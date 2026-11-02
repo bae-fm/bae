@@ -33,10 +33,7 @@ impl bae_core::diagnostics::BugReporter for PlatformBugReporter {
         if let Err(failed) = bae_util::task_failure::caught_sync("report a bug", || {
             self.0.report(operation.to_string(), detail.to_string())
         }) {
-            tracing::error!(
-                operation,
-                "the platform's crash reporter threw on a bug: {failed}"
-            );
+            tracing::error!(operation, "the platform's crash reporter threw on a bug: {failed}");
         }
     }
 }
@@ -44,9 +41,7 @@ impl bae_core::diagnostics::BugReporter for PlatformBugReporter {
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeDiagnosticsConfig {
     Disabled,
-    Enabled {
-        config: BridgeDatadogDiagnosticsConfig,
-    },
+    Enabled { config: BridgeDatadogDiagnosticsConfig },
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
@@ -101,10 +96,7 @@ impl BridgeDiagnostics {
 
     /// Flush any buffered telemetry now.
     pub(crate) async fn flush(&self) -> Result<(), BridgeError> {
-        self.inner
-            .flush()
-            .await
-            .map_err(diagnostics_error_to_bridge)
+        self.inner.flush().await.map_err(diagnostics_error_to_bridge)
     }
 
     /// Bootstrap the library `library_id` with this sink, its open's steps
@@ -248,16 +240,12 @@ impl BridgeDiagnostics {
     }
 
     fn emit_app_start_failed(&self, error: &BootstrapError) {
-        self.inner.event(TelemetryEvent::AppStartFailed {
-            kind: app_start_failure_kind(error),
-        });
+        self.inner.event(TelemetryEvent::AppStartFailed { kind: app_start_failure_kind(error) });
     }
 
     #[cfg(test)]
     pub(crate) fn noop() -> Arc<Self> {
-        Arc::new(Self {
-            inner: Diagnostics::noop(),
-        })
+        Arc::new(Self { inner: Diagnostics::noop() })
     }
 
     /// A sink that sends nothing and reports each bug to `bugs`.
@@ -265,9 +253,7 @@ impl BridgeDiagnostics {
     pub(crate) fn reporting_bugs_to(
         bugs: Arc<dyn bae_core::diagnostics::BugReporter>,
     ) -> Arc<Self> {
-        Arc::new(Self {
-            inner: Diagnostics::noop().reporting_bugs_to(bugs),
-        })
+        Arc::new(Self { inner: Diagnostics::noop().reporting_bugs_to(bugs) })
     }
 }
 
@@ -327,12 +313,7 @@ fn install_panic_logging() {
                 "non-string panic payload".to_string()
             };
             let location = panic.location().map(|location| {
-                format!(
-                    "{}:{}:{}",
-                    location.file(),
-                    location.line(),
-                    location.column()
-                )
+                format!("{}:{}:{}", location.file(), location.line(), location.column())
             });
             let backtrace = Backtrace::force_capture();
             tracing::error!(%message, ?location, %backtrace, "process panicked");
@@ -380,30 +361,14 @@ impl BridgeDiagnosticsConfig {
 
 impl BridgeDatadogDiagnosticsConfig {
     fn into_core(self) -> DiagnosticsConfig {
-        let BridgeDatadogDiagnosticsConfig {
-            datadog_site,
-            client_token,
-            source,
-            app,
-        } = self;
-        let BridgeAppDiagnosticMetadata {
-            service,
-            environment,
-            app_version,
-            edition,
-            git_commit,
-        } = app;
+        let BridgeDatadogDiagnosticsConfig { datadog_site, client_token, source, app } = self;
+        let BridgeAppDiagnosticMetadata { service, environment, app_version, edition, git_commit } =
+            app;
         let config = DatadogDiagnosticsConfig {
             datadog_site,
             client_token,
             source,
-            app: AppDiagnosticMetadata {
-                service,
-                environment,
-                app_version,
-                edition,
-                git_commit,
-            },
+            app: AppDiagnosticMetadata { service, environment, app_version, edition, git_commit },
         };
 
         DiagnosticsConfig::Enabled(config)
@@ -416,10 +381,9 @@ fn diagnostics_error_to_bridge(e: DiagnosticsError) -> BridgeError {
 
 fn bootstrap_error_to_bridge(e: BootstrapError) -> BridgeError {
     match e {
-        BootstrapError::LibraryNotFound(id) => BridgeError::NotFound {
-            entity: crate::types::BridgeEntityKind::Library,
-            id,
-        },
+        BootstrapError::LibraryNotFound(id) => {
+            BridgeError::NotFound { entity: crate::types::BridgeEntityKind::Library, id }
+        }
         BootstrapError::Config(msg) => BridgeError::config(msg),
         BootstrapError::Database(msg) => BridgeError::database(msg),
         BootstrapError::DeviceResetRequired(msg) => {
@@ -662,10 +626,7 @@ mod tests {
         let BridgeError::Diagnostic { category, .. } = &error else {
             panic!("a missing entitlement is a diagnostic: {error:?}");
         };
-        assert_eq!(
-            *category,
-            crate::BridgeErrorCategory::KeychainEntitlementMissing
-        );
+        assert_eq!(*category, crate::BridgeErrorCategory::KeychainEntitlementMissing);
         assert_eq!(
             crate::bridge_error_category_key(category.clone()),
             "core.error.keyring.entitlement_missing"
@@ -692,29 +653,18 @@ mod tests {
             let BridgeError::Diagnostic { category, .. } = &error else {
                 panic!("an unfinished replacement is a diagnostic: {error:?}");
             };
-            assert_eq!(
-                *category,
-                crate::BridgeErrorCategory::ReplacementUnfinished { by: bridge }
-            );
-            assert_eq!(
-                crate::types::bridge_error_line_key(&error).as_deref(),
-                Some(key)
-            );
+            assert_eq!(*category, crate::BridgeErrorCategory::ReplacementUnfinished { by: bridge });
+            assert_eq!(crate::types::bridge_error_line_key(&error).as_deref(), Some(key));
         }
     }
 
     #[test]
     fn host_telemetry_event_maps_to_the_core_catalog() {
-        let core = BridgeTelemetryEvent::ScreenOpened {
-            screen: BridgeScreen::Settings,
-        }
-        .into_core();
+        let core =
+            BridgeTelemetryEvent::ScreenOpened { screen: BridgeScreen::Settings }.into_core();
 
         assert_eq!(core.name(), "screen_opened");
-        assert_eq!(
-            core.fields()["screen"],
-            serde_json::Value::String("settings".to_string())
-        );
+        assert_eq!(core.fields()["screen"], serde_json::Value::String("settings".to_string()));
     }
 
     /// A desktop app whose stdout is no terminal — launched from Finder, the

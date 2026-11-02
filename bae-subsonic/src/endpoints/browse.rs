@@ -32,14 +32,9 @@ async fn artist_index(
 ) -> Result<Option<Element>, SubError> {
     let services = &state.services;
     let count = services.get_artist_count().await.map_err(lib_err)?;
-    let sort = [ArtistSortCriterion {
-        field: ArtistSortField::Name,
-        direction: SortDirection::Ascending,
-    }];
-    let summaries = services
-        .get_artist_page(&sort, 0, count)
-        .await
-        .map_err(lib_err)?;
+    let sort =
+        [ArtistSortCriterion { field: ArtistSortField::Name, direction: SortDirection::Ascending }];
+    let summaries = services.get_artist_page(&sort, 0, count).await.map_err(lib_err)?;
 
     // Bucket by first sort letter, keeping buckets ordered.
     let mut buckets: BTreeMap<String, Vec<ArtistId3>> = BTreeMap::new();
@@ -55,10 +50,7 @@ async fn artist_index(
             artist.musicbrainz_artist_id.clone(),
             summary.raw.image.as_ref(),
         );
-        buckets
-            .entry(index_letter(&artist.name))
-            .or_default()
-            .push(id3);
+        buckets.entry(index_letter(&artist.name)).or_default().push(id3);
     }
 
     let mut payload = Element::new(payload_name).attr("ignoredArticles", "");
@@ -89,9 +81,7 @@ pub(crate) async fn get_artist(
     params: Params,
 ) -> Result<Option<Element>, SubError> {
     let services = &state.services;
-    let artist_id = SubId::parse(params.require("id")?)?
-        .expect_artist()?
-        .to_string();
+    let artist_id = SubId::parse(params.require("id")?)?.expect_artist()?.to_string();
     let detail = services
         .get_artist_detail(&artist_id)
         .await
@@ -99,11 +89,8 @@ pub(crate) async fn get_artist(
         .ok_or_else(SubError::not_found)?;
 
     let artist = &detail.artist.raw.artist;
-    let release_ids: Vec<String> = detail
-        .albums
-        .iter()
-        .flat_map(|album| album.release_ids.iter().cloned())
-        .collect();
+    let release_ids: Vec<String> =
+        detail.albums.iter().flat_map(|album| album.release_ids.iter().cloned()).collect();
 
     let mut element = artist_id3(
         &artist.id,
@@ -127,9 +114,7 @@ pub(crate) async fn get_album(
     params: Params,
 ) -> Result<Option<Element>, SubError> {
     let services = &state.services;
-    let release_id = SubId::parse(params.require("id")?)?
-        .expect_album()?
-        .to_string();
+    let release_id = SubId::parse(params.require("id")?)?.expect_album()?.to_string();
     let release = services
         .get_release_by_id(&release_id)
         .await
@@ -140,18 +125,9 @@ pub(crate) async fn get_album(
     let album_title = album.name.clone();
     let cover_art = album.cover_art.clone();
 
-    let tracks = services
-        .get_tracks_for_release(&release_id)
-        .await
-        .map_err(lib_err)?;
-    let files = services
-        .get_files_for_release(&release_id)
-        .await
-        .map_err(lib_err)?;
-    let mediums = services
-        .get_release_mediums(&release_id)
-        .await
-        .map_err(lib_err)?;
+    let tracks = services.get_tracks_for_release(&release_id).await.map_err(lib_err)?;
+    let files = services.get_files_for_release(&release_id).await.map_err(lib_err)?;
+    let mediums = services.get_release_mediums(&release_id).await.map_err(lib_err)?;
 
     let mut songs = Vec::with_capacity(tracks.len());
     for track in &tracks {

@@ -32,13 +32,14 @@ fn sample_ledger() -> IdentifyRunView {
             discs: vec![crate::identify::DiscIdRow {
                 disc_id: "disc-1".to_string(),
                 lookup: LookupView::Found {
-                count: 1,
-                groups: crate::import::release_group::group_results(
-                    crate::import::release_group::unranked(vec![sample_match()]), None,
-                ),
-            },
-                }],
-            },
+                    count: 1,
+                    groups: crate::import::release_group::group_results(
+                        crate::import::release_group::unranked(vec![sample_match()]),
+                        None,
+                    ),
+                },
+            }],
+        },
         barcode: crate::identify::BarcodeStepView::Absent,
         catalog: crate::identify::CatalogStepView::NoneFound,
         isrc: crate::identify::IsrcStepView::Absent,
@@ -59,7 +60,9 @@ fn sample_match() -> MetadataResult {
         packaging: None,
         discogs_details: Vec::new(),
         barcodes: Vec::new(),
-        media: bae_types::pressing::StatedMedia::PerMedium(vec![Some(bae_types::pressing::Medium::Cd)]),
+        media: bae_types::pressing::StatedMedia::PerMedium(vec![Some(
+            bae_types::pressing::Medium::Cd,
+        )]),
         links: Vec::new(),
         cover_art: None,
         source_group_id: Some("group-1".to_string()),
@@ -100,10 +103,7 @@ fn sample_signals() -> crate::signals::Signals {
         origin: crate::signals::AudioOrigin::default(),
         disc_id: crate::signals::DiscIdSignal::Absent,
         barcode: crate::signals::BarcodeSignal::Absent,
-        text: crate::signals::TextSignal::Settled {
-            catalogs: Vec::new(),
-            free_text: Vec::new(),
-        },
+        text: crate::signals::TextSignal::Settled { catalogs: Vec::new(), free_text: Vec::new() },
         text_pool: Vec::new(),
         isrcs: Vec::new(),
         track_titles: Vec::new(),
@@ -154,29 +154,16 @@ async fn resizing_a_file_orphans_the_old_row_under_a_new_hash() {
     let (db, _tmp) = empty_db().await;
     let original = track_files_candidate(&[("01 Track.flac", 123_456), ("02 Track.flac", 234_567)]);
     let original_hash = original.content_hash();
-    let row = new_candidate_row(
-        &original_hash,
-        &host_root("/music/Some Album"),
-        &sample_verdict(),
-    );
+    let row = new_candidate_row(&original_hash, &host_root("/music/Some Album"), &sample_verdict());
     store_candidate_state(&db, &original, &row.candidate_key.test_folder()).await;
-    crate::import::CandidatePreparations::new(db.clone())
-        .store_verdict(&row)
-        .await
-        .unwrap();
+    crate::import::CandidatePreparations::new(db.clone()).store_verdict(&row).await.unwrap();
 
     let resized = track_files_candidate(&[("01 Track.flac", 999_999), ("02 Track.flac", 234_567)]);
     let resized_hash = resized.content_hash();
-    assert_ne!(
-        original_hash, resized_hash,
-        "resizing a file must change the hash"
-    );
+    assert_ne!(original_hash, resized_hash, "resizing a file must change the hash");
 
     let loaded = db.load_import_candidate_states().await.unwrap();
-    assert!(
-        loaded.contains_key(&original_hash),
-        "the old row is still present under its own key"
-    );
+    assert!(loaded.contains_key(&original_hash), "the old row is still present under its own key");
     assert!(
         !loaded.contains_key(&resized_hash),
         "the new hash must find no row -- the candidate needs re-identifying"
@@ -186,27 +173,25 @@ async fn resizing_a_file_orphans_the_old_row_under_a_new_hash() {
 /// Store MusicBrainz release `release_id` as the setup of a write that names
 /// it, which then finds it stored.
 async fn fetched(db: &Database, release_id: &str) {
-    db.save_source_release(&fetched_release(release_id))
-        .await
-        .unwrap();
+    db.save_source_release(&fetched_release(release_id)).await.unwrap();
 }
 
 /// The catalog release [`fetched`] stores.
 fn fetched_release(release_id: &str) -> crate::import::source_release::SourceRelease {
     crate::import::payloads::ReleasePayloads::for_test(
-            crate::import::MetadataRef::new(bae_catalogs::catalog::Catalog::MusicBrainz, release_id),
-            serde_json::json!({
-                "id": release_id,
-                "title": "Album",
-                "artist-credit": [{ "name": "Artist" }],
-                "media": [],
-                "cover-art-archive": { "front": false, "darkened": false }
-            })
-            .to_string(),
-            Vec::new(),
-        )
-        .extract()
-        .unwrap()
+        crate::import::MetadataRef::new(bae_catalogs::catalog::Catalog::MusicBrainz, release_id),
+        serde_json::json!({
+            "id": release_id,
+            "title": "Album",
+            "artist-credit": [{ "name": "Artist" }],
+            "media": [],
+            "cover-art-archive": { "front": false, "darkened": false }
+        })
+        .to_string(),
+        Vec::new(),
+    )
+    .extract()
+    .unwrap()
 }
 
 fn release_link(release_id: &str) -> crate::import::PressingLink {
@@ -235,7 +220,10 @@ async fn every_metadata_provenance_variant_survives_a_database_reopen() {
     let layout = crate::config::AppDir::at(tmp.path()).unwrap().store_layout();
     let clock: coven::ClockRef = Arc::new(FixedClock::new(fixed_now().into()));
     let handle = crate::library::configure_store(installation.builder(layout.clone()))
-        .clock(clock.clone()).create_store("Test Library").await.unwrap();
+        .clock(clock.clone())
+        .create_store("Test Library")
+        .await
+        .unwrap();
     let id = handle.store_id();
     let db = Database::from_handle(handle, clock.clone(), std::sync::Arc::new(coven::UuidIds));
     fetched(&db, "release-a").await;
@@ -260,10 +248,7 @@ async fn every_metadata_provenance_variant_survives_a_database_reopen() {
         store_candidate_state(&db, &candidate, folder_path).await;
         let row = new_candidate_row(content_hash, folder_path, &sample_verdict());
         let key = crate::import::CandidateKey::folder(folder_path);
-        crate::import::CandidatePreparations::new(db.clone())
-            .store_verdict(&row)
-            .await
-            .unwrap();
+        crate::import::CandidatePreparations::new(db.clone()).store_verdict(&row).await.unwrap();
         crate::import::CandidatePreparations::new(db.clone())
             .replace_metadata(
                 content_hash,
@@ -279,7 +264,10 @@ async fn every_metadata_provenance_variant_survives_a_database_reopen() {
     drop(db);
 
     let handle = crate::library::configure_store(installation.builder(layout))
-        .clock(clock.clone()).open(id, |_| ()).await.unwrap();
+        .clock(clock.clone())
+        .open(id, |_| ())
+        .await
+        .unwrap();
     let reopened = Database::from_handle(handle, clock, std::sync::Arc::new(coven::UuidIds));
     let loaded = reopened.load_import_candidate_states().await.unwrap();
 
@@ -311,24 +299,15 @@ async fn a_re_run_that_finds_nothing_leaves_the_draft_an_earlier_run_wrote() {
         new_candidate_row(&hash, &host_root("/music/Album"), &sample_verdict()),
         "mb-rel-1",
     );
-    crate::import::CandidatePreparations::new(db.clone())
-        .store_verdict(&settled)
-        .await
-        .unwrap();
+    crate::import::CandidatePreparations::new(db.clone()).store_verdict(&settled).await.unwrap();
 
     let re_run = new_candidate_row(&hash, &host_root("/music/Album"), &found_nothing());
     assert!(re_run.pick.is_none(), "nothing was found to pick");
-    crate::import::CandidatePreparations::new(db.clone())
-        .store_verdict(&re_run)
-        .await
-        .unwrap();
+    crate::import::CandidatePreparations::new(db.clone()).store_verdict(&re_run).await.unwrap();
 
     let loaded = db.load_import_candidate_states().await.unwrap();
     assert_eq!(
-        loaded
-            .get(&hash)
-            .expect("the row is still there")
-            .metadata_provenance,
+        loaded.get(&hash).expect("the row is still there").metadata_provenance,
         Some(release_pick("mb-rel-1")),
         "a run that concluded no release wrote no draft"
     );
@@ -343,10 +322,7 @@ async fn a_re_run_that_finds_nothing_leaves_a_person_s_pick_alone() {
     let hash = store_candidate_state(&db, &candidate, &host_root("/music/Album")).await;
 
     let initial = new_candidate_row(&hash, &host_root("/music/Album"), &found_nothing());
-    crate::import::CandidatePreparations::new(db.clone())
-        .store_verdict(&initial)
-        .await
-        .unwrap();
+    crate::import::CandidatePreparations::new(db.clone()).store_verdict(&initial).await.unwrap();
     crate::import::CandidatePreparations::new(db.clone())
         .replace_metadata(
             &hash,
@@ -359,17 +335,11 @@ async fn a_re_run_that_finds_nothing_leaves_a_person_s_pick_alone() {
         .unwrap();
 
     let re_run = new_candidate_row(&hash, &host_root("/music/Album"), &found_nothing());
-    crate::import::CandidatePreparations::new(db.clone())
-        .store_verdict(&re_run)
-        .await
-        .unwrap();
+    crate::import::CandidatePreparations::new(db.clone()).store_verdict(&re_run).await.unwrap();
 
     let loaded = db.load_import_candidate_states().await.unwrap();
     assert_eq!(
-        loaded
-            .get(&hash)
-            .expect("the row is still there")
-            .metadata_provenance,
+        loaded.get(&hash).expect("the row is still there").metadata_provenance,
         Some(release_pick("mb-rel-chosen")),
         "a verdict that concluded no release must not unmake a choice a person made"
     );
@@ -389,26 +359,17 @@ async fn a_re_run_that_settles_elsewhere_replaces_the_pick_it_made() {
         new_candidate_row(&hash, &host_root("/music/Album"), &sample_verdict()),
         "mb-rel-first",
     );
-    crate::import::CandidatePreparations::new(db.clone())
-        .store_verdict(&first)
-        .await
-        .unwrap();
+    crate::import::CandidatePreparations::new(db.clone()).store_verdict(&first).await.unwrap();
 
     let second = concluding(
         new_candidate_row(&hash, &host_root("/music/Album"), &sample_verdict()),
         "mb-rel-second",
     );
-    crate::import::CandidatePreparations::new(db.clone())
-        .store_verdict(&second)
-        .await
-        .unwrap();
+    crate::import::CandidatePreparations::new(db.clone()).store_verdict(&second).await.unwrap();
 
     let loaded = db.load_import_candidate_states().await.unwrap();
     assert_eq!(
-        loaded
-            .get(&hash)
-            .expect("the row is still there")
-            .metadata_provenance,
+        loaded.get(&hash).expect("the row is still there").metadata_provenance,
         Some(release_pick("mb-rel-second")),
         "the live verdict's own conclusion is the one that stands"
     );
@@ -430,10 +391,7 @@ async fn a_file_decision_preserves_applied_metadata_from_either_author() {
         new_candidate_row(&hash, &host_root("/music/Album"), &sample_verdict()),
         "mb-rel-derived",
     );
-    crate::import::CandidatePreparations::new(db.clone())
-        .store_verdict(&settled)
-        .await
-        .unwrap();
+    crate::import::CandidatePreparations::new(db.clone()).store_verdict(&settled).await.unwrap();
     let (metadata_revision, draft) = current_draft(&db, &hash).await;
     crate::import::CandidatePreparations::new(db.clone())
         .store_file_decisions(
@@ -481,10 +439,7 @@ async fn a_file_decision_preserves_applied_metadata_from_either_author() {
         .unwrap();
     let loaded = db.load_import_candidate_states().await.unwrap();
     assert_eq!(
-        loaded
-            .get(&hash)
-            .expect("the row is still there")
-            .metadata_provenance,
+        loaded.get(&hash).expect("the row is still there").metadata_provenance,
         Some(release_pick("mb-rel-chosen")),
         "a file decision must not unmake a choice a person made"
     );
@@ -497,21 +452,15 @@ async fn a_moved_folder_hashes_identically_and_keeps_its_row() {
     let at_old_location =
         track_files_candidate(&[("01 Track.flac", 123_456), ("02 Track.flac", 234_567)]);
     let hash = at_old_location.content_hash();
-    let row = new_candidate_row(
-        &hash,
-        &host_root("/music/Old Location/Some Album"),
-        &sample_verdict(),
-    );
+    let row =
+        new_candidate_row(&hash, &host_root("/music/Old Location/Some Album"), &sample_verdict());
     store_candidate_state(&db, &at_old_location, &row.candidate_key.test_folder()).await;
-    crate::import::CandidatePreparations::new(db.clone())
-        .store_verdict(&row)
-        .await
-        .unwrap();
+    crate::import::CandidatePreparations::new(db.clone()).store_verdict(&row).await.unwrap();
 
     let mut at_new_location = at_old_location.clone();
     for entry in &mut at_new_location.files {
-        entry.file.path = host_root("/music/New Location/Some Album")
-            .join(&entry.file.relative_path);
+        entry.file.path =
+            host_root("/music/New Location/Some Album").join(&entry.file.relative_path);
     }
     assert_eq!(
         hash,
@@ -558,10 +507,7 @@ async fn a_transport_failure_round_trips_as_a_failed_verdict() {
                     }],
                 },
                 barcode: BarcodeSignal::Absent,
-                text: TextSignal::Settled {
-                    catalogs: vec![],
-                    free_text: vec![],
-                },
+                text: TextSignal::Settled { catalogs: vec![], free_text: vec![] },
                 text_pool: Vec::new(),
                 isrcs: Vec::new(),
                 track_titles: Vec::new(),
@@ -580,20 +526,14 @@ async fn a_transport_failure_round_trips_as_a_failed_verdict() {
 
     let verdict = TerminalVerdict::try_from(state).expect("the failure is terminal");
     let row = new_candidate_row(&hash, &host_root("/music/Some Album"), &verdict);
-    crate::import::CandidatePreparations::new(db.clone())
-        .store_verdict(&row)
-        .await
-        .unwrap();
+    crate::import::CandidatePreparations::new(db.clone()).store_verdict(&row).await.unwrap();
 
     let loaded = db.load_import_candidate_states().await.unwrap();
     let loaded = loaded
         .get(&hash)
         .and_then(|state| state.identify.as_ref())
         .expect("the failed verdict is stored");
-    assert_eq!(
-        loaded.verdict, verdict,
-        "the provider failure survives the database boundary"
-    );
+    assert_eq!(loaded.verdict, verdict, "the provider failure survives the database boundary");
 }
 
 include!("bindings.rs");

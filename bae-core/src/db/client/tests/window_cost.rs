@@ -78,9 +78,7 @@ fn seed_sql(start: u64, end: u64) -> String {
 /// original for each size, which every file of that size names.
 pub(super) async fn seed(db: &Database, originals: &std::path::Path, start: u64, end: u64) {
     let sql = seed_sql(start, end);
-    db.call(move |conn| conn.execute_batch(&sql).map_err(DbError::from))
-        .await
-        .unwrap();
+    db.call(move |conn| conn.execute_batch(&sql).map_err(DbError::from)).await.unwrap();
     std::fs::create_dir_all(originals).unwrap();
     let mut files = Vec::new();
     for i in start..end {
@@ -93,10 +91,7 @@ pub(super) async fn seed(db: &Database, originals: &std::path::Path, start: u64,
             let size = 1000 + (i * 7 + j) % 50_000;
             let original = originals.join(format!("{size}.bin"));
             if !original.exists() {
-                std::fs::File::create_new(&original)
-                    .unwrap()
-                    .set_len(size)
-                    .unwrap();
+                std::fs::File::create_new(&original).unwrap().set_len(size).unwrap();
             }
             files.push((
                 NewReleaseFile {
@@ -141,11 +136,7 @@ where
 /// The window offsets measured in a list of `total` rows: its top, its middle
 /// and its last window.
 fn offsets(total: u64) -> [(&'static str, u64); 3] {
-    [
-        ("top", 0),
-        ("middle", total / 2),
-        ("end", total.saturating_sub(LIMIT)),
-    ]
+    [("top", 0), ("middle", total / 2), ("end", total.saturating_sub(LIMIT))]
 }
 
 fn report(
@@ -191,11 +182,7 @@ async fn measure<R: Send + 'static>(
                 limit: LIMIT,
             }]);
         // The row beside the window: after it at the top, before it below.
-        let beside = if offset == 0 {
-            offset + LIMIT
-        } else {
-            offset - 1
-        };
+        let beside = if offset == 0 { offset + LIMIT } else { offset - 1 };
         let key = {
             let (order, rows) = (order.clone(), rows.clone());
             db.read(move |sql| {
@@ -209,10 +196,7 @@ async fn measure<R: Send + 'static>(
         };
         for (reach, known) in [
             ("jump", super::super::list_windows::Places::new()),
-            (
-                "scroll",
-                super::super::list_windows::Places::from([(beside, key.clone())]),
-            ),
+            ("scroll", super::super::list_windows::Places::from([(beside, key.clone())])),
         ] {
             let (order, window, rows) = (order.clone(), window.clone(), rows.clone());
             let timing = median(db, move |sql| {
@@ -228,10 +212,7 @@ async fn measure<R: Send + 'static>(
 }
 
 fn both_ways<F: Copy>(field: F) -> [(F, SortDirection); 2] {
-    [
-        (field, SortDirection::Ascending),
-        (field, SortDirection::Descending),
-    ]
+    [(field, SortDirection::Ascending), (field, SortDirection::Descending)]
 }
 
 async fn measure_albums(db: &Database, n: u64) {
@@ -291,15 +272,8 @@ async fn measure_artists(db: &Database, n: u64) {
         }
     }
     for (name, sort) in sorts {
-        measure(
-            db,
-            "artists",
-            &name,
-            n,
-            artist_order(&sort),
-            super::super::artist::artist_rows_on,
-        )
-        .await;
+        measure(db, "artists", &name, n, artist_order(&sort), super::super::artist::artist_rows_on)
+            .await;
     }
 }
 
@@ -440,9 +414,7 @@ async fn measure_queues(db: &Database, n: u64) {
     for (at, offset) in offsets(n) {
         let lane = lane.clone();
         let timing = median(db, move |sql| {
-            Ok(sql
-                .query(&lane, params![LIMIT as i64, offset as i64], |_| Ok(()))?
-                .len())
+            Ok(sql.query(&lane, params![LIMIT as i64, offset as i64], |_| Ok(()))?.len())
         })
         .await;
         report("queue_upcoming", "lane", "jump", at, offset, n, timing);
@@ -459,28 +431,15 @@ pub(super) async fn grow_import_list(
 ) -> Duration {
     let root = tmp.join(format!("watched-{start}"));
     std::fs::create_dir_all(&root).unwrap();
-    let root = std::fs::canonicalize(&root)
-        .unwrap()
-        .to_str()
-        .unwrap()
-        .to_string();
+    let root = std::fs::canonicalize(&root).unwrap().to_str().unwrap().to_string();
     let started = Instant::now();
-    db.add_watched_import_folder(std::path::Path::new(&root))
-        .await
-        .unwrap();
+    db.add_watched_import_folder(std::path::Path::new(&root)).await.unwrap();
     let generation = db
-        .begin_folder_scan(
-            std::path::Path::new(&root),
-            crate::import::VolumeKind::Local,
-        )
+        .begin_folder_scan(std::path::Path::new(&root), crate::import::VolumeKind::Local)
         .await
         .unwrap();
     for i in start..end {
-        let name = format!(
-            "Artist {:03}/Album {:06}",
-            (i * 7) % 100,
-            (i * 16807) % 999_983
-        );
+        let name = format!("Artist {:03}/Album {:06}", (i * 7) % 100, (i * 16807) % 999_983);
         let candidate = super::candidate(std::path::Path::new(&root), &name);
         db.save_folder_scan_item(
             std::path::Path::new(&root),
@@ -491,10 +450,7 @@ pub(super) async fn grow_import_list(
         .unwrap()
         .unwrap();
     }
-    db.finish_folder_scan(std::path::Path::new(&root), generation, None)
-        .await
-        .unwrap()
-        .unwrap();
+    db.finish_folder_scan(std::path::Path::new(&root), generation, None).await.unwrap().unwrap();
     started.elapsed()
 }
 
@@ -518,23 +474,12 @@ async fn measure_import_list(db: &Database, n: u64) {
         let request = |offset| ImportListRequest {
             list,
             windows: crate::library::LibraryPageWindows::from([
-                crate::library::LibraryPageWindow {
-                    offset,
-                    limit: LIMIT,
-                },
+                crate::library::LibraryPageWindow { offset, limit: LIMIT },
             ]),
         };
         for (at, offset) in offsets(n) {
-            let away = if offset >= n / 2 {
-                offset - n / 4
-            } else {
-                offset + n / 4
-            };
-            let next = if offset + 2 * LIMIT <= n {
-                offset + LIMIT
-            } else {
-                offset - LIMIT
-            };
+            let away = if offset >= n / 2 { offset - n / 4 } else { offset + n / 4 };
+            let next = if offset + 2 * LIMIT <= n { offset + LIMIT } else { offset - LIMIT };
             for (reach, other) in [("jump", away), ("scroll", next)] {
                 let mut query = db.subscribe_import_list(request(other));
                 query.next().await.unwrap().result.unwrap();

@@ -43,16 +43,9 @@ async fn an_artist_identity_conflict_round_trips_with_both_library_artists() {
     db.insert_artist(&musicbrainz).await.unwrap();
     let expected = artist_identity_failure(&discogs, &musicbrainz);
 
-    db.save_import_candidate_failure(&hash, 0, &expected)
-        .await
-        .unwrap();
+    db.save_import_candidate_failure(&hash, 0, &expected).await.unwrap();
 
-    let stored = db
-        .load_import_candidate_pane_rows(&hash)
-        .await
-        .unwrap()
-        .failure
-        .unwrap();
+    let stored = db.load_import_candidate_pane_rows(&hash).await.unwrap().failure.unwrap();
     assert_eq!(stored, expected);
 }
 
@@ -198,34 +191,29 @@ async fn resolving_an_artist_identity_conflict_merges_library_links_and_clears_t
     })
     .await
     .unwrap();
-    for (artist, bytes) in [
-        (&discogs.id, b"four".as_slice()),
-        (&musicbrainz.id, b"one".as_slice()),
-    ] {
+    for (artist, bytes) in [(&discogs.id, b"four".as_slice()), (&musicbrainz.id, b"one".as_slice())]
+    {
         store_artist_image(&db, artist, bytes).await;
     }
     let failure = artist_identity_failure(&discogs, &musicbrainz);
-    db.save_import_candidate_failure(&hash, 0, &failure)
-        .await
-        .unwrap();
-    db.save_import_candidate_failure(&pending_hash, 0, &failure)
-        .await
-        .unwrap();
+    db.save_import_candidate_failure(&hash, 0, &failure).await.unwrap();
+    db.save_import_candidate_failure(&pending_hash, 0, &failure).await.unwrap();
 
-    db.choose_import_artist_identity(&hash, 0, crate::import::ArtistIdentityConflictChoice::SameArtist, &coven::UuidIds)
-        .await
-        .unwrap();
+    db.choose_import_artist_identity(
+        &hash,
+        0,
+        crate::import::ArtistIdentityConflictChoice::SameArtist,
+        &coven::UuidIds,
+    )
+    .await
+    .unwrap();
 
     let survivor = db.find_artist_by_id(&discogs.id).await.unwrap().unwrap();
     assert_eq!(survivor.discogs_artist_id.as_deref(), Some("discogs-1"));
     assert_eq!(survivor.musicbrainz_artist_id.as_deref(), Some("mb-1"));
     // The absorbed artist stays, recorded as merged, and every credit shows
     // the survivor: the album's list names it twice, as it named the two.
-    assert!(db
-        .find_artist_by_id(&musicbrainz.id)
-        .await
-        .unwrap()
-        .is_some());
+    assert!(db.find_artist_by_id(&musicbrainz.id).await.unwrap().is_some());
     assert_eq!(
         db.get_artists_for_album(&album.id)
             .await
@@ -238,8 +226,8 @@ async fn resolving_an_artist_identity_conflict_merges_library_links_and_clears_t
     let absorbed_id = musicbrainz.id.clone();
     let survivor_id = discogs.id.clone();
     let pending_hash_for_read = pending_hash.clone();
-    let (absorbed_references, pending_album_artists, pending_track_artists) =
-        db.read(move |sql| {
+    let (absorbed_references, pending_album_artists, pending_track_artists) = db
+        .read(move |sql| {
             let mut absorbed_references = 0_i64;
             // Only this device's drafts move; shared credits stay as written.
             for table in [
@@ -264,11 +252,7 @@ async fn resolving_an_artist_identity_conflict_merges_library_links_and_clears_t
                 params![pending_hash_for_read, survivor_id],
                 |row| row.get::<_, i64>(0),
             )?;
-            Ok((
-                absorbed_references,
-                pending_album_artists,
-                pending_track_artists,
-            ))
+            Ok((absorbed_references, pending_album_artists, pending_track_artists))
         })
         .await
         .unwrap();
@@ -280,18 +264,8 @@ async fn resolving_an_artist_identity_conflict_merges_library_links_and_clears_t
     );
     assert_eq!(pending_album_artists, 1);
     assert_eq!(pending_track_artists, 1);
-    assert!(db
-        .load_import_candidate_pane_rows(&hash)
-        .await
-        .unwrap()
-        .failure
-        .is_none());
-    assert!(db
-        .load_import_candidate_pane_rows(&pending_hash)
-        .await
-        .unwrap()
-        .failure
-        .is_none());
+    assert!(db.load_import_candidate_pane_rows(&hash).await.unwrap().failure.is_none());
+    assert!(db.load_import_candidate_pane_rows(&pending_hash).await.unwrap().failure.is_none());
 }
 
 async fn store_artist_image(db: &Database, artist_id: &str, bytes: &[u8]) {
@@ -353,9 +327,14 @@ async fn resolving_a_conflict_moves_the_absorbed_artists_image_to_the_survivor()
         .await
         .unwrap();
 
-    db.choose_import_artist_identity(&hash, 0, crate::import::ArtistIdentityConflictChoice::SameArtist, &coven::UuidIds)
-        .await
-        .unwrap();
+    db.choose_import_artist_identity(
+        &hash,
+        0,
+        crate::import::ArtistIdentityConflictChoice::SameArtist,
+        &coven::UuidIds,
+    )
+    .await
+    .unwrap();
 
     assert_eq!(artist_image_file(&db, &discogs.id).await.id(), absorbed);
     assert_eq!(
@@ -399,20 +378,16 @@ async fn resolving_a_conflict_refuses_a_third_provider_identity_without_changing
         .await
         .unwrap();
 
-    db.choose_import_artist_identity(&hash, 0, crate::import::ArtistIdentityConflictChoice::SameArtist, &coven::UuidIds)
-        .await
-        .expect_err("a two-artist merge must not absorb an unrelated provider identity");
+    db.choose_import_artist_identity(
+        &hash,
+        0,
+        crate::import::ArtistIdentityConflictChoice::SameArtist,
+        &coven::UuidIds,
+    )
+    .await
+    .expect_err("a two-artist merge must not absorb an unrelated provider identity");
 
     assert!(db.find_artist_by_id(&discogs.id).await.unwrap().is_some());
-    assert!(db
-        .find_artist_by_id(&musicbrainz.id)
-        .await
-        .unwrap()
-        .is_some());
-    assert!(db
-        .load_import_candidate_pane_rows(&hash)
-        .await
-        .unwrap()
-        .failure
-        .is_some());
+    assert!(db.find_artist_by_id(&musicbrainz.id).await.unwrap().is_some());
+    assert!(db.load_import_candidate_pane_rows(&hash).await.unwrap().failure.is_some());
 }

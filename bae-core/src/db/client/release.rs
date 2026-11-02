@@ -257,12 +257,8 @@ impl Database {
         tracks: &[DbTrack],
         track_artists: &[DbTrackArtist],
     ) -> Result<(), DbError> {
-        let (release, mediums, tracks, track_artists) = (
-            release.clone(),
-            mediums.to_vec(),
-            tracks.to_vec(),
-            track_artists.to_vec(),
-        );
+        let (release, mediums, tracks, track_artists) =
+            (release.clone(), mediums.to_vec(), tracks.to_vec(), track_artists.to_vec());
         let labels = self.label_parts(&release.pressing.labels);
         self.call_sql(move |sql| {
             let tx = &sql;
@@ -309,12 +305,8 @@ impl Database {
     pub async fn get_release_for_track(&self, track: &DbTrack) -> Result<DbRelease, DbError> {
         let release_id = track.release_id.clone();
         self.read(move |sql| {
-            sql.query_row(
-                &release_rows_sql("r.id = ?"),
-                params![release_id],
-                row_to_release,
-            )
-            .map_err(DbError::from)
+            sql.query_row(&release_rows_sql("r.id = ?"), params![release_id], row_to_release)
+                .map_err(DbError::from)
         })
         .await
     }
@@ -353,10 +345,7 @@ impl Database {
         })
         .process(|rows| {
             Ok(rows.map(|(context, tracks)| {
-                (
-                    super::release_projection::ReleaseContextRows::process(context),
-                    tracks,
-                )
+                (super::release_projection::ReleaseContextRows::process(context), tracks)
             }))
         })
         .await
@@ -403,8 +392,7 @@ impl Database {
     /// Ordered by `created_at`.
     pub async fn get_releases_for_album(&self, album_id: &str) -> Result<Vec<DbRelease>, DbError> {
         let album_id = album_id.to_string();
-        self.read(move |sql| get_releases_for_album_on(&sql, &album_id))
-            .await
+        self.read(move |sql| get_releases_for_album_on(&sql, &album_id)).await
     }
     /// Seed a release-file row for tests, its file staged from the original
     /// at `original` as a local import stages it: on this device only, with
@@ -415,9 +403,8 @@ impl Database {
         file: &NewReleaseFile,
         original: &std::path::Path,
     ) -> Result<coven::FileId, DbError> {
-        let staged = self
-            .insert_files_for_test(vec![(file.clone(), original.to_path_buf())])
-            .await?;
+        let staged =
+            self.insert_files_for_test(vec![(file.clone(), original.to_path_buf())]).await?;
         Ok(staged[0])
     }
 
@@ -470,12 +457,7 @@ impl Database {
                      ORDER BY f.original_filename COLLATE natural_order, f.id"
                 ),
                 params![release_id],
-                |row| {
-                    Ok((
-                        row_to_file(row)?,
-                        row.get::<_, Option<Vec<u8>>>("original_path")?,
-                    ))
-                },
+                |row| Ok((row_to_file(row)?, row.get::<_, Option<Vec<u8>>>("original_path")?)),
             )?
             .into_iter()
             .map(|(file, original)| Ok((file, original.map(path_column::decode).transpose()?)))
@@ -486,8 +468,7 @@ impl Database {
 
     pub async fn get_files_for_release(&self, release_id: &str) -> Result<Vec<DbFile>, DbError> {
         let release_id = release_id.to_string();
-        self.read(move |sql| get_files_for_release_on(&sql, &release_id))
-            .await
+        self.read(move |sql| get_files_for_release_on(&sql, &release_id)).await
     }
 
     /// Insert an audio format and its segments in one transaction — the rows the
@@ -518,8 +499,7 @@ impl Database {
         points: &DbScrubPoints,
     ) -> Result<(), DbError> {
         let points = points.clone();
-        self.call_sql(move |sql| insert_scrub_points_row(&sql, &points))
-            .await
+        self.call_sql(move |sql| insert_scrub_points_row(&sql, &points)).await
     }
     /// The file `file_id` of the release `release_id`, by the files' key;
     /// `None` when the release has no such file.
@@ -581,10 +561,7 @@ impl Database {
     ) -> Result<(), IdentityWriteError> {
         let album = album.cloned();
         let release = release.clone();
-        let tracks: Vec<DbTrack> = tracks_to_files
-            .iter()
-            .map(|tf| tf.db_track.clone())
-            .collect();
+        let tracks: Vec<DbTrack> = tracks_to_files.iter().map(|tf| tf.db_track.clone()).collect();
         let mediums = rows.mediums.to_vec();
         let track_artists = rows.track_artists.to_vec();
         let album_artists = rows.album_artists.to_vec();
@@ -647,18 +624,12 @@ impl Database {
                 // import committed a moment ago is the one this import
                 // links to. New artists go in and linked ones are filled in
                 // before the links below point at them.
-                let credits = ArtistCredits {
-                    credits: &artist_credits,
-                    picked: &picked_artists,
-                };
+                let credits = ArtistCredits { credits: &artist_credits, picked: &picked_artists };
                 let resolved = credits
                     .resolve_for_import_on(tx, guard.content_hash())
                     .map_err(identity_write_failure)?;
-                let inserted: BTreeSet<String> = resolved
-                    .inserts
-                    .iter()
-                    .map(|artist| artist.id.clone())
-                    .collect();
+                let inserted: BTreeSet<String> =
+                    resolved.inserts.iter().map(|artist| artist.id.clone()).collect();
                 if inserted != expected_new_artists {
                     return Err(identity_write_failure(IdentityWriteError::LibraryChanged));
                 }
@@ -666,21 +637,16 @@ impl Database {
                 let artist_ids = resolved.id_map(&artist_credits);
                 let album_artists = relink_album_artists(&album_artists, &artist_ids)?;
                 let track_artists = relink_track_artists(&track_artists, &artist_ids)?;
-                let release_artist_roles = relink(
-                    &release_artist_roles,
-                    &artist_ids,
-                    "release artist role",
-                    |role| &mut role.artist_id,
-                )?;
-                let track_artist_roles = relink(
-                    &track_artist_roles,
-                    &artist_ids,
-                    "track artist role",
-                    |role| &mut role.artist_id,
-                )?;
-                let work_artists = relink(&work_artists, &artist_ids, "work artist", |link| {
-                    &mut link.artist_id
-                })?;
+                let release_artist_roles =
+                    relink(&release_artist_roles, &artist_ids, "release artist role", |role| {
+                        &mut role.artist_id
+                    })?;
+                let track_artist_roles =
+                    relink(&track_artist_roles, &artist_ids, "track artist role", |role| {
+                        &mut role.artist_id
+                    })?;
+                let work_artists =
+                    relink(&work_artists, &artist_ids, "work artist", |link| &mut link.artist_id)?;
 
                 // A new album for a release group carries the group's id, so
                 // its row can be here already, emptied by an earlier delete
@@ -761,10 +727,8 @@ impl Database {
                     insert_scrub_points_row(tx, points)?;
                 }
 
-                for ((image, _), file) in library_image
-                    .iter()
-                    .chain(artist_images.iter())
-                    .zip(&image_file_ids)
+                for ((image, _), file) in
+                    library_image.iter().chain(artist_images.iter()).zip(&image_file_ids)
                 {
                     upsert_library_image_row(tx, image, file)?;
                 }
@@ -788,10 +752,7 @@ impl Database {
     ) -> Result<bool, DbError> {
         self.call_sql(move |sql| {
             plan.apply_on(&sql)?;
-            sql.execute(
-                "DELETE FROM releases WHERE id = ?",
-                params![plan.release_id()],
-            )?;
+            sql.execute("DELETE FROM releases WHERE id = ?", params![plan.release_id()])?;
             vacate_album_on(&sql, plan.album_id())
         })
         .await
@@ -803,15 +764,13 @@ impl Database {
         release_id: &str,
     ) -> Result<ReleaseDeletion, DbError> {
         let release_id = release_id.to_string();
-        self.read(move |sql| ReleaseDeletion::plan_on(&sql, &release_id))
-            .await
+        self.read(move |sql| ReleaseDeletion::plan_on(&sql, &release_id)).await
     }
 
     /// Find release by ID. Caller-provided ID — may not exist.
     pub async fn find_release_by_id(&self, release_id: &str) -> Result<Option<DbRelease>, DbError> {
         let release_id = release_id.to_string();
-        self.read(move |sql| find_release_by_id_on(&sql, &release_id))
-            .await
+        self.read(move |sql| find_release_by_id_on(&sql, &release_id)).await
     }
 
     /// Test-only: write a stored name onto an existing row directly, the way a
@@ -918,10 +877,7 @@ fn release_edit_tracks_on(
                         ))
                     }
                 };
-                Ok(DbReleaseEditSegment {
-                    file_id: segment.file_id,
-                    file,
-                })
+                Ok(DbReleaseEditSegment { file_id: segment.file_id, file })
             })
             .collect::<rusqlite::Result<Vec<_>>>()?;
         Ok(DbReleaseEditTrack {

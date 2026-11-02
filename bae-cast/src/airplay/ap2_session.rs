@@ -47,26 +47,11 @@ pub(crate) fn setup_session_body(
     local_ip: IpAddr,
 ) -> Plist {
     let mut entries = vec![
-        (
-            "timingProtocol".to_string(),
-            Plist::String(timing_protocol.to_string()),
-        ),
-        (
-            "groupUUID".to_string(),
-            Plist::String(group_uuid.to_string()),
-        ),
-        (
-            "sessionUUID".to_string(),
-            Plist::String(session_uuid.to_string()),
-        ),
-        (
-            "macAddress".to_string(),
-            Plist::String(mac_address.to_string()),
-        ),
-        (
-            "timingPort".to_string(),
-            Plist::Integer(u64::from(timing_port)),
-        ),
+        ("timingProtocol".to_string(), Plist::String(timing_protocol.to_string())),
+        ("groupUUID".to_string(), Plist::String(group_uuid.to_string())),
+        ("sessionUUID".to_string(), Plist::String(session_uuid.to_string())),
+        ("macAddress".to_string(), Plist::String(mac_address.to_string())),
+        ("timingPort".to_string(), Plist::Integer(u64::from(timing_port))),
     ];
     if timing_protocol == "PTP" {
         // The receiver listens for our PTP clock on these addresses.
@@ -90,19 +75,10 @@ pub(crate) fn setup_stream_body(shk: &[u8; 32], control_port: u16, timing_port: 
         ("type".to_string(), Plist::Integer(96)),
         // Compression type 1 = the uncompressed L16 stream bae sends.
         ("ct".to_string(), Plist::Integer(1)),
-        (
-            "spf".to_string(),
-            Plist::Integer(u64::from(super::stream::FRAMES_PER_PACKET)),
-        ),
+        ("spf".to_string(), Plist::Integer(u64::from(super::stream::FRAMES_PER_PACKET))),
         ("shk".to_string(), Plist::Data(shk.to_vec())),
-        (
-            "controlPort".to_string(),
-            Plist::Integer(u64::from(control_port)),
-        ),
-        (
-            "timingPort".to_string(),
-            Plist::Integer(u64::from(timing_port)),
-        ),
+        ("controlPort".to_string(), Plist::Integer(u64::from(control_port))),
+        ("timingPort".to_string(), Plist::Integer(u64::from(timing_port))),
         ("latencyMin".to_string(), Plist::Integer(11_025)),
         ("latencyMax".to_string(), Plist::Integer(88_200)),
     ]);
@@ -111,12 +87,7 @@ pub(crate) fn setup_stream_body(shk: &[u8; 32], control_port: u16, timing_port: 
 
 /// The SETPEERS body: the timing peers as an array of IP-address strings.
 pub(crate) fn set_peers_body(peers: &[IpAddr]) -> Plist {
-    Plist::Array(
-        peers
-            .iter()
-            .map(|ip| Plist::String(ip.to_string()))
-            .collect(),
-    )
+    Plist::Array(peers.iter().map(|ip| Plist::String(ip.to_string())).collect())
 }
 
 /// The SETRATEANCHORTIME body: `rate` 1 to play or 0 to pause, the RTP timestamp
@@ -132,14 +103,8 @@ pub(crate) fn set_rate_anchor_body(
     ];
     if let Some((secs, frac, timeline_id)) = ptp_anchor {
         entries.push(("networkTimeSecs".to_string(), Plist::Integer(secs)));
-        entries.push((
-            "networkTimeFrac".to_string(),
-            Plist::Integer(u64::from(frac)),
-        ));
-        entries.push((
-            "networkTimeTimelineID".to_string(),
-            Plist::Integer(timeline_id),
-        ));
+        entries.push(("networkTimeFrac".to_string(), Plist::Integer(u64::from(frac))));
+        entries.push(("networkTimeTimelineID".to_string(), Plist::Integer(timeline_id)));
     }
     Plist::Dict(entries)
 }
@@ -312,10 +277,7 @@ impl Ap2Control {
             "SETRATEANCHORTIME",
         )?;
 
-        self.request_expecting(
-            &RtspRequest::new(Method::Record, self.uri.clone()),
-            "RECORD",
-        )?;
+        self.request_expecting(&RtspRequest::new(Method::Record, self.uri.clone()), "RECORD")?;
         Ok(ports)
     }
 
@@ -337,10 +299,7 @@ impl Ap2Control {
 
     /// TEARDOWN the session over the encrypted channel.
     pub(crate) fn teardown(&mut self) -> Result<(), Ap2Error> {
-        self.request_expecting(
-            &RtspRequest::new(Method::Teardown, self.uri.clone()),
-            "TEARDOWN",
-        )?;
+        self.request_expecting(&RtspRequest::new(Method::Teardown, self.uri.clone()), "TEARDOWN")?;
         Ok(())
     }
 
@@ -371,10 +330,7 @@ impl Ap2Control {
         if response.is_success() {
             Ok(response)
         } else {
-            Err(Ap2Error::Rejected {
-                step,
-                status: response.status,
-            })
+            Err(Ap2Error::Rejected { step, status: response.status })
         }
     }
 }
@@ -429,10 +385,7 @@ fn pair_post(conn: &mut RtspConnection, path: &str, body: Vec<u8>) -> Result<Vec
     if response.is_success() {
         Ok(response.body)
     } else {
-        Err(Ap2Error::Rejected {
-            step: "pairing",
-            status: response.status,
-        })
+        Err(Ap2Error::Rejected { step: "pairing", status: response.status })
     }
 }
 
@@ -519,10 +472,7 @@ impl Ap2Session {
             TimingProtocol::Ptp => {
                 let now = NtpTime::now();
                 let timeline_id = rand::random::<u64>();
-                (
-                    "PTP".to_string(),
-                    Some((u64::from(now.seconds), now.fraction, timeline_id)),
-                )
+                ("PTP".to_string(), Some((u64::from(now.seconds), now.fraction, timeline_id)))
             }
             TimingProtocol::Ntp => ("NTP".to_string(), None),
         };
@@ -561,23 +511,15 @@ impl Ap2Session {
                 channels: PCM_CHANNELS,
                 initial_timestamp: 0,
             },
-            StreamSockets {
-                timing: timing_socket,
-                control: control_socket,
-            },
+            StreamSockets { timing: timing_socket, control: control_socket },
             clock,
             false, // AirPlay 2 anchors with SETRATEANCHORTIME, not RAOP sync packets
             stream_control.clone(),
         )?;
 
-        let session_control = Ap2SessionControl {
-            control: Arc::new(Mutex::new(control)),
-            stream: stream_control,
-        };
-        Ok(Ap2Session {
-            control: session_control,
-            _stream: stream,
-        })
+        let session_control =
+            Ap2SessionControl { control: Arc::new(Mutex::new(control)), stream: stream_control };
+        Ok(Ap2Session { control: session_control, _stream: stream })
     }
 
     pub(crate) fn flush(&self) -> Result<(), Ap2Error> {
@@ -612,15 +554,7 @@ impl Drop for Ap2Session {
 /// receivers don't authenticate it in a transient session; it's random per run.
 fn local_mac_address() -> String {
     let b: [u8; 6] = rand::random();
-    format!(
-        "{:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
-        b[0] | 0x02,
-        b[1],
-        b[2],
-        b[3],
-        b[4],
-        b[5]
-    )
+    format!("{:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}", b[0] | 0x02, b[1], b[2], b[3], b[4], b[5])
 }
 
 #[cfg(test)]

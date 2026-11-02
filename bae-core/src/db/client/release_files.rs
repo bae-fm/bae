@@ -11,11 +11,9 @@ pub(super) fn release_files_in(order: ReleaseFileOrder) -> String {
     let terms: &[&str] = match order.column {
         ReleaseFileColumn::Name => &["original_filename COLLATE natural_order", "id"],
         ReleaseFileColumn::Size => &["file_size", "original_filename COLLATE natural_order", "id"],
-        ReleaseFileColumn::Kind => &[
-            "content_type",
-            "original_filename COLLATE natural_order",
-            "id",
-        ],
+        ReleaseFileColumn::Kind => {
+            &["content_type", "original_filename COLLATE natural_order", "id"]
+        }
     };
     let terms = terms
         .iter()

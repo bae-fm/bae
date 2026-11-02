@@ -50,19 +50,17 @@ async fn fetch_gallery(http: &Http, url: &str) -> Result<Vec<RemoteCover>, Remot
     let Some(response) = send_artwork_request(http, url, "Cover Art Archive gallery").await? else {
         return Ok(Vec::new());
     };
-    let bytes = bae_util::http::read_body_capped(response, 4 * 1024 * 1024)
-        .await
-        .map_err(|error| {
+    let bytes =
+        bae_util::http::read_body_capped(response, 4 * 1024 * 1024).await.map_err(|error| {
             super::artwork_body_error(error, "Failed to read Cover Art Archive gallery")
         })?;
     parse_gallery(&bytes)
 }
 
 fn parse_gallery(bytes: &[u8]) -> Result<Vec<RemoteCover>, RemoteImageError> {
-    let mut gallery: ArchiveGallery =
-        serde_json::from_slice(bytes).map_err(|error| RemoteImageError::Unusable {
-            detail: format!("Invalid Cover Art Archive gallery: {error}"),
-        })?;
+    let mut gallery: ArchiveGallery = serde_json::from_slice(bytes).map_err(|error| {
+        RemoteImageError::Unusable { detail: format!("Invalid Cover Art Archive gallery: {error}") }
+    })?;
     gallery.images.sort_by_key(|image| !image.front);
     let mut covers = Vec::new();
     for (index, image) in gallery.images.into_iter().enumerate() {
@@ -102,19 +100,13 @@ fn downscaled_copies(thumbnails: &HashMap<String, String>) -> Vec<DownscaledCopy
     let mut copies: Vec<DownscaledCopy> = thumbnails
         .iter()
         .filter_map(|(key, url)| {
-            Some(DownscaledCopy {
-                url: url.clone(),
-                max_edge: key.parse().ok()?,
-            })
+            Some(DownscaledCopy { url: url.clone(), max_edge: key.parse().ok()? })
         })
         .collect();
     for (alias, max_edge) in [("small", 250), ("large", 500)] {
         if let Some(url) = thumbnails.get(alias) {
             if !copies.iter().any(|copy| copy.max_edge == max_edge) {
-                copies.push(DownscaledCopy {
-                    url: url.clone(),
-                    max_edge,
-                });
+                copies.push(DownscaledCopy { url: url.clone(), max_edge });
             }
         }
     }
@@ -138,21 +130,10 @@ mod tests {
         let group = serde_json::json!({"images": [item("front"), item("booklet")]});
         let app = Router::new()
             .route("/release/release-1/", get(move || async { Json(release) }))
-            .route(
-                "/release-group/group-1/",
-                get(move || async { Json(group) }),
-            )
-            .route(
-                "/release/failed/",
-                get(|| async { axum::http::StatusCode::BAD_REQUEST }),
-            );
-        let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
-            .await
-            .expect("listener binds");
-        let base = format!(
-            "http://{}",
-            listener.local_addr().expect("listener address")
-        );
+            .route("/release-group/group-1/", get(move || async { Json(group) }))
+            .route("/release/failed/", get(|| async { axum::http::StatusCode::BAD_REQUEST }));
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.expect("listener binds");
+        let base = format!("http://{}", listener.local_addr().expect("listener address"));
         let server =
             tokio::spawn(async move { axum::serve(listener, app).await.expect("server runs") });
         let http = Http::for_test().serve("coverartarchive.org", &base);
@@ -239,18 +220,9 @@ mod tests {
         )
         .expect("gallery parses");
         let image = &covers[0].image;
-        assert_eq!(
-            image.url_covering(Some(200)),
-            "https://images.example/front-small.jpg"
-        );
-        assert_eq!(
-            image.url_covering(Some(400)),
-            "https://images.example/front-large.jpg"
-        );
-        assert_eq!(
-            image.url_covering(Some(520)),
-            "https://images.example/front.jpg"
-        );
+        assert_eq!(image.url_covering(Some(200)), "https://images.example/front-small.jpg");
+        assert_eq!(image.url_covering(Some(400)), "https://images.example/front-large.jpg");
+        assert_eq!(image.url_covering(Some(520)), "https://images.example/front.jpg");
     }
 
     #[tokio::test]

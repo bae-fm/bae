@@ -70,9 +70,8 @@ impl BridgeHost {
     pub(crate) fn close_released(self: &Arc<Self>, handle: coven::CovenHandle) {
         let store = handle.store_id();
         let host = Arc::clone(self);
-        let started = std::thread::Builder::new()
-            .name("bae-store-close".to_string())
-            .spawn(move || {
+        let started =
+            std::thread::Builder::new().name("bae-store-close".to_string()).spawn(move || {
                 let runtime = host
                     .runtime
                     .as_ref()
@@ -80,8 +79,7 @@ impl BridgeHost {
                     .handle()
                     .clone();
                 if let Err(error) = runtime.block_on(handle.close()) {
-                    host.diagnostics
-                        .report_bug("close the store a released library held", &error);
+                    host.diagnostics.report_bug("close the store a released library held", &error);
                 }
             });
         match started {
@@ -119,11 +117,7 @@ impl BridgeHost {
         Ok(self
             .diagnostics
             .finish_removals(&self.app_dir, &|done, total| {
-                steps.step(
-                    crate::types::BridgeSetupStep::FinishingRemovals,
-                    done,
-                    total,
-                )
+                steps.step(crate::types::BridgeSetupStep::FinishingRemovals, done, total)
             })
             .await?)
     }
@@ -256,9 +250,10 @@ impl BridgeHost {
     pub async fn flush_diagnostics(self: Arc<Self>) -> Result<(), BridgeError> {
         self.operations
             .clone()
-            .run("BridgeHost.flush_diagnostics", move || async move {
-                self.diagnostics.flush().await
-            })
+            .run(
+                "BridgeHost.flush_diagnostics",
+                move || async move { self.diagnostics.flush().await },
+            )
             .await
     }
 
@@ -283,17 +278,13 @@ impl BridgeHost {
         self.operations
             .clone()
             .run("BridgeHost.unfinished_removal", move || async move {
-                Ok(self
-                    .diagnostics
-                    .unfinished_removal(&self.app_dir)
-                    .await?
-                    .map(|removal| {
-                        crate::BridgeUnfinishedRemoval::new(
-                            removal.category(),
-                            &removal,
-                            removal.files_remain(),
-                        )
-                    }))
+                Ok(self.diagnostics.unfinished_removal(&self.app_dir).await?.map(|removal| {
+                    crate::BridgeUnfinishedRemoval::new(
+                        removal.category(),
+                        &removal,
+                        removal.files_remain(),
+                    )
+                }))
             })
             .await
     }
@@ -329,9 +320,8 @@ impl BridgeHost {
         closing: Option<Arc<crate::BridgeLibraryClosing>>,
     ) -> Result<crate::BridgeLibraryRemoval, BridgeError> {
         let store = coven::StoreId(library_id.parse().map_err(BridgeError::config)?);
-        let steps = closing.map_or_else(crate::screens::ClosingSteps::unread, |closing| {
-            closing.writer()
-        });
+        let steps =
+            closing.map_or_else(crate::screens::ClosingSteps::unread, |closing| closing.writer());
         self.operations
             .clone()
             .run_to_completion(
@@ -355,16 +345,12 @@ impl BridgeHost {
     ) -> Result<(), BridgeError> {
         self.operations
             .clone()
-            .run_to_completion(
-                self.clone(),
-                "finish library removals",
-                move || async move {
-                    let steps = setup.writer();
-                    // Uncounted until the removal records are read.
-                    steps.uncounted(crate::types::BridgeSetupStep::FinishingRemovals);
-                    self.finish_removals_now(&steps).await
-                },
-            )
+            .run_to_completion(self.clone(), "finish library removals", move || async move {
+                let steps = setup.writer();
+                // Uncounted until the removal records are read.
+                steps.uncounted(crate::types::BridgeSetupStep::FinishingRemovals);
+                self.finish_removals_now(&steps).await
+            })
             .await
     }
 
@@ -399,9 +385,7 @@ impl BridgeHost {
 impl BridgeHost {
     pub fn set_oauth_clients(&self, clients: crate::BridgeOAuthClients) {
         *self.oauth_clients.lock().expect(HOST_LOCK) = coven::OAuthClients::new(
-            clients
-                .dropbox_app_key
-                .map(|app_key| coven::DropboxClients::FullDropbox { app_key }),
+            clients.dropbox_app_key.map(|app_key| coven::DropboxClients::FullDropbox { app_key }),
             clients.onedrive_client_id,
             Arc::new(coven::SystemClock),
         );
@@ -431,10 +415,7 @@ impl BridgeHost {
 #[uniffi::export]
 pub fn set_temporary_directory(directory: String) -> Result<(), BridgeError> {
     bae_core::library::set_temporary_directory(std::path::Path::new(&directory)).map_err(|error| {
-        BridgeError::diagnostic(
-            crate::BridgeErrorCategory::from_core(error.category()),
-            error,
-        )
+        BridgeError::diagnostic(crate::BridgeErrorCategory::from_core(error.category()), error)
     })
 }
 
@@ -448,9 +429,7 @@ pub fn init_app(
     host: Arc<BridgeHost>,
     opening: Arc<crate::BridgeLibraryOpening>,
 ) -> Result<Arc<crate::AppHandle>, BridgeError> {
-    host.wait_for_closing(coven::StoreId(
-        library_id.parse().map_err(BridgeError::config)?,
-    ));
+    host.wait_for_closing(coven::StoreId(library_id.parse().map_err(BridgeError::config)?));
     host.diagnostics.open_app(
         host.app_dir.clone(),
         library_id,
@@ -472,9 +451,7 @@ pub fn init_app_on_fixture(
     host: Arc<BridgeHost>,
     opening: Arc<crate::BridgeLibraryOpening>,
 ) -> Result<Arc<crate::AppHandle>, BridgeError> {
-    host.wait_for_closing(coven::StoreId(
-        library_id.parse().map_err(BridgeError::config)?,
-    ));
+    host.wait_for_closing(coven::StoreId(library_id.parse().map_err(BridgeError::config)?));
     host.diagnostics.open_app_on_fixture(
         fixture_path.into(),
         host.app_dir.clone(),
@@ -516,17 +493,8 @@ mod tests {
         let id = opened.library_id();
         drop(opened);
         drop(host);
-        assert_eq!(
-            caller
-                .block_on(app.subscribe_config().next())
-                .unwrap()
-                .library_id,
-            id
-        );
-        assert_eq!(
-            caller.block_on(app.clone().library_name()).unwrap(),
-            "Session Library"
-        );
+        assert_eq!(caller.block_on(app.subscribe_config().next()).unwrap().library_id, id);
+        assert_eq!(caller.block_on(app.clone().library_name()).unwrap(), "Session Library");
         app.close_library(None).unwrap();
     }
 }

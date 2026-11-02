@@ -80,19 +80,18 @@ impl BridgeBootstrapStatus {
     pub(crate) fn from_core(value: coven::BootstrapStatus) -> Self {
         match value {
             coven::BootstrapStatus::Connecting => Self::Connecting,
-            coven::BootstrapStatus::WaitingForApproval {
-                confirmation,
-                next_check,
-            } => Self::WaitingForApproval {
-                confirmation: confirmation.map(|number| number.to_string()),
-                next_check: BridgeNextCheck::from_core(next_check),
-            },
-            coven::BootstrapStatus::Loading(progress) => Self::Loading {
-                progress: BridgeLoadProgress::from_core(progress),
-            },
-            coven::BootstrapStatus::Opening(progress) => Self::Opening {
-                progress: BridgeOpenProgress::from_core(progress),
-            },
+            coven::BootstrapStatus::WaitingForApproval { confirmation, next_check } => {
+                Self::WaitingForApproval {
+                    confirmation: confirmation.map(|number| number.to_string()),
+                    next_check: BridgeNextCheck::from_core(next_check),
+                }
+            }
+            coven::BootstrapStatus::Loading(progress) => {
+                Self::Loading { progress: BridgeLoadProgress::from_core(progress) }
+            }
+            coven::BootstrapStatus::Opening(progress) => {
+                Self::Opening { progress: BridgeOpenProgress::from_core(progress) }
+            }
             coven::BootstrapStatus::Pending(records) => Self::Pending {
                 records: records
                     .into_iter()
@@ -299,11 +298,7 @@ impl BridgeLoadStep {
 
 impl BridgeLoadProgress {
     pub(crate) fn from_core(value: coven::Progress<coven::LoadStep>) -> Self {
-        Self {
-            step: BridgeLoadStep::from_core(value.step),
-            done: value.done,
-            total: value.total,
-        }
+        Self { step: BridgeLoadStep::from_core(value.step), done: value.done, total: value.total }
     }
 }
 
@@ -347,9 +342,7 @@ pub enum BridgeBootstrapResult {
 }
 impl BridgeBootstrapResult {
     pub(crate) fn opened(handle: coven::CovenHandle, host: Arc<crate::BridgeHost>) -> Self {
-        Self::Opened {
-            library: Arc::new(crate::OpenedLibrary::new(handle, host)),
-        }
+        Self::Opened { library: Arc::new(crate::OpenedLibrary::new(handle, host)) }
     }
     /// A join's outcome: the library with its profile written, or kept for a
     /// replacement; the library without a profile to retry; or the invite
@@ -410,9 +403,9 @@ pub enum BridgeSavedRestoreEntry {
 impl BridgeSavedRestoreEntry {
     pub(crate) fn from_core(value: coven::SavedRestoreEntry) -> Self {
         match value {
-            coven::SavedRestoreEntry::Readable(saved) => Self::Readable {
-                code: Arc::new(BridgeSavedRestoreCode { saved }),
-            },
+            coven::SavedRestoreEntry::Readable(saved) => {
+                Self::Readable { code: Arc::new(BridgeSavedRestoreCode { saved }) }
+            }
             coven::SavedRestoreEntry::Unreadable { store_id, reason } => Self::Unreadable {
                 library_id: store_id.to_string(),
                 reason: BridgeUnreadableSavedCode::from_core(reason),

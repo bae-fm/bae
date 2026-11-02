@@ -6,10 +6,7 @@
 fn every_source_on() -> Vec<CatalogAvailability> {
     Catalog::LOOKUP
         .into_iter()
-        .map(|catalog| CatalogAvailability {
-            catalog,
-            state: SourceAvailability::On,
-        })
+        .map(|catalog| CatalogAvailability { catalog, state: SourceAvailability::On })
         .collect()
 }
 
@@ -34,11 +31,7 @@ async fn search_of(
     runtime: &CandidateRuntime,
     key: &crate::import::CandidateKey,
 ) -> Option<CandidateSearch> {
-    runtime
-        .snapshot(key)
-        .await
-        .unwrap()
-        .and_then(|runtime| runtime.search)
+    runtime.snapshot(key).await.unwrap().and_then(|runtime| runtime.search)
 }
 
 /// Start a search of [`search_query`] for `key`, every catalog asked.
@@ -47,10 +40,7 @@ async fn started_search(
     key: &crate::import::CandidateKey,
 ) -> crate::import::candidate_search::SearchRun {
     runtime
-        .start_search(
-            key,
-            &CandidateSearch::started(search_query(), &every_source_on()),
-        )
+        .start_search(key, &CandidateSearch::started(search_query(), &every_source_on()))
         .await
         .unwrap()
 }
@@ -88,24 +78,17 @@ async fn two_landings_on_one_run_both_stand() {
         .await
     );
     assert!(
-        land(
-            &runtime,
-            run,
-            Catalog::Discogs,
-            Ok(vec![search_result(Catalog::Discogs, "dg-1")]),
-        )
-        .await
+        land(&runtime, run, Catalog::Discogs, Ok(vec![search_result(Catalog::Discogs, "dg-1")]),)
+            .await
     );
 
-    let landed = search_of(&runtime, key)
-        .await
-        .expect("the search is what is in flight for the key");
+    let landed =
+        search_of(&runtime, key).await.expect("the search is what is in flight for the key");
     assert_eq!(landed.query, search_query());
     let ids = |source| match landed.source(source) {
-        Some(SourceSearch::Done { results }) => results
-            .iter()
-            .map(|result| result.release_id.clone())
-            .collect::<Vec<_>>(),
+        Some(SourceSearch::Done { results }) => {
+            results.iter().map(|result| result.release_id.clone()).collect::<Vec<_>>()
+        }
         other => panic!("{source:?} stands at {other:?}"),
     };
     assert_eq!(ids(Catalog::MusicBrainz), ["mb-1", "mb-2"]);
@@ -151,10 +134,7 @@ async fn a_search_is_of_a_candidate_the_scan_holds_or_of_a_library_release() {
     let runtime = CandidateRuntime::for_test().await;
     let unscanned = &crate::import::CandidateKey::test("/watch/a/rel1");
     assert!(runtime
-        .start_search(
-            unscanned,
-            &CandidateSearch::started(search_query(), &every_source_on()),
-        )
+        .start_search(unscanned, &CandidateSearch::started(search_query(), &every_source_on()),)
         .await
         .is_err());
     assert!(search_of(&runtime, unscanned).await.is_none());
@@ -185,33 +165,19 @@ async fn a_retry_re_asks_only_the_failed_sources() {
         crate::signals::LookupFailure::Provider { status: Some(503) }.into();
     assert!(land(&runtime, run, Catalog::Discogs, Err(unavailable.clone())).await);
     assert_eq!(
-        search_of(&runtime, key)
-            .await
-            .unwrap()
-            .source(Catalog::Discogs),
+        search_of(&runtime, key).await.unwrap().source(Catalog::Discogs),
         Some(&SourceSearch::Failed(unavailable)),
         "the failure reads back as it landed"
     );
 
-    let (retried, query, sources) = runtime
-        .retry_search(key)
-        .await
-        .unwrap()
-        .expect("Discogs failed");
+    let (retried, query, sources) =
+        runtime.retry_search(key).await.unwrap().expect("Discogs failed");
     assert_eq!(retried, run);
     assert_eq!(query, search_query());
     assert_eq!(sources, vec![Catalog::Discogs]);
-    let search = search_of(&runtime, key)
-        .await
-        .expect("the retried search is in flight");
-    assert!(matches!(
-        search.source(Catalog::MusicBrainz),
-        Some(SourceSearch::Done { .. })
-    ));
-    assert_eq!(
-        search.source(Catalog::Discogs),
-        Some(&SourceSearch::Searching)
-    );
+    let search = search_of(&runtime, key).await.expect("the retried search is in flight");
+    assert!(matches!(search.source(Catalog::MusicBrainz), Some(SourceSearch::Done { .. })));
+    assert_eq!(search.source(Catalog::Discogs), Some(&SourceSearch::Searching));
 
     assert!(
         land(
@@ -250,10 +216,7 @@ async fn a_retry_leaves_a_source_still_searching_to_its_answer() {
     .into();
     assert!(land(&runtime, run, Catalog::Discogs, Err(broke.clone())).await);
     assert_eq!(
-        search_of(&runtime, key)
-            .await
-            .unwrap()
-            .source(Catalog::Discogs),
+        search_of(&runtime, key).await.unwrap().source(Catalog::Discogs),
         Some(&SourceSearch::Failed(broke)),
         "bae breaking reads back as its error"
     );
@@ -284,32 +247,19 @@ async fn only_a_part_still_searching_takes_an_answer() {
             key,
             &CandidateSearch::started(
                 search_query(),
-                &[CatalogAvailability {
-                    catalog: Catalog::Discogs,
-                    state: SourceAvailability::On,
-                }],
+                &[CatalogAvailability { catalog: Catalog::Discogs, state: SourceAvailability::On }],
             ),
         )
         .await
         .unwrap();
 
     assert!(
-        land(
-            &runtime,
-            run,
-            Catalog::Discogs,
-            Ok(vec![search_result(Catalog::Discogs, "dg-1")]),
-        )
-        .await
+        land(&runtime, run, Catalog::Discogs, Ok(vec![search_result(Catalog::Discogs, "dg-1")]),)
+            .await
     );
     assert!(
-        !land(
-            &runtime,
-            run,
-            Catalog::Discogs,
-            Ok(vec![search_result(Catalog::Discogs, "dg-2")]),
-        )
-        .await,
+        !land(&runtime, run, Catalog::Discogs, Ok(vec![search_result(Catalog::Discogs, "dg-2")]),)
+            .await,
         "a part that answered takes no second answer"
     );
     assert!(
@@ -326,10 +276,7 @@ async fn only_a_part_still_searching_takes_an_answer() {
     let search = search_of(&runtime, key).await.unwrap();
     assert_eq!(search.source(Catalog::MusicBrainz), None);
     assert_eq!(search.groups.len(), 1);
-    assert_eq!(
-        search.groups[0].sections[0].pressings[0].lead().release_id,
-        "dg-1"
-    );
+    assert_eq!(search.groups[0].sections[0].pressings[0].lead().release_id, "dg-1");
 }
 
 /// Switching a source off closes its part of every search, wherever the
@@ -346,13 +293,7 @@ async fn switching_a_source_off_closes_its_part_of_every_search() {
     for source in Catalog::LOOKUP {
         let release = format!("{}-1", source.as_str());
         assert!(
-            land(
-                &runtime,
-                answered_run,
-                source,
-                Ok(vec![search_result(source, &release)]),
-            )
-            .await
+            land(&runtime, answered_run, source, Ok(vec![search_result(source, &release)]),).await
         );
     }
     assert_eq!(search_of(&runtime, answered).await.unwrap().groups.len(), 2);
@@ -360,20 +301,11 @@ async fn switching_a_source_off_closes_its_part_of_every_search() {
     runtime.switch_source_off(Catalog::MusicBrainz).await.unwrap();
 
     let search = search_of(&runtime, answered).await.unwrap();
-    assert_eq!(
-        search.source(Catalog::MusicBrainz),
-        Some(&SourceSearch::Off)
-    );
-    assert!(matches!(
-        search.source(Catalog::Discogs),
-        Some(SourceSearch::Done { .. })
-    ));
+    assert_eq!(search.source(Catalog::MusicBrainz), Some(&SourceSearch::Off));
+    assert!(matches!(search.source(Catalog::Discogs), Some(SourceSearch::Done { .. })));
     assert_eq!(search.groups.len(), 1, "MusicBrainz's card is gone");
     let search = search_of(&runtime, searching).await.unwrap();
-    assert_eq!(
-        search.source(Catalog::MusicBrainz),
-        Some(&SourceSearch::Off)
-    );
+    assert_eq!(search.source(Catalog::MusicBrainz), Some(&SourceSearch::Off));
     assert_eq!(
         search.source(Catalog::Discogs),
         Some(&SourceSearch::Searching),
@@ -405,9 +337,8 @@ async fn a_landing_for_a_switched_off_source_goes_nowhere() {
         .await
     );
 
-    let search = search_of(&runtime, key)
-        .await
-        .expect("the search is what is in flight for the key");
+    let search =
+        search_of(&runtime, key).await.expect("the search is what is in flight for the key");
     assert_eq!(
         search.source(Catalog::MusicBrainz),
         Some(&SourceSearch::Off),
@@ -426,12 +357,11 @@ async fn a_pick_joins_the_search_s_cards_from_then_on() {
     let key = &crate::import::CandidateKey::test("/watch/a/rel1");
     scanned_key(&runtime, key).await;
     let run = started_search(&runtime, key).await;
-    let grouped = |source: Catalog, release_id: &str, group: &str| {
-        crate::import::search::MetadataResult {
+    let grouped =
+        |source: Catalog, release_id: &str, group: &str| crate::import::search::MetadataResult {
             source_group_id: Some(group.to_string()),
             ..search_result(source, release_id)
-        }
-    };
+        };
     assert!(
         land(
             &runtime,

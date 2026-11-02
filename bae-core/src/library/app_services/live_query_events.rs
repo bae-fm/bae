@@ -57,10 +57,7 @@ where
     /// it read, or both.
     pub(super) async fn recv_with_cause(
         &mut self,
-    ) -> Option<(
-        coven::LiveQueryCause,
-        Result<T, crate::library::LibraryError>,
-    )> {
+    ) -> Option<(coven::LiveQueryCause, Result<T, crate::library::LibraryError>)> {
         loop {
             let (revision, cause, result) = self.events.recv().await?;
             if self.newest.is_none_or(|newest| revision == newest) {
@@ -123,12 +120,7 @@ where
             }
         },
     );
-    ReconfigurableLiveQueryEvents {
-        events,
-        requests,
-        newest: None,
-        task,
-    }
+    ReconfigurableLiveQueryEvents { events, requests, newest: None, task }
 }
 
 #[cfg(test)]
@@ -170,17 +162,8 @@ mod tests {
         .await
         .expect("the query ends with its store");
 
-        events.set(
-            [crate::library::LibraryPageWindow {
-                offset: 0,
-                limit: 10,
-            }]
-            .into(),
-        );
+        events.set([crate::library::LibraryPageWindow { offset: 0, limit: 10 }].into());
 
-        assert!(
-            events.recv().await.is_none(),
-            "the ended query reads nothing"
-        );
+        assert!(events.recv().await.is_none(), "the ended query reads nothing");
     }
 }

@@ -66,31 +66,19 @@ async fn measured_frames_control_progress_value_and_determinacy() {
 #[tokio::test]
 async fn broken_reason_flags_shortfall_and_errors_not_clean() {
     assert!(
-        sink_with(Some(1000), 1000, 0)
-            .await
-            .broken_reason()
-            .is_none(),
+        sink_with(Some(1000), 1000, 0).await.broken_reason().is_none(),
         "a full-window decode is clean"
     );
     assert!(
-        sink_with(Some(1000), 970, 0)
-            .await
-            .broken_reason()
-            .is_none(),
+        sink_with(Some(1000), 970, 0).await.broken_reason().is_none(),
         "a 3% shortfall is boundary rounding, within slack"
     );
     assert!(
-        sink_with(Some(1000), 100, 0)
-            .await
-            .broken_reason()
-            .is_some(),
+        sink_with(Some(1000), 100, 0).await.broken_reason().is_some(),
         "a 90% shortfall is a truncated body"
     );
     assert!(
-        sink_with(Some(1000), 1000, 1)
-            .await
-            .broken_reason()
-            .is_some(),
+        sink_with(Some(1000), 1000, 1).await.broken_reason().is_some(),
         "a fatal decode error is broken even with the full window"
     );
     assert!(
@@ -123,10 +111,7 @@ async fn broken_reason_flags_shortfall_and_errors_not_clean() {
 #[tokio::test]
 async fn truncated_flac_decode_is_flagged_broken_intact_is_not() {
     bae_audio::init();
-    let path = concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/tests/fixtures/cue_flac/Test Album.flac"
-    );
+    let path = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/cue_flac/Test Album.flac");
     let clean = std::fs::read(path).expect("read fixture");
     let sr = 44100u64;
     // A one-second window deep in the file (25s, brown noise near the end).
@@ -280,11 +265,7 @@ async fn measure(
 }
 
 fn cue_flac_fixture(name: &str) -> PathBuf {
-    PathBuf::from(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/tests/fixtures/cue_flac"
-    ))
-    .join(name)
+    PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/cue_flac")).join(name)
 }
 
 /// [`measure_loudness`] over one whole-file track at `path` whose validated
@@ -339,11 +320,7 @@ async fn measure_loudness_fails_on_a_source_that_cannot_be_opened() {
 
     let error = measure_failure(&missing, 1).await;
 
-    assert_eq!(
-        source_read_kind(&error),
-        Some(std::io::ErrorKind::NotFound),
-        "{error}"
-    );
+    assert_eq!(source_read_kind(&error), Some(std::io::ErrorKind::NotFound), "{error}");
     let text = error.to_string();
     assert!(text.contains("/nonexistent/track.flac"), "{text}");
     assert!(!text.contains("Invalid data found"), "{text}");
@@ -356,23 +333,15 @@ async fn measure_loudness_fails_on_a_source_that_cannot_be_opened() {
 #[tokio::test]
 async fn measure_loudness_fails_on_a_source_whose_read_fails() {
     bae_audio::init();
-    let fixture = std::fs::read(cue_flac_fixture(
-        "03 Test Artist - Track Three (Brown Noise).flac",
-    ))
-    .expect("fixture");
-    let temp = tempfile::Builder::new()
-        .suffix(".flac")
-        .tempfile()
-        .expect("temp file");
+    let fixture =
+        std::fs::read(cue_flac_fixture("03 Test Artist - Track Three (Brown Noise).flac"))
+            .expect("fixture");
+    let temp = tempfile::Builder::new().suffix(".flac").tempfile().expect("temp file");
     std::fs::write(temp.path(), &fixture[..fixture.len() / 2]).expect("short copy");
 
     let error = measure_failure(temp.path(), fixture.len() as u64).await;
 
-    assert_eq!(
-        source_read_kind(&error),
-        Some(std::io::ErrorKind::UnexpectedEof),
-        "{error}"
-    );
+    assert_eq!(source_read_kind(&error), Some(std::io::ErrorKind::UnexpectedEof), "{error}");
     assert!(!error.to_string().contains("Invalid data found"), "{error}");
 }
 
@@ -384,10 +353,8 @@ async fn measure_loudness_fails_on_a_source_whose_read_fails() {
 #[tokio::test]
 async fn a_read_that_panics_is_reported_and_measures_nothing() {
     bae_audio::init();
-    let bytes = std::fs::read(cue_flac_fixture(
-        "03 Test Artist - Track Three (Brown Noise).flac",
-    ))
-    .expect("fixture");
+    let bytes = std::fs::read(cue_flac_fixture("03 Test Artist - Track Three (Brown Noise).flac"))
+        .expect("fixture");
     let buffer = create_sparse_buffer(bytes.len() as u64);
     buffer.append_at(0, &bytes);
     buffer.panic_reads();
@@ -410,10 +377,7 @@ async fn a_read_that_panics_is_reported_and_measures_nothing() {
         panic!("the track is a read that panicked");
     };
     assert!(failed.is_panic(), "{failed}");
-    assert_eq!(
-        reports.reports(),
-        vec![(failed.operation().to_string(), failed.to_string())]
-    );
+    assert_eq!(reports.reports(), vec![(failed.operation().to_string(), failed.to_string())]);
 }
 
 /// A track whose audio format has no segments is skipped (nothing to
@@ -477,10 +441,7 @@ async fn measure_loudness_computes_track_and_album_values() {
         "brown-noise track has a measurable loudness"
     );
     assert!(audio_formats[0].track_peak_linear.is_some());
-    assert!(
-        result.album_loudness_lufs.is_some(),
-        "one measured track yields an album aggregate"
-    );
+    assert!(result.album_loudness_lufs.is_some(), "one measured track yields an album aggregate");
     assert!(result.album_peak_linear.is_some());
 }
 
@@ -491,10 +452,7 @@ async fn measure_loudness_progress_weights_tracks_by_frames() {
         crate::import::ImportEventBus::new(crate::import::CandidateRuntime::for_test().await);
     let mut rx = event_tx.every_event();
     let path = cue_flac_fixture("03 Test Artist - Track Three (Brown Noise).flac");
-    let mut audio_formats = vec![
-        audio_format("track-0", "af-0"),
-        audio_format("track-1", "af-1"),
-    ];
+    let mut audio_formats = vec![audio_format("track-0", "af-0"), audio_format("track-1", "af-1")];
     let mut short = whole_file_main_segment("af-0", "file-0");
     short.end_sample = Some(2_205);
     let mut long = whole_file_main_segment("af-1", "file-0");
@@ -503,20 +461,10 @@ async fn measure_loudness_progress_weights_tracks_by_frames() {
     let file_ids = HashMap::from([(path.clone(), "file-0".to_string())]);
     let source_file_sizes =
         HashMap::from([(path.clone(), std::fs::metadata(&path).unwrap().len())]);
-    let tracks = vec![
-        standalone_track("track-0", &path),
-        standalone_track("track-1", &path),
-    ];
+    let tracks = vec![standalone_track("track-0", &path), standalone_track("track-1", &path)];
 
-    measure(
-        &event_tx,
-        &mut audio_formats,
-        &audio_segments,
-        &file_ids,
-        &source_file_sizes,
-        &tracks,
-    )
-    .await;
+    measure(&event_tx, &mut audio_formats, &audio_segments, &file_ids, &source_file_sizes, &tracks)
+        .await;
 
     // The first track holds 2,205 of the 8,820 measured frames, so the pass
     // stands at 25% when it finishes — a quarter, not the half an
@@ -564,10 +512,7 @@ async fn measure_loudness_leaves_ungated_track_unmeasured() {
         audio_formats[0].track_loudness_lufs.is_none(),
         "a sub-gate window has no usable loudness and stays unmeasured"
     );
-    assert!(
-        result.album_loudness_lufs.is_none(),
-        "no measured track means no album loudness"
-    );
+    assert!(result.album_loudness_lufs.is_none(), "no measured track means no album loudness");
 }
 
 /// Run the pass at `parallelism` over tracks whose sources were copied into
@@ -610,10 +555,7 @@ async fn peak_open_sources(
 
 /// Each track's measured loudness, in track order.
 fn track_loudness(audio_formats: &[crate::db::DbAudioFormat]) -> Vec<Option<f64>> {
-    audio_formats
-        .iter()
-        .map(|format| format.track_loudness_lufs)
-        .collect()
+    audio_formats.iter().map(|format| format.track_loudness_lufs).collect()
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -656,14 +598,8 @@ async fn measure_loudness_holds_at_most_parallelism_track_files_open() {
         );
         measured.push(track_loudness(&formats));
     }
-    assert!(
-        measured[0].iter().all(Option::is_some),
-        "every track is measured"
-    );
-    assert_eq!(
-        measured[0], measured[1],
-        "measuring at once changes no result"
-    );
+    assert!(measured[0].iter().all(Option::is_some), "every track is measured");
+    assert_eq!(measured[0], measured[1], "measuring at once changes no result");
 }
 
 /// Every track of one image reads it through one open file, however many
@@ -701,16 +637,10 @@ async fn measure_loudness_reads_a_cue_image_through_one_open_file() {
             &tracks,
         )
         .await;
-        assert!(
-            peak <= 1,
-            "the image is one open file at parallelism {parallelism}, not {peak}"
-        );
+        assert!(peak <= 1, "the image is one open file at parallelism {parallelism}, not {peak}");
         measured.push(track_loudness(&formats));
     }
-    assert!(
-        measured[0].iter().any(Option::is_some),
-        "the image's audible tracks are measured"
-    );
+    assert!(measured[0].iter().any(Option::is_some), "the image's audible tracks are measured");
     assert_eq!(
         measured[0], measured[1],
         "tracks sharing the image's stream measure as they do one at a time"

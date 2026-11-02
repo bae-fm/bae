@@ -37,9 +37,7 @@ async fn listed_db() -> (Database, tempfile::TempDir) {
 }
 
 async fn exec(db: &Database, sql: &'static str) {
-    db.call(move |conn| conn.execute_batch(sql).map_err(DbError::from))
-        .await
-        .unwrap();
+    db.call(move |conn| conn.execute_batch(sql).map_err(DbError::from)).await.unwrap();
 }
 
 /// The grid's album ids in `field` order, `direction`.
@@ -65,36 +63,16 @@ async fn artists(db: &Database) -> Vec<(String, i64)> {
 /// The grid grouped by artist: each section's artist, its first row and its
 /// length, and the album ids of the rows in order.
 async fn grouped(db: &Database) -> (Vec<(String, u64, u64)>, Vec<String>) {
-    let windows = [LibraryPageWindow {
-        offset: 0,
-        limit: 50,
-    }]
-    .into_iter()
-    .collect::<BTreeSet<_>>();
+    let windows = [LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect::<BTreeSet<_>>();
     let mut live = db.subscribe_album_browse(&[], true, windows);
-    let shown = live
-        .next()
-        .await
-        .expect("the query stays open")
-        .result
-        .unwrap();
+    let shown = live.next().await.expect("the query stays open").result.unwrap();
     (
         shown
             .sections
             .iter()
-            .map(|section| {
-                (
-                    section.id.clone(),
-                    section.window.offset,
-                    section.window.limit,
-                )
-            })
+            .map(|section| (section.id.clone(), section.window.offset, section.window.limit))
             .collect(),
-        shown.windows[0]
-            .rows
-            .iter()
-            .map(|album| album.id.clone())
-            .collect(),
+        shown.windows[0].rows.iter().map(|album| album.id.clone()).collect(),
     )
 }
 
@@ -142,26 +120,14 @@ async fn album_grid_puts_unknown_years_last_ascending_and_first_descending() {
 async fn an_album_leaves_the_lists_with_its_last_release() {
     let (db, _tmp) = listed_db().await;
     assert_eq!(db.get_album_count().await.unwrap(), 3);
-    assert_eq!(
-        artists(&db).await,
-        vec![(ALPHA.to_string(), 2), (BRAVO.to_string(), 2)]
-    );
+    assert_eq!(artists(&db).await, vec![(ALPHA.to_string(), 2), (BRAVO.to_string(), 2)]);
 
-    exec(
-        &db,
-        "DELETE FROM releases WHERE id = '5a905d5d-d400-42f3-a9a8-b858f18dcbc3';",
-    )
-    .await;
+    exec(&db, "DELETE FROM releases WHERE id = '5a905d5d-d400-42f3-a9a8-b858f18dcbc3';").await;
     assert_eq!(db.get_album_count().await.unwrap(), 2);
-    assert!(
-        !album_ids(&db, AlbumSortField::Title, SortDirection::Ascending)
-            .await
-            .contains(&ALBUM_ONE.to_string())
-    );
-    assert_eq!(
-        artists(&db).await,
-        vec![(ALPHA.to_string(), 2), (BRAVO.to_string(), 1)]
-    );
+    assert!(!album_ids(&db, AlbumSortField::Title, SortDirection::Ascending)
+        .await
+        .contains(&ALBUM_ONE.to_string()));
+    assert_eq!(artists(&db).await, vec![(ALPHA.to_string(), 2), (BRAVO.to_string(), 1)]);
     assert_eq!(db.get_artist_count().await.unwrap(), 2);
 
     // A release arriving under the album lists it again.
@@ -172,10 +138,7 @@ async fn an_album_leaves_the_lists_with_its_last_release() {
     )
     .await;
     assert_eq!(db.get_album_count().await.unwrap(), 3);
-    assert_eq!(
-        artists(&db).await,
-        vec![(ALPHA.to_string(), 2), (BRAVO.to_string(), 2)]
-    );
+    assert_eq!(artists(&db).await, vec![(ALPHA.to_string(), 2), (BRAVO.to_string(), 2)]);
 }
 
 #[tokio::test]
@@ -205,11 +168,7 @@ async fn a_merge_moves_the_absorbed_artists_albums_under_the_survivor() {
         grouped(&db).await,
         (
             vec![(BRAVO.to_string(), 0, 3)],
-            vec![
-                ALBUM_THREE.to_string(),
-                ALBUM_TWO.to_string(),
-                ALBUM_ONE.to_string(),
-            ]
+            vec![ALBUM_THREE.to_string(), ALBUM_TWO.to_string(), ALBUM_ONE.to_string(),]
         ),
         "the third album credits the survivor twice and lists once"
     );
@@ -250,10 +209,7 @@ async fn adding_a_release_rewrites_no_other_release_of_its_album() {
     }
     let twenty_second =
         rows_changed_adding_release(&db, &bae_test_support::test_uuid("box-set-22")).await;
-    assert_eq!(
-        twenty_second, second,
-        "the 22nd release changes as many rows as the second"
-    );
+    assert_eq!(twenty_second, second, "the 22nd release changes as many rows as the second");
 }
 
 /// Renaming an album renames every one of its releases' listing rows, so

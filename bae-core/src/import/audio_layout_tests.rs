@@ -132,13 +132,9 @@ fn loose_audio_is_one_unit_per_file_in_disk_order() {
 
     assert_eq!(
         file_ids(&units),
-        (1..=13)
-            .map(|index| format!("{index:02}.flac"))
-            .collect::<Vec<_>>(),
+        (1..=13).map(|index| format!("{index:02}.flac")).collect::<Vec<_>>(),
     );
-    assert!(units
-        .iter()
-        .all(|unit| matches!(unit, AudioFile::Standalone { .. })));
+    assert!(units.iter().all(|unit| matches!(unit, AudioFile::Standalone { .. })));
 }
 
 /// A disc image plus two loose bonus tracks. The sheet's slices and the two
@@ -148,11 +144,8 @@ fn loose_audio_is_one_unit_per_file_in_disk_order() {
 fn a_disc_image_and_loose_audio_both_become_units() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     write_sheet_audio(&tmp.path().join("CDImage.flac"), 11);
-    fs::write(
-        tmp.path().join("CDImage.cue"),
-        cue_sheet_text("CDImage.flac", 11),
-    )
-    .expect("write cue");
+    fs::write(tmp.path().join("CDImage.cue"), cue_sheet_text("CDImage.flac", 11))
+        .expect("write cue");
     write_flac(&tmp.path().join("bonus-1.flac"));
     write_flac(&tmp.path().join("bonus-2.flac"));
 
@@ -184,11 +177,8 @@ fn discs_are_laid_down_in_natural_order() {
         let dir = tmp.path().join(format!("CD{disc}"));
         fs::create_dir_all(&dir).expect("mkdir");
         write_sheet_audio(&dir.join("CDImage.flac"), disc);
-        fs::write(
-            dir.join("CDImage.cue"),
-            cue_sheet_text("CDImage.flac", disc),
-        )
-        .expect("write cue");
+        fs::write(dir.join("CDImage.cue"), cue_sheet_text("CDImage.flac", disc))
+            .expect("write cue");
     }
 
     let units = audio_units(&scan(tmp.path()));
@@ -209,10 +199,7 @@ fn assign_discs(files: &mut CategorizedFiles, assignments: &[(&str, SheetDisc)])
         sheet_discs.set((*sheet_id).to_string(), *disc);
     }
     files
-        .apply_candidate_file_edits(&CandidateFileEdits {
-            sheet_discs,
-            ..Default::default()
-        })
+        .apply_candidate_file_edits(&CandidateFileEdits { sheet_discs, ..Default::default() })
         .expect("the folder stays valid");
 }
 
@@ -223,11 +210,7 @@ fn assign_discs(files: &mut CategorizedFiles, assignments: &[(&str, SheetDisc)])
 fn the_disc_assignment_orders_the_units_the_filenames_do_not() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     write_sheet_audio(&tmp.path().join("alpha.flac"), 2);
-    fs::write(
-        tmp.path().join("alpha.cue"),
-        cue_sheet_text("alpha.flac", 2),
-    )
-    .expect("write cue");
+    fs::write(tmp.path().join("alpha.cue"), cue_sheet_text("alpha.flac", 2)).expect("write cue");
     write_sheet_audio(&tmp.path().join("beta.flac"), 3);
     fs::write(tmp.path().join("beta.cue"), cue_sheet_text("beta.flac", 3)).expect("write cue");
 
@@ -264,11 +247,8 @@ fn the_disc_assignment_orders_the_units_the_filenames_do_not() {
 fn an_ignored_sheet_leaves_its_container_a_track_of_its_own() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     write_sheet_audio(&tmp.path().join("CDImage.flac"), 3);
-    fs::write(
-        tmp.path().join("CDImage.cue"),
-        cue_sheet_text("CDImage.flac", 3),
-    )
-    .expect("write cue");
+    fs::write(tmp.path().join("CDImage.cue"), cue_sheet_text("CDImage.flac", 3))
+        .expect("write cue");
     write_flac(&tmp.path().join("bonus.flac"));
 
     let mut files = scan(tmp.path());
@@ -279,12 +259,8 @@ fn an_ignored_sheet_leaves_its_container_a_track_of_its_own() {
     assert_eq!(
         audio_units(&files),
         vec![
-            AudioFile::Standalone {
-                file_id: "bonus.flac".to_string(),
-            },
-            AudioFile::Standalone {
-                file_id: "CDImage.flac".to_string(),
-            },
+            AudioFile::Standalone { file_id: "bonus.flac".to_string() },
+            AudioFile::Standalone { file_id: "CDImage.flac".to_string() },
         ],
     );
 }
@@ -309,9 +285,7 @@ fn an_unnamed_slot_is_titled_after_its_file() {
                 track_number: std::num::NonZeroU32::MIN,
                 created_at: chrono::Utc::now(),
             },
-            AudioFile::Standalone {
-                file_id: "hidden track.flac".to_string(),
-            },
+            AudioFile::Standalone { file_id: "hidden track.flac".to_string() },
         )],
         &files,
     )
@@ -326,11 +300,8 @@ fn an_unnamed_slot_is_titled_after_its_file() {
 fn sheet_slices_bind_to_their_container_and_share_one_analysis() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     write_sheet_audio(&tmp.path().join("CDImage.flac"), 4);
-    fs::write(
-        tmp.path().join("CDImage.cue"),
-        cue_sheet_text("CDImage.flac", 4),
-    )
-    .expect("write cue");
+    fs::write(tmp.path().join("CDImage.cue"), cue_sheet_text("CDImage.flac", 4))
+        .expect("write cue");
     let files = scan(tmp.path());
     let rows = rows_for(audio_units(&files));
 
@@ -339,20 +310,11 @@ fn sheet_slices_bind_to_their_container_and_share_one_analysis() {
 
     let mut analyses = Vec::new();
     for (position, track_file) in track_files.iter().enumerate() {
-        assert!(
-            track_file.db_track.duration_ms > 0,
-            "every slice gets a duration",
-        );
+        assert!(track_file.db_track.duration_ms > 0, "every slice gets a duration",);
         match &track_file.audio {
-            TrackAudio::CueBacked {
-                cue_index,
-                cue_pair,
-            } => {
+            TrackAudio::CueBacked { cue_index, cue_pair } => {
                 assert_eq!(*cue_index, position);
-                assert_eq!(
-                    cue_pair.audio_files[0].path.file_name().unwrap(),
-                    "CDImage.flac"
-                );
+                assert_eq!(cue_pair.audio_files[0].path.file_name().unwrap(), "CDImage.flac");
                 analyses.push(Arc::as_ptr(cue_pair));
             }
             other => panic!("expected a CueBacked track file, got {other:?}"),
@@ -371,14 +333,8 @@ fn sheet_slices_bind_to_their_container_and_share_one_analysis() {
 #[test]
 fn a_length_nobody_can_read_is_not_a_disagreement() {
     assert!(!lengths_disagree(Some(180_000), Some(180_000)));
-    assert!(!lengths_disagree(
-        Some(180_000),
-        Some(180_000 + LENGTH_DISAGREEMENT_MS)
-    ));
-    assert!(lengths_disagree(
-        Some(180_000),
-        Some(180_001 + LENGTH_DISAGREEMENT_MS)
-    ));
+    assert!(!lengths_disagree(Some(180_000), Some(180_000 + LENGTH_DISAGREEMENT_MS)));
+    assert!(lengths_disagree(Some(180_000), Some(180_001 + LENGTH_DISAGREEMENT_MS)));
     assert!(lengths_disagree(Some(180_000), Some(120_000)));
     assert!(!lengths_disagree(None, Some(180_000)));
     assert!(!lengths_disagree(Some(180_000), None));
@@ -404,10 +360,8 @@ fn a_sheet_s_slices_each_carry_their_own_length() {
     let files = scan(tmp.path());
     let durations = source_durations(&files).expect("scanned fixture audio has durations");
 
-    let lengths: Vec<Option<u64>> = audio_units(&files)
-        .iter()
-        .map(|unit| durations.duration_of(unit))
-        .collect();
+    let lengths: Vec<Option<u64>> =
+        audio_units(&files).iter().map(|unit| durations.duration_of(unit)).collect();
     // 38 frames of 1/75s is ~506ms; the tail is what is left of the second.
     assert_eq!(lengths.len(), 2);
     assert_eq!(lengths[0], Some(506));
@@ -418,19 +372,14 @@ fn a_sheet_s_slices_each_carry_their_own_length() {
 fn a_sheet_whose_timing_exceeds_its_audio_leaves_the_container_standalone() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     write_flac(&tmp.path().join("CDImage.flac"));
-    fs::write(
-        tmp.path().join("CDImage.cue"),
-        cue_sheet_text("CDImage.flac", 2),
-    )
-    .expect("write cue");
+    fs::write(tmp.path().join("CDImage.cue"), cue_sheet_text("CDImage.flac", 2))
+        .expect("write cue");
 
     let files = scan(tmp.path());
 
     assert_eq!(
         audio_units(&files),
-        vec![AudioFile::Standalone {
-            file_id: "CDImage.flac".to_string(),
-        }]
+        vec![AudioFile::Standalone { file_id: "CDImage.flac".to_string() }]
     );
     assert!(matches!(
         files.track_sheets().next().map(|sheet| sheet.binding),
@@ -464,9 +413,7 @@ fn audio_that_left_the_folder_refuses() {
                 track_number: std::num::NonZeroU32::MIN,
                 created_at: chrono::Utc::now(),
             },
-            AudioFile::Standalone {
-                file_id: "02.flac".to_string(),
-            },
+            AudioFile::Standalone { file_id: "02.flac".to_string() },
         )],
         &files,
     )

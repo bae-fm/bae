@@ -11,12 +11,7 @@ use super::*;
 async fn release_count(handle: &ImportServiceHandle) -> usize {
     let mut count = 0;
     for album in handle.library_manager.get_albums(&[]).await.unwrap() {
-        count += handle
-            .library_manager
-            .get_releases_for_album(&album.id)
-            .await
-            .unwrap()
-            .len();
+        count += handle.library_manager.get_releases_for_album(&album.id).await.unwrap().len();
     }
     count
 }
@@ -27,7 +22,9 @@ async fn concurrent_imports_keep_one_owner_and_later_imports_of_its_files_are_re
     handle
         .set_candidate_album_artists(
             &key,
-            vec![crate::import::Credited::plain(crate::import::ArtistAssignment::named("Artist Name"))],
+            vec![crate::import::Credited::plain(crate::import::ArtistAssignment::named(
+                "Artist Name",
+            ))],
         )
         .await
         .unwrap();
@@ -108,10 +105,7 @@ async fn rescan_all_into(manager: &LibraryManager, candidates: &[FolderCandidate
             .unwrap()
             .expect("the scan generation is current");
     }
-    manager
-        .finish_folder_scan(&root, generation, None)
-        .await
-        .unwrap();
+    manager.finish_folder_scan(&root, generation, None).await.unwrap();
 }
 
 /// Two folders whose files hash alike share one preparation. Both asked to
@@ -124,10 +118,7 @@ async fn two_imports_of_the_same_files_asked_before_either_runs_make_one_release
     let copy = twin_of(&original, "Copy");
     let copy_key = crate::import::CandidateKey::folder(&copy.path);
     rescan_all_into(&manager, &[original, copy]).await;
-    let handle = manager
-        .start_import_service(tokio::runtime::Handle::current())
-        .await
-        .unwrap();
+    let handle = manager.start_import_service(tokio::runtime::Handle::current()).await.unwrap();
     // Each folder's own tags are read; the draft they share is then given its
     // artist. Nothing changes it once an import is asked for.
     for key in [&original_key, &copy_key] {
@@ -136,7 +127,9 @@ async fn two_imports_of_the_same_files_asked_before_either_runs_make_one_release
     handle
         .set_candidate_album_artists(
             &original_key,
-            vec![crate::import::Credited::plain(crate::import::ArtistAssignment::named("Artist Name"))],
+            vec![crate::import::Credited::plain(crate::import::ArtistAssignment::named(
+                "Artist Name",
+            ))],
         )
         .await
         .unwrap();
@@ -200,10 +193,7 @@ async fn a_file_decision_settles_every_folder_holding_the_same_files() {
     )
     .unwrap();
     rescan_all_into(&manager, &[original, copy, other]).await;
-    let handle = manager
-        .start_import_service(tokio::runtime::Handle::current())
-        .await
-        .unwrap();
+    let handle = manager.start_import_service(tokio::runtime::Handle::current()).await.unwrap();
     let (unsettled, _) = sheet_disc_of(&handle, &other_key).await;
 
     handle

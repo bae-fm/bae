@@ -2,19 +2,14 @@
 /// `ImportProgress`, in that order.
 async fn start_import_for(fixture: &Fixture, candidate: &Path) {
     let candidate_key = crate::import::CandidateKey::folder(candidate);
-    fixture
-        .import
-        .claim_candidate_for_import(&candidate_key, "import-running")
-        .await;
-    fixture
-        .import
-        .emit_event_for_test(ImportEvent::ImportProgress {
-            candidate_key,
-            progress: crate::import::ImportProgress::Preparing {
-                import_id: "import-running".to_string(),
-                step: crate::import::PrepareStep::ValidatingSourceFiles,
-            },
-        });
+    fixture.import.claim_candidate_for_import(&candidate_key, "import-running").await;
+    fixture.import.emit_event_for_test(ImportEvent::ImportProgress {
+        candidate_key,
+        progress: crate::import::ImportProgress::Preparing {
+            import_id: "import-running".to_string(),
+            step: crate::import::PrepareStep::ValidatingSourceFiles,
+        },
+    });
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -137,12 +132,10 @@ async fn a_rescan_does_not_count_back_a_candidate_an_import_owns() {
             other.map(|snapshot| snapshot.map(|_| "a candidate"))
         ),
     };
-    fixture
-        .import
-        .emit_event_for_test(ImportEvent::Scan(ScanEvent::FolderCandidate {
-            candidate: claimed,
-            found_while_automatic: false,
-        }));
+    fixture.import.emit_event_for_test(ImportEvent::Scan(ScanEvent::FolderCandidate {
+        candidate: claimed,
+        found_while_automatic: false,
+    }));
     fixture.provider.release();
     tokio::time::timeout(Duration::from_secs(15), pass)
         .await
@@ -164,18 +157,12 @@ async fn a_rescan_does_not_count_back_a_candidate_an_import_owns() {
 #[tokio::test(flavor = "multi_thread")]
 async fn an_import_started_while_a_verdict_is_in_flight_stores_nothing() {
     let fixture = Fixture::new("import-mid-write").await;
-    fixture
-        .import
-        .register_artwork_analyzer(Arc::new(BarcodeAnalyzer {
-            barcode: "0123456789012".to_string(),
-        }));
+    fixture.import.register_artwork_analyzer(Arc::new(BarcodeAnalyzer {
+        barcode: "0123456789012".to_string(),
+    }));
     let dir = fixture.barcode_candidate("From Barcode");
     let hash = fixture.content_hash(&dir);
-    fixture.provider.route(
-        "/release?",
-        200,
-        search_json("mb-mid-write", "rg-mid-write"),
-    );
+    fixture.provider.route("/release?", 200, search_json("mb-mid-write", "rg-mid-write"));
     fixture.provider.route(
         "/release/mb-mid-write?",
         200,
@@ -216,11 +203,7 @@ async fn progress_carries_both_counts() {
     let second = fixture.disc_id_candidate("Album Two");
     std::fs::write(second.join("notes.txt"), "different bytes").unwrap();
     let probed = fixture.probed_total_ms(&first);
-    fixture.provider.route(
-        "/discid/",
-        200,
-        discid_json("mb-prog-1", "rg-prog-1", &[probed, 0]),
-    );
+    fixture.provider.route("/discid/", 200, discid_json("mb-prog-1", "rg-prog-1", &[probed, 0]));
     fixture.provider.route(
         "/release/mb-prog-1?",
         200,
@@ -236,10 +219,7 @@ async fn progress_carries_both_counts() {
         Some(&(0, 2)),
         "planning announces the whole batch before any of it is answered"
     );
-    assert!(
-        progress.contains(&(1, 2)),
-        "and every verdict advances the count: {progress:?}"
-    );
+    assert!(progress.contains(&(1, 2)), "and every verdict advances the count: {progress:?}");
     assert_eq!(
         progress.last(),
         Some(&(0, 0)),
@@ -303,9 +283,7 @@ async fn identified_progress_is_emitted_after_the_verdict_is_committed() {
 async fn a_candidate_removed_mid_flight_does_not_wedge_the_queue() {
     let fixture = Fixture::new("removed-mid-flight").await;
     let (gate, held, entered) = crate::test_gate::closed();
-    fixture
-        .import
-        .register_artwork_analyzer(Arc::new(GatedAnalyzer(held)));
+    fixture.import.register_artwork_analyzer(Arc::new(GatedAnalyzer(held)));
     let dir = fixture.barcode_candidate("Vanishing");
     let hash = fixture.content_hash(&dir);
     fixture.scan(1).await;
@@ -348,11 +326,7 @@ async fn a_finished_candidate_leaves_no_driver_behind() {
     let fixture = Fixture::new("no-driver-left").await;
     let dir = fixture.disc_id_candidate("Album");
     let probed = fixture.probed_total_ms(&dir);
-    fixture.provider.route(
-        "/discid/",
-        200,
-        discid_json("mb-drv-1", "rg-drv-1", &[probed, 0]),
-    );
+    fixture.provider.route("/discid/", 200, discid_json("mb-drv-1", "rg-drv-1", &[probed, 0]));
     fixture.provider.route(
         "/release/mb-drv-1?",
         200,
@@ -363,10 +337,7 @@ async fn a_finished_candidate_leaves_no_driver_behind() {
 
     fixture.drain_automatic().await;
 
-    assert!(
-        fixture.identified_for(&dir).await.is_some(),
-        "the candidate really was identified"
-    );
+    assert!(fixture.identified_for(&dir).await.is_some(), "the candidate really was identified");
     assert!(
         !fixture.import.is_identifying(&key),
         "and its driver is gone: the run ended at the verdict it reached"

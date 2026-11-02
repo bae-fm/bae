@@ -99,9 +99,7 @@ impl BridgeHost {
         })
         .await
         .map_err(|failed| BridgeError::internal(self.diagnostics.bug(failed)))??;
-        let set_up = self
-            .set_up_dev_library(&app, profile, device_name, steps)
-            .await;
+        let set_up = self.set_up_dev_library(&app, profile, device_name, steps).await;
         let closing = app.clone();
         let closed = bae_util::task_failure::blocking("close the new library", move || {
             closing.close_library(None)
@@ -127,28 +125,18 @@ impl BridgeHost {
             import_when_identified = profile.import_when_identified,
             "dev reset: setting the preferences"
         );
-        app.clone()
-            .set_identify_automatically(profile.identify_automatically)
-            .await?;
-        app.clone()
-            .set_import_when_identified(profile.import_when_identified)
-            .await?;
+        app.clone().set_identify_automatically(profile.identify_automatically).await?;
+        app.clone().set_import_when_identified(profile.import_when_identified).await?;
 
         steps.uncounted(crate::types::BridgeSetupStep::ConnectingStorage);
         tracing::info!("dev reset: connecting S3 storage");
-        app.clone()
-            .save_sync_config(profile.sync_config, device_name.to_string(), None)
-            .await?;
+        app.clone().save_sync_config(profile.sync_config, device_name.to_string(), None).await?;
 
         tracing::info!("dev reset: saving the Discogs key");
-        match app
-            .clone()
-            .save_discogs_token(profile.discogs_token)
-            .await?
-        {
-            crate::types::BridgeDiscogsSaveOutcome::Rejected => Err(BridgeError::config(
-                "dev reset: Discogs rejected the profile's token",
-            )),
+        match app.clone().save_discogs_token(profile.discogs_token).await? {
+            crate::types::BridgeDiscogsSaveOutcome::Rejected => {
+                Err(BridgeError::config("dev reset: Discogs rejected the profile's token"))
+            }
             crate::types::BridgeDiscogsSaveOutcome::Valid
             | crate::types::BridgeDiscogsSaveOutcome::Unvalidated { .. } => Ok(()),
         }

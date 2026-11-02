@@ -19,9 +19,7 @@ impl Database {
     /// Follow where playback is, as the surfaces that move the position on
     /// themselves read it.
     pub(crate) fn subscribe_playback_timeline(&self) -> coven::LiveQuery<PlaybackTimeline> {
-        self.inner
-            .handle
-            .subscribe(|sql| playback_timeline_on(&sql).map_err(CovenError::from))
+        self.inner.handle.subscribe(|sql| playback_timeline_on(&sql).map_err(CovenError::from))
     }
 
     /// Where playback is now, as `subscribe_playback_timeline` reads it.
@@ -35,9 +33,7 @@ impl PlaybackTimelineRow {
     /// Write `timeline` as the row's whole value.
     pub async fn write(&self, timeline: &PlaybackTimeline) -> Result<(), DbError> {
         let timeline = timeline.clone();
-        self.db
-            .call(move |sql| write_on(sql, &timeline).map_err(DbError::from))
-            .await
+        self.db.call(move |sql| write_on(sql, &timeline).map_err(DbError::from)).await
     }
 }
 
@@ -118,10 +114,6 @@ fn playback_timeline_on(sql: &SqlReadContext<'_>) -> Result<PlaybackTimeline, Db
                 })
             }
         };
-        Ok(PlaybackTimeline {
-            library,
-            seek_revision: row.get("seek_revision")?,
-            preview,
-        })
+        Ok(PlaybackTimeline { library, seek_revision: row.get("seek_revision")?, preview })
     })?)
 }

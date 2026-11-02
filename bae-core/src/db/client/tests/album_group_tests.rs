@@ -47,10 +47,7 @@ async fn artist_sections_cover_unloaded_albums_and_match_page_and_reveal_order()
     let (db, _dir) = grouped_library().await;
     for direction in [SortDirection::Ascending, SortDirection::Descending] {
         let sort = [
-            AlbumSortCriterion {
-                field: AlbumSortField::Artist,
-                direction,
-            },
+            AlbumSortCriterion { field: AlbumSortField::Artist, direction },
             AlbumSortCriterion {
                 field: AlbumSortField::Title,
                 direction: SortDirection::Descending,
@@ -59,18 +56,9 @@ async fn artist_sections_cover_unloaded_albums_and_match_page_and_reveal_order()
         let mut browse = db.subscribe_album_browse(
             &sort,
             true,
-            [LibraryPageWindow {
-                offset: 2,
-                limit: 1,
-            }]
-            .into(),
+            [LibraryPageWindow { offset: 2, limit: 1 }].into(),
         );
-        let value = browse
-            .next()
-            .await
-            .expect("the query stays open")
-            .result
-            .unwrap();
+        let value = browse.next().await.expect("the query stays open").result.unwrap();
         assert_eq!(value.windows[0].rows.len(), 1);
         assert_eq!(value.total_count, 5);
         assert_eq!(value.sections.len(), 3);
@@ -79,9 +67,7 @@ async fn artist_sections_cover_unloaded_albums_and_match_page_and_reveal_order()
         for section in &value.sections {
             assert_eq!(section.window.offset, offset);
             let albums = &page[offset as usize..(offset + section.window.limit) as usize];
-            assert!(albums
-                .iter()
-                .all(|album| album.artist_names == section.title));
+            assert!(albums.iter().all(|album| album.artist_names == section.title));
             assert!(albums.windows(2).all(|pair| pair[0].title > pair[1].title));
             for (position, album) in albums.iter().enumerate() {
                 assert_eq!(
@@ -99,17 +85,10 @@ async fn artist_sections_cover_unloaded_albums_and_match_page_and_reveal_order()
 #[tokio::test]
 async fn artist_sections_follow_renames_and_disappearing_groups() {
     let (db, _dir) = grouped_library().await;
-    let sort = [AlbumSortCriterion {
-        field: AlbumSortField::Artist,
-        direction: SortDirection::Ascending,
-    }];
+    let sort =
+        [AlbumSortCriterion { field: AlbumSortField::Artist, direction: SortDirection::Ascending }];
     let mut browse = db.subscribe_album_browse(&sort, true, BTreeSet::new());
-    let initial = browse
-        .next()
-        .await
-        .expect("the query stays open")
-        .result
-        .unwrap();
+    let initial = browse.next().await.expect("the query stays open").result.unwrap();
     assert_eq!(initial.sections[0].id, ARTIST_C);
     exec(
         &db,
@@ -117,12 +96,7 @@ async fn artist_sections_follow_renames_and_disappearing_groups() {
         &[ARTIST_C],
     )
     .await;
-    let renamed = browse
-        .next()
-        .await
-        .expect("the query stays open")
-        .result
-        .unwrap();
+    let renamed = browse.next().await.expect("the query stays open").result.unwrap();
     assert_eq!(renamed.sections[2].title, "Renamed Artist");
     assert_eq!(renamed.sections[2].window.offset, 4);
     exec(
@@ -131,27 +105,12 @@ async fn artist_sections_follow_renames_and_disappearing_groups() {
         &[ARTIST_C],
     )
     .await;
-    let removed = browse
-        .next()
-        .await
-        .expect("the query stays open")
-        .result
-        .unwrap();
+    let removed = browse.next().await.expect("the query stays open").result.unwrap();
     assert_eq!(removed.total_count, 4);
     assert_eq!(removed.sections.len(), 2);
-    assert!(!removed
-        .sections
-        .iter()
-        .any(|section| section.id == ARTIST_C));
+    assert!(!removed.sections.iter().any(|section| section.id == ARTIST_C));
     let mut flat = db.subscribe_album_browse(&sort, false, BTreeSet::new());
-    assert!(flat
-        .next()
-        .await
-        .expect("the query stays open")
-        .result
-        .unwrap()
-        .sections
-        .is_empty());
+    assert!(flat.next().await.expect("the query stays open").result.unwrap().sections.is_empty());
 }
 
 #[tokio::test]
@@ -164,25 +123,11 @@ async fn collaborations_appear_under_each_credit_but_count_once() {
         &[album_id, ARTIST_B],
     )
     .await;
-    let sort = [AlbumSortCriterion {
-        field: AlbumSortField::Title,
-        direction: SortDirection::Descending,
-    }];
-    let mut browse = db.subscribe_album_browse(
-        &sort,
-        true,
-        [LibraryPageWindow {
-            offset: 0,
-            limit: 20,
-        }]
-        .into(),
-    );
-    let value = browse
-        .next()
-        .await
-        .expect("the query stays open")
-        .result
-        .unwrap();
+    let sort =
+        [AlbumSortCriterion { field: AlbumSortField::Title, direction: SortDirection::Descending }];
+    let mut browse =
+        db.subscribe_album_browse(&sort, true, [LibraryPageWindow { offset: 0, limit: 20 }].into());
+    let value = browse.next().await.expect("the query stays open").result.unwrap();
     assert_eq!(value.total_count, 5);
     assert_eq!(value.row_count, 6);
     let rows = &value.windows[0].rows;
@@ -196,53 +141,22 @@ async fn collaborations_appear_under_each_credit_but_count_once() {
             appearances.push(section.id.as_str());
         }
     }
-    assert_eq!(
-        appearances.into_iter().collect::<BTreeSet<_>>(),
-        [ARTIST_A, ARTIST_B].into()
-    );
+    assert_eq!(appearances.into_iter().collect::<BTreeSet<_>>(), [ARTIST_A, ARTIST_B].into());
     assert_eq!(
         db.get_album_index(&sort, album_id, true).await.unwrap(),
-        rows.iter()
-            .position(|row| row.id == album_id)
-            .map(|i| i as u64)
+        rows.iter().position(|row| row.id == album_id).map(|i| i as u64)
     );
     let mut flat = db.subscribe_album_browse(
         &sort,
         false,
-        [LibraryPageWindow {
-            offset: 0,
-            limit: 20,
-        }]
-        .into(),
+        [LibraryPageWindow { offset: 0, limit: 20 }].into(),
     );
-    let flat = flat
-        .next()
-        .await
-        .expect("the query stays open")
-        .result
-        .unwrap();
+    let flat = flat.next().await.expect("the query stays open").result.unwrap();
     assert_eq!(flat.row_count, 5);
     assert!(flat.sections.is_empty());
-    assert_eq!(
-        flat.windows[0]
-            .rows
-            .iter()
-            .filter(|row| row.id == album_id)
-            .count(),
-        1
-    );
-    exec(
-        &db,
-        "DELETE FROM album_artists WHERE album_id = ? AND position = 1",
-        &[album_id],
-    )
-    .await;
-    let removed = browse
-        .next()
-        .await
-        .expect("the query stays open")
-        .result
-        .unwrap();
+    assert_eq!(flat.windows[0].rows.iter().filter(|row| row.id == album_id).count(), 1);
+    exec(&db, "DELETE FROM album_artists WHERE album_id = ? AND position = 1", &[album_id]).await;
+    let removed = browse.next().await.expect("the query stays open").result.unwrap();
     assert_eq!(removed.row_count, 5);
     assert_eq!(removed.total_count, 5);
 }
@@ -251,29 +165,16 @@ async fn collaborations_appear_under_each_credit_but_count_once() {
 async fn merged_and_repeated_credits_make_one_appearance_per_artist() {
     let (db, _dir) = grouped_library().await;
     let album_id = "00000000-0000-4000-8000-000000000000";
-    for (id, artist, position) in [
-        ("primary-again", ARTIST_A, "1"),
-        ("other-credit", ARTIST_B, "2"),
-    ] {
+    for (id, artist, position) in
+        [("primary-again", ARTIST_A, "1"), ("other-credit", ARTIST_B, "2")]
+    {
         exec(&db,
             "INSERT INTO album_artists (id, album_id, artist_id, position, created_at) VALUES (?, ?, ?, ?, '2026-01-01T00:00:00Z')",
             &[id, album_id, artist, position]).await;
     }
-    let mut browse = db.subscribe_album_browse(
-        &[],
-        true,
-        [LibraryPageWindow {
-            offset: 0,
-            limit: 20,
-        }]
-        .into(),
-    );
-    let initial = browse
-        .next()
-        .await
-        .expect("the query stays open")
-        .result
-        .unwrap();
+    let mut browse =
+        db.subscribe_album_browse(&[], true, [LibraryPageWindow { offset: 0, limit: 20 }].into());
+    let initial = browse.next().await.expect("the query stays open").result.unwrap();
     assert_eq!(initial.row_count, 6);
     exec(
         &db,
@@ -281,24 +182,12 @@ async fn merged_and_repeated_credits_make_one_appearance_per_artist() {
         &[ARTIST_B, ARTIST_A],
     )
     .await;
-    let merged = browse
-        .next()
-        .await
-        .expect("the query stays open")
-        .result
-        .unwrap();
+    let merged = browse.next().await.expect("the query stays open").result.unwrap();
     assert_eq!(merged.total_count, 5);
     assert_eq!(merged.row_count, 5);
     assert_eq!(merged.sections.len(), 2);
     assert!(merged.sections.iter().all(|section| section.id != ARTIST_B));
-    assert_eq!(
-        merged.windows[0]
-            .rows
-            .iter()
-            .filter(|row| row.id == album_id)
-            .count(),
-        1
-    );
+    assert_eq!(merged.windows[0].rows.iter().filter(|row| row.id == album_id).count(), 1);
 }
 
 /// The grid's selection comes back in the grid's order, whatever order its
@@ -308,45 +197,21 @@ async fn merged_and_repeated_credits_make_one_appearance_per_artist() {
 async fn a_selection_is_read_in_the_grids_order() {
     let (db, _dir) = grouped_library().await;
     let album = |index: u32| format!("00000000-0000-4000-8000-{index:012}");
-    let picked = vec![
-        album(3),
-        album(0),
-        "no-such-album".to_string(),
-        album(4),
-        album(1),
-    ];
+    let picked = vec![album(3), album(0), "no-such-album".to_string(), album(4), album(1)];
     let titles = |albums: Vec<DbAlbumSummary>| {
-        albums
-            .into_iter()
-            .map(|album| album.title)
-            .collect::<Vec<_>>()
+        albums.into_iter().map(|album| album.title).collect::<Vec<_>>()
     };
-    let by_title = [AlbumSortCriterion {
-        field: AlbumSortField::Title,
-        direction: SortDirection::Descending,
-    }];
+    let by_title =
+        [AlbumSortCriterion { field: AlbumSortField::Title, direction: SortDirection::Descending }];
     assert_eq!(
-        titles(
-            db.albums_in_browse_order(&by_title, picked.clone(), false)
-                .await
-                .unwrap()
-        ),
+        titles(db.albums_in_browse_order(&by_title, picked.clone(), false).await.unwrap()),
         ["Album E", "Album D", "Album B", "Album A"]
     );
     let by_artist = [
-        AlbumSortCriterion {
-            field: AlbumSortField::Artist,
-            direction: SortDirection::Ascending,
-        },
-        AlbumSortCriterion {
-            field: AlbumSortField::Title,
-            direction: SortDirection::Ascending,
-        },
+        AlbumSortCriterion { field: AlbumSortField::Artist, direction: SortDirection::Ascending },
+        AlbumSortCriterion { field: AlbumSortField::Title, direction: SortDirection::Ascending },
     ];
-    let grouped = db
-        .albums_in_browse_order(&by_artist, picked, true)
-        .await
-        .unwrap();
+    let grouped = db.albums_in_browse_order(&by_artist, picked, true).await.unwrap();
     let page = db.get_album_page(&by_artist, 0, 10).await.unwrap();
     let expected: Vec<String> = page
         .into_iter()

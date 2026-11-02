@@ -33,10 +33,7 @@ impl std::str::FromStr for QueueEntryId {
             } else {
                 return Err(format!("{value:?} is not a queue entry id"));
             };
-        entry
-            .parse()
-            .map(lane)
-            .map_err(|e| format!("{value:?} names no queue entry: {e}"))
+        entry.parse().map(lane).map_err(|e| format!("{value:?} names no queue entry: {e}"))
     }
 }
 
@@ -94,11 +91,7 @@ impl PlaybackQueue {
     /// The queue over `tables`, with nothing playing and repeat off: what an
     /// opened library's tables hold until [`Self::restore`] reads them.
     pub fn new(tables: PlaybackQueueTables) -> Self {
-        Self {
-            tables,
-            current: None,
-            repeat: RepeatMode::Off,
-        }
+        Self { tables, current: None, repeat: RepeatMode::Off }
     }
 
     /// Take up the queue the tables hold, playing `current`.
@@ -131,9 +124,7 @@ impl PlaybackQueue {
         index: usize,
         track_ids: Vec<String>,
     ) -> Result<usize, DbError> {
-        self.tables
-            .add_manual(track_ids, ManualPlace::At(index))
-            .await
+        self.tables.add_manual(track_ids, ManualPlace::At(index)).await
     }
 
     /// Empty Up Next ("Clear Up Next"). The context lane is untouched.
@@ -214,10 +205,8 @@ impl PlaybackQueue {
     /// The library deleted `track_ids`, and with them their rows of the
     /// tables. Forget the current entry when its track is one; whether it was.
     pub fn forget_deleted_current(&mut self, track_ids: &HashSet<String>) -> bool {
-        let deleted = self
-            .current
-            .as_ref()
-            .is_some_and(|current| track_ids.contains(&current.track_id));
+        let deleted =
+            self.current.as_ref().is_some_and(|current| track_ids.contains(&current.track_id));
         if deleted {
             self.current = None;
         }

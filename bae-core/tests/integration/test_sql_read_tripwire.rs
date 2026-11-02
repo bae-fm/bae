@@ -6,12 +6,9 @@ async fn pure_reads_use_the_read_connection() {
     let (db, tmp) = bae_test_support::temp_test_db().await;
 
     // A device-local write still uses the write connection.
-    db.save_playback_state(&bae_core::db::DbPlaybackState {
-        current: None,
-        position_ms: None,
-    })
-    .await
-    .unwrap();
+    db.save_playback_state(&bae_core::db::DbPlaybackState { current: None, position_ms: None })
+        .await
+        .unwrap();
 
     // At least one read per db/client file.
     db.find_album_by_id("missing").await.unwrap();
@@ -35,10 +32,7 @@ async fn pure_reads_use_the_read_connection() {
     // The tables the pane writes read back the same way.
     db.load_import_candidate_state("missing").await.unwrap();
     assert_eq!(
-        db.load_import_candidate_pane_rows("missing")
-            .await
-            .unwrap_err()
-            .to_string(),
+        db.load_import_candidate_pane_rows("missing").await.unwrap_err().to_string(),
         "candidate missing has no state"
     );
 
@@ -50,31 +44,16 @@ async fn pure_reads_use_the_read_connection() {
 
     db.clear_playback_state().await.unwrap();
     db.clear_playback_state().await.unwrap();
-    db.add_watched_import_folder(std::path::Path::new(root))
-        .await
-        .unwrap();
-    assert!(!db
-        .add_watched_import_folder(std::path::Path::new(root))
-        .await
-        .unwrap());
+    db.add_watched_import_folder(std::path::Path::new(root)).await.unwrap();
+    assert!(!db.add_watched_import_folder(std::path::Path::new(root)).await.unwrap());
     let album = std::path::Path::new(root).join("Album");
     let album = album.to_str().unwrap();
     let never_skipped = std::path::Path::new(root).join("Never Skipped");
-    db.set_import_candidate_skipped(std::path::Path::new(album), true)
-        .await
-        .unwrap();
-    assert!(!db
-        .set_import_candidate_skipped(std::path::Path::new(album), true)
-        .await
-        .unwrap());
-    db.set_import_candidate_skipped(&never_skipped, false)
-        .await
-        .unwrap();
+    db.set_import_candidate_skipped(std::path::Path::new(album), true).await.unwrap();
+    assert!(!db.set_import_candidate_skipped(std::path::Path::new(album), true).await.unwrap());
+    db.set_import_candidate_skipped(&never_skipped, false).await.unwrap();
     let generation = db
-        .begin_folder_scan(
-            std::path::Path::new(root),
-            bae_core::import::VolumeKind::Local,
-        )
+        .begin_folder_scan(std::path::Path::new(root), bae_core::import::VolumeKind::Local)
         .await
         .unwrap();
     assert!(db

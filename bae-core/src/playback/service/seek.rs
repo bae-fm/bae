@@ -83,12 +83,7 @@ impl PlaybackService {
         // Time the rebuild: from here to the rebuilt stream being installed.
         let seek_started_at = std::time::Instant::now();
         let generation = self.next_load_generation();
-        let CurrentTrack {
-            prepared,
-            decoder: old_decoder,
-            phase,
-            position: _,
-        } = cur;
+        let CurrentTrack { prepared, decoder: old_decoder, phase, position: _ } = cur;
 
         // Where the rebuilt load should land: seek preserves the current
         // play/pause intent. A completed track resumes audibly at the seek
@@ -99,20 +94,16 @@ impl PlaybackService {
             TrackPhase::Loading { target, .. } => target,
         };
 
-        let old_buffers: Vec<_> = prepared
-            .segments
-            .iter()
-            .map(|segment| segment.buffer.clone())
-            .collect();
+        let old_buffers: Vec<_> =
+            prepared.segments.iter().map(|segment| segment.buffer.clone()).collect();
 
         // The same Loading→ready arc the play path uses: the bar jumps to the seek
         // position via the `Seeked` below, Loading covers the wait for the demanded
         // window, and the ready-watcher confirms the target once audio flows.
         // Projecting Stopped onto the atomic silences the callback while the new
         // decoder fills, so nothing leaks from the old ring before the swap.
-        self.slot = PlaybackSlot::Loading(LoadingTrack::Prepared(PlayingTrack::from_prepared(
-            &prepared,
-        )));
+        self.slot =
+            PlaybackSlot::Loading(LoadingTrack::Prepared(PlayingTrack::from_prepared(&prepared)));
         self.sync_audio_state();
         self.capture_listening_position();
         self.persist_listening().await;
@@ -145,10 +136,7 @@ impl PlaybackService {
                     &format!("restart the audio output for track {track_id} after a seek"),
                     &error,
                 );
-                emit_progress(
-                    &self.progress_tx,
-                    PlaybackProgress::PlaybackError { reason },
-                );
+                emit_progress(&self.progress_tx, PlaybackProgress::PlaybackError { reason });
                 self.stop().await;
                 return;
             }

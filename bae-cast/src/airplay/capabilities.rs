@@ -154,10 +154,7 @@ impl AirPlayCapabilities {
         let features = match txt_value(txt, "features", "ft") {
             Some((key, raw)) => parse_features(raw).ok_or_else(|| unreadable(key, raw))?,
             None if service_type == RendererServiceType::AirPlay => {
-                return Err(UnreadableSetting {
-                    key: "features".to_string(),
-                    raw: None,
-                });
+                return Err(UnreadableSetting { key: "features".to_string(), raw: None });
             }
             None => 0,
         };
@@ -172,9 +169,7 @@ impl AirPlayCapabilities {
                     | feature_bits::SUPPORTS_COREUTILS_PAIRING_AND_ENCRYPTION)
                 != 0;
 
-        let password = txt
-            .get("pw")
-            .is_some_and(|v| v.eq_ignore_ascii_case("true"))
+        let password = txt.get("pw").is_some_and(|v| v.eq_ignore_ascii_case("true"))
             || flags & status_flags::PASSWORD != 0;
         let requires_pin =
             password || flags & (status_flags::PIN_REQUIRED | status_flags::LEGACY_PAIRING) != 0;
@@ -214,18 +209,12 @@ fn txt_value<'a>(
 }
 
 fn unreadable(key: &str, raw: &str) -> UnreadableSetting {
-    UnreadableSetting {
-        key: key.to_string(),
-        raw: Some(raw.to_string()),
-    }
+    UnreadableSetting { key: key.to_string(), raw: Some(raw.to_string()) }
 }
 
 impl RaopParams {
     fn from_txt(txt: &HashMap<String, String>) -> Self {
-        let codecs = txt
-            .get("cn")
-            .map(|s| parse_int_set(s, raop_codec))
-            .unwrap_or_default();
+        let codecs = txt.get("cn").map(|s| parse_int_set(s, raop_codec)).unwrap_or_default();
         let encryption = txt
             .get("et")
             .map(|s| parse_int_set(s, raop_encryption))
@@ -290,10 +279,7 @@ fn parse_features(s: &str) -> Option<u64> {
 /// Parse a `0x`-prefixed (or bare) hex string into a u64.
 fn parse_hex(s: &str) -> Option<u64> {
     let s = s.trim();
-    let s = s
-        .strip_prefix("0x")
-        .or_else(|| s.strip_prefix("0X"))
-        .unwrap_or(s);
+    let s = s.strip_prefix("0x").or_else(|| s.strip_prefix("0X")).unwrap_or(s);
     u64::from_str_radix(s, 16).ok()
 }
 
@@ -302,10 +288,7 @@ mod tests {
     use super::*;
 
     fn txt(pairs: &[(&str, &str)]) -> HashMap<String, String> {
-        pairs
-            .iter()
-            .map(|(k, v)| (k.to_string(), v.to_string()))
-            .collect()
+        pairs.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect()
     }
 
     #[test]
@@ -316,10 +299,7 @@ mod tests {
     #[test]
     fn features_two_words_high_is_more_significant() {
         // `0xLOW,0xHIGH` composes to `0xHIGH_LOW`.
-        assert_eq!(
-            parse_features("0x445F8A00,0x1C340"),
-            Some(0x0001_C340_445F_8A00)
-        );
+        assert_eq!(parse_features("0x445F8A00,0x1C340"), Some(0x0001_C340_445F_8A00));
     }
 
     /// The AirPlay 2 markers as a two-word features string: bit 48 (CoreUtils
@@ -338,10 +318,7 @@ mod tests {
         let features = COREUTILS_BIT | UNIFIED_BIT;
         let caps = AirPlayCapabilities::from_txt(
             RendererServiceType::AirPlay,
-            &txt(&[
-                ("features", &features_str(features)),
-                ("model", "AudioAccessory5,1"),
-            ]),
+            &txt(&[("features", &features_str(features)), ("model", "AudioAccessory5,1")]),
         )
         .unwrap();
         assert_eq!(caps.dialect, Dialect::AirPlay2);
@@ -384,10 +361,7 @@ mod tests {
         assert!(!caps.supports_transient_pairing);
         let raop = caps.raop.expect("a RAOP receiver carries RAOP params");
         assert_eq!(raop.codecs, vec![RaopCodec::Pcm, RaopCodec::Alac]);
-        assert_eq!(
-            raop.encryption,
-            vec![RaopEncryption::None, RaopEncryption::RsaAes]
-        );
+        assert_eq!(raop.encryption, vec![RaopEncryption::None, RaopEncryption::RsaAes]);
         assert_eq!(raop.sample_rate, 44_100);
         assert_eq!(raop.sample_size, 16);
         assert_eq!(raop.channels, 2);
@@ -399,10 +373,7 @@ mod tests {
     fn third_party_airplay2_speaker() {
         let caps = AirPlayCapabilities::from_txt(
             RendererServiceType::AirPlay,
-            &txt(&[
-                ("features", &features_str(COREUTILS_BIT)),
-                ("model", "MyAmp,1"),
-            ]),
+            &txt(&[("features", &features_str(COREUTILS_BIT)), ("model", "MyAmp,1")]),
         )
         .unwrap();
         assert_eq!(caps.dialect, Dialect::AirPlay2);
@@ -461,10 +432,7 @@ mod tests {
                 .expect_err(&format!("{key}={raw} is unreadable"));
             assert_eq!(
                 unreadable,
-                UnreadableSetting {
-                    key: key.to_string(),
-                    raw: Some(raw.to_string()),
-                }
+                UnreadableSetting { key: key.to_string(), raw: Some(raw.to_string()) }
             );
         }
     }
@@ -476,13 +444,7 @@ mod tests {
         let unreadable =
             AirPlayCapabilities::from_txt(RendererServiceType::AirPlay, &txt(&[("pw", "false")]))
                 .expect_err("features is required on _airplay._tcp");
-        assert_eq!(
-            unreadable,
-            UnreadableSetting {
-                key: "features".to_string(),
-                raw: None,
-            }
-        );
+        assert_eq!(unreadable, UnreadableSetting { key: "features".to_string(), raw: None });
     }
 
     /// The fields the spec leaves out for older receivers take its meaning: a

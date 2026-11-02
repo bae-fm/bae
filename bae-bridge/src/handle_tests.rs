@@ -25,13 +25,8 @@ fn track_group_precomputes_header_key_per_side() {
 
     let cases = [
         (
-            TrackSide::Sided {
-                side_letter: "A".to_string(),
-            },
-            TrackPosition::Sided {
-                side_letter: "A".to_string(),
-                number: 1,
-            },
+            TrackSide::Sided { side_letter: "A".to_string() },
+            TrackPosition::Sided { side_letter: "A".to_string(), number: 1 },
             Some("core.track.side"),
         ),
         (
@@ -125,11 +120,7 @@ pub(super) fn fresh_bridge_handle(test_name: &str) -> (Arc<super::AppHandle>, st
 /// runtime a handle over it runs on.
 pub(super) fn fresh_test_library(
     test_name: &str,
-) -> (
-    tokio::runtime::Runtime,
-    bae_core::library::LibraryManager,
-    std::path::PathBuf,
-) {
+) -> (tokio::runtime::Runtime, bae_core::library::LibraryManager, std::path::PathBuf) {
     let root = std::env::temp_dir().join(format!("bae-bridge-{test_name}"));
     match std::fs::remove_dir_all(&root) {
         Ok(()) => {}
@@ -189,12 +180,8 @@ pub(super) fn start_test_handle(
         bae_core::library::AppServices::new(manager, playback)
     };
     Arc::new(
-        super::AppHandle::start(
-            services,
-            runtime,
-            bae_core::diagnostics::Diagnostics::noop(),
-        )
-        .expect("the bridge handle starts"),
+        super::AppHandle::start(services, runtime, bae_core::diagnostics::Diagnostics::noop())
+            .expect("the bridge handle starts"),
     )
 }
 
@@ -204,10 +191,8 @@ fn album_browse_subscription_pulls_count_before_any_windows() {
     let (handle, _root) = fresh_bridge_handle("album-browse-empty-windows");
     let subscription = handle.subscribe_album_browse(Vec::new(), false);
 
-    let snapshot = handle
-        .runtime
-        .block_on(subscription.clone().next())
-        .expect("album browse snapshot");
+    let snapshot =
+        handle.runtime.block_on(subscription.clone().next()).expect("album browse snapshot");
 
     assert_eq!(snapshot.total_count, 0);
     assert!(snapshot.windows.is_empty());
@@ -215,10 +200,7 @@ fn album_browse_subscription_pulls_count_before_any_windows() {
     assert_eq!(snapshot.request_revision, 0);
 
     subscription
-        .set_windows(vec![crate::types::BridgeLibraryPageWindow {
-            offset: 0,
-            limit: 50,
-        }])
+        .set_windows(vec![crate::types::BridgeLibraryPageWindow { offset: 0, limit: 50 }])
         .expect("request first album window");
     let requested = handle
         .runtime
@@ -237,21 +219,14 @@ fn album_browse_subscription_pulls_count_before_any_windows() {
 fn cancelling_album_browse_finishes_pending_next() {
     let (handle, _root) = fresh_bridge_handle("album-browse-cancel");
     let subscription = handle.subscribe_album_browse(Vec::new(), false);
-    handle
-        .runtime
-        .block_on(subscription.clone().next())
-        .expect("initial album browse snapshot");
+    handle.runtime.block_on(subscription.clone().next()).expect("initial album browse snapshot");
 
     let result = handle.runtime.block_on(async {
         let pending = tokio::spawn({
             let subscription = subscription.clone();
             async move { subscription.next().await }
         });
-        subscription
-            .clone()
-            .cancel()
-            .await
-            .expect("cancel album browse subscription");
+        subscription.clone().cancel().await.expect("cancel album browse subscription");
         pending.await.expect("next task joins")
     });
 
@@ -326,10 +301,7 @@ fn enqueue_export_missing_release_does_not_panic() {
     let (handle, root) = fresh_bridge_handle("enqueue-export-missing-release");
     let result = handle.runtime.block_on(async {
         Arc::clone(&handle)
-            .enqueue_export(
-                "missing-release".to_string(),
-                coven::path_bytes(&root.join("exports")),
-            )
+            .enqueue_export("missing-release".to_string(), coven::path_bytes(&root.join("exports")))
             .await
     });
 
@@ -379,25 +351,13 @@ fn a_run_s_signals_cross_with_its_runtime() {
         )
     };
 
-    let crossed = running(Some(signals))
-        .signals
-        .expect("the run's signals cross with its runtime");
-    let crate::types::BridgeTextSignal::Settled {
-        catalogs,
-        free_text,
-    } = crossed.text
-    else {
-        panic!(
-            "a settled text signal crosses as settled, got {:?}",
-            crossed.text
-        );
+    let crossed = running(Some(signals)).signals.expect("the run's signals cross with its runtime");
+    let crate::types::BridgeTextSignal::Settled { catalogs, free_text } = crossed.text else {
+        panic!("a settled text signal crosses as settled, got {:?}", crossed.text);
     };
     assert_eq!(free_text, vec!["Album Title".to_string()]);
     assert_eq!(catalogs, vec!["CAT-1".to_string()]);
-    assert!(
-        running(None).signals.is_none(),
-        "a run extraction has not reported to carries none"
-    );
+    assert!(running(None).signals.is_none(), "a run extraction has not reported to carries none");
 
     let queued = crate::types::BridgeCandidateRuntimeSnapshot::from_core(
         bae_core::import::CandidateRuntimeSnapshot {
@@ -408,10 +368,7 @@ fn a_run_s_signals_cross_with_its_runtime() {
             search: None,
         },
     );
-    assert!(
-        queued.signals.is_none(),
-        "a queued key has no run to have read any"
-    );
+    assert!(queued.signals.is_none(), "a queued key has no run to have read any");
 }
 
 #[test]
@@ -422,10 +379,7 @@ fn upload_progress_keeps_the_counts_and_their_phase() {
     });
     assert_eq!(value.queued, 1);
     assert_eq!(value.uploading, 2);
-    assert_eq!(
-        value.activity,
-        Some(crate::types::BridgeUploadActivity::Uploading)
-    );
+    assert_eq!(value.activity, Some(crate::types::BridgeUploadActivity::Uploading));
 }
 
 #[test]
@@ -496,20 +450,11 @@ fn composer_detail_conversion_preserves_work_groups() {
     assert_eq!(bridge.default_work_id.as_deref(), Some("work-parent-a"));
     let group = &bridge.work_groups[0];
     assert_eq!(group.id, "work-parent-a");
-    assert_eq!(
-        group.parent.as_ref().map(|work| work.work_id.as_str()),
-        Some("work-parent-a")
-    );
+    assert_eq!(group.parent.as_ref().map(|work| work.work_id.as_str()), Some("work-parent-a"));
     assert_eq!(group.works.len(), 1);
     assert_eq!(group.works[0].work_id, "work-child-a");
-    assert_eq!(
-        group.works[0].parent_work_id.as_deref(),
-        Some("work-parent-a")
-    );
-    assert_eq!(
-        group.works[0].representative_release_id.as_deref(),
-        Some("release-a")
-    );
+    assert_eq!(group.works[0].parent_work_id.as_deref(), Some("work-parent-a"));
+    assert_eq!(group.works[0].representative_release_id.as_deref(), Some("release-a"));
 }
 
 #[test]
@@ -565,16 +510,11 @@ fn work_detail_conversion_preserves_work_release_rows() {
     // Two CDs, worded: the count and the medium's printed name.
     let two_cds = vec![crate::types::BridgeFactTerm::Counted {
         count: 2,
-        label: crate::types::BridgeTermLabel::Verbatim {
-            text: "CD".to_string(),
-        },
+        label: crate::types::BridgeTermLabel::Verbatim { text: "CD".to_string() },
     }];
     assert_eq!(
         release.name,
-        crate::types::BridgeReleaseName::Described {
-            year: Some(2026),
-            media: two_cds.clone(),
-        }
+        crate::types::BridgeReleaseName::Described { year: Some(2026), media: two_cds.clone() }
     );
     assert_eq!(release.media, two_cds);
 }
@@ -594,18 +534,12 @@ fn a_failed_sync_status_crosses_with_its_fault() {
 
     let bridge = crate::types::BridgeSyncStatusSnapshot::from_core(snapshot);
 
-    assert_eq!(
-        bridge.indicator,
-        crate::types::BridgeSyncIndicator::Unconnected
-    );
+    assert_eq!(bridge.indicator, crate::types::BridgeSyncIndicator::Unconnected);
     let Some(crate::types::BridgeError::Diagnostic { category, detail }) = bridge.error else {
         panic!("a recorded sync failure crosses as a diagnostic");
     };
     assert_eq!(category, crate::types::BridgeErrorCategory::Internal);
-    assert_eq!(
-        detail, fault,
-        "the fault crosses whole, never summarized away"
-    );
+    assert_eq!(detail, fault, "the fault crosses whole, never summarized away");
 }
 
 /// A healthy cycle carries no error, so no surface renders a failure for it.
@@ -613,9 +547,7 @@ fn a_failed_sync_status_crosses_with_its_fault() {
 fn a_healthy_sync_status_crosses_without_an_error() {
     let snapshot = bae_core::library::SyncStatusSnapshot {
         error: None,
-        status: coven::SyncStatus::Synced {
-            finished_at: std::time::UNIX_EPOCH,
-        },
+        status: coven::SyncStatus::Synced { finished_at: std::time::UNIX_EPOCH },
         pending: Vec::new(),
         retry_effect: coven::RetryEffect::Pass,
     };
@@ -637,26 +569,21 @@ fn a_failure_its_record_shows_crosses_only_as_the_record() {
             failure: coven::StatusFailure::Storage(failure),
             error: "storage refused the pass".into(),
         },
-        pending: vec![bae_core::library::PendingItem::before_open(
-            coven::PendingRecord::new(
-                coven::PendingSubject::Connection,
-                coven::PendingReason::Storage {
-                    provider: coven::CloudProvider::S3,
-                    failure,
-                    answered: true,
-                },
-            ),
-        )],
+        pending: vec![bae_core::library::PendingItem::before_open(coven::PendingRecord::new(
+            coven::PendingSubject::Connection,
+            coven::PendingReason::Storage {
+                provider: coven::CloudProvider::S3,
+                failure,
+                answered: true,
+            },
+        ))],
         retry_effect: coven::RetryEffect::Pass,
     };
 
     let bridge = crate::types::BridgeSyncStatusSnapshot::from_core(snapshot);
 
     assert!(bridge.error.is_none());
-    assert_eq!(
-        bridge.indicator,
-        crate::types::BridgeSyncIndicator::Waiting { items: 1 }
-    );
+    assert_eq!(bridge.indicator, crate::types::BridgeSyncIndicator::Waiting { items: 1 });
 }
 
 /// One candidate's runtime pulled end to end: a claim crosses as its import
@@ -693,28 +620,17 @@ mod candidate_runtime {
         let (handle, _root) = fresh_bridge_handle("candidate-runtime-claim");
         let key = b"/watch/Album Title".to_vec();
         let watching = handle.subscribe_candidate_runtime(key.clone());
-        assert!(
-            pull_until(&handle, &watching, |_| true).is_none(),
-            "nothing runs yet"
-        );
+        assert!(pull_until(&handle, &watching, |_| true).is_none(), "nothing runs yet");
 
         handle.runtime.block_on(
-            handle
-                .services
-                .claim_candidate_for_import_for_test(&key.clone().into(), "import-1"),
+            handle.services.claim_candidate_for_import_for_test(&key.clone().into(), "import-1"),
         );
 
         let claimed = pull_until(&handle, &watching, Option::is_some)
             .expect("a claimed candidate is in flight");
-        let import = claimed
-            .import
-            .clone()
-            .expect("a claimed candidate has an import in flight");
+        let import = claimed.import.clone().expect("a claimed candidate has an import in flight");
         assert!(
-            matches!(
-                import.step,
-                crate::types::BridgeImportStep::Preparing { .. }
-            ),
+            matches!(import.step, crate::types::BridgeImportStep::Preparing { .. }),
             "a claim is the queued step, got {:?}",
             import.step
         );
@@ -722,18 +638,14 @@ mod candidate_runtime {
         // A subscriber opening mid-import reads what is running.
         let joining = handle.subscribe_candidate_runtime(key.clone());
         assert!(
-            pull_until(&handle, &joining, |_| true)
-                .and_then(|runtime| runtime.import)
-                .is_some(),
+            pull_until(&handle, &joining, |_| true).and_then(|runtime| runtime.import).is_some(),
             "a late subscriber reads the running import"
         );
 
         // The import fails as the worker fails it: its failure ends the
         // claim, then announces it.
         handle.runtime.block_on(
-            handle
-                .services
-                .end_candidate_import_for_test(&key.clone().into(), "import-1"),
+            handle.services.end_candidate_import_for_test(&key.clone().into(), "import-1"),
         );
 
         // A failed import is a row by the time it is announced, so the key
@@ -781,12 +693,9 @@ fn dropping_a_handle_closes_its_library_before_its_runtime_ends() {
     let services = runtime
         .block_on(bae_core::library::AppServices::for_test(manager))
         .expect("start test app services");
-    let app = super::AppHandle::start(
-        services,
-        runtime,
-        bae_core::diagnostics::Diagnostics::noop(),
-    )
-    .expect("the bridge handle starts");
+    let app =
+        super::AppHandle::start(services, runtime, bae_core::diagnostics::Diagnostics::noop())
+            .expect("the bridge handle starts");
 
     drop(app);
 
@@ -841,11 +750,9 @@ fn reopening_a_library_released_on_its_runtime_waits_for_its_close() {
     assert!(
         matches!(
             read,
-            Err(bae_core::library::LibraryError::Database(
-                bae_core::db::DbError::Coven(coven::CovenError::Database(
-                    coven::DbError::StoreClosed
-                ))
-            ))
+            Err(bae_core::library::LibraryError::Database(bae_core::db::DbError::Coven(
+                coven::CovenError::Database(coven::DbError::StoreClosed)
+            )))
         ),
         "the released handle's store is closed: {read:?}"
     );

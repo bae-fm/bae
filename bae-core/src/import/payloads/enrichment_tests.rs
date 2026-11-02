@@ -6,9 +6,7 @@ use serde_json::json;
 use std::sync::Arc;
 
 fn instant() -> DateTime<Utc> {
-    DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
-        .unwrap()
-        .with_timezone(&Utc)
+    DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z").unwrap().with_timezone(&Utc)
 }
 
 fn discogs() -> String {
@@ -72,18 +70,10 @@ async fn a_master_backlink_is_followed_and_the_stored_release_reads_back() {
     providers.discogs().seed_release_cache("7811", discogs());
     providers.discogs().seed_master_cache("7822", master());
     providers.musicbrainz().seed_discogs_page_lookup(&[
-        (
-            bae_catalogs::musicbrainz::DiscogsPage::Release("7811".into()),
-            None,
-        ),
-        (
-            bae_catalogs::musicbrainz::DiscogsPage::Master("7822".into()),
-            Some("album-group"),
-        ),
+        (bae_catalogs::musicbrainz::DiscogsPage::Release("7811".into()), None),
+        (bae_catalogs::musicbrainz::DiscogsPage::Master("7822".into()), Some("album-group")),
     ]);
-    providers
-        .musicbrainz()
-        .seed_release_group_json_cache("album-group", group());
+    providers.musicbrainz().seed_release_group_json_cache("album-group", group());
     let client = DiscogsClient::new(providers.discogs().clone(), "test-token".into());
     let fetched = providers
         .fetch_payloads(
@@ -110,17 +100,8 @@ async fn a_master_backlink_is_followed_and_the_stored_release_reads_back() {
     assert_eq!(parsed.album_title, "Selected Album");
     assert_eq!(parsed.album_year, Some(1980));
     assert_eq!(parsed.pressing.year, Some(2005));
-    assert_eq!(
-        crate::import::release_values::value_labels(&parsed),
-        ["A1", "B1"]
-    );
-    assert_eq!(
-        parsed.album_credits[0]
-            .credit
-            .musicbrainz_artist_id
-            .as_deref(),
-        Some("artist-id")
-    );
+    assert_eq!(crate::import::release_values::value_labels(&parsed), ["A1", "B1"]);
+    assert_eq!(parsed.album_credits[0].credit.musicbrainz_artist_id.as_deref(), Some("artist-id"));
     let (db, _temp) = database().await;
     db.save_source_release(&fetched).await.unwrap();
     let stored = db.load_source_release(fetched.release()).await.unwrap();
@@ -136,11 +117,7 @@ fn the_pressing_is_the_selected_record_s_alone() {
             SourcePayload::new(PayloadSource::MusicBrainzDiscogsXref, "7811", musicbrainz()),
             SourcePayload::new(PayloadSource::MusicBrainz, "linked-release", musicbrainz()),
             SourcePayload::new(PayloadSource::DiscogsMaster, "7822", master()),
-            SourcePayload::new(
-                PayloadSource::MusicBrainzReleaseGroup,
-                "album-group",
-                group(),
-            ),
+            SourcePayload::new(PayloadSource::MusicBrainzReleaseGroup, "album-group", group()),
         ],
     );
     let parsed = payloads.extract().unwrap().every_medium_values().unwrap();
@@ -160,10 +137,7 @@ fn the_pressing_is_the_selected_record_s_alone() {
     assert!(parsed.pressing.barcodes.is_empty());
     assert_eq!(parsed.tracks.len(), 2);
     assert_eq!(parsed.tracks[1].title, "Second Track");
-    assert_eq!(
-        crate::import::release_values::value_labels(&parsed)[1],
-        "B1"
-    );
+    assert_eq!(crate::import::release_values::value_labels(&parsed)[1], "B1");
     let detail = payloads.extract().unwrap().detail(&[]);
     assert_eq!(detail.labels, parsed.pressing.labels);
     assert_eq!(detail.facts, parsed.pressing.facts);
@@ -190,11 +164,7 @@ fn the_album_page_states_the_first_year_before_the_linked_release() {
     let without_master = ReleasePayloads::for_test(
         MetadataRef::new(Catalog::Discogs, "7811"),
         discogs(),
-        vec![SourcePayload::new(
-            PayloadSource::MusicBrainzDiscogsXref,
-            "7811",
-            musicbrainz(),
-        )],
+        vec![SourcePayload::new(PayloadSource::MusicBrainzDiscogsXref, "7811", musicbrainz())],
     )
     .extract()
     .unwrap();
@@ -210,11 +180,7 @@ fn linked_album_fills_missing_title_and_artists_without_setting_pressing_year() 
     let payloads = ReleasePayloads::for_test(
         MetadataRef::new(Catalog::Discogs, "7811"),
         anchor.to_string(),
-        vec![SourcePayload::new(
-            PayloadSource::DiscogsMaster,
-            "7822",
-            master(),
-        )],
+        vec![SourcePayload::new(PayloadSource::DiscogsMaster, "7822", master())],
     );
     let parsed = payloads.extract().unwrap().every_medium_values().unwrap();
     assert_eq!(parsed.album_title, "Master Album");
@@ -231,15 +197,9 @@ async fn refetching_without_a_reverse_answer_removes_its_pressing_record() {
     let with_alias = ReleasePayloads::for_test(
         MetadataRef::new(Catalog::Discogs, "7811"),
         discogs(),
-        vec![SourcePayload::new(
-            PayloadSource::MusicBrainzDiscogsXref,
-            "7811",
-            musicbrainz(),
-        )],
+        vec![SourcePayload::new(PayloadSource::MusicBrainzDiscogsXref, "7811", musicbrainz())],
     );
-    db.save_source_release(&with_alias.extract().unwrap())
-        .await
-        .unwrap();
+    db.save_source_release(&with_alias.extract().unwrap()).await.unwrap();
     assert!(db
         .load_source_release(&with_alias.release)
         .await
@@ -253,9 +213,7 @@ async fn refetching_without_a_reverse_answer_removes_its_pressing_record() {
         discogs(),
         Vec::new(),
     );
-    db.save_source_release(&without_alias.extract().unwrap())
-        .await
-        .unwrap();
+    db.save_source_release(&without_alias.extract().unwrap()).await.unwrap();
     assert!(!db
         .load_source_release(&without_alias.release)
         .await
@@ -271,11 +229,7 @@ fn linked_release_album_date_survives_an_unavailable_parent_document() {
     let payloads = ReleasePayloads::for_test(
         MetadataRef::new(Catalog::Discogs, "7811"),
         discogs(),
-        vec![SourcePayload::new(
-            PayloadSource::MusicBrainzDiscogsXref,
-            "7811",
-            musicbrainz(),
-        )],
+        vec![SourcePayload::new(PayloadSource::MusicBrainzDiscogsXref, "7811", musicbrainz())],
     );
     let parsed = payloads.extract().unwrap().every_medium_values().unwrap();
     assert_eq!(parsed.album_year, Some(1979));
@@ -290,11 +244,7 @@ fn selected_album_credits_keep_every_artist_in_detail_and_import() {
     let payloads = ReleasePayloads::for_test(
         MetadataRef::new(Catalog::Discogs, "7811"),
         anchor.to_string(),
-        vec![SourcePayload::new(
-            PayloadSource::MusicBrainzDiscogsXref,
-            "7811",
-            musicbrainz(),
-        )],
+        vec![SourcePayload::new(PayloadSource::MusicBrainzDiscogsXref, "7811", musicbrainz())],
     );
     assert_eq!(
         payloads.extract().unwrap().detail(&[]).artist.as_deref(),
@@ -302,11 +252,7 @@ fn selected_album_credits_keep_every_artist_in_detail_and_import() {
     );
     let parsed = payloads.extract().unwrap().every_medium_values().unwrap();
     assert_eq!(
-        parsed
-            .album_credits
-            .iter()
-            .map(|artist| artist.credit.name.as_str())
-            .collect::<Vec<_>>(),
+        parsed.album_credits.iter().map(|artist| artist.credit.name.as_str()).collect::<Vec<_>>(),
         vec!["Selected Artist", "Second Artist"]
     );
 }
@@ -319,15 +265,9 @@ async fn an_unavailable_supporting_document_does_not_return_from_an_earlier_fetc
     let earlier = ReleasePayloads::for_test(
         MetadataRef::new(Catalog::Discogs, "7811"),
         discogs(),
-        vec![SourcePayload::new(
-            PayloadSource::DiscogsMaster,
-            "7822",
-            master(),
-        )],
+        vec![SourcePayload::new(PayloadSource::DiscogsMaster, "7822", master())],
     );
-    db.save_source_release(&earlier.extract().unwrap())
-        .await
-        .unwrap();
+    db.save_source_release(&earlier.extract().unwrap()).await.unwrap();
     let later = ReleasePayloads::for_test(
         MetadataRef::new(Catalog::Discogs, "7811"),
         discogs(),
@@ -336,8 +276,5 @@ async fn an_unavailable_supporting_document_does_not_return_from_an_earlier_fetc
     .extract()
     .unwrap();
     db.save_source_release(&later).await.unwrap();
-    assert_eq!(
-        db.load_source_release(later.release()).await.unwrap(),
-        Some(later)
-    );
+    assert_eq!(db.load_source_release(later.release()).await.unwrap(), Some(later));
 }

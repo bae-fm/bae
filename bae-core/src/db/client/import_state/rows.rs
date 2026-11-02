@@ -25,11 +25,9 @@ struct ProvenanceColumns<'a> {
 
 fn provenance_columns(provenance: &MetadataProvenance) -> ProvenanceColumns<'_> {
     match provenance {
-        MetadataProvenance::FileMetadata => ProvenanceColumns {
-            kind: "file_tags",
-            source: None,
-            release_id: None,
-        },
+        MetadataProvenance::FileMetadata => {
+            ProvenanceColumns { kind: "file_tags", source: None, release_id: None }
+        }
         MetadataProvenance::ExternalRelease { record, .. } => ProvenanceColumns {
             kind: "external_release",
             source: Some(record.catalog.as_str()),
@@ -60,12 +58,7 @@ pub(super) fn store_provenance(
          VALUES (?, ?, ?, ?) \
          ON CONFLICT (content_hash) DO UPDATE SET \
              kind = excluded.kind, source = excluded.source, release_id = excluded.release_id",
-        params![
-            content_hash,
-            columns.kind,
-            columns.source,
-            columns.release_id
-        ],
+        params![content_hash, columns.kind, columns.source, columns.release_id],
     )?;
     Ok(())
 }
@@ -81,12 +74,7 @@ pub(super) fn insert_provenance(
         "INSERT INTO import_candidate_draft_provenance \
              (content_hash, kind, source, release_id) \
          VALUES (?, ?, ?, ?)",
-        params![
-            content_hash,
-            columns.kind,
-            columns.source,
-            columns.release_id
-        ],
+        params![content_hash, columns.kind, columns.source, columns.release_id],
     )?;
     Ok(())
 }
@@ -123,9 +111,7 @@ impl StoredProvenance {
             "file_tags" => Ok(MetadataProvenance::FileMetadata),
             "external_release" => {
                 let missing = |what: &str| {
-                    DbError::Message(format!(
-                        "stored external metadata provenance names no {what}"
-                    ))
+                    DbError::Message(format!("stored external metadata provenance names no {what}"))
                 };
                 Ok(MetadataProvenance::ExternalRelease {
                     record: MetadataRef::new(
@@ -168,11 +154,9 @@ pub(super) fn store_release_link(
         [content_hash],
     )?;
     let (kind, source, release_id) = match link {
-        ReleaseLink::Pressing(pressing) => (
-            "pressing",
-            Some(pressing.record.catalog.as_str()),
-            Some(pressing.record.key.as_str()),
-        ),
+        ReleaseLink::Pressing(pressing) => {
+            ("pressing", Some(pressing.record.catalog.as_str()), Some(pressing.record.key.as_str()))
+        }
         ReleaseLink::Album(_) => ("album", None, None),
     };
     sql.execute(
@@ -250,14 +234,7 @@ pub(crate) fn read_release_link(row: &Row<'_>) -> rusqlite::Result<Option<Stored
 
 impl StoredReleaseLink {
     pub(crate) fn link(self) -> Result<ReleaseLink, DbError> {
-        let Self {
-            content_hash,
-            kind,
-            source,
-            release_id,
-            partners,
-            albums,
-        } = self;
+        let Self { content_hash, kind, source, release_id, partners, albums } = self;
         let references = |json: &str, what: &str| {
             serde_json::from_str::<Vec<(String, String)>>(json)
                 .map_err(|error| {
@@ -287,10 +264,7 @@ impl StoredReleaseLink {
 }
 
 fn reference(catalog: String, key: String) -> Result<MetadataRef, DbError> {
-    Ok(MetadataRef::new(
-        Catalog::from_str(&catalog).map_err(DbError::Message)?,
-        key,
-    ))
+    Ok(MetadataRef::new(Catalog::from_str(&catalog).map_err(DbError::Message)?, key))
 }
 
 /// A match's own columns joined as `found`, and its album's first year from
@@ -327,11 +301,7 @@ fn match_entries_columns() -> String {
                  'discogs_label_id', entry.discogs_label_id)",
             "entry.ordinal"
         ),
-        barcodes = child(
-            "import_candidate_match_barcode",
-            "entry.barcode",
-            "entry.ordinal"
-        ),
+        barcodes = child("import_candidate_match_barcode", "entry.barcode", "entry.ordinal"),
         copies = super::super::downscaled_copies::copies_json_sql(
             "import_candidate_match_cover_copy",
             "copy.content_hash IS found.content_hash AND copy.identify_run IS found.identify_run \
@@ -497,11 +467,7 @@ pub(super) fn load_run_matches_on(
     let mut matches: HashMap<i64, StoredMatches> = HashMap::new();
     for (run, found) in rows {
         let (columns, entries) = found?;
-        matches
-            .entry(run)
-            .or_default()
-            .rows
-            .push(match_of(columns, entries.entries()?)?);
+        matches.entry(run).or_default().rows.push(match_of(columns, entries.entries()?)?);
     }
     Ok(matches)
 }
@@ -540,10 +506,7 @@ pub(super) fn load_search_matches_on(
     let mut matches: HashMap<i64, Vec<MatchRow>> = HashMap::new();
     for (search, found) in rows {
         let (columns, entries) = found?;
-        matches
-            .entry(search)
-            .or_default()
-            .push(match_of(columns, entries.entries()?)?);
+        matches.entry(search).or_default().push(match_of(columns, entries.entries()?)?);
     }
     Ok(matches)
 }
@@ -608,10 +571,7 @@ pub(crate) fn load_states_rows_on(
                 previous = Some(content_hash.clone());
                 Some(read_candidate(row, content_hash))
             };
-            Ok(StateReadRow {
-                candidate,
-                found: read_found(row).transpose(),
-            })
+            Ok(StateReadRow { candidate, found: read_found(row).transpose() })
         },
     )?;
     Ok(Box::new(move || {
@@ -624,13 +584,9 @@ pub(crate) fn load_states_rows_on(
                 continue;
             };
             let (columns, entries) = found?;
-            let candidate = candidates
-                .last_mut()
-                .expect("a match row follows its candidate's first row");
-            candidate
-                .matches
-                .rows
-                .push(match_of(columns, entries.entries()?)?);
+            let candidate =
+                candidates.last_mut().expect("a match row follows its candidate's first row");
+            candidate.matches.rows.push(match_of(columns, entries.entries()?)?);
         }
         candidates
             .into_iter()
@@ -729,9 +685,7 @@ pub(crate) fn load_stored_candidate_edits_on(
             .into_iter()
             .map(|stored| Ok((stored.content_hash().to_string(), stored.edits()?)))
             .collect::<Result<HashMap<_, _>, DbError>>()?;
-        Ok(crate::import::folder_scanner::StoredCandidateEdits::new(
-            edits,
-        ))
+        Ok(crate::import::folder_scanner::StoredCandidateEdits::new(edits))
     }))
 }
 
@@ -754,9 +708,6 @@ pub(crate) fn load_candidate_file_edits_on(
         )
         .optional()?;
     Ok(Box::new(move || {
-        stored.map_or_else(
-            || Ok(CandidateFileEdits::default()),
-            |stored| stored.edits(),
-        )
+        stored.map_or_else(|| Ok(CandidateFileEdits::default()), |stored| stored.edits())
     }))
 }

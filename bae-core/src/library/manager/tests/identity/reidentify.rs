@@ -47,21 +47,13 @@ fn seed_musicbrainz(manager: &LibraryManager, release_id: &str, group_id: &str, 
 /// reads a release's tracks.
 async fn insert_editable_tracks(manager: &LibraryManager, release_id: &str, n: usize) {
     insert_n_tracks(&manager.database, release_id, n).await;
-    for (index, track) in manager
-        .database
-        .get_tracks_for_release(release_id)
-        .await
-        .unwrap()
-        .iter()
-        .enumerate()
+    for (index, track) in
+        manager.database.get_tracks_for_release(release_id).await.unwrap().iter().enumerate()
     {
         add_track_audio_sources(
             manager,
             track,
-            &[(
-                &format!("{index:02}.flac"),
-                crate::album_detail::SourceAudioLayout::File,
-            )],
+            &[(&format!("{index:02}.flac"), crate::album_detail::SourceAudioLayout::File)],
         )
         .await;
     }
@@ -151,8 +143,10 @@ async fn insert_n_tracks(database: &Database, release_id: &str, n: usize) {
             title: format!("Track {i}"),
             medium_id: crate::db::identity::release_medium_id(release_id, 1),
             side: std::num::NonZeroU8::MIN,
-            track_number: std::num::NonZeroU32::new(u32::try_from(i).expect("a test track number fits u32"))
-                .expect("track numbers count from one"),
+            track_number: std::num::NonZeroU32::new(
+                u32::try_from(i).expect("a test track number fits u32"),
+            )
+            .expect("track numbers count from one"),
             duration_ms: 200_000,
             created_at: Utc::now(),
         };
@@ -182,17 +176,10 @@ async fn a_saved_reidentify_writes_the_picked_release_s_records_and_values() {
     seed_musicbrainz(&manager, new_release_id, new_group_id, 3);
     reidentify(&manager, &release.id, musicbrainz_link(new_release_id)).await;
 
-    let records = manager
-        .database
-        .get_release_records(&release.id)
-        .await
-        .unwrap();
+    let records = manager.database.get_release_records(&release.id).await.unwrap();
     assert_eq!(records.len(), 1);
     assert_eq!(records[0].key(), new_release_id);
-    assert_eq!(
-        records[0].album_ref().expect("known parent album").key,
-        new_group_id
-    );
+    assert_eq!(records[0].album_ref().expect("known parent album").key, new_group_id);
     let titles: Vec<String> = manager
         .database
         .get_tracks_for_release(&release.id)
@@ -220,23 +207,19 @@ async fn a_reidentify_that_does_not_fit_the_stored_tracks_is_refused() {
 
     let session = manager.open_release_edit(&release.id).await.unwrap();
     let err = manager
-        .apply_release_edit_catalog(&session, &musicbrainz_link(new_release_id), &crate::import::CatalogApplySteps::unread())
+        .apply_release_edit_catalog(
+            &session,
+            &musicbrainz_link(new_release_id),
+            &crate::import::CatalogApplySteps::unread(),
+        )
         .await
         .expect_err("a release of 12 tracks cannot lay out 10");
     assert_eq!(
         err.category(),
-        crate::ui::UiErrorCategory::MetadataTrackCount {
-            folder_tracks: 10,
-            release_tracks: 12,
-        },
+        crate::ui::UiErrorCategory::MetadataTrackCount { folder_tracks: 10, release_tracks: 12 },
         "the editor names the refusal, not a generic import failure: {err}"
     );
-    assert!(manager
-        .database
-        .get_release_records(&release.id)
-        .await
-        .unwrap()
-        .is_empty());
+    assert!(manager.database.get_release_records(&release.id).await.unwrap().is_empty());
 }
 
 /// Discarding a session with a catalog applied writes nothing: the library's
@@ -255,22 +238,18 @@ async fn discarding_a_session_restores_the_library_s_values_exactly() {
     let new_release_id = "discard-re-identify-mb-rel-new";
     seed_musicbrainz(&manager, new_release_id, "discard-re-identify-mb-group-new", 2);
     let applied = manager
-        .apply_release_edit_catalog(&session, &musicbrainz_link(new_release_id), &crate::import::CatalogApplySteps::unread())
+        .apply_release_edit_catalog(
+            &session,
+            &musicbrainz_link(new_release_id),
+            &crate::import::CatalogApplySteps::unread(),
+        )
         .await
         .unwrap();
     assert_ne!(applied.edit, before.edit, "the apply filled the form");
     drop(session);
 
-    assert_eq!(
-        manager.open_release_edit(&release.id).await.unwrap().opened(),
-        &before
-    );
-    assert!(manager
-        .database
-        .get_release_records(&release.id)
-        .await
-        .unwrap()
-        .is_empty());
+    assert_eq!(manager.open_release_edit(&release.id).await.unwrap().opened(), &before);
+    assert!(manager.database.get_release_records(&release.id).await.unwrap().is_empty());
 }
 
 /// Re-identifying a MusicBrainz release as a Discogs release and saving
@@ -334,7 +313,10 @@ async fn a_reidentify_leaves_none_of_the_previous_source_s_roles_or_works() {
     .to_string();
     manager.providers().discogs().seed_release_cache(discogs_release_id, discogs_raw);
     manager.providers().discogs().seed_artist_image_response("1", None);
-    manager.providers().musicbrainz().seed_discogs_page_lookup(&[(bae_catalogs::musicbrainz::DiscogsPage::Release(discogs_release_id.to_string()), None)]);
+    manager.providers().musicbrainz().seed_discogs_page_lookup(&[(
+        bae_catalogs::musicbrainz::DiscogsPage::Release(discogs_release_id.to_string()),
+        None,
+    )]);
     reidentify(
         &manager,
         &release.id,
@@ -348,11 +330,7 @@ async fn a_reidentify_leaves_none_of_the_previous_source_s_roles_or_works() {
     let mut left = Vec::new();
     for table in ["track_works", "track_artist_roles"] {
         left.push(
-            manager
-                .database
-                .count_rows_for_test(table, "track_id", &track.id)
-                .await
-                .unwrap(),
+            manager.database.count_rows_for_test(table, "track_id", &track.id).await.unwrap(),
         );
     }
     assert_eq!(left, [0, 0]);
@@ -377,10 +355,7 @@ async fn saving_moves_the_release_to_the_album_its_records_or_the_person_name() 
         .await
         .unwrap();
 
-    let own = DbAlbum {
-        title: "Own Album".to_string(),
-        ..create_test_album()
-    };
+    let own = DbAlbum { title: "Own Album".to_string(), ..create_test_album() };
     let release = create_test_release(&own.id);
     manager.database.insert_album(&own).await.unwrap();
     insert_release(&manager, &release).await;
@@ -393,26 +368,17 @@ async fn saving_moves_the_release_to_the_album_its_records_or_the_person_name() 
         Some(grouped.id.clone())
     );
 
-    let picked = DbAlbum {
-        title: "Picked Album".to_string(),
-        ..create_test_album()
-    };
+    let picked = DbAlbum { title: "Picked Album".to_string(), ..create_test_album() };
     manager.database.insert_album(&picked).await.unwrap();
     let session = manager.open_release_edit(&release.id).await.unwrap();
     assert_eq!(
-        manager
-            .set_release_edit_album(&session, Some(picked.id.clone()))
-            .await
-            .unwrap(),
+        manager.set_release_edit_album(&session, Some(picked.id.clone())).await.unwrap(),
         crate::import::DraftAlbum::Picked {
             album_id: picked.id.clone(),
             title: "Picked Album".to_string(),
         }
     );
-    manager
-        .save_release_edit(&session, &session.opened().edit)
-        .await
-        .unwrap();
+    manager.save_release_edit(&session, &session.opened().edit).await.unwrap();
     assert_eq!(
         manager.database.find_album_id_for_release(&release.id).await.unwrap(),
         Some(picked.id.clone())
@@ -432,10 +398,7 @@ async fn saving_moves_the_release_to_the_album_its_records_or_the_person_name() 
 async fn a_release_edit_session_names_the_album_its_save_files_under() {
     use crate::import::DraftAlbum;
     let (manager, _temp_dir) = setup_test_manager().await;
-    let grouped = DbAlbum {
-        title: "Grouped Album".to_string(),
-        ..create_test_album()
-    };
+    let grouped = DbAlbum { title: "Grouped Album".to_string(), ..create_test_album() };
     let sibling = create_test_release(&grouped.id);
     manager.database.insert_album(&grouped).await.unwrap();
     insert_release(&manager, &sibling).await;
@@ -444,18 +407,12 @@ async fn a_release_edit_session_names_the_album_its_save_files_under() {
         .insert_release_records(&sibling.id, &[mb_identity("named-group", "named-sibling")])
         .await
         .unwrap();
-    let own = DbAlbum {
-        title: "Own Album".to_string(),
-        ..create_test_album()
-    };
+    let own = DbAlbum { title: "Own Album".to_string(), ..create_test_album() };
     let release = create_test_release(&own.id);
     manager.database.insert_album(&own).await.unwrap();
     insert_release(&manager, &release).await;
     insert_editable_tracks(&manager, &release.id, 1).await;
-    let picked = DbAlbum {
-        title: "Picked Album".to_string(),
-        ..create_test_album()
-    };
+    let picked = DbAlbum { title: "Picked Album".to_string(), ..create_test_album() };
     manager.database.insert_album(&picked).await.unwrap();
     seed_musicbrainz(&manager, "named-new", "named-group", 1);
     seed_musicbrainz(&manager, "unnamed-new", "unnamed-group", 1);
@@ -463,40 +420,44 @@ async fn a_release_edit_session_names_the_album_its_save_files_under() {
         album_id: album.id.clone(),
         title: album.title.clone(),
     };
-    let picked_album = DraftAlbum::Picked {
-        album_id: picked.id.clone(),
-        title: picked.title.clone(),
-    };
+    let picked_album =
+        DraftAlbum::Picked { album_id: picked.id.clone(), title: picked.title.clone() };
 
     let session = manager.open_release_edit(&release.id).await.unwrap();
     assert_eq!(session.opened().album, named(&own));
     let applied = manager
-        .apply_release_edit_catalog(&session, &musicbrainz_link("named-new"), &crate::import::CatalogApplySteps::unread())
+        .apply_release_edit_catalog(
+            &session,
+            &musicbrainz_link("named-new"),
+            &crate::import::CatalogApplySteps::unread(),
+        )
         .await
         .unwrap();
     assert_eq!(applied.album, named(&grouped));
     let applied = manager
-        .apply_release_edit_catalog(&session, &musicbrainz_link("unnamed-new"), &crate::import::CatalogApplySteps::unread())
+        .apply_release_edit_catalog(
+            &session,
+            &musicbrainz_link("unnamed-new"),
+            &crate::import::CatalogApplySteps::unread(),
+        )
         .await
         .unwrap();
     assert_eq!(applied.album, DraftAlbum::New);
 
     assert_eq!(
-        manager
-            .set_release_edit_album(&session, Some(picked.id.clone()))
-            .await
-            .unwrap(),
+        manager.set_release_edit_album(&session, Some(picked.id.clone())).await.unwrap(),
         picked_album
     );
     assert!(
-        manager
-            .set_release_edit_album(&session, Some("no-such-album".to_string()))
-            .await
-            .is_err(),
+        manager.set_release_edit_album(&session, Some("no-such-album".to_string())).await.is_err(),
         "an album the library does not hold cannot be picked"
     );
     let applied = manager
-        .apply_release_edit_catalog(&session, &musicbrainz_link("named-new"), &crate::import::CatalogApplySteps::unread())
+        .apply_release_edit_catalog(
+            &session,
+            &musicbrainz_link("named-new"),
+            &crate::import::CatalogApplySteps::unread(),
+        )
         .await
         .unwrap();
     assert_eq!(applied.album, picked_album, "an apply keeps the person's pick");
@@ -514,39 +475,31 @@ async fn a_release_edit_session_names_the_album_its_save_files_under() {
 async fn two_sessions_on_one_release_keep_their_own_apply_and_pick() {
     use crate::import::DraftAlbum;
     let (manager, _temp_dir) = setup_test_manager().await;
-    let own = DbAlbum {
-        title: "Own Album".to_string(),
-        ..create_test_album()
-    };
+    let own = DbAlbum { title: "Own Album".to_string(), ..create_test_album() };
     let release = create_test_release(&own.id);
     manager.database.insert_album(&own).await.unwrap();
     insert_release(&manager, &release).await;
     insert_editable_tracks(&manager, &release.id, 2).await;
-    let picked = DbAlbum {
-        title: "Picked Album".to_string(),
-        ..create_test_album()
-    };
+    let picked = DbAlbum { title: "Picked Album".to_string(), ..create_test_album() };
     manager.database.insert_album(&picked).await.unwrap();
     seed_musicbrainz(&manager, "two-sessions-new", "two-sessions-group", 2);
 
     let sheet = manager.open_release_edit(&release.id).await.unwrap();
     let pane = manager.open_release_edit(&release.id).await.unwrap();
     let applied = manager
-        .apply_release_edit_catalog(&sheet, &musicbrainz_link("two-sessions-new"), &crate::import::CatalogApplySteps::unread())
+        .apply_release_edit_catalog(
+            &sheet,
+            &musicbrainz_link("two-sessions-new"),
+            &crate::import::CatalogApplySteps::unread(),
+        )
         .await
         .unwrap();
-    manager
-        .set_release_edit_album(&sheet, Some(picked.id.clone()))
-        .await
-        .unwrap();
+    manager.set_release_edit_album(&sheet, Some(picked.id.clone())).await.unwrap();
     let third = manager.open_release_edit(&release.id).await.unwrap();
 
     assert_eq!(
         manager.set_release_edit_album(&pane, None).await.unwrap(),
-        DraftAlbum::Named {
-            album_id: own.id.clone(),
-            title: own.title.clone(),
-        },
+        DraftAlbum::Named { album_id: own.id.clone(), title: own.title.clone() },
         "the other editor's pick and apply are not this one's"
     );
     assert_eq!(third.opened(), pane.opened());
@@ -588,10 +541,7 @@ async fn a_session_s_save_is_refused_once_the_release_changed_under_it() {
 
     let first = manager.open_release_edit(&release.id).await.unwrap();
     let second = manager.open_release_edit(&release.id).await.unwrap();
-    manager
-        .save_release_edit(&first, &titled(&first, "Saved First"))
-        .await
-        .unwrap();
+    manager.save_release_edit(&first, &titled(&first, "Saved First")).await.unwrap();
     let refused = manager
         .save_release_edit(&second, &titled(&second, "Saved Second"))
         .await
@@ -600,53 +550,31 @@ async fn a_session_s_save_is_refused_once_the_release_changed_under_it() {
         matches!(&refused, LibraryError::ReleaseEditStale { release_id } if *release_id == release.id),
         "{refused}"
     );
-    assert_eq!(
-        refused.category(),
-        crate::ui::UiErrorCategory::ReleaseChangedSinceOpened
-    );
+    assert_eq!(refused.category(), crate::ui::UiErrorCategory::ReleaseChangedSinceOpened);
     let held = |manager: &LibraryManager| {
         let release_id = release.id.clone();
         let manager = manager.clone();
         async move {
-            manager
-                .open_release_edit(&release_id)
-                .await
-                .unwrap()
-                .opened()
-                .edit
-                .album_title
-                .clone()
+            manager.open_release_edit(&release_id).await.unwrap().opened().edit.album_title.clone()
         }
     };
     assert_eq!(held(&manager).await, "Saved First");
     assert!(
-        manager
-            .save_release_edit(&first, &titled(&first, "Saved Again"))
-            .await
-            .is_err(),
+        manager.save_release_edit(&first, &titled(&first, "Saved Again")).await.is_err(),
         "a saved session opened on what the library held before its save"
     );
 
     let opened_before_write = manager.open_release_edit(&release.id).await.unwrap();
     let written = titled(&opened_before_write, "Written Elsewhere");
-    manager
-        .apply_release_metadata_user_edit(&release.id, &written.shape().unwrap())
-        .await
-        .unwrap();
+    manager.apply_release_metadata_user_edit(&release.id, &written.shape().unwrap()).await.unwrap();
     assert!(manager
-        .save_release_edit(
-            &opened_before_write,
-            &titled(&opened_before_write, "Saved Over It")
-        )
+        .save_release_edit(&opened_before_write, &titled(&opened_before_write, "Saved Over It"))
         .await
         .is_err());
     assert_eq!(held(&manager).await, "Written Elsewhere");
 
     let fresh = manager.open_release_edit(&release.id).await.unwrap();
-    manager
-        .save_release_edit(&fresh, &titled(&fresh, "Saved Fresh"))
-        .await
-        .unwrap();
+    manager.save_release_edit(&fresh, &titled(&fresh, "Saved Fresh")).await.unwrap();
     assert_eq!(held(&manager).await, "Saved Fresh");
 }
 
@@ -656,10 +584,8 @@ async fn re_identify_with_a_partner_writes_both_identity_rows() {
     use bae_catalogs::catalog::Catalog;
     let (manager, _temp_dir) = setup_test_manager().await;
     manager
-        .set_discogs_key(
-            "test-discogs-token",
-            crate::config::DiscogsValidation::Valid,
-        ).await
+        .set_discogs_key("test-discogs-token", crate::config::DiscogsValidation::Valid)
+        .await
         .unwrap();
 
     let album = create_test_album();
@@ -682,10 +608,7 @@ async fn re_identify_with_a_partner_writes_both_identity_rows() {
     let response = make_mb_release_for_re_identify(mb_release_id, mb_group_id, 1);
     let raw_json = serde_json::to_string(&response).unwrap();
     manager.providers().musicbrainz().seed_release_cache(mb_release_id, raw_json);
-    manager
-        .providers()
-        .musicbrainz()
-        .seed_release_group_json_cache(
+    manager.providers().musicbrainz().seed_release_group_json_cache(
         mb_group_id,
         serde_json::json!({ "id": mb_group_id }).to_string(),
     );
@@ -730,11 +653,7 @@ async fn re_identify_with_a_partner_writes_both_identity_rows() {
     )
     .await;
 
-    let identities = manager
-        .database
-        .get_release_records(&release.id)
-        .await
-        .unwrap();
+    let identities = manager.database.get_release_records(&release.id).await.unwrap();
     assert_eq!(identities.len(), 2, "one row per claimed catalog");
 
     let mb = identities
@@ -748,17 +667,13 @@ async fn re_identify_with_a_partner_writes_both_identity_rows() {
         .iter()
         .find(|record| record.catalog() == Catalog::Discogs)
         .expect("the Discogs record");
-    assert_eq!(
-        discogs.album_ref().expect("known parent album").key,
-        discogs_master_id
-    );
+    assert_eq!(discogs.album_ref().expect("known parent album").key, discogs_master_id);
     assert_eq!(discogs.key(), discogs_release_id);
 
     // No row names the applied releases, so neither is stored.
-    for (catalog, release_id) in [
-        (Catalog::MusicBrainz, mb_release_id),
-        (Catalog::Discogs, discogs_release_id),
-    ] {
+    for (catalog, release_id) in
+        [(Catalog::MusicBrainz, mb_release_id), (Catalog::Discogs, discogs_release_id)]
+    {
         assert_eq!(
             stored_for(&manager, catalog, release_id).await,
             None,

@@ -73,12 +73,8 @@ async fn scanned(
         .begin_folder_scan(std::path::Path::new(root), crate::import::VolumeKind::Local)
         .await
         .unwrap();
-    db.save_folder_scan_item(std::path::Path::new(root), generation, &item)
-        .await
-        .unwrap();
-    db.finish_folder_scan(std::path::Path::new(root), generation, None)
-        .await
-        .unwrap();
+    db.save_folder_scan_item(std::path::Path::new(root), generation, &item).await.unwrap();
+    db.finish_folder_scan(std::path::Path::new(root), generation, None).await.unwrap();
     candidate
 }
 
@@ -116,12 +112,7 @@ async fn import_list_moves_a_row_to_done_when_this_device_imports_its_files() {
     let mut live = db.subscribe_import_list(
         list_request(&db, crate::import::TriageTab::Pending, [(0, 50)]).await,
     );
-    let initial = live
-        .next()
-        .await
-        .expect("the query stays open")
-        .result
-        .unwrap();
+    let initial = live.next().await.expect("the query stays open").result.unwrap();
     assert_eq!(initial.total_count, 1);
     assert_eq!(initial.summary.counts.pending, 1);
     assert_eq!(initial.summary.counts.done, 0);
@@ -159,12 +150,7 @@ async fn a_done_row_reads_its_library_release() {
     .await;
     let mut live = db
         .subscribe_import_list(list_request(&db, crate::import::TriageTab::Done, [(0, 50)]).await);
-    let first = live
-        .next()
-        .await
-        .expect("the query stays open")
-        .result
-        .unwrap();
+    let first = live.next().await.expect("the query stays open").result.unwrap();
     let done = rows(&first);
     assert_eq!(done.len(), 1);
     let done = &done[0];
@@ -210,12 +196,7 @@ async fn a_done_row_reads_its_library_release() {
     assert_eq!(done.metadata_provenance, None);
     assert_eq!(done.release_link, None);
 
-    exec(
-        &db,
-        "UPDATE albums SET title = 'Retitled' WHERE id = ?1",
-        &[ALBUM_ID],
-    )
-    .await;
+    exec(&db, "UPDATE albums SET title = 'Retitled' WHERE id = ?1", &[ALBUM_ID]).await;
     let retitled = tokio::time::timeout(Duration::from_secs(2), live.next())
         .await
         .expect("retitling the album wakes the list")
@@ -223,10 +204,7 @@ async fn a_done_row_reads_its_library_release() {
         .result
         .unwrap();
     assert_eq!(
-        rows(&retitled)[0]
-            .metadata_summary
-            .as_ref()
-            .map(|summary| summary.album_title.as_str()),
+        rows(&retitled)[0].metadata_summary.as_ref().map(|summary| summary.album_title.as_str()),
         Some("Retitled")
     );
 }
@@ -248,15 +226,8 @@ async fn a_release_this_device_did_not_import_leaves_the_folder_in_found() {
         .unwrap();
     assert_eq!(projection.summary.counts.pending, 1);
     assert_eq!(projection.summary.counts.done, 0);
-    let detail = db
-        .load_import_candidate(&candidate.key())
-        .await
-        .unwrap()
-        .unwrap();
-    assert!(
-        detail.draft().is_some(),
-        "the folder holds a draft, as one nobody imported does"
-    );
+    let detail = db.load_import_candidate(&candidate.key()).await.unwrap().unwrap();
+    assert!(detail.draft().is_some(), "the folder holds a draft, as one nobody imported does");
 }
 
 /// Done is keyed by the folder's hash, not its path: a folder imported here
@@ -291,15 +262,7 @@ async fn deleting_the_release_puts_its_folder_back_in_found() {
 
     let mut live = db
         .subscribe_import_list(list_request(&db, crate::import::TriageTab::Done, [(0, 50)]).await);
-    assert_eq!(
-        live.next()
-            .await
-            .expect("the query stays open")
-            .result
-            .unwrap()
-            .total_count,
-        1
-    );
+    assert_eq!(live.next().await.expect("the query stays open").result.unwrap().total_count, 1);
 
     exec(&db, "DELETE FROM releases WHERE id = ?1", &[RELEASE_ID]).await;
     let deleted = tokio::time::timeout(Duration::from_secs(2), live.next())
@@ -332,10 +295,7 @@ async fn one_folder_hash_records_one_release() {
             .map_err(crate::db::DbError::from)
         })
         .await;
-    assert!(
-        refused.is_err(),
-        "a second release of the same files is refused"
-    );
+    assert!(refused.is_err(), "a second release of the same files is refused");
 }
 
 /// The pane of a candidate its import put in the library is placed Done, which
@@ -375,10 +335,7 @@ async fn the_pane_of_an_imported_candidate_is_placed_done() {
             },
         })
     );
-    assert!(!done
-        .live
-        .actions
-        .contains(&crate::import::CandidateAction::Import));
+    assert!(!done.live.actions.contains(&crate::import::CandidateAction::Import));
     assert_eq!(
         done.stage,
         crate::import::CandidateStage::Imported {
@@ -399,14 +356,9 @@ async fn import_list_moving_the_window_reruns_without_a_commit() {
     let (db, _temp) = live_db().await;
     let root = &crate::import::watched_folder::host_root("/music");
     db.add_watched_import_folder(root).await.unwrap();
-    let generation = db
-        .begin_folder_scan(root, crate::import::VolumeKind::Local)
-        .await
-        .unwrap();
+    let generation = db.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
     for name in ["first", "second"] {
-        db.save_folder_scan_item(root, generation, &scan_candidate(root, name))
-            .await
-            .unwrap();
+        db.save_folder_scan_item(root, generation, &scan_candidate(root, name)).await.unwrap();
     }
     db.finish_folder_scan(root, generation, None).await.unwrap();
 
@@ -417,10 +369,7 @@ async fn import_list_moving_the_window_reruns_without_a_commit() {
     let mut live = live;
     let initial = live.next().await.expect("the query stays open");
     assert_eq!(initial.cause, coven::LiveQueryCause::Request);
-    assert_eq!(
-        candidate_names(&initial.result.unwrap()),
-        vec!["first".to_string()]
-    );
+    assert_eq!(candidate_names(&initial.result.unwrap()), vec!["first".to_string()]);
 
     requests.set(through(list, [(1, 1)])).unwrap();
     let moved = tokio::time::timeout(Duration::from_secs(2), live.next())
@@ -428,10 +377,7 @@ async fn import_list_moving_the_window_reruns_without_a_commit() {
         .expect("the window change reruns the query")
         .expect("the query stays open");
     assert_eq!(moved.cause, coven::LiveQueryCause::Request);
-    assert_eq!(
-        candidate_names(&moved.result.unwrap()),
-        vec!["second".to_string()]
-    );
+    assert_eq!(candidate_names(&moved.result.unwrap()), vec!["second".to_string()]);
 }
 
 /// A commit that touches a table the list does not read does not read the list
@@ -441,26 +387,16 @@ async fn import_list_withholds_a_commit_that_changes_nothing_it_reads() {
     let (db, _temp) = live_db().await;
     let root = &crate::import::watched_folder::host_root("/music");
     db.add_watched_import_folder(root).await.unwrap();
-    let generation = db
-        .begin_folder_scan(root, crate::import::VolumeKind::Local)
-        .await
-        .unwrap();
+    let generation = db.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
     for name in ["first", "second"] {
-        db.save_folder_scan_item(root, generation, &scan_candidate(root, name))
-            .await
-            .unwrap();
+        db.save_folder_scan_item(root, generation, &scan_candidate(root, name)).await.unwrap();
     }
     db.finish_folder_scan(root, generation, None).await.unwrap();
 
     let request = list_request(&db, crate::import::TriageTab::Pending, [(0, 1)]).await;
     let list = request.list;
     let mut live = db.subscribe_import_list(request);
-    let initial = live
-        .next()
-        .await
-        .expect("the query stays open")
-        .result
-        .unwrap();
+    let initial = live.next().await.expect("the query stays open").result.unwrap();
     assert_eq!(candidate_names(&initial), vec!["first".to_string()]);
 
     // What a walk records about the directories it read: the list projects
@@ -490,10 +426,7 @@ async fn import_candidate_moves_between_candidates_on_one_subscription() {
     let (db, _temp) = live_db().await;
     let root = &crate::import::watched_folder::host_root("/music");
     db.add_watched_import_folder(root).await.unwrap();
-    let generation = db
-        .begin_folder_scan(root, crate::import::VolumeKind::Local)
-        .await
-        .unwrap();
+    let generation = db.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
     let mut keys = Vec::new();
     for name in ["first", "second"] {
         let item = scan_candidate(root, name);
@@ -501,21 +434,14 @@ async fn import_candidate_moves_between_candidates_on_one_subscription() {
             unreachable!("the fixture builds a valid candidate");
         };
         keys.push(candidate.key());
-        db.save_folder_scan_item(root, generation, &item)
-            .await
-            .unwrap();
+        db.save_folder_scan_item(root, generation, &item).await.unwrap();
     }
     db.finish_folder_scan(root, generation, None).await.unwrap();
 
     let mut live = db.subscribe_import_candidate(None);
     let requests = live.requests();
     assert!(
-        live.next()
-            .await
-            .expect("the query stays open")
-            .result
-            .unwrap()
-            .is_none(),
+        live.next().await.expect("the query stays open").result.unwrap().is_none(),
         "no key reads nothing"
     );
 
@@ -528,11 +454,5 @@ async fn import_candidate_moves_between_candidates_on_one_subscription() {
     }
 
     requests.set(None).unwrap();
-    assert!(live
-        .next()
-        .await
-        .expect("the query stays open")
-        .result
-        .unwrap()
-        .is_none());
+    assert!(live.next().await.expect("the query stays open").result.unwrap().is_none());
 }

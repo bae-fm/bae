@@ -36,10 +36,9 @@ pub struct ScannedFile {
 impl ScannedFile {
     pub fn new(path: PathBuf, relative_path: String, size: u64, modified_at_ns: i64) -> Self {
         let (dir_prefix, file_name) = match relative_path.rfind('/') {
-            Some(idx) => (
-                Some(relative_path[..=idx].to_string()),
-                relative_path[idx + 1..].to_string(),
-            ),
+            Some(idx) => {
+                (Some(relative_path[..=idx].to_string()), relative_path[idx + 1..].to_string())
+            }
             None => (None, relative_path.clone()),
         };
         Self {
@@ -109,11 +108,7 @@ pub enum FileRole {
     /// A track sheet (CUE) that parsed, carrying its parsed sheet, what its
     /// `FILE` directive resolved to, and which disc of the release its entries
     /// become.
-    TrackSheet {
-        sheet: crate::cue_flac::CueSheet,
-        binding: SheetBinding,
-        disc: SheetDisc,
-    },
+    TrackSheet { sheet: crate::cue_flac::CueSheet, binding: SheetBinding, disc: SheetDisc },
     /// An image the folder carries. Which one leads the release is not a
     /// property of the file: it is the cover choice, answered by the stored
     /// row, then the picked release's own art, then these ranked by name.
@@ -310,9 +305,9 @@ impl CandidateFileEdits {
         for (sheet_id, references) in self.sheet_bindings.iter() {
             for (reference, decision) in references.iter() {
                 let decision = match decision {
-                    UserSheetBinding::Describes { file_id } => UserSheetBinding::Describes {
-                        file_id: named(file_id),
-                    },
+                    UserSheetBinding::Describes { file_id } => {
+                        UserSheetBinding::Describes { file_id: named(file_id) }
+                    }
                     UserSheetBinding::Cleared => UserSheetBinding::Cleared,
                 };
                 edits.sheet_bindings.set_reference(
@@ -324,9 +319,7 @@ impl CandidateFileEdits {
         }
         for (sheet_id, assigned) in self.sheet_discs.iter() {
             let assigned = match assigned {
-                SheetDisc::Disc { number } => SheetDisc::Disc {
-                    number: disc(*number),
-                },
+                SheetDisc::Disc { number } => SheetDisc::Disc { number: disc(*number) },
                 SheetDisc::Ignored => SheetDisc::Ignored,
             };
             edits.sheet_discs.set(named(sheet_id), assigned);
@@ -376,8 +369,7 @@ impl StoredCandidateEdits {
     }
 
     pub(crate) fn revision_for_hash(&self, content_hash: &str) -> u64 {
-        self.for_hash(content_hash)
-            .map_or(0, |edits| edits.revision)
+        self.for_hash(content_hash).map_or(0, |edits| edits.revision)
     }
 
     /// One candidate's decisions, to be added to and written back. Empty when
@@ -597,16 +589,11 @@ impl CategorizedFiles {
             })
             .collect();
         let summary = SourceAudioSummary::from_files(
-            files_and_summarized
-                .iter()
-                .map(|(_, summarized)| summarized.clone()),
+            files_and_summarized.iter().map(|(_, summarized)| summarized.clone()),
         )?;
         Some(CandidateSourceAudio {
             summary,
-            files: files_and_summarized
-                .into_iter()
-                .map(|(file, _)| file)
-                .collect(),
+            files: files_and_summarized.into_iter().map(|(file, _)| file).collect(),
         })
     }
 
@@ -624,9 +611,7 @@ impl CategorizedFiles {
 
     /// Artwork offered by cover pickers; other images remain in `artwork`.
     pub fn cover_files(&self) -> impl Iterator<Item = &CandidateFile> {
-        self.files
-            .iter()
-            .filter(|entry| entry.cover_choice().is_some())
+        self.files.iter().filter(|entry| entry.cover_choice().is_some())
     }
 
     /// The release's readable evidence files.
@@ -654,16 +639,9 @@ impl CategorizedFiles {
     /// Every parsed track sheet, bound or not.
     pub fn track_sheets(&self) -> impl Iterator<Item = TrackSheetFile<'_>> {
         self.files.iter().filter_map(|entry| match &entry.role {
-            FileRole::TrackSheet {
-                sheet,
-                binding,
-                disc,
-            } => Some(TrackSheetFile {
-                file: &entry.file,
-                sheet,
-                binding,
-                disc: *disc,
-            }),
+            FileRole::TrackSheet { sheet, binding, disc } => {
+                Some(TrackSheetFile { file: &entry.file, sheet, binding, disc: *disc })
+            }
             _ => None,
         })
     }
@@ -671,9 +649,7 @@ impl CategorizedFiles {
     /// The track sheets whose `FILE` directives resolved, each with the audio
     /// it describes, in the sheets' `relative_path` order.
     pub fn bound_sheets(&self) -> Vec<BoundTrackSheet<'_>> {
-        self.track_sheets()
-            .filter_map(|sheet| self.bound_sheet(sheet))
-            .collect()
+        self.track_sheets().filter_map(|sheet| self.bound_sheet(sheet)).collect()
     }
 
     /// One parsed sheet with the audio its binding names, or `None` when it
@@ -709,10 +685,7 @@ impl CategorizedFiles {
     /// The bound sheets that carve the release's tracks — the ones the
     /// tracklist, the disc IDs and the file-metadata seed are all read from.
     pub fn carving_sheets(&self) -> Vec<BoundTrackSheet<'_>> {
-        self.bound_sheets()
-            .into_iter()
-            .filter(BoundTrackSheet::carves)
-            .collect()
+        self.bound_sheets().into_iter().filter(BoundTrackSheet::carves).collect()
     }
 
     /// Total playable tracks, including loose audio beside carving sheets.
@@ -757,9 +730,8 @@ impl CategorizedFiles {
 
     /// Every FILE reference with its association and the audio it can use.
     pub fn sheet_binding_options(&self, sheet_file_id: &str) -> Vec<SheetReferenceOptions> {
-        let Some(sheet) = self
-            .track_sheets()
-            .find(|sheet| sheet.file.relative_path == sheet_file_id)
+        let Some(sheet) =
+            self.track_sheets().find(|sheet| sheet.file.relative_path == sheet_file_id)
         else {
             return Vec::new();
         };
@@ -780,15 +752,10 @@ impl CategorizedFiles {
                     options: self
                         .audio()
                         .filter(|audio| {
-                            !sheet
-                                .binding
-                                .audio_files()
-                                .into_iter()
-                                .flatten()
-                                .any(|file| {
-                                    file.file_reference != reference
-                                        && file.file_id == audio.relative_path
-                                })
+                            !sheet.binding.audio_files().into_iter().flatten().any(|file| {
+                                file.file_reference != reference
+                                    && file.file_id == audio.relative_path
+                            })
                         })
                         .map(|audio| SheetBindingOption {
                             file_id: audio.relative_path.clone(),

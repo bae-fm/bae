@@ -90,16 +90,8 @@ fn albums(write: usize, per_write: usize) -> LibraryFixture {
 
 async fn restore_cost(library: Library) {
     let floor = library.floor;
-    let clock = Arc::new(BenchClock {
-        origin: Instant::now(),
-        ahead: AtomicU64::new(0),
-    });
-    let storage = Arc::new(
-        MemoryStorage::builder()
-            .clock(clock.clone())
-            .build()
-            .unwrap(),
-    );
+    let clock = Arc::new(BenchClock { origin: Instant::now(), ahead: AtomicU64::new(0) });
+    let storage = Arc::new(MemoryStorage::builder().clock(clock.clone()).build().unwrap());
     let owner_dir = tempfile::TempDir::new().unwrap();
     let app_dir = AppDir::at(owner_dir.path()).unwrap();
     let installation = TestCoven::new();
@@ -136,10 +128,7 @@ async fn restore_cost(library: Library) {
     );
     let building = Instant::now();
     for write in 0..library.albums / library.albums_per_write {
-        manager
-            .write_fixture(&albums(write, library.albums_per_write))
-            .await
-            .unwrap();
+        manager.write_fixture(&albums(write, library.albums_per_write)).await.unwrap();
         pass(&handle, &clock).await;
     }
     for edit in 0..library.edits {
@@ -161,10 +150,7 @@ async fn restore_cost(library: Library) {
         pass(&handle, &clock).await;
         pass(&handle, &clock).await;
     }
-    eprintln!(
-        "built the library in {:?} (floor {floor})",
-        building.elapsed()
-    );
+    eprintln!("built the library in {:?} (floor {floor})", building.elapsed());
     let code = handle.restore_code_for_transfer().await.unwrap();
     drop(manager);
     handle.close().await.unwrap();
@@ -192,9 +178,8 @@ async fn restore_cost(library: Library) {
     let restored_in = restoring.elapsed();
     let tracks = restored
         .read(|sql| {
-            let count = sql.query_row("SELECT count(*) FROM tracks", [], |row| {
-                row.get::<_, i64>(0)
-            })?;
+            let count =
+                sql.query_row("SELECT count(*) FROM tracks", [], |row| row.get::<_, i64>(0))?;
             Ok(count)
         })
         .await

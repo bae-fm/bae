@@ -20,10 +20,7 @@ async fn dates(db: &Database) -> Vec<(String, i64, Option<i64>, Option<String>)>
 async fn stored_dates_order_the_list_and_survive_candidate_replacement() {
     let (db, _tmp, root) = watched_root().await;
     db.add_watched_import_folder(&root).await.unwrap();
-    let generation = db
-        .begin_folder_scan(&root, crate::import::VolumeKind::Local)
-        .await
-        .unwrap();
+    let generation = db.begin_folder_scan(&root, crate::import::VolumeKind::Local).await.unwrap();
     for (name, date) in [
         ("A", Some(FolderDate::Created(100))),
         ("B", Some(FolderDate::AddedToDirectory(200))),
@@ -45,12 +42,7 @@ async fn stored_dates_order_the_list_and_survive_candidate_replacement() {
     assert_eq!(
         stored,
         vec![
-            (
-                "A".into(),
-                fixed_now().timestamp_millis(),
-                Some(100),
-                Some("created".into())
-            ),
+            ("A".into(), fixed_now().timestamp_millis(), Some(100), Some("created".into())),
             (
                 "B".into(),
                 fixed_now().timestamp_millis(),
@@ -61,30 +53,19 @@ async fn stored_dates_order_the_list_and_survive_candidate_replacement() {
         ]
     );
     let names = |projection: crate::import::ImportListProjection| {
-        rows(&projection)
-            .into_iter()
-            .map(|row| row.folder_name)
-            .collect::<Vec<_>>()
+        rows(&projection).into_iter().map(|row| row.folder_name).collect::<Vec<_>>()
     };
     assert_eq!(
-        names(
-            db.load_import_list_read(request(TriageTab::Pending).await)
-                .await
-                .unwrap()
-        ),
+        names(db.load_import_list_read(request(TriageTab::Pending).await).await.unwrap()),
         ["C", "B", "A"]
     );
     let later = Database::from_handle(
         db.inner.handle.clone(),
-        Arc::new(FixedClock::new(
-            (fixed_now() + chrono::Duration::days(1)).into(),
-        )),
+        Arc::new(FixedClock::new((fixed_now() + chrono::Duration::days(1)).into())),
         std::sync::Arc::new(coven::UuidIds),
     );
-    let generation = later
-        .begin_folder_scan(&root, crate::import::VolumeKind::Local)
-        .await
-        .unwrap();
+    let generation =
+        later.begin_folder_scan(&root, crate::import::VolumeKind::Local).await.unwrap();
     for name in ["A", "B", "C"] {
         let original = candidate(&root, name);
         // A tentative write and a rewrite with new files both keep the
@@ -95,41 +76,24 @@ async fn stored_dates_order_the_list_and_survive_candidate_replacement() {
             .unwrap();
         let mut changed = original;
         changed.files.files[0].file.size += 1;
-        later
-            .save_folder_scan_item(&root, generation, &ScanItem::Valid(changed))
-            .await
-            .unwrap();
+        later.save_folder_scan_item(&root, generation, &ScanItem::Valid(changed)).await.unwrap();
     }
-    later
-        .finish_folder_scan(&root, generation, None)
-        .await
-        .unwrap();
+    later.finish_folder_scan(&root, generation, None).await.unwrap();
     assert_eq!(dates(&later).await, stored);
     assert_eq!(
-        names(
-            later
-                .load_import_list_read(request(TriageTab::Pending).await)
-                .await
-                .unwrap()
-        ),
+        names(later.load_import_list_read(request(TriageTab::Pending).await).await.unwrap()),
         ["C", "B", "A"]
     );
     let mut ascending = request(TriageTab::Pending).await;
     ascending.view.order = ImportListOrder::OldestFirst;
-    assert_eq!(
-        names(later.load_import_list_read(ascending).await.unwrap()),
-        ["A", "B", "C"]
-    );
+    assert_eq!(names(later.load_import_list_read(ascending).await.unwrap()), ["A", "B", "C"]);
 }
 
 #[tokio::test]
 async fn a_rescan_captures_dates_even_when_the_candidate_files_are_unchanged() {
     let (db, _tmp, root) = watched_root().await;
     let item = scanned(&db, &root, "Album").await;
-    let generation = db
-        .begin_folder_scan(&root, crate::import::VolumeKind::Local)
-        .await
-        .unwrap();
+    let generation = db.begin_folder_scan(&root, crate::import::VolumeKind::Local).await.unwrap();
     db.save_folder_scan_items(
         &root,
         generation,
@@ -143,12 +107,7 @@ async fn a_rescan_captures_dates_even_when_the_candidate_files_are_unchanged() {
     .unwrap();
     assert_eq!(
         dates(&db).await,
-        vec![(
-            "Album".into(),
-            fixed_now().timestamp_millis(),
-            Some(123),
-            Some("created".into())
-        )]
+        vec![("Album".into(), fixed_now().timestamp_millis(), Some(123), Some("created".into()))]
     );
 }
 
@@ -156,19 +115,14 @@ async fn a_rescan_captures_dates_even_when_the_candidate_files_are_unchanged() {
 fn days_later(db: &Database, days: i64) -> Database {
     Database::from_handle(
         db.inner.handle.clone(),
-        Arc::new(FixedClock::new(
-            (fixed_now() + chrono::Duration::days(days)).into(),
-        )),
+        Arc::new(FixedClock::new((fixed_now() + chrono::Duration::days(days)).into())),
         std::sync::Arc::new(coven::UuidIds),
     )
 }
 
 /// One completed scan of `root` finding `folders`.
 async fn scan(db: &Database, root: &std::path::Path, folders: &[&FolderCandidate]) {
-    let generation = db
-        .begin_folder_scan(root, crate::import::VolumeKind::Local)
-        .await
-        .unwrap();
+    let generation = db.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
     for folder in folders {
         db.save_folder_scan_item(root, generation, &ScanItem::Valid((*folder).clone()))
             .await
@@ -221,19 +175,13 @@ async fn joined_folders_sort_by_the_earliest_found_of_them() {
         listed(joined.clone(), ImportListOrder::NewestFirst).await,
         [
             (key(&middle), "Middle".to_string()),
-            (
-                crate::import::CandidateKey::grouping("joined"),
-                "Older".to_string()
-            ),
+            (crate::import::CandidateKey::grouping("joined"), "Older".to_string()),
         ]
     );
     assert_eq!(
         listed(joined.clone(), ImportListOrder::OldestFirst).await,
         [
-            (
-                crate::import::CandidateKey::grouping("joined"),
-                "Older".to_string()
-            ),
+            (crate::import::CandidateKey::grouping("joined"), "Older".to_string()),
             (key(&middle), "Middle".to_string()),
         ]
     );
@@ -248,10 +196,8 @@ async fn joined_folders_sort_by_the_earliest_found_of_them() {
         })
         .await
         .unwrap();
-    let mut scanned: Vec<String> = [&older, &middle, &newest]
-        .iter()
-        .map(|folder| coven::path_text(&folder.path))
-        .collect();
+    let mut scanned: Vec<String> =
+        [&older, &middle, &newest].iter().map(|folder| coven::path_text(&folder.path)).collect();
     scanned.sort();
     assert_eq!(discovered, scanned);
 }

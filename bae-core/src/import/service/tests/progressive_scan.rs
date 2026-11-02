@@ -15,7 +15,10 @@ impl HeldListing {
             Self {
                 first: std::sync::Mutex::new(None),
                 entered,
-                gate: std::sync::Arc::new((std::sync::Mutex::new(false), std::sync::Condvar::new())),
+                gate: std::sync::Arc::new((
+                    std::sync::Mutex::new(false),
+                    std::sync::Condvar::new(),
+                )),
             },
             entered_rx,
         )
@@ -45,8 +48,10 @@ impl crate::import::folder_scanner::DirectoryReader for HeldListing {
         root: &Path,
         directory: &Path,
         cancellation: &crate::import::folder_scanner::ScanCancellation,
-    ) -> Result<crate::import::folder_scanner::DirectoryListing, crate::import::folder_scanner::FolderScanError>
-    {
+    ) -> Result<
+        crate::import::folder_scanner::DirectoryListing,
+        crate::import::folder_scanner::FolderScanError,
+    > {
         if directory.components().count() == 1 {
             // Decided under the lock and waited on outside it: the test reads
             // `first` while this holds the gate.
@@ -79,8 +84,10 @@ impl crate::import::folder_scanner::DirectoryReader for HeldListing {
         root: &Path,
         folders: &[PathBuf],
         cancellation: &crate::import::folder_scanner::ScanCancellation,
-    ) -> Result<Vec<crate::import::folder_scanner::FolderTimes>, crate::import::folder_scanner::FolderScanError>
-    {
+    ) -> Result<
+        Vec<crate::import::folder_scanner::FolderTimes>,
+        crate::import::folder_scanner::FolderScanError,
+    > {
         crate::import::folder_scanner::OsDirectoryReader.folder_times(root, folders, cancellation)
     }
 }
@@ -101,17 +108,11 @@ async fn a_candidate_is_announced_while_the_walk_still_reads_the_next_folder() {
         std::fs::create_dir_all(&folder).unwrap();
         std::fs::write(folder.join("track.flac"), flac()).unwrap();
     }
-    test.service
-        .library_manager
-        .add_watched_import_folder(&root)
-        .await
-        .unwrap();
+    test.service.library_manager.add_watched_import_folder(&root).await.unwrap();
     let (reader, mut entered) = HeldListing::new();
     let reader = Arc::new(reader);
-    let (scan, mut events) = test.scan_with(
-        Arc::new(crate::import::file_tag_snapshot::LoftyFileTagReader),
-        reader.clone(),
-    );
+    let (scan, mut events) = test
+        .scan_with(Arc::new(crate::import::file_tag_snapshot::LoftyFileTagReader), reader.clone());
 
     let observe = async {
         let _opens_on_failure = OpensOnDrop(&reader);
@@ -119,12 +120,8 @@ async fn a_candidate_is_announced_while_the_walk_still_reads_the_next_folder() {
             .await
             .expect("the walk reaches a second folder")
             .expect("the reader is still held");
-        let first = reader
-            .first
-            .lock()
-            .unwrap()
-            .clone()
-            .expect("a folder was read before the held one");
+        let first =
+            reader.first.lock().unwrap().clone().expect("a folder was read before the held one");
         let announced = tokio::time::timeout(HANG_GUARD, async {
             loop {
                 if let crate::import::handle::ImportEvent::Scan(
@@ -147,9 +144,7 @@ async fn a_candidate_is_announced_while_the_walk_still_reads_the_next_folder() {
     assert_ne!(first, held);
     assert_eq!(announced, first);
     assert!(
-        announced_candidates(&mut events)
-            .iter()
-            .any(|path| root.join(path) == held),
+        announced_candidates(&mut events).iter().any(|path| root.join(path) == held),
         "the held folder is announced once its listing opens"
     );
 }

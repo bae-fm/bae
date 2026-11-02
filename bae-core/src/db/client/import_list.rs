@@ -103,16 +103,8 @@ fn list_row(
                         row.get::<_, String>(2)?,
                         row.get::<_, String>(3)?,
                     ),
-                    (
-                        row.get::<_, i64>(4)?,
-                        row.get::<_, i64>(5)?,
-                        row.get::<_, i64>(6)?,
-                    ),
-                    (
-                        row.get::<_, bool>(7)?,
-                        row.get::<_, bool>(8)?,
-                        row.get::<_, bool>(9)?,
-                    ),
+                    (row.get::<_, i64>(4)?, row.get::<_, i64>(5)?, row.get::<_, i64>(6)?),
+                    (row.get::<_, bool>(7)?, row.get::<_, bool>(8)?, row.get::<_, bool>(9)?),
                 ))
             },
         )
@@ -137,10 +129,7 @@ fn list_row(
 
 #[derive(Clone, PartialEq)]
 struct ImportListRows {
-    windows: Vec<(
-        crate::library::LibraryPageWindow,
-        Vec<window::WindowItemRows>,
-    )>,
+    windows: Vec<(crate::library::LibraryPageWindow, Vec<window::WindowItemRows>)>,
     total_count: u64,
     summary: ImportQueueSummary,
     pending_filter_entries: Vec<crate::import::PendingFilterEntry>,
@@ -156,12 +145,8 @@ type Standing = (ImportListId, u64, Vec<i64>);
 /// The tables whose rows place a list's items, as `list_order_versions`
 /// names them: the placement, and for Done the releases still uploading,
 /// found by the hash of the folder each came from.
-const LIST_SOURCES: &[&str] = &[
-    "import_list_placement",
-    "release_listing",
-    "local_release_origin",
-    "scan_candidate",
-];
+const LIST_SOURCES: &[&str] =
+    &["import_list_placement", "release_listing", "local_release_origin", "scan_candidate"];
 
 /// Where a read found a list's rows: each window's first and last items in
 /// each part, and the headers of the groups its windows list.
@@ -180,11 +165,7 @@ fn load_import_list_on(
     places: &KnownPlaces<Standing, ListPlaces>,
 ) -> Result<ImportListRows, DbError> {
     let list = list_row(sql, request.list)?;
-    let standing = (
-        list.id,
-        list.view_revision,
-        list_order_versions_on(sql, LIST_SOURCES)?,
-    );
+    let standing = (list.id, list.view_revision, list_order_versions_on(sql, LIST_SOURCES)?);
     let mut known = places.under(&standing);
     let mut found = ListPlaces::default();
     let counts = summary::counts(sql)?;
@@ -198,20 +179,15 @@ fn load_import_list_on(
             known.items.extend(read.clone());
             found.items.extend(read);
             let headers = items.header_positions(sql, window.offset, &keys, &mut known.headers)?;
-            Ok((
-                window.clone(),
-                window::materialise(sql, &list, &keys, &headers)?,
-            ))
+            Ok((window.clone(), window::materialise(sql, &list, &keys, &headers)?))
         })
         .collect::<Result<Vec<_>, DbError>>()?;
     found.headers = known.headers;
     places.keep(standing, found);
     let watched_folders = sql
-        .query(
-            "SELECT path FROM watched_import_folders ORDER BY position",
-            [],
-            |row| path_column::get(row, 0),
-        )?
+        .query("SELECT path FROM watched_import_folders ORDER BY position", [], |row| {
+            path_column::get(row, 0)
+        })?
         .into_iter()
         .map(WatchedFolder::from_path)
         .collect();
@@ -331,10 +307,7 @@ impl Database {
     ) -> Result<Option<(Vec<String>, Vec<String>)>, DbError> {
         self.read(move |sql| {
             let row = list_row(&sql, list)?;
-            let everything = crate::library::LibraryPageWindow {
-                offset: 0,
-                limit: u64::MAX,
-            };
+            let everything = crate::library::LibraryPageWindow { offset: 0, limit: u64::MAX };
             let keys = |shown| -> Result<Vec<String>, DbError> {
                 Ok(row
                     .items(shown)
@@ -359,11 +332,7 @@ impl Database {
                     )?
                     .into_iter()
                     .map(|(item, key)| {
-                        Ok(format!(
-                            "{:?} {}",
-                            order::Item::of(&item)?,
-                            hex::encode(key)
-                        ))
+                        Ok(format!("{:?} {}", order::Item::of(&item)?, hex::encode(key)))
                     })
                     .collect::<Result<_, DbError>>()?,
                 (false, _) => return Ok(None),
@@ -393,8 +362,7 @@ impl Database {
         candidate_key: &crate::import::CandidateKey,
     ) -> Result<Option<crate::import::ImportCandidateListLocation>, DbError> {
         let candidate_key = candidate_key.clone();
-        self.read(move |sql| summary::locate(&sql, list, &candidate_key))
-            .await
+        self.read(move |sql| summary::locate(&sql, list, &candidate_key)).await
     }
 
     /// The first candidate in the list's order, every tab's rows unfiltered,
@@ -404,8 +372,7 @@ impl Database {
         &self,
         list: ImportListId,
     ) -> Result<Option<crate::import::CandidateKey>, DbError> {
-        self.read(move |sql| summary::first_identifying(&sql, list))
-            .await
+        self.read(move |sql| summary::first_identifying(&sql, list)).await
     }
 
     /// The rows the list `list` has selected, in the order it shows them:
@@ -452,31 +419,29 @@ impl Database {
         Option<crate::import::CandidateKey>,
         Option<crate::import::InvalidCandidateDetail>,
     > {
-        self.inner
-            .handle
-            .subscribe_reconfigurable(initial, |key, sql| match key {
-                None => Ok(None),
-                Some(key) => {
-                    let invalid: bool = sql.query_row(
-                        "SELECT EXISTS (SELECT 1 FROM scan_candidate \
+        self.inner.handle.subscribe_reconfigurable(initial, |key, sql| match key {
+            None => Ok(None),
+            Some(key) => {
+                let invalid: bool = sql.query_row(
+                    "SELECT EXISTS (SELECT 1 FROM scan_candidate \
                                         WHERE path = ? AND kind = 'invalid')",
-                        [key],
-                        |row| row.get(0),
-                    )?;
-                    if !invalid {
-                        return Ok(None);
-                    }
-                    let stored =
-                        folder_scans::load_item_by_key(&sql, key, folder_scans::RowSources::Any)
-                            .map_err(CovenError::from)?;
-                    Ok(match stored.map(|(_, stored)| stored.item) {
-                        Some(crate::import::folder_scanner::ScanItem::Invalid(candidate)) => {
-                            Some(crate::import::InvalidCandidateDetail::of(candidate))
-                        }
-                        _ => None,
-                    })
+                    [key],
+                    |row| row.get(0),
+                )?;
+                if !invalid {
+                    return Ok(None);
                 }
-            })
+                let stored =
+                    folder_scans::load_item_by_key(&sql, key, folder_scans::RowSources::Any)
+                        .map_err(CovenError::from)?;
+                Ok(match stored.map(|(_, stored)| stored.item) {
+                    Some(crate::import::folder_scanner::ScanItem::Invalid(candidate)) => {
+                        Some(crate::import::InvalidCandidateDetail::of(candidate))
+                    }
+                    _ => None,
+                })
+            }
+        })
     }
 
     /// One candidate as the pane reads it, once.

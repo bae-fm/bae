@@ -78,26 +78,16 @@ impl std::fmt::Display for Owner<'_> {
 /// or the verdict a run ended on.
 #[derive(Clone, Copy)]
 pub(super) enum Outcome<'a> {
-    Running {
-        ledger: &'a IdentifyRunView,
-        findings: &'a Findings,
-        track_count: u32,
-    },
+    Running { ledger: &'a IdentifyRunView, findings: &'a Findings, track_count: u32 },
     Settled(&'a TerminalVerdict),
 }
 
 impl<'a> Outcome<'a> {
     pub(super) fn of(outcome: &'a RunOutcome) -> Self {
         match outcome {
-            RunOutcome::Running {
-                ledger,
-                findings,
-                track_count,
-            } => Self::Running {
-                ledger,
-                findings,
-                track_count: *track_count,
-            },
+            RunOutcome::Running { ledger, findings, track_count } => {
+                Self::Running { ledger, findings, track_count: *track_count }
+            }
             RunOutcome::Answered(verdict) => Self::Settled(verdict),
         }
     }
@@ -129,10 +119,7 @@ pub(super) fn unreadable(column: &str, stored: &str) -> DbError {
 /// Clear whatever verdict stands under `content_hash`. The match rows go with
 /// it: they hang off the verdict row.
 pub(super) fn delete_verdict(sql: &CovenWrite<'_>, content_hash: &str) -> Result<(), DbError> {
-    sql.execute(
-        "DELETE FROM import_candidate_verdict WHERE content_hash = ?",
-        [content_hash],
-    )?;
+    sql.execute("DELETE FROM import_candidate_verdict WHERE content_hash = ?", [content_hash])?;
     Ok(())
 }
 
@@ -178,12 +165,12 @@ pub(super) fn store_outcome(
         Outcome::Settled(TerminalVerdict::Error { .. }) => ("error", None),
     };
     let steps = step_columns(owner, outcome.ledger(), outcome.running())?;
-    let medium_conflict = outcome
-        .findings()
-        .and_then(|findings| findings.medium_conflict)
-        .map(|conflict| match conflict {
-            MediumConflict::CdRip => "cd_rip",
-            MediumConflict::NotCdAudio => "not_cd_audio",
+    let medium_conflict =
+        outcome.findings().and_then(|findings| findings.medium_conflict).map(|conflict| {
+            match conflict {
+                MediumConflict::CdRip => "cd_rip",
+                MediumConflict::NotCdAudio => "not_cd_audio",
+            }
         });
     let failures_json = match outcome {
         Outcome::Settled(TerminalVerdict::Failed { failures, .. }) => {
@@ -253,10 +240,7 @@ pub(super) fn store_outcome(
         "import_candidate_match_link",
         "import_candidate_match_album_link",
     ] {
-        sql.execute(
-            &format!("DELETE FROM {table} WHERE {column} = ?"),
-            params![owner],
-        )?;
+        sql.execute(&format!("DELETE FROM {table} WHERE {column} = ?"), params![owner])?;
     }
     let written = store_matches(sql, owner, outcome)?;
     sql.execute(
@@ -268,10 +252,7 @@ pub(super) fn store_outcome(
             .iter()
             .enumerate()
             .map(|(position, result)| {
-                (
-                    (result.source, result.release_id.as_str()),
-                    (position, *result),
-                )
+                ((result.source, result.release_id.as_str()), (position, *result))
             })
             .collect();
         store_ledger(sql, owner, ledger, &positions, outcome.running())?;
@@ -340,11 +321,7 @@ fn store_matches<'a>(
         )))
     };
     rowed("matches", matches, pressings)?;
-    rowed(
-        "narrowed-out releases",
-        narrowed_matches,
-        narrowed_pressings,
-    )?;
+    rowed("narrowed-out releases", narrowed_matches, narrowed_pressings)?;
     let mut written: Vec<(&MetadataResult, Written<'_>)> = matches
         .iter()
         .zip(pressings.iter())
@@ -427,13 +404,12 @@ pub(super) fn identification_of(
 ) -> Result<DbCandidateIdentifyResult, DbError> {
     let owner = row.content_hash.clone();
     match outcome_of(row, found)? {
-        (RunOutcome::Answered(verdict), kept_own_draft) => Ok(DbCandidateIdentifyResult {
-            verdict,
-            kept_own_draft,
-        }),
-        (RunOutcome::Running { .. }, _) => Err(DbError::Message(format!(
-            "the verdict of {owner} is a run still running"
-        ))),
+        (RunOutcome::Answered(verdict), kept_own_draft) => {
+            Ok(DbCandidateIdentifyResult { verdict, kept_own_draft })
+        }
+        (RunOutcome::Running { .. }, _) => {
+            Err(DbError::Message(format!("the verdict of {owner} is a run still running")))
+        }
     }
 }
 
@@ -456,21 +432,16 @@ pub(super) fn outcome_of(
     } = row;
     // Only a typed search's catalog returns a release; a verdict-shaped
     // owner's rows are listed or unlisted.
-    if let Some(returned) = found
-        .rows
-        .iter()
-        .find(|row| matches!(row.listing, Listing::Returned { .. }))
+    if let Some(returned) =
+        found.rows.iter().find(|row| matches!(row.listing, Listing::Returned { .. }))
     {
         return Err(DbError::Message(format!(
             "match {} of {content_hash} is a search's release",
             returned.position
         )));
     }
-    let held: HashMap<i64, &MetadataResult> = found
-        .rows
-        .iter()
-        .map(|row| (row.position, &row.result))
-        .collect();
+    let held: HashMap<i64, &MetadataResult> =
+        found.rows.iter().map(|row| (row.position, &row.result)).collect();
     let (ledger, linked) = ledger.ledger(&content_hash, &held)?;
     if let Some(stray) = found
         .rows
@@ -485,9 +456,7 @@ pub(super) fn outcome_of(
     let count_of = || {
         track_count
             .ok_or_else(|| {
-                DbError::Message(format!(
-                    "verdict {kind} for {content_hash} counts no tracks"
-                ))
+                DbError::Message(format!("verdict {kind} for {content_hash} counts no tracks"))
             })
             .and_then(|count| {
                 u32::try_from(count).map_err(|error| {
@@ -500,10 +469,7 @@ pub(super) fn outcome_of(
     // Only the verdicts that hold findings may list releases; a listed row
     // under any other kind is one no writer here produces.
     let findings_of = |found: StoredMatches| {
-        let mut findings = Findings {
-            medium_conflict,
-            ..Findings::default()
-        };
+        let mut findings = Findings { medium_conflict, ..Findings::default() };
         for row in found.rows {
             match row.listing {
                 Listing::Offered(listed) => {
@@ -526,16 +492,10 @@ pub(super) fn outcome_of(
         findings
     };
     let no_findings = |found: &StoredMatches| {
-        if found
-            .rows
-            .iter()
-            .all(|row| matches!(row.listing, Listing::Unlisted))
-        {
+        if found.rows.iter().all(|row| matches!(row.listing, Listing::Unlisted)) {
             return Ok(());
         }
-        Err(DbError::Message(format!(
-            "verdict {kind} for {content_hash} lists releases"
-        )))
+        Err(DbError::Message(format!("verdict {kind} for {content_hash} lists releases")))
     };
     let verdict = match kind.as_str() {
         "running" => {
@@ -562,16 +522,11 @@ pub(super) fn outcome_of(
         }
         "manual_only" => {
             no_findings(&found)?;
-            TerminalVerdict::ManualOnly {
-                track_count: count_of()?,
-                ledger,
-            }
+            TerminalVerdict::ManualOnly { track_count: count_of()?, ledger }
         }
         "failed" => {
             let json = failures_json.ok_or_else(|| {
-                DbError::Message(format!(
-                    "failed verdict for {content_hash} lists no failure"
-                ))
+                DbError::Message(format!("failed verdict for {content_hash} lists no failure"))
             })?;
             let failures: Vec<IdentifyFailure> = serde_json::from_str(&json).map_err(|error| {
                 DbError::Message(format!(
@@ -595,9 +550,7 @@ pub(super) fn outcome_of(
             let detail = error_detail.ok_or_else(|| {
                 DbError::Message(format!("error verdict for {content_hash} states no error"))
             })?;
-            TerminalVerdict::Error {
-                failure: InternalFailure { detail },
-            }
+            TerminalVerdict::Error { failure: InternalFailure { detail } }
         }
         other => return Err(unreadable("verdict kind", other)),
     };

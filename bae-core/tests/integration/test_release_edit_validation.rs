@@ -54,9 +54,7 @@ async fn seed(db: &Database) -> (String, String) {
     db.insert_artist(&artist).await.unwrap();
     db.insert_album(&album).await.unwrap();
     db.insert_release(&release).await.unwrap();
-    db.insert_release_medium(&bae_core::db::DbReleaseMedium::new_test(&release.id))
-        .await
-        .unwrap();
+    db.insert_release_medium(&bae_core::db::DbReleaseMedium::new_test(&release.id)).await.unwrap();
     db.insert_track(&track).await.unwrap();
     (album.id, release.id)
 }
@@ -88,11 +86,7 @@ fn wire_edit(album_title: &str, album_artist_seed_names: &[&str]) -> ReleaseUser
 async fn invalid_edits_are_rejected_on_the_write_path() {
     for (case, album_title, album_artist_seed_names) in [
         ("an empty album title", "", &["Artist Alpha"][..]),
-        (
-            "a whitespace-only album title",
-            "   ",
-            &["Artist Alpha"][..],
-        ),
+        ("a whitespace-only album title", "   ", &["Artist Alpha"][..]),
         ("an artist-less album", "Album Alpha", &[][..]),
         ("a blank album artist name", "Album Alpha", &["  "][..]),
     ] {
@@ -111,10 +105,7 @@ async fn invalid_edits_are_rejected_on_the_write_path() {
             "{case} must be rejected, got {result:?}",
         );
         let album = db.find_album_by_id(&album_id).await.unwrap().unwrap();
-        assert_eq!(
-            album.title, "Original Album",
-            "{case}: a rejected edit must not have written",
-        );
+        assert_eq!(album.title, "Original Album", "{case}: a rejected edit must not have written",);
     }
 }
 

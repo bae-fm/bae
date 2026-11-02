@@ -44,10 +44,7 @@ impl Printed {
                 .labels
                 .iter()
                 .filter_map(|label| {
-                    Some((
-                        LabelName::of(label.name()?)?,
-                        catalog_key(label.catalog_number()?)?,
-                    ))
+                    Some((LabelName::of(label.name()?)?, catalog_key(label.catalog_number()?)?))
                 })
                 .collect(),
             title: album_title_words(&result.title),

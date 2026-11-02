@@ -210,11 +210,7 @@ pub(crate) fn assemble_rows<Binding: TrackBinding>(
         bindings.push(track.edit.file.clone());
     }
 
-    let ArtistRows {
-        rows: artist_rows,
-        picked,
-        ..
-    } = artists;
+    let ArtistRows { rows: artist_rows, picked, .. } = artists;
     Ok(AssembledRelease {
         parsed: ReleaseRows {
             album,
@@ -249,12 +245,7 @@ struct ArtistRows<'a> {
 
 impl<'a> ArtistRows<'a> {
     fn new(ids: &'a dyn IdSource, now: DateTime<Utc>) -> Self {
-        Self {
-            rows: Vec::new(),
-            picked: HashSet::new(),
-            ids,
-            now,
-        }
+        Self { rows: Vec::new(), picked: HashSet::new(), ids, now }
     }
 
     /// The row an album or track artist assignment links.
@@ -303,8 +294,7 @@ fn work_rows<Binding>(
     };
     for work in &draft.works.works {
         let work_id = crate::db::identity::work_id(&work.musicbrainz_work_id);
-        rows.ids
-            .insert(work.musicbrainz_work_id.clone(), work_id.clone());
+        rows.ids.insert(work.musicbrainz_work_id.clone(), work_id.clone());
         for (position, composer) in work.composers.iter().enumerate() {
             rows.work_artists.push(DbWorkArtist::new(
                 &work_id,

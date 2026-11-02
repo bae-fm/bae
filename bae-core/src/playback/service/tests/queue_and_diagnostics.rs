@@ -6,12 +6,7 @@ const RELEASE_ONE_TRACK: &str = "e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b";
 async fn context_lane(service: &PlaybackService) -> (ContextSource, Vec<String>) {
     let value = service.library_manager.queue_value().await.unwrap();
     let source = value.context.expect("a context lane").source;
-    let order = service
-        .library_manager
-        .playback_queue_tables()
-        .context_order()
-        .await
-        .unwrap();
+    let order = service.library_manager.playback_queue_tables().context_order().await.unwrap();
     (source, order)
 }
 
@@ -22,10 +17,7 @@ async fn play_releases_concatenates_tracks_in_input_order() {
     let (_home, mut service, _rx) = seeded_playback_service(&[
         (
             RELEASE_TWO_TRACKS,
-            &[
-                "5634d119-43be-4435-8432-575baddc4705",
-                "5634ce19-43be-4f1c-8432-545baddc41ec",
-            ],
+            &["5634d119-43be-4435-8432-575baddc4705", "5634ce19-43be-4f1c-8432-545baddc41ec"],
         ),
         (RELEASE_ONE_TRACK, &["5630a919-43ba-4766-842e-6f5badd886f6"]),
     ])
@@ -58,14 +50,8 @@ async fn play_releases_concatenates_tracks_in_input_order() {
 #[tokio::test]
 async fn play_releases_skips_a_release_without_tracks() {
     let (_home, mut service, _rx) = seeded_playback_service(&[
-        (
-            RELEASE_TWO_TRACKS,
-            &["5634d119-43be-4435-8432-575baddc4705"],
-        ),
-        (
-            RELEASE_ONE_TRACK,
-            &["5630a919-43ba-4766-842e-6f5badd886f6", TRACK_T2B],
-        ),
+        (RELEASE_TWO_TRACKS, &["5634d119-43be-4435-8432-575baddc4705"]),
+        (RELEASE_ONE_TRACK, &["5630a919-43ba-4766-842e-6f5badd886f6", TRACK_T2B]),
     ])
     .await;
 
@@ -102,34 +88,26 @@ async fn play_context_load_failure_surfaces_error_without_touching_the_queue() {
     let (_home, mut service, mut progress_rx) = test_playback_service().await;
     let queue_before = service.library_manager.queue_value().await.unwrap();
 
-    service
-        .handle_play("4b6f0e2a-91c3-4d58-b7e6-0a2f3c4d5e6f".to_string())
-        .await;
+    service.handle_play("4b6f0e2a-91c3-4d58-b7e6-0a2f3c4d5e6f".to_string()).await;
 
     let mut saw_error = false;
     let mut saw_playing = false;
     while let Ok(progress) = progress_rx.try_recv() {
         match progress {
             PlaybackProgress::PlaybackError { .. } => saw_error = true,
-            PlaybackProgress::StateChanged {
-                state: PlaybackState::Playing { .. },
-            } => saw_playing = true,
+            PlaybackProgress::StateChanged { state: PlaybackState::Playing { .. } } => {
+                saw_playing = true
+            }
             _ => {}
         }
     }
-    assert!(
-        saw_error,
-        "a failed context load must surface a PlaybackError"
-    );
+    assert!(saw_error, "a failed context load must surface a PlaybackError");
     assert_eq!(
         service.library_manager.queue_value().await.unwrap(),
         queue_before,
         "a failed context load must not mutate the queue with a fallback single-track entry"
     );
-    assert!(
-        !saw_playing,
-        "a failed context load must never reach Playing"
-    );
+    assert!(!saw_playing, "a failed context load must never reach Playing");
     assert!(
         matches!(service.slot, PlaybackSlot::Stopped),
         "the slot must stay Stopped, not start loading a track whose context failed"
@@ -162,16 +140,8 @@ async fn attach_track_reuses_stream_on_same_format_and_rebuilds_on_change() {
         )
         .await
         .expect("the first attach builds a stream");
-    assert_eq!(
-        builds.load(Ordering::Relaxed),
-        1,
-        "first attach builds once"
-    );
-    assert_eq!(
-        replaces.load(Ordering::Relaxed),
-        0,
-        "no swap on the first attach"
-    );
+    assert_eq!(builds.load(Ordering::Relaxed), 1, "first attach builds once");
+    assert_eq!(replaces.load(Ordering::Relaxed), 0, "no swap on the first attach");
 
     // Same format: swap in place, no rebuild.
     let (_s2, ts2, _r2) = create_track_stream_pair(44_100, 2);
@@ -199,25 +169,11 @@ async fn attach_track_reuses_stream_on_same_format_and_rebuilds_on_change() {
     // Format change: drop the old stream and build a fresh one.
     let (_s3, ts3, _r3) = create_track_stream_pair(96_000, 2);
     service
-        .attach_track(
-            ts3,
-            test_track_fmt("t3"),
-            96_000,
-            2,
-            StagedNextOnReplace::Discard,
-        )
+        .attach_track(ts3, test_track_fmt("t3"), 96_000, 2, StagedNextOnReplace::Discard)
         .await
         .expect("a format-change attach rebuilds the stream");
-    assert_eq!(
-        builds.load(Ordering::Relaxed),
-        2,
-        "a format change rebuilds the device stream"
-    );
-    assert_eq!(
-        replaces.load(Ordering::Relaxed),
-        1,
-        "a rebuild is not a source swap"
-    );
+    assert_eq!(builds.load(Ordering::Relaxed), 2, "a format change rebuilds the device stream");
+    assert_eq!(replaces.load(Ordering::Relaxed), 1, "a rebuild is not a source swap");
 }
 
 /// A stream whose device reported it can't go on — the default device changed
@@ -237,9 +193,7 @@ async fn an_invalidated_stream_is_rebuilt_over_the_same_source() {
     let builds = output.build_count.clone();
     let replaces = output.replace_count.clone();
     service.audio_output = Box::new(output);
-    service
-        .audio_output
-        .set_state(crate::playback::audio_output::AudioState::Playing);
+    service.audio_output.set_state(crate::playback::audio_output::AudioState::Playing);
 
     // Attach a track so there's a live output stream to move.
     let (_s1, ts1, _r1) = create_track_stream_pair(44_100, 2);
@@ -261,11 +215,7 @@ async fn an_invalidated_stream_is_rebuilt_over_the_same_source() {
         Box::new(InvalidatedTestStream::new("the default device changed"));
     service.drain_current_audio_events().await;
 
-    assert_eq!(
-        builds.load(Ordering::Relaxed),
-        2,
-        "an invalidated stream is rebuilt"
-    );
+    assert_eq!(builds.load(Ordering::Relaxed), 2, "an invalidated stream is rebuilt");
     assert_eq!(
         replaces.load(Ordering::Relaxed),
         0,
@@ -314,10 +264,7 @@ async fn an_invalidated_stream_with_no_device_to_move_to_stops_playback() {
     service.audio_output = Box::new(NoDeviceOutput(AudioOutputControls::new(1.0)));
 
     let (_sink, stream, _r) = create_track_stream_pair(44_100, 2);
-    let source = Arc::new(Mutex::new(source::PlaybackSource::new(
-        stream,
-        test_track_fmt("t"),
-    )));
+    let source = Arc::new(Mutex::new(source::PlaybackSource::new(stream, test_track_fmt("t"))));
     let (_tx, rx) = audio_event_channel();
     let mut out = test_output(source, rx);
     out.stream = Box::new(InvalidatedTestStream::new("device disconnected"));
@@ -328,10 +275,7 @@ async fn an_invalidated_stream_with_no_device_to_move_to_stops_playback() {
     service.drain_current_audio_events().await;
 
     assert!(service.output.is_none(), "no stream is left behind");
-    assert!(
-        !matches!(service.slot, PlaybackSlot::Active(_)),
-        "playback stopped"
-    );
+    assert!(!matches!(service.slot, PlaybackSlot::Active(_)), "playback stopped");
     let mut reasons = Vec::new();
     while let Ok(progress) = progress_rx.try_recv() {
         if let PlaybackProgress::PlaybackError { reason } = progress {
@@ -357,10 +301,7 @@ async fn an_invalidated_stream_with_no_device_to_move_to_stops_playback() {
 /// sink's cancel flag does).
 fn spawn_ring_filling_decoder(
     mut sink: bae_audio::track_stream::TrackSink,
-) -> (
-    Arc<std::sync::atomic::AtomicBool>,
-    std::thread::JoinHandle<()>,
-) {
+) -> (Arc<std::sync::atomic::AtomicBool>, std::thread::JoinHandle<()>) {
     use std::sync::atomic::{AtomicBool, Ordering};
     let exited = Arc::new(AtomicBool::new(false));
     let exited_in_thread = exited.clone();
@@ -395,10 +336,8 @@ async fn stop_cancels_the_output_source_so_a_ring_parked_decoder_exits() {
 
     let (sink, track_stream, _ready) = create_track_stream_pair(44_100, 2);
     let (exited, handle) = spawn_ring_filling_decoder(sink);
-    let source = Arc::new(Mutex::new(source::PlaybackSource::new(
-        track_stream,
-        test_track_fmt("t"),
-    )));
+    let source =
+        Arc::new(Mutex::new(source::PlaybackSource::new(track_stream, test_track_fmt("t"))));
     let (_tx, audio_rx) = audio_event_channel();
     service.output = Some(test_output(source, audio_rx));
     let buffer = create_sparse_buffer(1_024);
@@ -423,10 +362,8 @@ async fn format_change_rebuild_cancels_the_old_source_so_its_decoder_exits() {
     // An old output at 44.1kHz whose decoder is parked filling a full ring.
     let (sink, track_stream, _ready) = create_track_stream_pair(44_100, 2);
     let (exited, handle) = spawn_ring_filling_decoder(sink);
-    let source = Arc::new(Mutex::new(source::PlaybackSource::new(
-        track_stream,
-        test_track_fmt("t"),
-    )));
+    let source =
+        Arc::new(Mutex::new(source::PlaybackSource::new(track_stream, test_track_fmt("t"))));
     let (_tx, audio_rx) = audio_event_channel();
     service.output = Some(test_output(source, audio_rx));
 
@@ -479,10 +416,7 @@ async fn same_format_replace_drops_events_queued_for_the_outgoing_track() {
     let (_home, mut service, mut progress_rx) = test_playback_service().await;
 
     let (_sink_a, stream_a, _r_a) = create_track_stream_pair(44_100, 2);
-    let source = Arc::new(Mutex::new(source::PlaybackSource::new(
-        stream_a,
-        test_track_fmt("A"),
-    )));
+    let source = Arc::new(Mutex::new(source::PlaybackSource::new(stream_a, test_track_fmt("A"))));
     // A Completion for A is already in the receiver, not yet drained.
     let (mut tx, rx) = audio_event_channel();
     tx.push_required(queued_completion("A"));
@@ -493,13 +427,7 @@ async fn same_format_replace_drops_events_queued_for_the_outgoing_track() {
     // A same-format switch to B swaps the source in place.
     let (_sink_b, stream_b, _r_b) = create_track_stream_pair(44_100, 2);
     service
-        .attach_track(
-            stream_b,
-            test_track_fmt("B"),
-            44_100,
-            2,
-            StagedNextOnReplace::Discard,
-        )
+        .attach_track(stream_b, test_track_fmt("B"), 44_100, 2, StagedNextOnReplace::Discard)
         .await
         .expect("a same-format attach replaces in place");
 
@@ -523,19 +451,14 @@ async fn an_invalidated_stream_rebuild_carries_a_queued_completion_forward() {
     let (_home, mut service, mut progress_rx) = test_playback_service().await;
 
     let (_sink, stream, _r) = create_track_stream_pair(44_100, 2);
-    let source = Arc::new(Mutex::new(source::PlaybackSource::new(
-        stream,
-        test_track_fmt("t"),
-    )));
+    let source = Arc::new(Mutex::new(source::PlaybackSource::new(stream, test_track_fmt("t"))));
     let (mut tx, rx) = audio_event_channel();
     tx.push_required(queued_completion("t"));
     let out = test_output(source, rx);
     let buffer = create_sparse_buffer(1_024);
     service.slot = active_slot(test_prepared_track("t", buffer), TrackPhase::Playing);
 
-    service
-        .follow_output_device(out, "the default device changed")
-        .await;
+    service.follow_output_device(out, "the default device changed").await;
     service.drain_current_audio_events().await;
 
     assert_eq!(
@@ -601,10 +524,7 @@ async fn a_play_command_ships_playback_command_started_and_track_started() {
     let (_home, manager) = seeded_library_manager_with_diagnostics(
         &[(
             "c61a9e19-f3ba-4728-842c-c59dbc82e238",
-            &[
-                "08c80007-b56a-4fc9-8df6-af2967fa09b9",
-                "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
-            ],
+            &["08c80007-b56a-4fc9-8df6-af2967fa09b9", "08c7ff07-b56a-4e16-8df6-ae2967fa0806"],
         )],
         diagnostics.clone(),
     )
@@ -650,10 +570,7 @@ async fn previous_ships_track_started() {
     let (_home, manager) = seeded_library_manager_with_diagnostics(
         &[(
             "c61a9e19-f3ba-4728-842c-c59dbc82e238",
-            &[
-                "08c80007-b56a-4fc9-8df6-af2967fa09b9",
-                "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
-            ],
+            &["08c80007-b56a-4fc9-8df6-af2967fa09b9", "08c7ff07-b56a-4e16-8df6-ae2967fa0806"],
         )],
         diagnostics.clone(),
     )
@@ -714,10 +631,7 @@ fn playback_command_kind_maps_user_intent_only() {
 async fn track_completion_ships_track_completed_with_decode_error_count() {
     let (diagnostics, transport) = recording_diagnostics();
     let (_home, manager) = seeded_library_manager_with_diagnostics(
-        &[(
-            "c61a9e19-f3ba-4728-842c-c59dbc82e238",
-            &["08c80007-b56a-4fc9-8df6-af2967fa09b9"],
-        )],
+        &[("c61a9e19-f3ba-4728-842c-c59dbc82e238", &["08c80007-b56a-4fc9-8df6-af2967fa09b9"])],
         diagnostics.clone(),
     )
     .await;
@@ -730,11 +644,13 @@ async fn track_completion_ships_track_completed_with_decode_error_count() {
         TrackPhase::Playing,
     );
 
-    service.handle_completion_event(
-        Arc::new(test_track_fmt("08c80007-b56a-4fc9-8df6-af2967fa09b9")),
-        2,
-        44_100,
-    ).await;
+    service
+        .handle_completion_event(
+            Arc::new(test_track_fmt("08c80007-b56a-4fc9-8df6-af2967fa09b9")),
+            2,
+            44_100,
+        )
+        .await;
 
     diagnostics.flush().await.expect("flush succeeds");
     let bodies = transport.requests();
@@ -757,6 +673,4 @@ async fn track_completion_ships_track_completed_with_decode_error_count() {
 
 // -- renderer seam: remote playback -------------------------------------------
 
-use crate::renderer::{
-    ReceiverStatus, RendererFlavor, RendererPlayerState, RendererSessionEvent,
-};
+use crate::renderer::{ReceiverStatus, RendererFlavor, RendererPlayerState, RendererSessionEvent};

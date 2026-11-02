@@ -28,10 +28,7 @@ pub enum OtherDevice {
     /// A device that lost access to the library, by its name: removed, or
     /// replaced when it was reset. Its files stay on it, and no device can
     /// move them to the cloud any more.
-    Former {
-        name: String,
-        state: FormerDeviceState,
-    },
+    Former { name: String, state: FormerDeviceState },
 }
 
 /// The playability of a release from what the library records this device

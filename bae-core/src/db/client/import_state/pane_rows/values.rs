@@ -187,10 +187,7 @@ pub(super) fn works_of(works: Vec<StoredWork>, parts: Vec<StoredPart>) -> WorkGr
             .collect(),
         parts: parts
             .into_iter()
-            .map(|part| WorkPart {
-                parent: part.parent,
-                child: part.child,
-            })
+            .map(|part| WorkPart { parent: part.parent, child: part.child })
             .collect(),
     }
 }

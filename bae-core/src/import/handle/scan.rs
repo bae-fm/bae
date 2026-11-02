@@ -7,10 +7,7 @@ impl ImportServiceHandle {
         &self,
         candidate: crate::import::folder_scanner::FolderCandidate,
     ) {
-        self.event_tx
-            .send(ImportEvent::Scan(ScanEvent::CandidateBindingChanged {
-                candidate,
-            }));
+        self.event_tx.send(ImportEvent::Scan(ScanEvent::CandidateBindingChanged { candidate }));
     }
 
     /// Mark the candidate at `candidate_key` skipped or unskipped and
@@ -25,10 +22,9 @@ impl ImportServiceHandle {
         skipped: bool,
     ) -> Result<(), crate::import::ImportError> {
         let this = self.clone();
-        self.committed(async move {
-            this.set_candidate_skipped_write(candidate_key, skipped)
-                .await
-        })
+        self.committed(
+            async move { this.set_candidate_skipped_write(candidate_key, skipped).await },
+        )
         .await
     }
 
@@ -44,35 +40,27 @@ impl ImportServiceHandle {
             });
         };
         if candidate.grouping.is_some() {
-            if self
-                .library_manager
-                .set_grouping_skipped(&candidate_key, skipped)
-                .await?
-            {
+            if self.library_manager.set_grouping_skipped(&candidate_key, skipped).await? {
                 if skipped {
                     self.identification_ended(&candidate_key).await;
                 }
-                self.event_tx
-                    .send(ImportEvent::Scan(ScanEvent::CandidateSkipChanged {
-                        candidate_key,
-                        skipped,
-                    }));
+                self.event_tx.send(ImportEvent::Scan(ScanEvent::CandidateSkipChanged {
+                    candidate_key,
+                    skipped,
+                }));
             }
             return Ok(());
         }
-        let changed = self
-            .library_manager
-            .set_import_candidate_skipped(&candidate.path, skipped)
-            .await?;
+        let changed =
+            self.library_manager.set_import_candidate_skipped(&candidate.path, skipped).await?;
         if changed {
             if skipped {
                 self.identification_ended(&candidate_key).await;
             }
-            self.event_tx
-                .send(ImportEvent::Scan(ScanEvent::CandidateSkipChanged {
-                    candidate_key,
-                    skipped,
-                }));
+            self.event_tx.send(ImportEvent::Scan(ScanEvent::CandidateSkipChanged {
+                candidate_key,
+                skipped,
+            }));
         }
         Ok(())
     }
@@ -148,14 +136,8 @@ impl ImportServiceHandle {
         let decision = match audio_file_id {
             None => UserSheetBinding::Cleared,
             Some(file_id) => {
-                let offer = reference
-                    .options
-                    .iter()
-                    .find(|option| option.file_id == file_id);
-                if !matches!(
-                    offer.map(|option| &option.offer),
-                    Some(SheetBindingOffer::Offered)
-                ) {
+                let offer = reference.options.iter().find(|option| option.file_id == file_id);
+                if !matches!(offer.map(|option| &option.offer), Some(SheetBindingOffer::Offered)) {
                     return Err(crate::import::ImportError::SheetBinding {
                         detail: format!(
                             "{file_id} cannot supply {file_reference} in {sheet_file_id}"
@@ -166,9 +148,7 @@ impl ImportServiceHandle {
             }
         };
         self.write_file_edits(&candidate_key, files, offered_revision, |edits| {
-            edits
-                .sheet_bindings
-                .set_reference(sheet_file_id, file_reference, decision);
+            edits.sheet_bindings.set_reference(sheet_file_id, file_reference, decision);
         })
         .await
     }
@@ -189,8 +169,7 @@ impl ImportServiceHandle {
     ) -> Result<(), crate::import::ImportError> {
         let this = self.clone();
         self.committed(async move {
-            this.set_sheet_disc_write(candidate_key, sheet_file_id, disc)
-                .await
+            this.set_sheet_disc_write(candidate_key, sheet_file_id, disc).await
         })
         .await
     }
@@ -209,9 +188,8 @@ impl ImportServiceHandle {
             });
         }
         let (files, offered_revision) = self.folder_files_for_binding(&candidate_key).await?;
-        let Some(selected) = files
-            .track_sheets()
-            .find(|sheet| sheet.file.relative_path == sheet_file_id)
+        let Some(selected) =
+            files.track_sheets().find(|sheet| sheet.file.relative_path == sheet_file_id)
         else {
             return Err(crate::import::ImportError::SheetBinding {
                 detail: format!("{candidate_key} has no track sheet {sheet_file_id}"),
@@ -232,19 +210,14 @@ impl ImportServiceHandle {
                     detail: format!("{sheet_file_id} cannot be selected until every FILE reference has usable audio"),
                 });
             }
-            let selected_audio = selected
-                .binding
-                .audio_files()
-                .expect("resolved sheet has audio");
+            let selected_audio = selected.binding.audio_files().expect("resolved sheet has audio");
             files
                 .bound_sheets()
                 .into_iter()
                 .filter(|sheet| sheet.file.relative_path != sheet_file_id)
                 .filter(|sheet| {
                     sheet.audio_files.iter().any(|(_, audio)| {
-                        selected_audio
-                            .iter()
-                            .any(|file| file.file_id == audio.relative_path)
+                        selected_audio.iter().any(|file| file.file_id == audio.relative_path)
                     })
                 })
                 .map(|sheet| sheet.file.relative_path.clone())
@@ -318,9 +291,8 @@ impl ImportServiceHandle {
         partners: &[crate::import::source_release::SourceRelease],
         steps: &crate::import::CatalogApplySteps,
     ) -> Result<Option<FetchedCover>, CoverFetchFailure> {
-        let Some(remote) = crate::import::source_release::pick_covers(release, partners)
-            .into_iter()
-            .next()
+        let Some(remote) =
+            crate::import::source_release::pick_covers(release, partners).into_iter().next()
         else {
             return Ok(None);
         };
@@ -330,10 +302,7 @@ impl ImportServiceHandle {
                 self.library_manager.fetch_remote_image(&remote.image.url),
             )
             .await
-            .map_err(|error| CoverFetchFailure {
-                source: remote.source,
-                error,
-            })?;
+            .map_err(|error| CoverFetchFailure { source: remote.source, error })?;
         Ok(image.map(|image| (remote, image)))
     }
 
@@ -343,10 +312,7 @@ impl ImportServiceHandle {
         &self,
         candidate_key: &crate::import::CandidateKey,
     ) -> Result<
-        (
-            crate::import::folder_scanner::FolderCandidate,
-            crate::db::DbCandidateImportPreparation,
-        ),
+        (crate::import::folder_scanner::FolderCandidate, crate::db::DbCandidateImportPreparation),
         crate::import::ImportError,
     > {
         let Some(candidate) = self.get_release_candidate(candidate_key).await? else {
@@ -375,9 +341,7 @@ impl ImportServiceHandle {
         loop {
             // Read tags before taking the commit lock: a network share can be
             // slow, and every pane control waits on this lock.
-            let read = self
-                .read_file_tag_snapshot(&candidate_key, self.file_tags.clone())
-                .await?;
+            let read = self.read_file_tag_snapshot(&candidate_key, self.file_tags.clone()).await?;
             let seed = crate::import::file_metadata_seed::FileMetadataSeed::project(
                 &read.candidate,
                 read.snapshot,
@@ -434,14 +398,11 @@ impl ImportServiceHandle {
     ) -> Result<u64, crate::import::ImportError> {
         let (candidate, current) = self.metadata_write_base(&candidate_key).await?;
         let content_hash = candidate.files.content_hash();
-        let prepared = self
-            .release_for_pick(&candidate_key, &link.record, steps)
-            .await?;
+        let prepared = self.release_for_pick(&candidate_key, &link.record, steps).await?;
         let release = &prepared.release;
         // Picking a result of a typed search reads its documents: what they
         // state its album is joins the search's cards.
-        self.land_picked(&candidate_key, release.release(), release.album_links())
-            .await?;
+        self.land_picked(&candidate_key, release.release(), release.album_links()).await?;
         let audio = crate::import::catalog_reading::ReadAudio::of_files(&candidate.files)?;
         let folder_tracks = u32::try_from(audio.lengths.len()).expect("a folder's tracks fit u32");
         // A release that cannot be read onto the folder's audio — it lists
@@ -474,16 +435,10 @@ impl ImportServiceHandle {
         // The pick's releases as read, stored in the pick's write, which
         // names them.
         let releases: Vec<_> = std::iter::once(prepared.stored.clone())
-            .chain(
-                prepared_partners
-                    .iter()
-                    .map(|partner| partner.stored.clone()),
-            )
+            .chain(prepared_partners.iter().map(|partner| partner.stored.clone()))
             .collect();
-        let prepared_partners: Vec<_> = prepared_partners
-            .into_iter()
-            .map(|partner| partner.release)
-            .collect();
+        let prepared_partners: Vec<_> =
+            prepared_partners.into_iter().map(|partner| partner.release).collect();
         // The choice is stored as the candidate's result unless a run's result
         // already stands.
         let detail = release.detail(&prepared_partners);
@@ -491,22 +446,12 @@ impl ImportServiceHandle {
         // The records of the pressing picked, as the folder's text reads them
         // now: what the year falls back on.
         let records: Vec<crate::import::search::MetadataResult> = std::iter::once(picked.clone())
-            .chain(
-                prepared_partners
-                    .iter()
-                    .map(crate::import::search::MetadataResult::of_release),
-            )
+            .chain(prepared_partners.iter().map(crate::import::search::MetadataResult::of_release))
             .collect();
-        let state = self
-            .library_manager
-            .load_import_candidate_state(&content_hash)
-            .await?;
+        let state = self.library_manager.load_import_candidate_state(&content_hash).await?;
         let text = crate::identify::CandidateText::of_stored(
             state.as_ref().and_then(|state| state.signals.as_ref()),
-            &state
-                .as_ref()
-                .map(|state| state.lookup_choices.clone())
-                .unwrap_or_default(),
+            &state.as_ref().map(|state| state.lookup_choices.clone()).unwrap_or_default(),
         );
         let metadata = self
             .external_candidate_metadata(
@@ -554,9 +499,7 @@ impl ImportServiceHandle {
     ) -> Result<u64, crate::import::ImportError> {
         let this = self.clone();
         self.committed(async move {
-            let revision = this
-                .clear_candidate_metadata_write(candidate_key.clone())
-                .await?;
+            let revision = this.clear_candidate_metadata_write(candidate_key.clone()).await?;
             this.identification_ended(&candidate_key).await;
             this.announce_metadata_changed(candidate_key);
             Ok(revision)
@@ -621,8 +564,7 @@ impl ImportServiceHandle {
         candidate_key: crate::import::CandidateKey,
     ) -> Result<u64, crate::import::ImportError> {
         let this = self.clone();
-        self.committed(async move { this.keep_candidate_draft_write(candidate_key).await })
-            .await
+        self.committed(async move { this.keep_candidate_draft_write(candidate_key).await }).await
     }
 
     async fn keep_candidate_draft_write(
@@ -667,9 +609,7 @@ impl ImportServiceHandle {
     ) -> Result<u64, crate::import::ImportError> {
         let this = self.clone();
         self.committed(async move {
-            let revision = this
-                .unlink_candidate_release_write(candidate_key.clone())
-                .await?;
+            let revision = this.unlink_candidate_release_write(candidate_key.clone()).await?;
             this.announce_metadata_changed(candidate_key);
             Ok(revision)
         })
@@ -702,9 +642,7 @@ impl ImportServiceHandle {
 
     pub(crate) fn announce_metadata_changed(&self, candidate_key: crate::import::CandidateKey) {
         self.event_tx
-            .send(ImportEvent::Scan(ScanEvent::CandidateMetadataChanged {
-                candidate_key,
-            }));
+            .send(ImportEvent::Scan(ScanEvent::CandidateMetadataChanged { candidate_key }));
     }
 
     /// Add one file decision to the candidate's stored ones, apply it to every
@@ -743,10 +681,7 @@ impl ImportServiceHandle {
                     "{candidate_key} has no complete preparation for file revision {expected_revision}"
                 ),
             })?;
-        let mut edits = self
-            .library_manager
-            .load_candidate_file_edits(&content_hash)
-            .await?;
+        let mut edits = self.library_manager.load_candidate_file_edits(&content_hash).await?;
         if edits.revision != expected_revision {
             return Err(crate::import::ImportError::Internal {
                 detail: format!(
@@ -886,20 +821,18 @@ impl ImportServiceHandle {
         candidate_key: &crate::import::CandidateKey,
     ) -> Result<(crate::import::folder_scanner::CategorizedFiles, u64), crate::import::ImportError>
     {
-        self.actionable_candidate_files(candidate_key)
-            .await?
-            .ok_or_else(|| crate::import::ImportError::SheetBinding {
+        self.actionable_candidate_files(candidate_key).await?.ok_or_else(|| {
+            crate::import::ImportError::SheetBinding {
                 detail: format!("{candidate_key} is not a folder candidate"),
-            })
+            }
+        })
     }
 }
 
 /// The cover [`ImportServiceHandle::fetch_release_cover`] fetched, with the
 /// bytes its catalog served.
-pub(crate) type FetchedCover = (
-    bae_catalogs::remote_image::RemoteCover,
-    bae_catalogs::remote_image::RemoteImage,
-);
+pub(crate) type FetchedCover =
+    (bae_catalogs::remote_image::RemoteCover, bae_catalogs::remote_image::RemoteImage);
 
 /// A fetch of an external release's cover that failed, naming the catalog
 /// that offered it.
@@ -917,13 +850,9 @@ pub(crate) fn external_metadata_with_cover(
     cover: Option<FetchedCover>,
 ) -> crate::import::CandidateMetadataDraft {
     let (cover, remote_cover) = match cover {
-        Some((remote, image)) => (
-            Some(crate::import::CoverSelection::Remote(
-                remote.image,
-                remote.source,
-            )),
-            Some(image),
-        ),
+        Some((remote, image)) => {
+            (Some(crate::import::CoverSelection::Remote(remote.image, remote.source)), Some(image))
+        }
         None => (None, None),
     };
     crate::import::CandidateMetadataDraft {

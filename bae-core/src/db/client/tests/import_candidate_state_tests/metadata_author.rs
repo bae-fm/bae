@@ -11,26 +11,16 @@ async fn a_verdict_that_picks_names_identification_as_the_author() {
         track_files_candidate(&[("01 Track.flac", 123_456), ("02 Track.flac", 234_567)]);
     let hash = candidate.content_hash();
     let row = concluding(
-        new_candidate_row(
-            &hash,
-            &host_root("/music/Some Album"),
-            &sample_verdict(),
-        ),
+        new_candidate_row(&hash, &host_root("/music/Some Album"), &sample_verdict()),
         "rel-1",
     );
     store_candidate_state(&db, &candidate, &row.candidate_key.test_folder()).await;
 
-    crate::import::CandidatePreparations::new(db.clone())
-        .store_verdict(&row)
-        .await
-        .unwrap();
+    crate::import::CandidatePreparations::new(db.clone()).store_verdict(&row).await.unwrap();
 
     let loaded = db.load_import_candidate_states().await.unwrap();
     assert_eq!(
-        loaded
-            .get(&hash)
-            .expect("the candidate reads back")
-            .metadata_author,
+        loaded.get(&hash).expect("the candidate reads back").metadata_author,
         crate::import::MetadataAuthor::Identification
     );
 }
@@ -43,25 +33,15 @@ async fn a_verdict_that_picks_nothing_leaves_the_draft_unclaimed() {
     let candidate =
         track_files_candidate(&[("01 Track.flac", 123_456), ("02 Track.flac", 234_567)]);
     let hash = candidate.content_hash();
-    let row = new_candidate_row(
-        &hash,
-        &host_root("/music/Some Album"),
-        &sample_verdict(),
-    );
+    let row = new_candidate_row(&hash, &host_root("/music/Some Album"), &sample_verdict());
     assert!(row.pick.is_none(), "it settled on no release to write");
     store_candidate_state(&db, &candidate, &row.candidate_key.test_folder()).await;
 
-    crate::import::CandidatePreparations::new(db.clone())
-        .store_verdict(&row)
-        .await
-        .unwrap();
+    crate::import::CandidatePreparations::new(db.clone()).store_verdict(&row).await.unwrap();
 
     let loaded = db.load_import_candidate_states().await.unwrap();
     assert_eq!(
-        loaded
-            .get(&hash)
-            .expect("the candidate reads back")
-            .metadata_author,
+        loaded.get(&hash).expect("the candidate reads back").metadata_author,
         crate::import::MetadataAuthor::Nobody
     );
 }
@@ -75,10 +55,7 @@ async fn a_candidate_with_no_pick_has_no_author() {
 
     let loaded = db.load_import_candidate_states().await.unwrap();
     assert_eq!(
-        loaded
-            .get(&hash)
-            .expect("the candidate reads back")
-            .metadata_author,
+        loaded.get(&hash).expect("the candidate reads back").metadata_author,
         crate::import::MetadataAuthor::Nobody
     );
 }
@@ -93,11 +70,7 @@ async fn an_edit_to_identification_s_draft_makes_the_person_its_author() {
         track_files_candidate(&[("01 Track.flac", 123_456), ("02 Track.flac", 234_567)]);
     let hash = candidate.content_hash();
     let row = concluding(
-        new_candidate_row(
-            &hash,
-            &host_root("/music/Some Album"),
-            &sample_verdict(),
-        ),
+        new_candidate_row(&hash, &host_root("/music/Some Album"), &sample_verdict()),
         "rel-1",
     );
     store_candidate_state(&db, &candidate, &row.candidate_key.test_folder()).await;
@@ -105,11 +78,7 @@ async fn an_edit_to_identification_s_draft_makes_the_person_its_author() {
     preparations.store_verdict(&row).await.unwrap();
 
     preparations
-        .set_field(
-            &hash,
-            crate::import::CandidateEditField::AlbumTitle,
-            "Album",
-        )
+        .set_field(&hash, crate::import::CandidateEditField::AlbumTitle, "Album")
         .await
         .unwrap();
 

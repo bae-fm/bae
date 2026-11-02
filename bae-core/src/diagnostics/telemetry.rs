@@ -490,9 +490,7 @@ mod tests {
 
     #[test]
     fn error_level_events_declare_error() {
-        let event = TelemetryEvent::PlaybackFailed {
-            operation: PlaybackOperation::Preload,
-        };
+        let event = TelemetryEvent::PlaybackFailed { operation: PlaybackOperation::Preload };
         assert_eq!(event.level(), DiagnosticLevel::Error);
         assert_eq!(event.fields()["operation"], serde_json::json!("preload"));
     }
@@ -510,15 +508,11 @@ mod tests {
 
     #[test]
     fn playback_command_records_kind_as_snake_case() {
-        let event = TelemetryEvent::PlaybackCommand {
-            command: PlaybackCommandKind::PlayLibraryShuffled,
-        };
+        let event =
+            TelemetryEvent::PlaybackCommand { command: PlaybackCommandKind::PlayLibraryShuffled };
         assert_eq!(event.name(), "playback_command");
         assert_eq!(event.level(), DiagnosticLevel::Info);
-        assert_eq!(
-            event.fields()["command"],
-            serde_json::json!("play_library_shuffled")
-        );
+        assert_eq!(event.fields()["command"], serde_json::json!("play_library_shuffled"));
     }
 
     #[test]
@@ -528,25 +522,17 @@ mod tests {
             decode_errors: 3,
         };
         let fields = event.fields();
-        assert_eq!(
-            fields["track_id"],
-            serde_json::json!("a29b9a29-8c0c-4aee-84c8-0af69eb9ea1e")
-        );
+        assert_eq!(fields["track_id"], serde_json::json!("a29b9a29-8c0c-4aee-84c8-0af69eb9ea1e"));
         assert_eq!(fields["decode_errors"], serde_json::json!(3));
         assert!(fields["decode_errors"].is_number());
     }
 
     #[test]
     fn anomaly_is_warn_with_snake_case_kind() {
-        let event = TelemetryEvent::Anomaly {
-            kind: AnomalyKind::ResumePersistFailed,
-        };
+        let event = TelemetryEvent::Anomaly { kind: AnomalyKind::ResumePersistFailed };
         assert_eq!(event.name(), "anomaly");
         assert_eq!(event.level(), DiagnosticLevel::Warn);
-        assert_eq!(
-            event.fields()["kind"],
-            serde_json::json!("resume_persist_failed")
-        );
+        assert_eq!(event.fields()["kind"], serde_json::json!("resume_persist_failed"));
     }
 
     #[test]
@@ -558,10 +544,7 @@ mod tests {
         };
         let fields = event.fields();
         assert_eq!(fields["action"], serde_json::json!("upload"));
-        assert_eq!(
-            fields["release_id"],
-            serde_json::json!("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e")
-        );
+        assert_eq!(fields["release_id"], serde_json::json!("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e"));
         assert_eq!(fields["file_count"], serde_json::json!(12));
         assert!(fields["file_count"].is_number());
     }
@@ -579,15 +562,10 @@ mod tests {
 
     #[test]
     fn app_start_failed_is_error_with_snake_case_kind() {
-        let event = TelemetryEvent::AppStartFailed {
-            kind: AppStartFailureKind::LibraryNotFound,
-        };
+        let event = TelemetryEvent::AppStartFailed { kind: AppStartFailureKind::LibraryNotFound };
         assert_eq!(event.name(), "app_start_failed");
         assert_eq!(event.level(), DiagnosticLevel::Error);
-        assert_eq!(
-            event.fields()["kind"],
-            serde_json::json!("library_not_found")
-        );
+        assert_eq!(event.fields()["kind"], serde_json::json!("library_not_found"));
     }
 
     #[test]
@@ -600,16 +578,13 @@ mod tests {
 
     #[test]
     fn export_completed_and_failed_carry_release_and_differ_by_level() {
-        let completed = TelemetryEvent::ExportCompleted {
-            release_id: LocalId("rel-7".to_string()),
-        };
+        let completed =
+            TelemetryEvent::ExportCompleted { release_id: LocalId("rel-7".to_string()) };
         assert_eq!(completed.name(), "export_completed");
         assert_eq!(completed.level(), DiagnosticLevel::Info);
         assert_eq!(completed.fields()["release_id"], serde_json::json!("rel-7"));
 
-        let failed = TelemetryEvent::ExportFailed {
-            release_id: LocalId("rel-7".to_string()),
-        };
+        let failed = TelemetryEvent::ExportFailed { release_id: LocalId("rel-7".to_string()) };
         assert_eq!(failed.name(), "export_failed");
         assert_eq!(failed.level(), DiagnosticLevel::Error);
         assert_eq!(failed.fields()["release_id"], serde_json::json!("rel-7"));
@@ -617,16 +592,12 @@ mod tests {
 
     #[test]
     fn save_completed_and_failed_carry_release_and_differ_by_level() {
-        let completed = TelemetryEvent::SaveCompleted {
-            release_id: LocalId("rel-9".to_string()),
-        };
+        let completed = TelemetryEvent::SaveCompleted { release_id: LocalId("rel-9".to_string()) };
         assert_eq!(completed.name(), "save_completed");
         assert_eq!(completed.level(), DiagnosticLevel::Info);
         assert_eq!(completed.fields()["release_id"], serde_json::json!("rel-9"));
 
-        let failed = TelemetryEvent::SaveFailed {
-            release_id: LocalId("rel-9".to_string()),
-        };
+        let failed = TelemetryEvent::SaveFailed { release_id: LocalId("rel-9".to_string()) };
         assert_eq!(failed.name(), "save_failed");
         assert_eq!(failed.level(), DiagnosticLevel::Error);
         assert_eq!(failed.fields()["release_id"], serde_json::json!("rel-9"));
@@ -634,22 +605,16 @@ mod tests {
 
     #[test]
     fn cloud_provider_connected_and_disconnected_record_provider() {
-        let connected = TelemetryEvent::CloudProviderConnected {
-            provider: CloudProvider::Dropbox,
-        };
+        let connected = TelemetryEvent::CloudProviderConnected { provider: CloudProvider::Dropbox };
         assert_eq!(connected.name(), "cloud_provider_connected");
         assert_eq!(connected.level(), DiagnosticLevel::Info);
         assert_eq!(connected.fields()["provider"], serde_json::json!("dropbox"));
 
-        let disconnected = TelemetryEvent::CloudProviderDisconnected {
-            provider: CloudProvider::OneDrive,
-        };
+        let disconnected =
+            TelemetryEvent::CloudProviderDisconnected { provider: CloudProvider::OneDrive };
         assert_eq!(disconnected.name(), "cloud_provider_disconnected");
         assert_eq!(disconnected.level(), DiagnosticLevel::Info);
-        assert_eq!(
-            disconnected.fields()["provider"],
-            serde_json::json!("onedrive")
-        );
+        assert_eq!(disconnected.fields()["provider"], serde_json::json!("onedrive"));
     }
 
     #[test]

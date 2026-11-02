@@ -87,16 +87,12 @@ pub(super) enum PlayIntent {
 impl TrackPhase {
     pub(super) fn intent(&self) -> PlayIntent {
         match self {
-            TrackPhase::Playing
-            | TrackPhase::Loading {
-                target: PlayTarget::Playing,
-                ..
-            } => PlayIntent::Playing,
-            TrackPhase::Paused(_)
-            | TrackPhase::Loading {
-                target: PlayTarget::Paused(_),
-                ..
-            } => PlayIntent::Paused,
+            TrackPhase::Playing | TrackPhase::Loading { target: PlayTarget::Playing, .. } => {
+                PlayIntent::Playing
+            }
+            TrackPhase::Paused(_) | TrackPhase::Loading { target: PlayTarget::Paused(_), .. } => {
+                PlayIntent::Paused
+            }
             TrackPhase::Completed => PlayIntent::Stopped,
         }
     }

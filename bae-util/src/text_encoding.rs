@@ -16,27 +16,18 @@ pub struct DecodedText {
 pub fn decode_text(bytes: &[u8]) -> DecodedText {
     if let Some((encoding, bom_len)) = encoding_rs::Encoding::for_bom(bytes) {
         let (decoded, _, _) = encoding.decode(&bytes[bom_len..]);
-        return DecodedText {
-            text: decoded.into_owned(),
-            encoding: encoding.name().to_string(),
-        };
+        return DecodedText { text: decoded.into_owned(), encoding: encoding.name().to_string() };
     }
 
     if let Ok(s) = std::str::from_utf8(bytes) {
-        return DecodedText {
-            text: s.to_owned(),
-            encoding: "UTF-8".to_string(),
-        };
+        return DecodedText { text: s.to_owned(), encoding: "UTF-8".to_string() };
     }
 
     let mut detector = chardetng::EncodingDetector::new();
     detector.feed(bytes, true);
     let encoding = detector.guess(None, true);
     let (decoded, _, _) = encoding.decode(bytes);
-    DecodedText {
-        text: decoded.into_owned(),
-        encoding: encoding.name().to_string(),
-    }
+    DecodedText { text: decoded.into_owned(), encoding: encoding.name().to_string() }
 }
 
 /// Read a file and decode its contents, detecting encoding automatically.
@@ -95,10 +86,7 @@ mod tests {
         // "caf\xe9" = "cafe" with e-acute in Windows-1252
         let input = b"caf\xe9";
         let result = decode_text(input);
-        assert!(
-            result.text.contains("caf"),
-            "should decode the ASCII portion"
-        );
+        assert!(result.text.contains("caf"), "should decode the ASCII portion");
         // chardetng should detect this as a Latin encoding and decode the e-acute
         assert!(
             result.text.contains('\u{00e9}') || result.text.len() == 4,

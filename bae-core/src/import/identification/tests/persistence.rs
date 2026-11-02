@@ -26,12 +26,7 @@ async fn one_answer_covers_every_candidate_that_hashes_the_same() {
     fixture.drain_automatic().await;
 
     let asked = fixture.provider.count_containing("/discid/");
-    assert_eq!(
-        asked,
-        1,
-        "one run answered both: {:?}",
-        fixture.provider.requests()
-    );
+    assert_eq!(asked, 1, "one run answered both: {:?}", fixture.provider.requests());
     assert!(fixture.identified_for(&first).await.is_some());
     assert!(fixture.identified_for(&second).await.is_some());
 
@@ -177,9 +172,7 @@ async fn restating_a_file_decision_changes_nothing() {
     let dir = fixture.seed_cue_album("Album");
     fixture.scan(1).await;
     fixture.archive("mb-noop-1", "rg-noop-1", &[500, 500]).await;
-    fixture
-        .store_settled_verdict(&dir, "mb-noop-1", "rg-noop-1",)
-        .await;
+    fixture.store_settled_verdict(&dir, "mb-noop-1", "rg-noop-1").await;
     let key = crate::import::CandidateKey::folder(&dir);
     let mut events = fixture.import.every_event();
 
@@ -204,14 +197,8 @@ async fn restating_a_file_decision_changes_nothing() {
         .await
         .unwrap();
 
-    let row = fixture
-        .stored_for(&dir)
-        .await
-        .expect("the candidate's row remains");
-    assert!(
-        row.identify.is_some(),
-        "a re-stated decision must not clear the stored verdict"
-    );
+    let row = fixture.stored_for(&dir).await.expect("the candidate's row remains");
+    assert!(row.identify.is_some(), "a re-stated decision must not clear the stored verdict");
     assert!(
         !drain_events(&mut events).iter().any(|event| matches!(
             event,
@@ -231,10 +218,7 @@ async fn restating_a_file_decision_changes_nothing() {
         .await
         .unwrap();
     assert!(
-        fixture
-            .stored_for(&dir)
-            .await
-            .is_none_or(|row| row.identify.is_none()),
+        fixture.stored_for(&dir).await.is_none_or(|row| row.identify.is_none()),
         "a real change clears the verdict as before"
     );
 }

@@ -41,9 +41,7 @@ pub(crate) struct MakeLocalTransfers {
 
 impl MakeLocalTransfers {
     pub(crate) fn new() -> Self {
-        Self {
-            transfers: Arc::new(watch::Sender::new(BTreeMap::new())),
-        }
+        Self { transfers: Arc::new(watch::Sender::new(BTreeMap::new())) }
     }
 
     /// Every release's progress, and each change to it.
@@ -54,10 +52,7 @@ impl MakeLocalTransfers {
     /// Report `release_id`'s progress through the returned report until it
     /// drops, however the transfer ends.
     pub(crate) fn report(&self, release_id: &str) -> MakeLocalReport {
-        MakeLocalReport {
-            transfers: self.clone(),
-            release_id: release_id.to_string(),
-        }
+        MakeLocalReport { transfers: self.clone(), release_id: release_id.to_string() }
     }
 }
 

@@ -4,10 +4,7 @@ use super::*;
 
 impl Database {
     pub(crate) async fn open_release_file(&self, id: &str) -> Result<coven::FileStream, DbError> {
-        let row = self
-            .find_file_by_id(id)
-            .await?
-            .ok_or(rusqlite::Error::QueryReturnedNoRows)?;
+        let row = self.find_file_by_id(id).await?.ok_or(rusqlite::Error::QueryReturnedNoRows)?;
         let file = self.file_ref(row.file).await?;
         Ok(self.open_file_stream(&file).await?)
     }

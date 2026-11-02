@@ -41,19 +41,11 @@ impl ImportServiceHandle {
         let candidate_key = candidate_key.clone();
         let row = row.clone();
         self.committed(async move {
-            let _commit = this
-                .folder_state_commit
-                .lock("store an identification verdict")
-                .await;
-            match this
-                .save_candidate_verdict_if_current_write(&candidate_key, &row, run)
-                .await
-            {
+            let _commit = this.folder_state_commit.lock("store an identification verdict").await;
+            match this.save_candidate_verdict_if_current_write(&candidate_key, &row, run).await {
                 Ok(Some(import_asked)) => Ok(VerdictWrite::Stored { import_asked }),
                 Ok(None) => {
-                    this.runtime
-                        .end_identification_answer(&candidate_key, run)
-                        .await?;
+                    this.runtime.end_identification_answer(&candidate_key, run).await?;
                     Ok(VerdictWrite::Refused)
                 }
                 Err(error) => {
@@ -66,9 +58,7 @@ impl ImportServiceHandle {
                                 content_hash: row.content_hash.clone(),
                                 file_edit_revision: row.file_edit_revision,
                             },
-                            crate::import::SaveFailure::NotWritten {
-                                error: error.to_string(),
-                            },
+                            crate::import::SaveFailure::NotWritten { error: error.to_string() },
                         )
                         .await;
                     Err(match recorded {
@@ -102,18 +92,12 @@ impl ImportServiceHandle {
         {
             return Ok(None);
         }
-        match self
-            .preparations
-            .store_run_verdict(row, candidate_key, run)
-            .await?
-        {
+        match self.preparations.store_run_verdict(row, candidate_key, run).await? {
             // The verdict's write ended the answer, and what its run
             // published, inside it.
             Some(ended) => {
                 #[cfg(any(test, feature = "test-utils"))]
-                self.runtime
-                    .tell_every_change(std::iter::once(candidate_key))
-                    .await;
+                self.runtime.tell_every_change(std::iter::once(candidate_key)).await;
                 Ok(Some(ended.ended_with_import_asked()))
             }
             None => Ok(None),

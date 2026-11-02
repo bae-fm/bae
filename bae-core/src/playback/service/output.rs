@@ -85,8 +85,7 @@ impl PlaybackService {
     /// failure: report it, tell the person, and stop rather than play on with
     /// audio missing.
     pub(super) async fn output_stopped_sending(&mut self, detail: String) {
-        self.library_manager
-            .report_bug("keep the audio output playing", &detail);
+        self.library_manager.report_bug("keep the audio output playing", &detail);
         emit_progress(
             &self.progress_tx,
             PlaybackProgress::PlaybackError {
@@ -168,13 +167,7 @@ impl PlaybackService {
             return Err(PlaybackError::AudioOutput(e));
         }
 
-        self.output = Some(OutputStream {
-            stream,
-            source,
-            audio_events,
-            sample_rate,
-            channels,
-        });
+        self.output = Some(OutputStream { stream, source, audio_events, sample_rate, channels });
         Ok(())
     }
 
@@ -184,10 +177,7 @@ impl PlaybackService {
     /// tracks' streams to end.
     pub(super) fn discard_output(&mut self) {
         if let Some(out) = self.output.take() {
-            out.source
-                .lock()
-                .unwrap_or_else(std::sync::PoisonError::into_inner)
-                .cancel();
+            out.source.lock().unwrap_or_else(std::sync::PoisonError::into_inner).cancel();
         }
     }
 
@@ -199,13 +189,7 @@ impl PlaybackService {
     /// emit a `PlaybackError` and stop — rather than leaving a silently dead
     /// stream.
     pub(super) async fn follow_output_device(&mut self, out: OutputStream, detail: &str) {
-        let OutputStream {
-            stream,
-            source,
-            mut audio_events,
-            sample_rate,
-            channels,
-        } = out;
+        let OutputStream { stream, source, mut audio_events, sample_rate, channels } = out;
         // Release the old device before binding the new one.
         drop(stream);
         // Carry events already queued for this (unchanged) source onto the new
@@ -225,10 +209,7 @@ impl PlaybackService {
                 "rebuild the audio output on the current default device",
                 &error,
             );
-            emit_progress(
-                &self.progress_tx,
-                PlaybackProgress::PlaybackError { reason },
-            );
+            emit_progress(&self.progress_tx, PlaybackProgress::PlaybackError { reason });
             self.stop().await;
         }
     }

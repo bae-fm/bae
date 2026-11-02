@@ -41,40 +41,20 @@ async fn fixture(releases: &[(&str, &[&str])]) -> Fixture {
         ids.insert(release_name.to_string(), release_id.clone());
         let album = DbAlbum::new_test("Album Title");
         db.insert_album(&album).await.unwrap();
-        db.insert_album_artist(&DbAlbumArtist::new_test(&album.id, &artist.id))
-            .await
-            .unwrap();
-        db.insert_release(&DbRelease::new_test(&album.id, &release_id))
-            .await
-            .unwrap();
-        db.insert_release_medium(&DbReleaseMedium::new_test(&release_id))
-            .await
-            .unwrap();
+        db.insert_album_artist(&DbAlbumArtist::new_test(&album.id, &artist.id)).await.unwrap();
+        db.insert_release(&DbRelease::new_test(&album.id, &release_id)).await.unwrap();
+        db.insert_release_medium(&DbReleaseMedium::new_test(&release_id)).await.unwrap();
         for (index, name) in track_names.iter().enumerate() {
             let track_id = uuid::Uuid::new_v4().to_string();
             ids.insert(name.to_string(), track_id.clone());
             let number = u32::try_from(index + 1).unwrap();
-            db.insert_track(&DbTrack::new_test(
-                &release_id,
-                &track_id,
-                "Track Title",
-                number,
-            ))
-            .await
-            .unwrap();
+            db.insert_track(&DbTrack::new_test(&release_id, &track_id, "Track Title", number))
+                .await
+                .unwrap();
         }
     }
-    let names = ids
-        .iter()
-        .map(|(name, id)| (id.clone(), name.clone()))
-        .collect();
-    Fixture {
-        _home: home,
-        queue: PlaybackQueue::new(db.playback_queue_tables()),
-        db,
-        ids,
-        names,
-    }
+    let names = ids.iter().map(|(name, id)| (id.clone(), name.clone())).collect();
+    Fixture { _home: home, queue: PlaybackQueue::new(db.playback_queue_tables()), db, ids, names }
 }
 
 /// One release `r1` holding `tracks`.
@@ -103,11 +83,7 @@ impl Fixture {
 
     /// Play `r1` from where `start` says.
     async fn play(&mut self, start: ReleaseStart) -> String {
-        self.play_fill(ContextFill::Release {
-            release_id: self.id("r1"),
-            start,
-        })
-        .await
+        self.play_fill(ContextFill::Release { release_id: self.id("r1"), start }).await
     }
 
     /// Play `r1` from the named track.
@@ -138,20 +114,13 @@ impl Fixture {
             .manual
             .into_iter()
             .chain(context)
-            .map(|item| QueueEntry {
-                id: item.entry_id.parse().unwrap(),
-                track_id: item.track_id,
-            })
+            .map(|item| QueueEntry { id: item.entry_id.parse().unwrap(), track_id: item.track_id })
             .collect()
     }
 
     /// The flat play order after the current track, by name.
     async fn upcoming(&self) -> Vec<String> {
-        self.upcoming_entries()
-            .await
-            .iter()
-            .map(|entry| self.name(&entry.track_id))
-            .collect()
+        self.upcoming_entries().await.iter().map(|entry| self.name(&entry.track_id)).collect()
     }
 
     /// The current track then the upcoming ones, by name.
@@ -182,12 +151,7 @@ impl Fixture {
     }
 
     async fn manual_ids(&self) -> Vec<QueueEntryId> {
-        self.value()
-            .await
-            .manual
-            .iter()
-            .map(|item| item.entry_id.parse().unwrap())
-            .collect()
+        self.value().await.manual.iter().map(|item| item.entry_id.parse().unwrap()).collect()
     }
 
     /// The first upcoming entry playing the named track.
@@ -209,12 +173,7 @@ impl Fixture {
     }
 
     async fn previous(&mut self, at_ms: i64) -> Option<String> {
-        match self
-            .queue
-            .previous_action(TrackTime::from_millis(at_ms))
-            .await
-            .unwrap()
-        {
+        match self.queue.previous_action(TrackTime::from_millis(at_ms)).await.unwrap() {
             PreviousAction::PlayPrevious(track) => Some(self.name(&track)),
             PreviousAction::RestartCurrent => None,
         }
@@ -222,18 +181,8 @@ impl Fixture {
 
     /// Everything the queue screens and the tables show, to tell that an
     /// operation changed nothing.
-    async fn shown(
-        &self,
-    ) -> (
-        crate::queue::ResolvedQueueSnapshot,
-        Vec<String>,
-        Vec<String>,
-    ) {
-        (
-            self.value().await,
-            self.upcoming().await,
-            self.context_order_or_empty().await,
-        )
+    async fn shown(&self) -> (crate::queue::ResolvedQueueSnapshot, Vec<String>, Vec<String>) {
+        (self.value().await, self.upcoming().await, self.context_order_or_empty().await)
     }
 
     async fn context_order_or_empty(&self) -> Vec<String> {

@@ -66,10 +66,7 @@ impl<B: Browse> ProtocolDiscovery<B> {
 
 impl<B: Browse> Default for ProtocolDiscovery<B> {
     fn default() -> Self {
-        Self {
-            devices: PublishedDevices::new(),
-            running: None,
-        }
+        Self { devices: PublishedDevices::new(), running: None }
     }
 }
 

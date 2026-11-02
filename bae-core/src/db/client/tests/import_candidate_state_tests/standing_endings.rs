@@ -5,7 +5,11 @@
 // identification count with it. An import's claim outlives it.
 
 /// Put the candidate at `key` with `files` on the identification queue.
-async fn admitted(db: &Database, key: &crate::import::CandidateKey, files: crate::import::CandidateFiles) {
+async fn admitted(
+    db: &Database,
+    key: &crate::import::CandidateKey,
+    files: crate::import::CandidateFiles,
+) {
     db.change_candidate_identifications(vec![(
         key.clone(),
         crate::import::candidate_runtime::IdentificationChange::Admit {
@@ -15,12 +19,7 @@ async fn admitted(db: &Database, key: &crate::import::CandidateKey, files: crate
     )])
     .await
     .unwrap();
-    assert!(db
-        .load_candidate_standing(key)
-        .await
-        .unwrap()
-        .identification
-        .is_some());
+    assert!(db.load_candidate_standing(key).await.unwrap().identification.is_some());
     assert_eq!(db.load_identification_progress().await.unwrap(), (0, 1));
 }
 
@@ -36,13 +35,12 @@ async fn assert_identification_ended(db: &Database, key: &crate::import::Candida
 }
 
 /// The pane candidate's key and files, stored and admitted.
-async fn admitted_pane_candidate(db: &Database) -> (crate::import::CandidateKey, crate::import::CandidateFiles) {
+async fn admitted_pane_candidate(
+    db: &Database,
+) -> (crate::import::CandidateKey, crate::import::CandidateFiles) {
     let (_, hash) = stored_pane_candidate(db).await;
     let key = pane_candidate_key();
-    let files = crate::import::CandidateFiles {
-        content_hash: hash,
-        file_edit_revision: 0,
-    };
+    let files = crate::import::CandidateFiles { content_hash: hash, file_edit_revision: 0 };
     admitted(db, &key, files.clone()).await;
     (key, files)
 }
@@ -72,12 +70,7 @@ async fn an_entry_rewritten_with_other_files_ends_its_identification() {
         .await
         .unwrap()
         .expect("the current scan accepts the candidate");
-    assert!(db
-        .load_candidate_standing(&key)
-        .await
-        .unwrap()
-        .identification
-        .is_some());
+    assert!(db.load_candidate_standing(&key).await.unwrap().identification.is_some());
 
     let mut reshaped = scanned_candidate(&root, "Album");
     let crate::import::folder_scanner::ScanItem::Valid(candidate) = &mut reshaped else {
@@ -102,9 +95,7 @@ async fn an_entry_rewritten_with_other_files_ends_its_search() {
     let key = pane_candidate_key();
     let root = host_root("/music");
     let search = crate::import::CandidateSearch::started(
-        crate::import::search::SearchQuery::Barcode {
-            barcode: "012345678905".to_string(),
-        },
+        crate::import::search::SearchQuery::Barcode { barcode: "012345678905".to_string() },
         &[crate::import::CatalogAvailability {
             catalog: bae_catalogs::catalog::Catalog::Discogs,
             state: crate::import::SourceAvailability::On,
@@ -124,10 +115,7 @@ async fn an_entry_rewritten_with_other_files_ends_its_search() {
         .await
         .unwrap());
     let searched = |db: Database| async move {
-        db.load_candidate_runtime(&pane_candidate_key())
-            .await
-            .unwrap()
-            .search
+        db.load_candidate_runtime(&pane_candidate_key()).await.unwrap().search
     };
     assert!(searched(db.clone()).await.is_some());
 
@@ -136,10 +124,7 @@ async fn an_entry_rewritten_with_other_files_ends_its_search() {
         .await
         .unwrap()
         .expect("the current scan accepts the candidate");
-    assert!(
-        searched(db.clone()).await.is_some(),
-        "the same files keep their search"
-    );
+    assert!(searched(db.clone()).await.is_some(), "the same files keep their search");
 
     let mut reshaped = scanned_candidate(&root, "Album");
     let crate::import::folder_scanner::ScanItem::Valid(candidate) = &mut reshaped else {
@@ -167,10 +152,7 @@ async fn a_file_decision_ends_its_candidate_s_identification() {
     admitted(
         &db,
         &key,
-        crate::import::CandidateFiles {
-            content_hash: hash.clone(),
-            file_edit_revision: 0,
-        },
+        crate::import::CandidateFiles { content_hash: hash.clone(), file_edit_revision: 0 },
     )
     .await;
     let (metadata_revision, draft) = current_draft(&db, &hash).await;

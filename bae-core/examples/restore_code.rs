@@ -57,14 +57,8 @@ fn main() {
                 .map_err(|e| format!("open store failed: {e}"))?;
         let name = handle.store_name().await.map_err(|e| e.to_string())?;
         eprintln!("active library: {name} ({store_id})");
-        handle
-            .unlock_store_key()
-            .await
-            .map_err(|e| format!("unlock_store_key failed: {e}"))?;
-        let code = handle
-            .restore_code()
-            .await
-            .map_err(|e| format!("restore_code failed: {e}"))?;
+        handle.unlock_store_key().await.map_err(|e| format!("unlock_store_key failed: {e}"))?;
+        let code = handle.restore_code().await.map_err(|e| format!("restore_code failed: {e}"))?;
         handle.close().await.map_err(|e| e.to_string())?;
         Ok(code)
     });

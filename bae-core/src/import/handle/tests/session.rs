@@ -16,10 +16,7 @@ async fn the_pane_s_session_reads_back_part_by_part() {
         MetadataPresentation::Draft
     );
 
-    handle
-        .move_candidate_pane(&key, PaneMove::Search)
-        .await
-        .unwrap();
+    handle.move_candidate_pane(&key, PaneMove::Search).await.unwrap();
     let form = SearchForm {
         tab: SearchTab::CatalogNumber,
         artist: "Artist".to_string(),
@@ -27,17 +24,11 @@ async fn the_pane_s_session_reads_back_part_by_part() {
         catalog: "WPCR-80001".to_string(),
         barcode: String::new(),
     };
-    handle
-        .set_candidate_search_form(&key, form.clone())
-        .await
-        .unwrap();
+    handle.set_candidate_search_form(&key, form.clone()).await.unwrap();
 
     let session = pane(&handle, &key).await.draft().unwrap().session.clone();
     assert_eq!(session.presentation, MetadataPresentation::FindOnline);
-    assert_eq!(
-        session.find_online_section,
-        crate::import::FindOnlineSection::Search
-    );
+    assert_eq!(session.find_online_section, crate::import::FindOnlineSection::Search);
     assert_eq!(session.search, form);
     assert_eq!(session.error, None);
 
@@ -45,10 +36,7 @@ async fn the_pane_s_session_reads_back_part_by_part() {
     handle.move_candidate_pane(&key, PaneMove::Back).await.unwrap();
     let session = pane(&handle, &key).await.draft().unwrap().session.clone();
     assert_eq!(session.presentation, MetadataPresentation::Draft);
-    assert_eq!(
-        session.find_online_section,
-        crate::import::FindOnlineSection::Search
-    );
+    assert_eq!(session.find_online_section, crate::import::FindOnlineSection::Search);
 
     shut_down(handle).await;
 }
@@ -58,7 +46,10 @@ async fn the_pane_s_session_reads_back_part_by_part() {
 async fn a_session_write_for_an_unknown_key_is_refused() {
     let (handle, _tmp, _key, _hash) = pane_fixture().await;
     let refused = handle
-        .move_candidate_pane(&crate::import::CandidateKey::test("/nowhere/at/all"), PaneMove::FindOnline)
+        .move_candidate_pane(
+            &crate::import::CandidateKey::test("/nowhere/at/all"),
+            PaneMove::FindOnline,
+        )
         .await;
     assert!(refused.is_err());
     shut_down(handle).await;
@@ -70,10 +61,7 @@ async fn a_session_write_for_an_unknown_key_is_refused() {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_pane_command_s_failure_is_stored_until_the_next_command() {
     let (handle, _tmp, key, _hash) = pane_fixture().await;
-    handle
-        .move_candidate_pane(&key, PaneMove::FindOnline)
-        .await
-        .unwrap();
+    handle.move_candidate_pane(&key, PaneMove::FindOnline).await.unwrap();
 
     let failed = handle
         .run_pane_command(&key, PaneCommand::ChooseArtistIdentity, async {
@@ -114,9 +102,6 @@ async fn a_pane_command_s_failure_is_stored_until_the_next_command() {
 #[tokio::test(flavor = "multi_thread")]
 async fn clearing_the_failure_of_a_key_with_no_candidate_is_nothing() {
     let (handle, _tmp, _key, _hash) = pane_fixture().await;
-    handle
-        .clear_pane_failure(&crate::import::CandidateKey::reidentify("release-1"))
-        .await
-        .unwrap();
+    handle.clear_pane_failure(&crate::import::CandidateKey::reidentify("release-1")).await.unwrap();
     shut_down(handle).await;
 }

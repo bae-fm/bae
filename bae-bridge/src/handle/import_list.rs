@@ -69,10 +69,7 @@ impl AppHandle {
     /// How far the identifications and imports in flight have got, now and
     /// as they change.
     pub fn subscribe_import_counts(&self) -> std::sync::Arc<crate::ImportCountsSubscription> {
-        crate::screens::import_counts(
-            self.services.subscribe_import_counts(),
-            self.runtime.clone(),
-        )
+        crate::screens::import_counts(self.services.subscribe_import_counts(), self.runtime.clone())
     }
 
     /// What one candidate has in flight — a run's identify state and the
@@ -83,8 +80,7 @@ impl AppHandle {
         candidate_key: Vec<u8>,
     ) -> std::sync::Arc<crate::CandidateRuntimeSubscription> {
         crate::screens::candidate_runtime(
-            self.services
-                .subscribe_candidate_runtime(&candidate_key.into()),
+            self.services.subscribe_candidate_runtime(&candidate_key.into()),
             self.runtime.clone(),
         )
     }

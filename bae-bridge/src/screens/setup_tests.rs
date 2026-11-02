@@ -26,26 +26,16 @@ fn the_stream_holds_the_running_step_until_the_call_ends() {
             },
         })
     );
-    assert_eq!(
-        runtime.block_on(stream.clone().next()),
-        Ok(vec![Vec::new()]),
-        "the key started"
-    );
+    assert_eq!(runtime.block_on(stream.clone().next()), Ok(vec![Vec::new()]), "the key started");
     steps.bootstrap(coven::BootstrapStatus::Connecting);
     assert_eq!(
         stream.latest(Vec::new()),
-        Some(BridgeFastValue::BootstrapStatus {
-            status: BridgeBootstrapStatus::Connecting,
-        })
+        Some(BridgeFastValue::BootstrapStatus { status: BridgeBootstrapStatus::Connecting })
     );
 
     drop(steps);
     assert_eq!(stream.latest(Vec::new()), None);
-    assert_eq!(
-        runtime.block_on(stream.clone().next()),
-        Ok(vec![Vec::new()]),
-        "the key stopped"
-    );
+    assert_eq!(runtime.block_on(stream.clone().next()), Ok(vec![Vec::new()]), "the key stopped");
 }
 
 /// Creating a library runs one step, which ends with the call.
@@ -59,9 +49,7 @@ fn creating_a_library_reports_its_step() {
     .unwrap();
     let setup = BridgeLibrarySetup::new(host.clone());
     let caller = tokio::runtime::Runtime::new().unwrap();
-    caller
-        .block_on(host.create_library(Some("Created".into()), setup.clone()))
-        .unwrap();
+    caller.block_on(host.create_library(Some("Created".into()), setup.clone())).unwrap();
     assert_eq!(
         setup.written(),
         vec![

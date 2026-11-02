@@ -88,9 +88,7 @@ mod tests {
         }));
         assert_eq!(
             refusing.request(),
-            Err(bae_core::playback::AudioFocusRefused(
-                "audio mode IN_CALL".to_string()
-            ))
+            Err(bae_core::playback::AudioFocusRefused("audio mode IN_CALL".to_string()))
         );
         let granting = platform(Answering(BridgeAudioFocusAnswer::Granted));
         assert_eq!(granting.request(), Ok(()));

@@ -20,10 +20,7 @@ impl ImportServiceHandle {
         image: bae_catalogs::remote_image::RemoteImageSet,
         pixels: Option<u32>,
     ) -> Result<Option<bae_catalogs::remote_image::RemoteImage>, crate::import::ImportError> {
-        Ok(self
-            .library_manager
-            .fetch_remote_image(image.url_covering(pixels))
-            .await?)
+        Ok(self.library_manager.fetch_remote_image(image.url_covering(pixels)).await?)
     }
 
     /// Submit a candidate's typed search, stored before any source is asked,
@@ -110,9 +107,9 @@ impl ImportServiceHandle {
                 .await
                 {
                     Ok(found) => found,
-                    Err(failed) => Err(crate::signals::Failure::Internal(
-                        diagnostics.bug(failed).into(),
-                    )),
+                    Err(failed) => {
+                        Err(crate::signals::Failure::Internal(diagnostics.bug(failed).into()))
+                    }
                 };
                 land_source_search(&runtime, &diagnostics, &candidate_key, run, source, found)
                     .await;
@@ -131,10 +128,7 @@ impl ImportServiceHandle {
         release: &crate::import::MetadataRef,
         links: crate::import::album_links::AlbumLinks,
     ) -> Result<(), crate::library::LibraryError> {
-        let kept = self
-            .runtime
-            .land_picked(candidate_key, release, links)
-            .await?;
+        let kept = self.runtime.land_picked(candidate_key, release, links).await?;
         if !kept.is_empty() {
             self.library_manager.keep_album_links(kept).await;
         }
@@ -165,15 +159,10 @@ impl ImportServiceHandle {
 
         let checks: Vec<LibraryCheck> = results.iter().map(LibraryCheck::from).collect();
 
-        let statuses = self
-            .library_manager
-            .check_releases_in_library(&checks)
-            .await?;
+        let statuses = self.library_manager.check_releases_in_library(&checks).await?;
 
-        let status_map: HashMap<String, crate::db::LibraryStatus> = statuses
-            .into_iter()
-            .map(|s| (s.release_id.clone(), s))
-            .collect();
+        let status_map: HashMap<String, crate::db::LibraryStatus> =
+            statuses.into_iter().map(|s| (s.release_id.clone(), s)).collect();
 
         // `check_releases_in_library` returns exactly one status per input check,
         // keyed by `release_id`, so a miss is a broken invariant. Surface it: a
@@ -241,25 +230,21 @@ impl ImportServiceHandle {
         let mut claimed_releases = Vec::new();
         for claimed in link.claimed() {
             claimed_releases.push(
-                self.library_manager
-                    .load_source_release(claimed)
-                    .await?
-                    .ok_or_else(|| crate::import::ImportError::Internal {
+                self.library_manager.load_source_release(claimed).await?.ok_or_else(|| {
+                    crate::import::ImportError::Internal {
                         detail: format!(
                             "{key} names {} release {} that is not stored",
                             claimed.catalog.as_str(),
                             claimed.key
                         ),
-                    })?,
+                    }
+                })?,
             );
         }
-        let (primary, partners) = claimed_releases
-            .split_first()
-            .expect("a pick claims at least its primary");
+        let (primary, partners) =
+            claimed_releases.split_first().expect("a pick claims at least its primary");
         Ok(RemoteCoverGallery::Linked(
-            self.library_manager
-                .pick_gallery_covers(primary, partners)
-                .await?,
+            self.library_manager.pick_gallery_covers(primary, partners).await?,
         ))
     }
 
@@ -272,9 +257,7 @@ impl ImportServiceHandle {
         if records.is_empty() {
             return Ok(RemoteCoverGallery::Unlinked);
         }
-        Ok(RemoteCoverGallery::Linked(
-            self.records_gallery(&records).await?,
-        ))
+        Ok(RemoteCoverGallery::Linked(self.records_gallery(&records).await?))
     }
 
     /// Every image the lookup catalogs among `records` show for what each
@@ -284,14 +267,11 @@ impl ImportServiceHandle {
         records: &[crate::import::ReleaseRecord],
     ) -> Result<Vec<bae_catalogs::remote_image::RemoteCover>, crate::import::ImportError> {
         let mut covers = Vec::new();
-        for record in records
-            .iter()
-            .filter(|record| Catalog::LOOKUP.contains(&record.catalog()))
-        {
+        for record in records.iter().filter(|record| Catalog::LOOKUP.contains(&record.catalog())) {
             let gallery = match record {
-                crate::import::ReleaseRecord::Pressing {
-                    release, album_key, ..
-                } => match release.catalog {
+                crate::import::ReleaseRecord::Pressing { release, album_key, .. } => match release
+                    .catalog
+                {
                     Catalog::MusicBrainz => {
                         self.library_manager
                             .musicbrainz_gallery(&release.key, album_key.as_deref())
@@ -306,9 +286,7 @@ impl ImportServiceHandle {
                 },
                 crate::import::ReleaseRecord::Album { album } => match album.catalog {
                     Catalog::MusicBrainz => {
-                        self.library_manager
-                            .musicbrainz_group_gallery(&album.key)
-                            .await?
+                        self.library_manager.musicbrainz_group_gallery(&album.key).await?
                     }
                     Catalog::Discogs => {
                         self.library_manager
@@ -337,16 +315,15 @@ impl ImportServiceHandle {
         steps: &crate::import::CatalogApplySteps,
     ) -> Result<crate::import::source_release::PreparedRelease, crate::import::ImportError> {
         if self.is_settled_lead(candidate_key, release).await? {
-            self.library_manager
-                .load_source_release(release)
-                .await?
-                .ok_or_else(|| crate::import::ImportError::Internal {
+            self.library_manager.load_source_release(release).await?.ok_or_else(|| {
+                crate::import::ImportError::Internal {
                     detail: format!(
                         "{candidate_key} settled on {} release {} but nothing stored it",
                         release.catalog.as_str(),
                         release.key
                     ),
-                })?;
+                }
+            })?;
         }
         crate::import::service::prepare_applied_release(&self.library_manager, release, steps).await
     }
@@ -416,9 +393,8 @@ impl ImportServiceHandle {
     ) -> Result<u64, crate::import::ImportError> {
         let this = self.clone();
         self.committed(async move {
-            let revision = this
-                .pick_candidate_release_write(candidate_key.clone(), link, &steps)
-                .await?;
+            let revision =
+                this.pick_candidate_release_write(candidate_key.clone(), link, &steps).await?;
             this.identification_ended(&candidate_key).await;
             this.announce_metadata_changed(candidate_key);
             Ok(revision)
@@ -435,9 +411,7 @@ impl ImportServiceHandle {
     ) -> Result<u64, crate::import::ImportError> {
         let this = self.clone();
         self.committed(async move {
-            let revision = this
-                .read_candidate_file_tags_write(candidate_key.clone())
-                .await?;
+            let revision = this.read_candidate_file_tags_write(candidate_key.clone()).await?;
             this.identification_ended(&candidate_key).await;
             this.announce_metadata_changed(candidate_key);
             Ok(revision)
@@ -464,9 +438,7 @@ async fn land_source_search(
             candidate_key,
             source.as_str()
         ),
-        Err(error) => diagnostics.report_bug(
-            &format!("land {}'s {} search", candidate_key, source.as_str()),
-            &error,
-        ),
+        Err(error) => diagnostics
+            .report_bug(&format!("land {}'s {} search", candidate_key, source.as_str()), &error),
     }
 }

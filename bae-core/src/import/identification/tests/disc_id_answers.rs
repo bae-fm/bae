@@ -33,12 +33,8 @@ fn route_two_pressings(fixture: &Fixture, probed: u64) {
         200,
         serde_json::json!({ "releases": [first, second.clone()] }).to_string(),
     );
-    fixture
-        .provider
-        .route("/release/mb-disc-de?", 200, document.to_string());
-    fixture
-        .provider
-        .route("/release/mb-disc-gb?", 200, second.to_string());
+    fixture.provider.route("/release/mb-disc-de?", 200, document.to_string());
+    fixture.provider.route("/release/mb-disc-gb?", 200, second.to_string());
     fixture.provider.route(
         "/release-group/rg-disc?",
         200,
@@ -67,19 +63,13 @@ async fn a_run_reads_the_releases_its_disc_id_returned_from_that_answer() {
         fixture.provider.requests()
     );
     assert_eq!(fixture.provider.count_containing("/release-group/rg-disc?"), 1);
-    let row = fixture
-        .stored_for(&dir)
-        .await
-        .expect("the candidate stores a row");
+    let row = fixture.stored_for(&dir).await.expect("the candidate stores a row");
     let verdict = identify_result(&row).verdict.clone();
     let TerminalVerdict::Found { findings, .. } = &verdict else {
         panic!("expected a Found verdict, got {verdict:?}");
     };
-    let mut offered: Vec<&str> = findings
-        .matches
-        .iter()
-        .map(|result| result.release_id.as_str())
-        .collect();
+    let mut offered: Vec<&str> =
+        findings.matches.iter().map(|result| result.release_id.as_str()).collect();
     offered.sort();
     assert_eq!(offered, vec!["mb-disc-de", "mb-disc-gb"]);
     for result in &findings.matches {
@@ -94,10 +84,7 @@ async fn a_run_reads_the_releases_its_disc_id_returned_from_that_answer() {
     );
 
     for release_id in ["mb-disc-de", "mb-disc-gb"] {
-        let stored = fixture
-            .stored_release(release_id)
-            .await
-            .expect("the run stores what it read");
+        let stored = fixture.stored_release(release_id).await.expect("the run stores what it read");
         assert_eq!(
             stored.unfetched,
             vec![crate::import::source_release::UnfetchedDocument {
@@ -126,28 +113,15 @@ async fn picking_a_release_read_from_its_disc_id_answer_reads_it_in_full() {
         .import
         .select_candidate_release(
             crate::import::CandidateKey::folder(&dir),
-            crate::import::PressingLink {
-                record: release.clone(),
-                partners: vec![],
-            }, crate::import::CatalogApplySteps::unread(),
+            crate::import::PressingLink { record: release.clone(), partners: vec![] },
+            crate::import::CatalogApplySteps::unread(),
         )
         .await
         .expect("the pick applies the release");
 
-    assert_eq!(
-        fixture.count_release_lookups("mb-disc-de"),
-        1,
-        "{:?}",
-        fixture.provider.requests()
-    );
-    let picked = fixture
-        .stored_release("mb-disc-de")
-        .await
-        .expect("the pick stores its release");
-    assert_eq!(
-        picked.notes,
-        vec!["club edition".to_string(), "Matrix: A1".to_string()]
-    );
+    assert_eq!(fixture.count_release_lookups("mb-disc-de"), 1, "{:?}", fixture.provider.requests());
+    let picked = fixture.stored_release("mb-disc-de").await.expect("the pick stores its release");
+    assert_eq!(picked.notes, vec!["club edition".to_string(), "Matrix: A1".to_string()]);
 
     let scratch = Fixture::new("disc-id-complete").await;
     route_two_pressings(&scratch, fixture.probed_total_ms(&dir));
@@ -167,11 +141,9 @@ async fn picking_a_release_read_from_its_disc_id_answer_reads_it_in_full() {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_release_only_a_barcode_found_is_read_with_a_release_lookup() {
     let fixture = Fixture::new("barcode-read").await;
-    fixture
-        .import
-        .register_artwork_analyzer(Arc::new(BarcodeAnalyzer {
-            barcode: PAIRED_BARCODE.to_string(),
-        }));
+    fixture.import.register_artwork_analyzer(Arc::new(BarcodeAnalyzer {
+        barcode: PAIRED_BARCODE.to_string(),
+    }));
     let dir = fixture.barcode_candidate("Album");
     let probed = fixture.probed_total_ms(&dir);
     for release_id in ["mb-barcode-de", "mb-barcode-gb"] {
@@ -195,10 +167,7 @@ async fn a_release_only_a_barcode_found_is_read_with_a_release_lookup() {
 
     for release_id in ["mb-barcode-de", "mb-barcode-gb"] {
         assert_eq!(fixture.count_release_lookups(release_id), 1);
-        let stored = fixture
-            .stored_release(release_id)
-            .await
-            .expect("the run stores what it read");
+        let stored = fixture.stored_release(release_id).await.expect("the run stores what it read");
         assert!(
             !stored
                 .unfetched
@@ -209,11 +178,7 @@ async fn a_release_only_a_barcode_found_is_read_with_a_release_lookup() {
         );
     }
     assert_ne!(
-        fixture
-            .stored_for(&dir)
-            .await
-            .expect("the candidate stores a row")
-            .metadata_author,
+        fixture.stored_for(&dir).await.expect("the candidate stores a row").metadata_author,
         crate::import::MetadataAuthor::Identification,
         "two pressings are offered and neither is picked"
     );
@@ -229,25 +194,15 @@ async fn a_disc_id_lead_whose_release_cannot_be_read_fails_at_its_pick() {
     let fixture = Fixture::new("settle-disc-id-unreadable").await;
     let dir = fixture.disc_id_candidate("Album");
     let probed = fixture.probed_total_ms(&dir);
-    fixture.provider.route(
-        "/discid/",
-        200,
-        discid_json("mb-short-1", "rg-short-1", &[probed, 0]),
-    );
+    fixture.provider.route("/discid/", 200, discid_json("mb-short-1", "rg-short-1", &[probed, 0]));
     fixture.provider.route("/release/mb-short-1?", 400, "{}");
     fixture.scan(1).await;
 
     fixture.drain_automatic().await;
 
-    let row = fixture
-        .stored_for(&dir)
-        .await
-        .expect("the candidate stores a row");
+    let row = fixture.stored_for(&dir).await.expect("the candidate stores a row");
     let verdict = identify_result(&row).verdict.clone();
-    let TerminalVerdict::Failed {
-        failures, findings, ..
-    } = &verdict
-    else {
+    let TerminalVerdict::Failed { failures, findings, .. } = &verdict else {
         panic!("the pick's failed read fails the verdict, got {verdict:?}");
     };
     assert!(
@@ -274,10 +229,7 @@ async fn a_disc_id_lead_whose_release_cannot_be_read_fails_at_its_pick() {
         crate::import::MetadataAuthor::Identification,
         "nothing was applied"
     );
-    let stored = fixture
-        .stored_release("mb-short-1")
-        .await
-        .expect("the run's read is stored");
+    let stored = fixture.stored_release("mb-short-1").await.expect("the run's read is stored");
     assert!(
         stored.unfetched.contains(&crate::import::source_release::UnfetchedDocument {
             document: crate::import::PayloadSource::MusicBrainz,
@@ -288,4 +240,3 @@ async fn a_disc_id_lead_whose_release_cannot_be_read_fails_at_its_pick() {
         stored.unfetched
     );
 }
-

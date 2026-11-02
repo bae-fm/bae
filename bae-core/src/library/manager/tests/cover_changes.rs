@@ -66,10 +66,7 @@ async fn an_undecodable_cover_pick_is_refused_as_unreadable_artwork() {
         Uuid::new_v4().to_string(),
         Utc::now(),
     );
-    manager
-        .add_external_file_for_test(&file, &source_path)
-        .await
-        .unwrap();
+    manager.add_external_file_for_test(&file, &source_path).await.unwrap();
 
     let error = manager
         .change_cover(&release.id, CoverSelection::ReleaseImage { file_id: file.id })
@@ -105,31 +102,17 @@ async fn assert_changed_cover(
         Uuid::new_v4().to_string(),
         Utc::now(),
     );
-    manager
-        .add_external_file_for_test(&file, &source_path)
-        .await
-        .unwrap();
+    manager.add_external_file_for_test(&file, &source_path).await.unwrap();
 
     manager
-        .change_cover(
-            &release.id,
-            CoverSelection::ReleaseImage {
-                file_id: file.id.clone(),
-            },
-        )
+        .change_cover(&release.id, CoverSelection::ReleaseImage { file_id: file.id.clone() })
         .await
         .unwrap();
 
     // The cover is a normalized JPEG; the release file retains its original bytes.
-    let stored = manager
-        .read_cover_image_bytes(&release.id)
-        .await
-        .unwrap()
-        .expect("cover file stored");
-    assert_eq!(
-        ::image::guess_format(&stored).unwrap(),
-        ::image::ImageFormat::Jpeg
-    );
+    let stored =
+        manager.read_cover_image_bytes(&release.id).await.unwrap().expect("cover file stored");
+    assert_eq!(::image::guess_format(&stored).unwrap(), ::image::ImageFormat::Jpeg);
     let decoded = ::image::load_from_memory(&stored).unwrap();
     assert_eq!((decoded.width(), decoded.height()), dimensions);
     assert_eq!(std::fs::read(&source_path).unwrap(), cover_bytes);
@@ -142,10 +125,7 @@ async fn assert_changed_cover(
         .unwrap()
         .expect("cover row stored");
     assert_eq!(row.content_type, ContentType::Jpeg);
-    assert_eq!(
-        cover_file(&manager, &release.id).await.size(),
-        stored.len() as u64
-    );
+    assert_eq!(cover_file(&manager, &release.id).await.size(), stored.len() as u64);
 }
 
 /// A cover can be changed again and again. A coven file never changes its
@@ -183,23 +163,12 @@ async fn change_cover_twice_replaces_the_cover_file() {
     };
     let green = add_source("green.png", &png([20, 160, 90]));
     let red = add_source("red.png", &png([200, 40, 40]));
-    manager
-        .add_external_file_for_test(&green, &source_dir.path().join("green.png"))
-        .await
-        .unwrap();
-    manager
-        .add_external_file_for_test(&red, &source_dir.path().join("red.png"))
-        .await
-        .unwrap();
+    manager.add_external_file_for_test(&green, &source_dir.path().join("green.png")).await.unwrap();
+    manager.add_external_file_for_test(&red, &source_dir.path().join("red.png")).await.unwrap();
 
     let change_to = async |file: &NewReleaseFile| {
         manager
-            .change_cover(
-                &release.id,
-                CoverSelection::ReleaseImage {
-                    file_id: file.id.clone(),
-                },
-            )
+            .change_cover(&release.id, CoverSelection::ReleaseImage { file_id: file.id.clone() })
             .await
     };
     let cover_row = async || {
@@ -210,14 +179,8 @@ async fn change_cover_twice_replaces_the_cover_file() {
             .expect("cover row stored")
     };
 
-    let cover_version = async || {
-        manager
-            .cover_ref(&release.id)
-            .await
-            .unwrap()
-            .expect("cover stored")
-            .version
-    };
+    let cover_version =
+        async || manager.cover_ref(&release.id).await.unwrap().expect("cover stored").version;
 
     change_to(&green).await.unwrap();
     cover_row().await;
@@ -237,11 +200,8 @@ async fn change_cover_twice_replaces_the_cover_file() {
         "a replaced cover is a new file, not new bytes under the old one"
     );
     assert_ne!(cover_version().await, first_version, "the cover's version moves");
-    let stored = manager
-        .read_cover_image_bytes(&release.id)
-        .await
-        .unwrap()
-        .expect("cover file stored");
+    let stored =
+        manager.read_cover_image_bytes(&release.id).await.unwrap().expect("cover file stored");
     assert_eq!(second_ref.size(), stored.len() as u64);
 
     // The bytes really are the second image's, not the first's.
@@ -251,8 +211,10 @@ async fn change_cover_twice_replaces_the_cover_file() {
         "the two source images must produce different thumbnails for this test to mean anything"
     );
 
-    assert!(matches!(manager.database.read_file(&first_ref).await,
-        Err(coven::FileReadError::Database(coven::DbError::FileAbsent { .. }))));
+    assert!(matches!(
+        manager.database.read_file(&first_ref).await,
+        Err(coven::FileReadError::Database(coven::DbError::FileAbsent { .. }))
+    ));
 }
 
 /// Replacing an uploaded cover deletes its coven file's record with its last

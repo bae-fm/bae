@@ -108,16 +108,10 @@ fn run_search(
     devices: PublishedDevices,
     diagnostics: Diagnostics,
 ) {
-    let client = match reqwest::blocking::Client::builder()
-        .timeout(DESCRIPTION_TIMEOUT)
-        .build()
-    {
+    let client = match reqwest::blocking::Client::builder().timeout(DESCRIPTION_TIMEOUT).build() {
         Ok(client) => client,
         Err(e) => {
-            warn!(
-                "dlna discovery: failed to build HTTP client: {}",
-                CauseChain(&e)
-            );
+            warn!("dlna discovery: failed to build HTTP client: {}", CauseChain(&e));
             return;
         }
     };
@@ -185,10 +179,7 @@ fn fetch_device(client: &reqwest::blocking::Client, location: &str) -> Option<Re
     let xml = match client.get(location).send().and_then(|r| r.text()) {
         Ok(xml) => xml,
         Err(e) => {
-            debug!(
-                "dlna discovery: fetching {location} failed: {}",
-                CauseChain(&e)
-            );
+            debug!("dlna discovery: fetching {location} failed: {}", CauseChain(&e));
             return None;
         }
     };
@@ -239,10 +230,8 @@ pub(super) fn parse_device_description(xml: &str, location: &str) -> Option<Rend
         .filter(|s| !s.is_empty())
         .unwrap_or(location);
 
-    let Some(id) = local_text(&doc, "UDN")
-        .map(str::trim)
-        .filter(|udn| !udn.is_empty())
-        .map(str::to_string)
+    let Some(id) =
+        local_text(&doc, "UDN").map(str::trim).filter(|udn| !udn.is_empty()).map(str::to_string)
     else {
         warn!(
             "dlna discovery: the renderer at {location} states no UDN, which UPnP \
@@ -258,9 +247,7 @@ pub(super) fn parse_device_description(xml: &str, location: &str) -> Option<Rend
 
     let mut av_transport_url = None;
     let mut rendering_control_url = None;
-    for service in doc
-        .descendants()
-        .filter(|n| n.is_element() && n.tag_name().name() == "service")
+    for service in doc.descendants().filter(|n| n.is_element() && n.tag_name().name() == "service")
     {
         let service_type = child_local_text(&service, "serviceType").unwrap_or_default();
         let Some(control_url) = child_local_text(&service, "controlURL") else {
@@ -295,9 +282,7 @@ fn fallback_name(location: &str) -> String {
 
 /// The text of the first element with local name `name` anywhere in the document.
 fn local_text<'a>(doc: &'a roxmltree::Document, name: &str) -> Option<&'a str> {
-    doc.descendants()
-        .find(|n| n.is_element() && n.tag_name().name() == name)
-        .and_then(|n| n.text())
+    doc.descendants().find(|n| n.is_element() && n.tag_name().name() == name).and_then(|n| n.text())
 }
 
 /// The text of the first descendant of `node` with local name `name`.
@@ -311,9 +296,5 @@ fn child_local_text(node: &roxmltree::Node, name: &str) -> Option<String> {
 /// Resolve `target` against `base`, handling a relative path, an absolute path,
 /// and a full URL on another host/port uniformly. `None` when neither parses.
 fn resolve_url(base: &str, target: &str) -> Option<String> {
-    reqwest::Url::parse(base)
-        .ok()?
-        .join(target)
-        .ok()
-        .map(|url| url.to_string())
+    reqwest::Url::parse(base).ok()?.join(target).ok().map(|url| url.to_string())
 }

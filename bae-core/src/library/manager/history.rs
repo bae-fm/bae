@@ -8,9 +8,7 @@ impl LibraryManager {
         duration: Option<std::time::Duration>,
         started_at: chrono::DateTime<chrono::Utc>,
     ) -> Result<HistoryPlay, crate::db::DbError> {
-        self.database
-            .begin_play(self.ids.new_id(), track_id, duration, started_at)
-            .await
+        self.database.begin_play(self.ids.new_id(), track_id, duration, started_at).await
     }
 
     pub(crate) async fn record_play(&self, play: &HistoryPlay) -> Result<bool, crate::db::DbError> {

@@ -3,23 +3,18 @@
 #[tokio::test(flavor = "multi_thread")]
 async fn stream_raw_serves_original_bytes_and_ranges() {
     let lib = seed_library().await;
-    let router = bae_subsonic::router(lib.services.clone(), credential(), bae_core::diagnostics::Diagnostics::noop());
+    let router = bae_subsonic::router(
+        lib.services.clone(),
+        credential(),
+        bae_core::diagnostics::Diagnostics::noop(),
+    );
     let song_id = first_song_id(&router, &lib.per_track_release).await;
 
-    let full = call(
-        &router,
-        "stream",
-        &authed(&format!("id={song_id}&format=raw")),
-    )
-    .await;
+    let full = call(&router, "stream", &authed(&format!("id={song_id}&format=raw"))).await;
     assert_eq!(full.status, StatusCode::OK);
     assert_eq!(full.content_type, "audio/flac");
     let total: u64 = full.content_length.as_ref().unwrap().parse().unwrap();
-    assert_eq!(
-        full.body.len() as u64,
-        total,
-        "full body matches Content-Length"
-    );
+    assert_eq!(full.body.len() as u64, total, "full body matches Content-Length");
     assert_eq!(&full.body[0..4], b"fLaC", "raw FLAC bytes");
 
     // A range request returns 206 with the right slice.
@@ -45,35 +40,24 @@ async fn stream_raw_serves_original_bytes_and_ranges() {
 #[tokio::test(flavor = "multi_thread")]
 async fn stream_raw_serves_a_cue_track_as_its_own_pcm() {
     let lib = seed_library().await;
-    let router = bae_subsonic::router(lib.services.clone(), credential(), bae_core::diagnostics::Diagnostics::noop());
-    let album = call(
-        &router,
-        "getAlbum",
-        &authed(&format!("f=json&id=al-{}", lib.cue_release)),
-    )
-    .await;
+    let router = bae_subsonic::router(
+        lib.services.clone(),
+        credential(),
+        bae_core::diagnostics::Diagnostics::noop(),
+    );
+    let album =
+        call(&router, "getAlbum", &authed(&format!("f=json&id=al-{}", lib.cue_release))).await;
     let song = album.sub()["album"]["song"][1].clone();
     assert_eq!(song["title"], "Track Two (White Noise)");
     let song_id = song["id"].as_str().unwrap();
     assert_eq!(song["contentType"], "audio/wav", "{song}");
     assert_eq!(song["suffix"], "wav", "{song}");
-    assert!(
-        song.get("size").is_none(),
-        "the stream's size is not known: {song}"
-    );
+    assert!(song.get("size").is_none(), "the stream's size is not known: {song}");
 
-    let served = call(
-        &router,
-        "stream",
-        &authed(&format!("id={song_id}&format=raw")),
-    )
-    .await;
+    let served = call(&router, "stream", &authed(&format!("id={song_id}&format=raw"))).await;
     assert_eq!(served.status, StatusCode::OK);
     assert_eq!(served.content_type, "audio/wav");
-    assert!(
-        served.content_length.is_none(),
-        "the stream's length is not known before it ends"
-    );
+    assert!(served.content_length.is_none(), "the stream's length is not known before it ends");
     let wav = bae_audio::parse_streamed_wav(&served.body).expect("a WAV stream");
     let image = decode_bytes(&std::fs::read(cue_fixture("Test Album.flac")).unwrap());
     assert_eq!(wav.sample_rate, image.sample_rate);
@@ -86,15 +70,8 @@ async fn stream_raw_serves_a_cue_track_as_its_own_pcm() {
         .iter()
         .flat_map(|&sample| ((sample >> 16) as i16).to_le_bytes())
         .collect();
-    assert_eq!(
-        wav.data.len(),
-        expected.len(),
-        "12 s: the track's INDEX 00 pregap, then its 10 s"
-    );
-    assert!(
-        wav.data == expected,
-        "the served PCM is the image's samples from 0:08 to 0:20"
-    );
+    assert_eq!(wav.data.len(), expected.len(), "12 s: the track's INDEX 00 pregap, then its 10 s");
+    assert!(wav.data == expected, "the served PCM is the image's samples from 0:08 to 0:20");
 }
 
 /// `format=wav` — what a Cast device set to lossless conversion fetches — is
@@ -105,15 +82,14 @@ async fn stream_raw_serves_a_cue_track_as_its_own_pcm() {
 #[tokio::test(flavor = "multi_thread")]
 async fn stream_wav_is_the_tracks_pcm_in_an_unsized_wav() {
     let lib = seed_library().await;
-    let router = bae_subsonic::router(lib.services.clone(), credential(), bae_core::diagnostics::Diagnostics::noop());
+    let router = bae_subsonic::router(
+        lib.services.clone(),
+        credential(),
+        bae_core::diagnostics::Diagnostics::noop(),
+    );
     let song_id = first_song_id(&router, &lib.per_track_release).await;
 
-    let served = call(
-        &router,
-        "stream",
-        &authed(&format!("id={song_id}&format=wav")),
-    )
-    .await;
+    let served = call(&router, "stream", &authed(&format!("id={song_id}&format=wav"))).await;
     assert_eq!(served.status, StatusCode::OK);
     assert_eq!(served.content_type, "audio/wav");
     assert!(served.content_length.is_none(), "no length is claimed");
@@ -124,31 +100,14 @@ async fn stream_wav_is_the_tracks_pcm_in_an_unsized_wav() {
 
     let song = call(&router, "getSong", &authed(&format!("f=json&id={song_id}"))).await;
     let song = &song.sub()["song"];
-    assert_eq!(
-        i64::from(wav.channels),
-        song["channelCount"].as_i64().unwrap()
-    );
-    assert_eq!(
-        i64::from(wav.sample_rate),
-        song["samplingRate"].as_i64().unwrap()
-    );
-    assert_eq!(
-        i64::from(wav.bits_per_sample),
-        song["bitDepth"].as_i64().unwrap()
-    );
+    assert_eq!(i64::from(wav.channels), song["channelCount"].as_i64().unwrap());
+    assert_eq!(i64::from(wav.sample_rate), song["samplingRate"].as_i64().unwrap());
+    assert_eq!(i64::from(wav.bits_per_sample), song["bitDepth"].as_i64().unwrap());
 
-    let raw = call(
-        &router,
-        "stream",
-        &authed(&format!("id={song_id}&format=raw")),
-    )
-    .await;
+    let raw = call(&router, "stream", &authed(&format!("id={song_id}&format=raw"))).await;
     let stored = decode_bytes(&raw.body);
-    let expected: Vec<u8> = stored
-        .samples
-        .iter()
-        .flat_map(|&sample| ((sample >> 16) as i16).to_le_bytes())
-        .collect();
+    let expected: Vec<u8> =
+        stored.samples.iter().flat_map(|&sample| ((sample >> 16) as i16).to_le_bytes()).collect();
     assert_eq!(
         wav.data.len(),
         expected.len(),
@@ -164,13 +123,14 @@ async fn stream_wav_is_the_tracks_pcm_in_an_unsized_wav() {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_track_whose_original_is_gone_is_refused_with_the_reason() {
     let lib = seed_library().await;
-    let router = bae_subsonic::router(lib.services.clone(), credential(), bae_core::diagnostics::Diagnostics::noop());
-    let album = call(
-        &router,
-        "getAlbum",
-        &authed(&format!("f=json&id=al-{}", lib.per_track_release)),
-    )
-    .await;
+    let router = bae_subsonic::router(
+        lib.services.clone(),
+        credential(),
+        bae_core::diagnostics::Diagnostics::noop(),
+    );
+    let album =
+        call(&router, "getAlbum", &authed(&format!("f=json&id=al-{}", lib.per_track_release)))
+            .await;
     let songs = album.sub()["album"]["song"].clone();
     assert_eq!(songs[0]["title"], "First Track");
     let gone = songs[0]["id"].as_str().unwrap().to_string();
@@ -178,12 +138,8 @@ async fn a_track_whose_original_is_gone_is_refused_with_the_reason() {
     std::fs::remove_file(lib.per_track_source.join("01.flac")).unwrap();
 
     for format in ["raw", "mp3", "wav"] {
-        let refused = call(
-            &router,
-            "stream",
-            &authed(&format!("f=json&id={gone}&format={format}")),
-        )
-        .await;
+        let refused =
+            call(&router, "stream", &authed(&format!("f=json&id={gone}&format={format}"))).await;
         assert_eq!(refused.status, StatusCode::OK, "{format}");
         assert!(refused.content_type.contains("json"), "{format}");
         let sub = refused.sub();
@@ -203,37 +159,27 @@ async fn a_track_whose_original_is_gone_is_refused_with_the_reason() {
 #[tokio::test(flavor = "multi_thread")]
 async fn stream_transcode_mp3_is_chunked_and_decodes() {
     let lib = seed_library().await;
-    let router = bae_subsonic::router(lib.services.clone(), credential(), bae_core::diagnostics::Diagnostics::noop());
+    let router = bae_subsonic::router(
+        lib.services.clone(),
+        credential(),
+        bae_core::diagnostics::Diagnostics::noop(),
+    );
     let song_id = first_song_id(&router, &lib.per_track_release).await;
 
-    let resp = call(
-        &router,
-        "stream",
-        &authed(&format!("id={song_id}&format=mp3&maxBitRate=128")),
-    )
-    .await;
+    let resp =
+        call(&router, "stream", &authed(&format!("id={song_id}&format=mp3&maxBitRate=128"))).await;
     assert_eq!(resp.status, StatusCode::OK);
     assert_eq!(resp.content_type, "audio/mpeg");
     // Chunked: no (bogus) Content-Length on a streaming transcode.
-    assert!(
-        resp.content_length.is_none(),
-        "transcode must not send Content-Length"
-    );
-    assert!(
-        resp.body.len() > 1000,
-        "mp3 body present: {} bytes",
-        resp.body.len()
-    );
+    assert!(resp.content_length.is_none(), "transcode must not send Content-Length");
+    assert!(resp.body.len() > 1000, "mp3 body present: {} bytes", resp.body.len());
 
     // The bytes decode back with the source's channel count and duration.
     let song = call(&router, "getSong", &authed(&format!("f=json&id={song_id}"))).await;
     let expected_channels = song.sub()["song"]["channelCount"].as_i64().unwrap() as u32;
     let source_secs = song.sub()["song"]["duration"].as_i64().unwrap();
     let decoded = decode_bytes(&resp.body);
-    assert_eq!(
-        decoded.channels, expected_channels,
-        "transcode preserves channels"
-    );
+    assert_eq!(decoded.channels, expected_channels, "transcode preserves channels");
     assert!(!decoded.samples.is_empty());
     let decoded_secs =
         (decoded.samples.len() as f64 / decoded.channels as f64) / decoded.sample_rate as f64;
@@ -244,18 +190,10 @@ async fn stream_transcode_mp3_is_chunked_and_decodes() {
 
     // maxBitRate has a bitrate-dependent effect: a CBR MP3 of fixed duration is
     // larger at a higher bitrate.
-    let low = call(
-        &router,
-        "stream",
-        &authed(&format!("id={song_id}&format=mp3&maxBitRate=64")),
-    )
-    .await;
-    let high = call(
-        &router,
-        "stream",
-        &authed(&format!("id={song_id}&format=mp3&maxBitRate=320")),
-    )
-    .await;
+    let low =
+        call(&router, "stream", &authed(&format!("id={song_id}&format=mp3&maxBitRate=64"))).await;
+    let high =
+        call(&router, "stream", &authed(&format!("id={song_id}&format=mp3&maxBitRate=320"))).await;
     assert!(
         high.body.len() > low.body.len(),
         "320kbps ({} bytes) must exceed 64kbps ({} bytes)",
@@ -267,15 +205,15 @@ async fn stream_transcode_mp3_is_chunked_and_decodes() {
 #[tokio::test(flavor = "multi_thread")]
 async fn cover_art_resolves_every_id_kind() {
     let lib = seed_library().await;
-    let router = bae_subsonic::router(lib.services.clone(), credential(), bae_core::diagnostics::Diagnostics::noop());
+    let router = bae_subsonic::router(
+        lib.services.clone(),
+        credential(),
+        bae_core::diagnostics::Diagnostics::noop(),
+    );
 
     // Album id serves the release cover.
-    let by_album = call(
-        &router,
-        "getCoverArt",
-        &authed(&format!("id=al-{}", lib.per_track_release)),
-    )
-    .await;
+    let by_album =
+        call(&router, "getCoverArt", &authed(&format!("id=al-{}", lib.per_track_release))).await;
     assert_eq!(by_album.status, StatusCode::OK);
     assert!(by_album.content_type.starts_with("image/"));
     assert!(!by_album.body.is_empty());
@@ -288,16 +226,10 @@ async fn cover_art_resolves_every_id_kind() {
 
     // An artist's art is the artist's own image; this artist has none, so
     // its id finds nothing rather than one of its release covers.
-    let album = call(
-        &router,
-        "getAlbum",
-        &authed(&format!("f=json&id=al-{}", lib.per_track_release)),
-    )
-    .await;
-    let artist_id = album.sub()["album"]["artistId"]
-        .as_str()
-        .unwrap()
-        .to_string();
+    let album =
+        call(&router, "getAlbum", &authed(&format!("f=json&id=al-{}", lib.per_track_release)))
+            .await;
+    let artist_id = album.sub()["album"]["artistId"].as_str().unwrap().to_string();
     let by_artist = call(&router, "getCoverArt", &authed(&format!("id={artist_id}"))).await;
     assert!(
         by_artist.text().contains(r#"code="70""#),
@@ -306,17 +238,9 @@ async fn cover_art_resolves_every_id_kind() {
     );
 
     // The CUE release has no cover art → error 70.
-    let missing = call(
-        &router,
-        "getCoverArt",
-        &authed(&format!("id=al-{}", lib.cue_release)),
-    )
-    .await;
-    assert!(
-        missing.text().contains(r#"code="70""#),
-        "missing art: {}",
-        missing.text()
-    );
+    let missing =
+        call(&router, "getCoverArt", &authed(&format!("id=al-{}", lib.cue_release))).await;
+    assert!(missing.text().contains(r#"code="70""#), "missing art: {}", missing.text());
 }
 
 /// A `coverArt` id carries the image's version, so a client that caches art
@@ -324,13 +248,14 @@ async fn cover_art_resolves_every_id_kind() {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_changed_cover_gets_a_new_cover_art_id() {
     let lib = seed_library().await;
-    let router = bae_subsonic::router(lib.services.clone(), credential(), bae_core::diagnostics::Diagnostics::noop());
+    let router = bae_subsonic::router(
+        lib.services.clone(),
+        credential(),
+        bae_core::diagnostics::Diagnostics::noop(),
+    );
     let album_query = authed(&format!("f=json&id=al-{}", lib.per_track_release));
     let cover_art = |album: &Resp| {
-        album.sub()["album"]["coverArt"]
-            .as_str()
-            .expect("the release has a cover")
-            .to_string()
+        album.sub()["album"]["coverArt"].as_str().expect("the release has a cover").to_string()
     };
     let before = cover_art(&call(&router, "getAlbum", &album_query).await);
 
@@ -360,17 +285,15 @@ async fn a_changed_cover_gets_a_new_cover_art_id() {
 #[tokio::test(flavor = "multi_thread")]
 async fn an_artist_cover_art_is_the_artist_image() {
     let lib = seed_library().await;
-    let router = bae_subsonic::router(lib.services.clone(), credential(), bae_core::diagnostics::Diagnostics::noop());
-    let album = call(
-        &router,
-        "getAlbum",
-        &authed(&format!("f=json&id=al-{}", lib.per_track_release)),
-    )
-    .await;
-    let artist_wire_id = album.sub()["album"]["artistId"]
-        .as_str()
-        .unwrap()
-        .to_string();
+    let router = bae_subsonic::router(
+        lib.services.clone(),
+        credential(),
+        bae_core::diagnostics::Diagnostics::noop(),
+    );
+    let album =
+        call(&router, "getAlbum", &authed(&format!("f=json&id=al-{}", lib.per_track_release)))
+            .await;
+    let artist_wire_id = album.sub()["album"]["artistId"].as_str().unwrap().to_string();
     let artist_id = artist_wire_id.strip_prefix("ar-").unwrap().to_string();
     let image = support::cover_png();
     lib.manager
@@ -388,36 +311,25 @@ async fn an_artist_cover_art_is_the_artist_image() {
         .await
         .unwrap();
 
-    let artist = call(
-        &router,
-        "getArtist",
-        &authed(&format!("f=json&id={artist_wire_id}")),
-    )
-    .await;
-    let cover_art = artist.sub()["artist"]["coverArt"]
-        .as_str()
-        .expect("the artist has an image")
-        .to_string();
+    let artist = call(&router, "getArtist", &authed(&format!("f=json&id={artist_wire_id}"))).await;
+    let cover_art =
+        artist.sub()["artist"]["coverArt"].as_str().expect("the artist has an image").to_string();
     let served = call(&router, "getCoverArt", &authed(&format!("id={cover_art}"))).await;
     assert_eq!(served.status, StatusCode::OK);
-    assert_eq!(
-        served.body, image,
-        "the artist's own image, not a release cover"
-    );
+    assert_eq!(served.body, image, "the artist's own image, not a release cover");
 }
 
 #[tokio::test(flavor = "multi_thread")]
 async fn scrobble_is_an_accepted_no_op() {
     let lib = seed_library().await;
-    let router = bae_subsonic::router(lib.services.clone(), credential(), bae_core::diagnostics::Diagnostics::noop());
+    let router = bae_subsonic::router(
+        lib.services.clone(),
+        credential(),
+        bae_core::diagnostics::Diagnostics::noop(),
+    );
     let song_id = first_song_id(&router, &lib.per_track_release).await;
 
-    let resp = call(
-        &router,
-        "scrobble",
-        &authed(&format!("f=json&id={song_id}")),
-    )
-    .await;
+    let resp = call(&router, "scrobble", &authed(&format!("f=json&id={song_id}"))).await;
     assert_eq!(resp.sub()["status"], "ok");
 }
 
@@ -487,10 +399,9 @@ async fn musicbrainz_id_surfaces_when_present() {
         .await
         .unwrap();
 
-    let services = AppServices::for_test(manager.clone())
-        .await
-        .expect("app services");
-    let router = bae_subsonic::router(services, credential(), bae_core::diagnostics::Diagnostics::noop());
+    let services = AppServices::for_test(manager.clone()).await.expect("app services");
+    let router =
+        bae_subsonic::router(services, credential(), bae_core::diagnostics::Diagnostics::noop());
 
     let artists = call(&router, "getArtists", &authed("f=json")).await;
     let sub = artists.sub();
@@ -498,17 +409,8 @@ async fn musicbrainz_id_surfaces_when_present() {
     let mb = find_artist(indexes, "MB Artist");
     assert_eq!(mb["musicBrainzId"], "mbid-abc-123", "getArtists emits mbid");
 
-    let one = call(
-        &router,
-        "getArtist",
-        &authed(&format!("f=json&id=ar-{artist_id}")),
-    )
-    .await;
-    assert_eq!(
-        one.sub()["artist"]["musicBrainzId"],
-        "mbid-abc-123",
-        "getArtist emits mbid"
-    );
+    let one = call(&router, "getArtist", &authed(&format!("f=json&id=ar-{artist_id}"))).await;
+    assert_eq!(one.sub()["artist"]["musicBrainzId"], "mbid-abc-123", "getArtist emits mbid");
 
     let group = bae_core::import::MetadataRef::new(Catalog::MusicBrainz, "mb-group");
     let pressing = bae_core::import::MetadataRef::new(Catalog::MusicBrainz, "mb-pressing");
@@ -519,16 +421,9 @@ async fn musicbrainz_id_surfaces_when_present() {
             Some(pressing.key.as_str()),
         ),
     ] {
-        manager
-            .set_records(&release.id, vec![record])
-            .await
-            .unwrap();
-        let response = call(
-            &router,
-            "getAlbumList2",
-            &authed("f=json&type=alphabeticalByName"),
-        )
-        .await;
+        manager.set_records(&release.id, vec![record]).await.unwrap();
+        let response =
+            call(&router, "getAlbumList2", &authed("f=json&type=alphabeticalByName")).await;
         assert_eq!(
             response.sub()["albumList2"]["album"][0]["musicBrainzId"].as_str(),
             expected,
@@ -545,14 +440,10 @@ async fn lossy_track_reports_bit_depth_zero() {
     // (AAC-in-MP4 is unsuitable: the MP4 sound sample entry always declares 16,
     // so FFmpeg reports a bit depth for it; Opus carries none.)
     let (services, release_id, _temps) = seed_lossy_release().await;
-    let router = bae_subsonic::router(services, credential(), bae_core::diagnostics::Diagnostics::noop());
+    let router =
+        bae_subsonic::router(services, credential(), bae_core::diagnostics::Diagnostics::noop());
 
-    let album = call(
-        &router,
-        "getAlbum",
-        &authed(&format!("f=json&id=al-{release_id}")),
-    )
-    .await;
+    let album = call(&router, "getAlbum", &authed(&format!("f=json&id=al-{release_id}"))).await;
     let song = &album.sub()["album"]["song"][0];
     assert_eq!(song["bitDepth"], 0, "a lossy track reports bitDepth 0");
     assert!(song["samplingRate"].as_i64().unwrap() > 0);
@@ -560,11 +451,7 @@ async fn lossy_track_reports_bit_depth_zero() {
 
     let song_id = song["id"].as_str().unwrap().to_string();
     let one = call(&router, "getSong", &authed(&format!("f=json&id={song_id}"))).await;
-    assert_eq!(
-        one.sub()["song"]["bitDepth"],
-        0,
-        "getSong reports bitDepth 0 for lossy"
-    );
+    assert_eq!(one.sub()["song"]["bitDepth"], 0, "getSong reports bitDepth 0 for lossy");
 }
 
 /// Import the single-file lossy Opus fixture through the normal import path.
@@ -584,10 +471,7 @@ async fn seed_lossy_release() -> (AppServices, String, Vec<TempDir>) {
         DiscogsRelease {
             country: None,
             labels: vec![],
-            artists: vec![support::discogs_artist(
-                "discogs-lossy-artist",
-                "Lossy Artist",
-            )],
+            artists: vec![support::discogs_artist("discogs-lossy-artist", "Lossy Artist")],
             ..support::discogs_test_release("test-lossy", "Lossy Album", &[("Only Track", "0:10")])
         },
     );
@@ -621,23 +505,15 @@ async fn seed_lossy_release() -> (AppServices, String, Vec<TempDir>) {
 }
 
 async fn first_song_id(router: &Router, release_id: &str) -> String {
-    let album = call(
-        router,
-        "getAlbum",
-        &authed(&format!("f=json&id=al-{release_id}")),
-    )
-    .await;
-    album.sub()["album"]["song"][0]["id"]
-        .as_str()
-        .unwrap()
-        .to_string()
+    let album = call(router, "getAlbum", &authed(&format!("f=json&id=al-{release_id}"))).await;
+    album.sub()["album"]["song"][0]["id"].as_str().unwrap().to_string()
 }
 
 /// Decode encoded audio bytes by writing them to a temp file, filling a sparse
 /// buffer through the local reader, and running the real decoder.
 fn decode_bytes(bytes: &[u8]) -> bae_audio::DecodedAudio {
-    use bae_core::playback::data_source::{AudioDataReader, LocalReader};
     use bae_audio::sparse_buffer::create_sparse_buffer;
+    use bae_core::playback::data_source::{AudioDataReader, LocalReader};
     use std::io::Write;
 
     let mut file = tempfile::NamedTempFile::new().unwrap();
@@ -709,17 +585,11 @@ async fn an_album_prints_its_credit_line_and_lists_every_credited_artist() {
         .insert_album_with_release_and_tracks(&album, &credits, &release, &[], &[], &[])
         .await
         .unwrap();
-    let services = AppServices::for_test(manager.clone())
-        .await
-        .expect("app services");
-    let router = bae_subsonic::router(services, credential(), bae_core::diagnostics::Diagnostics::noop());
+    let services = AppServices::for_test(manager.clone()).await.expect("app services");
+    let router =
+        bae_subsonic::router(services, credential(), bae_core::diagnostics::Diagnostics::noop());
 
-    let response = call(
-        &router,
-        "getAlbumList2",
-        &authed("f=json&type=alphabeticalByName"),
-    )
-    .await;
+    let response = call(&router, "getAlbumList2", &authed("f=json&type=alphabeticalByName")).await;
 
     let sub = response.sub();
     let listed = &sub["albumList2"]["album"][0];

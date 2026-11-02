@@ -170,10 +170,7 @@ impl LibraryManager {
         access: coven::InviteAccess,
         delivery: coven::InviteDelivery,
     ) -> Result<coven::InviteId, LibraryError> {
-        Ok(self
-            .database
-            .invite_person(role, name, access, delivery)
-            .await?)
+        Ok(self.database.invite_person(role, name, access, delivery).await?)
     }
 
     /// This device's open invites, each with the pending record of its

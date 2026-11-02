@@ -24,10 +24,9 @@ impl ReleasePayloads {
                 .musicbrainz_anchor()?
                 .release_group
                 .map(|group| MetadataRef::new(Catalog::MusicBrainz, group.id)),
-            Catalog::Discogs => self
-                .discogs_anchor()?
-                .master_id
-                .map(|key| MetadataRef::new(Catalog::Discogs, key)),
+            Catalog::Discogs => {
+                self.discogs_anchor()?.master_id.map(|key| MetadataRef::new(Catalog::Discogs, key))
+            }
             other => not_fetched(other),
         })
     }
@@ -47,11 +46,7 @@ impl ReleasePayloads {
             if !admitted.contains(&MetadataRef::new(catalog, &document.source_release_id)) {
                 continue;
             }
-            documents.push((
-                catalog,
-                document.source_release_id.as_str(),
-                document.json.as_str(),
-            ));
+            documents.push((catalog, document.source_release_id.as_str(), document.json.as_str()));
         }
         documents.sort_by_key(|(catalog, key, _)| {
             let is_parent = parent
@@ -88,9 +83,7 @@ impl ReleasePayloads {
             other => not_fetched(other),
         };
         let linked_album_year = counterpart.as_ref().and_then(|value| value.album.year);
-        let linked_first_year = counterpart
-            .as_ref()
-            .and_then(|value| value.album.first_year);
+        let linked_first_year = counterpart.as_ref().and_then(|value| value.album.first_year);
         if let Some(mut counterpart) = counterpart {
             // The linked record is the same pressing on the other catalog: it
             // speaks for the album they share, never for the pressing, whose
@@ -139,10 +132,7 @@ impl ReleasePayloads {
 
     pub(super) fn projected_records(&self) -> Result<Vec<ReleaseRecord>, ImportError> {
         let parent = self.anchor_parent()?;
-        let mut records = vec![ReleaseRecord::new(
-            &self.release,
-            parent.map(|parent| parent.key),
-        )];
+        let mut records = vec![ReleaseRecord::new(&self.release, parent.map(|parent| parent.key))];
         if let Some(counterpart) = self.counterpart()? {
             let parent = match counterpart.catalog {
                 Catalog::Discogs => self.discogs_xref()?.and_then(|release| release.master_id),
@@ -173,10 +163,7 @@ impl ReleasePayloads {
 }
 
 fn merge_record(records: &mut Vec<ReleaseRecord>, incoming: ReleaseRecord) {
-    match records
-        .iter_mut()
-        .find(|record| record.catalog() == incoming.catalog())
-    {
+    match records.iter_mut().find(|record| record.catalog() == incoming.catalog()) {
         Some(existing @ ReleaseRecord::Album { .. })
             if matches!(incoming, ReleaseRecord::Pressing { .. }) =>
         {

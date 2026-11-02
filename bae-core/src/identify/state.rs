@@ -110,9 +110,7 @@ impl IdentifyState {
     /// The candidate's own text this run judged its results against, which a
     /// [`super::TerminalVerdict`] does not keep.
     pub fn candidate_text(&self) -> super::CandidateText {
-        self.context()
-            .map(|context| context.text.clone())
-            .unwrap_or_default()
+        self.context().map(|context| context.text.clone()).unwrap_or_default()
     }
 
     /// The releases this run read the documents of, as their read stores
@@ -148,11 +146,7 @@ impl IdentifyState {
     /// reads that pressing in full by.
     pub fn picks_unattended(&self) -> bool {
         match self {
-            IdentifyState::Found {
-                findings,
-                track_count,
-                ..
-            } => super::fit::unattended_pick(
+            IdentifyState::Found { findings, track_count, .. } => super::fit::unattended_pick(
                 &findings.matches,
                 &findings.pressings,
                 findings.medium_conflict,
@@ -218,11 +212,7 @@ impl IdentifyState {
     /// Shows the matched code, else the first, with every code as an option.
     fn barcode_badge(&self, context: &SignalsContext) -> ToolbarSignal {
         let codes = context.barcode.code_values();
-        let shown = context
-            .barcode
-            .matched
-            .clone()
-            .or_else(|| codes.first().cloned());
+        let shown = context.barcode.matched.clone().or_else(|| codes.first().cloned());
         let state = match self {
             IdentifyState::Triangulating { barcode, .. } => barcode_progress_state(barcode),
             _ => barcode_settled_state(context),
@@ -262,10 +252,7 @@ impl IdentifyState {
 fn signal_options(values: &[String], chosen: impl Fn(&str) -> bool) -> Vec<SignalOption> {
     values
         .iter()
-        .map(|value| SignalOption {
-            value: value.clone(),
-            chosen: chosen(value),
-        })
+        .map(|value| SignalOption { value: value.clone(), chosen: chosen(value) })
         .collect()
 }
 
@@ -398,14 +385,7 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
     }
 
     match (state, event) {
-        (
-            IdentifyState::Idle,
-            IdentifyEvent::Started {
-                providers,
-                choices,
-                title_search,
-            },
-        ) => {
+        (IdentifyState::Idle, IdentifyEvent::Started { providers, choices, title_search }) => {
             let context = SignalsContext::started(providers, choices, title_search);
             // Picked numbers are looked up at once, without waiting for a
             // snapshot to offer them again.
@@ -433,22 +413,11 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
         }
 
         (
-            IdentifyState::Triangulating {
-                discid,
-                barcode,
-                catalog,
-                isrc,
-                search,
-                context,
-            },
-            IdentifyEvent::SignalsUpdated {
-                signals,
-                audio,
-                artwork,
-            },
-        ) => apply_signals(
-            discid, barcode, catalog, isrc, search, context, signals, audio, artwork,
-        ),
+            IdentifyState::Triangulating { discid, barcode, catalog, isrc, search, context },
+            IdentifyEvent::SignalsUpdated { signals, audio, artwork },
+        ) => {
+            apply_signals(discid, barcode, catalog, isrc, search, context, signals, audio, artwork)
+        }
 
         (
             IdentifyState::Triangulating {
@@ -483,11 +452,7 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
                 search,
                 context,
             },
-            IdentifyEvent::BarcodeLookupAnswered {
-                source,
-                for_barcode,
-                outcome,
-            },
+            IdentifyEvent::BarcodeLookupAnswered { source, for_barcode, outcome },
         ) => {
             if let Some(lookup) = codes.iter_mut().find(|lookup| lookup.value == for_barcode) {
                 lookup.answer(source, outcome);
@@ -512,12 +477,7 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
                 search,
                 context,
             },
-            IdentifyEvent::CatalogLookupAnswered {
-                source,
-                for_catalog,
-                artist,
-                outcome,
-            },
+            IdentifyEvent::CatalogLookupAnswered { source, for_catalog, artist, outcome },
         ) => {
             if let Some(lookup) = values.iter_mut().find(|lookup| lookup.value == for_catalog) {
                 lookup.answer(source, &artist, outcome);
@@ -585,14 +545,7 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
         }),
 
         (
-            IdentifyState::Triangulating {
-                discid,
-                barcode,
-                catalog,
-                isrc,
-                search,
-                mut context,
-            },
+            IdentifyState::Triangulating { discid, barcode, catalog, isrc, search, mut context },
             IdentifyEvent::ReleasesRead { read },
         ) if matches!(context.documents, DocumentReading::Reading(_)) => {
             let mut documents = context.documents.read().to_vec();
@@ -609,19 +562,8 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
         }
 
         (
-            IdentifyState::Triangulating {
-                discid,
-                barcode,
-                catalog,
-                isrc,
-                search,
-                mut context,
-            },
-            IdentifyEvent::PressingLookupAnswered {
-                source,
-                key,
-                outcome,
-            },
+            IdentifyState::Triangulating { discid, barcode, catalog, isrc, search, mut context },
+            IdentifyEvent::PressingLookupAnswered { source, key, outcome },
         ) => {
             if let Some(lookup) = context
                 .pressings
@@ -662,24 +604,15 @@ fn apply_signals(
     // Reading the folder's files broke: nothing it would have read can be
     // looked up.
     if let Some(failure) = signals.failure() {
-        return (
-            IdentifyState::Error {
-                failure: failure.clone(),
-                context,
-            },
-            vec![],
-        );
+        return (IdentifyState::Error { failure: failure.clone(), context }, vec![]);
     }
     let mut effects = Vec::new();
     context.refresh_inputs(&signals, audio, artwork);
 
     let discid = match (discid, &signals.disc_id) {
-        (DiscidProgress::Computing, signal) => start_discid_progress(
-            signal,
-            context.disc.excluded,
-            &context.providers,
-            &mut effects,
-        ),
+        (DiscidProgress::Computing, signal) => {
+            start_discid_progress(signal, context.disc.excluded, &context.providers, &mut effects)
+        }
         (discid, _) => discid,
     };
 
@@ -705,14 +638,7 @@ fn apply_signals(
         isrc => isrc,
     };
 
-    let next = IdentifyState::Triangulating {
-        discid,
-        barcode,
-        catalog,
-        isrc,
-        search,
-        context,
-    };
+    let next = IdentifyState::Triangulating { discid, barcode, catalog, isrc, search, context };
 
     // A dispatched lookup means nothing can have settled this step.
     if effects.is_empty() {
@@ -725,14 +651,8 @@ fn apply_signals(
 /// Once every step has settled, record the results and combine them into a
 /// terminal state; until then, stay in `Triangulating`.
 fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
-    let IdentifyState::Triangulating {
-        discid,
-        barcode,
-        catalog,
-        isrc,
-        search,
-        mut context,
-    } = state
+    let IdentifyState::Triangulating { discid, barcode, catalog, isrc, search, mut context } =
+        state
     else {
         return (state, vec![]);
     };
@@ -744,14 +664,7 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
         || !isrc.is_settled()
     {
         return (
-            IdentifyState::Triangulating {
-                discid,
-                barcode,
-                catalog,
-                isrc,
-                search,
-                context,
-            },
+            IdentifyState::Triangulating { discid, barcode, catalog, isrc, search, context },
             vec![],
         );
     }
@@ -778,14 +691,7 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
         started
     } else if !search.is_settled() {
         return (
-            IdentifyState::Triangulating {
-                discid,
-                barcode,
-                catalog,
-                isrc,
-                search,
-                context,
-            },
+            IdentifyState::Triangulating { discid, barcode, catalog, isrc, search, context },
             vec![],
         );
     } else {
@@ -797,38 +703,20 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
     // an offered row not read yet.
     if matches!(context.documents, DocumentReading::Reading(_)) || !context.pressings_settled() {
         return (
-            IdentifyState::Triangulating {
-                discid,
-                barcode,
-                catalog,
-                isrc,
-                search,
-                context,
-            },
+            IdentifyState::Triangulating { discid, barcode, catalog, isrc, search, context },
             vec![],
         );
     }
     let (catalog, effects) = rounds::next_round(&mut context, catalog, &barcode);
     if !effects.is_empty() {
         return (
-            IdentifyState::Triangulating {
-                discid,
-                barcode,
-                catalog,
-                isrc,
-                search,
-                context,
-            },
+            IdentifyState::Triangulating { discid, barcode, catalog, isrc, search, context },
             effects,
         );
     }
     context.documents = DocumentReading::Read(context.documents.read().to_vec());
     let kept = context.album_links_to_keep();
-    let effects = if kept.is_empty() {
-        Vec::new()
-    } else {
-        vec![Effect::KeepAlbumLinks { kept }]
-    };
+    let effects = if kept.is_empty() { Vec::new() } else { vec![Effect::KeepAlbumLinks { kept }] };
 
     // The only place a ledger is recorded; later readers show this one.
     let ledger = context.has_inputs().then(|| {
@@ -837,22 +725,14 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
     });
 
     // Nothing was asked of anyone, so nothing was found wanting.
-    if matches!(
-        discid,
-        DiscidProgress::Skipped | DiscidProgress::NotAsked { .. }
-    ) && matches!(
-        barcode,
-        BarcodeProgress::Skipped | BarcodeProgress::NotAsked { .. }
-    ) && matches!(catalog, CatalogProgress::Skipped)
+    if matches!(discid, DiscidProgress::Skipped | DiscidProgress::NotAsked { .. })
+        && matches!(barcode, BarcodeProgress::Skipped | BarcodeProgress::NotAsked { .. })
+        && matches!(catalog, CatalogProgress::Skipped)
         && matches!(isrc, IsrcProgress::Skipped | IsrcProgress::NotAsked { .. })
         && matches!(search, SearchProgress::Skipped)
     {
         return (
-            IdentifyState::ManualOnly {
-                track_count: context.audio.track_count,
-                ledger,
-                context,
-            },
+            IdentifyState::ManualOnly { track_count: context.audio.track_count, ledger, context },
             effects,
         );
     }
@@ -862,11 +742,7 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
 
 /// The recorded results, combined: what the run offers and sets aside.
 fn combined(context: &SignalsContext) -> Findings {
-    combine_results(
-        context.lookup_results(),
-        &context.text,
-        context.folder_audio(),
-    )
+    combine_results(context.lookup_results(), &context.text, context.folder_audio())
 }
 
 /// Combine the recorded results into `Failed`, `NotFoundAnywhere` or `Found`.
@@ -876,23 +752,12 @@ fn re_derive(context: SignalsContext, ledger: Option<IdentifyRunView>) -> Identi
     let track_count = context.audio.track_count;
     let failures = context.active_failures();
     if !failures.is_empty() {
-        return IdentifyState::Failed {
-            failures,
-            findings,
-            track_count,
-            ledger,
-            context,
-        };
+        return IdentifyState::Failed { failures, findings, track_count, ledger, context };
     }
     if findings.is_empty() {
         return IdentifyState::NotFoundAnywhere { ledger, context };
     }
-    IdentifyState::Found {
-        findings,
-        track_count,
-        ledger,
-        context,
-    }
+    IdentifyState::Found { findings, track_count, ledger, context }
 }
 
 mod context;

@@ -8,9 +8,7 @@ fn a_run_that_leaves_the_disc_id_out_never_asks_about_it() {
         update(state, disc_and_codes("d", &["BAR"]))
     };
     assert!(
-        !effects
-            .iter()
-            .any(|effect| matches!(effect, Effect::LookupDiscid { .. })),
+        !effects.iter().any(|effect| matches!(effect, Effect::LookupDiscid { .. })),
         "the disc ID was left out, so nothing asks about it: {effects:?}"
     );
     assert!(effects.contains(&lookup_barcode(MB, "BAR")));
@@ -19,25 +17,15 @@ fn a_run_that_leaves_the_disc_id_out_never_asks_about_it() {
     assert!(disc.excluded, "the disc badge reads as left out");
     assert_eq!(
         disc.state,
-        SignalState::NotAsked {
-            reason: crate::identify::NotAskedReason::LeftOut
-        }
+        SignalState::NotAsked { reason: crate::identify::NotAskedReason::LeftOut }
     );
 
     let (state, _) = step(
         state,
-        barcode_matched(
-            MB,
-            "BAR",
-            vec![pair("e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b", Some("g-y"))],
-        ),
+        barcode_matched(MB, "BAR", vec![pair("e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b", Some("g-y"))]),
     );
     match state {
-        IdentifyState::Found {
-            findings: Findings { matches, .. },
-            ledger,
-            ..
-        } => {
+        IdentifyState::Found { findings: Findings { matches, .. }, ledger, .. } => {
             assert_eq!(matches.len(), 1);
             assert!(!found_by_disc_id(ledger.as_ref(), &matches[0]));
         }
@@ -52,39 +40,30 @@ fn a_run_that_leaves_the_barcode_out_never_asks_about_it() {
     let (state, _) = started_with_choices(vec![MB], excluding(false, &["BAR"]));
     let (state, effects) = update(state, disc_and_codes("d", &["BAR"]));
     assert!(
-        !effects
-            .iter()
-            .any(|effect| matches!(effect, Effect::LookupBarcode { .. })),
+        !effects.iter().any(|effect| matches!(effect, Effect::LookupBarcode { .. })),
         "the barcode was left out, so nothing asks about it: {effects:?}"
     );
-    assert!(effects
-        .iter()
-        .any(|effect| matches!(effect, Effect::LookupDiscid { .. })));
+    assert!(effects.iter().any(|effect| matches!(effect, Effect::LookupDiscid { .. })));
 
     let barcode = badge(&state, SignalKind::Barcode);
     assert!(barcode.excluded, "the barcode badge reads as left out");
     assert_eq!(
         barcode.state,
-        SignalState::NotAsked {
-            reason: crate::identify::NotAskedReason::LeftOut
-        }
+        SignalState::NotAsked { reason: crate::identify::NotAskedReason::LeftOut }
     );
 
     let (state, _) = step(
         state,
         IdentifyEvent::DiscidLookupAnswered {
             disc_id: "d".into(),
-            outcome: Ok(DiscIdAnswer::for_test(vec![
-                pair("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e", Some("g-x")),
-            ])),
+            outcome: Ok(DiscIdAnswer::for_test(vec![pair(
+                "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e",
+                Some("g-x"),
+            )])),
         },
     );
     match state {
-        IdentifyState::Found {
-            findings: Findings { matches, .. },
-            ledger,
-            ..
-        } => {
+        IdentifyState::Found { findings: Findings { matches, .. }, ledger, .. } => {
             assert_eq!(matches.len(), 1);
             assert!(found_by_disc_id(ledger.as_ref(), &matches[0]));
         }
@@ -100,17 +79,10 @@ fn an_excluded_disc_id_cannot_fail_the_barcode_answer() {
     let (state, _) = update(state, disc_and_codes("d", &["BAR"]));
     let (state, _) = step(
         state,
-        barcode_matched(
-            MB,
-            "BAR",
-            vec![pair("e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b", Some("g-y"))],
-        ),
+        barcode_matched(MB, "BAR", vec![pair("e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b", Some("g-y"))]),
     );
 
-    assert!(
-        matches!(state, IdentifyState::Found { .. }),
-        "got {state:?}"
-    );
+    assert!(matches!(state, IdentifyState::Found { .. }), "got {state:?}");
     assert!(matches!(
         crate::identify::TerminalVerdict::try_from(state),
         Ok(crate::identify::TerminalVerdict::Found { .. })
@@ -126,19 +98,13 @@ fn an_answer_from_a_source_the_run_never_asked_lands_nowhere() {
         panic!("expected the run looking up, got {state:?}");
     };
     assert_eq!(
-        barcode.lookups()[0]
-            .providers
-            .iter()
-            .map(|lookup| lookup.source)
-            .collect::<Vec<_>>(),
+        barcode.lookups()[0].providers.iter().map(|lookup| lookup.source).collect::<Vec<_>>(),
         vec![DG],
         "only the sources the run asks have a lookup"
     );
 
-    let (after, effects) = step(
-        state.clone(),
-        barcode_matched(MB, "BAR", vec![pair("rel-a", Some("g-x"))]),
-    );
+    let (after, effects) =
+        step(state.clone(), barcode_matched(MB, "BAR", vec![pair("rel-a", Some("g-x"))]));
 
     assert!(effects.is_empty());
     assert_eq!(after, state, "the unasked source's answer changed nothing");
@@ -160,10 +126,7 @@ fn leaving_one_of_two_codes_out_asks_only_about_the_other() {
     );
 
     let barcode = badge(&state, SignalKind::Barcode);
-    assert!(
-        !barcode.excluded,
-        "one code left out of two is not the signal left out"
-    );
+    assert!(!barcode.excluded, "one code left out of two is not the signal left out");
     assert_eq!(
         barcode
             .options
@@ -181,9 +144,7 @@ fn leaving_every_code_out_asks_about_none_of_them() {
     let (state, _) = started_with_choices(vec![MB], excluding(false, &["BOXSET", "DISC"]));
     let (state, effects) = update(state, disc_and_codes("d", &["BOXSET", "DISC"]));
     assert!(
-        !effects
-            .iter()
-            .any(|effect| matches!(effect, Effect::LookupBarcode { .. })),
+        !effects.iter().any(|effect| matches!(effect, Effect::LookupBarcode { .. })),
         "nothing asks about a code the candidate says to leave out: {effects:?}"
     );
     match &state {
@@ -198,15 +159,10 @@ fn leaving_every_code_out_asks_about_none_of_them() {
     }
 
     let barcode = badge(&state, SignalKind::Barcode);
-    assert!(
-        barcode.excluded,
-        "no code is asked about, so the badge says so"
-    );
+    assert!(barcode.excluded, "no code is asked about, so the badge says so");
     assert_eq!(
         barcode.state,
-        SignalState::NotAsked {
-            reason: crate::identify::NotAskedReason::LeftOut
-        }
+        SignalState::NotAsked { reason: crate::identify::NotAskedReason::LeftOut }
     );
     assert!(barcode.options.iter().all(|option| !option.chosen));
 }
@@ -230,12 +186,8 @@ fn every_disc_id_is_asked_and_a_release_holding_every_disc_ranks_first() {
     assert_eq!(
         effects,
         vec![
-            Effect::LookupDiscid {
-                disc_id: "disc-one".into()
-            },
-            Effect::LookupDiscid {
-                disc_id: "disc-two".into()
-            },
+            Effect::LookupDiscid { disc_id: "disc-one".into() },
+            Effect::LookupDiscid { disc_id: "disc-two".into() },
         ],
         "each disc's ID is looked up"
     );
@@ -245,7 +197,8 @@ fn every_disc_id_is_asked_and_a_release_holding_every_disc_ranks_first() {
         IdentifyEvent::DiscidLookupAnswered {
             disc_id: "disc-one".into(),
             outcome: Ok(DiscIdAnswer::for_test(vec![
-                pair("both-discs", Some("g")), pair("first-disc-only", Some("g")),
+                pair("both-discs", Some("g")),
+                pair("first-disc-only", Some("g")),
             ])),
         },
     );
@@ -264,11 +217,7 @@ fn every_disc_id_is_asked_and_a_release_holding_every_disc_ranks_first() {
         panic!("both answers settle the run: {state:?}");
     };
     assert_eq!(
-        findings
-            .matches
-            .iter()
-            .map(|release| release.release_id.as_str())
-            .collect::<Vec<_>>(),
+        findings.matches.iter().map(|release| release.release_id.as_str()).collect::<Vec<_>>(),
         vec!["both-discs"]
     );
     assert_eq!(

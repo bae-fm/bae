@@ -98,11 +98,7 @@ impl RendererChannel for RustCastChannel {
             composer: None,
             track_number: None,
             disc_number: None,
-            images: media
-                .cover_url
-                .iter()
-                .map(|url| Image::new(url.clone()))
-                .collect(),
+            images: media.cover_url.iter().map(|url| Image::new(url.clone())).collect(),
             release_date: None,
         });
 
@@ -146,12 +142,7 @@ impl RendererChannel for RustCastChannel {
         let media_session_id = self.require_media_session()?;
         self.device
             .media
-            .seek(
-                self.transport_id.clone(),
-                media_session_id,
-                Some(position.as_secs_f32()),
-                None,
-            )
+            .seek(self.transport_id.clone(), media_session_id, Some(position.as_secs_f32()), None)
             .map(|_| ())
             .map_err(|e| RendererError::Command(CauseChain(&e).to_string()))
     }
@@ -220,10 +211,7 @@ impl RendererChannel for RustCastChannel {
 
         Ok(ReceiverStatus {
             player_state: player_state_from(entry),
-            position: entry
-                .current_time
-                .filter(|t| *t >= 0.0)
-                .map(Duration::from_secs_f32),
+            position: entry.current_time.filter(|t| *t >= 0.0).map(Duration::from_secs_f32),
             duration: entry
                 .media
                 .as_ref()

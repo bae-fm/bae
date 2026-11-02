@@ -39,14 +39,8 @@ fn resolved_service_maps_to_device() {
 #[test]
 fn resolved_service_without_id_is_unusable() {
     assert!(
-        map_device(
-            "No Id",
-            8009,
-            [v4(192, 168, 1, 41)].into_iter(),
-            None,
-            Some("No Id"),
-        )
-        .is_none(),
+        map_device("No Id", 8009, [v4(192, 168, 1, 41)].into_iter(), None, Some("No Id"),)
+            .is_none(),
         "a service with no device id can't be routed to, so it is dropped"
     );
 }
@@ -62,14 +56,9 @@ fn service_fullname_reduces_to_its_instance_label() {
 
 #[test]
 fn resolved_service_falls_back_to_instance_name_without_fn() {
-    let device = map_device(
-        "Kitchen",
-        8009,
-        [v4(192, 168, 1, 42)].into_iter(),
-        Some("kitchen-id"),
-        None,
-    )
-    .expect("maps with a fallback name");
+    let device =
+        map_device("Kitchen", 8009, [v4(192, 168, 1, 42)].into_iter(), Some("kitchen-id"), None)
+            .expect("maps with a fallback name");
     assert_eq!(device.name, "Kitchen");
 }
 
@@ -93,14 +82,8 @@ fn resolved_service_prefers_ipv4() {
 #[test]
 fn resolved_service_without_address_is_unusable() {
     assert!(
-        map_device(
-            "Addrless",
-            8009,
-            std::iter::empty(),
-            Some("addrless-id"),
-            Some("Addrless"),
-        )
-        .is_none(),
+        map_device("Addrless", 8009, std::iter::empty(), Some("addrless-id"), Some("Addrless"),)
+            .is_none(),
         "a service with no address can't be reached, so it is dropped"
     );
 }

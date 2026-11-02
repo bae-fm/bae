@@ -26,8 +26,7 @@ impl LibraryManager {
         release_id: &str,
         target_dir: std::path::PathBuf,
     ) -> Result<(), LibraryError> {
-        self.enqueue_output(release_id, target_dir, crate::library::OutputKind::Export)
-            .await
+        self.enqueue_output(release_id, target_dir, crate::library::OutputKind::Export).await
     }
 
     /// Enqueue a release-level save to `target_dir` under the preset named by
@@ -50,12 +49,8 @@ impl LibraryManager {
                     "save preset {preset_id} is not available for release save"
                 ))
             })?;
-        self.enqueue_output(
-            release_id,
-            target_dir,
-            crate::library::OutputKind::Save { preset },
-        )
-        .await
+        self.enqueue_output(release_id, target_dir, crate::library::OutputKind::Save { preset })
+            .await
     }
 
     /// Shared enqueue body for both release-level outputs. Skips ids already in
@@ -138,9 +133,7 @@ impl LibraryManager {
                     let worker = self.clone();
                     let manager = self.clone();
                     let task = self.runtime_handle.spawn(async move {
-                        worker
-                            .export_release_to_dir(&op.release_id, op.payload)
-                            .await
+                        worker.export_release_to_dir(&op.release_id, op.payload).await
                     });
                     let abort = task.abort_handle();
                     async move {
@@ -212,19 +205,15 @@ impl LibraryManager {
         // Stage under the target dir (not a temp dir elsewhere) so the final rename
         // stays on one filesystem and is atomic. The name is hidden and carries the
         // release id so a concurrent export of a different release can't collide.
-        let staging_path = request
-            .target_dir
-            .join(output_sibling(&folder, "export", release_id));
-        let staging = blocking("create an output's staging folder", move || {
-            StagingDir::create(staging_path)
-        })
-        .await
-        .map_err(|failed| self.bug(failed))??;
+        let staging_path = request.target_dir.join(output_sibling(&folder, "export", release_id));
+        let staging =
+            blocking("create an output's staging folder", move || StagingDir::create(staging_path))
+                .await
+                .map_err(|failed| self.bug(failed))??;
 
         match request.kind {
             crate::library::OutputKind::Export => {
-                self.copy_release_files_to_staging(release_id, &folder, staging.path())
-                    .await?;
+                self.copy_release_files_to_staging(release_id, &folder, staging.path()).await?;
             }
             crate::library::OutputKind::Save { preset } => {
                 info!(
@@ -234,20 +223,16 @@ impl LibraryManager {
                     preset = preset.id.as_str(),
                     "Writing release output"
                 );
-                self.save_release_tracks_to_dir(release_id, preset, staging.path())
-                    .await?;
+                self.save_release_tracks_to_dir(release_id, preset, staging.path()).await?;
             }
         }
 
         let staging_path = staging.path().to_path_buf();
         let marker_release_id = release_id.to_string();
-        blocking(
-            "move an output into place",
-            move || -> Result<(), LibraryError> {
-                write_output_marker(&staging_path, &marker_release_id)?;
-                replace_output_dir(&staging_path, &final_dir, &folder, &marker_release_id)
-            },
-        )
+        blocking("move an output into place", move || -> Result<(), LibraryError> {
+            write_output_marker(&staging_path, &marker_release_id)?;
+            replace_output_dir(&staging_path, &final_dir, &folder, &marker_release_id)
+        })
         .await
         .map_err(|failed| self.bug(failed))??;
         staging.disarm();
@@ -405,10 +390,7 @@ impl Drop for StagingDir {
         }
         if let Err(e) = std::fs::remove_dir_all(&self.path) {
             if e.kind() != std::io::ErrorKind::NotFound {
-                warn!(
-                    "failed to remove export staging dir {}: {e}",
-                    self.path.display()
-                );
+                warn!("failed to remove export staging dir {}: {e}", self.path.display());
             }
         }
     }
@@ -482,10 +464,7 @@ mod tests {
         replace_output_dir(&staging_dir, &final_dir, "album", "release-1")
             .expect("marked prior export can be replaced");
 
-        assert_eq!(
-            std::fs::read(final_dir.join("export.txt")).expect("read export"),
-            b"export",
-        );
+        assert_eq!(std::fs::read(final_dir.join("export.txt")).expect("read export"), b"export",);
         assert!(!final_dir.join("prior.txt").exists());
         assert!(!temp.path().join(".album.replace-release-1").exists());
     }

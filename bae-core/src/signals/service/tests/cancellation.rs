@@ -58,10 +58,7 @@ async fn cancelled_ocr_run_does_not_settle() {
     gate.open();
     run_ended(&mut watch).await;
 
-    let settled: Vec<Signals> = delivered_signals(&mut rx)
-        .into_iter()
-        .filter(settled)
-        .collect();
+    let settled: Vec<Signals> = delivered_signals(&mut rx).into_iter().filter(settled).collect();
     assert!(
         settled.is_empty(),
         "cancelled OCR run must not emit a Settled snapshot, got {settled:?}"
@@ -74,9 +71,7 @@ async fn cancelled_ocr_run_does_not_settle() {
 #[tokio::test]
 async fn candidate_removed_event_cancels_in_flight_extraction() {
     let tmp = TempDir::new().unwrap();
-    let images: Vec<String> = (1..=IMAGES_IN_FLIGHT + 2)
-        .map(|n| format!("p{n}.jpg"))
-        .collect();
+    let images: Vec<String> = (1..=IMAGES_IN_FLIGHT + 2).map(|n| format!("p{n}.jpg")).collect();
     let image_names: Vec<&str> = images.iter().map(String::as_str).collect();
     let folder = build_release(&tmp, "Some Folder", &image_names, &[]);
     let (gate, held, entries) = crate::test_gate::closed();
@@ -157,11 +152,7 @@ async fn a_cancelled_pass_waiting_for_a_read_starts_none() {
         drop(reads_elsewhere);
         run_ended(&mut watch).await;
 
-        assert_eq!(
-            analyzer.calls(),
-            0,
-            "attempt {attempt}: the cancelled pass started a read"
-        );
+        assert_eq!(analyzer.calls(), 0, "attempt {attempt}: the cancelled pass started a read");
     }
 }
 
@@ -195,11 +186,8 @@ async fn three_starts_cancel_each_predecessor() {
     let tmp = TempDir::new().unwrap();
     let folder = build_release(&tmp, "Some Folder", &["p1.jpg"], &[]);
     let (gate, held, entries) = crate::test_gate::closed();
-    let analyzer: Arc<dyn ArtworkAnalyzer> = Arc::new(
-        StubAnalyzer::new()
-            .with("p1.jpg", vec!["Artist A".to_string()])
-            .gated(held),
-    );
+    let analyzer: Arc<dyn ArtworkAnalyzer> =
+        Arc::new(StubAnalyzer::new().with("p1.jpg", vec!["Artist A".to_string()]).gated(held));
     let (handle, _tx, mut rx, _lib_tmp) = make_service().await;
     handle.register_analyzer(analyzer);
     let _first = start(&handle, folder.clone());

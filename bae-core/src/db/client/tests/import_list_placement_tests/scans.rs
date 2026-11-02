@@ -17,10 +17,7 @@ async fn a_scanned_release_is_placed_on_found_as_nobody_has_looked_it_up() {
 #[tokio::test]
 async fn a_tentative_release_is_not_placed_until_it_settles() {
     let lib = Library::new().await;
-    assert_eq!(
-        lib.moved(&lib.scan_as("Album", "tentative")).await,
-        moves([])
-    );
+    assert_eq!(lib.moved(&lib.scan_as("Album", "tentative")).await, moves([]));
     assert_eq!(
         lib.moved(&format!(
             "UPDATE scan_candidate SET kind = 'valid' WHERE path = {};",
@@ -36,11 +33,7 @@ async fn a_removed_release_leaves_the_list() {
     let lib = Library::new().await;
     lib.run(&lib.scan("Album")).await;
     assert_eq!(
-        lib.moved(&format!(
-            "DELETE FROM scan_candidate WHERE path = {};",
-            lib.sql("Album")
-        ))
-        .await,
+        lib.moved(&format!("DELETE FROM scan_candidate WHERE path = {};", lib.sql("Album"))).await,
         moves([(lib.release("Album"), None)])
     );
 }
@@ -72,10 +65,7 @@ async fn a_release_with_no_draft_shows_its_folders_new_name() {
             lib.sql("Album")
         ))
         .await,
-        moves([(
-            lib.release("Album"),
-            Some(found("Album").shown("Renamed", None))
-        )])
+        moves([(lib.release("Album"), Some(found("Album").shown("Renamed", None)))])
     );
 }
 
@@ -109,10 +99,7 @@ async fn a_folder_that_failed_validation_shows_what_its_tags_call_it() {
         )])
     );
     assert_eq!(
-        lib.moved(&tags(
-            "UPDATE scan_skipped_tags SET artist = 'Tagged Artist'"
-        ))
-        .await,
+        lib.moved(&tags("UPDATE scan_skipped_tags SET artist = 'Tagged Artist'")).await,
         moves([(
             lib.invalid("Broken"),
             Some(failed_validation("Broken").shown("Tagged Album", Some("Tagged Artist")))
@@ -142,11 +129,7 @@ async fn a_release_is_dated_by_its_folder() {
         .await,
         moves([(lib.release("Album"), Some(found("Album").dated(50)))])
     );
-    assert_eq!(
-        lib.moved(&discovery("UPDATE folder_discovery SET settled = 0"))
-            .await,
-        moves([])
-    );
+    assert_eq!(lib.moved(&discovery("UPDATE folder_discovery SET settled = 0")).await, moves([]));
     assert_eq!(
         lib.moved(&discovery("DELETE FROM folder_discovery")).await,
         moves([(lib.release("Album"), Some(found("Album")))])
@@ -158,12 +141,7 @@ async fn a_release_is_dated_by_its_folder() {
 #[tokio::test]
 async fn reordering_the_watched_folders_moves_every_row_under_them() {
     let lib = Library::new().await;
-    lib.run(&format!(
-        "{}{}",
-        lib.scan("Artist/Album"),
-        lib.scan_as("Broken", "invalid")
-    ))
-    .await;
+    lib.run(&format!("{}{}", lib.scan("Artist/Album"), lib.scan_as("Broken", "invalid"))).await;
     assert_eq!(
         lib.moved(&format!(
             "UPDATE watched_import_folders SET position = 3 WHERE path = {};",
@@ -171,15 +149,9 @@ async fn reordering_the_watched_folders_moves_every_row_under_them() {
         ))
         .await,
         moves([
-            (
-                lib.release("Artist/Album"),
-                Some(found("Artist/Album").grouped("Artist").at_root(3))
-            ),
+            (lib.release("Artist/Album"), Some(found("Artist/Album").grouped("Artist").at_root(3))),
             (lib.group("Artist"), Some(header("Artist", None).at_root(3))),
-            (
-                lib.invalid("Broken"),
-                Some(failed_validation("Broken").at_root(3))
-            ),
+            (lib.invalid("Broken"), Some(failed_validation("Broken").at_root(3))),
         ])
     );
 }
@@ -213,18 +185,10 @@ async fn a_skipped_folder_is_listed_on_skipped() {
 #[tokio::test]
 async fn unwatching_a_folder_takes_its_rows_out() {
     let lib = Library::new().await;
-    lib.run(&format!(
-        "{}{}",
-        lib.scan("Artist/Album"),
-        lib.scan("Single")
-    ))
-    .await;
+    lib.run(&format!("{}{}", lib.scan("Artist/Album"), lib.scan("Single"))).await;
     assert_eq!(
-        lib.moved(&format!(
-            "DELETE FROM watched_import_folders WHERE path = {};",
-            lib.sql_root()
-        ))
-        .await,
+        lib.moved(&format!("DELETE FROM watched_import_folders WHERE path = {};", lib.sql_root()))
+            .await,
         moves([
             (lib.release("Artist/Album"), None),
             (lib.group("Artist"), None),

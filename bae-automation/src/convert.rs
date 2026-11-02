@@ -16,13 +16,11 @@ pub(crate) fn candidate_key_name(key: &CandidateKey) -> String {
 /// The key a caller names, refused when the name is not the hex of a key's
 /// bytes.
 pub(crate) fn candidate_key_named(name: &str) -> Result<CandidateKey, AutomationError> {
-    hex::decode(name)
-        .map(CandidateKey::from_bytes)
-        .map_err(|error| {
-            AutomationError::validation(format!(
-                "candidate key '{name}' is not the hex of a key's bytes: {error}"
-            ))
-        })
+    hex::decode(name).map(CandidateKey::from_bytes).map_err(|error| {
+        AutomationError::validation(format!(
+            "candidate key '{name}' is not the hex of a key's bytes: {error}"
+        ))
+    })
 }
 
 pub(super) fn expect_no_args(args: Value, tool_name: &str) -> Result<(), AutomationError> {
@@ -61,8 +59,7 @@ pub(super) fn schema_object<T: JsonSchema>() -> Map<String, Value> {
         _ => unreachable!("JSON schema is an object"),
     };
     // MCP requires a root `type: "object"`, which tagged-enum schemas omit.
-    map.entry("type".to_string())
-        .or_insert_with(|| Value::String("object".to_string()));
+    map.entry("type".to_string()).or_insert_with(|| Value::String("object".to_string()));
     map
 }
 
@@ -91,9 +88,9 @@ pub(super) fn automation_output_snapshot(
             };
             let kind = match op.payload.kind {
                 OutputKind::Export => AutomationOutputKind::Export,
-                OutputKind::Save { preset } => AutomationOutputKind::Save {
-                    preset_name: preset.name,
-                },
+                OutputKind::Save { preset } => {
+                    AutomationOutputKind::Save { preset_name: preset.name }
+                }
             };
             AutomationOutputOp {
                 release_id: op.release_id,
@@ -130,11 +127,7 @@ pub(super) fn require_action(
     if summary.storage_actions.contains(&action) {
         return Ok(());
     }
-    let available = summary
-        .storage_actions
-        .iter()
-        .map(storage_action_name)
-        .collect::<Vec<_>>();
+    let available = summary.storage_actions.iter().map(storage_action_name).collect::<Vec<_>>();
     let available = if available.is_empty() {
         "none (this library has no cloud home)".to_string()
     } else {
@@ -159,15 +152,12 @@ fn storage_action_name(action: &AutomationReleaseStorageAction) -> &'static str 
 /// Split a single-source request into the query and the source to ask.
 pub(super) fn search_query(query: AutomationSearchQuery) -> (SearchQuery, Catalog) {
     match query {
-        AutomationSearchQuery::General {
-            artist,
-            album,
-            source,
-        } => (SearchQuery::General { artist, album }, source.into()),
-        AutomationSearchQuery::CatalogNumber {
-            catalog_number,
-            source,
-        } => (SearchQuery::CatalogNumber { catalog_number }, source.into()),
+        AutomationSearchQuery::General { artist, album, source } => {
+            (SearchQuery::General { artist, album }, source.into())
+        }
+        AutomationSearchQuery::CatalogNumber { catalog_number, source } => {
+            (SearchQuery::CatalogNumber { catalog_number }, source.into())
+        }
         AutomationSearchQuery::Barcode { barcode, source } => {
             (SearchQuery::Barcode { barcode }, source.into())
         }
@@ -194,10 +184,9 @@ impl AutomationReleaseRecord {
                 album_key,
                 url,
             },
-            bae_core::import::ReleaseRecord::Album { album } => Self::Album {
-                album: AutomationMetadataRef::from_core(album),
-                url,
-            },
+            bae_core::import::ReleaseRecord::Album { album } => {
+                Self::Album { album: AutomationMetadataRef::from_core(album), url }
+            }
         }
     }
 }
@@ -206,22 +195,14 @@ impl AutomationPressingLink {
     pub(crate) fn from_core(link: PressingLink) -> Self {
         Self {
             record: AutomationMetadataRef::from_core(link.record),
-            partners: link
-                .partners
-                .into_iter()
-                .map(AutomationMetadataRef::from_core)
-                .collect(),
+            partners: link.partners.into_iter().map(AutomationMetadataRef::from_core).collect(),
         }
     }
 
     pub(crate) fn into_core(self) -> PressingLink {
         PressingLink {
             record: self.record.into_core(),
-            partners: self
-                .partners
-                .into_iter()
-                .map(AutomationMetadataRef::into_core)
-                .collect(),
+            partners: self.partners.into_iter().map(AutomationMetadataRef::into_core).collect(),
         }
     }
 }
@@ -409,11 +390,7 @@ impl AutomationReleaseUserEdit {
                 .collect(),
             album_year: edit.album_year,
             pressing: AutomationPressingEdit::from_core(edit.pressing),
-            tracks: edit
-                .tracks
-                .into_iter()
-                .map(AutomationTrackUserEdit::from_core)
-                .collect(),
+            tracks: edit.tracks.into_iter().map(AutomationTrackUserEdit::from_core).collect(),
         }
     }
 
@@ -427,11 +404,7 @@ impl AutomationReleaseUserEdit {
                 .collect(),
             album_year: self.album_year,
             pressing: self.pressing.into_core(),
-            tracks: self
-                .tracks
-                .into_iter()
-                .map(AutomationTrackUserEdit::into_core)
-                .collect(),
+            tracks: self.tracks.into_iter().map(AutomationTrackUserEdit::into_core).collect(),
         }
     }
 }
@@ -584,21 +557,13 @@ impl AutomationRelease {
             labels: release.labels,
             facts: release.facts,
             total_duration_ms: release.total_duration_ms,
-            tracks: release
-                .tracks
-                .into_iter()
-                .map(AutomationTrackDetail::from_core)
-                .collect(),
+            tracks: release.tracks.into_iter().map(AutomationTrackDetail::from_core).collect(),
             track_groups: release
                 .track_groups
                 .into_iter()
                 .map(AutomationTrackGroup::from_core)
                 .collect(),
-            files: release
-                .files
-                .into_iter()
-                .map(AutomationFileDetail::from_core)
-                .collect(),
+            files: release.files.into_iter().map(AutomationFileDetail::from_core).collect(),
             image_files: release
                 .image_files
                 .into_iter()
@@ -609,11 +574,7 @@ impl AutomationRelease {
                 .into_iter()
                 .map(AutomationGalleryItem::from_core)
                 .collect(),
-            records: release
-                .records
-                .into_iter()
-                .map(AutomationReleaseRecord::from_core)
-                .collect(),
+            records: release.records.into_iter().map(AutomationReleaseRecord::from_core).collect(),
         }
     }
 }
@@ -623,11 +584,7 @@ impl AutomationTrackGroup {
     pub(crate) fn from_core(group: bae_core::album_detail::TrackGroup) -> Self {
         Self {
             side: AutomationTrackSide::from_core(group.side),
-            tracks: group
-                .tracks
-                .into_iter()
-                .map(AutomationTrackDetail::from_core)
-                .collect(),
+            tracks: group.tracks.into_iter().map(AutomationTrackDetail::from_core).collect(),
         }
     }
 }
@@ -655,20 +612,14 @@ impl AutomationReleaseUpload {
     /// Drops core's bytes, which an automation client polls the release for
     /// rather than follows.
     pub(crate) fn from_core(upload: bae_core::album_detail::ReleaseUpload) -> Self {
-        Self {
-            queued: upload.progress.queued,
-            uploading: upload.progress.uploading,
-        }
+        Self { queued: upload.progress.queued, uploading: upload.progress.uploading }
     }
 }
 
 impl AutomationImageRef {
     /// Drops core's `image_type`, which the automation fetch does not take.
     pub(crate) fn from_core(image: ImageRef) -> Self {
-        Self {
-            id: image.id,
-            version: image.version,
-        }
+        Self { id: image.id, version: image.version }
     }
 }
 

@@ -60,17 +60,13 @@ fn drain(buffer: &SharedSparseBuffer) -> Vec<u8> {
 }
 
 async fn drain_async(buffer: SharedSparseBuffer) -> Vec<u8> {
-    tokio::task::spawn_blocking(move || drain(&buffer))
-        .await
-        .expect("drain task")
+    tokio::task::spawn_blocking(move || drain(&buffer)).await.expect("drain task")
 }
 
 /// A fill-error handler that forwards the error into a channel, plus the
 /// receiving end, so a test can assert on the reported failure.
-fn capturing_error_handler() -> (
-    FillErrorHandler,
-    tokio_mpsc::UnboundedReceiver<Arc<PlaybackError>>,
-) {
+fn capturing_error_handler() -> (FillErrorHandler, tokio_mpsc::UnboundedReceiver<Arc<PlaybackError>>)
+{
     let (tx, rx) = tokio_mpsc::unbounded_channel();
     (
         Box::new(move |error| {
@@ -124,10 +120,7 @@ async fn preload_fetch_yields_while_the_playing_track_is_fetching() {
     let waiting = arbiter.clone();
     let waiter = tokio::spawn(async move { waiting.await_foreground_idle().await });
     tokio::task::yield_now().await;
-    assert!(
-        !waiter.is_finished(),
-        "a preload must wait while the playing track is fetching"
-    );
+    assert!(!waiter.is_finished(), "a preload must wait while the playing track is fetching");
 
     // Once the playing track's fetch finishes, the preload proceeds.
     arbiter.end_foreground_fetch();
@@ -219,8 +212,7 @@ async fn seek_fetches_only_the_demanded_window_not_the_skipped_prefix() {
         "a window at or past the seek target must have been fetched; log: {log:?}"
     );
     assert!(
-        !log.iter()
-            .any(|&(start, _)| (WINDOW..6 * WINDOW).contains(&start)),
+        !log.iter().any(|&(start, _)| (WINDOW..6 * WINDOW).contains(&start)),
         "no window in the skipped prefix [{}, {}) may be fetched — there is no \
          backfill; log: {:?}",
         WINDOW,
@@ -264,9 +256,8 @@ async fn read_at_the_ceiling_is_served_not_starved() {
     // Unblock the parked reader before asserting, so a starved (failing)
     // run doesn't wedge the runtime's blocking pool on shutdown.
     buffer.cancel();
-    let one = read_result
-        .expect("a read at the ceiling must be served, not starved")
-        .expect("read task");
+    let one =
+        read_result.expect("a read at the ceiling must be served, not starved").expect("read task");
     assert_eq!(one, Some(1));
 }
 
@@ -312,10 +303,8 @@ async fn prefetched_start_window_removes_the_seek_target_fetch() {
     // With the landing window already buffered (the prefetch completed), the
     // fill must not fetch it.
     let prefetched = create_sparse_buffer(source_size);
-    prefetched.append_at(
-        start_byte,
-        &contents[start_byte as usize..(start_byte + WINDOW) as usize],
-    );
+    prefetched
+        .append_at(start_byte, &contents[start_byte as usize..(start_byte + WINDOW) as usize]);
     let with = seek_and_log(prefetched, contents.clone(), start_byte).await;
     assert!(
         !with.iter().any(|&(start, _)| start == start_byte),
@@ -347,21 +336,14 @@ async fn forward_play_keeps_the_head_and_evicts_behind_the_playhead() {
     let _read_log = start_recording_fill(contents.clone(), None, &buffer);
 
     let out = drain_async(buffer.clone()).await;
-    assert_eq!(
-        out, contents,
-        "front-to-back play must recover the whole file"
-    );
+    assert_eq!(out, contents, "front-to-back play must recover the whole file");
 
     // No ceiling is set on this reader, so it fetches the cushion ahead and
     // evicts behind: the whole file passes through but only the head and a
     // few windows at the playhead are retained.
     let head = WINDOW + bae_audio::AVIO_BUFFER_SIZE as u64;
     let ranges = buffer.get_ranges();
-    assert_eq!(
-        ranges.first(),
-        Some(&(0, head)),
-        "the file's head is kept: {ranges:?}"
-    );
+    assert_eq!(ranges.first(), Some(&(0, head)), "the file's head is kept: {ranges:?}");
     assert!(
         !buffer.is_buffered(head) && !buffer.is_buffered(8 * WINDOW),
         "the windows the reader passed, past the head, are evicted: {ranges:?}"
@@ -491,10 +473,7 @@ async fn backward_seek_into_evicted_region_refetches_the_window() {
         let mut filled = 0;
         while filled < sink.len() {
             match reader.read(&mut sink[filled..]) {
-                Ok(0) => panic!(
-                    "unexpected EOF at {filled} reading a {}-byte file",
-                    16 * WINDOW
-                ),
+                Ok(0) => panic!("unexpected EOF at {filled} reading a {}-byte file", 16 * WINDOW),
                 Err(stop) => panic!("unexpected stop at {filled}: {stop:?}"),
                 Ok(read) => filled += read,
             }
@@ -539,14 +518,10 @@ async fn fill_follows_the_buffer_and_exits_when_it_is_dropped() {
     let contents: Vec<u8> = (0..source_size).map(|i| (i % 251) as u8).collect();
     let buffer = create_sparse_buffer(source_size);
     let weak = Arc::downgrade(&buffer);
-    let fill = tokio::spawn(
-        buffer
-            .clone()
-            .fill_on_demand(FILL_WINDOW_SIZE, move |start, len| {
-                let bytes = contents[start as usize..(start + len) as usize].to_vec();
-                async move { Ok::<_, PlaybackError>(bytes) }
-            }),
-    );
+    let fill = tokio::spawn(buffer.clone().fill_on_demand(FILL_WINDOW_SIZE, move |start, len| {
+        let bytes = contents[start as usize..(start + len) as usize].to_vec();
+        async move { Ok::<_, PlaybackError>(bytes) }
+    }));
 
     // Let the spawned fill run to its park. With no reader it fetches nothing
     // and holds only a weak ref, leaving the test as the buffer's sole owner.
@@ -614,8 +589,7 @@ async fn blocked_reader_unblocks_on_demanded_window_not_sequential_catch_up() {
     // The skipped prefix [WINDOW, 6*WINDOW) must still be unfetched — the
     // reader did not wait for a sequential crawl up to the target.
     assert!(
-        !log.iter()
-            .any(|&(start, _)| (WINDOW..6 * WINDOW).contains(&start)),
+        !log.iter().any(|&(start, _)| (WINDOW..6 * WINDOW).contains(&start)),
         "no window in [{}, {}) should be fetched yet; read order: {:?}",
         WINDOW,
         6 * WINDOW,
@@ -631,10 +605,8 @@ async fn test_local_file_reader_full_file() {
     temp_file.write_all(test_data).unwrap();
     temp_file.flush().unwrap();
 
-    let reader = Box::new(LocalReader::new(
-        temp_file.path(),
-        crate::diagnostics::Diagnostics::noop(),
-    ));
+    let reader =
+        Box::new(LocalReader::new(temp_file.path(), crate::diagnostics::Diagnostics::noop()));
     let buffer = create_sparse_buffer(test_data.len() as u64);
 
     reader.start_reading(buffer.clone(), Box::new(|_| {}));
@@ -655,10 +627,8 @@ async fn local_seek_into_large_file_serves_target_via_shared_fill() {
     temp_file.write_all(&data).unwrap();
     temp_file.flush().unwrap();
 
-    let reader = Box::new(LocalReader::new(
-        temp_file.path(),
-        crate::diagnostics::Diagnostics::noop(),
-    ));
+    let reader =
+        Box::new(LocalReader::new(temp_file.path(), crate::diagnostics::Diagnostics::noop()));
     let buffer = create_sparse_buffer(source_size);
 
     // Register the seek demand before the fill loop starts (the seek case).
@@ -697,10 +667,7 @@ async fn test_local_file_reader_nonexistent_file() {
     let path = temp_file.path().to_path_buf();
     drop(temp_file);
 
-    let reader = Box::new(LocalReader::new(
-        path,
-        crate::diagnostics::Diagnostics::noop(),
-    ));
+    let reader = Box::new(LocalReader::new(path, crate::diagnostics::Diagnostics::noop()));
     let buffer = create_sparse_buffer(test_data.len() as u64);
 
     let (on_error, mut error_rx) = capturing_error_handler();
@@ -714,41 +681,26 @@ async fn test_local_file_reader_nonexistent_file() {
         "the buffer carries the open's NotFound"
     );
     assert!(result.is_empty());
-    let error = next_fill_error(
-        &mut error_rx,
-        "local open failure should report a fill error",
-    )
-    .await;
-    assert!(
-        error.contains("Failed to open"),
-        "expected open failure, got: {error}"
-    );
+    let error =
+        next_fill_error(&mut error_rx, "local open failure should report a fill error").await;
+    assert!(error.contains("Failed to open"), "expected open failure, got: {error}");
 }
 
 #[tokio::test]
 async fn test_local_file_reader_read_error_reports_error() {
     let dir = tempfile::tempdir().unwrap();
 
-    let reader = Box::new(LocalReader::new(
-        dir.path(),
-        crate::diagnostics::Diagnostics::noop(),
-    ));
+    let reader = Box::new(LocalReader::new(dir.path(), crate::diagnostics::Diagnostics::noop()));
     let buffer = create_sparse_buffer(1);
 
     let (on_error, mut error_rx) = capturing_error_handler();
     reader.start_reading(buffer.clone(), on_error);
     let result = drain_async(buffer.clone()).await;
 
-    assert!(
-        buffer.failure().is_some(),
-        "the buffer carries the read failure"
-    );
+    assert!(buffer.failure().is_some(), "the buffer carries the read failure");
     assert!(result.is_empty());
-    let error = next_fill_error(
-        &mut error_rx,
-        "local read failure should report a fill error",
-    )
-    .await;
+    let error =
+        next_fill_error(&mut error_rx, "local read failure should report a fill error").await;
     // The source is a directory, which the OS refuses to serve as a file: a
     // POSIX open succeeds and the first read fails, while Windows refuses at
     // open. Either way the reader must report a fill error and cancel — the
@@ -772,21 +724,17 @@ async fn a_failed_fetch_fails_the_buffer_with_the_read_error() {
     // The reader waits on the second window, which the fetch can't read.
     let mut reader = buffer.new_reader();
     assert!(reader.seek(WINDOW));
-    let fill = tokio::spawn(
-        buffer
-            .clone()
-            .fill_on_demand(FILL_WINDOW_SIZE, move |start, len| {
-                let result = if start == 0 {
-                    Ok(contents[..len as usize].to_vec())
-                } else {
-                    Err(PlaybackError::io(
-                        format!("Failed to read {len} bytes at {start} from /volume/track.flac"),
-                        std::io::Error::from(std::io::ErrorKind::StorageFull),
-                    ))
-                };
-                async move { result }
-            }),
-    );
+    let fill = tokio::spawn(buffer.clone().fill_on_demand(FILL_WINDOW_SIZE, move |start, len| {
+        let result = if start == 0 {
+            Ok(contents[..len as usize].to_vec())
+        } else {
+            Err(PlaybackError::io(
+                format!("Failed to read {len} bytes at {start} from /volume/track.flac"),
+                std::io::Error::from(std::io::ErrorKind::StorageFull),
+            ))
+        };
+        async move { result }
+    }));
 
     let stop = timeout(
         Duration::from_secs(5),
@@ -821,17 +769,13 @@ async fn a_fetch_failing_after_teardown_reports_nothing() {
     let mut reader = buffer.new_reader();
     assert!(reader.seek(0));
     let fetch_gate = gate.clone();
-    let fill = tokio::spawn(
-        buffer
-            .clone()
-            .fill_on_demand(FILL_WINDOW_SIZE, move |start, _len| {
-                let gate = fetch_gate.clone();
-                async move {
-                    gate.wait_for(start).await;
-                    Err::<Vec<u8>, _>(PlaybackError::internal("late read failure"))
-                }
-            }),
-    );
+    let fill = tokio::spawn(buffer.clone().fill_on_demand(FILL_WINDOW_SIZE, move |start, _len| {
+        let gate = fetch_gate.clone();
+        async move {
+            gate.wait_for(start).await;
+            Err::<Vec<u8>, _>(PlaybackError::internal("late read failure"))
+        }
+    }));
     for _ in 0..20 {
         tokio::task::yield_now().await;
     }
@@ -857,11 +801,8 @@ async fn cancelling_a_local_buffer_closes_its_file_while_the_buffer_lives() {
     let path = dir.path().join("track.flac");
     std::fs::write(&path, vec![7u8; 1024]).unwrap();
     let buffer = create_sparse_buffer(1024);
-    Box::new(LocalReader::new(
-        &path,
-        crate::diagnostics::Diagnostics::noop(),
-    ))
-    .start_reading(buffer.clone(), Box::new(|_| {}));
+    Box::new(LocalReader::new(&path, crate::diagnostics::Diagnostics::noop()))
+        .start_reading(buffer.clone(), Box::new(|_| {}));
     wait_for_open_files(dir.path(), 1).await;
 
     buffer.cancel();

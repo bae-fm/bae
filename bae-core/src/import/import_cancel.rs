@@ -113,10 +113,7 @@ impl ImportCancels {
     /// The import `import_id` of `candidate_key` never reached the worker.
     pub(crate) fn forget(&self, candidate_key: &crate::import::CandidateKey, import_id: &str) {
         let mut entries = self.entries.lock().unwrap();
-        if entries
-            .get(candidate_key)
-            .is_some_and(|entry| entry.import_id == import_id)
-        {
+        if entries.get(candidate_key).is_some_and(|entry| entry.import_id == import_id) {
             entries.remove(candidate_key);
         }
     }
@@ -197,12 +194,8 @@ impl ImportCancels {
             }
             Stage::Waiting => {
                 entry.token.cancel();
-                let entry = entries
-                    .remove(candidate_key)
-                    .expect("the entry was just read");
-                CancelOutcome::CancelledWaiting {
-                    import_id: entry.import_id,
-                }
+                let entry = entries.remove(candidate_key).expect("the entry was just read");
+                CancelOutcome::CancelledWaiting { import_id: entry.import_id }
             }
         }
     }
@@ -248,16 +241,12 @@ mod tests {
 
         assert_eq!(
             cancels.cancel(&crate::import::CandidateKey::test("Album")),
-            CancelOutcome::CancelledWaiting {
-                import_id: "import-1".to_string()
-            }
+            CancelOutcome::CancelledWaiting { import_id: "import-1".to_string() }
         );
         let end = cancels
-            .run(
-                &crate::import::CandidateKey::test("Album"),
-                "import-1",
-                async { panic!("a cancelled import never runs") },
-            )
+            .run(&crate::import::CandidateKey::test("Album"), "import-1", async {
+                panic!("a cancelled import never runs")
+            })
             .await;
         assert!(matches!(end, ImportRunEnd::<()>::CancelledWaiting));
         assert_eq!(
@@ -275,14 +264,10 @@ mod tests {
             let cancels = cancels.clone();
             tokio::spawn(async move {
                 cancels
-                    .run(
-                        &crate::import::CandidateKey::test("Album"),
-                        "import-1",
-                        async {
-                            started_tx.send(()).unwrap();
-                            std::future::pending::<Result<(), ImportStop>>().await
-                        },
-                    )
+                    .run(&crate::import::CandidateKey::test("Album"), "import-1", async {
+                        started_tx.send(()).unwrap();
+                        std::future::pending::<Result<(), ImportStop>>().await
+                    })
                     .await
             })
         };
@@ -305,15 +290,10 @@ mod tests {
         cancels.register(&crate::import::CandidateKey::test("Album"), "import-1");
         let writing = cancels.clone();
         let end = cancels
-            .run(
-                &crate::import::CandidateKey::test("Album"),
-                "import-1",
-                async move {
-                    writing
-                        .begin_writing(&crate::import::CandidateKey::test("Album"), "import-1")?;
-                    Ok(writing.cancel(&crate::import::CandidateKey::test("Album")))
-                },
-            )
+            .run(&crate::import::CandidateKey::test("Album"), "import-1", async move {
+                writing.begin_writing(&crate::import::CandidateKey::test("Album"), "import-1")?;
+                Ok(writing.cancel(&crate::import::CandidateKey::test("Album")))
+            })
             .await;
 
         assert!(matches!(end, ImportRunEnd::Ran(Ok(CancelOutcome::Writing))));
@@ -349,14 +329,10 @@ mod tests {
         cancels.register(&crate::import::CandidateKey::test("Album"), "import-1");
         let writing = cancels.clone();
         let end = cancels
-            .run(
-                &crate::import::CandidateKey::test("Album"),
-                "import-1",
-                async move {
-                    writing.cancel(&crate::import::CandidateKey::test("Album"));
-                    writing.begin_writing(&crate::import::CandidateKey::test("Album"), "import-1")
-                },
-            )
+            .run(&crate::import::CandidateKey::test("Album"), "import-1", async move {
+                writing.cancel(&crate::import::CandidateKey::test("Album"));
+                writing.begin_writing(&crate::import::CandidateKey::test("Album"), "import-1")
+            })
             .await;
 
         assert!(matches!(end, ImportRunEnd::CancelledRunning));
@@ -385,10 +361,7 @@ mod tests {
 
         assert_eq!(
             cancels.cancel_all(),
-            vec![(
-                crate::import::CandidateKey::test("Album 1"),
-                "import-1".to_string()
-            )]
+            vec![(crate::import::CandidateKey::test("Album 1"), "import-1".to_string())]
         );
         assert_eq!(
             cancels.cancel(&crate::import::CandidateKey::test("Album 3")),
@@ -411,11 +384,9 @@ mod tests {
         cancels.register(&crate::import::CandidateKey::test("Album"), "import-2");
 
         let end = cancels
-            .run(
-                &crate::import::CandidateKey::test("Album"),
-                "import-1",
-                async { panic!("the cancelled command never runs") },
-            )
+            .run(&crate::import::CandidateKey::test("Album"), "import-1", async {
+                panic!("the cancelled command never runs")
+            })
             .await;
         assert!(matches!(end, ImportRunEnd::<()>::CancelledWaiting));
         assert!(matches!(
@@ -425,11 +396,7 @@ mod tests {
         cancels.forget(&crate::import::CandidateKey::test("Album"), "import-1");
 
         let end = cancels
-            .run(
-                &crate::import::CandidateKey::test("Album"),
-                "import-2",
-                async { Ok("ran") },
-            )
+            .run(&crate::import::CandidateKey::test("Album"), "import-2", async { Ok("ran") })
             .await;
         assert!(matches!(end, ImportRunEnd::Ran(Ok("ran"))));
     }

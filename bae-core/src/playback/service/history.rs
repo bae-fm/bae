@@ -31,8 +31,7 @@ impl BufferedListening {
         } else {
             Duration::ZERO
         };
-        self.listening
-            .observe_local(tail.fmt.clone(), tail.position.saturating_sub(remaining));
+        self.listening.observe_local(tail.fmt.clone(), tail.position.saturating_sub(remaining));
         if remaining.is_zero() {
             self.tail = None;
         }
@@ -50,10 +49,7 @@ enum ListeningSave {
 
 enum ListeningMeter {
     Local(Option<(Arc<TrackFmt>, Duration)>),
-    Remote {
-        position: StreamPosition,
-        reported_at: chrono::DateTime<chrono::Utc>,
-    },
+    Remote { position: StreamPosition, reported_at: chrono::DateTime<chrono::Utc> },
 }
 
 impl Listening {
@@ -70,8 +66,7 @@ impl Listening {
             }
             _ => Duration::ZERO,
         };
-        self.play
-            .set_played(self.play.entry().played + heard.saturating_sub(previous));
+        self.play.set_played(self.play.entry().played + heard.saturating_sub(previous));
         self.meter = ListeningMeter::Local(Some((fmt, heard.max(previous))));
     }
 }
@@ -94,18 +89,11 @@ impl PlaybackService {
         match self.library_manager.begin_play(&track, duration, now).await {
             Ok(play) => {
                 let meter = if self.renderer.is_remote() {
-                    ListeningMeter::Remote {
-                        position,
-                        reported_at: now,
-                    }
+                    ListeningMeter::Remote { position, reported_at: now }
                 } else {
                     ListeningMeter::Local(None)
                 };
-                self.listening = Some(Listening {
-                    play,
-                    meter,
-                    saved: Duration::ZERO,
-                });
+                self.listening = Some(Listening { play, meter, saved: Duration::ZERO });
                 true
             }
             Err(error) => {
@@ -157,16 +145,11 @@ impl PlaybackService {
         );
         let position = fmt.starts_at + decoded;
         listening.play.finish_at(
-            position
-                .as_duration()
-                .saturating_sub(fmt.timeline.track_start().as_duration()),
+            position.as_duration().saturating_sub(fmt.timeline.track_start().as_duration()),
         );
         if let Some(latency) = self.renderer.airplay_latency() {
             listening.observe_local(fmt.clone(), position.saturating_sub(latency));
-            let listening = self
-                .listening
-                .take()
-                .expect("the finishing play is present");
+            let listening = self.listening.take().expect("the finishing play is present");
             self.buffered_listening.push(BufferedListening {
                 listening,
                 tail: Some(AudibleTail {
@@ -222,8 +205,7 @@ impl PlaybackService {
                 }
             }
         }
-        self.buffered_listening
-            .retain(|buffered| buffered.tail.is_some());
+        self.buffered_listening.retain(|buffered| buffered.tail.is_some());
         let succeeded = failures.is_empty();
         for error in failures {
             self.listening_failed(error);
@@ -260,10 +242,7 @@ impl PlaybackService {
 
     pub(super) fn reset_remote_listening_position(&mut self, position: StreamPosition) {
         if let Some(listening) = &mut self.listening {
-            listening.meter = ListeningMeter::Remote {
-                position,
-                reported_at: self.clock.now(),
-            };
+            listening.meter = ListeningMeter::Remote { position, reported_at: self.clock.now() };
         }
     }
 
@@ -276,11 +255,7 @@ impl PlaybackService {
             return;
         };
         let now = self.clock.now();
-        if let ListeningMeter::Remote {
-            position: previous,
-            reported_at,
-        } = listening.meter
-        {
+        if let ListeningMeter::Remote { position: previous, reported_at } = listening.meter {
             if playing {
                 // A device-side seek must not turn skipped positions into listening.
                 let elapsed = match (now - reported_at).to_std() {
@@ -294,24 +269,17 @@ impl PlaybackService {
                     .as_duration()
                     .saturating_sub(track_start)
                     .saturating_sub(previous.as_duration().saturating_sub(track_start));
-                listening
-                    .play
-                    .set_played(listening.play.entry().played + moved.min(elapsed));
+                listening.play.set_played(listening.play.entry().played + moved.min(elapsed));
             }
         }
-        listening.meter = ListeningMeter::Remote {
-            position,
-            reported_at: now,
-        };
+        listening.meter = ListeningMeter::Remote { position, reported_at: now };
     }
 
     fn listening_failed(&self, error: crate::db::DbError) {
         error!("could not record listening history: {error}");
         emit_progress(
             &self.progress_tx,
-            PlaybackProgress::PlaybackError {
-                reason: PlaybackError::database(error).ui_reason(),
-            },
+            PlaybackProgress::PlaybackError { reason: PlaybackError::database(error).ui_reason() },
         );
     }
 }

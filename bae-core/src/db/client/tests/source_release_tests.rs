@@ -174,13 +174,11 @@ fn discogs_documents() -> ReleasePayloads {
 async fn a_stored_release_reads_back_as_it_was_extracted() {
     let (db, _tmp) = empty_db().await;
     let mut musicbrainz = musicbrainz_documents().extract().unwrap();
-    musicbrainz
-        .unfetched
-        .push(crate::import::source_release::UnfetchedDocument {
-            document: PayloadSource::Discogs,
-            key: "4242".to_string(),
-            reason: crate::import::source_release::UnfetchedReason::DiscogsNotConfigured,
-        });
+    musicbrainz.unfetched.push(crate::import::source_release::UnfetchedDocument {
+        document: PayloadSource::Discogs,
+        key: "4242".to_string(),
+        reason: crate::import::source_release::UnfetchedReason::DiscogsNotConfigured,
+    });
     let performed = &musicbrainz.mediums[0].entries[0].works[0].work;
     let crate::import::source_release::SourceWorkEvent::Part { work: parent, .. } =
         &performed.events[1]
@@ -222,11 +220,7 @@ async fn a_stored_release_reads_back_as_it_was_extracted() {
     assert_eq!(discogs.mediums[1].entries[0].children.len(), 2);
     for extracted in [&musicbrainz, &discogs] {
         assert!(
-            extracted
-                .covers
-                .release
-                .iter()
-                .all(|cover| !cover.image.downscaled.is_empty()),
+            extracted.covers.release.iter().all(|cover| !cover.image.downscaled.is_empty()),
             "every offered image carries the copies its catalog serves"
         );
     }
@@ -271,10 +265,7 @@ async fn a_stored_release_reads_back_its_album_links() {
         };
         *album_links = stated;
         db.save_source_release(&release).await.unwrap();
-        assert_eq!(
-            db.load_source_release(release.release()).await.unwrap(),
-            Some(release)
-        );
+        assert_eq!(db.load_source_release(release.release()).await.unwrap(), Some(release));
     }
 }
 
@@ -302,10 +293,7 @@ async fn saving_a_release_again_replaces_its_rows() {
     .unwrap();
     db.save_source_release(&later).await.unwrap();
 
-    assert_eq!(
-        db.load_source_release(later.release()).await.unwrap(),
-        Some(later)
-    );
+    assert_eq!(db.load_source_release(later.release()).await.unwrap(), Some(later));
 }
 
 /// A release's album year and media counts read back from what the store
@@ -373,11 +361,7 @@ async fn a_stored_release_reads_back_its_album_year_and_media_counts() {
             Some(1998),
             vec![count(Medium::Cd, 2)],
         ),
-        (
-            musicbrainz(serde_json::json!([]), None),
-            Some(2003),
-            Vec::new(),
-        ),
+        (musicbrainz(serde_json::json!([]), None), Some(2003), Vec::new()),
         (
             discogs(
                 serde_json::json!([{ "name": "Vinyl", "qty": "2" }, { "name": "CD", "qty": "1" }]),
@@ -413,10 +397,7 @@ async fn a_release_whose_derived_facts_disagree_is_not_stored() {
     media.metadata.pressing.facts.media.clear();
     for release in [year, media] {
         assert!(db.save_source_release(&release).await.is_err());
-        assert_eq!(
-            db.load_source_release(release.release()).await.unwrap(),
-            None
-        );
+        assert_eq!(db.load_source_release(release.release()).await.unwrap(), None);
     }
 }
 
@@ -425,9 +406,7 @@ async fn a_release_whose_derived_facts_disagree_is_not_stored() {
 async fn an_unfetched_release_reads_as_nothing() {
     let (db, _tmp) = empty_db().await;
     assert_eq!(
-        db.load_source_release(&MetadataRef::new(Catalog::Discogs, "4242"))
-            .await
-            .unwrap(),
+        db.load_source_release(&MetadataRef::new(Catalog::Discogs, "4242")).await.unwrap(),
         None
     );
 }
@@ -455,14 +434,8 @@ async fn a_stored_release_carries_what_its_album_s_group_was_read_to_be() {
     let mut expected = discogs.clone();
     expected
         .other_records
-        .push(ReleaseRecord::album(&MetadataRef::new(
-            Catalog::MusicBrainz,
-            "mb-group-same",
-        )));
-    expected
-        .covers
-        .album
-        .push(RemoteCover::musicbrainz_release_group("mb-group-same"));
+        .push(ReleaseRecord::album(&MetadataRef::new(Catalog::MusicBrainz, "mb-group-same")));
+    expected.covers.album.push(RemoteCover::musicbrainz_release_group("mb-group-same"));
     expected.archive_groups.push("mb-group-same".to_string());
 
     // Stored first, then the statement read.
@@ -474,24 +447,10 @@ async fn a_stored_release_carries_what_its_album_s_group_was_read_to_be() {
 
     // The statement read first, then stored.
     let (db_after, _tmp_after) = empty_db().await;
-    db_after
-        .replace_group_album_links(statements())
-        .await
-        .unwrap();
+    db_after.replace_group_album_links(statements()).await.unwrap();
     db_after.save_source_release(&discogs).await.unwrap();
-    assert_eq!(
-        db_after
-            .load_source_release(discogs.release())
-            .await
-            .unwrap(),
-        before
-    );
+    assert_eq!(db_after.load_source_release(discogs.release()).await.unwrap(), before);
 
-    db.replace_group_album_links(vec![("mb-group-same".to_string(), Vec::new())])
-        .await
-        .unwrap();
-    assert_eq!(
-        db.load_source_release(discogs.release()).await.unwrap(),
-        Some(discogs)
-    );
+    db.replace_group_album_links(vec![("mb-group-same".to_string(), Vec::new())]).await.unwrap();
+    assert_eq!(db.load_source_release(discogs.release()).await.unwrap(), Some(discogs));
 }

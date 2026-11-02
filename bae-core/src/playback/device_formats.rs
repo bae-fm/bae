@@ -75,20 +75,10 @@ impl<C: DeviceFormatControl> DeviceFormats<C> {
             Some(device_use) => device_use.leases.push((id, None)),
             None => {
                 let before_bae = self.control.format(device)?;
-                devices.insert(
-                    device,
-                    DeviceUse {
-                        before_bae,
-                        leases: vec![(id, None)],
-                    },
-                );
+                devices.insert(device, DeviceUse { before_bae, leases: vec![(id, None)] });
             }
         }
-        Ok(FormatLease {
-            formats: self.clone(),
-            device,
-            id,
-        })
+        Ok(FormatLease { formats: self.clone(), device, id })
     }
 
     /// The devices and their leases. Each change to them is one map or list
@@ -139,10 +129,7 @@ impl<C: DeviceFormatControl> DeviceFormats<C> {
         };
         if let Some(format) = restore {
             if let Err(error) = self.control.set_format(device, format) {
-                warn!(
-                    ?device,
-                    "couldn't put the output device's format back: {error}"
-                );
+                warn!(?device, "couldn't put the output device's format back: {error}");
             }
         }
     }
@@ -177,9 +164,7 @@ pub(crate) struct PlayerFormat<C: DeviceFormatControl> {
 
 impl<C: DeviceFormatControl> PlayerFormat<C> {
     pub(crate) fn new() -> Self {
-        Self {
-            kept: Arc::new(Mutex::new(None)),
-        }
+        Self { kept: Arc::new(Mutex::new(None)) }
     }
 
     /// The lease of the stream just built, which comes back here when the
@@ -188,10 +173,7 @@ impl<C: DeviceFormatControl> PlayerFormat<C> {
     /// and goes back to its own when it isn't.
     pub(crate) fn stream_started(&self, lease: FormatLease<C>) -> StreamFormat<C> {
         drop(kept(&self.kept).take());
-        StreamFormat {
-            lease: Some(lease),
-            kept: self.kept.clone(),
-        }
+        StreamFormat { lease: Some(lease), kept: self.kept.clone() }
     }
 
     /// The player's playback ended: let the kept lease go, putting its device
@@ -464,10 +446,7 @@ mod tests {
         build_stream(&fake, 1, 96_000);
         lease.settle().unwrap();
         let second = player.stream_started(lease);
-        assert!(
-            fake.sets.lock().unwrap().is_empty(),
-            "nothing went back between the two tracks"
-        );
+        assert!(fake.sets.lock().unwrap().is_empty(), "nothing went back between the two tracks");
         drop(second);
         assert_eq!(rate(&fake, 1), 96_000);
 

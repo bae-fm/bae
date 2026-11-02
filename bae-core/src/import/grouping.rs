@@ -115,19 +115,17 @@ pub fn compose(
             });
         }
     }
-    let one_root = members
-        .iter()
-        .all(|member| member.watched_folder_path == first.watched_folder_path);
+    let one_root =
+        members.iter().all(|member| member.watched_folder_path == first.watched_folder_path);
     let shared = one_root.then(|| shared_folder(members));
     let mut seen_files = HashSet::new();
     let mut files = Vec::new();
     if !parent_files.is_empty() {
-        let parent = shared_parent(members.iter().map(|member| {
-            (
-                member.watched_folder_path.as_path(),
-                member.file_root.as_path(),
-            )
-        }))
+        let parent = shared_parent(
+            members
+                .iter()
+                .map(|member| (member.watched_folder_path.as_path(), member.file_root.as_path())),
+        )
         .filter(|parent| shared.as_ref() == Some(parent))
         .ok_or_else(|| ImportError::Internal {
             detail: format!("{key} does not sit in one folder, so no folder's files are its own"),
@@ -192,10 +190,7 @@ pub fn compose(
                 .collect();
         let run_start = next_disc;
         let in_run = |disc: u32| {
-            let position = discs
-                .iter()
-                .position(|known| *known == Some(disc))
-                .unwrap_or(0);
+            let position = discs.iter().position(|known| *known == Some(disc)).unwrap_or(0);
             run_start + u32::try_from(position).unwrap_or(0)
         };
         inherited.overlay(&edits[position].under_prefix(&prefix, in_run));
@@ -203,10 +198,7 @@ pub fn compose(
             detail: format!("combined disc number exceeds the supported range: {error}"),
         })?;
         if member.files.parts.is_empty() {
-            parts.push(ReleasePart {
-                folder: member.path.clone(),
-                prefix: prefix.clone(),
-            });
+            parts.push(ReleasePart { folder: member.path.clone(), prefix: prefix.clone() });
         } else {
             parts.extend(member.files.parts.iter().map(|part| ReleasePart {
                 folder: part.folder.clone(),

@@ -17,12 +17,7 @@ impl Home {
         let directory = TempDir::new().unwrap();
         let app_dir = AppDir::under_home(directory.path()).unwrap();
         let layout = app_dir.store_layout();
-        Self {
-            _directory: directory,
-            app_dir,
-            layout,
-            installation: coven::TestCoven::new(),
-        }
+        Self { _directory: directory, app_dir, layout, installation: coven::TestCoven::new() }
     }
 
     fn builder(&self) -> coven::CovenBuilder {
@@ -128,9 +123,7 @@ fn bootstrap_that_cannot_compose_the_frontend_leaves_active_pointer() {
         |_| (),
         |services, runtime| {
             runtime.block_on(services.close()).unwrap();
-            Err(BootstrapError::Internal(
-                "frontend owner failed to start".into(),
-            ))
+            Err(BootstrapError::Internal("frontend owner failed to start".into()))
         },
     );
     assert!(result.is_err());
@@ -219,10 +212,7 @@ fn bootstrap_of_locked_library_leaves_active_pointer() {
         TestApp::start,
     )
     .unwrap();
-    assert_eq!(
-        app.services.store_key_state().unwrap(),
-        coven::StoreKeyState::Locked
-    );
+    assert_eq!(app.services.store_key_state().unwrap(), coven::StoreKeyState::Locked);
     assert_eq!(home.active(), Some(first.to_string()));
     app.close();
 }

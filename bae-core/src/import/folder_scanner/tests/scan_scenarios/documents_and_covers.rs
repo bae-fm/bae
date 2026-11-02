@@ -2,13 +2,7 @@
 #[test]
 fn folder_with_only_cue_and_no_audio() {
     let result = run_scenario(vec![
-        file(
-            "Album/Album.cue",
-            FileKind::CueFor {
-                stem: "Album.flac",
-                n_tracks: 5,
-            },
-        ),
+        file("Album/Album.cue", FileKind::CueFor { stem: "Album.flac", n_tracks: 5 }),
         file("Album/cover.jpg", FileKind::Jpeg),
     ]);
     assert!(result.top_level_paths().is_empty());
@@ -94,21 +88,14 @@ fn zero_byte_cover_art_is_carried_as_a_damaged_image() {
 fn sheet_naming_absent_audio_uses_the_unique_same_stem_file() {
     let (tmp, album) = album_dir();
     std::fs::write(album.join("Album.flac"), fake_flac()).unwrap();
-    std::fs::write(
-        album.join("Album.cue"),
-        make_cue_content("Album.wav", "Album Title"),
-    )
-    .unwrap();
+    std::fs::write(album.join("Album.cue"), make_cue_content("Album.wav", "Album Title")).unwrap();
 
     let items = scan_items(tmp.path().to_path_buf());
     assert_eq!(items.len(), 1);
     let candidate = match &items[0] {
         ScanItem::Valid(candidate) => candidate,
         ScanItem::Invalid(invalid) => {
-            panic!(
-                "folder must stay importable, got invalid: {}",
-                invalid.reason()
-            )
+            panic!("folder must stay importable, got invalid: {}", invalid.reason())
         }
         ScanItem::Discovered(_) | ScanItem::Decided { .. } | ScanItem::Sidecar(_) => {
             panic!("terminal scan helper returned a progress item")
@@ -128,11 +115,7 @@ fn sheet_naming_absent_audio_uses_the_unique_same_stem_file() {
         },
     );
     assert_eq!(
-        candidate
-            .files
-            .audio()
-            .map(|f| f.file_name.as_str())
-            .collect::<Vec<_>>(),
+        candidate.files.audio().map(|f| f.file_name.as_str()).collect::<Vec<_>>(),
         vec!["Album.flac"],
     );
     assert_eq!(
@@ -148,35 +131,22 @@ fn sheet_naming_absent_audio_uses_the_unique_same_stem_file() {
 fn audio_no_sheet_references_survives() {
     let (_tmp, album) = album_dir();
     std::fs::write(album.join("Album.flac"), fake_flac()).unwrap();
-    std::fs::write(
-        album.join("Album.cue"),
-        make_cue_content("Album.flac", "Album Title"),
-    )
-    .unwrap();
+    std::fs::write(album.join("Album.cue"), make_cue_content("Album.flac", "Album Title")).unwrap();
     std::fs::write(album.join("bonus 1.flac"), fake_flac()).unwrap();
     std::fs::write(album.join("bonus 2.flac"), fake_flac()).unwrap();
 
     let files = scan_files(&album);
     assert_eq!(
-        files
-            .audio()
-            .map(|f| f.relative_path.as_str())
-            .collect::<Vec<_>>(),
+        files.audio().map(|f| f.relative_path.as_str()).collect::<Vec<_>>(),
         vec!["Album.flac", "bonus 1.flac", "bonus 2.flac"],
     );
     let bound = files.bound_sheets();
     assert_eq!(bound.len(), 1);
     assert_eq!(bound[0].audio_files[0].1.file_name, "Album.flac");
 
-    let carried: Vec<_> = files
-        .release_files()
-        .map(|f| f.relative_path.as_str())
-        .collect();
+    let carried: Vec<_> = files.release_files().map(|f| f.relative_path.as_str()).collect();
     for expected in ["Album.cue", "Album.flac", "bonus 1.flac", "bonus 2.flac"] {
-        assert!(
-            carried.contains(&expected),
-            "{expected} must survive the scan, got {carried:?}",
-        );
+        assert!(carried.contains(&expected), "{expected} must survive the scan, got {carried:?}",);
     }
 }
 
@@ -188,21 +158,11 @@ fn folder_identifies_from_its_rip_log_with_the_sheet_unbound() {
     let (tmp, album) = album_dir();
     let fixtures = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures");
     std::fs::copy(fixtures.join("logs/test_album.log"), album.join("rip.log")).unwrap();
-    std::fs::copy(
-        fixtures.join("flac/01 Test Track 1.flac"),
-        album.join("01 Test Track 1.flac"),
-    )
-    .unwrap();
-    std::fs::copy(
-        fixtures.join("flac/02 Test Track 2.flac"),
-        album.join("02 Test Track 2.flac"),
-    )
-    .unwrap();
-    std::fs::write(
-        album.join("Album.cue"),
-        make_cue_content("Album.wav", "Album Title"),
-    )
-    .unwrap();
+    std::fs::copy(fixtures.join("flac/01 Test Track 1.flac"), album.join("01 Test Track 1.flac"))
+        .unwrap();
+    std::fs::copy(fixtures.join("flac/02 Test Track 2.flac"), album.join("02 Test Track 2.flac"))
+        .unwrap();
+    std::fs::write(album.join("Album.cue"), make_cue_content("Album.wav", "Album Title")).unwrap();
 
     let items = scan_items(tmp.path().to_path_buf());
     assert_eq!(items.len(), 1);
@@ -214,11 +174,7 @@ fn folder_identifies_from_its_rip_log_with_the_sheet_unbound() {
     let files = scan_files(&album);
     assert!(files.bound_sheets().is_empty());
     assert!(
-        crate::import::discid::read_rip_artifacts(&files)
-            .disc_id
-            .computed()
-            .len()
-            == 1,
+        crate::import::discid::read_rip_artifacts(&files).disc_id.computed().len() == 1,
         "the rip log's TOC still yields a disc ID with the sheet unbound",
     );
 }
@@ -241,20 +197,14 @@ fn unparseable_sheet_lands_as_a_document() {
     match &items[0] {
         ScanItem::Valid(candidate) => {
             assert!(
-                candidate
-                    .files
-                    .documents()
-                    .any(|d| d.file_name == "Album.cue"),
+                candidate.files.documents().any(|d| d.file_name == "Album.cue"),
                 "an unparseable sheet stays a document",
             );
             assert!(candidate.files.track_sheets().next().is_none());
             assert_eq!(candidate.files.audio().count(), 1);
         }
         ScanItem::Invalid(invalid) => {
-            panic!(
-                "an unparseable sheet must not invalidate: {}",
-                invalid.reason()
-            )
+            panic!("an unparseable sheet must not invalidate: {}", invalid.reason())
         }
         ScanItem::Discovered(_) | ScanItem::Decided { .. } | ScanItem::Sidecar(_) => {
             panic!("terminal scan helper returned a progress item")
@@ -270,11 +220,8 @@ fn content_hash_covers_audio_no_sheet_references() {
     let build = |dir: &Path, with_bonus: bool| {
         std::fs::create_dir_all(dir).unwrap();
         std::fs::write(dir.join("Album.flac"), fake_flac()).unwrap();
-        std::fs::write(
-            dir.join("Album.cue"),
-            make_cue_content("Album.flac", "Album Title"),
-        )
-        .unwrap();
+        std::fs::write(dir.join("Album.cue"), make_cue_content("Album.flac", "Album Title"))
+            .unwrap();
         if with_bonus {
             std::fs::write(dir.join("bonus.flac"), fake_flac()).unwrap();
         }
@@ -283,10 +230,7 @@ fn content_hash_covers_audio_no_sheet_references() {
     let tmp = tempfile::tempdir().unwrap();
     let plain = build(&tmp.path().join("Plain"), false);
     let with_bonus = build(&tmp.path().join("Bonus"), true);
-    assert_ne!(
-        plain, with_bonus,
-        "audio no sheet references must count toward the hash",
-    );
+    assert_ne!(plain, with_bonus, "audio no sheet references must count toward the hash",);
 }
 
 /// The folder is the release, so an unrecognized sidecar is carried like every
@@ -322,10 +266,8 @@ fn an_unrecognized_sidecar_is_carried_and_hashed() {
     );
 
     // The import writes a row for every file the hash covers.
-    let carried: Vec<_> = sidecar_files
-        .release_files()
-        .map(|file| file.file_name.clone())
-        .collect();
+    let carried: Vec<_> =
+        sidecar_files.release_files().map(|file| file.file_name.clone()).collect();
     for sidecar in SIDECARS {
         assert!(
             carried.contains(&sidecar.to_string()),
@@ -387,10 +329,7 @@ fn corrupt_audio_and_empty_folders_still_invalidate() {
     let empty = tmp.path().join("Empty");
     std::fs::create_dir_all(&empty).unwrap();
     std::fs::write(empty.join("cover.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
-    assert!(
-        scan_items(empty.clone()).is_empty(),
-        "a folder with no audio has nothing to import",
-    );
+    assert!(scan_items(empty.clone()).is_empty(), "a folder with no audio has nothing to import",);
     assert!(
         matches!(
             collect_release_candidate_files_with_scope(
@@ -398,9 +337,7 @@ fn corrupt_audio_and_empty_folders_still_invalidate() {
                 crate::import::ReleaseFileScope::Recursive,
                 &StoredCandidateEdits::none()
             ),
-            Err(crate::import::ImportError::InvalidFolder(
-                InvalidReason::NoValidAudio
-            ))
+            Err(crate::import::ImportError::InvalidFolder(InvalidReason::NoValidAudio))
         ),
         "categorizing an audio-less folder names NoValidAudio",
     );

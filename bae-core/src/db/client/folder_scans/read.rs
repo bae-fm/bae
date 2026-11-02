@@ -52,10 +52,7 @@ impl RowSources {
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum EntryRows<'a> {
     Root(&'a Path),
-    Entry {
-        root: &'a Path,
-        key: &'a CandidateKey,
-    },
+    Entry { root: &'a Path, key: &'a CandidateKey },
 }
 
 impl<'a> EntryRows<'a> {
@@ -146,9 +143,7 @@ pub(crate) fn load_item_by_key(
     entry_key: &CandidateKey,
     sources: RowSources,
 ) -> Result<Option<(PathBuf, StoredScanItem)>, DbError> {
-    load_item_by_key_rows(sql, entry_key, sources)?
-        .map(|process| process())
-        .transpose()
+    load_item_by_key_rows(sql, entry_key, sources)?.map(|process| process()).transpose()
 }
 
 pub(crate) fn load_item_by_key_rows(
@@ -174,10 +169,7 @@ pub(crate) fn load_item_by_key_rows(
     if let Some(root) = roots.into_iter().next() {
         let items = load_candidate_items_rows(
             sql,
-            EntryRows::Entry {
-                root: &root,
-                key: entry_key,
-            },
+            EntryRows::Entry { root: &root, key: entry_key },
             sources,
         )?;
         let entry_key = entry_key.clone();
@@ -634,11 +626,7 @@ pub(crate) fn load_candidate_items_rows(
                 }
                 other => return Err(unreadable("kind", other)),
             };
-            items.push(StoredScanItem {
-                key: row.path,
-                generation,
-                item,
-            });
+            items.push(StoredScanItem { key: row.path, generation, item });
         }
         Ok(items)
     }))
@@ -651,9 +639,7 @@ fn listed<T: serde::de::DeserializeOwned>(
     what: &str,
 ) -> Result<Vec<T>, DbError> {
     serde_json::from_str(json).map_err(|error| {
-        DbError::Message(format!(
-            "the {what} stored under {candidate_path} do not read: {error}"
-        ))
+        DbError::Message(format!("the {what} stored under {candidate_path} do not read: {error}"))
     })
 }
 
@@ -705,10 +691,7 @@ fn files_of(candidate_path: &CandidateKey, json: &str) -> Result<Vec<CandidateFi
                         sheet: row.sheet.ok_or_else(|| missing("parsed sheet"))?.sheet()?,
                         binding: sheet_binding_of(
                             &row.sheet_binding.ok_or_else(|| missing("binding"))?,
-                            row.sheet_audio
-                                .into_iter()
-                                .map(StoredSheetAudio::audio_file)
-                                .collect(),
+                            row.sheet_audio.into_iter().map(StoredSheetAudio::audio_file).collect(),
                             row.sheet_binding_codec,
                         )?,
                         disc: sheet_disc_of(
@@ -793,12 +776,8 @@ fn source_audio_of(row: &FileRow) -> Result<Option<ScannedAudio>, DbError> {
                 )));
             }
             to_u64(sample_rate_hz, "an audio file's sample rate")?;
-            bits_per_sample
-                .map(|value| to_u64(value, "an audio file's bit depth"))
-                .transpose()?;
-            bitrate_kbps
-                .map(|value| to_u64(value, "an audio file's bitrate"))
-                .transpose()?;
+            bits_per_sample.map(|value| to_u64(value, "an audio file's bit depth")).transpose()?;
+            bitrate_kbps.map(|value| to_u64(value, "an audio file's bitrate")).transpose()?;
             to_u64(channels, "an audio file's channel count")?;
             Ok(Some(ScannedAudio {
                 format: AudioFormat {
@@ -864,9 +843,6 @@ struct PartRow {
 fn parts_of(candidate_path: &CandidateKey, json: &str) -> Result<Vec<ReleasePart>, DbError> {
     Ok(listed::<PartRow>(candidate_path, json, "parts")?
         .into_iter()
-        .map(|part| ReleasePart {
-            folder: part.folder,
-            prefix: part.prefix,
-        })
+        .map(|part| ReleasePart { folder: part.folder, prefix: part.prefix })
         .collect())
 }

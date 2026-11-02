@@ -33,9 +33,7 @@ fn discogs_titles(json: &str, audio: &[u64]) -> Vec<String> {
     )
     .extract()
     .expect("the Discogs fixture extracts")
-    .read(&crate::import::catalog_reading::ReadAudio::of_lengths(
-        audio,
-    ))
+    .read(&crate::import::catalog_reading::ReadAudio::of_lengths(audio))
     .expect("the Discogs fixture reads")
     .tracks
     .into_iter()
@@ -148,13 +146,9 @@ fn a_zero_master_id_is_no_group() {
         { "id": 12, "title": "Artist Name - Album Title", "master_id": 0, "type": "release" }
     ]))
     .expect("Discogs search results parse");
-    let converted: Vec<MetadataResult> = results
-        .into_iter()
-        .map(discogs_search_result_to_metadata)
-        .collect();
-    assert!(converted
-        .iter()
-        .all(|result| result.source_group_id.is_none()));
+    let converted: Vec<MetadataResult> =
+        results.into_iter().map(discogs_search_result_to_metadata).collect();
+    assert!(converted.iter().all(|result| result.source_group_id.is_none()));
 
     let groups = crate::import::release_group::group_results(
         crate::import::release_group::unranked(converted),
@@ -199,10 +193,7 @@ fn discid_metadata_links_the_releases_its_document_names() {
             crate::import::MetadataRef::new(Catalog::Discogs, "43"),
         ]
     );
-    assert_eq!(
-        metadata.media,
-        StatedMedia::PerMedium(vec![Some(Medium::Cd)])
-    );
+    assert_eq!(metadata.media, StatedMedia::PerMedium(vec![Some(Medium::Cd)]));
 }
 
 /// A disc ID names one medium of a release that has several. The pressing is
@@ -243,14 +234,8 @@ fn discid_metadata_carries_every_medium_into_pairing() {
         assert_eq!(
             media,
             vec![
-                MediaCount {
-                    medium: Medium::Cd,
-                    count: 1
-                },
-                MediaCount {
-                    medium: Medium::Vinyl,
-                    count: 1
-                },
+                MediaCount { medium: Medium::Cd, count: 1 },
+                MediaCount { medium: Medium::Vinyl, count: 1 },
             ],
             "the pressing is every medium the release lists, not the one the disc is"
         );
@@ -263,14 +248,12 @@ fn discid_metadata_carries_every_medium_into_pairing() {
         result.barcode = vec![barcode.to_string()];
         result.formats = formats
             .iter()
-            .map(
-                |(name, descriptions)| bae_catalogs::discogs::DiscogsFormat {
-                    name: name.to_string(),
-                    qty: "1".to_string(),
-                    descriptions: descriptions.iter().map(|d| d.to_string()).collect(),
-                    text: None,
-                },
-            )
+            .map(|(name, descriptions)| bae_catalogs::discogs::DiscogsFormat {
+                name: name.to_string(),
+                qty: "1".to_string(),
+                descriptions: descriptions.iter().map(|d| d.to_string()).collect(),
+                text: None,
+            })
             .collect();
         discogs_search_result_to_metadata(result)
     };
@@ -315,66 +298,40 @@ fn a_general_query_builds_both_providers_requests() {
 
 #[test]
 fn catalog_and_barcode_queries_fill_their_own_provider_fields() {
-    let catalog = SearchQuery::CatalogNumber {
-        catalog_number: "CAT-7".to_string(),
-    };
-    assert_eq!(
-        catalog.musicbrainz_params().catalog_number.as_deref(),
-        Some("CAT-7")
-    );
+    let catalog = SearchQuery::CatalogNumber { catalog_number: "CAT-7".to_string() };
+    assert_eq!(catalog.musicbrainz_params().catalog_number.as_deref(), Some("CAT-7"));
     assert_eq!(catalog.discogs_params().catno.as_deref(), Some("CAT-7"));
 
     // A code is asked for in its one spelling: a UPC-A as its EAN-13,
     // however it was typed.
     for typed in ["012345678905", " 0 12345 67890 5 ", "0012345678905"] {
-        let barcode = SearchQuery::Barcode {
-            barcode: typed.to_string(),
-        };
+        let barcode = SearchQuery::Barcode { barcode: typed.to_string() };
         assert_eq!(
             barcode.musicbrainz_params().barcode.as_deref(),
             Some("0012345678905"),
             "{typed}"
         );
-        assert_eq!(
-            barcode.discogs_params().barcode.as_deref(),
-            Some("0012345678905"),
-            "{typed}"
-        );
+        assert_eq!(barcode.discogs_params().barcode.as_deref(), Some("0012345678905"), "{typed}");
     }
 
     // A value whose check digit fails is still asked for, by its digits.
-    let mistyped = SearchQuery::Barcode {
-        barcode: "0 12345 67890 6".to_string(),
-    };
-    assert_eq!(
-        mistyped.musicbrainz_params().barcode.as_deref(),
-        Some("012345678906")
-    );
+    let mistyped = SearchQuery::Barcode { barcode: "0 12345 67890 6".to_string() };
+    assert_eq!(mistyped.musicbrainz_params().barcode.as_deref(), Some("012345678906"));
 }
 
 #[test]
 fn a_barcode_query_names_why_its_value_is_no_product_code() {
     use bae_types::barcode::Unusable;
-    let unusable = |typed: &str| {
-        SearchQuery::Barcode {
-            barcode: typed.to_string(),
-        }
-        .unusable_barcode()
-    };
+    let unusable =
+        |typed: &str| SearchQuery::Barcode { barcode: typed.to_string() }.unusable_barcode();
     assert_eq!(unusable("CAT-719"), Some(Unusable::NotACode));
     assert_eq!(unusable("12345"), Some(Unusable::TooShort));
     assert_eq!(unusable("0000000000000"), Some(Unusable::Placeholder));
     assert_eq!(unusable("2100000123457"), Some(Unusable::StoreInternal));
     assert_eq!(unusable("0 12345 67890 5"), None);
-    assert_eq!(
-        unusable("0 12345 67890 6"),
-        None,
-        "a check-digit slip is still a code"
-    );
+    assert_eq!(unusable("0 12345 67890 6"), None, "a check-digit slip is still a code");
 
-    let catalog = SearchQuery::CatalogNumber {
-        catalog_number: "CAT-719".to_string(),
-    };
+    let catalog = SearchQuery::CatalogNumber { catalog_number: "CAT-719".to_string() };
     assert_eq!(catalog.unusable_barcode(), None);
 }
 
@@ -472,24 +429,18 @@ fn discid_metadata_skips_only_releases_without_one_matching_medium() {
     }]);
     let multiple_matches = response_with_media(vec![
         MbMedium {
-            discs: vec![bae_catalogs::musicbrainz::MbDisc {
-                id: "disc-1".to_string(),
-            }],
+            discs: vec![bae_catalogs::musicbrainz::MbDisc { id: "disc-1".to_string() }],
             format: Some("CD".to_string()),
             tracks: vec![make_mb_track("1", "First CD Track")],
         },
         MbMedium {
-            discs: vec![bae_catalogs::musicbrainz::MbDisc {
-                id: "disc-1".to_string(),
-            }],
+            discs: vec![bae_catalogs::musicbrainz::MbDisc { id: "disc-1".to_string() }],
             format: Some("CD".to_string()),
             tracks: vec![make_mb_track("1", "Second CD Track")],
         },
     ]);
     let mut valid = response_with_media(vec![MbMedium {
-        discs: vec![bae_catalogs::musicbrainz::MbDisc {
-            id: "disc-1".to_string(),
-        }],
+        discs: vec![bae_catalogs::musicbrainz::MbDisc { id: "disc-1".to_string() }],
         format: Some("CD".to_string()),
         tracks: vec![make_mb_track("1", "CD Track")],
     }]);
@@ -501,11 +452,7 @@ fn discid_metadata_skips_only_releases_without_one_matching_medium() {
     };
     let metadata = mb_discid_releases_to_metadata(
         "disc-1",
-        vec![
-            answered(no_match),
-            answered(multiple_matches),
-            answered(valid),
-        ],
+        vec![answered(no_match), answered(multiple_matches), answered(valid)],
     );
 
     assert_eq!(metadata.len(), 1);
@@ -548,26 +495,17 @@ fn mb_values_number_vinyl_sides_across_media() {
         MbMedium {
             discs: vec![],
             format: Some("12\" Vinyl".to_string()),
-            tracks: vec![
-                make_mb_track("A1", "Track A1"),
-                make_mb_track("B1", "Track B1"),
-            ],
+            tracks: vec![make_mb_track("A1", "Track A1"), make_mb_track("B1", "Track B1")],
         },
         MbMedium {
             discs: vec![],
             format: Some("12\" Vinyl".to_string()),
-            tracks: vec![
-                make_mb_track("C1", "Track C1"),
-                make_mb_track("D1", "Track D1"),
-            ],
+            tracks: vec![make_mb_track("C1", "Track C1"), make_mb_track("D1", "Track D1")],
         },
     ]);
 
     let values = mb_release(&response).every_medium_values().unwrap();
-    assert_eq!(
-        crate::import::release_values::value_labels(&values),
-        ["A1", "B1", "C1", "D1"]
-    );
+    assert_eq!(crate::import::release_values::value_labels(&values), ["A1", "B1", "C1", "D1"]);
 }
 
 #[test]
@@ -594,11 +532,7 @@ fn parse_duration_to_ms_handles_mm_ss_and_hh_mm_ss() {
 /// than stopping the read on the catalog's data.
 #[test]
 fn a_duration_past_u64_milliseconds_states_no_length() {
-    for input in [
-        "307445734561825861:00",
-        "5124095576030432:00:00",
-        "0:18446744073709552",
-    ] {
+    for input in ["307445734561825861:00", "5124095576030432:00:00", "0:18446744073709552"] {
         assert_eq!(parse_duration_to_ms(input), None, "{input}");
     }
 }
@@ -609,17 +543,11 @@ fn mb_values_put_an_unlettered_track_on_the_side_before_it() {
     let response = response_with_media(vec![MbMedium {
         discs: vec![],
         format: Some("12\" Vinyl".to_string()),
-        tracks: vec![
-            make_mb_track("A1", "Track A1"),
-            make_mb_track("1", "Numeric-only Track"),
-        ],
+        tracks: vec![make_mb_track("A1", "Track A1"), make_mb_track("1", "Numeric-only Track")],
     }]);
 
     let values = mb_release(&response).every_medium_values().unwrap();
-    assert_eq!(
-        crate::import::release_values::value_labels(&values),
-        ["A1", "A1"]
-    );
+    assert_eq!(crate::import::release_values::value_labels(&values), ["A1", "A1"]);
 }
 
 /// The picker's pressing fields are the pressing the commit stores: one
@@ -652,10 +580,7 @@ fn mb_detail_pressing_matches_the_committed_pressing() {
     assert_eq!(detail.labels, committed.labels);
     assert_eq!(detail.facts, committed.facts);
     assert_eq!(detail.barcodes, committed.barcodes);
-    assert_eq!(
-        detail.facts.status,
-        Some(bae_types::pressing::ReleaseStatus::Promotion)
-    );
+    assert_eq!(detail.facts.status, Some(bae_types::pressing::ReleaseStatus::Promotion));
 }
 
 /// A track's title is the recording's first, the track's own title only as
@@ -796,10 +721,7 @@ fn a_discogs_reading_selects_each_index_layout_from_ordered_durations() {
 
     let titles = discogs_titles(&release, &[60_000, 120_000, 540_000]);
 
-    assert_eq!(
-        titles,
-        vec!["Suite One: Part One", "Suite One: Part Two", "Suite Two"]
-    );
+    assert_eq!(titles, vec!["Suite One: Part One", "Suite One: Part Two", "Suite Two"]);
 }
 
 #[test]
@@ -879,19 +801,13 @@ fn a_musicbrainz_search_result_states_its_media() {
         result.facts(),
         bae_types::pressing::PressingFacts {
             area: Some(bae_types::pressing::area("JM")),
-            media: vec![MediaCount {
-                medium: Medium::Vinyl,
-                count: 1
-            }],
+            media: vec![MediaCount { medium: Medium::Vinyl, count: 1 }],
             status: Some(bae_types::pressing::ReleaseStatus::Official),
             packaging: Some(bae_types::pressing::Packaging::CardboardSleeve),
             discogs_details: Vec::new(),
         }
     );
-    assert_eq!(
-        result.media,
-        StatedMedia::PerMedium(vec![Some(Medium::Vinyl), None])
-    );
+    assert_eq!(result.media, StatedMedia::PerMedium(vec![Some(Medium::Vinyl), None]));
 }
 
 /// A Discogs search result carries its structured format entries: the
@@ -917,10 +833,7 @@ fn a_discogs_search_result_reads_its_format_entries() {
         result.facts(),
         bae_types::pressing::PressingFacts {
             area: Some(bae_types::pressing::area("JP")),
-            media: vec![MediaCount {
-                medium: Medium::Cd,
-                count: 2
-            }],
+            media: vec![MediaCount { medium: Medium::Cd, count: 2 }],
             status: Some(bae_types::pressing::ReleaseStatus::Promotion),
             packaging: None,
             discogs_details: vec![
@@ -969,9 +882,6 @@ fn the_isrc_search_answers_each_release_of_an_asked_recording_once() {
             .iter()
             .map(|result| (result.release_id.as_str(), result.artist.as_deref()))
             .collect::<Vec<_>>(),
-        vec![
-            ("rel-album", Some("Artist Name")),
-            ("rel-compilation", Some("Various Artists")),
-        ]
+        vec![("rel-album", Some("Artist Name")), ("rel-compilation", Some("Various Artists")),]
     );
 }

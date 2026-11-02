@@ -128,8 +128,7 @@ impl StreamingAvioContext {
             Err(BufferStop::Cancelled) => {
                 // The buffer was cancelled under us: set our own token too, so the
                 // decode loop sees the cancellation rather than reading it as EOF.
-                self.cancel_token
-                    .store(true, std::sync::atomic::Ordering::Relaxed);
+                self.cancel_token.store(true, std::sync::atomic::Ordering::Relaxed);
                 ffmpeg_sys_next::AVERROR_EOF
             }
             Err(BufferStop::Failed(error)) => {

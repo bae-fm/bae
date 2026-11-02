@@ -73,11 +73,7 @@ impl DiscIdEvidence {
     /// release holding two of the folder's discs is answered for both.
     pub(super) fn hold(&mut self, documents: Vec<DiscIdRelease>) {
         for document in documents {
-            if !self
-                .documents
-                .iter()
-                .any(|held| held.release() == document.release())
-            {
+            if !self.documents.iter().any(|held| held.release() == document.release()) {
                 self.documents.push(document);
             }
         }
@@ -85,9 +81,7 @@ impl DiscIdEvidence {
 
     /// The document a lookup answered `release` with, where one did.
     pub(super) fn document_of(&self, release: &MetadataRef) -> Option<&DiscIdRelease> {
-        self.documents
-            .iter()
-            .find(|document| document.release() == release)
+        self.documents.iter().find(|document| document.release() == release)
     }
 
     /// Every release any disc ID's lookup returned, each once.
@@ -148,10 +142,7 @@ impl BarcodeEvidence {
 
     /// `code_values` less the ones the person left out.
     pub fn asked_code_values(&self) -> Vec<String> {
-        self.code_values()
-            .into_iter()
-            .filter(|code| !self.excluded.contains(code))
-            .collect()
+        self.code_values().into_iter().filter(|code| !self.excluded.contains(code)).collect()
     }
 
     /// Whether the candidate carries codes and the person left out every one.
@@ -281,9 +272,7 @@ impl CatalogEvidence {
     /// Whether the person struck `value` out, however either is spelled.
     pub fn is_struck_out(&self, value: &str) -> bool {
         let key = number_key(value);
-        self.struck_out
-            .iter()
-            .any(|struck| number_key(struck) == key)
+        self.struck_out.iter().any(|struck| number_key(struck) == key)
     }
 
     /// The numbers in effect: the picked ones not struck out, in the order
@@ -306,34 +295,21 @@ impl CatalogEvidence {
     /// either is spelled.
     pub(crate) fn holds(&self, value: &str) -> bool {
         let key = number_key(value);
-        self.chosen
-            .iter()
-            .chain(&self.confirmed)
-            .any(|held| number_key(held) == key)
+        self.chosen.iter().chain(&self.confirmed).any(|held| number_key(held) == key)
     }
 
     /// Every searched number's results, in the order asked.
     pub(super) fn active_results(&self) -> Vec<MetadataResult> {
-        self.searched
-            .iter()
-            .flat_map(|searched| searched.results.iter().cloned())
-            .collect()
+        self.searched.iter().flat_map(|searched| searched.results.iter().cloned()).collect()
     }
 
     /// Every searched number's provider failures, in the order asked.
     pub(super) fn recorded_failures(&self) -> Vec<SourceFailure> {
-        self.searched
-            .iter()
-            .flat_map(|searched| searched.failures.iter().cloned())
-            .collect()
+        self.searched.iter().flat_map(|searched| searched.failures.iter().cloned()).collect()
     }
 
     fn active_failures(&self, into: &mut Vec<IdentifyFailure>) {
-        into.extend(
-            self.recorded_failures()
-                .into_iter()
-                .map(IdentifyFailure::Catalog),
-        );
+        into.extend(self.recorded_failures().into_iter().map(IdentifyFailure::Catalog));
     }
 }
 
@@ -356,10 +332,8 @@ impl TitleSearch {
     /// The search for these words; `None` when there is no title.
     pub fn of(album: &str, artist: &str) -> Option<Self> {
         let album = album.trim();
-        (!album.is_empty()).then(|| Self {
-            album: album.to_string(),
-            artist: artist.trim().to_string(),
-        })
+        (!album.is_empty())
+            .then(|| Self { album: album.to_string(), artist: artist.trim().to_string() })
     }
 
     /// The search for a draft's own title, with trailing bracketed parts such
@@ -477,18 +451,9 @@ impl SignalsContext {
     ) -> Self {
         Self {
             providers,
-            search: SearchEvidence {
-                query: title_search,
-                ..Default::default()
-            },
-            disc: DiscIdEvidence {
-                excluded: choices.disc_id_excluded,
-                ..Default::default()
-            },
-            barcode: BarcodeEvidence {
-                excluded: choices.excluded_barcodes,
-                ..Default::default()
-            },
+            search: SearchEvidence { query: title_search, ..Default::default() },
+            disc: DiscIdEvidence { excluded: choices.disc_id_excluded, ..Default::default() },
+            barcode: BarcodeEvidence { excluded: choices.excluded_barcodes, ..Default::default() },
             catalog: CatalogEvidence {
                 chosen: choices.chosen_catalogs,
                 struck_out: choices.discounted_catalogs,
@@ -558,12 +523,7 @@ impl SignalsContext {
             catalog: read(self.catalog.active_results()),
             isrc: read(self.isrc.results.clone()),
             search: read(self.search.results.clone()),
-            pressing: read(
-                self.pressings
-                    .iter()
-                    .flat_map(PressingLookup::results)
-                    .collect(),
-            ),
+            pressing: read(self.pressings.iter().flat_map(PressingLookup::results).collect()),
         };
         let groups = self.album_groups(&answers);
         for result in answers
@@ -588,8 +548,7 @@ impl SignalsContext {
     fn album_groups(&self, answers: &LookupAnswers) -> Vec<GroupLinks> {
         let list: Vec<&MetadataResult> = answers.all().collect();
         album_links::read_groups(&list, |release| {
-            self.documents
-                .album_statements(&MetadataRef::new(Catalog::MusicBrainz, release))
+            self.documents.album_statements(&MetadataRef::new(Catalog::MusicBrainz, release))
         })
     }
 

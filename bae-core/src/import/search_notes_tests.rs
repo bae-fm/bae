@@ -38,8 +38,5 @@ fn a_search_result_carries_its_notes() {
         master_id: None,
         result_type: "release".to_string(),
     };
-    assert_eq!(
-        discogs_search_result_to_metadata(result).notes,
-        vec!["Small label".to_string()]
-    );
+    assert_eq!(discogs_search_result_to_metadata(result).notes, vec!["Small label".to_string()]);
 }

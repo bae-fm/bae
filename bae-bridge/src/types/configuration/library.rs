@@ -163,18 +163,11 @@ pub struct BridgeArtistSearchResult {
 
 impl BridgeArtistSearchResult {
     pub(crate) fn from_core(result: bae_core::album_detail::ArtistSearchResult) -> Self {
-        let bae_core::album_detail::ArtistSearchResult {
-            artist,
-            image,
-            credit_names,
-        } = result;
+        let bae_core::album_detail::ArtistSearchResult { artist, image, credit_names } = result;
         Self {
             artist: BridgeExistingArtist::from_core(bae_core::import::ExistingArtist::from(artist)),
             image: image.map(BridgeImageRef::from_core),
-            credit_names: credit_names
-                .into_iter()
-                .map(BridgeArtistCreditName::from_core)
-                .collect(),
+            credit_names: credit_names.into_iter().map(BridgeArtistCreditName::from_core).collect(),
         }
     }
 }
@@ -222,9 +215,7 @@ pub struct BridgeStorageRow {
 pub enum BridgeStorageRowStatus {
     Uploading,
     Pinning,
-    Transferring {
-        action: crate::types::BridgeReleaseStorageAction,
-    },
+    Transferring { action: crate::types::BridgeReleaseStorageAction },
     Local,
     Pinned,
     Cloud,
@@ -354,12 +345,8 @@ impl BridgeSyncStatusSnapshot {
         let indicator = crate::types::BridgeSyncIndicator::from_core(snapshot.indicator());
         let error = snapshot.shown_failure();
         let connected = snapshot.connected();
-        let bae_core::library::SyncStatusSnapshot {
-            status: _,
-            pending,
-            error: _,
-            retry_effect: _,
-        } = snapshot;
+        let bae_core::library::SyncStatusSnapshot { status: _, pending, error: _, retry_effect: _ } =
+            snapshot;
         Self {
             indicator,
             connected,
@@ -391,9 +378,9 @@ impl BridgeSyncIndicator {
             bae_core::library::SyncIndicator::Synced => Self::Synced,
             bae_core::library::SyncIndicator::Offline => Self::Offline,
             bae_core::library::SyncIndicator::Failed => Self::Failed,
-            bae_core::library::SyncIndicator::Waiting { items } => Self::Waiting {
-                items: items as u64,
-            },
+            bae_core::library::SyncIndicator::Waiting { items } => {
+                Self::Waiting { items: items as u64 }
+            }
         }
     }
 }

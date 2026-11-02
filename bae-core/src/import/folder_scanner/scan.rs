@@ -74,16 +74,14 @@ impl DirectoryReader for OsDirectoryReader {
                 .strip_prefix(root)
                 .map_err(|error| FolderScanError::Other(error.to_string()))?
                 .to_path_buf();
-            let file_type = entry
-                .file_type()
-                .map_err(|source| FolderScanError::io(&path, source))?;
+            let file_type =
+                entry.file_type().map_err(|source| FolderScanError::io(&path, source))?;
             // The entry's metadata, or `None` for a folder.
             let metadata = if file_type.is_dir() {
                 None
             } else {
-                let metadata = entry
-                    .metadata()
-                    .map_err(|source| FolderScanError::io(&path, source))?;
+                let metadata =
+                    entry.metadata().map_err(|source| FolderScanError::io(&path, source))?;
                 (!metadata.is_dir() || file_type.is_symlink()).then_some(metadata)
             };
             // A folder is known by its path's bytes, so one whose name isn't
@@ -103,8 +101,7 @@ impl DirectoryReader for OsDirectoryReader {
         let compare = |left: &PathBuf, right: &PathBuf| {
             let shown = |path: &PathBuf| {
                 coven::path_text(Path::new(
-                    path.file_name()
-                        .expect("a directory entry path has a file name"),
+                    path.file_name().expect("a directory entry path has a file name"),
                 ))
             };
             natord::compare_ignore_case(&shown(left), &shown(right))
@@ -128,17 +125,13 @@ pub(crate) fn file_modified_at_ns(
     path: &Path,
     metadata: &std::fs::Metadata,
 ) -> Result<i64, FolderScanError> {
-    let modified = metadata
-        .modified()
-        .map_err(|source| FolderScanError::io(path, source))?;
-    let elapsed = modified
-        .duration_since(std::time::UNIX_EPOCH)
-        .map_err(|error| {
-            FolderScanError::Other(format!(
-                "modification time is before the Unix epoch: {}: {error}",
-                path.display()
-            ))
-        })?;
+    let modified = metadata.modified().map_err(|source| FolderScanError::io(path, source))?;
+    let elapsed = modified.duration_since(std::time::UNIX_EPOCH).map_err(|error| {
+        FolderScanError::Other(format!(
+            "modification time is before the Unix epoch: {}: {error}",
+            path.display()
+        ))
+    })?;
     i64::try_from(elapsed.as_nanos()).map_err(|error| {
         FolderScanError::Other(format!(
             "modification time exceeds SQLite's integer range: {}: {error}",
@@ -261,13 +254,7 @@ impl<'a, R: DirectoryReader + ?Sized> Walk<'a, R> {
         decisions: &'a FolderReleaseDecisions,
         new_grouping_key: &'a (dyn Fn() -> CandidateKey + Sync),
     ) -> Self {
-        Self {
-            scan,
-            reader,
-            decisions,
-            new_grouping_key,
-            read_ahead: Default::default(),
-        }
+        Self { scan, reader, decisions, new_grouping_key, read_ahead: Default::default() }
     }
 
     /// `relative`'s listing: the one a reading already looked at, or a read
@@ -275,9 +262,7 @@ impl<'a, R: DirectoryReader + ?Sized> Walk<'a, R> {
     fn listing(&self, relative: &Path) -> Result<DirectoryListing, FolderScanError> {
         match self.read_ahead.borrow_mut().remove(relative) {
             Some(listing) => Ok(listing),
-            None => self
-                .reader
-                .read(self.scan.root, relative, self.scan.cancellation),
+            None => self.reader.read(self.scan.root, relative, self.scan.cancellation),
         }
     }
 
@@ -298,11 +283,7 @@ pub(crate) fn relative_path_string(path: &Path) -> String {
 }
 
 pub(super) fn directory_name(root: &Path, relative: &Path) -> String {
-    let path = if relative.as_os_str().is_empty() {
-        root
-    } else {
-        relative
-    };
+    let path = if relative.as_os_str().is_empty() { root } else { relative };
     coven::path_text(path.file_name().map_or(path, Path::new))
 }
 
@@ -343,10 +324,7 @@ fn in_disc_order(relative: &Path, audio_folders: &[PathBuf]) -> Vec<PathBuf> {
         Some(mut numbered) => {
             // Stable, so folders within one part keep the walk's order.
             numbered.sort_by_key(|(number, _)| *number);
-            numbered
-                .into_iter()
-                .map(|(_, folder)| folder.clone())
-                .collect()
+            numbered.into_iter().map(|(_, folder)| folder.clone()).collect()
         }
         None => audio_folders.to_vec(),
     }
@@ -366,11 +344,7 @@ fn parts_under(root: &Path, relative: &Path, part_folders: &[PathBuf]) -> Vec<Re
                 } else {
                     root.join(folder)
                 },
-                prefix: if prefix.is_empty() {
-                    prefix
-                } else {
-                    format!("{prefix}/")
-                },
+                prefix: if prefix.is_empty() { prefix } else { format!("{prefix}/") },
             }
         })
         .collect()
@@ -389,10 +363,7 @@ pub(super) fn candidate_from_files(
     part_folders: &[PathBuf],
 ) -> Result<Option<ProjectedScanNode>, FolderScanError> {
     if files.iter().any(|file| is_partial_marker_file(&file.path)) {
-        info!(
-            "Skipping release approximation {:?}: partial-download marker present",
-            relative
-        );
+        info!("Skipping release approximation {:?}: partial-download marker present", relative);
         return Ok(None);
     }
     let root = scan.root;
@@ -401,11 +372,8 @@ pub(super) fn candidate_from_files(
     } else {
         root.join(candidate_relative)
     };
-    let file_root = if relative.as_os_str().is_empty() {
-        root.to_path_buf()
-    } else {
-        root.join(relative)
-    };
+    let file_root =
+        if relative.as_os_str().is_empty() { root.to_path_buf() } else { root.join(relative) };
     let name = directory_name(root, candidate_relative);
     let relative_folder = RelativeFolder::of(candidate_relative)
         .map_err(|error| FolderScanError::Other(error.to_string()))?;
@@ -454,21 +422,13 @@ where
     F: FnMut(ScanItem),
     D: FnMut(PathBuf),
 {
-    let Walk {
-        scan,
-        decisions,
-        new_grouping_key,
-        ..
-    } = walk;
+    let Walk { scan, decisions, new_grouping_key, .. } = walk;
     let root = scan.root;
     let cancellation = scan.cancellation;
     cancellation.check()?;
     on_directory(root.join(relative));
     let listing = walk.listing(relative)?;
-    let direct_audio = listing
-        .files
-        .iter()
-        .any(|file| file.size > 0 && is_audio_file(&file.path));
+    let direct_audio = listing.files.iter().any(|file| file.size > 0 && is_audio_file(&file.path));
     let has_direct_files = !listing.files.is_empty();
     let wrapper_has_files = !direct_audio && !listing.files.is_empty();
     let mut all_files = listing.files.clone();
@@ -519,10 +479,7 @@ where
         Some((FolderReleaseDecision::CombineAsOneRelease, grouping)) => Some(grouping.clone()),
         _ => None,
     };
-    let keep_separate = matches!(
-        reading,
-        Some((FolderReleaseDecision::KeepAsSeparateReleases, _))
-    );
+    let keep_separate = matches!(reading, Some((FolderReleaseDecision::KeepAsSeparateReleases, _)));
     let can_stream_collection =
         ancestors_allow_actionable && combined_as.is_none() && (!has_direct_files || keep_separate);
     let mut collection_proven = !wrapper_has_files;
@@ -584,10 +541,7 @@ where
         .as_ref()
             == Some(&folder);
         if owns_wrapper_files && !reads_own_files {
-            loose.push(LooseFolder {
-                folder: relative.to_path_buf(),
-                files: direct_scope_files,
-            });
+            loose.push(LooseFolder { folder: relative.to_path_buf(), files: direct_scope_files });
         }
         let unread: HashSet<&Path> = loose
             .iter()
@@ -683,10 +637,7 @@ where
         // folders under it included.
         loose.clear();
     } else if owns_wrapper_files && contains_audio {
-        loose.push(LooseFolder {
-            folder: relative.to_path_buf(),
-            files: direct_scope_files,
-        });
+        loose.push(LooseFolder { folder: relative.to_path_buf(), files: direct_scope_files });
     }
 
     // Children below this folder have already gone out, so the parent will
@@ -811,12 +762,7 @@ where
         )));
     }
     let walk = Walk::new(
-        ScanRoot {
-            root,
-            stored: readings.stored,
-            cancellation,
-            reads,
-        },
+        ScanRoot { root, stored: readings.stored, cancellation, reads },
         reader,
         readings.decisions,
         readings.new_grouping_key,
@@ -841,14 +787,8 @@ where
     scan_for_candidates_with_reader_cancellable_and_directories(
         &OsDirectoryReader,
         root,
-        &ScanReadings {
-            stored,
-            decisions,
-            new_grouping_key: &fresh_grouping_key,
-        },
-        &FileReads::new(std::sync::Arc::new(
-            crate::import::file_tag_snapshot::LoftyFileTagReader,
-        )),
+        &ScanReadings { stored, decisions, new_grouping_key: &fresh_grouping_key },
+        &FileReads::new(std::sync::Arc::new(crate::import::file_tag_snapshot::LoftyFileTagReader)),
         &ScanCancellation::new(),
         |_| {},
         on_item,
@@ -863,10 +803,8 @@ pub(super) fn read_file_subtree<R: DirectoryReader + ?Sized>(
     cancellation: &ScanCancellation,
 ) -> Result<(Vec<FileEntry>, bool), FolderScanError> {
     let listing = reader.read(root, relative, cancellation)?;
-    let mut contains_audio = listing
-        .files
-        .iter()
-        .any(|file| file.size > 0 && is_audio_file(&file.path));
+    let mut contains_audio =
+        listing.files.iter().any(|file| file.size > 0 && is_audio_file(&file.path));
     let mut files = listing.files;
     for child in listing.directories {
         let (child_files, child_contains_audio) =
@@ -923,9 +861,7 @@ pub fn collect_release_candidate_files_with_scope(
         stored,
         &[],
         &ScanCancellation::new(),
-        &FileReads::new(std::sync::Arc::new(
-            crate::import::file_tag_snapshot::LoftyFileTagReader,
-        )),
+        &FileReads::new(std::sync::Arc::new(crate::import::file_tag_snapshot::LoftyFileTagReader)),
     )? {
         CategorizeOutcome::Valid(files) => Ok(files),
         CategorizeOutcome::Invalid { files, .. } => Err(InvalidReason::of(&files).into()),

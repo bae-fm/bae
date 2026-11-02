@@ -164,13 +164,7 @@ pub(super) fn read_facts_without_media(row: &Row, prefix: &str) -> rusqlite::Res
                 format!("discogs_details {details:?}: {error}"),
             )
         })?;
-    Ok(PressingFacts {
-        area,
-        media: Vec::new(),
-        status,
-        packaging,
-        discogs_details,
-    })
+    Ok(PressingFacts { area, media: Vec::new(), status, packaging, discogs_details })
 }
 
 /// A nullable column holding one vocabulary's key.

@@ -27,16 +27,9 @@ type ProgressTx = mpsc::UnboundedSender<TransferProgress>;
 /// the cloud out of reach, its credentials, or this device's own store.
 #[derive(Debug)]
 pub enum TransferProgress {
-    Progress {
-        progress: DownloadTransferProgress,
-    },
-    Complete {
-        release_id: String,
-    },
-    Failed {
-        release_id: String,
-        error: LibraryError,
-    },
+    Progress { progress: DownloadTransferProgress },
+    Complete { release_id: String },
+    Failed { release_id: String, error: LibraryError },
 }
 
 /// Pin, unpin, and audio detachment service for releases.
@@ -86,9 +79,9 @@ impl TransferService {
                 Err(join_error) if join_error.is_cancelled() => drained,
                 // The transfer catches its own work's panic, so this is a
                 // panic in recording how it ended.
-                Err(join_error) => Err(manager
-                    .bug(TaskFailed::of_join("pin a release", join_error))
-                    .into()),
+                Err(join_error) => {
+                    Err(manager.bug(TaskFailed::of_join("pin a release", join_error)).into())
+                }
             }
         };
         RunningOp::new(abort, outcome)
@@ -106,11 +99,7 @@ impl TransferService {
                 release_id,
                 ReleaseStorageAction::Unpin,
             ),
-            move |_tx| async move {
-                library_manager
-                    .unpin_release_files(&unpinned_release_id)
-                    .await
-            },
+            move |_tx| async move { library_manager.unpin_release_files(&unpinned_release_id).await },
         );
         rx
     }
@@ -173,32 +162,22 @@ impl ReleaseTransfer {
         release_id: String,
         action: ReleaseStorageAction,
     ) -> Self {
-        Self {
-            library_manager,
-            release_id,
-            action,
-        }
+        Self { library_manager, release_id, action }
     }
 
     /// Guard the transfer's preconditions; returns the release's file count so
     /// the completion can report it.
     pub(crate) async fn start(&self) -> Result<u32, LibraryError> {
-        self.library_manager
-            .get_release_by_id(&self.release_id)
-            .await?
-            .ok_or_else(|| {
-                LibraryError::TrackMapping(format!("Release not found: {}", self.release_id))
-            })?;
+        self.library_manager.get_release_by_id(&self.release_id).await?.ok_or_else(|| {
+            LibraryError::TrackMapping(format!("Release not found: {}", self.release_id))
+        })?;
         if matches!(self.action, ReleaseStorageAction::Upload)
             && !self.library_manager.is_sync_configured().await?
         {
             return Err(coven::SyncError::NoStorage.into());
         }
 
-        let files = self
-            .library_manager
-            .get_files_for_release(&self.release_id)
-            .await?;
+        let files = self.library_manager.get_files_for_release(&self.release_id).await?;
         if files.is_empty() {
             return Err(LibraryError::Storage("Release has no files".to_string()));
         }
@@ -208,10 +187,7 @@ impl ReleaseTransfer {
         let here = self.library_manager.device_id();
         let mut ready = match self.action {
             ReleaseStorageAction::Upload => {
-                !self
-                    .library_manager
-                    .has_pending_uploads_for_release(&self.release_id)
-                    .await?
+                !self.library_manager.has_pending_uploads_for_release(&self.release_id).await?
             }
             ReleaseStorageAction::Pin
             | ReleaseStorageAction::Unpin
@@ -233,9 +209,7 @@ impl ReleaseTransfer {
             };
         }
         if !ready {
-            return Err(LibraryError::Storage(
-                wrong_state_error(self.action).to_string(),
-            ));
+            return Err(LibraryError::Storage(wrong_state_error(self.action).to_string()));
         }
 
         Ok(files.len() as u32)
@@ -247,12 +221,11 @@ impl ReleaseTransfer {
             release_id = %self.release_id,
             "release transfer complete"
         );
-        self.library_manager
-            .record_telemetry(TelemetryEvent::StorageTransferCompleted {
-                action: self.action,
-                release_id: LocalId(self.release_id.clone()),
-                file_count,
-            });
+        self.library_manager.record_telemetry(TelemetryEvent::StorageTransferCompleted {
+            action: self.action,
+            release_id: LocalId(self.release_id.clone()),
+            file_count,
+        });
     }
 
     pub(crate) fn fail(&self, failure: &dyn std::fmt::Display) {
@@ -262,11 +235,10 @@ impl ReleaseTransfer {
             failure = %failure,
             "release transfer failed"
         );
-        self.library_manager
-            .record_telemetry(TelemetryEvent::StorageTransferFailed {
-                action: self.action,
-                release_id: LocalId(self.release_id.clone()),
-            });
+        self.library_manager.record_telemetry(TelemetryEvent::StorageTransferFailed {
+            action: self.action,
+            release_id: LocalId(self.release_id.clone()),
+        });
     }
 }
 
@@ -279,10 +251,7 @@ impl ReleaseTransfer {
 fn spawn_transfer<Run, Fut>(
     transfer: ReleaseTransfer,
     run: Run,
-) -> (
-    mpsc::UnboundedReceiver<TransferProgress>,
-    tokio::task::JoinHandle<()>,
-)
+) -> (mpsc::UnboundedReceiver<TransferProgress>, tokio::task::JoinHandle<()>)
 where
     Run: FnOnce(ProgressTx) -> Fut + Send + 'static,
     Fut: Future<Output = TransferResult> + Send + 'static,
@@ -301,9 +270,7 @@ where
             transfer.complete(file_count);
             send_progress(
                 &tx,
-                TransferProgress::Complete {
-                    release_id: transfer.release_id.clone(),
-                },
+                TransferProgress::Complete { release_id: transfer.release_id.clone() },
             );
             Ok::<_, LibraryError>(())
         })
@@ -313,10 +280,7 @@ where
             transfer.fail(&error);
             send_progress(
                 &tx,
-                TransferProgress::Failed {
-                    release_id: transfer.release_id.clone(),
-                    error,
-                },
+                TransferProgress::Failed { release_id: transfer.release_id.clone(), error },
             );
         }
     });
@@ -363,12 +327,8 @@ mod tests {
 
     /// A `LibraryManager` (over an empty test DB) whose diagnostics ship to a
     /// recording transport, so an emitted event can be read back off the wire.
-    async fn manager_with_recording_transport() -> (
-        LibraryManager,
-        Diagnostics,
-        Arc<RecordingTransport>,
-        TempDir,
-    ) {
+    async fn manager_with_recording_transport(
+    ) -> (LibraryManager, Diagnostics, Arc<RecordingTransport>, TempDir) {
         let home = TempDir::new().unwrap();
         let db_path = home.path().join("transfer-test.db");
         let database =
@@ -447,10 +407,7 @@ mod tests {
             .find(|e| e.name == "storage_transfer_failed")
             .expect("a failed transfer ships storage_transfer_failed");
         assert_eq!(failed.fields["action"], serde_json::json!("pin"));
-        assert_eq!(
-            failed.fields["release_id"],
-            serde_json::json!("missing-release")
-        );
+        assert_eq!(failed.fields["release_id"], serde_json::json!("missing-release"));
     }
 
     #[tokio::test]
@@ -461,10 +418,7 @@ mod tests {
             .upload_releases(&["missing-release".to_string()])
             .await
             .expect("a per-release refusal is returned as a batch outcome");
-        let crate::library::UploadReleasesOutcome::Partial {
-            receipt: None,
-            failure,
-        } = outcome
+        let crate::library::UploadReleasesOutcome::Partial { receipt: None, failure } = outcome
         else {
             panic!("the missing release must be refused without a receipt");
         };
@@ -476,9 +430,6 @@ mod tests {
             .find(|event| event.name == "storage_transfer_failed")
             .expect("a failed batch ships storage_transfer_failed");
         assert_eq!(failed.fields["action"], serde_json::json!("upload"));
-        assert_eq!(
-            failed.fields["release_id"],
-            serde_json::json!("missing-release")
-        );
+        assert_eq!(failed.fields["release_id"], serde_json::json!("missing-release"));
     }
 }

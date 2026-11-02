@@ -61,15 +61,7 @@ impl ImportFixture {
             .await
             .expect("import service starts");
 
-        Self {
-            db,
-            storage,
-            handle,
-            library_manager,
-            ids,
-            images,
-            _temp: temp,
-        }
+        Self { db, storage, handle, library_manager, ids, images, _temp: temp }
     }
 
     fn temp_path(&self) -> &Path {
@@ -179,9 +171,7 @@ fn generate_tagged_album_files(
         }
         tag.set_track(t.track_number);
         tagged.insert_tag(tag);
-        tagged
-            .save_to_path(&dest, WriteOptions::default())
-            .expect("save tags");
+        tagged.save_to_path(&dest, WriteOptions::default()).expect("save tags");
     }
 }
 
@@ -199,9 +189,7 @@ fn embedded_cover_jpeg() -> Vec<u8> {
 fn solid_jpeg((w, h): (u32, u32)) -> Vec<u8> {
     let img = image::RgbImage::from_pixel(w, h, image::Rgb([200, 60, 40]));
     let mut buf = std::io::Cursor::new(Vec::new());
-    image::DynamicImage::ImageRgb8(img)
-        .write_to(&mut buf, image::ImageFormat::Jpeg)
-        .unwrap();
+    image::DynamicImage::ImageRgb8(img).write_to(&mut buf, image::ImageFormat::Jpeg).unwrap();
     buf.into_inner()
 }
 
@@ -239,9 +227,7 @@ fn generate_tagged_album_files_with_embedded_cover(
                 .build(),
         );
         tagged.insert_tag(tag);
-        tagged
-            .save_to_path(&dest, WriteOptions::default())
-            .expect("save tags");
+        tagged.save_to_path(&dest, WriteOptions::default()).expect("save tags");
     }
 }
 
@@ -261,9 +247,7 @@ fn generate_album_with_oversized_cover(dir: &Path, filenames: &[&str]) -> String
     fs::create_dir_all(&scans).unwrap();
     let img = image::RgbImage::from_pixel(1000, 1000, image::Rgb([20, 160, 90]));
     let mut buf = std::io::Cursor::new(Vec::new());
-    image::DynamicImage::ImageRgb8(img)
-        .write_to(&mut buf, image::ImageFormat::Png)
-        .unwrap();
+    image::DynamicImage::ImageRgb8(img).write_to(&mut buf, image::ImageFormat::Png).unwrap();
     fs::write(scans.join("cover.png"), buf.into_inner()).unwrap();
     "scans/cover.png".to_string()
 }
@@ -274,11 +258,7 @@ fn generate_album_with_oversized_cover(dir: &Path, filenames: &[&str]) -> String
 /// concurrent run served whichever seed landed last. Each built release is a
 /// distinct release and gets a distinct id.
 fn synthetic_release_id(title: &str) -> String {
-    format!(
-        "test-{}-{}",
-        title.to_lowercase().replace(' ', "-"),
-        uuid::Uuid::new_v4()
-    )
+    format!("test-{}-{}", title.to_lowercase().replace(' ', "-"), uuid::Uuid::new_v4())
 }
 
 fn discogs_release(title: &str, tracks: &[&str]) -> DiscogsRelease {

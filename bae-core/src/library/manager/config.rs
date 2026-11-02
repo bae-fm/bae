@@ -50,8 +50,7 @@ impl LibraryManager {
     /// bae's own directory for this library, apart from coven's store: the
     /// remote image cache and the like.
     pub fn library_path(&self) -> PathBuf {
-        self.app_dir
-            .registered_library(&self.database.store_id().to_string())
+        self.app_dir.registered_library(&self.database.store_id().to_string())
     }
 
     /// The library's preferences as the settings screens read them, with the
@@ -62,11 +61,7 @@ impl LibraryManager {
         let store_id = self.database.store_id();
         let library_path = self.library_path();
         self.values_until_closed(self.database.subscribe_preferences().process(move |prefs| {
-            Ok(crate::config::Config {
-                store_id,
-                library_path: library_path.clone(),
-                prefs,
-            })
+            Ok(crate::config::Config { store_id, library_path: library_path.clone(), prefs })
         }))
     }
 
@@ -78,9 +73,7 @@ impl LibraryManager {
         part: impl Fn(crate::config::Preferences) -> T + Send + Sync + 'static,
     ) -> crate::library::LiveValues<T> {
         self.values_until_closed(
-            self.database
-                .subscribe_preferences()
-                .process(move |prefs| Ok(part(prefs))),
+            self.database.subscribe_preferences().process(move |prefs| Ok(part(prefs))),
         )
     }
 
@@ -258,8 +251,7 @@ impl LibraryManager {
     /// Hand the stored transfer limits to the open store, as opening it
     /// does; this is what a change after open does.
     async fn apply_transfer_limits(&self) -> Result<(), crate::config::ConfigError> {
-        self.database
-            .set_transfer_limits(self.preferences().await?.transfer_limits());
+        self.database.set_transfer_limits(self.preferences().await?.transfer_limits());
         Ok(())
     }
 
@@ -341,11 +333,7 @@ impl LibraryManager {
                 "unknown export preset {preset_id}"
             )));
         };
-        let allowed = if track_level {
-            preset.applies_to_track
-        } else {
-            preset.applies_to_release
-        };
+        let allowed = if track_level { preset.applies_to_track } else { preset.applies_to_release };
         if allowed {
             Ok(())
         } else {
@@ -389,8 +377,7 @@ impl LibraryManager {
     }
 
     pub async fn set_mcp_token(&self, token: String) -> Result<(), LibraryError> {
-        self.set_host_secret(crate::keys::MCP_BEARER_TOKEN, token)
-            .await
+        self.set_host_secret(crate::keys::MCP_BEARER_TOKEN, token).await
     }
 
     /// Set the Subsonic server config. Rejects `port == 0` (no real endpoint)
@@ -413,8 +400,7 @@ impl LibraryManager {
     }
 
     pub async fn set_subsonic_password(&self, password: String) -> Result<(), LibraryError> {
-        self.set_host_secret(crate::keys::SUBSONIC_PASSWORD, password)
-            .await
+        self.set_host_secret(crate::keys::SUBSONIC_PASSWORD, password).await
     }
 
     /// A host secret, read from the keychain on a blocking thread: a keychain
@@ -433,11 +419,10 @@ impl LibraryManager {
     /// Store a host secret in the keychain on a blocking thread.
     async fn set_host_secret(&self, name: &'static str, value: String) -> Result<(), LibraryError> {
         let database = self.database.clone();
-        let stored = blocking("store a host secret", move || {
-            database.set_host_secret(name, &value)
-        })
-        .await
-        .map_err(|failed| self.bug(failed))?;
+        let stored =
+            blocking("store a host secret", move || database.set_host_secret(name, &value))
+                .await
+                .map_err(|failed| self.bug(failed))?;
         Ok(stored?)
     }
 }

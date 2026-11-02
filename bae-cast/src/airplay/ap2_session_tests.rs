@@ -26,14 +26,8 @@ fn set_rate_anchor_pauses_and_resumes() {
     let resume = set_rate_anchor_body(1, 44_100, Some((123, 456, 0x99)));
     assert_eq!(resume.get("rate").unwrap().as_integer(), Some(1));
     assert_eq!(resume.get("rtpTime").unwrap().as_integer(), Some(44_100));
-    assert_eq!(
-        resume.get("networkTimeSecs").unwrap().as_integer(),
-        Some(123)
-    );
-    assert_eq!(
-        resume.get("networkTimeTimelineID").unwrap().as_integer(),
-        Some(0x99)
-    );
+    assert_eq!(resume.get("networkTimeSecs").unwrap().as_integer(), Some(123));
+    assert_eq!(resume.get("networkTimeTimelineID").unwrap().as_integer(), Some(0x99));
 }
 
 #[test]
@@ -146,14 +140,8 @@ fn setup_sequence_runs_over_the_encrypted_channel() {
     assert_eq!(ports.control_port, 7001);
 
     let (methods, saw_shk, saw_peers, saw_anchor_rate) = server.join().unwrap();
-    assert_eq!(
-        methods,
-        vec!["SETUP", "SETUP", "SETPEERS", "SETRATEANCHORTIME", "RECORD"]
-    );
-    assert!(
-        saw_shk,
-        "the SETUP stream body carried the derived audio key"
-    );
+    assert_eq!(methods, vec!["SETUP", "SETUP", "SETPEERS", "SETRATEANCHORTIME", "RECORD"]);
+    assert!(saw_shk, "the SETUP stream body carried the derived audio key");
     assert!(saw_peers, "SETPEERS carried an IP array");
     assert_eq!(saw_anchor_rate, Some(1), "SETRATEANCHORTIME rate was play");
 }
@@ -223,11 +211,9 @@ fn try_parse_request(bytes: &[u8]) -> Option<(String, String, Plist)> {
 }
 
 fn build_response(cseq: &str, body: &[u8]) -> Vec<u8> {
-    let mut out = format!(
-        "RTSP/1.0 200 OK\r\nCSeq: {cseq}\r\nContent-Length: {}\r\n\r\n",
-        body.len()
-    )
-    .into_bytes();
+    let mut out =
+        format!("RTSP/1.0 200 OK\r\nCSeq: {cseq}\r\nContent-Length: {}\r\n\r\n", body.len())
+            .into_bytes();
     out.extend_from_slice(body);
     out
 }
@@ -324,9 +310,7 @@ fn run_full_ap2_session(
     let addr = tcp.local_addr().unwrap();
     // Bind the audio (data) socket up front so its real port rides in SETUP.
     let data_udp = UdpSocket::bind(("127.0.0.1", 0)).unwrap();
-    data_udp
-        .set_read_timeout(Some(Duration::from_secs(5)))
-        .unwrap();
+    data_udp.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
     let data_port = data_udp.local_addr().unwrap().port();
 
     let server = std::thread::spawn(move || {
@@ -337,9 +321,7 @@ fn run_full_ap2_session(
         // -- Pairing (plaintext). The SRP secret is discarded by the sender, so
         // a valid B and a bare M4 suffice; pair-verify's X25519 secret is real.
         let group = SrpGroup::rfc5054_3072();
-        let b_pub = group
-            .g
-            .modpow(&num_bigint::BigUint::from_bytes_be(&[0x7Cu8; 32]), &group.n);
+        let b_pub = group.g.modpow(&num_bigint::BigUint::from_bytes_be(&[0x7Cu8; 32]), &group.n);
         let respond = |writer: &mut TcpStream, cseq: &str, body: Vec<u8>| {
             let mut out = format!(
                 "RTSP/1.0 200 OK\r\nCSeq: {cseq}\r\nContent-Length: {}\r\n\r\n",
@@ -364,11 +346,7 @@ fn run_full_ap2_session(
         );
         // pair-setup M3 -> M4 (bare)
         let (_m, _p, cseq, _b) = read_plaintext_request(&mut reader);
-        respond(
-            &mut writer,
-            &cseq,
-            Tlv8::new().push_u8(tlv_type::STATE, state::M4).encode(),
-        );
+        respond(&mut writer, &cseq, Tlv8::new().push_u8(tlv_type::STATE, state::M4).encode());
 
         // pair-verify M1 -> M2 (device eph + signed encrypted identity)
         use ed25519_dalek::{Signer, SigningKey};
@@ -378,11 +356,7 @@ fn run_full_ap2_session(
         let signing = SigningKey::generate(&mut SecureRng);
         let (_m, _p, cseq, m1) = read_plaintext_request(&mut reader);
         let m1_tlv = Tlv8::decode(&m1).unwrap();
-        let sender_pub: [u8; 32] = m1_tlv
-            .get(tlv_type::PUBLIC_KEY)
-            .unwrap()
-            .try_into()
-            .unwrap();
+        let sender_pub: [u8; 32] = m1_tlv.get(tlv_type::PUBLIC_KEY).unwrap().try_into().unwrap();
         let shared = eph.diffie_hellman(&PublicKey::from(sender_pub)).to_bytes();
         let session_key = crate::airplay::ap2_channel::hkdf32(
             b"Pair-Verify-Encrypt-Salt",
@@ -398,15 +372,8 @@ fn run_full_ap2_session(
             .push(tlv_type::IDENTIFIER, b"fake".to_vec())
             .push(tlv_type::SIGNATURE, sig.to_bytes().to_vec())
             .encode();
-        let sealed = cipher
-            .encrypt(
-                &pv_nonce(b"PV-Msg02"),
-                Payload {
-                    msg: &inner,
-                    aad: &[],
-                },
-            )
-            .unwrap();
+        let sealed =
+            cipher.encrypt(&pv_nonce(b"PV-Msg02"), Payload { msg: &inner, aad: &[] }).unwrap();
         respond(
             &mut writer,
             &cseq,
@@ -418,11 +385,7 @@ fn run_full_ap2_session(
         );
         // pair-verify M3 -> M4 (bare)
         let (_m, _p, cseq, _m3) = read_plaintext_request(&mut reader);
-        respond(
-            &mut writer,
-            &cseq,
-            Tlv8::new().push_u8(tlv_type::STATE, state::M4).encode(),
-        );
+        respond(&mut writer, &cseq, Tlv8::new().push_u8(tlv_type::STATE, state::M4).encode());
 
         // -- Encrypted control channel (keys derived from the verify secret).
         let (write, read) = control_keys(&shared);
@@ -441,21 +404,17 @@ fn run_full_ap2_session(
                 }
             }
             if method == "SETUP" && body.get("timingProtocol").is_some() {
-                timing_protocol = body
-                    .get("timingProtocol")
-                    .and_then(Plist::as_string)
-                    .unwrap_or("")
-                    .to_string();
+                timing_protocol =
+                    body.get("timingProtocol").and_then(Plist::as_string).unwrap_or("").to_string();
             }
             if method == "SETRATEANCHORTIME" {
                 anchor_has_network_time = body.get("networkTimeSecs").is_some();
             }
             methods.push(method.clone());
             let reply = match (method.as_str(), step) {
-                ("SETUP", 0) => bplist::encode(&Plist::Dict(vec![(
-                    "eventPort".to_string(),
-                    Plist::Integer(1),
-                )])),
+                ("SETUP", 0) => {
+                    bplist::encode(&Plist::Dict(vec![("eventPort".to_string(), Plist::Integer(1))]))
+                }
                 ("SETUP", 1) => {
                     let mut stream = vec![
                         ("dataPort".to_string(), Plist::Integer(u64::from(data_port))),
@@ -471,9 +430,7 @@ fn run_full_ap2_session(
                 }
                 _ => Vec::new(),
             };
-            writer
-                .write_all(&channel.seal(&build_response(&cseq, &reply)))
-                .unwrap();
+            writer.write_all(&channel.seal(&build_response(&cseq, &reply))).unwrap();
             writer.flush().unwrap();
         }
 
@@ -488,22 +445,10 @@ fn run_full_ap2_session(
         nonce[4..].copy_from_slice(nonce_tail);
         let audio_cipher = ChaCha20Poly1305::new(Key::from_slice(&shk));
         let pcm = audio_cipher
-            .decrypt(
-                Nonce::from_slice(&nonce),
-                Payload {
-                    msg: ciphertext,
-                    aad: &header[4..12],
-                },
-            )
+            .decrypt(Nonce::from_slice(&nonce), Payload { msg: ciphertext, aad: &header[4..12] })
             .expect("audio datagram decrypts with the shk-derived key");
 
-        Captured {
-            methods,
-            saw_shk,
-            timing_protocol,
-            anchor_has_network_time,
-            pcm,
-        }
+        Captured { methods, saw_shk, timing_protocol, anchor_has_network_time, pcm }
     });
 
     // The sender: pair, set up, and stream five packets of known PCM.
@@ -541,15 +486,9 @@ fn full_ap2_session_pairs_sets_up_and_streams_encrypted_audio() {
         vec!["SETUP", "SETUP", "SETPEERS", "SETRATEANCHORTIME", "RECORD"],
         "the AirPlay 2 control sequence runs in order over the encrypted channel"
     );
-    assert!(
-        c.saw_shk,
-        "SETUP carried the shk audio key derived from pair-verify"
-    );
+    assert!(c.saw_shk, "SETUP carried the shk audio key derived from pair-verify");
     assert_eq!(c.timing_protocol, "NTP");
-    assert!(
-        !c.anchor_has_network_time,
-        "NTP carries no network-time anchor"
-    );
+    assert!(!c.anchor_has_network_time, "NTP carries no network-time anchor");
     // One packet = 352 stereo frames of 0x0102, little-endian.
     assert_eq!(c.pcm.len(), 352 * 2 * 2);
     assert_eq!(&c.pcm[..4], &[0x02, 0x01, 0x02, 0x01]);
@@ -561,10 +500,7 @@ fn full_ap2_session_pairs_sets_up_and_streams_encrypted_audio() {
 fn ptp_receiver_gets_ptp_timing_and_the_network_anchor() {
     let (c, _) = run_full_ap2_session(super::super::airplay2::TimingProtocol::Ptp, None);
     assert_eq!(c.timing_protocol, "PTP");
-    assert!(
-        c.anchor_has_network_time,
-        "PTP carries the network-time anchor in SETRATEANCHORTIME"
-    );
+    assert!(c.anchor_has_network_time, "PTP carries the network-time anchor in SETRATEANCHORTIME");
 }
 
 /// A receiver that reports its `audioLatency` (11 025 frames, 0.25 s): the
@@ -574,10 +510,7 @@ fn ptp_receiver_gets_ptp_timing_and_the_network_anchor() {
 fn playback_is_told_the_latency_the_receiver_reports() {
     let (_, latency) =
         run_full_ap2_session(super::super::airplay2::TimingProtocol::Ntp, Some(11_025));
-    assert_eq!(
-        latency.paced_frames, 11_025,
-        "the session paces by the reported latency"
-    );
+    assert_eq!(latency.paced_frames, 11_025, "the session paces by the reported latency");
     assert_eq!(
         latency.told,
         Duration::from_millis(250),

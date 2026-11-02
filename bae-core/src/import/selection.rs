@@ -17,15 +17,9 @@ pub enum SelectionChange {
     /// Select exactly these rows, and nothing else.
     Replace { keys: Vec<CandidateKey> },
     /// Add these rows and take those out, leaving the rest as it is.
-    Toggle {
-        add: Vec<CandidateKey>,
-        remove: Vec<CandidateKey>,
-    },
+    Toggle { add: Vec<CandidateKey>, remove: Vec<CandidateKey> },
     /// Add every row the list shows from `from` to `to`, both included.
-    Extend {
-        from: CandidateKey,
-        to: CandidateKey,
-    },
+    Extend { from: CandidateKey, to: CandidateKey },
 }
 
 /// One selected candidate as the tables place it: what its commands are

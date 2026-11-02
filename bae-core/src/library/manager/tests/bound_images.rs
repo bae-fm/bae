@@ -33,11 +33,7 @@ fn a_cover_reaches_another_device_with_its_stored_file() {
             arrived.place()
         );
         assert_eq!(
-            other
-                .read_cover_image_bytes(&release.id)
-                .await
-                .unwrap()
-                .expect("the cover's bytes"),
+            other.read_cover_image_bytes(&release.id).await.unwrap().expect("the cover's bytes"),
             b"the cover"
         );
     });
@@ -117,11 +113,7 @@ fn a_cover_whose_row_arrives_before_its_file_moves_its_version_when_the_file_lan
         devices.b_mut().reopen_with(raised).await;
         let b = devices.b();
         b.wait_until("the cover's row on the second device", || async {
-            b.database()
-                .cover_version(&release.id)
-                .await
-                .unwrap()
-                .is_some()
+            b.database().cover_version(&release.id).await.unwrap().is_some()
         })
         .await;
         let early = cover_file(b.manager(), &release.id).await;
@@ -133,17 +125,10 @@ fn a_cover_whose_row_arrives_before_its_file_moves_its_version_when_the_file_lan
         );
         assert_eq!(
             b.database().cover_version(&release.id).await.unwrap(),
-            Some(format!(
-                "{}@{}",
-                cover.0,
-                hex::encode(uploader.0.to_be_bytes())
-            ))
+            Some(format!("{}@{}", cover.0, hex::encode(uploader.0.to_be_bytes())))
         );
         assert!(
-            b.manager()
-                .read_cover_image_bytes(&release.id)
-                .await
-                .is_err(),
+            b.manager().read_cover_image_bytes(&release.id).await.is_err(),
             "the cover can't be read while its file is on its uploader only"
         );
 
@@ -193,12 +178,7 @@ async fn an_image_over_the_bound_limit_is_refused() {
         .expect_err("an image over the limit makes no cover");
     match &error {
         LibraryError::Database(crate::db::DbError::Coven(coven::CovenError::Database(
-            coven::DbError::BoundFileTooLarge {
-                table,
-                column,
-                size,
-                limit,
-            },
+            coven::DbError::BoundFileTooLarge { table, column, size, limit },
         ))) => {
             assert_eq!((table.as_str(), column.as_str()), ("covers", "file"));
             assert_eq!(*size, coven::BOUND_FILE_LIMIT + 1);
@@ -226,9 +206,7 @@ fn the_largest_image_bae_stores_fits_a_bound_reference() {
         ::image::Rgb([channel(), channel(), channel()])
     });
     let mut png = std::io::Cursor::new(Vec::new());
-    ::image::DynamicImage::ImageRgb8(noise)
-        .write_to(&mut png, ::image::ImageFormat::Png)
-        .unwrap();
+    ::image::DynamicImage::ImageRgb8(noise).write_to(&mut png, ::image::ImageFormat::Png).unwrap();
     let stored = bae_util::stored_image::stored_jpeg(png.get_ref()).unwrap();
     let size = u64::try_from(stored.len()).unwrap();
     assert!(

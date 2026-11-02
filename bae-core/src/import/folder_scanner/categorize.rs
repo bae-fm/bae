@@ -62,9 +62,7 @@ pub(super) fn sheet_reference_fits_audio(
 
 fn track_fits_audio(track: &crate::cue_flac::CueTrack, audio: &ScannedFile) -> bool {
     audio.source_audio.as_ref().is_some_and(|source_audio| {
-        track
-            .duration_ms_with_file_duration(source_audio.duration_ms)
-            .is_ok()
+        track.duration_ms_with_file_duration(source_audio.duration_ms).is_ok()
     })
 }
 
@@ -122,10 +120,7 @@ pub(super) fn is_partial_marker_file(path: &Path) -> bool {
 #[derive(Debug)]
 pub(super) enum CategorizeOutcome {
     Valid(CategorizedFiles),
-    Invalid {
-        files: Vec<SkippedFile>,
-        tags: Option<SkippedTags>,
-    },
+    Invalid { files: Vec<SkippedFile>, tags: Option<SkippedTags> },
 }
 
 /// What settling a folder's sheet bindings produced.
@@ -162,10 +157,8 @@ pub(super) fn settle_sheet_bindings(
         .map(|entry| (entry.file.relative_path.as_str(), &entry.file))
         .collect();
     let audio_paths: Vec<PathBuf> = audio.values().map(|file| file.path.clone()).collect();
-    let audio_by_path: HashMap<&Path, &ScannedFile> = audio
-        .values()
-        .map(|file| (file.path.as_path(), *file))
-        .collect();
+    let audio_by_path: HashMap<&Path, &ScannedFile> =
+        audio.values().map(|file| (file.path.as_path(), *file)).collect();
 
     let mut settled: Vec<(usize, SheetBinding)> = Vec::new();
     for (index, entry) in files.iter().enumerate() {
@@ -214,11 +207,8 @@ pub(super) fn settle_sheet_bindings(
             && edits.get(sheet_id).is_none()
         {
             let sheet_dir = entry.file.path.parent();
-            let mut beside: Vec<&ScannedFile> = audio
-                .values()
-                .filter(|file| file.path.parent() == sheet_dir)
-                .copied()
-                .collect();
+            let mut beside: Vec<&ScannedFile> =
+                audio.values().filter(|file| file.path.parent() == sheet_dir).copied().collect();
             if beside.len() == references.len() {
                 beside.sort_by(|a, b| {
                     natord::compare_ignore_case(&a.relative_path, &b.relative_path)
@@ -241,12 +231,7 @@ pub(super) fn settle_sheet_bindings(
                 .collect::<Vec<_>>()
         };
         if references.is_empty() || resolved.len() != references.len() {
-            settled.push((
-                index,
-                SheetBinding::Unresolved {
-                    files: named_files(),
-                },
-            ));
+            settled.push((index, SheetBinding::Unresolved { files: named_files() }));
             continue;
         }
         let mut refused_codec = None;
@@ -261,9 +246,7 @@ pub(super) fn settle_sheet_bindings(
                         "Invalid candidate: sheet audio file could not be probed: {}",
                         audio.relative_path
                     );
-                    return Ok(SettledBindings::CorruptAudio {
-                        path: audio.relative_path.clone(),
-                    });
+                    return Ok(SettledBindings::CorruptAudio { path: audio.relative_path.clone() });
                 }
             }
         }
@@ -283,13 +266,9 @@ pub(super) fn settle_sheet_bindings(
                 "sheet {sheet_id} has boundaries outside {file_ids}; it stays unbound and \
                  the physical audio files import independently"
             );
-            SheetBinding::RefusedTiming {
-                files: named_files(),
-            }
+            SheetBinding::RefusedTiming { files: named_files() }
         } else {
-            SheetBinding::Resolved {
-                files: named_files(),
-            }
+            SheetBinding::Resolved { files: named_files() }
         };
         settled.push((index, binding));
     }
@@ -324,25 +303,18 @@ pub(super) fn settle_sheet_discs(
 ) {
     let mut claimed: std::collections::HashSet<&str> = std::collections::HashSet::new();
     for entry in files.iter() {
-        if let FileRole::TrackSheet {
-            binding: SheetBinding::Resolved { files: audio },
-            ..
-        } = &entry.role
+        if let FileRole::TrackSheet { binding: SheetBinding::Resolved { files: audio }, .. } =
+            &entry.role
         {
-            if matches!(
-                edits.get(&entry.file.relative_path),
-                Some(SheetDisc::Disc { .. })
-            ) {
+            if matches!(edits.get(&entry.file.relative_path), Some(SheetDisc::Disc { .. })) {
                 claimed.extend(audio.iter().map(|file| file.file_id.as_str()));
             }
         }
     }
     let mut ignored: BTreeSet<String> = BTreeSet::new();
     for entry in files.iter() {
-        let FileRole::TrackSheet {
-            binding: SheetBinding::Resolved { files: audio },
-            ..
-        } = &entry.role
+        let FileRole::TrackSheet { binding: SheetBinding::Resolved { files: audio }, .. } =
+            &entry.role
         else {
             continue;
         };
@@ -354,10 +326,7 @@ pub(super) fn settle_sheet_discs(
             }
             None => {}
         }
-        if audio
-            .iter()
-            .any(|file| claimed.contains(file.file_id.as_str()))
-        {
+        if audio.iter().any(|file| claimed.contains(file.file_id.as_str())) {
             ignored.insert(entry.file.relative_path.clone());
         } else {
             claimed.extend(audio.iter().map(|file| file.file_id.as_str()));
@@ -381,9 +350,7 @@ pub(super) fn settle_sheet_discs(
         *disc = edits
             .get(&entry.file.relative_path)
             .copied()
-            .unwrap_or(SheetDisc::Disc {
-                number: layout.sheet_disc(&entry.file.relative_path),
-            });
+            .unwrap_or(SheetDisc::Disc { number: layout.sheet_disc(&entry.file.relative_path) });
     }
 }
 
@@ -411,10 +378,9 @@ impl DiscLayout {
             .iter()
             .filter(|entry| carving(entry))
             .flat_map(|entry| match &entry.role {
-                FileRole::TrackSheet {
-                    binding: SheetBinding::Resolved { files },
-                    ..
-                } => files.iter().map(|audio| audio.file_id.as_str()).collect(),
+                FileRole::TrackSheet { binding: SheetBinding::Resolved { files }, .. } => {
+                    files.iter().map(|audio| audio.file_id.as_str()).collect()
+                }
                 _ => Vec::new(),
             })
             .collect();
@@ -485,11 +451,7 @@ fn propose_file(
     let relative_from_release = if release_root.as_os_str().is_empty() {
         entry.path.clone()
     } else {
-        entry
-            .path
-            .strip_prefix(release_root)
-            .unwrap_or(&entry.path)
-            .to_path_buf()
+        entry.path.strip_prefix(release_root).unwrap_or(&entry.path).to_path_buf()
     };
 
     // Joined from the path's components rather than displayed, so the result is
@@ -506,9 +468,7 @@ fn propose_file(
     let role = if is_audio_file(&entry.path) {
         if entry.size == 0 {
             info!("{relative_path} is a zero-byte audio file");
-            ProposedRole::DamagedAudio {
-                damage: AudioDamage::Empty,
-            }
+            ProposedRole::DamagedAudio { damage: AudioDamage::Empty }
         } else {
             ProposedRole::Audio
         }
@@ -536,15 +496,7 @@ fn propose_file(
         // Unrecognized, and carried anyway — the folder is the release.
         ProposedRole::Other
     };
-    Ok((
-        ScannedFile::new(
-            absolute_path,
-            relative_path,
-            entry.size,
-            entry.modified_at_ns,
-        ),
-        role,
-    ))
+    Ok((ScannedFile::new(absolute_path, relative_path, entry.size, entry.modified_at_ns), role))
 }
 
 /// `proposed`, which failed validation, as its skipped files in name order.
@@ -648,10 +600,7 @@ pub(super) fn categorize_sidecar(
         match release_role {
             Some(role) => {
                 if let Some(files) = files.as_mut() {
-                    files.push(CandidateFile {
-                        file: file.clone(),
-                        role,
-                    });
+                    files.push(CandidateFile { file: file.clone(), role });
                 }
             }
             None => files = None,
@@ -693,9 +642,7 @@ pub(super) fn categorize_files_from_tree(
 ) -> Result<CategorizeOutcome, FolderScanError> {
     let unreadable = |file: &ScannedFile| {
         info!("{} holds no audio bae can play", file.relative_path);
-        ProposedRole::DamagedAudio {
-            damage: AudioDamage::Unreadable,
-        }
+        ProposedRole::DamagedAudio { damage: AudioDamage::Unreadable }
     };
     let mut proposed: Vec<(ScannedFile, ProposedRole)> = Vec::new();
     for entry in tree.all_files_under(release_root) {
@@ -708,12 +655,8 @@ pub(super) fn categorize_files_from_tree(
     }
     let releasable = |proposed: &[(ScannedFile, ProposedRole)]| {
         shared_name(proposed.iter().map(|(file, _)| file.relative_path.as_str())).is_none()
-            && !proposed
-                .iter()
-                .any(|(_, role)| matches!(role, ProposedRole::DamagedAudio { .. }))
-            && proposed
-                .iter()
-                .any(|(_, role)| *role == ProposedRole::Audio)
+            && !proposed.iter().any(|(_, role)| matches!(role, ProposedRole::DamagedAudio { .. }))
+            && proposed.iter().any(|(_, role)| *role == ProposedRole::Audio)
     };
     // A folder that would be a release needs each track's measurements. A
     // track known only to play, from a skipped folder's row, is measured now.
@@ -834,10 +777,7 @@ pub(super) fn categorize_files_from_tree(
     }
     settle_sheet_discs(&mut files, parts, &stored.sheet_discs);
 
-    Ok(CategorizeOutcome::Valid(CategorizedFiles {
-        files,
-        parts: parts.to_vec(),
-    }))
+    Ok(CategorizeOutcome::Valid(CategorizedFiles { files, parts: parts.to_vec() }))
 }
 
 /// Reorder the audio among `proposed`, which is in name order, into the
@@ -874,9 +814,7 @@ fn lay_audio_in_play_order(
         .collect();
     // Stable, so files the numbers do not tell apart stay in name order.
     audio.sort_by(|(left_rank, left, _), (right_rank, right, _)| {
-        left_rank
-            .cmp(right_rank)
-            .then_with(|| left.play_order(right))
+        left_rank.cmp(right_rank).then_with(|| left.play_order(right))
     });
     for (slot, (_, _, entry)) in slots.into_iter().zip(audio) {
         proposed[slot] = entry;

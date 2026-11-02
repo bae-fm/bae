@@ -21,10 +21,7 @@ pub(crate) enum TestReadError {
 
 impl TestReadError {
     pub(crate) fn io(context: impl Into<String>, kind: std::io::ErrorKind) -> Self {
-        Self::Io {
-            context: context.into(),
-            source: std::io::Error::from(kind),
-        }
+        Self::Io { context: context.into(), source: std::io::Error::from(kind) }
     }
 }
 

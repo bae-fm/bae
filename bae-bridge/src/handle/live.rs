@@ -26,10 +26,7 @@ impl AppHandle {
             }
         };
         // A host feeds a stream only while the library is open.
-        if let Err(error) = self
-            .services
-            .spawn_library_task("stream feed", stop, delivery)
-        {
+        if let Err(error) = self.services.spawn_library_task("stream feed", stop, delivery) {
             self.services.report_bug("start a stream feed", &error);
         }
     }

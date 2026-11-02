@@ -30,10 +30,7 @@ fn affected_roots_maps_changed_paths_to_their_watched_roots() {
 fn watcher_error_without_a_mapped_path_rescans_every_root() {
     let roots = vec![PathBuf::from("/music/a"), PathBuf::from("/music/b")];
     assert_eq!(roots_for_watch_error(&[], &roots), roots);
-    assert_eq!(
-        roots_for_watch_error(&[PathBuf::from("/outside")], &roots),
-        roots
-    );
+    assert_eq!(roots_for_watch_error(&[PathBuf::from("/outside")], &roots), roots);
     assert_eq!(
         roots_for_watch_error(&[PathBuf::from("/music/b/release")], &roots),
         vec![PathBuf::from("/music/b")]
@@ -52,13 +49,14 @@ async fn explicit_bmp_cover_is_rejected() {
         artwork(ScannedFile::new(jpg.clone(), "front.jpg".to_string(), 9, 1)),
     ];
 
-    let error = ImportService::pick_folder_cover(&discovered, "cover.bmp", &crate::diagnostics::Diagnostics::noop())
-        .await
-        .unwrap_err();
-    assert!(matches!(
-        error,
-        crate::import::ImportError::LocalCover { .. }
-    ));
+    let error = ImportService::pick_folder_cover(
+        &discovered,
+        "cover.bmp",
+        &crate::diagnostics::Diagnostics::noop(),
+    )
+    .await
+    .unwrap_err();
+    assert!(matches!(error, crate::import::ImportError::LocalCover { .. }));
 }
 
 fn artwork(file: ScannedFile) -> crate::import::folder_scanner::CandidateFile {
@@ -80,13 +78,14 @@ async fn a_damaged_image_is_never_picked_as_the_cover() {
         role: crate::import::folder_scanner::FileRole::DamagedImage,
     }];
 
-    let error = ImportService::pick_folder_cover(&discovered, "front.png", &crate::diagnostics::Diagnostics::noop())
-        .await
-        .unwrap_err();
-    assert!(matches!(
-        error,
-        crate::import::ImportError::LocalCover { .. }
-    ));
+    let error = ImportService::pick_folder_cover(
+        &discovered,
+        "front.png",
+        &crate::diagnostics::Diagnostics::noop(),
+    )
+    .await
+    .unwrap_err();
+    assert!(matches!(error, crate::import::ImportError::LocalCover { .. }));
 }
 
 /// A retained reading from a tag reader that accepted BMP artwork.
@@ -249,14 +248,8 @@ async fn an_import_commits_after_a_pass_finds_its_folder_unchanged() {
         .unwrap();
     let (scan, _) = test.scan();
     scan.rescan(&root).await.unwrap();
-    let candidate = test
-        .service
-        .library_manager
-        .load_release_candidate(&key)
-        .await
-        .unwrap()
-        .unwrap()
-        .unwrap();
+    let candidate =
+        test.service.library_manager.load_release_candidate(&key).await.unwrap().unwrap().unwrap();
     let hash = candidate.files.content_hash();
     let revision = prepare_named_candidate(
         &test.service,
@@ -311,16 +304,16 @@ async fn explicit_local_cover_missing_from_discovered_images_is_an_error() {
     let test = setup_import_service().await;
     let fallback = test.temp.path().join("front.jpg");
     std::fs::write(&fallback, b"jpg bytes").unwrap();
-    let discovered = vec![artwork(ScannedFile::new(
-        fallback.clone(),
-        "front.jpg".to_string(),
-        9,
-        1,
-    ))];
+    let discovered =
+        vec![artwork(ScannedFile::new(fallback.clone(), "front.jpg".to_string(), 9, 1))];
 
-    let err = ImportService::pick_folder_cover(&discovered, "cover.bmp", &crate::diagnostics::Diagnostics::noop())
-        .await
-        .unwrap_err();
+    let err = ImportService::pick_folder_cover(
+        &discovered,
+        "cover.bmp",
+        &crate::diagnostics::Diagnostics::noop(),
+    )
+    .await
+    .unwrap_err();
 
     assert!(
         matches!(&err, crate::import::ImportError::LocalCover { detail } if detail.contains("Selected cover") && detail.contains("not found")),
@@ -330,9 +323,13 @@ async fn explicit_local_cover_missing_from_discovered_images_is_an_error() {
 
 #[tokio::test]
 async fn explicit_local_cover_with_no_discovered_images_is_an_error() {
-    let err = ImportService::pick_folder_cover(&[], "cover.bmp", &crate::diagnostics::Diagnostics::noop())
-        .await
-        .unwrap_err();
+    let err = ImportService::pick_folder_cover(
+        &[],
+        "cover.bmp",
+        &crate::diagnostics::Diagnostics::noop(),
+    )
+    .await
+    .unwrap_err();
 
     assert!(
         matches!(&err, crate::import::ImportError::LocalCover { detail } if detail.contains("Selected cover") && detail.contains("not found")),
@@ -342,12 +339,8 @@ async fn explicit_local_cover_with_no_discovered_images_is_an_error() {
 
 #[tokio::test]
 async fn selected_local_cover_path_must_match_discovered_file() {
-    let TestService {
-        service,
-        preparations,
-        database: _,
-        temp: tmp,
-    } = setup_import_service().await;
+    let TestService { service, preparations, database: _, temp: tmp } =
+        setup_import_service().await;
     let folder = tmp.path().join("release");
     std::fs::create_dir(&folder).unwrap();
     write_test_jpeg(&folder.join("front.jpg"));
@@ -424,7 +417,10 @@ async fn selected_local_cover_path_must_match_discovered_file() {
         .unwrap();
     let file_tag_snapshot = service
         .library_manager
-        .load_candidate_file_tag_snapshot(std::path::Path::new(&watched_folder_path), &crate::import::CandidateKey::folder(&folder))
+        .load_candidate_file_tag_snapshot(
+            std::path::Path::new(&watched_folder_path),
+            &crate::import::CandidateKey::folder(&folder),
+        )
         .await
         .unwrap()
         .expect("the candidate is stored")
@@ -439,7 +435,8 @@ async fn selected_local_cover_path_must_match_discovered_file() {
             crate::import::CandidateKey::folder(&folder),
             crate::import::release_candidate::CandidateSource {
                 path: folder,
-                scope: crate::import::folder_scanner::ReleaseFileScope::Recursive, parts: Vec::new(), 
+                scope: crate::import::folder_scanner::ReleaseFileScope::Recursive,
+                parts: Vec::new(),
             },
             super::ImportExpectation {
                 candidate: crate::import::CandidateAsRead {
@@ -474,14 +471,14 @@ async fn unreadable_selected_cover_is_an_error() {
     let cover = test.temp.path().join("cover.jpg");
     std::fs::write(&cover, b"jpg bytes").unwrap();
     std::fs::set_permissions(&cover, std::fs::Permissions::from_mode(0o000)).unwrap();
-    let discovered = vec![artwork(ScannedFile::new(
-        cover.clone(),
-        "cover.jpg".to_string(),
-        9,
-        1,
-    ))];
+    let discovered = vec![artwork(ScannedFile::new(cover.clone(), "cover.jpg".to_string(), 9, 1))];
 
-    let result = ImportService::pick_folder_cover(&discovered, "cover.jpg", &crate::diagnostics::Diagnostics::noop()).await;
+    let result = ImportService::pick_folder_cover(
+        &discovered,
+        "cover.jpg",
+        &crate::diagnostics::Diagnostics::noop(),
+    )
+    .await;
 
     std::fs::set_permissions(&cover, std::fs::Permissions::from_mode(0o600)).unwrap();
     let err = result.unwrap_err();
@@ -499,16 +496,8 @@ async fn rescan_seeded_root(
     Result<(), crate::import::ImportError>,
 ) {
     let service = &test.service;
-    service
-        .library_manager
-        .add_watched_import_folder(root)
-        .await
-        .unwrap();
-    let generation = service
-        .library_manager
-        .begin_folder_scan(root)
-        .await
-        .unwrap();
+    service.library_manager.add_watched_import_folder(root).await.unwrap();
+    let generation = service.library_manager.begin_folder_scan(root).await.unwrap();
     service
         .library_manager
         .save_folder_scan_item(
@@ -554,10 +543,7 @@ async fn rescan_missing_root_fails_and_preserves_previous_candidates() {
     assert!(result.is_err());
 
     let failed = loop {
-        match events
-            .try_recv()
-            .expect("the failed pass announced its failure")
-        {
+        match events.try_recv().expect("the failed pass announced its failure") {
             crate::import::handle::ImportEvent::Scan(ScanEvent::FolderScanStatusChanged {
                 status:
                     crate::import::WatchedFolderScanStatus {
@@ -575,10 +561,7 @@ async fn rescan_missing_root_fails_and_preserves_previous_candidates() {
     // the OS's own wording for an absent path ("No such file or directory" on
     // Unix, "The system cannot find the path specified" on Windows), so the
     // root — the part core promises — is what this asserts on.
-    assert!(
-        failed.contains(&root.to_string_lossy().into_owned()),
-        "{failed}"
-    );
+    assert!(failed.contains(&root.to_string_lossy().into_owned()), "{failed}");
     assert_eq!(stored_invalid_candidates(&test.service, &root).await, 1);
 }
 
@@ -591,10 +574,7 @@ async fn rescan_non_directory_root_keeps_previous_candidates() {
     assert!(result.is_err(), "a non-directory root must fail its scan");
 
     loop {
-        match events
-            .try_recv()
-            .expect("the failed pass announced its failure")
-        {
+        match events.try_recv().expect("the failed pass announced its failure") {
             crate::import::handle::ImportEvent::Scan(ScanEvent::FolderScanStatusChanged {
                 status:
                     crate::import::WatchedFolderScanStatus {
@@ -602,10 +582,7 @@ async fn rescan_non_directory_root_keeps_previous_candidates() {
                         ..
                     },
             }) => {
-                assert!(
-                    error.to_lowercase().contains("not a directory"),
-                    "got: {error}"
-                );
+                assert!(error.to_lowercase().contains("not a directory"), "got: {error}");
                 break;
             }
             crate::import::handle::ImportEvent::Scan(ScanEvent::FolderScanStatusChanged {
@@ -619,9 +596,8 @@ async fn rescan_non_directory_root_keeps_previous_candidates() {
 
 #[test]
 fn resolve_file_content_type_uses_scan_facts_for_new_audio_formats() {
-    let fixture_root = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("test-fixtures")
-        .join("audio-format");
+    let fixture_root =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("test-fixtures").join("audio-format");
     let files = crate::import::folder_scanner::collect_release_candidate_files_with_scope(
         &fixture_root,
         crate::import::ReleaseFileScope::Recursive,
@@ -629,34 +605,13 @@ fn resolve_file_content_type_uses_scan_facts_for_new_audio_formats() {
     )
     .expect("scan audio-format fixtures");
     for (name, expected) in [
-        (
-            "placeholder-pcm.wav",
-            bae_util::content_type::ContentType::Pcm,
-        ),
-        (
-            "placeholder-pcm.aiff",
-            bae_util::content_type::ContentType::Pcm,
-        ),
-        (
-            "placeholder-opus.opus",
-            bae_util::content_type::ContentType::Opus,
-        ),
-        (
-            "placeholder-vorbis.ogg",
-            bae_util::content_type::ContentType::Vorbis,
-        ),
-        (
-            "placeholder-wavpack.wv",
-            bae_util::content_type::ContentType::WavPack,
-        ),
-        (
-            "placeholder-dsd.dsf",
-            bae_util::content_type::ContentType::Dsd,
-        ),
-        (
-            "placeholder-dsd.dff",
-            bae_util::content_type::ContentType::Dsd,
-        ),
+        ("placeholder-pcm.wav", bae_util::content_type::ContentType::Pcm),
+        ("placeholder-pcm.aiff", bae_util::content_type::ContentType::Pcm),
+        ("placeholder-opus.opus", bae_util::content_type::ContentType::Opus),
+        ("placeholder-vorbis.ogg", bae_util::content_type::ContentType::Vorbis),
+        ("placeholder-wavpack.wv", bae_util::content_type::ContentType::WavPack),
+        ("placeholder-dsd.dsf", bae_util::content_type::ContentType::Dsd),
+        ("placeholder-dsd.dff", bae_util::content_type::ContentType::Dsd),
     ] {
         let entry = files
             .files
@@ -683,11 +638,7 @@ async fn a_second_pass_over_an_unchanged_folder_announces_nothing() {
         std::fs::write(album.join("01.flac"), flac()).unwrap();
         std::fs::write(album.join("02.flac"), flac()).unwrap();
     }
-    test.service
-        .library_manager
-        .add_watched_import_folder(&root)
-        .await
-        .unwrap();
+    test.service.library_manager.add_watched_import_folder(&root).await.unwrap();
 
     let (scan, mut events) = test.scan();
     let pass = async || scan.rescan(&root).await.expect("the pass reads the folder");
@@ -731,12 +682,7 @@ impl crate::import::file_tag_snapshot::FileTagReader for CountingTagReader {
         &self,
         path: &Path,
     ) -> Result<crate::import::file_tag_snapshot::FileTagRead, crate::import::ImportError> {
-        *self
-            .reads
-            .lock()
-            .unwrap()
-            .entry(path.to_path_buf())
-            .or_default() += 1;
+        *self.reads.lock().unwrap().entry(path.to_path_buf()).or_default() += 1;
         crate::import::file_tag_snapshot::LoftyFileTagReader.read(path)
     }
 }
@@ -749,9 +695,7 @@ async fn pre_fill_seeds_the_discovered_candidate_from_its_file_tags() {
     std::fs::create_dir_all(&album).unwrap();
     for name in TAGGED_FLAC_FIXTURES {
         std::fs::copy(
-            Path::new(env!("CARGO_MANIFEST_DIR"))
-                .join("tests/fixtures/cue_flac")
-                .join(name),
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/cue_flac").join(name),
             album.join(name),
         )
         .unwrap();
@@ -764,13 +708,9 @@ async fn pre_fill_seeds_the_discovered_candidate_from_its_file_tags() {
         .unwrap();
 
     let reader = std::sync::Arc::new(CountingTagReader::default());
-    let (scan, mut events) = test.scan_with(
-        reader.clone(),
-        Arc::new(crate::import::folder_scanner::OsDirectoryReader),
-    );
-    scan.rescan(&root)
-        .await
-        .expect("the candidate is read and stored");
+    let (scan, mut events) =
+        test.scan_with(reader.clone(), Arc::new(crate::import::folder_scanner::OsDirectoryReader));
+    scan.rescan(&root).await.expect("the candidate is read and stored");
 
     // Two writes store one candidate — it arrives tentative, then valid — and
     // the second finds the draft the first seeded, so the folder's two tracks
@@ -792,15 +732,14 @@ async fn pre_fill_seeds_the_discovered_candidate_from_its_file_tags() {
     assert_eq!(detail.draft().unwrap().metadata_draft.album_title, "Test Album");
     assert_eq!(
         detail
-            .draft().unwrap().metadata_draft
+            .draft()
+            .unwrap()
+            .metadata_draft
             .tracks
             .iter()
             .map(|track| track.title.clone())
             .collect::<Vec<_>>(),
-        vec![
-            "Track Two (White Noise)".to_string(),
-            "Track Three (Brown Noise)".to_string(),
-        ]
+        vec!["Track Two (White Noise)".to_string(), "Track Three (Brown Noise)".to_string(),]
     );
     let snapshot = test
         .service
@@ -853,30 +792,21 @@ async fn a_pass_records_the_directories_it_read() {
     let album = root.join("Artist - Album");
     std::fs::create_dir_all(album.join("Artwork")).unwrap();
     std::fs::write(album.join("01.flac"), flac()).unwrap();
-    test.service
-        .library_manager
-        .add_watched_import_folder(&root)
-        .await
-        .unwrap();
+    test.service.library_manager.add_watched_import_folder(&root).await.unwrap();
 
     let (scan, _events) = test.scan();
     scan.rescan(&root).await.expect("the pass reads the folder");
 
-    let recorded = test
-        .service
-        .library_manager
-        .load_folder_scan_directories(&root)
-        .await
-        .unwrap();
+    let recorded = test.service.library_manager.load_folder_scan_directories(&root).await.unwrap();
     let mut paths: Vec<&Path> = recorded.iter().map(|(path, _)| path.as_path()).collect();
     paths.sort_unstable();
     assert_eq!(
         paths,
         vec![root.as_path(), album.as_path(), album.join("Artwork").as_path()]
-        .into_iter()
-        .collect::<std::collections::BTreeSet<_>>()
-        .into_iter()
-        .collect::<Vec<_>>()
+            .into_iter()
+            .collect::<std::collections::BTreeSet<_>>()
+            .into_iter()
+            .collect::<Vec<_>>()
     );
     assert_eq!(super::changed_directories(&recorded), Some(Vec::new()));
 

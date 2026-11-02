@@ -3,18 +3,12 @@ use crate::library::{CountLabel, ReleaseQueueCounts};
 
 /// An empty, running upload queue.
 fn idle_uploads() -> UploadQueueCounts {
-    UploadQueueCounts {
-        queued: 0,
-        sending: 0,
-        paused: false,
-    }
+    UploadQueueCounts { queued: 0, sending: 0, paused: false }
 }
 
 fn status() -> SyncStatusSnapshot {
     SyncStatusSnapshot {
-        status: coven::SyncStatus::Synced {
-            finished_at: std::time::UNIX_EPOCH,
-        },
+        status: coven::SyncStatus::Synced { finished_at: std::time::UNIX_EPOCH },
         pending: Vec::new(),
         retry_effect: coven::RetryEffect::Pass,
         error: None,
@@ -43,20 +37,10 @@ fn a_pass_alone_is_not_movement() {
 /// Files being sent move; a paused queue's waiting files don't move.
 #[test]
 fn transfers_are_movement() {
-    let mut uploads = UploadQueueCounts {
-        queued: 6,
-        sending: 2,
-        paused: false,
-    };
+    let mut uploads = UploadQueueCounts { queued: 6, sending: 2, paused: false };
     let uploading = SyncActivity::new(&status(), &uploads, &ReleaseQueueCounts::default());
     assert!(uploading.moving());
-    assert_eq!(
-        uploading.uploads,
-        Some(UploadsInFlight {
-            sending: 2,
-            waiting: 4,
-        })
-    );
+    assert_eq!(uploading.uploads, Some(UploadsInFlight { sending: 2, waiting: 4 }));
     uploads.paused = true;
     uploads.sending = 0;
     let paused = SyncActivity::new(&status(), &uploads, &ReleaseQueueCounts::default());
@@ -88,27 +72,13 @@ fn failures_and_pending_records_need_attention() {
 /// and drop a zero.
 #[test]
 fn transfer_lines_name_the_moving_count_first() {
-    let label = |key: &str, count| CountLabel {
-        key: key.into(),
-        count,
-    };
+    let label = |key: &str, count| CountLabel { key: key.into(), count };
     assert_eq!(
-        UploadsInFlight {
-            sending: 2,
-            waiting: 4,
-        }
-        .summary_parts(),
-        vec![
-            label("core.queue.uploading", 2),
-            label("core.queue.queued", 4)
-        ]
+        UploadsInFlight { sending: 2, waiting: 4 }.summary_parts(),
+        vec![label("core.queue.uploading", 2), label("core.queue.queued", 4)]
     );
     assert_eq!(
-        DownloadsInFlight {
-            active: 1,
-            queued: 0
-        }
-        .summary_parts(),
+        DownloadsInFlight { active: 1, queued: 0 }.summary_parts(),
         vec![label("core.queue.downloading", 1)]
     );
 }

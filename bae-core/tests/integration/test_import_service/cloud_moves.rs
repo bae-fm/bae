@@ -8,16 +8,8 @@ fn two_track_album(f: &ImportFixture, title: &str) -> std::path::PathBuf {
         "Artist",
         None,
         &[
-            TaggedTrack {
-                filename: "01 Track.flac",
-                title: "Track One",
-                track_number: 1,
-            },
-            TaggedTrack {
-                filename: "02 Track.flac",
-                title: "Track Two",
-                track_number: 2,
-            },
+            TaggedTrack { filename: "01 Track.flac", title: "Track One", track_number: 1 },
+            TaggedTrack { filename: "02 Track.flac", title: "Track Two", track_number: 2 },
         ],
     );
     album
@@ -25,14 +17,13 @@ fn two_track_album(f: &ImportFixture, title: &str) -> std::path::PathBuf {
 
 /// The coven file each of the release's rows references, by row.
 async fn release_file_ids(f: &ImportFixture, release_id: &str) -> Vec<(String, coven::FileId)> {
-    let mut files: Vec<_> = f
-        .db
-        .get_files_for_release(release_id)
-        .await
-        .unwrap()
-        .into_iter()
-        .map(|file| (file.id, file.file))
-        .collect();
+    let mut files: Vec<_> =
+        f.db.get_files_for_release(release_id)
+            .await
+            .unwrap()
+            .into_iter()
+            .map(|file| (file.id, file.file))
+            .collect();
     files.sort();
     files
 }
@@ -41,9 +32,7 @@ async fn release_file_ids(f: &ImportFixture, release_id: &str) -> Vec<(String, c
 /// upload, and each reads the bytes of its original under `folder`.
 async fn assert_on_this_device(f: &ImportFixture, release_id: &str, folder: &Path) {
     assert_eq!(
-        f.db.count_pending_uploads_for_release(release_id)
-            .await
-            .unwrap(),
+        f.db.count_pending_uploads_for_release(release_id).await.unwrap(),
         0,
         "nothing of the release waits to upload"
     );
@@ -55,10 +44,7 @@ async fn assert_on_this_device(f: &ImportFixture, release_id: &str, folder: &Pat
             Some(original.clone())
         );
         assert_eq!(
-            f.library_manager
-                .materialize_release_file_for_test(&file.id)
-                .await
-                .unwrap(),
+            f.library_manager.materialize_release_file_for_test(&file.id).await.unwrap(),
             fs::read(&original).unwrap()
         );
     }
@@ -67,11 +53,7 @@ async fn assert_on_this_device(f: &ImportFixture, release_id: &str, folder: &Pat
 /// Move the release to the cloud through the Storage Manager's command,
 /// which checks it may move first.
 async fn move_to_cloud(f: &ImportFixture, release_id: &str) {
-    let outcome = f
-        .library_manager
-        .upload_releases(&[release_id.to_string()])
-        .await
-        .unwrap();
+    let outcome = f.library_manager.upload_releases(&[release_id.to_string()]).await.unwrap();
     assert!(
         matches!(outcome, bae_core::library::UploadReleasesOutcome::Complete { .. }),
         "the release moves: {outcome:?}"
@@ -87,11 +69,7 @@ async fn finish_move(f: &ImportFixture, release_id: &str, files: &[(String, cove
         "each of the release's files uploads"
     );
     assert!(
-        f.db.get_files_for_release(release_id)
-            .await
-            .unwrap()
-            .iter()
-            .all(|file| file.stored),
+        f.db.get_files_for_release(release_id).await.unwrap().iter().all(|file| file.stored),
         "every file is in the cloud"
     );
     assert_eq!(release_file_ids(f, release_id).await, files, "no row changes");
@@ -107,15 +85,10 @@ async fn a_local_import_moves_to_the_cloud_and_cancelling_the_move_keeps_it_here
     let f = ImportFixture::new().await;
     f.connect_cloud().await;
     let album = two_track_album(&f, "Album One");
-    let (id, _) = import_folder(
-        &f,
-        &album,
-        None,
-        ImportDestination::Local,
-        support::DraftSource::FileTags,
-    )
-    .await
-    .unwrap();
+    let (id, _) =
+        import_folder(&f, &album, None, ImportDestination::Local, support::DraftSource::FileTags)
+            .await
+            .unwrap();
     let files = release_file_ids(&f, &id).await;
     assert_eq!(files.len(), 2);
     assert_on_this_device(&f, &id, &album).await;
@@ -192,10 +165,7 @@ async fn a_release_made_local_moves_back_to_the_cloud() {
 
     let local = f.temp_path().join("Made Local");
     fs::create_dir_all(&local).unwrap();
-    f.library_manager
-        .detach_release_audio(&id, &local)
-        .await
-        .unwrap();
+    f.library_manager.detach_release_audio(&id, &local).await.unwrap();
     let copies = local.join(
         f.library_manager
             .file_local_path(&files[0].0)

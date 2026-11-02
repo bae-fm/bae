@@ -171,9 +171,7 @@ pub(super) fn default_save_presets() -> Vec<SavePreset> {
         SavePreset {
             id: "flac".to_string(),
             name: "FLAC".to_string(),
-            codec: SaveCodec::Flac {
-                bit_depth: SaveBitDepth::Bits24,
-            },
+            codec: SaveCodec::Flac { bit_depth: SaveBitDepth::Bits24 },
             filename_tokens: default_save_filename_tokens(),
             pregap_placement: default_export_pregap_placement(),
             applies_to_track: true,
@@ -202,9 +200,7 @@ mod tests {
         let preset = SavePreset {
             id: "flac-image".to_string(),
             name: "FLAC image".to_string(),
-            codec: SaveCodec::Flac {
-                bit_depth: SaveBitDepth::Bits24,
-            },
+            codec: SaveCodec::Flac { bit_depth: SaveBitDepth::Bits24 },
             filename_tokens: default_save_filename_tokens(),
             pregap_placement: SavePregapPlacement::SingleFileWithCue,
             applies_to_track: true,
@@ -212,15 +208,10 @@ mod tests {
             embed_cover: true,
         };
 
-        let err = preset
-            .validate()
-            .expect_err("single-file CUE cannot be a track export preset");
+        let err = preset.validate().expect_err("single-file CUE cannot be a track export preset");
         assert!(err.to_string().contains("cannot apply to track export"));
 
-        let release_only = SavePreset {
-            applies_to_track: false,
-            ..preset
-        };
+        let release_only = SavePreset { applies_to_track: false, ..preset };
         release_only.validate().unwrap();
 
         let opus_image = SavePreset {
@@ -233,9 +224,8 @@ mod tests {
             applies_to_release: true,
             embed_cover: true,
         };
-        let err = opus_image
-            .validate()
-            .expect_err("single-file CUE requires a CUE-compatible codec");
+        let err =
+            opus_image.validate().expect_err("single-file CUE requires a CUE-compatible codec");
         assert!(err.to_string().contains("unsupported codec"));
     }
 
@@ -256,13 +246,9 @@ mod tests {
         preset(256).validate().unwrap();
         preset(512).validate().unwrap();
 
-        let err = preset(31)
-            .validate()
-            .expect_err("a bitrate below the minimum must be rejected");
+        let err = preset(31).validate().expect_err("a bitrate below the minimum must be rejected");
         assert!(err.to_string().contains("unsupported AAC bitrate"));
-        let err = preset(513)
-            .validate()
-            .expect_err("a bitrate above the maximum must be rejected");
+        let err = preset(513).validate().expect_err("a bitrate above the maximum must be rejected");
         assert!(err.to_string().contains("unsupported AAC bitrate"));
     }
 }

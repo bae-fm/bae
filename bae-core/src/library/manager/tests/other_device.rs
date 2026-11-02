@@ -50,17 +50,10 @@ fn the_live_release_names_the_device_its_audio_is_on_until_it_moves_to_the_cloud
 
         assert_eq!(
             next_playability(manager, &mut live, &release.id, |_| true).await,
-            ReleasePlayability::OnOtherDevice(OtherDevice::Active {
-                name: "Device A".to_string()
-            })
+            ReleasePlayability::OnOtherDevice(OtherDevice::Active { name: "Device A".to_string() })
         );
 
-        devices
-            .a()
-            .manager()
-            .upload_release(&release.id, false)
-            .await
-            .unwrap();
+        devices.a().manager().upload_release(&release.id, false).await.unwrap();
         devices
             .converge(
                 "SELECT f.id, f.file, c.coordinates FROM release_files AS f \
@@ -79,15 +72,9 @@ fn the_live_release_names_the_device_its_audio_is_on_until_it_moves_to_the_cloud
 async fn offered(
     manager: &LibraryManager,
     release_id: &str,
-) -> (
-    Vec<ReleaseStorageAction>,
-    Option<crate::album_detail::ReleaseDownloadStatus>,
-) {
-    let detail = manager
-        .find_release_detail(release_id)
-        .await
-        .unwrap()
-        .expect("the release exists");
+) -> (Vec<ReleaseStorageAction>, Option<crate::album_detail::ReleaseDownloadStatus>) {
+    let detail =
+        manager.find_release_detail(release_id).await.unwrap().expect("the release exists");
     (detail.summary.storage_actions, detail.download_status)
 }
 
@@ -103,17 +90,9 @@ fn pin_is_offered_only_for_a_release_in_the_cloud() {
             offered(devices.a().manager(), &release.id).await,
             (vec![ReleaseStorageAction::Upload], None)
         );
-        assert_eq!(
-            offered(devices.b().manager(), &release.id).await,
-            (Vec::new(), None)
-        );
+        assert_eq!(offered(devices.b().manager(), &release.id).await, (Vec::new(), None));
 
-        devices
-            .a()
-            .manager()
-            .upload_release(&release.id, false)
-            .await
-            .unwrap();
+        devices.a().manager().upload_release(&release.id, false).await.unwrap();
         devices
             .settle("the release in the cloud", |_, database| {
                 let release_id = release.id.clone();
@@ -132,14 +111,8 @@ fn pin_is_offered_only_for_a_release_in_the_cloud() {
             vec![ReleaseStorageAction::Pin, ReleaseStorageAction::DetachAudio],
             Some(crate::album_detail::ReleaseDownloadStatus::Available),
         );
-        assert_eq!(
-            offered(devices.a().manager(), &release.id).await,
-            in_the_cloud
-        );
-        assert_eq!(
-            offered(devices.b().manager(), &release.id).await,
-            in_the_cloud
-        );
+        assert_eq!(offered(devices.a().manager(), &release.id).await, in_the_cloud);
+        assert_eq!(offered(devices.b().manager(), &release.id).await, in_the_cloud);
     });
 }
 
@@ -173,15 +146,10 @@ fn a_release_on_a_removed_device_names_it_as_removed() {
         };
         assert_eq!(
             playability().await,
-            ReleasePlayability::OnOtherDevice(OtherDevice::Active {
-                name: "Device B".to_string()
-            })
+            ReleasePlayability::OnOtherDevice(OtherDevice::Active { name: "Device B".to_string() })
         );
 
-        manager
-            .remove_device(devices.b().database().device_id())
-            .await
-            .unwrap();
+        manager.remove_device(devices.b().database().device_id()).await.unwrap();
         // The write journals the removal; a pass of this device claims it.
         devices
             .a()

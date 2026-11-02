@@ -72,9 +72,7 @@ async fn a_fixed_folder_is_not_found_again() {
     db.finish_folder_scan(root, generation, None).await.unwrap();
 
     let generation = db.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
-    assert!(!write(&db, root, generation, &ScanItem::Discovered(candidate))
-        .await
-        .changed());
+    assert!(!write(&db, root, generation, &ScanItem::Discovered(candidate)).await.changed());
     let fixed = write(&db, root, generation, &settled).await;
     assert!(fixed.changed());
     assert!(!fixed.found());
@@ -131,10 +129,8 @@ async fn a_grouping_is_found_when_combined_only() {
     let inner = host_root("/music/inner");
     db.add_watched_import_folder(&inner).await.unwrap();
     let generation = db.begin_folder_scan(&inner, crate::import::VolumeKind::Local).await.unwrap();
-    let members: Vec<_> = ["Volume A", "Volume B"]
-        .into_iter()
-        .map(|name| super::candidate(&inner, name))
-        .collect();
+    let members: Vec<_> =
+        ["Volume A", "Volume B"].into_iter().map(|name| super::candidate(&inner, name)).collect();
     for member in &members {
         write(&db, &inner, generation, &ScanItem::Valid(member.clone())).await;
     }
@@ -153,13 +149,8 @@ async fn a_grouping_is_found_when_combined_only() {
     let generation = db.begin_folder_scan(&music, crate::import::VolumeKind::Local).await.unwrap();
     let mut rebuilt = Vec::new();
     for name in ["inner/Volume A", "inner/Volume B"] {
-        let stored = write(
-            &db,
-            &music,
-            generation,
-            &ScanItem::Valid(super::candidate(&music, name)),
-        )
-        .await;
+        let stored =
+            write(&db, &music, generation, &ScanItem::Valid(super::candidate(&music, name))).await;
         assert!(!stored.found(), "{name} was found under the inner folder");
         rebuilt.extend(stored.regrouped().cloned());
     }

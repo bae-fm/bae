@@ -77,9 +77,7 @@ struct AtomicF32 {
 
 impl AtomicF32 {
     fn new(value: f32) -> Self {
-        Self {
-            bits: AtomicU32::new(value.to_bits()),
-        }
+        Self { bits: AtomicU32::new(value.to_bits()) }
     }
 
     fn store(&self, value: f32) {
@@ -100,9 +98,7 @@ pub(crate) enum DrainStatus {
 #[cfg(feature = "test-utils")]
 pub(crate) fn sleep_realtime_buffer(read: usize, channels: u32, sample_rate: u32) {
     let frames = (read as u32 / channels) as f64;
-    std::thread::sleep(std::time::Duration::from_secs_f64(
-        frames / sample_rate as f64,
-    ));
+    std::thread::sleep(std::time::Duration::from_secs_f64(frames / sample_rate as f64));
 }
 
 pub(crate) struct AudioLockMissLog {
@@ -113,19 +109,15 @@ pub(crate) struct AudioLockMissLog {
 impl AudioLockMissLog {
     #[cfg(not(target_os = "android"))]
     pub(crate) fn new() -> Self {
-        Self {
-            started: None,
-            last_log: None,
-        }
+        Self { started: None, last_log: None }
     }
 
     fn acquired(&mut self, audio_events: &mut AudioEventSender) {
         if let Some(started) = self.started.take() {
             let missed = started.elapsed();
             if missed >= std::time::Duration::from_millis(250) {
-                audio_events.push(AudioEvent::SourceLockReacquired {
-                    missed_ms: duration_millis(missed),
-                });
+                audio_events
+                    .push(AudioEvent::SourceLockReacquired { missed_ms: duration_millis(missed) });
             }
             self.last_log = None;
         }
@@ -140,9 +132,7 @@ impl AudioLockMissLog {
                 .last_log
                 .is_none_or(|last| now.duration_since(last) >= std::time::Duration::from_secs(1))
         {
-            audio_events.push(AudioEvent::SourceLockMissed {
-                missed_ms: duration_millis(missed),
-            });
+            audio_events.push(AudioEvent::SourceLockMissed { missed_ms: duration_millis(missed) });
             self.last_log = Some(now);
         }
     }
@@ -180,8 +170,7 @@ impl AudioDrain {
 
     /// Tell playback the output stopped sending, for the reason `detail` states.
     pub(crate) fn report_output_failure(&mut self, detail: String) {
-        self.audio_events
-            .push_required(AudioEvent::OutputFailed { detail });
+        self.audio_events.push_required(AudioEvent::OutputFailed { detail });
     }
 
     pub(crate) fn drain_iteration(
@@ -226,9 +215,8 @@ impl AudioDrain {
             Ok(read) => read,
             Err(failed) => {
                 self.failed = true;
-                self.audio_events.push_required(AudioEvent::OutputFailed {
-                    detail: failed.to_string(),
-                });
+                self.audio_events
+                    .push_required(AudioEvent::OutputFailed { detail: failed.to_string() });
                 if zero_unfilled {
                     buf.fill(0.0);
                 }
@@ -242,8 +230,7 @@ impl AudioDrain {
             // still reports each one exactly once.
             if let Some(event) = source_guard.take_completion_event() {
                 self.controls.set_state(AudioState::Stopped);
-                self.audio_events
-                    .push_required(AudioEvent::Completion(event));
+                self.audio_events.push_required(AudioEvent::Completion(event));
             }
             if zero_unfilled {
                 buf.fill(0.0);
@@ -262,8 +249,7 @@ impl AudioDrain {
         }
 
         if self.last_position_update.elapsed() >= self.position_update_interval {
-            self.audio_events
-                .push(AudioEvent::Position(source_guard.position_event()));
+            self.audio_events.push(AudioEvent::Position(source_guard.position_event()));
             self.last_position_update = std::time::Instant::now();
         }
 
@@ -404,11 +390,7 @@ pub(crate) fn audio_event_channel() -> (AudioEventSender, AudioEventReceiver) {
             dropped_events: dropped_events.clone(),
             dropped_required_events: dropped_required_events.clone(),
         },
-        AudioEventReceiver {
-            consumer,
-            dropped_events,
-            dropped_required_events,
-        },
+        AudioEventReceiver { consumer, dropped_events, dropped_required_events },
     )
 }
 
@@ -508,10 +490,7 @@ struct CaptureOutputCore {
 
 #[cfg(feature = "test-utils")]
 impl CaptureOutputCore {
-    fn new() -> (
-        Self,
-        tokio::sync::mpsc::UnboundedReceiver<Arc<Mutex<Vec<f32>>>>,
-    ) {
+    fn new() -> (Self, tokio::sync::mpsc::UnboundedReceiver<Arc<Mutex<Vec<f32>>>>) {
         let (notify_tx, notify_rx) = tokio::sync::mpsc::unbounded_channel();
         (Self::publishing_to(notify_tx), notify_rx)
     }
@@ -554,10 +533,7 @@ fn spawn_capture_stream<F>(
     audio_events: AudioEventSender,
     position_update_interval_ms: u32,
     mut after_samples: F,
-) -> (
-    Arc<std::sync::atomic::AtomicBool>,
-    std::thread::JoinHandle<()>,
-)
+) -> (Arc<std::sync::atomic::AtomicBool>, std::thread::JoinHandle<()>)
 where
     F: FnMut(usize) + Send + 'static,
 {
@@ -609,10 +585,7 @@ macro_rules! impl_capture_output_constructor {
             /// Returns the output and a receiver that yields one buffer per
             /// non-gapless transition (a `create_stream` rebuild or an
             /// `on_source_replaced` swap), in order.
-            pub fn new() -> (
-                Self,
-                tokio::sync::mpsc::UnboundedReceiver<Arc<Mutex<Vec<f32>>>>,
-            ) {
+            pub fn new() -> (Self, tokio::sync::mpsc::UnboundedReceiver<Arc<Mutex<Vec<f32>>>>) {
                 let (core, notify_rx) = CaptureOutputCore::new();
                 (Self { core }, notify_rx)
             }
@@ -623,9 +596,7 @@ macro_rules! impl_capture_output_constructor {
             fn publishing_to(
                 notify_tx: tokio::sync::mpsc::UnboundedSender<Arc<Mutex<Vec<f32>>>>,
             ) -> Self {
-                Self {
-                    core: CaptureOutputCore::publishing_to(notify_tx),
-                }
+                Self { core: CaptureOutputCore::publishing_to(notify_tx) }
             }
         }
     };
@@ -643,10 +614,7 @@ macro_rules! impl_capture_audio_device {
         }
 
         impl $device {
-            pub fn new() -> (
-                Self,
-                tokio::sync::mpsc::UnboundedReceiver<Arc<Mutex<Vec<f32>>>>,
-            ) {
+            pub fn new() -> (Self, tokio::sync::mpsc::UnboundedReceiver<Arc<Mutex<Vec<f32>>>>) {
                 let (notify_tx, notify_rx) = tokio::sync::mpsc::unbounded_channel();
                 (Self { notify_tx }, notify_rx)
             }
@@ -692,10 +660,7 @@ impl AudioOutput for CaptureAudioOutput {
             |_| {},
         );
 
-        Ok(Box::new(CaptureStream {
-            stop,
-            thread: Some(thread),
-        }))
+        Ok(Box::new(CaptureStream { stop, thread: Some(thread) }))
     }
 
     fn on_source_replaced(&mut self) {
@@ -777,10 +742,7 @@ impl AudioOutput for RealtimeCaptureAudioOutput {
             move |read| sleep_realtime_buffer(read, channels, source_sample_rate),
         );
 
-        Ok(Box::new(CaptureStream {
-            stop,
-            thread: Some(thread),
-        }))
+        Ok(Box::new(CaptureStream { stop, thread: Some(thread) }))
     }
 
     fn on_source_replaced(&mut self) {
@@ -864,9 +826,7 @@ pub struct RealtimeProbeOutput {
 #[cfg(feature = "test-utils")]
 impl RealtimeProbeOutput {
     pub fn new() -> Self {
-        Self {
-            controls: AudioOutputControls::new(1.0),
-        }
+        Self { controls: AudioOutputControls::new(1.0) }
     }
 }
 
@@ -922,10 +882,7 @@ impl AudioOutput for RealtimeProbeOutput {
             }
         });
 
-        Ok(Box::new(CaptureStream {
-            stop,
-            thread: Some(thread),
-        }))
+        Ok(Box::new(CaptureStream { stop, thread: Some(thread) }))
     }
 
     fn controls(&self) -> &AudioOutputControls {

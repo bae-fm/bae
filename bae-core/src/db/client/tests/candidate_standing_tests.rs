@@ -41,10 +41,7 @@ async fn scanned(
 }
 
 fn files_of(key: &crate::import::CandidateKey) -> CandidateFiles {
-    CandidateFiles {
-        content_hash: format!("hash:{key}"),
-        file_edit_revision: 0,
-    }
+    CandidateFiles { content_hash: format!("hash:{key}"), file_edit_revision: 0 }
 }
 
 fn run(number: u64) -> IdentifyRunId {
@@ -58,9 +55,7 @@ async fn change(
     changes: Vec<IdentificationChange>,
 ) {
     for change in changes {
-        db.change_candidate_identifications(vec![(key.clone(), change)])
-            .await
-            .unwrap();
+        db.change_candidate_identifications(vec![(key.clone(), change)]).await.unwrap();
     }
 }
 
@@ -77,28 +72,19 @@ async fn every_standing_reads_back_as_written() {
         files: files_of(&crate::import::CandidateKey::test(key)),
         run: run(1),
     };
-    let answer = |reads_pick| IdentificationChange::RunAnswered {
-        run: run(1),
-        reads_pick,
-    };
+    let answer = |reads_pick| IdentificationChange::RunAnswered { run: run(1), reads_pick };
     let fail = |key: &str, failure| IdentificationChange::AnswerFailed {
         files: files_of(&crate::import::CandidateKey::test(key)),
         run: run(1),
         failure,
     };
-    let not_written = SaveFailure::NotWritten {
-        error: "the disk is full".to_string(),
-    };
-    let inapplicable = SaveFailure::Inapplicable {
-        error: "a track has no title".to_string(),
-    };
+    let not_written = SaveFailure::NotWritten { error: "the disk is full".to_string() };
+    let inapplicable = SaveFailure::Inapplicable { error: "a track has no title".to_string() };
     let cases = [
         (
             "/music/Queued",
             vec![admit("/music/Queued")],
-            IdentificationStage::Queued {
-                admission: Admission::Requested,
-            },
+            IdentificationStage::Queued { admission: Admission::Requested },
         ),
         (
             "/music/Running",
@@ -107,11 +93,7 @@ async fn every_standing_reads_back_as_written() {
         ),
         (
             "/music/Finalizing",
-            vec![
-                admit("/music/Finalizing"),
-                start("/music/Finalizing"),
-                answer(false),
-            ],
+            vec![admit("/music/Finalizing"), start("/music/Finalizing"), answer(false)],
             IdentificationStage::Finalizing { run: run(1) },
         ),
         (
@@ -122,24 +104,17 @@ async fn every_standing_reads_back_as_written() {
                 answer(true),
                 IdentificationChange::ImportAsked,
             ],
-            IdentificationStage::ReadingPick {
-                run: run(1),
-                import_asked: true,
-            },
+            IdentificationStage::ReadingPick { run: run(1), import_asked: true },
         ),
         (
             "/music/Not Written",
             vec![fail("/music/Not Written", not_written.clone())],
-            IdentificationStage::Failed {
-                failure: not_written,
-            },
+            IdentificationStage::Failed { failure: not_written },
         ),
         (
             "/music/Inapplicable",
             vec![fail("/music/Inapplicable", inapplicable.clone())],
-            IdentificationStage::Failed {
-                failure: inapplicable,
-            },
+            IdentificationStage::Failed { failure: inapplicable },
         ),
     ];
     for (key, changes, stage) in cases {
@@ -149,10 +124,7 @@ async fn every_standing_reads_back_as_written() {
         assert_eq!(
             db.load_candidate_standing(key).await.unwrap(),
             StoredStanding {
-                identification: Some(StoredIdentification {
-                    files: files_of(key),
-                    stage,
-                }),
+                identification: Some(StoredIdentification { files: files_of(key), stage }),
                 import: None,
             },
             "{key}"
@@ -160,26 +132,19 @@ async fn every_standing_reads_back_as_written() {
     }
 
     let key = &crate::import::CandidateKey::test("/music/Import");
-    db.claim_candidate_import(key, "import-1", None)
-        .await
-        .unwrap();
+    db.claim_candidate_import(key, "import-1", None).await.unwrap();
     for step in [
         crate::import::ImportStep::Preparing(crate::import::PrepareStep::Queued),
         crate::import::ImportStep::Preparing(crate::import::PrepareStep::ValidatingSourceFiles),
         crate::import::ImportStep::Running(crate::import::ImportPhase::MeasuringLoudness),
         crate::import::ImportStep::Running(crate::import::ImportPhase::Finalizing),
     ] {
-        db.move_candidate_import(key, "import-1", Some(step))
-            .await
-            .unwrap();
+        db.move_candidate_import(key, "import-1", Some(step)).await.unwrap();
         assert_eq!(
             db.load_candidate_standing(key).await.unwrap(),
             StoredStanding {
                 identification: None,
-                import: Some(StoredImport {
-                    import_id: "import-1".to_string(),
-                    step,
-                }),
+                import: Some(StoredImport { import_id: "import-1".to_string(), step }),
             }
         );
     }
@@ -195,33 +160,17 @@ async fn nothing_running_removes_the_row() {
     change(
         &db,
         key,
-        vec![IdentificationChange::Admit {
-            files: files_of(key),
-            admission: Admission::Automatic,
-        }],
+        vec![IdentificationChange::Admit { files: files_of(key), admission: Admission::Automatic }],
     )
     .await;
-    db.claim_candidate_import(key, "import-1", None)
-        .await
-        .unwrap();
+    db.claim_candidate_import(key, "import-1", None).await.unwrap();
 
     change(&db, key, vec![IdentificationChange::Withdraw]).await;
-    assert_eq!(
-        db.load_candidate_standing(key)
-            .await
-            .unwrap()
-            .identification,
-        None
-    );
-    db.move_candidate_import(key, "import-1", None)
-        .await
-        .unwrap();
+    assert_eq!(db.load_candidate_standing(key).await.unwrap().identification, None);
+    db.move_candidate_import(key, "import-1", None).await.unwrap();
 
     assert!(db.load_candidate_standings().await.unwrap().is_empty());
-    assert_eq!(
-        db.load_candidate_standing(key).await.unwrap(),
-        StoredStanding::default()
-    );
+    assert_eq!(db.load_candidate_standing(key).await.unwrap(), StoredStanding::default());
 }
 
 /// A second claim on a candidate an import owns is refused by the row, and
@@ -235,20 +184,12 @@ async fn a_claim_while_another_stands_is_refused_whole() {
         &db,
         key,
         vec![
-            IdentificationChange::Admit {
-                files: files_of(key),
-                admission: Admission::Requested,
-            },
-            IdentificationChange::RunStarted {
-                files: files_of(key),
-                run: run(1),
-            },
+            IdentificationChange::Admit { files: files_of(key), admission: Admission::Requested },
+            IdentificationChange::RunStarted { files: files_of(key), run: run(1) },
         ],
     )
     .await;
-    db.claim_candidate_import(key, "import-1", None)
-        .await
-        .unwrap();
+    db.claim_candidate_import(key, "import-1", None).await.unwrap();
     let claimed = db.load_candidate_standing(key).await.unwrap();
 
     assert_eq!(
@@ -277,13 +218,9 @@ async fn clearing_removes_every_standing() {
         )
         .await;
     }
-    db.claim_candidate_import(
-        &crate::import::CandidateKey::test("/music/Two"),
-        "import-1",
-        None,
-    )
-    .await
-    .unwrap();
+    db.claim_candidate_import(&crate::import::CandidateKey::test("/music/Two"), "import-1", None)
+        .await
+        .unwrap();
     db.clear_candidate_standings().await.unwrap();
 
     assert!(db.load_candidate_standings().await.unwrap().is_empty());
@@ -320,37 +257,23 @@ async fn the_imports_in_flight_are_the_rows_an_import_holds() {
     }
     assert_eq!(imports_in_flight(&db).await, 0);
 
-    db.claim_candidate_import(
-        &crate::import::CandidateKey::test("/music/One"),
-        "import-1",
-        None,
-    )
-    .await
-    .unwrap();
-    db.claim_candidate_import(
-        &crate::import::CandidateKey::test("/music/Two"),
-        "import-2",
-        None,
-    )
-    .await
-    .unwrap();
+    db.claim_candidate_import(&crate::import::CandidateKey::test("/music/One"), "import-1", None)
+        .await
+        .unwrap();
+    db.claim_candidate_import(&crate::import::CandidateKey::test("/music/Two"), "import-2", None)
+        .await
+        .unwrap();
     db.move_candidate_import(
         &crate::import::CandidateKey::test("/music/Two"),
         "import-2",
-        Some(crate::import::ImportStep::Running(
-            crate::import::ImportPhase::Finalizing,
-        )),
+        Some(crate::import::ImportStep::Running(crate::import::ImportPhase::Finalizing)),
     )
     .await
     .unwrap();
     assert_eq!(imports_in_flight(&db).await, 2);
 
-    db.move_candidate_import(
-        &crate::import::CandidateKey::test("/music/One"),
-        "import-1",
-        None,
-    )
-    .await
-    .unwrap();
+    db.move_candidate_import(&crate::import::CandidateKey::test("/music/One"), "import-1", None)
+        .await
+        .unwrap();
     assert_eq!(imports_in_flight(&db).await, 1);
 }

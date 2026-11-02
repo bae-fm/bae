@@ -60,14 +60,11 @@ pub(super) fn materialise(
                 ))
             };
             if key.item == Item::Group {
-                let (_, header) = headers
-                    .next_if(|(at, _)| *at == position)
-                    .ok_or_else(missing)?;
+                let (_, header) = headers.next_if(|(at, _)| *at == position).ok_or_else(missing)?;
                 return Ok(WindowItemRows::Ready(header));
             }
-            let release = releases
-                .next_if(|release| release.position == position)
-                .ok_or_else(missing)?;
+            let release =
+                releases.next_if(|release| release.position == position).ok_or_else(missing)?;
             if key.item == Item::Invalid {
                 return invalid_item(sql, release);
             }
@@ -287,10 +284,9 @@ fn release_rows(
                 content_hash: row.get(18)?,
                 current: row.get(19)?,
                 imported: match row.get::<_, Option<String>>(20)? {
-                    Some(release_id) => Some(ImportedRelease {
-                        release_id,
-                        album_id: row.get(21)?,
-                    }),
+                    Some(release_id) => {
+                        Some(ImportedRelease { release_id, album_id: row.get(21)? })
+                    }
                     None => None,
                 },
                 library_cover: row.get("library_cover")?,
@@ -306,12 +302,7 @@ fn release_rows(
                 release_link: None,
                 cover: None,
             };
-            Ok((
-                release,
-                read_provenance(row)?,
-                read_release_link(row)?,
-                read_cover(row)?,
-            ))
+            Ok((release, read_provenance(row)?, read_release_link(row)?, read_cover(row)?))
         },
     )?;
     rows.into_iter()
@@ -358,11 +349,8 @@ fn candidate_item(
     let facts = release.facts.facts(&release.key)?;
     let (blocked, subject, holder) = release.block.clone();
     let block = block_of(blocked, subject, holder)?;
-    let import_status = import_status_of(
-        release.imported.as_ref(),
-        block.as_ref(),
-        release.failure.as_ref(),
-    );
+    let import_status =
+        import_status_of(release.imported.as_ref(), block.as_ref(), release.failure.as_ref());
     // Only a row with an imported release reads the upload queue, so a
     // window of rows that have none reruns on none of its changes.
     let upload = release
@@ -467,13 +455,7 @@ impl WindowItemRows {
     pub(super) fn process(self) -> Result<ImportListItem, DbError> {
         match self {
             Self::Ready(item) => Ok(item),
-            Self::Candidate {
-                mut row,
-                live,
-                picked,
-                cover,
-                header_position,
-            } => {
+            Self::Candidate { mut row, live, picked, cover, header_position } => {
                 // The reading the row was placed with named no records;
                 // this is where the linked releases' records are put
                 // together.
@@ -485,11 +467,7 @@ impl WindowItemRows {
                     );
                 }
                 row.cover = cover;
-                Ok(ImportListItem::Candidate {
-                    row,
-                    live,
-                    header_position,
-                })
+                Ok(ImportListItem::Candidate { row, live, header_position })
             }
         }
     }
@@ -551,9 +529,9 @@ fn row_cover_source(
     cover: &CoverSelection,
 ) -> Result<crate::import::CoverImageSource, DbError> {
     match cover {
-        CoverSelection::Remote(image, _) => Ok(crate::import::CoverImageSource::Remote {
-            image: image.clone(),
-        }),
+        CoverSelection::Remote(image, _) => {
+            Ok(crate::import::CoverImageSource::Remote { image: image.clone() })
+        }
         CoverSelection::Local(file_id) => Ok(crate::import::CoverImageSource::Local {
             file: scanned_file_version(sql, watched_folder_path, candidate_path, file_id)?,
         }),
@@ -577,24 +555,12 @@ fn scanned_file_version(
             "SELECT absolute_path, size, modified_at_ns FROM scan_candidate_file \
              WHERE watched_folder_path = ? AND candidate_path = ? \
                AND relative_path = ?",
-            params![
-                coven::path_bytes(watched_folder_path),
-                candidate_path,
-                file_id
-            ],
-            |row| {
-                Ok((
-                    row.get::<_, Vec<u8>>(0)?,
-                    row.get::<_, i64>(1)?,
-                    row.get::<_, i64>(2)?,
-                ))
-            },
+            params![coven::path_bytes(watched_folder_path), candidate_path, file_id],
+            |row| Ok((row.get::<_, Vec<u8>>(0)?, row.get::<_, i64>(1)?, row.get::<_, i64>(2)?)),
         )
         .optional()?
         .ok_or_else(|| {
-            DbError::Message(format!(
-                "candidate {candidate_path} names missing file {file_id}"
-            ))
+            DbError::Message(format!("candidate {candidate_path} names missing file {file_id}"))
         })?;
     Ok(FileVersion {
         path: path_column::decode(path)?,
@@ -612,13 +578,8 @@ pub(super) fn stored_embedded_cover(
     candidate_path: &CandidateKey,
     source_file_id: &str,
 ) -> Result<(FileVersion, Vec<u8>), DbError> {
-    type CoverColumns = (
-        Option<String>,
-        Option<Vec<u8>>,
-        Option<i64>,
-        Option<i64>,
-        Option<Vec<u8>>,
-    );
+    type CoverColumns =
+        (Option<String>, Option<Vec<u8>>, Option<i64>, Option<i64>, Option<Vec<u8>>);
     let (stored_source, data, size, modified_at_ns, path): CoverColumns = sql
         .query_row(
             "SELECT snapshot.embedded_cover_source_relative_path, snapshot.embedded_cover_data, \
@@ -638,15 +599,7 @@ pub(super) fn stored_embedded_cover(
                 ":path": candidate_path,
                 ":source": source_file_id,
             },
-            |row| {
-                Ok((
-                    row.get(0)?,
-                    row.get(1)?,
-                    row.get(2)?,
-                    row.get(3)?,
-                    row.get(4)?,
-                ))
-            },
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?)),
         )
         .optional()?
         .ok_or_else(|| {
@@ -670,9 +623,7 @@ pub(super) fn stored_embedded_cover(
         )));
     };
     let path = path.ok_or_else(|| {
-        DbError::Message(format!(
-            "candidate {candidate_path} names missing file {source_file_id}"
-        ))
+        DbError::Message(format!("candidate {candidate_path} names missing file {source_file_id}"))
     })?;
     Ok((
         FileVersion {

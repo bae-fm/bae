@@ -35,15 +35,14 @@ pub fn code(stated: &str) -> Option<String> {
 /// well-formed ISRC — see [`code`] — whose agency code names one.
 pub fn territory(isrc: &str) -> Option<ReleaseArea> {
     let code = code(isrc)?;
-    AGENCY_CODES
-        .iter()
-        .find(|(agency, _)| *agency == &code[..2])
-        .map(|(_, territory)| match territory {
+    AGENCY_CODES.iter().find(|(agency, _)| *agency == &code[..2]).map(|(_, territory)| {
+        match territory {
             Territory::Country(country) => ReleaseArea::Country(
                 Country::from_code(country).expect("the agency table names ISO 3166-1 codes"),
             ),
             Territory::Region(region) => ReleaseArea::Region(*region),
-        })
+        }
+    })
 }
 
 /// Where most of these recordings were registered: the territory more than
@@ -58,10 +57,7 @@ pub fn registered_in<'a>(isrcs: impl IntoIterator<Item = &'a str>) -> Option<Rel
             None => counts.push((*area, 1)),
         }
     }
-    counts
-        .into_iter()
-        .find(|(_, count)| count * 2 > named.len())
-        .map(|(area, _)| area)
+    counts.into_iter().find(|(_, count)| count * 2 > named.len()).map(|(area, _)| area)
 }
 
 /// The territory an agency code was allocated for.

@@ -37,8 +37,7 @@ impl Database {
         track_id: &str,
     ) -> Result<Option<crate::playback::TrackDisplay>, DbError> {
         let track_id = track_id.to_string();
-        self.read(move |sql| track_display_on(&sql, &track_id))
-            .await
+        self.read(move |sql| track_display_on(&sql, &track_id)).await
     }
 
     /// Write the single device-local `playback_state` row (id = 'current'),
@@ -122,9 +121,7 @@ impl Database {
             return Ok(());
         }
         self.call(move |conn| {
-            conn.execute("DELETE FROM playback_state", [])
-                .map(|_| ())
-                .map_err(DbError::from)
+            conn.execute("DELETE FROM playback_state", []).map(|_| ()).map_err(DbError::from)
         })
         .await
     }

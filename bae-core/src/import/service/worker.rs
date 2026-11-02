@@ -29,12 +29,7 @@ impl ImportService {
             ids.clone(),
             diagnostics.clone(),
         );
-        Ok(Self::start_with(
-            runtime_handle,
-            services,
-            runtime,
-            diagnostics,
-        )?)
+        Ok(Self::start_with(runtime_handle, services, runtime, diagnostics)?)
     }
 
     /// [`Self::start`] reading folders' tags through `file_tags`, for a test
@@ -108,10 +103,9 @@ impl ImportService {
 
                     while let Some(message) = service.commands_rx.recv().await {
                         match message {
-                            ImportWorkerMessage::Import {
-                                command,
-                                expectation,
-                            } => service.do_import(command, expectation).await,
+                            ImportWorkerMessage::Import { command, expectation } => {
+                                service.do_import(command, expectation).await
+                            }
                             ImportWorkerMessage::Shutdown => break,
                         }
                     }

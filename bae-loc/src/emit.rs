@@ -147,10 +147,7 @@ fn apple_unit(msg: &Message, value: &str, state: &str) -> Result<serde_json::Val
 /// locale isn't translated yet.
 fn apple_localization(msg: &Message) -> Result<serde_json::Value, String> {
     let mut locs = serde_json::Map::new();
-    locs.insert(
-        SOURCE_LOCALE.to_string(),
-        apple_unit(msg, &msg.value, "translated")?,
-    );
+    locs.insert(SOURCE_LOCALE.to_string(), apple_unit(msg, &msg.value, "translated")?);
     for loc in TARGET_LOCALES {
         let (value, state) = localized(msg, loc);
         locs.insert((*loc).to_string(), apple_unit(msg, value, state)?);
@@ -246,10 +243,8 @@ fn android_values_dir(locale: &str) -> String {
 /// right-to-left layout selection don't apply). Returns `(relative path, file
 /// contents)` pairs.
 pub fn android_resource_files(cat: &Catalog) -> Vec<(String, String)> {
-    let mut files = vec![(
-        "values/core_strings.xml".to_string(),
-        android_strings_xml(cat, SOURCE_LOCALE),
-    )];
+    let mut files =
+        vec![("values/core_strings.xml".to_string(), android_strings_xml(cat, SOURCE_LOCALE))];
     for loc in TARGET_LOCALES {
         files.push((
             format!("{}/core_strings.xml", android_values_dir(loc)),
@@ -293,18 +288,12 @@ value = "Looking up barcode {position} of {total}"
 "#);
         let json = apple_xcstrings(&c).unwrap();
         // Multi-arg becomes positional; single message text passes through.
-        assert!(
-            json.contains("Looking up barcode %1$lld of %2$lld"),
-            "{json}"
-        );
+        assert!(json.contains("Looking up barcode %1$lld of %2$lld"), "{json}");
         assert!(json.contains("that release couldn't be found"), "{json}");
         assert!(json.contains("\"sourceLanguage\": \"en\""));
         // Every catalog target locale gets a slot; messages without that
         // locale are `new`.
-        assert!(
-            json.contains("\"ar\"") && json.contains("\"zh-Hans\""),
-            "{json}"
-        );
+        assert!(json.contains("\"ar\"") && json.contains("\"zh-Hans\""), "{json}");
         assert!(json.contains("\"new\""), "{json}");
     }
 
@@ -342,15 +331,9 @@ value = "{count, plural, one {# pending delete} other {# pending deletes}}"
 value = "that release couldn't be found"
 "#);
         let xml = android_strings_xml(&c, "en");
-        assert!(
-            xml.contains("name=\"core_outbox_pending_deletes\""),
-            "{xml}"
-        );
+        assert!(xml.contains("name=\"core_outbox_pending_deletes\""), "{xml}");
         // MF1 braces kept verbatim for android.icu.text.MessageFormat.
-        assert!(
-            xml.contains("{count, plural, one {# pending delete}"),
-            "{xml}"
-        );
+        assert!(xml.contains("{count, plural, one {# pending delete}"), "{xml}");
         // Apostrophe escaped for the resource parser.
         assert!(xml.contains("couldn\\'t"), "{xml}");
     }
@@ -395,10 +378,7 @@ translations = { ar = "أحادي", "zh-Hans" = "单声道" }
         assert_eq!(files.len(), 1 + TARGET_LOCALES.len());
         let paths: Vec<&str> = files.iter().map(|(p, _)| p.as_str()).collect();
         assert!(paths.contains(&"values/core_strings.xml"), "{paths:?}");
-        assert!(
-            paths.contains(&"values-b+zh+Hans/core_strings.xml"),
-            "{paths:?}"
-        );
+        assert!(paths.contains(&"values-b+zh+Hans/core_strings.xml"), "{paths:?}");
         assert!(paths.contains(&"values-ar/core_strings.xml"), "{paths:?}");
     }
 
@@ -443,15 +423,9 @@ translations = { pl = "{count, plural, one {# usunięcie oczekuje} few {# usuni�
         // Android: the Spanish file carries the translation verbatim; a target
         // locale untranslated for this message keeps the English source.
         let files = android_resource_files(&c);
-        let es = files
-            .iter()
-            .find(|(p, _)| p == "values-es/core_strings.xml")
-            .unwrap();
+        let es = files.iter().find(|(p, _)| p == "values-es/core_strings.xml").unwrap();
         assert!(es.1.contains("no se encontró ese lanzamiento"), "{}", es.1);
-        let pl = files
-            .iter()
-            .find(|(p, _)| p == "values-pl/core_strings.xml")
-            .unwrap();
+        let pl = files.iter().find(|(p, _)| p == "values-pl/core_strings.xml").unwrap();
         assert!(pl.1.contains("that release couldn"), "{}", pl.1);
     }
 }

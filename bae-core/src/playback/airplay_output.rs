@@ -83,9 +83,7 @@ pub(crate) struct AirPlayControl {
 
 impl AirPlayControl {
     pub(crate) fn new() -> Self {
-        Self {
-            session: Mutex::new(None),
-        }
+        Self { session: Mutex::new(None) }
     }
 
     /// Make `session` the live one. The stream that opened it holds it.
@@ -135,11 +133,7 @@ impl AirPlayOutput {
         initial_volume: f32,
         control: Arc<AirPlayControl>,
     ) -> Self {
-        AirPlayOutput {
-            controls: AudioOutputControls::new(initial_volume),
-            sink,
-            control,
-        }
+        AirPlayOutput { controls: AudioOutputControls::new(initial_volume), sink, control }
     }
 }
 
@@ -236,10 +230,7 @@ impl DrainSource {
                 channels: source_channels,
             }
         })?;
-        Ok(DrainSource {
-            converter,
-            packet: Vec::new(),
-        })
+        Ok(DrainSource { converter, packet: Vec::new() })
     }
 }
 
@@ -350,9 +341,7 @@ mod tests {
         output.set_state(AudioState::Playing);
 
         let (tx, _rx) = audio_event_channel();
-        let stream = output
-            .create_stream(source, 44_100, 2, tx, 100)
-            .expect("stream builds");
+        let stream = output.create_stream(source, 44_100, 2, tx, 100).expect("stream builds");
 
         // The fake pulled 4 stereo frames.
         assert_eq!(state.frames.load(Ordering::Relaxed), 4);
@@ -384,10 +373,7 @@ mod tests {
         );
         assert!(matches!(
             refused,
-            Err(AudioError::UnsupportedFormat {
-                sample_rate: 0,
-                channels: 2
-            })
+            Err(AudioError::UnsupportedFormat { sample_rate: 0, channels: 2 })
         ));
     }
 

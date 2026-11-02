@@ -125,17 +125,9 @@ unsafe fn seek_to_byte_or_warn(
 ) {
     use ffmpeg_sys_next::*;
 
-    let ret = av_seek_frame(
-        fmt_ctx,
-        stream_index,
-        byte_pos as i64,
-        AVSEEK_FLAG_BYTE as c_int,
-    );
+    let ret = av_seek_frame(fmt_ctx, stream_index, byte_pos as i64, AVSEEK_FLAG_BYTE as c_int);
     if ret < 0 {
-        warn!(
-            "byte seek to {byte_pos} failed ({}); decoding from the start",
-            av_err_str(ret)
-        );
+        warn!("byte seek to {byte_pos} failed ({}); decoding from the start", av_err_str(ret));
     }
 }
 
@@ -159,14 +151,8 @@ unsafe fn seek_to_indexed_frame_or_warn(
     use ffmpeg_sys_next::*;
 
     let timestamp = sample_clock.timestamp_of(sample as i64);
-    let ret = av_add_index_entry(
-        audio.stream,
-        byte as i64,
-        timestamp,
-        0,
-        0,
-        AVINDEX_KEYFRAME as c_int,
-    );
+    let ret =
+        av_add_index_entry(audio.stream, byte as i64, timestamp, 0, 0, AVINDEX_KEYFRAME as c_int);
     if ret < 0 {
         warn!(
             "indexing the frame at byte {byte} (sample {sample}) failed ({}); decoding from the start",
@@ -174,19 +160,9 @@ unsafe fn seek_to_indexed_frame_or_warn(
         );
         return;
     }
-    let ret = avformat_seek_file(
-        fmt_ctx,
-        audio.stream_index,
-        i64::MIN,
-        timestamp,
-        timestamp,
-        0,
-    );
+    let ret = avformat_seek_file(fmt_ctx, audio.stream_index, i64::MIN, timestamp, timestamp, 0);
     if ret < 0 {
-        warn!(
-            "seek to the frame at byte {byte} (sample {sample}) failed ({})",
-            av_err_str(ret)
-        );
+        warn!("seek to the frame at byte {byte} (sample {sample}) failed ({})", av_err_str(ret));
     }
 }
 

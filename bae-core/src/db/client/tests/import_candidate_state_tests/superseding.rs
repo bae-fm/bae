@@ -1,5 +1,8 @@
 /// A tentative candidate at `name` below `root`.
-fn tentative_candidate(root: &std::path::Path, name: &str) -> crate::import::folder_scanner::ScanItem {
+fn tentative_candidate(
+    root: &std::path::Path,
+    name: &str,
+) -> crate::import::folder_scanner::ScanItem {
     match scanned_candidate(root, name) {
         crate::import::folder_scanner::ScanItem::Valid(candidate) => {
             crate::import::folder_scanner::ScanItem::Discovered(candidate)
@@ -15,7 +18,10 @@ async fn save_in_turn(
     root: &std::path::Path,
     items: &[crate::import::folder_scanner::ScanItem],
 ) -> Vec<crate::db::ScanItemWrite> {
-    let generation = db.begin_folder_scan(std::path::Path::new(root), crate::import::VolumeKind::Local).await.unwrap();
+    let generation = db
+        .begin_folder_scan(std::path::Path::new(root), crate::import::VolumeKind::Local)
+        .await
+        .unwrap();
     let mut writes = Vec::new();
     for item in items {
         writes.push(
@@ -54,11 +60,7 @@ async fn a_release_read_over_a_folder_replaces_the_entries_below_it_and_no_sibli
     assert_eq!(replaced, vec![key_of(root, "Box/CD1"), key_of(root, "Box/CD2")]);
     assert_eq!(
         stored_keys(&db, root).await,
-        vec![
-            key_of(root, "Box"),
-            key_of(root, "Box 2"),
-            key_of(root, "Boxes/CD1")
-        ]
+        vec![key_of(root, "Box"), key_of(root, "Box 2"), key_of(root, "Boxes/CD1")]
     );
 }
 

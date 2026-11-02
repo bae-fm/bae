@@ -16,10 +16,7 @@ impl Params {
     /// A parameter's value, or `None` when absent or empty. An empty value is
     /// treated as absent so `size=` reads like an omitted `size`.
     pub(crate) fn get(&self, name: &str) -> Option<&str> {
-        self.0
-            .get(name)
-            .map(String::as_str)
-            .filter(|value| !value.is_empty())
+        self.0.get(name).map(String::as_str).filter(|value| !value.is_empty())
     }
 
     /// A required parameter, or error 10 when missing.

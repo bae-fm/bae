@@ -14,11 +14,7 @@ fn found_over(pressings: Vec<u32>) -> crate::identify::IdentifyState {
         })
         .collect();
     crate::identify::IdentifyState::Found {
-        findings: crate::identify::Findings {
-            matches,
-            pressings,
-            ..Default::default()
-        },
+        findings: crate::identify::Findings { matches, pressings, ..Default::default() },
         track_count: 2,
         ledger: None,
         context: signals_context(2),
@@ -33,16 +29,11 @@ async fn an_answer_that_picks_reads_as_its_pick_being_read_and_carries_an_import
     let runtime = CandidateRuntime::for_test().await;
     let key = &crate::import::CandidateKey::test("/watch/a/rel1");
     let files = scanned_key(&runtime, key).await;
-    runtime
-        .admit(vec![(key.clone(), files.clone())], Admission::Automatic)
-        .await
-        .unwrap();
+    runtime.admit(vec![(key.clone(), files.clone())], Admission::Automatic).await.unwrap();
     report(&runtime, key, &files, run(1), found_over(vec![0])).await;
     assert_eq!(
         identification(&runtime, key).await,
-        Some(crate::import::IdentificationStatus::ReadingPick {
-            import_asked: false
-        })
+        Some(crate::import::IdentificationStatus::ReadingPick { import_asked: false })
     );
 
     assert!(runtime.ask_import_once_stored(key).await.unwrap());
@@ -50,10 +41,7 @@ async fn an_answer_that_picks_reads_as_its_pick_being_read_and_carries_an_import
         identification(&runtime, key).await,
         Some(crate::import::IdentificationStatus::ReadingPick { import_asked: true })
     );
-    assert!(
-        runtime.ask_import_once_stored(key).await.unwrap(),
-        "asking again asks the same thing"
-    );
+    assert!(runtime.ask_import_once_stored(key).await.unwrap(), "asking again asks the same thing");
 
     assert!(
         runtime.end_identification_answer(key, run(1)).await.unwrap(),
@@ -73,10 +61,7 @@ async fn an_answer_that_picks_nothing_reads_as_finalizing_and_takes_no_ask() {
     let runtime = CandidateRuntime::for_test().await;
     let key = &crate::import::CandidateKey::test("/watch/a/rel1");
     let files = scanned_key(&runtime, key).await;
-    runtime
-        .admit(vec![(key.clone(), files.clone())], Admission::Automatic)
-        .await
-        .unwrap();
+    runtime.admit(vec![(key.clone(), files.clone())], Admission::Automatic).await.unwrap();
     report(&runtime, key, &files, run(1), found_over(vec![0, 1])).await;
     assert_eq!(
         identification(&runtime, key).await,
@@ -99,10 +84,7 @@ async fn an_import_ask_goes_with_the_answer_it_was_asked_of() {
     let runtime = CandidateRuntime::for_test().await;
     let key = &crate::import::CandidateKey::test("/watch/a/rel1");
     let files = scanned_key(&runtime, key).await;
-    runtime
-        .admit(vec![(key.clone(), files.clone())], Admission::Automatic)
-        .await
-        .unwrap();
+    runtime.admit(vec![(key.clone(), files.clone())], Admission::Automatic).await.unwrap();
     report(&runtime, key, &files, run(2), found_over(vec![0])).await;
     assert!(runtime.ask_import_once_stored(key).await.unwrap());
 

@@ -3,10 +3,7 @@ fn validation_folds_validate_token_outcomes() {
     use crate::config::DiscogsValidation;
     use bae_catalogs::discogs::client::DiscogsError;
 
-    assert_eq!(
-        DiscogsCheck::of(Ok(())).validation(),
-        DiscogsValidation::Valid
-    );
+    assert_eq!(DiscogsCheck::of(Ok(())).validation(), DiscogsValidation::Valid);
     // A 401 is the one outcome that rejects the stored key.
     assert_eq!(
         DiscogsCheck::of(Err(DiscogsError::InvalidApiKey)).validation(),
@@ -169,7 +166,9 @@ fn values_for(
     .expect("synthetic MB response reads")
 }
 
-fn seed_for(response: &bae_catalogs::musicbrainz::MbReleaseResponse) -> crate::import::ReleaseUserEdit {
+fn seed_for(
+    response: &bae_catalogs::musicbrainz::MbReleaseResponse,
+) -> crate::import::ReleaseUserEdit {
     values_for(response).user_edit()
 }
 
@@ -190,10 +189,8 @@ fn a_reading_numbers_tracks_per_side() {
 #[test]
 fn seed_carries_every_album_artist() {
     let mut response = vinyl_response();
-    response.artist_credit = vec![
-        mb_credit("mb-artist-a", "Artist A"),
-        mb_credit("mb-artist-b", "Artist B"),
-    ];
+    response.artist_credit =
+        vec![mb_credit("mb-artist-a", "Artist A"), mb_credit("mb-artist-b", "Artist B")];
 
     let edit = seed_for(&response);
 
@@ -201,8 +198,14 @@ fn seed_carries_every_album_artist() {
         .album_artist_assignments
         .iter()
         .map(|assignment| match assignment {
-            crate::import::Credited { artist: crate::import::ArtistAssignment::Credit { credit }, .. } => credit.name.as_str(),
-            crate::import::Credited { artist: crate::import::ArtistAssignment::Picked { .. }, .. } => {
+            crate::import::Credited {
+                artist: crate::import::ArtistAssignment::Credit { credit },
+                ..
+            } => credit.name.as_str(),
+            crate::import::Credited {
+                artist: crate::import::ArtistAssignment::Picked { .. },
+                ..
+            } => {
                 panic!("a parsed source artist is not a library selection")
             }
         })

@@ -49,10 +49,7 @@ async fn seeded_db() -> (Database, tempfile::TempDir) {
 async fn search(db: &Database, text: &str) -> Vec<DbArtist> {
     db.search_artists(
         &crate::library::LibrarySearchQuery::parse(text).expect("the text is not blank"),
-        crate::library::LibraryPageWindow {
-            offset: 0,
-            limit: 10,
-        },
+        crate::library::LibraryPageWindow { offset: 0, limit: 10 },
     )
     .await
     .unwrap()
@@ -78,10 +75,7 @@ async fn artist_search_ranks_exact_prefix_and_substring_matches() {
     .unwrap();
 
     let matches = search(&db, "artist search").await;
-    let ids = matches
-        .iter()
-        .map(|artist| artist.id.as_str())
-        .collect::<Vec<_>>();
+    let ids = matches.iter().map(|artist| artist.id.as_str()).collect::<Vec<_>>();
     assert_eq!(
         ids,
         vec![
@@ -92,38 +86,24 @@ async fn artist_search_ranks_exact_prefix_and_substring_matches() {
             "d5cfb57f-0df4-4c99-9a1a-a634161c2e2c",
         ]
     );
-    assert_eq!(
-        matches[0].discogs_artist_id.as_deref(),
-        Some("discogs-exact")
-    );
-    assert_eq!(
-        matches[0].musicbrainz_artist_id.as_deref(),
-        Some("mb-exact")
-    );
+    assert_eq!(matches[0].discogs_artist_id.as_deref(), Some("discogs-exact"));
+    assert_eq!(matches[0].musicbrainz_artist_id.as_deref(), Some("mb-exact"));
 
     let by_musicbrainz_id = search(&db, "mb-exact").await;
     assert_eq!(by_musicbrainz_id.len(), 1);
-    assert_eq!(
-        by_musicbrainz_id[0].id,
-        "0d3d77ce-a3ea-4d31-b5ff-e10facb0cc0b"
-    );
+    assert_eq!(by_musicbrainz_id[0].id, "0d3d77ce-a3ea-4d31-b5ff-e10facb0cc0b");
 
     let by_library_id = search(&db, "0d3d77ce-a3ea-4d31-b5ff-e10facb0cc0b").await;
     assert_eq!(by_library_id.len(), 1);
-    assert_eq!(
-        by_library_id[0].discogs_artist_id.as_deref(),
-        Some("discogs-exact")
-    );
+    assert_eq!(by_library_id[0].discogs_artist_id.as_deref(), Some("discogs-exact"));
 }
 
 #[tokio::test]
 async fn artist_page_lists_album_artists_with_distinct_album_counts() {
     let (db, _tmp) = seeded_db().await;
 
-    let sort = [ArtistSortCriterion {
-        field: ArtistSortField::Name,
-        direction: SortDirection::Ascending,
-    }];
+    let sort =
+        [ArtistSortCriterion { field: ArtistSortField::Name, direction: SortDirection::Ascending }];
     let page = db.get_artist_page(&sort, 0, 10).await.unwrap();
 
     let ids: Vec<&str> = page.iter().map(|a| a.artist.id.as_str()).collect();
@@ -240,10 +220,7 @@ async fn artist_page_applies_secondary_criterion() {
             field: ArtistSortField::AlbumCount,
             direction: SortDirection::Descending,
         },
-        ArtistSortCriterion {
-            field: ArtistSortField::Name,
-            direction: SortDirection::Descending,
-        },
+        ArtistSortCriterion { field: ArtistSortField::Name, direction: SortDirection::Descending },
     ];
     let page = db.get_artist_page(&sort, 0, 10).await.unwrap();
     let ids: Vec<&str> = page.iter().map(|a| a.artist.id.as_str()).collect();
@@ -300,13 +277,7 @@ async fn artist_detail_orders_albums_year_then_title_with_unknown_years_last() {
     let album_ids: Vec<&str> = detail.albums.iter().map(|a| a.id.as_str()).collect();
     assert_eq!(
         album_ids,
-        vec![
-            ALBUM_1999,
-            ALBUM_2001_LOWER,
-            ALBUM_2001_UPPER,
-            ALBUM_JUNCTION,
-            ALBUM_NULL,
-        ]
+        vec![ALBUM_1999, ALBUM_2001_LOWER, ALBUM_2001_UPPER, ALBUM_JUNCTION, ALBUM_NULL,]
     );
 }
 
@@ -314,14 +285,6 @@ async fn artist_detail_orders_albums_year_then_title_with_unknown_years_last() {
 async fn artist_detail_absent_or_album_less_artist_is_none() {
     let (db, _tmp) = seeded_db().await;
 
-    assert!(db
-        .find_artist_detail(ARTIST_ABSENT)
-        .await
-        .unwrap()
-        .is_none());
-    assert!(db
-        .find_artist_detail(ARTIST_WORK_ONLY)
-        .await
-        .unwrap()
-        .is_none());
+    assert!(db.find_artist_detail(ARTIST_ABSENT).await.unwrap().is_none());
+    assert!(db.find_artist_detail(ARTIST_WORK_ONLY).await.unwrap().is_none());
 }

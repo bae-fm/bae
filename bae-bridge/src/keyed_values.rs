@@ -154,11 +154,7 @@ impl KeyedValueStream {
         stop: CancellationToken,
         runtime: OperationRuntime,
     ) -> Self {
-        Self {
-            values,
-            stop,
-            runtime,
-        }
+        Self { values, stop, runtime }
     }
 }
 
@@ -187,11 +183,7 @@ impl KeyedValueStream {
     /// that held a value then, and every pull after it that it was cancelled.
     pub async fn next(self: Arc<Self>) -> Result<Vec<Vec<u8>>, BridgeError> {
         let runtime = self.runtime.clone();
-        runtime
-            .run("KeyedValueStream.next", move || async move {
-                self.values.next().await
-            })
-            .await
+        runtime.run("KeyedValueStream.next", move || async move { self.values.next().await }).await
     }
 }
 
@@ -215,11 +207,10 @@ impl StreamWriter {
     /// The stream names `key` with `value`.
     pub(crate) fn set(&self, key: impl Into<Vec<u8>>, value: BridgeFastValue) {
         let key = key.into();
-        self.values
-            .write(|values| match values.insert(key.clone(), value) {
-                None => vec![key],
-                Some(_) => vec![],
-            });
+        self.values.write(|values| match values.insert(key.clone(), value) {
+            None => vec![key],
+            Some(_) => vec![],
+        });
     }
 
     /// The stream stopped naming `key`.

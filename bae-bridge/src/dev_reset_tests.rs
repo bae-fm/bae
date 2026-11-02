@@ -32,9 +32,7 @@ token = "discogs-token"
 #[test]
 fn the_profile_key_prefix_crosses_in_its_one_spelling() {
     let dir = tempfile::tempdir().unwrap();
-    let read = read_dev_reset_profile(profile(&dir, "bae-dima/"))
-        .ok()
-        .unwrap();
+    let read = read_dev_reset_profile(profile(&dir, "bae-dima/")).ok().unwrap();
 
     assert_eq!(read.sync_config.key_prefix, "bae-dima");
 }
@@ -77,10 +75,12 @@ fn a_dev_reset_reports_each_step_until_one_fails() {
     let caller = tokio::runtime::Runtime::new().unwrap();
     for name in ["First", "Second"] {
         caller
-            .block_on(host.clone().create_library(
-                Some(name.into()),
-                crate::BridgeLibrarySetup::new(host.clone()),
-            ))
+            .block_on(
+                host.clone().create_library(
+                    Some(name.into()),
+                    crate::BridgeLibrarySetup::new(host.clone()),
+                ),
+            )
             .unwrap();
     }
     let stray = root.path().join(".bae").join("stray-file");
@@ -111,9 +111,7 @@ fn a_dev_reset_reports_each_step_until_one_fails() {
     assert!(!matches!(error, BridgeError::Cancelled), "{error:?}");
 
     let step = |step, done, total| {
-        Some(BridgeFastValue::SetupProgress {
-            progress: BridgeSetupProgress { step, done, total },
-        })
+        Some(BridgeFastValue::SetupProgress { progress: BridgeSetupProgress { step, done, total } })
     };
     assert_eq!(
         setup.written(),
@@ -131,10 +129,7 @@ fn a_dev_reset_reports_each_step_until_one_fails() {
     assert!(!stray.exists(), "bae's directory was emptied");
     let libraries = caller.block_on(host.clone().list_libraries()).unwrap();
     assert_eq!(
-        libraries
-            .iter()
-            .map(|library| library.name.as_str())
-            .collect::<Vec<_>>(),
+        libraries.iter().map(|library| library.name.as_str()).collect::<Vec<_>>(),
         vec!["Dev"],
         "the old libraries are gone and the profile's was created"
     );

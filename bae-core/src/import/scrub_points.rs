@@ -117,10 +117,7 @@ impl ScrubPointTaker {
                 // Which samples a frame holds, and what it leans on, show
                 // only in a read from the stream's first frame.
                 if stream.start != DecodeStart::StreamStart {
-                    warn!(
-                        "an MP3 decoded from {:?}, not its start; no scrub points",
-                        stream.start
-                    );
+                    warn!("an MP3 decoded from {:?}, not its start; no scrub points", stream.start);
                     return None;
                 }
                 Codec::Mp3
@@ -149,11 +146,7 @@ impl ScrubPointTaker {
         {
             return;
         }
-        self.frames.push(ReadFrame {
-            sample,
-            byte,
-            size: packet.size,
-        });
+        self.frames.push(ReadFrame { sample, byte, size: packet.size });
     }
 
     /// The segment's scrub points, in sample order.
@@ -212,23 +205,14 @@ impl ScrubPointTaker {
         // be its file's last, so it is never a point; the frame before it, which
         // a jump can date, serves its samples.
         if let [.., before, last] = self.frames.as_slice() {
-            if points
-                .last()
-                .is_some_and(|point| point.sample == last.sample)
-            {
+            if points.last().is_some_and(|point| point.sample == last.sample) {
                 points.pop();
-                if points
-                    .last()
-                    .is_none_or(|point| point.sample < before.sample)
-                {
+                if points.last().is_none_or(|point| point.sample < before.sample) {
                     points.push(before);
                 }
             }
         }
-        points
-            .into_iter()
-            .filter_map(|frame| frame.point(frame.sample))
-            .collect()
+        points.into_iter().filter_map(|frame| frame.point(frame.sample)).collect()
     }
 
     /// An MP3's points: for the stream's first frame, then the first frame

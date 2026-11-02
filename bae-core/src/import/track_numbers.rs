@@ -44,19 +44,9 @@ impl TrackNumbers {
         let Some(first) = first else {
             return Self::unstated();
         };
-        match rest
-            .strip_prefix('-')
-            .map(leading_number)
-            .and_then(|(track, _)| track)
-        {
-            Some(track) => Self {
-                disc: Some(first),
-                track: Some(track),
-            },
-            None => Self {
-                disc: None,
-                track: Some(first),
-            },
+        match rest.strip_prefix('-').map(leading_number).and_then(|(track, _)| track) {
+            Some(track) => Self { disc: Some(first), track: Some(track) },
+            None => Self { disc: None, track: Some(first) },
         }
     }
 
@@ -64,19 +54,13 @@ impl TrackNumbers {
     /// taken from its name.
     pub(crate) fn or_file_name(self, relative_path: &str) -> Self {
         let named = Self::in_file_name(relative_path);
-        Self {
-            disc: self.disc.or(named.disc),
-            track: self.track.or(named.track),
-        }
+        Self { disc: self.disc.or(named.disc), track: self.track.or(named.track) }
     }
 
     /// Numbers a file whose tags could not be read, or that carries no tag,
     /// states.
     pub(crate) fn unstated() -> Self {
-        Self {
-            disc: None,
-            track: None,
-        }
+        Self { disc: None, track: None }
     }
 
     /// The order two files play in by these numbers: by disc, then by track,
@@ -94,11 +78,7 @@ fn leading_number(text: &str) -> (Option<u32>, &str) {
     let digits = text.bytes().take_while(u8::is_ascii_digit).count();
     let number = (1..=3)
         .contains(&digits)
-        .then(|| {
-            text[..digits]
-                .parse::<u32>()
-                .expect("1-3 ASCII digits parse")
-        })
+        .then(|| text[..digits].parse::<u32>().expect("1-3 ASCII digits parse"))
         .filter(|number| *number > 0);
     (number, &text[digits..])
 }

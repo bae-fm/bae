@@ -27,10 +27,7 @@ impl Database {
     /// The person using this device, once their registration has applied:
     /// their membership, and their profile once they made one.
     pub async fn own_person(&self) -> Result<Option<Person>, DbError> {
-        Ok(self
-            .read(|sql| Ok(people_on(&sql, OWN_PERSON_SQL)?))
-            .await?
-            .pop())
+        Ok(self.read(|sql| Ok(people_on(&sql, OWN_PERSON_SQL)?)).await?.pop())
     }
 
     pub async fn profiles(&self) -> Result<Vec<PersonProfile>, DbError> {
@@ -79,10 +76,7 @@ impl Database {
     pub async fn create_profile(&self, name: &str) -> Result<(), ProfileError> {
         let name = profile_name(name)?;
         let _creation = self.inner.profile_creation.lock().await;
-        let member = self
-            .current_member()
-            .await?
-            .ok_or(ProfileError::NotRegistered)?;
+        let member = self.current_member().await?.ok_or(ProfileError::NotRegistered)?;
         if let Some(profile) = self.profile(member).await? {
             if profile.name != name {
                 return Err(ProfileError::AlreadyExists);
@@ -118,9 +112,8 @@ impl Database {
                     })?;
                 match matching.as_slice() {
                     [] => {
-                        let (circle, operation) = sql
-                            .create_circle(&circle_name)
-                            .map_err(coven::CovenError::from)?;
+                        let (circle, operation) =
+                            sql.create_circle(&circle_name).map_err(coven::CovenError::from)?;
                         insert_profile_request(sql, operation, circle, &name)?;
                     }
                     [(circle, true)] => {
@@ -274,13 +267,7 @@ impl Database {
             return Ok(None);
         };
         let file = self.coven_file(avatar).await?;
-        Ok(Some(
-            self.inner
-                .handle
-                .read_file(&file)
-                .await
-                .map_err(DbError::from)?,
-        ))
+        Ok(Some(self.inner.handle.read_file(&file).await.map_err(DbError::from)?))
     }
 }
 
@@ -392,11 +379,8 @@ fn people_on(sql: &SqlReadContext<'_>, statement: &str) -> rusqlite::Result<Vec<
 }
 
 /// Every profile, by name; `people_name` serves the order.
-pub(super) const PROFILES_SQL: &str = concat!(
-    "SELECT ",
-    profile_columns!(),
-    " FROM people ORDER BY name, id"
-);
+pub(super) const PROFILES_SQL: &str =
+    concat!("SELECT ", profile_columns!(), " FROM people ORDER BY name, id");
 
 fn profile_rows(sql: &SqlReadContext<'_>) -> rusqlite::Result<Vec<PersonProfile>> {
     sql.query(PROFILES_SQL, [], profile_row)

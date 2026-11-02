@@ -41,11 +41,7 @@ fn view(text: &str, windows: &[LibraryPageWindow]) -> ArtistSearchView {
 fn ids(
     window: &crate::library::LibraryBrowseWindow<super::super::artist_search::DbArtistSearchRow>,
 ) -> Vec<&str> {
-    window
-        .rows
-        .iter()
-        .map(|row| row.artist.id.as_str())
-        .collect()
+    window.rows.iter().map(|row| row.artist.id.as_str()).collect()
 }
 
 /// Each window answers with its slice of what the text finds, and the count is
@@ -57,34 +53,19 @@ async fn artist_search_moves_between_texts_and_windows_on_one_subscription() {
     let mut live = db.subscribe_artist_search(view("artist name", &[window(0, 2), window(2, 2)]));
     let requests = live.requests();
 
-    let found = live
-        .next()
-        .await
-        .expect("the query stays open")
-        .result
-        .unwrap();
+    let found = live.next().await.expect("the query stays open").result.unwrap();
     assert_eq!(found.total_count, 3);
     assert_eq!(found.windows.len(), 2);
     assert_eq!(ids(&found.windows[0]), vec![FIRST, SECOND]);
     assert_eq!(ids(&found.windows[1]), vec![THIRD]);
 
     requests.set(view("composer", &[window(0, 2)])).unwrap();
-    let other = live
-        .next()
-        .await
-        .expect("the query stays open")
-        .result
-        .unwrap();
+    let other = live.next().await.expect("the query stays open").result.unwrap();
     assert_eq!(other.total_count, 1);
     assert_eq!(ids(&other.windows[0]), vec![OTHER]);
 
     requests.set(view("   ", &[window(0, 2)])).unwrap();
-    let none = live
-        .next()
-        .await
-        .expect("the query stays open")
-        .result
-        .unwrap();
+    let none = live.next().await.expect("the query stays open").result.unwrap();
     assert_eq!(none.total_count, 0);
     assert_eq!(none.windows.len(), 1, "every window answers");
     assert!(none.windows[0].rows.is_empty());
@@ -96,12 +77,7 @@ async fn artist_search_moves_between_texts_and_windows_on_one_subscription() {
 async fn artist_search_follows_writes_to_what_it_finds() {
     let (db, _tmp) = seeded().await;
     let mut live = db.subscribe_artist_search(view("artist name", &[window(0, 10)]));
-    let first = live
-        .next()
-        .await
-        .expect("the query stays open")
-        .result
-        .unwrap();
+    let first = live.next().await.expect("the query stays open").result.unwrap();
     assert_eq!(first.total_count, 3);
     assert!(first
         .windows
@@ -124,9 +100,7 @@ async fn artist_search_follows_writes_to_what_it_finds() {
         .unwrap();
     assert_eq!(added.total_count, 4);
 
-    db.add_artist_credit_name(FIRST, "Artist Alias")
-        .await
-        .unwrap();
+    db.add_artist_credit_name(FIRST, "Artist Alias").await.unwrap();
     let named = tokio::time::timeout(Duration::from_secs(2), live.next())
         .await
         .expect("a found artist's new name wakes the search")
@@ -150,9 +124,7 @@ async fn artist_search_follows_writes_to_what_it_finds() {
 async fn a_found_artist_reads_its_image_and_names_in_its_row() {
     let (db, _tmp) = seeded().await;
     db.add_artist_credit_name(FIRST, "Zed Alias").await.unwrap();
-    db.add_artist_credit_name(FIRST, "Alpha Alias")
-        .await
-        .unwrap();
+    db.add_artist_credit_name(FIRST, "Alpha Alias").await.unwrap();
     let image = super::live_query_tests::write_artist_image(&db, FIRST, "artist image bytes").await;
 
     let found = db
@@ -169,11 +141,7 @@ async fn a_found_artist_reads_its_image_and_names_in_its_row() {
         .expect("the artist is found");
     assert_eq!(first.image_version.as_deref(), Some(image.as_str()));
     assert_eq!(
-        first
-            .credit_names
-            .iter()
-            .map(|name| name.credit.name.as_str())
-            .collect::<Vec<_>>(),
+        first.credit_names.iter().map(|name| name.credit.name.as_str()).collect::<Vec<_>>(),
         ["Alpha Alias", "Zed Alias"]
     );
 }

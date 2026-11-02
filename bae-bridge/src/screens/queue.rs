@@ -47,10 +47,7 @@ impl QueueUpcomingSubscription {
     ) -> Result<(), BridgeError> {
         self.inner
             .set(
-                windows
-                    .into_iter()
-                    .map(crate::types::BridgeLibraryPageWindow::into_core)
-                    .collect(),
+                windows.into_iter().map(crate::types::BridgeLibraryPageWindow::into_core).collect(),
             )
             .map_err(live_read_error)
     }

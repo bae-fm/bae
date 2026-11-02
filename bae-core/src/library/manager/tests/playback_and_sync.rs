@@ -3,32 +3,20 @@ async fn discogs_operations_withheld_when_rejected() {
     use crate::config::DiscogsValidation;
     let (manager, _temp_dir) = setup_test_manager().await;
     manager
-        .set_discogs_key(
-            "f7228aaf-52b3-40ea-8526-a7e8aa0bf5da",
-            DiscogsValidation::Valid,
-        ).await
+        .set_discogs_key("f7228aaf-52b3-40ea-8526-a7e8aa0bf5da", DiscogsValidation::Valid)
+        .await
         .unwrap();
 
-    assert!(
-        manager.discogs_available_for_test().await.unwrap(),
-        "a Valid key is served"
-    );
+    assert!(manager.discogs_available_for_test().await.unwrap(), "a Valid key is served");
 
-    manager
-        .set_discogs_validation(DiscogsValidation::Unvalidated).await
-        .unwrap();
+    manager.set_discogs_validation(DiscogsValidation::Unvalidated).await.unwrap();
     assert!(
         manager.discogs_available_for_test().await.unwrap(),
         "an Unvalidated key is served optimistically"
     );
 
-    manager
-        .set_discogs_validation(DiscogsValidation::Rejected).await
-        .unwrap();
-    assert!(
-        !manager.discogs_available_for_test().await.unwrap(),
-        "a Rejected key is withheld"
-    );
+    manager.set_discogs_validation(DiscogsValidation::Rejected).await.unwrap();
+    assert!(!manager.discogs_available_for_test().await.unwrap(), "a Rejected key is withheld");
 }
 
 /// A key present in the keyring but absent from config (the residue a torn write
@@ -39,10 +27,7 @@ async fn discogs_operations_withheld_when_config_has_no_key() {
     let (manager, _temp_dir) = setup_test_manager().await;
 
     // Keyring bytes present, config untouched (still `None`).
-    manager
-        .database
-        .set_host_secret(crate::keys::DISCOGS_API_KEY, "orphan-key")
-        .unwrap();
+    manager.database.set_host_secret(crate::keys::DISCOGS_API_KEY, "orphan-key").unwrap();
 
     assert_eq!(manager.discogs_validation().await.unwrap(), None);
     assert!(
@@ -57,29 +42,17 @@ async fn set_and_clear_discogs_key_move_both_stores() {
     use crate::config::DiscogsValidation;
     let (manager, _temp_dir) = setup_test_manager().await;
 
-    manager
-        .set_discogs_key("the-key", DiscogsValidation::Valid).await
-        .unwrap();
+    manager.set_discogs_key("the-key", DiscogsValidation::Valid).await.unwrap();
     assert_eq!(manager.discogs_validation().await.unwrap(), Some(DiscogsValidation::Valid));
     assert_eq!(
-        manager
-            .database
-            .host_secret(crate::keys::DISCOGS_API_KEY)
-            .unwrap()
-            .as_deref(),
+        manager.database.host_secret(crate::keys::DISCOGS_API_KEY).unwrap().as_deref(),
         Some("the-key"),
     );
     assert!(manager.discogs_available_for_test().await.unwrap());
 
     manager.clear_discogs_key().await.unwrap();
     assert_eq!(manager.discogs_validation().await.unwrap(), None);
-    assert_eq!(
-        manager
-            .database
-            .host_secret(crate::keys::DISCOGS_API_KEY)
-            .unwrap(),
-        None
-    );
+    assert_eq!(manager.database.host_secret(crate::keys::DISCOGS_API_KEY).unwrap(), None);
     assert!(!manager.discogs_available_for_test().await.unwrap());
 }
 
@@ -96,13 +69,11 @@ async fn revalidate_errors_when_config_claims_a_key_the_keyring_lacks() {
         .update_preferences(|prefs| {
             prefs.discogs = Some(DiscogsValidation::Unvalidated);
             Ok(())
-        }).await
-        .unwrap();
-
-    let handle = manager
-        .start_import_service(tokio::runtime::Handle::current())
+        })
         .await
         .unwrap();
+
+    let handle = manager.start_import_service(tokio::runtime::Handle::current()).await.unwrap();
 
     assert!(
         handle.revalidate_discogs_token().await.is_err(),
@@ -116,14 +87,11 @@ async fn revalidate_errors_when_config_claims_a_key_the_keyring_lacks() {
 #[tokio::test]
 async fn a_key_discogs_cannot_be_asked_about_is_stored_unchecked_with_why() {
     use crate::config::DiscogsValidation;
-    use bae_catalogs::discogs::client::DiscogsError;
     use crate::import::{DiscogsSaveOutcome, ImportError};
+    use bae_catalogs::discogs::client::DiscogsError;
 
     let (manager, _temp_dir) = setup_test_manager().await;
-    let handle = manager
-        .start_import_service(tokio::runtime::Handle::current())
-        .await
-        .unwrap();
+    let handle = manager.start_import_service(tokio::runtime::Handle::current()).await.unwrap();
 
     let outcome = handle
         .save_discogs_token("discogs-test-key")
@@ -132,23 +100,14 @@ async fn a_key_discogs_cannot_be_asked_about_is_stored_unchecked_with_why() {
     let DiscogsSaveOutcome::Unvalidated(reason) = outcome else {
         panic!("an unreachable Discogs leaves the key unchecked: {outcome:?}");
     };
-    assert!(
-        reason.to_string().contains("tcp connect error"),
-        "{reason}"
-    );
-    assert_eq!(
-        manager.discogs_validation().await.unwrap(),
-        Some(DiscogsValidation::Unvalidated)
-    );
+    assert!(reason.to_string().contains("tcp connect error"), "{reason}");
+    assert_eq!(manager.discogs_validation().await.unwrap(), Some(DiscogsValidation::Unvalidated));
 
     let error = handle
         .revalidate_discogs_token()
         .await
         .expect_err("a re-check Discogs cannot answer fails with why");
-    assert!(
-        matches!(error, ImportError::Discogs(DiscogsError::Transport(_))),
-        "{error}"
-    );
+    assert!(matches!(error, ImportError::Discogs(DiscogsError::Transport(_))), "{error}");
 }
 
 #[tokio::test]
@@ -161,29 +120,22 @@ async fn discogs_validation_signals_confirm_and_reject() {
         .update_preferences(|prefs| {
             prefs.discogs = Some(DiscogsValidation::Unvalidated);
             Ok(())
-        }).await
+        })
+        .await
         .unwrap();
     manager.record_discogs_validation_for_test(DiscogsKeySignal::Accepted).await;
     assert_eq!(manager.discogs_validation().await.unwrap(), Some(DiscogsValidation::Valid));
 
     // A 401 rejects, from any prior state.
     manager.record_discogs_validation_for_test(DiscogsKeySignal::Rejected).await;
-    assert_eq!(
-        manager.discogs_validation().await.unwrap(),
-        Some(DiscogsValidation::Rejected)
-    );
+    assert_eq!(manager.discogs_validation().await.unwrap(), Some(DiscogsValidation::Rejected));
 
     // A success does NOT flip an already-Rejected key back to Valid.
     manager.record_discogs_validation_for_test(DiscogsKeySignal::Accepted).await;
-    assert_eq!(
-        manager.discogs_validation().await.unwrap(),
-        Some(DiscogsValidation::Rejected)
-    );
+    assert_eq!(manager.discogs_validation().await.unwrap(), Some(DiscogsValidation::Rejected));
 
     // A success while already Valid is a no-op (only Unvalidated -> Valid).
-    manager
-        .set_discogs_validation(DiscogsValidation::Valid).await
-        .unwrap();
+    manager.set_discogs_validation(DiscogsValidation::Valid).await.unwrap();
     manager.record_discogs_validation_for_test(DiscogsKeySignal::Accepted).await;
     assert_eq!(manager.discogs_validation().await.unwrap(), Some(DiscogsValidation::Valid));
 }
@@ -296,7 +248,10 @@ fn setup_failure_classes_retain_the_actionable_category() {
         (coven::KeyError::Left.into(), C::DeviceRemoved),
         (coven::SyncError::SecureStorage(coven::KeyError::Left).into(), C::DeviceRemoved),
         (missing_entitlement().into(), C::KeychainEntitlementMissing),
-        (coven::SyncError::SecureStorage(missing_entitlement()).into(), C::KeychainEntitlementMissing),
+        (
+            coven::SyncError::SecureStorage(missing_entitlement()).into(),
+            C::KeychainEntitlementMissing,
+        ),
         // Block Store's limits on Android say which one was met, not that the
         // keyring broke.
         (coven::KeyError::SavedEntriesFull.into(), C::SavedRestoreCodesFull),
@@ -321,14 +276,23 @@ fn setup_failure_classes_retain_the_actionable_category() {
         (LibraryError::Storage("pin ended without completion".into()), C::Internal),
         (LibraryError::Validation("library name cannot be empty".into()), C::Config),
     ];
-    for (error, expected) in cases { assert_eq!(error.category(), expected, "{error}"); }
+    for (error, expected) in cases {
+        assert_eq!(error.category(), expected, "{error}");
+    }
 }
 
 #[test]
 fn every_storage_setup_failure_keeps_its_exact_user_action() {
     use coven::StorageFailure as F;
-    for failure in [F::Authentication, F::PermissionDenied, F::ContainerNotFound,
-        F::RegionMismatch, F::QuotaExceeded, F::InvalidConfiguration, F::Network] {
+    for failure in [
+        F::Authentication,
+        F::PermissionDenied,
+        F::ContainerNotFound,
+        F::RegionMismatch,
+        F::QuotaExceeded,
+        F::InvalidConfiguration,
+        F::Network,
+    ] {
         let error = LibraryError::CloudSetup(coven::StorageSetupError::Storage(failure.into()));
         assert_eq!(error.category(), crate::ui::UiErrorCategory::Storage(failure));
     }
@@ -369,18 +333,10 @@ async fn seed_release_tracks(manager: &LibraryManager, count: usize) -> Vec<Stri
 /// Play the seeded release from its first track.
 async fn play_seeded(manager: &LibraryManager, first_track: &str) {
     let tables = manager.playback_queue_tables();
-    let release_id = manager
-        .database
-        .find_track_by_id(first_track)
-        .await
-        .unwrap()
-        .unwrap()
-        .release_id;
+    let release_id =
+        manager.database.find_track_by_id(first_track).await.unwrap().unwrap().release_id;
     tables
-        .fill(crate::db::ContextFill::Release {
-            release_id,
-            start: crate::db::ReleaseStart::First,
-        })
+        .fill(crate::db::ContextFill::Release { release_id, start: crate::db::ReleaseStart::First })
         .await
         .unwrap();
 }
@@ -395,13 +351,8 @@ async fn the_context_tail_reads_in_order_after_the_playing_track() {
 
     let value = manager.queue_value().await.unwrap();
     assert!(value.context.is_some() && value.has_next);
-    let upcoming: Vec<String> = manager
-        .queue_upcoming()
-        .await
-        .unwrap()
-        .into_iter()
-        .map(|item| item.track_id)
-        .collect();
+    let upcoming: Vec<String> =
+        manager.queue_upcoming().await.unwrap().into_iter().map(|item| item.track_id).collect();
     assert_eq!(upcoming, track_ids[1..].to_vec());
 }
 
@@ -434,10 +385,7 @@ async fn a_reordered_queue_shows_each_entry_in_its_new_place() {
     let tables = manager.playback_queue_tables();
     let mut queued = track_ids.clone();
     queued.push(track_ids[0].clone());
-    tables
-        .add_manual(queued, crate::db::ManualPlace::End)
-        .await
-        .unwrap();
+    tables.add_manual(queued, crate::db::ManualPlace::End).await.unwrap();
     let entries: Vec<String> = manager
         .queue_value()
         .await
@@ -472,8 +420,17 @@ async fn a_reordered_queue_shows_each_entry_in_its_new_place() {
 async fn failed_storage_setup_keeps_the_library_unconfigured() {
     let (manager, _temp) = setup_test_manager().await;
     manager.storage.set_online(false);
-    manager.database.setup_s3_storage(manager.storage.config(), "Device", "key".into(), coven::SecretText::new("secret".into()), &|_| ())
-        .await.expect_err("offline storage cannot be set up");
+    manager
+        .database
+        .setup_s3_storage(
+            manager.storage.config(),
+            "Device",
+            "key".into(),
+            coven::SecretText::new("secret".into()),
+            &|_| (),
+        )
+        .await
+        .expect_err("offline storage cannot be set up");
     assert!(!manager.is_sync_configured().await.unwrap());
     assert_eq!(manager.library_name().await.unwrap(), "Test Library");
 }
@@ -503,12 +460,21 @@ async fn startup_and_retry_publish_the_native_connection_status() {
     manager.start().unwrap();
     let mut values = manager.subscribe_sync_status();
     manager.attach_and_start_sync_at_startup().await;
-    crate::followed::value_matching(&mut values, |value| matches!(value.status, coven::SyncStatus::Failed { .. } | coven::SyncStatus::Offline { .. })).await;
-    assert!(manager.is_sync_ready().await.unwrap(), "the loop keeps the failed connection retryable");
+    crate::followed::value_matching(&mut values, |value| {
+        matches!(value.status, coven::SyncStatus::Failed { .. } | coven::SyncStatus::Offline { .. })
+    })
+    .await;
+    assert!(
+        manager.is_sync_ready().await.unwrap(),
+        "the loop keeps the failed connection retryable"
+    );
     manager.storage.set_online(true);
     clock.set(std::time::UNIX_EPOCH + std::time::Duration::from_secs(60));
     manager.reconnect_sync().await.unwrap();
-    crate::followed::value_matching(&mut values, |value| matches!(value.status, coven::SyncStatus::Synced { .. })).await;
+    crate::followed::value_matching(&mut values, |value| {
+        matches!(value.status, coven::SyncStatus::Synced { .. })
+    })
+    .await;
     manager.close().await.unwrap();
 }
 
@@ -524,15 +490,28 @@ async fn a_network_report_ends_the_offline_backoff_and_syncs() {
     let mut status = manager.database.subscribe_sync_status();
     manager.storage.set_online(false);
     manager.trigger_sync();
-    crate::followed::value_matching(&mut status, |status| matches!(status.status, coven::SyncStatus::Offline { .. })).await;
+    crate::followed::value_matching(&mut status, |status| {
+        matches!(status.status, coven::SyncStatus::Offline { .. })
+    })
+    .await;
     manager.storage.set_online(true);
     let requests = manager.storage.request_trace().len();
     manager.trigger_sync();
     tokio::time::sleep(std::time::Duration::from_millis(200)).await;
-    assert_eq!(manager.storage.request_trace().len(), requests, "a sync request ran a pass inside the offline backoff");
-    assert!(matches!(manager.sync_status().await.unwrap().status, coven::SyncStatus::Offline { .. }));
+    assert_eq!(
+        manager.storage.request_trace().len(),
+        requests,
+        "a sync request ran a pass inside the offline backoff"
+    );
+    assert!(matches!(
+        manager.sync_status().await.unwrap().status,
+        coven::SyncStatus::Offline { .. }
+    ));
     manager.network_changed();
-    crate::followed::value_matching(&mut status, |status| matches!(status.status, coven::SyncStatus::Synced { .. })).await;
+    crate::followed::value_matching(&mut status, |status| {
+        matches!(status.status, coven::SyncStatus::Synced { .. })
+    })
+    .await;
     manager.close().await.unwrap();
 }
 
@@ -550,12 +529,8 @@ async fn reconnect_sync_clears_the_failure_it_retries() {
     manager.start().unwrap();
     manager.installation.fail_next_keychain_operation();
     manager.attach_and_start_sync_at_startup().await;
-    let recorded = manager
-        .sync_status()
-        .await
-        .unwrap()
-        .error
-        .expect("the failed startup connect is recorded");
+    let recorded =
+        manager.sync_status().await.unwrap().error.expect("the failed startup connect is recorded");
     let crate::ui::UiError::Diagnostic { category, .. } = &recorded;
     assert_eq!(
         *category,
@@ -563,10 +538,7 @@ async fn reconnect_sync_clears_the_failure_it_retries() {
         "a keychain refused for this session reads as locked: {recorded:?}"
     );
 
-    manager
-        .reconnect_sync()
-        .await
-        .expect("the keychain answers the retry");
+    manager.reconnect_sync().await.expect("the keychain answers the retry");
     assert!(
         manager.sync_status().await.unwrap().error.is_none(),
         "the stale failure is gone the moment the retry runs"
@@ -580,12 +552,7 @@ async fn reconnect_sync_clears_the_failure_it_retries() {
 async fn starting_work_after_close_is_refused_to_the_caller() {
     let (manager, _temp) = setup_test_manager().await;
     manager.close().await.unwrap();
-    let error = manager
-        .start_sync_at_startup()
-        .expect_err("a closed library starts no work");
-    assert!(
-        matches!(error, LibraryError::Closed("startup sync attachment")),
-        "got {error:?}"
-    );
+    let error = manager.start_sync_at_startup().expect_err("a closed library starts no work");
+    assert!(matches!(error, LibraryError::Closed("startup sync attachment")), "got {error:?}");
     assert!(matches!(manager.start(), Err(LibraryError::Closed(_))));
 }

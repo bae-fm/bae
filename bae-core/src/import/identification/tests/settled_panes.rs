@@ -11,29 +11,20 @@ async fn a_settled_pick_that_asks_nothing_opens_the_pane_on_the_draft() {
     let key = crate::import::CandidateKey::folder(&dir);
     let probed = fixture.probed_total_ms(&dir);
     fixture.scan(1).await;
-    fixture
-        .archive("mb-settled-1", "rg-settled-1", &[probed, 0])
-        .await;
-    fixture
-        .import
-        .move_candidate_pane(&key, crate::import::PaneMove::FindOnline)
-        .await
-        .unwrap();
+    fixture.archive("mb-settled-1", "rg-settled-1", &[probed, 0]).await;
+    fixture.import.move_candidate_pane(&key, crate::import::PaneMove::FindOnline).await.unwrap();
 
-    fixture
-        .store_settled_verdict(&dir, "mb-settled-1", "rg-settled-1",)
-        .await;
+    fixture.store_settled_verdict(&dir, "mb-settled-1", "rg-settled-1").await;
 
-    assert_eq!(
-        fixture.judgement_for(&dir).await,
-        (true, None)
-    );
+    assert_eq!(fixture.judgement_for(&dir).await, (true, None));
     assert_eq!(
         fixture
             .pane(&dir)
             .await
             .expect("the candidate reads back")
-            .draft().unwrap().session
+            .draft()
+            .unwrap()
+            .session
             .presentation,
         crate::import::MetadataPresentation::Draft
     );
@@ -48,14 +39,8 @@ async fn a_settled_pick_that_asks_something_leaves_the_pane_where_it_was() {
     let dir = fixture.disc_id_candidate("Album");
     let key = crate::import::CandidateKey::folder(&dir);
     fixture.scan(1).await;
-    fixture
-        .archive("mb-settled-2", "rg-settled-2", &[0, 0])
-        .await;
-    fixture
-        .import
-        .move_candidate_pane(&key, crate::import::PaneMove::FindOnline)
-        .await
-        .unwrap();
+    fixture.archive("mb-settled-2", "rg-settled-2", &[0, 0]).await;
+    fixture.import.move_candidate_pane(&key, crate::import::PaneMove::FindOnline).await.unwrap();
 
     fixture
         .store_settled_verdict_listing(
@@ -75,7 +60,9 @@ async fn a_settled_pick_that_asks_something_leaves_the_pane_where_it_was() {
             .pane(&dir)
             .await
             .expect("the candidate reads back")
-            .draft().unwrap().session
+            .draft()
+            .unwrap()
+            .session
             .presentation,
         crate::import::MetadataPresentation::FindOnline
     );
@@ -93,22 +80,18 @@ async fn automatic_shows_a_stored_verdict_without_asking_again() {
     let key = crate::import::CandidateKey::folder(&dir);
     let probed = fixture.probed_total_ms(&dir);
     fixture.scan(1).await;
-    fixture
-        .archive("mb-automatic-1", "rg-automatic-1", &[probed, 0])
-        .await;
-    fixture
-        .store_settled_verdict(&dir, "mb-automatic-1", "rg-automatic-1")
-        .await;
+    fixture.archive("mb-automatic-1", "rg-automatic-1", &[probed, 0]).await;
+    fixture.store_settled_verdict(&dir, "mb-automatic-1", "rg-automatic-1").await;
     let asked = fixture.provider.requests().len();
 
-    assert!(
-        !fixture.import.open_automatic(&key).await.unwrap(),
-        "a stored verdict owes no run"
-    );
+    assert!(!fixture.import.open_automatic(&key).await.unwrap(), "a stored verdict owes no run");
 
     assert_eq!(fixture.provider.requests().len(), asked);
     let pane = fixture.pane(&dir).await.expect("the candidate reads back");
-    assert_eq!(pane.draft().unwrap().session.presentation, crate::import::MetadataPresentation::FindOnline);
+    assert_eq!(
+        pane.draft().unwrap().session.presentation,
+        crate::import::MetadataPresentation::FindOnline
+    );
     assert_eq!(
         pane.draft().unwrap().session.find_online_section,
         crate::import::FindOnlineSection::Automatic
@@ -141,7 +124,9 @@ async fn automatic_with_no_stored_verdict_owes_a_run() {
             .pane(&dir)
             .await
             .expect("the candidate reads back")
-            .draft().unwrap().session
+            .draft()
+            .unwrap()
+            .session
             .presentation,
         crate::import::MetadataPresentation::FindOnline
     );

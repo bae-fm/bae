@@ -20,11 +20,7 @@ async fn a_cleared_binding_survives_a_relaunch() {
         &StoredCandidateEdits::none(),
     )
     .unwrap();
-    assert_eq!(
-        scanned.track_count(),
-        12,
-        "the unique same-stem audio is bound automatically"
-    );
+    assert_eq!(scanned.track_count(), 12, "the unique same-stem audio is bound automatically");
     let root = folder.path().to_path_buf();
     db.add_watched_import_folder(std::path::Path::new(&root)).await.unwrap();
     let generation = db
@@ -49,24 +45,13 @@ async fn a_cleared_binding_survives_a_relaunch() {
     )
     .await
     .unwrap();
-    db.finish_folder_scan(std::path::Path::new(&root), generation, None)
-        .await
-        .unwrap();
+    db.finish_folder_scan(std::path::Path::new(&root), generation, None).await.unwrap();
 
     let mut edits = SheetBindingEdits::default();
-    edits.set_reference(
-        "cd.cue".to_string(),
-        "cd.wav".to_string(),
-        UserSheetBinding::Cleared,
-    );
-    let candidate_edits = CandidateFileEdits {
-        sheet_bindings: edits,
-        ..Default::default()
-    };
+    edits.set_reference("cd.cue".to_string(), "cd.wav".to_string(), UserSheetBinding::Cleared);
+    let candidate_edits = CandidateFileEdits { sheet_bindings: edits, ..Default::default() };
     let mut settled = scanned.clone();
-    settled
-        .apply_candidate_file_edits(&candidate_edits)
-        .unwrap();
+    settled.apply_candidate_file_edits(&candidate_edits).unwrap();
     let hash = scanned.content_hash();
     let (metadata_revision, mut draft) = current_draft(&db, &hash).await;
     draft.tracks = crate::import::pane::blank_candidate_draft(&settled).tracks;
@@ -81,16 +66,10 @@ async fn a_cleared_binding_survives_a_relaunch() {
         .await
         .unwrap();
 
-    let current = db
-        .load_candidate_file_edits(&scanned.content_hash())
-        .await
-        .unwrap();
+    let current = db.load_candidate_file_edits(&scanned.content_hash()).await.unwrap();
     assert_eq!(current.revision, 1);
     assert_eq!(
-        current
-            .sheet_bindings
-            .get("cd.cue")
-            .and_then(|references| references.get("cd.wav")),
+        current.sheet_bindings.get("cd.cue").and_then(|references| references.get("cd.wav")),
         Some(&UserSheetBinding::Cleared)
     );
     assert_eq!(
@@ -156,11 +135,7 @@ async fn changing_a_binding_keeps_the_hash_and_clears_the_verdict() {
     store_candidate_state(&db, &proposed, folder.path()).await;
 
     crate::import::CandidatePreparations::new(db.clone())
-        .store_verdict(&new_candidate_row(
-            &hash,
-            folder.path(),
-            &sample_verdict(),
-        ))
+        .store_verdict(&new_candidate_row(&hash, folder.path(), &sample_verdict()))
         .await
         .unwrap();
     assert!(
@@ -175,11 +150,7 @@ async fn changing_a_binding_keeps_the_hash_and_clears_the_verdict() {
     );
 
     let mut edits = SheetBindingEdits::default();
-    edits.set_reference(
-        "cd.cue".to_string(),
-        "cd.wav".to_string(),
-        UserSheetBinding::Cleared,
-    );
+    edits.set_reference("cd.cue".to_string(), "cd.wav".to_string(), UserSheetBinding::Cleared);
     let mut settled = proposed.clone();
     settled
         .apply_candidate_file_edits(&CandidateFileEdits {
@@ -194,10 +165,7 @@ async fn changing_a_binding_keeps_the_hash_and_clears_the_verdict() {
         .store_file_decisions(
             &as_read(&hash, metadata_revision),
             &folder_path,
-            &CandidateFileEdits {
-                sheet_bindings: edits,
-                ..Default::default()
-            },
+            &CandidateFileEdits { sheet_bindings: edits, ..Default::default() },
             &[(folder_path.clone(), settled)],
             draft,
         )
@@ -233,10 +201,7 @@ async fn changing_a_binding_keeps_the_hash_and_clears_the_verdict() {
          so the queue identifies the candidate again"
     );
     assert_eq!(
-        row.file_edits
-            .sheet_bindings
-            .get("cd.cue")
-            .and_then(|references| references.get("cd.wav")),
+        row.file_edits.sheet_bindings.get("cd.cue").and_then(|references| references.get("cd.wav")),
         Some(&UserSheetBinding::Cleared),
         "the decision that cleared the verdict is what the row now holds"
     );
@@ -252,9 +217,7 @@ async fn folder_release_decision_is_idempotent_and_root_scoped() {
         watched_folder_path: host_root("/mounted/library"),
         relative_folder: crate::import::RelativeFolder::test("Collection/Release Wrapper"),
     };
-    db.add_watched_import_folder(&key.watched_folder_path)
-        .await
-        .unwrap();
+    db.add_watched_import_folder(&key.watched_folder_path).await.unwrap();
     db.add_watched_import_folder(&other).await.unwrap();
 
     store_user_folder_decision(&db, &key, FolderReleaseDecision::CombineAsOneRelease)
@@ -274,14 +237,9 @@ async fn folder_release_decision_is_idempotent_and_root_scoped() {
     .await
     .unwrap();
 
-    let decisions = db
-        .load_folder_release_decisions(&key.watched_folder_path)
-        .await
-        .unwrap();
+    let decisions = db.load_folder_release_decisions(&key.watched_folder_path).await.unwrap();
     assert_eq!(
-        decisions
-            .get(&key.relative_folder)
-            .map(|reading| (reading.decision, reading.author)),
+        decisions.get(&key.relative_folder).map(|reading| (reading.decision, reading.author)),
         Some((
             FolderReleaseDecision::CombineAsOneRelease,
             crate::import::folder_scanner::FolderReleaseDecisionAuthor::User
@@ -340,23 +298,14 @@ async fn a_sheet_s_ripper_survives_a_relaunch() {
     )
     .await
     .unwrap();
-    db.finish_folder_scan(std::path::Path::new(&root), generation, None)
-        .await
-        .unwrap();
+    db.finish_folder_scan(std::path::Path::new(&root), generation, None).await.unwrap();
 
     let restored = db.load_folder_scan_snapshots().await.unwrap();
     let ScanItem::Valid(restored) = &restored[0].items[0] else {
         panic!("the persisted candidate keeps its valid variant");
     };
-    let sheets: Vec<_> = restored
-        .files
-        .track_sheets()
-        .map(|sheet| sheet.sheet.ripper)
-        .collect();
-    assert_eq!(
-        sheets,
-        vec![Some(crate::cue_flac::CdRipper::ExactAudioCopy)]
-    );
+    let sheets: Vec<_> = restored.files.track_sheets().map(|sheet| sheet.sheet.ripper).collect();
+    assert_eq!(sheets, vec![Some(crate::cue_flac::CdRipper::ExactAudioCopy)]);
 }
 
 /// A sheet whose boundaries run past its audio reads back refused for its
@@ -418,16 +367,11 @@ async fn a_timing_refusal_survives_a_relaunch() {
     )
     .await
     .unwrap();
-    db.finish_folder_scan(std::path::Path::new(&root), generation, None)
-        .await
-        .unwrap();
+    db.finish_folder_scan(std::path::Path::new(&root), generation, None).await.unwrap();
 
     let restored = db.load_folder_scan_snapshots().await.unwrap();
     let ScanItem::Valid(restored) = &restored[0].items[0] else {
         panic!("the persisted candidate keeps its valid variant");
     };
-    assert_eq!(
-        restored.files.track_sheets().next().unwrap().binding,
-        &refused
-    );
+    assert_eq!(restored.files.track_sheets().next().unwrap().binding, &refused);
 }

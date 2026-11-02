@@ -18,10 +18,7 @@ pub struct CreditName {
 impl CreditName {
     /// The credit name `name` prints as, keyed by its folded form.
     pub(crate) fn of(name: &str) -> Self {
-        Self {
-            key: bae_types::text_match::artist_name_key(name),
-            name: name.to_string(),
-        }
+        Self { key: bae_types::text_match::artist_name_key(name), name: name.to_string() }
     }
 }
 
@@ -76,19 +73,13 @@ pub struct LibraryCredit {
 impl LibraryCredit {
     /// What the credit prints: its credit name, else the artist's own name.
     pub fn printed(&self) -> &str {
-        self.credit
-            .as_ref()
-            .map_or(self.artist.name.as_str(), |credit| credit.name.as_str())
+        self.credit.as_ref().map_or(self.artist.name.as_str(), |credit| credit.name.as_str())
     }
 }
 
 /// The line `credits` print.
 pub fn library_line(credits: &[LibraryCredit]) -> String {
-    credit_line(
-        credits
-            .iter()
-            .map(|credit| (credit.printed(), credit.join.as_deref())),
-    )
+    credit_line(credits.iter().map(|credit| (credit.printed(), credit.join.as_deref())))
 }
 
 #[cfg(test)]

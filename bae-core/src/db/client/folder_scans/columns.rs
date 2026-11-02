@@ -18,9 +18,7 @@ pub(crate) fn to_u64(value: i64, what: &str) -> Result<u64, DbError> {
 
 pub(crate) fn to_u32(value: i64, what: &str) -> Result<u32, DbError> {
     u32::try_from(value).map_err(|error| {
-        DbError::Message(format!(
-            "{what} is outside the range it counts over: {error}"
-        ))
+        DbError::Message(format!("{what} is outside the range it counts over: {error}"))
     })
 }
 
@@ -67,20 +65,20 @@ pub(super) fn proposed_role_of(
     // The table pairs the two columns, so only a damaged track names damage.
     match (stored, damage) {
         ("audio", None) => Ok(ProposedRole::Audio),
-        ("damaged_audio", Some("empty")) => Ok(ProposedRole::DamagedAudio {
-            damage: AudioDamage::Empty,
-        }),
-        ("damaged_audio", Some("unreadable")) => Ok(ProposedRole::DamagedAudio {
-            damage: AudioDamage::Unreadable,
-        }),
+        ("damaged_audio", Some("empty")) => {
+            Ok(ProposedRole::DamagedAudio { damage: AudioDamage::Empty })
+        }
+        ("damaged_audio", Some("unreadable")) => {
+            Ok(ProposedRole::DamagedAudio { damage: AudioDamage::Unreadable })
+        }
         ("track_sheet", None) => Ok(ProposedRole::Cue),
         ("artwork", None) => Ok(ProposedRole::Image),
         ("damaged_image", None) => Ok(ProposedRole::DamagedImage),
         ("document", None) => Ok(ProposedRole::Document),
         ("other", None) => Ok(ProposedRole::Other),
-        (stored, damage) => Err(DbError::Message(format!(
-            "skipped file role {stored:?} stores damage {damage:?}"
-        ))),
+        (stored, damage) => {
+            Err(DbError::Message(format!("skipped file role {stored:?} stores damage {damage:?}")))
+        }
     }
 }
 
@@ -168,9 +166,7 @@ pub(super) fn sheet_disc_of(stored: &str, number: Option<i64>) -> Result<SheetDi
             let number = number.ok_or_else(|| {
                 DbError::Message("folder scan sheet disc names no number".to_string())
             })?;
-            Ok(SheetDisc::Disc {
-                number: to_u32(number, "a sheet's disc number")?,
-            })
+            Ok(SheetDisc::Disc { number: to_u32(number, "a sheet's disc number")? })
         }
         "ignored" => Ok(SheetDisc::Ignored),
         other => Err(unreadable("sheet_disc", other)),

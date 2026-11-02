@@ -51,11 +51,8 @@ impl Barcode {
     /// `0946 3 12345 2 3`, is split where no barcode prints a gap: it is the
     /// catalog number, and the catalog-number reader is what reads it.
     pub fn printed(line: &str) -> Option<Self> {
-        let groups: Vec<&str> = line
-            .trim()
-            .split([' ', '-'])
-            .filter(|group| !group.is_empty())
-            .collect();
+        let groups: Vec<&str> =
+            line.trim().split([' ', '-']).filter(|group| !group.is_empty()).collect();
         if groups.is_empty() || !groups.iter().all(|group| is_digits(group)) {
             return None;
         }
@@ -71,9 +68,7 @@ impl Barcode {
         Symbology::ALL
             .into_iter()
             .any(|symbology| {
-                breaks
-                    .iter()
-                    .all(|at| symbology.printed_breaks().contains(at))
+                breaks.iter().all(|at| symbology.printed_breaks().contains(at))
                     && symbology.admits(&digits)
             })
             .then(|| Self::spelled(digits))
@@ -104,11 +99,7 @@ impl Barcode {
 /// compared or searched for.
 pub fn written_digits(value: &str) -> Option<String> {
     let value = value.trim();
-    if value.is_empty()
-        || !value
-            .chars()
-            .all(|c| c.is_ascii_digit() || c == ' ' || c == '-')
-    {
+    if value.is_empty() || !value.chars().all(|c| c.is_ascii_digit() || c == ' ' || c == '-') {
         return None;
     }
     let digits: String = value.chars().filter(char::is_ascii_digit).collect();

@@ -43,10 +43,7 @@ impl Database {
                 Choice::ChangeMatch => unreachable!("changing the match returned above"),
             };
             record_choice_on(sql, &hash, &conflict, choice, &label_id)?;
-            sql.execute(
-                "DELETE FROM import_candidate_failure WHERE content_hash = ?",
-                [&hash],
-            )?;
+            sql.execute("DELETE FROM import_candidate_failure WHERE content_hash = ?", [&hash])?;
             Ok(())
         })
         .await
@@ -94,9 +91,7 @@ fn record_choice_on(
         Choice::MusicBrainzLabel => "musicbrainz_label",
         Choice::Neither => "neither",
         Choice::ChangeMatch => {
-            return Err(DbError::Message(
-                "changing the match does not choose a label".into(),
-            ))
+            return Err(DbError::Message("changing the match does not choose a label".into()))
         }
     };
     sql.execute(
@@ -105,13 +100,7 @@ fn record_choice_on(
          VALUES (?, ?, ?, ?, ?) \
          ON CONFLICT (content_hash, discogs_label_id, musicbrainz_label_id) DO UPDATE SET \
          choice = excluded.choice, label_id = excluded.label_id",
-        params![
-            hash,
-            conflict.discogs,
-            conflict.musicbrainz,
-            choice,
-            label_id
-        ],
+        params![hash, conflict.discogs, conflict.musicbrainz, choice, label_id],
     )?;
     sql.execute(
         "UPDATE import_candidate_state SET metadata_revision = metadata_revision + 1 \
@@ -140,13 +129,8 @@ fn merge_labels_on(
             "a label identity conflict names one library label twice".into(),
         ));
     }
-    let row = |id: &str| {
-        sql.query_row(
-            "SELECT * FROM labels WHERE id = ?",
-            [id],
-            LabelRow::from_row,
-        )
-    };
+    let row =
+        |id: &str| sql.query_row("SELECT * FROM labels WHERE id = ?", [id], LabelRow::from_row);
     let (surviving, absorbed_row) = (row(survivor)?, row(absorbed)?);
     for label in [&surviving, &absorbed_row] {
         if !crate::import::label_ids_are_compatible(
@@ -239,9 +223,7 @@ pub(super) fn chosen_label_on<Q: QueryOne>(
             )))
         }
         (other, _) => {
-            return Err(DbError::Message(format!(
-                "unknown label identity choice {other:?}"
-            )))
+            return Err(DbError::Message(format!("unknown label identity choice {other:?}")))
         }
     }))
 }

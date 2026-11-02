@@ -21,8 +21,7 @@ const MAX_BLOCK: usize = u16::MAX as usize;
 pub(crate) fn hkdf32(salt: &[u8], ikm: &[u8], info: &[u8]) -> [u8; 32] {
     let hk = Hkdf::<Sha512>::new(Some(salt), ikm);
     let mut okm = [0u8; 32];
-    hk.expand(info, &mut okm)
-        .expect("32 is a valid HKDF length");
+    hk.expand(info, &mut okm).expect("32 is a valid HKDF length");
     okm
 }
 
@@ -92,13 +91,7 @@ impl HapChannel {
             let nonce = Self::nonce(self.write_counter);
             let sealed = self
                 .write_cipher
-                .encrypt(
-                    Nonce::from_slice(&nonce),
-                    Payload {
-                        msg: block,
-                        aad: &aad,
-                    },
-                )
+                .encrypt(Nonce::from_slice(&nonce), Payload { msg: block, aad: &aad })
                 .expect("ChaCha20-Poly1305 seal cannot fail for a valid key");
             self.write_counter = self.write_counter.wrapping_add(1);
             out.extend_from_slice(&aad);
@@ -133,10 +126,7 @@ impl HapChannel {
             .read_cipher
             .decrypt(
                 Nonce::from_slice(&nonce),
-                Payload {
-                    msg: &self.in_buf[2..frame_len],
-                    aad: &aad,
-                },
+                Payload { msg: &self.in_buf[2..frame_len], aad: &aad },
             )
             .map_err(|_| ChannelError::Decrypt)?;
         self.read_counter = self.read_counter.wrapping_add(1);
@@ -163,10 +153,7 @@ mod tests {
         let msg = b"SETUP rtsp://x/1 RTSP/1.0\r\nCSeq: 1\r\n\r\n";
         let sealed = sender.seal(msg);
         // The length prefix is the plaintext length, and there's a 16-byte tag.
-        assert_eq!(
-            u16::from_le_bytes([sealed[0], sealed[1]]) as usize,
-            msg.len()
-        );
+        assert_eq!(u16::from_le_bytes([sealed[0], sealed[1]]) as usize, msg.len());
         assert_eq!(sealed.len(), 2 + msg.len() + 16);
 
         receiver.feed(&sealed);

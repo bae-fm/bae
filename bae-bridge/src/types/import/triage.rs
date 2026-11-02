@@ -321,10 +321,7 @@ pub enum BridgeNeedsYouReason {
     NoTracklist,
     /// The folder's own files rule out every release found, of which there
     /// are `releases`.
-    MediumMismatch {
-        folder: BridgeMediumMismatch,
-        releases: u32,
-    },
+    MediumMismatch { folder: BridgeMediumMismatch, releases: u32 },
     /// No catalog has the folder.
     NotFound,
     /// The folder has nothing to look it up by.
@@ -428,10 +425,7 @@ pub enum BridgeSelectionChange {
     /// Select exactly these rows, and nothing else.
     Replace { keys: Vec<Vec<u8>> },
     /// Add these rows and take those out, leaving the rest as it is.
-    Toggle {
-        add: Vec<Vec<u8>>,
-        remove: Vec<Vec<u8>>,
-    },
+    Toggle { add: Vec<Vec<u8>>, remove: Vec<Vec<u8>> },
     /// Add every row the list shows from `from` to `to`, both included.
     Extend { from: Vec<u8>, to: Vec<u8> },
 }
@@ -459,11 +453,7 @@ pub fn bridge_candidate_selection_offers(
     let parts: Vec<bae_core::import::triage::SelectionPart> = members
         .into_iter()
         .map(|member| bae_core::import::triage::SelectionPart {
-            actions: member
-                .actions
-                .into_iter()
-                .map(BridgeCandidateAction::into_core)
-                .collect(),
+            actions: member.actions.into_iter().map(BridgeCandidateAction::into_core).collect(),
             count: 1,
         })
         .collect();
@@ -537,12 +527,12 @@ impl BridgeFolderCheck {
     pub(crate) fn loc_key(&self) -> &'static str {
         match self {
             Self::SourceTracksUnknown => "core.import.triage.source_tracks_unknown",
-            Self::MediumDisagrees {
-                folder: BridgeMediumConflict::CdRip,
-            } => "core.import.triage.medium_disagrees.cd_rip",
-            Self::MediumDisagrees {
-                folder: BridgeMediumConflict::NotCdAudio { .. },
-            } => "core.import.triage.medium_disagrees.not_cd_audio",
+            Self::MediumDisagrees { folder: BridgeMediumConflict::CdRip } => {
+                "core.import.triage.medium_disagrees.cd_rip"
+            }
+            Self::MediumDisagrees { folder: BridgeMediumConflict::NotCdAudio { .. } } => {
+                "core.import.triage.medium_disagrees.not_cd_audio"
+            }
         }
     }
 }
@@ -579,18 +569,16 @@ pub enum BridgeReleaseLink {
     Pressing { link: BridgePressingLink },
     /// The album the folder's copy is a pressing of, its pressing unknown:
     /// the album in each catalog that files it, in catalog order.
-    Album {
-        albums: Vec<crate::types::BridgeMetadataRef>,
-    },
+    Album { albums: Vec<crate::types::BridgeMetadataRef> },
 }
 
 #[cfg(feature = "desktop")]
 impl BridgeReleaseLink {
     pub(crate) fn from_core(link: bae_core::import::ReleaseLink) -> Self {
         match link {
-            bae_core::import::ReleaseLink::Pressing(pressing) => Self::Pressing {
-                link: BridgePressingLink::from_core(pressing),
-            },
+            bae_core::import::ReleaseLink::Pressing(pressing) => {
+                Self::Pressing { link: BridgePressingLink::from_core(pressing) }
+            }
             bae_core::import::ReleaseLink::Album(album) => Self::Album {
                 albums: album
                     .albums()
@@ -675,14 +663,10 @@ pub enum BridgeTriageReading {
     Prefilled,
     /// A draft of a candidate linked to a catalog pressing, with every
     /// catalog that describes that pressing.
-    Identified {
-        records: Vec<crate::types::BridgeReleaseRecord>,
-    },
+    Identified { records: Vec<crate::types::BridgeReleaseRecord> },
     /// A draft of a candidate linked to an album, its pressing unknown, with
     /// every catalog's record of the album.
-    IdentifiedAlbum {
-        records: Vec<crate::types::BridgeReleaseRecord>,
-    },
+    IdentifiedAlbum { records: Vec<crate::types::BridgeReleaseRecord> },
 }
 
 mirror_enum! {

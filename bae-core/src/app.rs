@@ -20,9 +20,7 @@ struct BootstrapTiming {
 impl BootstrapTiming {
     fn start(library_id: &str) -> Self {
         info!(%library_id, "Application bootstrap started");
-        Self {
-            started: Instant::now(),
-        }
+        Self { started: Instant::now() }
     }
 
     fn stage<T>(&self, library_id: &str, stage: &'static str, run: impl FnOnce() -> T) -> T {
@@ -316,10 +314,8 @@ where
     // A panic fails the open as something that went wrong, reported as a
     // bug; what it had built was dropped as the thread unwound.
     bootstrap_thread.join().map_err(|panic| {
-        let failed = reporter.bug(bae_util::task_failure::TaskFailed::panicked(
-            "open the library",
-            panic.as_ref(),
-        ));
+        let failed = reporter
+            .bug(bae_util::task_failure::TaskFailed::panicked("open the library", panic.as_ref()));
         BootstrapError::Internal(failed.to_string())
     })?
 }
@@ -405,32 +401,23 @@ where
         let provider_configured = runtime
             .block_on(library_manager.is_sync_configured())
             .map_err(|error| BootstrapError::Config(error.to_string()))?;
-        let key_state = library_manager
-            .store_key_state()
-            .map_err(classify_key_state_error)?;
+        let key_state = library_manager.store_key_state().map_err(classify_key_state_error)?;
         let locked = provider_configured && key_state == coven::StoreKeyState::Locked;
         let advance_active_pointer = !locked;
         if locked {
             warn!("store key unavailable at startup; opening library locked");
-            diagnostics.event(TelemetryEvent::Anomaly {
-                kind: AnomalyKind::EncryptionKeyMissing,
-            });
+            diagnostics.event(TelemetryEvent::Anomaly { kind: AnomalyKind::EncryptionKeyMissing });
         }
 
         // Install the sync-status and pending subscriptions before connection starts.
         // coven's status receiver may be subscribed before a provider connects, so the
         // attachment's first events cannot race the library/UI observers.
         timing
-            .stage(&library_id, "start library observation", || {
-                library_manager.start()
-            })
+            .stage(&library_id, "start library observation", || library_manager.start())
             .map_err(|e| BootstrapError::Internal(e.to_string()))?;
 
-        let startup_sync_manager = if provider_configured && !locked {
-            Some(library_manager.clone())
-        } else {
-            None
-        };
+        let startup_sync_manager =
+            if provider_configured && !locked { Some(library_manager.clone()) } else { None };
 
         // A fixture states what its watched folders hold, and nothing on disk
         // backs it, so reading them would replace it with what is there.
@@ -505,9 +492,8 @@ where
     };
     drop(opened);
 
-    let owner = timing.stage(&library_id, "compose frontend owner", || {
-        compose(app_services, runtime)
-    })?;
+    let owner =
+        timing.stage(&library_id, "compose frontend owner", || compose(app_services, runtime))?;
 
     // The durable active-library pointer names the library the user last actually
     // landed in, so launch ordering (discovery sorts active-first) and
@@ -551,11 +537,7 @@ mod tests {
         let installation = coven::TestCoven::new();
         installation.fail_next_keychain_operation();
         let failure = crate::library::configure_store(
-            installation.builder(
-                crate::config::AppDir::at(temp.path())
-                    .unwrap()
-                    .store_layout(),
-            ),
+            installation.builder(crate::config::AppDir::at(temp.path()).unwrap().store_layout()),
         )
         .create_store("Unavailable Keychain")
         .await
@@ -566,10 +548,7 @@ mod tests {
         };
         let error = LibraryError::Keyring(key);
 
-        assert!(matches!(
-            classify_key_state_error(error),
-            BootstrapError::KeyringUnavailable
-        ));
+        assert!(matches!(classify_key_state_error(error), BootstrapError::KeyringUnavailable));
     }
 
     #[tokio::test]
@@ -578,11 +557,7 @@ mod tests {
         let installation = coven::TestCoven::new();
         installation.fail_next_keychain_operation();
         let failure = crate::library::configure_store(
-            installation.builder(
-                crate::config::AppDir::at(temp.path())
-                    .unwrap()
-                    .store_layout(),
-            ),
+            installation.builder(crate::config::AppDir::at(temp.path()).unwrap().store_layout()),
         )
         .create_store("Keychain test")
         .await
@@ -662,10 +637,7 @@ mod tests {
         );
         let read = runtime.block_on(handle.pending());
         assert!(
-            matches!(
-                read,
-                Err(coven::CovenError::Database(coven::DbError::StoreClosed))
-            ),
+            matches!(read, Err(coven::CovenError::Database(coven::DbError::StoreClosed))),
             "the library's store is closed: {read:?}"
         );
     }
@@ -676,9 +648,6 @@ mod tests {
         // so it must not join the retry path.
         let error = LibraryError::Keyring(coven::KeyError::DeviceIdEncoding);
 
-        assert!(matches!(
-            classify_key_state_error(error),
-            BootstrapError::Config(_)
-        ));
+        assert!(matches!(classify_key_state_error(error), BootstrapError::Config(_)));
     }
 }

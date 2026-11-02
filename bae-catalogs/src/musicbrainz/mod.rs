@@ -69,9 +69,7 @@ fn release_url(release_id: &str) -> String {
 }
 
 fn release_group_url(release_group_id: &str) -> String {
-    ws2(&format!(
-        "release-group/{release_group_id}?inc=artist-credits+url-rels&fmt=json"
-    ))
+    ws2(&format!("release-group/{release_group_id}?inc=artist-credits+url-rels&fmt=json"))
 }
 
 /// How many recordings one search page answers — the most MusicBrainz serves
@@ -87,9 +85,7 @@ const RECORDING_SEARCH_PAGE: usize = 100;
 /// release lookup states. Neither endpoint states a release group's own
 /// links, `release-group-rels` included: those are on the group's page.
 fn discid_url(discid: &str) -> String {
-    ws2(&format!(
-        "discid/{discid}?inc=recordings+artist-credits+release-groups+url-rels+labels"
-    ))
+    ws2(&format!("discid/{discid}?inc=recordings+artist-credits+release-groups+url-rels+labels"))
 }
 
 /// The Discogs pages one URL lookup asks about, in the order the request
@@ -116,9 +112,7 @@ fn discogs_lookup_url(pages: &[DiscogsPage]) -> String {
             query.append_pair("resource", &page.resource());
         }
         // A space is encoded as the `+` MusicBrainz separates includes with.
-        query
-            .append_pair("inc", &include.join(" "))
-            .append_pair("fmt", "json");
+        query.append_pair("inc", &include.join(" ")).append_pair("fmt", "json");
     }
     url.to_string()
 }
@@ -200,10 +194,7 @@ fn mb_rate_answer(status: StatusCode, headers: &HeaderMap) -> RateAnswer {
     let resets_in = bae_util::http::wait_until_epoch(headers, "x-ratelimit-reset");
     if status == StatusCode::SERVICE_UNAVAILABLE && headers.contains_key(RATE_ZONE) {
         return RateAnswer::Refused {
-            wait: [bae_util::http::told_wait(headers), resets_in]
-                .into_iter()
-                .flatten()
-                .max(),
+            wait: [bae_util::http::told_wait(headers), resets_in].into_iter().flatten().max(),
         };
     }
     let remaining = headers
@@ -211,10 +202,9 @@ fn mb_rate_answer(status: StatusCode, headers: &HeaderMap) -> RateAnswer {
         .and_then(|value| value.to_str().ok())
         .and_then(|value| value.trim().parse().ok());
     match (remaining, resets_in) {
-        (Some(remaining), Some(resets_in)) => RateAnswer::Counted(WindowCount::Fixed {
-            remaining,
-            resets_in,
-        }),
+        (Some(remaining), Some(resets_in)) => {
+            RateAnswer::Counted(WindowCount::Fixed { remaining, resets_in })
+        }
         _ => RateAnswer::Silent,
     }
 }
@@ -229,10 +219,7 @@ fn mb_body(
     if response.is_success() {
         Ok(response.body)
     } else {
-        Err(MusicBrainzError::Provider {
-            status: Some(response.status),
-            told_wait,
-        })
+        Err(MusicBrainzError::Provider { status: Some(response.status), told_wait })
     }
 }
 
@@ -265,10 +252,7 @@ pub enum MusicBrainzError {
     /// how long the response's `Retry-After` asked bae to wait before asking
     /// again, when it stated one.
     #[error("MusicBrainz returned an error response (status {status:?})")]
-    Provider {
-        status: Option<u16>,
-        told_wait: Option<Duration>,
-    },
+    Provider { status: Option<u16>, told_wait: Option<Duration> },
     /// A local failure reading an answer: JSON that does not parse, a
     /// search answer missing a field.
     #[error("MusicBrainz API error: {0}")]
@@ -284,10 +268,7 @@ impl MusicBrainzError {
         } else if e.is_timeout() {
             MusicBrainzError::Timeout
         } else if let Some(status) = e.status() {
-            MusicBrainzError::Provider {
-                status: Some(status.as_u16()),
-                told_wait: None,
-            }
+            MusicBrainzError::Provider { status: Some(status.as_u16()), told_wait: None }
         } else {
             MusicBrainzError::Network(e)
         }
@@ -321,11 +302,9 @@ impl ReleaseSearchParams {
     }
 
     pub fn has_any_field(&self) -> bool {
-        self.query_fields().iter().any(|(value, _, _)| {
-            value
-                .as_deref()
-                .is_some_and(|value| !value.trim().is_empty())
-        })
+        self.query_fields()
+            .iter()
+            .any(|(value, _, _)| value.as_deref().is_some_and(|value| !value.trim().is_empty()))
     }
 
     /// The filled fields as a Lucene query.
@@ -368,10 +347,8 @@ impl QueryValueFormat {
                     .filter(|word| !bae_types::text_match::is_stop_word(word))
                     .collect();
                 let asked = if asked.is_empty() { words } else { asked };
-                let required: Vec<String> = asked
-                    .into_iter()
-                    .map(|word| format!("+{}", quoted(word)))
-                    .collect();
+                let required: Vec<String> =
+                    asked.into_iter().map(|word| format!("+{}", quoted(word))).collect();
                 format!("{}:({})", key, required.join(" "))
             }
         }
@@ -444,17 +421,11 @@ impl MusicBrainz {
         let response = self.send(request, priority).await?;
         let status = response.status().as_u16();
         let told_wait = bae_util::http::told_wait(response.headers());
-        let body = response
-            .text()
-            .await
-            .map_err(MusicBrainzError::from_reqwest)?;
+        let body = response.text().await.map_err(MusicBrainzError::from_reqwest)?;
         let response = CachedResponse { status, body };
 
         if !response.is_success() {
-            warn!(
-                "MusicBrainz API error response ({} from {}): {}",
-                status, key, response.body
-            );
+            warn!("MusicBrainz API error response ({} from {}): {}", status, key, response.body);
         }
         if is_cacheable(status) {
             self.responses.put(key, response.clone());
@@ -474,15 +445,10 @@ impl MusicBrainz {
         priority: CallPriority,
     ) -> Result<reqwest::Response, MusicBrainzError> {
         loop {
-            let attempt = request
-                .try_clone()
-                .expect("a MusicBrainz request has no streamed body");
+            let attempt = request.try_clone().expect("a MusicBrainz request has no streamed body");
             let admitted = self.limiter.wait(priority).await;
-            let response = self
-                .http
-                .execute(attempt)
-                .await
-                .map_err(MusicBrainzError::from_reqwest)?;
+            let response =
+                self.http.execute(attempt).await.map_err(MusicBrainzError::from_reqwest)?;
             let rate = mb_rate_answer(response.status(), response.headers());
             admitted.answered(rate);
             let RateAnswer::Refused { wait } = rate else {
@@ -511,10 +477,7 @@ impl MusicBrainz {
         discid: &str,
         priority: CallPriority,
     ) -> Result<Vec<(MbReleaseResponse, String)>, MusicBrainzError> {
-        mb_retry("MusicBrainz DiscID lookup", || {
-            self.lookup_by_discid_once(discid, priority)
-        })
-        .await
+        mb_retry("MusicBrainz DiscID lookup", || self.lookup_by_discid_once(discid, priority)).await
     }
 
     async fn lookup_by_discid_once(
@@ -528,9 +491,7 @@ impl MusicBrainz {
 
         let body = match self.get(&url, priority).await {
             Ok(body) => body,
-            Err(MusicBrainzError::Provider {
-                status: Some(404), ..
-            }) => {
+            Err(MusicBrainzError::Provider { status: Some(404), .. }) => {
                 return Err(MusicBrainzError::NotFound(discid.to_string()));
             }
             Err(error) => return Err(error),
@@ -554,11 +515,7 @@ impl MusicBrainz {
             })
             .collect::<Result<Vec<_>, MusicBrainzError>>()?;
 
-        debug!(
-            "MusicBrainz found {} release(s) for DiscID {}",
-            releases.len(),
-            discid
-        );
+        debug!("MusicBrainz found {} release(s) for DiscID {}", releases.len(), discid);
 
         Ok(releases)
     }
@@ -573,9 +530,7 @@ impl MusicBrainz {
         mb_retry("MusicBrainz release fetch", || async {
             let raw_json = match self.get(&release_url(release_id), priority).await {
                 Ok(body) => body,
-                Err(MusicBrainzError::Provider {
-                    status: Some(404), ..
-                }) => {
+                Err(MusicBrainzError::Provider { status: Some(404), .. }) => {
                     return Err(MusicBrainzError::NotFound(release_id.to_string()));
                 }
                 Err(error) => return Err(error),
@@ -625,9 +580,9 @@ impl MusicBrainz {
                 Ok(body) => body,
                 // The URL endpoint answers one address it has no document
                 // for with a 404.
-                Err(MusicBrainzError::Provider {
-                    status: Some(404), ..
-                }) => return Ok(HashMap::new()),
+                Err(MusicBrainzError::Provider { status: Some(404), .. }) => {
+                    return Ok(HashMap::new())
+                }
                 Err(error) => return Err(error),
             };
             parse_discogs_lookup(&pages, &body).map_err(|error| {
@@ -684,13 +639,8 @@ impl MusicBrainz {
         ]);
         let body = match self.get_request(request, priority).await {
             Ok(body) => body,
-            Err(MusicBrainzError::Provider {
-                status: Some(404), ..
-            }) => {
-                return Ok(RecordingSearchResponse {
-                    count: 0,
-                    recordings: Vec::new(),
-                })
+            Err(MusicBrainzError::Provider { status: Some(404), .. }) => {
+                return Ok(RecordingSearchResponse { count: 0, recordings: Vec::new() })
             }
             Err(error) => return Err(error),
         };
@@ -710,10 +660,8 @@ impl MusicBrainz {
                 "At least one search field must be provided".to_string(),
             ));
         }
-        mb_retry("MusicBrainz search", || {
-            self.search_releases_with_params_once(params, priority)
-        })
-        .await
+        mb_retry("MusicBrainz search", || self.search_releases_with_params_once(params, priority))
+            .await
     }
 
     async fn search_releases_with_params_once(
@@ -727,15 +675,10 @@ impl MusicBrainz {
         let url = ws2("release");
         debug!("MusicBrainz API request: {}?query={}&limit=25", url, query);
 
-        let request = self
-            .http
-            .get(&url)
-            .query(&[("query", query.as_str()), ("limit", "25")]);
+        let request = self.http.get(&url).query(&[("query", query.as_str()), ("limit", "25")]);
         let body = match self.get_request(request, priority).await {
             Ok(body) => body,
-            Err(MusicBrainzError::Provider {
-                status: Some(404), ..
-            }) => return Ok(Vec::new()),
+            Err(MusicBrainzError::Provider { status: Some(404), .. }) => return Ok(Vec::new()),
             Err(error) => return Err(error),
         };
 
@@ -744,10 +687,7 @@ impl MusicBrainz {
 
         if let Some(ref error_msg) = search_response.error {
             warn!("MusicBrainz API returned error: {}", error_msg);
-            return Err(MusicBrainzError::Other(format!(
-                "MusicBrainz error: {}",
-                error_msg
-            )));
+            return Err(MusicBrainzError::Other(format!("MusicBrainz error: {}", error_msg)));
         }
 
         let releases = search_response.releases;
@@ -759,10 +699,7 @@ impl MusicBrainz {
     /// Put `body` where a request built right now for `url` would look for it.
     #[cfg(any(test, feature = "test-utils"))]
     fn seed_response(&self, url: &str, status: u16, body: String) {
-        self.responses.put(
-            bae_util::http::response_key(url),
-            CachedResponse { status, body },
-        );
+        self.responses.put(bae_util::http::response_key(url), CachedResponse { status, body });
     }
 
     /// Put MusicBrainz's answer to asking about these Discogs pages together
@@ -776,10 +713,7 @@ impl MusicBrainz {
         let pages = asked_pages(&pages);
         assert_eq!(pages.len(), answers.len(), "each page is answered once");
         let linked = |page: &DiscogsPage| {
-            answers
-                .iter()
-                .find(|(answered, _)| answered == page)
-                .and_then(|(_, id)| *id)
+            answers.iter().find(|(answered, _)| answered == page).and_then(|(_, id)| *id)
         };
         let document = |page: &DiscogsPage| {
             let id = linked(page)?;

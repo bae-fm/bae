@@ -54,10 +54,7 @@ struct TrackRead {
 #[derive(Debug, Clone, PartialEq)]
 enum TagRead {
     /// What they state, and what is known of the picture they embed.
-    Read {
-        tags: FileTags,
-        cover: EmbeddedCover,
-    },
+    Read { tags: FileTags, cover: EmbeddedCover },
     /// They could not be read, for this reason.
     Unreadable(String),
 }
@@ -72,11 +69,7 @@ enum EmbeddedCover {
     Absent,
     /// This picture, held while a draft may still take it. `kept` once a
     /// reading of its folder takes it as its release's picture.
-    Held {
-        data: Vec<u8>,
-        content_type: ContentType,
-        kept: bool,
-    },
+    Held { data: Vec<u8>, content_type: ContentType, kept: bool },
     /// They embed one the pass no longer holds.
     Released,
 }
@@ -117,10 +110,7 @@ pub(crate) struct FileReads {
 impl FileReads {
     /// Nothing read yet; a track's tags are read through `tags`.
     pub(crate) fn new(tags: Arc<dyn FileTagReader>) -> Self {
-        Self {
-            known: Mutex::new(Known::default()),
-            tags,
-        }
+        Self { known: Mutex::new(Known::default()), tags }
     }
 
     /// What the scan entries stored for one root say their pass read, and
@@ -195,10 +185,7 @@ impl FileReads {
                 }),
             )?;
         }
-        Ok(Self {
-            known: Mutex::new(known),
-            tags,
-        })
+        Ok(Self { known: Mutex::new(known), tags })
     }
 
     fn with_known<T>(&self, action: impl FnOnce(&mut Known) -> T) -> T {
@@ -210,11 +197,7 @@ impl FileReads {
     }
 
     fn tags_known(&self, version: &FileVersion) -> bool {
-        self.with_known(|known| {
-            known
-                .track(version)
-                .is_some_and(|track| track.tags.is_some())
-        })
+        self.with_known(|known| known.track(version).is_some_and(|track| track.tags.is_some()))
     }
 
     /// What FFmpeg makes of the track `file`: what is known, or a probe of it
@@ -314,10 +297,7 @@ impl FileReads {
             for file in audio {
                 let version = file.version();
                 let cover = match known.track_mut_if_known(&version) {
-                    Some(TrackRead {
-                        tags: Some(TagRead::Read { cover, .. }),
-                        ..
-                    }) => cover,
+                    Some(TrackRead { tags: Some(TagRead::Read { cover, .. }), .. }) => cover,
                     // Until the first picture is found, a track whose picture
                     // is not known could be the one, so none after it can be
                     // told to be no release's.
@@ -364,31 +344,26 @@ impl FileReads {
                 modified_at_ns: file.modified_at_ns,
             };
             let (mut tags, mut cover) = self.with_known(|known| {
-                match known
-                    .track(&file.version())
-                    .and_then(|track| track.tags.as_ref())
-                {
+                match known.track(&file.version()).and_then(|track| track.tags.as_ref()) {
                     Some(TagRead::Read { tags, cover }) => Ok((
                         Some(tags.clone()),
                         match cover {
                             EmbeddedCover::Absent => CoverRead::Absent,
-                            EmbeddedCover::Held {
-                                data, content_type, ..
-                            } => CoverRead::Picture(data.clone(), content_type.clone()),
+                            EmbeddedCover::Held { data, content_type, .. } => {
+                                CoverRead::Picture(data.clone(), content_type.clone())
+                            }
                             EmbeddedCover::Unknown | EmbeddedCover::Released => CoverRead::Unknown,
                         },
                     )),
-                    Some(TagRead::Unreadable(error)) => Err(ImportError::FileTags {
-                        detail: error.clone(),
-                    }),
+                    Some(TagRead::Unreadable(error)) => {
+                        Err(ImportError::FileTags { detail: error.clone() })
+                    }
                     None => Ok((None, CoverRead::Unknown)),
                 }
             })?;
             if let Some(stored) = stored {
-                if let Some(index) = stored
-                    .files
-                    .iter()
-                    .position(|fact| fact.observation == observation)
+                if let Some(index) =
+                    stored.files.iter().position(|fact| fact.observation == observation)
                 {
                     tags.get_or_insert_with(|| stored.files[index].tags.clone());
                     if cover == CoverRead::Unknown {
@@ -431,12 +406,7 @@ impl FileReads {
             }
             files.push(FileTagFact { observation, tags });
         }
-        Ok(FileTagSnapshot {
-            scan_generation,
-            file_edit_revision,
-            files,
-            embedded_cover,
-        })
+        Ok(FileTagSnapshot { scan_generation, file_edit_revision, files, embedded_cover })
     }
 
     /// Whether the image at `version` decodes as the picture its name says:
@@ -475,11 +445,7 @@ impl FileReads {
                 None
             }
         };
-        self.with_known(|known| {
-            known
-                .files
-                .insert(file.version(), FileRead::Sheet(sheet.clone()))
-        });
+        self.with_known(|known| known.files.insert(file.version(), FileRead::Sheet(sheet.clone())));
         sheet
     }
 
@@ -554,10 +520,7 @@ impl Known {
         let entry = self
             .files
             .entry(version.clone())
-            .or_insert(FileRead::Track(TrackRead {
-                stream: None,
-                tags: None,
-            }));
+            .or_insert(FileRead::Track(TrackRead { stream: None, tags: None }));
         let FileRead::Track(track) = entry else {
             unreachable!("a file named as audio is only ever read as a track");
         };
@@ -569,21 +532,13 @@ impl Known {
     /// identification reads it from the file.
     fn remember_tags(&mut self, version: &FileVersion, read: Result<FileTagRead, ImportError>) {
         let read = match read {
-            Ok(FileTagRead {
-                tags,
-                delivery: _,
-                embedded_cover,
-            }) => TagRead::Read {
+            Ok(FileTagRead { tags, delivery: _, embedded_cover }) => TagRead::Read {
                 tags,
                 cover: match embedded_cover {
                     Some((data, content_type)) => {
                         self.held.push_back(version.clone());
                         self.held_bytes += data.len();
-                        EmbeddedCover::Held {
-                            data,
-                            content_type,
-                            kept: false,
-                        }
+                        EmbeddedCover::Held { data, content_type, kept: false }
                     }
                     None => EmbeddedCover::Absent,
                 },
@@ -601,10 +556,8 @@ impl Known {
 
     /// Let go of the picture held for the track at `version`, if one is.
     fn release(&mut self, version: &FileVersion) {
-        let Some(TrackRead {
-            tags: Some(TagRead::Read { cover, .. }),
-            ..
-        }) = self.track_mut_if_known(version)
+        let Some(TrackRead { tags: Some(TagRead::Read { cover, .. }), .. }) =
+            self.track_mut_if_known(version)
         else {
             return;
         };
@@ -667,23 +620,17 @@ impl Known {
     /// What one file of a folder that can't be imported says its pass read.
     fn learn_skipped_file(&mut self, file: &SkippedFile) -> Result<(), FolderScanError> {
         let read = match file.role {
-            ProposedRole::Audio => FileRead::Track(TrackRead {
-                stream: Some(Playability::Playable),
-                tags: None,
-            }),
-            ProposedRole::DamagedAudio {
-                damage: AudioDamage::Unreadable,
-            } => FileRead::Track(TrackRead {
-                stream: Some(Playability::Unplayable),
-                tags: None,
-            }),
+            ProposedRole::Audio => {
+                FileRead::Track(TrackRead { stream: Some(Playability::Playable), tags: None })
+            }
+            ProposedRole::DamagedAudio { damage: AudioDamage::Unreadable } => {
+                FileRead::Track(TrackRead { stream: Some(Playability::Unplayable), tags: None })
+            }
             ProposedRole::Image => FileRead::Image { decodes: true },
             ProposedRole::DamagedImage if file.file.size > 0 => FileRead::Image { decodes: false },
             // An empty track or image is damaged before its bytes are looked
             // at, and a folder that can't be imported parses no sheet.
-            ProposedRole::DamagedAudio {
-                damage: AudioDamage::Empty,
-            }
+            ProposedRole::DamagedAudio { damage: AudioDamage::Empty }
             | ProposedRole::DamagedImage
             | ProposedRole::Cue
             | ProposedRole::Document
@@ -706,11 +653,7 @@ impl Known {
             Entry::Occupied(entry) => {
                 return Err(FolderScanError::Other(format!(
                     "the stored scan says two things about the tags of {:?}: {:?} and {tags:?}",
-                    entry
-                        .key()
-                        .iter()
-                        .map(|file| &file.path)
-                        .collect::<Vec<_>>(),
+                    entry.key().iter().map(|file| &file.path).collect::<Vec<_>>(),
                     entry.get()
                 )))
             }
@@ -750,10 +693,7 @@ fn unchanged(file: &ScannedFile, what: &str) -> Result<(), FolderScanError> {
         std::fs::metadata(&file.path).map_err(|source| FolderScanError::io(&file.path, source))?;
     let modified_at_ns = super::scan::file_modified_at_ns(&file.path, &metadata)?;
     if metadata.len() != file.size || modified_at_ns != file.modified_at_ns {
-        return Err(FolderScanError::Other(format!(
-            "{} {what}",
-            file.path.display()
-        )));
+        return Err(FolderScanError::Other(format!("{} {what}", file.path.display())));
     }
     Ok(())
 }
@@ -771,10 +711,7 @@ fn probe(
         Some(probe) => match scanned_audio(&probe) {
             Some(audio) => Playability::Measured(audio),
             None => {
-                info!(
-                    "Invalid candidate: {} is no audio stream bae plays",
-                    file.relative_path
-                );
+                info!("Invalid candidate: {} is no audio stream bae plays", file.relative_path);
                 Playability::Unplayable
             }
         },

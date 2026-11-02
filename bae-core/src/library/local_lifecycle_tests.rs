@@ -57,10 +57,7 @@ impl Home {
             )
             .await
             .unwrap();
-        handle
-            .test_sync_status()
-            .wait_for(|s| matches!(s, coven::SyncStatus::Synced { .. }))
-            .await;
+        handle.test_sync_status().wait_for(|s| matches!(s, coven::SyncStatus::Synced { .. })).await;
     }
 
     /// The libraries whose saved restore codes this device offers, with the
@@ -155,9 +152,7 @@ async fn removing_an_inactive_library_preserves_the_active_pointer() {
     let removed = home.library("Removed").await;
     home.point_at(active.store_id());
     let id = removed.store_id();
-    remove_local_library(&home.app_dir, &Diagnostics::noop(), &removed)
-        .await
-        .unwrap();
+    remove_local_library(&home.app_dir, &Diagnostics::noop(), &removed).await.unwrap();
     assert_eq!(home.stores().await, 1);
     assert!(!home.directory(id).exists());
     assert_eq!(home.pointer(), Some(active.store_id().to_string()));
@@ -171,9 +166,7 @@ async fn removing_the_active_library_clears_its_pointer() {
     let handle = home.library("Library").await;
     let id = handle.store_id();
     home.point_at(id);
-    remove_local_library(&home.app_dir, &Diagnostics::noop(), &handle)
-        .await
-        .unwrap();
+    remove_local_library(&home.app_dir, &Diagnostics::noop(), &handle).await.unwrap();
     assert_eq!(home.stores().await, 0);
     assert!(!home.directory(id).exists());
     assert_eq!(home.pointer(), None);
@@ -204,9 +197,7 @@ async fn offline_removal_keeps_the_store_preferences_and_active_pointer() {
     assert!(!home.record(id).exists());
     assert_eq!(home.unfinished().await, None);
     home.storage.set_online(true);
-    remove_local_library(&home.app_dir, &Diagnostics::noop(), &handle)
-        .await
-        .unwrap();
+    remove_local_library(&home.app_dir, &Diagnostics::noop(), &handle).await.unwrap();
     assert_eq!(home.pointer(), None);
     assert!(!home.directory(id).exists());
     assert_eq!(home.unfinished().await, None);
@@ -222,13 +213,8 @@ async fn removing_a_library_keeps_its_saved_restore_code_to_offer_again() {
     home.connect(&handle).await;
     let id = handle.store_id();
     assert_eq!(home.offered_codes().await, Vec::new());
-    remove_local_library(&home.app_dir, &Diagnostics::noop(), &handle)
-        .await
-        .unwrap();
-    assert_eq!(
-        home.offered_codes().await,
-        vec![(id, "Library".to_string())]
-    );
+    remove_local_library(&home.app_dir, &Diagnostics::noop(), &handle).await.unwrap();
+    assert_eq!(home.offered_codes().await, vec![(id, "Library".to_string())]);
 }
 
 /// Forgetting a saved restore code deletes it from the person's keychain, so
@@ -242,38 +228,19 @@ async fn a_forgotten_restore_code_is_no_longer_offered() {
     let forgotten = home.library("Forgotten").await;
     home.connect(&forgotten).await;
     let (kept_id, forgotten_id) = (kept.store_id(), forgotten.store_id());
-    remove_local_library(&home.app_dir, &Diagnostics::noop(), &kept)
-        .await
-        .unwrap();
-    remove_local_library(&home.app_dir, &Diagnostics::noop(), &forgotten)
-        .await
-        .unwrap();
+    remove_local_library(&home.app_dir, &Diagnostics::noop(), &kept).await.unwrap();
+    remove_local_library(&home.app_dir, &Diagnostics::noop(), &forgotten).await.unwrap();
     let mut offered = home.offered_codes().await;
     offered.sort_by(|a, b| a.1.cmp(&b.1));
     assert_eq!(
         offered,
-        vec![
-            (forgotten_id, "Forgotten".to_string()),
-            (kept_id, "Kept".to_string()),
-        ]
+        vec![(forgotten_id, "Forgotten".to_string()), (kept_id, "Kept".to_string()),]
     );
 
-    home.keychain()
-        .forget_saved_restore_code(forgotten_id)
-        .await
-        .unwrap();
-    assert_eq!(
-        home.offered_codes().await,
-        vec![(kept_id, "Kept".to_string())]
-    );
-    home.keychain()
-        .forget_saved_restore_code(forgotten_id)
-        .await
-        .unwrap();
-    assert_eq!(
-        home.offered_codes().await,
-        vec![(kept_id, "Kept".to_string())]
-    );
+    home.keychain().forget_saved_restore_code(forgotten_id).await.unwrap();
+    assert_eq!(home.offered_codes().await, vec![(kept_id, "Kept".to_string())]);
+    home.keychain().forget_saved_restore_code(forgotten_id).await.unwrap();
+    assert_eq!(home.offered_codes().await, vec![(kept_id, "Kept".to_string())]);
 }
 
 #[tokio::test]
@@ -283,9 +250,8 @@ async fn a_removal_that_cannot_be_recorded_removes_nothing() {
     let id = handle.store_id();
     home.point_at(id);
     std::fs::write(home.app_dir.removal_records(), b"").unwrap();
-    let error = remove_local_library(&home.app_dir, &Diagnostics::noop(), &handle)
-        .await
-        .unwrap_err();
+    let error =
+        remove_local_library(&home.app_dir, &Diagnostics::noop(), &handle).await.unwrap_err();
     assert!(matches!(error, LibraryRemovalError::Record(_)), "{error}");
     assert_eq!(handle.store_name().await.unwrap(), "Library");
     assert_eq!(home.pointer(), Some(id.to_string()));
@@ -310,16 +276,12 @@ async fn a_removal_stopped_before_the_delete_reports_the_library_still_here() {
     assert!(!files_remain);
     assert!(!home.record(id).exists());
     assert_eq!(home.unfinished().await, None);
-    finish_removals(&home.app_dir, &Diagnostics::noop(), &|_, _| ())
-        .await
-        .unwrap();
+    finish_removals(&home.app_dir, &Diagnostics::noop(), &|_, _| ()).await.unwrap();
     assert_eq!(home.stores().await, 1);
     assert_eq!(home.pointer(), Some(id.to_string()));
     assert!(home.directory(id).exists());
 
-    remove_local_library(&home.app_dir, &Diagnostics::noop(), &handle)
-        .await
-        .unwrap();
+    remove_local_library(&home.app_dir, &Diagnostics::noop(), &handle).await.unwrap();
     assert_eq!(home.stores().await, 0);
     assert!(!home.directory(id).exists());
 }
@@ -332,8 +294,7 @@ async fn a_removal_stopped_after_the_store_was_deleted_is_found_again() {
     let handle = home.library("Library").await;
     let id = handle.store_id();
     home.point_at(id);
-    home.stop_removal_after(id, handle.delete_store(coven::IfUnsent::Refuse))
-        .await;
+    home.stop_removal_after(id, handle.delete_store(coven::IfUnsent::Refuse)).await;
     drop(handle);
 
     let (shown, files_remain) = home.unfinished().await.unwrap();
@@ -355,9 +316,7 @@ async fn a_removal_stopped_after_the_store_was_deleted_is_found_again() {
     assert!(!home.directory(id).exists());
     assert!(!home.record(id).exists());
     assert_eq!(home.unfinished().await, None);
-    finish_removals(&home.app_dir, &Diagnostics::noop(), &|_, _| ())
-        .await
-        .unwrap();
+    finish_removals(&home.app_dir, &Diagnostics::noop(), &|_, _| ()).await.unwrap();
 }
 
 /// The pointer can't be read: the store is gone, the record keeps the removal
@@ -368,13 +327,9 @@ async fn a_pointer_that_cannot_be_cleared_leaves_the_removal_to_retry() {
     let handle = home.library("Library").await;
     let id = handle.store_id();
     std::fs::create_dir(home.app_dir.active_library_pointer()).unwrap();
-    let error = remove_local_library(&home.app_dir, &Diagnostics::noop(), &handle)
-        .await
-        .unwrap_err();
-    assert!(
-        matches!(error, LibraryRemovalError::Unfinished(_)),
-        "{error}"
-    );
+    let error =
+        remove_local_library(&home.app_dir, &Diagnostics::noop(), &handle).await.unwrap_err();
+    assert!(matches!(error, LibraryRemovalError::Unfinished(_)), "{error}");
     assert!(error.to_string().contains("store was removed"), "{error}");
     assert_eq!(error.category(), crate::ui::UiErrorCategory::Internal);
     assert_eq!(home.stores().await, 0);
@@ -382,16 +337,10 @@ async fn a_pointer_that_cannot_be_cleared_leaves_the_removal_to_retry() {
     assert!(home.record(id).exists());
     assert!(home.unfinished().await.unwrap().1);
 
-    assert!(
-        finish_removals(&home.app_dir, &Diagnostics::noop(), &|_, _| ())
-            .await
-            .is_err()
-    );
+    assert!(finish_removals(&home.app_dir, &Diagnostics::noop(), &|_, _| ()).await.is_err());
     std::fs::remove_dir(home.app_dir.active_library_pointer()).unwrap();
     home.point_at(id);
-    finish_removals(&home.app_dir, &Diagnostics::noop(), &|_, _| ())
-        .await
-        .unwrap();
+    finish_removals(&home.app_dir, &Diagnostics::noop(), &|_, _| ()).await.unwrap();
     assert_eq!(home.pointer(), None);
     assert!(!home.directory(id).exists());
     assert!(!home.record(id).exists());
@@ -408,28 +357,17 @@ async fn a_directory_that_cannot_be_deleted_leaves_the_removal_to_retry() {
     let id = handle.store_id();
     home.point_at(id);
     set_writable(&home.app_dir.libraries(), false);
-    let error = remove_local_library(&home.app_dir, &Diagnostics::noop(), &handle)
-        .await
-        .unwrap_err();
-    assert!(
-        matches!(error, LibraryRemovalError::Unfinished(_)),
-        "{error}"
-    );
-    assert!(
-        error
-            .to_string()
-            .contains(&home.directory(id).display().to_string()),
-        "{error}"
-    );
+    let error =
+        remove_local_library(&home.app_dir, &Diagnostics::noop(), &handle).await.unwrap_err();
+    assert!(matches!(error, LibraryRemovalError::Unfinished(_)), "{error}");
+    assert!(error.to_string().contains(&home.directory(id).display().to_string()), "{error}");
     assert_eq!(home.stores().await, 0);
     assert_eq!(home.pointer(), None);
     assert!(home.directory(id).exists());
     assert!(home.unfinished().await.unwrap().1);
 
     set_writable(&home.app_dir.libraries(), true);
-    finish_removals(&home.app_dir, &Diagnostics::noop(), &|_, _| ())
-        .await
-        .unwrap();
+    finish_removals(&home.app_dir, &Diagnostics::noop(), &|_, _| ()).await.unwrap();
     assert!(!home.directory(id).exists());
     assert!(!home.record(id).exists());
     assert_eq!(home.unfinished().await, None);
@@ -446,18 +384,13 @@ async fn files_without_a_removal_record_are_left_alone() {
     std::fs::create_dir_all(home.directory(hidden).join("cache")).unwrap();
     home.point_at(hidden);
     let removed = home.library("Removed").await;
-    home.stop_removal_after(
-        removed.store_id(),
-        removed.delete_store(coven::IfUnsent::Refuse),
-    )
-    .await;
+    home.stop_removal_after(removed.store_id(), removed.delete_store(coven::IfUnsent::Refuse))
+        .await;
 
     let (shown, _) = home.unfinished().await.unwrap();
     assert!(shown.contains(&removed.store_id().to_string()), "{shown}");
     assert!(!shown.contains(&hidden.to_string()), "{shown}");
-    finish_removals(&home.app_dir, &Diagnostics::noop(), &|_, _| ())
-        .await
-        .unwrap();
+    finish_removals(&home.app_dir, &Diagnostics::noop(), &|_, _| ()).await.unwrap();
     assert!(!home.directory(removed.store_id()).exists());
     assert!(home.directory(hidden).exists());
     assert_eq!(home.pointer(), Some(hidden.to_string()));
@@ -553,12 +486,7 @@ async fn a_library_whose_settings_cant_be_read_is_removed_without_opening() {
     drop(handle);
     home.point_at(id);
     std::fs::write(
-        home._temp
-            .path()
-            .join(".bae")
-            .join("stores")
-            .join(id.to_string())
-            .join("storage.json"),
+        home._temp.path().join(".bae").join("stores").join(id.to_string()).join("storage.json"),
         "{not settings",
     )
     .unwrap();
@@ -588,10 +516,7 @@ async fn a_library_whose_settings_cant_be_read_is_removed_without_opening() {
     .unwrap();
     assert_eq!(
         *steps.lock().unwrap(),
-        [
-            super::ClosingStep::LeavingLibrary,
-            super::ClosingStep::DeletingFiles
-        ]
+        [super::ClosingStep::LeavingLibrary, super::ClosingStep::DeletingFiles]
     );
     assert_eq!(home.stores().await, 1);
     assert!(!home.directory(id).exists());

@@ -23,10 +23,7 @@ fn a_poisoned_buffer_drops_its_bytes_and_serves_on() {
     let mut reader = buffer.new_reader();
     poison(&buffer);
 
-    assert!(
-        !buffer.is_buffered(0),
-        "the bytes the panic left are dropped"
-    );
+    assert!(!buffer.is_buffered(0), "the bytes the panic left are dropped");
     assert!(!buffer.inner.is_poisoned());
     buffer.append_at(0, &[5, 6, 7, 8, 9, 10, 11, 12]);
     let mut read = [0u8; 4];

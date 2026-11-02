@@ -16,7 +16,9 @@ pub enum ReleaseTransferChange<Progress> {
         progress: Progress,
     },
     /// The release's entry is no longer active.
-    Removed { release_id: String },
+    Removed {
+        release_id: String,
+    },
     /// Every active release's progress, as a reader first reads it.
     Reset(BTreeMap<String, Progress>),
 }
@@ -38,10 +40,7 @@ pub type MakeLocalTransfersWatch = ReleaseTransfersWatch<super::MakeLocalTransfe
 
 impl<Progress: Clone + PartialEq> ReleaseTransfersWatch<Progress> {
     pub(crate) fn of(transfers: watch::Receiver<BTreeMap<String, Progress>>) -> Self {
-        Self {
-            transfers,
-            told: None,
-        }
+        Self { transfers, told: None }
     }
 
     /// Every active release's progress as one `Reset` on the first call;
@@ -73,17 +72,15 @@ fn changes_between<Progress: Clone + PartialEq>(
     let mut changes: Vec<ReleaseTransferChange<Progress>> = told
         .keys()
         .filter(|release_id| !next.contains_key(*release_id))
-        .map(|release_id| ReleaseTransferChange::Removed {
-            release_id: release_id.clone(),
-        })
+        .map(|release_id| ReleaseTransferChange::Removed { release_id: release_id.clone() })
         .collect();
     changes.extend(
-        next.iter()
-            .filter(|(release_id, progress)| told.get(*release_id) != Some(*progress))
-            .map(|(release_id, progress)| ReleaseTransferChange::Updated {
+        next.iter().filter(|(release_id, progress)| told.get(*release_id) != Some(*progress)).map(
+            |(release_id, progress)| ReleaseTransferChange::Updated {
                 release_id: release_id.clone(),
                 progress: progress.clone(),
-            }),
+            },
+        ),
     );
     changes
 }
@@ -122,9 +119,7 @@ mod tests {
         tx.send_replace(BTreeMap::new());
         assert_eq!(
             watch.next().await,
-            Some(vec![ReleaseTransferChange::Removed {
-                release_id: "release-1".to_string(),
-            }])
+            Some(vec![ReleaseTransferChange::Removed { release_id: "release-1".to_string() }])
         );
     }
 

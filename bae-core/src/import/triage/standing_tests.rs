@@ -7,31 +7,21 @@ fn every_standing() -> Vec<PendingStanding> {
     vec![
         PendingStanding::NotLookedUp,
         PendingStanding::Identifying,
-        PendingStanding::NeedsYou {
-            reason: NeedsYouReason::Matches { count: 3 },
-        },
-        PendingStanding::NeedsYou {
-            reason: NeedsYouReason::NoTracklist,
-        },
+        PendingStanding::NeedsYou { reason: NeedsYouReason::Matches { count: 3 } },
+        PendingStanding::NeedsYou { reason: NeedsYouReason::NoTracklist },
         PendingStanding::NeedsYou {
             reason: NeedsYouReason::MediumMismatch {
                 folder: MediumConflict::NotCdAudio,
                 releases: 2,
             },
         },
-        PendingStanding::NeedsYou {
-            reason: NeedsYouReason::NotFound,
-        },
-        PendingStanding::NeedsYou {
-            reason: NeedsYouReason::NothingToLookUp,
-        },
+        PendingStanding::NeedsYou { reason: NeedsYouReason::NotFound },
+        PendingStanding::NeedsYou { reason: NeedsYouReason::NothingToLookUp },
         PendingStanding::Identified,
         PendingStanding::Unmatched,
         PendingStanding::LookupError,
         PendingStanding::Error {
-            failure: InternalFailure {
-                detail: "the disk is full".to_string(),
-            },
+            failure: InternalFailure { detail: "the disk is full".to_string() },
         },
         PendingStanding::Importing,
         PendingStanding::ImportError,
@@ -80,11 +70,7 @@ fn a_failure_wears_the_failure_tone() {
     for (standing, badge) in [
         (PendingStanding::LookupError, PendingBadge::LookupError),
         (
-            PendingStanding::Error {
-                failure: InternalFailure {
-                    detail: "disk full".to_string(),
-                },
-            },
+            PendingStanding::Error { failure: InternalFailure { detail: "disk full".to_string() } },
             PendingBadge::Error,
         ),
         (PendingStanding::ImportError, PendingBadge::ImportError),

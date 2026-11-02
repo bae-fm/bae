@@ -8,10 +8,7 @@ type Outcome = Findings;
 
 fn folder(line: &str) -> CandidateText {
     CandidateText::of(
-        &[TextLine {
-            text: line.to_string(),
-            origin: TextOrigin::FolderName,
-        }],
+        &[TextLine { text: line.to_string(), origin: TextOrigin::FolderName }],
         &[],
         &[],
     )
@@ -24,10 +21,7 @@ fn pressing(release_id: &str, notes: &[&str]) -> MetadataResult {
         title: "Album One".to_string(),
         artist: Some("Artist One".to_string()),
         year: Some(1987),
-        labels: vec![bae_types::pressing::ReleaseLabel::of(
-            Some("Label One"),
-            Some("L1-100"),
-        )],
+        labels: vec![bae_types::pressing::ReleaseLabel::of(Some("Label One"), Some("L1-100"))],
         notes: notes.iter().map(|note| note.to_string()).collect(),
         packaging: Some(match release_id {
             "rel-alpha" => bae_types::pressing::Packaging::JewelCase,
@@ -41,21 +35,14 @@ fn pressing(release_id: &str, notes: &[&str]) -> MetadataResult {
 
 fn by_catalog(results: Vec<MetadataResult>, text: &CandidateText) -> Outcome {
     combine_results(
-        LookupAnswers {
-            catalog: results,
-            ..LookupAnswers::default()
-        },
+        LookupAnswers { catalog: results, ..LookupAnswers::default() },
         text,
         FolderAudio::UNPROVEN,
     )
 }
 
 fn offered(outcome: &Outcome) -> Vec<&str> {
-    outcome
-        .matches
-        .iter()
-        .map(|result| result.release_id.as_str())
-        .collect()
+    outcome.matches.iter().map(|result| result.release_id.as_str()).collect()
 }
 
 /// Two pressings alike in every field: the folder naming a word only the
@@ -97,10 +84,7 @@ fn a_word_every_row_s_notes_write_gives_no_point() {
         ],
         &folder("1987 Plant L1-100"),
     );
-    assert_eq!(
-        offered(&outcome),
-        vec!["rel-alpha", "rel-beta", "rel-gamma"]
-    );
+    assert_eq!(offered(&outcome), vec!["rel-alpha", "rel-beta", "rel-gamma"]);
 }
 
 /// A matrix inscription writing the catalog number the folder names gives no
@@ -124,16 +108,10 @@ fn numbers_in_the_notes_give_no_point() {
 fn the_notes_never_outrank_an_earlier_field() {
     let numbered = pressing("rel-alpha", &["Pressed By Plant Alpha"]);
     let unnumbered = MetadataResult {
-        labels: vec![bae_types::pressing::ReleaseLabel::of(
-            Some("Label One"),
-            None,
-        )],
+        labels: vec![bae_types::pressing::ReleaseLabel::of(Some("Label One"), None)],
         ..pressing("rel-beta", &["Made In Nordland By Plant Beta"])
     };
-    let outcome = by_catalog(
-        vec![numbered, unnumbered],
-        &folder("1987 Nordland Label One L1-100"),
-    );
+    let outcome = by_catalog(vec![numbered, unnumbered], &folder("1987 Nordland Label One L1-100"));
     assert_eq!(offered(&outcome), vec!["rel-alpha"]);
 }
 
@@ -142,10 +120,7 @@ fn the_notes_never_outrank_an_earlier_field() {
 #[test]
 fn an_undated_look_alike_folds_below_a_dated_one() {
     let dated = pressing("rel-dated", &[]);
-    let undated = MetadataResult {
-        year: None,
-        ..pressing("rel-undated", &[])
-    };
+    let undated = MetadataResult { year: None, ..pressing("rel-undated", &[]) };
     let outcome = by_catalog(vec![undated, dated], &folder("Label One L1-100"));
     assert_eq!(offered(&outcome), vec!["rel-dated"]);
     assert_eq!(
@@ -163,15 +138,9 @@ fn an_undated_look_alike_folds_below_a_dated_one() {
 /// field is offered over a dated one.
 #[test]
 fn stating_a_year_never_outranks_an_earlier_field() {
-    let undated = MetadataResult {
-        year: None,
-        ..pressing("rel-undated", &[])
-    };
+    let undated = MetadataResult { year: None, ..pressing("rel-undated", &[]) };
     let dated = MetadataResult {
-        labels: vec![bae_types::pressing::ReleaseLabel::of(
-            Some("Label One"),
-            None,
-        )],
+        labels: vec![bae_types::pressing::ReleaseLabel::of(Some("Label One"), None)],
         ..pressing("rel-dated", &[])
     };
     let outcome = by_catalog(vec![undated, dated], &folder("Label One L1-100"));
@@ -182,14 +151,9 @@ fn stating_a_year_never_outranks_an_earlier_field() {
 /// undated one whose notes the folder names: the year is weighed first.
 #[test]
 fn a_dated_row_outranks_an_undated_one_a_note_names() {
-    let undated = MetadataResult {
-        year: None,
-        ..pressing("rel-undated", &["Made In Nordland"])
-    };
-    let outcome = by_catalog(
-        vec![undated, pressing("rel-dated", &[])],
-        &folder("Label One L1-100 Nordland"),
-    );
+    let undated = MetadataResult { year: None, ..pressing("rel-undated", &["Made In Nordland"]) };
+    let outcome =
+        by_catalog(vec![undated, pressing("rel-dated", &[])], &folder("Label One L1-100 Nordland"));
     assert_eq!(offered(&outcome), vec!["rel-dated"]);
 }
 
@@ -198,10 +162,7 @@ fn a_dated_row_outranks_an_undated_one_a_note_names() {
 /// a dated row, so the folder naming that word offers the dated row.
 #[test]
 fn the_notes_are_weighed_after_the_year() {
-    let undated = MetadataResult {
-        year: None,
-        ..pressing("rel-undated", &["Plant Beta"])
-    };
+    let undated = MetadataResult { year: None, ..pressing("rel-undated", &["Plant Beta"]) };
     let outcome = by_catalog(
         vec![
             pressing("rel-alpha", &["Plant Alpha"]),
@@ -219,10 +180,7 @@ fn the_notes_are_weighed_after_the_year() {
 #[test]
 fn the_artist_s_name_in_a_note_keeps_the_tie() {
     let outcome = by_catalog(
-        vec![
-            pressing("rel-alpha", &["© 1987 Artist One."]),
-            pressing("rel-beta", &[]),
-        ],
+        vec![pressing("rel-alpha", &["© 1987 Artist One."]), pressing("rel-beta", &[])],
         &folder("Artist One - Album One L1-100"),
     );
     assert_eq!(offered(&outcome), vec!["rel-alpha", "rel-beta"]);

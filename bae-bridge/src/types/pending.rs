@@ -93,10 +93,7 @@ impl BridgePendingReason {
             R::AccessRemains { .. } => K::AccessRemains,
             R::FileUnavailable(coven::FileMissingReason::Source(_)) => K::FileUnavailable,
             R::FileUnavailable(coven::FileMissingReason::Lost) => K::FileLost,
-            R::Original {
-                failure: coven::FileSourceFailure::Missing,
-                ..
-            } => K::FileUnavailable,
+            R::Original { failure: coven::FileSourceFailure::Missing, .. } => K::FileUnavailable,
             R::Original {
                 failure: coven::FileSourceFailure::Changed | coven::FileSourceFailure::Integrity,
                 ..
@@ -110,18 +107,11 @@ impl BridgePendingReason {
         };
         let causes = match reason {
             R::Cleanup { operation, cleanup } => {
-                vec![
-                    Self::from_core(*operation, None),
-                    Self::from_core(*cleanup, None),
-                ]
+                vec![Self::from_core(*operation, None), Self::from_core(*cleanup, None)]
             }
             _ => Vec::new(),
         };
-        Self {
-            key: kind.key().to_string(),
-            detail,
-            causes,
-        }
+        Self { key: kind.key().to_string(), detail, causes }
     }
 }
 
@@ -156,9 +146,9 @@ impl BridgePendingAction {
         match value {
             A::Wait => Self::Wait,
             A::UpdateApp => Self::UpdateApp,
-            A::SignIn(provider) => Self::SignIn {
-                provider: BridgeCloudProvider::from_core(&provider),
-            },
+            A::SignIn(provider) => {
+                Self::SignIn { provider: BridgeCloudProvider::from_core(&provider) }
+            }
             A::Reconnect => Self::Reconnect,
             A::RestoreFile => Self::RestoreFile,
             A::ResumeUploads => Self::ResumeUploads,
@@ -226,10 +216,7 @@ pub(crate) fn subject_message(subject: bae_core::library::PendingSubjectName) ->
     use bae_core::library::PendingSubjectName as S;
     use coven::OperationKind as O;
     let key = match subject {
-        S::ReleaseFile {
-            file_name,
-            album_title,
-        } => {
+        S::ReleaseFile { file_name, album_title } => {
             return BridgeMessage {
                 key: "core.pending.subject.release_file".to_string(),
                 args: vec![
@@ -283,8 +270,5 @@ pub(crate) fn subject_message(subject: bae_core::library::PendingSubjectName) ->
             O::ReplaceMemberKeys => "core.pending.operation.replace_member_keys",
         },
     };
-    BridgeMessage {
-        key: key.to_string(),
-        args: Vec::new(),
-    }
+    BridgeMessage { key: key.to_string(), args: Vec::new() }
 }

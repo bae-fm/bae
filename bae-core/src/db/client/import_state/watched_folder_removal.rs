@@ -28,15 +28,11 @@ impl Database {
             .map(|parent| crate::import::watched_folder::canonical_absolute_root(&parent))
             .transpose()?;
         if roots.is_empty() {
-            return Err(DbError::Message(
-                "removing watched folders requires at least one".into(),
-            ));
+            return Err(DbError::Message("removing watched folders requires at least one".into()));
         }
         let watched = self.watched_import_roots().await?;
         if roots.iter().all(|root| !is_among(&watched, root))
-            && parent
-                .as_ref()
-                .is_none_or(|parent| is_among(&watched, parent))
+            && parent.as_ref().is_none_or(|parent| is_among(&watched, parent))
         {
             return Ok(None);
         }
@@ -63,10 +59,8 @@ impl Database {
                     [&root_bytes],
                     |row| row.get::<_, CandidateKey>(0),
                 )?);
-                let deleted = sql.execute(
-                    "DELETE FROM watched_import_folders WHERE path = ?",
-                    [&root_bytes],
-                )?;
+                let deleted = sql
+                    .execute("DELETE FROM watched_import_folders WHERE path = ?", [&root_bytes])?;
                 if deleted != 1 {
                     return Err(DbError::Message(format!(
                         "removing watched folder {} changed {deleted} rows; expected one",
@@ -92,9 +86,7 @@ impl Database {
 
 /// Whether `path` is among the stored `roots`, spelled as they are keyed.
 fn is_among(roots: &[PathBuf], path: &Path) -> bool {
-    roots
-        .iter()
-        .any(|root| root.as_os_str() == path.as_os_str())
+    roots.iter().any(|root| root.as_os_str() == path.as_os_str())
 }
 
 /// Watch `parent` in place of `roots`, which must be exactly the watched
@@ -116,12 +108,7 @@ fn watch_in_place_of(
         folders.sort_by_key(|folder| coven::path_bytes(folder));
         folders
     }
-    let inside = spelled(
-        watched
-            .iter()
-            .filter(|root| root.starts_with(parent))
-            .collect(),
-    );
+    let inside = spelled(watched.iter().filter(|root| root.starts_with(parent)).collect());
     let expected = spelled(roots.iter().collect());
     if !inside
         .iter()
@@ -129,10 +116,7 @@ fn watch_in_place_of(
         .eq(expected.iter().map(|folder| folder.as_os_str()))
     {
         let shown = |folders: &[&PathBuf]| {
-            folders
-                .iter()
-                .map(|folder| coven::path_text(folder))
-                .collect::<Vec<_>>()
+            folders.iter().map(|folder| coven::path_text(folder)).collect::<Vec<_>>()
         };
         return Err(DbError::Message(format!(
             "watching {} in place of the folders inside it: they are {:?}, not {:?}",
@@ -173,14 +157,10 @@ fn forget_folders_under(
             ":below_first": below_first,
             ":below_past": below_past,
         };
-        for (table, column) in [
-            ("skipped_import_candidates", "candidate_path"),
-            ("folder_discovery", "folder"),
-        ] {
-            sql.execute(
-                &format!("DELETE FROM {table} WHERE {}", under(column)),
-                params,
-            )?;
+        for (table, column) in
+            [("skipped_import_candidates", "candidate_path"), ("folder_discovery", "folder")]
+        {
+            sql.execute(&format!("DELETE FROM {table} WHERE {}", under(column)), params)?;
         }
         // A grouping goes with its anchor folder or any folder it takes a
         // release from.
@@ -214,10 +194,7 @@ fn forget_folders_under(
             |row| row.get(0),
         )?;
         sql.execute(
-            &format!(
-                "DELETE FROM import_candidate_folder WHERE {}",
-                under("folder")
-            ),
+            &format!("DELETE FROM import_candidate_folder WHERE {}", under("folder")),
             params,
         )?;
         sql.execute(

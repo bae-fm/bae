@@ -11,9 +11,7 @@ use crate::import::{
 pub(crate) const FAILURE_REASON_COLUMNS: &str = "failure.error AS failure_error";
 
 pub(crate) fn failure_reason_from_row(row: &Row<'_>) -> rusqlite::Result<ImportFailureReason> {
-    Ok(ImportFailureReason {
-        detail: row.get("failure_error")?,
-    })
+    Ok(ImportFailureReason { detail: row.get("failure_error")? })
 }
 
 fn existing_artist_from_row(row: &Row<'_>, prefix: &str) -> rusqlite::Result<ExistingArtist> {
@@ -118,10 +116,7 @@ pub(super) fn load_failure_on(
 /// Drop the failure the last import of `content_hash` left, and the identity
 /// conflict that hangs off it.
 pub(super) fn delete_failure_on(sql: &CovenWrite<'_>, content_hash: &str) -> Result<(), DbError> {
-    sql.execute(
-        "DELETE FROM import_candidate_failure WHERE content_hash = ?",
-        [content_hash],
-    )?;
+    sql.execute("DELETE FROM import_candidate_failure WHERE content_hash = ?", [content_hash])?;
     Ok(())
 }
 
@@ -158,14 +153,10 @@ fn save_failure_on(
              error = excluded.error, failed_at = excluded.failed_at",
         params![content_hash, failure.reason.detail, failed_at],
     )?;
-    for table in [
-        "import_candidate_artist_identity_conflict",
-        "import_candidate_label_identity_conflict",
-    ] {
-        sql.execute(
-            &format!("DELETE FROM {table} WHERE content_hash = ?"),
-            [content_hash],
-        )?;
+    for table in
+        ["import_candidate_artist_identity_conflict", "import_candidate_label_identity_conflict"]
+    {
+        sql.execute(&format!("DELETE FROM {table} WHERE content_hash = ?"), [content_hash])?;
     }
     match &failure.identity_conflict {
         None => {}
@@ -216,8 +207,7 @@ impl Database {
     ) -> Result<(), DbError> {
         let content_hash = content_hash.to_string();
         let failure = failure.clone();
-        self.call(move |sql| save_failure_on(sql, &content_hash, edit_revision, &failure))
-            .await
+        self.call(move |sql| save_failure_on(sql, &content_hash, edit_revision, &failure)).await
     }
 
     /// Record that the import `import_id` of the candidate at

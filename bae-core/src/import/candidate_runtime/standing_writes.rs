@@ -28,13 +28,9 @@ impl CandidateRuntime {
         &self,
         changes: Vec<(CandidateKey, IdentificationChange)>,
     ) -> Result<Vec<(CandidateKey, IdentificationMove)>, DbError> {
-        let moved = self
-            .database
-            .change_candidate_identifications(changes)
-            .await?;
+        let moved = self.database.change_candidate_identifications(changes).await?;
         #[cfg(any(test, feature = "test-utils"))]
-        self.tell_every_change(moved.iter().map(|(key, _)| key))
-            .await;
+        self.tell_every_change(moved.iter().map(|(key, _)| key)).await;
         Ok(moved)
     }
 
@@ -53,10 +49,7 @@ impl CandidateRuntime {
             moved
         };
         if moved {
-            self.every_count
-                .lock()
-                .unwrap()
-                .retain(|reader| reader.send(count).is_ok());
+            self.every_count.lock().unwrap().retain(|reader| reader.send(count).is_ok());
         }
         if self.every_change.lock().unwrap().is_empty() {
             return;
@@ -67,16 +60,12 @@ impl CandidateRuntime {
                 .await
                 .expect("a test reads back the standing it just wrote")
             {
-                Some(runtime) => super::CandidateRuntimeChange::Updated {
-                    key: key.clone(),
-                    runtime,
-                },
+                Some(runtime) => {
+                    super::CandidateRuntimeChange::Updated { key: key.clone(), runtime }
+                }
                 None => super::CandidateRuntimeChange::Removed { key: key.clone() },
             };
-            self.every_change
-                .lock()
-                .unwrap()
-                .retain(|reader| reader.send(change.clone()).is_ok());
+            self.every_change.lock().unwrap().retain(|reader| reader.send(change.clone()).is_ok());
         }
     }
 
@@ -116,8 +105,7 @@ impl CandidateRuntime {
     /// This key is not waiting any more: nothing came of the admission that
     /// put it there.
     pub(crate) async fn withdraw(&self, key: &CandidateKey) -> Result<(), DbError> {
-        self.change_identification(key, IdentificationChange::Withdraw)
-            .await?;
+        self.change_identification(key, IdentificationChange::Withdraw).await?;
         Ok(())
     }
 
@@ -138,9 +126,7 @@ impl CandidateRuntime {
             .await?;
         #[cfg(any(test, feature = "test-utils"))]
         self.tell_every_change(std::iter::once(key)).await;
-        Ok(moved
-            .after
-            .is_some_and(|after| after.stage == IdentificationStage::Running { run }))
+        Ok(moved.after.is_some_and(|after| after.stage == IdentificationStage::Running { run }))
     }
 
     /// `run` reached its answer, which is now being written; `false` when
@@ -164,8 +150,7 @@ impl CandidateRuntime {
         key: &CandidateKey,
         run: IdentifyRunId,
     ) -> Result<(), DbError> {
-        self.change_identification(key, IdentificationChange::RunEnded { run })
-            .await?;
+        self.change_identification(key, IdentificationChange::RunEnded { run }).await?;
         Ok(())
     }
 
@@ -189,9 +174,8 @@ impl CandidateRuntime {
         key: &CandidateKey,
         run: IdentifyRunId,
     ) -> Result<bool, DbError> {
-        let moved = self
-            .change_identification(key, IdentificationChange::AnswerEnded { run })
-            .await?;
+        let moved =
+            self.change_identification(key, IdentificationChange::AnswerEnded { run }).await?;
         Ok(moved.ended_with_import_asked())
     }
 
@@ -211,17 +195,10 @@ impl CandidateRuntime {
         files: &CandidateFiles,
         failure: SaveFailure,
     ) -> Result<(), DbError> {
-        tracing::error!(
-            "identification: {key}'s answer did not land: {}",
-            failure.error()
-        );
+        tracing::error!("identification: {key}'s answer did not land: {}", failure.error());
         self.change_identification(
             key,
-            IdentificationChange::AnswerFailed {
-                files: files.clone(),
-                run,
-                failure,
-            },
+            IdentificationChange::AnswerFailed { files: files.clone(), run, failure },
         )
         .await?;
         Ok(())
@@ -232,9 +209,7 @@ impl CandidateRuntime {
     /// `false`, asking nothing, when no answer that picks unattended is held
     /// for the key.
     pub(crate) async fn ask_import_once_stored(&self, key: &CandidateKey) -> Result<bool, DbError> {
-        let moved = self
-            .change_identification(key, IdentificationChange::ImportAsked)
-            .await?;
+        let moved = self.change_identification(key, IdentificationChange::ImportAsked).await?;
         Ok(matches!(
             moved.after.as_ref().map(|after| &after.stage),
             Some(IdentificationStage::ReadingPick { .. })
@@ -281,9 +256,7 @@ impl CandidateRuntime {
         import_id: &str,
         next: Option<ImportStep>,
     ) -> Result<(), DbError> {
-        self.database
-            .move_candidate_import(key, import_id, next)
-            .await?;
+        self.database.move_candidate_import(key, import_id, next).await?;
         #[cfg(any(test, feature = "test-utils"))]
         self.tell_every_change(std::iter::once(key)).await;
         Ok(())
@@ -291,12 +264,7 @@ impl CandidateRuntime {
 
     /// Whether an import owns `key`, read from its claim.
     pub(crate) async fn import_claimed(&self, key: &CandidateKey) -> Result<bool, DbError> {
-        Ok(self
-            .database
-            .load_candidate_standing(key)
-            .await?
-            .import
-            .is_some())
+        Ok(self.database.load_candidate_standing(key).await?.import.is_some())
     }
 
     /// Where `key` stands, as its row reads it.

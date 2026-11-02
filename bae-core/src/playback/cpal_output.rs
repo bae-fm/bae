@@ -120,12 +120,8 @@ fn output_rate(device: &cpal::Device, track_rate: u32, channels: u32) -> Result<
         })?
         .map(|range| range.min_sample_rate()..=range.max_sample_rate())
         .collect();
-    crate::playback::output_rate::output_rate(track_rate, &device_rates).ok_or(
-        AudioError::UnsupportedFormat {
-            sample_rate: track_rate,
-            channels,
-        },
-    )
+    crate::playback::output_rate::output_rate(track_rate, &device_rates)
+        .ok_or(AudioError::UnsupportedFormat { sample_rate: track_rate, channels })
 }
 
 /// The rate to build the stream at for a track at `track_rate`: the track's
@@ -182,8 +178,7 @@ impl CpalAudioOutput {
         #[cfg(target_os = "macos")] device_formats: Arc<DeviceFormats<CoreAudioDeviceFormats>>,
     ) -> Result<Self, AudioError> {
         let host = cpal::default_host();
-        host.default_output_device()
-            .ok_or(AudioError::DeviceUnavailable)?;
+        host.default_output_device().ok_or(AudioError::DeviceUnavailable)?;
 
         Ok(Self {
             controls: AudioOutputControls::new(1.0),
@@ -208,11 +203,8 @@ impl AudioOutput for CpalAudioOutput {
         // the stream's sample rate on the device it resolved as the default, so
         // a device kept from an earlier build would set the rate of whatever was
         // default then, not of the device that plays.
-        let resolve = || {
-            cpal::default_host()
-                .default_output_device()
-                .ok_or(AudioError::DeviceUnavailable)
-        };
+        let resolve =
+            || cpal::default_host().default_output_device().ok_or(AudioError::DeviceUnavailable);
         #[cfg(target_os = "macos")]
         let (device, format_lease) = {
             let (device, device_id) = resolve_default_device(resolve)?;
@@ -341,14 +333,8 @@ mod tests {
         }
         assert!(invalidations.try_recv().is_err());
 
-        handle(cpal::Error::with_message(
-            ErrorKind::StreamInvalidated,
-            "default device changed",
-        ));
-        handle(cpal::Error::with_message(
-            ErrorKind::DeviceNotAvailable,
-            "device disconnected",
-        ));
+        handle(cpal::Error::with_message(ErrorKind::StreamInvalidated, "default device changed"));
+        handle(cpal::Error::with_message(ErrorKind::DeviceNotAvailable, "device disconnected"));
         assert_eq!(
             invalidations.try_iter().collect::<Vec<_>>(),
             ["default device changed", "device disconnected"]
@@ -371,10 +357,7 @@ mod tests {
             "default output device changed",
         ));
 
-        assert_eq!(
-            invalidations.try_iter().collect::<Vec<_>>(),
-            ["default output device changed"]
-        );
+        assert_eq!(invalidations.try_iter().collect::<Vec<_>>(), ["default output device changed"]);
     }
 
     /// Elsewhere the move needs nothing more: iOS reports one when headphones

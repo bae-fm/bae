@@ -44,9 +44,7 @@ async fn a_rounds_catalog_number_search_names_the_artist_on_discogs_alone() {
         200,
         release_json_with_catalog("mb-catalog-1", "rg-catalog-1", &[probed, 0], "NJ 8255"),
     );
-    fixture
-        .provider
-        .route("/database/search", 200, r#"{"results":[]}"#);
+    fixture.provider.route("/database/search", 200, r#"{"results":[]}"#);
     fixture.scan(1).await;
 
     fixture.drain_automatic().await;
@@ -66,11 +64,7 @@ async fn a_rounds_catalog_number_search_names_the_artist_on_discogs_alone() {
     assert_eq!(discogs.len(), 1, "Discogs is asked once: {discogs:?}");
     assert_eq!(discogs[0]["catno"], "NJ 8255");
     assert_eq!(discogs[0].get("q").map(String::as_str), Some("Artist"));
-    assert_eq!(
-        discogs[0].get("label"),
-        None,
-        "a number in effect is searched under no label"
-    );
+    assert_eq!(discogs[0].get("label"), None, "a number in effect is searched under no label");
 }
 
 /// The disc ID's release prints a number under its label and no barcode, and
@@ -85,27 +79,17 @@ async fn a_pressing_lookup_by_catalog_number_names_the_label_and_the_artist() {
     let label_info = serde_json::json!([
         { "catalog-number": "LN-100", "label": { "name": "Label Name" } }
     ]);
-    let mut disc: serde_json::Value = serde_json::from_str(&discid_json(
-        "mb-pressing-1",
-        "rg-pressing-1",
-        &[probed, 0],
-    ))
-    .expect("the disc ID fixture parses");
+    let mut disc: serde_json::Value =
+        serde_json::from_str(&discid_json("mb-pressing-1", "rg-pressing-1", &[probed, 0]))
+            .expect("the disc ID fixture parses");
     disc["releases"][0]["label-info"] = label_info.clone();
     fixture.provider.route("/discid/", 200, disc.to_string());
-    let mut release: serde_json::Value = serde_json::from_str(&release_json(
-        "mb-pressing-1",
-        "rg-pressing-1",
-        &[probed, 0],
-    ))
-    .expect("the release fixture parses");
+    let mut release: serde_json::Value =
+        serde_json::from_str(&release_json("mb-pressing-1", "rg-pressing-1", &[probed, 0]))
+            .expect("the release fixture parses");
     release["label-info"] = label_info;
-    fixture
-        .provider
-        .route("/release/mb-pressing-1?", 200, release.to_string());
-    fixture
-        .provider
-        .route("/database/search", 200, r#"{"results":[]}"#);
+    fixture.provider.route("/release/mb-pressing-1?", 200, release.to_string());
+    fixture.provider.route("/database/search", 200, r#"{"results":[]}"#);
     fixture.scan(1).await;
 
     fixture.drain_automatic().await;

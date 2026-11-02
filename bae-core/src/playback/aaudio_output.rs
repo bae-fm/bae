@@ -41,9 +41,7 @@ pub struct AAudioOutput {
 
 impl AAudioOutput {
     pub fn new() -> Result<Self, AudioError> {
-        Ok(Self {
-            controls: AudioOutputControls::new(1.0),
-        })
+        Ok(Self { controls: AudioOutputControls::new(1.0) })
     }
 }
 
@@ -91,10 +89,7 @@ fn open_output_stream(
 fn open_error(error: NdkAudioError, sample_rate: u32, channels: u32) -> AudioError {
     match error {
         NdkAudioError::InvalidFormat | NdkAudioError::InvalidRate => {
-            AudioError::UnsupportedFormat {
-                sample_rate,
-                channels,
-            }
+            AudioError::UnsupportedFormat { sample_rate, channels }
         }
         NdkAudioError::Disconnected => AudioError::DeviceUnavailable,
         other => AudioError::Unexpected(format!("opening the AAudio stream: {other:?}")),
@@ -133,8 +128,7 @@ impl DeviceStream for AAudioDeviceStream {
         // the slice length covers. The stream was opened for PCM_Float with this
         // channel count on this thread.
         let result = unsafe {
-            self.stream
-                .write(samples.as_ptr() as *const c_void, frames, WRITE_TIMEOUT_NS)
+            self.stream.write(samples.as_ptr() as *const c_void, frames, WRITE_TIMEOUT_NS)
         };
         // ndk 0.9.0 bug: `AAudioStream_write` returns the number of frames
         // written (a positive value) on success, but ndk's wrapper runs that
@@ -247,10 +241,7 @@ impl AudioOutput for AAudioOutput {
             }
         });
 
-        let handle = AAudioStreamHandle {
-            stop,
-            thread: Some(thread),
-        };
+        let handle = AAudioStreamHandle { stop, thread: Some(thread) };
         match opened_rx.recv() {
             Ok(Ok(())) => Ok(Box::new(handle)),
             Ok(Err(error)) => Err(error),

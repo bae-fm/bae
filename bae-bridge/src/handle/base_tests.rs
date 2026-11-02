@@ -9,13 +9,8 @@ fn bridge_handle_holding(
     fixture: &bae_core::library::LibraryFixture,
 ) -> (Arc<super::AppHandle>, std::path::PathBuf) {
     let (runtime, manager, root) = super::super::tests::fresh_test_library(test_name);
-    runtime
-        .block_on(manager.write_fixture(fixture))
-        .expect("write the library fixture");
-    (
-        super::super::tests::start_test_handle(runtime, manager),
-        root,
-    )
+    runtime.block_on(manager.write_fixture(fixture)).expect("write the library fixture");
+    (super::super::tests::start_test_handle(runtime, manager), root)
 }
 
 /// Deleting an album through the handle takes it out of the grid and leaves
@@ -39,27 +34,19 @@ fn delete_album_takes_the_album_out_of_the_grid() {
     );
     let subscription = handle.subscribe_album_browse(Vec::new(), false);
     subscription
-        .set_windows(vec![crate::types::BridgeLibraryPageWindow {
-            offset: 0,
-            limit: 10,
-        }])
+        .set_windows(vec![crate::types::BridgeLibraryPageWindow { offset: 0, limit: 10 }])
         .expect("request the grid's window");
     let titles = |rows: &[crate::types::BridgeAlbum]| -> Vec<String> {
         rows.iter().map(|album| album.title.clone()).collect()
     };
     let listed = loop {
-        let snapshot = handle
-            .runtime
-            .block_on(subscription.clone().next())
-            .expect("album browse snapshot");
+        let snapshot =
+            handle.runtime.block_on(subscription.clone().next()).expect("album browse snapshot");
         if !snapshot.windows.is_empty() {
             break snapshot;
         }
     };
-    assert_eq!(
-        titles(&listed.windows[0].rows),
-        ["Kept Album", "Deleted Album"]
-    );
+    assert_eq!(titles(&listed.windows[0].rows), ["Kept Album", "Deleted Album"]);
     let deleted = listed.windows[0]
         .rows
         .iter()
@@ -74,22 +61,15 @@ fn delete_album_takes_the_album_out_of_the_grid() {
         .expect("delete the album");
 
     let after = loop {
-        let snapshot = handle
-            .runtime
-            .block_on(subscription.clone().next())
-            .expect("album browse snapshot");
+        let snapshot =
+            handle.runtime.block_on(subscription.clone().next()).expect("album browse snapshot");
         if snapshot.total_count == 1 {
             break snapshot;
         }
     };
     assert_eq!(titles(&after.windows[0].rows), ["Kept Album"]);
-    let again = handle
-        .runtime
-        .block_on(Arc::clone(&handle).delete_album(deleted));
-    assert!(
-        matches!(again, Err(crate::types::BridgeError::Diagnostic { .. })),
-        "{again:?}"
-    );
+    let again = handle.runtime.block_on(Arc::clone(&handle).delete_album(deleted));
+    assert!(matches!(again, Err(crate::types::BridgeError::Diagnostic { .. })), "{again:?}");
 }
 
 /// Setting S3 up as the library's storage writes the steps coven reports into
@@ -108,26 +88,15 @@ fn setting_up_s3_storage_writes_its_steps() {
         root.path(),
         bae_core::providers::Providers::offline(),
     ));
-    let coven::StorageConfig::S3 {
-        bucket,
-        region,
-        endpoint,
-        profile,
-        prefix,
-    } = coven::Storage::config(storage.as_ref())
+    let coven::StorageConfig::S3 { bucket, region, endpoint, profile, prefix } =
+        coven::Storage::config(storage.as_ref())
     else {
         panic!("the memory provider uses S3 configuration");
     };
-    let services = runtime
-        .block_on(bae_core::library::AppServices::for_test(manager))
-        .unwrap();
+    let services = runtime.block_on(bae_core::library::AppServices::for_test(manager)).unwrap();
     let app = Arc::new(
-        super::AppHandle::start(
-            services,
-            runtime,
-            bae_core::diagnostics::Diagnostics::noop(),
-        )
-        .unwrap(),
+        super::AppHandle::start(services, runtime, bae_core::diagnostics::Diagnostics::noop())
+            .unwrap(),
     );
     let host = crate::BridgeHost::with_test_keyring(
         crate::BridgeDiagnostics::noop(),

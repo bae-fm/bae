@@ -13,19 +13,15 @@ fn same_label(
         (a, b) => a.is_none() && b.is_none(),
     };
     same_name
-        && a.catalog_number()
-            .and_then(bae_types::text_match::catalog_key)
-            == b.catalog_number()
-                .and_then(bae_types::text_match::catalog_key)
+        && a.catalog_number().and_then(bae_types::text_match::catalog_key)
+            == b.catalog_number().and_then(bae_types::text_match::catalog_key)
 }
 
 impl Pressing {
     /// Why a record of the row's document could not be read, where one could
     /// not: the row then states what its search result said.
     pub fn document_failure(&self) -> Option<&crate::signals::LookupFailure> {
-        self.releases
-            .iter()
-            .find_map(|release| release.document_failure.as_ref())
+        self.releases.iter().find_map(|release| release.document_failure.as_ref())
     }
 
     /// Every label the row's records state, as one list in the order of the
@@ -82,20 +78,13 @@ mod tests {
             releases: vec![record(
                 Catalog::Discogs,
                 "dg-1",
-                &[
-                    ("Label One", "AB-100"),
-                    ("Label Two", "CD-200"),
-                    ("label one", "EF-300"),
-                ],
+                &[("Label One", "AB-100"), ("Label Two", "CD-200"), ("label one", "EF-300")],
             )],
         };
         assert_eq!(pressing.labels().len(), 3);
         assert_eq!(
             pressing.label_lines(),
-            vec![
-                line("Label One", &["AB-100", "EF-300"]),
-                line("Label Two", &["CD-200"]),
-            ]
+            vec![line("Label One", &["AB-100", "EF-300"]), line("Label Two", &["CD-200"]),]
         );
     }
 
@@ -113,20 +102,13 @@ mod tests {
                 record(
                     Catalog::Discogs,
                     "dg-1",
-                    &[
-                        ("Label One", "AB-100"),
-                        ("Label Two", "CD-200"),
-                        ("Label One", "EF 300"),
-                    ],
+                    &[("Label One", "AB-100"), ("Label Two", "CD-200"), ("Label One", "EF 300")],
                 ),
             ],
         };
         assert_eq!(
             pressing.label_lines(),
-            vec![
-                line("Label One", &["EF-300", "AB-100"]),
-                line("Label Two", &["CD-200"]),
-            ]
+            vec![line("Label One", &["EF-300", "AB-100"]), line("Label Two", &["CD-200"]),]
         );
     }
 
@@ -137,11 +119,7 @@ mod tests {
     fn a_label_written_two_ways_is_listed_once() {
         let pressing = Pressing {
             releases: vec![
-                record(
-                    Catalog::MusicBrainz,
-                    "mb-1",
-                    &[("Harbor Records", "AB-100")],
-                ),
+                record(Catalog::MusicBrainz, "mb-1", &[("Harbor Records", "AB-100")]),
                 record(Catalog::Discogs, "dg-1", &[("Harbor", "AB 100")]),
             ],
         };
@@ -149,14 +127,8 @@ mod tests {
             &crate::import::pressing_evidence::ComparedPressing::of(&pressing.releases[0]),
             &crate::import::pressing_evidence::ComparedPressing::of(&pressing.releases[1]),
         );
-        assert_eq!(
-            paired.label,
-            crate::import::pressing_evidence::Comparison::Same
-        );
+        assert_eq!(paired.label, crate::import::pressing_evidence::Comparison::Same);
         assert_eq!(pressing.labels().len(), 1);
-        assert_eq!(
-            pressing.label_lines(),
-            vec![line("Harbor Records", &["AB-100"])]
-        );
+        assert_eq!(pressing.label_lines(), vec![line("Harbor Records", &["AB-100"])]);
     }
 }

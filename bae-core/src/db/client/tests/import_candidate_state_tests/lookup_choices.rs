@@ -17,18 +17,10 @@ async fn lookup_choices_round_trip_with_their_catalog_order() {
         search_words: None,
         discounted_catalogs: Vec::new(),
     };
-    db.save_import_candidate_lookup_choices(&hash, &choices)
-        .await
-        .unwrap();
+    db.save_import_candidate_lookup_choices(&hash, &choices).await.unwrap();
 
     let loaded = db.load_import_candidate_states().await.unwrap();
-    assert_eq!(
-        loaded
-            .get(&hash)
-            .expect("the candidate reads back")
-            .lookup_choices,
-        choices
-    );
+    assert_eq!(loaded.get(&hash).expect("the candidate reads back").lookup_choices, choices);
 }
 
 /// A second write is the whole value again: what it no longer names is gone,
@@ -58,18 +50,10 @@ async fn writing_lookup_choices_replaces_what_stood_before() {
         search_words: None,
         discounted_catalogs: Vec::new(),
     };
-    db.save_import_candidate_lookup_choices(&hash, &replacement)
-        .await
-        .unwrap();
+    db.save_import_candidate_lookup_choices(&hash, &replacement).await.unwrap();
 
     let loaded = db.load_import_candidate_states().await.unwrap();
-    assert_eq!(
-        loaded
-            .get(&hash)
-            .expect("the candidate reads back")
-            .lookup_choices,
-        replacement
-    );
+    assert_eq!(loaded.get(&hash).expect("the candidate reads back").lookup_choices, replacement);
 }
 
 /// A candidate nobody has chosen anything for reads as the default: nothing
@@ -82,10 +66,7 @@ async fn a_candidate_with_no_stored_choices_reads_the_default() {
 
     let loaded = db.load_import_candidate_states().await.unwrap();
     assert_eq!(
-        loaded
-            .get(&hash)
-            .expect("the candidate reads back")
-            .lookup_choices,
+        loaded.get(&hash).expect("the candidate reads back").lookup_choices,
         crate::import::LookupChoices::default()
     );
 }
@@ -131,18 +112,10 @@ async fn struck_out_catalog_numbers_round_trip_beside_the_chosen_ones() {
         search_words: None,
         discounted_catalogs: vec!["LBL 002".to_string(), "LBL 100".to_string()],
     };
-    db.save_import_candidate_lookup_choices(&hash, &choices)
-        .await
-        .unwrap();
+    db.save_import_candidate_lookup_choices(&hash, &choices).await.unwrap();
 
     let loaded = db.load_import_candidate_states().await.unwrap();
-    assert_eq!(
-        loaded
-            .get(&hash)
-            .expect("the candidate reads back")
-            .lookup_choices,
-        choices
-    );
+    assert_eq!(loaded.get(&hash).expect("the candidate reads back").lookup_choices, choices);
 }
 
 /// The struck-out numbers are replaced whole like the rest of the value: what
@@ -166,18 +139,10 @@ async fn writing_the_choices_replaces_what_was_struck_out() {
         discounted_catalogs: vec!["LBL 002".to_string()],
         ..Default::default()
     };
-    db.save_import_candidate_lookup_choices(&hash, &replacement)
-        .await
-        .unwrap();
+    db.save_import_candidate_lookup_choices(&hash, &replacement).await.unwrap();
 
     let loaded = db.load_import_candidate_states().await.unwrap();
-    assert_eq!(
-        loaded
-            .get(&hash)
-            .expect("the candidate reads back")
-            .lookup_choices,
-        replacement
-    );
+    assert_eq!(loaded.get(&hash).expect("the candidate reads back").lookup_choices, replacement);
 }
 
 /// The barcodes a run leaves out go down and come back as the set they are:
@@ -196,18 +161,10 @@ async fn left_out_barcodes_round_trip_as_a_set() {
         search_words: None,
         discounted_catalogs: Vec::new(),
     };
-    db.save_import_candidate_lookup_choices(&hash, &choices)
-        .await
-        .unwrap();
+    db.save_import_candidate_lookup_choices(&hash, &choices).await.unwrap();
 
     let loaded = db.load_import_candidate_states().await.unwrap();
-    assert_eq!(
-        loaded
-            .get(&hash)
-            .expect("the candidate reads back")
-            .lookup_choices,
-        choices
-    );
+    assert_eq!(loaded.get(&hash).expect("the candidate reads back").lookup_choices, choices);
 }
 
 /// The left-out barcodes are replaced whole like the rest of the value: a code
@@ -231,18 +188,10 @@ async fn writing_the_choices_replaces_the_left_out_barcodes() {
         excluded_barcodes: vec!["9999999999999".to_string()],
         ..Default::default()
     };
-    db.save_import_candidate_lookup_choices(&hash, &replacement)
-        .await
-        .unwrap();
+    db.save_import_candidate_lookup_choices(&hash, &replacement).await.unwrap();
 
     let loaded = db.load_import_candidate_states().await.unwrap();
-    assert_eq!(
-        loaded
-            .get(&hash)
-            .expect("the candidate reads back")
-            .lookup_choices,
-        replacement
-    );
+    assert_eq!(loaded.get(&hash).expect("the candidate reads back").lookup_choices, replacement);
 }
 
 /// The words typed for the title search go down and come back with the
@@ -260,28 +209,16 @@ async fn typed_search_words_round_trip() {
         }),
         ..Default::default()
     };
-    db.save_import_candidate_lookup_choices(&hash, &typed)
-        .await
-        .unwrap();
+    db.save_import_candidate_lookup_choices(&hash, &typed).await.unwrap();
     let loaded = db.load_import_candidate_states().await.unwrap();
-    assert_eq!(
-        loaded
-            .get(&hash)
-            .expect("the candidate reads back")
-            .lookup_choices,
-        typed
-    );
+    assert_eq!(loaded.get(&hash).expect("the candidate reads back").lookup_choices, typed);
 
     db.save_import_candidate_lookup_choices(&hash, &crate::import::LookupChoices::default())
         .await
         .unwrap();
     let loaded = db.load_import_candidate_states().await.unwrap();
     assert_eq!(
-        loaded
-            .get(&hash)
-            .expect("the candidate reads back")
-            .lookup_choices
-            .search_words,
+        loaded.get(&hash).expect("the candidate reads back").lookup_choices.search_words,
         None
     );
 }

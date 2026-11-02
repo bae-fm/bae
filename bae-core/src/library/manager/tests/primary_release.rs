@@ -25,29 +25,14 @@ async fn check_converging_primaries(devices: &mut crate::sync::test_devices::Two
     for release in &releases {
         insert_release(manager, release).await;
     }
-    let orders = format!(
-        "SELECT id || ':' || album_order FROM releases WHERE album_id = '{}'",
-        album.id
-    );
+    let orders =
+        format!("SELECT id || ':' || album_order FROM releases WHERE album_id = '{}'", album.id);
     devices.converge(&orders).await;
-    assert_eq!(
-        primary_of(devices.b().database(), &album.id).await,
-        releases[0].id
-    );
+    assert_eq!(primary_of(devices.b().database(), &album.id).await, releases[0].id);
 
     devices.pause().await;
-    devices
-        .a()
-        .manager()
-        .set_album_primary_release(&album.id, &releases[1].id)
-        .await
-        .unwrap();
-    devices
-        .b()
-        .manager()
-        .set_album_primary_release(&album.id, &releases[2].id)
-        .await
-        .unwrap();
+    devices.a().manager().set_album_primary_release(&album.id, &releases[1].id).await.unwrap();
+    devices.b().manager().set_album_primary_release(&album.id, &releases[2].id).await.unwrap();
     devices.resume().await;
     devices.converge(&orders).await;
 

@@ -126,10 +126,7 @@ impl Medium {
     /// Whether the carrier is played side by side, so a track's position
     /// letter names its side.
     pub fn is_sided(self) -> bool {
-        matches!(
-            self.physical(),
-            Some(PhysicalMedium::Record | PhysicalMedium::Cassette)
-        )
+        matches!(self.physical(), Some(PhysicalMedium::Record | PhysicalMedium::Cassette))
     }
 }
 
@@ -199,13 +196,13 @@ impl Medium {
 /// nothing enforces it, and a lowercased "vinyl" names the same carrier.
 #[cfg(desktop)]
 fn found(table: &[(&str, Option<Medium>)], value: &str) -> Lookup {
-    table
-        .iter()
-        .find(|(name, _)| super::same_name(name, value))
-        .map_or(Lookup::Unrecognized, |(_, medium)| match medium {
+    table.iter().find(|(name, _)| super::same_name(name, value)).map_or(
+        Lookup::Unrecognized,
+        |(_, medium)| match medium {
             Some(medium) => Lookup::Carrier(*medium),
             None => Lookup::NamesNoCarrier,
-        })
+        },
+    )
 }
 
 /// Every `medium_format` row of MusicBrainz, in the order the page lists
@@ -347,16 +344,10 @@ const DISCOGS_FORMAT_NAMES: &[(&str, DiscogsFormatName)] = &[
     ("Flexi-disc", DiscogsFormatName::Carrier(Medium::Vinyl)),
     ("Lathe Cut", DiscogsFormatName::Carrier(Medium::Vinyl)),
     ("Shellac", DiscogsFormatName::Carrier(Medium::Shellac)),
-    (
-        "Mighty Tiny",
-        DiscogsFormatName::Carrier(Medium::MightyTiny),
-    ),
+    ("Mighty Tiny", DiscogsFormatName::Carrier(Medium::MightyTiny)),
     ("Sopic", DiscogsFormatName::Carrier(Medium::Sopic)),
     ("Pathé Disc", DiscogsFormatName::Carrier(Medium::PatheDisc)),
-    (
-        "Edison Disc",
-        DiscogsFormatName::Carrier(Medium::EdisonDisc),
-    ),
+    ("Edison Disc", DiscogsFormatName::Carrier(Medium::EdisonDisc)),
     ("Cylinder", DiscogsFormatName::Carrier(Medium::Cylinder)),
     ("CDV", DiscogsFormatName::Carrier(Medium::Cdv)),
     ("DVD", DiscogsFormatName::Carrier(Medium::Dvd)),
@@ -365,58 +356,28 @@ const DISCOGS_FORMAT_NAMES: &[(&str, DiscogsFormatName)] = &[
     ("HD DVD-R", DiscogsFormatName::Carrier(Medium::HdDvd)),
     ("Blu-ray", DiscogsFormatName::Carrier(Medium::BluRay)),
     ("Blu-ray-R", DiscogsFormatName::Carrier(Medium::BluRay)),
-    (
-        "Ultra HD Blu-ray",
-        DiscogsFormatName::Carrier(Medium::BluRay),
-    ),
+    ("Ultra HD Blu-ray", DiscogsFormatName::Carrier(Medium::BluRay)),
     ("SACD", DiscogsFormatName::Carrier(Medium::Sacd)),
-    (
-        "4-Track Cartridge",
-        DiscogsFormatName::Carrier(Medium::Cartridge),
-    ),
-    (
-        "8-Track Cartridge",
-        DiscogsFormatName::Carrier(Medium::Cartridge),
-    ),
-    (
-        "DC-International",
-        DiscogsFormatName::Carrier(Medium::Cassette),
-    ),
+    ("4-Track Cartridge", DiscogsFormatName::Carrier(Medium::Cartridge)),
+    ("8-Track Cartridge", DiscogsFormatName::Carrier(Medium::Cartridge)),
+    ("DC-International", DiscogsFormatName::Carrier(Medium::Cassette)),
     ("Elcaset", DiscogsFormatName::Carrier(Medium::Cassette)),
     ("PlayTape", DiscogsFormatName::Carrier(Medium::Cartridge)),
-    (
-        "RCA Tape Cartridge",
-        DiscogsFormatName::Carrier(Medium::Cartridge),
-    ),
+    ("RCA Tape Cartridge", DiscogsFormatName::Carrier(Medium::Cartridge)),
     ("DAT", DiscogsFormatName::Carrier(Medium::Dat)),
     ("DCC", DiscogsFormatName::Carrier(Medium::Dcc)),
-    (
-        "Microcassette",
-        DiscogsFormatName::Carrier(Medium::Cassette),
-    ),
+    ("Microcassette", DiscogsFormatName::Carrier(Medium::Cassette)),
     ("NT Cassette", DiscogsFormatName::Carrier(Medium::Cassette)),
-    (
-        "Pocket Rocker",
-        DiscogsFormatName::Carrier(Medium::Cartridge),
-    ),
-    (
-        "Revere Magnetic Stereo Tape Ca",
-        DiscogsFormatName::Carrier(Medium::Cartridge),
-    ),
+    ("Pocket Rocker", DiscogsFormatName::Carrier(Medium::Cartridge)),
+    ("Revere Magnetic Stereo Tape Ca", DiscogsFormatName::Carrier(Medium::Cartridge)),
     ("Tefifon", DiscogsFormatName::Carrier(Medium::Tefifon)),
-    (
-        "Reel-To-Reel",
-        DiscogsFormatName::Carrier(Medium::ReelToReel),
-    ),
+    ("Reel-To-Reel", DiscogsFormatName::Carrier(Medium::ReelToReel)),
     ("Sabamobil", DiscogsFormatName::Carrier(Medium::Cartridge)),
     ("Beta ED", DiscogsFormatName::Carrier(Medium::VideoTape)),
     ("Betacam", DiscogsFormatName::Carrier(Medium::VideoTape)),
     ("Betacam SP", DiscogsFormatName::Carrier(Medium::VideoTape)),
     ("Betamax", DiscogsFormatName::Carrier(Medium::VideoTape)),
-    (
-        "Cartrivision",
-        DiscogsFormatName::Carrier(Medium::VideoTape),
-    ),
+    ("Cartrivision", DiscogsFormatName::Carrier(Medium::VideoTape)),
     ("MiniDV", DiscogsFormatName::Carrier(Medium::VideoTape)),
     ("Super Beta", DiscogsFormatName::Carrier(Medium::VideoTape)),
     ("Super VHS", DiscogsFormatName::Carrier(Medium::VideoTape)),
@@ -427,25 +388,16 @@ const DISCOGS_FORMAT_NAMES: &[(&str, DiscogsFormatName)] = &[
     ("Film Reel", DiscogsFormatName::Carrier(Medium::FilmReel)),
     ("HitClips", DiscogsFormatName::Carrier(Medium::FlashMemory)),
     ("Laserdisc", DiscogsFormatName::Carrier(Medium::LaserDisc)),
-    (
-        "SelectaVision",
-        DiscogsFormatName::Carrier(Medium::SelectaVision),
-    ),
+    ("SelectaVision", DiscogsFormatName::Carrier(Medium::SelectaVision)),
     ("TeD", DiscogsFormatName::Carrier(Medium::Ted)),
     ("VHD", DiscogsFormatName::Carrier(Medium::Vhd)),
-    (
-        "Wire Recording",
-        DiscogsFormatName::Carrier(Medium::WireRecording),
-    ),
+    ("Wire Recording", DiscogsFormatName::Carrier(Medium::WireRecording)),
     ("Minidisc", DiscogsFormatName::Carrier(Medium::MiniDisc)),
     ("MVD", DiscogsFormatName::Carrier(Medium::Mvd)),
     ("UMD", DiscogsFormatName::Carrier(Medium::Umd)),
     ("Floppy Disk", DiscogsFormatName::Carrier(Medium::Floppy)),
     ("Zip Disk", DiscogsFormatName::Carrier(Medium::Floppy)),
-    (
-        "Memory Stick",
-        DiscogsFormatName::Carrier(Medium::FlashMemory),
-    ),
+    ("Memory Stick", DiscogsFormatName::Carrier(Medium::FlashMemory)),
     ("Hybrid", DiscogsFormatName::Hybrid),
     ("All Media", DiscogsFormatName::AllMedia),
     ("Box Set", DiscogsFormatName::BoxSet),
@@ -462,19 +414,13 @@ mod tests {
     #[test]
     fn each_table_is_the_catalogs_own_list() {
         assert_eq!(
-            MUSICBRAINZ_FORMAT_NAMES
-                .iter()
-                .map(|(name, _)| *name)
-                .collect::<Vec<_>>(),
+            MUSICBRAINZ_FORMAT_NAMES.iter().map(|(name, _)| *name).collect::<Vec<_>>(),
             recorded(include_str!(
                 "../../test-fixtures/pressing-vocabulary/musicbrainz-format-names.txt"
             ))
         );
         assert_eq!(
-            DISCOGS_FORMAT_NAMES
-                .iter()
-                .map(|(name, _)| *name)
-                .collect::<Vec<_>>(),
+            DISCOGS_FORMAT_NAMES.iter().map(|(name, _)| *name).collect::<Vec<_>>(),
             recorded(include_str!(
                 "../../test-fixtures/pressing-vocabulary/discogs-format-names.txt"
             ))
@@ -485,26 +431,16 @@ mod tests {
     /// every way a word can land has its answer.
     #[test]
     fn a_word_lands_as_a_carrier_a_name_or_nothing() {
-        assert_eq!(
-            Medium::musicbrainz("Hybrid SACD (SACD layer)"),
-            Lookup::Carrier(Medium::Sacd)
-        );
+        assert_eq!(Medium::musicbrainz("Hybrid SACD (SACD layer)"), Lookup::Carrier(Medium::Sacd));
         assert_eq!(Medium::musicbrainz("Other"), Lookup::NamesNoCarrier);
         assert_eq!(
             Medium::musicbrainz("File"),
             Lookup::Unrecognized,
             "a Discogs format name is not a MusicBrainz one"
         );
-        assert_eq!(
-            Medium::discogs("File"),
-            Some(DiscogsFormatName::Carrier(Medium::Digital))
-        );
+        assert_eq!(Medium::discogs("File"), Some(DiscogsFormatName::Carrier(Medium::Digital)));
         assert_eq!(Medium::discogs("Box Set"), Some(DiscogsFormatName::BoxSet));
-        assert_eq!(
-            Medium::discogs("FLAC"),
-            None,
-            "a description is not a format name"
-        );
+        assert_eq!(Medium::discogs("FLAC"), None, "a description is not a format name");
     }
 
     /// A name matches as a whole word, not as a part of one: the catalogs
@@ -512,10 +448,7 @@ mod tests {
     /// description of something else.
     #[test]
     fn a_name_matches_whole_and_in_any_case() {
-        assert_eq!(
-            Medium::discogs("vinyl"),
-            Some(DiscogsFormatName::Carrier(Medium::Vinyl))
-        );
+        assert_eq!(Medium::discogs("vinyl"), Some(DiscogsFormatName::Carrier(Medium::Vinyl)));
         assert_eq!(Medium::musicbrainz("8CM cd+g"), Lookup::Carrier(Medium::Cd));
         assert_eq!(
             Medium::discogs("PATHÉ DISC"),

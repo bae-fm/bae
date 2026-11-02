@@ -61,16 +61,9 @@ fn single_file_cue_uses_the_unique_same_stem_audio_when_its_reference_is_missing
             }],
         },
     );
-    assert_eq!(
-        files.bound_sheets()[0].audio_files[0].1.file_name,
-        "cd.flac"
-    );
+    assert_eq!(files.bound_sheets()[0].audio_files[0].1.file_name, "cd.flac");
     assert!(
-        crate::import::discid::read_rip_artifacts(&files)
-            .disc_id
-            .computed()
-            .len()
-            == 1,
+        crate::import::discid::read_rip_artifacts(&files).disc_id.computed().len() == 1,
         "the automatically bound sheet and audio yield a disc ID",
     );
 }
@@ -281,9 +274,7 @@ fn audio_a_sheet_cannot_use_is_refused_at_offer_time_with_the_codec_named() {
             },
             SheetBindingOption {
                 file_id: "cd.mp3".to_string(),
-                offer: SheetBindingOffer::RefusedCodec {
-                    codec: "MP3".to_string()
-                },
+                offer: SheetBindingOffer::RefusedCodec { codec: "MP3".to_string() },
             },
         ],
         "the MP3 is refused with its codec named, not offered and rejected later",
@@ -313,11 +304,7 @@ fn clearing_a_binding_leaves_it_unbound_rather_than_re_guessed() {
         "the sheet the user cleared describes nothing, proposal or not",
     );
     assert_eq!(cleared.track_count(), 1);
-    assert_uniform_source_audio(
-        &cleared,
-        crate::album_detail::SourceAudioLayout::File,
-        "FLAC",
-    );
+    assert_uniform_source_audio(&cleared, crate::album_detail::SourceAudioLayout::File, "FLAC");
     assert!(cleared.bound_sheets().is_empty());
 }
 
@@ -387,18 +374,13 @@ fn stored_binding(
             .audio_file_references()[0]
             .to_owned(),
         match audio_file_id {
-            Some(file_id) => UserSheetBinding::Describes {
-                file_id: file_id.to_string(),
-            },
+            Some(file_id) => UserSheetBinding::Describes { file_id: file_id.to_string() },
             None => UserSheetBinding::Cleared,
         },
     );
     StoredCandidateEdits::new(HashMap::from([(
         files.content_hash(),
-        CandidateFileEdits {
-            sheet_bindings: edits,
-            ..Default::default()
-        },
+        CandidateFileEdits { sheet_bindings: edits, ..Default::default() },
     )]))
 }
 
@@ -423,13 +405,7 @@ fn scan_with_binding(
 #[test]
 fn files_list_in_case_insensitive_natural_order() {
     let (_tmp, album) = album_dir();
-    for name in [
-        "Track 10.flac",
-        "cover.jpg",
-        "Track 2.flac",
-        "Back.jpg",
-        "booklet.pdf",
-    ] {
+    for name in ["Track 10.flac", "cover.jpg", "Track 2.flac", "Back.jpg", "booklet.pdf"] {
         let bytes = if name.ends_with(".flac") {
             fake_flac()
         } else if name.ends_with(".jpg") {
@@ -441,20 +417,11 @@ fn files_list_in_case_insensitive_natural_order() {
     }
 
     let files = scan_files(&album);
-    let names: Vec<&str> = files
-        .files
-        .iter()
-        .map(|entry| entry.file.relative_path.as_str())
-        .collect();
+    let names: Vec<&str> =
+        files.files.iter().map(|entry| entry.file.relative_path.as_str()).collect();
     assert_eq!(
         names,
-        vec![
-            "Back.jpg",
-            "booklet.pdf",
-            "cover.jpg",
-            "Track 2.flac",
-            "Track 10.flac",
-        ]
+        vec!["Back.jpg", "booklet.pdf", "cover.jpg", "Track 2.flac", "Track 10.flac",]
     );
 }
 
@@ -469,11 +436,7 @@ fn the_first_of_competing_cues_carves_the_audio() {
     )
     .unwrap();
     let files = scan_files(&album);
-    assert_eq!(
-        files.track_count(),
-        2,
-        "alternative.cue sorts first and carves"
-    );
+    assert_eq!(files.track_count(), 2, "alternative.cue sorts first and carves");
     assert_eq!(files.carving_sheets().len(), 1);
     assert_eq!(files.bound_sheets().len(), 2);
 }

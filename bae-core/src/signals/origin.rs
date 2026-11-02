@@ -85,18 +85,12 @@ pub struct SourcedValue {
 impl SourcedValue {
     /// A value read off no file of the candidate's.
     pub fn new(value: String) -> Self {
-        Self {
-            value,
-            origin_path: None,
-        }
+        Self { value, origin_path: None }
     }
 
     /// A value read off one of the candidate's files.
     pub fn in_file(value: String, file_id: String) -> Self {
-        Self {
-            value,
-            origin_path: Some(file_id),
-        }
+        Self { value, origin_path: Some(file_id) }
     }
 
     /// Each value among `sightings` once, in first-seen order.

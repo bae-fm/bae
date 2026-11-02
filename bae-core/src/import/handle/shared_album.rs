@@ -17,9 +17,7 @@ impl ImportServiceHandle {
     ) -> Result<u64, crate::import::ImportError> {
         let this = self.clone();
         self.committed(async move {
-            let revision = this
-                .link_candidate_shared_album_write(candidate_key.clone())
-                .await?;
+            let revision = this.link_candidate_shared_album_write(candidate_key.clone()).await?;
             this.identification_ended(&candidate_key).await;
             this.announce_metadata_changed(candidate_key);
             Ok(revision)
@@ -41,13 +39,9 @@ impl ImportServiceHandle {
             .ok_or_else(|| crate::import::ImportError::Internal {
                 detail: format!("{candidate_key} has no state for its files as they stand"),
             })?;
-        let identify = state
-            .identify
-            .ok_or_else(|| crate::import::ImportError::Internal {
-                detail: format!(
-                    "{candidate_key} has no lookup whose pressings to link the album of"
-                ),
-            })?;
+        let identify = state.identify.ok_or_else(|| crate::import::ImportError::Internal {
+            detail: format!("{candidate_key} has no lookup whose pressings to link the album of"),
+        })?;
         // The rows as the pane lists them: ranked by the candidate's own text,
         // as it reads now.
         let text = crate::identify::CandidateText::of_stored(
@@ -80,9 +74,7 @@ impl ImportServiceHandle {
             let release = &prepared.release;
             records.push(crate::import::search::MetadataResult::of_release(release));
             offered.push(crate::import::shared_album::OfferedReading::of(
-                &release
-                    .read(&audio)
-                    .map_err(crate::import::ImportError::from)?,
+                &release.read(&audio).map_err(crate::import::ImportError::from)?,
             ));
             releases.push(prepared.stored);
         }

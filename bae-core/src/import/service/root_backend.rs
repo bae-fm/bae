@@ -22,10 +22,7 @@ pub(super) struct ServiceRootRemovalBackend {
 
 impl ServiceRootRemovalBackend {
     pub(super) fn new(folder_watcher: Arc<FolderWatcher>, library_manager: LibraryManager) -> Self {
-        Self {
-            folder_watcher,
-            library_manager,
-        }
+        Self { folder_watcher, library_manager }
     }
 }
 

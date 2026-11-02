@@ -22,10 +22,7 @@ pub struct ReleaseMedium {
 impl ReleaseMedium {
     /// A medium of one side and `carrier`.
     pub fn one_sided(carrier: Option<Medium>) -> Self {
-        Self {
-            carrier,
-            sides: NonZeroU8::MIN,
-        }
+        Self { carrier, sides: NonZeroU8::MIN }
     }
 
     /// Whether the medium is played side by side, so its sides carry letters.
@@ -71,11 +68,7 @@ impl Placer {
         let number = stated.unwrap_or_else(|| {
             NonZeroU32::new(*before).expect("a side's count is at least one once a track is on it")
         });
-        TrackPlace {
-            medium,
-            side,
-            number,
-        }
+        TrackPlace { medium, side, number }
     }
 }
 
@@ -89,10 +82,7 @@ pub fn by_disc(
     let discs: std::collections::BTreeSet<Option<u32>> =
         tracks.iter().map(|(disc, _)| *disc).collect();
     let discs: Vec<Option<u32>> = discs.into_iter().collect();
-    let mediums = discs
-        .iter()
-        .map(|_| ReleaseMedium::one_sided(None))
-        .collect();
+    let mediums = discs.iter().map(|_| ReleaseMedium::one_sided(None)).collect();
     let mut placer = Placer::default();
     let places = tracks
         .iter()
@@ -144,9 +134,8 @@ pub fn side_letters(n: u32) -> String {
 /// among them), and plain otherwise.
 pub fn track_position(place: &TrackPlace, mediums: &[ReleaseMedium]) -> TrackPosition {
     let number = place.number.get();
-    let medium = mediums
-        .get(place.medium_index())
-        .expect("a track's medium is one of its release's");
+    let medium =
+        mediums.get(place.medium_index()).expect("a track's medium is one of its release's");
     if medium.is_sided() {
         let sides_before: u32 = mediums[..place.medium_index()]
             .iter()
@@ -159,10 +148,7 @@ pub fn track_position(place: &TrackPlace, mediums: &[ReleaseMedium]) -> TrackPos
         };
     }
     if mediums.len() > 1 {
-        return TrackPosition::Disc {
-            disc: u32::from(place.medium.get()),
-            number,
-        };
+        return TrackPosition::Disc { disc: u32::from(place.medium.get()), number };
     }
     TrackPosition::Flat { number }
 }

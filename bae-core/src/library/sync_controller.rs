@@ -19,10 +19,7 @@ pub(crate) struct SyncController {
 
 impl SyncController {
     pub(crate) fn new(database: Database, diagnostics: Diagnostics) -> Self {
-        Self {
-            database,
-            diagnostics,
-        }
+        Self { database, diagnostics }
     }
 
     pub(crate) async fn set_sync_paused(&self, paused: bool) -> Result<(), LibraryError> {
@@ -54,9 +51,7 @@ impl SyncController {
             )
             .await?;
         self.diagnostics
-            .event(TelemetryEvent::CloudProviderConnected {
-                provider: CloudProvider::S3,
-            });
+            .event(TelemetryEvent::CloudProviderConnected { provider: CloudProvider::S3 });
         Ok(setup)
     }
 
@@ -71,9 +66,7 @@ impl SyncController {
             }
             CloudProvider::OneDrive => coven::OAuthAccess::OneDrive,
             CloudProvider::S3 | CloudProvider::CloudKit => {
-                return Err(LibraryError::Internal(format!(
-                    "{provider:?} has no account sign-in"
-                )))
+                return Err(LibraryError::Internal(format!("{provider:?} has no account sign-in")))
             }
         };
         self.database.authenticate(access).await?;
@@ -110,12 +103,8 @@ impl SyncController {
         steps: crate::library::StorageSetupSteps<'_>,
     ) -> Result<coven::StorageSetup, LibraryError> {
         let provider = storage.provider();
-        let setup = self
-            .database
-            .setup_oauth_storage(storage, device_name, steps)
-            .await?;
-        self.diagnostics
-            .event(TelemetryEvent::CloudProviderConnected { provider });
+        let setup = self.database.setup_oauth_storage(storage, device_name, steps).await?;
+        self.diagnostics.event(TelemetryEvent::CloudProviderConnected { provider });
         Ok(setup)
     }
 
@@ -124,27 +113,17 @@ impl SyncController {
         device_name: &str,
         steps: crate::library::StorageSetupSteps<'_>,
     ) -> Result<coven::StorageSetup, LibraryError> {
-        let setup = self
-            .database
-            .setup_cloudkit_storage(device_name, steps)
-            .await?;
+        let setup = self.database.setup_cloudkit_storage(device_name, steps).await?;
         self.diagnostics
-            .event(TelemetryEvent::CloudProviderConnected {
-                provider: CloudProvider::CloudKit,
-            });
+            .event(TelemetryEvent::CloudProviderConnected { provider: CloudProvider::CloudKit });
         Ok(setup)
     }
 
     pub(crate) async fn disconnect_cloud_provider(&self) -> Result<(), LibraryError> {
-        let provider = self
-            .database
-            .storage_config()
-            .await?
-            .map(|storage| storage.provider());
+        let provider = self.database.storage_config().await?.map(|storage| storage.provider());
         self.database.disconnect_storage().await?;
         if let Some(provider) = provider {
-            self.diagnostics
-                .event(TelemetryEvent::CloudProviderDisconnected { provider });
+            self.diagnostics.event(TelemetryEvent::CloudProviderDisconnected { provider });
         }
         Ok(())
     }

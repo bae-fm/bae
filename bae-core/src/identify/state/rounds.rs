@@ -83,11 +83,7 @@ pub(super) fn next_round(
                 }
             };
             if !asked && !answered {
-                pressings.push(PressingLookup {
-                    source,
-                    key,
-                    state: LookupState::LookingUp,
-                });
+                pressings.push(PressingLookup { source, key, state: LookupState::LookingUp });
             }
         }
     }
@@ -102,10 +98,7 @@ pub(super) fn next_round(
         });
     }
     for lookup in pressings {
-        effects.push(Effect::LookupPressing {
-            source: lookup.source,
-            key: lookup.key.clone(),
-        });
+        effects.push(Effect::LookupPressing { source: lookup.source, key: lookup.key.clone() });
         context.pressings.push(lookup);
     }
     (catalog, effects)
@@ -153,10 +146,8 @@ fn catalog_searches_due(
     let answers = context.lookup_results();
     let facts = FolderFacts::of(&context.text, answers.all());
     let mut numbers: Vec<String> = context.catalog.confirmed.clone();
-    for number in answers
-        .all()
-        .flat_map(|result| &result.labels)
-        .filter_map(ReleaseLabel::catalog_number)
+    for number in
+        answers.all().flat_map(|result| &result.labels).filter_map(ReleaseLabel::catalog_number)
     {
         let key = super::number_key(number);
         if facts.states_catalog(number)
@@ -169,10 +160,7 @@ fn catalog_searches_due(
     let album = album_artists(rows);
     let mut due: Vec<(String, Option<String>, Vec<Catalog>)> = Vec::new();
     for number in &numbers {
-        let lookup = catalog
-            .lookups()
-            .iter()
-            .find(|lookup| &lookup.value == number);
+        let lookup = catalog.lookups().iter().find(|lookup| &lookup.value == number);
         for &source in &context.providers {
             let artists = if !names_artist(source) {
                 vec![None]
@@ -189,10 +177,7 @@ fn catalog_searches_due(
                 if lookup.is_some_and(|lookup| lookup.covers(source, artist.as_deref())) {
                     continue;
                 }
-                match due
-                    .iter_mut()
-                    .find(|(due, asked, _)| due == number && *asked == artist)
-                {
+                match due.iter_mut().find(|(due, asked, _)| due == number && *asked == artist) {
                     Some((_, _, providers)) => providers.push(source),
                     None => due.push((number.clone(), artist, vec![source])),
                 }
@@ -212,10 +197,7 @@ fn album_artists(rows: &[Vec<MetadataResult>]) -> Vec<Option<String>> {
         let Some(artist) = row.iter().find_map(credited_artist) else {
             return vec![None];
         };
-        if !artists
-            .iter()
-            .any(|held| bae_types::text_match::same_artist_name(held, &artist))
-        {
+        if !artists.iter().any(|held| bae_types::text_match::same_artist_name(held, &artist)) {
             artists.push(artist);
         }
     }

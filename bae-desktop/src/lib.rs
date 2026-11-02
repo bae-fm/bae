@@ -44,10 +44,7 @@ impl DesktopServices {
             Arc::new(move || {
                 let token_manager = token_manager.clone();
                 Box::pin(async move {
-                    token_manager
-                        .ensure_mcp_token()
-                        .await
-                        .map_err(|e| e.to_string())
+                    token_manager.ensure_mcp_token().await.map_err(|e| e.to_string())
                 })
             }),
             diagnostics.clone(),
@@ -62,10 +59,7 @@ impl DesktopServices {
             Arc::new(move || {
                 let password_manager = password_manager.clone();
                 Box::pin(async move {
-                    password_manager
-                        .get_subsonic_password()
-                        .await
-                        .map_err(|e| e.to_string())
+                    password_manager.get_subsonic_password().await.map_err(|e| e.to_string())
                 })
             }),
             diagnostics.clone(),
@@ -120,11 +114,7 @@ impl DesktopServices {
             |_| {},
         ));
 
-        Self {
-            services,
-            mcp_controller: controller,
-            subsonic_controller,
-        }
+        Self { services, mcp_controller: controller, subsonic_controller }
     }
 
     pub async fn mcp_server_status(&self) -> McpServerStatus {
@@ -231,10 +221,7 @@ where
     match persist(config).await {
         Ok(()) => Ok(()),
         Err(error) => {
-            if let ServerStatus::Error {
-                error: rollback_error,
-            } = apply(previous).await
-            {
+            if let ServerStatus::Error { error: rollback_error } = apply(previous).await {
                 tracing::warn!(
                     "{label} runtime rollback failed after config save error: {}",
                     rollback_error.detail()
@@ -277,10 +264,7 @@ mod tests {
         ));
 
         runtime.block_on(async {
-            assert!(matches!(
-                desktop.mcp_server_status().await,
-                McpServerStatus::Disabled
-            ));
+            assert!(matches!(desktop.mcp_server_status().await, McpServerStatus::Disabled));
             assert!(matches!(
                 desktop.subsonic_server_status().await,
                 SubsonicServerStatus::Disabled
@@ -305,10 +289,7 @@ mod tests {
             Arc::new(move || {
                 let password_services = password_services.clone();
                 Box::pin(async move {
-                    password_services
-                        .get_subsonic_password()
-                        .await
-                        .map_err(|e| e.to_string())
+                    password_services.get_subsonic_password().await.map_err(|e| e.to_string())
                 })
             }),
             Diagnostics::noop(),

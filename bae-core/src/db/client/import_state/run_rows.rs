@@ -63,15 +63,12 @@ fn load_runs_on(
         let signals = signals.map(|stored| stored.signals()).transpose()?;
         let number = u64::try_from(run)
             .map_err(|error| DbError::Message(format!("{key} holds run {run}: {error}")))?;
-        runs.entry(key).or_default().insert(
-            IdentifyRunId::of_number(number),
-            PublishedRun { outcome, signals },
-        );
+        runs.entry(key)
+            .or_default()
+            .insert(IdentifyRunId::of_number(number), PublishedRun { outcome, signals });
     }
     if let Some(run) = matches.keys().next() {
-        return Err(DbError::Message(format!(
-            "run {run} holds matches but no verdict row"
-        )));
+        return Err(DbError::Message(format!("run {run} holds matches but no verdict row")));
     }
     Ok(runs)
 }
@@ -84,9 +81,7 @@ pub(crate) fn load_stored_runtime_on(
 ) -> Result<StoredRuntime, DbError> {
     Ok(StoredRuntime {
         standing: load_standing_on(sql, key)?,
-        runs: load_runs_on(sql, Some(key))?
-            .remove(key)
-            .unwrap_or_default(),
+        runs: load_runs_on(sql, Some(key))?.remove(key).unwrap_or_default(),
         search: load_search_on(sql, key)?,
     })
 }
@@ -98,15 +93,7 @@ fn load_stored_runtimes_on(
 ) -> Result<HashMap<CandidateKey, StoredRuntime>, DbError> {
     let mut runtimes: HashMap<CandidateKey, StoredRuntime> = load_standings_on(sql)?
         .into_iter()
-        .map(|(key, standing)| {
-            (
-                key,
-                StoredRuntime {
-                    standing,
-                    ..StoredRuntime::default()
-                },
-            )
-        })
+        .map(|(key, standing)| (key, StoredRuntime { standing, ..StoredRuntime::default() }))
         .collect();
     for (key, runs) in load_runs_on(sql, None)? {
         runtimes.entry(key).or_default().runs = runs;
@@ -139,9 +126,7 @@ fn store_run_on(
         .into_iter()
         .next();
     if stored_key.as_ref() != Some(key) {
-        return Err(DbError::Message(format!(
-            "run {run} of {key} is stored as another key's"
-        )));
+        return Err(DbError::Message(format!("run {run} of {key} is stored as another key's")));
     }
     let owner = Owner::Run(run);
     store_outcome(sql, owner, Outcome::of(outcome), false)?;
@@ -183,8 +168,7 @@ impl Database {
         key: &CandidateKey,
     ) -> Result<StoredRuntime, DbError> {
         let key = key.clone();
-        self.read(move |sql| load_stored_runtime_on(&sql, &key))
-            .await
+        self.read(move |sql| load_stored_runtime_on(&sql, &key)).await
     }
 
     /// Every key something is running for, as [`Self::load_candidate_runtime`]
@@ -217,12 +201,7 @@ impl Database {
                 params![key, run],
                 read_signals,
             )?;
-            stored
-                .into_iter()
-                .next()
-                .flatten()
-                .map(|stored| stored.signals())
-                .transpose()
+            stored.into_iter().next().flatten().map(|stored| stored.signals()).transpose()
         })
         .await
     }
@@ -253,10 +232,7 @@ impl Database {
         releases: Vec<SourceRelease>,
     ) -> Result<IdentificationMove, DbError> {
         let key = key.clone();
-        let change = IdentificationChange::RunStarted {
-            files: files.clone(),
-            run,
-        };
+        let change = IdentificationChange::RunStarted { files: files.clone(), run };
         let outcome = outcome.clone();
         self.call(move |sql| {
             let moved = change_identification_on(sql, &key, &change)?;
@@ -334,10 +310,7 @@ impl Database {
         let key = key.clone();
         self.call(move |sql| {
             let moved = change_identification_on(sql, &key, &IdentificationChange::Cancelled)?;
-            sql.execute(
-                "DELETE FROM import_identify_run WHERE candidate_key = ?",
-                [&key],
-            )?;
+            sql.execute("DELETE FROM import_identify_run WHERE candidate_key = ?", [&key])?;
             Ok(moved)
         })
         .await

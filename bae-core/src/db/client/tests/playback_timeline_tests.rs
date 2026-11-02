@@ -23,11 +23,7 @@ fn timeline() -> PlaybackTimeline {
 }
 
 fn nothing() -> PlaybackTimeline {
-    PlaybackTimeline {
-        library: None,
-        seek_revision: 0,
-        preview: None,
-    }
+    PlaybackTimeline { library: None, seek_revision: 0, preview: None }
 }
 
 /// The row reads back each line as written, a length unknown and a clip
@@ -61,11 +57,7 @@ async fn starting_playback_leaves_no_line() {
     for resume in [true, false] {
         db.playback_timeline_row().write(&timeline()).await.unwrap();
         db.settle_playback_queue(resume).await.unwrap();
-        assert_eq!(
-            db.playback_timeline().await.unwrap(),
-            nothing(),
-            "resume: {resume}"
-        );
+        assert_eq!(db.playback_timeline().await.unwrap(), nothing(), "resume: {resume}");
     }
 }
 

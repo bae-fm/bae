@@ -1,7 +1,8 @@
 // ── File metadata as a metadata source ──────────────────────────────────────
 
 fn file_tag_artist_assignment(name: &str) -> ArtistAssignment {
-    ArtistAssignment::Credit { credit: bae_core::import::ArtistCredit {
+    ArtistAssignment::Credit {
+        credit: bae_core::import::ArtistCredit {
             credited_as: None,
             name: name.to_string(),
             sort_name: None,
@@ -27,26 +28,14 @@ async fn file_metadata_import_seeds_from_the_folder_and_writes_no_identity() {
         "Artist From Tags",
         Some(2003),
         &[
-            TaggedTrack {
-                filename: "01.flac",
-                title: "Track One",
-                track_number: 1,
-            },
-            TaggedTrack {
-                filename: "02.flac",
-                title: "Track Two",
-                track_number: 2,
-            },
+            TaggedTrack { filename: "01.flac", title: "Track One", track_number: 1 },
+            TaggedTrack { filename: "02.flac", title: "Track Two", track_number: 2 },
         ],
     );
 
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
-        .send_command(support::folder_import(
-            &import_id,
-            album_dir,
-            support::DraftSource::FileTags,
-        ))
+        .send_command(support::folder_import(&import_id, album_dir, support::DraftSource::FileTags))
         .await
         .unwrap();
 
@@ -59,10 +48,7 @@ async fn file_metadata_import_seeds_from_the_folder_and_writes_no_identity() {
     assert!(release.pressing.facts.media.is_empty());
 
     let records = f.db.get_release_records(&release_id).await.unwrap();
-    assert!(
-        records.is_empty(),
-        "a draft read off the files names no catalog, got {records:?}",
-    );
+    assert!(records.is_empty(), "a draft read off the files names no catalog, got {records:?}",);
 
     let album = f.db.find_album_by_id(&album_id).await.unwrap().unwrap();
     assert_eq!(album.title, "Album From Tags");
@@ -84,14 +70,8 @@ async fn the_seeded_draft_for_a_cue_folder_matches_its_commit_layout() {
     copy_cue_flac_fixture(&album_dir);
 
     let candidate_key = bae_core::import::CandidateKey::folder(&album_dir);
-    f.handle
-        .add_watched_folder(album_dir.to_path_buf())
-        .await
-        .unwrap();
-    f.handle
-        .refresh_watched_folder(album_dir.to_path_buf())
-        .await
-        .unwrap();
+    f.handle.add_watched_folder(album_dir.to_path_buf()).await.unwrap();
+    f.handle.refresh_watched_folder(album_dir.to_path_buf()).await.unwrap();
     // The draft the folder's own tags seeded at discovery — what the pane
     // shows, and what the commit below has to agree with.
     let draft = f
@@ -100,7 +80,10 @@ async fn the_seeded_draft_for_a_cue_folder_matches_its_commit_layout() {
         .await
         .unwrap()
         .expect("the scanned candidate reads back")
-        .draft().unwrap().metadata_draft.clone();
+        .draft()
+        .unwrap()
+        .metadata_draft
+        .clone();
 
     assert_eq!(draft.album_title, "Test Album");
     assert_eq!(
@@ -110,26 +93,14 @@ async fn the_seeded_draft_for_a_cue_folder_matches_its_commit_layout() {
     assert_eq!(draft.pressing.year, "");
     assert!(draft.pressing.facts.is_empty());
 
-    let draft_tracks: Vec<(String, TrackArtistAssignments)> = draft
-        .tracks
-        .iter()
-        .map(|t| (t.title.clone(), t.artist_assignments.clone()))
-        .collect();
+    let draft_tracks: Vec<(String, TrackArtistAssignments)> =
+        draft.tracks.iter().map(|t| (t.title.clone(), t.artist_assignments.clone())).collect();
     assert_eq!(
         draft_tracks,
         vec![
-            (
-                "Track One (Silence)".to_string(),
-                TrackArtistAssignments::AlbumArtists,
-            ),
-            (
-                "Track Two (White Noise)".to_string(),
-                TrackArtistAssignments::AlbumArtists,
-            ),
-            (
-                "Track Three (Brown Noise)".to_string(),
-                TrackArtistAssignments::AlbumArtists,
-            ),
+            ("Track One (Silence)".to_string(), TrackArtistAssignments::AlbumArtists,),
+            ("Track Two (White Noise)".to_string(), TrackArtistAssignments::AlbumArtists,),
+            ("Track Three (Brown Noise)".to_string(), TrackArtistAssignments::AlbumArtists,),
         ],
     );
 
@@ -151,30 +122,20 @@ async fn the_seeded_draft_for_a_cue_folder_matches_its_commit_layout() {
     assert_eq!(release.pressing.year, None, "the tags state no year");
     assert!(release.pressing.facts.media.is_empty(), "and no medium");
 
-    let album_detail =
-        f.db.find_album_detail(&album_id)
-            .await
-            .unwrap()
-            .expect("album detail");
+    let album_detail = f.db.find_album_detail(&album_id).await.unwrap().expect("album detail");
     let committed_album_artist_assignments: Vec<ArtistAssignment> = album_detail
         .artists
         .iter()
         .map(|artist| file_tag_artist_assignment(&artist.artist.name))
         .collect();
-    assert!(album_detail
-        .artists
-        .iter()
-        .all(|artist| artist.artist.sort_name.is_none()));
+    assert!(album_detail.artists.iter().all(|artist| artist.artist.sort_name.is_none()));
     assert_eq!(
         draft.album_artist_assignments,
         bae_core::import::Credited::plain_list(committed_album_artist_assignments)
     );
 
     let release_detail =
-        f.db.find_release_detail(&release_id)
-            .await
-            .unwrap()
-            .expect("release detail");
+        f.db.find_release_detail(&release_id).await.unwrap().expect("release detail");
     let committed_tracks: Vec<(String, TrackArtistAssignments)> = release_detail
         .tracks
         .iter()
@@ -215,20 +176,12 @@ async fn file_metadata_import_seeds_embedded_cover_when_no_folder_image() {
         &album_dir,
         "Embedded Cover Album",
         "Artist",
-        &[TaggedTrack {
-            filename: "01.flac",
-            title: "Track One",
-            track_number: 1,
-        }],
+        &[TaggedTrack { filename: "01.flac", title: "Track One", track_number: 1 }],
     );
 
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
-        .send_command(support::folder_import(
-            &import_id,
-            album_dir,
-            support::DraftSource::FileTags,
-        ))
+        .send_command(support::folder_import(&import_id, album_dir, support::DraftSource::FileTags))
         .await
         .unwrap();
 
@@ -245,10 +198,7 @@ async fn file_metadata_import_seeds_embedded_cover_when_no_folder_image() {
     let bytes = support::read_cover_image_bytes(&f.library_manager, &release_id)
         .await
         .expect("cover file readable");
-    assert_eq!(
-        image::guess_format(&bytes).unwrap(),
-        image::ImageFormat::Jpeg
-    );
+    assert_eq!(image::guess_format(&bytes).unwrap(), image::ImageFormat::Jpeg);
     let decoded = image::load_from_memory(&bytes).unwrap();
     assert_eq!((decoded.width(), decoded.height()), EMBEDDED_COVER_DIMS);
 
@@ -272,11 +222,7 @@ async fn file_metadata_cover_dims_beside(folder_image: &str) -> (u32, u32) {
         &album_dir,
         "Both Covers Album",
         "Artist",
-        &[TaggedTrack {
-            filename: "01.flac",
-            title: "Track One",
-            track_number: 1,
-        }],
+        &[TaggedTrack { filename: "01.flac", title: "Track One", track_number: 1 }],
     );
     let image = album_dir.join(folder_image);
     fs::create_dir_all(image.parent().unwrap()).unwrap();
@@ -284,11 +230,7 @@ async fn file_metadata_cover_dims_beside(folder_image: &str) -> (u32, u32) {
 
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
-        .send_command(support::folder_import(
-            &import_id,
-            album_dir,
-            support::DraftSource::FileTags,
-        ))
+        .send_command(support::folder_import(&import_id, album_dir, support::DraftSource::FileTags))
         .await
         .unwrap();
 
@@ -309,19 +251,13 @@ async fn file_metadata_cover_dims_beside(folder_image: &str) -> (u32, u32) {
 /// A folder image named as the front cover leads the tags' embedded artwork.
 #[tokio::test]
 async fn file_metadata_import_front_cover_image_wins_over_embedded_cover() {
-    assert_eq!(
-        file_metadata_cover_dims_beside("scans/cover.jpg").await,
-        FOLDER_IMAGE_DIMS
-    );
+    assert_eq!(file_metadata_cover_dims_beside("scans/cover.jpg").await, FOLDER_IMAGE_DIMS);
 }
 
 /// Embedded artwork leads a folder image not named as the front cover.
 #[tokio::test]
 async fn file_metadata_import_embedded_cover_wins_over_other_folder_images() {
-    assert_eq!(
-        file_metadata_cover_dims_beside("scans/back.jpg").await,
-        EMBEDDED_COVER_DIMS
-    );
+    assert_eq!(file_metadata_cover_dims_beside("scans/back.jpg").await, EMBEDDED_COVER_DIMS);
 }
 
 /// File-metadata imports never deduplicate against existing releases — even
@@ -365,11 +301,7 @@ async fn file_metadata_import_always_creates_a_fresh_album() {
         "Album Title",
         "Artist Name",
         None,
-        &[TaggedTrack {
-            filename: "01.flac",
-            title: "Track One",
-            track_number: 1,
-        }],
+        &[TaggedTrack { filename: "01.flac", title: "Track One", track_number: 1 }],
     );
 
     let import_id2 = uuid::Uuid::new_v4().to_string();
@@ -405,20 +337,21 @@ async fn file_metadata_import_with_user_edit_overlay() {
         "Wrong Album Title",
         "Wrong Artist",
         Some(1999),
-        &[TaggedTrack {
-            filename: "01.flac",
-            title: "Wrong Track Title",
-            track_number: 1,
-        }],
+        &[TaggedTrack { filename: "01.flac", title: "Wrong Track Title", track_number: 1 }],
     );
 
     let edit = ReleaseUserEdit {
         album_title: "Edited Title".to_string(),
-        album_artist_assignments: vec![bae_core::import::Credited::plain(ArtistAssignment::named("Artist Edited"))],
+        album_artist_assignments: vec![bae_core::import::Credited::plain(ArtistAssignment::named(
+            "Artist Edited",
+        ))],
         album_year: Some(1998),
         pressing: bae_types::pressing::Pressing {
             year: Some(2010),
-            labels: vec![bae_types::pressing::ReleaseLabel::of(Some("Edited Label"), Some("EDIT-1"))],
+            labels: vec![bae_types::pressing::ReleaseLabel::of(
+                Some("Edited Label"),
+                Some("EDIT-1"),
+            )],
             facts: bae_types::pressing::PressingFacts {
                 area: Some(bae_types::pressing::ReleaseArea::Country(
                     bae_types::pressing::Country::from_code("JP").unwrap(),
@@ -434,9 +367,7 @@ async fn file_metadata_import_with_user_edit_overlay() {
         tracks: vec![TrackUserEdit {
             title: "Edited Track Title".to_string(),
             artist_assignments: TrackArtistAssignments::AlbumArtists,
-            file: Some(bae_core::import::AudioFile::Standalone {
-                file_id: "01.flac".into(),
-            }),
+            file: Some(bae_core::import::AudioFile::Standalone { file_id: "01.flac".into() }),
         }],
     };
 
@@ -456,10 +387,7 @@ async fn file_metadata_import_with_user_edit_overlay() {
     assert_eq!(release.pressing.year, Some(2010));
     assert_eq!(
         release.pressing.facts.media,
-        vec![bae_types::pressing::MediaCount {
-            medium: bae_types::pressing::Medium::Cd,
-            count: 1,
-        }]
+        vec![bae_types::pressing::MediaCount { medium: bae_types::pressing::Medium::Cd, count: 1 }]
     );
     assert_eq!(
         release.pressing.labels,
@@ -502,18 +430,9 @@ async fn file_metadata_import_with_no_tags_seeds_title_from_folder_name() {
     generate_album_files(&album_dir, &["01.flac", "02.flac"]);
 
     let candidate_key = bae_core::import::CandidateKey::folder(&album_dir);
-    f.handle
-        .add_watched_folder(album_dir.to_path_buf())
-        .await
-        .unwrap();
-    f.handle
-        .refresh_watched_folder(album_dir.to_path_buf())
-        .await
-        .unwrap();
-    f.handle
-        .select_candidate_file_tags(candidate_key.clone())
-        .await
-        .unwrap();
+    f.handle.add_watched_folder(album_dir.to_path_buf()).await.unwrap();
+    f.handle.refresh_watched_folder(album_dir.to_path_buf()).await.unwrap();
+    f.handle.select_candidate_file_tags(candidate_key.clone()).await.unwrap();
     let pane = f
         .handle
         .candidate_pane(&candidate_key)
@@ -536,10 +455,7 @@ async fn file_metadata_import_with_no_tags_seeds_title_from_folder_name() {
     let (release_id, album_id) = support::wait_for_import_complete(&mut progress_rx).await;
 
     let album = f.db.find_album_by_id(&album_id).await.unwrap().unwrap();
-    assert_eq!(
-        album.title, "Mystery Rip",
-        "untagged rip takes the folder name as its album title",
-    );
+    assert_eq!(album.title, "Mystery Rip", "untagged rip takes the folder name as its album title",);
     let tracks = f.db.get_tracks_for_release(&release_id).await.unwrap();
     assert_eq!(tracks.len(), 2, "both untagged files import as tracks");
 }

@@ -49,16 +49,8 @@ impl SearchResults {
                     }
                 })
                 .collect(),
-            artists: raw
-                .artists
-                .into_iter()
-                .map(ArtistSummary::from_raw)
-                .collect(),
-            composers: raw
-                .composers
-                .into_iter()
-                .map(ComposerSummary::from_raw)
-                .collect(),
+            artists: raw.artists.into_iter().map(ArtistSummary::from_raw).collect(),
+            composers: raw.composers.into_iter().map(ComposerSummary::from_raw).collect(),
             works: raw.works.into_iter().map(WorkSummary::from_raw).collect(),
         }
     }

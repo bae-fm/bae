@@ -74,11 +74,7 @@ impl BridgeTrack {
 
 impl BridgeTrackGroup {
     pub(super) fn from_core(g: bae_core::album_detail::TrackGroup) -> Self {
-        let bae_core::album_detail::TrackGroup {
-            side,
-            tracks,
-            total_duration_ms,
-        } = g;
+        let bae_core::album_detail::TrackGroup { side, tracks, total_duration_ms } = g;
         let side = crate::types::BridgeTrackSide::from_core(side);
         BridgeTrackGroup {
             header_key: side.header_key().map(str::to_string),
@@ -155,17 +151,11 @@ impl BridgeRelease {
             total_duration: bae_util::duration::DurationUnits::from_millis(total_duration_ms)
                 .map(crate::types::BridgeDurationUnits::from_core),
             tracks: tracks.into_iter().map(BridgeTrack::from_core).collect(),
-            track_groups: track_groups
-                .into_iter()
-                .map(BridgeTrackGroup::from_core)
-                .collect(),
+            track_groups: track_groups.into_iter().map(BridgeTrackGroup::from_core).collect(),
             image_files: image_files.into_iter().map(BridgeFile::from_core).collect(),
             cover_files: cover_files.into_iter().map(BridgeFile::from_core).collect(),
             source_audio: source_audio.map(crate::types::BridgeSourceAudioSummary::from_core),
-            gallery_items: gallery_items
-                .into_iter()
-                .map(BridgeGalleryItem::from_core)
-                .collect(),
+            gallery_items: gallery_items.into_iter().map(BridgeGalleryItem::from_core).collect(),
             playability: crate::types::BridgeReleasePlayability::from_core(playability),
             download_status: download_status
                 .map(crate::types::BridgeReleaseDownloadStatus::from_core),
@@ -271,10 +261,8 @@ impl BridgeReleaseSummary {
             total_size,
             cover,
         } = summary;
-        let media: Vec<crate::types::BridgeMediaCount> = media
-            .into_iter()
-            .map(crate::types::BridgeMediaCount::from_core)
-            .collect();
+        let media: Vec<crate::types::BridgeMediaCount> =
+            media.into_iter().map(crate::types::BridgeMediaCount::from_core).collect();
         BridgeReleaseSummary {
             id,
             album_id,
@@ -388,11 +376,7 @@ impl BridgeComposerSummary {
 impl BridgeArtistSummary {
     pub(crate) fn from_core(s: bae_core::album_detail::ArtistSummary) -> Self {
         let bae_core::album_detail::ArtistSummary { raw } = s;
-        let bae_core::db::DbArtistSummary {
-            artist,
-            image,
-            album_count,
-        } = raw;
+        let bae_core::db::DbArtistSummary { artist, image, album_count } = raw;
         let bae_core::db::DbArtist {
             id: artist_id,
             name,
@@ -488,12 +472,7 @@ impl BridgeReleaseRoleSummary {
 
 impl BridgeTrackRoleSummary {
     pub(super) fn from_core(s: bae_core::album_detail::TrackRoleSummary) -> Self {
-        let bae_core::db::DbTrackRoleSummary {
-            role,
-            track,
-            album,
-            artist,
-        } = s;
+        let bae_core::db::DbTrackRoleSummary { role, track, album, artist } = s;
         let bae_core::db::DbTrackArtistRole {
             track_id,
             artist_id,
@@ -570,13 +549,7 @@ impl BridgeWorkTrackSummary {
             is_compilation: _,
             created_at: _,
         } = album;
-        BridgeWorkTrackSummary {
-            track_id,
-            track_title,
-            release_id,
-            album_id,
-            album_title,
-        }
+        BridgeWorkTrackSummary { track_id, track_title, release_id, album_id, album_title }
     }
 }
 
@@ -598,10 +571,7 @@ impl BridgeWorkReleaseSummary {
             album_title,
             name: crate::types::BridgeReleaseName::from_core(name),
             media: crate::types::bridge_media_terms(
-                media
-                    .into_iter()
-                    .map(crate::types::BridgeMediaCount::from_core)
-                    .collect(),
+                media.into_iter().map(crate::types::BridgeMediaCount::from_core).collect(),
             ),
             cover: cover.map(crate::types::BridgeImageRef::from_core),
         }

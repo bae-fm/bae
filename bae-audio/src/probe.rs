@@ -132,22 +132,12 @@ unsafe fn open_best_audio_stream(path: &Path) -> Result<(OpenedFile, c_int), Str
     if opened < 0 {
         free_custom_avio_context(avio);
         drop(Box::from_raw(file));
-        return Err(format!(
-            "failed to open input ({})",
-            super::av_err_str(opened)
-        ));
+        return Err(format!("failed to open input ({})", super::av_err_str(opened)));
     }
-    let opened = OpenedFile {
-        fmt_ctx,
-        avio,
-        file,
-    };
+    let opened = OpenedFile { fmt_ctx, avio, file };
     let found = avformat_find_stream_info(opened.fmt_ctx, ptr::null_mut());
     if found < 0 {
-        return Err(format!(
-            "failed to read stream info ({})",
-            super::av_err_str(found)
-        ));
+        return Err(format!("failed to read stream info ({})", super::av_err_str(found)));
     }
     let stream_index = av_find_best_stream(
         opened.fmt_ctx,
@@ -222,11 +212,7 @@ unsafe fn probed_lossy_bitrate_kbps(
         return Some(kbps);
     }
 
-    let start = if (*stream).start_time == AV_NOPTS_VALUE {
-        0
-    } else {
-        (*stream).start_time
-    };
+    let start = if (*stream).start_time == AV_NOPTS_VALUE { 0 } else { (*stream).start_time };
     if av_seek_frame(fmt_ctx, stream_index, start, AVSEEK_FLAG_BACKWARD) < 0 {
         warn!("probe_audio_from_path: cannot seek {path} to measure audio bitrate");
         return None;
@@ -337,10 +323,7 @@ fn open_and_probe(path: &Path) -> Option<ProbeResult> {
                 channels,
             })
         } else {
-            debug!(
-                "probe_audio_from_path: no usable container duration for {}",
-                path.display()
-            );
+            debug!("probe_audio_from_path: no usable container duration for {}", path.display());
             None
         }
     }
@@ -469,15 +452,7 @@ unsafe fn flac_frame_landings(
     let tail = flac_final_frames(path)?;
     let (tail_pts, tail_pos) = tail[0];
     let stream = *(*fmt_ctx).streams.add(stream_index as usize);
-    if av_add_index_entry(
-        stream,
-        tail_pos as i64,
-        tail_pts,
-        0,
-        0,
-        AVINDEX_KEYFRAME as c_int,
-    ) < 0
-    {
+    if av_add_index_entry(stream, tail_pos as i64, tail_pts, 0, 0, AVINDEX_KEYFRAME as c_int) < 0 {
         return Err("cannot index the final frames".to_string());
     }
     targets
@@ -532,10 +507,7 @@ unsafe fn flac_final_frames_in(
 
     let size = avio_size((*fmt_ctx).pb);
     if size < 0 {
-        return Err(format!(
-            "file size unknown ({})",
-            super::av_err_str(size as i32)
-        ));
+        return Err(format!("file size unknown ({})", super::av_err_str(size as i32)));
     }
     // STREAMINFO's largest frame size, when the encoder recorded it, sizes the
     // first read to hold the frames needed (plus the one a mid-frame start
@@ -550,10 +522,7 @@ unsafe fn flac_final_frames_in(
         let from = (size - back).max(0);
         let result = av_seek_frame(fmt_ctx, stream_index, from, AVSEEK_FLAG_BYTE as c_int);
         if result < 0 {
-            return Err(format!(
-                "byte seek to {from} failed ({})",
-                super::av_err_str(result)
-            ));
+            return Err(format!("byte seek to {from} failed ({})", super::av_err_str(result)));
         }
         let mut frames = flac_frames_to_end(fmt_ctx, stream_index)?;
         // A start past the first frame may fall inside a frame, and the frame
@@ -613,10 +582,7 @@ unsafe fn flac_frames_to_end(
             break if result == AVERROR_EOF {
                 Ok(())
             } else {
-                Err(format!(
-                    "reading frames failed ({})",
-                    super::av_err_str(result)
-                ))
+                Err(format!("reading frames failed ({})", super::av_err_str(result)))
             };
         }
         let frame =
@@ -629,9 +595,7 @@ unsafe fn flac_frames_to_end(
             continue;
         }
         if pts == AV_NOPTS_VALUE || pos < 0 {
-            break Err(format!(
-                "a frame carries no timestamp or byte (pts {pts}, pos {pos})"
-            ));
+            break Err(format!("a frame carries no timestamp or byte (pts {pts}, pos {pos})"));
         }
         frames.push((pts, pos as u64));
     };
@@ -696,10 +660,7 @@ unsafe fn next_packet_byte(
     let read = loop {
         let result = av_read_frame(fmt_ctx, packet);
         if result < 0 {
-            break Err(format!(
-                "reading the next frame failed ({})",
-                super::av_err_str(result)
-            ));
+            break Err(format!("reading the next frame failed ({})", super::av_err_str(result)));
         }
         let ours = (*packet).stream_index == stream_index;
         let pos = (*packet).pos;

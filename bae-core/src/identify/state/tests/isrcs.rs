@@ -12,9 +12,7 @@ fn tagged(isrcs: &[&str]) -> Signals {
 }
 
 fn lookup_isrcs(isrcs: &[&str]) -> Effect {
-    Effect::LookupIsrcs {
-        isrcs: isrcs.iter().map(|code| code.to_string()).collect(),
-    }
+    Effect::LookupIsrcs { isrcs: isrcs.iter().map(|code| code.to_string()).collect() }
 }
 
 /// Each code is asked once, in one search, however many files carry it and
@@ -31,9 +29,7 @@ fn the_tags_isrcs_are_asked_once_in_one_search() {
 
     let (state, _) = step(
         state,
-        IdentifyEvent::IsrcLookupAnswered {
-            outcome: Ok(vec![pair("rel-a", Some("g-x"))]),
-        },
+        IdentifyEvent::IsrcLookupAnswered { outcome: Ok(vec![pair("rel-a", Some("g-x"))]) },
     );
     let IdentifyState::Found { findings, .. } = state else {
         panic!("expected Found, got {state:?}");
@@ -52,9 +48,7 @@ fn what_the_isrcs_find_still_leaves_the_title_to_search() {
     assert_eq!(effects, vec![lookup_isrcs(&["XX0000000001"])]);
     let (_, effects) = step(
         state,
-        IdentifyEvent::IsrcLookupAnswered {
-            outcome: Ok(vec![pair("rel-a", Some("g-x"))]),
-        },
+        IdentifyEvent::IsrcLookupAnswered { outcome: Ok(vec![pair("rel-a", Some("g-x"))]) },
     );
     assert_eq!(
         effects,
@@ -79,9 +73,7 @@ fn a_run_without_musicbrainz_asks_nobody_about_the_isrcs() {
         run.isrc,
         IsrcStepView::Read {
             isrcs: vec!["XX0000000001".to_string()],
-            lookup: LookupView::NotAsked {
-                reason: NotAskedReason::NoCatalog,
-            },
+            lookup: LookupView::NotAsked { reason: NotAskedReason::NoCatalog },
         }
     );
 }
@@ -91,25 +83,16 @@ fn a_run_without_musicbrainz_asks_nobody_about_the_isrcs() {
 #[test]
 fn a_failed_isrc_search_fails_the_run() {
     let (state, _) = update(started(), tagged(&["XX0000000001"]));
-    let (state, _) = step(
-        state,
-        IdentifyEvent::IsrcLookupAnswered {
-            outcome: Err(LookupFailure::Timeout),
-        },
-    );
-    let IdentifyState::Failed {
-        failures, ledger, ..
-    } = &state
-    else {
+    let (state, _) =
+        step(state, IdentifyEvent::IsrcLookupAnswered { outcome: Err(LookupFailure::Timeout) });
+    let IdentifyState::Failed { failures, ledger, .. } = &state else {
         panic!("expected Failed, got {state:?}");
     };
     assert_eq!(failures, &vec![IdentifyFailure::Isrc(LookupFailure::Timeout)]);
     assert!(matches!(
         ledger.as_ref().map(|run| &run.isrc),
         Some(IsrcStepView::Read {
-            lookup: LookupView::Failed {
-                failure: LookupFailure::Timeout
-            },
+            lookup: LookupView::Failed { failure: LookupFailure::Timeout },
             ..
         })
     ));

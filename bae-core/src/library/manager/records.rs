@@ -11,10 +11,7 @@ impl LibraryManager {
         release_id: &str,
         records: &[crate::import::ReleaseRecord],
     ) -> Result<(), LibraryError> {
-        Ok(self
-            .database
-            .insert_release_records(release_id, records)
-            .await?)
+        Ok(self.database.insert_release_records(release_id, records).await?)
     }
 
     /// Replace a release's records in one shot, moving the release between
@@ -64,14 +61,12 @@ impl LibraryManager {
         release_id: &str,
         new_records: Vec<crate::import::ReleaseRecord>,
     ) -> Result<crate::db::RecordsChange, LibraryError> {
-        let current_album_id = self
-            .database
-            .find_album_id_for_release(release_id)
-            .await?
-            .ok_or_else(|| LibraryError::Refused(format!("Release '{release_id}' not found")))?;
-        let target = self
-            .resolve_records_target_album(release_id, &current_album_id, &new_records)
-            .await?;
+        let current_album_id =
+            self.database.find_album_id_for_release(release_id).await?.ok_or_else(|| {
+                LibraryError::Refused(format!("Release '{release_id}' not found"))
+            })?;
+        let target =
+            self.resolve_records_target_album(release_id, &current_album_id, &new_records).await?;
         Ok(crate::db::RecordsChange {
             release_id: release_id.to_string(),
             records: new_records,
@@ -112,24 +107,17 @@ impl LibraryManager {
         // Any album already holding a release that matches the new records on at
         // least one catalog. The lookup excludes `release_id`'s own rows, so it
         // never matches against the records we are about to overwrite.
-        if let Some(candidate_album_id) = self
-            .database
-            .album_records_name(new_records, &[release_id.to_string()])
-            .await?
+        if let Some(candidate_album_id) =
+            self.database.album_records_name(new_records, &[release_id.to_string()]).await?
         {
-            return Ok(RecordsTargetAlbum {
-                album_id: candidate_album_id,
-                new_album: None,
-            });
+            return Ok(RecordsTargetAlbum { album_id: candidate_album_id, new_album: None });
         }
 
         // No merge candidate. A release alone in its album moves to its group's
         // own album, the one every device files this group under, so two
         // devices identifying one group while apart land in one album.
-        let beside = self
-            .database
-            .album_beside_release(current_album_id, release_id, new_records)
-            .await?;
+        let beside =
+            self.database.album_beside_release(current_album_id, release_id, new_records).await?;
         let group_album_id = crate::db::identity::album_id_for_records(new_records);
         if !beside.holds_others {
             return match group_album_id {
@@ -176,19 +164,11 @@ impl LibraryManager {
         group_album_id: String,
     ) -> Result<RecordsTargetAlbum, LibraryError> {
         if self.database.album_holds_releases(&group_album_id).await? {
-            return Ok(RecordsTargetAlbum {
-                album_id: group_album_id,
-                new_album: None,
-            });
+            return Ok(RecordsTargetAlbum { album_id: group_album_id, new_album: None });
         }
-        let new_album = DbAlbum {
-            id: group_album_id,
-            ..self.fresh_album_for_release(current_album_id).await?
-        };
-        Ok(RecordsTargetAlbum {
-            album_id: new_album.id.clone(),
-            new_album: Some(new_album),
-        })
+        let new_album =
+            DbAlbum { id: group_album_id, ..self.fresh_album_for_release(current_album_id).await? };
+        Ok(RecordsTargetAlbum { album_id: new_album.id.clone(), new_album: Some(new_album) })
     }
 
     /// A fresh album row mirroring `seed_album_id`'s metadata, for when
@@ -196,13 +176,9 @@ impl LibraryManager {
     /// metadata, so the new album reflects what the release already had; the caller
     /// can reseed it.
     async fn fresh_album_for_release(&self, seed_album_id: &str) -> Result<DbAlbum, LibraryError> {
-        let source = self
-            .database
-            .find_album_by_id(seed_album_id)
-            .await?
-            .ok_or_else(|| {
-                LibraryError::Refused(format!("Source album '{seed_album_id}' not found"))
-            })?;
+        let source = self.database.find_album_by_id(seed_album_id).await?.ok_or_else(|| {
+            LibraryError::Refused(format!("Source album '{seed_album_id}' not found"))
+        })?;
         let now = chrono::DateTime::<chrono::Utc>::from(self.clock.now());
         Ok(DbAlbum {
             id: self.ids.new_id().to_string(),

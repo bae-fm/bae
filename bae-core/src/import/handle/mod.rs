@@ -121,9 +121,7 @@ impl EventDelivery {
         let mut every_event = self.every_event.lock().unwrap();
         #[cfg(any(test, feature = "test-utils"))]
         every_event.delivered.push(event.clone());
-        every_event
-            .readers
-            .retain(|reader| reader.send(event.clone()).is_ok());
+        every_event.readers.retain(|reader| reader.send(event.clone()).is_ok());
     }
 }
 
@@ -177,12 +175,7 @@ impl ImportEventBus {
     #[cfg(any(test, feature = "test-utils"))]
     pub fn every_event(&self) -> mpsc::UnboundedReceiver<ImportEvent> {
         let (reader, events) = mpsc::unbounded_channel();
-        self.delivery
-            .every_event
-            .lock()
-            .unwrap()
-            .readers
-            .push(reader);
+        self.delivery.every_event.lock().unwrap().readers.push(reader);
         events
     }
 
@@ -517,19 +510,14 @@ impl ImportServiceHandle {
     pub fn stop_and_join(&self) {
         self.watcher.stop_and_join(|watcher_tx| {
             let (completion, receiver) = std::sync::mpsc::channel();
-            if watcher_tx
-                .send(WatcherCommand::Shutdown { completion })
-                .is_ok()
+            if watcher_tx.send(WatcherCommand::Shutdown { completion }).is_ok()
                 && receiver.recv().is_err()
             {
                 tracing::warn!("folder scan coordinator ended without acknowledging shutdown");
             }
         });
         self.worker.stop_and_join(|requests_tx| {
-            if requests_tx
-                .send(crate::import::service::ImportWorkerMessage::Shutdown)
-                .is_err()
-            {
+            if requests_tx.send(crate::import::service::ImportWorkerMessage::Shutdown).is_err() {
                 // The worker already exited (its loop only ends on Shutdown or
                 // a panic); the join surfaces which.
                 tracing::warn!("import command channel closed before shutdown");
@@ -550,8 +538,7 @@ impl ImportServiceHandle {
         candidate_key: &crate::import::CandidateKey,
         import_id: &str,
     ) {
-        self.claim_candidate_for_import(candidate_key, import_id)
-            .await;
+        self.claim_candidate_for_import(candidate_key, import_id).await;
     }
 
     /// End an import's claim on a candidate the way the import's own ending
@@ -610,10 +597,7 @@ impl ImportServiceHandle {
         &self,
         key: &crate::import::CandidateKey,
     ) -> crate::import::TriageRuntimeFacts {
-        self.runtime
-            .standing_facts(key)
-            .await
-            .expect("a test reads the standings table")
+        self.runtime.standing_facts(key).await.expect("a test reads the standings table")
     }
 
     /// Put `key` where a run's answer being written puts it — queued, `run`
@@ -626,29 +610,15 @@ impl ImportServiceHandle {
         run: crate::identify::IdentifyRunId,
         answer: &crate::identify::IdentifyState,
     ) {
-        let candidate = self
-            .get_release_candidate(key)
-            .await
-            .unwrap()
-            .expect("the candidate is stored");
+        let candidate =
+            self.get_release_candidate(key).await.unwrap().expect("the candidate is stored");
         let files = crate::import::CandidateFiles::of(&candidate);
         self.runtime
-            .admit(
-                vec![(key.clone(), files.clone())],
-                crate::import::Admission::Requested,
-            )
+            .admit(vec![(key.clone(), files.clone())], crate::import::Admission::Requested)
             .await
             .unwrap();
-        assert!(self
-            .runtime
-            .run_started(key, &files, run, answer)
-            .await
-            .unwrap());
-        assert!(self
-            .runtime
-            .run_answered(key, run, answer.picks_unattended())
-            .await
-            .unwrap());
+        assert!(self.runtime.run_started(key, &files, run, answer).await.unwrap());
+        assert!(self.runtime.run_answered(key, run, answer.picks_unattended()).await.unwrap());
     }
 
     /// Each running import's percent, by candidate key, as its import last
@@ -706,8 +676,7 @@ impl ImportServiceHandle {
         Option<crate::import::CandidateKey>,
         Option<crate::import::ImportCandidateDetailProjection>,
     > {
-        self.library_manager
-            .subscribe_import_candidate(Some(key.clone()))
+        self.library_manager.subscribe_import_candidate(Some(key.clone()))
     }
 
     /// The import list for `view` as one window over every item, for a test
@@ -719,10 +688,7 @@ impl ImportServiceHandle {
     ) -> crate::import::ImportListSubscription {
         self.subscribe_list_window(
             view,
-            crate::library::LibraryPageWindow {
-                offset: 0,
-                limit: u64::MAX,
-            },
+            crate::library::LibraryPageWindow { offset: 0, limit: u64::MAX },
         )
         .await
     }
@@ -775,10 +741,7 @@ impl ImportServiceHandle {
     ) -> crate::import::ImportListSnapshot {
         let subscription = self.subscribe_whole_list(view).await;
         loop {
-            let snapshot = subscription
-                .next()
-                .await
-                .expect("the import list query stays open");
+            let snapshot = subscription.next().await.expect("the import list query stays open");
             if accept(&snapshot) {
                 return snapshot;
             }
@@ -820,10 +783,8 @@ impl ImportServiceHandle {
                 is_added: standing.imported,
             }));
         }
-        Ok(runtime.map(|runtime| ImportCandidateSnapshot::Runtime {
-            key: key.to_string(),
-            runtime,
-        }))
+        Ok(runtime
+            .map(|runtime| ImportCandidateSnapshot::Runtime { key: key.to_string(), runtime }))
     }
 
     /// The stored candidate whose preparation may still be changed. A caller
@@ -854,10 +815,7 @@ impl ImportServiceHandle {
         candidate: &crate::import::folder_scanner::FolderCandidate,
     ) -> Result<crate::import::CandidateStanding, crate::library::LibraryError> {
         Ok(crate::import::CandidateStanding {
-            skipped: self
-                .library_manager
-                .is_release_candidate_skipped(candidate)
-                .await?,
+            skipped: self.library_manager.is_release_candidate_skipped(candidate).await?,
             imported: self
                 .library_manager
                 .is_content_hash_imported(&candidate.files.content_hash())
@@ -897,10 +855,7 @@ impl ImportServiceHandle {
         candidate_key: &crate::import::CandidateKey,
         import_id: &str,
     ) {
-        let _commit = self
-            .folder_state_commit
-            .lock("claim a candidate for a test")
-            .await;
+        let _commit = self.folder_state_commit.lock("claim a candidate for a test").await;
         self.runtime
             .claim_for_import(candidate_key, import_id, false)
             .await
@@ -912,14 +867,8 @@ impl ImportServiceHandle {
         candidate_key: &crate::import::CandidateKey,
         import_id: &str,
     ) -> Result<(), crate::library::LibraryError> {
-        let _commit = self
-            .folder_state_commit
-            .lock("release an import claim")
-            .await;
-        Ok(self
-            .runtime
-            .move_import(candidate_key, import_id, None)
-            .await?)
+        let _commit = self.folder_state_commit.lock("release an import claim").await;
+        Ok(self.runtime.move_import(candidate_key, import_id, None).await?)
     }
 
     /// Run a durable write to completion once it has been asked for.
@@ -961,11 +910,9 @@ pub(crate) fn remap_links<T: Clone>(
         .map(|link| {
             let parsed_id = target_id(link);
             let actual_id =
-                id_map
-                    .get(parsed_id)
-                    .ok_or_else(|| crate::import::ImportError::Internal {
-                        detail: format!("{label} ID {parsed_id} not found in the import's ID map"),
-                    })?;
+                id_map.get(parsed_id).ok_or_else(|| crate::import::ImportError::Internal {
+                    detail: format!("{label} ID {parsed_id} not found in the import's ID map"),
+                })?;
             let mut remapped = link.clone();
             assign_target_id(&mut remapped, actual_id.clone());
             Ok(remapped)

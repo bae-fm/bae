@@ -67,10 +67,7 @@ async fn a_medium_still_holding_a_track_cannot_be_removed() {
             "UPDATE tracks SET medium_id = ?1 WHERE medium_id = ?2",
             rusqlite::params![medium_id(1), medium_id(2)],
         )?;
-        conn.execute(
-            "DELETE FROM release_mediums WHERE id = ?1",
-            rusqlite::params![medium_id(2)],
-        )?;
+        conn.execute("DELETE FROM release_mediums WHERE id = ?1", rusqlite::params![medium_id(2)])?;
         Ok(())
     })
     .await
@@ -129,19 +126,11 @@ async fn check_concurrent_medium_removal(devices: &mut crate::sync::test_devices
         })
         .await
         .unwrap();
-    devices
-        .b()
-        .database()
-        .call(|conn| insert_track(conn, STRAY_TRACK, 2, 2))
-        .await
-        .unwrap();
+    devices.b().database().call(|conn| insert_track(conn, STRAY_TRACK, 2, 2)).await.unwrap();
     devices.resume().await;
     devices.converge(rows).await;
 
     for device in [devices.a(), devices.b()] {
-        assert_eq!(
-            tracks_on_missing_mediums(device.database()).await,
-            Vec::<String>::new()
-        );
+        assert_eq!(tracks_on_missing_mediums(device.database()).await, Vec::<String>::new());
     }
 }

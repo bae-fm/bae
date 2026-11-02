@@ -44,11 +44,8 @@ pub enum RendererServiceType {
 
 /// Every service type a renderer is found on. A host that browses for bae walks
 /// this list rather than naming service types itself.
-pub const RENDERER_SERVICE_TYPES: [RendererServiceType; 3] = [
-    RendererServiceType::GoogleCast,
-    RendererServiceType::AirPlay,
-    RendererServiceType::Raop,
-];
+pub const RENDERER_SERVICE_TYPES: [RendererServiceType; 3] =
+    [RendererServiceType::GoogleCast, RendererServiceType::AirPlay, RendererServiceType::Raop];
 
 impl RendererServiceType {
     /// The DNS-SD service type to browse, without a domain — the form a host
@@ -118,10 +115,7 @@ pub struct ReportedDiscovery {
 
 impl ReportedDiscovery {
     pub fn new() -> Self {
-        Self {
-            devices: PublishedDevices::new(),
-            reported: None,
-        }
+        Self { devices: PublishedDevices::new(), reported: None }
     }
 
     /// Subscribe to the live device list. The current snapshot is available
@@ -164,18 +158,12 @@ impl ReportedDiscovery {
     /// device.
     pub fn report(&mut self, service: ReportedRenderer) {
         let Some(reported) = self.reported.as_mut() else {
-            debug!(
-                "reported discovery: ignoring {} while not browsing",
-                service.instance_name
-            );
+            debug!("reported discovery: ignoring {} while not browsing", service.instance_name);
             return;
         };
         let key = (service.service_type, service.instance_name.clone());
         let Some(entry) = map_reported(&service) else {
-            debug!(
-                "reported discovery: ignoring unusable service {}",
-                service.instance_name
-            );
+            debug!("reported discovery: ignoring unusable service {}", service.instance_name);
             return;
         };
         reported.insert(key, entry);
@@ -187,10 +175,7 @@ impl ReportedDiscovery {
         let Some(reported) = self.reported.as_mut() else {
             return;
         };
-        if reported
-            .remove(&(service_type, instance_name.to_string()))
-            .is_none()
-        {
+        if reported.remove(&(service_type, instance_name.to_string())).is_none() {
             return;
         }
         self.devices.publish(snapshot(reported));
@@ -210,11 +195,8 @@ fn map_reported(service: &ReportedRenderer) -> Option<ReportedEntry> {
             );
         })
         .ok()?;
-    let txt: HashMap<String, String> = service
-        .txt
-        .iter()
-        .map(|(k, v)| (k.to_ascii_lowercase(), v.clone()))
-        .collect();
+    let txt: HashMap<String, String> =
+        service.txt.iter().map(|(k, v)| (k.to_ascii_lowercase(), v.clone())).collect();
     match service.service_type {
         RendererServiceType::GoogleCast => crate::cast::discovery::map_device(
             &service.instance_name,
@@ -427,18 +409,11 @@ mod tests {
         );
         assert_eq!(devices[0].kind(), RendererKind::Cast);
         assert_eq!(devices[1].kind(), RendererKind::AirPlay);
-        assert!(matches!(
-            devices[0].connection,
-            RendererConnection::Cast { port: 8009, .. }
-        ));
+        assert!(matches!(devices[0].connection, RendererConnection::Cast { port: 8009, .. }));
 
         discovery.forget(RendererServiceType::GoogleCast, "Kitchen");
         assert_eq!(
-            discovery
-                .devices()
-                .iter()
-                .map(|d| d.name.as_str())
-                .collect::<Vec<_>>(),
+            discovery.devices().iter().map(|d| d.name.as_str()).collect::<Vec<_>>(),
             vec!["Studio"],
             "a lost service leaves the list"
         );
@@ -451,10 +426,7 @@ mod tests {
         let mut discovery = RendererDiscovery::reported();
 
         discovery.report(cast_service("Kitchen", "cast-1", "192.168.1.7"));
-        assert!(
-            discovery.devices().is_empty(),
-            "a report outside a browse is dropped"
-        );
+        assert!(discovery.devices().is_empty(), "a report outside a browse is dropped");
 
         discovery.start(&bae_core::diagnostics::Diagnostics::noop());
         discovery.report(cast_service("Kitchen", "cast-1", "192.168.1.7"));
@@ -462,10 +434,7 @@ mod tests {
 
         discovery.stop();
         discovery.start(&bae_core::diagnostics::Diagnostics::noop());
-        assert!(
-            discovery.devices().is_empty(),
-            "a fresh browse starts from nothing"
-        );
+        assert!(discovery.devices().is_empty(), "a fresh browse starts from nothing");
     }
 
     /// A service that can't be reached or routed to is dropped rather than

@@ -34,10 +34,7 @@ pub async fn start_test_import(
 /// the same library-manager capability production uses.
 pub async fn configure_test_discogs(library_manager: &bae_core::library::LibraryManager) {
     library_manager
-        .set_discogs_key(
-            "test-discogs-token",
-            bae_core::config::DiscogsValidation::Valid,
-        )
+        .set_discogs_key("test-discogs-token", bae_core::config::DiscogsValidation::Valid)
         .await
         .expect("test Discogs key is stored through the library manager");
 }
@@ -102,11 +99,9 @@ impl DraftSource {
     /// `command` reading its draft from this source.
     pub fn onto(self, command: bae_core::import::ImportCommand) -> bae_core::import::ImportCommand {
         match self {
-            Self::FileTags => bae_core::import::ImportCommand {
-                pick: None,
-                read_file_tags: true,
-                ..command
-            },
+            Self::FileTags => {
+                bae_core::import::ImportCommand { pick: None, read_file_tags: true, ..command }
+            }
             Self::Pick(link) => bae_core::import::ImportCommand {
                 pick: Some(link),
                 read_file_tags: false,
@@ -250,13 +245,5 @@ where
     let tracks = library_manager.get_tracks_for_release(&release_id).await?;
     let track_ids: Vec<String> = tracks.iter().map(|t| t.id.clone()).collect();
 
-    Ok((
-        library_manager,
-        ImportedRelease {
-            track_ids,
-            release_id,
-            album_dir,
-            temp_dir,
-        },
-    ))
+    Ok((library_manager, ImportedRelease { track_ids, release_id, album_dir, temp_dir }))
 }

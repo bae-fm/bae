@@ -82,13 +82,7 @@ impl Packetizer {
         let packet = match &mut self.crypto {
             PayloadCrypto::Raop(cipher) => {
                 cipher.encrypt_packet(&mut payload);
-                rtp::audio_packet(
-                    self.first,
-                    self.sequence,
-                    self.timestamp,
-                    self.ssrc,
-                    &payload,
-                )
+                rtp::audio_packet(self.first, self.sequence, self.timestamp, self.ssrc, &payload)
             }
             PayloadCrypto::Ap2(cipher) => {
                 // The AAD is the header's timestamp+SSRC (bytes 4..12); build the
@@ -104,9 +98,7 @@ impl Packetizer {
 
         self.first = false;
         self.sequence = self.sequence.wrapping_add(1);
-        self.timestamp = self
-            .timestamp
-            .wrapping_add(frames.len() as u32 / self.channels.max(1));
+        self.timestamp = self.timestamp.wrapping_add(frames.len() as u32 / self.channels.max(1));
         packet
     }
 
@@ -131,11 +123,7 @@ impl Pacer {
     /// `latency_frames` is how far ahead of the playback clock the sender stays
     /// (the receiver's reported audio latency, ~2 s).
     pub(crate) fn new(sample_rate: u32, latency_frames: u32) -> Self {
-        Pacer {
-            sample_rate,
-            latency_frames,
-            frames_sent: 0,
-        }
+        Pacer { sample_rate, latency_frames, frames_sent: 0 }
     }
 
     /// Whole packets still owed at `elapsed` since the anchor: the target is the
@@ -175,9 +163,7 @@ pub(crate) struct SystemClock {
 
 impl SystemClock {
     pub(crate) fn new() -> Self {
-        SystemClock {
-            start: Mutex::new(Instant::now()),
-        }
+        SystemClock { start: Mutex::new(Instant::now()) }
     }
 }
 
@@ -539,13 +525,8 @@ mod tests {
     /// advancing sequence and timestamp per packet — a golden fixture.
     #[test]
     fn packetizer_is_golden_unencrypted() {
-        let mut p = Packetizer::new(
-            0xDEAD_BEEF,
-            PayloadCrypto::Raop(RaopCipher::none()),
-            2,
-            100,
-            1000,
-        );
+        let mut p =
+            Packetizer::new(0xDEAD_BEEF, PayloadCrypto::Raop(RaopCipher::none()), 2, 100, 1000);
         // One "packet" of two stereo frames: L,R,L,R.
         let pkt = p.packet(&[0x0102, 0x0304, 0x0506, 0x0708]);
         assert_eq!(
@@ -666,11 +647,8 @@ mod tests {
     fn a_sender_that_panics_fails_the_stream_and_is_reported() {
         let bugs = Arc::new(bae_core::diagnostics::RecordingBugReporter::default());
         let diagnostics = Diagnostics::noop().reporting_bugs_to(bugs.clone());
-        let (handle, control) = audio_thread(
-            &diagnostics,
-            Box::new(PanickingSource),
-            Arc::new(AtomicBool::new(false)),
-        );
+        let (handle, control) =
+            audio_thread(&diagnostics, Box::new(PanickingSource), Arc::new(AtomicBool::new(false)));
 
         handle.join();
 
@@ -705,10 +683,7 @@ mod tests {
             assert!(Instant::now() < deadline, "packets were not sent in time");
             std::thread::sleep(Duration::from_millis(5));
         }
-        assert!(
-            !handle.is_finished(),
-            "the thread persists past a drained source"
-        );
+        assert!(!handle.is_finished(), "the thread persists past a drained source");
 
         stop.store(true, Ordering::Release);
         handle.join();
@@ -726,9 +701,6 @@ mod tests {
         assert_eq!(second[1], 0x60, "later packets are unmarked");
         p.reanchor();
         let after = p.packet(&[0, 0, 0, 0]);
-        assert_eq!(
-            after[1], 0xE0,
-            "the packet after a re-anchor is marked again"
-        );
+        assert_eq!(after[1], 0xE0, "the packet after a re-anchor is marked again");
     }
 }

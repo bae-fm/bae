@@ -113,15 +113,11 @@ pub enum TriageReading {
     /// A draft of a candidate linked to a catalog pressing, or an imported
     /// release a catalog's record of its pressing describes, with every
     /// catalog that describes it.
-    Identified {
-        records: Vec<crate::import::ReleaseRecord>,
-    },
+    Identified { records: Vec<crate::import::ReleaseRecord> },
     /// A draft of a candidate linked to an album, or an imported release only
     /// catalogs' records of its album describe, with every catalog's record
     /// of the album: the row says its pressing is unknown.
-    IdentifiedAlbum {
-        records: Vec<crate::import::ReleaseRecord>,
-    },
+    IdentifiedAlbum { records: Vec<crate::import::ReleaseRecord> },
 }
 
 impl TriageReading {

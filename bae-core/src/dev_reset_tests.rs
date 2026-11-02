@@ -36,10 +36,7 @@ fn a_private_profile_reads_into_the_library_it_describes() {
     assert_eq!(profile.discogs_token, "discogs-token");
     assert_eq!(profile.s3.bucket, "bucket-name");
     assert_eq!(profile.s3.region, "region-1");
-    assert_eq!(
-        profile.s3.endpoint.as_deref(),
-        Some("https://storage.example.test")
-    );
+    assert_eq!(profile.s3.endpoint.as_deref(), Some("https://storage.example.test"));
     assert_eq!(profile.s3.key_prefix.as_str(), "prefix/path");
     assert_eq!(profile.s3.access_key, "access-key-id");
     assert_eq!(profile.s3.secret_key, "secret-access-key");
@@ -53,10 +50,7 @@ fn a_profile_others_can_read_is_refused() {
         .err()
         .expect("a readable profile is refused");
 
-    assert!(matches!(
-        error,
-        DevResetProfileError::Exposed { mode: 0o644, .. }
-    ));
+    assert!(matches!(error, DevResetProfileError::Exposed { mode: 0o644, .. }));
 }
 
 #[test]
@@ -67,13 +61,7 @@ fn an_empty_credential_is_refused_by_name() {
         .err()
         .expect("an empty secret is refused");
 
-    assert!(matches!(
-        error,
-        DevResetProfileError::Empty {
-            field: "s3.secret_access_key",
-            ..
-        }
-    ));
+    assert!(matches!(error, DevResetProfileError::Empty { field: "s3.secret_access_key", .. }));
 }
 
 /// The key prefix goes through storage setup's parse: slashes at its ends
@@ -99,10 +87,7 @@ fn a_key_prefix_that_is_no_folder_path_is_refused_by_name() {
         ("prefix//path", coven::S3PrefixError::EmptySegment),
         (
             "prefix/pa.th",
-            coven::S3PrefixError::InvalidCharacter {
-                segment: "pa.th".into(),
-                character: '.',
-            },
+            coven::S3PrefixError::InvalidCharacter { segment: "pa.th".into(), character: '.' },
         ),
     ] {
         let text = PROFILE.replace("\"prefix/path\"", &format!("\"{typed}\""));
@@ -110,11 +95,7 @@ fn a_key_prefix_that_is_no_folder_path_is_refused_by_name() {
             .err()
             .expect("a prefix that is no folder path is refused");
 
-        let DevResetProfileError::Prefix {
-            field: "s3.key_prefix",
-            error: parsed,
-            ..
-        } = &error
+        let DevResetProfileError::Prefix { field: "s3.key_prefix", error: parsed, .. } = &error
         else {
             panic!("expected a refused key prefix, got {error}");
         };
@@ -134,13 +115,7 @@ fn a_key_prefix_of_only_slashes_is_refused_as_the_whole_bucket() {
         .expect("the bucket's root is refused");
 
     assert!(
-        matches!(
-            error,
-            DevResetProfileError::WholeBucket {
-                field: "s3.key_prefix",
-                ..
-            }
-        ),
+        matches!(error, DevResetProfileError::WholeBucket { field: "s3.key_prefix", .. }),
         "{error}"
     );
 }

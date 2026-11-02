@@ -26,8 +26,7 @@ impl Database {
         let query = format!("SELECT COUNT(*) FROM \"{table}\" WHERE \"{column}\" = ?");
         let value = value.to_string();
         self.read(move |sql| {
-            sql.query_row(&query, rusqlite::params![value], |row| row.get(0))
-                .map_err(DbError::from)
+            sql.query_row(&query, rusqlite::params![value], |row| row.get(0)).map_err(DbError::from)
         })
         .await
     }
@@ -89,14 +88,11 @@ impl Database {
                     .parts
                     .iter()
                     .flat_map(|part| {
-                        part.rows
-                            .iter()
-                            .map(|change| change.row.table.clone())
-                            .chain(
-                                part.executions
-                                    .iter()
-                                    .map(|row| format!("{} (unchanged)", row.row.table)),
-                            )
+                        part.rows.iter().map(|change| change.row.table.clone()).chain(
+                            part.executions
+                                .iter()
+                                .map(|row| format!("{} (unchanged)", row.row.table)),
+                        )
                     })
                     .collect();
                 tables.sort();
@@ -107,23 +103,13 @@ impl Database {
 
     /// How many writes this device committed and has not yet sent to storage.
     pub async fn unsent_writes_for_test(&self) -> Result<u64, DbError> {
-        Ok(self
-            .inner
-            .handle
-            .unsent_work()
-            .await
-            .map_err(DbError::from)?
-            .writes)
+        Ok(self.inner.handle.unsent_work().await.map_err(DbError::from)?.writes)
     }
 
     /// How many files wait in this device's upload queue.
     pub async fn queued_upload_count_for_test(&self) -> Result<i64, DbError> {
         self.read(|sql| {
-            Ok(
-                sql.query_row("SELECT COUNT(*) FROM coven_upload_queue", [], |row| {
-                    row.get(0)
-                })?,
-            )
+            Ok(sql.query_row("SELECT COUNT(*) FROM coven_upload_queue", [], |row| row.get(0))?)
         })
         .await
     }
@@ -154,8 +140,7 @@ impl Database {
              JOIN {table} AS t ON t.{column} = upload.file",
             column = file_column_for_test(table),
         );
-        self.read(move |sql| Ok(sql.query_row(&statement, [], |row| row.get(0))?))
-            .await
+        self.read(move |sql| Ok(sql.query_row(&statement, [], |row| row.get(0))?)).await
     }
 
     /// How many of the files waiting in this device's upload queue are in
@@ -181,10 +166,7 @@ impl Database {
         root_table: &str,
         root_id: &str,
     ) -> Result<usize, DbError> {
-        Ok(self
-            .queued_upload_rows_for_root_for_test(root_table, root_id)
-            .await?
-            .len())
+        Ok(self.queued_upload_rows_for_root_for_test(root_table, root_id).await?.len())
     }
 
     pub async fn queued_upload_rows_for_root_for_test(
@@ -193,9 +175,7 @@ impl Database {
         root_id: &str,
     ) -> Result<Vec<(String, String)>, DbError> {
         if root_table != "releases" {
-            return Err(DbError::Message(format!(
-                "unknown upload root {root_table}"
-            )));
+            return Err(DbError::Message(format!("unknown upload root {root_table}")));
         }
         // The release's own files and its cover, whose row the release's id
         // keys.
@@ -231,8 +211,7 @@ impl Database {
     pub async fn query_texts_for_test(&self, query: &str) -> Result<Vec<String>, DbError> {
         let query = query.to_string();
         self.read(move |sql| {
-            sql.query(&query, [], |row| row.get::<_, String>(0))
-                .map_err(DbError::from)
+            sql.query(&query, [], |row| row.get::<_, String>(0)).map_err(DbError::from)
         })
         .await
     }

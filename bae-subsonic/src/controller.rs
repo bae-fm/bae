@@ -98,9 +98,7 @@ impl SubsonicServerController {
         if let Err(error) = config.validate() {
             return self
                 .server
-                .record_error(SubsonicServerError::InvalidConfig {
-                    detail: error.to_string(),
-                })
+                .record_error(SubsonicServerError::InvalidConfig { detail: error.to_string() })
                 .await;
         }
 
@@ -109,9 +107,7 @@ impl SubsonicServerController {
             port: config.port,
             username: config.username,
         };
-        self.server
-            .apply(binding, |binding| self.start(binding))
-            .await
+        self.server.apply(binding, |binding| self.start(binding)).await
     }
 
     /// Stop and re-apply `config`, so a running server picks up a credential
@@ -155,10 +151,7 @@ impl SubsonicServerController {
                 })
                 .await;
         }
-        let credential = SubsonicCredential {
-            username: binding.username.clone(),
-            password,
-        };
+        let credential = SubsonicCredential { username: binding.username.clone(), password };
 
         // `validate` already guaranteed the address parses; surface a parse
         // failure as a config error rather than unwrapping.
@@ -226,11 +219,7 @@ mod tests {
     /// could grab it in the gap, but for a single-threaded test loopback this is
     /// stable enough and keeps the test off a fixed, possibly-busy port.
     fn free_port() -> u16 {
-        std::net::TcpListener::bind("127.0.0.1:0")
-            .unwrap()
-            .local_addr()
-            .unwrap()
-            .port()
+        std::net::TcpListener::bind("127.0.0.1:0").unwrap().local_addr().unwrap().port()
     }
 
     fn password_provider(password: Option<&str>) -> Arc<SubsonicPasswordProvider> {
@@ -263,9 +252,7 @@ mod tests {
     async fn disabled_config_reports_disabled() {
         let (services, _temp) = test_manager().await;
         let controller = controller(&services, Some("s3cret"));
-        let status = controller
-            .apply_config(SubsonicConfig::disabled_default())
-            .await;
+        let status = controller.apply_config(SubsonicConfig::disabled_default()).await;
         assert!(matches!(status, SubsonicServerStatus::Disabled));
     }
 
@@ -292,9 +279,7 @@ mod tests {
         assert!(
             matches!(
                 status,
-                SubsonicServerStatus::Error {
-                    error: SubsonicServerError::InvalidConfig { .. }
-                }
+                SubsonicServerStatus::Error { error: SubsonicServerError::InvalidConfig { .. } }
             ),
             "a missing password is a config error, got {status:?}"
         );
@@ -333,9 +318,7 @@ mod tests {
         let enabled = enabled_config(free_port(), "listener");
 
         assert!(matches!(
-            controller
-                .apply_config(SubsonicConfig::disabled_default())
-                .await,
+            controller.apply_config(SubsonicConfig::disabled_default()).await,
             SubsonicServerStatus::Disabled
         ));
         assert!(matches!(
@@ -343,15 +326,10 @@ mod tests {
             SubsonicServerStatus::Running { .. }
         ));
         assert!(matches!(
-            controller
-                .apply_config(SubsonicConfig::disabled_default())
-                .await,
+            controller.apply_config(SubsonicConfig::disabled_default()).await,
             SubsonicServerStatus::Disabled
         ));
-        assert!(matches!(
-            controller.status().await,
-            SubsonicServerStatus::Disabled
-        ));
+        assert!(matches!(controller.status().await, SubsonicServerStatus::Disabled));
     }
 
     #[tokio::test]
@@ -365,10 +343,7 @@ mod tests {
             SubsonicServerStatus::Running { .. }
         ));
         controller.shutdown().await;
-        assert!(matches!(
-            controller.status().await,
-            SubsonicServerStatus::Disabled
-        ));
+        assert!(matches!(controller.status().await, SubsonicServerStatus::Disabled));
         // Once shut down, the port is released and can be bound again.
         assert!(
             std::net::TcpListener::bind(("127.0.0.1", port)).is_ok(),

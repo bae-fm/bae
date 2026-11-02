@@ -12,17 +12,10 @@ use tracing::debug;
 /// Discogs packs the artist and album into one title field, separated by " - ".
 /// `None` when there's no separator; an empty artist half also comes back `None`.
 pub fn split_title(title: &str) -> Option<(Option<&str>, &str)> {
-    title
-        .split_once(" - ")
-        .map(|(a, b)| (a.trim(), b.trim()))
-        .map(|(artist, album)| {
-            let artist = if artist.is_empty() {
-                None
-            } else {
-                Some(artist)
-            };
-            (artist, album)
-        })
+    title.split_once(" - ").map(|(a, b)| (a.trim(), b.trim())).map(|(artist, album)| {
+        let artist = if artist.is_empty() { None } else { Some(artist) };
+        (artist, album)
+    })
 }
 
 /// The box Discogs fits its thumbnails in: an image's `uri150` and a search
@@ -44,10 +37,7 @@ where
     let image = match (cover_image, thumb) {
         (Some(url), Some(thumb)) => RemoteImageSet::with_copies(
             url.to_string(),
-            vec![DownscaledCopy {
-                url: thumb.to_string(),
-                max_edge: DISCOGS_THUMBNAIL_EDGE,
-            }],
+            vec![DownscaledCopy { url: thumb.to_string(), max_edge: DISCOGS_THUMBNAIL_EDGE }],
         ),
         (Some(url), None) => {
             debug!(

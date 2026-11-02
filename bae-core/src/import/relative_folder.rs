@@ -93,17 +93,13 @@ impl RelativeFolder {
 
     /// Each name's bytes, outermost first; none for the root.
     fn names(&self) -> impl Iterator<Item = &[u8]> {
-        self.0
-            .split(|byte| *byte == b'/')
-            .filter(|_| !self.0.is_empty())
+        self.0.split(|byte| *byte == b'/').filter(|_| !self.0.is_empty())
     }
 }
 
 impl rusqlite::types::ToSql for RelativeFolder {
     fn to_sql(&self) -> rusqlite::Result<rusqlite::types::ToSqlOutput<'_>> {
-        Ok(rusqlite::types::ToSqlOutput::Borrowed(
-            rusqlite::types::ValueRef::Blob(&self.0),
-        ))
+        Ok(rusqlite::types::ToSqlOutput::Borrowed(rusqlite::types::ValueRef::Blob(&self.0)))
     }
 }
 
@@ -192,14 +188,8 @@ mod tests {
         let folder = root.join("Artist").join("Album");
         let relative = folder_relative_below(&root, &folder).unwrap().unwrap();
         assert_eq!(relative.text(), "Artist/Album");
-        assert_eq!(
-            folder_below(&root, &relative).as_os_str(),
-            folder.as_os_str()
-        );
-        assert_eq!(
-            folder_relative_below(&root, &root).unwrap(),
-            Some(RelativeFolder::root())
-        );
+        assert_eq!(folder_below(&root, &relative).as_os_str(), folder.as_os_str());
+        assert_eq!(folder_relative_below(&root, &root).unwrap(), Some(RelativeFolder::root()));
         let beside = crate::import::watched_folder::host_root("/other");
         assert_eq!(folder_relative_below(&root, &beside).unwrap(), None);
     }
@@ -214,10 +204,7 @@ mod tests {
         let relative = RelativeFolder::of(&Path::new("Artist").join(name)).unwrap();
         assert_eq!(relative.as_bytes(), b"Artist/Caf\xE9");
         assert_eq!(relative.text(), "Artist/Caf\\xE9");
-        assert_eq!(
-            RelativeFolder::from_bytes(relative.as_bytes().to_vec()).unwrap(),
-            relative
-        );
+        assert_eq!(RelativeFolder::from_bytes(relative.as_bytes().to_vec()).unwrap(), relative);
     }
 
     /// The range of paths below a folder holds what is inside it and nothing

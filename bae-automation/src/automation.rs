@@ -38,9 +38,7 @@ impl Automation {
         &self,
         path: String,
     ) -> Result<Vec<AutomationWatchedFolder>, AutomationError> {
-        self.services
-            .import_add_watched_folder(PathBuf::from(path))
-            .await?;
+        self.services.import_add_watched_folder(PathBuf::from(path)).await?;
         self.watched_folders().await
     }
 
@@ -48,9 +46,7 @@ impl Automation {
         &self,
         path: String,
     ) -> Result<Vec<AutomationWatchedFolder>, AutomationError> {
-        self.services
-            .import_remove_watched_folder(PathBuf::from(path))
-            .await?;
+        self.services.import_remove_watched_folder(PathBuf::from(path)).await?;
         self.watched_folders().await
     }
 
@@ -104,18 +100,11 @@ impl Automation {
     /// presents one flat list across both, so it walks all three tabs and
     /// sorts by the key callers name candidates by.
     pub async fn list_candidates(&self) -> Result<Vec<AutomationCandidate>, AutomationError> {
-        let runtime = self
-            .services
-            .candidate_runtimes()
-            .await
-            .map_err(AutomationError::from)?;
+        let runtime = self.services.candidate_runtimes().await.map_err(AutomationError::from)?;
         let percents = self.services.import_percents();
         let mut candidates = Vec::new();
         for tab in [TriageTab::Pending, TriageTab::Done, TriageTab::Skipped] {
-            let view = ImportListView {
-                tab,
-                ..ImportListView::default()
-            };
+            let view = ImportListView { tab, ..ImportListView::default() };
             let projection = self
                 .services
                 .load_import_list(view, whole_list())
@@ -165,32 +154,21 @@ impl Automation {
         candidate_key: String,
     ) -> Result<AutomationCandidate, AutomationError> {
         let key = candidate_key_named(&candidate_key)?;
-        if let Some(detail) = self
-            .services
-            .load_import_candidate(&key)
-            .await
-            .map_err(AutomationError::from)?
+        if let Some(detail) =
+            self.services.load_import_candidate(&key).await.map_err(AutomationError::from)?
         {
-            let runtime = self
-                .services
-                .candidate_runtimes()
-                .await
-                .map_err(AutomationError::from)?;
+            let runtime =
+                self.services.candidate_runtimes().await.map_err(AutomationError::from)?;
             let percents = self.services.import_percents();
             return automation_candidate_from_folder(&detail, &runtime, &percents, &self.services)
                 .await;
         }
-        if let Some(bae_core::import::ImportCandidateSnapshot::Invalid(candidate)) = self
-            .services
-            .import_get_candidate(&key)
-            .await
-            .map_err(AutomationError::from)?
+        if let Some(bae_core::import::ImportCandidateSnapshot::Invalid(candidate)) =
+            self.services.import_get_candidate(&key).await.map_err(AutomationError::from)?
         {
             return Ok(automation_candidate_from_invalid(&candidate));
         }
-        Err(AutomationError::not_found(format!(
-            "candidate '{candidate_key}' not found"
-        )))
+        Err(AutomationError::not_found(format!("candidate '{candidate_key}' not found")))
     }
 
     /// The key `candidate_key` names, refused unless the import tables hold
@@ -217,10 +195,7 @@ impl Automation {
         query: AutomationSearchQuery,
     ) -> Result<AutomationSearchResults, AutomationError> {
         let (query, source) = search_query(query);
-        let results = self
-            .services
-            .import_search_with_status(query, source)
-            .await?;
+        let results = self.services.import_search_with_status(query, source).await?;
         Ok(AutomationSearchResults::from_core(results))
     }
 
@@ -263,10 +238,7 @@ impl Automation {
         self.services
             .import_set_candidate_edit_field(
                 &key,
-                bae_core::import::DraftFieldEdit::Text {
-                    field: field.into_core(),
-                    value,
-                },
+                bae_core::import::DraftFieldEdit::Text { field: field.into_core(), value },
             )
             .await?;
         Ok(EmptyResponse {})
@@ -283,10 +255,7 @@ impl Automation {
             .import_set_candidate_edit_field(
                 &key,
                 bae_core::import::DraftFieldEdit::Labels(
-                    labels
-                        .into_iter()
-                        .map(AutomationLabelRow::into_core)
-                        .collect(),
+                    labels.into_iter().map(AutomationLabelRow::into_core).collect(),
                 ),
             )
             .await?;
@@ -300,9 +269,7 @@ impl Automation {
         album_id: Option<String>,
     ) -> Result<EmptyResponse, AutomationError> {
         let key = self.known_key(candidate_key).await?;
-        self.services
-            .import_set_candidate_album(&key, album_id)
-            .await?;
+        self.services.import_set_candidate_album(&key, album_id).await?;
         Ok(EmptyResponse {})
     }
 
@@ -345,9 +312,7 @@ impl Automation {
         cover: AutomationCoverSelection,
     ) -> Result<EmptyResponse, AutomationError> {
         let key = self.known_key(candidate_key).await?;
-        self.services
-            .import_set_candidate_cover(&key, cover_selection(cover))
-            .await?;
+        self.services.import_set_candidate_cover(&key, cover_selection(cover)).await?;
         Ok(EmptyResponse {})
     }
 
@@ -358,20 +323,14 @@ impl Automation {
         &self,
         candidate_key: String,
     ) -> Result<AutomationImportStarted, AutomationError> {
-        Ok(
-            match self
-                .services
-                .import_start_import(&candidate_key_named(&candidate_key)?)
-                .await?
-            {
-                bae_core::import::ImportStart::Queued { import_id } => {
-                    AutomationImportStarted::Queued { import_id }
-                }
-                bae_core::import::ImportStart::WhenPickStored => {
-                    AutomationImportStarted::WhenPickStored
-                }
-            },
-        )
+        Ok(match self.services.import_start_import(&candidate_key_named(&candidate_key)?).await? {
+            bae_core::import::ImportStart::Queued { import_id } => {
+                AutomationImportStarted::Queued { import_id }
+            }
+            bae_core::import::ImportStart::WhenPickStored => {
+                AutomationImportStarted::WhenPickStored
+            }
+        })
     }
 
     pub async fn release_detail(
@@ -392,9 +351,7 @@ impl Automation {
         release_id: String,
         target_dir: String,
     ) -> Result<AutomationReleaseExport, AutomationError> {
-        self.services
-            .enqueue_export(&release_id, PathBuf::from(target_dir))
-            .await?;
+        self.services.enqueue_export(&release_id, PathBuf::from(target_dir)).await?;
         Ok(AutomationReleaseExport { release_id })
     }
 
@@ -417,10 +374,8 @@ impl Automation {
         match action {
             AutomationStorageAction::Upload => {
                 require_action(&summary, AutomationReleaseStorageAction::Upload, "upload")?;
-                let outcome = self
-                    .services
-                    .upload_releases(std::slice::from_ref(&release_id))
-                    .await?;
+                let outcome =
+                    self.services.upload_releases(std::slice::from_ref(&release_id)).await?;
                 match outcome {
                     bae_core::library::UploadReleasesOutcome::Complete { .. } => {}
                     bae_core::library::UploadReleasesOutcome::Partial {
@@ -479,9 +434,7 @@ impl Automation {
     /// The current export-queue snapshot: per-release state, each release as
     /// the library holds it now, and rolled-up counts.
     pub async fn output_status(&self) -> Result<AutomationOutputSnapshot, AutomationError> {
-        Ok(automation_output_snapshot(
-            self.services.output_snapshot().await?,
-        ))
+        Ok(automation_output_snapshot(self.services.output_snapshot().await?))
     }
 
     /// Re-identify a library release as the catalog release `pressing`
@@ -507,13 +460,9 @@ impl Automation {
             )
             .await?;
         if album_id.is_some() {
-            self.services
-                .set_release_edit_album(&session, album_id)
-                .await?;
+            self.services.set_release_edit_album(&session, album_id).await?;
         }
-        self.services
-            .save_release_edit(&session, &seed.edit)
-            .await?;
+        self.services.save_release_edit(&session, &seed.edit).await?;
         Ok(())
     }
 
@@ -526,12 +475,8 @@ impl Automation {
         album_id: String,
     ) -> Result<(), AutomationError> {
         let session = self.services.open_release_edit(&release_id).await?;
-        self.services
-            .set_release_edit_album(&session, Some(album_id))
-            .await?;
-        self.services
-            .save_release_edit(&session, &session.opened().edit)
-            .await?;
+        self.services.set_release_edit_album(&session, Some(album_id)).await?;
+        self.services.save_release_edit(&session, &session.opened().edit).await?;
         Ok(())
     }
 
@@ -540,9 +485,7 @@ impl Automation {
         release_id: String,
         edit: AutomationReleaseUserEdit,
     ) -> Result<(), AutomationError> {
-        self.services
-            .apply_release_metadata_user_edit(&release_id, &edit.into_core())
-            .await?;
+        self.services.apply_release_metadata_user_edit(&release_id, &edit.into_core()).await?;
         Ok(())
     }
 
@@ -575,17 +518,11 @@ impl Automation {
             }
             AutomationTool::WatchedFolderAdd => {
                 let input: PathInput = from_value(args)?;
-                to_list_value(
-                    "watched_folders",
-                    self.add_watched_folder(input.path).await?,
-                )
+                to_list_value("watched_folders", self.add_watched_folder(input.path).await?)
             }
             AutomationTool::WatchedFolderRemove => {
                 let input: PathInput = from_value(args)?;
-                to_list_value(
-                    "watched_folders",
-                    self.remove_watched_folder(input.path).await?,
-                )
+                to_list_value("watched_folders", self.remove_watched_folder(input.path).await?)
             }
             AutomationTool::WatchedFoldersScan => {
                 let wait: ScanWait = from_value(args)?;
@@ -601,8 +538,7 @@ impl Automation {
             }
             AutomationTool::ImportCandidateSkipSet => {
                 let input: CandidateSkipSetInput = from_value(args)?;
-                self.set_candidate_skipped(input.candidate_key, input.skipped)
-                    .await?;
+                self.set_candidate_skipped(input.candidate_key, input.skipped).await?;
                 to_value(EmptyResponse {})
             }
             AutomationTool::ImportSearch => {
@@ -611,10 +547,7 @@ impl Automation {
             }
             AutomationTool::ImportCandidateReleaseSelect => {
                 let input: CandidateReleaseInput = from_value(args)?;
-                to_value(
-                    self.select_candidate_release(input.candidate_key, input.link)
-                        .await?,
-                )
+                to_value(self.select_candidate_release(input.candidate_key, input.link).await?)
             }
             AutomationTool::ImportCandidateFileTagsRead => {
                 let input: CandidateKeyInput = from_value(args)?;
@@ -629,38 +562,23 @@ impl Automation {
             }
             AutomationTool::ImportCandidateLabelsSet => {
                 let input: CandidateLabelsInput = from_value(args)?;
-                to_value(
-                    self.set_candidate_labels(input.candidate_key, input.labels)
-                        .await?,
-                )
+                to_value(self.set_candidate_labels(input.candidate_key, input.labels).await?)
             }
             AutomationTool::ImportCandidateAlbumSet => {
                 let input: CandidateAlbumInput = from_value(args)?;
-                to_value(
-                    self.set_candidate_album(input.candidate_key, input.album_id)
-                        .await?,
-                )
+                to_value(self.set_candidate_album(input.candidate_key, input.album_id).await?)
             }
             AutomationTool::ImportCandidateBarcodesSet => {
                 let input: CandidateBarcodesInput = from_value(args)?;
-                to_value(
-                    self.set_candidate_barcodes(input.candidate_key, input.barcodes)
-                        .await?,
-                )
+                to_value(self.set_candidate_barcodes(input.candidate_key, input.barcodes).await?)
             }
             AutomationTool::ImportCandidatePressingFactSet => {
                 let input: CandidatePressingFactInput = from_value(args)?;
-                to_value(
-                    self.set_candidate_pressing_fact(input.candidate_key, input.fact)
-                        .await?,
-                )
+                to_value(self.set_candidate_pressing_fact(input.candidate_key, input.fact).await?)
             }
             AutomationTool::ImportCandidateCoverSet => {
                 let input: CandidateCoverInput = from_value(args)?;
-                to_value(
-                    self.set_candidate_cover(input.candidate_key, input.cover)
-                        .await?,
-                )
+                to_value(self.set_candidate_cover(input.candidate_key, input.cover).await?)
             }
             AutomationTool::ImportStart => {
                 let input: CandidateKeyInput = from_value(args)?;
@@ -672,17 +590,11 @@ impl Automation {
             }
             AutomationTool::ReleaseExport => {
                 let input: ReleaseExportInput = from_value(args)?;
-                to_value(
-                    self.export_release(input.release_id, input.target_dir)
-                        .await?,
-                )
+                to_value(self.export_release(input.release_id, input.target_dir).await?)
             }
             AutomationTool::ReleaseStorageAction => {
                 let input: ReleaseStorageActionInput = from_value(args)?;
-                to_value(
-                    self.release_storage_action(input.release_id, input.action)
-                        .await?,
-                )
+                to_value(self.release_storage_action(input.release_id, input.action).await?)
             }
             AutomationTool::OutputStatus => {
                 expect_no_args(args, tool.name())?;
@@ -690,20 +602,17 @@ impl Automation {
             }
             AutomationTool::ReleaseReidentify => {
                 let input: ReleaseReidentifyInput = from_value(args)?;
-                self.reidentify_release(input.release_id, input.pressing, input.album_id)
-                    .await?;
+                self.reidentify_release(input.release_id, input.pressing, input.album_id).await?;
                 to_value(EmptyResponse {})
             }
             AutomationTool::ReleaseAlbumSet => {
                 let input: ReleaseAlbumInput = from_value(args)?;
-                self.set_release_album(input.release_id, input.album_id)
-                    .await?;
+                self.set_release_album(input.release_id, input.album_id).await?;
                 to_value(EmptyResponse {})
             }
             AutomationTool::ReleaseMetadataUpdate => {
                 let input: ReleaseMetadataUpdateInput = from_value(args)?;
-                self.update_release_metadata(input.release_id, input.edit)
-                    .await?;
+                self.update_release_metadata(input.release_id, input.edit).await?;
                 to_value(EmptyResponse {})
             }
             AutomationTool::LibrarySearch => {
@@ -717,9 +626,5 @@ impl Automation {
 /// A window over every item the list holds. Automation presents the whole
 /// queue at once; the paging the tab does is a rendering concern.
 fn whole_list() -> bae_core::library::LibraryPageWindows {
-    std::iter::once(bae_core::library::LibraryPageWindow {
-        offset: 0,
-        limit: u64::MAX,
-    })
-    .collect()
+    std::iter::once(bae_core::library::LibraryPageWindow { offset: 0, limit: u64::MAX }).collect()
 }

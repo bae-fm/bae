@@ -20,9 +20,7 @@ const LISTED_RELEASES: &str = "
 ";
 
 async fn exec_listed(db: &Database, sql: &'static str) {
-    db.call(move |conn| conn.execute_batch(sql).map_err(DbError::from))
-        .await
-        .unwrap();
+    db.call(move |conn| conn.execute_batch(sql).map_err(DbError::from)).await.unwrap();
 }
 
 /// The composer list by name: each composer's id and its work, linked release
@@ -71,10 +69,7 @@ async fn composer_list_counts_a_merged_composer_under_its_survivor() {
     .await;
     assert_eq!(
         listed_composers(&db).await,
-        vec![
-            (LISTED_ABSORBED.to_string(), 1, 1, 0),
-            (LISTED_SURVIVOR.to_string(), 1, 1, 0),
-        ]
+        vec![(LISTED_ABSORBED.to_string(), 1, 1, 0), (LISTED_SURVIVOR.to_string(), 1, 1, 0),]
     );
 
     exec_listed(
@@ -94,11 +89,7 @@ async fn composer_list_counts_a_merged_composer_under_its_survivor() {
         .unwrap()
         .expect("the survivor is a composer");
     assert_eq!(survivor.work_groups.len(), 2);
-    assert!(db
-        .find_composer_detail(LISTED_ABSORBED)
-        .await
-        .unwrap()
-        .is_none());
+    assert!(db.find_composer_detail(LISTED_ABSORBED).await.unwrap().is_none());
 
     exec_listed(
         &db,
@@ -107,10 +98,7 @@ async fn composer_list_counts_a_merged_composer_under_its_survivor() {
     .await;
     assert_eq!(
         listed_composers(&db).await,
-        vec![
-            (LISTED_ABSORBED.to_string(), 1, 1, 0),
-            (LISTED_SURVIVOR.to_string(), 1, 1, 0),
-        ]
+        vec![(LISTED_ABSORBED.to_string(), 1, 1, 0), (LISTED_SURVIVOR.to_string(), 1, 1, 0),]
     );
 }
 
@@ -130,10 +118,7 @@ async fn composer_list_counts_a_role_credit_until_a_work_links_it() {
         ",
     )
     .await;
-    assert_eq!(
-        listed_composers(&db).await,
-        vec![(LISTED_CREDITED.to_string(), 0, 0, 2)]
-    );
+    assert_eq!(listed_composers(&db).await, vec![(LISTED_CREDITED.to_string(), 0, 0, 2)]);
     let credited = db
         .find_composer_detail(LISTED_CREDITED)
         .await
@@ -155,41 +140,21 @@ async fn composer_list_counts_a_role_credit_until_a_work_links_it() {
         ",
     )
     .await;
-    assert_eq!(
-        listed_composers(&db).await,
-        vec![(LISTED_CREDITED.to_string(), 1, 1, 0)]
-    );
-    let credited = db
-        .find_composer_detail(LISTED_CREDITED)
-        .await
-        .unwrap()
-        .expect("the work's composer");
+    assert_eq!(listed_composers(&db).await, vec![(LISTED_CREDITED.to_string(), 1, 1, 0)]);
+    let credited =
+        db.find_composer_detail(LISTED_CREDITED).await.unwrap().expect("the work's composer");
     assert!(credited.unlinked_track_roles.is_empty());
     assert!(credited.unlinked_release_roles.is_empty());
 
     // Deleting the release takes its track, credits and links with it; the
     // work stays.
-    exec_listed(
-        &db,
-        "DELETE FROM releases WHERE id = 'c4325183-800c-41da-9082-5d998f9a7ecd';",
-    )
-    .await;
-    assert_eq!(
-        listed_composers(&db).await,
-        vec![(LISTED_CREDITED.to_string(), 1, 0, 0)]
-    );
+    exec_listed(&db, "DELETE FROM releases WHERE id = 'c4325183-800c-41da-9082-5d998f9a7ecd';")
+        .await;
+    assert_eq!(listed_composers(&db).await, vec![(LISTED_CREDITED.to_string(), 1, 0, 0)]);
 
-    exec_listed(
-        &db,
-        "DELETE FROM works WHERE id = '65c7e99f-2638-4086-aac4-9dceab1ae6ef';",
-    )
-    .await;
+    exec_listed(&db, "DELETE FROM works WHERE id = '65c7e99f-2638-4086-aac4-9dceab1ae6ef';").await;
     assert!(listed_composers(&db).await.is_empty());
-    assert!(db
-        .find_composer_detail(LISTED_CREDITED)
-        .await
-        .unwrap()
-        .is_none());
+    assert!(db.find_composer_detail(LISTED_CREDITED).await.unwrap().is_none());
 }
 
 #[tokio::test]

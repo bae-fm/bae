@@ -45,8 +45,5 @@ async fn a_track_whose_name_is_not_utf8_plays() {
     )
     .await
     .expect("the track plays");
-    assert!(
-        wait_for_position_advance(&mut progress_rx).await.is_some(),
-        "its audio plays on"
-    );
+    assert!(wait_for_position_advance(&mut progress_rx).await.is_some(), "its audio plays on");
 }

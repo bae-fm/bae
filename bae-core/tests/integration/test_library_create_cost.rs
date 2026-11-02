@@ -39,17 +39,12 @@ async fn creating_a_library_costs() {
         let builder = installation.builder(app_dir.store_layout());
         let name = bae_core::library_name::LibraryName::parse("Bench").unwrap();
         let started = Instant::now();
-        let handle = bae_core::library::create_library(builder, name)
-            .await
-            .unwrap();
+        let handle = bae_core::library::create_library(builder, name).await.unwrap();
         let created_in = started.elapsed();
         handle.close().await.unwrap();
         eprintln!("created a library in {created_in:?}");
         times.push(created_in);
     }
     times.sort();
-    eprintln!(
-        "median of {CREATIONS} library creations: {:?}",
-        times[CREATIONS / 2]
-    );
+    eprintln!("median of {CREATIONS} library creations: {:?}", times[CREATIONS / 2]);
 }

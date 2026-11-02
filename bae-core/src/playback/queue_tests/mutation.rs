@@ -18,11 +18,8 @@ async fn test_add_to_queue_gives_duplicates_distinct_ids() {
 #[tokio::test]
 async fn test_add_to_queue_leaves_out_tracks_the_library_lacks() {
     let mut f = release(&["a"]).await;
-    let added = f
-        .queue
-        .add_to_queue(vec![f.id("a"), uuid::Uuid::new_v4().to_string()])
-        .await
-        .unwrap();
+    let added =
+        f.queue.add_to_queue(vec![f.id("a"), uuid::Uuid::new_v4().to_string()]).await.unwrap();
     assert_eq!(added, 1);
     assert_eq!(f.upcoming().await, names(&["a"]));
 }
@@ -440,10 +437,8 @@ async fn test_a_row_removed_while_shuffled_is_absent_after_unshuffling() {
 
     let removed_track = f.name(&removed.track_id);
     assert_eq!(f.current(), "t1");
-    let expected: Vec<String> = names(&["t2", "t3", "t4", "t5"])
-        .into_iter()
-        .filter(|t| *t != removed_track)
-        .collect();
+    let expected: Vec<String> =
+        names(&["t2", "t3", "t4", "t5"]).into_iter().filter(|t| *t != removed_track).collect();
     assert_eq!(f.upcoming().await, expected);
 }
 
@@ -491,10 +486,8 @@ async fn test_shuffled_play_then_unshuffle_yields_source_order() {
     f.queue.set_shuffle(false).await.unwrap();
 
     assert_eq!(f.current(), played_first, "the playing track keeps playing");
-    let expected: Vec<String> = names(&["t1", "t2", "t3", "t4", "t5"])
-        .into_iter()
-        .filter(|t| *t != played_first)
-        .collect();
+    let expected: Vec<String> =
+        names(&["t1", "t2", "t3", "t4", "t5"]).into_iter().filter(|t| *t != played_first).collect();
     assert_eq!(f.upcoming().await, expected, "source order resumes");
 }
 
@@ -503,13 +496,9 @@ async fn test_shuffled_play_then_unshuffle_yields_source_order() {
 #[tokio::test]
 async fn test_a_release_named_twice_plays_twice() {
     let mut f = fixture(&[("r1", &["a1", "a2"]), ("r2", &["b1"])]).await;
-    f.play_fill(ContextFill::Releases(vec![f.id("r1"), f.id("r2"), f.id("r1")]))
-        .await;
+    f.play_fill(ContextFill::Releases(vec![f.id("r1"), f.id("r2"), f.id("r1")])).await;
     assert_eq!(f.context_order().await, names(&["a1", "a2", "b1", "a1", "a2"]));
-    assert_eq!(
-        f.value().await.context.unwrap().source,
-        ContextSource::Releases
-    );
+    assert_eq!(f.value().await.context.unwrap().source, ContextSource::Releases);
     let mut played = vec![f.current()];
     while let Some(next) = f.next().await {
         played.push(next);
@@ -533,16 +522,11 @@ async fn test_a_track_queued_twice_plays_twice() {
 #[tokio::test]
 async fn test_remove_one_context_duplicate_keeps_the_other() {
     let mut f = release(&["a1", "a2"]).await;
-    f.play_fill(ContextFill::Releases(vec![f.id("r1"), f.id("r1")]))
-        .await;
+    f.play_fill(ContextFill::Releases(vec![f.id("r1"), f.id("r1")])).await;
     let upcoming = f.upcoming_entries().await;
     assert_eq!(f.upcoming().await, names(&["a2", "a1", "a2"]));
-    let removed = f
-        .queue
-        .remove(upcoming[0].id.clone())
-        .await
-        .unwrap()
-        .expect("the first a2 removed");
+    let removed =
+        f.queue.remove(upcoming[0].id.clone()).await.unwrap().expect("the first a2 removed");
     assert_eq!(removed, upcoming[0]);
     assert_eq!(f.upcoming_entries().await, upcoming[1..].to_vec());
 }

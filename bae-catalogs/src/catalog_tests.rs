@@ -57,21 +57,9 @@ fn a_parsed_page_rebuilds_the_address_it_was_read_from() {
             Catalog::MusicBrainz,
             "11111111-2222-3333-4444-555555555555",
         ),
-        (
-            "https://www.discogs.com/release/4242",
-            Catalog::Discogs,
-            "4242",
-        ),
-        (
-            "https://www.wikidata.org/wiki/Q424242",
-            Catalog::Wikidata,
-            "Q424242",
-        ),
-        (
-            "https://www.allmusic.com/album/mw0000424242",
-            Catalog::AllMusic,
-            "mw0000424242",
-        ),
+        ("https://www.discogs.com/release/4242", Catalog::Discogs, "4242"),
+        ("https://www.wikidata.org/wiki/Q424242", Catalog::Wikidata, "Q424242"),
+        ("https://www.allmusic.com/album/mw0000424242", Catalog::AllMusic, "mw0000424242"),
         (
             "https://rateyourmusic.com/release/album/artist-name/album-title",
             Catalog::RateYourMusic,
@@ -82,11 +70,7 @@ fn a_parsed_page_rebuilds_the_address_it_was_read_from() {
             Catalog::Genius,
             "Artist-name/Album-title",
         ),
-        (
-            "https://www.musik-sammler.de/album/424242",
-            Catalog::MusikSammler,
-            "424242",
-        ),
+        ("https://www.musik-sammler.de/album/424242", Catalog::MusikSammler, "424242"),
         (
             "https://artist-name.bandcamp.com/album/album-title",
             Catalog::Bandcamp,
@@ -97,23 +81,13 @@ fn a_parsed_page_rebuilds_the_address_it_was_read_from() {
             Catalog::Spotify,
             "4242424242424242424242",
         ),
-        (
-            "https://www.deezer.com/album/424242",
-            Catalog::Deezer,
-            "424242",
-        ),
+        ("https://www.deezer.com/album/424242", Catalog::Deezer, "424242"),
     ] {
         let page = parse_catalog_url(url).unwrap_or_else(|| panic!("{url} names a catalog page"));
         let expected = if Catalog::LOOKUP.contains(&catalog) {
-            CatalogPage::Release {
-                catalog,
-                key: key.to_string(),
-            }
+            CatalogPage::Release { catalog, key: key.to_string() }
         } else {
-            CatalogPage::Group {
-                catalog,
-                key: key.to_string(),
-            }
+            CatalogPage::Group { catalog, key: key.to_string() }
         };
         assert_eq!(page, expected);
         let rebuilt = match page {
@@ -132,17 +106,11 @@ fn an_address_is_read_past_what_does_not_name_the_page() {
     for (url, expected) in [
         (
             "http://www.discogs.com/release/4242-Artist-Name-Album-Title/",
-            CatalogPage::Release {
-                catalog: Catalog::Discogs,
-                key: "4242".to_string(),
-            },
+            CatalogPage::Release { catalog: Catalog::Discogs, key: "4242".to_string() },
         ),
         (
             "https://www.discogs.com/master/909090-Album-Title",
-            CatalogPage::Group {
-                catalog: Catalog::Discogs,
-                key: "909090".to_string(),
-            },
+            CatalogPage::Group { catalog: Catalog::Discogs, key: "909090".to_string() },
         ),
         (
             "https://musicbrainz.org/release-group/99999999-2222-3333-4444-555555555555",
@@ -153,17 +121,11 @@ fn an_address_is_read_past_what_does_not_name_the_page() {
         ),
         (
             "https://music.apple.com/us/album/album-title/424242?i=989898",
-            CatalogPage::Group {
-                catalog: Catalog::AppleMusic,
-                key: "424242".to_string(),
-            },
+            CatalogPage::Group { catalog: Catalog::AppleMusic, key: "424242".to_string() },
         ),
         (
             "https://www.deezer.com/en/album/424242",
-            CatalogPage::Group {
-                catalog: Catalog::Deezer,
-                key: "424242".to_string(),
-            },
+            CatalogPage::Group { catalog: Catalog::Deezer, key: "424242".to_string() },
         ),
     ] {
         assert_eq!(parse_catalog_url(url).as_ref(), Some(&expected), "{url}");

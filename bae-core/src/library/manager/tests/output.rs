@@ -10,8 +10,7 @@ async fn make_exportable_release(
     folder_name: &str,
     files: &[(&str, &[u8])],
 ) -> String {
-    let (release, _) =
-        insert_export_release_rows(manager, source_dir, folder_name, files).await;
+    let (release, _) = insert_export_release_rows(manager, source_dir, folder_name, files).await;
     manager.upload_release(&release.id, true).await.unwrap();
     // The sync loop this fixture's tests connect drains the queue itself, so
     // wait for the upload to finish rather than counting a drain pass this
@@ -61,10 +60,7 @@ async fn insert_export_release_rows(
         let path = source_dir.join(name);
         std::fs::create_dir_all(path.parent().unwrap()).unwrap();
         std::fs::write(&path, bytes).unwrap();
-        manager
-            .add_external_file_for_test(&file, &path)
-            .await
-            .unwrap();
+        manager.add_external_file_for_test(&file, &path).await.unwrap();
         inserted_files.push(file);
     }
     (release, inserted_files)
@@ -82,24 +78,16 @@ async fn insert_local_export_release_named(
     bytes: &[u8],
     name: PeerName<'_>,
 ) -> String {
-    let (release, db_files) = insert_export_release_rows(
-        manager,
-        source_dir,
-        "Album Title",
-        &[("track.flac", bytes)],
-    )
-    .await;
+    let (release, db_files) =
+        insert_export_release_rows(manager, source_dir, "Album Title", &[("track.flac", bytes)])
+            .await;
     match name {
-        PeerName::OriginalFilename(value) => manager
-            .database
-            .set_original_filename_for_test(&db_files[0].id, value)
-            .await
-            .unwrap(),
-        PeerName::SourceFolderName(value) => manager
-            .database
-            .set_source_folder_name_for_test(&release.id, value)
-            .await
-            .unwrap(),
+        PeerName::OriginalFilename(value) => {
+            manager.database.set_original_filename_for_test(&db_files[0].id, value).await.unwrap()
+        }
+        PeerName::SourceFolderName(value) => {
+            manager.database.set_source_folder_name_for_test(&release.id, value).await.unwrap()
+        }
     }
     release.id
 }
@@ -121,10 +109,7 @@ async fn output_queue_enqueue_dedups_and_cancels_while_paused() {
     manager.set_outputs_paused(true).await.unwrap();
 
     let target = temp_dir.path().join("export-out");
-    manager
-        .enqueue_export(&release_id, target.clone())
-        .await
-        .unwrap();
+    manager.enqueue_export(&release_id, target.clone()).await.unwrap();
     let snap = output_queue_now(&manager).await;
     assert_eq!(snap.total.queued, 1);
     assert_eq!(snap.rows.len(), 1);
@@ -133,10 +118,7 @@ async fn output_queue_enqueue_dedups_and_cancels_while_paused() {
     assert!(snap.paused);
 
     // Re-enqueuing the same release is a no-op: still one entry.
-    manager
-        .enqueue_export(&release_id, target.clone())
-        .await
-        .unwrap();
+    manager.enqueue_export(&release_id, target.clone()).await.unwrap();
     assert_eq!(output_queue_now(&manager).await.rows.len(), 1);
 
     // Cancel drops the entry.
@@ -155,10 +137,8 @@ async fn export_writes_exact_bytes_in_source_folder_and_leaves_release_remote() 
     connect_test_cloud_with_sync_loop(&manager).await;
 
     let source_dir = temp_dir.path().join("source");
-    let files: &[(&str, &[u8])] = &[
-        ("cover.jpg", b"cover-bytes-abc"),
-        ("CD1/track.flac", b"flac-bytes-0123456789"),
-    ];
+    let files: &[(&str, &[u8])] =
+        &[("cover.jpg", b"cover-bytes-abc"), ("CD1/track.flac", b"flac-bytes-0123456789")];
     let release_id =
         make_exportable_release(&manager, &source_dir, "Album Title (2020)", files).await;
 
@@ -167,10 +147,7 @@ async fn export_writes_exact_bytes_in_source_folder_and_leaves_release_remote() 
     assert!(!has_pending_uploads(&manager, &release_id).await);
 
     let target = temp_dir.path().join("export-out");
-    manager
-        .enqueue_export(&release_id, target.clone())
-        .await
-        .unwrap();
+    manager.enqueue_export(&release_id, target.clone()).await.unwrap();
 
     // Success removes the entry from the queue.
     output_queue_until(&manager, |queue| queue.rows.is_empty()).await;
@@ -195,10 +172,7 @@ async fn export_writes_exact_bytes_in_source_folder_and_leaves_release_remote() 
 
     // Export changed no release state: still Remote, no new outbox rows.
     assert!(release_files(&manager, &release_id).await.iter().all(|file| file.stored));
-    assert!(
-        !has_pending_uploads(&manager, &release_id).await,
-        "export enqueues no cloud uploads"
-    );
+    assert!(!has_pending_uploads(&manager, &release_id).await, "export enqueues no cloud uploads");
 }
 
 /// A file named `..` is an ordinary name: coven writes it as `.．`, so the
@@ -249,10 +223,7 @@ async fn export_refuses_an_absolute_original_filename() {
         .await
         .expect_err("an absolute original_filename is refused");
 
-    assert!(
-        error.to_string().contains("names no file"),
-        "unexpected error: {error}"
-    );
+    assert!(error.to_string().contains("names no file"), "unexpected error: {error}");
     assert!(!target.join("Album Title").exists());
 }
 
@@ -305,10 +276,7 @@ async fn export_write_error_marks_failed_until_cancelled() {
     let blocker = temp_dir.path().join("blocker");
     std::fs::write(&blocker, b"a file, not a directory").unwrap();
 
-    manager
-        .enqueue_export(&release_id, blocker.clone())
-        .await
-        .unwrap();
+    manager.enqueue_export(&release_id, blocker.clone()).await.unwrap();
 
     // An unwritable target marks the export Failed.
     let failed = output_queue_until(&manager, |queue| {
@@ -321,10 +289,7 @@ async fn export_write_error_marks_failed_until_cancelled() {
     assert_eq!(failed.total.failed, 1);
 
     manager.cancel_output(&release_id).await.unwrap();
-    assert!(
-        output_queue_now(&manager).await.rows.is_empty(),
-        "cancel removes the entry"
-    );
+    assert!(output_queue_now(&manager).await.rows.is_empty(), "cancel removes the entry");
 }
 
 /// A failure partway through the export (a read error on a later file, after an
@@ -358,10 +323,7 @@ async fn export_mid_failure_leaves_no_partial_output_at_final_path() {
             Uuid::new_v4().to_string(),
             Utc::now(),
         );
-        manager
-            .add_external_file_for_test(&file, &source_dir.join(name))
-            .await
-            .unwrap();
+        manager.add_external_file_for_test(&file, &source_dir.join(name)).await.unwrap();
     }
 
     // Pause so the source file can be deleted before the worker runs, making the
@@ -369,10 +331,7 @@ async fn export_mid_failure_leaves_no_partial_output_at_final_path() {
     manager.set_outputs_paused(true).await.unwrap();
     let target = temp_dir.path().join("export-out");
     std::fs::create_dir_all(&target).unwrap();
-    manager
-        .enqueue_export(&release.id, target.clone())
-        .await
-        .unwrap();
+    manager.enqueue_export(&release.id, target.clone()).await.unwrap();
     std::fs::remove_file(source_dir.join("02.flac")).unwrap();
     manager.set_outputs_paused(false).await.unwrap();
 
@@ -387,10 +346,7 @@ async fn export_mid_failure_leaves_no_partial_output_at_final_path() {
 
     // The all-or-nothing guarantee: nothing at the final path, and the staging
     // directory was removed — the target holds no export output at all.
-    assert!(
-        !target.join("Album Title").exists(),
-        "no partial output at the final export path"
-    );
+    assert!(!target.join("Album Title").exists(), "no partial output at the final export path");
     assert_eq!(
         std::fs::read_dir(&target).unwrap().count(),
         0,

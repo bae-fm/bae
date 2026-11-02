@@ -54,11 +54,7 @@ fn found(display_path: &str) -> Placed {
 
 /// A folder that failed validation, which only Skipped lists.
 fn failed_validation(display_path: &str) -> Placed {
-    Placed {
-        tab: "skipped".to_string(),
-        pending_state: None,
-        ..found(display_path)
-    }
+    Placed { tab: "skipped".to_string(), pending_state: None, ..found(display_path) }
 }
 
 /// The header of the group at `name`, dated `date`.
@@ -93,11 +89,7 @@ impl Placed {
     }
 
     fn state(self, state: &str) -> Self {
-        Self {
-            pending_state: Some(state.to_string()),
-            needs_you_reason: None,
-            ..self
-        }
+        Self { pending_state: Some(state.to_string()), needs_you_reason: None, ..self }
     }
 
     /// Needing the person, for `reason`.
@@ -111,20 +103,12 @@ impl Placed {
 
     /// Dated `date` and sorting by it.
     fn dated(self, date: i64) -> Self {
-        Self {
-            own_date: Some(date),
-            unit_date: Some(date),
-            ..self
-        }
+        Self { own_date: Some(date), unit_date: Some(date), ..self }
     }
 
     /// Listed under the group at `name`, sorting in its header's place.
     fn grouped(self, name: &str) -> Self {
-        Self {
-            group_name: Some(name.to_string()),
-            unit_date: None,
-            ..self
-        }
+        Self { group_name: Some(name.to_string()), unit_date: None, ..self }
     }
 
     fn shown(self, title: &str, artists: Option<&str>) -> Self {
@@ -136,10 +120,7 @@ impl Placed {
     }
 
     fn at_root(self, root_position: i64) -> Self {
-        Self {
-            root_position,
-            ..self
-        }
+        Self { root_position, ..self }
     }
 }
 
@@ -155,11 +136,7 @@ impl Library {
     async fn new() -> Self {
         let (db, tmp) = empty_db().await;
         let root = crate::import::watched_folder::host_root("/music");
-        let library = Self {
-            db,
-            _tmp: tmp,
-            root,
-        };
+        let library = Self { db, _tmp: tmp, root };
         library.run(&library.watch(&library.root, 0)).await;
         library
     }
@@ -203,11 +180,7 @@ impl Library {
     /// its path.
     #[cfg(unix)]
     fn release_at(&self, relative: &std::path::Path) -> Item {
-        (
-            self.root_text(),
-            "candidate",
-            coven::path_text(&self.folder(relative)),
-        )
+        (self.root_text(), "candidate", coven::path_text(&self.folder(relative)))
     }
 
     fn invalid(&self, display_path: &str) -> Item {
@@ -391,10 +364,7 @@ impl Library {
         for (mut kept, mut counted) in kept.into_iter().zip(counted) {
             kept.sort();
             counted.sort();
-            assert_eq!(
-                kept, counted,
-                "the counts kept beside the placement after {sql}"
-            );
+            assert_eq!(kept, counted, "the counts kept beside the placement after {sql}");
         }
     }
 

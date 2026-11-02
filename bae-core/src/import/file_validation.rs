@@ -38,9 +38,7 @@ fn matches_any(path: &Path, alternatives: &[Magic]) -> io::Result<bool> {
         return Ok(false);
     };
     Ok(alternatives.iter().any(|checks| {
-        checks
-            .iter()
-            .all(|(offset, magic)| &header[*offset..*offset + magic.len()] == *magic)
+        checks.iter().all(|(offset, magic)| &header[*offset..*offset + magic.len()] == *magic)
     }))
 }
 
@@ -66,10 +64,7 @@ pub(crate) fn is_valid_image(path: &Path) -> io::Result<bool> {
 }
 
 fn extension(path: &Path) -> String {
-    path.extension()
-        .and_then(|e| e.to_str())
-        .map(|e| e.to_lowercase())
-        .unwrap_or_default()
+    path.extension().and_then(|e| e.to_str()).map(|e| e.to_lowercase()).unwrap_or_default()
 }
 
 #[cfg(test)]
@@ -79,10 +74,8 @@ mod tests {
     use tempfile::NamedTempFile;
 
     fn write_temp_file(extension: &str, data: &[u8]) -> NamedTempFile {
-        let mut file = tempfile::Builder::new()
-            .suffix(&format!(".{}", extension))
-            .tempfile()
-            .unwrap();
+        let mut file =
+            tempfile::Builder::new().suffix(&format!(".{}", extension)).tempfile().unwrap();
         file.write_all(data).unwrap();
         file.flush().unwrap();
         file

@@ -14,9 +14,7 @@ impl Database {
     pub(crate) fn subscribe_queue_value(
         &self,
     ) -> coven::LiveQuery<crate::queue::ResolvedQueueSnapshot> {
-        self.inner
-            .handle
-            .subscribe(|sql| queue_value_on(&sql).map_err(CovenError::from))
+        self.inner.handle.subscribe(|sql| queue_value_on(&sql).map_err(CovenError::from))
     }
 
     /// Follow the queue's last addition to Up Next; `None` until there is
@@ -24,9 +22,7 @@ impl Database {
     pub(crate) fn subscribe_queue_addition(
         &self,
     ) -> coven::LiveQuery<Option<crate::queue::QueueAddition>> {
-        self.inner
-            .handle
-            .subscribe(|sql| queue_addition_on(&sql).map_err(CovenError::from))
+        self.inner.handle.subscribe(|sql| queue_addition_on(&sql).map_err(CovenError::from))
     }
 
     /// The queue's last addition to Up Next, as `subscribe_queue_addition`
@@ -50,11 +46,7 @@ impl Database {
             limit: u64::MAX,
         }]);
         let read = self.read(move |sql| queue_upcoming_on(&sql, &all)).await?;
-        Ok(read
-            .windows
-            .into_iter()
-            .flat_map(|window| window.items)
-            .collect())
+        Ok(read.windows.into_iter().flat_map(|window| window.items).collect())
     }
 
     /// Follow the windows `initial` names of the context lane's tracks after
@@ -112,25 +104,11 @@ struct QueueHead {
 }
 
 fn queue_head_on(sql: &SqlReadContext<'_>) -> Result<QueueHead, DbError> {
-    type Head = (
-        String,
-        Option<String>,
-        Option<String>,
-        Option<bool>,
-        Option<i64>,
-    );
+    type Head = (String, Option<String>, Option<String>, Option<bool>, Option<i64>);
     let (repeat, source_kind, source_release_id, shuffled, cursor): Head = sql.query_row(
         "SELECT repeat, source_kind, source_release_id, shuffled, cursor FROM playback_queue",
         [],
-        |row| {
-            Ok((
-                row.get(0)?,
-                row.get(1)?,
-                row.get(2)?,
-                row.get(3)?,
-                row.get(4)?,
-            ))
-        },
+        |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?)),
     )?;
     let context = match (source_kind, shuffled, cursor) {
         (Some(source_kind), Some(shuffled), Some(cursor)) => Some((
@@ -142,20 +120,16 @@ fn queue_head_on(sql: &SqlReadContext<'_>) -> Result<QueueHead, DbError> {
         // The table's CHECK keeps the three NULL together.
         _ => None,
     };
-    Ok(QueueHead {
-        repeat: repeat_from_column(&repeat)?,
-        context,
-    })
+    Ok(QueueHead { repeat: repeat_from_column(&repeat)?, context })
 }
 
 fn queue_addition_on(
     sql: &SqlReadContext<'_>,
 ) -> Result<Option<crate::queue::QueueAddition>, DbError> {
-    let (number, added_tracks): (u64, Option<u32>) = sql.query_row(
-        "SELECT additions, added_tracks FROM playback_queue",
-        [],
-        |row| Ok((row.get(0)?, row.get(1)?)),
-    )?;
+    let (number, added_tracks): (u64, Option<u32>) =
+        sql.query_row("SELECT additions, added_tracks FROM playback_queue", [], |row| {
+            Ok((row.get(0)?, row.get(1)?))
+        })?;
     // The table's CHECK sets the count exactly when there was an addition.
     Ok(added_tracks.map(|tracks| crate::queue::QueueAddition { number, tracks }))
 }
@@ -193,23 +167,14 @@ fn queue_value_on(
                 ContextSource::Releases | ContextSource::Library => None,
             };
             (
-                Some(crate::queue::ResolvedContext {
-                    source,
-                    source_title,
-                    shuffled,
-                }),
+                Some(crate::queue::ResolvedContext { source, source_title, shuffled }),
                 has_upcoming,
                 has_previous,
             )
         }
     };
     let has_next = !manual.is_empty() || has_upcoming || head.repeat != RepeatMode::Off;
-    Ok(crate::queue::ResolvedQueueSnapshot {
-        manual,
-        context,
-        has_next,
-        has_previous,
-    })
+    Ok(crate::queue::ResolvedQueueSnapshot { manual, context, has_next, has_previous })
 }
 
 fn queue_upcoming_on(
@@ -233,10 +198,7 @@ fn queue_upcoming_on(
                     ],
                 )?,
             };
-            Ok(crate::library::QueueUpcomingWindow {
-                window: window.clone(),
-                items,
-            })
+            Ok(crate::library::QueueUpcomingWindow { window: window.clone(), items })
         })
         .collect::<Result<_, DbError>>()?;
     Ok(QueueUpcomingRead {

@@ -66,9 +66,8 @@ async fn the_listed_queue_counts_follow_every_upload_and_file_write() {
     let mut most_uploading = 0usize;
     for step in 0..400 {
         let pick = |rng: &mut rand::rngs::StdRng, releases: &[HarnessRelease], stage| {
-            let matching: Vec<usize> = (0..releases.len())
-                .filter(|&index| releases[index].stage == stage)
-                .collect();
+            let matching: Vec<usize> =
+                (0..releases.len()).filter(|&index| releases[index].stage == stage).collect();
             (!matching.is_empty()).then(|| matching[rng.random_range(0..matching.len())])
         };
         let op = match rng.random_range(0..10) {
@@ -76,10 +75,8 @@ async fn the_listed_queue_counts_follow_every_upload_and_file_write() {
                 let files: Vec<(String, Vec<u8>)> = (0..rng.random_range(1..=3))
                     .map(|index| (format!("{index}.flac"), format!("{step}-{index}").into_bytes()))
                     .collect();
-                let files: Vec<(&str, &[u8])> = files
-                    .iter()
-                    .map(|(name, bytes)| (name.as_str(), bytes.as_slice()))
-                    .collect();
+                let files: Vec<(&str, &[u8])> =
+                    files.iter().map(|(name, bytes)| (name.as_str(), bytes.as_slice())).collect();
                 let release = insert_local_release_with_files(
                     &manager,
                     &temp_dir.path().join(format!("release-{step}")),
@@ -87,10 +84,7 @@ async fn the_listed_queue_counts_follow_every_upload_and_file_write() {
                     &files,
                 )
                 .await;
-                releases.push(HarnessRelease {
-                    id: release.id,
-                    stage: HarnessStage::Local,
-                });
+                releases.push(HarnessRelease { id: release.id, stage: HarnessStage::Local });
                 "add release"
             }
             2 | 3 => {

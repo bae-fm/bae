@@ -15,33 +15,21 @@ pub(crate) struct SubError {
 impl SubError {
     /// 10 — a required parameter is missing.
     pub(crate) fn missing_param(name: &str) -> Self {
-        Self {
-            code: 10,
-            message: format!("Required parameter '{name}' is missing"),
-        }
+        Self { code: 10, message: format!("Required parameter '{name}' is missing") }
     }
 
     /// 40 — wrong username or password.
     pub(crate) fn wrong_credentials() -> Self {
-        Self {
-            code: 40,
-            message: "Wrong username or password".to_string(),
-        }
+        Self { code: 40, message: "Wrong username or password".to_string() }
     }
 
     /// 70 — the requested data was not found.
     pub(crate) fn not_found() -> Self {
-        Self {
-            code: 70,
-            message: "The requested data was not found".to_string(),
-        }
+        Self { code: 70, message: "The requested data was not found".to_string() }
     }
 
     /// 0 — a generic error, message carrying the detail.
     pub(crate) fn generic(message: impl Into<String>) -> Self {
-        Self {
-            code: 0,
-            message: message.into(),
-        }
+        Self { code: 0, message: message.into() }
     }
 }

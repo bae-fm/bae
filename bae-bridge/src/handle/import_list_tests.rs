@@ -20,11 +20,7 @@ fn rows(snapshot: &BridgeImportListSnapshot) -> (Vec<Vec<u8>>, Vec<Vec<u8>>) {
         .collect();
     (
         shown.iter().map(|row| row.candidate_key.clone()).collect(),
-        shown
-            .iter()
-            .filter(|row| row.selected)
-            .map(|row| row.candidate_key.clone())
-            .collect(),
+        shown.iter().filter(|row| row.selected).map(|row| row.candidate_key.clone()).collect(),
     )
 }
 
@@ -69,16 +65,8 @@ fn separating_the_selection_selects_the_releases_it_returns() {
     handle.runtime.block_on(async {
         // Nothing but the test acts on the candidates: a run going would hold
         // back combining them.
-        handle
-            .services
-            .set_identify_automatically(false)
-            .await
-            .unwrap();
-        handle
-            .services
-            .import_add_watched_folder(music.clone())
-            .await
-            .unwrap();
+        handle.services.set_identify_automatically(false).await.unwrap();
+        handle.services.import_add_watched_folder(music.clone()).await.unwrap();
     });
     let list = handle
         .runtime
@@ -89,46 +77,29 @@ fn separating_the_selection_selects_the_releases_it_returns() {
             order: BridgeImportListOrder::PathAscending,
         }))
         .expect("the list opens");
-    list.set_windows(vec![BridgeLibraryPageWindow {
-        offset: 0,
-        limit: 50,
-    }])
-    .unwrap();
+    list.set_windows(vec![BridgeLibraryPageWindow { offset: 0, limit: 50 }]).unwrap();
     until(&handle, &list, |snapshot| rows(snapshot).0 == parts);
 
     let revision = handle
         .runtime
         .block_on(
-            list.clone()
-                .change_selection(BridgeSelectionChange::Replace {
-                    keys: parts.clone(),
-                }),
+            list.clone().change_selection(BridgeSelectionChange::Replace { keys: parts.clone() }),
         )
         .unwrap();
     until(&handle, &list, |snapshot| {
         snapshot.selection_revision >= revision && snapshot.selection.count == 2
     });
-    let combined = handle
-        .runtime
-        .block_on(list.clone().combine_selection())
-        .unwrap();
+    let combined = handle.runtime.block_on(list.clone().combine_selection()).unwrap();
     until(&handle, &list, |snapshot| {
         rows(snapshot) == (vec![combined.clone()], vec![combined.clone()])
     });
 
-    let returned = handle
-        .runtime
-        .block_on(list.clone().separate_selection())
-        .unwrap();
+    let returned = handle.runtime.block_on(list.clone().separate_selection()).unwrap();
     assert_eq!(returned, parts);
-    let separated = until(&handle, &list, |snapshot| {
-        rows(snapshot) == (parts.clone(), parts.clone())
-    });
+    let separated =
+        until(&handle, &list, |snapshot| rows(snapshot) == (parts.clone(), parts.clone()));
     assert_eq!(separated.selection.count, 2);
-    handle
-        .runtime
-        .block_on(list.clone().cancel())
-        .expect("cancel the list");
+    handle.runtime.block_on(list.clone().cancel()).expect("cancel the list");
 }
 
 /// A bulk action writes its progress into the stream the app reads while it
@@ -146,16 +117,8 @@ fn a_cancelled_progress_stream_hears_no_later_action() {
     let music = std::fs::canonicalize(&music).unwrap();
     let key = coven::path_bytes(&music.join("Album"));
     handle.runtime.block_on(async {
-        handle
-            .services
-            .set_identify_automatically(false)
-            .await
-            .unwrap();
-        handle
-            .services
-            .import_add_watched_folder(music.clone())
-            .await
-            .unwrap();
+        handle.services.set_identify_automatically(false).await.unwrap();
+        handle.services.import_add_watched_folder(music.clone()).await.unwrap();
     });
     let list = handle
         .runtime
@@ -166,19 +129,13 @@ fn a_cancelled_progress_stream_hears_no_later_action() {
             order: BridgeImportListOrder::PathAscending,
         }))
         .expect("the list opens");
-    list.set_windows(vec![BridgeLibraryPageWindow {
-        offset: 0,
-        limit: 50,
-    }])
-    .unwrap();
+    list.set_windows(vec![BridgeLibraryPageWindow { offset: 0, limit: 50 }]).unwrap();
     until(&handle, &list, |snapshot| rows(snapshot).0 == [key.clone()]);
     let revision = handle
         .runtime
         .block_on(
             list.clone()
-                .change_selection(BridgeSelectionChange::Replace {
-                    keys: vec![key.clone()],
-                }),
+                .change_selection(BridgeSelectionChange::Replace { keys: vec![key.clone()] }),
         )
         .unwrap();
     until(&handle, &list, |snapshot| {
@@ -188,10 +145,7 @@ fn a_cancelled_progress_stream_hears_no_later_action() {
     let progress = list.selection_action_progress();
     handle
         .runtime
-        .block_on(
-            list.clone()
-                .run_selection_action(crate::types::BridgeCandidateAction::Skip),
-        )
+        .block_on(list.clone().run_selection_action(crate::types::BridgeCandidateAction::Skip))
         .unwrap();
     assert_eq!(
         handle.runtime.block_on(progress.clone().next()),
@@ -203,10 +157,7 @@ fn a_cancelled_progress_stream_hears_no_later_action() {
     progress.cancel();
     handle
         .runtime
-        .block_on(
-            list.clone()
-                .run_selection_action(crate::types::BridgeCandidateAction::Skip),
-        )
+        .block_on(list.clone().run_selection_action(crate::types::BridgeCandidateAction::Skip))
         .unwrap();
     assert_eq!(
         handle.runtime.block_on(progress.clone().next()),
@@ -214,8 +165,5 @@ fn a_cancelled_progress_stream_hears_no_later_action() {
         "a cancelled stream hears no later action"
     );
     assert_eq!(progress.latest(Vec::new()), None);
-    handle
-        .runtime
-        .block_on(list.clone().cancel())
-        .expect("cancel the list");
+    handle.runtime.block_on(list.clone().cancel()).expect("cancel the list");
 }

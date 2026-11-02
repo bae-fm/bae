@@ -14,11 +14,7 @@ pub struct BridgePreviewTarget {
 impl BridgePreviewTarget {
     pub(crate) fn from_core(target: bae_core::playback::PreviewTarget) -> Self {
         let (path, start_sample, end_sample) = target.into_sample_range();
-        Self {
-            path: coven::path_bytes(&path),
-            start_sample,
-            end_sample,
-        }
+        Self { path: coven::path_bytes(&path), start_sample, end_sample }
     }
 
     pub(crate) fn into_core(
@@ -101,12 +97,8 @@ pub struct BridgeSidePausePrompt {
 
 impl BridgeSidePausePrompt {
     pub(crate) fn from_core(prompt: bae_core::playback::PlaybackSidePausePrompt) -> Self {
-        let bae_core::playback::PlaybackSidePausePrompt {
-            id,
-            boundary,
-            side_label,
-            countdown,
-        } = prompt;
+        let bae_core::playback::PlaybackSidePausePrompt { id, boundary, side_label, countdown } =
+            prompt;
         Self {
             id,
             boundary: BridgePauseBoundary::from_core(boundary),
@@ -174,9 +166,7 @@ pub struct BridgeSideCountdown {
 impl BridgeSideCountdown {
     fn from_core(countdown: bae_core::playback::PlaybackSideCountdown) -> Self {
         let bae_core::playback::PlaybackSideCountdown { resumes_at } = countdown;
-        Self {
-            resumes_at_ms: resumes_at.timestamp_millis(),
-        }
+        Self { resumes_at_ms: resumes_at.timestamp_millis() }
     }
 }
 
@@ -198,14 +188,8 @@ mirror_enum! {
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgePreviewState {
     Idle,
-    Playing {
-        target: BridgePreviewTarget,
-        duration_ms: u64,
-    },
-    Paused {
-        target: BridgePreviewTarget,
-        duration_ms: u64,
-    },
+    Playing { target: BridgePreviewTarget, duration_ms: u64 },
+    Paused { target: BridgePreviewTarget, duration_ms: u64 },
 }
 
 /// Where the playing track is, as its seek bar draws it: the value its
@@ -276,13 +260,8 @@ mirror_struct! {
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeRemotePlayback {
     Local,
-    On {
-        device: BridgeRemoteDevice,
-    },
-    Ended {
-        device: BridgeRemoteDevice,
-        detail: String,
-    },
+    On { device: BridgeRemoteDevice },
+    Ended { device: BridgeRemoteDevice, detail: String },
 }
 
 mirror_enum! {
@@ -361,16 +340,9 @@ pub struct BridgePreviewTimelinePoint {
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgePlaybackValueState {
     Stopped,
-    Loading {
-        track: BridgeLoadingTrack,
-    },
-    Playing {
-        track: BridgeNowPlayingTrack,
-    },
-    Paused {
-        track: BridgeNowPlayingTrack,
-        reason: BridgePlaybackPauseReason,
-    },
+    Loading { track: BridgeLoadingTrack },
+    Playing { track: BridgeNowPlayingTrack },
+    Paused { track: BridgeNowPlayingTrack, reason: BridgePlaybackPauseReason },
 }
 
 mirror_enum! {
@@ -441,12 +413,7 @@ impl BridgeTrackPosition {
             duration_ms,
             progress,
         } = position;
-        Self {
-            position_ms,
-            duration_ms,
-            progress,
-            seek_revision,
-        }
+        Self { position_ms, duration_ms, progress, seek_revision }
     }
 }
 
@@ -462,11 +429,7 @@ mirror_enum! {
 
 impl BridgePlaybackValues {
     pub(crate) fn from_core(value: bae_core::playback::NowPlayingValues) -> Self {
-        let bae_core::playback::NowPlayingValues {
-            playback,
-            repeat_mode,
-            failure,
-        } = value;
+        let bae_core::playback::NowPlayingValues { playback, repeat_mode, failure } = value;
         let media_control = BridgeMediaControlPlayback::from_core(playback.media_control());
         Self {
             state: BridgePlaybackValueState::from_core(playback.state),

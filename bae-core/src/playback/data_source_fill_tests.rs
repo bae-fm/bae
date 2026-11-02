@@ -21,9 +21,7 @@ async fn a_fill_that_panics_fails_its_buffer_and_is_reported() {
         diagnostics,
         &buffer,
         Box::new(move |error| {
-            error_tx
-                .send(error)
-                .expect("the test waits for the fill's error");
+            error_tx.send(error).expect("the test waits for the fill's error");
         }),
         fill_that_panics(),
     );
@@ -34,10 +32,7 @@ async fn a_fill_that_panics_fails_its_buffer_and_is_reported() {
         matches!(*error, PlaybackError::TaskFailed(ref text) if text.contains("window index out of range")),
         "{error}"
     );
-    assert!(matches!(
-        buffer.new_reader().read(&mut [0u8; 1]),
-        Err(BufferStop::Failed(_))
-    ));
+    assert!(matches!(buffer.new_reader().read(&mut [0u8; 1]), Err(BufferStop::Failed(_))));
     assert_eq!(
         bugs.reports(),
         vec![(

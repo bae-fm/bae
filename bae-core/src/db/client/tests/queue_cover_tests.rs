@@ -56,10 +56,7 @@ async fn cover_ref(db: &Database, release_id: &str) -> Option<crate::album_detai
 #[tokio::test]
 async fn queue_row_covers_a_track_on_its_album_s_one_release() {
     let (db, _tmp) = cover_db().await;
-    assert_eq!(
-        cover_of(&db, TRACK_LONELY).await,
-        cover_ref(&db, RELEASE_LONELY).await,
-    );
+    assert_eq!(cover_of(&db, TRACK_LONELY).await, cover_ref(&db, RELEASE_LONELY).await,);
 }
 
 /// The album's primary release is set, but the queued track is on a different
@@ -67,30 +64,20 @@ async fn queue_row_covers_a_track_on_its_album_s_one_release() {
 #[tokio::test]
 async fn queue_row_covers_the_track_s_own_release_not_the_album_s_primary() {
     let (db, _tmp) = cover_db().await;
-    assert_eq!(
-        cover_of(&db, TRACK_OTHER).await,
-        cover_ref(&db, RELEASE_OTHER).await,
-    );
+    assert_eq!(cover_of(&db, TRACK_OTHER).await, cover_ref(&db, RELEASE_OTHER).await,);
 }
 
 /// Replacing the bytes changes the queue and list image versions.
 #[tokio::test]
 async fn replacing_a_cover_changes_its_version() {
     let (db, _tmp) = cover_db().await;
-    let before = cover_of(&db, TRACK_LONELY)
-        .await
-        .expect("the release has a cover");
+    let before = cover_of(&db, TRACK_LONELY).await.expect("the release has a cover");
     let listed_before = db.cover_version(RELEASE_LONELY).await.unwrap();
 
     super::write_cover(&db, RELEASE_LONELY, "replacement cover").await;
 
-    let after = cover_of(&db, TRACK_LONELY)
-        .await
-        .expect("the release has a cover");
-    assert_ne!(
-        after.version, before.version,
-        "the queue's cover version moves"
-    );
+    let after = cover_of(&db, TRACK_LONELY).await.expect("the release has a cover");
+    assert_ne!(after.version, before.version, "the queue's cover version moves");
     assert_ne!(
         db.cover_version(RELEASE_LONELY).await.unwrap(),
         listed_before,
@@ -104,11 +91,8 @@ async fn replacing_a_cover_changes_its_version() {
 #[tokio::test]
 async fn track_display_names_the_track_s_own_release_not_the_album_s_primary() {
     let (db, _tmp) = cover_db().await;
-    let display = db
-        .track_display(TRACK_OTHER)
-        .await
-        .unwrap()
-        .expect("the library holds the track");
+    let display =
+        db.track_display(TRACK_OTHER).await.unwrap().expect("the library holds the track");
     assert_eq!(display.album_id, "82a53f44-1b76-435b-89f0-42749371ee15");
     assert_eq!(display.release_id, RELEASE_OTHER);
 }

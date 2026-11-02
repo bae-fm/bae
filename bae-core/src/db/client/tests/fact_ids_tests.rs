@@ -13,12 +13,9 @@ fn record(source: Catalog, release_id: &str) -> ReleaseRecord {
 }
 
 async fn ids(db: &Database, query: &'static str) -> Vec<String> {
-    db.read(move |sql| {
-        sql.query(query, [], |row| row.get::<_, String>(0))
-            .map_err(DbError::from)
-    })
-    .await
-    .unwrap()
+    db.read(move |sql| sql.query(query, [], |row| row.get::<_, String>(0)).map_err(DbError::from))
+        .await
+        .unwrap()
 }
 
 /// A release's records and an album's credits are facts: each row's id is
@@ -42,18 +39,13 @@ async fn fact_rows_take_their_ids_from_their_facts() {
     let mut album = DbAlbum::new_test("Album");
     album.id = ALBUM_1.to_string();
     db.insert_album(&album).await.unwrap();
-    db.insert_album_artist(&DbAlbumArtist::new(&album.id, &artist.id, 0, now))
-        .await
-        .unwrap();
+    db.insert_album_artist(&DbAlbumArtist::new(&album.id, &artist.id, 0, now)).await.unwrap();
 
     let release = DbRelease::new_test(&album.id, RELEASE_1);
     db.insert_release(&release).await.unwrap();
-    db.insert_release_records(
-        &release.id,
-        &[record(Catalog::Discogs, "discogs-release-1")],
-    )
-    .await
-    .unwrap();
+    db.insert_release_records(&release.id, &[record(Catalog::Discogs, "discogs-release-1")])
+        .await
+        .unwrap();
     assert_eq!(
         ids(&db, "SELECT id FROM release_records").await,
         vec![identity::release_record_id(&release.id, Catalog::Discogs)],
@@ -79,9 +71,6 @@ async fn fact_rows_take_their_ids_from_their_facts() {
     );
     assert_eq!(
         ids(&db, "SELECT id FROM release_records").await,
-        vec![identity::release_record_id(
-            &release.id,
-            Catalog::MusicBrainz
-        )],
+        vec![identity::release_record_id(&release.id, Catalog::MusicBrainz)],
     );
 }

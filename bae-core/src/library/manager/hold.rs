@@ -13,10 +13,7 @@ pub(crate) struct Hold {
 impl Hold {
     /// Wait, blocking this thread, until no test holds the work.
     pub(crate) fn wait(&self) {
-        let _released = self
-            .released
-            .wait_while(self.held.lock().unwrap(), |held| *held)
-            .unwrap();
+        let _released = self.released.wait_while(self.held.lock().unwrap(), |held| *held).unwrap();
     }
 
     /// Hold the work until the returned guard drops.

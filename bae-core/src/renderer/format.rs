@@ -170,12 +170,9 @@ mod tests {
     /// the setting: the setting is only what a conversion produces.
     #[test]
     fn a_whole_file_both_flavors_decode_is_served_as_stored() {
-        for content_type in [
-            ContentType::Flac,
-            ContentType::Mp3,
-            ContentType::Aac,
-            ContentType::Pcm,
-        ] {
+        for content_type in
+            [ContentType::Flac, ContentType::Mp3, ContentType::Aac, ContentType::Pcm]
+        {
             assert_eq!(
                 served(&track(content_type.clone(), true)),
                 [Raw, Raw, Raw, Raw],
@@ -199,12 +196,9 @@ mod tests {
     /// window is.
     #[test]
     fn a_codec_no_flavor_decodes_converts_to_the_setting() {
-        for content_type in [
-            ContentType::Ape,
-            ContentType::Alac,
-            ContentType::WavPack,
-            ContentType::Dsd,
-        ] {
+        for content_type in
+            [ContentType::Ape, ContentType::Alac, ContentType::WavPack, ContentType::Dsd]
+        {
             assert_eq!(
                 served(&track(content_type.clone(), true)),
                 [TranscodeMp3, TranscodeWav, TranscodeMp3, TranscodeMp3],
@@ -217,22 +211,13 @@ mod tests {
     /// stored, a UPnP renderer gets a conversion.
     #[test]
     fn opus_plays_raw_on_cast_and_converts_for_upnp() {
-        assert_eq!(
-            served(&track(ContentType::Opus, true)),
-            [Raw, Raw, TranscodeMp3, TranscodeMp3]
-        );
+        assert_eq!(served(&track(ContentType::Opus, true)), [Raw, Raw, TranscodeMp3, TranscodeMp3]);
     }
 
     #[test]
     fn served_content_type_follows_the_format() {
         assert_eq!(Raw.content_type_str(&ContentType::Flac), "audio/flac");
-        assert_eq!(
-            TranscodeMp3.content_type_str(&ContentType::Ape),
-            "audio/mpeg"
-        );
-        assert_eq!(
-            TranscodeWav.content_type_str(&ContentType::Ape),
-            "audio/wav"
-        );
+        assert_eq!(TranscodeMp3.content_type_str(&ContentType::Ape), "audio/mpeg");
+        assert_eq!(TranscodeWav.content_type_str(&ContentType::Ape), "audio/wav");
     }
 }

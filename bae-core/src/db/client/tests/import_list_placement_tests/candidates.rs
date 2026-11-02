@@ -13,15 +13,11 @@ async fn the_draft_shows_while_its_state_is_current() {
     assert_eq!(lib.moved(&lib.state("Album")).await, moves([]));
     assert_eq!(
         lib.moved(&lib.draft("Album", "Album Title")).await,
-        moves([(
-            lib.release("Album"),
-            Some(found("Album").shown("Album Title", Some("")))
-        )])
+        moves([(lib.release("Album"), Some(found("Album").shown("Album Title", Some(""))))])
     );
     let draft = |set: &str| format!("{set} WHERE content_hash = '{}';", hash("Album"));
     assert_eq!(
-        lib.moved(&draft("UPDATE import_candidate_edit SET draft_valid = 1"))
-            .await,
+        lib.moved(&draft("UPDATE import_candidate_edit SET draft_valid = 1")).await,
         moves([])
     );
     assert_eq!(
@@ -37,14 +33,10 @@ async fn the_draft_shows_while_its_state_is_current() {
             lib.sql("Album")
         ))
         .await,
-        moves([(
-            lib.release("Album"),
-            Some(found("Album").shown("Album Title", Some("")))
-        )])
+        moves([(lib.release("Album"), Some(found("Album").shown("Album Title", Some(""))))])
     );
     assert_eq!(
-        lib.moved(&draft("DELETE FROM import_candidate_state"))
-            .await,
+        lib.moved(&draft("DELETE FROM import_candidate_state")).await,
         moves([(lib.release("Album"), Some(found("Album")))])
     );
 }
@@ -53,8 +45,7 @@ async fn the_draft_shows_while_its_state_is_current() {
 #[tokio::test]
 async fn a_blank_draft_shows_once_something_answered_it() {
     let lib = Library::new().await;
-    lib.run(&format!("{}{}", lib.scan("Album"), lib.state("Album")))
-        .await;
+    lib.run(&format!("{}{}", lib.scan("Album"), lib.state("Album"))).await;
     let provenance = format!(
         "INSERT INTO import_candidate_draft_provenance (content_hash, kind)
          VALUES ('{}', 'file_tags');",
@@ -62,10 +53,7 @@ async fn a_blank_draft_shows_once_something_answered_it() {
     );
     assert_eq!(
         lib.moved(&provenance).await,
-        moves([(
-            lib.release("Album"),
-            Some(found("Album").shown("", Some("")))
-        )])
+        moves([(lib.release("Album"), Some(found("Album").shown("", Some(""))))])
     );
     assert_eq!(
         lib.moved(&format!(
@@ -92,10 +80,7 @@ async fn the_album_credits_print_as_one_line() {
     ))
     .await;
     let shown = |artists: &str| {
-        moves([(
-            lib.release("Album"),
-            Some(found("Album").shown("Album Title", Some(artists))),
-        )])
+        moves([(lib.release("Album"), Some(found("Album").shown("Album Title", Some(artists))))])
     };
     let hash = hash("Album");
     assert_eq!(
@@ -126,10 +111,8 @@ async fn the_album_credits_print_as_one_line() {
         shown("First Artist & Printed Second feat. Picked Artist")
     );
     assert_eq!(
-        lib.moved(&format!(
-            "UPDATE artists SET name = 'Renamed Artist' WHERE id = '{ARTIST_A}';"
-        ))
-        .await,
+        lib.moved(&format!("UPDATE artists SET name = 'Renamed Artist' WHERE id = '{ARTIST_A}';"))
+            .await,
         shown("First Artist & Printed Second feat. Renamed Artist")
     );
     assert_eq!(
@@ -148,10 +131,7 @@ async fn the_album_credits_print_as_one_line() {
         shown("First Artist & Printed Second feat. Other Printing")
     );
     assert_eq!(
-        lib.moved(&format!(
-            "DELETE FROM artist_credits WHERE artist_id = '{ARTIST_A}';"
-        ))
-        .await,
+        lib.moved(&format!("DELETE FROM artist_credits WHERE artist_id = '{ARTIST_A}';")).await,
         shown("First Artist & Printed Second feat. Renamed Artist")
     );
     assert_eq!(
@@ -178,8 +158,7 @@ async fn the_album_credits_print_as_one_line() {
 #[tokio::test]
 async fn a_linked_release_is_identified() {
     let lib = Library::new().await;
-    lib.run(&format!("{}{}", lib.scan("Album"), lib.state("Album")))
-        .await;
+    lib.run(&format!("{}{}", lib.scan("Album"), lib.state("Album"))).await;
     assert_eq!(
         lib.moved(&format!(
             "INSERT INTO import_candidate_release_link (content_hash, kind)
@@ -207,8 +186,7 @@ async fn a_linked_release_is_identified() {
 #[tokio::test]
 async fn a_failed_import_is_founds_import_error() {
     let lib = Library::new().await;
-    lib.run(&format!("{}{}", lib.scan("Album"), lib.state("Album")))
-        .await;
+    lib.run(&format!("{}{}", lib.scan("Album"), lib.state("Album"))).await;
     assert_eq!(
         lib.moved(&format!(
             "UPDATE import_candidate_state SET edit_revision = 3 WHERE content_hash = '{0}';
@@ -217,10 +195,7 @@ async fn a_failed_import_is_founds_import_error() {
             hash("Album")
         ))
         .await,
-        moves([(
-            lib.release("Album"),
-            Some(found("Album").state("import_error"))
-        )])
+        moves([(lib.release("Album"), Some(found("Album").state("import_error")))])
     );
     assert_eq!(
         lib.moved(&format!(
@@ -261,12 +236,7 @@ async fn an_imported_release_is_done_dated_by_its_release() {
         .await,
         moves([(
             lib.release("Album"),
-            Some(
-                found("Album")
-                    .on("done")
-                    .dated(imported_at + 123)
-                    .shown("Album Title", Some(""))
-            )
+            Some(found("Album").on("done").dated(imported_at + 123).shown("Album Title", Some("")))
         )])
     );
     assert_eq!(
@@ -277,10 +247,7 @@ async fn an_imported_release_is_done_dated_by_its_release() {
         moves([(
             lib.release("Album"),
             Some(
-                found("Album")
-                    .on("done")
-                    .dated(imported_at + 1_000)
-                    .shown("Album Title", Some(""))
+                found("Album").on("done").dated(imported_at + 1_000).shown("Album Title", Some(""))
             )
         )])
     );
@@ -292,22 +259,14 @@ async fn an_imported_release_is_done_dated_by_its_release() {
         moves([(
             lib.release("Album"),
             Some(
-                found("Album")
-                    .on("done")
-                    .dated(imported_at + 2_000)
-                    .shown("Album Title", Some(""))
+                found("Album").on("done").dated(imported_at + 2_000).shown("Album Title", Some(""))
             )
         )])
     );
     assert_eq!(
-        lib.moved(&format!(
-            "DELETE FROM local_release_origin WHERE release_id = '{RELEASE_A}';"
-        ))
-        .await,
-        moves([(
-            lib.release("Album"),
-            Some(found("Album").on("skipped").dated(100))
-        )])
+        lib.moved(&format!("DELETE FROM local_release_origin WHERE release_id = '{RELEASE_A}';"))
+            .await,
+        moves([(lib.release("Album"), Some(found("Album").on("skipped").dated(100)))])
     );
 }
 
@@ -367,18 +326,12 @@ async fn what_is_running_decides_a_found_releases_state() {
         now("error")
     );
     assert_eq!(
-        lib.moved(&standing("DELETE FROM import_candidate_standing"))
-            .await,
-        moves([(
-            lib.release("Album"),
-            Some(found("Album").needs_you("not_found"))
-        )])
+        lib.moved(&standing("DELETE FROM import_candidate_standing")).await,
+        moves([(lib.release("Album"), Some(found("Album").needs_you("not_found")))])
     );
     // Off Found nothing running is a state.
-    lib.run(&format!(
-        "INSERT INTO skipped_import_candidates (candidate_path) VALUES ({key});"
-    ))
-    .await;
+    lib.run(&format!("INSERT INTO skipped_import_candidates (candidate_path) VALUES ({key});"))
+        .await;
     assert_eq!(
         lib.moved(&format!(
             "INSERT INTO import_candidate_standing (candidate_key, import_step, import_id)
@@ -414,12 +367,8 @@ async fn a_release_whose_draft_is_gone_shows_its_folder() {
 /// both releases.
 #[tokio::test]
 async fn a_row_moved_to_other_files_moves_both_releases() {
-    let imported = |placed: Placed| {
-        placed
-            .on("done")
-            .dated(1_767_225_600_000)
-            .shown("Album Title", Some(""))
-    };
+    let imported =
+        |placed: Placed| placed.on("done").dated(1_767_225_600_000).shown("Album Title", Some(""));
     for (table, row, placed) in [
         (
             "import_candidate_failure",
@@ -476,10 +425,7 @@ async fn a_row_moved_to_other_files_moves_both_releases() {
              INSERT INTO releases (id, album_id, created_at, album_order)
              VALUES ('{RELEASE_A}', '{ALBUM_A}', '2026-01-01T00:00:00Z', 0);"
         ));
-        setup.push_str(
-            &row.replace("{hash}", &hash("First"))
-                .replace("{RELEASE_A}", RELEASE_A),
-        );
+        setup.push_str(&row.replace("{hash}", &hash("First")).replace("{RELEASE_A}", RELEASE_A));
         lib.run(&setup).await;
         assert_eq!(
             lib.moved(&format!(
@@ -516,9 +462,6 @@ async fn a_draft_stored_written_shows_at_once() {
             hash("Album")
         ))
         .await,
-        moves([(
-            lib.release("Album"),
-            Some(found("Album").shown("Tagged Title", Some("")))
-        )])
+        moves([(lib.release("Album"), Some(found("Album").shown("Tagged Title", Some(""))))])
     );
 }

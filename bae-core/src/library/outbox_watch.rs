@@ -70,10 +70,7 @@ impl OutboxTransfers {
             })
             .collect();
         let mut total = UploadTransfer {
-            bar: (!sending.files.is_empty()).then_some(UploadBar {
-                bytes_done: 0,
-                bytes_total: 0,
-            }),
+            bar: (!sending.files.is_empty()).then_some(UploadBar { bytes_done: 0, bytes_total: 0 }),
             throughput_bps: 0,
         };
         for file in &sending.files {
@@ -109,7 +106,9 @@ pub enum OutboxTransferChange {
         transfer: ReleaseUploadTransfer,
     },
     /// The release has nothing being sent any more.
-    Removed { release_id: String },
+    Removed {
+        release_id: String,
+    },
     /// The files being sent together.
     TotalUpdated(UploadTransfer),
     /// Every transfer, as a reader first reads them.
@@ -187,10 +186,7 @@ impl OutboxTransfersWatch {
         watch: coven::TransferWatch,
         clock: coven::ClockRef,
     ) -> Self {
-        Self {
-            transfers: SendingTransfers::of(sending, watch, clock),
-            told: None,
-        }
+        Self { transfers: SendingTransfers::of(sending, watch, clock), told: None }
     }
 
     /// Every transfer as one `Reset` on the first read; after that, wait for
@@ -235,10 +231,7 @@ impl OutboxTotalTransferWatch {
         watch: coven::TransferWatch,
         clock: coven::ClockRef,
     ) -> Self {
-        Self {
-            transfers: SendingTransfers::of(sending, watch, clock),
-            told: None,
-        }
+        Self { transfers: SendingTransfers::of(sending, watch, clock), told: None }
     }
 
     /// The total on the first read, then the next total that differs. A
@@ -269,9 +262,7 @@ fn changes_between(told: &OutboxTransfers, next: &OutboxTransfers) -> Vec<Outbox
         .releases
         .keys()
         .filter(|release_id| !next.releases.contains_key(*release_id))
-        .map(|release_id| OutboxTransferChange::Removed {
-            release_id: release_id.clone(),
-        })
+        .map(|release_id| OutboxTransferChange::Removed { release_id: release_id.clone() })
         .collect();
     changes.extend(
         next.releases

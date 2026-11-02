@@ -11,10 +11,7 @@ pub(super) fn delete_file_edits(sql: &CovenWrite<'_>, content_hash: &str) -> Res
         "DELETE FROM import_candidate_sheet_reference WHERE content_hash = ?",
         [content_hash],
     )?;
-    sql.execute(
-        "DELETE FROM import_candidate_sheet_disc WHERE content_hash = ?",
-        [content_hash],
-    )?;
+    sql.execute("DELETE FROM import_candidate_sheet_disc WHERE content_hash = ?", [content_hash])?;
     Ok(())
 }
 
@@ -150,9 +147,7 @@ impl StoredFileEdits {
                 Some(file_id) => UserSheetBinding::Describes { file_id },
                 None => UserSheetBinding::Cleared,
             };
-            edits
-                .sheet_bindings
-                .set_reference(stored.sheet_id, stored.file_reference, decision);
+            edits.sheet_bindings.set_reference(stored.sheet_id, stored.file_reference, decision);
         }
         Ok(edits)
     }

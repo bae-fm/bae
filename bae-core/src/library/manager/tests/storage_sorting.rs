@@ -33,10 +33,7 @@ async fn storage_page_sort_by_artist_names() {
         field: crate::db::StorageSortField::ArtistNames,
         direction: crate::db::SortDirection::Ascending,
     };
-    let page = manager
-        .get_storage_page(&asc, crate::db::StorageFilter::All, 0, 10)
-        .await
-        .unwrap();
+    let page = manager.get_storage_page(&asc, crate::db::StorageFilter::All, 0, 10).await.unwrap();
     let names: Vec<_> = page.rows.iter().map(|r| r.album.title.clone()).collect();
     assert_eq!(names, vec!["Album by Alpha", "Album by Zulu"]);
 
@@ -44,10 +41,7 @@ async fn storage_page_sort_by_artist_names() {
         field: crate::db::StorageSortField::ArtistNames,
         direction: crate::db::SortDirection::Descending,
     };
-    let page = manager
-        .get_storage_page(&desc, crate::db::StorageFilter::All, 0, 10)
-        .await
-        .unwrap();
+    let page = manager.get_storage_page(&desc, crate::db::StorageFilter::All, 0, 10).await.unwrap();
     let names: Vec<_> = page.rows.iter().map(|r| r.album.title.clone()).collect();
     assert_eq!(names, vec!["Album by Zulu", "Album by Alpha"]);
 }
@@ -64,9 +58,8 @@ async fn storage_page_sort_by_media_nulls_last() {
         let mut album = create_test_album();
         album.title = title.to_string();
         let mut release = create_test_release(&album.id);
-        release.pressing.facts = media
-            .map(|medium| bae_types::pressing::made_of(medium, 1))
-            .unwrap_or_default();
+        release.pressing.facts =
+            media.map(|medium| bae_types::pressing::made_of(medium, 1)).unwrap_or_default();
         manager.database.insert_album(&album).await.unwrap();
         insert_release(&manager, &release).await;
     }
@@ -75,10 +68,7 @@ async fn storage_page_sort_by_media_nulls_last() {
         field: crate::db::StorageSortField::Media,
         direction: crate::db::SortDirection::Ascending,
     };
-    let page = manager
-        .get_storage_page(&asc, crate::db::StorageFilter::All, 0, 10)
-        .await
-        .unwrap();
+    let page = manager.get_storage_page(&asc, crate::db::StorageFilter::All, 0, 10).await.unwrap();
     let titles: Vec<_> = page.rows.iter().map(|r| r.album.title.clone()).collect();
     // Unknown media sorts last in both directions.
     assert_eq!(titles, vec!["Album CD", "Album Vinyl", "Album No Media"]);
@@ -87,10 +77,7 @@ async fn storage_page_sort_by_media_nulls_last() {
         field: crate::db::StorageSortField::Media,
         direction: crate::db::SortDirection::Descending,
     };
-    let page = manager
-        .get_storage_page(&desc, crate::db::StorageFilter::All, 0, 10)
-        .await
-        .unwrap();
+    let page = manager.get_storage_page(&desc, crate::db::StorageFilter::All, 0, 10).await.unwrap();
     let titles: Vec<_> = page.rows.iter().map(|r| r.album.title.clone()).collect();
     assert_eq!(titles, vec!["Album Vinyl", "Album CD", "Album No Media"]);
 }
@@ -123,10 +110,7 @@ async fn storage_page_sort_by_file_count() {
         field: crate::db::StorageSortField::FileCount,
         direction: crate::db::SortDirection::Descending,
     };
-    let page = manager
-        .get_storage_page(&desc, crate::db::StorageFilter::All, 0, 10)
-        .await
-        .unwrap();
+    let page = manager.get_storage_page(&desc, crate::db::StorageFilter::All, 0, 10).await.unwrap();
     let titles: Vec<_> = page.rows.iter().map(|r| r.album.title.clone()).collect();
     assert_eq!(titles, vec!["Album B", "Album C", "Album A"]);
 }
@@ -156,10 +140,7 @@ async fn storage_page_sort_by_total_size() {
         field: crate::db::StorageSortField::TotalSize,
         direction: crate::db::SortDirection::Ascending,
     };
-    let page = manager
-        .get_storage_page(&asc, crate::db::StorageFilter::All, 0, 10)
-        .await
-        .unwrap();
+    let page = manager.get_storage_page(&asc, crate::db::StorageFilter::All, 0, 10).await.unwrap();
     let titles: Vec<_> = page.rows.iter().map(|r| r.album.title.clone()).collect();
     assert_eq!(titles, vec!["Small", "Medium", "Big"]);
 }
@@ -230,10 +211,8 @@ async fn by_storage(
     filter: crate::db::StorageFilter,
     direction: crate::db::SortDirection,
 ) -> Vec<String> {
-    let sort = crate::db::StorageSortCriterion {
-        field: crate::db::StorageSortField::Storage,
-        direction,
-    };
+    let sort =
+        crate::db::StorageSortCriterion { field: crate::db::StorageSortField::Storage, direction };
     manager
         .get_storage_page(&sort, filter, 0, 10)
         .await
@@ -278,17 +257,9 @@ async fn storage_page_sort_by_storage_state() {
     .id;
 
     use crate::db::{SortDirection, StorageFilter};
-    let ascending = vec![
-        uploading.clone(),
-        pinning.clone(),
-        local.clone(),
-        pinned.clone(),
-        cloud.clone(),
-    ];
-    assert_eq!(
-        by_storage(&manager, StorageFilter::All, SortDirection::Ascending).await,
-        ascending
-    );
+    let ascending =
+        vec![uploading.clone(), pinning.clone(), local.clone(), pinned.clone(), cloud.clone()];
+    assert_eq!(by_storage(&manager, StorageFilter::All, SortDirection::Ascending).await, ascending);
     let sort = crate::db::StorageSortCriterion {
         field: crate::db::StorageSortField::Storage,
         direction: SortDirection::Ascending,
@@ -340,13 +311,8 @@ async fn a_release_sorts_as_pinning_while_the_download_queue_holds_it() {
     let dir = |name: &str| temp_dir.path().join(name);
     let first = uploaded_release(&manager, &dir("first"), "Album Title A", false).await;
     let second = uploaded_release(&manager, &dir("second"), "Album Title B", false).await;
-    let ascending = || {
-        by_storage(
-            &manager,
-            crate::db::StorageFilter::All,
-            crate::db::SortDirection::Ascending,
-        )
-    };
+    let ascending =
+        || by_storage(&manager, crate::db::StorageFilter::All, crate::db::SortDirection::Ascending);
     let resting = vec![first.clone(), second.clone()];
     let second_pinning = vec![second.clone(), first.clone()];
     assert_eq!(ascending().await, resting);
@@ -355,11 +321,7 @@ async fn a_release_sorts_as_pinning_while_the_download_queue_holds_it() {
     manager.enqueue_pins(vec![second.clone()]).await.unwrap();
     assert_eq!(ascending().await, second_pinning, "queued");
 
-    assert!(manager
-        .database
-        .activate_queued_release::<()>(&second)
-        .await
-        .unwrap());
+    assert!(manager.database.activate_queued_release::<()>(&second).await.unwrap());
     assert_eq!(ascending().await, second_pinning, "downloading");
 
     assert!(manager
@@ -387,16 +349,8 @@ async fn a_release_sorts_as_pinning_while_the_download_queue_holds_it() {
     assert_eq!(ascending().await, resting, "cancelled");
 
     manager.enqueue_pins(vec![second.clone()]).await.unwrap();
-    assert!(manager
-        .database
-        .activate_queued_release::<()>(&second)
-        .await
-        .unwrap());
-    assert!(manager
-        .database
-        .finish_queued_release::<()>(&second)
-        .await
-        .unwrap());
+    assert!(manager.database.activate_queued_release::<()>(&second).await.unwrap());
+    assert!(manager.database.finish_queued_release::<()>(&second).await.unwrap());
     assert_eq!(ascending().await, resting, "finished");
 
     manager.enqueue_pins(vec![second.clone()]).await.unwrap();
@@ -418,13 +372,7 @@ async fn listed_queues(manager: &LibraryManager) -> crate::library::StorageQueue
         windows: Default::default(),
         selected: Default::default(),
     });
-    browse
-        .next()
-        .await
-        .expect("the browse query answers")
-        .result
-        .unwrap()
-        .queues
+    browse.next().await.expect("the browse query answers").result.unwrap().queues
 }
 
 /// The list's value carries each transfer queue while it holds work waiting
@@ -436,12 +384,9 @@ async fn the_storage_list_carries_the_queues_holding_work() {
     use crate::library::{ReleaseQueueRun, StorageQueues, UploadQueueRun};
     let (manager, temp_dir) = setup_test_manager().await;
     connect_test_cloud(&manager).await;
-    let pinning = uploaded_release(&manager, &temp_dir.path().join("pin"), "Album Title", false).await;
-    let idle = StorageQueues {
-        uploads: None,
-        pins: None,
-        outputs: None,
-    };
+    let pinning =
+        uploaded_release(&manager, &temp_dir.path().join("pin"), "Album Title", false).await;
+    let idle = StorageQueues { uploads: None, pins: None, outputs: None };
     assert_eq!(listed_queues(&manager).await, idle);
 
     manager.set_sync_paused(true).await.unwrap();
@@ -464,11 +409,7 @@ async fn the_storage_list_carries_the_queues_holding_work() {
         }
     );
 
-    assert!(manager
-        .database
-        .activate_queued_release::<()>(&pinning)
-        .await
-        .unwrap());
+    assert!(manager.database.activate_queued_release::<()>(&pinning).await.unwrap());
     manager
         .database
         .execute_for_test(
@@ -495,11 +436,7 @@ async fn the_storage_list_carries_the_queues_holding_work() {
         .unwrap());
     assert_eq!(
         listed_queues(&manager).await,
-        StorageQueues {
-            uploads,
-            pins: None,
-            outputs,
-        },
+        StorageQueues { uploads, pins: None, outputs },
         "a failed pin is no work"
     );
 }

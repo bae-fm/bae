@@ -89,10 +89,7 @@ impl Resampler {
         let input_frames = input.map_or(0, |i| i.len() / self.src_channels) as c_int;
         let capacity = swr_get_out_samples(self.swr, input_frames);
         if capacity < 0 {
-            return Err(format!(
-                "Failed to size resampler output: {}",
-                av_err_str(capacity)
-            ));
+            return Err(format!("Failed to size resampler output: {}", av_err_str(capacity)));
         }
 
         let start = out.len();

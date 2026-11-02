@@ -2,17 +2,13 @@
 fn flac_commented(dir: &Path, name: &str, comments: &[(&str, &str)]) -> PathBuf {
     use lofty::config::WriteOptions;
     let path = dir.join(name);
-    fs::copy(
-        fixtures_dir().join("flac").join("01 Test Track 1.flac"),
-        &path,
-    )
-    .expect("copy fixture");
+    fs::copy(fixtures_dir().join("flac").join("01 Test Track 1.flac"), &path)
+        .expect("copy fixture");
     let mut tag = lofty::ogg::tag::VorbisComments::default();
     for (key, value) in comments {
         tag.push((*key).to_string(), (*value).to_string());
     }
-    tag.save_to_path(&path, WriteOptions::default())
-        .expect("save comments");
+    tag.save_to_path(&path, WriteOptions::default()).expect("save comments");
     path
 }
 
@@ -30,22 +26,15 @@ fn read_commented(files: &[&[(&str, &str)]]) -> ReleaseValues {
 }
 
 fn album_artist_names(values: &ReleaseValues) -> Vec<&str> {
-    values
-        .album_credits
-        .iter()
-        .map(|credit| credit.credit.name.as_str())
-        .collect()
+    values.album_credits.iter().map(|credit| credit.credit.name.as_str()).collect()
 }
 
 fn track_artist_names(values: &ReleaseValues, index: usize) -> Option<Vec<&str>> {
     match &values.tracks[index].credits {
         TrackCredits::AlbumArtists => None,
-        TrackCredits::Own(credits) => Some(
-            credits
-                .iter()
-                .map(|credit| credit.credit.name.as_str())
-                .collect(),
-        ),
+        TrackCredits::Own(credits) => {
+            Some(credits.iter().map(|credit| credit.credit.name.as_str()).collect())
+        }
     }
 }
 
@@ -86,10 +75,7 @@ fn a_file_naming_two_artists_gives_its_track_two_credits() {
         ("ARTIST", "Artist Beta"),
     ]]);
     assert_eq!(album_artist_names(&values), ["Artist Alpha"]);
-    assert_eq!(
-        track_artist_names(&values, 0),
-        Some(vec!["Artist Alpha", "Artist Beta"])
-    );
+    assert_eq!(track_artist_names(&values, 0), Some(vec!["Artist Alpha", "Artist Beta"]));
 }
 
 /// A track whose ARTIST folds to the album artist's name takes the album's
@@ -111,10 +97,8 @@ fn a_track_artist_naming_the_album_artist_takes_the_album_s_credit() {
 /// stated anywhere the folder's name is the title.
 #[test]
 fn files_give_the_title_they_agree_on_else_the_first_file_s() {
-    let values = read_commented(&[
-        &[("ALBUM", "Album Title CD1")],
-        &[("ALBUM", "Album Title CD1")],
-    ]);
+    let values =
+        read_commented(&[&[("ALBUM", "Album Title CD1")], &[("ALBUM", "Album Title CD1")]]);
     assert_eq!(values.album_title, "Album Title CD1");
 
     let values = read_commented(&[

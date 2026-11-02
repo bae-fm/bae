@@ -12,14 +12,8 @@ use tracing::warn;
 #[derive(Debug, Clone, PartialEq)]
 pub enum PreviewState {
     Idle,
-    Playing {
-        target: crate::playback::PreviewTarget,
-        duration_ms: u64,
-    },
-    Paused {
-        target: crate::playback::PreviewTarget,
-        duration_ms: u64,
-    },
+    Playing { target: crate::playback::PreviewTarget, duration_ms: u64 },
+    Paused { target: crate::playback::PreviewTarget, duration_ms: u64 },
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -124,10 +118,7 @@ pub enum RemotePlayback {
     /// the receiver stopped its app, went unreachable, or the network dropped.
     /// `detail` is why, untranslated. Held until playback moves to a device
     /// again, so the picker can say what happened to the last one.
-    Ended {
-        device: RemoteDevice,
-        detail: String,
-    },
+    Ended { device: RemoteDevice, detail: String },
 }
 
 impl PlaybackValues {
@@ -189,11 +180,7 @@ impl PlaybackValues {
 
 impl PlaybackPositions {
     pub(super) fn initial() -> Self {
-        Self {
-            library: None,
-            seek_revision: 0,
-            preview: None,
-        }
+        Self { library: None, seek_revision: 0, preview: None }
     }
 
     /// These positions after `event`, or `None` when `event` is not about
@@ -212,12 +199,7 @@ impl PlaybackPositions {
                     next.library = None;
                 }
             }
-            PlaybackProgress::PositionUpdate {
-                track_id,
-                position_ms,
-                duration_ms,
-                progress,
-            } => {
+            PlaybackProgress::PositionUpdate { track_id, position_ms, duration_ms, progress } => {
                 next.library = Some(PlaybackPosition {
                     track_id: track_id.clone(),
                     position_ms: *position_ms,
@@ -225,33 +207,20 @@ impl PlaybackPositions {
                     progress: *progress,
                 });
             }
-            PlaybackProgress::Seeked {
-                track_id,
-                position_ms,
-                duration_ms,
-                progress,
-            } => {
+            PlaybackProgress::Seeked { track_id, position_ms, duration_ms, progress } => {
                 next.library = Some(PlaybackPosition {
                     track_id: track_id.clone(),
                     position_ms: *position_ms,
                     duration_ms: *duration_ms,
                     progress: *progress,
                 });
-                next.seek_revision = next
-                    .seek_revision
-                    .checked_add(1)
-                    .expect("playback seek revision overflow");
+                next.seek_revision =
+                    next.seek_revision.checked_add(1).expect("playback seek revision overflow");
             }
             PlaybackProgress::PreviewStateChanged(PreviewState::Idle) => next.preview = None,
             PlaybackProgress::PreviewStateChanged(
-                PreviewState::Playing {
-                    target,
-                    duration_ms,
-                }
-                | PreviewState::Paused {
-                    target,
-                    duration_ms,
-                },
+                PreviewState::Playing { target, duration_ms }
+                | PreviewState::Paused { target, duration_ms },
             ) => {
                 // The same clip pausing, resuming or reloading for a seek
                 // keeps its place; another clip starts from its beginning.
@@ -267,10 +236,7 @@ impl PlaybackPositions {
                     progress,
                 });
             }
-            PlaybackProgress::PreviewPositionUpdate {
-                position_ms,
-                progress,
-            } => {
+            PlaybackProgress::PreviewPositionUpdate { position_ms, progress } => {
                 let Some(preview) = next.preview.as_mut() else {
                     tracing::debug!(
                         "preview position {position_ms} ms arrived with no preview loaded; dropped"
@@ -298,37 +264,19 @@ impl<Track> PlaybackValues<Track> {
         self,
         f: impl FnMut(Track) -> Result<Mapped, Error>,
     ) -> Result<PlaybackValues<Mapped>, Error> {
-        let Self {
-            state,
-            volume,
-            is_muted,
-            remote,
-            preview,
-        } = self;
-        Ok(PlaybackValues {
-            state: state.try_map_track(f)?,
-            volume,
-            is_muted,
-            remote,
-            preview,
-        })
+        let Self { state, volume, is_muted, remote, preview } = self;
+        Ok(PlaybackValues { state: state.try_map_track(f)?, volume, is_muted, remote, preview })
     }
 
     /// What the operating-system media surface shows of these values.
     pub fn media_control(&self) -> MediaControlPlayback {
         match &self.preview {
-            PreviewState::Playing {
-                target,
-                duration_ms,
-            } => MediaControlPlayback::Preview {
+            PreviewState::Playing { target, duration_ms } => MediaControlPlayback::Preview {
                 target: target.clone(),
                 duration_ms: *duration_ms,
                 is_playing: true,
             },
-            PreviewState::Paused {
-                target,
-                duration_ms,
-            } => MediaControlPlayback::Preview {
+            PreviewState::Paused { target, duration_ms } => MediaControlPlayback::Preview {
                 target: target.clone(),
                 duration_ms: *duration_ms,
                 is_playing: false,
@@ -442,11 +390,7 @@ mod tests {
         );
         assert!(matches!(
             values.media_control(),
-            MediaControlPlayback::Preview {
-                duration_ms: 120_000,
-                is_playing: true,
-                ..
-            }
+            MediaControlPlayback::Preview { duration_ms: 120_000, is_playing: true, .. }
         ));
 
         assert_eq!(
@@ -472,17 +416,13 @@ mod tests {
         );
         assert_eq!(values.volume, 0.5);
         assert_eq!(
-            values.apply(&PlaybackProgress::StateChanged {
-                state: PlaybackState::Stopped
-            }),
+            values.apply(&PlaybackProgress::StateChanged { state: PlaybackState::Stopped }),
             None
         );
         let failure = crate::ui::PlaybackErrorReason::SyncDisconnected;
         for _ in 0..2 {
             assert_eq!(
-                values.apply(&PlaybackProgress::PlaybackError {
-                    reason: failure.clone()
-                }),
+                values.apply(&PlaybackProgress::PlaybackError { reason: failure.clone() }),
                 Some(PlaybackChange::Failed(failure.clone()))
             );
         }
@@ -499,10 +439,7 @@ mod tests {
             })
             .expect("position update is retained");
 
-        assert_eq!(
-            positions.library.as_ref().expect("UI position").position_ms,
-            -1_250
-        );
+        assert_eq!(positions.library.as_ref().expect("UI position").position_ms, -1_250);
     }
 
     #[test]
@@ -521,10 +458,7 @@ mod tests {
                 track_id: "track-1".to_string(),
                 progress: 0.5,
             },
-            PlaybackProgress::PreviewPositionUpdate {
-                position_ms: 1_000,
-                progress: 0.01,
-            },
+            PlaybackProgress::PreviewPositionUpdate { position_ms: 1_000, progress: 0.01 },
         ] {
             assert!(values.apply(&tick).is_none(), "{tick:?} is a position");
         }
@@ -549,20 +483,14 @@ mod tests {
             },
         };
 
-        let same_track = positions
-            .applying(&playing("track-1"))
-            .expect("a state change is folded");
+        let same_track = positions.applying(&playing("track-1")).expect("a state change is folded");
         assert_eq!(same_track, positions);
 
-        let next_track = positions
-            .applying(&playing("track-2"))
-            .expect("a state change is folded");
+        let next_track = positions.applying(&playing("track-2")).expect("a state change is folded");
         assert_eq!(next_track.library, None);
 
         let stopped = positions
-            .applying(&PlaybackProgress::StateChanged {
-                state: PlaybackState::Stopped,
-            })
+            .applying(&PlaybackProgress::StateChanged { state: PlaybackState::Stopped })
             .expect("a state change is folded");
         assert_eq!(stopped.library, None);
     }
@@ -571,12 +499,10 @@ mod tests {
     fn a_preview_position_names_its_clip_and_keeps_its_place_only_on_that_clip() {
         let first = preview_target("/tmp/first.flac");
         let playing_first = PlaybackPositions::initial()
-            .applying(&PlaybackProgress::PreviewStateChanged(
-                PreviewState::Playing {
-                    target: first.clone(),
-                    duration_ms: 120_000,
-                },
-            ))
+            .applying(&PlaybackProgress::PreviewStateChanged(PreviewState::Playing {
+                target: first.clone(),
+                duration_ms: 120_000,
+            }))
             .and_then(|positions| {
                 positions.applying(&PlaybackProgress::PreviewPositionUpdate {
                     position_ms: 30_000,
@@ -595,23 +521,19 @@ mod tests {
         );
 
         let paused_first = playing_first
-            .applying(&PlaybackProgress::PreviewStateChanged(
-                PreviewState::Paused {
-                    target: first,
-                    duration_ms: 120_000,
-                },
-            ))
+            .applying(&PlaybackProgress::PreviewStateChanged(PreviewState::Paused {
+                target: first,
+                duration_ms: 120_000,
+            }))
             .expect("the first clip pauses");
         assert_eq!(paused_first, playing_first);
 
         let second = preview_target("/tmp/second.flac");
         let playing_second = paused_first
-            .applying(&PlaybackProgress::PreviewStateChanged(
-                PreviewState::Playing {
-                    target: second.clone(),
-                    duration_ms: 60_000,
-                },
-            ))
+            .applying(&PlaybackProgress::PreviewStateChanged(PreviewState::Playing {
+                target: second.clone(),
+                duration_ms: 60_000,
+            }))
             .expect("the second clip plays");
         assert_eq!(
             playing_second.preview,

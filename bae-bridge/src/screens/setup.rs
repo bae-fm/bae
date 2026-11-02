@@ -18,11 +18,7 @@ use crate::types::{
 /// that is handed the stream's values writes them; cancelling the stream ends
 /// what it holds.
 fn setup_steps(values: Arc<StreamValues>, runtime: OperationRuntime) -> Arc<KeyedValueStream> {
-    Arc::new(KeyedValueStream::new(
-        values,
-        bae_core::library::CancellationToken::new(),
-        runtime,
-    ))
+    Arc::new(KeyedValueStream::new(values, bae_core::library::CancellationToken::new(), runtime))
 }
 
 /// The app makes one for each call that opens a library, starts reading its
@@ -38,10 +34,7 @@ pub struct BridgeLibraryOpening {
 
 /// An opening whose stream is pulled on `runtime`.
 pub(crate) fn library_opening(runtime: OperationRuntime) -> Arc<BridgeLibraryOpening> {
-    Arc::new(BridgeLibraryOpening {
-        runtime,
-        steps: Mutex::new(None),
-    })
+    Arc::new(BridgeLibraryOpening { runtime, steps: Mutex::new(None) })
 }
 
 #[uniffi::export]

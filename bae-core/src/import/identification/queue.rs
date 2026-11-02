@@ -44,11 +44,7 @@ enum JobState {
 impl Job {
     /// A job is a request when any of its members is.
     fn admission(&self) -> Admission {
-        if self
-            .members
-            .iter()
-            .any(|member| member.admission == Admission::Requested)
-        {
+        if self.members.iter().any(|member| member.admission == Admission::Requested) {
             Admission::Requested
         } else {
             Admission::Automatic
@@ -63,16 +59,11 @@ impl Job {
     }
 
     fn holds(&self, key: &crate::import::CandidateKey) -> bool {
-        self.members
-            .iter()
-            .any(|member| member.candidate.key() == *key)
+        self.members.iter().any(|member| member.candidate.key() == *key)
     }
 
     fn keys(&self) -> Vec<crate::import::CandidateKey> {
-        self.members
-            .iter()
-            .map(|member| member.candidate.key())
-            .collect()
+        self.members.iter().map(|member| member.candidate.key()).collect()
     }
 
     /// Whether a run of this job holds one of the queue's slots. A settling
@@ -97,12 +88,7 @@ impl Job {
     fn marks(&self) -> Vec<(crate::import::CandidateKey, CandidateFiles)> {
         self.members
             .iter()
-            .map(|member| {
-                (
-                    member.candidate.key(),
-                    CandidateFiles::of(&member.candidate),
-                )
-            })
+            .map(|member| (member.candidate.key(), CandidateFiles::of(&member.candidate)))
             .collect()
     }
 
@@ -112,10 +98,7 @@ impl Job {
         record(
             context,
             "mark a job's candidates waiting",
-            context
-                .import
-                .admit_identification(self.marks(), self.admission())
-                .await,
+            context.import.admit_identification(self.marks(), self.admission()).await,
         );
     }
 }
@@ -158,21 +141,16 @@ impl Queue {
             JobState::Running { representative, .. }
             | JobState::Settling { representative, .. } => representative == key,
         };
-        Some(Held {
-            admission: member.admission,
-            identity: job.identity.clone(),
-            running,
-        })
+        Some(Held { admission: member.admission, identity: job.identity.clone(), running })
     }
 
     /// Whether no job `drain` names is left.
     #[cfg(any(test, feature = "test-utils"))]
     fn is_drained(&self, drain: super::Drain) -> bool {
         match drain {
-            super::Drain::Automatic => !self
-                .jobs
-                .iter()
-                .any(|job| job.admission() == Admission::Automatic),
+            super::Drain::Automatic => {
+                !self.jobs.iter().any(|job| job.admission() == Admission::Automatic)
+            }
             super::Drain::Every => self.jobs.is_empty(),
         }
     }
@@ -208,10 +186,7 @@ impl Queue {
             }
             content_hashes.push(identity.content_hash.clone());
             let mark = (key, identity.clone());
-            let entry = Entry {
-                candidate,
-                admission,
-            };
+            let entry = Entry { candidate, admission };
             match (self.index_of_identity(&identity), admission) {
                 (Some(index), Admission::Automatic) => self.jobs[index].members.push(entry),
                 (Some(index), Admission::Requested) => {
@@ -223,20 +198,13 @@ impl Queue {
                     if let Some(representative) = running {
                         cancel(context, &representative).await;
                     }
-                    let job = self
-                        .jobs
-                        .remove(index)
-                        .expect("the located job still exists");
+                    let job = self.jobs.remove(index).expect("the located job still exists");
                     job.mark_waiting(context).await;
                     let position = self.request_position();
                     self.jobs.insert(position, job);
                 }
                 (None, _) => {
-                    let job = Job {
-                        identity,
-                        members: vec![entry],
-                        state: JobState::Waiting,
-                    };
+                    let job = Job { identity, members: vec![entry], state: JobState::Waiting };
                     match admission {
                         Admission::Automatic => self.jobs.push_back(job),
                         Admission::Requested => {
@@ -282,10 +250,7 @@ impl Queue {
             self.jobs.remove(index);
         } else if lost_its_run {
             // The rest have waited for this answer, so they go to the head.
-            let job = self
-                .jobs
-                .remove(index)
-                .expect("the located job still exists");
+            let job = self.jobs.remove(index).expect("the located job still exists");
             job.mark_waiting(context).await;
             self.jobs.push_front(job);
         }
@@ -312,10 +277,7 @@ impl Queue {
         let Some(index) = self.index_of_key(key) else {
             return context.import.cancel_identification(key).await;
         };
-        let job = self
-            .jobs
-            .remove(index)
-            .expect("the located job still exists");
+        let job = self.jobs.remove(index).expect("the located job still exists");
         self.end_cancelled(context, job).await
     }
 
@@ -336,15 +298,9 @@ impl Queue {
             JobState::Settling { abandon, .. } => abandon.cancel(),
         }
         for key in job.keys() {
-            first_failure(
-                &mut ended,
-                context.import.withdraw_identification(&key).await,
-            );
+            first_failure(&mut ended, context.import.withdraw_identification(&key).await);
         }
-        info!(
-            "identification: cancelled {} candidate(s) of one job",
-            job.members.len()
-        );
+        info!("identification: cancelled {} candidate(s) of one job", job.members.len());
         ended
     }
 
@@ -353,10 +309,7 @@ impl Queue {
         let Some(index) = self.index_of_identity(identity) else {
             return;
         };
-        let job = self
-            .jobs
-            .remove(index)
-            .expect("the located job still exists");
+        let job = self.jobs.remove(index).expect("the located job still exists");
         for key in job.keys() {
             withdraw(context, &key).await;
         }
@@ -367,9 +320,7 @@ impl Queue {
         if self.running_count() >= MAX_IN_FLIGHT {
             return None;
         }
-        self.jobs
-            .iter()
-            .position(|job| matches!(job.state, JobState::Waiting))
+        self.jobs.iter().position(|job| matches!(job.state, JobState::Waiting))
     }
 
     /// Where a request goes: behind earlier waiting requests, ahead of every
@@ -431,9 +382,7 @@ pub(super) fn record(
     written: Result<(), crate::library::LibraryError>,
 ) {
     if let Err(error) = written {
-        context
-            .library_manager
-            .report_bug(&format!("identification: {doing}"), &error);
+        context.library_manager.report_bug(&format!("identification: {doing}"), &error);
     }
 }
 
@@ -623,23 +572,15 @@ async fn fill_slots(context: &Context, queue: &mut Queue) {
                 continue;
             }
         };
-        let CandidateRunStart {
-            choices,
-            title_search,
-        } = start;
-        info!(
-            "identification: identifying {key} at {priority:?} ({} job(s) on the queue)",
-            queued
-        );
+        let CandidateRunStart { choices, title_search } = start;
+        info!("identification: identifying {key} at {priority:?} ({} job(s) on the queue)", queued);
         let run = context.import.new_identification_run();
         match context
             .import
             .start_identification(
                 run,
                 key.clone(),
-                ExtractionSource::Candidate {
-                    candidate: candidate.clone(),
-                },
+                ExtractionSource::Candidate { candidate: candidate.clone() },
                 priority,
                 choices,
                 title_search,
@@ -665,9 +606,6 @@ async fn fill_slots(context: &Context, queue: &mut Queue) {
         let index = queue
             .index_of_identity(&identity)
             .expect("the job that just started is the one that was selected");
-        queue.jobs[index].state = JobState::Running {
-            representative: key,
-            run,
-        };
+        queue.jobs[index].state = JobState::Running { representative: key, run };
     }
 }

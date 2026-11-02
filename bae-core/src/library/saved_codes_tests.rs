@@ -16,7 +16,7 @@ fn a_device_with_nowhere_to_keep_saved_codes_keeps_none() {
 /// read never looks like a device with none.
 #[test]
 fn a_failed_read_of_the_saved_codes_stays_a_failure() {
-    assert!(!keeps_no_saved_codes(
-        &coven::BootstrapError::SecureStorage(coven::KeyError::RestoreCodeStoreId)
-    ));
+    assert!(!keeps_no_saved_codes(&coven::BootstrapError::SecureStorage(
+        coven::KeyError::RestoreCodeStoreId
+    )));
 }

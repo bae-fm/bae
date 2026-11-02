@@ -201,15 +201,13 @@ impl BridgeSourceSearch {
             SourceSearch::Off => Self::Off,
             SourceSearch::NotConfigured => Self::NotConfigured,
             SourceSearch::Searching => Self::Searching,
-            SourceSearch::Done { results } => Self::Done {
-                count: results.len() as u32,
-            },
-            SourceSearch::Failed(bae_core::signals::Failure::Lookup(failure)) => Self::Failed {
-                failure: BridgeLookupFailure::from_core(failure),
-            },
-            SourceSearch::Failed(bae_core::signals::Failure::Internal(failure)) => Self::Error {
-                failure: BridgeInternalFailure::from_core(failure),
-            },
+            SourceSearch::Done { results } => Self::Done { count: results.len() as u32 },
+            SourceSearch::Failed(bae_core::signals::Failure::Lookup(failure)) => {
+                Self::Failed { failure: BridgeLookupFailure::from_core(failure) }
+            }
+            SourceSearch::Failed(bae_core::signals::Failure::Internal(failure)) => {
+                Self::Error { failure: BridgeInternalFailure::from_core(failure) }
+            }
         }
     }
 }
@@ -274,10 +272,8 @@ pub struct BridgeCandidateSearch {
 impl BridgeCandidateSearch {
     pub(crate) fn from_core(search: bae_core::import::CandidateSearch) -> Self {
         let status = BridgeSearchStatus::from_core(search.status());
-        let unusable_barcode = search
-            .query
-            .unusable_barcode()
-            .map(BridgeUnusableBarcode::from_core);
+        let unusable_barcode =
+            search.query.unusable_barcode().map(BridgeUnusableBarcode::from_core);
         let bae_core::import::CandidateSearch {
             query,
             sources,
@@ -296,10 +292,7 @@ impl BridgeCandidateSearch {
                     state: BridgeSourceSearch::from_core(state),
                 })
                 .collect(),
-            groups: groups
-                .into_iter()
-                .map(BridgeReleaseGroup::from_core)
-                .collect(),
+            groups: groups.into_iter().map(BridgeReleaseGroup::from_core).collect(),
         }
     }
 }

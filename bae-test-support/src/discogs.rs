@@ -97,13 +97,7 @@ fn discogs_fixture_artist_ids(
         ids: &mut std::collections::BTreeSet<String>,
     ) {
         ids.extend(track.artists.iter().map(|artist| artist.id.clone()));
-        ids.extend(
-            track
-                .extraartists
-                .iter()
-                .flatten()
-                .filter_map(|artist| artist.id.clone()),
-        );
+        ids.extend(track.extraartists.iter().flatten().filter_map(|artist| artist.id.clone()));
         for sub_track in &track.sub_tracks {
             collect_track(sub_track, ids);
         }
@@ -113,13 +107,7 @@ fn discogs_fixture_artist_ids(
         .artists
         .iter()
         .map(|artist| artist.id.clone())
-        .chain(
-            release
-                .extraartists
-                .iter()
-                .flatten()
-                .filter_map(|artist| artist.id.clone()),
-        )
+        .chain(release.extraartists.iter().flatten().filter_map(|artist| artist.id.clone()))
         .collect();
     for track in &release.tracklist {
         collect_track(track, &mut ids);
@@ -148,9 +136,7 @@ pub fn seed_discogs_test_release(
     release: bae_catalogs::discogs::DiscogsRelease,
 ) -> String {
     let numeric = |value: &str| -> u64 {
-        discogs_fixture_id(value)
-            .parse()
-            .expect("a rendered Discogs id is numeric")
+        discogs_fixture_id(value).parse().expect("a rendered Discogs id is numeric")
     };
     let credit = |artist: &bae_catalogs::discogs::DiscogsArtist| {
         serde_json::json!({
@@ -171,18 +157,14 @@ pub fn seed_discogs_test_release(
     let master_id = release.master_id.as_deref().map(numeric);
 
     for artist_id in discogs_fixture_artist_ids(&release) {
-        providers
-            .discogs()
-            .seed_artist_image_response(&numeric(&artist_id).to_string(), None);
+        providers.discogs().seed_artist_image_response(&numeric(&artist_id).to_string(), None);
     }
 
     if let Some(master_id) = master_id {
         // Keyed by the rendered id, which is the one the parsed release names
         // and therefore the one the master fetch asks for.
         let master_json = serde_json::json!({ "id": master_id, "year": release.year });
-        providers
-            .discogs()
-            .seed_master_cache(&master_id.to_string(), master_json.to_string());
+        providers.discogs().seed_master_cache(&master_id.to_string(), master_json.to_string());
     }
 
     let raw_json = serde_json::json!({

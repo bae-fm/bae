@@ -12,28 +12,15 @@ async fn a_track_named_with_an_unpaired_surrogate_imports_and_exports() {
     let root = test.temp.path().join("watched");
     let folder = root.join("Album");
     std::fs::create_dir_all(&folder).unwrap();
-    let name: Vec<u16> = "Caf"
-        .encode_utf16()
-        .chain([0xD800])
-        .chain(".flac".encode_utf16())
-        .collect();
+    let name: Vec<u16> =
+        "Caf".encode_utf16().chain([0xD800]).chain(".flac".encode_utf16()).collect();
     std::fs::write(folder.join(std::ffi::OsString::from_wide(&name)), flac()).unwrap();
     let key = crate::import::CandidateKey::folder(&folder);
-    test.service
-        .library_manager
-        .add_watched_import_folder(&root)
-        .await
-        .unwrap();
+    test.service.library_manager.add_watched_import_folder(&root).await.unwrap();
     let (scan, _) = test.scan();
     scan.rescan(&root).await.unwrap();
-    let candidate = test
-        .service
-        .library_manager
-        .load_release_candidate(&key)
-        .await
-        .unwrap()
-        .unwrap()
-        .unwrap();
+    let candidate =
+        test.service.library_manager.load_release_candidate(&key).await.unwrap().unwrap().unwrap();
     let hash = candidate.files.content_hash();
     let revision = prepare_named_candidate(
         &test.service,
@@ -83,10 +70,7 @@ async fn a_track_named_with_an_unpaired_surrogate_imports_and_exports() {
         panic!("one release: {releases:?}");
     };
     let files = manager.get_files_for_release(&release.id).await.unwrap();
-    let names: Vec<&str> = files
-        .iter()
-        .map(|file| file.original_filename.as_str())
-        .collect();
+    let names: Vec<&str> = files.iter().map(|file| file.original_filename.as_str()).collect();
     assert_eq!(names, [r"Caf\xED\xA0\x80.flac"]);
 
     let target = test.temp.path().join("export");

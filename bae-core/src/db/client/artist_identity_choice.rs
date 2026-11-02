@@ -14,9 +14,7 @@ impl Database {
         ids: &dyn coven::IdSource,
     ) -> Result<(), DbError> {
         if choice == Choice::SameArtist {
-            return self
-                .merge_import_artist_identity_choice(content_hash, metadata_revision)
-                .await;
+            return self.merge_import_artist_identity_choice(content_hash, metadata_revision).await;
         }
         let hash = content_hash.to_string();
         let new_id = (choice == Choice::Neither).then(|| ids.new_id().to_string());
@@ -49,10 +47,7 @@ impl Database {
                 Choice::SameArtist => unreachable!("a merge uses the file-aware write"),
             };
             record_choice_on(sql, &hash, &discogs, &musicbrainz, choice, &artist_id)?;
-            sql.execute(
-                "DELETE FROM import_candidate_failure WHERE content_hash = ?",
-                [&hash],
-            )?;
+            sql.execute("DELETE FROM import_candidate_failure WHERE content_hash = ?", [&hash])?;
             Ok(())
         })
         .await
@@ -94,9 +89,7 @@ pub(super) fn record_choice_on(
         Choice::MusicBrainzArtist => "musicbrainz_artist",
         Choice::Neither => "neither",
         Choice::ChangeMatch => {
-            return Err(DbError::Message(
-                "changing the match does not choose an artist".into(),
-            ))
+            return Err(DbError::Message("changing the match does not choose an artist".into()))
         }
     };
     sql.execute(
@@ -158,11 +151,7 @@ fn chosen_artist_on<Q: QueryOne>(
             Some(artist) => ChosenArtist::Library(artist),
             None => ChosenArtist::New(artist_id),
         },
-        other => {
-            return Err(DbError::Message(format!(
-                "unknown artist identity choice {other:?}"
-            )))
-        }
+        other => return Err(DbError::Message(format!("unknown artist identity choice {other:?}"))),
     };
     Ok(Some(selected))
 }
@@ -208,17 +197,10 @@ impl ArtistCredits<'_> {
                 }
             }
         }
-        let mut resolved = ArtistCredits {
-            credits: &ordinary,
-            picked: self.picked,
-        }
-        .resolve_on(sql)?;
+        let mut resolved =
+            ArtistCredits { credits: &ordinary, picked: self.picked }.resolve_on(sql)?;
         selected.extend(resolved.id_map(&ordinary));
-        resolved.ids = self
-            .credits
-            .iter()
-            .map(|credit| selected[&credit.id].clone())
-            .collect();
+        resolved.ids = self.credits.iter().map(|credit| selected[&credit.id].clone()).collect();
         resolved.inserts.extend(new_artists.into_values());
         Ok(resolved)
     }
@@ -237,9 +219,9 @@ pub(super) fn resolve_import_credits_on<'a, Q: QueryOne + QueryRows>(
                 credit.discogs_artist_id.as_deref(),
                 credit.musicbrainz_artist_id.as_deref(),
             )? {
-                Some(ChosenArtist::Library(artist)) => crate::import::CreditResolution::Library {
-                    artist: artist.into(),
-                },
+                Some(ChosenArtist::Library(artist)) => {
+                    crate::import::CreditResolution::Library { artist: artist.into() }
+                }
                 Some(ChosenArtist::New(_)) => crate::import::CreditResolution::New,
                 None => super::artist_resolution::resolve_credit_on(sql, credit)?,
             },

@@ -81,25 +81,14 @@ struct FixtureAnalyzer {
 
 impl FixtureAnalyzer {
     fn new(responses: HashMap<PathBuf, Vec<String>>) -> Self {
-        Self {
-            responses: Mutex::new(responses),
-        }
+        Self { responses: Mutex::new(responses) }
     }
 }
 
 impl ArtworkAnalyzer for FixtureAnalyzer {
     fn analyze(&self, path: &Path) -> ArtworkAnalysis {
-        let text_lines = self
-            .responses
-            .lock()
-            .unwrap()
-            .get(path)
-            .cloned()
-            .unwrap_or_default();
-        ArtworkAnalysis {
-            barcodes: Vec::new(),
-            text_lines,
-        }
+        let text_lines = self.responses.lock().unwrap().get(path).cloned().unwrap_or_default();
+        ArtworkAnalysis { barcodes: Vec::new(), text_lines }
     }
 }
 
@@ -112,10 +101,7 @@ fn materialize(fixture: &Fixture, tmp: &TempDir) -> (PathBuf, HashMap<PathBuf, V
         [single] => (None, single.clone()),
         components => {
             let len = components.len();
-            (
-                Some(components[len - 2].clone()),
-                components[len - 1].clone(),
-            )
+            (Some(components[len - 2].clone()), components[len - 1].clone())
         }
     };
 
@@ -145,12 +131,8 @@ fn materialize(fixture: &Fixture, tmp: &TempDir) -> (PathBuf, HashMap<PathBuf, V
 
     // Each CUE field becomes a top-level TITLE.
     if !fixture.sources.cue_fields.is_empty() {
-        let cue_body: String = fixture
-            .sources
-            .cue_fields
-            .iter()
-            .map(|s| format!("TITLE \"{s}\"\n"))
-            .collect();
+        let cue_body: String =
+            fixture.sources.cue_fields.iter().map(|s| format!("TITLE \"{s}\"\n")).collect();
         fs::write(folder.join("fixture.cue"), cue_body).unwrap();
     }
 
@@ -246,9 +228,7 @@ async fn drive_fixture(
                     return (snapshot.signals.text.catalogs().to_vec(), free_text.clone());
                 }
             }
-            run.changed()
-                .await
-                .expect("the extraction settles before it ends");
+            run.changed().await.expect("the extraction settles before it ends");
         }
     })
     .await

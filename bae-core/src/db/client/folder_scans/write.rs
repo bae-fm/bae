@@ -101,14 +101,8 @@ pub(crate) fn replace_candidate_file_tag_snapshot(
         params![
             coven::path_bytes(watched_folder_path),
             candidate_path,
-            to_i64(
-                snapshot.scan_generation,
-                "a file-tag snapshot's scan generation"
-            )?,
-            to_i64(
-                snapshot.file_edit_revision,
-                "a file-tag snapshot's file edit revision"
-            )?,
+            to_i64(snapshot.scan_generation, "a file-tag snapshot's scan generation")?,
+            to_i64(snapshot.file_edit_revision, "a file-tag snapshot's file edit revision")?,
             cover_source,
             cover_content_type,
             cover_data,
@@ -248,24 +242,14 @@ fn insert_candidate(
     candidate: &FolderCandidate,
     file_metadata: Option<&crate::import::file_metadata_seed::FileMetadataSeed>,
 ) -> Result<(), DbError> {
-    insert_candidate_row(
-        sql,
-        watched_folder_path,
-        generation,
-        kind,
-        source_kind,
-        candidate,
-    )?;
+    insert_candidate_row(sql, watched_folder_path, generation, kind, source_kind, candidate)?;
     let path = candidate.key();
     let blank;
     let seed = match file_metadata {
         Some(seed) => CandidateStateSeed::FileMetadata(seed),
         None => {
             blank = candidate.blank_draft();
-            CandidateStateSeed::Blank {
-                draft: &blank,
-                cover: candidate.blank_cover(),
-            }
+            CandidateStateSeed::Blank { draft: &blank, cover: candidate.blank_cover() }
         }
     };
     // File rows first: the file-tag reading references them.
@@ -310,10 +294,7 @@ pub(crate) fn insert_candidate_row(
             coven::path_bytes(&candidate.file_root),
             scope_text(candidate.scope),
             candidate.files.content_hash(),
-            to_i64(
-                candidate.file_edit_revision,
-                "a candidate's file edit revision"
-            )?,
+            to_i64(candidate.file_edit_revision, "a candidate's file edit revision")?,
             candidate.grouping,
             source_kind,
         ],
@@ -339,10 +320,7 @@ pub(crate) fn insert_candidate_row(
 pub(crate) enum CandidateStateSeed<'a> {
     /// As many empty track slots as the folder has audio units, and the
     /// folder's own cover: what a candidate holding no draft row reads as.
-    Blank {
-        draft: &'a crate::import::CandidateDraft,
-        cover: Option<crate::import::CoverSelection>,
-    },
+    Blank { draft: &'a crate::import::CandidateDraft, cover: Option<crate::import::CoverSelection> },
     /// The folder read as its own files describe it, with the reading it was
     /// projected from and the cover those tags embed.
     FileMetadata(&'a crate::import::file_metadata_seed::FileMetadataSeed),
@@ -474,12 +452,7 @@ fn insert_invalid(
             "INSERT INTO scan_skipped_tags \
                  (watched_folder_path, candidate_path, album_title, artist) \
              VALUES (?, ?, ?, ?)",
-            params![
-                coven::path_bytes(watched_folder_path),
-                key,
-                tags.album_title,
-                tags.artist
-            ],
+            params![coven::path_bytes(watched_folder_path), key, tags.album_title, tags.artist],
         )?;
     }
     Ok(())
@@ -546,31 +519,16 @@ fn insert_file(
             coven::path_bytes(&file.file.path),
             to_i64(file.file.size, "a file's size")?,
             file.file.modified_at_ns,
-            file.file
-                .source_audio
-                .as_ref()
-                .map(|audio| audio.content_type.as_str()),
+            file.file.source_audio.as_ref().map(|audio| audio.content_type.as_str()),
             file.file
                 .source_audio
                 .as_ref()
                 .map(|audio| to_i64(audio.duration_ms, "an audio file's duration"))
                 .transpose()?,
-            file.file
-                .source_audio
-                .as_ref()
-                .map(|audio| audio.format.sample_rate_hz),
-            file.file
-                .source_audio
-                .as_ref()
-                .and_then(|audio| audio.format.bits_per_sample),
-            file.file
-                .source_audio
-                .as_ref()
-                .and_then(|audio| audio.format.bitrate_kbps),
-            file.file
-                .source_audio
-                .as_ref()
-                .map(|audio| audio.format.channels),
+            file.file.source_audio.as_ref().map(|audio| audio.format.sample_rate_hz),
+            file.file.source_audio.as_ref().and_then(|audio| audio.format.bits_per_sample),
+            file.file.source_audio.as_ref().and_then(|audio| audio.format.bitrate_kbps),
+            file.file.source_audio.as_ref().map(|audio| audio.format.channels),
             file.file.file_name,
             file.file.dir_prefix,
             columns.role,
@@ -689,10 +647,8 @@ mod tests {
             .collect::<Result<_, _>>()
             .unwrap();
         referencing.sort();
-        let mut cleared: Vec<String> = super::ENTRY_ROW_TABLES
-            .iter()
-            .map(|table| table.to_string())
-            .collect();
+        let mut cleared: Vec<String> =
+            super::ENTRY_ROW_TABLES.iter().map(|table| table.to_string()).collect();
         cleared.sort();
         assert_eq!(cleared, referencing);
     }

@@ -34,10 +34,7 @@ fn an_invite_shows_the_record_its_operation_holds() {
         std::slice::from_ref(&record),
     );
     assert_eq!(open[0].held, None);
-    let held = open[1]
-        .held
-        .as_ref()
-        .expect("the record names the second invite");
+    let held = open[1].held.as_ref().expect("the record names the second invite");
     assert_eq!(held.reason, coven::PendingReason::NoStorage);
     assert_eq!(held.cause.as_deref(), Some("offline"));
     assert_eq!(invite_shown(&open[1].invite), InviteShown::Granting);

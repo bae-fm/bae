@@ -34,14 +34,8 @@ async fn search_library_matches_composer_and_work_sort_names() {
     let work_results = db.search_library("Displayed Work", 10).await.unwrap();
     assert_eq!(work_results.works.len(), 1);
     assert_eq!(work_results.works[0].work.id, WORK_CHILD_A);
-    assert_eq!(
-        work_results.works[0].parent_work_id.as_deref(),
-        Some(WORK_PARENT_A)
-    );
-    assert_eq!(
-        work_results.works[0].representative_release_id.as_deref(),
-        Some(RELEASE_A)
-    );
+    assert_eq!(work_results.works[0].parent_work_id.as_deref(), Some(WORK_PARENT_A));
+    assert_eq!(work_results.works[0].representative_release_id.as_deref(), Some(RELEASE_A));
 }
 
 #[tokio::test]
@@ -97,57 +91,33 @@ async fn search_library_treats_like_metacharacters_as_literals() {
 async fn composer_detail_carries_work_parent_and_representative_release() {
     let (db, _tmp) = seeded_db().await;
 
-    let detail = db
-        .find_composer_detail(ARTIST_COMPOSER)
-        .await
-        .unwrap()
-        .expect("composer detail");
+    let detail = db.find_composer_detail(ARTIST_COMPOSER).await.unwrap().expect("composer detail");
 
     assert_eq!(detail.work_groups.len(), 1);
     let group = &detail.work_groups[0];
-    assert_eq!(
-        group.parent.as_ref().map(|work| work.work.id.as_str()),
-        Some(WORK_PARENT_A)
-    );
+    assert_eq!(group.parent.as_ref().map(|work| work.work.id.as_str()), Some(WORK_PARENT_A));
     assert_eq!(group.works.len(), 1);
     assert_eq!(group.works[0].work.id, WORK_CHILD_A);
-    assert_eq!(
-        group.works[0].parent_work_id.as_deref(),
-        Some(WORK_PARENT_A)
-    );
-    assert_eq!(
-        group.works[0].representative_release_id.as_deref(),
-        Some(RELEASE_A)
-    );
+    assert_eq!(group.works[0].parent_work_id.as_deref(), Some(WORK_PARENT_A));
+    assert_eq!(group.works[0].representative_release_id.as_deref(), Some(RELEASE_A));
 }
 
 #[tokio::test]
 async fn work_detail_lists_child_works_with_their_representative_release() {
     let (db, _tmp) = seeded_db().await;
 
-    let detail = db
-        .find_work_detail(WORK_PARENT_A)
-        .await
-        .unwrap()
-        .expect("work detail");
+    let detail = db.find_work_detail(WORK_PARENT_A).await.unwrap().expect("work detail");
 
     assert_eq!(detail.child_works.len(), 1);
     assert_eq!(detail.child_works[0].work.id, WORK_CHILD_A);
-    assert_eq!(
-        detail.child_works[0].representative_release_id.as_deref(),
-        Some(RELEASE_A)
-    );
+    assert_eq!(detail.child_works[0].representative_release_id.as_deref(), Some(RELEASE_A));
 }
 
 #[tokio::test]
 async fn work_detail_release_rows_carry_album_release_display_fields() {
     let (db, _tmp) = seeded_db().await;
 
-    let detail = db
-        .find_work_detail(WORK_CHILD_A)
-        .await
-        .unwrap()
-        .expect("work detail");
+    let detail = db.find_work_detail(WORK_CHILD_A).await.unwrap().expect("work detail");
 
     assert_eq!(detail.releases.len(), 1);
     let release = &detail.releases[0];

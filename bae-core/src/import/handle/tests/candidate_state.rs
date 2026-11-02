@@ -13,10 +13,7 @@ async fn removing_a_watched_folder_cancels_in_flight_extraction() {
         fn analyze(&self, _path: &Path) -> ArtworkAnalysis {
             self.calls.fetch_add(1, Ordering::SeqCst);
             self.held.pass();
-            ArtworkAnalysis {
-                barcodes: Vec::new(),
-                text_lines: vec!["Line".to_string()],
-            }
+            ArtworkAnalysis { barcodes: Vec::new(), text_lines: vec!["Line".to_string()] }
         }
     }
 
@@ -42,22 +39,14 @@ async fn removing_a_watched_folder_cancels_in_flight_extraction() {
         std::fs::write(release_folder.join(format!("p{n}.jpg")), minimal_jpeg()).unwrap();
     }
 
-    let import_handle = manager
-        .start_import_service(tokio::runtime::Handle::current())
-        .await
-        .unwrap();
+    let import_handle =
+        manager.start_import_service(tokio::runtime::Handle::current()).await.unwrap();
     let (gate, held, reached) = crate::test_gate::closed();
-    let analyzer = std::sync::Arc::new(HeldAnalyzer {
-        calls: AtomicUsize::new(0),
-        held,
-    });
+    let analyzer = std::sync::Arc::new(HeldAnalyzer { calls: AtomicUsize::new(0), held });
     import_handle.register_artwork_analyzer(analyzer.clone());
 
     let mut events = import_handle.every_event();
-    import_handle
-        .add_watched_folder(root.clone())
-        .await
-        .unwrap();
+    import_handle.add_watched_folder(root.clone()).await.unwrap();
 
     // Take the key from the scanned candidate's path, however it is canonicalized.
     let candidate_path = tokio::time::timeout(HANG_GUARD, async {
@@ -99,17 +88,10 @@ async fn removing_a_watched_folder_cancels_in_flight_extraction() {
         ExtractionSource::Candidate { candidate },
         bae_catalogs::rate_limiter::CallPriority::Interactive,
     );
-    reached
-        .recv_timeout(HANG_GUARD)
-        .expect("the OCR pass reaches its first image");
-    let cancelled = import_handle
-        .extraction
-        .cancelled_for_test(&key)
-        .expect("the extraction is in flight");
-    import_handle
-        .remove_watched_folder(root.clone())
-        .await
-        .unwrap();
+    reached.recv_timeout(HANG_GUARD).expect("the OCR pass reaches its first image");
+    let cancelled =
+        import_handle.extraction.cancelled_for_test(&key).expect("the extraction is in flight");
+    import_handle.remove_watched_folder(root.clone()).await.unwrap();
     // Let the reads under way finish only once the removal has reached the
     // extraction, so whatever the pass does next it does cancelled.
     tokio::time::timeout(HANG_GUARD, cancelled)
@@ -117,19 +99,12 @@ async fn removing_a_watched_folder_cancels_in_flight_extraction() {
         .expect("removing the folder cancels the extraction");
     gate.open();
     // The extraction drops its end of the watch when it stops.
-    tokio::time::timeout(HANG_GUARD, async {
-        while extraction.changed().await.is_ok() {}
-    })
-    .await
-    .expect("the cancelled extraction stops");
+    tokio::time::timeout(HANG_GUARD, async { while extraction.changed().await.is_ok() {} })
+        .await
+        .expect("the cancelled extraction stops");
 
     while let Ok(event) = events.try_recv() {
-        if let ImportEvent::SignalsUpdated {
-            candidate_key,
-            signals,
-            ..
-        } = event
-        {
+        if let ImportEvent::SignalsUpdated { candidate_key, signals, .. } = event {
             if candidate_key == key {
                 assert!(
                     !matches!(signals.text, TextSignal::Settled { .. }),
@@ -149,21 +124,12 @@ async fn removing_a_watched_folder_cancels_in_flight_extraction() {
 async fn removing_a_root_queued_behind_a_decision_does_not_deadlock() {
     let (manager, _temp) = setup_test_manager().await;
     let root = crate::import::watched_folder::host_root("/music");
-    manager
-        .add_watched_import_folder(&root)
-        .await
-        .unwrap();
-    let handle = manager
-        .start_import_service(tokio::runtime::Handle::current())
-        .await
-        .unwrap();
+    manager.add_watched_import_folder(&root).await.unwrap();
+    let handle = manager.start_import_service(tokio::runtime::Handle::current()).await.unwrap();
     // A row under `Collection`, so the decision the removal races is one the
     // list offers.
     let folder = root.join("Collection").join("Album");
-    let generation = manager
-        .begin_folder_scan(&root)
-        .await
-        .unwrap();
+    let generation = manager.begin_folder_scan(&root).await.unwrap();
     manager
         .save_folder_scan_item(
             &root,
@@ -174,7 +140,8 @@ async fn removing_a_root_queued_behind_a_decision_does_not_deadlock() {
                     file_root: folder.clone(),
                     name: "Album".to_string(),
                     files: crate::import::folder_scanner::CategorizedFiles {
-                        files: Vec::new(), parts: Vec::new(), 
+                        files: Vec::new(),
+                        parts: Vec::new(),
                     },
                     watched_folder_path: root.clone(),
                     scope: crate::import::folder_scanner::ReleaseFileScope::Recursive,
@@ -211,7 +178,5 @@ async fn removing_a_root_queued_behind_a_decision_does_not_deadlock() {
     // not with success.
     assert!(decision.unwrap().is_err());
     removal.unwrap();
-    tokio::task::spawn_blocking(move || handle.stop_and_join())
-        .await
-        .unwrap();
+    tokio::task::spawn_blocking(move || handle.stop_and_join()).await.unwrap();
 }

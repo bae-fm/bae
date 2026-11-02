@@ -198,9 +198,8 @@ impl Session {
         // whose thread can't start is still here, not dropped with the
         // spawn's error.
         let (work_tx, work) = std::sync::mpsc::channel::<Box<dyn FnOnce() + Send>>();
-        let started = std::thread::Builder::new()
-            .name("bae-library-close".to_string())
-            .spawn(move || {
+        let started =
+            std::thread::Builder::new().name("bae-library-close".to_string()).spawn(move || {
                 if let Ok(ending) = work.recv() {
                     ending();
                 }
@@ -210,10 +209,9 @@ impl Session {
                 ending_on(thread);
                 match work_tx.send(ending) {
                     Ok(()) => return,
-                    Err(unsent) => (
-                        unsent.0,
-                        "its thread ended before it was handed the close".to_string(),
-                    ),
+                    Err(unsent) => {
+                        (unsent.0, "its thread ended before it was handed the close".to_string())
+                    }
                 }
             }
             Err(error) => (ending, format!("its thread could not start: {error}")),
@@ -414,9 +412,8 @@ impl AppHandle {
         &self,
         closing: Option<std::sync::Arc<crate::BridgeLibraryClosing>>,
     ) -> Result<(), BridgeError> {
-        let steps = closing.map_or_else(crate::screens::ClosingSteps::unread, |closing| {
-            closing.writer()
-        });
+        let steps =
+            closing.map_or_else(crate::screens::ClosingSteps::unread, |closing| closing.writer());
         self.session.end(self.closing(steps)).ok_or_else(|| {
             BridgeError::from(bae_core::library::LibraryError::Internal(
                 "the library is already closed".to_string(),

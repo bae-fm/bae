@@ -18,10 +18,7 @@ pub(super) async fn admit_found(
         };
         match context
             .library_manager
-            .verdict_stored_for(
-                &candidate.files.content_hash(),
-                candidate.file_edit_revision,
-            )
+            .verdict_stored_for(&candidate.files.content_hash(), candidate.file_edit_revision)
             .await
         {
             Ok(true) => {
@@ -71,28 +68,18 @@ pub(super) async fn candidate_run_start(
     candidate: &FolderCandidate,
 ) -> Result<CandidateRunStart, crate::library::LibraryError> {
     let content_hash = candidate.files.content_hash();
-    let Some(state) = context
-        .library_manager
-        .load_import_candidate_state(&content_hash)
-        .await?
+    let Some(state) = context.library_manager.load_import_candidate_state(&content_hash).await?
     else {
         return Err(crate::library::LibraryError::Internal(format!(
             "candidate {} has no persisted state row",
             candidate.key()
         )));
     };
-    let draft = context
-        .library_manager
-        .load_import_candidate_pane_rows(&content_hash)
-        .await?
-        .draft;
+    let draft = context.library_manager.load_import_candidate_pane_rows(&content_hash).await?.draft;
     let artist = crate::import::credited_line(&draft.album_artist_assignments);
     let title_search = match &state.lookup_choices.search_words {
         Some(words) => TitleSearch::of(&words.album, &words.artist),
         None => TitleSearch::of_draft(&draft.album_title, &artist),
     };
-    Ok(CandidateRunStart {
-        choices: state.lookup_choices,
-        title_search,
-    })
+    Ok(CandidateRunStart { choices: state.lookup_choices, title_search })
 }

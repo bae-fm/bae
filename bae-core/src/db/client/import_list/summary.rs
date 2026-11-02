@@ -30,17 +30,11 @@ pub(super) struct Counts {
 pub(super) fn counts(sql: &SqlReadContext<'_>) -> Result<Counts, DbError> {
     let mut tabs = TriageTabCounts::default();
     let mut has_groups = false;
-    for (tab, item, count) in sql.query(
-        "SELECT tab, item, count FROM import_list_tab_count",
-        [],
-        |row| {
-            Ok((
-                row.get::<_, String>(0)?,
-                row.get::<_, String>(1)?,
-                row.get::<_, i64>(2)?,
-            ))
-        },
-    )? {
+    for (tab, item, count) in
+        sql.query("SELECT tab, item, count FROM import_list_tab_count", [], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?, row.get::<_, i64>(2)?))
+        })?
+    {
         match Item::of(&item)? {
             Item::Group => has_groups = true,
             Item::Candidate | Item::Invalid => {
@@ -49,17 +43,12 @@ pub(super) fn counts(sql: &SqlReadContext<'_>) -> Result<Counts, DbError> {
         }
     }
     let in_entries = sql
-        .query(
-            "SELECT pending_entry, count FROM import_list_entry_count",
-            [],
-            |row| Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?)),
-        )?
+        .query("SELECT pending_entry, count FROM import_list_entry_count", [], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?))
+        })?
         .into_iter()
         .map(|(entry, count)| {
-            Ok((
-                pending_filter_of(&entry)?,
-                to_u32(count, "a filter entry's count")?,
-            ))
+            Ok((pending_filter_of(&entry)?, to_u32(count, "a filter entry's count")?))
         })
         .collect::<Result<Vec<_>, DbError>>()?;
     Ok(Counts {
@@ -204,11 +193,7 @@ pub(super) fn listed(
         )?)?),
         false => None,
     };
-    Ok(Listed {
-        total: total(items)?,
-        narrowed,
-        reads: Reads::Order,
-    })
+    Ok(Listed { total: total(items)?, narrowed, reads: Reads::Order })
 }
 
 /// What the list's selection holds and offers. The offers are worked out
@@ -252,21 +237,14 @@ pub(super) fn selection(
             Item::Candidate => basis.basis(&key)?.actions(&facts.facts(&key)?),
             Item::Invalid | Item::Group => Vec::new(),
         };
-        parts.push(SelectionPart {
-            actions,
-            count: rows,
-        });
+        parts.push(SelectionPart { actions, count: rows });
     }
     let single = match (count, single) {
         (1, Some((Item::Candidate, key))) => Some(SingleSelection::Candidate { key }),
         (1, Some((Item::Invalid, key))) => Some(SingleSelection::InvalidCandidate { key }),
         _ => None,
     };
-    Ok(SelectionSummary {
-        count,
-        single,
-        offers: selection_offers(&parts),
-    })
+    Ok(SelectionSummary { count, single, offers: selection_offers(&parts) })
 }
 
 /// The selected rows of the list, in its order.
@@ -347,15 +325,9 @@ pub(super) fn locate(
         watched_folder_path: root,
         relative_folder: folder,
     });
-    let position = Items::new(
-        list,
-        tab,
-        row.view.order,
-        Shown::Revealing {
-            opened: group.as_ref(),
-        },
-    )
-    .position_of(sql, key)?;
+    let position =
+        Items::new(list, tab, row.view.order, Shown::Revealing { opened: group.as_ref() })
+            .position_of(sql, key)?;
     Ok(position.map(|position| ImportCandidateListLocation {
         stable_key: crate::import::list::candidate_stable_key(key),
         tab,

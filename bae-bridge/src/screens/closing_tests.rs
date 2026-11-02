@@ -63,9 +63,7 @@ fn a_removal_writes_each_step_it_runs() {
     let closing = BridgeLibraryClosing::new(host);
     let stream = closing.feed_closing_steps();
 
-    let removal = caller
-        .block_on(app.clone().remove_library(Some(closing.clone())))
-        .unwrap();
+    let removal = caller.block_on(app.clone().remove_library(Some(closing.clone()))).unwrap();
 
     assert!(matches!(removal, crate::BridgeLibraryRemoval::Removed));
     let mut expected = Vec::new();
@@ -107,18 +105,13 @@ fn an_unopened_removal_writes_each_step_it_runs() {
     let closing = BridgeLibraryClosing::new(host.clone());
     let stream = closing.feed_closing_steps();
 
-    let removal = caller
-        .block_on(host.remove_unopenable_library(id, Some(closing.clone())))
-        .unwrap();
+    let removal =
+        caller.block_on(host.remove_unopenable_library(id, Some(closing.clone()))).unwrap();
 
     assert!(matches!(removal, crate::BridgeLibraryRemoval::Removed));
     assert_eq!(
         closing.written(),
-        [
-            Some(BridgeClosingStep::LeavingLibrary),
-            Some(BridgeClosingStep::DeletingFiles),
-            None,
-        ]
+        [Some(BridgeClosingStep::LeavingLibrary), Some(BridgeClosingStep::DeletingFiles), None,]
     );
     assert_eq!(stream.latest(Vec::new()), None);
 }

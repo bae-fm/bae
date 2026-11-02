@@ -90,12 +90,7 @@ fn extract_log_toc_sectors(log_content: &str) -> Result<Vec<(i32, i32)>, std::io
             l_lower.contains("toc") && (l_lower.contains("cd") || l_lower.contains("extracted"))
         });
         let preview: String = if let Some(start_idx) = toc_start {
-            log_content
-                .lines()
-                .skip(start_idx)
-                .take(15)
-                .collect::<Vec<_>>()
-                .join("\n")
+            log_content.lines().skip(start_idx).take(15).collect::<Vec<_>>().join("\n")
         } else {
             log_content.lines().take(30).collect::<Vec<_>>().join("\n")
         };
@@ -120,15 +115,10 @@ fn discid_from_raw_offsets(
             })
         })
         .collect::<Result<_, _>>()?;
-    let lead_out_sectors = raw_leadout_sector
-        .checked_add(CD_PREGAP_SECTORS)
-        .ok_or_else(|| {
-            invalid_discid_data("lead-out sector out of range for DiscID calculation")
-        })?;
-    debug!(
-        "{method_label} raw track start sectors before adding 150: {:?}",
-        raw_track_sectors
-    );
+    let lead_out_sectors = raw_leadout_sector.checked_add(CD_PREGAP_SECTORS).ok_or_else(|| {
+        invalid_discid_data("lead-out sector out of range for DiscID calculation")
+    })?;
+    debug!("{method_label} raw track start sectors before adding 150: {:?}", raw_track_sectors);
     debug!("{method_label} raw lead-out sector {leadout_source}: {raw_leadout_sector}");
     debug!(
         "{method_label} lead-out offset: {lead_out_sectors} sectors (raw: {raw_leadout_sector} + 150)"
@@ -157,20 +147,12 @@ fn discid_from_log_text(log_content: &str) -> Result<String, std::io::Error> {
     trace!("LOG file decoded, length: {} chars", log_content.len());
     let toc_sectors = extract_log_toc_sectors(log_content)?;
     let raw_track_sectors: Vec<i32> = toc_sectors.iter().map(|(start, _)| *start).collect();
-    let last_end_sector = toc_sectors
-        .last()
-        .expect("LOG TOC parser returned at least one row")
-        .1;
+    let last_end_sector = toc_sectors.last().expect("LOG TOC parser returned at least one row").1;
     let raw_leadout_sector = last_end_sector
         .checked_add(1)
         .ok_or_else(|| invalid_discid_data("lead-out sector out of range in LOG TOC"))?;
     debug!("Found {} track(s) in LOG file", raw_track_sectors.len());
-    discid_from_raw_offsets(
-        "LOG",
-        &raw_track_sectors,
-        raw_leadout_sector,
-        "from LOG lead-out",
-    )
+    discid_from_raw_offsets("LOG", &raw_track_sectors, raw_leadout_sector, "from LOG lead-out")
 }
 /// The measured length of one audio file a sheet names.
 #[derive(Debug, Clone, Copy)]
@@ -213,9 +195,7 @@ fn calculate_mb_discid_from_cue(
             .iter()
             .find(|duration| duration.file_reference == file_reference)
             .ok_or_else(|| {
-                invalid_discid_data(format!(
-                    "CUE FILE {file_reference:?} has no measured length"
-                ))
+                invalid_discid_data(format!("CUE FILE {file_reference:?} has no measured length"))
             })?;
         file_start.insert(file_reference, laid);
         laid += sectors_of(duration.duration_ms);
@@ -346,9 +326,7 @@ struct RipArtifacts<'a> {
 }
 
 fn has_extension(path: &Path, expected: &str) -> bool {
-    path.extension()
-        .and_then(|e| e.to_str())
-        .is_some_and(|e| e.eq_ignore_ascii_case(expected))
+    path.extension().and_then(|e| e.to_str()).is_some_and(|e| e.eq_ignore_ascii_case(expected))
 }
 
 /// Whether a document is one a rip reading reads: a rip log, or an
@@ -371,9 +349,7 @@ fn read(mut artifacts: RipArtifacts<'_>) -> RipReading {
     let not_cd_rate = rate_ruling_out_cd(artifacts.audio.iter().copied());
     // Logs first: a log's table of contents is the disc ID as well as the
     // proof, which a report is not.
-    artifacts
-        .documents
-        .sort_by_key(|document| !document.is_log());
+    artifacts.documents.sort_by_key(|document| !document.is_log());
     let mut discs: Vec<ComputedDiscId> = Vec::new();
     let mut read_logs: Vec<&RipDocument<'_>> = Vec::new();
     let mut report = None;
@@ -398,27 +374,23 @@ fn read(mut artifacts: RipArtifacts<'_>) -> RipReading {
     }
 
     let source = match (read_logs.first(), report) {
-        (Some(log), _) => Some(AudioSource::CdRip {
-            proof: CdProof::RipLog,
-            file: log.file.map(str::to_string),
-        }),
+        (Some(log), _) => {
+            Some(AudioSource::CdRip { proof: CdProof::RipLog, file: log.file.map(str::to_string) })
+        }
         (None, Some(file)) => Some(AudioSource::CdRip {
             proof: CdProof::AccurateRipReport,
             file: file.map(str::to_string),
         }),
-        (None, None) => artifacts
-            .sheets
-            .iter()
-            .find(|sheet| sheet.sheet.ripper.is_some())
-            .map(|sheet| AudioSource::CdRip {
-                proof: CdProof::RipperSheet,
-                file: sheet.file.map(str::to_string),
-            }),
+        (None, None) => {
+            artifacts.sheets.iter().find(|sheet| sheet.sheet.ripper.is_some()).map(|sheet| {
+                AudioSource::CdRip {
+                    proof: CdProof::RipperSheet,
+                    file: sheet.file.map(str::to_string),
+                }
+            })
+        }
     };
-    let origin = AudioOrigin {
-        source,
-        not_cd_rate,
-    };
+    let origin = AudioOrigin { source, not_cd_rate };
 
     if origin.not_cd_rate.is_some() && !origin.is_cd_rip() {
         // Nothing proves a CD rip, so no log read.
@@ -431,25 +403,16 @@ fn read(mut artifacts: RipArtifacts<'_>) -> RipReading {
         return RipReading { origin, disc_id };
     }
     for sheet in &artifacts.sheets {
-        if read_logs
-            .iter()
-            .any(|log| log.path.parent() == sheet.path.parent())
-        {
-            debug!(
-                "not hashing {:?}: a log beside it already hashed its disc",
-                sheet.path
-            );
+        if read_logs.iter().any(|log| log.path.parent() == sheet.path.parent()) {
+            debug!("not hashing {:?}: a log beside it already hashed its disc", sheet.path);
             continue;
         }
         if let Some(disc_id) = discid_from_cue_audio(sheet.sheet, &sheet.audio, sheet.path) {
             keep_disc(&mut discs, disc_id, sheet.file);
         }
     }
-    let disc_id = if discs.is_empty() {
-        DiscIdReading::Absent
-    } else {
-        DiscIdReading::Computed(discs)
-    };
+    let disc_id =
+        if discs.is_empty() { DiscIdReading::Absent } else { DiscIdReading::Computed(discs) };
     RipReading { origin, disc_id }
 }
 
@@ -464,10 +427,7 @@ fn keep_disc(discs: &mut Vec<ComputedDiscId>, disc_id: String, file: Option<&str
         );
         return;
     }
-    discs.push(ComputedDiscId {
-        disc_id,
-        source_file: file.map(str::to_string),
-    });
+    discs.push(ComputedDiscId { disc_id, source_file: file.map(str::to_string) });
 }
 
 /// One of a library release's audio files: where it is, how long it plays,
@@ -487,21 +447,16 @@ pub fn read_rip_artifacts_from_paths(
     cue_paths: &[PathBuf],
     audio: &[ReleaseAudioFile],
 ) -> RipReading {
-    let audio_paths = audio
-        .iter()
-        .map(|file| file.path.clone())
-        .collect::<Vec<_>>();
+    let audio_paths = audio.iter().map(|file| file.path.clone()).collect::<Vec<_>>();
     let parsed: Vec<(&PathBuf, CueSheet)> = cue_paths
         .iter()
-        .filter_map(
-            |cue_path| match crate::cue_flac::parse_cue_sheet(cue_path) {
-                Ok(sheet) => Some((cue_path, sheet)),
-                Err(e) => {
-                    debug!("Skipping unparseable CUE {:?}: {}", cue_path, e);
-                    None
-                }
-            },
-        )
+        .filter_map(|cue_path| match crate::cue_flac::parse_cue_sheet(cue_path) {
+            Ok(sheet) => Some((cue_path, sheet)),
+            Err(e) => {
+                debug!("Skipping unparseable CUE {:?}: {}", cue_path, e);
+                None
+            }
+        })
         .collect();
     let sheets = parsed
         .iter()
@@ -521,12 +476,7 @@ pub fn read_rip_artifacts_from_paths(
                         .duration_ms,
                 })
                 .collect();
-            Some(RipSheet {
-                sheet,
-                audio,
-                path: cue_path.as_path(),
-                file: None,
-            })
+            Some(RipSheet { sheet, audio, path: cue_path.as_path(), file: None })
         })
         .collect();
     read(RipArtifacts {
@@ -568,10 +518,7 @@ pub fn read_rip_artifacts(
     let documents = categorized
         .documents()
         .filter(|doc| is_rip_document(&doc.path))
-        .map(|doc| RipDocument {
-            path: &doc.path,
-            file: Some(&doc.relative_path),
-        })
+        .map(|doc| RipDocument { path: &doc.path, file: Some(&doc.relative_path) })
         .collect();
     let carving = categorized.carving_sheets();
     let sheets = carving

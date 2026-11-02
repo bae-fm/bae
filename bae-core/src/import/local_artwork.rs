@@ -38,11 +38,7 @@ pub(crate) fn file_tags_cover<'a>(
     embedded: Option<super::CoverSelection>,
     artwork: impl IntoIterator<Item = &'a ScannedFile>,
 ) -> Option<super::CoverSelection> {
-    embedded.map(|embedded| {
-        front_cover_file(artwork)
-            .map(local_selection)
-            .unwrap_or(embedded)
-    })
+    embedded.map(|embedded| front_cover_file(artwork).map(local_selection).unwrap_or(embedded))
 }
 
 /// The folder image named as the front cover, by [`artwork_order`] among
@@ -79,10 +75,7 @@ pub(crate) fn default_local_cover_file<'a>(
 fn artwork_order(left: &ScannedFile, right: &ScannedFile) -> std::cmp::Ordering {
     let left_name = left.relative_path.to_lowercase();
     let right_name = right.relative_path.to_lowercase();
-    match (
-        conventional_artwork_name(left),
-        conventional_artwork_name(right),
-    ) {
+    match (conventional_artwork_name(left), conventional_artwork_name(right)) {
         (Some(left_artwork), Some(right_artwork)) => left_artwork
             .cmp(&right_artwork)
             .then_with(|| left.size.cmp(&right.size))
@@ -107,9 +100,8 @@ fn conventional_artwork_name(file: &ScannedFile) -> Option<String> {
             })
             .to_lowercase()
         })?;
-    let mut words = stem
-        .split(|character: char| !character.is_alphanumeric())
-        .filter(|word| !word.is_empty());
+    let mut words =
+        stem.split(|character: char| !character.is_alphanumeric()).filter(|word| !word.is_empty());
     let first = words.next()?;
     let names_front_artwork = ["cover", "folder", "front"].contains(&first);
     let names_non_front_artwork = words
@@ -132,9 +124,7 @@ mod tests {
     }
 
     fn embedded() -> Option<crate::import::CoverSelection> {
-        Some(crate::import::CoverSelection::Embedded(
-            "01 Track.mp3".to_string(),
-        ))
+        Some(crate::import::CoverSelection::Embedded("01 Track.mp3".to_string()))
     }
 
     fn local(path: &str) -> Option<crate::import::CoverSelection> {
@@ -171,11 +161,8 @@ mod tests {
 
     #[test]
     fn conventional_folder_artwork_uses_case_insensitive_name_order() {
-        let files = [
-            artwork("z/Folder.png", 50),
-            artwork("A/COVER.jpg", 500),
-            artwork("front.jpg", 1),
-        ];
+        let files =
+            [artwork("z/Folder.png", 50), artwork("A/COVER.jpg", 500), artwork("front.jpg", 1)];
 
         assert_eq!(
             default_local_cover_file(&files).map(|file| file.relative_path.as_str()),
@@ -225,11 +212,8 @@ mod tests {
 
     #[test]
     fn remaining_folder_artwork_uses_size_then_name() {
-        let files = [
-            artwork("large.jpg", 500),
-            artwork("b/scan.png", 20),
-            artwork("A/scan.png", 20),
-        ];
+        let files =
+            [artwork("large.jpg", 500), artwork("b/scan.png", 20), artwork("A/scan.png", 20)];
 
         assert_eq!(
             default_local_cover_file(&files).map(|file| file.relative_path.as_str()),

@@ -79,14 +79,8 @@ mod tests {
 
     #[test]
     fn trailing_brackets_leave_the_words() {
-        assert_eq!(
-            strip_trailing_brackets("Album Title [XX34b]"),
-            "Album Title"
-        );
-        assert_eq!(
-            strip_trailing_brackets("Album Title (Deluxe) [2020]"),
-            "Album Title"
-        );
+        assert_eq!(strip_trailing_brackets("Album Title [XX34b]"), "Album Title");
+        assert_eq!(strip_trailing_brackets("Album Title (Deluxe) [2020]"), "Album Title");
         assert_eq!(strip_trailing_brackets("[XX34b]"), "");
         assert_eq!(strip_trailing_brackets("Album Title"), "Album Title");
     }
@@ -98,10 +92,7 @@ mod tests {
             strip_trailing_brackets("(Leading Words) Album Title?"),
             "(Leading Words) Album Title?"
         );
-        assert_eq!(
-            strip_trailing_brackets("Album (Middle) Title"),
-            "Album (Middle) Title"
-        );
+        assert_eq!(strip_trailing_brackets("Album (Middle) Title"), "Album (Middle) Title");
     }
 
     #[test]
@@ -113,18 +104,12 @@ mod tests {
     #[test]
     fn a_track_title_loses_every_bracketed_part() {
         assert_eq!(track_title_key("Track Title (Remastered)"), "tracktitle");
-        assert_eq!(
-            track_title_key("Track [Live] Title (feat. Guest)"),
-            "tracktitle"
-        );
+        assert_eq!(track_title_key("Track [Live] Title (feat. Guest)"), "tracktitle");
         assert_eq!(track_title_key("(Intro)"), "");
     }
 
     #[test]
     fn an_album_title_s_words_leave_out_its_tails_and_stop_words() {
-        assert_eq!(
-            album_title_words("The Album of Titles (Remastered)"),
-            vec!["album", "titles"]
-        );
+        assert_eq!(album_title_words("The Album of Titles (Remastered)"), vec!["album", "titles"]);
     }
 }

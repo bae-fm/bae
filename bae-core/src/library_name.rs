@@ -75,10 +75,7 @@ const MUSICIANS: &str = concat!(
 pub fn generate_library_name() -> LibraryName {
     let mut rng = rand::rng();
     let mut word = |list: &str| {
-        list.split_whitespace()
-            .choose(&mut rng)
-            .expect("the word lists are not empty")
-            .to_string()
+        list.split_whitespace().choose(&mut rng).expect("the word lists are not empty").to_string()
     };
     let verb = word(VERBS);
     let musician = word(MUSICIANS);

@@ -11,11 +11,9 @@ fn every_table_is_strict() {
         .map(|captures| captures[1].to_string())
         .filter(|table| {
             let strict: i64 = conn
-                .query_row(
-                    "SELECT strict FROM pragma_table_list WHERE name = ?",
-                    [table],
-                    |row| row.get(0),
-                )
+                .query_row("SELECT strict FROM pragma_table_list WHERE name = ?", [table], |row| {
+                    row.get(0)
+                })
                 .unwrap();
             strict != 1
         })
@@ -59,8 +57,5 @@ fn every_update_of_trigger_names_columns_its_table_has() {
         }
     }
     assert!(checked > 0, "no UPDATE OF trigger found");
-    assert!(
-        missing.is_empty(),
-        "triggers name absent columns: {missing:?}"
-    );
+    assert!(missing.is_empty(), "triggers name absent columns: {missing:?}");
 }

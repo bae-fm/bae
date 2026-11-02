@@ -50,9 +50,7 @@ impl IdentificationHandle {
         if self.token.is_cancelled() {
             return;
         }
-        let sent = self.commands.send(Command::Request {
-            candidate_key: candidate_key.clone(),
-        });
+        let sent = self.commands.send(Command::Request { candidate_key: candidate_key.clone() });
         if sent.is_err() {
             warn!("identification: the queue has stopped; {candidate_key} was not identified");
         }
@@ -67,10 +65,7 @@ impl IdentificationHandle {
         candidate_keys: Vec<crate::import::CandidateKey>,
     ) -> Result<(), crate::library::LibraryError> {
         let (done, cancelled) = tokio::sync::oneshot::channel();
-        self.send_cancel(Command::Cancel {
-            candidate_keys,
-            done,
-        })?;
+        self.send_cancel(Command::Cancel { candidate_keys, done })?;
         Self::await_cancel(cancelled).await
     }
 
@@ -116,11 +111,7 @@ impl IdentificationHandle {
     #[cfg(any(test, feature = "test-utils"))]
     async fn drained(&self, drain: super::Drain) {
         let (drained, wait) = tokio::sync::oneshot::channel();
-        if self
-            .commands
-            .send(Command::AwaitDrained { drain, drained })
-            .is_err()
-        {
+        if self.commands.send(Command::AwaitDrained { drain, drained }).is_err() {
             return;
         }
         // A stopped queue ends the wait too.
@@ -136,11 +127,7 @@ impl IdentificationHandle {
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn commands_taken_for_test(&self) {
         let (taken, wait) = tokio::sync::oneshot::channel();
-        if self
-            .commands
-            .send(Command::AwaitCommandsTaken { taken })
-            .is_err()
-        {
+        if self.commands.send(Command::AwaitCommandsTaken { taken }).is_err() {
             return;
         }
         #[expect(

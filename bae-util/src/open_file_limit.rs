@@ -13,10 +13,7 @@ use tracing::{info, warn};
 /// logging the limit before and after. A limit that cannot be read or raised
 /// is logged and left as it was; the process runs under it.
 pub fn raise_open_file_limit() {
-    let mut limit = libc::rlimit {
-        rlim_cur: 0,
-        rlim_max: 0,
-    };
+    let mut limit = libc::rlimit { rlim_cur: 0, rlim_max: 0 };
     // SAFETY: getrlimit writes the limit into the struct we pass.
     if unsafe { libc::getrlimit(libc::RLIMIT_NOFILE, &mut limit) } != 0 {
         warn!(
@@ -45,10 +42,7 @@ pub fn raise_open_file_limit() {
         );
         return;
     }
-    let raised = libc::rlimit {
-        rlim_cur: ceiling,
-        rlim_max: limit.rlim_max,
-    };
+    let raised = libc::rlimit { rlim_cur: ceiling, rlim_max: limit.rlim_max };
     // SAFETY: setrlimit reads the struct we pass.
     if unsafe { libc::setrlimit(libc::RLIMIT_NOFILE, &raised) } != 0 {
         warn!(
@@ -102,15 +96,9 @@ mod tests {
     use super::*;
 
     fn current_limit() -> libc::rlimit {
-        let mut limit = libc::rlimit {
-            rlim_cur: 0,
-            rlim_max: 0,
-        };
+        let mut limit = libc::rlimit { rlim_cur: 0, rlim_max: 0 };
         // SAFETY: getrlimit writes the limit into the struct we pass.
-        assert_eq!(
-            unsafe { libc::getrlimit(libc::RLIMIT_NOFILE, &mut limit) },
-            0
-        );
+        assert_eq!(unsafe { libc::getrlimit(libc::RLIMIT_NOFILE, &mut limit) }, 0);
         limit
     }
 
@@ -121,10 +109,7 @@ mod tests {
     fn a_soft_limit_below_its_ceiling_is_raised_to_it() {
         let hard = current_limit().rlim_max;
         let ceiling = soft_ceiling(hard).expect("soft ceiling");
-        let lowered = libc::rlimit {
-            rlim_cur: ceiling.min(4096) - 1,
-            rlim_max: hard,
-        };
+        let lowered = libc::rlimit { rlim_cur: ceiling.min(4096) - 1, rlim_max: hard };
         // SAFETY: setrlimit reads the struct we pass.
         assert_eq!(unsafe { libc::setrlimit(libc::RLIMIT_NOFILE, &lowered) }, 0);
 

@@ -16,8 +16,10 @@ impl crate::import::folder_scanner::DirectoryReader for RecordingListing {
         root: &Path,
         directory: &Path,
         cancellation: &crate::import::folder_scanner::ScanCancellation,
-    ) -> Result<crate::import::folder_scanner::DirectoryListing, crate::import::folder_scanner::FolderScanError>
-    {
+    ) -> Result<
+        crate::import::folder_scanner::DirectoryListing,
+        crate::import::folder_scanner::FolderScanError,
+    > {
         self.read.lock().unwrap().push(root.join(directory));
         crate::import::folder_scanner::OsDirectoryReader.read(root, directory, cancellation)
     }
@@ -27,8 +29,10 @@ impl crate::import::folder_scanner::DirectoryReader for RecordingListing {
         root: &Path,
         folders: &[PathBuf],
         cancellation: &crate::import::folder_scanner::ScanCancellation,
-    ) -> Result<Vec<crate::import::folder_scanner::FolderTimes>, crate::import::folder_scanner::FolderScanError>
-    {
+    ) -> Result<
+        Vec<crate::import::folder_scanner::FolderTimes>,
+        crate::import::folder_scanner::FolderScanError,
+    > {
         crate::import::folder_scanner::OsDirectoryReader.folder_times(root, folders, cancellation)
     }
 }
@@ -61,13 +65,8 @@ impl DecisionFixture {
             write_disc(&root.join("Artist").join("Album").join(disc), tracks);
         }
         write_disc(&root.join("Other").join("Record"), 1);
-        let root = crate::import::watched_folder::canonical_absolute_root(&root)
-                .unwrap();
-        test.service
-            .library_manager
-            .add_watched_import_folder(&root)
-            .await
-            .unwrap();
+        let root = crate::import::watched_folder::canonical_absolute_root(&root).unwrap();
+        test.service.library_manager.add_watched_import_folder(&root).await.unwrap();
         let listing = Arc::new(RecordingListing::default());
         let (scan, _) = test.scan_with(
             Arc::new(crate::import::file_tag_snapshot::LoftyFileTagReader),
@@ -75,12 +74,7 @@ impl DecisionFixture {
         );
         scan.rescan(&root).await.unwrap();
         listing.take();
-        Self {
-            test,
-            scan,
-            listing,
-            root,
-        }
+        Self { test, scan, listing, root }
     }
 
     fn manager(&self) -> &LibraryManager {
@@ -115,24 +109,19 @@ impl DecisionFixture {
         decision: crate::import::FolderReleaseDecision,
         settled: &[&str],
     ) -> Vec<Vec<String>> {
-        let mut live = self
-            .manager()
-            .subscribe_import_list(crate::import::ImportListRequest {
-                list: self
-                    .manager()
-                    .open_import_list(crate::import::ImportListView {
+        let mut live = self.manager().subscribe_import_list(crate::import::ImportListRequest {
+            list: self
+                .manager()
+                .open_import_list(crate::import::ImportListView {
                     order: crate::import::ImportListOrder::PathAscending,
                     ..crate::import::ImportListView::default()
                 })
-                    .await
-                    .unwrap(),
-                windows: [crate::library::LibraryPageWindow {
-                    offset: 0,
-                    limit: 50,
-                }]
+                .await
+                .unwrap(),
+            windows: [crate::library::LibraryPageWindow { offset: 0, limit: 50 }]
                 .into_iter()
                 .collect(),
-            });
+        });
         let (seen_tx, mut seen_rx) = tokio::sync::mpsc::unbounded_channel();
         let watcher = tokio::spawn(async move {
             loop {
@@ -166,10 +155,7 @@ impl DecisionFixture {
 
         let mut seen = vec![first];
         let settled: Vec<String> = settled.iter().map(|name| name.to_string()).collect();
-        while !settled
-            .iter()
-            .all(|name| seen.last().unwrap().contains(name))
-        {
+        while !settled.iter().all(|name| seen.last().unwrap().contains(name)) {
             seen.push(
                 tokio::time::timeout(HANG_GUARD, seen_rx.recv())
                     .await
@@ -187,9 +173,7 @@ impl DecisionFixture {
 fn assert_never_neither(seen: &[Vec<String>], combined: &str, separate: [&str; 2]) {
     for names in seen {
         let shows_combined = names.iter().any(|name| name == combined);
-        let shows_separate = separate
-            .iter()
-            .all(|disc| names.iter().any(|name| name == disc));
+        let shows_separate = separate.iter().all(|disc| names.iter().any(|name| name == disc));
         assert!(
             shows_combined || shows_separate,
             "the list showed the folder as neither reading: {names:?} (all delivered: {seen:?})"
@@ -336,18 +320,11 @@ async fn a_folder_reading_refuses_a_root_that_moved_while_it_read() {
     })
     .await
     .expect("the reading started walking");
-    fixture
-        .manager()
-        .begin_folder_scan(&fixture.root)
-        .await
-        .unwrap();
+    fixture.manager().begin_folder_scan(&fixture.root).await.unwrap();
     drop(held);
 
     let error = reading.await.unwrap().unwrap_err();
-    assert!(
-        error.to_string().contains("changed while it was being read again"),
-        "{error}"
-    );
+    assert!(error.to_string().contains("changed while it was being read again"), "{error}");
     assert_eq!(fixture.stored_paths().await, before);
     assert_eq!(
         fixture
@@ -369,9 +346,8 @@ fn a_change_reads_the_folder_it_is_in_and_the_root_only_where_it_must() {
     let root = temp.path();
     write_disc(&root.join("Artist").join("Album"), 1);
     std::fs::write(root.join("notes.txt"), b"notes").unwrap();
-    let folders = |names: &[&str]| {
-        RootChange::Folders(names.iter().map(std::ffi::OsString::from).collect())
-    };
+    let folders =
+        |names: &[&str]| RootChange::Folders(names.iter().map(std::ffi::OsString::from).collect());
     let change = |paths: &[PathBuf], holds: bool| {
         let paths: Vec<&Path> = paths.iter().map(PathBuf::as_path).collect();
         root_change(root, &paths, holds)
@@ -420,11 +396,7 @@ fn a_change_reads_the_folder_it_is_in_and_the_root_only_where_it_must() {
 async fn the_network_check_names_the_folders_that_moved() {
     let fixture = DecisionFixture::new(["Disc 1", "Disc 2"], 1).await;
     let root = &fixture.root;
-    let recorded = fixture
-        .manager()
-        .load_folder_scan_directories(root)
-        .await
-        .unwrap();
+    let recorded = fixture.manager().load_folder_scan_directories(root).await.unwrap();
     assert_eq!(network_changes(root, &recorded), Some(Vec::new()));
 
     write_disc(&root.join("Artist/Album/Disc 1"), 2);
@@ -434,12 +406,7 @@ async fn the_network_check_names_the_folders_that_moved() {
     let changes: Vec<&Path> = changes.iter().map(PathBuf::as_path).collect();
     assert_eq!(
         root_change(root, &changes, false),
-        RootChange::Folders(
-            ["Artist", "New"]
-                .into_iter()
-                .map(std::ffi::OsString::from)
-                .collect()
-        )
+        RootChange::Folders(["Artist", "New"].into_iter().map(std::ffi::OsString::from).collect())
     );
 }
 
@@ -470,15 +437,13 @@ async fn changed_folders_are_read_again_and_nothing_beside_them() {
 
     assert_eq!(
         fixture.stored_paths().await,
-        vec![
-            "Artist/Album".to_string(),
-            "New/Record".to_string(),
-            "Other/Record".to_string(),
-        ]
+        vec!["Artist/Album".to_string(), "New/Record".to_string(), "Other/Record".to_string(),]
     );
     let other = fixture
         .manager()
-        .load_folder_scan_item(&crate::import::CandidateKey::folder(&root.join("Other").join("Record")))
+        .load_folder_scan_item(&crate::import::CandidateKey::folder(
+            &root.join("Other").join("Record"),
+        ))
         .await
         .unwrap();
     let Some(ScanItem::Valid(other)) = other else {

@@ -14,8 +14,7 @@ impl Database {
     ) -> Result<(), DbError> {
         let release_id = release_id.to_string();
         let records = records.to_vec();
-        self.call_sql(move |sql| write_release_records(&sql, &release_id, &records))
-            .await
+        self.call_sql(move |sql| write_release_records(&sql, &release_id, &records)).await
     }
 
     /// Every record for a release. Empty if no catalog describes it.
@@ -24,8 +23,7 @@ impl Database {
         release_id: &str,
     ) -> Result<Vec<crate::import::ReleaseRecord>, DbError> {
         let release_id = release_id.to_string();
-        self.read(move |sql| get_release_records_on(&sql, &release_id))
-            .await
+        self.read(move |sql| get_release_records_on(&sql, &release_id)).await
     }
 
     /// The library album `records` file a release under, leaving out the
@@ -42,8 +40,7 @@ impl Database {
     ) -> Result<Option<String>, DbError> {
         let records = records.to_vec();
         let excluding = excluding.to_vec();
-        self.read(move |sql| album_records_name_on(&sql, &records, &excluding))
-            .await
+        self.read(move |sql| album_records_name_on(&sql, &records, &excluding)).await
     }
 
     /// Where an album stands for a release whose records are about to be
@@ -73,12 +70,7 @@ impl Database {
                     ":release": release_id,
                     ":album_refs": album_refs,
                 },
-                |row| {
-                    Ok(AlbumBesideRelease {
-                        holds_others: row.get(0)?,
-                        disagrees: row.get(1)?,
-                    })
-                },
+                |row| Ok(AlbumBesideRelease { holds_others: row.get(0)?, disagrees: row.get(1)? }),
             )?)
         })
         .await
@@ -104,8 +96,7 @@ impl Database {
     #[cfg(all(desktop, any(test, feature = "test-utils")))]
     pub(crate) async fn set_records_atomic(&self, change: RecordsChange) -> Result<(), DbError> {
         let now = chrono::DateTime::<chrono::Utc>::from(self.inner.clock.now());
-        self.call_sql(move |sql| set_records_on(&sql, &change, now))
-            .await
+        self.call_sql(move |sql| set_records_on(&sql, &change, now)).await
     }
 
     /// Check, for each candidate in `checks`, whether the library already
@@ -121,8 +112,7 @@ impl Database {
         checks: &[LibraryCheck],
     ) -> Result<Vec<LibraryStatus>, DbError> {
         let checks = checks.to_vec();
-        self.read(move |sql| check_releases_in_library_on(&sql, &checks))
-            .await
+        self.read(move |sql| check_releases_in_library_on(&sql, &checks)).await
     }
 
     /// Follow the library membership of every release `initial` checks, in
@@ -182,13 +172,8 @@ pub(super) fn set_records_on(
     now_dt: chrono::DateTime<chrono::Utc>,
 ) -> Result<(), DbError> {
     let now = now_dt.to_rfc3339();
-    let RecordsChange {
-        release_id,
-        records,
-        current_album_id,
-        target_album_id,
-        new_album,
-    } = change;
+    let RecordsChange { release_id, records, current_album_id, target_album_id, new_album } =
+        change;
 
     // 1. Write the destination album when it is new to this release's
     //    history: absent, or here but empty (a group's album another release
@@ -214,10 +199,9 @@ pub(super) fn set_records_on(
                 |row| {
                     Ok(DbAlbumArtist {
                         credit: match row.get::<_, Option<String>>("name_key")? {
-                            Some(key) => Some(crate::credits::CreditName {
-                                key,
-                                name: row.get("name")?,
-                            }),
+                            Some(key) => {
+                                Some(crate::credits::CreditName { key, name: row.get("name")? })
+                            }
                             None => None,
                         },
                         join_phrase: row.get("join_phrase")?,
@@ -359,10 +343,7 @@ pub(super) fn check_releases_in_library_on(
 ) -> Result<Vec<LibraryStatus>, DbError> {
     let mut statuses = checks
         .iter()
-        .map(|check| LibraryStatus {
-            release_id: check.release_id.clone(),
-            albums: Vec::new(),
-        })
+        .map(|check| LibraryStatus { release_id: check.release_id.clone(), albums: Vec::new() })
         .collect::<Vec<_>>();
     if checks.is_empty() {
         return Ok(statuses);
@@ -371,11 +352,7 @@ pub(super) fn check_releases_in_library_on(
         checks
             .iter()
             .map(|check| {
-                serde_json::json!([
-                    check.release_id,
-                    check.source.as_str(),
-                    check.source_group_id
-                ])
+                serde_json::json!([check.release_id, check.source.as_str(), check.source_group_id])
             })
             .collect(),
     )

@@ -10,10 +10,9 @@ async fn picked_with_front(
     release_id: &str,
 ) -> (ImportServiceHandle, TempDir, crate::import::CandidateKey, String) {
     let archive = bae_util::http::serve_not_found().await;
-    let (handle, tmp, key, hash) = pane_fixture_with(
-        bae_util::http::Http::for_test().serve("coverartarchive.org", &archive),
-    )
-    .await;
+    let (handle, tmp, key, hash) =
+        pane_fixture_with(bae_util::http::Http::for_test().serve("coverartarchive.org", &archive))
+            .await;
     super::lookup_choices::seed_mb_release_with_front(
         handle.library_manager.providers(),
         release_id,
@@ -27,17 +26,17 @@ async fn picked_with_front(
 async fn offered(handle: &ImportServiceHandle, key: &crate::import::CandidateKey) -> Vec<String> {
     pane(handle, key)
         .await
-        .draft().unwrap().remote_covers.clone()
+        .draft()
+        .unwrap()
+        .remote_covers
+        .clone()
         .into_iter()
         .map(|cover| cover.image.url)
         .collect()
 }
 
 fn front_of(release_id: &str) -> String {
-    format!(
-        "{}/release/{release_id}/front",
-        bae_catalogs::remote_image::ARCHIVE
-    )
+    format!("{}/release/{release_id}/front", bae_catalogs::remote_image::ARCHIVE)
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -71,10 +70,9 @@ async fn unlinking_offers_no_catalog_cover() {
 #[tokio::test(flavor = "multi_thread")]
 async fn linking_the_album_offers_no_catalog_cover() {
     let archive = bae_util::http::serve_not_found().await;
-    let (handle, _tmp, key, hash) = pane_fixture_with(
-        bae_util::http::Http::for_test().serve("coverartarchive.org", &archive),
-    )
-    .await;
+    let (handle, _tmp, key, hash) =
+        pane_fixture_with(bae_util::http::Http::for_test().serve("coverartarchive.org", &archive))
+            .await;
     super::shared_album::store_two_pressings(&handle, &hash).await;
     super::lookup_choices::seed_mb_release_with_front(
         handle.library_manager.providers(),
@@ -113,17 +111,10 @@ async fn a_release_stored_again_offers_what_it_holds_now() {
         source: bae_catalogs::catalog::Catalog::MusicBrainz,
         standing: bae_catalogs::remote_image::CoverStanding::Stated,
     });
-    handle
-        .library_manager
-        .save_source_release(&stored)
-        .await
-        .unwrap();
+    handle.library_manager.save_source_release(&stored).await.unwrap();
     assert_eq!(
         offered(&handle, &key).await,
-        [
-            front_of("refetched-release"),
-            "https://images.example/back.jpg".to_string()
-        ]
+        [front_of("refetched-release"), "https://images.example/back.jpg".to_string()]
     );
     shut_down(handle).await;
 }

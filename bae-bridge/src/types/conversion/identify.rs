@@ -96,35 +96,26 @@ impl BridgeCoverChoice {
 impl BridgeCoverImageSource {
     pub(crate) fn from_core(source: bae_core::import::CoverImageSource) -> Self {
         match source {
-            bae_core::import::CoverImageSource::Library { image } => Self::Library {
-                image: crate::types::BridgeImageRef::from_core(image),
-            },
-            bae_core::import::CoverImageSource::Remote { image } => Self::Remote {
-                image: BridgeRemoteImageSet::from_core(image),
-            },
-            bae_core::import::CoverImageSource::Local { file } => Self::Local {
-                file: BridgeFileVersion::from_core(file),
-            },
-            bae_core::import::CoverImageSource::Embedded { source, data } => Self::Embedded {
-                source: BridgeFileVersion::from_core(source),
-                data,
-            },
+            bae_core::import::CoverImageSource::Library { image } => {
+                Self::Library { image: crate::types::BridgeImageRef::from_core(image) }
+            }
+            bae_core::import::CoverImageSource::Remote { image } => {
+                Self::Remote { image: BridgeRemoteImageSet::from_core(image) }
+            }
+            bae_core::import::CoverImageSource::Local { file } => {
+                Self::Local { file: BridgeFileVersion::from_core(file) }
+            }
+            bae_core::import::CoverImageSource::Embedded { source, data } => {
+                Self::Embedded { source: BridgeFileVersion::from_core(source), data }
+            }
         }
     }
 }
 
 impl BridgeFileVersion {
     pub(crate) fn from_core(file: bae_core::import::folder_scanner::FileVersion) -> Self {
-        let bae_core::import::folder_scanner::FileVersion {
-            path,
-            size,
-            modified_at_ns,
-        } = file;
-        Self {
-            path: coven::path_bytes(&path),
-            size,
-            modified_at_ns,
-        }
+        let bae_core::import::folder_scanner::FileVersion { path, size, modified_at_ns } = file;
+        Self { path: coven::path_bytes(&path), size, modified_at_ns }
     }
 }
 
@@ -185,12 +176,10 @@ impl BridgeDiscIdStep {
         match step {
             DiscIdStepView::Reading => Self::Reading,
             DiscIdStepView::Absent => Self::Absent,
-            DiscIdStepView::NotCdAudio => Self::NotCdAudio {
-                sample_rate_hz: rate,
-            },
-            DiscIdStepView::Read { discs } => Self::Read {
-                discs: discs.into_iter().map(BridgeDiscIdRow::from_core).collect(),
-            },
+            DiscIdStepView::NotCdAudio => Self::NotCdAudio { sample_rate_hz: rate },
+            DiscIdStepView::Read { discs } => {
+                Self::Read { discs: discs.into_iter().map(BridgeDiscIdRow::from_core).collect() }
+            }
         }
     }
 }
@@ -258,10 +247,7 @@ impl BridgeIdentifyRun {
             search,
         } = run;
         Self {
-            providers: providers
-                .into_iter()
-                .map(BridgeCatalog::from_core)
-                .collect(),
+            providers: providers.into_iter().map(BridgeCatalog::from_core).collect(),
             disc_id: BridgeDiscIdStep::from_core(disc_id, rate),
             barcode: BridgeBarcodeStep::from_core(barcode),
             catalog: BridgeCatalogStep::from_core(catalog),
@@ -296,37 +282,22 @@ impl BridgeReleaseGroup {
             artist,
             label,
             cover_art: cover_art.map(BridgeRemoteCover::from_core),
-            sources: sources
-                .into_iter()
-                .map(BridgeReleaseGroupSource::from_core)
-                .collect(),
+            sources: sources.into_iter().map(BridgeReleaseGroupSource::from_core).collect(),
             year_min,
             year_max,
-            sections: sections
-                .into_iter()
-                .map(BridgePressingSection::from_core)
-                .collect(),
+            sections: sections.into_iter().map(BridgePressingSection::from_core).collect(),
         }
     }
 }
 
 impl BridgePressingSection {
     fn from_core(section: bae_core::import::release_group::PressingSection) -> Self {
-        let bae_core::import::release_group::PressingSection {
-            album,
-            pressings,
-            narrowed_out,
-        } = section;
+        let bae_core::import::release_group::PressingSection { album, pressings, narrowed_out } =
+            section;
         BridgePressingSection {
             album: album.map(BridgeAlbumHeading::from_core),
-            pressings: pressings
-                .into_iter()
-                .map(BridgePressing::from_core)
-                .collect(),
-            narrowed_out: narrowed_out
-                .into_iter()
-                .map(BridgePressing::from_core)
-                .collect(),
+            pressings: pressings.into_iter().map(BridgePressing::from_core).collect(),
+            narrowed_out: narrowed_out.into_iter().map(BridgePressing::from_core).collect(),
         }
     }
 }
@@ -347,19 +318,11 @@ impl BridgePressing {
                 .document_failure()
                 .cloned()
                 .map(BridgeLookupFailure::from_core),
-            labels: pressing
-                .label_lines()
-                .into_iter()
-                .map(BridgeLabelLine::from_core)
-                .collect(),
+            labels: pressing.label_lines().into_iter().map(BridgeLabelLine::from_core).collect(),
             pick: crate::types::BridgePressingLink::from_core(pressing.pick()),
             summary: crate::types::bridge_pressing_summary(facts.clone()),
             details: crate::types::bridge_pressing_details(facts),
-            releases: pressing
-                .releases
-                .into_iter()
-                .map(BridgeMetadataResult::from_core)
-                .collect(),
+            releases: pressing.releases.into_iter().map(BridgeMetadataResult::from_core).collect(),
         }
     }
 }
@@ -387,9 +350,7 @@ impl BridgeSignals {
             isrcs: _,
             track_titles: _,
         } = s;
-        BridgeSignals {
-            text: BridgeTextSignal::from_core(text),
-        }
+        BridgeSignals { text: BridgeTextSignal::from_core(text) }
     }
 }
 
@@ -408,15 +369,7 @@ impl BridgeAgreements {
             title: _,
             artist: _,
         } = fields;
-        Self {
-            disc_id,
-            barcode,
-            catalog,
-            label,
-            year,
-            country,
-            notes,
-        }
+        Self { disc_id, barcode, catalog, label, year, country, notes }
     }
 }
 
@@ -440,23 +393,17 @@ impl BridgeIdentifyState {
             IdentifyStateView::Error { failure } => BridgeIdentifyState::Error {
                 failure: crate::types::BridgeInternalFailure::from_core(failure),
             },
-            IdentifyStateView::Triangulating {
-                run,
-                groups,
-                agreements,
-                narrowed_out_count,
-            } => BridgeIdentifyState::Triangulating {
-                run: BridgeIdentifyRun::from_core(run, rate),
-                groups: groups
-                    .into_iter()
-                    .map(BridgeReleaseGroup::from_core)
-                    .collect(),
-                agreements: agreements
-                    .into_iter()
-                    .map(|(release_id, a)| (release_id, BridgeAgreements::from_core(a)))
-                    .collect(),
-                narrowed_out_count,
-            },
+            IdentifyStateView::Triangulating { run, groups, agreements, narrowed_out_count } => {
+                BridgeIdentifyState::Triangulating {
+                    run: BridgeIdentifyRun::from_core(run, rate),
+                    groups: groups.into_iter().map(BridgeReleaseGroup::from_core).collect(),
+                    agreements: agreements
+                        .into_iter()
+                        .map(|(release_id, a)| (release_id, BridgeAgreements::from_core(a)))
+                        .collect(),
+                    narrowed_out_count,
+                }
+            }
             IdentifyStateView::Found {
                 run,
                 groups,
@@ -468,10 +415,7 @@ impl BridgeIdentifyState {
                 offers_shared_album,
             } => BridgeIdentifyState::Found {
                 run: run.map(|run| BridgeIdentifyRun::from_core(run, rate)),
-                groups: groups
-                    .into_iter()
-                    .map(BridgeReleaseGroup::from_core)
-                    .collect(),
+                groups: groups.into_iter().map(BridgeReleaseGroup::from_core).collect(),
                 track_count,
                 agreements: agreements
                     .into_iter()
@@ -499,10 +443,7 @@ impl BridgeIdentifyState {
             } => BridgeIdentifyState::Failed {
                 run: run.map(|run| BridgeIdentifyRun::from_core(run, rate)),
                 failure_lines: failure_lines.into_iter().map(identify_failure).collect(),
-                groups: groups
-                    .into_iter()
-                    .map(BridgeReleaseGroup::from_core)
-                    .collect(),
+                groups: groups.into_iter().map(BridgeReleaseGroup::from_core).collect(),
                 agreements: agreements
                     .into_iter()
                     .map(|(release_id, a)| (release_id, BridgeAgreements::from_core(a)))
@@ -576,10 +517,7 @@ mod tests {
                 providers: vec![Catalog::MusicBrainz, Catalog::Discogs],
                 artwork: bae_core::signals::ArtworkScan::Absent,
                 origin: bae_core::signals::AudioOrigin::default(),
-                disc: DiscIdEvidence {
-                    signal: DiscIdSignal::Absent,
-                    ..Default::default()
-                },
+                disc: DiscIdEvidence { signal: DiscIdSignal::Absent, ..Default::default() },
                 barcode: BarcodeEvidence {
                     codes: vec![SourcedValue::in_file(
                         "0123456789012".to_string(),
@@ -592,10 +530,7 @@ mod tests {
                 search: Default::default(),
                 text: Default::default(),
                 text_settled: true,
-                audio: bae_core::signals::AudioFacts {
-                    track_count: 9,
-                    ..Default::default()
-                },
+                audio: bae_core::signals::AudioFacts { track_count: 9, ..Default::default() },
                 isrc: Default::default(),
                 track_titles: Vec::new(),
                 documents: bae_core::identify::documents::DocumentReading::Pending,
@@ -618,10 +553,7 @@ mod tests {
             codes: vec![ValueLookup {
                 value: "0123456789012".to_string(),
                 providers: vec![
-                    ProviderLookup {
-                        source: Catalog::MusicBrainz,
-                        state: LookupState::LookingUp,
-                    },
+                    ProviderLookup { source: Catalog::MusicBrainz, state: LookupState::LookingUp },
                     ProviderLookup {
                         source: Catalog::Discogs,
                         state: LookupState::Failed {
@@ -640,10 +572,7 @@ mod tests {
         assert!(!rows[0].excluded);
         assert_eq!(rows[0].cells.len(), 2);
         assert_eq!(rows[0].cells[0].source, BridgeCatalog::MusicBrainz);
-        assert!(matches!(
-            rows[0].cells[0].lookup,
-            BridgeLookupState::LookingUp
-        ));
+        assert!(matches!(rows[0].cells[0].lookup, BridgeLookupState::LookingUp));
         assert_eq!(rows[0].cells[1].source, BridgeCatalog::Discogs);
         assert!(matches!(
             &rows[0].cells[1].lookup,
@@ -672,9 +601,7 @@ mod tests {
         assert!(rows[0].excluded);
         assert!(rows[0].cells.iter().all(|cell| matches!(
             cell.lookup,
-            BridgeLookupState::NotAsked {
-                reason: BridgeNotAskedReason::LeftOut
-            }
+            BridgeLookupState::NotAsked { reason: BridgeNotAskedReason::LeftOut }
         )));
     }
 
@@ -684,10 +611,7 @@ mod tests {
         use bae_core::identify::NotAskedReason;
         let step = |reason: NotAskedReason| {
             let mut state = in_flight(BarcodeProgress::Skipped);
-            let IdentifyState::Triangulating {
-                discid, context, ..
-            } = &mut state
-            else {
+            let IdentifyState::Triangulating { discid, context, .. } = &mut state else {
                 panic!("a run in flight");
             };
             *discid = DiscidProgress::NotAsked { reason };
@@ -733,9 +657,7 @@ mod tests {
         match BridgeIdentifyState::from_core(state) {
             BridgeIdentifyState::Triangulating { run, .. } => assert!(matches!(
                 run.disc_id,
-                BridgeDiscIdStep::NotCdAudio {
-                    sample_rate_hz: Some(96_000)
-                }
+                BridgeDiscIdStep::NotCdAudio { sample_rate_hz: Some(96_000) }
             )),
             other => panic!("expected a run in flight, got {other:?}"),
         }
@@ -751,10 +673,7 @@ mod tests {
         else {
             unreachable!("in_flight builds a run in flight");
         };
-        let state = IdentifyState::Error {
-            failure: failure.clone(),
-            context,
-        };
+        let state = IdentifyState::Error { failure: failure.clone(), context };
         assert_eq!(
             match BridgeIdentifyState::from_core(state) {
                 BridgeIdentifyState::Error { failure } => failure.detail,

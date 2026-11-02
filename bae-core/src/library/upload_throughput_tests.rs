@@ -86,11 +86,7 @@ fn a_new_total_starts_a_new_measurement() {
     tracker.record(id, 0, 1000, Duration::ZERO);
     tracker.record(id, 500, 1000, secs(1));
     tracker.record(id, 600, 2000, secs(2));
-    assert_eq!(
-        tracker.rates(secs(2))[&id],
-        0,
-        "bytes against another total are another attempt"
-    );
+    assert_eq!(tracker.rates(secs(2))[&id], 0, "bytes against another total are another attempt");
 }
 
 #[test]
@@ -116,11 +112,7 @@ fn sending(files: &[FileId], paused: bool) -> DbSendingUploads {
     DbSendingUploads {
         files: files
             .iter()
-            .map(|file| crate::db::DbSendingFile {
-                file: *file,
-                release_id: None,
-                file_size: None,
-            })
+            .map(|file| crate::db::DbSendingFile { file: *file, release_id: None, file_size: None })
             .collect(),
         releases: Vec::new(),
         paused,
@@ -167,21 +159,10 @@ fn the_files_being_sent_are_measured_from_the_watch_until_they_stop_or_pause() {
     assert_eq!(rates.get(&second), Some(&2000));
     assert_eq!(rates.get(&unheard), None);
 
-    tracker.observe(
-        &sending(&[first], true),
-        &moved(&[(first, 600, 1000)]),
-        secs(2),
-    );
-    assert!(
-        tracker.rates(secs(2)).is_empty(),
-        "a pause ends the measurement"
-    );
+    tracker.observe(&sending(&[first], true), &moved(&[(first, 600, 1000)]), secs(2));
+    assert!(tracker.rates(secs(2)).is_empty(), "a pause ends the measurement");
 
-    tracker.observe(
-        &sending(&[first], false),
-        &moved(&[(first, 600, 1000)]),
-        secs(3),
-    );
+    tracker.observe(&sending(&[first], false), &moved(&[(first, 600, 1000)]), secs(3));
     tracker.observe(&sending(&[], false), &BTreeMap::new(), secs(4));
     assert!(tracker.rates(secs(4)).is_empty(), "a file sent has no rate");
 }

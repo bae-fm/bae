@@ -20,9 +20,7 @@ pub fn decode_image(data: &[u8]) -> Result<(image::DynamicImage, ContentType), S
     let mut reader = ImageReader::new(Cursor::new(data))
         .with_guessed_format()
         .map_err(|e| format!("Failed to read image: {}", e))?;
-    let format = reader
-        .format()
-        .ok_or_else(|| "Unrecognized image format".to_string())?;
+    let format = reader.format().ok_or_else(|| "Unrecognized image format".to_string())?;
     let content_type = ContentType::from_mime(format.to_mime_type());
     if !content_type.is_supported_cover() {
         return Err(format!("Image format {format:?} is not supported"));
@@ -34,9 +32,7 @@ pub fn decode_image(data: &[u8]) -> Result<(image::DynamicImage, ContentType), S
     limits.max_alloc = Some(MAX_DECODE_ALLOC_BYTES);
     reader.limits(limits);
 
-    let img = reader
-        .decode()
-        .map_err(|e| format!("Failed to decode image: {}", e))?;
+    let img = reader.decode().map_err(|e| format!("Failed to decode image: {}", e))?;
     Ok((img, content_type))
 }
 
@@ -47,15 +43,8 @@ pub fn stored_jpeg(data: &[u8]) -> Result<Vec<u8>, String> {
     let (w, h) = (img.width(), img.height());
 
     let img = if w > STORED_MAX_EDGE || h > STORED_MAX_EDGE {
-        debug!(
-            "Resizing image from {}x{} to fit {}x{}",
-            w, h, STORED_MAX_EDGE, STORED_MAX_EDGE
-        );
-        img.resize(
-            STORED_MAX_EDGE,
-            STORED_MAX_EDGE,
-            image::imageops::FilterType::Lanczos3,
-        )
+        debug!("Resizing image from {}x{} to fit {}x{}", w, h, STORED_MAX_EDGE, STORED_MAX_EDGE);
+        img.resize(STORED_MAX_EDGE, STORED_MAX_EDGE, image::imageops::FilterType::Lanczos3)
     } else {
         img
     };
@@ -75,9 +64,7 @@ mod tests {
     fn png_source(width: u32, height: u32) -> Vec<u8> {
         let img = image::RgbImage::from_pixel(width, height, image::Rgb([120, 40, 200]));
         let mut buf = std::io::Cursor::new(Vec::new());
-        image::DynamicImage::ImageRgb8(img)
-            .write_to(&mut buf, image::ImageFormat::Png)
-            .unwrap();
+        image::DynamicImage::ImageRgb8(img).write_to(&mut buf, image::ImageFormat::Png).unwrap();
         buf.into_inner()
     }
 
@@ -143,11 +130,7 @@ mod tests {
         ] {
             let output = stored_jpeg(bytes).unwrap_or_else(|error| panic!("{name}: {error}"));
             assert_eq!(decoded_dims(&output), dimensions, "{name}");
-            let pixel = image::load_from_memory(&output)
-                .unwrap()
-                .to_rgb8()
-                .get_pixel(0, 0)
-                .0;
+            let pixel = image::load_from_memory(&output).unwrap().to_rgb8().get_pixel(0, 0).0;
             for (actual, expected) in pixel.into_iter().zip([120u8, 40, 200]) {
                 assert!(actual.abs_diff(expected) <= 3, "{name}: {pixel:?}");
             }
@@ -180,19 +163,11 @@ mod tests {
         ] {
             let output = stored_jpeg(bytes).unwrap();
             assert_eq!(decoded_dims(&output), (16, 8));
-            let pixel = image::load_from_memory(&output)
-                .unwrap()
-                .to_rgb8()
-                .get_pixel(0, 0)
-                .0;
+            let pixel = image::load_from_memory(&output).unwrap().to_rgb8().get_pixel(0, 0).0;
             for (actual, expected) in pixel.into_iter().zip([120u8, 40, 200]) {
                 assert!(actual.abs_diff(expected) <= 3, "{pixel:?}");
             }
-            let pixel = image::load_from_memory(&output)
-                .unwrap()
-                .to_rgb8()
-                .get_pixel(15, 0)
-                .0;
+            let pixel = image::load_from_memory(&output).unwrap().to_rgb8().get_pixel(15, 0).0;
             for (actual, expected) in pixel.into_iter().zip(right_pixel) {
                 assert!(actual.abs_diff(expected) <= 3, "{pixel:?}");
             }

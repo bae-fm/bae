@@ -42,9 +42,7 @@ pub(crate) struct StreamPipeline {
 /// to the UI as a `PlaybackError`; preview only logs.
 #[derive(Clone)]
 pub(crate) enum DecodeFailureReport {
-    EmitPlaybackError {
-        progress_tx: tokio_mpsc::UnboundedSender<PlaybackProgress>,
-    },
+    EmitPlaybackError { progress_tx: tokio_mpsc::UnboundedSender<PlaybackProgress> },
     LogOnly,
 }
 
@@ -87,13 +85,7 @@ impl DecoderSetup {
         log_context: &'static str,
         on_decode_failure: DecodeFailureReport,
     ) -> Self {
-        Self {
-            decode,
-            sample_rate,
-            channels,
-            log_context,
-            on_decode_failure,
-        }
+        Self { decode, sample_rate, channels, log_context, on_decode_failure }
     }
 }
 
@@ -148,12 +140,7 @@ impl SegmentDecodeParams {
         span: crate::db::SegmentSpan,
         start_offset: u64,
     ) -> Self {
-        Self {
-            buffer,
-            span,
-            start_offset,
-            start: SegmentStart::Span,
-        }
+        Self { buffer, span, start_offset, start: SegmentStart::Span }
     }
 
     /// A start `start_offset` samples into the segment that decodes from
@@ -165,12 +152,7 @@ impl SegmentDecodeParams {
         start_offset: u64,
         point: crate::db::ScrubPoint,
     ) -> Self {
-        Self {
-            buffer,
-            span,
-            start_offset,
-            start: SegmentStart::ScrubPoint(point),
-        }
+        Self { buffer, span, start_offset, start: SegmentStart::ScrubPoint(point) }
     }
 
     /// A start `start_offset` samples into the segment that decodes from the
@@ -180,12 +162,7 @@ impl SegmentDecodeParams {
         span: crate::db::SegmentSpan,
         start_offset: u64,
     ) -> Self {
-        Self {
-            buffer,
-            span,
-            start_offset,
-            start: SegmentStart::StreamStart,
-        }
+        Self { buffer, span, start_offset, start: SegmentStart::StreamStart }
     }
 
     /// First sample to emit: the segment's start plus the seek offset. FFmpeg
@@ -202,10 +179,9 @@ impl SegmentDecodeParams {
     pub(crate) fn decode_start(&self, byte_seekable: bool) -> bae_audio::DecodeStart {
         use bae_audio::DecodeStart;
         match self.start {
-            SegmentStart::ScrubPoint(point) => DecodeStart::Frame {
-                byte: point.byte,
-                sample: point.sample,
-            },
+            SegmentStart::ScrubPoint(point) => {
+                DecodeStart::Frame { byte: point.byte, sample: point.sample }
+            }
             SegmentStart::StreamStart => DecodeStart::StreamStart,
             SegmentStart::Span => match self.span.start_byte {
                 Some(byte) if self.start_offset == 0 && byte_seekable => DecodeStart::Byte(byte),
@@ -222,12 +198,7 @@ impl StreamDecodeParams {
         leading_silence_frames: u64,
         trailing_silence_frames: u64,
     ) -> Self {
-        Self {
-            segments,
-            byte_seekable,
-            leading_silence_frames,
-            trailing_silence_frames,
-        }
+        Self { segments, byte_seekable, leading_silence_frames, trailing_silence_frames }
     }
 
     #[cfg(desktop)]
@@ -420,13 +391,7 @@ pub(crate) fn spawn_decoder<T, F>(
 where
     F: FnOnce(TrackStream, ReportedThread, Arc<AtomicBool>, ReadyReceiver) -> T,
 {
-    let DecoderSetup {
-        decode,
-        sample_rate,
-        channels,
-        log_context,
-        on_decode_failure,
-    } = setup;
+    let DecoderSetup { decode, sample_rate, channels, log_context, on_decode_failure } = setup;
     let cancel_token = Arc::new(AtomicBool::new(false));
     let (mut sink, track_stream, ready) = create_track_stream_pair(sample_rate, channels);
 
@@ -501,12 +466,7 @@ where
         };
 
     Ok(compose(
-        StreamPipeline {
-            stream,
-            source,
-            decoder_handle: handle,
-            cancel_token,
-        },
+        StreamPipeline { stream, source, decoder_handle: handle, cancel_token },
         audio_events,
     ))
 }
@@ -520,14 +480,7 @@ async fn build_and_play_stream(
     track_source: TrackStream,
     fmt: TrackFmt,
     position_update_interval_ms: u32,
-) -> Result<
-    (
-        Box<dyn AudioStream>,
-        Arc<Mutex<PlaybackSource>>,
-        AudioEventReceiver,
-    ),
-    PlaybackError,
-> {
+) -> Result<(Box<dyn AudioStream>, Arc<Mutex<PlaybackSource>>, AudioEventReceiver), PlaybackError> {
     // The audio callback tags every position/completion emit with `fmt`.
     let source = Arc::new(Mutex::new(PlaybackSource::new(track_source, fmt)));
 
@@ -558,9 +511,7 @@ async fn build_and_play_stream(
 
     if let Err(e) = stream.play() {
         source.lock().unwrap().cancel();
-        return Err(PlaybackError::task(format!(
-            "Failed to start streaming playback: {e:?}"
-        )));
+        return Err(PlaybackError::task(format!("Failed to start streaming playback: {e:?}")));
     }
 
     Ok((stream, source, audio_events))
@@ -667,10 +618,7 @@ pub(crate) fn log_stream_diagnostic(context: &'static str, event: &AudioEvent) {
             );
         }
         AudioEvent::SourceLockReacquired { missed_ms } => {
-            debug!(
-                context,
-                missed_ms, "audio callback reacquired playback source lock"
-            );
+            debug!(context, missed_ms, "audio callback reacquired playback source lock");
         }
         AudioEvent::Starved {
             fmt,
@@ -726,18 +674,12 @@ pub(crate) fn report_dropped_audio_events(
 ) -> bool {
     let dropped_required = events.take_dropped_required_count();
     if dropped_required > 0 {
-        error!(
-            context,
-            dropped_required, "audio callback event queue dropped required events"
-        );
+        error!(context, dropped_required, "audio callback event queue dropped required events");
         return true;
     }
     let dropped = events.take_dropped_count();
     if dropped > 0 {
-        warn!(
-            context,
-            dropped, "audio callback event queue dropped events"
-        );
+        warn!(context, dropped, "audio callback event queue dropped events");
     }
     false
 }
@@ -750,11 +692,7 @@ mod tests {
 
     fn one_segment_decode(buffer: SharedSparseBuffer) -> StreamDecodeParams {
         StreamDecodeParams::new(
-            vec![SegmentDecodeParams::new(
-                buffer,
-                crate::db::SegmentSpan::whole_file(),
-                0,
-            )],
+            vec![SegmentDecodeParams::new(buffer, crate::db::SegmentSpan::whole_file(), 0)],
             true,
             0,
             0,
@@ -824,9 +762,7 @@ mod tests {
         assert_eq!(frames, 44_100);
         let header_end = reads[0] + 8 * 1024;
         assert!(
-            reads
-                .iter()
-                .all(|&offset| offset < header_end || offset >= landing),
+            reads.iter().all(|&offset| offset < header_end || offset >= landing),
             "reads {reads:?} around landing {landing}"
         );
 
@@ -897,15 +833,9 @@ mod tests {
                 (0.5 * i32::MAX as f64 * (2.0 * std::f64::consts::PI * 440.0 * t).sin()) as i32
             })
             .collect();
-        let flac = encode_i32(
-            EncodeFormat::Flac {
-                bits_per_sample: 16,
-            },
-            &original,
-            sample_rate,
-            1,
-        )
-        .unwrap();
+        let flac =
+            encode_i32(EncodeFormat::Flac { bits_per_sample: 16 }, &original, sample_rate, 1)
+                .unwrap();
         let buffer = create_sparse_buffer(flac.len() as u64);
         buffer.append_at(0, &flac);
 
@@ -951,10 +881,7 @@ mod tests {
                 }
             }
         }
-        decoder
-            .join()
-            .unwrap()
-            .expect("two-segment decode succeeds");
+        decoder.join().unwrap().expect("two-segment decode succeeds");
         assert_eq!(pulled, total_frames);
     }
 

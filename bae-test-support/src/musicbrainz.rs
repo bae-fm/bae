@@ -23,11 +23,7 @@ pub fn mb_track(position: i64, title: &str) -> bae_catalogs::musicbrainz::MbTrac
 pub fn mb_medium(
     tracks: Vec<bae_catalogs::musicbrainz::MbTrack>,
 ) -> bae_catalogs::musicbrainz::MbMedium {
-    bae_catalogs::musicbrainz::MbMedium {
-        discs: vec![],
-        format: Some("CD".to_string()),
-        tracks,
-    }
+    bae_catalogs::musicbrainz::MbMedium { discs: vec![], format: Some("CD".to_string()), tracks }
 }
 
 /// The MusicBrainz release document the import tests seed: one "Artist Name"

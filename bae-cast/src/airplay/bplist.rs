@@ -114,10 +114,8 @@ fn flatten(value: &Plist, nodes: &mut Vec<Node>) -> usize {
             Node::Array(refs)
         }
         Plist::Dict(entries) => {
-            let key_refs = entries
-                .iter()
-                .map(|(k, _)| flatten(&Plist::String(k.clone()), nodes))
-                .collect();
+            let key_refs =
+                entries.iter().map(|(k, _)| flatten(&Plist::String(k.clone()), nodes)).collect();
             let val_refs = entries.iter().map(|(_, v)| flatten(v, nodes)).collect();
             Node::Dict(key_refs, val_refs)
         }
@@ -278,25 +276,15 @@ pub(crate) fn decode(bytes: &[u8]) -> Result<Plist, BplistError> {
         .filter(|end| *end <= body_end as u64)
         .ok_or(BplistError::BadTrailer)?;
     let table = &bytes[table_offset as usize..table_end as usize];
-    let offsets = table
-        .chunks_exact(offset_size)
-        .map(read_uint)
-        .collect::<Result<Vec<_>, _>>()?;
+    let offsets = table.chunks_exact(offset_size).map(read_uint).collect::<Result<Vec<_>, _>>()?;
 
-    let ctx = DecodeCtx {
-        bytes,
-        offsets: &offsets,
-        ref_size,
-        decoded: std::cell::Cell::new(0),
-    };
+    let ctx = DecodeCtx { bytes, offsets: &offsets, ref_size, decoded: std::cell::Cell::new(0) };
     ctx.object(top as usize, 0)
 }
 
 /// A big-endian unsigned integer of at most eight bytes.
 fn be_u64(field: &[u8]) -> u64 {
-    field
-        .iter()
-        .fold(0, |value, &byte| (value << 8) | u64::from(byte))
+    field.iter().fold(0, |value, &byte| (value << 8) | u64::from(byte))
 }
 
 struct DecodeCtx<'a> {
@@ -370,9 +358,7 @@ impl DecodeCtx<'_> {
             0xD => {
                 let (count, refs_at) = self.count(at, low)?;
                 let refs_len = count.checked_mul(2).ok_or(BplistError::Truncated)?;
-                let refs = self
-                    .references(refs_at, refs_len)?
-                    .collect::<Result<Vec<_>, _>>()?;
+                let refs = self.references(refs_at, refs_len)?.collect::<Result<Vec<_>, _>>()?;
                 let (keys, values) = refs.split_at(count);
                 keys.iter()
                     .zip(values)
@@ -420,13 +406,8 @@ impl DecodeCtx<'_> {
         refs_at: usize,
         count: usize,
     ) -> Result<impl Iterator<Item = Result<usize, BplistError>> + '_, BplistError> {
-        let len = count
-            .checked_mul(self.ref_size)
-            .ok_or(BplistError::Truncated)?;
-        Ok(self
-            .span(refs_at, len)?
-            .chunks_exact(self.ref_size)
-            .map(read_uint))
+        let len = count.checked_mul(self.ref_size).ok_or(BplistError::Truncated)?;
+        Ok(self.span(refs_at, len)?.chunks_exact(self.ref_size).map(read_uint))
     }
 }
 
@@ -454,12 +435,7 @@ mod tests {
     use super::*;
 
     fn dict(entries: &[(&str, Plist)]) -> Plist {
-        Plist::Dict(
-            entries
-                .iter()
-                .map(|(k, v)| (k.to_string(), v.clone()))
-                .collect(),
-        )
+        Plist::Dict(entries.iter().map(|(k, v)| (k.to_string(), v.clone())).collect())
     }
 
     /// A small dict encodes to a well-formed bplist and decodes back unchanged.
@@ -485,14 +461,8 @@ mod tests {
                     ("timingProtocol", Plist::String("NTP".to_string())),
                 ])]),
             ),
-            (
-                "sessionUUID",
-                Plist::String("3195C737-1E6E-4487-BECB-4D287B7C7626".to_string()),
-            ),
-            (
-                "networkTimeTimelineID",
-                Plist::Integer(0x1122_3344_5566_7788),
-            ),
+            ("sessionUUID", Plist::String("3195C737-1E6E-4487-BECB-4D287B7C7626".to_string())),
+            ("networkTimeTimelineID", Plist::Integer(0x1122_3344_5566_7788)),
         ]);
         let bytes = encode(&value);
         let decoded = decode(&bytes).unwrap();

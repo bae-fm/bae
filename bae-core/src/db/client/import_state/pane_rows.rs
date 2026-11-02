@@ -30,10 +30,7 @@ const TRACK_COLUMNS: &str = "content_hash, track_id, position, title, \
      file_kind, file_id, sheet_id, slice_index";
 
 pub(super) fn delete_cover(sql: &CovenWrite<'_>, content_hash: &str) -> Result<(), DbError> {
-    sql.execute(
-        "DELETE FROM import_candidate_cover WHERE content_hash = ?",
-        [content_hash],
-    )?;
+    sql.execute("DELETE FROM import_candidate_cover WHERE content_hash = ?", [content_hash])?;
     Ok(())
 }
 
@@ -97,9 +94,7 @@ pub(super) fn edit_row_values(
         text(&draft.pressing.year),
         optional(facts.country),
         optional(facts.region),
-        Value::Text(super::super::pressing_columns::media_column(
-            &draft.pressing.facts.media,
-        )),
+        Value::Text(super::super::pressing_columns::media_column(&draft.pressing.facts.media)),
         optional(facts.status),
         optional(facts.packaging),
         Value::Text(facts.discogs_details),
@@ -254,16 +249,9 @@ fn assignment_kind_column(assignments: &TrackArtistAssignments) -> &'static str 
 fn mapping_file_columns(file: &AudioFile) -> (&str, &str, Option<&str>, Option<i64>) {
     match file {
         AudioFile::Standalone { file_id } => ("standalone", file_id.as_str(), None, None),
-        AudioFile::SheetSlice {
-            file_id,
-            sheet_id,
-            index,
-        } => (
-            "sheet_slice",
-            file_id.as_str(),
-            Some(sheet_id.as_str()),
-            Some(i64::from(*index)),
-        ),
+        AudioFile::SheetSlice { file_id, sheet_id, index } => {
+            ("sheet_slice", file_id.as_str(), Some(sheet_id.as_str()), Some(i64::from(*index)))
+        }
     }
 }
 
@@ -387,9 +375,10 @@ pub(crate) fn read_cover(row: &Row<'_>) -> rusqlite::Result<Option<StoredCover>>
 impl StoredCover {
     pub(crate) fn selection(self) -> Result<CoverSelection, DbError> {
         match self.kind.as_str() {
-            "local" => Ok(CoverSelection::Local(self.file_id.ok_or_else(|| {
-                DbError::Message("a local cover names no file".into())
-            })?)),
+            "local" => Ok(CoverSelection::Local(
+                self.file_id
+                    .ok_or_else(|| DbError::Message("a local cover names no file".into()))?,
+            )),
             "embedded" => Ok(CoverSelection::Embedded(self.file_id.ok_or_else(|| {
                 DbError::Message("an embedded cover names no source file".into())
             })?)),
@@ -555,10 +544,7 @@ impl StoredDraftRow {
                             .ok_or_else(|| unreadable("draft medium", &key))
                     })
                     .transpose()?;
-                Ok(crate::mediums::ReleaseMedium {
-                    carrier,
-                    sides: medium.sides,
-                })
+                Ok(crate::mediums::ReleaseMedium { carrier, sides: medium.sides })
             })
             .collect::<Result<_, DbError>>()?;
         let tracks = decoded::<Vec<StoredTrack>>(&self.tracks, "tracks")?
@@ -628,10 +614,7 @@ struct StoredTrack {
 impl StoredTrack {
     fn track(self) -> Result<CandidateTrack, DbError> {
         let missing = |what: &str| {
-            DbError::Message(format!(
-                "the track stored for {} states no {what}",
-                self.track_id
-            ))
+            DbError::Message(format!("the track stored for {} states no {what}", self.track_id))
         };
         let artist_assignments = match self.assignment_kind.as_str() {
             "album_artists" => TrackArtistAssignments::AlbumArtists,
@@ -644,9 +627,7 @@ impl StoredTrack {
             other => return Err(unreadable("artist assignment kind", other)),
         };
         let file = match self.file_kind.as_str() {
-            "standalone" => AudioFile::Standalone {
-                file_id: self.file_id,
-            },
+            "standalone" => AudioFile::Standalone { file_id: self.file_id },
             "sheet_slice" => AudioFile::SheetSlice {
                 file_id: self.file_id,
                 sheet_id: self.sheet_id.ok_or_else(|| missing("sheet"))?,
@@ -661,12 +642,7 @@ impl StoredTrack {
             .transpose()
             .map_err(|error| missing(&format!("a readable stated length ({error})")))?;
         Ok(CandidateTrack {
-            edit: RawTrackEdit {
-                id: self.track_id,
-                title: self.title,
-                artist_assignments,
-                file,
-            },
+            edit: RawTrackEdit { id: self.track_id, title: self.title, artist_assignments, file },
             place: crate::mediums::TrackPlace {
                 medium: self.medium,
                 side: self.side,
@@ -694,19 +670,14 @@ struct AssignmentColumns<'a> {
 fn assignment_columns(credited: &Credited) -> AssignmentColumns<'_> {
     let join_phrase = credited.join.as_deref();
     match &credited.artist {
-        ArtistAssignment::Picked {
-            artist,
-            credit_name,
-        } => AssignmentColumns {
+        ArtistAssignment::Picked { artist, credit_name } => AssignmentColumns {
             kind: "picked",
             artist_id: Some(&artist.artist_id),
             name: None,
             sort_name: None,
             musicbrainz_id: None,
             discogs_id: None,
-            credit_key: credit_name
-                .as_ref()
-                .map(|credit_name| credit_name.key.as_str()),
+            credit_key: credit_name.as_ref().map(|credit_name| credit_name.key.as_str()),
             credited_as: None,
             join_phrase,
         },
@@ -805,10 +776,7 @@ impl StoredAssignment {
             },
             other => return Err(unreadable("artist assignment kind", other)),
         };
-        Ok(Credited {
-            artist,
-            join: self.join_phrase,
-        })
+        Ok(Credited { artist, join: self.join_phrase })
     }
 }
 

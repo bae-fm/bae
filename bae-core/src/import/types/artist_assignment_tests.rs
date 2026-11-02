@@ -27,18 +27,11 @@ fn a_picked_artist_stands_in_the_library_whatever_was_resolved() {
 #[test]
 fn a_credit_stands_as_it_resolved() {
     let resolutions = [
-        resolved(
-            "Artist One",
-            CreditResolution::Library {
-                artist: library_artist("one"),
-            },
-        ),
+        resolved("Artist One", CreditResolution::Library { artist: library_artist("one") }),
         resolved("Artist Two", CreditResolution::New),
         resolved(
             "Artist Three",
-            CreditResolution::Ambiguous {
-                artists: vec![library_artist("a"), library_artist("b")],
-            },
+            CreditResolution::Ambiguous { artists: vec![library_artist("a"), library_artist("b")] },
         ),
     ];
 
@@ -52,9 +45,7 @@ fn a_credit_stands_as_it_resolved() {
     );
     assert_eq!(
         ArtistAssignment::named("Artist Three").standing(&resolutions),
-        Some(ArtistStanding::Choose {
-            choices: vec![library_artist("a"), library_artist("b")]
-        })
+        Some(ArtistStanding::Choose { choices: vec![library_artist("a"), library_artist("b")] })
     );
     assert_eq!(
         ArtistAssignment::named("Artist Four").standing(&resolutions),
@@ -83,19 +74,13 @@ fn a_field_summarizes_its_artists() {
     );
     assert_eq!(
         artists_standing(
-            &[
-                ArtistAssignment::named("New One"),
-                ArtistAssignment::named("New Two")
-            ],
+            &[ArtistAssignment::named("New One"), ArtistAssignment::named("New Two")],
             &resolutions
         ),
         Some(ArtistsStanding::New)
     );
     assert_eq!(
-        artists_standing(
-            &[picked.clone(), ArtistAssignment::named("New One")],
-            &resolutions
-        ),
+        artists_standing(&[picked.clone(), ArtistAssignment::named("New One")], &resolutions),
         Some(ArtistsStanding::SomeNew { count: 1 })
     );
     assert_eq!(

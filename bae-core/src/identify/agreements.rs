@@ -62,17 +62,10 @@ impl Agreements {
     /// How many of the pressing's fields agree, which orders the records in a
     /// row, the rows in a card, and the cards.
     pub fn count(&self) -> u32 {
-        [
-            self.disc_id,
-            self.barcode,
-            self.catalog,
-            self.label,
-            self.year,
-            self.country,
-        ]
-        .into_iter()
-        .filter(|agreed| *agreed)
-        .count() as u32
+        [self.disc_id, self.barcode, self.catalog, self.label, self.year, self.country]
+            .into_iter()
+            .filter(|agreed| *agreed)
+            .count() as u32
     }
 
     /// How many of the album's title and artist agree.
@@ -100,10 +93,7 @@ pub(crate) fn agreements_of(
 ) -> Agreements {
     Agreements {
         disc_id: by_disc_id,
-        barcode: result
-            .barcodes
-            .iter()
-            .any(|barcode| text.carries_barcode(barcode)),
+        barcode: result.barcodes.iter().any(|barcode| text.carries_barcode(barcode)),
         catalog: result
             .labels
             .iter()
@@ -119,10 +109,7 @@ pub(crate) fn agreements_of(
             .is_some_and(|year| facts.pressing_year(std::slice::from_ref(result)) == Some(year)),
         country: result.area.is_some_and(|area| facts.names_area(area)),
         title: text.states_title(&result.title),
-        artist: result
-            .artist
-            .as_deref()
-            .is_some_and(|artist| text.states(artist)),
+        artist: result.artist.as_deref().is_some_and(|artist| text.states(artist)),
     }
 }
 
@@ -175,11 +162,7 @@ impl CandidateText {
         choices: &crate::import::LookupChoices,
     ) -> Self {
         signals.map_or_else(Self::default, |signals| {
-            Self::of(
-                &signals.text_pool,
-                &choices.discounted_catalogs,
-                signals.barcode.codes(),
-            )
+            Self::of(&signals.text_pool, &choices.discounted_catalogs, signals.barcode.codes())
         })
     }
 
@@ -195,12 +178,7 @@ impl CandidateText {
                 .collect(),
             barcodes: barcodes
                 .iter()
-                .map(|code| {
-                    code.value
-                        .chars()
-                        .filter(char::is_ascii_digit)
-                        .collect::<String>()
-                })
+                .map(|code| code.value.chars().filter(char::is_ascii_digit).collect::<String>())
                 .filter(|digits| !digits.is_empty())
                 .collect(),
             barcode_keys: barcodes
@@ -327,9 +305,7 @@ impl CandidateText {
     /// `ReleaseArea::names`.
     pub fn states_area(&self, area: ReleaseArea) -> bool {
         area.names().iter().any(|name| self.states(name))
-            || area
-                .codes()
-                .any(|code| self.lines.iter().any(|line| line.writes_code(code)))
+            || area.codes().any(|code| self.lines.iter().any(|line| line.writes_code(code)))
     }
 
     /// Whether the person struck `value` out as a catalog number.
@@ -459,10 +435,7 @@ impl NormalizedLine {
     /// Whether every one of `words` — each squashed — is a word of this line.
     fn holds_words(&self, words: &[String]) -> bool {
         words.iter().all(|word| {
-            self.starts
-                .iter()
-                .zip(&self.ends)
-                .any(|(&start, &end)| &self.run[start..end] == word)
+            self.starts.iter().zip(&self.ends).any(|(&start, &end)| &self.run[start..end] == word)
         })
     }
 

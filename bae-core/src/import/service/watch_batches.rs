@@ -97,10 +97,7 @@ impl WatchedRoot {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 enum Gathering {
     /// One folder directly under a watched root.
-    Folder {
-        root: PathBuf,
-        folder: std::ffi::OsString,
-    },
+    Folder { root: PathBuf, folder: std::ffi::OsString },
     /// A whole watched root: the root itself changed, or the watch lost track
     /// of changes somewhere that takes in all of it.
     Root(PathBuf),
@@ -122,9 +119,7 @@ pub(super) struct WatchBatches {
 
 impl WatchBatches {
     pub(super) fn new() -> Self {
-        Self {
-            pending: HashMap::new(),
-        }
+        Self { pending: HashMap::new() }
     }
 
     /// Take in one event that `root`'s watch reported at `now`. An event
@@ -152,15 +147,9 @@ impl WatchBatches {
         for path in &event.paths {
             if let Some(spelled) = root.spelled(path) {
                 let gathering = match spelled.strip_prefix(&root.path).ok().and_then(|relative| {
-                    relative
-                        .components()
-                        .next()
-                        .map(|first| first.as_os_str().to_os_string())
+                    relative.components().next().map(|first| first.as_os_str().to_os_string())
                 }) {
-                    Some(folder) => Gathering::Folder {
-                        root: root.path.clone(),
-                        folder,
-                    },
+                    Some(folder) => Gathering::Folder { root: root.path.clone(), folder },
                     None => Gathering::Root(root.path.clone()),
                 };
                 self.file(gathering, single(&spelled), now);
@@ -224,18 +213,12 @@ impl WatchBatches {
     /// Everything still waiting, as batches — what goes out when the watch
     /// itself goes away.
     pub(super) fn take_all(&mut self) -> Vec<Vec<Event>> {
-        self.pending
-            .drain()
-            .map(|(_, pending)| pending.events)
-            .collect()
+        self.pending.drain().map(|(_, pending)| pending.events).collect()
     }
 
     /// When the next gathering goes quiet, if any is waiting.
     pub(super) fn next_quiet_at(&self) -> Option<Instant> {
-        self.pending
-            .values()
-            .map(|pending| pending.last + QUIET)
-            .min()
+        self.pending.values().map(|pending| pending.last + QUIET).min()
     }
 }
 
@@ -310,10 +293,7 @@ mod tests {
     }
 
     fn root() -> WatchedRoot {
-        WatchedRoot {
-            path: PathBuf::from("/music"),
-            reported: PathBuf::from("/music"),
-        }
+        WatchedRoot { path: PathBuf::from("/music"), reported: PathBuf::from("/music") }
     }
 
     /// A folder still being written to is held back; one that went quiet
@@ -333,10 +313,7 @@ mod tests {
         );
         assert_eq!(
             paths(&batches.take_quiet(start + QUIET / 2 + QUIET)),
-            vec![vec![
-                "/music/Two/01.flac".to_string(),
-                "/music/Two/02.flac".to_string()
-            ]]
+            vec![vec!["/music/Two/01.flac".to_string(), "/music/Two/02.flac".to_string()]]
         );
     }
 
@@ -351,10 +328,7 @@ mod tests {
 
         assert_eq!(
             paths(&batches.take_quiet(start + QUIET)),
-            vec![
-                vec!["/music/One".to_string()],
-                vec!["/music/Two/Disc 1".to_string()]
-            ]
+            vec![vec!["/music/One".to_string()], vec!["/music/Two/Disc 1".to_string()]]
         );
     }
 

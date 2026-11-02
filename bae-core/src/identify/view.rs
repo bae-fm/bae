@@ -92,10 +92,7 @@ pub enum BarcodeStepView {
     NoCodes,
     /// One row per code, in the order first seen. While `scanning`, more rows
     /// may come and every cell is queued.
-    Rows {
-        scanning: bool,
-        rows: Vec<SignalValueRow>,
-    },
+    Rows { scanning: bool, rows: Vec<SignalValueRow> },
 }
 
 /// A catalog number the folder's text offers that is not in effect: neither
@@ -135,10 +132,7 @@ pub enum IsrcStepView {
     /// No audio file's tags carry one.
     Absent,
     /// Every code, each once, in the files' order.
-    Read {
-        isrcs: Vec<String>,
-        lookup: LookupView,
-    },
+    Read { isrcs: Vec<String>, lookup: LookupView },
 }
 
 /// The title search, asked of every provider when the identifiers name
@@ -339,25 +333,13 @@ fn cards(
     track_count: u32,
 ) -> Cards {
     let facts = FolderFacts::of(text, findings.releases());
-    let by_disc_id = ledger
-        .map(IdentifyRunView::disc_id_releases)
-        .unwrap_or_default();
+    let by_disc_id = ledger.map(IdentifyRunView::disc_id_releases).unwrap_or_default();
     // The medium conflict is stated by the folder check, not here.
-    let Findings {
-        matches,
-        pressings,
-        narrowed_out,
-        medium_conflict: _,
-        named_notes,
-    } = findings;
+    let Findings { matches, pressings, narrowed_out, medium_conflict: _, named_notes } = findings;
     let offered = judged_results(matches, &by_disc_id, text, &facts);
     let set_aside = judged_results(narrowed_out.matches, &by_disc_id, text, &facts);
     let judgements = Judgements::of(
-        &offered
-            .iter()
-            .chain(&set_aside)
-            .cloned()
-            .collect::<Vec<_>>(),
+        &offered.iter().chain(&set_aside).cloned().collect::<Vec<_>>(),
         Some(track_count),
     );
     let groups = group_formed_rows(
@@ -367,11 +349,7 @@ fn cards(
         &narrowed_out.pressings,
         Some(track_count),
     );
-    Cards {
-        groups,
-        judgements,
-        named_notes,
-    }
+    Cards { groups, judgements, named_notes }
 }
 
 /// The album a stored verdict's offered rows are several pressings of, as
@@ -383,17 +361,10 @@ pub(crate) fn shared_album_of(
     text: &CandidateText,
 ) -> Option<SharedAlbum> {
     match verdict {
-        super::TerminalVerdict::Found {
-            findings,
-            track_count,
-            ledger,
+        super::TerminalVerdict::Found { findings, track_count, ledger }
+        | super::TerminalVerdict::Failed { findings, track_count, ledger, .. } => {
+            SharedAlbum::of(&cards(findings, ledger.as_ref(), text, track_count).groups)
         }
-        | super::TerminalVerdict::Failed {
-            findings,
-            track_count,
-            ledger,
-            ..
-        } => SharedAlbum::of(&cards(findings, ledger.as_ref(), text, track_count).groups),
         super::TerminalVerdict::NotFoundAnywhere { .. }
         | super::TerminalVerdict::ManualOnly { .. }
         | super::TerminalVerdict::Error { .. } => None,
@@ -408,11 +379,8 @@ fn fold(
     text: &CandidateText,
     track_count: u32,
 ) -> Folded {
-    let Cards {
-        groups: cards,
-        judgements,
-        named_notes,
-    } = cards(findings, ledger, text, track_count);
+    let Cards { groups: cards, judgements, named_notes } =
+        cards(findings, ledger, text, track_count);
     let named_note = |pressing: &Pressing| {
         pressing.releases.iter().find_map(|release| {
             named_notes
@@ -438,10 +406,7 @@ fn fold(
                 .map(move |release| (release.release_id.clone(), agreements.clone()))
         })
         .collect();
-    let narrowed_out_count = cards
-        .iter()
-        .map(|group| group.narrowed_out().count() as u32)
-        .sum();
+    let narrowed_out_count = cards.iter().map(|group| group.narrowed_out().count() as u32).sum();
     Folded {
         offers_shared_album: SharedAlbum::of(&cards).is_some(),
         groups: cards,
@@ -473,11 +438,7 @@ pub(super) fn run_view(
         barcode: barcode_step(barcode, context, scanning),
         catalog: catalog_step(catalog, context, scanning),
         isrc: isrc_step(isrc, context),
-        search: search_step(
-            search,
-            identifiers_found_something(discid, barcode, catalog),
-            context,
-        ),
+        search: search_step(search, identifiers_found_something(discid, barcode, catalog), context),
     }
 }
 

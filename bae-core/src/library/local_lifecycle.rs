@@ -59,10 +59,7 @@ pub struct UnfinishedRemoval {
 impl std::fmt::Display for UnfinishedRemoval {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let ids = |ids: &[coven::StoreId]| {
-            ids.iter()
-                .map(ToString::to_string)
-                .collect::<Vec<_>>()
-                .join(", ")
+            ids.iter().map(ToString::to_string).collect::<Vec<_>>().join(", ")
         };
         let mut parts = Vec::new();
         if !self.files_remain.is_empty() {
@@ -100,10 +97,7 @@ impl UnfinishedRemoval {
         for &id in &not_removed {
             delete_record(app_dir, diagnostics, id).await?;
         }
-        Ok(Some(Self {
-            files_remain,
-            not_removed,
-        }))
+        Ok(Some(Self { files_remain, not_removed }))
     }
 
     /// Whether [`finish_removals`] has files left to delete.
@@ -198,9 +192,7 @@ pub async fn unsent_before_removal(
     store: coven::StoreId,
     on_open_progress: impl Fn(coven::Progress<coven::OpenStep>),
 ) -> Result<coven::UnsentWork, LibraryError> {
-    let handle = super::configure_store(builder)
-        .open(store, on_open_progress)
-        .await?;
+    let handle = super::configure_store(builder).open(store, on_open_progress).await?;
     let unsent = crate::db::Database::from_handle(
         handle.clone(),
         std::sync::Arc::new(coven::SystemClock),
@@ -224,12 +216,9 @@ pub(crate) async fn remove_recorded(
     delete_store: impl std::future::Future<Output = Result<(), coven::StoreDeletionError>>,
     steps: &(dyn Fn(super::ClosingStep) + Send + Sync),
 ) -> Result<(), LibraryRemovalError> {
-    let _lock = RemovalLock::acquire(app_dir, diagnostics)
-        .await
-        .map_err(LibraryRemovalError::Record)?;
-    write_record(app_dir, diagnostics, store_id)
-        .await
-        .map_err(LibraryRemovalError::Record)?;
+    let _lock =
+        RemovalLock::acquire(app_dir, diagnostics).await.map_err(LibraryRemovalError::Record)?;
+    write_record(app_dir, diagnostics, store_id).await.map_err(LibraryRemovalError::Record)?;
     steps(super::ClosingStep::LeavingLibrary);
     if let Err(error) = delete_store.await {
         if let Err(record) = delete_record(app_dir, diagnostics, store_id).await {
@@ -241,9 +230,7 @@ pub(crate) async fn remove_recorded(
     delete_library_files(app_dir, diagnostics, store_id)
         .await
         .map_err(LibraryRemovalError::Unfinished)?;
-    delete_record(app_dir, diagnostics, store_id)
-        .await
-        .map_err(LibraryRemovalError::Unfinished)
+    delete_record(app_dir, diagnostics, store_id).await.map_err(LibraryRemovalError::Unfinished)
 }
 
 /// The removal lock: an exclusive OS lock on one file in the app directory,
@@ -292,9 +279,7 @@ async fn write_record(
     let records = app_dir.removal_records();
     file_work(diagnostics, "write a removal record", move || {
         std::fs::create_dir_all(&records).map_err(|error| io_at(&records, error))?;
-        let parent = records
-            .parent()
-            .expect("the records directory has a parent");
+        let parent = records.parent().expect("the records directory has a parent");
         bae_util::fs::sync_directory(parent).map_err(|error| io_at(parent, error))?;
         let id = store_id.to_string();
         coven::write_atomic(&records.join(&id), id.as_bytes()).map_err(ConfigError::from)?;
@@ -309,15 +294,11 @@ async fn delete_record(
     store_id: coven::StoreId,
 ) -> Result<(), LibraryError> {
     let record = app_dir.removal_records().join(store_id.to_string());
-    file_work(
-        diagnostics,
-        "delete a removal record",
-        move || match std::fs::remove_file(&record) {
-            Ok(()) => Ok(()),
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
-            Err(error) => Err(io_at(&record, error)),
-        },
-    )
+    file_work(diagnostics, "delete a removal record", move || match std::fs::remove_file(&record) {
+        Ok(()) => Ok(()),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(io_at(&record, error)),
+    })
     .await
 }
 
@@ -340,10 +321,7 @@ async fn removal_records(
         for entry in entries {
             let entry = entry.map_err(|error| io_at(&root, error))?;
             let path = entry.path();
-            let is_file = entry
-                .file_type()
-                .map_err(|error| io_at(&path, error))?
-                .is_file();
+            let is_file = entry.file_type().map_err(|error| io_at(&path, error))?.is_file();
             match entry.file_name().to_str().and_then(parse_library_id) {
                 Some(id) if is_file => {
                     records.insert(id);
@@ -405,8 +383,5 @@ async fn file_work<T: Send + 'static>(
 
 /// Keep the path in the error: a bare "Permission denied" names no file.
 fn io_at(path: &std::path::Path, error: std::io::Error) -> LibraryError {
-    LibraryError::Io(std::io::Error::new(
-        error.kind(),
-        format!("{}: {error}", path.display()),
-    ))
+    LibraryError::Io(std::io::Error::new(error.kind(), format!("{}: {error}", path.display())))
 }

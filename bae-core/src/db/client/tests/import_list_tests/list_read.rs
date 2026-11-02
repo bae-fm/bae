@@ -15,15 +15,9 @@ pub(super) struct ListRead {
 /// The first fifty items of `tab`, nothing selected.
 pub(super) async fn request(tab: TriageTab) -> ListRead {
     ListRead {
-        view: ImportListView {
-            tab,
-            ..ImportListView::default()
-        },
-        windows: std::iter::once(crate::library::LibraryPageWindow {
-            offset: 0,
-            limit: 50,
-        })
-        .collect(),
+        view: ImportListView { tab, ..ImportListView::default() },
+        windows: std::iter::once(crate::library::LibraryPageWindow { offset: 0, limit: 50 })
+            .collect(),
         selected: Vec::new(),
     }
 }
@@ -38,17 +32,12 @@ impl Database {
         if !read.selected.is_empty() {
             self.change_import_list_selection(
                 list,
-                crate::import::selection::SelectionChange::Replace {
-                    keys: read.selected,
-                },
+                crate::import::selection::SelectionChange::Replace { keys: read.selected },
             )
             .await?;
         }
         let projection = self
-            .load_import_list(crate::import::ImportListRequest {
-                list,
-                windows: read.windows,
-            })
+            .load_import_list(crate::import::ImportListRequest { list, windows: read.windows })
             .await;
         self.close_import_list(list).await?;
         projection

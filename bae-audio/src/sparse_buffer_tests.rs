@@ -137,10 +137,7 @@ fn test_cancel_unblocks_reader() {
     buffer.wait_until_parked(1);
     buffer.cancel();
 
-    assert!(
-        handle.join().unwrap(),
-        "a cancel unblocks the reader as a cancel"
-    );
+    assert!(handle.join().unwrap(), "a cancel unblocks the reader as a cancel");
 }
 
 #[test]
@@ -271,16 +268,10 @@ fn a_failed_buffer_hands_readers_the_read_error_and_the_first_stop_wins() {
     let seen = join_within(handle, Duration::from_secs(5))
         .expect("a failure unblocks the reader")
         .expect("the reader saw the failure");
-    assert!(
-        seen.contains("/volume/track.flac"),
-        "the reader gets the read's own error: {seen}"
-    );
+    assert!(seen.contains("/volume/track.flac"), "the reader gets the read's own error: {seen}");
 
     buffer.cancel();
-    assert!(
-        !buffer.is_cancelled(),
-        "a later cancel doesn't mask the failure"
-    );
+    assert!(!buffer.is_cancelled(), "a later cancel doesn't mask the failure");
     let kind = buffer.failure().as_ref().and_then(io_kind);
     assert_eq!(kind, Some(std::io::ErrorKind::StorageFull));
 
@@ -309,10 +300,7 @@ fn test_seek_returns_false_after_cancel() {
     // Once the buffer is cancelled the reader is shutting down, so seek is
     // refused rather than silently repositioning a dead cursor.
     buffer.cancel();
-    assert!(
-        !reader.seek(0),
-        "seek must return false once the buffer is cancelled"
-    );
+    assert!(!reader.seek(0), "seek must return false once the buffer is cancelled");
 }
 
 /// Join `handle`, returning its value, or `None` if it hasn't finished within
@@ -444,27 +432,15 @@ fn demand_windows_carry_the_per_reader_ceiling() {
     assert_eq!(
         buffer.demand_windows(),
         vec![
-            ReaderDemand {
-                pos: 100,
-                ceiling: Some(250)
-            },
-            ReaderDemand {
-                pos: 300,
-                ceiling: None
-            },
+            ReaderDemand { pos: 100, ceiling: Some(250) },
+            ReaderDemand { pos: 300, ceiling: None },
         ],
         "each reader carries its own position and ceiling, ascending by position"
     );
 
     // Dropping a reader removes both its demand and its ceiling.
     drop(a);
-    assert_eq!(
-        buffer.demand_windows(),
-        vec![ReaderDemand {
-            pos: 300,
-            ceiling: None
-        }]
-    );
+    assert_eq!(buffer.demand_windows(), vec![ReaderDemand { pos: 300, ceiling: None }]);
 }
 
 #[test]
@@ -506,10 +482,7 @@ fn evict_drops_ranges_inside_and_keeps_the_bytes_outside() {
     // A range spanning the evicted bytes splits around them; one reaching
     // past the evicted end is trimmed at its front.
     buffer.evict(3..7);
-    assert_eq!(
-        buffer.get_ranges(),
-        vec![(0, 3), (7, 10), (20, 24), (30, 40)]
-    );
+    assert_eq!(buffer.get_ranges(), vec![(0, 3), (7, 10), (20, 24), (30, 40)]);
     buffer.evict(8..32);
     assert_eq!(buffer.get_ranges(), vec![(0, 3), (7, 8), (32, 40)]);
 

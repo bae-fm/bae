@@ -51,10 +51,7 @@ pub enum MappingTrackRun {
     /// Rows supplied independently rather than carved by a track sheet.
     Tracks(Vec<TrackMapping>),
     /// A track sheet and the entries it carves, which are its child rows.
-    Sheet {
-        sheet: SheetGroup,
-        entries: Vec<TrackMapping>,
-    },
+    Sheet { sheet: SheetGroup, entries: Vec<TrackMapping> },
 }
 
 impl MappingTrackRun {
@@ -277,32 +274,25 @@ fn folder_files_besides(
             // A carving sheet is named at the position its run occupies, which
             // the assignment decides and the sheet's own place on disk does not.
             FileRole::TrackSheet { .. } if carving.contains(entry.file.relative_path.as_str()) => {}
-            FileRole::TrackSheet {
-                sheet,
-                binding,
-                disc,
-            } => file_rows.push(MappingFileRow::Sheet(SheetGroup {
-                sheet_id: entry.file.relative_path.clone(),
-                name: entry.file.relative_path.clone(),
-                size: entry.file.size,
-                path: entry.file.path.clone(),
-                bound: bound_of(
-                    files,
-                    TrackSheetFile {
-                        file: &entry.file,
-                        sheet,
-                        binding,
-                        disc: *disc,
+            FileRole::TrackSheet { sheet, binding, disc } => {
+                file_rows.push(MappingFileRow::Sheet(SheetGroup {
+                    sheet_id: entry.file.relative_path.clone(),
+                    name: entry.file.relative_path.clone(),
+                    size: entry.file.size,
+                    path: entry.file.path.clone(),
+                    bound: bound_of(
+                        files,
+                        TrackSheetFile { file: &entry.file, sheet, binding, disc: *disc },
+                    ),
+                    reference_options: files.sheet_binding_options(&entry.file.relative_path),
+                    assignment: *disc,
+                    disc_options: if binding.is_resolved() {
+                        disc_options.to_vec()
+                    } else {
+                        Vec::new()
                     },
-                ),
-                reference_options: files.sheet_binding_options(&entry.file.relative_path),
-                assignment: *disc,
-                disc_options: if binding.is_resolved() {
-                    disc_options.to_vec()
-                } else {
-                    Vec::new()
-                },
-            })),
+                }))
+            }
             // The track rows stand for the audio.
             FileRole::Audio => {}
             // Nothing else the folder holds is in the tracklist — the role says
@@ -314,10 +304,7 @@ fn folder_files_besides(
             FileRole::Other => file_rows.push(carried(entry, MappingRole::Other)),
         }
     }
-    FolderFiles {
-        images,
-        files: file_rows,
-    }
+    FolderFiles { images, files: file_rows }
 }
 
 /// Project the mapping table for one folder and the draft committing it.
@@ -340,11 +327,7 @@ pub(crate) fn mapping_table(
         .collect();
     let carving = carving_sheets(&layout);
     let disc_options = disc_options(files);
-    let mut rows = RowBuilder {
-        durations,
-        mediums: &draft.mediums,
-        tracks: draft.tracks.iter(),
-    };
+    let mut rows = RowBuilder { durations, mediums: &draft.mediums, tracks: draft.tracks.iter() };
     let mut track_sides = Vec::new();
 
     for entry in &files.files {
@@ -435,9 +418,7 @@ impl RowBuilder<'_> {
         &mut self,
         entry: &CandidateFile,
     ) -> Result<(crate::album_detail::TrackSide, TrackMapping), ImportError> {
-        let unit = AudioFile::Standalone {
-            file_id: entry.file.relative_path.clone(),
-        };
+        let unit = AudioFile::Standalone { file_id: entry.file.relative_path.clone() };
         let duration_ms = self.durations.duration_of(&unit);
         self.row(
             &unit,
@@ -545,15 +526,9 @@ fn side_runs(
     side: crate::album_detail::TrackSide,
 ) -> &mut Vec<MappingTrackRun> {
     if sides.last().is_none_or(|last| last.side != side) {
-        sides.push(MappingTrackSide {
-            side,
-            runs: Vec::new(),
-        });
+        sides.push(MappingTrackSide { side, runs: Vec::new() });
     }
-    &mut sides
-        .last_mut()
-        .expect("the side was found or pushed above")
-        .runs
+    &mut sides.last_mut().expect("the side was found or pushed above").runs
 }
 
 /// Append a loose row to the last run of loose rows on its side, or start one.
@@ -579,20 +554,13 @@ fn push_sheet_entry(
     mapping: TrackMapping,
 ) {
     let runs = side_runs(sides, side);
-    if let Some(MappingTrackRun::Sheet {
-        sheet: group,
-        entries,
-    }) = runs.last_mut()
-    {
+    if let Some(MappingTrackRun::Sheet { sheet: group, entries }) = runs.last_mut() {
         if group.sheet_id == sheet.sheet_id {
             entries.push(mapping);
             return;
         }
     }
-    runs.push(MappingTrackRun::Sheet {
-        sheet: sheet.clone(),
-        entries: vec![mapping],
-    });
+    runs.push(MappingTrackRun::Sheet { sheet: sheet.clone(), entries: vec![mapping] });
 }
 
 /// One row for a file that is not one of the release's tracks: something the
@@ -665,11 +633,7 @@ impl InvalidCandidateDetail {
                 ProposedRole::Other => files.push(entry(MappingRole::Other)),
             }
         }
-        Self {
-            candidate,
-            images,
-            files,
-        }
+        Self { candidate, images, files }
     }
 }
 
@@ -691,28 +655,22 @@ fn container(audio: &ScannedFile) -> MappingContainer {
 /// What a sheet describes, as its header states it.
 fn bound_of(files: &CategorizedFiles, sheet: TrackSheetFile<'_>) -> SheetBound {
     match sheet.binding {
-        SheetBinding::Resolved { .. } => bound_sheet(
-            &files
-                .bound_sheet(sheet)
-                .expect("a resolved binding names audio"),
-        ),
+        SheetBinding::Resolved { .. } => {
+            bound_sheet(&files.bound_sheet(sheet).expect("a resolved binding names audio"))
+        }
         SheetBinding::Unresolved { files: associated } => SheetBound::Unresolved {
             requested: sheet
                 .sheet
                 .audio_file_references()
                 .into_iter()
                 .filter(|reference| {
-                    !associated
-                        .iter()
-                        .any(|file| file.file_reference == *reference)
+                    !associated.iter().any(|file| file.file_reference == *reference)
                 })
                 .map(str::to_string)
                 .collect(),
         },
         SheetBinding::RefusedTiming { .. } => SheetBound::RefusedTiming,
-        SheetBinding::RefusedCodec { codec } => SheetBound::RefusedCodec {
-            codec: codec.clone(),
-        },
+        SheetBinding::RefusedCodec { codec } => SheetBound::RefusedCodec { codec: codec.clone() },
     }
 }
 
@@ -738,11 +696,7 @@ fn mapping_file(entry: &CandidateFile, role: MappingRole, duration_ms: Option<u6
         path: entry.file.path.clone(),
         preview_target,
         duration_ms,
-        audio_format: entry
-            .file
-            .source_audio
-            .as_ref()
-            .map(|audio| audio.format.clone()),
+        audio_format: entry.file.source_audio.as_ref().map(|audio| audio.format.clone()),
         role,
     }
 }

@@ -19,10 +19,7 @@ fn release_file_pins_on(
         .query(RELEASE_FILE_PINS, [release_id], |row| {
             Ok((
                 row.get::<_, String>(0)?,
-                DbFilePin {
-                    kept: row.get(1)?,
-                    downloading: row.get(2)?,
-                },
+                DbFilePin { kept: row.get(1)?, downloading: row.get(2)? },
             ))
         })?
         .into_iter()
@@ -47,20 +44,16 @@ impl Database {
     pub(crate) async fn rename_store(&self, name: &str) -> Result<(), coven::SyncError> {
         let name = name.to_owned();
         let renamed = name.clone();
-        self.admin_change(
-            super::admin_operations::AdminTarget::LibraryName(renamed),
-            move |sql| Ok((sql.rename_store(&name)?, ())),
-        )
+        self.admin_change(super::admin_operations::AdminTarget::LibraryName(renamed), move |sql| {
+            Ok((sql.rename_store(&name)?, ()))
+        })
         .await
     }
 
     /// Delete the store, discarding what this device hasn't uploaded; the
     /// person confirmed that loss from [`Self::unsent_before_removal`].
     pub(crate) async fn delete_store(&self) -> Result<(), coven::StoreDeletionError> {
-        self.inner
-            .handle
-            .delete_store(coven::IfUnsent::Discard)
-            .await
+        self.inner.handle.delete_store(coven::IfUnsent::Discard).await
     }
 
     /// What deleting the store from this device loses: the writes and files
@@ -71,10 +64,7 @@ impl Database {
         &self,
     ) -> Result<coven::UnsentWork, coven::SyncError> {
         if self.inner.handle.storage_config().await?.is_none() {
-            return Ok(coven::UnsentWork {
-                writes: 0,
-                files: 0,
-            });
+            return Ok(coven::UnsentWork { writes: 0, files: 0 });
         }
         Ok(self.inner.handle.unsent_work().await?)
     }
@@ -161,10 +151,7 @@ impl Database {
         device_name: &str,
         steps: crate::library::StorageSetupSteps<'_>,
     ) -> Result<coven::StorageSetup, coven::StorageSetupError> {
-        self.inner
-            .handle
-            .setup_cloudkit_storage("iCloud.fm.bae.desktop", device_name, steps)
-            .await
+        self.inner.handle.setup_cloudkit_storage("iCloud.fm.bae.desktop", device_name, steps).await
     }
 
     #[cfg(feature = "oauth-providers")]
@@ -182,10 +169,7 @@ impl Database {
         device_name: &str,
         steps: crate::library::StorageSetupSteps<'_>,
     ) -> Result<coven::StorageSetup, coven::StorageSetupError> {
-        self.inner
-            .handle
-            .setup_oauth_storage(storage, device_name, steps)
-            .await
+        self.inner.handle.setup_oauth_storage(storage, device_name, steps).await
     }
 
     #[cfg(feature = "oauth-providers")]
@@ -289,10 +273,7 @@ impl Database {
         cancel: &tokio::sync::watch::Receiver<bool>,
         on_progress: impl Fn(coven::Progress<coven::DeviceOnlyStep>),
     ) -> Result<coven::PreparedDeviceOnly, coven::DeviceOnlyError> {
-        self.inner
-            .handle
-            .prepare_device_only(folder, files, cancel, on_progress)
-            .await
+        self.inner.handle.prepare_device_only(folder, files, cancel, on_progress).await
     }
 
     pub(crate) async fn pin(&self, files: &[coven::FileRef]) -> Result<(), coven::FileReadError> {
@@ -306,8 +287,7 @@ impl Database {
         release_id: &str,
     ) -> Result<std::collections::BTreeMap<String, DbFilePin>, DbError> {
         let release_id = release_id.to_string();
-        self.read(move |sql| release_file_pins_on(&sql, &release_id))
-            .await
+        self.read(move |sql| release_file_pins_on(&sql, &release_id)).await
     }
 
     /// Where each of the release's files stands for its pin, live: it reruns
@@ -317,9 +297,7 @@ impl Database {
         release_id: &str,
     ) -> coven::LiveQuery<std::collections::BTreeMap<String, DbFilePin>> {
         let release_id = release_id.to_string();
-        self.inner
-            .handle
-            .subscribe(move |sql| Ok(release_file_pins_on(&sql, &release_id)?))
+        self.inner.handle.subscribe(move |sql| Ok(release_file_pins_on(&sql, &release_id)?))
     }
 
     /// How far each file this process is downloading to keep whole has got,
@@ -336,20 +314,12 @@ impl Database {
         &self,
         files: &[coven::FileId],
     ) -> Result<Vec<Option<bool>>, DbError> {
-        self.inner
-            .handle
-            .files_pinned(files)
-            .await
-            .map_err(DbError::from)
+        self.inner.handle.files_pinned(files).await.map_err(DbError::from)
     }
 
     #[cfg(any(test, feature = "test-utils"))]
     pub(crate) async fn evict_file(&self, file: coven::FileId) -> Result<(), DbError> {
-        self.inner
-            .handle
-            .evict_file(file)
-            .await
-            .map_err(DbError::from)
+        self.inner.handle.evict_file(file).await.map_err(DbError::from)
     }
 
     /// coven's whole upload queue, for a test's drain to count what left it.
@@ -359,11 +329,7 @@ impl Database {
     }
 
     pub(crate) async fn set_uploads_paused(&self, paused: bool) -> Result<(), DbError> {
-        self.inner
-            .handle
-            .set_uploads_paused(paused)
-            .await
-            .map_err(DbError::from)
+        self.inner.handle.set_uploads_paused(paused).await.map_err(DbError::from)
     }
 
     pub(crate) async fn retry_uploads_now(&self) -> Result<coven::DrainOutcome, coven::SyncError> {
@@ -385,10 +351,9 @@ impl Database {
         member: &coven::MemberId,
     ) -> Result<(), coven::SyncError> {
         let member = *member;
-        self.admin_change(
-            super::admin_operations::AdminTarget::Person(member),
-            move |sql| Ok((sql.remove_member(&member)?, ())),
-        )
+        self.admin_change(super::admin_operations::AdminTarget::Person(member), move |sql| {
+            Ok((sql.remove_member(&member)?, ()))
+        })
         .await
     }
 
@@ -398,10 +363,9 @@ impl Database {
         &self,
         device: coven::DeviceId,
     ) -> Result<Option<coven::ProviderSignOut>, coven::SyncError> {
-        self.admin_change(
-            super::admin_operations::AdminTarget::Device(device),
-            move |sql| sql.remove_device(device),
-        )
+        self.admin_change(super::admin_operations::AdminTarget::Device(device), move |sql| {
+            sql.remove_device(device)
+        })
         .await
     }
 
@@ -412,10 +376,9 @@ impl Database {
         role: coven::MemberRole,
     ) -> Result<(), coven::SyncError> {
         let member = *member;
-        self.admin_change(
-            super::admin_operations::AdminTarget::Role(member, role),
-            move |sql| Ok((sql.set_member_role(&member, role)?, ())),
-        )
+        self.admin_change(super::admin_operations::AdminTarget::Role(member, role), move |sql| {
+            Ok((sql.set_member_role(&member, role)?, ()))
+        })
         .await
     }
 
@@ -431,11 +394,7 @@ impl Database {
         let (invite, _member, _operation) = self
             .inner
             .handle
-            .create_invite(
-                coven::InviteTarget::NewMember { role, name },
-                access,
-                delivery,
-            )
+            .create_invite(coven::InviteTarget::NewMember { role, name }, access, delivery)
             .await?;
         Ok(invite)
     }
@@ -450,10 +409,7 @@ impl Database {
                 record.cause = row.get(1)?;
                 Ok(record)
             })?;
-            Ok(crate::people::OpenInvite::held_by(
-                coven::Invite::list(sql)?,
-                &records,
-            ))
+            Ok(crate::people::OpenInvite::held_by(coven::Invite::list(sql)?, &records))
         })
     }
 
@@ -504,11 +460,7 @@ impl Database {
     ) -> Result<coven::S3Detection, coven::StorageSetupError> {
         self.inner
             .handle
-            .detect_s3_settings(
-                storage,
-                credentials.access_key_id,
-                credentials.secret_access_key,
-            )
+            .detect_s3_settings(storage, credentials.access_key_id, credentials.secret_access_key)
             .await
     }
 }

@@ -50,10 +50,8 @@ pub struct VariousArtistsIds {
     pub musicbrainz: &'static str,
 }
 
-pub const VARIOUS_ARTISTS: VariousArtistsIds = VariousArtistsIds {
-    discogs: "194",
-    musicbrainz: "89ad4ac3-39f7-470e-963a-56509c546377",
-};
+pub const VARIOUS_ARTISTS: VariousArtistsIds =
+    VariousArtistsIds { discogs: "194", musicbrainz: "89ad4ac3-39f7-470e-963a-56509c546377" };
 
 impl DbArtist {
     /// True if this artist is the well-known "Various Artists" placeholder of any
@@ -245,10 +243,7 @@ impl LibraryStatus {
     /// Nothing in the library matches this release — neither the release itself
     /// nor its album, so there is no album to name either.
     pub fn absent(release_id: impl Into<String>) -> Self {
-        Self {
-            release_id: release_id.into(),
-            albums: Vec::new(),
-        }
+        Self { release_id: release_id.into(), albums: Vec::new() }
     }
 
     /// Whether some album holds a copy of the release itself.
@@ -514,12 +509,7 @@ pub struct SegmentSpan {
 impl SegmentSpan {
     /// The whole backing file: start at sample 0, run to EOF.
     pub fn whole_file() -> Self {
-        Self {
-            start_sample: 0,
-            end_sample: None,
-            start_byte: None,
-            end_byte: None,
-        }
+        Self { start_sample: 0, end_sample: None, start_byte: None, end_byte: None }
     }
 }
 

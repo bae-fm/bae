@@ -68,10 +68,8 @@ impl AppServices {
                             continue;
                         }
                     };
-                    let value = value.map(|value| crate::library::DetailSnapshot {
-                        id: id.clone(),
-                        value,
-                    });
+                    let value =
+                        value.map(|value| crate::library::DetailSnapshot { id: id.clone(), value });
                     if tx.send(value).is_err() {
                         return;
                     }

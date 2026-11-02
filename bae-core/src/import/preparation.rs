@@ -82,9 +82,7 @@ impl CandidateAsRead {
 
     /// The refusal for a candidate whose metadata moved past `expected`.
     pub(crate) fn metadata_moved(expected: u64) -> LibraryError {
-        LibraryError::Refused(format!(
-            "candidate metadata changed from revision {expected}"
-        ))
+        LibraryError::Refused(format!("candidate metadata changed from revision {expected}"))
     }
 }
 
@@ -120,9 +118,9 @@ impl MetadataAuthor {
             | (Self::Prefill, Some(MetadataProvenance::FileMetadata))
             | (Self::Identification, Some(MetadataProvenance::ExternalRelease { .. }))
             | (Self::Person, _) => Ok(()),
-            (author, provenance) => Err(format!(
-                "a draft written by {author:?} cannot be read from {provenance:?}"
-            )),
+            (author, provenance) => {
+                Err(format!("a draft written by {author:?} cannot be read from {provenance:?}"))
+            }
         }
     }
 }
@@ -176,10 +174,7 @@ impl CandidatePreparation {
         self.author
             .check_provenance(self.metadata.provenance.as_ref())
             .map_err(|error| format!("candidate {}: {error}", self.content_hash))?;
-        check_cover_bytes(
-            self.metadata.cover.as_ref(),
-            self.metadata.assets.remote_cover.as_ref(),
-        )
+        check_cover_bytes(self.metadata.cover.as_ref(), self.metadata.assets.remote_cover.as_ref())
     }
 }
 

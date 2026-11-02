@@ -38,30 +38,14 @@ async fn two_sequential_imports() {
     }
 
     // Both releases exist in DB
-    let release1 =
-        f.db.find_release_by_id(&release_ids[0])
-            .await
-            .unwrap()
-            .unwrap();
-    let release2 =
-        f.db.find_release_by_id(&release_ids[1])
-            .await
-            .unwrap()
-            .unwrap();
+    let release1 = f.db.find_release_by_id(&release_ids[0]).await.unwrap().unwrap();
+    let release2 = f.db.find_release_by_id(&release_ids[1]).await.unwrap().unwrap();
 
     // Different albums
     assert_ne!(release1.album_id, release2.album_id);
 
-    let album1 =
-        f.db.find_album_by_id(&release1.album_id)
-            .await
-            .unwrap()
-            .unwrap();
-    let album2 =
-        f.db.find_album_by_id(&release2.album_id)
-            .await
-            .unwrap()
-            .unwrap();
+    let album1 = f.db.find_album_by_id(&release1.album_id).await.unwrap().unwrap();
+    let album2 = f.db.find_album_by_id(&release2.album_id).await.unwrap().unwrap();
     assert_eq!(album1.title, "First Album");
     assert_eq!(album2.title, "Second Album");
 }
@@ -96,13 +80,19 @@ async fn repeated_imports_keep_independent_copies() {
             .open(album_dir.join("01 Track.flac"))
             .unwrap()
             .set_times(fs::FileTimes::new().set_modified(
-                std::time::UNIX_EPOCH + std::time::Duration::from_secs(1_000_000_000 + index as u64),
+                std::time::UNIX_EPOCH
+                    + std::time::Duration::from_secs(1_000_000_000 + index as u64),
             ))
             .unwrap();
         let (id, _) = import_folder(
-            &f, &album_dir, None, destination,
+            &f,
+            &album_dir,
+            None,
+            destination,
             support::discogs_release(pressing.clone()),
-        ).await.expect("each import creates another copy");
+        )
+        .await
+        .expect("each import creates another copy");
         let release = f.db.find_release_by_id(&id).await.unwrap().unwrap();
         let tracks = f.db.get_tracks_for_release(&id).await.unwrap();
         let files = f.db.get_files_for_release(&id).await.unwrap();
@@ -151,11 +141,7 @@ async fn a_remote_import_without_a_cloud_connection_queues_its_uploads() {
         "Remote Album",
         "Remote Artist",
         None,
-        &[TaggedTrack {
-            filename: "01 Remote Track.flac",
-            title: "Remote Track",
-            track_number: 1,
-        }],
+        &[TaggedTrack { filename: "01 Remote Track.flac", title: "Remote Track", track_number: 1 }],
     );
 
     let (release_id, _) = import_folder(
@@ -172,9 +158,7 @@ async fn a_remote_import_without_a_cloud_connection_queues_its_uploads() {
     // Each row names its file only once its upload completes.
     assert!(f.db.get_files_for_release(&release_id).await.unwrap().iter().all(|file| !file.stored));
     assert!(
-        f.db.has_pending_uploads_for_release(&release_id)
-            .await
-            .unwrap(),
+        f.db.has_pending_uploads_for_release(&release_id).await.unwrap(),
         "its uploads wait in the queue"
     );
 }

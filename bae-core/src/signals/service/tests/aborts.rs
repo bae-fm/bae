@@ -21,14 +21,8 @@ async fn a_fast_pass_that_panics_says_why_there_is_no_pass_and_is_reported() {
     let Err(detail) = fast_pass else {
         panic!("a fast pass that panics fails, not swallowed");
     };
-    assert_eq!(
-        detail,
-        "read a folder's signals panicked: fast-pass blocking task panicked"
-    );
-    assert_eq!(
-        bugs.reports(),
-        vec![("read a folder's signals".to_string(), detail)]
-    );
+    assert_eq!(detail, "read a folder's signals panicked: fast-pass blocking task panicked");
+    assert_eq!(bugs.reports(), vec![("read a folder's signals".to_string(), detail)]);
 }
 
 /// An extraction that cannot gather its inputs does not go silent: it says so
@@ -69,9 +63,7 @@ async fn an_aborted_extraction_fails_every_signal_in_one_snapshot() {
     emit_aborted_signals(
         &inner,
         &extraction,
-        DiscIdSignal::Failed {
-            failure: failure.clone(),
-        },
+        DiscIdSignal::Failed { failure: failure.clone() },
         failure.clone(),
     );
 
@@ -93,14 +85,7 @@ async fn an_aborted_extraction_fails_every_signal_in_one_snapshot() {
         signals.text
     );
     assert!(
-        matches!(
-            artwork,
-            ArtworkScan::Failed {
-                read: 0,
-                total: 0,
-                ..
-            }
-        ),
+        matches!(artwork, ArtworkScan::Failed { read: 0, total: 0, .. }),
         "the artwork pass failed before reading anything, got {artwork:?}"
     );
     assert_no_more_snapshots(&mut rx, "the aborted extraction's one snapshot");

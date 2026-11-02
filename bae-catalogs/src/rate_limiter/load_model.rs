@@ -65,17 +65,11 @@ pub(crate) async fn sustain(
 
     let mut requests = Vec::new();
     for index in 0..load.requests {
-        let priority = if index % 3 == 0 {
-            CallPriority::Interactive
-        } else {
-            CallPriority::Background
-        };
+        let priority =
+            if index % 3 == 0 { CallPriority::Interactive } else { CallPriority::Background };
         let mut latencies: Vec<(Duration, Duration)> = (0..64)
             .map(|_| {
-                (
-                    rng.random_range(load.latency.clone()),
-                    rng.random_range(load.latency.clone()),
-                )
+                (rng.random_range(load.latency.clone()), rng.random_range(load.latency.clone()))
             })
             .collect();
         let limiter = Arc::clone(&limiter);

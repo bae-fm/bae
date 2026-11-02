@@ -150,10 +150,7 @@ impl PlaybackService {
             _ => None,
         };
         if let Some(gapless) = stage_source {
-            info!(
-                "Preload: staged next track into gapless chain: {}",
-                track_id
-            );
+            info!("Preload: staged next track into gapless chain: {}", track_id);
             gapless
                 .lock()
                 .unwrap()
@@ -165,10 +162,7 @@ impl PlaybackService {
                 source: PreloadedNextSource::Staged,
             });
         } else {
-            info!(
-                "Preload: holding next track for stream-rebuild path: {}",
-                track_id
-            );
+            info!("Preload: holding next track for stream-rebuild path: {}", track_id);
             self.preloaded_next = Some(PreloadedNext {
                 prepared,
                 decoder_handle,
@@ -207,10 +201,8 @@ impl PlaybackService {
             }
         };
 
-        let boundary = self
-            .side_boundary_between(&current_id, &next_track_id)
-            .await
-            .map_err(|error| {
+        let boundary =
+            self.side_boundary_between(&current_id, &next_track_id).await.map_err(|error| {
                 error!(
                     "failed to read the sides for the side-pause decision between \
                      {current_id} and {next_track_id}: {error}"
@@ -219,17 +211,10 @@ impl PlaybackService {
         let Some(boundary) = boundary else {
             return Ok(None);
         };
-        let resumes_at = self
-            .side_pause_countdown_from_now()
-            .await
-            .map_err(|error| {
-                error!("failed to read how long a side pause lasts: {error}");
-            })?;
-        Ok(Some(SidePauseDecision {
-            track_id: next_track_id,
-            boundary,
-            resumes_at,
-        }))
+        let resumes_at = self.side_pause_countdown_from_now().await.map_err(|error| {
+            error!("failed to read how long a side pause lasts: {error}");
+        })?;
+        Ok(Some(SidePauseDecision { track_id: next_track_id, boundary, resumes_at }))
     }
 
     /// When a side pause starting now ends on its own, per the countdown
@@ -237,12 +222,8 @@ impl PlaybackService {
     async fn side_pause_countdown_from_now(
         &self,
     ) -> Result<Option<chrono::DateTime<chrono::Utc>>, crate::db::DbError> {
-        let Some(length) = self
-            .library_manager
-            .preferences()
-            .await?
-            .side_pause_countdown
-            .duration()
+        let Some(length) =
+            self.library_manager.preferences().await?.side_pause_countdown.duration()
         else {
             return Ok(None);
         };
@@ -262,23 +243,13 @@ impl PlaybackService {
         if !self.side_pause_enabled().await? {
             return Ok(None);
         }
-        let current = self
-            .library_manager
-            .get_playback_track_info(current_id)
-            .await?;
-        let next = self
-            .library_manager
-            .get_playback_track_info(next_id)
-            .await?;
+        let current = self.library_manager.get_playback_track_info(current_id).await?;
+        let next = self.library_manager.get_playback_track_info(next_id).await?;
         Ok(side_boundary_between(&current, &next))
     }
 
     pub(super) async fn side_pause_enabled(&self) -> Result<bool, crate::db::DbError> {
-        Ok(self
-            .library_manager
-            .preferences()
-            .await?
-            .pause_between_sides
+        Ok(self.library_manager.preferences().await?.pause_between_sides
             && self.playback_queue.repeat_mode() != RepeatMode::Track)
     }
 
@@ -345,10 +316,7 @@ impl PlaybackService {
             (PlaybackSlot::Active(cur), Some(preloaded))
                 if matches!(preloaded.source, PreloadedNextSource::Staged) =>
             {
-                Some([
-                    cur.prepared.track_id.clone(),
-                    preloaded.track_id().to_string(),
-                ])
+                Some([cur.prepared.track_id.clone(), preloaded.track_id().to_string()])
             }
             _ => None,
         }
@@ -386,8 +354,7 @@ impl PlaybackService {
         };
 
         if self.next_track_id() == Some(pending_track_id.as_str()) {
-            self.advance_and_play_preloaded(&pending_track_id, true, PlayTarget::Playing)
-                .await;
+            self.advance_and_play_preloaded(&pending_track_id, true, PlayTarget::Playing).await;
             return;
         }
 
@@ -557,10 +524,9 @@ impl PlaybackService {
         };
         match &preloaded.source {
             PreloadedNextSource::Held(_) => true,
-            PreloadedNextSource::Staged => self
-                .output
-                .as_ref()
-                .is_some_and(|output| output.source.lock().unwrap().has_next()),
+            PreloadedNextSource::Staged => {
+                self.output.as_ref().is_some_and(|output| output.source.lock().unwrap().has_next())
+            }
         }
     }
 
@@ -605,12 +571,7 @@ impl PlaybackService {
                 return;
             }
         };
-        let PreloadedNext {
-            prepared: next_prepared,
-            decoder_handle,
-            cancel_token,
-            ..
-        } = preloaded;
+        let PreloadedNext { prepared: next_prepared, decoder_handle, cancel_token, .. } = preloaded;
         let track_id = crossing.incoming_fmt.track_id.clone();
         info!("Gapless boundary: now playing {}", track_id);
         self.telemetry_track_started(&track_id, TrackTransition::Gapless);
@@ -631,16 +592,12 @@ impl PlaybackService {
         };
         // Release the previous track's buffers (files shared with the new one
         // stay cached and alive).
-        self.file_buffers
-            .release(&cur.prepared, &next_prepared.file_ids());
+        self.file_buffers.release(&cur.prepared, &next_prepared.file_ids());
         cur.prepared = next_prepared;
         // Swap in the crossed-into decoder. The finishing track's already exited
         // (that is what fired the crossing), so dropping its handle detaches
         // nothing live.
-        cur.decoder = TrackDecoder {
-            handle: decoder_handle,
-            cancel_token,
-        };
+        cur.decoder = TrackDecoder { handle: decoder_handle, cancel_token };
         // A natural transition starts at the stream's start (pregap included).
         cur.position = StreamPosition::START;
 
@@ -702,11 +659,8 @@ impl PlaybackService {
         // sink reports the start itself (gated on a Playing target): the
         // streaming path inside `play_preloaded_track`, the rebuild path inside
         // `play_track`.
-        let transition = if natural {
-            TrackTransition::AutoAdvance
-        } else {
-            TrackTransition::Manual
-        };
+        let transition =
+            if natural { TrackTransition::AutoAdvance } else { TrackTransition::Manual };
         if !self.advance_to_preloaded().await {
             self.stop().await;
             return;
@@ -821,16 +775,10 @@ impl PlaybackService {
             }
             drop(decoder_handle);
             let reason = self.output_start_failed(
-                &format!(
-                    "start the audio output for track {}",
-                    next_prepared.track_id
-                ),
+                &format!("start the audio output for track {}", next_prepared.track_id),
                 &error,
             );
-            emit_progress(
-                &self.progress_tx,
-                PlaybackProgress::PlaybackError { reason },
-            );
+            emit_progress(&self.progress_tx, PlaybackProgress::PlaybackError { reason });
             self.stop().await;
             return;
         }
@@ -843,10 +791,7 @@ impl PlaybackService {
 
         self.install_active_track(
             next_prepared,
-            TrackDecoder {
-                handle: decoder_handle,
-                cancel_token,
-            },
+            TrackDecoder { handle: decoder_handle, cancel_token },
             TrackPhase::Paused(PausePhase::Manual),
             StreamPosition::START,
         );

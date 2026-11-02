@@ -119,9 +119,7 @@ fn produced_keys() -> Vec<String> {
     // bridge_sheet_binding_offer_key — an offered file needs no reason.
     for o in [
         BridgeSheetBindingOffer::Offered,
-        BridgeSheetBindingOffer::RefusedCodec {
-            codec: String::new(),
-        },
+        BridgeSheetBindingOffer::RefusedCodec { codec: String::new() },
         BridgeSheetBindingOffer::RefusedTiming,
         BridgeSheetBindingOffer::RefusedUnreadable,
     ] {
@@ -132,9 +130,7 @@ fn produced_keys() -> Vec<String> {
     // BridgeTrackSide::header_key — this is what BridgeTrackGroup::header_key
     // is built from at conversion.
     for s in [
-        BridgeTrackSide::Sided {
-            side_letter: "A".to_string(),
-        },
+        BridgeTrackSide::Sided { side_letter: "A".to_string() },
         BridgeTrackSide::Disc { disc: 1 },
         BridgeTrackSide::Flat,
     ] {
@@ -154,19 +150,15 @@ fn produced_keys() -> Vec<String> {
         keys.extend(bridge_cloud_provider_label_key(p));
     }
     // The brand-name providers render their own names, so they name no key.
-    for p in [
-        BridgeCloudProvider::Dropbox,
-        BridgeCloudProvider::OneDrive,
-        BridgeCloudProvider::CloudKit,
-    ] {
+    for p in
+        [BridgeCloudProvider::Dropbox, BridgeCloudProvider::OneDrive, BridgeCloudProvider::CloudKit]
+    {
         assert!(bridge_cloud_provider_label_key(Some(p)).is_none());
     }
 
     // bridge_invalid_reason_key — every variant carries a key.
     for r in [
-        BridgeInvalidReason::SameName {
-            name: "Track.flac".to_string(),
-        },
+        BridgeInvalidReason::SameName { name: "Track.flac".to_string() },
         BridgeInvalidReason::DamagedAudio { count: 2 },
         BridgeInvalidReason::NoValidAudio,
     ] {
@@ -191,13 +183,9 @@ fn produced_keys() -> Vec<String> {
     // bridge_folder_check_key — every variant carries a key.
     for folder_check in [
         BridgeFolderCheck::SourceTracksUnknown,
+        BridgeFolderCheck::MediumDisagrees { folder: BridgeMediumConflict::CdRip },
         BridgeFolderCheck::MediumDisagrees {
-            folder: BridgeMediumConflict::CdRip,
-        },
-        BridgeFolderCheck::MediumDisagrees {
-            folder: BridgeMediumConflict::NotCdAudio {
-                sample_rate_hz: None,
-            },
+            folder: BridgeMediumConflict::NotCdAudio { sample_rate_hz: None },
         },
     ] {
         keys.push(bridge_folder_check_key(&folder_check));
@@ -249,13 +237,8 @@ fn produced_keys() -> Vec<String> {
         BridgeErrorCategory::SyncUpdateRequired,
         BridgeErrorCategory::Import,
         BridgeErrorCategory::ImportData,
-        BridgeErrorCategory::MetadataTrackCount {
-            folder_tracks: 12,
-            release_tracks: 10,
-        },
-        BridgeErrorCategory::TiedMediums {
-            mediums: vec![2, 4],
-        },
+        BridgeErrorCategory::MetadataTrackCount { folder_tracks: 12, release_tracks: 10 },
+        BridgeErrorCategory::TiedMediums { mediums: vec![2, 4] },
         BridgeErrorCategory::ReleaseChangedSinceOpened,
         BridgeErrorCategory::CandidateImportInProgress,
         BridgeErrorCategory::CandidateBeingIdentified,
@@ -268,16 +251,10 @@ fn produced_keys() -> Vec<String> {
             check: BridgeStorageCheck::Read,
             failure: BridgeStorageFailure::Network,
         },
-        BridgeErrorCategory::S3VersioningUnknown {
-            failure: BridgeStorageFailure::Network,
-        },
-        BridgeErrorCategory::S3VersioningUnsupported {
-            state: BridgeS3BucketVersioning::Enabled,
-        },
+        BridgeErrorCategory::S3VersioningUnknown { failure: BridgeStorageFailure::Network },
+        BridgeErrorCategory::S3VersioningUnsupported { state: BridgeS3BucketVersioning::Enabled },
         BridgeErrorCategory::StorageLocationChangeUnsupported,
-        BridgeErrorCategory::S3Prefix {
-            problem: BridgeS3PrefixProblem::EmptySegment,
-        },
+        BridgeErrorCategory::S3Prefix { problem: BridgeS3PrefixProblem::EmptySegment },
         BridgeErrorCategory::S3Prefix {
             problem: BridgeS3PrefixProblem::InvalidCharacter {
                 segment: "bae.lib".into(),
@@ -285,9 +262,7 @@ fn produced_keys() -> Vec<String> {
             },
         },
         BridgeErrorCategory::S3Prefix {
-            problem: BridgeS3PrefixProblem::SegmentTooLong {
-                segment: "b".repeat(256),
-            },
+            problem: BridgeS3PrefixProblem::SegmentTooLong { segment: "b".repeat(256) },
         },
         BridgeErrorCategory::DeviceIdentityMissing,
         BridgeErrorCategory::Credentials,
@@ -301,41 +276,25 @@ fn produced_keys() -> Vec<String> {
         BridgeErrorCategory::InviteJoining,
         BridgeErrorCategory::StoreOwnerAccount,
         BridgeErrorCategory::Renderer,
-        BridgeErrorCategory::GroupingBlocked {
-            reason: BridgeGroupingBlock::SourceChanged,
-        },
-        BridgeErrorCategory::GroupingBlocked {
-            reason: BridgeGroupingBlock::SourceGone,
-        },
-        BridgeErrorCategory::GroupingBlocked {
-            reason: BridgeGroupingBlock::FolderFilesTaken,
-        },
-        BridgeErrorCategory::GroupingBlocked {
-            reason: BridgeGroupingBlock::FolderFilesContested,
-        },
+        BridgeErrorCategory::GroupingBlocked { reason: BridgeGroupingBlock::SourceChanged },
+        BridgeErrorCategory::GroupingBlocked { reason: BridgeGroupingBlock::SourceGone },
+        BridgeErrorCategory::GroupingBlocked { reason: BridgeGroupingBlock::FolderFilesTaken },
+        BridgeErrorCategory::GroupingBlocked { reason: BridgeGroupingBlock::FolderFilesContested },
         BridgeErrorCategory::GroupingBlocked {
             reason: BridgeGroupingBlock::FolderFilesDownloading,
         },
         BridgeErrorCategory::AirPlayUnsupported,
         BridgeErrorCategory::AirPlayUnreadableSettings,
-        BridgeErrorCategory::ReplacementUnfinished {
-            by: BridgeReplacedBy::Reset,
-        },
-        BridgeErrorCategory::ReplacementUnfinished {
-            by: BridgeReplacedBy::Restore,
-        },
+        BridgeErrorCategory::ReplacementUnfinished { by: BridgeReplacedBy::Reset },
+        BridgeErrorCategory::ReplacementUnfinished { by: BridgeReplacedBy::Restore },
     ] {
         keys.push(bridge_error_category_key(c));
     }
 
     for failure in [
         BridgeStorageFailure::ProviderUnavailable,
-        BridgeStorageFailure::AccessNotRegistered {
-            required: crate::BridgeOAuthAccess::OneDrive,
-        },
-        BridgeStorageFailure::AccessNotGranted {
-            required: crate::BridgeOAuthAccess::OneDrive,
-        },
+        BridgeStorageFailure::AccessNotRegistered { required: crate::BridgeOAuthAccess::OneDrive },
+        BridgeStorageFailure::AccessNotGranted { required: crate::BridgeOAuthAccess::OneDrive },
         BridgeStorageFailure::DropboxAppFolderNotShareable,
         BridgeStorageFailure::Network,
         BridgeStorageFailure::Authentication,
@@ -345,9 +304,7 @@ fn produced_keys() -> Vec<String> {
         BridgeStorageFailure::Conflict,
         BridgeStorageFailure::ContainerNotFound,
         BridgeStorageFailure::RegionMismatch,
-        BridgeStorageFailure::OwnBucketRequired {
-            reason: BridgeOwnBucketReason::Prefix,
-        },
+        BridgeStorageFailure::OwnBucketRequired { reason: BridgeOwnBucketReason::Prefix },
         BridgeStorageFailure::StoreExists,
         BridgeStorageFailure::ClockSkew,
         BridgeStorageFailure::QuotaExceeded,
@@ -365,28 +322,16 @@ fn produced_keys() -> Vec<String> {
         BridgeStorageFailure::SessionIdentityUnknown,
         BridgeStorageFailure::SessionExpired,
         BridgeStorageFailure::InvalidPart,
-        BridgeStorageFailure::SingleRequestTooLarge {
-            size: 200,
-            limit: 100,
-        },
-        BridgeStorageFailure::CopyTooLarge {
-            size: 200,
-            limit: 100,
-        },
+        BridgeStorageFailure::SingleRequestTooLarge { size: 200, limit: 100 },
+        BridgeStorageFailure::CopyTooLarge { size: 200, limit: 100 },
         BridgeStorageFailure::Encoding,
         BridgeStorageFailure::File,
         BridgeStorageFailure::MemberKeysMissing,
         BridgeStorageFailure::CatchUpRequired,
     ] {
-        keys.push(bridge_error_category_key(BridgeErrorCategory::Storage {
-            failure,
-        }));
+        keys.push(bridge_error_category_key(BridgeErrorCategory::Storage { failure }));
     }
-    keys.extend(
-        pending_subject_messages()
-            .into_iter()
-            .map(|message| message.key),
-    );
+    keys.extend(pending_subject_messages().into_iter().map(|message| message.key));
     for reason in [
         PendingReasonKind::Missing,
         PendingReasonKind::Waits,
@@ -414,16 +359,12 @@ fn produced_keys() -> Vec<String> {
     for action in [
         BridgePendingAction::Wait,
         BridgePendingAction::UpdateApp,
-        BridgePendingAction::SignIn {
-            provider: BridgeCloudProvider::Dropbox,
-        },
+        BridgePendingAction::SignIn { provider: BridgeCloudProvider::Dropbox },
         BridgePendingAction::Reconnect,
         BridgePendingAction::RestoreFile,
         BridgePendingAction::ResumeUploads,
         BridgePendingAction::RetryOperation { id: 1 },
-        BridgePendingAction::RetryDownload {
-            release_id: "release".to_string(),
-        },
+        BridgePendingAction::RetryDownload { release_id: "release".to_string() },
         BridgePendingAction::CancelUpload { id: 1 },
         BridgePendingAction::RestoreFromCode,
         BridgePendingAction::Review,
@@ -444,30 +385,21 @@ fn produced_keys() -> Vec<String> {
     }
     for outcome in [
         BridgeSyncRetryOutcome::Synced,
-        BridgeSyncRetryOutcome::Failed {
-            error: BridgeError::Cancelled,
-        },
-        BridgeSyncRetryOutcome::CoolingDown {
-            until: std::time::UNIX_EPOCH,
-        },
+        BridgeSyncRetryOutcome::Failed { error: BridgeError::Cancelled },
+        BridgeSyncRetryOutcome::CoolingDown { until: std::time::UNIX_EPOCH },
         BridgeSyncRetryOutcome::NotSyncing,
     ] {
         keys.extend(bridge_sync_retry_outcome_key(&outcome));
     }
 
     for instruction in [
-        BridgeProviderSignOut::RemoveAppAccess {
-            provider: BridgeCloudProvider::Dropbox,
-        },
+        BridgeProviderSignOut::RemoveAppAccess { provider: BridgeCloudProvider::Dropbox },
         BridgeProviderSignOut::RemoveFromAppleAccount,
     ] {
         keys.push(bridge_provider_sign_out_key(instruction));
     }
     // bridge_upload_activity_key — each variant carries a key.
-    for activity in [
-        BridgeUploadActivity::Uploading,
-        BridgeUploadActivity::Queued,
-    ] {
+    for activity in [BridgeUploadActivity::Uploading, BridgeUploadActivity::Queued] {
         keys.push(bridge_upload_activity_key(activity));
     }
     // bridge_open_step_key — each step carries a key.
@@ -531,10 +463,7 @@ fn produced_keys() -> Vec<String> {
     // the per-part key functions above, whose loops already pushed the keys.
     for e in [
         BridgeError::Cancelled,
-        BridgeError::NotFound {
-            entity: BridgeEntityKind::Library,
-            id: "a".to_string(),
-        },
+        BridgeError::NotFound { entity: BridgeEntityKind::Library, id: "a".to_string() },
         BridgeError::internal(""),
     ] {
         let expected: Option<String> = match &e {
@@ -562,29 +491,17 @@ fn produced_keys() -> Vec<String> {
         BridgePlaybackErrorReason::AudioOutput {
             problem: BridgeAudioOutputProblem::AirPlayRefused,
         },
-        BridgePlaybackErrorReason::Diagnostic {
-            error: BridgeError::internal(""),
-        },
+        BridgePlaybackErrorReason::Diagnostic { error: BridgeError::internal("") },
     ] {
         keys.extend(bridge_playback_error_reason_key(&r));
     }
-    assert!(
-        bridge_playback_error_reason_key(&BridgePlaybackErrorReason::Diagnostic {
-            error: BridgeError::internal(""),
-        })
-        .is_none()
-    );
+    assert!(bridge_playback_error_reason_key(&BridgePlaybackErrorReason::Diagnostic {
+        error: BridgeError::internal(""),
+    })
+    .is_none());
 
-    keys.extend(
-        playability_messages()
-            .into_iter()
-            .map(|message| message.key),
-    );
-    keys.extend(
-        catalog_apply_step_lines()
-            .into_iter()
-            .map(|message| message.key),
-    );
+    keys.extend(playability_messages().into_iter().map(|message| message.key));
+    keys.extend(catalog_apply_step_lines().into_iter().map(|message| message.key));
 
     for boundary in [BridgePauseBoundary::Side, BridgePauseBoundary::Disc] {
         keys.push(bridge_pause_boundary_title_key(boundary));
@@ -596,32 +513,24 @@ fn produced_keys() -> Vec<String> {
     // a key; a medium or a Discogs detail carries one where it is a word, and
     // is printed as its term where it is a name, a size or a file type.
     keys.extend(bridge_regions().into_iter().map(bridge_region_key));
-    keys.extend(
-        bridge_release_statuses()
-            .into_iter()
-            .map(bridge_release_status_key),
-    );
+    keys.extend(bridge_release_statuses().into_iter().map(bridge_release_status_key));
     keys.extend(bridge_packagings().into_iter().map(bridge_packaging_key));
-    for label in bridge_media().into_iter().map(bridge_medium_label).chain(
-        bridge_discogs_details()
-            .into_iter()
-            .map(bridge_discogs_detail_label),
-    ) {
+    for label in bridge_media()
+        .into_iter()
+        .map(bridge_medium_label)
+        .chain(bridge_discogs_details().into_iter().map(bridge_discogs_detail_label))
+    {
         if let BridgeTermLabel::Localized { key } = label {
             keys.push(key);
         }
     }
     assert_eq!(
         bridge_medium_label(BridgeMedium::Cd),
-        BridgeTermLabel::Verbatim {
-            text: "CD".to_string()
-        }
+        BridgeTermLabel::Verbatim { text: "CD".to_string() }
     );
     assert_eq!(
         bridge_discogs_detail_label(BridgeDiscogsDetail::Size12In),
-        BridgeTermLabel::Verbatim {
-            text: "12\"".to_string()
-        }
+        BridgeTermLabel::Verbatim { text: "12\"".to_string() }
     );
 
     keys
@@ -657,13 +566,8 @@ fn pending_subject_messages() -> Vec<BridgeMessage> {
         O::ReplaceMemberKeys,
     ];
     [
-        S::ReleaseFile {
-            file_name: "01 Track.flac".into(),
-            album_title: "Album Title".into(),
-        },
-        S::Cover {
-            album_title: "Album Title".into(),
-        },
+        S::ReleaseFile { file_name: "01 Track.flac".into(), album_title: "Album Title".into() },
+        S::Cover { album_title: "Album Title".into() },
         S::ArtistImage,
         S::Avatar,
         S::DeletedReleaseFile,
@@ -732,11 +636,7 @@ fn catalog() -> bae_loc::Catalog {
 #[test]
 fn every_produced_key_exists_in_catalog() {
     let cat = catalog();
-    for key in produced_keys()
-        .iter()
-        .map(String::as_str)
-        .chain(DIRECT_KEYS.iter().copied())
-    {
+    for key in produced_keys().iter().map(String::as_str).chain(DIRECT_KEYS.iter().copied()) {
         assert!(
             cat.messages.contains_key(key),
             "catalog missing `{key}` — a key fn or DIRECT_KEYS produces it but the entry is gone"
@@ -757,10 +657,7 @@ fn no_orphan_core_keys() {
         .keys()
         .filter(|key| key.starts_with("core.") && !accounted.contains(*key))
         .collect();
-    assert!(
-        orphans.is_empty(),
-        "catalog keys without a producer: {orphans:?}"
-    );
+    assert!(orphans.is_empty(), "catalog keys without a producer: {orphans:?}");
 }
 
 /// A subject, playability or apply step message names its arguments as its source

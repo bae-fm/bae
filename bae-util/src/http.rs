@@ -36,9 +36,7 @@ pub const MAX_IMAGE_BYTES: usize = 32 * 1024 * 1024;
 /// what this returns.
 pub fn told_wait(headers: &reqwest::header::HeaderMap) -> Option<Duration> {
     let retry_after = headers.get(reqwest::header::RETRY_AFTER)?.to_str().ok()?;
-    let date = headers
-        .get(reqwest::header::DATE)
-        .and_then(|value| value.to_str().ok());
+    let date = headers.get(reqwest::header::DATE).and_then(|value| value.to_str().ok());
     told_wait_at(retry_after, date, chrono::Utc::now())
 }
 
@@ -51,16 +49,8 @@ pub fn told_wait(headers: &reqwest::header::HeaderMap) -> Option<Duration> {
 /// already past asks for no wait.
 #[cfg(desktop)]
 pub fn wait_until_epoch(headers: &reqwest::header::HeaderMap, header: &str) -> Option<Duration> {
-    let epoch = headers
-        .get(header)?
-        .to_str()
-        .ok()?
-        .trim()
-        .parse::<i64>()
-        .ok()?;
-    let date = headers
-        .get(reqwest::header::DATE)
-        .and_then(|value| value.to_str().ok());
+    let epoch = headers.get(header)?.to_str().ok()?.trim().parse::<i64>().ok()?;
+    let date = headers.get(reqwest::header::DATE).and_then(|value| value.to_str().ok());
     wait_until_epoch_at(epoch, date, chrono::Utc::now())
 }
 
@@ -136,9 +126,7 @@ pub fn is_cacheable(status: u16) -> bool {
 /// same one, so the two cannot drift apart over URL normalization.
 #[cfg(all(any(test, feature = "test-utils"), desktop))]
 pub fn response_key(url: &str) -> String {
-    reqwest::Url::parse(url)
-        .expect("a provider request URL parses")
-        .to_string()
+    reqwest::Url::parse(url).expect("a provider request URL parses").to_string()
 }
 
 /// A `reqwest` client builder pre-set with bae's outbound HTTP policy. Callers
@@ -191,9 +179,7 @@ impl Http {
     #[cfg(any(test, feature = "test-utils"))]
     pub fn for_test() -> Self {
         Self {
-            client: client_builder()
-                .build()
-                .expect("the test HTTP client builds"),
+            client: client_builder().build().expect("the test HTTP client builds"),
             routes: Some(std::sync::Arc::new(TestRoutes {
                 by_host: std::collections::HashMap::new(),
                 unrouted: reqwest::Url::parse("http://127.0.0.1:9").expect("the dead port parses"),
@@ -206,14 +192,11 @@ impl Http {
     #[cfg(any(test, feature = "test-utils"))]
     pub fn serve(mut self, host: &str, origin: &str) -> Self {
         let routes = std::sync::Arc::make_mut(
-            self.routes
-                .as_mut()
-                .expect("only a test transport routes hosts"),
+            self.routes.as_mut().expect("only a test transport routes hosts"),
         );
-        routes.by_host.insert(
-            host.to_string(),
-            reqwest::Url::parse(origin).expect("a test origin parses"),
-        );
+        routes
+            .by_host
+            .insert(host.to_string(), reqwest::Url::parse(origin).expect("a test origin parses"));
         self
     }
 
@@ -221,9 +204,7 @@ impl Http {
     #[cfg(any(test, feature = "test-utils"))]
     pub fn serve_every_host(mut self, origin: &str) -> Self {
         let routes = std::sync::Arc::make_mut(
-            self.routes
-                .as_mut()
-                .expect("only a test transport routes hosts"),
+            self.routes.as_mut().expect("only a test transport routes hosts"),
         );
         routes.unrouted = reqwest::Url::parse(origin).expect("a test origin parses");
         self
@@ -255,12 +236,9 @@ impl Http {
             .unwrap_or(&routes.unrouted)
             .clone();
         let url = request.url_mut();
-        url.set_scheme(origin.scheme())
-            .expect("a test origin's scheme applies");
-        url.set_host(origin.host_str())
-            .expect("a test origin's host applies");
-        url.set_port(origin.port())
-            .expect("a test origin's port applies");
+        url.set_scheme(origin.scheme()).expect("a test origin's scheme applies");
+        url.set_host(origin.host_str()).expect("a test origin's host applies");
+        url.set_port(origin.port()).expect("a test origin's port applies");
         request
     }
 }
@@ -271,15 +249,10 @@ impl Http {
 #[cfg(any(test, feature = "test-utils"))]
 pub async fn serve_not_found() -> String {
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
-        .await
-        .expect("the not-found server binds");
-    let origin = format!(
-        "http://{}",
-        listener
-            .local_addr()
-            .expect("the not-found server has an address")
-    );
+    let listener =
+        tokio::net::TcpListener::bind("127.0.0.1:0").await.expect("the not-found server binds");
+    let origin =
+        format!("http://{}", listener.local_addr().expect("the not-found server has an address"));
     tokio::spawn(async move {
         while let Ok((mut stream, _)) = listener.accept().await {
             tokio::spawn(async move {
@@ -323,10 +296,7 @@ pub async fn refused_request_error() -> reqwest::Error {
 /// The error reqwest returns for a request it will not build.
 #[cfg(any(test, feature = "test-utils"))]
 pub fn unbuildable_request_error() -> reqwest::Error {
-    reqwest::Client::new()
-        .get("not a URL")
-        .build()
-        .expect_err("a relative URL does not build")
+    reqwest::Client::new().get("not a URL").build().expect_err("a relative URL does not build")
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -365,24 +335,15 @@ mod tests {
     use tokio::time::{timeout, Duration};
 
     async fn response_from_raw(raw_response: Vec<u8>) -> reqwest::Response {
-        let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
-            .await
-            .expect("test listener should bind");
+        let listener =
+            tokio::net::TcpListener::bind("127.0.0.1:0").await.expect("test listener should bind");
         let url = format!(
             "http://{}",
-            listener
-                .local_addr()
-                .expect("test listener should have an address")
+            listener.local_addr().expect("test listener should have an address")
         );
         tokio::spawn(async move {
-            let (mut stream, _) = listener
-                .accept()
-                .await
-                .expect("test request should connect");
-            stream
-                .write_all(&raw_response)
-                .await
-                .expect("test response should write");
+            let (mut stream, _) = listener.accept().await.expect("test request should connect");
+            stream.write_all(&raw_response).await.expect("test response should write");
             // Half-close and then drain the client's side to EOF rather than
             // dropping the stream outright. A bare drop with data still in flight
             // makes Windows send an RST, which the client surfaces as a
@@ -403,24 +364,16 @@ mod tests {
 
     #[tokio::test]
     async fn client_builder_times_out_when_response_stalls() {
-        let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
-            .await
-            .expect("test listener should bind");
+        let listener =
+            tokio::net::TcpListener::bind("127.0.0.1:0").await.expect("test listener should bind");
         let url = format!(
             "http://{}",
-            listener
-                .local_addr()
-                .expect("test listener should have an address")
+            listener.local_addr().expect("test listener should have an address")
         );
         let (accepted_tx, accepted_rx) = oneshot::channel();
         tokio::spawn(async move {
-            let (_stream, _) = listener
-                .accept()
-                .await
-                .expect("test request should connect");
-            accepted_tx
-                .send(())
-                .expect("test should receive accepted signal");
+            let (_stream, _) = listener.accept().await.expect("test request should connect");
+            accepted_tx.send(()).expect("test should receive accepted signal");
             std::future::pending::<()>().await;
         });
         let client = client_builder()
@@ -430,17 +383,13 @@ mod tests {
         let request_url = url.clone();
         let request = tokio::spawn(async move { client.get(&request_url).send().await });
 
-        accepted_rx
-            .await
-            .expect("test listener should accept the request");
+        accepted_rx.await.expect("test listener should accept the request");
         let result = timeout(Duration::from_secs(1), request)
             .await
             .expect("request should finish before the outer guard")
             .expect("request task should finish");
 
-        assert!(result
-            .expect_err("stalled response should fail")
-            .is_timeout());
+        assert!(result.expect_err("stalled response should fail").is_timeout());
     }
 
     #[tokio::test]
@@ -449,9 +398,8 @@ mod tests {
         raw_response.extend([0xAB; 129]);
         let response = response_from_raw(raw_response).await;
 
-        let error = read_body_capped(response, 128)
-            .await
-            .expect_err("over-limit stream should fail");
+        let error =
+            read_body_capped(response, 128).await.expect_err("over-limit stream should fail");
 
         assert!(matches!(error, HttpBodyError::TooLarge { limit: 128 }));
     }
@@ -461,10 +409,7 @@ mod tests {
         let now = chrono::DateTime::parse_from_rfc2822("Sat, 26 Sep 2026 06:51:45 GMT")
             .unwrap()
             .with_timezone(&chrono::Utc);
-        assert_eq!(
-            told_wait_at("120", None, now),
-            Some(Duration::from_secs(120))
-        );
+        assert_eq!(told_wait_at("120", None, now), Some(Duration::from_secs(120)));
         assert_eq!(told_wait_at(" 0 ", None, now), Some(Duration::ZERO));
         // A date is measured from the response's own clock, not this one.
         assert_eq!(
@@ -494,11 +439,7 @@ mod tests {
         let now = chrono::DateTime::parse_from_rfc2822("Sat, 26 Sep 2026 06:51:45 GMT")
             .unwrap()
             .with_timezone(&chrono::Utc);
-        let epoch = |date: &str| {
-            chrono::DateTime::parse_from_rfc2822(date)
-                .unwrap()
-                .timestamp()
-        };
+        let epoch = |date: &str| chrono::DateTime::parse_from_rfc2822(date).unwrap().timestamp();
         assert_eq!(
             wait_until_epoch_at(
                 epoch("Sat, 26 Sep 2026 07:00:10 GMT"),
@@ -519,10 +460,7 @@ mod tests {
 
         let mut headers = reqwest::header::HeaderMap::new();
         assert_eq!(wait_until_epoch(&headers, "x-ratelimit-reset"), None);
-        headers.insert(
-            "x-ratelimit-reset",
-            reqwest::header::HeaderValue::from_static("soon"),
-        );
+        headers.insert("x-ratelimit-reset", reqwest::header::HeaderValue::from_static("soon"));
         assert_eq!(wait_until_epoch(&headers, "x-ratelimit-reset"), None);
     }
 
@@ -530,10 +468,8 @@ mod tests {
     fn a_told_wait_is_read_off_the_headers() {
         let mut headers = reqwest::header::HeaderMap::new();
         assert_eq!(told_wait(&headers), None);
-        headers.insert(
-            reqwest::header::RETRY_AFTER,
-            reqwest::header::HeaderValue::from_static("7"),
-        );
+        headers
+            .insert(reqwest::header::RETRY_AFTER, reqwest::header::HeaderValue::from_static("7"));
         assert_eq!(told_wait(&headers), Some(Duration::from_secs(7)));
     }
 }

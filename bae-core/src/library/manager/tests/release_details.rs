@@ -39,11 +39,7 @@ async fn find_release_detail_does_not_panic_on_traversal_filenames_from_a_peer()
         Utc::now(),
     );
     manager.add_file(&file, 5).await.unwrap();
-    manager
-        .database
-        .set_original_filename_for_test(&file.id, "../../etc/y")
-        .await
-        .unwrap();
+    manager.database.set_original_filename_for_test(&file.id, "../../etc/y").await.unwrap();
 
     // The resolver that fires when a synced release surfaces in the UI. The
     // name must resolve to "no cover" / "no local gallery path", not a panic.
@@ -52,10 +48,7 @@ async fn find_release_detail_does_not_panic_on_traversal_filenames_from_a_peer()
         .await
         .expect("resolving a release with a traversal filename must not error")
         .expect("the inserted release must resolve to a detail");
-    assert!(
-        detail.summary.cover.is_none(),
-        "there is no cover row, so no cover"
-    );
+    assert!(detail.summary.cover.is_none(), "there is no cover row, so no cover");
     assert!(
         detail.gallery_items.iter().all(|item| matches!(
             item.source,
@@ -94,10 +87,7 @@ async fn release_cover_version_moves_when_the_cover_row_is_reupserted() {
         .summary
         .cover
         .expect("cover reference present after overwrite");
-    assert_ne!(
-        before.version, after.version,
-        "overwriting the cover must move its version"
-    );
+    assert_ne!(before.version, after.version, "overwriting the cover must move its version");
 }
 
 /// Each storage-page row carries its own release's cover reference, not the
@@ -114,10 +104,7 @@ async fn storage_page_rows_carry_each_releases_own_cover() {
     insert_release(&manager, &release1).await;
     insert_release(&manager, &release2).await;
     // release1 is the album's primary, so its cover is the album-level cover.
-    manager
-        .set_album_primary_release(&album.id, &release1.id)
-        .await
-        .unwrap();
+    manager.set_album_primary_release(&album.id, &release1.id).await.unwrap();
 
     store_test_cover(&manager, &release1.id, b"cover").await;
     store_test_cover(&manager, &release2.id, b"cover").await;
@@ -135,16 +122,10 @@ async fn storage_page_rows_carry_each_releases_own_cover() {
         .await
         .unwrap();
 
-    let row1 = page
-        .rows
-        .iter()
-        .find(|r| r.release.id == release1.id)
-        .expect("release1 row present");
-    let row2 = page
-        .rows
-        .iter()
-        .find(|r| r.release.id == release2.id)
-        .expect("release2 row present");
+    let row1 =
+        page.rows.iter().find(|r| r.release.id == release1.id).expect("release1 row present");
+    let row2 =
+        page.rows.iter().find(|r| r.release.id == release2.id).expect("release2 row present");
 
     // Each release row resolves to that release's own cover.
     assert_eq!(row1.release.cover.as_ref().unwrap().id, release1.id);
@@ -153,10 +134,7 @@ async fn storage_page_rows_carry_each_releases_own_cover() {
     // The album carries the primary release's cover; the non-primary release's
     // row carries its own, distinct from the album's.
     assert_eq!(row2.album.cover.as_ref().unwrap().id, release1.id);
-    assert_ne!(
-        row2.release.cover.as_ref().unwrap().id,
-        row2.album.cover.as_ref().unwrap().id
-    );
+    assert_ne!(row2.release.cover.as_ref().unwrap().id, row2.album.cover.as_ref().unwrap().id);
 }
 
 #[tokio::test]
@@ -252,22 +230,10 @@ async fn release_source_audio_summary_uses_every_file_without_track_formats() {
             },
         }
     };
-    let flac = source(
-        ContentType::Flac,
-        crate::album_detail::SourceAudioLayout::Cue,
-        "FLAC",
-        None,
-    );
-    let mp3 = source(
-        ContentType::Mp3,
-        crate::album_detail::SourceAudioLayout::File,
-        "MP3",
-        Some(320),
-    );
-    for (name, facts) in [
-        ("01-disc.flac", flac.clone()),
-        ("02-bonus.mp3", mp3.clone()),
-    ] {
+    let flac = source(ContentType::Flac, crate::album_detail::SourceAudioLayout::Cue, "FLAC", None);
+    let mp3 =
+        source(ContentType::Mp3, crate::album_detail::SourceAudioLayout::File, "MP3", Some(320));
+    for (name, facts) in [("01-disc.flac", flac.clone()), ("02-bonus.mp3", mp3.clone())] {
         let mut file = NewReleaseFile::new(
             &release.id,
             name,
@@ -279,11 +245,7 @@ async fn release_source_audio_summary_uses_every_file_without_track_formats() {
         manager.add_file(&file, 1000).await.unwrap();
     }
 
-    let detail = manager
-        .find_release_detail(&release.id)
-        .await
-        .unwrap()
-        .expect("detail present");
+    let detail = manager.find_release_detail(&release.id).await.unwrap().expect("detail present");
     assert!(detail.tracks.is_empty());
     assert_eq!(
         detail.source_audio,
@@ -314,22 +276,12 @@ async fn find_release_detail_surfaces_seeded_tracks() {
     manager.database.insert_track(&t1).await.unwrap();
     manager.database.insert_track(&t2).await.unwrap();
 
-    let detail = manager
-        .find_release_detail(&release.id)
-        .await
-        .unwrap()
-        .expect("detail present");
+    let detail = manager.find_release_detail(&release.id).await.unwrap().expect("detail present");
     assert_eq!(detail.tracks.len(), 2);
-    let opening = detail
-        .tracks
-        .iter()
-        .find(|t| t.title == "Opening")
-        .expect("opening track surfaced");
+    let opening =
+        detail.tracks.iter().find(|t| t.title == "Opening").expect("opening track surfaced");
     assert_eq!(opening.position_text, "1");
-    assert!(
-        detail.tracks.iter().any(|t| t.title == "Closing"),
-        "closing track surfaced"
-    );
+    assert!(detail.tracks.iter().any(|t| t.title == "Closing"), "closing track surfaced");
 }
 
 /// A compilation's rows each carry their own artist (the header names none); a
@@ -352,27 +304,15 @@ async fn display_artist_is_set_only_for_a_compilation() {
             musicbrainz_artist_id: None,
             created_at: Utc::now(),
         };
-        let track_artist = crate::db::DbTrackArtist::new(
-            &track.id,
-            &guest.id,
-            0,
-            Utc::now(),
-        );
+        let track_artist = crate::db::DbTrackArtist::new(&track.id, &guest.id, 0, Utc::now());
         manager.database.insert_album(&album).await.unwrap();
         insert_release(&manager, &release).await;
         manager.database.insert_artist(&guest).await.unwrap();
         manager.database.insert_track(&track).await.unwrap();
-        manager
-            .database
-            .insert_track_artist(&track_artist)
-            .await
-            .unwrap();
+        manager.database.insert_track_artist(&track_artist).await.unwrap();
 
-        let detail = manager
-            .find_release_detail(&release.id)
-            .await
-            .unwrap()
-            .expect("detail present");
+        let detail =
+            manager.find_release_detail(&release.id).await.unwrap().expect("detail present");
         detail.tracks[0].display_artist.clone()
     }
 
@@ -403,11 +343,7 @@ async fn gallery_includes_cloud_only_image_files_with_no_local_path() {
     );
     manager.add_file(&image, 1234).await.unwrap();
 
-    let detail = manager
-        .find_release_detail(&release.id)
-        .await
-        .unwrap()
-        .expect("detail present");
+    let detail = manager.find_release_detail(&release.id).await.unwrap().expect("detail present");
 
     // The lightbox shows every image the release has: the image file is
     // surfaced as a gallery item read by file id (fetched on demand), a
@@ -419,10 +355,7 @@ async fn gallery_includes_cloud_only_image_files_with_no_local_path() {
         .expect("image file surfaced in gallery");
     assert_eq!(item.label, "back.jpg");
     assert!(
-        matches!(
-            item.source,
-            crate::album_detail::GallerySource::ReleaseFile { .. }
-        ),
+        matches!(item.source, crate::album_detail::GallerySource::ReleaseFile { .. }),
         "a release-file image is read by file id, not as the cover"
     );
 }
@@ -453,26 +386,10 @@ async fn cover_picker_excludes_unsupported_images_without_hiding_gallery_files()
         }
         all_images.push(file.id);
     }
-    let detail = manager
-        .find_release_detail(&release.id)
-        .await
-        .unwrap()
-        .unwrap();
-    let mut cover_ids: Vec<_> = detail
-        .cover_files
-        .iter()
-        .map(|file| file.id.clone())
-        .collect();
-    let mut image_ids: Vec<_> = detail
-        .image_files
-        .iter()
-        .map(|file| file.id.clone())
-        .collect();
-    let mut gallery_ids: Vec<_> = detail
-        .gallery_items
-        .iter()
-        .map(|item| item.id.clone())
-        .collect();
+    let detail = manager.find_release_detail(&release.id).await.unwrap().unwrap();
+    let mut cover_ids: Vec<_> = detail.cover_files.iter().map(|file| file.id.clone()).collect();
+    let mut image_ids: Vec<_> = detail.image_files.iter().map(|file| file.id.clone()).collect();
+    let mut gallery_ids: Vec<_> = detail.gallery_items.iter().map(|item| item.id.clone()).collect();
     eligible.sort();
     all_images.sort();
     cover_ids.sort();
@@ -522,15 +439,9 @@ async fn resolve_to_track_ids_expands_album_to_primary_release() {
     manager.database.insert_track(&p1).await.unwrap();
     manager.database.insert_track(&p2).await.unwrap();
 
-    manager
-        .set_album_primary_release(&album.id, &release2.id)
-        .await
-        .unwrap();
+    manager.set_album_primary_release(&album.id, &release2.id).await.unwrap();
 
-    let resolved = manager
-        .resolve_to_track_ids(std::slice::from_ref(&album.id))
-        .await
-        .unwrap();
+    let resolved = manager.resolve_to_track_ids(std::slice::from_ref(&album.id)).await.unwrap();
     assert!(resolved.contains(&"cc4180bc-58f5-456f-8116-f9b2099f5b7f".to_string()));
     assert!(resolved.contains(&"cc4181bc-58f5-4722-8116-fab2099f5d32".to_string()));
     assert!(
@@ -543,10 +454,7 @@ async fn resolve_to_track_ids_expands_album_to_primary_release() {
 #[tokio::test]
 async fn resolve_to_track_ids_rejects_unknown_id() {
     let (manager, _temp_dir) = setup_test_manager().await;
-    let err = manager
-        .resolve_to_track_ids(&["missing-id".to_string()])
-        .await
-        .unwrap_err();
+    let err = manager.resolve_to_track_ids(&["missing-id".to_string()]).await.unwrap_err();
     assert!(
         matches!(err, LibraryError::TrackMapping(message) if message.contains("missing-id")),
         "unknown ids must fail instead of being treated as track ids"
@@ -563,11 +471,7 @@ async fn find_release_detail_name_uses_year_and_media() {
     manager.database.insert_album(&album).await.unwrap();
     insert_release(&manager, &release).await;
 
-    let detail = manager
-        .find_release_detail(&release.id)
-        .await
-        .unwrap()
-        .unwrap();
+    let detail = manager.find_release_detail(&release.id).await.unwrap().unwrap();
     assert_eq!(
         detail.name,
         crate::album_detail::ReleaseName::Described {
@@ -588,15 +492,8 @@ async fn find_release_detail_name_prefers_release_name() {
     manager.database.insert_album(&album).await.unwrap();
     insert_release(&manager, &release).await;
 
-    let detail = manager
-        .find_release_detail(&release.id)
-        .await
-        .unwrap()
-        .unwrap();
-    assert_eq!(
-        detail.name,
-        crate::album_detail::ReleaseName::Named("Deluxe Edition".to_string())
-    );
+    let detail = manager.find_release_detail(&release.id).await.unwrap().unwrap();
+    assert_eq!(detail.name, crate::album_detail::ReleaseName::Named("Deluxe Edition".to_string()));
 }
 
 #[tokio::test]
@@ -613,11 +510,7 @@ async fn find_release_detail_uses_position_for_second_release() {
     insert_release(&manager, &release1).await;
     insert_release(&manager, &release2).await;
 
-    let detail2 = manager
-        .find_release_detail(&release2.id)
-        .await
-        .unwrap()
-        .unwrap();
+    let detail2 = manager.find_release_detail(&release2.id).await.unwrap().unwrap();
     assert_eq!(detail2.name, crate::album_detail::ReleaseName::Numbered(2));
 }
 
@@ -649,9 +542,7 @@ async fn a_gallery_read_refuses_another_releases_file() {
     let error = manager
         .read_gallery_bytes(
             &release.id,
-            &crate::album_detail::GallerySource::ReleaseFile {
-                file_id: file.id.clone(),
-            },
+            &crate::album_detail::GallerySource::ReleaseFile { file_id: file.id.clone() },
         )
         .await
         .expect_err("the file is another release's");

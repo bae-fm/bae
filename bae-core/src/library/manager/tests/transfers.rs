@@ -40,10 +40,7 @@ async fn remote_read_with_sync_disconnected_reports_sync_disconnected() {
     let files = release_files(&manager, &release_id).await;
     let file = files.first().expect("the release has a file");
     let reason = playback_error_reason_for_file(&manager, file).await;
-    assert!(
-        matches!(reason, PlaybackErrorReason::SyncDisconnected),
-        "got {reason:?}"
-    );
+    assert!(matches!(reason, PlaybackErrorReason::SyncDisconnected), "got {reason:?}");
 }
 
 /// An upload whose original vanished cannot finish by waiting. Playback reports
@@ -62,12 +59,14 @@ async fn pending_upload_with_missing_source_reports_the_missing_original() {
         .find(|f| f.original_filename == "b.flac")
         .expect("the un-uploaded file whose source was removed");
     let reason = playback_error_reason_for_file(&manager, file).await;
-    assert!(
-        matches!(reason, PlaybackErrorReason::OriginalMissing),
-        "got {reason:?}"
-    );
-    assert!(manager.pending().await.unwrap().iter().any(|record|
-        crate::library::pending_action(record, None) == crate::library::PendingAction::RestoreFile));
+    assert!(matches!(reason, PlaybackErrorReason::OriginalMissing), "got {reason:?}");
+    assert!(manager
+        .pending()
+        .await
+        .unwrap()
+        .iter()
+        .any(|record| crate::library::pending_action(record, None)
+            == crate::library::PendingAction::RestoreFile));
 }
 
 /// A local release another device holds says it isn't uploaded here:
@@ -83,10 +82,7 @@ fn a_file_on_another_device_is_not_uploaded() {
         let files = release_files(manager, &release.id).await;
         let file = files.first().expect("the release has a file");
         let reason = playback_error_reason_for_file(manager, file).await;
-        assert!(
-            matches!(reason, PlaybackErrorReason::NotUploaded),
-            "got {reason:?}"
-        );
+        assert!(matches!(reason, PlaybackErrorReason::NotUploaded), "got {reason:?}");
     });
 }
 
@@ -112,24 +108,12 @@ async fn check_release_surfaces(manager: &LibraryManager, release: &DbRelease) {
     assert_eq!(manager.get_album_count().await.unwrap(), 1);
 
     // Album detail carries the release.
-    let detail = manager
-        .find_album_detail(&album_id)
-        .await
-        .unwrap()
-        .expect("album surfaces");
-    let detail_ids: Vec<_> = detail
-        .releases
-        .iter()
-        .map(|r| r.summary.id.clone())
-        .collect();
+    let detail = manager.find_album_detail(&album_id).await.unwrap().expect("album surfaces");
+    let detail_ids: Vec<_> = detail.releases.iter().map(|r| r.summary.id.clone()).collect();
     assert_eq!(detail_ids, vec![release.id.clone()]);
 
     // The release-level resolver returns it.
-    assert!(manager
-        .find_release_detail(&release.id)
-        .await
-        .unwrap()
-        .is_some());
+    assert!(manager.find_release_detail(&release.id).await.unwrap().is_some());
 }
 
 #[tokio::test]
@@ -169,13 +153,9 @@ async fn unmanage_cancelled_before_copy_leaves_release_remote() {
     // Really Remote, through the real transition: audio detachment resolves the
     // release's current locality from coven, which a fabricated `remote` column
     // with no cloud objects behind it cannot answer.
-    let release_id = upload_release_under_sync_loop(
-        &manager,
-        &temp_dir.path().join("r1"),
-        "Album One",
-        false,
-    )
-    .await;
+    let release_id =
+        upload_release_under_sync_loop(&manager, &temp_dir.path().join("r1"), "Album One", false)
+            .await;
 
     // A token cancelled before coven downloads anything: the call stops
     // before its write and removes whatever it made.
@@ -188,8 +168,10 @@ async fn unmanage_cancelled_before_copy_leaves_release_remote() {
         .await
         .expect_err("a cancelled audio detachment must not report completion");
 
-    assert!(release_files(&manager, &release_id).await.iter().all(|file| file.stored),
-        "cancellation leaves every file in the cloud");
+    assert!(
+        release_files(&manager, &release_id).await.iter().all(|file| file.stored),
+        "cancellation leaves every file in the cloud"
+    );
     assert_eq!(std::fs::read_dir(&dest).unwrap().count(), 0, "no copy is left");
 }
 
@@ -211,7 +193,13 @@ async fn a_missing_upload_source_is_pending_until_its_move_is_cancelled() {
 #[tokio::test]
 async fn cancelling_all_release_uploads_restores_their_originals() {
     let (manager, temp, first, _) = queued_upload_fixture("first").await;
-    let second = insert_release_with_queued_uploads(&manager, &temp.path().join("second"), "Album", &[("b.flac", b"audio")]).await;
+    let second = insert_release_with_queued_uploads(
+        &manager,
+        &temp.path().join("second"),
+        "Album",
+        &[("b.flac", b"audio")],
+    )
+    .await;
     manager.cancel_all_release_uploads().await.unwrap();
     // Cancelling retires each move, so its uploads leave the queue.
     assert_eq!(manager.database.queued_upload_count_for_test().await.unwrap(), 0);
@@ -219,8 +207,18 @@ async fn cancelling_all_release_uploads_restores_their_originals() {
     for release in [first, second] {
         for file in release_files(&manager, &release.id).await {
             assert!(!file.stored);
-            assert!(manager.database.external_file(&file.id).await.unwrap().is_some(), "the original plays again");
-            assert_eq!(manager.database.read_release_file(&file.id).await.unwrap().len(), std::fs::metadata(manager.database.external_file(&file.id).await.unwrap().unwrap().path).unwrap().len() as usize);
+            assert!(
+                manager.database.external_file(&file.id).await.unwrap().is_some(),
+                "the original plays again"
+            );
+            assert_eq!(
+                manager.database.read_release_file(&file.id).await.unwrap().len(),
+                std::fs::metadata(
+                    manager.database.external_file(&file.id).await.unwrap().unwrap().path
+                )
+                .unwrap()
+                .len() as usize
+            );
         }
     }
 }
@@ -262,9 +260,9 @@ async fn a_changed_original_fails_the_move_until_its_upload_is_cancelled() {
     manager.start().unwrap();
     let mut values = manager.subscribe_sync_status();
     let listed = pending_list_until(&mut values, |items| {
-        items
-            .iter()
-            .any(|item| matches!(item.wait.action, crate::library::PendingAction::CancelUpload { .. }))
+        items.iter().any(|item| {
+            matches!(item.wait.action, crate::library::PendingAction::CancelUpload { .. })
+        })
     })
     .await;
     let item = listed
@@ -287,9 +285,9 @@ async fn a_changed_original_fails_the_move_until_its_upload_is_cancelled() {
     }
     assert_eq!(manager.count_pending_uploads_for_release(&release.id).await.unwrap(), 0);
     pending_list_until(&mut values, |items| {
-        !items
-            .iter()
-            .any(|item| matches!(item.wait.action, crate::library::PendingAction::CancelUpload { .. }))
+        !items.iter().any(|item| {
+            matches!(item.wait.action, crate::library::PendingAction::CancelUpload { .. })
+        })
     })
     .await;
 }
@@ -335,10 +333,7 @@ async fn a_releases_cover_is_no_file_of_its_upload() {
     .await;
     let cover_bytes = b"cover-bytes";
     let cover = DbLibraryImage::cover(&release.id, manager.clock.now().into());
-    manager
-        .store_library_image(&cover, cover_bytes)
-        .await
-        .unwrap();
+    manager.store_library_image(&cover, cover_bytes).await.unwrap();
     manager.upload_release(&release.id, false).await.unwrap();
     finish_bound_uploads(&manager).await;
 
@@ -348,11 +343,7 @@ async fn a_releases_cover_is_no_file_of_its_upload() {
         "the release's upload is its own file"
     );
     assert_eq!(
-        manager
-            .database
-            .queued_upload_count_in_table_for_test("covers")
-            .await
-            .unwrap(),
+        manager.database.queued_upload_count_in_table_for_test("covers").await.unwrap(),
         0,
         "the cover uploads through the pause"
     );
@@ -386,18 +377,12 @@ async fn an_upload_queues_each_release_before_returning() {
     )
     .await;
 
-    let outcome = manager
-        .upload_releases(
-            &[release.id.clone(), second_release.id.clone()])
-        .await
-        .unwrap();
+    let outcome =
+        manager.upload_releases(&[release.id.clone(), second_release.id.clone()]).await.unwrap();
     let UploadReleasesOutcome::Complete { receipt } = outcome else {
         panic!("both releases must be admitted");
     };
-    assert_eq!(
-        receipt.release_ids,
-        vec![release.id.clone(), second_release.id.clone()]
-    );
+    assert_eq!(receipt.release_ids, vec![release.id.clone(), second_release.id.clone()]);
     for release in [release, second_release] {
         assert!(has_pending_uploads(&manager, &release.id).await);
     }
@@ -439,19 +424,14 @@ async fn an_active_target_does_not_block_sibling_cloud_admissions() {
     );
 
     let outcome = manager
-        .upload_releases(
-            &[
-                first_new_release.id.clone(),
-                active_release.id.clone(),
-                last_new_release.id.clone(),
-            ])
+        .upload_releases(&[
+            first_new_release.id.clone(),
+            active_release.id.clone(),
+            last_new_release.id.clone(),
+        ])
         .await
         .expect("the batch returns every release's admission outcome");
-    let UploadReleasesOutcome::Partial {
-        receipt: Some(receipt),
-        failure,
-    } = outcome
-    else {
+    let UploadReleasesOutcome::Partial { receipt: Some(receipt), failure } = outcome else {
         panic!("two releases must be admitted around one refusal");
     };
     assert_eq!(
@@ -509,7 +489,10 @@ async fn upload_pause_survives_retry_and_resuming_allows_progress() {
     let (manager, _temp, _release, _) = queued_upload_fixture("paused").await;
     manager.set_sync_paused(true).await.unwrap();
     let before = manager.storage.request_count();
-    assert!(matches!(manager.database.retry_uploads_now().await.unwrap(), coven::DrainOutcome::Paused));
+    assert!(matches!(
+        manager.database.retry_uploads_now().await.unwrap(),
+        coven::DrainOutcome::Paused
+    ));
     assert_eq!(manager.storage.request_count(), before);
     assert!(manager.is_sync_paused().await.unwrap());
     manager.set_sync_paused(false).await.unwrap();
@@ -549,11 +532,7 @@ async fn transfer_concurrency_settings_apply_to_the_open_store() {
     assert_eq!(manager.preferences().await.unwrap().max_concurrent_downloads.get(), 2);
 
     assert!(manager.set_max_concurrent_uploads(0).await.is_err());
-    assert_eq!(
-        manager.transfer_limits().uploads.get(),
-        5,
-        "a rejected value changes nothing"
-    );
+    assert_eq!(manager.transfer_limits().uploads.get(), 5, "a rejected value changes nothing");
 }
 
 /// A release moved to the cloud to be kept here goes through no download
@@ -576,14 +555,7 @@ async fn a_release_kept_here_is_pinned_once_its_move_finishes() {
     assert!(download_queue_now(&manager).await.rows.is_empty());
     assert_eq!(manager.drain_uploads_expecting_work().await.unwrap(), 1);
     wait_for_kept_release(&manager, &release.id).await;
-    assert!(
-        manager
-            .find_release_storage_summary(&release.id)
-            .await
-            .unwrap()
-            .unwrap()
-            .pinned
-    );
+    assert!(manager.find_release_storage_summary(&release.id).await.unwrap().unwrap().pinned);
 }
 
 #[tokio::test]
@@ -611,15 +583,10 @@ async fn close_waits_for_a_file_operations_rollback_and_refuses_new_work() {
     let mut close = tokio::spawn(async move { closing.close().await });
     reached.await.unwrap();
     assert!(
-        tokio::time::timeout(std::time::Duration::from_millis(50), &mut close)
-            .await
-            .is_err(),
+        tokio::time::timeout(std::time::Duration::from_millis(50), &mut close).await.is_err(),
         "close must wait for rollback before closing the database"
     );
-    assert!(manager
-        .run_file_operation("late operation", |_| async { Ok(()) })
-        .await
-        .is_err());
+    assert!(manager.run_file_operation("late operation", |_| async { Ok(()) }).await.is_err());
     release.send(()).unwrap();
     operation.await.unwrap().unwrap();
     close.await.unwrap().unwrap();
@@ -653,20 +620,15 @@ async fn check_playability(
         &[("track.flac", b"track-bytes")],
     )
     .await;
-    let playability = |release_id: String| {
-        async move {
-            manager
-                .find_release_detail(&release_id)
-                .await
-                .unwrap()
-                .expect("the release exists")
-                .playability
-        }
+    let playability = |release_id: String| async move {
+        manager
+            .find_release_detail(&release_id)
+            .await
+            .unwrap()
+            .expect("the release exists")
+            .playability
     };
-    assert_eq!(
-        playability(here.id.clone()).await,
-        ReleasePlayability::Playable
-    );
+    assert_eq!(playability(here.id.clone()).await, ReleasePlayability::Playable);
 
     assert_eq!(
         playability(elsewhere.id.clone()).await,
@@ -683,8 +645,5 @@ async fn check_playability(
     );
     let file = release_files(manager, &here.id).await.remove(0);
     let reason = playback_error_reason_for_file(manager, &file).await;
-    assert!(
-        matches!(reason, PlaybackErrorReason::OriginalMissing),
-        "got {reason:?}"
-    );
+    assert!(matches!(reason, PlaybackErrorReason::OriginalMissing), "got {reason:?}");
 }

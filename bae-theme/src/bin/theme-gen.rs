@@ -36,11 +36,7 @@ fn run() -> Result<(), String> {
     let mut command = None;
     let mut args = raw.iter();
     while let Some(arg) = args.next() {
-        let mut value = || {
-            args.next()
-                .cloned()
-                .ok_or_else(|| format!("`{arg}` needs a value"))
-        };
+        let mut value = || args.next().cloned().ok_or_else(|| format!("`{arg}` needs a value"));
         match arg.as_str() {
             "emit" if command.is_none() => command = Some(Command::Emit),
             "standard-tone" if command.is_none() => command = Some(Command::StandardTone),

@@ -13,10 +13,7 @@ impl AppHandle {
     /// Everything sync is doing, for the activity indicator and its list:
     /// the value now, then one after each change.
     pub fn subscribe_sync_activity(&self) -> std::sync::Arc<crate::SyncActivitySubscription> {
-        crate::screens::sync_activity(
-            self.services.subscribe_sync_activity(),
-            self.runtime.clone(),
-        )
+        crate::screens::sync_activity(self.services.subscribe_sync_activity(), self.runtime.clone())
     }
 
     /// Whether the person paused uploads now, then each time that changes.

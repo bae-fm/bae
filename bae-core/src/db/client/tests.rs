@@ -63,10 +63,7 @@ async fn temp_db() -> (super::Database, tempfile::TempDir) {
 /// The folder at `name`, a `/`-separated path below `root`, spelled the way
 /// the scanner spells it on this host.
 fn folder_below(root: &std::path::Path, name: &str) -> std::path::PathBuf {
-    name.split('/')
-        .fold(std::path::PathBuf::from(root), |folder, part| {
-            folder.join(part)
-        })
+    name.split('/').fold(std::path::PathBuf::from(root), |folder, part| folder.join(part))
 }
 
 /// A scanned folder at `name` below watched root `root` holding `files`, as the
@@ -145,10 +142,7 @@ async fn watched_root() -> (super::Database, tempfile::TempDir, std::path::PathB
 /// them.
 async fn queue_items(db: &super::Database, track_ids: &[&str]) -> Vec<crate::queue::QueueItem> {
     db.playback_queue_tables()
-        .add_manual(
-            track_ids.iter().map(|id| id.to_string()).collect(),
-            super::ManualPlace::End,
-        )
+        .add_manual(track_ids.iter().map(|id| id.to_string()).collect(), super::ManualPlace::End)
         .await
         .unwrap();
     db.queue_value().await.unwrap().manual
@@ -170,9 +164,7 @@ async fn exec(db: &super::Database, sql: &str, args: &[&str]) {
 /// `exec` for a multi-statement script, which takes no bound parameters.
 async fn exec_batch(db: &super::Database, sql: &str) {
     let sql = sql.to_string();
-    db.call(move |conn| conn.execute_batch(&sql).map_err(crate::db::DbError::from))
-        .await
-        .unwrap();
+    db.call(move |conn| conn.execute_batch(&sql).map_err(crate::db::DbError::from)).await.unwrap();
 }
 
 /// Store a real cover holding `content` as a coven file its row references,
@@ -194,11 +186,7 @@ async fn stored_image_version(db: &super::Database, table: &str, id: &str) -> St
         crate::sync::ARTIST_IMAGES_NAMESPACE => crate::db::LibraryImageType::Artist,
         other => panic!("{other} holds no library images"),
     };
-    let file = db
-        .library_image_file(id, &image_type)
-        .await
-        .unwrap()
-        .expect("the image row");
+    let file = db.library_image_file(id, &image_type).await.unwrap().expect("the image row");
     match file.place() {
         coven::FilePlace::Cloud { .. } => file.id().0.to_string(),
         coven::FilePlace::DeviceOnly { device } => {

@@ -43,26 +43,18 @@ impl SourceDurations {
     /// What this unit plays for; no row when it is not part of this duration
     /// set's effective layout.
     pub fn duration_of(&self, audio: &AudioFile) -> Option<u64> {
-        self.units
-            .iter()
-            .find(|unit| &unit.audio == audio)
-            .map(|unit| unit.duration_ms)
+        self.units.iter().find(|unit| &unit.audio == audio).map(|unit| unit.duration_ms)
     }
 }
 /// Project every audio unit from the scan's authoritative per-file facts.
 pub fn source_durations(files: &CategorizedFiles) -> Result<SourceDurations, ImportError> {
     let mut units = Vec::new();
     for file in files.audio() {
-        let source_audio = file
-            .source_audio
-            .as_ref()
-            .ok_or_else(|| ImportError::UnusableFile {
-                detail: format!("{} has no scanned audio facts", file.relative_path),
-            })?;
+        let source_audio = file.source_audio.as_ref().ok_or_else(|| ImportError::UnusableFile {
+            detail: format!("{} has no scanned audio facts", file.relative_path),
+        })?;
         units.push(SourceDuration {
-            audio: AudioFile::Standalone {
-                file_id: file.relative_path.clone(),
-            },
+            audio: AudioFile::Standalone { file_id: file.relative_path.clone() },
             duration_ms: source_audio.duration_ms,
         });
     }
@@ -95,22 +87,20 @@ pub(crate) fn sheet_track_duration_ms(
     index: usize,
     sheet_id: &str,
 ) -> Result<u64, ImportError> {
-    let cue_track = analysis
-        .cue_sheet
-        .playable_tracks()
-        .nth(index)
-        .ok_or_else(|| ImportError::UnusableFile {
+    let cue_track = analysis.cue_sheet.playable_tracks().nth(index).ok_or_else(|| {
+        ImportError::UnusableFile {
             detail: format!("{sheet_id} no longer describes a track {}", index + 1),
-        })?;
-    let audio = analysis
-        .audio_file(&cue_track.file_reference)
-        .ok_or_else(|| ImportError::UnusableFile {
+        }
+    })?;
+    let audio = analysis.audio_file(&cue_track.file_reference).ok_or_else(|| {
+        ImportError::UnusableFile {
             detail: format!(
                 "{sheet_id} track {} references missing audio {}",
                 index + 1,
                 cue_track.file_reference
             ),
-        })?;
+        }
+    })?;
     let total_ms = u64::try_from(audio.probe.duration.as_millis()).map_err(|error| {
         ImportError::UnusableFile {
             detail: format!(
@@ -121,9 +111,7 @@ pub(crate) fn sheet_track_duration_ms(
     })?;
     cue_track
         .duration_ms_with_file_duration(total_ms)
-        .map_err(|error| ImportError::UnusableFile {
-            detail: format!("{sheet_id}: {error}"),
-        })
+        .map_err(|error| ImportError::UnusableFile { detail: format!("{sheet_id}: {error}") })
 }
 
 /// Parse-and-probe one bound track sheet, once, for every slice carved out of
@@ -134,21 +122,18 @@ pub(crate) fn sheet_analysis(
     sheet_id: &str,
 ) -> Result<CueFlacAnalysis, ImportError> {
     let bound = files.bound_sheets();
-    let sheet = bound
-        .iter()
-        .find(|bound| bound.file.relative_path == sheet_id)
-        .ok_or_else(|| ImportError::UnusableFile {
-            detail: format!("{sheet_id} no longer describes any of the folder's audio"),
+    let sheet =
+        bound.iter().find(|bound| bound.file.relative_path == sheet_id).ok_or_else(|| {
+            ImportError::UnusableFile {
+                detail: format!("{sheet_id} no longer describes any of the folder's audio"),
+            }
         })?;
 
     let mut audio_files = Vec::new();
     for (file_reference, file) in &sheet.audio_files {
-        let source_audio = file
-            .source_audio
-            .as_ref()
-            .ok_or_else(|| ImportError::UnusableFile {
-                detail: format!("{} has no scanned audio facts", file.relative_path),
-            })?;
+        let source_audio = file.source_audio.as_ref().ok_or_else(|| ImportError::UnusableFile {
+            detail: format!("{} has no scanned audio facts", file.relative_path),
+        })?;
         audio_files.push(CueAnalyzedAudioFile {
             file_reference: (*file_reference).to_string(),
             path: file.path.clone(),
@@ -163,10 +148,7 @@ pub(crate) fn sheet_analysis(
         });
     }
 
-    Ok(CueFlacAnalysis {
-        cue_sheet: sheet.sheet.clone(),
-        audio_files,
-    })
+    Ok(CueFlacAnalysis { cue_sheet: sheet.sheet.clone(), audio_files })
 }
 
 #[cfg(test)]

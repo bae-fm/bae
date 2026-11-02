@@ -75,18 +75,11 @@ fn wav_extensible_pcm(
 }
 
 fn truncated_flac_packet_stream() -> Vec<u8> {
-    let original_samples: Vec<i32> = (0..44100)
-        .map(|i| ((i as f64 * 0.01).sin() * 0.5 * i32::MAX as f64) as i32)
-        .collect();
-    let mut flac_data = encode_i32(
-        EncodeFormat::Flac {
-            bits_per_sample: 16,
-        },
-        &original_samples,
-        44100,
-        1,
-    )
-    .unwrap();
+    let original_samples: Vec<i32> =
+        (0..44100).map(|i| ((i as f64 * 0.01).sin() * 0.5 * i32::MAX as f64) as i32).collect();
+    let mut flac_data =
+        encode_i32(EncodeFormat::Flac { bits_per_sample: 16 }, &original_samples, 44100, 1)
+            .unwrap();
     flac_data.truncate(flac_data.len() / 2);
     flac_data
 }
@@ -99,17 +92,10 @@ fn mp3_with_invalid_terminal_packet() -> (Vec<u8>, usize) {
             (0.5 * i32::MAX as f64 * (2.0 * std::f64::consts::PI * 440.0 * t).sin()) as i32
         })
         .collect();
-    let clean = encode_i32(
-        EncodeFormat::Mp3 { bitrate_kbps: 128 },
-        &samples,
-        sample_rate,
-        2,
-    )
-    .unwrap();
-    let expected_samples = decode_audio(buffer_from(&clean), None, None)
-        .expect("clean decode")
-        .samples
-        .len();
+    let clean =
+        encode_i32(EncodeFormat::Mp3 { bitrate_kbps: 128 }, &samples, sample_rate, 2).unwrap();
+    let expected_samples =
+        decode_audio(buffer_from(&clean), None, None).expect("clean decode").samples.len();
     let frame_start = clean
         .windows(2)
         .position(|bytes| bytes[0] == 0xff && bytes[1] & 0xe0 == 0xe0)

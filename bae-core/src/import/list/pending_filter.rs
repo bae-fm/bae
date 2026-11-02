@@ -55,11 +55,7 @@ pub(crate) fn pending_filter_entries(held: &[(PendingFilter, u32)]) -> Vec<Pendi
                 .filter(|(entry, _)| filter == PendingFilter::All || *entry == filter)
                 .map(|(_, count)| count)
                 .sum();
-            PendingFilterEntry {
-                filter,
-                count,
-                selectable: count > 0,
-            }
+            PendingFilterEntry { filter, count, selectable: count > 0 }
         })
         .collect()
 }

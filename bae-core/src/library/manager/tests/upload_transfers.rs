@@ -14,20 +14,11 @@ fn apply_transfer_changes(
     for change in changes {
         match change {
             OutboxTransferChange::Reset(transfers) => *held = Some(transfers),
-            OutboxTransferChange::Updated {
-                release_id,
-                transfer,
-            } => {
-                held.as_mut()
-                    .expect("a reset comes first")
-                    .releases
-                    .insert(release_id, transfer);
+            OutboxTransferChange::Updated { release_id, transfer } => {
+                held.as_mut().expect("a reset comes first").releases.insert(release_id, transfer);
             }
             OutboxTransferChange::Removed { release_id } => {
-                held.as_mut()
-                    .expect("a reset comes first")
-                    .releases
-                    .remove(&release_id);
+                held.as_mut().expect("a reset comes first").releases.remove(&release_id);
             }
             OutboxTransferChange::TotalUpdated(total) => {
                 held.as_mut().expect("a reset comes first").total = total;
@@ -62,10 +53,7 @@ async fn the_transfers_name_only_the_files_being_sent() {
         held,
         Some(crate::library::OutboxTransfers {
             releases: Default::default(),
-            total: crate::library::UploadTransfer {
-                bar: None,
-                throughput_bps: 0,
-            },
+            total: crate::library::UploadTransfer { bar: None, throughput_bps: 0 },
         }),
         "files that only wait have no transfer"
     );
@@ -124,10 +112,7 @@ async fn the_total_transfer_is_told_first_and_then_as_it_changes() {
     )
     .await;
     let mut total = manager.watch_outbox_total_transfer();
-    let idle = crate::library::UploadTransfer {
-        bar: None,
-        throughput_bps: 0,
-    };
+    let idle = crate::library::UploadTransfer { bar: None, throughput_bps: 0 };
     assert_eq!(total.next().await.unwrap().unwrap(), idle);
 
     home.set_faults(coven::Faults {
@@ -193,12 +178,7 @@ async fn a_file_sent_in_one_request_moves_its_release_as_it_goes() {
     let bar = tokio::time::timeout(std::time::Duration::from_secs(10), async {
         loop {
             apply_transfer_changes(&mut held, transfers.next().await.unwrap().unwrap());
-            let bar = held
-                .as_ref()
-                .unwrap()
-                .releases
-                .get(&release.id)
-                .map(|transfer| transfer.bar);
+            let bar = held.as_ref().unwrap().releases.get(&release.id).map(|transfer| transfer.bar);
             if bar.is_some_and(|bar| bar.bytes_done > 0) {
                 break bar.unwrap();
             }
@@ -208,10 +188,7 @@ async fn a_file_sent_in_one_request_moves_its_release_as_it_goes() {
     .expect("the release moves while its one request goes");
     assert_eq!(
         bar,
-        crate::library::UploadBar {
-            bytes_done: 7,
-            bytes_total: 7,
-        },
+        crate::library::UploadBar { bytes_done: 7, bytes_total: 7 },
         "the file's whole share counts once its request has taken it"
     );
     let fraction = tokio::time::timeout(std::time::Duration::from_secs(10), async {

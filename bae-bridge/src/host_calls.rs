@@ -29,7 +29,5 @@ pub(crate) async fn host_call_async<T>(
     operation: &'static str,
     call: impl std::future::Future<Output = T>,
 ) -> Result<T, TaskFailed> {
-    bae_util::task_failure::caught(operation, call)
-        .await
-        .map_err(bug)
+    bae_util::task_failure::caught(operation, call).await.map_err(bug)
 }

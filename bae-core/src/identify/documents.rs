@@ -139,13 +139,12 @@ impl DocumentReading {
     /// What `release`'s documents state its album is: `Unread` where they
     /// could not be read, `None` where nothing read them.
     pub(crate) fn album_statements(&self, release: &MetadataRef) -> Option<AlbumLinks> {
-        self.read()
-            .iter()
-            .find(|reading| reading.release == *release)
-            .map(|reading| match &reading.document {
-                Ok(document) => document.album_links.clone(),
-                Err(_) => AlbumLinks::Unread,
-            })
+        self.read().iter().find(|reading| reading.release == *release).map(|reading| match &reading
+            .document
+        {
+            Ok(document) => document.album_links.clone(),
+            Err(_) => AlbumLinks::Unread,
+        })
     }
 
     /// `result` with what its document states in place of what the result

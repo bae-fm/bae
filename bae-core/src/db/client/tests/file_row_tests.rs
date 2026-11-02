@@ -6,10 +6,8 @@ use super::super::pending::pending_rows_query;
 /// The plan SQLite chooses for `statement`, one detail line per step.
 async fn plan(db: &super::super::Database, statement: String) -> Vec<String> {
     db.read(move |sql| {
-        sql.query(&format!("EXPLAIN QUERY PLAN {statement}"), [], |row| {
-            row.get::<_, String>(3)
-        })
-        .map_err(super::super::DbError::from)
+        sql.query(&format!("EXPLAIN QUERY PLAN {statement}"), [], |row| row.get::<_, String>(3))
+            .map_err(super::super::DbError::from)
     })
     .await
     .unwrap()
@@ -28,10 +26,8 @@ async fn the_pending_list_finds_each_row_by_index() {
         "cover_release",
         "cover_album",
     ] {
-        let steps: Vec<&String> = plan
-            .iter()
-            .filter(|step| step.split(' ').nth(1) == Some(alias))
-            .collect();
+        let steps: Vec<&String> =
+            plan.iter().filter(|step| step.split(' ').nth(1) == Some(alias)).collect();
         assert!(
             !steps.is_empty() && steps.iter().all(|step| step.starts_with("SEARCH")),
             "{alias} is not searched by index in {plan:?}"

@@ -54,28 +54,25 @@ fn probe_failure_persists_nothing_and_surfaces_as_cloud_setup_network() {
 /// and an overflow aborts the process it happens in.
 #[test]
 fn save_s3_config_survives_a_narrow_host_stack() {
-    in_own_process(
-        "test_save_s3_config::save_s3_config_survives_a_narrow_host_stack",
-        || {
-            let runtime = tokio::runtime::Runtime::new().expect("build test runtime");
-            let (manager, _library) = setup_fresh_library(&runtime);
-            std::thread::scope(|scope| {
-                std::thread::Builder::new()
-                    .name("narrow-s3-host".to_string())
-                    .stack_size(512 * 1024)
-                    .spawn_scoped(scope, move || {
-                        runtime
-                            .block_on(manager.save_s3_config(
-                                unreachable_s3_config(),
-                                "Test Device",
-                                &|_| (),
-                            ))
-                            .expect_err("an unreachable endpoint must fail the probe");
-                    })
-                    .expect("spawn narrow S3 host")
-                    .join()
-                    .expect("narrow S3 host completes");
-            });
-        },
-    );
+    in_own_process("test_save_s3_config::save_s3_config_survives_a_narrow_host_stack", || {
+        let runtime = tokio::runtime::Runtime::new().expect("build test runtime");
+        let (manager, _library) = setup_fresh_library(&runtime);
+        std::thread::scope(|scope| {
+            std::thread::Builder::new()
+                .name("narrow-s3-host".to_string())
+                .stack_size(512 * 1024)
+                .spawn_scoped(scope, move || {
+                    runtime
+                        .block_on(manager.save_s3_config(
+                            unreachable_s3_config(),
+                            "Test Device",
+                            &|_| (),
+                        ))
+                        .expect_err("an unreachable endpoint must fail the probe");
+                })
+                .expect("spawn narrow S3 host")
+                .join()
+                .expect("narrow S3 host completes");
+        });
+    });
 }

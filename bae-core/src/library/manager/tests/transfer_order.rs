@@ -21,10 +21,7 @@ async fn uploading_releases_keep_their_admission_order() {
     )
     .await;
 
-    assert_eq!(
-        manager.database.uploading_releases().await.unwrap(),
-        vec![first.id, second.id],
-    );
+    assert_eq!(manager.database.uploading_releases().await.unwrap(), vec![first.id, second.id],);
 }
 
 #[cfg(feature = "test-utils")]
@@ -41,16 +38,8 @@ async fn upload_keeps_every_file_in_the_queue() {
     std::fs::create_dir_all(&source_dir).unwrap();
     let created_at = Utc::now();
     for (id, name, bytes) in [
-        (
-            "00000000-0000-4000-8000-000000000001",
-            "Track 10.flac",
-            b"ten".as_slice(),
-        ),
-        (
-            "ffffffff-ffff-4fff-bfff-ffffffffffff",
-            "track 2.flac",
-            b"two".as_slice(),
-        ),
+        ("00000000-0000-4000-8000-000000000001", "Track 10.flac", b"ten".as_slice()),
+        ("ffffffff-ffff-4fff-bfff-ffffffffffff", "track 2.flac", b"two".as_slice()),
     ] {
         let path = source_dir.join(name);
         std::fs::write(&path, bytes).unwrap();
@@ -61,10 +50,7 @@ async fn upload_keeps_every_file_in_the_queue() {
             id.to_string(),
             created_at,
         );
-        manager
-            .add_external_file_for_test(&file, &path)
-            .await
-            .unwrap();
+        manager.add_external_file_for_test(&file, &path).await.unwrap();
     }
     let files = release_files(&manager, &release.id).await;
 
@@ -75,16 +61,14 @@ async fn upload_keeps_every_file_in_the_queue() {
             .database
             .queued_upload_rows_for_root_for_test("releases", &release.id)
             .await
-            .unwrap().into_iter().collect::<std::collections::BTreeSet<_>>(),
+            .unwrap()
+            .into_iter()
+            .collect::<std::collections::BTreeSet<_>>(),
         vec![
-            (
-                crate::sync::RELEASE_FILES_NAMESPACE.to_string(),
-                files[0].id.clone(),
-            ),
-            (
-                crate::sync::RELEASE_FILES_NAMESPACE.to_string(),
-                files[1].id.clone(),
-            ),
-        ].into_iter().collect::<std::collections::BTreeSet<_>>(),
+            (crate::sync::RELEASE_FILES_NAMESPACE.to_string(), files[0].id.clone(),),
+            (crate::sync::RELEASE_FILES_NAMESPACE.to_string(), files[1].id.clone(),),
+        ]
+        .into_iter()
+        .collect::<std::collections::BTreeSet<_>>(),
     );
 }

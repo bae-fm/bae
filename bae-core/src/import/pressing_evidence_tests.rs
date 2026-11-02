@@ -20,11 +20,7 @@ fn an_unusable_barcode_leaves_the_comparison_unknown() {
 
     b.barcodes = vec!["5051961234567".to_string(), "012345678905".to_string()];
     a.barcodes = vec!["0 01234 56789 05".to_string()];
-    assert_eq!(
-        evidence(&a, &b).barcode,
-        Comparison::Same,
-        "any usable key on either side"
-    );
+    assert_eq!(evidence(&a, &b).barcode, Comparison::Same, "any usable key on either side");
 }
 
 /// Two countries are one or two; a region matches only itself and
@@ -43,11 +39,7 @@ fn countries_and_regions_compare_by_what_they_name() {
     b.area = ReleaseArea::discogs("Europe");
     assert_eq!(evidence(&a, &b).country, Comparison::Same);
     b.area = Some(ReleaseArea::Region(Region::UkAndEurope));
-    assert_eq!(
-        evidence(&a, &b).country,
-        Comparison::Unknown,
-        "two regions that overlap"
-    );
+    assert_eq!(evidence(&a, &b).country, Comparison::Unknown, "two regions that overlap");
     b.area = Some(area("XW"));
     assert_eq!(
         evidence(&a, &b).country,
@@ -55,11 +47,7 @@ fn countries_and_regions_compare_by_what_they_name() {
         "a worldwide release is sold in Europe too"
     );
     b.area = Some(area("DE"));
-    assert_eq!(
-        evidence(&a, &b).country,
-        Comparison::Unknown,
-        "a region against a country"
-    );
+    assert_eq!(evidence(&a, &b).country, Comparison::Unknown, "a region against a country");
     b.area = None;
     assert_eq!(evidence(&a, &b).country, Comparison::Unknown);
 }
@@ -71,14 +59,8 @@ fn countries_and_regions_compare_by_what_they_name() {
 fn labels_agree_by_name_and_never_disagree() {
     let mut a = release(Catalog::MusicBrainz, "mb-1");
     let mut b = release(Catalog::Discogs, "dg-1");
-    a.labels = vec![bae_types::pressing::ReleaseLabel::of(
-        Some("Label Name Records"),
-        None,
-    )];
-    b.labels = vec![bae_types::pressing::ReleaseLabel::of(
-        Some("Label Name"),
-        None,
-    )];
+    a.labels = vec![bae_types::pressing::ReleaseLabel::of(Some("Label Name Records"), None)];
+    b.labels = vec![bae_types::pressing::ReleaseLabel::of(Some("Label Name"), None)];
     assert_eq!(evidence(&a, &b).label, Comparison::Same);
     b.labels = vec![bae_types::pressing::ReleaseLabel::of(Some("LN"), None)];
     assert_eq!(evidence(&a, &b).label, Comparison::Same);
@@ -93,19 +75,10 @@ fn labels_agree_by_name_and_never_disagree() {
 fn catalog_numbers_compare_squashed_and_never_disagree() {
     let mut a = release(Catalog::MusicBrainz, "mb-1");
     let mut b = release(Catalog::Discogs, "dg-1");
-    a.labels = vec![bae_types::pressing::ReleaseLabel::of(
-        None,
-        Some("WPCR-80001"),
-    )];
-    b.labels = vec![bae_types::pressing::ReleaseLabel::of(
-        None,
-        Some("wpcr 80001"),
-    )];
+    a.labels = vec![bae_types::pressing::ReleaseLabel::of(None, Some("WPCR-80001"))];
+    b.labels = vec![bae_types::pressing::ReleaseLabel::of(None, Some("wpcr 80001"))];
     assert_eq!(evidence(&a, &b).catalog, Comparison::Same);
-    b.labels = vec![bae_types::pressing::ReleaseLabel::of(
-        None,
-        Some("WPCR-80002"),
-    )];
+    b.labels = vec![bae_types::pressing::ReleaseLabel::of(None, Some("WPCR-80002"))];
     assert_eq!(evidence(&a, &b).catalog, Comparison::Unknown);
 }
 
@@ -137,14 +110,12 @@ fn per_medium(names: &[&str]) -> StatedMedia {
 fn formats(entries: &[(&str, &[&str])]) -> StatedMedia {
     let entries: Vec<bae_catalogs::discogs::DiscogsFormat> = entries
         .iter()
-        .map(
-            |(name, descriptions)| bae_catalogs::discogs::DiscogsFormat {
-                name: name.to_string(),
-                qty: "1".to_string(),
-                descriptions: descriptions.iter().map(|d| d.to_string()).collect(),
-                text: None,
-            },
-        )
+        .map(|(name, descriptions)| bae_catalogs::discogs::DiscogsFormat {
+            name: name.to_string(),
+            qty: "1".to_string(),
+            descriptions: descriptions.iter().map(|d| d.to_string()).collect(),
+            text: None,
+        })
         .collect();
     bae_catalogs::discogs::formats::read("dg-1", &entries).media
 }
@@ -164,15 +135,9 @@ fn media(a: StatedMedia, b: StatedMedia) -> Comparison {
 /// carriers or contradict each other.
 #[test]
 fn media_compare_as_the_carriers_each_catalogs_words_name() {
+    assert_eq!(media(per_medium(&["CD"]), formats(&[("CD", &["Album"])])), Comparison::Same);
     assert_eq!(
-        media(per_medium(&["CD"]), formats(&[("CD", &["Album"])])),
-        Comparison::Same
-    );
-    assert_eq!(
-        media(
-            per_medium(&["CD"]),
-            formats(&[("File", &["FLAC", "Album", "Reissue"])])
-        ),
+        media(per_medium(&["CD"]), formats(&[("File", &["FLAC", "Album", "Reissue"])])),
         Comparison::Different,
         "a download is not a CD"
     );
@@ -184,18 +149,12 @@ fn media_compare_as_the_carriers_each_catalogs_words_name() {
         Comparison::Same
     );
     assert_eq!(
-        media(
-            per_medium(&["CD", "DVD-Video"]),
-            formats(&[("CD", &["Album"])])
-        ),
+        media(per_medium(&["CD", "DVD-Video"]), formats(&[("CD", &["Album"])])),
         Comparison::Different,
         "the Discogs record names what it is made of, and there is no DVD in it"
     );
     assert_eq!(
-        media(
-            per_medium(&["Hybrid SACD"]),
-            formats(&[("SACD", &["Hybrid", "Multichannel"])])
-        ),
+        media(per_medium(&["Hybrid SACD"]), formats(&[("SACD", &["Hybrid", "Multichannel"])])),
         Comparison::Same,
         "a hybrid SACD is an SACD on both catalogs"
     );
@@ -204,10 +163,7 @@ fn media_compare_as_the_carriers_each_catalogs_words_name() {
 /// The case a catalog writes its own name in is not evidence of anything.
 #[test]
 fn a_format_name_is_the_same_name_in_any_case() {
-    assert_eq!(
-        media(per_medium(&["cd"]), formats(&[("CD", &[])])),
-        Comparison::Same
-    );
+    assert_eq!(media(per_medium(&["cd"]), formats(&[("CD", &[])])), Comparison::Same);
 }
 
 /// A Discogs description outside its list says nothing bae reads, so it is
@@ -218,32 +174,20 @@ fn a_format_name_is_the_same_name_in_any_case() {
 fn a_word_outside_the_vocabulary_is_logged_and_settles_by_catalog() {
     let logs = crate::test_logs::capture_warn_logs(|| {
         assert_eq!(
-            media(
-                per_medium(&["CD"]),
-                formats(&[("CD", &["Album", "Zorblax"])])
-            ),
+            media(per_medium(&["CD"]), formats(&[("CD", &["Album", "Zorblax"])])),
             Comparison::Same
         );
     });
-    assert!(
-        logs.contains("Zorblax"),
-        "the unknown word is logged: {logs}"
-    );
+    assert!(logs.contains("Zorblax"), "the unknown word is logged: {logs}");
 
     let logs = crate::test_logs::capture_warn_logs(|| {
         assert_eq!(
-            media(
-                per_medium(&["CD", "Zorblax Disc"]),
-                formats(&[("CD", &["Album"])])
-            ),
+            media(per_medium(&["CD", "Zorblax Disc"]), formats(&[("CD", &["Album"])])),
             Comparison::Unknown,
             "what the second MusicBrainz medium is cannot be said"
         );
     });
-    assert!(
-        logs.contains("Zorblax Disc"),
-        "the unknown word is logged: {logs}"
-    );
+    assert!(logs.contains("Zorblax Disc"), "the unknown word is logged: {logs}");
 }
 
 /// A record with a medium it does not name still contradicts a record that
@@ -268,15 +212,9 @@ fn a_medium_left_unstated_is_weighed_against_a_complete_account() {
         "the Discogs record lacks nothing the MusicBrainz one knows, and what \
          the unstated medium is nobody says"
     );
+    assert_eq!(media(per_medium(&["CD"]), StatedMedia::Undescribed), Comparison::Unknown);
     assert_eq!(
-        media(per_medium(&["CD"]), StatedMedia::Undescribed),
-        Comparison::Unknown
-    );
-    assert_eq!(
-        media(
-            StatedMedia::Undescribed,
-            formats(&[("Hybrid", &["Album", "Reissue"])])
-        ),
+        media(StatedMedia::Undescribed, formats(&[("Hybrid", &["Album", "Reissue"])])),
         Comparison::Unknown,
         "a hybrid disc whose kind is not stated names no carrier"
     );
@@ -297,9 +235,7 @@ fn support_needs_identity_evidence_and_no_contradiction() {
     b.year = Some(1993);
 
     a.links = vec![MetadataRef::new(Catalog::Discogs, "dg-1")];
-    let linked = evidence(&a, &b)
-        .support()
-        .expect("a link stands despite the year");
+    let linked = evidence(&a, &b).support().expect("a link stands despite the year");
     a.links.clear();
     a.barcodes = vec!["012345678905".to_string()];
     b.barcodes = vec!["012345678905".to_string()];
@@ -339,16 +275,11 @@ fn barcode_label_and_year_outweigh_a_different_country() {
     b.year = Some(1992);
     a.area = Some(area("IT"));
     b.area = ReleaseArea::discogs("Germany");
-    let across = evidence(&a, &b)
-        .support()
-        .expect("barcode, label and year agree");
+    let across = evidence(&a, &b).support().expect("barcode, label and year agree");
 
     b.area = ReleaseArea::discogs("Italy");
     let within = evidence(&a, &b).support().expect("everything agrees");
-    assert!(
-        within > across,
-        "an agreeing country still ranks a pair above one that differs"
-    );
+    assert!(within > across, "an agreeing country still ranks a pair above one that differs");
     b.area = ReleaseArea::discogs("Germany");
 
     b.year = None;
@@ -369,18 +300,10 @@ fn barcode_label_and_year_outweigh_a_different_country() {
 
     b.media = StatedMedia::PerMedium(vec![Some(bae_types::pressing::Medium::Vinyl)]);
     a.media = StatedMedia::PerMedium(vec![Some(bae_types::pressing::Medium::Cd)]);
-    assert_eq!(
-        evidence(&a, &b).support(),
-        None,
-        "a different medium is still a contradiction"
-    );
+    assert_eq!(evidence(&a, &b).support(), None, "a different medium is still a contradiction");
     a.media = StatedMedia::Undescribed;
     b.media = StatedMedia::Undescribed;
 
     b.year = Some(1993);
-    assert_eq!(
-        evidence(&a, &b).support(),
-        None,
-        "a different year is still a contradiction"
-    );
+    assert_eq!(evidence(&a, &b).support(), None, "a different year is still a contradiction");
 }

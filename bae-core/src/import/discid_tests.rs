@@ -4,9 +4,7 @@ use std::path::PathBuf;
 /// Resolve a checked-in test fixture by path relative to the crate root, so
 /// tests don't depend on the process working directory.
 fn fixture(rel: &str) -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("tests/fixtures")
-        .join(rel)
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures").join(rel)
 }
 
 /// The disc ID one log file hashes to, decoded the way the extraction pass
@@ -37,22 +35,12 @@ fn write_log_with_toc(end_sector: i32) -> tempfile::NamedTempFile {
 
 #[test]
 fn discid_rejects_track_start_sector_that_overflows_pregap_offset() {
-    assert_invalid_data(discid_from_raw_offsets(
-        "LOG",
-        &[i32::MAX],
-        100,
-        "from test lead-out",
-    ));
+    assert_invalid_data(discid_from_raw_offsets("LOG", &[i32::MAX], 100, "from test lead-out"));
 }
 
 #[test]
 fn discid_rejects_leadout_sector_that_overflows_pregap_offset() {
-    assert_invalid_data(discid_from_raw_offsets(
-        "LOG",
-        &[0],
-        i32::MAX,
-        "from test lead-out",
-    ));
+    assert_invalid_data(discid_from_raw_offsets("LOG", &[0], i32::MAX, "from test lead-out"));
 }
 
 #[test]
@@ -68,20 +56,11 @@ fn test_extract_leadout_from_log() {
         .expect("LOG fixture should be readable")
         .text;
     let toc_sectors = extract_log_toc_sectors(&log_content).expect("LOG TOC should parse");
-    let last_end_sector = toc_sectors
-        .last()
-        .expect("LOG TOC should include at least one track")
-        .1;
+    let last_end_sector = toc_sectors.last().expect("LOG TOC should include at least one track").1;
     let raw_sector = last_end_sector + 1;
     let final_offset = raw_sector + 150;
-    assert_eq!(
-        final_offset, 188965,
-        "Expected lead-out to be 188965 (188814 + 1 + 150)",
-    );
-    assert_eq!(
-        raw_sector, 188815,
-        "Expected raw lead-out sector to be 188815 (188814 + 1)",
-    );
+    assert_eq!(final_offset, 188965, "Expected lead-out to be 188965 (188814 + 1 + 150)",);
+    assert_eq!(raw_sector, 188815, "Expected raw lead-out sector to be 188815 (188814 + 1)",);
 }
 
 #[test]
@@ -90,9 +69,7 @@ fn test_discid_from_log_text() {
         .expect("disc ID should compute from the LOG fixture");
     assert_eq!(discid.len(), 28, "DiscID should be 28 characters");
     assert!(
-        discid
-            .chars()
-            .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_'),
+        discid.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_'),
         "DiscID should contain only alphanumeric characters, dashes, and underscores",
     );
 }
@@ -160,10 +137,7 @@ fn test_cue_duration_discid_matches_across_codecs() {
         ],
     };
 
-    let audio = [SheetAudioDuration {
-        file_reference: "Album.flac",
-        duration_ms: 9 * 60 * 1000,
-    }];
+    let audio = [SheetAudioDuration { file_reference: "Album.flac", duration_ms: 9 * 60 * 1000 }];
     let id_a = calculate_mb_discid_from_cue(&sheet, &audio, "CUE/FLAC")
         .expect("disc ID from FLAC path should compute");
     let id_b = calculate_mb_discid_from_cue(&sheet, &audio, "CUE/probe")
@@ -199,10 +173,8 @@ fn cue_duration_discid_ignores_non_audio_tracks() {
         }
     }
 
-    let audio_tracks = vec![
-        track(1, CueTrackMode::Audio, 0),
-        track(2, CueTrackMode::Audio, 3 * 60 * 75),
-    ];
+    let audio_tracks =
+        vec![track(1, CueTrackMode::Audio, 0), track(2, CueTrackMode::Audio, 3 * 60 * 75)];
     let audio_only = CueSheet {
         title: Some("Album Title".to_string()),
         performer: Some("Artist Name".to_string()),
@@ -227,10 +199,8 @@ fn cue_duration_discid_ignores_non_audio_tracks() {
             .collect(),
     };
 
-    let audio = [SheetAudioDuration {
-        file_reference: "disc-image.bin",
-        duration_ms: 6 * 60 * 1000,
-    }];
+    let audio =
+        [SheetAudioDuration { file_reference: "disc-image.bin", duration_ms: 6 * 60 * 1000 }];
     let audio_only_id = calculate_mb_discid_from_cue(&audio_only, &audio, "CUE/probe")
         .expect("audio-only CUE should compute a disc ID");
     let with_data_track_id = calculate_mb_discid_from_cue(&with_data_track, &audio, "CUE/probe")
@@ -251,10 +221,7 @@ fn multi_file_cue_lays_its_files_end_to_end() {
     ]);
     let image_id = calculate_mb_discid_from_cue(
         &image,
-        &[SheetAudioDuration {
-            file_reference: "Album.flac",
-            duration_ms: 9 * 60 * 1000,
-        }],
+        &[SheetAudioDuration { file_reference: "Album.flac", duration_ms: 9 * 60 * 1000 }],
         "image",
     )
     .expect("the image computes");
@@ -287,10 +254,7 @@ fn generated_pregap_shifts_every_later_offset() {
     ]);
     let expected = calculate_mb_discid_from_cue(
         &with_gap_on_disc,
-        &[SheetAudioDuration {
-            file_reference: "Album.flac",
-            duration_ms: 6 * 60 * 1000 + 2_000,
-        }],
+        &[SheetAudioDuration { file_reference: "Album.flac", duration_ms: 6 * 60 * 1000 + 2_000 }],
         "image with gap",
     )
     .expect("the image computes");
@@ -326,17 +290,12 @@ fn audio_pregap_in_the_previous_file_is_already_laid() {
         },
     );
     let gaps_appended = cue_sheet_with(vec![audio_cue_track(1, "01.flac"), second]);
-    let durations = ["01.flac", "02.flac"].map(|file_reference| SheetAudioDuration {
-        file_reference,
-        duration_ms: 3 * 60 * 1000,
-    });
+    let durations = ["01.flac", "02.flac"]
+        .map(|file_reference| SheetAudioDuration { file_reference, duration_ms: 3 * 60 * 1000 });
     let computed = calculate_mb_discid_from_cue(&gaps_appended, &durations, "gaps appended")
         .expect("the gaps-appended rip computes");
 
-    let plain = cue_sheet_with(vec![
-        audio_cue_track(1, "01.flac"),
-        audio_cue_track(2, "02.flac"),
-    ]);
+    let plain = cue_sheet_with(vec![audio_cue_track(1, "01.flac"), audio_cue_track(2, "02.flac")]);
     let expected =
         calculate_mb_discid_from_cue(&plain, &durations, "plain").expect("the plain rip computes");
     assert_eq!(computed, expected);
@@ -345,16 +304,10 @@ fn audio_pregap_in_the_previous_file_is_already_laid() {
 /// A sheet naming a file whose length nobody measured cannot be laid out.
 #[test]
 fn a_file_without_a_measured_length_is_an_error() {
-    let sheet = cue_sheet_with(vec![
-        audio_cue_track(1, "01.flac"),
-        audio_cue_track(2, "02.flac"),
-    ]);
+    let sheet = cue_sheet_with(vec![audio_cue_track(1, "01.flac"), audio_cue_track(2, "02.flac")]);
     assert_invalid_data(calculate_mb_discid_from_cue(
         &sheet,
-        &[SheetAudioDuration {
-            file_reference: "01.flac",
-            duration_ms: 3 * 60 * 1000,
-        }],
+        &[SheetAudioDuration { file_reference: "01.flac", duration_ms: 3 * 60 * 1000 }],
         "half measured",
     ));
 }
@@ -413,16 +366,8 @@ fn test_compute_discid_routes_cue_ape() {
     let fixture_dir = fixture("cue_ape");
     let tmp = TempDir::new().unwrap();
     let folder = tmp.path();
-    std::fs::copy(
-        fixture_dir.join("Test Album.ape"),
-        folder.join("Test Album.ape"),
-    )
-    .unwrap();
-    std::fs::copy(
-        fixture_dir.join("Test Album.cue"),
-        folder.join("Test Album.cue"),
-    )
-    .unwrap();
+    std::fs::copy(fixture_dir.join("Test Album.ape"), folder.join("Test Album.ape")).unwrap();
+    std::fs::copy(fixture_dir.join("Test Album.cue"), folder.join("Test Album.cue")).unwrap();
 
     let categorized = crate::import::folder_scanner::collect_release_candidate_files_with_scope(
         folder,
@@ -443,16 +388,9 @@ fn test_compute_discid_routes_cue_ape() {
         opens_before,
         "DiscID must reuse the duration retained by the folder scan"
     );
-    assert_eq!(
-        computed.disc_id.len(),
-        28,
-        "MusicBrainz disc IDs are 28 chars"
-    );
+    assert_eq!(computed.disc_id.len(), 28, "MusicBrainz disc IDs are 28 chars");
     assert!(
-        computed
-            .source_file
-            .as_deref()
-            .is_some_and(|file| file.ends_with(".cue")),
+        computed.source_file.as_deref().is_some_and(|file| file.ends_with(".cue")),
         "the sheet it was carved from rides with it, got {:?}",
         computed.source_file
     );
@@ -510,20 +448,13 @@ fn test_compute_discid_routes_cue_mp3() {
         .try_into()
         .map(|[disc]: [crate::signals::ComputedDiscId; 1]| disc)
         .expect("CUE+MP3 pair must compute one disc ID");
-    assert_eq!(
-        disc_id.disc_id.len(),
-        28,
-        "MusicBrainz disc IDs are 28 chars"
-    );
+    assert_eq!(disc_id.disc_id.len(), 28, "MusicBrainz disc IDs are 28 chars");
 }
 
 #[test]
 fn parse_log_toc_row_accepts_valid_and_rejects_malformed() {
     // A well-formed EAC/XLD TOC row: track | start | length | start | end.
-    assert_eq!(
-        parse_log_toc_row("   1 | 0:00.00 | 1:00.00 |      0 |  188814"),
-        Some((0, 188814))
-    );
+    assert_eq!(parse_log_toc_row("   1 | 0:00.00 | 1:00.00 |      0 |  188814"), Some((0, 188814)));
     // Fewer than five pipe-separated columns.
     assert_eq!(parse_log_toc_row("1 | 0:00.00 | 1:00.00 | 0"), None);
     // Track number outside 1..=99.
@@ -613,10 +544,8 @@ fn resolve_cue_audio_paths_matches_by_stem() {
         audio_cue_track(1, "Album Image.flac"),
         audio_cue_track(2, "Album Image.flac"),
     ]);
-    let audio_files = vec![
-        PathBuf::from("/rip/Some Other.mp3"),
-        PathBuf::from("/rip/Album Image.flac"),
-    ];
+    let audio_files =
+        vec![PathBuf::from("/rip/Some Other.mp3"), PathBuf::from("/rip/Album Image.flac")];
 
     let matched = resolve_cue_audio_paths(Path::new("/rip/Album.cue"), &sheet, &audio_files)
         .expect("the unique same-stem audio should resolve");
@@ -635,10 +564,8 @@ fn resolve_cue_audio_paths_no_stem_match_is_none() {
 #[test]
 fn resolve_cue_audio_paths_ambiguous_same_stem_is_none() {
     let sheet = cue_sheet_with(vec![audio_cue_track(1, "Album Image.wav")]);
-    let audio_files = vec![
-        PathBuf::from("/rip/Album Image.flac"),
-        PathBuf::from("/rip/Album Image.ape"),
-    ];
+    let audio_files =
+        vec![PathBuf::from("/rip/Album Image.flac"), PathBuf::from("/rip/Album Image.ape")];
 
     assert!(resolve_cue_audio_paths(Path::new("/rip/Album.cue"), &sheet, &audio_files).is_none());
 }
@@ -646,10 +573,8 @@ fn resolve_cue_audio_paths_ambiguous_same_stem_is_none() {
 #[test]
 fn resolve_cue_audio_paths_exact_path_wins_over_same_stem_audio() {
     let sheet = cue_sheet_with(vec![audio_cue_track(1, "Album Image.flac")]);
-    let audio_files = vec![
-        PathBuf::from("/rip/Album Image.ape"),
-        PathBuf::from("/rip/Album Image.flac"),
-    ];
+    let audio_files =
+        vec![PathBuf::from("/rip/Album Image.ape"), PathBuf::from("/rip/Album Image.flac")];
 
     assert_eq!(
         resolve_cue_audio_paths(Path::new("/rip/Album.cue"), &sheet, &audio_files)
@@ -686,21 +611,13 @@ fn resolve_cue_audio_paths_resolves_multiple_files() {
         audio_cue_track(1, "Track 01.flac"),
         audio_cue_track(2, "Track 02.flac"),
     ]);
-    let audio_files = vec![
-        PathBuf::from("/rip/Track 01.flac"),
-        PathBuf::from("/rip/Track 02.flac"),
-    ];
+    let audio_files =
+        vec![PathBuf::from("/rip/Track 01.flac"), PathBuf::from("/rip/Track 02.flac")];
 
     let matched = resolve_cue_audio_paths(Path::new("/rip/Album.cue"), &sheet, &audio_files)
         .expect("both referenced audio files should resolve");
     assert_eq!(
-        matched
-            .into_iter()
-            .map(|(_, path)| path.as_path())
-            .collect::<Vec<_>>(),
-        vec![
-            Path::new("/rip/Track 01.flac"),
-            Path::new("/rip/Track 02.flac"),
-        ]
+        matched.into_iter().map(|(_, path)| path.as_path()).collect::<Vec<_>>(),
+        vec![Path::new("/rip/Track 01.flac"), Path::new("/rip/Track 02.flac"),]
     );
 }

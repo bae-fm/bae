@@ -97,10 +97,8 @@ fn file_tag_facts_values(
             detail: "file-tag seeding requires at least one audio file".to_string(),
         });
     }
-    let album = TaggedAlbum::of(
-        extracted.iter().map(|fact| UnitAlbum::of_file(&fact.tags)),
-        folder_name,
-    );
+    let album =
+        TaggedAlbum::of(extracted.iter().map(|fact| UnitAlbum::of_file(&fact.tags)), folder_name);
     Ok(file_tag_release_values(album, tag_tracks(extracted)))
 }
 
@@ -177,27 +175,22 @@ impl TaggedAlbum {
     /// artists where any unit names one, else the track artists.
     fn of(units: impl Iterator<Item = UnitAlbum>, folder_name: Option<&str>) -> Self {
         let units: Vec<UnitAlbum> = units.collect();
-        let title = match given(units.iter().map(|unit| unit.title.as_deref()), |a, b| {
-            a == b
-        }) {
+        let title = match given(units.iter().map(|unit| unit.title.as_deref()), |a, b| a == b) {
             Given::Agreed(title) => title.to_string(),
             Given::Disagreed { first } => without_disc_marker(first).to_string(),
             Given::Unstated => folder_name.map(str::to_string).unwrap_or_default(),
         };
         let stated = |artists: &[String]| (!artists.is_empty()).then(|| artists.to_vec());
-        let artists = given(
-            units.iter().map(|unit| stated(&unit.album_artists)),
-            |a, b| same_names(a, b),
-        )
-        .value()
-        .or_else(|| {
-            given(
-                units.iter().map(|unit| stated(&unit.track_artists)),
-                |a, b| same_names(a, b),
-            )
-            .value()
-        })
-        .unwrap_or_default();
+        let artists =
+            given(units.iter().map(|unit| stated(&unit.album_artists)), |a, b| same_names(a, b))
+                .value()
+                .or_else(|| {
+                    given(units.iter().map(|unit| stated(&unit.track_artists)), |a, b| {
+                        same_names(a, b)
+                    })
+                    .value()
+                })
+                .unwrap_or_default();
         let year = |year: fn(&StatedYears) -> Option<i32>| {
             given(units.iter().map(|unit| year(&unit.years)), |a, b| a == b).value()
         };
@@ -279,11 +272,7 @@ fn without_disc_marker(title: &str) -> &str {
         return title;
     };
     let before_marker = &before_number[..before_number.len() - marker.len()];
-    if before_marker
-        .chars()
-        .next_back()
-        .is_some_and(char::is_alphanumeric)
-    {
+    if before_marker.chars().next_back().is_some_and(char::is_alphanumeric) {
         return title;
     }
     let before_marker = match open {
@@ -307,9 +296,7 @@ fn without_disc_marker(title: &str) -> &str {
 /// order.
 fn same_names(a: &[String], b: &[String]) -> bool {
     a.len() == b.len()
-        && a.iter()
-            .zip(b)
-            .all(|(a, b)| bae_types::text_match::same_artist_name(a, b))
+        && a.iter().zip(b).all(|(a, b)| bae_types::text_match::same_artist_name(a, b))
 }
 
 /// One track as files or a CUE sheet state it, before the folder's discs are
@@ -357,10 +344,7 @@ fn tag_tracks(extracted: &[FileTagFact]) -> Vec<TagTrack> {
 /// display names here, so the sort names and source artist ids stay absent,
 /// and no joining words: the line prints the default separator.
 fn named_credits(names: &[String]) -> Vec<crate::import::SourceCredit> {
-    names
-        .iter()
-        .map(|name| crate::import::SourceCredit::plain(ArtistCredit::named(name)))
-        .collect()
+    names.iter().map(|name| crate::import::SourceCredit::plain(ArtistCredit::named(name))).collect()
 }
 
 /// The values the file-tag and CUE-sheet readers share: one medium per disc
@@ -369,16 +353,10 @@ fn named_credits(names: &[String]) -> Vec<crate::import::SourceCredit> {
 /// A compilation is credited to the various-artists artist, and each of its
 /// tracks keeps the artists it names.
 fn file_tag_release_values(album: TaggedAlbum, tags: Vec<TagTrack>) -> ReleaseValues {
-    let numbering: Vec<_> = tags
-        .iter()
-        .map(|track| (track.disc, track.number))
-        .collect();
+    let numbering: Vec<_> = tags.iter().map(|track| (track.disc, track.number)).collect();
     let (mediums, places) = crate::mediums::by_disc(&numbering);
-    let album_artists = if album.compilation {
-        vec![VARIOUS_ARTISTS_NAME.to_string()]
-    } else {
-        album.artists
-    };
+    let album_artists =
+        if album.compilation { vec![VARIOUS_ARTISTS_NAME.to_string()] } else { album.artists };
     let tracks: Vec<TrackValues> = tags
         .into_iter()
         .zip(places)
@@ -401,10 +379,7 @@ fn file_tag_release_values(album: TaggedAlbum, tags: Vec<TagTrack>) -> ReleaseVa
         album_title: album.title,
         album_credits: named_credits(&album_artists),
         album_year: album.years.album,
-        pressing: Pressing {
-            year: album.years.pressing,
-            ..Pressing::blank()
-        },
+        pressing: Pressing { year: album.years.pressing, ..Pressing::blank() },
         mediums,
         release_roles: Vec::new(),
         works: Default::default(),
@@ -424,10 +399,8 @@ pub(crate) fn file_metadata_values(
     snapshot: &FileTagSnapshot,
     folder_name: Option<&str>,
 ) -> Result<ReleaseValues, ImportError> {
-    let audio_file_ids = categorized
-        .audio()
-        .map(|file| file.relative_path.as_str())
-        .collect::<Vec<_>>();
+    let audio_file_ids =
+        categorized.audio().map(|file| file.relative_path.as_str()).collect::<Vec<_>>();
     let snapshot_file_ids = snapshot
         .files
         .iter()
@@ -466,10 +439,7 @@ pub(crate) fn file_metadata_values(
     if sheets.is_empty() {
         return file_tag_facts_values(&loose_facts, folder_name);
     }
-    let album = TaggedAlbum::of(
-        sheets.iter().map(|sheet| UnitAlbum::of_sheet(sheet)),
-        folder_name,
-    );
+    let album = TaggedAlbum::of(sheets.iter().map(|sheet| UnitAlbum::of_sheet(sheet)), folder_name);
     let mut loose_tracks = tag_tracks(&loose_facts).into_iter();
     let mut tracks = Vec::new();
     for (_, contribution) in layout {
@@ -479,15 +449,9 @@ pub(crate) fn file_metadata_values(
             }
             UnitContribution::Runs(sheets) => {
                 for bound in sheets {
-                    let disc = bound
-                        .disc_number()
-                        .expect("carving sheet has a disc number");
-                    tracks.extend(
-                        bound
-                            .sheet
-                            .playable_tracks()
-                            .map(|track| cue_track(track, disc)),
-                    );
+                    let disc = bound.disc_number().expect("carving sheet has a disc number");
+                    tracks
+                        .extend(bound.sheet.playable_tracks().map(|track| cue_track(track, disc)));
                 }
             }
             UnitContribution::SpokenFor => {}

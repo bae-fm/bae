@@ -116,14 +116,8 @@ mod tests {
             callback: Box::new(Cancelled),
             diagnostics: crate::BridgeDiagnostics::noop(),
         };
-        assert_eq!(
-            presenter.redirect_uri(coven::CloudProvider::Dropbox),
-            "bae://dropbox"
-        );
-        assert_eq!(
-            presenter.redirect_uri(coven::CloudProvider::OneDrive),
-            "bae://onedrive"
-        );
+        assert_eq!(presenter.redirect_uri(coven::CloudProvider::Dropbox), "bae://dropbox");
+        assert_eq!(presenter.redirect_uri(coven::CloudProvider::OneDrive), "bae://onedrive");
         assert!(matches!(
             presenter.present("https://example.test/authorize").await,
             Err(coven::OAuthError::Cancelled)
@@ -146,14 +140,8 @@ mod tests {
             callback: Box::new(Redirect),
             diagnostics: crate::BridgeDiagnostics::noop(),
         };
-        let redirect = presenter
-            .present("https://example.test/authorize")
-            .await
-            .unwrap();
-        assert_eq!(
-            redirect.as_str(),
-            "bae://dropbox?code=authorization-code&state=request-state"
-        );
+        let redirect = presenter.present("https://example.test/authorize").await.unwrap();
+        assert_eq!(redirect.as_str(), "bae://dropbox?code=authorization-code&state=request-state");
     }
 
     /// A sign-in sheet whose host throws something its callback doesn't

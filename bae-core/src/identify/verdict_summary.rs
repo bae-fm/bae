@@ -81,10 +81,7 @@ impl LeadMatch {
             artist: result.artist.clone(),
             year: result.year,
             media: result.media.counts(),
-            cover: result
-                .cover_art
-                .as_ref()
-                .map(|cover: &RemoteCover| cover.image.clone()),
+            cover: result.cover_art.as_ref().map(|cover: &RemoteCover| cover.image.clone()),
             source_tracks: result.source_tracks.clone(),
         }
     }
@@ -125,9 +122,7 @@ impl VerdictSummary {
             TerminalVerdict::NotFoundAnywhere { .. } => VerdictKind::NotFound,
             TerminalVerdict::ManualOnly { .. } => VerdictKind::ManualOnly,
             TerminalVerdict::Failed { .. } => VerdictKind::Failed,
-            TerminalVerdict::Error { failure } => VerdictKind::Error {
-                failure: failure.clone(),
-            },
+            TerminalVerdict::Error { failure } => VerdictKind::Error { failure: failure.clone() },
         };
         let track_count = match verdict {
             TerminalVerdict::Found { track_count, .. }
@@ -163,10 +158,7 @@ impl VerdictSummary {
             lead: findings.and_then(|findings| findings.matches.first().map(LeadMatch::of)),
             medium_conflict: findings.and_then(|findings| findings.medium_conflict),
             unread_document: findings.is_some_and(|findings| {
-                findings
-                    .matches
-                    .iter()
-                    .any(|result| result.document_failure.is_some())
+                findings.matches.iter().any(|result| result.document_failure.is_some())
             }),
         }
     }

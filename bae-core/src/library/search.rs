@@ -80,34 +80,21 @@ impl LibrarySearchSubscription {
             + Sync
             + 'static,
     ) -> Self {
-        Self {
-            query,
-            resolve: std::sync::Arc::new(resolve),
-        }
+        Self { query, resolve: std::sync::Arc::new(resolve) }
     }
 
     /// Search for `raw`, parsed as every surface parses a query: a blank one is
     /// no search. Returns the revision the answer will carry.
     pub fn set_query(&self, raw: &str) -> Result<u64, LibrarySearchSubscriptionError> {
-        self.query
-            .set(LibrarySearchQuery::parse(raw))
-            .map_err(LibrarySearchSubscriptionError::from)
+        self.query.set(LibrarySearchQuery::parse(raw)).map_err(LibrarySearchSubscriptionError::from)
     }
 
     pub async fn next(&self) -> Result<LibrarySearchSnapshot, LibrarySearchSubscriptionError> {
-        let event = self
-            .query
-            .next()
-            .await
-            .map_err(LibrarySearchSubscriptionError::from)?;
+        let event = self.query.next().await.map_err(LibrarySearchSubscriptionError::from)?;
         let request_revision = event.revision.0;
         let query = event.request.clone();
         let projection = event.result?;
-        Ok(LibrarySearchSnapshot {
-            query,
-            results: (self.resolve)(projection),
-            request_revision,
-        })
+        Ok(LibrarySearchSnapshot { query, results: (self.resolve)(projection), request_revision })
     }
 
     pub async fn cancel(&self) {

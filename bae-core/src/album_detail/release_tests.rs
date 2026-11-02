@@ -6,10 +6,7 @@ fn track(id: &str, side: u8, number: u32, duration_ms: u64) -> crate::db::DbTrac
     let mut track = crate::db::DbTrack::new_test("release-id", id, "Track Title", number);
     track.side = std::num::NonZeroU8::new(side).expect("sides count from one");
     track.duration_ms = duration_ms;
-    crate::db::DbTrackWithArtists {
-        track,
-        artists: Vec::new(),
-    }
+    crate::db::DbTrackWithArtists { track, artists: Vec::new() }
 }
 
 /// The detail of a release holding `tracks`.
@@ -36,11 +33,7 @@ fn detail(tracks: Vec<crate::db::DbTrackWithArtists>) -> ReleaseDetail {
         transfer_action: None,
         cover_version: None,
     };
-    let ctx = ReleaseResolveCtx {
-        has_cloud_home: false,
-        cover: None,
-        is_compilation: false,
-    };
+    let ctx = ReleaseResolveCtx { has_cloud_home: false, cover: None, is_compilation: false };
     ReleaseDetail::from_raw(raw, &[], 0, &ctx).0
 }
 
@@ -54,10 +47,7 @@ fn a_release_totals_its_tracks() {
     ]);
 
     assert_eq!(detail.total_duration_ms, 600_000);
-    let group_totals: Vec<_> = detail
-        .track_groups
-        .iter()
-        .map(|group| group.total_duration_ms)
-        .collect();
+    let group_totals: Vec<_> =
+        detail.track_groups.iter().map(|group| group.total_duration_ms).collect();
     assert_eq!(group_totals, [300_000, 300_000]);
 }

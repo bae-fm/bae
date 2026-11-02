@@ -38,9 +38,7 @@ impl InvalidReason {
     /// all.
     pub fn of(files: &[SkippedFile]) -> Self {
         if let Some(name) = shared_name(files.iter().map(|file| file.relative_path.as_str())) {
-            return Self::SameName {
-                name: name.to_string(),
-            };
+            return Self::SameName { name: name.to_string() };
         }
         let damaged = files
             .iter()
@@ -137,14 +135,8 @@ impl SkippedFile {
     pub(crate) fn empty_track(folder: &Path, relative_path: &str) -> Self {
         Self {
             relative_path: relative_path.to_string(),
-            file: FileVersion {
-                path: folder.join(relative_path),
-                size: 0,
-                modified_at_ns: 1,
-            },
-            role: ProposedRole::DamagedAudio {
-                damage: AudioDamage::Empty,
-            },
+            file: FileVersion { path: folder.join(relative_path), size: 0, modified_at_ns: 1 },
+            role: ProposedRole::DamagedAudio { damage: AudioDamage::Empty },
         }
     }
 }
@@ -202,17 +194,12 @@ impl InvalidCandidate {
             .map(SkippedFile::scanned)
             .collect();
         let cover = crate::import::local_artwork::default_local_cover_file(&images)?;
-        self.files
-            .iter()
-            .find(|file| file.relative_path == cover.relative_path)
+        self.files.iter().find(|file| file.relative_path == cover.relative_path)
     }
 
     /// Where its row draws [`Self::cover`] from.
     pub fn cover_image(&self) -> Option<crate::import::CoverImageSource> {
-        self.cover()
-            .map(|file| crate::import::CoverImageSource::Local {
-                file: file.file.clone(),
-            })
+        self.cover().map(|file| crate::import::CoverImageSource::Local { file: file.file.clone() })
     }
 }
 
@@ -220,9 +207,7 @@ impl InvalidCandidate {
 impl InvalidCandidate {
     /// The key this row is stored and addressed under.
     pub fn key(&self) -> CandidateKey {
-        self.grouping
-            .clone()
-            .unwrap_or_else(|| CandidateKey::folder(&self.path))
+        self.grouping.clone().unwrap_or_else(|| CandidateKey::folder(&self.path))
     }
 }
 
@@ -322,10 +307,9 @@ impl ScanItem {
             // The folder whose files it holds: what a reading of one folder
             // checks it stays inside. Which release holds a file is settled
             // file by file, not by coverage (see the store's sidecar writes).
-            Self::Sidecar(sidecar) => Some(Coverage {
-                folder: sidecar.folder.clone(),
-                whole_subtree: false,
-            }),
+            Self::Sidecar(sidecar) => {
+                Some(Coverage { folder: sidecar.folder.clone(), whole_subtree: false })
+            }
             Self::Decided { .. } => None,
         }
     }
@@ -451,10 +435,8 @@ pub fn names_could_number_one_release(holds_audio_directly: bool, names: &[Strin
     if holds_audio_directly {
         return false;
     }
-    let numbers: std::collections::HashSet<u32> = names
-        .iter()
-        .filter_map(|name| folder_part_number(name))
-        .collect();
+    let numbers: std::collections::HashSet<u32> =
+        names.iter().filter_map(|name| folder_part_number(name)).collect();
     numbers.contains(&1) && numbers.contains(&2)
 }
 
@@ -465,10 +447,7 @@ pub fn names_could_number_one_release(holds_audio_directly: bool, names: &[Strin
 pub(super) fn folder_part_number(name: &str) -> Option<u32> {
     let labeled_numbers = labeled_part_numbers(name)?;
     if let Some((&number, remaining)) = labeled_numbers.split_first() {
-        return remaining
-            .iter()
-            .all(|candidate| *candidate == number)
-            .then_some(number);
+        return remaining.iter().all(|candidate| *candidate == number).then_some(number);
     }
 
     let mut found: Option<u32> = None;
@@ -617,9 +596,7 @@ impl FolderCandidate {
     /// The key this release is stored and addressed under: its grouping's, or
     /// its folder's.
     pub fn key(&self) -> CandidateKey {
-        self.grouping
-            .clone()
-            .unwrap_or_else(|| CandidateKey::folder(&self.path))
+        self.grouping.clone().unwrap_or_else(|| CandidateKey::folder(&self.path))
     }
 
     /// The folders on disk this release is read from.
@@ -627,11 +604,7 @@ impl FolderCandidate {
         if self.files.parts.is_empty() {
             vec![self.path.clone()]
         } else {
-            self.files
-                .parts
-                .iter()
-                .map(|part| part.folder.clone())
-                .collect()
+            self.files.parts.iter().map(|part| part.folder.clone()).collect()
         }
     }
 }
@@ -644,10 +617,7 @@ mod heuristic_tests {
     fn discs(names: &[&str]) -> Vec<FolderPart> {
         names
             .iter()
-            .map(|name| FolderPart {
-                name: name.to_string(),
-                audio: PartAudio::OneFolder,
-            })
+            .map(|name| FolderPart { name: name.to_string(), audio: PartAudio::OneFolder })
             .collect()
     }
 
@@ -674,10 +644,7 @@ mod heuristic_tests {
                 name: "01_Artist_Originals".to_string(),
                 audio: PartAudio::SeveralFolders,
             },
-            FolderPart {
-                name: "02_Artist_Remasters".to_string(),
-                audio: PartAudio::OneFolder,
-            },
+            FolderPart { name: "02_Artist_Remasters".to_string(), audio: PartAudio::OneFolder },
         ];
         assert_eq!(
             decide(&["01_Artist_Originals", "02_Artist_Remasters"]),
@@ -700,11 +667,7 @@ mod heuristic_tests {
             &["CD2", "CD1"][..],
             &["Vol. 3", "Vol. 1", "Vol. 2"][..],
         ] {
-            assert_eq!(
-                decide(names),
-                FolderReleaseDecision::CombineAsOneRelease,
-                "{names:?}"
-            );
+            assert_eq!(decide(names), FolderReleaseDecision::CombineAsOneRelease, "{names:?}");
         }
     }
 
@@ -720,11 +683,7 @@ mod heuristic_tests {
             &["Live in Tokyo", "Live in Osaka"][..],
             &["1", "1"][..],
         ] {
-            assert_eq!(
-                decide(names),
-                FolderReleaseDecision::KeepAsSeparateReleases,
-                "{names:?}"
-            );
+            assert_eq!(decide(names), FolderReleaseDecision::KeepAsSeparateReleases, "{names:?}");
         }
     }
 
@@ -739,16 +698,9 @@ mod heuristic_tests {
             &["1994 Disk 1 archive 2001", "1995 Disk 2 archive 2002"][..],
             &["1994 Vol. 1 archive 2001", "1995 Vol. 2 archive 2002"][..],
             &["1994 Volume 1 archive 2001", "1995 Volume 2 archive 2002"][..],
-            &[
-                "1994 Volume 1 (CD 1) archive 2001",
-                "1995 Volume 2 (CD 2) archive 2002",
-            ][..],
+            &["1994 Volume 1 (CD 1) archive 2001", "1995 Volume 2 (CD 2) archive 2002"][..],
         ] {
-            assert_eq!(
-                decide(names),
-                FolderReleaseDecision::CombineAsOneRelease,
-                "{names:?}"
-            );
+            assert_eq!(decide(names), FolderReleaseDecision::CombineAsOneRelease, "{names:?}");
         }
     }
 
@@ -760,11 +712,7 @@ mod heuristic_tests {
             &["SACD 1994 layer 1", "SACD 1995 layer 2"][..],
             &["éCD1 archive 1994", "éCD2 archive 1995"][..],
         ] {
-            assert_eq!(
-                decide(names),
-                FolderReleaseDecision::KeepAsSeparateReleases,
-                "{names:?}"
-            );
+            assert_eq!(decide(names), FolderReleaseDecision::KeepAsSeparateReleases, "{names:?}");
         }
     }
 
@@ -782,44 +730,21 @@ mod heuristic_tests {
     /// can't be one release's discs whatever the folders hold.
     #[test]
     fn names_without_parts_one_and_two_cannot_number_a_set() {
-        let names = |names: &[&str]| {
-            names
-                .iter()
-                .map(|name| name.to_string())
-                .collect::<Vec<_>>()
-        };
-        assert!(names_could_number_one_release(
-            false,
-            &names(&["CD1", "CD2", "Bonus"])
-        ));
-        assert!(names_could_number_one_release(
-            false,
-            &names(&["Part 01", "Part 02", "Part 99"])
-        ));
-        assert!(!names_could_number_one_release(
-            false,
-            &names(&["1990 - First", "1992 - Second"])
-        ));
-        assert!(!names_could_number_one_release(
-            false,
-            &names(&["Release 01", "Release 99"])
-        ));
+        let names = |names: &[&str]| names.iter().map(|name| name.to_string()).collect::<Vec<_>>();
+        assert!(names_could_number_one_release(false, &names(&["CD1", "CD2", "Bonus"])));
+        assert!(names_could_number_one_release(false, &names(&["Part 01", "Part 02", "Part 99"])));
+        assert!(!names_could_number_one_release(false, &names(&["1990 - First", "1992 - Second"])));
+        assert!(!names_could_number_one_release(false, &names(&["Release 01", "Release 99"])));
         assert!(!names_could_number_one_release(
             false,
             &names(&["Live in Tokyo", "Live in Osaka"])
         ));
-        assert!(!names_could_number_one_release(
-            true,
-            &names(&["Disc 1", "Disc 2"])
-        ));
+        assert!(!names_could_number_one_release(true, &names(&["Disc 1", "Disc 2"])));
     }
 
     /// One child is not a set.
     #[test]
     fn a_single_child_is_not_a_set() {
-        assert_eq!(
-            decide(&["Disc 1"]),
-            FolderReleaseDecision::KeepAsSeparateReleases
-        );
+        assert_eq!(decide(&["Disc 1"]), FolderReleaseDecision::KeepAsSeparateReleases);
     }
 }

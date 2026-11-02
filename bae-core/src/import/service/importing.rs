@@ -35,28 +35,23 @@ impl ImportService {
             ImportRunEnd::CancelledRunning => {
                 info!("Import of {candidate_key} was cancelled");
                 // No caller waits on the worker to hear it: a bug.
-                if let Err(error) = self
-                    .runtime
-                    .move_import(&candidate_key, &import_id, None)
-                    .await
+                if let Err(error) = self.runtime.move_import(&candidate_key, &import_id, None).await
                 {
                     self.diagnostics.report_bug(
                         &format!("end the cancelled import of {candidate_key}"),
                         &error,
                     );
                 }
-                self.event_tx
-                    .send(crate::import::handle::ImportEvent::ImportProgress {
-                        candidate_key,
-                        progress: ImportProgress::Cancelled { import_id },
-                    });
+                self.event_tx.send(crate::import::handle::ImportEvent::ImportProgress {
+                    candidate_key,
+                    progress: ImportProgress::Cancelled { import_id },
+                });
                 return;
             }
         };
         if let Err(e) = result {
             error!("Import failed: {}", e);
-            self.library_manager
-                .record_telemetry(TelemetryEvent::ImportFailed {});
+            self.library_manager.record_telemetry(TelemetryEvent::ImportFailed {});
             // The failure is recorded as what it is; the progress event carries
             // the error's diagnostic text, which the variant Displays build
             // from their `#[from]` source messages.
@@ -88,11 +83,10 @@ impl ImportService {
                 );
             }
 
-            self.event_tx
-                .send(crate::import::handle::ImportEvent::ImportProgress {
-                    candidate_key,
-                    progress: ImportProgress::Failed { error, import_id },
-                });
+            self.event_tx.send(crate::import::handle::ImportEvent::ImportProgress {
+                candidate_key,
+                progress: ImportProgress::Failed { error, import_id },
+            });
         }
     }
 
@@ -103,20 +97,14 @@ impl ImportService {
         let identity_conflict = match error {
             crate::import::ImportError::Db(
                 crate::library::LibraryError::ArtistIdentityConflict(conflict),
-            ) => Some(crate::import::IdentityConflict::Artist(
-                conflict.as_ref().clone(),
-            )),
+            ) => Some(crate::import::IdentityConflict::Artist(conflict.as_ref().clone())),
             crate::import::ImportError::Db(
                 crate::library::LibraryError::LabelIdentityConflict(conflict),
-            ) => Some(crate::import::IdentityConflict::Label(
-                conflict.as_ref().clone(),
-            )),
+            ) => Some(crate::import::IdentityConflict::Label(conflict.as_ref().clone())),
             _ => None,
         };
         crate::import::ImportFailure {
-            reason: crate::import::ImportFailureReason {
-                detail: error.to_string(),
-            },
+            reason: crate::import::ImportFailureReason { detail: error.to_string() },
             failed_at,
             identity_conflict,
         }
@@ -160,8 +148,9 @@ impl ImportService {
         let stored_candidate = match library_manager
             .load_release_candidate(&candidate_key)
             .await?
-            .map_err(|reason| crate::import::ImportError::GroupingBlocked { reason })?
-        {
+            .map_err(|reason| {
+            crate::import::ImportError::GroupingBlocked { reason }
+        })? {
             Some(candidate) => candidate,
             _ => {
                 return Err(crate::import::ImportError::Internal {
@@ -181,11 +170,7 @@ impl ImportService {
             }
             .into());
         }
-        let identity_files = stored_candidate
-            .files
-            .release_files()
-            .cloned()
-            .collect::<Vec<_>>();
+        let identity_files = stored_candidate.files.release_files().cloned().collect::<Vec<_>>();
         let audio_observations = blocking("validate the import's file identities", move || {
             crate::import::file_identity::validate_scanned_file_identities(&identity_files)
         })
@@ -216,12 +201,7 @@ impl ImportService {
 
         let file_tag_snapshot = expectation.file_tag_snapshot.as_ref();
         if let Some(snapshot) = file_tag_snapshot {
-            if !snapshot
-                .files
-                .iter()
-                .map(|fact| &fact.observation)
-                .eq(audio_observations.iter())
-            {
+            if !snapshot.files.iter().map(|fact| &fact.observation).eq(audio_observations.iter()) {
                 return Err(crate::import::ImportError::FileTags {
                     detail: format!(
                         "{candidate_key}'s audio changed after its file tags were read"
@@ -252,9 +232,8 @@ impl ImportService {
         )?;
         let track_bindings = assembled.bindings;
 
-        let picked_album = library_manager
-            .candidate_album_pick(&categorized.content_hash())
-            .await?;
+        let picked_album =
+            library_manager.candidate_album_pick(&categorized.content_hash()).await?;
         let mut prepared = self
             .reconcile_prepared_release(assembled.parsed, records, picked_album, assembled.picked)
             .await?;
@@ -292,9 +271,7 @@ impl ImportService {
                 .map_err(crate::library::LibraryError::from)
                 .map_err(crate::import::ImportError::from)?;
         }
-        let artist_images = library_manager
-            .fetch_discogs_artist_images(new_artists)
-            .await?;
+        let artist_images = library_manager.fetch_discogs_artist_images(new_artists).await?;
 
         prepared.selected_cover = selected_cover.clone();
 
@@ -321,10 +298,7 @@ impl ImportService {
         // its slot named and measured by it. Past here the tracks live in
         // `tracks_to_files`.
         let tracks_to_files = resolve_track_files(
-            std::mem::take(&mut prepared.track_rows)
-                .into_iter()
-                .zip(track_bindings)
-                .collect(),
+            std::mem::take(&mut prepared.track_rows).into_iter().zip(track_bindings).collect(),
             &categorized,
         )?;
 
@@ -376,20 +350,11 @@ impl ImportService {
         );
 
         self.run_import(
-            CommittedCandidate {
-                source,
-                expectation: expectation.clone(),
-            },
-            ImportRun {
-                import_id: &import_id,
-                candidate_key: &candidate_key,
-            },
+            CommittedCandidate { source, expectation: expectation.clone() },
+            ImportRun { import_id: &import_id, candidate_key: &candidate_key },
             destination,
             &mut prepared,
-            ImportFiles {
-                discovered: &categorized.files,
-                tracks: &tracks_to_files,
-            },
+            ImportFiles { discovered: &categorized.files, tracks: &tracks_to_files },
             &artist_images,
         )
         .await?;
@@ -397,15 +362,11 @@ impl ImportService {
         let total_duration = import_start.elapsed();
         // The release is written (`run_import` succeeded via `?` above). Report
         // the real track count and the monotonic elapsed — never a zero default.
-        self.library_manager
-            .record_telemetry(TelemetryEvent::ImportCompleted {
-                track_count: tracks_to_files.len() as u32,
-                duration_ms: total_duration,
-            });
-        info!(
-            "Imported '{}' in {:.0?}",
-            prepared.album_title, total_duration,
-        );
+        self.library_manager.record_telemetry(TelemetryEvent::ImportCompleted {
+            track_count: tracks_to_files.len() as u32,
+            duration_ms: total_duration,
+        });
+        info!("Imported '{}' in {:.0?}", prepared.album_title, total_duration,);
 
         Ok(())
     }
@@ -430,14 +391,8 @@ impl ImportService {
         artist_images: &[crate::import::DiscogsArtistImage],
     ) -> Result<(), ImportStop> {
         let library_manager = &self.library_manager;
-        let ImportFiles {
-            discovered: discovered_files,
-            tracks: tracks_to_files,
-        } = files;
-        let ImportRun {
-            import_id,
-            candidate_key,
-        } = run;
+        let ImportFiles { discovered: discovered_files, tracks: tracks_to_files } = files;
+        let ImportRun { import_id, candidate_key } = run;
         let total_files = discovered_files.len();
         let PreparedMetadata {
             db_album,
@@ -475,16 +430,11 @@ impl ImportService {
         let mut source_audio_layouts = HashMap::new();
         for track_file in tracks_to_files {
             let (file_paths, layout): (Vec<&Path>, _) = match &track_file.audio {
-                TrackAudio::Standalone { file_path, .. } => (
-                    vec![file_path.as_path()],
-                    crate::album_detail::SourceAudioLayout::File,
-                ),
+                TrackAudio::Standalone { file_path, .. } => {
+                    (vec![file_path.as_path()], crate::album_detail::SourceAudioLayout::File)
+                }
                 TrackAudio::CueBacked { cue_pair, .. } => (
-                    cue_pair
-                        .audio_files
-                        .iter()
-                        .map(|audio| audio.path.as_path())
-                        .collect(),
+                    cue_pair.audio_files.iter().map(|audio| audio.path.as_path()).collect(),
                     crate::album_detail::SourceAudioLayout::Cue,
                 ),
             };
@@ -502,10 +452,8 @@ impl ImportService {
                 }
             }
         }
-        let total_bytes: u128 = discovered_files
-            .iter()
-            .map(|entry| u128::from(entry.file.size))
-            .sum();
+        let total_bytes: u128 =
+            discovered_files.iter().map(|entry| u128::from(entry.file.size)).sum();
         if total_bytes == 0 {
             return Err(crate::import::ImportError::Internal {
                 detail: "stored import candidate contains no bytes".to_string(),
@@ -595,26 +543,15 @@ impl ImportService {
                 files_now,
             );
             db_file.source_audio =
-                file.source_audio
-                    .as_ref()
-                    .map(|audio| crate::album_detail::SourceAudioFile {
-                        layout: source_audio_layouts.get(file.path.as_path()).copied(),
-                        format: audio.format.clone(),
-                        content_type: audio.content_type.clone(),
-                        duration_ms: audio.duration_ms,
-                    });
+                file.source_audio.as_ref().map(|audio| crate::album_detail::SourceAudioFile {
+                    layout: source_audio_layouts.get(file.path.as_path()).copied(),
+                    format: audio.format.clone(),
+                    content_type: audio.content_type.clone(),
+                    duration_ms: audio.duration_ms,
+                });
             file_ids.insert(file.path.clone(), db_file.id.clone());
-            prepared_files.push(PreparedImportFile {
-                row: db_file,
-                original,
-                place,
-            });
-            debug!(
-                "Read file {}/{}: {}",
-                idx + 1,
-                total_files,
-                file.relative_path,
-            );
+            prepared_files.push(PreparedImportFile { row: db_file, original, place });
+            debug!("Read file {}/{}: {}", idx + 1, total_files, file.relative_path,);
         }
 
         // Byte landings seek through each CUE image with FFmpeg: blocking file
@@ -729,14 +666,11 @@ impl ImportService {
             }
             None => None,
         };
-        let library_image = cover_winner
-            .as_ref()
-            .map(|(image, bytes)| (image, bytes.as_slice()));
+        let library_image = cover_winner.as_ref().map(|(image, bytes)| (image, bytes.as_slice()));
 
         // Past here the release is written in one transaction, which a cancel
         // no longer interrupts; one that came first stops the import here.
-        self.import_cancels
-            .begin_writing(candidate_key, import_id)?;
+        self.import_cancels.begin_writing(candidate_key, import_id)?;
         self.event_tx
             .send_once_written(
                 Self::phase_progress(run, &db_release.id, None, ImportPhase::Finalizing),
@@ -801,11 +735,10 @@ impl ImportService {
                 album_id: album_id.to_string(),
             },
         };
-        self.event_tx
-            .send(crate::import::handle::ImportEvent::ImportProgress {
-                candidate_key: candidate_key.clone(),
-                progress,
-            });
+        self.event_tx.send(crate::import::handle::ImportEvent::ImportProgress {
+            candidate_key: candidate_key.clone(),
+            progress,
+        });
 
         info!("Import complete for release {}", db_release.id);
         Ok(())
@@ -827,21 +760,16 @@ async fn linked_records(
     };
     let mut claimed = Vec::new();
     for release in link.claimed() {
-        claimed.push(
-            library_manager
-                .load_source_release(release)
-                .await?
-                .ok_or_else(|| crate::import::ImportError::Internal {
-                    detail: format!(
-                        "the candidate is linked to {} release {} that nothing stored",
-                        release.catalog.as_str(),
-                        release.key
-                    ),
-                })?,
-        );
+        claimed.push(library_manager.load_source_release(release).await?.ok_or_else(|| {
+            crate::import::ImportError::Internal {
+                detail: format!(
+                    "the candidate is linked to {} release {} that nothing stored",
+                    release.catalog.as_str(),
+                    release.key
+                ),
+            }
+        })?);
     }
-    let (primary, partners) = claimed
-        .split_first()
-        .expect("a link claims at least its primary");
+    let (primary, partners) = claimed.split_first().expect("a link claims at least its primary");
     Ok(records_for_commit(primary, partners))
 }

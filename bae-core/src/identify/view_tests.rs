@@ -29,10 +29,7 @@ fn context() -> SignalsContext {
     SignalsContext {
         providers: vec![MB, DG],
         artwork: ArtworkScan::Absent,
-        disc: DiscIdEvidence {
-            signal: DiscIdSignal::Absent,
-            ..Default::default()
-        },
+        disc: DiscIdEvidence { signal: DiscIdSignal::Absent, ..Default::default() },
         barcode: BarcodeEvidence {
             codes: vec![SourcedValue::new("A".to_string())],
             had_source: true,
@@ -72,10 +69,7 @@ fn in_flight(context: SignalsContext) -> IdentifyState {
                 "A",
                 vec![
                     (MB, LookupState::LookingUp),
-                    (
-                        DG,
-                        found(vec![printing_the_folder_s_code(result(DG, "dg-1"))]),
-                    ),
+                    (DG, found(vec![printing_the_folder_s_code(result(DG, "dg-1"))])),
                 ],
             )],
         },
@@ -111,17 +105,13 @@ fn cells(row: &SignalValueRow) -> Vec<&LookupView> {
 /// One provider's matches show, badged, while the other is still looking.
 #[test]
 fn a_landed_provider_s_matches_show_before_the_other_answers() {
-    let IdentifyStateView::Triangulating {
-        groups, agreements, ..
-    } = IdentifyStateView::from(in_flight(context()))
+    let IdentifyStateView::Triangulating { groups, agreements, .. } =
+        IdentifyStateView::from(in_flight(context()))
     else {
         panic!("a run in flight");
     };
     assert_eq!(groups.len(), 1);
-    assert_eq!(
-        groups[0].sections[0].pressings[0].releases[0].release_id,
-        "dg-1"
-    );
+    assert_eq!(groups[0].sections[0].pressings[0].releases[0].release_id, "dg-1");
     assert_eq!(agreements.len(), 1);
     assert_eq!(agreements[0].0, "dg-1");
     assert!(agreements[0].1.fields.barcode);
@@ -132,10 +122,8 @@ fn a_landed_provider_s_matches_show_before_the_other_answers() {
 #[test]
 fn a_code_left_out_is_a_row_that_says_nobody_was_asked() {
     let mut context = context();
-    context.barcode.codes = vec![
-        SourcedValue::new("BOXSET".to_string()),
-        SourcedValue::new("DISC".to_string()),
-    ];
+    context.barcode.codes =
+        vec![SourcedValue::new("BOXSET".to_string()), SourcedValue::new("DISC".to_string())];
     context.barcode.excluded = vec!["BOXSET".to_string()];
     context.providers = vec![MB];
     let state = IdentifyState::Triangulating {
@@ -151,21 +139,11 @@ fn a_code_left_out_is_a_row_that_says_nobody_was_asked() {
     let run = run_of(state);
     let rows = barcode_rows(&run);
     assert_eq!(
-        rows.iter()
-            .map(|row| (row.value.as_str(), row.excluded))
-            .collect::<Vec<_>>(),
+        rows.iter().map(|row| (row.value.as_str(), row.excluded)).collect::<Vec<_>>(),
         vec![("BOXSET", true), ("DISC", false)]
     );
-    assert_eq!(
-        cells(&rows[0]),
-        vec![&LookupView::NotAsked {
-            reason: NotAskedReason::LeftOut
-        }]
-    );
-    assert!(matches!(
-        cells(&rows[1]).as_slice(),
-        [LookupView::Found { count: 1, .. }]
-    ));
+    assert_eq!(cells(&rows[0]), vec![&LookupView::NotAsked { reason: NotAskedReason::LeftOut }]);
+    assert!(matches!(cells(&rows[1]).as_slice(), [LookupView::Found { count: 1, .. }]));
 }
 
 /// With every code left out, each code is still a row whose cells say it was
@@ -173,10 +151,8 @@ fn a_code_left_out_is_a_row_that_says_nobody_was_asked() {
 #[test]
 fn every_code_left_out_lists_them_all_unasked() {
     let mut context = context();
-    context.barcode.codes = vec![
-        SourcedValue::new("BOXSET".to_string()),
-        SourcedValue::new("DISC".to_string()),
-    ];
+    context.barcode.codes =
+        vec![SourcedValue::new("BOXSET".to_string()), SourcedValue::new("DISC".to_string())];
     context.barcode.excluded = vec!["BOXSET".to_string(), "DISC".to_string()];
     let state = IdentifyState::Triangulating {
         discid: DiscidProgress::Skipped,
@@ -192,12 +168,8 @@ fn every_code_left_out_lists_them_all_unasked() {
     let run = run_of(state);
     let rows = barcode_rows(&run);
     assert!(rows.iter().all(|row| row.excluded));
-    let left_out = LookupView::NotAsked {
-        reason: NotAskedReason::LeftOut,
-    };
-    assert!(rows
-        .iter()
-        .all(|row| cells(row) == vec![&left_out, &left_out]));
+    let left_out = LookupView::NotAsked { reason: NotAskedReason::LeftOut };
+    assert!(rows.iter().all(|row| cells(row) == vec![&left_out, &left_out]));
 }
 
 /// A disc ID nobody looked up still reads as read, with its lookup saying why.
@@ -245,13 +217,7 @@ fn each_code_fills_its_own_cells() {
         discid: DiscidProgress::Skipped,
         barcode: BarcodeProgress::Lookups {
             codes: vec![
-                code(
-                    "A",
-                    vec![
-                        (MB, found(vec![result(MB, "mb-1")])),
-                        (DG, found(Vec::new())),
-                    ],
-                ),
+                code("A", vec![(MB, found(vec![result(MB, "mb-1")])), (DG, found(Vec::new()))]),
                 code(
                     "B",
                     vec![
@@ -262,12 +228,7 @@ fn each_code_fills_its_own_cells() {
                 code(
                     "C",
                     vec![
-                        (
-                            MB,
-                            LookupState::Failed {
-                                failure: LookupFailure::Timeout,
-                            },
-                        ),
+                        (MB, LookupState::Failed { failure: LookupFailure::Timeout }),
                         (DG, found(Vec::new())),
                     ],
                 ),
@@ -280,12 +241,7 @@ fn each_code_fills_its_own_cells() {
     };
     let run = run_of(state);
     let rows = barcode_rows(&run);
-    assert_eq!(
-        rows.iter()
-            .map(|row| row.value.as_str())
-            .collect::<Vec<_>>(),
-        vec!["A", "B", "C"]
-    );
+    assert_eq!(rows.iter().map(|row| row.value.as_str()).collect::<Vec<_>>(), vec!["A", "B", "C"]);
     assert!(matches!(
         cells(&rows[0]).as_slice(),
         [LookupView::Found { count: 1, .. }, LookupView::NoMatch]
@@ -296,12 +252,7 @@ fn each_code_fills_its_own_cells() {
     ));
     assert_eq!(
         cells(&rows[2]),
-        vec![
-            &LookupView::Failed {
-                failure: LookupFailure::Timeout
-            },
-            &LookupView::NoMatch
-        ]
+        vec![&LookupView::Failed { failure: LookupFailure::Timeout }, &LookupView::NoMatch]
     );
 }
 
@@ -315,12 +266,7 @@ fn a_code_seen_in_two_places_is_one_row() {
     ];
     let run = run_of(in_flight(context));
     let rows = barcode_rows(&run);
-    assert_eq!(
-        rows.iter()
-            .map(|row| row.value.as_str())
-            .collect::<Vec<_>>(),
-        vec!["A"]
-    );
+    assert_eq!(rows.iter().map(|row| row.value.as_str()).collect::<Vec<_>>(), vec!["A"]);
 }
 
 /// While the artwork is being read, each code read so far is a row of queued
@@ -328,11 +274,8 @@ fn a_code_seen_in_two_places_is_one_row() {
 #[test]
 fn codes_read_so_far_wait_while_the_artwork_is_still_being_read() {
     let mut context = context();
-    context.artwork = ArtworkScan::Reading {
-        current: Some("Back.jpg".to_string()),
-        position: 2,
-        total: 3,
-    };
+    context.artwork =
+        ArtworkScan::Reading { current: Some("Back.jpg".to_string()), position: 2, total: 3 };
     let state = IdentifyState::Triangulating {
         discid: DiscidProgress::Skipped,
         barcode: BarcodeProgress::Scanning,
@@ -347,25 +290,15 @@ fn codes_read_so_far_wait_while_the_artwork_is_still_being_read() {
     };
     assert!(scanning);
     assert_eq!(rows.len(), 1);
-    assert_eq!(
-        cells(&rows[0]),
-        vec![&LookupView::Queued, &LookupView::Queued]
-    );
-    assert!(matches!(
-        run.catalog,
-        CatalogStepView::Numbers { scanning: true, .. }
-    ));
+    assert_eq!(cells(&rows[0]), vec![&LookupView::Queued, &LookupView::Queued]);
+    assert!(matches!(run.catalog, CatalogStepView::Numbers { scanning: true, .. }));
 }
 
 /// Chosen catalog numbers are rows and the rest are tiles, one per number.
 #[test]
 fn chosen_catalog_numbers_are_rows_and_the_rest_are_tiles() {
     let mut context = context();
-    context.catalog.numbers = vec![
-        "LBL-1".to_string(),
-        "LBL-2".to_string(),
-        "LBL-3".to_string(),
-    ];
+    context.catalog.numbers = vec!["LBL-1".to_string(), "LBL-2".to_string(), "LBL-3".to_string()];
     context.catalog.chosen = vec!["LBL-2".to_string()];
     let state = IdentifyState::Triangulating {
         discid: DiscidProgress::Skipped,
@@ -378,14 +311,9 @@ fn chosen_catalog_numbers_are_rows_and_the_rest_are_tiles() {
                     providers: vec![
                         ProviderLookup {
                             source: MB,
-                            state: LookupState::Done {
-                                results: vec![result(MB, "mb-1")],
-                            },
+                            state: LookupState::Done { results: vec![result(MB, "mb-1")] },
                         },
-                        ProviderLookup {
-                            source: DG,
-                            state: LookupState::LookingUp,
-                        },
+                        ProviderLookup { source: DG, state: LookupState::LookingUp },
                     ],
                 }],
             }],
@@ -395,12 +323,7 @@ fn chosen_catalog_numbers_are_rows_and_the_rest_are_tiles() {
         context,
     };
     let run = run_of(state);
-    let CatalogStepView::Numbers {
-        scanning,
-        rows,
-        candidates,
-    } = &run.catalog
-    else {
+    let CatalogStepView::Numbers { scanning, rows, candidates } = &run.catalog else {
         panic!("numbers, got {:?}", run.catalog);
     };
     assert!(!scanning);
@@ -411,10 +334,7 @@ fn chosen_catalog_numbers_are_rows_and_the_rest_are_tiles() {
         [LookupView::Found { count: 1, .. }, LookupView::LookingUp]
     ));
     assert_eq!(
-        candidates
-            .iter()
-            .map(|c| c.value.as_str())
-            .collect::<Vec<_>>(),
+        candidates.iter().map(|c| c.value.as_str()).collect::<Vec<_>>(),
         vec!["LBL-1", "LBL-3"]
     );
 }
@@ -424,10 +344,8 @@ fn chosen_catalog_numbers_are_rows_and_the_rest_are_tiles() {
 #[test]
 fn a_settled_state_carries_the_ledger_its_last_frame_showed() {
     let mut context = context();
-    context.barcode.codes = vec![
-        SourcedValue::new("A".to_string()),
-        SourcedValue::new("B".to_string()),
-    ];
+    context.barcode.codes =
+        vec![SourcedValue::new("A".to_string()), SourcedValue::new("B".to_string())];
     let in_flight = IdentifyState::Triangulating {
         discid: DiscidProgress::Skipped,
         barcode: BarcodeProgress::Lookups {
@@ -436,18 +354,10 @@ fn a_settled_state_carries_the_ledger_its_last_frame_showed() {
                     "A",
                     vec![
                         (MB, found(Vec::new())),
-                        (
-                            DG,
-                            LookupState::Failed {
-                                failure: LookupFailure::Network,
-                            },
-                        ),
+                        (DG, LookupState::Failed { failure: LookupFailure::Network }),
                     ],
                 ),
-                code(
-                    "B",
-                    vec![(MB, LookupState::LookingUp), (DG, found(Vec::new()))],
-                ),
+                code("B", vec![(MB, LookupState::LookingUp), (DG, found(Vec::new()))]),
             ],
         },
         catalog: CatalogProgress::Skipped,
@@ -486,10 +396,7 @@ fn a_settled_state_carries_the_ledger_its_last_frame_showed() {
     let before = barcode_rows(&last_frame);
     let after = barcode_rows(&ledger);
     assert_eq!(cells(&after[0]), cells(&before[0]));
-    assert!(matches!(
-        cells(&before[1]).as_slice(),
-        [LookupView::LookingUp, LookupView::NoMatch]
-    ));
+    assert!(matches!(cells(&before[1]).as_slice(), [LookupView::LookingUp, LookupView::NoMatch]));
     assert!(matches!(
         cells(&after[1]).as_slice(),
         [LookupView::Found { count: 1, .. }, LookupView::NoMatch]
@@ -497,20 +404,14 @@ fn a_settled_state_carries_the_ledger_its_last_frame_showed() {
     // The cell shows the record as the run last read it, its document
     // wanting, as the offered row does.
     assert_eq!(offered[0].document_failure, Some(LookupFailure::Network));
-    assert_eq!(
-        cells(&after[1])[0].releases(),
-        offered.iter().collect::<Vec<_>>()
-    );
+    assert_eq!(cells(&after[1])[0].releases(), offered.iter().collect::<Vec<_>>());
 }
 
 /// A folder with nothing to look up records no ledger.
 #[test]
 fn a_run_with_no_inputs_records_no_ledger() {
-    let blank = SignalsContext {
-        providers: Vec::new(),
-        barcode: BarcodeEvidence::default(),
-        ..context()
-    };
+    let blank =
+        SignalsContext { providers: Vec::new(), barcode: BarcodeEvidence::default(), ..context() };
     let settled = crate::identify::state::settle_for_tests(
         DiscidProgress::Skipped,
         BarcodeProgress::Skipped,
@@ -528,11 +429,8 @@ fn a_run_with_no_inputs_records_no_ledger() {
 /// tiles.
 #[test]
 fn a_manual_only_folder_with_catalog_numbers_offers_them() {
-    let mut context = SignalsContext {
-        providers: vec![MB],
-        barcode: BarcodeEvidence::default(),
-        ..context()
-    };
+    let mut context =
+        SignalsContext { providers: vec![MB], barcode: BarcodeEvidence::default(), ..context() };
     context.catalog.numbers = vec!["LBL-1".to_string()];
     let settled = crate::identify::state::settle_for_tests(
         DiscidProgress::Skipped,
@@ -591,10 +489,8 @@ fn a_found_lookup_names_its_releases() {
     let DiscIdStepView::Read { discs } = &run.disc_id else {
         panic!("a found disc ID, got {:?}", run.disc_id);
     };
-    let [crate::identify::DiscIdRow {
-        lookup: LookupView::Found { count, groups },
-        ..
-    }] = discs.as_slice()
+    let [crate::identify::DiscIdRow { lookup: LookupView::Found { count, groups }, .. }] =
+        discs.as_slice()
     else {
         panic!("a found disc ID, got {:?}", run.disc_id);
     };
@@ -629,10 +525,7 @@ fn recorded_ledger() -> IdentifyRunView {
                 value: "0123456789012".to_string(),
                 excluded: false,
                 cells: vec![
-                    ProviderCell {
-                        source: MB,
-                        lookup: LookupView::NoMatch,
-                    },
+                    ProviderCell { source: MB, lookup: LookupView::NoMatch },
                     ProviderCell {
                         source: DG,
                         lookup: LookupView::Found {
@@ -721,18 +614,11 @@ fn disc_id_ledger(found: &[MetadataResult]) -> IdentifyRunView {
 fn what_agreement_narrowed_out_stays_on_its_album_s_card() {
     let mut context = context();
     context.disc.signal = DiscIdSignal::Computed {
-        discs: vec![crate::signals::ComputedDiscId {
-            disc_id: "d".to_string(),
-            source_file: None,
-        }],
+        discs: vec![crate::signals::ComputedDiscId { disc_id: "d".to_string(), source_file: None }],
     };
     let other_album = MetadataResult::for_test(MB, "mb-other", Some("g-other"));
     let shared = printing_the_folder_s_code(result(MB, "mb-shared"));
-    context.disc.answers = vec![vec![
-        shared.clone(),
-        result(MB, "mb-only"),
-        other_album.clone(),
-    ]];
+    context.disc.answers = vec![vec![shared.clone(), result(MB, "mb-only"), other_album.clone()]];
     context.barcode.results = vec![shared];
     context.barcode.matched = Some("A".to_string());
 
@@ -742,29 +628,19 @@ fn what_agreement_narrowed_out_stays_on_its_album_s_card() {
         panic!("the signals agree on one release");
     };
     *ledger = Some(disc_id_ledger(&disc_answers));
-    let IdentifyStateView::Found {
-        groups,
-        agreements,
-        narrowed_out_count,
-        ..
-    } = IdentifyStateView::from(state)
+    let IdentifyStateView::Found { groups, agreements, narrowed_out_count, .. } =
+        IdentifyStateView::from(state)
     else {
         panic!("the signals agree on one release");
     };
     assert_eq!(
-        groups
-            .iter()
-            .map(|group| group.id.as_str())
-            .collect::<Vec<_>>(),
+        groups.iter().map(|group| group.id.as_str()).collect::<Vec<_>>(),
         vec!["g", "g-other"],
         "each album is one card across the disclosure, the offering one first"
     );
     assert_eq!(groups[0].sections.len(), 1);
     let rows = |pressings: &[crate::import::release_group::Pressing]| -> Vec<String> {
-        pressings
-            .iter()
-            .map(|pressing| pressing.lead().release_id.clone())
-            .collect()
+        pressings.iter().map(|pressing| pressing.lead().release_id.clone()).collect()
     };
     assert_eq!(rows(&groups[0].sections[0].pressings), vec!["mb-shared"]);
     assert_eq!(rows(&groups[0].sections[0].narrowed_out), vec!["mb-only"]);
@@ -785,20 +661,14 @@ fn what_agreement_narrowed_out_stays_on_its_album_s_card() {
 fn the_disc_id_s_release_outranks_a_barcode_that_named_another() {
     let mut context = context();
     context.disc.signal = DiscIdSignal::Computed {
-        discs: vec![crate::signals::ComputedDiscId {
-            disc_id: "d".to_string(),
-            source_file: None,
-        }],
+        discs: vec![crate::signals::ComputedDiscId { disc_id: "d".to_string(), source_file: None }],
     };
     context.disc.answers = vec![vec![result(MB, "mb-disc")]];
     context.barcode.results = vec![result(MB, "mb-barcode")];
     context.barcode.matched = Some("A".to_string());
 
-    let IdentifyStateView::Found {
-        groups,
-        narrowed_out_count,
-        ..
-    } = IdentifyStateView::from(crate::identify::state::re_derive_for_tests(context))
+    let IdentifyStateView::Found { groups, narrowed_out_count, .. } =
+        IdentifyStateView::from(crate::identify::state::re_derive_for_tests(context))
     else {
         panic!("both releases are offered");
     };
@@ -829,11 +699,8 @@ fn a_found_release_states_the_check_against_the_folder_it_failed() {
         ledger: None,
     };
     let judged = |verdict: TerminalVerdict| {
-        let IdentifyStateView::Found {
-            folder_check,
-            picks_unattended,
-            ..
-        } = IdentifyStateView::from(verdict.resume_state(Default::default(), Default::default()))
+        let IdentifyStateView::Found { folder_check, picks_unattended, .. } =
+            IdentifyStateView::from(verdict.resume_state(Default::default(), Default::default()))
         else {
             panic!("a found verdict resumes found");
         };
@@ -841,15 +708,10 @@ fn a_found_release_states_the_check_against_the_folder_it_failed() {
     };
     assert_eq!(
         judged(lone(crate::import::search::SourceTracks::Nothing)),
-        (
-            false,
-            Some(crate::identify::FolderCheck::SourceTracksUnknown)
-        )
+        (false, Some(crate::identify::FolderCheck::SourceTracksUnknown))
     );
     assert_eq!(
-        judged(lone(crate::import::search::SourceTracks::Listed {
-            count: 13
-        })),
+        judged(lone(crate::import::search::SourceTracks::Listed { count: 13 })),
         (true, None)
     );
 }
@@ -860,10 +722,7 @@ fn a_found_release_states_the_check_against_the_folder_it_failed() {
 fn the_notes_badge_is_on_the_row_the_folder_names_by_its_notes() {
     let mut context = context();
     context.disc.signal = DiscIdSignal::Computed {
-        discs: vec![crate::signals::ComputedDiscId {
-            disc_id: "d".to_string(),
-            source_file: None,
-        }],
+        discs: vec![crate::signals::ComputedDiscId { disc_id: "d".to_string(), source_file: None }],
     };
     let noted = |release_id: &str, note: &str| MetadataResult {
         notes: vec![note.to_string()],
@@ -894,10 +753,7 @@ fn the_notes_badge_is_on_the_row_the_folder_names_by_its_notes() {
             .map(|(_, row)| row.notes.clone())
             .expect("every row is badged")
     };
-    assert_eq!(
-        notes("mb-beta").as_deref(),
-        Some("Made In Nordland By Plant Beta")
-    );
+    assert_eq!(notes("mb-beta").as_deref(), Some("Made In Nordland By Plant Beta"));
     assert_eq!(notes("mb-alpha"), None);
 }
 
@@ -908,10 +764,7 @@ fn the_notes_badge_is_on_the_row_the_folder_names_by_its_notes() {
 fn the_notes_badge_reads_the_ranking_s_answer() {
     let mut context = context();
     context.disc.signal = DiscIdSignal::Computed {
-        discs: vec![crate::signals::ComputedDiscId {
-            disc_id: "d".to_string(),
-            source_file: None,
-        }],
+        discs: vec![crate::signals::ComputedDiscId { disc_id: "d".to_string(), source_file: None }],
     };
     let noted = |release_id: &str, note: &str| MetadataResult {
         year: Some(1987),

@@ -62,31 +62,19 @@ pub(crate) fn output_rate(track_rate: u32, device_rates: &[RangeInclusive<u32>])
     let candidates: Vec<u32> = device_rates
         .iter()
         .flat_map(|range| {
-            [*range.start(), *range.end()].into_iter().chain(
-                STANDARD_RATES
-                    .into_iter()
-                    .filter(move |rate| range.contains(rate)),
-            )
+            [*range.start(), *range.end()]
+                .into_iter()
+                .chain(STANDARD_RATES.into_iter().filter(move |rate| range.contains(rate)))
         })
         .collect();
     let same_family: Vec<u32> = match family(track_rate) {
-        Some(track_family) => candidates
-            .iter()
-            .copied()
-            .filter(|rate| family(*rate) == Some(track_family))
-            .collect(),
+        Some(track_family) => {
+            candidates.iter().copied().filter(|rate| family(*rate) == Some(track_family)).collect()
+        }
         None => Vec::new(),
     };
-    let pool = if same_family.is_empty() {
-        candidates
-    } else {
-        same_family
-    };
-    let at_or_below = pool
-        .iter()
-        .copied()
-        .filter(|rate| *rate <= track_rate)
-        .max();
+    let pool = if same_family.is_empty() { candidates } else { same_family };
+    let at_or_below = pool.iter().copied().filter(|rate| *rate <= track_rate).max();
     at_or_below.or_else(|| pool.iter().copied().filter(|rate| *rate > track_rate).min())
 }
 

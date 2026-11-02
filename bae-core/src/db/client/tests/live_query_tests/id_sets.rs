@@ -23,24 +23,12 @@ async fn library_statuses_follow_the_offered_releases_on_one_subscription() {
     let mut live = db.subscribe_library_statuses(BTreeSet::new());
     let requests = live.requests();
     assert!(
-        live.next()
-            .await
-            .expect("the query stays open")
-            .result
-            .unwrap()
-            .is_empty(),
+        live.next().await.expect("the query stays open").result.unwrap().is_empty(),
         "no offers check nothing"
     );
 
-    requests
-        .set([offered.clone(), other.clone()].into_iter().collect())
-        .unwrap();
-    let initial = live
-        .next()
-        .await
-        .expect("the query stays open")
-        .result
-        .unwrap();
+    requests.set([offered.clone(), other.clone()].into_iter().collect()).unwrap();
+    let initial = live.next().await.expect("the query stays open").result.unwrap();
     assert_eq!(initial.len(), 2);
     assert!(initial.iter().all(|status| !status.album_in_library()));
 
@@ -85,17 +73,9 @@ async fn library_statuses_follow_the_offered_releases_on_one_subscription() {
     assert!(held.album_in_library());
 
     requests.set([other].into_iter().collect()).unwrap();
-    let narrowed = live
-        .next()
-        .await
-        .expect("the query stays open")
-        .result
-        .unwrap();
+    let narrowed = live.next().await.expect("the query stays open").result.unwrap();
     assert_eq!(
-        narrowed
-            .iter()
-            .map(|status| status.release_id.as_str())
-            .collect::<Vec<_>>(),
+        narrowed.iter().map(|status| status.release_id.as_str()).collect::<Vec<_>>(),
         vec!["source-release-2"],
         "a release no longer offered is no longer checked"
     );
@@ -109,20 +89,10 @@ async fn album_selection_follows_its_ids_on_one_subscription() {
     let (db, _temp) = live_db().await;
     let mut live = db.subscribe_album_selection(BTreeSet::new());
     let requests = live.requests();
-    assert!(live
-        .next()
-        .await
-        .expect("the query stays open")
-        .result
-        .unwrap()
-        .is_empty());
+    assert!(live.next().await.expect("the query stays open").result.unwrap().is_empty());
 
     requests
-        .set(
-            [ALBUM_ID.to_string(), "missing-album".to_string()]
-                .into_iter()
-                .collect(),
-        )
+        .set([ALBUM_ID.to_string(), "missing-album".to_string()].into_iter().collect())
         .unwrap();
     let selected = live.next().await.expect("the query stays open");
     assert_eq!(selected.request.len(), 2);
@@ -170,17 +140,10 @@ async fn library_statuses_answer_every_check_in_order() {
         .await
         .unwrap();
     fn albums(status: &LibraryStatus) -> Vec<(&str, bool)> {
-        status
-            .albums
-            .iter()
-            .map(|album| (album.album_id.as_str(), album.holds_release))
-            .collect()
+        status.albums.iter().map(|album| (album.album_id.as_str(), album.holds_release)).collect()
     }
     assert_eq!(
-        statuses
-            .iter()
-            .map(|status| status.release_id.as_str())
-            .collect::<Vec<_>>(),
+        statuses.iter().map(|status| status.release_id.as_str()).collect::<Vec<_>>(),
         ["pressing-1", "pressing-2", "pressing-3", "pressing-1"]
     );
     assert_eq!(

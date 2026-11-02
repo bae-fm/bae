@@ -9,10 +9,7 @@ use crate::db::{FileRow, PendingRow};
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PendingSubjectName {
     /// A release file, by its name and its release's album.
-    ReleaseFile {
-        file_name: String,
-        album_title: String,
-    },
+    ReleaseFile { file_name: String, album_title: String },
     /// A release's cover, by its release's album.
     Cover { album_title: String },
     /// An artist's image.
@@ -155,14 +152,9 @@ impl PendingItem {
 impl From<FileRow> for PendingSubjectName {
     fn from(row: FileRow) -> Self {
         match row {
-            FileRow::ReleaseFile {
-                release_id: _,
-                file_name,
-                album_title,
-            } => Self::ReleaseFile {
-                file_name,
-                album_title,
-            },
+            FileRow::ReleaseFile { release_id: _, file_name, album_title } => {
+                Self::ReleaseFile { file_name, album_title }
+            }
             FileRow::Cover { album_title } => Self::Cover { album_title },
             FileRow::DeletedReleaseFile => Self::DeletedReleaseFile,
             FileRow::ArtistImage => Self::ArtistImage,

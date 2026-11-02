@@ -106,8 +106,7 @@ async fn a_grouping_skips_and_blocks_its_release() {
     .await;
     let grouping = |set: &str| format!("{set} WHERE key = {};", lib.sql("Discs"));
     assert_eq!(
-        lib.moved(&grouping("UPDATE release_grouping SET skipped = 1"))
-            .await,
+        lib.moved(&grouping("UPDATE release_grouping SET skipped = 1")).await,
         moves([(lib.release("Discs"), Some(found("Discs").on("skipped")))])
     );
     assert_eq!(
@@ -116,10 +115,7 @@ async fn a_grouping_skips_and_blocks_its_release() {
              blocked_subject = 'Disc 1'"
         ))
         .await,
-        moves([(
-            lib.release("Discs"),
-            Some(found("Discs").state("import_error"))
-        )])
+        moves([(lib.release("Discs"), Some(found("Discs").state("import_error")))])
     );
 }
 
@@ -136,15 +132,8 @@ async fn undoing_a_grouping_gives_its_folders_back() {
     ))
     .await;
     assert_eq!(
-        lib.moved(&format!(
-            "DELETE FROM release_grouping WHERE key = {};",
-            lib.sql("Discs")
-        ))
-        .await,
-        moves([
-            (lib.release("Disc 1"), Some(found("Disc 1"))),
-            (lib.release("Discs"), None),
-        ])
+        lib.moved(&format!("DELETE FROM release_grouping WHERE key = {};", lib.sql("Discs"))).await,
+        moves([(lib.release("Disc 1"), Some(found("Disc 1"))), (lib.release("Discs"), None),])
     );
 }
 

@@ -52,18 +52,11 @@ fn local_startup_returns_while_storage_is_pending_and_reports_its_failure() {
         time: coven::FixedClock::new(coven::SystemClock.now()),
         sleeping: tokio::sync::Notify::new(),
     });
-    let storage = Arc::new(
-        coven::MemoryStorage::builder()
-            .clock(clock.clone())
-            .build()
-            .unwrap(),
-    );
+    let storage = Arc::new(coven::MemoryStorage::builder().clock(clock.clone()).build().unwrap());
     let setup = bae_test_support::multi_thread_runtime();
     let library_id = setup.block_on(async {
         let handle = bae_core::library::create_library(
-            installation
-                .builder(layout.clone())
-                .storage_connector(storage.clone()),
+            installation.builder(layout.clone()).storage_connector(storage.clone()),
             bae_core::library_name::LibraryName::parse("Test Library").unwrap(),
         )
         .await
@@ -94,9 +87,7 @@ fn local_startup_returns_while_storage_is_pending_and_reports_its_failure() {
             .await;
         id
     });
-    let builder = installation
-        .builder(layout)
-        .storage_connector(storage.clone());
+    let builder = installation.builder(layout).storage_connector(storage.clone());
     let (app_tx, app_rx) = mpsc::sync_channel(1);
     let startup = std::thread::spawn(move || {
         app_tx
@@ -114,9 +105,7 @@ fn local_startup_returns_while_storage_is_pending_and_reports_its_failure() {
             .unwrap();
     });
     setup.block_on(async {
-        tokio::time::timeout(Duration::from_secs(20), clock.sleeping.notified())
-            .await
-            .unwrap();
+        tokio::time::timeout(Duration::from_secs(20), clock.sleeping.notified()).await.unwrap();
     });
     let app = app_rx
         .recv_timeout(Duration::from_secs(20))

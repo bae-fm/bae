@@ -26,9 +26,7 @@ pub struct BridgeJoinControl {
 impl BridgeJoinControl {
     #[uniffi::constructor]
     pub fn new() -> Arc<Self> {
-        Arc::new(Self {
-            control: bae_core::library::JoinControl::new(),
-        })
+        Arc::new(Self { control: bae_core::library::JoinControl::new() })
     }
     pub fn cancel(&self) {
         self.control.cancel();
@@ -62,12 +60,9 @@ impl BridgeHost {
         &self,
         store: coven::StoreId,
     ) -> Result<(), BridgeError> {
-        self.keychain
-            .forget_saved_restore_code(store)
-            .await
-            .map_err(|error| {
-                BridgeError::diagnostic(BridgeErrorCategory::from_core(error.category()), error)
-            })
+        self.keychain.forget_saved_restore_code(store).await.map_err(|error| {
+            BridgeError::diagnostic(BridgeErrorCategory::from_core(error.category()), error)
+        })
     }
 }
 
@@ -90,10 +85,7 @@ impl BridgeHost {
                     .saved_restore_codes(&self.app_dir)
                     .await
                     .map(|codes| {
-                        codes
-                            .into_iter()
-                            .map(BridgeSavedRestoreEntry::from_core)
-                            .collect()
+                        codes.into_iter().map(BridgeSavedRestoreEntry::from_core).collect()
                     })
                     .map_err(|error| {
                         BridgeError::diagnostic(
@@ -116,15 +108,9 @@ impl BridgeHost {
         self.operations
             .clone()
             .run("BridgeHost.forget_saved_restore_code", move || async move {
-                self.keychain
-                    .forget_saved_restore_code(store)
-                    .await
-                    .map_err(|error| {
-                        BridgeError::diagnostic(
-                            BridgeErrorCategory::from_core(error.category()),
-                            error,
-                        )
-                    })
+                self.keychain.forget_saved_restore_code(store).await.map_err(|error| {
+                    BridgeError::diagnostic(BridgeErrorCategory::from_core(error.category()), error)
+                })
             })
             .await
     }

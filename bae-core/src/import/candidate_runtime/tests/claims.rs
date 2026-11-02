@@ -38,9 +38,7 @@ async fn a_claim_is_the_queued_step_until_the_worker_takes_it_up() {
     runtime.claim_for_import(key, "imp-1", false).await.unwrap();
     assert_eq!(
         runtime.snapshot(key).await.unwrap().and_then(|runtime| runtime.import),
-        Some(ImportInFlight {
-            step: ImportStep::Preparing(PrepareStep::Queued),
-        })
+        Some(ImportInFlight { step: ImportStep::Preparing(PrepareStep::Queued) })
     );
 
     runtime.move_import(key, "imp-1", None).await.unwrap();
@@ -61,32 +59,21 @@ async fn only_the_claiming_import_moves_its_claim() {
     runtime.move_import(key, "imp-1", None).await.unwrap();
     runtime.record_event(&ImportEvent::ImportProgress {
         candidate_key: key.clone(),
-        progress: ImportProgress::Cancelled {
-            import_id: "imp-1".to_string(),
-        },
+        progress: ImportProgress::Cancelled { import_id: "imp-1".to_string() },
     });
 
     runtime.claim_for_import(key, "imp-2", false).await.unwrap();
-    let queued = Some(ImportInFlight {
-        step: ImportStep::Preparing(PrepareStep::Queued),
-    });
+    let queued = Some(ImportInFlight { step: ImportStep::Preparing(PrepareStep::Queued) });
     runtime.record_event(&progress(key, 80));
     assert_eq!(
         runtime.snapshot(key).await.unwrap().and_then(|runtime| runtime.import),
         queued,
         "the ended import's report does not move the new claim"
     );
-    assert!(
-        runtime.percents().is_empty(),
-        "nor is the ended import's percent drawn"
-    );
+    assert!(runtime.percents().is_empty(), "nor is the ended import's percent drawn");
     assert!(
         runtime
-            .move_import(
-                key,
-                "imp-1",
-                Some(ImportStep::Running(ImportPhase::ReadingFiles)),
-            )
+            .move_import(key, "imp-1", Some(ImportStep::Running(ImportPhase::ReadingFiles)),)
             .await
             .is_err(),
         "nor may the ended import move it"
@@ -109,9 +96,7 @@ async fn an_import_outlives_its_candidate_leaving_the_scan() {
     let mut reshaped = folder_candidate(key, "/watch/a");
     reshaped.file_edit_revision = 1;
     let departures = [
-        ImportEvent::Scan(ScanEvent::CandidateRemoved {
-            candidate_key: key.clone(),
-        }),
+        ImportEvent::Scan(ScanEvent::CandidateRemoved { candidate_key: key.clone() }),
         scanned(reshaped),
         ImportEvent::Scan(ScanEvent::InvalidCandidate(InvalidCandidate {
             path: key.test_folder(),
@@ -158,18 +143,12 @@ async fn a_claim_that_ends_identification_ends_it_in_its_own_write() {
     let runtime = CandidateRuntime::for_test().await;
     let key = &crate::import::CandidateKey::test("/watch/a/rel1");
     let files = scanned_key(&runtime, key).await;
-    runtime
-        .admit(vec![(key.clone(), files.clone())], Admission::Requested)
-        .await
-        .unwrap();
+    runtime.admit(vec![(key.clone(), files.clone())], Admission::Requested).await.unwrap();
     report(&runtime, key, &files, run(1), triangulating()).await;
 
     runtime.claim_for_import(key, "imp-1", true).await.unwrap();
     let facts = runtime.standing_facts(key).await.unwrap();
     assert_eq!(facts.identification, None);
-    assert_eq!(
-        facts.import,
-        Some(ImportStep::Preparing(PrepareStep::Queued))
-    );
+    assert_eq!(facts.import, Some(ImportStep::Preparing(PrepareStep::Queued)));
     assert_eq!(runtime.identification_progress().await.unwrap(), (0, 0));
 }

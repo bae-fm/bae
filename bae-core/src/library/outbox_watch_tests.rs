@@ -6,33 +6,18 @@ fn file(n: u128) -> coven::FileId {
 }
 
 fn total(bytes_done: u64, throughput_bps: u64) -> UploadTransfer {
-    UploadTransfer {
-        bar: Some(UploadBar {
-            bytes_done,
-            bytes_total: 100,
-        }),
-        throughput_bps,
-    }
+    UploadTransfer { bar: Some(UploadBar { bytes_done, bytes_total: 100 }), throughput_bps }
 }
 
 fn release(bytes_done: u64, throughput_bps: u64) -> ReleaseUploadTransfer {
-    ReleaseUploadTransfer {
-        bar: UploadBar {
-            bytes_done,
-            bytes_total: 1_000,
-        },
-        throughput_bps,
-    }
+    ReleaseUploadTransfer { bar: UploadBar { bytes_done, bytes_total: 1_000 }, throughput_bps }
 }
 
 fn transfers(
     releases: Vec<(String, ReleaseUploadTransfer)>,
     total: UploadTransfer,
 ) -> OutboxTransfers {
-    OutboxTransfers {
-        releases: releases.into_iter().collect(),
-        total,
-    }
+    OutboxTransfers { releases: releases.into_iter().collect(), total }
 }
 
 /// A file being sent: a release's of `file_size` bytes, or one no release
@@ -46,10 +31,7 @@ fn sending(file: coven::FileId, release: Option<(&str, i64)>) -> DbSendingFile {
 }
 
 fn moved(bytes_transferred: u64, bytes_total: u64) -> coven::TransferProgress {
-    coven::TransferProgress {
-        bytes_transferred,
-        bytes_total,
-    }
+    coven::TransferProgress { bytes_transferred, bytes_total }
 }
 
 #[test]
@@ -57,10 +39,7 @@ fn a_reader_hears_each_release_that_moved_and_each_that_left() {
     let first = "release-1".to_string();
     let second = "release-2".to_string();
     let told = transfers(
-        vec![
-            (first.clone(), release(100, 5)),
-            (second.clone(), release(100, 5)),
-        ],
+        vec![(first.clone(), release(100, 5)), (second.clone(), release(100, 5))],
         total(30, 10),
     );
     let next = transfers(vec![(first.clone(), release(200, 8))], total(40, 8));
@@ -69,19 +48,14 @@ fn a_reader_hears_each_release_that_moved_and_each_that_left() {
 
     assert_eq!(changes.len(), 3, "{changes:?}");
     assert!(changes.contains(&OutboxTransferChange::Removed { release_id: second }));
-    assert!(changes.contains(&OutboxTransferChange::Updated {
-        release_id: first,
-        transfer: release(200, 8),
-    }));
+    assert!(changes
+        .contains(&OutboxTransferChange::Updated { release_id: first, transfer: release(200, 8) }));
     assert!(changes.contains(&OutboxTransferChange::TotalUpdated(total(40, 8))));
 }
 
 #[test]
 fn transfers_that_did_not_move_say_nothing() {
-    let told = transfers(
-        vec![("release-1".to_string(), release(100, 5))],
-        total(10, 5),
-    );
+    let told = transfers(vec![("release-1".to_string(), release(100, 5))], total(10, 5));
 
     assert!(changes_between(&told, &told.clone()).is_empty());
 }
@@ -107,29 +81,19 @@ fn a_release_holds_its_stored_bytes_and_its_files_shares() {
         paused: false,
     };
     let rates = [(a, 10), (b, 20), (cover, 5)].into_iter().collect();
-    let progress = [
-        (a, moved(55, 220)),
-        (b, moved(110, 110)),
-        (cover, moved(5, 50)),
-    ]
-    .into_iter()
-    .collect();
+    let progress =
+        [(a, moved(55, 220)), (b, moved(110, 110)), (cover, moved(5, 50))].into_iter().collect();
 
     let measured = OutboxTransfers::of(&sending, &rates, &progress);
 
     assert_eq!(
         measured.releases,
-        [("release-1".to_string(), release(400 + 50 + 100, 30))]
-            .into_iter()
-            .collect()
+        [("release-1".to_string(), release(400 + 50 + 100, 30))].into_iter().collect()
     );
     assert_eq!(
         measured.total,
         UploadTransfer {
-            bar: Some(UploadBar {
-                bytes_done: 55 + 110 + 5,
-                bytes_total: 220 + 110 + 50,
-            }),
+            bar: Some(UploadBar { bytes_done: 55 + 110 + 5, bytes_total: 220 + 110 + 50 }),
             throughput_bps: 35,
         }
     );
@@ -152,27 +116,11 @@ fn a_file_not_yet_heard_has_moved_nothing() {
     };
     let measured = OutboxTransfers::of(&one, &HashMap::new(), &BTreeMap::new());
     assert_eq!(measured.releases["release-1"], release(400, 0));
-    assert_eq!(
-        measured.total.bar,
-        Some(UploadBar {
-            bytes_done: 0,
-            bytes_total: 0,
-        }),
-    );
+    assert_eq!(measured.total.bar, Some(UploadBar { bytes_done: 0, bytes_total: 0 }),);
 
-    let none = DbSendingUploads {
-        files: Vec::new(),
-        releases: Vec::new(),
-        paused: false,
-    };
+    let none = DbSendingUploads { files: Vec::new(), releases: Vec::new(), paused: false };
     assert_eq!(
         OutboxTransfers::of(&none, &HashMap::new(), &BTreeMap::new()),
-        transfers(
-            Vec::new(),
-            UploadTransfer {
-                bar: None,
-                throughput_bps: 0,
-            }
-        )
+        transfers(Vec::new(), UploadTransfer { bar: None, throughput_bps: 0 })
     );
 }

@@ -35,11 +35,7 @@ impl LibraryManager {
         };
 
         let total_tracks = self.database.count_tracks_for_release(&release.id).await?;
-        let disc = self
-            .database
-            .get_release_mediums(&release.id)
-            .await?
-            .disc_number(track);
+        let disc = self.database.get_release_mediums(&release.id).await?.disc_number(track);
 
         let year = release.pressing.year.or(album.year);
 
@@ -52,11 +48,7 @@ impl LibraryManager {
             disc,
         };
 
-        Ok(ResolvedSaveTags {
-            tags,
-            track_number: track.track_number.get(),
-            total_tracks,
-        })
+        Ok(ResolvedSaveTags { tags, track_number: track.track_number.get(), total_tracks })
     }
 
     /// One track's save plan under `window`: its tag data and stored audio,
@@ -68,11 +60,7 @@ impl LibraryManager {
         window: SaveWindow,
     ) -> Result<SaveTrackPlan, LibraryError> {
         let resolved = self.resolve_save_tags(&meta.release, &meta.track).await?;
-        Ok(SaveTrackPlan {
-            resolved,
-            audio_meta: meta,
-            window,
-        })
+        Ok(SaveTrackPlan { resolved, audio_meta: meta, window })
     }
 
     /// The cover bytes a save of `release_id` embeds: the art of the release
@@ -191,23 +179,17 @@ impl LibraryManager {
                 ))
             })?;
         let meta = TrackAudioMeta::resolve(&self.database, track_id).await?;
-        let neighbors = self
-            .database
-            .track_neighbors(&meta.track.id)
-            .await?
-            .ok_or_else(|| {
-                LibraryError::Save(format!(
-                    "track {} is not ordered in release {}",
-                    meta.track.id, meta.release.id
-                ))
-            })?;
+        let neighbors = self.database.track_neighbors(&meta.track.id).await?.ok_or_else(|| {
+            LibraryError::Save(format!(
+                "track {} is not ordered in release {}",
+                meta.track.id, meta.release.id
+            ))
+        })?;
         let next = match &neighbors.next {
             Some(next) => Some(TrackAudioMeta::resolve(&self.database, next).await?),
             None => None,
         };
-        let cover = self
-            .save_cover_image(&meta.release.id, preset.embed_cover)
-            .await?;
+        let cover = self.save_cover_image(&meta.release.id, preset.embed_cover).await?;
         let plan = self
             .save_track_plan(
                 meta,
@@ -246,22 +228,15 @@ impl LibraryManager {
             self.set_output_progress(release_id, 100);
             return Ok(());
         }
-        let cover = self
-            .save_cover_image(release_id, preset.embed_cover)
-            .await?;
+        let cover = self.save_cover_image(release_id, preset.embed_cover).await?;
         let mut metas = Vec::with_capacity(tracks.len());
         for track in &tracks {
             metas.push(TrackAudioMeta::resolve(&self.database, &track.id).await?);
         }
         // Each track's plan carries the track after it, whose audio pregap a
         // placement may append to this one's file.
-        let nexts: Vec<Option<TrackAudioMeta>> = metas
-            .iter()
-            .skip(1)
-            .cloned()
-            .map(Some)
-            .chain(std::iter::once(None))
-            .collect();
+        let nexts: Vec<Option<TrackAudioMeta>> =
+            metas.iter().skip(1).cloned().map(Some).chain(std::iter::once(None)).collect();
         let mut used_paths = std::collections::HashSet::new();
         let mut saves = Vec::with_capacity(tracks.len());
         for (index, (meta, next)) in metas.into_iter().zip(nexts).enumerate() {
@@ -277,12 +252,8 @@ impl LibraryManager {
                 .await?;
             let stem =
                 crate::library::save::render_save_filename(&preset.filename_tokens, &plan.resolved);
-            let output_path = unique_output_path(
-                staging_dir,
-                &stem,
-                preset.codec.extension(),
-                &mut used_paths,
-            );
+            let output_path =
+                unique_output_path(staging_dir, &stem, preset.codec.extension(), &mut used_paths);
             saves.push((plan, output_path));
         }
 
@@ -339,9 +310,7 @@ impl LibraryManager {
             let meta = TrackAudioMeta::resolve(&self.database, &track.id).await?;
             plans.push(self.save_track_plan(meta, SaveWindow::ImageTrack).await?);
         }
-        let cover = self
-            .save_cover_image(release_id, preset.embed_cover)
-            .await?;
+        let cover = self.save_cover_image(release_id, preset.embed_cover).await?;
 
         let release = self
             .get_release_by_id(release_id)
@@ -358,10 +327,8 @@ impl LibraryManager {
                 "release {release_id} source folder name has no usable filename characters"
             )));
         }
-        let output_audio_path = staging_dir.join(crate::library::save::save_file_name(
-            &stem,
-            preset.codec.extension(),
-        ));
+        let output_audio_path =
+            staging_dir.join(crate::library::save::save_file_name(&stem, preset.codec.extension()));
         let output_cue_path = staging_dir.join(crate::library::save::save_file_name(&stem, "cue"));
 
         let sources = Self::save_source_files(&plans);
@@ -409,19 +376,11 @@ impl SaveTrackPlan {
         let meta = &self.audio_meta;
         match &self.window {
             SaveWindow::ImageTrack => SaveSegments {
-                segments: meta
-                    .audio_segments
-                    .iter()
-                    .map(|entry| &entry.segment)
-                    .collect(),
+                segments: meta.audio_segments.iter().map(|entry| &entry.segment).collect(),
                 leading_silence_frames: pregap_frames(meta.audio_format.generated_pregap_samples),
                 trailing_silence_frames: 0,
             },
-            SaveWindow::TrackFile {
-                next,
-                placement,
-                is_first_track,
-            } => {
+            SaveWindow::TrackFile { next, placement, is_first_track } => {
                 use crate::config::SavePregapPlacement;
 
                 let own_audio_pregap = pregap_frames(meta.audio_format.pregap_samples);
@@ -450,34 +409,25 @@ impl SaveTrackPlan {
                     if let Some(next) = next {
                         if pregap_frames(next.audio_format.pregap_samples) > 0 {
                             segments.extend(
-                                next.audio_segments
-                                    .iter()
-                                    .map(|entry| &entry.segment)
-                                    .filter(|segment| {
+                                next.audio_segments.iter().map(|entry| &entry.segment).filter(
+                                    |segment| {
                                         segment.role == crate::db::DbAudioSegmentRole::AudioPregap
-                                    }),
+                                    },
+                                ),
                             );
                         }
                         trailing_silence_frames =
                             pregap_frames(next.audio_format.generated_pregap_samples);
                     }
                 }
-                SaveSegments {
-                    segments,
-                    leading_silence_frames,
-                    trailing_silence_frames,
-                }
+                SaveSegments { segments, leading_silence_frames, trailing_silence_frames }
             }
         }
     }
 
     /// The release files this track's saved audio reads, by id.
     pub(crate) fn source_files(&self) -> Vec<String> {
-        self.segments()
-            .segments
-            .iter()
-            .map(|segment| segment.file_id.clone())
-            .collect()
+        self.segments().segments.iter().map(|segment| segment.file_id.clone()).collect()
     }
 
     /// The decode of this track's saved audio from its files' open `streams`.
@@ -528,15 +478,9 @@ fn unique_output_path(
 ) -> std::path::PathBuf {
     let mut index = 1usize;
     loop {
-        let candidate_stem = if index == 1 {
-            stem.to_string()
-        } else {
-            format!("{stem} ({index})")
-        };
-        let path = dir.join(crate::library::save::save_file_name(
-            &candidate_stem,
-            extension,
-        ));
+        let candidate_stem =
+            if index == 1 { stem.to_string() } else { format!("{stem} ({index})") };
+        let path = dir.join(crate::library::save::save_file_name(&candidate_stem, extension));
         if used_paths.insert(path.clone()) {
             return path;
         }
@@ -551,9 +495,8 @@ fn unique_output_path(
 /// disc's more than the other.
 fn media_catalog_number(barcodes: &[String]) -> Option<String> {
     let mut codes: Vec<String> = Vec::new();
-    for key in barcodes
-        .iter()
-        .filter_map(|barcode| bae_types::barcode::comparison_key(barcode).ok())
+    for key in
+        barcodes.iter().filter_map(|barcode| bae_types::barcode::comparison_key(barcode).ok())
     {
         if !codes.contains(&key) {
             codes.push(key);

@@ -1,10 +1,9 @@
 /// The countdown a side-pause state carries. Panics on any other state.
 fn side_pause_countdown(state: &PlaybackState) -> Option<PlaybackSideCountdown> {
     match state {
-        PlaybackState::Paused {
-            reason: PlaybackPauseReason::SideEnded(prompt),
-            ..
-        } => prompt.countdown.clone(),
+        PlaybackState::Paused { reason: PlaybackPauseReason::SideEnded(prompt), .. } => {
+            prompt.countdown.clone()
+        }
         other => panic!("expected a side-ended pause, got {other:?}"),
     }
 }
@@ -13,9 +12,7 @@ impl SidePauseTestFixture {
     /// Play side A's last track (A2) to its side pause and return that state.
     async fn pause_after_side_a(&mut self) -> PlaybackState {
         let side_a_track_id = self.track_ids[1].clone();
-        self.play_to_side_pause(
-            &side_a_track_id, "A", PlaybackPauseBoundary::Side)
-            .await
+        self.play_to_side_pause(&side_a_track_id, "A", PlaybackPauseBoundary::Side).await
     }
 
     /// Assert side B (B1) has not started and the service waits on a countdown
@@ -35,17 +32,12 @@ impl SidePauseTestFixture {
             .filter(|s| s.track_id() == Some(side_b_track_id.as_str()))
             .collect();
         assert!(started.is_empty(), "{message}: side B started: {started:?}");
-        assert_eq!(
-            self.clock.pending_waits(),
-            Vec::from_iter(countdown_end),
-            "{message}"
-        );
+        assert_eq!(self.clock.pending_waits(), Vec::from_iter(countdown_end), "{message}");
     }
 
     async fn wait_for_next_side(&mut self, message: &str) {
         let side_b_track_id = self.track_ids[2].clone();
-        self.wait_for_playing_track(&side_b_track_id, Duration::from_secs(5), message)
-            .await;
+        self.wait_for_playing_track(&side_b_track_id, Duration::from_secs(5), message).await;
     }
 
     /// Wait for the side pause to be announced again without a countdown.
@@ -90,9 +82,7 @@ async fn side_pause_countdown_starts_the_next_side_when_it_runs_out() {
         .await;
 
     fixture.clock.advance(Duration::from_secs(1));
-    fixture
-        .wait_for_next_side("side B starts when the countdown runs out")
-        .await;
+    fixture.wait_for_next_side("side B starts when the countdown runs out").await;
 }
 
 #[tokio::test]
@@ -122,14 +112,10 @@ async fn closing_the_prompt_stops_the_countdown_and_keeps_the_pause() {
     fixture.playback_handle.cancel_side_pause_countdown();
     fixture.wait_for_countdown_cancelled().await;
 
-    fixture
-        .assert_next_side_waits(None, "a closed prompt's countdown never starts side B")
-        .await;
+    fixture.assert_next_side_waits(None, "a closed prompt's countdown never starts side B").await;
 
     fixture.playback_handle.resume();
-    fixture
-        .wait_for_next_side("Play still starts side B after the prompt was closed")
-        .await;
+    fixture.wait_for_next_side("Play still starts side B after the prompt was closed").await;
 }
 
 #[tokio::test]
@@ -140,9 +126,7 @@ async fn play_during_the_countdown_starts_the_next_side_at_once() {
     fixture.pause_after_side_a().await;
 
     fixture.playback_handle.resume();
-    fixture
-        .wait_for_next_side("Play starts side B without waiting for the countdown")
-        .await;
+    fixture.wait_for_next_side("Play starts side B without waiting for the countdown").await;
 }
 
 #[tokio::test]
@@ -155,9 +139,7 @@ async fn seeking_during_the_countdown_stops_it() {
     fixture.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(1)));
     fixture.wait_for_countdown_cancelled().await;
 
-    fixture
-        .assert_next_side_waits(None, "a seek stops the countdown")
-        .await;
+    fixture.assert_next_side_waits(None, "a seek stops the countdown").await;
 }
 
 #[tokio::test]
@@ -170,9 +152,7 @@ async fn pausing_during_the_countdown_stops_it() {
     fixture.playback_handle.pause();
     fixture.wait_for_countdown_cancelled().await;
 
-    fixture
-        .assert_next_side_waits(None, "a pause stops the countdown")
-        .await;
+    fixture.assert_next_side_waits(None, "a pause stops the countdown").await;
 }
 
 #[tokio::test]
@@ -182,12 +162,8 @@ async fn a_queue_edit_during_the_countdown_stops_it() {
         .expect("side-pause fixture");
     fixture.pause_after_side_a().await;
 
-    fixture
-        .playback_handle
-        .add_to_queue(vec![fixture.track_ids[0].clone()]);
+    fixture.playback_handle.add_to_queue(vec![fixture.track_ids[0].clone()]);
     fixture.wait_for_countdown_cancelled().await;
 
-    fixture
-        .assert_next_side_waits(None, "a queue edit stops the countdown")
-        .await;
+    fixture.assert_next_side_waits(None, "a queue edit stops the countdown").await;
 }

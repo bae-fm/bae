@@ -117,11 +117,7 @@ struct TrackRows<'a> {
 
 impl<'a> TrackRows<'a> {
     fn of(track: &'a CandidateTrack) -> Self {
-        Self {
-            artists: &track.edit.artist_assignments,
-            roles: &track.roles,
-            works: &track.works,
-        }
+        Self { artists: &track.edit.artist_assignments, roles: &track.roles, works: &track.works }
     }
 }
 
@@ -213,10 +209,7 @@ fn delete_draft_body(sql: &CovenWrite<'_>, content_hash: &str) -> Result<(), DbE
         "import_candidate_release_role",
         "import_candidate_medium",
     ] {
-        sql.execute(
-            &format!("DELETE FROM {table} WHERE content_hash = ?"),
-            [content_hash],
-        )?;
+        sql.execute(&format!("DELETE FROM {table} WHERE content_hash = ?"), [content_hash])?;
     }
     Ok(())
 }

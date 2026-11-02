@@ -62,9 +62,8 @@ impl LibraryManager {
 
         let file_path = staging_dir.join(&relative);
         let file_id = file.id.clone();
-        let mut output = blocking(
-            "create an exported file",
-            move || -> Result<std::fs::File, LibraryError> {
+        let mut output =
+            blocking("create an exported file", move || -> Result<std::fs::File, LibraryError> {
                 if let Some(parent) = file_path.parent() {
                     std::fs::create_dir_all(parent)?;
                 }
@@ -76,17 +75,13 @@ impl LibraryManager {
                     }
                     Err(CreateFileError::Io(error)) => Err(error.into()),
                 }
-            },
-        )
-        .await
-        .map_err(|failed| self.bug(failed))??;
+            })
+            .await
+            .map_err(|failed| self.bug(failed))??;
         let mut offset = 0;
         while offset < size {
             let len = EXPORT_WINDOW.min(size - offset);
-            let window = stream
-                .read_at(offset, len)
-                .await
-                .map_err(crate::db::DbError::from)?;
+            let window = stream.read_at(offset, len).await.map_err(crate::db::DbError::from)?;
             output = blocking("write an exported file", move || {
                 std::io::Write::write_all(&mut output, &window).map(|()| output)
             })

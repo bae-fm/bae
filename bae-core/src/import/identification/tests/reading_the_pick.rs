@@ -31,7 +31,11 @@ impl Fixture {
     /// A disc-ID candidate whose one release `release_id` the run picks
     /// unattended, with the settle's read of that release held, and its run
     /// asked for and reading the pick. Returns its folder and key.
-    async fn reading_its_pick(&self, release_id: &str, group_id: &str) -> (PathBuf, crate::import::CandidateKey) {
+    async fn reading_its_pick(
+        &self,
+        release_id: &str,
+        group_id: &str,
+    ) -> (PathBuf, crate::import::CandidateKey) {
         self.manager.set_identify_automatically(false).await.unwrap();
         let dir = self.disc_id_candidate("Album");
         let key = crate::import::CandidateKey::folder(&dir);
@@ -41,9 +45,7 @@ impl Fixture {
         self.start_explicit_lookup(&dir);
         self.await_identification_status(
             &key,
-            crate::import::IdentificationStatus::ReadingPick {
-                import_asked: false,
-            },
+            crate::import::IdentificationStatus::ReadingPick { import_asked: false },
         )
         .await;
         (dir, key)
@@ -52,12 +54,9 @@ impl Fixture {
     /// Let the held read answer and wait for the queue to be done.
     async fn finish_reading(&self) {
         self.provider.release();
-        tokio::time::timeout(
-            Duration::from_secs(30),
-            self.identification().drained_for_test(),
-        )
-        .await
-        .expect("the settle ends");
+        tokio::time::timeout(Duration::from_secs(30), self.identification().drained_for_test())
+            .await
+            .expect("the settle ends");
     }
 }
 
@@ -67,20 +66,14 @@ impl Fixture {
 async fn a_settle_reading_its_pick_holds_no_slot() {
     let fixture = Fixture::new("settle-holds-no-slot").await;
     fixture.manager.set_identify_automatically(false).await.unwrap();
-    fixture
-        .import
-        .register_artwork_analyzer(Arc::new(PerFolderBarcodeAnalyzer));
+    fixture.import.register_artwork_analyzer(Arc::new(PerFolderBarcodeAnalyzer));
     let settling = fixture.disc_id_candidate("Album 0");
     let settling_key = crate::import::CandidateKey::folder(&settling);
     fixture.route_disc_id_match(&settling, "mb-slot", "rg-slot", 2);
     let mut running = Vec::new();
     for index in 1..=MAX_IN_FLIGHT {
         let dir = fixture.barcode_candidate(&format!("Album {index}"));
-        std::fs::write(
-            dir.join(format!("playlist-{index}.m3u")),
-            format!("{index}"),
-        )
-        .unwrap();
+        std::fs::write(dir.join(format!("playlist-{index}.m3u")), format!("{index}")).unwrap();
         running.push(dir);
     }
     fixture.provider.route("/release?", 200, "{}");
@@ -92,9 +85,7 @@ async fn a_settle_reading_its_pick_holds_no_slot() {
     fixture
         .await_identification_status(
             &settling_key,
-            crate::import::IdentificationStatus::ReadingPick {
-                import_asked: false,
-            },
+            crate::import::IdentificationStatus::ReadingPick { import_asked: false },
         )
         .await;
     for dir in &running {
@@ -111,9 +102,7 @@ async fn a_settle_reading_its_pick_holds_no_slot() {
     );
     assert_eq!(
         fixture.identification_status(&settling_key).await,
-        Some(crate::import::IdentificationStatus::ReadingPick {
-            import_asked: false,
-        })
+        Some(crate::import::IdentificationStatus::ReadingPick { import_asked: false })
     );
     for dir in &running {
         assert_eq!(
@@ -150,9 +139,7 @@ async fn a_row_whose_pick_is_being_read_is_identified() {
         loop {
             let snapshot = next_page(&list).await;
             if page_live(&snapshot)[&key].facts.identification
-                == Some(crate::import::IdentificationStatus::ReadingPick {
-                    import_asked: false,
-                })
+                == Some(crate::import::IdentificationStatus::ReadingPick { import_asked: false })
             {
                 return snapshot;
             }
@@ -188,10 +175,7 @@ async fn a_row_whose_pick_is_being_read_is_identified() {
     assert!(pane_reads_pick().await, "the pane shows the pick being read");
 
     fixture.finish_reading().await;
-    assert!(
-        !pane_reads_pick().await,
-        "once the pick is stored, the pane shows none being read"
-    );
+    assert!(!pane_reads_pick().await, "once the pick is stored, the pane shows none being read");
 }
 
 /// Import from the pane while the pick is read does not cancel the read nor
@@ -203,11 +187,7 @@ async fn import_from_the_pane_while_the_pick_is_read_imports_it_once_stored() {
     let (dir, key) = fixture.reading_its_pick("mb-pane", "rg-pane").await;
     let mut events = fixture.import.every_event();
 
-    let started = fixture
-        .import
-        .start_import(&key)
-        .await
-        .expect("the import is asked for");
+    let started = fixture.import.start_import(&key).await.expect("the import is asked for");
     assert_eq!(started, crate::import::ImportStart::WhenPickStored);
     assert_eq!(
         fixture.identification_status(&key).await,
@@ -217,7 +197,9 @@ async fn import_from_the_pane_while_the_pick_is_read_imports_it_once_stored() {
     assert!(
         fixture
             .import
-            .candidate_runtime(&key).await.unwrap()
+            .candidate_runtime(&key)
+            .await
+            .unwrap()
             .is_some_and(|runtime| runtime.import.is_none()),
         "nothing is claimed while the pick is read"
     );
@@ -241,12 +223,9 @@ async fn import_from_the_pane_while_the_pick_is_read_imports_it_once_stored() {
         "what imported is the pick's draft, read from the picked release"
     );
 
-    tokio::time::timeout(
-        Duration::from_secs(30),
-        fixture.identification().drained_for_test(),
-    )
-    .await
-    .expect("the queue has nothing left to do");
+    tokio::time::timeout(Duration::from_secs(30), fixture.identification().drained_for_test())
+        .await
+        .expect("the queue has nothing left to do");
     assert_no_import(&fixture, &mut events, &key, "the asked-for import ended").await;
 }
 
@@ -258,11 +237,8 @@ async fn importing_a_selection_while_the_pick_is_read_imports_it_once_stored() {
     let (_dir, key) = fixture.reading_its_pick("mb-selection", "rg-selection").await;
     let mut events = fixture.import.every_event();
 
-    let started = fixture
-        .import
-        .import_selected(&key)
-        .await
-        .expect("the selected row is not refused");
+    let started =
+        fixture.import.import_selected(&key).await.expect("the selected row is not refused");
     assert_eq!(started, crate::import::ImportStart::WhenPickStored);
 
     fixture.provider.release();
@@ -270,12 +246,9 @@ async fn importing_a_selection_while_the_pick_is_read_imports_it_once_stored() {
     assert_eq!(imports.len(), 1, "one import of the candidate: {imports:?}");
     assert_eq!(failure, None, "the import completes");
 
-    tokio::time::timeout(
-        Duration::from_secs(30),
-        fixture.identification().drained_for_test(),
-    )
-    .await
-    .expect("the queue has nothing left to do");
+    tokio::time::timeout(Duration::from_secs(30), fixture.identification().drained_for_test())
+        .await
+        .expect("the queue has nothing left to do");
     assert_no_import(&fixture, &mut events, &key, "the asked-for import ended").await;
 }
 
@@ -297,9 +270,7 @@ async fn a_read_that_fails_after_import_was_asked_imports_nothing() {
     fixture
         .await_identification_status(
             &key,
-            crate::import::IdentificationStatus::ReadingPick {
-                import_asked: false,
-            },
+            crate::import::IdentificationStatus::ReadingPick { import_asked: false },
         )
         .await;
     let mut events = fixture.import.every_event();
@@ -311,10 +282,7 @@ async fn a_read_that_fails_after_import_was_asked_imports_nothing() {
 
     fixture.finish_reading().await;
     assert_ne!(
-        fixture
-            .stored_for(&dir)
-            .await
-            .map(|row| row.metadata_author),
+        fixture.stored_for(&dir).await.map(|row| row.metadata_author),
         Some(crate::import::MetadataAuthor::Identification),
         "no pick was stored"
     );

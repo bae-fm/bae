@@ -31,11 +31,7 @@ async fn a_track_that_does_not_decode_fully_fails_its_import() {
         "Broken Album",
         "Broken Artist",
         None,
-        &[TaggedTrack {
-            filename: "01.flac",
-            title: "Broken Track",
-            track_number: 1,
-        }],
+        &[TaggedTrack { filename: "01.flac", title: "Broken Track", track_number: 1 }],
     );
     truncate_flac_body(&album_dir.join("01.flac"));
 
@@ -52,22 +48,14 @@ async fn a_track_that_does_not_decode_fully_fails_its_import() {
         err.contains("decode verification failed") && err.contains("Broken Track (track 1)"),
         "the failure must name the broken track, got: {err}",
     );
-    assert!(
-        f.db.get_albums(&[]).await.unwrap().is_empty(),
-        "a failed import writes no album",
-    );
-    assert!(
-        f.db.get_all_track_ids().await.unwrap().is_empty(),
-        "a failed import writes no track",
-    );
+    assert!(f.db.get_albums(&[]).await.unwrap().is_empty(), "a failed import writes no album",);
+    assert!(f.db.get_all_track_ids().await.unwrap().is_empty(), "a failed import writes no track",);
 }
 
 // ── album artists survive the confirmation editor ────────────────────────
 
 /// A MusicBrainz release credited to two artists, one CD track.
-fn seed_two_credit_mb_release(
-    f: &ImportFixture,
-    mb_release_id: &str, mb_group_id: &str) -> String {
+fn seed_two_credit_mb_release(f: &ImportFixture, mb_release_id: &str, mb_group_id: &str) -> String {
     let credit = |id: &str, name: &str| MbArtistCredit {
         joinphrase: None,
         name: name.to_string(),
@@ -79,17 +67,18 @@ fn seed_two_credit_mb_release(
     };
     let response = MbReleaseResponse {
         date: Some("1999".to_string()),
-        artist_credit: vec![
-            credit("mb-artist-a", "Artist A"),
-            credit("mb-artist-b", "Artist B"),
-        ],
+        artist_credit: vec![credit("mb-artist-a", "Artist A"), credit("mb-artist-b", "Artist B")],
         cover_art_archive: bae_catalogs::musicbrainz::MbCoverArtArchive {
             front: true,
             darkened: false,
         },
         ..support::mb_release(mb_release_id, mb_group_id, "Split Album")
     };
-    let mb_release_id = support::seed_mb_release(f.library_manager.providers().musicbrainz(), response, mb_group_id);
+    let mb_release_id = support::seed_mb_release(
+        f.library_manager.providers().musicbrainz(),
+        response,
+        mb_group_id,
+    );
     f.images.serve_front(&mb_release_id, support::cover_png());
     mb_release_id
 }
@@ -110,10 +99,7 @@ async fn two_credit_mb_release_keeps_both_album_artists() {
     let candidate_key = bae_core::import::CandidateKey::folder(&album_dir);
 
     let mut scan_rx = f.handle.every_scan_event_for_test();
-    f.handle
-        .add_watched_folder(collection.to_path_buf())
-        .await
-        .unwrap();
+    f.handle.add_watched_folder(collection.to_path_buf()).await.unwrap();
     wait_for_scan_event(
         &mut scan_rx,
         "the two-credit candidate",
@@ -123,10 +109,13 @@ async fn two_credit_mb_release_keeps_both_album_artists() {
 
     // Pick the release and change nothing.
     f.handle
-        .select_candidate_release(candidate_key.clone(), bae_core::import::PressingLink {
+        .select_candidate_release(
+            candidate_key.clone(),
+            bae_core::import::PressingLink {
                 record: bae_core::import::MetadataRef::new(Catalog::MusicBrainz, mb_id.clone()),
                 partners: vec![],
-            }, bae_core::import::CatalogApplySteps::unread(),
+            },
+            bae_core::import::CatalogApplySteps::unread(),
         )
         .await
         .unwrap();
@@ -137,10 +126,7 @@ async fn two_credit_mb_release_keeps_both_album_artists() {
     let artists = f.db.get_artists_for_album(&album_id).await.unwrap();
     let names: Vec<&str> = artists.iter().map(|a| a.artist.name.as_str()).collect();
     assert_eq!(names, vec!["Artist A", "Artist B"]);
-    assert_eq!(
-        artists[1].artist.musicbrainz_artist_id.as_deref(),
-        Some("mb-artist-b")
-    );
+    assert_eq!(artists[1].artist.musicbrainz_artist_id.as_deref(), Some("mb-artist-b"));
 }
 
 /// Seed a plain MusicBrainz release of `track_count` tracks on one CD, credited
@@ -190,16 +176,18 @@ fn seed_mb_release_with_media(
         },
         ..support::mb_release(mb_release_id, mb_group_id, "Album Title")
     };
-    let mb_release_id = support::seed_mb_release(f.library_manager.providers().musicbrainz(), response, mb_group_id);
+    let mb_release_id = support::seed_mb_release(
+        f.library_manager.providers().musicbrainz(),
+        response,
+        mb_group_id,
+    );
     f.images.serve_front(&mb_release_id, support::cover_png());
     mb_release_id
 }
 
 /// A release's tracks in track order, each with the file its samples come from.
 async fn committed_track_files(f: &ImportFixture, release_id: &str) -> Vec<(String, String)> {
-    f.db.committed_track_files_for_test(release_id)
-        .await
-        .expect("read committed track files")
+    f.db.committed_track_files_for_test(release_id).await.expect("read committed track files")
 }
 
 /// Scan `album_dir` in and pick `mb_id` for it, returning the candidate key and
@@ -212,10 +200,7 @@ async fn pick_release_for_folder(
 ) -> (bae_core::import::CandidateKey, bae_core::import::ImportCandidateDetail) {
     let candidate_key = bae_core::import::CandidateKey::folder(album_dir);
     let mut scan_rx = f.handle.every_scan_event_for_test();
-    f.handle
-        .add_watched_folder(collection.to_path_buf())
-        .await
-        .unwrap();
+    f.handle.add_watched_folder(collection.to_path_buf()).await.unwrap();
     let expected = album_dir.to_path_buf();
     wait_for_scan_event(
         &mut scan_rx,
@@ -225,10 +210,13 @@ async fn pick_release_for_folder(
     .await;
 
     f.handle
-        .select_candidate_release(candidate_key.clone(), bae_core::import::PressingLink {
+        .select_candidate_release(
+            candidate_key.clone(),
+            bae_core::import::PressingLink {
                 record: bae_core::import::MetadataRef::new(Catalog::MusicBrainz, mb_id.to_string()),
                 partners: vec![],
-            }, bae_core::import::CatalogApplySteps::unread(),
+            },
+            bae_core::import::CatalogApplySteps::unread(),
         )
         .await
         .unwrap();
@@ -242,20 +230,17 @@ async fn pick_release_for_folder(
 }
 
 /// Scan in a folder of `track_count` audio files and return its candidate key.
-async fn scanned_folder_of(f: &ImportFixture, track_count: usize) -> bae_core::import::CandidateKey {
+async fn scanned_folder_of(
+    f: &ImportFixture,
+    track_count: usize,
+) -> bae_core::import::CandidateKey {
     let collection = f.temp_path().join("collection");
     let album_dir = collection.join("album");
     fs::create_dir_all(&album_dir).unwrap();
     let names: Vec<String> = (1..=track_count).map(|n| format!("{n:02} Track.flac")).collect();
-    generate_album_files(
-        &album_dir,
-        &names.iter().map(String::as_str).collect::<Vec<_>>(),
-    );
+    generate_album_files(&album_dir, &names.iter().map(String::as_str).collect::<Vec<_>>());
     let mut scan_rx = f.handle.every_scan_event_for_test();
-    f.handle
-        .add_watched_folder(collection.to_path_buf())
-        .await
-        .unwrap();
+    f.handle.add_watched_folder(collection.to_path_buf()).await.unwrap();
     let expected = album_dir.clone();
     wait_for_scan_event(&mut scan_rx, "the candidate", move |event| {
         matches!(event, ScanEvent::FolderCandidate { candidate, .. } if candidate.path == expected)
@@ -271,7 +256,11 @@ async fn pick_release(
     mb_id: &str,
 ) -> Result<u64, bae_core::import::ImportError> {
     f.handle
-        .select_candidate_release(candidate_key.clone(), pressing_link(mb_id), bae_core::import::CatalogApplySteps::unread())
+        .select_candidate_release(
+            candidate_key.clone(),
+            pressing_link(mb_id),
+            bae_core::import::CatalogApplySteps::unread(),
+        )
         .await
 }
 
@@ -286,11 +275,7 @@ async fn candidate_pane(
     f: &ImportFixture,
     candidate_key: &bae_core::import::CandidateKey,
 ) -> bae_core::import::ImportCandidateDetail {
-    f.handle
-        .candidate_pane(candidate_key)
-        .await
-        .unwrap()
-        .expect("the candidate reads back")
+    f.handle.candidate_pane(candidate_key).await.unwrap().expect("the candidate reads back")
 }
 
 /// A release listing another number of tracks than the folder holds is
@@ -344,7 +329,10 @@ async fn a_release_listing_another_track_count_is_refused_and_changes_nothing() 
         );
         assert_eq!(after.draft().unwrap().release_link, before.draft().unwrap().release_link);
         assert_eq!(after.draft().unwrap().metadata_draft, before.draft().unwrap().metadata_draft);
-        assert_eq!(after.draft().unwrap().metadata_provenance, before.draft().unwrap().metadata_provenance);
+        assert_eq!(
+            after.draft().unwrap().metadata_provenance,
+            before.draft().unwrap().metadata_provenance
+        );
         assert_eq!(after.metadata_revision, before.metadata_revision);
         assert_eq!(after.draft().unwrap().cover, before.draft().unwrap().cover);
         assert_eq!(after.resumed_identify_state, before.resumed_identify_state);
@@ -377,7 +365,9 @@ async fn a_release_listing_the_folder_s_track_count_applies() {
         })
     );
     let titles: Vec<_> = pane
-        .draft().unwrap().metadata_draft
+        .draft()
+        .unwrap()
+        .metadata_draft
         .tracks
         .iter()
         .map(|track| track.title.as_str())
@@ -412,7 +402,10 @@ async fn a_release_listing_no_tracks_applies() {
         })
     );
     assert_eq!(after.draft().unwrap().metadata_draft.album_title, "Album Title");
-    assert_eq!(after.draft().unwrap().metadata_draft.tracks, before.draft().unwrap().metadata_draft.tracks);
+    assert_eq!(
+        after.draft().unwrap().metadata_draft.tracks,
+        before.draft().unwrap().metadata_draft.tracks
+    );
     let tracks = bae_core::import::mapping_tracks(&after.draft().unwrap().mapping);
     assert_eq!(tracks.len(), 12);
     assert!(tracks.iter().all(|track| track.file.is_some()));
@@ -438,11 +431,7 @@ async fn the_commit_binds_each_track_to_the_audio_in_its_place() {
     let mut tracks = bae_core::import::mapping_tracks(&pane.draft().unwrap().mapping);
     assert_eq!(tracks.len(), 3);
     tracks[0].file = tracks[1].file.clone();
-    assert!(f
-        .handle
-        .set_candidate_track_edit(&candidate_key, tracks[0].clone())
-        .await
-        .is_err());
+    assert!(f.handle.set_candidate_track_edit(&candidate_key, tracks[0].clone()).await.is_err());
     let import_id = f.handle.start_import(&candidate_key).await.unwrap().expect_queued();
     let mut rx = f.handle.subscribe_import(import_id);
     let (release_id, _album_id) = support::wait_for_import_complete(&mut rx).await;
@@ -462,7 +451,10 @@ async fn the_commit_binds_each_track_to_the_audio_in_its_place() {
 /// its front image.
 fn seed_mb_release_with_front_cover(
     f: &ImportFixture,
-    mb_release_id: &str, mb_group_id: &str, title: &str) -> String {
+    mb_release_id: &str,
+    mb_group_id: &str,
+    title: &str,
+) -> String {
     let response = MbReleaseResponse {
         country: None,
         status: None,
@@ -495,8 +487,12 @@ async fn an_import_with_no_cover_pick_takes_the_release_s_own_cover() {
     let f = ImportFixture::new().await;
 
     let mb_id = "mb-rel-derived-cover";
-    let release_id_key =
-        seed_mb_release_with_front_cover(&f, mb_id, "mb-group-derived-cover", "Derived Cover Album");
+    let release_id_key = seed_mb_release_with_front_cover(
+        &f,
+        mb_id,
+        "mb-group-derived-cover",
+        "Derived Cover Album",
+    );
     f.images.serve_front(mb_id, support::cover_png());
 
     let album_dir = f.temp_path().join("album");
@@ -518,13 +514,10 @@ async fn an_import_with_no_cover_pick_takes_the_release_s_own_cover() {
     .await
     .expect("the import succeeds");
 
-    f.db.find_library_image(&release_id, &LibraryImageType::Cover)
-        .await
-        .unwrap()
-        .expect(
-            "the release document says the archive holds a front image, so the import \
+    f.db.find_library_image(&release_id, &LibraryImageType::Cover).await.unwrap().expect(
+        "the release document says the archive holds a front image, so the import \
              must land one",
-        );
+    );
 }
 
 /// When the release's own cover will not download, the import fails rather
@@ -536,7 +529,8 @@ async fn an_import_fails_when_the_release_s_own_cover_will_not_download() {
     let f = ImportFixture::new().await;
 
     let mb_id = "mb-rel-unreachable-cover";
-    let release_id_key = seed_mb_release_with_front_cover(&f,
+    let release_id_key = seed_mb_release_with_front_cover(
+        &f,
         mb_id,
         "mb-group-unreachable-cover",
         "Unreachable Cover Album",

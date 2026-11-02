@@ -43,12 +43,7 @@ fn track2_of(image: &[u8]) -> Vec<i32> {
 async fn import_image(
     extension: &str,
     format: EncodeFormat,
-) -> (
-    bae_core::library::LibraryManager,
-    String,
-    Vec<u8>,
-    tempfile::TempDir,
-) {
+) -> (bae_core::library::LibraryManager, String, Vec<u8>, tempfile::TempDir) {
     support::tracing_init();
     bae_audio::init();
     let image =
@@ -60,11 +55,7 @@ async fn import_image(
         ..support::discogs_test_release(
             &format!("image-{extension}"),
             "Album Title",
-            &[
-                ("Track One", "0:03"),
-                ("Track Two", "0:03"),
-                ("Track Three", "0:03"),
-            ],
+            &[("Track One", "0:03"), ("Track Two", "0:03"), ("Track Three", "0:03")],
         )
     };
     let (library_manager, imported) = support::imported_release_setup(
@@ -87,24 +78,14 @@ async fn import_image(
     .await
     .expect("import the image");
     assert_eq!(imported.track_ids.len(), 3, "the image's three tracks");
-    (
-        library_manager,
-        imported.track_ids[1].clone(),
-        image,
-        imported.temp_dir,
-    )
+    (library_manager, imported.track_ids[1].clone(), image, imported.temp_dir)
 }
 
 /// The loudness of `samples` as the import's meter reads it.
 fn loudness_of(samples: &[i32]) -> f64 {
     let mut meter = bae_core::loudness::LoudnessMeter::new(2, SAMPLE_RATE).expect("a meter");
     meter.add_chunk(samples).expect("meter the samples");
-    meter
-        .finish()
-        .expect("finish the meter")
-        .1
-        .expect("an audible track")
-        .loudness_lufs
+    meter.finish().expect("finish the meter").1.expect("an audible track").loudness_lufs
 }
 
 /// Import an image and check the loudness its import measured for track 2 is
@@ -129,10 +110,7 @@ async fn check_track2_loudness(extension: &str, format: EncodeFormat) {
 async fn check_track2_save(extension: &str, format: EncodeFormat) {
     let (library_manager, track2, image, dir) = import_image(extension, format).await;
     let out = dir.path().join("saved.flac");
-    library_manager
-        .save_track(&track2, &out, "flac")
-        .await
-        .expect("save track 2");
+    library_manager.save_track(&track2, &out, "flac").await.expect("save track 2");
     let saved = bae_audio::decode_audio(
         support::filled_sparse_buffer(&std::fs::read(&out).unwrap()),
         None,
@@ -140,57 +118,26 @@ async fn check_track2_save(extension: &str, format: EncodeFormat) {
     )
     .expect("decode the saved track");
     let own = track2_of(&image);
-    assert_eq!(
-        saved.samples.len(),
-        own.len(),
-        "{extension}: saved sample count"
-    );
-    assert!(
-        saved.samples == own,
-        "{extension}: the saved track's samples are not track 2's own"
-    );
+    assert_eq!(saved.samples.len(), own.len(), "{extension}: saved sample count");
+    assert!(saved.samples == own, "{extension}: the saved track's samples are not track 2's own");
 }
 
 #[tokio::test]
 async fn a_wav_images_track_is_measured_from_its_own_audio() {
-    check_track2_loudness(
-        "wav",
-        EncodeFormat::PcmWav {
-            bits_per_sample: 16,
-        },
-    )
-    .await;
+    check_track2_loudness("wav", EncodeFormat::PcmWav { bits_per_sample: 16 }).await;
 }
 
 #[tokio::test]
 async fn an_aiff_images_track_is_measured_from_its_own_audio() {
-    check_track2_loudness(
-        "aiff",
-        EncodeFormat::PcmAiff {
-            bits_per_sample: 16,
-        },
-    )
-    .await;
+    check_track2_loudness("aiff", EncodeFormat::PcmAiff { bits_per_sample: 16 }).await;
 }
 
 #[tokio::test]
 async fn a_wav_images_track_saves_its_own_audio() {
-    check_track2_save(
-        "wav",
-        EncodeFormat::PcmWav {
-            bits_per_sample: 16,
-        },
-    )
-    .await;
+    check_track2_save("wav", EncodeFormat::PcmWav { bits_per_sample: 16 }).await;
 }
 
 #[tokio::test]
 async fn an_aiff_images_track_saves_its_own_audio() {
-    check_track2_save(
-        "aiff",
-        EncodeFormat::PcmAiff {
-            bits_per_sample: 16,
-        },
-    )
-    .await;
+    check_track2_save("aiff", EncodeFormat::PcmAiff { bits_per_sample: 16 }).await;
 }

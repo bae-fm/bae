@@ -166,11 +166,8 @@ impl PlaybackPreparedTrack {
     /// Decoder windows for this track starting `offset` samples in.
     fn decode_params(&self, offset: u64, include_pregap: bool) -> StreamDecodeParams {
         let mut remaining_offset = offset;
-        let leading_silence_frames = if include_pregap {
-            self.generated_pregap_frames.saturating_sub(offset)
-        } else {
-            0
-        };
+        let leading_silence_frames =
+            if include_pregap { self.generated_pregap_frames.saturating_sub(offset) } else { 0 };
         if include_pregap {
             remaining_offset = remaining_offset.saturating_sub(self.generated_pregap_frames);
         }
@@ -180,10 +177,8 @@ impl PlaybackPreparedTrack {
             if !include_pregap && segment.role == DbAudioSegmentRole::AudioPregap {
                 continue;
             }
-            let segment_len = segment
-                .span
-                .end_sample
-                .map(|end| end.saturating_sub(segment.span.start_sample));
+            let segment_len =
+                segment.span.end_sample.map(|end| end.saturating_sub(segment.span.start_sample));
             if let Some(len) = segment_len {
                 if remaining_offset >= len {
                     remaining_offset -= len;
@@ -204,17 +199,12 @@ impl PlaybackPreparedTrack {
 
     /// Whether this track reads its bytes from the buffer with this id.
     fn reads_buffer(&self, buffer_id: u64) -> bool {
-        self.segments
-            .iter()
-            .any(|segment| segment.buffer.id() == buffer_id)
+        self.segments.iter().any(|segment| segment.buffer.id() == buffer_id)
     }
 
     /// The distinct release files this track plays from.
     fn file_ids(&self) -> HashSet<&str> {
-        self.segments
-            .iter()
-            .map(|segment| segment.file_id.as_str())
-            .collect()
+        self.segments.iter().map(|segment| segment.file_id.as_str()).collect()
     }
 }
 
@@ -494,10 +484,7 @@ fn side_boundary_between(
         return None;
     }
     Some(SideBoundary {
-        id: format!(
-            "{}:{}:{}",
-            next.track_id, current_side.medium, current_side.side
-        ),
+        id: format!("{}:{}:{}", next.track_id, current_side.medium, current_side.side),
         kind: current_side.boundary,
         side_label: current_side.label.clone(),
     })
@@ -535,21 +522,17 @@ impl AudioOutputDevice for SystemAudioOutputDevice {
     fn open_output(
         &self,
     ) -> Result<Box<dyn AudioOutput>, crate::playback::audio_output::AudioError> {
-        Ok(Box::new(
-            crate::playback::cpal_output::CpalAudioOutput::new(
-                #[cfg(target_os = "macos")]
-                self.device_formats.clone(),
-            )?,
-        ))
+        Ok(Box::new(crate::playback::cpal_output::CpalAudioOutput::new(
+            #[cfg(target_os = "macos")]
+            self.device_formats.clone(),
+        )?))
     }
 
     #[cfg(target_os = "android")]
     fn open_output(
         &self,
     ) -> Result<Box<dyn AudioOutput>, crate::playback::audio_output::AudioError> {
-        Ok(Box::new(
-            crate::playback::aaudio_output::AAudioOutput::new()?
-        ))
+        Ok(Box::new(crate::playback::aaudio_output::AAudioOutput::new()?))
     }
 }
 

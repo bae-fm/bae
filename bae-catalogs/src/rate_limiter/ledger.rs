@@ -51,11 +51,7 @@ struct Count {
 
 impl Ledger {
     pub(super) fn new(window: Duration) -> Self {
-        Self {
-            window,
-            sent: VecDeque::new(),
-            count: None,
-        }
+        Self { window, sent: VecDeque::new(), count: None }
     }
 
     pub(super) fn window(&self) -> Duration {
@@ -64,19 +60,11 @@ impl Ledger {
 
     pub(super) fn admit(&mut self, admission: u64, now: Instant) {
         self.prune(now);
-        self.sent.push_back(Sent {
-            admission,
-            admitted: now,
-            answered: None,
-        });
+        self.sent.push_back(Sent { admission, admitted: now, answered: None });
     }
 
     pub(super) fn answer(&mut self, admission: u64, now: Instant) {
-        if let Some(sent) = self
-            .sent
-            .iter_mut()
-            .find(|sent| sent.admission == admission)
-        {
+        if let Some(sent) = self.sent.iter_mut().find(|sent| sent.admission == admission) {
             sent.answered = Some(now);
         }
     }
@@ -84,27 +72,14 @@ impl Ledger {
     /// Take `count`, read off the response to `admission`, unless a response to
     /// a later admission has already said more.
     pub(super) fn counted(&mut self, admission: u64, now: Instant, count: WindowCount) {
-        if self
-            .count
-            .as_ref()
-            .is_some_and(|newest| newest.admission > admission)
-        {
+        if self.count.as_ref().is_some_and(|newest| newest.admission > admission) {
             return;
         }
         let (remaining, ends, rolling) = match count {
             WindowCount::Rolling { remaining } => (remaining, now + self.window, true),
-            WindowCount::Fixed {
-                remaining,
-                resets_in,
-            } => (remaining, now + resets_in, false),
+            WindowCount::Fixed { remaining, resets_in } => (remaining, now + resets_in, false),
         };
-        self.count = Some(Count {
-            admission,
-            answered: now,
-            remaining,
-            ends,
-            rolling,
-        });
+        self.count = Some(Count { admission, answered: now, remaining, ends, rolling });
     }
 
     /// A refusal says the count is spent, and the hold it brings outlasts it.
@@ -124,11 +99,7 @@ impl Ledger {
         }
 
         // Every request admitted after the counted one is spent from it.
-        let after = self
-            .sent
-            .iter()
-            .filter(|sent| sent.admission > count.admission)
-            .count() as i64;
+        let after = self.sent.iter().filter(|sent| sent.admission > count.admission).count() as i64;
         // In a moving window, each request of ours the count held, or that was
         // spent from it since, gives its place back once it has certainly left
         // — a window after it certainly arrived. The others the count holds
@@ -165,10 +136,7 @@ impl Ledger {
     /// so they left any window a count current now describes.
     fn prune(&mut self, now: Instant) {
         let window = self.window;
-        self.sent.retain(|sent| {
-            sent.answered
-                .is_none_or(|answered| answered + window * 2 > now)
-        });
+        self.sent.retain(|sent| sent.answered.is_none_or(|answered| answered + window * 2 > now));
     }
 
     #[cfg(test)]

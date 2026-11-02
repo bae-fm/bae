@@ -25,10 +25,7 @@ async fn a_picked_album_shows_over_what_the_records_name() {
         .await
         .unwrap();
 
-    handle
-        .set_candidate_album(&key, Some(album.id.clone()))
-        .await
-        .unwrap();
+    handle.set_candidate_album(&key, Some(album.id.clone())).await.unwrap();
     assert_eq!(
         pane(&handle, &key).await.draft().unwrap().album,
         crate::import::DraftAlbum::Picked {

@@ -44,10 +44,7 @@ async fn a_candidate_holding_no_draft_row_reads_its_blank_draft_and_folder_cover
     let candidate = with_cover(&root, "Album");
     let key = candidate.key();
     let hash = candidate.files.content_hash();
-    let generation = db
-        .begin_folder_scan(&root, crate::import::VolumeKind::Local)
-        .await
-        .unwrap();
+    let generation = db.begin_folder_scan(&root, crate::import::VolumeKind::Local).await.unwrap();
     db.save_folder_scan_item(
         &root,
         generation,
@@ -55,25 +52,13 @@ async fn a_candidate_holding_no_draft_row_reads_its_blank_draft_and_folder_cover
     )
     .await
     .unwrap();
-    db.finish_folder_scan(&root, generation, None)
-        .await
-        .unwrap();
+    db.finish_folder_scan(&root, generation, None).await.unwrap();
     let folder_cover = crate::import::CoverSelection::Local("cover.jpg".to_string());
     assert_eq!(candidate.blank_cover(), Some(folder_cover.clone()));
     // As an import deletes them, with no release recorded: the folder is
     // back in Found.
-    exec(
-        &db,
-        "DELETE FROM import_candidate_edit WHERE content_hash = ?1",
-        &[&hash],
-    )
-    .await;
-    exec(
-        &db,
-        "DELETE FROM import_candidate_cover WHERE content_hash = ?1",
-        &[&hash],
-    )
-    .await;
+    exec(&db, "DELETE FROM import_candidate_edit WHERE content_hash = ?1", &[&hash]).await;
+    exec(&db, "DELETE FROM import_candidate_cover WHERE content_hash = ?1", &[&hash]).await;
 
     let listed = db
         .load_import_list(list_request(&db, crate::import::TriageTab::Pending, [(0, 50)]).await)
@@ -96,15 +81,9 @@ async fn a_candidate_holding_no_draft_row_reads_its_blank_draft_and_folder_cover
         })
     );
 
-    let pane = db
-        .load_import_candidate(&key)
-        .await
-        .unwrap()
-        .expect("the folder has a pane")
-        .resolve();
-    let draft = pane
-        .draft()
-        .expect("a folder nobody imported holds a draft");
+    let pane =
+        db.load_import_candidate(&key).await.unwrap().expect("the folder has a pane").resolve();
+    let draft = pane.draft().expect("a folder nobody imported holds a draft");
     assert_eq!(draft.metadata_draft, candidate.blank_draft().release_edit());
     assert_eq!(draft.metadata_author, crate::import::MetadataAuthor::Nobody);
     assert_eq!(
@@ -113,26 +92,14 @@ async fn a_candidate_holding_no_draft_row_reads_its_blank_draft_and_folder_cover
     );
 
     crate::import::CandidatePreparations::new(db.clone())
-        .set_field(
-            &hash,
-            crate::import::CandidateEditField::AlbumTitle,
-            "Typed album",
-        )
+        .set_field(&hash, crate::import::CandidateEditField::AlbumTitle, "Typed album")
         .await
         .unwrap();
-    let stored = db
-        .load_candidate_preparation(&hash)
-        .await
-        .unwrap()
-        .unwrap()
-        .stored()
-        .unwrap();
+    let stored = db.load_candidate_preparation(&hash).await.unwrap().unwrap().stored().unwrap();
     assert_eq!(stored.metadata.draft.album_title, "Typed album");
     assert_eq!(stored.metadata.cover, Some(folder_cover));
     assert_eq!(
-        db.count_rows_for_test("import_candidate_cover", "content_hash", &hash)
-            .await
-            .unwrap(),
+        db.count_rows_for_test("import_candidate_cover", "content_hash", &hash).await.unwrap(),
         1,
         "the first save stores the cover it read"
     );

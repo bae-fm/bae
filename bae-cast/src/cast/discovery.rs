@@ -167,11 +167,8 @@ pub(crate) fn map_device(
     friendly_name: Option<&str>,
 ) -> Option<RendererDevice> {
     let id = id.map(str::trim).filter(|id| !id.is_empty())?;
-    let name = friendly_name
-        .map(str::trim)
-        .filter(|n| !n.is_empty())
-        .unwrap_or(instance)
-        .to_string();
+    let name =
+        friendly_name.map(str::trim).filter(|n| !n.is_empty()).unwrap_or(instance).to_string();
 
     let mut chosen: Option<IpAddr> = None;
     for addr in addresses {
@@ -185,18 +182,12 @@ pub(crate) fn map_device(
     Some(RendererDevice {
         id: id.to_string(),
         name,
-        connection: RendererConnection::Cast {
-            addr: chosen?,
-            port,
-        },
+        connection: RendererConnection::Cast { addr: chosen?, port },
     })
 }
 
 /// The instance label of a service fullname (`"Living Room._googlecast._tcp.local."`
 /// → `"Living Room"`), which is what a host browser reports directly.
 pub(super) fn instance_name(fullname: &str) -> &str {
-    fullname
-        .split_once("._googlecast")
-        .map(|(instance, _)| instance)
-        .unwrap_or(fullname)
+    fullname.split_once("._googlecast").map(|(instance, _)| instance).unwrap_or(fullname)
 }

@@ -57,19 +57,13 @@ pub struct SourceAudioFile {
 
 impl SourceAudioFile {
     pub fn descriptor(&self) -> Option<SourceAudioDescriptor> {
-        Some(SourceAudioDescriptor {
-            layout: self.layout?,
-            format: self.format.clone(),
-        })
+        Some(SourceAudioDescriptor { layout: self.layout?, format: self.format.clone() })
     }
 
     /// This file as one the release's summary is read from, when it
     /// contributes tracks.
     pub fn summarized(&self) -> Option<SummarizedAudio> {
-        Some(SummarizedAudio {
-            descriptor: self.descriptor()?,
-            duration_ms: self.duration_ms,
-        })
+        Some(SummarizedAudio { descriptor: self.descriptor()?, duration_ms: self.duration_ms })
     }
 }
 
@@ -88,9 +82,7 @@ pub enum SourceAudioSummary {
     Uniform { descriptor: SourceAudioDescriptor },
     /// The files are more than one format: each fact they disagree on, in the
     /// order a format's facts read. A fact they share is not named.
-    Mixed {
-        differences: Vec<SourceAudioDifference>,
-    },
+    Mixed { differences: Vec<SourceAudioDifference> },
 }
 
 /// One fact a release's files disagree on, and its values, each once, in the
@@ -121,10 +113,7 @@ impl SourceAudioSummary {
     pub fn from_files(files: impl IntoIterator<Item = SummarizedAudio>) -> Option<Self> {
         let files: Vec<SummarizedAudio> = files.into_iter().collect();
         let first = files.first()?;
-        if files
-            .iter()
-            .all(|file| file.descriptor.shares_format(&first.descriptor))
-        {
+        if files.iter().all(|file| file.descriptor.shares_format(&first.descriptor)) {
             let mut descriptor = first.descriptor.clone();
             descriptor.format.bitrate_kbps = average_bitrate_kbps(&files);
             return Some(Self::Uniform { descriptor });
@@ -181,10 +170,7 @@ fn average_bitrate_kbps(files: &[SummarizedAudio]) -> Option<i64> {
             i128::from(played),
         )
     } else {
-        (
-            rated.iter().map(|(kbps, _)| i128::from(*kbps)).sum(),
-            rated.len() as i128,
-        )
+        (rated.iter().map(|(kbps, _)| i128::from(*kbps)).sum(), rated.len() as i128)
     };
     Some(((weighted + weight / 2) / weight) as i64)
 }
@@ -228,9 +214,7 @@ mod tests {
         let one = flac(44_100, 16);
         assert_eq!(
             SourceAudioSummary::from_files([one.clone(), one.clone()]),
-            Some(SourceAudioSummary::Uniform {
-                descriptor: one.descriptor
-            })
+            Some(SourceAudioSummary::Uniform { descriptor: one.descriptor })
         );
     }
 
@@ -279,12 +263,8 @@ mod tests {
             SourceAudioSummary::from_files([flac(44_100, 16), flac(96_000, 24)]),
             Some(SourceAudioSummary::Mixed {
                 differences: vec![
-                    SourceAudioDifference::SampleRate {
-                        sample_rates_hz: vec![44_100, 96_000],
-                    },
-                    SourceAudioDifference::BitDepth {
-                        bits_per_sample: vec![16, 24],
-                    },
+                    SourceAudioDifference::SampleRate { sample_rates_hz: vec![44_100, 96_000] },
+                    SourceAudioDifference::BitDepth { bits_per_sample: vec![16, 24] },
                 ],
             })
         );

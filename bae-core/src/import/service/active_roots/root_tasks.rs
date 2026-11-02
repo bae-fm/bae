@@ -22,10 +22,8 @@ pub(super) async fn run_root_removal(
         match backend.uninstall(root).await {
             Ok(snapshot) => uninstalled.push((root, snapshot)),
             Err(error) => {
-                let error = format!(
-                    "could not remove folder watch for {}: {error}",
-                    root.display()
-                );
+                let error =
+                    format!("could not remove folder watch for {}: {error}", root.display());
                 return RootRemovalResult::Failed(
                     restore_watches(backend, &uninstalled, error).await,
                 );
@@ -39,10 +37,7 @@ pub(super) async fn run_root_removal(
         })
         .await;
     match backend.remove_durable_roots(roots, parent).await {
-        Ok(removed_keys) => RootRemovalResult::Removed {
-            commit,
-            removed_keys,
-        },
+        Ok(removed_keys) => RootRemovalResult::Removed { commit, removed_keys },
         Err(error) => {
             drop(commit);
             let error = format!("could not remove {described}: {error}");
@@ -53,17 +48,12 @@ pub(super) async fn run_root_removal(
 
 /// What a removal changes, in words for its errors.
 fn describe(roots: &[PathBuf], parent: Option<&Path>) -> String {
-    let roots = roots
-        .iter()
-        .map(|root| root.display().to_string())
-        .collect::<Vec<_>>()
-        .join(", ");
+    let roots = roots.iter().map(|root| root.display().to_string()).collect::<Vec<_>>().join(", ");
     match parent {
         None => format!("watched folder {roots}"),
-        Some(parent) => format!(
-            "watched folders {roots} for {} to watch in their place",
-            parent.display()
-        ),
+        Some(parent) => {
+            format!("watched folders {roots} for {} to watch in their place", parent.display())
+        }
     }
 }
 

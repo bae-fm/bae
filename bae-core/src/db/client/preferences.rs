@@ -21,9 +21,7 @@ impl Database {
     /// Follow this device's preferences: the first value at once, then one
     /// after each write that changes them.
     pub(crate) fn subscribe_preferences(&self) -> coven::LiveQuery<Preferences> {
-        self.inner
-            .handle
-            .subscribe(|sql| preferences_on(&sql).map_err(CovenError::from))
+        self.inner.handle.subscribe(|sql| preferences_on(&sql).map_err(CovenError::from))
     }
 
     /// Edit the preferences in one write. `edit` is handed the stored
@@ -105,10 +103,7 @@ fn preferences_on(sql: &(impl QueryOne + QueryRows)) -> rusqlite::Result<Prefere
                 "wav" => CastTranscodeFormat::Wav,
                 other => return Err(invalid("cast_transcode_format", other)),
             },
-            mcp: McpConfig {
-                enabled: flag("mcp_enabled")?,
-                port: row.get("mcp_port")?,
-            },
+            mcp: McpConfig { enabled: flag("mcp_enabled")?, port: row.get("mcp_port")? },
             subsonic: SubsonicConfig {
                 enabled: flag("subsonic_enabled")?,
                 port: row.get("subsonic_port")?,
@@ -152,24 +147,12 @@ fn save_presets_on(sql: &impl QueryRows) -> rusqlite::Result<Vec<SavePreset>> {
             filename_tokens: tokens_by_preset.remove(&id).unwrap_or_default(),
             name: row.get("name")?,
             codec: match codec.as_str() {
-                "flac" => SaveCodec::Flac {
-                    bit_depth: bit_depth()?,
-                },
-                "wav" => SaveCodec::Wav {
-                    bit_depth: bit_depth()?,
-                },
-                "aiff" => SaveCodec::Aiff {
-                    bit_depth: bit_depth()?,
-                },
-                "mp3" => SaveCodec::Mp3 {
-                    bitrate_kbps: bitrate_kbps()?,
-                },
-                "aac" => SaveCodec::Aac {
-                    bitrate_kbps: bitrate_kbps()?,
-                },
-                "opus_ogg" => SaveCodec::OpusOgg {
-                    bitrate_kbps: bitrate_kbps()?,
-                },
+                "flac" => SaveCodec::Flac { bit_depth: bit_depth()? },
+                "wav" => SaveCodec::Wav { bit_depth: bit_depth()? },
+                "aiff" => SaveCodec::Aiff { bit_depth: bit_depth()? },
+                "mp3" => SaveCodec::Mp3 { bitrate_kbps: bitrate_kbps()? },
+                "aac" => SaveCodec::Aac { bitrate_kbps: bitrate_kbps()? },
+                "opus_ogg" => SaveCodec::OpusOgg { bitrate_kbps: bitrate_kbps()? },
                 _ => return Err(invalid("codec", codec)),
             },
             pregap_placement: match pregap.as_str() {
@@ -289,9 +272,7 @@ fn write_preferences_on(
             default_track_save_preset,
             default_release_save_preset,
             pause_between_sides,
-            side_pause_countdown
-                .duration()
-                .map(|duration| duration.as_secs() as i64),
+            side_pause_countdown.duration().map(|duration| duration.as_secs() as i64),
             max_concurrent_uploads.get(),
             max_concurrent_downloads.get(),
             show_remaining_time,

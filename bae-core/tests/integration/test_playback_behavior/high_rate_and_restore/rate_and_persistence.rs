@@ -29,17 +29,14 @@ impl HighSampleRateTestFixture {
                 &[("96kHz Track", "0:03")],
             )
         };
-        let release_id_key = seed_discogs_test_release(library_manager.providers(), discogs_release);
+        let release_id_key =
+            seed_discogs_test_release(library_manager.providers(), discogs_release);
 
         support::import_folder_and_wait(&library_manager, album_dir, release_id_key).await;
 
         let albums = library_manager.get_albums(&[]).await?;
-        let releases = library_manager
-            .get_releases_for_album(&albums[0].id)
-            .await?;
-        let tracks = library_manager
-            .get_tracks_for_release(&releases[0].id)
-            .await?;
+        let releases = library_manager.get_releases_for_album(&albums[0].id).await?;
+        let tracks = library_manager.get_tracks_for_release(&releases[0].id).await?;
         let track_id = tracks[0].id.clone();
 
         // Verify the audio format was correctly detected as 96kHz
@@ -80,9 +77,8 @@ impl HighSampleRateTestFixture {
 /// not ~6.5s.
 #[tokio::test]
 async fn test_high_sample_rate_position_calculation() {
-    let mut fixture = HighSampleRateTestFixture::new()
-        .await
-        .expect("set up high sample rate fixture");
+    let mut fixture =
+        HighSampleRateTestFixture::new().await.expect("set up high sample rate fixture");
 
     // Play the 96kHz track (3 seconds duration)
     fixture.playback_handle.play(fixture.track_id.clone());
@@ -154,10 +150,7 @@ async fn test_seek_lands_near_target_position() {
 
     // Wait for playback to start
     let playing_state = fixture
-        .wait_for_state(
-            |s| matches!(s, PlaybackState::Playing { .. }),
-            Duration::from_secs(5),
-        )
+        .wait_for_state(|s| matches!(s, PlaybackState::Playing { .. }), Duration::from_secs(5))
         .await;
     assert!(playing_state.is_some(), "Should start playing");
 
@@ -231,22 +224,15 @@ async fn test_cue_flac_seek_respects_track_end_boundary() {
     // Wait for playback to start
     let started =
         support::next_matching(&mut fixture.progress_rx, Duration::from_secs(5), |event| {
-            matches!(
-                event,
-                PlaybackProgress::StateChanged {
-                    state: PlaybackState::Playing { .. }
-                }
-            )
-            .then_some(())
+            matches!(event, PlaybackProgress::StateChanged { state: PlaybackState::Playing { .. } })
+                .then_some(())
         })
         .await;
     assert!(started.is_some(), "Playback should start");
 
     // Seek to 5s into track 2
     let seek_position_ms: u64 = 5000;
-    fixture
-        .playback_handle
-        .seek(TrackTime::from_duration(Duration::from_millis(seek_position_ms)));
+    fixture.playback_handle.seek(TrackTime::from_duration(Duration::from_millis(seek_position_ms)));
     let captured = fixture.next_capture_stream().await;
 
     support::wait_for_seek(&mut fixture.progress_rx, &track_id).await;
@@ -257,11 +243,11 @@ async fn test_cue_flac_seek_respects_track_end_boundary() {
     let decoded_samples =
         support::next_matching(&mut fixture.progress_rx, Duration::from_secs(30), |event| {
             match event {
-                PlaybackProgress::DecodeStats {
-                    track_id: ref tid,
-                    samples_decoded,
-                    ..
-                } if *tid == track_id => Some(samples_decoded),
+                PlaybackProgress::DecodeStats { track_id: ref tid, samples_decoded, .. }
+                    if *tid == track_id =>
+                {
+                    Some(samples_decoded)
+                }
                 _ => None,
             }
         })
@@ -275,8 +261,8 @@ async fn test_cue_flac_seek_respects_track_end_boundary() {
     let reference_data =
         std::fs::read(fixture_dir.join("02 Test Artist - Track Two (White Noise).flac"))
             .expect("read reference");
-    let reference =
-        decode_audio(support::filled_sparse_buffer(&reference_data), None, None).expect("decode reference");
+    let reference = decode_audio(support::filled_sparse_buffer(&reference_data), None, None)
+        .expect("decode reference");
     let channels = reference.channels as usize;
     let sample_rate = reference.sample_rate;
     let reference_f32 = samples_as_f32(&reference);
@@ -305,9 +291,8 @@ async fn test_cue_flac_seek_respects_track_end_boundary() {
     let skip_samples = (seek_position_ms * sample_rate as u64 / 1000) as usize * channels;
     if skip_samples < reference_f32.len() {
         let reference_from_seek = &reference_f32[skip_samples..];
-        let snippet_len = (200 * channels)
-            .min(captured_snapshot.len())
-            .min(reference_from_seek.len());
+        let snippet_len =
+            (200 * channels).min(captured_snapshot.len()).min(reference_from_seek.len());
         let mut sad: f64 = 0.0;
         for i in 0..snippet_len {
             sad += (captured_snapshot[i] as f64 - reference_from_seek[i] as f64).abs();
@@ -340,7 +325,8 @@ async fn test_cue_flac_seek_respects_track_end_boundary() {
 async fn imported_library_without_playback() -> (LibraryManager, TempDir) {
     let (library_manager, album_dir, temp_dir) = support::setup_test_library_with_album_dir().await;
     let _ = generate_test_flac_files(&album_dir);
-    let release_id_key = seed_discogs_test_release(library_manager.providers(), create_test_album());
+    let release_id_key =
+        seed_discogs_test_release(library_manager.providers(), create_test_album());
     support::import_folder_and_wait(&library_manager, album_dir, release_id_key).await;
     (library_manager, temp_dir)
 }
@@ -368,18 +354,12 @@ async fn test_restore_emits_seeked_at_saved_position() {
         .get_releases_for_album(&library_manager.get_albums(&[]).await.unwrap()[0].id)
         .await
         .unwrap();
-    let tracks = library_manager
-        .get_tracks_for_release(&releases[0].id)
-        .await
-        .unwrap();
+    let tracks = library_manager.get_tracks_for_release(&releases[0].id).await.unwrap();
     let track_id = tracks[0].id.clone();
 
     // Write a snapshot before the service starts, so no one can consume it
     // before our test service starts.
-    library_manager
-        .write_resume_point(&releases[0].id, track_id.clone(), Some(0))
-        .await
-        .unwrap();
+    library_manager.write_resume_point(&releases[0].id, track_id.clone(), Some(0)).await.unwrap();
 
     // Start the playback service — restore() runs on the audio thread before
     // run() and calls emit_position_display at its tail.
@@ -413,14 +393,11 @@ async fn test_play_persists_then_stop_clears_playback_state() {
         .unwrap()[0]
         .id
         .clone();
-    let first_track = library_manager
-        .get_tracks_for_release(&release_id)
-        .await
-        .unwrap()[0]
-        .id
-        .clone();
+    let first_track =
+        library_manager.get_tracks_for_release(&release_id).await.unwrap()[0].id.clone();
 
-    let (handle, _capture_rx) = start_capture_service(library_manager.clone(), runtime_handle).await;
+    let (handle, _capture_rx) =
+        start_capture_service(library_manager.clone(), runtime_handle).await;
 
     // Playing a release persists the row: current is the first track, and the
     // queue plays from the release.
@@ -435,20 +412,14 @@ async fn test_play_persists_then_stop_clears_playback_state() {
         tokio::time::sleep(Duration::from_millis(50)).await;
     }
     let row = persisted.expect("playing a release should persist the playback_state row");
-    assert_eq!(
-        row.current.map(|current| current.track_id).as_deref(),
-        Some(first_track.as_str())
-    );
+    assert_eq!(row.current.map(|current| current.track_id).as_deref(), Some(first_track.as_str()));
     let context = handle
         .queue_value()
         .await
         .expect("queue value")
         .context
         .expect("playing a release fills the context lane");
-    assert_eq!(
-        context.source,
-        bae_core::playback::ContextSource::Release(release_id.clone())
-    );
+    assert_eq!(context.source, bae_core::playback::ContextSource::Release(release_id.clone()));
 
     // Stopping clears it, so a restart wouldn't re-cue a finished session.
     handle.stop();
@@ -461,10 +432,7 @@ async fn test_play_persists_then_stop_clears_playback_state() {
         }
         tokio::time::sleep(Duration::from_millis(50)).await;
     }
-    assert!(
-        cleared,
-        "stopping playback should clear the playback_state row"
-    );
+    assert!(cleared, "stopping playback should clear the playback_state row");
 }
 
 /// The `playback_state` row must advance while a track plays, with no
@@ -478,10 +446,7 @@ async fn test_position_persists_periodically_while_playing() {
 
     fixture.playback_handle.play(track_id.clone());
     fixture
-        .wait_for_state(
-            |s| matches!(s, PlaybackState::Playing { .. }),
-            Duration::from_secs(5),
-        )
+        .wait_for_state(|s| matches!(s, PlaybackState::Playing { .. }), Duration::from_secs(5))
         .await
         .expect("the track should start playing");
 
@@ -501,20 +466,20 @@ async fn persisted_position_past(fixture: &mut PlaybackTestFixture, floor_ms: u6
     let deadline = Instant::now() + POSITION_BACKSTOP;
     loop {
         let remaining = deadline.saturating_duration_since(Instant::now());
-        next_position(&mut fixture.progress_rx, remaining)
-            .await
-            .unwrap_or_else(|| {
-                panic!(
-                    "the persisted position should pass {floor_ms}ms while playing, \
+        next_position(&mut fixture.progress_rx, remaining).await.unwrap_or_else(|| {
+            panic!(
+                "the persisted position should pass {floor_ms}ms while playing, \
                      with no Shutdown/SaveState sent"
-                )
-            });
+            )
+        });
         let state = fixture
             .library_manager
             .load_playback_state()
             .await
             .expect("load_playback_state should succeed");
-        if let Some(persisted_ms) = state.and_then(|row| row.position_ms).filter(|ms| *ms > floor_ms) {
+        if let Some(persisted_ms) =
+            state.and_then(|row| row.position_ms).filter(|ms| *ms > floor_ms)
+        {
             return persisted_ms;
         }
     }

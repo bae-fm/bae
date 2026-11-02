@@ -51,13 +51,9 @@ fn insert_file(
 ) -> rusqlite::Result<usize> {
     let now = "2026-01-01T00:00:00Z";
     let (content_type, duration_ms, sample_rate_hz, bits_per_sample, channels) = match audio {
-        Some((content_type, bits)) => (
-            Some(content_type),
-            Some(1_000),
-            Some(44_100),
-            Some(bits),
-            Some(2),
-        ),
+        Some((content_type, bits)) => {
+            (Some(content_type), Some(1_000), Some(44_100), Some(bits), Some(2))
+        }
         None => (None, None, None, None, None),
     };
     // The stand-in record of the coven file the row references.
@@ -99,10 +95,7 @@ fn only_audio_has_a_layout_and_audio_left_out_of_the_tracklist_has_none() {
         ("unknown-layout", Some("disc"), Some(("audio/flac", 16))),
     ] {
         let error = insert_file(&conn, id, layout, audio).expect_err(id);
-        assert!(
-            error.to_string().contains("CHECK constraint failed"),
-            "{id}: {error}"
-        );
+        assert!(error.to_string().contains("CHECK constraint failed"), "{id}: {error}");
     }
 
     let left_out = conn
@@ -116,9 +109,7 @@ fn only_audio_has_a_layout_and_audio_left_out_of_the_tracklist_has_none() {
             row_to_file,
         )
         .unwrap();
-    let audio = left_out
-        .source_audio
-        .expect("the facts of carried audio read back");
+    let audio = left_out.source_audio.expect("the facts of carried audio read back");
     assert_eq!(audio.layout, None);
 }
 
@@ -164,10 +155,8 @@ fn the_schema_refuses_negative_audio_positions() {
         assert!(update.is_err(), "a negative {column} was stored");
     }
     for column in ["pregap_samples", "generated_pregap_samples"] {
-        let update = conn.execute(
-            &format!("UPDATE audio_formats SET {column} = -1 WHERE id = 'format-1'"),
-            [],
-        );
+        let update = conn
+            .execute(&format!("UPDATE audio_formats SET {column} = -1 WHERE id = 'format-1'"), []);
         assert!(update.is_err(), "a negative {column} was stored");
     }
 }
@@ -212,21 +201,15 @@ fn an_unusable_audio_format_value_is_an_error_naming_the_track() {
         ("channels", "0"),
         ("bits_per_sample", "33"),
     ] {
-        conn.execute_batch("PRAGMA ignore_check_constraints = ON")
-            .unwrap();
+        conn.execute_batch("PRAGMA ignore_check_constraints = ON").unwrap();
         conn.execute(
             &format!("UPDATE audio_formats SET {column} = {value} WHERE id = 'format-1'"),
             [],
         )
         .unwrap();
-        conn.execute_batch("PRAGMA ignore_check_constraints = OFF")
-            .unwrap();
+        conn.execute_batch("PRAGMA ignore_check_constraints = OFF").unwrap();
         let error = conn
-            .query_row(
-                "SELECT * FROM audio_formats WHERE id = 'format-1'",
-                [],
-                row_to_audio_format,
-            )
+            .query_row("SELECT * FROM audio_formats WHERE id = 'format-1'", [], row_to_audio_format)
             .expect_err(column);
         let message = error.to_string();
         assert!(

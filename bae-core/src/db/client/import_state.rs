@@ -82,17 +82,8 @@ pub(crate) fn insert_file_tags_draft(
     content_hash: &str,
     draft: &crate::import::CandidateDraft,
 ) -> Result<(), DbError> {
-    pane_rows::insert_draft(
-        sql,
-        content_hash,
-        draft,
-        crate::import::MetadataAuthor::Prefill,
-    )?;
-    insert_provenance(
-        sql,
-        content_hash,
-        &crate::import::MetadataProvenance::FileMetadata,
-    )?;
+    pane_rows::insert_draft(sql, content_hash, draft, crate::import::MetadataAuthor::Prefill)?;
+    insert_provenance(sql, content_hash, &crate::import::MetadataProvenance::FileMetadata)?;
     Ok(())
 }
 
@@ -140,10 +131,7 @@ pub(super) fn relative_below(root: &Path, folder: &Path) -> Result<RelativeFolde
 /// folder would never be deleted.
 pub(super) fn require_watched(sql: &CovenWrite<'_>, folder: &Path) -> Result<PathBuf, DbError> {
     watched_folder_among_on(sql, folder.ancestors())?.ok_or_else(|| {
-        DbError::Message(format!(
-            "{} is under no watched folder",
-            coven::path_text(folder)
-        ))
+        DbError::Message(format!("{} is under no watched folder", coven::path_text(folder)))
     })
 }
 
@@ -198,10 +186,7 @@ impl Database {
                 )));
             }
         }
-        Ok(roots
-            .into_iter()
-            .map(crate::import::WatchedFolder::from_path)
-            .collect())
+        Ok(roots.into_iter().map(crate::import::WatchedFolder::from_path).collect())
     }
 
     /// Every skipped candidate under one root, by its path below the root:
@@ -252,8 +237,7 @@ impl Database {
         path: &Path,
     ) -> Result<Option<PathBuf>, DbError> {
         let path = path.to_path_buf();
-        self.read(move |sql| watched_folder_among_on(&sql, path.ancestors().skip(1)))
-            .await
+        self.read(move |sql| watched_folder_among_on(&sql, path.ancestors().skip(1))).await
     }
 
     /// The watched folders inside `path`, not `path` itself, in their order:
@@ -302,18 +286,14 @@ impl Database {
                 [],
                 |row| path_column::get(row, 0),
             )?;
-            if roots
-                .iter()
-                .any(|root| root.as_os_str() == path.as_os_str())
-            {
+            if roots.iter().any(|root| root.as_os_str() == path.as_os_str()) {
                 return Err(DbError::Message(format!(
                     "watched folder {} was added while this add was deciding",
                     coven::path_text(&path)
                 )));
             }
-            if let Some(conflict) = roots
-                .iter()
-                .find(|root| crate::import::watched_folder::paths_overlap(&path, root))
+            if let Some(conflict) =
+                roots.iter().find(|root| crate::import::watched_folder::paths_overlap(&path, root))
             {
                 return Err(DbError::Message(format!(
                     "watched folders cannot overlap: {} conflicts with {}",
@@ -512,10 +492,7 @@ impl Database {
         folder: &Path,
     ) -> Result<std::collections::BTreeSet<CandidateKey>, DbError> {
         let (below_first, below_past) = crate::import::relative_folder::paths_below(folder);
-        let (root, folder) = (
-            coven::path_bytes(watched_folder_path),
-            coven::path_bytes(folder),
-        );
+        let (root, folder) = (coven::path_bytes(watched_folder_path), coven::path_bytes(folder));
         self.read(move |sql| {
             Ok(sql
                 .query(
@@ -610,13 +587,7 @@ impl Database {
         &self,
         content_hash: &str,
         file_edit_revision: u64,
-    ) -> Result<
-        Vec<(
-            CandidateKey,
-            crate::import::folder_scanner::CategorizedFiles,
-        )>,
-        DbError,
-    > {
+    ) -> Result<Vec<(CandidateKey, crate::import::folder_scanner::CategorizedFiles)>, DbError> {
         let content_hash = content_hash.to_string();
         let file_edit_revision = to_i64(file_edit_revision, "a file decision revision")?;
         self.read(move |sql| {
@@ -691,10 +662,7 @@ impl Database {
     ) -> Result<Option<DbImportCandidateState>, DbError> {
         let content_hash = content_hash.to_string();
         self.read(move |sql| {
-            Ok((
-                load_states_rows_on(&sql, CandidateRows::One(&content_hash))?,
-                content_hash,
-            ))
+            Ok((load_states_rows_on(&sql, CandidateRows::One(&content_hash))?, content_hash))
         })
         .process(|(process, content_hash)| Ok(process()?.remove(&content_hash)))
         .await
@@ -781,11 +749,7 @@ pub(super) fn settle_scanned_candidates(
                 }
                 updated_folders.insert(path.clone());
             }
-            other => {
-                return Err(DbError::Message(format!(
-                    "unknown candidate source {other}"
-                )))
-            }
+            other => return Err(DbError::Message(format!("unknown candidate source {other}"))),
         }
         let changed = sql.execute(
             "UPDATE scan_candidate SET file_edit_revision = ? \

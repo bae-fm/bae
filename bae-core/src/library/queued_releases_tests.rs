@@ -16,11 +16,7 @@ async fn queue() -> (QueuedReleases<(), u8>, tempfile::TempDir) {
 }
 
 fn entry(release_id: &str) -> ReleaseQueueEntry<()> {
-    ReleaseQueueEntry {
-        release_id: release_id.to_string(),
-        created_at: 0,
-        payload: (),
-    }
+    ReleaseQueueEntry { release_id: release_id.to_string(), created_at: 0, payload: () }
 }
 
 /// Each entry's phase in the table, in order.
@@ -80,10 +76,10 @@ where
                 "Test",
                 start,
                 move |release_id, result| {
-                    recorded.lock().unwrap().push((
-                        release_id.to_string(),
-                        result.map_err(|error| error.to_string()),
-                    ))
+                    recorded
+                        .lock()
+                        .unwrap()
+                        .push((release_id.to_string(), result.map_err(|error| error.to_string())))
                 },
                 |label, error| panic!("{label}: the queue's table failed: {error}"),
                 |failed| panic!("an entry's work panicked: {failed}"),
@@ -124,9 +120,7 @@ fn spawned(
             Err(join_error) if join_error.is_cancelled() => {
                 Err(LibraryError::Storage("cancelled".to_string()))
             }
-            Err(join_error) => Err(LibraryError::Storage(format!(
-                "task panicked: {join_error}"
-            ))),
+            Err(join_error) => Err(LibraryError::Storage(format!("task panicked: {join_error}"))),
         }
     })
 }
@@ -136,23 +130,12 @@ fn spawned(
 #[tokio::test]
 async fn a_finished_entry_leaves_and_the_next_starts() {
     let (queue, _tmp) = queue().await;
-    queue
-        .enqueue_all(vec![entry(RELEASE_A), entry(RELEASE_B)])
-        .await
-        .unwrap();
-    let (task, done) = worker(&queue, |_entry| async {
-        Ok((0, spawned(tokio::spawn(async {}))))
-    });
+    queue.enqueue_all(vec![entry(RELEASE_A), entry(RELEASE_B)]).await.unwrap();
+    let (task, done) = worker(&queue, |_entry| async { Ok((0, spawned(tokio::spawn(async {})))) });
 
     let outcomes = reported(&done, 2).await;
     task.abort();
-    assert_eq!(
-        outcomes,
-        vec![
-            (RELEASE_A.to_string(), Ok(())),
-            (RELEASE_B.to_string(), Ok(()))
-        ]
-    );
+    assert_eq!(outcomes, vec![(RELEASE_A.to_string(), Ok(())), (RELEASE_B.to_string(), Ok(()))]);
     assert!(phases(&queue).await.is_empty());
 }
 
@@ -163,22 +146,15 @@ async fn a_finished_entry_leaves_and_the_next_starts() {
 async fn a_panicking_operation_marks_the_release_failed_with_the_panic() {
     let (queue, _tmp) = queue().await;
     queue.enqueue_all(vec![entry(RELEASE_A)]).await.unwrap();
-    let (task, _done) = worker(&queue, |_entry| async {
-        Ok((0, spawned(tokio::spawn(async { panic!("boom") }))))
-    });
+    let (task, _done) =
+        worker(&queue, |_entry| async { Ok((0, spawned(tokio::spawn(async { panic!("boom") })))) });
 
-    let rows = until(&queue, |rows| {
-        matches!(rows.first(), Some((_, ReleaseQueueState::Failed { .. })))
-    })
-    .await;
+    let rows =
+        until(&queue, |rows| matches!(rows.first(), Some((_, ReleaseQueueState::Failed { .. }))))
+            .await;
     task.abort();
-    let ReleaseQueueState::Failed { error } = &rows[0].1 else {
-        unreachable!()
-    };
-    assert!(
-        error.contains("panicked"),
-        "the failure names the panic, got: {error}"
-    );
+    let ReleaseQueueState::Failed { error } = &rows[0].1 else { unreachable!() };
+    assert!(error.contains("panicked"), "the failure names the panic, got: {error}");
 }
 
 /// An entry whose work panics in the worker itself fails, the panic is
@@ -186,10 +162,7 @@ async fn a_panicking_operation_marks_the_release_failed_with_the_panic() {
 #[tokio::test]
 async fn an_entry_that_panics_fails_and_the_next_one_runs() {
     let (queue, _tmp) = queue().await;
-    queue
-        .enqueue_all(vec![entry(RELEASE_A), entry(RELEASE_B)])
-        .await
-        .unwrap();
+    queue.enqueue_all(vec![entry(RELEASE_A), entry(RELEASE_B)]).await.unwrap();
     let bugs: Arc<Mutex<Vec<TaskFailed>>> = Arc::default();
     let done: Outcomes = Arc::default();
     let worker_queue = queue.clone();
@@ -212,10 +185,10 @@ async fn an_entry_that_panics_fails_and_the_next_one_runs() {
                     ))
                 },
                 move |release_id, result| {
-                    recorded.lock().unwrap().push((
-                        release_id.to_string(),
-                        result.map_err(|error| error.to_string()),
-                    ))
+                    recorded
+                        .lock()
+                        .unwrap()
+                        .push((release_id.to_string(), result.map_err(|error| error.to_string())))
                 },
                 |label, error| panic!("{label}: the queue's table failed: {error}"),
                 move |failed| {
@@ -263,11 +236,7 @@ async fn a_cancel_before_the_start_aborts_the_work() {
     });
 
     loop {
-        let finished = work
-            .lock()
-            .unwrap()
-            .as_ref()
-            .is_some_and(|abort| abort.is_finished());
+        let finished = work.lock().unwrap().as_ref().is_some_and(|abort| abort.is_finished());
         if finished {
             break;
         }
@@ -275,10 +244,7 @@ async fn a_cancel_before_the_start_aborts_the_work() {
     }
     task.abort();
     assert!(phases(&queue).await.is_empty());
-    assert!(
-        done.lock().unwrap().is_empty(),
-        "a cancel is not an outcome"
-    );
+    assert!(done.lock().unwrap().is_empty(), "a cancel is not an outcome");
 }
 
 /// A cancel while the work runs aborts it; the entry is gone, its progress
@@ -291,35 +257,20 @@ async fn a_cancel_while_running_aborts_the_work_and_is_no_failure() {
         Ok((7, spawned(tokio::spawn(std::future::pending::<()>()))))
     });
     let mut transfers = queue.subscribe_transfers();
-    transfers
-        .wait_for(|transfers| transfers.get(RELEASE_A) == Some(&7))
-        .await
-        .unwrap();
+    transfers.wait_for(|transfers| transfers.get(RELEASE_A) == Some(&7)).await.unwrap();
     assert_eq!(
         phases(&queue).await,
-        vec![(
-            RELEASE_A.to_string(),
-            ReleaseQueueState::Active { progress: () }
-        )]
+        vec![(RELEASE_A.to_string(), ReleaseQueueState::Active { progress: () })]
     );
 
     queue.cancel(RELEASE_A).await.unwrap();
-    transfers
-        .wait_for(|transfers| transfers.is_empty())
-        .await
-        .unwrap();
+    transfers.wait_for(|transfers| transfers.is_empty()).await.unwrap();
     assert!(phases(&queue).await.is_empty());
     // The worker has seen the abort once it starts the next entry.
     queue.enqueue_all(vec![entry(RELEASE_B)]).await.unwrap();
-    transfers
-        .wait_for(|transfers| transfers.contains_key(RELEASE_B))
-        .await
-        .unwrap();
+    transfers.wait_for(|transfers| transfers.contains_key(RELEASE_B)).await.unwrap();
     task.abort();
-    assert!(
-        done.lock().unwrap().is_empty(),
-        "a cancel is not an outcome"
-    );
+    assert!(done.lock().unwrap().is_empty(), "a cancel is not an outcome");
 }
 
 /// Progress for the running entry is published once it has started; for
@@ -332,21 +283,12 @@ async fn progress_is_the_running_entrys_alone() {
         Ok((0, spawned(tokio::spawn(std::future::pending::<()>()))))
     });
     let mut transfers = queue.subscribe_transfers();
-    transfers
-        .wait_for(|transfers| transfers.contains_key(RELEASE_A))
-        .await
-        .unwrap();
+    transfers.wait_for(|transfers| transfers.contains_key(RELEASE_A)).await.unwrap();
 
     assert!(queue.set_active_progress(RELEASE_A, 50));
     assert!(!queue.set_active_progress(RELEASE_B, 10));
-    assert_eq!(
-        *transfers.borrow_and_update(),
-        BTreeMap::from([(RELEASE_A.to_string(), 50)])
-    );
-    assert_eq!(
-        queue.active_progress(),
-        BTreeMap::from([(RELEASE_A.to_string(), 50)])
-    );
+    assert_eq!(*transfers.borrow_and_update(), BTreeMap::from([(RELEASE_A.to_string(), 50)]));
+    assert_eq!(queue.active_progress(), BTreeMap::from([(RELEASE_A.to_string(), 50)]));
     task.abort();
 }
 
@@ -356,16 +298,11 @@ async fn a_paused_queue_starts_nothing_until_it_resumes() {
     let (queue, _tmp) = queue().await;
     queue.set_paused(true).await.unwrap();
     queue.enqueue_all(vec![entry(RELEASE_A)]).await.unwrap();
-    let (task, done) = worker(&queue, |_entry| async {
-        Ok((0, spawned(tokio::spawn(async {}))))
-    });
+    let (task, done) = worker(&queue, |_entry| async { Ok((0, spawned(tokio::spawn(async {})))) });
     for _ in 0..10 {
         tokio::task::yield_now().await;
     }
-    assert_eq!(
-        phases(&queue).await,
-        vec![(RELEASE_A.to_string(), ReleaseQueueState::Queued)]
-    );
+    assert_eq!(phases(&queue).await, vec![(RELEASE_A.to_string(), ReleaseQueueState::Queued)]);
 
     queue.set_paused(false).await.unwrap();
     assert_eq!(reported(&done, 1).await.len(), 1);

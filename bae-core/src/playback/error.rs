@@ -101,10 +101,7 @@ impl PlaybackError {
         Self::Internal(msg.into())
     }
     pub fn io(context: impl Into<String>, source: std::io::Error) -> Self {
-        Self::Io {
-            context: context.into(),
-            source,
-        }
+        Self::Io { context: context.into(), source }
     }
 }
 
@@ -127,15 +124,9 @@ mod tests {
     #[test]
     fn an_audio_output_failure_names_its_reason() {
         for (error, problem) in [
+            (AudioError::DeviceUnavailable, AudioOutputProblem::DeviceUnavailable),
             (
-                AudioError::DeviceUnavailable,
-                AudioOutputProblem::DeviceUnavailable,
-            ),
-            (
-                AudioError::UnsupportedFormat {
-                    sample_rate: 352_800,
-                    channels: 2,
-                },
+                AudioError::UnsupportedFormat { sample_rate: 352_800, channels: 2 },
                 AudioOutputProblem::UnsupportedFormat,
             ),
             (

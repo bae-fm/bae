@@ -10,10 +10,7 @@ impl LibraryManager {
     /// Whether storage is set up on this device, as coven's sync status
     /// says now.
     pub async fn has_cloud_home(&self) -> Result<bool, LibraryError> {
-        Ok(!matches!(
-            self.database.coven_sync_status().await?,
-            coven::SyncStatus::Disconnected
-        ))
+        Ok(!matches!(self.database.coven_sync_status().await?, coven::SyncStatus::Disconnected))
     }
 
     pub async fn set_sync_paused(&self, paused: bool) -> Result<(), LibraryError> {
@@ -126,9 +123,7 @@ impl LibraryManager {
         device_name: &str,
         steps: crate::library::StorageSetupSteps<'_>,
     ) -> Result<coven::StorageSetup, LibraryError> {
-        self.sync
-            .setup_oauth_storage(storage, device_name, steps)
-            .await
+        self.sync.setup_oauth_storage(storage, device_name, steps).await
     }
 
     #[cfg(feature = "oauth-providers")]
@@ -289,8 +284,7 @@ impl LibraryManager {
     async fn set_sync_error(&self, error: Option<&LibraryError>) {
         let failure = error.map(|error| crate::ui::UiError::diagnostic(error.category(), error));
         if let Err(error) = self.database.record_sync_start_failure(failure).await {
-            self.diagnostics
-                .report_bug("record why sync failed to start", &error);
+            self.diagnostics.report_bug("record why sync failed to start", &error);
         }
     }
 }
@@ -301,10 +295,7 @@ impl LibraryManager {
         storage: coven::StorageConfig,
         credentials: coven::S3Credentials,
     ) -> Result<coven::S3Detection, LibraryError> {
-        Ok(self
-            .database
-            .detect_s3_settings(storage, credentials)
-            .await?)
+        Ok(self.database.detect_s3_settings(storage, credentials).await?)
     }
     pub async fn storage_location(&self) -> Result<Option<coven::StorageConfig>, LibraryError> {
         Ok(self.database.storage_config().await?)

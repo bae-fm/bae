@@ -60,12 +60,7 @@ impl ItemKey {
     }
 
     fn of((watched_folder_path, item, key, group_folder): ItemKeyColumns) -> Result<Self, DbError> {
-        Ok(Self {
-            watched_folder_path,
-            item: Item::of(&item)?,
-            key,
-            group_folder,
-        })
+        Ok(Self { watched_folder_path, item: Item::of(&item)?, key, group_folder })
     }
 
     /// The key as text for the log.
@@ -121,29 +116,18 @@ struct Term {
 }
 
 const fn up(expression: &'static str) -> Term {
-    Term {
-        expression,
-        descending: false,
-        nullable: false,
-    }
+    Term { expression, descending: false, nullable: false }
 }
 
 const fn down(expression: &'static str) -> Term {
-    Term {
-        expression,
-        descending: true,
-        nullable: false,
-    }
+    Term { expression, descending: true, nullable: false }
 }
 
 impl Term {
     /// The same term over a column a row can hold NULL in: an undated row's
     /// date, a header's display path.
     const fn nullable(self) -> Self {
-        Term {
-            nullable: true,
-            ..self
-        }
+        Term { nullable: true, ..self }
     }
 }
 
@@ -182,11 +166,7 @@ const OLDEST_FIRST: (&[Term], &[Term]) = (
 );
 
 const PATH_ASCENDING: (&[Term], &[Term]) = (
-    &[
-        up("{t}.root_position"),
-        up("{t}.watched_folder_path"),
-        up("{t}.unit_path"),
-    ],
+    &[up("{t}.root_position"), up("{t}.watched_folder_path"), up("{t}.unit_path")],
     &[
         down("{t}.item = 'group'"),
         up("{t}.display_path COLLATE natural_order").nullable(),
@@ -195,11 +175,7 @@ const PATH_ASCENDING: (&[Term], &[Term]) = (
 );
 
 const PATH_DESCENDING: (&[Term], &[Term]) = (
-    &[
-        down("{t}.root_position"),
-        down("{t}.watched_folder_path"),
-        down("{t}.unit_path"),
-    ],
+    &[down("{t}.root_position"), down("{t}.watched_folder_path"), down("{t}.unit_path")],
     &[
         down("{t}.item = 'group'"),
         down("{t}.display_path COLLATE natural_order").nullable(),
@@ -264,9 +240,7 @@ fn unit_order(order: ImportListOrder, head: &str, row: &str) -> ListOrder {
         prefix
             .iter()
             .map(|term| term.sort_term(head))
-            .chain(std::iter::once(SortTerm::ascending(format!(
-                "{head}.entry"
-            ))))
+            .chain(std::iter::once(SortTerm::ascending(format!("{head}.entry"))))
             .chain(suffix.iter().map(|term| term.sort_term(row)))
             .collect(),
     )
@@ -348,9 +322,7 @@ pub(super) enum Shown<'a> {
     Found,
     /// What `tab` shows with the filters cleared and the group `opened`
     /// folded open: the view a release is revealed in, its other folds kept.
-    Revealing {
-        opened: Option<&'a FolderReleaseDecisionKey>,
-    },
+    Revealing { opened: Option<&'a FolderReleaseDecisionKey> },
 }
 
 /// One part of a tab's run of items: Done's uploads, Done's rest, or a whole
@@ -397,12 +369,7 @@ impl<'a> Items<'a> {
         order: ImportListOrder,
         shown: Shown<'a>,
     ) -> Self {
-        Self {
-            list,
-            tab,
-            order,
-            shown,
-        }
+        Self { list, tab, order, shown }
     }
 
     /// The parts the tab runs in, in order.
@@ -529,9 +496,7 @@ impl<'a> Items<'a> {
         run: impl FnOnce(&[(&str, &dyn ToSql)]) -> Result<T, DbError>,
     ) -> Result<T, DbError> {
         let (opened_root, opened_group) = match self.shown {
-            Shown::Revealing {
-                opened: Some(opened),
-            } => (
+            Shown::Revealing { opened: Some(opened) } => (
                 Some(coven::path_bytes(&opened.watched_folder_path)),
                 Some(opened.relative_folder.as_bytes().to_vec()),
             ),
@@ -545,10 +510,8 @@ impl<'a> Items<'a> {
             (":opened_group", &opened_group),
         ];
         named.extend_from_slice(extra);
-        let bound: Vec<(&str, &dyn ToSql)> = named
-            .into_iter()
-            .filter(|(name, _)| names(statement, name))
-            .collect();
+        let bound: Vec<(&str, &dyn ToSql)> =
+            named.into_iter().filter(|(name, _)| names(statement, name)).collect();
         run(bound.as_slice())
     }
 
@@ -560,20 +523,15 @@ impl<'a> Items<'a> {
         extra: &[(&str, &dyn ToSql)],
         read: impl FnMut(&Row<'_>) -> rusqlite::Result<T>,
     ) -> Result<Vec<T>, DbError> {
-        self.bound(statement, extra, |bound| {
-            Ok(sql.query(statement, bound, read)?)
-        })
+        self.bound(statement, extra, |bound| Ok(sql.query(statement, bound, read)?))
     }
 
     fn count(&self, sql: &(impl QueryOne + QueryRows), part: Part) -> Result<u64, DbError> {
         let PartSql { with, from, .. } = self.part(part);
         let count = self
-            .query(
-                sql,
-                &format!("{with} SELECT count(*) FROM {from}"),
-                &[],
-                |row| row.get::<_, i64>(0),
-            )?
+            .query(sql, &format!("{with} SELECT count(*) FROM {from}"), &[], |row| {
+                row.get::<_, i64>(0)
+            })?
             .into_iter()
             .next()
             .expect("a count answers one row");
@@ -616,9 +574,7 @@ impl<'a> Items<'a> {
     ) -> Result<Vec<Keyed<ItemKeyColumns>>, DbError> {
         let statement = self.window_statement(part, seek);
         seek.bound(limit, offset, |window| {
-            self.query(sql, &statement, window, |row| {
-                Ok((ItemKey::read(row)?, order.key_of(row)?))
-            })
+            self.query(sql, &statement, window, |row| Ok((ItemKey::read(row)?, order.key_of(row)?)))
         })
     }
 
@@ -668,13 +624,7 @@ impl<'a> Items<'a> {
                 break;
             }
             if at + 1 == parts.len() {
-                reached.push(PartWindow {
-                    part,
-                    start,
-                    end: None,
-                    offset,
-                    limit,
-                });
+                reached.push(PartWindow { part, start, end: None, offset, limit });
                 break;
             }
             let held = self.count(sql, part)?;
@@ -684,13 +634,7 @@ impl<'a> Items<'a> {
                 continue;
             }
             let read = limit.min(held - offset);
-            reached.push(PartWindow {
-                part,
-                start,
-                end: Some(start + held),
-                offset,
-                limit: read,
-            });
+            reached.push(PartWindow { part, start, end: Some(start + held), offset, limit: read });
             limit -= read;
             offset = 0;
             start += held;
@@ -710,14 +654,7 @@ impl<'a> Items<'a> {
     ) -> Result<(Vec<ItemKey>, Places), DbError> {
         let mut items = Vec::new();
         let mut found = Places::new();
-        for PartWindow {
-            part,
-            start,
-            end,
-            offset,
-            limit,
-        } in self.window_parts(sql, window)?
-        {
+        for PartWindow { part, start, end, offset, limit } in self.window_parts(sql, window)? {
             let order = self.part_order(part);
             // The part's places, in its own count from its first row.
             let in_part = known
@@ -725,10 +662,7 @@ impl<'a> Items<'a> {
                 .take_while(|(place, _)| end.is_none_or(|end| **place < end))
                 .map(|(place, key)| (place - start, key.clone()))
                 .collect();
-            let WindowsRead {
-                windows: read,
-                found: places,
-            } = read_windows(
+            let WindowsRead { windows: read, found: places } = read_windows(
                 &order,
                 &crate::library::LibraryPageWindows::from([LibraryPageWindow { offset, limit }]),
                 in_part,
@@ -751,13 +685,7 @@ impl<'a> Items<'a> {
         sql: &CovenWrite<'_>,
         window: &LibraryPageWindow,
     ) -> Result<(), DbError> {
-        for PartWindow {
-            part,
-            offset,
-            limit,
-            ..
-        } in self.window_parts(sql, window)?
-        {
+        for PartWindow { part, offset, limit, .. } in self.window_parts(sql, window)? {
             let order = self.part_order(part);
             let everything = order.everything();
             let statement = format!(
@@ -861,9 +789,7 @@ impl<'a> Items<'a> {
                 )?
                 .into_iter()
                 .next();
-            return found
-                .map(|position| to_u64(position, "an import list position"))
-                .transpose();
+            return found.map(|position| to_u64(position, "an import list position")).transpose();
         }
         let mut before = 0;
         for &part in self.parts() {

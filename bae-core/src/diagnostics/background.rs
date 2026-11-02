@@ -67,13 +67,11 @@ impl Diagnostics {
         on_panic: impl FnOnce(TaskFailed) + Send + 'static,
     ) -> std::io::Result<ReportedThread> {
         let diagnostics = self.clone();
-        let thread = std::thread::Builder::new()
-            .name(name.to_string())
-            .spawn(move || {
-                if let Err(failed) = caught_sync(name, body) {
-                    diagnostics.panicked(failed, on_panic);
-                }
-            })?;
+        let thread = std::thread::Builder::new().name(name.to_string()).spawn(move || {
+            if let Err(failed) = caught_sync(name, body) {
+                diagnostics.panicked(failed, on_panic);
+            }
+        })?;
         Ok(ReportedThread { name, thread })
     }
 
@@ -160,10 +158,8 @@ pub fn lock_or_crash<'a, T>(
     match mutex.lock() {
         Ok(guard) => guard,
         Err(_) => {
-            diagnostics.report_bug(
-                what,
-                &"a panic while it was held left it partway through a change",
-            );
+            diagnostics
+                .report_bug(what, &"a panic while it was held left it partway through a change");
             std::process::abort()
         }
     }

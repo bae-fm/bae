@@ -20,9 +20,7 @@ impl LibraryManager {
         audio_format: &DbAudioFormat,
         segments: &[DbAudioSegment],
     ) -> Result<(), LibraryError> {
-        self.database
-            .insert_audio_format_with_segments_for_test(audio_format, segments)
-            .await?;
+        self.database.insert_audio_format_with_segments_for_test(audio_format, segments).await?;
         Ok(())
     }
 
@@ -153,9 +151,7 @@ impl LibraryManager {
         tracks: &[DbTrack],
         track_artists: &[crate::db::DbTrackArtist],
     ) -> Result<(), LibraryError> {
-        self.database
-            .insert_release_with_tracks(release, mediums, tracks, track_artists)
-            .await?;
+        self.database.insert_release_with_tracks(release, mediums, tracks, track_artists).await?;
         Ok(())
     }
 
@@ -166,16 +162,14 @@ impl LibraryManager {
         &self,
         release_id: &str,
     ) -> Result<(String, DbRelease, DbAlbum, Vec<DbTrack>), LibraryError> {
-        let album_id = self
-            .database
-            .find_album_id_for_release(release_id)
-            .await?
-            .ok_or_else(|| LibraryError::Refused(format!("Release '{release_id}' not found")))?;
-        let release = self
-            .database
-            .find_release_by_id(release_id)
-            .await?
-            .ok_or_else(|| LibraryError::Refused(format!("Release '{release_id}' not found")))?;
+        let album_id =
+            self.database.find_album_id_for_release(release_id).await?.ok_or_else(|| {
+                LibraryError::Refused(format!("Release '{release_id}' not found"))
+            })?;
+        let release =
+            self.database.find_release_by_id(release_id).await?.ok_or_else(|| {
+                LibraryError::Refused(format!("Release '{release_id}' not found"))
+            })?;
         let album = self
             .database
             .find_album_by_id(&album_id)
@@ -207,9 +201,7 @@ impl LibraryManager {
         let _writing = self.release_writes.lock().await;
         let (_, release, album, existing_tracks) = self.load_release_for_edit(release_id).await?;
         let metadata = self.release_metadata_rows(album, release, &existing_tracks, &edit)?;
-        self.database
-            .update_release_metadata_user_edit(metadata)
-            .await?;
+        self.database.update_release_metadata_user_edit(metadata).await?;
         Ok(())
     }
 
@@ -287,19 +279,13 @@ impl LibraryManager {
             ..album
         };
 
-        let updated_release = DbRelease {
-            pressing: edit.pressing.clone(),
-            ..release
-        };
+        let updated_release = DbRelease { pressing: edit.pressing.clone(), ..release };
 
         let track_updates: Vec<(String, DbTrack)> = existing_tracks
             .iter()
             .zip(edit.tracks.iter())
             .map(|(existing, t)| {
-                let updated = DbTrack {
-                    title: t.title.clone(),
-                    ..existing.clone()
-                };
+                let updated = DbTrack { title: t.title.clone(), ..existing.clone() };
                 (existing.id.clone(), updated)
             })
             .collect();
@@ -349,17 +335,10 @@ impl LibraryManager {
         &self,
         release_id: &str,
     ) -> Result<Option<ReleaseStorageSummary>, LibraryError> {
-        let Some(raw) = self
-            .database
-            .find_release_storage_summary(release_id)
-            .await?
-        else {
+        let Some(raw) = self.database.find_release_storage_summary(release_id).await? else {
             return Ok(None);
         };
-        Ok(Some(ReleaseStorageSummary::from_raw(
-            raw,
-            self.has_cloud_home().await?,
-        )))
+        Ok(Some(ReleaseStorageSummary::from_raw(raw, self.has_cloud_home().await?)))
     }
 
     pub(crate) fn subscribe_release_detail(
@@ -423,10 +402,7 @@ impl LibraryManager {
             album_artists,
             release_index,
             is_compilation,
-        }) = self
-            .database
-            .find_release_detail_context(release_id)
-            .await?
+        }) = self.database.find_release_detail_context(release_id).await?
         else {
             return Ok(None);
         };
@@ -482,10 +458,7 @@ impl LibraryManager {
         &self,
         release_id: &str,
     ) -> Result<Vec<(DbFile, Option<std::path::PathBuf>)>, LibraryError> {
-        Ok(self
-            .database
-            .get_files_with_originals_for_release(release_id)
-            .await?)
+        Ok(self.database.get_files_with_originals_for_release(release_id).await?)
     }
 
     pub async fn get_album_id_for_release(&self, release_id: &str) -> Result<String, LibraryError> {
@@ -503,9 +476,7 @@ impl LibraryManager {
         album_id: &str,
         primary_release_id: &str,
     ) -> Result<(), LibraryError> {
-        self.database
-            .set_album_primary_release(album_id, primary_release_id)
-            .await?;
+        self.database.set_album_primary_release(album_id, primary_release_id).await?;
 
         Ok(())
     }
@@ -514,22 +485,15 @@ impl LibraryManager {
     /// album with them if this was its last release. Coven owns retention of
     /// files still referenced by committed uploads or shared history.
     pub async fn delete_release(&self, release_id: &str) -> Result<(), LibraryError> {
-        self.database
-            .find_release_by_id(release_id)
-            .await?
-            .ok_or_else(|| {
-                LibraryError::TrackMapping(format!("Release not found: {release_id}"))
-            })?;
+        self.database.find_release_by_id(release_id).await?.ok_or_else(|| {
+            LibraryError::TrackMapping(format!("Release not found: {release_id}"))
+        })?;
 
         // Read the track ids before the delete cascades them away — the player
         // stops a deleted track it plays or has loaded next. The queue's rows
         // leave in the delete's own transaction.
-        let track_ids: Vec<String> = self
-            .get_tracks_for_release(release_id)
-            .await?
-            .into_iter()
-            .map(|t| t.id)
-            .collect();
+        let track_ids: Vec<String> =
+            self.get_tracks_for_release(release_id).await?.into_iter().map(|t| t.id).collect();
 
         let deletion = self.database.plan_release_deletion(release_id).await?;
         // Deletion is a local transaction. Each coven file of the release goes
@@ -557,12 +521,9 @@ pub(crate) async fn cover_ref_for(
     database: &Database,
     release_id: &str,
 ) -> Result<Option<ImageRef>, LibraryError> {
-    Ok(database
-        .cover_version(release_id)
-        .await?
-        .map(|version| ImageRef {
-            id: release_id.to_string(),
-            version,
-            image_type: LibraryImageType::Cover,
-        }))
+    Ok(database.cover_version(release_id).await?.map(|version| ImageRef {
+        id: release_id.to_string(),
+        version,
+        image_type: LibraryImageType::Cover,
+    }))
 }

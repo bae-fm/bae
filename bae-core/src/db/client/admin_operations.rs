@@ -57,10 +57,9 @@ fn admin_changes_on(sql: &impl coven::SqlRead) -> rusqlite::Result<Vec<AdminChan
                     other => return Err(unreadable(6, Type::Text, format!("a role {other:?}"))),
                 },
             },
-            coven::OperationKind::RemoveMember => AdminChangeKind::RemovePerson {
-                member: member()?,
-                person: row.get(8)?,
-            },
+            coven::OperationKind::RemoveMember => {
+                AdminChangeKind::RemovePerson { member: member()?, person: row.get(8)? }
+            }
             coven::OperationKind::Invite | coven::OperationKind::ReplaceMemberKeys => {
                 AdminChangeKind::Approve {
                     member: member()?,
@@ -79,11 +78,7 @@ fn admin_changes_on(sql: &impl coven::SqlRead) -> rusqlite::Result<Vec<AdminChan
                     .ok_or_else(|| unreadable(9, Type::Text, "coven lists no such device"))?,
             },
             other => {
-                return Err(unreadable(
-                    2,
-                    Type::Text,
-                    format!("an admin change of kind {other:?}"),
-                ))
+                return Err(unreadable(2, Type::Text, format!("an admin change of kind {other:?}")))
             }
         };
         let state = match row.get::<_, Option<coven::OperationOutcome>>(3)? {
@@ -94,11 +89,7 @@ fn admin_changes_on(sql: &impl coven::SqlRead) -> rusqlite::Result<Vec<AdminChan
             Some(coven::OperationOutcome::Rejected(reason)) => AdminChangeState::Refused(reason),
             Some(coven::OperationOutcome::Stopped(stop)) => AdminChangeState::Stopped(stop),
         };
-        Ok(AdminChange {
-            operation,
-            change,
-            state,
-        })
+        Ok(AdminChange { operation, change, state })
     })
 }
 
@@ -159,9 +150,7 @@ impl Database {
     /// The admin changes this device asked for, live: each until its outcome
     /// is acknowledged.
     pub(crate) fn subscribe_admin_changes(&self) -> coven::LiveQuery<Vec<AdminChange>> {
-        self.inner
-            .handle
-            .subscribe(|sql| Ok(admin_changes_on(&sql)?))
+        self.inner.handle.subscribe(|sql| Ok(admin_changes_on(&sql)?))
     }
 
     /// Acknowledge a finished admin change's outcome, so it leaves the list:
@@ -173,10 +162,8 @@ impl Database {
     ) -> Result<(), DbError> {
         self.call(move |sql| {
             sql.acknowledge_operation(operation)?;
-            let deleted = sql.execute(
-                "DELETE FROM admin_operations WHERE operation = ?1",
-                [operation.0],
-            )?;
+            let deleted =
+                sql.execute("DELETE FROM admin_operations WHERE operation = ?1", [operation.0])?;
             if deleted != 1 {
                 return Err(DbError::Message(format!(
                     "operation {operation:?} is no admin change of this device's"

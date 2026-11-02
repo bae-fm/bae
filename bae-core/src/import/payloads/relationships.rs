@@ -16,21 +16,14 @@ impl AlbumClaims {
         let mut candidates: HashMap<Catalog, HashSet<String>> = HashMap::new();
         for claim in claims {
             if !self.0.contains_key(&claim.catalog) {
-                candidates
-                    .entry(claim.catalog)
-                    .or_default()
-                    .insert(claim.key);
+                candidates.entry(claim.catalog).or_default().insert(claim.key);
             }
         }
         for (catalog, keys) in candidates {
             let identity = if keys.len() == 1 {
                 AlbumIdentity::Known(keys.into_iter().next().expect("one candidate"))
             } else {
-                warn!(
-                    ?catalog,
-                    ?keys,
-                    "Conflicting album identities; no catalog identity claimed"
-                );
+                warn!(?catalog, ?keys, "Conflicting album identities; no catalog identity claimed");
                 AlbumIdentity::Ambiguous
             };
             self.0.insert(catalog, identity);
@@ -64,10 +57,7 @@ impl ReleasePayloads {
         let mut keys: Vec<_> = bae_catalogs::musicbrainz::relation_urls(&response.relations)
             .filter_map(parse_catalog_url)
             .filter_map(|page| match page {
-                CatalogPage::Release {
-                    catalog: Catalog::Discogs,
-                    key,
-                } => Some(key),
+                CatalogPage::Release { catalog: Catalog::Discogs, key } => Some(key),
                 _ => None,
             })
             .collect();
@@ -80,9 +70,7 @@ impl ReleasePayloads {
     /// through the MusicBrainz release linked to it.
     fn counterpart_group(&self) -> Result<Option<MetadataRef>, ImportError> {
         Ok(self.musicbrainz_xref()?.and_then(|release| {
-            release
-                .release_group
-                .map(|group| MetadataRef::new(Catalog::MusicBrainz, group.id))
+            release.release_group.map(|group| MetadataRef::new(Catalog::MusicBrainz, group.id))
         }))
     }
 
@@ -149,11 +137,7 @@ impl ReleasePayloads {
 
         let mut items: Vec<&str> = Vec::new();
         for page in &pages {
-            if let CatalogPage::Group {
-                catalog: Catalog::Wikidata,
-                key,
-            } = page
-            {
+            if let CatalogPage::Group { catalog: Catalog::Wikidata, key } = page {
                 if !items.contains(&key.as_str()) {
                     items.push(key);
                 }

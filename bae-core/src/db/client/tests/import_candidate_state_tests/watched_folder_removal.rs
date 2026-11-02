@@ -6,24 +6,26 @@ async fn removed_and_readded_root_rejects_items_from_its_old_registration() {
     let (db, _tmp) = empty_db().await;
     let root = &host_root("/mounted/library");
     db.add_watched_import_folder(root).await.unwrap();
-    let old_generation = db.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
+    let old_generation =
+        db.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
 
     db.remove_watched_import_folders(vec![root.clone()], None).await.unwrap();
     db.add_watched_import_folder(root).await.unwrap();
-    let new_generation = db.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
+    let new_generation =
+        db.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
     assert!(new_generation > old_generation);
 
-    assert!(db.save_folder_scan_item(root, old_generation, &scanned_candidate(root, "Old")).await.unwrap().is_none());
-    assert!(db.load_folder_scan_snapshots().await.unwrap()[0]
-        .items
-        .is_empty());
+    assert!(db
+        .save_folder_scan_item(root, old_generation, &scanned_candidate(root, "Old"))
+        .await
+        .unwrap()
+        .is_none());
+    assert!(db.load_folder_scan_snapshots().await.unwrap()[0].items.is_empty());
 }
 
 async fn rows_in(db: &Database, table: &'static str) -> i64 {
     db.read(move |sql| {
-        Ok(sql.query_row(&format!("SELECT COUNT(*) FROM {table}"), [], |row| {
-            row.get(0)
-        })?)
+        Ok(sql.query_row(&format!("SELECT COUNT(*) FROM {table}"), [], |row| row.get(0))?)
     })
     .await
     .unwrap()
@@ -40,12 +42,14 @@ const FOLDER_TABLES: [&str; 6] = [
 ];
 
 /// Two releases under `root`, read together as the grouping `key`.
-async fn picked_grouping(db: &Database, root: &std::path::Path, names: [&str; 2], key: &crate::import::CandidateKey) {
+async fn picked_grouping(
+    db: &Database,
+    root: &std::path::Path,
+    names: [&str; 2],
+    key: &crate::import::CandidateKey,
+) {
     let generation = db.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
-    let members: Vec<_> = names
-        .iter()
-        .map(|name| super::candidate(root, name))
-        .collect();
+    let members: Vec<_> = names.iter().map(|name| super::candidate(root, name)).collect();
     for member in &members {
         db.save_folder_scan_item(
             root,
@@ -56,10 +60,7 @@ async fn picked_grouping(db: &Database, root: &std::path::Path, names: [&str; 2]
         .unwrap();
     }
     db.finish_folder_scan(root, generation, None).await.unwrap();
-    db.combine_releases(key.clone(), members)
-        .await
-        .unwrap()
-        .unwrap();
+    db.combine_releases(key.clone(), members).await.unwrap().unwrap();
 }
 
 /// Removing a watched folder removes everything decided under it: skips,
@@ -69,15 +70,16 @@ async fn removing_a_watched_folder_forgets_what_was_decided_under_it() {
     let (db, _tmp) = empty_db().await;
     let root = &host_root("/mounted/library");
     db.add_watched_import_folder(root).await.unwrap();
-    picked_grouping(&db, root, ["Volume A", "Volume B"], &crate::import::CandidateKey::grouping("picked")).await;
-    db.set_import_candidate_skipped(
-        &root.join("Collection").join("Release"),
-        true,
+    picked_grouping(
+        &db,
+        root,
+        ["Volume A", "Volume B"],
+        &crate::import::CandidateKey::grouping("picked"),
     )
-    .await
-    .unwrap();
+    .await;
+    db.set_import_candidate_skipped(&root.join("Collection").join("Release"), true).await.unwrap();
     store_user_folder_decision(
-    &db,
+        &db,
         &crate::import::folder_scanner::FolderReleaseDecisionKey {
             watched_folder_path: root.clone(),
             relative_folder: crate::import::RelativeFolder::test("Collection"),
@@ -92,29 +94,20 @@ async fn removing_a_watched_folder_forgets_what_was_decided_under_it() {
         panic!("the fixture must produce a valid candidate");
     };
     let content_hash = candidate_files.files.content_hash();
-    db.save_folder_scan_item(root, generation, &candidate)
+    db.save_folder_scan_item(root, generation, &candidate).await.unwrap();
+    crate::import::CandidatePreparations::new(db.clone())
+        .set_field(
+            &content_hash,
+            crate::import::CandidateEditField::AlbumTitle,
+            "Edited Album Title",
+        )
         .await
         .unwrap();
-    crate::import::CandidatePreparations::new(db.clone()).set_field(
-        &content_hash,
-        crate::import::CandidateEditField::AlbumTitle,
-        "Edited Album Title",
-    )
-    .await
-    .unwrap();
-    assert!(db
-        .load_import_candidate_state(&content_hash)
-        .await
-        .unwrap()
-        .is_some());
+    assert!(db.load_import_candidate_state(&content_hash).await.unwrap().is_some());
 
-    db.finish_folder_scan(root, generation, None)
-        .await
-        .unwrap();
+    db.finish_folder_scan(root, generation, None).await.unwrap();
     let generation = db.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
-    db.finish_folder_scan(root, generation, None)
-        .await
-        .unwrap();
+    db.finish_folder_scan(root, generation, None).await.unwrap();
     // The scan rows are gone; the grouping's release stays as last built.
     let left: Vec<crate::import::CandidateKey> = db.load_folder_scan_snapshots().await.unwrap()[0]
         .items
@@ -132,11 +125,7 @@ async fn removing_a_watched_folder_forgets_what_was_decided_under_it() {
         removed.contains(&crate::import::CandidateKey::grouping("picked")),
         "the grouping's release leaves the queue with it: {removed:?}"
     );
-    assert!(db
-        .load_watched_import_folders()
-        .await
-        .unwrap()
-        .is_empty());
+    assert!(db.load_watched_import_folders().await.unwrap().is_empty());
     for table in FOLDER_TABLES {
         assert_eq!(rows_in(&db, table).await, 0, "{table} still holds rows");
     }
@@ -148,11 +137,7 @@ async fn removing_a_watched_folder_forgets_what_was_decided_under_it() {
         None
     );
     assert!(db.load_folder_scan_snapshots().await.unwrap().is_empty());
-    assert!(db
-        .load_import_candidate_state(&content_hash)
-        .await
-        .unwrap()
-        .is_none());
+    assert!(db.load_import_candidate_state(&content_hash).await.unwrap().is_none());
 }
 
 /// A folder taking over the watched folders inside it keeps everything decided
@@ -170,7 +155,8 @@ async fn a_folder_taking_over_the_watched_folders_inside_it_keeps_what_was_decid
     let volume_a = super::candidate(&one, "Volume A");
     let volume_b = super::candidate(&two, "Volume B");
     for (root, member) in [(&one, &volume_a), (&two, &volume_b)] {
-        let generation = db.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
+        let generation =
+            db.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
         db.save_folder_scan_item(
             root,
             generation,
@@ -201,11 +187,7 @@ async fn a_folder_taking_over_the_watched_folders_inside_it_keeps_what_was_decid
     .unwrap();
     let edited = volume_b.files.content_hash();
     crate::import::CandidatePreparations::new(db.clone())
-        .set_field(
-            &edited,
-            crate::import::CandidateEditField::AlbumTitle,
-            "Edited Album Title",
-        )
+        .set_field(&edited, crate::import::CandidateEditField::AlbumTitle, "Edited Album Title")
         .await
         .unwrap();
     let mut decided = Vec::new();
@@ -220,11 +202,8 @@ async fn a_folder_taking_over_the_watched_folders_inside_it_keeps_what_was_decid
         .expect("the inner folders were watched");
 
     removed.sort();
-    let mut listed = vec![
-        crate::import::CandidateKey::grouping("picked"),
-        volume_a.key(),
-        volume_b.key(),
-    ];
+    let mut listed =
+        vec![crate::import::CandidateKey::grouping("picked"), volume_a.key(), volume_b.key()];
     listed.sort();
     assert_eq!(removed, listed, "what the inner scans found leaves the queue");
     assert_eq!(
@@ -240,7 +219,9 @@ async fn a_folder_taking_over_the_watched_folders_inside_it_keeps_what_was_decid
         std::collections::HashSet::from([crate::import::RelativeFolder::test("one/Album")])
     );
     let box_reading = db.load_folder_release_decisions(&music).await.unwrap();
-    let box_reading = box_reading.get(&crate::import::RelativeFolder::test("one/Box")).expect("the box still reads its way");
+    let box_reading = box_reading
+        .get(&crate::import::RelativeFolder::test("one/Box"))
+        .expect("the box still reads its way");
     assert_eq!(
         box_reading.decision,
         crate::import::folder_scanner::FolderReleaseDecision::KeepAsSeparateReleases
@@ -259,11 +240,7 @@ async fn a_folder_taking_over_the_watched_folders_inside_it_keeps_what_was_decid
             decision: crate::import::folder_scanner::FolderReleaseDecision::KeepAsSeparateReleases,
         })
     );
-    assert!(db
-        .load_import_candidate_state(&edited)
-        .await
-        .unwrap()
-        .is_some());
+    assert!(db.load_import_candidate_state(&edited).await.unwrap().is_some());
 
     let generation = db.begin_folder_scan(&music, crate::import::VolumeKind::Local).await.unwrap();
     for name in ["one/Volume A", "two/Volume B"] {
@@ -276,7 +253,8 @@ async fn a_folder_taking_over_the_watched_folders_inside_it_keeps_what_was_decid
         .unwrap();
     }
     db.finish_folder_scan(&music, generation, None).await.unwrap();
-    match db.load_folder_scan_item(&crate::import::CandidateKey::grouping("picked")).await.unwrap() {
+    match db.load_folder_scan_item(&crate::import::CandidateKey::grouping("picked")).await.unwrap()
+    {
         Some(crate::import::folder_scanner::ScanItem::Valid(release)) => {
             assert_eq!(release.watched_folder_path, music);
         }
@@ -296,13 +274,10 @@ async fn shared_candidate_state_leaves_with_its_last_watched_root() {
     let second_candidate = scanned_candidate(&second, "Release");
     let first_candidate = scanned_candidate(&first, "Release");
     for (root, candidate) in [(&second, &second_candidate), (&first, &first_candidate)] {
-        let generation = db.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
-        db.save_folder_scan_item(root, generation, candidate)
-            .await
-            .unwrap();
-        db.finish_folder_scan(root, generation, None)
-            .await
-            .unwrap();
+        let generation =
+            db.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
+        db.save_folder_scan_item(root, generation, candidate).await.unwrap();
+        db.finish_folder_scan(root, generation, None).await.unwrap();
     }
     let crate::import::folder_scanner::ScanItem::Valid(candidate) = &first_candidate else {
         panic!("the fixture must produce a valid candidate");
@@ -310,22 +285,12 @@ async fn shared_candidate_state_leaves_with_its_last_watched_root() {
     let content_hash = candidate.files.content_hash();
 
     db.remove_watched_import_folders(vec![first.clone()], None).await.unwrap();
-    assert!(db
-        .load_import_candidate_state(&content_hash)
-        .await
-        .unwrap()
-        .is_some());
+    assert!(db.load_import_candidate_state(&content_hash).await.unwrap().is_some());
 
     let generation = db.begin_folder_scan(&second, crate::import::VolumeKind::Local).await.unwrap();
-    db.finish_folder_scan(&second, generation, None)
-        .await
-        .unwrap();
+    db.finish_folder_scan(&second, generation, None).await.unwrap();
     db.remove_watched_import_folders(vec![second.clone()], None).await.unwrap();
-    assert!(db
-        .load_import_candidate_state(&content_hash)
-        .await
-        .unwrap()
-        .is_none());
+    assert!(db.load_import_candidate_state(&content_hash).await.unwrap().is_none());
 }
 
 #[tokio::test]
@@ -339,26 +304,17 @@ async fn a_late_import_failure_cannot_recreate_state_after_root_removal() {
     let content_hash = folder.files.content_hash();
     db.add_watched_import_folder(&root).await.unwrap();
     let generation = db.begin_folder_scan(&root, crate::import::VolumeKind::Local).await.unwrap();
-    db.save_folder_scan_item(&root, generation, &candidate)
-        .await
-        .unwrap();
+    db.save_folder_scan_item(&root, generation, &candidate).await.unwrap();
     db.remove_watched_import_folders(vec![root.clone()], None).await.unwrap();
 
     db.save_import_candidate_failure(
         &content_hash,
         0,
-        &crate::import::ImportFailure::error_only(
-            "the source disappeared",
-            fixed_now(),
-        ),
+        &crate::import::ImportFailure::error_only("the source disappeared", fixed_now()),
     )
     .await
     .expect_err("a removed candidate cannot receive an import failure");
-    assert!(db
-        .load_import_candidate_state(&content_hash)
-        .await
-        .unwrap()
-        .is_none());
+    assert!(db.load_import_candidate_state(&content_hash).await.unwrap().is_none());
 }
 
 /// Removing a watched folder forgets what was decided under it alone: a
@@ -371,12 +327,7 @@ async fn removing_a_watched_folder_leaves_the_folder_beside_it() {
     let beside = host_root("/mounted/library 2");
     for folder in [&root, &beside] {
         db.add_watched_import_folder(folder).await.unwrap();
-        db.set_import_candidate_skipped(
-            &folder.join("Release"),
-            true,
-        )
-        .await
-        .unwrap();
+        db.set_import_candidate_skipped(&folder.join("Release"), true).await.unwrap();
     }
 
     db.remove_watched_import_folders(vec![root.clone()], None)

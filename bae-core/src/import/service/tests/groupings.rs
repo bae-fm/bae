@@ -7,12 +7,7 @@ async fn offers(manager: &LibraryManager) -> (Vec<(String, bool)>, Vec<(String, 
                 order: crate::import::ImportListOrder::PathAscending,
                 ..crate::import::ImportListView::default()
             },
-            [crate::library::LibraryPageWindow {
-                offset: 0,
-                limit: 50,
-            }]
-            .into_iter()
-            .collect(),
+            [crate::library::LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect(),
         )
         .await
         .unwrap();
@@ -41,11 +36,7 @@ async fn scanned_root(releases: &[&str]) -> (TestService, TestScan, PathBuf) {
         write_disc(&root.join(release), 1);
     }
     let root = crate::import::watched_folder::canonical_absolute_root(&root).unwrap();
-    test.service
-        .library_manager
-        .add_watched_import_folder(&root)
-        .await
-        .unwrap();
+    test.service.library_manager.add_watched_import_folder(&root).await.unwrap();
     let (scan, _events) = test.scan();
     scan.rescan(&root).await.unwrap();
     (test, scan, root)
@@ -62,8 +53,7 @@ fn folder_key(root: &Path, relative: &str) -> crate::import::FolderReleaseDecisi
 /// header has nothing to combine.
 #[tokio::test]
 async fn one_grouped_album_under_an_artist_offers_no_combine() {
-    let (test, _scan, _root) =
-        scanned_root(&["Artist/Album/Disc 1", "Artist/Album/Disc 2"]).await;
+    let (test, _scan, _root) = scanned_root(&["Artist/Album/Disc 1", "Artist/Album/Disc 2"]).await;
     let (headers, rows) = offers(&test.service.library_manager).await;
     assert_eq!(headers, vec![("Artist".to_string(), false)]);
     assert_eq!(rows, vec![("Artist/Album".to_string(), true)]);
@@ -78,10 +68,7 @@ async fn two_albums_under_an_artist_offer_to_combine() {
     assert_eq!(headers, vec![("Artist".to_string(), true)]);
     assert_eq!(
         rows,
-        vec![
-            ("Artist/Album A".to_string(), false),
-            ("Artist/Album B".to_string(), false),
-        ]
+        vec![("Artist/Album A".to_string(), false), ("Artist/Album B".to_string(), false),]
     );
 }
 
@@ -111,10 +98,7 @@ async fn disc_folders_offer_to_separate_and_kept_apart_offer_to_combine() {
         assert_eq!(headers, vec![(header.to_string(), true)], "{album}");
         assert_eq!(
             rows,
-            vec![
-                (format!("{album}/Disc 1"), false),
-                (format!("{album}/Disc 2"), false),
-            ],
+            vec![(format!("{album}/Disc 1"), false), (format!("{album}/Disc 2"), false),],
             "{album}"
         );
     }
@@ -176,11 +160,7 @@ async fn a_folder_read_as_one_release_takes_its_own_files_and_numbers_its_discs(
     }
     std::fs::write(root.join("Album/notes.txt"), "notes").unwrap();
     let root = crate::import::watched_folder::canonical_absolute_root(&root).unwrap();
-    test.service
-        .library_manager
-        .add_watched_import_folder(&root)
-        .await
-        .unwrap();
+    test.service.library_manager.add_watched_import_folder(&root).await.unwrap();
     let (scan, _events) = test.scan();
     scan.rescan(&root).await.unwrap();
     let release = test
@@ -195,10 +175,7 @@ async fn a_folder_read_as_one_release_takes_its_own_files_and_numbers_its_discs(
             _ => None,
         })
         .expect("the album is one release");
-    assert!(release
-        .files
-        .release_files()
-        .any(|file| file.relative_path == "notes.txt"));
+    assert!(release.files.release_files().any(|file| file.relative_path == "notes.txt"));
     assert_eq!(
         crate::import::audio_layout::folder_tracks(&release.files)
             .iter()

@@ -101,10 +101,7 @@ pub(crate) fn transfer_summary<const N: usize>(
         .into_iter()
         .filter(|(_, count, _)| *count > 0)
         .map(|(key, count, stage)| TransferCount {
-            label: CountLabel {
-                key: key.to_string(),
-                count,
-            },
+            label: CountLabel { key: key.to_string(), count },
             stage,
         })
         .collect()
@@ -123,10 +120,7 @@ impl ReleaseQueueProgress {
         ]
         .into_iter()
         .filter(|(_, count)| *count > 0)
-        .map(|(key, count)| CountLabel {
-            key: key.to_string(),
-            count,
-        })
+        .map(|(key, count)| CountLabel { key: key.to_string(), count })
         .collect()
     }
 }
@@ -196,11 +190,7 @@ impl<Extra> ReleaseQueueSnapshot<Extra, ()> {
                 })
             })
             .collect::<Option<Vec<_>>>()?;
-        Some(ReleaseQueueSnapshot {
-            rows,
-            total: self.total,
-            paused: self.paused,
-        })
+        Some(ReleaseQueueSnapshot { rows, total: self.total, paused: self.paused })
     }
 }
 
@@ -235,29 +225,17 @@ mod tests {
 
     #[test]
     fn summary_parts_order_drop_and_active_verb() {
-        let progress = ReleaseQueueProgress {
-            queued: 3,
-            active: 2,
-            failed: 0,
-        };
+        let progress = ReleaseQueueProgress { queued: 3, active: 2, failed: 0 };
         assert_eq!(
             progress.summary_parts("core.queue.downloading"),
             vec![
-                CountLabel {
-                    key: "core.queue.downloading".to_string(),
-                    count: 2,
-                },
-                CountLabel {
-                    key: "core.queue.queued".to_string(),
-                    count: 3,
-                },
+                CountLabel { key: "core.queue.downloading".to_string(), count: 2 },
+                CountLabel { key: "core.queue.queued".to_string(), count: 3 },
             ],
             "failed is zero and drops; the active verb is the caller's"
         );
         assert!(
-            ReleaseQueueProgress::default()
-                .summary_parts("core.queue.uploading")
-                .is_empty(),
+            ReleaseQueueProgress::default().summary_parts("core.queue.uploading").is_empty(),
             "an idle queue has no parts"
         );
     }
@@ -283,21 +261,12 @@ mod tests {
                 row("rel-a", ReleaseQueueState::Active { progress: () }),
                 row("rel-b", ReleaseQueueState::Queued),
             ],
-            total: ReleaseQueueProgress {
-                queued: 1,
-                active: 1,
-                failed: 0,
-            },
+            total: ReleaseQueueProgress { queued: 1, active: 1, failed: 0 },
             paused: false,
         };
-        let with = snapshot
-            .clone()
-            .with_progress(&BTreeMap::from([("rel-a".to_string(), 42u8)]))
-            .unwrap();
-        assert_eq!(
-            with.rows[0].op.state,
-            ReleaseQueueState::Active { progress: 42 }
-        );
+        let with =
+            snapshot.clone().with_progress(&BTreeMap::from([("rel-a".to_string(), 42u8)])).unwrap();
+        assert_eq!(with.rows[0].op.state, ReleaseQueueState::Active { progress: 42 });
         assert_eq!(with.rows[1].op.state, ReleaseQueueState::Queued);
         assert!(snapshot.with_progress::<u8>(&BTreeMap::new()).is_none());
     }

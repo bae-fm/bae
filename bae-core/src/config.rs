@@ -51,13 +51,11 @@ pub fn default_transfer_limits() -> coven::TransferLimits {
 /// nothing at 0 and never completes — and at most [`MAX_CONCURRENT_TRANSFERS`],
 /// the ceiling the UI offers. Returns the validated value for storage.
 pub(crate) fn validate_concurrency(n: u32) -> Result<NonZeroU32, ConfigError> {
-    NonZeroU32::new(n)
-        .filter(|n| n.get() <= MAX_CONCURRENT_TRANSFERS)
-        .ok_or_else(|| {
-            ConfigError::Config(format!(
-                "transfer concurrency must be between 1 and {MAX_CONCURRENT_TRANSFERS}"
-            ))
-        })
+    NonZeroU32::new(n).filter(|n| n.get() <= MAX_CONCURRENT_TRANSFERS).ok_or_else(|| {
+        ConfigError::Config(format!(
+            "transfer concurrency must be between 1 and {MAX_CONCURRENT_TRANSFERS}"
+        ))
+    })
 }
 
 /// Widen a stored concurrency setting to the [`NonZeroUsize`] coven's builder
@@ -165,10 +163,7 @@ impl DiscogsTokenStatus {
     /// for this policy — both the macOS and Windows UIs read a flag derived from
     /// it rather than re-deciding which states count as usable.
     pub fn is_usable(&self) -> bool {
-        matches!(
-            self,
-            DiscogsTokenStatus::Valid | DiscogsTokenStatus::Unvalidated
-        )
+        matches!(self, DiscogsTokenStatus::Valid | DiscogsTokenStatus::Unvalidated)
     }
 }
 
@@ -392,9 +387,9 @@ pub struct Config {
 
 /// The library a registered id names: a UUID, never a path.
 pub fn parse_library_id(library_id: &str) -> Result<coven::StoreId, ConfigError> {
-    Ok(coven::StoreId(uuid::Uuid::parse_str(library_id).map_err(
-        |error| ConfigError::Config(format!("invalid library id {library_id}: {error}")),
-    )?))
+    Ok(coven::StoreId(uuid::Uuid::parse_str(library_id).map_err(|error| {
+        ConfigError::Config(format!("invalid library id {library_id}: {error}"))
+    })?))
 }
 
 impl Config {
@@ -402,11 +397,7 @@ impl Config {
     /// tests that build a value without a library.
     #[cfg(any(test, feature = "test-utils"))]
     pub fn with_defaults(store_id: coven::StoreId, library_path: impl Into<PathBuf>) -> Self {
-        Self {
-            store_id,
-            library_path: library_path.into(),
-            prefs: Preferences::default(),
-        }
+        Self { store_id, library_path: library_path.into(), prefs: Preferences::default() }
     }
 
     pub async fn discover_libraries(app_dir: &AppDir) -> Result<Vec<LibraryInfo>, ConfigError> {
@@ -438,11 +429,7 @@ impl Config {
                 state,
             });
         }
-        libraries.sort_by(|a, b| {
-            b.is_active
-                .cmp(&a.is_active)
-                .then_with(|| a.name.cmp(&b.name))
-        });
+        libraries.sort_by(|a, b| b.is_active.cmp(&a.is_active).then_with(|| a.name.cmp(&b.name)));
         Ok(libraries)
     }
 
@@ -464,10 +451,9 @@ fn read_optional_file(path: &std::path::Path) -> Result<Option<String>, ConfigEr
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
         // Keep the path in the error: "Access is denied" without the file it
         // was denied on is undiagnosable from a user report.
-        Err(e) => Err(ConfigError::Io(std::io::Error::new(
-            e.kind(),
-            format!("{}: {e}", path.display()),
-        ))),
+        Err(e) => {
+            Err(ConfigError::Io(std::io::Error::new(e.kind(), format!("{}: {e}", path.display()))))
+        }
     }
 }
 

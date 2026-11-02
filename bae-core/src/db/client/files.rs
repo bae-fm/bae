@@ -9,8 +9,7 @@ impl Database {
         image: &DbLibraryImage,
         bytes: &[u8],
     ) -> Result<(), DbError> {
-        self.write_library_image_after_planning(image, bytes, || async {})
-            .await
+        self.write_library_image_after_planning(image, bytes, || async {}).await
     }
 
     #[cfg(test)]
@@ -24,8 +23,7 @@ impl Database {
         F: FnOnce() -> Fut,
         Fut: std::future::Future<Output = ()>,
     {
-        self.write_library_image_after_planning(image, bytes, after_planning)
-            .await
+        self.write_library_image_after_planning(image, bytes, after_planning).await
     }
 
     async fn write_library_image_after_planning<F, Fut>(
@@ -41,9 +39,7 @@ impl Database {
         let image = image.clone();
         let namespace = image.image_type.namespace();
         let (image_type, id) = (image.image_type.clone(), image.id.clone());
-        let planned = self
-            .read(move |sql| image_file_on(&sql, &image_type, &id))
-            .await?;
+        let planned = self.read(move |sql| image_file_on(&sql, &image_type, &id)).await?;
         after_planning().await;
         let bytes = bytes.to_vec();
         self.write_staged(
@@ -80,19 +76,16 @@ impl Database {
         let table = image_table(&image_type);
         let query = format!("SELECT * FROM {table} WHERE id = ?");
         self.read(move |sql| {
-            sql.query_row(&query, params![id], |row| {
-                row_to_library_image(row, image_type.clone())
-            })
-            .optional()
-            .map_err(DbError::from)
+            sql.query_row(&query, params![id], |row| row_to_library_image(row, image_type.clone()))
+                .optional()
+                .map_err(DbError::from)
         })
         .await
     }
 
     /// The version of one release's cover, or `None` when it has no cover.
     pub async fn cover_version(&self, release_id: &str) -> Result<Option<String>, DbError> {
-        self.find_image_version(&LibraryImageType::Cover, release_id)
-            .await
+        self.find_image_version(&LibraryImageType::Cover, release_id).await
     }
 
     async fn find_image_version(
@@ -101,8 +94,7 @@ impl Database {
         id: &str,
     ) -> Result<Option<String>, DbError> {
         let (image_type, id) = (image_type.clone(), id.to_string());
-        self.read(move |sql| image_version_on(&sql, &image_type, &id))
-            .await
+        self.read(move |sql| image_version_on(&sql, &image_type, &id)).await
     }
 
     /// The original coven records on this device for a release file's coven
@@ -130,10 +122,7 @@ impl Database {
         image_type: &LibraryImageType,
     ) -> Result<Option<coven::FileRef>, DbError> {
         let (image_type, id) = (image_type.clone(), id.to_string());
-        let Some(file) = self
-            .read(move |sql| image_file_on(&sql, &image_type, &id))
-            .await?
-        else {
+        let Some(file) = self.read(move |sql| image_file_on(&sql, &image_type, &id)).await? else {
             return Ok(None);
         };
         Ok(Some(self.coven_file(file).await?))
@@ -223,10 +212,8 @@ pub(super) fn image_file_on<Q: QueryOne>(
 ) -> Result<Option<coven::FileId>, DbError> {
     let table = image_table(image_type);
     Ok(sql
-        .query_row(
-            &format!("SELECT file FROM {table} WHERE id = ?"),
-            params![id],
-            |row| row.get::<_, coven::FileId>(0),
-        )
+        .query_row(&format!("SELECT file FROM {table} WHERE id = ?"), params![id], |row| {
+            row.get::<_, coven::FileId>(0)
+        })
         .optional()?)
 }

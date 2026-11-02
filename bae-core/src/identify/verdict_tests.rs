@@ -18,10 +18,7 @@ fn mk_context(track_count: u32) -> SignalsContext {
         origin: crate::signals::AudioOrigin::default(),
         providers: Vec::new(),
         artwork: crate::signals::ArtworkScan::Absent,
-        disc: DiscIdEvidence {
-            signal: crate::signals::DiscIdSignal::Absent,
-            ..Default::default()
-        },
+        disc: DiscIdEvidence { signal: crate::signals::DiscIdSignal::Absent, ..Default::default() },
         barcode: BarcodeEvidence::default(),
         catalog: Default::default(),
         search: Default::default(),
@@ -79,11 +76,7 @@ fn found_keeps_its_matches_and_their_rows() {
     let verdict = TerminalVerdict::try_from(found_state()).unwrap();
     assert_eq!(
         verdict,
-        TerminalVerdict::Found {
-            findings: one_disc_id_match(),
-            track_count: 11,
-            ledger: None,
-        }
+        TerminalVerdict::Found { findings: one_disc_id_match(), track_count: 11, ledger: None }
     );
 }
 
@@ -128,9 +121,8 @@ fn a_terminal_verdict_carries_the_ledger_its_run_recorded() {
             }],
         },
     );
-    let IdentifyStateView::Found {
-        run: Some(shown), ..
-    } = IdentifyStateView::from(settled.clone())
+    let IdentifyStateView::Found { run: Some(shown), .. } =
+        IdentifyStateView::from(settled.clone())
     else {
         panic!("the run found one release");
     };
@@ -142,10 +134,7 @@ fn a_terminal_verdict_carries_the_ledger_its_run_recorded() {
     let BarcodeStepView::Rows { rows, .. } = &shown.barcode else {
         panic!("one row per code, got {:?}", shown.barcode);
     };
-    assert!(matches!(
-        rows[0].cells[0].lookup,
-        LookupView::Found { count: 1, .. }
-    ));
+    assert!(matches!(rows[0].cells[0].lookup, LookupView::Found { count: 1, .. }));
 }
 
 /// What agreement narrowed out stores beside the matches, and the verdict
@@ -156,10 +145,7 @@ fn a_stored_verdict_keeps_what_agreement_narrowed_out() {
     let IdentifyState::Found { findings, .. } = &mut state else {
         panic!("a found state");
     };
-    findings.narrowed_out = NarrowedOut {
-        matches: vec![mk_result("rel-out")],
-        pressings: vec![0],
-    };
+    findings.narrowed_out = NarrowedOut { matches: vec![mk_result("rel-out")], pressings: vec![0] };
     let verdict = TerminalVerdict::try_from(state).unwrap();
     let TerminalVerdict::Found { findings, .. } = &verdict else {
         panic!("a found state stores as a found verdict");
@@ -180,10 +166,7 @@ fn a_stored_verdict_keeps_what_agreement_narrowed_out() {
 fn a_resumed_verdict_stands_its_narrowed_out_releases_back_up() {
     let verdict = TerminalVerdict::Found {
         findings: Findings {
-            narrowed_out: NarrowedOut {
-                matches: vec![mk_result("rel-out")],
-                pressings: vec![0],
-            },
+            narrowed_out: NarrowedOut { matches: vec![mk_result("rel-out")], pressings: vec![0] },
             ..one_disc_id_match()
         },
         track_count: 11,
@@ -245,10 +228,7 @@ fn signals_that_share_no_result_store_as_one_match_list() {
             findings: Findings {
                 matches: vec![mk_result("rel-a")],
                 pressings: vec![0],
-                narrowed_out: NarrowedOut {
-                    matches: vec![mk_result("rel-b")],
-                    pressings: vec![0],
-                },
+                narrowed_out: NarrowedOut { matches: vec![mk_result("rel-b")], pressings: vec![0] },
                 medium_conflict: None,
                 named_notes: Vec::new(),
             },
@@ -291,14 +271,9 @@ fn a_union_reached_with_a_recorded_discid_failure_is_failed() {
 #[test]
 fn clean_not_found_anywhere_is_terminal() {
     let context = mk_context(7);
-    let verdict = TerminalVerdict::try_from(IdentifyState::NotFoundAnywhere {
-        ledger: None,
-        context,
-    });
-    assert!(matches!(
-        verdict,
-        Ok(TerminalVerdict::NotFoundAnywhere { ledger: None })
-    ));
+    let verdict =
+        TerminalVerdict::try_from(IdentifyState::NotFoundAnywhere { ledger: None, context });
+    assert!(matches!(verdict, Ok(TerminalVerdict::NotFoundAnywhere { ledger: None })));
 }
 
 /// A disc-ID lookup failure derives to `Failed`, never to no-match.
@@ -355,17 +330,10 @@ fn a_partial_barcode_answer_keeps_its_matches_on_a_failed_state() {
         failure: crate::signals::LookupFailure::Network,
     }];
     let state = crate::identify::state::re_derive_for_tests(context);
-    let IdentifyState::Failed {
-        findings, failures, ..
-    } = &state
-    else {
+    let IdentifyState::Failed { findings, failures, .. } = &state else {
         panic!("a provider failure is a failed state");
     };
-    assert_eq!(
-        findings.matches.len(),
-        1,
-        "the other provider's match still stands"
-    );
+    assert_eq!(findings.matches.len(), 1, "the other provider's match still stands");
     let live = findings.clone();
     assert_eq!(
         failures,
@@ -472,9 +440,7 @@ fn a_later_failure_keeps_the_findings_and_joins_earlier_failures() {
 #[test]
 fn a_resumed_failure_stands_its_findings_back_up() {
     let verdict = TerminalVerdict::Failed {
-        failures: vec![IdentifyFailure::DiscId(
-            crate::signals::LookupFailure::Network,
-        )],
+        failures: vec![IdentifyFailure::DiscId(crate::signals::LookupFailure::Network)],
         findings: one_disc_id_match(),
         track_count: 11,
         ledger: None,

@@ -102,10 +102,7 @@ pub(crate) fn artist_source_ids_are_compatible(
     musicbrainz_artist_id: Option<&str>,
 ) -> bool {
     source_ids_are_compatible(artist.discogs_artist_id.as_deref(), discogs_artist_id)
-        && source_ids_are_compatible(
-            artist.musicbrainz_artist_id.as_deref(),
-            musicbrainz_artist_id,
-        )
+        && source_ids_are_compatible(artist.musicbrainz_artist_id.as_deref(), musicbrainz_artist_id)
 }
 
 fn source_ids_are_compatible(left: Option<&str>, right: Option<&str>) -> bool {
@@ -168,10 +165,7 @@ pub enum ImportError {
     /// it cannot describe the folder's audio without adding or losing tracks.
     #[cfg(desktop)]
     #[error("{folder_tracks} tracks in the folder, {release_tracks} on the release")]
-    MetadataTrackCount {
-        folder_tracks: u32,
-        release_tracks: u32,
-    },
+    MetadataTrackCount { folder_tracks: u32, release_tracks: u32 },
 
     /// Several sets of the release's mediums fit the folder's audio equally —
     /// by Disc ID, carrier and lengths — and read as different tracks, so
@@ -219,10 +213,7 @@ pub enum ImportError {
     /// is readable is the remedy.
     #[cfg(desktop)]
     #[error("the source audio for {track} could not be read: {error}")]
-    SourceRead {
-        track: String,
-        error: bae_audio::sparse_buffer::SourceReadError,
-    },
+    SourceRead { track: String, error: bae_audio::sparse_buffer::SourceReadError },
 
     /// Candidate preparation is immutable from the moment import owns it.
     #[cfg(desktop)]
@@ -257,9 +248,7 @@ pub enum ImportError {
     /// downloading.
     #[cfg(desktop)]
     #[error("{reason}")]
-    GroupingBlocked {
-        reason: crate::import::grouping::GroupingBlock,
-    },
+    GroupingBlocked { reason: crate::import::grouping::GroupingBlock },
 
     /// The draft or edit does not shape into a savable one (the editor's
     /// typed error).
@@ -315,9 +304,7 @@ pub enum ImportError {
 #[cfg(desktop)]
 impl From<bae_util::task_failure::TaskFailed> for ImportError {
     fn from(failed: bae_util::task_failure::TaskFailed) -> Self {
-        Self::Internal {
-            detail: failed.to_string(),
-        }
+        Self::Internal { detail: failed.to_string() }
     }
 }
 
@@ -331,9 +318,7 @@ impl ImportError {
         path: &std::path::Path,
         error: impl std::fmt::Display,
     ) -> Self {
-        Self::FileTags {
-            detail: format!("failed to {action} {}: {error}", path.display()),
-        }
+        Self::FileTags { detail: format!("failed to {action} {}: {error}", path.display()) }
     }
 }
 
@@ -383,17 +368,12 @@ impl ImportError {
             Self::CandidateBeingIdentified => C::CandidateBeingIdentified,
             Self::FilesAlreadyImported { .. } => C::FilesAlreadyImported,
             #[cfg(desktop)]
-            Self::MetadataTrackCount {
-                folder_tracks,
-                release_tracks,
-            } => C::MetadataTrackCount {
+            Self::MetadataTrackCount { folder_tracks, release_tracks } => C::MetadataTrackCount {
                 folder_tracks: *folder_tracks,
                 release_tracks: *release_tracks,
             },
             #[cfg(desktop)]
-            Self::TiedMediums { mediums } => C::TiedMediums {
-                mediums: mediums.clone(),
-            },
+            Self::TiedMediums { mediums } => C::TiedMediums { mediums: mediums.clone() },
             #[cfg(desktop)]
             Self::SourceData { .. } => C::ImportData,
             Self::CoverArt { .. } => C::ImportData,
@@ -468,22 +448,13 @@ mod tests {
     #[test]
     fn musicbrainz_error_is_preserved_unflattened() {
         let err: ImportError = MusicBrainzError::Timeout.into();
-        assert!(matches!(
-            err,
-            ImportError::MusicBrainz(MusicBrainzError::Timeout)
-        ));
+        assert!(matches!(err, ImportError::MusicBrainz(MusicBrainzError::Timeout)));
 
-        let err: ImportError = MusicBrainzError::Provider {
-            status: Some(503),
-            told_wait: None,
-        }
-        .into();
+        let err: ImportError =
+            MusicBrainzError::Provider { status: Some(503), told_wait: None }.into();
         assert!(matches!(
             err,
-            ImportError::MusicBrainz(MusicBrainzError::Provider {
-                status: Some(503),
-                ..
-            })
+            ImportError::MusicBrainz(MusicBrainzError::Provider { status: Some(503), .. })
         ));
     }
 
@@ -522,20 +493,13 @@ mod tests {
         let error = super::ImportError::from(
             bae_catalogs::discogs::client::DiscogsError::Transport(request_error),
         );
-        assert!(
-            error.to_string().contains("relative URL without a base"),
-            "{error}"
-        );
+        assert!(error.to_string().contains("relative URL without a base"), "{error}");
         let crate::signals::Failure::Internal(failure) =
             crate::import::search::failure_of(&error, "asking Discogs")
         else {
             panic!("a request bae could not build is its own failure");
         };
-        assert!(
-            failure.detail.contains("relative URL without a base"),
-            "{}",
-            failure.detail
-        );
+        assert!(failure.detail.contains("relative URL without a base"), "{}", failure.detail);
     }
 
     /// An import error that crosses into a library error stays the refusal it
@@ -546,15 +510,8 @@ mod tests {
     fn an_import_error_keeps_its_kind_through_a_library_error() {
         use crate::library::LibraryError;
         use crate::ui::UiErrorCategory;
-        let library = LibraryError::from(ImportError::TiedMediums {
-            mediums: vec![1, 3],
-        });
-        assert_eq!(
-            library.category(),
-            UiErrorCategory::TiedMediums {
-                mediums: vec![1, 3]
-            }
-        );
+        let library = LibraryError::from(ImportError::TiedMediums { mediums: vec![1, 3] });
+        assert_eq!(library.category(), UiErrorCategory::TiedMediums { mediums: vec![1, 3] });
         assert!(matches!(
             ImportError::from(library),
             ImportError::TiedMediums { mediums } if mediums == [1, 3]
@@ -566,10 +523,7 @@ mod tests {
         });
         assert_eq!(
             library.category(),
-            UiErrorCategory::MetadataTrackCount {
-                folder_tracks: 10,
-                release_tracks: 12,
-            }
+            UiErrorCategory::MetadataTrackCount { folder_tracks: 10, release_tracks: 12 }
         );
 
         let from_db = LibraryError::from(ImportError::Db(LibraryError::Database(
@@ -600,10 +554,9 @@ mod tests {
     /// query stay out of it.
     #[tokio::test]
     async fn a_musicbrainz_network_failure_names_its_cause_in_the_detail_a_surface_shows() {
-        for (origin, cause) in [
-            ("http://bae-test.invalid", "dns error"),
-            ("http://127.0.0.1:1", "tcp connect error"),
-        ] {
+        for (origin, cause) in
+            [("http://bae-test.invalid", "dns error"), ("http://127.0.0.1:1", "tcp connect error")]
+        {
             let musicbrainz = bae_catalogs::musicbrainz::MusicBrainz::for_test(
                 bae_util::http::Http::for_test().serve_every_host(origin),
             );
@@ -635,17 +588,11 @@ mod tests {
             "token".to_string(),
         );
         let error = client
-            .get_release(
-                "510001",
-                bae_catalogs::rate_limiter::CallPriority::Interactive,
-            )
+            .get_release("510001", bae_catalogs::rate_limiter::CallPriority::Interactive)
             .await
             .expect_err("nothing listens on port 1");
         assert!(
-            matches!(
-                error,
-                bae_catalogs::discogs::client::DiscogsError::Transport(_)
-            ),
+            matches!(error, bae_catalogs::discogs::client::DiscogsError::Transport(_)),
             "{error}"
         );
         let crate::ui::UiError::Diagnostic { category, detail } =

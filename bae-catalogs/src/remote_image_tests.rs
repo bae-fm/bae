@@ -20,10 +20,7 @@ fn cover_art_archive_addresses_are_derived_from_the_entity_id() {
 
     let copies = |front: &str| {
         [250, 500, 1200]
-            .map(|max_edge| DownscaledCopy {
-                url: format!("{front}-{max_edge}"),
-                max_edge,
-            })
+            .map(|max_edge| DownscaledCopy { url: format!("{front}-{max_edge}"), max_edge })
             .to_vec()
     };
 
@@ -46,38 +43,17 @@ fn a_slot_reads_the_smallest_copy_that_fills_it() {
     let image = RemoteImageSet::with_copies(
         "https://caa.example/front".to_string(),
         vec![
-            DownscaledCopy {
-                url: "https://caa.example/front-1200".to_string(),
-                max_edge: 1200,
-            },
-            DownscaledCopy {
-                url: "https://caa.example/front-250".to_string(),
-                max_edge: 250,
-            },
-            DownscaledCopy {
-                url: "https://caa.example/front-500".to_string(),
-                max_edge: 500,
-            },
+            DownscaledCopy { url: "https://caa.example/front-1200".to_string(), max_edge: 1200 },
+            DownscaledCopy { url: "https://caa.example/front-250".to_string(), max_edge: 250 },
+            DownscaledCopy { url: "https://caa.example/front-500".to_string(), max_edge: 500 },
         ],
     );
 
     // A 40-point row on a 2x display, then the 200- and 260-point panes.
-    assert_eq!(
-        image.url_covering(Some(80)),
-        "https://caa.example/front-250"
-    );
-    assert_eq!(
-        image.url_covering(Some(250)),
-        "https://caa.example/front-250"
-    );
-    assert_eq!(
-        image.url_covering(Some(400)),
-        "https://caa.example/front-500"
-    );
-    assert_eq!(
-        image.url_covering(Some(520)),
-        "https://caa.example/front-1200"
-    );
+    assert_eq!(image.url_covering(Some(80)), "https://caa.example/front-250");
+    assert_eq!(image.url_covering(Some(250)), "https://caa.example/front-250");
+    assert_eq!(image.url_covering(Some(400)), "https://caa.example/front-500");
+    assert_eq!(image.url_covering(Some(520)), "https://caa.example/front-1200");
     // Wider than every copy, and a viewer zooming to the image's own pixels.
     assert_eq!(image.url_covering(Some(2400)), "https://caa.example/front");
     assert_eq!(image.url_covering(None), "https://caa.example/front");
@@ -87,14 +63,8 @@ fn a_slot_reads_the_smallest_copy_that_fills_it() {
 fn an_image_served_at_one_size_is_read_there_for_every_slot() {
     let image = RemoteImageSet::original("https://discogs.example/only.jpg".to_string());
 
-    assert_eq!(
-        image.url_covering(Some(80)),
-        "https://discogs.example/only.jpg"
-    );
-    assert_eq!(
-        image.url_covering(Some(520)),
-        "https://discogs.example/only.jpg"
-    );
+    assert_eq!(image.url_covering(Some(80)), "https://discogs.example/only.jpg");
+    assert_eq!(image.url_covering(Some(520)), "https://discogs.example/only.jpg");
 }
 
 #[test]
@@ -102,33 +72,21 @@ fn push_unique_cover_dedupes_by_url() {
     let cover = |thumbnail: &str, label: &str| RemoteCover {
         image: RemoteImageSet::with_copies(
             "https://caa.example/cover.jpg".to_string(),
-            vec![DownscaledCopy {
-                url: thumbnail.to_string(),
-                max_edge: 250,
-            }],
+            vec![DownscaledCopy { url: thumbnail.to_string(), max_edge: 250 }],
         ),
         label: label.to_string(),
         source: Catalog::MusicBrainz,
         standing: CoverStanding::Stated,
     };
-    let mut covers = vec![cover(
-        "https://caa.example/thumb-a.jpg",
-        "Cover Art Archive",
-    )];
+    let mut covers = vec![cover("https://caa.example/thumb-a.jpg", "Cover Art Archive")];
 
     push_unique_cover(
         &mut covers,
-        cover(
-            "https://caa.example/thumb-b.jpg",
-            "Cover Art Archive (Album)",
-        ),
+        cover("https://caa.example/thumb-b.jpg", "Cover Art Archive (Album)"),
     );
 
     assert_eq!(covers.len(), 1);
-    assert_eq!(
-        covers[0].image.downscaled[0].url,
-        "https://caa.example/thumb-a.jpg"
-    );
+    assert_eq!(covers[0].image.downscaled[0].url, "https://caa.example/thumb-a.jpg");
 }
 
 /// Spawn a localhost HTTP server that returns the given responses in order,
@@ -145,25 +103,17 @@ async fn start_mock(responses: Vec<(u16, Vec<u8>)>) -> String {
     }
 
     async fn handler(State(mock): State<Mock>) -> (StatusCode, Vec<u8>) {
-        let index = mock
-            .index
-            .fetch_add(1, Ordering::SeqCst)
-            .min(mock.responses.len() - 1);
+        let index = mock.index.fetch_add(1, Ordering::SeqCst).min(mock.responses.len() - 1);
         let (status, body) = &mock.responses[index];
         (StatusCode::from_u16(*status).unwrap(), body.clone())
     }
 
-    let state = Mock {
-        responses: Arc::new(responses),
-        index: Arc::new(AtomicUsize::new(0)),
-    };
+    let state = Mock { responses: Arc::new(responses), index: Arc::new(AtomicUsize::new(0)) };
     let app = axum::Router::new().fallback(handler).with_state(state);
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let address = listener.local_addr().unwrap();
     tokio::spawn(async move {
-        axum::serve(listener, app)
-            .await
-            .expect("the test server serves until the test ends");
+        axum::serve(listener, app).await.expect("the test server serves until the test ends");
     });
     format!("http://{address}/cover.jpg")
 }
@@ -188,26 +138,15 @@ async fn start_counting_host(status: u16, body: Vec<u8>) -> (CountingHost, Strin
 
     async fn handler(State(host): State<CountingHost>) -> (StatusCode, Vec<u8>) {
         host.hits.fetch_add(1, Ordering::SeqCst);
-        (
-            StatusCode::from_u16(host.status).expect("valid test status"),
-            host.body.as_ref().clone(),
-        )
+        (StatusCode::from_u16(host.status).expect("valid test status"), host.body.as_ref().clone())
     }
 
-    let host = CountingHost {
-        status,
-        body: Arc::new(body),
-        hits: Arc::new(AtomicUsize::new(0)),
-    };
-    let app = axum::Router::new()
-        .fallback(handler)
-        .with_state(host.clone());
+    let host = CountingHost { status, body: Arc::new(body), hits: Arc::new(AtomicUsize::new(0)) };
+    let app = axum::Router::new().fallback(handler).with_state(host.clone());
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let address = listener.local_addr().unwrap();
     tokio::spawn(async move {
-        axum::serve(listener, app)
-            .await
-            .expect("the test server serves until the test ends");
+        axum::serve(listener, app).await.expect("the test server serves until the test ends");
     });
     (host, format!("http://{address}/cover.jpg"))
 }
@@ -215,22 +154,13 @@ async fn start_counting_host(status: u16, body: Vec<u8>) -> (CountingHost, Strin
 async fn start_declared_length_response(content_length: usize) -> String {
     use tokio::io::AsyncWriteExt;
 
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
-        .await
-        .expect("test listener should bind");
-    let address = listener
-        .local_addr()
-        .expect("test listener should have an address");
+    let listener =
+        tokio::net::TcpListener::bind("127.0.0.1:0").await.expect("test listener should bind");
+    let address = listener.local_addr().expect("test listener should have an address");
     tokio::spawn(async move {
-        let (mut stream, _) = listener
-            .accept()
-            .await
-            .expect("test request should connect");
+        let (mut stream, _) = listener.accept().await.expect("test request should connect");
         let response = format!("HTTP/1.1 200 OK\r\nContent-Length: {content_length}\r\n\r\n");
-        stream
-            .write_all(response.as_bytes())
-            .await
-            .expect("test response headers should write");
+        stream.write_all(response.as_bytes()).await.expect("test response headers should write");
         std::future::pending::<()>().await;
     });
     format!("http://{address}/cover.jpg")
@@ -351,10 +281,7 @@ async fn concurrent_reads_of_one_url_share_the_download() {
 #[tokio::test]
 async fn download_rejects_short_non_image_response() {
     let url = start_mock(vec![(200, vec![0u8; 50])]).await;
-    let error = RemoteImageCache::for_test(direct_http())
-        .fetch(&url)
-        .await
-        .unwrap_err();
+    let error = RemoteImageCache::for_test(direct_http()).fetch(&url).await.unwrap_err();
     assert!(
         matches!(&error, RemoteImageError::Unusable { detail } if detail.contains("valid image")),
         "got: {error}"
@@ -364,10 +291,7 @@ async fn download_rejects_short_non_image_response() {
 #[tokio::test]
 async fn download_rejects_bytes_that_are_not_an_image() {
     let url = start_mock(vec![(200, vec![b'x'; 256])]).await;
-    let error = RemoteImageCache::for_test(direct_http())
-        .fetch(&url)
-        .await
-        .unwrap_err();
+    let error = RemoteImageCache::for_test(direct_http()).fetch(&url).await.unwrap_err();
     assert!(
         matches!(&error, RemoteImageError::Unusable { detail } if detail.contains("valid image")),
         "got: {error}"
@@ -378,12 +302,10 @@ async fn download_rejects_bytes_that_are_not_an_image() {
 async fn download_rejects_declared_over_cap_response() {
     let url = start_declared_length_response(bae_util::http::MAX_IMAGE_BYTES + 1).await;
     let cache = RemoteImageCache::for_test(direct_http());
-    let result = tokio::time::timeout(
-        std::time::Duration::from_secs(1),
-        cache.fetch_required(&url),
-    )
-    .await
-    .expect("oversized response should fail before reading the body");
+    let result =
+        tokio::time::timeout(std::time::Duration::from_secs(1), cache.fetch_required(&url))
+            .await
+            .expect("oversized response should fail before reading the body");
     let error = result.unwrap_err();
     assert!(
         matches!(&error, RemoteImageError::Unusable { detail } if detail.contains("too large")),
@@ -395,10 +317,7 @@ async fn download_rejects_declared_over_cap_response() {
 async fn download_retries_transient_then_succeeds() {
     let body = test_png();
     let url = start_mock(vec![(503, vec![]), (200, body.clone())]).await;
-    let image = RemoteImageCache::for_test(direct_http())
-        .fetch_required(&url)
-        .await
-        .unwrap();
+    let image = RemoteImageCache::for_test(direct_http()).fetch_required(&url).await.unwrap();
     assert_eq!(image.bytes, body);
 }
 
@@ -417,10 +336,8 @@ async fn no_image_answer_is_stored() {
 async fn artwork_http_failures_keep_their_status_after_retries() {
     for (status, attempts) in [(400, 1), (401, 1), (429, 4), (500, 4)] {
         let (host, url) = start_counting_host(status, Vec::new()).await;
-        let error = RemoteImageCache::for_test(direct_http())
-            .fetch_required(&url)
-            .await
-            .unwrap_err();
+        let error =
+            RemoteImageCache::for_test(direct_http()).fetch_required(&url).await.unwrap_err();
         assert_eq!(host.hits(), attempts, "status {status}");
         assert!(
             matches!(error, RemoteImageError::Status { status: answered, .. } if answered == status),
@@ -436,10 +353,7 @@ async fn required_missing_artwork_is_a_not_found_status() {
     assert!(cache.fetch(&url).await.unwrap().is_none());
     let error = cache.fetch_required(&url).await.unwrap_err();
     assert_eq!(host.hits(), 1);
-    assert!(
-        matches!(error, RemoteImageError::Status { status: 404, .. }),
-        "{error}"
-    );
+    assert!(matches!(error, RemoteImageError::Status { status: 404, .. }), "{error}");
 }
 
 /// A successful response whose body ends before its declared length.
@@ -451,10 +365,7 @@ pub(super) async fn truncated_body_url() -> String {
         let (mut stream, _) = listener.accept().await.unwrap();
         let mut request = [0; 4096];
         let received = stream.read(&mut request).await.unwrap();
-        assert!(
-            received > 0,
-            "client must send a request before the response"
-        );
+        assert!(received > 0, "client must send a request before the response");
         stream
             .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 256\r\nConnection: close\r\n\r\nx")
             .await
@@ -469,10 +380,7 @@ pub(super) async fn truncated_body_url() -> String {
 #[tokio::test]
 async fn artwork_interrupted_body_is_a_transport_failure() {
     let url = truncated_body_url().await;
-    let error = RemoteImageCache::for_test(direct_http())
-        .fetch_required(&url)
-        .await
-        .unwrap_err();
+    let error = RemoteImageCache::for_test(direct_http()).fetch_required(&url).await.unwrap_err();
     assert!(
         matches!(&error, RemoteImageError::Transport { error, .. } if error.is_decode()),
         "{error}"
@@ -482,10 +390,8 @@ async fn artwork_interrupted_body_is_a_transport_failure() {
 #[tokio::test]
 async fn artwork_stalled_body_is_a_timeout() {
     let url = start_declared_length_response(256).await;
-    let client = bae_util::http::client_builder()
-        .timeout(Duration::from_millis(30))
-        .build()
-        .unwrap();
+    let client =
+        bae_util::http::client_builder().timeout(Duration::from_millis(30)).build().unwrap();
     let response = client.get(&url).send().await.unwrap();
     let error = match read_image_response(response, &url).await {
         Err(error) => error,
@@ -499,18 +405,13 @@ async fn artwork_stalled_body_is_a_timeout() {
 
 #[tokio::test]
 async fn artwork_invalid_request_is_a_request_bae_could_not_build() {
-    let error = RemoteImageCache::for_test(direct_http())
-        .fetch_required("not a URL")
-        .await
-        .unwrap_err();
+    let error =
+        RemoteImageCache::for_test(direct_http()).fetch_required("not a URL").await.unwrap_err();
     assert!(
         matches!(&error, RemoteImageError::Transport { error, .. } if error.is_builder()),
         "{error}"
     );
-    assert!(
-        error.to_string().contains("relative URL without a base"),
-        "{error}"
-    );
+    assert!(error.to_string().contains("relative URL without a base"), "{error}");
 }
 
 /// An image request to a host no resolver knows names the DNS failure in its
@@ -564,14 +465,9 @@ async fn supported_cover_formats_keep_original_remote_bytes_and_type() {
 #[tokio::test]
 async fn remote_cover_dimensions_are_bounded() {
     let mut bytes = std::io::Cursor::new(Vec::new());
-    image::DynamicImage::new_rgb8(8193, 1)
-        .write_to(&mut bytes, image::ImageFormat::Png)
-        .unwrap();
+    image::DynamicImage::new_rgb8(8193, 1).write_to(&mut bytes, image::ImageFormat::Png).unwrap();
     let url = start_mock(vec![(200, bytes.into_inner())]).await;
-    let error = RemoteImageCache::for_test(direct_http())
-        .fetch_required(&url)
-        .await
-        .unwrap_err();
+    let error = RemoteImageCache::for_test(direct_http()).fetch_required(&url).await.unwrap_err();
     assert!(
         matches!(&error, RemoteImageError::Unusable { detail } if detail.contains("limit")),
         "{error}"
@@ -584,10 +480,7 @@ async fn remote_cover_decode_allocation_is_bounded() {
     bytes[6..8].copy_from_slice(&6000u16.to_le_bytes());
     bytes[8..10].copy_from_slice(&6000u16.to_le_bytes());
     let url = start_mock(vec![(200, bytes)]).await;
-    let error = RemoteImageCache::for_test(direct_http())
-        .fetch_required(&url)
-        .await
-        .unwrap_err();
+    let error = RemoteImageCache::for_test(direct_http()).fetch_required(&url).await.unwrap_err();
     assert!(
         matches!(&error, RemoteImageError::Unusable { detail } if detail.contains("Memory limit")),
         "{error}"
@@ -603,10 +496,8 @@ async fn truncated_gif_and_webp_fail_remote_validation_and_normalization() {
         let truncated = &bytes[..20];
         assert!(bae_util::stored_image::stored_jpeg(truncated).is_err());
         let url = start_mock(vec![(200, truncated.to_vec())]).await;
-        let error = RemoteImageCache::for_test(direct_http())
-            .fetch_required(&url)
-            .await
-            .unwrap_err();
+        let error =
+            RemoteImageCache::for_test(direct_http()).fetch_required(&url).await.unwrap_err();
         assert!(matches!(error, RemoteImageError::Unusable { .. }));
     }
 }

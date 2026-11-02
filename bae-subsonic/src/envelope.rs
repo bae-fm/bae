@@ -98,11 +98,7 @@ pub(crate) struct Element {
 
 impl Element {
     pub(crate) fn new(name: &'static str) -> Self {
-        Self {
-            name,
-            attrs: Vec::new(),
-            children: Vec::new(),
-        }
+        Self { name, attrs: Vec::new(), children: Vec::new() }
     }
 
     pub(crate) fn attr(mut self, name: &'static str, value: impl Into<Val>) -> Self {
@@ -231,14 +227,10 @@ fn render(
     error: Option<&SubError>,
 ) -> Response {
     let (content_type, body) = match format {
-        Format::Xml => (
-            "application/xml",
-            render_xml(response_status, payload, error),
-        ),
-        Format::Json => (
-            "application/json",
-            render_json(response_status, payload, error).to_string(),
-        ),
+        Format::Xml => ("application/xml", render_xml(response_status, payload, error)),
+        Format::Json => {
+            ("application/json", render_json(response_status, payload, error).to_string())
+        }
         Format::Jsonp(callback) => {
             let json = render_json(response_status, payload, error);
             ("application/javascript", format!("{callback}({json});"))
@@ -275,26 +267,14 @@ fn render_xml(response_status: &str, payload: Option<Element>, error: Option<&Su
 
 fn render_json(response_status: &str, payload: Option<Element>, error: Option<&SubError>) -> Value {
     let mut inner = Map::new();
-    inner.insert(
-        "status".to_string(),
-        Value::String(response_status.to_string()),
-    );
-    inner.insert(
-        "version".to_string(),
-        Value::String(API_VERSION.to_string()),
-    );
+    inner.insert("status".to_string(), Value::String(response_status.to_string()));
+    inner.insert("version".to_string(), Value::String(API_VERSION.to_string()));
     inner.insert("type".to_string(), Value::String(SERVER_TYPE.to_string()));
-    inner.insert(
-        "serverVersion".to_string(),
-        Value::String(server_version().to_string()),
-    );
+    inner.insert("serverVersion".to_string(), Value::String(server_version().to_string()));
     inner.insert("openSubsonic".to_string(), Value::Bool(true));
     if let Some(error) = error {
         let mut e = Map::new();
-        e.insert(
-            "code".to_string(),
-            Value::Number((error.code as i64).into()),
-        );
+        e.insert("code".to_string(), Value::Number((error.code as i64).into()));
         e.insert("message".to_string(), Value::String(error.message.clone()));
         inner.insert("error".to_string(), Value::Object(e));
     }

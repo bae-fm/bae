@@ -104,11 +104,8 @@ fn plan_artist_identity_merge<Q: QueryOne + QueryRows>(
         )));
     }
 
-    let discogs_artist = sql.query_row(
-        "SELECT * FROM artists WHERE id = ?",
-        [&discogs_library_id],
-        row_to_artist,
-    )?;
+    let discogs_artist =
+        sql.query_row("SELECT * FROM artists WHERE id = ?", [&discogs_library_id], row_to_artist)?;
     let musicbrainz_artist = sql.query_row(
         "SELECT * FROM artists WHERE id = ?",
         [&musicbrainz_library_id],
@@ -203,10 +200,7 @@ fn apply_artist_identity_merge(
     }
 
     if plan.images.1.is_some() {
-        sql.execute(
-            "DELETE FROM artist_images WHERE id = ?",
-            [&plan.absorbed_artist_id],
-        )?;
+        sql.execute("DELETE FROM artist_images WHERE id = ?", [&plan.absorbed_artist_id])?;
     }
 
     // Drafts and conflicts are this device's alone: they move to the survivor.
@@ -214,14 +208,8 @@ fn apply_artist_identity_merge(
     // be crediting the absorbed artist right now; reads show every credit
     // through `artist_shown_as`.
     for (table, unique_columns) in [
-        (
-            "import_candidate_album_artist_assignment",
-            &["content_hash"][..],
-        ),
-        (
-            "import_candidate_track_artist_assignment",
-            &["content_hash", "track_id"][..],
-        ),
+        ("import_candidate_album_artist_assignment", &["content_hash"][..]),
+        ("import_candidate_track_artist_assignment", &["content_hash", "track_id"][..]),
     ] {
         merge_local_artist_references(
             sql,

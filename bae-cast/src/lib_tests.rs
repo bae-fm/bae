@@ -1,10 +1,7 @@
 use super::*;
 
 fn credential() -> SubsonicCredential {
-    SubsonicCredential {
-        username: "castuser".to_string(),
-        password: "castpassword".to_string(),
-    }
+    SubsonicCredential { username: "castuser".to_string(), password: "castpassword".to_string() }
 }
 
 /// Whether a browse is live right now — the gate the `cast_enabled` setting
@@ -24,9 +21,7 @@ fn start_discovery(runtime: &tokio::runtime::Runtime, controller: &Arc<CastContr
     let mut decided = controller.browsing_decided.subscribe();
     decided.mark_unchanged();
     controller.start_discovery();
-    runtime
-        .block_on(decided.changed())
-        .expect("the controller is alive");
+    runtime.block_on(decided.changed()).expect("the controller is alive");
 }
 
 /// A controller over a fresh library, on the runtime it returns, serving
@@ -34,12 +29,7 @@ fn start_discovery(runtime: &tokio::runtime::Runtime, controller: &Arc<CastContr
 /// outlive the controller.
 fn test_controller(
     discovery: RendererDiscovery,
-) -> (
-    tokio::runtime::Runtime,
-    Arc<CastController>,
-    AppServices,
-    tempfile::TempDir,
-) {
+) -> (tokio::runtime::Runtime, Arc<CastController>, AppServices, tempfile::TempDir) {
     let (runtime, services, tmp) = bae_test_support::runtime_with_services();
     let controller = CastController::start_serving_on(
         services.clone(),
@@ -86,20 +76,11 @@ fn reported_cast_service(instance: &str, id: &str, port: u16) -> ReportedRendere
 fn discovery_and_casting_follow_the_cast_setting() {
     let (runtime, controller, services, _tmp) = test_controller(RendererDiscovery::reported());
 
-    assert!(
-        !runtime
-            .block_on(services.preferences())
-            .unwrap()
-            .cast_enabled,
-        "casting is opt-in"
-    );
+    assert!(!runtime.block_on(services.preferences()).unwrap().cast_enabled, "casting is opt-in");
     start_discovery(&runtime, &controller);
     assert!(!browsing(&controller), "casting is off: nothing may browse");
     assert!(
-        matches!(
-            runtime.block_on(controller.cast_to("some-device")),
-            Err(CastError::Disabled)
-        ),
+        matches!(runtime.block_on(controller.cast_to("some-device")), Err(CastError::Disabled)),
         "casting is off: a session must be refused"
     );
 
@@ -127,9 +108,7 @@ fn a_stop_before_the_setting_is_read_wins() {
     decided.mark_unchanged();
     controller.start_discovery();
     controller.stop_discovery();
-    runtime
-        .block_on(decided.changed())
-        .expect("the controller is alive");
+    runtime.block_on(decided.changed()).expect("the controller is alive");
     assert!(!browsing(&controller), "the picker closed: nothing browses");
 }
 
@@ -152,10 +131,7 @@ fn turning_casting_off_stops_browsing() {
     runtime
         .block_on(applied.wait_for(|applied| *applied == Some(false)))
         .expect("the setting watcher runs while the controller is alive");
-    assert!(
-        !browsing(&controller),
-        "casting turned off: the watcher stopped browsing"
-    );
+    assert!(!browsing(&controller), "casting turned off: the watcher stopped browsing");
 }
 
 /// The reported path: a host that browses for bae pushes what its browser
@@ -179,22 +155,14 @@ fn reported_devices_follow_the_host_browser_and_the_cast_setting() {
     controller.renderer_found(reported_cast_service("Kitchen", "cast-1", port));
     controller.renderer_found(reported_cast_service("Study", "cast-2", port));
     assert_eq!(
-        controller
-            .devices()
-            .iter()
-            .map(|device| device.name.as_str())
-            .collect::<Vec<_>>(),
+        controller.devices().iter().map(|device| device.name.as_str()).collect::<Vec<_>>(),
         vec!["Kitchen", "Study"],
         "a reported service is a device the picker can cast to"
     );
 
     controller.renderer_lost(RendererServiceType::GoogleCast, "Kitchen");
     assert_eq!(
-        controller
-            .devices()
-            .iter()
-            .map(|device| device.name.as_str())
-            .collect::<Vec<_>>(),
+        controller.devices().iter().map(|device| device.name.as_str()).collect::<Vec<_>>(),
         vec!["Study"],
         "a service the host's browser lost leaves the picker"
     );
@@ -253,19 +221,9 @@ fn ephemeral_server_start_does_not_reenter_the_owned_runtime() {
     let (runtime, controller, _services, _tmp) = test_controller(RendererDiscovery::reported());
 
     runtime.block_on(async {
-        controller
-            .ensure_server()
-            .await
-            .expect("server starts from the controller runtime");
+        controller.ensure_server().await.expect("server starts from the controller runtime");
     });
-    let base_url = controller
-        .server
-        .lock()
-        .unwrap()
-        .as_ref()
-        .unwrap()
-        .base_url
-        .clone();
+    let base_url = controller.server.lock().unwrap().as_ref().unwrap().base_url.clone();
     assert!(
         base_url.starts_with("http://127.0.0.1:"),
         "the test's server stays on loopback: {base_url}"
@@ -276,10 +234,8 @@ fn ephemeral_server_start_does_not_reenter_the_owned_runtime() {
 /// connection is attempted, with the setting named in the error.
 #[test]
 fn an_unreadable_airplay_advertisement_is_refused() {
-    let unreadable = UnreadableSetting {
-        key: "features".to_string(),
-        raw: Some("garbage".to_string()),
-    };
+    let unreadable =
+        UnreadableSetting { key: "features".to_string(), raw: Some("garbage".to_string()) };
     let Err(error) = build_airplay_sink(
         &Diagnostics::noop(),
         "10.0.0.7".parse().unwrap(),
@@ -309,10 +265,7 @@ fn stream_url_encodes_format_and_track() {
     assert!(raw.contains("&s="));
 
     let transcoded = provider("track-2", RendererStreamFormat::TranscodeMp3).unwrap();
-    assert!(
-        transcoded.contains("&format=mp3&maxBitRate=320"),
-        "{transcoded}"
-    );
+    assert!(transcoded.contains("&format=mp3&maxBitRate=320"), "{transcoded}");
 
     let wav = provider("track-3", RendererStreamFormat::TranscodeWav).unwrap();
     assert!(wav.contains("id=tr-track-3&"), "{wav}");
@@ -331,13 +284,8 @@ fn minted_token_matches_the_credential() {
     )
     .unwrap();
 
-    let params: std::collections::HashMap<_, _> = url
-        .split_once('?')
-        .unwrap()
-        .1
-        .split('&')
-        .filter_map(|pair| pair.split_once('='))
-        .collect();
+    let params: std::collections::HashMap<_, _> =
+        url.split_once('?').unwrap().1.split('&').filter_map(|pair| pair.split_once('=')).collect();
     let salt = params["s"];
     let expected = md5_hex(&format!("{}{salt}", credential.password));
     assert_eq!(params["t"], expected, "token must be md5(password + salt)");
@@ -362,14 +310,10 @@ fn ephemeral_server_authenticates_minted_urls_and_stops() {
     let (runtime, services, _tmp) = bae_test_support::runtime_with_services();
 
     runtime.block_on(async move {
-        let server = EphemeralServer::start(
-            services,
-            ServingNetwork::Loopback,
-            &Diagnostics::noop(),
-            || {},
-        )
-        .await
-        .expect("the ephemeral server binds a real port");
+        let server =
+            EphemeralServer::start(services, ServingNetwork::Loopback, &Diagnostics::noop(), || {})
+                .await
+                .expect("the ephemeral server binds a real port");
         assert!(
             server.base_url.starts_with("http://127.0.0.1:"),
             "the test's server stays on loopback: {}",
@@ -399,10 +343,8 @@ fn ephemeral_server_authenticates_minted_urls_and_stops() {
         );
 
         // Tamper with the token: auth must reject it.
-        let tampered = valid.replace(
-            &format!("&t={}", token_of(&valid)),
-            "&t=00000000000000000000000000000000",
-        );
+        let tampered = valid
+            .replace(&format!("&t={}", token_of(&valid)), "&t=00000000000000000000000000000000");
         let tampered_body = reqwest::get(&tampered).await.unwrap().text().await.unwrap();
         assert!(
             tampered_body.contains("code=\"40\""),
@@ -412,10 +354,7 @@ fn ephemeral_server_authenticates_minted_urls_and_stops() {
         server.stop().await;
 
         // The port is released: a fresh request fails to connect.
-        assert!(
-            reqwest::get(&valid).await.is_err(),
-            "stopping the session must release the port"
-        );
+        assert!(reqwest::get(&valid).await.is_err(), "stopping the session must release the port");
     });
 }
 

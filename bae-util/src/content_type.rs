@@ -163,17 +163,12 @@ impl ContentType {
     /// bit depth. Perceptual codecs may report a coded-word width, but that is
     /// not source sample bit depth.
     pub fn is_lossless_audio(&self) -> bool {
-        matches!(
-            self,
-            Self::Flac | Self::Ape | Self::Alac | Self::Pcm | Self::WavPack | Self::Dsd
-        )
+        matches!(self, Self::Flac | Self::Ape | Self::Alac | Self::Pcm | Self::WavPack | Self::Dsd)
     }
 
     pub fn is_image(&self) -> bool {
-        matches!(
-            self,
-            Self::Jpeg | Self::Png | Self::Gif | Self::Webp | Self::Bmp | Self::Svg
-        ) || matches!(self, Self::Other(s) if s.starts_with("image/"))
+        matches!(self, Self::Jpeg | Self::Png | Self::Gif | Self::Webp | Self::Bmp | Self::Svg)
+            || matches!(self, Self::Other(s) if s.starts_with("image/"))
     }
 
     /// Formats decoded and normalized when an image is used as cover artwork.
@@ -299,28 +294,17 @@ mod tests {
         ] {
             assert!(ct.is_audio(), "{ct:?}");
         }
-        for ct in [
-            C::Jpeg,
-            C::PlainText,
-            C::Pdf,
-            C::OctetStream,
-            C::Other("video/mp4".to_string()),
-        ] {
+        for ct in [C::Jpeg, C::PlainText, C::Pdf, C::OctetStream, C::Other("video/mp4".to_string())]
+        {
             assert!(!ct.is_audio(), "{ct:?}");
         }
     }
 
     #[test]
     fn is_image_membership() {
-        for ct in [
-            C::Jpeg,
-            C::Png,
-            C::Gif,
-            C::Webp,
-            C::Bmp,
-            C::Svg,
-            C::Other("image/heic".to_string()),
-        ] {
+        for ct in
+            [C::Jpeg, C::Png, C::Gif, C::Webp, C::Bmp, C::Svg, C::Other("image/heic".to_string())]
+        {
             assert!(ct.is_image(), "{ct:?}");
         }
         for ct in [C::Flac, C::PlainText, C::Other("audio/flac".to_string())] {

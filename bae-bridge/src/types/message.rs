@@ -17,9 +17,6 @@ pub struct BridgeMessageArg {
 
 impl BridgeMessageArg {
     pub(crate) fn new(name: &str, value: String) -> Self {
-        Self {
-            name: name.to_string(),
-            value,
-        }
+        Self { name: name.to_string(), value }
     }
 }

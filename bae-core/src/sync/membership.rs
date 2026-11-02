@@ -155,9 +155,7 @@ mod tests {
             id: coven::MemberId(uuid::Uuid::from_u128(id)),
             keys: coven::MemberKeys::generate().unwrap().public_keys(),
             role: coven::MemberRole::Member,
-            access: coven::MemberAccess::S3AccessKey {
-                access_key_id: format!("key-{id}"),
-            },
+            access: coven::MemberAccess::S3AccessKey { access_key_id: format!("key-{id}") },
             is_self,
             can_remove: false,
             active_devices: devices.iter().copied().map(device).collect(),
@@ -178,9 +176,6 @@ mod tests {
 
         assert_eq!(watch.added(&membership(&[1, 2], &[3])), None);
         assert_eq!(watch.added(&membership(&[1, 2], &[3, 4])), None);
-        assert_eq!(
-            watch.added(&membership(&[1, 2, 5], &[3, 4])),
-            Some(device(5))
-        );
+        assert_eq!(watch.added(&membership(&[1, 2, 5], &[3, 4])), Some(device(5)));
     }
 }

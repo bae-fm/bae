@@ -32,18 +32,11 @@ pub(super) struct SortTerm {
 
 impl SortTerm {
     pub(super) fn ascending(expression: impl Into<String>) -> Self {
-        Self {
-            expression: expression.into(),
-            descending: false,
-            nullable: false,
-        }
+        Self { expression: expression.into(), descending: false, nullable: false }
     }
 
     pub(super) fn descending(expression: impl Into<String>) -> Self {
-        Self {
-            descending: true,
-            ..Self::ascending(expression)
-        }
+        Self { descending: true, ..Self::ascending(expression) }
     }
 
     pub(super) fn running(expression: impl Into<String>, direction: SortDirection) -> Self {
@@ -55,10 +48,7 @@ impl SortTerm {
 
     /// The same term over an expression that can be NULL.
     pub(super) fn nullable(self) -> Self {
-        Self {
-            nullable: true,
-            ..self
-        }
+        Self { nullable: true, ..self }
     }
 
     /// The term as an ORDER BY term, run `descending` or the other way.
@@ -131,10 +121,7 @@ enum Past {
 impl Seek {
     /// The parameters the seek's condition names, as a statement binds them.
     pub(super) fn params(&self) -> Vec<(&str, &dyn ToSql)> {
-        self.binds
-            .iter()
-            .map(|(name, value)| (name.as_str(), value as &dyn ToSql))
-            .collect()
+        self.binds.iter().map(|(name, value)| (name.as_str(), value as &dyn ToSql)).collect()
     }
 
     /// Run `run` with the seek's parameters and a window's `:limit` and
@@ -215,13 +202,7 @@ impl ListOrder {
     /// Every row of the list, in its order: the seek a window read by its
     /// offset runs.
     pub(super) fn everything(&self) -> Seek {
-        Seek {
-            equal: 0,
-            past: None,
-            from: 0,
-            reversed: false,
-            binds: Vec::new(),
-        }
+        Seek { equal: 0, past: None, from: 0, reversed: false, binds: Vec::new() }
     }
 
     /// The condition `seek` holds this order's rows to.
@@ -356,9 +337,7 @@ pub(super) struct KnownPlaces<Standing, Kept = Places> {
 
 impl<Standing: PartialEq, Kept: Clone + Default> KnownPlaces<Standing, Kept> {
     pub(super) fn new() -> Self {
-        Self {
-            last: Mutex::new(None),
-        }
+        Self { last: Mutex::new(None) }
     }
 
     /// What the last read kept, if the list stands where it stood for that
@@ -422,14 +401,8 @@ pub(super) fn read_windows<R, E>(
     let mut read_windows = Vec::with_capacity(windows.len());
     for window in windows {
         let start = match (
-            window
-                .offset
-                .checked_sub(1)
-                .and_then(|before| known.get(&before)),
-            window
-                .offset
-                .checked_add(window.limit)
-                .and_then(|after| known.get(&after)),
+            window.offset.checked_sub(1).and_then(|before| known.get(&before)),
+            window.offset.checked_add(window.limit).and_then(|after| known.get(&after)),
         ) {
             _ if window.limit == 0 => {
                 read_windows.push((window.clone(), Vec::new()));
@@ -457,15 +430,9 @@ pub(super) fn read_windows<R, E>(
                 found.insert(place, key.clone());
             }
         }
-        read_windows.push((
-            window.clone(),
-            rows.into_iter().map(|(row, _)| row).collect(),
-        ));
+        read_windows.push((window.clone(), rows.into_iter().map(|(row, _)| row).collect()));
     }
-    Ok(WindowsRead {
-        windows: read_windows,
-        found,
-    })
+    Ok(WindowsRead { windows: read_windows, found })
 }
 
 /// Up to `limit` rows from `seeks`, run in turn until they hold that many.

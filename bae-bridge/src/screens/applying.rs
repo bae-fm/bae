@@ -23,10 +23,7 @@ pub struct BridgeCatalogApply {
 
 /// An apply whose stream is pulled on `runtime`.
 pub(crate) fn catalog_apply(runtime: OperationRuntime) -> Arc<BridgeCatalogApply> {
-    Arc::new(BridgeCatalogApply {
-        runtime,
-        steps: Mutex::new(None),
-    })
+    Arc::new(BridgeCatalogApply { runtime, steps: Mutex::new(None) })
 }
 
 #[uniffi::export]
@@ -58,9 +55,7 @@ pub(crate) fn catalog_apply_steps(
     bae_core::import::CatalogApplySteps::new(move |step| match step {
         Some(step) => writer.set(
             String::new(),
-            BridgeFastValue::CatalogApplyStep {
-                step: BridgeCatalogApplyStep::from_core(step),
-            },
+            BridgeFastValue::CatalogApplyStep { step: BridgeCatalogApplyStep::from_core(step) },
         ),
         None => writer.remove(&[]),
     })

@@ -35,18 +35,11 @@ impl RawReleaseEdit {
             && self.album_year.trim().is_empty()
             && self.pressing.year.trim().is_empty()
             && self.pressing.labels.iter().all(RawLabelEdit::is_blank)
-            && self
-                .pressing
-                .barcodes
-                .iter()
-                .all(|barcode| barcode.trim().is_empty())
+            && self.pressing.barcodes.iter().all(|barcode| barcode.trim().is_empty())
             && self.pressing.facts.is_empty()
             && self.tracks.iter().all(|track| {
                 track.title.trim().is_empty()
-                    && matches!(
-                        track.artist_assignments,
-                        TrackArtistAssignments::AlbumArtists
-                    )
+                    && matches!(track.artist_assignments, TrackArtistAssignments::AlbumArtists)
             })
     }
 }
@@ -57,11 +50,7 @@ impl RawReleaseEdit {
     pub(crate) fn credits(&self) -> impl Iterator<Item = &ArtistCredit> {
         self.album_artist_assignments
             .iter()
-            .chain(
-                self.tracks
-                    .iter()
-                    .flat_map(|track| track.artist_assignments.explicit()),
-            )
+            .chain(self.tracks.iter().flat_map(|track| track.artist_assignments.explicit()))
             .filter_map(|credited| credited.artist.credit())
     }
 }
@@ -163,10 +152,7 @@ pub enum EditValidationError {
 fn parse_optional_year(raw: &str) -> Result<Option<i32>, EditValidationError> {
     match raw.trim() {
         "" => Ok(None),
-        text => text
-            .parse::<i32>()
-            .map(Some)
-            .map_err(|_| EditValidationError::InvalidYear),
+        text => text.parse::<i32>().map(Some).map_err(|_| EditValidationError::InvalidYear),
     }
 }
 
@@ -217,10 +203,7 @@ impl RawReleaseEdit {
         Self {
             album_title: edit.album_title,
             album_artist_assignments: edit.album_artist_assignments,
-            album_year: edit
-                .album_year
-                .map(|year| year.to_string())
-                .unwrap_or_default(),
+            album_year: edit.album_year.map(|year| year.to_string()).unwrap_or_default(),
             pressing: RawPressingEdit::from_pressing(&edit.pressing),
             tracks,
         }
@@ -231,12 +214,7 @@ impl RawTrackEdit {
     /// Seed one raw editor row from a wire [`TrackUserEdit`], under the row
     /// identity `id`, retaining artist assignments and the audio binding.
     pub fn from_user_edit(edit: TrackUserEdit, id: String) -> Self {
-        Self {
-            id,
-            title: edit.title,
-            artist_assignments: edit.artist_assignments,
-            file: edit.file,
-        }
+        Self { id, title: edit.title, artist_assignments: edit.artist_assignments, file: edit.file }
     }
 }
 

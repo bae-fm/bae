@@ -49,39 +49,34 @@ impl Database {
         initial: crate::library::ArtistSearchView,
     ) -> coven::ReconfigurableLiveQuery<crate::library::ArtistSearchView, ArtistSearchProjection>
     {
-        self.inner
-            .handle
-            .subscribe_reconfigurable(initial, |view, sql| {
-                let Some(query) = &view.query else {
-                    return Ok(ArtistSearchProjection {
-                        windows: view
-                            .windows
-                            .iter()
-                            .map(|window| crate::library::LibraryBrowseWindow {
-                                window: window.clone(),
-                                rows: Vec::new(),
-                            })
-                            .collect(),
-                        total_count: 0,
-                    });
-                };
-                let total_count = artist_search_count_on(&sql, query).map_err(CovenError::from)?;
-                let windows = view
-                    .windows
-                    .iter()
-                    .map(|window| {
-                        Ok(crate::library::LibraryBrowseWindow {
+        self.inner.handle.subscribe_reconfigurable(initial, |view, sql| {
+            let Some(query) = &view.query else {
+                return Ok(ArtistSearchProjection {
+                    windows: view
+                        .windows
+                        .iter()
+                        .map(|window| crate::library::LibraryBrowseWindow {
                             window: window.clone(),
-                            rows: artist_search_rows_on(&sql, query, window)?,
+                            rows: Vec::new(),
                         })
+                        .collect(),
+                    total_count: 0,
+                });
+            };
+            let total_count = artist_search_count_on(&sql, query).map_err(CovenError::from)?;
+            let windows = view
+                .windows
+                .iter()
+                .map(|window| {
+                    Ok(crate::library::LibraryBrowseWindow {
+                        window: window.clone(),
+                        rows: artist_search_rows_on(&sql, query, window)?,
                     })
-                    .collect::<Result<Vec<_>, DbError>>()
-                    .map_err(CovenError::from)?;
-                Ok(ArtistSearchProjection {
-                    windows,
-                    total_count,
                 })
-            })
+                .collect::<Result<Vec<_>, DbError>>()
+                .map_err(CovenError::from)?;
+            Ok(ArtistSearchProjection { windows, total_count })
+        })
     }
 }
 
@@ -111,10 +106,7 @@ fn artist_search_count_on(
     query: &crate::library::LibrarySearchQuery,
 ) -> Result<u64, DbError> {
     sql.query_row(
-        &format!(
-            "SELECT COUNT(*) FROM artists WHERE {filter}",
-            filter = artist_search_filter()
-        ),
+        &format!("SELECT COUNT(*) FROM artists WHERE {filter}", filter = artist_search_filter()),
         params![query.as_str()],
         |row| row.get::<_, i64>(0),
     )

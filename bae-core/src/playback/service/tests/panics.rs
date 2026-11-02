@@ -10,9 +10,7 @@ impl crate::playback::audio_output::AudioOutput for VolumePanicsOutput {
         _audio_events: AudioEventSender,
         _position_update_interval_ms: u32,
     ) -> Result<Box<dyn AudioStream>, AudioError> {
-        Err(AudioError::Unexpected(
-            "this test's output builds no stream".to_string(),
-        ))
+        Err(AudioError::Unexpected("this test's output builds no stream".to_string()))
     }
 
     fn controls(&self) -> &AudioOutputControls {
@@ -47,10 +45,7 @@ async fn a_command_that_panics_is_reported_and_the_next_is_served() {
 
     service.run(deletions_rx).await;
 
-    assert!(
-        volume_rx.await.is_err(),
-        "the command that panicked answers nothing"
-    );
+    assert!(volume_rx.await.is_err(), "the command that panicked answers nothing");
     saved_rx.await.expect("the next command is served");
     shutdown_rx.await.expect("the service shuts down when asked");
     let mut saw_error = false;

@@ -10,11 +10,7 @@ use std::time::Duration;
 /// Copy the three fixture tracks into `dir`.
 fn write_tracks(dir: &std::path::Path) {
     let fixtures = support::fixture_dir!("flac");
-    for name in [
-        "01 Test Track 1.flac",
-        "02 Test Track 2.flac",
-        "03 Test Track 3.flac",
-    ] {
+    for name in ["01 Test Track 1.flac", "02 Test Track 2.flac", "03 Test Track 3.flac"] {
         std::fs::copy(fixtures.join(name), dir.join(name)).expect("copy a fixture track");
     }
 }
@@ -26,11 +22,7 @@ async fn closing_a_playing_library_leaves_none_of_its_files_open() {
     let release = support::discogs_test_release(
         "close-files-release",
         "Close Test Album",
-        &[
-            ("Test Track 1", "0:10"),
-            ("Test Track 2", "0:10"),
-            ("Test Track 3", "0:10"),
-        ],
+        &[("Test Track 1", "0:10"), ("Test Track 2", "0:10"), ("Test Track 3", "0:10")],
     );
     let (manager, imported) = support::imported_release_setup(
         release,
@@ -59,12 +51,8 @@ async fn closing_a_playing_library_leaves_none_of_its_files_open() {
 
     services.playback_play_release(imported.release_id.clone(), None, false);
     assert!(
-        support::wait_until_playing(
-            &mut progress,
-            &imported.track_ids[0],
-            Duration::from_secs(30)
-        )
-        .await,
+        support::wait_until_playing(&mut progress, &imported.track_ids[0], Duration::from_secs(30))
+            .await,
         "the first track plays"
     );
     assert!(

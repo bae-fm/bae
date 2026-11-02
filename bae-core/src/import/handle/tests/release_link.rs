@@ -5,12 +5,11 @@
 use super::*;
 use crate::import::{CandidateEditField, PendingStanding};
 
-async fn standing(handle: &ImportServiceHandle, key: &crate::import::CandidateKey) -> PendingStanding {
-    pane(handle, key)
-        .await
-        .live
-        .standing
-        .expect("the candidate is on Found")
+async fn standing(
+    handle: &ImportServiceHandle,
+    key: &crate::import::CandidateKey,
+) -> PendingStanding {
+    pane(handle, key).await.live.standing.expect("the candidate is on Found")
 }
 
 fn linked_to(release_id: &str) -> crate::import::ReleaseLink {
@@ -69,7 +68,10 @@ async fn unlinking_keeps_the_draft_and_unmatches_the_folder() {
     let after = pane(&handle, &key).await;
     assert_eq!(after.draft().unwrap().release_link, None);
     assert_eq!(after.draft().unwrap().metadata_draft, before.draft().unwrap().metadata_draft);
-    assert_eq!(after.draft().unwrap().metadata_provenance, before.draft().unwrap().metadata_provenance);
+    assert_eq!(
+        after.draft().unwrap().metadata_provenance,
+        before.draft().unwrap().metadata_provenance
+    );
     assert_eq!(standing(&handle, &key).await, PendingStanding::Unmatched);
     shut_down(handle).await;
 }

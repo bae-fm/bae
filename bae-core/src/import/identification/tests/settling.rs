@@ -13,11 +13,9 @@
 #[tokio::test(flavor = "multi_thread")]
 async fn settling_a_lead_costs_one_release_lookup_whichever_signal_found_it() {
     let fixture = Fixture::new("settle-lead").await;
-    fixture
-        .import
-        .register_artwork_analyzer(Arc::new(BarcodeAnalyzer {
-            barcode: "0123456789012".to_string(),
-        }));
+    fixture.import.register_artwork_analyzer(Arc::new(BarcodeAnalyzer {
+        barcode: "0123456789012".to_string(),
+    }));
     let disc_dir = fixture.disc_id_candidate("From Disc Id");
     let barcode_dir = fixture.barcode_candidate("From Barcode");
     let probed = fixture.probed_total_ms(&disc_dir);
@@ -29,16 +27,8 @@ async fn settling_a_lead_costs_one_release_lookup_whichever_signal_found_it() {
             release_json(id, group, &[probed, 0]),
         );
     }
-    fixture.provider.route(
-        "/discid/",
-        200,
-        discid_json("mb-disc-1", "rg-disc-1", &[probed, 0]),
-    );
-    fixture.provider.route(
-        "/release?",
-        200,
-        search_json("mb-barcode-1", "rg-barcode-1"),
-    );
+    fixture.provider.route("/discid/", 200, discid_json("mb-disc-1", "rg-disc-1", &[probed, 0]));
+    fixture.provider.route("/release?", 200, search_json("mb-barcode-1", "rg-barcode-1"));
     fixture.scan(2).await;
 
     fixture.drain_automatic().await;
@@ -55,14 +45,8 @@ async fn settling_a_lead_costs_one_release_lookup_whichever_signal_found_it() {
         "and so is the search lead: {:?}",
         fixture.provider.requests()
     );
-    assert_eq!(
-        fixture.judgement_for(&disc_dir).await,
-        (true, None)
-    );
-    assert_eq!(
-        fixture.judgement_for(&barcode_dir).await,
-        (true, None)
-    );
+    assert_eq!(fixture.judgement_for(&disc_dir).await, (true, None));
+    assert_eq!(fixture.judgement_for(&barcode_dir).await, (true, None));
 }
 
 /// A lead whose document cannot be read is stored as its lookup returned it,
@@ -70,25 +54,18 @@ async fn settling_a_lead_costs_one_release_lookup_whichever_signal_found_it() {
 #[tokio::test(flavor = "multi_thread")]
 async fn an_unreadable_lead_is_stored_unsettled_without_partial_documents() {
     let fixture = Fixture::new("settle-ordering").await;
-    fixture
-        .import
-        .register_artwork_analyzer(Arc::new(BarcodeAnalyzer {
-            barcode: "0123456789012".to_string(),
-        }));
+    fixture.import.register_artwork_analyzer(Arc::new(BarcodeAnalyzer {
+        barcode: "0123456789012".to_string(),
+    }));
     let dir = fixture.barcode_candidate("Album");
     // The barcode search answers; the release document does not.
-    fixture
-        .provider
-        .route("/release?", 200, search_json("mb-order-1", "rg-order-1"));
+    fixture.provider.route("/release?", 200, search_json("mb-order-1", "rg-order-1"));
     fixture.provider.route("/release/mb-order-1?", 400, "{}");
     fixture.scan(1).await;
 
     fixture.drain_automatic().await;
 
-    let row = fixture
-        .stored_for(&dir)
-        .await
-        .expect("the candidate stores a row");
+    let row = fixture.stored_for(&dir).await.expect("the candidate stores a row");
     let verdict = identify_result(&row).verdict.clone();
     let TerminalVerdict::Found { findings, .. } = &verdict else {
         panic!("an unreadable document does not fail the run, got {verdict:?}");
@@ -135,47 +112,39 @@ async fn applying_a_settled_candidate_refetches_a_missing_parent_then_reads_offl
         })
         .to_string(),
     );
-    fixture
-        .archive_missing_its_group("mb-offline-1", "rg-offline-1", &[probed, 0])
-        .await;
-    fixture
-        .store_settled_verdict(&dir, "mb-offline-1", "rg-offline-1",)
-        .await;
+    fixture.archive_missing_its_group("mb-offline-1", "rg-offline-1", &[probed, 0]).await;
+    fixture.store_settled_verdict(&dir, "mb-offline-1", "rg-offline-1").await;
     let before = fixture.provider.requests().len();
 
     fixture
         .import
-        .select_candidate_release(crate::import::CandidateKey::folder(&dir), crate::import::PressingLink {
+        .select_candidate_release(
+            crate::import::CandidateKey::folder(&dir),
+            crate::import::PressingLink {
                 record: crate::import::MetadataRef::new(
                     bae_catalogs::catalog::Catalog::MusicBrainz,
                     "mb-offline-1".to_string(),
                 ),
                 partners: vec![],
-            }, crate::import::CatalogApplySteps::unread())
+            },
+            crate::import::CatalogApplySteps::unread(),
+        )
         .await
         .expect("a settled candidate opens once its release is fetched again");
 
     let after_apply = fixture.provider.requests().len();
-    let stored = fixture
-        .stored_release("mb-offline-1")
-        .await
-        .expect("the release stays stored");
-    assert!(
-        stored.unfetched.is_empty(),
-        "the group fetched this time: {:?}",
-        stored.unfetched
-    );
-    let detail = fixture
-        .pane(&dir)
-        .await
-        .expect("the picked candidate reads back");
+    let stored = fixture.stored_release("mb-offline-1").await.expect("the release stays stored");
+    assert!(stored.unfetched.is_empty(), "the group fetched this time: {:?}", stored.unfetched);
+    let detail = fixture.pane(&dir).await.expect("the picked candidate reads back");
     assert_eq!(
         fixture.provider.requests().len(),
         after_apply,
         "reading the candidate does not fetch metadata"
     );
     let link = detail
-        .draft().unwrap().release_link
+        .draft()
+        .unwrap()
+        .release_link
         .as_ref()
         .and_then(crate::import::ReleaseLink::pressing)
         .expect("the pick names a release");
@@ -185,23 +154,19 @@ async fn applying_a_settled_candidate_refetches_a_missing_parent_then_reads_offl
     assert_eq!(edit.album_title, "Album");
     assert_eq!(
         detail
-            .draft().unwrap().remote_covers
+            .draft()
+            .unwrap()
+            .remote_covers
             .iter()
             .map(|cover| cover.image.url.as_str())
             .collect::<Vec<_>>(),
-        vec![format!(
-            "{}/release-group/rg-offline-1/front",
-            bae_catalogs::remote_image::ARCHIVE
-        )],
+        vec![format!("{}/release-group/rg-offline-1/front", bae_catalogs::remote_image::ARCHIVE)],
         "the pressing states no front image of its own, so the album's is the \
          only option — stored with the draft when it was applied, not asked for"
     );
     let requested = &fixture.provider.requests()[before..];
     assert_eq!(requested.len(), 3, "{requested:?}");
-    assert!(
-        requested[0].starts_with("/ws/2/release/mb-offline-1?"),
-        "{requested:?}"
-    );
+    assert!(requested[0].starts_with("/ws/2/release/mb-offline-1?"), "{requested:?}");
     assert_eq!(
         &requested[1..],
         &[
@@ -220,19 +185,21 @@ async fn a_settled_lead_with_no_stored_release_fails_loud() {
     let fixture = Fixture::new("offline-miss").await;
     let dir = fixture.disc_id_candidate("Album");
     fixture.scan(1).await;
-    fixture
-        .store_settled_lead_without_its_pick(&dir, "mb-missing-1", "rg-missing-1")
-        .await;
+    fixture.store_settled_lead_without_its_pick(&dir, "mb-missing-1", "rg-missing-1").await;
 
     let error = fixture
         .import
-        .select_candidate_release(crate::import::CandidateKey::folder(&dir), crate::import::PressingLink {
+        .select_candidate_release(
+            crate::import::CandidateKey::folder(&dir),
+            crate::import::PressingLink {
                 record: crate::import::MetadataRef::new(
                     bae_catalogs::catalog::Catalog::MusicBrainz,
                     "mb-missing-1".to_string(),
                 ),
                 partners: vec![],
-            }, crate::import::CatalogApplySteps::unread())
+            },
+            crate::import::CatalogApplySteps::unread(),
+        )
         .await
         .expect_err("a settled lead with nothing archived must not silently re-fetch");
 
@@ -272,7 +239,11 @@ async fn a_pick_outside_the_verdict_archives_what_it_fetched() {
     };
     fixture
         .import
-        .select_candidate_release(crate::import::CandidateKey::folder(&dir), pick(), crate::import::CatalogApplySteps::unread())
+        .select_candidate_release(
+            crate::import::CandidateKey::folder(&dir),
+            pick(),
+            crate::import::CatalogApplySteps::unread(),
+        )
         .await
         .expect("a manual pick fetches");
 
@@ -285,7 +256,11 @@ async fn a_pick_outside_the_verdict_archives_what_it_fetched() {
     let before = fixture.provider.requests().len();
     fixture
         .import
-        .select_candidate_release(crate::import::CandidateKey::folder(&dir), pick(), crate::import::CatalogApplySteps::unread())
+        .select_candidate_release(
+            crate::import::CandidateKey::folder(&dir),
+            pick(),
+            crate::import::CatalogApplySteps::unread(),
+        )
         .await
         .expect("re-picking reads what the first pick archived");
     assert_eq!(
@@ -310,11 +285,9 @@ const PAIRED_BARCODE_AS_DISCOGS_PRINTS_IT: &str = "012 345 678901 2";
 async fn matches_that_pair_into_one_pressing_settle_as_one_pick() {
     let fixture = Fixture::new("paired-settle").await;
     fixture.use_discogs().await;
-    fixture
-        .import
-        .register_artwork_analyzer(Arc::new(BarcodeAnalyzer {
-            barcode: PAIRED_BARCODE.to_string(),
-        }));
+    fixture.import.register_artwork_analyzer(Arc::new(BarcodeAnalyzer {
+        barcode: PAIRED_BARCODE.to_string(),
+    }));
     let dir = fixture.barcode_candidate("From Barcode");
     let probed = fixture.probed_total_ms(&dir);
     fixture.provider.route(
@@ -332,37 +305,25 @@ async fn matches_that_pair_into_one_pressing_settle_as_one_pick() {
         200,
         discogs_search_json("70000101", PAIRED_BARCODE_AS_DISCOGS_PRINTS_IT),
     );
-    fixture
-        .provider
-        .route("/releases/70000101", 200, discogs_release_json("70000101"));
+    fixture.provider.route("/releases/70000101", 200, discogs_release_json("70000101"));
     // Nothing links this synthetic Discogs release to a MusicBrainz one, which
     // is the answer the cross-reference lookup would come back with.
-    fixture
-        .manager
-        .providers()
-        .musicbrainz()
-        .seed_discogs_page_lookup(&[(bae_catalogs::musicbrainz::DiscogsPage::Release("70000101".to_string()), None)]);
+    fixture.manager.providers().musicbrainz().seed_discogs_page_lookup(&[(
+        bae_catalogs::musicbrainz::DiscogsPage::Release("70000101".to_string()),
+        None,
+    )]);
     fixture.scan(1).await;
 
     fixture.drain_automatic().await;
 
-    let row = fixture
-        .stored_for(&dir)
-        .await
-        .expect("the paired candidate stores a row");
+    let row = fixture.stored_for(&dir).await.expect("the paired candidate stores a row");
     let verdict = identify_result(&row).verdict.clone();
-    let TerminalVerdict::Found {
-        findings: crate::identify::Findings { matches, .. },
-        ..
-    } = &verdict
+    let TerminalVerdict::Found { findings: crate::identify::Findings { matches, .. }, .. } =
+        &verdict
     else {
         panic!("expected a Found verdict, got {verdict:?}");
     };
-    assert_eq!(
-        matches.len(),
-        2,
-        "both sources answered the barcode: {matches:?}"
-    );
+    assert_eq!(matches.len(), 2, "both sources answered the barcode: {matches:?}");
     assert!(
         matches[0].source_tracks.is_some(),
         "the pressing's lead was settled before the verdict was written"
@@ -406,11 +367,9 @@ async fn matches_that_pair_into_one_pressing_settle_as_one_pick() {
 async fn a_disc_id_lead_settles_with_the_discogs_record_of_its_pressing() {
     let fixture = Fixture::new("disc-id-partner").await;
     fixture.use_discogs().await;
-    fixture
-        .import
-        .register_artwork_analyzer(Arc::new(BarcodeAnalyzer {
-            barcode: PAIRED_BARCODE.to_string(),
-        }));
+    fixture.import.register_artwork_analyzer(Arc::new(BarcodeAnalyzer {
+        barcode: PAIRED_BARCODE.to_string(),
+    }));
     let dir = fixture.disc_id_candidate("From Disc Id And Barcode");
     std::fs::write(dir.join("cover.jpg"), [0xFF, 0xD8, 0xFF, 0xE0, 0x00]).unwrap();
     let probed = fixture.probed_total_ms(&dir);
@@ -435,30 +394,19 @@ async fn a_disc_id_lead_settles_with_the_discogs_record_of_its_pressing() {
         200,
         discogs_search_json("70000102", PAIRED_BARCODE_AS_DISCOGS_PRINTS_IT),
     );
-    fixture
-        .provider
-        .route("/releases/70000102", 200, discogs_release_json("70000102"));
-    fixture
-        .manager
-        .providers()
-        .musicbrainz()
-        .seed_discogs_page_lookup(&[(bae_catalogs::musicbrainz::DiscogsPage::Release("70000102".to_string()), None)]);
+    fixture.provider.route("/releases/70000102", 200, discogs_release_json("70000102"));
+    fixture.manager.providers().musicbrainz().seed_discogs_page_lookup(&[(
+        bae_catalogs::musicbrainz::DiscogsPage::Release("70000102".to_string()),
+        None,
+    )]);
     fixture.scan(1).await;
 
     fixture.drain_automatic().await;
 
-    let row = fixture
-        .stored_for(&dir)
-        .await
-        .expect("the candidate stores a row");
+    let row = fixture.stored_for(&dir).await.expect("the candidate stores a row");
     let verdict = identify_result(&row).verdict.clone();
     let TerminalVerdict::Found {
-        findings:
-            crate::identify::Findings {
-                matches,
-                narrowed_out,
-                ..
-            },
+        findings: crate::identify::Findings { matches, narrowed_out, .. },
         ..
     } = &verdict
     else {
@@ -507,11 +455,9 @@ async fn a_disc_id_lead_settles_with_the_discogs_record_of_its_pressing() {
 async fn the_record_the_folder_agrees_with_settles_as_the_lead() {
     let fixture = Fixture::new("evidence-lead").await;
     fixture.use_discogs().await;
-    fixture
-        .import
-        .register_artwork_analyzer(Arc::new(BarcodeAnalyzer {
-            barcode: PAIRED_BARCODE.to_string(),
-        }));
+    fixture.import.register_artwork_analyzer(Arc::new(BarcodeAnalyzer {
+        barcode: PAIRED_BARCODE.to_string(),
+    }));
     // The folder writes the album's year and, later, its pressing's, which
     // the Discogs record states and the MusicBrainz search hit does not. A
     // lone year would name no pressing: no record states the album's first
@@ -532,35 +478,26 @@ async fn the_record_the_folder_agrees_with_settles_as_the_lead() {
         200,
         discogs_search_json("70000103", PAIRED_BARCODE_AS_DISCOGS_PRINTS_IT),
     );
-    fixture.provider.route(
-        "/releases/70000103",
-        200,
-        {
-            let mut release: serde_json::Value = serde_json::from_str(&discogs_release_json("70000103")).unwrap();
-            release["tracklist"].as_array_mut().unwrap().push(serde_json::json!({
-                "position": "2", "title": "Track 2", "duration": "0:01", "type_": "track", "artists": []
-            }));
-            release.to_string()
-        },
-    );
-    fixture
-        .manager
-        .providers()
-        .musicbrainz()
-        .seed_discogs_page_lookup(&[(bae_catalogs::musicbrainz::DiscogsPage::Release("70000103".to_string()), None)]);
+    fixture.provider.route("/releases/70000103", 200, {
+        let mut release: serde_json::Value =
+            serde_json::from_str(&discogs_release_json("70000103")).unwrap();
+        release["tracklist"].as_array_mut().unwrap().push(serde_json::json!({
+            "position": "2", "title": "Track 2", "duration": "0:01", "type_": "track", "artists": []
+        }));
+        release.to_string()
+    });
+    fixture.manager.providers().musicbrainz().seed_discogs_page_lookup(&[(
+        bae_catalogs::musicbrainz::DiscogsPage::Release("70000103".to_string()),
+        None,
+    )]);
     fixture.scan(1).await;
 
     fixture.drain_automatic().await;
 
-    let row = fixture
-        .stored_for(&dir)
-        .await
-        .expect("the paired candidate stores a row");
+    let row = fixture.stored_for(&dir).await.expect("the paired candidate stores a row");
     let verdict = identify_result(&row).verdict.clone();
-    let TerminalVerdict::Found {
-        findings: crate::identify::Findings { matches, .. },
-        ..
-    } = &verdict
+    let TerminalVerdict::Found { findings: crate::identify::Findings { matches, .. }, .. } =
+        &verdict
     else {
         panic!("expected a Found verdict, got {verdict:?}");
     };
@@ -592,7 +529,9 @@ async fn the_record_the_folder_agrees_with_settles_as_the_lead() {
             .pane(&dir)
             .await
             .expect("the settled candidate reads back")
-            .draft().unwrap().metadata_draft
+            .draft()
+            .unwrap()
+            .metadata_draft
             .album_year,
         "1996",
         "and the draft carries the year only the Discogs document states"
@@ -612,11 +551,9 @@ async fn the_record_the_folder_agrees_with_settles_as_the_lead() {
 #[tokio::test(flavor = "multi_thread")]
 async fn two_distinct_pressings_are_read_in_full_and_do_not_settle() {
     let fixture = Fixture::new("two-pressings").await;
-    fixture
-        .import
-        .register_artwork_analyzer(Arc::new(BarcodeAnalyzer {
-            barcode: PAIRED_BARCODE.to_string(),
-        }));
+    fixture.import.register_artwork_analyzer(Arc::new(BarcodeAnalyzer {
+        barcode: PAIRED_BARCODE.to_string(),
+    }));
     let dir = fixture.barcode_candidate("From Barcode");
     let probed = fixture.probed_total_ms(&dir);
     for id in ["mb-two-1", "mb-two-2"] {
@@ -638,22 +575,18 @@ async fn two_distinct_pressings_are_read_in_full_and_do_not_settle() {
 
     fixture.drain_automatic().await;
 
-    let row = fixture
-        .stored_for(&dir)
-        .await
-        .expect("the candidate stores a row");
+    let row = fixture.stored_for(&dir).await.expect("the candidate stores a row");
     let verdict = identify_result(&row).verdict.clone();
-    let TerminalVerdict::Found {
-        findings: crate::identify::Findings { matches, .. },
-        ..
-    } = &verdict
+    let TerminalVerdict::Found { findings: crate::identify::Findings { matches, .. }, .. } =
+        &verdict
     else {
         panic!("expected a Found verdict, got {verdict:?}");
     };
     assert_eq!(matches.len(), 2);
     assert!(
-        matches.iter().all(|result| result.source_tracks
-            == Some(SourceTracks::Listed { count: 2 })),
+        matches
+            .iter()
+            .all(|result| result.source_tracks == Some(SourceTracks::Listed { count: 2 })),
         "every offered pressing states its full tracklist: {matches:?}"
     );
     assert_ne!(
@@ -662,30 +595,28 @@ async fn two_distinct_pressings_are_read_in_full_and_do_not_settle() {
         "a run that settled on no release wrote no draft, so the candidate's own stands"
     );
     assert_eq!(
-        (
-            fixture.count_release_lookups("mb-two-1"),
-            fixture.count_release_lookups("mb-two-2")
-        ),
+        (fixture.count_release_lookups("mb-two-1"), fixture.count_release_lookups("mb-two-2")),
         (1, 1),
         "each offered pressing's document was fetched once: {:?}",
         fixture.provider.requests()
     );
-    assert_eq!(
-        fixture.judgement_for(&dir).await,
-        (false, None)
-    );
+    assert_eq!(fixture.judgement_for(&dir).await, (false, None));
 
     // Picking an offered row reads the document the run stored.
     let before_pick = fixture.provider.requests().len();
     fixture
         .import
-        .select_candidate_release(crate::import::CandidateKey::folder(&dir), crate::import::PressingLink {
+        .select_candidate_release(
+            crate::import::CandidateKey::folder(&dir),
+            crate::import::PressingLink {
                 record: crate::import::MetadataRef::new(
                     bae_catalogs::catalog::Catalog::MusicBrainz,
                     "mb-two-2".to_string(),
                 ),
                 partners: vec![],
-            }, crate::import::CatalogApplySteps::unread())
+            },
+            crate::import::CatalogApplySteps::unread(),
+        )
         .await
         .expect("an offered row is picked from what the run stored");
     assert_eq!(
@@ -705,11 +636,9 @@ async fn two_distinct_pressings_are_read_in_full_and_do_not_settle() {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_row_whose_document_cannot_be_read_keeps_its_search_facts() {
     let fixture = Fixture::new("unread-pressing").await;
-    fixture
-        .import
-        .register_artwork_analyzer(Arc::new(BarcodeAnalyzer {
-            barcode: PAIRED_BARCODE.to_string(),
-        }));
+    fixture.import.register_artwork_analyzer(Arc::new(BarcodeAnalyzer {
+        barcode: PAIRED_BARCODE.to_string(),
+    }));
     let dir = fixture.barcode_candidate("From Barcode");
     let probed = fixture.probed_total_ms(&dir);
     fixture.provider.route(
@@ -729,10 +658,7 @@ async fn a_row_whose_document_cannot_be_read_keeps_its_search_facts() {
 
     fixture.drain_automatic().await;
 
-    let row = fixture
-        .stored_for(&dir)
-        .await
-        .expect("the candidate stores a row");
+    let row = fixture.stored_for(&dir).await.expect("the candidate stores a row");
     let verdict = identify_result(&row).verdict.clone();
     let TerminalVerdict::Found { findings, .. } = &verdict else {
         panic!("the run settles on what it read, got {verdict:?}");
@@ -751,10 +677,7 @@ async fn a_row_whose_document_cannot_be_read_keeps_its_search_facts() {
     assert_eq!(read.document_failure, None);
     let unread = stored("mb-unread");
     assert_eq!(unread.source_tracks, None, "it keeps what the lookup returned");
-    assert!(
-        unread.document_failure.is_some(),
-        "it says its document could not be read"
-    );
+    assert!(unread.document_failure.is_some(), "it says its document could not be read");
 }
 
 /// A settle writes the result, never what the next run asks: a disc-ID lead
@@ -781,10 +704,7 @@ async fn settling_a_lead_leaves_the_lookup_choices_alone() {
 
     fixture.drain_automatic().await;
 
-    let pane = fixture
-        .pane(&dir)
-        .await
-        .expect("the settled candidate has a pane");
+    let pane = fixture.pane(&dir).await.expect("the settled candidate has a pane");
     assert_eq!(
         pane.draft().unwrap().release_link,
         Some(crate::import::ReleaseLink::Pressing(crate::import::PressingLink {

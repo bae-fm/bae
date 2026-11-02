@@ -4,11 +4,9 @@
 #[tokio::test(flavor = "multi_thread")]
 async fn a_run_leaves_out_the_signals_the_candidate_says_to_leave_out() {
     let fixture = Fixture::new("choices-leave-out-barcode").await;
-    fixture
-        .import
-        .register_artwork_analyzer(Arc::new(BarcodeAnalyzer {
-            barcode: "0123456789012".to_string(),
-        }));
+    fixture.import.register_artwork_analyzer(Arc::new(BarcodeAnalyzer {
+        barcode: "0123456789012".to_string(),
+    }));
     // A rip log for the disc ID and an image for the barcode, so both signals
     // are there and only the choice decides which is asked about.
     let dir = fixture.disc_id_candidate("Album");
@@ -17,20 +15,12 @@ async fn a_run_leaves_out_the_signals_the_candidate_says_to_leave_out() {
     fixture.provider.route(
         "/discid/",
         200,
-        discid_json(
-            "mb-choice-1",
-            "rg-choice-1",
-            &[probed / 2, probed - probed / 2],
-        ),
+        discid_json("mb-choice-1", "rg-choice-1", &[probed / 2, probed - probed / 2]),
     );
     fixture.provider.route(
         "/release/mb-choice-1?",
         200,
-        release_json(
-            "mb-choice-1",
-            "rg-choice-1",
-            &[probed / 2, probed - probed / 2],
-        ),
+        release_json("mb-choice-1", "rg-choice-1", &[probed / 2, probed - probed / 2]),
     );
     fixture.scan(1).await;
     fixture.use_discogs().await;
@@ -38,9 +28,7 @@ async fn a_run_leaves_out_the_signals_the_candidate_says_to_leave_out() {
         .import
         .edit_candidate_lookup_choices(
             &crate::import::CandidateKey::folder(&dir),
-            crate::import::LookupChoiceEdit::ToggleBarcode {
-                code: "0123456789012".to_string(),
-            },
+            crate::import::LookupChoiceEdit::ToggleBarcode { code: "0123456789012".to_string() },
         )
         .await
         .unwrap();
@@ -62,9 +50,7 @@ async fn a_run_leaves_out_the_signals_the_candidate_says_to_leave_out() {
         "nothing asks about a barcode the candidate says to leave out: {requests:?}"
     );
     assert!(
-        !requests
-            .iter()
-            .any(|target| target.contains("/database/search")),
+        !requests.iter().any(|target| target.contains("/database/search")),
         "and Discogs is not asked about it either: {requests:?}"
     );
 }

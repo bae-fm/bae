@@ -32,10 +32,7 @@ impl SubsonicCredential {
     /// The unset credential: empty username and password. No client login
     /// matches it, so the server rejects every request until one is configured.
     pub fn empty() -> Self {
-        Self {
-            username: String::new(),
-            password: String::new(),
-        }
+        Self { username: String::new(), password: String::new() }
     }
 }
 
@@ -90,17 +87,12 @@ impl SubsonicConfig {
 
 impl McpConfig {
     pub fn disabled_default() -> Self {
-        Self {
-            enabled: false,
-            port: MCP_DEFAULT_PORT,
-        }
+        Self { enabled: false, port: MCP_DEFAULT_PORT }
     }
 
     pub fn validate(&self) -> Result<(), ConfigError> {
         if self.port == 0 {
-            return Err(ConfigError::Config(
-                "MCP port must be between 1 and 65535".to_string(),
-            ));
+            return Err(ConfigError::Config("MCP port must be between 1 and 65535".to_string()));
         }
         Ok(())
     }

@@ -22,10 +22,7 @@ fn pass_over_root<R: DirectoryReader>(
     root: &Path,
     cancellation: &ScanCancellation,
 ) -> (Result<(), FolderScanError>, SaidByPass) {
-    let mut said = SaidByPass {
-        directories: Vec::new(),
-        items: Vec::new(),
-    };
+    let mut said = SaidByPass { directories: Vec::new(), items: Vec::new() };
     let result = scan_for_candidates_with_reader_cancellable_and_directories(
         reader,
         root.to_path_buf(),
@@ -44,10 +41,7 @@ fn pass_over_root<R: DirectoryReader>(
 
 /// What reading `folder` under `root` on its own says.
 fn reading_of_one_folder(root: &Path, folder: &str) -> SaidByPass {
-    let mut said = SaidByPass {
-        directories: Vec::new(),
-        items: Vec::new(),
-    };
+    let mut said = SaidByPass { directories: Vec::new(), items: Vec::new() };
     scan_top_level_folder_with_reader(
         &OsDirectoryReader,
         root,
@@ -220,11 +214,8 @@ fn a_pass_reads_folders_at_once_and_says_what_each_says_on_its_own() {
     // The root's own release comes last, and takes the files of the folders
     // that hold no audio, the one read last among them.
     assert_eq!(said.directories.first(), Some(&root));
-    let root_items: Vec<&ScanItem> = said
-        .items
-        .iter()
-        .filter(|item| top_level_folder_of_item(&root, item).is_empty())
-        .collect();
+    let root_items: Vec<&ScanItem> =
+        said.items.iter().filter(|item| top_level_folder_of_item(&root, item).is_empty()).collect();
     assert_eq!(root_items.len(), 1);
     let Some(ScanItem::Valid(root_release)) = said.items.last() else {
         panic!("the root's own release is said last: {:?}", said.items.last());
@@ -316,10 +307,7 @@ fn a_folder_that_fails_stops_the_others_and_fails_the_pass() {
     let first_in_flight: Vec<PathBuf> = std::iter::once(PathBuf::new())
         .chain((1..=FOLDERS_AT_ONCE).map(|folder| PathBuf::from(format!("Folder {folder:02}"))))
         .collect();
-    assert!(
-        asked.iter().all(|directory| first_in_flight.contains(directory)),
-        "{asked:?}"
-    );
+    assert!(asked.iter().all(|directory| first_in_flight.contains(directory)), "{asked:?}");
 }
 
 /// Lists the root and `cancelling`, cancelling `pass` as it lists the
@@ -392,10 +380,7 @@ fn cancelling_a_pass_stops_every_folder_it_is_reading() {
     assert!(matches!(result, Err(FolderScanError::Cancelled)), "{result:?}");
     // The cancelled folder's walk reads none of its files into a release.
     assert!(
-        !said
-            .items
-            .iter()
-            .any(|item| matches!(item, ScanItem::Valid(_) | ScanItem::Invalid(_))),
+        !said.items.iter().any(|item| matches!(item, ScanItem::Valid(_) | ScanItem::Invalid(_))),
         "{:?}",
         said.items
     );
@@ -405,10 +390,7 @@ fn cancelling_a_pass_stops_every_folder_it_is_reading() {
     let first_in_flight: Vec<PathBuf> = std::iter::once(PathBuf::new())
         .chain((1..=FOLDERS_AT_ONCE).map(|folder| PathBuf::from(format!("Release {folder:02}"))))
         .collect();
-    assert!(
-        asked.iter().all(|directory| first_in_flight.contains(directory)),
-        "{asked:?}"
-    );
+    assert!(asked.iter().all(|directory| first_in_flight.contains(directory)), "{asked:?}");
 }
 
 /// Reads directories as the OS does and gives each folder under the root the
@@ -423,10 +405,7 @@ struct DatedFolders {
 
 impl DatedFolders {
     fn new(times: HashMap<PathBuf, FolderTimes>) -> Self {
-        Self {
-            times,
-            first_begun: Default::default(),
-        }
+        Self { times, first_begun: Default::default() }
     }
 }
 
@@ -489,18 +468,9 @@ fn a_pass_begins_the_newest_folders_first_and_says_what_a_pass_in_name_order_say
         }
     }
     let at = |seconds| Some(std::time::UNIX_EPOCH + std::time::Duration::from_secs(seconds));
-    let added = |seconds| FolderTimes {
-        added: at(seconds),
-        ..Default::default()
-    };
-    let created = |seconds| FolderTimes {
-        created: at(seconds),
-        ..Default::default()
-    };
-    let modified = |seconds| FolderTimes {
-        modified: at(seconds),
-        ..Default::default()
-    };
+    let added = |seconds| FolderTimes { added: at(seconds), ..Default::default() };
+    let created = |seconds| FolderTimes { created: at(seconds), ..Default::default() };
+    let modified = |seconds| FolderTimes { modified: at(seconds), ..Default::default() };
     // Folders 02 and 07 have no date.
     let times: HashMap<PathBuf, FolderTimes> = [
         (1, added(100)),
@@ -508,14 +478,7 @@ fn a_pass_begins_the_newest_folders_first_and_says_what_a_pass_in_name_order_say
         (4, modified(300)),
         (5, added(300)),
         // Added long ago, and something in it changed since.
-        (
-            6,
-            FolderTimes {
-                added: at(50),
-                created: at(50),
-                modified: at(650),
-            },
-        ),
+        (6, FolderTimes { added: at(50), created: at(50), modified: at(650) }),
         (8, added(900)),
         (9, created(700)),
         (10, modified(200)),
@@ -546,8 +509,8 @@ fn a_pass_begins_the_newest_folders_first_and_says_what_a_pass_in_name_order_say
     // in name order says.
     let (result, by_name) = pass_over_root(&OsDirectoryReader, &root, &ScanCancellation::new());
     result.unwrap();
-    for folder in std::iter::once(String::new())
-        .chain((1..=12).map(|folder| format!("Folder {folder:02}")))
+    for folder in
+        std::iter::once(String::new()).chain((1..=12).map(|folder| format!("Folder {folder:02}")))
     {
         let items = |said: &SaidByPass| -> Vec<ScanItem> {
             said.items
@@ -567,12 +530,7 @@ fn a_pass_begins_the_newest_folders_first_and_says_what_a_pass_in_name_order_say
             .release_files()
             .map(|file| file.relative_path.as_str())
             .collect::<Vec<_>>(),
-        [
-            "Folder 02/notes.txt",
-            "Folder 04/notes.txt",
-            "Folder 07/notes.txt",
-            "loose.flac"
-        ]
+        ["Folder 02/notes.txt", "Folder 04/notes.txt", "Folder 07/notes.txt", "loose.flac"]
     );
 }
 
@@ -588,8 +546,7 @@ fn a_pass_over_folders_with_no_dates_begins_them_in_name_order() {
     result.unwrap();
     let mut first_begun = reader.first_begun.0.lock().unwrap().clone();
     first_begun.sort();
-    let by_name: Vec<PathBuf> = (1..=FOLDERS_AT_ONCE)
-        .map(|folder| PathBuf::from(format!("Folder {folder:02}")))
-        .collect();
+    let by_name: Vec<PathBuf> =
+        (1..=FOLDERS_AT_ONCE).map(|folder| PathBuf::from(format!("Folder {folder:02}"))).collect();
     assert_eq!(first_begun, by_name);
 }

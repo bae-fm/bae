@@ -26,9 +26,7 @@ pub struct CatalogApplySteps {
 impl CatalogApplySteps {
     /// Steps told to `report`.
     pub fn new(report: impl Fn(Option<CatalogApplyStep>) + Send + Sync + 'static) -> Self {
-        Self {
-            report: Some(Arc::new(report)),
-        }
+        Self { report: Some(Arc::new(report)) }
     }
 
     /// Where nothing reads an apply's steps.

@@ -17,11 +17,7 @@ fn tell(read: &FetchProgress, buffer_id: u64, len: u64, here: u64) {
 }
 
 fn track_download(here: u64, total: u64) -> Option<TrackDownload> {
-    Some(TrackDownload {
-        track_id: "track-1".into(),
-        here,
-        total,
-    })
+    Some(TrackDownload { track_id: "track-1".into(), here, total })
 }
 
 /// While the person waits on the playing track's load, its reads from
@@ -35,11 +31,7 @@ fn a_waited_load_tells_its_reads_from_storage() {
 
     let first = downloads.read(PLAYING, 100);
     let second = downloads.read(PLAYING, 50);
-    assert_eq!(
-        *told.borrow(),
-        None,
-        "a read coven told nothing is not a download"
-    );
+    assert_eq!(*told.borrow(), None, "a read coven told nothing is not a download");
     tell(&first, PLAYING, 100, 30);
     tell(&second, PLAYING, 50, 10);
     assert_eq!(*told.borrow(), track_download(40, 150));
@@ -98,10 +90,6 @@ fn a_load_of_another_track_waits_on_none_of_the_playing_ones_reads() {
     downloads.set_foreground(PRELOAD, "track-2");
     assert_eq!(
         *told.borrow(),
-        Some(TrackDownload {
-            track_id: "track-2".into(),
-            here: 20,
-            total: 80,
-        })
+        Some(TrackDownload { track_id: "track-2".into(), here: 20, total: 80 })
     );
 }

@@ -8,7 +8,10 @@
 /// Each candidate row a snapshot's page holds, with its live state, by key.
 fn page_rows(
     snapshot: &crate::import::ImportListSnapshot,
-) -> BTreeMap<crate::import::CandidateKey, (crate::import::TriageRow, crate::import::CandidateLiveState)> {
+) -> BTreeMap<
+    crate::import::CandidateKey,
+    (crate::import::TriageRow, crate::import::CandidateLiveState),
+> {
     snapshot
         .windows
         .iter()
@@ -28,11 +31,7 @@ fn page_rows(
 #[tokio::test(flavor = "multi_thread")]
 async fn a_run_reads_as_identifying_until_its_verdict_is_stored() {
     let fixture = Fixture::new("standing-run-to-verdict").await;
-    fixture
-        .manager
-        .set_identify_automatically(false)
-        .await
-        .unwrap();
+    fixture.manager.set_identify_automatically(false).await.unwrap();
     let dir = fixture.disc_id_candidate("Album");
     let key = crate::import::CandidateKey::folder(&dir);
     fixture.route_disc_id_match(&dir, "mb-standing", "rg-standing", 2);
@@ -79,9 +78,7 @@ async fn an_import_reads_as_importing_until_its_release_is_written() {
     let fixture = Fixture::importing("standing-import-to-done").await;
     let dir = fixture.disc_id_candidate("Album");
     let key = crate::import::CandidateKey::folder(&dir);
-    fixture
-        .identify_ready(&dir, "mb-standing-import", "rg-standing-import")
-        .await;
+    fixture.identify_ready(&dir, "mb-standing-import", "rg-standing-import").await;
 
     let list = list_subscription(&fixture, page_window(0, 50)).await;
     let initial = next_page(&list).await;
@@ -97,7 +94,8 @@ async fn an_import_reads_as_importing_until_its_release_is_written() {
             let detail = pane
                 .next()
                 .await
-                .expect("the query stays open").result
+                .expect("the query stays open")
+                .result
                 .unwrap()
                 .expect("the candidate stays stored")
                 .resolve();
@@ -170,7 +168,11 @@ async fn the_library_opens_with_no_standing_a_crash_left() {
         .unwrap();
     fixture
         .database
-        .claim_candidate_import(&crate::import::CandidateKey::test("/watched/Writing"), "import-1", None)
+        .claim_candidate_import(
+            &crate::import::CandidateKey::test("/watched/Writing"),
+            "import-1",
+            None,
+        )
         .await
         .unwrap();
     fixture
@@ -184,11 +186,8 @@ async fn the_library_opens_with_no_standing_a_crash_left() {
         .unwrap();
     assert_eq!(fixture.database.load_candidate_standings().await.unwrap().len(), 2);
 
-    let reopened = fixture
-        .manager
-        .start_import_service(tokio::runtime::Handle::current())
-        .await
-        .unwrap();
+    let reopened =
+        fixture.manager.start_import_service(tokio::runtime::Handle::current()).await.unwrap();
 
     assert!(fixture.database.load_candidate_standings().await.unwrap().is_empty());
     tokio::task::spawn_blocking(move || reopened.stop_and_join())
@@ -202,11 +201,7 @@ async fn the_library_opens_with_no_standing_a_crash_left() {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_folder_removed_and_found_again_starts_with_no_standing() {
     let fixture = Fixture::new("standing-ends-with-its-candidate").await;
-    fixture
-        .manager
-        .set_identify_automatically(false)
-        .await
-        .unwrap();
+    fixture.manager.set_identify_automatically(false).await.unwrap();
     let dir = fixture.disc_id_candidate("Album");
     let key = crate::import::CandidateKey::folder(&dir);
     fixture.scan(1).await;
@@ -214,9 +209,7 @@ async fn a_folder_removed_and_found_again_starts_with_no_standing() {
         content_hash: fixture.content_hash(&dir),
         file_edit_revision: 0,
     };
-    let failure = crate::import::SaveFailure::NotWritten {
-        error: "the disk is full".to_string(),
-    };
+    let failure = crate::import::SaveFailure::NotWritten { error: "the disk is full".to_string() };
     fixture
         .import
         .fail_identification(&key, IdentifyRunId::for_test(1), &files, failure.clone())

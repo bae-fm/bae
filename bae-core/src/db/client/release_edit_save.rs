@@ -79,33 +79,21 @@ fn write_applied_rows_on(
     now: &str,
     labels: &super::LabelWrite<'_>,
 ) -> Result<(), IdentityWriteError> {
-    let resolved = ArtistCredits {
-        credits: &rows.artists,
-        picked,
-    }
-    .resolve_on(tx)?;
+    let resolved = ArtistCredits { credits: &rows.artists, picked }.resolve_on(tx)?;
     resolved.write_on(tx)?;
     let artist_ids = resolved.id_map(&rows.artists);
     let album_artists = relink_album_artists(&rows.album_artists, &artist_ids)?;
     let track_artists = relink_track_artists(&rows.track_artists, &artist_ids)?;
-    let release_roles = relink(
-        &rows.release_artist_roles,
-        &artist_ids,
-        "release artist role",
-        |role| &mut role.artist_id,
-    )?;
-    let track_roles = relink(
-        &rows.track_artist_roles,
-        &artist_ids,
-        "track artist role",
-        |role| &mut role.artist_id,
-    )?;
-    let work_artists = relink(
-        &rows.work_graph.work_artists,
-        &artist_ids,
-        "work artist",
-        |link| &mut link.artist_id,
-    )?;
+    let release_roles =
+        relink(&rows.release_artist_roles, &artist_ids, "release artist role", |role| {
+            &mut role.artist_id
+        })?;
+    let track_roles = relink(&rows.track_artist_roles, &artist_ids, "track artist role", |role| {
+        &mut role.artist_id
+    })?;
+    let work_artists = relink(&rows.work_graph.work_artists, &artist_ids, "work artist", |link| {
+        &mut link.artist_id
+    })?;
 
     let album = &rows.album;
     if album_fields == AlbumFields::Written {
@@ -158,11 +146,7 @@ fn write_applied_rows_on(
             .into());
         }
     }
-    let kept: Vec<&str> = rows
-        .mediums
-        .iter()
-        .map(|medium| medium.id.as_str())
-        .collect();
+    let kept: Vec<&str> = rows.mediums.iter().map(|medium| medium.id.as_str()).collect();
     for stale in tx.query(
         "SELECT id FROM release_mediums WHERE release_id = ?",
         params![release_id],
@@ -179,19 +163,10 @@ fn write_applied_rows_on(
     // What the previous source credited goes whole; the applied one's rows
     // take its place.
     for track_id in &track_ids {
-        tx.execute(
-            "DELETE FROM track_artist_roles WHERE track_id = ?",
-            params![track_id],
-        )?;
-        tx.execute(
-            "DELETE FROM track_works WHERE track_id = ?",
-            params![track_id],
-        )?;
+        tx.execute("DELETE FROM track_artist_roles WHERE track_id = ?", params![track_id])?;
+        tx.execute("DELETE FROM track_works WHERE track_id = ?", params![track_id])?;
     }
-    tx.execute(
-        "DELETE FROM release_artist_roles WHERE release_id = ?",
-        params![release_id],
-    )?;
+    tx.execute("DELETE FROM release_artist_roles WHERE release_id = ?", params![release_id])?;
     for work in &rows.work_graph.works {
         insert_work_row(tx, work)?;
     }

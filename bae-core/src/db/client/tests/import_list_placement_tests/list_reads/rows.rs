@@ -28,11 +28,7 @@ impl Library {
 
     /// The items a list on `tab` shows with `needle` typed into its filter.
     async fn found_by(&self, tab: TriageTab, needle: &str) -> Vec<String> {
-        self.items(ImportListView {
-            filter_text: needle.to_string(),
-            ..view(tab)
-        })
-        .await
+        self.items(ImportListView { filter_text: needle.to_string(), ..view(tab) }).await
     }
 }
 
@@ -46,12 +42,7 @@ fn offers_import(live: &crate::import::CandidateLiveState) -> bool {
 #[tokio::test]
 async fn the_filter_finds_an_undrafted_row_by_its_folder_name_not_its_path() {
     let lib = Library::new().await;
-    lib.run(&format!(
-        "{}{}",
-        lib.scan("Group/Wanted"),
-        lib.scan("Other")
-    ))
-    .await;
+    lib.run(&format!("{}{}", lib.scan("Group/Wanted"), lib.scan("Other"))).await;
     assert_eq!(
         lib.found_by(TriageTab::Pending, "want").await,
         ["group Group", "candidate Group/Wanted"],
@@ -100,10 +91,7 @@ async fn the_filter_folds_case_beyond_ascii() {
         lib.draft("Folder", "ÉTÉ Œuvre"),
     ))
     .await;
-    assert_eq!(
-        lib.found_by(TriageTab::Pending, "été œuvre").await,
-        ["candidate Folder"]
-    );
+    assert_eq!(lib.found_by(TriageTab::Pending, "été œuvre").await, ["candidate Folder"]);
 }
 
 /// What is typed is matched as itself: `*`, `?` and `[`, which a `GLOB`
@@ -127,11 +115,7 @@ async fn the_filter_matches_wildcard_characters_as_themselves() {
         ("[", "candidate Bracketed"),
         ("[live]", "candidate Bracketed"),
     ] {
-        assert_eq!(
-            lib.found_by(TriageTab::Pending, needle).await,
-            [found],
-            "{needle}"
-        );
+        assert_eq!(lib.found_by(TriageTab::Pending, needle).await, [found], "{needle}");
     }
 }
 
@@ -151,10 +135,7 @@ async fn the_filter_finds_one_or_two_characters() {
         lib.found_by(TriageTab::Pending, "y").await,
         ["candidate Folder", "candidate Other"]
     );
-    assert_eq!(
-        lib.found_by(TriageTab::Pending, "XY").await,
-        ["candidate Folder"]
-    );
+    assert_eq!(lib.found_by(TriageTab::Pending, "XY").await, ["candidate Folder"]);
     assert!(lib.found_by(TriageTab::Pending, "q").await.is_empty());
 }
 
@@ -179,10 +160,7 @@ async fn the_filter_finds_a_done_row_by_its_library_album() {
         lib.found_by(TriageTab::Done, "album").await,
         ["candidate Other", "candidate Folder"]
     );
-    assert_eq!(
-        lib.found_by(TriageTab::Done, "second").await,
-        ["candidate Other"]
-    );
+    assert_eq!(lib.found_by(TriageTab::Done, "second").await, ["candidate Other"]);
     for needle in ["folder", "draft title", "draft artist"] {
         assert!(
             lib.found_by(TriageTab::Done, needle).await.is_empty(),
@@ -201,14 +179,8 @@ async fn the_filter_matches_an_invalid_folder_by_its_name_and_its_tags() {
         lib.tagged("Tagged", "Tagged Title"),
     ))
     .await;
-    assert_eq!(
-        lib.found_by(TriageTab::Skipped, "broken").await,
-        ["invalid Broken"]
-    );
-    assert_eq!(
-        lib.found_by(TriageTab::Skipped, "tagged title").await,
-        ["invalid Tagged"]
-    );
+    assert_eq!(lib.found_by(TriageTab::Skipped, "broken").await, ["invalid Broken"]);
+    assert_eq!(lib.found_by(TriageTab::Skipped, "tagged title").await, ["invalid Tagged"]);
 }
 
 /// A row the text filter or the filter entry narrows is counted beside the
@@ -224,23 +196,14 @@ async fn a_narrowed_tab_counts_what_it_shows_of_its_total() {
     ))
     .await;
     let narrowed = lib
-        .shown(ImportListView {
-            filter_text: "wanted".to_string(),
-            ..view(TriageTab::Pending)
-        })
+        .shown(ImportListView { filter_text: "wanted".to_string(), ..view(TriageTab::Pending) })
         .await;
     assert_eq!(
         narrowed.summary.narrowed,
         Some(crate::import::NarrowedCount { shown: 1, total: 3 })
     );
-    assert_eq!(
-        narrowed.total_count, 2,
-        "the header and its matching member"
-    );
-    assert_eq!(
-        narrowed.summary.counts.pending, 3,
-        "the counts are the whole queue's"
-    );
+    assert_eq!(narrowed.total_count, 2, "the header and its matching member");
+    assert_eq!(narrowed.summary.counts.pending, 3, "the counts are the whole queue's");
     assert!(narrowed.summary.has_groups);
     let whole = lib.shown(view(TriageTab::Pending)).await;
     assert_eq!(whole.summary.narrowed, None);
@@ -271,10 +234,7 @@ async fn an_identified_row_is_pending_and_offers_import() {
     let read = lib.shown(view(TriageTab::Pending)).await;
     let (row, live) = row_at(&read, "Release");
     assert_eq!(row.placement, TriagePlacement::Pending);
-    assert_eq!(
-        live.standing,
-        Some(crate::import::PendingStanding::Identified)
-    );
+    assert_eq!(live.standing, Some(crate::import::PendingStanding::Identified));
     assert!(offers_import(live));
 }
 
@@ -296,14 +256,8 @@ async fn a_state_at_a_stale_edit_revision_is_not_the_row_s_answer() {
     assert_eq!(row.placement, TriagePlacement::Pending);
     assert_eq!(row.release_link, None);
     assert_eq!(row.metadata_summary, None);
-    assert_eq!(
-        live.standing,
-        Some(crate::import::PendingStanding::NotLookedUp)
-    );
-    assert!(
-        !offers_import(live),
-        "a draft for other files is not this row's"
-    );
+    assert_eq!(live.standing, Some(crate::import::PendingStanding::NotLookedUp));
+    assert!(!offers_import(live), "a draft for other files is not this row's");
 }
 
 #[tokio::test]
@@ -329,13 +283,9 @@ async fn an_imported_content_hash_puts_its_row_in_done() {
 #[tokio::test]
 async fn a_skipped_candidate_lands_in_skipped() {
     let lib = Library::new().await;
-    lib.run(&format!("{}{}", lib.scan("Release"), lib.skip("Release")))
-        .await;
+    lib.run(&format!("{}{}", lib.scan("Release"), lib.skip("Release"))).await;
     let read = lib.shown(view(TriageTab::Skipped)).await;
-    assert_eq!(
-        row_at(&read, "Release").0.placement,
-        TriagePlacement::Skipped
-    );
+    assert_eq!(row_at(&read, "Release").0.placement, TriagePlacement::Skipped);
     assert_eq!(read.summary.counts.skipped, 1);
 }
 
@@ -356,14 +306,8 @@ async fn a_claimed_import_leaves_the_row_pending() {
     let (row, live) = row_at(&read, "Release");
     assert_eq!(row.placement, TriagePlacement::Pending);
     assert_eq!(row.import_status, None);
-    assert_eq!(
-        live.standing,
-        Some(crate::import::PendingStanding::Importing)
-    );
-    assert_eq!(
-        live.actions,
-        [CandidateAction::CancelImport, CandidateAction::RevealFolder]
-    );
+    assert_eq!(live.standing, Some(crate::import::PendingStanding::Importing));
+    assert_eq!(live.actions, [CandidateAction::CancelImport, CandidateAction::RevealFolder]);
 }
 
 /// The failure is a row, so it survives the session that produced it: a
@@ -389,19 +333,13 @@ async fn a_failed_import_stays_pending_until_its_retry_lands_in_done() {
             failure: crate::import::ImportFailureReason::error("it broke")
         })
     );
-    assert_eq!(
-        live.standing,
-        Some(crate::import::PendingStanding::ImportError)
-    );
+    assert_eq!(live.standing, Some(crate::import::PendingStanding::ImportError));
     assert!(offers_import(live));
     assert_eq!(read.summary.counts.pending, 1);
 
     lib.run("DELETE FROM import_candidate_failure;").await;
     let read = lib.shown(view(TriageTab::Pending)).await;
-    assert_eq!(
-        row_at(&read, "Release").0.placement,
-        TriagePlacement::Pending
-    );
+    assert_eq!(row_at(&read, "Release").0.placement, TriagePlacement::Pending);
 
     lib.run(&format!(
         "{}{}",
@@ -436,12 +374,9 @@ async fn a_row_offers_import_exactly_when_its_draft_would_import() {
     ))
     .await;
     let read = lib.shown(view(TriageTab::Pending)).await;
-    for (display_path, offers) in [
-        ("Valid", true),
-        ("Several", false),
-        ("Picked", true),
-        ("Not Found", false),
-    ] {
+    for (display_path, offers) in
+        [("Valid", true), ("Several", false), ("Picked", true), ("Not Found", false)]
+    {
         let (row, live) = row_at(&read, display_path);
         assert_eq!(row.placement, TriagePlacement::Pending, "{display_path}");
         assert_eq!(offers_import(live), offers, "{display_path}");
@@ -463,15 +398,11 @@ async fn a_pick_does_not_outrank_skipped_or_done() {
     ))
     .await;
     assert_eq!(
-        row_at(&lib.shown(view(TriageTab::Skipped)).await, "Skipped")
-            .0
-            .placement,
+        row_at(&lib.shown(view(TriageTab::Skipped)).await, "Skipped").0.placement,
         TriagePlacement::Skipped
     );
     assert_eq!(
-        row_at(&lib.shown(view(TriageTab::Done)).await, "Imported")
-            .0
-            .placement,
+        row_at(&lib.shown(view(TriageTab::Done)).await, "Imported").0.placement,
         TriagePlacement::Done
     );
 }
@@ -519,29 +450,15 @@ async fn the_first_identifying_candidate_follows_the_queue_order() {
     .await;
     let first = |view: ImportListView| async {
         let list = lib.open(view).await;
-        lib.db
-            .first_identifying_import_candidate(list)
-            .await
-            .unwrap()
+        lib.db.first_identifying_import_candidate(list).await.unwrap()
     };
-    assert_eq!(
-        first(view(TriageTab::Pending)).await,
-        Some(lib.key("Release 2"))
-    );
-    let filtered = ImportListView {
-        filter_text: "Release 1".to_string(),
-        ..view(TriageTab::Pending)
-    };
+    assert_eq!(first(view(TriageTab::Pending)).await, Some(lib.key("Release 2")));
+    let filtered =
+        ImportListView { filter_text: "Release 1".to_string(), ..view(TriageTab::Pending) };
     assert_eq!(first(filtered).await, Some(lib.key("Release 2")));
-    assert_eq!(
-        first(view(TriageTab::Done)).await,
-        Some(lib.key("Release 2"))
-    );
+    assert_eq!(first(view(TriageTab::Done)).await, Some(lib.key("Release 2")));
     lib.run(&lib.identifying("Release 1", "queued")).await;
-    assert_eq!(
-        first(view(TriageTab::Pending)).await,
-        Some(lib.key("Release 1"))
-    );
+    assert_eq!(first(view(TriageTab::Pending)).await, Some(lib.key("Release 1")));
     lib.run("DELETE FROM import_candidate_standing;").await;
     assert_eq!(first(view(TriageTab::Pending)).await, None);
 }
@@ -559,10 +476,7 @@ async fn the_first_identifying_candidate_of_a_group_is_its_first_member() {
     .await;
     let list = lib.open(view(TriageTab::Pending)).await;
     assert_eq!(
-        lib.db
-            .first_identifying_import_candidate(list)
-            .await
-            .unwrap(),
+        lib.db.first_identifying_import_candidate(list).await.unwrap(),
         Some(lib.key("Group/Release 1"))
     );
 }
@@ -590,10 +504,7 @@ async fn candidate_location_opens_only_its_group() {
         watched_folder_path: lib.root.clone(),
         relative_folder: crate::import::RelativeFolder::test(group),
     };
-    lib.db
-        .set_import_list_groups_folded(list, true)
-        .await
-        .unwrap();
+    lib.db.set_import_list_groups_folded(list, true).await.unwrap();
     let location = lib
         .db
         .locate_import_candidate(list, &lib.key("Target/Release 1"))
@@ -628,11 +539,5 @@ async fn candidate_location_follows_an_import_from_pending_to_done() {
     assert_eq!(location.tab, TriageTab::Done);
     assert_eq!(location.group_key, None);
     assert_eq!(location.visible_position, 0);
-    assert_eq!(
-        lib.db
-            .locate_import_candidate(list, &lib.key("Nowhere"))
-            .await
-            .unwrap(),
-        None
-    );
+    assert_eq!(lib.db.locate_import_candidate(list, &lib.key("Nowhere")).await.unwrap(), None);
 }

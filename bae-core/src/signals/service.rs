@@ -37,12 +37,8 @@ use tracing::{debug, error};
 /// library release being re-identified.
 #[derive(Debug, Clone)]
 pub enum ExtractionSource {
-    Candidate {
-        candidate: crate::import::folder_scanner::FolderCandidate,
-    },
-    Release {
-        release_id: String,
-    },
+    Candidate { candidate: crate::import::folder_scanner::FolderCandidate },
+    Release { release_id: String },
 }
 
 /// One snapshot of a candidate's signals, with the audio they were read
@@ -101,9 +97,7 @@ struct ExtractionRelease {
 
 impl Drop for ExtractionRelease {
     fn drop(&mut self) {
-        self.inner
-            .candidates
-            .release_work(CandidateWork::Extraction, &self.key, self.generation);
+        self.inner.candidates.release_work(CandidateWork::Extraction, &self.key, self.generation);
     }
 }
 
@@ -165,13 +159,7 @@ impl ExtractionServiceHandle {
             CandidateWork::Extraction,
             key.clone(),
             move |token, generation| {
-                let extraction = RunningExtraction {
-                    run,
-                    key,
-                    generation,
-                    priority,
-                    snapshots,
-                };
+                let extraction = RunningExtraction { run, key, generation, priority, snapshots };
                 runtime_handle.spawn(async move {
                     run_extraction(inner, extraction, source, token).await;
                 });
@@ -182,9 +170,7 @@ impl ExtractionServiceHandle {
 
     /// Cancel a candidate's in-flight extraction.
     pub fn cancel(&self, key: &crate::import::CandidateKey) {
-        self.inner
-            .candidates
-            .cancel_work(CandidateWork::Extraction, key);
+        self.inner.candidates.cancel_work(CandidateWork::Extraction, key);
     }
 
     /// What ends once `key`'s extraction in flight is cancelled.
@@ -193,9 +179,7 @@ impl ExtractionServiceHandle {
         &self,
         key: &crate::import::CandidateKey,
     ) -> Option<impl std::future::Future<Output = ()> + Send + 'static> {
-        self.inner
-            .candidates
-            .work_cancelled_for_test(CandidateWork::Extraction, key)
+        self.inner.candidates.work_cancelled_for_test(CandidateWork::Extraction, key)
     }
 }
 
@@ -223,9 +207,7 @@ async fn run_extraction(
         emit_aborted_signals(
             &inner,
             &extraction,
-            DiscIdSignal::Failed {
-                failure: failure.clone(),
-            },
+            DiscIdSignal::Failed { failure: failure.clone() },
             failure,
         );
     }
@@ -264,9 +246,7 @@ async fn extract(
                     emit_aborted_signals(
                         inner,
                         extraction,
-                        DiscIdSignal::Failed {
-                            failure: failure.clone(),
-                        },
+                        DiscIdSignal::Failed { failure: failure.clone() },
                         failure,
                     );
                     return;
@@ -310,11 +290,9 @@ async fn extract(
         ExtractionSource::Release { release_id } => {
             let (origin, audio, disc_id) =
                 match resolve_release_identity(&inner.library_manager, &release_id).await {
-                    Ok(identity) => (
-                        identity.rip.origin,
-                        identity.audio,
-                        identity.rip.disc_id.into_signal(),
-                    ),
+                    Ok(identity) => {
+                        (identity.rip.origin, identity.audio, identity.rip.disc_id.into_signal())
+                    }
                     Err(error) => (
                         AudioOrigin::default(),
                         AudioFacts::default(),
@@ -342,10 +320,7 @@ async fn extract(
                             analyzer,
                             paths
                                 .into_iter()
-                                .map(|path| ArtworkImage {
-                                    path,
-                                    file_id: None,
-                                })
+                                .map(|path| ArtworkImage { path, file_id: None })
                                 .collect(),
                         ),
                         staging,
@@ -356,9 +331,7 @@ async fn extract(
                             inner,
                             extraction,
                             disc_id,
-                            InternalFailure {
-                                detail: e.to_string(),
-                            },
+                            InternalFailure { detail: e.to_string() },
                         );
                         return;
                     }
@@ -485,11 +458,11 @@ impl<'a> ImageRead<'a> {
         self,
         library_manager: &LibraryManager,
     ) -> Result<ArtworkAnalysis, InternalFailure> {
-        bae_util::task_failure::joined(READ_IMAGE, self.task)
-            .await
-            .map_err(|failed| InternalFailure {
+        bae_util::task_failure::joined(READ_IMAGE, self.task).await.map_err(|failed| {
+            InternalFailure {
                 detail: format!("{:?}: {}", self.image.path, library_manager.bug(failed)),
-            })
+            }
+        })
     }
 }
 
@@ -515,15 +488,10 @@ async fn stream_extraction(
     settled_key: Option<String>,
     inputs: ExtractionInputs,
 ) {
-    let ExtractionInputs {
-        mut gathered,
-        artwork,
-    } = inputs;
+    let ExtractionInputs { mut gathered, artwork } = inputs;
     let finished = match &artwork {
         Artwork::Absent => ArtworkScan::Absent,
-        Artwork::Read(pass) => ArtworkScan::Done {
-            total: pass.images.len() as u32,
-        },
+        Artwork::Read(pass) => ArtworkScan::Done { total: pass.images.len() as u32 },
     };
     let artwork = match artwork {
         Artwork::Read(pass) => Some(pass),
@@ -619,11 +587,7 @@ async fn stream_extraction(
                         inner,
                         extraction,
                         gathered,
-                        ArtworkScan::Failed {
-                            failure: failure.clone(),
-                            read: index as u32,
-                            total,
-                        },
+                        ArtworkScan::Failed { failure: failure.clone(), read: index as u32, total },
                         failure,
                     );
                     abandon(in_flight, &inner.library_manager).await;
@@ -645,10 +609,7 @@ async fn stream_extraction(
                 }
             }
             for text in analysis.text_lines {
-                gathered.pool.push(SourcedLine::new(
-                    Source::Artwork { path: path.clone() },
-                    text,
-                ));
+                gathered.pool.push(SourcedLine::new(Source::Artwork { path: path.clone() }, text));
             }
             index += 1;
 
@@ -679,9 +640,7 @@ async fn stream_extraction(
 
     let classification = gathered.pool.classify();
     let barcode = if has_artwork || !gathered.barcodes.is_empty() {
-        BarcodeSignal::Settled {
-            codes: gathered.barcodes,
-        }
+        BarcodeSignal::Settled { codes: gathered.barcodes }
     } else {
         BarcodeSignal::Absent
     };
@@ -715,10 +674,7 @@ fn emit_failed_ocr_signals(
     failure: InternalFailure,
 ) {
     let classification = gathered.pool.classify();
-    let barcode = BarcodeSignal::Failed {
-        failure: failure.clone(),
-        codes: gathered.barcodes,
-    };
+    let barcode = BarcodeSignal::Failed { failure: failure.clone(), codes: gathered.barcodes };
     emit_signals(
         inner,
         extraction,
@@ -758,10 +714,7 @@ fn emit_aborted_signals(
             signals: Signals {
                 origin: AudioOrigin::default(),
                 disc_id,
-                barcode: BarcodeSignal::Failed {
-                    failure: failure.clone(),
-                    codes: Vec::new(),
-                },
+                barcode: BarcodeSignal::Failed { failure: failure.clone(), codes: Vec::new() },
                 text: TextSignal::Failed {
                     failure: failure.clone(),
                     catalogs: Vec::new(),
@@ -772,11 +725,7 @@ fn emit_aborted_signals(
                 track_titles: Vec::new(),
             },
             audio: AudioFacts::default(),
-            artwork: ArtworkScan::Failed {
-                failure,
-                read: 0,
-                total: 0,
-            },
+            artwork: ArtworkScan::Failed { failure, read: 0, total: 0 },
         },
     );
 }
@@ -787,13 +736,8 @@ fn scanning_signals(gathered: &Gathered, catalogs: Vec<String>, free_text: Vec<S
     Signals {
         origin: gathered.origin.clone(),
         disc_id: gathered.disc_id.clone(),
-        barcode: BarcodeSignal::Scanning {
-            codes: gathered.barcodes.clone(),
-        },
-        text: TextSignal::Scanning {
-            catalogs,
-            free_text,
-        },
+        barcode: BarcodeSignal::Scanning { codes: gathered.barcodes.clone() },
+        text: TextSignal::Scanning { catalogs, free_text },
         text_pool,
         isrcs: gathered.isrcs.clone(),
         track_titles: gathered.track_titles.clone(),

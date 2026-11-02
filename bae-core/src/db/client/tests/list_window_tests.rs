@@ -17,16 +17,10 @@ async fn plan(
     db.read(move |sql| {
         seek.bound(50, 0, |params| {
             let mut params = params.to_vec();
-            params.extend(
-                extra
-                    .iter()
-                    .map(|(name, value)| (*name, value as &dyn rusqlite::ToSql)),
-            );
-            Ok(sql.query(
-                &format!("EXPLAIN QUERY PLAN {statement}"),
-                params.as_slice(),
-                |row| row.get::<_, String>(3),
-            )?)
+            params.extend(extra.iter().map(|(name, value)| (*name, value as &dyn rusqlite::ToSql)));
+            Ok(sql.query(&format!("EXPLAIN QUERY PLAN {statement}"), params.as_slice(), |row| {
+                row.get::<_, String>(3)
+            })?)
         })
     })
     .await
@@ -89,10 +83,7 @@ async fn library() -> (Database, tempfile::TempDir) {
 }
 
 fn both_ways<F: Copy>(field: F) -> [(F, SortDirection); 2] {
-    [
-        (field, SortDirection::Ascending),
-        (field, SortDirection::Descending),
-    ]
+    [(field, SortDirection::Ascending), (field, SortDirection::Descending)]
 }
 
 /// The key of row `at` of `order`, read by `rows`.
@@ -105,14 +96,9 @@ async fn key_at<R: Send + 'static>(
     at: u64,
 ) -> OrderKey {
     let order = order.clone();
-    db.read(move |sql| {
-        Ok(rows(&sql, &order, &order.everything(), 1, at)?
-            .pop()
-            .unwrap()
-            .1)
-    })
-    .await
-    .unwrap()
+    db.read(move |sql| Ok(rows(&sql, &order, &order.everything(), 1, at)?.pop().unwrap().1))
+        .await
+        .unwrap()
 }
 
 #[tokio::test]
@@ -163,9 +149,8 @@ async fn every_album_sort_seeks_its_windows_through_an_index() {
 async fn every_artist_and_composer_sort_seeks_its_windows_through_an_index() {
     let (db, _tmp) = library().await;
     let mut artist_sorts = vec![Vec::new()];
-    for (field, direction) in both_ways(ArtistSortField::Name)
-        .into_iter()
-        .chain(both_ways(ArtistSortField::AlbumCount))
+    for (field, direction) in
+        both_ways(ArtistSortField::Name).into_iter().chain(both_ways(ArtistSortField::AlbumCount))
     {
         artist_sorts.push(vec![ArtistSortCriterion { field, direction }]);
     }
@@ -210,11 +195,7 @@ async fn every_artist_and_composer_sort_seeks_its_windows_through_an_index() {
 #[tokio::test]
 async fn every_storage_sort_and_filter_seeks_its_windows_through_an_index() {
     let (db, _tmp) = library().await;
-    for filter in [
-        StorageFilter::All,
-        StorageFilter::Local,
-        StorageFilter::Remote,
-    ] {
+    for filter in [StorageFilter::All, StorageFilter::Local, StorageFilter::Remote] {
         for field in [
             StorageSortField::AlbumTitle,
             StorageSortField::ArtistNames,
@@ -280,10 +261,7 @@ fn reads_search_text_by_entry(steps: &[String]) -> bool {
 
 /// The search pattern of `text`, as a statement binds it.
 fn search_param(text: &str) -> Vec<(&'static str, rusqlite::types::Value)> {
-    vec![(
-        ":search",
-        rusqlite::types::Value::Text(crate::library::search::search_pattern(text)),
-    )]
+    vec![(":search", rusqlite::types::Value::Text(crate::library::search::search_pattern(text)))]
 }
 
 /// A searching Storage Manager list stays on its indexes under every sort
@@ -296,11 +274,7 @@ fn search_param(text: &str) -> Vec<(&'static str, rusqlite::types::Value)> {
 async fn every_storage_sort_and_filter_seeks_a_searched_window_through_an_index() {
     let (db, _tmp) = library().await;
     let search = search_param("album 1");
-    for filter in [
-        StorageFilter::All,
-        StorageFilter::Local,
-        StorageFilter::Remote,
-    ] {
+    for filter in [StorageFilter::All, StorageFilter::Local, StorageFilter::Remote] {
         for field in [
             StorageSortField::AlbumTitle,
             StorageSortField::ArtistNames,
@@ -372,10 +346,7 @@ async fn every_storage_sort_and_filter_seeks_a_searched_window_through_an_index(
         let mut counted = search.clone();
         counted.push((":titles", rusqlite::types::Value::Integer(30)));
         let steps = read(storage_found_totals_query(filter), counted).await;
-        assert!(
-            !scans(&steps, SEARCH_ALIASES),
-            "count {filter:?}: {steps:?}"
-        );
+        assert!(!scans(&steps, SEARCH_ALIASES), "count {filter:?}: {steps:?}");
         // The pass over the titles reads every title once, and nothing else
         // whole.
         let steps = read(storage_unfound_totals_query(filter), search.clone()).await;
@@ -388,10 +359,7 @@ async fn every_storage_sort_and_filter_seeks_a_searched_window_through_an_index(
             "unfound {filter:?}: {steps:?}"
         );
         let mut selected = search.clone();
-        selected.push((
-            ":selected",
-            rusqlite::types::Value::Text(r#"["a", "b"]"#.to_string()),
-        ));
+        selected.push((":selected", rusqlite::types::Value::Text(r#"["a", "b"]"#.to_string())));
         let steps = read(storage_selected_query(filter, true), selected).await;
         assert!(
             !scans(&steps, SEARCH_ALIASES) && reads_search_text_by_entry(&steps),
@@ -454,10 +422,7 @@ async fn a_rare_search_reads_what_it_finds_and_a_broad_one_the_index() {
     };
     // The second album's title, "Album 16807", is the only text holding it.
     assert_eq!(read_at_top("16807").await, (1, true, StorageRows::Found));
-    assert_eq!(
-        read_at_top("album").await,
-        (300, false, StorageRows::SearchedInOrder)
-    );
+    assert_eq!(read_at_top("album").await, (300, false, StorageRows::SearchedInOrder));
 }
 
 /// A search is counted through the indexes while its pattern is in fewer
@@ -574,11 +539,8 @@ async fn a_scrolled_search_holds_its_offsets_rows_across_a_rename() {
     // rename below changes only what the search finds.
     let artist = "00000000-0001-4000-8000-000000000000";
     db.call(move |conn| {
-        conn.execute(
-            "UPDATE artists SET sort_name = name WHERE id = ?1",
-            [artist],
-        )
-        .map_err(DbError::from)
+        conn.execute("UPDATE artists SET sort_name = name WHERE id = ?1", [artist])
+            .map_err(DbError::from)
     })
     .await
     .unwrap();
@@ -611,21 +573,14 @@ async fn a_scrolled_search_holds_its_offsets_rows_across_a_rename() {
         );
     }
     db.call(move |conn| {
-        conn.execute(
-            "UPDATE artists SET name = 'Album 1 Artist' WHERE id = ?1",
-            [artist],
-        )
-        .map_err(DbError::from)
+        conn.execute("UPDATE artists SET name = 'Album 1 Artist' WHERE id = ?1", [artist])
+            .map_err(DbError::from)
     })
     .await
     .unwrap();
     for offset in [10, 5] {
         let read = read_storage(&mut query, request(offset)).await;
-        assert_eq!(
-            read.0,
-            count + 1,
-            "the renamed artist's album joins the list"
-        );
+        assert_eq!(read.0, count + 1, "the renamed artist's album joins the list");
         assert_eq!(read, fresh(offset).await, "at {offset} after the rename");
     }
 }
@@ -634,13 +589,8 @@ async fn a_scrolled_search_holds_its_offsets_rows_across_a_rename() {
 async fn the_download_queue_seeks_its_windows_through_its_key() {
     let (db, _tmp) = library().await;
     let order = super::super::release_queues::queue_order();
-    let key = key_at(
-        &db,
-        &order,
-        super::super::release_queues::queue_window_rows_on::<()>,
-        150,
-    )
-    .await;
+    let key =
+        key_at(&db, &order, super::super::release_queues::queue_window_rows_on::<()>, 150).await;
     assert_seeks_search(
         &db,
         "downloads",
@@ -789,11 +739,7 @@ async fn a_scrolled_import_list_holds_its_offsets_items_across_a_scan() {
         }
     };
     for offset in [10, 20, 30, 40, 30, 20, 10] {
-        assert_eq!(
-            scroll(offset).await,
-            import_items(&db, request(offset)).await,
-            "at {offset}"
-        );
+        assert_eq!(scroll(offset).await, import_items(&db, request(offset)).await, "at {offset}");
     }
     super::window_cost::grow_import_list(&db, tmp.path(), 300, 305).await;
     for offset in [30, 20] {

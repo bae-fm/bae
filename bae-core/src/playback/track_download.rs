@@ -74,18 +74,12 @@ impl TrackDownloads {
     /// Make `track_id`, reading from `buffer_id`, the playing track.
     pub(crate) fn set_foreground(&self, buffer_id: u64, track_id: &str) {
         self.change(|state| {
-            state.foreground = Some(Foreground {
-                buffer_id,
-                track_id: track_id.to_string(),
-            })
+            state.foreground = Some(Foreground { buffer_id, track_id: track_id.to_string() })
         });
     }
 
     pub(crate) fn foreground_buffer(&self) -> Option<u64> {
-        self.lock()
-            .foreground
-            .as_ref()
-            .map(|foreground| foreground.buffer_id)
+        self.lock().foreground.as_ref().map(|foreground| foreground.buffer_id)
     }
 
     /// The track a load the person waits on is for, or `None` once nothing
@@ -116,14 +110,7 @@ impl TrackDownloads {
     /// Read `id`, of `len` bytes into `buffer_id`, has `here` of them.
     fn told(&self, id: u64, buffer_id: u64, len: u64, here: u64) {
         self.change(|state| {
-            state.fetches.insert(
-                id,
-                Fetch {
-                    buffer_id,
-                    here,
-                    len,
-                },
-            );
+            state.fetches.insert(id, Fetch { buffer_id, here, len });
         });
     }
 
@@ -168,11 +155,7 @@ fn waited_download(state: &DownloadsState) -> Option<TrackDownload> {
             let (here, total) = sum.unwrap_or((0, 0));
             Some((here + fetch.here, total + fetch.len))
         })?;
-    Some(TrackDownload {
-        track_id: foreground.track_id.clone(),
-        here,
-        total,
-    })
+    Some(TrackDownload { track_id: foreground.track_id.clone(), here, total })
 }
 
 /// A read's progress, told to coven: counted toward the playing track's

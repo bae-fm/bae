@@ -93,10 +93,7 @@ impl ContentTypeHint {
     }
 
     pub fn is_image(&self) -> bool {
-        matches!(
-            self,
-            Self::Jpeg | Self::Png | Self::Gif | Self::Webp | Self::Bmp | Self::Svg
-        )
+        matches!(self, Self::Jpeg | Self::Png | Self::Gif | Self::Webp | Self::Bmp | Self::Svg)
     }
 
     pub fn is_raster_image(&self) -> bool {
@@ -105,8 +102,7 @@ impl ContentTypeHint {
 
     /// Whether this extension suggests a format accepted for cover artwork.
     pub fn is_supported_cover(&self) -> bool {
-        self.image_content_type()
-            .is_some_and(|content_type| content_type.is_supported_cover())
+        self.image_content_type().is_some_and(|content_type| content_type.is_supported_cover())
     }
 
     pub fn path_is_supported_cover(path: &Path) -> bool {
@@ -253,13 +249,7 @@ mod tests {
         for hint in [H::Jpeg, H::Png, H::Gif, H::Webp, H::Bmp] {
             assert!(hint.is_raster_image(), "{hint:?}");
         }
-        for hint in [
-            H::Svg,
-            H::Flac,
-            H::PlainText,
-            H::Pdf,
-            H::Unknown("svg2".to_string()),
-        ] {
+        for hint in [H::Svg, H::Flac, H::PlainText, H::Pdf, H::Unknown("svg2".to_string())] {
             assert!(!hint.is_raster_image(), "{hint:?}");
         }
     }

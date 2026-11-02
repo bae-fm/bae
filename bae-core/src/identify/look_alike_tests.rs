@@ -18,10 +18,7 @@ fn pressing(catalog: Catalog, id: &str) -> MetadataResult {
 
 fn offered(results: Vec<MetadataResult>) -> Vec<String> {
     combine_results(
-        LookupAnswers {
-            catalog: results,
-            ..LookupAnswers::default()
-        },
+        LookupAnswers { catalog: results, ..LookupAnswers::default() },
         &CandidateText::default(),
         FolderAudio::UNPROVEN,
     )
@@ -70,10 +67,7 @@ fn rows_differing_only_in_their_ids_and_notes_are_listed_once() {
         result.notes = vec![note.to_string()];
         result
     };
-    assert_eq!(
-        offered(vec![noted("20", "Plant Alpha"), noted("30", "Plant Beta")]),
-        vec!["20"]
-    );
+    assert_eq!(offered(vec![noted("20", "Plant Alpha"), noted("30", "Plant Beta")]), vec!["20"]);
 }
 
 /// A row that shows something another does not is listed beside it.
@@ -81,8 +75,5 @@ fn rows_differing_only_in_their_ids_and_notes_are_listed_once() {
 fn rows_that_show_different_details_are_both_listed() {
     let mut boxed = pressing(Catalog::Discogs, "30");
     boxed.packaging = Some(Packaging::Box);
-    assert_eq!(
-        offered(vec![pressing(Catalog::Discogs, "20"), boxed]),
-        vec!["20", "30"]
-    );
+    assert_eq!(offered(vec![pressing(Catalog::Discogs, "20"), boxed]), vec!["20", "30"]);
 }

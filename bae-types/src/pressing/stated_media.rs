@@ -43,9 +43,7 @@ impl StatedMedia {
             Self::Undescribed => Vec::new(),
             Self::PerMedium(media) => MediaCount::tally(media.iter().flatten().map(|m| (*m, 1))),
             Self::Formats(formats) => MediaCount::tally(
-                formats
-                    .iter()
-                    .filter_map(|format| Some((format.medium?, format.quantity))),
+                formats.iter().filter_map(|format| Some((format.medium?, format.quantity))),
             ),
         }
     }
@@ -85,37 +83,16 @@ mod tests {
         assert_eq!(
             per_medium.counts(),
             vec![
-                MediaCount {
-                    medium: Medium::Cd,
-                    count: 2
-                },
-                MediaCount {
-                    medium: Medium::Dvd,
-                    count: 1
-                },
+                MediaCount { medium: Medium::Cd, count: 2 },
+                MediaCount { medium: Medium::Dvd, count: 1 },
             ]
         );
         let formats = StatedMedia::Formats(vec![
-            StatedFormat {
-                medium: Some(Medium::Vinyl),
-                quantity: 1,
-            },
-            StatedFormat {
-                medium: None,
-                quantity: 1,
-            },
-            StatedFormat {
-                medium: Some(Medium::Vinyl),
-                quantity: 3,
-            },
+            StatedFormat { medium: Some(Medium::Vinyl), quantity: 1 },
+            StatedFormat { medium: None, quantity: 1 },
+            StatedFormat { medium: Some(Medium::Vinyl), quantity: 3 },
         ]);
-        assert_eq!(
-            formats.counts(),
-            vec![MediaCount {
-                medium: Medium::Vinyl,
-                count: 4
-            }]
-        );
+        assert_eq!(formats.counts(), vec![MediaCount { medium: Medium::Vinyl, count: 4 }]);
         assert!(StatedMedia::Undescribed.counts().is_empty());
     }
 }

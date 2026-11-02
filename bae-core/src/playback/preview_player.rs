@@ -46,10 +46,7 @@ pub struct PreviewTarget {
 
 impl PreviewTarget {
     pub fn whole_file(path: PathBuf) -> Self {
-        Self {
-            path,
-            span: crate::db::SegmentSpan::whole_file(),
-        }
+        Self { path, span: crate::db::SegmentSpan::whole_file() }
     }
 
     pub fn sample_range(path: PathBuf, start_sample: u64, end_sample: Option<u64>) -> Self {
@@ -75,8 +72,7 @@ impl PreviewTarget {
             .end_sample
             .map(|sample| Duration::from_secs_f64(sample as f64 / sample_rate as f64))
             .unwrap_or(file_duration);
-        end.checked_sub(start)
-            .filter(|duration| !duration.is_zero())
+        end.checked_sub(start).filter(|duration| !duration.is_zero())
     }
 }
 
@@ -88,12 +84,7 @@ fn preview_fill_error_handler(
     progress_tx: tokio_mpsc::UnboundedSender<PlaybackProgress>,
 ) -> crate::playback::data_source::FillErrorHandler {
     Box::new(move |error| {
-        emit_progress(
-            &progress_tx,
-            PlaybackProgress::PlaybackError {
-                reason: error.ui_reason(),
-            },
-        );
+        emit_progress(&progress_tx, PlaybackProgress::PlaybackError { reason: error.ui_reason() });
     })
 }
 
@@ -237,11 +228,7 @@ impl PreviewPlayer {
         let source_size = match tokio::fs::metadata(&target.path).await {
             Ok(metadata) => metadata.len(),
             Err(e) => {
-                error!(
-                    "Failed to stat preview file {}: {}",
-                    target.path.display(),
-                    e
-                );
+                error!("Failed to stat preview file {}: {}", target.path.display(), e);
                 return PreviewPlayOutcome::SetupFailed;
             }
         };
@@ -262,10 +249,7 @@ impl PreviewPlayer {
         let buffer = create_sparse_buffer(source_size);
         let reader: Box<dyn AudioDataReader> =
             Box::new(LocalReader::new(&target.path, self.diagnostics.clone()));
-        reader.start_reading(
-            buffer.clone(),
-            preview_fill_error_handler(self.progress_tx.clone()),
-        );
+        reader.start_reading(buffer.clone(), preview_fill_error_handler(self.progress_tx.clone()));
 
         let started = self
             .start_streaming(
@@ -330,14 +314,9 @@ impl PreviewPlayer {
         // so the fresh decoder can reuse the retained buffer.
         let active = self.active.take().unwrap();
         active.listener_handle.abort();
-        active
-            .pipeline
-            .shutdown_for_seek(std::slice::from_ref(&buffer))
-            .await;
+        active.pipeline.shutdown_for_seek(std::slice::from_ref(&buffer)).await;
 
-        let started = self
-            .start_streaming(source, Some(position), was_paused, audio_device)
-            .await;
+        let started = self.start_streaming(source, Some(position), was_paused, audio_device).await;
 
         // The rebuild failed: the old pipeline is torn down and `start_streaming`
         // cancelled the buffer, so the preview is gone (no zombie). Surface Idle
@@ -500,11 +479,7 @@ impl PreviewPlayer {
         // landing byte exists for an unimported file, so the decoder sample-seeks.
         let start_offset = seek_to.map_or(0, |position| position.frames(source.sample_rate));
         let decode = StreamDecodeParams::new(
-            vec![SegmentDecodeParams::new(
-                source.buffer.clone(),
-                source.target.span,
-                start_offset,
-            )],
+            vec![SegmentDecodeParams::new(source.buffer.clone(), source.target.span, start_offset)],
             true,
             0,
             0,
@@ -562,28 +537,15 @@ impl PreviewPlayer {
 
         // Preview's play/pause authority is its own audio-output state atomic.
         let preview_output = self.audio_output.as_ref().unwrap();
-        preview_output.set_state(if paused {
-            AudioState::Paused
-        } else {
-            AudioState::Playing
-        });
+        preview_output.set_state(if paused { AudioState::Paused } else { AudioState::Playing });
 
         let dur_ms = duration.as_millis() as u64;
         let preview_state = if paused {
-            PreviewState::Paused {
-                target: target.clone(),
-                duration_ms: dur_ms,
-            }
+            PreviewState::Paused { target: target.clone(), duration_ms: dur_ms }
         } else {
-            PreviewState::Playing {
-                target: target.clone(),
-                duration_ms: dur_ms,
-            }
+            PreviewState::Playing { target: target.clone(), duration_ms: dur_ms }
         };
-        emit_progress(
-            &self.progress_tx,
-            PlaybackProgress::PreviewStateChanged(preview_state),
-        );
+        emit_progress(&self.progress_tx, PlaybackProgress::PreviewStateChanged(preview_state));
 
         self.active = Some(active);
         true

@@ -71,14 +71,12 @@ impl AudioOutput for TestAudioOutput {
         _audio_events: AudioEventSender,
         _position_update_interval_ms: u32,
     ) -> Result<Box<dyn AudioStream>, AudioError> {
-        self.build_count
-            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        self.build_count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         Ok(Box::new(TestAudioStream))
     }
 
     fn on_source_replaced(&mut self) {
-        self.replace_count
-            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        self.replace_count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     }
 
     fn controls(&self) -> &AudioOutputControls {
@@ -196,21 +194,16 @@ async fn seeded_library_manager_with_track_length(
     (home, manager)
 }
 
-async fn test_playback_service() -> (
-    TempDir,
-    PlaybackService,
-    tokio_mpsc::UnboundedReceiver<PlaybackProgress>,
-) {
+async fn test_playback_service(
+) -> (TempDir, PlaybackService, tokio_mpsc::UnboundedReceiver<PlaybackProgress>) {
     seeded_playback_service(&[]).await
 }
 
 /// A `Diagnostics` wired to a `RecordingTransport`, for emission tests that
 /// assert typed events reach the wire. The transport replays success (the
 /// drained outcome queue defaults to `Ok`).
-fn recording_diagnostics() -> (
-    crate::diagnostics::Diagnostics,
-    Arc<crate::diagnostics::RecordingTransport>,
-) {
+fn recording_diagnostics(
+) -> (crate::diagnostics::Diagnostics, Arc<crate::diagnostics::RecordingTransport>) {
     use crate::diagnostics::{
         AppDiagnosticMetadata, DatadogDiagnosticsConfig, Diagnostics, RecordingTransport,
     };
@@ -240,11 +233,7 @@ fn recording_diagnostics() -> (
 
 async fn seeded_playback_service(
     releases: &[(&str, &[&str])],
-) -> (
-    TempDir,
-    PlaybackService,
-    tokio_mpsc::UnboundedReceiver<PlaybackProgress>,
-) {
+) -> (TempDir, PlaybackService, tokio_mpsc::UnboundedReceiver<PlaybackProgress>) {
     let (home, library_manager) = seeded_library_manager(releases).await;
     let (service, progress_rx) = playback_service_over(library_manager);
     (home, service, progress_rx)
@@ -254,19 +243,12 @@ async fn seeded_playback_service(
 /// stub audio output), for tests that call its handlers without the actor loop.
 fn playback_service_over(
     library_manager: LibraryManager,
-) -> (
-    PlaybackService,
-    tokio_mpsc::UnboundedReceiver<PlaybackProgress>,
-) {
+) -> (PlaybackService, tokio_mpsc::UnboundedReceiver<PlaybackProgress>) {
     let (command_tx, command_rx) = tokio_mpsc::unbounded_channel();
     let (progress_tx, progress_rx) = tokio_mpsc::unbounded_channel();
     let diagnostics = crate::diagnostics::Diagnostics::noop();
-    let preview = PreviewPlayer::new(
-        progress_tx.clone(),
-        command_tx.clone(),
-        50,
-        diagnostics.clone(),
-    );
+    let preview =
+        PreviewPlayer::new(progress_tx.clone(), command_tx.clone(), 50, diagnostics.clone());
     let playback_queue = PlaybackQueue::new(library_manager.playback_queue_tables());
     let staged_sides = advance::staged_sides_follow(&library_manager, &diagnostics);
     let service = PlaybackService {
@@ -459,10 +441,7 @@ fn play_decode(
             4 * sample_rate as usize,
         );
     let decoder = std::thread::spawn(move || {
-        decode.run_decoder(
-            &mut sink,
-            Arc::new(std::sync::atomic::AtomicBool::new(false)),
-        )
+        decode.run_decoder(&mut sink, Arc::new(std::sync::atomic::AtomicBool::new(false)))
     });
     let mut played = Vec::new();
     let mut chunk = [0.0f32; 4_096];
@@ -473,10 +452,7 @@ fn play_decode(
             break;
         }
     }
-    decoder
-        .join()
-        .expect("the decoder thread")
-        .expect("the decode runs to the window's end");
+    decoder.join().expect("the decoder thread").expect("the decode runs to the window's end");
     played
 }
 
@@ -520,14 +496,9 @@ fn import_scrub_points(
     );
     let mut sink = TakesScrubPoints(None);
     decode
-        .verify_to_sink(
-            &mut sink,
-            Arc::new(std::sync::atomic::AtomicBool::new(false)),
-        )
+        .verify_to_sink(&mut sink, Arc::new(std::sync::atomic::AtomicBool::new(false)))
         .expect("the verifying decode reads the file");
-    sink.0
-        .expect("the file is one that gets scrub points")
-        .finish()
+    sink.0.expect("the file is one that gets scrub points").finish()
 }
 
 include!("tests/buffers_and_loading.rs");

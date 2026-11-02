@@ -32,10 +32,7 @@ async fn a_takeover_stops_the_inner_read_then_reads_the_parent() {
         harness.removal_backend.calls.lock().unwrap().is_empty(),
         "the takeover took the inner watches down while their pass still ran"
     );
-    assert!(
-        !is_answered(&mut taken_over),
-        "the takeover waits for the pass it cancelled"
-    );
+    assert!(!is_answered(&mut taken_over), "the takeover waits for the pass it cancelled");
 
     harness.scans.complete(0);
     assert_eq!(taken_over.await.unwrap(), Ok(()));
@@ -58,20 +55,14 @@ async fn a_refresh_during_a_takeover_waits_for_the_parent_read() {
     harness.scans.wait_for_cancellation(0).await;
     let mut refreshed = request_refresh(&harness, "/music/two");
     harness.commands_handled().await;
-    assert!(
-        !is_answered(&mut refreshed),
-        "the refresh waits for the takeover"
-    );
+    assert!(!is_answered(&mut refreshed), "the refresh waits for the takeover");
 
     harness.scans.complete(0);
     assert_eq!(taken_over.await.unwrap(), Ok(()));
     harness.scans.wait_for_count(2).await;
     assert_eq!(harness.scans.scans.lock().unwrap()[1].path, root_path("/music"));
     harness.commands_handled().await;
-    assert!(
-        !is_answered(&mut refreshed),
-        "the refresh waits for the parent's read"
-    );
+    assert!(!is_answered(&mut refreshed), "the refresh waits for the parent's read");
     harness.scans.complete(1);
     assert_eq!(refreshed.await.unwrap(), Ok(()));
     harness.shutdown().await;
@@ -127,14 +118,8 @@ async fn a_failed_takeover_restores_the_inner_folders() {
         ["uninstall", "uninstall", "remove", "reinstall", "reinstall"]
     );
     harness.scans.wait_for_count(2).await;
-    let mut read_again: Vec<PathBuf> = harness
-        .scans
-        .scans
-        .lock()
-        .unwrap()
-        .iter()
-        .map(|scan| scan.path.clone())
-        .collect();
+    let mut read_again: Vec<PathBuf> =
+        harness.scans.scans.lock().unwrap().iter().map(|scan| scan.path.clone()).collect();
     read_again.sort();
     assert_eq!(read_again, vec![root_path("/music/one"), root_path("/music/two")]);
     for index in 0..2 {

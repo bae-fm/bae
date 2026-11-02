@@ -57,10 +57,7 @@ pub struct DiscIdRelease {
 impl DiscIdRelease {
     /// MusicBrainz release `release_id`, as `json` states it.
     pub(crate) fn new(release_id: String, json: String) -> Self {
-        Self {
-            release: MetadataRef::new(Catalog::MusicBrainz, release_id),
-            json: json.into(),
-        }
+        Self { release: MetadataRef::new(Catalog::MusicBrainz, release_id), json: json.into() }
     }
 
     /// The release the answer states.
@@ -141,10 +138,7 @@ impl ReleasePayloads {
     }
 
     fn source_data(&self, detail: String) -> ImportError {
-        ImportError::SourceData {
-            catalog: self.release.catalog,
-            detail,
-        }
+        ImportError::SourceData { catalog: self.release.catalog, detail }
     }
 
     /// The anchoring MusicBrainz release, parsed. Only called down the
@@ -185,9 +179,7 @@ impl ReleasePayloads {
             return Ok(None);
         };
         serde_json::from_str(json).map(Some).map_err(|e| {
-            self.source_data(format!(
-                "stored MusicBrainz cross-reference does not parse: {e}"
-            ))
+            self.source_data(format!("stored MusicBrainz cross-reference does not parse: {e}"))
         })
     }
 
@@ -208,9 +200,7 @@ impl ReleasePayloads {
             Catalog::Discogs => {
                 covers.extend(self.discogs_anchor()?.covers);
                 if let Some(release) = self.musicbrainz_xref()? {
-                    covers.extend(bae_catalogs::remote_image::musicbrainz_release_cover(
-                        &release,
-                    ));
+                    covers.extend(bae_catalogs::remote_image::musicbrainz_release_cover(&release));
                 }
             }
             other => not_fetched(other),
@@ -254,10 +244,7 @@ impl ReleasePayloads {
         let metadata = self.projected_metadata()?;
         let mut other_records = self.projected_records()?;
         other_records.retain(|record| record.catalog() != self.release.catalog);
-        let covers = ReleaseCovers {
-            release: self.release_covers()?,
-            album: self.album_covers()?,
-        };
+        let covers = ReleaseCovers { release: self.release_covers()?, album: self.album_covers()? };
         let archive_groups = self
             .album_documents()?
             .into_iter()

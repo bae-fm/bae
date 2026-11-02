@@ -81,26 +81,24 @@ impl CueTrack {
         &self,
         file_duration_ms: u64,
     ) -> Result<u64, CueFlacError> {
-        let start_ms = self
-            .start_cue_frames
-            .checked_mul(1_000)
-            .map(|frames_ms| frames_ms / 75)
-            .ok_or_else(|| {
-                CueFlacError::CueTiming(format!(
-                    "track {} start is too large to represent",
-                    self.number
-                ))
-            })?;
+        let start_ms =
+            self.start_cue_frames.checked_mul(1_000).map(|frames_ms| frames_ms / 75).ok_or_else(
+                || {
+                    CueFlacError::CueTiming(format!(
+                        "track {} start is too large to represent",
+                        self.number
+                    ))
+                },
+            )?;
         let end_ms = match self.end_cue_frames {
-            Some(end_frames) => end_frames
-                .checked_mul(1_000)
-                .map(|frames_ms| frames_ms / 75)
-                .ok_or_else(|| {
+            Some(end_frames) => {
+                end_frames.checked_mul(1_000).map(|frames_ms| frames_ms / 75).ok_or_else(|| {
                     CueFlacError::CueTiming(format!(
                         "track {} end is too large to represent",
                         self.number
                     ))
-                })?,
+                })?
+            }
             None => file_duration_ms,
         };
         if end_ms > file_duration_ms {
@@ -146,9 +144,7 @@ pub enum CdRipper {
 impl CdRipper {
     /// The ripper a sheet's `REM COMMENT` names, if it names one this knows.
     fn named_in(comment: &str) -> Option<Self> {
-        comment
-            .starts_with("ExactAudioCopy")
-            .then_some(Self::ExactAudioCopy)
+        comment.starts_with("ExactAudioCopy").then_some(Self::ExactAudioCopy)
     }
 
     /// The word a stored sheet keeps it as.
@@ -296,9 +292,7 @@ fn parse_cue_content(input: &str) -> Result<CueSheet, CueFlacError> {
                 tracks.push(track.finish()?);
             }
             let Some(file_reference) = current_file.clone() else {
-                return Err(CueFlacError::CueParsing(format!(
-                    "TRACK before any FILE: {line:?}"
-                )));
+                return Err(CueFlacError::CueParsing(format!("TRACK before any FILE: {line:?}")));
             };
             current_track = Some(PendingCueTrack::new(number, mode, file_reference));
             continue;
@@ -327,9 +321,7 @@ fn parse_cue_content(input: &str) -> Result<CueSheet, CueFlacError> {
         tracks.push(track.finish()?);
     }
     if tracks.is_empty() {
-        return Err(CueFlacError::CueParsing(
-            "CUE sheet contains no tracks".into(),
-        ));
+        return Err(CueFlacError::CueParsing("CUE sheet contains no tracks".into()));
     }
 
     // Some rippers write a bogus INDEX 00 that sits before the previous track's
@@ -417,10 +409,7 @@ fn apply_track_line(
             track.generated_pregap_frames = Some(parse_time(rest)?);
         }
         Some((keyword, _)) if track_keyword_is_known_skipped(keyword) => {}
-        _ => warn!(
-            "unrecognized CUE line in track {}: {:?}",
-            track.number, line
-        ),
+        _ => warn!("unrecognized CUE line in track {}: {:?}", track.number, line),
     }
     Ok(())
 }
@@ -434,11 +423,8 @@ fn parse_track_directive(line: &str) -> Result<Option<(u32, CueTrackMode)>, CueF
     let mode = parts
         .next()
         .ok_or_else(|| CueFlacError::CueParsing(format!("TRACK line has no mode: {line:?}")))?;
-    let mode = if mode == "AUDIO" {
-        CueTrackMode::Audio
-    } else {
-        CueTrackMode::Other(mode.to_string())
-    };
+    let mode =
+        if mode == "AUDIO" { CueTrackMode::Audio } else { CueTrackMode::Other(mode.to_string()) };
     Ok(Some((number, mode)))
 }
 
@@ -554,19 +540,14 @@ fn parse_time(input: &str) -> Result<u64, CueFlacError> {
     let frames_and_rest = parts
         .next()
         .ok_or_else(|| CueFlacError::CueParsing(format!("invalid CUE time {input:?}")))?;
-    let frame_end = frames_and_rest
-        .find(|c: char| !c.is_ascii_digit())
-        .unwrap_or(frames_and_rest.len());
+    let frame_end =
+        frames_and_rest.find(|c: char| !c.is_ascii_digit()).unwrap_or(frames_and_rest.len());
     if frame_end == 0 {
-        return Err(CueFlacError::CueParsing(format!(
-            "invalid CUE time {input:?}"
-        )));
+        return Err(CueFlacError::CueParsing(format!("invalid CUE time {input:?}")));
     }
-    let frames = frames_and_rest[..frame_end]
-        .parse::<u64>()
-        .map_err(|error| {
-            CueFlacError::CueParsing(format!("invalid CUE time {input:?}: {error}"))
-        })?;
+    let frames = frames_and_rest[..frame_end].parse::<u64>().map_err(|error| {
+        CueFlacError::CueParsing(format!("invalid CUE time {input:?}: {error}"))
+    })?;
     Ok((minutes * 60 + seconds) * 75 + frames)
 }
 

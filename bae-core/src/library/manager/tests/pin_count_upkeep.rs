@@ -117,13 +117,13 @@ async fn the_listed_pinned_count_follows_every_pin_and_file_write() {
     let mut releases: Vec<HarnessRelease> = Vec::new();
     // The releases moving to the cloud to be kept here.
     let mut kept_moves: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
-    let mut ran: std::collections::BTreeMap<&'static str, usize> = std::collections::BTreeMap::new();
+    let mut ran: std::collections::BTreeMap<&'static str, usize> =
+        std::collections::BTreeMap::new();
     let mut most_pinned = 0usize;
     for step in 0..400 {
         let pick = |rng: &mut rand::rngs::StdRng, releases: &[HarnessRelease], stage| {
-            let matching: Vec<usize> = (0..releases.len())
-                .filter(|&index| releases[index].stage == stage)
-                .collect();
+            let matching: Vec<usize> =
+                (0..releases.len()).filter(|&index| releases[index].stage == stage).collect();
             (!matching.is_empty()).then(|| matching[rng.random_range(0..matching.len())])
         };
         let op = match rng.random_range(0..10) {
@@ -131,10 +131,8 @@ async fn the_listed_pinned_count_follows_every_pin_and_file_write() {
                 let files: Vec<(String, Vec<u8>)> = (0..rng.random_range(1..=3))
                     .map(|index| (format!("{index}.flac"), format!("{step}-{index}").into_bytes()))
                     .collect();
-                let files: Vec<(&str, &[u8])> = files
-                    .iter()
-                    .map(|(name, bytes)| (name.as_str(), bytes.as_slice()))
-                    .collect();
+                let files: Vec<(&str, &[u8])> =
+                    files.iter().map(|(name, bytes)| (name.as_str(), bytes.as_slice())).collect();
                 let release = insert_local_release_with_files(
                     &manager,
                     &temp_dir.path().join(format!("release-{step}")),
@@ -142,10 +140,7 @@ async fn the_listed_pinned_count_follows_every_pin_and_file_write() {
                     &files,
                 )
                 .await;
-                releases.push(HarnessRelease {
-                    id: release.id,
-                    stage: HarnessStage::Local,
-                });
+                releases.push(HarnessRelease { id: release.id, stage: HarnessStage::Local });
                 "add release"
             }
             2 => {
@@ -158,7 +153,11 @@ async fn the_listed_pinned_count_follows_every_pin_and_file_write() {
                 if pin {
                     kept_moves.insert(releases[index].id.clone());
                 }
-                if pin { "attach pinned" } else { "attach" }
+                if pin {
+                    "attach pinned"
+                } else {
+                    "attach"
+                }
             }
             3 => {
                 if !releases.iter().any(|release| release.stage == HarnessStage::Attached) {
@@ -234,7 +233,10 @@ async fn the_listed_pinned_count_follows_every_pin_and_file_write() {
                 let file = &files[rng.random_range(0..files.len())];
                 manager
                     .database
-                    .execute_for_test("DELETE FROM release_files WHERE id = ?1", vec![file.id.clone()])
+                    .execute_for_test(
+                        "DELETE FROM release_files WHERE id = ?1",
+                        vec![file.id.clone()],
+                    )
                     .await
                     .unwrap();
                 "delete file"

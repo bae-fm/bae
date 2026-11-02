@@ -107,25 +107,23 @@ async fn linking_the_album_takes_what_its_pressings_share() {
     let (handle, _tmp, key, hash) = pane_fixture().await;
     store_two_pressings(&handle, &hash).await;
     let before = pane(&handle, &key).await;
-    let crate::identify::IdentifyStateView::Found {
-        offers_shared_album, ..
-    } = crate::identify::IdentifyStateView::from(before.resumed_identify_state.clone())
+    let crate::identify::IdentifyStateView::Found { offers_shared_album, .. } =
+        crate::identify::IdentifyStateView::from(before.resumed_identify_state.clone())
     else {
         panic!("the stored verdict reads back as found");
     };
     assert!(offers_shared_album, "two pressings of one album are offered");
     let own_numbers: Vec<String> = before
-        .draft().unwrap().metadata_draft
+        .draft()
+        .unwrap()
+        .metadata_draft
         .pressing
         .labels
         .iter()
         .map(|label| label.catalog_number.clone())
         .collect();
 
-    handle
-        .link_candidate_shared_album(key.clone())
-        .await
-        .unwrap();
+    handle.link_candidate_shared_album(key.clone()).await.unwrap();
 
     assert_eq!(link(&handle, &hash).await, Some(ReleaseLink::Album(album())));
     let after = pane(&handle, &key).await;
@@ -133,7 +131,9 @@ async fn linking_the_album_takes_what_its_pressings_share() {
     assert_eq!(after.draft().unwrap().metadata_draft.album_title, "Album Title");
     assert_eq!(after.draft().unwrap().metadata_draft.pressing.year, "1996");
     let label = after
-        .draft().unwrap().metadata_draft
+        .draft()
+        .unwrap()
+        .metadata_draft
         .pressing
         .labels
         .first()
@@ -145,7 +145,8 @@ async fn linking_the_album_takes_what_its_pressings_share() {
         "the pressings' numbers differ, so the draft's own stands"
     );
     assert_eq!(
-        after.draft().unwrap().metadata_provenance, before.draft().unwrap().metadata_provenance,
+        after.draft().unwrap().metadata_provenance,
+        before.draft().unwrap().metadata_provenance,
         "the fields they differ on are still read from where they were"
     );
     assert_eq!(
@@ -164,25 +165,15 @@ async fn linking_the_album_takes_what_its_pressings_share() {
 async fn an_import_linked_to_an_album_stores_the_album() {
     let (handle, _tmp, key, hash) = pane_fixture().await;
     store_two_pressings(&handle, &hash).await;
-    handle
-        .link_candidate_shared_album(key.clone())
-        .await
-        .unwrap();
+    handle.link_candidate_shared_album(key.clone()).await.unwrap();
 
     let mut events = handle.every_event();
     let import_id = handle.start_import(&key).await.unwrap().expect_queued();
     let (release_id, _) = await_import_outcome(&mut events, &import_id).await.unwrap();
-    let records = handle
-        .library_manager
-        .get_release_records(&release_id)
-        .await
-        .unwrap();
+    let records = handle.library_manager.get_release_records(&release_id).await.unwrap();
     shut_down(handle).await;
     assert_eq!(records, album().records());
-    assert_eq!(
-        records[0].url(),
-        format!("https://musicbrainz.org/release-group/{ALBUM}")
-    );
+    assert_eq!(records[0].url(), format!("https://musicbrainz.org/release-group/{ALBUM}"));
 }
 
 /// Picking a pressing after all replaces the album link with the pressing.
@@ -190,10 +181,7 @@ async fn an_import_linked_to_an_album_stores_the_album() {
 async fn a_pick_replaces_the_album_link() {
     let (handle, _tmp, key, hash) = pane_fixture().await;
     store_two_pressings(&handle, &hash).await;
-    handle
-        .link_candidate_shared_album(key.clone())
-        .await
-        .unwrap();
+    handle.link_candidate_shared_album(key.clone()).await.unwrap();
 
     super::lookup_choices::pick(&handle, &key, "mb-pressing-2").await;
 

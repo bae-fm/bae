@@ -27,10 +27,7 @@ impl crate::types::BridgeStorageInspectorTransfer {
             StorageInspectorTransfer::Download { operation, summary } => Self::Download {
                 operation: crate::types::BridgeDownloadOp::from_core(operation),
                 summary: summary.map(|summary| {
-                    summary
-                        .into_iter()
-                        .map(crate::types::BridgeTransferCount::from_core)
-                        .collect()
+                    summary.into_iter().map(crate::types::BridgeTransferCount::from_core).collect()
                 }),
             },
             StorageInspectorTransfer::PinFetch { summary } => Self::PinFetch {
@@ -39,9 +36,9 @@ impl crate::types::BridgeStorageInspectorTransfer {
                     .map(crate::types::BridgeTransferCount::from_core)
                     .collect(),
             },
-            StorageInspectorTransfer::Output { operation } => Self::Output {
-                operation: crate::types::BridgeOutputOp::from_core(operation),
-            },
+            StorageInspectorTransfer::Output { operation } => {
+                Self::Output { operation: crate::types::BridgeOutputOp::from_core(operation) }
+            }
             StorageInspectorTransfer::Upload { release_id, upload } => Self::Upload {
                 release_id,
                 upload: crate::types::BridgeReleaseUpload::from_core(upload),
@@ -61,16 +58,12 @@ impl crate::types::BridgeStorageInspectorFile {
                     coven::UploadPhase::Waiting => crate::types::BridgeUploadFileState::Waiting,
                     coven::UploadPhase::Uploading => crate::types::BridgeUploadFileState::Uploading,
                 },
-                pending: upload
-                    .pending
-                    .map(crate::types::BridgePendingWait::from_core),
+                pending: upload.pending.map(crate::types::BridgePendingWait::from_core),
             }),
             pin: pin.map(|pin| match pin {
                 bae_core::album_detail::FilePin::Kept => crate::types::BridgeFilePin::Kept,
                 bae_core::album_detail::FilePin::Downloading { file } => {
-                    crate::types::BridgeFilePin::Downloading {
-                        file_id: file.to_string(),
-                    }
+                    crate::types::BridgeFilePin::Downloading { file_id: file.to_string() }
                 }
                 bae_core::album_detail::FilePin::Waiting => crate::types::BridgeFilePin::Waiting,
             }),

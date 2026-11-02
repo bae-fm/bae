@@ -6,8 +6,7 @@ use super::*;
 /// A release whose stored state is current, ready for a verdict.
 async fn looked_up() -> Library {
     let lib = Library::new().await;
-    lib.run(&format!("{}{}", lib.scan("Album"), lib.state("Album")))
-        .await;
+    lib.run(&format!("{}{}", lib.scan("Album"), lib.state("Album"))).await;
     lib
 }
 
@@ -21,11 +20,7 @@ fn now(lib: &Library, placed: Placed) -> Moved {
 async fn each_verdict_kind_places_its_release() {
     for (kind, track_count, placed) in [
         ("not_found", None, found("Album").needs_you("not_found")),
-        (
-            "manual_only",
-            Some(11),
-            found("Album").needs_you("nothing_to_look_up"),
-        ),
+        ("manual_only", Some(11), found("Album").needs_you("nothing_to_look_up")),
         ("failed", Some(11), found("Album").state("lookup_error")),
         ("error", None, found("Album").state("error")),
         // Nothing found that agreement kept.
@@ -48,10 +43,7 @@ async fn keeping_ones_own_draft_leaves_the_release_unmatched() {
     lib.run(&lib.verdict("Album", "not_found", None)).await;
     let verdict = |set: &str| format!("{set} WHERE content_hash = '{}';", hash("Album"));
     assert_eq!(
-        lib.moved(&verdict(
-            "UPDATE import_candidate_verdict SET kept_own_draft = 1"
-        ))
-        .await,
+        lib.moved(&verdict("UPDATE import_candidate_verdict SET kept_own_draft = 1")).await,
         now(&lib, found("Album").state("unmatched"))
     );
     assert_eq!(
@@ -64,8 +56,7 @@ async fn keeping_ones_own_draft_leaves_the_release_unmatched() {
         moves([])
     );
     assert_eq!(
-        lib.moved(&verdict("DELETE FROM import_candidate_verdict"))
-            .await,
+        lib.moved(&verdict("DELETE FROM import_candidate_verdict")).await,
         now(&lib, found("Album"))
     );
 }
@@ -75,22 +66,10 @@ async fn keeping_ones_own_draft_leaves_the_release_unmatched() {
 #[tokio::test]
 async fn a_found_verdict_is_judged_by_its_lead() {
     for (source_tracks, placed) in [
-        (
-            (Some("listed"), Some(11)),
-            found("Album").state("unmatched"),
-        ),
-        (
-            (Some("listed"), Some(12)),
-            found("Album").needs_you("not_found"),
-        ),
-        (
-            (Some("unreadable"), None),
-            found("Album").needs_you("not_found"),
-        ),
-        (
-            (Some("nothing"), None),
-            found("Album").needs_you("no_tracklist"),
-        ),
+        ((Some("listed"), Some(11)), found("Album").state("unmatched")),
+        ((Some("listed"), Some(12)), found("Album").needs_you("not_found")),
+        ((Some("unreadable"), None), found("Album").needs_you("not_found")),
+        ((Some("nothing"), None), found("Album").needs_you("no_tracklist")),
         ((None, None), found("Album").needs_you("no_tracklist")),
     ] {
         let lib = looked_up().await;
@@ -102,8 +81,7 @@ async fn a_found_verdict_is_judged_by_its_lead() {
             false => now(&lib, placed),
         };
         assert_eq!(
-            lib.moved(&lib.found_release("Album", 0, 0, source_tracks))
-                .await,
+            lib.moved(&lib.found_release("Album", 0, 0, source_tracks)).await,
             expected,
             "{source_tracks:?}"
         );
@@ -124,22 +102,15 @@ async fn a_found_verdict_names_what_holds_its_pick_back() {
         lib.found_release("Album", 1, 0, fits)
     ))
     .await;
-    let found_releases = |set: &str| {
-        format!(
-            "{set} WHERE content_hash = '{}' AND position = 0;",
-            hash("Album")
-        )
-    };
+    let found_releases =
+        |set: &str| format!("{set} WHERE content_hash = '{}' AND position = 0;", hash("Album"));
     assert_eq!(
-        lib.moved(&lib.found_release("Album", 0, 1, (Some("listed"), Some(12))))
-            .await,
+        lib.moved(&lib.found_release("Album", 0, 1, (Some("listed"), Some(12)))).await,
         now(&lib, found("Album").needs_you("matches"))
     );
     assert_eq!(
-        lib.moved(&found_releases(
-            "UPDATE import_candidate_match SET listing = 'narrowed_out'"
-        ))
-        .await,
+        lib.moved(&found_releases("UPDATE import_candidate_match SET listing = 'narrowed_out'"))
+            .await,
         now(&lib, found("Album").state("unmatched"))
     );
     assert_eq!(
@@ -207,8 +178,5 @@ async fn a_verdict_of_older_files_places_nothing() {
         hash("Album")
     ))
     .await;
-    assert_eq!(
-        lib.moved(&lib.verdict("Album", "not_found", None)).await,
-        moves([])
-    );
+    assert_eq!(lib.moved(&lib.verdict("Album", "not_found", None)).await, moves([]));
 }

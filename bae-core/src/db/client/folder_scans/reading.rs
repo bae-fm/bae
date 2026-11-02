@@ -251,11 +251,7 @@ impl Database {
             }
             let regrouped =
                 super::super::release_groupings::rebuild_groupings(sql, &pruned, &pruned_sidecars)?;
-            Ok(FolderReadingWrite {
-                writes,
-                pruned,
-                regrouped,
-            })
+            Ok(FolderReadingWrite { writes, pruned, regrouped })
         })
         .await
     }

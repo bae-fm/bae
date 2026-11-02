@@ -29,10 +29,7 @@ impl LibraryManager {
         album_id: &str,
         group_by_artist: bool,
     ) -> Result<Option<u64>, LibraryError> {
-        Ok(self
-            .database
-            .get_album_index(sort, album_id, group_by_artist)
-            .await?)
+        Ok(self.database.get_album_index(sort, album_id, group_by_artist).await?)
     }
 
     /// The albums of `album_ids` the grid lists, in its order under `sort`
@@ -43,10 +40,7 @@ impl LibraryManager {
         album_ids: Vec<String>,
         group_by_artist: bool,
     ) -> Result<Vec<AlbumSummary>, LibraryError> {
-        let raws = self
-            .database
-            .albums_in_browse_order(sort, album_ids, group_by_artist)
-            .await?;
+        let raws = self.database.albums_in_browse_order(sort, album_ids, group_by_artist).await?;
         Ok(raws.into_iter().map(AlbumSummary::from_raw).collect())
     }
 
@@ -63,8 +57,7 @@ impl LibraryManager {
         crate::library::LibraryPageWindows,
         crate::db::AlbumBrowseProjection,
     > {
-        self.database
-            .subscribe_album_browse(sort, group_by_artist, initial_windows)
+        self.database.subscribe_album_browse(sort, group_by_artist, initial_windows)
     }
 
     pub(crate) fn resolve_album_browse(
@@ -79,11 +72,7 @@ impl LibraryManager {
                 .into_iter()
                 .map(|window| crate::library::LibraryBrowseWindow {
                     window: window.window,
-                    rows: window
-                        .rows
-                        .into_iter()
-                        .map(AlbumSummary::from_raw)
-                        .collect(),
+                    rows: window.rows.into_iter().map(AlbumSummary::from_raw).collect(),
                 })
                 .collect(),
             total_count: projection.total_count,
@@ -132,9 +121,7 @@ impl LibraryManager {
         projection: crate::db::AlbumDetailProjection,
     ) -> Option<AlbumDetail> {
         let has_cloud_home = projection.has_cloud_home;
-        projection
-            .detail
-            .map(|raw| self.resolve_album_detail(raw, has_cloud_home))
+        projection.detail.map(|raw| self.resolve_album_detail(raw, has_cloud_home))
     }
 
     /// The library albums a parsed, non-blank query finds, as the album
@@ -171,8 +158,7 @@ impl LibraryManager {
         Option<crate::library::LibrarySearchQuery>,
         crate::db::LibrarySearchProjection,
     > {
-        self.database
-            .subscribe_library_search(initial, crate::library::SEARCH_RESULT_LIMIT)
+        self.database.subscribe_library_search(initial, crate::library::SEARCH_RESULT_LIMIT)
     }
 
     pub(crate) fn resolve_library_search_projection(
@@ -190,9 +176,7 @@ impl LibraryManager {
     pub async fn delete_album(&self, album_id: &str) -> Result<(), LibraryError> {
         let releases = self.get_releases_for_album(album_id).await?;
         if releases.is_empty() {
-            return Err(LibraryError::Refused(format!(
-                "Album not found: {album_id}"
-            )));
+            return Err(LibraryError::Refused(format!("Album not found: {album_id}")));
         }
 
         // Read every release's track ids before the delete cascades them away —
@@ -208,9 +192,7 @@ impl LibraryManager {
             deletions.push(self.database.plan_release_deletion(&release.id).await?);
         }
 
-        self.database
-            .delete_album_with_cleanup(album_id, deletions)
-            .await?;
+        self.database.delete_album_with_cleanup(album_id, deletions).await?;
 
         if !all_track_ids.is_empty() {
             self.tracks_deleted(all_track_ids);

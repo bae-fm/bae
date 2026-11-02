@@ -8,18 +8,14 @@
 #[tokio::test(flavor = "multi_thread")]
 async fn a_pick_ends_only_the_picked_candidates_run() {
     let fixture = Fixture::new("pick-ends-one-run").await;
-    fixture
-        .import
-        .register_artwork_analyzer(Arc::new(BarcodeAnalyzer {
-            barcode: "0123456789012".to_string(),
-        }));
+    fixture.import.register_artwork_analyzer(Arc::new(BarcodeAnalyzer {
+        barcode: "0123456789012".to_string(),
+    }));
     let picked = fixture.disc_id_candidate("Picked");
     let other = fixture.barcode_candidate("Other");
     let probed = fixture.probed_total_ms(&other);
     fixture.provider.route("/discid/", 200, "{}");
-    fixture
-        .provider
-        .route("/release?", 200, search_json("mb-other-1", "rg-other-1"));
+    fixture.provider.route("/release?", 200, search_json("mb-other-1", "rg-other-1"));
     fixture.provider.route(
         "/release/mb-other-1?",
         200,
@@ -34,11 +30,7 @@ async fn a_pick_ends_only_the_picked_candidates_run() {
     wait_for_request(&fixture.provider, "/discid/", 1).await;
     let mut events = fixture.import.every_event();
 
-    fixture
-        .import
-        .select_candidate_file_tags(picked_key.clone())
-        .await
-        .expect("the pick lands");
+    fixture.import.select_candidate_file_tags(picked_key.clone()).await.expect("the pick lands");
 
     assert!(
         !fixture.import.is_identifying(&picked_key),
@@ -46,25 +38,16 @@ async fn a_pick_ends_only_the_picked_candidates_run() {
     );
     // The other candidate is carried to its verdict. The picked one left the
     // queue with the run the pick ended.
-    tokio::time::timeout(
-        Duration::from_secs(30),
-        fixture.await_identified_row(&other),
-    )
-    .await
-    .expect("the pass answers the candidate nobody picked");
-
-    let picked_row = fixture
-        .stored_for(&picked)
+    tokio::time::timeout(Duration::from_secs(30), fixture.await_identified_row(&other))
         .await
-        .expect("the pick is stored");
+        .expect("the pass answers the candidate nobody picked");
+
+    let picked_row = fixture.stored_for(&picked).await.expect("the pick is stored");
     assert_eq!(
         picked_row.metadata_provenance,
         Some(crate::import::MetadataProvenance::FileMetadata)
     );
-    assert!(
-        picked_row.identify.is_none(),
-        "a cancelled run writes no verdict"
-    );
+    assert!(picked_row.identify.is_none(), "a cancelled run writes no verdict");
     assert!(
         fixture.identified_for(&other).await.is_some(),
         "the candidate nobody picked reached its verdict"
@@ -86,10 +69,7 @@ async fn a_pick_ends_only_the_picked_candidates_run() {
 
     fixture.identification().shut_down();
     fixture.provider.release();
-    tokio::time::timeout(Duration::from_secs(10), pass)
-        .await
-        .expect("the pass ends")
-        .unwrap();
+    tokio::time::timeout(Duration::from_secs(10), pass).await.expect("the pass ends").unwrap();
 }
 
 /// Skipping is a decision about the candidate, so it ends its run. Unskipping
@@ -102,11 +82,7 @@ async fn skipping_a_candidate_ends_its_run_and_unskipping_queues_nothing() {
     fixture.provider.route("/discid/", 200, "{}");
     fixture.provider.hold("/discid/");
     // Identified only when asked: nothing found here is identified on its own.
-    fixture
-        .manager
-        .set_identify_automatically(false)
-        .await
-        .unwrap();
+    fixture.manager.set_identify_automatically(false).await.unwrap();
     fixture.scan(1).await;
 
     fixture.start_explicit_lookup_and_await_run(&dir).await;
@@ -118,15 +94,9 @@ async fn skipping_a_candidate_ends_its_run_and_unskipping_queues_nothing() {
         .await
         .expect("the candidate is skipped");
 
-    assert!(
-        !fixture.import.is_identifying(&key),
-        "skipping ends the run before it returns"
-    );
+    assert!(!fixture.import.is_identifying(&key), "skipping ends the run before it returns");
     fixture.provider.release();
-    assert!(
-        fixture.identified_for(&dir).await.is_none(),
-        "a cancelled run writes no verdict"
-    );
+    assert!(fixture.identified_for(&dir).await.is_none(), "a cancelled run writes no verdict");
 
     fixture
         .import
@@ -157,27 +127,16 @@ async fn clearing_a_candidates_metadata_ends_its_run_and_announces_the_change() 
     fixture.provider.route("/discid/", 200, "{}");
     fixture.provider.hold("/discid/");
     // Identified only when asked: nothing found here is identified on its own.
-    fixture
-        .manager
-        .set_identify_automatically(false)
-        .await
-        .unwrap();
+    fixture.manager.set_identify_automatically(false).await.unwrap();
     fixture.scan(1).await;
 
     let mut events = fixture.import.every_event();
     fixture.start_explicit_lookup_and_await_run(&dir).await;
     wait_for_request(&fixture.provider, "/discid/", 1).await;
 
-    fixture
-        .import
-        .clear_candidate_metadata(key.clone())
-        .await
-        .expect("the metadata is cleared");
+    fixture.import.clear_candidate_metadata(key.clone()).await.expect("the metadata is cleared");
 
-    assert!(
-        !fixture.import.is_identifying(&key),
-        "clearing ends the run before it returns"
-    );
+    assert!(!fixture.import.is_identifying(&key), "clearing ends the run before it returns");
     // The announce is sent inside the same write, so it is on the bus by the
     // time the command has returned.
     let announced = drain_events(&mut events).into_iter().any(|event| {
@@ -190,10 +149,7 @@ async fn clearing_a_candidates_metadata_ends_its_run_and_announces_the_change() 
     assert!(announced, "the clear announces the candidate's change");
     fixture.provider.release();
 
-    assert!(
-        fixture.identified_for(&dir).await.is_none(),
-        "a cancelled run writes no verdict"
-    );
+    assert!(fixture.identified_for(&dir).await.is_none(), "a cancelled run writes no verdict");
 }
 
 /// A clear ends the identification the automatic admission had going, and
@@ -205,11 +161,7 @@ async fn clearing_a_candidates_metadata_takes_it_off_the_queue() {
     let dir = fixture.disc_id_candidate("Candidate");
     let key = crate::import::CandidateKey::folder(&dir);
     let probed = fixture.probed_total_ms(&dir);
-    fixture.provider.route(
-        "/discid/",
-        200,
-        discid_json("mb-cleared", "rg-cleared", &[probed, 0]),
-    );
+    fixture.provider.route("/discid/", 200, discid_json("mb-cleared", "rg-cleared", &[probed, 0]));
     fixture.provider.route(
         "/release/mb-cleared?",
         200,
@@ -221,16 +173,9 @@ async fn clearing_a_candidates_metadata_takes_it_off_the_queue() {
     let pass = fixture.drain_automatic_task();
     wait_for_request(&fixture.provider, "/discid/", 1).await;
 
-    fixture
-        .import
-        .clear_candidate_metadata(key.clone())
-        .await
-        .expect("the metadata is cleared");
+    fixture.import.clear_candidate_metadata(key.clone()).await.expect("the metadata is cleared");
 
-    assert!(
-        !fixture.import.is_identifying(&key),
-        "the clear ends the run it found"
-    );
+    assert!(!fixture.import.is_identifying(&key), "the clear ends the run it found");
     tokio::time::timeout(Duration::from_secs(30), pass)
         .await
         .expect("the candidate left the queue, so the automatic admission holds nothing")
@@ -257,30 +202,20 @@ async fn a_decision_announced_before_a_request_leaves_the_requested_run_going() 
     let dir = fixture.disc_id_candidate("Candidate");
     let key = crate::import::CandidateKey::folder(&dir);
     let probed = fixture.probed_total_ms(&dir);
-    fixture.provider.route(
-        "/discid/",
-        200,
-        discid_json("mb-asked", "rg-asked", &[probed, 0]),
-    );
+    fixture.provider.route("/discid/", 200, discid_json("mb-asked", "rg-asked", &[probed, 0]));
     fixture.provider.route(
         "/release/mb-asked?",
         200,
         release_json("mb-asked", "rg-asked", &[probed, 0]),
     );
-    fixture
-        .manager
-        .set_identify_automatically(false)
-        .await
-        .unwrap();
+    fixture.manager.set_identify_automatically(false).await.unwrap();
     fixture.scan(1).await;
 
     // The loop is handed both before it first looks: the announcement, then
     // the request, with every later event behind them.
     let (events, mut bus) = tokio::sync::mpsc::unbounded_channel();
     events
-        .send(ImportEvent::Scan(ScanEvent::CandidateMetadataChanged {
-            candidate_key: key.clone(),
-        }))
+        .send(ImportEvent::Scan(ScanEvent::CandidateMetadataChanged { candidate_key: key.clone() }))
         .unwrap();
     let mut later = fixture.import.every_event();
     tokio::spawn(async move {
@@ -291,18 +226,9 @@ async fn a_decision_announced_before_a_request_leaves_the_requested_run_going() 
         }
     });
     let (commands, mut asked) = tokio::sync::mpsc::unbounded_channel();
-    commands
-        .send(Command::Request {
-            candidate_key: key.clone(),
-        })
-        .unwrap();
+    commands.send(Command::Request { candidate_key: key.clone() }).unwrap();
     let (drained, answered) = tokio::sync::oneshot::channel();
-    commands
-        .send(Command::AwaitDrained {
-            drain: Drain::Every,
-            drained,
-        })
-        .unwrap();
+    commands.send(Command::AwaitDrained { drain: Drain::Every, drained }).unwrap();
 
     let context = fixture.context();
     let token = CancellationToken::new();
@@ -334,11 +260,7 @@ async fn starting_an_import_ends_the_candidates_run() {
     fixture.provider.route("/discid/", 200, "{}");
     fixture.provider.hold("/discid/");
     // Identified only when asked: nothing found here is identified on its own.
-    fixture
-        .manager
-        .set_identify_automatically(false)
-        .await
-        .unwrap();
+    fixture.manager.set_identify_automatically(false).await.unwrap();
     fixture.scan(1).await;
 
     fixture.start_explicit_lookup_and_await_run(&dir).await;
@@ -357,10 +279,7 @@ async fn starting_an_import_ends_the_candidates_run() {
     );
     assert!(!import_id.is_empty(), "the import was queued");
     fixture.provider.release();
-    assert!(
-        fixture.identified_for(&dir).await.is_none(),
-        "a cancelled run writes no verdict"
-    );
+    assert!(fixture.identified_for(&dir).await.is_none(), "a cancelled run writes no verdict");
 }
 
 /// Switching automatic identification off takes nothing off the queue: a
@@ -402,9 +321,7 @@ async fn switching_automatic_identification_off_lets_a_settling_write_land() {
     );
     let runtime = fixture.import.candidate_runtime(&key).await.unwrap();
     assert!(
-        runtime
-            .as_ref()
-            .is_none_or(|runtime| runtime.identification.is_none()),
+        runtime.as_ref().is_none_or(|runtime| runtime.identification.is_none()),
         "nothing is left saying the commit is still pending, nor any failure: {runtime:?}"
     );
 }

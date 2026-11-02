@@ -16,7 +16,10 @@ fn plain_document(notes: &[&str]) -> ReleaseDocument {
         links: Vec::new(),
         album_links: AlbumLinks::NotAsked,
         stored: std::sync::Arc::new(crate::import::source_release::SourceRelease::for_test(
-            crate::import::MetadataRef::new(bae_catalogs::catalog::Catalog::MusicBrainz, "release-1"),
+            crate::import::MetadataRef::new(
+                bae_catalogs::catalog::Catalog::MusicBrainz,
+                "release-1",
+            ),
         )),
     }
 }
@@ -38,10 +41,7 @@ fn packed_in(
     group: &str,
     packaging: bae_types::pressing::Packaging,
 ) -> MetadataResult {
-    MetadataResult {
-        packaging: Some(packaging),
-        ..mk_result_from(source, release_id, Some(group))
-    }
+    MetadataResult { packaging: Some(packaging), ..mk_result_from(source, release_id, Some(group)) }
 }
 
 /// What a run asked in its rounds past the folder's own keys: each read's
@@ -63,10 +63,7 @@ fn answer_rounds(
 ) -> (IdentifyState, Vec<Effect>, Asked) {
     let mut asked = Asked::default();
     while let Some(at) = effects.iter().position(|effect| {
-        matches!(
-            effect,
-            Effect::ReadReleases { .. } | Effect::LookupPressing { .. }
-        )
+        matches!(effect, Effect::ReadReleases { .. } | Effect::LookupPressing { .. })
     }) {
         let answer = match effects.remove(at) {
             Effect::ReadReleases { releases, .. } => {
@@ -84,11 +81,7 @@ fn answer_rounds(
             Effect::LookupPressing { source, key } => {
                 asked.pressings.push((source, key.clone()));
                 let outcome = Ok(pressing(source, &key));
-                IdentifyEvent::PressingLookupAnswered {
-                    source,
-                    key,
-                    outcome,
-                }
+                IdentifyEvent::PressingLookupAnswered { source, key, outcome }
             }
             _ => unreachable!("the position is of a read or a pressing lookup"),
         };
@@ -102,10 +95,7 @@ fn answer_rounds(
 /// Every release a settled state names with its row and whether a lookup of
 /// the folder's disc IDs found it, offered or set aside.
 fn rows_of(state: &IdentifyState) -> Vec<(MetadataResult, bool, u32)> {
-    let IdentifyState::Found {
-        findings, ledger, ..
-    } = state
-    else {
+    let IdentifyState::Found { findings, ledger, .. } = state else {
         panic!("expected Found, got {state:?}");
     };
     let by_disc_id = |result: &MetadataResult| found_by_disc_id(ledger.as_ref(), result);
@@ -163,10 +153,7 @@ fn disc_run_reading(
 fn a_disc_id_s_releases_are_looked_up_on_discogs_by_their_links() {
     use bae_types::pressing::Packaging::{Digipak, JewelCase};
     let reading = disc_run_reading(
-        vec![
-            packed_in(MB, "mb-1", "g-1", JewelCase),
-            packed_in(MB, "mb-2", "g-1", Digipak),
-        ],
+        vec![packed_in(MB, "mb-1", "g-1", JewelCase), packed_in(MB, "mb-2", "g-1", Digipak)],
         Vec::new(),
     );
     let (state, effects, asked) = answer_rounds(
@@ -193,18 +180,8 @@ fn a_disc_id_s_releases_are_looked_up_on_discogs_by_their_links() {
     assert_eq!(
         asked.pressings,
         vec![
-            (
-                DG,
-                PressingKey::Link {
-                    release: MetadataRef::new(DG, "dg-1")
-                }
-            ),
-            (
-                DG,
-                PressingKey::Link {
-                    release: MetadataRef::new(DG, "dg-2")
-                }
-            ),
+            (DG, PressingKey::Link { release: MetadataRef::new(DG, "dg-1") }),
+            (DG, PressingKey::Link { release: MetadataRef::new(DG, "dg-2") }),
         ],
         "then each row by the release its page names"
     );
@@ -250,10 +227,7 @@ fn a_disc_id_s_releases_are_looked_up_on_discogs_by_their_links() {
 fn a_linked_release_s_note_word_breaks_the_tie() {
     use bae_types::pressing::Packaging::{Digipak, JewelCase};
     let reading = disc_run_reading(
-        vec![
-            packed_in(MB, "mb-1", "g-1", JewelCase),
-            packed_in(MB, "mb-2", "g-1", Digipak),
-        ],
+        vec![packed_in(MB, "mb-1", "g-1", JewelCase), packed_in(MB, "mb-2", "g-1", Digipak)],
         vec![crate::signals::TextLine {
             text: "Album Title (Pressed by Plantname)".to_string(),
             origin: crate::signals::TextOrigin::FolderName,
@@ -304,19 +278,11 @@ fn a_linked_release_s_note_word_breaks_the_tie() {
 fn a_catalog_number_only_a_document_states_joins_the_albums() {
     let (state, _) = update(
         started_with(vec![MB, DG]),
-        signals(
-            DiscIdSignal::Absent,
-            BarcodeSignal::Settled {
-                codes: artwork_codes(&["A"]),
-            },
-            &[],
-        ),
+        signals(DiscIdSignal::Absent, BarcodeSignal::Settled { codes: artwork_codes(&["A"]) }, &[]),
     );
     let (state, _) = super::step(state, barcode_matched(MB, "A", vec![pair("mb-1", Some("g-1"))]));
-    let reading = super::step(
-        state,
-        barcode_matched(DG, "A", vec![discogs_pair("dg-1", Some("7"))]),
-    );
+    let reading =
+        super::step(state, barcode_matched(DG, "A", vec![discogs_pair("dg-1", Some("7"))]));
     let (state, effects, _) = answer_rounds(
         reading,
         |release| ReleaseDocument {
@@ -332,9 +298,7 @@ fn a_catalog_number_only_a_document_states_joins_the_albums() {
     let joined = MetadataRef::new(DG, "7");
     assert_eq!(
         effects,
-        vec![Effect::KeepAlbumLinks {
-            kept: vec![("g-1".to_string(), vec![joined.clone()])],
-        }]
+        vec![Effect::KeepAlbumLinks { kept: vec![("g-1".to_string(), vec![joined.clone()])] }]
     );
     let mb = rows_of(&state)
         .into_iter()
@@ -352,10 +316,7 @@ fn a_disc_id_alone_whose_documents_name_nothing_keeps_nothing() {
     let reading = disc_run_reading(vec![pair("mb-1", Some("g-1"))], Vec::new());
     let (state, effects, _) = answer_rounds(
         reading,
-        |_| ReleaseDocument {
-            album_links: AlbumLinks::Read(Vec::new()),
-            ..plain_document(&[])
-        },
+        |_| ReleaseDocument { album_links: AlbumLinks::Read(Vec::new()), ..plain_document(&[]) },
         |_, _| Vec::new(),
     );
     assert!(effects.is_empty(), "nothing is kept: {effects:?}");

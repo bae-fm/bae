@@ -19,20 +19,14 @@ async fn nested_releases_group_under_their_first_folder_by_the_newest() {
     assert_eq!(
         lib.moved(&lib.scan("Artist/Early")).await,
         moves([
-            (
-                lib.release("Artist/Early"),
-                Some(found("Artist/Early").dated(100).grouped("Artist"))
-            ),
+            (lib.release("Artist/Early"), Some(found("Artist/Early").dated(100).grouped("Artist"))),
             (lib.group("Artist"), Some(header("Artist", Some(100)))),
         ])
     );
     assert_eq!(
         lib.moved(&lib.scan("Artist/Late")).await,
         moves([
-            (
-                lib.release("Artist/Late"),
-                Some(found("Artist/Late").dated(300).grouped("Artist"))
-            ),
+            (lib.release("Artist/Late"), Some(found("Artist/Late").dated(300).grouped("Artist"))),
             (lib.group("Artist"), Some(header("Artist", Some(300)))),
         ])
     );
@@ -43,10 +37,7 @@ async fn nested_releases_group_under_their_first_folder_by_the_newest() {
         ))
         .await,
         moves([
-            (
-                lib.release("Artist/Late"),
-                Some(found("Artist/Late").grouped("Artist"))
-            ),
+            (lib.release("Artist/Late"), Some(found("Artist/Late").grouped("Artist"))),
             (lib.group("Artist"), Some(header("Artist", Some(100)))),
         ])
     );
@@ -64,18 +55,12 @@ async fn a_release_at_a_folder_groups_while_another_is_nested_below_it() {
         moves([
             (lib.release("Box"), Some(found("Box").grouped("Box"))),
             (lib.group("Box"), Some(header("Box", None))),
-            (
-                lib.invalid("Box/Disc 1"),
-                Some(failed_validation("Box/Disc 1"))
-            ),
+            (lib.invalid("Box/Disc 1"), Some(failed_validation("Box/Disc 1"))),
         ])
     );
     assert_eq!(
-        lib.moved(&format!(
-            "DELETE FROM scan_candidate WHERE path = {};",
-            lib.sql("Box/Disc 1")
-        ))
-        .await,
+        lib.moved(&format!("DELETE FROM scan_candidate WHERE path = {};", lib.sql("Box/Disc 1")))
+            .await,
         moves([
             (lib.release("Box"), Some(found("Box"))),
             (lib.group("Box"), None),
@@ -92,10 +77,7 @@ async fn a_folder_sharing_a_name_prefix_is_not_nested() {
     assert_eq!(
         lib.moved(&lib.scan("Box Set/Disc 1")).await,
         moves([
-            (
-                lib.release("Box Set/Disc 1"),
-                Some(found("Box Set/Disc 1").grouped("Box Set"))
-            ),
+            (lib.release("Box Set/Disc 1"), Some(found("Box Set/Disc 1").grouped("Box Set"))),
             (lib.group("Box Set"), Some(header("Box Set", None))),
         ])
     );
@@ -121,10 +103,7 @@ async fn a_member_leaving_found_leaves_its_group() {
         ))
         .await,
         moves([
-            (
-                lib.release("Artist/Late"),
-                Some(found("Artist/Late").dated(300).on("skipped"))
-            ),
+            (lib.release("Artist/Late"), Some(found("Artist/Late").dated(300).on("skipped"))),
             (lib.group("Artist"), Some(header("Artist", Some(100)))),
         ])
     );
@@ -135,10 +114,7 @@ async fn a_member_leaving_found_leaves_its_group() {
         ))
         .await,
         moves([
-            (
-                lib.release("Artist/Early"),
-                Some(found("Artist/Early").dated(100).on("skipped"))
-            ),
+            (lib.release("Artist/Early"), Some(found("Artist/Early").dated(100).on("skipped"))),
             (lib.group("Artist"), None),
         ])
     );
@@ -148,12 +124,7 @@ async fn a_member_leaving_found_leaves_its_group() {
 #[tokio::test]
 async fn a_moved_release_changes_group() {
     let lib = Library::new().await;
-    lib.run(&format!(
-        "{}{}",
-        lib.scan("Old/Album"),
-        lib.scan("Old/Other")
-    ))
-    .await;
+    lib.run(&format!("{}{}", lib.scan("Old/Album"), lib.scan("Old/Other"))).await;
     assert_eq!(
         lib.moved(&format!(
             "UPDATE scan_candidate SET relative_folder = {} WHERE path = {};",
@@ -225,10 +196,7 @@ fn a_member_costs_the_same_however_large_its_group() {
     };
     let early = (0..20).map(place).last().unwrap();
     let late = (20..2_000).map(place).last().unwrap();
-    assert!(
-        late < early * 3 / 2,
-        "placing the 20th member took {early} steps, the 2,000th {late}"
-    );
+    assert!(late < early * 3 / 2, "placing the 20th member took {early} steps, the 2,000th {late}");
 }
 
 /// A folder whose name isn't valid UTF-8 nests and groups by its bytes: the
@@ -248,14 +216,8 @@ async fn a_folder_whose_name_is_not_utf8_nests_and_groups_by_its_bytes() {
     assert_eq!(
         lib.moved(&lib.scan_folder(&disc, "valid")).await,
         moves([
-            (
-                lib.release_at(cafe),
-                Some(found("Caf\\xE9").grouped("Caf\\xE9"))
-            ),
-            (
-                lib.release_at(&disc),
-                Some(found("Caf\\xE9/Disc 1").grouped("Caf\\xE9"))
-            ),
+            (lib.release_at(cafe), Some(found("Caf\\xE9").grouped("Caf\\xE9"))),
+            (lib.release_at(&disc), Some(found("Caf\\xE9/Disc 1").grouped("Caf\\xE9"))),
             (lib.group("Caf\\xE9"), Some(header("Caf\\xE9", None))),
         ])
     );

@@ -30,11 +30,7 @@ pub(super) enum DiscIdError {
     /// The lead-out exceeds a 90-minute disc.
     DiscTooLong(i32),
     /// A track (or the lead-out slot) sits past the lead-out offset.
-    OffsetPastLeadOut {
-        index: usize,
-        offset: i32,
-        lead_out: i32,
-    },
+    OffsetPastLeadOut { index: usize, offset: i32, lead_out: i32 },
     /// Track offsets are not non-decreasing.
     OffsetsOutOfOrder { index: usize },
 }
@@ -46,19 +42,11 @@ impl std::fmt::Display for DiscIdError {
                 write!(f, "illegal track count {n} (must be 1..=99)")
             }
             DiscIdError::DiscTooLong(lead_out) => {
-                write!(
-                    f,
-                    "disc too long: lead-out {lead_out} exceeds {MAX_DISC_LENGTH}"
-                )
+                write!(f, "disc too long: lead-out {lead_out} exceeds {MAX_DISC_LENGTH}")
             }
-            DiscIdError::OffsetPastLeadOut {
-                index,
-                offset,
-                lead_out,
-            } => write!(
-                f,
-                "offset {offset} at slot {index} is past the lead-out {lead_out}"
-            ),
+            DiscIdError::OffsetPastLeadOut { index, offset, lead_out } => {
+                write!(f, "offset {offset} at slot {index} is past the lead-out {lead_out}")
+            }
             DiscIdError::OffsetsOutOfOrder { index } => {
                 write!(f, "track offset at slot {index} is out of order")
             }
@@ -85,11 +73,7 @@ pub(super) fn musicbrainz_discid(offsets: &[i32]) -> Result<String, DiscIdError>
     }
     for (index, &offset) in offsets.iter().enumerate() {
         if offset > lead_out {
-            return Err(DiscIdError::OffsetPastLeadOut {
-                index,
-                offset,
-                lead_out,
-            });
+            return Err(DiscIdError::OffsetPastLeadOut { index, offset, lead_out });
         }
         // libdiscid orders track offsets only (index > 1): the lead-out at slot 0
         // is the largest value and precedes track 1 in the array.
@@ -150,10 +134,7 @@ mod tests {
             // Single track, lead-out after the 150-sector pregap.
             (vec![180_150, 150], "NyB4TAo0fl6yU3tBAcL.jKphZs0-"),
             // Typical 3-track disc.
-            (
-                vec![270_150, 150, 90_150, 180_150],
-                "OW7Dlo_1oOnvIk1X5vG229avEII-",
-            ),
+            (vec![270_150, 150, 90_150, 180_150], "OW7Dlo_1oOnvIk1X5vG229avEII-"),
             // 99 tracks — the maximum a CD (and this hash) allows.
             (max_track_toc(), "qOt.RNFgr441aSUXpEjVegEMurg-"),
         ]
@@ -184,46 +165,31 @@ mod tests {
         let id = musicbrainz_discid(&fixed_vectors()[0].0).unwrap();
         assert_eq!(id.len(), 28);
         assert!(id.ends_with('-'));
-        assert!(id
-            .chars()
-            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-')));
+        assert!(id.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-')));
     }
 
     #[test]
     fn rejects_no_tracks() {
-        assert_eq!(
-            musicbrainz_discid(&[150]),
-            Err(DiscIdError::IllegalTrackCount(0))
-        );
+        assert_eq!(musicbrainz_discid(&[150]), Err(DiscIdError::IllegalTrackCount(0)));
     }
 
     #[test]
     fn rejects_too_many_tracks() {
         let offsets = vec![0; 102]; // lead-out + 101 tracks
-        assert_eq!(
-            musicbrainz_discid(&offsets),
-            Err(DiscIdError::IllegalTrackCount(101))
-        );
+        assert_eq!(musicbrainz_discid(&offsets), Err(DiscIdError::IllegalTrackCount(101)));
     }
 
     #[test]
     fn rejects_disc_too_long() {
         let lead_out = MAX_DISC_LENGTH + 1;
-        assert_eq!(
-            musicbrainz_discid(&[lead_out, 150]),
-            Err(DiscIdError::DiscTooLong(lead_out))
-        );
+        assert_eq!(musicbrainz_discid(&[lead_out, 150]), Err(DiscIdError::DiscTooLong(lead_out)));
     }
 
     #[test]
     fn rejects_track_past_lead_out() {
         assert_eq!(
             musicbrainz_discid(&[1000, 2000]),
-            Err(DiscIdError::OffsetPastLeadOut {
-                index: 1,
-                offset: 2000,
-                lead_out: 1000,
-            })
+            Err(DiscIdError::OffsetPastLeadOut { index: 1, offset: 2000, lead_out: 1000 })
         );
     }
 

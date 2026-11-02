@@ -43,9 +43,7 @@ pub(crate) struct CreditedArtist {
 
 impl CreditedArtist {
     fn to_element(&self) -> Element {
-        Element::new("artists")
-            .attr("id", self.id.clone())
-            .attr("name", self.name.clone())
+        Element::new("artists").attr("id", self.id.clone()).attr("name", self.name.clone())
     }
 
     /// Every credit of `credits`, in order.
@@ -102,8 +100,7 @@ impl AlbumId3 {
 
     /// As an `<album>` element with its songs nested — the `getAlbum` payload.
     pub(crate) fn with_songs(&self, songs: Vec<Child>) -> Element {
-        self.base("album")
-            .children(songs.into_iter().map(|song| song.to_element()))
+        self.base("album").children(songs.into_iter().map(|song| song.to_element()))
     }
 }
 

@@ -53,15 +53,16 @@ async fn album_detail_delivers_while_sync_shaped_load_runs() {
         }
     }));
 
-    let playback = manager.start_playback_service_with_audio_device(
-        tokio::runtime::Handle::current(),
-        50,
-        false,
-        // No hardware behind it: this test never plays anything.
-        Box::new(crate::playback::audio_output::FailingAudioDevice),
-    )
-    .await
-    .expect("start playback");
+    let playback = manager
+        .start_playback_service_with_audio_device(
+            tokio::runtime::Handle::current(),
+            50,
+            false,
+            // No hardware behind it: this test never plays anything.
+            Box::new(crate::playback::audio_output::FailingAudioDevice),
+        )
+        .await
+        .expect("start playback");
     let import = manager
         .start_import_service(tokio::runtime::Handle::current())
         .await
@@ -87,9 +88,7 @@ async fn album_detail_delivers_while_sync_shaped_load_runs() {
         task.abort();
     }
     drop(values);
-    tokio::task::spawn_blocking(move || drop(services))
-        .await
-        .expect("tear the application down");
+    tokio::task::spawn_blocking(move || drop(services)).await.expect("tear the application down");
 
     let detail = delivered
         .expect("the album detail arrives while sync-shaped load runs")
@@ -112,9 +111,7 @@ async fn album_detail_moves_between_albums_on_one_subscription() {
         insert_release(&manager, &create_test_release(&album.id)).await;
         albums.push(album);
     }
-    let services = crate::library::AppServices::for_test(manager.clone())
-        .await
-        .unwrap();
+    let services = crate::library::AppServices::for_test(manager.clone()).await.unwrap();
     let values = services.subscribe_album_detail();
     let next_for = |id: Option<String>| {
         let values = &values;
@@ -158,9 +155,7 @@ async fn release_detail_offers_storage_once_a_cloud_home_is_set_up() {
         &[("a.flac", b"aaa")],
     )
     .await;
-    let services = crate::library::AppServices::for_test(manager.library.clone())
-        .await
-        .unwrap();
+    let services = crate::library::AppServices::for_test(manager.library.clone()).await.unwrap();
     let values = services.subscribe_release_detail();
     values.set(Some(release.id.clone())).unwrap();
     let actions_until = |accept: fn(&[crate::album_detail::ReleaseStorageAction]) -> bool| {

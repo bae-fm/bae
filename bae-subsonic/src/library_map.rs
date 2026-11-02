@@ -87,20 +87,14 @@ pub(crate) async fn release_album_id3_with(
         .await
         .map_err(lib_err)?
         .ok_or_else(SubError::not_found)?;
-    let tracks = services
-        .get_tracks_for_release(&release.id)
-        .await
-        .map_err(lib_err)?;
+    let tracks = services.get_tracks_for_release(&release.id).await.map_err(lib_err)?;
     let cover_art = release_cover_art(services, &release.id).await?;
 
     Ok(AlbumId3 {
         id: album_wire_id(&release.id),
         name: album.album.title.clone(),
         artist: Some(album.artist_names.clone()),
-        artist_id: album
-            .artists
-            .first()
-            .map(|credit| artist_wire_id(&credit.artist.id)),
+        artist_id: album.artists.first().map(|credit| artist_wire_id(&credit.artist.id)),
         artists: CreditedArtist::of(&album.artists),
         cover_art,
         song_count: tracks.len() as i64,
@@ -134,19 +128,14 @@ async fn resolve_audio_fields(
     track_id: &str,
     files: Option<&[DbFile]>,
 ) -> Result<AudioFields, SubError> {
-    let audio = services
-        .resolve_track_audio(track_id)
-        .await
-        .map_err(lib_err)?;
+    let audio = services.resolve_track_audio(track_id).await.map_err(lib_err)?;
 
     let owned_files;
     let files = match files {
         Some(files) => files,
         None => {
-            owned_files = services
-                .get_files_for_release(&audio.release_id)
-                .await
-                .map_err(lib_err)?;
+            owned_files =
+                services.get_files_for_release(&audio.release_id).await.map_err(lib_err)?;
             &owned_files
         }
     };
@@ -164,11 +153,7 @@ async fn resolve_audio_fields(
         }
         None => {
             let format = audio.wav_stream_format();
-            (
-                format.content_type().to_string(),
-                Some(format.extension().to_string()),
-                None,
-            )
+            (format.content_type().to_string(), Some(format.extension().to_string()), None)
         }
     };
 
@@ -220,9 +205,7 @@ pub(crate) async fn track_child(
         disc_number: mediums.disc_number(track),
         created: Some(track.created_at.to_rfc3339()),
         album_id: Some(album_wire_id(&release.id)),
-        artist_id: credits
-            .first()
-            .map(|credit| artist_wire_id(&credit.artist.id)),
+        artist_id: credits.first().map(|credit| artist_wire_id(&credit.artist.id)),
         artists: CreditedArtist::of(&credits),
         bit_depth: audio.bit_depth,
         sampling_rate: audio.sampling_rate,
@@ -268,9 +251,7 @@ pub(crate) async fn search_track_child(
         disc_number: None,
         created: None,
         album_id: Some(album_wire_id(&audio.release_id)),
-        artist_id: credits
-            .first()
-            .map(|credit| artist_wire_id(&credit.artist.id)),
+        artist_id: credits.first().map(|credit| artist_wire_id(&credit.artist.id)),
         artists: CreditedArtist::of(&credits),
         bit_depth: audio.bit_depth,
         sampling_rate: audio.sampling_rate,
@@ -285,13 +266,9 @@ pub(crate) async fn artist_release_count(
     services: &AppServices,
     artist_id: &str,
 ) -> Result<i64, SubError> {
-    let detail = services
-        .get_artist_detail(artist_id)
-        .await
-        .map_err(lib_err)?;
-    Ok(detail
-        .map(|d| d.albums.iter().map(|a| a.release_ids.len()).sum::<usize>())
-        .unwrap_or(0) as i64)
+    let detail = services.get_artist_detail(artist_id).await.map_err(lib_err)?;
+    Ok(detail.map(|d| d.albums.iter().map(|a| a.release_ids.len()).sum::<usize>()).unwrap_or(0)
+        as i64)
 }
 
 /// The `ArtistID3` for an artist row, with a release-count album total. Its
@@ -314,10 +291,7 @@ pub(crate) fn artist_id3(
 
 /// The file extension, lowercased, with no leading dot — Subsonic's `suffix`.
 fn file_suffix(filename: &str) -> String {
-    filename
-        .rsplit_once('.')
-        .map(|(_, ext)| ext.to_ascii_lowercase())
-        .unwrap_or_default()
+    filename.rsplit_once('.').map(|(_, ext)| ext.to_ascii_lowercase()).unwrap_or_default()
 }
 
 /// The credits a song shows: the track's own, else its album's.
@@ -326,15 +300,9 @@ async fn shown_track_credits(
     track_id: &str,
     album_id: &str,
 ) -> Result<Vec<bae_core::credits::LibraryCredit>, SubError> {
-    let own = services
-        .get_artists_for_track(track_id)
-        .await
-        .map_err(lib_err)?;
+    let own = services.get_artists_for_track(track_id).await.map_err(lib_err)?;
     if !own.is_empty() {
         return Ok(own);
     }
-    services
-        .get_artists_for_album(album_id)
-        .await
-        .map_err(lib_err)
+    services.get_artists_for_album(album_id).await.map_err(lib_err)
 }

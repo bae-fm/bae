@@ -119,10 +119,7 @@ fn action(service_type: &str, action_name: &str, arguments: &str) -> SoapRequest
          </s:Body>\
          </s:Envelope>"
     );
-    SoapRequest {
-        soap_action: format!("\"{service_type}#{action_name}\""),
-        body,
-    }
+    SoapRequest { soap_action: format!("\"{service_type}#{action_name}\""), body }
 }
 
 /// The DIDL-Lite document embedded in `SetAVTransportURI`'s metadata argument.
@@ -130,10 +127,9 @@ fn action(service_type: &str, action_name: &str, arguments: &str) -> SoapRequest
 /// `protocolInfo` MIME. Text fields are XML-escaped.
 fn didl_lite(url: &str, metadata: &DidlMetadata) -> String {
     let cover = match metadata.cover_url {
-        Some(cover_url) => format!(
-            "<upnp:albumArtURI>{}</upnp:albumArtURI>",
-            xml_escape(cover_url)
-        ),
+        Some(cover_url) => {
+            format!("<upnp:albumArtURI>{}</upnp:albumArtURI>", xml_escape(cover_url))
+        }
         None => String::new(),
     };
     format!(

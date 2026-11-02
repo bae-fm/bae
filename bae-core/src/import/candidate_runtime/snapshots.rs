@@ -21,20 +21,12 @@ pub(crate) fn compose(
         Some(identification) => stored_identification(key, &identification.stage, stored),
         None => release_run(stored),
     };
-    let import = stored
-        .standing
-        .import
-        .as_ref()
-        .map(|import| ImportInFlight { step: import.step });
+    let import = stored.standing.import.as_ref().map(|import| ImportInFlight { step: import.step });
     let search = stored.search.clone();
     if identification.is_none() && import.is_none() && search.is_none() {
         return None;
     }
-    Some(CandidateRuntimeSnapshot {
-        identification,
-        import,
-        search,
-    })
+    Some(CandidateRuntimeSnapshot { identification, import, search })
 }
 
 /// A folder candidate's identification as the table holds it, with the
@@ -61,16 +53,10 @@ fn stored_identification(
         }
         IdentificationStage::Running { run } => published(*run).map(IdentificationRuntime::Running),
         IdentificationStage::Finalizing { run } => published(*run).map(|state| {
-            IdentificationRuntime::Saving(SavingAnswer {
-                state,
-                import_asked: false,
-            })
+            IdentificationRuntime::Saving(SavingAnswer { state, import_asked: false })
         }),
         IdentificationStage::ReadingPick { run, import_asked } => published(*run).map(|state| {
-            IdentificationRuntime::Saving(SavingAnswer {
-                state,
-                import_asked: *import_asked,
-            })
+            IdentificationRuntime::Saving(SavingAnswer { state, import_asked: *import_asked })
         }),
         IdentificationStage::Failed { failure } => {
             Some(IdentificationRuntime::SaveFailed(failure.clone()))
@@ -84,10 +70,7 @@ fn stored_identification(
 /// standing names it.
 fn release_run(stored: &StoredRuntime) -> Option<IdentificationRuntime> {
     let latest_first: Vec<_> = stored.runs.values().rev().collect();
-    if let Some(running) = latest_first
-        .iter()
-        .find(|published| !published.outcome.is_answered())
-    {
+    if let Some(running) = latest_first.iter().find(|published| !published.outcome.is_answered()) {
         return Some(IdentificationRuntime::Running((*running).clone()));
     }
     latest_first.first().map(|answered| {

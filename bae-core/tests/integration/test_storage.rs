@@ -32,14 +32,10 @@ async fn test_local_import() {
     fs::create_dir_all(&db_dir).expect("db dir");
 
     let file_data = generate_test_files(&album_dir);
-    let original_files: Vec<_> = [
-        "01 Track One.flac",
-        "02 Track Two.flac",
-        "03 Track Three.flac",
-    ]
-    .iter()
-    .map(|f| album_dir.join(f))
-    .collect();
+    let original_files: Vec<_> = ["01 Track One.flac", "02 Track Two.flac", "03 Track Three.flac"]
+        .iter()
+        .map(|f| album_dir.join(f))
+        .collect();
 
     for path in &original_files {
         assert!(path.exists(), "Test file should exist: {:?}", path);
@@ -66,10 +62,7 @@ async fn test_local_import() {
 
     info!("Import completed, release_id: {}", release_id);
 
-    let tracks = library_manager
-        .get_tracks_for_release(&release_id)
-        .await
-        .expect("get tracks");
+    let tracks = library_manager.get_tracks_for_release(&release_id).await.expect("get tracks");
     assert_eq!(tracks.len(), file_data.len(), "Should have all tracks");
 
     info!("All {} tracks created", tracks.len());
@@ -85,15 +78,10 @@ async fn test_local_import() {
             track.title
         );
         let _af = audio_format.unwrap();
-        let resolved = library_manager
-            .resolve_track_audio(&track.id)
-            .await
-            .expect("resolve track audio");
+        let resolved =
+            library_manager.resolve_track_audio(&track.id).await.expect("resolve track audio");
         assert!(
-            resolved
-                .segments
-                .iter()
-                .any(|segment| !segment.file_id.is_empty()),
+            resolved.segments.iter().any(|segment| !segment.file_id.is_empty()),
             "Track '{}' should have a segment file_id",
             track.title
         );
@@ -101,11 +89,7 @@ async fn test_local_import() {
 
     info!("All tracks have audio_format records with segment file links");
 
-    assert!(database
-        .find_release_by_id(&release_id)
-        .await
-        .unwrap()
-        .is_some());
+    assert!(database.find_release_by_id(&release_id).await.unwrap().is_some());
     assert!(database
         .get_files_for_release(&release_id)
         .await
@@ -113,10 +97,7 @@ async fn test_local_import() {
         .iter()
         .all(|file| !file.stored));
     // A local release's original paths live in bae's device-local table.
-    let files = library_manager
-        .get_files_for_release(&release_id)
-        .await
-        .expect("get files");
+    let files = library_manager.get_files_for_release(&release_id).await.expect("get files");
     let local_path = library_manager
         .file_local_path(&files[0].id)
         .await
@@ -130,11 +111,7 @@ async fn test_local_import() {
     info!("Release is correctly local");
 
     for path in &original_files {
-        assert!(
-            path.exists(),
-            "Original file should still exist after local import: {:?}",
-            path
-        );
+        assert!(path.exists(), "Original file should still exist after local import: {:?}", path);
     }
 
     info!("Original files preserved in place");
@@ -152,14 +129,10 @@ async fn test_local_delete_preserves_files() {
     fs::create_dir_all(&db_dir).expect("db dir");
 
     let _file_data = generate_test_files(&album_dir);
-    let original_files: Vec<_> = [
-        "01 Track One.flac",
-        "02 Track Two.flac",
-        "03 Track Three.flac",
-    ]
-    .iter()
-    .map(|f| album_dir.join(f))
-    .collect();
+    let original_files: Vec<_> = ["01 Track One.flac", "02 Track Two.flac", "03 Track Three.flac"]
+        .iter()
+        .map(|f| album_dir.join(f))
+        .collect();
 
     for path in &original_files {
         assert!(path.exists(), "Test file should exist: {:?}", path);
@@ -186,35 +159,19 @@ async fn test_local_delete_preserves_files() {
 
     info!("Import completed, release_id: {}", release_id);
 
-    let tracks = library_manager
-        .get_tracks_for_release(&release_id)
-        .await
-        .expect("get tracks");
+    let tracks = library_manager.get_tracks_for_release(&release_id).await.expect("get tracks");
     assert_eq!(tracks.len(), 3, "Should have 3 tracks after import");
 
     info!("Deleting release {}", release_id);
-    library_manager
-        .delete_release(&release_id)
-        .await
-        .expect("delete release");
+    library_manager.delete_release(&release_id).await.expect("delete release");
 
-    let tracks_after = library_manager
-        .get_tracks_for_release(&release_id)
-        .await
-        .expect("get tracks after delete");
-    assert!(
-        tracks_after.is_empty(),
-        "Tracks should be deleted from database"
-    );
+    let tracks_after =
+        library_manager.get_tracks_for_release(&release_id).await.expect("get tracks after delete");
+    assert!(tracks_after.is_empty(), "Tracks should be deleted from database");
 
-    let album_after = library_manager
-        .find_album_detail(&album_id)
-        .await
-        .expect("get album after delete");
-    assert!(
-        album_after.is_none(),
-        "Album should no longer be shown (was last release)"
-    );
+    let album_after =
+        library_manager.find_album_detail(&album_id).await.expect("get album after delete");
+    assert!(album_after.is_none(), "Album should no longer be shown (was last release)");
 
     for path in &original_files {
         assert!(
@@ -273,10 +230,7 @@ async fn run_import_with_cover_test() {
         .unwrap()
         .iter()
         .all(|file| !file.stored));
-    let local_files = library_manager
-        .get_files_for_release(&release_id)
-        .await
-        .expect("get files");
+    let local_files = library_manager.get_files_for_release(&release_id).await.expect("get files");
     let local_path = library_manager
         .file_local_path(&local_files[0].id)
         .await
@@ -299,10 +253,8 @@ async fn run_import_with_cover_test() {
     assert_eq!(tracks.len(), 3, "Expected 3 tracks");
     info!("All {} tracks created", tracks.len());
 
-    let files = library_manager
-        .get_files_for_release(&release_id)
-        .await
-        .expect("Failed to get files");
+    let files =
+        library_manager.get_files_for_release(&release_id).await.expect("Failed to get files");
     assert!(!files.is_empty(), "Should have file records");
 
     for file in &files {
@@ -314,10 +266,7 @@ async fn run_import_with_cover_test() {
             original_path,
         );
     }
-    info!(
-        "{} DbFile records with original files in place",
-        files.len()
-    );
+    info!("{} DbFile records with original files in place", files.len());
 
     for track in &tracks {
         let audio_format = library_manager
@@ -325,27 +274,17 @@ async fn run_import_with_cover_test() {
             .await
             .expect("Failed to get audio format")
             .expect("Audio format should exist for track");
-        assert_eq!(
-            audio_format.content_type,
-            ContentType::Flac,
-            "Should be FLAC format"
-        );
+        assert_eq!(audio_format.content_type, ContentType::Flac, "Should be FLAC format");
         let resolved = library_manager
             .resolve_track_audio(&track.id)
             .await
             .expect("Failed to resolve track audio");
         assert!(
-            resolved
-                .segments
-                .iter()
-                .any(|segment| !segment.file_id.is_empty()),
+            resolved.segments.iter().any(|segment| !segment.file_id.is_empty()),
             "Track '{}' should have a segment file_id",
             track.title
         );
-        info!(
-            "Track '{}' has audio format with segment file link",
-            track.title
-        );
+        info!("Track '{}' has audio format with segment file link", track.title);
     }
 
     let cover = library_manager
@@ -374,10 +313,7 @@ async fn run_import_with_cover_test() {
         .await
         .expect("Failed to get album")
         .expect("Album should exist");
-    assert_eq!(
-        album.primary_release_id, release_id,
-        "an album's first release is its primary",
-    );
+    assert_eq!(album.primary_release_id, release_id, "an album's first release is its primary",);
 
     info!("Import with cover selection test passed");
 }
@@ -388,11 +324,7 @@ fn create_test_discogs_release() -> DiscogsRelease {
         ..support::discogs_test_release(
             "test-release-storage",
             "Storage Test Album",
-            &[
-                ("Track One", "3:00"),
-                ("Track Two", "4:00"),
-                ("Track Three", "2:30"),
-            ],
+            &[("Track One", "3:00"), ("Track Two", "4:00"), ("Track Three", "2:30")],
         )
     }
 }
@@ -400,11 +332,7 @@ fn create_test_discogs_release() -> DiscogsRelease {
 fn generate_test_files(dir: &Path) -> Vec<Vec<u8>> {
     let fixture_path = bae_test_support::fixture_dir!("flac", "01 Test Track 1.flac");
     let flac_template = bae_test_support::read_fixture(&fixture_path);
-    let files = [
-        "01 Track One.flac",
-        "02 Track Two.flac",
-        "03 Track Three.flac",
-    ];
+    let files = ["01 Track One.flac", "02 Track Two.flac", "03 Track Three.flac"];
     let bae_dir = dir.join(".bae");
     fs::create_dir_all(&bae_dir).expect("Failed to create .bae directory");
     let minimal_jpeg: Vec<u8> = vec![

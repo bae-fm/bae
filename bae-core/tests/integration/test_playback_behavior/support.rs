@@ -1,11 +1,10 @@
 use bae_catalogs::discogs::models::DiscogsRelease;
+use bae_core::config::SidePauseCountdown;
 use bae_core::import::{ImportCommand, ImportDestination};
 use bae_core::library::LibraryManager;
-use bae_core::config::SidePauseCountdown;
 use bae_core::playback::{
     LoadingTrack, PlaybackPauseBoundary, PlaybackPauseReason, PlaybackProgress,
-    PlaybackSideCountdown,
-    PlaybackState, RepeatMode, TrackTime,
+    PlaybackSideCountdown, PlaybackState, RepeatMode, TrackTime,
 };
 use bae_test_support as support;
 use coven::{IdSource, SequentialIds};
@@ -97,11 +96,11 @@ async fn wait_for_track_position_where(
     reached: impl Fn(i64) -> bool,
 ) -> Option<i64> {
     support::next_matching(progress_rx, POSITION_BACKSTOP, |event| match event {
-        PlaybackProgress::PositionUpdate {
-            position_ms,
-            track_id: tid,
-            ..
-        } if tid == track_id && reached(position_ms) => Some(position_ms),
+        PlaybackProgress::PositionUpdate { position_ms, track_id: tid, .. }
+            if tid == track_id && reached(position_ms) =>
+        {
+            Some(position_ms)
+        }
         _ => None,
     })
     .await
@@ -215,13 +214,8 @@ async fn wait_for_playing_capturing_queue_on(
     timeout_duration: Duration,
 ) -> (bool, Vec<bae_core::playback::QueueEntry>) {
     let playing = support::next_matching(progress_rx, timeout_duration, |event| {
-        matches!(
-            event,
-            PlaybackProgress::StateChanged {
-                state: PlaybackState::Playing { .. },
-            }
-        )
-        .then_some(())
+        matches!(event, PlaybackProgress::StateChanged { state: PlaybackState::Playing { .. } })
+            .then_some(())
     })
     .await;
     if playing.is_none() {
@@ -259,11 +253,9 @@ async fn wait_for_track_position(
     timeout_duration: Duration,
 ) -> Option<i64> {
     support::next_matching(progress_rx, timeout_duration, |event| match event {
-        PlaybackProgress::PositionUpdate {
-            position_ms,
-            track_id: tid,
-            ..
-        } if tid == track_id => Some(position_ms),
+        PlaybackProgress::PositionUpdate { position_ms, track_id: tid, .. } if tid == track_id => {
+            Some(position_ms)
+        }
         _ => None,
     })
     .await
@@ -310,11 +302,7 @@ async fn observe_boundary(
     };
     support::next_matching(progress_rx, timeout_duration, |event| {
         match event {
-            PlaybackProgress::DecodeStats {
-                track_id,
-                error_count,
-                ..
-            } => {
+            PlaybackProgress::DecodeStats { track_id, error_count, .. } => {
                 outcome.decode_errors += error_count;
                 if track_id == finishing {
                     outcome.decode_stats_for_finishing = true;
@@ -323,14 +311,14 @@ async fn observe_boundary(
             PlaybackProgress::TrackCompleted { track_id } if track_id == finishing => {
                 outcome.completed_for_finishing = true;
             }
-            PlaybackProgress::StateChanged {
-                state: PlaybackState::Loading { track },
-            } if track.track_id() == incoming => {
+            PlaybackProgress::StateChanged { state: PlaybackState::Loading { track } }
+                if track.track_id() == incoming =>
+            {
                 outcome.loading_for_incoming = true;
             }
-            PlaybackProgress::StateChanged {
-                state: PlaybackState::Playing { track, .. },
-            } if track.track_id == incoming => {
+            PlaybackProgress::StateChanged { state: PlaybackState::Playing { track, .. } }
+                if track.track_id == incoming =>
+            {
                 outcome.reached_incoming = true;
                 return Some(());
             }
@@ -359,16 +347,16 @@ async fn start_capture_service_with_restore(
     runtime_handle: tokio::runtime::Handle,
     restore_playback: bool,
 ) -> (bae_core::playback::PlaybackHandle, support::CaptureStreamRx) {
-    let (capture_device, capture_stream_rx) =
-        bae_core::playback::RealtimeCaptureAudioDevice::new();
-    let handle = library_manager.start_playback_service_with_audio_device(
-        runtime_handle,
-        100,
-        restore_playback,
-        Box::new(capture_device),
-    )
-    .await
-    .expect("start playback");
+    let (capture_device, capture_stream_rx) = bae_core::playback::RealtimeCaptureAudioDevice::new();
+    let handle = library_manager
+        .start_playback_service_with_audio_device(
+            runtime_handle,
+            100,
+            restore_playback,
+            Box::new(capture_device),
+        )
+        .await
+        .expect("start playback");
     (handle, capture_stream_rx)
 }
 
@@ -387,9 +375,15 @@ struct PlaybackTestFixture {
 impl PlaybackTestFixture {
     async fn new() -> Self {
         let (library_manager, imported) = imported_release_setup(
-            create_test_album(), "playback", uuid::Uuid::new_v4().to_string(),
-            |directory| { generate_test_flac_files(directory); },
-        ).await.expect("import the playback fixture");
+            create_test_album(),
+            "playback",
+            uuid::Uuid::new_v4().to_string(),
+            |directory| {
+                generate_test_flac_files(directory);
+            },
+        )
+        .await
+        .expect("import the playback fixture");
         let temp_dir = imported.temp_dir;
         let album_dir = imported.album_dir;
         let track_ids = imported.track_ids;
@@ -397,14 +391,15 @@ impl PlaybackTestFixture {
 
         let (capture_device, capture_stream_rx) =
             bae_core::playback::RealtimeCaptureAudioDevice::new();
-        let playback_handle = library_manager.start_playback_service_with_audio_device(
-            runtime_handle,
-            100,
-            true,
-            Box::new(capture_device),
-        )
-    .await
-    .expect("start playback");
+        let playback_handle = library_manager
+            .start_playback_service_with_audio_device(
+                runtime_handle,
+                100,
+                true,
+                Box::new(capture_device),
+            )
+            .await
+            .expect("start playback");
         let progress_rx = playback_handle.subscribe_progress();
         Self {
             playback_handle,
@@ -455,17 +450,13 @@ impl PlaybackTestFixture {
     }
     /// Wait for a position update with timeout (returns position in ms)
     async fn wait_for_position_update(&mut self, timeout_duration: Duration) -> Option<u64> {
-        support::next_matching(
-            &mut self.progress_rx,
-            timeout_duration,
-            |event| match event {
-                PlaybackProgress::PositionUpdate { position_ms, .. } => Some(
-                    u64::try_from(position_ms)
-                        .expect("this helper expects playback at or after track start"),
-                ),
-                _ => None,
-            },
-        )
+        support::next_matching(&mut self.progress_rx, timeout_duration, |event| match event {
+            PlaybackProgress::PositionUpdate { position_ms, .. } => Some(
+                u64::try_from(position_ms)
+                    .expect("this helper expects playback at or after track start"),
+            ),
+            _ => None,
+        })
         .await
     }
     /// Wait for the first position update past `floor_ms`, or `None` on
@@ -477,19 +468,13 @@ impl PlaybackTestFixture {
         timeout_duration: Duration,
     ) -> Option<u64> {
         let floor = i64::try_from(floor_ms).expect("position floor exceeds i64 range");
-        support::next_matching(
-            &mut self.progress_rx,
-            timeout_duration,
-            |event| match event {
-                PlaybackProgress::PositionUpdate { position_ms, .. } if position_ms > floor => {
-                    Some(
-                        u64::try_from(position_ms)
-                            .expect("position past a nonnegative floor is nonnegative"),
-                    )
-                }
-                _ => None,
-            },
-        )
+        support::next_matching(&mut self.progress_rx, timeout_duration, |event| match event {
+            PlaybackProgress::PositionUpdate { position_ms, .. } if position_ms > floor => Some(
+                u64::try_from(position_ms)
+                    .expect("position past a nonnegative floor is nonnegative"),
+            ),
+            _ => None,
+        })
         .await
     }
     /// Wait for a Seeked event with timeout (returns position in ms)

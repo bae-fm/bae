@@ -21,10 +21,7 @@ struct Layout {
     channels: u32,
 }
 
-const STEREO_44K: Layout = Layout {
-    sample_rate: 44_100,
-    channels: 2,
-};
+const STEREO_44K: Layout = Layout { sample_rate: 44_100, channels: 2 };
 
 impl Layout {
     fn second(self) -> u64 {
@@ -69,13 +66,8 @@ fn signal(layout: Layout, seconds: u32) -> Vec<i32> {
 /// `samples` encoded by LAME at a constant bitrate, with the Xing/LAME header
 /// the MP3 muxer writes.
 fn cbr_mp3(samples: &[i32], layout: Layout, bitrate_kbps: u32) -> Vec<u8> {
-    encode_i32(
-        EncodeFormat::Mp3 { bitrate_kbps },
-        samples,
-        layout.sample_rate,
-        layout.channels,
-    )
-    .expect("encode the CBR MP3")
+    encode_i32(EncodeFormat::Mp3 { bitrate_kbps }, samples, layout.sample_rate, layout.channels)
+        .expect("encode the CBR MP3")
 }
 
 /// `samples`, stereo at 44.1 kHz, encoded by LAME at VBR quality 2, with the
@@ -104,10 +96,7 @@ fn vbr_mp3(samples: &[i32], xing: bool) -> Vec<u8> {
         (*setup.as_mut_ptr()).global_quality = 2 * ff::ffi::FF_QP2LAMBDA;
     }
     let mut encoder = setup.open_as(codec).expect("open the encoder");
-    output
-        .add_stream(codec)
-        .expect("the MP3 stream")
-        .set_parameters(&encoder);
+    output.add_stream(codec).expect("the MP3 stream").set_parameters(&encoder);
     let mut options = ff::Dictionary::new();
     if !xing {
         options.set("write_xing", "0");
@@ -171,18 +160,9 @@ impl Mp3 {
     }
 }
 
-const MONO_44K: Layout = Layout {
-    sample_rate: 44_100,
-    channels: 1,
-};
-const STEREO_22K: Layout = Layout {
-    sample_rate: 22_050,
-    channels: 2,
-};
-const MONO_8K: Layout = Layout {
-    sample_rate: 8_000,
-    channels: 1,
-};
+const MONO_44K: Layout = Layout { sample_rate: 44_100, channels: 1 };
+const STEREO_22K: Layout = Layout { sample_rate: 22_050, channels: 2 };
+const MONO_8K: Layout = Layout { sample_rate: 8_000, channels: 1 };
 
 /// 320 kbps for 4.5 minutes: 10.8 MB, more than two fetch windows.
 fn long_mp3() -> Mp3 {
@@ -239,10 +219,7 @@ fn scrub_from(
     prepared.content_type = ContentType::Mp3;
     prepared.sample_rate = mp3.layout.sample_rate;
     prepared.channels = mp3.layout.channels;
-    prepared.segments[0].span = SegmentSpan {
-        end_sample: end,
-        ..SegmentSpan::whole_file()
-    };
+    prepared.segments[0].span = SegmentSpan { end_sample: end, ..SegmentSpan::whole_file() };
     prepared.segments[0].scrub_points = ScrubPoints::new(points.to_vec());
     play(prepared.decode_params(target, false), mp3.layout)
 }
@@ -330,14 +307,8 @@ fn check_scrubs(mp3: &Mp3) {
     let ten_seconds = 10 * mp3.layout.second();
     let frame = mp3.layout.frame();
     let steps = mp3.seconds / 10;
-    assert!(
-        points.len() as u32 == steps || points.len() as u32 + 1 == steps,
-        "{name}: {points:?}"
-    );
-    assert!(
-        points.iter().all(|point| point.sample < point.exact_from),
-        "{name}: {points:?}"
-    );
+    assert!(points.len() as u32 == steps || points.len() as u32 + 1 == steps, "{name}: {points:?}");
+    assert!(points.iter().all(|point| point.sample < point.exact_from), "{name}: {points:?}");
     if let Some(first) = points.first() {
         assert!(first.exact_from <= ten_seconds + frame, "{name}: {first:?}");
     }
@@ -356,26 +327,16 @@ fn check_scrubs(mp3: &Mp3) {
     for point in &points {
         let end = Some(point.exact_from + mp3.layout.second());
         let (reads, _) = scrub(mp3, &points, point.exact_from, end);
-        let head = reads
-            .iter()
-            .take_while(|&&at| at + avio <= point.byte)
-            .count();
+        let head = reads.iter().take_while(|&&at| at + avio <= point.byte).count();
         assert!(
-            reads[..head]
-                .iter()
-                .enumerate()
-                .all(|(index, &at)| at == index as u64 * avio)
+            reads[..head].iter().enumerate().all(|(index, &at)| at == index as u64 * avio)
                 && reads[head..].iter().all(|&at| at + avio > point.byte),
             "{name}: reads {reads:?} leave the head and the bytes from {point:?}"
         );
     }
 
-    let differing = differing_targets(
-        mp3,
-        &points,
-        &reference,
-        &targets(&points, total, mp3.layout),
-    );
+    let differing =
+        differing_targets(mp3, &points, &reference, &targets(&points, total, mp3.layout));
     assert!(
         differing.is_empty(),
         "{name}: scrubs to {differing:?} play other samples than the stream's own, points {points:?}"
@@ -403,9 +364,8 @@ fn a_scrub_in_an_mp3_larger_than_a_window_plays_the_streams_own_samples() {
 /// 128 bytes when it opens it.
 fn without_id3v2(bytes: &[u8]) -> Vec<u8> {
     assert_eq!(&bytes[..3], b"ID3", "the muxer writes an ID3v2 tag");
-    let size = bytes[6..10]
-        .iter()
-        .fold(0usize, |size, &byte| (size << 7) | usize::from(byte & 0x7f));
+    let size =
+        bytes[6..10].iter().fold(0usize, |size, &byte| (size << 7) | usize::from(byte & 0x7f));
     let footer = if bytes[5] & 0x10 != 0 { 10 } else { 0 };
     bytes[10 + size + footer..].to_vec()
 }
@@ -445,12 +405,8 @@ async fn scrub_fetching(
     let played = {
         let buffer = buffer.clone();
         let points = points.to_vec();
-        let mp3 = Mp3 {
-            name: mp3.name,
-            layout: mp3.layout,
-            seconds: mp3.seconds,
-            bytes: Vec::new(),
-        };
+        let mp3 =
+            Mp3 { name: mp3.name, layout: mp3.layout, seconds: mp3.seconds, bytes: Vec::new() };
         tokio::task::spawn_blocking(move || scrub_from(buffer, &mp3, &points, target, end))
             .await
             .expect("the scrub")
@@ -526,11 +482,7 @@ async fn a_scrub_deep_into_a_long_mp3_fetches_its_head_and_the_window_from_its_p
             .iter()
             .filter(|&&(start, end)| start >= FILL_WINDOW_SIZE && end <= head_end)
             .count();
-        assert_eq!(
-            fetches.len() - read_aheads,
-            if tagged { 2 } else { 3 },
-            "{name}: {fetches:?}"
-        );
+        assert_eq!(fetches.len() - read_aheads, if tagged { 2 } else { 3 }, "{name}: {fetches:?}");
     }
 }
 

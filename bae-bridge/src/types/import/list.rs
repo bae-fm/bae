@@ -309,9 +309,7 @@ pub enum BridgeCandidatePanePlacement {
         records: Vec<crate::types::BridgeReleaseRecord>,
     },
     /// Skipped, with every catalog the draft was read from.
-    Skipped {
-        records: Vec<crate::types::BridgeReleaseRecord>,
-    },
+    Skipped { records: Vec<crate::types::BridgeReleaseRecord> },
     /// In the library.
     Done,
 }
@@ -511,16 +509,10 @@ mirror_struct! {
 pub enum BridgeImportFailure {
     /// One incoming artist matched two library artists; the pane offers to
     /// choose how this import credits the artist.
-    ArtistIdentityConflict {
-        conflict: BridgeArtistIdentityConflict,
-        error: BridgeError,
-    },
+    ArtistIdentityConflict { conflict: BridgeArtistIdentityConflict, error: BridgeError },
     /// One incoming label's catalog ids matched two library labels; the pane
     /// offers to choose how this import names the label.
-    LabelIdentityConflict {
-        conflict: BridgeLabelIdentityConflict,
-        error: BridgeError,
-    },
+    LabelIdentityConflict { conflict: BridgeLabelIdentityConflict, error: BridgeError },
     /// Any other failure: a generic line and its diagnostic detail.
     Other { error: BridgeError },
 }

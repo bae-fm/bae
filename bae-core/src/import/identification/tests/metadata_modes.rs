@@ -4,24 +4,15 @@ async fn automatic_lookup_off_runs_none_of_the_identification_pipeline() {
     let calls = Arc::new(AtomicUsize::new(0));
     fixture
         .import
-        .register_artwork_analyzer(Arc::new(CountingAnalyzer {
-            calls: Arc::clone(&calls),
-        }));
+        .register_artwork_analyzer(Arc::new(CountingAnalyzer { calls: Arc::clone(&calls) }));
     let dir = fixture.barcode_candidate("Candidate");
-    fixture
-        .manager
-        .set_identify_automatically(false)
-        .await
-        .unwrap();
+    fixture.manager.set_identify_automatically(false).await.unwrap();
     fixture.scan(1).await;
 
     fixture.drain_automatic().await;
 
     assert_eq!(calls.load(Ordering::Relaxed), 0, "OCR must not run");
-    assert!(
-        fixture.provider.requests().is_empty(),
-        "no provider request may run"
-    );
+    assert!(fixture.provider.requests().is_empty(), "no provider request may run");
     assert!(fixture.identified_for(&dir).await.is_none());
 }
 
@@ -51,10 +42,7 @@ async fn a_file_tags_draft_is_still_run() {
                 .await
                 .unwrap();
         }
-        let stored = fixture
-            .stored_for(&dir)
-            .await
-            .expect("the candidate is stored");
+        let stored = fixture.stored_for(&dir).await.expect("the candidate is stored");
         assert_eq!(
             stored.metadata_provenance,
             Some(crate::import::MetadataProvenance::FileMetadata),
@@ -98,28 +86,27 @@ async fn a_pick_stores_the_result_and_automatic_identification_leaves_it_alone()
     let probed = fixture.probed_total_ms(&dir);
     fixture.scan(1).await;
     // Nothing is routed: a run would have to look the disc ID up.
-    fixture
-        .archive("mb-chosen", "rg-chosen", &[probed, 0])
-        .await;
+    fixture.archive("mb-chosen", "rg-chosen", &[probed, 0]).await;
     assert!(fixture.identified_for(&dir).await.is_none());
 
     fixture
         .import
-        .select_candidate_release(key.clone(), crate::import::PressingLink {
+        .select_candidate_release(
+            key.clone(),
+            crate::import::PressingLink {
                 record: crate::import::MetadataRef::new(
                     bae_catalogs::catalog::Catalog::MusicBrainz,
                     "mb-chosen".to_string(),
                 ),
                 partners: Vec::new(),
-            }, crate::import::CatalogApplySteps::unread(),
+            },
+            crate::import::CatalogApplySteps::unread(),
         )
         .await
         .expect("the pick lands");
 
     let picked = fixture.stored_for(&dir).await.expect("the pick is stored");
-    let result = picked
-        .identify
-        .expect("the choice is the candidate's result");
+    let result = picked.identify.expect("the choice is the candidate's result");
     assert!(
         matches!(
             &result.verdict,
@@ -140,11 +127,7 @@ async fn a_pick_stores_the_result_and_automatic_identification_leaves_it_alone()
         "a candidate a person had answered was asked about"
     );
     assert_eq!(
-        fixture
-            .stored_for(&dir)
-            .await
-            .expect("the candidate is still stored")
-            .release_link,
+        fixture.stored_for(&dir).await.expect("the candidate is still stored").release_link,
         Some(crate::import::ReleaseLink::Pressing(crate::import::PressingLink {
             record: crate::import::MetadataRef::new(
                 bae_catalogs::catalog::Catalog::MusicBrainz,
@@ -177,30 +160,17 @@ async fn a_draft_write_leaves_the_result_and_starts_no_run() {
         );
         fixture.scan(1).await;
         fixture.drain_automatic().await;
-        let settled = fixture
-            .stored_for(&dir)
-            .await
-            .expect("identification stores a result");
+        let settled = fixture.stored_for(&dir).await.expect("identification stores a result");
         let asked = fixture.provider.count_containing("/discid/");
 
         if name == "clear-metadata" {
             fixture.import.clear_candidate_metadata(key).await.unwrap();
         } else {
-            fixture
-                .import
-                .select_candidate_file_tags(key)
-                .await
-                .unwrap();
+            fixture.import.select_candidate_file_tags(key).await.unwrap();
         }
 
-        let after = fixture
-            .stored_for(&dir)
-            .await
-            .expect("the candidate is still stored");
-        assert_eq!(
-            after.identify, settled.identify,
-            "{name} left the result alone"
-        );
+        let after = fixture.stored_for(&dir).await.expect("the candidate is still stored");
+        assert_eq!(after.identify, settled.identify, "{name} left the result alone");
         assert_eq!(
             after.file_edits.revision, settled.file_edits.revision,
             "{name} did not move the file revision the result is keyed on"
@@ -208,11 +178,7 @@ async fn a_draft_write_leaves_the_result_and_starts_no_run() {
 
         fixture.drain_automatic().await;
 
-        assert_eq!(
-            fixture.provider.count_containing("/discid/"),
-            asked,
-            "{name} started no run"
-        );
+        assert_eq!(fixture.provider.count_containing("/discid/"), asked, "{name} started no run");
     }
 }
 
@@ -224,11 +190,7 @@ async fn changed_files_retire_the_result_and_wait_for_a_person() {
     let fixture = Fixture::new("changed-files-wait").await;
     let dir = fixture.disc_id_candidate("Candidate");
     let probed = fixture.probed_total_ms(&dir);
-    fixture.provider.route(
-        "/discid/",
-        200,
-        discid_json("mb-changed", "rg-changed", &[probed, 0]),
-    );
+    fixture.provider.route("/discid/", 200, discid_json("mb-changed", "rg-changed", &[probed, 0]));
     fixture.provider.route(
         "/release/mb-changed?",
         200,
@@ -244,10 +206,7 @@ async fn changed_files_retire_the_result_and_wait_for_a_person() {
     fixture.rescan(&fixture.import, 1).await;
     fixture.drain_automatic().await;
 
-    assert!(
-        fixture.identified_for(&dir).await.is_none(),
-        "the files it has now have no result"
-    );
+    assert!(fixture.identified_for(&dir).await.is_none(), "the files it has now have no result");
     assert_eq!(
         fixture.provider.count_containing("/discid/"),
         asked,
@@ -283,11 +242,7 @@ async fn disabling_automatic_lookup_lets_what_it_queued_finish() {
 
     // A preference is not a cancel: the run the setting admitted is still
     // running after it turns off, and answers.
-    fixture
-        .manager
-        .set_identify_automatically(false)
-        .await
-        .unwrap();
+    fixture.manager.set_identify_automatically(false).await.unwrap();
     assert!(fixture.import.is_identifying(&key));
     fixture.provider.release();
     tokio::time::timeout(Duration::from_secs(20), pass)
@@ -307,11 +262,7 @@ async fn disabling_automatic_lookup_preserves_a_settled_result() {
     let fixture = Fixture::new("disable-preserves-settled").await;
     let dir = fixture.disc_id_candidate("Candidate");
     let probed = fixture.probed_total_ms(&dir);
-    fixture.provider.route(
-        "/discid/",
-        200,
-        discid_json("mb-settled", "rg-settled", &[probed, 0]),
-    );
+    fixture.provider.route("/discid/", 200, discid_json("mb-settled", "rg-settled", &[probed, 0]));
     fixture.provider.route(
         "/release/mb-settled?",
         200,
@@ -319,16 +270,9 @@ async fn disabling_automatic_lookup_preserves_a_settled_result() {
     );
     fixture.scan(1).await;
     fixture.drain_automatic().await;
-    let before = fixture
-        .stored_for(&dir)
-        .await
-        .expect("identification stores its settled result");
+    let before = fixture.stored_for(&dir).await.expect("identification stores its settled result");
 
-    fixture
-        .manager
-        .set_identify_automatically(false)
-        .await
-        .unwrap();
+    fixture.manager.set_identify_automatically(false).await.unwrap();
     fixture.drain_automatic().await;
 
     let after = fixture

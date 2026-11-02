@@ -20,10 +20,7 @@ mod standings;
 
 /// `tab` in the default order, unfiltered.
 fn view(tab: TriageTab) -> ImportListView {
-    ImportListView {
-        tab,
-        ..ImportListView::default()
-    }
+    ImportListView { tab, ..ImportListView::default() }
 }
 
 /// The items one read holds, one readable line each: a header by its
@@ -48,10 +45,7 @@ fn sequence(projection: &ImportListProjection) -> Vec<String> {
 fn row_at<'a>(
     projection: &'a ImportListProjection,
     display_path: &str,
-) -> (
-    &'a crate::import::TriageRow,
-    &'a crate::import::CandidateLiveState,
-) {
+) -> (&'a crate::import::TriageRow, &'a crate::import::CandidateLiveState) {
     projection
         .windows
         .iter()
@@ -99,14 +93,7 @@ impl Library {
 
     /// One read of `list` through one window over every item.
     async fn read(&self, list: ImportListId) -> ImportListProjection {
-        self.read_through(
-            list,
-            LibraryPageWindow {
-                offset: 0,
-                limit: u64::MAX,
-            },
-        )
-        .await
+        self.read_through(list, LibraryPageWindow { offset: 0, limit: u64::MAX }).await
     }
 
     /// One read of a list opened on `view`.
@@ -122,12 +109,7 @@ impl Library {
 
     /// Change `list`'s selection, and answer with the revision.
     async fn select(&self, list: ImportListId, change: SelectionChange) -> u64 {
-        match self
-            .db
-            .change_import_list_selection(list, change)
-            .await
-            .unwrap()
-        {
+        match self.db.change_import_list_selection(list, change).await.unwrap() {
             crate::db::SelectionWrite::Changed { revision } => revision,
             crate::db::SelectionWrite::RunNotShown => panic!("the run's ends are shown"),
         }
@@ -229,10 +211,7 @@ fn scanned_with_states(lib: &Library, display_paths: &[&str]) -> String {
 
 /// `view` narrowed to `filter`.
 fn under(tab: TriageTab, filter: PendingFilter) -> ImportListView {
-    ImportListView {
-        pending_filter: filter,
-        ..view(tab)
-    }
+    ImportListView { pending_filter: filter, ..view(tab) }
 }
 
 /// `view` ordered by `order`.

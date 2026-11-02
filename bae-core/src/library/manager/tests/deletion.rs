@@ -33,11 +33,7 @@ async fn work_detail_release_rows_are_display_ready() {
         .unwrap();
     store_test_cover(&manager, &release.id, b"cover").await;
 
-    let detail = manager
-        .get_work_detail(&work.id)
-        .await
-        .unwrap()
-        .expect("work detail");
+    let detail = manager.get_work_detail(&work.id).await.unwrap().expect("work detail");
 
     assert_eq!(detail.releases.len(), 1);
     let row = &detail.releases[0];
@@ -51,10 +47,7 @@ async fn work_detail_release_rows_are_display_ready() {
             media: bae_types::pressing::made_of(bae_types::pressing::Medium::Cd, 1).media,
         }
     );
-    assert_eq!(
-        row.media,
-        bae_types::pressing::made_of(bae_types::pressing::Medium::Cd, 1).media
-    );
+    assert_eq!(row.media, bae_types::pressing::made_of(bae_types::pressing::Medium::Cd, 1).media);
     let cover = row.cover.as_ref().expect("work release cover");
     assert_eq!(cover.id, release.id);
     assert!(!cover.version.is_empty());
@@ -101,12 +94,21 @@ async fn deletion_retires_queued_file_uploads_and_keeps_the_originals() {
         let (manager, temp) = setup_test_manager().await;
         let storage = connect_test_cloud(&manager).await;
         let source = temp.path().join("source");
-        let release = insert_release_with_queued_uploads(&manager, &source, "Album", &[("track.flac", b"audio")]).await;
+        let release = insert_release_with_queued_uploads(
+            &manager,
+            &source,
+            "Album",
+            &[("track.flac", b"audio")],
+        )
+        .await;
         store_test_cover(&manager, &release.id, b"cover").await;
         finish_bound_uploads(&manager).await;
         storage.set_online(false);
-        if delete_album { manager.delete_album(&release.album_id).await.unwrap(); }
-        else { manager.delete_release(&release.id).await.unwrap(); }
+        if delete_album {
+            manager.delete_album(&release.album_id).await.unwrap();
+        } else {
+            manager.delete_release(&release.id).await.unwrap();
+        }
         assert!(find_release(&manager, &release.id).await.is_none());
         assert_eq!(std::fs::read(source.join("track.flac")).unwrap(), b"audio");
         assert_eq!(manager.database.queued_upload_count_for_test().await.unwrap(), 0);
@@ -129,9 +131,16 @@ async fn deletion_refuses_an_unavailable_database_without_losing_rows() {
         };
         assert!(matches!(error, LibraryError::Database(_)), "{error}");
         let handle = crate::library::configure_store(
-            manager.installation.builder(manager.app_dir.store_layout())
-        ).open(id, |_| ()).await.unwrap();
-        let reopened = Database::from_handle(handle, manager.clock.clone(), std::sync::Arc::new(coven::UuidIds));
+            manager.installation.builder(manager.app_dir.store_layout()),
+        )
+        .open(id, |_| ())
+        .await
+        .unwrap();
+        let reopened = Database::from_handle(
+            handle,
+            manager.clock.clone(),
+            std::sync::Arc::new(coven::UuidIds),
+        );
         assert_eq!(reopened.every_row_for_test().await.unwrap(), before);
         reopened.close().await.unwrap();
     }
@@ -157,11 +166,7 @@ async fn track_display_carries_the_cover_version() {
     manager.database.insert_album(&album).await.unwrap();
     insert_release(&manager, &release).await;
     manager.database.insert_track(&track).await.unwrap();
-    manager
-        .database
-        .insert_track_artist(&track_artist)
-        .await
-        .unwrap();
+    manager.database.insert_track_artist(&track_artist).await.unwrap();
 
     // No cover row yet: nothing to reference.
     let display = manager.get_track_display(&track.id).await.unwrap();
@@ -199,13 +204,8 @@ async fn delete_release_removes_its_cover_image() {
     // the delete runs against a cover that names a real cloud object.
     let release1 = ReleaseRef::of(
         &manager,
-        upload_release_under_sync_loop(
-            &manager,
-            &temp_dir.path().join("r1"),
-            "Album One",
-            false,
-        )
-        .await,
+        upload_release_under_sync_loop(&manager, &temp_dir.path().join("r1"), "Album One", false)
+            .await,
     )
     .await;
     // A sibling release so the album survives the single-release delete.
@@ -236,13 +236,8 @@ async fn delete_album_removes_release_covers() {
     connect_test_cloud_with_sync_loop(&manager).await;
     let release = ReleaseRef::of(
         &manager,
-        upload_release_under_sync_loop(
-            &manager,
-            &temp_dir.path().join("r1"),
-            "Album One",
-            false,
-        )
-        .await,
+        upload_release_under_sync_loop(&manager, &temp_dir.path().join("r1"), "Album One", false)
+            .await,
     )
     .await;
     store_test_cover(&manager, &release.id, b"image").await;
@@ -265,11 +260,7 @@ async fn delete_album_removes_release_covers() {
 async fn delete_release_refuses_a_plan_whose_cover_changed() {
     let (manager, _temp_dir, _album, release) = manager_with_release().await;
     store_test_cover(&manager, &release.id, b"cover").await;
-    let plan = manager
-        .database
-        .plan_release_deletion(&release.id)
-        .await
-        .unwrap();
+    let plan = manager.database.plan_release_deletion(&release.id).await.unwrap();
     store_test_cover(&manager, &release.id, b"replacement cover").await;
 
     let error = manager
@@ -316,16 +307,27 @@ async fn delete_album_deletes_its_releases_and_what_they_own() {
     let kept = uploaded_release(&manager, &temp.path().join("kept"), "Deleted", true).await;
     let album_id = find_release(&manager, &kept).await.unwrap().album_id;
     let local_dir = temp.path().join("local");
-    let local = insert_local_release_in_album(&manager, &album_id, &local_dir, &[("a.flac", b"local audio")])
-        .await
-        .id;
+    let local = insert_local_release_in_album(
+        &manager,
+        &album_id,
+        &local_dir,
+        &[("a.flac", b"local audio")],
+    )
+    .await
+    .id;
     let other_dir = temp.path().join("other");
-    let other = insert_local_release_with_files(&manager, &other_dir, "Kept", &[("b.flac", b"other audio")])
-        .await;
+    let other = insert_local_release_with_files(
+        &manager,
+        &other_dir,
+        "Kept",
+        &[("b.flac", b"other audio")],
+    )
+    .await;
     let mut tracks = Vec::new();
     for (index, release_id) in [&kept, &local, &other.id].into_iter().enumerate() {
         store_test_cover(&manager, release_id, format!("cover {index}").as_bytes()).await;
-        let track = crate::db::DbTrack::new_test(release_id, &Uuid::new_v4().to_string(), "Track", 1);
+        let track =
+            crate::db::DbTrack::new_test(release_id, &Uuid::new_v4().to_string(), "Track", 1);
         manager.database.insert_track(&track).await.unwrap();
         tracks.push(track.id);
     }
@@ -342,22 +344,16 @@ async fn delete_album_deletes_its_releases_and_what_they_own() {
              UNION ALL SELECT file FROM covers WHERE id IN ({ids})"
         )
     };
-    let deleted_files = manager
-        .database
-        .query_texts_for_test(&coven_files_of(&[&kept, &local]))
-        .await
-        .unwrap();
+    let deleted_files =
+        manager.database.query_texts_for_test(&coven_files_of(&[&kept, &local])).await.unwrap();
     assert_eq!(deleted_files.len(), 4, "two files and two covers");
     let mut pinned = 0;
     for file in &deleted_files {
         pinned += manager.database.count_rows_for_test("coven_pins", "file", file).await.unwrap();
     }
     assert!(pinned > 0, "the kept release's file is pinned here");
-    let kept_files = manager
-        .database
-        .query_texts_for_test(&coven_files_of(&[&other.id]))
-        .await
-        .unwrap();
+    let kept_files =
+        manager.database.query_texts_for_test(&coven_files_of(&[&other.id])).await.unwrap();
 
     let mut browse = manager.subscribe_album_browse(
         &[],
@@ -408,8 +404,14 @@ async fn delete_album_deletes_its_releases_and_what_they_own() {
             .is_none());
     }
     for file in &deleted_files {
-        assert_eq!(manager.database.count_rows_for_test("coven_files", "id", file).await.unwrap(), 0);
-        assert_eq!(manager.database.count_rows_for_test("coven_pins", "file", file).await.unwrap(), 0);
+        assert_eq!(
+            manager.database.count_rows_for_test("coven_files", "id", file).await.unwrap(),
+            0
+        );
+        assert_eq!(
+            manager.database.count_rows_for_test("coven_pins", "file", file).await.unwrap(),
+            0
+        );
     }
     assert_eq!(std::fs::read(local_dir.join("a.flac")).unwrap(), b"local audio");
     assert_eq!(std::fs::read(temp.path().join("kept").join("track.flac")).unwrap(), b"track-bytes");
@@ -422,17 +424,18 @@ async fn delete_album_deletes_its_releases_and_what_they_own() {
         .unwrap()
         .is_some());
     for file in &kept_files {
-        assert_eq!(manager.database.count_rows_for_test("coven_files", "id", file).await.unwrap(), 1);
+        assert_eq!(
+            manager.database.count_rows_for_test("coven_files", "id", file).await.unwrap(),
+            1
+        );
     }
-    let queued: Vec<String> = manager
-        .queue_value()
-        .await
-        .unwrap()
-        .manual
-        .into_iter()
-        .map(|item| item.track_id)
-        .collect();
-    assert_eq!(queued, std::slice::from_ref(&tracks[2]), "only the other album's track stays queued");
+    let queued: Vec<String> =
+        manager.queue_value().await.unwrap().manual.into_iter().map(|item| item.track_id).collect();
+    assert_eq!(
+        queued,
+        std::slice::from_ref(&tracks[2]),
+        "only the other album's track stays queued"
+    );
 }
 
 /// An album holding no release is not in the library, so deleting it is

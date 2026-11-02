@@ -78,10 +78,7 @@ impl PluralCategory {
 /// Parse an MF1 source string into nodes. Returns a human-readable error on any
 /// unsupported or malformed construct.
 pub fn parse(src: &str) -> Result<Vec<Node>, String> {
-    let mut p = Parser {
-        chars: src.chars().collect(),
-        pos: 0,
-    };
+    let mut p = Parser { chars: src.chars().collect(), pos: 0 };
     let nodes = p.parse_message(true)?;
     if p.pos != p.chars.len() {
         return Err(format!("unexpected `}}` at offset {}", p.pos));
@@ -211,9 +208,9 @@ impl Parser {
                 let cases = self.parse_plural_cases()?;
                 Ok(Node::Plural { arg: name, cases })
             }
-            other => Err(format!(
-                "expected `}}` or `,` after argument name `{name}`, found {other:?}"
-            )),
+            other => {
+                Err(format!("expected `}}` or `,` after argument name `{name}`, found {other:?}"))
+            }
         }
     }
 
@@ -259,9 +256,8 @@ impl Parser {
             if digits.is_empty() {
                 return Err("expected a number after `=` in a plural selector".to_string());
             }
-            let n = digits
-                .parse::<i64>()
-                .map_err(|e| format!("bad `=` selector {digits:?}: {e}"))?;
+            let n =
+                digits.parse::<i64>().map_err(|e| format!("bad `=` selector {digits:?}: {e}"))?;
             return Ok(PluralSelector::Exact(n));
         }
         let kw = self.parse_ident()?;
@@ -357,14 +353,8 @@ mod tests {
         };
         assert_eq!(arg, "count");
         assert_eq!(cases.len(), 2);
-        assert_eq!(
-            cases[0].selector,
-            PluralSelector::Category(PluralCategory::One)
-        );
-        assert_eq!(
-            cases[0].message,
-            vec![Node::Pound, Node::Text(" pending delete".to_string())]
-        );
+        assert_eq!(cases[0].selector, PluralSelector::Category(PluralCategory::One));
+        assert_eq!(cases[0].message, vec![Node::Pound, Node::Text(" pending delete".to_string())]);
     }
 
     #[test]
@@ -391,18 +381,12 @@ mod tests {
 
     #[test]
     fn apostrophe_quotes_a_literal_brace() {
-        assert_eq!(
-            parse("a '{' b").unwrap(),
-            vec![Node::Text("a { b".to_string())]
-        );
+        assert_eq!(parse("a '{' b").unwrap(), vec![Node::Text("a { b".to_string())]);
     }
 
     #[test]
     fn double_apostrophe_is_literal() {
-        assert_eq!(
-            parse("it''s here").unwrap(),
-            vec![Node::Text("it's here".to_string())]
-        );
+        assert_eq!(parse("it''s here").unwrap(), vec![Node::Text("it's here".to_string())]);
     }
 
     #[test]

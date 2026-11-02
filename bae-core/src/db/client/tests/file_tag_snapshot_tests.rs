@@ -28,10 +28,7 @@ fn candidate(root: &std::path::Path) -> FolderCandidate {
         path: candidate_path.clone(),
         file_root: candidate_path,
         name: "Candidate A".to_string(),
-        files: CategorizedFiles {
-            files,
-            parts: Vec::new(),
-        },
+        files: CategorizedFiles { files, parts: Vec::new() },
         watched_folder_path: root.to_path_buf(),
         scope: ReleaseFileScope::Recursive,
         file_edit_revision: 0,
@@ -42,14 +39,9 @@ fn candidate(root: &std::path::Path) -> FolderCandidate {
 
 async fn scanned_candidate(db: &Database, root: &std::path::Path) -> (FolderCandidate, u64) {
     db.add_watched_import_folder(root).await.unwrap();
-    let generation = db
-        .begin_folder_scan(root, crate::import::VolumeKind::Local)
-        .await
-        .unwrap();
+    let generation = db.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
     let candidate = candidate(root);
-    db.save_folder_scan_item(root, generation, &ScanItem::Valid(candidate.clone()))
-        .await
-        .unwrap();
+    db.save_folder_scan_item(root, generation, &ScanItem::Valid(candidate.clone())).await.unwrap();
     db.finish_folder_scan(root, generation, None).await.unwrap();
     (candidate, generation)
 }
@@ -112,26 +104,15 @@ async fn file_tag_snapshot_round_trips_with_current_candidate_stamp() {
     let (candidate, generation) = scanned_candidate(&db, &root).await;
     let key = crate::import::CandidateKey::folder(&candidate.path);
 
-    let empty = db
-        .load_candidate_file_tag_snapshot(&root, &key)
-        .await
-        .unwrap()
-        .unwrap();
+    let empty = db.load_candidate_file_tag_snapshot(&root, &key).await.unwrap().unwrap();
     assert_eq!(empty.scan_generation, generation);
     assert_eq!(empty.candidate.file_edit_revision, 0);
     assert_eq!(empty.snapshot, None);
 
     let expected = snapshot(generation, 0);
-    assert!(db
-        .replace_candidate_file_tag_snapshot(&root, &key, &expected)
-        .await
-        .unwrap());
+    assert!(db.replace_candidate_file_tag_snapshot(&root, &key, &expected).await.unwrap());
 
-    let loaded = db
-        .load_candidate_file_tag_snapshot(&root, &key)
-        .await
-        .unwrap()
-        .unwrap();
+    let loaded = db.load_candidate_file_tag_snapshot(&root, &key).await.unwrap().unwrap();
     assert_eq!(loaded.scan_generation, generation);
     assert_eq!(loaded.candidate, candidate);
     assert_eq!(loaded.snapshot, Some(expected));
@@ -142,9 +123,7 @@ async fn replacement_removes_every_prior_file_and_embedded_cover() {
     let (db, _tmp, root) = watched_root().await;
     let (candidate, generation) = scanned_candidate(&db, &root).await;
     let key = crate::import::CandidateKey::folder(&candidate.path);
-    db.replace_candidate_file_tag_snapshot(&root, &key, &snapshot(generation, 0))
-        .await
-        .unwrap();
+    db.replace_candidate_file_tag_snapshot(&root, &key, &snapshot(generation, 0)).await.unwrap();
 
     let replacement = FileTagSnapshot {
         scan_generation: generation,
@@ -163,10 +142,7 @@ async fn replacement_removes_every_prior_file_and_embedded_cover() {
                     album_artists: Vec::new(),
                     compilation: false,
                     years: Vec::new(),
-                    numbers: crate::import::track_numbers::TrackNumbers {
-                        disc: None,
-                        track: None,
-                    },
+                    numbers: crate::import::track_numbers::TrackNumbers { disc: None, track: None },
                 },
             },
             FileTagFact {
@@ -182,25 +158,15 @@ async fn replacement_removes_every_prior_file_and_embedded_cover() {
                     album_artists: Vec::new(),
                     compilation: false,
                     years: Vec::new(),
-                    numbers: crate::import::track_numbers::TrackNumbers {
-                        disc: None,
-                        track: None,
-                    },
+                    numbers: crate::import::track_numbers::TrackNumbers { disc: None, track: None },
                 },
             },
         ],
         embedded_cover: None,
     };
-    assert!(db
-        .replace_candidate_file_tag_snapshot(&root, &key, &replacement)
-        .await
-        .unwrap());
+    assert!(db.replace_candidate_file_tag_snapshot(&root, &key, &replacement).await.unwrap());
 
-    let loaded = db
-        .load_candidate_file_tag_snapshot(&root, &key)
-        .await
-        .unwrap()
-        .unwrap();
+    let loaded = db.load_candidate_file_tag_snapshot(&root, &key).await.unwrap().unwrap();
     assert_eq!(loaded.snapshot, Some(replacement));
 }
 
@@ -213,45 +179,23 @@ async fn a_rescan_carries_the_reading_forward_and_refuses_an_older_stamp() {
     let (candidate, first_generation) = scanned_candidate(&db, &root).await;
     let key = crate::import::CandidateKey::folder(&candidate.path);
     let stored = snapshot(first_generation, 0);
-    db.replace_candidate_file_tag_snapshot(&root, &key, &stored)
-        .await
-        .unwrap();
+    db.replace_candidate_file_tag_snapshot(&root, &key, &stored).await.unwrap();
 
-    let current_generation = db
-        .begin_folder_scan(&root, crate::import::VolumeKind::Local)
-        .await
-        .unwrap();
-    db.save_folder_scan_item(&root, current_generation, &ScanItem::Valid(candidate))
-        .await
-        .unwrap();
-    db.finish_folder_scan(&root, current_generation, None)
-        .await
-        .unwrap();
+    let current_generation =
+        db.begin_folder_scan(&root, crate::import::VolumeKind::Local).await.unwrap();
+    db.save_folder_scan_item(&root, current_generation, &ScanItem::Valid(candidate)).await.unwrap();
+    db.finish_folder_scan(&root, current_generation, None).await.unwrap();
 
-    let loaded = db
-        .load_candidate_file_tag_snapshot(&root, &key)
-        .await
-        .unwrap()
-        .unwrap();
+    let loaded = db.load_candidate_file_tag_snapshot(&root, &key).await.unwrap().unwrap();
     assert_eq!(loaded.scan_generation, current_generation);
     assert_eq!(loaded.candidate.file_edit_revision, 0);
-    let carried = loaded
-        .snapshot
-        .clone()
-        .expect("the reading is still stored");
+    let carried = loaded.snapshot.clone().expect("the reading is still stored");
     assert_eq!(carried.scan_generation, current_generation);
     assert_eq!(carried.files, stored.files);
 
-    assert!(!db
-        .replace_candidate_file_tag_snapshot(&root, &key, &stored)
-        .await
-        .unwrap());
+    assert!(!db.replace_candidate_file_tag_snapshot(&root, &key, &stored).await.unwrap());
     assert_eq!(
-        db.load_candidate_file_tag_snapshot(&root, &key)
-            .await
-            .unwrap()
-            .unwrap()
-            .snapshot,
+        db.load_candidate_file_tag_snapshot(&root, &key).await.unwrap().unwrap().snapshot,
         Some(carried)
     );
 }
@@ -262,9 +206,7 @@ async fn stale_file_edit_revision_cannot_replace_snapshot() {
     let (candidate, generation) = scanned_candidate(&db, &root).await;
     let key = crate::import::CandidateKey::folder(&candidate.path);
     let stored = snapshot(generation, 0);
-    db.replace_candidate_file_tag_snapshot(&root, &key, &stored)
-        .await
-        .unwrap();
+    db.replace_candidate_file_tag_snapshot(&root, &key, &stored).await.unwrap();
 
     let root_owned = coven::path_bytes(&root);
     let key_owned = key.clone();
@@ -279,17 +221,10 @@ async fn stale_file_edit_revision_cannot_replace_snapshot() {
     .await
     .unwrap();
 
-    let loaded = db
-        .load_candidate_file_tag_snapshot(&root, &key)
-        .await
-        .unwrap()
-        .unwrap();
+    let loaded = db.load_candidate_file_tag_snapshot(&root, &key).await.unwrap().unwrap();
     assert_eq!(loaded.candidate.file_edit_revision, 1);
     assert_eq!(loaded.snapshot, Some(stored.clone()));
-    assert!(!db
-        .replace_candidate_file_tag_snapshot(&root, &key, &stored)
-        .await
-        .unwrap());
+    assert!(!db.replace_candidate_file_tag_snapshot(&root, &key, &stored).await.unwrap());
 }
 
 #[tokio::test]
@@ -298,23 +233,14 @@ async fn failed_whole_replacement_preserves_the_previous_snapshot() {
     let (candidate, generation) = scanned_candidate(&db, &root).await;
     let key = crate::import::CandidateKey::folder(&candidate.path);
     let stored = snapshot(generation, 0);
-    db.replace_candidate_file_tag_snapshot(&root, &key, &stored)
-        .await
-        .unwrap();
+    db.replace_candidate_file_tag_snapshot(&root, &key, &stored).await.unwrap();
 
     let mut invalid = stored.clone();
     invalid.files[0].observation.modified_at_ns = -1;
-    assert!(db
-        .replace_candidate_file_tag_snapshot(&root, &key, &invalid)
-        .await
-        .is_err());
+    assert!(db.replace_candidate_file_tag_snapshot(&root, &key, &invalid).await.is_err());
 
     assert_eq!(
-        db.load_candidate_file_tag_snapshot(&root, &key)
-            .await
-            .unwrap()
-            .unwrap()
-            .snapshot,
+        db.load_candidate_file_tag_snapshot(&root, &key).await.unwrap().unwrap().snapshot,
         Some(stored)
     );
 }
@@ -356,15 +282,10 @@ async fn a_candidate_that_turns_invalid_drops_the_reading_it_carried() {
     let (db, _tmp, root) = watched_root().await;
     let (candidate, generation) = scanned_candidate(&db, &root).await;
     let key = crate::import::CandidateKey::folder(&candidate.path);
-    db.replace_candidate_file_tag_snapshot(&root, &key, &snapshot(generation, 0))
-        .await
-        .unwrap();
+    db.replace_candidate_file_tag_snapshot(&root, &key, &snapshot(generation, 0)).await.unwrap();
     assert_eq!(stored_reading_rows(&db, &root, &key).await, (1, 2));
 
-    let generation = db
-        .begin_folder_scan(&root, crate::import::VolumeKind::Local)
-        .await
-        .unwrap();
+    let generation = db.begin_folder_scan(&root, crate::import::VolumeKind::Local).await.unwrap();
     db.save_folder_scan_item(
         &root,
         generation,
@@ -383,9 +304,7 @@ async fn a_candidate_that_turns_invalid_drops_the_reading_it_carried() {
     )
     .await
     .unwrap();
-    db.finish_folder_scan(&root, generation, None)
-        .await
-        .unwrap();
+    db.finish_folder_scan(&root, generation, None).await.unwrap();
 
     assert_eq!(stored_reading_rows(&db, &root, &key).await, (0, 0));
 }
@@ -399,23 +318,16 @@ async fn a_rescan_that_finds_other_audio_drops_the_reading_it_carried() {
     let (db, _tmp, root) = watched_root().await;
     let (candidate, generation) = scanned_candidate(&db, &root).await;
     let key = crate::import::CandidateKey::folder(&candidate.path);
-    db.replace_candidate_file_tag_snapshot(&root, &key, &snapshot(generation, 0))
-        .await
-        .unwrap();
+    db.replace_candidate_file_tag_snapshot(&root, &key, &snapshot(generation, 0)).await.unwrap();
     assert_eq!(stored_reading_rows(&db, &root, &key).await, (1, 2));
 
     let mut without_second_file = candidate.clone();
     without_second_file.files.files.pop();
-    let generation = db
-        .begin_folder_scan(&root, crate::import::VolumeKind::Local)
-        .await
-        .unwrap();
+    let generation = db.begin_folder_scan(&root, crate::import::VolumeKind::Local).await.unwrap();
     db.save_folder_scan_item(&root, generation, &ScanItem::Valid(without_second_file))
         .await
         .unwrap();
-    db.finish_folder_scan(&root, generation, None)
-        .await
-        .unwrap();
+    db.finish_folder_scan(&root, generation, None).await.unwrap();
 
     assert_eq!(stored_reading_rows(&db, &root, &key).await, (0, 0));
 }
@@ -441,32 +353,14 @@ async fn superseded_preparation_leaves_snapshot_facts_and_cover_unchanged() {
     let key = crate::import::CandidateKey::folder(&candidate.path);
     let hash = candidate.files.content_hash();
     let reading = snapshot(generation, 0);
-    db.replace_candidate_file_tag_snapshot(&root, &key, &reading)
-        .await
-        .unwrap();
-    let mut stale = db
-        .load_candidate_preparation(&hash)
-        .await
-        .unwrap()
-        .unwrap()
-        .stored()
-        .unwrap();
+    db.replace_candidate_file_tag_snapshot(&root, &key, &reading).await.unwrap();
+    let mut stale = db.load_candidate_preparation(&hash).await.unwrap().unwrap().stored().unwrap();
     let expected = save_expectation(&candidate, &stale);
     crate::import::CandidatePreparations::new(db.clone())
-        .set_field(
-            &hash,
-            crate::import::CandidateEditField::AlbumTitle,
-            "Newer album",
-        )
+        .set_field(&hash, crate::import::CandidateEditField::AlbumTitle, "Newer album")
         .await
         .unwrap();
-    let before = db
-        .load_candidate_preparation(&hash)
-        .await
-        .unwrap()
-        .unwrap()
-        .stored()
-        .unwrap();
+    let before = db.load_candidate_preparation(&hash).await.unwrap().unwrap().stored().unwrap();
     stale.metadata_revision += 1;
     let mut replacement = reading.clone();
     replacement.files[0].tags.title = Some("Stale title".into());
@@ -484,20 +378,11 @@ async fn superseded_preparation_leaves_snapshot_facts_and_cover_unchanged() {
         .unwrap();
     assert!(matches!(result, crate::db::CandidateSaved::Superseded));
     assert_eq!(
-        db.load_candidate_preparation(&hash)
-            .await
-            .unwrap()
-            .unwrap()
-            .stored()
-            .unwrap(),
+        db.load_candidate_preparation(&hash).await.unwrap().unwrap().stored().unwrap(),
         before
     );
     assert_eq!(
-        db.load_candidate_file_tag_snapshot(&root, &key)
-            .await
-            .unwrap()
-            .unwrap()
-            .snapshot,
+        db.load_candidate_file_tag_snapshot(&root, &key).await.unwrap().unwrap().snapshot,
         Some(reading)
     );
 }
@@ -508,13 +393,7 @@ async fn preparation_reshape_stores_complete_tags_after_their_file_rows() {
     let (candidate, generation) = scanned_candidate(&db, &root).await;
     let key = crate::import::CandidateKey::folder(&candidate.path);
     let hash = candidate.files.content_hash();
-    let mut prep = db
-        .load_candidate_preparation(&hash)
-        .await
-        .unwrap()
-        .unwrap()
-        .stored()
-        .unwrap();
+    let mut prep = db.load_candidate_preparation(&hash).await.unwrap().unwrap().stored().unwrap();
     let expected = save_expectation(&candidate, &prep);
     prep.file_edits.revision += 1;
     prep.metadata_revision += 1;
@@ -532,11 +411,7 @@ async fn preparation_reshape_stores_complete_tags_after_their_file_rows() {
         .await
         .unwrap();
     assert!(matches!(result, crate::db::CandidateSaved::Landed(_)));
-    let stored = db
-        .load_candidate_file_tag_snapshot(&root, &key)
-        .await
-        .unwrap()
-        .unwrap();
+    let stored = db.load_candidate_file_tag_snapshot(&root, &key).await.unwrap().unwrap();
     assert_eq!(stored.candidate.file_edit_revision, 1);
     assert_eq!(stored.snapshot, Some(reading));
     assert_eq!(stored_reading_rows(&db, &root, &key).await, (1, 2));
@@ -550,26 +425,14 @@ async fn preparation_save_rejects_incomplete_or_unowned_tag_readings_atomically(
         let key = crate::import::CandidateKey::folder(&candidate.path);
         let hash = candidate.files.content_hash();
         let original = snapshot(generation, 0);
-        db.replace_candidate_file_tag_snapshot(&root, &key, &original)
-            .await
-            .unwrap();
-        let before = db
-            .load_candidate_preparation(&hash)
-            .await
-            .unwrap()
-            .unwrap()
-            .stored()
-            .unwrap();
+        db.replace_candidate_file_tag_snapshot(&root, &key, &original).await.unwrap();
+        let before = db.load_candidate_preparation(&hash).await.unwrap().unwrap().stored().unwrap();
         let expected = save_expectation(&candidate, &before);
         let mut prep = before.clone();
         prep.metadata_revision += 1;
         let mut invalid = original.clone();
         if invalid_cover {
-            invalid
-                .embedded_cover
-                .as_mut()
-                .unwrap()
-                .source_relative_path = "unread.flac".into();
+            invalid.embedded_cover.as_mut().unwrap().source_relative_path = "unread.flac".into();
         } else {
             invalid.files.pop();
         }
@@ -585,20 +448,11 @@ async fn preparation_save_rejects_incomplete_or_unowned_tag_readings_atomically(
             .await
             .is_err());
         assert_eq!(
-            db.load_candidate_preparation(&hash)
-                .await
-                .unwrap()
-                .unwrap()
-                .stored()
-                .unwrap(),
+            db.load_candidate_preparation(&hash).await.unwrap().unwrap().stored().unwrap(),
             before
         );
         assert_eq!(
-            db.load_candidate_file_tag_snapshot(&root, &key)
-                .await
-                .unwrap()
-                .unwrap()
-                .snapshot,
+            db.load_candidate_file_tag_snapshot(&root, &key).await.unwrap().unwrap().snapshot,
             Some(original)
         );
     }

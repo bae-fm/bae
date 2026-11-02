@@ -86,10 +86,7 @@ pub(super) struct StoredSheetAudio {
 
 impl StoredSheetAudio {
     pub(super) fn audio_file(self) -> SheetAudioFile {
-        SheetAudioFile {
-            file_reference: self.file_reference,
-            file_id: self.file_id,
-        }
+        SheetAudioFile { file_reference: self.file_reference, file_id: self.file_id }
     }
 }
 
@@ -107,11 +104,7 @@ impl StoredSheet {
                         .ok_or_else(|| unreadable("ripper", &key))
                 })
                 .transpose()?,
-            tracks: self
-                .tracks
-                .into_iter()
-                .map(StoredCueTrack::track)
-                .collect::<Result<_, _>>()?,
+            tracks: self.tracks.into_iter().map(StoredCueTrack::track).collect::<Result<_, _>>()?,
         })
     }
 }

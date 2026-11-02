@@ -73,12 +73,8 @@ fn a_pause_carries_the_kind_of_boundary_that_ended() {
         let boundary = side_boundary_between(&last, &next).expect("the side ends");
         assert_eq!(boundary.kind, kind, "{side_label}");
         assert_eq!(boundary.side_label, side_label);
-        let prompt = SidePauseDecision {
-            track_id: "next".to_string(),
-            boundary,
-            resumes_at: None,
-        }
-        .prompt();
+        let prompt =
+            SidePauseDecision { track_id: "next".to_string(), boundary, resumes_at: None }.prompt();
         assert_eq!(prompt.boundary, kind, "{side_label}");
     }
 }
@@ -101,20 +97,10 @@ fn side_pause_prompt_carries_its_countdown() {
             id: "next:1:Cd".to_string(),
             boundary: PlaybackPauseBoundary::Disc,
             side_label: "1".to_string(),
-            countdown: Some(PlaybackSideCountdown {
-                resumes_at: countdown_deadline(),
-            }),
+            countdown: Some(PlaybackSideCountdown { resumes_at: countdown_deadline() }),
         }
     );
-    assert_eq!(
-        SidePauseDecision {
-            resumes_at: None,
-            ..decision
-        }
-        .prompt()
-        .countdown,
-        None
-    );
+    assert_eq!(SidePauseDecision { resumes_at: None, ..decision }.prompt().countdown, None);
 }
 
 #[tokio::test]
@@ -155,9 +141,7 @@ async fn a_countdown_that_is_no_longer_running_does_not_resume() {
     let (_home, mut service, mut progress_rx) = test_playback_service().await;
     service.slot = side_paused_slot(None);
 
-    service
-        .side_pause_countdown_elapsed(countdown_deadline())
-        .await;
+    service.side_pause_countdown_elapsed(countdown_deadline()).await;
 
     assert!(service.is_side_paused(), "a cancelled countdown leaves the pause");
     assert!(drained_states(&mut progress_rx).is_empty());
@@ -181,10 +165,7 @@ fn commands_that_steer_playback_stop_the_countdown_and_the_rest_leave_it() {
         PlaybackCommand::StopRemote,
     ];
     for command in &stops {
-        assert!(
-            cancels_side_pause_countdown(command),
-            "{command:?} stops the countdown"
-        );
+        assert!(cancels_side_pause_countdown(command), "{command:?} stops the countdown");
     }
     let leaves = [
         PlaybackCommand::Resume,
@@ -192,15 +173,10 @@ fn commands_that_steer_playback_stop_the_countdown_and_the_rest_leave_it() {
         PlaybackCommand::SetMuted(true),
         PlaybackCommand::SetRepeatMode(RepeatMode::Context),
         PlaybackCommand::GetVolume(volume_tx),
-        PlaybackCommand::AutoAdvance {
-            track_id: "track".to_string(),
-        },
+        PlaybackCommand::AutoAdvance { track_id: "track".to_string() },
     ];
     for command in &leaves {
-        assert!(
-            !cancels_side_pause_countdown(command),
-            "{command:?} leaves the countdown running"
-        );
+        assert!(!cancels_side_pause_countdown(command), "{command:?} leaves the countdown running");
     }
 }
 

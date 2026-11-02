@@ -23,9 +23,7 @@ impl ImportServiceHandle {
     ) -> Result<(), crate::import::ImportError> {
         self.watcher
             .send(command)
-            .map_err(|_| crate::import::ImportError::Internal {
-                detail: on_closed.to_string(),
-            })
+            .map_err(|_| crate::import::ImportError::Internal { detail: on_closed.to_string() })
     }
 
     /// Watch a folder, in whatever spelling the caller had. A folder already
@@ -36,8 +34,7 @@ impl ImportServiceHandle {
         path: std::path::PathBuf,
     ) -> Result<(), crate::import::ImportError> {
         let this = self.clone();
-        self.committed(async move { this.add_watched_folder_write(path).await })
-            .await
+        self.committed(async move { this.add_watched_folder_write(path).await }).await
     }
 
     /// Store `path` as watched and ask for it to be read. A folder holding
@@ -48,11 +45,7 @@ impl ImportServiceHandle {
     ) -> Result<(), crate::import::ImportError> {
         let path = crate::import::watched_folder::canonical_absolute_root(&path)?;
         let shown = coven::path_text(&path);
-        if let Some(covering) = self
-            .library_manager
-            .watched_import_folder_above(&path)
-            .await?
-        {
+        if let Some(covering) = self.library_manager.watched_import_folder_above(&path).await? {
             info!(
                 "{shown} is inside the watched folder {}; re-reading it",
                 coven::path_text(&covering)
@@ -62,41 +55,28 @@ impl ImportServiceHandle {
                 "Failed to start watching folder",
             );
         }
-        let inner: Vec<std::path::PathBuf> = self
-            .library_manager
-            .watched_import_folders_below(&path)
-            .await?;
+        let inner: Vec<std::path::PathBuf> =
+            self.library_manager.watched_import_folders_below(&path).await?;
         if !inner.is_empty() {
             info!(
                 "{shown} takes over the watched folders inside it: {:?}",
-                inner
-                    .iter()
-                    .map(|folder| coven::path_text(folder))
-                    .collect::<Vec<_>>()
+                inner.iter().map(|folder| coven::path_text(folder)).collect::<Vec<_>>()
             );
             return self.remove_watched_roots(inner, Some(path)).await;
         }
         let _commit = self.folder_state_commit.lock("add a watched folder").await;
-        let added = self
-            .library_manager
-            .add_watched_import_folder(&path)
-            .await?;
+        let added = self.library_manager.add_watched_import_folder(&path).await?;
         let read = WatcherCommand::Rescan(path.clone());
         if !added {
             info!("{shown} is already watched; re-reading it");
             return self.send_watcher_command(read, "Failed to start watching folder");
         }
         if let Err(error) = self.send_watcher_command(read, "Failed to start watching folder") {
-            self.library_manager
-                .remove_watched_import_folders(vec![path], None)
-                .await?;
+            self.library_manager.remove_watched_import_folders(vec![path], None).await?;
             return Err(error);
         }
         let folders = self.watched_folders().await?;
-        self.event_tx
-            .send(ImportEvent::Scan(ScanEvent::WatchedFoldersChanged {
-                folders,
-            }));
+        self.event_tx.send(ImportEvent::Scan(ScanEvent::WatchedFoldersChanged { folders }));
         Ok(())
     }
 
@@ -120,11 +100,7 @@ impl ImportServiceHandle {
     ) -> Result<(), crate::import::ImportError> {
         let (completion, receiver) = tokio::sync::oneshot::channel();
         self.send_watcher_command(
-            WatcherCommand::Remove {
-                roots,
-                parent,
-                completion,
-            },
+            WatcherCommand::Remove { roots, parent, completion },
             "failed to request folder watch removal",
         )?;
         receiver
@@ -152,18 +128,13 @@ impl ImportServiceHandle {
         }
         while let Some(read) = reads.join_next().await {
             read.map_err(|error| {
-                self.library_manager
-                    .bug(bae_util::task_failure::TaskFailed::of_join(
-                        "read a watched folder",
-                        error,
-                    ))
+                self.library_manager.bug(bae_util::task_failure::TaskFailed::of_join(
+                    "read a watched folder",
+                    error,
+                ))
             })??;
         }
-        Ok(self
-            .library_manager
-            .load_folder_scan_progress()
-            .await?
-            .statuses)
+        Ok(self.library_manager.load_folder_scan_progress().await?.statuses)
     }
 
     pub async fn refresh_watched_folder(
@@ -207,10 +178,7 @@ impl ImportServiceHandle {
         }
         let (completion, receiver) = tokio::sync::oneshot::channel();
         self.send_watcher_command(
-            WatcherCommand::SetFolderReleaseDecision {
-                target: (key, decision),
-                completion,
-            },
+            WatcherCommand::SetFolderReleaseDecision { target: (key, decision), completion },
             "failed to set folder release decision",
         )?;
         receiver

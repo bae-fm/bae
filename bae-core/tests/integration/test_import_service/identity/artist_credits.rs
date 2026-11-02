@@ -10,7 +10,11 @@ const DISCOGS_ARTIST_FIXTURE: &str = "discogs-artist-1";
 
 /// A folder whose release is picked from a seeded Discogs release by "Artist
 /// Name".
-fn discogs_album_folder(f: &ImportFixture, dir_name: &str, title: &str) -> (std::path::PathBuf, support::DraftSource) {
+fn discogs_album_folder(
+    f: &ImportFixture,
+    dir_name: &str,
+    title: &str,
+) -> (std::path::PathBuf, support::DraftSource) {
     let release = discogs_release(title, &["Track One"]);
     let release_key = seed_discogs_test_release(f.library_manager.providers(), release);
     let dir = f.temp_path().join(dir_name);
@@ -20,7 +24,12 @@ fn discogs_album_folder(f: &ImportFixture, dir_name: &str, title: &str) -> (std:
 }
 
 /// A folder whose only metadata is its files' tags, crediting `artist`.
-fn tagged_album_folder(f: &ImportFixture, dir_name: &str, title: &str, artist: &str) -> std::path::PathBuf {
+fn tagged_album_folder(
+    f: &ImportFixture,
+    dir_name: &str,
+    title: &str,
+    artist: &str,
+) -> std::path::PathBuf {
     let dir = f.temp_path().join(dir_name);
     fs::create_dir_all(&dir).unwrap();
     generate_tagged_album_files(
@@ -28,11 +37,7 @@ fn tagged_album_folder(f: &ImportFixture, dir_name: &str, title: &str, artist: &
         title,
         artist,
         None,
-        &[TaggedTrack {
-            filename: "01.flac",
-            title: "Track One",
-            track_number: 1,
-        }],
+        &[TaggedTrack { filename: "01.flac", title: "Track One", track_number: 1 }],
     );
     dir
 }
@@ -43,10 +48,7 @@ async fn import_and_wait(
     provenance: support::DraftSource,
 ) -> (String, String) {
     let import_id = uuid::Uuid::new_v4().to_string();
-    f.handle
-        .send_command(support::folder_import(&import_id, dir, provenance))
-        .await
-        .unwrap();
+    f.handle.send_command(support::folder_import(&import_id, dir, provenance)).await.unwrap();
     let mut progress_rx = f.handle.subscribe_import(import_id);
     support::wait_for_import_complete(&mut progress_rx).await
 }
@@ -61,10 +63,7 @@ async fn artists_named(f: &ImportFixture, name: &str) -> Vec<bae_core::db::DbArt
             .to_lowercase()
     };
     let query = bae_core::library::LibrarySearchQuery::parse("rtist").expect("not blank");
-    let window = bae_core::library::LibraryPageWindow {
-        offset: 0,
-        limit: 100,
-    };
+    let window = bae_core::library::LibraryPageWindow { offset: 0, limit: 100 };
     f.db.search_artists(&query, window)
         .await
         .unwrap()
@@ -80,7 +79,8 @@ async fn album_artist_id(f: &ImportFixture, album_id: &str) -> String {
         .unwrap()
         .first()
         .expect("the imported album's first credit")
-        .artist.id
+        .artist
+        .id
         .clone()
 }
 
@@ -103,8 +103,7 @@ async fn a_tagged_album_after_a_catalog_album_joins_its_artist() {
     let tagged_dir = tagged_album_folder(&f, "album-two", "Album Two", "Artist Name");
 
     let (_, catalog_album) = import_and_wait(&f, catalog_dir, catalog).await;
-    let (_, tagged_album) =
-        import_and_wait(&f, tagged_dir, support::DraftSource::FileTags).await;
+    let (_, tagged_album) = import_and_wait(&f, tagged_dir, support::DraftSource::FileTags).await;
 
     let artists = artists_named(&f, "Artist Name").await;
     assert_eq!(artists.len(), 1, "one artist, got {artists:?}");
@@ -123,8 +122,7 @@ async fn a_catalog_album_after_a_tagged_album_gives_its_artist_the_catalog_id() 
     let (catalog_dir, catalog) = discogs_album_folder(&f, "album-one", "Album One");
     let tagged_dir = tagged_album_folder(&f, "album-two", "Album Two", "Artist Name");
 
-    let (_, tagged_album) =
-        import_and_wait(&f, tagged_dir, support::DraftSource::FileTags).await;
+    let (_, tagged_album) = import_and_wait(&f, tagged_dir, support::DraftSource::FileTags).await;
     let tagged_artist = album_artist_id(&f, &tagged_album).await;
     let (_, catalog_album) = import_and_wait(&f, catalog_dir, catalog).await;
 
@@ -239,17 +237,11 @@ type PaneQuery = coven::ReconfigurableLiveQuery<
 async fn open_tagged_pane(
     f: &ImportFixture,
     dir: &std::path::Path,
-) -> (
-    bae_core::import::CandidateKey,
-    PaneQuery,
-) {
+) -> (bae_core::import::CandidateKey, PaneQuery) {
     let key = bae_core::import::CandidateKey::folder(dir);
     f.handle.add_watched_folder(dir.to_path_buf()).await.unwrap();
     f.handle.refresh_watched_folder(dir.to_path_buf()).await.unwrap();
-    f.handle
-        .select_candidate_file_tags(key.clone())
-        .await
-        .unwrap();
+    f.handle.select_candidate_file_tags(key.clone()).await.unwrap();
     let pane = f.handle.subscribe_candidate_pane(&key);
     (key, pane)
 }
@@ -266,11 +258,14 @@ async fn next_resolution(
             let projection = pane
                 .next()
                 .await
-                .expect("the query stays open").result
+                .expect("the query stays open")
+                .result
                 .expect("the pane reads")
                 .expect("the candidate stays in the queue");
             let Some(resolved) = projection
-                .draft().unwrap().artist_resolutions
+                .draft()
+                .unwrap()
+                .artist_resolutions
                 .iter()
                 .find(|resolved| resolved.credit.name == name)
             else {
@@ -374,12 +369,8 @@ async fn a_discogs_credit_imports_with_its_printed_name_and_join() {
 
     let (_, album_id) = import_and_wait(&f, dir, support::discogs_release(release_key)).await;
 
-    let album = f
-        .library_manager
-        .find_album_detail(&album_id)
-        .await
-        .unwrap()
-        .expect("the imported album");
+    let album =
+        f.library_manager.find_album_detail(&album_id).await.unwrap().expect("the imported album");
     assert_eq!(album.artist_names, "A Variation & Artist B");
     assert_eq!(album.artists[0].artist.name, "Artist A");
     assert_eq!(album.artists[0].printed(), "A Variation");

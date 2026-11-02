@@ -282,9 +282,7 @@ impl Database {
         R: Send + 'static,
     {
         database_read::DatabaseRead::new(
-            self.inner
-                .handle
-                .read(move |sql| f(sql).map_err(CovenError::from)),
+            self.inner.handle.read(move |sql| f(sql).map_err(CovenError::from)),
         )
     }
 

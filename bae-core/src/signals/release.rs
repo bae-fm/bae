@@ -25,9 +25,7 @@ impl ReleaseIdentity {
                         "a library release with no tracks has nothing to read a release against"
                             .to_string(),
                 })?;
-        Ok(crate::import::catalog_reading::ReadAudio::of_rip(
-            lengths, self.rip,
-        ))
+        Ok(crate::import::catalog_reading::ReadAudio::of_rip(lengths, self.rip))
     }
 }
 
@@ -43,15 +41,10 @@ pub(crate) async fn resolve_release_identity(
     library_manager: &crate::library::LibraryManager,
     release_id: &str,
 ) -> Result<ReleaseIdentity, crate::library::LibraryError> {
-    library_manager
-        .get_release_by_id(release_id)
-        .await?
-        .ok_or_else(|| {
-            crate::library::LibraryError::Refused(format!("Release '{release_id}' not found"))
-        })?;
-    let files = library_manager
-        .get_files_with_originals_for_release(release_id)
-        .await?;
+    library_manager.get_release_by_id(release_id).await?.ok_or_else(|| {
+        crate::library::LibraryError::Refused(format!("Release '{release_id}' not found"))
+    })?;
+    let files = library_manager.get_files_with_originals_for_release(release_id).await?;
     let tracks = library_manager.get_tracks_for_release(release_id).await?;
     // The lengths a pick of this release is laid out against, so a document
     // is read against the discs these tracks are.
@@ -113,9 +106,7 @@ pub(crate) async fn resolve_release_artwork_paths(
     library_manager: &crate::library::LibraryManager,
     release_id: &str,
 ) -> Result<(Vec<PathBuf>, Option<tempfile::TempDir>), crate::library::LibraryError> {
-    let files = library_manager
-        .get_files_with_originals_for_release(release_id)
-        .await?;
+    let files = library_manager.get_files_with_originals_for_release(release_id).await?;
     let mut paths: Vec<PathBuf> = Vec::new();
 
     // The cover is one of several OCR inputs (the image files below are the
@@ -297,16 +288,12 @@ mod tests {
         std::fs::create_dir_all(&missing_dir).unwrap();
         let missing_path = missing_dir.join(&file.original_filename);
         std::fs::write(&missing_path, b"cover").unwrap();
-        database
-            .insert_file_for_test(&file, &missing_path)
-            .await
-            .unwrap();
+        database.insert_file_for_test(&file, &missing_path).await.unwrap();
         std::fs::remove_file(&missing_path).unwrap();
 
         let logs = capture_warn_logs_async(|| async {
-            let (paths, cover_staging) = resolve_release_artwork_paths(&manager, &release.id)
-                .await
-                .unwrap();
+            let (paths, cover_staging) =
+                resolve_release_artwork_paths(&manager, &release.id).await.unwrap();
             assert!(paths.is_empty());
             assert!(cover_staging.is_none());
         })
@@ -452,9 +439,7 @@ mod tests {
             database.insert_track(&track).await.unwrap();
         }
 
-        let identity = resolve_release_identity(&manager, &release.id)
-            .await
-            .unwrap();
+        let identity = resolve_release_identity(&manager, &release.id).await.unwrap();
         let (rip, track_count) = (identity.rip, identity.audio.track_count);
 
         assert!(

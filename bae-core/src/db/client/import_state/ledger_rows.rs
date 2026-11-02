@@ -74,9 +74,7 @@ pub(super) fn step_columns<'a>(
         BarcodeStepView::Rows { scanning: true, .. } => {
             return Err(unsettled(owner, "barcodes still being scanned"))
         }
-        BarcodeStepView::Rows {
-            scanning: false, ..
-        } => "rows",
+        BarcodeStepView::Rows { scanning: false, .. } => "rows",
     };
     let catalog = match &ledger.catalog {
         CatalogStepView::NoneFound => "none_found",
@@ -84,9 +82,7 @@ pub(super) fn step_columns<'a>(
         CatalogStepView::Numbers { scanning: true, .. } => {
             return Err(unsettled(owner, "catalog numbers still being scanned"))
         }
-        CatalogStepView::Numbers {
-            scanning: false, ..
-        } => "numbers",
+        CatalogStepView::Numbers { scanning: false, .. } => "numbers",
     };
     let isrc = match &ledger.isrc {
         IsrcStepView::Reading if running => "reading",
@@ -127,10 +123,7 @@ pub(super) fn delete_ledger(sql: &CovenWrite<'_>, owner: Owner<'_>) -> Result<()
         "import_candidate_lookup_isrc",
         "import_candidate_lookup_offered_catalog",
     ] {
-        sql.execute(
-            &format!("DELETE FROM {table} WHERE {} = ?", owner.column()),
-            params![owner],
-        )?;
+        sql.execute(&format!("DELETE FROM {table} WHERE {} = ?", owner.column()), params![owner])?;
     }
     Ok(())
 }
@@ -177,11 +170,7 @@ pub(super) fn store_ledger(
         store_lookup(
             sql,
             owner,
-            LookupKey {
-                step,
-                position,
-                cell,
-            },
+            LookupKey { step, position, cell },
             catalog,
             lookup,
             (matches, running),
@@ -205,10 +194,7 @@ pub(super) fn store_ledger(
     if let BarcodeStepView::Rows { rows, .. } = &ledger.barcode {
         value_rows(STEP_BARCODE, rows)?;
     }
-    if let CatalogStepView::Numbers {
-        rows, candidates, ..
-    } = &ledger.catalog
-    {
+    if let CatalogStepView::Numbers { rows, candidates, .. } = &ledger.catalog {
         value_rows(STEP_CATALOG, rows)?;
         for (position, candidate) in candidates.iter().enumerate() {
             sql.execute(
@@ -264,11 +250,7 @@ fn store_lookup(
     lookup: &LookupView,
     (matches, running): (&MatchPositions<'_>, bool),
 ) -> Result<(), DbError> {
-    let LookupKey {
-        step,
-        position,
-        cell,
-    } = key;
+    let LookupKey { step, position, cell } = key;
     let (answer, reason, failure) = match lookup {
         LookupView::Queued if running => ("queued", None, None),
         LookupView::LookingUp if running => ("looking_up", None, None),
@@ -341,9 +323,7 @@ fn store_lookup(
 
 fn column(index: usize) -> Result<i64, DbError> {
     i64::try_from(index).map_err(|error| {
-        DbError::Message(format!(
-            "a ledger list is longer than SQLite counts: {error}"
-        ))
+        DbError::Message(format!("a ledger list is longer than SQLite counts: {error}"))
     })
 }
 
@@ -474,9 +454,7 @@ impl StoredLedger {
         let isrcs = list(&isrcs, "ISRCs")?;
         let offered = list(&offered_catalogs, "offered catalog numbers")?;
         let rows: Vec<StoredRow> = serde_json::from_str(&rows).map_err(|error| {
-            DbError::Message(format!(
-                "the stored ledger rows of {content_hash} {rows:?}: {error}"
-            ))
+            DbError::Message(format!("the stored ledger rows of {content_hash} {rows:?}: {error}"))
         })?;
         let (Some(disc_id), Some(barcode), Some(catalog), Some(isrc), Some(search)) =
             (disc_id, barcode, catalog, isrc, search)
@@ -521,10 +499,7 @@ impl StoredLedger {
                             ))
                         })
                         .and_then(|catalog| Catalog::from_str(catalog).map_err(DbError::Message))?;
-                    Ok(ProviderCell {
-                        source,
-                        lookup: lookup(cell)?,
-                    })
+                    Ok(ProviderCell { source, lookup: lookup(cell)? })
                 })
                 .collect::<Result<Vec<_>, DbError>>()
         };
@@ -564,10 +539,7 @@ impl StoredLedger {
                                 "a stored disc ID row of {content_hash} names no disc ID"
                             ))
                         })?;
-                        Ok(DiscIdRow {
-                            disc_id,
-                            lookup: one_lookup(row, "disc ID")?,
-                        })
+                        Ok(DiscIdRow { disc_id, lookup: one_lookup(row, "disc ID")? })
                     })
                     .collect::<Result<_, DbError>>()?,
             },
@@ -626,10 +598,7 @@ impl StoredLedger {
                         "the ledger of {content_hash} read ISRCs but holds other than one ISRC row"
                     )));
                 };
-                IsrcStepView::Read {
-                    isrcs,
-                    lookup: one_lookup(row, "ISRC")?,
-                }
+                IsrcStepView::Read { isrcs, lookup: one_lookup(row, "ISRC")? }
             }
             stood @ ("reading" | "absent") => {
                 stray(&isrc_rows, STEP_ISRC, stood)?;
@@ -654,11 +623,7 @@ impl StoredLedger {
                         "the ledger of {content_hash} searched but holds other than one search row"
                     )));
                 };
-                SearchStepView::Searched {
-                    album,
-                    artist,
-                    cells: provider_cells(row.cells)?,
-                }
+                SearchStepView::Searched { album, artist, cells: provider_cells(row.cells)? }
             }
             ("waiting", Some(album), Some(artist)) => {
                 stray(&search_rows, STEP_SEARCH, "waiting")?;
@@ -698,14 +663,7 @@ fn lookup_of(
     stored: StoredLookup,
     matches: &HashMap<i64, &MetadataResult>,
 ) -> Result<LookupView, DbError> {
-    let StoredLookup {
-        catalog: _,
-        answer,
-        reason,
-        failure,
-        status,
-        releases,
-    } = stored;
+    let StoredLookup { catalog: _, answer, reason, failure, status, releases } = stored;
     if answer != "answered" && !releases.is_empty() {
         return Err(DbError::Message(format!(
             "a {answer} lookup of {content_hash} lists releases it found"
@@ -723,23 +681,18 @@ fn lookup_of(
         }),
         "failed" => Ok(LookupView::Failed {
             failure: failure_of(failure, status)?.ok_or_else(|| {
-                DbError::Message(format!(
-                    "a failed lookup of {content_hash} states no failure"
-                ))
+                DbError::Message(format!("a failed lookup of {content_hash} states no failure"))
             })?,
         }),
         "answered" => {
             let found = releases
                 .into_iter()
                 .map(|position| {
-                    matches
-                        .get(&position)
-                        .map(|held| (*held).clone())
-                        .ok_or_else(|| {
-                            DbError::Message(format!(
+                    matches.get(&position).map(|held| (*held).clone()).ok_or_else(|| {
+                        DbError::Message(format!(
                             "a lookup of {content_hash} found match {position}, which is not stored"
                         ))
-                        })
+                    })
                 })
                 .collect::<Result<Vec<_>, DbError>>()?;
             Ok(LookupView::answered(&found))

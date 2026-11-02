@@ -41,10 +41,7 @@ async fn retiring_preloaded_next_removes_staged_source() {
         current_source,
         test_track_fmt("current-track"),
     )));
-    gapless
-        .lock()
-        .unwrap()
-        .stage_next(next_source, test_track_fmt(NEXT_TRACK));
+    gapless.lock().unwrap().stage_next(next_source, test_track_fmt(NEXT_TRACK));
 
     let buffer = create_sparse_buffer(1_024);
     service.preloaded_next = Some(test_preloaded_next(
@@ -87,9 +84,7 @@ async fn read_failure_on_the_preloaded_next_discards_it_and_keeps_playing() {
     let (_home, mut service, mut progress_rx) = test_playback_service().await;
     let current_buffer = create_sparse_buffer(1_024);
     let preload_buffer = create_sparse_buffer(1_024);
-    service
-        .file_buffers
-        .cache_for_test("preload-file", preload_buffer.clone());
+    service.file_buffers.cache_for_test("preload-file", preload_buffer.clone());
     service.slot = active_slot(
         test_prepared_track_with_file("current-track", "current-file", current_buffer),
         TrackPhase::Playing,
@@ -120,10 +115,7 @@ async fn read_failure_on_the_preloaded_next_discards_it_and_keeps_playing() {
         !drained_a_playback_error(&mut progress_rx),
         "a preload's read failure must not surface an error that halts playback"
     );
-    assert!(
-        service.preloaded_next.is_none(),
-        "the preload whose bytes are gone is discarded"
-    );
+    assert!(service.preloaded_next.is_none(), "the preload whose bytes are gone is discarded");
     assert!(
         !service.file_buffers.holds("preload-file"),
         "its cancelled buffer leaves the shared cache rather than being reused dead"
@@ -189,7 +181,8 @@ async fn read_failure_on_a_buffer_out_of_play_is_ignored() {
 
 #[tokio::test]
 async fn seek_drains_pending_gapless_crossing_before_reading_current_track() {
-    let (_home, mut service, mut progress_rx) = seeded_playback_service(&[(LOADING_RELEASE, &[FINISHED_TRACK, INCOMING_TRACK])]).await;
+    let (_home, mut service, mut progress_rx) =
+        seeded_playback_service(&[(LOADING_RELEASE, &[FINISHED_TRACK, INCOMING_TRACK])]).await;
     fill_test_release(&mut service, LOADING_RELEASE).await;
 
     let finished_buffer = create_sparse_buffer(1_024);
@@ -202,10 +195,8 @@ async fn seek_drains_pending_gapless_crossing_before_reading_current_track() {
         incoming_fmt: Arc::new(test_track_fmt(INCOMING_TRACK)),
     }));
     let (_sink, source, _ready) = create_track_stream_pair(44_100, 2);
-    let source = Arc::new(Mutex::new(source::PlaybackSource::new(
-        source,
-        test_track_fmt(FINISHED_TRACK),
-    )));
+    let source =
+        Arc::new(Mutex::new(source::PlaybackSource::new(source, test_track_fmt(FINISHED_TRACK))));
     // The crossing event lives in the persistent output's audio-events receiver;
     // the source and receiver survive the track transition.
     service.output = Some(test_output(source, audio_rx));
@@ -229,10 +220,7 @@ async fn seek_drains_pending_gapless_crossing_before_reading_current_track() {
             saw_incoming_seek = track_id == INCOMING_TRACK;
         }
     }
-    assert!(
-        saw_incoming_seek,
-        "seek should emit for the crossed-into track"
-    );
+    assert!(saw_incoming_seek, "seek should emit for the crossed-into track");
     assert!(finished_buffer.is_cancelled());
 }
 
@@ -243,19 +231,16 @@ async fn seek_drains_pending_gapless_crossing_before_reading_current_track() {
 /// rebuild a stream that stays silent because the atomic is still `Stopped`.
 #[tokio::test]
 async fn seek_after_natural_completion_resumes_audibly() {
-    let (_home, mut service, _progress_rx) = seeded_playback_service(&[(LOADING_RELEASE, &[FINISHED_TRACK])]).await;
+    let (_home, mut service, _progress_rx) =
+        seeded_playback_service(&[(LOADING_RELEASE, &[FINISHED_TRACK])]).await;
     fill_test_release(&mut service, LOADING_RELEASE).await;
 
     let buffer = create_sparse_buffer(1_024);
     // The track drained: phase is Completed with its bookkeeping retained, and
     // the audio callback already flipped the atomic to Stopped.
-    service.slot = active_slot(
-        test_prepared_track(FINISHED_TRACK, buffer.clone()),
-        TrackPhase::Completed,
-    );
-    service
-        .audio_output
-        .set_state(crate::playback::audio_output::AudioState::Stopped);
+    service.slot =
+        active_slot(test_prepared_track(FINISHED_TRACK, buffer.clone()), TrackPhase::Completed);
+    service.audio_output.set_state(crate::playback::audio_output::AudioState::Stopped);
 
     service.seek(StreamPosition::from_duration(std::time::Duration::from_millis(500))).await;
 
@@ -275,19 +260,16 @@ async fn seek_after_natural_completion_resumes_audibly() {
 /// to a paused/stopped target turns the atomic assertion red.
 #[tokio::test]
 async fn next_after_natural_completion_resumes_audibly() {
-    let (_home, mut service, _progress_rx) = seeded_playback_service(&[(LOADING_RELEASE, &[FINISHED_TRACK, NEXT_TRACK])]).await;
+    let (_home, mut service, _progress_rx) =
+        seeded_playback_service(&[(LOADING_RELEASE, &[FINISHED_TRACK, NEXT_TRACK])]).await;
     fill_test_release(&mut service, LOADING_RELEASE).await;
 
     // The current track drained naturally: phase Completed, and the audio
     // callback already flipped the atomic to Stopped.
     let finished_buffer = create_sparse_buffer(1_024);
-    service.slot = active_slot(
-        test_prepared_track(FINISHED_TRACK, finished_buffer),
-        TrackPhase::Completed,
-    );
-    service
-        .audio_output
-        .set_state(crate::playback::audio_output::AudioState::Stopped);
+    service.slot =
+        active_slot(test_prepared_track(FINISHED_TRACK, finished_buffer), TrackPhase::Completed);
+    service.audio_output.set_state(crate::playback::audio_output::AudioState::Stopped);
 
     // A next track is preloaded and ready to play without a fresh decode.
     let (_next_sink, next_source, _next_ready) = create_track_stream_pair(44_100, 2);
@@ -317,17 +299,14 @@ async fn next_after_natural_completion_resumes_audibly() {
 
 #[tokio::test]
 async fn gapless_crossing_evicts_finished_track_file_buffer() {
-    let (_home, mut service, _progress_rx) = seeded_playback_service(&[(LOADING_RELEASE, &[FINISHED_TRACK, INCOMING_TRACK])]).await;
+    let (_home, mut service, _progress_rx) =
+        seeded_playback_service(&[(LOADING_RELEASE, &[FINISHED_TRACK, INCOMING_TRACK])]).await;
     fill_test_release(&mut service, LOADING_RELEASE).await;
 
     let finished_buffer = create_sparse_buffer(1_024);
     let incoming_buffer = create_sparse_buffer(1_024);
-    service
-        .file_buffers
-        .cache_for_test("finished-file", finished_buffer.clone());
-    service
-        .file_buffers
-        .cache_for_test("incoming-file", incoming_buffer.clone());
+    service.file_buffers.cache_for_test("finished-file", finished_buffer.clone());
+    service.file_buffers.cache_for_test("incoming-file", incoming_buffer.clone());
     service.slot = active_slot(
         test_prepared_track_with_file(FINISHED_TRACK, "finished-file", finished_buffer.clone()),
         TrackPhase::Playing,
@@ -353,13 +332,12 @@ async fn gapless_crossing_evicts_finished_track_file_buffer() {
 
 #[tokio::test]
 async fn gapless_crossing_keeps_file_buffer_used_by_incoming_track() {
-    let (_home, mut service, _progress_rx) = seeded_playback_service(&[(LOADING_RELEASE, &[FINISHED_TRACK, INCOMING_TRACK])]).await;
+    let (_home, mut service, _progress_rx) =
+        seeded_playback_service(&[(LOADING_RELEASE, &[FINISHED_TRACK, INCOMING_TRACK])]).await;
     fill_test_release(&mut service, LOADING_RELEASE).await;
 
     let shared_buffer = create_sparse_buffer(1_024);
-    service
-        .file_buffers
-        .cache_for_test("shared-file", shared_buffer.clone());
+    service.file_buffers.cache_for_test("shared-file", shared_buffer.clone());
     service.slot = active_slot(
         test_prepared_track_with_file(FINISHED_TRACK, "shared-file", shared_buffer.clone()),
         TrackPhase::Playing,
@@ -394,17 +372,11 @@ async fn track_ready_with_stale_generation_is_ignored() {
     let buffer = create_sparse_buffer(1_024);
     service.slot = active_slot(
         test_prepared_track("t", buffer),
-        TrackPhase::Loading {
-            generation: live,
-            target: PlayTarget::Playing,
-        },
+        TrackPhase::Loading { generation: live, target: PlayTarget::Playing },
     );
 
     service.resolve_track_ready("t".to_string(), stale).await;
-    assert!(
-        progress_rx.try_recv().is_err(),
-        "a stale-generation TrackReady must not emit"
-    );
+    assert!(progress_rx.try_recv().is_err(), "a stale-generation TrackReady must not emit");
     assert!(
         matches!(
             &service.slot,
@@ -417,9 +389,7 @@ async fn track_ready_with_stale_generation_is_ignored() {
     assert!(
         matches!(
             progress_rx.try_recv(),
-            Ok(PlaybackProgress::StateChanged {
-                state: PlaybackState::Playing { .. }
-            })
+            Ok(PlaybackProgress::StateChanged { state: PlaybackState::Playing { .. } })
         ),
         "the live load resolves to Playing and emits"
     );
@@ -435,10 +405,7 @@ async fn pause_during_load_emits_paused_and_supersedes_track_ready() {
     let buffer = create_sparse_buffer(1_024);
     service.slot = active_slot(
         test_prepared_track("t", buffer),
-        TrackPhase::Loading {
-            generation,
-            target: PlayTarget::Playing,
-        },
+        TrackPhase::Loading { generation, target: PlayTarget::Playing },
     );
 
     service.pause();
@@ -446,10 +413,7 @@ async fn pause_during_load_emits_paused_and_supersedes_track_ready() {
         matches!(
             progress_rx.try_recv(),
             Ok(PlaybackProgress::StateChanged {
-                state: PlaybackState::Paused {
-                    reason: PlaybackPauseReason::Manual,
-                    ..
-                }
+                state: PlaybackState::Paused { reason: PlaybackPauseReason::Manual, .. }
             })
         ),
         "pause during a load emits Paused(Manual)"

@@ -20,24 +20,13 @@ fn handle_over_one_album(
         playing: None,
     };
     let track_ids = runtime.block_on(async {
-        manager
-            .write_fixture(&fixture)
-            .await
-            .expect("write the library fixture");
+        manager.write_fixture(&fixture).await.expect("write the library fixture");
         let albums = manager.get_albums(&[]).await.expect("read the albums");
-        let releases = manager
-            .get_releases_for_album(&albums[0].id)
-            .await
-            .expect("read the releases");
-        manager
-            .get_track_ids(&releases[0].id)
-            .await
-            .expect("read the tracks")
+        let releases =
+            manager.get_releases_for_album(&albums[0].id).await.expect("read the releases");
+        manager.get_track_ids(&releases[0].id).await.expect("read the tracks")
     });
-    (
-        super::super::tests::start_test_handle(runtime, manager),
-        track_ids,
-    )
+    (super::super::tests::start_test_handle(runtime, manager), track_ids)
 }
 
 /// An addition reaches the app as a value of its own, with how many tracks
@@ -56,19 +45,10 @@ fn each_addition_reaches_the_app_once() {
     };
 
     handle.add_to_queue(tracks.clone());
-    assert_eq!(
-        pull(),
-        crate::types::BridgeQueueAddition {
-            number: 1,
-            tracks: 2
-        }
-    );
+    assert_eq!(pull(), crate::types::BridgeQueueAddition { number: 1, tracks: 2 });
     for (number, track) in [(2, &tracks[0]), (3, &tracks[1])] {
         handle.add_next(vec![track.clone()]);
-        assert_eq!(
-            pull(),
-            crate::types::BridgeQueueAddition { number, tracks: 1 }
-        );
+        assert_eq!(pull(), crate::types::BridgeQueueAddition { number, tracks: 1 });
     }
 
     handle.runtime.block_on(additions.clone().cancel()).unwrap();

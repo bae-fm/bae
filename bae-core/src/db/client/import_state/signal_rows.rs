@@ -73,10 +73,7 @@ pub(super) fn signals_read_columns() -> String {
 
 /// Every signal row under `content_hash`. The values cascade from the header.
 pub(super) fn delete_signals(sql: &CovenWrite<'_>, content_hash: &str) -> Result<(), DbError> {
-    sql.execute(
-        "DELETE FROM import_candidate_signals WHERE content_hash = ?",
-        [content_hash],
-    )?;
+    sql.execute("DELETE FROM import_candidate_signals WHERE content_hash = ?", [content_hash])?;
     Ok(())
 }
 
@@ -88,11 +85,8 @@ pub(super) fn store_signals(
     owner: Owner<'_>,
     signals: &Signals,
 ) -> Result<(), DbError> {
-    let scanning_refused = || {
-        DbError::Message(format!(
-            "signals of {owner} still scanning at verdict write"
-        ))
-    };
+    let scanning_refused =
+        || DbError::Message(format!("signals of {owner} still scanning at verdict write"));
     let running = matches!(owner, Owner::Run(_));
     let (disc_id_state, discs, disc_id_failure) = match &signals.disc_id {
         DiscIdSignal::Computed { discs } => ("computed", discs.as_slice(), None),
@@ -105,12 +99,9 @@ pub(super) fn store_signals(
             Some(AudioSource::CdRip { proof, file }) => {
                 (Some("cd_rip"), Some(proof.key()), None, file.clone())
             }
-            Some(AudioSource::Download(DownloadProof::Store { marker, file })) => (
-                Some("download"),
-                None,
-                Some(marker.key()),
-                Some(file.clone()),
-            ),
+            Some(AudioSource::Download(DownloadProof::Store { marker, file })) => {
+                (Some("download"), None, Some(marker.key()), Some(file.clone()))
+            }
             Some(AudioSource::Download(DownloadProof::DeliverySet)) => {
                 (Some("download"), None, Some(DELIVERY_SET), None)
             }
@@ -163,14 +154,8 @@ pub(super) fn store_signals(
         ],
     )?;
 
-    for table in [
-        "import_candidate_signal_value",
-        "import_candidate_text_line",
-    ] {
-        sql.execute(
-            &format!("DELETE FROM {table} WHERE {} = ?", owner.column()),
-            params![owner],
-        )?;
+    for table in ["import_candidate_signal_value", "import_candidate_text_line"] {
+        sql.execute(&format!("DELETE FROM {table} WHERE {} = ?", owner.column()), params![owner])?;
     }
     let unsourced = |values: &[String]| -> Vec<(String, Option<String>)> {
         values.iter().map(|value| (value.clone(), None)).collect()
@@ -178,10 +163,7 @@ pub(super) fn store_signals(
     let lists = [
         (
             "disc_id",
-            discs
-                .iter()
-                .map(|disc| (disc.disc_id.clone(), disc.source_file.clone()))
-                .collect(),
+            discs.iter().map(|disc| (disc.disc_id.clone(), disc.source_file.clone())).collect(),
         ),
         (
             "barcode",
@@ -360,16 +342,10 @@ impl StoredSignals {
             }
             (source, ..) => return Err(unreadable("audio_source", source.unwrap_or("NULL"))),
         };
-        let origin = AudioOrigin {
-            source,
-            not_cd_rate,
-        };
+        let origin = AudioOrigin { source, not_cd_rate };
         let discs: Vec<ComputedDiscId> = list_of::<StoredSourcedValue>(&discs, "Disc IDs")?
             .into_iter()
-            .map(|disc| ComputedDiscId {
-                disc_id: disc.value,
-                source_file: disc.origin_path,
-            })
+            .map(|disc| ComputedDiscId { disc_id: disc.value, source_file: disc.origin_path })
             .collect();
         if (disc_id_state == "computed") == discs.is_empty() {
             return Err(DbError::Message(format!(
@@ -381,39 +357,27 @@ impl StoredSignals {
             "computed" => DiscIdSignal::Computed { discs },
             "absent" => DiscIdSignal::Absent,
             "not_cd_audio" => DiscIdSignal::NotCdAudio,
-            "failed" => DiscIdSignal::Failed {
-                failure: failure_of(disc_id_failure, "Disc ID")?,
-            },
+            "failed" => DiscIdSignal::Failed { failure: failure_of(disc_id_failure, "Disc ID")? },
             other => return Err(unreadable("disc_id_state", other)),
         };
         let codes: Vec<SourcedValue> = list_of::<StoredSourcedValue>(&barcodes, "barcodes")?
             .into_iter()
-            .map(|code| SourcedValue {
-                value: code.value,
-                origin_path: code.origin_path,
-            })
+            .map(|code| SourcedValue { value: code.value, origin_path: code.origin_path })
             .collect();
         let barcode = match barcode_state.as_str() {
             "scanning" => BarcodeSignal::Scanning { codes },
             "settled" => BarcodeSignal::Settled { codes },
             "absent" => BarcodeSignal::Absent,
-            "failed" => BarcodeSignal::Failed {
-                failure: failure_of(barcode_failure, "barcode")?,
-                codes,
-            },
+            "failed" => {
+                BarcodeSignal::Failed { failure: failure_of(barcode_failure, "barcode")?, codes }
+            }
             other => return Err(unreadable("barcode_state", other)),
         };
         let catalogs = list_of(&catalogs, "catalog numbers")?;
         let free_text = list_of(&free_text, "free text")?;
         let text = match text_state.as_str() {
-            "scanning" => TextSignal::Scanning {
-                catalogs,
-                free_text,
-            },
-            "settled" => TextSignal::Settled {
-                catalogs,
-                free_text,
-            },
+            "scanning" => TextSignal::Scanning { catalogs, free_text },
+            "settled" => TextSignal::Settled { catalogs, free_text },
             "failed" => TextSignal::Failed {
                 failure: failure_of(text_failure, "text signal")?,
                 catalogs,

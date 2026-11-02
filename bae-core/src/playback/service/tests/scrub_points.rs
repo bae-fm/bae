@@ -27,15 +27,8 @@ fn noise_flac(seconds: u32) -> Vec<u8> {
             (state as i32 >> 8) << 8
         })
         .collect();
-    encode_i32(
-        EncodeFormat::Flac {
-            bits_per_sample: 24,
-        },
-        &samples,
-        SAMPLE_RATE,
-        CHANNELS,
-    )
-    .expect("encode the noise FLAC")
+    encode_i32(EncodeFormat::Flac { bits_per_sample: 24 }, &samples, SAMPLE_RATE, CHANNELS)
+        .expect("encode the noise FLAC")
 }
 
 /// The scrub points the import's verifying decode takes over `span` of `flac`.
@@ -62,10 +55,7 @@ fn scrub(
     let buffer = filled_buffer(flac);
     let mut prepared = test_prepared_track("track", buffer.clone());
     prepared.sample_rate = SAMPLE_RATE;
-    prepared.segments[0].span = SegmentSpan {
-        end_sample: Some(end),
-        ..segment
-    };
+    prepared.segments[0].span = SegmentSpan { end_sample: Some(end), ..segment };
     prepared.segments[0].scrub_points = ScrubPoints::new(points.to_vec());
     let played = play(prepared.decode_params(target - segment.start_sample, false));
     (buffer.read_log(), played)
@@ -116,10 +106,7 @@ fn check_worst_scrub(flac: &[u8], segment: SegmentSpan, points: &[ScrubPoint], n
     let (_, played) = scrub(flac, segment, points, target, end);
     let reference = from_track_start(flac, points[0].byte, target, end);
     assert_eq!(played.len(), (end - target) as usize * CHANNELS as usize);
-    assert!(
-        played == reference,
-        "the scrub's samples differ from a decode from the track's start"
-    );
+    assert!(played == reference, "the scrub's samples differ from a decode from the track's start");
 }
 
 #[test]
@@ -128,10 +115,7 @@ fn a_scrub_in_a_file_without_a_seektable_jumps_to_its_scrub_point() {
     let flac = noise_flac(30);
     let whole = SegmentSpan::whole_file();
     let points = import_scrub_points(&flac, whole);
-    assert!(
-        points.len() >= 5,
-        "30 s of noise spans several windows: {points:?}"
-    );
+    assert!(points.len() >= 5, "30 s of noise spans several windows: {points:?}");
     // Spaced by bytes, not by the 10 s rule: ten seconds of this noise
     // outgrow one window.
     for pair in points.windows(2) {
@@ -165,10 +149,7 @@ fn a_scrub_inside_a_track_of_a_single_file_album_jumps_to_its_scrub_point() {
         end_byte: None,
     };
     let points = import_scrub_points(&flac, track);
-    assert_eq!(
-        points[0].byte, start_byte,
-        "the first point is the track's own frame"
-    );
+    assert_eq!(points[0].byte, start_byte, "the first point is the track's own frame");
     assert!(points[0].sample <= start_sample && points[1].sample > start_sample);
     check_worst_scrub(&flac, track, &points, 2);
 }
@@ -180,15 +161,8 @@ fn quiet_flac(frames: u64) -> Vec<u8> {
     let samples: Vec<i32> = (0..frames * u64::from(CHANNELS))
         .map(|i| ((i as f64 * 0.001).sin() * 0.01 * i32::MAX as f64) as i32)
         .collect();
-    encode_i32(
-        EncodeFormat::Flac {
-            bits_per_sample: 24,
-        },
-        &samples,
-        SAMPLE_RATE,
-        CHANNELS,
-    )
-    .expect("encode the quiet FLAC")
+    encode_i32(EncodeFormat::Flac { bits_per_sample: 24 }, &samples, SAMPLE_RATE, CHANNELS)
+        .expect("encode the quiet FLAC")
 }
 
 /// A file whose last frame is the first one ten seconds past its first point,
@@ -218,8 +192,5 @@ fn a_scrub_into_the_last_frame_plays_from_its_target() {
         (total - target) as usize * CHANNELS as usize,
         "the scrub plays from its target, points {points:?}"
     );
-    assert!(
-        played == reference,
-        "the scrub's samples differ from a decode from the track's start"
-    );
+    assert!(played == reference, "the scrub's samples differ from a decode from the track's start");
 }

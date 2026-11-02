@@ -95,9 +95,7 @@ async fn create_local_release(
             uuid::Uuid::new_v4().to_string(),
             now,
         );
-        mgr.add_external_file_for_test(&db_file, &path)
-            .await
-            .unwrap();
+        mgr.add_external_file_for_test(&db_file, &path).await.unwrap();
         result.push((name.to_string(), data.to_vec()));
     }
     (release_id, result)
@@ -151,52 +149,26 @@ async fn test_multiple_releases_independent_completion() {
     mgr.upload_release(&release_a, true).await.unwrap();
     mgr.upload_release(&release_b, true).await.unwrap();
 
-    assert_eq!(
-        mgr.count_pending_uploads_for_release(&release_a)
-            .await
-            .unwrap(),
-        1
-    );
-    assert_eq!(
-        mgr.count_pending_uploads_for_release(&release_b)
-            .await
-            .unwrap(),
-        1
-    );
+    assert_eq!(mgr.count_pending_uploads_for_release(&release_a).await.unwrap(), 1);
+    assert_eq!(mgr.count_pending_uploads_for_release(&release_b).await.unwrap(), 1);
     assert_eq!(mgr.drain_uploads_expecting_work().await.unwrap(), 2);
-    assert_eq!(
-        mgr.count_pending_uploads_for_release(&release_a)
-            .await
-            .unwrap(),
-        0
-    );
-    assert_eq!(
-        mgr.count_pending_uploads_for_release(&release_b)
-            .await
-            .unwrap(),
-        0
-    );
+    assert_eq!(mgr.count_pending_uploads_for_release(&release_a).await.unwrap(), 0);
+    assert_eq!(mgr.count_pending_uploads_for_release(&release_b).await.unwrap(), 0);
 
     let mut downloads = mgr.subscribe_download_snapshot();
-    let settled = tokio::time::timeout(std::time::Duration::from_secs(10), async {
-        loop {
-            let queue = downloads
-                .next()
-                .await
-                .expect("the query stays open")
-                .unwrap();
-            if queue.rows.iter().all(|row| {
-                matches!(
-                    row.op.state,
-                    bae_core::library::DownloadPhase::Failed { .. }
-                )
-            }) {
-                return queue;
+    let settled =
+        tokio::time::timeout(std::time::Duration::from_secs(10), async {
+            loop {
+                let queue = downloads.next().await.expect("the query stays open").unwrap();
+                if queue.rows.iter().all(|row| {
+                    matches!(row.op.state, bae_core::library::DownloadPhase::Failed { .. })
+                }) {
+                    return queue;
+                }
             }
-        }
-    })
-    .await
-    .expect("both offline copies finish");
+        })
+        .await
+        .expect("both offline copies finish");
     assert!(settled.rows.is_empty(), "offline copy failed: {settled:?}");
     // Each completed upload carried its file's pin to the stored file, which
     // is pinned once its copy from storage lands.
@@ -239,10 +211,7 @@ async fn test_manage_refused_without_cloud_storage() {
         !mgr.is_sync_ready().await.unwrap(),
         "precondition: no cloud home / sync loop not running"
     );
-    assert!(
-        !mgr.has_cloud_home().await.unwrap(),
-        "precondition: no cloud home connected"
-    );
+    assert!(!mgr.has_cloud_home().await.unwrap(), "precondition: no cloud home connected");
     let source_dir = tmp.path().join("originals");
     let (release_id, _files) = create_local_release(
         &mgr,
@@ -256,10 +225,7 @@ async fn test_manage_refused_without_cloud_storage() {
         .upload_releases(std::slice::from_ref(&release_id))
         .await
         .expect("the batch reports a per-release refusal");
-    let bae_core::library::UploadReleasesOutcome::Partial {
-        receipt: None,
-        failure,
-    } = result
+    let bae_core::library::UploadReleasesOutcome::Partial { receipt: None, failure } = result
     else {
         panic!("upload must refuse the release without a receipt");
     };
@@ -334,12 +300,7 @@ async fn upload_failure_keeps_attachment_and_pending_work() {
         support::release_storage(&mgr, &release_id).await,
         (ReleaseStorageState::Local, false)
     );
-    assert_ne!(
-        mgr.count_pending_uploads_for_release(&release_id)
-            .await
-            .unwrap(),
-        0
-    );
+    assert_ne!(mgr.count_pending_uploads_for_release(&release_id).await.unwrap(), 0);
 }
 
 /// An original changed since import fails its release's move: the move
@@ -406,9 +367,7 @@ async fn detaching_audio_updates_summary_and_original_paths() {
 
     let new_path = tmp.path().join("exported");
     std::fs::create_dir(&new_path).unwrap();
-    mgr.detach_release_audio_into(&release_id, &new_path, &CancellationToken::new())
-        .await
-        .unwrap();
+    mgr.detach_release_audio_into(&release_id, &new_path, &CancellationToken::new()).await.unwrap();
 
     // Release is Local, and each file's original path names its new copy.
     assert_eq!(
@@ -417,11 +376,7 @@ async fn detaching_audio_updates_summary_and_original_paths() {
     );
     for (file_id, name, _) in &files {
         let path = mgr.file_local_path(file_id).await.unwrap().unwrap();
-        assert_eq!(
-            path,
-            new_path.join(name),
-            "device-local path names the new copy"
-        );
+        assert_eq!(path, new_path.join(name), "device-local path names the new copy");
     }
 }
 
@@ -447,20 +402,15 @@ async fn detaching_audio_with_a_missing_file_fails_leaving_summary_remote() {
 
     let new_path = tmp.path().join("exported");
     std::fs::create_dir(&new_path).unwrap();
-    let result = mgr
-        .detach_release_audio_into(&release_id, &new_path, &CancellationToken::new())
-        .await;
+    let result =
+        mgr.detach_release_audio_into(&release_id, &new_path, &CancellationToken::new()).await;
     assert!(result.is_err(), "missing file must be a hard error");
 
     assert_eq!(
         support::release_storage(&mgr, &release_id).await,
         (ReleaseStorageState::Remote, false)
     );
-    assert_eq!(
-        std::fs::read_dir(&new_path).unwrap().count(),
-        0,
-        "no copy is left"
-    );
+    assert_eq!(std::fs::read_dir(&new_path).unwrap().count(), 0, "no copy is left");
 }
 
 /// Two names of a release that coven writes as one name (`?` becomes its
@@ -498,11 +448,7 @@ async fn detaching_audio_whose_names_write_as_one_is_refused() {
         support::release_storage(&mgr, &release_id).await,
         (ReleaseStorageState::Remote, false)
     );
-    assert_eq!(
-        std::fs::read_dir(&new_path).unwrap().count(),
-        0,
-        "no copy is made"
-    );
+    assert_eq!(std::fs::read_dir(&new_path).unwrap().count(), 0, "no copy is made");
 }
 
 // ---------------------------------------------------------------------------
@@ -549,19 +495,13 @@ async fn storage_subscription_delivers_actions_on_cloud_home_transition() {
         },
         filter: StorageFilter::All,
         search: String::new(),
-        windows: [bae_core::library::LibraryPageWindow {
-            offset: 0,
-            limit: 50,
-        }]
-        .into_iter()
-        .collect(),
+        windows: [bae_core::library::LibraryPageWindow { offset: 0, limit: 50 }]
+            .into_iter()
+            .collect(),
         selected: Default::default(),
     });
     let before = next_storage_release(&values, &release_id).await;
-    assert!(
-        before.storage_actions.is_empty(),
-        "no cloud home → no storage actions"
-    );
+    assert!(before.storage_actions.is_empty(), "no cloud home → no storage actions");
 
     support::connect_storage(&mgr, &cloud).await;
     // The disk's answer for the release's originals is a value of its own,

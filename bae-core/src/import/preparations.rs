@@ -38,17 +38,13 @@ impl CandidatePreparations {
         &self,
         content_hash: &str,
     ) -> Result<Option<CandidatePreparation>, LibraryError> {
-        match self
-            .database
-            .load_candidate_preparation(content_hash)
-            .await?
-        {
+        match self.database.load_candidate_preparation(content_hash).await? {
             None => Ok(None),
             Some(crate::db::CandidatePreparationRead::Stored(prep)) => Ok(Some(prep)),
             Some(crate::db::CandidatePreparationRead::Imported { release_id }) => {
-                Err(LibraryError::Import(Box::new(
-                    super::ImportError::FilesAlreadyImported { release_id },
-                )))
+                Err(LibraryError::Import(Box::new(super::ImportError::FilesAlreadyImported {
+                    release_id,
+                })))
             }
         }
     }
@@ -99,9 +95,7 @@ impl CandidatePreparations {
             return Ok(false);
         };
         Ok(matches!(
-            self.database
-                .save_candidate_preparation(prep, expected, extras)
-                .await?,
+            self.database.save_candidate_preparation(prep, expected, extras).await?,
             CandidateSaved::Landed(_)
         ))
     }
@@ -114,11 +108,7 @@ impl CandidatePreparations {
         &self,
         verdict: &NewImportCandidateVerdict,
     ) -> Result<
-        Option<(
-            CandidatePreparation,
-            CandidateSaveExpectation,
-            CandidateSaveExtras,
-        )>,
+        Option<(CandidatePreparation, CandidateSaveExpectation, CandidateSaveExtras)>,
         LibraryError,
     > {
         let Some(mut prep) = self.load_stored(&verdict.content_hash).await? else {
@@ -221,11 +211,7 @@ impl CandidatePreparations {
             reshaped_files: Some(settled_candidates.to_vec()),
             ..CandidateSaveExtras::default()
         };
-        match self
-            .database
-            .save_candidate_preparation(prep, expected, extras)
-            .await?
-        {
+        match self.database.save_candidate_preparation(prep, expected, extras).await? {
             CandidateSaved::Landed(candidates) => Ok((next_revision, candidates)),
             CandidateSaved::Superseded => Err(CandidateAsRead::files_moved(
                 read.file_edit_revision,
@@ -259,8 +245,7 @@ impl CandidatePreparations {
             cover: None,
             assets: crate::import::CandidatePreparedAssets::default(),
         };
-        self.apply_metadata(prep, None, candidate_key, metadata, None, releases.to_vec())
-            .await
+        self.apply_metadata(prep, None, candidate_key, metadata, None, releases.to_vec()).await
     }
 
     /// Link the candidate to `link`, or to nothing, leaving everything else
@@ -285,15 +270,9 @@ impl CandidatePreparations {
             metadata_revision: prep.metadata_revision,
             scanned: None,
         };
-        let extras = CandidateSaveExtras {
-            releases: releases.to_vec(),
-            ..CandidateSaveExtras::default()
-        };
-        match self
-            .database
-            .save_candidate_preparation(prep, expected, extras)
-            .await?
-        {
+        let extras =
+            CandidateSaveExtras { releases: releases.to_vec(), ..CandidateSaveExtras::default() };
+        match self.database.save_candidate_preparation(prep, expected, extras).await? {
             CandidateSaved::Landed(_) => Ok(()),
             CandidateSaved::Superseded => Err(LibraryError::Refused(format!(
                 "{content_hash} changed while its link was replaced"
@@ -313,15 +292,8 @@ impl CandidatePreparations {
             watched_folder_path: watched_folder_path.to_path_buf(),
             candidate_path: candidate_key.clone(),
         };
-        self.apply_metadata(
-            prep,
-            Some(scanned),
-            candidate_key,
-            metadata.clone(),
-            None,
-            Vec::new(),
-        )
-        .await
+        self.apply_metadata(prep, Some(scanned), candidate_key, metadata.clone(), None, Vec::new())
+            .await
     }
 
     /// A person's pick: the candidate is linked to `link`, the draft read
@@ -364,15 +336,8 @@ impl CandidatePreparations {
                 })
             }
         }
-        self.apply_metadata(
-            prep,
-            Some(scanned),
-            candidate_key,
-            metadata.clone(),
-            None,
-            releases,
-        )
-        .await
+        self.apply_metadata(prep, Some(scanned), candidate_key, metadata.clone(), None, releases)
+            .await
     }
 
     /// The person could not tell which of the pressings the stored verdict
@@ -423,11 +388,7 @@ impl CandidatePreparations {
             releases,
             ..CandidateSaveExtras::default()
         };
-        match self
-            .database
-            .save_candidate_preparation(prep, expected, extras)
-            .await?
-        {
+        match self.database.save_candidate_preparation(prep, expected, extras).await? {
             CandidateSaved::Landed(_) => Ok(revision),
             CandidateSaved::Superseded => Err(LibraryError::Refused(format!(
                 "{} changed while its album was being linked",
@@ -568,11 +529,7 @@ impl CandidatePreparations {
             ends_identification: true,
             releases,
         };
-        match self
-            .database
-            .save_candidate_preparation(prep, expected, extras)
-            .await?
-        {
+        match self.database.save_candidate_preparation(prep, expected, extras).await? {
             CandidateSaved::Landed(_) => Ok(revision),
             CandidateSaved::Superseded => Err(crate::library::LibraryError::Refused(
                 "candidate changed before its metadata was stored".into(),
@@ -615,10 +572,7 @@ fn settle_cover(
             selection: metadata.cover.take(),
             image: metadata.assets.remote_cover.take(),
         },
-        PreparedCover {
-            selection: stored.cover.take(),
-            image: stored.assets.remote_cover.take(),
-        },
+        PreparedCover { selection: stored.cover.take(), image: stored.assets.remote_cover.take() },
     );
     metadata.cover = settled.selection;
     metadata.assets.remote_cover = settled.image;
@@ -648,27 +602,18 @@ mod tests {
             ),
             bae_catalogs::catalog::Catalog::Discogs,
         );
-        let nothing = || PreparedCover {
-            selection: None,
-            image: None,
-        };
+        let nothing = || PreparedCover { selection: None, image: None };
 
         let kept = settled_cover(
             nothing(),
-            PreparedCover {
-                selection: Some(folders_own.clone()),
-                image: None,
-            },
+            PreparedCover { selection: Some(folders_own.clone()), image: None },
         );
         assert_eq!(kept.selection, Some(folders_own.clone()));
         assert_eq!(kept.image, None);
 
         let kept = settled_cover(
             nothing(),
-            PreparedCover {
-                selection: Some(remote.clone()),
-                image: Some(image(1)),
-            },
+            PreparedCover { selection: Some(remote.clone()), image: Some(image(1)) },
         );
         assert_eq!(kept.selection, Some(remote.clone()));
         assert_eq!(kept.image, Some(image(1)));
@@ -678,14 +623,8 @@ mod tests {
         assert_eq!(none_either_way.image, None);
 
         let replaced = settled_cover(
-            PreparedCover {
-                selection: Some(remote.clone()),
-                image: Some(image(2)),
-            },
-            PreparedCover {
-                selection: Some(folders_own),
-                image: None,
-            },
+            PreparedCover { selection: Some(remote.clone()), image: Some(image(2)) },
+            PreparedCover { selection: Some(folders_own), image: None },
         );
         assert_eq!(replaced.selection, Some(remote));
         assert_eq!(replaced.image, Some(image(2)));

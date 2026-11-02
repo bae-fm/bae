@@ -36,12 +36,7 @@ impl PlaybackService {
         let Some(preloaded) = self.preloaded_next.take() else {
             return false;
         };
-        let PreloadedNext {
-            prepared,
-            source,
-            cancel_token,
-            ..
-        } = preloaded;
+        let PreloadedNext { prepared, source, cancel_token, .. } = preloaded;
         self.discard_preloaded_source(source);
         discard_preloaded_decoder(&prepared, &cancel_token);
         self.file_buffers.retire(prepared);
@@ -57,10 +52,7 @@ impl PlaybackService {
             self.discard_buffered_listening();
             self.renderer.flush_airplay();
             self.capture_listening_position();
-            current
-                .decoder
-                .cancel_token
-                .store(true, std::sync::atomic::Ordering::Release);
+            current.decoder.cancel_token.store(true, std::sync::atomic::Ordering::Release);
             self.file_buffers.retire(current.prepared);
             true
         } else {
@@ -95,9 +87,7 @@ impl PlaybackService {
                 sample_rate,
                 channels,
                 "Streaming decode",
-                DecodeFailureReport::EmitPlaybackError {
-                    progress_tx: self.progress_tx.clone(),
-                },
+                DecodeFailureReport::EmitPlaybackError { progress_tx: self.progress_tx.clone() },
             ),
             |track_stream, handle, cancel_token, ready| (track_stream, handle, cancel_token, ready),
         );
@@ -111,9 +101,8 @@ impl PlaybackService {
             }
         };
 
-        if let Err(error) = self
-            .attach_track(track_stream, fmt, sample_rate, channels, staged_next)
-            .await
+        if let Err(error) =
+            self.attach_track(track_stream, fmt, sample_rate, channels, staged_next).await
         {
             cancel_token.store(true, std::sync::atomic::Ordering::Release);
             for segment in &prepared.segments {
@@ -135,10 +124,7 @@ impl PlaybackService {
                 match ready.await {
                     Ok(()) => dispatch_command(
                         &command_tx,
-                        PlaybackCommand::TrackReady {
-                            track_id,
-                            generation,
-                        },
+                        PlaybackCommand::TrackReady { track_id, generation },
                     ),
                     Err(_) => {
                         debug!("ready watcher dropped before signal for track {track_id}")
@@ -163,10 +149,7 @@ impl PlaybackService {
 
         self.install_active_track(
             prepared,
-            TrackDecoder {
-                handle,
-                cancel_token,
-            },
+            TrackDecoder { handle, cancel_token },
             phase,
             starts_at,
         );
@@ -216,9 +199,7 @@ impl PlaybackService {
                 );
                 emit_progress(
                     &self.progress_tx,
-                    PlaybackProgress::PlaybackError {
-                        reason: error.ui_reason(),
-                    },
+                    PlaybackProgress::PlaybackError { reason: error.ui_reason() },
                 );
                 return;
             }
@@ -299,28 +280,25 @@ impl PlaybackService {
     /// fill, fails loud rather than falling back to a single-track queue.
     pub(super) async fn handle_play(&mut self, track_id: String) {
         self.stop_preview_for_main_playback();
-        let failure = match self
-            .playback_queue
-            .play(ContextFill::ReleaseOfTrack(track_id.clone()))
-            .await
-        {
-            Ok(ContextFilled::Playing { track_count, .. }) => {
-                self.telemetry_playback_started(PlaybackStartSource::Release, track_count);
-                None
-            }
-            Ok(ContextFilled::NoTracks | ContextFilled::StartMissing) => Some(
-                crate::library::LibraryError::TrackMapping(format!("Track not found: {track_id}")),
-            ),
-            Err(e) => Some(crate::library::LibraryError::from(e)),
-        };
+        let failure =
+            match self.playback_queue.play(ContextFill::ReleaseOfTrack(track_id.clone())).await {
+                Ok(ContextFilled::Playing { track_count, .. }) => {
+                    self.telemetry_playback_started(PlaybackStartSource::Release, track_count);
+                    None
+                }
+                Ok(ContextFilled::NoTracks | ContextFilled::StartMissing) => {
+                    Some(crate::library::LibraryError::TrackMapping(format!(
+                        "Track not found: {track_id}"
+                    )))
+                }
+                Err(e) => Some(crate::library::LibraryError::from(e)),
+            };
         if let Some(e) = failure {
             error!("Failed to play {track_id} from its release: {e}");
             self.telemetry_playback_failed(PlaybackOperation::LoadContext);
             emit_progress(
                 &self.progress_tx,
-                PlaybackProgress::PlaybackError {
-                    reason: PlaybackError::database(e).ui_reason(),
-                },
+                PlaybackProgress::PlaybackError { reason: PlaybackError::database(e).ui_reason() },
             );
             return;
         }
@@ -338,14 +316,10 @@ impl PlaybackService {
     /// play/pause intent forward (a naturally-completed track carries Playing, so
     /// the skip resumes audibly rather than inheriting the Stopped atomic).
     pub(super) async fn handle_next(&mut self) {
-        let target = if self.is_side_paused() {
-            PlayTarget::Playing
-        } else {
-            self.current_play_target()
-        };
+        let target =
+            if self.is_side_paused() { PlayTarget::Playing } else { self.current_play_target() };
         if let Some(preloaded_track_id) = self.next_track_id().map(|s| s.to_string()) {
-            self.advance_and_play_preloaded(&preloaded_track_id, false, target)
-                .await;
+            self.advance_and_play_preloaded(&preloaded_track_id, false, target).await;
         } else {
             // Nothing preloaded: let the queue decide what plays next.
             match self.next_entry().await {
@@ -372,10 +346,9 @@ impl PlaybackService {
     /// intent to the track we land on (a side-pause collapses to a plain manual
     /// pause across the track change).
     pub(super) async fn handle_previous(&mut self) {
-        let (Some(current_track_id), Some(track_time)) = (
-            self.current_track_id().map(str::to_string),
-            self.current_track_time(),
-        ) else {
+        let (Some(current_track_id), Some(track_time)) =
+            (self.current_track_id().map(str::to_string), self.current_track_time())
+        else {
             debug!("Previous command received with no current track; ignoring");
             return;
         };
@@ -552,8 +525,7 @@ impl PlaybackService {
                 self.handle_position_event(fmt, position).await
             }
             AudioEvent::Completion((fmt, error_count, samples_decoded)) => {
-                self.handle_completion_event(fmt, error_count, samples_decoded)
-                    .await;
+                self.handle_completion_event(fmt, error_count, samples_decoded).await;
             }
             AudioEvent::TrackCrossing(crossing) => self.handle_track_crossed(crossing).await,
             AudioEvent::Starved {
@@ -567,8 +539,7 @@ impl PlaybackService {
                 // `producer_finished` means a drained track awaiting AutoAdvance,
                 // not the stall this watchdog targets.
                 if !producer_finished {
-                    self.handle_starvation(&fmt, position, samples_decoded, starved_ms)
-                        .await;
+                    self.handle_starvation(&fmt, position, samples_decoded, starved_ms).await;
                 }
             }
             AudioEvent::StarvationEnded { .. } => self.reset_starvation_episode(),
@@ -584,8 +555,7 @@ impl PlaybackService {
         // End AirPlay and resume local paused (the shape a Cast/DLNA end has).
         if let Some(cause) = self.renderer.airplay_failure() {
             warn!("airplay stream failed ({cause}); ending AirPlay and resuming local");
-            self.end_airplay_and_resume_local(RemoteEnd::Lost(cause))
-                .await;
+            self.end_airplay_and_resume_local(RemoteEnd::Lost(cause)).await;
             return;
         }
         while let Some(event) = self.output.as_mut().and_then(|o| o.audio_events.pop()) {
@@ -594,15 +564,8 @@ impl PlaybackService {
 
         // Asked of whichever stream the events above left in place: one they
         // replaced took its device's reports with it.
-        if let Some(detail) = self
-            .output
-            .as_ref()
-            .and_then(|out| out.stream.take_invalidation())
-        {
-            let out = self
-                .output
-                .take()
-                .expect("the output whose stream reported it can't go on");
+        if let Some(detail) = self.output.as_ref().and_then(|out| out.stream.take_invalidation()) {
+            let out = self.output.take().expect("the output whose stream reported it can't go on");
             self.follow_output_device(out, &detail).await;
         }
 

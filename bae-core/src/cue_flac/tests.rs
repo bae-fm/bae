@@ -2,11 +2,8 @@ use super::*;
 #[test]
 fn test_parse_time() {
     // "MM:SS:FF" -> total CUE frames (75 frames per second).
-    let cases = [
-        ("03:45:12", (3 * 60 + 45) * 75 + 12),
-        ("00:00:00", 0),
-        ("60:35:00", (60 * 60 + 35) * 75),
-    ];
+    let cases =
+        [("03:45:12", (3 * 60 + 45) * 75 + 12), ("00:00:00", 0), ("60:35:00", (60 * 60 + 35) * 75)];
     for (input, expected) in cases {
         let cue_frames = parse_time(input).unwrap();
         assert_eq!(cue_frames, expected, "input: {input}");
@@ -39,11 +36,7 @@ FILE "03 - Track Three.m4a" WAVE
     assert_eq!(sheet.tracks[2].file_reference, "03 - Track Three.m4a");
     assert_eq!(
         sheet.audio_file_references(),
-        [
-            "01 - Track One.m4a",
-            "02 - Track Two.m4a",
-            "03 - Track Three.m4a"
-        ]
+        ["01 - Track One.m4a", "02 - Track Two.m4a", "03 - Track Three.m4a"]
     );
 }
 
@@ -213,11 +206,7 @@ FILE "Artist Name - Album Title.flac" WAVE
     INDEX 01 05:46:50
 "#;
     let result = parse_cue_content(cue_content);
-    assert!(
-        result.is_ok(),
-        "Failed to parse CUE with CATALOG line: {:?}",
-        result.err()
-    );
+    assert!(result.is_ok(), "Failed to parse CUE with CATALOG line: {:?}", result.err());
     let cue_sheet = result.unwrap();
     assert_eq!(cue_sheet.title.as_deref(), Some("Album Title"));
     assert_eq!(cue_sheet.performer.as_deref(), Some("Artist Name"));
@@ -555,11 +544,7 @@ FILE "test.flac" WAVE
 
     // Pregap duration should be 3 seconds (3:03 - 3:00 = 225 CUE frames = 3s)
     let pregap_duration_frames = start_frames - pregap_frames;
-    assert_eq!(
-        pregap_duration_frames,
-        3 * 75,
-        "Pregap duration should be 3 seconds"
-    );
+    assert_eq!(pregap_duration_frames, 3 * 75, "Pregap duration should be 3 seconds");
 }
 
 #[test]
@@ -621,25 +606,16 @@ FILE "Test Artist - Test Album.flac" WAVE
     INDEX 01 10:41:28
 "#;
     let result = parse_cue_content(cue_content);
-    assert!(
-        result.is_ok(),
-        "Should parse CUE with REM between TITLE and FILE"
-    );
+    assert!(result.is_ok(), "Should parse CUE with REM between TITLE and FILE");
     let cue_sheet = result.unwrap();
     assert_eq!(cue_sheet.title.as_deref(), Some("Test Album"));
     assert_eq!(cue_sheet.performer.as_deref(), Some("Test Artist"));
     assert_eq!(cue_sheet.tracks.len(), 3, "Should parse 3 tracks");
     assert_eq!(cue_sheet.tracks[0].title.as_deref(), Some("Track 1"));
     assert_eq!(cue_sheet.tracks[1].title.as_deref(), Some("Track 2"));
-    assert_eq!(
-        cue_sheet.tracks[2].title.as_deref(),
-        Some("Track 3 With Multiple Sections")
-    );
+    assert_eq!(cue_sheet.tracks[2].title.as_deref(), Some("Track 3 With Multiple Sections"));
     assert_eq!(cue_sheet.tracks[0].start_cue_frames, 0);
-    assert_eq!(
-        cue_sheet.tracks[1].start_cue_frames,
-        (6 * 60 + 17) * 75 + 53
-    );
+    assert_eq!(cue_sheet.tracks[1].start_cue_frames, (6 * 60 + 17) * 75 + 53);
 }
 
 #[test]
@@ -680,24 +656,15 @@ FILE "test.ape" WAVE
     // sits on track 2's own start.
     let track2 = &cue_sheet.tracks[1];
     assert_eq!(track2.start_cue_frames, (5 * 60 + 5) * 75);
-    assert!(
-        length(track2) > 200 * 75,
-        "track 2 runs about three and a half minutes"
-    );
+    assert!(length(track2) > 200 * 75, "track 2 runs about three and a half minutes");
 
     // Track 3 ends at track 4's INDEX 01, not at its bogus pregap.
     let track3 = &cue_sheet.tracks[2];
     assert_eq!(track3.start_cue_frames, (8 * 60 + 31) * 75 + 20);
-    assert!(
-        length(track3) > 140 * 75,
-        "track 3 runs about two and a half minutes"
-    );
+    assert!(length(track3) > 140 * 75, "track 3 runs about two and a half minutes");
 
     // The bogus pregap is gone.
-    assert!(
-        track3.index(0).is_none(),
-        "Bogus INDEX 00 should be removed from the raw index list"
-    );
+    assert!(track3.index(0).is_none(), "Bogus INDEX 00 should be removed from the raw index list");
 }
 
 /// A sheet names the CD ripper that wrote it in its `REM COMMENT`; a comment
@@ -711,10 +678,7 @@ fn a_sheet_names_the_cd_ripper_that_wrote_it() {
         ))
         .unwrap()
     };
-    assert_eq!(
-        sheet("REM COMMENT \"ExactAudioCopy v1.1\"").ripper,
-        Some(CdRipper::ExactAudioCopy)
-    );
+    assert_eq!(sheet("REM COMMENT \"ExactAudioCopy v1.1\"").ripper, Some(CdRipper::ExactAudioCopy));
     assert_eq!(sheet("REM COMMENT \"Transferred from LP\"").ripper, None);
     assert_eq!(sheet("REM Placeholder MONO").ripper, None);
 }

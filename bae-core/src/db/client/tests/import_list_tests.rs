@@ -25,14 +25,9 @@ use list_read::request;
 /// One scanned candidate under a fresh watched root.
 async fn scanned(db: &Database, root: &std::path::Path, name: &str) -> FolderCandidate {
     db.add_watched_import_folder(root).await.unwrap();
-    let generation = db
-        .begin_folder_scan(root, crate::import::VolumeKind::Local)
-        .await
-        .unwrap();
+    let generation = db.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
     let candidate = candidate(root, name);
-    db.save_folder_scan_item(root, generation, &ScanItem::Valid(candidate.clone()))
-        .await
-        .unwrap();
+    db.save_folder_scan_item(root, generation, &ScanItem::Valid(candidate.clone())).await.unwrap();
     db.finish_folder_scan(root, generation, None).await.unwrap();
     candidate
 }
@@ -165,10 +160,7 @@ fn rows(projection: &crate::import::ImportListProjection) -> Vec<crate::import::
 /// Each candidate row of one read, by key, with where it stands on Found.
 fn standings(
     projection: &crate::import::ImportListProjection,
-) -> Vec<(
-    crate::import::CandidateKey,
-    Option<crate::import::PendingStanding>,
-)> {
+) -> Vec<(crate::import::CandidateKey, Option<crate::import::PendingStanding>)> {
     projection
         .windows
         .iter()
@@ -225,21 +217,16 @@ async fn a_picked_row_reads_in_the_stored_releases_records() {
     crate::import::CandidatePreparations::new(db.clone())
         .replace_link(
             &candidate.files.content_hash(),
-            Some(&crate::import::ReleaseLink::Pressing(
-                crate::import::PressingLink {
-                    record: crate::import::MetadataRef::new(Catalog::MusicBrainz, "mb-picked"),
-                    partners: vec![],
-                },
-            )),
+            Some(&crate::import::ReleaseLink::Pressing(crate::import::PressingLink {
+                record: crate::import::MetadataRef::new(Catalog::MusicBrainz, "mb-picked"),
+                partners: vec![],
+            })),
             &[],
         )
         .await
         .unwrap();
 
-    let projection = db
-        .load_import_list_read(request(TriageTab::Pending).await)
-        .await
-        .unwrap();
+    let projection = db.load_import_list_read(request(TriageTab::Pending).await).await.unwrap();
     assert_eq!(
         rows(&projection)[0].reading,
         crate::import::triage::TriageReading::Identified {
@@ -279,10 +266,7 @@ async fn a_pick_of_a_release_nothing_stored_is_refused() {
         .await
         .expect_err("a pick of a release nothing stored is refused");
 
-    let projection = db
-        .load_import_list_read(request(TriageTab::Pending).await)
-        .await
-        .unwrap();
+    let projection = db.load_import_list_read(request(TriageTab::Pending).await).await.unwrap();
     assert_eq!(
         rows(&projection)[0].metadata_provenance,
         None,
@@ -304,16 +288,10 @@ async fn a_sole_release_with_an_unread_document_reads_back_as_a_lookup_error() {
     findings.matches[0].document_failure = Some(crate::signals::LookupFailure::Network);
     store_verdict(&db, &candidate, unread).await;
 
-    let projection = db
-        .load_import_list_read(request(TriageTab::Pending).await)
-        .await
-        .unwrap();
+    let projection = db.load_import_list_read(request(TriageTab::Pending).await).await.unwrap();
     assert_eq!(
         standings(&projection),
-        vec![(
-            candidate.key(),
-            Some(crate::import::PendingStanding::LookupError)
-        )]
+        vec![(candidate.key(), Some(crate::import::PendingStanding::LookupError))]
     );
 }
 
@@ -326,25 +304,12 @@ async fn an_error_verdict_reads_back_as_an_error_with_its_text() {
     let failure = crate::signals::InternalFailure {
         detail: "checking the library: the store is locked".to_string(),
     };
-    store_verdict(
-        &db,
-        &candidate,
-        TerminalVerdict::Error {
-            failure: failure.clone(),
-        },
-    )
-    .await;
+    store_verdict(&db, &candidate, TerminalVerdict::Error { failure: failure.clone() }).await;
 
-    let projection = db
-        .load_import_list_read(request(TriageTab::Pending).await)
-        .await
-        .unwrap();
+    let projection = db.load_import_list_read(request(TriageTab::Pending).await).await.unwrap();
     assert_eq!(
         standings(&projection),
-        vec![(
-            candidate.key(),
-            Some(crate::import::PendingStanding::Error { failure })
-        )]
+        vec![(candidate.key(), Some(crate::import::PendingStanding::Error { failure }))]
     );
 }
 
@@ -362,31 +327,16 @@ async fn a_verdict_the_folder_rules_out_reads_back_as_its_failed_check() {
         }
     }
     db.add_watched_import_folder(&root).await.unwrap();
-    let generation = db
-        .begin_folder_scan(&root, crate::import::VolumeKind::Local)
-        .await
-        .unwrap();
-    db.save_folder_scan_item(&root, generation, &ScanItem::Valid(candidate.clone()))
-        .await
-        .unwrap();
-    db.finish_folder_scan(&root, generation, None)
-        .await
-        .unwrap();
+    let generation = db.begin_folder_scan(&root, crate::import::VolumeKind::Local).await.unwrap();
+    db.save_folder_scan_item(&root, generation, &ScanItem::Valid(candidate.clone())).await.unwrap();
+    db.finish_folder_scan(&root, generation, None).await.unwrap();
     let conflict = crate::identify::MediumConflict::NotCdAudio;
-    let TerminalVerdict::Found {
-        mut findings,
-        track_count,
-        ledger,
-    } = verdict("mb-verdict", None)
+    let TerminalVerdict::Found { mut findings, track_count, ledger } = verdict("mb-verdict", None)
     else {
         unreachable!("verdict builds a found verdict");
     };
     findings.medium_conflict = Some(conflict);
-    let stored = TerminalVerdict::Found {
-        findings,
-        track_count,
-        ledger,
-    };
+    let stored = TerminalVerdict::Found { findings, track_count, ledger };
     assert!(crate::import::CandidatePreparations::new(db.clone())
         .store_verdict(&NewImportCandidateVerdict {
             content_hash: candidate.files.content_hash(),
@@ -394,10 +344,7 @@ async fn a_verdict_the_folder_rules_out_reads_back_as_its_failed_check() {
             candidate_key: candidate.key(),
             verdict: stored.clone(),
             signals: crate::signals::Signals {
-                origin: crate::signals::AudioOrigin {
-                    source: None,
-                    not_cd_rate: Some(96_000),
-                },
+                origin: crate::signals::AudioOrigin { source: None, not_cd_rate: Some(96_000) },
                 disc_id: crate::signals::DiscIdSignal::Absent,
                 barcode: crate::signals::BarcodeSignal::Absent,
                 text: crate::signals::TextSignal::Settled {
@@ -419,10 +366,7 @@ async fn a_verdict_the_folder_rules_out_reads_back_as_its_failed_check() {
         .await
         .unwrap()
         .expect("the candidate has a state row");
-    assert_eq!(
-        state.identify.expect("the verdict reads back").verdict,
-        stored
-    );
+    assert_eq!(state.identify.expect("the verdict reads back").verdict, stored);
     let pane = db
         .load_import_candidate(&crate::import::CandidateKey::folder(&candidate.path))
         .await
@@ -442,10 +386,7 @@ async fn a_verdict_the_folder_rules_out_reads_back_as_its_failed_check() {
         .unwrap()
         .expect("the candidate reads back");
     assert_eq!(
-        detail
-            .resumed_identify_state
-            .audio()
-            .and_then(|audio| audio.rate_ruling_out_cd),
+        detail.resumed_identify_state.audio().and_then(|audio| audio.rate_ruling_out_cd),
         Some(96_000)
     );
 }
@@ -458,15 +399,9 @@ async fn the_list_places_a_row_without_reading_its_files() {
     let candidate = scanned(&db, &root, "Album").await;
     save_verdict(&db, &candidate, "mb-verdict").await;
 
-    let before = db
-        .load_import_list_read(request(TriageTab::Pending).await)
-        .await
-        .unwrap();
+    let before = db.load_import_list_read(request(TriageTab::Pending).await).await.unwrap();
     exec(&db, "DELETE FROM scan_candidate_file", &[]).await;
-    let after = db
-        .load_import_list_read(request(TriageTab::Pending).await)
-        .await
-        .unwrap();
+    let after = db.load_import_list_read(request(TriageTab::Pending).await).await.unwrap();
 
     assert_eq!(rows(&before), rows(&after));
     assert_eq!(before.summary, after.summary);
@@ -490,16 +425,10 @@ async fn the_detail_resumes_the_stored_verdict() {
         ..
     } = &detail.resumed_identify_state
     else {
-        panic!(
-            "expected the stored Found, got {:?}",
-            detail.resumed_identify_state
-        );
+        panic!("expected the stored Found, got {:?}", detail.resumed_identify_state);
     };
     assert_eq!(
-        matches
-            .iter()
-            .map(|result| result.release_id.as_str())
-            .collect::<Vec<_>>(),
+        matches.iter().map(|result| result.release_id.as_str()).collect::<Vec<_>>(),
         vec!["mb-verdict"]
     );
 }
@@ -577,10 +506,7 @@ async fn a_verdict_from_another_revision_does_not_resume() {
         .unwrap()
         .expect("the scanned candidate still reads back");
 
-    assert!(matches!(
-        detail.resumed_identify_state,
-        crate::identify::IdentifyState::Idle
-    ));
+    assert!(matches!(detail.resumed_identify_state, crate::identify::IdentifyState::Idle));
     assert!(detail.verdict.is_none());
 }
 
@@ -590,10 +516,7 @@ async fn a_verdict_from_another_revision_does_not_resume() {
 async fn the_list_projects_the_applied_draft_and_cover() {
     let (db, _tmp, root) = watched_root().await;
     db.add_watched_import_folder(&root).await.unwrap();
-    let generation = db
-        .begin_folder_scan(&root, crate::import::VolumeKind::Local)
-        .await
-        .unwrap();
+    let generation = db.begin_folder_scan(&root, crate::import::VolumeKind::Local).await.unwrap();
     let mut candidate = candidate(&root, "Album");
     candidate.files.files.push(CandidateFile {
         file: ScannedFile::new(
@@ -613,48 +536,27 @@ async fn the_list_projects_the_applied_draft_and_cover() {
         ),
         role: FileRole::Artwork,
     });
-    db.save_folder_scan_item(&root, generation, &ScanItem::Valid(candidate.clone()))
-        .await
-        .unwrap();
-    db.finish_folder_scan(&root, generation, None)
-        .await
-        .unwrap();
+    db.save_folder_scan_item(&root, generation, &ScanItem::Valid(candidate.clone())).await.unwrap();
+    db.finish_folder_scan(&root, generation, None).await.unwrap();
     save_verdict(&db, &candidate, "mb-verdict").await;
     let hash = candidate.files.content_hash();
 
     crate::import::CandidatePreparations::new(db.clone())
-        .set_cover(
-            &hash,
-            &crate::import::CoverSelection::Local("cover.jpg".to_string()),
-            None,
-        )
+        .set_cover(&hash, &crate::import::CoverSelection::Local("cover.jpg".to_string()), None)
         .await
         .unwrap();
     crate::import::CandidatePreparations::new(db.clone())
-        .set_field(
-            &hash,
-            crate::import::CandidateEditField::AlbumTitle,
-            "Edited Album",
-        )
+        .set_field(&hash, crate::import::CandidateEditField::AlbumTitle, "Edited Album")
         .await
         .unwrap();
     crate::import::CandidatePreparations::new(db.clone())
-        .set_field(
-            &hash,
-            crate::import::CandidateEditField::PressingYear,
-            "1991",
-        )
+        .set_field(&hash, crate::import::CandidateEditField::PressingYear, "1991")
         .await
         .unwrap();
 
-    let projection = db
-        .load_import_list_read(request(TriageTab::Pending).await)
-        .await
-        .unwrap();
+    let projection = db.load_import_list_read(request(TriageTab::Pending).await).await.unwrap();
     let row = rows(&projection).remove(0);
-    let summary = row
-        .metadata_summary
-        .expect("the row carries its applied draft");
+    let summary = row.metadata_summary.expect("the row carries its applied draft");
     assert_eq!(summary.album_title, "Edited Album");
     assert_eq!(
         row.cover,
@@ -676,21 +578,11 @@ async fn the_list_projects_the_applied_draft_and_cover() {
         )
         .await
         .unwrap();
-    let generation = db
-        .begin_folder_scan(&root, crate::import::VolumeKind::Local)
-        .await
-        .unwrap();
-    db.save_folder_scan_item(&root, generation, &ScanItem::Valid(candidate.clone()))
-        .await
-        .unwrap();
-    db.finish_folder_scan(&root, generation, None)
-        .await
-        .unwrap();
+    let generation = db.begin_folder_scan(&root, crate::import::VolumeKind::Local).await.unwrap();
+    db.save_folder_scan_item(&root, generation, &ScanItem::Valid(candidate.clone())).await.unwrap();
+    db.finish_folder_scan(&root, generation, None).await.unwrap();
 
-    let projection = db
-        .load_import_list_read(request(TriageTab::Pending).await)
-        .await
-        .unwrap();
+    let projection = db.load_import_list_read(request(TriageTab::Pending).await).await.unwrap();
     assert_eq!(
         rows(&projection).remove(0).cover,
         Some(crate::import::CoverImageSource::Local {
@@ -713,21 +605,11 @@ async fn the_list_projects_the_applied_draft_and_cover() {
         )
         .await
         .unwrap();
-    let generation = db
-        .begin_folder_scan(&root, crate::import::VolumeKind::Local)
-        .await
-        .unwrap();
-    db.save_folder_scan_item(&root, generation, &ScanItem::Valid(candidate))
-        .await
-        .unwrap();
-    db.finish_folder_scan(&root, generation, None)
-        .await
-        .unwrap();
+    let generation = db.begin_folder_scan(&root, crate::import::VolumeKind::Local).await.unwrap();
+    db.save_folder_scan_item(&root, generation, &ScanItem::Valid(candidate)).await.unwrap();
+    db.finish_folder_scan(&root, generation, None).await.unwrap();
 
-    let projection = db
-        .load_import_list_read(request(TriageTab::Pending).await)
-        .await
-        .unwrap();
+    let projection = db.load_import_list_read(request(TriageTab::Pending).await).await.unwrap();
     assert_eq!(
         rows(&projection).remove(0).cover,
         Some(crate::import::CoverImageSource::Local {
@@ -747,10 +629,7 @@ async fn the_list_projects_the_applied_draft_and_cover() {
 async fn the_scan_stores_the_folders_own_cover() {
     let (db, _tmp, root) = watched_root().await;
     db.add_watched_import_folder(&root).await.unwrap();
-    let generation = db
-        .begin_folder_scan(&root, crate::import::VolumeKind::Local)
-        .await
-        .unwrap();
+    let generation = db.begin_folder_scan(&root, crate::import::VolumeKind::Local).await.unwrap();
     let mut candidate = candidate(&root, "Album");
     candidate.files.files.push(CandidateFile {
         file: ScannedFile::new(
@@ -761,21 +640,12 @@ async fn the_scan_stores_the_folders_own_cover() {
         ),
         role: FileRole::Artwork,
     });
-    db.save_folder_scan_item(&root, generation, &ScanItem::Valid(candidate.clone()))
-        .await
-        .unwrap();
-    db.finish_folder_scan(&root, generation, None)
-        .await
-        .unwrap();
+    db.save_folder_scan_item(&root, generation, &ScanItem::Valid(candidate.clone())).await.unwrap();
+    db.finish_folder_scan(&root, generation, None).await.unwrap();
 
     assert_eq!(
-        db.load_import_candidate_pane_rows(&candidate.files.content_hash())
-            .await
-            .unwrap()
-            .cover,
-        Some(crate::import::CoverSelection::Local(
-            "cover.jpg".to_string()
-        ))
+        db.load_import_candidate_pane_rows(&candidate.files.content_hash()).await.unwrap().cover,
+        Some(crate::import::CoverSelection::Local("cover.jpg".to_string()))
     );
     let detail = db
         .load_import_candidate(&crate::import::CandidateKey::folder(&candidate.path))
@@ -783,20 +653,10 @@ async fn the_scan_stores_the_folders_own_cover() {
         .unwrap()
         .expect("the candidate reads back");
     assert_eq!(
-        detail
-            .draft()
-            .unwrap()
-            .cover
-            .clone()
-            .map(|cover| cover.selection),
-        Some(crate::import::CoverSelection::Local(
-            "cover.jpg".to_string()
-        ))
+        detail.draft().unwrap().cover.clone().map(|cover| cover.selection),
+        Some(crate::import::CoverSelection::Local("cover.jpg".to_string()))
     );
-    let projection = db
-        .load_import_list_read(request(TriageTab::Pending).await)
-        .await
-        .unwrap();
+    let projection = db.load_import_list_read(request(TriageTab::Pending).await).await.unwrap();
     let row = rows(&projection).remove(0);
     assert!(row.metadata_summary.is_none());
     assert_eq!(
@@ -820,10 +680,7 @@ async fn the_scan_stores_the_folders_own_cover() {
         &["https://example.invalid/full.jpg", "Cover", &hash],
     )
     .await;
-    let projection = db
-        .load_import_list_read(request(TriageTab::Pending).await)
-        .await
-        .unwrap();
+    let projection = db.load_import_list_read(request(TriageTab::Pending).await).await.unwrap();
     assert_eq!(
         rows(&projection).remove(0).cover,
         Some(crate::import::CoverImageSource::Local {
@@ -843,11 +700,7 @@ async fn the_list_projects_the_persisted_embedded_file_metadata_cover() {
     let (db, _tmp, root) = watched_root().await;
     let candidate = scanned(&db, &root, "Album").await;
     let hash = candidate.files.content_hash();
-    let draft = db
-        .load_import_candidate_pane_rows(&hash)
-        .await
-        .unwrap()
-        .draft;
+    let draft = db.load_import_candidate_pane_rows(&hash).await.unwrap().draft;
     let bytes = vec![1, 2, 3, 4];
     let snapshot = crate::import::file_tag_snapshot::FileTagSnapshot {
         scan_generation: 1,
@@ -878,20 +731,14 @@ async fn the_list_projects_the_persisted_embedded_file_metadata_cover() {
             },
             &snapshot,
             &draft,
-            Some(&crate::import::CoverSelection::Embedded(
-                "01.flac".to_string(),
-            )),
+            Some(&crate::import::CoverSelection::Embedded("01.flac".to_string())),
         )
         .await
         .unwrap();
 
-    let projection = db
-        .load_import_list_read(request(TriageTab::Pending).await)
-        .await
-        .unwrap();
+    let projection = db.load_import_list_read(request(TriageTab::Pending).await).await.unwrap();
     let row = rows(&projection).remove(0);
-    row.metadata_summary
-        .expect("the row carries its file-metadata draft");
+    row.metadata_summary.expect("the row carries its file-metadata draft");
     assert_eq!(
         row.cover,
         Some(crate::import::CoverImageSource::Embedded {
@@ -910,12 +757,7 @@ async fn the_list_projects_the_persisted_embedded_file_metadata_cover() {
         .unwrap()
         .expect("the candidate reads back");
     assert_eq!(
-        detail
-            .draft()
-            .unwrap()
-            .cover
-            .clone()
-            .map(|cover| cover.image),
+        detail.draft().unwrap().cover.clone().map(|cover| cover.image),
         Some(crate::import::CoverImageSource::Embedded {
             source: FileVersion {
                 path: root.join("Album").join("01.flac"),
@@ -953,10 +795,7 @@ async fn a_stored_failure_keeps_the_row_pending_saying_why() {
     .unwrap();
 
     assert_eq!(
-        db.load_import_list_read(request(TriageTab::Done).await)
-            .await
-            .unwrap()
-            .total_count,
+        db.load_import_list_read(request(TriageTab::Done).await).await.unwrap().total_count,
         0,
         "a failed attempt imported nothing, so nothing is done"
     );

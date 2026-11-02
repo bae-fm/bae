@@ -46,34 +46,27 @@ impl Database {
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn insert_release_medium(&self, medium: &DbReleaseMedium) -> Result<(), DbError> {
         let medium = medium.clone();
-        self.call_sql(move |sql| insert_release_medium_row(&sql, &medium))
-            .await
+        self.call_sql(move |sql| insert_release_medium_row(&sql, &medium)).await
     }
 
     pub async fn insert_track(&self, track: &DbTrack) -> Result<(), DbError> {
         let track = track.clone();
-        self.call_sql(move |sql| insert_track_row(&sql, &track))
-            .await
+        self.call_sql(move |sql| insert_track_row(&sql, &track)).await
     }
 
     /// A release's mediums, in order.
     pub async fn get_release_mediums(&self, release_id: &str) -> Result<DbReleaseMediums, DbError> {
         let release_id = release_id.to_string();
-        self.read(move |sql| release_mediums_on(&sql, &release_id))
-            .await
+        self.read(move |sql| release_mediums_on(&sql, &release_id)).await
     }
 
     /// Find track by ID. Caller-provided ID — may not exist.
     pub async fn find_track_by_id(&self, track_id: &str) -> Result<Option<DbTrack>, DbError> {
         let track_id = track_id.to_string();
         self.read(move |sql| {
-            sql.query_row(
-                "SELECT * FROM tracks WHERE id = ?",
-                params![track_id],
-                row_to_track,
-            )
-            .optional()
-            .map_err(DbError::from)
+            sql.query_row("SELECT * FROM tracks WHERE id = ?", params![track_id], row_to_track)
+                .optional()
+                .map_err(DbError::from)
         })
         .await
     }
@@ -101,11 +94,9 @@ impl Database {
     /// library play unshuffles into.
     pub async fn get_all_track_ids(&self) -> Result<Vec<String>, DbError> {
         self.read(move |sql| {
-            sql.query(
-                "SELECT id FROM tracks ORDER BY release_id, position, id",
-                [],
-                |row| row.get::<_, String>("id"),
-            )
+            sql.query("SELECT id FROM tracks ORDER BY release_id, position, id", [], |row| {
+                row.get::<_, String>("id")
+            })
             .map_err(DbError::from)
         })
         .await
@@ -158,10 +149,7 @@ impl Database {
         self.read(move |sql| {
             Ok(sql
                 .query_row(TRACK_NEIGHBORS, params![track_id], |row| {
-                    Ok(TrackNeighbors {
-                        is_first: row.get(0)?,
-                        next: row.get(1)?,
-                    })
+                    Ok(TrackNeighbors { is_first: row.get(0)?, next: row.get(1)? })
                 })
                 .optional()?)
         })

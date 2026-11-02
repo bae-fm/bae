@@ -15,11 +15,8 @@ pub async fn value_matching<T: Clone + PartialEq + std::fmt::Debug + Send + 'sta
     let mut last = None;
     let found = tokio::time::timeout(PATIENCE, async {
         loop {
-            let value = query
-                .next()
-                .await
-                .expect("the live query ended")
-                .expect("the live query failed");
+            let value =
+                query.next().await.expect("the live query ended").expect("the live query failed");
             if matches(&value) {
                 return value;
             }
@@ -43,10 +40,7 @@ pub async fn pulled_matching<T: Clone + PartialEq + std::fmt::Debug + Send + 'st
     let mut last = None;
     let found = tokio::time::timeout(PATIENCE, async {
         loop {
-            let value = values
-                .next()
-                .await
-                .expect("the values stop only when cancelled");
+            let value = values.next().await.expect("the values stop only when cancelled");
             if matches(&value) {
                 return value;
             }

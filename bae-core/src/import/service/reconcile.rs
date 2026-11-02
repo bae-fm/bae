@@ -22,16 +22,8 @@ fn retain_referenced_artists(
         .flat_map(|(_, links)| links.iter().map(|link| link.artist_id.as_str()));
     let referenced: std::collections::HashSet<&str> = album_artists
         .chain(track_artists.iter().map(|link| link.artist_id.as_str()))
-        .chain(
-            release_artist_roles
-                .iter()
-                .map(|role| role.artist_id.as_str()),
-        )
-        .chain(
-            track_artist_roles
-                .iter()
-                .map(|role| role.artist_id.as_str()),
-        )
+        .chain(release_artist_roles.iter().map(|role| role.artist_id.as_str()))
+        .chain(track_artist_roles.iter().map(|role| role.artist_id.as_str()))
         .chain(work_artists.iter().map(|link| link.artist_id.as_str()))
         .collect();
     artists.retain(|artist| referenced.contains(artist.id.as_str()));
@@ -79,11 +71,7 @@ impl ImportService {
         // foreign key.
         let existing_album_id = match picked_album {
             Some(album_id) => Some(album_id),
-            None => {
-                library_manager
-                    .find_existing_album_for_import(&records)
-                    .await?
-            }
+            None => library_manager.find_existing_album_for_import(&records).await?,
         };
         match &existing_album_id {
             Some(album_id) => {
@@ -108,9 +96,7 @@ impl ImportService {
 
         retain_referenced_artists(
             &mut artists,
-            existing_album_id
-                .is_none()
-                .then_some((&db_album, album_artists.as_slice())),
+            existing_album_id.is_none().then_some((&db_album, album_artists.as_slice())),
             &track_artists,
             &release_artist_roles,
             &track_artist_roles,
@@ -125,9 +111,7 @@ impl ImportService {
         // A work performed by an already-imported release keeps that release's
         // `works` row, so every link this import writes points at the resolved id
         // and only the works new to the library are inserted.
-        let resolved_works = library_manager
-            .resolve_works_for_import(&work_graph.works)
-            .await?;
+        let resolved_works = library_manager.resolve_works_for_import(&work_graph.works).await?;
         let work_id_map: HashMap<String, String> = work_graph
             .works
             .iter()
@@ -228,12 +212,7 @@ mod tests {
             is_compilation: false,
             created_at: now,
         };
-        let credits = [crate::db::DbAlbumArtist::new(
-            &album.id,
-            "artist-referenced",
-            0,
-            now,
-        )];
+        let credits = [crate::db::DbAlbumArtist::new(&album.id, "artist-referenced", 0, now)];
 
         retain_referenced_artists(&mut artists, Some((&album, &credits)), &[], &[], &[], &[]);
 

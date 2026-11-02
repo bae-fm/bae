@@ -45,11 +45,9 @@ impl Database {
         let release_id = release_id.to_string();
         let query = Self::release_storage_summary_query();
         self.read(move |sql| {
-            sql.query_row(&query, [release_id], |row| {
-                row_to_release_storage_summary(&sql, row)
-            })
-            .optional()
-            .map_err(DbError::from)
+            sql.query_row(&query, [release_id], |row| row_to_release_storage_summary(&sql, row))
+                .optional()
+                .map_err(DbError::from)
         })
         .await
     }
@@ -75,8 +73,7 @@ impl Database {
     /// storage-manager footer's "Total:", independent of how many pages have
     /// loaded.
     pub async fn get_storage_total_size(&self, filter: StorageFilter) -> Result<u64, DbError> {
-        self.read(move |sql| storage_total_size_on(&sql, filter))
-            .await
+        self.read(move |sql| storage_total_size_on(&sql, filter)).await
     }
 
     pub async fn get_storage_page(
@@ -88,18 +85,10 @@ impl Database {
     ) -> Result<Vec<DbStorageRow>, DbError> {
         let order = storage_order(sort);
         self.read(move |sql| {
-            Ok(storage_rows_on(
-                &sql,
-                &order,
-                filter,
-                None,
-                &order.everything(),
-                limit,
-                offset,
-            )?
-            .into_iter()
-            .map(|(row, _)| row)
-            .collect::<Vec<_>>())
+            Ok(storage_rows_on(&sql, &order, filter, None, &order.everything(), limit, offset)?
+                .into_iter()
+                .map(|(row, _)| row)
+                .collect::<Vec<_>>())
         })
         .process(super::release_projection::process_storage_rows)
         .await
@@ -135,12 +124,8 @@ impl Database {
                     Some(_) => &["release_listing", "library_search"],
                     None => &["release_listing"],
                 };
-                let standing = (
-                    request.sort,
-                    request.filter,
-                    query,
-                    list_order_versions_on(&sql, sources)?,
-                );
+                let standing =
+                    (request.sort, request.filter, query, list_order_versions_on(&sql, sources)?);
                 let WindowsRead { windows, found } = read_windows(
                     &order,
                     &request.windows,
@@ -226,9 +211,7 @@ pub(super) fn storage_queues_on(
         |row| {
             Ok(row
                 .get::<_, bool>(0)?
-                .then_some(crate::library::UploadQueueRun {
-                    paused: row.get(1)?,
-                }))
+                .then_some(crate::library::UploadQueueRun { paused: row.get(1)? }))
         },
     )?;
     let release_queue = |table: &str, queue: &str| {

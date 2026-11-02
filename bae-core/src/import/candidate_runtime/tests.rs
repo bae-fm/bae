@@ -13,10 +13,7 @@ use bae_catalogs::catalog::Catalog;
 use std::path::PathBuf;
 
 fn empty_categorized() -> CategorizedFiles {
-    CategorizedFiles {
-        files: Vec::new(),
-        parts: Vec::new(),
-    }
+    CategorizedFiles { files: Vec::new(), parts: Vec::new() }
 }
 
 fn folder_candidate(key: &crate::import::CandidateKey, watched: &str) -> FolderCandidate {
@@ -36,11 +33,7 @@ fn folder_candidate(key: &crate::import::CandidateKey, watched: &str) -> FolderC
 }
 
 fn scanned(candidate: FolderCandidate) -> ImportEvent {
-    ImportEvent::Scan(ScanEvent::FolderCandidate {
-        candidate,
-
-        found_while_automatic: false,
-    })
+    ImportEvent::Scan(ScanEvent::FolderCandidate { candidate, found_while_automatic: false })
 }
 
 fn progress(key: &crate::import::CandidateKey, percent: u8) -> ImportEvent {
@@ -60,11 +53,7 @@ fn progress(key: &crate::import::CandidateKey, percent: u8) -> ImportEvent {
 async fn claim(runtime: &CandidateRuntime, key: &crate::import::CandidateKey) {
     runtime.claim_for_import(key, "imp-1", false).await.unwrap();
     runtime
-        .move_import(
-            key,
-            "imp-1",
-            Some(ImportStep::Preparing(PrepareStep::ValidatingSourceFiles)),
-        )
+        .move_import(key, "imp-1", Some(ImportStep::Preparing(PrepareStep::ValidatingSourceFiles)))
         .await
         .unwrap();
     runtime.record_event(&ImportEvent::ImportProgress {
@@ -80,11 +69,7 @@ async fn claim(runtime: &CandidateRuntime, key: &crate::import::CandidateKey) {
 /// it starts, and report `percent` of it, as the measuring does.
 async fn measuring(runtime: &CandidateRuntime, key: &crate::import::CandidateKey, percent: u8) {
     runtime
-        .move_import(
-            key,
-            "imp-1",
-            Some(ImportStep::Running(ImportPhase::MeasuringLoudness)),
-        )
+        .move_import(key, "imp-1", Some(ImportStep::Running(ImportPhase::MeasuringLoudness)))
         .await
         .unwrap();
     runtime.record_event(&progress(key, percent));
@@ -104,10 +89,7 @@ pub(crate) fn signals_context(track_count: u32) -> crate::identify::state::Signa
         search: Default::default(),
         text: Default::default(),
         text_settled: true,
-        audio: crate::signals::AudioFacts {
-            track_count,
-            ..Default::default()
-        },
+        audio: crate::signals::AudioFacts { track_count, ..Default::default() },
         documents: crate::identify::documents::DocumentReading::Pending,
         pressings: Vec::new(),
         isrc: Default::default(),
@@ -155,10 +137,8 @@ async fn scanned_at(
     key: &crate::import::CandidateKey,
     revision: u64,
 ) -> CandidateFiles {
-    let files = CandidateFiles {
-        content_hash: format!("hash:{key}"),
-        file_edit_revision: revision,
-    };
+    let files =
+        CandidateFiles { content_hash: format!("hash:{key}"), file_edit_revision: revision };
     runtime
         .execute_local_sql_for_test(&format!(
             "INSERT OR IGNORE INTO watched_import_folders (path, position)
@@ -239,10 +219,7 @@ pub(crate) async fn fail_standing_writes(directory: &std::path::Path, failing: &
                 found = true;
             }
         }
-        assert!(
-            found,
-            "the library under the directory holds the standings table"
-        );
+        assert!(found, "the library under the directory holds the standings table");
     })
     .await
     .unwrap();
@@ -259,10 +236,7 @@ async fn report(
 ) {
     assert!(runtime.run_started(key, files, run, &state).await.unwrap());
     if state.is_terminal() {
-        assert!(runtime
-            .run_answered(key, run, state.picks_unattended())
-            .await
-            .unwrap());
+        assert!(runtime.run_answered(key, run, state.picks_unattended()).await.unwrap());
     }
 }
 
@@ -279,10 +253,7 @@ fn extracted_signals() -> crate::signals::Signals {
         origin: crate::signals::AudioOrigin::default(),
         disc_id: crate::signals::DiscIdSignal::Absent,
         barcode: crate::signals::BarcodeSignal::Settled { codes: Vec::new() },
-        text: crate::signals::TextSignal::Settled {
-            catalogs: Vec::new(),
-            free_text: Vec::new(),
-        },
+        text: crate::signals::TextSignal::Settled { catalogs: Vec::new(), free_text: Vec::new() },
         text_pool: Vec::new(),
         isrcs: Vec::new(),
         track_titles: Vec::new(),
@@ -296,23 +267,13 @@ async fn an_import_s_step_is_its_claim_s_and_its_percent_is_held_per_key() {
     let runtime = CandidateRuntime::for_test().await;
     let key = &crate::import::CandidateKey::test("/watch/a/rel1");
     claim(&runtime, key).await;
-    claim(
-        &runtime,
-        &crate::import::CandidateKey::test("/watch/a/rel2"),
-    )
-    .await;
+    claim(&runtime, &crate::import::CandidateKey::test("/watch/a/rel2")).await;
 
     measuring(&runtime, key, 42).await;
 
     assert_eq!(
-        runtime
-            .snapshot(key)
-            .await
-            .unwrap()
-            .and_then(|runtime| runtime.import),
-        Some(ImportInFlight {
-            step: ImportStep::Running(ImportPhase::MeasuringLoudness),
-        })
+        runtime.snapshot(key).await.unwrap().and_then(|runtime| runtime.import),
+        Some(ImportInFlight { step: ImportStep::Running(ImportPhase::MeasuringLoudness) })
     );
     assert_eq!(
         runtime
@@ -320,9 +281,7 @@ async fn an_import_s_step_is_its_claim_s_and_its_percent_is_held_per_key() {
             .await
             .unwrap()
             .and_then(|runtime| runtime.import),
-        Some(ImportInFlight {
-            step: ImportStep::Preparing(PrepareStep::ValidatingSourceFiles),
-        }),
+        Some(ImportInFlight { step: ImportStep::Preparing(PrepareStep::ValidatingSourceFiles) }),
         "another key's progress is its own"
     );
     assert_eq!(
@@ -364,10 +323,7 @@ async fn a_finished_import_leaves_nothing_in_flight() {
             candidate_key: key.clone(),
             progress: ending.clone(),
         });
-        assert!(
-            runtime.snapshot(key).await.unwrap().is_none(),
-            "{ending:?} left something behind"
-        );
+        assert!(runtime.snapshot(key).await.unwrap().is_none(), "{ending:?} left something behind");
         assert!(runtime.percents().is_empty(), "{ending:?} left a percent");
     }
 }
@@ -378,19 +334,12 @@ async fn a_finished_import_keeps_a_key_whose_answer_is_still_being_written() {
     let runtime = CandidateRuntime::for_test().await;
     let key = &crate::import::CandidateKey::test("/watch/a/rel1");
     let files = scanned_key(&runtime, key).await;
-    runtime
-        .admit(vec![(key.clone(), files.clone())], Admission::Automatic)
-        .await
-        .unwrap();
+    runtime.admit(vec![(key.clone(), files.clone())], Admission::Automatic).await.unwrap();
     report(&runtime, key, &files, run(1), manual_only()).await;
     claim(&runtime, key).await;
 
     runtime.move_import(key, "imp-1", None).await.unwrap();
-    let recorded = runtime
-        .snapshot(key)
-        .await
-        .unwrap()
-        .expect("the answer keeps the key");
+    let recorded = runtime.snapshot(key).await.unwrap().expect("the answer keeps the key");
     assert!(recorded.import.is_none());
     assert!(matches!(
         recorded.identification,
@@ -410,34 +359,17 @@ async fn a_finished_import_keeps_a_key_whose_answer_is_still_being_written() {
 #[tokio::test]
 async fn a_late_reader_reads_every_running_key() {
     let runtime = CandidateRuntime::for_test().await;
-    claim(
-        &runtime,
-        &crate::import::CandidateKey::test("/watch/a/rel1"),
-    )
-    .await;
-    measuring(
-        &runtime,
-        &crate::import::CandidateKey::test("/watch/a/rel1"),
-        10,
-    )
-    .await;
-    claim(
-        &runtime,
-        &crate::import::CandidateKey::test("/watch/a/rel2"),
-    )
-    .await;
+    claim(&runtime, &crate::import::CandidateKey::test("/watch/a/rel1")).await;
+    measuring(&runtime, &crate::import::CandidateKey::test("/watch/a/rel1"), 10).await;
+    claim(&runtime, &crate::import::CandidateKey::test("/watch/a/rel2")).await;
 
     let running = runtime.snapshots().await.unwrap();
     assert_eq!(running.len(), 2);
     assert_eq!(
         running[&crate::import::CandidateKey::test("/watch/a/rel1")].import,
-        Some(ImportInFlight {
-            step: ImportStep::Running(ImportPhase::MeasuringLoudness),
-        })
+        Some(ImportInFlight { step: ImportStep::Running(ImportPhase::MeasuringLoudness) })
     );
-    assert!(running[&crate::import::CandidateKey::test("/watch/a/rel2")]
-        .import
-        .is_some());
+    assert!(running[&crate::import::CandidateKey::test("/watch/a/rel2")].import.is_some());
 }
 
 /// A preparing step reads back as the step the worker wrote.
@@ -448,11 +380,7 @@ async fn a_preparing_step_is_the_step_written() {
     claim(&runtime, key).await;
 
     runtime
-        .move_import(
-            key,
-            "imp-1",
-            Some(ImportStep::Preparing(PrepareStep::FetchingArtistPictures)),
-        )
+        .move_import(key, "imp-1", Some(ImportStep::Preparing(PrepareStep::FetchingArtistPictures)))
         .await
         .unwrap();
 
@@ -463,9 +391,7 @@ async fn a_preparing_step_is_the_step_written() {
             .unwrap()
             .and_then(|runtime| runtime.import)
             .expect("preparation is in flight"),
-        ImportInFlight {
-            step: ImportStep::Preparing(PrepareStep::FetchingArtistPictures),
-        }
+        ImportInFlight { step: ImportStep::Preparing(PrepareStep::FetchingArtistPictures) }
     );
 }
 
@@ -508,11 +434,7 @@ async fn a_claim_survives_the_scan_reporting_the_key() {
 
     runtime.record_event(&scanned(folder_candidate(key, "/watch/a")));
 
-    assert!(runtime
-        .snapshot(key)
-        .await
-        .unwrap()
-        .is_some_and(|runtime| runtime.import.is_some()));
+    assert!(runtime.snapshot(key).await.unwrap().is_some_and(|runtime| runtime.import.is_some()));
 }
 
 /// A rescan reporting the same files keeps the key's work; one reporting
@@ -543,41 +465,25 @@ async fn a_terminal_state_moves_the_run_to_being_written() {
     let runtime = CandidateRuntime::for_test().await;
     let key = &crate::import::CandidateKey::test("/watch/a/rel1");
     let files = scanned_key(&runtime, key).await;
-    runtime
-        .admit(vec![(key.clone(), files.clone())], Admission::Automatic)
-        .await
-        .unwrap();
+    runtime.admit(vec![(key.clone(), files.clone())], Admission::Automatic).await.unwrap();
 
     report(&runtime, key, &files, run(1), triangulating()).await;
     assert!(matches!(
-        runtime
-            .snapshot(key)
-            .await
-            .unwrap()
-            .and_then(|runtime| runtime.identification),
-        Some(IdentificationRuntime::Running(
-            crate::identify::PublishedRun {
-                outcome: crate::identify::RunOutcome::Running { .. },
-                ..
-            }
-        ))
+        runtime.snapshot(key).await.unwrap().and_then(|runtime| runtime.identification),
+        Some(IdentificationRuntime::Running(crate::identify::PublishedRun {
+            outcome: crate::identify::RunOutcome::Running { .. },
+            ..
+        }))
     ));
 
-    assert!(runtime
-        .publish_candidate_run(key, run(1), &manual_only(), None)
-        .await
-        .unwrap());
+    assert!(runtime.publish_candidate_run(key, run(1), &manual_only(), None).await.unwrap());
     assert!(runtime.run_answered(key, run(1), false).await.unwrap());
     assert_eq!(
         identification(&runtime, key).await,
         Some(crate::import::IdentificationStatus::Finalizing)
     );
     assert!(matches!(
-        runtime
-            .snapshot(key)
-            .await
-            .unwrap()
-            .and_then(|runtime| runtime.identification),
+        runtime.snapshot(key).await.unwrap().and_then(|runtime| runtime.identification),
         Some(IdentificationRuntime::Saving(SavingAnswer {
             state: crate::identify::PublishedRun {
                 outcome: crate::identify::RunOutcome::Answered(
@@ -597,17 +503,11 @@ async fn a_run_s_end_ends_only_that_run() {
     let runtime = CandidateRuntime::for_test().await;
     let key = &crate::import::CandidateKey::test("/watch/a/rel1");
     let files = scanned_key(&runtime, key).await;
-    runtime
-        .admit(vec![(key.clone(), files.clone())], Admission::Automatic)
-        .await
-        .unwrap();
+    runtime.admit(vec![(key.clone(), files.clone())], Admission::Automatic).await.unwrap();
     report(&runtime, key, &files, run(2), triangulating()).await;
 
     assert!(
-        !runtime
-            .run_started(key, &files, run(1), &triangulating())
-            .await
-            .unwrap(),
+        !runtime.run_started(key, &files, run(1), &triangulating()).await.unwrap(),
         "a run that lost its wait holds no standing"
     );
     runtime.run_ended(key, run(1)).await.unwrap();
@@ -628,34 +528,23 @@ async fn a_write_ends_the_answer_it_ran_for_and_no_other() {
     let runtime = CandidateRuntime::for_test().await;
     let key = &crate::import::CandidateKey::test("/watch/a/rel1");
     let files = scanned_key(&runtime, key).await;
-    runtime
-        .admit(vec![(key.clone(), files.clone())], Admission::Automatic)
-        .await
-        .unwrap();
+    runtime.admit(vec![(key.clone(), files.clone())], Admission::Automatic).await.unwrap();
     report(&runtime, key, &files, run(1), manual_only()).await;
 
-    runtime
-        .end_identification_answer(key, run(2))
-        .await
-        .unwrap();
+    runtime.end_identification_answer(key, run(2)).await.unwrap();
     assert_eq!(
         identification(&runtime, key).await,
         Some(crate::import::IdentificationStatus::Finalizing),
         "another run's write says nothing about this answer"
     );
 
-    runtime
-        .end_identification_answer(key, run(1))
-        .await
-        .unwrap();
+    runtime.end_identification_answer(key, run(1)).await.unwrap();
     assert!(runtime.snapshot(key).await.unwrap().is_none());
 }
 
 /// A write that did not land, which another run may land.
 fn not_written(error: &str) -> SaveFailure {
-    SaveFailure::NotWritten {
-        error: error.to_string(),
-    }
+    SaveFailure::NotWritten { error: error.to_string() }
 }
 
 /// A write that failed leaves the error where a row can say so, and nothing
@@ -665,10 +554,7 @@ async fn a_failed_write_stands_until_the_next_run_starts() {
     let runtime = CandidateRuntime::for_test().await;
     let key = &crate::import::CandidateKey::test("/watch/a/rel1");
     let files = scanned_key(&runtime, key).await;
-    runtime
-        .admit(vec![(key.clone(), files.clone())], Admission::Automatic)
-        .await
-        .unwrap();
+    runtime.admit(vec![(key.clone(), files.clone())], Admission::Automatic).await.unwrap();
     report(&runtime, key, &files, run(1), manual_only()).await;
 
     runtime
@@ -682,20 +568,11 @@ async fn a_failed_write_stands_until_the_next_run_starts() {
         })
     );
     assert_eq!(
-        runtime
-            .snapshot(key)
-            .await
-            .unwrap()
-            .and_then(|runtime| runtime.identification),
-        Some(IdentificationRuntime::SaveFailed(not_written(
-            "database write failed"
-        )))
+        runtime.snapshot(key).await.unwrap().and_then(|runtime| runtime.identification),
+        Some(IdentificationRuntime::SaveFailed(not_written("database write failed")))
     );
 
-    runtime
-        .admit(vec![(key.clone(), files.clone())], Admission::Requested)
-        .await
-        .unwrap();
+    runtime.admit(vec![(key.clone(), files.clone())], Admission::Requested).await.unwrap();
     report(&runtime, key, &files, run(2), triangulating()).await;
     assert_eq!(
         identification(&runtime, key).await,
@@ -710,23 +587,13 @@ async fn a_finished_answer_keeps_a_key_whose_import_is_running() {
     let runtime = CandidateRuntime::for_test().await;
     let key = &crate::import::CandidateKey::test("/watch/a/rel1");
     let files = scanned_key(&runtime, key).await;
-    runtime
-        .admit(vec![(key.clone(), files.clone())], Admission::Automatic)
-        .await
-        .unwrap();
+    runtime.admit(vec![(key.clone(), files.clone())], Admission::Automatic).await.unwrap();
     report(&runtime, key, &files, run(1), manual_only()).await;
     claim(&runtime, key).await;
 
-    runtime
-        .end_identification_answer(key, run(1))
-        .await
-        .unwrap();
+    runtime.end_identification_answer(key, run(1)).await.unwrap();
 
-    let recorded = runtime
-        .snapshot(key)
-        .await
-        .unwrap()
-        .expect("the claim keeps the key");
+    let recorded = runtime.snapshot(key).await.unwrap().expect("the claim keeps the key");
     assert!(recorded.identification.is_none());
     assert!(recorded.import.is_some());
 }
@@ -738,10 +605,7 @@ async fn a_cancel_ends_the_run_and_what_it_published() {
     let runtime = CandidateRuntime::for_test().await;
     let key = &crate::import::CandidateKey::test("/watch/a/rel1");
     let files = scanned_key(&runtime, key).await;
-    runtime
-        .admit(vec![(key.clone(), files.clone())], Admission::Automatic)
-        .await
-        .unwrap();
+    runtime.admit(vec![(key.clone(), files.clone())], Admission::Automatic).await.unwrap();
     report(&runtime, key, &files, run(1), manual_only()).await;
 
     runtime.cancel_identification(key).await.unwrap();

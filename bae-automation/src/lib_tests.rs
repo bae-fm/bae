@@ -24,10 +24,7 @@ mod candidate_lookup {
         let fixture = automation_over().await;
         let key = scan(&fixture, "Album").await;
 
-        let found = fixture
-            .get_candidate(&key)
-            .await
-            .expect("a scanned candidate resolves");
+        let found = fixture.get_candidate(&key).await.expect("a scanned candidate resolves");
         assert_eq!(found.key(), key);
         assert_eq!(
             found.common().source_folders,
@@ -58,10 +55,8 @@ mod candidate_lookup {
     #[tokio::test]
     async fn a_name_that_is_not_hex_is_refused() {
         let fixture = automation_over().await;
-        let error = fixture
-            .get_candidate("/music/Album")
-            .await
-            .expect_err("a path is not a key's name");
+        let error =
+            fixture.get_candidate("/music/Album").await.expect_err("a path is not a key's name");
         assert_eq!(error.kind(), "validation");
     }
 
@@ -118,27 +113,19 @@ mod release_metadata_update_input {
     #[test]
     fn an_empty_album_title_fails_the_edit_rule() {
         let wire = edit("", &["Artist Alpha"]).into_core();
-        assert_eq!(
-            wire.validate(),
-            Err(bae_core::import::EditValidationError::EmptyAlbumTitle),
-        );
+        assert_eq!(wire.validate(), Err(bae_core::import::EditValidationError::EmptyAlbumTitle),);
     }
 
     #[test]
     fn an_artist_less_edit_fails_the_edit_rule() {
         let wire = edit("Album Alpha", &[]).into_core();
-        assert_eq!(
-            wire.validate(),
-            Err(bae_core::import::EditValidationError::NoAlbumArtist),
-        );
+        assert_eq!(wire.validate(), Err(bae_core::import::EditValidationError::NoAlbumArtist),);
     }
 
     /// An untrimmed title is trimmed, as the desktop editor does, not refused.
     #[test]
     fn an_untrimmed_album_title_normalizes() {
-        let wire = edit("  Album Alpha  ", &["  Artist Alpha  "])
-            .into_core()
-            .normalized();
+        let wire = edit("  Album Alpha  ", &["  Artist Alpha  "]).into_core().normalized();
         assert_eq!(wire.validate(), Ok(()));
         assert_eq!(wire.album_title, "Album Alpha");
         assert_eq!(
@@ -168,24 +155,16 @@ mod release_metadata_update_input {
         }];
 
         let round_trip = AutomationReleaseUserEdit::from_core(edit.into_core());
-        let AutomationArtistAssignment::Picked {
-            credit_name: None,
-            artist: round_trip_artist,
-        } = &round_trip.album_artist_assignments[0].artist
+        let AutomationArtistAssignment::Picked { credit_name: None, artist: round_trip_artist } =
+            &round_trip.album_artist_assignments[0].artist
         else {
             panic!("the existing artist remains an existing artist");
         };
         assert_eq!(round_trip_artist.artist_id, artist.artist_id);
         assert_eq!(round_trip_artist.name, artist.name);
         assert_eq!(round_trip_artist.sort_name, artist.sort_name);
-        assert_eq!(
-            round_trip_artist.musicbrainz_artist_id,
-            artist.musicbrainz_artist_id
-        );
-        assert_eq!(
-            round_trip_artist.discogs_artist_id,
-            artist.discogs_artist_id
-        );
+        assert_eq!(round_trip_artist.musicbrainz_artist_id, artist.musicbrainz_artist_id);
+        assert_eq!(round_trip_artist.discogs_artist_id, artist.discogs_artist_id);
     }
 
     /// A refused edit reaches the client as `validation`, not `import`.
@@ -275,9 +254,7 @@ fn import_step_and_phase_serialize_snake_case() {
 fn indeterminate_import_progress_serializes_without_a_fraction() {
     let status = automation_import_status(
         None,
-        Some(&ImportInFlight {
-            step: ImportStep::Preparing(PrepareStep::ValidatingSourceFiles),
-        }),
+        Some(&ImportInFlight { step: ImportStep::Preparing(PrepareStep::ValidatingSourceFiles) }),
         None,
     )
     .expect("the importing row has a status");
@@ -307,10 +284,7 @@ mod identify_mirrors {
             title: "Album Title".to_string(),
             artist: Some("Artist Name".to_string()),
             year: Some(1999),
-            labels: vec![bae_types::pressing::ReleaseLabel::of(
-                Some("Label A"),
-                Some("AB 100"),
-            )],
+            labels: vec![bae_types::pressing::ReleaseLabel::of(Some("Label A"), Some("AB 100"))],
             area: Some(bae_types::pressing::ReleaseArea::Country(
                 bae_types::pressing::Country::from_code("US").unwrap(),
             )),
@@ -410,10 +384,7 @@ mod identify_mirrors {
                 named_notes: Vec::new(),
             },
             ledger: Some(disc_id_ledger(&matches)),
-            context: SignalsContext {
-                text: text_carrying("0123456789012"),
-                ..empty_context()
-            },
+            context: SignalsContext { text: text_carrying("0123456789012"), ..empty_context() },
         };
 
         let json = serde_json::to_value(shown(state)).unwrap();
@@ -462,10 +433,7 @@ mod identify_mirrors {
                 named_notes: Vec::new(),
             },
             ledger: Some(disc_id_ledger(&[metadata_result("rel-disc", "g-d")])),
-            context: SignalsContext {
-                text: text_carrying("0123456789012"),
-                ..empty_context()
-            },
+            context: SignalsContext { text: text_carrying("0123456789012"), ..empty_context() },
         };
 
         let json = serde_json::to_value(shown(state)).unwrap();
@@ -504,9 +472,7 @@ mod identify_mirrors {
                         providers: vec![
                             ProviderLookup {
                                 source: Catalog::MusicBrainz,
-                                state: LookupState::Done {
-                                    results: Vec::new(),
-                                },
+                                state: LookupState::Done { results: Vec::new() },
                             },
                             ProviderLookup {
                                 source: Catalog::Discogs,
@@ -528,9 +494,7 @@ mod identify_mirrors {
                             },
                             ProviderLookup {
                                 source: Catalog::Discogs,
-                                state: LookupState::Done {
-                                    results: Vec::new(),
-                                },
+                                state: LookupState::Done { results: Vec::new() },
                             },
                         ],
                     },
@@ -566,10 +530,7 @@ mod identify_mirrors {
         let json = serde_json::to_value(shown(state)).unwrap();
         assert_eq!(json["kind"], "triangulating");
         let run = &json["run"];
-        assert_eq!(
-            run["providers"],
-            serde_json::json!(["music_brainz", "discogs"])
-        );
+        assert_eq!(run["providers"], serde_json::json!(["music_brainz", "discogs"]));
         assert_eq!(run["disc_id"]["kind"], "read");
         assert_eq!(run["disc_id"]["discs"][0]["disc_id"], "disc-hash");
         assert_eq!(run["disc_id"]["discs"][0]["lookup"]["kind"], "looking_up");
@@ -594,10 +555,7 @@ mod identify_mirrors {
         // Discogs's match is already on the list while MusicBrainz is out.
         let groups = json["groups"].as_array().unwrap();
         assert_eq!(groups.len(), 1);
-        assert_eq!(
-            groups[0]["sections"][0]["pressings"][0]["releases"][0]["release_id"],
-            "rel-dg"
-        );
+        assert_eq!(groups[0]["sections"][0]["pressings"][0]["releases"][0]["release_id"], "rel-dg");
         assert_eq!(json["agreements"][0]["release_id"], "rel-dg");
         assert_eq!(json["agreements"][0]["barcode"], true);
     }
@@ -607,9 +565,7 @@ mod identify_mirrors {
         let signal = ToolbarSignal {
             kind: SignalKind::DiscId,
             shown: Some("disc-hash".to_string()),
-            state: SignalState::Failed {
-                failure: LookupFailure::Provider { status: Some(503) },
-            },
+            state: SignalState::Failed { failure: LookupFailure::Provider { status: Some(503) } },
             excluded: false,
             options: Vec::new(),
         };
@@ -656,10 +612,7 @@ mod identify_mirrors {
         assert_eq!(json["origin"]["source"]["file"], "Album.log");
         assert_eq!(json["origin"]["not_cd_rate"], serde_json::Value::Null);
         assert_eq!(json["disc_id"]["kind"], "computed");
-        assert_eq!(
-            json["disc_id"]["disc_ids"],
-            serde_json::json!(["disc-hash"])
-        );
+        assert_eq!(json["disc_id"]["disc_ids"], serde_json::json!(["disc-hash"]));
         assert_eq!(json["barcode"]["kind"], "settled");
         assert_eq!(json["barcode"]["codes"][0], "0123456789012");
         assert_eq!(json["text"]["kind"], "settled");
@@ -795,12 +748,9 @@ mod release_storage_action {
     /// A library with no cloud home says so rather than listing no transitions.
     #[test]
     fn a_release_with_no_transitions_says_why() {
-        let error = require_action(
-            &summary(Vec::new()),
-            AutomationReleaseStorageAction::Upload,
-            "upload",
-        )
-        .expect_err("a library with no cloud home cannot move anything to it");
+        let error =
+            require_action(&summary(Vec::new()), AutomationReleaseStorageAction::Upload, "upload")
+                .expect_err("a library with no cloud home cannot move anything to it");
         assert!(
             error.message().contains("no cloud home"),
             "unexpected refusal: {}",
@@ -873,18 +823,14 @@ mod release_album {
         );
         let picked_release =
             bae_test_support::import_folder_and_wait(&manager, &picked_dir, picked_key).await;
-        let picked_album = manager
-            .get_album_id_for_release(&picked_release)
-            .await
-            .expect("the picked album");
+        let picked_album =
+            manager.get_album_id_for_release(&picked_release).await.expect("the picked album");
         let moved_from = manager
             .get_album_id_for_release(&imported.release_id)
             .await
             .expect("the release's own album");
         assert_ne!(moved_from, picked_album);
-        let services = AppServices::for_test(manager.clone())
-            .await
-            .expect("the services start");
+        let services = AppServices::for_test(manager.clone()).await.expect("the services start");
         let automation = Automation::new(services, &tokio::runtime::Handle::current());
 
         automation
@@ -899,10 +845,7 @@ mod release_album {
             .expect("the release moves");
 
         assert_eq!(
-            manager
-                .get_album_id_for_release(&imported.release_id)
-                .await
-                .unwrap(),
+            manager.get_album_id_for_release(&imported.release_id).await.unwrap(),
             picked_album
         );
         assert_eq!(

@@ -154,10 +154,7 @@ pub struct HeaderSeekIndex {
 impl HeaderSeekIndex {
     /// The index of a stream whose header gave it none.
     pub(crate) fn none() -> Self {
-        Self {
-            entries: Vec::new(),
-            length: None,
-        }
+        Self { entries: Vec::new(), length: None }
     }
 
     /// Whether every seek through the index lands at most `samples` before
@@ -209,8 +206,6 @@ pub(crate) fn av_err_str(errnum: i32) -> String {
     unsafe {
         let mut buf = [0 as std::ffi::c_char; 256];
         ffmpeg_sys_next::av_strerror(errnum, buf.as_mut_ptr(), buf.len());
-        std::ffi::CStr::from_ptr(buf.as_ptr())
-            .to_string_lossy()
-            .into_owned()
+        std::ffi::CStr::from_ptr(buf.as_ptr()).to_string_lossy().into_owned()
     }
 }

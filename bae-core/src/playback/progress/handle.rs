@@ -82,10 +82,7 @@ impl PlaybackProgressHandle {
                 }
             }
         });
-        Self {
-            subscriptions,
-            positions,
-        }
+        Self { subscriptions, positions }
     }
     /// A receiver yielding every progress update. Dropping it unsubscribes (the
     /// fan-out prunes closed senders).
@@ -152,9 +149,7 @@ mod tests {
         let dropped = handle.subscribe_all();
         drop(dropped);
 
-        progress_tx
-            .send(PlaybackProgress::VolumeChanged { volume: 0.5 })
-            .unwrap();
+        progress_tx.send(PlaybackProgress::VolumeChanged { volume: 0.5 }).unwrap();
 
         match timeout(Duration::from_secs(1), live.recv())
             .await
@@ -183,12 +178,8 @@ mod tests {
         let (handle, progress_tx, db, _tmp) = started().await;
         let mut events = handle.subscribe_all();
 
-        progress_tx
-            .send(PlaybackProgress::VolumeChanged { volume: 0.25 })
-            .unwrap();
-        progress_tx
-            .send(PlaybackProgress::MuteChanged { is_muted: true })
-            .unwrap();
+        progress_tx.send(PlaybackProgress::VolumeChanged { volume: 0.25 }).unwrap();
+        progress_tx.send(PlaybackProgress::MuteChanged { is_muted: true }).unwrap();
         next_event(&mut events).await;
         next_event(&mut events).await;
 
@@ -221,13 +212,7 @@ mod tests {
 
         let positions = handle.subscribe_positions();
         let positions = positions.borrow();
-        assert_eq!(
-            positions
-                .library
-                .as_ref()
-                .map(|position| position.position_ms),
-            Some(71)
-        );
+        assert_eq!(positions.library.as_ref().map(|position| position.position_ms), Some(71));
         assert_eq!(positions.seek_revision, 1);
     }
 
@@ -292,10 +277,7 @@ mod tests {
         let mut positions = handle.subscribe_positions();
         positions.mark_unchanged();
         assert_eq!(
-            db.now_playing()
-                .await
-                .unwrap()
-                .map(|now| now.playback.state),
+            db.now_playing().await.unwrap().map(|now| now.playback.state),
             Some(crate::playback::PlaybackState::Stopped)
         );
 
@@ -315,10 +297,7 @@ mod tests {
             None,
             "the row names track-1, which the library does not hold"
         );
-        assert!(
-            !positions.has_changed().unwrap(),
-            "a state change moves no position"
-        );
+        assert!(!positions.has_changed().unwrap(), "a state change moves no position");
 
         progress_tx
             .send(PlaybackProgress::PositionUpdate {
@@ -329,10 +308,7 @@ mod tests {
             })
             .unwrap();
         next_event(&mut events).await;
-        assert!(
-            positions.has_changed().unwrap(),
-            "a position tick sends a position"
-        );
+        assert!(positions.has_changed().unwrap(), "a position tick sends a position");
         assert_eq!(db.playback_level().await.unwrap(), (1.0, false));
     }
 }

@@ -34,10 +34,7 @@ fn mb_relation_is(relation: &MbRelation, target_type: &str, relation_type: &str)
 /// The name a role or composer credit goes by: the name the relation
 /// credits, else the artist's own.
 fn mb_artist_name(artist: &MbArtistRef, credit: Option<&str>) -> Option<String> {
-    credit
-        .filter(|c| !c.trim().is_empty())
-        .map(str::to_string)
-        .or_else(|| artist.name.clone())
+    credit.filter(|c| !c.trim().is_empty()).map(str::to_string).or_else(|| artist.name.clone())
 }
 
 /// A role or composer credit of a MusicBrainz artist: `name` is the resolved
@@ -65,9 +62,7 @@ fn mb_credited_artist(artist: &MbArtistRef, printed: &str) -> Option<ArtistCredi
         .or(printed)?
         .to_string();
     Some(ArtistCredit {
-        credited_as: printed
-            .filter(|printed| *printed != name)
-            .map(str::to_string),
+        credited_as: printed.filter(|printed| *printed != name).map(str::to_string),
         name,
         sort_name: artist.sort_name.clone(),
         musicbrainz_artist_id: artist.id.clone(),
@@ -234,16 +229,11 @@ pub(crate) fn medium_sides(
     if medium.entries.is_empty() {
         return Err(ImportError::SourceData {
             catalog: Catalog::MusicBrainz,
-            detail: format!(
-                "MusicBrainz release {} has a medium with no tracks",
-                release_id
-            ),
+            detail: format!("MusicBrainz release {} has a medium with no tracks", release_id),
         });
     }
-    let one_side = || MediumSides {
-        sides: vec![NonZeroU8::MIN; medium.entries.len()],
-        count: NonZeroU8::MIN,
-    };
+    let one_side =
+        || MediumSides { sides: vec![NonZeroU8::MIN; medium.entries.len()], count: NonZeroU8::MIN };
     if !medium.medium.is_some_and(Medium::is_sided) {
         return Ok(one_side());
     }
@@ -310,10 +300,7 @@ pub(crate) fn metadata(
 ) -> Result<super::release_metadata::ReleaseMetadata, ImportError> {
     let release_refs = artist_credits(&response.artist_credit, &response.id)?;
     let album_year = super::parse_year(
-        response
-            .release_group
-            .as_ref()
-            .and_then(|group| group.first_release_date.as_deref()),
+        response.release_group.as_ref().and_then(|group| group.first_release_date.as_deref()),
     );
     Ok(super::release_metadata::ReleaseMetadata {
         album: super::release_metadata::AlbumMetadata {
@@ -455,9 +442,7 @@ pub(crate) fn values(
 ) -> Result<ReleaseValues, ImportError> {
     let release_id = &release.release.key;
     let metadata = release.metadata.clone();
-    metadata
-        .album
-        .require_artists(Catalog::MusicBrainz, release_id)?;
+    metadata.album.require_artists(Catalog::MusicBrainz, release_id)?;
 
     let mut tracks: Vec<TrackValues> = Vec::new();
     let mut mediums = Vec::new();
@@ -465,10 +450,7 @@ pub(crate) fn values(
     let mut works = WorkGraphBuilder::default();
     for (index, medium) in release.covered_mediums(coverage).enumerate() {
         let sides = medium_sides(release_id, medium)?;
-        mediums.push(crate::mediums::ReleaseMedium {
-            carrier: medium.medium,
-            sides: sides.count,
-        });
+        mediums.push(crate::mediums::ReleaseMedium { carrier: medium.medium, sides: sides.count });
         let position = crate::mediums::medium_position(index);
 
         for (track, &side) in medium.entries.iter().zip(&sides.sides) {
@@ -495,17 +477,16 @@ pub(crate) fn values(
                         role: role.role.clone(),
                     })
                     .collect(),
-                works: track
-                    .works
-                    .iter()
-                    .map(|performed| works.performed(&performed.work))
-                    .fold(Vec::new(), |mut performed, work| {
+                works: track.works.iter().map(|performed| works.performed(&performed.work)).fold(
+                    Vec::new(),
+                    |mut performed, work| {
                         // A recording can relate to one work more than once.
                         if !performed.contains(&work) {
                             performed.push(work);
                         }
                         performed
-                    }),
+                    },
+                ),
             });
         }
     }

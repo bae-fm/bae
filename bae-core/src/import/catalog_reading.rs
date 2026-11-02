@@ -59,12 +59,7 @@ impl ReadAudio {
         Self {
             lengths,
             origin: rip.origin,
-            disc_ids: rip
-                .disc_id
-                .computed()
-                .into_iter()
-                .map(|disc| disc.disc_id)
-                .collect(),
+            disc_ids: rip.disc_id.computed().into_iter().map(|disc| disc.disc_id).collect(),
         }
     }
 
@@ -88,10 +83,7 @@ impl ReadAudio {
         let lengths = MeasuredLengths::new(lengths).ok_or_else(|| ImportError::Internal {
             detail: "a candidate with no audio has nothing to read a release against".to_string(),
         })?;
-        Ok(Self::of_rip(
-            lengths,
-            crate::import::discid::read_rip_artifacts(files),
-        ))
+        Ok(Self::of_rip(lengths, crate::import::discid::read_rip_artifacts(files)))
     }
 }
 
@@ -113,10 +105,9 @@ pub(crate) enum ReadingRefusal {
 impl From<ReadingRefusal> for ImportError {
     fn from(refusal: ReadingRefusal) -> Self {
         match refusal {
-            ReadingRefusal::TrackCount { folder, release } => Self::MetadataTrackCount {
-                folder_tracks: folder,
-                release_tracks: release,
-            },
+            ReadingRefusal::TrackCount { folder, release } => {
+                Self::MetadataTrackCount { folder_tracks: folder, release_tracks: release }
+            }
             ReadingRefusal::Tied { mediums } => Self::TiedMediums { mediums },
             ReadingRefusal::Unreadable { catalog, detail } => Self::SourceData { catalog, detail },
         }
@@ -134,9 +125,9 @@ pub(crate) fn listing(
 ) -> SourceTracks {
     match reading {
         Ok(values) if values.tracks.is_empty() => SourceTracks::Nothing,
-        Ok(_) | Err(ReadingRefusal::Tied { .. }) => SourceTracks::Listed {
-            count: audio.lengths.count(),
-        },
+        Ok(_) | Err(ReadingRefusal::Tied { .. }) => {
+            SourceTracks::Listed { count: audio.lengths.count() }
+        }
         Err(ReadingRefusal::TrackCount { release, .. }) => SourceTracks::Listed { count: *release },
         Err(ReadingRefusal::Unreadable { .. }) => SourceTracks::Unreadable,
     }
@@ -158,9 +149,7 @@ impl SourceRelease {
     pub(crate) fn read(&self, audio: &ReadAudio) -> Result<ReleaseValues, ReadingRefusal> {
         let shapes = self.medium_shapes(audio);
         if shapes.iter().all(|shape| shape.counts.is_empty()) {
-            return self
-                .values_over(&MediumCoverage::none(), audio)
-                .map_err(unreadable);
+            return self.values_over(&MediumCoverage::none(), audio).map_err(unreadable);
         }
         let measured = audio.lengths.as_slice();
         let mut best: Vec<MediumCoverage> = Vec::new();
@@ -179,9 +168,7 @@ impl SourceRelease {
                 }
             }
         }
-        let mut readings = best
-            .iter()
-            .map(|set| self.values_over(set, audio).map_err(unreadable));
+        let mut readings = best.iter().map(|set| self.values_over(set, audio).map_err(unreadable));
         let Some(first) = readings.next() else {
             return Err(ReadingRefusal::TrackCount {
                 folder: audio.lengths.count(),

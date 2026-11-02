@@ -112,11 +112,7 @@ impl ReleaseUpload {
         use crate::library::TransferStage;
         Self {
             summary: crate::library::release_queue::transfer_summary([
-                (
-                    "core.queue.uploading",
-                    progress.uploading,
-                    TransferStage::Moving,
-                ),
+                ("core.queue.uploading", progress.uploading, TransferStage::Moving),
                 ("core.queue.queued", progress.queued, TransferStage::Waiting),
                 (
                     "core.queue.stored",
@@ -216,10 +212,7 @@ pub enum ReleaseEditTrackRun {
     Track(ReleaseEditTrackContext),
     /// Two or more consecutive tracks a CUE sheet carves from one file, which
     /// is named once above them.
-    Sheet {
-        source: ReleaseEditTrackSource,
-        tracks: Vec<ReleaseEditTrackContext>,
-    },
+    Sheet { source: ReleaseEditTrackSource, tracks: Vec<ReleaseEditTrackContext> },
 }
 
 impl ReleaseEditTrackRun {
@@ -251,10 +244,7 @@ impl ReleaseEditTrackSide {
         for (side, track) in tracks {
             match sides.last_mut() {
                 Some(last) if last.side == side => last.append(track),
-                _ => sides.push(Self {
-                    side,
-                    runs: vec![ReleaseEditTrackRun::Track(track)],
-                }),
+                _ => sides.push(Self { side, runs: vec![ReleaseEditTrackRun::Track(track)] }),
             }
         }
         sides
@@ -265,27 +255,19 @@ impl ReleaseEditTrackSide {
     #[cfg(desktop)]
     fn append(&mut self, track: ReleaseEditTrackContext) {
         let carved_with = |source: &ReleaseEditTrackSource| {
-            track
-                .sheet_source()
-                .is_some_and(|next| next.file_id == source.file_id)
+            track.sheet_source().is_some_and(|next| next.file_id == source.file_id)
         };
         match self.runs.pop() {
             Some(ReleaseEditTrackRun::Sheet { source, mut tracks }) if carved_with(&source) => {
                 tracks.push(track);
-                self.runs
-                    .push(ReleaseEditTrackRun::Sheet { source, tracks });
+                self.runs.push(ReleaseEditTrackRun::Sheet { source, tracks });
             }
             Some(ReleaseEditTrackRun::Track(last))
                 if last.sheet_source().is_some_and(carved_with) =>
             {
-                let source = last
-                    .sheet_source()
-                    .expect("the guard read the track's sheet source")
-                    .clone();
-                self.runs.push(ReleaseEditTrackRun::Sheet {
-                    source,
-                    tracks: vec![last, track],
-                });
+                let source =
+                    last.sheet_source().expect("the guard read the track's sheet source").clone();
+                self.runs.push(ReleaseEditTrackRun::Sheet { source, tracks: vec![last, track] });
             }
             last => {
                 self.runs.extend(last);
@@ -374,24 +356,18 @@ impl ReleaseEditDisplayContext {
             let mut sources: Vec<ReleaseEditTrackSource> = Vec::new();
             for segment in entry.segments {
                 // A file a track plays in several segments is one source.
-                if sources
-                    .iter()
-                    .any(|source| source.file_id == segment.file_id)
-                {
+                if sources.iter().any(|source| source.file_id == segment.file_id) {
                     continue;
                 }
-                let file = segment
-                    .file
-                    .ok_or_else(|| ReleaseEditLoadError::MissingSourceFile {
+                let file = segment.file.ok_or_else(|| ReleaseEditLoadError::MissingSourceFile {
+                    track_id: track_id.clone(),
+                    file_id: segment.file_id.clone(),
+                })?;
+                let layout =
+                    file.layout.ok_or_else(|| ReleaseEditLoadError::MissingSourceAudio {
                         track_id: track_id.clone(),
                         file_id: segment.file_id.clone(),
                     })?;
-                let layout =
-                    file.layout
-                        .ok_or_else(|| ReleaseEditLoadError::MissingSourceAudio {
-                            track_id: track_id.clone(),
-                            file_id: segment.file_id.clone(),
-                        })?;
                 sources.push(ReleaseEditTrackSource {
                     file_id: segment.file_id,
                     name: file.name,
@@ -412,9 +388,7 @@ impl ReleaseEditDisplayContext {
 
         Ok(Self {
             source_audio: SourceAudioSummary::from_files(
-                raw.files
-                    .iter()
-                    .filter_map(|file| file.source_audio.as_ref()?.summarized()),
+                raw.files.iter().filter_map(|file| file.source_audio.as_ref()?.summarized()),
             ),
             sides: ReleaseEditTrackSide::lay_out(contexts),
         })
@@ -487,9 +461,7 @@ impl ReleaseDetail {
             .collect();
         let image_files: Vec<FileDetail> = files.iter().filter(|f| f.is_image).cloned().collect();
         let source_audio = SourceAudioSummary::from_files(
-            files
-                .iter()
-                .filter_map(|file| file.source_audio.as_ref()?.summarized()),
+            files.iter().filter_map(|file| file.source_audio.as_ref()?.summarized()),
         );
 
         let file_count = files.len() as i64;
@@ -514,9 +486,7 @@ impl ReleaseDetail {
             gallery.push(GalleryItem {
                 id: f.id.clone(),
                 label: f.original_filename.clone(),
-                source: GallerySource::ReleaseFile {
-                    file_id: f.id.clone(),
-                },
+                source: GallerySource::ReleaseFile { file_id: f.id.clone() },
             });
         }
 
@@ -590,9 +560,7 @@ mod release_edit_display_tests {
     }
 
     fn side(letter: &str) -> TrackSide {
-        TrackSide::Sided {
-            side_letter: letter.to_string(),
-        }
+        TrackSide::Sided { side_letter: letter.to_string() }
     }
 
     /// Each run as the track ids it holds, and the file a sheet run names.
@@ -604,13 +572,7 @@ mod release_edit_display_tests {
                     ReleaseEditTrackRun::Track(_) => None,
                     ReleaseEditTrackRun::Sheet { source, .. } => Some(source.file_id.as_str()),
                 };
-                (
-                    source,
-                    run.tracks()
-                        .iter()
-                        .map(|track| track.track_id.as_str())
-                        .collect(),
-                )
+                (source, run.tracks().iter().map(|track| track.track_id.as_str()).collect())
             })
             .collect()
     }
@@ -628,10 +590,7 @@ mod release_edit_display_tests {
             (side("B"), context("b3", &[("image-c", Cue)])),
             (side("B"), context("b4", &[("image-c", Cue)])),
             (side("B"), context("b5", &[("image-d", Cue)])),
-            (
-                side("B"),
-                context("b6", &[("image-d", Cue), ("image-e", Cue)]),
-            ),
+            (side("B"), context("b6", &[("image-d", Cue), ("image-e", Cue)])),
         ]);
 
         assert_eq!(
@@ -640,10 +599,7 @@ mod release_edit_display_tests {
         );
         assert_eq!(
             runs(&sides[0]),
-            [
-                (Some("image-a"), vec!["a1", "a2", "a3"]),
-                (None, vec!["a4"]),
-            ]
+            [(Some("image-a"), vec!["a1", "a2", "a3"]), (None, vec!["a4"]),]
         );
         // Two sheets back to back are two runs; a file one track alone is
         // carved from stays in that track's row, and so does a track playing
@@ -689,11 +645,7 @@ mod release_edit_display_tests {
         ]);
 
         assert_eq!(
-            placed
-                .sides
-                .iter()
-                .map(|side| &side.side)
-                .collect::<Vec<_>>(),
+            placed.sides.iter().map(|side| &side.side).collect::<Vec<_>>(),
             [&TrackSide::Disc { disc: 1 }, &TrackSide::Disc { disc: 2 }]
         );
         assert_eq!(

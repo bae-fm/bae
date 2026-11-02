@@ -34,10 +34,7 @@ pub async fn requested_profile(manager: &LibraryManager) -> PersonProfile {
         member,
     );
     manager.stop_sync().await.unwrap();
-    value_matching(&mut status, |value| {
-        matches!(value.status, coven::SyncStatus::Stopped)
-    })
-    .await;
+    value_matching(&mut status, |value| matches!(value.status, coven::SyncStatus::Stopped)).await;
     manager.unlock_store_key().await.unwrap();
     profile
 }

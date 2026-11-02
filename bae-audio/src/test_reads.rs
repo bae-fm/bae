@@ -26,12 +26,7 @@ pub(crate) fn record_probe(path: &Path) {
 /// How many times `path` has been probed.
 #[cfg(feature = "test-instrumentation")]
 pub fn probes(path: &Path) -> u64 {
-    probe_counts()
-        .lock()
-        .expect("probe counts mutex poisoned")
-        .get(path)
-        .copied()
-        .unwrap_or(0)
+    probe_counts().lock().expect("probe counts mutex poisoned").get(path).copied().unwrap_or(0)
 }
 
 #[cfg(test)]

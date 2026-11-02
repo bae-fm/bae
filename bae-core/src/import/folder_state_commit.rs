@@ -27,12 +27,7 @@ impl FolderStateCommit {
         let asked = Instant::now();
         let guard = self.0.clone().lock_owned().await;
         let acquired = Instant::now();
-        FolderStateCommitGuard {
-            _guard: guard,
-            operation,
-            waited: acquired - asked,
-            acquired,
-        }
+        FolderStateCommitGuard { _guard: guard, operation, waited: acquired - asked, acquired }
     }
 }
 
@@ -91,10 +86,8 @@ mod tests {
 
     #[test]
     fn a_long_hold_warns_naming_the_operation_that_held_it() {
-        let logs = logs_of_a_hold(
-            tracing::Level::WARN,
-            NOTICEABLE_HOLD + Duration::from_millis(20),
-        );
+        let logs =
+            logs_of_a_hold(tracing::Level::WARN, NOTICEABLE_HOLD + Duration::from_millis(20));
         assert!(logs.contains("WARN"), "{logs}");
         assert!(logs.contains("operation=\"store scan items\""), "{logs}");
         assert!(logs.contains("held_ms="), "{logs}");

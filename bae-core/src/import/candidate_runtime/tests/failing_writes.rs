@@ -5,11 +5,7 @@
 async fn fail_writes_of(runtime: &CandidateRuntime, stage: &str) {
     let when = format!("NEW.identification = '{stage}'");
     fail_standing_writes(
-        runtime
-            ._test_directory
-            .as_ref()
-            .expect("a test runtime keeps its directory")
-            .path(),
+        runtime._test_directory.as_ref().expect("a test runtime keeps its directory").path(),
         &[("INSERT", when.as_str()), ("UPDATE", when.as_str())],
     )
     .await;
@@ -22,23 +18,14 @@ async fn a_start_that_cannot_be_written_fails_and_leaves_the_table_as_it_was() {
     let runtime = CandidateRuntime::for_test().await;
     let key = &crate::import::CandidateKey::test("/watch/a/rel1");
     let files = scanned_key(&runtime, key).await;
-    runtime
-        .admit(vec![(key.clone(), files.clone())], Admission::Requested)
-        .await
-        .unwrap();
+    runtime.admit(vec![(key.clone(), files.clone())], Admission::Requested).await.unwrap();
     let before = runtime.stored_standing_for_test(key).await;
     fail_writes_of(&runtime, "running").await;
 
-    let error = runtime
-        .run_started(key, &files, run(1), &triangulating())
-        .await
-        .unwrap_err();
+    let error = runtime.run_started(key, &files, run(1), &triangulating()).await.unwrap_err();
     assert!(error.to_string().contains("the disk is full"), "{error}");
 
-    assert_eq!(
-        runtime.stored_standing_for_test(key).await,
-        before
-    );
+    assert_eq!(runtime.stored_standing_for_test(key).await, before);
     assert_eq!(runtime.identification_progress().await.unwrap(), (0, 1));
     assert_eq!(
         runtime.snapshot(key).await.unwrap().and_then(|runtime| runtime.identification),

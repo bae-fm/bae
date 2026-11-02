@@ -13,11 +13,7 @@ async fn local_folder_import() {
     fs::create_dir_all(&album_dir).unwrap();
     generate_album_files(
         &album_dir,
-        &[
-            "01 Track One.flac",
-            "02 Track Two.flac",
-            "03 Track Three.flac",
-        ],
+        &["01 Track One.flac", "02 Track Two.flac", "03 Track Three.flac"],
     );
 
     let import_id = uuid::Uuid::new_v4().to_string();
@@ -36,12 +32,7 @@ async fn local_folder_import() {
     // The release's files resolve to the folder they were imported from.
     assert!(f.db.get_files_for_release(&release_id).await.unwrap().iter().all(|file| !file.stored));
     let files = f.db.get_files_for_release(&release_id).await.unwrap();
-    let local_path = f
-        .library_manager
-        .file_local_path(&files[0].id)
-        .await
-        .unwrap()
-        .unwrap();
+    let local_path = f.library_manager.file_local_path(&files[0].id).await.unwrap().unwrap();
     assert_eq!(local_path.parent().unwrap(), album_dir);
 
     let tracks = f.db.get_tracks_for_release(&release_id).await.unwrap();
@@ -75,20 +66,12 @@ async fn import_progress_names_every_operation_before_loudness() {
         "Album Title",
         "Artist Name",
         Some(2024),
-        &[TaggedTrack {
-            filename: "01 Track Title.flac",
-            title: "Track Title",
-            track_number: 1,
-        }],
+        &[TaggedTrack { filename: "01 Track Title.flac", title: "Track Title", track_number: 1 }],
     );
 
     let import_id = f.ids.new_id().to_string();
     f.handle
-        .send_command(support::folder_import(
-            &import_id,
-            album_dir,
-            support::DraftSource::FileTags,
-        ))
+        .send_command(support::folder_import(&import_id, album_dir, support::DraftSource::FileTags))
         .await
         .unwrap();
 
@@ -98,11 +81,7 @@ async fn import_progress_names_every_operation_before_loudness() {
             .await
             .expect("import progress arrives")
             .expect("import event stream remains open");
-        let ImportEvent::ImportProgress {
-            candidate_key,
-            progress,
-        } = event
-        else {
+        let ImportEvent::ImportProgress { candidate_key, progress } = event else {
             continue;
         };
         if candidate_key != expected_candidate_key {
@@ -111,10 +90,7 @@ async fn import_progress_names_every_operation_before_loudness() {
         let step = match progress {
             ImportProgress::Preparing { step, .. } => Some(ImportStep::Preparing(step)),
             ImportProgress::Progress { phase, .. } => Some(ImportStep::Running(phase)),
-            ImportProgress::Complete {
-                import_id: completed,
-                ..
-            } if completed == import_id => {
+            ImportProgress::Complete { import_id: completed, .. } if completed == import_id => {
                 break;
             }
             ImportProgress::Failed { error, .. } => panic!("import failed: {error}"),
@@ -173,10 +149,7 @@ async fn import_produces_audio_format_records() {
     let tracks = f.db.get_tracks_for_release(&release_id).await.unwrap();
     assert_eq!(tracks.len(), 1);
 
-    let format =
-        f.db.find_audio_format_by_track_id(&tracks[0].id)
-            .await
-            .unwrap();
+    let format = f.db.find_audio_format_by_track_id(&tracks[0].id).await.unwrap();
     assert!(format.is_some(), "should have audio format record");
     let format = format.unwrap();
     assert_eq!(format.content_type.as_str(), "audio/flac");
@@ -186,10 +159,9 @@ async fn import_produces_audio_format_records() {
 async fn exact_metadata_import_stores_dsd_audio_format() {
     support::tracing_init();
 
-    for (index, fixture_name, import_name) in [
-        (1, "placeholder-dsd.dsf", "01 Track.dsf"),
-        (2, "placeholder-dsd.dff", "01 Track.dff"),
-    ] {
+    for (index, fixture_name, import_name) in
+        [(1, "placeholder-dsd.dsf", "01 Track.dsf"), (2, "placeholder-dsd.dff", "01 Track.dff")]
+    {
         let release = discogs_release(&format!("DSD Format Album {index}"), &["Track"]);
         let f = ImportFixture::new().await;
         let release_id_key = seed_discogs_test_release(f.library_manager.providers(), release);
@@ -228,16 +200,8 @@ async fn exact_metadata_import_stores_dsd_audio_format() {
 
         let tracks = f.db.get_tracks_for_release(&release_id).await.unwrap();
         assert_eq!(tracks.len(), 1, "{fixture_name}");
-        let format =
-            f.db.find_audio_format_by_track_id(&tracks[0].id)
-                .await
-                .unwrap()
-                .unwrap();
-        assert_eq!(
-            format.content_type,
-            bae_util::content_type::ContentType::Dsd,
-            "{fixture_name}"
-        );
+        let format = f.db.find_audio_format_by_track_id(&tracks[0].id).await.unwrap().unwrap();
+        assert_eq!(format.content_type, bae_util::content_type::ContentType::Dsd, "{fixture_name}");
     }
 }
 
@@ -269,9 +233,7 @@ fn sine(amplitude: f64, sample_rate: u32, secs: f64, spikes: bool) -> Vec<i32> {
 /// Write a synthetic 16-bit stereo FLAC of `samples` to `path`.
 fn write_flac(path: &Path, samples: &[i32], sample_rate: u32) {
     let bytes = bae_audio::encode_i32(
-        bae_audio::EncodeFormat::Flac {
-            bits_per_sample: 16,
-        },
+        bae_audio::EncodeFormat::Flac { bits_per_sample: 16 },
         samples,
         sample_rate,
         2,
@@ -299,16 +261,8 @@ async fn loudness_measured_at_import_drives_playback_gain() {
     let sr = 44_100;
     // Quiet track: a low sine with full-scale spikes, so it wants a boost but
     // peaks near full scale. Loud track: a steady half-scale sine.
-    write_flac(
-        &album_dir.join("01 Quiet Track.flac"),
-        &sine(0.03, sr, 4.0, true),
-        sr,
-    );
-    write_flac(
-        &album_dir.join("02 Loud Track.flac"),
-        &sine(0.5, sr, 4.0, false),
-        sr,
-    );
+    write_flac(&album_dir.join("01 Quiet Track.flac"), &sine(0.03, sr, 4.0, true), sr);
+    write_flac(&album_dir.join("02 Loud Track.flac"), &sine(0.5, sr, 4.0, false), sr);
 
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
@@ -329,49 +283,25 @@ async fn loudness_measured_at_import_drives_playback_gain() {
     let quiet = tracks.iter().find(|t| t.title == "Quiet Track").unwrap();
     let loud = tracks.iter().find(|t| t.title == "Loud Track").unwrap();
 
-    let quiet_fmt =
-        f.db.find_audio_format_by_track_id(&quiet.id)
-            .await
-            .unwrap()
-            .unwrap();
-    let loud_fmt =
-        f.db.find_audio_format_by_track_id(&loud.id)
-            .await
-            .unwrap()
-            .unwrap();
+    let quiet_fmt = f.db.find_audio_format_by_track_id(&quiet.id).await.unwrap().unwrap();
+    let loud_fmt = f.db.find_audio_format_by_track_id(&loud.id).await.unwrap().unwrap();
 
-    let quiet_lufs = quiet_fmt
-        .track_loudness_lufs
-        .expect("quiet track measured a loudness");
-    let loud_lufs = loud_fmt
-        .track_loudness_lufs
-        .expect("loud track measured a loudness");
+    let quiet_lufs = quiet_fmt.track_loudness_lufs.expect("quiet track measured a loudness");
+    let loud_lufs = loud_fmt.track_loudness_lufs.expect("loud track measured a loudness");
     assert!(
         loud_lufs > quiet_lufs + 10.0,
         "loud track ({loud_lufs} LUFS) should be clearly louder than quiet ({quiet_lufs} LUFS)"
     );
     // The quiet track's spikes put its peak near 1.0; the loud track's near 0.5.
-    let quiet_peak = quiet_fmt
-        .track_peak_linear
-        .expect("quiet track measured a peak");
-    let loud_peak = loud_fmt
-        .track_peak_linear
-        .expect("loud track measured a peak");
-    assert!(
-        quiet_peak > 0.9,
-        "quiet track's burst should peak near full scale: {quiet_peak}"
-    );
-    assert!(
-        loud_peak < 0.7,
-        "loud track's steady sine should peak near 0.5: {loud_peak}"
-    );
+    let quiet_peak = quiet_fmt.track_peak_linear.expect("quiet track measured a peak");
+    let loud_peak = loud_fmt.track_peak_linear.expect("loud track measured a peak");
+    assert!(quiet_peak > 0.9, "quiet track's burst should peak near full scale: {quiet_peak}");
+    assert!(loud_peak < 0.7, "loud track's steady sine should peak near 0.5: {loud_peak}");
 
     // Album loudness is measured over both tracks together, so it falls between
     // the two track loudnesses.
     let release = f.db.find_release_by_id(&release_id).await.unwrap().unwrap();
-    let album_lufs = release
-        .album_loudness_lufs
-        .expect("album loudness measured");
+    let album_lufs = release.album_loudness_lufs.expect("album loudness measured");
     assert!(
         album_lufs.is_finite() && album_lufs >= quiet_lufs && album_lufs <= loud_lufs + 0.01,
         "album loudness {album_lufs} should fall within [{quiet_lufs}, {loud_lufs}]"
@@ -383,16 +313,8 @@ async fn loudness_measured_at_import_drives_playback_gain() {
     );
 
     // ── Playback gain per track ──
-    let quiet_audio = f
-        .library_manager
-        .resolve_track_audio(&quiet.id)
-        .await
-        .unwrap();
-    let loud_audio = f
-        .library_manager
-        .resolve_track_audio(&loud.id)
-        .await
-        .unwrap();
+    let quiet_audio = f.library_manager.resolve_track_audio(&quiet.id).await.unwrap();
+    let loud_audio = f.library_manager.resolve_track_audio(&loud.id).await.unwrap();
 
     let quiet_gain = quiet_audio.replay_gain_linear(ReplayGainMode::Track);
     let loud_gain = loud_audio.replay_gain_linear(ReplayGainMode::Track);
@@ -404,10 +326,7 @@ async fn loudness_measured_at_import_drives_playback_gain() {
         "quiet track gain {quiet_gain} should exceed loud track gain {loud_gain}"
     );
     // The loud track is above the -18 LUFS target, so it is turned down.
-    assert!(
-        loud_gain < 1.0,
-        "loud track should be attenuated toward the target: {loud_gain}"
-    );
+    assert!(loud_gain < 1.0, "loud track should be attenuated toward the target: {loud_gain}");
 
     // ── Peak clamp ──
     // The quiet track's gain is capped at 1/peak, well below the boost its
@@ -445,11 +364,7 @@ async fn loudness_pass_advances_the_candidate_rows_percent() {
     fs::create_dir_all(&album_dir).unwrap();
     generate_album_files(
         &album_dir,
-        &[
-            "01 Track One.flac",
-            "02 Track Two.flac",
-            "03 Track Three.flac",
-        ],
+        &["01 Track One.flac", "02 Track Two.flac", "03 Track Three.flac"],
     );
 
     let import_id = uuid::Uuid::new_v4().to_string();
@@ -470,11 +385,7 @@ async fn loudness_pass_advances_the_candidate_rows_percent() {
         let ImportEvent::ImportProgress {
             candidate_key,
             progress:
-                ImportProgress::Progress {
-                    percent,
-                    phase: ImportPhase::MeasuringLoudness,
-                    ..
-                },
+                ImportProgress::Progress { percent, phase: ImportPhase::MeasuringLoudness, .. },
         } = event
         else {
             continue;
@@ -498,14 +409,6 @@ async fn loudness_pass_advances_the_candidate_rows_percent() {
         Some(None),
         "the step is written as it opens, before the pass counts its frames"
     );
-    assert_eq!(
-        percents.get(1).copied(),
-        Some(Some(0)),
-        "a known frame denominator opens at zero"
-    );
-    assert_eq!(
-        percents.last().copied(),
-        Some(Some(100)),
-        "the bar reaches the end of the phase"
-    );
+    assert_eq!(percents.get(1).copied(), Some(Some(0)), "a known frame denominator opens at zero");
+    assert_eq!(percents.last().copied(), Some(Some(100)), "the bar reaches the end of the phase");
 }

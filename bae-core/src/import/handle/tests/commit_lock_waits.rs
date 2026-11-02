@@ -45,12 +45,7 @@ impl crate::import::file_tag_snapshot::FileTagReader for HeldTagReader {
         &self,
         path: &Path,
     ) -> Result<crate::import::file_tag_snapshot::FileTagRead, crate::import::ImportError> {
-        let held = self
-            .held
-            .lock()
-            .unwrap()
-            .as_ref()
-            .is_some_and(|held| path.starts_with(held));
+        let held = self.held.lock().unwrap().as_ref().is_some_and(|held| path.starts_with(held));
         if held {
             // The receiver is gone once the test has stopped watching, which
             // changes nothing about the read.
@@ -84,15 +79,10 @@ fn audio_folder(root: &Path, name: &str) {
     let folder = root.join(name);
     std::fs::create_dir_all(&folder).unwrap();
     let fixtures = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/flac");
-    for (index, fixture) in ["01 Test Track 1.flac", "02 Test Track 2.flac"]
-        .into_iter()
-        .enumerate()
+    for (index, fixture) in ["01 Test Track 1.flac", "02 Test Track 2.flac"].into_iter().enumerate()
     {
-        std::fs::copy(
-            fixtures.join(fixture),
-            folder.join(format!("{:02} Track.flac", index + 1)),
-        )
-        .unwrap();
+        std::fs::copy(fixtures.join(fixture), folder.join(format!("{:02} Track.flac", index + 1)))
+            .unwrap();
     }
 }
 
@@ -115,7 +105,8 @@ async fn retitle(handle: &ImportServiceHandle, key: &crate::import::CandidateKey
         let projection = pane_query
             .next()
             .await
-            .expect("the query stays open").result
+            .expect("the query stays open")
+            .result
             .unwrap()
             .expect("the candidate is still stored");
         if projection.draft().unwrap().metadata_draft.album_title == "Retitled" {
@@ -139,14 +130,8 @@ async fn a_pane_edit_lands_while_a_scan_reads_another_folders_tags() {
     let _opens = OpensOnDrop(reader.clone());
     let handle = manager
         .start_import_service_reading_tags_with(tokio::runtime::Handle::current(), reader.clone());
-    handle
-        .select_candidate_file_tags(key.clone())
-        .await
-        .unwrap();
-    handle
-        .add_watched_folder(slow_root.clone())
-        .await
-        .unwrap();
+    handle.select_candidate_file_tags(key.clone()).await.unwrap();
+    handle.add_watched_folder(slow_root.clone()).await.unwrap();
     tokio::time::timeout(HANG_GUARD, entered.recv())
         .await
         .expect("the scan reads the new folder's tags")
@@ -173,8 +158,7 @@ async fn two_candidates() -> (
 ) {
     let (manager, tmp) = setup_test_manager().await;
     let other = TempDir::new().unwrap();
-    let (mut held_candidate, held_key, _) =
-        unscanned_candidate(&manager, &tmp, "Held Album").await;
+    let (mut held_candidate, held_key, _) = unscanned_candidate(&manager, &tmp, "Held Album").await;
     std::fs::write(held_candidate.path.join("Disc.cue"), SECOND_FILE_IN_TWO).unwrap();
     held_candidate.files =
         crate::import::folder_scanner::collect_release_candidate_files_with_scope(
@@ -188,18 +172,8 @@ async fn two_candidates() -> (
     let (reader, entered) = HeldTagReader::new();
     let handle = manager
         .start_import_service_reading_tags_with(tokio::runtime::Handle::current(), reader.clone());
-    handle
-        .select_candidate_file_tags(edited_key.clone())
-        .await
-        .unwrap();
-    (
-        handle,
-        reader,
-        entered,
-        (held_key, held_candidate.path),
-        edited_key,
-        [tmp, other],
-    )
+    handle.select_candidate_file_tags(edited_key.clone()).await.unwrap();
+    (handle, reader, entered, (held_key, held_candidate.path), edited_key, [tmp, other])
 }
 
 /// Picking a folder's own tags reads them when nothing has read them yet.
@@ -213,11 +187,7 @@ async fn a_pane_edit_lands_while_a_pick_reads_another_folders_tags() {
     reader.hold(&held_folder);
     let pick = tokio::spawn({
         let handle = handle.clone();
-        async move {
-            handle
-                .select_candidate_file_tags(held_key)
-                .await
-        }
+        async move { handle.select_candidate_file_tags(held_key).await }
     });
     tokio::time::timeout(HANG_GUARD, entered.recv())
         .await
@@ -240,10 +210,7 @@ async fn a_pane_edit_lands_while_a_file_decision_reads_another_folders_tags() {
     let (handle, reader, mut entered, (held_key, held_folder), edited_key, _tmp) =
         two_candidates().await;
     let _opens = OpensOnDrop(reader.clone());
-    handle
-        .select_candidate_file_tags(held_key.clone())
-        .await
-        .unwrap();
+    handle.select_candidate_file_tags(held_key.clone()).await.unwrap();
     reader.hold(&held_folder);
     let decision = tokio::spawn({
         let handle = handle.clone();

@@ -67,12 +67,7 @@ pub enum StorageInspectorTransfer {
 impl StorageInspector {
     /// The release `release_id` from one read of it, `rows`.
     pub(crate) fn read(release_id: &str, rows: crate::db::DbStorageInspector) -> Self {
-        Self::of(
-            release_id,
-            rows.files,
-            &rows.entries,
-            rows.upload.map(ReleaseUpload::from_raw),
-        )
+        Self::of(release_id, rows.files, &rows.entries, rows.upload.map(ReleaseUpload::from_raw))
     }
 
     /// The release `release_id`: its `files` in their order, each upload's
@@ -93,10 +88,7 @@ impl StorageInspector {
             .is_some_and(|row| !matches!(row.op.state, ReleaseQueueState::Failed { .. }))
         {
             Some(Pinning::Download)
-        } else if files
-            .iter()
-            .any(|file| file.pin.is_some_and(|pin| pin != FilePin::Kept))
-        {
+        } else if files.iter().any(|file| file.pin.is_some_and(|pin| pin != FilePin::Kept)) {
             Some(Pinning::Fetch)
         } else {
             None
@@ -124,13 +116,8 @@ impl StorageInspector {
             })
             .collect();
         let count = |stands: fn(&FilePin) -> bool| {
-            u32::try_from(
-                files
-                    .iter()
-                    .filter(|file| file.pin.as_ref().is_some_and(stands))
-                    .count(),
-            )
-            .expect("a release's file count")
+            u32::try_from(files.iter().filter(|file| file.pin.as_ref().is_some_and(stands)).count())
+                .expect("a release's file count")
         };
         let pins = pinning.map(|pinning| {
             use crate::library::TransferStage;
@@ -155,10 +142,7 @@ impl StorageInspector {
                 ]),
             )
         });
-        Self {
-            transfers: storage_inspector_transfers(release_id, entries, upload, pins),
-            files,
-        }
+        Self { transfers: storage_inspector_transfers(release_id, entries, upload, pins), files }
     }
 }
 
@@ -196,15 +180,10 @@ fn storage_inspector_transfers(
         items.push(StorageInspectorTransfer::PinFetch { summary });
     }
     if let Some(operation) = &entries.output {
-        items.push(StorageInspectorTransfer::Output {
-            operation: operation.clone(),
-        });
+        items.push(StorageInspectorTransfer::Output { operation: operation.clone() });
     }
     if let Some(upload) = upload {
-        items.push(StorageInspectorTransfer::Upload {
-            release_id: release_id.to_string(),
-            upload,
-        });
+        items.push(StorageInspectorTransfer::Upload { release_id: release_id.to_string(), upload });
     }
     items
 }

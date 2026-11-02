@@ -31,12 +31,7 @@ async fn status_until(
 /// with no answer when `None`.
 #[cfg(feature = "test-utils")]
 fn next_request_fails(failure: coven::StorageFailure, response: Option<u16>) -> coven::Faults {
-    coven::Faults {
-        fail_next: 1,
-        failure,
-        response,
-        ..coven::Faults::none()
-    }
+    coven::Faults { fail_next: 1, failure, response, ..coven::Faults::none() }
 }
 
 /// Fail the next pass with `faults`, then follow the status until it shows
@@ -49,13 +44,8 @@ async fn fail_a_pass(manager: &TestManager, faults: coven::Faults) -> SyncStatus
     manager.storage.set_faults(faults).await;
     manager.trigger_sync();
     let failed = crate::followed::value_matching(&mut values, |value| {
-        matches!(
-            value.status,
-            coven::SyncStatus::Failed { .. } | coven::SyncStatus::Offline { .. }
-        ) && value
-            .pending
-            .iter()
-            .any(|item| item.subject == PendingSubjectName::Connection)
+        matches!(value.status, coven::SyncStatus::Failed { .. } | coven::SyncStatus::Offline { .. })
+            && value.pending.iter().any(|item| item.subject == PendingSubjectName::Connection)
     })
     .await;
     manager.storage.set_faults(coven::Faults::none()).await;
@@ -81,15 +71,13 @@ async fn each_offered_failure_is_retried_by_a_pass_that_syncs() {
         let (manager, _temp_dir, _clock) = library_on_a_stopped_clock().await;
         let failed = fail_a_pass(&manager, next_request_fails(failure, response)).await;
         assert_eq!(failed.retry_effect, coven::RetryEffect::Pass);
-        assert!(
-            failed.retry_offered(),
-            "{failure:?} {response:?}: {:?}",
-            failed.status
-        );
+        assert!(failed.retry_offered(), "{failure:?} {response:?}: {:?}", failed.status);
         let requests = manager.storage.request_trace().len();
-        let answer = tokio::time::timeout(std::time::Duration::from_secs(20), async { manager.retry_now().await.unwrap().await })
-            .await
-            .expect("the retry's pass ends");
+        let answer = tokio::time::timeout(std::time::Duration::from_secs(20), async {
+            manager.retry_now().await.unwrap().await
+        })
+        .await
+        .expect("the retry's pass ends");
         assert!(
             matches!(answer, crate::library::SyncRetryOutcome::Synced),
             "{failure:?} {response:?}: {answer:?}"
@@ -121,15 +109,13 @@ async fn each_failure_the_person_clears_offers_no_retry() {
         let (manager, _temp_dir, _clock) = library_on_a_stopped_clock().await;
         let failed = fail_a_pass(&manager, next_request_fails(failure, response)).await;
         assert_eq!(failed.retry_effect, coven::RetryEffect::Failed);
-        assert!(
-            !failed.retry_offered(),
-            "{failure:?} {response:?}: {:?}",
-            failed.status
-        );
+        assert!(!failed.retry_offered(), "{failure:?} {response:?}: {:?}", failed.status);
         let requests = manager.storage.request_trace().len();
-        let answer = tokio::time::timeout(std::time::Duration::from_secs(20), async { manager.retry_now().await.unwrap().await })
-            .await
-            .expect("a held pass answers the retry at once");
+        let answer = tokio::time::timeout(std::time::Duration::from_secs(20), async {
+            manager.retry_now().await.unwrap().await
+        })
+        .await
+        .expect("a held pass answers the retry at once");
         assert!(
             matches!(answer, crate::library::SyncRetryOutcome::Failed(_)),
             "{failure:?} {response:?}: {answer:?}"
@@ -159,14 +145,13 @@ async fn a_provider_cooldown_offers_no_retry_until_it_ends() {
     )
     .await;
     let ends = std::time::UNIX_EPOCH + std::time::Duration::from_secs(600);
-    assert_eq!(
-        cooling.retry_effect,
-        coven::RetryEffect::CoolingDown { until: ends }
-    );
+    assert_eq!(cooling.retry_effect, coven::RetryEffect::CoolingDown { until: ends });
     assert!(!cooling.retry_offered(), "{:?}", cooling.status);
-    let answer = tokio::time::timeout(std::time::Duration::from_secs(20), async { manager.retry_now().await.unwrap().await })
-        .await
-        .expect("a cooldown answers the retry at once");
+    let answer = tokio::time::timeout(std::time::Duration::from_secs(20), async {
+        manager.retry_now().await.unwrap().await
+    })
+    .await
+    .expect("a cooldown answers the retry at once");
     assert!(
         matches!(answer, crate::library::SyncRetryOutcome::CoolingDown { until } if until == ends),
         "{answer:?}"
@@ -174,25 +159,20 @@ async fn a_provider_cooldown_offers_no_retry_until_it_ends() {
 
     // The pass the cooldown's end lets run finds storage unreachable, so a
     // failure a retry clears holds work back.
-    manager
-        .storage
-        .set_faults(next_request_fails(coven::StorageFailure::Network, None))
-        .await;
+    manager.storage.set_faults(next_request_fails(coven::StorageFailure::Network, None)).await;
     clock.set(ends + std::time::Duration::from_secs(1));
-    let offline = status_until(&manager, |value| {
-        matches!(value.status, coven::SyncStatus::Offline { .. })
-    })
-    .await;
+    let offline =
+        status_until(&manager, |value| matches!(value.status, coven::SyncStatus::Offline { .. }))
+            .await;
     assert!(offline.retry_offered(), "{:?}", offline.retry_effect);
     manager.storage.set_faults(coven::Faults::none()).await;
     let requests = manager.storage.request_trace().len();
-    let answer = tokio::time::timeout(std::time::Duration::from_secs(20), async { manager.retry_now().await.unwrap().await })
-        .await
-        .expect("the retry's pass ends");
-    assert!(
-        matches!(answer, crate::library::SyncRetryOutcome::Synced),
-        "{answer:?}"
-    );
+    let answer = tokio::time::timeout(std::time::Duration::from_secs(20), async {
+        manager.retry_now().await.unwrap().await
+    })
+    .await
+    .expect("the retry's pass ends");
+    assert!(matches!(answer, crate::library::SyncRetryOutcome::Synced), "{answer:?}");
     assert!(manager.storage.request_trace().len() > requests, "the retry ran a pass");
     manager.close().await.unwrap();
 }

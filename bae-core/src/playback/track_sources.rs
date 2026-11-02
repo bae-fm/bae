@@ -58,10 +58,7 @@ impl SourceStream {
     ) -> Self {
         let buffer = create_sparse_buffer(size);
         let fill = reader.start_reading(buffer.clone(), on_error);
-        Self {
-            buffer: StopOnDrop(buffer),
-            fill,
-        }
+        Self { buffer: StopOnDrop(buffer), fill }
     }
 
     /// Stop the stream and wait for its fill to end, so the file is closed
@@ -123,19 +120,15 @@ where
             let Some((_, (_, files))) = waiting.peek() else {
                 break;
             };
-            let opening = files
-                .iter()
-                .filter(|file| !open_files.contains_key(*file))
-                .count();
+            let opening = files.iter().filter(|file| !open_files.contains_key(*file)).count();
             if !running.is_empty() && open_files.len() + opening > parallelism {
                 break;
             }
             let (index, (track, files)) = waiting.next().expect("peeked above");
             let mut streams = HashMap::with_capacity(files.len());
             for file in &files {
-                let (stream, readers) = open_files
-                    .entry(file.clone())
-                    .or_insert_with(|| (open(file), 0));
+                let (stream, readers) =
+                    open_files.entry(file.clone()).or_insert_with(|| (open(file), 0));
                 *readers += 1;
                 streams.insert(file.clone(), stream.buffer.0.clone());
             }
@@ -165,10 +158,7 @@ where
             }
         }
         for file in &files {
-            open_files
-                .get_mut(file)
-                .expect("a running track's files are open")
-                .1 -= 1;
+            open_files.get_mut(file).expect("a running track's files are open").1 -= 1;
         }
         // A file the next waiting track reads stays open for it, so a CUE
         // image is not closed and reopened between its tracks.

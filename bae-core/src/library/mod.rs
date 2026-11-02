@@ -278,19 +278,14 @@ pub(crate) fn with_transfer_limits(
     builder: coven::CovenBuilder,
     limits: coven::TransferLimits,
 ) -> coven::CovenBuilder {
-    builder
-        .max_concurrent_uploads(limits.uploads)
-        .max_concurrent_downloads(limits.downloads)
+    builder.max_concurrent_uploads(limits.uploads).max_concurrent_downloads(limits.downloads)
 }
 
 /// `builder` configured as bae's store for loading a library from storage,
 /// under the default transfer limits: the library's own preferences are in
 /// the store being loaded, so they apply once it opens.
 fn loading_builder(builder: coven::CovenBuilder) -> coven::CovenBuilder {
-    with_transfer_limits(
-        configure_store(builder),
-        crate::config::default_transfer_limits(),
-    )
+    with_transfer_limits(configure_store(builder), crate::config::default_transfer_limits())
 }
 
 /// The most each connection to a library keeps in its page cache. A cache
@@ -384,9 +379,7 @@ fn folder_below_value(root: Vec<u8>, relative: Vec<u8>) -> rusqlite::Result<Vec<
         .map_err(|error| rusqlite::Error::UserFunctionError(Box::new(error)))?;
     let relative = crate::import::RelativeFolder::from_bytes(relative)
         .map_err(|error| rusqlite::Error::UserFunctionError(Box::new(error)))?;
-    Ok(coven::path_bytes(
-        &crate::import::relative_folder::folder_below(&root, &relative),
-    ))
+    Ok(coven::path_bytes(&crate::import::relative_folder::folder_below(&root, &relative)))
 }
 
 /// `bae_folder_relative`: the [`RelativeFolder`] bytes of a folder below a
@@ -457,11 +450,8 @@ pub(crate) fn bare_library_connection() -> rusqlite::Connection {
             .transpose()
     })
     .expect("coven_path_text registers");
-    conn.create_collation(
-        crate::migrations::NATURAL_ORDER,
-        crate::migrations::natural_order,
-    )
-    .expect("natural_order registers");
+    conn.create_collation(crate::migrations::NATURAL_ORDER, crate::migrations::natural_order)
+        .expect("natural_order registers");
     // The schema's triggers follow coven's `coven_files`, `coven_pins` and
     // `coven_upload_queue`, which coven creates before it migrates; these
     // tests pin and queue nothing, so tables of the same shape let the
@@ -551,10 +541,7 @@ pub async fn restore_from_saved_code(
 /// existing member's keys: that person keeps the row they already have
 /// (§5.4). An asked-for profile is written once sync has made the person's
 /// private circle.
-pub type JoinedLibrary = (
-    coven::CovenHandle,
-    Option<Result<(), crate::people::ProfileError>>,
-);
+pub type JoinedLibrary = (coven::CovenHandle, Option<Result<(), crate::people::ProfileError>>);
 
 /// The app's hold on a running join: cancel it before its request is sent, or
 /// check for approval at once. One control covers coven's join and any
@@ -566,10 +553,7 @@ pub struct JoinControl {
 
 impl JoinControl {
     pub fn new() -> Self {
-        Self {
-            sign_in: watch::channel(false).0,
-            join: coven::JoinControl::new(),
-        }
+        Self { sign_in: watch::channel(false).0, join: coven::JoinControl::new() }
     }
 
     /// Cancel the join. Once its request may have been sent, coven keeps the
@@ -672,12 +656,12 @@ pub async fn resume_join(
 fn invite_info(code: &str) -> Result<coven::InviteInfo, RestoreFromCodeError> {
     match coven::decode_code_info(code) {
         Ok(coven::CodeInfo::Invite(invite)) => Ok(invite),
-        Ok(coven::CodeInfo::Restore(_)) => Err(restore_error(coven::BootstrapError::Code(
-            coven::CodeError::WrongKind {
+        Ok(coven::CodeInfo::Restore(_)) => {
+            Err(restore_error(coven::BootstrapError::Code(coven::CodeError::WrongKind {
                 expected: coven::CodeKind::Invite,
                 actual: coven::CodeKind::Restore,
-            },
-        ))),
+            })))
+        }
         Err(error) => Err(restore_error(coven::BootstrapError::Code(error))),
     }
 }
@@ -809,26 +793,16 @@ impl ForgetSavedRestoreCodeError {
 /// nowhere to keep them: coven answers `Unsupported` there, which says the
 /// device keeps no saved codes, not that reading them failed.
 fn keeps_no_saved_codes(error: &coven::BootstrapError) -> bool {
-    matches!(
-        error,
-        coven::BootstrapError::SecureStorage(coven::KeyError::Unsupported)
-    )
+    matches!(error, coven::BootstrapError::SecureStorage(coven::KeyError::Unsupported))
 }
 
 async fn restorable_codes(
     codes: Vec<coven::SavedRestoreEntry>,
     layout: &coven::StoreLayout,
 ) -> Result<Vec<coven::SavedRestoreEntry>, SavedRestoreCodesError> {
-    let here: std::collections::HashSet<_> = layout
-        .stores()
-        .await?
-        .into_iter()
-        .map(|store| store.id)
-        .collect();
-    Ok(codes
-        .into_iter()
-        .filter(|code| !here.contains(&code.store_id()))
-        .collect())
+    let here: std::collections::HashSet<_> =
+        layout.stores().await?.into_iter().map(|store| store.id).collect();
+    Ok(codes.into_iter().filter(|code| !here.contains(&code.store_id())).collect())
 }
 
 fn restore_error(error: coven::BootstrapError) -> RestoreFromCodeError {

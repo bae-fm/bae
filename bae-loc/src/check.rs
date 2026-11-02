@@ -39,9 +39,7 @@ pub fn validate(cat: &Catalog) -> Result<(), Vec<String>> {
         let referenced = mf1::referenced_args(&nodes);
         for arg in &referenced {
             if !msg.args.contains_key(arg) {
-                errs.push(format!(
-                    "{id}: `{{{arg}}}` is used but not declared in `args`"
-                ));
+                errs.push(format!("{id}: `{{{arg}}}` is used but not declared in `args`"));
             }
         }
         for arg in msg.args.keys() {
@@ -180,35 +178,25 @@ value = "oops"
 
     #[test]
     fn flags_a_locale_outside_the_shipping_set() {
-        let mut translations: Vec<String> = TARGET_LOCALES
-            .iter()
-            .map(|l| format!("\"{l}\" = \"hi\""))
-            .collect();
+        let mut translations: Vec<String> =
+            TARGET_LOCALES.iter().map(|l| format!("\"{l}\" = \"hi\"")).collect();
         translations.push("\"qq\" = \"hi\"".to_string());
         let errs = locale_coverage(&one_message(&translations.join(", "))).unwrap_err();
         assert_eq!(errs.len(), 1, "{errs:?}");
-        assert!(
-            errs[0].contains("`qq` is not a shipping locale"),
-            "{errs:?}"
-        );
+        assert!(errs[0].contains("`qq` is not a shipping locale"), "{errs:?}");
     }
 
     #[test]
     fn flags_a_shipping_locale_with_no_translation() {
         let errs = locale_coverage(&one_message("de = \"hallo\"")).unwrap_err();
         assert_eq!(errs.len(), TARGET_LOCALES.len() - 1, "{errs:?}");
-        assert!(
-            errs.iter().any(|e| e.contains("`fr` ships, but 1 message")),
-            "{errs:?}"
-        );
+        assert!(errs.iter().any(|e| e.contains("`fr` ships, but 1 message")), "{errs:?}");
     }
 
     #[test]
     fn accepts_exactly_the_shipping_set() {
-        let translations: Vec<String> = TARGET_LOCALES
-            .iter()
-            .map(|l| format!("\"{l}\" = \"hi\""))
-            .collect();
+        let translations: Vec<String> =
+            TARGET_LOCALES.iter().map(|l| format!("\"{l}\" = \"hi\"")).collect();
         assert!(locale_coverage(&one_message(&translations.join(", "))).is_ok());
     }
 

@@ -176,18 +176,13 @@ impl Database {
     /// Whether the person paused uploads, live, whether or not anything is
     /// queued.
     pub(crate) fn subscribe_uploads_paused(&self) -> coven::LiveQuery<bool> {
-        self.inner
-            .handle
-            .subscribe(|sql| Ok(sql.query_row(UPLOADS_PAUSED, [], |row| row.get(0))?))
+        self.inner.handle.subscribe(|sql| Ok(sql.query_row(UPLOADS_PAUSED, [], |row| row.get(0))?))
     }
 
     /// Whether the person paused uploads now.
     pub(crate) async fn uploads_paused(&self) -> Result<bool, DbError> {
-        self.read(|sql| {
-            sql.query_row(UPLOADS_PAUSED, [], |row| row.get(0))
-                .map_err(DbError::from)
-        })
-        .await
+        self.read(|sql| sql.query_row(UPLOADS_PAUSED, [], |row| row.get(0)).map_err(DbError::from))
+            .await
     }
 
     /// Whether a release file's coven file still waits to upload from this
@@ -196,8 +191,7 @@ impl Database {
     pub async fn has_pending_cloud_upload(&self, file_id: &str) -> Result<bool, DbError> {
         let file_id = file_id.to_string();
         self.read(move |sql| {
-            sql.query_row(RELEASE_FILE_QUEUED, [file_id], |row| row.get(0))
-                .map_err(DbError::from)
+            sql.query_row(RELEASE_FILE_QUEUED, [file_id], |row| row.get(0)).map_err(DbError::from)
         })
         .await
     }

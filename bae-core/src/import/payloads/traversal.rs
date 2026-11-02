@@ -22,10 +22,8 @@ pub(super) fn related_documents(
             if let Some(group) = &release.release_group {
                 next.push((PayloadSource::MusicBrainzReleaseGroup, group.id.clone()));
             }
-            if let Some(relations) = release
-                .release_group
-                .as_ref()
-                .and_then(|group| group.relations.as_ref())
+            if let Some(relations) =
+                release.release_group.as_ref().and_then(|group| group.relations.as_ref())
             {
                 for page in bae_catalogs::musicbrainz::relation_urls(relations)
                     .filter_map(parse_catalog_url)
@@ -72,10 +70,7 @@ pub(super) fn related_documents(
         }
         PayloadSource::Wikidata => {
             let item = bae_catalogs::wikidata::parse_entity(json).map_err(|error| {
-                ImportError::SourceData {
-                    catalog: Catalog::Wikidata,
-                    detail: error.to_string(),
-                }
+                ImportError::SourceData { catalog: Catalog::Wikidata, detail: error.to_string() }
             })?;
             for page in item.catalog_pages() {
                 if let Some(request) = page_document(&page, true) {
@@ -114,38 +109,27 @@ pub(super) fn supporting_document_edges(
 }
 
 fn mb_data(error: serde_json::Error) -> ImportError {
-    ImportError::SourceData {
-        catalog: Catalog::MusicBrainz,
-        detail: error.to_string(),
-    }
+    ImportError::SourceData { catalog: Catalog::MusicBrainz, detail: error.to_string() }
 }
 
 fn page_document(page: &CatalogPage, album_context: bool) -> Option<DocumentKey> {
     match page {
-        CatalogPage::Release {
-            catalog: Catalog::Discogs,
-            key,
-        } if !album_context => Some((PayloadSource::Discogs, key.clone())),
-        CatalogPage::Release {
-            catalog: Catalog::MusicBrainz,
-            key,
-        } if !album_context => Some((PayloadSource::MusicBrainz, key.clone())),
-        CatalogPage::Group {
-            catalog: Catalog::Discogs,
-            key,
-        } => Some((PayloadSource::DiscogsMaster, key.clone())),
-        CatalogPage::Group {
-            catalog: Catalog::MusicBrainz,
-            key,
-        } => Some((PayloadSource::MusicBrainzReleaseGroup, key.clone())),
-        CatalogPage::Release {
-            catalog: Catalog::Wikidata,
-            key,
+        CatalogPage::Release { catalog: Catalog::Discogs, key } if !album_context => {
+            Some((PayloadSource::Discogs, key.clone()))
         }
-        | CatalogPage::Group {
-            catalog: Catalog::Wikidata,
-            key,
-        } => Some((PayloadSource::Wikidata, key.clone())),
+        CatalogPage::Release { catalog: Catalog::MusicBrainz, key } if !album_context => {
+            Some((PayloadSource::MusicBrainz, key.clone()))
+        }
+        CatalogPage::Group { catalog: Catalog::Discogs, key } => {
+            Some((PayloadSource::DiscogsMaster, key.clone()))
+        }
+        CatalogPage::Group { catalog: Catalog::MusicBrainz, key } => {
+            Some((PayloadSource::MusicBrainzReleaseGroup, key.clone()))
+        }
+        CatalogPage::Release { catalog: Catalog::Wikidata, key }
+        | CatalogPage::Group { catalog: Catalog::Wikidata, key } => {
+            Some((PayloadSource::Wikidata, key.clone()))
+        }
         _ => None,
     }
 }
@@ -309,11 +293,7 @@ impl DocumentTraversal {
     }
 
     fn missing(&mut self, source: PayloadSource, key: String, reason: UnfetchedReason) {
-        self.payloads.unfetched.push(UnfetchedDocument {
-            document: source,
-            key,
-            reason,
-        });
+        self.payloads.unfetched.push(UnfetchedDocument { document: source, key, reason });
     }
 
     /// The documents the walk read, naming each one it set aside and never
@@ -391,15 +371,10 @@ impl FetchDocuments<'_> {
         }
         let json = match source {
             PayloadSource::MusicBrainz => {
-                self.musicbrainz
-                    .lookup_release_by_id(id, self.priority)
-                    .await?
-                    .1
+                self.musicbrainz.lookup_release_by_id(id, self.priority).await?.1
             }
             PayloadSource::MusicBrainzReleaseGroup => {
-                self.musicbrainz
-                    .fetch_release_group_json(id, self.priority)
-                    .await?
+                self.musicbrainz.fetch_release_group_json(id, self.priority).await?
             }
             _ => unreachable!("MusicBrainz entity fetch requires a release or group"),
         };
@@ -444,10 +419,7 @@ impl FetchDocuments<'_> {
         &mut self,
         pages: &[DiscogsPage],
     ) -> Result<Vec<(DiscogsPage, Result<Fetched, ImportError>)>, ImportError> {
-        let mut linked = self
-            .musicbrainz
-            .lookup_discogs_pages(pages, self.priority)
-            .await?;
+        let mut linked = self.musicbrainz.lookup_discogs_pages(pages, self.priority).await?;
         let mut answers = Vec::with_capacity(pages.len());
         for page in pages {
             let fetched = match linked.remove(page).as_deref() {
@@ -504,16 +476,14 @@ pub(crate) async fn fetch_documents(
     priority: CallPriority,
 ) -> Result<ReleasePayloads, ImportError> {
     let mut fetcher = FetchDocuments::new(musicbrainz, wikidata, discogs, priority);
-    let anchor = match fetcher
-        .document(PayloadSource::release_of(release.catalog), &release.key)
-        .await?
-    {
-        Fetched::Document(json) => json,
-        Fetched::DiscogsNotConfigured => return Err(ImportError::DiscogsNotConfigured),
-        Fetched::Absent | Fetched::FailedEarlier => {
-            unreachable!("a release's own document is asked for first and by its own id")
-        }
-    };
+    let anchor =
+        match fetcher.document(PayloadSource::release_of(release.catalog), &release.key).await? {
+            Fetched::Document(json) => json,
+            Fetched::DiscogsNotConfigured => return Err(ImportError::DiscogsNotConfigured),
+            Fetched::Absent | Fetched::FailedEarlier => {
+                unreachable!("a release's own document is asked for first and by its own id")
+            }
+        };
     let traversal = DocumentTraversal::new(release, anchor, depth)?;
     Ok(walk(fetcher, traversal).await)
 }
@@ -532,21 +502,14 @@ pub(crate) async fn read_disc_id_release(
     priority: CallPriority,
 ) -> Result<ReleasePayloads, ImportError> {
     let release = answered.release();
-    let mut traversal = DocumentTraversal::new(
-        release,
-        answered.json().to_owned(),
-        ReadDepth::Identification,
-    )?;
+    let mut traversal =
+        DocumentTraversal::new(release, answered.json().to_owned(), ReadDepth::Identification)?;
     traversal.missing(
         PayloadSource::release_of(release.catalog),
         release.key.clone(),
         UnfetchedReason::StoppedShort,
     );
-    Ok(walk(
-        FetchDocuments::new(musicbrainz, wikidata, discogs, priority),
-        traversal,
-    )
-    .await)
+    Ok(walk(FetchDocuments::new(musicbrainz, wikidata, discogs, priority), traversal).await)
 }
 
 /// Ask for every document `traversal` follows, and finish it.

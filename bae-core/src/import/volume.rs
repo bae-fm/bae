@@ -107,9 +107,7 @@ pub(crate) fn directory_modified_at(path: &Path) -> Option<i64> {
         Ok(since) => i64::try_from(since.as_nanos()).ok(),
         // A timestamp before 1970 is nothing a scan should reason about, but it
         // is a real reading and has to compare equal to itself.
-        Err(before) => i64::try_from(before.duration().as_nanos())
-            .ok()
-            .map(|nanos| -nanos),
+        Err(before) => i64::try_from(before.duration().as_nanos()).ok().map(|nanos| -nanos),
     }
 }
 
@@ -307,11 +305,7 @@ mod tests {
         let untouched = recorded(&album);
         assert_eq!(changed_directories(&untouched), Some(Vec::new()));
 
-        assert_eq!(
-            changed_directories(&[]),
-            None,
-            "nothing recorded is not an answer"
-        );
+        assert_eq!(changed_directories(&[]), None, "nothing recorded is not an answer");
         let gone = temp.path().join("Gone");
         assert_eq!(
             changed_directories(&[(gone.clone(), 0)]),

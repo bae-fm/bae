@@ -6,10 +6,7 @@ fn text(lines: &[&str]) -> CandidateText {
     CandidateText::of(
         &lines
             .iter()
-            .map(|line| TextLine {
-                text: (*line).to_string(),
-                origin: TextOrigin::FolderName,
-            })
+            .map(|line| TextLine { text: (*line).to_string(), origin: TextOrigin::FolderName })
             .collect::<Vec<_>>(),
         &[],
         &[],
@@ -98,10 +95,7 @@ fn a_country_agrees_disagrees_or_states_nothing() {
     assert_eq!(country(None), Fact::StatesNothing);
     let unnamed = text(&["Album CD"]);
     let facts = FolderFacts::of(&unnamed, []);
-    assert_eq!(
-        facts.country(&[record(None, None, Some("US"))]),
-        Fact::StatesNothing
-    );
+    assert_eq!(facts.country(&[record(None, None, Some("US"))]), Fact::StatesNothing);
 }
 
 /// The registration country agrees with a row released there, disagrees with
@@ -114,10 +108,7 @@ fn the_registration_country_agrees_disagrees_or_states_nothing() {
     assert_eq!(registered(Some("US")), Fact::Disagrees);
     assert_eq!(registered(Some("XE")), Fact::StatesNothing);
     assert_eq!(registered(None), Fact::StatesNothing);
-    assert_eq!(
-        registration(&[record(None, None, Some("US"))], None),
-        Fact::StatesNothing
-    );
+    assert_eq!(registration(&[record(None, None, Some("US"))], None), Fact::StatesNothing);
 }
 
 /// Agreeing outranks stating nothing, which outranks disagreeing.
@@ -135,10 +126,7 @@ fn an_album_s_first_year_is_every_pressing_s() {
     let read = record(Some(1963), Some(1963), None);
     let unread = record(Some(2005), None, None);
     let facts = FolderFacts::of(&text(&["1963 Album"]), [&read, &unread]);
-    assert_eq!(
-        facts.album_first_year(std::slice::from_ref(&unread)),
-        Some(1963)
-    );
+    assert_eq!(facts.album_first_year(std::slice::from_ref(&unread)), Some(1963));
     assert!(facts.names_the_album_year(std::slice::from_ref(&unread)));
 }
 
@@ -199,10 +187,7 @@ fn titles_that_differ_otherwise_state_nothing() {
 #[test]
 fn a_record_in_order_decides_its_row() {
     let folder = titles(&["Song One", "Song Two"]);
-    let rows = [
-        listing(&["Song Two", "Song One"]),
-        listing(&["Song One", "Song Two"]),
-    ];
+    let rows = [listing(&["Song Two", "Song One"]), listing(&["Song One", "Song Two"])];
     assert_eq!(track_titles(&rows, &folder), Fact::Agrees);
 }
 
@@ -211,10 +196,7 @@ fn read(lines: &[(TextOrigin, &str)]) -> CandidateText {
     CandidateText::of(
         &lines
             .iter()
-            .map(|(origin, text)| TextLine {
-                text: (*text).to_string(),
-                origin: *origin,
-            })
+            .map(|(origin, text)| TextLine { text: (*text).to_string(), origin: *origin })
             .collect::<Vec<_>>(),
         &[],
         &[],
@@ -237,10 +219,7 @@ fn the_folder_s_name_outranks_the_artwork_s_country() {
     let us = released_in("rel-us", "US");
     let facts = FolderFacts::of(
         &read(&[
-            (
-                TextOrigin::FolderName,
-                "Artist - Album [Label CAT-1, Canada]",
-            ),
+            (TextOrigin::FolderName, "Artist - Album [Label CAT-1, Canada]"),
             (TextOrigin::Artwork, "Freedom is coming to the U.S.A."),
         ]),
         [&canada, &us],
@@ -257,15 +236,10 @@ fn the_folder_s_name_outranks_the_artwork_s_country() {
 fn two_countries_in_the_folder_s_name_name_none() {
     let canada = released_in("rel-ca", "CA");
     let us = released_in("rel-us", "US");
-    let facts = FolderFacts::of(
-        &read(&[(TextOrigin::FolderName, "Album (Canada, USA)")]),
-        [&canada, &us],
-    );
+    let facts =
+        FolderFacts::of(&read(&[(TextOrigin::FolderName, "Album (Canada, USA)")]), [&canada, &us]);
     for row in [&canada, &us] {
-        assert_eq!(
-            facts.country(std::slice::from_ref(row)),
-            Fact::StatesNothing
-        );
+        assert_eq!(facts.country(std::slice::from_ref(row)), Fact::StatesNothing);
     }
     assert!(!facts.names_area(bae_types::pressing::area("CA")));
     assert!(!facts.names_area(bae_types::pressing::area("US")));
@@ -298,15 +272,9 @@ fn a_country_no_row_has_disagrees_with_every_row() {
         &read(&[(TextOrigin::FolderName, "Album (Japan)")]),
         [&canada, &us, &unplaced],
     );
-    assert_eq!(
-        facts.country(std::slice::from_ref(&canada)),
-        Fact::Disagrees
-    );
+    assert_eq!(facts.country(std::slice::from_ref(&canada)), Fact::Disagrees);
     assert_eq!(facts.country(std::slice::from_ref(&us)), Fact::Disagrees);
-    assert_eq!(
-        facts.country(std::slice::from_ref(&unplaced)),
-        Fact::StatesNothing
-    );
+    assert_eq!(facts.country(std::slice::from_ref(&unplaced)), Fact::StatesNothing);
 }
 
 /// A row carrying `numbers` as its catalog numbers.
@@ -328,10 +296,7 @@ fn the_folder_s_name_outranks_the_artwork_s_catalog_number() {
     let printed = numbered("rel-b", &["LBL-200"]);
     let facts = FolderFacts::of(
         &read(&[
-            (
-                TextOrigin::FolderName,
-                "Artist - Album (Label One, LBL-100)",
-            ),
+            (TextOrigin::FolderName, "Artist - Album (Label One, LBL-100)"),
             (TextOrigin::Artwork, "LBL-200"),
         ]),
         [&named, &printed],
@@ -347,14 +312,9 @@ fn a_barcode_s_digits_state_no_catalog_number() {
     let named = numbered("rel-a", &["LBL-100"]);
     let barcoded = numbered("rel-b", &["1234-56789-0"]);
     let text = CandidateText::of(
-        &[TextLine {
-            text: "LBL-100 0 1234-56789-0 5".to_string(),
-            origin: TextOrigin::Artwork,
-        }],
+        &[TextLine { text: "LBL-100 0 1234-56789-0 5".to_string(), origin: TextOrigin::Artwork }],
         &[],
-        &[crate::signals::SourcedValue::new(
-            "012345678905".to_string(),
-        )],
+        &[crate::signals::SourcedValue::new("012345678905".to_string())],
     );
     let facts = FolderFacts::of(&text, [&named, &barcoded]);
     assert!(facts.states_catalog("LBL-100"));
@@ -380,10 +340,8 @@ fn every_number_the_folder_states_counts() {
 #[test]
 fn a_piece_of_a_longer_number_is_no_number_the_folder_states() {
     let short = numbered("rel-a", &["AB12"]);
-    let named = FolderFacts::of(
-        &read(&[(TextOrigin::FolderName, "Artist - Album [AB12-2]")]),
-        [&short],
-    );
+    let named =
+        FolderFacts::of(&read(&[(TextOrigin::FolderName, "Artist - Album [AB12-2]")]), [&short]);
     assert!(!named.states_catalog("AB12"));
     let printed = FolderFacts::of(
         &read(&[
@@ -418,18 +376,12 @@ fn a_number_no_row_carries_leaves_the_next_standing_to_speak() {
 fn an_undated_pick_s_year_is_the_folder_s_not_its_partner_s() {
     let folder = text(&["1986 Germany Label AB 12345-2", "1979 Album"]);
     let undated = record(None, Some(1979), None);
-    assert_eq!(
-        folder_pressing_year(&folder, std::slice::from_ref(&undated)),
-        Some(1986)
-    );
+    assert_eq!(folder_pressing_year(&folder, std::slice::from_ref(&undated)), Some(1986));
     let partner = MetadataResult {
         year: Some(1987),
         ..MetadataResult::for_test(Catalog::Discogs, "dg-1", Some("m-1"))
     };
-    assert_eq!(
-        folder_pressing_year(&folder, &[undated.clone(), partner]),
-        Some(1986)
-    );
+    assert_eq!(folder_pressing_year(&folder, &[undated.clone(), partner]), Some(1986));
     assert_eq!(folder_pressing_year(&text(&["Album"]), &[undated]), None);
 }
 
@@ -443,10 +395,7 @@ fn stated_years_name_the_album_and_the_pressing() {
         let read = StatedYears::of(years, first);
         (read.album, read.pressing)
     };
-    assert_eq!(
-        years(&[1963, 2005, 1999], Some(1963)),
-        (Some(1963), Some(2005))
-    );
+    assert_eq!(years(&[1963, 2005, 1999], Some(1963)), (Some(1963), Some(2005)));
     assert_eq!(years(&[1963], Some(1963)), (Some(1963), None));
     assert_eq!(years(&[1960], Some(1963)), (Some(1963), None));
     assert_eq!(years(&[2005, 1971], None), (Some(1971), Some(2005)));

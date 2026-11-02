@@ -112,11 +112,8 @@ impl RtspRequest {
     /// `Content-Length` is always emitted (0 for a bodyless request), matching
     /// what receivers expect.
     pub(crate) fn serialize(&self, cseq: u32, extra: &[(String, String)]) -> Vec<u8> {
-        let mut head = format!(
-            "{} {} RTSP/1.0\r\nCSeq: {cseq}\r\n",
-            self.method.as_str(),
-            self.uri
-        );
+        let mut head =
+            format!("{} {} RTSP/1.0\r\nCSeq: {cseq}\r\n", self.method.as_str(), self.uri);
         for (key, value) in extra.iter().chain(&self.headers) {
             head.push_str(&format!("{key}: {value}\r\n"));
         }
@@ -142,10 +139,7 @@ pub(crate) struct RtspResponse {
 impl RtspResponse {
     /// A header value looked up case-insensitively (RTSP header names are).
     pub(crate) fn header(&self, key: &str) -> Option<&str> {
-        self.headers
-            .iter()
-            .find(|(k, _)| k.eq_ignore_ascii_case(key))
-            .map(|(_, v)| v.as_str())
+        self.headers.iter().find(|(k, _)| k.eq_ignore_ascii_case(key)).map(|(_, v)| v.as_str())
     }
 
     pub(crate) fn cseq(&self) -> Option<u32> {
@@ -173,10 +167,7 @@ impl RtspResponse {
         loop {
             let mut line = String::new();
             if reader.read_line(&mut line)? == 0 {
-                return Err(io::Error::new(
-                    io::ErrorKind::UnexpectedEof,
-                    "RTSP headers truncated",
-                ));
+                return Err(io::Error::new(io::ErrorKind::UnexpectedEof, "RTSP headers truncated"));
             }
             let line = line.trim_end_matches(['\r', '\n']);
             if line.is_empty() {
@@ -190,27 +181,20 @@ impl RtspResponse {
         // A missing Content-Length means no body; a present-but-malformed one is a
         // protocol error, not silently an empty body (which would desync the
         // stream and mask a corrupt response).
-        let content_length = match headers
-            .iter()
-            .find(|(k, _)| k.eq_ignore_ascii_case("Content-Length"))
-        {
-            Some((_, v)) => v.trim().parse::<usize>().map_err(|error| {
-                io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    format!("malformed RTSP Content-Length: {v:?}: {error}"),
-                )
-            })?,
-            None => 0,
-        };
+        let content_length =
+            match headers.iter().find(|(k, _)| k.eq_ignore_ascii_case("Content-Length")) {
+                Some((_, v)) => v.trim().parse::<usize>().map_err(|error| {
+                    io::Error::new(
+                        io::ErrorKind::InvalidData,
+                        format!("malformed RTSP Content-Length: {v:?}: {error}"),
+                    )
+                })?,
+                None => 0,
+            };
         let mut body = vec![0u8; content_length];
         reader.read_exact(&mut body)?;
 
-        Ok(RtspResponse {
-            status,
-            reason,
-            headers,
-            body,
-        })
+        Ok(RtspResponse { status, reason, headers, body })
     }
 }
 
@@ -350,10 +334,7 @@ struct ParsedRequest {
 #[cfg(test)]
 impl ParsedRequest {
     fn header(&self, key: &str) -> Option<&str> {
-        self.headers
-            .iter()
-            .find(|(k, _)| k.eq_ignore_ascii_case(key))
-            .map(|(_, v)| v.as_str())
+        self.headers.iter().find(|(k, _)| k.eq_ignore_ascii_case(key)).map(|(_, v)| v.as_str())
     }
 }
 
@@ -395,9 +376,7 @@ fn read_request(reader: &mut impl BufRead) -> io::Result<ParsedRequest> {
     let content_length = headers
         .iter()
         .find(|(k, _)| k.eq_ignore_ascii_case("Content-Length"))
-        .map_or(0, |(_, v)| {
-            v.trim().parse::<usize>().expect("valid content-length")
-        });
+        .map_or(0, |(_, v)| v.trim().parse::<usize>().expect("valid content-length"));
     let mut body = vec![0u8; content_length];
     reader.read_exact(&mut body)?;
     Ok(ParsedRequest { method, headers })
@@ -503,12 +482,7 @@ mod tests {
         });
 
         let mut conn = RtspConnection::connect(addr.ip(), addr.port(), "bae/test").unwrap();
-        assert_eq!(
-            conn.request(&RtspRequest::new(Method::Options, "*"))
-                .unwrap()
-                .status,
-            200
-        );
+        assert_eq!(conn.request(&RtspRequest::new(Method::Options, "*")).unwrap().status, 200);
         conn.request(&RtspRequest::with_body(
             Method::Announce,
             "rtsp://x/1",
@@ -523,19 +497,10 @@ mod tests {
         .unwrap();
         // The session id from SETUP is now attached automatically.
         assert_eq!(conn.session(), Some("7A3B120C"));
-        conn.request(&RtspRequest::new(Method::Record, "rtsp://x/1"))
-            .unwrap();
+        conn.request(&RtspRequest::new(Method::Record, "rtsp://x/1")).unwrap();
 
         let (methods, record_session) = server.join().unwrap();
-        assert_eq!(
-            methods,
-            vec![
-                Method::Options,
-                Method::Announce,
-                Method::Setup,
-                Method::Record
-            ]
-        );
+        assert_eq!(methods, vec![Method::Options, Method::Announce, Method::Setup, Method::Record]);
         assert_eq!(
             record_session.as_deref(),
             Some("7A3B120C"),

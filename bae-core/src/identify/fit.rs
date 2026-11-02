@@ -82,12 +82,8 @@ pub(crate) fn rules_out(records: &[MetadataResult], folder_track_count: u32) -> 
             .map(|record| TracklistFit::of(record.source_tracks.as_ref(), folder_track_count))
     };
     !fits().any(TracklistFit::admits)
-        && fits().any(|fit| {
-            matches!(
-                fit,
-                TracklistFit::Disagrees { .. } | TracklistFit::Unreadable
-            )
-        })
+        && fits()
+            .any(|fit| matches!(fit, TracklistFit::Disagrees { .. } | TracklistFit::Unreadable))
 }
 
 /// Why a found verdict picks none of its releases unattended.
@@ -113,9 +109,7 @@ pub struct UnattendedPick<'a> {
 
 impl UnattendedPick<'_> {
     pub fn pressing(&self) -> crate::import::release_group::Pressing {
-        crate::import::release_group::Pressing {
-            releases: self.records.to_vec(),
-        }
+        crate::import::release_group::Pressing { releases: self.records.to_vec() }
     }
 }
 
@@ -134,9 +128,7 @@ pub fn unattended_pick<'a>(
         matches
             .first()
             .map(|lead| TracklistFit::of(lead.source_tracks.as_ref(), folder_track_count)),
-        matches
-            .iter()
-            .any(|record| record.document_failure.is_some()),
+        matches.iter().any(|record| record.document_failure.is_some()),
     );
     match declined {
         Some(declined) => Err(declined),
@@ -163,9 +155,7 @@ pub(crate) fn decline(
     // does not. Checked before the pressing count, so it is named over
     // several pressings too.
     if let Some(folder) = medium_conflict {
-        return Some(Declined::FolderCheck(FolderCheck::MediumDisagrees {
-            folder,
-        }));
+        return Some(Declined::FolderCheck(FolderCheck::MediumDisagrees { folder }));
     }
     let Some(lead) = lead else {
         return Some(Declined::NothingFound);
@@ -207,10 +197,8 @@ mod tests {
     /// is what the rule judged.
     #[test]
     fn a_sole_fitting_pressing_is_picked_whole() {
-        let records = vec![
-            listing("mb-1", 11),
-            MetadataResult::for_test(Catalog::Discogs, "dg-1", None),
-        ];
+        let records =
+            vec![listing("mb-1", 11), MetadataResult::for_test(Catalog::Discogs, "dg-1", None)];
         let pick = unattended_pick(&records, &[0, 0], None, 11).expect("it fits");
         assert_eq!(pick.records, records.as_slice());
         assert_eq!(pick.pressing().lead().release_id, "mb-1");

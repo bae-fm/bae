@@ -5,12 +5,7 @@ async fn stored_runs(
     runtime: &CandidateRuntime,
     key: &crate::import::CandidateKey,
 ) -> std::collections::BTreeMap<crate::identify::IdentifyRunId, crate::identify::PublishedRun> {
-    runtime
-        .database
-        .load_candidate_runtime(key)
-        .await
-        .expect("a test reads the runs table")
-        .runs
+    runtime.database.load_candidate_runtime(key).await.expect("a test reads the runs table").runs
 }
 
 /// A folder candidate's run has its row only while the standing names it:
@@ -21,10 +16,7 @@ async fn a_run_s_published_state_goes_in_the_write_that_moves_its_standing_off_i
     let runtime = CandidateRuntime::for_test().await;
     let key = &crate::import::CandidateKey::test("/watch/a/rel1");
     let files = scanned_key(&runtime, key).await;
-    runtime
-        .admit(vec![(key.clone(), files.clone())], Admission::Automatic)
-        .await
-        .unwrap();
+    runtime.admit(vec![(key.clone(), files.clone())], Admission::Automatic).await.unwrap();
     report(&runtime, key, &files, run(1), manual_only()).await;
     assert_eq!(
         stored_runs(&runtime, key).await,
@@ -32,18 +24,12 @@ async fn a_run_s_published_state_goes_in_the_write_that_moves_its_standing_off_i
         "the answer being written keeps what its run published"
     );
 
-    runtime
-        .admit(vec![(key.clone(), files.clone())], Admission::Requested)
-        .await
-        .unwrap();
+    runtime.admit(vec![(key.clone(), files.clone())], Admission::Requested).await.unwrap();
     assert!(
         stored_runs(&runtime, key).await.is_empty(),
         "waiting for the next run, the standing names none"
     );
-    assert!(!runtime
-        .publish_candidate_run(key, run(1), &triangulating(), None)
-        .await
-        .unwrap());
+    assert!(!runtime.publish_candidate_run(key, run(1), &triangulating(), None).await.unwrap());
     assert!(stored_runs(&runtime, key).await.is_empty());
 
     report(&runtime, key, &files, run(2), triangulating()).await;
@@ -61,10 +47,7 @@ async fn a_run_s_published_state_goes_in_the_write_that_moves_its_standing_off_i
 async fn opening_the_library_empties_every_run_s_published_state() {
     let runtime = CandidateRuntime::for_test().await;
     let release = &crate::import::CandidateKey::reidentify("release-1");
-    runtime
-        .publish_release_run(release, run(1), &triangulating(), None)
-        .await
-        .unwrap();
+    runtime.publish_release_run(release, run(1), &triangulating(), None).await.unwrap();
     assert!(!stored_runs(&runtime, release).await.is_empty());
 
     runtime.database.clear_candidate_standings().await.unwrap();
@@ -76,14 +59,8 @@ async fn opening_the_library_empties_every_run_s_published_state() {
 async fn a_release_run_that_ends_goes_alone() {
     let runtime = CandidateRuntime::for_test().await;
     let release = &crate::import::CandidateKey::reidentify("release-1");
-    runtime
-        .publish_release_run(release, run(1), &manual_only(), None)
-        .await
-        .unwrap();
-    runtime
-        .publish_release_run(release, run(2), &triangulating(), None)
-        .await
-        .unwrap();
+    runtime.publish_release_run(release, run(1), &manual_only(), None).await.unwrap();
+    runtime.publish_release_run(release, run(2), &triangulating(), None).await.unwrap();
     runtime
         .publish_release_run(release, run(1), &crate::identify::IdentifyState::Idle, None)
         .await
@@ -128,10 +105,7 @@ fn barcode_half_answered() -> crate::identify::IdentifyState {
                             )],
                         },
                     },
-                    ProviderLookup {
-                        source: Catalog::Discogs,
-                        state: LookupState::LookingUp,
-                    },
+                    ProviderLookup { source: Catalog::Discogs, state: LookupState::LookingUp },
                 ],
             }],
         },
@@ -161,10 +135,7 @@ fn search_waiting() -> crate::identify::IdentifyState {
 /// with one barcode and one line of text so far.
 fn scanning_signals() -> crate::signals::Signals {
     crate::signals::Signals {
-        origin: crate::signals::AudioOrigin {
-            source: None,
-            not_cd_rate: Some(96_000),
-        },
+        origin: crate::signals::AudioOrigin { source: None, not_cd_rate: Some(96_000) },
         disc_id: crate::signals::DiscIdSignal::Absent,
         barcode: crate::signals::BarcodeSignal::Scanning {
             codes: vec![crate::signals::SourcedValue::in_file(
@@ -195,10 +166,7 @@ async fn a_run_in_flight_reads_back_as_it_published() {
     let release = &crate::import::CandidateKey::reidentify("release-1");
     let signals = scanning_signals();
     let state = barcode_half_answered();
-    runtime
-        .publish_release_run(release, run(1), &state, Some(&signals))
-        .await
-        .unwrap();
+    runtime.publish_release_run(release, run(1), &state, Some(&signals)).await.unwrap();
     let expected = crate::identify::PublishedRun {
         outcome: crate::identify::RunOutcome::of(&state).unwrap(),
         signals: Some(signals.clone()),
@@ -214,10 +182,7 @@ async fn a_run_in_flight_reads_back_as_it_published() {
     );
 
     // A later state without new signals keeps the ones the run read.
-    runtime
-        .publish_release_run(release, run(1), &search_waiting(), None)
-        .await
-        .unwrap();
+    runtime.publish_release_run(release, run(1), &search_waiting(), None).await.unwrap();
     assert_eq!(
         stored_runs(&runtime, release).await,
         std::collections::BTreeMap::from([(
@@ -238,10 +203,7 @@ async fn a_run_s_signals_are_its_own_and_go_with_it() {
     let runtime = CandidateRuntime::for_test().await;
     let key = &crate::import::CandidateKey::test("/watch/a/rel1");
     let files = scanned_key(&runtime, key).await;
-    runtime
-        .admit(vec![(key.clone(), files.clone())], Admission::Automatic)
-        .await
-        .unwrap();
+    runtime.admit(vec![(key.clone(), files.clone())], Admission::Automatic).await.unwrap();
     report(&runtime, key, &files, run(1), triangulating()).await;
     assert_eq!(runtime.run_signals(key, run(1)).await.unwrap(), None);
 
@@ -274,10 +236,7 @@ async fn a_run_s_signals_are_its_own_and_go_with_it() {
     );
     assert_eq!(shown(runtime.snapshot(key).await.unwrap()), Some(settled));
 
-    runtime
-        .admit(vec![(key.clone(), files.clone())], Admission::Requested)
-        .await
-        .unwrap();
+    runtime.admit(vec![(key.clone(), files.clone())], Admission::Requested).await.unwrap();
     assert_eq!(runtime.run_signals(key, run(1)).await.unwrap(), None);
 }
 
@@ -288,12 +247,7 @@ async fn a_run_s_rows_go_with_it() {
     let runtime = CandidateRuntime::for_test().await;
     let release = &crate::import::CandidateKey::reidentify("release-1");
     runtime
-        .publish_release_run(
-            release,
-            run(1),
-            &barcode_half_answered(),
-            Some(&scanning_signals()),
-        )
+        .publish_release_run(release, run(1), &barcode_half_answered(), Some(&scanning_signals()))
         .await
         .unwrap();
     let owned = [
@@ -309,12 +263,7 @@ async fn a_run_s_rows_go_with_it() {
     ];
     for table in owned {
         assert!(
-            runtime
-                .database
-                .count_rows_for_test(table, "identify_run", "1")
-                .await
-                .unwrap()
-                > 0,
+            runtime.database.count_rows_for_test(table, "identify_run", "1").await.unwrap() > 0,
             "the run holds rows of {table}"
         );
     }
@@ -324,11 +273,7 @@ async fn a_run_s_rows_go_with_it() {
         .unwrap();
     for table in owned {
         assert_eq!(
-            runtime
-                .database
-                .count_rows_for_test(table, "identify_run", "1")
-                .await
-                .unwrap(),
+            runtime.database.count_rows_for_test(table, "identify_run", "1").await.unwrap(),
             0,
             "{table} keeps rows of a run that ended"
         );

@@ -17,10 +17,7 @@ pub(crate) struct ClosingLibraries(Mutex<Vec<(coven::StoreId, JoinHandle<()>)>>)
 
 impl ClosingLibraries {
     pub(crate) fn add(&self, store: coven::StoreId, closing: JoinHandle<()>) {
-        self.0
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .push((store, closing));
+        self.0.lock().unwrap_or_else(PoisonError::into_inner).push((store, closing));
     }
 
     /// Wait until every library of `store` still closing has closed. Blocks,

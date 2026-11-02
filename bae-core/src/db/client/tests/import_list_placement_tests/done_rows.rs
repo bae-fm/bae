@@ -7,10 +7,7 @@ use super::*;
 
 /// An imported release's Done row, showing `title` and `artists`.
 fn done(title: &str, artists: &str) -> Placed {
-    found("Album")
-        .on("done")
-        .dated(1_767_225_600_000)
-        .shown(title, Some(artists))
+    found("Album").on("done").dated(1_767_225_600_000).shown(title, Some(artists))
 }
 
 fn uuid(name: &str) -> String {
@@ -56,10 +53,7 @@ async fn a_done_row_follows_its_library_album() {
     let moved_to =
         |title: &str, artists: &str| moves([(lib.release("Album"), Some(done(title, artists)))]);
     assert_eq!(
-        lib.moved(&format!(
-            "UPDATE albums SET title = 'Retitled' WHERE id = '{ALBUM_A}';"
-        ))
-        .await,
+        lib.moved(&format!("UPDATE albums SET title = 'Retitled' WHERE id = '{ALBUM_A}';")).await,
         moved_to("Retitled", "")
     );
     assert_eq!(
@@ -105,10 +99,7 @@ async fn a_done_row_follows_its_library_album() {
         moved_to("Retitled", "Artist A & Printed Bee")
     );
     assert_eq!(
-        lib.moved(&format!(
-            "UPDATE artists SET name = 'Renamed A' WHERE id = '{ARTIST_A}';"
-        ))
-        .await,
+        lib.moved(&format!("UPDATE artists SET name = 'Renamed A' WHERE id = '{ARTIST_A}';")).await,
         moved_to("Retitled", "Renamed A & Printed Bee")
     );
     assert_eq!(
@@ -138,11 +129,7 @@ async fn a_done_row_follows_its_library_album() {
         moved_to("Retitled", "Renamed Survivor with Printed Bee")
     );
     assert_eq!(
-        lib.moved(&format!(
-            "DELETE FROM album_artists WHERE id = '{}';",
-            uuid("credit b")
-        ))
-        .await,
+        lib.moved(&format!("DELETE FROM album_artists WHERE id = '{}';", uuid("credit b"))).await,
         moved_to("Retitled", "Renamed Survivor")
     );
     assert_eq!(

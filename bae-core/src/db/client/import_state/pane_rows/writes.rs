@@ -54,8 +54,7 @@ impl Database {
         content_hash: &str,
     ) -> Result<DbCandidatePaneRows, DbError> {
         let content_hash = content_hash.to_string();
-        self.read(move |sql| load_pane_rows_on(&sql, &content_hash))
-            .await
+        self.read(move |sql| load_pane_rows_on(&sql, &content_hash)).await
     }
 
     pub async fn load_import_candidate_prepared_assets(

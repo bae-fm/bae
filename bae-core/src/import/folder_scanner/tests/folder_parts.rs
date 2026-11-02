@@ -14,7 +14,9 @@ fn decided(items: &[ScanItem]) -> Vec<(String, FolderReleaseDecision)> {
     items
         .iter()
         .filter_map(|item| match item {
-            ScanItem::Decided { key, decision, .. } => Some((key.relative_folder.text(), *decision)),
+            ScanItem::Decided { key, decision, .. } => {
+                Some((key.relative_folder.text(), *decision))
+            }
             _ => None,
         })
         .collect()
@@ -53,10 +55,8 @@ fn numbered_folders_of_albums_are_separate_releases() {
     let items = scan_for_candidates_with_decisions_collect(root, FolderReleaseDecisions::default());
 
     assert!(
-        decided(&items).contains(&(
-            collection.to_string(),
-            FolderReleaseDecision::KeepAsSeparateReleases
-        )),
+        decided(&items)
+            .contains(&(collection.to_string(), FolderReleaseDecision::KeepAsSeparateReleases)),
         "{:?}",
         decided(&items)
     );
@@ -123,12 +123,7 @@ fn discs_whose_tracks_sit_one_folder_down_are_one_release() {
         })
         .expect("the set is one release");
     assert_eq!(
-        release
-            .files
-            .parts
-            .iter()
-            .map(|part| part.prefix.as_str())
-            .collect::<Vec<_>>(),
+        release.files.parts.iter().map(|part| part.prefix.as_str()).collect::<Vec<_>>(),
         ["CD1/FLAC/", "CD2/FLAC/"]
     );
 }
@@ -230,8 +225,16 @@ fn a_set_s_discs_play_in_the_order_they_number_themselves() {
     for discs in [
         &["Box Set/1936 Archive - CD 1", "Box Set/1935 Archive - CD 2"][..],
         &[
-            "Box Set/CD1", "Box Set/CD2", "Box Set/CD3", "Box Set/CD4", "Box Set/CD5",
-            "Box Set/CD6", "Box Set/CD7", "Box Set/CD8", "Box Set/CD9", "Box Set/CD10",
+            "Box Set/CD1",
+            "Box Set/CD2",
+            "Box Set/CD3",
+            "Box Set/CD4",
+            "Box Set/CD5",
+            "Box Set/CD6",
+            "Box Set/CD7",
+            "Box Set/CD8",
+            "Box Set/CD9",
+            "Box Set/CD10",
         ][..],
         &["Box Set/disc 1", "Box Set/disc 02"][..],
     ] {
@@ -255,17 +258,10 @@ fn a_set_s_discs_play_in_the_order_they_number_themselves() {
                 _ => None,
             })
             .expect("the set is one release");
-        let expected_parts: Vec<String> = discs
-            .iter()
-            .map(|disc| format!("{}/", disc.trim_start_matches("Box Set/")))
-            .collect();
+        let expected_parts: Vec<String> =
+            discs.iter().map(|disc| format!("{}/", disc.trim_start_matches("Box Set/"))).collect();
         assert_eq!(
-            release
-                .files
-                .parts
-                .iter()
-                .map(|part| part.prefix.clone())
-                .collect::<Vec<_>>(),
+            release.files.parts.iter().map(|part| part.prefix.clone()).collect::<Vec<_>>(),
             expected_parts
         );
         let expected_audio: Vec<String> = expected_parts
@@ -273,17 +269,14 @@ fn a_set_s_discs_play_in_the_order_they_number_themselves() {
             .flat_map(|part| [format!("{part}01.flac"), format!("{part}02.flac")])
             .collect();
         assert_eq!(
-            release
-                .files
-                .audio()
-                .map(|file| file.relative_path.clone())
-                .collect::<Vec<_>>(),
+            release.files.audio().map(|file| file.relative_path.clone()).collect::<Vec<_>>(),
             expected_audio
         );
-        let discs_in_play_order: Vec<_> = crate::import::audio_layout::folder_tracks(&release.files)
-            .iter()
-            .map(|track| (track.disc, track.number.get()))
-            .collect();
+        let discs_in_play_order: Vec<_> =
+            crate::import::audio_layout::folder_tracks(&release.files)
+                .iter()
+                .map(|track| (track.disc, track.number.get()))
+                .collect();
         let expected_numbers: Vec<_> = (1..=u32::try_from(discs.len()).unwrap())
             .flat_map(|disc| [(Some(disc), 1), (Some(disc), 2)])
             .collect();

@@ -63,10 +63,7 @@ pub(crate) enum IdentificationStage {
     /// `run` answered with a release it picks unattended, which is read in
     /// full before the answer is written; `import_asked` is a person asking
     /// for the candidate to be imported once it is.
-    ReadingPick {
-        run: IdentifyRunId,
-        import_asked: bool,
-    },
+    ReadingPick { run: IdentifyRunId, import_asked: bool },
     /// The last answer's write failed.
     Failed { failure: SaveFailure },
 }
@@ -87,12 +84,12 @@ impl IdentificationStage {
             Self::Queued { .. } => IdentificationStatus::Queued,
             Self::Running { .. } => IdentificationStatus::Running,
             Self::Finalizing { .. } => IdentificationStatus::Finalizing,
-            Self::ReadingPick { import_asked, .. } => IdentificationStatus::ReadingPick {
-                import_asked: *import_asked,
-            },
-            Self::Failed { failure } => IdentificationStatus::FinalizationFailed {
-                failure: failure.clone(),
-            },
+            Self::ReadingPick { import_asked, .. } => {
+                IdentificationStatus::ReadingPick { import_asked: *import_asked }
+            }
+            Self::Failed { failure } => {
+                IdentificationStatus::FinalizationFailed { failure: failure.clone() }
+            }
         }
     }
 }
@@ -110,33 +107,20 @@ pub(crate) struct StoredImport {
 pub(crate) enum IdentificationChange {
     /// The queue admitted the candidate's `files`: it waits for a run, over
     /// whatever its identification was.
-    Admit {
-        files: CandidateFiles,
-        admission: Admission,
-    },
+    Admit { files: CandidateFiles, admission: Admission },
     /// The queue let the candidate go before its run started.
     Withdraw,
     /// `run`'s first report: it started from the wait for `files`.
-    RunStarted {
-        files: CandidateFiles,
-        run: IdentifyRunId,
-    },
+    RunStarted { files: CandidateFiles, run: IdentifyRunId },
     /// `run` reached its answer; `reads_pick` when the answer picks a release
     /// unattended, which is read before it is written.
-    RunAnswered {
-        run: IdentifyRunId,
-        reads_pick: bool,
-    },
+    RunAnswered { run: IdentifyRunId, reads_pick: bool },
     /// `run` ended without an answer: it was cancelled.
     RunEnded { run: IdentifyRunId },
     /// `run`'s answer is disposed of: written, refused, or given up.
     AnswerEnded { run: IdentifyRunId },
     /// `run`'s answer for `files` could not be written.
-    AnswerFailed {
-        files: CandidateFiles,
-        run: IdentifyRunId,
-        failure: SaveFailure,
-    },
+    AnswerFailed { files: CandidateFiles, run: IdentifyRunId, failure: SaveFailure },
     /// A person asked for the candidate to be imported once the answer being
     /// written stores the release it picks unattended.
     ImportAsked,
@@ -162,9 +146,7 @@ impl IdentificationChange {
         match self {
             Self::Admit { files, admission } => Some(StoredIdentification {
                 files: files.clone(),
-                stage: IdentificationStage::Queued {
-                    admission: *admission,
-                },
+                stage: IdentificationStage::Queued { admission: *admission },
             }),
             Self::Withdraw => match stage {
                 Some(IdentificationStage::Queued { .. }) => None,
@@ -190,10 +172,7 @@ impl IdentificationChange {
                 }) if running == run => Some(StoredIdentification {
                     files: files.clone(),
                     stage: if *reads_pick {
-                        IdentificationStage::ReadingPick {
-                            run: *run,
-                            import_asked: false,
-                        }
+                        IdentificationStage::ReadingPick { run: *run, import_asked: false }
                     } else {
                         IdentificationStage::Finalizing { run: *run }
                     },
@@ -213,17 +192,11 @@ impl IdentificationChange {
             // A failure replaces this run's answer, an earlier failure, or
             // nothing; a candidate waiting for or running a later
             // identification keeps it.
-            Self::AnswerFailed {
-                files,
-                run,
-                failure,
-            } => {
+            Self::AnswerFailed { files, run, failure } => {
                 let failed = |files: &CandidateFiles| {
                     Some(StoredIdentification {
                         files: files.clone(),
-                        stage: IdentificationStage::Failed {
-                            failure: failure.clone(),
-                        },
+                        stage: IdentificationStage::Failed { failure: failure.clone() },
                     })
                 };
                 match stored {
@@ -242,10 +215,7 @@ impl IdentificationChange {
                     stage: IdentificationStage::ReadingPick { run, .. },
                 }) => Some(StoredIdentification {
                     files: files.clone(),
-                    stage: IdentificationStage::ReadingPick {
-                        run: *run,
-                        import_asked: true,
-                    },
+                    stage: IdentificationStage::ReadingPick { run: *run, import_asked: true },
                 }),
                 _ => unchanged(),
             },
@@ -275,18 +245,12 @@ pub(crate) struct Identifying {
 impl Identifying {
     pub(crate) fn of(stored: Option<&StoredIdentification>) -> Self {
         match stored.map(|stored| &stored.stage) {
-            Some(IdentificationStage::Queued { .. }) => Self {
-                queued: true,
-                in_flight: true,
-            },
+            Some(IdentificationStage::Queued { .. }) => Self { queued: true, in_flight: true },
             Some(
                 IdentificationStage::Running { .. }
                 | IdentificationStage::Finalizing { .. }
                 | IdentificationStage::ReadingPick { .. },
-            ) => Self {
-                queued: false,
-                in_flight: true,
-            },
+            ) => Self { queued: false, in_flight: true },
             Some(IdentificationStage::Failed { .. }) | None => Self::default(),
         }
     }
@@ -306,10 +270,7 @@ impl IdentificationMove {
         self.after.is_none()
             && matches!(
                 self.before.as_ref().map(|before| &before.stage),
-                Some(IdentificationStage::ReadingPick {
-                    import_asked: true,
-                    ..
-                })
+                Some(IdentificationStage::ReadingPick { import_asked: true, .. })
             )
     }
 }

@@ -16,10 +16,7 @@ pub(super) fn formed_pressings(rows: &[u32]) -> Vec<Vec<usize>> {
             None => sets.push((*row, vec![at])),
         }
     }
-    sets.into_iter()
-        .map(|(_, members)| members)
-        .filter(|members| members.len() > 1)
-        .collect()
+    sets.into_iter().map(|(_, members)| members).filter(|members| members.len() > 1).collect()
 }
 
 /// The sets of records that name one pressing, as indexes into `releases`,
@@ -58,10 +55,7 @@ pub(super) fn gather_pressings(releases: &[MetadataResult]) -> Vec<Vec<usize>> {
     let mut settled = vec![false; count];
     let mut level = edges.as_slice();
     while let Some((top, _, _)) = level.first() {
-        let end = level
-            .iter()
-            .position(|(other, _, _)| other != top)
-            .unwrap_or(level.len());
+        let end = level.iter().position(|(other, _, _)| other != top).unwrap_or(level.len());
         // The distinct pairs of open sets this level's edges connect.
         let mut live: Vec<(usize, usize)> = level[..end]
             .iter()
@@ -73,9 +67,7 @@ pub(super) fn gather_pressings(releases: &[MetadataResult]) -> Vec<Vec<usize>> {
         for chain in chains(&live) {
             let all_support = chain.iter().enumerate().all(|(i, &x)| {
                 chain[i + 1..].iter().all(|&y| {
-                    members[x]
-                        .iter()
-                        .all(|&p| members[y].iter().all(|&q| supported[p][q]))
+                    members[x].iter().all(|&p| members[y].iter().all(|&q| supported[p][q]))
                 })
             });
             if all_support {

@@ -46,10 +46,7 @@ mod triage_tests {
                 import: None,
                 search: None,
             });
-        assert!(matches!(
-            queued.identification,
-            Some(BridgeIdentificationInFlight::Queued)
-        ));
+        assert!(matches!(queued.identification, Some(BridgeIdentificationInFlight::Queued)));
     }
 }
 
@@ -108,9 +105,7 @@ mod conversion_roundtrip {
             },
         ];
         for location in locations {
-            let crossed = BridgeStorageLocation::from_core(location.clone())
-                .into_core()
-                .unwrap();
+            let crossed = BridgeStorageLocation::from_core(location.clone()).into_core().unwrap();
             assert!(crossed.same_location(&location));
             assert_eq!(
                 BridgeStorageLocation::from_core(crossed),
@@ -148,13 +143,7 @@ mod conversion_roundtrip {
 
         let bridge = BridgeConfig::from_core(&config);
         assert!(bridge.import_when_identified);
-        assert_eq!(
-            bridge.import_storage,
-            BridgeImportStorage {
-                cloud: true,
-                pinned: false,
-            }
-        );
+        assert_eq!(bridge.import_storage, BridgeImportStorage { cloud: true, pinned: false });
     }
 
     #[test]
@@ -175,10 +164,7 @@ mod conversion_roundtrip {
             );
             config.prefs.side_pause_countdown = core;
 
-            assert_eq!(
-                BridgeConfig::from_core(&config).side_pause_countdown,
-                bridge
-            );
+            assert_eq!(BridgeConfig::from_core(&config).side_pause_countdown, bridge);
             assert_eq!(bridge.into_core(), core);
         }
     }
@@ -203,9 +189,7 @@ mod conversion_roundtrip {
                 id: "next:1:Cd".to_string(),
                 boundary: BridgePauseBoundary::Disc,
                 side_label: "1".to_string(),
-                countdown: Some(BridgeSideCountdown {
-                    resumes_at_ms: 1_767_225_605_000,
-                }),
+                countdown: Some(BridgeSideCountdown { resumes_at_ms: 1_767_225_605_000 }),
             }
         );
     }
@@ -217,20 +201,11 @@ mod conversion_roundtrip {
 
         for (core, bridge) in [
             (Core::Authentication, BridgeStorageFailure::Authentication),
-            (
-                Core::PermissionDenied,
-                BridgeStorageFailure::PermissionDenied,
-            ),
-            (
-                Core::ContainerNotFound,
-                BridgeStorageFailure::ContainerNotFound,
-            ),
+            (Core::PermissionDenied, BridgeStorageFailure::PermissionDenied),
+            (Core::ContainerNotFound, BridgeStorageFailure::ContainerNotFound),
             (Core::RegionMismatch, BridgeStorageFailure::RegionMismatch),
             (Core::QuotaExceeded, BridgeStorageFailure::QuotaExceeded),
-            (
-                Core::InvalidConfiguration,
-                BridgeStorageFailure::InvalidConfiguration,
-            ),
+            (Core::InvalidConfiguration, BridgeStorageFailure::InvalidConfiguration),
             (Core::Network, BridgeStorageFailure::Network),
         ] {
             assert_eq!(
@@ -252,41 +227,28 @@ mod conversion_roundtrip {
     #[test]
     fn grouping_blocks_carry_their_own_lines() {
         use bae_core::import::{GroupingBlock, ImportError};
-        let taken = GroupingBlock::FolderFilesTaken {
-            folder: "Album".into(),
-            release: "Disc 1".into(),
-        };
-        let refused = BridgeError::from(ImportError::GroupingBlocked {
-            reason: taken.clone(),
-        });
+        let taken =
+            GroupingBlock::FolderFilesTaken { folder: "Album".into(), release: "Disc 1".into() };
+        let refused = BridgeError::from(ImportError::GroupingBlocked { reason: taken.clone() });
         let BridgeError::Diagnostic { category, detail } = &refused else {
             panic!("a block is a diagnostic with its own line: {refused:?}");
         };
         assert_eq!(
             *category,
-            BridgeErrorCategory::GroupingBlocked {
-                reason: BridgeGroupingBlock::FolderFilesTaken
-            }
+            BridgeErrorCategory::GroupingBlocked { reason: BridgeGroupingBlock::FolderFilesTaken }
         );
         assert_eq!(
             bridge_error_category_key(category.clone()),
             "core.import.grouping.folder_files_taken"
         );
-        assert!(
-            detail.contains("Album") && detail.contains("Disc 1"),
-            "{detail}"
-        );
+        assert!(detail.contains("Album") && detail.contains("Disc 1"), "{detail}");
         assert_eq!(BridgeError::from(&taken), refused);
 
-        let unbuildable = BridgeError::from(&GroupingBlock::Unbuildable {
-            detail: "no playable tracks".into(),
-        });
+        let unbuildable =
+            BridgeError::from(&GroupingBlock::Unbuildable { detail: "no playable tracks".into() });
         assert!(matches!(
             unbuildable,
-            BridgeError::Diagnostic {
-                category: BridgeErrorCategory::Import,
-                ..
-            }
+            BridgeError::Diagnostic { category: BridgeErrorCategory::Import, .. }
         ));
     }
 
@@ -329,18 +291,9 @@ mod conversion_roundtrip {
         assert_eq!(bridge.artist.artist_id, "artist-1");
         assert_eq!(bridge.artist.name, "Artist Name");
         assert_eq!(bridge.artist.sort_name.as_deref(), Some("Name, Artist"));
-        assert_eq!(
-            bridge.artist.discogs_artist_id.as_deref(),
-            Some("discogs-1")
-        );
-        assert_eq!(
-            bridge.artist.musicbrainz_artist_id.as_deref(),
-            Some("musicbrainz-1")
-        );
-        assert_eq!(
-            bridge.image.map(|image| image.id),
-            Some("artist-1".to_string())
-        );
+        assert_eq!(bridge.artist.discogs_artist_id.as_deref(), Some("discogs-1"));
+        assert_eq!(bridge.artist.musicbrainz_artist_id.as_deref(), Some("musicbrainz-1"));
+        assert_eq!(bridge.image.map(|image| image.id), Some("artist-1".to_string()));
         assert_eq!(
             bridge.credit_names,
             [BridgeArtistCreditName {
@@ -415,10 +368,7 @@ mod conversion_roundtrip {
                 }),
             }],
         };
-        assert_eq!(
-            core,
-            BridgeRawReleaseEdit::from_core(core.clone()).into_core()
-        );
+        assert_eq!(core, BridgeRawReleaseEdit::from_core(core.clone()).into_core());
     }
 
     #[cfg(feature = "desktop")]
@@ -500,14 +450,8 @@ fn every_kind_of_fact() -> bae_types::pressing::PressingFacts {
     PressingFacts {
         area: Some(ReleaseArea::Region(Region::UkAndEurope)),
         media: vec![
-            MediaCount {
-                medium: Medium::Cd,
-                count: 2,
-            },
-            MediaCount {
-                medium: Medium::Dvd,
-                count: 1,
-            },
+            MediaCount { medium: Medium::Cd, count: 2 },
+            MediaCount { medium: Medium::Dvd, count: 1 },
         ],
         status: Some(ReleaseStatus::Promotion),
         packaging: Some(Packaging::Digipak),
@@ -563,14 +507,8 @@ fn a_release_read_from_several_folders_crosses_as_its_folders() {
     assert_eq!(
         crossed,
         vec![
-            BridgeReleasePart {
-                folder_path: "/music/Album/Disc 1".into(),
-                name: "Disc 1".into(),
-            },
-            BridgeReleasePart {
-                folder_path: "/music/Album/Disc 2".into(),
-                name: "Disc 2".into(),
-            },
+            BridgeReleasePart { folder_path: "/music/Album/Disc 1".into(), name: "Disc 1".into() },
+            BridgeReleasePart { folder_path: "/music/Album/Disc 2".into(), name: "Disc 2".into() },
         ]
     );
 }
@@ -624,22 +562,13 @@ fn a_pending_record_crosses_with_its_labels_as_catalog_messages() {
         BridgeMessage {
             key: "core.pending.subject.release_file".into(),
             args: vec![
-                BridgeMessageArg {
-                    name: "file".into(),
-                    value: "01 Track Title.flac".into(),
-                },
-                BridgeMessageArg {
-                    name: "album".into(),
-                    value: "Album Title".into(),
-                },
+                BridgeMessageArg { name: "file".into(), value: "01 Track Title.flac".into() },
+                BridgeMessageArg { name: "album".into(), value: "Album Title".into() },
             ],
         }
     );
     assert_eq!(record.reason.key, "core.pending.reason.paused");
-    assert_eq!(
-        record.action_key.as_deref(),
-        Some("core.pending.action.restore_file")
-    );
+    assert_eq!(record.action_key.as_deref(), Some("core.pending.action.restore_file"));
 
     let waiting = BridgePendingRecord::from_core(bae_core::library::PendingItem {
         subject: bae_core::library::PendingSubjectName::Snapshot,
@@ -651,10 +580,7 @@ fn a_pending_record_crosses_with_its_labels_as_catalog_messages() {
     });
     assert_eq!(
         waiting.subject,
-        BridgeMessage {
-            key: "core.pending.subject.snapshot".into(),
-            args: Vec::new(),
-        }
+        BridgeMessage { key: "core.pending.subject.snapshot".into(), args: Vec::new() }
     );
     assert_eq!(waiting.action_key, None);
 }
@@ -706,9 +632,7 @@ fn a_typed_key_prefix_crosses_as_its_folder_path() {
     };
     assert_eq!(
         category,
-        BridgeErrorCategory::S3Prefix {
-            problem: BridgeS3PrefixProblem::EmptySegment,
-        }
+        BridgeErrorCategory::S3Prefix { problem: BridgeS3PrefixProblem::EmptySegment }
     );
 }
 
@@ -724,10 +648,7 @@ fn an_s3_location_crosses_back_with_its_prefix_parsed() {
         prefix: prefix.into(),
     };
     let crossed = location("/music/bae/").into_core().ok().unwrap();
-    assert_eq!(
-        BridgeStorageLocation::from_core(crossed),
-        location("music/bae")
-    );
+    assert_eq!(BridgeStorageLocation::from_core(crossed), location("music/bae"));
     let refused = location("music/ bae").into_core().err().unwrap();
     assert_eq!(
         bridge_error_line_key(&refused).as_deref(),
@@ -747,9 +668,7 @@ fn a_preview_target_whose_name_is_not_utf8_comes_back_as_its_path() {
     let target = bae_core::playback::PreviewTarget::sample_range(path.clone(), 0, Some(44_100));
     let crossed = BridgePreviewTarget::from_core(target);
     assert_eq!(crossed.path, b"/music/Album/Caf\xE9.flac");
-    let back = crossed
-        .into_core()
-        .expect("a path core gave the app comes back");
+    let back = crossed.into_core().expect("a path core gave the app comes back");
     assert_eq!(back.into_sample_range(), (path, 0, Some(44_100)));
 }
 
@@ -770,15 +689,9 @@ fn a_folder_whose_name_is_not_utf8_shows_as_its_escape() {
     assert_eq!(folder.path_text, "/music/Caf\\xE9");
 
     let key = bae_core::import::CandidateKey::folder(&path);
-    assert_eq!(
-        bridge_candidate_key_text(key.into_bytes()),
-        "/music/Caf\\xE9"
-    );
+    assert_eq!(bridge_candidate_key_text(key.into_bytes()), "/music/Caf\\xE9");
     let grouping = bae_core::import::CandidateKey::grouping("g1");
-    assert_eq!(
-        bridge_candidate_key_text(grouping.into_bytes()),
-        "grouping:g1"
-    );
+    assert_eq!(bridge_candidate_key_text(grouping.into_bytes()), "grouping:g1");
 }
 
 /// A new installation's open crosses with its step, and loading the store
@@ -798,11 +711,7 @@ fn a_bootstrap_open_and_each_load_step_cross_with_their_progress() {
             if progress.step == BridgeOpenStep::Migrating && progress.done == 1 && progress.total == 4
     ));
     let load = |step| match BridgeBootstrapStatus::from_core(coven::BootstrapStatus::Loading(
-        coven::Progress {
-            step,
-            done: 3,
-            total: 9,
-        },
+        coven::Progress { step, done: 3, total: 9 },
     )) {
         BridgeBootstrapStatus::Loading { progress } => {
             assert_eq!((progress.done, progress.total), (3, 9));
@@ -810,28 +719,19 @@ fn a_bootstrap_open_and_each_load_step_cross_with_their_progress() {
         }
         _ => panic!("loading crosses as loading"),
     };
-    assert_eq!(
-        load(coven::LoadStep::FindingKeys),
-        BridgeLoadStep::FindingKeys
-    );
+    assert_eq!(load(coven::LoadStep::FindingKeys), BridgeLoadStep::FindingKeys);
     assert_eq!(
         load(coven::LoadStep::Streaming(coven::Audience::Store)),
         BridgeLoadStep::StreamingLibrary
     );
     assert_eq!(
-        load(coven::LoadStep::Streaming(coven::Audience::Circle(
-            coven::CircleId(coven::IdSource::new_id(&coven::UuidIds))
-        ))),
+        load(coven::LoadStep::Streaming(coven::Audience::Circle(coven::CircleId(
+            coven::IdSource::new_id(&coven::UuidIds)
+        )))),
         BridgeLoadStep::StreamingCircle
     );
-    assert_eq!(
-        load(coven::LoadStep::Installing),
-        BridgeLoadStep::Installing
-    );
-    assert_eq!(
-        load(coven::LoadStep::InstallingSlots),
-        BridgeLoadStep::InstallingSlots
-    );
+    assert_eq!(load(coven::LoadStep::Installing), BridgeLoadStep::Installing);
+    assert_eq!(load(coven::LoadStep::InstallingSlots), BridgeLoadStep::InstallingSlots);
     assert_eq!(load(coven::LoadStep::Reading), BridgeLoadStep::Reading);
     assert_eq!(load(coven::LoadStep::Applying), BridgeLoadStep::Applying);
 }

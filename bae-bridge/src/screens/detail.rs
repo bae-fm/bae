@@ -62,9 +62,7 @@ macro_rules! detail_subscription {
         impl $object {
             /// Show `id` from now on; `None` shows nothing.
             pub fn set_id(&self, id: Option<$id>) -> Result<(), BridgeError> {
-                self.inner
-                    .set(id.map(<$core_id>::from))
-                    .map_err(live_read_error)
+                self.inner.set(id.map(<$core_id>::from)).map_err(live_read_error)
             }
 
             pub async fn next(self: Arc<Self>) -> Result<$snapshot, BridgeError> {
@@ -86,13 +84,10 @@ macro_rules! detail_subscription {
             pub async fn cancel(self: Arc<Self>) -> Result<(), BridgeError> {
                 let runtime = self.runtime.clone();
                 runtime
-                    .run(
-                        concat!(stringify!($object), ".cancel"),
-                        move || async move {
-                            self.inner.cancel();
-                            Ok(())
-                        },
-                    )
+                    .run(concat!(stringify!($object), ".cancel"), move || async move {
+                        self.inner.cancel();
+                        Ok(())
+                    })
                     .await
             }
         }

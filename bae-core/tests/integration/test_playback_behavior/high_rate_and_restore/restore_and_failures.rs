@@ -2,24 +2,17 @@ async fn restore_test_library() -> RestoreTestLibrary {
     let (library_manager, album_dir, temp_dir) = support::setup_test_library_with_album_dir().await;
     let runtime_handle = tokio::runtime::Handle::current();
     let _ = generate_test_flac_files(&album_dir);
-    let release_id_key = seed_discogs_test_release(library_manager.providers(), create_test_album());
+    let release_id_key =
+        seed_discogs_test_release(library_manager.providers(), create_test_album());
     support::import_folder_and_wait(&library_manager, album_dir, release_id_key).await;
     let releases = library_manager
         .get_releases_for_album(&library_manager.get_albums(&[]).await.unwrap()[0].id)
         .await
         .unwrap();
-    let tracks = library_manager
-        .get_tracks_for_release(&releases[0].id)
-        .await
-        .unwrap();
+    let tracks = library_manager.get_tracks_for_release(&releases[0].id).await.unwrap();
     let track_ids: Vec<String> = tracks.iter().map(|t| t.id.clone()).collect();
     assert!(!track_ids.is_empty(), "the test album imported some tracks");
-    RestoreTestLibrary {
-        library_manager,
-        runtime_handle,
-        track_ids,
-        _temp_dir: temp_dir,
-    }
+    RestoreTestLibrary { library_manager, runtime_handle, track_ids, _temp_dir: temp_dir }
 }
 
 /// A library with no imports, for the empty-library no-op paths. Returns the
@@ -39,10 +32,8 @@ async fn empty_test_library() -> (LibraryManager, tokio::runtime::Handle, TempDi
 async fn import_second_release(lib: &RestoreTestLibrary) -> (String, Vec<String>, TempDir) {
     let source = TempDir::new().unwrap();
     generate_cue_flac_files(source.path());
-    let release_key = seed_discogs_test_release(
-        lib.library_manager.providers(),
-        create_cue_flac_test_album(),
-    );
+    let release_key =
+        seed_discogs_test_release(lib.library_manager.providers(), create_cue_flac_test_album());
     let import_handle =
         start_test_import(lib.runtime_handle.clone(), lib.library_manager.clone()).await;
     let import_id = uuid::Uuid::new_v4().to_string();
@@ -117,11 +108,7 @@ async fn test_restart_resumes_the_stored_queue_in_its_order() {
         before,
         "the restarted queue is the one that was playing"
     );
-    assert_eq!(
-        handle.queue_upcoming().await.expect("queue upcoming"),
-        order,
-        "in its order"
-    );
+    assert_eq!(handle.queue_upcoming().await.expect("queue upcoming"), order, "in its order");
 
     handle.stop();
 }
@@ -186,10 +173,7 @@ async fn test_preview_seek_while_paused_emits_position_update() {
     )
     .await;
 
-    assert!(
-        saw_position_update.is_some(),
-        "seek-while-paused should emit PreviewPositionUpdate"
-    );
+    assert!(saw_position_update.is_some(), "seek-while-paused should emit PreviewPositionUpdate");
 
     fixture.playback_handle.preview_stop();
 }
@@ -218,12 +202,15 @@ impl CloudOnlyPlaybackFixture {
         let temp_dir = TempDir::new()?;
         let album_dir = temp_dir.path().join("album");
         std::fs::create_dir_all(&album_dir)?;
-        let (library_manager, _, cloud) = support::storage_library(temp_dir.path(), bae_core::providers::Providers::offline()).await;
+        let (library_manager, _, cloud) =
+            support::storage_library(temp_dir.path(), bae_core::providers::Providers::offline())
+                .await;
         support::connect_storage(&library_manager, &cloud).await;
 
         let runtime_handle = tokio::runtime::Handle::current();
         let discogs_release = create_test_album();
-        let release_id_key = seed_discogs_test_release(library_manager.providers(), discogs_release);
+        let release_id_key =
+            seed_discogs_test_release(library_manager.providers(), discogs_release);
         generate_test_flac_files(&album_dir);
 
         let import_handle =
@@ -290,13 +277,9 @@ impl CloudOnlyPlaybackFixture {
 /// playback down rather than leaving a frozen position bar.
 #[tokio::test]
 async fn mid_flight_cloud_read_failure_ends_in_stopped() {
-    let mut fixture = CloudOnlyPlaybackFixture::new()
-        .await
-        .expect("set up cloud-only playback fixture");
-    assert!(
-        !fixture.track_ids.is_empty(),
-        "fixture must import at least one playable track"
-    );
+    let mut fixture =
+        CloudOnlyPlaybackFixture::new().await.expect("set up cloud-only playback fixture");
+    assert!(!fixture.track_ids.is_empty(), "fixture must import at least one playable track");
 
     fixture.cloud.set_online(false);
 
@@ -318,9 +301,7 @@ async fn mid_flight_cloud_read_failure_ends_in_stopped() {
         "a mid-flight cloud read failure must end in Stopped, got {states:?}"
     );
     assert!(
-        !states
-            .iter()
-            .any(|s| matches!(s, PlaybackState::Playing { .. })),
+        !states.iter().any(|s| matches!(s, PlaybackState::Playing { .. })),
         "Playing must never be emitted for a track whose audio never became ready, got {states:?}"
     );
 
@@ -329,9 +310,7 @@ async fn mid_flight_cloud_read_failure_ends_in_stopped() {
     let events = settled_events_on(&fixture.playback_handle, &mut fixture.progress_rx).await;
     let resurfaced = states_in(&events);
     assert!(
-        resurfaced
-            .iter()
-            .all(|s| matches!(s, PlaybackState::Stopped)),
+        resurfaced.iter().all(|s| matches!(s, PlaybackState::Stopped)),
         "playback must stay stopped after the failure, got {resurfaced:?}"
     );
     let state = fixture

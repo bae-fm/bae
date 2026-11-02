@@ -48,23 +48,15 @@ fn opening_a_library_with_a_migration_to_run_reports_migrating_it() {
     let reported = reported.lock().unwrap().clone();
     assert_eq!(
         reported.last(),
-        Some(&coven::Progress {
-            step: coven::OpenStep::Migrating,
-            done: 1,
-            total: 1,
-        }),
+        Some(&coven::Progress { step: coven::OpenStep::Migrating, done: 1, total: 1 }),
         "{reported:?}"
     );
     // The store never ordered text by bae's collations, so the open rebuilds
     // their indexes first.
-    let migrating = reported
-        .iter()
-        .position(|progress| progress.step == coven::OpenStep::Migrating)
-        .unwrap();
+    let migrating =
+        reported.iter().position(|progress| progress.step == coven::OpenStep::Migrating).unwrap();
     assert!(
-        reported[..migrating]
-            .iter()
-            .all(|progress| progress.step == coven::OpenStep::Rebuilding)
+        reported[..migrating].iter().all(|progress| progress.step == coven::OpenStep::Rebuilding)
             && reported[migrating..]
                 .iter()
                 .all(|progress| progress.step == coven::OpenStep::Migrating),

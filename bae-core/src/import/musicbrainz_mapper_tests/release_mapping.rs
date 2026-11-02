@@ -1,8 +1,8 @@
 use super::*;
+use crate::import::MetadataRef;
 use bae_catalogs::musicbrainz::{
     MbArtistCredit, MbArtistRef, MbMedium, MbRecording, MbReleaseResponse, MbTrack, MbWork,
 };
-use crate::import::MetadataRef;
 
 /// Read archived source documents through the same metadata and reading path
 /// as import.
@@ -12,10 +12,10 @@ fn map(
 ) -> Result<ReleaseValues, ImportError> {
     let payloads: crate::import::payloads::ReleasePayloads =
         crate::import::payloads::ReleasePayloads::for_test(
-        MetadataRef::new(Catalog::MusicBrainz, &response.id),
-        serde_json::to_string(response).expect("MusicBrainz fixture serializes"),
-        supporting,
-    );
+            MetadataRef::new(Catalog::MusicBrainz, &response.id),
+            serde_json::to_string(response).expect("MusicBrainz fixture serializes"),
+            supporting,
+        );
     payloads.extract().unwrap().every_medium_values()
 }
 
@@ -60,7 +60,8 @@ fn make_response(media: Vec<MbMedium>) -> MbReleaseResponse {
         status: None,
         packaging: None,
         barcode: None,
-        artist_credit: vec![MbArtistCredit { joinphrase: None, 
+        artist_credit: vec![MbArtistCredit {
+            joinphrase: None,
             name: "Artist Name A".to_string(),
             artist: Some(MbArtistRef {
                 id: Some("artist-1".to_string()),
@@ -91,10 +92,10 @@ fn map_for_audio(
 ) -> Result<ReleaseValues, ImportError> {
     let payloads: crate::import::payloads::ReleasePayloads =
         crate::import::payloads::ReleasePayloads::for_test(
-        MetadataRef::new(Catalog::MusicBrainz, &response.id),
-        serde_json::to_string(response).expect("MusicBrainz fixture serializes"),
-        Vec::new(),
-    );
+            MetadataRef::new(Catalog::MusicBrainz, &response.id),
+            serde_json::to_string(response).expect("MusicBrainz fixture serializes"),
+            Vec::new(),
+        );
     payloads
         .extract()
         .unwrap()
@@ -103,10 +104,7 @@ fn map_for_audio(
 }
 
 fn timed_mb_track(number: &str, title: &str, length_ms: u64) -> MbTrack {
-    MbTrack {
-        length: Some(length_ms),
-        ..make_mb_track(number, title)
-    }
+    MbTrack { length: Some(length_ms), ..make_mb_track(number, title) }
 }
 
 /// A hybrid SACD is one disc MusicBrainz lists as two mediums, a CD layer
@@ -130,7 +128,11 @@ fn a_hybrid_sacd_rip_is_read_from_its_cd_layer() {
 
     let parsed = map_for_audio(&response, &[527_200, 284_000, 332_900]).unwrap();
 
-    assert_eq!(crate::import::release_values::value_labels(&parsed), ["1", "2", "3"], "one layer is one disc");
+    assert_eq!(
+        crate::import::release_values::value_labels(&parsed),
+        ["1", "2", "3"],
+        "one layer is one disc"
+    );
 }
 
 /// One disc of a box is read from the medium its lengths match, and the
@@ -154,11 +156,7 @@ fn one_disc_of_a_box_is_read_from_its_own_medium() {
     let parsed = map_for_audio(&response, &[250_100, 349_800]).unwrap();
 
     assert_eq!(
-        parsed
-            .tracks
-            .iter()
-            .map(|track| track.title.as_str())
-            .collect::<Vec<_>>(),
+        parsed.tracks.iter().map(|track| track.title.as_str()).collect::<Vec<_>>(),
         vec!["Track 5", "Track 6"]
     );
     assert_eq!(
@@ -189,13 +187,7 @@ fn audio_no_mediums_hold_is_refused_with_both_counts() {
         .expect_err("no set of mediums holds three tracks");
 
     assert!(
-        matches!(
-            refused,
-            ImportError::MetadataTrackCount {
-                folder_tracks: 3,
-                release_tracks: 2
-            }
-        ),
+        matches!(refused, ImportError::MetadataTrackCount { folder_tracks: 3, release_tracks: 2 }),
         "{refused}"
     );
 }
@@ -288,7 +280,10 @@ fn test_vinyl_two_media_four_sides() {
     ]);
 
     let parsed = map(&response, vec![]).unwrap();
-    assert_eq!(crate::import::release_values::value_labels(&parsed), ["A1", "A2", "B1", "B2", "C1", "C2", "D1", "D2"]);
+    assert_eq!(
+        crate::import::release_values::value_labels(&parsed),
+        ["A1", "A2", "B1", "B2", "C1", "C2", "D1", "D2"]
+    );
     assert!(
         parsed.mediums.iter().all(|medium| medium.sides.get() == 2),
         "each record has two sides of its own"
@@ -347,10 +342,7 @@ fn vinyl_numeric_track_is_on_the_side_before_it() {
     let response = make_response(vec![MbMedium {
         discs: vec![],
         format: Some("12\" Vinyl".to_string()),
-        tracks: vec![
-            make_mb_track("A1", "Track A1"),
-            make_mb_track("1", "Numeric-only Track"),
-        ],
+        tracks: vec![make_mb_track("A1", "Track A1"), make_mb_track("1", "Numeric-only Track")],
     }]);
 
     let parsed = map(&response, vec![]).unwrap();
@@ -486,14 +478,8 @@ fn pressing_reads_year_every_label_barcode_and_every_fact() {
             facts: bae_types::pressing::PressingFacts {
                 area: Some(bae_types::pressing::area("GB")),
                 media: vec![
-                    bae_types::pressing::MediaCount {
-                        medium: Medium::Vinyl,
-                        count: 2,
-                    },
-                    bae_types::pressing::MediaCount {
-                        medium: Medium::Cd,
-                        count: 1,
-                    },
+                    bae_types::pressing::MediaCount { medium: Medium::Vinyl, count: 2 },
+                    bae_types::pressing::MediaCount { medium: Medium::Cd, count: 1 },
                 ],
                 status: Some(bae_types::pressing::ReleaseStatus::Official),
                 packaging: Some(bae_types::pressing::Packaging::GatefoldCover),
@@ -548,7 +534,8 @@ fn release_with_no_artist_credits_returns_err() {
 }
 
 fn credit(id: &str, name: &str) -> MbArtistCredit {
-    MbArtistCredit { joinphrase: None, 
+    MbArtistCredit {
+        joinphrase: None,
         name: name.to_string(),
         artist: Some(MbArtistRef {
             id: Some(id.to_string()),
@@ -572,10 +559,7 @@ fn release_artist_credit_name_is_used_when_artist_payload_name_is_missing() {
     let parsed = map(&response, vec![]).unwrap();
 
     let artist = &parsed.album_credits[0];
-    assert_eq!(
-        artist.credit.musicbrainz_artist_id.as_deref(),
-        Some("artist-credit-name-only")
-    );
+    assert_eq!(artist.credit.musicbrainz_artist_id.as_deref(), Some("artist-credit-name-only"));
     assert_eq!(artist.credit.name, "Credit Artist Name");
 }
 
@@ -593,11 +577,7 @@ fn missing_mb_sort_names_remain_absent() {
             }),
             ..MbRelation::default()
         }];
-        MbMedium {
-            discs: vec![],
-            format: Some("CD".to_string()),
-            tracks: vec![track],
-        }
+        MbMedium { discs: vec![], format: Some("CD".to_string()), tracks: vec![track] }
     }]);
     response.artist_credit[0].artist.as_mut().unwrap().sort_name = None;
 
@@ -609,10 +589,7 @@ fn missing_mb_sort_names_remain_absent() {
         .find(|artist| artist.credit.musicbrainz_artist_id.as_deref() == Some("artist-1"))
         .expect("release artist read");
     let composer = &parsed.tracks[0].roles[0].artist;
-    assert_eq!(
-        composer.musicbrainz_artist_id.as_deref(),
-        Some("composer-artist-a")
-    );
+    assert_eq!(composer.musicbrainz_artist_id.as_deref(), Some("composer-artist-a"));
 
     assert_eq!(release_artist.credit.sort_name, None);
     assert_eq!(composer.sort_name, None);

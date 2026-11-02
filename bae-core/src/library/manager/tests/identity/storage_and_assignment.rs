@@ -26,14 +26,10 @@ async fn storage_page_id_tiebreaker_stable_across_pages() {
         field: crate::db::StorageSortField::AlbumTitle,
         direction: crate::db::SortDirection::Ascending,
     };
-    let first_page = manager
-        .get_storage_page(&sort, crate::db::StorageFilter::All, 0, 1)
-        .await
-        .unwrap();
-    let second_page = manager
-        .get_storage_page(&sort, crate::db::StorageFilter::All, 1, 1)
-        .await
-        .unwrap();
+    let first_page =
+        manager.get_storage_page(&sort, crate::db::StorageFilter::All, 0, 1).await.unwrap();
+    let second_page =
+        manager.get_storage_page(&sort, crate::db::StorageFilter::All, 1, 1).await.unwrap();
 
     assert_eq!(first_page.rows.len(), 1);
     assert_eq!(second_page.rows.len(), 1);
@@ -48,13 +44,15 @@ async fn storage_page_id_tiebreaker_stable_across_pages() {
 fn mb_identity(group: &str, release: &str) -> crate::import::ReleaseRecord {
     crate::import::ReleaseRecord::new(
         &crate::import::MetadataRef::new(bae_catalogs::catalog::Catalog::MusicBrainz, release),
-        Some(group.to_string()))
+        Some(group.to_string()),
+    )
 }
 
 fn discogs_identity(group: &str, release: &str) -> crate::import::ReleaseRecord {
     crate::import::ReleaseRecord::new(
         &crate::import::MetadataRef::new(bae_catalogs::catalog::Catalog::Discogs, release),
-        Some(group.to_string()))
+        Some(group.to_string()),
+    )
 }
 
 /// Insert `album`, then one release under it per `(group, release)` MusicBrainz
@@ -95,36 +93,21 @@ async fn set_records_to_file_metadata_moves_release_to_fresh_album() {
         .await
         .unwrap();
 
-    manager
-        .set_records(&release.id, vec![])
-        .await
-        .unwrap();
+    manager.set_records(&release.id, vec![]).await.unwrap();
 
     // The original album was a one-release album → empty and unlisted now.
     assert!(manager.find_album_detail(&album.id).await.unwrap().is_none());
 
     // Release moved to a brand-new album, holds nothing else.
-    let new_album_id = manager
-        .database
-        .find_album_id_for_release(&release.id)
-        .await
-        .unwrap()
-        .unwrap();
+    let new_album_id =
+        manager.database.find_album_id_for_release(&release.id).await.unwrap().unwrap();
     assert_ne!(new_album_id, album.id);
-    let siblings = manager
-        .database
-        .get_releases_for_album(&new_album_id)
-        .await
-        .unwrap();
+    let siblings = manager.database.get_releases_for_album(&new_album_id).await.unwrap();
     assert_eq!(siblings.len(), 1);
     assert_eq!(siblings[0].id, release.id);
 
     // Identity rows wiped, metadata source flipped to file_tags.
-    let identities = manager
-        .database
-        .get_release_records(&release.id)
-        .await
-        .unwrap();
+    let identities = manager.database.get_release_records(&release.id).await.unwrap();
     assert!(identities.is_empty());
 }
 
@@ -140,38 +123,19 @@ async fn set_records_replaces_rows_when_the_new_records_fit_the_current_album() 
 
     // Re-point release1 at another pressing within g1. The new row still
     // agrees with release2's group, so release1 stays put.
-    manager
-        .set_records(&release1.id, vec![mb_identity("g1", "mb-rel-99")])
-        .await
-        .unwrap();
+    manager.set_records(&release1.id, vec![mb_identity("g1", "mb-rel-99")]).await.unwrap();
 
-    let landing_album_id = manager
-        .database
-        .find_album_id_for_release(&release1.id)
-        .await
-        .unwrap()
-        .unwrap();
+    let landing_album_id =
+        manager.database.find_album_id_for_release(&release1.id).await.unwrap().unwrap();
     assert_eq!(landing_album_id, album.id);
 
-    let identities = manager
-        .database
-        .get_release_records(&release1.id)
-        .await
-        .unwrap();
+    let identities = manager.database.get_release_records(&release1.id).await.unwrap();
     assert_eq!(identities.len(), 1);
-    assert_eq!(
-        identities[0].album_ref().expect("known parent album").key,
-        "g1"
-    );
+    assert_eq!(identities[0].album_ref().expect("known parent album").key, "g1");
     assert_eq!(identities[0].key(), "mb-rel-99");
 
-
     // Source album still holds both releases.
-    let siblings = manager
-        .database
-        .get_releases_for_album(&album.id)
-        .await
-        .unwrap();
+    let siblings = manager.database.get_releases_for_album(&album.id).await.unwrap();
     assert_eq!(siblings.len(), 2);
 }
 
@@ -190,12 +154,7 @@ async fn set_records_on_another_catalog_keeps_the_release_in_its_album() {
         .unwrap();
 
     assert_eq!(
-        manager
-            .database
-            .find_album_id_for_release(&releases[0].id)
-            .await
-            .unwrap()
-            .as_deref(),
+        manager.database.find_album_id_for_release(&releases[0].id).await.unwrap().as_deref(),
         Some(album.id.as_str())
     );
 }
@@ -217,26 +176,15 @@ async fn set_records_creates_a_new_album_when_no_existing_album_fits() {
     // release_alpha takes on a brand-new MB group (g2). Its current
     // album (album_a) holds release_beta on g1, so it can't stay.
     // No other album holds g2 either → fresh album.
-    manager
-        .set_records(&release_alpha.id, vec![mb_identity("g2", "g2-rel")])
-        .await
-        .unwrap();
+    manager.set_records(&release_alpha.id, vec![mb_identity("g2", "g2-rel")]).await.unwrap();
 
-    let landing_album_id = manager
-        .database
-        .find_album_id_for_release(&release_alpha.id)
-        .await
-        .unwrap()
-        .unwrap();
+    let landing_album_id =
+        manager.database.find_album_id_for_release(&release_alpha.id).await.unwrap().unwrap();
     assert_ne!(landing_album_id, album_a.id);
     assert_ne!(landing_album_id, album_b.id);
 
     // Source album loses release_alpha but keeps release_beta.
-    let source_siblings = manager
-        .database
-        .get_releases_for_album(&album_a.id)
-        .await
-        .unwrap();
+    let source_siblings = manager.database.get_releases_for_album(&album_a.id).await.unwrap();
     assert_eq!(source_siblings.len(), 1);
     assert_eq!(source_siblings[0].id, release_beta.id);
 }
@@ -251,32 +199,20 @@ async fn set_records_moves_the_release_to_the_matching_album() {
     let album_a = create_test_album();
     let mut album_b = create_test_album();
     album_b.title = "Other Album".to_string();
-    let release_alpha = seed_grouped_releases(&manager, &album_a, &[("g1", "g1-rel")])
-        .await
-        .remove(0);
+    let release_alpha =
+        seed_grouped_releases(&manager, &album_a, &[("g1", "g1-rel")]).await.remove(0);
     seed_grouped_releases(&manager, &album_b, &[("g2", "g2-rel")]).await;
 
     manager
-        .set_records(
-            &release_alpha.id,
-            vec![mb_identity("g2", "mb-rel-pressing")],
-        )
+        .set_records(&release_alpha.id, vec![mb_identity("g2", "mb-rel-pressing")])
         .await
         .unwrap();
 
     // release_alpha now lives in album_b alongside release_other.
-    let landing_album_id = manager
-        .database
-        .find_album_id_for_release(&release_alpha.id)
-        .await
-        .unwrap()
-        .unwrap();
+    let landing_album_id =
+        manager.database.find_album_id_for_release(&release_alpha.id).await.unwrap().unwrap();
     assert_eq!(landing_album_id, album_b.id);
-    let target_siblings = manager
-        .database
-        .get_releases_for_album(&album_b.id)
-        .await
-        .unwrap();
+    let target_siblings = manager.database.get_releases_for_album(&album_b.id).await.unwrap();
     assert_eq!(target_siblings.len(), 2);
 
     // album_a was a single-release album → empty and unlisted now.
@@ -295,23 +231,12 @@ async fn set_records_keeps_the_vacated_album_when_other_releases_remain() {
     let release_alpha = &releases[0];
     let release_beta = &releases[1];
 
-    manager
-        .set_records(&release_alpha.id, vec![mb_identity("g2", "g2-rel")])
-        .await
-        .unwrap();
+    manager.set_records(&release_alpha.id, vec![mb_identity("g2", "g2-rel")]).await.unwrap();
 
     // album_a still exists, holds release_beta only.
-    let surviving = manager
-        .database
-        .find_album_by_id(&album_a.id)
-        .await
-        .unwrap();
+    let surviving = manager.database.find_album_by_id(&album_a.id).await.unwrap();
     assert!(surviving.is_some());
-    let surviving_releases = manager
-        .database
-        .get_releases_for_album(&album_a.id)
-        .await
-        .unwrap();
+    let surviving_releases = manager.database.get_releases_for_album(&album_a.id).await.unwrap();
     assert_eq!(surviving_releases.len(), 1);
     assert_eq!(surviving_releases[0].id, release_beta.id);
 }
@@ -364,21 +289,10 @@ async fn set_records_does_not_touch_metadata_columns() {
     };
     manager.database.insert_track(&track).await.unwrap();
 
-    manager
-        .set_records(
-            &release.id,
-            vec![discogs_identity("dg1", "dg-rel-1")],
-        )
-        .await
-        .unwrap();
+    manager.set_records(&release.id, vec![discogs_identity("dg1", "dg-rel-1")]).await.unwrap();
 
     // Pressing fields untouched.
-    let after = manager
-        .database
-        .find_release_by_id(&release.id)
-        .await
-        .unwrap()
-        .unwrap();
+    let after = manager.database.find_release_by_id(&release.id).await.unwrap().unwrap();
     assert_eq!(after.pressing.facts, release.pressing.facts);
     assert_eq!(after.pressing.labels, release.pressing.labels);
     assert_eq!(after.pressing.barcodes, ["1234567890", "5012345678900"]);
@@ -386,21 +300,12 @@ async fn set_records_does_not_touch_metadata_columns() {
 
     // Album-level fields untouched (still in the same album, since
     // both old and new identities are in the only release).
-    let after_album = manager
-        .database
-        .find_album_by_id(&after.album_id)
-        .await
-        .unwrap()
-        .unwrap();
+    let after_album = manager.database.find_album_by_id(&after.album_id).await.unwrap().unwrap();
     assert_eq!(after_album.title, "Initial Title");
     assert_eq!(after_album.year, Some(1999));
 
     // Track survived.
-    let tracks = manager
-        .database
-        .get_tracks_for_release(&release.id)
-        .await
-        .unwrap();
+    let tracks = manager.database.get_tracks_for_release(&release.id).await.unwrap();
     assert_eq!(tracks.len(), 1);
     assert_eq!(tracks[0].title, "My Track");
 }
@@ -434,37 +339,21 @@ async fn set_records_to_a_fresh_album_preserves_album_artists() {
     for (position, artist_id) in [(0, &primary.id), (1, &secondary.id)] {
         manager
             .database
-            .insert_album_artist(&DbAlbumArtist::new(
-                &album_a.id,
-                artist_id,
-                position,
-                Utc::now(),
-            ))
+            .insert_album_artist(&DbAlbumArtist::new(&album_a.id, artist_id, position, Utc::now()))
             .await
             .unwrap();
     }
 
     // release_alpha takes a different group → can't stay in album_a
     // (g1 disagrees with g2), no other album holds g2 → fresh album.
-    manager
-        .set_records(&release_alpha.id, vec![mb_identity("g2", "g2-rel")])
-        .await
-        .unwrap();
+    manager.set_records(&release_alpha.id, vec![mb_identity("g2", "g2-rel")]).await.unwrap();
 
-    let new_album_id = manager
-        .database
-        .find_album_id_for_release(&release_alpha.id)
-        .await
-        .unwrap()
-        .unwrap();
+    let new_album_id =
+        manager.database.find_album_id_for_release(&release_alpha.id).await.unwrap().unwrap();
     assert_ne!(new_album_id, album_a.id);
 
     // The fresh album carries the same credit list as the source, in order.
-    let new_album_artists = manager
-        .database
-        .get_artists_for_album(&new_album_id)
-        .await
-        .unwrap();
+    let new_album_artists = manager.database.get_artists_for_album(&new_album_id).await.unwrap();
     let names: Vec<&str> = new_album_artists.iter().map(|a| a.artist.name.as_str()).collect();
     assert_eq!(names, vec!["Primary", "Secondary"]);
 }
@@ -503,16 +392,9 @@ async fn set_records_clears_primary_when_it_pointed_at_the_moved_release() {
     manager.database.insert_track(&beta_track).await.unwrap();
 
     // Make release_alpha — the release about to move out — primary.
-    manager
-        .database
-        .set_album_primary_release(&album_a.id, &release_alpha.id)
-        .await
-        .unwrap();
+    manager.database.set_album_primary_release(&album_a.id, &release_alpha.id).await.unwrap();
 
-    manager
-        .set_records(&release_alpha.id, vec![mb_identity("g2", "g2-rel")])
-        .await
-        .unwrap();
+    manager.set_records(&release_alpha.id, vec![mb_identity("g2", "g2-rel")]).await.unwrap();
 
     // album_a survives, holding release_beta.
     manager
@@ -523,11 +405,8 @@ async fn set_records_clears_primary_when_it_pointed_at_the_moved_release() {
         .expect("album should still exist with release_beta");
 
     // The primary release is the lowest-ordered one left: release_beta.
-    let resolved_track_ids = manager
-        .database
-        .get_primary_release_track_ids_for_album(&album_a.id)
-        .await
-        .unwrap();
+    let resolved_track_ids =
+        manager.database.get_primary_release_track_ids_for_album(&album_a.id).await.unwrap();
     assert_eq!(
         resolved_track_ids,
         Some(vec![beta_track_id.clone()]),
@@ -545,9 +424,8 @@ async fn set_records_atomic_rechecks_the_source_count_inside_the_transaction() {
     let (manager, _temp_dir) = setup_test_manager().await;
 
     let album_a = create_test_album();
-    let release_alpha = seed_grouped_releases(&manager, &album_a, &[("g1", "g1-rel")])
-        .await
-        .remove(0);
+    let release_alpha =
+        seed_grouped_releases(&manager, &album_a, &[("g1", "g1-rel")]).await.remove(0);
 
     // Build the fresh-album row the manager would have produced —
     // we're driving the atomic API by hand.
@@ -564,11 +442,7 @@ async fn set_records_atomic_rechecks_the_source_count_inside_the_transaction() {
     // album_a after the (hypothetical) pre-flight read but before
     // the atomic call.
     let release_intruder = create_test_release(&album_a.id);
-    manager
-        .database
-        .insert_release(&release_intruder)
-        .await
-        .unwrap();
+    manager.database.insert_release(&release_intruder).await.unwrap();
 
     manager
         .database
@@ -583,20 +457,12 @@ async fn set_records_atomic_rechecks_the_source_count_inside_the_transaction() {
         .unwrap();
 
     // Source album survives, holding only release_intruder.
-    let survivors = manager
-        .database
-        .get_releases_for_album(&album_a.id)
-        .await
-        .unwrap();
+    let survivors = manager.database.get_releases_for_album(&album_a.id).await.unwrap();
     assert_eq!(survivors.len(), 1);
     assert_eq!(survivors[0].id, release_intruder.id);
 
     // release_alpha landed in the fresh album.
-    let fresh_releases = manager
-        .database
-        .get_releases_for_album(&fresh_album.id)
-        .await
-        .unwrap();
+    let fresh_releases = manager.database.get_releases_for_album(&fresh_album.id).await.unwrap();
     assert_eq!(fresh_releases.len(), 1);
     assert_eq!(fresh_releases[0].id, release_alpha.id);
 }
@@ -614,19 +480,8 @@ async fn album_records_merge_albums_but_never_match_pressings() {
         ReleaseRecord::album(&MetadataRef::new(Catalog::Discogs, "42")),
         ReleaseRecord::album(&MetadataRef::new(Catalog::AllMusic, "mw42")),
     ];
-    manager
-        .database
-        .insert_release_records(&release.id, &records)
-        .await
-        .unwrap();
-    assert_eq!(
-        manager
-            .database
-            .get_release_records(&release.id)
-            .await
-            .unwrap(),
-        records
-    );
+    manager.database.insert_release_records(&release.id, &records).await.unwrap();
+    assert_eq!(manager.database.get_release_records(&release.id).await.unwrap(), records);
     let name = |records: Vec<ReleaseRecord>| {
         let database = manager.database.clone();
         async move { database.album_records_name(&records, &[]).await.unwrap() }
@@ -635,9 +490,7 @@ async fn album_records_merge_albums_but_never_match_pressings() {
     // Numeric Discogs release and master identifiers can coincide; their kinds
     // still denote different objects: a pressing "42" with no album names no
     // album the album record "42" files.
-    let pressing = ReleaseRecord::new(
-        &MetadataRef::new(Catalog::Discogs, "42"),
-        Some("42".into()));
+    let pressing = ReleaseRecord::new(&MetadataRef::new(Catalog::Discogs, "42"), Some("42".into()));
     let ungrouped = ReleaseRecord::new(&MetadataRef::new(Catalog::Discogs, "42"), None);
     assert_eq!(name(vec![ungrouped.clone()]).await, None);
     assert_eq!(name(vec![pressing.clone()]).await, Some(album.id.clone()));
@@ -653,32 +506,17 @@ async fn album_records_merge_albums_but_never_match_pressings() {
             source_group_id: Some("42".into()),
         },
     ];
-    let statuses = manager
-        .database
-        .check_releases_in_library(&checks)
-        .await
-        .unwrap();
+    let statuses = manager.database.check_releases_in_library(&checks).await.unwrap();
     assert!(!statuses[0].release_in_library() && !statuses[0].album_in_library());
     assert!(!statuses[1].release_in_library() && statuses[1].album_in_library());
 
     let another_album = create_test_album();
     manager.database.insert_album(&another_album).await.unwrap();
     let another_release = create_test_release(&another_album.id);
-    manager
-        .database
-        .insert_release(&another_release)
-        .await
-        .unwrap();
-    manager
-        .set_records(&another_release.id, vec![pressing.clone()])
-        .await
-        .unwrap();
+    manager.database.insert_release(&another_release).await.unwrap();
+    manager.set_records(&another_release.id, vec![pressing.clone()]).await.unwrap();
     assert_eq!(
-        manager
-            .database
-            .find_album_id_for_release(&another_release.id)
-            .await
-            .unwrap(),
+        manager.database.find_album_id_for_release(&another_release.id).await.unwrap(),
         Some(album.id.clone())
     );
     // A copy of the pressing now files under its album too.
@@ -694,30 +532,13 @@ async fn ungrouped_pressings_do_not_invent_album_matches() {
     manager.database.insert_album(&album).await.unwrap();
     let release = create_test_release(&album.id);
     manager.database.insert_release(&release).await.unwrap();
-    let records = [ReleaseRecord::new(
-        &MetadataRef::new(Catalog::Discogs, "42"),
-        None)];
-    manager
-        .database
-        .insert_release_records(&release.id, &records)
-        .await
-        .unwrap();
-    assert_eq!(
-        manager
-            .database
-            .get_release_records(&release.id)
-            .await
-            .unwrap(),
-        records
-    );
+    let records = [ReleaseRecord::new(&MetadataRef::new(Catalog::Discogs, "42"), None)];
+    manager.database.insert_release_records(&release.id, &records).await.unwrap();
+    assert_eq!(manager.database.get_release_records(&release.id).await.unwrap(), records);
     // A copy of the ungrouped pressing files under its album; an album record
     // of the same number names none.
     assert_eq!(
-        manager
-            .database
-            .album_records_name(&records, &[])
-            .await
-            .unwrap(),
+        manager.database.album_records_name(&records, &[]).await.unwrap(),
         Some(album.id.clone())
     );
     assert_eq!(

@@ -34,12 +34,10 @@ async fn setup_test_manager_over(
 ) -> (LibraryManager, TempDir) {
     let temp_dir = TempDir::new().unwrap();
     let db_path = temp_dir.path().join("test.db");
-    let database = Database::new_test(
-        db_path.to_str().unwrap(),
-        std::sync::Arc::new(coven::SystemClock),
-    )
-    .await
-    .unwrap();
+    let database =
+        Database::new_test(db_path.to_str().unwrap(), std::sync::Arc::new(coven::SystemClock))
+            .await
+            .unwrap();
     let manager = LibraryManager::new(
         database,
         crate::config::AppDir::under_home(temp_dir.path()).unwrap(),
@@ -80,15 +78,16 @@ async fn await_import_outcome(
             continue;
         };
         match progress {
-            crate::import::ImportProgress::Complete {
-                import_id: completed,
-                id,
-                album_id,
-            } if completed == import_id => return Ok((id, album_id)),
-            crate::import::ImportProgress::Failed {
-                import_id: failed,
-                error,
-            } if failed == import_id => return Err(error),
+            crate::import::ImportProgress::Complete { import_id: completed, id, album_id }
+                if completed == import_id =>
+            {
+                return Ok((id, album_id))
+            }
+            crate::import::ImportProgress::Failed { import_id: failed, error }
+                if failed == import_id =>
+            {
+                return Err(error)
+            }
             _ => {}
         }
     }
@@ -120,20 +119,14 @@ async fn an_import_s_progress_is_recorded_before_any_reader_hears_it() {
     let bus = ImportEventBus::new(runtime.clone());
     let mut events = bus.every_event();
     runtime
-        .claim_for_import(
-            &crate::import::CandidateKey::test("candidate"),
-            "import-1",
-            false,
-        )
+        .claim_for_import(&crate::import::CandidateKey::test("candidate"), "import-1", false)
         .await
         .unwrap();
     runtime
         .move_import(
             &crate::import::CandidateKey::test("candidate"),
             "import-1",
-            Some(crate::import::ImportStep::Running(
-                crate::import::ImportPhase::ReadingFiles,
-            )),
+            Some(crate::import::ImportStep::Running(crate::import::ImportPhase::ReadingFiles)),
         )
         .await
         .unwrap();
@@ -156,20 +149,15 @@ async fn an_import_s_progress_is_recorded_before_any_reader_hears_it() {
             .unwrap()
             .and_then(|candidate| candidate.import)
             .map(|import| import.step),
-        Some(crate::import::ImportStep::Running(
-            crate::import::ImportPhase::ReadingFiles
-        ))
+        Some(crate::import::ImportStep::Running(crate::import::ImportPhase::ReadingFiles))
     );
 }
 
 /// Put `key` on the identification queue as the queue admits it, with the
 /// files the scan holds it with.
 async fn admit(handle: &ImportServiceHandle, key: &crate::import::CandidateKey) {
-    let candidate = handle
-        .get_release_candidate(key)
-        .await
-        .unwrap()
-        .expect("the candidate is stored");
+    let candidate =
+        handle.get_release_candidate(key).await.unwrap().expect("the candidate is stored");
     handle
         .admit_identification(
             vec![(key.clone(), crate::import::CandidateFiles::of(&candidate))],
@@ -186,11 +174,8 @@ async fn start_run(
     key: &crate::import::CandidateKey,
     run: crate::identify::IdentifyRunId,
 ) {
-    let candidate = handle
-        .get_release_candidate(key)
-        .await
-        .unwrap()
-        .expect("the candidate is stored");
+    let candidate =
+        handle.get_release_candidate(key).await.unwrap().expect("the candidate is stored");
     assert!(handle
         .runtime
         .run_started(

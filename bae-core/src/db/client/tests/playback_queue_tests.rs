@@ -40,10 +40,7 @@ pub(super) async fn release_db(count: usize) -> (Database, tempfile::TempDir, Ve
 async fn play(db: &Database, start: ReleaseStart) -> crate::playback::QueueEntry {
     match db
         .playback_queue_tables()
-        .fill(ContextFill::Release {
-            release_id: RELEASE_A.to_string(),
-            start,
-        })
+        .fill(ContextFill::Release { release_id: RELEASE_A.to_string(), start })
         .await
         .unwrap()
     {
@@ -54,18 +51,12 @@ async fn play(db: &Database, start: ReleaseStart) -> crate::playback::QueueEntry
 
 async fn upcoming(db: &Database) -> Vec<String> {
     let manual = db.queue_value().await.unwrap().manual;
-    manual
-        .into_iter()
-        .chain(db.queue_upcoming().await.unwrap())
-        .map(|item| item.track_id)
-        .collect()
+    manual.into_iter().chain(db.queue_upcoming().await.unwrap()).map(|item| item.track_id).collect()
 }
 
 async fn rejects(db: &Database, sql: &str) -> bool {
     let sql = sql.to_string();
-    db.call(move |conn| conn.execute_batch(&sql).map_err(DbError::from))
-        .await
-        .is_err()
+    db.call(move |conn| conn.execute_batch(&sql).map_err(DbError::from)).await.is_err()
 }
 
 /// What the context lane plays from, whether it is shuffled and where it
@@ -75,19 +66,10 @@ async fn rejects(db: &Database, sql: &str) -> bool {
 async fn the_schema_refuses_a_half_written_context_and_a_negative_position() {
     let (db, _tmp, _tracks) = release_db(1).await;
     assert!(rejects(&db, "UPDATE playback_queue SET source_kind = 'library'").await);
+    assert!(rejects(&db, "UPDATE playback_queue SET source_kind = 'library', shuffled = 1").await);
     assert!(
-        rejects(
-            &db,
-            "UPDATE playback_queue SET source_kind = 'library', shuffled = 1"
-        )
-        .await
-    );
-    assert!(
-        rejects(
-            &db,
-            "UPDATE playback_queue SET source_kind = 'release', shuffled = 0, cursor = 1"
-        )
-        .await
+        rejects(&db, "UPDATE playback_queue SET source_kind = 'release', shuffled = 0, cursor = 1")
+            .await
     );
     assert!(
         rejects(
@@ -97,13 +79,7 @@ async fn the_schema_refuses_a_half_written_context_and_a_negative_position() {
         )
         .await
     );
-    assert!(
-        rejects(
-            &db,
-            "UPDATE playback_queue SET source_release_id = 'release'"
-        )
-        .await
-    );
+    assert!(rejects(&db, "UPDATE playback_queue SET source_release_id = 'release'").await);
     assert!(
         rejects(
             &db,
@@ -121,10 +97,7 @@ async fn duplicate_entries_show_in_order_with_distinct_ids() {
     let (db, _tmp, tracks) = release_db(2).await;
     let items = super::queue_items(&db, &[&tracks[0], &tracks[0], &tracks[1]]).await;
     let track_ids: Vec<&str> = items.iter().map(|i| i.track_id.as_str()).collect();
-    assert_eq!(
-        track_ids,
-        vec![tracks[0].as_str(), tracks[0].as_str(), tracks[1].as_str()]
-    );
+    assert_eq!(track_ids, vec![tracks[0].as_str(), tracks[0].as_str(), tracks[1].as_str()]);
     let mut entry_ids: Vec<&str> = items.iter().map(|i| i.entry_id.as_str()).collect();
     entry_ids.dedup();
     assert_eq!(entry_ids.len(), 3);
@@ -139,10 +112,7 @@ async fn deleting_a_queued_track_takes_its_rows() {
 
     exec(&db, "DELETE FROM tracks WHERE id = ?", &[&tracks[1]]).await;
 
-    assert_eq!(
-        upcoming(&db).await,
-        vec![tracks[2].clone(), tracks[2].clone()]
-    );
+    assert_eq!(upcoming(&db).await, vec![tracks[2].clone(), tracks[2].clone()]);
 }
 
 /// A track queued twice in each lane leaves all four places when it is
@@ -152,16 +122,10 @@ async fn deleting_a_track_queued_twice_takes_every_entry() {
     let (db, _tmp, tracks) = release_db(2).await;
     let filled = db
         .playback_queue_tables()
-        .fill(ContextFill::Releases(vec![
-            RELEASE_A.to_string(),
-            RELEASE_A.to_string(),
-        ]))
+        .fill(ContextFill::Releases(vec![RELEASE_A.to_string(), RELEASE_A.to_string()]))
         .await
         .unwrap();
-    assert!(matches!(
-        filled,
-        ContextFilled::Playing { track_count: 4, .. }
-    ));
+    assert!(matches!(filled, ContextFilled::Playing { track_count: 4, .. }));
     super::queue_items(&db, &[&tracks[1], &tracks[1]]).await;
     assert_eq!(
         upcoming(&db).await,
@@ -231,19 +195,11 @@ async fn a_play_of_releases_stores_its_kind_and_a_lone_release_its_id() {
     let (db, _tmp, _tracks) = release_db(1).await;
     let fill = |release_ids: Vec<String>| {
         let db = db.clone();
-        async move {
-            db.playback_queue_tables()
-                .fill(ContextFill::Releases(release_ids))
-                .await
-                .unwrap()
-        }
+        async move { db.playback_queue_tables().fill(ContextFill::Releases(release_ids)).await.unwrap() }
     };
 
     fill(vec![RELEASE_A.to_string(), RELEASE_A.to_string()]).await;
-    assert_eq!(
-        context_head(&db).await,
-        (Some("releases".to_string()), None, Some(false), Some(1))
-    );
+    assert_eq!(context_head(&db).await, (Some("releases".to_string()), None, Some(false), Some(1)));
     let context = db.queue_value().await.unwrap().context.unwrap();
     assert_eq!(context.source, crate::playback::ContextSource::Releases);
     assert_eq!(context.source_title, None);
@@ -251,12 +207,7 @@ async fn a_play_of_releases_stores_its_kind_and_a_lone_release_its_id() {
     fill(vec![RELEASE_B.to_string(), RELEASE_A.to_string()]).await;
     assert_eq!(
         context_head(&db).await,
-        (
-            Some("release".to_string()),
-            Some(RELEASE_A.to_string()),
-            Some(false),
-            Some(1)
-        )
+        (Some("release".to_string()), Some(RELEASE_A.to_string()), Some(false), Some(1))
     );
     assert_eq!(
         db.queue_value().await.unwrap().context.unwrap().source,
@@ -285,26 +236,13 @@ async fn removing_the_lane_s_last_row_clears_the_context() {
     let next = db.queue_upcoming().await.unwrap().remove(0);
     let tables = db.playback_queue_tables();
 
-    tables
-        .remove(next.entry_id.parse().unwrap())
-        .await
-        .unwrap()
-        .expect("the lane holds it");
+    tables.remove(next.entry_id.parse().unwrap()).await.unwrap().expect("the lane holds it");
     assert_eq!(
         context_head(&db).await,
-        (
-            Some("release".to_string()),
-            Some(RELEASE_A.to_string()),
-            Some(false),
-            Some(1)
-        )
+        (Some("release".to_string()), Some(RELEASE_A.to_string()), Some(false), Some(1))
     );
 
-    tables
-        .remove(playing.id)
-        .await
-        .unwrap()
-        .expect("the lane holds it");
+    tables.remove(playing.id).await.unwrap().expect("the lane holds it");
     assert_eq!(context_head(&db).await, (None, None, None, None));
 }
 
@@ -335,26 +273,15 @@ async fn the_context_lane_has_no_trigger() {
 async fn the_resume_row_round_trips_and_forgets_a_deleted_track() {
     let (db, _tmp, tracks) = release_db(2).await;
     let current = play(&db, ReleaseStart::First).await;
-    let state = DbPlaybackState {
-        current: Some(current.clone()),
-        position_ms: Some(42_000),
-    };
+    let state = DbPlaybackState { current: Some(current.clone()), position_ms: Some(42_000) };
     db.save_playback_state(&state).await.unwrap();
 
-    let loaded = db
-        .load_playback_state()
-        .await
-        .unwrap()
-        .expect("a stored row");
+    let loaded = db.load_playback_state().await.unwrap().expect("a stored row");
     assert_eq!(loaded.current, Some(current));
     assert_eq!(loaded.position_ms, Some(42_000));
 
     exec(&db, "DELETE FROM tracks WHERE id = ?", &[&tracks[0]]).await;
-    let forgotten = db
-        .load_playback_state()
-        .await
-        .unwrap()
-        .expect("the row stays");
+    let forgotten = db.load_playback_state().await.unwrap().expect("the row stays");
     assert_eq!(forgotten.current, None);
 
     db.clear_playback_state().await.unwrap();
@@ -369,14 +296,8 @@ async fn the_resume_row_round_trips_and_forgets_a_deleted_track() {
 async fn opening_keeps_the_queue_only_to_resume_it() {
     let (db, _tmp, tracks) = release_db(2).await;
     let current = play(&db, ReleaseStart::First).await;
-    db.playback_queue_tables()
-        .set_repeat(crate::playback::RepeatMode::Context)
-        .await
-        .unwrap();
-    let state = DbPlaybackState {
-        current: Some(current.clone()),
-        position_ms: None,
-    };
+    db.playback_queue_tables().set_repeat(crate::playback::RepeatMode::Context).await.unwrap();
+    let state = DbPlaybackState { current: Some(current.clone()), position_ms: None };
     db.save_playback_state(&state).await.unwrap();
     let now = db.playback_now_row();
     for change in [
@@ -394,29 +315,15 @@ async fn opening_keeps_the_queue_only_to_resume_it() {
     }
 
     db.settle_playback_queue(true).await.unwrap();
-    assert_eq!(
-        upcoming(&db).await,
-        vec![tracks[1].clone()],
-        "kept to resume"
-    );
+    assert_eq!(upcoming(&db).await, vec![tracks[1].clone()], "kept to resume");
     let resumed = db.now_playing().await.unwrap().expect("nothing to display");
-    assert_eq!(
-        resumed.playback.state,
-        crate::playback::PlaybackState::Stopped
-    );
+    assert_eq!(resumed.playback.state, crate::playback::PlaybackState::Stopped);
     assert_eq!(resumed.failure, None);
-    assert_eq!(
-        db.playback_level().await.unwrap(),
-        (0.5, true),
-        "kept to resume"
-    );
+    assert_eq!(db.playback_level().await.unwrap(), (0.5, true), "kept to resume");
 
     db.settle_playback_queue(false).await.unwrap();
     assert_eq!(db.playback_level().await.unwrap(), (1.0, false));
-    assert!(
-        db.queue_value().await.unwrap().context.is_none(),
-        "restore off empties it"
-    );
+    assert!(db.queue_value().await.unwrap().context.is_none(), "restore off empties it");
     assert!(db.load_playback_state().await.unwrap().is_none());
     assert_eq!(
         db.playback_queue_tables().repeat().await.unwrap(),
@@ -435,9 +342,7 @@ async fn plan(db: &Database, sql: &str, args: Vec<rusqlite::types::Value>) -> St
     let sql = format!("EXPLAIN QUERY PLAN {sql}");
     db.read(move |read| {
         Ok(read
-            .query(&sql, rusqlite::params_from_iter(args), |row| {
-                row.get::<_, String>("detail")
-            })?
+            .query(&sql, rusqlite::params_from_iter(args), |row| row.get::<_, String>("detail"))?
             .join(" | "))
     })
     .await
@@ -466,12 +371,8 @@ async fn the_queue_reads_are_planned_on_the_indexes() {
             && !window.contains("TEMP B-TREE"),
         "{window}"
     );
-    let count = plan(
-        &db,
-        "SELECT count(*) FROM playback_context WHERE position > ?",
-        vec![int(1)],
-    )
-    .await;
+    let count =
+        plan(&db, "SELECT count(*) FROM playback_context WHERE position > ?", vec![int(1)]).await;
     assert!(
         count.contains("USING COVERING INDEX sqlite_autoindex_playback_context_1 (position>?)"),
         "{count}"
@@ -481,16 +382,9 @@ async fn the_queue_reads_are_planned_on_the_indexes() {
         ("playback_context", "playback_context_track"),
         ("playback_manual", "playback_manual_track"),
     ] {
-        let by_track = plan(
-            &db,
-            &format!("SELECT 1 FROM {table} WHERE track_id = ?"),
-            vec![text("")],
-        )
-        .await;
-        assert!(
-            by_track.contains(&format!("USING COVERING INDEX {index}")),
-            "{by_track}"
-        );
+        let by_track =
+            plan(&db, &format!("SELECT 1 FROM {table} WHERE track_id = ?"), vec![text("")]).await;
+        assert!(by_track.contains(&format!("USING COVERING INDEX {index}")), "{by_track}");
     }
 }
 
@@ -522,10 +416,7 @@ async fn a_context_row_is_named_by_its_entry() {
 
     let tables = db.playback_queue_tables();
     assert_eq!(
-        tables
-            .skip_to(first_upcoming[1].entry_id.parse().unwrap())
-            .await
-            .unwrap(),
+        tables.skip_to(first_upcoming[1].entry_id.parse().unwrap()).await.unwrap(),
         None,
         "an entry of the last play"
     );
@@ -546,11 +437,8 @@ async fn an_up_next_row_is_named_by_its_entry() {
     let items = super::queue_items(&db, &[&tracks[0], &tracks[0]]).await;
     assert!(items.iter().all(|item| item.entry_id.starts_with('m')));
     assert_ne!(items[0].entry_id, items[1].entry_id);
-    let removed = db
-        .playback_queue_tables()
-        .remove(items[1].entry_id.parse().unwrap())
-        .await
-        .unwrap();
+    let removed =
+        db.playback_queue_tables().remove(items[1].entry_id.parse().unwrap()).await.unwrap();
     assert!(removed.is_some());
     assert_eq!(db.queue_value().await.unwrap().manual, items[..1].to_vec());
 }
@@ -572,10 +460,7 @@ async fn the_queue_tables_hold_no_foreign_key_and_a_deleted_track_still_leaves()
         .await
         .unwrap();
     assert_eq!(definitions.len(), 2);
-    assert!(
-        definitions.iter().all(|sql| !sql.contains("REFERENCES")),
-        "{definitions:?}"
-    );
+    assert!(definitions.iter().all(|sql| !sql.contains("REFERENCES")), "{definitions:?}");
 
     play(&db, ReleaseStart::First).await;
     super::queue_items(&db, &[&tracks[2]]).await;

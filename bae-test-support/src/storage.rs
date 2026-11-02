@@ -12,18 +12,11 @@ pub async fn storage_library(
     providers: Providers,
 ) -> (LibraryManager, Database, Arc<MemoryStorage>) {
     let installation = coven::TestCoven::new();
-    let storage = Arc::new(
-        MemoryStorage::builder()
-            .clock(Arc::new(coven::SystemClock))
-            .build()
-            .unwrap(),
-    );
+    let storage =
+        Arc::new(MemoryStorage::builder().clock(Arc::new(coven::SystemClock)).build().unwrap());
     let handle = bae_core::library::configure_store(
-        installation.builder(
-            bae_core::config::AppDir::under_home(directory)
-                .unwrap()
-                .store_layout(),
-        ),
+        installation
+            .builder(bae_core::config::AppDir::under_home(directory).unwrap().store_layout()),
     )
     .storage_connector(storage.clone())
     .create_store("Test Library")
@@ -36,13 +29,7 @@ pub async fn storage_library(
 
 /// Set up storage, then pause uploads while the caller seeds its queue.
 pub async fn connect_storage(manager: &LibraryManager, storage: &MemoryStorage) {
-    let coven::StorageConfig::S3 {
-        bucket,
-        region,
-        endpoint,
-        prefix,
-        profile,
-    } = storage.config()
+    let coven::StorageConfig::S3 { bucket, region, endpoint, prefix, profile } = storage.config()
     else {
         panic!("the memory provider uses S3 configuration");
     };
@@ -63,15 +50,10 @@ pub async fn connect_storage(manager: &LibraryManager, storage: &MemoryStorage) 
         .await
         .unwrap();
     let mut status = manager.subscribe_sync_status();
-    value_matching(&mut status, |value| {
-        matches!(value.status, coven::SyncStatus::Synced { .. })
-    })
-    .await;
+    value_matching(&mut status, |value| matches!(value.status, coven::SyncStatus::Synced { .. }))
+        .await;
     manager.stop_sync().await.unwrap();
-    value_matching(&mut status, |value| {
-        matches!(value.status, coven::SyncStatus::Stopped)
-    })
-    .await;
+    value_matching(&mut status, |value| matches!(value.status, coven::SyncStatus::Stopped)).await;
     manager.unlock_store_key().await.unwrap();
     manager.set_sync_paused(true).await.unwrap();
 }
@@ -85,20 +67,11 @@ pub async fn remove_uploaded_file(
     let reference = manager.release_file_ref_for_test(file_id).await.unwrap();
     manager.evict_file_for_test(reference.id()).await.unwrap();
     let before = storage.reads().await.len();
-    manager
-        .materialize_release_file_for_test(file_id)
-        .await
-        .unwrap();
+    manager.materialize_release_file_for_test(file_id).await.unwrap();
     let reads = storage.reads().await;
-    let objects: std::collections::BTreeSet<_> = reads[before..]
-        .iter()
-        .map(|(path, _, _)| path.clone())
-        .collect();
-    assert_eq!(
-        objects.len(),
-        1,
-        "the file read names exactly one provider object"
-    );
+    let objects: std::collections::BTreeSet<_> =
+        reads[before..].iter().map(|(path, _, _)| path.clone()).collect();
+    assert_eq!(objects.len(), 1, "the file read names exactly one provider object");
     for object in objects {
         storage.delete(&object).await.unwrap();
     }
@@ -110,10 +83,6 @@ pub async fn release_storage(
     manager: &LibraryManager,
     release_id: &str,
 ) -> (bae_core::album_detail::ReleaseStorageState, bool) {
-    let summary = manager
-        .find_release_storage_summary(release_id)
-        .await
-        .unwrap()
-        .unwrap();
+    let summary = manager.find_release_storage_summary(release_id).await.unwrap().unwrap();
     (summary.storage_state, summary.pinned)
 }

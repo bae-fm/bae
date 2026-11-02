@@ -62,10 +62,7 @@ impl Catalog {
     /// The catalog's place in [`Self::ALL`], the order surfaces list
     /// catalogs in.
     pub fn rank(self) -> usize {
-        Self::ALL
-            .iter()
-            .position(|known| *known == self)
-            .expect("every catalog is in Catalog::ALL")
+        Self::ALL.iter().position(|known| *known == self).expect("every catalog is in Catalog::ALL")
     }
 
     /// The stored `catalog` column value.
@@ -200,15 +197,10 @@ pub enum CatalogPage {
 /// This is the inverse of [`Catalog::release_url`] and [`Catalog::album_url`]:
 /// the key it reads back is the one those two rebuild the address from.
 pub fn parse_catalog_url(url: &str) -> Option<CatalogPage> {
-    let rest = url
-        .strip_prefix("https://")
-        .or_else(|| url.strip_prefix("http://"))?;
+    let rest = url.strip_prefix("https://").or_else(|| url.strip_prefix("http://"))?;
     // Neither the fragment nor the query names the page: Apple Music appends
     // `?i=` for a track within an album, and either can be a share tag.
-    let rest = rest
-        .split(['?', '#'])
-        .next()
-        .expect("split always yields a first part");
+    let rest = rest.split(['?', '#']).next().expect("split always yields a first part");
     let (host, path) = match rest.split_once('/') {
         Some((host, path)) => (host, path.trim_end_matches('/')),
         None => (rest, ""),
@@ -229,66 +221,48 @@ pub fn parse_catalog_url(url: &str) -> Option<CatalogPage> {
     }
 
     match (host.as_str(), segments.as_slice()) {
-        ("musicbrainz.org", ["release", key]) => Some(CatalogPage::Release {
-            catalog: Catalog::MusicBrainz,
-            key: (*key).to_string(),
-        }),
-        ("musicbrainz.org", ["release-group", key]) => Some(CatalogPage::Group {
-            catalog: Catalog::MusicBrainz,
-            key: (*key).to_string(),
-        }),
+        ("musicbrainz.org", ["release", key]) => {
+            Some(CatalogPage::Release { catalog: Catalog::MusicBrainz, key: (*key).to_string() })
+        }
+        ("musicbrainz.org", ["release-group", key]) => {
+            Some(CatalogPage::Group { catalog: Catalog::MusicBrainz, key: (*key).to_string() })
+        }
         // A Discogs address carries a slug after the id — `/release/42-Album-Title`.
         ("discogs.com", ["release", slug]) => {
-            leading_digits(slug).map(|key| CatalogPage::Release {
-                catalog: Catalog::Discogs,
-                key,
-            })
+            leading_digits(slug).map(|key| CatalogPage::Release { catalog: Catalog::Discogs, key })
         }
-        ("discogs.com", ["master", slug]) => leading_digits(slug).map(|key| CatalogPage::Group {
-            catalog: Catalog::Discogs,
-            key,
-        }),
-        ("wikidata.org", ["wiki", key]) if key.starts_with('Q') => Some(CatalogPage::Group {
-            catalog: Catalog::Wikidata,
-            key: (*key).to_string(),
-        }),
-        ("allmusic.com", ["album", key]) => Some(CatalogPage::Group {
-            catalog: Catalog::AllMusic,
-            key: (*key).to_string(),
-        }),
-        ("musik-sammler.de", ["album", key]) => Some(CatalogPage::Group {
-            catalog: Catalog::MusikSammler,
-            key: (*key).to_string(),
-        }),
-        ("open.spotify.com", ["album", key]) => Some(CatalogPage::Group {
-            catalog: Catalog::Spotify,
-            key: (*key).to_string(),
-        }),
+        ("discogs.com", ["master", slug]) => {
+            leading_digits(slug).map(|key| CatalogPage::Group { catalog: Catalog::Discogs, key })
+        }
+        ("wikidata.org", ["wiki", key]) if key.starts_with('Q') => {
+            Some(CatalogPage::Group { catalog: Catalog::Wikidata, key: (*key).to_string() })
+        }
+        ("allmusic.com", ["album", key]) => {
+            Some(CatalogPage::Group { catalog: Catalog::AllMusic, key: (*key).to_string() })
+        }
+        ("musik-sammler.de", ["album", key]) => {
+            Some(CatalogPage::Group { catalog: Catalog::MusikSammler, key: (*key).to_string() })
+        }
+        ("open.spotify.com", ["album", key]) => {
+            Some(CatalogPage::Group { catalog: Catalog::Spotify, key: (*key).to_string() })
+        }
         // Apple Music and Deezer both prefix the storefront country onto the
         // path, and both leave it off the canonical address. Apple also puts a
         // slug ahead of the id.
         ("music.apple.com", ["album", key]) | ("music.apple.com", [.., "album", _, key]) => {
-            Some(CatalogPage::Group {
-                catalog: Catalog::AppleMusic,
-                key: (*key).to_string(),
-            })
+            Some(CatalogPage::Group { catalog: Catalog::AppleMusic, key: (*key).to_string() })
         }
-        ("deezer.com", [.., "album", key]) => Some(CatalogPage::Group {
-            catalog: Catalog::Deezer,
-            key: (*key).to_string(),
-        }),
+        ("deezer.com", [.., "album", key]) => {
+            Some(CatalogPage::Group { catalog: Catalog::Deezer, key: (*key).to_string() })
+        }
         // Neither of these names a release with an id; what identifies the page
         // is the rest of its path.
         ("rateyourmusic.com", ["release", rest @ ..]) if !rest.is_empty() => {
-            Some(CatalogPage::Group {
-                catalog: Catalog::RateYourMusic,
-                key: rest.join("/"),
-            })
+            Some(CatalogPage::Group { catalog: Catalog::RateYourMusic, key: rest.join("/") })
         }
-        ("genius.com", ["albums", rest @ ..]) if !rest.is_empty() => Some(CatalogPage::Group {
-            catalog: Catalog::Genius,
-            key: rest.join("/"),
-        }),
+        ("genius.com", ["albums", rest @ ..]) if !rest.is_empty() => {
+            Some(CatalogPage::Group { catalog: Catalog::Genius, key: rest.join("/") })
+        }
         _ => None,
     }
 }

@@ -24,11 +24,7 @@ impl SampleClock {
         sample_rate: u32,
         origin: i64,
     ) -> Self {
-        Self {
-            time_base,
-            sample_rate,
-            origin,
-        }
+        Self { time_base, sample_rate, origin }
     }
 
     /// The clock of `stream`, decoded at `sample_rate`.
@@ -40,19 +36,12 @@ impl SampleClock {
         sample_rate: u32,
     ) -> Self {
         let start_time = (*stream).start_time;
-        let origin = if start_time == ffmpeg_sys_next::AV_NOPTS_VALUE {
-            0
-        } else {
-            start_time
-        };
+        let origin = if start_time == ffmpeg_sys_next::AV_NOPTS_VALUE { 0 } else { start_time };
         Self::new((*stream).time_base, sample_rate, origin)
     }
 
     fn samples(&self) -> ffmpeg_sys_next::AVRational {
-        ffmpeg_sys_next::AVRational {
-            num: 1,
-            den: self.sample_rate as c_int,
-        }
+        ffmpeg_sys_next::AVRational { num: 1, den: self.sample_rate as c_int }
     }
 
     /// The sample a timestamp falls on.

@@ -178,10 +178,7 @@ mod tests {
             CandidateSession::initial(true, false).presentation,
             MetadataPresentation::Draft
         );
-        assert_eq!(
-            CandidateSession::initial(true, true).presentation,
-            MetadataPresentation::Draft
-        );
+        assert_eq!(CandidateSession::initial(true, true).presentation, MetadataPresentation::Draft);
     }
 
     /// A verdict nobody has acted on — several matches, none, a failed run —
@@ -214,10 +211,7 @@ mod tests {
             assert_eq!(moved.find_online_section, FindOnlineSection::Automatic);
         }
         for pane_move in [PaneMove::SettledOnPick, PaneMove::Picked, PaneMove::Back] {
-            assert_eq!(
-                reopened.clone().moved(pane_move).presentation,
-                MetadataPresentation::Draft
-            );
+            assert_eq!(reopened.clone().moved(pane_move).presentation, MetadataPresentation::Draft);
         }
     }
 }

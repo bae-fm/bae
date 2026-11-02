@@ -13,11 +13,7 @@ async fn serve_one(mut stream: tokio::net::TcpStream, state: Arc<Mutex<FakeState
         }
     }
     let head = String::from_utf8_lossy(&buffer).to_string();
-    let target = head
-        .split_whitespace()
-        .nth(1)
-        .unwrap_or_default()
-        .to_string();
+    let target = head.split_whitespace().nth(1).unwrap_or_default().to_string();
 
     let (status, body, gate) = {
         let mut state = state.lock().unwrap();

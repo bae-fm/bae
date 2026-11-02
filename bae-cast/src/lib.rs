@@ -75,10 +75,7 @@ fn build_airplay_sink(
             diagnostics.clone(),
         ))),
         Dialect::Raop => {
-            let raop = capabilities
-                .raop
-                .as_ref()
-                .ok_or(CastError::AirPlayEncryptionUnsupported)?;
+            let raop = capabilities.raop.as_ref().ok_or(CastError::AirPlayEncryptionUnsupported)?;
             let encryption = if raop.encryption.contains(&RaopEncryption::None) {
                 RaopEncryption::None
             } else if raop.encryption.contains(&RaopEncryption::RsaAes) {
@@ -191,10 +188,7 @@ impl EphemeralServer {
         diagnostics: &Diagnostics,
         on_panic: impl FnOnce() + Send + 'static,
     ) -> Result<Self, String> {
-        let credential = SubsonicCredential {
-            username: random_hex(8),
-            password: random_hex(32),
-        };
+        let credential = SubsonicCredential { username: random_hex(8), password: random_hex(32) };
         let (bind_ip, url_ip) = network.addresses()?;
         let listener = tokio::net::TcpListener::bind((bind_ip, 0))
             .await
@@ -227,13 +221,7 @@ impl EphemeralServer {
             },
         );
 
-        Ok(Self {
-            base_url,
-            credential,
-            cancel,
-            task,
-            panicked,
-        })
+        Ok(Self { base_url, credential, cancel, task, panicked })
     }
 
     /// Whether the server panicked and serves nothing.
@@ -302,13 +290,7 @@ impl CastController {
         discovery: RendererDiscovery,
         diagnostics: Diagnostics,
     ) -> Arc<Self> {
-        Self::start_serving_on(
-            services,
-            runtime,
-            discovery,
-            ServingNetwork::Lan,
-            diagnostics,
-        )
+        Self::start_serving_on(services, runtime, discovery, ServingNetwork::Lan, diagnostics)
     }
 
     /// [`Self::start`], with the ephemeral server on `serving`.
@@ -468,23 +450,14 @@ impl CastController {
     /// a browse partway through starting or stopping, holding a daemon,
     /// socket or thread nothing tracks: casting can't go on from that.
     fn with_discovery<T>(&self, act: impl FnOnce(&mut RendererDiscovery) -> T) -> T {
-        act(&mut lock_or_crash(
-            &self.diagnostics,
-            "the cast device sources",
-            &self.discovery,
-        ))
+        act(&mut lock_or_crash(&self.diagnostics, "the cast device sources", &self.discovery))
     }
 
     /// Whether the library has casting turned on, read from the preferences
     /// row on demand: the row is the one authority, so there is no copy here
     /// to fall out of step with it.
     async fn enabled(&self) -> Result<bool, CastError> {
-        Ok(self
-            .services
-            .preferences()
-            .await
-            .map_err(CastError::Setting)?
-            .cast_enabled)
+        Ok(self.services.preferences().await.map_err(CastError::Setting)?.cast_enabled)
     }
 
     /// Start browsing for devices (the picker opened). Idempotent, and a no-op
@@ -506,9 +479,7 @@ impl CastController {
                 Err(error) => warn!("cast discovery not started: {error}"),
             }
             #[cfg(test)]
-            controller
-                .browsing_decided
-                .send_modify(|decided| *decided += 1);
+            controller.browsing_decided.send_modify(|decided| *decided += 1);
         });
     }
 
@@ -567,20 +538,10 @@ impl CastController {
 
         // AirPlay is not a fetch-a-URL renderer: build the push-audio sink and hand
         // it to playback, which keeps decoding locally. No ephemeral server needed.
-        if let RendererConnection::AirPlay {
-            addr,
-            port,
-            capabilities,
-        } = &device.connection
-        {
+        if let RendererConnection::AirPlay { addr, port, capabilities } = &device.connection {
             let sink = build_airplay_sink(&self.diagnostics, *addr, *port, capabilities)?;
-            self.services.playback_play_on_airplay(
-                sink,
-                RemoteDevice {
-                    id: device.id,
-                    name: device.name,
-                },
-            );
+            self.services
+                .playback_play_on_airplay(sink, RemoteDevice { id: device.id, name: device.name });
             return Ok(());
         }
 
@@ -604,10 +565,7 @@ impl CastController {
                 .map_err(|e| CastError::Connect(e.to_string()))?;
                 (Box::new(channel), RendererFlavor::Cast)
             }
-            RendererConnection::Dlna {
-                av_transport_url,
-                rendering_control_url,
-            } => {
+            RendererConnection::Dlna { av_transport_url, rendering_control_url } => {
                 let channel =
                     DlnaChannel::connect(av_transport_url.clone(), rendering_control_url.clone())
                         .map_err(|e| CastError::Connect(e.to_string()))?;
@@ -625,9 +583,7 @@ impl CastController {
         self.ensure_server().await?;
         let (stream_provider, cover_provider) = {
             let slot = self.server.lock().unwrap();
-            let server = slot
-                .as_ref()
-                .expect("ensure_server installed the ephemeral server");
+            let server = slot.as_ref().expect("ensure_server installed the ephemeral server");
             (
                 stream_url_provider(server.base_url.clone(), server.credential.clone()),
                 cover_url_provider(server.base_url.clone(), server.credential.clone()),
@@ -636,10 +592,7 @@ impl CastController {
 
         self.services.playback_play_on(
             channel,
-            RemoteDevice {
-                id: device.id,
-                name: device.name,
-            },
+            RemoteDevice { id: device.id, name: device.name },
             RendererMediaSource::new(stream_provider, cover_provider, flavor),
         );
         Ok(())

@@ -65,22 +65,14 @@ fn cue_and_loose_audio_both_keep_their_metadata_in_playback_order() {
                     album_artists: vec!["Album Artist".into()],
                     compilation: false,
                     years: Vec::new(),
-                    numbers: crate::import::track_numbers::TrackNumbers {
-                        disc: None,
-                        track: None,
-                    },
+                    numbers: crate::import::track_numbers::TrackNumbers { disc: None, track: None },
                 },
             })
             .collect(),
     };
-    let parsed = file_metadata_values(&files, &snapshot, Some("Folder"))
-    .unwrap();
+    let parsed = file_metadata_values(&files, &snapshot, Some("Folder")).unwrap();
     assert_eq!(
-        parsed
-            .tracks
-            .iter()
-            .map(|track| track.title.as_str())
-            .collect::<Vec<_>>(),
+        parsed.tracks.iter().map(|track| track.title.as_str()).collect::<Vec<_>>(),
         ["Tags a.flac", "Cue One", "Cue Two", "Tags z.flac"]
     );
     assert_eq!(files.track_count(), 4);
@@ -110,9 +102,7 @@ fn draft_numbers(values: ReleaseValues) -> Vec<u32> {
 }
 
 fn fixtures_dir() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("tests")
-        .join("fixtures")
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("tests").join("fixtures")
 }
 
 #[test]
@@ -143,17 +133,13 @@ fn stored_file_tag_facts_project_without_opening_the_source_file() {
                 album_artists: vec!["Artist Alpha".to_string()],
                 compilation: false,
                 years: vec![2001],
-                numbers: crate::import::track_numbers::TrackNumbers {
-                    disc: None,
-                    track: Some(1),
-                },
+                numbers: crate::import::track_numbers::TrackNumbers { disc: None, track: Some(1) },
             },
         }],
         embedded_cover: None,
     };
 
-    let parsed =
-        file_metadata_values(&files, &snapshot, Some("Folder Alpha")).unwrap();
+    let parsed = file_metadata_values(&files, &snapshot, Some("Folder Alpha")).unwrap();
 
     assert_eq!(parsed.album_title, "Album Alpha");
     assert_eq!(parsed.tracks[0].title, "Track Alpha");
@@ -179,12 +165,7 @@ fn map_cue_folder(sheets: Vec<CueSheet>, folder_name: Option<&str>) -> ReleaseVa
             role: FileRole::Audio,
         });
         entries.push(CandidateFile {
-            file: ScannedFile::new(
-                PathBuf::from("/source").join(&sheet_name),
-                sheet_name,
-                123,
-                1,
-            ),
+            file: ScannedFile::new(PathBuf::from("/source").join(&sheet_name), sheet_name, 123, 1),
             role: FileRole::TrackSheet {
                 sheet,
                 binding: SheetBinding::Resolved {
@@ -193,16 +174,11 @@ fn map_cue_folder(sheets: Vec<CueSheet>, folder_name: Option<&str>) -> ReleaseVa
                         file_id: image,
                     }],
                 },
-                disc: SheetDisc::Disc {
-                    number: index as u32 + 1,
-                },
+                disc: SheetDisc::Disc { number: index as u32 + 1 },
             },
         });
     }
-    let files = CategorizedFiles {
-        files: entries,
-        parts: Vec::new(),
-    };
+    let files = CategorizedFiles { files: entries, parts: Vec::new() };
     let snapshot = FileTagSnapshot {
         scan_generation: 1,
         file_edit_revision: 0,
@@ -219,19 +195,14 @@ fn map_cue_folder(sheets: Vec<CueSheet>, folder_name: Option<&str>) -> ReleaseVa
             })
             .collect(),
     };
-    file_metadata_values(&files, &snapshot, folder_name)
-    .unwrap()
+    file_metadata_values(&files, &snapshot, folder_name).unwrap()
 }
 
 #[test]
 fn cue_sheet_seeds_one_track_per_cue_entry_not_per_image_file() {
     let mut sheet = cue_sheet(
         "Album Title",
-        vec![
-            cue_track(1, "Track One"),
-            cue_track(2, "Track Two"),
-            cue_track(3, "Track Three"),
-        ],
+        vec![cue_track(1, "Track One"), cue_track(2, "Track Two"), cue_track(3, "Track Three")],
     );
     sheet.date = Some("1970".to_string());
     for track in &mut sheet.tracks {
@@ -242,11 +213,7 @@ fn cue_sheet_seeds_one_track_per_cue_entry_not_per_image_file() {
     // The single-file image is NOT collapsed to one track: one DbTrack per
     // CUE TRACK entry, in order, carrying the CUE's own titles.
     assert_eq!(
-        parsed
-            .tracks
-            .iter()
-            .map(|t| t.title.as_str())
-            .collect::<Vec<_>>(),
+        parsed.tracks.iter().map(|t| t.title.as_str()).collect::<Vec<_>>(),
         ["Track One", "Track Two", "Track Three"]
     );
     assert_eq!(crate::import::release_values::value_labels(&parsed), ["1", "2", "3"]);
@@ -262,11 +229,7 @@ fn cue_track(number: u32, title: &str) -> crate::cue_flac::CueTrack {
         mode: CueTrackMode::Audio,
         title: Some(title.to_string()),
         performer: None,
-        indexes: vec![CueIndex {
-            number: 1,
-            frames: 0,
-            file_reference: "image.flac".to_string(),
-        }],
+        indexes: vec![CueIndex { number: 1, frames: 0, file_reference: "image.flac".to_string() }],
         file_reference: "image.flac".to_string(),
         start_cue_frames: 0,
         generated_pregap_frames: None,
@@ -289,20 +252,11 @@ fn cue_sheet(title: &str, tracks: Vec<crate::cue_flac::CueTrack>) -> CueSheet {
 /// assigned; track numbers restart per sheet.
 #[test]
 fn cue_multi_sheet_assigns_side_per_disc() {
-    let disc1 = cue_sheet(
-        "Album Title",
-        vec![cue_track(1, "D1 T1"), cue_track(2, "D1 T2")],
-    );
-    let disc2 = cue_sheet(
-        "Album Title",
-        vec![cue_track(1, "D2 T1"), cue_track(2, "D2 T2")],
-    );
+    let disc1 = cue_sheet("Album Title", vec![cue_track(1, "D1 T1"), cue_track(2, "D1 T2")]);
+    let disc2 = cue_sheet("Album Title", vec![cue_track(1, "D2 T1"), cue_track(2, "D2 T2")]);
     let parsed = map_cue_folder(vec![disc1, disc2], Some("Folder"));
 
-    assert_eq!(
-        crate::import::release_values::value_labels(&parsed),
-        ["1-1", "1-2", "2-1", "2-2"]
-    );
+    assert_eq!(crate::import::release_values::value_labels(&parsed), ["1-1", "1-2", "2-1", "2-2"]);
 }
 
 /// Copy a fixture into `dest_dir/{name}` and stamp it with the given
@@ -354,9 +308,7 @@ fn copy_and_tag(
         tag.set_disk(d);
     }
     tagged.insert_tag(tag);
-    tagged
-        .save_to_path(&dest, WriteOptions::default())
-        .expect("save tags");
+    tagged.save_to_path(&dest, WriteOptions::default()).expect("save tags");
     dest
 }
 
@@ -409,19 +361,12 @@ fn flac_with_vorbis_comments_basic() {
     assert_eq!(crate::import::release_values::value_labels(&parsed), ["1", "2"]);
 
     assert_eq!(
-        parsed
-            .album_credits
-            .iter()
-            .map(|credit| credit.credit.name.as_str())
-            .collect::<Vec<_>>(),
+        parsed.album_credits.iter().map(|credit| credit.credit.name.as_str()).collect::<Vec<_>>(),
         ["Artist Name"],
         "single artist for whole album"
     );
     // A track ARTIST naming the album artist takes the album's credit.
-    assert!(parsed
-        .tracks
-        .iter()
-        .all(|track| track.credits == TrackCredits::AlbumArtists));
+    assert!(parsed.tracks.iter().all(|track| track.credits == TrackCredits::AlbumArtists));
 }
 
 /// Multi-disc rip: DISCNUMBER + TRACKNUMBER produce side groupings.
@@ -431,12 +376,9 @@ fn flac_multi_disc_groups_by_discnumber() {
     let src = fixtures_dir().join("flac").join("01 Test Track 1.flac");
 
     let mut files = Vec::new();
-    for (disc, track, name) in [
-        (1u32, 1u32, "d1t1.flac"),
-        (1, 2, "d1t2.flac"),
-        (2, 1, "d2t1.flac"),
-        (2, 2, "d2t2.flac"),
-    ] {
+    for (disc, track, name) in
+        [(1u32, 1u32, "d1t1.flac"), (1, 2, "d1t2.flac"), (2, 1, "d2t1.flac"), (2, 2, "d2t2.flac")]
+    {
         files.push(copy_and_tag(
             &src,
             temp.path(),
@@ -455,10 +397,7 @@ fn flac_multi_disc_groups_by_discnumber() {
     let parsed = map_tags(&files).unwrap();
 
     assert_eq!(crate::import::release_values::value_labels(&parsed), ["1-1", "1-2", "2-1", "2-2"]);
-    assert!(
-        parsed.mediums.iter().all(|medium| medium.carrier.is_none()),
-        "tags state no carrier"
-    );
+    assert!(parsed.mediums.iter().all(|medium| medium.carrier.is_none()), "tags state no carrier");
 }
 
 /// The largest number a tag can state is a track's number as stated.
@@ -525,20 +464,15 @@ fn a_track_artist_unlike_the_album_s_is_the_track_s_own_credit() {
     let parsed = map_tags(&[f1, f2]).unwrap();
 
     let track_artist = |index: usize| match &parsed.tracks[index].credits {
-        TrackCredits::Own(credits) => credits
-            .iter()
-            .map(|credit| credit.credit.name.as_str())
-            .collect::<Vec<_>>(),
+        TrackCredits::Own(credits) => {
+            credits.iter().map(|credit| credit.credit.name.as_str()).collect::<Vec<_>>()
+        }
         TrackCredits::AlbumArtists => Vec::new(),
     };
     assert_eq!(parsed.tracks[0].credits, TrackCredits::AlbumArtists);
     assert_eq!(track_artist(1), ["Featured Artist"]);
     assert_eq!(
-        parsed
-            .album_credits
-            .iter()
-            .map(|credit| credit.credit.name.as_str())
-            .collect::<Vec<_>>(),
+        parsed.album_credits.iter().map(|credit| credit.credit.name.as_str()).collect::<Vec<_>>(),
         ["Album Artist"]
     );
 }
@@ -620,11 +554,7 @@ fn partial_track_numbers_default_to_order() {
     );
 
     let parsed = map_tags(&[f1, f2]).unwrap();
-    assert_eq!(
-        draft_numbers(parsed),
-        [1, 1],
-        "an untagged file uses its ordered position"
-    );
+    assert_eq!(draft_numbers(parsed), [1, 1], "an untagged file uses its ordered position");
 }
 
 /// The album-title ladder (ALBUM tag → folder name → empty) and the
@@ -738,11 +668,7 @@ fn album_and_artist_fallback_ladder() {
             None,
         );
         let parsed = map_tags_with_folder(&[f], row.folder).unwrap();
-        assert_eq!(
-            parsed.album_title, row.expect_title,
-            "title for {}",
-            row.name
-        );
+        assert_eq!(parsed.album_title, row.expect_title, "title for {}", row.name);
         assert_eq!(
             parsed
                 .album_credits
@@ -780,19 +706,12 @@ fn absent_numbers_take_their_place_on_their_own_disc() {
         })
         .collect::<Vec<_>>();
     let parsed = map_tags(&files).unwrap();
-    assert_eq!(
-        draft_numbers(parsed),
-        [1, 1],
-        "each disc's first track is its number one"
-    );
+    assert_eq!(draft_numbers(parsed), [1, 1], "each disc's first track is its number one");
 }
 
 #[test]
 fn cue_numbers_are_preserved_instead_of_recreated() {
-    let sheet = cue_sheet(
-        "Album",
-        vec![cue_track(4, "Fourth"), cue_track(7, "Seventh")],
-    );
+    let sheet = cue_sheet("Album", vec![cue_track(4, "Fourth"), cue_track(7, "Seventh")]);
     let parsed = map_cue_folder(vec![sheet], None);
     assert_eq!(crate::import::release_values::value_labels(&parsed), ["4", "7"]);
 }

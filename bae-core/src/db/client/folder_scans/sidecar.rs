@@ -113,11 +113,7 @@ impl StoredSidecar {
             ),
             other => return Err(unreadable("scan_sidecar.state", other)),
         };
-        Ok(FolderSidecar {
-            watched_folder_path: self.watched_folder_path,
-            folder,
-            files,
-        })
+        Ok(FolderSidecar { watched_folder_path: self.watched_folder_path, folder, files })
     }
 }
 
@@ -268,12 +264,7 @@ pub(super) fn write_sidecar(
     sql.execute(
         "INSERT INTO scan_sidecar (folder, watched_folder_path, generation, state) \
          VALUES (?, ?, ?, ?)",
-        params![
-            folder_text,
-            coven::path_bytes(watched_folder_path),
-            generation,
-            state
-        ],
+        params![folder_text, coven::path_bytes(watched_folder_path), generation, state],
     )?;
     for (position, entry) in files.iter().enumerate() {
         sql.execute(
@@ -295,11 +286,7 @@ pub(super) fn write_sidecar(
     }
     let regrouped =
         super::super::release_groupings::rebuild_groupings(sql, &superseded_keys, &touched)?;
-    Ok(ScanItemWrite::Stored {
-        superseded_keys,
-        regrouped,
-        found: false,
-    })
+    Ok(ScanItemWrite::Stored { superseded_keys, regrouped, found: false })
 }
 
 /// One sidecar file as its row stores it.
@@ -335,11 +322,7 @@ pub(super) fn delete_sidecars_holding(
          WHERE absolute_path IN (SELECT unhex(value) FROM json_each(?)) \
          ORDER BY folder",
         [path_column::hex_list(
-            candidate
-                .files
-                .files
-                .iter()
-                .map(|entry| entry.file.path.as_path()),
+            candidate.files.files.iter().map(|entry| entry.file.path.as_path()),
         )],
         |row| path_column::get(row, 0),
     )?;

@@ -28,20 +28,17 @@ async fn test_cue_ape_next_track() {
     let captured = fixture.next_capture_stream().await;
 
     // Wait for track 2 to start
-    let track2_started = support::wait_until_playing(
-        &mut fixture.progress_rx,
-        &track2_id,
-        Duration::from_secs(10),
-    )
-    .await;
+    let track2_started =
+        support::wait_until_playing(&mut fixture.progress_rx, &track2_id, Duration::from_secs(10))
+            .await;
     assert!(track2_started, "Track 2 should start after Next");
 
     // Decode XLD reference
     let fixture_dir = bae_test_support::fixture_dir!("cue_ape");
     let reference_data =
         std::fs::read(fixture_dir.join("02 Test Artist - Track Two.flac")).expect("read reference");
-    let reference =
-        decode_audio(support::filled_sparse_buffer(&reference_data), None, None).expect("decode reference");
+    let reference = decode_audio(support::filled_sparse_buffer(&reference_data), None, None)
+        .expect("decode reference");
     let channels = reference.channels as usize;
     let sample_rate = reference.sample_rate;
     let reference_f32 = samples_as_f32(&reference);
@@ -56,11 +53,11 @@ async fn test_cue_ape_next_track() {
     let track2_sample_count =
         support::next_matching(&mut fixture.progress_rx, Duration::from_secs(10), |event| {
             match event {
-                PlaybackProgress::DecodeStats {
-                    track_id,
-                    samples_decoded,
-                    ..
-                } if track_id == track2_id => Some(samples_decoded as usize),
+                PlaybackProgress::DecodeStats { track_id, samples_decoded, .. }
+                    if track_id == track2_id =>
+                {
+                    Some(samples_decoded as usize)
+                }
                 _ => None,
             }
         })
@@ -138,7 +135,8 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(destination: ImportDestinati
         std::fs::write(dir.join("CDImage.cue"), cue_body).expect("write cue");
     }
 
-    let (library_manager, _, storage) = support::storage_library(&db_dir, bae_core::providers::Providers::offline()).await;
+    let (library_manager, _, storage) =
+        support::storage_library(&db_dir, bae_core::providers::Providers::offline()).await;
     if let ImportDestination::Remote { .. } = destination {
         support::connect_storage(&library_manager, &storage).await;
     }
@@ -185,19 +183,13 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(destination: ImportDestinati
         wait_for_multi_disc_cue_ape_import_ready(&library_manager, destination, &mut progress_rx)
             .await;
 
-    let tracks = library_manager
-        .get_tracks_for_release(&release_id)
-        .await
-        .expect("get tracks");
+    let tracks = library_manager.get_tracks_for_release(&release_id).await.expect("get tracks");
     assert_eq!(tracks.len(), 6, "should have 6 tracks (2 discs × 3 tracks)");
 
     // `original_filename` in release_files must be the full relative path
     // (`CD1/CDImage.ape`), not the bare filename — otherwise the two discs'
     // APE rows would collide on the same `"CDImage.ape"` string.
-    let files = library_manager
-        .get_files_for_release(&release_id)
-        .await
-        .expect("get files");
+    let files = library_manager.get_files_for_release(&release_id).await.expect("get files");
     let mut ape_filenames: Vec<String> = files
         .iter()
         .filter(|f| f.original_filename.ends_with(".ape"))
@@ -211,16 +203,12 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(destination: ImportDestinati
     );
 
     // Each track's main audio segment must point to its own disc's APE.
-    let filename_by_id: std::collections::HashMap<String, String> = files
-        .iter()
-        .map(|f| (f.id.clone(), f.original_filename.clone()))
-        .collect();
+    let filename_by_id: std::collections::HashMap<String, String> =
+        files.iter().map(|f| (f.id.clone(), f.original_filename.clone())).collect();
 
     for track in &tracks {
-        let resolved = library_manager
-            .resolve_track_audio(&track.id)
-            .await
-            .expect("resolve track audio");
+        let resolved =
+            library_manager.resolve_track_audio(&track.id).await.expect("resolve track audio");
         let segment = resolved
             .segments
             .iter()
@@ -254,7 +242,10 @@ async fn wait_for_multi_disc_cue_ape_import_ready(
         ImportDestination::Local => wait_for_import_complete(progress_rx).await,
         ImportDestination::Remote { .. } => {
             let (release_id, album_id) = wait_for_import_complete(progress_rx).await;
-            library_manager.drain_uploads_expecting_work().await.expect("upload every imported file");
+            library_manager
+                .drain_uploads_expecting_work()
+                .await
+                .expect("upload every imported file");
             let files = library_manager
                 .get_files_for_release(&release_id)
                 .await
@@ -292,4 +283,3 @@ async fn test_multi_disc_cue_ape_remote_pin() {
 async fn test_multi_disc_cue_ape_remote_unpin() {
     assert_multi_disc_cue_ape_per_disc_mapping(ImportDestination::Remote { pin: false }).await;
 }
-

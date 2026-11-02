@@ -11,18 +11,10 @@
 async fn a_file_a_pin_downloads_reads_as_downloading() {
     let (manager, temp_dir) = setup_test_manager().await;
     let home = connect_test_cloud(&manager).await;
-    let release_id = uploaded_release(
-        &manager,
-        &temp_dir.path().join("pin-files"),
-        "Pin Files",
-        false,
-    )
-    .await;
+    let release_id =
+        uploaded_release(&manager, &temp_dir.path().join("pin-files"), "Pin Files", false).await;
     let file = release_files(&manager, &release_id).await.remove(0);
-    manager
-        .evict_file_for_test(file.file)
-        .await
-        .unwrap();
+    manager.evict_file_for_test(file.file).await.unwrap();
     let mut files = manager.watch_pin_file_transfers();
     assert_eq!(
         files.next().await.unwrap(),
@@ -39,11 +31,7 @@ async fn a_file_a_pin_downloads_reads_as_downloading() {
     let pin = tokio::spawn({
         let manager = manager.library.clone();
         let release_id = release_id.clone();
-        async move {
-            manager
-                .pin_release_files_with_progress(&release_id, |_| {})
-                .await
-        }
+        async move { manager.pin_release_files_with_progress(&release_id, |_| {}).await }
     });
     let fetched = tokio::time::timeout(std::time::Duration::from_secs(10), async {
         loop {
@@ -57,11 +45,7 @@ async fn a_file_a_pin_downloads_reads_as_downloading() {
     .await
     .expect("the pin file watch names the file the pin downloads");
     let pin_of = |rows: crate::db::DbStorageInspector| {
-        rows.files
-            .into_iter()
-            .find(|row| row.file.id == file.id)
-            .expect("the release's file")
-            .pin
+        rows.files.into_iter().find(|row| row.file.id == file.id).expect("the release's file").pin
     };
     assert_eq!(
         pin_of(inspector_rows_until(&manager, &release_id, |_| true).await),
@@ -85,13 +69,9 @@ async fn a_file_a_pin_downloads_reads_as_downloading() {
 async fn a_pins_bytes_never_fall_back_as_a_file_lands() {
     let (manager, temp_dir) = setup_test_manager().await;
     let home = connect_test_cloud(&manager).await;
-    let release_id = uploaded_release(
-        &manager,
-        &temp_dir.path().join("pin-forward"),
-        "Pin Forward",
-        false,
-    )
-    .await;
+    let release_id =
+        uploaded_release(&manager, &temp_dir.path().join("pin-forward"), "Pin Forward", false)
+            .await;
     let file = release_files(&manager, &release_id).await.remove(0);
     let size = u64::try_from(file.file_size).unwrap();
     let file = manager.release_file_ref(&file.id).await.unwrap();
@@ -130,12 +110,7 @@ async fn a_pins_bytes_never_fall_back_as_a_file_lands() {
     observed.await.unwrap();
     let mut seen = Vec::new();
     while seen.last().is_none_or(|done| *done == 0) {
-        seen.push(
-            bytes
-                .recv()
-                .await
-                .expect("the pin counts the held download's share"),
-        );
+        seen.push(bytes.recv().await.expect("the pin counts the held download's share"));
     }
 
     // From here the pins query runs no more until the pin ends, so it still
@@ -148,9 +123,6 @@ async fn a_pins_bytes_never_fall_back_as_a_file_lands() {
     while let Ok(done) = bytes.try_recv() {
         seen.push(done);
     }
-    assert!(
-        seen.windows(2).all(|pair| pair[0] <= pair[1]),
-        "the bytes never fall back: {seen:?}"
-    );
+    assert!(seen.windows(2).all(|pair| pair[0] <= pair[1]), "the bytes never fall back: {seen:?}");
     assert_eq!(seen.last(), Some(&size), "the pin ends holding the file");
 }

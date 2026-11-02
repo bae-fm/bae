@@ -74,11 +74,8 @@ impl StandingColumns {
                         .map(|run| IdentifyRunId::of_number(run as u64))
                         .ok_or_else(|| broken("names no run"))
                 };
-                let error = || {
-                    self.save_failure_error
-                        .clone()
-                        .ok_or_else(|| broken("names no failure"))
-                };
+                let error =
+                    || self.save_failure_error.clone().ok_or_else(|| broken("names no failure"));
                 let stage = match stage {
                     "queued" => IdentificationStage::Queued {
                         admission: match self.admission.as_deref() {
@@ -127,15 +124,10 @@ impl StandingColumns {
                 step: import_step(step).map_err(|unknown| broken(&unknown))?,
             }),
             (Some(_), None) | (None, Some(_)) => {
-                return Err(broken(
-                    "names an import without its id, or an id without it",
-                ))
+                return Err(broken("names an import without its id, or an id without it"))
             }
         };
-        Ok(StoredStanding {
-            identification,
-            import,
-        })
+        Ok(StoredStanding { identification, import })
     }
 }
 
@@ -197,11 +189,7 @@ impl RuntimeFactColumns {
     pub(crate) fn facts(&self, key: &CandidateKey) -> Result<TriageRuntimeFacts, DbError> {
         use crate::import::IdentificationStatus as S;
         let broken = |what: &str| DbError::Message(format!("the standing of {key} {what}"));
-        let error = || {
-            self.save_failure_error
-                .clone()
-                .ok_or_else(|| broken("names no failure"))
-        };
+        let error = || self.save_failure_error.clone().ok_or_else(|| broken("names no failure"));
         Ok(TriageRuntimeFacts {
             identification: match self.identification.as_deref() {
                 None => None,
@@ -209,9 +197,7 @@ impl RuntimeFactColumns {
                 Some("running") => Some(S::Running),
                 Some("finalizing") => Some(S::Finalizing),
                 Some("reading_pick") => Some(S::ReadingPick {
-                    import_asked: self
-                        .import_asked
-                        .ok_or_else(|| broken("names no import ask"))?,
+                    import_asked: self.import_asked.ok_or_else(|| broken("names no import ask"))?,
                 }),
                 Some("not_written") => Some(S::FinalizationFailed {
                     failure: SaveFailure::NotWritten { error: error()? },
@@ -241,12 +227,7 @@ pub(crate) fn load_standings_on(
     sql.query(
         &format!("SELECT candidate_key, {COLUMNS} FROM import_candidate_standing"),
         [],
-        |row| {
-            Ok((
-                row.get::<_, CandidateKey>(0)?,
-                StandingColumns::read(row, 1)?,
-            ))
-        },
+        |row| Ok((row.get::<_, CandidateKey>(0)?, StandingColumns::read(row, 1)?)),
     )?
     .into_iter()
     .map(|(key, columns)| {
@@ -298,11 +279,7 @@ fn load_imports_in_flight_on(sql: &SqlReadContext<'_>) -> Result<u32, DbError> {
 /// The identification batch's count and the imports in flight, read together.
 fn load_import_counts_on(sql: &SqlReadContext<'_>) -> Result<ImportCounts, DbError> {
     let (identified, admitted) = load_identification_progress_on(sql)?;
-    Ok(ImportCounts {
-        identified,
-        admitted,
-        imports_in_flight: load_imports_in_flight_on(sql)?,
-    })
+    Ok(ImportCounts { identified, admitted, imports_in_flight: load_imports_in_flight_on(sql)? })
 }
 
 /// End, inside the caller's write, `candidate_key`'s identification and its
@@ -318,9 +295,7 @@ pub(crate) fn end_file_work_unless_of_on(
     change_identification_on(
         sql,
         candidate_key,
-        &IdentificationChange::ScanHolds {
-            files: held.cloned(),
-        },
+        &IdentificationChange::ScanHolds { files: held.cloned() },
     )?;
     Ok(())
 }
@@ -378,15 +353,10 @@ fn write_on(
     let mut save_failure_error = None;
     if let Some(stored) = &standing.identification {
         content_hash = Some(stored.files.content_hash.as_str());
-        file_edit_revision = Some(to_i64(
-            stored.files.file_edit_revision,
-            "a standing's file edit revision",
-        )?);
-        identify_run = stored
-            .stage
-            .run()
-            .map(|run| to_i64(run.number(), "a standing's run"))
-            .transpose()?;
+        file_edit_revision =
+            Some(to_i64(stored.files.file_edit_revision, "a standing's file edit revision")?);
+        identify_run =
+            stored.stage.run().map(|run| to_i64(run.number(), "a standing's run")).transpose()?;
         identification = Some(match &stored.stage {
             IdentificationStage::Queued { admission: queued } => {
                 admission = Some(match queued {
@@ -397,10 +367,7 @@ fn write_on(
             }
             IdentificationStage::Running { .. } => "running",
             IdentificationStage::Finalizing { .. } => "finalizing",
-            IdentificationStage::ReadingPick {
-                import_asked: asked,
-                ..
-            } => {
+            IdentificationStage::ReadingPick { import_asked: asked, .. } => {
                 import_asked = Some(*asked);
                 "reading_pick"
             }
@@ -415,10 +382,7 @@ fn write_on(
     }
     let (import_step, import_id) = match &standing.import {
         None => (None, None),
-        Some(stored) => (
-            Some(import_step_column(stored.step)),
-            Some(stored.import_id.as_str()),
-        ),
+        Some(stored) => (Some(import_step_column(stored.step)), Some(stored.import_id.as_str())),
     };
     sql.execute(
         &format!(
@@ -499,19 +463,10 @@ pub(crate) fn move_import_on(
     next: Option<ImportStep>,
 ) -> Result<(), DbError> {
     let mut standing = load_standing_on(sql, candidate_key)?;
-    if standing
-        .import
-        .as_ref()
-        .is_none_or(|import| import.import_id != import_id)
-    {
-        return Err(DbError::Message(format!(
-            "import {import_id} does not own {candidate_key}"
-        )));
+    if standing.import.as_ref().is_none_or(|import| import.import_id != import_id) {
+        return Err(DbError::Message(format!("import {import_id} does not own {candidate_key}")));
     }
-    standing.import = next.map(|step| StoredImport {
-        import_id: import_id.to_string(),
-        step,
-    });
+    standing.import = next.map(|step| StoredImport { import_id: import_id.to_string(), step });
     write_on(sql, candidate_key, &standing)
 }
 
@@ -520,9 +475,7 @@ pub(crate) fn move_import_on(
 pub(crate) enum ImportClaim {
     /// The import owns the candidate, and the identification change the
     /// claim made with it, when it was asked to make one, did this.
-    Claimed {
-        identification: Option<IdentificationMove>,
-    },
+    Claimed { identification: Option<IdentificationMove> },
     /// Another import owns it; nothing changed.
     Refused,
 }
@@ -557,8 +510,7 @@ impl Database {
         candidate_key: &CandidateKey,
     ) -> Result<StoredStanding, DbError> {
         let candidate_key = candidate_key.clone();
-        self.read(move |sql| load_standing_on(&sql, &candidate_key))
-            .await
+        self.read(move |sql| load_standing_on(&sql, &candidate_key)).await
     }
 
     /// How far the batch of identifications in flight has got, for a test;
@@ -571,9 +523,7 @@ impl Database {
     /// How far the identification batch has got and how many imports are in
     /// flight, live.
     pub(crate) fn subscribe_import_counts(&self) -> coven::LiveQuery<ImportCounts> {
-        self.inner
-            .handle
-            .subscribe(|sql| load_import_counts_on(&sql).map_err(CovenError::from))
+        self.inner.handle.subscribe(|sql| load_import_counts_on(&sql).map_err(CovenError::from))
     }
 
     /// Apply each change to its candidate's identification, in one write.
@@ -625,7 +575,6 @@ impl Database {
     ) -> Result<(), DbError> {
         let candidate_key = candidate_key.clone();
         let import_id = import_id.to_string();
-        self.call(move |sql| move_import_on(sql, &candidate_key, &import_id, next))
-            .await
+        self.call(move |sql| move_import_on(sql, &candidate_key, &import_id, next)).await
     }
 }

@@ -67,36 +67,22 @@ fn assign_discs(files: &mut CategorizedFiles, assignments: &[(&str, u32)]) {
         sheet_discs.set((*sheet_id).to_string(), SheetDisc::Disc { number: *number });
     }
     files
-        .apply_candidate_file_edits(&CandidateFileEdits {
-            sheet_discs,
-            ..Default::default()
-        })
+        .apply_candidate_file_edits(&CandidateFileEdits { sheet_discs, ..Default::default() })
         .expect("disc assignments preserve a valid candidate");
 }
 
 fn mappings(table: &MappingTable) -> Vec<&TrackMapping> {
-    table
-        .track_sides
-        .iter()
-        .flat_map(MappingTrackSide::mappings)
-        .collect()
+    table.track_sides.iter().flat_map(MappingTrackSide::mappings).collect()
 }
 
 /// Every run of the table, side after side.
 fn runs(table: &MappingTable) -> Vec<&MappingTrackRun> {
-    table
-        .track_sides
-        .iter()
-        .flat_map(|side| &side.runs)
-        .collect()
+    table.track_sides.iter().flat_map(|side| &side.runs).collect()
 }
 
 fn track_file(mapping: &TrackMapping) -> &MappingFile {
     match mapping {
-        TrackMapping {
-            source: MappingSource::File(file),
-            ..
-        } => file,
+        TrackMapping { source: MappingSource::File(file), .. } => file,
         other => panic!("expected a file row, got {other:?}"),
     }
 }
@@ -135,9 +121,7 @@ fn record() -> Vec<crate::mediums::ReleaseMedium> {
 }
 
 fn positions(side: &MappingTrackSide) -> Vec<&str> {
-    side.mappings()
-        .map(|mapping| mapping.position.as_str())
-        .collect()
+    side.mappings().map(|mapping| mapping.position.as_str()).collect()
 }
 
 /// Every audio row is one of the draft's tracks, and a rip log is carried
@@ -167,10 +151,7 @@ fn audio_rows_are_the_draft_s_tracks_and_the_rest_are_carried() {
     );
     assert_eq!(track_file(mappings[0]).name, "01.flac");
     assert_eq!(track_file(mappings[1]).name, "02.flac");
-    assert_eq!(
-        mapping_tracks(&table),
-        blank_candidate_draft(&files).release_edit().tracks
-    );
+    assert_eq!(mapping_tracks(&table), blank_candidate_draft(&files).release_edit().tracks);
     let MappingFileRow::File(file) = &table.files[0] else {
         panic!("expected a carried file, got {:?}", table.files[0]);
     };
@@ -190,10 +171,7 @@ fn the_table_counts_the_rows_nobody_has_named() {
         write_flac(&tmp.path().join(name));
     }
     let files = scan(tmp.path());
-    assert_eq!(
-        blank_table(&files, &SourceDurations::default()).untitled_track_count,
-        3
-    );
+    assert_eq!(blank_table(&files, &SourceDurations::default()).untitled_track_count, 3);
     let mut draft = blank_candidate_draft(&files);
     draft.tracks[0].edit.title = "Intro".into();
     draft.tracks[1].edit.title = "   ".into();
@@ -255,18 +233,8 @@ fn the_folder_s_images_are_a_gallery_beside_the_table_rows() {
 
     assert_eq!(table.images.len(), 5);
     assert_eq!(
-        table
-            .images
-            .iter()
-            .map(|image| image.file_id.as_str())
-            .collect::<Vec<_>>(),
-        [
-            "back.jpg",
-            "cover.jpg",
-            "scans/scan1.jpg",
-            "scans/scan2.jpg",
-            "scans/scan3.jpg",
-        ],
+        table.images.iter().map(|image| image.file_id.as_str()).collect::<Vec<_>>(),
+        ["back.jpg", "cover.jpg", "scans/scan1.jpg", "scans/scan2.jpg", "scans/scan3.jpg",],
         "the gallery preserves the scan's authoritative order"
     );
     // A directory of images is not collapsed away from the gallery — its
@@ -286,11 +254,8 @@ fn the_folder_s_images_are_a_gallery_beside_the_table_rows() {
 fn a_sheet_s_entries_carry_its_own_titles_and_bind_to_its_slices() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     write_flac(&tmp.path().join("CDImage.flac"));
-    fs::write(
-        tmp.path().join("CDImage.cue"),
-        cue_sheet_text("CDImage.flac", 3),
-    )
-    .expect("write cue");
+    fs::write(tmp.path().join("CDImage.cue"), cue_sheet_text("CDImage.flac", 3))
+        .expect("write cue");
 
     let files = scan(tmp.path());
     let durations = source_durations(&files).expect("scanned fixture audio has durations");
@@ -301,10 +266,7 @@ fn a_sheet_s_entries_carry_its_own_titles_and_bind_to_its_slices() {
     let table = mapping_table(&files, &durations, &draft).unwrap();
 
     let [MappingTrackRun::Sheet { sheet, entries }] = runs(&table).as_slice() else {
-        panic!(
-            "the sheet is the folder's only run, got {:?}",
-            table.track_sides
-        );
+        panic!("the sheet is the folder's only run, got {:?}", table.track_sides);
     };
     assert_eq!(sheet.sheet_id, "CDImage.cue");
     assert_eq!(sheet.assignment, SheetDisc::Disc { number: 1 });
@@ -332,10 +294,7 @@ fn a_sheet_s_entries_carry_its_own_titles_and_bind_to_its_slices() {
         };
         assert_eq!(source.index, index as u32);
         assert_eq!(source.number, index as u32 + 1);
-        assert_eq!(
-            source.title.as_deref(),
-            Some(&*format!("Sheet Track {}", index + 1))
-        );
+        assert_eq!(source.title.as_deref(), Some(&*format!("Sheet Track {}", index + 1)));
         assert_eq!(source.container_id, "CDImage.flac");
         // The first entries end at the next sheet boundary; the final entry
         // ends at the container duration already stored by the scan.
@@ -361,25 +320,17 @@ fn standalone_tracks_are_sectioned_by_release_side() {
     }
 
     let files = scan(tmp.path());
-    let draft = numbered_draft(
-        &files,
-        record(),
-        &[(1, 1, 1), (1, 1, 2), (1, 2, 1), (1, 2, 2)],
-    );
+    let draft = numbered_draft(&files, record(), &[(1, 1, 1), (1, 1, 2), (1, 2, 1), (1, 2, 2)]);
     let table = mapping_table(&files, &SourceDurations::default(), &draft).unwrap();
 
     assert_eq!(table.track_sides.len(), 2);
     assert_eq!(
         table.track_sides[0].side,
-        crate::album_detail::TrackSide::Sided {
-            side_letter: "A".to_string(),
-        }
+        crate::album_detail::TrackSide::Sided { side_letter: "A".to_string() }
     );
     assert_eq!(
         table.track_sides[1].side,
-        crate::album_detail::TrackSide::Sided {
-            side_letter: "B".to_string(),
-        }
+        crate::album_detail::TrackSide::Sided { side_letter: "B".to_string() }
     );
     assert_eq!(positions(&table.track_sides[0]), ["A1", "A2"]);
     assert_eq!(positions(&table.track_sides[1]), ["B1", "B2"]);
@@ -410,10 +361,8 @@ fn each_cue_is_one_section_on_its_assigned_disc() {
     let table = mapping_table(&files, &SourceDurations::default(), &draft).unwrap();
 
     assert_eq!(table.track_sides.len(), 2);
-    for (side, (disc, sheet_id)) in table
-        .track_sides
-        .iter()
-        .zip([(1, "beta.cue"), (2, "alpha.cue")])
+    for (side, (disc, sheet_id)) in
+        table.track_sides.iter().zip([(1, "beta.cue"), (2, "alpha.cue")])
     {
         assert_eq!(side.side, crate::album_detail::TrackSide::Disc { disc });
         let [MappingTrackRun::Sheet { sheet, entries }] = side.runs.as_slice() else {
@@ -434,20 +383,14 @@ fn a_sheet_the_release_splits_across_sides_heads_each_side() {
     fs::write(tmp.path().join("LP.cue"), cue_sheet_text("LP.flac", 4)).expect("write cue");
 
     let files = scan(tmp.path());
-    let draft = numbered_draft(
-        &files,
-        record(),
-        &[(1, 1, 1), (1, 1, 2), (1, 2, 1), (1, 2, 2)],
-    );
+    let draft = numbered_draft(&files, record(), &[(1, 1, 1), (1, 1, 2), (1, 2, 1), (1, 2, 2)]);
     let table = mapping_table(&files, &SourceDurations::default(), &draft).unwrap();
 
     assert_eq!(table.track_sides.len(), 2);
     for (side, letter) in table.track_sides.iter().zip(["A", "B"]) {
         assert_eq!(
             side.side,
-            crate::album_detail::TrackSide::Sided {
-                side_letter: letter.to_string(),
-            }
+            crate::album_detail::TrackSide::Sided { side_letter: letter.to_string() }
         );
         let [MappingTrackRun::Sheet { sheet, entries }] = side.runs.as_slice() else {
             panic!("each side's entries sit under the sheet");
@@ -470,46 +413,26 @@ fn a_side_of_loose_rows_and_a_sheet_is_one_side_of_two_runs() {
     fs::write(tmp.path().join("LP.cue"), cue_sheet_text("LP.flac", 2)).expect("write cue");
 
     let files = scan(tmp.path());
-    let draft = numbered_draft(
-        &files,
-        record(),
-        &[(1, 1, 1), (1, 1, 2), (1, 1, 3), (1, 2, 1)],
-    );
+    let draft = numbered_draft(&files, record(), &[(1, 1, 1), (1, 1, 2), (1, 1, 3), (1, 2, 1)]);
     let table = mapping_table(&files, &SourceDurations::default(), &draft).unwrap();
 
     let [side_a, side_b] = table.track_sides.as_slice() else {
         panic!("one side per side letter, got {:?}", table.track_sides);
     };
-    assert_eq!(
-        side_a.side,
-        crate::album_detail::TrackSide::Sided {
-            side_letter: "A".to_string(),
-        }
-    );
+    assert_eq!(side_a.side, crate::album_detail::TrackSide::Sided { side_letter: "A".to_string() });
     let [MappingTrackRun::Tracks(loose), MappingTrackRun::Sheet { sheet, entries }] =
         side_a.runs.as_slice()
     else {
-        panic!(
-            "side A holds the loose run, then the sheet: {:?}",
-            side_a.runs
-        );
+        panic!("side A holds the loose run, then the sheet: {:?}", side_a.runs);
     };
     assert_eq!(
-        loose
-            .iter()
-            .map(|row| track_file(row).name.as_str())
-            .collect::<Vec<_>>(),
+        loose.iter().map(|row| track_file(row).name.as_str()).collect::<Vec<_>>(),
         ["01.flac", "02.flac"]
     );
     assert_eq!(sheet.sheet_id, "LP.cue");
     assert_eq!(entries.len(), 1);
     assert_eq!(positions(side_a), ["A1", "A2", "A3"]);
-    assert_eq!(
-        side_b.side,
-        crate::album_detail::TrackSide::Sided {
-            side_letter: "B".to_string(),
-        }
-    );
+    assert_eq!(side_b.side, crate::album_detail::TrackSide::Sided { side_letter: "B".to_string() });
     let [MappingTrackRun::Sheet { sheet, entries }] = side_b.runs.as_slice() else {
         panic!("side B's entry sits under the sheet: {:?}", side_b.runs);
     };
@@ -523,11 +446,8 @@ fn a_side_of_loose_rows_and_a_sheet_is_one_side_of_two_runs() {
 fn the_commit_tracks_are_the_table_s_rows_in_order() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     write_flac(&tmp.path().join("CDImage.flac"));
-    fs::write(
-        tmp.path().join("CDImage.cue"),
-        cue_sheet_text("CDImage.flac", 2),
-    )
-    .expect("write cue");
+    fs::write(tmp.path().join("CDImage.cue"), cue_sheet_text("CDImage.flac", 2))
+        .expect("write cue");
     write_flac(&tmp.path().join("bonus.flac"));
     fs::write(tmp.path().join("cover.jpg"), fake_jpeg()).expect("write cover");
 
@@ -537,11 +457,7 @@ fn the_commit_tracks_are_the_table_s_rows_in_order() {
     let tracks = mapping_tracks(&table);
     assert_eq!(
         tracks.iter().map(|t| t.id.as_str()).collect::<Vec<_>>(),
-        vec![
-            "candidate-track-0",
-            "candidate-track-1",
-            "candidate-track-2"
-        ],
+        vec!["candidate-track-0", "candidate-track-1", "candidate-track-2"],
     );
     // The cover is not a track, and the bonus file leads the sheet's two
     // slices exactly as the folder's audio units do (case-insensitive name
@@ -549,9 +465,7 @@ fn the_commit_tracks_are_the_table_s_rows_in_order() {
     assert_eq!(
         tracks.iter().map(|t| t.file.clone()).collect::<Vec<_>>(),
         vec![
-            Some(AudioFile::Standalone {
-                file_id: "bonus.flac".to_string(),
-            }),
+            Some(AudioFile::Standalone { file_id: "bonus.flac".to_string() }),
             Some(AudioFile::SheetSlice {
                 file_id: "CDImage.flac".to_string(),
                 sheet_id: "CDImage.cue".to_string(),
@@ -587,17 +501,11 @@ fn a_draft_not_drawn_over_the_folder_s_audio_is_refused() {
 
     let mut short = blank_candidate_draft(&files);
     short.tracks.pop();
-    assert!(matches!(
-        mapping_table(&files, &durations, &short),
-        Err(ImportError::Internal { .. })
-    ));
+    assert!(matches!(mapping_table(&files, &durations, &short), Err(ImportError::Internal { .. })));
 
     let mut long = blank_candidate_draft(&files);
     long.tracks.push(long.tracks[0].clone());
-    assert!(matches!(
-        mapping_table(&files, &durations, &long),
-        Err(ImportError::Internal { .. })
-    ));
+    assert!(matches!(mapping_table(&files, &durations, &long), Err(ImportError::Internal { .. })));
 }
 
 /// A sheet whose `FILE` directive names audio that is not in the folder
@@ -611,28 +519,17 @@ fn a_sheet_that_describes_nothing_says_what_it_asked_for() {
     // last resort, so it describes nothing.
     write_flac(&tmp.path().join("01.flac"));
     write_flac(&tmp.path().join("02.flac"));
-    fs::write(
-        tmp.path().join("CDImage.cue"),
-        cue_sheet_text("CDImage.wav", 3),
-    )
-    .expect("write cue");
+    fs::write(tmp.path().join("CDImage.cue"), cue_sheet_text("CDImage.wav", 3)).expect("write cue");
 
     let table = blank_table(&scan(tmp.path()), &SourceDurations::default());
     // The sheet is named where it sits on disk, after the loose audio that
     // sorts before it — a sheet that carves nothing occupies no run.
-    let Some(MappingFileRow::Sheet(sheet)) = table
-        .files
-        .iter()
-        .find(|row| matches!(row, MappingFileRow::Sheet(_)))
+    let Some(MappingFileRow::Sheet(sheet)) =
+        table.files.iter().find(|row| matches!(row, MappingFileRow::Sheet(_)))
     else {
         panic!("expected a sheet row among {:?}", table.files);
     };
-    assert_eq!(
-        sheet.bound,
-        SheetBound::Unresolved {
-            requested: vec!["CDImage.wav".to_string()],
-        },
-    );
+    assert_eq!(sheet.bound, SheetBound::Unresolved { requested: vec!["CDImage.wav".to_string()] },);
     assert_eq!(sheet.path, tmp.path().join("CDImage.cue"));
 }
 
@@ -645,11 +542,8 @@ fn associated_sheets_group_tracks_and_unassociated_sheets_remain_files() {
     write_flac(&tmp.path().join("disc.flac"));
     fs::write(tmp.path().join("disc.cue"), cue_sheet_text("disc.flac", 2))
         .expect("write associated cue");
-    fs::write(
-        tmp.path().join("unresolved.cue"),
-        cue_sheet_text("absent.wav", 2),
-    )
-    .expect("write unassociated cue");
+    fs::write(tmp.path().join("unresolved.cue"), cue_sheet_text("absent.wav", 2))
+        .expect("write unassociated cue");
 
     let table = blank_table(&scan(tmp.path()), &SourceDurations::default());
 
@@ -672,11 +566,8 @@ fn associated_sheets_group_tracks_and_unassociated_sheets_remain_files() {
 fn projecting_the_table_opens_no_audio() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     write_flac(&tmp.path().join("CDImage.flac"));
-    fs::write(
-        tmp.path().join("CDImage.cue"),
-        cue_sheet_text("CDImage.flac", 2),
-    )
-    .expect("write cue");
+    fs::write(tmp.path().join("CDImage.cue"), cue_sheet_text("CDImage.flac", 2))
+        .expect("write cue");
     write_flac(&tmp.path().join("bonus.flac"));
 
     let files = scan(tmp.path());
@@ -752,12 +643,7 @@ fn partial_sheet_keeps_assigned_and_missing_references_even_without_choices() {
     let MappingFileRow::Sheet(sheet) = &table.files[0] else {
         panic!("partial CUE remains listed");
     };
-    assert_eq!(
-        sheet.bound,
-        SheetBound::Unresolved {
-            requested: vec!["absent.wav".into()]
-        }
-    );
+    assert_eq!(sheet.bound, SheetBound::Unresolved { requested: vec!["absent.wav".into()] });
     assert_eq!(
         sheet.reference_options,
         vec![
@@ -792,12 +678,7 @@ fn codec_refusal_does_not_invent_a_current_assignment() {
     let MappingFileRow::Sheet(sheet) = &table.files[0] else {
         panic!("refused CUE remains listed");
     };
-    assert_eq!(
-        sheet.bound,
-        SheetBound::RefusedCodec {
-            codec: "MP3".into()
-        }
-    );
+    assert_eq!(sheet.bound, SheetBound::RefusedCodec { codec: "MP3".into() });
     assert_eq!(
         sheet.reference_options,
         vec![SheetReferenceOptions {
@@ -805,9 +686,7 @@ fn codec_refusal_does_not_invent_a_current_assignment() {
             file_id: None,
             options: vec![SheetBindingOption {
                 file_id: "disc.mp3".into(),
-                offer: SheetBindingOffer::RefusedCodec {
-                    codec: "MP3".into()
-                }
+                offer: SheetBindingOffer::RefusedCodec { codec: "MP3".into() }
             }],
         }]
     );
@@ -837,10 +716,7 @@ fn the_first_of_competing_sheets_carves_and_the_rest_stay_listed() {
     assert!(
         matches!(&sheet.bound, SheetBound::Describes(container) if container.file_id == "disc.flac")
     );
-    assert_eq!(
-        sheet.reference_options[0].file_id.as_deref(),
-        Some("disc.flac")
-    );
+    assert_eq!(sheet.reference_options[0].file_id.as_deref(), Some("disc.flac"));
 }
 
 /// A CUE's slices on a draft whose medium states no carrier read as one flat
@@ -862,10 +738,7 @@ fn source_disc_assignments_do_not_invent_sides() {
             .all(|side| { !matches!(side.side, crate::album_detail::TrackSide::Sided { .. }) }),
         "available CUE audio does not establish vinyl sides"
     );
-    let positions: Vec<_> = mappings(&table)
-        .into_iter()
-        .map(|row| row.position.as_str())
-        .collect();
+    let positions: Vec<_> = mappings(&table).into_iter().map(|row| row.position.as_str()).collect();
     assert_eq!(positions, ["1", "2", "3"]);
 }
 
@@ -907,34 +780,21 @@ fn a_multi_file_sheet_stays_described_when_ignored_without_probing() {
     let [MappingTrackRun::Sheet { sheet, entries }] = runs(&table).as_slice() else {
         panic!("the CUE heads its entries");
     };
-    assert_eq!(
-        sheet.bound,
-        SheetBound::DescribesFiles {
-            audio_file_count: 2
-        }
-    );
+    assert_eq!(sheet.bound, SheetBound::DescribesFiles { audio_file_count: 2 });
     assert_eq!(sheet.reference_options, expected);
     assert_eq!(entries.len(), 3);
 
     let mut sheet_discs = SheetDiscEdits::default();
     sheet_discs.set("album.cue".into(), SheetDisc::Ignored);
     files
-        .apply_candidate_file_edits(&CandidateFileEdits {
-            sheet_discs,
-            ..Default::default()
-        })
+        .apply_candidate_file_edits(&CandidateFileEdits { sheet_discs, ..Default::default() })
         .unwrap();
     let table = blank_table(&files, &durations);
     let MappingFileRow::Sheet(sheet) = &table.files[0] else {
         panic!("ignored CUE remains a file");
     };
     assert_eq!(sheet.assignment, SheetDisc::Ignored);
-    assert_eq!(
-        sheet.bound,
-        SheetBound::DescribesFiles {
-            audio_file_count: 2
-        }
-    );
+    assert_eq!(sheet.bound, SheetBound::DescribesFiles { audio_file_count: 2 });
     assert_eq!(sheet.reference_options, expected);
     for (name, count) in ["first.flac", "second.flac"].into_iter().zip(opens) {
         assert_eq!(bae_audio::test_reads::probes(&tmp.path().join(name)), count);

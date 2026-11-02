@@ -52,30 +52,22 @@ async fn the_row_and_the_pane_name_the_same_records() {
     crate::import::CandidatePreparations::new(db.clone())
         .replace_link(
             &candidate.files.content_hash(),
-            Some(&crate::import::ReleaseLink::Pressing(
-                crate::import::PressingLink {
-                    record: crate::import::MetadataRef::new(Catalog::MusicBrainz, "mb-linked"),
-                    partners: vec![],
-                },
-            )),
+            Some(&crate::import::ReleaseLink::Pressing(crate::import::PressingLink {
+                record: crate::import::MetadataRef::new(Catalog::MusicBrainz, "mb-linked"),
+                partners: vec![],
+            })),
             &[],
         )
         .await
         .unwrap();
 
-    let projection = db
-        .load_import_list_read(request(TriageTab::Pending).await)
-        .await
-        .unwrap();
+    let projection = db.load_import_list_read(request(TriageTab::Pending).await).await.unwrap();
     let row = rows(&projection).remove(0);
     let crate::import::triage::TriageReading::Identified { records } = &row.reading else {
         panic!("a picked row reads as identified, got {:?}", row.reading);
     };
     assert_eq!(
-        records
-            .iter()
-            .map(|record| (record.catalog(), record.key()))
-            .collect::<Vec<_>>(),
+        records.iter().map(|record| (record.catalog(), record.key())).collect::<Vec<_>>(),
         vec![
             (Catalog::MusicBrainz, "mb-linked"),
             (Catalog::Discogs, "4242"),
@@ -90,15 +82,10 @@ async fn the_row_and_the_pane_name_the_same_records() {
         .unwrap()
         .expect("the scanned candidate has a pane")
         .resolve();
-    let crate::import::CandidatePanePlacement::Pending {
-        records: pane_records,
-        ..
-    } = &detail.placement
+    let crate::import::CandidatePanePlacement::Pending { records: pane_records, .. } =
+        &detail.placement
     else {
         panic!("a picked candidate is pending, got {:?}", detail.placement);
     };
-    assert_eq!(
-        pane_records, records,
-        "the pane names the records the queue's row does"
-    );
+    assert_eq!(pane_records, records, "the pane names the records the queue's row does");
 }

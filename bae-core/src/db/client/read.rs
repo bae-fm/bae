@@ -61,10 +61,7 @@ pub(super) fn row_to_library_credit(row: &Row) -> rusqlite::Result<LibraryCredit
     Ok(LibraryCredit {
         artist: row_to_artist_with_prefix(row, "artist_")?,
         credit: match row.get::<_, Option<String>>("credit_key")? {
-            Some(key) => Some(crate::credits::CreditName {
-                key,
-                name: row.get("credit_name")?,
-            }),
+            Some(key) => Some(crate::credits::CreditName { key, name: row.get("credit_name")? }),
             None => None,
         },
         join: row.get("credit_join")?,
@@ -132,13 +129,9 @@ pub(super) fn find_release_by_id_on(
     sql: &SqlReadContext<'_>,
     release_id: &str,
 ) -> Result<Option<DbRelease>, DbError> {
-    sql.query_row(
-        &release_rows_sql("r.id = ?"),
-        params![release_id],
-        row_to_release,
-    )
-    .optional()
-    .map_err(DbError::from)
+    sql.query_row(&release_rows_sql("r.id = ?"), params![release_id], row_to_release)
+        .optional()
+        .map_err(DbError::from)
 }
 
 pub(super) fn get_releases_for_album_on(
@@ -289,29 +282,20 @@ impl UnstoredRow {
     fn other_device(&self) -> Result<crate::album_detail::OtherDevice, DbError> {
         use crate::album_detail::OtherDevice;
         use crate::sync::membership::FormerDeviceState;
-        let (Some(name), Some(state), Some(member_removed)) = (
-            self.name.clone(),
-            self.state.as_deref(),
-            self.member_removed,
-        ) else {
+        let (Some(name), Some(state), Some(member_removed)) =
+            (self.name.clone(), self.state.as_deref(), self.member_removed)
+        else {
             return Err(DbError::Message(format!(
                 "coven_devices lists the device of release file {} as {:?}, {:?}, {:?}",
                 self.file, self.name, self.state, self.member_removed
             )));
         };
         Ok(match state {
-            "replaced" => OtherDevice::Former {
-                name,
-                state: FormerDeviceState::Replaced,
-            },
-            "removed" => OtherDevice::Former {
-                name,
-                state: FormerDeviceState::Removed,
-            },
-            "active" if member_removed => OtherDevice::Former {
-                name,
-                state: FormerDeviceState::Removed,
-            },
+            "replaced" => OtherDevice::Former { name, state: FormerDeviceState::Replaced },
+            "removed" => OtherDevice::Former { name, state: FormerDeviceState::Removed },
+            "active" if member_removed => {
+                OtherDevice::Former { name, state: FormerDeviceState::Removed }
+            }
             "active" => OtherDevice::Active { name },
             other => {
                 return Err(DbError::Message(format!(
@@ -413,17 +397,10 @@ fn process_tracks(joined: Vec<(DbTrack, Option<LibraryCredit>)>) -> Vec<DbTrackW
     let mut tracks: Vec<DbTrackWithArtists> = Vec::new();
     for (track, artist) in joined {
         if tracks.last().map(|last| last.track.id.as_str()) != Some(track.id.as_str()) {
-            tracks.push(DbTrackWithArtists {
-                track,
-                artists: Vec::new(),
-            });
+            tracks.push(DbTrackWithArtists { track, artists: Vec::new() });
         }
         if let Some(credit) = artist {
-            tracks
-                .last_mut()
-                .expect("the row's track was just pushed")
-                .artists
-                .push(credit);
+            tracks.last_mut().expect("the row's track was just pushed").artists.push(credit);
         }
     }
 
@@ -464,26 +441,21 @@ pub(super) fn get_release_records_on(
     sql: &SqlReadContext<'_>,
     release_id: &str,
 ) -> Result<Vec<crate::import::ReleaseRecord>, DbError> {
-    Ok(
-        sql.query(RELEASE_RECORDS_IN_ORDER, params![release_id], |row| {
-            let identity = crate::import::MetadataRef::new(
-                parsed_column(row, "catalog")?,
-                row.get::<_, String>("key")?,
-            );
-            match row.get::<_, String>("kind")?.as_str() {
-                "pressing" => Ok(crate::import::ReleaseRecord::new(
-                    &identity,
-                    row.get("album_key")?,
-                )),
-                "album" => Ok(crate::import::ReleaseRecord::album(&identity)),
-                kind => Err(rusqlite::Error::FromSqlConversionFailure(
-                    row.as_ref().column_index("kind")?,
-                    rusqlite::types::Type::Text,
-                    format!("unknown record kind: {kind}").into(),
-                )),
-            }
-        })?,
-    )
+    Ok(sql.query(RELEASE_RECORDS_IN_ORDER, params![release_id], |row| {
+        let identity = crate::import::MetadataRef::new(
+            parsed_column(row, "catalog")?,
+            row.get::<_, String>("key")?,
+        );
+        match row.get::<_, String>("kind")?.as_str() {
+            "pressing" => Ok(crate::import::ReleaseRecord::new(&identity, row.get("album_key")?)),
+            "album" => Ok(crate::import::ReleaseRecord::album(&identity)),
+            kind => Err(rusqlite::Error::FromSqlConversionFailure(
+                row.as_ref().column_index("kind")?,
+                rusqlite::types::Type::Text,
+                format!("unknown record kind: {kind}").into(),
+            )),
+        }
+    })?)
 }
 
 /// Build a column-conversion error for a named column whose stored text the
@@ -506,15 +478,13 @@ pub(super) fn column_conversion_error(row: &Row, column: &str, message: String) 
 /// column-conversion error rather than panicking on the parse.
 pub(super) fn rfc3339_column(row: &Row, column: &str) -> rusqlite::Result<DateTime<Utc>> {
     let raw: String = row.get(column)?;
-    DateTime::parse_from_rfc3339(&raw)
-        .map(|dt| dt.with_timezone(&Utc))
-        .map_err(|e| {
-            column_conversion_error(
-                row,
-                column,
-                format!("{column} {raw:?} is not a valid rfc3339 timestamp: {e}"),
-            )
-        })
+    DateTime::parse_from_rfc3339(&raw).map(|dt| dt.with_timezone(&Utc)).map_err(|e| {
+        column_conversion_error(
+            row,
+            column,
+            format!("{column} {raw:?} is not a valid rfc3339 timestamp: {e}"),
+        )
+    })
 }
 
 /// Read a named integer column that holds a count or a position, which the
@@ -542,8 +512,7 @@ where
     T: std::str::FromStr<Err = String>,
 {
     let raw: String = row.get(column)?;
-    raw.parse::<T>()
-        .map_err(|e| column_conversion_error(row, column, e))
+    raw.parse::<T>().map_err(|e| column_conversion_error(row, column, e))
 }
 
 // ─── Entity row readers ──────────────────────────────────────────────────────
@@ -608,10 +577,7 @@ pub(super) fn row_to_release_medium(row: &Row) -> rusqlite::Result<DbReleaseMedi
         id: row.get("id")?,
         release_id: row.get("release_id")?,
         position: row.get("position")?,
-        medium: crate::mediums::ReleaseMedium {
-            carrier,
-            sides: row.get("side_count")?,
-        },
+        medium: crate::mediums::ReleaseMedium { carrier, sides: row.get("side_count")? },
         created_at: rfc3339_column(row, "created_at")?,
     })
 }
@@ -701,9 +667,7 @@ pub(super) fn row_to_file(row: &Row) -> rusqlite::Result<DbFile> {
             content_type: ContentType::from_mime(&content_type),
             duration_ms,
             format: crate::album_detail::AudioFormat {
-                codec: ContentType::from_mime(&content_type)
-                    .display_name()
-                    .to_string(),
+                codec: ContentType::from_mime(&content_type).display_name().to_string(),
                 sample_rate_hz,
                 bits_per_sample,
                 bitrate_kbps,
@@ -752,16 +716,13 @@ fn track_audio_count_column(
     track_id: &str,
 ) -> rusqlite::Result<std::num::NonZeroU32> {
     let raw: i64 = row.get(column)?;
-    u32::try_from(raw)
-        .ok()
-        .and_then(std::num::NonZeroU32::new)
-        .ok_or_else(|| {
-            column_conversion_error(
-                row,
-                column,
-                format!("track {track_id} has {column} {raw}, not a count above zero"),
-            )
-        })
+    u32::try_from(raw).ok().and_then(std::num::NonZeroU32::new).ok_or_else(|| {
+        column_conversion_error(
+            row,
+            column,
+            format!("track {track_id} has {column} {raw}, not a count above zero"),
+        )
+    })
 }
 
 /// A track's stored bit depth: absent for lossy audio, else 1 to 32.

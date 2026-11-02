@@ -31,11 +31,8 @@ impl LibraryManager {
         release_id: &str,
         file_id: &str,
     ) -> Result<Vec<u8>, LibraryError> {
-        let file = self
-            .database
-            .find_release_file(release_id, file_id)
-            .await?
-            .ok_or_else(|| {
+        let file =
+            self.database.find_release_file(release_id, file_id).await?.ok_or_else(|| {
                 LibraryError::Refused(format!(
                     "Image file {file_id} is not part of release {release_id}"
                 ))
@@ -88,12 +85,10 @@ impl LibraryManager {
         // the stored bytes, their format, size and hash all describe the thumbnail,
         // not the source.
         // Decoding and re-encoding the image is CPU work.
-        let bytes = blocking("resize a cover", move || {
-            bae_util::stored_image::stored_jpeg(&bytes)
-        })
-        .await
-        .map_err(|failed| self.bug(failed))?
-        .map_err(|detail| crate::import::ImportError::CoverArt { detail })?;
+        let bytes = blocking("resize a cover", move || bae_util::stored_image::stored_jpeg(&bytes))
+            .await
+            .map_err(|failed| self.bug(failed))?
+            .map_err(|detail| crate::import::ImportError::CoverArt { detail })?;
         let library_image = DbLibraryImage::cover(
             release_id,
             chrono::DateTime::<chrono::Utc>::from(self.clock.now()),

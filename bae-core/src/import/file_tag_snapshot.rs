@@ -127,12 +127,7 @@ impl FileTagSnapshot {
     /// same file edit revision. The scan stamp is left out: a pass that finds
     /// the candidate unchanged moves its stamp onto the reading it keeps.
     pub(crate) fn same_reading(&self, other: &Self) -> bool {
-        let Self {
-            scan_generation: _,
-            file_edit_revision,
-            files,
-            embedded_cover,
-        } = self;
+        let Self { scan_generation: _, file_edit_revision, files, embedded_cover } = self;
         *file_edit_revision == other.file_edit_revision
             && *files == other.files
             && *embedded_cover == other.embedded_cover
@@ -171,10 +166,7 @@ impl FileTagReader for LoftyFileTagReader {
         let Some(tag) = tag else {
             return Ok(FileTagRead {
                 tags: FileTags::untagged(),
-                delivery: DeliveryTags {
-                    store,
-                    ..DeliveryTags::default()
-                },
+                delivery: DeliveryTags { store, ..DeliveryTags::default() },
                 embedded_cover: None,
             });
         };
@@ -272,11 +264,7 @@ fn parse(
                     .iter()
                     .any(|atom| ilst.get(&AtomIdent::Fourcc(*atom)).is_some())
             });
-            ParsedFile {
-                tagged: parsed.into(),
-                id3v2: Id3v2Frames::Unkept,
-                itunes_purchase,
-            }
+            ParsedFile { tagged: parsed.into(), id3v2: Id3v2Frames::Unkept, itunes_purchase }
         }),
         other => match other {
             Some(file_type) => Probe::with_file_type(reader, file_type),
@@ -343,11 +331,9 @@ fn store_marker(itunes_purchase: bool, tag: Option<&lofty::tag::Tag>) -> Option<
     if itunes_purchase {
         return Some(StoreMarker::ITunesPurchase);
     }
-    let bandcamp = tag
-        .and_then(|tag| tag.get_string(ItemKey::Comment))
-        .is_some_and(|comment| {
-            comment.trim_start().starts_with("Visit ") && comment.contains(".bandcamp.com")
-        });
+    let bandcamp = tag.and_then(|tag| tag.get_string(ItemKey::Comment)).is_some_and(|comment| {
+        comment.trim_start().starts_with("Visit ") && comment.contains(".bandcamp.com")
+    });
     bandcamp.then_some(StoreMarker::Bandcamp)
 }
 
@@ -421,10 +407,7 @@ fn legacy_id3v1_text(
 }
 
 fn decoded_id3v1_field(bytes: &[u8]) -> Option<String> {
-    let end = bytes
-        .iter()
-        .position(|byte| *byte == 0)
-        .unwrap_or(bytes.len());
+    let end = bytes.iter().position(|byte| *byte == 0).unwrap_or(bytes.len());
     (end > 0).then(|| bae_util::text_encoding::decode_text(&bytes[..end]).text)
 }
 
@@ -496,10 +479,7 @@ pub(crate) fn read_delivered_file_tags(
         .map(|file| {
             let (observation, read) = read_observed(file, reader)?;
             Ok(DeliveredFileTags {
-                fact: FileTagFact {
-                    observation,
-                    tags: read.tags,
-                },
+                fact: FileTagFact { observation, tags: read.tags },
                 delivery: read.delivery,
             })
         })
@@ -517,25 +497,15 @@ pub(crate) fn extract_file_tag_snapshot(
     for file in audio_files {
         let (before, read) = read_observed(file, reader)?;
         if embedded_cover.is_none() {
-            embedded_cover = read
-                .embedded_cover
-                .map(|(data, content_type)| EmbeddedCoverFact {
-                    source_relative_path: file.relative_path.clone(),
-                    content_type,
-                    data,
-                });
+            embedded_cover = read.embedded_cover.map(|(data, content_type)| EmbeddedCoverFact {
+                source_relative_path: file.relative_path.clone(),
+                content_type,
+                data,
+            });
         }
-        facts.push(FileTagFact {
-            observation: before,
-            tags: read.tags,
-        });
+        facts.push(FileTagFact { observation: before, tags: read.tags });
     }
-    Ok(FileTagSnapshot {
-        scan_generation,
-        file_edit_revision,
-        files: facts,
-        embedded_cover,
-    })
+    Ok(FileTagSnapshot { scan_generation, file_edit_revision, files: facts, embedded_cover })
 }
 
 /// Embedded artwork is a file-metadata selection because its bytes belong to the
@@ -616,10 +586,7 @@ pub(crate) fn non_empty(value: Option<String>) -> Option<String> {
 
 fn embedded_cover_from_tag(tag: &lofty::tag::Tag) -> Option<(Vec<u8>, ContentType)> {
     let mut pictures = tag.pictures().iter().filter_map(|picture| {
-        picture
-            .mime_type()
-            .and_then(image_content_type)
-            .map(|content_type| (picture, content_type))
+        picture.mime_type().and_then(image_content_type).map(|content_type| (picture, content_type))
     });
     let (picture, content_type) = pictures
         .clone()
@@ -638,12 +605,9 @@ pub(crate) fn image_content_type(mime: &lofty::picture::MimeType) -> Option<Cont
 /// date, each as many times as the tag holds it.
 fn tag_years(tag: &lofty::tag::Tag) -> Vec<u16> {
     let mut years = Vec::new();
-    for key in [
-        ItemKey::RecordingDate,
-        ItemKey::Year,
-        ItemKey::ReleaseDate,
-        ItemKey::OriginalReleaseDate,
-    ] {
+    for key in
+        [ItemKey::RecordingDate, ItemKey::Year, ItemKey::ReleaseDate, ItemKey::OriginalReleaseDate]
+    {
         for value in tag.get_strings(key) {
             for year in years_in_date(value) {
                 if !years.contains(&year) {
@@ -662,11 +626,7 @@ fn tag_years(tag: &lofty::tag::Tag) -> Vec<u16> {
 pub(crate) fn years_in_date(date: &str) -> impl Iterator<Item = u16> + '_ {
     date.split(|c: char| !c.is_ascii_digit())
         .filter(|run| run.len() >= 4)
-        .map(|run| {
-            run[..4]
-                .parse::<u16>()
-                .expect("four ASCII digits parse as u16")
-        })
+        .map(|run| run[..4].parse::<u16>().expect("four ASCII digits parse as u16"))
         .filter(|year| *year != 0)
 }
 

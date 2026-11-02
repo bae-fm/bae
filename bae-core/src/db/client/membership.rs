@@ -49,10 +49,7 @@ const MEMBERS: &str = concat!(
 fn membership_on(sql: &SqlReadContext<'_>) -> rusqlite::Result<Membership> {
     let self_is_admin: bool = sql.query_row(SELF_IS_ADMIN, [], |row| row.get(0))?;
     let members = sql.query(MEMBERS, [], |row| member_row(row, 0, self_is_admin))?;
-    Ok(Membership {
-        members,
-        self_is_admin,
-    })
+    Ok(Membership { members, self_is_admin })
 }
 
 /// The member whose [`member_columns`] start at column `first`.
@@ -65,14 +62,7 @@ pub(super) fn member_row(
     let role = match row.get::<_, String>(first + 1)?.as_str() {
         "admin" => coven::MemberRole::Admin,
         "member" => coven::MemberRole::Member,
-        other => {
-            return Err(unreadable_column(
-                first + 1,
-                Type::Text,
-                "a member role",
-                other,
-            ))
-        }
+        other => return Err(unreadable_column(first + 1, Type::Text, "a member role", other)),
     };
     let keys = coven::MemberPublicKeys {
         signing: coven::SigningKey::from_bytes(row.get(first + 3)?).map_err(|error| {
@@ -149,11 +139,9 @@ fn json_column<T: serde::de::DeserializeOwned>(row: &Row<'_>, index: usize) -> r
 
 /// A device id from the hex of its eight bytes.
 fn device_id(hex: &str, index: usize) -> rusqlite::Result<coven::DeviceId> {
-    u64::from_str_radix(hex, 16)
-        .map(coven::DeviceId)
-        .map_err(|error| {
-            rusqlite::Error::FromSqlConversionFailure(index, Type::Text, Box::new(error))
-        })
+    u64::from_str_radix(hex, 16).map(coven::DeviceId).map_err(|error| {
+        rusqlite::Error::FromSqlConversionFailure(index, Type::Text, Box::new(error))
+    })
 }
 
 fn unreadable_column(index: usize, kind: Type, what: &str, value: &str) -> rusqlite::Error {

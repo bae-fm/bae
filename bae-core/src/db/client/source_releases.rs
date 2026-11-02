@@ -66,9 +66,7 @@ fn album_links_column(facts: &CatalogFacts) -> Result<Option<&'static str>, DbEr
 }
 
 fn unreadable(what: &str, value: impl std::fmt::Debug) -> DbError {
-    DbError::Message(format!(
-        "stored source release holds an unreadable {what}: {value:?}"
-    ))
+    DbError::Message(format!("stored source release holds an unreadable {what}: {value:?}"))
 }
 
 #[expect(
@@ -158,14 +156,8 @@ pub(super) fn replace_source_release_on(
             facts.packaging,
             facts.discogs_details,
             serde_json::to_string(&release.notes).expect("notes serialize"),
-            release
-                .archive_release
-                .as_ref()
-                .map(|archive| archive.release_id.as_str()),
-            release
-                .archive_release
-                .as_ref()
-                .and_then(|archive| archive.group_id.as_deref()),
+            release.archive_release.as_ref().map(|archive| archive.release_id.as_str()),
+            release.archive_release.as_ref().and_then(|archive| archive.group_id.as_deref()),
             album_links_column(&release.catalog)?,
         ],
     )?;
@@ -226,13 +218,7 @@ pub(super) fn replace_source_release_on(
                     "INSERT INTO source_release_link \
                          (catalog, release_id, position, link_catalog, link_key) \
                      VALUES (?, ?, ?, ?, ?)",
-                    params![
-                        catalog,
-                        key,
-                        position as i64,
-                        link.catalog.as_str(),
-                        link.key
-                    ],
+                    params![catalog, key, position as i64, link.catalog.as_str(), link.key],
                 )?;
             }
             for (ordinal, album) in album_links.read().iter().enumerate() {
@@ -240,20 +226,11 @@ pub(super) fn replace_source_release_on(
                     "INSERT INTO source_release_album_link \
                          (catalog, release_id, ordinal, album_catalog, album_key) \
                      VALUES (?, ?, ?, ?, ?)",
-                    params![
-                        catalog,
-                        key,
-                        ordinal as i64,
-                        album.catalog.as_str(),
-                        album.key,
-                    ],
+                    params![catalog, key, ordinal as i64, album.catalog.as_str(), album.key,],
                 )?;
             }
         }
-        CatalogFacts::Discogs {
-            media,
-            release_roles,
-        } => {
+        CatalogFacts::Discogs { media, release_roles } => {
             let formats: &[StatedFormat] = match media {
                 StatedMedia::Formats(formats) => formats,
                 StatedMedia::Undescribed => &[],
@@ -304,20 +281,11 @@ pub(super) fn replace_source_release_on(
             "INSERT INTO source_release_record \
                  (catalog, release_id, record_catalog, kind, key, album_key) \
              VALUES (?, ?, ?, ?, ?, ?)",
-            params![
-                catalog,
-                key,
-                record.catalog().as_str(),
-                kind,
-                record.key(),
-                album_key
-            ],
+            params![catalog, key, record.catalog().as_str(), kind, record.key(), album_key],
         )?;
     }
-    for (scope, covers) in [
-        ("release", &release.covers.release),
-        ("album", &release.covers.album),
-    ] {
+    for (scope, covers) in [("release", &release.covers.release), ("album", &release.covers.album)]
+    {
         for (position, cover) in covers.iter().enumerate() {
             sql.execute(
                 "INSERT INTO source_release_cover \
@@ -339,14 +307,7 @@ pub(super) fn replace_source_release_on(
                     "INSERT INTO source_release_cover_copy \
                          (catalog, release_id, scope, position, max_edge, url) \
                      VALUES (?, ?, ?, ?, ?, ?)",
-                    params![
-                        catalog,
-                        key,
-                        scope,
-                        position as i64,
-                        copy.max_edge,
-                        copy.url
-                    ],
+                    params![catalog, key, scope, position as i64, copy.max_edge, copy.url],
                 )?;
             }
         }
@@ -380,12 +341,7 @@ pub(super) fn replace_source_release_on(
         sql.execute(
             "INSERT INTO source_release_medium (catalog, release_id, position, medium) \
              VALUES (?, ?, ?, ?)",
-            params![
-                catalog,
-                key,
-                position as i64,
-                medium.medium.map(Medium::key)
-            ],
+            params![catalog, key, position as i64, medium.medium.map(Medium::key)],
         )?;
         for (disc, disc_id) in medium.disc_ids.iter().enumerate() {
             sql.execute(
@@ -395,15 +351,7 @@ pub(super) fn replace_source_release_on(
             )?;
         }
         for entry in &medium.entries {
-            insert_entry(
-                sql,
-                catalog,
-                key,
-                position as i64,
-                None,
-                entry,
-                &mut numbering,
-            )?;
+            insert_entry(sql, catalog, key, position as i64, None, entry, &mut numbering)?;
         }
     }
     Ok(())
@@ -471,10 +419,7 @@ fn load_source_release_rows_on<S: QueryOne + QueryRows>(
         return Ok(None);
     };
     let archive_release = match (archive_release, archive_group) {
-        (Some(release_id), group_id) => Some(ArchiveRelease {
-            release_id,
-            group_id,
-        }),
+        (Some(release_id), group_id) => Some(ArchiveRelease { release_id, group_id }),
         (None, None) => None,
         (None, Some(group)) => return Err(unreadable("archive group without a release", group)),
     };
@@ -601,10 +546,7 @@ fn load_source_release_rows_on<S: QueryOne + QueryRows>(
     // The record rows keep no order: they read in the order surfaces list
     // catalogs.
     let other_records = with_joined_records(own_records_on(sql, release)?, &[]);
-    let mut covers = ReleaseCovers {
-        release: Vec::new(),
-        album: Vec::new(),
-    };
+    let mut covers = ReleaseCovers { release: Vec::new(), album: Vec::new() };
     let copies = super::downscaled_copies::copies_json_sql(
         "source_release_cover_copy",
         "copy.catalog = cover.catalog AND copy.release_id = cover.release_id \
@@ -659,11 +601,7 @@ fn load_source_release_rows_on<S: QueryOne + QueryRows>(
              WHERE catalog = ? AND release_id = ? ORDER BY document, key",
             params![catalog, key],
             |row| {
-                Ok((
-                    row.get::<_, String>(0)?,
-                    row.get::<_, String>(1)?,
-                    row.get::<_, String>(2)?,
-                ))
+                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?, row.get::<_, String>(2)?))
             },
         )?
         .into_iter()
@@ -768,10 +706,7 @@ fn with_joined_albums_on<S: QueryRows>(
     release.other_records = with_joined_records(release.other_records, &joined);
     // A joined release group's images, addressed by its id as the extraction
     // addresses a group its documents reach.
-    for group in joined
-        .iter()
-        .filter(|album| album.catalog == Catalog::MusicBrainz)
-    {
+    for group in joined.iter().filter(|album| album.catalog == Catalog::MusicBrainz) {
         bae_catalogs::remote_image::push_unique_cover(
             &mut release.covers.album,
             RemoteCover::musicbrainz_release_group(&group.key),
@@ -887,8 +822,7 @@ impl Database {
         release: &MetadataRef,
     ) -> Result<Option<SourceRelease>, DbError> {
         let release = release.clone();
-        self.read(move |sql| load_source_release_on(&sql, &release))
-            .await
+        self.read(move |sql| load_source_release_on(&sql, &release)).await
     }
 
     /// The stored release `release` names, as its rows hold it beside how
@@ -901,10 +835,7 @@ impl Database {
         self.read(move |sql| {
             load_source_release_rows_on(&sql, &release)?
                 .map(|stored| {
-                    Ok(PreparedRelease {
-                        release: with_joined_albums_on(&sql, &stored)?,
-                        stored,
-                    })
+                    Ok(PreparedRelease { release: with_joined_albums_on(&sql, &stored)?, stored })
                 })
                 .transpose()
         })
@@ -917,10 +848,7 @@ impl Database {
         stored: SourceRelease,
     ) -> Result<PreparedRelease, DbError> {
         self.read(move |sql| {
-            Ok(PreparedRelease {
-                release: with_joined_albums_on(&sql, &stored)?,
-                stored,
-            })
+            Ok(PreparedRelease { release: with_joined_albums_on(&sql, &stored)?, stored })
         })
         .await
     }
@@ -930,7 +858,6 @@ impl Database {
     #[cfg(test)]
     pub async fn save_source_release(&self, release: &SourceRelease) -> Result<(), DbError> {
         let release = release.clone();
-        self.call(move |sql| replace_source_release_on(sql, &release))
-            .await
+        self.call(move |sql| replace_source_release_on(sql, &release)).await
     }
 }

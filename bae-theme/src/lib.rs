@@ -216,9 +216,7 @@ impl RawPlatformLengths {
         let mut length = |platform: &str, value: Option<f64>| match value {
             Some(value) if value >= 0.0 => value,
             Some(value) => {
-                problems.push(format!(
-                    "{context}: the {platform} length {value} is negative"
-                ));
+                problems.push(format!("{context}: the {platform} length {value} is negative"));
                 0.0
             }
             None => {
@@ -317,16 +315,8 @@ impl Theme {
             })
             .collect();
 
-        check_choices(
-            "tone",
-            tones.iter().map(|tone| tone.name.as_str()),
-            &mut problems,
-        );
-        check_choices(
-            "accent",
-            accents.iter().map(|accent| accent.name.as_str()),
-            &mut problems,
-        );
+        check_choices("tone", tones.iter().map(|tone| tone.name.as_str()), &mut problems);
+        check_choices("accent", accents.iter().map(|accent| accent.name.as_str()), &mut problems);
         let standard_tone = standard_choice(
             "tone",
             &raw.standard.tone,
@@ -341,10 +331,9 @@ impl Theme {
         );
         if let Some(first) = tones.first() {
             for tone in &tones {
-                for (mode, surfaces) in [
-                    ("light", &tone.surfaces.light),
-                    ("dark", &tone.surfaces.dark),
-                ] {
+                for (mode, surfaces) in
+                    [("light", &tone.surfaces.light), ("dark", &tone.surfaces.dark)]
+                {
                     check_same_roles(
                         &format!("tone {}.{mode}", tone.name),
                         surfaces,
@@ -388,19 +377,10 @@ impl Theme {
             .icon
             .iter()
             .map(|(name, role)| {
-                let lengths = RawPlatformLengths {
-                    macos: role.macos,
-                    ios: role.ios,
-                    android: role.android,
-                };
+                let lengths =
+                    RawPlatformLengths { macos: role.macos, ios: role.ios, android: role.android };
                 let sizes = lengths.check(&format!("icon {name}"), &mut problems);
-                (
-                    name.clone(),
-                    IconRole {
-                        weight: role.weight,
-                        sizes,
-                    },
-                )
+                (name.clone(), IconRole { weight: role.weight, sizes })
             })
             .collect();
         check_role_names(raw.size.keys(), &mut problems);
@@ -408,10 +388,7 @@ impl Theme {
             .size
             .iter()
             .map(|(name, lengths)| {
-                (
-                    name.clone(),
-                    lengths.check(&format!("size {name}"), &mut problems),
-                )
+                (name.clone(), lengths.check(&format!("size {name}"), &mut problems))
             })
             .collect();
         let text = raw
@@ -499,9 +476,7 @@ fn standard_choice<'a>(
 ) -> Option<usize> {
     let position = names.position(|listed| listed == name);
     if position.is_none() {
-        problems.push(format!(
-            "the standard {kind} `{name}` is not a listed {kind}"
-        ));
+        problems.push(format!("the standard {kind} `{name}` is not a listed {kind}"));
     }
     position
 }
@@ -525,14 +500,10 @@ fn check_same_roles(
     problems: &mut Vec<String>,
 ) {
     for name in reference.keys().filter(|name| !roles.contains_key(*name)) {
-        problems.push(format!(
-            "{context} lacks `{name}`, which {reference_context} has"
-        ));
+        problems.push(format!("{context} lacks `{name}`, which {reference_context} has"));
     }
     for name in roles.keys().filter(|name| !reference.contains_key(*name)) {
-        problems.push(format!(
-            "{context} has `{name}`, which {reference_context} lacks"
-        ));
+        problems.push(format!("{context} has `{name}`, which {reference_context} lacks"));
     }
 }
 

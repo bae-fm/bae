@@ -23,10 +23,7 @@ impl<V> SessionCache<V> {
     pub fn new(name: &'static str, capacity: usize) -> Self {
         let capacity = NonZeroUsize::new(capacity)
             .unwrap_or_else(|| panic!("{name} capacity must be greater than zero"));
-        Self {
-            name,
-            inner: Mutex::new(LruCache::new(capacity)),
-        }
+        Self { name, inner: Mutex::new(LruCache::new(capacity)) }
     }
 
     pub fn get_cloned(&self, key: &str) -> Option<V>

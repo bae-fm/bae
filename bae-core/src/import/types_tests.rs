@@ -59,9 +59,7 @@ mod edit_shaping_tests {
                 artist_assignments: TrackArtistAssignments::Explicit(vec![
                     crate::import::Credited::plain(ArtistAssignment::named("Artist Two")),
                 ]),
-                file: Some(AudioFile::Standalone {
-                    file_id: "01.flac".to_string(),
-                }),
+                file: Some(AudioFile::Standalone { file_id: "01.flac".to_string() }),
             }],
         }
     }
@@ -123,10 +121,7 @@ mod edit_shaping_tests {
         let mut form = valid_form();
         form.tracks[0].artist_assignments = TrackArtistAssignments::AlbumArtists;
         let shaped = form.shape().expect("shapes");
-        assert_eq!(
-            shaped.tracks[0].artist_assignments,
-            TrackArtistAssignments::AlbumArtists
-        );
+        assert_eq!(shaped.tracks[0].artist_assignments, TrackArtistAssignments::AlbumArtists);
     }
 
     #[test]
@@ -170,27 +165,17 @@ mod edit_shaping_tests {
             ..Default::default()
         };
         let stated = vec![
-            RawLabelEdit {
-                discogs_label_id: Some("7190".to_string()),
-                ..row("Rhino", "R2 1")
-            },
+            RawLabelEdit { discogs_label_id: Some("7190".to_string()), ..row("Rhino", "R2 1") },
             RawLabelEdit {
                 musicbrainz_label_id: Some("mb-harbor".to_string()),
                 ..row("Harbor", "")
             },
         ];
-        let sent = vec![
-            row("Harbor", "H 2"),
-            row("Rhino Records", "R2 1"),
-            row("New", ""),
-        ];
+        let sent = vec![row("Harbor", "H 2"), row("Rhino Records", "R2 1"), row("New", "")];
         let kept = RawLabelEdit::kept_ids(sent, &stated);
         assert_eq!(
             kept.iter()
-                .map(|row| (
-                    row.musicbrainz_label_id.as_deref(),
-                    row.discogs_label_id.as_deref()
-                ))
+                .map(|row| (row.musicbrainz_label_id.as_deref(), row.discogs_label_id.as_deref()))
                 .collect::<Vec<_>>(),
             [(Some("mb-harbor"), None), (None, None), (None, None)]
         );
@@ -255,9 +240,8 @@ mod edit_shaping_tests {
     #[test]
     fn a_blank_artist_credit_is_a_validation_error() {
         let mut form = valid_form();
-        form.album_artist_assignments = vec![crate::import::Credited::plain(
-            ArtistAssignment::named("   "),
-        )];
+        form.album_artist_assignments =
+            vec![crate::import::Credited::plain(ArtistAssignment::named("   "))];
         assert_eq!(form.shape(), Err(EditValidationError::EmptyArtistName));
     }
 
@@ -291,9 +275,7 @@ mod edit_shaping_tests {
                     artist_assignments: TrackArtistAssignments::Explicit(vec![
                         crate::import::Credited::plain(ArtistAssignment::named("Track Artist")),
                     ]),
-                    file: Some(AudioFile::Standalone {
-                        file_id: "01.flac".to_string(),
-                    }),
+                    file: Some(AudioFile::Standalone { file_id: "01.flac".to_string() }),
                 },
                 TrackUserEdit {
                     title: "Track Two".to_string(),
@@ -304,20 +286,11 @@ mod edit_shaping_tests {
         };
 
         let raw = RawReleaseEdit::from_user_edit(original.clone(), "reset-track");
-        assert_eq!(
-            raw.album_artist_assignments,
-            original.album_artist_assignments
-        );
+        assert_eq!(raw.album_artist_assignments, original.album_artist_assignments);
         assert_eq!(raw.tracks[0].id, "reset-track-0");
         assert_eq!(raw.tracks[1].id, "reset-track-1");
-        assert_eq!(
-            raw.tracks[0].artist_assignments,
-            original.tracks[0].artist_assignments
-        );
-        assert_eq!(
-            raw.tracks[1].artist_assignments,
-            TrackArtistAssignments::AlbumArtists
-        );
+        assert_eq!(raw.tracks[0].artist_assignments, original.tracks[0].artist_assignments);
+        assert_eq!(raw.tracks[1].artist_assignments, TrackArtistAssignments::AlbumArtists);
         assert_eq!(raw.pressing.year, "1999");
         assert_eq!(raw.album_year, "1987");
         assert_eq!(

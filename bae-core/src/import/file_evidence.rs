@@ -73,10 +73,7 @@ mod tests {
                     SourcedValue::in_file("0602527336459".to_string(), "Inlay.jpg".to_string()),
                 ],
             },
-            text: TextSignal::Settled {
-                catalogs: Vec::new(),
-                free_text: Vec::new(),
-            },
+            text: TextSignal::Settled { catalogs: Vec::new(), free_text: Vec::new() },
             text_pool: Vec::new(),
             isrcs: Vec::new(),
             track_titles: Vec::new(),
@@ -126,9 +123,8 @@ mod tests {
                 source_file: None,
             }],
         };
-        fileless.barcode = BarcodeSignal::Settled {
-            codes: vec![SourcedValue::new("5099969394522".to_string())],
-        };
+        fileless.barcode =
+            BarcodeSignal::Settled { codes: vec![SourcedValue::new("5099969394522".to_string())] };
 
         assert!(file_evidence(&fileless).is_empty());
     }

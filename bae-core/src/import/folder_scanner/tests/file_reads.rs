@@ -1,22 +1,15 @@
 /// One valid release at `/music/Album` holding the track `01.flac`, measured
 /// as `audio`.
 fn stored_release(audio: ScannedAudio) -> ScanItem {
-    let mut file = ScannedFile::new(
-        PathBuf::from("/music/Album/01.flac"),
-        "01.flac".to_string(),
-        10,
-        1,
-    );
+    let mut file =
+        ScannedFile::new(PathBuf::from("/music/Album/01.flac"), "01.flac".to_string(), 10, 1);
     file.source_audio = Some(audio);
     ScanItem::Valid(FolderCandidate {
         path: PathBuf::from("/music/Album"),
         file_root: PathBuf::from("/music/Album"),
         name: "Album".to_string(),
         files: CategorizedFiles {
-            files: vec![CandidateFile {
-                file,
-                role: FileRole::Audio,
-            }],
+            files: vec![CandidateFile { file, role: FileRole::Audio }],
             parts: Vec::new(),
         },
         watched_folder_path: std::path::PathBuf::from("/music"),
@@ -41,24 +34,15 @@ fn measured(duration_ms: u64) -> ScannedAudio {
 #[test]
 fn stored_rows_that_disagree_about_a_file_fail_the_pass() {
     let error = FileReads::stored(
-        &[
-            stored_release(measured(5_000)),
-            stored_release(measured(6_000)),
-        ],
+        &[stored_release(measured(5_000)), stored_release(measured(6_000))],
         &[],
         Arc::new(crate::import::file_tag_snapshot::LoftyFileTagReader),
     )
     .err()
     .expect("the rows disagree");
-    assert!(
-        error.to_string().contains("/music/Album/01.flac"),
-        "{error}"
-    );
+    assert!(error.to_string().contains("/music/Album/01.flac"), "{error}");
     assert!(FileReads::stored(
-        &[
-            stored_release(measured(5_000)),
-            stored_release(measured(5_000))
-        ],
+        &[stored_release(measured(5_000)), stored_release(measured(5_000))],
         &[],
         Arc::new(crate::import::file_tag_snapshot::LoftyFileTagReader),
     )
@@ -74,10 +58,7 @@ struct PictureReader {
 
 impl PictureReader {
     fn new(size: usize) -> Arc<Self> {
-        Arc::new(Self {
-            size,
-            reads: Default::default(),
-        })
+        Arc::new(Self { size, reads: Default::default() })
     }
 
     fn reads_of(&self, path: &Path) -> u64 {
@@ -90,17 +71,9 @@ impl crate::import::file_tag_snapshot::FileTagReader for PictureReader {
         &self,
         path: &Path,
     ) -> Result<crate::import::file_tag_snapshot::FileTagRead, crate::import::ImportError> {
-        *self
-            .reads
-            .lock()
-            .unwrap()
-            .entry(path.to_path_buf())
-            .or_default() += 1;
+        *self.reads.lock().unwrap().entry(path.to_path_buf()).or_default() += 1;
         let mut read = crate::import::file_tag_snapshot::LoftyFileTagReader.read(path)?;
-        read.embedded_cover = Some((
-            vec![0; self.size],
-            bae_util::content_type::ContentType::Jpeg,
-        ));
+        read.embedded_cover = Some((vec![0; self.size], bae_util::content_type::ContentType::Jpeg));
         Ok(read)
     }
 }
@@ -149,19 +122,13 @@ fn a_pass_holds_only_the_picture_a_release_takes() {
     let audio = audio_of(&release);
 
     let reading = reads.tag_snapshot(&audio, 0, 0, None).unwrap();
-    assert_eq!(
-        reading.embedded_cover.unwrap().source_relative_path,
-        "01.flac"
-    );
+    assert_eq!(reading.embedded_cover.unwrap().source_relative_path, "01.flac");
     for file in &audio {
         assert_eq!(reader.reads_of(&file.path), 1, "{}", file.relative_path);
     }
 
     let second = reads.tag_snapshot(&audio[1..], 0, 0, None).unwrap();
-    assert_eq!(
-        second.embedded_cover.unwrap().source_relative_path,
-        "02.flac"
-    );
+    assert_eq!(second.embedded_cover.unwrap().source_relative_path, "02.flac");
     assert_eq!(reader.reads_of(&audio[1].path), 2);
 }
 

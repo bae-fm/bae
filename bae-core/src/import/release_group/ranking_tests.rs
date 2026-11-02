@@ -26,10 +26,7 @@ fn rows_the_text_says_most_about_lead() {
         ],
         None,
     );
-    assert_eq!(
-        lead_ids(&groups[0]),
-        vec![vec!["rel-late"], vec!["rel-early"]]
-    );
+    assert_eq!(lead_ids(&groups[0]), vec![vec!["rel-late"], vec!["rel-early"]]);
 }
 
 /// Rows the text says as much about keep the pressing-year order.
@@ -42,10 +39,7 @@ fn rows_the_text_says_as_much_about_keep_the_year_order() {
         ],
         None,
     );
-    assert_eq!(
-        lead_ids(&groups[0]),
-        vec![vec!["rel-early"], vec!["rel-late"]]
-    );
+    assert_eq!(lead_ids(&groups[0]), vec![vec!["rel-early"], vec!["rel-late"]]);
 }
 
 /// A row is picked whole, so what the text says about the row is what it
@@ -82,14 +76,8 @@ fn a_row_outranks_by_what_its_records_add_up_to() {
     mb_release.barcodes = vec!["0075678169328".to_string()];
     let mut dg_release = discogs("dg-1", Some("master-7"), Some(1976));
     dg_release.barcodes = vec!["0075678169328".to_string()];
-    let disc_id_only = Agreements {
-        disc_id: true,
-        ..Agreements::NONE
-    };
-    let catalog_only = Agreements {
-        catalog: true,
-        ..Agreements::NONE
-    };
+    let disc_id_only = Agreements { disc_id: true, ..Agreements::NONE };
+    let catalog_only = Agreements { catalog: true, ..Agreements::NONE };
     let groups = group_results(
         vec![
             (mb_release, disc_id_only),
@@ -117,10 +105,7 @@ fn a_shared_barcode_pairs_with_the_record_pressed_the_same_year() {
         .into_iter()
         .map(|year| {
             let mut release = discogs(
-                &format!(
-                    "dg-{}",
-                    year.map_or("undated".to_string(), |y| y.to_string())
-                ),
+                &format!("dg-{}", year.map_or("undated".to_string(), |y| y.to_string())),
                 Some("master-7"),
                 year,
             );
@@ -132,11 +117,7 @@ fn a_shared_barcode_pairs_with_the_record_pressed_the_same_year() {
     let groups = grouped(std::iter::once(lead).chain(reissues).collect());
     assert_eq!(
         lead_ids(&groups[0]),
-        vec![
-            vec!["mb-1988", "dg-1988"],
-            vec!["dg-1991"],
-            vec!["dg-undated"]
-        ]
+        vec![vec!["mb-1988", "dg-1988"], vec!["dg-1991"], vec!["dg-undated"]]
     );
 }
 
@@ -156,10 +137,7 @@ fn two_records_of_one_catalog_leave_their_common_match_alone() {
     let groups = grouped(vec![lead.clone(), first.clone(), second.clone()]);
     let mut rows = lead_ids(&groups[0]);
     rows.sort();
-    assert_eq!(
-        rows,
-        vec![vec!["dg-first"], vec!["dg-second"], vec!["mb-1"]]
-    );
+    assert_eq!(rows, vec![vec!["dg-first"], vec!["dg-second"], vec!["mb-1"]]);
     assert_eq!(pressing_count(vec![second, lead, first]), 3);
 }
 
@@ -177,10 +155,7 @@ fn records_that_contradict_each_other_leave_their_common_match_ambiguous() {
     second.barcodes = vec!["4988014720311".to_string()];
 
     let groups = grouped(vec![lead.clone(), first.clone(), second.clone()]);
-    assert_eq!(
-        lead_ids(&groups[0]),
-        vec![vec!["dg-first"], vec!["dg-second"], vec!["mb-1"]]
-    );
+    assert_eq!(lead_ids(&groups[0]), vec![vec!["dg-first"], vec!["dg-second"], vec!["mb-1"]]);
     assert_eq!(pressing_count(vec![second, lead, first]), 3);
 }
 
@@ -196,10 +171,7 @@ fn cards_are_ordered_by_their_best_row() {
         None,
     );
     assert_eq!(
-        groups
-            .iter()
-            .map(|group| group.id.as_str())
-            .collect::<Vec<_>>(),
+        groups.iter().map(|group| group.id.as_str()).collect::<Vec<_>>(),
         vec!["group-named", "group-stranger"],
     );
 }
@@ -235,10 +207,7 @@ fn the_record_the_text_says_most_about_leads_its_pressing() {
         groups[0].sections[0].pressings[0].pick(),
         crate::import::PressingLink {
             record: crate::import::MetadataRef::new(Catalog::Discogs, "dg-1".to_string()),
-            partners: vec![crate::import::MetadataRef::new(
-                Catalog::MusicBrainz,
-                "mb-1"
-            )],
+            partners: vec![crate::import::MetadataRef::new(Catalog::MusicBrainz, "mb-1")],
         }
     );
 }
@@ -285,11 +254,7 @@ fn the_card_names_its_sources_in_the_order_surfaces_list_them() {
         "the best row is read from the Discogs record",
     );
     assert_eq!(
-        groups[0]
-            .sources
-            .iter()
-            .map(|source| source.source)
-            .collect::<Vec<_>>(),
+        groups[0].sources.iter().map(|source| source.source).collect::<Vec<_>>(),
         vec![Catalog::MusicBrainz, Catalog::Discogs]
     );
 }

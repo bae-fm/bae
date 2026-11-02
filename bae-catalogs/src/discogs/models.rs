@@ -63,10 +63,7 @@ pub struct DiscogsFormat {
     pub descriptions: Vec<String>,
     /// Free text beside the format ("Small label", "Club Edition"); absent
     /// where none is written.
-    #[serde(
-        default,
-        deserialize_with = "crate::serde_helpers::empty_string_as_none"
-    )]
+    #[serde(default, deserialize_with = "crate::serde_helpers::empty_string_as_none")]
     pub text: Option<String>,
 }
 

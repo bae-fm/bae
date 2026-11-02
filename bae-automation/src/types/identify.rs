@@ -92,10 +92,7 @@ pub struct AutomationDiscIdRow {
 pub enum AutomationBarcodeStep {
     Absent,
     NoCodes,
-    Rows {
-        scanning: bool,
-        rows: Vec<AutomationSignalValueRow>,
-    },
+    Rows { scanning: bool, rows: Vec<AutomationSignalValueRow> },
 }
 
 /// Mirrors bae-core's `identify::IsrcStepView`.
@@ -104,10 +101,7 @@ pub enum AutomationBarcodeStep {
 pub enum AutomationIsrcStep {
     Reading,
     Absent,
-    Read {
-        isrcs: Vec<String>,
-        lookup: AutomationLookupState,
-    },
+    Read { isrcs: Vec<String>, lookup: AutomationLookupState },
 }
 
 /// Mirrors bae-core's `identify::CatalogCandidateView`.
@@ -134,15 +128,8 @@ pub enum AutomationCatalogStep {
 pub enum AutomationSearchStep {
     NotNeeded,
     NoTitle,
-    Waiting {
-        album: String,
-        artist: String,
-    },
-    Searched {
-        album: String,
-        artist: String,
-        cells: Vec<AutomationProviderCell>,
-    },
+    Waiting { album: String, artist: String },
+    Searched { album: String, artist: String, cells: Vec<AutomationProviderCell> },
 }
 
 /// Mirrors bae-core's `identify::IdentifyRunView`.
@@ -175,35 +162,14 @@ pub struct AutomationAgreements {
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationIdentifyFailure {
-    DiscId {
-        failure: AutomationLookupFailure,
-    },
-    Barcode {
-        source: AutomationCatalog,
-        failure: AutomationLookupFailure,
-    },
-    Catalog {
-        source: AutomationCatalog,
-        failure: AutomationLookupFailure,
-    },
-    Search {
-        source: AutomationCatalog,
-        failure: AutomationLookupFailure,
-    },
-    Isrc {
-        failure: AutomationLookupFailure,
-    },
-    Pressing {
-        source: AutomationCatalog,
-        failure: AutomationLookupFailure,
-    },
-    ReleaseDetails {
-        failure: AutomationLookupFailure,
-    },
-    Cover {
-        source: AutomationCatalog,
-        failure: AutomationLookupFailure,
-    },
+    DiscId { failure: AutomationLookupFailure },
+    Barcode { source: AutomationCatalog, failure: AutomationLookupFailure },
+    Catalog { source: AutomationCatalog, failure: AutomationLookupFailure },
+    Search { source: AutomationCatalog, failure: AutomationLookupFailure },
+    Isrc { failure: AutomationLookupFailure },
+    Pressing { source: AutomationCatalog, failure: AutomationLookupFailure },
+    ReleaseDetails { failure: AutomationLookupFailure },
+    Cover { source: AutomationCatalog, failure: AutomationLookupFailure },
 }
 
 /// Mirrors bae-core's `identify::IdentifyStateView`.

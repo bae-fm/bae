@@ -115,10 +115,7 @@ mirror_struct! {
 /// keeps the name they came with.
 impl BridgeRawLabelEdit {
     pub(crate) fn from_core(row: bae_core::import::RawLabelEdit) -> Self {
-        Self {
-            name: row.name,
-            catalog_number: row.catalog_number,
-        }
+        Self { name: row.name, catalog_number: row.catalog_number }
     }
 
     pub(crate) fn into_core(self) -> bae_core::import::RawLabelEdit {
@@ -171,10 +168,7 @@ impl BridgeReleaseEditTrackContext {
         } = context;
         Self {
             track_id,
-            sources: sources
-                .into_iter()
-                .map(BridgeReleaseEditTrackSource::from_core)
-                .collect(),
+            sources: sources.into_iter().map(BridgeReleaseEditTrackSource::from_core).collect(),
             duration_clock: crate::types::BridgeDurationClock::of_length(duration_ms),
             position_text,
         }
@@ -202,10 +196,7 @@ impl BridgeReleaseEditTrackSide {
         Self {
             header_key: side.header_key().map(str::to_string),
             side,
-            runs: runs
-                .into_iter()
-                .map(BridgeReleaseEditTrackRun::from_core)
-                .collect(),
+            runs: runs.into_iter().map(BridgeReleaseEditTrackRun::from_core).collect(),
         }
     }
 }

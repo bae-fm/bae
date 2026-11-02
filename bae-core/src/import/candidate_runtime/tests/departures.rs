@@ -2,7 +2,10 @@
 // that work read files the candidate no longer has.
 
 /// Start extraction and an identify run on `key`, returning their tokens.
-fn start_both(runtime: &CandidateRuntime, key: &crate::import::CandidateKey) -> [tokio_util::sync::CancellationToken; 2] {
+fn start_both(
+    runtime: &CandidateRuntime,
+    key: &crate::import::CandidateKey,
+) -> [tokio_util::sync::CancellationToken; 2] {
     [CandidateWork::Extraction, CandidateWork::Identify]
         .map(|work| runtime.start_work(work, key.clone(), |token, _| token))
 }
@@ -22,7 +25,8 @@ fn invalid(candidate: &FolderCandidate) -> ImportEvent {
 #[tokio::test]
 async fn a_candidate_leaving_or_reshaped_ends_its_work() {
     for grouping in [None, Some(crate::import::CandidateKey::grouping("group-1"))] {
-        let mut candidate = folder_candidate(&crate::import::CandidateKey::test("/watch/a/rel1"), "/watch/a");
+        let mut candidate =
+            folder_candidate(&crate::import::CandidateKey::test("/watch/a/rel1"), "/watch/a");
         candidate.grouping = grouping;
         let key = candidate.key();
         let mut reshaped = candidate.clone();
@@ -31,9 +35,7 @@ async fn a_candidate_leaving_or_reshaped_ends_its_work() {
             ("reshaped", scanned(reshaped.clone())),
             (
                 "reshaped while not yet actionable",
-                ImportEvent::Scan(ScanEvent::CandidateDiscovered {
-                    candidate: reshaped,
-                }),
+                ImportEvent::Scan(ScanEvent::CandidateDiscovered { candidate: reshaped }),
             ),
             (
                 "rebound",
@@ -44,9 +46,7 @@ async fn a_candidate_leaving_or_reshaped_ends_its_work() {
             ("invalid", invalid(&candidate)),
             (
                 "removed",
-                ImportEvent::Scan(ScanEvent::CandidateRemoved {
-                    candidate_key: key.clone(),
-                }),
+                ImportEvent::Scan(ScanEvent::CandidateRemoved { candidate_key: key.clone() }),
             ),
         ];
         for (name, departure) in departures {

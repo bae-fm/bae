@@ -61,12 +61,7 @@ impl ResamplingDrain {
         let resampler = if (source_rate, source_channels) == (output_rate, output_channels) {
             None
         } else {
-            Some(Resampler::new(
-                source_rate,
-                source_channels,
-                output_rate,
-                output_channels,
-            )?)
+            Some(Resampler::new(source_rate, source_channels, output_rate, output_channels)?)
         };
         Ok(Self {
             drain,
@@ -114,10 +109,7 @@ impl ResamplingDrain {
             return Pull::Idle;
         }
         self.pulled.resize(frames * self.source_channels, 0.0);
-        match self
-            .drain
-            .drain_iteration(&mut self.pulled, true, false, self.lock_miss.as_mut())
-        {
+        match self.drain.drain_iteration(&mut self.pulled, true, false, self.lock_miss.as_mut()) {
             DrainStatus::Samples { read } => {
                 self.flushed = false;
                 let input = &self.pulled[..read];
@@ -153,10 +145,7 @@ impl ResamplingDrain {
 
     /// Stop yielding after a conversion failed, and tell playback why.
     fn conversion_failed(&mut self, what: &str, error: String) -> Pull {
-        self.fail(format!(
-            "converting {what} for {} failed: {error}",
-            self.output_name
-        ));
+        self.fail(format!("converting {what} for {} failed: {error}", self.output_name));
         Pull::Idle
     }
 
@@ -275,10 +264,7 @@ mod tests {
         for frame in 1_000..8_000 {
             let expected = tone(96_000.0, frame);
             let actual = heard[frame * 2];
-            assert!(
-                (actual - expected).abs() < 0.05,
-                "frame {frame}: {actual} vs {expected}"
-            );
+            assert!((actual - expected).abs() < 0.05, "frame {frame}: {actual} vs {expected}");
         }
     }
 }

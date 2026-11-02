@@ -119,17 +119,14 @@ fn playback_cpu_exceeds_limits(decode_multiple: f64, realtime_factor: f64) -> bo
 fn run_ffmpeg(args: &[&str], fixture: &str) {
     use std::process::Command;
 
-    let output = Command::new("ffmpeg")
-        .args(args)
-        .output()
-        .unwrap_or_else(|e| {
-            panic!(
-                "could not run the `ffmpeg` command-line tool needed to generate the {fixture} \
+    let output = Command::new("ffmpeg").args(args).output().unwrap_or_else(|e| {
+        panic!(
+            "could not run the `ffmpeg` command-line tool needed to generate the {fixture} \
                  fixture: {e}\nPut `ffmpeg` on PATH: run scripts/setup-ffmpeg.sh (it fetches \
                  ffmpeg into bae-ffmpeg/dist/bin — add that to PATH), or install it system-wide \
                  (`brew install ffmpeg` on macOS, your package manager on Linux)."
-            )
-        });
+        )
+    });
 
     assert!(
         output.status.success(),
@@ -233,11 +230,7 @@ fn create_cue_flac_test_album() -> DiscogsRelease {
         ..support::discogs_test_release(
             "cue-flac-cpu-test",
             "Test Album",
-            &[
-                ("Track One", "0:30"),
-                ("Track Two", "0:30"),
-                ("Track Three", "0:30"),
-            ],
+            &[("Track One", "0:30"), ("Track Two", "0:30"), ("Track Three", "0:30")],
         )
     }
 }
@@ -251,11 +244,7 @@ fn create_mp3_test_album() -> DiscogsRelease {
         ..support::discogs_test_release(
             "mp3-cpu-test",
             "Test Album MP3",
-            &[
-                ("Track 1", "0:30"),
-                ("Track 2", "0:30"),
-                ("Track 3", "0:30"),
-            ],
+            &[("Track 1", "0:30"), ("Track 2", "0:30"), ("Track 3", "0:30")],
         )
     }
 }
@@ -348,19 +337,11 @@ fn get_process_cpu_time() -> Duration {
 /// Wait (up to `within`) for playback to report it is playing.
 async fn await_playing(fixture: &mut PlaybackTestFixture, within: Duration, label: &str) {
     let started = support::next_matching(&mut fixture.progress_rx, within, |event| {
-        matches!(
-            event,
-            PlaybackProgress::StateChanged {
-                state: PlaybackState::Playing { .. }
-            }
-        )
-        .then_some(())
+        matches!(event, PlaybackProgress::StateChanged { state: PlaybackState::Playing { .. } })
+            .then_some(())
     })
     .await;
-    assert!(
-        started.is_some(),
-        "{label}: playback did not start within {within:?}"
-    );
+    assert!(started.is_some(), "{label}: playback did not start within {within:?}");
 }
 
 /// This machine's cost to decode one second of this album's audio: CPU-seconds

@@ -70,10 +70,7 @@ impl ReleaseEditSession {
         let runtime = self.runtime.clone();
         runtime
             .run("ReleaseEditSession.set_album", move || async move {
-                let album = self
-                    .services
-                    .set_release_edit_album(&self.inner, album_id)
-                    .await?;
+                let album = self.services.set_release_edit_album(&self.inner, album_id).await?;
                 Ok(crate::types::BridgeDraftAlbum::from_core(album))
             })
             .await
@@ -91,9 +88,7 @@ impl ReleaseEditSession {
         let runtime = self.runtime.clone();
         runtime
             .run("ReleaseEditSession.save", move || async move {
-                self.services
-                    .save_release_edit(&self.inner, &edit.into_core())
-                    .await?;
+                self.services.save_release_edit(&self.inner, &edit.into_core()).await?;
                 self.services
                     .get_album_id_for_release(self.inner.release_id())
                     .await

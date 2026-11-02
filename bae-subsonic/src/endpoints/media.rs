@@ -61,9 +61,7 @@ async fn stream_inner(
     headers: &HeaderMap,
 ) -> Result<Response, SubError> {
     let services = &state.services;
-    let track_id = SubId::parse(params.require("id")?)?
-        .expect_track()?
-        .to_string();
+    let track_id = SubId::parse(params.require("id")?)?.expect_track()?.to_string();
 
     let existing = services
         .filter_existing_track_ids(std::slice::from_ref(&track_id))
@@ -72,10 +70,7 @@ async fn stream_inner(
     if existing.is_empty() {
         return Err(SubError::not_found());
     }
-    let audio = services
-        .resolve_track_audio(&track_id)
-        .await
-        .map_err(lib_err)?;
+    let audio = services.resolve_track_audio(&track_id).await.map_err(lib_err)?;
 
     let requested_format = params.get("format");
     let max_bitrate = params.int("maxBitRate")?.filter(|&b| b > 0);
@@ -126,10 +121,7 @@ async fn stream_file(
                 .header(CONTENT_TYPE, content_type)
                 .header(ACCEPT_RANGES, "bytes")
                 .header(CONTENT_LENGTH, len)
-                .header(
-                    CONTENT_RANGE,
-                    format!("bytes {start}-{end_inclusive}/{total}"),
-                )
+                .header(CONTENT_RANGE, format!("bytes {start}-{end_inclusive}/{total}"))
                 .body(body)
                 .expect("range response builds"))
         }
@@ -210,10 +202,7 @@ async fn reader_body(
                 }
                 Ok(n) => {
                     remaining -= n as u64;
-                    if tx
-                        .blocking_send(Ok(Bytes::copy_from_slice(&chunk[..n])))
-                        .is_err()
-                    {
+                    if tx.blocking_send(Ok(Bytes::copy_from_slice(&chunk[..n]))).is_err() {
                         break; // client hung up
                     }
                 }
@@ -267,39 +256,26 @@ async fn stream_encoded(
 
     let cancel = Arc::new(AtomicBool::new(false));
     let track_id = audio.track_id.clone();
-    let rx = produce_body(
-        &state.diagnostics,
-        "transcode a streamed track",
-        move |tx| {
-            let sink = ChannelSink { tx: tx.clone() };
-            let mut encoder = StreamingEncoder::streaming(format, Box::new(sink), cancel.clone());
-            if let Err(error) = decode.run_to_sink(&mut encoder, cancel.clone()) {
-                warn!("subsonic transcode of {track_id} failed to decode: {error}");
-                end_body(
-                    &tx,
-                    std::io::Error::other(format!("decoding the track failed: {error}")),
-                );
-                return;
-            }
-            if let Err(error) = encoder.finish() {
-                warn!("subsonic transcode of {track_id} failed to finish: {error}");
-                end_body(
-                    &tx,
-                    std::io::Error::other(format!("finishing the encode failed: {error}")),
-                );
-            }
-        },
-    );
+    let rx = produce_body(&state.diagnostics, "transcode a streamed track", move |tx| {
+        let sink = ChannelSink { tx: tx.clone() };
+        let mut encoder = StreamingEncoder::streaming(format, Box::new(sink), cancel.clone());
+        if let Err(error) = decode.run_to_sink(&mut encoder, cancel.clone()) {
+            warn!("subsonic transcode of {track_id} failed to decode: {error}");
+            end_body(&tx, std::io::Error::other(format!("decoding the track failed: {error}")));
+            return;
+        }
+        if let Err(error) = encoder.finish() {
+            warn!("subsonic transcode of {track_id} failed to finish: {error}");
+            end_body(&tx, std::io::Error::other(format!("finishing the encode failed: {error}")));
+        }
+    });
 
-    let mut builder = Response::builder()
-        .status(StatusCode::OK)
-        .header(CONTENT_TYPE, format.content_type());
+    let mut builder =
+        Response::builder().status(StatusCode::OK).header(CONTENT_TYPE, format.content_type());
     if let Some(bytes) = content_length {
         builder = builder.header(CONTENT_LENGTH, bytes);
     }
-    Ok(builder
-        .body(Body::from_stream(ReceiverStream::new(rx)))
-        .expect("transcode response builds"))
+    Ok(builder.body(Body::from_stream(ReceiverStream::new(rx))).expect("transcode response builds"))
 }
 
 /// The transcode for the requested format and bitrate. `wav` is the track's
@@ -314,12 +290,10 @@ fn transcode_format(
     let bitrate = max_bitrate.filter(|&b| b > 0).unwrap_or(128) as u32;
     match requested_format {
         Some("wav") => audio.wav_stream_format(),
-        Some("opus") | Some("ogg") => StreamEncodeFormat::OpusOgg {
-            bitrate_kbps: bitrate.clamp(32, 512),
-        },
-        _ => StreamEncodeFormat::Mp3 {
-            bitrate_kbps: bitrate.clamp(32, 320),
-        },
+        Some("opus") | Some("ogg") => {
+            StreamEncodeFormat::OpusOgg { bitrate_kbps: bitrate.clamp(32, 512) }
+        }
+        _ => StreamEncodeFormat::Mp3 { bitrate_kbps: bitrate.clamp(32, 320) },
     }
 }
 
@@ -351,11 +325,9 @@ impl std::io::Write for ChannelSink {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
         // A closed receiver (client hung up) surfaces as a broken pipe, which
         // stops the encode rather than being silently dropped.
-        self.tx
-            .blocking_send(Ok(Bytes::copy_from_slice(buf)))
-            .map_err(|error| {
-                std::io::Error::new(std::io::ErrorKind::BrokenPipe, error.to_string())
-            })?;
+        self.tx.blocking_send(Ok(Bytes::copy_from_slice(buf))).map_err(|error| {
+            std::io::Error::new(std::io::ErrorKind::BrokenPipe, error.to_string())
+        })?;
         Ok(buf.len())
     }
 
@@ -420,11 +392,7 @@ async fn cover_art_inner(state: &AppState, params: &Params) -> Result<Response, 
         .map_err(lib_err)?
         .ok_or_else(SubError::not_found)?;
 
-    Ok((
-        [(CONTENT_TYPE, row.content_type.as_str().to_string())],
-        bytes,
-    )
-        .into_response())
+    Ok(([(CONTENT_TYPE, row.content_type.as_str().to_string())], bytes).into_response())
 }
 
 /// The image a `getCoverArt` id names: an album's or a song's release cover,
@@ -436,10 +404,7 @@ async fn cover_subject(
     match SubId::parse_cover_art(raw_id)? {
         SubId::Album(release_id) => Ok((release_id, LibraryImageType::Cover)),
         SubId::Track(track_id) => {
-            let info = services
-                .get_playback_track_info(&track_id)
-                .await
-                .map_err(lib_err)?;
+            let info = services.get_playback_track_info(&track_id).await.map_err(lib_err)?;
             Ok((info.release_id, LibraryImageType::Cover))
         }
         SubId::Artist(artist_id) => Ok((artist_id, LibraryImageType::Artist)),
@@ -466,8 +431,7 @@ mod tests {
         let diagnostics = Diagnostics::noop().reporting_bugs_to(bugs.clone());
 
         let mut body = produce_body(&diagnostics, "test stream", |tx| {
-            tx.blocking_send(Ok(Bytes::from_static(b"first")))
-                .expect("the test reads the body");
+            tx.blocking_send(Ok(Bytes::from_static(b"first"))).expect("the test reads the body");
             panic!("the producer broke its guarantee");
         });
 
@@ -480,12 +444,7 @@ mod tests {
             .await
             .expect("the body does not end cleanly")
             .expect_err("the body ends with an error");
-        assert!(
-            ended
-                .to_string()
-                .contains("the producer broke its guarantee"),
-            "{ended}"
-        );
+        assert!(ended.to_string().contains("the producer broke its guarantee"), "{ended}");
         assert!(body.recv().await.is_none());
         let reports = bugs.reports();
         assert_eq!(reports.len(), 1, "{reports:?}");

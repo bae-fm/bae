@@ -32,18 +32,15 @@ impl LiveList {
     /// Wait until the list shows exactly `expected`; at once when it already
     /// does, since a change that moves no row delivers nothing.
     async fn shows(&mut self, expected: &[&crate::import::CandidateKey]) {
-        let wanted: Vec<crate::import::CandidateKey> = expected.iter().map(|key| (*key).clone()).collect();
+        let wanted: Vec<crate::import::CandidateKey> =
+            expected.iter().map(|key| (*key).clone()).collect();
         let reached = tokio::time::timeout(HANG_GUARD, async {
             while self.shown.as_ref() != Some(&wanted) {
                 self.next().await;
             }
         })
         .await;
-        assert!(
-            reached.is_ok(),
-            "the list shows {:?}, not {wanted:?}",
-            self.shown
-        );
+        assert!(reached.is_ok(), "the list shows {:?}, not {wanted:?}", self.shown);
     }
 
     /// How many rows the last snapshot counts under `filter`; none before
@@ -100,7 +97,11 @@ async fn importing_shows_a_queued_and_a_running_import_until_it_ends() {
 
     handle
         .runtime
-        .move_import(&key, "import-1", Some(crate::import::ImportStep::Running(crate::import::ImportPhase::ReadingFiles)))
+        .move_import(
+            &key,
+            "import-1",
+            Some(crate::import::ImportStep::Running(crate::import::ImportPhase::ReadingFiles)),
+        )
         .await
         .unwrap();
     list.shows(&[&key]).await;
@@ -195,7 +196,13 @@ async fn the_entry_counts_follow_what_is_running() {
 /// A watched root holding two stored candidates, each with its draft read
 /// from its own tags, and the list under All through a window that holds the
 /// first item alone: the key on that page, and the key off it.
-async fn one_row_on_the_page() -> (ImportServiceHandle, TempDir, ImportListSubscription, crate::import::CandidateKey, crate::import::CandidateKey) {
+async fn one_row_on_the_page() -> (
+    ImportServiceHandle,
+    TempDir,
+    ImportListSubscription,
+    crate::import::CandidateKey,
+    crate::import::CandidateKey,
+) {
     let (manager, tmp) = setup_test_manager_with(bae_util::http::Http::for_test()).await;
     let (first, first_key, _) = unscanned_candidate(&manager, &tmp, "Album").await;
     let (second, second_key, _) = unscanned_candidate(&manager, &tmp, "Other Record").await;
@@ -211,24 +218,15 @@ async fn one_row_on_the_page() -> (ImportServiceHandle, TempDir, ImportListSubsc
             .await
             .unwrap();
     }
-    manager
-        .finish_folder_scan(&root, generation, None)
-        .await
-        .unwrap();
-    let handle = manager
-        .start_import_service(tokio::runtime::Handle::current())
-        .await
-        .unwrap();
+    manager.finish_folder_scan(&root, generation, None).await.unwrap();
+    let handle = manager.start_import_service(tokio::runtime::Handle::current()).await.unwrap();
     for key in [&first_key, &second_key] {
         handle.select_candidate_file_tags(key.clone()).await.unwrap();
     }
     let list = handle
         .subscribe_list_window(
             ImportListView::default(),
-            crate::library::LibraryPageWindow {
-                offset: 0,
-                limit: 1,
-            },
+            crate::library::LibraryPageWindow { offset: 0, limit: 1 },
         )
         .await;
     let snapshot = delivered(&list).await;
@@ -269,10 +267,7 @@ async fn delivered(list: &ImportListSubscription) -> crate::import::ImportListSn
 /// How many rows `entries` count under `filter`; `None` when they hold no
 /// entry for it, as before the list's first snapshot.
 fn counted(entries: &[crate::import::PendingFilterEntry], filter: PendingFilter) -> Option<u32> {
-    entries
-        .iter()
-        .find(|entry| entry.filter == filter)
-        .map(|entry| entry.count)
+    entries.iter().find(|entry| entry.filter == filter).map(|entry| entry.count)
 }
 
 /// A run starting for a row off the page, under All, changes nothing on the

@@ -58,11 +58,7 @@ pub(crate) struct DownloadRate {
 
 impl DownloadRate {
     pub(crate) fn begin(now: std::time::SystemTime, bytes_done: u64) -> Self {
-        Self {
-            began: now,
-            bytes_then: bytes_done,
-            bytes_last: bytes_done,
-        }
+        Self { began: now, bytes_then: bytes_done, bytes_last: bytes_done }
     }
 
     /// `progress` read at `now`, with the rate it has gone at since the
@@ -78,15 +74,10 @@ impl DownloadRate {
         }
         self.bytes_last = progress.bytes_done;
         let moved = progress.bytes_done - self.bytes_then;
-        let elapsed = now
-            .duration_since(self.began)
-            .expect("download clock regressed");
+        let elapsed = now.duration_since(self.began).expect("download clock regressed");
         let throughput_bps = (moved > 0 && !elapsed.is_zero())
             .then(|| (moved as f64 / elapsed.as_secs_f64()) as u64);
-        DownloadTransferProgress {
-            throughput_bps,
-            ..progress
-        }
+        DownloadTransferProgress { throughput_bps, ..progress }
     }
 }
 

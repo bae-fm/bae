@@ -39,9 +39,7 @@ fn credit(
         sort_name: None,
         discogs_artist_id: discogs_artist_id.map(str::to_string),
         musicbrainz_artist_id: musicbrainz_artist_id.map(str::to_string),
-        created_at: chrono::DateTime::parse_from_rfc3339(NOW)
-            .unwrap()
-            .with_timezone(&Utc),
+        created_at: chrono::DateTime::parse_from_rfc3339(NOW).unwrap().with_timezone(&Utc),
     }
 }
 
@@ -82,10 +80,7 @@ fn a_catalog_credit_links_by_name_and_gives_the_artist_its_id() {
     let conn = library();
     add_artist(&conn, "library-artist", "Artist Name", None, None);
 
-    let resolved = resolve(
-        &conn,
-        &[credit("credit", "Artist Name", Some("discogs-1"), None)],
-    );
+    let resolved = resolve(&conn, &[credit("credit", "Artist Name", Some("discogs-1"), None)]);
 
     assert_eq!(resolved.ids, ["library-artist"], "the artist keeps its id");
     assert!(resolved.inserts.is_empty());
@@ -98,18 +93,9 @@ fn a_catalog_credit_links_by_name_and_gives_the_artist_its_id() {
 #[test]
 fn a_library_artist_holding_another_id_of_the_catalog_is_not_the_credit() {
     let conn = library();
-    add_artist(
-        &conn,
-        "library-artist",
-        "Artist Name",
-        Some("discogs-x"),
-        None,
-    );
+    add_artist(&conn, "library-artist", "Artist Name", Some("discogs-x"), None);
 
-    let resolved = resolve(
-        &conn,
-        &[credit("credit", "Artist Name", Some("discogs-y"), None)],
-    );
+    let resolved = resolve(&conn, &[credit("credit", "Artist Name", Some("discogs-y"), None)]);
 
     let identity = crate::db::identity::artist_id(None, Some("discogs-y")).unwrap();
     assert_eq!(resolved.ids, [identity.as_str()]);
@@ -153,10 +139,7 @@ fn a_catalog_id_wins_over_the_name() {
     add_artist(&conn, "named", "Artist Name", None, None);
     add_artist(&conn, "catalogued", "Other Name", Some("discogs-1"), None);
 
-    let resolved = resolve(
-        &conn,
-        &[credit("credit", "Artist Name", Some("discogs-1"), None)],
-    );
+    let resolved = resolve(&conn, &[credit("credit", "Artist Name", Some("discogs-1"), None)]);
 
     assert_eq!(resolved.ids, ["catalogued"]);
 }
@@ -192,10 +175,7 @@ fn a_new_catalog_artist_takes_the_catalog_identity() {
     let identity = crate::db::identity::artist_id(None, Some("discogs-1")).unwrap();
     assert_eq!(resolved.ids, [identity.clone(), identity.clone()]);
     assert_eq!(resolved.inserts.len(), 1);
-    assert_eq!(
-        resolved.inserts[0].discogs_artist_id.as_deref(),
-        Some("discogs-1")
-    );
+    assert_eq!(resolved.inserts[0].discogs_artist_id.as_deref(), Some("discogs-1"));
 }
 
 #[test]
@@ -206,10 +186,7 @@ fn a_picked_artist_that_is_gone_refuses_the_write() {
     let error = resolve_artists_on(&conn, &[credit("gone", "Artist Name", None, None)], &picked)
         .unwrap_err();
 
-    assert!(
-        matches!(error, IdentityWriteError::Unresolvable(_)),
-        "{error}"
-    );
+    assert!(matches!(error, IdentityWriteError::Unresolvable(_)), "{error}");
 }
 
 #[test]
@@ -220,12 +197,7 @@ fn two_artists_holding_the_credits_two_ids_are_the_identity_conflict() {
 
     let error = resolve_artists_on(
         &conn,
-        &[credit(
-            "credit",
-            "Artist Name",
-            Some("discogs-1"),
-            Some("mb-1"),
-        )],
+        &[credit("credit", "Artist Name", Some("discogs-1"), Some("mb-1"))],
         &HashSet::new(),
     )
     .unwrap_err();
@@ -256,19 +228,13 @@ fn read_credit(
 }
 
 fn artist_ids(artists: &[crate::import::ExistingArtist]) -> Vec<&str> {
-    artists
-        .iter()
-        .map(|artist| artist.artist_id.as_str())
-        .collect()
+    artists.iter().map(|artist| artist.artist_id.as_str()).collect()
 }
 
 #[test]
 fn a_read_credit_is_new_until_the_library_holds_its_artist() {
     let conn = library();
-    assert_eq!(
-        read_credit(&conn, "Artist Name", None),
-        crate::import::CreditResolution::New
-    );
+    assert_eq!(read_credit(&conn, "Artist Name", None), crate::import::CreditResolution::New);
 
     add_artist(&conn, "library-artist", "Ärtist Name", None, None);
 
@@ -297,13 +263,7 @@ fn a_read_credit_shared_by_two_library_artists_is_ambiguous() {
 #[test]
 fn a_read_credit_with_another_catalog_id_than_the_named_artist_is_new() {
     let conn = library();
-    add_artist(
-        &conn,
-        "library-artist",
-        "Artist Name",
-        Some("discogs-x"),
-        None,
-    );
+    add_artist(&conn, "library-artist", "Artist Name", Some("discogs-x"), None);
 
     assert_eq!(
         read_credit(&conn, "Artist Name", Some("discogs-y")),

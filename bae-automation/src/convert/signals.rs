@@ -29,12 +29,12 @@ impl AutomationBarcodeSignal {
     pub(crate) fn from_core(signal: bae_core::signals::BarcodeSignal) -> Self {
         use bae_core::signals::{BarcodeSignal, SourcedValue};
         match signal {
-            BarcodeSignal::Scanning { codes } => Self::Scanning {
-                codes: SourcedValue::values(&codes),
-            },
-            BarcodeSignal::Settled { codes } => Self::Settled {
-                codes: SourcedValue::values(&codes),
-            },
+            BarcodeSignal::Scanning { codes } => {
+                Self::Scanning { codes: SourcedValue::values(&codes) }
+            }
+            BarcodeSignal::Settled { codes } => {
+                Self::Settled { codes: SourcedValue::values(&codes) }
+            }
             BarcodeSignal::Failed { failure, codes } => Self::Failed {
                 failure: AutomationInternalFailure::from_core(failure),
                 codes: SourcedValue::values(&codes),
@@ -61,14 +61,14 @@ impl AutomationDiscIdSignal {
     pub(crate) fn from_core(signal: bae_core::signals::DiscIdSignal) -> Self {
         use bae_core::signals::DiscIdSignal;
         match signal {
-            DiscIdSignal::Computed { discs } => Self::Computed {
-                disc_ids: discs.into_iter().map(|disc| disc.disc_id).collect(),
-            },
+            DiscIdSignal::Computed { discs } => {
+                Self::Computed { disc_ids: discs.into_iter().map(|disc| disc.disc_id).collect() }
+            }
             DiscIdSignal::Absent => Self::Absent,
             DiscIdSignal::NotCdAudio => Self::NotCdAudio,
-            DiscIdSignal::Failed { failure } => Self::Failed {
-                failure: AutomationInternalFailure::from_core(failure),
-            },
+            DiscIdSignal::Failed { failure } => {
+                Self::Failed { failure: AutomationInternalFailure::from_core(failure) }
+            }
         }
     }
 }
@@ -101,13 +101,12 @@ impl AutomationAudioSource {
     #[cfg(desktop)]
     pub(crate) fn from_core(source: bae_core::signals::AudioSource) -> Self {
         match source {
-            bae_core::signals::AudioSource::CdRip { proof, file } => Self::CdRip {
-                proof: AutomationCdProof::from_core(proof),
-                file,
-            },
-            bae_core::signals::AudioSource::Download(proof) => Self::Download {
-                proof: AutomationDownloadProof::from_core(proof),
-            },
+            bae_core::signals::AudioSource::CdRip { proof, file } => {
+                Self::CdRip { proof: AutomationCdProof::from_core(proof), file }
+            }
+            bae_core::signals::AudioSource::Download(proof) => {
+                Self::Download { proof: AutomationDownloadProof::from_core(proof) }
+            }
         }
     }
 }

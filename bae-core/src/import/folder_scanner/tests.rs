@@ -4,11 +4,8 @@ use std::sync::Arc;
 
 /// Valid FLAC fixture bytes.
 fn fake_flac() -> Vec<u8> {
-    std::fs::read(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/tests/fixtures/flac/01 Test Track 1.flac"
-    ))
-    .expect("read FLAC fixture")
+    std::fs::read(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/flac/01 Test Track 1.flac"))
+        .expect("read FLAC fixture")
 }
 
 /// One audio-role entry, for the hand-built `CategorizedFiles` in the
@@ -26,9 +23,7 @@ fn assert_uniform_source_audio(
     layout: crate::album_detail::SourceAudioLayout,
     codec: &str,
 ) {
-    let summary = files
-        .source_audio_summary()
-        .expect("candidate has source audio");
+    let summary = files.source_audio_summary().expect("candidate has source audio");
     match summary {
         crate::album_detail::SourceAudioSummary::Uniform { descriptor } => {
             assert_eq!(descriptor.layout, layout);
@@ -53,11 +48,7 @@ fn source_audio_keeps_every_physical_file_in_release_order() {
     let source_audio = files.source_audio().expect("candidate has source audio");
 
     assert_eq!(
-        source_audio
-            .files
-            .iter()
-            .map(|file| file.relative_path.as_str())
-            .collect::<Vec<_>>(),
+        source_audio.files.iter().map(|file| file.relative_path.as_str()).collect::<Vec<_>>(),
         ["02.flac", "03.flac"]
     );
     assert!(matches!(
@@ -117,20 +108,12 @@ async fn stored_scan(root: PathBuf, decisions: FolderReleaseDecisions) -> Vec<Sc
         |item| walked.push(item),
     )
     .unwrap();
-    let generation = db
-        .begin_folder_scan(&root, crate::import::VolumeKind::Local)
-        .await
-        .unwrap();
+    let generation = db.begin_folder_scan(&root, crate::import::VolumeKind::Local).await.unwrap();
     for item in walked {
         match item {
-            ScanItem::Decided {
-                key,
-                decision,
-                grouping,
-            } => db
-                .record_scanned_folder_release_decision(&key, decision, &grouping)
-                .await
-                .unwrap(),
+            ScanItem::Decided { key, decision, grouping } => {
+                db.record_scanned_folder_release_decision(&key, decision, &grouping).await.unwrap()
+            }
             item => {
                 db.save_folder_scan_item(&root, generation, &item)
                     .await
@@ -156,11 +139,7 @@ async fn stored_scan(root: PathBuf, decisions: FolderReleaseDecisions) -> Vec<Sc
             }
         }
     }
-    let shown = |item: &ScanItem| {
-        item.relative_folder()
-            .expect("a release shows a path")
-            .text()
-    };
+    let shown = |item: &ScanItem| item.relative_folder().expect("a release shows a path").text();
     valid.sort_by(|left, right| natord::compare_ignore_case(&shown(left), &shown(right)));
     invalid.sort_by(|left, right| natord::compare_ignore_case(&shown(left), &shown(right)));
     valid.into_iter().chain(invalid).collect()

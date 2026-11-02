@@ -96,10 +96,7 @@ impl<Request, Projection> CancellableLiveQuery<Request, Projection> {
     /// lives until [`Self::close`] takes it, or until this is dropped.
     pub(crate) fn cancel(&self) {
         self.cancellation.cancel();
-        self.requests
-            .lock()
-            .expect("live query request mutex poisoned")
-            .take();
+        self.requests.lock().expect("live query request mutex poisoned").take();
     }
 
     /// Cancel, then drop the query once no read holds it.

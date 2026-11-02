@@ -59,11 +59,7 @@ impl LibraryManager {
         #[cfg(desktop)] providers: crate::providers::Providers,
     ) -> Result<Self, crate::db::DbError> {
         let handle = match opening {
-            LibraryOpening::Registered {
-                builder,
-                store,
-                on_progress,
-            } => {
+            LibraryOpening::Registered { builder, store, on_progress } => {
                 crate::library::configure_store(builder)
                     .clock(clock.clone())
                     .open(store, on_progress)
@@ -163,12 +159,8 @@ impl LibraryManager {
             #[cfg(test)]
             pin_reads_hold: Arc::default(),
         };
-        manager
-            .start_queue_workers()
-            .expect("a manager being assembled has not closed");
-        manager
-            .start_profile_requests()
-            .expect("a manager being assembled has not closed");
+        manager.start_queue_workers().expect("a manager being assembled has not closed");
+        manager.start_profile_requests().expect("a manager being assembled has not closed");
         manager
     }
 
@@ -249,9 +241,7 @@ impl LibraryManager {
             },
             on_panic,
         );
-        self.tasks
-            .tracker
-            .spawn_on(task.ended(), &self.runtime_handle);
+        self.tasks.tracker.spawn_on(task.ended(), &self.runtime_handle);
         Ok(())
     }
 
@@ -360,9 +350,7 @@ impl LibraryManager {
                 &self.runtime_handle,
             )
         };
-        joined(name, task)
-            .await
-            .map_err(|failed| self.bug(failed))?
+        joined(name, task).await.map_err(|failed| self.bug(failed))?
     }
 
     /// Close the library: stop the sync loop, end every background task the
@@ -436,15 +424,10 @@ impl LibraryManager {
         discid: &str,
         priority: bae_catalogs::rate_limiter::CallPriority,
     ) -> Result<
-        Vec<(
-            crate::import::search::MetadataResult,
-            crate::import::payloads::DiscIdRelease,
-        )>,
+        Vec<(crate::import::search::MetadataResult, crate::import::payloads::DiscIdRelease)>,
         crate::signals::Failure,
     > {
-        self.providers
-            .lookup_musicbrainz_discid(discid, priority)
-            .await
+        self.providers.lookup_musicbrainz_discid(discid, priority).await
     }
 
     #[cfg(desktop)]
@@ -453,9 +436,7 @@ impl LibraryManager {
         isrcs: &[String],
         priority: bae_catalogs::rate_limiter::CallPriority,
     ) -> Result<Vec<crate::import::search::MetadataResult>, crate::signals::Failure> {
-        self.providers
-            .lookup_musicbrainz_isrcs(isrcs, priority)
-            .await
+        self.providers.lookup_musicbrainz_isrcs(isrcs, priority).await
     }
 
     /// The Cover Art Archive's images of a MusicBrainz release, then of its
@@ -469,9 +450,7 @@ impl LibraryManager {
         Vec<bae_catalogs::remote_image::RemoteCover>,
         bae_catalogs::remote_image::RemoteImageError,
     > {
-        self.providers
-            .musicbrainz_gallery(release_id, group_id)
-            .await
+        self.providers.musicbrainz_gallery(release_id, group_id).await
     }
 
     #[cfg(desktop)]
@@ -503,10 +482,7 @@ impl LibraryManager {
         Option<bae_catalogs::remote_image::RemoteImage>,
         bae_catalogs::remote_image::RemoteImageError,
     > {
-        self.remote_images
-            .fetch(url)
-            .await
-            .map_err(|error| self.remote_image_failed(error))
+        self.remote_images.fetch(url).await.map_err(|error| self.remote_image_failed(error))
     }
 
     #[cfg(desktop)]
@@ -745,13 +721,9 @@ impl LibraryManager {
         // The table first: every export it reads as active has its percent
         // held from before it started until after it stops.
         let snapshot = self.outputs.snapshot().await?;
-        snapshot
-            .with_progress(&self.outputs.active_progress())
-            .ok_or_else(|| {
-                LibraryError::Internal(
-                    "an export the queue reads as active has no percent".to_string(),
-                )
-            })
+        snapshot.with_progress(&self.outputs.active_progress()).ok_or_else(|| {
+            LibraryError::Internal("an export the queue reads as active has no percent".to_string())
+        })
     }
 
     /// Follow every entry of the export queue, for a test that waits on the

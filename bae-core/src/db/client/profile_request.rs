@@ -115,10 +115,7 @@ fn requested_profile(request: ProfileRequest) -> Result<crate::people::Requested
         ProfileRequestState::Refused(reason) => RequestedProfileState::Refused(reason),
         ProfileRequestState::Stopped(stop) => RequestedProfileState::Stopped(stop),
     };
-    Ok(crate::people::RequestedProfile {
-        name: request.name,
-        state,
-    })
+    Ok(crate::people::RequestedProfile { name: request.name, state })
 }
 
 impl Database {
@@ -127,18 +124,14 @@ impl Database {
     pub(crate) fn subscribe_requested_profile(
         &self,
     ) -> coven::LiveQuery<Option<crate::people::RequestedProfile>> {
-        self.inner.handle.subscribe(|sql| {
-            Ok(profile_request_on(&sql)?
-                .map(requested_profile)
-                .transpose()?)
-        })
+        self.inner
+            .handle
+            .subscribe(|sql| Ok(profile_request_on(&sql)?.map(requested_profile).transpose()?))
     }
 
     /// The profile request, live: it reruns as the request is made or ends
     /// and as its circle's operation ends.
     pub(crate) fn subscribe_profile_request(&self) -> coven::LiveQuery<Option<ProfileRequest>> {
-        self.inner
-            .handle
-            .subscribe(|sql| Ok(profile_request_on(&sql)?))
+        self.inner.handle.subscribe(|sql| Ok(profile_request_on(&sql)?))
     }
 }

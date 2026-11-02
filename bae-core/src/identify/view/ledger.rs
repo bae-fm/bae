@@ -12,10 +12,7 @@ pub(super) fn identifiers_found_something(
 ) -> bool {
     let disc = discid.answers().iter().any(|results| !results.is_empty());
     let code = !barcode.results().is_empty();
-    let number = catalog
-        .lookups()
-        .iter()
-        .any(|lookup| !lookup.results().is_empty());
+    let number = catalog.lookups().iter().any(|lookup| !lookup.results().is_empty());
     disc || code || number
 }
 
@@ -40,11 +37,7 @@ pub(super) fn search_step(
         (SearchProgress::Skipped, Some(_)) => return SearchStepView::NotNeeded,
         (SearchProgress::Lookups { providers }, Some(_)) => providers,
     };
-    let query = context
-        .search
-        .query
-        .as_ref()
-        .expect("a search runs only on a query");
+    let query = context.search.query.as_ref().expect("a search runs only on a query");
     SearchStepView::Searched {
         album: query.album.clone(),
         artist: query.artist.clone(),
@@ -74,21 +67,17 @@ pub(super) fn disc_id_step(progress: &DiscidProgress, context: &SignalsContext) 
             unreachable!("a run whose Disc ID could not be derived ended as an error")
         }
     };
-    let row = |disc_id: &str, lookup: LookupView| DiscIdRow {
-        disc_id: disc_id.to_string(),
-        lookup,
-    };
+    let row =
+        |disc_id: &str, lookup: LookupView| DiscIdRow { disc_id: disc_id.to_string(), lookup };
     let discs = match progress {
         // The disc IDs as their lookups were started.
-        DiscidProgress::Lookups { discs } => discs
-            .iter()
-            .map(|disc| row(&disc.disc_id, lookup_view(&disc.state)))
-            .collect(),
+        DiscidProgress::Lookups { discs } => {
+            discs.iter().map(|disc| row(&disc.disc_id, lookup_view(&disc.state))).collect()
+        }
         // The track count reaches a surface through the terminal state.
-        DiscidProgress::Computing => discs
-            .iter()
-            .map(|disc| row(&disc.disc_id, LookupView::LookingUp))
-            .collect(),
+        DiscidProgress::Computing => {
+            discs.iter().map(|disc| row(&disc.disc_id, LookupView::LookingUp)).collect()
+        }
         DiscidProgress::NotAsked { reason } => discs
             .iter()
             .map(|disc| row(&disc.disc_id, LookupView::NotAsked { reason: *reason }))
@@ -108,14 +97,9 @@ pub(super) fn isrc_step(progress: &IsrcProgress, context: &SignalsContext) -> Is
         IsrcProgress::LookingUp => LookupView::LookingUp,
         IsrcProgress::Done { results } => LookupView::answered(results),
         IsrcProgress::NotAsked { reason } => LookupView::NotAsked { reason: *reason },
-        IsrcProgress::Failed { failure } => LookupView::Failed {
-            failure: failure.clone(),
-        },
+        IsrcProgress::Failed { failure } => LookupView::Failed { failure: failure.clone() },
     };
-    IsrcStepView::Read {
-        isrcs: context.isrc.codes(),
-        lookup,
-    }
+    IsrcStepView::Read { isrcs: context.isrc.codes(), lookup }
 }
 
 pub(super) fn barcode_step(
@@ -167,9 +151,7 @@ pub(super) fn barcode_step(
                         Some(lookup) => lookup_cells(lookup),
                         None => uniform_cells(
                             context,
-                            LookupView::NotAsked {
-                                reason: NotAskedReason::LeftOut,
-                            },
+                            LookupView::NotAsked { reason: NotAskedReason::LeftOut },
                         ),
                     };
                     let excluded = context.barcode.excluded.contains(&code);
@@ -185,10 +167,7 @@ fn uniform_cells(context: &SignalsContext, lookup: LookupView) -> Vec<ProviderCe
     context
         .providers
         .iter()
-        .map(|&source| ProviderCell {
-            source,
-            lookup: lookup.clone(),
-        })
+        .map(|&source| ProviderCell { source, lookup: lookup.clone() })
         .collect()
 }
 
@@ -218,9 +197,7 @@ pub(super) fn catalog_step(
                 excluded: true,
                 cells: uniform_cells(
                     context,
-                    LookupView::NotAsked {
-                        reason: NotAskedReason::LeftOut,
-                    },
+                    LookupView::NotAsked { reason: NotAskedReason::LeftOut },
                 ),
             });
         }
@@ -229,18 +206,12 @@ pub(super) fn catalog_step(
         .numbers
         .iter()
         .filter(|value| !catalog.holds(value) && !catalog.is_struck_out(value))
-        .map(|value| CatalogCandidateView {
-            value: value.clone(),
-        })
+        .map(|value| CatalogCandidateView { value: value.clone() })
         .collect();
     if rows.is_empty() && candidates.is_empty() && !scanning {
         return CatalogStepView::NoneFound;
     }
-    CatalogStepView::Numbers {
-        scanning,
-        rows,
-        candidates,
-    }
+    CatalogStepView::Numbers { scanning, rows, candidates }
 }
 
 /// One cell per provider asked about a value.
@@ -260,9 +231,7 @@ fn lookup_view(state: &LookupState) -> LookupView {
     match state {
         LookupState::LookingUp => LookupView::LookingUp,
         LookupState::Done { results } => LookupView::answered(results),
-        LookupState::Failed { failure } => LookupView::Failed {
-            failure: failure.clone(),
-        },
+        LookupState::Failed { failure } => LookupView::Failed { failure: failure.clone() },
     }
 }
 
@@ -285,10 +254,7 @@ fn catalog_row(lookup: &CatalogLookup) -> SignalValueRow {
                 .filter(|provider| provider.source == source)
                 .map(|provider| &provider.state)
                 .collect();
-            ProviderCell {
-                source,
-                lookup: searches_view(&states),
-            }
+            ProviderCell { source, lookup: searches_view(&states) }
         })
         .collect();
     SignalValueRow {
@@ -302,10 +268,7 @@ fn catalog_row(lookup: &CatalogLookup) -> SignalValueRow {
 /// What one provider's searches of a number show together: looking up while
 /// any is, every release they found, else the first failure, else no match.
 fn searches_view(states: &[&LookupState]) -> LookupView {
-    if states
-        .iter()
-        .any(|state| matches!(state, LookupState::LookingUp))
-    {
+    if states.iter().any(|state| matches!(state, LookupState::LookingUp)) {
         return LookupView::LookingUp;
     }
     let found =
@@ -321,9 +284,7 @@ fn searches_view(states: &[&LookupState]) -> LookupView {
         LookupState::LookingUp | LookupState::Done { .. } => None,
     });
     match failure {
-        Some(failure) => LookupView::Failed {
-            failure: failure.clone(),
-        },
+        Some(failure) => LookupView::Failed { failure: failure.clone() },
         None => LookupView::NoMatch,
     }
 }
@@ -335,15 +296,9 @@ impl LookupView {
         if results.is_empty() {
             return LookupView::NoMatch;
         }
-        let groups = group_results(
-            crate::import::release_group::unranked(results.clone()),
-            None,
-        );
+        let groups = group_results(crate::import::release_group::unranked(results.clone()), None);
         LookupView::Found {
-            count: groups
-                .iter()
-                .map(|group| group.pressings().count() as u32)
-                .sum(),
+            count: groups.iter().map(|group| group.pressings().count() as u32).sum(),
             groups,
         }
     }
@@ -397,10 +352,7 @@ impl IdentifyRunView {
         if let IsrcStepView::Read { lookup, .. } = &self.isrc {
             lookups.push(lookup);
         }
-        if let SearchStepView::Searched {
-            cells: searched, ..
-        } = &self.search
-        {
+        if let SearchStepView::Searched { cells: searched, .. } = &self.search {
             lookups.extend(cells(searched));
         }
         lookups
@@ -414,14 +366,12 @@ impl IdentifyRunView {
         }
         if let BarcodeStepView::Rows { rows, .. } = &mut self.barcode {
             lookups.extend(
-                rows.iter_mut()
-                    .flat_map(|row| row.cells.iter_mut().map(|cell| &mut cell.lookup)),
+                rows.iter_mut().flat_map(|row| row.cells.iter_mut().map(|cell| &mut cell.lookup)),
             );
         }
         if let CatalogStepView::Numbers { rows, .. } = &mut self.catalog {
             lookups.extend(
-                rows.iter_mut()
-                    .flat_map(|row| row.cells.iter_mut().map(|cell| &mut cell.lookup)),
+                rows.iter_mut().flat_map(|row| row.cells.iter_mut().map(|cell| &mut cell.lookup)),
             );
         }
         if let IsrcStepView::Read { lookup, .. } = &mut self.isrc {
@@ -442,9 +392,7 @@ impl IdentifyRunView {
         let mut reads: std::collections::HashMap<(Catalog, &str), &MetadataResult> =
             std::collections::HashMap::new();
         for result in answers.all() {
-            reads
-                .entry((result.source, result.release_id.as_str()))
-                .or_insert(result);
+            reads.entry((result.source, result.release_id.as_str())).or_insert(result);
         }
         for lookup in self.lookups_mut() {
             let releases: Vec<MetadataResult> = lookup

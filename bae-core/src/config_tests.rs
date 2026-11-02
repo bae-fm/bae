@@ -4,15 +4,10 @@ use tempfile::TempDir;
 
 #[test]
 fn validate_concurrency_bounds() {
-    assert!(
-        validate_concurrency(0).is_err(),
-        "0 deadlocks coven's drain"
-    );
+    assert!(validate_concurrency(0).is_err(), "0 deadlocks coven's drain");
     assert_eq!(validate_concurrency(1).unwrap().get(), 1);
     assert_eq!(
-        validate_concurrency(MAX_CONCURRENT_TRANSFERS)
-            .unwrap()
-            .get(),
+        validate_concurrency(MAX_CONCURRENT_TRANSFERS).unwrap().get(),
         MAX_CONCURRENT_TRANSFERS
     );
     assert!(
@@ -55,15 +50,9 @@ fn an_import_s_destination_is_the_stored_choice() {
         ImportDestination::Local,
         "without storage, imports stay local"
     );
-    assert_eq!(
-        prefs.import_destination(true),
-        ImportDestination::Remote { pin: true }
-    );
+    assert_eq!(prefs.import_destination(true), ImportDestination::Remote { pin: true });
     prefs.import_storage.pinned = false;
-    assert_eq!(
-        prefs.import_destination(true),
-        ImportDestination::Remote { pin: false }
-    );
+    assert_eq!(prefs.import_destination(true), ImportDestination::Remote { pin: false });
     prefs.import_storage.cloud = false;
     assert_eq!(prefs.import_destination(true), ImportDestination::Local);
 }
@@ -87,10 +76,7 @@ fn subsonic_config_rejects_enabled_without_username() {
         username: String::new(),
         bind_address: "127.0.0.1".to_string(),
     };
-    assert!(
-        config.validate().is_err(),
-        "an enabled server with no username authenticates no one"
-    );
+    assert!(config.validate().is_err(), "an enabled server with no username authenticates no one");
 }
 
 #[test]
@@ -101,10 +87,7 @@ fn subsonic_config_rejects_non_ip_bind_address() {
         username: "listener".to_string(),
         bind_address: "not-an-ip".to_string(),
     };
-    assert!(
-        config.validate().is_err(),
-        "a bind address that isn't an IP must be rejected"
-    );
+    assert!(config.validate().is_err(), "a bind address that isn't an IP must be rejected");
 }
 
 #[test]
@@ -115,10 +98,7 @@ fn subsonic_config_allows_lan_bind_address() {
         username: "listener".to_string(),
         bind_address: "0.0.0.0".to_string(),
     };
-    assert!(
-        config.validate().is_ok(),
-        "0.0.0.0 opens the server to the network and is valid"
-    );
+    assert!(config.validate().is_ok(), "0.0.0.0 opens the server to the network and is valid");
 }
 
 #[test]
@@ -126,10 +106,7 @@ fn subsonic_config_allows_disabled_without_username() {
     let config = SubsonicConfig::disabled_default();
     assert!(config.username.is_empty());
     assert_eq!(config.bind_address, "127.0.0.1");
-    assert!(
-        config.validate().is_ok(),
-        "a disabled server needs no username"
-    );
+    assert!(config.validate().is_ok(), "a disabled server needs no username");
 }
 
 /// The row names a column per catalog, but nothing else reads them by name:
@@ -230,47 +207,23 @@ fn discogs_token_status_derives_from_option() {
     let mut prefs = Preferences::default();
 
     assert!(prefs.discogs.is_none());
-    assert!(matches!(
-        prefs.discogs_token_status(),
-        DiscogsTokenStatus::NotConfigured
-    ));
+    assert!(matches!(prefs.discogs_token_status(), DiscogsTokenStatus::NotConfigured));
 
     prefs.discogs = Some(DiscogsValidation::Unvalidated);
-    assert!(matches!(
-        prefs.discogs_token_status(),
-        DiscogsTokenStatus::Unvalidated
-    ));
+    assert!(matches!(prefs.discogs_token_status(), DiscogsTokenStatus::Unvalidated));
 
     prefs.discogs = Some(DiscogsValidation::Rejected);
-    assert!(matches!(
-        prefs.discogs_token_status(),
-        DiscogsTokenStatus::Rejected
-    ));
+    assert!(matches!(prefs.discogs_token_status(), DiscogsTokenStatus::Rejected));
 }
 
 #[test]
 fn side_pause_countdown_duration_is_the_offered_length() {
     assert_eq!(SidePauseCountdown::Off.duration(), None);
-    assert_eq!(
-        SidePauseCountdown::Seconds5.duration(),
-        Some(Duration::from_secs(5))
-    );
-    assert_eq!(
-        SidePauseCountdown::Seconds15.duration(),
-        Some(Duration::from_secs(15))
-    );
-    assert_eq!(
-        SidePauseCountdown::Seconds30.duration(),
-        Some(Duration::from_secs(30))
-    );
-    assert_eq!(
-        SidePauseCountdown::Seconds45.duration(),
-        Some(Duration::from_secs(45))
-    );
-    assert_eq!(
-        SidePauseCountdown::Seconds60.duration(),
-        Some(Duration::from_secs(60))
-    );
+    assert_eq!(SidePauseCountdown::Seconds5.duration(), Some(Duration::from_secs(5)));
+    assert_eq!(SidePauseCountdown::Seconds15.duration(), Some(Duration::from_secs(15)));
+    assert_eq!(SidePauseCountdown::Seconds30.duration(), Some(Duration::from_secs(30)));
+    assert_eq!(SidePauseCountdown::Seconds45.duration(), Some(Duration::from_secs(45)));
+    assert_eq!(SidePauseCountdown::Seconds60.duration(), Some(Duration::from_secs(60)));
 }
 
 #[tokio::test]
@@ -293,22 +246,14 @@ async fn discovery_uses_coven_names_and_sorts_the_active_store_first() {
     second.close().await.unwrap();
     let libraries = Config::discover_libraries(&app_dir).await.unwrap();
     assert_eq!(
-        libraries
-            .iter()
-            .map(|l| (l.id.as_str(), l.name.as_str(), l.is_active))
-            .collect::<Vec<_>>(),
+        libraries.iter().map(|l| (l.id.as_str(), l.name.as_str(), l.is_active)).collect::<Vec<_>>(),
         vec![
             (second_id.to_string().as_str(), "Second", true),
             (first_id.to_string().as_str(), "First", false)
         ]
     );
-    assert!(libraries
-        .iter()
-        .all(|l| matches!(l.state, LibraryState::Openable(None))));
-    assert_eq!(
-        libraries[0].path,
-        app_dir.registered_library(&second_id.to_string())
-    );
+    assert!(libraries.iter().all(|l| matches!(l.state, LibraryState::Openable(None))));
+    assert_eq!(libraries[0].path, app_dir.registered_library(&second_id.to_string()));
 }
 
 #[tokio::test]
@@ -316,10 +261,7 @@ async fn discovery_reports_a_broken_store_instead_of_omitting_it() {
     let tmp = TempDir::new().unwrap();
     let app_dir = AppDir::at(tmp.path()).unwrap();
     let id = coven::StoreId(uuid::Uuid::new_v4());
-    app_dir
-        .store_layout()
-        .create_store_dir(id, &coven::UuidIds)
-        .unwrap();
+    app_dir.store_layout().create_store_dir(id, &coven::UuidIds).unwrap();
     let error = Config::discover_libraries(&app_dir).await.unwrap_err();
     assert!(error.to_string().contains(&id.to_string()), "{error}");
 }
@@ -341,21 +283,14 @@ async fn discovery_lists_a_library_whose_settings_cant_be_read() {
         handle.close().await.unwrap();
     }
     std::fs::write(
-        tmp.path()
-            .join("stores")
-            .join(ids[1].to_string())
-            .join("storage.json"),
+        tmp.path().join("stores").join(ids[1].to_string()).join("storage.json"),
         "{not settings",
     )
     .unwrap();
 
     let libraries = Config::discover_libraries(&app_dir).await.unwrap();
     let state = |name: &str| {
-        &libraries
-            .iter()
-            .find(|library| library.name == name)
-            .expect("every store is listed")
-            .state
+        &libraries.iter().find(|library| library.name == name).expect("every store is listed").state
     };
     assert!(matches!(state("Openable"), LibraryState::Openable(None)));
     assert!(
@@ -383,10 +318,7 @@ fn installation_id_is_shared_by_libraries_and_survives_reopening() {
     let ids = coven::SequentialIds::new();
     let first = app_dir.install_id(&ids).unwrap();
     assert_eq!(app_dir.install_id(&ids).unwrap(), first);
-    assert_eq!(
-        AppDir::at(tmp.path()).unwrap().install_id(&ids).unwrap(),
-        first
-    );
+    assert_eq!(AppDir::at(tmp.path()).unwrap().install_id(&ids).unwrap(), first);
     std::fs::write(tmp.path().join("install-id"), "invalid").unwrap();
     assert!(app_dir.install_id(&ids).is_err());
 }

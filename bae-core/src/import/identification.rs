@@ -64,9 +64,7 @@ struct Context {
 /// What the handle asks the queue's loop for.
 enum Command {
     /// A person asked for this candidate to be identified now.
-    Request {
-        candidate_key: crate::import::CandidateKey,
-    },
+    Request { candidate_key: crate::import::CandidateKey },
     /// A person cancelled these candidates' identification. `done` hears
     /// once the jobs are gone, or the first ending that could not be written.
     Cancel {
@@ -74,22 +72,15 @@ enum Command {
         done: tokio::sync::oneshot::Sender<Result<(), crate::library::LibraryError>>,
     },
     /// A person cancelled every identification the queue holds.
-    CancelAll {
-        done: tokio::sync::oneshot::Sender<Result<(), crate::library::LibraryError>>,
-    },
+    CancelAll { done: tokio::sync::oneshot::Sender<Result<(), crate::library::LibraryError>> },
     /// Say when every release found so far has been admitted and every job
     /// `drain` names has ended.
     #[cfg(any(test, feature = "test-utils"))]
-    AwaitDrained {
-        drain: Drain,
-        drained: tokio::sync::oneshot::Sender<()>,
-    },
+    AwaitDrained { drain: Drain, drained: tokio::sync::oneshot::Sender<()> },
     /// Say when every command sent before this one has been handled and the
     /// queue has started what it has room for.
     #[cfg(any(test, feature = "test-utils"))]
-    AwaitCommandsTaken {
-        taken: tokio::sync::oneshot::Sender<()>,
-    },
+    AwaitCommandsTaken { taken: tokio::sync::oneshot::Sender<()> },
 }
 
 /// Which jobs a test waits to see end.
@@ -105,15 +96,10 @@ enum Drain {
 pub fn start(import: ImportServiceHandle, library_manager: LibraryManager) -> IdentificationHandle {
     let token = CancellationToken::new();
     let tasks = TaskTracker::new();
-    let context = Context {
-        import,
-        library_manager,
-    };
+    let context = Context { import, library_manager };
 
-    let mut bus = context
-        .import
-        .take_event_feed()
-        .expect("one identification queue per import service");
+    let mut bus =
+        context.import.take_event_feed().expect("one identification queue per import service");
     let (command_tx, mut command_rx) = mpsc::unbounded_channel();
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()

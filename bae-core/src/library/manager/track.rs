@@ -29,10 +29,8 @@ impl LibraryManager {
     pub async fn resolve_to_track_ids(&self, ids: &[String]) -> Result<Vec<String>, LibraryError> {
         let mut track_ids = Vec::new();
         for id in ids {
-            if let Some(album_track_ids) = self
-                .database
-                .get_primary_release_track_ids_for_album(id)
-                .await?
+            if let Some(album_track_ids) =
+                self.database.get_primary_release_track_ids_for_album(id).await?
             {
                 track_ids.extend(album_track_ids);
             } else if self.database.find_track_by_id(id).await?.is_some() {
@@ -100,10 +98,7 @@ impl LibraryManager {
         &self,
         track_id: &str,
     ) -> Result<Option<DbAudioFormat>, LibraryError> {
-        Ok(self
-            .database
-            .find_audio_format_by_track_id(track_id)
-            .await?)
+        Ok(self.database.find_audio_format_by_track_id(track_id).await?)
     }
 
     /// Resolve a track's audio into a `ResolvedTrackAudio` with its sample window
@@ -123,11 +118,10 @@ impl LibraryManager {
         &self,
         track_id: &str,
     ) -> Result<crate::playback::PlaybackTrackInfo, LibraryError> {
-        let track = self
-            .database
-            .find_track_by_id(track_id)
-            .await?
-            .ok_or_else(|| LibraryError::TrackMapping(format!("Track not found: {}", track_id)))?;
+        let track =
+            self.database.find_track_by_id(track_id).await?.ok_or_else(|| {
+                LibraryError::TrackMapping(format!("Track not found: {}", track_id))
+            })?;
         let mediums = self.database.get_release_mediums(&track.release_id).await?;
         Ok(crate::playback::PlaybackTrackInfo::of(&track, &mediums))
     }

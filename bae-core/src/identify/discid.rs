@@ -14,10 +14,7 @@ pub async fn lookup_and_resolve(
     library_manager: &crate::library::LibraryManager,
     priority: CallPriority,
 ) -> Result<super::DiscIdAnswer, Failure> {
-    let (results, documents) = library_manager
-        .lookup_musicbrainz_discid(disc_id, priority)
-        .await?
-        .into_iter()
-        .unzip();
+    let (results, documents) =
+        library_manager.lookup_musicbrainz_discid(disc_id, priority).await?.into_iter().unzip();
     Ok(super::DiscIdAnswer { results, documents })
 }

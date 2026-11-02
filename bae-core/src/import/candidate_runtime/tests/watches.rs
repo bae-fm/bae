@@ -54,20 +54,11 @@ async fn a_key_s_runtime_query_shows_queued_then_running_from_the_table() {
     let mut query = runtime.database.subscribe_candidate_runtime(key);
     assert_eq!(next_runtime(&mut query).await, None);
 
-    runtime
-        .admit(vec![(key.clone(), files.clone())], Admission::Requested)
-        .await
-        .unwrap();
+    runtime.admit(vec![(key.clone(), files.clone())], Admission::Requested).await.unwrap();
     let queued = runtime_until(&mut query, Option::is_some).await.unwrap();
-    assert_eq!(
-        queued.identification,
-        Some(IdentificationRuntime::Queued(Admission::Requested))
-    );
+    assert_eq!(queued.identification, Some(IdentificationRuntime::Queued(Admission::Requested)));
 
-    assert!(runtime
-        .run_started(key, &files, run(1), &triangulating())
-        .await
-        .unwrap());
+    assert!(runtime.run_started(key, &files, run(1), &triangulating()).await.unwrap());
     let running = runtime_until(&mut query, |value| {
         matches!(
             value.as_ref().and_then(|runtime| runtime.identification.as_ref()),
@@ -110,31 +101,19 @@ async fn the_import_counts_query_delivers_each_write_that_moves_them() {
     runtime.admit(marks, Admission::Automatic).await.unwrap();
     assert_eq!(
         next_counts().await,
-        crate::import::ImportCounts {
-            identified: 0,
-            admitted: 2,
-            imports_in_flight: 0,
-        }
+        crate::import::ImportCounts { identified: 0, admitted: 2, imports_in_flight: 0 }
     );
 
     runtime.withdraw(first).await.unwrap();
     assert_eq!(
         next_counts().await,
-        crate::import::ImportCounts {
-            identified: 1,
-            admitted: 2,
-            imports_in_flight: 0,
-        }
+        crate::import::ImportCounts { identified: 1, admitted: 2, imports_in_flight: 0 }
     );
 
     claim(&runtime, &crate::import::CandidateKey::test("/watch/a/rel3")).await;
     assert_eq!(
         next_counts().await,
-        crate::import::ImportCounts {
-            identified: 1,
-            admitted: 2,
-            imports_in_flight: 1,
-        }
+        crate::import::ImportCounts { identified: 1, admitted: 2, imports_in_flight: 1 }
     );
 }
 
@@ -154,9 +133,7 @@ async fn a_key_s_runtime_query_hears_only_its_key() {
     claim(&runtime, second).await;
     measuring(&runtime, second, 40).await;
     assert!(
-        tokio::time::timeout(std::time::Duration::from_millis(100), query.next())
-            .await
-            .is_err(),
+        tokio::time::timeout(std::time::Duration::from_millis(100), query.next()).await.is_err(),
         "another key's writes tell this key's query nothing"
     );
 
@@ -188,14 +165,9 @@ async fn an_import_percent_moves_the_percents_not_the_runtime() {
 
     runtime.record_event(&progress(key, 41));
     within_five_seconds(percents.wait_for(|percents| percents.get(key) == Some(&41))).await;
+    assert!(!percents.borrow().contains_key(other), "a claim no report moved has no percent");
     assert!(
-        !percents.borrow().contains_key(other),
-        "a claim no report moved has no percent"
-    );
-    assert!(
-        tokio::time::timeout(std::time::Duration::from_millis(100), query.next())
-            .await
-            .is_err(),
+        tokio::time::timeout(std::time::Duration::from_millis(100), query.next()).await.is_err(),
         "a percent at the same step tells the runtime query nothing"
     );
 

@@ -164,12 +164,7 @@ impl TwoDevices {
 impl Library {
     async fn new() -> Self {
         let clock: coven::ClockRef = Arc::new(coven::SystemClock);
-        let storage = Arc::new(
-            coven::MemoryStorage::builder()
-                .clock(clock)
-                .build()
-                .unwrap(),
-        );
+        let storage = Arc::new(coven::MemoryStorage::builder().clock(clock).build().unwrap());
         let dir = TempDir::new().unwrap();
         let app = AppDir::at(dir.path()).unwrap();
         let installation = coven::TestCoven::new();
@@ -192,10 +187,7 @@ impl Library {
             .test_sync_status()
             .wait_for(|status| matches!(status, coven::SyncStatus::Synced { .. }))
             .await;
-        Self {
-            first: device(dir, app, handle, installation, storage.clone()),
-            storage,
-        }
+        Self { first: device(dir, app, handle, installation, storage.clone()), storage }
     }
 
     /// The device that created the library.
@@ -235,12 +227,7 @@ impl Library {
 impl TwoDevices {
     async fn new() -> Self {
         let library = Library::new().await;
-        let code = library
-            .first
-            .database()
-            .generate_restore_code()
-            .await
-            .unwrap();
+        let code = library.first.database().generate_restore_code().await.unwrap();
         let b = library.restore(&code, "Device B").await;
         Self { library, b }
     }
@@ -346,10 +333,7 @@ impl TwoDevices {
 }
 
 async fn sorted_rows(database: &Database, query: &str) -> Vec<String> {
-    let mut rows = database
-        .query_texts_for_test(query)
-        .await
-        .expect("read the compared rows");
+    let mut rows = database.query_texts_for_test(query).await.expect("read the compared rows");
     rows.sort();
     rows
 }
@@ -366,11 +350,7 @@ impl TestDevice {
     /// Close the device's library: stop its sync loop, end the manager's
     /// tasks and close its store.
     pub(crate) async fn close(&self) {
-        self.library
-            .manager
-            .close()
-            .await
-            .expect("close the device's library");
+        self.library.manager.close().await.expect("close the device's library");
     }
 
     /// Close the device's library and open its store again with
@@ -395,12 +375,7 @@ impl TestDevice {
     }
 
     fn last(&self) -> String {
-        self.library
-            .cycles
-            .lock()
-            .expect("cycle record")
-            .last
-            .clone()
+        self.library.cycles.lock().expect("cycle record").last.clone()
     }
 }
 
@@ -468,12 +443,7 @@ impl RunningLibrary {
             crate::providers::Providers::offline(),
         );
         let (cycles, watcher) = record_cycles(&database);
-        Self {
-            manager,
-            database,
-            cycles,
-            _watcher: watcher,
-        }
+        Self { manager, database, cycles, _watcher: watcher }
     }
 }
 
@@ -485,10 +455,9 @@ fn a_two_device_test_closes_both_devices_before_its_runtime_ends() {
     let databases = Arc::new(std::sync::Mutex::new(Vec::new()));
     let kept = databases.clone();
     run_two_device_test(async move |devices| {
-        kept.lock().expect("kept databases").extend([
-            devices.a().database().clone(),
-            devices.b().database().clone(),
-        ]);
+        kept.lock()
+            .expect("kept databases")
+            .extend([devices.a().database().clone(), devices.b().database().clone()]);
     });
     let databases = std::mem::take(&mut *databases.lock().expect("kept databases"));
     assert_eq!(databases.len(), 2);

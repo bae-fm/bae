@@ -83,10 +83,7 @@ pub(super) fn resolve_file_content_type(
 
     if hint.is_audio() {
         return Err(ImportError::UnusableFile {
-            detail: format!(
-                "{} is named as audio the scan did not read as audio",
-                path.display()
-            ),
+            detail: format!("{} is named as audio the scan did not read as audio", path.display()),
         });
     }
 
@@ -107,12 +104,9 @@ pub(super) fn resolve_file_content_type(
 /// A track's sample rate or channel count as its audio format row stores it:
 /// above zero and within a `u32`. `source` names the file it was read from.
 fn track_audio_count(source: &Path, quantity: &str, raw: i64) -> Result<NonZeroU32, ImportError> {
-    u32::try_from(raw)
-        .ok()
-        .and_then(NonZeroU32::new)
-        .ok_or_else(|| ImportError::UnusableFile {
-            detail: format!("{} states {quantity} {raw}", source.display()),
-        })
+    u32::try_from(raw).ok().and_then(NonZeroU32::new).ok_or_else(|| ImportError::UnusableFile {
+        detail: format!("{} states {quantity} {raw}", source.display()),
+    })
 }
 
 /// A track's bit depth as its audio format row stores it: none for lossy
@@ -142,13 +136,9 @@ fn cue_track_by_playable_index(
     cue_pair: &CueFlacAnalysis,
     cue_index: usize,
 ) -> Result<&crate::cue_flac::CueTrack, ImportError> {
-    cue_pair
-        .cue_sheet
-        .playable_tracks()
-        .nth(cue_index)
-        .ok_or_else(|| ImportError::Internal {
-            detail: format!("CUE playable track index {cue_index} out of bounds"),
-        })
+    cue_pair.cue_sheet.playable_tracks().nth(cue_index).ok_or_else(|| ImportError::Internal {
+        detail: format!("CUE playable track index {cue_index} out of bounds"),
+    })
 }
 
 /// The scanned audio file a `FILE` directive of the sheet names. Every file
@@ -157,11 +147,9 @@ fn cue_audio_file<'a>(
     cue_pair: &'a CueFlacAnalysis,
     file_reference: &str,
 ) -> Result<&'a crate::import::types::CueAnalyzedAudioFile, ImportError> {
-    cue_pair
-        .audio_file(file_reference)
-        .ok_or_else(|| ImportError::Internal {
-            detail: format!("CUE references audio without scan facts: {file_reference}"),
-        })
+    cue_pair.audio_file(file_reference).ok_or_else(|| ImportError::Internal {
+        detail: format!("CUE references audio without scan facts: {file_reference}"),
+    })
 }
 
 struct CueAudioPregap {
@@ -356,17 +344,11 @@ impl ImportService {
         let mut segments = Vec::new();
 
         if let Some(pregap) = cue_audio_pregap(cue_pair, cue_index)? {
-            let pregap_path = cue_audio_file(cue_pair, &pregap.file_reference)?
-                .path
-                .as_path();
+            let pregap_path = cue_audio_file(cue_pair, &pregap.file_reference)?.path.as_path();
             let pregap_file_id =
-                file_ids
-                    .get(pregap_path)
-                    .ok_or_else(|| ImportError::Internal {
-                        detail: format!(
-                            "No DbFile registered for CUE pregap source {pregap_path:?}"
-                        ),
-                    })?;
+                file_ids.get(pregap_path).ok_or_else(|| ImportError::Internal {
+                    detail: format!("No DbFile registered for CUE pregap source {pregap_path:?}"),
+                })?;
             let start_sample = pregap.start_sample;
             let end_sample = Some(pregap.end_sample);
             let start_byte =
@@ -379,22 +361,15 @@ impl ImportService {
                 segments.len() as i64,
                 DbAudioSegmentRole::AudioPregap,
                 pregap_file_id,
-                SegmentSpan {
-                    start_sample,
-                    end_sample,
-                    start_byte,
-                    end_byte,
-                },
+                SegmentSpan { start_sample, end_sample, start_byte, end_byte },
                 ids,
                 now,
             ));
         }
 
-        let main_file_id = file_ids
-            .get(main_path)
-            .ok_or_else(|| ImportError::Internal {
-                detail: format!("No DbFile registered for CUE source {main_path:?}"),
-            })?;
+        let main_file_id = file_ids.get(main_path).ok_or_else(|| ImportError::Internal {
+            detail: format!("No DbFile registered for CUE source {main_path:?}"),
+        })?;
         let start_sample =
             crate::cue_flac::cue_frames_to_samples(cue_track.start_cue_frames, sample_rate);
         // Where the sheet's slice ends — the same boundary its length and its
@@ -410,12 +385,7 @@ impl ImportService {
             segments.len() as i64,
             DbAudioSegmentRole::Main,
             main_file_id,
-            SegmentSpan {
-                start_sample,
-                end_sample,
-                start_byte,
-                end_byte,
-            },
+            SegmentSpan { start_sample, end_sample, start_byte, end_byte },
             ids,
             now,
         ));
@@ -440,11 +410,7 @@ impl ImportService {
         for track_file in tracks_to_files {
             let db_track = &track_file.db_track;
             let built = match &track_file.audio {
-                TrackAudio::CueBacked {
-                    cue_pair,
-                    cue_index,
-                    ..
-                } => {
+                TrackAudio::CueBacked { cue_pair, cue_index, .. } => {
                     let af = cue_backed_audio_format(
                         &db_track.id,
                         cue_pair,
@@ -453,22 +419,20 @@ impl ImportService {
                         now,
                     )?;
                     for audio_file in &cue_pair.audio_files {
-                        cue_landings_by_file
-                            .entry(audio_file.path.clone())
-                            .or_insert_with(|| {
-                                match cue_file_landing_bytes(audio_file, &cue_pair.cue_sheet) {
-                                    Ok(landings) => Some(landings),
-                                    // The image's tracks hold no byte window and
-                                    // keep the whole-file read-ahead span.
-                                    Err(reason) => {
-                                        bugs.report_bug(
-                                            "read where each track of a CUE image starts",
-                                            &format!("{}: {reason}", audio_file.path.display()),
-                                        );
-                                        None
-                                    }
+                        cue_landings_by_file.entry(audio_file.path.clone()).or_insert_with(|| {
+                            match cue_file_landing_bytes(audio_file, &cue_pair.cue_sheet) {
+                                Ok(landings) => Some(landings),
+                                // The image's tracks hold no byte window and
+                                // keep the whole-file read-ahead span.
+                                Err(reason) => {
+                                    bugs.report_bug(
+                                        "read where each track of a CUE image starts",
+                                        &format!("{}: {reason}", audio_file.path.display()),
+                                    );
+                                    None
                                 }
-                            });
+                            }
+                        });
                     }
                     let segments = Self::cue_segments(
                         &af.id,
@@ -479,20 +443,12 @@ impl ImportService {
                         ids,
                         now,
                     )?;
-                    BuiltAudioFormat {
-                        format: af,
-                        segments,
-                    }
+                    BuiltAudioFormat { format: af, segments }
                 }
-                TrackAudio::Standalone {
-                    file_path,
-                    source_audio,
-                } => {
-                    let file_id = file_ids
-                        .get(file_path)
-                        .ok_or_else(|| ImportError::Internal {
-                            detail: format!("No DbFile registered for track source {file_path:?}"),
-                        })?;
+                TrackAudio::Standalone { file_path, source_audio } => {
+                    let file_id = file_ids.get(file_path).ok_or_else(|| ImportError::Internal {
+                        detail: format!("No DbFile registered for track source {file_path:?}"),
+                    })?;
                     let af = standalone_audio_format(
                         &db_track.id,
                         file_path,
@@ -509,10 +465,7 @@ impl ImportService {
                         ids,
                         now,
                     );
-                    BuiltAudioFormat {
-                        format: af,
-                        segments: vec![segment],
-                    }
+                    BuiltAudioFormat { format: af, segments: vec![segment] }
                 }
             };
 
@@ -520,10 +473,7 @@ impl ImportService {
             audio_formats.push(built.format);
         }
 
-        Ok(BuiltAudioFormats {
-            audio_formats,
-            audio_segments,
-        })
+        Ok(BuiltAudioFormats { audio_formats, audio_segments })
     }
 }
 

@@ -18,45 +18,23 @@ async fn each_addition_counts_once_with_its_tracks() {
 
     queue
         .add_manual(
-            vec![
-                tracks[0].clone(),
-                "not-a-track".to_string(),
-                tracks[1].clone(),
-            ],
+            vec![tracks[0].clone(), "not-a-track".to_string(), tracks[1].clone()],
             ManualPlace::End,
         )
         .await
         .unwrap();
-    assert_eq!(
-        db.queue_addition().await.unwrap(),
-        Some(QueueAddition {
-            number: 1,
-            tracks: 2
-        })
-    );
+    assert_eq!(db.queue_addition().await.unwrap(), Some(QueueAddition { number: 1, tracks: 2 }));
 
-    queue
-        .add_manual(vec!["not-a-track".to_string()], ManualPlace::Front)
-        .await
-        .unwrap();
+    queue.add_manual(vec!["not-a-track".to_string()], ManualPlace::Front).await.unwrap();
     assert_eq!(
-        db.queue_addition()
-            .await
-            .unwrap()
-            .map(|addition| addition.number),
+        db.queue_addition().await.unwrap().map(|addition| addition.number),
         Some(1),
         "nothing went in"
     );
 
     for (number, place) in [(2, ManualPlace::Front), (3, ManualPlace::At(1))] {
-        queue
-            .add_manual(vec![tracks[2].clone(), tracks[0].clone()], place)
-            .await
-            .unwrap();
-        assert_eq!(
-            db.queue_addition().await.unwrap(),
-            Some(QueueAddition { number, tracks: 2 })
-        );
+        queue.add_manual(vec![tracks[2].clone(), tracks[0].clone()], place).await.unwrap();
+        assert_eq!(db.queue_addition().await.unwrap(), Some(QueueAddition { number, tracks: 2 }));
     }
 }
 
@@ -67,10 +45,7 @@ async fn starting_playback_forgets_the_additions() {
     let (db, _tmp, tracks) = release_db(1).await;
     let queue = db.playback_queue_tables();
     for resume in [true, false] {
-        queue
-            .add_manual(vec![tracks[0].clone()], ManualPlace::End)
-            .await
-            .unwrap();
+        queue.add_manual(vec![tracks[0].clone()], ManualPlace::End).await.unwrap();
         assert!(db.queue_addition().await.unwrap().is_some());
 
         db.settle_playback_queue(resume).await.unwrap();
@@ -105,20 +80,11 @@ async fn the_live_query_delivers_each_addition() {
     let mut additions = db.subscribe_queue_addition();
     assert_eq!(next(&mut additions).await, None);
 
-    queue
-        .set_repeat(crate::playback::RepeatMode::Track)
-        .await
-        .unwrap();
-    queue
-        .add_manual(vec![tracks[1].clone()], ManualPlace::End)
-        .await
-        .unwrap();
+    queue.set_repeat(crate::playback::RepeatMode::Track).await.unwrap();
+    queue.add_manual(vec![tracks[1].clone()], ManualPlace::End).await.unwrap();
     assert_eq!(
         next(&mut additions).await,
-        Some(QueueAddition {
-            number: 1,
-            tracks: 1
-        }),
+        Some(QueueAddition { number: 1, tracks: 1 }),
         "the repeat change delivered nothing of its own"
     );
 }

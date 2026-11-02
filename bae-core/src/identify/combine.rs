@@ -163,16 +163,8 @@ pub fn combine_results(
         .flat_map(ReleaseGroup::into_pressings)
         .filter(|row| !super::fit::rules_out(&row.releases, folder.track_count))
         .collect();
-    let (offered, set_aside, medium_conflict, notes) = split_rows(
-        rows,
-        &judgements,
-        &by_isrc,
-        &discs_held,
-        ripped_from,
-        folder,
-        text,
-        &facts,
-    );
+    let (offered, set_aside, medium_conflict, notes) =
+        split_rows(rows, &judgements, &by_isrc, &discs_held, ripped_from, folder, text, &facts);
     // Offered rows that would look alike on screen are listed once.
     let offered = super::look_alike::keep_one_of_each_look(offered, &judgements, &notes);
 
@@ -194,22 +186,17 @@ pub fn combine_results(
     let named_notes = combined
         .iter()
         .filter_map(|result| {
-            notes
-                .get(&(result.source, result.release_id.clone()))
-                .map(|note| NamedNote {
-                    release: crate::import::MetadataRef::new(result.source, &result.release_id),
-                    note: note.clone(),
-                })
+            notes.get(&(result.source, result.release_id.clone())).map(|note| NamedNote {
+                release: crate::import::MetadataRef::new(result.source, &result.release_id),
+                note: note.clone(),
+            })
         })
         .collect();
     let (left_out, narrowed_out_pressings) = records(set_aside);
     Findings {
         matches: combined,
         pressings,
-        narrowed_out: NarrowedOut {
-            matches: left_out,
-            pressings: narrowed_out_pressings,
-        },
+        narrowed_out: NarrowedOut { matches: left_out, pressings: narrowed_out_pressings },
         medium_conflict,
         named_notes,
     }
@@ -356,9 +343,7 @@ fn support_of(
         edition_year: facts.edition_year(&row.releases),
         states_the_channels: agrees_with_mono(
             folder.mono,
-            row.releases
-                .iter()
-                .flat_map(|release| &release.discogs_details),
+            row.releases.iter().flat_map(|release| &release.discogs_details),
         ),
         country: facts.country(&row.releases),
         registration: super::row_facts::registration(&row.releases, folder.registered_in),
@@ -380,25 +365,10 @@ fn split_rows(
     folder: FolderAudio<'_>,
     text: &CandidateText,
     facts: &FolderFacts,
-) -> (
-    Vec<Pressing>,
-    Vec<Pressing>,
-    Option<super::MediumConflict>,
-    HashMap<ReleaseKey, String>,
-) {
+) -> (Vec<Pressing>, Vec<Pressing>, Option<super::MediumConflict>, HashMap<ReleaseKey, String>) {
     let mut support: Vec<Support> = rows
         .iter()
-        .map(|row| {
-            support_of(
-                row,
-                judgements,
-                by_isrc,
-                discs_held,
-                ripped_from,
-                folder,
-                facts,
-            )
-        })
+        .map(|row| support_of(row, judgements, by_isrc, discs_held, ripped_from, folder, facts))
         .collect();
     weigh_title_agreement(&rows, &mut support);
     let notes = weigh_notes(&rows, &mut support, text);
@@ -406,11 +376,7 @@ fn split_rows(
         return (Vec::new(), Vec::new(), None, notes);
     };
     // The best row failing the medium means every row does.
-    let medium_conflict = if best.medium {
-        None
-    } else {
-        ripped_from.conflict()
-    };
+    let medium_conflict = if best.medium { None } else { ripped_from.conflict() };
     let mut offered = Vec::new();
     let mut set_aside = Vec::new();
     for (row, support) in rows.into_iter().zip(&support) {
@@ -426,22 +392,13 @@ impl Support {
     /// The fields declared above `names_what_sets_it_apart`, the notes as
     /// though no row had them.
     fn above_notes(&self) -> Self {
-        Self {
-            names_what_sets_it_apart: false,
-            ..*self
-        }
+        Self { names_what_sets_it_apart: false, ..*self }
     }
 
     /// The fields declared above `track_titles`: what a row ties with the
     /// others on before its titles are weighed.
     fn above_track_titles(&self) -> (bool, u32, u32, u32, bool) {
-        (
-            self.medium,
-            self.names_pressing,
-            self.shares_toc,
-            self.names_album,
-            self.fits_the_tracks,
-        )
+        (self.medium, self.names_pressing, self.shares_toc, self.names_album, self.fits_the_tracks)
     }
 }
 
@@ -458,16 +415,10 @@ fn weigh_title_agreement(rows: &[Pressing], support: &mut [Support]) {
     };
     let undecided = rows.iter().zip(support.iter()).any(|(row, support)| {
         support.above_track_titles() == best
-            && row
-                .releases
-                .iter()
-                .all(|release| release.track_titles.is_empty())
+            && row.releases.iter().all(|release| release.track_titles.is_empty())
     });
     if undecided {
-        for support in support
-            .iter_mut()
-            .filter(|support| support.track_titles == Fact::Agrees)
-        {
+        for support in support.iter_mut().filter(|support| support.track_titles == Fact::Agrees) {
             support.track_titles = Fact::StatesNothing;
         }
     }
@@ -487,9 +438,8 @@ fn weigh_notes(
     let Some(best) = support.iter().map(Support::above_notes).max() else {
         return notes;
     };
-    let tied: Vec<usize> = (0..rows.len())
-        .filter(|row| support[*row].above_notes() == best)
-        .collect();
+    let tied: Vec<usize> =
+        (0..rows.len()).filter(|row| support[*row].above_notes() == best).collect();
     let named =
         super::notes::named_notes(tied.iter().map(|row| rows[*row].releases.as_slice()), text);
     for (row, named) in tied.into_iter().zip(named) {
@@ -504,10 +454,7 @@ fn weigh_notes(
 }
 
 fn release_keys(results: &Results) -> HashSet<ReleaseKey> {
-    results
-        .iter()
-        .map(|r| (r.source, r.release_id.clone()))
-        .collect()
+    results.iter().map(|r| (r.source, r.release_id.clone())).collect()
 }
 
 /// Every release any set names, once, in signal order.

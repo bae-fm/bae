@@ -41,10 +41,7 @@ fn frame_sample_bounds_tracks_position_across_pts_gaps() {
 
     // A valid pts places the frame and advances the tracked position to its end.
     let mut tracked = None;
-    assert_eq!(
-        frame_sample_bounds(1000, 100, &clock, &mut tracked),
-        Some((1000, 1100))
-    );
+    assert_eq!(frame_sample_bounds(1000, 100, &clock, &mut tracked), Some((1000, 1100)));
     assert_eq!(tracked, Some(1100));
 
     // A frame with no pts continues from the tracked position.
@@ -66,10 +63,7 @@ fn frame_sample_bounds_tracks_position_across_pts_gaps() {
     // A frame before the stream's first sample (an encoder delay the decoder
     // kept) is placed before it.
     let mut before = None;
-    assert_eq!(
-        frame_sample_bounds(-312, 960, &clock, &mut before),
-        Some((-312, 648))
-    );
+    assert_eq!(frame_sample_bounds(-312, 960, &clock, &mut before), Some((-312, 648)));
 }
 
 #[test]
@@ -93,11 +87,7 @@ fn frame_output_window_trims_at_boundaries() {
             channels: 2,
             start: None,
             end: None,
-            expected: Emit {
-                skip_start: 0,
-                take_end: 200,
-                reached_end: false,
-            },
+            expected: Emit { skip_start: 0, take_end: 200, reached_end: false },
         },
         Row {
             name: "empty output with no window skips",
@@ -133,11 +123,7 @@ fn frame_output_window_trims_at_boundaries() {
             channels: 2,
             start: Some(40),
             end: None,
-            expected: Emit {
-                skip_start: 80,
-                take_end: 200,
-                reached_end: false,
-            },
+            expected: Emit { skip_start: 80, take_end: 200, reached_end: false },
         },
         Row {
             name: "frame at or past end stops",
@@ -155,11 +141,7 @@ fn frame_output_window_trims_at_boundaries() {
             channels: 2,
             start: None,
             end: Some(60),
-            expected: Emit {
-                skip_start: 0,
-                take_end: 120,
-                reached_end: true,
-            },
+            expected: Emit { skip_start: 0, take_end: 120, reached_end: true },
         },
         Row {
             name: "take_end clamps to a short output buffer",
@@ -168,11 +150,7 @@ fn frame_output_window_trims_at_boundaries() {
             channels: 1,
             start: None,
             end: Some(80),
-            expected: Emit {
-                skip_start: 0,
-                take_end: 50,
-                reached_end: true,
-            },
+            expected: Emit { skip_start: 0, take_end: 50, reached_end: true },
         },
         Row {
             name: "start-skip past a reached end stops",
@@ -199,11 +177,7 @@ fn frame_output_window_trims_at_boundaries() {
             channels: 2,
             start: Some(50),
             end: Some(60),
-            expected: Emit {
-                skip_start: 0,
-                take_end: 200,
-                reached_end: false,
-            },
+            expected: Emit { skip_start: 0, take_end: 200, reached_end: false },
         },
     ];
 
@@ -222,10 +196,7 @@ fn packed_s64_decoder_rejects_zero_channels_before_format_signal() {
         assert!(!fmt_ctx.is_null());
         let stream = ffmpeg_sys_next::avformat_new_stream(fmt_ctx, ptr::null());
         assert!(!stream.is_null());
-        (*stream).time_base = ffmpeg_sys_next::AVRational {
-            num: 1,
-            den: 44_100,
-        };
+        (*stream).time_base = ffmpeg_sys_next::AVRational { num: 1, den: 44_100 };
         let mut codecpar = ffmpeg_sys_next::avcodec_parameters_alloc();
         assert!(!codecpar.is_null());
         (*codecpar).ch_layout.nb_channels = 0;

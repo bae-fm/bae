@@ -63,21 +63,11 @@ impl SuspendedScan {
     fn spawn(root: PathBuf, blocked: &str) -> Self {
         let (gate, held, entered) = crate::test_gate::closed();
         let (item_tx, items) = std::sync::mpsc::channel();
-        let reader = BlockingReader {
-            blocked: PathBuf::from(blocked),
-            held,
-        };
+        let reader = BlockingReader { blocked: PathBuf::from(blocked), held };
         let thread = std::thread::spawn(move || {
-            scan_with_reader(&reader, root, |item| {
-                item_tx.send(item).expect("receive scan item")
-            })
+            scan_with_reader(&reader, root, |item| item_tx.send(item).expect("receive scan item"))
         });
-        Self {
-            gate,
-            entered,
-            items,
-            thread,
-        }
+        Self { gate, entered, items, thread }
     }
 
     /// Whether the scan says an item `wanted` matches while it is held, taking
@@ -113,9 +103,7 @@ fn names_do_not_combine_audio_bearing_children() {
     let candidates = scan_valid(&root);
 
     assert_eq!(candidates.len(), 2);
-    assert!(candidates
-        .iter()
-        .all(|candidate| candidate.scope == ReleaseFileScope::Direct));
+    assert!(candidates.iter().all(|candidate| candidate.scope == ReleaseFileScope::Direct));
 }
 
 #[test]
@@ -167,10 +155,8 @@ fn file_free_group_emits_an_actionable_release_before_later_child_finishes() {
 
     let scan = SuspendedScan::spawn(root.clone(), "Collection/Release 99");
 
-    let mut first_item = scan
-        .items
-        .recv_timeout(std::time::Duration::from_secs(2))
-        .expect("first release emits");
+    let mut first_item =
+        scan.items.recv_timeout(std::time::Duration::from_secs(2)).expect("first release emits");
     // The folder's own reading comes first — it is what says the releases
     // below it are separate.
     if matches!(first_item, ScanItem::Decided { .. }) {
@@ -301,10 +287,7 @@ fn discography_and_multidisc_shapes_follow_folder_structure_only() {
     assert!(candidates.contains_key("Solo Artist/1973 - Box"));
     assert!(!candidates.contains_key("Solo Artist/1973 - Box/CD1"));
     assert!(!candidates.contains_key("Solo Artist/1973 - Box/CD2"));
-    assert_eq!(
-        candidates["Solo Artist/1973 - Box"].scope,
-        ReleaseFileScope::Recursive
-    );
+    assert_eq!(candidates["Solo Artist/1973 - Box"].scope, ReleaseFileScope::Recursive);
 
     // The user's own answer replaces the scan's.
     let separate = scan_for_candidates_with_decisions_collect(
@@ -355,9 +338,7 @@ fn cancellation_reaches_an_in_progress_directory_read() {
     let thread_cancellation = cancellation.clone();
     let scan = std::thread::spawn(move || {
         scan_for_candidates_with_reader_cancellable_and_directories(
-            &CancellableReader {
-                entered: entered_tx,
-            },
+            &CancellableReader { entered: entered_tx },
             PathBuf::from("/network"),
             &ScanReadings {
                 stored: &StoredCandidateEdits::none(),
@@ -370,14 +351,9 @@ fn cancellation_reaches_an_in_progress_directory_read() {
             |_| {},
         )
     });
-    entered_rx
-        .recv_timeout(std::time::Duration::from_secs(2))
-        .expect("reader did not start");
+    entered_rx.recv_timeout(std::time::Duration::from_secs(2)).expect("reader did not start");
     cancellation.cancel();
-    assert!(matches!(
-        scan.join().unwrap(),
-        Err(FolderScanError::Cancelled)
-    ));
+    assert!(matches!(scan.join().unwrap(), Err(FolderScanError::Cancelled)));
 }
 
 #[test]
@@ -413,7 +389,10 @@ fn a_wrapper_of_numbered_parts_combines_unless_the_user_says_otherwise() {
         .iter()
         .find_map(|item| match item {
             ScanItem::Valid(candidate) => Some(candidate),
-            ScanItem::Discovered(_) | ScanItem::Invalid(_) | ScanItem::Decided { .. } | ScanItem::Sidecar(_) => None,
+            ScanItem::Discovered(_)
+            | ScanItem::Invalid(_)
+            | ScanItem::Decided { .. }
+            | ScanItem::Sidecar(_) => None,
         })
         .expect("combined wrapper is actionable");
     assert_eq!(combined.path, wrapper);
@@ -422,25 +401,23 @@ fn a_wrapper_of_numbered_parts_combines_unless_the_user_says_otherwise() {
     // The release is its grouping, made of the two parts, each a disc run.
     assert!(combined.grouping.is_some());
     assert_eq!(
-        combined
-            .files
-            .parts
-            .iter()
-            .map(|part| part.prefix.as_str())
-            .collect::<Vec<_>>(),
+        combined.files.parts.iter().map(|part| part.prefix.as_str()).collect::<Vec<_>>(),
         ["Part 01/", "Part 02/"]
     );
 
     let separate = scan(readings(&[(
-            "Collection/Release Wrapper",
-            FolderReleaseDecision::KeepAsSeparateReleases,
-            FolderReleaseDecisionAuthor::User,
-        )]));
+        "Collection/Release Wrapper",
+        FolderReleaseDecision::KeepAsSeparateReleases,
+        FolderReleaseDecisionAuthor::User,
+    )]));
     let separate: Vec<_> = separate
         .iter()
         .filter_map(|item| match item {
             ScanItem::Valid(candidate) => Some(candidate),
-            ScanItem::Discovered(_) | ScanItem::Invalid(_) | ScanItem::Decided { .. } | ScanItem::Sidecar(_) => None,
+            ScanItem::Discovered(_)
+            | ScanItem::Invalid(_)
+            | ScanItem::Decided { .. }
+            | ScanItem::Sidecar(_) => None,
         })
         .collect();
     assert_eq!(separate.len(), 2);
@@ -466,10 +443,7 @@ fn labeled_disc_numbers_win_over_other_numbers_in_part_names() {
         std::fs::write(child.join("track.flac"), fake_flac()).unwrap();
     }
 
-    let items = scan_for_candidates_with_decisions_collect(
-        root,
-        FolderReleaseDecisions::default(),
-    );
+    let items = scan_for_candidates_with_decisions_collect(root, FolderReleaseDecisions::default());
 
     assert!(items.iter().any(|item| matches!(
         item,
@@ -570,9 +544,9 @@ fn keep_separate_context_survives_when_every_descendant_is_invalid() {
         )]),
         |item| {
             if !matches!(
-            item,
-            ScanItem::Discovered(_) | ScanItem::Decided { .. } | ScanItem::Sidecar(_)
-        ) {
+                item,
+                ScanItem::Discovered(_) | ScanItem::Decided { .. } | ScanItem::Sidecar(_)
+            ) {
                 items.push(item);
             }
         },
@@ -675,9 +649,7 @@ fn a_folder_that_yields_one_release_decides_nothing() {
 
     let items = scan_for_candidates_with_decisions_collect(root, FolderReleaseDecisions::default());
     assert!(
-        !items
-            .iter()
-            .any(|item| matches!(item, ScanItem::Decided { .. })),
+        !items.iter().any(|item| matches!(item, ScanItem::Decided { .. })),
         "one release is nothing to decide about: {items:?}"
     );
     let releases: Vec<_> = items
@@ -702,11 +674,9 @@ fn a_folder_that_yields_one_release_decides_nothing() {
 fn a_numbered_box_inside_a_collection_is_one_release() {
     let temp_dir = tempfile::tempdir().unwrap();
     let root = temp_dir.path().join("Queue");
-    for release in [
-        "Collection/Box/Release 01",
-        "Collection/Box/Release 02",
-        "Collection/Release 03",
-    ] {
+    for release in
+        ["Collection/Box/Release 01", "Collection/Box/Release 02", "Collection/Release 03"]
+    {
         let release = root.join(release);
         std::fs::create_dir_all(&release).unwrap();
         std::fs::write(release.join("track.flac"), fake_flac()).unwrap();
@@ -759,11 +729,7 @@ fn two_walks_of_one_tree_produce_the_same_items() {
         scan_for_candidates_with_decisions_collect(root.clone(), FolderReleaseDecisions::default())
             .into_iter()
             .filter_map(|item| match item {
-                ScanItem::Decided {
-                    key,
-                    decision,
-                    grouping,
-                } => Some((
+                ScanItem::Decided { key, decision, grouping } => Some((
                     key.relative_folder,
                     FolderReading {
                         decision,

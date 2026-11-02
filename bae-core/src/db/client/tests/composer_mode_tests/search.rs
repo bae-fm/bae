@@ -27,9 +27,7 @@ const SEARCHED_LIBRARY: &str = "
 ";
 
 async fn exec_searched(db: &Database, sql: &'static str) {
-    db.call(move |conn| conn.execute_batch(sql).map_err(DbError::from))
-        .await
-        .unwrap();
+    db.call(move |conn| conn.execute_batch(sql).map_err(DbError::from)).await.unwrap();
 }
 
 /// What a search for `query` finds: the ids of its albums, tracks, artists,
@@ -39,16 +37,8 @@ async fn found(db: &Database, query: &str) -> [Vec<String>; 5] {
     [
         results.albums.into_iter().map(|album| album.id).collect(),
         results.tracks.into_iter().map(|track| track.id).collect(),
-        results
-            .artists
-            .into_iter()
-            .map(|artist| artist.artist.id)
-            .collect(),
-        results
-            .composers
-            .into_iter()
-            .map(|composer| composer.artist.id)
-            .collect(),
+        results.artists.into_iter().map(|artist| artist.artist.id).collect(),
+        results.composers.into_iter().map(|composer| composer.artist.id).collect(),
         results.works.into_iter().map(|work| work.work.id).collect(),
     ]
 }
@@ -98,10 +88,7 @@ async fn search_library_follows_names_as_they_change() {
     )
     .await;
     assert!(found(&db, "åsel").await[0].is_empty());
-    assert_eq!(
-        found(&db, "renamed artist").await[0],
-        vec![SEARCHED_ALBUM.to_string()]
-    );
+    assert_eq!(found(&db, "renamed artist").await[0], vec![SEARCHED_ALBUM.to_string()]);
 
     // The credit prints another of the artist's names, which finds the album.
     exec_searched(
@@ -111,10 +98,7 @@ async fn search_library_follows_names_as_they_change() {
          UPDATE album_artists SET credit_key = 'printed name' WHERE id = 'cd1bc541-a0b2-4440-8a6b-b9c1ffa33f67';",
     )
     .await;
-    assert_eq!(
-        found(&db, "printed näme").await[0],
-        vec![SEARCHED_ALBUM.to_string()]
-    );
+    assert_eq!(found(&db, "printed näme").await[0], vec![SEARCHED_ALBUM.to_string()]);
 
     exec_searched(
         &db,

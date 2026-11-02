@@ -62,30 +62,21 @@ async fn a_list_counts_what_it_lists() {
                 assert_eq!(read.total_count as usize, sequence(&read).len(), "{what}");
                 match filter != PendingFilter::All || !text.is_empty() {
                     true => assert_eq!(
-                        read.summary
-                            .narrowed
-                            .map(|narrowed| narrowed.shown as usize),
+                        read.summary.narrowed.map(|narrowed| narrowed.shown as usize),
                         Some(kept.len()),
                         "{what}"
                     ),
                     false => assert_eq!(read.summary.narrowed, None, "{what}"),
                 }
                 for item in read.windows.iter().flat_map(|window| &window.items) {
-                    let ImportListItem::GroupHeader {
-                        group, entry_count, ..
-                    } = item
-                    else {
+                    let ImportListItem::GroupHeader { group, entry_count, .. } = item else {
                         continue;
                     };
                     let members = kept
                         .iter()
                         .filter(|path| path.starts_with(&format!("{}/", group.name)))
                         .count();
-                    assert_eq!(
-                        *entry_count as usize, members,
-                        "{what}, group {}",
-                        group.name
-                    );
+                    assert_eq!(*entry_count as usize, members, "{what}, group {}", group.name);
                 }
             }
         }

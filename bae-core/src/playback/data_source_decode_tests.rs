@@ -51,10 +51,8 @@ async fn i32_decode_streams_from_a_live_fill_and_stays_windowed() {
         fn on_samples(&mut self, samples: &[i32]) {
             for &sample in samples {
                 self.count += 1;
-                self.digest = self
-                    .digest
-                    .wrapping_mul(1099511628211)
-                    .wrapping_add(sample as u32 as u64);
+                self.digest =
+                    self.digest.wrapping_mul(1099511628211).wrapping_add(sample as u32 as u64);
             }
         }
     }
@@ -67,15 +65,8 @@ async fn i32_decode_streams_from_a_live_fill_and_stays_windowed() {
     let samples: Vec<i32> = (0..sample_rate as usize * seconds * 2)
         .map(|i| (i as u32).wrapping_mul(2_654_435_761) as i32)
         .collect();
-    let wav = encode_i32(
-        EncodeFormat::PcmWav {
-            bits_per_sample: 16,
-        },
-        &samples,
-        sample_rate,
-        2,
-    )
-    .unwrap();
+    let wav =
+        encode_i32(EncodeFormat::PcmWav { bits_per_sample: 16 }, &samples, sample_rate, 2).unwrap();
     drop(samples);
 
     let never = || Arc::new(std::sync::atomic::AtomicBool::new(false));
@@ -99,11 +90,8 @@ async fn i32_decode_streams_from_a_live_fill_and_stays_windowed() {
     std::io::Write::write_all(&mut temp, &wav).unwrap();
     std::io::Write::flush(&mut temp).unwrap();
     let buffer = create_sparse_buffer(wav.len() as u64);
-    Box::new(LocalReader::new(
-        temp.path(),
-        crate::diagnostics::Diagnostics::noop(),
-    ))
-    .start_reading(buffer.clone(), Box::new(|_| {}));
+    Box::new(LocalReader::new(temp.path(), crate::diagnostics::Diagnostics::noop()))
+        .start_reading(buffer.clone(), Box::new(|_| {}));
 
     let streamed = tokio::task::spawn_blocking({
         let buffer = buffer.clone();
@@ -155,11 +143,8 @@ async fn i32_decode_names_the_read_error_when_the_first_read_fails() {
         .expect_err("reading a directory fails")
         .kind();
     let buffer = create_sparse_buffer(64 * 1024);
-    Box::new(LocalReader::new(
-        dir.path(),
-        crate::diagnostics::Diagnostics::noop(),
-    ))
-    .start_reading(buffer.clone(), Box::new(|_| {}));
+    Box::new(LocalReader::new(dir.path(), crate::diagnostics::Diagnostics::noop()))
+        .start_reading(buffer.clone(), Box::new(|_| {}));
 
     let result = tokio::task::spawn_blocking(move || decode_audio(buffer, None, None).map(|_| ()))
         .await

@@ -56,10 +56,7 @@ pub fn work_id(musicbrainz_work_id: &str) -> String {
 /// The album of the group `records` name, preferring the MusicBrainz release
 /// group over the Discogs master. `None` when no record names a group.
 pub fn album_id_for_records(records: &[ReleaseRecord]) -> Option<String> {
-    let groups = records
-        .iter()
-        .filter_map(ReleaseRecord::album_ref)
-        .collect::<Vec<_>>();
+    let groups = records.iter().filter_map(ReleaseRecord::album_ref).collect::<Vec<_>>();
     [Catalog::MusicBrainz, Catalog::Discogs]
         .into_iter()
         .find_map(|catalog| groups.iter().find(|group| group.catalog == catalog))

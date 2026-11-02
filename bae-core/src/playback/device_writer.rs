@@ -99,10 +99,7 @@ where
     ) -> Self {
         Self {
             open,
-            current: OpenStream {
-                stream,
-                phase: StreamPhase::Opened,
-            },
+            current: OpenStream { stream, phase: StreamPhase::Opened },
             controls,
             drain,
             buf: vec![0.0; buf_len],
@@ -164,9 +161,9 @@ where
             DeviceStreamError::Disconnected if self.current.phase != StreamPhase::Opened => {
                 self.reopen()
             }
-            DeviceStreamError::Disconnected => self.end(format!(
-                "{operation}: the device it was opened on disconnected it"
-            )),
+            DeviceStreamError::Disconnected => {
+                self.end(format!("{operation}: the device it was opened on disconnected it"))
+            }
             DeviceStreamError::Failed(detail) => self.end(format!("{operation}: {detail}")),
         }
     }
@@ -182,15 +179,12 @@ where
         match (self.open)() {
             Ok(stream) => {
                 info!("the output device changed; playing on the current default device");
-                self.current = OpenStream {
-                    stream,
-                    phase: StreamPhase::Opened,
-                };
+                self.current = OpenStream { stream, phase: StreamPhase::Opened };
                 WriterStep::Wrote
             }
-            Err(detail) => self.end(format!(
-                "reopen the device stream after its device changed: {detail}"
-            )),
+            Err(detail) => {
+                self.end(format!("reopen the device stream after its device changed: {detail}"))
+            }
         }
     }
 
@@ -306,10 +300,7 @@ mod tests {
                     taking
                 }
             };
-            self.heard
-                .lock()
-                .unwrap()
-                .extend_from_slice(&samples[..taking]);
+            self.heard.lock().unwrap().extend_from_slice(&samples[..taking]);
             Ok(taking)
         }
     }
@@ -358,21 +349,12 @@ mod tests {
         let (controls, drain, _rx) = playing_drain();
         let heard = Heard::default();
         let (opens, open) = reopening(&heard);
-        let mut writer = DeviceWriter::new(
-            FakeStream::new(&heard, Some(300)),
-            open,
-            controls,
-            drain,
-            1_024,
-        );
+        let mut writer =
+            DeviceWriter::new(FakeStream::new(&heard, Some(300)), open, controls, drain, 1_024);
 
         play_out(&mut writer, &heard);
 
-        assert_eq!(
-            opens.load(Ordering::Relaxed),
-            1,
-            "one reopen for one disconnect"
-        );
+        assert_eq!(opens.load(Ordering::Relaxed), 1, "one reopen for one disconnect");
         assert_eq!(*heard.lock().unwrap(), ramp());
     }
 
@@ -447,11 +429,7 @@ mod tests {
         );
 
         assert_eq!(writer.step(), WriterStep::Wrote, "the disconnect reopens");
-        assert_eq!(
-            writer.step(),
-            WriterStep::Ended,
-            "the new stream's refusal ends it"
-        );
+        assert_eq!(writer.step(), WriterStep::Ended, "the new stream's refusal ends it");
         assert_eq!(opens.load(Ordering::Relaxed), 1);
         assert!(output_failure(&mut rx).is_some());
     }

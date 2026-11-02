@@ -47,20 +47,11 @@ fn a_media_edit_reaches_the_other_device() {
 }
 
 async fn check_media_edit_reaches(devices: &mut crate::sync::test_devices::TwoDevices) {
-    devices
-        .a()
-        .database()
-        .call(seed_artist_album_release)
-        .await
-        .unwrap();
+    devices.a().database().call(seed_artist_album_release).await.unwrap();
     set_media(devices.a().database(), vec![count(Medium::Cd, 1)]).await;
     devices.converge(MEDIA_ROWS).await;
 
-    set_media(
-        devices.a().database(),
-        vec![count(Medium::Vinyl, 2), count(Medium::Cd, 1)],
-    )
-    .await;
+    set_media(devices.a().database(), vec![count(Medium::Vinyl, 2), count(Medium::Cd, 1)]).await;
     devices.converge(MEDIA_ROWS).await;
 
     assert_eq!(
@@ -80,30 +71,13 @@ fn concurrent_edits_of_different_places_both_stay() {
 }
 
 async fn check_concurrent_places(devices: &mut crate::sync::test_devices::TwoDevices) {
-    devices
-        .a()
-        .database()
-        .call(seed_artist_album_release)
-        .await
-        .unwrap();
-    set_media(
-        devices.a().database(),
-        vec![count(Medium::Cd, 1), count(Medium::Dvd, 1)],
-    )
-    .await;
+    devices.a().database().call(seed_artist_album_release).await.unwrap();
+    set_media(devices.a().database(), vec![count(Medium::Cd, 1), count(Medium::Dvd, 1)]).await;
     devices.converge(MEDIA_ROWS).await;
 
     devices.pause().await;
-    set_media(
-        devices.a().database(),
-        vec![count(Medium::Cd, 2), count(Medium::Dvd, 1)],
-    )
-    .await;
-    set_media(
-        devices.b().database(),
-        vec![count(Medium::Cd, 1), count(Medium::BluRay, 1)],
-    )
-    .await;
+    set_media(devices.a().database(), vec![count(Medium::Cd, 2), count(Medium::Dvd, 1)]).await;
+    set_media(devices.b().database(), vec![count(Medium::Cd, 1), count(Medium::BluRay, 1)]).await;
     devices.resume().await;
     devices.converge(MEDIA_ROWS).await;
 
@@ -122,12 +96,7 @@ async fn set_barcodes(db: &crate::db::Database, barcodes: &[&str]) {
 
 /// `RELEASE`'s barcodes as `db` reads the release.
 async fn barcodes_on(db: &crate::db::Database) -> Vec<String> {
-    db.find_release_by_id(RELEASE)
-        .await
-        .unwrap()
-        .unwrap()
-        .pressing
-        .barcodes
+    db.find_release_by_id(RELEASE).await.unwrap().unwrap().pressing.barcodes
 }
 
 const BARCODE_ROWS: &str = "SELECT id || ':' || position || ':' || barcode \
@@ -142,12 +111,7 @@ fn barcode_edits_merge_by_place_and_reach_the_other_device() {
 }
 
 async fn check_barcodes(devices: &mut crate::sync::test_devices::TwoDevices) {
-    devices
-        .a()
-        .database()
-        .call(seed_artist_album_release)
-        .await
-        .unwrap();
+    devices.a().database().call(seed_artist_album_release).await.unwrap();
     set_barcodes(devices.a().database(), &["0123456789012", "5012345678900"]).await;
     devices.converge(BARCODE_ROWS).await;
 
@@ -183,12 +147,7 @@ async fn set_labels(db: &crate::db::Database, labels: Vec<bae_types::pressing::R
 
 /// `RELEASE`'s labels as `db` reads the release.
 async fn labels_on(db: &crate::db::Database) -> Vec<bae_types::pressing::ReleaseLabel> {
-    db.find_release_by_id(RELEASE)
-        .await
-        .unwrap()
-        .unwrap()
-        .pressing
-        .labels
+    db.find_release_by_id(RELEASE).await.unwrap().unwrap().pressing.labels
 }
 
 const LABEL_ROWS: &str = "SELECT id || ':' || name || ':' || ifnull(discogs_label_id, '') \
@@ -211,22 +170,14 @@ async fn check_labels(devices: &mut crate::sync::test_devices::TwoDevices) {
             .unwrap()
             .with_ids(None, Some("7190".to_string()))
     };
-    devices
-        .a()
-        .database()
-        .call(seed_artist_album_release)
-        .await
-        .unwrap();
+    devices.a().database().call(seed_artist_album_release).await.unwrap();
     devices.converge(LABEL_ROWS).await;
 
     devices.pause().await;
     set_labels(devices.a().database(), vec![rhino("R2 1")]).await;
     set_labels(
         devices.b().database(),
-        vec![
-            rhino("R2 1"),
-            ReleaseLabel::new(None, Some("XY 3".to_string())).unwrap(),
-        ],
+        vec![rhino("R2 1"), ReleaseLabel::new(None, Some("XY 3".to_string())).unwrap()],
     )
     .await;
     devices.resume().await;

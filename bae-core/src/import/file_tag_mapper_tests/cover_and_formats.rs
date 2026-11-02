@@ -193,12 +193,7 @@ fn copy_with_picture(
     let mut tagged = lofty::read_from_path(&dest).unwrap();
     let mut tag = Tag::new(TagType::VorbisComments);
     tag.set_title("Track".to_string());
-    tag.push_picture(
-        Picture::unchecked(data.to_vec())
-            .pic_type(pic_type)
-            .mime_type(mime)
-            .build(),
-    );
+    tag.push_picture(Picture::unchecked(data.to_vec()).pic_type(pic_type).mime_type(mime).build());
     tagged.insert_tag(tag);
     tagged.save_to_path(&dest, WriteOptions::default()).unwrap();
     dest
@@ -209,9 +204,7 @@ fn embedded_cover(
     path: &std::path::Path,
 ) -> Result<Option<(Vec<u8>, ContentType)>, crate::import::ImportError> {
     use crate::import::file_tag_snapshot::FileTagReader;
-    crate::import::file_tag_snapshot::LoftyFileTagReader
-        .read(path)
-        .map(|read| read.embedded_cover)
+    crate::import::file_tag_snapshot::LoftyFileTagReader.read(path).map(|read| read.embedded_cover)
 }
 
 /// An embedded front cover is read and mapped to its `ContentType`.
@@ -270,9 +263,7 @@ fn tag_read_cover_prefers_front_over_other() {
     tagged.insert_tag(tag);
     tagged.save_to_path(&dest, WriteOptions::default()).unwrap();
 
-    let (bytes, content_type) = embedded_cover(&dest)
-        .unwrap()
-        .expect("cover present");
+    let (bytes, content_type) = embedded_cover(&dest).unwrap().expect("cover present");
     assert_eq!(bytes, JPEG_BYTES, "front cover wins over back");
     assert_eq!(content_type, ContentType::Jpeg);
 }
@@ -344,10 +335,7 @@ fn unsupported_front_picture_does_not_hide_supported_embedded_cover() {
         );
         tagged.save_to_path(&dest, WriteOptions::default()).unwrap();
 
-        assert_eq!(
-            embedded_cover(&dest).unwrap(),
-            Some((bytes.to_vec(), expected_type))
-        );
+        assert_eq!(embedded_cover(&dest).unwrap(), Some((bytes.to_vec(), expected_type)));
     }
 }
 

@@ -39,9 +39,7 @@ impl CandidateRuntime {
         let mut state = self.work.lock().unwrap();
         let generation = state.next_generation;
         state.next_generation += 1;
-        let prior = state
-            .running
-            .insert((work, key), (generation, token.clone()));
+        let prior = state.running.insert((work, key), (generation, token.clone()));
         drop(state);
         if let Some((_, prior)) = prior {
             prior.cancel();
@@ -68,12 +66,7 @@ impl CandidateRuntime {
 
     /// Cancel `key`'s `work`.
     pub(crate) fn cancel_work(&self, work: CandidateWork, key: &CandidateKey) {
-        let entry = self
-            .work
-            .lock()
-            .unwrap()
-            .running
-            .remove(&(work, key.clone()));
+        let entry = self.work.lock().unwrap().running.remove(&(work, key.clone()));
         if let Some((_, token)) = entry {
             token.cancel();
         }
@@ -83,21 +76,13 @@ impl CandidateRuntime {
     pub(crate) fn release_work(&self, work: CandidateWork, key: &CandidateKey, generation: u64) {
         let mut state = self.work.lock().unwrap();
         let entry = (work, key.clone());
-        if state
-            .running
-            .get(&entry)
-            .is_some_and(|(current, _)| *current == generation)
-        {
+        if state.running.get(&entry).is_some_and(|(current, _)| *current == generation) {
             state.running.remove(&entry);
         }
     }
 
     pub(crate) fn is_working(&self, work: CandidateWork, key: &CandidateKey) -> bool {
-        self.work
-            .lock()
-            .unwrap()
-            .running
-            .contains_key(&(work, key.clone()))
+        self.work.lock().unwrap().running.contains_key(&(work, key.clone()))
     }
 
     /// Every key with `work` in flight.
@@ -171,16 +156,14 @@ mod tests {
     #[tokio::test]
     async fn generations_are_unique_across_keys_and_kinds() {
         let runtime = CandidateRuntime::for_test().await;
-        let a = runtime.start_work(
-            WORK,
-            crate::import::CandidateKey::test("a"),
-            |_, generation| generation,
-        );
-        let b = runtime.start_work(
-            WORK,
-            crate::import::CandidateKey::test("b"),
-            |_, generation| generation,
-        );
+        let a =
+            runtime.start_work(WORK, crate::import::CandidateKey::test("a"), |_, generation| {
+                generation
+            });
+        let b =
+            runtime.start_work(WORK, crate::import::CandidateKey::test("b"), |_, generation| {
+                generation
+            });
         let c = runtime.start_work(
             CandidateWork::Identify,
             crate::import::CandidateKey::test("a"),
@@ -192,11 +175,10 @@ mod tests {
     #[tokio::test]
     async fn only_the_current_generation_emits() {
         let runtime = CandidateRuntime::for_test().await;
-        let stale = runtime.start_work(
-            WORK,
-            crate::import::CandidateKey::test("cand"),
-            |_, generation| generation,
-        );
+        let stale =
+            runtime.start_work(WORK, crate::import::CandidateKey::test("cand"), |_, generation| {
+                generation
+            });
         assert_eq!(
             runtime.while_work_current(
                 WORK,
@@ -207,11 +189,10 @@ mod tests {
             Some("sent")
         );
 
-        let live = runtime.start_work(
-            WORK,
-            crate::import::CandidateKey::test("cand"),
-            |_, generation| generation,
-        );
+        let live =
+            runtime.start_work(WORK, crate::import::CandidateKey::test("cand"), |_, generation| {
+                generation
+            });
         assert_eq!(
             runtime.while_work_current(
                 WORK,
@@ -246,11 +227,10 @@ mod tests {
     #[tokio::test]
     async fn a_release_removes_only_the_current_generation() {
         let runtime = CandidateRuntime::for_test().await;
-        let stale = runtime.start_work(
-            WORK,
-            crate::import::CandidateKey::test("cand"),
-            |_, generation| generation,
-        );
+        let stale =
+            runtime.start_work(WORK, crate::import::CandidateKey::test("cand"), |_, generation| {
+                generation
+            });
         let (live, live_generation) = runtime.start_work(
             WORK,
             crate::import::CandidateKey::test("cand"),
@@ -261,11 +241,7 @@ mod tests {
         assert!(runtime.is_working(WORK, &crate::import::CandidateKey::test("cand")));
         assert!(!live.is_cancelled());
 
-        runtime.release_work(
-            WORK,
-            &crate::import::CandidateKey::test("cand"),
-            live_generation,
-        );
+        runtime.release_work(WORK, &crate::import::CandidateKey::test("cand"), live_generation);
         assert!(!runtime.is_working(WORK, &crate::import::CandidateKey::test("cand")));
     }
 

@@ -94,9 +94,7 @@ struct BufferDecodeResources {
 
 impl BufferDecodeResources {
     fn core(&self) -> &DecodeResources {
-        self.core
-            .as_ref()
-            .expect("streaming decode resources missing core resources")
+        self.core.as_ref().expect("streaming decode resources missing core resources")
     }
 }
 
@@ -142,10 +140,7 @@ impl DecodeCodecOpenError {
 
 enum ProbedAudioCodecOpenError {
     MissingStream(String),
-    Codec {
-        audio: AudioStreamInfo,
-        error: DecodeCodecOpenError,
-    },
+    Codec { audio: AudioStreamInfo, error: DecodeCodecOpenError },
 }
 
 unsafe fn allocate_input_format_context(
@@ -184,14 +179,7 @@ unsafe fn open_and_probe_input(
     debug_assert_eq!((**fmt_ctx).pb, avio);
 
     let mut format: *const AVInputFormat = ptr::null();
-    let ret = av_probe_input_buffer2(
-        avio,
-        &mut format,
-        ptr::null(),
-        *fmt_ctx as *mut c_void,
-        0,
-        0,
-    );
+    let ret = av_probe_input_buffer2(avio, &mut format, ptr::null(), *fmt_ctx as *mut c_void, 0, 0);
     if ret < 0 {
         return Err(InputOpenProbeError::Open(ret));
     }
@@ -238,10 +226,7 @@ impl HeaderIndex {
             })
             .collect();
         let duration = Some((*stream).duration).filter(|&duration| duration != AV_NOPTS_VALUE);
-        Self {
-            timestamps,
-            duration,
-        }
+        Self { timestamps, duration }
     }
 
     /// The index on the stream's sample count, by `sample_clock`.
@@ -274,25 +259,15 @@ unsafe fn find_audio_stream(
 ) -> Result<AudioStreamInfo, String> {
     use ffmpeg_sys_next::*;
 
-    let stream_index = av_find_best_stream(
-        fmt_ctx,
-        AVMediaType::AVMEDIA_TYPE_AUDIO,
-        -1,
-        -1,
-        ptr::null_mut(),
-        0,
-    );
+    let stream_index =
+        av_find_best_stream(fmt_ctx, AVMediaType::AVMEDIA_TYPE_AUDIO, -1, -1, ptr::null_mut(), 0);
     if stream_index < 0 {
         return Err("No audio stream found".to_string());
     }
 
     let stream = *(*fmt_ctx).streams.add(stream_index as usize);
     let codecpar = (*stream).codecpar;
-    Ok(AudioStreamInfo {
-        stream_index,
-        stream,
-        codecpar,
-    })
+    Ok(AudioStreamInfo { stream_index, stream, codecpar })
 }
 
 /// The decoder for `stream`'s codec, opened on the stream's parameters and
@@ -342,15 +317,9 @@ unsafe fn open_audio_codec(
 /// The callback never reads `_vl`; this type only has to match the signature
 /// bindgen generated for `av_log_set_callback` on the target, or assignment
 /// below won't type-check.
-#[cfg(all(
-    any(target_os = "linux", target_os = "android"),
-    target_arch = "x86_64"
-))]
+#[cfg(all(any(target_os = "linux", target_os = "android"), target_arch = "x86_64"))]
 type FfmpegVaList = *mut ffmpeg_sys_next::__va_list_tag;
-#[cfg(all(
-    any(target_os = "linux", target_os = "android"),
-    target_arch = "aarch64"
-))]
+#[cfg(all(any(target_os = "linux", target_os = "android"), target_arch = "aarch64"))]
 type FfmpegVaList = ffmpeg_sys_next::__BindgenOpaqueArray<u64, 4>;
 #[cfg(not(all(
     any(target_os = "linux", target_os = "android"),
@@ -492,12 +461,7 @@ unsafe fn open_buffer_input(
         }
     };
 
-    Ok(BufferInput {
-        fmt_ctx,
-        avio,
-        avio_ctx_ptr,
-        header_indexes,
-    })
+    Ok(BufferInput { fmt_ctx, avio, avio_ctx_ptr, header_indexes })
 }
 
 /// Decode a `[start_sample, end_sample)` window from the buffer to interleaved
@@ -509,22 +473,13 @@ pub fn decode_audio(
     start_sample: Option<u64>,
     end_sample: Option<u64>,
 ) -> Result<DecodedAudio, DecodeError> {
-    let mut sink = CollectingSink {
-        samples: Vec::new(),
-        format: None,
-    };
+    let mut sink = CollectingSink { samples: Vec::new(), format: None };
     let never_cancelled = Arc::new(std::sync::atomic::AtomicBool::new(false));
     decode_audio_to_sink(buffer, start_sample, end_sample, &mut sink, never_cancelled)?;
     // `decode_audio_to_sink` returning Ok means the format was probed, so
     // `on_format` ran before any samples.
-    let (sample_rate, channels) = sink
-        .format
-        .expect("decode produced samples without a format");
-    Ok(DecodedAudio {
-        samples: sink.samples,
-        sample_rate,
-        channels,
-    })
+    let (sample_rate, channels) = sink.format.expect("decode produced samples without a format");
+    Ok(DecodedAudio { samples: sink.samples, sample_rate, channels })
 }
 
 /// The sink behind `decode_audio`: collects the whole decode into a `Vec` and
@@ -636,12 +591,8 @@ unsafe fn decode_buffer_to_sink_impl(
     // that say nothing about the audio.
     install_ffmpeg_log_callback();
 
-    let BufferInput {
-        mut fmt_ctx,
-        avio,
-        avio_ctx_ptr,
-        header_indexes,
-    } = open_buffer_input(&buffer, cancel.clone()).map_err(|e| e.into_decode_error(&cancel))?;
+    let BufferInput { mut fmt_ctx, avio, avio_ctx_ptr, header_indexes } =
+        open_buffer_input(&buffer, cancel.clone()).map_err(|e| e.into_decode_error(&cancel))?;
 
     // Count only the audio decode's errors: probing an embedded cover during
     // `find_stream_info` above may have logged its own.
@@ -708,11 +659,7 @@ unsafe fn decode_buffer_to_sink_impl(
     // verifying decode, which takes an MP3's scrub points, relies on this: it
     // reads every frame from the stream's first.
     let content_type = super::probe::content_type_from_codec_id((*audio.codecpar).codec_id);
-    let start = if content_type.is_lossless_audio() {
-        start
-    } else {
-        DecodeStart::StreamStart
-    };
+    let start = if content_type.is_lossless_audio() { start } else { DecodeStart::StreamStart };
 
     sink.on_format(sample_rate, channels);
     sink.on_stream(&decoded_stream(
@@ -760,14 +707,7 @@ unsafe fn decode_buffer_to_sink_impl(
     }
 
     let resources = BufferDecodeResources {
-        core: Some(DecodeResources {
-            frame,
-            packet,
-            swr_ctx,
-            codec_ctx,
-            fmt_ctx,
-            avio,
-        }),
+        core: Some(DecodeResources { frame, packet, swr_ctx, codec_ctx, fmt_ctx, avio }),
         avio_ctx_ptr,
     };
 
@@ -828,9 +768,7 @@ unsafe fn decoded_stream(
         // A stream the probe found past the header's has no header index.
         header_index: header_indexes
             .get(audio.stream_index as usize)
-            .map_or_else(super::HeaderSeekIndex::none, |index| {
-                index.on_samples(&sample_clock)
-            }),
+            .map_or_else(super::HeaderSeekIndex::none, |index| index.on_samples(&sample_clock)),
         start,
         sample_rate,
         stop_at_sample,
@@ -858,10 +796,7 @@ unsafe fn allocate_swr_context(
         ptr::null_mut(),
     );
     if ret < 0 || swr_ctx.is_null() {
-        return Err(format!(
-            "Failed to allocate SwrContext: {}",
-            av_err_str(ret)
-        ));
+        return Err(format!("Failed to allocate SwrContext: {}", av_err_str(ret)));
     }
 
     let ret = swr_init(swr_ctx);

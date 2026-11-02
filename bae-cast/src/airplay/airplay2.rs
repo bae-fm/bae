@@ -77,10 +77,7 @@ impl PairVerify {
         self.phase = Phase::AwaitingM2;
         Ok(Tlv8::new()
             .push_u8(tlv_type::STATE, state::M1)
-            .push(
-                tlv_type::PUBLIC_KEY,
-                self.ephemeral_public.as_bytes().to_vec(),
-            )
+            .push(tlv_type::PUBLIC_KEY, self.ephemeral_public.as_bytes().to_vec())
             .encode())
     }
 
@@ -114,15 +111,8 @@ impl PairVerify {
             .get(tlv_type::ENCRYPTED_DATA)
             .ok_or(PairingError::MissingField("encrypted verifier"))?;
 
-        let shared = self
-            .ephemeral
-            .diffie_hellman(&PublicKey::from(device_public))
-            .to_bytes();
-        let session_key = hkdf32(
-            b"Pair-Verify-Encrypt-Salt",
-            &shared,
-            b"Pair-Verify-Encrypt-Info",
-        );
+        let shared = self.ephemeral.diffie_hellman(&PublicKey::from(device_public)).to_bytes();
+        let session_key = hkdf32(b"Pair-Verify-Encrypt-Salt", &shared, b"Pair-Verify-Encrypt-Info");
         let cipher = ChaCha20Poly1305::new(Key::from_slice(&session_key));
 
         // Decrypt M2's verifier: authenticates the channel (a wrong session key
@@ -151,13 +141,7 @@ impl PairVerify {
             reason = "an AEAD failure is opaque by design: it says only that the tag did not verify"
         )]
         let sealed = cipher
-            .encrypt(
-                &pair_verify_nonce(b"PV-Msg03"),
-                Payload {
-                    msg: &inner,
-                    aad: &[],
-                },
-            )
+            .encrypt(&pair_verify_nonce(b"PV-Msg03"), Payload { msg: &inner, aad: &[] })
             .map_err(|_| PairingError::Rejected(0x02))?;
 
         self.phase = Phase::AwaitingM4(shared);
@@ -193,10 +177,7 @@ impl Ap2AudioCipher {
     /// key the SETUP streams plist hands the receiver.
     pub(crate) fn from_shared_secret(shared: &[u8; 32]) -> Self {
         let key = super::ap2_channel::audio_key(shared);
-        Ap2AudioCipher {
-            cipher: ChaCha20Poly1305::new(Key::from_slice(&key)),
-            counter: 0,
-        }
+        Ap2AudioCipher { cipher: ChaCha20Poly1305::new(Key::from_slice(&key)), counter: 0 }
     }
 
     /// Seal one packet's payload: `aad` is the RTP header's timestamp+SSRC (bytes
@@ -207,10 +188,7 @@ impl Ap2AudioCipher {
         nonce_bytes[4..].copy_from_slice(&self.counter.to_le_bytes());
         let sealed = self
             .cipher
-            .encrypt(
-                Nonce::from_slice(&nonce_bytes),
-                Payload { msg: payload, aad },
-            )
+            .encrypt(Nonce::from_slice(&nonce_bytes), Payload { msg: payload, aad })
             .expect("ChaCha20-Poly1305 seal cannot fail for a valid key");
         self.counter = self.counter.wrapping_add(1);
 
@@ -286,16 +264,10 @@ mod tests {
             assert_eq!(tlv.get_u8(tlv_type::STATE), Some(state::M1));
             let sender_pub: [u8; 32] = tlv.get(tlv_type::PUBLIC_KEY).unwrap().try_into().unwrap();
 
-            let shared = self
-                .ephemeral
-                .diffie_hellman(&PublicKey::from(sender_pub))
-                .to_bytes();
+            let shared = self.ephemeral.diffie_hellman(&PublicKey::from(sender_pub)).to_bytes();
             self.shared = Some(shared);
-            let session_key = hkdf32(
-                b"Pair-Verify-Encrypt-Salt",
-                &shared,
-                b"Pair-Verify-Encrypt-Info",
-            );
+            let session_key =
+                hkdf32(b"Pair-Verify-Encrypt-Salt", &shared, b"Pair-Verify-Encrypt-Info");
             let cipher = ChaCha20Poly1305::new(Key::from_slice(&session_key));
 
             // Sign device_ephemeral || sender_ephemeral.
@@ -308,21 +280,12 @@ mod tests {
                 .push(tlv_type::SIGNATURE, signature.to_bytes().to_vec())
                 .encode();
             let sealed = cipher
-                .encrypt(
-                    &pair_verify_nonce(b"PV-Msg02"),
-                    Payload {
-                        msg: &inner,
-                        aad: &[],
-                    },
-                )
+                .encrypt(&pair_verify_nonce(b"PV-Msg02"), Payload { msg: &inner, aad: &[] })
                 .unwrap();
 
             Tlv8::new()
                 .push_u8(tlv_type::STATE, state::M2)
-                .push(
-                    tlv_type::PUBLIC_KEY,
-                    self.ephemeral_public.as_bytes().to_vec(),
-                )
+                .push(tlv_type::PUBLIC_KEY, self.ephemeral_public.as_bytes().to_vec())
                 .push(tlv_type::ENCRYPTED_DATA, sealed)
                 .encode()
         }
@@ -343,11 +306,8 @@ mod tests {
                 .decrypt(&pair_verify_nonce(b"PV-Msg03"), encrypted)
                 .expect("M3 decrypts with the shared session key");
             let inner_tlv = Tlv8::decode(&inner).unwrap();
-            let sig_bytes: [u8; 64] = inner_tlv
-                .get(tlv_type::SIGNATURE)
-                .unwrap()
-                .try_into()
-                .unwrap();
+            let sig_bytes: [u8; 64] =
+                inner_tlv.get(tlv_type::SIGNATURE).unwrap().try_into().unwrap();
 
             let mut signed = Vec::new();
             signed.extend_from_slice(sender_pub);
@@ -388,10 +348,8 @@ mod tests {
     fn receiver_error_is_surfaced() {
         let mut verify = PairVerify::new();
         verify.start().unwrap();
-        let err = Tlv8::new()
-            .push_u8(tlv_type::STATE, state::M2)
-            .push_u8(tlv_type::ERROR, 0x02)
-            .encode();
+        let err =
+            Tlv8::new().push_u8(tlv_type::STATE, state::M2).push_u8(tlv_type::ERROR, 0x02).encode();
         assert_eq!(verify.handle_m2(&err), Err(PairingError::Rejected(0x02)));
     }
 
@@ -418,12 +376,8 @@ mod tests {
         let dec = ChaCha20Poly1305::new(Key::from_slice(&key));
         let mut nonce_bytes = [0u8; 12];
         nonce_bytes[4..].copy_from_slice(nonce_tail);
-        let plain = dec
-            .decrypt(
-                Nonce::from_slice(&nonce_bytes),
-                Payload { msg: ct, aad: &aad },
-            )
-            .unwrap();
+        let plain =
+            dec.decrypt(Nonce::from_slice(&nonce_bytes), Payload { msg: ct, aad: &aad }).unwrap();
         assert_eq!(plain, payload);
     }
 

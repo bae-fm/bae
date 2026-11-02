@@ -7,11 +7,7 @@ fn discogs_release_rich(title: &str, master_id: &str, tracks: &[&str]) -> Discog
         formats: vec![bae_catalogs::discogs::DiscogsFormat {
             name: "CD".to_string(),
             qty: "1".to_string(),
-            descriptions: vec![
-                "Album".to_string(),
-                "Reissue".to_string(),
-                "Promo".to_string(),
-            ],
+            descriptions: vec!["Album".to_string(), "Reissue".to_string(), "Promo".to_string()],
             text: None,
         }],
         labels: vec![
@@ -86,10 +82,7 @@ async fn a_picked_release_writes_its_id_and_pressing_fields() {
         support::discogs_fixture_id("master-exact")
     );
     assert_eq!(records[0].key(), release_id_key);
-    assert_eq!(
-        records[0].url(),
-        format!("https://www.discogs.com/release/{release_id_key}")
-    );
+    assert_eq!(records[0].url(), format!("https://www.discogs.com/release/{release_id_key}"));
 }
 
 /// The confirm form's overlay is the whole pressing block, applied on top of
@@ -109,11 +102,18 @@ async fn a_user_edit_overlays_the_picked_release() {
 
     let edit = ReleaseUserEdit {
         album_title: "Edited Title".to_string(),
-        album_artist_assignments: vec![bae_core::import::Credited::plain(ArtistAssignment::named("Artist Edited"))],
+        album_artist_assignments: vec![bae_core::import::Credited::plain(ArtistAssignment::named(
+            "Artist Edited",
+        ))],
         album_year: Some(1977),
         pressing: bae_types::pressing::Pressing {
             // User typed JP — we expect this to land on the release row.
-            facts: bae_types::pressing::PressingFacts { area: Some(bae_types::pressing::ReleaseArea::Country(bae_types::pressing::Country::from_code("JP").unwrap())), ..Default::default() },
+            facts: bae_types::pressing::PressingFacts {
+                area: Some(bae_types::pressing::ReleaseArea::Country(
+                    bae_types::pressing::Country::from_code("JP").unwrap(),
+                )),
+                ..Default::default()
+            },
             ..bae_types::pressing::Pressing::blank()
         },
         tracks: vec![TrackUserEdit {
@@ -153,11 +153,7 @@ async fn a_user_edit_overlays_the_picked_release() {
     assert!(release.pressing.year.is_none());
     assert!(release.pressing.facts.media.is_empty());
 
-    let album =
-        f.db.find_album_by_id(&release.album_id)
-            .await
-            .unwrap()
-            .unwrap();
+    let album = f.db.find_album_by_id(&release.album_id).await.unwrap().unwrap();
     assert_eq!(album.title, "Edited Title");
 
     let tracks = f.db.get_tracks_for_release(&release.id).await.unwrap();
@@ -191,11 +187,7 @@ async fn a_linked_draft_read_from_the_tags_imports_under_the_link() {
         "Tagged Title",
         "Tagged Artist",
         None,
-        &[TaggedTrack {
-            filename: "01.flac",
-            title: "Tagged Track",
-            track_number: 1,
-        }],
+        &[TaggedTrack { filename: "01.flac", title: "Tagged Track", track_number: 1 }],
     );
 
     let import_id = uuid::Uuid::new_v4().to_string();
@@ -242,7 +234,10 @@ async fn a_linked_draft_read_from_the_tags_imports_under_the_link() {
 /// numerically as the endpoint numbers its ids.
 fn seed_discogs_for_xref(
     f: &ImportFixture,
-    release_id: &str, master_id: &str, title: &str) -> String {
+    release_id: &str,
+    master_id: &str,
+    title: &str,
+) -> String {
     let rendered_master = support::discogs_fixture_id(master_id);
     f.library_manager.providers().discogs().seed_artist_image_response("1", None);
     f.library_manager.providers().discogs().seed_master_cache(
@@ -291,9 +286,7 @@ fn seed_mb_with_discogs_xref(
     let mut response = support::mb_release(mb_release_id, mb_group_id, title);
     response.relations = vec![MbRelation {
         url: Some(MbUrlResource {
-            resource: Some(format!(
-                "https://www.discogs.com/release/{discogs_release_id}"
-            )),
+            resource: Some(format!("https://www.discogs.com/release/{discogs_release_id}")),
         }),
         ..MbRelation::default()
     }];
@@ -315,7 +308,8 @@ async fn a_cross_link_writes_both_catalogs_records() {
     let f = ImportFixture::new().await;
 
     let discogs_id = seed_discogs_for_xref(&f, "90000001", "xref-d-master-exact", "Album Title");
-    let mb_id = seed_mb_with_discogs_xref(&f,
+    let mb_id = seed_mb_with_discogs_xref(
+        &f,
         "xref-mb-rel-exact",
         "xref-mb-group-exact",
         &discogs_id,
@@ -349,10 +343,7 @@ async fn a_cross_link_writes_both_catalogs_records() {
         .iter()
         .find(|record| record.catalog() == Catalog::MusicBrainz)
         .expect("MusicBrainz record missing");
-    assert_eq!(
-        mb.album_ref().expect("known parent album").key,
-        "xref-mb-group-exact"
-    );
+    assert_eq!(mb.album_ref().expect("known parent album").key, "xref-mb-group-exact");
     assert_eq!(mb.key(), mb_id);
 
     let discogs = records
@@ -414,10 +405,7 @@ async fn a_pick_with_a_partner_writes_both_records() {
         .iter()
         .find(|record| record.catalog() == Catalog::MusicBrainz)
         .expect("MusicBrainz record missing");
-    assert_eq!(
-        mb.album_ref().expect("known parent album").key,
-        "partner-mb-group"
-    );
+    assert_eq!(mb.album_ref().expect("known parent album").key, "partner-mb-group");
     assert_eq!(mb.key(), mb_id);
 
     let discogs = records
@@ -442,7 +430,8 @@ async fn a_partner_replaces_an_inferred_record_of_the_same_catalog() {
 
     let inferred_id = seed_discogs_for_xref(&f, "90000201", "inferred-d-master", "Album Title");
     let picked_id = seed_discogs_for_xref(&f, "90000202", "picked-d-master", "Album Title");
-    let mb_id = seed_mb_with_discogs_xref(&f,
+    let mb_id = seed_mb_with_discogs_xref(
+        &f,
         "partner-override-mb-rel",
         "partner-override-mb-group",
         &inferred_id,
@@ -473,16 +462,10 @@ async fn a_partner_replaces_an_inferred_record_of_the_same_catalog() {
     let (release_id, _) = support::wait_for_import_complete(&mut progress_rx).await;
 
     let records = f.db.get_release_records(&release_id).await.unwrap();
-    let discogs: Vec<_> = records
-        .iter()
-        .filter(|record| record.catalog() == Catalog::Discogs)
-        .collect();
+    let discogs: Vec<_> =
+        records.iter().filter(|record| record.catalog() == Catalog::Discogs).collect();
     assert_eq!(discogs.len(), 1, "one row per catalog");
-    assert_eq!(
-        discogs[0].key(),
-        picked_id,
-        "the picked release outranks the cross-referenced one"
-    );
+    assert_eq!(discogs[0].key(), picked_id, "the picked release outranks the cross-referenced one");
     assert_eq!(
         discogs[0].album_ref().expect("known parent album").key,
         support::discogs_fixture_id("picked-d-master")
@@ -492,7 +475,10 @@ async fn a_partner_replaces_an_inferred_record_of_the_same_catalog() {
 /// Seed an MB release with no Discogs url-rel. Returns the MB release id.
 fn seed_mb_without_xref(
     f: &ImportFixture,
-    mb_release_id: &str, mb_group_id: &str, title: &str) -> String {
+    mb_release_id: &str,
+    mb_group_id: &str,
+    title: &str,
+) -> String {
     support::seed_mb_release(
         f.library_manager.providers().musicbrainz(),
         support::mb_release(mb_release_id, mb_group_id, title),

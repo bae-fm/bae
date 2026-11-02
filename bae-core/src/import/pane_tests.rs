@@ -58,9 +58,7 @@ fn metadata(
 fn one_disc(count: u32) -> ReleaseValues {
     let places: Vec<_> = (1..=count).map(|number| place(1, 1, number)).collect();
     metadata(
-        vec![crate::mediums::ReleaseMedium::one_sided(Some(
-            bae_types::pressing::Medium::Cd,
-        ))],
+        vec![crate::mediums::ReleaseMedium::one_sided(Some(bae_types::pressing::Medium::Cd))],
         &places,
     )
 }
@@ -74,15 +72,7 @@ fn metadata_splits_one_draft_disc_into_sides() {
         sides: std::num::NonZeroU8::new(2).expect("two sides"),
     };
     let laid = values_over_audio(
-        metadata(
-            vec![record],
-            &[
-                place(1, 1, 1),
-                place(1, 1, 2),
-                place(1, 2, 1),
-                place(1, 2, 2),
-            ],
-        ),
+        metadata(vec![record], &[place(1, 1, 1), place(1, 1, 2), place(1, 2, 1), place(1, 2, 2)]),
         &current,
     )
     .unwrap();
@@ -95,9 +85,7 @@ fn metadata_splits_one_draft_disc_into_sides() {
 #[test]
 fn metadata_merges_two_draft_discs_into_one() {
     let mut current = draft(4);
-    current
-        .mediums
-        .push(crate::mediums::ReleaseMedium::one_sided(None));
+    current.mediums.push(crate::mediums::ReleaseMedium::one_sided(None));
     current.tracks[2].place = place(2, 1, 1);
     current.tracks[3].place = place(2, 1, 2);
     let laid = values_over_audio(one_disc(4), &current).unwrap();
@@ -113,10 +101,7 @@ fn metadata_takes_the_identity_of_the_row_it_is_laid_over() {
     current.tracks[1].edit.id = "kept-second".into();
     let laid = values_over_audio(one_disc(2), &current).unwrap();
     assert_eq!(
-        laid.tracks
-            .iter()
-            .map(|track| track.edit.id.as_str())
-            .collect::<Vec<_>>(),
+        laid.tracks.iter().map(|track| track.edit.id.as_str()).collect::<Vec<_>>(),
         ["kept-first", "kept-second"],
     );
 }
@@ -128,9 +113,6 @@ fn metadata_with_a_different_track_count_is_refused() {
     let current = draft(3);
     assert!(matches!(
         values_over_audio(one_disc(2), &current),
-        Err(ImportError::MetadataTrackCount {
-            folder_tracks: 3,
-            release_tracks: 2,
-        })
+        Err(ImportError::MetadataTrackCount { folder_tracks: 3, release_tracks: 2 })
     ));
 }

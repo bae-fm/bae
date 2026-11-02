@@ -8,11 +8,7 @@ use super::*;
 pub(crate) enum FileRow {
     /// A release file whose row is still in the library, of the release
     /// `release_id`.
-    ReleaseFile {
-        release_id: String,
-        file_name: String,
-        album_title: String,
-    },
+    ReleaseFile { release_id: String, file_name: String, album_title: String },
     /// A release's cover whose release is still in the library.
     Cover { album_title: String },
     /// A release file or cover no row of the library names any more: a lost
@@ -83,11 +79,7 @@ impl FileRowColumns {
                     Some(file_name),
                     Some(album_title),
                     _,
-                ) => FileRow::ReleaseFile {
-                    release_id,
-                    file_name,
-                    album_title,
-                },
+                ) => FileRow::ReleaseFile { release_id, file_name, album_title },
                 (Some(RELEASE_FILES_NAMESPACE), None, None, None, _) => FileRow::DeletedReleaseFile,
                 (Some(COVERS_NAMESPACE), _, _, _, Some(album_title)) => {
                     FileRow::Cover { album_title }

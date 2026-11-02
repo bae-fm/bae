@@ -43,8 +43,7 @@ const LIBRARY_FILL_IN_TRACK_ORDER: &str =
 
 /// `fill` with its rows and table named.
 fn fill_into(fill: &str, table: &str) -> String {
-    fill.replace("{rows}", LIBRARY_ROWS)
-        .replace("{table}", table)
+    fill.replace("{rows}", LIBRARY_ROWS).replace("{table}", table)
 }
 
 /// `playback_context`'s columns without its `track_id` index.
@@ -103,9 +102,7 @@ fn database_file(dir: &std::path::Path) -> std::path::PathBuf {
 
 fn plain_connection(path: &std::path::Path) -> rusqlite::Connection {
     let plain = rusqlite::Connection::open(path).unwrap();
-    plain
-        .busy_timeout(std::time::Duration::from_secs(60))
-        .unwrap();
+    plain.busy_timeout(std::time::Duration::from_secs(60)).unwrap();
     plain
 }
 
@@ -128,12 +125,7 @@ async fn library_db() -> (Database, tempfile::TempDir, std::path::PathBuf) {
     .unwrap();
     let path = database_file(tmp.path());
     let plain = plain_connection(&path);
-    plain
-        .set_db_config(
-            rusqlite::config::DbConfig::SQLITE_DBCONFIG_ENABLE_TRIGGER,
-            false,
-        )
-        .unwrap();
+    plain.set_db_config(rusqlite::config::DbConfig::SQLITE_DBCONFIG_ENABLE_TRIGGER, false).unwrap();
     plain
         .execute(
             &format!(
@@ -222,11 +214,7 @@ fn plain_statement(
         }
         plain.execute_batch("ROLLBACK").unwrap();
     }
-    let hook = if hooked {
-        "with a pre-update hook"
-    } else {
-        "no hook"
-    };
+    let hook = if hooked { "with a pre-update hook" } else { "no hook" };
     report(&format!("plain SQLite, {label}, {hook}"), times);
 }
 
@@ -244,9 +232,7 @@ fn plain_fill(plain: &rusqlite::Connection, label: &str, pragmas: &str, fill: &s
         times.push(seconds_since(start));
         plain.execute_batch("DELETE FROM playback_context").unwrap();
     }
-    plain
-        .execute_batch("PRAGMA cache_size = -2000; PRAGMA cache_spill = ON")
-        .unwrap();
+    plain.execute_batch("PRAGMA cache_size = -2000; PRAGMA cache_spill = ON").unwrap();
     report(&format!("plain SQLite, {label}, committed"), times);
 }
 
@@ -273,10 +259,7 @@ async fn playback_queue_bench_library_play() {
     // The queue screens open, each following the queue as it changes.
     let mut value = db.subscribe_queue_value();
     let mut upcoming = db.subscribe_queue_upcoming(crate::library::LibraryPageWindows::from([
-        crate::library::LibraryPageWindow {
-            offset: 0,
-            limit: 100,
-        },
+        crate::library::LibraryPageWindow { offset: 0, limit: 100 },
     ]));
     value.next().await.unwrap().unwrap();
     upcoming.next().await.unwrap();
@@ -293,11 +276,7 @@ async fn playback_queue_bench_library_play() {
     let plain = plain_connection(&path);
     let into_lane = fill_into(LIBRARY_FILL, "playback_context");
     let into_unindexed = fill_into(LIBRARY_FILL, "bench_unindexed_lane");
-    plain_query(
-        &plain,
-        "the fill's rows alone, read and counted",
-        LIBRARY_ROWS,
-    );
+    plain_query(&plain, "the fill's rows alone, read and counted", LIBRARY_ROWS);
     plain_statement(&plain, "fill", "", &into_lane, false);
     plain_statement(&plain, "fill", "", &into_lane, true);
     let in_track_order = fill_into(LIBRARY_FILL_IN_TRACK_ORDER, "playback_context");
@@ -305,10 +284,7 @@ async fn playback_queue_bench_library_play() {
     plain_fill(&plain, "fill in track order", "", &in_track_order);
     // Changed pages past the cache are written out mid-statement, then read
     // back and written again as the fill keeps changing them.
-    for (label, fill) in [
-        ("fill", &into_lane),
-        ("fill in track order", &in_track_order),
-    ] {
+    for (label, fill) in [("fill", &into_lane), ("fill in track order", &in_track_order)] {
         plain_fill(
             &plain,
             &format!("{label}, changed pages kept in memory"),
@@ -320,12 +296,7 @@ async fn playback_queue_bench_library_play() {
     // indexes a fill writes out of order.
     for mebibytes in [16, 64, 256] {
         let pragma = format!("PRAGMA cache_size = -{}", mebibytes * 1024);
-        plain_fill(
-            &plain,
-            &format!("fill, {mebibytes} MiB page cache"),
-            &pragma,
-            &into_lane,
-        );
+        plain_fill(&plain, &format!("fill, {mebibytes} MiB page cache"), &pragma, &into_lane);
         plain_fill(
             &plain,
             &format!("fill in track order, {mebibytes} MiB page cache"),
@@ -340,10 +311,7 @@ async fn playback_queue_bench_library_play() {
         &into_unindexed,
         false,
     );
-    db.playback_queue_tables()
-        .fill(ContextFill::LibraryShuffled)
-        .await
-        .unwrap();
+    db.playback_queue_tables().fill(ContextFill::LibraryShuffled).await.unwrap();
     let copy_lane = format!(
         "{UNINDEXED_LANE} INSERT INTO bench_unindexed_lane SELECT entry, position, track_id, unshuffled FROM playback_context;"
     );
@@ -351,18 +319,6 @@ async fn playback_queue_bench_library_play() {
     let empty_unindexed = "DELETE FROM bench_unindexed_lane";
     plain_statement(&plain, "empty", "", empty_lane, false);
     plain_statement(&plain, "empty", "", empty_lane, true);
-    plain_statement(
-        &plain,
-        "empty without the track_id index",
-        &copy_lane,
-        empty_unindexed,
-        false,
-    );
-    plain_statement(
-        &plain,
-        "empty without the track_id index",
-        &copy_lane,
-        empty_unindexed,
-        true,
-    );
+    plain_statement(&plain, "empty without the track_id index", &copy_lane, empty_unindexed, false);
+    plain_statement(&plain, "empty without the track_id index", &copy_lane, empty_unindexed, true);
 }

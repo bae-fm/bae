@@ -10,11 +10,7 @@ fn fixture_album(title: &str, artists: &[&str], tracks: &[&str]) -> crate::libra
 
 /// The library fixture holding `albums` and nothing else.
 fn fixture_of_albums(albums: Vec<crate::library::FixtureAlbum>) -> crate::library::LibraryFixture {
-    crate::library::LibraryFixture {
-        albums,
-        watched_folders: Vec::new(),
-        playing: None,
-    }
+    crate::library::LibraryFixture { albums, watched_folders: Vec::new(), playing: None }
 }
 
 /// A fixture's albums land as the grid lists them: added in the fixture's
@@ -40,23 +36,15 @@ async fn fixture_albums_land_in_the_order_they_were_added() {
         .unwrap();
     let titles: Vec<&str> = newest_first.iter().map(|album| album.title.as_str()).collect();
     assert_eq!(titles, ["Third", "Second", "First"]);
-    let second_artists = manager
-        .get_artists_for_album(&newest_first[1].id)
-        .await
-        .unwrap();
-    let first_artists = manager
-        .get_artists_for_album(&newest_first[2].id)
-        .await
-        .unwrap();
+    let second_artists = manager.get_artists_for_album(&newest_first[1].id).await.unwrap();
+    let first_artists = manager.get_artists_for_album(&newest_first[2].id).await.unwrap();
     assert_eq!(second_artists[0].artist.id, first_artists[0].artist.id);
 
     let third = &newest_first[0];
     let artists = manager.get_artists_for_album(&third.id).await.unwrap();
     assert_eq!(artists.len(), 1);
     assert_eq!(artists[0].artist.name, "Artist B");
-    let release_id = manager.get_releases_for_album(&third.id).await.unwrap()[0]
-        .id
-        .clone();
+    let release_id = manager.get_releases_for_album(&third.id).await.unwrap()[0].id.clone();
     let tracks = manager.get_tracks_for_release(&release_id).await.unwrap();
     let track_titles: Vec<&str> = tracks.iter().map(|track| track.title.as_str()).collect();
     assert_eq!(track_titles, ["Opening", "Closing"]);
@@ -91,11 +79,7 @@ async fn a_fixture_album_credited_to_two_artists_is_listed_under_each() {
     let mut browse = manager.subscribe_album_browse(
         &[],
         true,
-        [crate::library::LibraryPageWindow {
-            offset: 0,
-            limit: 10,
-        }]
-        .into(),
+        [crate::library::LibraryPageWindow { offset: 0, limit: 10 }].into(),
     );
     let grouped = browse.next().await.expect("the query stays open").result.unwrap();
     let rows = &grouped.windows[0].rows;
@@ -107,10 +91,7 @@ async fn a_fixture_album_credited_to_two_artists_is_listed_under_each() {
             let end = start + section.window.limit as usize;
             (
                 section.title.clone(),
-                rows[start..end]
-                    .iter()
-                    .map(|album| album.title.clone())
-                    .collect(),
+                rows[start..end].iter().map(|album| album.title.clone()).collect(),
             )
         })
         .collect();
@@ -118,10 +99,7 @@ async fn a_fixture_album_credited_to_two_artists_is_listed_under_each() {
         sections,
         [
             ("Artist A".to_string(), vec!["Shared Album".to_string()]),
-            (
-                "Artist B".to_string(),
-                vec!["Own Album".to_string(), "Shared Album".to_string()]
-            ),
+            ("Artist B".to_string(), vec!["Own Album".to_string(), "Shared Album".to_string()]),
         ]
     );
 }
@@ -132,21 +110,14 @@ async fn a_fixture_album_credited_to_two_artists_is_listed_under_each() {
 async fn a_fixture_albums_cover_is_its_releases_cover() {
     let (manager, temp_dir) = setup_test_manager().await;
     let cover = temp_dir.path().join("cover.png");
-    ::image::RgbImage::from_pixel(4, 4, ::image::Rgb([200, 40, 40]))
-        .save(&cover)
-        .unwrap();
+    ::image::RgbImage::from_pixel(4, 4, ::image::Rgb([200, 40, 40])).save(&cover).unwrap();
     let mut album = fixture_album("Covered Album", &["Artist A"], &["One"]);
     album.cover = Some(cover.clone());
 
-    manager
-        .write_fixture(&fixture_of_albums(vec![album]))
-        .await
-        .unwrap();
+    manager.write_fixture(&fixture_of_albums(vec![album])).await.unwrap();
 
     let albums = manager.get_albums(&[]).await.unwrap();
-    let release_id = manager.get_releases_for_album(&albums[0].id).await.unwrap()[0]
-        .id
-        .clone();
+    let release_id = manager.get_releases_for_album(&albums[0].id).await.unwrap()[0].id.clone();
     let stored = manager
         .read_cover_image_bytes(&release_id)
         .await
@@ -191,18 +162,12 @@ fn fixture_candidate(
 
 /// Found's rows the import list reads, by display path, newest first.
 async fn found_rows(manager: &LibraryManager) -> crate::import::ImportListProjection {
-    let list = manager
-        .open_import_list(crate::import::ImportListView::default())
-        .await
-        .unwrap();
+    let list = manager.open_import_list(crate::import::ImportListView::default()).await.unwrap();
     manager
         .load_import_list(crate::import::ImportListRequest {
             list,
-            windows: std::iter::once(crate::library::LibraryPageWindow {
-                offset: 0,
-                limit: 50,
-            })
-            .collect(),
+            windows: std::iter::once(crate::library::LibraryPageWindow { offset: 0, limit: 50 })
+                .collect(),
         })
         .await
         .unwrap()
@@ -258,9 +223,7 @@ async fn fixture_candidates_land_on_found_in_their_states() {
             ("Not Looked Up".to_string(), Some(PendingStanding::NotLookedUp)),
             (
                 "Needs You".to_string(),
-                Some(PendingStanding::NeedsYou {
-                    reason: crate::import::NeedsYouReason::NotFound
-                })
+                Some(PendingStanding::NeedsYou { reason: crate::import::NeedsYouReason::NotFound })
             ),
             ("Identified".to_string(), Some(PendingStanding::Identified)),
             ("Unmatched".to_string(), Some(PendingStanding::Unmatched)),
@@ -430,15 +393,10 @@ async fn a_fixtures_playing_album_lays_its_tracks_over_the_disc_image() {
         albums.iter().map(|album| album.title.as_str()).collect::<Vec<_>>(),
         ["Album Title"]
     );
-    let release_id = manager.get_releases_for_album(&albums[0].id).await.unwrap()[0]
-        .id
-        .clone();
+    let release_id = manager.get_releases_for_album(&albums[0].id).await.unwrap()[0].id.clone();
     let tracks = manager.get_tracks_for_release(&release_id).await.unwrap();
     assert_eq!(
-        tracks
-            .iter()
-            .map(|track| (track.title.as_str(), track.duration_ms))
-            .collect::<Vec<_>>(),
+        tracks.iter().map(|track| (track.title.as_str(), track.duration_ms)).collect::<Vec<_>>(),
         [("Opening Track", 3_000), ("Pregap Track", 5_000)]
     );
     let pregap = manager.resolve_track_audio(&tracks[1].id).await.unwrap();
@@ -447,7 +405,11 @@ async fn a_fixtures_playing_album_lays_its_tracks_over_the_disc_image() {
         pregap
             .segments
             .iter()
-            .map(|segment| (segment.role.clone(), segment.span.start_sample, segment.span.end_sample))
+            .map(|segment| (
+                segment.role.clone(),
+                segment.span.start_sample,
+                segment.span.end_sample
+            ))
             .collect::<Vec<_>>(),
         [
             (crate::db::DbAudioSegmentRole::AudioPregap, 132_300, Some(220_500)),
@@ -481,22 +443,19 @@ async fn playback_resumes_the_fixtures_playing_album_in_the_pregap() {
         .await
         .unwrap();
     let album_id = manager.get_albums(&[]).await.unwrap()[0].id.clone();
-    let release_id = manager.get_releases_for_album(&album_id).await.unwrap()[0]
-        .id
-        .clone();
-    let pregap_track = manager.get_tracks_for_release(&release_id).await.unwrap()[1]
-        .id
-        .clone();
+    let release_id = manager.get_releases_for_album(&album_id).await.unwrap()[0].id.clone();
+    let pregap_track = manager.get_tracks_for_release(&release_id).await.unwrap()[1].id.clone();
 
     let (device, _capture) = crate::playback::RealtimeCaptureAudioDevice::new();
-    let playback = manager.start_playback_service_with_audio_device(
-        tokio::runtime::Handle::current(),
-        100,
-        true,
-        Box::new(device),
-    )
-    .await
-    .expect("start playback");
+    let playback = manager
+        .start_playback_service_with_audio_device(
+            tokio::runtime::Handle::current(),
+            100,
+            true,
+            Box::new(device),
+        )
+        .await
+        .expect("start playback");
     let values = manager.values_until_closed(manager.subscribe_now_playing());
     let mut positions = playback.subscribe_positions();
     let restored = tokio::time::timeout(std::time::Duration::from_secs(30), async {

@@ -10,11 +10,9 @@
 #[tokio::test(flavor = "multi_thread")]
 async fn the_pressing_whose_tracklist_fits_the_folder_is_offered() {
     let fixture = Fixture::new("fitting-pressing").await;
-    fixture
-        .import
-        .register_artwork_analyzer(Arc::new(BarcodeAnalyzer {
-            barcode: PAIRED_BARCODE.to_string(),
-        }));
+    fixture.import.register_artwork_analyzer(Arc::new(BarcodeAnalyzer {
+        barcode: PAIRED_BARCODE.to_string(),
+    }));
     let dir = fixture.barcode_candidate("From Barcode");
     let probed = fixture.probed_total_ms(&dir);
     fixture.provider.route(
@@ -39,28 +37,17 @@ async fn the_pressing_whose_tracklist_fits_the_folder_is_offered() {
 
     fixture.drain_automatic().await;
 
-    let row = fixture
-        .stored_for(&dir)
-        .await
-        .expect("the candidate stores a row");
+    let row = fixture.stored_for(&dir).await.expect("the candidate stores a row");
     let verdict = identify_result(&row).verdict.clone();
     let TerminalVerdict::Found {
-        findings:
-            crate::identify::Findings {
-                matches,
-                narrowed_out,
-                ..
-            },
+        findings: crate::identify::Findings { matches, narrowed_out, .. },
         ..
     } = &verdict
     else {
         panic!("expected a Found verdict, got {verdict:?}");
     };
     assert_eq!(
-        matches
-            .iter()
-            .map(|result| result.release_id.as_str())
-            .collect::<Vec<_>>(),
+        matches.iter().map(|result| result.release_id.as_str()).collect::<Vec<_>>(),
         vec!["mb-fits"]
     );
     assert!(narrowed_out.is_empty(), "{narrowed_out:?}");
@@ -82,11 +69,9 @@ async fn the_pressing_whose_tracklist_fits_the_folder_is_offered() {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_combined_folder_settles_on_the_release_that_holds_all_its_tracks() {
     let fixture = Fixture::new("combined-folder").await;
-    fixture
-        .import
-        .register_artwork_analyzer(Arc::new(BarcodeAnalyzer {
-            barcode: PAIRED_BARCODE.to_string(),
-        }));
+    fixture.import.register_artwork_analyzer(Arc::new(BarcodeAnalyzer {
+        barcode: PAIRED_BARCODE.to_string(),
+    }));
     let dir = fixture.barcode_candidate("Artist - Album One [CAT-100]");
     for at in 3..=20 {
         copy_fixture(
@@ -181,20 +166,13 @@ async fn a_combined_folder_settles_on_the_release_that_holds_all_its_tracks() {
 
     fixture.drain_automatic().await;
 
-    let row = fixture
-        .stored_for(&dir)
-        .await
-        .expect("the candidate stores a row");
+    let row = fixture.stored_for(&dir).await.expect("the candidate stores a row");
     let verdict = identify_result(&row).verdict.clone();
     let TerminalVerdict::Found { findings, .. } = &verdict else {
         panic!("expected a Found verdict, got {verdict:?}");
     };
     assert_eq!(
-        findings
-            .matches
-            .iter()
-            .map(|result| result.release_id.as_str())
-            .collect::<Vec<_>>(),
+        findings.matches.iter().map(|result| result.release_id.as_str()).collect::<Vec<_>>(),
         vec!["mb-both-albums"]
     );
     assert!(
@@ -216,11 +194,9 @@ async fn a_combined_folder_settles_on_the_release_that_holds_all_its_tracks() {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_sole_release_that_does_not_fit_the_folder_is_not_found() {
     let fixture = Fixture::new("unfit-sole").await;
-    fixture
-        .import
-        .register_artwork_analyzer(Arc::new(BarcodeAnalyzer {
-            barcode: PAIRED_BARCODE.to_string(),
-        }));
+    fixture.import.register_artwork_analyzer(Arc::new(BarcodeAnalyzer {
+        barcode: PAIRED_BARCODE.to_string(),
+    }));
     let dir = fixture.barcode_candidate("From Barcode");
     let probed = fixture.probed_total_ms(&dir);
     fixture.provider.route(
@@ -237,10 +213,7 @@ async fn a_sole_release_that_does_not_fit_the_folder_is_not_found() {
 
     fixture.drain_automatic().await;
 
-    let row = fixture
-        .stored_for(&dir)
-        .await
-        .expect("the candidate stores a row");
+    let row = fixture.stored_for(&dir).await.expect("the candidate stores a row");
     let verdict = identify_result(&row).verdict.clone();
     assert!(
         matches!(verdict, TerminalVerdict::NotFoundAnywhere { .. }),

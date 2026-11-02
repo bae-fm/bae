@@ -24,10 +24,7 @@ fn credited(
 
 /// A run on both catalogs given a disc ID alone, its folder named `folder`.
 fn disc_run_of_folder(folder: &str, catalogs: &[&str]) -> IdentifyState {
-    disc_run_of_text(
-        &[(folder, crate::signals::TextOrigin::FolderName)],
-        catalogs,
-    )
+    disc_run_of_text(&[(folder, crate::signals::TextOrigin::FolderName)], catalogs)
 }
 
 /// A run on both catalogs given a disc ID alone, its text the given lines.
@@ -38,10 +35,7 @@ fn disc_run_of_text(
     let mut disc_signals = disc_only(catalogs);
     disc_signals.text_pool = lines
         .iter()
-        .map(|(text, origin)| crate::signals::TextLine {
-            text: text.to_string(),
-            origin: *origin,
-        })
+        .map(|(text, origin)| crate::signals::TextLine { text: text.to_string(), origin: *origin })
         .collect();
     let (state, effects) = super::step(
         started_with(vec![MB, DG]),
@@ -86,7 +80,7 @@ fn a_number_the_text_prints_that_a_found_release_carries_is_searched_on_both_cat
                 labelled(MB, "mb-1", "Label", "AB 12345-2"),
                 pair("mb-2", Some("g")),
             ])),
-            },
+        },
     );
     assert!(
         effects.contains(&catalog_lookup(MB, "AB 12345-2"))
@@ -171,7 +165,7 @@ fn a_number_only_the_artwork_prints_is_not_confirmed_over_the_folder_names() {
                 labelled(MB, "mb-1", "Label", "AB-100"),
                 labelled(MB, "mb-2", "Other", "XY-250"),
             ])),
-            },
+        },
     );
     let IdentifyState::Triangulating { context, .. } = &state else {
         panic!("the run goes round: {state:?}");
@@ -204,10 +198,7 @@ fn a_struck_out_picked_number_is_not_searched() {
     );
     assert_eq!(
         effects,
-        vec![
-            catalog_lookup_under(MB, "CD-2", None),
-            catalog_lookup_under(DG, "CD-2", None)
-        ]
+        vec![catalog_lookup_under(MB, "CD-2", None), catalog_lookup_under(DG, "CD-2", None)]
     );
 }
 
@@ -219,10 +210,8 @@ fn a_struck_out_picked_number_is_not_searched() {
 #[test]
 fn a_row_with_no_link_and_no_barcode_is_looked_up_by_its_number_under_its_label() {
     let state = disc_run_of_folder("Some Album", &[]);
-    let record = MetadataResult {
-        artist: Some("Artist Name".to_string()),
-        ..mk_result("mb-1", Some("g"))
-    };
+    let record =
+        MetadataResult { artist: Some("Artist Name".to_string()), ..mk_result("mb-1", Some("g")) };
     let reading = super::step(
         state,
         IdentifyEvent::DiscidLookupAnswered {
@@ -233,10 +222,7 @@ fn a_row_with_no_link_and_no_barcode_is_looked_up_by_its_number_under_its_label(
     let (state, effects, asked) = answer_rounds(
         reading,
         |release| ReleaseDocument {
-            labels: vec![bae_types::pressing::ReleaseLabel::of(
-                Some("Label One"),
-                Some("XY-100"),
-            )],
+            labels: vec![bae_types::pressing::ReleaseLabel::of(Some("Label One"), Some("XY-100"))],
             album_links: match release.catalog {
                 Catalog::MusicBrainz => AlbumLinks::Read(Vec::new()),
                 _ => AlbumLinks::NotAsked,
@@ -261,9 +247,7 @@ fn a_row_with_no_link_and_no_barcode_is_looked_up_by_its_number_under_its_label(
     keys.dedup();
     assert_eq!(keys, asked.pressings, "each key is asked once");
     assert!(
-        effects
-            .iter()
-            .all(|effect| matches!(effect, Effect::KeepAlbumLinks { .. })),
+        effects.iter().all(|effect| matches!(effect, Effect::KeepAlbumLinks { .. })),
         "the last round asks nothing: {effects:?}"
     );
     let rows = rows_of(&state);
@@ -299,12 +283,7 @@ fn a_failed_pressing_lookup_fails_the_run() {
             Effect::LookupPressing { source, key } => {
                 assert_eq!(
                     (source, &key),
-                    (
-                        DG,
-                        &PressingKey::Barcode {
-                            barcode: "5012345678900".to_string()
-                        }
-                    )
+                    (DG, &PressingKey::Barcode { barcode: "5012345678900".to_string() })
                 );
                 IdentifyEvent::PressingLookupAnswered {
                     source,
@@ -351,21 +330,12 @@ fn a_number_is_searched_on_discogs_under_each_offered_rows_artist() {
             disc_id: "d".into(),
             outcome: Ok(DiscIdAnswer::for_test(vec![
                 labelled(MB, "mb-1", "Label", "AB-100"),
-                titled(
-                        credited(MB, "mb-2", "ARTIST NAME", "Label", "AB 100"),
-                        "Album Two",
-                    ),
-                titled(
-                        credited(MB, "mb-3", "Other Artist", "Label", "AB-100"),
-                        "Album Three",
-                    ),
+                titled(credited(MB, "mb-2", "ARTIST NAME", "Label", "AB 100"), "Album Two"),
+                titled(credited(MB, "mb-3", "Other Artist", "Label", "AB-100"), "Album Three"),
             ])),
         },
     );
-    let IdentifyState::Triangulating {
-        catalog, context, ..
-    } = &state
-    else {
+    let IdentifyState::Triangulating { catalog, context, .. } = &state else {
         panic!("the run goes round: {state:?}");
     };
     assert_eq!(
@@ -373,10 +343,8 @@ fn a_number_is_searched_on_discogs_under_each_offered_rows_artist() {
         3,
         "every album is offered"
     );
-    let searches: Vec<&Effect> = effects
-        .iter()
-        .filter(|effect| matches!(effect, Effect::LookupCatalog { .. }))
-        .collect();
+    let searches: Vec<&Effect> =
+        effects.iter().filter(|effect| matches!(effect, Effect::LookupCatalog { .. })).collect();
     assert_eq!(
         searches,
         vec![
@@ -423,20 +391,14 @@ fn a_release_of_another_artist_carrying_the_number_adds_no_search() {
         },
     );
     assert!(
-        !effects
-            .iter()
-            .any(|effect| matches!(effect, Effect::LookupCatalog { .. })),
+        !effects.iter().any(|effect| matches!(effect, Effect::LookupCatalog { .. })),
         "no search under another artist: {effects:?}"
     );
     let IdentifyState::Found { findings, .. } = &state else {
         panic!("the run settles: {state:?}");
     };
     assert!(
-        findings
-            .narrowed_out
-            .matches
-            .iter()
-            .any(|result| result.release_id == "mb-9"),
+        findings.narrowed_out.matches.iter().any(|result| result.release_id == "mb-9"),
         "the other artist's release is found and not offered: {findings:?}"
     );
     let Some(crate::identify::view::CatalogStepView::Numbers { rows, .. }) =
@@ -465,10 +427,7 @@ fn a_picked_number_is_searched_as_it_stands_and_not_again_under_an_artist() {
     let (state, effects) = started_with_choices(vec![MB, DG], choosing(&["AB-100"]));
     assert_eq!(
         effects,
-        vec![
-            catalog_lookup_under(MB, "AB-100", None),
-            catalog_lookup_under(DG, "AB-100", None),
-        ]
+        vec![catalog_lookup_under(MB, "AB-100", None), catalog_lookup_under(DG, "AB-100", None),]
     );
     let mut signals = disc_only(&["AB-100"]);
     signals.text_pool = vec![crate::signals::TextLine {
@@ -499,15 +458,10 @@ fn a_picked_number_is_searched_as_it_stands_and_not_again_under_an_artist() {
         asked.extend(more);
     }
     assert!(
-        !asked
-            .iter()
-            .any(|effect| matches!(effect, Effect::LookupCatalog { .. })),
+        !asked.iter().any(|effect| matches!(effect, Effect::LookupCatalog { .. })),
         "nothing searches the picked number again: {asked:?}"
     );
-    assert!(
-        matches!(state, IdentifyState::Found { .. }),
-        "the run settles: {state:?}"
-    );
+    assert!(matches!(state, IdentifyState::Found { .. }), "the run settles: {state:?}");
 }
 
 /// An offered row whose number is in effect is not looked up again by that
@@ -527,10 +481,7 @@ fn a_rows_number_searched_under_its_artist_is_not_looked_up_again() {
     let (mut state, effects, mut asked) = answer_rounds(
         answered,
         |_| ReleaseDocument {
-            labels: vec![bae_types::pressing::ReleaseLabel::of(
-                Some("Label"),
-                Some("AB-100"),
-            )],
+            labels: vec![bae_types::pressing::ReleaseLabel::of(Some("Label"), Some("AB-100"))],
             ..plain_document(&[])
         },
         |_, _| Vec::new(),
@@ -546,19 +497,12 @@ fn a_rows_number_searched_under_its_artist_is_not_looked_up_again() {
                 outcome: Ok(Vec::new()),
             },
         );
-        let (next, _, more) = answer_rounds(
-            answered,
-            |_| plain_document(&[]),
-            |_, _| Vec::new(),
-        );
+        let (next, _, more) = answer_rounds(answered, |_| plain_document(&[]), |_, _| Vec::new());
         state = next;
         asked.pressings.extend(more.pressings);
     }
     assert_eq!(asked.pressings, Vec::new(), "no pressing lookup is asked");
-    assert!(
-        matches!(state, IdentifyState::Found { .. }),
-        "the run settles: {state:?}"
-    );
+    assert!(matches!(state, IdentifyState::Found { .. }), "the run settles: {state:?}");
 }
 
 /// A Discogs row is looked up on MusicBrainz by its number under its label
@@ -589,7 +533,13 @@ fn a_compilations_number_is_searched_alone_on_discogs_too() {
         state,
         IdentifyEvent::DiscidLookupAnswered {
             disc_id: "d".into(),
-            outcome: Ok(DiscIdAnswer::for_test(vec![credited(MB, "mb-1", "Various Artists", "Label", "AB-100")])),
+            outcome: Ok(DiscIdAnswer::for_test(vec![credited(
+                MB,
+                "mb-1",
+                "Various Artists",
+                "Label",
+                "AB-100",
+            )])),
         },
     );
     assert_eq!(
@@ -597,10 +547,7 @@ fn a_compilations_number_is_searched_alone_on_discogs_too() {
             .iter()
             .filter(|effect| matches!(effect, Effect::LookupCatalog { .. }))
             .collect::<Vec<_>>(),
-        vec![
-            &catalog_lookup_under(MB, "AB-100", None),
-            &catalog_lookup_under(DG, "AB-100", None),
-        ]
+        vec![&catalog_lookup_under(MB, "AB-100", None), &catalog_lookup_under(DG, "AB-100", None),]
     );
 }
 
@@ -618,10 +565,7 @@ fn a_number_is_not_searched_again_once_no_row_is_offered() {
         },
     );
     let other_tracks = |_: &MetadataRef| ReleaseDocument {
-        labels: vec![bae_types::pressing::ReleaseLabel::of(
-            Some("Label"),
-            Some("AB-100"),
-        )],
+        labels: vec![bae_types::pressing::ReleaseLabel::of(Some("Label"), Some("AB-100"))],
         source_tracks: crate::import::search::SourceTracks::Listed { count: 9 },
         ..plain_document(&[])
     };
@@ -643,15 +587,10 @@ fn a_number_is_not_searched_again_once_no_row_is_offered() {
         asked.extend(more);
     }
     assert!(
-        !asked
-            .iter()
-            .any(|effect| matches!(effect, Effect::LookupCatalog { .. })),
+        !asked.iter().any(|effect| matches!(effect, Effect::LookupCatalog { .. })),
         "nothing searches the number again: {asked:?}"
     );
-    assert!(
-        state.is_terminal(),
-        "the run settles: {state:?}"
-    );
+    assert!(state.is_terminal(), "the run settles: {state:?}");
 }
 
 /// Two searches of one number name no artist, each on its own catalog: an
@@ -671,12 +610,7 @@ fn an_answer_lands_on_the_search_waiting_on_its_catalog() {
     };
     lookup.answer(DG, &None, Ok(Vec::new()));
     assert_eq!(lookup.searches[0], waiting(MB), "MusicBrainz's still waits");
-    assert_eq!(
-        lookup.searches[1].providers[0].state,
-        LookupState::Done {
-            results: Vec::new()
-        }
-    );
+    assert_eq!(lookup.searches[1].providers[0].state, LookupState::Done { results: Vec::new() });
 }
 
 /// An offered release the Disc ID lookup answered with its document is read
@@ -715,8 +649,7 @@ fn a_release_the_disc_id_answered_is_read_from_its_answer() {
         vec![
             crate::identify::documents::ReleaseToRead::DiscIdAnswer(answered),
             crate::identify::documents::ReleaseToRead::ReleaseLookup(MetadataRef::new(
-                MB,
-                "mb-other"
+                MB, "mb-other"
             )),
         ]
     );

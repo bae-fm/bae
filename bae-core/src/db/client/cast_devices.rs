@@ -26,17 +26,9 @@ fn kind_from_column(row: &Row<'_>, column: usize) -> rusqlite::Result<RendererKi
 
 /// Every receiver listed, by name, then id: the picker's order.
 fn cast_devices_on(sql: &SqlReadContext<'_>) -> Result<Vec<CastDevice>, DbError> {
-    Ok(sql.query(
-        "SELECT id, name, kind FROM cast_device ORDER BY name, id",
-        [],
-        |row| {
-            Ok(CastDevice {
-                id: row.get(0)?,
-                name: row.get(1)?,
-                kind: kind_from_column(row, 2)?,
-            })
-        },
-    )?)
+    Ok(sql.query("SELECT id, name, kind FROM cast_device ORDER BY name, id", [], |row| {
+        Ok(CastDevice { id: row.get(0)?, name: row.get(1)?, kind: kind_from_column(row, 2)? })
+    })?)
 }
 
 impl Database {
@@ -60,9 +52,7 @@ impl Database {
 
     /// Follow the receivers the picker lists.
     pub(crate) fn subscribe_cast_devices(&self) -> coven::LiveQuery<Vec<CastDevice>> {
-        self.inner
-            .handle
-            .subscribe(|sql| cast_devices_on(&sql).map_err(CovenError::from))
+        self.inner.handle.subscribe(|sql| cast_devices_on(&sql).map_err(CovenError::from))
     }
 
     /// The receivers the picker lists now.

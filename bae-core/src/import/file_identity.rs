@@ -23,9 +23,7 @@ fn validate_scanned_file_metadata(
         }
     })?;
     let modified_at_ns = crate::import::folder_scanner::file_modified_at_ns(&file.path, &metadata)
-        .map_err(|error| crate::import::ImportError::UnusableFile {
-            detail: error.to_string(),
-        })?;
+        .map_err(|error| crate::import::ImportError::UnusableFile { detail: error.to_string() })?;
     if metadata.len() != file.size || modified_at_ns != file.modified_at_ns {
         return Err(changed_after_scan(file));
     }

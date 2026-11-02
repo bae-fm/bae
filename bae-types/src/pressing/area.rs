@@ -146,9 +146,7 @@ impl ReleaseArea {
             Self::Country(country) => (Some(country), &[]),
             Self::Region(region) => (None, region.writings().1),
         };
-        code.into_iter()
-            .flat_map(Country::codes)
-            .chain(abbreviations.iter().copied())
+        code.into_iter().flat_map(Country::codes).chain(abbreviations.iter().copied())
     }
 }
 
@@ -173,28 +171,16 @@ const REGION_WRITINGS: &[(Region, &[&str], &[&str])] = &[
     (Region::Africa, &["Africa"], &[]),
     (Region::Asia, &["Asia"], &[]),
     (Region::MiddleEast, &["Middle East"], &[]),
-    (
-        Region::SouthEastAsia,
-        &["South East Asia", "Southeast Asia"],
-        &[],
-    ),
+    (Region::SouthEastAsia, &["South East Asia", "Southeast Asia"], &[]),
     (Region::CentralAmerica, &["Central America"], &[]),
     (Region::SouthAmerica, &["South America"], &[]),
     (Region::NorthAmerica, &["North America"], &[]),
-    (
-        Region::NorthAndSouthAmerica,
-        &["North and South America", "North & South America"],
-        &[],
-    ),
+    (Region::NorthAndSouthAmerica, &["North and South America", "North & South America"], &[]),
     (Region::Australasia, &["Australasia"], &[]),
     (Region::SouthPacific, &["South Pacific"], &[]),
     (Region::Scandinavia, &["Scandinavia"], &[]),
     (Region::Benelux, &["Benelux"], &[]),
-    (
-        Region::GulfCooperationCouncil,
-        &["Gulf Cooperation Council"],
-        &["GCC"],
-    ),
+    (Region::GulfCooperationCouncil, &["Gulf Cooperation Council"], &["GCC"]),
     (Region::UkAndEurope, &["UK & Europe"], &[]),
     (Region::UkAndIreland, &["UK & Ireland"], &[]),
     (Region::UkAndUs, &["UK & US"], &[]),
@@ -207,34 +193,14 @@ const REGION_WRITINGS: &[(Region, &[&str], &[&str])] = &[
     (Region::UsaAndEurope, &["USA & Europe"], &[]),
     (Region::UsaCanadaAndEurope, &["USA, Canada & Europe"], &[]),
     (Region::UsaCanadaAndUk, &["USA, Canada & UK"], &[]),
-    (
-        Region::GermanyAndSwitzerland,
-        &["Germany & Switzerland"],
-        &[],
-    ),
-    (
-        Region::GermanyAustriaAndSwitzerland,
-        &["Germany, Austria & Switzerland"],
-        &[],
-    ),
+    (Region::GermanyAndSwitzerland, &["Germany & Switzerland"], &[]),
+    (Region::GermanyAustriaAndSwitzerland, &["Germany, Austria & Switzerland"], &[]),
     (Region::FranceAndBenelux, &["France & Benelux"], &[]),
-    (
-        Region::CzechRepublicAndSlovakia,
-        &["Czech Republic & Slovakia"],
-        &[],
-    ),
+    (Region::CzechRepublicAndSlovakia, &["Czech Republic & Slovakia"], &[]),
     (Region::RussiaAndCis, &["Russia & CIS"], &[]),
-    (
-        Region::AustraliaAndNewZealand,
-        &["Australia & New Zealand"],
-        &[],
-    ),
+    (Region::AustraliaAndNewZealand, &["Australia & New Zealand"], &[]),
     (Region::SingaporeAndMalaysia, &["Singapore & Malaysia"], &[]),
-    (
-        Region::SingaporeMalaysiaAndHongKong,
-        &["Singapore, Malaysia & Hong Kong"],
-        &[],
-    ),
+    (Region::SingaporeMalaysiaAndHongKong, &["Singapore, Malaysia & Hong Kong"], &[]),
     (
         Region::SingaporeMalaysiaHongKongAndThailand,
         &["Singapore, Malaysia, Hong Kong & Thailand"],
@@ -243,16 +209,8 @@ const REGION_WRITINGS: &[(Region, &[&str], &[&str])] = &[
     (Region::HongKongAndThailand, &["Hong Kong & Thailand"], &[]),
     (Region::SovietUnion, &["Soviet Union"], &["USSR"]),
     (Region::Yugoslavia, &["Yugoslavia"], &[]),
-    (
-        Region::Czechoslovakia,
-        &["Czechoslovakia", "Czech and Slovak Federative Republic"],
-        &[],
-    ),
-    (
-        Region::EastGermany,
-        &["East Germany", "German Democratic Republic"],
-        &["GDR", "DDR"],
-    ),
+    (Region::Czechoslovakia, &["Czechoslovakia", "Czech and Slovak Federative Republic"], &[]),
+    (Region::EastGermany, &["East Germany", "German Democratic Republic"], &["GDR", "DDR"]),
     (Region::SerbiaAndMontenegro, &["Serbia and Montenegro"], &[]),
     (Region::NetherlandsAntilles, &["Netherlands Antilles"], &[]),
     (Region::Kosovo, &["Kosovo"], &[]),
@@ -260,11 +218,7 @@ const REGION_WRITINGS: &[(Region, &[&str], &[&str])] = &[
     (Region::AustriaHungary, &["Austria-Hungary"], &[]),
     (Region::OttomanEmpire, &["Ottoman Empire"], &[]),
     (Region::Bohemia, &["Bohemia"], &[]),
-    (
-        Region::ProtectorateOfBohemiaAndMoravia,
-        &["Protectorate of Bohemia and Moravia"],
-        &[],
-    ),
+    (Region::ProtectorateOfBohemiaAndMoravia, &["Protectorate of Bohemia and Moravia"], &[]),
     (Region::KoreaBefore1945, &["Korea (pre-1945)"], &[]),
     (Region::SouthVietnam, &["South Vietnam"], &[]),
     (Region::Indochina, &["Indochina", "French Indochina"], &[]),
@@ -338,10 +292,7 @@ const DISCOGS_COUNTRIES: &[(&str, Place)] = &[
     ("Asia", Place::Region(Region::Asia)),
     ("Australasia", Place::Region(Region::Australasia)),
     ("Australia", Place::Code("AU")),
-    (
-        "Australia & New Zealand",
-        Place::Region(Region::AustraliaAndNewZealand),
-    ),
+    ("Australia & New Zealand", Place::Region(Region::AustraliaAndNewZealand)),
     ("Austria", Place::Code("AT")),
     ("Austria-Hungary", Place::Region(Region::AustriaHungary)),
     ("Azerbaijan", Place::Code("AZ")),
@@ -388,15 +339,9 @@ const DISCOGS_COUNTRIES: &[(&str, Place)] = &[
     ("Cuba", Place::Code("CU")),
     ("Curaçao", Place::Code("CW")),
     ("Cyprus", Place::Code("CY")),
-    (
-        "Czech And Slovak Federative Republic",
-        Place::Region(Region::Czechoslovakia),
-    ),
+    ("Czech And Slovak Federative Republic", Place::Region(Region::Czechoslovakia)),
     ("Czech Republic", Place::Code("CZ")),
-    (
-        "Czech Republic & Slovakia",
-        Place::Region(Region::CzechRepublicAndSlovakia),
-    ),
+    ("Czech Republic & Slovakia", Place::Region(Region::CzechRepublicAndSlovakia)),
     ("Czechoslovakia", Place::Region(Region::Czechoslovakia)),
     ("Dahomey", Place::Region(Region::Dahomey)),
     ("Denmark", Place::Code("DK")),
@@ -425,19 +370,10 @@ const DISCOGS_COUNTRIES: &[(&str, Place)] = &[
     ("Gambia, The", Place::Code("GM")),
     ("Gaza Strip", Place::Code("PS")),
     ("Georgia", Place::Code("GE")),
-    (
-        "German Democratic Republic (GDR)",
-        Place::Region(Region::EastGermany),
-    ),
+    ("German Democratic Republic (GDR)", Place::Region(Region::EastGermany)),
     ("Germany", Place::Code("DE")),
-    (
-        "Germany & Switzerland",
-        Place::Region(Region::GermanyAndSwitzerland),
-    ),
-    (
-        "Germany, Austria, & Switzerland",
-        Place::Region(Region::GermanyAustriaAndSwitzerland),
-    ),
+    ("Germany & Switzerland", Place::Region(Region::GermanyAndSwitzerland)),
+    ("Germany, Austria, & Switzerland", Place::Region(Region::GermanyAustriaAndSwitzerland)),
     ("Ghana", Place::Code("GH")),
     ("Gibraltar", Place::Code("GI")),
     ("Greece", Place::Code("GR")),
@@ -449,18 +385,12 @@ const DISCOGS_COUNTRIES: &[(&str, Place)] = &[
     ("Guernsey", Place::Code("GG")),
     ("Guinea", Place::Code("GN")),
     ("Guinea-Bissau", Place::Code("GW")),
-    (
-        "Gulf Cooperation Council",
-        Place::Region(Region::GulfCooperationCouncil),
-    ),
+    ("Gulf Cooperation Council", Place::Region(Region::GulfCooperationCouncil)),
     ("Guyana", Place::Code("GY")),
     ("Haiti", Place::Code("HT")),
     ("Honduras", Place::Code("HN")),
     ("Hong Kong", Place::Code("HK")),
-    (
-        "Hong Kong & Thailand",
-        Place::Region(Region::HongKongAndThailand),
-    ),
+    ("Hong Kong & Thailand", Place::Region(Region::HongKongAndThailand)),
     ("Hungary", Place::Code("HU")),
     ("Iceland", Place::Code("IS")),
     ("India", Place::Code("IN")),
@@ -471,10 +401,7 @@ const DISCOGS_COUNTRIES: &[(&str, Place)] = &[
     ("Ireland", Place::Code("IE")),
     ("Isle Of Man", Place::Code("IM")),
     ("Israel", Place::Code("IL")),
-    (
-        "Italian East Africa",
-        Place::Region(Region::ItalianEastAfrica),
-    ),
+    ("Italian East Africa", Place::Region(Region::ItalianEastAfrica)),
     ("Italy", Place::Code("IT")),
     ("Ivory Coast", Place::Code("CI")),
     ("Jamaica", Place::Code("JM")),
@@ -523,10 +450,7 @@ const DISCOGS_COUNTRIES: &[(&str, Place)] = &[
     ("Nauru", Place::Code("NR")),
     ("Nepal", Place::Code("NP")),
     ("Netherlands", Place::Code("NL")),
-    (
-        "Netherlands Antilles",
-        Place::Region(Region::NetherlandsAntilles),
-    ),
+    ("Netherlands Antilles", Place::Region(Region::NetherlandsAntilles)),
     ("New Caledonia", Place::Code("NC")),
     ("New Zealand", Place::Code("NZ")),
     ("Nicaragua", Place::Code("NI")),
@@ -534,14 +458,8 @@ const DISCOGS_COUNTRIES: &[(&str, Place)] = &[
     ("Nigeria", Place::Code("NG")),
     ("Niue", Place::Code("NU")),
     ("Norfolk Island", Place::Code("NF")),
-    (
-        "North & South America",
-        Place::Region(Region::NorthAndSouthAmerica),
-    ),
-    (
-        "North America (inc Mexico)",
-        Place::Region(Region::NorthAmerica),
-    ),
+    ("North & South America", Place::Region(Region::NorthAndSouthAmerica)),
+    ("North America (inc Mexico)", Place::Region(Region::NorthAmerica)),
     ("North Korea", Place::Code("KP")),
     ("Northern Mariana Islands", Place::Code("MP")),
     ("Norway", Place::Code("NO")),
@@ -558,10 +476,7 @@ const DISCOGS_COUNTRIES: &[(&str, Place)] = &[
     ("Pitcairn Islands", Place::Code("PN")),
     ("Poland", Place::Code("PL")),
     ("Portugal", Place::Code("PT")),
-    (
-        "Protectorate of Bohemia and Moravia",
-        Place::Region(Region::ProtectorateOfBohemiaAndMoravia),
-    ),
+    ("Protectorate of Bohemia and Moravia", Place::Region(Region::ProtectorateOfBohemiaAndMoravia)),
     ("Puerto Rico", Place::Code("PR")),
     ("Qatar", Place::Code("QA")),
     ("Reunion", Place::Code("RE")),
@@ -581,21 +496,12 @@ const DISCOGS_COUNTRIES: &[(&str, Place)] = &[
     ("Scandinavia", Place::Region(Region::Scandinavia)),
     ("Senegal", Place::Code("SN")),
     ("Serbia", Place::Code("RS")),
-    (
-        "Serbia and Montenegro",
-        Place::Region(Region::SerbiaAndMontenegro),
-    ),
+    ("Serbia and Montenegro", Place::Region(Region::SerbiaAndMontenegro)),
     ("Seychelles", Place::Code("SC")),
     ("Sierra Leone", Place::Code("SL")),
     ("Singapore", Place::Code("SG")),
-    (
-        "Singapore & Malaysia",
-        Place::Region(Region::SingaporeAndMalaysia),
-    ),
-    (
-        "Singapore, Malaysia & Hong Kong",
-        Place::Region(Region::SingaporeMalaysiaAndHongKong),
-    ),
+    ("Singapore & Malaysia", Place::Region(Region::SingaporeAndMalaysia)),
+    ("Singapore, Malaysia & Hong Kong", Place::Region(Region::SingaporeMalaysiaAndHongKong)),
     (
         "Singapore, Malaysia, Hong Kong & Thailand",
         Place::Region(Region::SingaporeMalaysiaHongKongAndThailand),
@@ -640,14 +546,8 @@ const DISCOGS_COUNTRIES: &[(&str, Place)] = &[
     ("UK & Germany", Place::Region(Region::UkAndGermany)),
     ("UK & Ireland", Place::Region(Region::UkAndIreland)),
     ("UK & US", Place::Region(Region::UkAndUs)),
-    (
-        "UK, Europe & Israel",
-        Place::Region(Region::UkEuropeAndIsrael),
-    ),
-    (
-        "UK, Europe & Japan",
-        Place::Region(Region::UkEuropeAndJapan),
-    ),
+    ("UK, Europe & Israel", Place::Region(Region::UkEuropeAndIsrael)),
+    ("UK, Europe & Japan", Place::Region(Region::UkEuropeAndJapan)),
     ("UK, Europe & US", Place::Region(Region::UkEuropeAndUs)),
     ("Ukraine", Place::Code("UA")),
     ("United Arab Emirates", Place::Code("AE")),
@@ -656,10 +556,7 @@ const DISCOGS_COUNTRIES: &[(&str, Place)] = &[
     ("US", Place::Code("US")),
     ("USA & Canada", Place::Region(Region::UsaAndCanada)),
     ("USA & Europe", Place::Region(Region::UsaAndEurope)),
-    (
-        "USA, Canada & Europe",
-        Place::Region(Region::UsaCanadaAndEurope),
-    ),
+    ("USA, Canada & Europe", Place::Region(Region::UsaCanadaAndEurope)),
     ("USA, Canada & UK", Place::Region(Region::UsaCanadaAndUk)),
     ("USSR", Place::Region(Region::SovietUnion)),
     ("Uzbekistan", Place::Code("UZ")),
@@ -687,10 +584,7 @@ mod tests {
     #[test]
     fn the_discogs_table_is_discogss_own_list() {
         assert_eq!(
-            DISCOGS_COUNTRIES
-                .iter()
-                .map(|(name, _)| *name)
-                .collect::<Vec<_>>(),
+            DISCOGS_COUNTRIES.iter().map(|(name, _)| *name).collect::<Vec<_>>(),
             recorded(include_str!(
                 "../../test-fixtures/pressing-vocabulary/discogs-release-countries.txt"
             ))
@@ -719,10 +613,7 @@ mod tests {
         }
         assert_eq!(
             outside_the_standard,
-            MUSICBRAINZ_REGION_CODES
-                .iter()
-                .map(|(code, _)| *code)
-                .collect::<Vec<_>>()
+            MUSICBRAINZ_REGION_CODES.iter().map(|(code, _)| *code).collect::<Vec<_>>()
         );
     }
 
@@ -743,10 +634,7 @@ mod tests {
     #[test]
     fn every_region_is_written_somehow() {
         for region in Region::ALL {
-            let rows = REGION_WRITINGS
-                .iter()
-                .filter(|(r, _, _)| r == region)
-                .count();
+            let rows = REGION_WRITINGS.iter().filter(|(r, _, _)| r == region).count();
             assert_eq!(rows, 1, "{region:?}");
             assert!(!region.writings().0.is_empty(), "{region:?}");
             for code in region.writings().1 {
@@ -764,10 +652,7 @@ mod tests {
             ReleaseArea::discogs("UK"),
             Some(ReleaseArea::Country(Country::from_code("GB").unwrap()))
         );
-        assert_eq!(
-            ReleaseArea::musicbrainz("XE"),
-            ReleaseArea::discogs("Europe")
-        );
+        assert_eq!(ReleaseArea::musicbrainz("XE"), ReleaseArea::discogs("Europe"));
         assert_eq!(ReleaseArea::musicbrainz("SU"), ReleaseArea::discogs("USSR"));
         assert_eq!(
             ReleaseArea::discogs("uk & europe"),

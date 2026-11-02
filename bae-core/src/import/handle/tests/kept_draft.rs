@@ -39,12 +39,11 @@ async fn store_not_found(handle: &ImportServiceHandle, hash: &str) {
     assert!(stored, "the verdict lands on the fixture candidate");
 }
 
-async fn standing(handle: &ImportServiceHandle, key: &crate::import::CandidateKey) -> PendingStanding {
-    pane(handle, key)
-        .await
-        .live
-        .standing
-        .expect("the candidate is on Found")
+async fn standing(
+    handle: &ImportServiceHandle,
+    key: &crate::import::CandidateKey,
+) -> PendingStanding {
+    pane(handle, key).await.live.standing.expect("the candidate is on Found")
 }
 
 /// Keep my info leaves the draft as it was and makes the folder Unmatched.
@@ -54,9 +53,7 @@ async fn keeping_the_draft_makes_the_folder_unmatched() {
     store_not_found(&handle, &hash).await;
     assert_eq!(
         standing(&handle, &key).await,
-        PendingStanding::NeedsYou {
-            reason: NeedsYouReason::NotFound
-        }
+        PendingStanding::NeedsYou { reason: NeedsYouReason::NotFound }
     );
     let before = pane(&handle, &key).await.draft().unwrap().metadata_draft.clone();
 
@@ -80,9 +77,7 @@ async fn a_new_verdict_starts_without_the_kept_draft() {
 
     assert_eq!(
         standing(&handle, &key).await,
-        PendingStanding::NeedsYou {
-            reason: NeedsYouReason::NotFound
-        }
+        PendingStanding::NeedsYou { reason: NeedsYouReason::NotFound }
     );
     shut_down(handle).await;
 }

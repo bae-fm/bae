@@ -65,15 +65,8 @@ impl ArtworkAnalyzer for OrderedAnalyzer {
 /// are taken in.
 fn image_analysis(name: &str) -> ArtworkAnalysis {
     ArtworkAnalysis {
-        barcodes: if name == "p3.jpg" {
-            vec!["5012345678900".to_string()]
-        } else {
-            Vec::new()
-        },
-        text_lines: vec![
-            format!("Line read off {name}"),
-            "Catalog CAT-1001".to_string(),
-        ],
+        barcodes: if name == "p3.jpg" { vec!["5012345678900".to_string()] } else { Vec::new() },
+        text_lines: vec![format!("Line read off {name}"), "Catalog CAT-1001".to_string()],
     }
 }
 
@@ -110,12 +103,9 @@ async fn reads_finishing_out_of_order_send_what_reads_in_order_send() {
     // The fast pass, one per image but the last, then the settled snapshot.
     let expected = images.len() + 1;
 
-    let in_order = pass_snapshots(
-        folder.clone(),
-        Arc::new(OrderedAnalyzer::new(images.clone())),
-        expected,
-    )
-    .await;
+    let in_order =
+        pass_snapshots(folder.clone(), Arc::new(OrderedAnalyzer::new(images.clone())), expected)
+            .await;
     let reversed: Vec<String> = images.iter().rev().cloned().collect();
     let last_first =
         pass_snapshots(folder, Arc::new(OrderedAnalyzer::new(reversed)), expected).await;
@@ -131,9 +121,7 @@ async fn reads_finishing_out_of_order_send_what_reads_in_order_send() {
             total: images.len() as u32,
         })
         .collect();
-    reading.push(ArtworkScan::Done {
-        total: images.len() as u32,
-    });
+    reading.push(ArtworkScan::Done { total: images.len() as u32 });
     assert_eq!(progress, reading.iter().collect::<Vec<_>>());
     let settled = &in_order[images.len()].0;
     let artwork_lines: Vec<&str> = settled
@@ -142,18 +130,13 @@ async fn reads_finishing_out_of_order_send_what_reads_in_order_send() {
         .filter(|line| line.text.starts_with("Line read off"))
         .map(|line| line.text.as_str())
         .collect();
-    let in_image_order: Vec<String> = images
-        .iter()
-        .map(|name| format!("Line read off {name}"))
-        .collect();
+    let in_image_order: Vec<String> =
+        images.iter().map(|name| format!("Line read off {name}")).collect();
     assert_eq!(artwork_lines, in_image_order);
     assert_eq!(
         settled.barcode,
         BarcodeSignal::Settled {
-            codes: vec![SourcedValue::in_file(
-                "5012345678900".to_string(),
-                "p3.jpg".to_string()
-            )]
+            codes: vec![SourcedValue::in_file("5012345678900".to_string(), "p3.jpg".to_string())]
         }
     );
 }
@@ -227,15 +210,10 @@ async fn no_more_than_the_bound_are_read_at_once() {
 
     assert_eq!(
         snapshots.last().map(|(_, artwork)| artwork),
-        Some(&ArtworkScan::Done {
-            total: images.len() as u32
-        })
+        Some(&ArtworkScan::Done { total: images.len() as u32 })
     );
     assert_eq!(analyzer.calls.load(Ordering::SeqCst), images.len());
-    assert_eq!(
-        analyzer.most_at_once.load(Ordering::SeqCst),
-        IMAGES_IN_FLIGHT
-    );
+    assert_eq!(analyzer.most_at_once.load(Ordering::SeqCst), IMAGES_IN_FLIGHT);
 }
 
 /// Two passes running at once share the bound: between them no more than
@@ -271,22 +249,14 @@ async fn passes_running_at_once_share_the_bound() {
     run_ended(&mut second_run).await;
     drop(entries);
 
-    let done = ArtworkScan::Done {
-        total: images.len() as u32,
-    };
+    let done = ArtworkScan::Done { total: images.len() as u32 };
     assert_eq!(
-        snapshots
-            .iter()
-            .filter(|(_, artwork)| *artwork == done)
-            .count(),
+        snapshots.iter().filter(|(_, artwork)| *artwork == done).count(),
         2,
         "both passes settle"
     );
     assert_eq!(analyzer.calls.load(Ordering::SeqCst), 2 * images.len());
-    assert_eq!(
-        analyzer.most_at_once.load(Ordering::SeqCst),
-        IMAGES_IN_FLIGHT
-    );
+    assert_eq!(analyzer.most_at_once.load(Ordering::SeqCst), IMAGES_IN_FLIGHT);
 }
 
 /// An image whose read dies fails the pass with what the images before it
@@ -311,12 +281,7 @@ async fn a_failed_read_fails_the_pass_with_the_images_before_it() {
 
     let (after_p1, _) = &snapshots[1];
     let (failed, artwork) = &snapshots[2];
-    let ArtworkScan::Failed {
-        failure,
-        read,
-        total,
-    } = artwork
-    else {
+    let ArtworkScan::Failed { failure, read, total } = artwork else {
         panic!("the pass fails at p2, got {artwork:?}");
     };
     assert_eq!((*read, *total), (1, images.len() as u32));
@@ -335,18 +300,12 @@ async fn a_failed_read_fails_the_pass_with_the_images_before_it() {
     );
     assert_eq!(
         failed.barcode,
-        BarcodeSignal::Failed {
-            failure: failure.clone(),
-            codes: Vec::new(),
-        },
+        BarcodeSignal::Failed { failure: failure.clone(), codes: Vec::new() },
         "p3's barcode was read after the failure, so it is not a sighting"
     );
     assert_eq!(failed.text_pool, after_p1.text_pool);
     assert!(
-        after_p1
-            .text_pool
-            .iter()
-            .any(|line| line.text == "Line read off p1.jpg"),
+        after_p1.text_pool.iter().any(|line| line.text == "Line read off p1.jpg"),
         "p1's reading is in, got {:?}",
         after_p1.text_pool
     );

@@ -51,10 +51,7 @@ fn a_folder_kept_as_separate_releases_says_its_own_files() {
             .iter()
             .map(|entry| (entry.file.relative_path.as_str(), &entry.role))
             .collect::<Vec<_>>(),
-        [
-            ("cover.jpg", &FileRole::Artwork),
-            ("Scans/booklet.txt", &FileRole::Document)
-        ]
+        [("cover.jpg", &FileRole::Artwork), ("Scans/booklet.txt", &FileRole::Document)]
     );
     assert!(files.iter().all(|entry| entry.file.path.starts_with(&album)));
 }
@@ -83,10 +80,8 @@ fn a_folder_whose_files_a_release_owns_has_no_sidecar() {
 #[test]
 fn a_folder_read_as_one_release_reads_files_by_the_grouping_rule() {
     let (_temp, root, album) = album_of_discs(&["Disc 1", "Disc 2"]);
-    let combined_album = scan_for_candidates_with_decisions_collect(
-        root.clone(),
-        FolderReleaseDecisions::default(),
-    );
+    let combined_album =
+        scan_for_candidates_with_decisions_collect(root.clone(), FolderReleaseDecisions::default());
     let album_release = combined_album
         .iter()
         .find_map(|item| match item {
@@ -94,11 +89,7 @@ fn a_folder_read_as_one_release_reads_files_by_the_grouping_rule() {
             _ => None,
         })
         .expect("the album folder reads as one release");
-    assert!(album_release
-        .files
-        .files
-        .iter()
-        .any(|entry| entry.file.relative_path == "cover.jpg"));
+    assert!(album_release.files.files.iter().any(|entry| entry.file.relative_path == "cover.jpg"));
 
     let artist = root.join("Artist");
     let other = artist.join("Other");
@@ -192,10 +183,7 @@ fn a_damaged_image_is_carried_in_the_sidecar_as_one() {
             .iter()
             .map(|entry| (entry.file.relative_path.as_str(), &entry.role))
             .collect::<Vec<_>>(),
-        [
-            ("cover.jpg", &FileRole::DamagedImage),
-            ("Scans/booklet.txt", &FileRole::Document)
-        ]
+        [("cover.jpg", &FileRole::DamagedImage), ("Scans/booklet.txt", &FileRole::Document)]
     );
 }
 
@@ -220,17 +208,9 @@ fn a_zero_byte_track_makes_the_sidecar_invalid() {
         panic!("a zero-byte track leaves the files unimportable: {:?}", sidecar.files);
     };
     assert_eq!(
-        files
-            .iter()
-            .map(|file| (file.relative_path.as_str(), file.role))
-            .collect::<Vec<_>>(),
+        files.iter().map(|file| (file.relative_path.as_str(), file.role)).collect::<Vec<_>>(),
         [
-            (
-                "bonus.flac",
-                ProposedRole::DamagedAudio {
-                    damage: AudioDamage::Empty
-                }
-            ),
+            ("bonus.flac", ProposedRole::DamagedAudio { damage: AudioDamage::Empty }),
             ("cover.jpg", ProposedRole::Image),
             ("Scans/booklet.txt", ProposedRole::Document),
         ],

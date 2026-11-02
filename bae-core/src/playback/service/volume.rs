@@ -18,10 +18,7 @@ pub(super) struct OutputVolume {
 
 impl OutputVolume {
     pub(super) fn new() -> Self {
-        Self {
-            muted: false,
-            pre_mute_level: 1.0,
-        }
+        Self { muted: false, pre_mute_level: 1.0 }
     }
 
     #[cfg(test)]

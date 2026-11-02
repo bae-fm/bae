@@ -34,10 +34,9 @@ async fn credited_library() -> CreditedLibrary {
             .unwrap();
     }
     let now = Utc::now();
-    for (artist, position, credit, join) in [
-        (CREDIT_ARTIST_A, 0, None, Some(" & ")),
-        (CREDIT_ARTIST_B, 1, Some("B Alias"), None),
-    ] {
+    for (artist, position, credit, join) in
+        [(CREDIT_ARTIST_A, 0, None, Some(" & ")), (CREDIT_ARTIST_B, 1, Some("B Alias"), None)]
+    {
         manager
             .database
             .insert_album_artist(&crate::db::DbAlbumArtist {
@@ -52,7 +51,8 @@ async fn credited_library() -> CreditedLibrary {
     let plain = DbTrack::new_test(&release.id, &Uuid::new_v4().to_string(), "Plain", 2);
     manager.database.insert_track(&featured).await.unwrap();
     manager.database.insert_track(&plain).await.unwrap();
-    for (artist, position, join) in [(CREDIT_ARTIST_A, 0, Some(" feat. ")), (CREDIT_ARTIST_B, 1, None)]
+    for (artist, position, join) in
+        [(CREDIT_ARTIST_A, 0, Some(" feat. ")), (CREDIT_ARTIST_B, 1, None)]
     {
         manager
             .database
@@ -63,14 +63,7 @@ async fn credited_library() -> CreditedLibrary {
             .await
             .unwrap();
     }
-    CreditedLibrary {
-        manager,
-        _temp_dir: temp_dir,
-        album,
-        release,
-        featured,
-        plain,
-    }
+    CreditedLibrary { manager, _temp_dir: temp_dir, album, release, featured, plain }
 }
 
 /// The lines the album page, the release's track rows, the queue, search and
@@ -87,11 +80,7 @@ struct PrintedLines {
 
 async fn printed_lines(library: &CreditedLibrary) -> PrintedLines {
     let manager = &library.manager;
-    let album = manager
-        .find_album_detail(&library.album.id)
-        .await
-        .unwrap()
-        .expect("the album");
+    let album = manager.find_album_detail(&library.album.id).await.unwrap().expect("the album");
     let row = |id: &str| {
         album.releases[0]
             .tracks
@@ -118,10 +107,7 @@ async fn printed_lines(library: &CreditedLibrary) -> PrintedLines {
         .expect("the album is found")
         .artist_name
         .clone();
-    let saved = manager
-        .resolve_save_tags(&library.release, &library.featured)
-        .await
-        .unwrap();
+    let saved = manager.resolve_save_tags(&library.release, &library.featured).await.unwrap();
     PrintedLines {
         album_page: album.artist_names.clone(),
         featured_row: row(&library.featured.id),
@@ -154,28 +140,16 @@ async fn every_surface_prints_the_credits_as_stated() {
 async fn a_printed_name_shows_in_place_of_the_artists_while_the_link_names_the_artist() {
     let library = credited_library().await;
 
-    let credits = library
-        .manager
-        .get_artists_for_album(&library.album.id)
-        .await
-        .unwrap();
-    let detail = library
-        .manager
-        .get_artist_detail(CREDIT_ARTIST_B)
-        .await
-        .unwrap()
-        .expect("Artist B's page");
+    let credits = library.manager.get_artists_for_album(&library.album.id).await.unwrap();
+    let detail =
+        library.manager.get_artist_detail(CREDIT_ARTIST_B).await.unwrap().expect("Artist B's page");
 
     assert_eq!(credits[1].artist.id, CREDIT_ARTIST_B);
     assert_eq!(credits[1].artist.name, "Artist B");
     assert_eq!(credits[1].printed(), "B Alias");
     assert_eq!(detail.albums.len(), 1);
     assert_eq!(
-        detail
-            .credit_names
-            .iter()
-            .map(|name| name.credit.name.as_str())
-            .collect::<Vec<_>>(),
+        detail.credit_names.iter().map(|name| name.credit.name.as_str()).collect::<Vec<_>>(),
         ["B Alias"]
     );
 }
@@ -209,11 +183,7 @@ async fn an_edit_prints_typed_artists_with_commas_and_drops_the_last_join() {
     let library = credited_library().await;
     let manager = &library.manager;
     let artist_a = crate::import::ExistingArtist::from(
-        manager
-            .get_artist_by_id(CREDIT_ARTIST_A)
-            .await
-            .unwrap()
-            .expect("Artist A"),
+        manager.get_artist_by_id(CREDIT_ARTIST_A).await.unwrap().expect("Artist A"),
     );
     let edit = |album_artists: Vec<crate::import::Credited>| crate::import::ReleaseUserEdit {
         album_title: "Test Album".to_string(),
@@ -272,22 +242,13 @@ async fn renaming_or_removing_a_credit_name_reaches_every_credit_printing_it() {
     let library = credited_library().await;
     let manager = &library.manager;
 
-    manager
-        .rename_artist_credit_name(CREDIT_ARTIST_B, "b alias", "B Other")
-        .await
-        .unwrap();
+    manager.rename_artist_credit_name(CREDIT_ARTIST_B, "b alias", "B Other").await.unwrap();
     assert_eq!(printed_lines(&library).await.album_page, "Artist A & B Other");
 
-    manager
-        .remove_artist_credit_name(CREDIT_ARTIST_B, "b other")
-        .await
-        .unwrap();
+    manager.remove_artist_credit_name(CREDIT_ARTIST_B, "b other").await.unwrap();
     assert_eq!(printed_lines(&library).await.album_page, "Artist A & Artist B");
-    let detail = manager
-        .get_artist_detail(CREDIT_ARTIST_B)
-        .await
-        .unwrap()
-        .expect("Artist B's page");
+    let detail =
+        manager.get_artist_detail(CREDIT_ARTIST_B).await.unwrap().expect("Artist B's page");
     assert!(detail.credit_names.is_empty());
 }
 
@@ -297,10 +258,7 @@ async fn renaming_or_removing_a_credit_name_reaches_every_credit_printing_it() {
 async fn a_typed_credit_matching_a_credit_name_is_that_artist() {
     let library = credited_library().await;
     let manager = &library.manager;
-    manager
-        .add_artist_credit_name(CREDIT_ARTIST_A, "A Pseudonym")
-        .await
-        .unwrap();
+    manager.add_artist_credit_name(CREDIT_ARTIST_A, "A Pseudonym").await.unwrap();
 
     manager
         .apply_release_metadata_user_edit(

@@ -1,9 +1,7 @@
 impl crate::types::BridgeFolderReleaseDecisionKey {
     pub(super) fn from_core(key: bae_core::import::FolderReleaseDecisionKey) -> Self {
-        let bae_core::import::FolderReleaseDecisionKey {
-            watched_folder_path,
-            relative_folder,
-        } = key;
+        let bae_core::import::FolderReleaseDecisionKey { watched_folder_path, relative_folder } =
+            key;
         Self {
             watched_folder_path: coven::path_bytes(&watched_folder_path),
             relative_folder: relative_folder.as_bytes().to_vec(),
@@ -15,10 +13,7 @@ impl crate::types::BridgeFolderReleaseDecisionKey {
     pub(crate) fn into_core(
         self,
     ) -> Result<bae_core::import::FolderReleaseDecisionKey, crate::types::BridgeError> {
-        let Self {
-            watched_folder_path,
-            relative_folder,
-        } = self;
+        let Self { watched_folder_path, relative_folder } = self;
         Ok(bae_core::import::FolderReleaseDecisionKey {
             watched_folder_path: crate::path_bytes::path_from_app(watched_folder_path)?,
             relative_folder: bae_core::import::RelativeFolder::from_bytes(relative_folder)
@@ -82,9 +77,7 @@ impl crate::types::BridgeInvalidCandidate {
     pub(crate) fn from_core(candidate: bae_core::import::InvalidCandidate) -> Self {
         let candidate_key = candidate.key();
         let reason = crate::types::BridgeInvalidReason::from_core(candidate.reason());
-        let cover = candidate
-            .cover_image()
-            .map(crate::types::BridgeCoverImageSource::from_core);
+        let cover = candidate.cover_image().map(crate::types::BridgeCoverImageSource::from_core);
         let bae_core::import::InvalidCandidate {
             path,
             name,
@@ -110,21 +103,11 @@ impl crate::types::BridgeInvalidCandidate {
 
 impl crate::types::BridgeInvalidCandidateDetail {
     pub(crate) fn from_core(detail: bae_core::import::InvalidCandidateDetail) -> Self {
-        let bae_core::import::InvalidCandidateDetail {
-            candidate,
-            images,
-            files,
-        } = detail;
+        let bae_core::import::InvalidCandidateDetail { candidate, images, files } = detail;
         Self {
             candidate: crate::types::BridgeInvalidCandidate::from_core(candidate),
-            images: images
-                .into_iter()
-                .map(crate::types::BridgeMappingImage::from_core)
-                .collect(),
-            files: files
-                .into_iter()
-                .map(crate::types::BridgeMappingFile::from_core)
-                .collect(),
+            images: images.into_iter().map(crate::types::BridgeMappingImage::from_core).collect(),
+            files: files.into_iter().map(crate::types::BridgeMappingFile::from_core).collect(),
         }
     }
 }
@@ -135,17 +118,13 @@ impl crate::types::BridgeCandidateRuntimeSnapshot {
         // reach the UI through the row's live state.
         let in_flight = runtime.identification_in_flight();
         let signals = match &in_flight {
-            Some(bae_core::import::IdentificationInFlight::Run(published)) => published
-                .signals
-                .clone()
-                .map(crate::types::BridgeSignals::from_core),
+            Some(bae_core::import::IdentificationInFlight::Run(published)) => {
+                published.signals.clone().map(crate::types::BridgeSignals::from_core)
+            }
             Some(bae_core::import::IdentificationInFlight::Queued) | None => None,
         };
-        let bae_core::import::CandidateRuntimeSnapshot {
-            identification: _,
-            import,
-            search,
-        } = runtime;
+        let bae_core::import::CandidateRuntimeSnapshot { identification: _, import, search } =
+            runtime;
         crate::types::BridgeCandidateRuntimeSnapshot {
             identification: in_flight.map(crate::types::BridgeIdentificationInFlight::from_core),
             import: import.map(crate::types::BridgeImportInFlight::from_core),
@@ -159,9 +138,9 @@ impl crate::types::BridgeIdentificationInFlight {
     fn from_core(identification: bae_core::import::IdentificationInFlight) -> Self {
         match identification {
             bae_core::import::IdentificationInFlight::Queued => Self::Queued,
-            bae_core::import::IdentificationInFlight::Run(state) => Self::Run {
-                state: crate::types::BridgeIdentifyState::from_published(state),
-            },
+            bae_core::import::IdentificationInFlight::Run(state) => {
+                Self::Run { state: crate::types::BridgeIdentifyState::from_published(state) }
+            }
         }
     }
 }
@@ -177,15 +156,15 @@ mirror_struct! {
 impl crate::types::BridgeTriageImportStatus {
     pub(super) fn from_core(status: bae_core::import::triage::TriageImportStatus) -> Self {
         match status {
-            bae_core::import::triage::TriageImportStatus::Complete { release } => Self::Complete {
-                release: crate::types::BridgeImportedRelease::from_core(release),
-            },
-            bae_core::import::triage::TriageImportStatus::Error { failure } => Self::Error {
-                error: crate::types::BridgeError::from_core(failure.ui_error()),
-            },
-            bae_core::import::triage::TriageImportStatus::Blocked { reason } => Self::Error {
-                error: crate::types::BridgeError::from(&reason),
-            },
+            bae_core::import::triage::TriageImportStatus::Complete { release } => {
+                Self::Complete { release: crate::types::BridgeImportedRelease::from_core(release) }
+            }
+            bae_core::import::triage::TriageImportStatus::Error { failure } => {
+                Self::Error { error: crate::types::BridgeError::from_core(failure.ui_error()) }
+            }
+            bae_core::import::triage::TriageImportStatus::Blocked { reason } => {
+                Self::Error { error: crate::types::BridgeError::from(&reason) }
+            }
         }
     }
 }
@@ -193,18 +172,18 @@ impl crate::types::BridgeTriageImportStatus {
 impl crate::types::BridgeCandidateImportStatus {
     pub(super) fn from_core(status: bae_core::import::CandidateImportStatus) -> Self {
         match status {
-            bae_core::import::CandidateImportStatus::Importing { step } => Self::Importing {
-                step: crate::types::BridgeImportStep::from_core(step),
-            },
-            bae_core::import::CandidateImportStatus::Complete { release } => Self::Complete {
-                release: crate::types::BridgeImportedRelease::from_core(release),
-            },
-            bae_core::import::CandidateImportStatus::Error { failure } => Self::Error {
-                error: crate::types::BridgeError::from_core(failure.ui_error()),
-            },
-            bae_core::import::CandidateImportStatus::Blocked { reason } => Self::Error {
-                error: crate::types::BridgeError::from(&reason),
-            },
+            bae_core::import::CandidateImportStatus::Importing { step } => {
+                Self::Importing { step: crate::types::BridgeImportStep::from_core(step) }
+            }
+            bae_core::import::CandidateImportStatus::Complete { release } => {
+                Self::Complete { release: crate::types::BridgeImportedRelease::from_core(release) }
+            }
+            bae_core::import::CandidateImportStatus::Error { failure } => {
+                Self::Error { error: crate::types::BridgeError::from_core(failure.ui_error()) }
+            }
+            bae_core::import::CandidateImportStatus::Blocked { reason } => {
+                Self::Error { error: crate::types::BridgeError::from(&reason) }
+            }
         }
     }
 }
@@ -337,21 +316,12 @@ mirror_enum! {
 
 impl crate::types::BridgeCandidateLiveState {
     pub(crate) fn from_core(live: bae_core::import::CandidateLiveState) -> Self {
-        let identifying = live
-            .identifying()
-            .map(crate::types::BridgeIdentifyingStep::from_core);
+        let identifying = live.identifying().map(crate::types::BridgeIdentifyingStep::from_core);
         let reading_pick = live.reading_pick();
-        let bae_core::import::CandidateLiveState {
-            facts,
-            actions,
-            standing,
-        } = live;
+        let bae_core::import::CandidateLiveState { facts, actions, standing } = live;
         // What identification is doing reaches the UI as what the row and
         // the pane show of it, and as the actions the row offers.
-        let bae_core::import::TriageRuntimeFacts {
-            identification: _,
-            import,
-        } = facts;
+        let bae_core::import::TriageRuntimeFacts { identification: _, import } = facts;
         Self {
             identifying,
             reading_pick,
@@ -415,9 +385,7 @@ impl crate::types::BridgeFolderCheck {
                         crate::types::BridgeMediumConflict::CdRip
                     }
                     bae_core::identify::MediumConflict::NotCdAudio => {
-                        crate::types::BridgeMediumConflict::NotCdAudio {
-                            sample_rate_hz: rate,
-                        }
+                        crate::types::BridgeMediumConflict::NotCdAudio { sample_rate_hz: rate }
                     }
                 },
             },
@@ -500,25 +468,21 @@ impl crate::types::BridgeImportListItem {
                 expanded,
                 entry_count,
             },
-            bae_core::import::ImportListItem::Candidate {
-                row,
-                live,
-                header_position,
-            } => Self::Candidate {
-                stable_key,
-                row: crate::types::BridgeTriageRow::from_core(row, live),
-                header_position,
-            },
-            bae_core::import::ImportListItem::Invalid {
-                candidate,
-                selected,
-                is_group_member,
-            } => Self::Invalid {
-                stable_key,
-                invalid_candidate: crate::types::BridgeInvalidCandidate::from_core(candidate),
-                selected,
-                is_group_member,
-            },
+            bae_core::import::ImportListItem::Candidate { row, live, header_position } => {
+                Self::Candidate {
+                    stable_key,
+                    row: crate::types::BridgeTriageRow::from_core(row, live),
+                    header_position,
+                }
+            }
+            bae_core::import::ImportListItem::Invalid { candidate, selected, is_group_member } => {
+                Self::Invalid {
+                    stable_key,
+                    invalid_candidate: crate::types::BridgeInvalidCandidate::from_core(candidate),
+                    selected,
+                    is_group_member,
+                }
+            }
         }
     }
 }
@@ -622,18 +586,11 @@ mirror_struct! {
 
 impl crate::types::BridgeSelectionSummary {
     pub(super) fn from_core(summary: bae_core::import::selection::SelectionSummary) -> Self {
-        let bae_core::import::selection::SelectionSummary {
-            count,
-            single,
-            offers,
-        } = summary;
+        let bae_core::import::selection::SelectionSummary { count, single, offers } = summary;
         Self {
             count,
             single: single.map(crate::types::BridgeSingleSelection::from_core),
-            offers: offers
-                .into_iter()
-                .map(crate::types::BridgeSelectionOffer::from_core)
-                .collect(),
+            offers: offers.into_iter().map(crate::types::BridgeSelectionOffer::from_core).collect(),
         }
     }
 }
@@ -674,10 +631,7 @@ impl crate::types::BridgeCandidatePanePlacement {
     /// audio's files.
     fn from_core(placement: bae_core::import::CandidatePanePlacement, rate: Option<u32>) -> Self {
         let records = |records: Vec<bae_core::import::ReleaseRecord>| {
-            records
-                .into_iter()
-                .map(crate::types::BridgeReleaseRecord::from_core)
-                .collect()
+            records.into_iter().map(crate::types::BridgeReleaseRecord::from_core).collect()
         };
         match placement {
             bae_core::import::CandidatePanePlacement::Pending {
@@ -689,9 +643,7 @@ impl crate::types::BridgeCandidatePanePlacement {
                 records: records(pending),
             },
             bae_core::import::CandidatePanePlacement::Skipped { records: skipped } => {
-                Self::Skipped {
-                    records: records(skipped),
-                }
+                Self::Skipped { records: records(skipped) }
             }
             bae_core::import::CandidatePanePlacement::Done => Self::Done,
         }
@@ -714,9 +666,7 @@ impl crate::types::BridgeImportCandidateDetail {
             signals,
             stage,
         } = detail;
-        let rate = resumed_identify_state
-            .audio()
-            .and_then(|audio| audio.rate_ruling_out_cd);
+        let rate = resumed_identify_state.audio().and_then(|audio| audio.rate_ruling_out_cd);
         Self {
             candidate: crate::types::BridgeFolderCandidate::from_core(candidate, skipped, is_added),
             actionable,
@@ -740,9 +690,9 @@ impl crate::types::BridgeImportCandidateDetail {
 impl crate::types::BridgeCandidateStage {
     fn from_core(stage: bae_core::import::CandidateStage) -> Self {
         match stage {
-            bae_core::import::CandidateStage::Drafting(draft) => Self::Drafting {
-                draft: crate::types::BridgeCandidateDraftPane::from_core(*draft),
-            },
+            bae_core::import::CandidateStage::Drafting(draft) => {
+                Self::Drafting { draft: crate::types::BridgeCandidateDraftPane::from_core(*draft) }
+            }
             bae_core::import::CandidateStage::Imported { release, folder } => Self::Imported {
                 release: crate::types::BridgeImportedRelease::from_core(release),
                 folder: crate::types::BridgeFolderFiles::from_core(folder),
@@ -799,11 +749,7 @@ impl crate::types::BridgeCandidateDraftPane {
 
 impl crate::types::BridgeImportFailure {
     fn from_core(failure: bae_core::import::ImportFailure) -> Self {
-        let bae_core::import::ImportFailure {
-            reason,
-            failed_at: _,
-            identity_conflict,
-        } = failure;
+        let bae_core::import::ImportFailure { reason, failed_at: _, identity_conflict } = failure;
         let error = crate::types::BridgeError::from_core(reason.ui_error());
         match identity_conflict {
             Some(bae_core::import::IdentityConflict::Label(conflict)) => {

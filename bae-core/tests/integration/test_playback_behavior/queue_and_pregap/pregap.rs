@@ -21,8 +21,7 @@ async fn test_direct_play_skips_pregap() {
     .await
     .expect("the pregapped track should start playing");
 
-    let first_position =
-        first_position_of(&mut fixture.progress_rx, &pregapped_track_id).await;
+    let first_position = first_position_of(&mut fixture.progress_rx, &pregapped_track_id).await;
     assert!(
         first_position >= 0,
         "direct play should skip the 2s pregap and start the track at 0; \
@@ -63,8 +62,7 @@ async fn test_next_button_skips_pregap() {
     .await
     .expect("Next should switch to the pregapped track");
 
-    let first_position =
-        first_position_of(&mut fixture.progress_rx, &pregapped_track_id).await;
+    let first_position = first_position_of(&mut fixture.progress_rx, &pregapped_track_id).await;
     assert!(
         first_position >= 0,
         "Next should skip the 2s pregap and start the track at 0; \
@@ -108,8 +106,7 @@ async fn test_auto_advance_plays_pregap() {
     .await
     .expect("playback should auto-advance into the pregapped track");
 
-    let first_position =
-        first_position_of(&mut fixture.progress_rx, &pregapped_track_id).await;
+    let first_position = first_position_of(&mut fixture.progress_rx, &pregapped_track_id).await;
     assert!(
         first_position < 0,
         "auto-advance should play the pregap with a negative countdown; \
@@ -142,13 +139,8 @@ async fn test_cue_flac_seek() {
 
     let started =
         support::next_matching(&mut fixture.progress_rx, Duration::from_secs(5), |event| {
-            matches!(
-                event,
-                PlaybackProgress::StateChanged {
-                    state: PlaybackState::Playing { .. }
-                }
-            )
-            .then_some(())
+            matches!(event, PlaybackProgress::StateChanged { state: PlaybackState::Playing { .. } })
+                .then_some(())
         })
         .await;
     assert!(started.is_some(), "Playback should start");
@@ -162,8 +154,8 @@ async fn test_cue_flac_seek() {
     let reference_data =
         std::fs::read(fixture_dir.join("02 Test Artist - Track Two (White Noise).flac"))
             .expect("read reference");
-    let reference =
-        decode_audio(support::filled_sparse_buffer(&reference_data), None, None).expect("decode reference");
+    let reference = decode_audio(support::filled_sparse_buffer(&reference_data), None, None)
+        .expect("decode reference");
     let channels = reference.channels as usize;
     let sample_rate = reference.sample_rate;
     let reference_f32 = samples_as_f32(&reference);
@@ -174,10 +166,7 @@ async fn test_cue_flac_seek() {
         bae_core::playback::wait_for_samples(&captured, target_samples, Duration::from_secs(60))
             .await;
 
-    assert!(
-        !captured_snapshot.is_empty(),
-        "No samples captured after seek",
-    );
+    assert!(!captured_snapshot.is_empty(), "No samples captured after seek",);
 
     // Search the whole reference for the match.
     let snippet_len = 200 * channels;
@@ -237,16 +226,16 @@ async fn seek_lands_at_the_track_time_it_names() {
 
     fixture.playback_handle.seek(TrackTime::from_millis(4_000));
     let seeked =
-        support::next_matching(&mut fixture.progress_rx, PLAY_START_BACKSTOP, |event| {
-            match event {
-                PlaybackProgress::Seeked {
-                    position_ms,
-                    track_id: tid,
-                    ..
-                } if tid == track_id => Some(position_ms),
+        support::next_matching(
+            &mut fixture.progress_rx,
+            PLAY_START_BACKSTOP,
+            |event| match event {
+                PlaybackProgress::Seeked { position_ms, track_id: tid, .. } if tid == track_id => {
+                    Some(position_ms)
+                }
                 _ => None,
-            }
-        })
+            },
+        )
         .await
         .expect("the seek reports where it landed");
     assert_eq!(seeked, 4_000, "the seek shows the track time it named");
@@ -277,13 +266,12 @@ async fn restore_without_a_saved_position_shows_the_track_start() {
     let (handle, _capture_rx) =
         start_capture_service(library_manager, tokio::runtime::Handle::current()).await;
     let mut progress_rx = handle.subscribe_progress();
-    let shown = support::next_matching(&mut progress_rx, PLAY_START_BACKSTOP, |event| {
-        match event {
+    let shown =
+        support::next_matching(&mut progress_rx, PLAY_START_BACKSTOP, |event| match event {
             PlaybackProgress::Seeked { position_ms, .. } => Some(position_ms),
             _ => None,
-        }
-    })
-    .await;
+        })
+        .await;
     assert_eq!(shown, Some(0), "the restored track shows its start");
 
     handle.stop();
@@ -312,8 +300,8 @@ async fn test_direct_play_skips_pregap_cue_flac() {
     let reference_data =
         std::fs::read(fixture_dir.join("02 Test Artist - Track Two (White Noise).flac"))
             .expect("read reference");
-    let reference =
-        decode_audio(support::filled_sparse_buffer(&reference_data), None, None).expect("decode reference");
+    let reference = decode_audio(support::filled_sparse_buffer(&reference_data), None, None)
+        .expect("decode reference");
     let channels = reference.channels as usize;
     let sample_rate = reference.sample_rate;
     let reference_f32 = samples_as_f32(&reference);
@@ -408,9 +396,7 @@ fn generate_back_album_files(dir: &std::path::Path) {
         .collect();
     bae_audio::init();
     let flac = bae_audio::encode_i32(
-        bae_audio::EncodeFormat::Flac {
-            bits_per_sample: 16,
-        },
+        bae_audio::EncodeFormat::Flac { bits_per_sample: 16 },
         &samples,
         SAMPLE_RATE,
         2,
@@ -446,11 +432,7 @@ fn create_back_album() -> DiscogsRelease {
         ..support::discogs_test_release(
             "back-album-release",
             "Back Album",
-            &[
-                ("Back One", "0:05"),
-                ("Back Two", "0:10"),
-                ("Back Three", "0:10"),
-            ],
+            &[("Back One", "0:05"), ("Back Two", "0:10"), ("Back Three", "0:10")],
         )
     }
 }
@@ -603,9 +585,7 @@ async fn pause_on_back_album(fixture: &mut CueFlacTestFixture, track_id: &str) {
 async fn assert_paused_load_shows_start(fixture: &mut CueFlacTestFixture, track_id: &str) {
     let events = settled_events_on(&fixture.playback_handle, &mut fixture.progress_rx).await;
     assert!(
-        !states_in(&events)
-            .iter()
-            .any(|s| matches!(s, PlaybackState::Playing { .. })),
+        !states_in(&events).iter().any(|s| matches!(s, PlaybackState::Playing { .. })),
         "a load from a paused track stays paused, got {:?}",
         states_in(&events),
     );

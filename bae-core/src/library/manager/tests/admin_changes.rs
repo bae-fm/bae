@@ -75,9 +75,7 @@ fn a_change_this_devices_removal_ends_is_listed_as_stopped() {
                 .iter()
                 .any(|member| member.active_devices.iter().any(|d| d.id == device))
         };
-        laptop
-            .wait_until("the tablet's registration", || active(tablet_id))
-            .await;
+        laptop.wait_until("the tablet's registration", || active(tablet_id)).await;
         laptop.stop_sync().await;
         let mut changes = laptop.manager().subscribe_admin_changes();
         laptop.manager().remove_device(tablet_id).await.unwrap();
@@ -98,9 +96,7 @@ fn a_change_this_devices_removal_ends_is_listed_as_stopped() {
 
         laptop.database().start_sync().await.unwrap();
         let stopped = crate::followed::value_matching(&mut changes, |changes| {
-            changes
-                .iter()
-                .any(|change| change.state != AdminChangeState::Waiting)
+            changes.iter().any(|change| change.state != AdminChangeState::Waiting)
         })
         .await;
         let [AdminChange {

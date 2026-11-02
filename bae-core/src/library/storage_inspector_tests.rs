@@ -11,31 +11,17 @@ fn row<Extra>(
     state: ReleaseQueueState<()>,
 ) -> ReleaseQueueRow<Extra, ()> {
     ReleaseQueueRow {
-        op: ReleaseQueueOp {
-            release_id: release_id.to_string(),
-            created_at: 1,
-            payload,
-            state,
-        },
+        op: ReleaseQueueOp { release_id: release_id.to_string(), created_at: 1, payload, state },
         release: None,
     }
 }
 
 fn export() -> OutputRequest {
-    OutputRequest {
-        target_dir: "/exports".into(),
-        kind: OutputKind::Export,
-    }
+    OutputRequest { target_dir: "/exports".into(), kind: OutputKind::Export }
 }
 
 fn waiting() -> ReleaseUpload {
-    ReleaseUpload {
-        progress: UploadProgress {
-            queued: 1,
-            uploading: 0,
-        },
-        summary: Vec::new(),
-    }
+    ReleaseUpload { progress: UploadProgress { queued: 1, uploading: 0 }, summary: Vec::new() }
 }
 
 fn file(id: &str, pin: Option<FilePin>) -> crate::db::DbStorageInspectorFile {
@@ -58,10 +44,7 @@ fn file(id: &str, pin: Option<FilePin>) -> crate::db::DbStorageInspectorFile {
 
 /// Each count of a summary, by its label's key.
 fn counts(summary: &[crate::library::TransferCount]) -> Vec<(&str, u32)> {
-    summary
-        .iter()
-        .map(|count| (count.label.key.as_str(), count.label.count))
-        .collect()
+    summary.iter().map(|count| (count.label.key.as_str(), count.label.count)).collect()
 }
 
 fn shown(
@@ -99,11 +82,7 @@ fn each_queue_shows_the_selected_releases_entry() {
                 }
             })
             .collect::<Vec<_>>(),
-        vec![
-            ("download", "selected"),
-            ("output", "selected"),
-            ("upload", "selected"),
-        ]
+        vec![("download", "selected"), ("output", "selected"), ("upload", "selected"),]
     );
 }
 
@@ -111,17 +90,11 @@ fn each_queue_shows_the_selected_releases_entry() {
 fn a_release_no_queue_holds_has_no_transfers() {
     let inspector = shown(
         vec![file("a", Some(FilePin::Kept))],
-        &ReleaseQueueEntries {
-            download: None,
-            output: None,
-        },
+        &ReleaseQueueEntries { download: None, output: None },
         None,
     );
     assert!(inspector.transfers.is_empty());
-    assert_eq!(
-        inspector.files[0].pin, None,
-        "no pin shows out of the queue"
-    );
+    assert_eq!(inspector.files[0].pin, None, "no pin shows out of the queue");
 }
 
 /// While its download waits or runs, each file says whether it is kept,
@@ -140,24 +113,14 @@ fn a_release_pinning_shows_each_files_pin_and_counts_them() {
             file("d", Some(downloading)),
         ]
     };
-    for state in [
-        ReleaseQueueState::Queued,
-        ReleaseQueueState::Active { progress: () },
-    ] {
+    for state in [ReleaseQueueState::Queued, ReleaseQueueState::Active { progress: () }] {
         let inspector = shown(
             files(),
-            &ReleaseQueueEntries {
-                download: Some(row((), "selected", state)),
-                output: None,
-            },
+            &ReleaseQueueEntries { download: Some(row((), "selected", state)), output: None },
             None,
         );
         assert_eq!(
-            inspector
-                .files
-                .iter()
-                .map(|file| file.pin)
-                .collect::<Vec<_>>(),
+            inspector.files.iter().map(|file| file.pin).collect::<Vec<_>>(),
             vec![
                 Some(FilePin::Kept),
                 Some(FilePin::Waiting),
@@ -165,20 +128,14 @@ fn a_release_pinning_shows_each_files_pin_and_counts_them() {
                 Some(downloading),
             ]
         );
-        let [StorageInspectorTransfer::Download {
-            summary: Some(summary),
-            ..
-        }] = inspector.transfers.as_slice()
+        let [StorageInspectorTransfer::Download { summary: Some(summary), .. }] =
+            inspector.transfers.as_slice()
         else {
             panic!("a pinning release's download counts its files");
         };
         assert_eq!(
             counts(summary),
-            vec![
-                ("core.queue.pinning", 1),
-                ("core.queue.waiting", 2),
-                ("core.queue.pinned", 1)
-            ]
+            vec![("core.queue.pinning", 1), ("core.queue.waiting", 2), ("core.queue.pinned", 1)]
         );
     }
 
@@ -188,9 +145,7 @@ fn a_release_pinning_shows_each_files_pin_and_counts_them() {
             download: Some(row(
                 (),
                 "selected",
-                ReleaseQueueState::Failed {
-                    error: "the network connection was lost".into(),
-                },
+                ReleaseQueueState::Failed { error: "the network connection was lost".into() },
             )),
             output: None,
         },
@@ -198,12 +153,7 @@ fn a_release_pinning_shows_each_files_pin_and_counts_them() {
     );
     assert_eq!(
         failed.files.iter().map(|file| file.pin).collect::<Vec<_>>(),
-        vec![
-            Some(FilePin::Kept),
-            Some(FilePin::Waiting),
-            None,
-            Some(downloading)
-        ],
+        vec![Some(FilePin::Kept), Some(FilePin::Waiting), None, Some(downloading)],
         "coven still fetches the copies the pins wait for"
     );
     let [StorageInspectorTransfer::Download { summary: None, .. }, StorageInspectorTransfer::PinFetch { summary }] =
@@ -213,11 +163,7 @@ fn a_release_pinning_shows_each_files_pin_and_counts_them() {
     };
     assert_eq!(
         counts(summary),
-        vec![
-            ("core.queue.pinning", 1),
-            ("core.queue.waiting", 1),
-            ("core.queue.pinned", 1)
-        ]
+        vec![("core.queue.pinning", 1), ("core.queue.waiting", 1), ("core.queue.pinned", 1)]
     );
 }
 
@@ -227,40 +173,23 @@ fn a_release_pinning_shows_each_files_pin_and_counts_them() {
 /// waits, nothing pins it.
 #[test]
 fn a_release_whose_pins_wait_for_their_copies_shows_coven_fetching_them() {
-    let no_queue = ReleaseQueueEntries {
-        download: None,
-        output: None,
-    };
+    let no_queue = ReleaseQueueEntries { download: None, output: None };
     let fetching = shown(
-        vec![
-            file("a", Some(FilePin::Kept)),
-            file("b", Some(FilePin::Waiting)),
-            file("c", None),
-        ],
+        vec![file("a", Some(FilePin::Kept)), file("b", Some(FilePin::Waiting)), file("c", None)],
         &no_queue,
         None,
     );
     assert_eq!(
-        fetching
-            .files
-            .iter()
-            .map(|file| file.pin)
-            .collect::<Vec<_>>(),
+        fetching.files.iter().map(|file| file.pin).collect::<Vec<_>>(),
         vec![Some(FilePin::Kept), Some(FilePin::Waiting), None]
     );
     let [StorageInspectorTransfer::PinFetch { summary }] = fetching.transfers.as_slice() else {
         panic!("coven's fetch counts the pinned files");
     };
-    assert_eq!(
-        counts(summary),
-        vec![("core.queue.waiting", 1), ("core.queue.pinned", 1)]
-    );
+    assert_eq!(counts(summary), vec![("core.queue.waiting", 1), ("core.queue.pinned", 1)]);
 
     let kept = shown(
-        vec![
-            file("a", Some(FilePin::Kept)),
-            file("b", Some(FilePin::Kept)),
-        ],
+        vec![file("a", Some(FilePin::Kept)), file("b", Some(FilePin::Kept))],
         &no_queue,
         None,
     );

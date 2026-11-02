@@ -24,10 +24,7 @@ impl UploadProgress {
     /// them: those only waiting, and those this process is sending now.
     pub(crate) fn of_release(raw: &crate::db::DbReleaseUpload) -> Self {
         let count = |value: i64| u32::try_from(value).expect("a release's queued file count");
-        Self {
-            queued: count(raw.queued - raw.sending),
-            uploading: count(raw.sending),
-        }
+        Self { queued: count(raw.queued - raw.sending), uploading: count(raw.sending) }
     }
 
     pub fn activity(&self) -> Option<UploadActivity> {

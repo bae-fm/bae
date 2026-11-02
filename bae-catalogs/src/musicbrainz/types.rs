@@ -70,15 +70,9 @@ pub struct MbLabelInfo {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct MbLabel {
     /// MusicBrainz's id for the label.
-    #[serde(
-        default,
-        deserialize_with = "crate::serde_helpers::empty_string_as_none"
-    )]
+    #[serde(default, deserialize_with = "crate::serde_helpers::empty_string_as_none")]
     pub id: Option<String>,
-    #[serde(
-        default,
-        deserialize_with = "crate::serde_helpers::empty_string_as_none"
-    )]
+    #[serde(default, deserialize_with = "crate::serde_helpers::empty_string_as_none")]
     pub name: Option<String>,
 }
 
@@ -144,10 +138,7 @@ pub struct MbTrack {
 pub struct MbMedium {
     #[serde(default)]
     pub discs: Vec<MbDisc>,
-    #[serde(
-        default,
-        deserialize_with = "crate::serde_helpers::empty_string_as_none"
-    )]
+    #[serde(default, deserialize_with = "crate::serde_helpers::empty_string_as_none")]
     pub format: Option<String>,
     #[serde(default)]
     pub tracks: Vec<MbTrack>,
@@ -180,44 +171,26 @@ pub struct MbReleaseResponse {
     /// What an editor wrote to tell this release apart from its album's
     /// others ("made in West Germany", "club edition"). Absent where none is
     /// set.
-    #[serde(
-        default,
-        deserialize_with = "crate::serde_helpers::empty_string_as_none"
-    )]
+    #[serde(default, deserialize_with = "crate::serde_helpers::empty_string_as_none")]
     pub disambiguation: Option<String>,
     /// The release's annotation: the free text editors write about it — its
     /// matrix, its SID codes, where it was made. Only a lookup that asks for
     /// it (`inc=annotation`) states it; the disc ID lookup cannot ask.
     /// Absent where none is written.
-    #[serde(
-        default,
-        deserialize_with = "crate::serde_helpers::empty_string_as_none"
-    )]
+    #[serde(default, deserialize_with = "crate::serde_helpers::empty_string_as_none")]
     pub annotation: Option<String>,
     pub date: Option<String>,
-    #[serde(
-        default,
-        deserialize_with = "crate::serde_helpers::empty_string_as_none"
-    )]
+    #[serde(default, deserialize_with = "crate::serde_helpers::empty_string_as_none")]
     pub country: Option<String>,
     /// How official the release is, as MusicBrainz names it ("Official",
     /// "Promotion", …). Absent where no status is set.
-    #[serde(
-        default,
-        deserialize_with = "crate::serde_helpers::empty_string_as_none"
-    )]
+    #[serde(default, deserialize_with = "crate::serde_helpers::empty_string_as_none")]
     pub status: Option<String>,
     /// The release's outermost packaging, as MusicBrainz names it ("Jewel
     /// Case", "Digipak", …). Absent where none is set.
-    #[serde(
-        default,
-        deserialize_with = "crate::serde_helpers::empty_string_as_none"
-    )]
+    #[serde(default, deserialize_with = "crate::serde_helpers::empty_string_as_none")]
     pub packaging: Option<String>,
-    #[serde(
-        default,
-        deserialize_with = "crate::serde_helpers::empty_string_as_none"
-    )]
+    #[serde(default, deserialize_with = "crate::serde_helpers::empty_string_as_none")]
     pub barcode: Option<String>,
     #[serde(rename = "artist-credit", default)]
     pub artist_credit: Vec<MbArtistCredit>,
@@ -286,37 +259,22 @@ pub struct SearchRelease {
     pub title: String,
     /// What an editor wrote to tell this release apart from its album's
     /// others. Absent where none is set.
-    #[serde(
-        default,
-        deserialize_with = "crate::serde_helpers::empty_string_as_none"
-    )]
+    #[serde(default, deserialize_with = "crate::serde_helpers::empty_string_as_none")]
     pub disambiguation: Option<String>,
     pub date: Option<String>,
-    #[serde(
-        default,
-        deserialize_with = "crate::serde_helpers::empty_string_as_none"
-    )]
+    #[serde(default, deserialize_with = "crate::serde_helpers::empty_string_as_none")]
     pub country: Option<String>,
     /// How official the release is, as MusicBrainz names it ("Official",
     /// "Promotion", …). Absent where no status is set.
-    #[serde(
-        default,
-        deserialize_with = "crate::serde_helpers::empty_string_as_none"
-    )]
+    #[serde(default, deserialize_with = "crate::serde_helpers::empty_string_as_none")]
     pub status: Option<String>,
     /// The release's outermost packaging, as MusicBrainz names it ("Jewel
     /// Case", "Digipak", …). Absent where none is set.
-    #[serde(
-        default,
-        deserialize_with = "crate::serde_helpers::empty_string_as_none"
-    )]
+    #[serde(default, deserialize_with = "crate::serde_helpers::empty_string_as_none")]
     pub packaging: Option<String>,
     /// `ws/2/release?query=` states the pressing's barcode. An empty string
     /// means the release carries none.
-    #[serde(
-        default,
-        deserialize_with = "crate::serde_helpers::empty_string_as_none"
-    )]
+    #[serde(default, deserialize_with = "crate::serde_helpers::empty_string_as_none")]
     pub barcode: Option<String>,
     #[serde(rename = "artist-credit", default)]
     pub artist_credit: Vec<MbArtistCredit>,
@@ -333,10 +291,7 @@ pub struct SearchRelease {
 /// One medium as `ws/2/release?query=` states it.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct MbSearchMedium {
-    #[serde(
-        default,
-        deserialize_with = "crate::serde_helpers::empty_string_as_none"
-    )]
+    #[serde(default, deserialize_with = "crate::serde_helpers::empty_string_as_none")]
     pub format: Option<String>,
 }
 
@@ -344,10 +299,7 @@ pub struct MbSearchMedium {
 #[derive(Debug, Clone, Deserialize)]
 pub struct ReleaseGroupResponse {
     pub id: String,
-    #[serde(
-        default,
-        deserialize_with = "crate::serde_helpers::empty_string_as_none"
-    )]
+    #[serde(default, deserialize_with = "crate::serde_helpers::empty_string_as_none")]
     pub title: Option<String>,
     #[serde(
         rename = "first-release-date",
@@ -482,10 +434,7 @@ pub(super) fn parse_discogs_lookup(
 ) -> Result<HashMap<DiscogsPage, Vec<String>>, String> {
     if let [page] = pages {
         let document: UrlDocument = serde_json::from_str(json).map_err(|e| e.to_string())?;
-        return Ok(HashMap::from([(
-            page.clone(),
-            page.linked_ids(document.relations),
-        )]));
+        return Ok(HashMap::from([(page.clone(), page.linked_ids(document.relations))]));
     }
     let documents: UrlDocuments = serde_json::from_str(json).map_err(|e| e.to_string())?;
     let asked: HashMap<String, &DiscogsPage> =
@@ -493,10 +442,7 @@ pub(super) fn parse_discogs_lookup(
     let mut linked = HashMap::new();
     for entry in documents.urls {
         let Some(page) = asked.get(&entry.resource) else {
-            return Err(format!(
-                "the answer names {}, which was not asked about",
-                entry.resource
-            ));
+            return Err(format!("the answer names {}, which was not asked about", entry.resource));
         };
         linked.insert((*page).clone(), page.linked_ids(entry.relations));
     }
@@ -506,7 +452,5 @@ pub(super) fn parse_discogs_lookup(
 /// Every address a set of relations states, in relation order. A relation that
 /// names an artist, a work or a recording rather than a URL states none.
 pub fn relation_urls(relations: &[MbRelation]) -> impl Iterator<Item = &str> {
-    relations
-        .iter()
-        .filter_map(|r| r.url.as_ref()?.resource.as_deref())
+    relations.iter().filter_map(|r| r.url.as_ref()?.resource.as_deref())
 }

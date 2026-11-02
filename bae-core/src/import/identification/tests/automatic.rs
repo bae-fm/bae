@@ -50,9 +50,9 @@ async fn a_release_found_after_its_key_was_removed_is_queued() {
         .unwrap()
         .expect("the scanned candidate is answerable");
 
-    fixture.import.emit_event_for_test(ImportEvent::Scan(ScanEvent::CandidateRemoved {
-        candidate_key: key,
-    }));
+    fixture
+        .import
+        .emit_event_for_test(ImportEvent::Scan(ScanEvent::CandidateRemoved { candidate_key: key }));
     fixture.import.emit_event_for_test(ImportEvent::Scan(ScanEvent::FolderCandidate {
         candidate,
         found_while_automatic: true,
@@ -88,9 +88,9 @@ async fn a_found_release_whose_key_is_then_removed_is_not_identified() {
         candidate,
         found_while_automatic: true,
     }));
-    fixture.import.emit_event_for_test(ImportEvent::Scan(ScanEvent::CandidateRemoved {
-        candidate_key: key,
-    }));
+    fixture
+        .import
+        .emit_event_for_test(ImportEvent::Scan(ScanEvent::CandidateRemoved { candidate_key: key }));
     fixture.drain_automatic().await;
     fixture.provider.release();
 
@@ -176,19 +176,13 @@ async fn a_relaunch_queues_no_candidate_the_library_stored() {
     fixture.scan(1).await;
     fixture.import.stop_and_join();
 
-    let import = fixture
-        .manager
-        .start_import_service(tokio::runtime::Handle::current())
-        .await
-        .unwrap();
+    let import =
+        fixture.manager.start_import_service(tokio::runtime::Handle::current()).await.unwrap();
     let identification = super::start(import.clone(), fixture.manager.clone());
     fixture.rescan(&import, 1).await;
-    tokio::time::timeout(
-        Duration::from_secs(30),
-        identification.automatic_drained_for_test(),
-    )
-    .await
-    .expect("the relaunched queue drains");
+    tokio::time::timeout(Duration::from_secs(30), identification.automatic_drained_for_test())
+        .await
+        .expect("the relaunched queue drains");
 
     assert_eq!(
         fixture.provider.count_containing("/discid/"),
@@ -198,7 +192,11 @@ async fn a_relaunch_queues_no_candidate_the_library_stored() {
     );
     assert!(fixture.identified_for(&dir).await.is_none());
     assert!(
-        import.candidate_runtime(&crate::import::CandidateKey::folder(&dir)).await.unwrap().is_none(),
+        import
+            .candidate_runtime(&crate::import::CandidateKey::folder(&dir))
+            .await
+            .unwrap()
+            .is_none(),
         "nothing is waiting either"
     );
     identification.stop();
@@ -212,10 +210,8 @@ async fn turning_automatic_identification_off_finishes_what_is_queued() {
     let dirs = flooded_queue(&fixture).await;
     let sweep = fixture.drain_automatic_task();
     wait_for_request(&fixture.provider, "query=barcode", MAX_IN_FLIGHT).await;
-    let waiting = fixture
-        .first_queued(&dirs)
-        .await
-        .expect("one candidate is over the cap and waiting");
+    let waiting =
+        fixture.first_queued(&dirs).await.expect("one candidate is over the cap and waiting");
 
     fixture.manager.set_identify_automatically(false).await.unwrap();
     fixture.provider.release();
@@ -252,22 +248,14 @@ async fn a_takeover_queues_only_a_release_new_to_the_parent() {
     let known = fixture.disc_id_candidate("Inner/Album");
     fixture.provider.route("/discid/", 200, "{}");
     fixture.manager.set_identify_automatically(false).await.unwrap();
-    fixture
-        .import
-        .add_watched_folder(inner.clone())
-        .await
-        .unwrap();
+    fixture.import.add_watched_folder(inner.clone()).await.unwrap();
     fixture.read_root(&fixture.import, &inner).await;
     fixture.await_listed(&fixture.import, 1).await;
     fixture.manager.set_identify_automatically(true).await.unwrap();
 
     let new = fixture.disc_id_candidate("New Album");
     std::fs::write(new.join("notes.txt"), "a candidate of its own").unwrap();
-    fixture
-        .import
-        .add_watched_folder(fixture.root.clone())
-        .await
-        .unwrap();
+    fixture.import.add_watched_folder(fixture.root.clone()).await.unwrap();
     // Answered once the parent's read, which follows the takeover, is over.
     fixture.read_root(&fixture.import, &fixture.root).await;
     fixture.await_listed(&fixture.import, 2).await;
@@ -292,7 +280,10 @@ async fn a_takeover_queues_only_a_release_new_to_the_parent() {
 /// Two releases under `folder`, each with a file of its own, scanned with the
 /// setting off and read as one release by the person. Returns the parts and
 /// the combined release's key.
-async fn combined_parts(fixture: &Fixture, folder: &str) -> (Vec<PathBuf>, crate::import::CandidateKey) {
+async fn combined_parts(
+    fixture: &Fixture,
+    folder: &str,
+) -> (Vec<PathBuf>, crate::import::CandidateKey) {
     let parts: Vec<PathBuf> = ["Side A", "Side B"]
         .iter()
         .map(|side| {
@@ -307,10 +298,7 @@ async fn combined_parts(fixture: &Fixture, folder: &str) -> (Vec<PathBuf>, crate
     let combined = fixture
         .import
         .combine_candidates(
-            parts
-                .iter()
-                .map(|dir| crate::import::CandidateKey::folder(dir))
-                .collect(),
+            parts.iter().map(|dir| crate::import::CandidateKey::folder(dir)).collect(),
         )
         .await
         .unwrap();
@@ -373,17 +361,11 @@ async fn separating_picked_releases_queues_them_only_while_the_setting_is_on() {
         let combined = fixture
             .import
             .combine_candidates(
-                picked
-                    .iter()
-                    .map(|dir| crate::import::CandidateKey::folder(dir))
-                    .collect(),
+                picked.iter().map(|dir| crate::import::CandidateKey::folder(dir)).collect(),
             )
             .await
             .unwrap();
-        assert!(
-            combined.as_bytes().starts_with(b"grouping:"),
-            "{combined} is a picked grouping"
-        );
+        assert!(combined.as_bytes().starts_with(b"grouping:"), "{combined} is a picked grouping");
         fixture.manager.set_identify_automatically(automatic).await.unwrap();
 
         fixture.import.separate_candidate(&combined).await.unwrap();

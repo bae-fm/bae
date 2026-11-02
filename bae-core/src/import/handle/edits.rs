@@ -44,11 +44,9 @@ impl ImportServiceHandle {
             })?
             .metadata_revision;
         let remote_image = match &cover {
-            crate::import::CoverSelection::Remote(image, _) => Some(
-                self.library_manager
-                    .fetch_required_remote_image(&image.url)
-                    .await?,
-            ),
+            crate::import::CoverSelection::Remote(image, _) => {
+                Some(self.library_manager.fetch_required_remote_image(&image.url).await?)
+            }
             crate::import::CoverSelection::Local(_)
             | crate::import::CoverSelection::Embedded(_) => None,
         };
@@ -96,9 +94,7 @@ impl ImportServiceHandle {
                     candidate.file_edit_revision,
                 )
                 .await?;
-            this.library_manager
-                .set_candidate_album_pick(&hash, album_id.as_deref())
-                .await
+            this.library_manager.set_candidate_album_pick(&hash, album_id.as_deref()).await
         })
         .await
     }
@@ -111,10 +107,9 @@ impl ImportServiceHandle {
     ) -> Result<(), crate::import::ImportError> {
         let this = self.clone();
         let candidate_key = candidate_key.clone();
-        self.committed(async move {
-            this.set_candidate_edit_field_write(&candidate_key, edit)
-                .await
-        })
+        self.committed(
+            async move { this.set_candidate_edit_field_write(&candidate_key, edit).await },
+        )
         .await
     }
 
@@ -156,8 +151,7 @@ impl ImportServiceHandle {
         let this = self.clone();
         let candidate_key = candidate_key.clone();
         self.committed(async move {
-            this.set_candidate_album_artists_write(&candidate_key, assignments)
-                .await
+            this.set_candidate_album_artists_write(&candidate_key, assignments).await
         })
         .await
     }
@@ -196,10 +190,9 @@ impl ImportServiceHandle {
     ) -> Result<(), crate::import::ImportError> {
         let this = self.clone();
         let candidate_key = candidate_key.clone();
-        self.committed(async move {
-            this.set_candidate_track_edit_write(&candidate_key, track)
-                .await
-        })
+        self.committed(
+            async move { this.set_candidate_track_edit_write(&candidate_key, track).await },
+        )
         .await
     }
 
@@ -240,8 +233,7 @@ impl ImportServiceHandle {
         let this = self.clone();
         let candidate_key = candidate_key.clone();
         self.committed(async move {
-            this.set_candidate_track_artists_write(&candidate_key, track_ids, assignments)
-                .await
+            this.set_candidate_track_artists_write(&candidate_key, track_ids, assignments).await
         })
         .await
     }
@@ -279,11 +271,11 @@ impl ImportServiceHandle {
         &self,
         candidate_key: &crate::import::CandidateKey,
     ) -> Result<crate::import::folder_scanner::FolderCandidate, crate::import::ImportError> {
-        self.get_release_candidate(candidate_key)
-            .await?
-            .ok_or_else(|| crate::import::ImportError::Internal {
+        self.get_release_candidate(candidate_key).await?.ok_or_else(|| {
+            crate::import::ImportError::Internal {
                 detail: format!("{candidate_key} is not an actionable candidate"),
-            })
+            }
+        })
     }
 
     /// The candidate at `candidate_key` as an edit of its draft reads it, or
@@ -295,13 +287,12 @@ impl ImportServiceHandle {
     ) -> Result<DraftEditBase, crate::import::ImportError> {
         let candidate = self.editable_candidate(candidate_key).await?;
         let hash = candidate.files.content_hash();
-        let preparation = self
-            .library_manager
-            .load_import_candidate_preparation(&hash)
-            .await?
-            .ok_or_else(|| crate::import::ImportError::Internal {
-                detail: format!("{candidate_key} has no stored import preparation"),
-            })?;
+        let preparation =
+            self.library_manager.load_import_candidate_preparation(&hash).await?.ok_or_else(
+                || crate::import::ImportError::Internal {
+                    detail: format!("{candidate_key} has no stored import preparation"),
+                },
+            )?;
         if preparation.file_edit_revision != candidate.file_edit_revision {
             return Err(crate::import::ImportError::Internal {
                 detail: format!("{candidate_key} changed before its edit was prepared"),

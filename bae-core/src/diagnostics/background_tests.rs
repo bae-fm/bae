@@ -12,17 +12,12 @@ fn reporting() -> (Diagnostics, Arc<RecordingBugReporter>) {
 #[test]
 fn bug_reports_a_panic_and_hands_it_back() {
     let (diagnostics, reports) = reporting();
-    let failed = TaskFailed::Panicked {
-        operation: "resize the cover",
-        message: "zero width".to_string(),
-    };
+    let failed =
+        TaskFailed::Panicked { operation: "resize the cover", message: "zero width".to_string() };
     assert_eq!(diagnostics.bug(failed.clone()), failed);
     assert_eq!(
         reports.reports(),
-        vec![(
-            "resize the cover".to_string(),
-            "resize the cover panicked: zero width".to_string()
-        )]
+        vec![("resize the cover".to_string(), "resize the cover panicked: zero width".to_string())]
     );
 }
 
@@ -96,10 +91,7 @@ async fn a_panic_in_on_panic_is_reported_and_goes_no_further() {
     );
     task.ended().await;
     let operations: Vec<String> = reports.reports().into_iter().map(|(op, _)| op).collect();
-    assert_eq!(
-        operations,
-        vec!["fan out progress", "end the work a panic stopped"]
-    );
+    assert_eq!(operations, vec!["fan out progress", "end the work a panic stopped"]);
 }
 
 #[test]

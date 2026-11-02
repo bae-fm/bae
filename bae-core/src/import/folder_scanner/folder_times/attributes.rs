@@ -106,17 +106,11 @@ pub(super) fn read_directory(directory: &Path) -> io::Result<HashMap<OsString, F
         for _ in 0..count {
             let packed = decode(rest)?;
             match packed {
-                Packed {
-                    error: Some(error), ..
-                } => tracing::debug!(
+                Packed { error: Some(error), .. } => tracing::debug!(
                     error = %io::Error::from_raw_os_error(error),
                     "a folder's dates are unreadable in its batch"
                 ),
-                Packed {
-                    name: Some(name),
-                    times,
-                    ..
-                } => {
+                Packed { name: Some(name), times, .. } => {
                     entries.insert(name, times);
                 }
                 Packed { name: None, .. } => {}
@@ -148,13 +142,10 @@ fn decode(buffer: &[u8]) -> io::Result<Packed> {
     // Past the length and the five groups of the returned set.
     let mut at = 4 + std::mem::size_of::<libc::attribute_set_t>();
     if length < at {
-        return Err(invalid(
-            "an attribute answer is shorter than its returned set",
-        ));
+        return Err(invalid("an attribute answer is shorter than its returned set"));
     }
-    let entry = buffer
-        .get(..length)
-        .ok_or_else(|| invalid("an attribute answer runs past the buffer"))?;
+    let entry =
+        buffer.get(..length).ok_or_else(|| invalid("an attribute answer runs past the buffer"))?;
     let returned = u32_at(entry, 4).expect("the length covers the returned set");
     let mut error = None;
     if returned & ATTR_CMN_ERROR != 0 {
@@ -189,23 +180,12 @@ fn decode(buffer: &[u8]) -> io::Result<Packed> {
         let nanos = i64_at(entry, at + 8).ok_or_else(cut_off)?;
         // A timespec, packed on a four-byte boundary like every attribute.
         at += 16;
-        system_time(seconds, nanos)
-            .map(Some)
-            .ok_or_else(|| invalid("an answer's date is no time"))
+        system_time(seconds, nanos).map(Some).ok_or_else(|| invalid("an answer's date is no time"))
     };
     let created = date(libc::ATTR_CMN_CRTIME)?;
     let modified = date(libc::ATTR_CMN_MODTIME)?;
     let added = date(libc::ATTR_CMN_ADDEDTIME)?;
-    Ok(Packed {
-        length,
-        error,
-        name,
-        times: FolderTimes {
-            added,
-            created,
-            modified,
-        },
-    })
+    Ok(Packed { length, error, name, times: FolderTimes { added, created, modified } })
 }
 
 fn u32_at(buffer: &[u8], at: usize) -> Option<u32> {
@@ -218,9 +198,7 @@ fn i64_at(buffer: &[u8], at: usize) -> Option<i64> {
 
 /// A timespec's instant; `None` for one no `SystemTime` holds.
 fn system_time(seconds: i64, nanos: i64) -> Option<SystemTime> {
-    let nanos = u32::try_from(nanos)
-        .ok()
-        .filter(|nanos| *nanos < 1_000_000_000)?;
+    let nanos = u32::try_from(nanos).ok().filter(|nanos| *nanos < 1_000_000_000)?;
     match u64::try_from(seconds) {
         Ok(seconds) => UNIX_EPOCH.checked_add(Duration::new(seconds, nanos)),
         Err(_) => UNIX_EPOCH
@@ -272,10 +250,7 @@ mod tests {
         let entry = packed(
             Some(0),
             "Folder",
-            &[
-                (libc::ATTR_CMN_CRTIME, 20, 0),
-                (libc::ATTR_CMN_MODTIME, 30, 500),
-            ],
+            &[(libc::ATTR_CMN_CRTIME, 20, 0), (libc::ATTR_CMN_MODTIME, 30, 500)],
         );
         assert_eq!(
             decode(&entry).unwrap(),
@@ -304,11 +279,7 @@ mod tests {
     fn a_cut_off_entry_or_one_whose_date_is_no_time_is_invalid() {
         let entry = packed(None, "Folder", &[(libc::ATTR_CMN_ADDEDTIME, 1, 0)]);
         assert!(decode(&entry[..entry.len() - 8]).is_err());
-        let entry = packed(
-            None,
-            "Folder",
-            &[(libc::ATTR_CMN_ADDEDTIME, 1, 1_000_000_000)],
-        );
+        let entry = packed(None, "Folder", &[(libc::ATTR_CMN_ADDEDTIME, 1, 1_000_000_000)]);
         assert!(decode(&entry).is_err());
     }
 
@@ -350,10 +321,8 @@ mod tests {
         std::fs::write(directory.path().join("file.txt"), b"x").unwrap();
         names.push("file.txt".to_string());
         let entries = read_directory(directory.path()).unwrap();
-        let mut read_names: Vec<String> = entries
-            .keys()
-            .map(|name| name.to_string_lossy().into_owned())
-            .collect();
+        let mut read_names: Vec<String> =
+            entries.keys().map(|name| name.to_string_lossy().into_owned()).collect();
         read_names.sort();
         names.sort();
         assert_eq!(read_names, names);

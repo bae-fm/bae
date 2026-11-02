@@ -21,10 +21,7 @@ enum Said {
     Item(ScanItem),
     /// It read through the folder at `index` under the root: the files the
     /// root's own release takes from it, or why it could not be read.
-    Read {
-        index: usize,
-        lent: Result<Vec<FileEntry>, FolderScanError>,
-    },
+    Read { index: usize, lent: Result<Vec<FileEntry>, FolderScanError> },
     /// It panicked, and stopped the others.
     Panicked(TaskFailed),
 }
@@ -51,22 +48,15 @@ where
         }
     }
     let walk = Walk::new(
-        ScanRoot {
-            root: &root,
-            stored: readings.stored,
-            cancellation,
-            reads,
-        },
+        ScanRoot { root: &root, stored: readings.stored, cancellation, reads },
         reader,
         readings.decisions,
         readings.new_grouping_key,
     );
     on_directory(root.clone());
     let root_listing = walk.listing(Path::new(""))?;
-    let direct_audio = root_listing
-        .files
-        .iter()
-        .any(|file| file.size > 0 && is_audio_file(&file.path));
+    let direct_audio =
+        root_listing.files.iter().any(|file| file.size > 0 && is_audio_file(&file.path));
     let mut direct_scope_files = root_listing.files;
     let walk_order =
         newest_first(&reader.folder_times(&root, &root_listing.directories, cancellation)?);
@@ -121,13 +111,7 @@ where
     F: FnMut(ScanItem),
     D: FnMut(PathBuf),
 {
-    let Walk {
-        scan,
-        reader,
-        decisions,
-        new_grouping_key,
-        ..
-    } = walk;
+    let Walk { scan, reader, decisions, new_grouping_key, .. } = walk;
     // Cancelled with the pass, and by the first folder that fails, so no
     // walk begins another folder or reads further into its own.
     let stop = scan.cancellation.child();
@@ -142,10 +126,7 @@ where
         for _ in 0..FOLDERS_AT_ONCE.min(folders.len()) {
             let said_tx = said_tx.clone();
             let (stop, next) = (&stop, &next);
-            let scan = ScanRoot {
-                cancellation: stop,
-                ..*scan
-            };
+            let scan = ScanRoot { cancellation: stop, ..*scan };
             let (reader, decisions, new_grouping_key) = (*reader, *decisions, *new_grouping_key);
             threads.spawn(move || {
                 // Nothing takes what the walks say once the calling thread
@@ -195,15 +176,10 @@ where
             match said {
                 Said::Directory(directory) => on_directory(directory),
                 Said::Item(item) => on_item(item),
-                Said::Read {
-                    index,
-                    lent: Ok(files),
-                } => lent[index] = Some(files),
+                Said::Read { index, lent: Ok(files) } => lent[index] = Some(files),
                 // A folder stopped by an earlier failure says it was
                 // cancelled; the pass fails with what stopped it.
-                Said::Read {
-                    lent: Err(error), ..
-                } => {
+                Said::Read { lent: Err(error), .. } => {
                     failure.get_or_insert(error);
                 }
                 Said::Panicked(failed) => {

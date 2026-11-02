@@ -15,10 +15,7 @@ impl AppHandle {
         sort_criteria: Vec<BridgeSortCriterion>,
         group_by_artist: bool,
     ) -> Arc<crate::AlbumBrowseSubscription> {
-        let sort: Vec<_> = sort_criteria
-            .into_iter()
-            .map(BridgeSortCriterion::into_core)
-            .collect();
+        let sort: Vec<_> = sort_criteria.into_iter().map(BridgeSortCriterion::into_core).collect();
         crate::screens::album_browse(
             self.services.subscribe_album_browse(&sort, group_by_artist),
             self.runtime.clone(),
@@ -31,10 +28,8 @@ impl AppHandle {
         &self,
         sort_criteria: Vec<BridgeArtistSortCriterion>,
     ) -> Arc<crate::ArtistBrowseSubscription> {
-        let sort: Vec<_> = sort_criteria
-            .into_iter()
-            .map(BridgeArtistSortCriterion::into_core)
-            .collect();
+        let sort: Vec<_> =
+            sort_criteria.into_iter().map(BridgeArtistSortCriterion::into_core).collect();
         crate::screens::artist_browse(
             self.services.subscribe_artist_browse(&sort),
             self.runtime.clone(),
@@ -47,10 +42,8 @@ impl AppHandle {
         &self,
         sort_criteria: Vec<BridgeComposerSortCriterion>,
     ) -> Arc<crate::ComposerBrowseSubscription> {
-        let sort: Vec<_> = sort_criteria
-            .into_iter()
-            .map(BridgeComposerSortCriterion::into_core)
-            .collect();
+        let sort: Vec<_> =
+            sort_criteria.into_iter().map(BridgeComposerSortCriterion::into_core).collect();
         crate::screens::composer_browse(
             self.services.subscribe_composer_browse(&sort),
             self.runtime.clone(),
@@ -86,10 +79,7 @@ impl AppHandle {
     /// A live artist search with no text and no windows until `set_view`
     /// names them.
     pub fn subscribe_artist_search(&self) -> Arc<crate::ArtistSearchSubscription> {
-        crate::screens::artist_search(
-            self.services.subscribe_artist_search(),
-            self.runtime.clone(),
-        )
+        crate::screens::artist_search(self.services.subscribe_artist_search(), self.runtime.clone())
     }
 
     /// The album detail view's read, showing nothing until `set_id`.
@@ -107,10 +97,7 @@ impl AppHandle {
 
     /// The artist detail view's read, showing nothing until `set_id`.
     pub fn subscribe_artist_detail(&self) -> Arc<crate::ArtistDetailSubscription> {
-        crate::screens::artist_detail(
-            self.services.subscribe_artist_detail(),
-            self.runtime.clone(),
-        )
+        crate::screens::artist_detail(self.services.subscribe_artist_detail(), self.runtime.clone())
     }
 
     /// The composer detail view's read, showing nothing until `set_id`.
@@ -135,14 +122,13 @@ impl AppHandle {
         filter: BridgeStorageFilter,
     ) -> Arc<crate::StorageBrowseSubscription> {
         crate::screens::storage_browse(
-            self.services
-                .subscribe_storage_browse(bae_core::library::StorageBrowseView {
-                    sort: sort.into_core(),
-                    filter: filter.into_core(),
-                    search: String::new(),
-                    windows: Default::default(),
-                    selected: Default::default(),
-                }),
+            self.services.subscribe_storage_browse(bae_core::library::StorageBrowseView {
+                sort: sort.into_core(),
+                filter: filter.into_core(),
+                search: String::new(),
+                windows: Default::default(),
+                selected: Default::default(),
+            }),
             self.runtime.clone(),
         )
     }
@@ -202,10 +188,7 @@ impl AppHandle {
     /// A release's files in the Storage sheet's order, showing nothing until
     /// `set_request` names a release.
     pub fn subscribe_release_files(&self) -> Arc<crate::ReleaseFilesSubscription> {
-        crate::screens::release_files(
-            self.services.subscribe_release_files(),
-            self.runtime.clone(),
-        )
+        crate::screens::release_files(self.services.subscribe_release_files(), self.runtime.clone())
     }
 }
 

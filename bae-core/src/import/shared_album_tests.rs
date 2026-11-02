@@ -41,10 +41,7 @@ fn several_pressings_of_one_album_name_it_in_each_catalog() {
         release(Catalog::MusicBrainz, "mb-2", Some("group-1"), 2001),
     ]))
     .expect("two pressings of one album");
-    assert_eq!(
-        shared.link.albums(),
-        [MetadataRef::new(Catalog::MusicBrainz, "group-1")]
-    );
+    assert_eq!(shared.link.albums(), [MetadataRef::new(Catalog::MusicBrainz, "group-1")]);
     assert_eq!(
         shared.leads,
         vec![
@@ -58,12 +55,7 @@ fn several_pressings_of_one_album_name_it_in_each_catalog() {
 #[test]
 fn one_pressing_offers_no_album_to_be_unsure_about() {
     assert_eq!(
-        SharedAlbum::of(&cards(vec![release(
-            Catalog::MusicBrainz,
-            "mb-1",
-            Some("group-1"),
-            1990
-        )])),
+        SharedAlbum::of(&cards(vec![release(Catalog::MusicBrainz, "mb-1", Some("group-1"), 1990)])),
         None
     );
 }
@@ -171,9 +163,7 @@ fn draft() -> CandidateDraft {
                     id: format!("candidate-track-{position}"),
                     title: title.to_string(),
                     artist_assignments: TrackArtistAssignments::AlbumArtists,
-                    file: AudioFile::Standalone {
-                        file_id: format!("{position}.flac"),
-                    },
+                    file: AudioFile::Standalone { file_id: format!("{position}.flac") },
                 },
                 place: crate::mediums::TrackPlace {
                     medium: std::num::NonZeroU16::MIN,
@@ -196,11 +186,7 @@ fn what_the_pressings_agree_on_is_taken_as_the_top_row_spells_it() {
     let shared = shared_draft(
         &draft(),
         &offered(vec![
-            row(
-                "Album Title",
-                "ABC-100",
-                &["First Song", "Second Song (Remastered)"],
-            ),
+            row("Album Title", "ABC-100", &["First Song", "Second Song (Remastered)"]),
             row("ALBUM TITLE", "ABC-200", &["first song", "Second Song"]),
         ]),
         None,
@@ -208,17 +194,11 @@ fn what_the_pressings_agree_on_is_taken_as_the_top_row_spells_it() {
     assert_eq!(shared.album_title, "Album Title");
     assert_eq!(
         shared.album_artist_assignments,
-        vec![crate::import::Credited::plain(
-            crate::import::ArtistAssignment::named("Artist Name")
-        )]
+        vec![crate::import::Credited::plain(crate::import::ArtistAssignment::named("Artist Name"))]
     );
     assert_eq!(shared.album_year, "1990");
     assert_eq!(
-        shared
-            .tracks
-            .iter()
-            .map(|track| track.edit.title.as_str())
-            .collect::<Vec<_>>(),
+        shared.tracks.iter().map(|track| track.edit.title.as_str()).collect::<Vec<_>>(),
         ["First Song", "Second Song (Remastered)"]
     );
     assert_eq!(
@@ -235,10 +215,7 @@ fn what_the_pressings_disagree_on_or_leave_unstated_stays_as_the_draft_has_it() 
     unstated.album_year.clear();
     let shared = shared_draft(
         &current,
-        &offered(vec![
-            row("Album Title", "ABC-100", &["First Song", "Second Song"]),
-            unstated,
-        ]),
+        &offered(vec![row("Album Title", "ABC-100", &["First Song", "Second Song"]), unstated]),
         None,
     );
     assert_eq!(shared.album_year, current.album_year, "never blanked");
@@ -268,11 +245,7 @@ fn tracks_agree_only_when_every_pressing_lists_the_folders_count() {
         &current,
         &offered(vec![
             row("Album Title", "ABC-100", &["First Song", "Second Song"]),
-            row(
-                "Album Title",
-                "ABC-200",
-                &["First Song", "Second Song", "Bonus"],
-            ),
+            row("Album Title", "ABC-200", &["First Song", "Second Song", "Bonus"]),
         ]),
         None,
     );
@@ -283,10 +256,7 @@ fn tracks_agree_only_when_every_pressing_lists_the_folders_count() {
 #[test]
 fn media_every_pressing_states_alike_are_taken() {
     let mut first = row("Album Title", "ABC-100", &["First Song", "Second Song"]);
-    first.pressing.facts.media = vec![MediaCount {
-        medium: Medium::Cd,
-        count: 1,
-    }];
+    first.pressing.facts.media = vec![MediaCount { medium: Medium::Cd, count: 1 }];
     let second = RawReleaseEdit {
         pressing: RawPressingEdit {
             labels: vec![label("Label Name", "ABC-200")],
@@ -308,10 +278,6 @@ fn a_year_the_pressings_do_not_share_is_the_folder_s() {
     second.pressing.year = "2010".to_string();
     let shared = shared_draft(&draft(), &offered(vec![first.clone(), second]), Some(1986));
     assert_eq!(shared.pressing.year, "1986");
-    let agreeing = shared_draft(
-        &draft(),
-        &offered(vec![first.clone(), first.clone()]),
-        Some(1986),
-    );
+    let agreeing = shared_draft(&draft(), &offered(vec![first.clone(), first.clone()]), Some(1986));
     assert_eq!(agreeing.pressing.year, "2005");
 }

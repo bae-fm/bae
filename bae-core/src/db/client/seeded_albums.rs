@@ -44,10 +44,8 @@ impl Database {
             .collect();
         let mut originals = Vec::new();
         let mut audios = Vec::new();
-        let labels: Vec<super::label_resolution::LabelParts> = albums
-            .iter()
-            .map(|seeded| self.label_parts(&seeded.release.pressing.labels))
-            .collect();
+        let labels: Vec<super::label_resolution::LabelParts> =
+            albums.iter().map(|seeded| self.label_parts(&seeded.release.pressing.labels)).collect();
         for seeded in &mut albums {
             if let Some(audio) = seeded.audio.take() {
                 let mut rows = Vec::with_capacity(audio.files.len());

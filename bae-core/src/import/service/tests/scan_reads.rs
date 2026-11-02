@@ -15,11 +15,7 @@ async fn regrouping_disc_folders_probes_each_audio_file_once() {
         }
     }
     let root = crate::import::watched_folder::canonical_absolute_root(&root).unwrap();
-    test.service
-        .library_manager
-        .add_watched_import_folder(&root)
-        .await
-        .unwrap();
+    test.service.library_manager.add_watched_import_folder(&root).await.unwrap();
 
     let (scan, _) = test.scan();
     scan.rescan(&root).await.unwrap();
@@ -38,12 +34,7 @@ async fn regrouping_disc_folders_probes_each_audio_file_once() {
         .collect();
     assert_eq!(releases, vec![4], "the discs read as one release");
     for track in &tracks {
-        assert_eq!(
-            bae_audio::test_reads::probes(track),
-            1,
-            "{} is probed once",
-            track.display()
-        );
+        assert_eq!(bae_audio::test_reads::probes(track), 1, "{} is probed once", track.display());
     }
 }
 
@@ -69,11 +60,7 @@ impl ReadableFiles {
         for image in &self.images {
             reads.push((image.clone(), "image", count(FileRead::ImageCheck, image)));
         }
-        reads.push((
-            self.sheet.clone(),
-            "sheet",
-            count(FileRead::CueParse, &self.sheet),
-        ));
+        reads.push((self.sheet.clone(), "sheet", count(FileRead::CueParse, &self.sheet)));
         reads
     }
 }
@@ -87,12 +74,7 @@ async fn readable_root(test: &TestService) -> ReadableFiles {
     let album = root.join("Album");
     let broken = root.join("Broken");
     let set = root.join("Set");
-    for folder in [
-        &album,
-        &broken,
-        &set.join("Live One"),
-        &set.join("Live Two"),
-    ] {
+    for folder in [&album, &broken, &set.join("Live One"), &set.join("Live Two")] {
         std::fs::create_dir_all(folder).unwrap();
     }
     let mut tracks = Vec::new();
@@ -113,28 +95,15 @@ async fn readable_root(test: &TestService) -> ReadableFiles {
     std::fs::write(album.join("back.png"), vec![0u8; 64]).unwrap();
     write_test_jpeg(&set.join("booklet.jpg"));
     let sheet = album.join("album.cue");
-    std::fs::write(
-        &sheet,
-        "FILE \"01.flac\" WAVE\n  TRACK 01 AUDIO\n    INDEX 01 00:00:00\n",
-    )
-    .unwrap();
-    let root = crate::import::watched_folder::canonical_absolute_root(&root).unwrap();
-    test.service
-        .library_manager
-        .add_watched_import_folder(&root)
-        .await
+    std::fs::write(&sheet, "FILE \"01.flac\" WAVE\n  TRACK 01 AUDIO\n    INDEX 01 00:00:00\n")
         .unwrap();
+    let root = crate::import::watched_folder::canonical_absolute_root(&root).unwrap();
+    test.service.library_manager.add_watched_import_folder(&root).await.unwrap();
     ReadableFiles {
         album: root.join("Album"),
         tracks: tracks
             .iter()
-            .map(|track| {
-                root.join(
-                    track
-                        .strip_prefix(test.temp.path().join("watched"))
-                        .unwrap(),
-                )
-            })
+            .map(|track| root.join(track.strip_prefix(test.temp.path().join("watched")).unwrap()))
             .collect(),
         images: ["Album/cover.jpg", "Album/back.png", "Set/booklet.jpg"]
             .iter()
@@ -154,10 +123,8 @@ async fn a_rescan_of_an_unchanged_folder_reads_none_of_its_files() {
     let test = setup_import_service().await;
     let files = readable_root(&test).await;
     let tags = Arc::new(CountingTagReader::default());
-    let (scan, _) = test.scan_with(
-        tags.clone(),
-        Arc::new(crate::import::folder_scanner::OsDirectoryReader),
-    );
+    let (scan, _) =
+        test.scan_with(tags.clone(), Arc::new(crate::import::folder_scanner::OsDirectoryReader));
     let root_key = files.root.to_path_buf();
     scan.rescan(&files.root).await.unwrap();
     let first = files.reads(&tags);
@@ -173,15 +140,16 @@ async fn a_rescan_of_an_unchanged_folder_reads_none_of_its_files() {
         .await
         .unwrap();
     assert!(
-        stored
-            .iter()
-            .any(|item| matches!(item, ScanItem::Invalid(_))),
+        stored.iter().any(|item| matches!(item, ScanItem::Invalid(_))),
         "the broken folder is stored as one that can't be imported: {stored:?}"
     );
     let reading = test
         .service
         .library_manager
-        .load_candidate_file_tag_snapshot(&root_key, &crate::import::CandidateKey::folder(&files.album))
+        .load_candidate_file_tag_snapshot(
+            &root_key,
+            &crate::import::CandidateKey::folder(&files.album),
+        )
         .await
         .unwrap()
         .unwrap()
@@ -203,7 +171,10 @@ async fn a_rescan_of_an_unchanged_folder_reads_none_of_its_files() {
     let reread = test
         .service
         .library_manager
-        .load_candidate_file_tag_snapshot(&root_key, &crate::import::CandidateKey::folder(&files.album))
+        .load_candidate_file_tag_snapshot(
+            &root_key,
+            &crate::import::CandidateKey::folder(&files.album),
+        )
         .await
         .unwrap()
         .unwrap()
@@ -239,10 +210,8 @@ async fn a_rescan_of_an_unchanged_multi_disc_album_reads_none_of_its_files() {
         .map(|track| root.join("Album").join(format!("{track}.flac")))
         .collect();
     let tags = Arc::new(CountingTagReader::default());
-    let (scan, _) = test.scan_with(
-        tags.clone(),
-        Arc::new(crate::import::folder_scanner::OsDirectoryReader),
-    );
+    let (scan, _) =
+        test.scan_with(tags.clone(), Arc::new(crate::import::folder_scanner::OsDirectoryReader));
     let reads = || {
         tracks
             .iter()
@@ -288,10 +257,8 @@ async fn a_rescan_reads_again_only_the_file_that_changed() {
     let test = setup_import_service().await;
     let files = readable_root(&test).await;
     let tags = Arc::new(CountingTagReader::default());
-    let (scan, _) = test.scan_with(
-        tags.clone(),
-        Arc::new(crate::import::folder_scanner::OsDirectoryReader),
-    );
+    let (scan, _) =
+        test.scan_with(tags.clone(), Arc::new(crate::import::folder_scanner::OsDirectoryReader));
     scan.rescan(&files.root).await.unwrap();
     let changed = files.album.join("02.flac");
     std::fs::File::options()
@@ -323,10 +290,8 @@ async fn a_release_whose_tracks_did_not_change_keeps_their_stored_tags() {
     let test = setup_import_service().await;
     let files = readable_root(&test).await;
     let tags = Arc::new(CountingTagReader::default());
-    let (scan, _) = test.scan_with(
-        tags.clone(),
-        Arc::new(crate::import::folder_scanner::OsDirectoryReader),
-    );
+    let (scan, _) =
+        test.scan_with(tags.clone(), Arc::new(crate::import::folder_scanner::OsDirectoryReader));
     let root_key = files.root.to_path_buf();
     let album_key = crate::import::CandidateKey::folder(&files.album);
     scan.rescan(&files.root).await.unwrap();
@@ -363,10 +328,7 @@ async fn a_release_whose_tracks_did_not_change_keeps_their_stored_tags() {
         .unwrap()
         .expect("the release with the new file is stored");
     assert_eq!(preparation.draft.tracks.len(), 2);
-    assert!(stored
-        .snapshot
-        .unwrap()
-        .same_reading(&reading.snapshot.unwrap()));
+    assert!(stored.snapshot.unwrap().same_reading(&reading.snapshot.unwrap()));
 }
 
 /// Two folders holding the same names at the same sizes and modification
@@ -397,17 +359,18 @@ async fn folders_whose_files_hash_alike_each_keep_their_tags() {
         .await
         .unwrap();
     let tags = Arc::new(CountingTagReader::default());
-    let (scan, _) = test.scan_with(
-        tags.clone(),
-        Arc::new(crate::import::folder_scanner::OsDirectoryReader),
-    );
+    let (scan, _) =
+        test.scan_with(tags.clone(), Arc::new(crate::import::folder_scanner::OsDirectoryReader));
     scan.rescan(&root).await.unwrap();
     let mut hashes = Vec::new();
     for folder in ["First", "Second"] {
         let stored = test
             .service
             .library_manager
-            .load_candidate_file_tag_snapshot(&root_key, &crate::import::CandidateKey::folder(&root.join(folder)))
+            .load_candidate_file_tag_snapshot(
+                &root_key,
+                &crate::import::CandidateKey::folder(&root.join(folder)),
+            )
             .await
             .unwrap()
             .unwrap();
@@ -437,10 +400,8 @@ impl crate::import::file_tag_snapshot::FileTagReader for EmbeddingTagReader {
         path: &Path,
     ) -> Result<crate::import::file_tag_snapshot::FileTagRead, crate::import::ImportError> {
         let mut read = self.counted.read(path)?;
-        read.embedded_cover = Some((
-            self.picture.clone(),
-            bae_util::content_type::ContentType::Jpeg,
-        ));
+        read.embedded_cover =
+            Some((self.picture.clone(), bae_util::content_type::ContentType::Jpeg));
         Ok(read)
     }
 }
@@ -475,10 +436,8 @@ async fn a_first_scan_reads_each_tracks_tags_once() {
         counted: CountingTagReader::default(),
         picture: std::fs::read(&picture_path).unwrap(),
     });
-    let (scan, _) = test.scan_with(
-        tags.clone(),
-        Arc::new(crate::import::folder_scanner::OsDirectoryReader),
-    );
+    let (scan, _) =
+        test.scan_with(tags.clone(), Arc::new(crate::import::folder_scanner::OsDirectoryReader));
 
     scan.rescan(&root).await.unwrap();
 
@@ -509,9 +468,7 @@ async fn a_first_scan_reads_each_tracks_tags_once() {
         .expect("the release's draft was seeded from its tags");
     assert_eq!(reading.files.len(), 4);
     assert_eq!(
-        reading
-            .embedded_cover
-            .map(|cover| cover.source_relative_path),
+        reading.embedded_cover.map(|cover| cover.source_relative_path),
         Some("CD1/01.flac".to_string())
     );
 }

@@ -24,8 +24,7 @@ impl Database {
         content_hash: &str,
     ) -> Result<Option<String>, DbError> {
         let content_hash = content_hash.to_string();
-        self.read(move |sql| load_album_pick_on(&sql, &content_hash))
-            .await
+        self.read(move |sql| load_album_pick_on(&sql, &content_hash)).await
     }
 
     /// Pick `album_id` for the candidate `content_hash` to join, or (`None`)

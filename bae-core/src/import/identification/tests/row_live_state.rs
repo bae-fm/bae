@@ -69,7 +69,10 @@ fn preparing(import_id: &str) -> crate::import::ImportProgress {
     }
 }
 
-fn running(phase: crate::import::ImportPhase, percent: Option<u8>) -> crate::import::ImportProgress {
+fn running(
+    phase: crate::import::ImportPhase,
+    percent: Option<u8>,
+) -> crate::import::ImportProgress {
     crate::import::ImportProgress::Progress {
         id: "release-1".to_string(),
         percent,
@@ -78,11 +81,11 @@ fn running(phase: crate::import::ImportPhase, percent: Option<u8>) -> crate::imp
     }
 }
 
-fn reported(key: &crate::import::CandidateKey, progress: crate::import::ImportProgress) -> ImportEvent {
-    ImportEvent::ImportProgress {
-        candidate_key: key.clone(),
-        progress,
-    }
+fn reported(
+    key: &crate::import::CandidateKey,
+    progress: crate::import::ImportProgress,
+) -> ImportEvent {
+    ImportEvent::ImportProgress { candidate_key: key.clone(), progress }
 }
 
 /// An import claiming a candidate writes its standing, so the list is read
@@ -99,9 +102,7 @@ async fn a_claimed_import_reaches_its_row_on_the_page() {
 
     let list = list_subscription(&fixture, page_window(0, 50)).await;
     let initial = next_page(&list).await;
-    let idle = page_live(&initial)
-        .remove(&key)
-        .expect("the scanned candidate has a row");
+    let idle = page_live(&initial).remove(&key).expect("the scanned candidate has a row");
     assert!(!idle.facts.importing());
     assert!(!idle.actions.is_empty(), "an idle row offers its commands");
     assert_eq!(counted(&initial, crate::import::PendingFilter::All), 1);
@@ -113,10 +114,7 @@ async fn a_claimed_import_reaches_its_row_on_the_page() {
         claimed.view_revision, initial.view_revision,
         "a claimed import changed the list's request"
     );
-    assert_eq!(
-        claimed.cause,
-        coven::LiveQueryCause::Write
-    );
+    assert_eq!(claimed.cause, coven::LiveQueryCause::Write);
     let queued = &page_live(&claimed)[&key];
     assert_eq!(
         queued.facts.import,
@@ -141,15 +139,19 @@ async fn a_claimed_import_reaches_its_row_on_the_page() {
     // then reports it.
     fixture
         .import
-        .move_candidate_import_for_test(&key, "import-1", crate::import::ImportStep::Preparing(crate::import::PrepareStep::ValidatingSourceFiles))
+        .move_candidate_import_for_test(
+            &key,
+            "import-1",
+            crate::import::ImportStep::Preparing(crate::import::PrepareStep::ValidatingSourceFiles),
+        )
         .await;
-    fixture
-        .import
-        .emit_event_for_test(reported(&key, preparing("import-1")));
+    fixture.import.emit_event_for_test(reported(&key, preparing("import-1")));
     let taken_up = &page_live(&next_page(&list).await)[&key];
     assert_eq!(
         taken_up.facts.import,
-        Some(crate::import::ImportStep::Preparing(crate::import::PrepareStep::ValidatingSourceFiles)),
+        Some(crate::import::ImportStep::Preparing(
+            crate::import::PrepareStep::ValidatingSourceFiles
+        )),
         "the worker's first report takes the import off the queue"
     );
     assert_eq!(taken_up.actions, queued.actions);
@@ -167,9 +169,7 @@ async fn a_claimed_import_reaches_its_row_on_the_page() {
     let measuring = &page_live(&next_page(&list).await)[&key];
     assert_eq!(
         measuring.facts.import,
-        Some(crate::import::ImportStep::Running(
-            crate::import::ImportPhase::MeasuringLoudness
-        ))
+        Some(crate::import::ImportStep::Running(crate::import::ImportPhase::MeasuringLoudness))
     );
     fixture.import.emit_event_for_test(reported(
         &key,
@@ -183,10 +183,9 @@ async fn a_claimed_import_reaches_its_row_on_the_page() {
             crate::import::ImportStep::Running(crate::import::ImportPhase::Finalizing),
         )
         .await;
-    fixture.import.emit_event_for_test(reported(
-        &key,
-        running(crate::import::ImportPhase::Finalizing, None),
-    ));
+    fixture
+        .import
+        .emit_event_for_test(reported(&key, running(crate::import::ImportPhase::Finalizing, None)));
     let writing = next_page(&list).await;
     let writing_live = &page_live(&writing)[&key];
     assert_eq!(
@@ -205,10 +204,7 @@ async fn a_claimed_import_reaches_its_row_on_the_page() {
     list.set_windows(page_window(0, 49)).unwrap();
     let moved = next_page(&list).await;
     assert_eq!(moved.view_revision, initial.view_revision);
-    assert_eq!(
-        moved.cause,
-        coven::LiveQueryCause::Request
-    );
+    assert_eq!(moved.cause, coven::LiveQueryCause::Request);
     assert_eq!(
         moved.windows[0].items, writing.windows[0].items,
         "the window move read the rows as they were delivered"
@@ -238,25 +234,13 @@ async fn a_row_off_the_page_reaches_its_row_once_the_window_holds_it() {
         .find(|key| *key != on_key)
         .expect("the other candidate is off the page");
 
-    fixture
-        .import
-        .claim_candidate_for_import(&off_key, "import-off")
-        .await;
+    fixture.import.claim_candidate_for_import(&off_key, "import-off").await;
     let counted_off = next_page(&list).await;
     assert_eq!(counted_off.view_revision, initial.view_revision);
-    assert_eq!(
-        counted_off.windows, initial.windows,
-        "the claim off the page reached no row on it"
-    );
-    assert_eq!(
-        counted(&counted_off, crate::import::PendingFilter::InProgress),
-        1
-    );
+    assert_eq!(counted_off.windows, initial.windows, "the claim off the page reached no row on it");
+    assert_eq!(counted(&counted_off, crate::import::PendingFilter::InProgress), 1);
 
-    fixture
-        .import
-        .claim_candidate_for_import(&on_key, "import-on")
-        .await;
+    fixture.import.claim_candidate_for_import(&on_key, "import-on").await;
     let claimed = next_page(&list).await;
     assert_eq!(claimed.view_revision, initial.view_revision);
     assert_eq!(
@@ -268,14 +252,10 @@ async fn a_row_off_the_page_reaches_its_row_once_the_window_holds_it() {
     list.set_windows(page_window(0, 2)).unwrap();
     let widened = next_page(&list).await;
     assert_eq!(
-        widened.view_revision,
-        initial.view_revision,
+        widened.view_revision, initial.view_revision,
         "a window is the query's request, not the list's view"
     );
-    assert_eq!(
-        widened.cause,
-        coven::LiveQueryCause::Request
-    );
+    assert_eq!(widened.cause, coven::LiveQueryCause::Request);
     assert_eq!(
         page_live(&widened)[&off_key].facts.import,
         Some(crate::import::ImportStep::Preparing(crate::import::PrepareStep::Queued)),
@@ -290,15 +270,15 @@ async fn a_row_off_the_page_reaches_its_row_once_the_window_holds_it() {
             crate::import::ImportStep::Preparing(crate::import::PrepareStep::ValidatingSourceFiles),
         )
         .await;
-    fixture
-        .import
-        .emit_event_for_test(reported(&off_key, preparing("import-off")));
+    fixture.import.emit_event_for_test(reported(&off_key, preparing("import-off")));
     let taken_up = next_page(&list).await;
     assert_eq!(taken_up.view_revision, widened.view_revision);
     let live = page_live(&taken_up);
     assert_eq!(
         live[&off_key].facts.import,
-        Some(crate::import::ImportStep::Preparing(crate::import::PrepareStep::ValidatingSourceFiles))
+        Some(crate::import::ImportStep::Preparing(
+            crate::import::PrepareStep::ValidatingSourceFiles
+        ))
     );
     assert_eq!(
         live[&on_key].facts.import,
@@ -318,9 +298,7 @@ async fn a_row_off_the_page_reaches_its_row_once_the_window_holds_it() {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_batch_identify_shows_a_row_waiting_for_a_slot_queued_then_running() {
     let fixture = Fixture::new("batch-identify-rows").await;
-    fixture
-        .import
-        .register_artwork_analyzer(Arc::new(PerFolderBarcodeAnalyzer));
+    fixture.import.register_artwork_analyzer(Arc::new(PerFolderBarcodeAnalyzer));
     let dirs: Vec<PathBuf> = (0..MAX_IN_FLIGHT + 1)
         .map(|index| {
             let dir = fixture.barcode_candidate(&format!("Album {index}"));
@@ -328,21 +306,16 @@ async fn a_batch_identify_shows_a_row_waiting_for_a_slot_queued_then_running() {
             dir
         })
         .collect();
-    fixture
-        .provider
-        .route("/release?", 200, r#"{"releases":[]}"#);
+    fixture.provider.route("/release?", 200, r#"{"releases":[]}"#);
     fixture.provider.hold("query=barcode");
     // Identified only when asked: nothing found here is identified on its own.
-    fixture
-        .manager
-        .set_identify_automatically(false)
-        .await
-        .unwrap();
+    fixture.manager.set_identify_automatically(false).await.unwrap();
     fixture.scan(MAX_IN_FLIGHT + 1).await;
 
     let list = list_subscription(&fixture, page_window(0, 50)).await;
     let initial = next_page(&list).await;
-    let keys: Vec<crate::import::CandidateKey> = dirs.iter().map(|dir| crate::import::CandidateKey::folder(dir)).collect();
+    let keys: Vec<crate::import::CandidateKey> =
+        dirs.iter().map(|dir| crate::import::CandidateKey::folder(dir)).collect();
     for key in &keys {
         assert_eq!(page_live(&initial)[key].facts.identification, None);
     }
@@ -352,7 +325,8 @@ async fn a_batch_identify_shows_a_row_waiting_for_a_slot_queued_then_running() {
     }
     wait_for_request(&fixture.provider, "query=barcode", MAX_IN_FLIGHT).await;
 
-    let status = |snapshot: &crate::import::ImportListSnapshot, key: &crate::import::CandidateKey| {
+    let status = |snapshot: &crate::import::ImportListSnapshot,
+                  key: &crate::import::CandidateKey| {
         page_live(snapshot)[key].facts.identification.clone()
     };
     let running = Some(crate::import::IdentificationStatus::Running);
@@ -365,14 +339,9 @@ async fn a_batch_identify_shows_a_row_waiting_for_a_slot_queued_then_running() {
             snapshot.view_revision, initial.view_revision,
             "identifying changed the list's request"
         );
-        let runs = keys
-            .iter()
-            .filter(|key| status(&snapshot, key) == running)
-            .count();
-        let waits: Vec<&crate::import::CandidateKey> = keys
-            .iter()
-            .filter(|key| status(&snapshot, key) == queued)
-            .collect();
+        let runs = keys.iter().filter(|key| status(&snapshot, key) == running).count();
+        let waits: Vec<&crate::import::CandidateKey> =
+            keys.iter().filter(|key| status(&snapshot, key) == queued).collect();
         if runs == MAX_IN_FLIGHT && waits.len() == 1 {
             break waits[0].clone();
         }
@@ -404,19 +373,12 @@ async fn a_verdict_off_the_page_delivers_the_counts_it_moves() {
     let first = fixture.disc_id_candidate("First");
     let second = fixture.disc_id_candidate("Second");
     std::fs::write(second.join("notes.txt"), "distinct candidate").unwrap();
-    fixture
-        .manager
-        .set_identify_automatically(false)
-        .await
-        .unwrap();
+    fixture.manager.set_identify_automatically(false).await.unwrap();
     fixture.scan(2).await;
 
     let list = list_subscription(&fixture, page_window(0, 1)).await;
     let initial = next_page(&list).await;
-    let on_key = page_live(&initial)
-        .into_keys()
-        .next()
-        .expect("the window holds one row");
+    let on_key = page_live(&initial).into_keys().next().expect("the window holds one row");
     let off_dir = [&first, &second]
         .into_iter()
         .find(|dir| crate::import::CandidateKey::folder(dir) != on_key)
@@ -424,21 +386,14 @@ async fn a_verdict_off_the_page_delivers_the_counts_it_moves() {
         .clone();
 
     let probed = fixture.probed_total_ms(&off_dir);
-    fixture
-        .archive("mb-off-page", "rg-off-page", &[probed, 0])
-        .await;
-    fixture
-        .store_settled_verdict(&off_dir, "mb-off-page", "rg-off-page")
-        .await;
+    fixture.archive("mb-off-page", "rg-off-page", &[probed, 0]).await;
+    fixture.store_settled_verdict(&off_dir, "mb-off-page", "rg-off-page").await;
     let moved = next_page(&list).await;
     assert_ne!(
         moved.pending_filter_entries, initial.pending_filter_entries,
         "the verdict moved a count"
     );
     assert_eq!(counted(&moved, crate::import::PendingFilter::All), 2);
-    assert_eq!(
-        moved.windows, initial.windows,
-        "the verdict off the page reached no row on it"
-    );
+    assert_eq!(moved.windows, initial.windows, "the verdict off the page reached no row on it");
     assert_eq!(page_live(&moved).into_keys().collect::<Vec<_>>(), vec![on_key]);
 }

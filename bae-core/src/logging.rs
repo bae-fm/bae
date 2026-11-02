@@ -21,10 +21,7 @@ impl LogSink {
         layer: impl tracing_subscriber::Layer<tracing_subscriber::Registry> + Send + Sync + 'static,
         default_level: LevelFilter,
     ) -> Self {
-        Self {
-            layer: Box::new(layer),
-            default_level,
-        }
+        Self { layer: Box::new(layer), default_level }
     }
 
     /// The finest level this sink keeps of a `log` crate record. Only
@@ -71,11 +68,7 @@ fn dependency_level(level: LevelFilter) -> LevelFilter {
 /// the sink's level, everything else at its dependency level.
 fn default_directives(level: LevelFilter) -> String {
     std::iter::once(dependency_level(level).to_string())
-        .chain(
-            FIRST_PARTY_TARGETS
-                .iter()
-                .map(|target| format!("{target}={level}")),
-        )
+        .chain(FIRST_PARTY_TARGETS.iter().map(|target| format!("{target}={level}")))
         .collect::<Vec<_>>()
         .join(",")
 }
@@ -91,9 +84,7 @@ fn rust_log() -> (Option<String>, Option<String>) {
         Err(std::env::VarError::NotPresent) => (None, None),
         Err(std::env::VarError::NotUnicode(raw)) => (
             None,
-            Some(format!(
-                "RUST_LOG {raw:?} is not valid Unicode; logging at the default levels"
-            )),
+            Some(format!("RUST_LOG {raw:?} is not valid Unicode; logging at the default levels")),
         ),
         Ok(value) => match tracing_subscriber::EnvFilter::try_new(&value) {
             Ok(_) => (Some(value), None),
@@ -163,9 +154,7 @@ pub(crate) fn install_global(
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     use tracing_log::AsLog;
     tracing::subscriber::set_global_default(subscriber)?;
-    tracing_log::LogTracer::builder()
-        .with_max_level(log_crate_level.as_log())
-        .init()?;
+    tracing_log::LogTracer::builder().with_max_level(log_crate_level.as_log()).init()?;
     Ok(())
 }
 
@@ -226,10 +215,7 @@ mod tests {
 
     impl std::io::Write for KeptLine {
         fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
-            self.0
-                .lock()
-                .expect("kept lines mutex poisoned")
-                .extend_from_slice(bytes);
+            self.0.lock().expect("kept lines mutex poisoned").extend_from_slice(bytes);
             Ok(bytes.len())
         }
 
@@ -242,10 +228,7 @@ mod tests {
     /// never a dependency's debug.
     #[test]
     fn a_debug_sink_keeps_dependencies_at_info() {
-        let kept = kept_lines(
-            sink_filter(None, LevelFilter::DEBUG),
-            || emit_probe_lines!(),
-        );
+        let kept = kept_lines(sink_filter(None, LevelFilter::DEBUG), || emit_probe_lines!());
 
         assert_eq!(
             kept,
@@ -291,9 +274,7 @@ mod tests {
         let mut child = std::process::Command::new(
             std::env::current_exe().expect("resolve the bae-core test executable"),
         );
-        child
-            .args(["--exact", test, "--nocapture"])
-            .env(LOG_CRATE_CHILD, sink_level.to_string());
+        child.args(["--exact", test, "--nocapture"]).env(LOG_CRATE_CHILD, sink_level.to_string());
         match rust_log {
             Some(rust_log) => child.env("RUST_LOG", rust_log),
             None => child.env_remove("RUST_LOG"),
@@ -354,12 +335,6 @@ mod tests {
             || emit_probe_lines!(),
         );
 
-        assert_eq!(
-            kept,
-            vec![
-                "dependency debug".to_string(),
-                "dependency info".to_string()
-            ]
-        );
+        assert_eq!(kept, vec!["dependency debug".to_string(), "dependency info".to_string()]);
     }
 }

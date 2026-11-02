@@ -106,14 +106,8 @@ fn nested_recording_work_imports_composer_work_graph() {
         .artists
         .iter()
         .any(|artist| artist.musicbrainz_artist_id.as_deref() == Some("lyricist-artist-a")));
-    assert!(!parsed
-        .album_artists
-        .iter()
-        .any(|link| committed[&link.artist_id] == composer));
-    assert!(!parsed
-        .track_artists
-        .iter()
-        .any(|link| committed[&link.artist_id] == composer));
+    assert!(!parsed.album_artists.iter().any(|link| committed[&link.artist_id] == composer));
+    assert!(!parsed.track_artists.iter().any(|link| committed[&link.artist_id] == composer));
 }
 
 #[test]
@@ -198,10 +192,7 @@ fn track_level_artist_credit_creates_and_links_a_new_artist() {
 
     let track1 = &parsed.tracks[0];
     assert!(
-        !parsed
-            .track_artists
-            .iter()
-            .any(|ta| ta.track_id == track1.id),
+        !parsed.track_artists.iter().any(|ta| ta.track_id == track1.id),
         "a track with no credits gets no track-artist rows"
     );
 }
@@ -267,11 +258,7 @@ fn known_mb_artist_id_does_not_merge_into_same_name_artist_without_id() {
             }),
             ..MbRelation::default()
         }];
-        MbMedium {
-            discs: vec![],
-            format: Some("CD".to_string()),
-            tracks: vec![track],
-        }
+        MbMedium { discs: vec![], format: Some("CD".to_string()), tracks: vec![track] }
     }]);
     response.artist_credit[0].artist = None;
 
@@ -289,10 +276,7 @@ fn known_mb_artist_id_does_not_merge_into_same_name_artist_without_id() {
         .expect("known composer artist exists separately");
 
     assert_ne!(release_artist.id, composer.id);
-    assert!(parsed
-        .track_artist_roles
-        .iter()
-        .any(|role| role.artist_id == composer.id));
+    assert!(parsed.track_artist_roles.iter().any(|role| role.artist_id == composer.id));
 }
 
 /// An id-less track credit sharing the release artist's name creates a
@@ -306,7 +290,8 @@ fn known_mb_artist_id_does_not_merge_into_same_name_artist_without_id() {
 fn id_less_track_credit_does_not_merge_into_id_bearing_release_artist() {
     // Release artist "Artist Name A" carries MB id "artist-1".
     let mut track = make_mb_track("1", "Track 1");
-    track.artist_credit = vec![MbArtistCredit { joinphrase: None, 
+    track.artist_credit = vec![MbArtistCredit {
+        joinphrase: None,
         name: "Artist Name A".to_string(),
         artist: Some(MbArtistRef {
             id: None,
@@ -322,19 +307,13 @@ fn id_less_track_credit_does_not_merge_into_id_bearing_release_artist() {
 
     let parsed = rows(map(&response, vec![]).unwrap());
 
-    let matching: Vec<_> = parsed
-        .artists
-        .iter()
-        .filter(|a| a.name == "Artist Name A")
-        .collect();
+    let matching: Vec<_> = parsed.artists.iter().filter(|a| a.name == "Artist Name A").collect();
     assert_eq!(
         matching.len(),
         2,
         "an id-less credit must not merge into the id-bearing release artist"
     );
-    assert!(matching
-        .iter()
-        .any(|a| a.musicbrainz_artist_id.as_deref() == Some("artist-1")));
+    assert!(matching.iter().any(|a| a.musicbrainz_artist_id.as_deref() == Some("artist-1")));
     assert!(matching.iter().any(|a| a.musicbrainz_artist_id.is_none()));
 }
 
@@ -361,11 +340,8 @@ fn known_mb_artist_ids_keep_same_name_artists_separate() {
     let parsed = rows(map(&response, vec![]).unwrap());
 
     let committed = crate::import::release_values::committed_artists(&parsed);
-    let matching: Vec<_> = parsed
-        .artists
-        .iter()
-        .filter(|artist| artist.name == "Artist Name A")
-        .collect();
+    let matching: Vec<_> =
+        parsed.artists.iter().filter(|artist| artist.name == "Artist Name A").collect();
     let distinct: std::collections::HashSet<_> =
         matching.iter().map(|artist| &committed[&artist.id]).collect();
     assert_eq!(distinct.len(), 2, "two MB ids commit as two artists");
@@ -579,19 +555,10 @@ fn work_referenced_by_two_tracks_logs_skip_once() {
 
     // The work row lands once and both tracks link it.
     let work_id = work_row_id(&parsed, "mb-work-a");
-    assert_eq!(
-        parsed
-            .work_graph
-            .track_works
-            .iter()
-            .filter(|l| l.work_id == work_id)
-            .count(),
-        2
-    );
+    assert_eq!(parsed.work_graph.track_works.iter().filter(|l| l.work_id == work_id).count(), 2);
     // The skip line is logged exactly once, not once per referencing track.
     assert_eq!(
-        logs.matches("work artist relation without artist payload")
-            .count(),
+        logs.matches("work artist relation without artist payload").count(),
         1,
         "expected the work's skip to log once per release, got: {logs}"
     );
@@ -646,7 +613,8 @@ fn work_parts_relation_without_work_payload_is_logged_and_skipped() {
 #[test]
 fn track_artist_credit_without_resolvable_name_is_logged_and_skipped() {
     let mut track = make_mb_track("1", "Track 1");
-    track.artist_credit = vec![MbArtistCredit { joinphrase: None, 
+    track.artist_credit = vec![MbArtistCredit {
+        joinphrase: None,
         name: String::new(),
         artist: Some(MbArtistRef {
             id: Some("artist-nameless".to_string()),
@@ -668,10 +636,7 @@ fn track_artist_credit_without_resolvable_name_is_logged_and_skipped() {
 
     assert_eq!(parsed.tracks.len(), 1);
     assert!(parsed.track_artists.is_empty());
-    assert!(
-        logs.contains("unresolvable artist name"),
-        "expected a skip warning, got: {logs}"
-    );
+    assert!(logs.contains("unresolvable artist name"), "expected a skip warning, got: {logs}");
 }
 
 /// A track credited "Artist A feat. Artist B" keeps both credits, the join
@@ -710,11 +675,7 @@ fn a_track_credit_keeps_each_printed_name_and_join() {
     let stated: Vec<(&str, &str, Option<&str>)> = credits
         .iter()
         .map(|stated| {
-            (
-                stated.credit.name.as_str(),
-                stated.credit.printed(),
-                stated.join.as_deref(),
-            )
+            (stated.credit.name.as_str(), stated.credit.printed(), stated.join.as_deref())
         })
         .collect();
     assert_eq!(

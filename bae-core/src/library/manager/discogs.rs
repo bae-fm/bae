@@ -32,10 +32,8 @@ impl DiscogsSession {
         params: DiscogsSearchParams,
         priority: CallPriority,
     ) -> Result<Vec<crate::import::search::MetadataResult>, crate::import::ImportError> {
-        let client = self
-            .client
-            .as_ref()
-            .ok_or(crate::import::ImportError::DiscogsNotConfigured)?;
+        let client =
+            self.client.as_ref().ok_or(crate::import::ImportError::DiscogsNotConfigured)?;
         Ok(crate::import::search::search_discogs(client, params, priority).await?)
     }
 
@@ -46,9 +44,7 @@ impl DiscogsSession {
         depth: crate::import::payloads::ReadDepth,
         priority: CallPriority,
     ) -> Result<crate::import::payloads::ReleasePayloads, crate::import::ImportError> {
-        self.providers
-            .fetch_payloads(self.client.as_deref(), release, depth, priority)
-            .await
+        self.providers.fetch_payloads(self.client.as_deref(), release, depth, priority).await
     }
 
     #[cfg(desktop)]
@@ -57,9 +53,7 @@ impl DiscogsSession {
         answered: &crate::import::payloads::DiscIdRelease,
         priority: CallPriority,
     ) -> Result<crate::import::payloads::ReleasePayloads, crate::import::ImportError> {
-        self.providers
-            .read_disc_id_release(self.client.as_deref(), answered, priority)
-            .await
+        self.providers.read_disc_id_release(self.client.as_deref(), answered, priority).await
     }
 
     #[cfg(desktop)]
@@ -88,10 +82,8 @@ impl DiscogsSession {
         master_id: &str,
         priority: CallPriority,
     ) -> Result<Vec<bae_catalogs::remote_image::RemoteCover>, crate::import::ImportError> {
-        let client = self
-            .client
-            .as_ref()
-            .ok_or(crate::import::ImportError::DiscogsNotConfigured)?;
+        let client =
+            self.client.as_ref().ok_or(crate::import::ImportError::DiscogsNotConfigured)?;
         let (master, _) = client.get_master(master_id, priority).await?;
         Ok(master.covers)
     }
@@ -108,9 +100,7 @@ impl DiscogsSession {
             );
             return Ok(None);
         };
-        Ok(client
-            .get_artist_image(artist_id, CallPriority::Interactive)
-            .await?)
+        Ok(client.get_artist_image(artist_id, CallPriority::Interactive).await?)
     }
 
     #[cfg(desktop)]
@@ -120,9 +110,7 @@ impl DiscogsSession {
                 "config says a Discogs key is stored but the keyring has none".to_string(),
             )
         })?;
-        Ok(DiscogsCheck::of(
-            client.validate_token(CallPriority::Interactive).await,
-        ))
+        Ok(DiscogsCheck::of(client.validate_token(CallPriority::Interactive).await))
     }
 }
 
@@ -284,10 +272,7 @@ impl LibraryManager {
         depth: crate::import::payloads::ReadDepth,
         priority: CallPriority,
     ) -> Result<crate::import::payloads::ReleasePayloads, crate::import::ImportError> {
-        self.release_read_session(release)
-            .await?
-            .fetch_payloads(release, depth, priority)
-            .await
+        self.release_read_session(release).await?.fetch_payloads(release, depth, priority).await
     }
 
     /// A release a Disc ID lookup returned, read for an identify run from
@@ -319,10 +304,7 @@ impl LibraryManager {
                     release_id = %release.key,
                     "Discogs cross-reference unavailable while fetching MusicBrainz release: {error}"
                 );
-                Ok(DiscogsSession {
-                    client: None,
-                    providers: self.providers.clone(),
-                })
+                Ok(DiscogsSession { client: None, providers: self.providers.clone() })
             }
             Err(error) => Err(error.into()),
         }
@@ -348,10 +330,7 @@ impl LibraryManager {
         release_id: &str,
         priority: CallPriority,
     ) -> Result<Vec<bae_catalogs::remote_image::RemoteCover>, crate::import::ImportError> {
-        self.discogs_session()
-            .await?
-            .release_covers(release_id, priority)
-            .await
+        self.discogs_session().await?.release_covers(release_id, priority).await
     }
 
     #[cfg(desktop)]
@@ -360,10 +339,7 @@ impl LibraryManager {
         master_id: &str,
         priority: CallPriority,
     ) -> Result<Vec<bae_catalogs::remote_image::RemoteCover>, crate::import::ImportError> {
-        self.discogs_session()
-            .await?
-            .master_covers(master_id, priority)
-            .await
+        self.discogs_session().await?.master_covers(master_id, priority).await
     }
 
     /// Discogs' answer for the picture of each artist `ids` names, asked now,
@@ -396,10 +372,7 @@ impl LibraryManager {
             .await
             .map_err(|failed| self.bug(failed))?
             .map_err(|detail| crate::import::ImportError::CoverArt { detail })?;
-            answers.push(crate::import::DiscogsArtistImage::Image {
-                discogs_artist_id,
-                jpeg,
-            });
+            answers.push(crate::import::DiscogsArtistImage::Image { discogs_artist_id, jpeg });
         }
         Ok(answers)
     }
@@ -418,10 +391,8 @@ impl LibraryManager {
         inserted_artists: &[DbArtist],
         fetched: &[crate::import::DiscogsArtistImage],
     ) -> Result<Vec<(DbLibraryImage, Vec<u8>)>, LibraryError> {
-        let by_discogs_id: HashMap<_, _> = fetched
-            .iter()
-            .map(|answer| (answer.discogs_artist_id(), answer))
-            .collect();
+        let by_discogs_id: HashMap<_, _> =
+            fetched.iter().map(|answer| (answer.discogs_artist_id(), answer)).collect();
         if by_discogs_id.len() != fetched.len() {
             return Err(LibraryError::Internal(
                 "fetched artist images contain a duplicate Discogs artist ID".into(),
@@ -449,18 +420,13 @@ impl LibraryManager {
     /// is told rather than shown the same state again.
     #[cfg(desktop)]
     pub(crate) async fn revalidate_discogs_token(&self) -> Result<(), crate::import::ImportError> {
-        if self
-            .discogs_validation()
-            .await
-            .map_err(LibraryError::from)?
+        if self.discogs_validation().await.map_err(LibraryError::from)?
             != Some(DiscogsValidation::Unvalidated)
         {
             return Ok(());
         }
         let check = self.discogs_session().await?.validate().await?;
-        self.set_discogs_validation(check.validation())
-            .await
-            .map_err(LibraryError::from)?;
+        self.set_discogs_validation(check.validation()).await.map_err(LibraryError::from)?;
         match check {
             DiscogsCheck::Valid | DiscogsCheck::Rejected => Ok(()),
             DiscogsCheck::Unchecked(error) => Err(error.into()),
@@ -506,10 +472,7 @@ impl LibraryManager {
         let mut cached = self.discogs_client.lock().await;
         let validation = self.preferences().await?.discogs;
         if matches!(validation, None | Some(DiscogsValidation::Rejected)) {
-            return Ok(DiscogsSession {
-                client: None,
-                providers,
-            });
+            return Ok(DiscogsSession { client: None, providers });
         }
         if cached.is_none() {
             let database = self.database.clone();
@@ -538,10 +501,7 @@ impl LibraryManager {
                 .host_secret(crate::keys::DISCOGS_API_KEY)?
                 .map(|key| Arc::new(providers.discogs_client(key, Some(observer))));
         }
-        Ok(DiscogsSession {
-            client: cached.clone(),
-            providers,
-        })
+        Ok(DiscogsSession { client: cached.clone(), providers })
     }
 
     /// Ask Discogs whether it accepts `key`, which this library does not
@@ -552,9 +512,6 @@ impl LibraryManager {
         key: &str,
         priority: CallPriority,
     ) -> Result<(), DiscogsError> {
-        self.providers
-            .discogs_client(key.to_string(), None)
-            .validate_token(priority)
-            .await
+        self.providers.discogs_client(key.to_string(), None).validate_token(priority).await
     }
 }

@@ -14,10 +14,9 @@ use crate::renderer::{RendererConnection, RendererDevice};
 /// The DLNA connection's control URLs, for asserting on a parsed device.
 fn dlna_urls(device: &RendererDevice) -> (String, Option<String>) {
     match &device.connection {
-        RendererConnection::Dlna {
-            av_transport_url,
-            rendering_control_url,
-        } => (av_transport_url.clone(), rendering_control_url.clone()),
+        RendererConnection::Dlna { av_transport_url, rendering_control_url } => {
+            (av_transport_url.clone(), rendering_control_url.clone())
+        }
         _ => panic!("a device description must parse to a DLNA connection"),
     }
 }
@@ -82,10 +81,7 @@ fn description_with_relative_control_urls_resolves_against_location() {
     assert_eq!(device.kind(), bae_core::renderer::RendererKind::Dlna);
     let (av, rc) = dlna_urls(&device);
     assert_eq!(av, "http://192.168.1.50:8080/desc/AVTransport/control");
-    assert_eq!(
-        rc.as_deref(),
-        Some("http://192.168.1.50:8080/desc/RenderingControl/control")
-    );
+    assert_eq!(rc.as_deref(), Some("http://192.168.1.50:8080/desc/RenderingControl/control"));
 }
 
 #[test]
@@ -244,9 +240,7 @@ fn set_av_transport_uri_carries_url_and_escaped_didl() {
         request.body
     );
     assert!(
-        request
-            .body
-            .contains("protocolInfo=&quot;http-get:*:audio/flac:*&quot;"),
+        request.body.contains("protocolInfo=&quot;http-get:*:audio/flac:*&quot;"),
         "the protocolInfo MIME rides in the escaped DIDL: {}",
         request.body
     );
@@ -272,11 +266,7 @@ fn didl_escapes_special_characters_and_keeps_unicode() {
         request.body
     );
     // Unicode passes through untouched.
-    assert!(
-        request.body.contains("Sigur Rós"),
-        "unicode text is preserved: {}",
-        request.body
-    );
+    assert!(request.body.contains("Sigur Rós"), "unicode text is preserved: {}", request.body);
     // No cover art: no albumArtURI element in the DIDL.
     assert!(
         !request.body.contains("albumArtURI"),
@@ -287,30 +277,17 @@ fn didl_escapes_special_characters_and_keeps_unicode() {
 
 #[test]
 fn transport_actions_name_the_right_soap_action() {
-    assert_eq!(
-        soap::play().soap_action,
-        "\"urn:schemas-upnp-org:service:AVTransport:1#Play\""
-    );
+    assert_eq!(soap::play().soap_action, "\"urn:schemas-upnp-org:service:AVTransport:1#Play\"");
     assert!(soap::play().body.contains("<Speed>1</Speed>"));
-    assert_eq!(
-        soap::pause().soap_action,
-        "\"urn:schemas-upnp-org:service:AVTransport:1#Pause\""
-    );
-    assert_eq!(
-        soap::stop().soap_action,
-        "\"urn:schemas-upnp-org:service:AVTransport:1#Stop\""
-    );
+    assert_eq!(soap::pause().soap_action, "\"urn:schemas-upnp-org:service:AVTransport:1#Pause\"");
+    assert_eq!(soap::stop().soap_action, "\"urn:schemas-upnp-org:service:AVTransport:1#Stop\"");
 }
 
 #[test]
 fn seek_targets_rel_time_in_hms() {
     let request = soap::seek(Duration::from_secs(3 * 3600 + 4 * 60 + 5));
     assert!(request.body.contains("<Unit>REL_TIME</Unit>"));
-    assert!(
-        request.body.contains("<Target>3:04:05</Target>"),
-        "{}",
-        request.body
-    );
+    assert!(request.body.contains("<Target>3:04:05</Target>"), "{}", request.body);
 }
 
 #[test]
@@ -320,19 +297,11 @@ fn set_volume_scales_to_upnp_percent_on_rendering_control() {
         request.soap_action,
         "\"urn:schemas-upnp-org:service:RenderingControl:1#SetVolume\""
     );
-    assert!(
-        request.body.contains("<DesiredVolume>50</DesiredVolume>"),
-        "{}",
-        request.body
-    );
+    assert!(request.body.contains("<DesiredVolume>50</DesiredVolume>"), "{}", request.body);
     assert!(request.body.contains("<Channel>Master</Channel>"));
     // Out-of-range levels clamp to the 0–100 bounds.
-    assert!(soap::set_volume(1.7)
-        .body
-        .contains("<DesiredVolume>100</DesiredVolume>"));
-    assert!(soap::set_volume(-0.3)
-        .body
-        .contains("<DesiredVolume>0</DesiredVolume>"));
+    assert!(soap::set_volume(1.7).body.contains("<DesiredVolume>100</DesiredVolume>"));
+    assert!(soap::set_volume(-0.3).body.contains("<DesiredVolume>0</DesiredVolume>"));
 }
 
 // -- SOAP response parsing ----------------------------------------------------
@@ -431,12 +400,7 @@ type Shared = Arc<Mutex<FakeRenderer>>;
 /// Extract the action name from a `SOAPACTION` header value
 /// (`"urn:…:AVTransport:1#Play"` → `Play`).
 fn action_name(soap_action: &str) -> String {
-    soap_action
-        .trim_matches('"')
-        .rsplit('#')
-        .next()
-        .unwrap_or_default()
-        .to_string()
+    soap_action.trim_matches('"').rsplit('#').next().unwrap_or_default().to_string()
 }
 
 /// The SOAP response body for one action, reading scripted state for the polls.
@@ -482,14 +446,10 @@ async fn start_fake_renderer(state: Shared) -> String {
 
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr = listener.local_addr().unwrap();
-    let router = Router::new()
-        .route("/avt", post(handle))
-        .route("/rc", post(handle))
-        .with_state(state);
+    let router =
+        Router::new().route("/avt", post(handle)).route("/rc", post(handle)).with_state(state);
     tokio::spawn(async move {
-        axum::serve(listener, router)
-            .await
-            .expect("the test server serves until the test ends");
+        axum::serve(listener, router).await.expect("the test server serves until the test ends");
     });
     format!("http://{addr}")
 }
@@ -529,15 +489,7 @@ fn channel_routes_each_command_to_its_soap_action() {
     let actions = state.lock().unwrap().actions.clone();
     assert_eq!(
         actions,
-        vec![
-            "SetAVTransportURI",
-            "Play",
-            "Pause",
-            "Seek",
-            "SetVolume",
-            "Play",
-            "Stop",
-        ],
+        vec!["SetAVTransportURI", "Play", "Pause", "Seek", "SetVolume", "Play", "Stop",],
         "each command must reach the renderer as its SOAP action"
     );
 }
@@ -589,10 +541,7 @@ fn our_own_stop_is_not_read_as_finished() {
     let base = runtime.block_on(start_fake_renderer(state.clone()));
     let mut channel = channel_to(&base);
 
-    assert_eq!(
-        channel.poll_status().unwrap().player_state,
-        RendererPlayerState::Playing
-    );
+    assert_eq!(channel.poll_status().unwrap().player_state, RendererPlayerState::Playing);
 
     // We stop it; the renderer goes STOPPED as a result.
     channel.stop().unwrap();
@@ -619,10 +568,7 @@ fn stopped_mid_track_is_idle_not_finished() {
     let base = runtime.block_on(start_fake_renderer(state.clone()));
     let mut channel = channel_to(&base);
 
-    assert_eq!(
-        channel.poll_status().unwrap().player_state,
-        RendererPlayerState::Playing
-    );
+    assert_eq!(channel.poll_status().unwrap().player_state, RendererPlayerState::Playing);
     state.lock().unwrap().transport_state = "STOPPED".to_string();
     assert_eq!(
         channel.poll_status().unwrap().player_state,
@@ -668,17 +614,9 @@ fn stopped_state_after(
     }));
     let base = runtime.block_on(start_fake_renderer(state.clone()));
     let mut channel = channel_to(&base);
-    channel
-        .load(&RendererMedia {
-            duration: loaded_length,
-            ..test_media()
-        })
-        .unwrap();
+    channel.load(&RendererMedia { duration: loaded_length, ..test_media() }).unwrap();
     // Observe PLAYING so has_played is set and any position is recorded.
-    assert_eq!(
-        channel.poll_status().unwrap().player_state,
-        RendererPlayerState::Playing
-    );
+    assert_eq!(channel.poll_status().unwrap().player_state, RendererPlayerState::Playing);
     state.lock().unwrap().transport_state = "STOPPED".to_string();
     channel.poll_status().unwrap().player_state
 }

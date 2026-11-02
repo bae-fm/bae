@@ -137,9 +137,7 @@ impl FolderWatcher {
             return Ok(());
         };
         let mut state = lock_or_crash(&self.diagnostics, WATCH_TABLE, &self.state);
-        let watches = state
-            .as_mut()
-            .map_err(|e| ImportError::Watch { detail: e.clone() })?;
+        let watches = state.as_mut().map_err(|e| ImportError::Watch { detail: e.clone() })?;
         watches.install(root, directory, mode)
     }
 
@@ -164,9 +162,8 @@ impl FolderWatcher {
             return Ok(());
         }
         let mut state = lock_or_crash(&self.diagnostics, WATCH_TABLE, &self.state);
-        let watches = state.as_mut().map_err(|error| ImportError::Watch {
-            detail: error.clone(),
-        })?;
+        let watches =
+            state.as_mut().map_err(|error| ImportError::Watch { detail: error.clone() })?;
         let Some(watch) = watches.roots.get_mut(root) else {
             return Ok(());
         };
@@ -203,9 +200,8 @@ impl FolderWatcher {
         let Some(watch) = removed else {
             return FolderWatchSnapshot::default();
         };
-        let snapshot = FolderWatchSnapshot {
-            directories: watch.installed.iter().cloned().collect(),
-        };
+        let snapshot =
+            FolderWatchSnapshot { directories: watch.installed.iter().cloned().collect() };
         drop(watch);
         snapshot
     }
@@ -217,18 +213,13 @@ impl FolderWatcher {
     ) -> Result<(), ImportError> {
         let mut failures = Vec::new();
         let mut state = lock_or_crash(&self.diagnostics, WATCH_TABLE, &self.state);
-        let watches = state.as_mut().map_err(|error| ImportError::Watch {
-            detail: error.clone(),
-        })?;
+        let watches =
+            state.as_mut().map_err(|error| ImportError::Watch { detail: error.clone() })?;
         for directory in &snapshot.directories {
             let Some(mode) = watch_mode(root, directory) else {
                 continue;
             };
-            if watches
-                .roots
-                .get(root)
-                .is_some_and(|watch| watch.installed.contains(directory))
-            {
+            if watches.roots.get(root).is_some_and(|watch| watch.installed.contains(directory)) {
                 continue;
             }
             if let Err(error) = watches.install(root, directory, mode) {
@@ -260,13 +251,8 @@ impl Watches {
     ) -> Result<(), ImportError> {
         if uses_recursive_root_watch() {
             let mut backend = (self.open)(root).map_err(|error| watch_failed(root, error))?;
-            backend
-                .watch(directory, mode)
-                .map_err(|error| watch_failed(directory, error))?;
-            let fresh = RootWatch {
-                backend,
-                installed: HashSet::from([directory.to_path_buf()]),
-            };
+            backend.watch(directory, mode).map_err(|error| watch_failed(directory, error))?;
+            let fresh = RootWatch { backend, installed: HashSet::from([directory.to_path_buf()]) };
             // The replaced watch stops here, after the fresh one started.
             drop(self.roots.insert(root.to_path_buf(), fresh));
             return Ok(());
@@ -288,9 +274,7 @@ impl Watches {
 }
 
 fn watch_failed(path: &Path, error: notify::Error) -> ImportError {
-    ImportError::Watch {
-        detail: format!("failed to watch {}: {error}", path.display()),
-    }
+    ImportError::Watch { detail: format!("failed to watch {}: {error}", path.display()) }
 }
 
 /// Start each root's watch as the platform's own, reporting on `events`
@@ -383,11 +367,7 @@ mod tests {
 
     impl Drop for FakeBackend {
         fn drop(&mut self) {
-            self.watches
-                .calls
-                .lock()
-                .unwrap()
-                .push(Call::Stop(self.root.clone(), self.serial));
+            self.watches.calls.lock().unwrap().push(Call::Stop(self.root.clone(), self.serial));
         }
     }
 
@@ -418,12 +398,7 @@ mod tests {
 
     fn installed(watcher: &FolderWatcher, root: &Path) -> Option<HashSet<PathBuf>> {
         let state = watcher.state.lock().unwrap();
-        state
-            .as_ref()
-            .unwrap()
-            .roots
-            .get(root)
-            .map(|watch| watch.installed.clone())
+        state.as_ref().unwrap().roots.get(root).map(|watch| watch.installed.clone())
     }
 
     #[test]
@@ -455,10 +430,7 @@ mod tests {
         if uses_recursive_root_watch() {
             assert_eq!(
                 fake.calls(),
-                [
-                    Call::Watch(root.clone(), 1, root.clone()),
-                    Call::Stop(root.clone(), 1),
-                ]
+                [Call::Watch(root.clone(), 1, root.clone()), Call::Stop(root.clone(), 1),]
             );
             assert_eq!(directories, vec![root.clone()]);
         } else {
@@ -496,10 +468,7 @@ mod tests {
                 matches!(call, Call::Watch(root, ..) | Call::Unwatch(root, ..) | Call::Stop(root, ..) if *root == second)
             })
             .collect();
-        assert_eq!(
-            second_calls,
-            [Call::Watch(second.clone(), 2, second.clone())]
-        );
+        assert_eq!(second_calls, [Call::Watch(second.clone(), 2, second.clone())]);
         assert_eq!(installed(&watcher, &second), Some(HashSet::from([second])));
     }
 
@@ -518,10 +487,7 @@ mod tests {
 
         assert_eq!(
             fake.calls(),
-            [
-                Call::Watch(root.clone(), 1, child.clone()),
-                Call::Watch(root, 1, child),
-            ]
+            [Call::Watch(root.clone(), 1, child.clone()), Call::Watch(root, 1, child),]
         );
     }
 
@@ -563,10 +529,7 @@ mod tests {
         watcher.install_directory(&root, &root).unwrap();
         *fake.fail_watch.lock().unwrap() = true;
         assert!(watcher.install_directory(&root, &root).is_err());
-        assert_eq!(
-            installed(&watcher, &root),
-            Some(HashSet::from([root.clone()]))
-        );
+        assert_eq!(installed(&watcher, &root), Some(HashSet::from([root.clone()])));
         *fake.fail_watch.lock().unwrap() = false;
         watcher.install_directory(&root, &root).unwrap();
 
@@ -593,13 +556,7 @@ mod tests {
         *fake.fail_watch.lock().unwrap() = false;
         watcher.install_directory(&root, &root).unwrap();
 
-        assert_eq!(
-            fake.calls()
-                .iter()
-                .filter(|call| matches!(call, Call::Watch(..)))
-                .count(),
-            2
-        );
+        assert_eq!(fake.calls().iter().filter(|call| matches!(call, Call::Watch(..))).count(), 2);
         assert_eq!(installed(&watcher, &root), Some(HashSet::from([root])));
     }
 
@@ -669,11 +626,7 @@ mod tests {
                 .expect("the written file was reported")
                 .expect("the watch is still sending");
             let events = report.expect("the watch reports no error");
-            if events
-                .iter()
-                .flat_map(|event| &event.paths)
-                .any(|path| path.ends_with("01.flac"))
-            {
+            if events.iter().flat_map(|event| &event.paths).any(|path| path.ends_with("01.flac")) {
                 assert!(
                     events
                         .iter()

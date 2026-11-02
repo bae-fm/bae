@@ -22,39 +22,23 @@ const BAD_REQUEST: &str = "HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\n\r\n
 
 /// A Discogs transport whose requests go to the local server at `origin`.
 fn served_by(origin: &str) -> Arc<Discogs> {
-    Arc::new(Discogs::for_test(
-        Http::for_test().serve("api.discogs.com", origin),
-    ))
+    Arc::new(Discogs::for_test(Http::for_test().serve("api.discogs.com", origin)))
 }
 
 async fn discogs_response_server(responses: Vec<&'static str>) -> (String, Arc<AtomicUsize>) {
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
-        .await
-        .expect("test listener should bind");
-    let url = format!(
-        "http://{}",
-        listener
-            .local_addr()
-            .expect("test listener should have an address")
-    );
+    let listener =
+        tokio::net::TcpListener::bind("127.0.0.1:0").await.expect("test listener should bind");
+    let url =
+        format!("http://{}", listener.local_addr().expect("test listener should have an address"));
     let request_count = Arc::new(AtomicUsize::new(0));
     let counted_requests = request_count.clone();
     tokio::spawn(async move {
         for response in responses {
-            let (mut stream, _) = listener
-                .accept()
-                .await
-                .expect("test request should connect");
+            let (mut stream, _) = listener.accept().await.expect("test request should connect");
             counted_requests.fetch_add(1, Ordering::SeqCst);
             let mut buffer = [0; 4096];
-            let _ = stream
-                .read(&mut buffer)
-                .await
-                .expect("test request should be readable");
-            stream
-                .write_all(response.as_bytes())
-                .await
-                .expect("test response should write");
+            let _ = stream.read(&mut buffer).await.expect("test request should be readable");
+            stream.write_all(response.as_bytes()).await.expect("test response should write");
         }
     });
     (url, request_count)
@@ -128,14 +112,8 @@ fn search_result_thumb_is_the_cover_bounded_to_150_pixels() {
         }
     );
     // A 40-point row reads the thumbnail; a 200-point pane never does.
-    assert_eq!(
-        cover.image.url_covering(Some(80)),
-        "https://discogs.example/thumb.jpg"
-    );
-    assert_eq!(
-        cover.image.url_covering(Some(400)),
-        "https://discogs.example/full.jpg"
-    );
+    assert_eq!(cover.image.url_covering(Some(80)), "https://discogs.example/thumb.jpg");
+    assert_eq!(cover.image.url_covering(Some(400)), "https://discogs.example/full.jpg");
 }
 
 #[test]
@@ -280,10 +258,7 @@ fn a_label_keeps_its_id_and_loses_its_disambiguation_suffix() {
         "id": 123, "type": "release", "title": "Album", "label": ["Rhino Records (2)", "Company (14)"]
     }))
     .unwrap();
-    assert_eq!(
-        search.label,
-        Some(vec!["Rhino Records".to_string(), "Company".to_string()])
-    );
+    assert_eq!(search.label, Some(vec!["Rhino Records".to_string(), "Company".to_string()]));
 }
 
 #[test]
@@ -294,11 +269,7 @@ fn master_year_distinguishes_unknown_from_known() {
         (r#"{"id":456,"year":0}"#, None),
         (r#"{"id":456,"year":1966}"#, Some(1966)),
     ] {
-        assert_eq!(
-            parse_discogs_master_json(document).unwrap().year,
-            expected,
-            "{document}"
-        );
+        assert_eq!(parse_discogs_master_json(document).unwrap().year, expected, "{document}");
     }
 }
 
@@ -318,10 +289,7 @@ fn master_parser_retains_album_metadata_without_pressing_or_track_defaults() {
     assert_eq!(master.artists[0].id, "12");
     assert_eq!(master.artists[0].name, "Artist Name");
     assert_eq!(master.covers.len(), 1);
-    assert_eq!(
-        master.covers[0].image.url,
-        "https://images.example/front.jpg"
-    );
+    assert_eq!(master.covers[0].image.url, "https://images.example/front.jpg");
 
     for raw in [r#"{"id":456}"#, r#"{"id":456,"title":"","year":0}"#] {
         let master = parse_discogs_master_json(raw).unwrap();
@@ -338,10 +306,8 @@ async fn master_fetch_returns_its_own_document_without_following_main_release() 
     let raw =
         r#"{"id":510005,"title":"Album Title","year":1982,"main_release":510006}"#.to_string();
     let (url, requests) = scripted_server(vec![(200, raw.clone())]).await;
-    let (master, archived) = client_at(url)
-        .get_master("510005", CallPriority::Interactive)
-        .await
-        .unwrap();
+    let (master, archived) =
+        client_at(url).get_master("510005", CallPriority::Interactive).await.unwrap();
     assert_eq!(master.title.as_deref(), Some("Album Title"));
     assert_eq!(master.year, Some(1982));
     assert_eq!(archived, raw);
@@ -406,10 +372,7 @@ async fn transport_error_display_does_not_include_discogs_token() {
     let token = "secret-discogs-token";
     let client = DiscogsClient::new(served_by("http://127.0.0.1:1"), token.to_string());
 
-    let error = client
-        .validate_token(CallPriority::Interactive)
-        .await
-        .unwrap_err();
+    let error = client.validate_token(CallPriority::Interactive).await.unwrap_err();
 
     assert!(!error.to_string().contains(token));
 }
@@ -418,18 +381,12 @@ async fn transport_error_display_does_not_include_discogs_token() {
 async fn validate_token_sends_token_in_authorization_header() {
     let token = "secret-discogs-token";
     let listener = TcpListener::bind("127.0.0.1:0").expect("test listener should bind");
-    let url = format!(
-        "http://{}",
-        listener
-            .local_addr()
-            .expect("test listener should have an address")
-    );
+    let url =
+        format!("http://{}", listener.local_addr().expect("test listener should have an address"));
     let request = std::thread::spawn(move || {
         let (mut stream, _) = listener.accept().expect("test request should connect");
         let mut buffer = [0; 4096];
-        let read = stream
-            .read(&mut buffer)
-            .expect("test request should be readable");
+        let read = stream.read(&mut buffer).expect("test request should be readable");
         stream
             .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n")
             .expect("test response should write");
@@ -443,10 +400,7 @@ async fn validate_token_sends_token_in_authorization_header() {
         .expect("token validation should accept 200 response");
 
     let request = request.join().expect("test listener should finish");
-    let request_line = request
-        .lines()
-        .next()
-        .expect("test request should include a request line");
+    let request_line = request.lines().next().expect("test request should include a request line");
     assert_eq!(request_line, "GET /database/search?per_page=1 HTTP/1.1");
     assert!(request.contains("authorization: Discogs token=secret-discogs-token\r\n"));
     assert!(!request_line.contains("token=secret-discogs-token"));
@@ -483,9 +437,7 @@ async fn a_rate_limit_holds_every_discogs_request_for_its_stated_wait() {
     let discogs = served_by(&url);
     let client = DiscogsClient::new(discogs.clone(), "token".to_string());
     let asked = tokio::spawn(async move {
-        client
-            .search_with_params(&DiscogsSearchParams::default(), CallPriority::Interactive)
-            .await
+        client.search_with_params(&DiscogsSearchParams::default(), CallPriority::Interactive).await
     });
 
     let opens_at = tokio::time::timeout(Duration::from_secs(5), async {
@@ -532,13 +484,7 @@ async fn search_does_not_retry_client_error() {
         .expect_err("a 400 should fail without retry");
 
     assert!(
-        matches!(
-            error,
-            DiscogsError::Provider {
-                status: StatusCode::BAD_REQUEST,
-                ..
-            }
-        ),
+        matches!(error, DiscogsError::Provider { status: StatusCode::BAD_REQUEST, .. }),
         "expected Provider(400), got {error:?}",
     );
     assert_eq!(request_count.load(Ordering::SeqCst), 1);
@@ -546,12 +492,8 @@ async fn search_does_not_retry_client_error() {
 
 #[test]
 fn retry_policy_repeats_only_transient_failures() {
-    let provider = |status: StatusCode| {
-        repeat_discogs(&DiscogsError::Provider {
-            status,
-            told_wait: None,
-        })
-    };
+    let provider =
+        |status: StatusCode| repeat_discogs(&DiscogsError::Provider { status, told_wait: None });
     assert_eq!(
         repeat_discogs(&DiscogsError::Provider {
             status: StatusCode::SERVICE_UNAVAILABLE,
@@ -560,14 +502,8 @@ fn retry_policy_repeats_only_transient_failures() {
         Repeat::AfterToldWait(Duration::from_secs(9)),
         "a stated wait replaces the backoff"
     );
-    assert_eq!(
-        provider(StatusCode::INTERNAL_SERVER_ERROR),
-        Repeat::AfterBackoff
-    );
-    assert_eq!(
-        provider(StatusCode::SERVICE_UNAVAILABLE),
-        Repeat::AfterBackoff
-    );
+    assert_eq!(provider(StatusCode::INTERNAL_SERVER_ERROR), Repeat::AfterBackoff);
+    assert_eq!(provider(StatusCode::SERVICE_UNAVAILABLE), Repeat::AfterBackoff);
     assert_eq!(provider(StatusCode::BAD_REQUEST), Repeat::Never);
     assert_eq!(provider(StatusCode::FORBIDDEN), Repeat::Never);
     assert_eq!(provider(StatusCode::UNPROCESSABLE_ENTITY), Repeat::Never);
@@ -621,15 +557,10 @@ async fn search_observer_records_one_signal_after_internal_retry() {
 /// so the client opens a fresh connection for its next request and the accept
 /// count is the request count.
 async fn scripted_server(responses: Vec<(u16, String)>) -> (String, Arc<AtomicUsize>) {
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
-        .await
-        .expect("test listener should bind");
-    let url = format!(
-        "http://{}",
-        listener
-            .local_addr()
-            .expect("test listener should have an address")
-    );
+    let listener =
+        tokio::net::TcpListener::bind("127.0.0.1:0").await.expect("test listener should bind");
+    let url =
+        format!("http://{}", listener.local_addr().expect("test listener should have an address"));
     let request_count = Arc::new(AtomicUsize::new(0));
     let counted_requests = request_count.clone();
     tokio::spawn(async move {
@@ -645,9 +576,8 @@ async fn scripted_server(responses: Vec<(u16, String)>) -> (String, Arc<AtomicUs
                 reason = "the fake answers whatever the request said"
             )]
             let _ = stream.read(&mut buffer).await;
-            let (status, body) = remaining
-                .next()
-                .unwrap_or_else(|| (599, "unscripted request".to_string()));
+            let (status, body) =
+                remaining.next().unwrap_or_else(|| (599, "unscripted request".to_string()));
             let raw = format!(
                 "HTTP/1.1 {status} Response\r\nContent-Type: application/json\r\n\
                  Content-Length: {}\r\n\r\n{body}",
@@ -722,27 +652,16 @@ async fn transient_failures_are_not_kept() {
         .expect_err("transient answers on every try exhaust the retries");
     assert!(matches!(
         error,
-        DiscogsError::Provider {
-            status: StatusCode::SERVICE_UNAVAILABLE,
-            ..
-        }
+        DiscogsError::Provider { status: StatusCode::SERVICE_UNAVAILABLE, .. }
     ));
-    assert_eq!(
-        requests.load(Ordering::SeqCst),
-        attempts,
-        "each retry asked the server again"
-    );
+    assert_eq!(requests.load(Ordering::SeqCst), attempts, "each retry asked the server again");
 
     let (release, _) = client
         .get_release("510003", CallPriority::Interactive)
         .await
         .expect("the provider recovered");
     assert_eq!(release.id, "510003");
-    assert_eq!(
-        requests.load(Ordering::SeqCst),
-        attempts + 1,
-        "the failed answer was not kept"
-    );
+    assert_eq!(requests.load(Ordering::SeqCst), attempts + 1, "the failed answer was not kept");
 }
 
 /// Each transport keeps its own answers: two asking the same URL each ask
@@ -811,22 +730,13 @@ async fn a_catalog_number_search_reads_every_page() {
 
     let releases = client
         .search_with_params(
-            &DiscogsSearchParams {
-                catno: Some("LBL 719".to_string()),
-                ..Default::default()
-            },
+            &DiscogsSearchParams { catno: Some("LBL 719".to_string()), ..Default::default() },
             CallPriority::Interactive,
         )
         .await
         .expect("both pages answer");
 
-    assert_eq!(
-        releases
-            .iter()
-            .map(|release| release.id)
-            .collect::<Vec<_>>(),
-        vec![1, 2, 3]
-    );
+    assert_eq!(releases.iter().map(|release| release.id).collect::<Vec<_>>(), vec![1, 2, 3]);
     assert_eq!(request_count.load(Ordering::SeqCst), 2);
 }
 
@@ -843,11 +753,7 @@ struct DiscogsMinute {
 
 impl crate::rate_limiter::load_model::Window for DiscogsMinute {
     fn arrive(&mut self, at: tokio::time::Instant) -> (StatusCode, reqwest::header::HeaderMap) {
-        while self
-            .arrivals
-            .front()
-            .is_some_and(|arrived| *arrived + DISCOGS_WINDOW <= at)
-        {
+        while self.arrivals.front().is_some_and(|arrived| *arrived + DISCOGS_WINDOW <= at) {
             self.arrivals.pop_front();
         }
         let used = self.arrivals.len();
@@ -909,9 +815,7 @@ async fn sustained_load_stays_inside_discogs_minute() {
 async fn sustained_load_yields_discogs_minute_to_another_client() {
     let discogs = Discogs::new(Http::for_test());
     let limiter = Arc::new(discogs.limiter);
-    let others = (0..300)
-        .map(|second| Duration::from_secs(second * 2))
-        .collect();
+    let others = (0..300).map(|second| Duration::from_secs(second * 2)).collect();
     let load = discogs_load(others);
     let requests = load.requests as u32;
 

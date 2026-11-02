@@ -45,9 +45,7 @@ impl BridgeCandidateFile {
                 // parse product the bridge doesn't mirror.
                 track_count: sheet.playable_track_count() as u32,
             },
-            FileRole::Artwork => BridgeFileRole::Artwork {
-                choice: cover_choice,
-            },
+            FileRole::Artwork => BridgeFileRole::Artwork { choice: cover_choice },
             FileRole::DamagedImage => BridgeFileRole::DamagedImage,
             FileRole::Document => BridgeFileRole::Document,
             FileRole::Other => BridgeFileRole::Other,
@@ -76,23 +74,15 @@ mirror_struct! {
 
 impl BridgeCandidateFiles {
     pub(crate) fn from_core(files: bae_core::import::folder_scanner::CategorizedFiles) -> Self {
-        let source_audio = files
-            .source_audio()
-            .map(BridgeCandidateSourceAudio::from_core);
+        let source_audio = files.source_audio().map(BridgeCandidateSourceAudio::from_core);
         let file_metadata_identity = files.file_metadata_identity();
-        let cover_files = files
-            .cover_files()
-            .cloned()
-            .map(BridgeCandidateFile::from_core)
-            .collect();
+        let cover_files =
+            files.cover_files().cloned().map(BridgeCandidateFile::from_core).collect();
         let bae_core::import::folder_scanner::CategorizedFiles { files, .. } = files;
         BridgeCandidateFiles {
             file_metadata_identity,
             cover_files,
-            files: files
-                .into_iter()
-                .map(BridgeCandidateFile::from_core)
-                .collect(),
+            files: files.into_iter().map(BridgeCandidateFile::from_core).collect(),
             source_audio,
         }
     }
@@ -100,18 +90,10 @@ impl BridgeCandidateFiles {
 
 impl BridgePressingEdit {
     pub(super) fn from_core(pressing: bae_types::pressing::Pressing) -> Self {
-        let bae_types::pressing::Pressing {
-            year,
-            labels,
-            barcodes,
-            facts,
-        } = pressing;
+        let bae_types::pressing::Pressing { year, labels, barcodes, facts } = pressing;
         Self {
             year,
-            labels: labels
-                .into_iter()
-                .map(BridgeReleaseLabel::from_core)
-                .collect(),
+            labels: labels.into_iter().map(BridgeReleaseLabel::from_core).collect(),
             barcodes,
             facts: BridgePressingFacts::from_core(facts),
         }
@@ -268,16 +250,8 @@ mirror_enum! {
 
 impl BridgeMappingImage {
     pub(crate) fn from_core(image: bae_core::import::MappingImage) -> Self {
-        let bae_core::import::MappingImage {
-            file_id,
-            name,
-            file,
-        } = image;
-        BridgeMappingImage {
-            file_id,
-            name,
-            file: BridgeFileVersion::from_core(file),
-        }
+        let bae_core::import::MappingImage { file_id, name, file } = image;
+        BridgeMappingImage { file_id, name, file: BridgeFileVersion::from_core(file) }
     }
 }
 
@@ -302,10 +276,7 @@ impl BridgeMappingTrackSide {
         Self {
             header_key: side.header_key().map(str::to_string),
             side,
-            runs: runs
-                .into_iter()
-                .map(BridgeMappingTrackRun::from_core)
-                .collect(),
+            runs: runs.into_iter().map(BridgeMappingTrackRun::from_core).collect(),
         }
     }
 }
@@ -348,14 +319,8 @@ mod cover_projection_tests {
 
     #[test]
     fn unsupported_cover_formats_remain_artwork_without_a_cover_action() {
-        let names = [
-            "front.jpg",
-            "back.png",
-            "scan.gif",
-            "scan.webp",
-            "booklet.bmp",
-            "drawing.svg",
-        ];
+        let names =
+            ["front.jpg", "back.png", "scan.gif", "scan.webp", "booklet.bmp", "drawing.svg"];
         let files = CategorizedFiles {
             files: names
                 .iter()
@@ -374,11 +339,7 @@ mod cover_projection_tests {
         let projected = BridgeCandidateFiles::from_core(files);
         assert_eq!(projected.files.len(), names.len());
         assert_eq!(
-            projected
-                .cover_files
-                .iter()
-                .map(|entry| entry.file.name.as_str())
-                .collect::<Vec<_>>(),
+            projected.cover_files.iter().map(|entry| entry.file.name.as_str()).collect::<Vec<_>>(),
             &names[..4]
         );
         for (index, entry) in projected.files.iter().enumerate() {

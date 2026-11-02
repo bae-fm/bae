@@ -19,9 +19,7 @@ fn presentation_of(column: &str) -> Result<MetadataPresentation, DbError> {
     match column {
         "draft" => Ok(MetadataPresentation::Draft),
         "find_online" => Ok(MetadataPresentation::FindOnline),
-        other => Err(DbError::Message(format!(
-            "unreadable session presentation {other:?}"
-        ))),
+        other => Err(DbError::Message(format!("unreadable session presentation {other:?}"))),
     }
 }
 
@@ -36,9 +34,7 @@ fn section_of(column: &str) -> Result<FindOnlineSection, DbError> {
     match column {
         "automatic" => Ok(FindOnlineSection::Automatic),
         "search" => Ok(FindOnlineSection::Search),
-        other => Err(DbError::Message(format!(
-            "unreadable Find online section {other:?}"
-        ))),
+        other => Err(DbError::Message(format!("unreadable Find online section {other:?}"))),
     }
 }
 
@@ -55,9 +51,7 @@ fn tab_of(column: &str) -> Result<SearchTab, DbError> {
         "general" => Ok(SearchTab::General),
         "catalog_number" => Ok(SearchTab::CatalogNumber),
         "barcode" => Ok(SearchTab::Barcode),
-        other => Err(DbError::Message(format!(
-            "unreadable session search tab {other:?}"
-        ))),
+        other => Err(DbError::Message(format!("unreadable session search tab {other:?}"))),
     }
 }
 
@@ -88,11 +82,7 @@ fn command_of(column: &str) -> Result<PaneCommand, DbError> {
         "keep_own_draft" => PaneCommand::KeepOwnDraft,
         "link_shared_album" => PaneCommand::LinkSharedAlbum,
         "unlink" => PaneCommand::Unlink,
-        other => {
-            return Err(DbError::Message(format!(
-                "unreadable pane command {other:?}"
-            )))
-        }
+        other => return Err(DbError::Message(format!("unreadable pane command {other:?}"))),
     })
 }
 
@@ -122,17 +112,12 @@ fn category_column(category: UiErrorCategory) -> String {
         C::CandidateImportInProgress => "candidate_import_in_progress".to_string(),
         C::CandidateBeingIdentified => "candidate_being_identified".to_string(),
         C::FilesAlreadyImported => "files_already_imported".to_string(),
-        C::MetadataTrackCount {
-            folder_tracks,
-            release_tracks,
-        } => format!("metadata_track_count.{folder_tracks}.{release_tracks}"),
+        C::MetadataTrackCount { folder_tracks, release_tracks } => {
+            format!("metadata_track_count.{folder_tracks}.{release_tracks}")
+        }
         C::TiedMediums { mediums } => format!(
             "tied_mediums.{}",
-            mediums
-                .iter()
-                .map(u32::to_string)
-                .collect::<Vec<_>>()
-                .join(".")
+            mediums.iter().map(u32::to_string).collect::<Vec<_>>().join(".")
         ),
         C::ReleaseChangedSinceOpened => "release_changed_since_opened".to_string(),
         C::GroupingBlocked(reason) => format!("grouping_blocked.{}", block_column(reason)),
@@ -270,9 +255,7 @@ fn category_of(column: &str) -> Result<UiErrorCategory, DbError> {
         Some(("metadata_track_count", stored)) => {
             let (folder_tracks, release_tracks) = stored.split_once('.').ok_or_else(unreadable)?;
             C::MetadataTrackCount {
-                folder_tracks: folder_tracks
-                    .parse()
-                    .map_err(|error| unreadable_because(&error))?,
+                folder_tracks: folder_tracks.parse().map_err(|error| unreadable_because(&error))?,
                 release_tracks: release_tracks
                     .parse()
                     .map_err(|error| unreadable_because(&error))?,
@@ -352,28 +335,15 @@ fn session_of(row: SessionRow) -> Result<CandidateSession, DbError> {
     let error = match (command, category, detail) {
         (Some(command), Some(category), Some(detail)) => Some(PaneFailure {
             command: command_of(&command)?,
-            error: UiError::Diagnostic {
-                category: category_of(&category)?,
-                detail,
-            },
+            error: UiError::Diagnostic { category: category_of(&category)?, detail },
         }),
         (None, None, None) => None,
-        _ => {
-            return Err(DbError::Message(
-                "a pane failure is stored in part".to_string(),
-            ))
-        }
+        _ => return Err(DbError::Message("a pane failure is stored in part".to_string())),
     };
     Ok(CandidateSession {
         presentation: presentation_of(&presentation)?,
         find_online_section: section_of(&section)?,
-        search: SearchForm {
-            tab: tab_of(&tab)?,
-            artist,
-            album,
-            catalog,
-            barcode,
-        },
+        search: SearchForm { tab: tab_of(&tab)?, artist, album, catalog, barcode },
         error,
     })
 }
@@ -509,8 +479,7 @@ impl Database {
     ) -> Result<(), DbError> {
         let content_hash = content_hash.to_string();
         let session = session.clone();
-        self.call(move |sql| save_session_on(sql, &content_hash, &session))
-            .await
+        self.call(move |sql| save_session_on(sql, &content_hash, &session)).await
     }
 }
 
@@ -536,13 +505,8 @@ mod tests {
             C::CandidateImportInProgress,
             C::CandidateBeingIdentified,
             C::FilesAlreadyImported,
-            C::MetadataTrackCount {
-                folder_tracks: 12,
-                release_tracks: 10,
-            },
-            C::TiedMediums {
-                mediums: vec![2, 4],
-            },
+            C::MetadataTrackCount { folder_tracks: 12, release_tracks: 10 },
+            C::TiedMediums { mediums: vec![2, 4] },
             C::ReleaseChangedSinceOpened,
             C::GroupingBlocked(B::SourceChanged),
             C::GroupingBlocked(B::SourceGone),
@@ -551,10 +515,7 @@ mod tests {
             C::GroupingBlocked(B::FolderFilesDownloading),
             C::Export,
             C::Save,
-            C::StorageCheck {
-                check: coven::StorageCheck::CreateOnce,
-                failure: F::Protocol,
-            },
+            C::StorageCheck { check: coven::StorageCheck::CreateOnce, failure: F::Protocol },
             C::S3VersioningUnsupported(coven::S3BucketVersioning::Enabled),
             C::S3VersioningUnknown(F::PermissionDenied),
             C::StorageLocationChangeUnsupported,
@@ -563,9 +524,7 @@ mod tests {
                 segment: "bae.lib".into(),
                 character: '.',
             }),
-            C::S3Prefix(coven::S3PrefixError::SegmentTooLong {
-                segment: "b".repeat(256),
-            }),
+            C::S3Prefix(coven::S3PrefixError::SegmentTooLong { segment: "b".repeat(256) }),
             C::Storage(F::Authentication),
             C::Storage(F::PermissionDenied),
             C::Storage(F::ContainerNotFound),

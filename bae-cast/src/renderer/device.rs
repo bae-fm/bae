@@ -38,11 +38,7 @@ impl RendererDevice {
 
     /// The device as the picker lists it.
     pub fn listed(&self) -> CastDevice {
-        CastDevice {
-            id: self.id.clone(),
-            name: self.name.clone(),
-            kind: self.kind(),
-        }
+        CastDevice { id: self.id.clone(), name: self.name.clone(), kind: self.kind() }
     }
 }
 

@@ -7,10 +7,7 @@
 fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<Effect>) {
     let (mut state, mut effects) = super::step(state, event);
     while let Some(at) = effects.iter().position(|effect| {
-        matches!(
-            effect,
-            Effect::ReadReleases { .. } | Effect::LookupPressing { .. }
-        )
+        matches!(effect, Effect::ReadReleases { .. } | Effect::LookupPressing { .. })
     }) {
         let answer = match effects.remove(at) {
             Effect::ReadReleases { releases, .. } => IdentifyEvent::ReleasesRead {
@@ -22,11 +19,9 @@ fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<Effec
                     })
                     .collect(),
             },
-            Effect::LookupPressing { source, key } => IdentifyEvent::PressingLookupAnswered {
-                source,
-                key,
-                outcome: Ok(Vec::new()),
-            },
+            Effect::LookupPressing { source, key } => {
+                IdentifyEvent::PressingLookupAnswered { source, key, outcome: Ok(Vec::new()) }
+            }
             _ => unreachable!("the position is of a read or a pressing lookup"),
         };
         let (next, more) = super::step(state, answer);
@@ -45,10 +40,7 @@ fn found_by_disc_id(
     ledger.is_some_and(|ledger| {
         ledger
             .disc_id_releases()
-            .contains(&crate::import::MetadataRef::new(
-                result.source,
-                &result.release_id,
-            ))
+            .contains(&crate::import::MetadataRef::new(result.source, &result.release_id))
     })
 }
 
@@ -56,10 +48,7 @@ fn found_by_disc_id(
 fn records_read(
     releases: &[crate::identify::documents::ReleaseToRead],
 ) -> Vec<crate::import::MetadataRef> {
-    releases
-        .iter()
-        .map(|release| release.release().clone())
-        .collect()
+    releases.iter().map(|release| release.release().clone()).collect()
 }
 
 include!("tests/signals_and_conflicts.rs");

@@ -2,21 +2,15 @@ use super::*;
 use crate::import::{ChoiceChange, LookupChoiceEdit, LookupChoices};
 
 fn barcode(code: &str) -> LookupChoiceEdit {
-    LookupChoiceEdit::ToggleBarcode {
-        code: code.to_string(),
-    }
+    LookupChoiceEdit::ToggleBarcode { code: code.to_string() }
 }
 
 fn catalog(number: &str) -> LookupChoiceEdit {
-    LookupChoiceEdit::ToggleCatalog {
-        number: number.to_string(),
-    }
+    LookupChoiceEdit::ToggleCatalog { number: number.to_string() }
 }
 
 fn discounted(number: &str) -> LookupChoiceEdit {
-    LookupChoiceEdit::ToggleDiscounted {
-        number: number.to_string(),
-    }
+    LookupChoiceEdit::ToggleDiscounted { number: number.to_string() }
 }
 
 /// Make each of `edits` to the candidate's choices, in order, and say what
@@ -105,7 +99,10 @@ async fn two_quick_changes_both_land() {
 async fn lookup_choices_for_an_unknown_key_are_refused() {
     let (handle, _tmp, _key, _hash) = pane_fixture().await;
     let refused = handle
-        .edit_candidate_lookup_choices(&crate::import::CandidateKey::test("/nowhere/at/all"), LookupChoiceEdit::ToggleDiscId)
+        .edit_candidate_lookup_choices(
+            &crate::import::CandidateKey::test("/nowhere/at/all"),
+            LookupChoiceEdit::ToggleDiscId,
+        )
         .await;
     assert!(refused.is_err());
     shut_down(handle).await;
@@ -129,10 +126,7 @@ async fn only_a_change_to_what_a_run_looks_up_asks_for_another_run() {
         edit(
             &handle,
             &key,
-            [LookupChoiceEdit::SearchBy {
-                album: "  ".to_string(),
-                artist: String::new(),
-            }]
+            [LookupChoiceEdit::SearchBy { album: "  ".to_string(), artist: String::new() }]
         )
         .await,
         vec![ChoiceChange::Ranking],
@@ -146,18 +140,10 @@ async fn only_a_change_to_what_a_run_looks_up_asks_for_another_run() {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_struck_out_number_is_written_as_still_chosen() {
     let (handle, _tmp, key, _hash) = pane_fixture().await;
-    edit(
-        &handle,
-        &key,
-        [catalog("WPCR-80001"), catalog("NJ 8255"), discounted("NJ-8255")],
-    )
-    .await;
+    edit(&handle, &key, [catalog("WPCR-80001"), catalog("NJ 8255"), discounted("NJ-8255")]).await;
     let stored = pane(&handle, &key).await.draft().unwrap().lookup_choices.clone();
     shut_down(handle).await;
-    assert_eq!(
-        stored.chosen_catalogs,
-        vec!["WPCR-80001".to_string(), "NJ 8255".to_string()]
-    );
+    assert_eq!(stored.chosen_catalogs, vec!["WPCR-80001".to_string(), "NJ 8255".to_string()]);
     assert_eq!(stored.discounted_catalogs, vec!["NJ-8255".to_string()]);
 }
 
@@ -168,21 +154,12 @@ async fn striking_a_chosen_number_out_and_back_asks_for_a_run_each_way() {
     let (handle, _tmp, key, _hash) = pane_fixture().await;
     edit(&handle, &key, [catalog("NJ-8255")]).await;
     let chosen = pane(&handle, &key).await.draft().unwrap().lookup_choices.clone();
-    assert_eq!(
-        edit(&handle, &key, [discounted("NJ-8255")]).await,
-        vec![ChoiceChange::Lookups]
-    );
+    assert_eq!(edit(&handle, &key, [discounted("NJ-8255")]).await, vec![ChoiceChange::Lookups]);
     assert_eq!(
         pane(&handle, &key).await.draft().unwrap().lookup_choices,
-        LookupChoices {
-            discounted_catalogs: vec!["NJ-8255".to_string()],
-            ..chosen.clone()
-        }
+        LookupChoices { discounted_catalogs: vec!["NJ-8255".to_string()], ..chosen.clone() }
     );
-    assert_eq!(
-        edit(&handle, &key, [discounted("NJ-8255")]).await,
-        vec![ChoiceChange::Lookups]
-    );
+    assert_eq!(edit(&handle, &key, [discounted("NJ-8255")]).await, vec![ChoiceChange::Lookups]);
     let stored = pane(&handle, &key).await.draft().unwrap().lookup_choices.clone();
     shut_down(handle).await;
     assert_eq!(stored, chosen);
@@ -208,12 +185,8 @@ async fn picking_a_record_the_folder_prints_the_number_of_chooses_nothing() {
 async fn a_pick_leaves_the_person_s_choices_as_they_were() {
     let (handle, _tmp, key, hash) = pane_fixture().await;
     store_settled_text(&handle, &hash, "NJ-8255").await;
-    edit(
-        &handle,
-        &key,
-        [barcode("0123456789012"), catalog("WPCR-80001"), discounted("NJ-8255")],
-    )
-    .await;
+    edit(&handle, &key, [barcode("0123456789012"), catalog("WPCR-80001"), discounted("NJ-8255")])
+        .await;
     let choices = pane(&handle, &key).await.draft().unwrap().lookup_choices.clone();
     seed_mb_release_with_catalog(handle.library_manager.providers(), "chosen-mb-rel-2", "NJ 8255");
 
@@ -239,10 +212,7 @@ async fn store_settled_text(handle: &ImportServiceHandle, hash: &str, printed: &
             content_hash: hash.to_string(),
             file_edit_revision: prep.file_edit_revision,
             candidate_key: crate::import::CandidateKey::from_bytes(Vec::new()),
-            verdict: crate::identify::TerminalVerdict::ManualOnly {
-                track_count: 1,
-                ledger: None,
-            },
+            verdict: crate::identify::TerminalVerdict::ManualOnly { track_count: 1, ledger: None },
             signals: crate::signals::Signals {
                 origin: crate::signals::AudioOrigin::default(),
                 disc_id: crate::signals::DiscIdSignal::Absent,
@@ -266,15 +236,22 @@ async fn store_settled_text(handle: &ImportServiceHandle, hash: &str, printed: &
     assert!(stored, "the settled signals land on the fixture candidate");
 }
 
-pub(super) async fn pick(handle: &ImportServiceHandle, key: &crate::import::CandidateKey, release_id: &str) {
+pub(super) async fn pick(
+    handle: &ImportServiceHandle,
+    key: &crate::import::CandidateKey,
+    release_id: &str,
+) {
     handle
-        .select_candidate_release(key.clone(), crate::import::PressingLink {
+        .select_candidate_release(
+            key.clone(),
+            crate::import::PressingLink {
                 record: crate::import::MetadataRef::new(
                     bae_catalogs::catalog::Catalog::MusicBrainz,
                     release_id.to_string(),
                 ),
                 partners: vec![],
-            }, crate::import::CatalogApplySteps::unread(),
+            },
+            crate::import::CatalogApplySteps::unread(),
         )
         .await
         .unwrap();
@@ -284,7 +261,9 @@ pub(super) async fn pick(handle: &ImportServiceHandle, key: &crate::import::Cand
 /// group so the pick fetches no cover.
 pub(super) fn seed_mb_release_with_catalog(
     providers: &crate::providers::Providers,
-    release_id: &str, catalog_number: &str) {
+    release_id: &str,
+    catalog_number: &str,
+) {
     seed_mb_release(providers, release_id, catalog_number, false);
 }
 
@@ -351,10 +330,7 @@ fn seed_mb_release(
                 .collect(),
         }],
         relations: vec![],
-        cover_art_archive: bae_catalogs::musicbrainz::MbCoverArtArchive {
-            front,
-            darkened: false,
-        },
+        cover_art_archive: bae_catalogs::musicbrainz::MbCoverArtArchive { front, darkened: false },
     };
     let raw_json = serde_json::to_string(&response).expect("the test response serializes");
     providers.musicbrainz().seed_release_cache(release_id, raw_json);

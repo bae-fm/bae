@@ -6,9 +6,7 @@ use super::*;
 
 impl Database {
     pub async fn load_folder_scan_snapshots(&self) -> Result<Vec<DbFolderScanSnapshot>, DbError> {
-        self.read(move |sql| load_folder_scan_snapshots_on(&sql))
-            .process(|process| process())
-            .await
+        self.read(move |sql| load_folder_scan_snapshots_on(&sql)).process(|process| process()).await
     }
 }
 

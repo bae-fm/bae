@@ -25,10 +25,7 @@ pub struct DiscIdAnswer {
 impl DiscIdAnswer {
     /// An answer of `results` whose documents a test does not read.
     pub(crate) fn for_test(results: LookupResults) -> Self {
-        Self {
-            results,
-            documents: Vec::new(),
-        }
+        Self { results, documents: Vec::new() }
     }
 }
 
@@ -198,10 +195,7 @@ pub enum BarcodeProgress {
     Lookups { codes: Vec<ValueLookup> },
     /// The candidate has barcodes and nobody was asked about any of them, for
     /// `reason`; the codes are still listed.
-    NotAsked {
-        codes: Vec<String>,
-        reason: NotAskedReason,
-    },
+    NotAsked { codes: Vec<String>, reason: NotAskedReason },
     /// No barcode source at all.
     Skipped,
 }
@@ -219,18 +213,12 @@ impl BarcodeProgress {
 
     /// What every code's lookup found, in code then provider order.
     pub fn results(&self) -> LookupResults {
-        self.lookups()
-            .iter()
-            .flat_map(ValueLookup::results)
-            .collect()
+        self.lookups().iter().flat_map(ValueLookup::results).collect()
     }
 
     /// Every provider that failed any code's lookup.
     pub fn failures(&self) -> Vec<SourceFailure> {
-        self.lookups()
-            .iter()
-            .flat_map(ValueLookup::failures)
-            .collect()
+        self.lookups().iter().flat_map(ValueLookup::failures).collect()
     }
 
     /// The codes' lookups, in first-seen order.
@@ -342,10 +330,7 @@ fn ask_every(
         .iter()
         .map(|&source| {
             effects.push(ask(source));
-            ProviderLookup {
-                source,
-                state: LookupState::LookingUp,
-            }
+            ProviderLookup { source, state: LookupState::LookingUp }
         })
         .collect()
 }
@@ -353,9 +338,8 @@ fn ask_every(
 /// Land `source`'s answer among `providers`, where it is still being waited
 /// for.
 fn answer_provider(providers: &mut [ProviderLookup], source: Catalog, outcome: LookupOutcome) {
-    if let Some(lookup) = providers
-        .iter_mut()
-        .find(|l| l.source == source && l.state == LookupState::LookingUp)
+    if let Some(lookup) =
+        providers.iter_mut().find(|l| l.source == source && l.state == LookupState::LookingUp)
     {
         lookup.state = match outcome {
             Ok(results) => LookupState::Done { results },
@@ -384,10 +368,9 @@ fn providers_failures(providers: &[ProviderLookup]) -> Vec<SourceFailure> {
     providers
         .iter()
         .filter_map(|l| match &l.state {
-            LookupState::Failed { failure } => Some(SourceFailure {
-                source: l.source,
-                failure: failure.clone(),
-            }),
+            LookupState::Failed { failure } => {
+                Some(SourceFailure { source: l.source, failure: failure.clone() })
+            }
             _ => None,
         })
         .collect()
@@ -464,10 +447,7 @@ impl CatalogLookup {
         providers: &[Catalog],
         effects: &mut Vec<Effect>,
     ) -> Self {
-        let mut lookup = Self {
-            value: value.to_string(),
-            searches: Vec::new(),
-        };
+        let mut lookup = Self { value: value.to_string(), searches: Vec::new() };
         lookup.search(artist, providers, effects);
         lookup
     }
@@ -505,9 +485,7 @@ impl CatalogLookup {
     }
 
     fn is_settled(&self) -> bool {
-        self.searches
-            .iter()
-            .all(|search| providers_settled(&search.providers))
+        self.searches.iter().all(|search| providers_settled(&search.providers))
     }
 
     /// Every release a search of the number returned, each once.
@@ -522,20 +500,14 @@ impl CatalogLookup {
     }
 
     pub(super) fn failures(&self) -> Vec<SourceFailure> {
-        self.searches
-            .iter()
-            .flat_map(|search| providers_failures(&search.providers))
-            .collect()
+        self.searches.iter().flat_map(|search| providers_failures(&search.providers)).collect()
     }
 
     /// Whether any search of the number asked `source`.
     pub(super) fn asks(&self, source: Catalog) -> bool {
-        self.searches.iter().any(|search| {
-            search
-                .providers
-                .iter()
-                .any(|provider| provider.source == source)
-        })
+        self.searches
+            .iter()
+            .any(|search| search.providers.iter().any(|provider| provider.source == source))
     }
 
     /// Whether a search of the number already holds every release one
@@ -543,10 +515,7 @@ impl CatalogLookup {
     pub(super) fn covers(&self, source: Catalog, artist: Option<&str>) -> bool {
         self.searches.iter().any(|search| {
             search.covers(artist)
-                && search
-                    .providers
-                    .iter()
-                    .any(|provider| provider.source == source)
+                && search.providers.iter().any(|provider| provider.source == source)
         })
     }
 }
@@ -570,18 +539,12 @@ impl CatalogProgress {
 
     /// Every chosen number's results, in chosen order.
     pub fn results(&self) -> LookupResults {
-        self.lookups()
-            .iter()
-            .flat_map(CatalogLookup::results)
-            .collect()
+        self.lookups().iter().flat_map(CatalogLookup::results).collect()
     }
 
     /// Every provider that failed any chosen number's lookup.
     pub fn failures(&self) -> Vec<SourceFailure> {
-        self.lookups()
-            .iter()
-            .flat_map(CatalogLookup::failures)
-            .collect()
+        self.lookups().iter().flat_map(CatalogLookup::failures).collect()
     }
 
     /// The chosen numbers' lookups, in chosen order.
@@ -639,9 +602,7 @@ pub(super) fn discid_progress_state(progress: &DiscidProgress) -> SignalState {
         DiscidProgress::Lookups { .. } => {
             let found = crate::identify::combine::union_all(&progress.answers()).len();
             match progress.failures().first() {
-                Some(failure) if found == 0 => SignalState::Failed {
-                    failure: failure.clone(),
-                },
+                Some(failure) if found == 0 => SignalState::Failed { failure: failure.clone() },
                 _ => found_or_no_match(found as u32),
             }
         }
@@ -656,9 +617,7 @@ pub(super) fn isrc_progress_state(progress: &IsrcProgress) -> SignalState {
         IsrcProgress::Done { results } => found_or_no_match(results.len() as u32),
         IsrcProgress::Skipped => SignalState::Skipped,
         IsrcProgress::NotAsked { reason } => SignalState::NotAsked { reason: *reason },
-        IsrcProgress::Failed { failure } => SignalState::Failed {
-            failure: failure.clone(),
-        },
+        IsrcProgress::Failed { failure } => SignalState::Failed { failure: failure.clone() },
     }
 }
 
@@ -693,9 +652,7 @@ fn settled_lookup_state(n_results: usize, failures: &[SourceFailure]) -> SignalS
         return found_or_no_match(n_results as u32);
     }
     match failures.first() {
-        Some(first) => SignalState::Failed {
-            failure: first.failure.clone(),
-        },
+        Some(first) => SignalState::Failed { failure: first.failure.clone() },
         None => SignalState::NoMatch,
     }
 }
@@ -708,9 +665,7 @@ fn settled_lookup_state(n_results: usize, failures: &[SourceFailure]) -> SignalS
 pub(super) fn settled_identity_state(context: &SignalsContext) -> SignalState {
     let found = context.disc.results().len();
     if let Some(failure) = context.disc.failures.first().filter(|_| found == 0) {
-        return SignalState::Failed {
-            failure: failure.clone(),
-        };
+        return SignalState::Failed { failure: failure.clone() };
     }
     match &context.disc.signal {
         DiscIdSignal::Absent | DiscIdSignal::NotCdAudio => SignalState::Skipped,
@@ -728,9 +683,7 @@ pub(super) fn settled_identity_state(context: &SignalsContext) -> SignalState {
 pub(super) fn isrc_settled_state(context: &SignalsContext) -> SignalState {
     let isrc = &context.isrc;
     if let Some(failure) = &isrc.failure {
-        return SignalState::Failed {
-            failure: failure.clone(),
-        };
+        return SignalState::Failed { failure: failure.clone() };
     }
     if isrc.tagged.is_empty() {
         return SignalState::Skipped;
@@ -745,11 +698,7 @@ pub(super) fn isrc_settled_state(context: &SignalsContext) -> SignalState {
 pub(super) fn barcode_settled_state(context: &SignalsContext) -> SignalState {
     let barcode = &context.barcode;
     if barcode.codes.is_empty() {
-        return if barcode.had_source {
-            SignalState::NoMatch
-        } else {
-            SignalState::Skipped
-        };
+        return if barcode.had_source { SignalState::NoMatch } else { SignalState::Skipped };
     }
     if let Some(reason) = barcode.not_asked {
         return SignalState::NotAsked { reason };
@@ -801,13 +750,8 @@ pub(super) fn start_discid_progress(
                 discs: discs
                     .iter()
                     .map(|disc| {
-                        effects.push(Effect::LookupDiscid {
-                            disc_id: disc.disc_id.clone(),
-                        });
-                        DiscLookup {
-                            disc_id: disc.disc_id.clone(),
-                            state: LookupState::LookingUp,
-                        }
+                        effects.push(Effect::LookupDiscid { disc_id: disc.disc_id.clone() });
+                        DiscLookup { disc_id: disc.disc_id.clone(), state: LookupState::LookingUp }
                     })
                     .collect(),
             }
@@ -829,9 +773,7 @@ pub(super) fn start_isrc_progress(
         return IsrcProgress::Skipped;
     }
     if !providers.contains(&Catalog::ISRC_CATALOG) {
-        return IsrcProgress::NotAsked {
-            reason: NotAskedReason::NoCatalog,
-        };
+        return IsrcProgress::NotAsked { reason: NotAskedReason::NoCatalog };
     }
     effects.push(Effect::LookupIsrcs { isrcs: codes });
     IsrcProgress::LookingUp
@@ -847,22 +789,12 @@ pub(super) fn start_barcode_progress(
 ) -> BarcodeProgress {
     if codes.is_empty() {
         // Whether there was a source is what tells "found none" from "never looked".
-        return if had_source {
-            BarcodeProgress::NoCodes
-        } else {
-            BarcodeProgress::Skipped
-        };
+        return if had_source { BarcodeProgress::NoCodes } else { BarcodeProgress::Skipped };
     }
-    let asked: Vec<String> = codes
-        .iter()
-        .filter(|code| !excluded.contains(code))
-        .cloned()
-        .collect();
+    let asked: Vec<String> =
+        codes.iter().filter(|code| !excluded.contains(code)).cloned().collect();
     if asked.is_empty() {
-        return BarcodeProgress::NotAsked {
-            codes,
-            reason: NotAskedReason::LeftOut,
-        };
+        return BarcodeProgress::NotAsked { codes, reason: NotAskedReason::LeftOut };
     }
     BarcodeProgress::Lookups {
         codes: asked
@@ -921,14 +853,8 @@ pub(super) fn start_search_progress(
             .providers
             .iter()
             .map(|&source| {
-                effects.push(Effect::SearchTitle {
-                    source,
-                    query: query.clone(),
-                });
-                ProviderLookup {
-                    source,
-                    state: LookupState::LookingUp,
-                }
+                effects.push(Effect::SearchTitle { source, query: query.clone() });
+                ProviderLookup { source, state: LookupState::LookingUp }
             })
             .collect(),
     }

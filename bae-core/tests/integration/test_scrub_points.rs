@@ -32,9 +32,7 @@ fn noise_flac(seconds: u32, seed: u32) -> Vec<u8> {
         .collect();
     bae_audio::init();
     bae_audio::encode_i32(
-        bae_audio::EncodeFormat::Flac {
-            bits_per_sample: 16,
-        },
+        bae_audio::EncodeFormat::Flac { bits_per_sample: 16 },
         &samples,
         SAMPLE_RATE,
         2,
@@ -52,11 +50,7 @@ struct SeekPoint {
 }
 
 /// The point a ripper reserves to fill in later: sample number all ones.
-const PLACEHOLDER: SeekPoint = SeekPoint {
-    sample: u64::MAX,
-    offset: 0,
-    frame_samples: 0,
-};
+const PLACEHOLDER: SeekPoint = SeekPoint { sample: u64::MAX, offset: 0, frame_samples: 0 };
 
 /// `flac` with a SEEKTABLE of `points` after its STREAMINFO.
 fn with_seektable(flac: &[u8], points: &[SeekPoint]) -> Vec<u8> {
@@ -153,16 +147,9 @@ fn assert_mp3_points(points: &[ScrubPoint], frames: &[(i64, u64)]) {
         }
     }
     served.remove(0);
-    assert_eq!(
-        points.len(),
-        served.len(),
-        "points {points:?} for frames at {served:?}"
-    );
+    assert_eq!(points.len(), served.len(), "points {points:?} for frames at {served:?}");
     for (point, served) in points.iter().zip(served) {
-        assert!(
-            frames.contains(&(point.sample as i64, point.byte)),
-            "{point:?} is a frame start"
-        );
+        assert!(frames.contains(&(point.sample as i64, point.byte)), "{point:?} is a frame start");
         assert!(
             point.sample < point.exact_from && point.exact_from as i64 <= served,
             "{point:?} plays the frame at {served}"
@@ -179,11 +166,7 @@ fn frames(path: &Path) -> Vec<ScrubPoint> {
         .packets()
         .map(|(_, packet)| {
             let sample = packet.pts().expect("a FLAC packet's timestamp") as u64;
-            ScrubPoint {
-                sample,
-                byte: packet.position() as u64,
-                exact_from: sample,
-            }
+            ScrubPoint { sample, byte: packet.position() as u64, exact_from: sample }
         })
         .collect()
 }
@@ -216,10 +199,8 @@ fn assert_points_every_ten_seconds(
 
 async fn tracks(library_manager: &LibraryManager, release_id: &str) -> Vec<ResolvedTrackAudio> {
     let mut resolved = Vec::new();
-    for track in library_manager
-        .get_tracks_for_release(release_id)
-        .await
-        .expect("the release's tracks")
+    for track in
+        library_manager.get_tracks_for_release(release_id).await.expect("the release's tracks")
     {
         resolved.push(
             library_manager
@@ -270,11 +251,7 @@ async fn a_single_file_album_without_a_seektable_stores_points_per_segment() {
     let imported = import(
         release(
             "scrub-points-cue",
-            &[
-                ("Track One", "0:23"),
-                ("Track Two", "0:25"),
-                ("Track Three", "0:25"),
-            ],
+            &[("Track One", "0:23"), ("Track Two", "0:25"), ("Track Three", "0:25")],
         ),
         move |dir| {
             std::fs::write(dir.join("Album Title.flac"), &album).unwrap();
@@ -304,11 +281,7 @@ FILE \"Album Title.flac\" WAVE
 
     let tracks = &imported.tracks;
     let segments: Vec<_> = tracks.iter().flat_map(|track| &track.segments).collect();
-    assert_eq!(
-        segments.len(),
-        4,
-        "three main segments and track two's pregap"
-    );
+    assert_eq!(segments.len(), 4, "three main segments and track two's pregap");
     for segment in segments {
         assert_points_every_ten_seconds(
             segment.scrub_points.as_slice(),
@@ -332,10 +305,7 @@ async fn per_track_files_without_a_seektable_store_points() {
     let files = [noise_flac(25, 11), noise_flac(32, 13)];
     let written = files.clone();
     let imported = import(
-        release(
-            "scrub-points-per-track",
-            &[("Track One", "0:25"), ("Track Two", "0:32")],
-        ),
+        release("scrub-points-per-track", &[("Track One", "0:25"), ("Track Two", "0:32")]),
         move |dir| {
             std::fs::write(dir.join("01 Track One.flac"), &written[0]).unwrap();
             std::fs::write(dir.join("02 Track Two.flac"), &written[1]).unwrap();
@@ -360,11 +330,11 @@ async fn per_track_files_without_a_seektable_store_points() {
 async fn a_seektable_of_placeholders_counts_as_none() {
     support::tracing_init();
     let flac = with_seektable(&noise_flac(25, 17), &[PLACEHOLDER; 4]);
-    let imported = import(
-        release("scrub-points-placeholders", &[("Track One", "0:25")]),
-        move |dir| std::fs::write(dir.join("01 Track One.flac"), &flac).unwrap(),
-    )
-    .await;
+    let imported =
+        import(release("scrub-points-placeholders", &[("Track One", "0:25")]), move |dir| {
+            std::fs::write(dir.join("01 Track One.flac"), &flac).unwrap()
+        })
+        .await;
     let frames = frames(&imported.album_dir.join("01 Track One.flac"));
     let points = imported.tracks[0].segments[0].scrub_points.as_slice();
     assert_points_every_ten_seconds(points, &frames, 0, u64::MAX);
@@ -377,11 +347,11 @@ async fn a_seektable_of_placeholders_counts_as_none() {
 async fn a_seektable_sparser_than_ten_seconds_stores_points() {
     support::tracing_init();
     let flac = with_seek_points(&noise_flac(45, 19), 30 * u64::from(SAMPLE_RATE), u64::MAX);
-    let imported = import(
-        release("scrub-points-sparse-seektable", &[("Track One", "0:45")]),
-        move |dir| std::fs::write(dir.join("01 Track One.flac"), &flac).unwrap(),
-    )
-    .await;
+    let imported =
+        import(release("scrub-points-sparse-seektable", &[("Track One", "0:45")]), move |dir| {
+            std::fs::write(dir.join("01 Track One.flac"), &flac).unwrap()
+        })
+        .await;
     let frames = frames(&imported.album_dir.join("01 Track One.flac"));
     let points = imported.tracks[0].segments[0].scrub_points.as_slice();
     assert_points_every_ten_seconds(points, &frames, 0, u64::MAX);
@@ -393,16 +363,12 @@ async fn a_seektable_sparser_than_ten_seconds_stores_points() {
 #[tokio::test]
 async fn a_seektable_that_stops_short_of_the_end_stores_points() {
     support::tracing_init();
-    let flac = with_seek_points(
-        &noise_flac(45, 23),
-        TEN_SECONDS,
-        20 * u64::from(SAMPLE_RATE),
-    );
-    let imported = import(
-        release("scrub-points-short-seektable", &[("Track One", "0:45")]),
-        move |dir| std::fs::write(dir.join("01 Track One.flac"), &flac).unwrap(),
-    )
-    .await;
+    let flac = with_seek_points(&noise_flac(45, 23), TEN_SECONDS, 20 * u64::from(SAMPLE_RATE));
+    let imported =
+        import(release("scrub-points-short-seektable", &[("Track One", "0:45")]), move |dir| {
+            std::fs::write(dir.join("01 Track One.flac"), &flac).unwrap()
+        })
+        .await;
     let frames = frames(&imported.album_dir.join("01 Track One.flac"));
     let points = imported.tracks[0].segments[0].scrub_points.as_slice();
     assert_points_every_ten_seconds(points, &frames, 0, u64::MAX);
@@ -416,11 +382,11 @@ async fn a_seektable_that_stops_short_of_the_end_stores_points() {
 async fn a_seektable_no_sparser_than_ten_seconds_stores_no_points() {
     support::tracing_init();
     let flac = with_seek_points(&noise_flac(45, 29), TEN_SECONDS, u64::MAX);
-    let imported = import(
-        release("scrub-points-dense-seektable", &[("Track One", "0:45")]),
-        move |dir| std::fs::write(dir.join("01 Track One.flac"), &flac).unwrap(),
-    )
-    .await;
+    let imported =
+        import(release("scrub-points-dense-seektable", &[("Track One", "0:45")]), move |dir| {
+            std::fs::write(dir.join("01 Track One.flac"), &flac).unwrap()
+        })
+        .await;
     let points = imported.tracks[0].segments[0].scrub_points.as_slice();
     assert!(points.is_empty(), "{points:?}");
 }
@@ -442,11 +408,8 @@ async fn a_file_with_a_seektable_stores_no_points() {
         ),
         move |dir| {
             for name in ["Test Album.flac", "Test Album.cue"] {
-                std::fs::write(
-                    dir.join(name),
-                    support::read_fixture(&fixture_dir.join(name)),
-                )
-                .unwrap();
+                std::fs::write(dir.join(name), support::read_fixture(&fixture_dir.join(name)))
+                    .unwrap();
             }
         },
     )
@@ -467,10 +430,7 @@ async fn per_track_mp3s_store_points() {
     let files = [noise_mp3(25, 11), noise_mp3(32, 13)];
     let written = files.clone();
     let imported = import(
-        release(
-            "scrub-points-per-track-mp3",
-            &[("Track One", "0:25"), ("Track Two", "0:32")],
-        ),
+        release("scrub-points-per-track-mp3", &[("Track One", "0:25"), ("Track Two", "0:32")]),
         move |dir| {
             std::fs::write(dir.join("01 Track One.mp3"), &written[0]).unwrap();
             std::fs::write(dir.join("02 Track Two.mp3"), &written[1]).unwrap();

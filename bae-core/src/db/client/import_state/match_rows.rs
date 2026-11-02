@@ -120,27 +120,18 @@ pub(super) fn store_match(
     let album_links_kind = album_links_column(&result.album_links);
     let (media_kind, media_entries): (&str, Vec<(Option<Medium>, u32)>) = match &result.media {
         StatedMedia::Undescribed => (MEDIA_UNDESCRIBED, Vec::new()),
-        StatedMedia::PerMedium(entries) => (
-            MEDIA_PER_MEDIUM,
-            entries.iter().map(|medium| (*medium, 1)).collect(),
-        ),
-        StatedMedia::Formats(formats) => (
-            MEDIA_FORMATS,
-            formats
-                .iter()
-                .map(|format| (format.medium, format.quantity))
-                .collect(),
-        ),
+        StatedMedia::PerMedium(entries) => {
+            (MEDIA_PER_MEDIUM, entries.iter().map(|medium| (*medium, 1)).collect())
+        }
+        StatedMedia::Formats(formats) => {
+            (MEDIA_FORMATS, formats.iter().map(|format| (format.medium, format.quantity)).collect())
+        }
     };
     let facts = super::super::pressing_columns::FactColumns::of(&result.facts());
     let document_failure =
         super::lookup_failure_columns::failure_columns(result.document_failure.as_ref());
-    let (content_hash, run, search, column) = (
-        owner.content_hash(),
-        owner.run(),
-        owner.search(),
-        owner.column(),
-    );
+    let (content_hash, run, search, column) =
+        (owner.content_hash(), owner.run(), owner.search(), owner.column());
     sql.execute(
         &format!(
             "INSERT INTO import_candidate_match \
@@ -246,14 +237,7 @@ pub(super) fn store_match(
             "INSERT INTO import_candidate_match_barcode \
                  (content_hash, identify_run, search_run, position, ordinal, barcode) \
              VALUES (?, ?, ?, ?, ?, ?)",
-            params![
-                content_hash,
-                run,
-                search,
-                position,
-                ordinal_column(ordinal)?,
-                barcode
-            ],
+            params![content_hash, run, search, position, ordinal_column(ordinal)?, barcode],
         )?;
     }
     for (ordinal, (medium, quantity)) in media_entries.iter().enumerate() {
@@ -360,9 +344,7 @@ fn album_links_column(links: &AlbumLinks) -> &'static str {
 
 pub(super) fn ordinal_column(ordinal: usize) -> Result<i64, DbError> {
     i64::try_from(ordinal).map_err(|error| {
-        DbError::Message(format!(
-            "a match's list is longer than SQLite counts: {error}"
-        ))
+        DbError::Message(format!("a match's list is longer than SQLite counts: {error}"))
     })
 }
 
@@ -483,14 +465,7 @@ pub(super) fn match_of(columns: MatchColumns, entries: MatchEntries) -> Result<M
         mut result,
         named_note,
     } = columns;
-    let MatchEntries {
-        labels,
-        barcodes,
-        cover_copies,
-        media,
-        links,
-        album_links,
-    } = entries;
+    let MatchEntries { labels, barcodes, cover_copies, media, links, album_links } = entries;
     let mismatch = |what: &str| {
         DbError::Message(format!(
             "match {position} of {content_hash} holds {media_kind} media but {what}"
@@ -521,10 +496,7 @@ pub(super) fn match_of(columns: MatchColumns, entries: MatchEntries) -> Result<M
         MEDIA_FORMATS => StatedMedia::Formats(
             media
                 .into_iter()
-                .map(|stored| StatedFormat {
-                    medium: stored.medium,
-                    quantity: stored.quantity,
-                })
+                .map(|stored| StatedFormat { medium: stored.medium, quantity: stored.quantity })
                 .collect(),
         ),
         other => return Err(unreadable("media_kind", other)),
@@ -541,10 +513,7 @@ pub(super) fn match_of(columns: MatchColumns, entries: MatchEntries) -> Result<M
         .collect::<Result<_, DbError>>()?;
     result.album_links = match album_links_kind.as_str() {
         ALBUM_LINKS_READ => AlbumLinks::Read(
-            album_links
-                .into_iter()
-                .map(AlbumLinkRow::album)
-                .collect::<Result<_, DbError>>()?,
+            album_links.into_iter().map(AlbumLinkRow::album).collect::<Result<_, DbError>>()?,
         ),
         ALBUM_LINKS_NOT_ASKED | ALBUM_LINKS_UNREAD if !album_links.is_empty() => {
             return Err(DbError::Message(format!(
@@ -567,16 +536,10 @@ pub(super) fn match_of(columns: MatchColumns, entries: MatchEntries) -> Result<M
                 "match {position} of {content_hash} names pressing row {pressing}: {error}"
             ))
         })?;
-        Ok(ListedMatch {
-            pressing,
-            named_note: None,
-        })
+        Ok(ListedMatch { pressing, named_note: None })
     };
     let listing = match listing.as_str() {
-        LISTING_OFFERED => Listing::Offered(ListedMatch {
-            named_note,
-            ..listed(pressing)?
-        }),
+        LISTING_OFFERED => Listing::Offered(ListedMatch { named_note, ..listed(pressing)? }),
         LISTING_NARROWED_OUT if named_note.is_none() => Listing::NarrowedOut(listed(pressing)?),
         LISTING_UNLISTED if pressing.is_none() && named_note.is_none() => Listing::Unlisted,
         LISTING_RETURNED if pressing.is_none() && named_note.is_none() => Listing::Returned {
@@ -594,11 +557,7 @@ pub(super) fn match_of(columns: MatchColumns, entries: MatchEntries) -> Result<M
         }
         other => return Err(unreadable("listing", other)),
     };
-    Ok(MatchRow {
-        position,
-        result,
-        listing,
-    })
+    Ok(MatchRow { position, result, listing })
 }
 
 pub(super) fn read_match_row(row: &Row<'_>) -> Result<MatchColumns, DbError> {
@@ -621,16 +580,13 @@ pub(super) fn read_match_row(row: &Row<'_>) -> Result<MatchColumns, DbError> {
         Some("nothing") => Some(SourceTracks::Nothing),
         Some("unreadable") => Some(SourceTracks::Unreadable),
         Some("listed") => {
-            let count: i64 = row
-                .get::<_, Option<i64>>("source_tracks_count")?
-                .ok_or_else(|| {
+            let count: i64 =
+                row.get::<_, Option<i64>>("source_tracks_count")?.ok_or_else(|| {
                     DbError::Message("a listed source tracklist states no count".to_string())
                 })?;
             Some(SourceTracks::Listed {
                 count: u32::try_from(count).map_err(|error| {
-                    DbError::Message(format!(
-                        "a source tracklist's count is out of range: {error}"
-                    ))
+                    DbError::Message(format!("a source tracklist's count is out of range: {error}"))
                 })?,
             })
         }

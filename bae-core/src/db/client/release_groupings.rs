@@ -52,10 +52,7 @@ impl GroupingChanges {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum GroupingFacts {
     /// A folder's reading: the folder, and whether its releases are one.
-    Anchored {
-        folder: FolderReleaseDecisionKey,
-        decision: FolderReleaseDecision,
-    },
+    Anchored { folder: FolderReleaseDecisionKey, decision: FolderReleaseDecision },
     /// Releases the person read as one, by key, in play order.
     Picked { members: Vec<CandidateKey> },
 }
@@ -98,11 +95,9 @@ pub(super) fn skipped_on(
 ) -> Result<bool, DbError> {
     match &candidate.grouping {
         Some(grouping) => sql
-            .query_row(
-                "SELECT skipped FROM release_grouping WHERE key = ?",
-                [grouping],
-                |row| row.get(0),
-            )
+            .query_row("SELECT skipped FROM release_grouping WHERE key = ?", [grouping], |row| {
+                row.get(0)
+            })
             .optional()?
             .ok_or_else(|| DbError::Message(format!("release {grouping} has no grouping"))),
         None => Ok(sql.query_row(
@@ -128,10 +123,7 @@ pub(super) fn rebuild_groupings(
          UNION SELECT key FROM release_grouping \
          WHERE parent_folder IN (SELECT unhex(value) FROM json_each(?)) \
          ORDER BY 1",
-        [
-            touched,
-            path_column::hex_list(sidecars.iter().map(PathBuf::as_path)),
-        ],
+        [touched, path_column::hex_list(sidecars.iter().map(PathBuf::as_path))],
         |row| row.get(0),
     )?;
     let mut changes = GroupingChanges::default();
@@ -159,38 +151,26 @@ fn rebuild_grouping(sql: &CovenWrite<'_>, key: &CandidateKey) -> Result<Grouping
                     return blocked(
                         sql,
                         key,
-                        &GroupingBlock::SourceChanged {
-                            folder: candidate.name,
-                        },
+                        &GroupingBlock::SourceChanged { folder: candidate.name },
                     );
                 }
                 ScanItem::Invalid(candidate) => {
                     return blocked(
                         sql,
                         key,
-                        &GroupingBlock::SourceChanged {
-                            folder: candidate.name,
-                        },
+                        &GroupingBlock::SourceChanged { folder: candidate.name },
                     );
                 }
                 ScanItem::Decided { .. } | ScanItem::Sidecar(_) => {
                     return blocked(
                         sql,
                         key,
-                        &GroupingBlock::SourceGone {
-                            folder: member.to_string(),
-                        },
+                        &GroupingBlock::SourceGone { folder: member.to_string() },
                     );
                 }
             },
             None => {
-                return blocked(
-                    sql,
-                    key,
-                    &GroupingBlock::SourceGone {
-                        folder: member.to_string(),
-                    },
-                )
+                return blocked(sql, key, &GroupingBlock::SourceGone { folder: member.to_string() })
             }
         }
     }
@@ -202,12 +182,11 @@ fn rebuild_grouping(sql: &CovenWrite<'_>, key: &CandidateKey) -> Result<Grouping
     // Record where the grouping sits before anything can block it, so other
     // groupings in that folder find it; leaving a folder rebuilds the ones
     // blocked there.
-    let sits_in = crate::import::grouping::shared_parent(members.iter().map(|member| {
-        (
-            member.watched_folder_path.as_path(),
-            member.file_root.as_path(),
-        )
-    }));
+    let sits_in = crate::import::grouping::shared_parent(
+        members
+            .iter()
+            .map(|member| (member.watched_folder_path.as_path(), member.file_root.as_path())),
+    );
     let sits_in_bytes = sits_in.as_deref().map(coven::path_bytes);
     let (sat_in, was_reading): (Option<Vec<u8>>, bool) = sql.query_row(
         "SELECT parent_folder, reads_parent_files FROM release_grouping WHERE key = ?",
@@ -237,12 +216,7 @@ fn rebuild_grouping(sql: &CovenWrite<'_>, key: &CandidateKey) -> Result<Grouping
         &root,
         &members
             .into_iter()
-            .map(|member| {
-                (
-                    member,
-                    crate::import::folder_scanner::CandidateFileEdits::default(),
-                )
-            })
+            .map(|member| (member, crate::import::folder_scanner::CandidateFileEdits::default()))
             .collect::<Vec<_>>(),
         parent.valid(),
     )
@@ -253,9 +227,7 @@ fn rebuild_grouping(sql: &CovenWrite<'_>, key: &CandidateKey) -> Result<Grouping
             changes.extend(blocked(
                 sql,
                 key,
-                &GroupingBlock::Unbuildable {
-                    detail: error.to_string(),
-                },
+                &GroupingBlock::Unbuildable { detail: error.to_string() },
             )?);
             return Ok(changes);
         }
@@ -277,20 +249,11 @@ fn rebuild_grouping(sql: &CovenWrite<'_>, key: &CandidateKey) -> Result<Grouping
         // name, which a release can't hold (`InvalidReason::SameName`).
         ParentFiles::None | ParentFiles::Files(_)
             if crate::import::folder_scanner::shared_name(
-                candidate
-                    .files
-                    .files
-                    .iter()
-                    .map(|entry| entry.file.relative_path.as_str()),
+                candidate.files.files.iter().map(|entry| entry.file.relative_path.as_str()),
             )
             .is_some() =>
         {
-            let files = candidate
-                .files
-                .files
-                .iter()
-                .map(SkippedFile::of_release_file)
-                .collect();
+            let files = candidate.files.files.iter().map(SkippedFile::of_release_file).collect();
             invalid(candidate, files)
         }
         ParentFiles::None | ParentFiles::Files(_) => {
@@ -313,9 +276,8 @@ fn rebuild_grouping(sql: &CovenWrite<'_>, key: &CandidateKey) -> Result<Grouping
                         .map(|entry| {
                             let mut file = SkippedFile::of_release_file(entry);
                             if file.relative_path == unreadable.path {
-                                file.role = ProposedRole::DamagedAudio {
-                                    damage: AudioDamage::Unreadable,
-                                };
+                                file.role =
+                                    ProposedRole::DamagedAudio { damage: AudioDamage::Unreadable };
                             }
                             file
                         })
@@ -424,17 +386,12 @@ fn parent_files_on(
     let named = coven::path_text(folder.file_name().map_or(folder, Path::new));
     if !reading {
         let reader: Option<String> = sql
-            .query_row(
-                PARENT_FILES_READER,
-                params![coven::path_bytes(folder), key],
-                |row| row.get(0),
-            )
+            .query_row(PARENT_FILES_READER, params![coven::path_bytes(folder), key], |row| {
+                row.get(0)
+            })
             .optional()?;
         if let Some(reader) = reader {
-            return Ok(Err(GroupingBlock::FolderFilesTaken {
-                folder: named,
-                release: reader,
-            }));
+            return Ok(Err(GroupingBlock::FolderFilesTaken { folder: named, release: reader }));
         }
         let contested: bool = sql.query_row(
             "SELECT EXISTS(SELECT 1 FROM release_grouping WHERE parent_folder = ? AND key != ?)",
@@ -505,12 +462,7 @@ fn anchored_at(
     anchor: &Path,
 ) -> Result<FolderReleaseDecisionKey, DbError> {
     let root = super::import_state::watched_folder_among_on(sql, anchor.ancestors())?.ok_or_else(
-        || {
-            DbError::Message(format!(
-                "{} is under no watched folder",
-                coven::path_text(anchor)
-            ))
-        },
+        || DbError::Message(format!("{} is under no watched folder", coven::path_text(anchor))),
     )?;
     Ok(FolderReleaseDecisionKey {
         relative_folder: super::import_state::relative_below(&root, anchor)?,
@@ -551,10 +503,9 @@ pub(super) fn block_of(
     Ok(Some(match (kind.as_str(), holder) {
         ("source_changed", None) => GroupingBlock::SourceChanged { folder: subject },
         ("source_gone", None) => GroupingBlock::SourceGone { folder: subject },
-        ("folder_files_taken", Some(release)) => GroupingBlock::FolderFilesTaken {
-            folder: subject,
-            release,
-        },
+        ("folder_files_taken", Some(release)) => {
+            GroupingBlock::FolderFilesTaken { folder: subject, release }
+        }
         ("folder_files_contested", None) => GroupingBlock::FolderFilesContested { folder: subject },
         ("folder_files_downloading", None) => {
             GroupingBlock::FolderFilesDownloading { folder: subject }
@@ -681,12 +632,11 @@ impl Database {
         let key_for_compose = key.clone();
         // Check for a refusal on the read connection; the write checks again
         // and fails if the store changed in between.
-        let sits_in = crate::import::grouping::shared_parent(members.iter().map(|member| {
-            (
-                member.watched_folder_path.as_path(),
-                member.file_root.as_path(),
-            )
-        }));
+        let sits_in = crate::import::grouping::shared_parent(
+            members
+                .iter()
+                .map(|member| (member.watched_folder_path.as_path(), member.file_root.as_path())),
+        );
         let refusal_key = key.clone();
         let refused = self
             .read(move |sql| {
@@ -706,12 +656,10 @@ impl Database {
                 )?()?;
                 with_edits.push((member.clone(), edits));
             }
-            let sits_in = crate::import::grouping::shared_parent(members.iter().map(|member| {
-                (
-                    member.watched_folder_path.as_path(),
-                    member.file_root.as_path(),
-                )
-            }));
+            let sits_in =
+                crate::import::grouping::shared_parent(members.iter().map(|member| {
+                    (member.watched_folder_path.as_path(), member.file_root.as_path())
+                }));
             let parent = parent_files_on(sql, &key_for_compose, sits_in.as_deref(), false)?
                 .map_err(|block| {
                     DbError::Message(format!("{key_for_compose} could not be combined: {block}"))
@@ -786,12 +734,7 @@ impl Database {
                     "INSERT INTO release_grouping_member \
                          (grouping_key, position, member_key, member_folder) \
                      VALUES (?, ?, ?, ?)",
-                    params![
-                        key,
-                        position as i64,
-                        member.key(),
-                        coven::path_bytes(&member.path)
-                    ],
+                    params![key, position as i64, member.key(), coven::path_bytes(&member.path)],
                 )?;
                 // A folder read into the combined release leaves the queue, and
                 // its identification ends with it.
@@ -812,9 +755,9 @@ impl Database {
             if changes.written.is_empty() {
                 // Nothing of it is kept: the whole write rolls back.
                 return match load_block_on(sql, &key)? {
-                    Some(block) => Err(DbError::Message(format!(
-                        "{key} could not be combined: {block}"
-                    ))),
+                    Some(block) => {
+                        Err(DbError::Message(format!("{key} could not be combined: {block}")))
+                    }
                     None => Err(DbError::Message(format!(
                         "{key} built no release from the folders it takes in"
                     ))),

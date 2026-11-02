@@ -106,10 +106,7 @@ pub(crate) fn read_groups(
     stated: impl Fn(&str) -> Option<AlbumLinks>,
 ) -> Vec<GroupLinks> {
     let mut groups: Vec<(&str, Vec<&str>)> = Vec::new();
-    for result in list
-        .iter()
-        .filter(|result| result.source == Catalog::MusicBrainz)
-    {
+    for result in list.iter().filter(|result| result.source == Catalog::MusicBrainz) {
         let Some(group) = result.source_group_id.as_deref() else {
             continue;
         };
@@ -144,10 +141,7 @@ pub(crate) fn read_groups(
             } else {
                 found.settle()
             };
-            Some(GroupLinks {
-                group: group.to_string(),
-                links,
-            })
+            Some(GroupLinks { group: group.to_string(), links })
         })
         .collect()
 }

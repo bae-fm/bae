@@ -30,10 +30,7 @@ async fn storage_page(
     offset: u64,
     limit: u64,
 ) -> StoragePage {
-    manager
-        .get_storage_page(&sort_by_album_title_asc(), filter, offset, limit)
-        .await
-        .unwrap()
+    manager.get_storage_page(&sort_by_album_title_asc(), filter, offset, limit).await.unwrap()
 }
 
 #[tokio::test]
@@ -83,10 +80,7 @@ async fn storage_page_sorts_album_title_descending() {
         field: crate::db::StorageSortField::AlbumTitle,
         direction: crate::db::SortDirection::Descending,
     };
-    let page = manager
-        .get_storage_page(&sort, crate::db::StorageFilter::All, 0, 10)
-        .await
-        .unwrap();
+    let page = manager.get_storage_page(&sort, crate::db::StorageFilter::All, 0, 10).await.unwrap();
     let titles: Vec<_> = page.rows.iter().map(|r| r.album.title.clone()).collect();
     assert_eq!(titles, vec!["Album 2", "Album 1", "Album 0"]);
 }
@@ -98,7 +92,7 @@ async fn storage_page_sorts_album_title_descending() {
 #[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn storage_page_rows_carry_state_appropriate_actions() {
-    use crate::album_detail::ReleaseStorageAction::{DetachAudio, Upload, Pin, Unpin};
+    use crate::album_detail::ReleaseStorageAction::{DetachAudio, Pin, Unpin, Upload};
 
     let (manager, temp_dir) = setup_test_manager().await;
     connect_test_cloud_with_sync_loop(&manager).await;
@@ -168,11 +162,7 @@ async fn album_detail_releases_carry_their_own_pin_state() {
         pressings.push((release.id, pin));
     }
 
-    let detail = manager
-        .find_album_detail(&album.id)
-        .await
-        .unwrap()
-        .expect("the album surfaces");
+    let detail = manager.find_album_detail(&album.id).await.unwrap().expect("the album surfaces");
     let pinned: std::collections::HashMap<_, _> = detail
         .releases
         .iter()
@@ -207,8 +197,15 @@ async fn storage_page_rows_have_no_actions_without_cloud_home() {
 async fn storage_page_local_filter_matches_local_path() {
     let (manager, temp_dir) = setup_test_manager().await;
     connect_test_cloud(&manager).await;
-    let remote_id = uploaded_release(&manager, &temp_dir.path().join("remote"), "Remote Album", false).await;
-    let local_release = insert_local_release_with_files(&manager, &temp_dir.path().join("local"), "Local Album", &[("track.flac", b"local")]).await;
+    let remote_id =
+        uploaded_release(&manager, &temp_dir.path().join("remote"), "Remote Album", false).await;
+    let local_release = insert_local_release_with_files(
+        &manager,
+        &temp_dir.path().join("local"),
+        "Local Album",
+        &[("track.flac", b"local")],
+    )
+    .await;
 
     let local = storage_page(&manager, crate::db::StorageFilter::Local, 0, 10).await;
     assert_eq!(local.rows.len(), 1);
@@ -234,7 +231,13 @@ async fn storage_count_matches_filtered_page_total() {
     connect_test_cloud(&manager).await;
     let mut inserted_local = None;
     for i in 0..3 {
-        let release = insert_local_release_with_files(&manager, &temp_dir.path().join(format!("album-{i}")), &format!("Album {i}"), &[("track.flac", b"track")]).await;
+        let release = insert_local_release_with_files(
+            &manager,
+            &temp_dir.path().join(format!("album-{i}")),
+            &format!("Album {i}"),
+            &[("track.flac", b"track")],
+        )
+        .await;
         if i == 1 {
             inserted_local = Some(release.id);
         } else {
@@ -243,27 +246,9 @@ async fn storage_count_matches_filtered_page_total() {
         }
     }
 
-    assert_eq!(
-        manager
-            .get_storage_count(crate::db::StorageFilter::All)
-            .await
-            .unwrap(),
-        3
-    );
-    assert_eq!(
-        manager
-            .get_storage_count(crate::db::StorageFilter::Local)
-            .await
-            .unwrap(),
-        1
-    );
-    assert_eq!(
-        manager
-            .get_storage_count(crate::db::StorageFilter::Remote)
-            .await
-            .unwrap(),
-        2
-    );
+    assert_eq!(manager.get_storage_count(crate::db::StorageFilter::All).await.unwrap(), 3);
+    assert_eq!(manager.get_storage_count(crate::db::StorageFilter::Local).await.unwrap(), 1);
+    assert_eq!(manager.get_storage_count(crate::db::StorageFilter::Remote).await.unwrap(), 2);
 
     let all_page = storage_page(&manager, crate::db::StorageFilter::All, 0, 10).await;
     assert_eq!(all_page.total_count, 3);
@@ -283,19 +268,36 @@ async fn storage_total_size_matches_page_total_size_sum() {
     let (manager, temp_dir) = setup_test_manager().await;
     connect_test_cloud(&manager).await;
 
-    insert_local_release_with_files(&manager, &temp_dir.path().join("local"), "Local Album", &[("a.flac", &vec![0u8; 1_000])]).await;
-    uploaded_release_with_files(&manager, &temp_dir.path().join("remote"), "Remote Album", &[("a.flac", &[0u8; 100])], false).await;
-    insert_release_with_queued_uploads(&manager, &temp_dir.path().join("uploading"), "Uploading Album", &[("a.flac", &vec![0u8; 10_000])]).await;
+    insert_local_release_with_files(
+        &manager,
+        &temp_dir.path().join("local"),
+        "Local Album",
+        &[("a.flac", &vec![0u8; 1_000])],
+    )
+    .await;
+    uploaded_release_with_files(
+        &manager,
+        &temp_dir.path().join("remote"),
+        "Remote Album",
+        &[("a.flac", &[0u8; 100])],
+        false,
+    )
+    .await;
+    insert_release_with_queued_uploads(
+        &manager,
+        &temp_dir.path().join("uploading"),
+        "Uploading Album",
+        &[("a.flac", &vec![0u8; 10_000])],
+    )
+    .await;
 
     for filter in [
         crate::db::StorageFilter::All,
         crate::db::StorageFilter::Local,
         crate::db::StorageFilter::Remote,
     ] {
-        let page = manager
-            .get_storage_page(&sort_by_album_title_asc(), filter, 0, 10)
-            .await
-            .unwrap();
+        let page =
+            manager.get_storage_page(&sort_by_album_title_asc(), filter, 0, 10).await.unwrap();
         let page_sum: i64 = page.rows.iter().map(|row| row.release.total_size).sum();
 
         let aggregate = manager.get_storage_total_size(filter).await.unwrap();
@@ -308,24 +310,15 @@ async fn storage_total_size_matches_page_total_size_sum() {
     // A release stays local while its upload is pending: its rows name no
     // file until storage holds it.
     assert_eq!(
-        manager
-            .get_storage_total_size(crate::db::StorageFilter::All)
-            .await
-            .unwrap(),
+        manager.get_storage_total_size(crate::db::StorageFilter::All).await.unwrap(),
         11_100
     );
     assert_eq!(
-        manager
-            .get_storage_total_size(crate::db::StorageFilter::Local)
-            .await
-            .unwrap(),
+        manager.get_storage_total_size(crate::db::StorageFilter::Local).await.unwrap(),
         11_000
     );
     assert_eq!(
-        manager
-            .get_storage_total_size(crate::db::StorageFilter::Remote)
-            .await
-            .unwrap(),
+        manager.get_storage_total_size(crate::db::StorageFilter::Remote).await.unwrap(),
         100
     );
 }
@@ -398,11 +391,7 @@ async fn pin_release_counts_audio_and_keeps_cover_evictable() {
 
     let expected_total = file_bytes.len() as u64;
     assert_eq!(
-        manager
-            .initial_download_progress(&release.id)
-            .await
-            .unwrap()
-            .bytes_total,
+        manager.initial_download_progress(&release.id).await.unwrap().bytes_total,
         expected_total,
         "the pane's denominator counts every file the pin fetches"
     );
@@ -445,25 +434,17 @@ async fn a_pin_reaches_the_storage_view_without_a_sync_cycle() {
     manager.upload_release(&release.id, false).await.unwrap();
     manager.drain_uploads_expecting_work().await.unwrap();
 
-    let services = crate::library::AppServices::for_test(manager.clone())
-        .await
-        .unwrap();
+    let services = crate::library::AppServices::for_test(manager.clone()).await.unwrap();
     let values = services.subscribe_storage_browse(crate::library::StorageBrowseView {
-            sort: crate::db::StorageSortCriterion {
-                field: crate::db::StorageSortField::AlbumTitle,
-                direction: crate::db::SortDirection::Ascending,
-            },
-            filter: crate::db::StorageFilter::All,
-            search: String::new(),
-            windows: [crate::library::LibraryPageWindow {
-                offset: 0,
-                limit: 50,
-            }]
-            .into_iter()
-            .collect(),
-            selected: Default::default(),
+        sort: crate::db::StorageSortCriterion {
+            field: crate::db::StorageSortField::AlbumTitle,
+            direction: crate::db::SortDirection::Ascending,
         },
-    );
+        filter: crate::db::StorageFilter::All,
+        search: String::new(),
+        windows: [crate::library::LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect(),
+        selected: Default::default(),
+    });
     let pinned = |value: &crate::library::StorageBrowseSnapshot| {
         value
             .windows
@@ -475,10 +456,7 @@ async fn a_pin_reaches_the_storage_view_without_a_sync_cycle() {
     let first = values.next().await.unwrap();
     assert_eq!(pinned(&first), Some(false));
 
-    manager
-        .pin_release_files_with_progress(&release.id, |_| {})
-        .await
-        .unwrap();
+    manager.pin_release_files_with_progress(&release.id, |_| {}).await.unwrap();
 
     loop {
         let value = tokio::time::timeout(std::time::Duration::from_secs(5), values.next())
@@ -508,15 +486,10 @@ async fn a_pin_the_provider_refuses_is_a_cloud_setup_failure() {
     manager.upload_release(&release.id, false).await.unwrap();
     manager.drain_uploads_expecting_work().await.unwrap();
     let file = release_files(&manager, &release.id).await[0].file;
-    manager
-        .evict_file_for_test(file)
-        .await
-        .unwrap();
+    manager.evict_file_for_test(file).await.unwrap();
 
-    for failure in [
-        coven::StorageFailure::Authentication,
-        coven::StorageFailure::ContainerNotFound,
-    ] {
+    for failure in [coven::StorageFailure::Authentication, coven::StorageFailure::ContainerNotFound]
+    {
         let mut faults = coven::Faults::none();
         faults.fail_next = 1;
         faults.failure = failure;
@@ -552,10 +525,7 @@ async fn a_pin_the_cloud_cannot_serve_is_a_network_failure() {
     manager.upload_release(&release.id, false).await.unwrap();
     manager.drain_uploads_expecting_work().await.unwrap();
     let file = release_files(&manager, &release.id).await[0].file;
-    manager
-        .evict_file_for_test(file)
-        .await
-        .unwrap();
+    manager.evict_file_for_test(file).await.unwrap();
     home.set_online(false);
 
     let error = manager
@@ -575,7 +545,10 @@ async fn a_pin_the_cloud_cannot_serve_is_a_network_failure() {
 async fn making_a_release_remote_without_storage_requires_configuration() {
     let (manager, _temp_dir, _album, release) = manager_with_release().await;
     let transfer = crate::storage::transfer::ReleaseTransfer::new(
-        manager.library.clone(), release.id, ReleaseStorageAction::Upload);
+        manager.library.clone(),
+        release.id,
+        ReleaseStorageAction::Upload,
+    );
     let error = transfer.start().await.expect_err("storage must be configured");
     assert_eq!(error.category(), crate::ui::UiErrorCategory::Config, "{error}");
 }
@@ -598,9 +571,7 @@ async fn next_storage_value(
 async fn the_storage_view_moves_one_subscription() {
     let (manager, _temp_dir) = setup_test_manager().await;
     seed_albums(&manager, 3).await;
-    let services = crate::library::AppServices::for_test(manager.clone())
-        .await
-        .unwrap();
+    let services = crate::library::AppServices::for_test(manager.clone()).await.unwrap();
     let window = |offset, limit| crate::library::LibraryPageWindow { offset, limit };
     let view = |direction, filter, windows: &[crate::library::LibraryPageWindow]| {
         crate::library::StorageBrowseView {
@@ -618,53 +589,34 @@ async fn the_storage_view_moves_one_subscription() {
         value
             .windows
             .iter()
-            .map(|window| {
-                window
-                    .rows
-                    .iter()
-                    .map(|row| row.album.title.clone())
-                    .collect::<Vec<_>>()
-            })
+            .map(|window| window.rows.iter().map(|row| row.album.title.clone()).collect::<Vec<_>>())
             .collect::<Vec<_>>()
     };
     let ascending = crate::db::SortDirection::Ascending;
     let all = crate::db::StorageFilter::All;
-    let values = services.subscribe_storage_browse(view(ascending, all, &[window(0, 2)]),
-    );
+    let values = services.subscribe_storage_browse(view(ascending, all, &[window(0, 2)]));
 
     let first = next_storage_value(&values).await;
     assert_eq!(titles(&first), vec![vec!["Album 0", "Album 1"]]);
     assert_eq!(first.total_count, 3);
 
-    values
-        .set(view(ascending, all, &[window(0, 1), window(2, 1)]))
-        .unwrap();
+    values.set(view(ascending, all, &[window(0, 1), window(2, 1)])).unwrap();
     let scrolled = next_storage_value(&values).await;
     assert_eq!(titles(&scrolled), vec![vec!["Album 0"], vec!["Album 2"]]);
     assert_eq!(scrolled.total_count, 3, "one count answers every window");
 
     let descending = crate::db::SortDirection::Descending;
-    values
-        .set(view(descending, all, &[window(0, 2)]))
-        .unwrap();
+    values.set(view(descending, all, &[window(0, 2)])).unwrap();
     let resorted = next_storage_value(&values).await;
     assert_eq!(resorted.sort.direction, descending);
     assert_eq!(titles(&resorted), vec![vec!["Album 2", "Album 1"]]);
 
     let local = crate::db::StorageFilter::Local;
-    values
-        .set(view(descending, local, &[window(0, 2)]))
-        .unwrap();
+    values.set(view(descending, local, &[window(0, 2)])).unwrap();
     let filtered = next_storage_value(&values).await;
     assert_eq!(filtered.filter, local);
-    assert_eq!(
-        filtered.total_count,
-        manager.get_storage_count(local).await.unwrap()
-    );
-    assert_eq!(
-        filtered.total_size,
-        manager.get_storage_total_size(local).await.unwrap()
-    );
+    assert_eq!(filtered.total_count, manager.get_storage_count(local).await.unwrap());
+    assert_eq!(filtered.total_size, manager.get_storage_total_size(local).await.unwrap());
 }
 
 /// Uploading reads this device's originals, so every surface that offers it —
@@ -697,45 +649,37 @@ async fn check_upload_offered(
     )
     .await;
 
-    let offered = |release_id: String| {
-        async move {
-            let detail = manager
-                .find_release_detail(&release_id)
-                .await
-                .unwrap()
-                .expect("the release exists")
-                .summary
-                .storage_actions;
-            let summary = manager
-                .find_release_storage_summary(&release_id)
-                .await
-                .unwrap()
-                .expect("the release exists")
-                .storage_actions;
-            let row = storage_page(manager, crate::db::StorageFilter::All, 0, 10)
-                .await
-                .rows
-                .into_iter()
-                .find(|row| row.release.id == release_id)
-                .expect("the release is listed")
-                .release
-                .storage_actions;
-            assert_eq!(detail, summary, "the detail and summary agree");
-            assert_eq!(detail, row, "the detail and the storage row agree");
-            detail
-        }
+    let offered = |release_id: String| async move {
+        let detail = manager
+            .find_release_detail(&release_id)
+            .await
+            .unwrap()
+            .expect("the release exists")
+            .summary
+            .storage_actions;
+        let summary = manager
+            .find_release_storage_summary(&release_id)
+            .await
+            .unwrap()
+            .expect("the release exists")
+            .storage_actions;
+        let row = storage_page(manager, crate::db::StorageFilter::All, 0, 10)
+            .await
+            .rows
+            .into_iter()
+            .find(|row| row.release.id == release_id)
+            .expect("the release is listed")
+            .release
+            .storage_actions;
+        assert_eq!(detail, summary, "the detail and summary agree");
+        assert_eq!(detail, row, "the detail and the storage row agree");
+        detail
     };
 
-    assert_eq!(
-        offered(here.id.clone()).await,
-        vec![ReleaseStorageAction::Upload]
-    );
+    assert_eq!(offered(here.id.clone()).await, vec![ReleaseStorageAction::Upload]);
     assert_eq!(offered(elsewhere.id.clone()).await, Vec::new());
     std::fs::remove_file(originals.join("track.flac")).unwrap();
-    assert_eq!(
-        offered(here.id.clone()).await,
-        vec![ReleaseStorageAction::Upload]
-    );
+    assert_eq!(offered(here.id.clone()).await, vec![ReleaseStorageAction::Upload]);
 }
 
 /// The Storage Manager row of a release with files waiting to upload says
@@ -785,15 +729,9 @@ async fn a_storage_row_reads_its_queued_upload_from_the_queue() {
     assert_eq!(
         queued.upload,
         Some(crate::album_detail::ReleaseUpload {
-            progress: crate::library::UploadProgress {
-                queued: 2,
-                uploading: 0
-            },
+            progress: crate::library::UploadProgress { queued: 2, uploading: 0 },
             summary: vec![crate::library::TransferCount {
-                label: crate::library::CountLabel {
-                    key: "core.queue.queued".into(),
-                    count: 2,
-                },
+                label: crate::library::CountLabel { key: "core.queue.queued".into(), count: 2 },
                 stage: crate::library::TransferStage::Waiting,
             }],
         })
@@ -828,9 +766,7 @@ async fn a_storage_row_counts_the_file_being_sent() {
         },
         filter: crate::db::StorageFilter::All,
         search: String::new(),
-        windows: [crate::library::LibraryPageWindow { offset: 0, limit: 50 }]
-            .into_iter()
-            .collect(),
+        windows: [crate::library::LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect(),
         selected: Default::default(),
     });
     home.set_faults(coven::Faults {
@@ -892,13 +828,7 @@ async fn the_sync_activity_follows_a_send_as_it_starts_and_ends() {
             break uploads;
         }
     };
-    assert_eq!(
-        sending,
-        crate::library::UploadsInFlight {
-            sending: 1,
-            waiting: 0,
-        }
-    );
+    assert_eq!(sending, crate::library::UploadsInFlight { sending: 1, waiting: 0 });
     while crate::followed::value_matching(&mut activity, |_| true).await.uploads.is_some() {}
     drain.await.unwrap().unwrap();
 }
@@ -924,13 +854,8 @@ async fn the_upload_pause_follows_each_change_with_an_empty_queue() {
 async fn setting_up_s3_storage_tells_each_step_coven_reports() {
     use coven::StorageSetupStep::*;
     let (manager, _temp) = setup_test_manager().await;
-    let coven::StorageConfig::S3 {
-        bucket,
-        region,
-        endpoint,
-        prefix,
-        profile,
-    } = manager.storage.config()
+    let coven::StorageConfig::S3 { bucket, region, endpoint, prefix, profile } =
+        manager.storage.config()
     else {
         panic!("the memory provider uses S3 configuration");
     };
@@ -964,17 +889,10 @@ async fn setting_up_s3_storage_tells_each_step_coven_reports() {
                 .unwrap_or_else(|| panic!("a step S3 setup doesn't run: {progress:?}"))
         })
         .collect();
-    assert!(
-        positions.windows(2).all(|pair| pair[0] <= pair[1]),
-        "{told:?}"
-    );
+    assert!(positions.windows(2).all(|pair| pair[0] <= pair[1]), "{told:?}");
     assert_eq!(
         told.last(),
-        Some(&coven::Progress {
-            step: CreatingStore,
-            done: 1,
-            total: 1
-        }),
+        Some(&coven::Progress { step: CreatingStore, done: 1, total: 1 }),
         "{told:?}"
     );
 }

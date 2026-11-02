@@ -9,21 +9,22 @@ async fn linked_cover_gallery_can_be_empty() {
     let (handle, _tmp, key, _) = pane_fixture().await;
     handle
         .library_manager
-        .set_discogs_key(
-            "test-discogs-token",
-            crate::config::DiscogsValidation::Valid,
-        ).await
+        .set_discogs_key("test-discogs-token", crate::config::DiscogsValidation::Valid)
+        .await
         .unwrap();
     let release_id = "70000003";
     seed_discogs_release(handle.library_manager.providers(), release_id);
     handle
-        .select_candidate_release(key.clone(), crate::import::PressingLink {
+        .select_candidate_release(
+            key.clone(),
+            crate::import::PressingLink {
                 record: crate::import::MetadataRef::new(
                     bae_catalogs::catalog::Catalog::Discogs,
                     release_id.to_string(),
                 ),
                 partners: vec![],
-            }, crate::import::CatalogApplySteps::unread(),
+            },
+            crate::import::CatalogApplySteps::unread(),
         )
         .await
         .unwrap();
@@ -32,10 +33,7 @@ async fn linked_cover_gallery_can_be_empty() {
         .await
         .unwrap();
     shut_down(handle).await;
-    assert_eq!(
-        gallery,
-        crate::import::cover_art::RemoteCoverGallery::Linked(vec![])
-    );
+    assert_eq!(gallery, crate::import::cover_art::RemoteCoverGallery::Linked(vec![]));
 }
 
 /// Picking a paired pressing claims both sources. The partner is stored beside
@@ -47,16 +45,13 @@ async fn a_pick_with_a_partner_stores_it_and_archives_its_documents() {
     // The pick offers the partner's album address, which the archive holds
     // no image at.
     let archive = bae_util::http::serve_not_found().await;
-    let (handle, _tmp, key, hash) = pane_fixture_with(
-        bae_util::http::Http::for_test().serve("coverartarchive.org", &archive),
-    )
-    .await;
+    let (handle, _tmp, key, hash) =
+        pane_fixture_with(bae_util::http::Http::for_test().serve("coverartarchive.org", &archive))
+            .await;
     handle
         .library_manager
-        .set_discogs_key(
-            "test-discogs-token",
-            crate::config::DiscogsValidation::Valid,
-        ).await
+        .set_discogs_key("test-discogs-token", crate::config::DiscogsValidation::Valid)
+        .await
         .unwrap();
 
     let discogs_release_id = "70000001";
@@ -69,13 +64,16 @@ async fn a_pick_with_a_partner_stores_it_and_archives_its_documents() {
     );
 
     handle
-        .select_candidate_release(key.clone(), crate::import::PressingLink {
+        .select_candidate_release(
+            key.clone(),
+            crate::import::PressingLink {
                 record: crate::import::MetadataRef::new(
                     bae_catalogs::catalog::Catalog::Discogs,
                     discogs_release_id.to_string(),
                 ),
                 partners: vec![partner.clone()],
-            }, crate::import::CatalogApplySteps::unread(),
+            },
+            crate::import::CatalogApplySteps::unread(),
         )
         .await
         .unwrap();
@@ -99,12 +97,7 @@ async fn a_pick_with_a_partner_stores_it_and_archives_its_documents() {
     );
 
     assert!(
-        handle
-            .library_manager
-            .load_source_release(&partner)
-            .await
-            .unwrap()
-            .is_some(),
+        handle.library_manager.load_source_release(&partner).await.unwrap().is_some(),
         "the partner's own release is stored by the apply"
     );
     assert_eq!(
@@ -141,7 +134,9 @@ async fn a_partner_that_will_not_prepare_fails_the_apply() {
         .metadata_provenance;
 
     handle
-        .select_candidate_release(key.clone(), crate::import::PressingLink {
+        .select_candidate_release(
+            key.clone(),
+            crate::import::PressingLink {
                 record: crate::import::MetadataRef::new(
                     bae_catalogs::catalog::Catalog::MusicBrainz,
                     mb_release_id.to_string(),
@@ -150,7 +145,8 @@ async fn a_partner_that_will_not_prepare_fails_the_apply() {
                     bae_catalogs::catalog::Catalog::Discogs,
                     "70000002",
                 )],
-            }, crate::import::CatalogApplySteps::unread(),
+            },
+            crate::import::CatalogApplySteps::unread(),
         )
         .await
         .expect_err("a partner that will not prepare fails the apply");
@@ -188,7 +184,9 @@ async fn a_partner_repeating_the_primary_source_is_refused() {
         .metadata_provenance;
 
     handle
-        .select_candidate_release(key.clone(), crate::import::PressingLink {
+        .select_candidate_release(
+            key.clone(),
+            crate::import::PressingLink {
                 record: crate::import::MetadataRef::new(
                     bae_catalogs::catalog::Catalog::MusicBrainz,
                     mb_release_id.to_string(),
@@ -197,7 +195,8 @@ async fn a_partner_repeating_the_primary_source_is_refused() {
                     bae_catalogs::catalog::Catalog::MusicBrainz,
                     "repeat-mb-rel-2",
                 )],
-            }, crate::import::CatalogApplySteps::unread(),
+            },
+            crate::import::CatalogApplySteps::unread(),
         )
         .await
         .expect_err("two MusicBrainz releases for one pressing is refused");
@@ -218,7 +217,9 @@ async fn a_partner_repeating_the_primary_source_is_refused() {
 
 /// A Discogs release under a master, which MusicBrainz's lookup by its
 /// address links to a MusicBrainz release, seeded into the caches a read asks.
-fn seed_linked_discogs_release(providers: &crate::providers::Providers) -> crate::import::MetadataRef {
+fn seed_linked_discogs_release(
+    providers: &crate::providers::Providers,
+) -> crate::import::MetadataRef {
     seed_discogs_release_in(providers, "70000007", Some("70000008"), Some("linked-mb-rel-1"));
     seed_mb_release(providers, "linked-mb-rel-1", "linked-mb-group-1");
     crate::import::MetadataRef::new(bae_catalogs::catalog::Catalog::Discogs, "70000007")
@@ -230,10 +231,9 @@ fn seed_linked_discogs_release(providers: &crate::providers::Providers) -> crate
 #[tokio::test(flavor = "multi_thread")]
 async fn a_pick_of_a_release_a_run_read_reads_the_rest() {
     let archive = bae_util::http::serve_not_found().await;
-    let (handle, _tmp, key, _) = pane_fixture_with(
-        bae_util::http::Http::for_test().serve("coverartarchive.org", &archive),
-    )
-    .await;
+    let (handle, _tmp, key, _) =
+        pane_fixture_with(bae_util::http::Http::for_test().serve("coverartarchive.org", &archive))
+            .await;
     handle
         .library_manager
         .set_discogs_key("test-discogs-token", crate::config::DiscogsValidation::Valid)
@@ -262,10 +262,8 @@ async fn a_pick_of_a_release_a_run_read_reads_the_rest() {
     handle
         .select_candidate_release(
             key.clone(),
-            crate::import::PressingLink {
-                record: release.clone(),
-                partners: vec![],
-            }, crate::import::CatalogApplySteps::unread(),
+            crate::import::PressingLink { record: release.clone(), partners: vec![] },
+            crate::import::CatalogApplySteps::unread(),
         )
         .await
         .unwrap();
@@ -294,14 +292,11 @@ async fn a_pick_of_a_release_a_run_read_reads_the_rest() {
     .unwrap();
     shut_down(scratch).await;
 
-    assert!(picked
-        .records()
-        .iter()
-        .any(|record| record.release_ref()
-            == Some(&crate::import::MetadataRef::new(
-                bae_catalogs::catalog::Catalog::MusicBrainz,
-                "linked-mb-rel-1"
-            ))));
+    assert!(picked.records().iter().any(|record| record.release_ref()
+        == Some(&crate::import::MetadataRef::new(
+            bae_catalogs::catalog::Catalog::MusicBrainz,
+            "linked-mb-rel-1"
+        ))));
     assert_eq!(picked, complete.release);
 }
 
@@ -445,13 +440,16 @@ async fn numeric_vinyl_import_preserves_unknown_sides_and_track_order() {
         "cover-art-archive": { "front": false, "darkened": false }
     }).to_string());
     handle
-        .select_candidate_release(key.clone(), crate::import::PressingLink {
+        .select_candidate_release(
+            key.clone(),
+            crate::import::PressingLink {
                 record: crate::import::MetadataRef::new(
                     bae_catalogs::catalog::Catalog::MusicBrainz,
                     release_id,
                 ),
                 partners: vec![],
-            }, crate::import::CatalogApplySteps::unread(),
+            },
+            crate::import::CatalogApplySteps::unread(),
         )
         .await
         .unwrap();
@@ -477,11 +475,7 @@ async fn numeric_vinyl_import_preserves_unknown_sides_and_track_order() {
     let mut events = handle.every_event();
     let import_id = handle.start_import(&key).await.unwrap().expect_queued();
     let (release_id, _) = await_import_outcome(&mut events, &import_id).await.unwrap();
-    let tracks = handle
-        .library_manager
-        .get_tracks_for_release(&release_id)
-        .await
-        .unwrap();
+    let tracks = handle.library_manager.get_tracks_for_release(&release_id).await.unwrap();
     assert_eq!(
         tracks
             .iter()
@@ -497,16 +491,13 @@ async fn an_import_commits_what_its_picked_releases_store_now() {
     // The pick offers the partner's album address, which the archive holds
     // no image at.
     let archive = bae_util::http::serve_not_found().await;
-    let (handle, _tmp, key, _hash) = pane_fixture_with(
-        bae_util::http::Http::for_test().serve("coverartarchive.org", &archive),
-    )
-    .await;
+    let (handle, _tmp, key, _hash) =
+        pane_fixture_with(bae_util::http::Http::for_test().serve("coverartarchive.org", &archive))
+            .await;
     handle
         .library_manager
-        .set_discogs_key(
-            "test-discogs-token",
-            crate::config::DiscogsValidation::Valid,
-        ).await
+        .set_discogs_key("test-discogs-token", crate::config::DiscogsValidation::Valid)
+        .await
         .unwrap();
     let primary = "70000004";
     let partner = "refetched-partner-release";
@@ -522,13 +513,19 @@ async fn an_import_commits_what_its_picked_releases_store_now() {
         .musicbrainz()
         .seed_release_group_json_cache(group, group_json("mw111"));
     handle
-        .select_candidate_release(key.clone(), crate::import::PressingLink {
-                record: crate::import::MetadataRef::new(bae_catalogs::catalog::Catalog::Discogs, primary),
+        .select_candidate_release(
+            key.clone(),
+            crate::import::PressingLink {
+                record: crate::import::MetadataRef::new(
+                    bae_catalogs::catalog::Catalog::Discogs,
+                    primary,
+                ),
                 partners: vec![crate::import::MetadataRef::new(
                     bae_catalogs::catalog::Catalog::MusicBrainz,
                     partner,
                 )],
-            }, crate::import::CatalogApplySteps::unread(),
+            },
+            crate::import::CatalogApplySteps::unread(),
         )
         .await
         .unwrap();
@@ -539,7 +536,10 @@ async fn an_import_commits_what_its_picked_releases_store_now() {
         .library_manager
         .save_source_release(
             &crate::import::payloads::ReleasePayloads::for_test(
-                crate::import::MetadataRef::new(bae_catalogs::catalog::Catalog::MusicBrainz, partner),
+                crate::import::MetadataRef::new(
+                    bae_catalogs::catalog::Catalog::MusicBrainz,
+                    partner,
+                ),
                 mb_release_json(partner, group),
                 vec![crate::import::SourcePayload::new(
                     crate::import::PayloadSource::MusicBrainzReleaseGroup,
@@ -555,11 +555,7 @@ async fn an_import_commits_what_its_picked_releases_store_now() {
     let mut events = handle.every_event();
     let import_id = handle.start_import(&key).await.unwrap().expect_queued();
     let (release_id, _) = await_import_outcome(&mut events, &import_id).await.unwrap();
-    let records = handle
-        .library_manager
-        .get_release_records(&release_id)
-        .await
-        .unwrap();
+    let records = handle.library_manager.get_release_records(&release_id).await.unwrap();
     shut_down(handle).await;
     assert_eq!(
         records
@@ -580,16 +576,13 @@ async fn a_pick_carries_the_album_a_reading_found_through_another_pressing() {
     // The pick offers the joined group's album address, which the archive
     // holds no image at.
     let archive = bae_util::http::serve_not_found().await;
-    let (handle, _tmp, key, _hash) = pane_fixture_with(
-        bae_util::http::Http::for_test().serve("coverartarchive.org", &archive),
-    )
-    .await;
+    let (handle, _tmp, key, _hash) =
+        pane_fixture_with(bae_util::http::Http::for_test().serve("coverartarchive.org", &archive))
+            .await;
     handle
         .library_manager
-        .set_discogs_key(
-            "test-discogs-token",
-            crate::config::DiscogsValidation::Valid,
-        ).await
+        .set_discogs_key("test-discogs-token", crate::config::DiscogsValidation::Valid)
+        .await
         .unwrap();
     let providers = handle.library_manager.providers();
     let group = "chain-mb-group";
@@ -598,19 +591,17 @@ async fn a_pick_carries_the_album_a_reading_found_through_another_pressing() {
         .library_manager
         .keep_album_links(vec![(
             group.to_string(),
-            vec![crate::import::MetadataRef::new(
-                bae_catalogs::catalog::Catalog::Discogs,
-                "909",
-            )],
+            vec![crate::import::MetadataRef::new(bae_catalogs::catalog::Catalog::Discogs, "909")],
         )])
         .await;
 
-    let picked = crate::import::MetadataRef::new(bae_catalogs::catalog::Catalog::Discogs, "70000012");
+    let picked =
+        crate::import::MetadataRef::new(bae_catalogs::catalog::Catalog::Discogs, "70000012");
     handle
-        .select_candidate_release(key.clone(), crate::import::PressingLink {
-                record: picked.clone(),
-                partners: vec![],
-            }, crate::import::CatalogApplySteps::unread(),
+        .select_candidate_release(
+            key.clone(),
+            crate::import::PressingLink { record: picked.clone(), partners: vec![] },
+            crate::import::CatalogApplySteps::unread(),
         )
         .await
         .unwrap();
@@ -634,10 +625,7 @@ fn recorded() -> (
 ) {
     let told = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
     let keep = told.clone();
-    (
-        crate::import::CatalogApplySteps::new(move |step| keep.lock().unwrap().push(step)),
-        told,
-    )
+    (crate::import::CatalogApplySteps::new(move |step| keep.lock().unwrap().push(step)), told)
 }
 
 /// A pick of a paired pressing tells each release it reads from its catalog,
@@ -646,26 +634,18 @@ fn recorded() -> (
 #[tokio::test(flavor = "multi_thread")]
 async fn a_pick_tells_each_catalog_read_it_waits_on() {
     let archive = bae_util::http::serve_not_found().await;
-    let (handle, _tmp, key, _hash) = pane_fixture_with(
-        bae_util::http::Http::for_test().serve("coverartarchive.org", &archive),
-    )
-    .await;
+    let (handle, _tmp, key, _hash) =
+        pane_fixture_with(bae_util::http::Http::for_test().serve("coverartarchive.org", &archive))
+            .await;
     handle
         .library_manager
-        .set_discogs_key(
-            "test-discogs-token",
-            crate::config::DiscogsValidation::Valid,
-        )
+        .set_discogs_key("test-discogs-token", crate::config::DiscogsValidation::Valid)
         .await
         .unwrap();
     let discogs_release_id = "70000021";
     seed_discogs_release(handle.library_manager.providers(), discogs_release_id);
     let mb_release_id = "steps-mb-rel-1";
-    seed_mb_release(
-        handle.library_manager.providers(),
-        mb_release_id,
-        "steps-mb-group-1",
-    );
+    seed_mb_release(handle.library_manager.providers(), mb_release_id, "steps-mb-group-1");
     let (steps, told) = recorded();
 
     handle
@@ -711,16 +691,11 @@ async fn a_pick_tells_each_catalog_read_it_waits_on() {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_pick_of_a_held_release_tells_no_read() {
     let archive = bae_util::http::serve_not_found().await;
-    let (handle, _tmp, key, _hash) = pane_fixture_with(
-        bae_util::http::Http::for_test().serve("coverartarchive.org", &archive),
-    )
-    .await;
+    let (handle, _tmp, key, _hash) =
+        pane_fixture_with(bae_util::http::Http::for_test().serve("coverartarchive.org", &archive))
+            .await;
     let mb_release_id = "steps-held-mb-rel-1";
-    seed_mb_release(
-        handle.library_manager.providers(),
-        mb_release_id,
-        "steps-held-mb-group-1",
-    );
+    seed_mb_release(handle.library_manager.providers(), mb_release_id, "steps-held-mb-group-1");
     let link = crate::import::PressingLink {
         record: crate::import::MetadataRef::new(
             bae_catalogs::catalog::Catalog::MusicBrainz,
@@ -729,16 +704,10 @@ async fn a_pick_of_a_held_release_tells_no_read() {
         partners: vec![],
     };
     let (first, first_told) = recorded();
-    handle
-        .select_candidate_release(key.clone(), link.clone(), first)
-        .await
-        .unwrap();
+    handle.select_candidate_release(key.clone(), link.clone(), first).await.unwrap();
     let (again, again_told) = recorded();
 
-    handle
-        .select_candidate_release(key, link, again)
-        .await
-        .unwrap();
+    handle.select_candidate_release(key, link, again).await.unwrap();
     shut_down(handle).await;
 
     assert_eq!(

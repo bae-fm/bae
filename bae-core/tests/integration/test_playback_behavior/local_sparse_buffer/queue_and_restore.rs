@@ -151,13 +151,8 @@ async fn seek_preserves_staged_next_over_sparse_buffer() {
         .await
         .expect("second seek lands");
 
-    let outcome = observe_boundary(
-        &mut playback.progress_rx,
-        &first,
-        &second,
-        Duration::from_secs(25),
-    )
-    .await;
+    let outcome =
+        observe_boundary(&mut playback.progress_rx, &first, &second, Duration::from_secs(25)).await;
     assert!(
         outcome.reached_incoming,
         "playback crosses into the second track after two re-staging seeks"
@@ -189,10 +184,9 @@ async fn restore_at_position_over_sparse_buffer_resumes_and_advances() {
     // as a real app relaunch reopening the same library.
     playback.playback_handle.shutdown().await;
 
-    let (handle, _capture_rx) = start_capture_service(
-        playback.library_manager.clone(),
-        playback.runtime_handle.clone(),
-    ).await;
+    let (handle, _capture_rx) =
+        start_capture_service(playback.library_manager.clone(), playback.runtime_handle.clone())
+            .await;
     let mut progress_rx = handle.subscribe_progress();
 
     wait_for_state_on(
@@ -253,12 +247,7 @@ async fn restore_off_starts_with_nothing_in_playback_and_forgets_the_session() {
     // generous relative to how fast a restore emits (immediately at startup).
     let restored = wait_for_state_on(
         &mut progress_rx,
-        |s| {
-            matches!(
-                s,
-                PlaybackState::Paused { .. } | PlaybackState::Playing { .. }
-            )
-        },
+        |s| matches!(s, PlaybackState::Paused { .. } | PlaybackState::Playing { .. }),
         Duration::from_secs(3),
     )
     .await;
@@ -323,10 +312,7 @@ async fn a_resumed_session_comes_back_at_its_volume_and_mute() {
     .await
     .expect("restore announces the volume and the mute");
     assert_eq!(announced, (Some(0.3), Some(true)));
-    assert_eq!(
-        playback.library_manager.playback_level().await.unwrap(),
-        (0.3, true)
-    );
+    assert_eq!(playback.library_manager.playback_level().await.unwrap(), (0.3, true));
     handle.shutdown().await;
 }
 
@@ -349,13 +335,12 @@ async fn assert_preload_refreshed_over_sparse_buffer<F>(
     playback.playback_handle.add_to_queue(initial_queue);
     playback.playback_handle.play(track0.to_string());
 
-    let (played, entries) =
-        wait_for_playing_capturing_queue_on(
-            &playback.playback_handle,
-            &mut playback.progress_rx,
-            Duration::from_secs(25),
-        )
-            .await;
+    let (played, entries) = wait_for_playing_capturing_queue_on(
+        &playback.playback_handle,
+        &mut playback.progress_rx,
+        Duration::from_secs(25),
+    )
+    .await;
     assert!(played, "track0 should start playing");
 
     mutate(&playback.playback_handle, &entries);
@@ -364,8 +349,9 @@ async fn assert_preload_refreshed_over_sparse_buffer<F>(
     let next_state = wait_for_state_on(
         &mut playback.progress_rx,
         |s| match s {
-            PlaybackState::Playing { track, .. }
-            | PlaybackState::Paused { track, .. } => track.track_id != track0,
+            PlaybackState::Playing { track, .. } | PlaybackState::Paused { track, .. } => {
+                track.track_id != track0
+            }
             _ => false,
         },
         Duration::from_secs(25),
@@ -467,13 +453,12 @@ async fn skip_to_entry_jumps_to_that_queue_entry_over_sparse_buffer() {
     let first = playback.track_ids[0].clone();
     let third = playback.track_ids[2].clone();
     playback.playback_handle.play(first.clone());
-    let (played, entries) =
-        wait_for_playing_capturing_queue_on(
-            &playback.playback_handle,
-            &mut playback.progress_rx,
-            Duration::from_secs(25),
-        )
-            .await;
+    let (played, entries) = wait_for_playing_capturing_queue_on(
+        &playback.playback_handle,
+        &mut playback.progress_rx,
+        Duration::from_secs(25),
+    )
+    .await;
     assert!(played, "the release starts playing");
     let target = entries
         .iter()
@@ -501,27 +486,16 @@ async fn set_shuffle_rearranges_the_context_lane_over_sparse_buffer() {
     playback.play_and_wait(&first).await;
 
     playback.playback_handle.set_shuffle(true);
-    let shuffled = playback
-        .playback_handle
-        .queue_value()
-        .await
-        .expect("queue value");
+    let shuffled = playback.playback_handle.queue_value().await.expect("queue value");
     assert!(
         shuffled.context.as_ref().is_some_and(|c| c.shuffled),
         "SetShuffle(true) puts the lane in shuffled order"
     );
 
     playback.playback_handle.set_shuffle(false);
-    let sequential = playback
-        .playback_handle
-        .queue_value()
-        .await
-        .expect("queue value");
+    let sequential = playback.playback_handle.queue_value().await.expect("queue value");
     assert!(
-        !sequential
-            .context
-            .expect("still a playing context")
-            .shuffled,
+        !sequential.context.expect("still a playing context").shuffled,
         "SetShuffle(false) puts the lane back in sequential order"
     );
 

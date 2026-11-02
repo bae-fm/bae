@@ -25,10 +25,7 @@ impl AppServices {
     ) -> Result<Vec<std::path::PathBuf>, ImportError> {
         let mut folders = Vec::new();
         for candidate in &selected.candidates {
-            folders.extend(
-                self.import_candidate_source_folders(&candidate.candidate_key)
-                    .await?,
-            );
+            folders.extend(self.import_candidate_source_folders(&candidate.candidate_key).await?);
         }
         Ok(folders)
     }
@@ -39,11 +36,7 @@ impl AppServices {
         selected: &SelectedRows,
     ) -> Result<crate::import::CandidateKey, ImportError> {
         self.import_combine_candidates(
-            selected
-                .candidates
-                .iter()
-                .map(|candidate| candidate.candidate_key.clone())
-                .collect(),
+            selected.candidates.iter().map(|candidate| candidate.candidate_key.clone()).collect(),
         )
         .await
     }
@@ -126,14 +119,12 @@ impl AppServices {
                 Ok(())
             }
             CandidateAction::CancelImport => self.import_cancel(key).await,
-            CandidateAction::ResetToFileMetadata => self
-                .import_select_candidate_file_tags(key.clone())
-                .await
-                .map(|_| ()),
-            CandidateAction::ClearMetadata => self
-                .import_clear_candidate_metadata(key.clone())
-                .await
-                .map(|_| ()),
+            CandidateAction::ResetToFileMetadata => {
+                self.import_select_candidate_file_tags(key.clone()).await.map(|_| ())
+            }
+            CandidateAction::ClearMetadata => {
+                self.import_clear_candidate_metadata(key.clone()).await.map(|_| ())
+            }
             // A bulk action reports only what it failed on; the releases a
             // separation returns join the list unselected.
             CandidateAction::Separate => self.import_separate_candidate(key).await.map(|_| ()),

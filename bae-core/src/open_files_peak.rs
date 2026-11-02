@@ -61,21 +61,13 @@ impl OpenFilesPeak {
                 }
             }
         });
-        Self {
-            stop,
-            peak,
-            thread: Some(thread),
-        }
+        Self { stop, peak, thread: Some(thread) }
     }
 
     /// Stop sampling and return the most files seen open at once.
     pub fn finish(mut self) -> usize {
         self.stop.store(true, Ordering::Relaxed);
-        self.thread
-            .take()
-            .expect("sampler runs until finished")
-            .join()
-            .expect("sampler thread");
+        self.thread.take().expect("sampler runs until finished").join().expect("sampler thread");
         self.peak.load(Ordering::Relaxed)
     }
 }
@@ -97,10 +89,7 @@ mod tests {
             named_by_both(paths(&["01.flac", "02.flac"]), paths(&["02.flac"])),
             paths(&["02.flac"])
         );
-        assert_eq!(
-            named_by_both(paths(&["01.flac"]), paths(&["02.flac"])),
-            paths(&[])
-        );
+        assert_eq!(named_by_both(paths(&["01.flac"]), paths(&["02.flac"])), paths(&[]));
     }
 
     /// A file open through two descriptors in both reads counts twice; one

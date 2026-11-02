@@ -23,16 +23,10 @@ async fn panicking_close() -> super::Closing {
 type Told = Arc<Mutex<Vec<String>>>;
 
 /// A `failed` that records what it is told, and the record.
-fn told() -> (
-    impl Fn(&dyn std::fmt::Display) + Send + Sync + 'static,
-    Told,
-) {
+fn told() -> (impl Fn(&dyn std::fmt::Display) + Send + Sync + 'static, Told) {
     let heard = Told::default();
     let telling = heard.clone();
-    (
-        move |error: &dyn std::fmt::Display| telling.lock().unwrap().push(error.to_string()),
-        heard,
-    )
+    (move |error: &dyn std::fmt::Display| telling.lock().unwrap().push(error.to_string()), heard)
 }
 
 /// Released on a runtime thread, the close runs on a thread of its own; its
@@ -47,9 +41,7 @@ fn a_released_close_that_panics_on_its_thread_is_told_not_raised_into_the_next_o
 
     caller.block_on(async {
         session.end_released(panicking_close(), failed, |thread| {
-            thread_tx
-                .send(thread)
-                .expect("the test waits for the thread");
+            thread_tx.send(thread).expect("the test waits for the thread");
         });
     });
 
@@ -59,20 +51,13 @@ fn a_released_close_that_panics_on_its_thread_is_told_not_raised_into_the_next_o
         crate::BridgeAppDir::new(root.path().to_str().unwrap().into()).unwrap(),
     )
     .unwrap();
-    let store = coven::StoreId(
-        "00000000-0000-0000-0000-000000000001"
-            .parse()
-            .expect("a store id"),
-    );
+    let store = coven::StoreId("00000000-0000-0000-0000-000000000001".parse().expect("a store id"));
     host.library_closing(store, thread_rx.recv().expect("the close ran on a thread"));
     host.wait_for_closing(store);
 
     let heard = heard.lock().unwrap().clone();
     assert_eq!(heard.len(), 1, "{heard:?}");
-    assert!(
-        heard[0].contains("the close broke its guarantee"),
-        "{heard:?}"
-    );
+    assert!(heard[0].contains("the close broke its guarantee"), "{heard:?}");
 }
 
 /// Released off any runtime, the close runs inside the handle's `Drop`; its
@@ -89,8 +74,5 @@ fn a_released_close_that_panics_inline_is_told_not_unwound() {
 
     let heard = heard.lock().unwrap().clone();
     assert_eq!(heard.len(), 1, "{heard:?}");
-    assert!(
-        heard[0].contains("the close broke its guarantee"),
-        "{heard:?}"
-    );
+    assert!(heard[0].contains("the close broke its guarantee"), "{heard:?}");
 }

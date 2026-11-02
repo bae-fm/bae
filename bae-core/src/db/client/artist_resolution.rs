@@ -102,12 +102,9 @@ impl Database {
         self.inner
             .handle
             .read(move |sql| {
-                ArtistCredits {
-                    credits: &credits,
-                    picked: &picked,
-                }
-                .resolve_for_import_on(&sql, content_hash.as_deref())
-                .map_err(identity_write_failure)
+                ArtistCredits { credits: &credits, picked: &picked }
+                    .resolve_for_import_on(&sql, content_hash.as_deref())
+                    .map_err(identity_write_failure)
             })
             .await
             .map_err(Self::identity_write_error)
@@ -123,11 +120,7 @@ impl Database {
     ) -> Result<Vec<String>, IdentityWriteError> {
         let credits = credits.to_vec();
         self.write_resolving_identities(move |sql| {
-            let resolved = ArtistCredits {
-                credits: &credits,
-                picked: &[],
-            }
-            .resolve_on(&sql)?;
+            let resolved = ArtistCredits { credits: &credits, picked: &[] }.resolve_on(&sql)?;
             resolved.write_on(&sql)?;
             Ok(resolved.ids)
         })
@@ -140,8 +133,7 @@ impl Database {
         credits: &[crate::import::ArtistCredit],
     ) -> Result<Vec<crate::import::ResolvedCredit>, DbError> {
         let credits = credits.to_vec();
-        self.read(move |sql| resolve_credits_on(&sql, &credits))
-            .await
+        self.read(move |sql| resolve_credits_on(&sql, &credits)).await
     }
 
     /// The [`IdentityWriteError`] a coven write closure failed with, or the
@@ -212,11 +204,7 @@ impl ResolvedArtists {
 
     /// The resolved id of every input credit, keyed by the id it came in with.
     pub(super) fn id_map(&self, credits: &[DbArtist]) -> HashMap<String, String> {
-        credits
-            .iter()
-            .zip(&self.ids)
-            .map(|(credit, id)| (credit.id.clone(), id.clone()))
-            .collect()
+        credits.iter().zip(&self.ids).map(|(credit, id)| (credit.id.clone(), id.clone())).collect()
     }
 }
 
@@ -330,11 +318,7 @@ pub(crate) fn resolve_artists_on<Q: QueryOne + QueryRows>(
         insert.id = identity;
     }
 
-    Ok(ResolvedArtists {
-        ids,
-        inserts,
-        external_id_updates,
-    })
+    Ok(ResolvedArtists { ids, inserts, external_id_updates })
 }
 
 /// The library artist each of `credits` resolves to when one write commits
@@ -366,19 +350,15 @@ pub(crate) fn resolve_credit_on<Q: QueryOne + QueryRows>(
         created_at: chrono::DateTime::<Utc>::MIN_UTC,
     };
     Ok(match catalog_match_on(sql, &row, &[])? {
-        CatalogMatch::Artist(artist) => CreditResolution::Library {
-            artist: artist.into(),
-        },
-        CatalogMatch::Conflict(conflict) => CreditResolution::Conflicting {
-            artists: conflict.artists(),
-        },
+        CatalogMatch::Artist(artist) => CreditResolution::Library { artist: artist.into() },
+        CatalogMatch::Conflict(conflict) => {
+            CreditResolution::Conflicting { artists: conflict.artists() }
+        }
         CatalogMatch::Unmatched => {
             let mut named = name_matches_on(sql, &row, &[])?;
             match named.len() {
                 0 => CreditResolution::New,
-                1 => CreditResolution::Library {
-                    artist: named.remove(0).into(),
-                },
+                1 => CreditResolution::Library { artist: named.remove(0).into() },
                 _ => CreditResolution::Ambiguous {
                     artists: named.into_iter().map(Into::into).collect(),
                 },
@@ -479,9 +459,7 @@ pub(super) fn relink_album_artists(
     links: &[DbAlbumArtist],
     artist_ids: &HashMap<String, String>,
 ) -> Result<Vec<DbAlbumArtist>, DbError> {
-    relink(links, artist_ids, "album artist", |link| {
-        &mut link.artist_id
-    })
+    relink(links, artist_ids, "album artist", |link| &mut link.artist_id)
 }
 
 /// Each track's own credits, resolved, every place kept.
@@ -489,9 +467,7 @@ pub(super) fn relink_track_artists(
     links: &[DbTrackArtist],
     artist_ids: &HashMap<String, String>,
 ) -> Result<Vec<DbTrackArtist>, DbError> {
-    relink(links, artist_ids, "track artist", |link| {
-        &mut link.artist_id
-    })
+    relink(links, artist_ids, "track artist", |link| &mut link.artist_id)
 }
 
 /// What the catalog-id step says about one credit.
@@ -509,10 +485,7 @@ pub(super) enum CatalogConflict {
     Identity(Box<crate::import::ArtistIdentityConflict>),
     /// A matched artist holds a different id of the same catalog, or the
     /// library holds one id on several artists.
-    Contradicted {
-        artists: Vec<DbArtist>,
-        detail: String,
-    },
+    Contradicted { artists: Vec<DbArtist>, detail: String },
 }
 
 impl CatalogConflict {
@@ -589,28 +562,26 @@ pub(super) fn catalog_match_on<Q: QueryOne>(
     // incoming exact provider match still wins; only its absence permits the
     // other provider's canonical row to stand in for it.
     let va = &crate::db::VARIOUS_ARTISTS;
-    let stand_in = match (
-        credit.discogs_artist_id.as_deref(),
-        credit.musicbrainz_artist_id.as_deref(),
-    ) {
-        (Some(_), None) => exact_artist(
-            "MusicBrainz",
-            &credit.name,
-            va.musicbrainz,
-            artist_by_catalog_id_on(sql, CatalogColumn::MusicBrainz, va.musicbrainz)?,
-            staged,
-            |artist| artist.musicbrainz_artist_id.as_deref(),
-        ),
-        (None, Some(_)) => exact_artist(
-            "Discogs",
-            &credit.name,
-            va.discogs,
-            artist_by_catalog_id_on(sql, CatalogColumn::Discogs, va.discogs)?,
-            staged,
-            |artist| artist.discogs_artist_id.as_deref(),
-        ),
-        (Some(_), Some(_)) | (None, None) => Ok(None),
-    };
+    let stand_in =
+        match (credit.discogs_artist_id.as_deref(), credit.musicbrainz_artist_id.as_deref()) {
+            (Some(_), None) => exact_artist(
+                "MusicBrainz",
+                &credit.name,
+                va.musicbrainz,
+                artist_by_catalog_id_on(sql, CatalogColumn::MusicBrainz, va.musicbrainz)?,
+                staged,
+                |artist| artist.musicbrainz_artist_id.as_deref(),
+            ),
+            (None, Some(_)) => exact_artist(
+                "Discogs",
+                &credit.name,
+                va.discogs,
+                artist_by_catalog_id_on(sql, CatalogColumn::Discogs, va.discogs)?,
+                staged,
+                |artist| artist.discogs_artist_id.as_deref(),
+            ),
+            (Some(_), Some(_)) | (None, None) => Ok(None),
+        };
     Ok(match stand_in {
         Ok(Some(artist)) => CatalogMatch::Artist(artist),
         Ok(None) => CatalogMatch::Unmatched,
@@ -673,14 +644,12 @@ fn artist_by_catalog_id_on<Q: QueryOne>(
     catalog_id: &str,
 ) -> Result<Option<DbArtist>, DbError> {
     let (column, identity) = match column {
-        CatalogColumn::Discogs => (
-            "discogs_artist_id",
-            crate::db::identity::artist_id(None, Some(catalog_id)),
-        ),
-        CatalogColumn::MusicBrainz => (
-            "musicbrainz_artist_id",
-            crate::db::identity::artist_id(Some(catalog_id), None),
-        ),
+        CatalogColumn::Discogs => {
+            ("discogs_artist_id", crate::db::identity::artist_id(None, Some(catalog_id)))
+        }
+        CatalogColumn::MusicBrainz => {
+            ("musicbrainz_artist_id", crate::db::identity::artist_id(Some(catalog_id), None))
+        }
     };
     sql.query_row(
         &format!(
@@ -698,13 +667,9 @@ fn artist_by_catalog_id_on<Q: QueryOne>(
 }
 
 fn artist_by_id_on<Q: QueryOne>(sql: &Q, artist_id: &str) -> Result<Option<DbArtist>, DbError> {
-    sql.query_row(
-        "SELECT * FROM artists WHERE id = ?",
-        params![artist_id],
-        row_to_artist,
-    )
-    .optional()
-    .map_err(DbError::from)
+    sql.query_row("SELECT * FROM artists WHERE id = ?", params![artist_id], row_to_artist)
+        .optional()
+        .map_err(DbError::from)
 }
 
 fn exact_artist(
@@ -758,10 +723,9 @@ fn matching_artist(
             if !ids_agree(&discogs, incoming) || !ids_agree(&musicbrainz, incoming) {
                 return Err(contradicted(vec![discogs, musicbrainz]));
             }
-            let (Some(discogs_artist_id), Some(musicbrainz_artist_id)) = (
-                incoming.discogs_artist_id.clone(),
-                incoming.musicbrainz_artist_id.clone(),
-            ) else {
+            let (Some(discogs_artist_id), Some(musicbrainz_artist_id)) =
+                (incoming.discogs_artist_id.clone(), incoming.musicbrainz_artist_id.clone())
+            else {
                 unreachable!("two catalog matches come from the credit's two catalog ids")
             };
             return Err(CatalogConflict::Identity(Box::new(
@@ -804,9 +768,8 @@ fn stage_artist_update(
     artist_id: String,
     artist: DbArtist,
 ) {
-    if let Some((_, staged)) = staged_updates
-        .iter_mut()
-        .find(|(staged_id, _)| *staged_id == artist_id)
+    if let Some((_, staged)) =
+        staged_updates.iter_mut().find(|(staged_id, _)| *staged_id == artist_id)
     {
         *staged = artist;
     } else {
@@ -820,10 +783,7 @@ fn remove_pending_artists(
     absorbed: &[DbArtist],
     survivor_id: &str,
 ) {
-    let absorbed_ids = absorbed
-        .iter()
-        .map(|artist| artist.id.as_str())
-        .collect::<HashSet<_>>();
+    let absorbed_ids = absorbed.iter().map(|artist| artist.id.as_str()).collect::<HashSet<_>>();
     pending_artists.retain(|artist| !absorbed_ids.contains(artist.id.as_str()));
     for resolved_id in resolved_ids {
         if absorbed_ids.contains(resolved_id.as_str()) {
@@ -844,14 +804,10 @@ fn merge_artist_metadata(
         )));
     }
     if target.discogs_artist_id.is_none() {
-        target
-            .discogs_artist_id
-            .clone_from(&incoming.discogs_artist_id);
+        target.discogs_artist_id.clone_from(&incoming.discogs_artist_id);
     }
     if target.musicbrainz_artist_id.is_none() {
-        target
-            .musicbrainz_artist_id
-            .clone_from(&incoming.musicbrainz_artist_id);
+        target.musicbrainz_artist_id.clone_from(&incoming.musicbrainz_artist_id);
     }
     if target.sort_name.is_none() {
         target.sort_name.clone_from(&incoming.sort_name);

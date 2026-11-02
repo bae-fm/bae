@@ -68,9 +68,7 @@ fn origin_of(comments: &[(&str, &str)], extra: &[(&str, &[u8])]) -> crate::signa
         &crate::import::folder_scanner::StoredCandidateEdits::none(),
     )
     .expect("candidate scan");
-    gather_non_ocr_sources(&[folder], &files)
-        .expect("the fixture audio times")
-        .origin
+    gather_non_ocr_sources(&[folder], &files).expect("the fixture audio times").origin
 }
 
 const DELIVERED: &[(&str, &str)] = &[
@@ -120,14 +118,8 @@ fn a_delivery_set_with_a_part_missing_or_beside_a_rip_file_proves_nothing() {
         .source,
         None
     );
-    assert_eq!(
-        origin_of(DELIVERED, &[("rip.log", b"not a log")]).source,
-        None
-    );
-    assert_eq!(
-        origin_of(DELIVERED, &[("Album.cue", b"FILE \"01.flac\" WAVE\n")]).source,
-        None
-    );
+    assert_eq!(origin_of(DELIVERED, &[("rip.log", b"not a log")]).source, None);
+    assert_eq!(origin_of(DELIVERED, &[("Album.cue", b"FILE \"01.flac\" WAVE\n")]).source, None);
 }
 
 /// A store's own marker proves a download, and names the track it is on.
@@ -147,21 +139,12 @@ fn a_store_s_marker_proves_a_download() {
 /// reading a disc, and a tag can be copied, so the rip is what it proves.
 #[test]
 fn a_rip_log_outweighs_a_store_s_marker() {
-    let log = fs::read(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/tests/fixtures/logs/test_album.log"
-    ))
-    .unwrap();
+    let log = fs::read(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/logs/test_album.log"))
+        .unwrap();
     assert!(matches!(
-        origin_of(
-            &[("COMMENT", "Visit https://artistname.bandcamp.com")],
-            &[("Album.log", &log)]
-        )
-        .source,
-        Some(crate::signals::AudioSource::CdRip {
-            proof: crate::signals::CdProof::RipLog,
-            ..
-        })
+        origin_of(&[("COMMENT", "Visit https://artistname.bandcamp.com")], &[("Album.log", &log)])
+            .source,
+        Some(crate::signals::AudioSource::CdRip { proof: crate::signals::CdProof::RipLog, .. })
     ));
 }
 
@@ -172,10 +155,7 @@ fn each_track_is_titled_by_its_tag_or_its_file_name() {
     let tmp = TempDir::new().unwrap();
     let folder = tmp.path().join("Some Folder");
     fs::create_dir_all(&folder).unwrap();
-    tagged_flac(
-        &folder.join("01 - First File.flac"),
-        &[("TITLE", "Song One")],
-    );
+    tagged_flac(&folder.join("01 - First File.flac"), &[("TITLE", "Song One")]);
     tagged_flac(&folder.join("02 - Song Two.flac"), &[]);
     let files = crate::import::folder_scanner::collect_release_candidate_files_with_scope(
         &folder,
@@ -207,9 +187,7 @@ fn unnumbered_files_give_no_titles() {
             &crate::import::folder_scanner::StoredCandidateEdits::none(),
         )
         .expect("candidate scan");
-        gather_non_ocr_sources(&[folder], &files)
-            .expect("the fixture audio times")
-            .track_titles
+        gather_non_ocr_sources(&[folder], &files).expect("the fixture audio times").track_titles
     };
     assert!(titles_of(&[("Song A.flac", &[]), ("Song B.flac", &[])]).is_empty());
     assert!(titles_of(&[

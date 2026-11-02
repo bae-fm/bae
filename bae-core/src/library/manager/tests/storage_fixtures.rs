@@ -11,7 +11,10 @@ async fn connect_test_cloud(manager: &TestManager) -> Arc<MemoryStorage> {
     connect_test_cloud_with_sync_loop(manager).await;
     manager.database.stop_sync().await.unwrap();
     let mut status = manager.database.subscribe_sync_status();
-    crate::followed::value_matching(&mut status, |status| matches!(status.status, coven::SyncStatus::Stopped)).await;
+    crate::followed::value_matching(&mut status, |status| {
+        matches!(status.status, coven::SyncStatus::Stopped)
+    })
+    .await;
     manager.database.unlock_store_key().await.unwrap();
     manager.database.set_uploads_paused(true).await.unwrap();
     manager.storage.clone()
@@ -19,9 +22,22 @@ async fn connect_test_cloud(manager: &TestManager) -> Arc<MemoryStorage> {
 
 #[cfg(feature = "test-utils")]
 async fn connect_test_cloud_with_sync_loop(manager: &TestManager) -> Arc<MemoryStorage> {
-    manager.database.setup_s3_storage(manager.storage.config(), "Test Device", "test-key".into(), coven::SecretText::new("test-secret".into()), &|_| ()).await.unwrap();
+    manager
+        .database
+        .setup_s3_storage(
+            manager.storage.config(),
+            "Test Device",
+            "test-key".into(),
+            coven::SecretText::new("test-secret".into()),
+            &|_| (),
+        )
+        .await
+        .unwrap();
     let mut status = manager.database.subscribe_sync_status();
-    crate::followed::value_matching(&mut status, |status| matches!(status.status, coven::SyncStatus::Synced { .. })).await;
+    crate::followed::value_matching(&mut status, |status| {
+        matches!(status.status, coven::SyncStatus::Synced { .. })
+    })
+    .await;
     manager.storage.clone()
 }
 
@@ -61,10 +77,7 @@ struct ReleaseRef {
 #[cfg(feature = "test-utils")]
 impl ReleaseRef {
     async fn of(manager: &LibraryManager, id: String) -> Self {
-        let album_id = find_release(manager, &id)
-            .await
-            .expect("the release exists")
-            .album_id;
+        let album_id = find_release(manager, &id).await.expect("the release exists").album_id;
         Self { id, album_id }
     }
 }
@@ -92,14 +105,8 @@ async fn uploaded_release(
     album_title: &str,
     pin: bool,
 ) -> String {
-    uploaded_release_with_files(
-        manager,
-        dir,
-        album_title,
-        &[("track.flac", b"track-bytes")],
-        pin,
-    )
-    .await
+    uploaded_release_with_files(manager, dir, album_title, &[("track.flac", b"track-bytes")], pin)
+        .await
 }
 
 #[cfg(feature = "test-utils")]
@@ -131,9 +138,13 @@ async fn release_kept_here_waiting_for_its_copy(
     dir: &std::path::Path,
     album_title: &str,
 ) -> DbRelease {
-    let release =
-        insert_local_release_with_files(manager, dir, album_title, &[("track.flac", b"kept-bytes")])
-            .await;
+    let release = insert_local_release_with_files(
+        manager,
+        dir,
+        album_title,
+        &[("track.flac", b"kept-bytes")],
+    )
+    .await;
     manager.upload_release(&release.id, true).await.unwrap();
 
     // Hold the file's upload as it is created, and from then on refuse every
@@ -285,10 +296,7 @@ async fn insert_local_release_in_album(
             bae_test_support::test_uuid(&format!("{}-test-file-{index}", release.id)),
             created_at,
         );
-        manager
-            .add_external_file_for_test(&file, &path)
-            .await
-            .unwrap();
+        manager.add_external_file_for_test(&file, &path).await.unwrap();
     }
     release
 }
@@ -347,20 +355,13 @@ async fn playback_error_reason_for_file(
         r.read(&mut b)
     });
     let reason = tokio::time::timeout(std::time::Duration::from_secs(10), async {
-        error_rx
-            .recv()
-            .await
-            .expect("error channel open")
-            .ui_reason()
+        error_rx.recv().await.expect("error channel open").ui_reason()
     })
     .await
     .expect("a playback error must be reported");
     let read = demand.await.expect("demand read task");
     assert!(
-        matches!(
-            read,
-            Err(bae_audio::sparse_buffer::BufferStop::Failed(_))
-        ),
+        matches!(read, Err(bae_audio::sparse_buffer::BufferStop::Failed(_))),
         "the waiting read ends on the fetch failure: {read:?}"
     );
     reason
@@ -371,10 +372,7 @@ async fn playback_error_reason_for_file(
 /// cover, as `change_cover` does.
 async fn store_test_cover(manager: &LibraryManager, release_id: &str, bytes: &[u8]) {
     let cover = DbLibraryImage::cover(release_id, manager.clock.now().into());
-    manager
-        .store_library_image(&cover, bytes)
-        .await
-        .unwrap();
+    manager.store_library_image(&cover, bytes).await.unwrap();
 }
 
 /// Run the bound uploads waiting now, a cover's, an artist image's or an
@@ -407,4 +405,3 @@ async fn file_pinned(manager: &LibraryManager, namespace: &str, row_id: &str) ->
         .flatten()
         .expect("this device has a record of the file")
 }
-

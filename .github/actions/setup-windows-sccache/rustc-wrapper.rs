@@ -13,9 +13,7 @@ fn main() {
     let mut args = env::args_os().skip(1);
     let rustc = args.next().expect("cargo passes the rustc path first");
     let rest: Vec<_> = args.collect();
-    let in_argfile = rest
-        .iter()
-        .any(|arg| arg.to_str().is_some_and(|arg| arg.starts_with('@')));
+    let in_argfile = rest.iter().any(|arg| arg.to_str().is_some_and(|arg| arg.starts_with('@')));
     let mut command = if in_argfile {
         Command::new(&rustc)
     } else {

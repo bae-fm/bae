@@ -210,15 +210,9 @@ fn extraartist_roles_import_as_role_credits_not_works_or_display_artists() {
         .artists
         .iter()
         .any(|artist| artist.discogs_artist_id.as_deref() == Some("discogs-engineer-a")));
-    assert!(!parsed
-        .album_artists
-        .iter()
-        .any(|link| committed[&link.artist_id] == composer));
+    assert!(!parsed.album_artists.iter().any(|link| committed[&link.artist_id] == composer));
     assert!(committed[&parsed.album_artists[0].artist_id] != composer);
-    assert!(!parsed
-        .track_artists
-        .iter()
-        .any(|link| committed[&link.artist_id] == composer));
+    assert!(!parsed.track_artists.iter().any(|link| committed[&link.artist_id] == composer));
 }
 
 #[test]
@@ -328,10 +322,7 @@ fn test_2lp_vinyl_with_headings() {
     );
     assert_eq!(tracks[0].title, "Track One");
     assert_eq!(tracks[1].title, "Track Two");
-    assert_eq!(
-        tracks[2].title,
-        "Medley: Part I \u{2013} Part II \u{2013} Part III"
-    );
+    assert_eq!(tracks[2].title, "Medley: Part I \u{2013} Part II \u{2013} Part III");
     assert_eq!(tracks[3].title, "Track Three");
     assert_eq!(tracks[4].title, "Track Four");
     assert_eq!(tracks[8].title, "Track Eight");
@@ -352,10 +343,7 @@ fn test_single_disc() {
         text: None,
     }];
     let parsed = map(&release).unwrap();
-    assert_eq!(
-        crate::import::release_values::row_labels(&parsed),
-        ["1", "2", "3"]
-    );
+    assert_eq!(crate::import::release_values::row_labels(&parsed), ["1", "2", "3"]);
 }
 
 #[test]
@@ -400,17 +388,12 @@ fn test_collapsed_sub_tracks_preserve_per_track_artists() {
     assert_eq!(tracks[1].title, "Suite: Movement 1 \u{2013} Movement 2");
 
     // Sub artist should be in the artists list
-    assert!(
-        artists.iter().any(|a| a.name == "Sub Artist"),
-        "Sub artist not found in artists list"
-    );
+    assert!(artists.iter().any(|a| a.name == "Sub Artist"), "Sub artist not found in artists list");
 
     // The collapsed track should have a track-artist link to "Sub Artist"
     let collapsed_track_id = &tracks[1].id;
-    let linked_artists: Vec<_> = track_artists
-        .iter()
-        .filter(|ta| &ta.track_id == collapsed_track_id)
-        .collect();
+    let linked_artists: Vec<_> =
+        track_artists.iter().filter(|ta| &ta.track_id == collapsed_track_id).collect();
     assert_eq!(
         linked_artists.len(),
         1,
@@ -485,16 +468,10 @@ fn discogs_role_is_composer_matches_composing_roles() {
         "[Written-By]",
         "composed_by",
     ] {
-        assert!(
-            discogs_role_is_composer(role),
-            "expected {role:?} to be a composer role"
-        );
+        assert!(discogs_role_is_composer(role), "expected {role:?} to be a composer role");
     }
     for role in ["Producer", "Engineer", "Vocals", "Remix", ""] {
-        assert!(
-            !discogs_role_is_composer(role),
-            "expected {role:?} not to be a composer role"
-        );
+        assert!(!discogs_role_is_composer(role), "expected {role:?} not to be a composer role");
     }
 }
 
@@ -522,10 +499,7 @@ fn role_artist_without_credited_name_falls_back_to_canonical_name() {
         .find(|a| a.discogs_artist_id.as_deref() == Some("discogs-composer-a"))
         .expect("composer role artist imported");
     assert_eq!(composer.name, "Composer Canonical Name");
-    assert!(
-        logs.contains("has no credited name"),
-        "expected a fallback warning, got: {logs}"
-    );
+    assert!(logs.contains("has no credited name"), "expected a fallback warning, got: {logs}");
 }
 
 /// An id-less composer role credit whose name case-insensitively matches
@@ -546,10 +520,7 @@ fn id_less_role_credit_reuses_release_artist_by_name() {
     let parsed = map(&release).unwrap();
 
     let committed = committed_artists(&parsed);
-    let role = parsed
-        .release_artist_roles
-        .first()
-        .expect("composer role imported");
+    let role = parsed.release_artist_roles.first().expect("composer role imported");
     assert_eq!(
         committed[&role.artist_id], committed[&parsed.album_artists[0].artist_id],
         "id-less role credit must commit as the release artist, not a duplicate"
@@ -571,14 +542,8 @@ fn id_less_role_credit_reuses_release_artist_however_it_is_accented() {
     let parsed = map(&release).unwrap();
 
     let committed = committed_artists(&parsed);
-    let role = parsed
-        .release_artist_roles
-        .first()
-        .expect("composer role imported");
-    assert_eq!(
-        committed[&role.artist_id],
-        committed[&parsed.album_artists[0].artist_id]
-    );
+    let role = parsed.release_artist_roles.first().expect("composer role imported");
+    assert_eq!(committed[&role.artist_id], committed[&parsed.album_artists[0].artist_id]);
 }
 
 /// An id-less Discogs role credit is its *credited* name — the name stored on
@@ -606,10 +571,7 @@ fn id_less_role_credits_dedup_on_credited_name() {
     let parsed = map(&release).unwrap();
 
     // The stored name is the credited name; neither canonical name lands.
-    assert!(!parsed
-        .artists
-        .iter()
-        .any(|a| a.name == "Canonical One" || a.name == "Canonical Two"));
+    assert!(!parsed.artists.iter().any(|a| a.name == "Canonical One" || a.name == "Canonical Two"));
     // Both release roles commit as one artist of the credited name.
     let committed = committed_artists(&parsed);
     let roles: Vec<_> = parsed
@@ -682,11 +644,7 @@ fn album_credits_keep_their_printed_names_and_joins() {
     let stated: Vec<(&str, &str, Option<&str>)> = credits
         .iter()
         .map(|stated| {
-            (
-                stated.credit.name.as_str(),
-                stated.credit.printed(),
-                stated.join.as_deref(),
-            )
+            (stated.credit.name.as_str(), stated.credit.printed(), stated.join.as_deref())
         })
         .collect();
     assert_eq!(
@@ -697,10 +655,7 @@ fn album_credits_keep_their_printed_names_and_joins() {
             ("Artist C", "Artist C", None),
         ]
     );
-    assert_eq!(
-        crate::import::SourceCredit::line(&credits),
-        "A Variation & Artist B, Artist C"
-    );
+    assert_eq!(crate::import::SourceCredit::line(&credits), "A Variation & Artist B, Artist C");
 }
 
 /// Every Barcode identifier reaches the pressing as printed, each code once:
@@ -723,10 +678,7 @@ fn release_barcodes_reach_pressing_metadata() {
             json.to_string(),
             Vec::new(),
         );
-    assert_eq!(
-        payloads.extract().unwrap().detail(&[]).barcodes,
-        release.barcodes
-    );
+    assert_eq!(payloads.extract().unwrap().detail(&[]).barcodes, release.barcodes);
     assert_eq!(metadata(&release).pressing.barcodes, release.barcodes);
 }
 

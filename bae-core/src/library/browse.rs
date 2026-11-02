@@ -86,28 +86,18 @@ where
             + Sync
             + 'static,
     ) -> Self {
-        Self {
-            query,
-            resolve: Arc::new(resolve),
-        }
+        Self { query, resolve: Arc::new(resolve) }
     }
 
     pub fn set_windows(
         &self,
         windows: LibraryPageWindows,
     ) -> Result<(), LibraryBrowseSubscriptionError> {
-        self.query
-            .set(windows)
-            .map(|_| ())
-            .map_err(LibraryBrowseSubscriptionError::from)
+        self.query.set(windows).map(|_| ()).map_err(LibraryBrowseSubscriptionError::from)
     }
 
     pub async fn next(&self) -> Result<LibraryBrowseSnapshot<Row>, LibraryBrowseSubscriptionError> {
-        let event = self
-            .query
-            .next()
-            .await
-            .map_err(LibraryBrowseSubscriptionError::from)?;
+        let event = self.query.next().await.map_err(LibraryBrowseSubscriptionError::from)?;
         let revision = event.revision.0;
         let cause = event.cause;
         let projection = event.result?;

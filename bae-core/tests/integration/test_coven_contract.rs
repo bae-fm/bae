@@ -5,11 +5,8 @@ async fn real_schema_opens_with_the_declarations_and_device_only_files() {
     let directory = tempfile::tempdir().unwrap();
     let installation = coven::TestCoven::new();
     let handle = bae_core::library::configure_store(
-        installation.builder(
-            bae_core::config::AppDir::at(directory.path())
-                .unwrap()
-                .store_layout(),
-        ),
+        installation
+            .builder(bae_core::config::AppDir::at(directory.path()).unwrap().store_layout()),
     )
     .create_store("Schema Test")
     .await
@@ -50,10 +47,7 @@ async fn real_schema_opens_with_the_declarations_and_device_only_files() {
     );
     let original = directory.path().join("track.flac");
     std::fs::write(&original, vec![0; 42]).unwrap();
-    database
-        .insert_file_for_test(&file, &original)
-        .await
-        .unwrap();
+    database.insert_file_for_test(&file, &original).await.unwrap();
     let stored = database.find_file_by_id(&file.id).await.unwrap().unwrap();
     assert!(!stored.stored);
     assert_eq!(stored.file_size, 42);
@@ -78,11 +72,8 @@ async fn upload_cancellation_keeps_the_file_on_this_device_with_its_original() {
     let directory = tempfile::tempdir().unwrap();
     let installation = coven::TestCoven::new();
     let handle = bae_core::library::configure_store(
-        installation.builder(
-            bae_core::config::AppDir::at(directory.path())
-                .unwrap()
-                .store_layout(),
-        ),
+        installation
+            .builder(bae_core::config::AppDir::at(directory.path()).unwrap().store_layout()),
     )
     .create_store("Upload Test")
     .await
@@ -123,15 +114,9 @@ async fn upload_cancellation_keeps_the_file_on_this_device_with_its_original() {
         uuid::Uuid::new_v4().to_string(),
         chrono::Utc::now(),
     );
-    manager
-        .add_external_file_for_test(&file, &source)
-        .await
-        .unwrap();
+    manager.add_external_file_for_test(&file, &source).await.unwrap();
     manager.upload_release(&release.id, false).await.unwrap();
-    manager
-        .cancel_release_transition(&release.id)
-        .await
-        .unwrap();
+    manager.cancel_release_transition(&release.id).await.unwrap();
     // Cancelling the move retires its uploads; the file stays on this
     // device only, read from its original.
     assert!(handle.uploads().await.unwrap().files.is_empty());
@@ -141,9 +126,6 @@ async fn upload_cancellation_keeps_the_file_on_this_device_with_its_original() {
         .unwrap()
         .iter()
         .all(|file| !file.stored));
-    assert_eq!(
-        manager.file_local_path(&file.id).await.unwrap(),
-        Some(source)
-    );
+    assert_eq!(manager.file_local_path(&file.id).await.unwrap(), Some(source));
     handle.close().await.unwrap();
 }

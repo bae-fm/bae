@@ -16,15 +16,8 @@ fn multi_window_wav() -> Vec<u8> {
     let samples: Vec<i32> = (0..sample_rate as usize * 60 * 2)
         .map(|i| (i as u32).wrapping_mul(2_654_435_761) as i32)
         .collect();
-    let wav = encode_i32(
-        EncodeFormat::PcmWav {
-            bits_per_sample: 16,
-        },
-        &samples,
-        sample_rate,
-        2,
-    )
-    .unwrap();
+    let wav =
+        encode_i32(EncodeFormat::PcmWav { bits_per_sample: 16 }, &samples, sample_rate, 2).unwrap();
     assert!(
         wav.len() as u64 > 2 * crate::test_source::TEST_WINDOW,
         "the source must span several fill windows"
@@ -135,9 +128,9 @@ async fn verifying_decode_reports_a_first_read_failure_as_a_read_failure() {
 /// error.
 #[tokio::test]
 async fn streaming_decode_stops_on_a_read_failure_as_a_read_failure() {
-    use crate::track_stream::create_track_stream_pair_with_capacity;
     use crate::sparse_buffer::create_sparse_buffer;
     use crate::test_source::TEST_WINDOW;
+    use crate::track_stream::create_track_stream_pair_with_capacity;
 
     init();
 
@@ -148,17 +141,11 @@ async fn streaming_decode_stops_on_a_read_failure_as_a_read_failure() {
     spawn_fill_failing_from(&buffer, wav, 2 * TEST_WINDOW);
 
     let result = tokio::task::spawn_blocking(move || {
-        let (mut sink, _source, _ready) = create_track_stream_pair_with_capacity(44_100, 2, 1 << 22);
+        let (mut sink, _source, _ready) =
+            create_track_stream_pair_with_capacity(44_100, 2, 1 << 22);
         let token = Arc::new(std::sync::atomic::AtomicBool::new(false));
-        decode_audio_streaming(
-            buffer,
-            &mut sink,
-            DecodeStart::StreamStart,
-            None,
-            None,
-            None,
-            token,
-        ).map(|_| ())
+        decode_audio_streaming(buffer, &mut sink, DecodeStart::StreamStart, None, None, None, token)
+            .map(|_| ())
     })
     .await
     .expect("decode task");

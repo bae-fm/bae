@@ -22,11 +22,7 @@ fn album_with_a_latin1_name(collection: &Path) -> (std::path::PathBuf, std::path
         "Album Title",
         "Artist Name",
         None,
-        &[TaggedTrack {
-            filename: "Track.flac",
-            title: "Track Title",
-            track_number: 1,
-        }],
+        &[TaggedTrack { filename: "Track.flac", title: "Track Title", track_number: 1 }],
     );
     let track = album.join(latin1_name("flac"));
     fs::rename(album.join("Track.flac"), &track).unwrap();
@@ -41,10 +37,7 @@ async fn scanned_releases(
     collection: &Path,
 ) -> Vec<bae_core::import::FolderCandidate> {
     let mut scan_rx = f.handle.every_scan_event_for_test();
-    f.handle
-        .add_watched_folder(collection.to_path_buf())
-        .await
-        .unwrap();
+    f.handle.add_watched_folder(collection.to_path_buf()).await.unwrap();
     let mut releases = Vec::new();
     support::next_matching(&mut scan_rx, HANG_GUARD, |event| match event {
         ScanEvent::FolderCandidate { candidate, .. } => {
@@ -105,12 +98,8 @@ async fn a_track_whose_name_is_not_utf8_is_scanned_and_imported_under_its_escape
         panic!("the release holds the track: {files:?}");
     };
     assert_eq!(file.original_filename, r"Caf\xE9.flac");
-    let original = f
-        .db
-        .external_file(&file.id)
-        .await
-        .unwrap()
-        .expect("the track's original is recorded");
+    let original =
+        f.db.external_file(&file.id).await.unwrap().expect("the track's original is recorded");
     assert_eq!(original.path, track);
     let release = f.db.find_release_by_id(&release_id).await.unwrap().unwrap();
     assert_eq!(release.source_folder_name.as_deref(), Some("Album"));
@@ -133,11 +122,7 @@ async fn a_track_whose_name_is_not_utf8_exports_under_the_name_coven_writes() {
     let target = f.temp_path().join("Export");
     fs::create_dir_all(&target).unwrap();
     f.library_manager
-        .export_release(
-            &release_id,
-            &target,
-            bae_core::library::OutputKind::Export,
-        )
+        .export_release(&release_id, &target, bae_core::library::OutputKind::Export)
         .await
         .expect("the release exports");
 
@@ -180,9 +165,7 @@ async fn a_track_whose_name_is_not_utf8_uploads() {
     );
     let files = f.db.get_files_for_release(&id).await.unwrap();
     assert!(
-        files
-            .iter()
-            .all(|file| file.stored && file.original_filename == r"Caf\xE9.flac"),
+        files.iter().all(|file| file.stored && file.original_filename == r"Caf\xE9.flac"),
         "the track is stored under its escaped name: {files:?}"
     );
 }
@@ -203,26 +186,20 @@ async fn two_tracks_showing_one_name_are_skipped_with_that_name() {
 
     assert!(scanned_releases(&f, &collection).await.is_empty());
 
-    let expected = bae_core::import::InvalidReason::SameName {
-        name: r"Caf\xE9.flac".to_string(),
-    };
+    let expected = bae_core::import::InvalidReason::SameName { name: r"Caf\xE9.flac".to_string() };
     wait_for_tab(
         &f,
         "the folder under Skipped",
         bae_core::import::TriageTab::Skipped,
         |snapshot| {
-            snapshot
-                .windows
-                .iter()
-                .flat_map(|window| &window.items)
-                .any(|item| match item {
-                    bae_core::import::ImportListItem::Invalid { candidate, .. } => {
-                        candidate.path == album
-                            && candidate.reason() == expected
-                            && candidate.files.len() == 2
-                    }
-                    _ => false,
-                })
+            snapshot.windows.iter().flat_map(|window| &window.items).any(|item| match item {
+                bae_core::import::ImportListItem::Invalid { candidate, .. } => {
+                    candidate.path == album
+                        && candidate.reason() == expected
+                        && candidate.files.len() == 2
+                }
+                _ => false,
+            })
         },
     )
     .await;

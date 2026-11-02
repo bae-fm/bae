@@ -77,24 +77,14 @@ impl Shown {
                 .releases
                 .iter()
                 .filter_map(|release| {
-                    release
-                        .source_group_id
-                        .clone()
-                        .map(|group| (release.source, group))
+                    release.source_group_id.clone().map(|group| (release.source, group))
                 })
                 .collect(),
             year: row.lead().year,
             labels: row.label_lines(),
             facts: row.lead().facts(),
-            badges: Agreements {
-                title: false,
-                artist: false,
-                ..row.agreements(judgements)
-            },
-            note: row
-                .releases
-                .iter()
-                .find_map(|release| notes.get(&key(release)).cloned()),
+            badges: Agreements { title: false, artist: false, ..row.agreements(judgements) },
+            note: row.releases.iter().find_map(|release| notes.get(&key(release)).cloned()),
             unread: row.document_failure().is_some(),
         }
     }
@@ -118,11 +108,7 @@ impl Shown {
 /// catalogs, then the lower catalog id.
 fn stands_before(row: &Pressing, other: &Pressing) -> bool {
     let catalogs = |row: &Pressing| {
-        row.releases
-            .iter()
-            .map(|release| release.source)
-            .collect::<HashSet<_>>()
-            .len()
+        row.releases.iter().map(|release| release.source).collect::<HashSet<_>>().len()
     };
     let id = |row: &Pressing| {
         let id = &row.lead().release_id;

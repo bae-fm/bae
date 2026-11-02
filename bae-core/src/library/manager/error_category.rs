@@ -17,10 +17,9 @@ pub(super) fn cloud_setup_category(error: &coven::StorageSetupError) -> C {
     use coven::StorageSetupError as E;
     match error {
         E::Storage(error) => cloud_home_category(error),
-        E::ProviderCheck { check, source } => C::StorageCheck {
-            check: *check,
-            failure: source.failure(),
-        },
+        E::ProviderCheck { check, source } => {
+            C::StorageCheck { check: *check, failure: source.failure() }
+        }
         E::S3VersioningUnknown { source } => C::S3VersioningUnknown(source.failure()),
         E::S3VersioningUnsupported { state } => C::S3VersioningUnsupported(*state),
         E::LocationChangeUnsupported => C::StorageLocationChangeUnsupported,

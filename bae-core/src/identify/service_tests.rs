@@ -8,9 +8,8 @@ use tokio::sync::mpsc::UnboundedReceiver;
 async fn setup_inner() -> (Arc<IdentifyServiceInner>, tempfile::TempDir) {
     let temp_dir = tempfile::TempDir::new().unwrap();
     let db_path = temp_dir.path().join("test.db");
-    let database = Database::new_test(db_path.to_str().unwrap(), Arc::new(coven::SystemClock))
-        .await
-        .unwrap();
+    let database =
+        Database::new_test(db_path.to_str().unwrap(), Arc::new(coven::SystemClock)).await.unwrap();
 
     let manager = LibraryManager::new(
         database,
@@ -45,21 +44,15 @@ async fn a_removed_candidates_run_ends_in_the_send_that_removes_it() {
         |token, _| token,
     );
 
-    inner.event_tx.send(ImportEvent::Scan(
-        crate::import::ScanEvent::CandidateRemoved {
-            candidate_key: crate::import::CandidateKey::test("k"),
-        },
-    ));
+    inner.event_tx.send(ImportEvent::Scan(crate::import::ScanEvent::CandidateRemoved {
+        candidate_key: crate::import::CandidateKey::test("k"),
+    }));
 
+    assert!(token.is_cancelled(), "the removed candidate's run is cancelled");
     assert!(
-        token.is_cancelled(),
-        "the removed candidate's run is cancelled"
-    );
-    assert!(
-        !inner.candidates.is_working(
-            CandidateWork::Identify,
-            &crate::import::CandidateKey::test("k")
-        ),
+        !inner
+            .candidates
+            .is_working(CandidateWork::Identify, &crate::import::CandidateKey::test("k")),
         "and no longer registered"
     );
 }
@@ -72,10 +65,7 @@ fn absent_signals() -> Signals {
         origin: crate::signals::AudioOrigin::default(),
         disc_id: DiscIdSignal::Absent,
         barcode: BarcodeSignal::Absent,
-        text: TextSignal::Settled {
-            catalogs: vec![],
-            free_text: vec![],
-        },
+        text: TextSignal::Settled { catalogs: vec![], free_text: vec![] },
         text_pool: Vec::new(),
         isrcs: Vec::new(),
         track_titles: Vec::new(),
@@ -98,12 +88,7 @@ async fn await_state<T>(
 ) -> Option<T> {
     tokio::time::timeout(Duration::from_secs(5), async {
         while let Some(event) = events.recv().await {
-            if let ImportEvent::IdentifyStateChanged {
-                candidate_key,
-                state,
-                ..
-            } = event
-            {
+            if let ImportEvent::IdentifyStateChanged { candidate_key, state, .. } = event {
                 if candidate_key == crate::import::CandidateKey::test("k") {
                     if let Some(found) = wanted(&state) {
                         return Some(found);
@@ -122,11 +107,11 @@ async fn await_state<T>(
 fn reported_states(events: &mut UnboundedReceiver<ImportEvent>) -> Vec<IdentifyState> {
     std::iter::from_fn(|| events.try_recv().ok())
         .filter_map(|event| match event {
-            ImportEvent::IdentifyStateChanged {
-                candidate_key,
-                state,
-                ..
-            } if candidate_key == crate::import::CandidateKey::test("k") => Some(state),
+            ImportEvent::IdentifyStateChanged { candidate_key, state, .. }
+                if candidate_key == crate::import::CandidateKey::test("k") =>
+            {
+                Some(state)
+            }
             _ => None,
         })
         .collect()
@@ -146,18 +131,11 @@ fn scanning_snapshot() -> SignalsSnapshot {
     SignalsSnapshot {
         signals: Signals {
             barcode: BarcodeSignal::Scanning { codes: vec![] },
-            text: TextSignal::Scanning {
-                catalogs: vec![],
-                free_text: vec![],
-            },
+            text: TextSignal::Scanning { catalogs: vec![], free_text: vec![] },
             ..absent_signals()
         },
         audio: crate::signals::AudioFacts::default(),
-        artwork: crate::signals::ArtworkScan::Reading {
-            current: None,
-            position: 1,
-            total: 1,
-        },
+        artwork: crate::signals::ArtworkScan::Reading { current: None, position: 1, total: 1 },
     }
 }
 
@@ -167,9 +145,7 @@ fn scanning_snapshot() -> SignalsSnapshot {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_driver_that_reaches_its_verdict_is_gone_without_a_cancel() {
     let (inner, _tmp) = setup_inner().await;
-    let handle = IdentifyServiceHandle {
-        inner: inner.clone(),
-    };
+    let handle = IdentifyServiceHandle { inner: inner.clone() };
     let mut bus_rx = inner.event_tx.every_event();
 
     let (snapshots, watch) = tokio::sync::watch::channel(None);
@@ -205,10 +181,7 @@ async fn a_driver_that_reaches_its_verdict_is_gone_without_a_cancel() {
     // And nothing follows it: a terminal state is not chased by the `Idle`
     // a teardown would report.
     let after = reported_states(&mut bus_rx);
-    assert!(
-        after.is_empty(),
-        "the settled run reported nothing after its verdict: {after:?}"
-    );
+    assert!(after.is_empty(), "the settled run reported nothing after its verdict: {after:?}");
 }
 
 /// The watch holds the latest snapshot rather than queueing them. Two
@@ -218,9 +191,7 @@ async fn a_driver_that_reaches_its_verdict_is_gone_without_a_cancel() {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_run_reads_the_latest_snapshot_however_many_landed_before_it_looked() {
     let (inner, _tmp) = setup_inner().await;
-    let handle = IdentifyServiceHandle {
-        inner: inner.clone(),
-    };
+    let handle = IdentifyServiceHandle { inner: inner.clone() };
     let mut bus_rx = inner.event_tx.every_event();
 
     let (snapshots, watch) = tokio::sync::watch::channel(None);
@@ -255,9 +226,7 @@ async fn a_run_reads_the_latest_snapshot_however_many_landed_before_it_looked() 
 #[tokio::test(flavor = "multi_thread")]
 async fn an_extraction_ending_does_not_end_the_run() {
     let (inner, _tmp) = setup_inner().await;
-    let handle = IdentifyServiceHandle {
-        inner: inner.clone(),
-    };
+    let handle = IdentifyServiceHandle { inner: inner.clone() };
     let mut bus_rx = inner.event_tx.every_event();
 
     let (snapshots, watch) = tokio::sync::watch::channel(None);
@@ -277,9 +246,7 @@ async fn an_extraction_ending_does_not_end_the_run() {
     drop(snapshots);
 
     assert!(
-        await_state(&mut bus_rx, |state| state.is_terminal().then_some(()))
-            .await
-            .is_none(),
+        await_state(&mut bus_rx, |state| state.is_terminal().then_some(())).await.is_none(),
         "no verdict comes of an extraction that said nothing settled"
     );
     assert!(
@@ -290,9 +257,7 @@ async fn an_extraction_ending_does_not_end_the_run() {
     handle.cancel(&crate::import::CandidateKey::test("k"));
     drivers_ended(&inner).await;
     assert!(
-        reported_states(&mut bus_rx)
-            .iter()
-            .any(|state| matches!(state, IdentifyState::Idle)),
+        reported_states(&mut bus_rx).iter().any(|state| matches!(state, IdentifyState::Idle)),
         "and its cancel still lands"
     );
 }
@@ -302,9 +267,7 @@ async fn an_extraction_ending_does_not_end_the_run() {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_cancel_mid_run_reports_idle_and_deregisters() {
     let (inner, _tmp) = setup_inner().await;
-    let handle = IdentifyServiceHandle {
-        inner: inner.clone(),
-    };
+    let handle = IdentifyServiceHandle { inner: inner.clone() };
     let mut bus_rx = inner.event_tx.every_event();
 
     let (_snapshots, watch) = tokio::sync::watch::channel(None);
@@ -320,23 +283,15 @@ async fn a_cancel_mid_run_reports_idle_and_deregisters() {
         )
         .await
         .unwrap());
-    assert!(
-        handle.is_running(&crate::import::CandidateKey::test("k")),
-        "the run is in flight"
-    );
-    assert_eq!(
-        handle.running_keys(),
-        vec![crate::import::CandidateKey::test("k")]
-    );
+    assert!(handle.is_running(&crate::import::CandidateKey::test("k")), "the run is in flight");
+    assert_eq!(handle.running_keys(), vec![crate::import::CandidateKey::test("k")]);
 
     // No signals: the run sits in `Triangulating` until the cancel lands.
     handle.cancel(&crate::import::CandidateKey::test("k"));
 
     drivers_ended(&inner).await;
     assert!(
-        reported_states(&mut bus_rx)
-            .iter()
-            .any(|state| matches!(state, IdentifyState::Idle)),
+        reported_states(&mut bus_rx).iter().any(|state| matches!(state, IdentifyState::Idle)),
         "the cancelled run reports Idle"
     );
     assert!(handle.running_keys().is_empty());
@@ -370,11 +325,7 @@ async fn what_a_run_keeps_is_kept_by_the_step_that_ends_it() {
     )
     .extract()
     .unwrap();
-    inner
-        .library_manager
-        .save_source_release(&discogs)
-        .await
-        .unwrap();
+    inner.library_manager.save_source_release(&discogs).await.unwrap();
 
     let found = crate::import::search::MetadataResult::for_test(
         Catalog::MusicBrainz,
@@ -385,9 +336,7 @@ async fn what_a_run_keeps_is_kept_by_the_step_that_ends_it() {
         discid: DiscidProgress::Lookups {
             discs: vec![crate::identify::DiscLookup {
                 disc_id: "d".to_string(),
-                state: crate::identify::LookupState::Done {
-                    results: vec![found],
-                },
+                state: crate::identify::LookupState::Done { results: vec![found] },
             }],
         },
         barcode: BarcodeProgress::Skipped,
@@ -517,10 +466,7 @@ async fn a_lookup_that_panics_ends_its_run_as_broken() {
     let IdentifyEvent::Broke { failure } = event else {
         panic!("a panicked lookup breaks its run, got {event:?}");
     };
-    assert_eq!(
-        failure.detail,
-        "run an identify lookup panicked: the lookup broke"
-    );
+    assert_eq!(failure.detail, "run an identify lookup panicked: the lookup broke");
     assert_eq!(
         bugs.reports(),
         vec![(

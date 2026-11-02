@@ -14,10 +14,7 @@ async fn test_same_discogs_id_reuses_existing() {
     manager.insert_artist(&existing).await.unwrap();
 
     let incoming = make_artist("Artist One", Some("d123"), None);
-    let resolved = manager
-        .find_or_create_artists(std::slice::from_ref(&incoming))
-        .await
-        .unwrap();
+    let resolved = manager.find_or_create_artists(std::slice::from_ref(&incoming)).await.unwrap();
 
     assert_eq!(resolved[0], existing.id);
 }
@@ -29,10 +26,7 @@ async fn test_same_mb_id_reuses_existing() {
     manager.insert_artist(&existing).await.unwrap();
 
     let incoming = make_artist("Artist One", None, Some("mb-abc"));
-    let resolved = manager
-        .find_or_create_artists(std::slice::from_ref(&incoming))
-        .await
-        .unwrap();
+    let resolved = manager.find_or_create_artists(std::slice::from_ref(&incoming)).await.unwrap();
 
     assert_eq!(resolved[0], existing.id);
 }
@@ -52,11 +46,7 @@ async fn one_import_reuses_an_artist_already_waiting_to_be_inserted() {
     // MusicBrainz id names.
     let artist_id = catalog_artist_id(&cross_linked_credit);
     assert_eq!(resolved, vec![artist_id.clone(), artist_id.clone()]);
-    let saved = manager
-        .get_artist_by_id(&artist_id)
-        .await
-        .unwrap()
-        .unwrap();
+    let saved = manager.get_artist_by_id(&artist_id).await.unwrap().unwrap();
     assert_eq!(saved.musicbrainz_artist_id.as_deref(), Some("mb-abc"));
 }
 
@@ -71,20 +61,9 @@ async fn one_import_reuses_an_idless_artist_name_already_waiting_to_be_inserted(
         .await
         .unwrap();
 
-    assert_eq!(
-        resolved,
-        vec![album_credit.id.clone(), album_credit.id.clone()]
-    );
-    assert!(manager
-        .get_artist_by_id(&album_credit.id)
-        .await
-        .unwrap()
-        .is_some());
-    assert!(manager
-        .get_artist_by_id(&track_credit.id)
-        .await
-        .unwrap()
-        .is_none());
+    assert_eq!(resolved, vec![album_credit.id.clone(), album_credit.id.clone()]);
+    assert!(manager.get_artist_by_id(&album_credit.id).await.unwrap().is_some());
+    assert!(manager.get_artist_by_id(&track_credit.id).await.unwrap().is_none());
 }
 
 #[tokio::test]
@@ -104,15 +83,8 @@ async fn one_import_combines_two_pending_artists_when_a_later_credit_links_them(
         .unwrap();
 
     let artist_id = catalog_artist_id(&cross_linked_credit);
-    assert_eq!(
-        resolved,
-        vec![artist_id.clone(), artist_id.clone(), artist_id.clone()]
-    );
-    let saved = manager
-        .get_artist_by_id(&artist_id)
-        .await
-        .unwrap()
-        .unwrap();
+    assert_eq!(resolved, vec![artist_id.clone(), artist_id.clone(), artist_id.clone()]);
+    let saved = manager.get_artist_by_id(&artist_id).await.unwrap().unwrap();
     assert_eq!(saved.discogs_artist_id.as_deref(), Some("d123"));
     assert_eq!(saved.musicbrainz_artist_id.as_deref(), Some("mb-abc"));
 }
@@ -125,17 +97,11 @@ async fn a_pending_artist_is_folded_into_a_committed_cross_provider_match() {
     let discogs_credit = make_artist("Artist One", Some("d123"), None);
     let cross_linked_credit = make_artist("Artist One", Some("d123"), Some("mb-abc"));
 
-    let resolved = manager
-        .find_or_create_artists(&[discogs_credit, cross_linked_credit])
-        .await
-        .unwrap();
+    let resolved =
+        manager.find_or_create_artists(&[discogs_credit, cross_linked_credit]).await.unwrap();
 
     assert_eq!(resolved, vec![existing.id.clone(), existing.id.clone()]);
-    let saved = manager
-        .get_artist_by_id(&existing.id)
-        .await
-        .unwrap()
-        .unwrap();
+    let saved = manager.get_artist_by_id(&existing.id).await.unwrap().unwrap();
     assert_eq!(saved.discogs_artist_id.as_deref(), Some("d123"));
     assert_eq!(saved.musicbrainz_artist_id.as_deref(), Some("mb-abc"));
 }
@@ -148,17 +114,11 @@ async fn one_import_reuses_an_external_id_waiting_to_be_added_to_an_existing_art
     let cross_linked_credit = make_artist("Artist One", Some("d123"), Some("mb-abc"));
     let discogs_credit = make_artist("Artist One", Some("d123"), None);
 
-    let resolved = manager
-        .find_or_create_artists(&[cross_linked_credit, discogs_credit])
-        .await
-        .unwrap();
+    let resolved =
+        manager.find_or_create_artists(&[cross_linked_credit, discogs_credit]).await.unwrap();
 
     assert_eq!(resolved, vec![existing.id.clone(), existing.id.clone()]);
-    let saved = manager
-        .get_artist_by_id(&existing.id)
-        .await
-        .unwrap()
-        .unwrap();
+    let saved = manager.get_artist_by_id(&existing.id).await.unwrap().unwrap();
     assert_eq!(saved.discogs_artist_id.as_deref(), Some("d123"));
 }
 
@@ -168,17 +128,11 @@ async fn credits_of_one_write_reuse_an_artist_waiting_to_be_inserted() {
     let discogs_credit = make_artist("Artist One", Some("d123"), None);
     let cross_linked_credit = make_artist("Artist One", Some("d123"), Some("mb-abc"));
 
-    let resolved = manager
-        .find_or_create_artists(&[discogs_credit, cross_linked_credit])
-        .await
-        .unwrap();
+    let resolved =
+        manager.find_or_create_artists(&[discogs_credit, cross_linked_credit]).await.unwrap();
 
     assert_eq!(resolved, vec![resolved[0].clone(); 2]);
-    let saved = manager
-        .get_artist_by_id(&resolved[0])
-        .await
-        .unwrap()
-        .unwrap();
+    let saved = manager.get_artist_by_id(&resolved[0]).await.unwrap().unwrap();
     assert_eq!(saved.musicbrainz_artist_id.as_deref(), Some("mb-abc"));
 }
 
@@ -204,11 +158,7 @@ async fn conflicting_exact_source_ids_fail_instead_of_choosing_an_artist() {
     assert_eq!(conflict.musicbrainz_artist_id, "mb-abc");
     assert_eq!(conflict.discogs_artist.artist_id, discogs_artist.id);
     assert_eq!(conflict.musicbrainz_artist.artist_id, musicbrainz_artist.id);
-    assert!(manager
-        .get_artist_by_id(&incoming.id)
-        .await
-        .unwrap()
-        .is_none());
+    assert!(manager.get_artist_by_id(&incoming.id).await.unwrap().is_none());
 }
 
 #[tokio::test]
@@ -218,10 +168,7 @@ async fn a_same_name_credit_without_ids_is_the_library_artist() {
     manager.insert_artist(&existing).await.unwrap();
 
     let incoming = make_artist("artist one", None, None);
-    let resolved = manager
-        .find_or_create_artists(std::slice::from_ref(&incoming))
-        .await
-        .unwrap();
+    let resolved = manager.find_or_create_artists(std::slice::from_ref(&incoming)).await.unwrap();
 
     assert_eq!(resolved[0], existing.id);
 }
@@ -233,10 +180,7 @@ async fn test_same_name_same_mb_id_reuses() {
     manager.insert_artist(&existing).await.unwrap();
 
     let incoming = make_artist("Artist Two", None, Some("mb-artist-two"));
-    let resolved = manager
-        .find_or_create_artists(std::slice::from_ref(&incoming))
-        .await
-        .unwrap();
+    let resolved = manager.find_or_create_artists(std::slice::from_ref(&incoming)).await.unwrap();
 
     assert_eq!(resolved[0], existing.id);
 }
@@ -248,10 +192,7 @@ async fn test_same_name_different_mb_id_creates_new() {
     manager.insert_artist(&existing).await.unwrap();
 
     let incoming = make_artist("Artist Two", None, Some("mb-artist-two-ca"));
-    let resolved = manager
-        .find_or_create_artists(std::slice::from_ref(&incoming))
-        .await
-        .unwrap();
+    let resolved = manager.find_or_create_artists(std::slice::from_ref(&incoming)).await.unwrap();
 
     // Should create a new artist, not reuse existing
     assert_eq!(resolved[0], catalog_artist_id(&incoming));
@@ -265,10 +206,7 @@ async fn test_same_name_different_discogs_id_creates_new() {
     manager.insert_artist(&existing).await.unwrap();
 
     let incoming = make_artist("Artist Two", Some("d200"), None);
-    let resolved = manager
-        .find_or_create_artists(std::slice::from_ref(&incoming))
-        .await
-        .unwrap();
+    let resolved = manager.find_or_create_artists(std::slice::from_ref(&incoming)).await.unwrap();
 
     assert_eq!(resolved[0], catalog_artist_id(&incoming));
     assert_ne!(resolved[0], existing.id);
@@ -283,24 +221,13 @@ async fn ids_of_different_catalogs_do_not_keep_a_name_match_apart() {
     manager.insert_artist(&existing).await.unwrap();
 
     let incoming = make_artist("Artist One", None, Some("mb-xyz"));
-    let resolved = manager
-        .find_or_create_artists(std::slice::from_ref(&incoming))
-        .await
-        .unwrap();
+    let resolved = manager.find_or_create_artists(std::slice::from_ref(&incoming)).await.unwrap();
 
     assert_eq!(resolved[0], existing.id, "the artist keeps its own id");
-    let linked = manager
-        .get_artist_by_id(&existing.id)
-        .await
-        .unwrap()
-        .unwrap();
+    let linked = manager.get_artist_by_id(&existing.id).await.unwrap().unwrap();
     assert_eq!(linked.discogs_artist_id.as_deref(), Some("d456"));
     assert_eq!(linked.musicbrainz_artist_id.as_deref(), Some("mb-xyz"));
-    assert!(manager
-        .get_artist_by_id(&catalog_artist_id(&incoming))
-        .await
-        .unwrap()
-        .is_none());
+    assert!(manager.get_artist_by_id(&catalog_artist_id(&incoming)).await.unwrap().is_none());
 }
 
 #[tokio::test]
@@ -308,19 +235,12 @@ async fn test_new_artist_inserts() {
     let (manager, _tmp) = setup_test_manager().await;
 
     let incoming = make_artist("New Band", Some("d999"), Some("mb-999"));
-    let resolved = manager
-        .find_or_create_artists(std::slice::from_ref(&incoming))
-        .await
-        .unwrap();
+    let resolved = manager.find_or_create_artists(std::slice::from_ref(&incoming)).await.unwrap();
 
     assert_eq!(resolved[0], catalog_artist_id(&incoming));
 
     // Verify it's in the DB
-    let saved = manager
-        .get_artist_by_id(&resolved[0])
-        .await
-        .unwrap()
-        .unwrap();
+    let saved = manager.get_artist_by_id(&resolved[0]).await.unwrap().unwrap();
     assert_eq!(saved.name, "New Band");
     assert_eq!(saved.discogs_artist_id.as_deref(), Some("d999"));
     assert_eq!(saved.musicbrainz_artist_id.as_deref(), Some("mb-999"));
@@ -390,8 +310,10 @@ fn make_track(release_id: &str, number: i32) -> DbTrack {
         title: format!("Track {}", number),
         medium_id: crate::db::identity::release_medium_id(release_id, 1),
         side: std::num::NonZeroU8::MIN,
-        track_number: std::num::NonZeroU32::new(u32::try_from(number).expect("a test track number fits u32"))
-            .expect("track numbers count from one"),
+        track_number: std::num::NonZeroU32::new(
+            u32::try_from(number).expect("a test track number fits u32"),
+        )
+        .expect("track numbers count from one"),
         duration_ms: 180000,
         created_at: now,
     }
@@ -402,13 +324,15 @@ fn make_track(release_id: &str, number: i32) -> DbTrack {
 fn mb_identity(group: &str, release: &str) -> ReleaseRecord {
     ReleaseRecord::new(
         &crate::import::MetadataRef::new(Catalog::MusicBrainz, release),
-        Some(group.to_string()))
+        Some(group.to_string()),
+    )
 }
 
 fn discogs_identity(master: &str, release: &str) -> ReleaseRecord {
     ReleaseRecord::new(
         &crate::import::MetadataRef::new(Catalog::Discogs, release),
-        Some(master.to_string()))
+        Some(master.to_string()),
+    )
 }
 
 /// Insert an album + release with the supplied identity rows. Mirrors
@@ -432,10 +356,7 @@ async fn insert_with_identities(
         )
         .await
         .unwrap();
-    manager
-        .insert_release_records(&release.id, identities)
-        .await
-        .unwrap();
+    manager.insert_release_records(&release.id, identities).await.unwrap();
 }
 
 /// A library holding one album titled `title`, whose single release carries
@@ -458,10 +379,7 @@ async fn album_for_import(
     manager: &LibraryManager,
     identities: &[ReleaseRecord],
 ) -> Option<String> {
-    manager
-        .find_existing_album_for_import(identities)
-        .await
-        .unwrap()
+    manager.find_existing_album_for_import(identities).await.unwrap()
 }
 
 #[tokio::test]
@@ -495,11 +413,8 @@ async fn test_same_release_group_finds_existing_album() {
 
 #[tokio::test]
 async fn test_same_discogs_master_finds_existing_album() {
-    let (manager, _tmp, album, _release) = album_with(
-        "Album Title",
-        &[discogs_identity("d-master-456", "d-rel-123")],
-    )
-    .await;
+    let (manager, _tmp, album, _release) =
+        album_with("Album Title", &[discogs_identity("d-master-456", "d-rel-123")]).await;
 
     let incoming = vec![discogs_identity("d-master-456", "d-rel-999")];
     assert_eq!(album_for_import(&manager, &incoming).await, Some(album.id));
@@ -521,11 +436,8 @@ async fn test_no_match_returns_none() {
 #[tokio::test]
 async fn test_cross_source_no_false_merge() {
     // Existing album holds only a Discogs identity row.
-    let (manager, _tmp, _album, _release) = album_with(
-        "Album Title",
-        &[discogs_identity("d-master-200", "d-rel-100")],
-    )
-    .await;
+    let (manager, _tmp, _album, _release) =
+        album_with("Album Title", &[discogs_identity("d-master-200", "d-rel-100")]).await;
 
     // Unrelated MB import → should not merge.
     let incoming = vec![mb_identity("mb-rg-600", "mb-rel-500")];
@@ -540,10 +452,7 @@ async fn test_cross_source_merge_via_path_2() {
     // master.
     let (manager, _tmp, album, _release) = album_with(
         "Album Title",
-        &[
-            mb_identity("mb-rg-100", "mb-rel-50"),
-            discogs_identity("d-master-200", "d-rel-75"),
-        ],
+        &[mb_identity("mb-rg-100", "mb-rel-50"), discogs_identity("d-master-200", "d-rel-75")],
     )
     .await;
 
@@ -559,18 +468,13 @@ async fn test_cross_source_merge_via_path_2_inverse() {
     // cross-link Discogs row pointing to the same master and thus
     // attaches via the Discogs match — even though the existing album
     // has no MB row to compare against.
-    let (manager, _tmp, album, _release) = album_with(
-        "Album Title",
-        &[discogs_identity("d-master-200", "d-rel-75")],
-    )
-    .await;
+    let (manager, _tmp, album, _release) =
+        album_with("Album Title", &[discogs_identity("d-master-200", "d-rel-75")]).await;
 
     // MB-rooted import: an MB row plus a Discogs cross-link to the
     // same Discogs master the existing album sits on.
-    let incoming = vec![
-        mb_identity("mb-rg-100", "mb-rel-50"),
-        discogs_identity("d-master-200", "d-rel-300"),
-    ];
+    let incoming =
+        vec![mb_identity("mb-rg-100", "mb-rel-50"), discogs_identity("d-master-200", "d-rel-300")];
     assert_eq!(album_for_import(&manager, &incoming).await, Some(album.id));
 }
 
@@ -605,13 +509,15 @@ async fn test_merge_release_into_existing_album() {
     release2.album_id = existing_album_id.unwrap();
     let track2 = make_track(&release2.id, 1);
     manager
-        .insert_release_with_tracks(&release2, &[crate::db::DbReleaseMedium::new_test(&release2.id)], &[track2], &[])
+        .insert_release_with_tracks(
+            &release2,
+            &[crate::db::DbReleaseMedium::new_test(&release2.id)],
+            &[track2],
+            &[],
+        )
         .await
         .unwrap();
-    manager
-        .insert_release_records(&release2.id, &incoming)
-        .await
-        .unwrap();
+    manager.insert_release_records(&release2.id, &incoming).await.unwrap();
 
     let releases = manager.get_releases_for_album(&album.id).await.unwrap();
     assert_eq!(releases.len(), 2);
@@ -687,13 +593,15 @@ async fn test_check_pressing_match_wins_over_sibling_pressing_row() {
     let named = make_release(&album.id);
     let track = make_track(&named.id, 1);
     manager
-        .insert_release_with_tracks(&named, &[crate::db::DbReleaseMedium::new_test(&named.id)], &[track], &[])
+        .insert_release_with_tracks(
+            &named,
+            &[crate::db::DbReleaseMedium::new_test(&named.id)],
+            &[track],
+            &[],
+        )
         .await
         .unwrap();
-    manager
-        .insert_release_records(&named.id, &[mb_identity("mb-rg-1", "mb-rel-1")])
-        .await
-        .unwrap();
+    manager.insert_release_records(&named.id, &[mb_identity("mb-rg-1", "mb-rel-1")]).await.unwrap();
 
     let checks = vec![crate::db::LibraryCheck {
         release_id: "mb-rel-1".to_string(),
@@ -746,17 +654,11 @@ async fn test_check_cross_source_doesnt_leak() {
 /// A library holding album X filed under MusicBrainz group `mb-rg-x` and
 /// album Y filed under Discogs master `d-master-y`.
 async fn two_albums() -> (LibraryManager, TempDir, DbAlbum, DbAlbum) {
-    let (manager, tmp, x, _) =
-        album_with("Album X", &[mb_identity("mb-rg-x", "mb-rel-x")]).await;
+    let (manager, tmp, x, _) = album_with("Album X", &[mb_identity("mb-rg-x", "mb-rel-x")]).await;
     let y = make_album("Album Y");
     let release_y = make_release(&y.id);
-    insert_with_identities(
-        &manager,
-        &y,
-        &release_y,
-        &[discogs_identity("d-master-y", "d-rel-y")],
-    )
-    .await;
+    insert_with_identities(&manager, &y, &release_y, &[discogs_identity("d-master-y", "d-rel-y")])
+        .await;
     (manager, tmp, x, y)
 }
 
@@ -792,13 +694,15 @@ async fn an_applied_record_naming_no_album_takes_its_partner_s() {
     let records = vec![
         ReleaseRecord::new(
             &crate::import::MetadataRef::new(Catalog::MusicBrainz, "mb-rel-new"),
-            Some("mb-rg-unknown".to_string())),
+            Some("mb-rg-unknown".to_string()),
+        ),
         discogs_identity("d-master-y", "d-rel-new"),
     ];
     assert_eq!(album_for_import(&manager, &records).await, Some(y.id));
     let neither = vec![ReleaseRecord::new(
         &crate::import::MetadataRef::new(Catalog::MusicBrainz, "mb-rel-new"),
-        Some("mb-rg-unknown".to_string()))];
+        Some("mb-rg-unknown".to_string()),
+    )];
     assert_eq!(album_for_import(&manager, &neither).await, None);
 }
 
@@ -806,12 +710,10 @@ async fn an_applied_record_naming_no_album_takes_its_partner_s() {
 /// holding the release itself first.
 #[tokio::test]
 async fn the_status_probe_names_every_album_of_the_group() {
-    let (manager, _tmp, x, _) =
-        album_with("Album X", &[mb_identity("mb-rg-1", "mb-rel-1")]).await;
+    let (manager, _tmp, x, _) = album_with("Album X", &[mb_identity("mb-rg-1", "mb-rel-1")]).await;
     let other = make_album("Album Other");
     let release = make_release(&other.id);
-    insert_with_identities(&manager, &other, &release, &[mb_identity("mb-rg-1", "mb-rel-2")])
-        .await;
+    insert_with_identities(&manager, &other, &release, &[mb_identity("mb-rg-1", "mb-rel-2")]).await;
 
     let statuses = manager
         .check_releases_in_library(&[crate::db::LibraryCheck {

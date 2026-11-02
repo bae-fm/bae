@@ -24,17 +24,11 @@ fn track(position: &str, title: &str, length: Option<u64>) -> TracklistEntry {
 /// `count` tracks positioned `<prefix><n>`, titled `<name> <n>`, each
 /// stating `length`.
 fn run(prefix: &str, name: &str, count: usize, length: Option<u64>) -> Vec<TracklistEntry> {
-    (1..=count)
-        .map(|n| track(&format!("{prefix}{n}"), &format!("{name} {n}"), length))
-        .collect()
+    (1..=count).map(|n| track(&format!("{prefix}{n}"), &format!("{name} {n}"), length)).collect()
 }
 
 fn medium(carrier: Option<Medium>, entries: Vec<TracklistEntry>) -> SourceMedium {
-    SourceMedium {
-        medium: carrier,
-        disc_ids: Vec::new(),
-        entries,
-    }
+    SourceMedium { medium: carrier, disc_ids: Vec::new(), entries }
 }
 
 /// An imaginary release of `catalog` holding `mediums`, credited to one
@@ -55,10 +49,7 @@ fn release(catalog: Catalog, mediums: Vec<SourceMedium>) -> SourceRelease {
             pressing: Pressing::blank(),
         },
         other_records: Vec::new(),
-        covers: ReleaseCovers {
-            release: Vec::new(),
-            album: Vec::new(),
-        },
+        covers: ReleaseCovers { release: Vec::new(), album: Vec::new() },
         archive_release: None,
         archive_groups: Vec::new(),
         mediums,
@@ -67,10 +58,9 @@ fn release(catalog: Catalog, mediums: Vec<SourceMedium>) -> SourceRelease {
                 links: Vec::new(),
                 album_links: crate::import::album_links::AlbumLinks::NotAsked,
             },
-            Catalog::Discogs => CatalogFacts::Discogs {
-                media: StatedMedia::Undescribed,
-                release_roles: Vec::new(),
-            },
+            Catalog::Discogs => {
+                CatalogFacts::Discogs { media: StatedMedia::Undescribed, release_roles: Vec::new() }
+            }
             other => unreachable!("no release is fetched from {}", other.as_str()),
         },
         notes: Vec::new(),
@@ -88,10 +78,7 @@ fn audio(lengths: Vec<u64>, origin: AudioOrigin, disc_ids: &[&str]) -> ReadAudio
 
 fn proven_cd_rip() -> AudioOrigin {
     AudioOrigin {
-        source: Some(AudioSource::CdRip {
-            proof: CdProof::RipLog,
-            file: None,
-        }),
+        source: Some(AudioSource::CdRip { proof: CdProof::RipLog, file: None }),
         not_cd_rate: None,
     }
 }
@@ -110,20 +97,15 @@ const CD1: [u64; 12] = [
     201_000, 202_000, 203_000, 204_000, 205_000, 206_000, 207_000, 208_000, 209_000, 210_000,
     211_000, 212_000,
 ];
-const CD2: [u64; 10] = [
-    301_000, 302_000, 303_000, 304_000, 305_000, 306_000, 307_000, 308_000, 309_000, 310_000,
-];
+const CD2: [u64; 10] =
+    [301_000, 302_000, 303_000, 304_000, 305_000, 306_000, 307_000, 308_000, 309_000, 310_000];
 
 fn stated(lengths: &[u64], prefix: &str, name: &str) -> Vec<TracklistEntry> {
     lengths
         .iter()
         .enumerate()
         .map(|(i, &length)| {
-            track(
-                &format!("{prefix}{}", i + 1),
-                &format!("{name} {}", i + 1),
-                Some(length),
-            )
+            track(&format!("{prefix}{}", i + 1), &format!("{name} {}", i + 1), Some(length))
         })
         .collect()
 }
@@ -157,9 +139,7 @@ fn mixed_box_discogs() -> SourceRelease {
         ..track("", title, None)
     };
     let with_heading = |title: &str, rows: Vec<TracklistEntry>| {
-        std::iter::once(heading(title))
-            .chain(rows)
-            .collect::<Vec<_>>()
+        std::iter::once(heading(title)).chain(rows).collect::<Vec<_>>()
     };
     let mut lp1 = stated(&CD1[..6], "A", "LP Side A");
     lp1.extend(stated(&CD1[6..], "B", "LP Side B"));
@@ -170,10 +150,7 @@ fn mixed_box_discogs() -> SourceRelease {
         vec![
             medium(Some(Medium::Vinyl), with_heading("Records", lp1)),
             medium(Some(Medium::Vinyl), lp2),
-            medium(
-                Some(Medium::Cd),
-                with_heading("Discs", stated(&CD1, "CD1-", "CD One")),
-            ),
+            medium(Some(Medium::Cd), with_heading("Discs", stated(&CD1, "CD1-", "CD One"))),
             medium(Some(Medium::Cd), stated(&CD2, "CD2-", "CD Two")),
             medium(
                 Some(Medium::BluRay),
@@ -195,10 +172,7 @@ fn a_cd_rip_of_the_mixed_box_reads_its_two_cds() {
         assert_eq!(read.len(), 22);
         assert_eq!(read[0], "CD One 1");
         assert_eq!(read[12], "CD Two 1");
-        assert!(
-            read.iter().all(|title| title.starts_with("CD ")),
-            "{read:?}"
-        );
+        assert!(read.iter().all(|title| title.starts_with("CD ")), "{read:?}");
         let values = reading.as_ref().expect("the release reads");
         assert_eq!(
             values.mediums,
@@ -240,12 +214,7 @@ fn tied_discs_that_read_differently_are_refused_naming_them() {
 
     let audio = audio(rip, AudioOrigin::default(), &[]);
     let tied = mixed_box_musicbrainz().read(&audio);
-    assert_eq!(
-        tied,
-        Err(ReadingRefusal::Tied {
-            mediums: vec![1, 3]
-        })
-    );
+    assert_eq!(tied, Err(ReadingRefusal::Tied { mediums: vec![1, 3] }));
     assert_eq!(
         listing(&tied, &audio),
         SourceTracks::Listed { count: 12 },
@@ -264,16 +233,10 @@ fn identical_layers_of_a_hybrid_disc_are_one_answer() {
     let layer = || run("", "Movement", 4, Some(400_000));
     let release = release(
         Catalog::MusicBrainz,
-        vec![
-            medium(Some(Medium::Sacd), layer()),
-            medium(Some(Medium::Sacd), layer()),
-        ],
+        vec![medium(Some(Medium::Sacd), layer()), medium(Some(Medium::Sacd), layer())],
     );
     let reading = release.read(&audio(vec![400_200; 4], proven_cd_rip(), &[]));
-    assert_eq!(
-        titles(&reading),
-        vec!["Movement 1", "Movement 2", "Movement 3", "Movement 4"]
-    );
+    assert_eq!(titles(&reading), vec!["Movement 1", "Movement 2", "Movement 3", "Movement 4"]);
 }
 
 /// A medium MusicBrainz registers one of the folder's Disc IDs against is
@@ -284,10 +247,7 @@ fn a_disc_id_decides_over_lengths() {
     second.disc_ids = vec!["disc-id-two".to_string()];
     let release = release(
         Catalog::MusicBrainz,
-        vec![
-            medium(Some(Medium::Cd), run("", "First Disc", 3, Some(200_000))),
-            second,
-        ],
+        vec![medium(Some(Medium::Cd), run("", "First Disc", 3, Some(200_000))), second],
     );
     let reading = release.read(&audio(vec![200_000; 3], proven_cd_rip(), &["disc-id-two"]));
     assert_eq!(titles(&reading)[0], "Second Disc 1");
@@ -321,13 +281,7 @@ fn audio_no_set_of_mediums_holds_is_refused_with_both_counts() {
     );
     let audio = audio(vec![200_000; 2], AudioOrigin::default(), &[]);
     let reading = release.read(&audio);
-    assert_eq!(
-        reading,
-        Err(ReadingRefusal::TrackCount {
-            folder: 2,
-            release: 7
-        })
-    );
+    assert_eq!(reading, Err(ReadingRefusal::TrackCount { folder: 2, release: 7 }));
     assert_eq!(listing(&reading, &audio), SourceTracks::Listed { count: 7 });
 }
 
@@ -340,10 +294,7 @@ fn an_untitled_track_in_a_covered_medium_is_never_a_fit() {
     let release = release(Catalog::MusicBrainz, vec![medium(Some(Medium::Cd), rows)]);
     let audio = audio(vec![200_000; 2], AudioOrigin::default(), &[]);
     let reading = release.read(&audio);
-    assert!(
-        matches!(reading, Err(ReadingRefusal::Unreadable { .. })),
-        "{reading:?}"
-    );
+    assert!(matches!(reading, Err(ReadingRefusal::Unreadable { .. })), "{reading:?}");
     let listed = listing(&reading, &audio);
     assert_eq!(listed, SourceTracks::Unreadable);
     assert_eq!(
@@ -384,10 +335,7 @@ fn a_collapsed_suite_reads_its_own_disc() {
     disc_one.push(suite);
     let release = release(
         Catalog::Discogs,
-        vec![
-            medium(None, disc_one),
-            medium(None, run("2-", "Second", 10, Some(250_000))),
-        ],
+        vec![medium(None, disc_one), medium(None, run("2-", "Second", 10, Some(250_000)))],
     );
     let mut rip = vec![200_000; 9];
     rip.push(300_000);
@@ -398,8 +346,6 @@ fn a_collapsed_suite_reads_its_own_disc() {
     assert_eq!(read[9], "Suite");
     assert_eq!(
         listing(&reading, &audio),
-        SourceTracks::Listed {
-            count: u32::try_from(read.len()).expect("ten fits")
-        }
+        SourceTracks::Listed { count: u32::try_from(read.len()).expect("ten fits") }
     );
 }

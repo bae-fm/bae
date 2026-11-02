@@ -37,30 +37,18 @@ struct QueryColumns<'a> {
 }
 
 fn query_columns(query: &SearchQuery) -> QueryColumns<'_> {
-    let none = QueryColumns {
-        mode: "",
-        artist: None,
-        album: None,
-        catalog_number: None,
-        barcode: None,
-    };
+    let none =
+        QueryColumns { mode: "", artist: None, album: None, catalog_number: None, barcode: None };
     match query {
-        SearchQuery::General { artist, album } => QueryColumns {
-            mode: "general",
-            artist: Some(artist),
-            album: Some(album),
-            ..none
-        },
-        SearchQuery::CatalogNumber { catalog_number } => QueryColumns {
-            mode: "catalog_number",
-            catalog_number: Some(catalog_number),
-            ..none
-        },
-        SearchQuery::Barcode { barcode } => QueryColumns {
-            mode: "barcode",
-            barcode: Some(barcode),
-            ..none
-        },
+        SearchQuery::General { artist, album } => {
+            QueryColumns { mode: "general", artist: Some(artist), album: Some(album), ..none }
+        }
+        SearchQuery::CatalogNumber { catalog_number } => {
+            QueryColumns { mode: "catalog_number", catalog_number: Some(catalog_number), ..none }
+        }
+        SearchQuery::Barcode { barcode } => {
+            QueryColumns { mode: "barcode", barcode: Some(barcode), ..none }
+        }
     }
 }
 
@@ -72,16 +60,9 @@ fn query_of(row: &Row<'_>) -> Result<SearchQuery, DbError> {
             .ok_or_else(|| DbError::Message(format!("a {mode} search states no {column}")))
     };
     Ok(match mode.as_str() {
-        "general" => SearchQuery::General {
-            artist: value("artist")?,
-            album: value("album")?,
-        },
-        "catalog_number" => SearchQuery::CatalogNumber {
-            catalog_number: value("catalog_number")?,
-        },
-        "barcode" => SearchQuery::Barcode {
-            barcode: value("barcode")?,
-        },
+        "general" => SearchQuery::General { artist: value("artist")?, album: value("album")? },
+        "catalog_number" => SearchQuery::CatalogNumber { catalog_number: value("catalog_number")? },
+        "barcode" => SearchQuery::Barcode { barcode: value("barcode")? },
         other => return Err(unreadable("search mode", other)),
     })
 }
@@ -96,12 +77,8 @@ struct PartColumns<'a> {
 }
 
 fn part_columns(part: &SourceSearch) -> PartColumns<'_> {
-    let settled = |state| PartColumns {
-        state,
-        failure: None,
-        failure_status: None,
-        error_detail: None,
-    };
+    let settled =
+        |state| PartColumns { state, failure: None, failure_status: None, error_detail: None };
     match part {
         SourceSearch::Off => settled("off"),
         SourceSearch::NotConfigured => settled("not_configured"),
@@ -115,10 +92,9 @@ fn part_columns(part: &SourceSearch) -> PartColumns<'_> {
                 ..settled("failed")
             }
         }
-        SourceSearch::Failed(Failure::Internal(failure)) => PartColumns {
-            error_detail: Some(&failure.detail),
-            ..settled("failed")
-        },
+        SourceSearch::Failed(Failure::Internal(failure)) => {
+            PartColumns { error_detail: Some(&failure.detail), ..settled("failed") }
+        }
     }
 }
 
@@ -226,20 +202,13 @@ fn load_on(
                     row.position
                 )));
             };
-            if was_picked
-                && !picked
-                    .iter()
-                    .any(|read| read.release_id == row.result.release_id)
-            {
+            if was_picked && !picked.iter().any(|read| read.release_id == row.result.release_id) {
                 picked.push(PickedResult {
                     release_id: row.result.release_id.clone(),
                     links: row.result.album_links.clone(),
                 });
             }
-            by_catalog
-                .entry(row.result.source)
-                .or_default()
-                .push(row.result);
+            by_catalog.entry(row.result.source).or_default().push(row.result);
         }
         let sources = parts_by_search
             .remove(&run)
@@ -247,10 +216,7 @@ fn load_on(
             .into_iter()
             .map(|part| {
                 let catalog = Catalog::from_str(&part.catalog).map_err(DbError::Message)?;
-                Ok((
-                    catalog,
-                    part.part(by_catalog.remove(&catalog).unwrap_or_default())?,
-                ))
+                Ok((catalog, part.part(by_catalog.remove(&catalog).unwrap_or_default())?))
             })
             .collect::<Result<Vec<_>, DbError>>()?;
         if let Some(catalog) = by_catalog.keys().next() {
@@ -260,13 +226,7 @@ fn load_on(
                 catalog.as_str()
             )));
         }
-        loaded.insert(
-            key,
-            (
-                SearchRun::of(run),
-                CandidateSearch::of(query, sources, picked),
-            ),
-        );
+        loaded.insert(key, (SearchRun::of(run), CandidateSearch::of(query, sources, picked)));
     }
     Ok(loaded)
 }
@@ -276,19 +236,14 @@ pub(super) fn load_search_on(
     sql: &impl super::super::query::QueryRows,
     key: &CandidateKey,
 ) -> Result<Option<CandidateSearch>, DbError> {
-    Ok(load_on(sql, Some(key))?
-        .remove(key)
-        .map(|(_, search)| search))
+    Ok(load_on(sql, Some(key))?.remove(key).map(|(_, search)| search))
 }
 
 /// Every key's search.
 pub(super) fn load_searches_on(
     sql: &impl super::super::query::QueryRows,
 ) -> Result<HashMap<CandidateKey, CandidateSearch>, DbError> {
-    Ok(load_on(sql, None)?
-        .into_iter()
-        .map(|(key, (_, search))| (key, search))
-        .collect())
+    Ok(load_on(sql, None)?.into_iter().map(|(key, (_, search))| (key, search)).collect())
 }
 
 /// End, inside the caller's scan write, `key`'s search unless it is of
@@ -300,10 +255,9 @@ pub(super) fn end_search_unless_of_on(
     held: Option<&CandidateFiles>,
 ) -> Result<(), DbError> {
     match held {
-        None => sql.execute(
-            "DELETE FROM import_candidate_search WHERE candidate_key = ?",
-            [key],
-        )?,
+        None => {
+            sql.execute("DELETE FROM import_candidate_search WHERE candidate_key = ?", [key])?
+        }
         Some(files) => sql.execute(
             "DELETE FROM import_candidate_search WHERE candidate_key = ? \
              AND (content_hash, file_edit_revision) IS NOT (?, ?)",
@@ -325,10 +279,7 @@ fn start_on(
     files: Option<&CandidateFiles>,
     search: &CandidateSearch,
 ) -> Result<SearchRun, DbError> {
-    sql.execute(
-        "DELETE FROM import_candidate_search WHERE candidate_key = ?",
-        [key],
-    )?;
+    sql.execute("DELETE FROM import_candidate_search WHERE candidate_key = ?", [key])?;
     let query = query_columns(&search.query);
     let run: i64 = sql.query_row(
         "INSERT INTO import_candidate_search \
@@ -384,12 +335,7 @@ fn land_on(
 ) -> Result<bool, DbError> {
     let empty = Vec::new();
     let (part, results) = match outcome {
-        Ok(results) => (
-            SourceSearch::Done {
-                results: Vec::new(),
-            },
-            results,
-        ),
+        Ok(results) => (SourceSearch::Done { results: Vec::new() }, results),
         Err(failure) => (SourceSearch::Failed(failure.clone()), &empty),
     };
     let columns = part_columns(&part);
@@ -536,8 +482,7 @@ impl Database {
         catalog: Catalog,
         outcome: Result<Vec<MetadataResult>, Failure>,
     ) -> Result<bool, DbError> {
-        self.call(move |sql| land_on(sql, run, catalog, &outcome))
-            .await
+        self.call(move |sql| land_on(sql, run, catalog, &outcome)).await
     }
 
     /// Land what the documents of `release`, which a pick read, state its
@@ -572,7 +517,6 @@ impl Database {
         key: &CandidateKey,
     ) -> Result<Option<SearchRun>, DbError> {
         let key = key.clone();
-        self.read(move |sql| Ok(load_on(&sql, Some(&key))?.remove(&key).map(|(run, _)| run)))
-            .await
+        self.read(move |sql| Ok(load_on(&sql, Some(&key))?.remove(&key).map(|(run, _)| run))).await
     }
 }

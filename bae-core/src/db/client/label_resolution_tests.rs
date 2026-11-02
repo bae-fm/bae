@@ -13,9 +13,7 @@ async fn library() -> (Database, tempfile::TempDir) {
     .unwrap();
     let album = DbAlbum::new_test("Album Title");
     let release = DbRelease::new_test(&album.id, RELEASE);
-    db.insert_album_with_release_and_tracks(&album, &[], &release, &[], &[], &[])
-        .await
-        .unwrap();
+    db.insert_album_with_release_and_tracks(&album, &[], &release, &[], &[], &[]).await.unwrap();
     (db, tmp)
 }
 
@@ -41,13 +39,7 @@ async fn add_label(
             "INSERT INTO labels \
                  (id, name, name_key, musicbrainz_label_id, discogs_label_id, created_at) \
              VALUES (?, ?, ?, ?, ?, '2026-01-01T00:00:00Z')",
-            params![
-                id,
-                name,
-                bae_types::text_match::label_name_key(&name),
-                musicbrainz,
-                discogs
-            ],
+            params![id, name, bae_types::text_match::label_name_key(&name), musicbrainz, discogs],
         )?;
         Ok(())
     })
@@ -91,11 +83,7 @@ async fn placed(db: &Database) -> Vec<(Option<String>, Option<String>)> {
 async fn stored_label(db: &Database, id: &str) -> LabelRow {
     let id = id.to_string();
     db.read(move |sql| {
-        Ok(sql.query_row(
-            "SELECT * FROM labels WHERE id = ?",
-            [id],
-            LabelRow::from_row,
-        )?)
+        Ok(sql.query_row("SELECT * FROM labels WHERE id = ?", [id], LabelRow::from_row)?)
     })
     .await
     .unwrap()
@@ -109,12 +97,7 @@ async fn label_count(db: &Database) -> i64 {
 
 /// The labels `RELEASE` reads with, as the library shows them.
 async fn read_labels(db: &Database) -> Vec<ReleaseLabel> {
-    db.find_release_by_id(RELEASE)
-        .await
-        .unwrap()
-        .unwrap()
-        .pressing
-        .labels
+    db.find_release_by_id(RELEASE).await.unwrap().unwrap().pressing.labels
 }
 
 fn ids_of(rows: &[(Option<String>, Option<String>)]) -> Vec<Option<&str>> {
@@ -127,23 +110,12 @@ fn ids_of(rows: &[(Option<String>, Option<String>)]) -> Vec<Option<&str>> {
 #[tokio::test]
 async fn a_label_is_the_library_label_holding_its_catalog_id() {
     let (db, _tmp) = library().await;
-    add_label(
-        &db,
-        "held",
-        "Warner Strategic Marketing",
-        None,
-        Some("7190"),
-    )
-    .await;
+    add_label(&db, "held", "Warner Strategic Marketing", None, Some("7190")).await;
 
     write(
         &db,
         vec![
-            with_ids(
-                label(Some("Rhino"), Some("R2 1")),
-                Some("mb-rhino"),
-                Some("7190"),
-            ),
+            with_ids(label(Some("Rhino"), Some("R2 1")), Some("mb-rhino"), Some("7190")),
             label(None, Some("XY 3")),
         ],
         None,
@@ -160,10 +132,7 @@ async fn a_label_is_the_library_label_holding_its_catalog_id() {
     assert_eq!(label_count(&db).await, 1);
     assert_eq!(
         read_labels(&db).await,
-        vec![
-            label(Some("Warner Strategic Marketing"), Some("R2 1")),
-            label(None, Some("XY 3"))
-        ]
+        vec![label(Some("Warner Strategic Marketing"), Some("R2 1")), label(None, Some("XY 3"))]
     );
 }
 
@@ -224,10 +193,7 @@ async fn one_write_makes_one_new_label_of_two_places_naming_it() {
 
     let rows = placed(&db).await;
     assert_eq!(rows[0].0, rows[1].0);
-    assert_eq!(
-        rows[2].0,
-        crate::db::identity::label_id(Some("mb-other"), None)
-    );
+    assert_eq!(rows[2].0, crate::db::identity::label_id(Some("mb-other"), None));
     assert_eq!(label_count(&db).await, 2);
 }
 
@@ -238,20 +204,13 @@ async fn an_edit_keeps_the_label_the_release_names_by_its_name() {
     let (db, _tmp) = library().await;
     add_label(&db, "columbia-1", "Columbia", None, Some("1866")).await;
     add_label(&db, "columbia-2", "Columbia", None, Some("5320")).await;
-    write(&db, vec![label(Some("Columbia"), Some("C 1"))], None)
-        .await
-        .unwrap();
+    write(&db, vec![label(Some("Columbia"), Some("C 1"))], None).await.unwrap();
     let made = placed(&db).await[0].0.clone().unwrap();
     assert!(!["columbia-1", "columbia-2"].contains(&made.as_str()));
 
-    write(&db, vec![label(Some("Columbia"), Some("C 2"))], None)
-        .await
-        .unwrap();
+    write(&db, vec![label(Some("Columbia"), Some("C 2"))], None).await.unwrap();
 
-    assert_eq!(
-        placed(&db).await,
-        vec![(Some(made), Some("C 2".to_string()))]
-    );
+    assert_eq!(placed(&db).await, vec![(Some(made), Some("C 2".to_string()))]);
     assert_eq!(label_count(&db).await, 3);
 }
 
@@ -265,11 +224,7 @@ async fn two_labels_holding_the_labels_two_ids_are_the_identity_conflict() {
 
     let error = write(
         &db,
-        vec![with_ids(
-            label(Some("Label Name"), None),
-            Some("mb-label"),
-            Some("7190"),
-        )],
+        vec![with_ids(label(Some("Label Name"), None), Some("mb-label"), Some("7190"))],
         None,
     )
     .await
@@ -327,11 +282,7 @@ async fn has_failure(db: &Database) -> bool {
 }
 
 fn conflicting() -> ReleaseLabel {
-    with_ids(
-        label(Some("Label Name"), Some("LN 1")),
-        Some("mb-label"),
-        Some("7190"),
-    )
+    with_ids(label(Some("Label Name"), Some("LN 1")), Some("mb-label"), Some("7190"))
 }
 
 /// "Same label" merges the MusicBrainz library label into the Discogs one,
@@ -341,21 +292,10 @@ fn conflicting() -> ReleaseLabel {
 async fn the_same_label_answer_merges_the_two_and_the_import_names_the_survivor() {
     let (db, _tmp) = library().await;
     add_label(&db, "by-discogs", "Label Name", None, Some("7190")).await;
-    add_label(
-        &db,
-        "by-musicbrainz",
-        "Label Name Records",
-        Some("mb-label"),
-        None,
-    )
-    .await;
+    add_label(&db, "by-musicbrainz", "Label Name Records", Some("mb-label"), None).await;
     write(
         &db,
-        vec![with_ids(
-            label(Some("Label Name Records"), None),
-            Some("mb-label"),
-            None,
-        )],
+        vec![with_ids(label(Some("Label Name Records"), None), Some("mb-label"), None)],
         None,
     )
     .await
@@ -374,10 +314,7 @@ async fn the_same_label_answer_merges_the_two_and_the_import_names_the_survivor(
     assert!(!has_failure(&db).await);
     let survivor = stored_label(&db, "by-discogs").await;
     assert_eq!(survivor.musicbrainz_label_id.as_deref(), Some("mb-label"));
-    assert_eq!(
-        read_labels(&db).await,
-        vec![label(Some("Label Name"), None)]
-    );
+    assert_eq!(read_labels(&db).await, vec![label(Some("Label Name"), None)]);
     let into: String = db
         .read(|sql| {
             Ok(sql.query_row(
@@ -390,9 +327,7 @@ async fn the_same_label_answer_merges_the_two_and_the_import_names_the_survivor(
         .unwrap();
     assert_eq!(into, "by-discogs");
 
-    write(&db, vec![conflicting()], Some(CANDIDATE))
-        .await
-        .unwrap();
+    write(&db, vec![conflicting()], Some(CANDIDATE)).await.unwrap();
     assert_eq!(ids_of(&placed(&db).await), [Some("by-discogs")]);
 }
 
@@ -413,16 +348,11 @@ async fn the_neither_and_one_label_answers_decide_the_import() {
     )
     .await
     .unwrap();
-    write(&db, vec![conflicting()], Some(CANDIDATE))
-        .await
-        .unwrap();
+    write(&db, vec![conflicting()], Some(CANDIDATE)).await.unwrap();
     let made = placed(&db).await[0].0.clone().unwrap();
     assert!(!["by-discogs", "by-musicbrainz"].contains(&made.as_str()));
     let made = stored_label(&db, &made).await;
-    assert_eq!(
-        (made.musicbrainz_label_id, made.discogs_label_id),
-        (None, None)
-    );
+    assert_eq!((made.musicbrainz_label_id, made.discogs_label_id), (None, None));
 
     record_conflict(&db, false).await;
     db.choose_import_label_identity(
@@ -433,12 +363,7 @@ async fn the_neither_and_one_label_answers_decide_the_import() {
     )
     .await
     .unwrap();
-    write(&db, vec![conflicting()], Some(CANDIDATE))
-        .await
-        .unwrap();
+    write(&db, vec![conflicting()], Some(CANDIDATE)).await.unwrap();
     assert_eq!(ids_of(&placed(&db).await), [Some("by-discogs")]);
-    assert_eq!(
-        stored_label(&db, "by-discogs").await.musicbrainz_label_id,
-        None
-    );
+    assert_eq!(stored_label(&db, "by-discogs").await.musicbrainz_label_id, None);
 }

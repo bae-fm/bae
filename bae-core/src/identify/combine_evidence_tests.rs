@@ -40,53 +40,29 @@ fn made_of(media: &[Medium]) -> StatedMedia {
 }
 
 const CD_RIP: AudioOrigin = AudioOrigin {
-    source: Some(AudioSource::CdRip {
-        proof: CdProof::RipLog,
-        file: None,
-    }),
+    source: Some(AudioSource::CdRip { proof: CdProof::RipLog, file: None }),
     not_cd_rate: None,
 };
 
-const NOT_CD: AudioOrigin = AudioOrigin {
-    source: None,
-    not_cd_rate: Some(96_000),
-};
+const NOT_CD: AudioOrigin = AudioOrigin { source: None, not_cd_rate: Some(96_000) };
 
-const UNPROVEN: AudioOrigin = AudioOrigin {
-    source: None,
-    not_cd_rate: None,
-};
+const UNPROVEN: AudioOrigin = AudioOrigin { source: None, not_cd_rate: None };
 
 /// The catalog lookup returned `rows`, and the folder's files say `origin`.
 fn by_catalog(rows: Vec<Found>, origin: &AudioOrigin) -> Outcome {
     combine_results(
-        LookupAnswers {
-            catalog: rows,
-            ..LookupAnswers::default()
-        },
+        LookupAnswers { catalog: rows, ..LookupAnswers::default() },
         &folder(),
-        FolderAudio {
-            origin,
-            ..FolderAudio::UNPROVEN
-        },
+        FolderAudio { origin, ..FolderAudio::UNPROVEN },
     )
 }
 
 fn offered(outcome: &Outcome) -> Vec<&str> {
-    outcome
-        .matches
-        .iter()
-        .map(|result| result.release_id.as_str())
-        .collect()
+    outcome.matches.iter().map(|result| result.release_id.as_str()).collect()
 }
 
 fn set_aside(outcome: &Outcome) -> Vec<&str> {
-    outcome
-        .narrowed_out
-        .matches
-        .iter()
-        .map(|result| result.release_id.as_str())
-        .collect()
+    outcome.narrowed_out.matches.iter().map(|result| result.release_id.as_str()).collect()
 }
 
 /// A folder its rip log proves is a CD rip sets the vinyl pressing aside.
@@ -115,10 +91,7 @@ fn a_cd_rip_keeps_a_cd_and_dvd_pressing_and_one_stating_nothing() {
         ],
         &CD_RIP,
     );
-    assert_eq!(
-        offered(&outcome),
-        vec!["rel-cd", "rel-cd-dvd", "rel-undescribed"]
-    );
+    assert_eq!(offered(&outcome), vec!["rel-cd", "rel-cd-dvd", "rel-undescribed"]);
     assert!(set_aside(&outcome).is_empty());
 }
 
@@ -150,18 +123,13 @@ fn audio_no_cd_holds_sets_aside_a_cd_pressing() {
         ],
         &NOT_CD,
     );
-    assert_eq!(
-        offered(&outcome),
-        vec!["rel-vinyl", "rel-cd-dvd", "rel-undescribed"]
-    );
+    assert_eq!(offered(&outcome), vec!["rel-vinyl", "rel-cd-dvd", "rel-undescribed"]);
     assert_eq!(set_aside(&outcome), vec!["rel-cd"]);
 }
 
 /// A download at a rate no CD plays at, the way a store delivers one.
 const HI_RES_DOWNLOAD: AudioOrigin = AudioOrigin {
-    source: Some(AudioSource::Download(
-        crate::signals::DownloadProof::DeliverySet,
-    )),
+    source: Some(AudioSource::Download(crate::signals::DownloadProof::DeliverySet)),
     not_cd_rate: Some(96_000),
 };
 
@@ -267,10 +235,7 @@ fn the_pressing_the_barcode_and_catalog_number_name_outranks_the_disc_id_s() {
 /// label's address beside it says nothing.
 #[test]
 fn a_sleeve_saying_where_it_was_made_offers_that_pressing() {
-    let line = |text: &str, origin| TextLine {
-        text: text.to_string(),
-        origin,
-    };
+    let line = |text: &str, origin| TextLine { text: text.to_string(), origin };
     let text = CandidateText::of(
         &[
             line("2010. Artist One - Album One", TextOrigin::FolderName),
@@ -310,17 +275,10 @@ fn a_sleeve_saying_where_it_was_made_offers_that_pressing() {
 /// Stating no pressing's country, or both, leaves the two tied.
 #[test]
 fn stating_no_country_or_both_leaves_the_pressings_tied() {
-    let line = |text: &str| TextLine {
-        text: text.to_string(),
-        origin: TextOrigin::Artwork,
-    };
+    let line = |text: &str| TextLine { text: text.to_string(), origin: TextOrigin::Artwork };
     let released_in = |release_id: &str, area: &str| {
         let result = pressing(release_id, made_of(&[Medium::Cd]));
-        MetadataResult {
-            area: Some(bae_types::pressing::area(area)),
-            labels: Vec::new(),
-            ..result
-        }
+        MetadataResult { area: Some(bae_types::pressing::area(area)), labels: Vec::new(), ..result }
     };
     for sleeve in [
         vec![line("Artist One - Album One")],
@@ -356,10 +314,7 @@ fn rows_the_folder_rules_out_carry_the_conflict() {
     );
     assert_eq!(offered(&every_cd), vec!["rel-cd-1", "rel-cd-2"]);
     assert_eq!(every_cd.medium_conflict, Some(MediumConflict::NotCdAudio));
-    let every_vinyl = by_catalog(
-        vec![pressing("rel-vinyl", made_of(&[Medium::Vinyl]))],
-        &CD_RIP,
-    );
+    let every_vinyl = by_catalog(vec![pressing("rel-vinyl", made_of(&[Medium::Vinyl]))], &CD_RIP);
     assert_eq!(every_vinyl.medium_conflict, Some(MediumConflict::CdRip));
 }
 
@@ -385,10 +340,7 @@ fn an_admitted_row_leads_with_no_conflict() {
 fn mono_audio_offers_the_pressing_stated_mono() {
     let lp = |release_id: &str, details: Vec<DiscogsDetail>| {
         let result = pressing(release_id, made_of(&[Medium::Vinyl]));
-        MetadataResult {
-            discogs_details: details,
-            ..result
-        }
+        MetadataResult { discogs_details: details, ..result }
     };
     let outcome = combine_results(
         LookupAnswers {
@@ -409,10 +361,7 @@ fn mono_audio_offers_the_pressing_stated_mono() {
 /// A pressing of `media` that Discogs lists as stereo.
 fn stated_stereo(release_id: &str, media: StatedMedia) -> Found {
     let result = pressing(release_id, media);
-    MetadataResult {
-        discogs_details: vec![DiscogsDetail::Stereo],
-        ..result
-    }
+    MetadataResult { discogs_details: vec![DiscogsDetail::Stereo], ..result }
 }
 
 const MONO_FILES: FolderAudio<'static> = FolderAudio {
@@ -460,26 +409,14 @@ fn mono_audio_against_stereo_listings_can_still_be_ready() {
         ..result
     };
     let findings = combine_results(
-        LookupAnswers {
-            barcode: vec![listed],
-            ..LookupAnswers::default()
-        },
+        LookupAnswers { barcode: vec![listed], ..LookupAnswers::default() },
         &folder(),
-        FolderAudio {
-            track_count: 11,
-            ..MONO_FILES
-        },
+        FolderAudio { track_count: 11, ..MONO_FILES },
     );
     assert_eq!(findings.medium_conflict, None);
-    let verdict = crate::identify::TerminalVerdict::Found {
-        findings,
-        track_count: 11,
-        ledger: None,
-    };
-    assert_eq!(
-        crate::identify::VerdictSummary::of(&verdict, false).judgement(),
-        (true, None)
-    );
+    let verdict =
+        crate::identify::TerminalVerdict::Found { findings, track_count: 11, ledger: None };
+    assert_eq!(crate::identify::VerdictSummary::of(&verdict, false).judgement(), (true, None));
 }
 
 /// Of two releases on the folder's label and country, the one whose title and
@@ -499,10 +436,7 @@ fn the_album_the_folder_names_outranks_another_on_the_same_label() {
         MetadataResult {
             title: title.to_string(),
             artist: Some(artist.to_string()),
-            labels: vec![bae_types::pressing::ReleaseLabel::of(
-                Some("Label One"),
-                None,
-            )],
+            labels: vec![bae_types::pressing::ReleaseLabel::of(Some("Label One"), None)],
             area: Some(bae_types::pressing::area("US")),
             ..result
         }
@@ -529,19 +463,13 @@ fn released_in(countries: &[(&str, &str)]) -> Vec<Found> {
         .iter()
         .map(|(release_id, country)| {
             let result = pressing(release_id, made_of(&[Medium::Cd]));
-            MetadataResult {
-                area: Some(bae_types::pressing::area(country)),
-                ..result
-            }
+            MetadataResult { area: Some(bae_types::pressing::area(country)), ..result }
         })
         .collect()
 }
 
 fn registered_in(country: Option<&str>) -> FolderAudio<'static> {
-    FolderAudio {
-        registered_in: country.map(bae_types::pressing::area),
-        ..FolderAudio::UNPROVEN
-    }
+    FolderAudio { registered_in: country.map(bae_types::pressing::area), ..FolderAudio::UNPROVEN }
 }
 
 /// Where the tracks' recordings were registered breaks a tie between rows of

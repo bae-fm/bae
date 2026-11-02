@@ -40,18 +40,11 @@ pub(crate) fn named_notes<'a>(
     let words: Vec<HashSet<String>> = rows
         .iter()
         .map(|records| {
-            records
-                .iter()
-                .flat_map(|record| &record.notes)
-                .flat_map(|note| counted(note))
-                .collect()
+            records.iter().flat_map(|record| &record.notes).flat_map(|note| counted(note)).collect()
         })
         .collect();
     let sets_apart = |row: usize, word: &String| {
-        !words
-            .iter()
-            .enumerate()
-            .any(|(other, theirs)| other != row && theirs.contains(word))
+        !words.iter().enumerate().any(|(other, theirs)| other != row && theirs.contains(word))
             && text.states(word)
     };
     rows.iter()

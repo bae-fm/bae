@@ -35,10 +35,7 @@ pub(super) fn insert_entry(
             entry.kind.as_str(),
             entry.position,
             entry.title,
-            entry
-                .duration_ms
-                .map(|duration| to_i64(duration, "track duration"))
-                .transpose()?,
+            entry.duration_ms.map(|duration| to_i64(duration, "track duration")).transpose()?,
         ],
     )?;
     for credit in &entry.credits {
@@ -101,13 +98,8 @@ pub(super) fn insert_entry(
 /// Where a stored work node hangs: off the track that performs it, or off
 /// the work it is a part relation of.
 enum WorkPlace {
-    Performed {
-        entry: i64,
-    },
-    Part {
-        parent: i64,
-        direction: PartDirection,
-    },
+    Performed { entry: i64 },
+    Part { parent: i64, direction: PartDirection },
 }
 
 fn direction_column(direction: PartDirection) -> &'static str {
@@ -178,10 +170,7 @@ fn insert_work(
                     sql,
                     catalog,
                     key,
-                    WorkPlace::Part {
-                        parent: node,
-                        direction: *direction,
-                    },
+                    WorkPlace::Part { parent: node, direction: *direction },
                     event_position as i32,
                     work,
                     numbering,
@@ -499,11 +488,8 @@ fn load_works<S: QueryOne + QueryRows>(
             events: stored_list(&events, "work relations")?,
         });
     }
-    let index_of: HashMap<i64, usize> = nodes
-        .iter()
-        .enumerate()
-        .map(|(index, row)| (row.node, index))
-        .collect();
+    let index_of: HashMap<i64, usize> =
+        nodes.iter().enumerate().map(|(index, row)| (row.node, index)).collect();
     // Parts are numbered after the work they belong to, so completing nodes
     // from the last back finishes every part before its parent takes it.
     let mut parts: Vec<Option<(PartDirection, SourceWork)>> = vec![None; nodes.len()];
@@ -530,20 +516,11 @@ fn load_works<S: QueryOne + QueryRows>(
             })
             .collect::<Result<_, DbError>>()?;
         match (row.entry, row.parent, row.direction) {
-            (Some(entry), None, None) => performed.push((
-                entry,
-                PerformedWork {
-                    position: row.position,
-                    work,
-                },
-            )),
-            (None, Some(_), Some(direction)) => parts[index] = Some((direction, work)),
-            _ => {
-                return Err(unreadable(
-                    "work placed on neither a track nor a work",
-                    row.node,
-                ))
+            (Some(entry), None, None) => {
+                performed.push((entry, PerformedWork { position: row.position, work }))
             }
+            (None, Some(_), Some(direction)) => parts[index] = Some((direction, work)),
+            _ => return Err(unreadable("work placed on neither a track nor a work", row.node)),
         }
     }
     // A part whose work no node holds was never taken.

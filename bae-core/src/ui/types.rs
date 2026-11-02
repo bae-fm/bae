@@ -129,10 +129,7 @@ pub enum GroupingBlockReason {
 pub enum UiError {
     /// A diagnostic failure. The UI shows a generic per-category line; `detail`
     /// is the opaque Rust error chain, never translated.
-    Diagnostic {
-        category: UiErrorCategory,
-        detail: String,
-    },
+    Diagnostic { category: UiErrorCategory, detail: String },
 }
 
 impl UiError {
@@ -144,10 +141,7 @@ impl UiError {
     /// source, with whole URLs and the provider's reply, which can echo
     /// credentials.
     pub fn diagnostic(category: UiErrorCategory, detail: impl std::fmt::Display) -> Self {
-        Self::Diagnostic {
-            category,
-            detail: detail.to_string(),
-        }
+        Self::Diagnostic { category, detail: detail.to_string() }
     }
     pub fn internal(detail: impl std::fmt::Display) -> Self {
         Self::diagnostic(UiErrorCategory::Internal, detail)
@@ -181,10 +175,7 @@ pub enum PlaybackErrorReason {
     /// Any other failure: bae's own (decode, audio output, IO, DB, missing
     /// file) or a renderer refusing a command. The UI renders its generic
     /// per-category line plus `detail`, the opaque, log-only error chain.
-    Diagnostic {
-        failure: PlaybackDiagnostic,
-        detail: String,
-    },
+    Diagnostic { failure: PlaybackDiagnostic, detail: String },
 }
 
 /// Whose failure a diagnostic playback failure is.
@@ -213,18 +204,12 @@ impl PlaybackErrorReason {
     /// log-only detail. For the in-core failure paths (decode, audio output,
     /// IO) that have no user-actionable distinction.
     pub fn internal(detail: impl std::fmt::Display) -> Self {
-        Self::Diagnostic {
-            failure: PlaybackDiagnostic::Internal,
-            detail: detail.to_string(),
-        }
+        Self::Diagnostic { failure: PlaybackDiagnostic::Internal, detail: detail.to_string() }
     }
 
     /// A renderer refused a command; `detail` is why, untranslated.
     pub fn renderer(detail: impl std::fmt::Display) -> Self {
-        Self::Diagnostic {
-            failure: PlaybackDiagnostic::Renderer,
-            detail: detail.to_string(),
-        }
+        Self::Diagnostic { failure: PlaybackDiagnostic::Renderer, detail: detail.to_string() }
     }
 }
 

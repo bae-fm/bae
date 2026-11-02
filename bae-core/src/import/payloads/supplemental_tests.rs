@@ -5,9 +5,7 @@ use serde_json::json;
 fn parse(
     payloads: &ReleasePayloads,
 ) -> Result<crate::import::release_values::ReleaseValues, ImportError> {
-    payloads
-        .extract()
-        .and_then(|release| release.every_medium_values())
+    payloads.extract().and_then(|release| release.every_medium_values())
 }
 
 fn selected_release() -> ReleasePayloads {
@@ -55,24 +53,14 @@ fn malformed_group_credit_preserves_selected_tracks_and_valid_supplemental_field
     assert_eq!(parsed.pressing.year, None);
     assert_eq!(parsed.album_credits[0].credit.name, "Selected Artist");
     assert_eq!(
-        parsed.album_credits[0]
-            .credit
-            .musicbrainz_artist_id
-            .as_deref(),
+        parsed.album_credits[0].credit.musicbrainz_artist_id.as_deref(),
         Some("linked-artist")
     );
     assert_eq!(
-        parsed
-            .tracks
-            .iter()
-            .map(|track| track.title.as_str())
-            .collect::<Vec<_>>(),
+        parsed.tracks.iter().map(|track| track.title.as_str()).collect::<Vec<_>>(),
         ["First Track", "Second Track"]
     );
-    assert_eq!(
-        crate::import::release_values::value_labels(&parsed),
-        ["A1", "B1"]
-    );
+    assert_eq!(crate::import::release_values::value_labels(&parsed), ["A1", "B1"]);
 }
 
 #[test]
@@ -96,17 +84,11 @@ fn malformed_linked_release_credit_keeps_its_valid_credit_and_fills_no_pressing_
     assert_eq!(parsed.pressing.facts.area, None);
     assert!(parsed.pressing.barcodes.is_empty());
     assert_eq!(
-        parsed.album_credits[0]
-            .credit
-            .musicbrainz_artist_id
-            .as_deref(),
+        parsed.album_credits[0].credit.musicbrainz_artist_id.as_deref(),
         Some("linked-artist")
     );
     assert_eq!(parsed.tracks[1].title, "Second Track");
-    assert_eq!(
-        crate::import::release_values::value_labels(&parsed)[1],
-        "B1"
-    );
+    assert_eq!(crate::import::release_values::value_labels(&parsed)[1], "B1");
 }
 
 #[test]
@@ -122,10 +104,7 @@ fn malformed_selected_release_credit_is_still_rejected() {
     );
     assert!(matches!(
         parse(&payloads),
-        Err(ImportError::SourceData {
-            catalog: Catalog::MusicBrainz,
-            ..
-        })
+        Err(ImportError::SourceData { catalog: Catalog::MusicBrainz, .. })
     ));
 }
 
@@ -135,10 +114,7 @@ fn malformed_optional_documents_do_not_block_extraction() {
         (PayloadSource::MusicBrainzDiscogsXref, "{}"),
         (PayloadSource::MusicBrainzReleaseGroup, "{}"),
         (PayloadSource::DiscogsMaster, "{}"),
-        (
-            PayloadSource::DiscogsMaster,
-            r#"{"id":7811,"images":[{"uri":23}]}"#,
-        ),
+        (PayloadSource::DiscogsMaster, r#"{"id":7811,"images":[{"uri":23}]}"#),
         (PayloadSource::Wikidata, "{}"),
     ] {
         let selected = selected_release();
@@ -161,14 +137,7 @@ fn malformed_optional_documents_do_not_block_extraction() {
         assert_eq!(parsed.tracks.len(), 2);
         assert_eq!(payloads.extract().unwrap().records().len(), 1);
         assert!(payloads.extract().unwrap().covers().is_empty());
-        assert_eq!(
-            payloads.extract().unwrap().detail(&[]).title,
-            "Selected Album"
-        );
-        assert_eq!(
-            payloads.supporting.len(),
-            1,
-            "only usable documents are admitted"
-        );
+        assert_eq!(payloads.extract().unwrap().detail(&[]).title, "Selected Album");
+        assert_eq!(payloads.supporting.len(), 1, "only usable documents are admitted");
     }
 }

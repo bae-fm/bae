@@ -142,16 +142,9 @@ fn nullable_key(keys: Vec<&'static str>) -> schemars::Schema {
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationReleaseName {
-    Named {
-        name: String,
-    },
-    Described {
-        year: Option<i32>,
-        media: Vec<MediaCount>,
-    },
-    Numbered {
-        number: i64,
-    },
+    Named { name: String },
+    Described { year: Option<i32>, media: Vec<MediaCount> },
+    Numbered { number: i64 },
 }
 
 impl AutomationReleaseName {

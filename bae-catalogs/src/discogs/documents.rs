@@ -24,12 +24,7 @@ struct ArtistCredit {
 
 impl ArtistCredit {
     fn into_model(self) -> DiscogsArtist {
-        DiscogsArtist {
-            id: self.id.to_string(),
-            name: self.name,
-            anv: self.anv,
-            join: self.join,
-        }
+        DiscogsArtist { id: self.id.to_string(), name: self.name, anv: self.anv, join: self.join }
     }
 }
 
@@ -37,15 +32,9 @@ impl ArtistCredit {
 struct ExtraArtistCredit {
     id: Option<u64>,
     name: String,
-    #[serde(
-        default,
-        deserialize_with = "crate::serde_helpers::empty_string_as_none"
-    )]
+    #[serde(default, deserialize_with = "crate::serde_helpers::empty_string_as_none")]
     role: Option<String>,
-    #[serde(
-        default,
-        deserialize_with = "crate::serde_helpers::empty_string_as_none"
-    )]
+    #[serde(default, deserialize_with = "crate::serde_helpers::empty_string_as_none")]
     anv: Option<String>,
 }
 #[derive(Debug, Deserialize)]
@@ -54,10 +43,7 @@ struct ReleaseResponse {
     title: String,
     year: Option<u32>,
     formats: Option<Vec<crate::discogs::DiscogsFormat>>,
-    #[serde(
-        default,
-        deserialize_with = "crate::serde_helpers::empty_string_as_none"
-    )]
+    #[serde(default, deserialize_with = "crate::serde_helpers::empty_string_as_none")]
     country: Option<String>,
     labels: Option<Vec<LabelResponse>>,
     images: Option<Vec<Image>>,
@@ -68,10 +54,7 @@ struct ReleaseResponse {
     master_id: Option<u64>,
     identifiers: Option<Vec<Identifier>>,
     companies: Option<Vec<Company>>,
-    #[serde(
-        default,
-        deserialize_with = "crate::serde_helpers::empty_string_as_none"
-    )]
+    #[serde(default, deserialize_with = "crate::serde_helpers::empty_string_as_none")]
     notes: Option<String>,
 }
 
@@ -85,10 +68,7 @@ struct Company {
 struct Identifier {
     #[serde(rename = "type")]
     kind: String,
-    #[serde(
-        default,
-        deserialize_with = "crate::serde_helpers::empty_string_as_none"
-    )]
+    #[serde(default, deserialize_with = "crate::serde_helpers::empty_string_as_none")]
     value: Option<String>,
 }
 
@@ -103,10 +83,7 @@ where
 #[derive(Debug, Deserialize)]
 struct MasterResponse {
     id: u64,
-    #[serde(
-        default,
-        deserialize_with = "crate::serde_helpers::empty_string_as_none"
-    )]
+    #[serde(default, deserialize_with = "crate::serde_helpers::empty_string_as_none")]
     title: Option<String>,
     year: Option<u32>,
     artists: Option<Vec<ArtistCredit>>,
@@ -116,15 +93,9 @@ struct MasterResponse {
 struct Image {
     #[serde(rename = "type")]
     image_type: String,
-    #[serde(
-        default,
-        deserialize_with = "crate::serde_helpers::empty_string_as_none"
-    )]
+    #[serde(default, deserialize_with = "crate::serde_helpers::empty_string_as_none")]
     uri: Option<String>,
-    #[serde(
-        default,
-        deserialize_with = "crate::serde_helpers::empty_string_as_none"
-    )]
+    #[serde(default, deserialize_with = "crate::serde_helpers::empty_string_as_none")]
     uri150: Option<String>,
 }
 
@@ -167,15 +138,9 @@ struct LabelResponse {
     /// Discogs' id for the label.
     #[serde(default)]
     id: Option<u64>,
-    #[serde(
-        default,
-        deserialize_with = "crate::serde_helpers::empty_string_as_none"
-    )]
+    #[serde(default, deserialize_with = "crate::serde_helpers::empty_string_as_none")]
     name: Option<String>,
-    #[serde(
-        default,
-        deserialize_with = "crate::serde_helpers::empty_string_as_none"
-    )]
+    #[serde(default, deserialize_with = "crate::serde_helpers::empty_string_as_none")]
     catno: Option<String>,
 }
 
@@ -223,22 +188,11 @@ fn track_to_model(track: TrackResponse) -> DiscogsTrack {
         position: track.position,
         title: track.title,
         duration: track.duration,
-        artists: track
-            .artists
-            .into_iter()
-            .map(ArtistCredit::into_model)
-            .collect(),
+        artists: track.artists.into_iter().map(ArtistCredit::into_model).collect(),
         extraartists: track.extraartists.map(|extraartists| {
-            extraartists
-                .into_iter()
-                .filter_map(extra_artist_to_model)
-                .collect()
+            extraartists.into_iter().filter_map(extra_artist_to_model).collect()
         }),
-        type_: if track.type_.is_empty() {
-            "track".to_string()
-        } else {
-            track.type_
-        },
+        type_: if track.type_.is_empty() { "track".to_string() } else { track.type_ },
         sub_tracks: track.sub_tracks.into_iter().map(track_to_model).collect(),
     }
 }
@@ -248,24 +202,12 @@ fn track_to_model(track: TrackResponse) -> DiscogsTrack {
 /// release fetch's documents are read the way the client reads them.
 pub fn parse_discogs_release_json(raw_json: &str) -> Result<DiscogsRelease, DiscogsError> {
     let release: ReleaseResponse = serde_json::from_str(raw_json)?;
-    let tracklist = release
-        .tracklist
-        .unwrap_or_default()
-        .into_iter()
-        .map(track_to_model)
-        .collect();
-    let artists = release
-        .artists
-        .unwrap_or_default()
-        .into_iter()
-        .map(ArtistCredit::into_model)
-        .collect();
-    let extraartists = release.extraartists.map(|extraartists| {
-        extraartists
-            .into_iter()
-            .filter_map(extra_artist_to_model)
-            .collect()
-    });
+    let tracklist = release.tracklist.unwrap_or_default().into_iter().map(track_to_model).collect();
+    let artists =
+        release.artists.unwrap_or_default().into_iter().map(ArtistCredit::into_model).collect();
+    let extraartists = release
+        .extraartists
+        .map(|extraartists| extraartists.into_iter().filter_map(extra_artist_to_model).collect());
     let covers = image_covers(release.images, "r", release.id);
     let master_id = release.master_id.map(|id| id.to_string());
     let labels = bae_types::pressing::ReleaseLabel::each_once(
@@ -285,20 +227,10 @@ pub fn parse_discogs_release_json(raw_json: &str) -> Result<DiscogsRelease, Disc
         .partition(|identifier| identifier.kind == "Barcode");
     // Discogs often lists one code twice: as printed and as scanned.
     let barcode_values = bae_types::barcode::each_product_once(
-        barcodes
-            .into_iter()
-            .filter_map(|identifier| identifier.value),
+        barcodes.into_iter().filter_map(|identifier| identifier.value),
     );
-    let identifiers = identifiers
-        .into_iter()
-        .filter_map(|identifier| identifier.value)
-        .collect();
-    let companies = release
-        .companies
-        .into_iter()
-        .flatten()
-        .map(|company| company.name)
-        .collect();
+    let identifiers = identifiers.into_iter().filter_map(|identifier| identifier.value).collect();
+    let companies = release.companies.into_iter().flatten().map(|company| company.name).collect();
 
     Ok(DiscogsRelease {
         id: release.id.to_string(),
@@ -326,12 +258,7 @@ pub fn parse_discogs_master_json(raw_json: &str) -> Result<DiscogsMaster, Discog
     Ok(DiscogsMaster {
         title: master.title,
         year: master.year.filter(|year| *year != 0),
-        artists: master
-            .artists
-            .into_iter()
-            .flatten()
-            .map(ArtistCredit::into_model)
-            .collect(),
+        artists: master.artists.into_iter().flatten().map(ArtistCredit::into_model).collect(),
         covers: image_covers(master.images, "m", master.id),
     })
 }

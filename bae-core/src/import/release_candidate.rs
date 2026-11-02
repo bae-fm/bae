@@ -29,10 +29,8 @@ impl FolderCandidate {
                     detail: "file metadata does not match the release's track count".into(),
                 });
             }
-            let numbering: Vec<_> = layout
-                .iter()
-                .map(|track| (track.disc, Some(track.number)))
-                .collect();
+            let numbering: Vec<_> =
+                layout.iter().map(|track| (track.disc, Some(track.number))).collect();
             let (mediums, places) = crate::mediums::by_disc(&numbering);
             values.mediums = mediums;
             for (track, place) in values.tracks.iter_mut().zip(places) {
@@ -64,12 +62,7 @@ impl FolderCandidate {
         CandidateSource {
             path: self.file_root.clone(),
             scope: self.scope,
-            parts: self
-                .files
-                .parts
-                .iter()
-                .map(|part| part.folder.clone())
-                .collect(),
+            parts: self.files.parts.iter().map(|part| part.folder.clone()).collect(),
         }
     }
 }

@@ -111,10 +111,8 @@ impl ReleaseValues {
     /// Every value, laid onto a library release's tracks in order: track `i`
     /// is track row `i`.
     pub(crate) fn library_draft(self, track_ids: Vec<String>) -> crate::import::LibraryDraft {
-        let tracks = track_ids
-            .into_iter()
-            .map(|id| (id.clone(), crate::import::LibraryTrack(id)))
-            .collect();
+        let tracks =
+            track_ids.into_iter().map(|id| (id.clone(), crate::import::LibraryTrack(id))).collect();
         self.draft(tracks)
     }
 
@@ -151,10 +149,7 @@ impl ReleaseValues {
         crate::import::ReleaseDraft {
             album_title: self.album_title,
             album_artist_assignments,
-            album_year: self
-                .album_year
-                .map(|year| year.to_string())
-                .unwrap_or_default(),
+            album_year: self.album_year.map(|year| year.to_string()).unwrap_or_default(),
             pressing: RawPressingEdit::from_pressing(&self.pressing),
             mediums: self.mediums,
             tracks,
@@ -210,12 +205,7 @@ impl WorkGraphBuilder {
     /// reference that carries them still adds them.
     fn add(&mut self, work: &SourceWork, parent: Option<&str>) -> String {
         let id = work.musicbrainz_work_id.clone();
-        if !self
-            .graph
-            .works
-            .iter()
-            .any(|held| held.musicbrainz_work_id == id)
-        {
+        if !self.graph.works.iter().any(|held| held.musicbrainz_work_id == id) {
             self.graph.works.push(GraphWork {
                 musicbrainz_work_id: id.clone(),
                 title: work.title.clone(),
@@ -233,17 +223,11 @@ impl WorkGraphBuilder {
         for event in &work.events {
             match event {
                 SourceWorkEvent::Composer(composer) => self.compose(&id, composer),
-                SourceWorkEvent::Part {
-                    direction: PartDirection::Backward,
-                    work: parent,
-                } => {
+                SourceWorkEvent::Part { direction: PartDirection::Backward, work: parent } => {
                     let parent = self.add(parent, None);
                     self.link(&parent, &id);
                 }
-                SourceWorkEvent::Part {
-                    direction: PartDirection::Forward,
-                    work: child,
-                } => {
+                SourceWorkEvent::Part { direction: PartDirection::Forward, work: child } => {
                     self.add(child, Some(&id));
                 }
             }
@@ -252,18 +236,10 @@ impl WorkGraphBuilder {
     }
 
     fn link(&mut self, parent: &str, child: &str) {
-        if self
-            .graph
-            .parts
-            .iter()
-            .any(|part| part.parent == parent && part.child == child)
-        {
+        if self.graph.parts.iter().any(|part| part.parent == parent && part.child == child) {
             return;
         }
-        self.graph.parts.push(WorkPart {
-            parent: parent.to_string(),
-            child: child.to_string(),
-        });
+        self.graph.parts.push(WorkPart { parent: parent.to_string(), child: child.to_string() });
     }
 
     /// Credit `composer` on the work once. An id-less MusicBrainz credit is
@@ -276,10 +252,7 @@ impl WorkGraphBuilder {
             .find(|work| work.musicbrainz_work_id == work_id)
             .expect("a work is held before its relations are read");
         let held = work.composers.iter().any(|known| {
-            match (
-                &known.musicbrainz_artist_id,
-                &composer.musicbrainz_artist_id,
-            ) {
+            match (&known.musicbrainz_artist_id, &composer.musicbrainz_artist_id) {
                 (Some(known), Some(composer)) => known == composer,
                 (None, None) => {
                     bae_types::text_match::same_artist_name(&known.name, &composer.name)
@@ -299,9 +272,7 @@ impl WorkGraphBuilder {
 #[cfg(test)]
 pub(crate) fn committed_rows(values: ReleaseValues) -> crate::import::ReleaseRows {
     let units = (0..values.tracks.len())
-        .map(|index| AudioFile::Standalone {
-            file_id: format!("{index:02}.flac"),
-        })
+        .map(|index| AudioFile::Standalone { file_id: format!("{index:02}.flac") })
         .collect();
     let draft = values.candidate_draft(units);
     let clock = coven::FixedClock::new(
@@ -341,26 +312,18 @@ pub(crate) fn place_labels(
     use crate::album_detail::TrackPosition;
     places
         .into_iter()
-        .map(
-            |place| match crate::mediums::track_position(&place, mediums) {
-                TrackPosition::Sided {
-                    side_letter,
-                    number,
-                } => format!("{side_letter}{number}"),
-                TrackPosition::Disc { disc, number } => format!("{disc}-{number}"),
-                TrackPosition::Flat { number } => number.to_string(),
-            },
-        )
+        .map(|place| match crate::mediums::track_position(&place, mediums) {
+            TrackPosition::Sided { side_letter, number } => format!("{side_letter}{number}"),
+            TrackPosition::Disc { disc, number } => format!("{disc}-{number}"),
+            TrackPosition::Flat { number } => number.to_string(),
+        })
         .collect()
 }
 
 /// [`place_labels`] of a reading's tracks.
 #[cfg(test)]
 pub(crate) fn value_labels(values: &ReleaseValues) -> Vec<String> {
-    place_labels(
-        &values.mediums,
-        values.tracks.iter().map(|track| track.place),
-    )
+    place_labels(&values.mediums, values.tracks.iter().map(|track| track.place))
 }
 
 /// [`place_labels`] of an import's track rows.

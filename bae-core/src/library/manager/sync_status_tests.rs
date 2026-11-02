@@ -13,13 +13,7 @@ fn read(
     SyncStatusSnapshot::read(
         status,
         retry_effect,
-        records
-            .into_iter()
-            .map(|record| PendingRow {
-                record,
-                file_row: None,
-            })
-            .collect(),
+        records.into_iter().map(|record| PendingRow { record, file_row: None }).collect(),
         error,
     )
 }
@@ -52,10 +46,7 @@ fn offline() -> coven::SyncStatus {
 }
 
 fn failed_status(failure: coven::StatusFailure) -> coven::SyncStatus {
-    coven::SyncStatus::Failed {
-        failure,
-        error: "the pass failed".into(),
-    }
+    coven::SyncStatus::Failed { failure, error: "the pass failed".into() }
 }
 
 /// A failed start the status keeps beside coven's status survives the
@@ -73,11 +64,8 @@ fn reading_pending_items_does_not_clear_a_start_failure() {
 
 #[test]
 fn pending_files_remain_waiting_after_the_sequence_is_synced() {
-    let status = snapshot(
-        synced(),
-        vec![record(coven::PendingReason::NoStorage)],
-        coven::RetryEffect::Pass,
-    );
+    let status =
+        snapshot(synced(), vec![record(coven::PendingReason::NoStorage)], coven::RetryEffect::Pass);
     assert_eq!(status.indicator(), SyncIndicator::Waiting { items: 1 });
 }
 
@@ -91,10 +79,7 @@ fn pending_authentication_offers_the_provider_sign_in() {
             answered: true,
         },
     );
-    assert_eq!(
-        pending_action(&record, None),
-        PendingAction::SignIn(coven::CloudProvider::Dropbox)
-    );
+    assert_eq!(pending_action(&record, None), PendingAction::SignIn(coven::CloudProvider::Dropbox));
 }
 
 /// A pin's failed download offers pinning the release again; with no release
@@ -114,9 +99,7 @@ fn a_failed_pins_download_offers_pinning_its_release_again() {
     );
     assert_eq!(
         pending_action(&record, Some("release")),
-        PendingAction::RetryDownload {
-            release_id: "release".into()
-        }
+        PendingAction::RetryDownload { release_id: "release".into() }
     );
     assert_eq!(pending_action(&record, None), PendingAction::Review);
 }
@@ -127,30 +110,17 @@ fn a_failed_pins_download_offers_pinning_its_release_again() {
 fn a_moves_original_offers_restoring_it_or_cancelling_the_upload() {
     let original = |failure| {
         coven::PendingRecord::new(
-            coven::PendingSubject::Move {
-                id: coven::MoveId(4),
-            },
-            coven::PendingReason::Original {
-                path: "/music/a.flac".into(),
-                failure,
-            },
+            coven::PendingSubject::Move { id: coven::MoveId(4) },
+            coven::PendingReason::Original { path: "/music/a.flac".into(), failure },
         )
     };
     assert_eq!(
-        pending_action(
-            &original(coven::FileSourceFailure::Missing),
-            Some("release")
-        ),
+        pending_action(&original(coven::FileSourceFailure::Missing), Some("release")),
         PendingAction::RestoreFile
     );
     assert_eq!(
-        pending_action(
-            &original(coven::FileSourceFailure::Changed),
-            Some("release")
-        ),
-        PendingAction::CancelUpload {
-            id: coven::MoveId(4),
-        }
+        pending_action(&original(coven::FileSourceFailure::Changed), Some("release")),
+        PendingAction::CancelUpload { id: coven::MoveId(4) }
     );
 }
 
@@ -166,10 +136,7 @@ fn missing_provider_permission_offers_sign_in() {
             answered: true,
         },
     );
-    assert_eq!(
-        pending_action(&record, None),
-        PendingAction::SignIn(coven::CloudProvider::Dropbox)
-    );
+    assert_eq!(pending_action(&record, None), PendingAction::SignIn(coven::CloudProvider::Dropbox));
 }
 
 #[test]
@@ -210,10 +177,7 @@ fn only_a_pass_in_progress_is_syncing() {
 fn with_nothing_pending_the_line_names_the_status() {
     let indicator =
         |status, error| read(status, Vec::new(), coven::RetryEffect::Pass, error).indicator();
-    assert_eq!(
-        indicator(coven::SyncStatus::Syncing, None),
-        SyncIndicator::Syncing
-    );
+    assert_eq!(indicator(coven::SyncStatus::Syncing, None), SyncIndicator::Syncing);
     assert_eq!(indicator(offline(), None), SyncIndicator::Offline);
     assert_eq!(
         indicator(
@@ -226,21 +190,12 @@ fn with_nothing_pending_the_line_names_the_status() {
         ),
         SyncIndicator::Failed
     );
-    assert_eq!(
-        indicator(coven::SyncStatus::Stopped, None),
-        SyncIndicator::Stopped
-    );
-    assert_eq!(
-        indicator(coven::SyncStatus::Disconnected, None),
-        SyncIndicator::Unconnected
-    );
+    assert_eq!(indicator(coven::SyncStatus::Stopped, None), SyncIndicator::Stopped);
+    assert_eq!(indicator(coven::SyncStatus::Disconnected, None), SyncIndicator::Unconnected);
     assert_eq!(
         indicator(
             synced(),
-            Some(UiError::diagnostic(
-                crate::ui::UiErrorCategory::Internal,
-                "start failed"
-            ))
+            Some(UiError::diagnostic(crate::ui::UiErrorCategory::Internal, "start failed"))
         ),
         SyncIndicator::Failed
     );
@@ -265,10 +220,7 @@ fn category(snapshot: &SyncStatusSnapshot) -> crate::ui::UiErrorCategory {
 /// register it again: its record is only reviewed, never reset.
 #[test]
 fn a_removed_device_says_so_and_offers_nothing_that_registers_it() {
-    assert_eq!(
-        pending_action(&record(coven::PendingReason::Removed), None),
-        PendingAction::Review
-    );
+    assert_eq!(pending_action(&record(coven::PendingReason::Removed), None), PendingAction::Review);
     assert_eq!(
         category(&failed(coven::StatusFailure::Removed)),
         crate::ui::UiErrorCategory::DeviceRemoved
@@ -281,10 +233,7 @@ fn a_removed_device_says_so_and_offers_nothing_that_registers_it() {
 fn replaced_member_keys_offer_restoring_from_the_code() {
     let member = coven::MemberId(uuid::Uuid::from_u128(7));
     assert_eq!(
-        pending_action(
-            &record(coven::PendingReason::MemberKeysReplaced { member }),
-            None
-        ),
+        pending_action(&record(coven::PendingReason::MemberKeysReplaced { member }), None),
         PendingAction::RestoreFromCode
     );
 }
@@ -293,9 +242,7 @@ fn replaced_member_keys_offer_restoring_from_the_code() {
 #[test]
 fn another_copy_of_this_device_is_answered_by_a_reset() {
     assert_eq!(
-        category(&failed(coven::StatusFailure::DeviceIdInUse(
-            coven::DeviceIdEvidence::Replaced
-        ))),
+        category(&failed(coven::StatusFailure::DeviceIdInUse(coven::DeviceIdEvidence::Replaced))),
         crate::ui::UiErrorCategory::DeviceResetRequired
     );
 }
@@ -345,10 +292,7 @@ fn a_failed_retry_answers_with_the_failure_the_status_shows() {
     assert!(
         matches!(
             removed,
-            SyncRetryOutcome::Failed(UiError::Diagnostic {
-                category: C::DeviceRemoved,
-                ..
-            })
+            SyncRetryOutcome::Failed(UiError::Diagnostic { category: C::DeviceRemoved, .. })
         ),
         "{removed:?}"
     );
@@ -445,9 +389,7 @@ fn the_connection_record_names_only_a_matching_error() {
 fn a_new_sync_failure_is_logged_once() {
     let syncing = alone(coven::SyncStatus::Syncing);
     let failed = alone(offline());
-    let logged = failed
-        .failure_to_log(Some(&syncing))
-        .expect("the new failure is logged");
+    let logged = failed.failure_to_log(Some(&syncing)).expect("the new failure is logged");
     let UiError::Diagnostic { category, detail } = &logged;
     assert_eq!(*category, crate::ui::UiErrorCategory::Network);
     assert_eq!(detail, UNREACHABLE_S3);
@@ -496,10 +438,7 @@ fn a_blocked_slot_is_not_logged_again() {
         reason: coven::PendingReason::NoStorage,
         error: Some(UNREACHABLE_S3.into()),
     });
-    assert_eq!(
-        blocked.failure_to_log(Some(&alone(coven::SyncStatus::Syncing))),
-        None
-    );
+    assert_eq!(blocked.failure_to_log(Some(&alone(coven::SyncStatus::Syncing))), None);
     assert!(blocked.failure().is_some());
 }
 
@@ -517,11 +456,7 @@ fn a_record_keeps_the_error_coven_keeps_for_it() {
 }
 
 fn storage(failure: coven::StorageFailure) -> coven::PendingReason {
-    coven::PendingReason::Storage {
-        provider: coven::CloudProvider::S3,
-        failure,
-        answered: true,
-    }
+    coven::PendingReason::Storage { provider: coven::CloudProvider::S3, failure, answered: true }
 }
 
 /// A pass whose retry runs a pass, beside `records`.
@@ -540,9 +475,7 @@ fn file(reason: coven::PendingReason) -> coven::PendingRecord {
 }
 
 fn synced() -> coven::SyncStatus {
-    coven::SyncStatus::Synced {
-        finished_at: std::time::UNIX_EPOCH,
-    }
+    coven::SyncStatus::Synced { finished_at: std::time::UNIX_EPOCH }
 }
 
 /// Only a retry coven would run a pass for is offered: never while a
@@ -558,10 +491,7 @@ fn retry_now_is_offered_only_when_coven_would_run_a_pass() {
         coven::RetryEffect::Failed,
         coven::RetryEffect::NotSyncing,
     ] {
-        assert!(
-            !snapshot(offline(), Vec::new(), effect).retry_offered(),
-            "{effect:?}"
-        );
+        assert!(!snapshot(offline(), Vec::new(), effect).retry_offered(), "{effect:?}");
     }
 }
 
@@ -570,15 +500,10 @@ fn retry_now_is_offered_only_when_coven_would_run_a_pass() {
 #[test]
 fn a_failed_pass_offers_retry() {
     assert!(retried(
-        failed_status(coven::StatusFailure::Storage(
-            coven::StorageFailure::Network
-        )),
+        failed_status(coven::StatusFailure::Storage(coven::StorageFailure::Network)),
         Vec::new(),
     ));
-    assert!(retried(
-        failed_status(coven::StatusFailure::Other),
-        Vec::new()
-    ));
+    assert!(retried(failed_status(coven::StatusFailure::Other), Vec::new()));
 }
 
 /// A failure only an update, a reset or nothing clears offers no retry.
@@ -599,23 +524,15 @@ fn a_failure_no_retry_clears_offers_none() {
 fn a_blocked_slot_offers_retry_only_for_a_retried_failure() {
     let blocked = |reason: coven::PendingReason| {
         retried(
-            coven::SyncStatus::Blocked {
-                slot: coven::Slot(3),
-                reason,
-                error: None,
-            },
+            coven::SyncStatus::Blocked { slot: coven::Slot(3), reason, error: None },
             Vec::new(),
         )
     };
     assert!(blocked(storage(coven::StorageFailure::Network)));
-    assert!(blocked(coven::PendingReason::Failed(
-        coven::LocalFailure::Disk
-    )));
+    assert!(blocked(coven::PendingReason::Failed(coven::LocalFailure::Disk)));
     assert!(!blocked(coven::PendingReason::Removed));
     assert!(!blocked(storage(coven::StorageFailure::Protocol)));
-    assert!(!blocked(coven::PendingReason::Waits(
-        coven::Prerequisite::SequenceCatchUp
-    )));
+    assert!(!blocked(coven::PendingReason::Waits(coven::Prerequisite::SequenceCatchUp)));
 }
 
 /// coven's own operation that failed its last attempt offers Retry Now when
@@ -630,10 +547,7 @@ fn a_failed_operation_offers_retry_only_when_coven_retries_it() {
             },
             reason,
         );
-        retried(
-            failed_status(coven::StatusFailure::Operation(operation.clone())),
-            vec![operation],
-        )
+        retried(failed_status(coven::StatusFailure::Operation(operation.clone())), vec![operation])
     };
     assert!(failed(storage(coven::StorageFailure::Network)));
     assert!(!failed(storage(coven::StorageFailure::Authentication)));
@@ -657,8 +571,6 @@ fn a_synced_library_offers_retry_for_a_retried_record() {
     assert!(!with(vec![storage(coven::StorageFailure::Authentication)]));
     assert!(!with(vec![storage(coven::StorageFailure::Protocol)]));
     assert!(!with(vec![coven::PendingReason::Paused]));
-    assert!(!with(vec![coven::PendingReason::Waits(
-        coven::Prerequisite::SequenceCatchUp
-    )]));
+    assert!(!with(vec![coven::PendingReason::Waits(coven::Prerequisite::SequenceCatchUp)]));
     assert!(!with(Vec::new()));
 }

@@ -71,13 +71,9 @@ impl AppServices {
     ) -> Result<PaneOutcome, ImportError> {
         let import = &self.inner.import;
         import.clear_pane_failure(&candidate_key).await?;
-        import
-            .select_candidate_release(candidate_key.clone(), link, steps)
-            .await?;
+        import.select_candidate_release(candidate_key.clone(), link, steps).await?;
         // A pick that landed leaves the draft it read to see.
-        import
-            .move_candidate_pane(&candidate_key, PaneMove::Picked)
-            .await?;
+        import.move_candidate_pane(&candidate_key, PaneMove::Picked).await?;
         Ok(PaneOutcome::Done)
     }
 
@@ -96,9 +92,7 @@ impl AppServices {
             )
             .await?;
         if outcome == PaneOutcome::Done {
-            import
-                .move_candidate_pane(&candidate_key, PaneMove::Picked)
-                .await?;
+            import.move_candidate_pane(&candidate_key, PaneMove::Picked).await?;
         }
         Ok(outcome)
     }
@@ -133,9 +127,7 @@ impl AppServices {
             )
             .await?;
         if outcome == PaneOutcome::Done {
-            import
-                .move_candidate_pane(candidate_key, PaneMove::Picked)
-                .await?;
+            import.move_candidate_pane(candidate_key, PaneMove::Picked).await?;
         }
         Ok(outcome)
     }
@@ -156,9 +148,7 @@ impl AppServices {
             )
             .await?;
         if outcome == PaneOutcome::Done {
-            import
-                .move_candidate_pane(candidate_key, PaneMove::Picked)
-                .await?;
+            import.move_candidate_pane(candidate_key, PaneMove::Picked).await?;
         }
         Ok(outcome)
     }
@@ -209,12 +199,8 @@ impl AppServices {
         &self,
         candidate_key: &crate::import::CandidateKey,
     ) -> Result<(), ImportError> {
-        self.cancel_identification(vec![candidate_key.clone()])
-            .await?;
-        self.inner
-            .import
-            .move_candidate_pane(candidate_key, PaneMove::Back)
-            .await
+        self.cancel_identification(vec![candidate_key.clone()]).await?;
+        self.inner.import.move_candidate_pane(candidate_key, PaneMove::Back).await
     }
 
     /// Submit the candidate's typed search. What it turns up, failures
@@ -226,10 +212,7 @@ impl AppServices {
         query: SearchQuery,
     ) -> Result<(), ImportError> {
         self.inner.import.clear_pane_failure(&candidate_key).await?;
-        self.inner
-            .import
-            .start_candidate_search(candidate_key, query)
-            .await
+        self.inner.import.start_candidate_search(candidate_key, query).await
     }
 
     /// Make one change to what a candidate's identification asks about, and
@@ -243,11 +226,7 @@ impl AppServices {
         candidate_key: crate::import::CandidateKey,
         edit: crate::import::LookupChoiceEdit,
     ) -> Result<(), crate::import::ImportError> {
-        let change = self
-            .inner
-            .import
-            .edit_candidate_lookup_choices(&candidate_key, edit)
-            .await?;
+        let change = self.inner.import.edit_candidate_lookup_choices(&candidate_key, edit).await?;
         if change == crate::import::ChoiceChange::Lookups {
             self.inner.identification.rerun_identify(candidate_key);
         }

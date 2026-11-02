@@ -4,19 +4,16 @@ impl Database {
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn insert_artist(&self, artist: &DbArtist) -> Result<(), DbError> {
         let artist = artist.clone();
-        self.call_sql(move |sql| insert_artist_row(&sql, &artist))
-            .await
+        self.call_sql(move |sql| insert_artist_row(&sql, &artist)).await
     }
     pub async fn insert_album_artist(&self, album_artist: &DbAlbumArtist) -> Result<(), DbError> {
         let album_artist = album_artist.clone();
-        self.call_sql(move |sql| insert_album_artist_row(&sql, &album_artist))
-            .await
+        self.call_sql(move |sql| insert_album_artist_row(&sql, &album_artist)).await
     }
     #[cfg(test)]
     pub async fn insert_track_artist(&self, track_artist: &DbTrackArtist) -> Result<(), DbError> {
         let track_artist = track_artist.clone();
-        self.call_sql(move |sql| insert_track_artist_row(&sql, &track_artist))
-            .await
+        self.call_sql(move |sql| insert_track_artist_row(&sql, &track_artist)).await
     }
     /// The album's credits in list order, each the artist it shows after
     /// merges; a list naming one artist twice gives it twice.
@@ -25,8 +22,7 @@ impl Database {
         album_id: &str,
     ) -> Result<Vec<LibraryCredit>, DbError> {
         let album_id = album_id.to_string();
-        self.read(move |sql| get_artists_for_album_on(&sql, &album_id))
-            .await
+        self.read(move |sql| get_artists_for_album_on(&sql, &album_id)).await
     }
     /// The track's own credits in list order, each the artist it shows after
     /// merges; a list naming one artist twice gives it twice.
@@ -61,13 +57,9 @@ impl Database {
     pub async fn find_artist_by_id(&self, artist_id: &str) -> Result<Option<DbArtist>, DbError> {
         let artist_id = artist_id.to_string();
         self.read(move |sql| {
-            sql.query_row(
-                "SELECT * FROM artists WHERE id = ?",
-                params![artist_id],
-                row_to_artist,
-            )
-            .optional()
-            .map_err(DbError::from)
+            sql.query_row("SELECT * FROM artists WHERE id = ?", params![artist_id], row_to_artist)
+                .optional()
+                .map_err(DbError::from)
         })
         .await
     }
@@ -81,12 +73,10 @@ impl Database {
     ) -> Result<Vec<DbComposerSummary>, DbError> {
         let order = composer_order(sort);
         self.read(move |sql| {
-            Ok(
-                composer_rows_on(&sql, &order, &order.everything(), limit, offset)?
-                    .into_iter()
-                    .map(|(row, _)| row)
-                    .collect(),
-            )
+            Ok(composer_rows_on(&sql, &order, &order.everything(), limit, offset)?
+                .into_iter()
+                .map(|(row, _)| row)
+                .collect())
         })
         .await
     }
@@ -102,26 +92,22 @@ impl Database {
     {
         let order = composer_order(sort);
         let places = KnownPlaces::new();
-        self.inner
-            .handle
-            .subscribe_reconfigurable(initial_windows, move |requested, sql| {
-                let versions = list_order_versions_on(&sql, &["composer_listing"])?;
-                let total_count = composer_count_on(&sql).map_err(CovenError::from)?;
-                let WindowsRead { windows, found } = read_windows(
-                    &order,
-                    requested,
-                    places.under(&versions),
-                    |seek, limit, offset| composer_rows_on(&sql, &order, seek, limit, offset),
-                )?;
-                places.keep(versions, found);
-                Ok(ComposerBrowseProjection {
-                    windows: windows
-                        .into_iter()
-                        .map(|(window, rows)| crate::library::LibraryBrowseWindow { window, rows })
-                        .collect(),
-                    total_count,
-                })
+        self.inner.handle.subscribe_reconfigurable(initial_windows, move |requested, sql| {
+            let versions = list_order_versions_on(&sql, &["composer_listing"])?;
+            let total_count = composer_count_on(&sql).map_err(CovenError::from)?;
+            let WindowsRead { windows, found } =
+                read_windows(&order, requested, places.under(&versions), |seek, limit, offset| {
+                    composer_rows_on(&sql, &order, seek, limit, offset)
+                })?;
+            places.keep(versions, found);
+            Ok(ComposerBrowseProjection {
+                windows: windows
+                    .into_iter()
+                    .map(|(window, rows)| crate::library::LibraryBrowseWindow { window, rows })
+                    .collect(),
+                total_count,
             })
+        })
     }
 
     pub async fn get_artist_count(&self) -> Result<u64, DbError> {
@@ -136,12 +122,10 @@ impl Database {
     ) -> Result<Vec<DbArtistSummary>, DbError> {
         let order = artist_order(sort);
         self.read(move |sql| {
-            Ok(
-                artist_rows_on(&sql, &order, &order.everything(), limit, offset)?
-                    .into_iter()
-                    .map(|(row, _)| row)
-                    .collect(),
-            )
+            Ok(artist_rows_on(&sql, &order, &order.everything(), limit, offset)?
+                .into_iter()
+                .map(|(row, _)| row)
+                .collect())
         })
         .await
     }
@@ -157,26 +141,22 @@ impl Database {
     {
         let order = artist_order(sort);
         let places = KnownPlaces::new();
-        self.inner
-            .handle
-            .subscribe_reconfigurable(initial_windows, move |requested, sql| {
-                let versions = list_order_versions_on(&sql, &["artist_listing"])?;
-                let total_count = artist_count_on(&sql).map_err(CovenError::from)?;
-                let WindowsRead { windows, found } = read_windows(
-                    &order,
-                    requested,
-                    places.under(&versions),
-                    |seek, limit, offset| artist_rows_on(&sql, &order, seek, limit, offset),
-                )?;
-                places.keep(versions, found);
-                Ok(ArtistBrowseProjection {
-                    windows: windows
-                        .into_iter()
-                        .map(|(window, rows)| crate::library::LibraryBrowseWindow { window, rows })
-                        .collect(),
-                    total_count,
-                })
+        self.inner.handle.subscribe_reconfigurable(initial_windows, move |requested, sql| {
+            let versions = list_order_versions_on(&sql, &["artist_listing"])?;
+            let total_count = artist_count_on(&sql).map_err(CovenError::from)?;
+            let WindowsRead { windows, found } =
+                read_windows(&order, requested, places.under(&versions), |seek, limit, offset| {
+                    artist_rows_on(&sql, &order, seek, limit, offset)
+                })?;
+            places.keep(versions, found);
+            Ok(ArtistBrowseProjection {
+                windows: windows
+                    .into_iter()
+                    .map(|(window, rows)| crate::library::LibraryBrowseWindow { window, rows })
+                    .collect(),
+                total_count,
             })
+        })
     }
 
     /// The artist's summary row plus every album whose credit list names it,
@@ -241,9 +221,7 @@ impl Database {
                 find_composer_detail_on(&sql, artist_id).map_err(CovenError::from)
             })
             .process(|detail| {
-                Ok(ComposerDetailProjection {
-                    detail: detail.map(ComposerDetailRows::process),
-                })
+                Ok(ComposerDetailProjection { detail: detail.map(ComposerDetailRows::process) })
             })
     }
 
@@ -258,10 +236,7 @@ impl Database {
             sql.query_row(
                 "SELECT id FROM works WHERE id = ?1 OR musicbrainz_work_id = ?2 \
                  ORDER BY id = ?1 DESC LIMIT 1",
-                params![
-                    crate::db::identity::work_id(&musicbrainz_work_id),
-                    musicbrainz_work_id
-                ],
+                params![crate::db::identity::work_id(&musicbrainz_work_id), musicbrainz_work_id],
                 |row| row.get::<_, String>(0),
             )
             .optional()
@@ -273,8 +248,7 @@ impl Database {
     #[cfg(test)]
     pub async fn find_work_detail(&self, work_id: &str) -> Result<Option<DbWorkDetail>, DbError> {
         let work_id = work_id.to_string();
-        self.read(move |sql| find_work_detail_on(&sql, &work_id))
-            .await
+        self.read(move |sql| find_work_detail_on(&sql, &work_id)).await
     }
 
     /// Follow the work `initial` names, or none. The detail view moves to
@@ -283,16 +257,14 @@ impl Database {
         &self,
         initial: Option<String>,
     ) -> coven::ReconfigurableLiveQuery<Option<String>, WorkDetailProjection> {
-        self.inner
-            .handle
-            .subscribe_reconfigurable(initial, |work_id, sql| {
-                let Some(work_id) = work_id else {
-                    return Ok(WorkDetailProjection { detail: None });
-                };
-                Ok(WorkDetailProjection {
-                    detail: find_work_detail_on(&sql, work_id).map_err(CovenError::from)?,
-                })
+        self.inner.handle.subscribe_reconfigurable(initial, |work_id, sql| {
+            let Some(work_id) = work_id else {
+                return Ok(WorkDetailProjection { detail: None });
+            };
+            Ok(WorkDetailProjection {
+                detail: find_work_detail_on(&sql, work_id).map_err(CovenError::from)?,
             })
+        })
     }
 }
 
@@ -353,12 +325,7 @@ fn find_work_detail_on(
             })
         },
     )?;
-    Ok(Some(DbWorkDetail {
-        work,
-        child_works,
-        releases,
-        tracks,
-    }))
+    Ok(Some(DbWorkDetail { work, child_works, releases, tracks }))
 }
 
 fn find_artist_detail_on(
@@ -391,11 +358,7 @@ fn find_artist_detail_on(
     )?
     .remove(&artist.artist.id)
     .unwrap_or_default();
-    Ok(Some(ArtistDetailRows {
-        artist,
-        credit_names,
-        albums,
-    }))
+    Ok(Some(ArtistDetailRows { artist, credit_names, albums }))
 }
 
 #[derive(Clone, PartialEq)]
@@ -452,17 +415,12 @@ fn find_composer_detail_on(
     let parent_summaries = if parent_ids.is_empty() {
         HashMap::new()
     } else {
-        let placeholders = (0..parent_ids.len())
-            .map(|_| "?")
-            .collect::<Vec<_>>()
-            .join(",");
+        let placeholders = (0..parent_ids.len()).map(|_| "?").collect::<Vec<_>>().join(",");
         let filter = format!("WHERE w.id IN ({placeholders})");
         let query = work_summary_query(Some(&filter), None);
-        sql.query(
-            &query,
-            rusqlite::params_from_iter(parent_ids.iter()),
-            |row| row_to_work_summary(row).map(|summary| (summary.work.id.clone(), summary)),
-        )?
+        sql.query(&query, rusqlite::params_from_iter(parent_ids.iter()), |row| {
+            row_to_work_summary(row).map(|summary| (summary.work.id.clone(), summary))
+        })?
         .into_iter()
         .collect::<HashMap<_, _>>()
     };
@@ -519,11 +477,8 @@ fn find_composer_detail_on(
          JOIN artists art ON art.id = unlinked.artist_id
          WHERE unlinked.artist_id = ?
          ORDER BY a.title, r.album_order, r.id, t.position, tar.position";
-    let unlinked_track_roles = sql.query(
-        track_roles_query,
-        params![composer.artist.id],
-        row_to_track_role_summary,
-    )?;
+    let unlinked_track_roles =
+        sql.query(track_roles_query, params![composer.artist.id], row_to_track_role_summary)?;
     Ok(Some(ComposerDetailRows {
         composer,
         works,
@@ -558,11 +513,7 @@ impl ComposerDetailRows {
                 grouped.entry(parent_id).or_default().push(work);
             } else {
                 let id = work.work.id.clone();
-                ungrouped.push(DbComposerWorkGroup {
-                    id,
-                    parent: None,
-                    works: vec![work],
-                });
+                ungrouped.push(DbComposerWorkGroup { id, parent: None, works: vec![work] });
             }
         }
         let mut work_groups = grouped
@@ -579,12 +530,7 @@ impl ComposerDetailRows {
         work_groups.extend(ungrouped);
         work_groups.sort_by_key(composer_work_group_sort_key);
 
-        DbComposerDetail {
-            composer,
-            work_groups,
-            unlinked_release_roles,
-            unlinked_track_roles,
-        }
+        DbComposerDetail { composer, work_groups, unlinked_release_roles, unlinked_track_roles }
     }
 }
 
@@ -592,19 +538,14 @@ fn composer_work_group_sort_key(group: &DbComposerWorkGroup) -> String {
     if let Some(parent) = group.parent.as_ref() {
         return work_summary_sort_key(parent);
     }
-    let work = group
-        .works
-        .first()
-        .expect("composer work group without parent must contain a work");
+    let work = group.works.first().expect("composer work group without parent must contain a work");
     work_summary_sort_key(work)
 }
 
 fn composer_count_on(sql: &SqlReadContext<'_>) -> Result<u64, DbError> {
-    sql.query_row("SELECT COUNT(*) FROM composer_listing", [], |row| {
-        row.get::<_, i64>(0)
-    })
-    .map(|count| count as u64)
-    .map_err(DbError::from)
+    sql.query_row("SELECT COUNT(*) FROM composer_listing", [], |row| row.get::<_, i64>(0))
+        .map(|count| count as u64)
+        .map_err(DbError::from)
 }
 
 /// The composer list's rows `seek` reads in `order`, at most `limit` from
@@ -618,9 +559,7 @@ pub(super) fn composer_rows_on(
 ) -> Result<Vec<Keyed<DbComposerSummary>>, DbError> {
     let statement = listing_window_query(composer_listing_query, order, seek);
     Ok(seek.bound(limit, offset, |params| {
-        sql.query(&statement, params, |row| {
-            Ok((row_to_composer_summary(row)?, order.key_of(row)?))
-        })
+        sql.query(&statement, params, |row| Ok((row_to_composer_summary(row)?, order.key_of(row)?)))
     })?)
 }
 
@@ -635,18 +574,14 @@ pub(super) fn artist_rows_on(
 ) -> Result<Vec<Keyed<DbArtistSummary>>, DbError> {
     let statement = listing_window_query(artist_listing_query, order, seek);
     Ok(seek.bound(limit, offset, |params| {
-        sql.query(&statement, params, |row| {
-            Ok((row_to_artist_summary(row)?, order.key_of(row)?))
-        })
+        sql.query(&statement, params, |row| Ok((row_to_artist_summary(row)?, order.key_of(row)?)))
     })?)
 }
 
 fn artist_count_on(sql: &SqlReadContext<'_>) -> Result<u64, DbError> {
-    sql.query_row("SELECT COUNT(*) FROM artist_listing", [], |row| {
-        row.get::<_, i64>(0)
-    })
-    .map(|count| count as u64)
-    .map_err(DbError::from)
+    sql.query_row("SELECT COUNT(*) FROM artist_listing", [], |row| row.get::<_, i64>(0))
+        .map(|count| count as u64)
+        .map_err(DbError::from)
 }
 
 #[derive(Debug, Clone, PartialEq)]

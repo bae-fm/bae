@@ -154,10 +154,7 @@ fn run_browse(
                 let mut table = lock_table(&table);
                 if change.apply(&mut table) {
                     devices.publish(
-                        snapshot(&table)
-                            .iter()
-                            .map(AirPlayDevice::to_renderer_device)
-                            .collect(),
+                        snapshot(&table).iter().map(AirPlayDevice::to_renderer_device).collect(),
                     );
                 }
             }
@@ -172,20 +169,13 @@ fn run_browse(
 /// operation, made after the advertisement is read, so a panic while it was
 /// held never leaves it partway through a change, and it stands.
 fn lock_table(table: &std::sync::Mutex<DeviceTable>) -> std::sync::MutexGuard<'_, DeviceTable> {
-    table
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner)
+    table.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
 /// What one mDNS event does to the table, read before the table is locked.
 enum TableChange {
-    Resolved {
-        fullname: String,
-        device: AirPlayDevice,
-    },
-    Removed {
-        fullname: String,
-    },
+    Resolved { fullname: String, device: AirPlayDevice },
+    Removed { fullname: String },
 }
 
 impl TableChange {
@@ -300,10 +290,7 @@ pub(crate) fn map_device(
         .unwrap_or(instance)
         .to_string();
 
-    let name = raop_name_suffix(instance)
-        .unwrap_or(instance)
-        .trim()
-        .to_string();
+    let name = raop_name_suffix(instance).unwrap_or(instance).trim().to_string();
     let name = if name.is_empty() { id.clone() } else { name };
 
     let mut chosen: Option<IpAddr> = None;
@@ -323,13 +310,7 @@ pub(crate) fn map_device(
              can't read, so it can't be connected to: {unreadable}"
         );
     }
-    Some(AirPlayDevice {
-        id,
-        name,
-        addr,
-        port,
-        capabilities,
-    })
+    Some(AirPlayDevice { id, name, addr, port, capabilities })
 }
 
 /// The instance label of a service fullname (`"Living Room._airplay._tcp.local."`
@@ -360,10 +341,7 @@ mod tests {
     use super::*;
 
     fn txt(pairs: &[(&str, &str)]) -> HashMap<String, String> {
-        pairs
-            .iter()
-            .map(|(k, v)| (k.to_string(), v.to_string()))
-            .collect()
+        pairs.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect()
     }
 
     fn v4(a: u8, b: u8, c: u8, d: u8) -> IpAddr {
@@ -384,20 +362,14 @@ mod tests {
             "Kitchen",
             7000,
             [v4(10, 0, 0, 4)].into_iter(),
-            &txt(&[
-                ("deviceid", "AA:BB:CC:DD:EE:FF"),
-                ("features", AIRPLAY2_FEATURES),
-            ]),
+            &txt(&[("deviceid", "AA:BB:CC:DD:EE:FF"), ("features", AIRPLAY2_FEATURES)]),
         )
         .expect("a service with an address maps");
         assert_eq!(device.id, "AA:BB:CC:DD:EE:FF");
         assert_eq!(device.name, "Kitchen");
         assert_eq!(device.addr, v4(10, 0, 0, 4));
         assert_eq!(device.port, 7000);
-        assert_eq!(
-            device.capabilities.as_ref().unwrap().dialect,
-            Dialect::AirPlay2
-        );
+        assert_eq!(device.capabilities.as_ref().unwrap().dialect, Dialect::AirPlay2);
     }
 
     /// A RAOP instance name `MAC@Name` yields the MAC as the id and the suffix as
@@ -461,27 +433,17 @@ mod tests {
             "Den",
             7000,
             [v4(10, 0, 0, 7)].into_iter(),
-            &txt(&[
-                ("deviceid", "AABBCCDDEEFF"),
-                ("features", AIRPLAY2_FEATURES),
-            ]),
+            &txt(&[("deviceid", "AABBCCDDEEFF"), ("features", AIRPLAY2_FEATURES)]),
         )
         .unwrap();
 
         let mut table = DeviceTable::default();
-        table
-            .by_fullname
-            .insert("AABBCCDDEEFF@Den._raop._tcp.local.".to_string(), raop);
-        table
-            .by_fullname
-            .insert("Den._airplay._tcp.local.".to_string(), airplay);
+        table.by_fullname.insert("AABBCCDDEEFF@Den._raop._tcp.local.".to_string(), raop);
+        table.by_fullname.insert("Den._airplay._tcp.local.".to_string(), airplay);
 
         let snap = snapshot(&table);
         assert_eq!(snap.len(), 1, "one entry per receiver");
-        assert_eq!(
-            snap[0].capabilities.as_ref().unwrap().dialect,
-            Dialect::AirPlay2
-        );
+        assert_eq!(snap[0].capabilities.as_ref().unwrap().dialect, Dialect::AirPlay2);
         assert_eq!(snap[0].port, 7000);
     }
 

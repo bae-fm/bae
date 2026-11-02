@@ -17,10 +17,7 @@ fn names(master: &str) -> MetadataRef {
 /// `list` read with `stated` answering for the releases it names.
 fn read(list: &[MetadataResult], stated: &[(&str, AlbumLinks)]) -> Vec<GroupLinks> {
     read_groups(&list.iter().collect::<Vec<_>>(), |release| {
-        stated
-            .iter()
-            .find(|(read, _)| *read == release)
-            .map(|(_, links)| links.clone())
+        stated.iter().find(|(read, _)| *read == release).map(|(_, links)| links.clone())
     })
 }
 
@@ -54,22 +51,12 @@ fn an_unread_release_leaves_the_group_unknown_only_where_nothing_is_named() {
     ours.barcodes = printed.barcodes.clone();
     let list = [ours, musicbrainz("mb-2"), printed];
 
-    let named = read(
-        &list,
-        &[
-            ("mb-1", AlbumLinks::Read(vec![names("7")])),
-            ("mb-2", AlbumLinks::Unread),
-        ],
-    );
+    let named =
+        read(&list, &[("mb-1", AlbumLinks::Read(vec![names("7")])), ("mb-2", AlbumLinks::Unread)]);
     assert_eq!(named[0].links, AlbumLinks::Read(vec![names("7")]));
 
-    let unknown = read(
-        &list,
-        &[
-            ("mb-1", AlbumLinks::Read(Vec::new())),
-            ("mb-2", AlbumLinks::Unread),
-        ],
-    );
+    let unknown =
+        read(&list, &[("mb-1", AlbumLinks::Read(Vec::new())), ("mb-2", AlbumLinks::Unread)]);
     assert_eq!(unknown[0].links, AlbumLinks::Unread);
 }
 
@@ -99,10 +86,7 @@ fn a_group_nothing_read_is_not_read() {
 /// What a group was read to be goes onto its MusicBrainz records only.
 #[test]
 fn a_group_s_links_go_onto_its_musicbrainz_records() {
-    let groups = vec![GroupLinks {
-        group: GROUP.to_string(),
-        links: AlbumLinks::Unread,
-    }];
+    let groups = vec![GroupLinks { group: GROUP.to_string(), links: AlbumLinks::Unread }];
     let mut ours = musicbrainz("mb-1");
     let mut other = MetadataResult::for_test(Catalog::MusicBrainz, "mb-9", Some("other-group"));
     let mut theirs = discogs_release("dg-1", GROUP);
@@ -118,18 +102,11 @@ fn a_group_s_links_go_onto_its_musicbrainz_records() {
 /// another catalog's album to compare it against; an unknown one never.
 #[test]
 fn what_is_kept_is_what_the_list_could_say() {
-    let named = GroupLinks {
-        group: "g-named".to_string(),
-        links: AlbumLinks::Read(vec![names("7")]),
-    };
-    let nothing = GroupLinks {
-        group: "g-nothing".to_string(),
-        links: AlbumLinks::Read(Vec::new()),
-    };
-    let unknown = GroupLinks {
-        group: "g-unknown".to_string(),
-        links: AlbumLinks::Unread,
-    };
+    let named =
+        GroupLinks { group: "g-named".to_string(), links: AlbumLinks::Read(vec![names("7")]) };
+    let nothing =
+        GroupLinks { group: "g-nothing".to_string(), links: AlbumLinks::Read(Vec::new()) };
+    let unknown = GroupLinks { group: "g-unknown".to_string(), links: AlbumLinks::Unread };
     let groups = [named, nothing, unknown];
     let named_albums = vec![MetadataRef::new(Catalog::Discogs, "7")];
 
@@ -142,9 +119,6 @@ fn what_is_kept_is_what_the_list_could_say() {
     let beside = [musicbrainz("mb-1"), discogs_release("dg-1", "7")];
     assert_eq!(
         to_keep(&groups, &beside.iter().collect::<Vec<_>>()),
-        vec![
-            ("g-named".to_string(), named_albums),
-            ("g-nothing".to_string(), Vec::new()),
-        ]
+        vec![("g-named".to_string(), named_albums), ("g-nothing".to_string(), Vec::new()),]
     );
 }

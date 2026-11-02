@@ -7,7 +7,8 @@ async fn listening_counts_consumed_audio_across_decoder_replacement_and_pause() 
     let (_home, mut service, mut progress) =
         seeded_playback_service(&[(RELEASE, &[TRACK_T])]).await;
     let mut prepared = test_prepared_track(TRACK_T, create_sparse_buffer(1024));
-    prepared.timeline = TrackTimeline::new(Some(Duration::from_secs(40)), std::time::Duration::ZERO);
+    prepared.timeline =
+        TrackTimeline::new(Some(Duration::from_secs(40)), std::time::Duration::ZERO);
     prepared.sample_rate = 100;
     prepared.channels = 1;
     let fmt = prepared.track_fmt(StreamPosition::START);
@@ -18,20 +19,10 @@ async fn listening_counts_consumed_audio_across_decoder_replacement_and_pause() 
     let (mut audio_tx, audio_rx) = audio_event_channel();
     service.output = Some(test_output(source.clone(), audio_rx));
     let generation = service.next_load_generation();
-    service.slot = active_slot(
-        prepared,
-        TrackPhase::Loading {
-            generation,
-            target: PlayTarget::Playing,
-        },
-    );
-    service
-        .resolve_track_ready(TRACK_T.to_string(), generation)
-        .await;
-    source
-        .lock()
-        .unwrap()
-        .pull_samples(&mut vec![0.0; 1900], &mut audio_tx);
+    service.slot =
+        active_slot(prepared, TrackPhase::Loading { generation, target: PlayTarget::Playing });
+    service.resolve_track_ready(TRACK_T.to_string(), generation).await;
+    source.lock().unwrap().pull_samples(&mut vec![0.0; 1900], &mut audio_tx);
     let (fmt, position) = source.lock().unwrap().position_event();
     service.handle_position_event(fmt, position).await;
     assert!(service.library_manager.history().await.unwrap().is_empty());
@@ -51,10 +42,7 @@ async fn listening_counts_consumed_audio_across_decoder_replacement_and_pause() 
         _ => panic!("active"),
     };
     source.lock().unwrap().replace(stream, fmt);
-    source
-        .lock()
-        .unwrap()
-        .pull_samples(&mut vec![0.0; 100], &mut audio_tx);
+    source.lock().unwrap().pull_samples(&mut vec![0.0; 100], &mut audio_tx);
     let (fmt, position) = source.lock().unwrap().position_event();
     service.handle_position_event(fmt, position).await;
     let rows = service.library_manager.history().await.unwrap();
@@ -63,10 +51,7 @@ async fn listening_counts_consumed_audio_across_decoder_replacement_and_pause() 
     assert_eq!(rows[0].started_at, test_clock_start());
     let id = rows[0].id;
     // No position tick covers these final samples. Stop captures them itself.
-    source
-        .lock()
-        .unwrap()
-        .pull_samples(&mut [0.0; 50], &mut audio_tx);
+    source.lock().unwrap().pull_samples(&mut [0.0; 50], &mut audio_tx);
     service.stop().await;
     let rows = service.library_manager.history().await.unwrap();
     assert_eq!(rows.len(), 1);
@@ -84,7 +69,8 @@ async fn a_counted_play_is_saved_again_only_at_its_next_boundary() {
     let (_home, mut service, mut progress) =
         seeded_playback_service(&[(RELEASE, &[TRACK_T])]).await;
     let mut prepared = test_prepared_track(TRACK_T, create_sparse_buffer(1024));
-    prepared.timeline = TrackTimeline::new(Some(Duration::from_secs(40)), std::time::Duration::ZERO);
+    prepared.timeline =
+        TrackTimeline::new(Some(Duration::from_secs(40)), std::time::Duration::ZERO);
     prepared.sample_rate = 100;
     prepared.channels = 1;
     let fmt = prepared.track_fmt(StreamPosition::START);
@@ -95,21 +81,11 @@ async fn a_counted_play_is_saved_again_only_at_its_next_boundary() {
     let (mut audio_tx, audio_rx) = audio_event_channel();
     service.output = Some(test_output(source.clone(), audio_rx));
     let generation = service.next_load_generation();
-    service.slot = active_slot(
-        prepared,
-        TrackPhase::Loading {
-            generation,
-            target: PlayTarget::Playing,
-        },
-    );
-    service
-        .resolve_track_ready(TRACK_T.to_string(), generation)
-        .await;
+    service.slot =
+        active_slot(prepared, TrackPhase::Loading { generation, target: PlayTarget::Playing });
+    service.resolve_track_ready(TRACK_T.to_string(), generation).await;
     let mut hear = |samples: usize| {
-        source
-            .lock()
-            .unwrap()
-            .pull_samples(&mut vec![0.0; samples], &mut audio_tx);
+        source.lock().unwrap().pull_samples(&mut vec![0.0; samples], &mut audio_tx);
         source.lock().unwrap().position_event()
     };
     let (fmt, position) = hear(2100);
@@ -118,10 +94,7 @@ async fn a_counted_play_is_saved_again_only_at_its_next_boundary() {
         assert_eq!(rows.len(), 1);
         rows[0].played
     };
-    assert_eq!(
-        saved(service.library_manager.history().await.unwrap()),
-        Duration::from_secs(21)
-    );
+    assert_eq!(saved(service.library_manager.history().await.unwrap()), Duration::from_secs(21));
     for _ in 0..5 {
         let (fmt, position) = hear(100);
         service.handle_position_event(fmt, position).await;
@@ -135,10 +108,7 @@ async fn a_counted_play_is_saved_again_only_at_its_next_boundary() {
     service.pause();
     service.capture_listening_position();
     service.persist_listening().await;
-    assert_eq!(
-        saved(service.library_manager.history().await.unwrap()),
-        Duration::from_secs(26)
-    );
+    assert_eq!(saved(service.library_manager.history().await.unwrap()), Duration::from_secs(26));
     assert!(!drained_a_playback_error(&mut progress));
 }
 
@@ -157,8 +127,10 @@ async fn gapless_crossing_records_the_finishing_play_and_starts_a_distinct_one()
     };
     let first = prepared(TRACK_A);
     let second = prepared(TRACK_B);
-    let (mut a, source_a, _) = bae_audio::track_stream::create_track_stream_pair_with_capacity(100, 1, 100);
-    let (mut b, source_b, _) = bae_audio::track_stream::create_track_stream_pair_with_capacity(100, 1, 100);
+    let (mut a, source_a, _) =
+        bae_audio::track_stream::create_track_stream_pair_with_capacity(100, 1, 100);
+    let (mut b, source_b, _) =
+        bae_audio::track_stream::create_track_stream_pair_with_capacity(100, 1, 100);
     a.push_samples(&vec![0.25; 100]);
     a.mark_finished();
     b.push_samples(&vec![0.25; 100]);
@@ -167,19 +139,13 @@ async fn gapless_crossing_records_the_finishing_play_and_starts_a_distinct_one()
         source_a,
         first.track_fmt(StreamPosition::START),
     )));
-    source
-        .lock()
-        .unwrap()
-        .stage_next(source_b, second.track_fmt(StreamPosition::START));
+    source.lock().unwrap().stage_next(source_b, second.track_fmt(StreamPosition::START));
     let (mut audio_tx, audio_rx) = audio_event_channel();
     service.output = Some(test_output(source.clone(), audio_rx));
     service.slot = active_slot(first, TrackPhase::Playing);
     service.preloaded_next = Some(test_preloaded_next(second, PreloadedNextSource::Staged));
     assert!(service.begin_listening().await);
-    source
-        .lock()
-        .unwrap()
-        .pull_samples(&mut vec![0.0; 150], &mut audio_tx);
+    source.lock().unwrap().pull_samples(&mut vec![0.0; 150], &mut audio_tx);
     service.drain_current_audio_events().await;
     let (fmt, position) = source.lock().unwrap().position_event();
     service.handle_position_event(fmt, position).await;
@@ -204,7 +170,8 @@ async fn airplay_completion_waits_for_the_audio_still_in_the_receiver() {
         let clock = Arc::new(crate::playback::ManualPlaybackClock::new(test_clock_start()));
         service.clock = clock.clone();
         let mut prepared = test_prepared_track(TRACK_T, create_sparse_buffer(1024));
-        prepared.timeline = TrackTimeline::new(Some(Duration::from_secs(40)), std::time::Duration::ZERO);
+        prepared.timeline =
+            TrackTimeline::new(Some(Duration::from_secs(40)), std::time::Duration::ZERO);
         prepared.sample_rate = 100;
         prepared.channels = 1;
         let (mut sink, stream, _) =
@@ -219,9 +186,7 @@ async fn airplay_completion_waits_for_the_audio_still_in_the_receiver() {
         let (mut tx, _) = audio_event_channel();
         source.pull_samples(&mut vec![0.0; 4000], &mut tx);
         service
-            .handle_audio_event(AudioEvent::Completion(
-                source.take_completion_event().unwrap(),
-            ))
+            .handle_audio_event(AudioEvent::Completion(source.take_completion_event().unwrap()))
             .await;
         assert_eq!(
             service.library_manager.history().await.unwrap()[0].played,
@@ -250,10 +215,7 @@ async fn airplay_completion_waits_for_the_audio_still_in_the_receiver() {
         if pause_tail {
             assert!(drained_track_completed_ids(&mut progress).is_empty());
         } else {
-            assert_eq!(
-                drained_track_completed_ids(&mut progress),
-                vec![TRACK_T.to_string()]
-            );
+            assert_eq!(drained_track_completed_ids(&mut progress), vec![TRACK_T.to_string()]);
         }
     }
 }
@@ -316,17 +278,14 @@ async fn a_short_track_of_unknown_length_heard_to_its_end_counts_as_played() {
         bae_audio::track_stream::create_track_stream_pair_with_capacity(100, 1, 2000);
     sink.push_samples(&vec![0.25; 2000]);
     sink.mark_finished();
-    let mut source =
-        source::PlaybackSource::new(stream, prepared.track_fmt(StreamPosition::START));
+    let mut source = source::PlaybackSource::new(stream, prepared.track_fmt(StreamPosition::START));
     service.slot = active_slot(prepared, TrackPhase::Playing);
     assert!(service.begin_listening().await);
     let (mut tx, _) = audio_event_channel();
     source.pull_samples(&mut vec![0.0; 2000], &mut tx);
 
     service
-        .handle_audio_event(AudioEvent::Completion(
-            source.take_completion_event().unwrap(),
-        ))
+        .handle_audio_event(AudioEvent::Completion(source.take_completion_event().unwrap()))
         .await;
     service.persist_listening().await;
 

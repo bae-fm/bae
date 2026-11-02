@@ -49,15 +49,11 @@ impl FileTransferChange {
     fn of(change: coven::TransferChange) -> Self {
         match change {
             coven::TransferChange::Reset(files) => Self::Reset(
-                files
-                    .into_iter()
-                    .map(|(file, progress)| (file, fraction(progress)))
-                    .collect(),
+                files.into_iter().map(|(file, progress)| (file, fraction(progress))).collect(),
             ),
-            coven::TransferChange::Updated { file, progress } => Self::Updated {
-                file,
-                fraction: fraction(progress),
-            },
+            coven::TransferChange::Updated { file, progress } => {
+                Self::Updated { file, fraction: fraction(progress) }
+            }
             coven::TransferChange::Removed { file } => Self::Removed { file },
         }
     }
@@ -78,14 +74,7 @@ impl FileTransfersWatch {
     /// wait for a file's share to change and name each file it changed for.
     /// `None` once the store has closed.
     pub async fn next(&mut self) -> Option<Vec<FileTransferChange>> {
-        Some(
-            self.watch
-                .next()
-                .await?
-                .into_iter()
-                .map(FileTransferChange::of)
-                .collect(),
-        )
+        Some(self.watch.next().await?.into_iter().map(FileTransferChange::of).collect())
     }
 }
 
@@ -94,10 +83,7 @@ mod tests {
     use super::*;
 
     fn progress(bytes_transferred: u64, bytes_total: u64) -> coven::TransferProgress {
-        coven::TransferProgress {
-            bytes_transferred,
-            bytes_total,
-        }
+        coven::TransferProgress { bytes_transferred, bytes_total }
     }
 
     /// A file's share is the bytes of its object moved over the object's
@@ -113,24 +99,17 @@ mod tests {
     /// none removed.
     #[test]
     fn a_reader_holds_each_file_in_flight() {
-        let (a, b) = (
-            coven::FileId(uuid::Uuid::from_u128(1)),
-            coven::FileId(uuid::Uuid::from_u128(2)),
-        );
+        let (a, b) =
+            (coven::FileId(uuid::Uuid::from_u128(1)), coven::FileId(uuid::Uuid::from_u128(2)));
         let mut held = BTreeMap::new();
         apply(
             &mut held,
-            vec![coven::TransferChange::Reset(
-                [(a, progress(1, 10))].into_iter().collect(),
-            )],
+            vec![coven::TransferChange::Reset([(a, progress(1, 10))].into_iter().collect())],
         );
         apply(
             &mut held,
             vec![
-                coven::TransferChange::Updated {
-                    file: b,
-                    progress: progress(2, 10),
-                },
+                coven::TransferChange::Updated { file: b, progress: progress(2, 10) },
                 coven::TransferChange::Removed { file: a },
             ],
         );

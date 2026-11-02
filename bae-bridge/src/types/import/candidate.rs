@@ -16,11 +16,7 @@ pub struct BridgeWatchedFolder {
 impl BridgeWatchedFolder {
     pub fn from_core(folder: bae_core::import::WatchedFolder) -> Self {
         let bae_core::import::WatchedFolder { path, name } = folder;
-        Self {
-            path: coven::path_bytes(&path),
-            path_text: coven::path_text(&path),
-            name,
-        }
+        Self { path: coven::path_bytes(&path), path_text: coven::path_text(&path), name }
     }
 }
 
@@ -156,9 +152,7 @@ pub fn bridge_catalog_name(catalog: crate::types::BridgeCatalog) -> String {
 /// order, so the order is core's and no surface states it again.
 #[cfg_attr(feature = "desktop", uniffi::export)]
 pub fn bridge_catalogs() -> Vec<crate::types::BridgeCatalog> {
-    bae_catalogs::catalog::Catalog::ALL
-        .map(crate::types::BridgeCatalog::from_core)
-        .to_vec()
+    bae_catalogs::catalog::Catalog::ALL.map(crate::types::BridgeCatalog::from_core).to_vec()
 }
 
 /// The catalogs bae asks — a search, a disc ID, a barcode — in the order
@@ -166,9 +160,7 @@ pub fn bridge_catalogs() -> Vec<crate::types::BridgeCatalog> {
 /// asks them anything, so nothing offers them as something to switch on.
 #[cfg_attr(feature = "desktop", uniffi::export)]
 pub fn bridge_lookup_catalogs() -> Vec<crate::types::BridgeCatalog> {
-    bae_catalogs::catalog::Catalog::LOOKUP
-        .map(crate::types::BridgeCatalog::from_core)
-        .to_vec()
+    bae_catalogs::catalog::Catalog::LOOKUP.map(crate::types::BridgeCatalog::from_core).to_vec()
 }
 
 /// One file of a candidate, with its role.
@@ -329,11 +321,7 @@ impl BridgeLibraryStatus {
             release_in_library: status.release_in_library(),
             album_in_library: status.album_in_library(),
             release_id: status.release_id,
-            albums: status
-                .albums
-                .into_iter()
-                .map(BridgeLibraryAlbumMatch::from_core)
-                .collect(),
+            albums: status.albums.into_iter().map(BridgeLibraryAlbumMatch::from_core).collect(),
         }
     }
 }

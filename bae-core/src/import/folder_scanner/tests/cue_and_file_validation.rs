@@ -161,10 +161,7 @@ fn unreadable_child_directory_fails_scan() {
             assert_eq!(source.kind(), std::io::ErrorKind::PermissionDenied);
         }
         FolderScanError::NotADirectory { path } => {
-            panic!(
-                "expected IO error, got not-a-directory for {}",
-                path.display()
-            )
+            panic!("expected IO error, got not-a-directory for {}", path.display())
         }
         FolderScanError::Other(message) => panic!("expected IO error, got {message}"),
         FolderScanError::Cancelled => panic!("expected IO error, got cancellation"),
@@ -178,7 +175,8 @@ fn content_hash_is_location_independent_and_size_sensitive() {
         files: vec![
             audio_entry(&format!("{root}/01.flac"), "01.flac", 1000),
             audio_entry(&format!("{root}/02.flac"), "02.flac", second_size),
-        ], parts: Vec::new(), 
+        ],
+        parts: Vec::new(),
     };
 
     // The same relative structure under two different parent folders hashes
@@ -204,12 +202,8 @@ fn content_hash_changes_with_file_modification_time() {
         .with_test_flac_audio(),
         role: FileRole::Audio,
     };
-    let before = CategorizedFiles {
-        files: vec![entry(1)], parts: Vec::new(), 
-    };
-    let after = CategorizedFiles {
-        files: vec![entry(2)], parts: Vec::new(), 
-    };
+    let before = CategorizedFiles { files: vec![entry(1)], parts: Vec::new() };
+    let after = CategorizedFiles { files: vec![entry(2)], parts: Vec::new() };
 
     assert_ne!(before.content_hash(), after.content_hash());
 }
@@ -226,7 +220,8 @@ fn content_hash_is_independent_of_discovery_order() {
             entry("02.flac", 2, FileRole::Audio),
             entry("cover.jpg", 3, FileRole::Artwork),
             entry("notes.txt", 4, FileRole::Document),
-        ], parts: Vec::new(), 
+        ],
+        parts: Vec::new(),
     };
     let shuffled = CategorizedFiles {
         files: vec![
@@ -234,7 +229,8 @@ fn content_hash_is_independent_of_discovery_order() {
             entry("02.flac", 2, FileRole::Audio),
             entry("cover.jpg", 3, FileRole::Artwork),
             entry("01.flac", 1, FileRole::Audio),
-        ], parts: Vec::new(), 
+        ],
+        parts: Vec::new(),
     };
     assert_eq!(forward.content_hash(), shuffled.content_hash());
 }
@@ -282,10 +278,7 @@ FILE "album.ape" WAVE
             assert_eq!(invalid.reason(), InvalidReason::DamagedAudio { count: 1 });
             assert!(
                 invalid.files.iter().any(|file| file.relative_path == "album.ape"
-                    && file.role
-                        == ProposedRole::DamagedAudio {
-                            damage: AudioDamage::Unreadable
-                        }),
+                    && file.role == ProposedRole::DamagedAudio { damage: AudioDamage::Unreadable }),
                 "the unreadable audio is marked as such: {:?}",
                 invalid.files,
             );
@@ -300,11 +293,8 @@ FILE "album.ape" WAVE
 /// Bytes of a placeholder audio fixture that probes to a specific codec, used to
 /// build CUE pairs whose probed codec identity is what a test asserts against.
 fn audio_format_fixture(name: &str) -> Vec<u8> {
-    std::fs::read(format!(
-        "{}/test-fixtures/audio-format/{name}",
-        env!("CARGO_MANIFEST_DIR")
-    ))
-    .unwrap_or_else(|e| panic!("read audio fixture {name}: {e}"))
+    std::fs::read(format!("{}/test-fixtures/audio-format/{name}", env!("CARGO_MANIFEST_DIR")))
+        .unwrap_or_else(|e| panic!("read audio fixture {name}: {e}"))
 }
 
 /// A FLAC with valid `fLaC` magic + well-formed STREAMINFO shape but no audio
@@ -344,11 +334,7 @@ fn cue_with_unprobeable_audio_is_invalid_and_siblings_still_scan() {
 
     let bad = root.join("Truncated Album");
     std::fs::create_dir(&bad).unwrap();
-    std::fs::write(
-        bad.join("album.cue"),
-        make_cue_content("album.flac", "Test Album"),
-    )
-    .unwrap();
+    std::fs::write(bad.join("album.cue"), make_cue_content("album.flac", "Test Album")).unwrap();
     std::fs::write(bad.join("album.flac"), header_only_flac_unprobeable()).unwrap();
 
     let good = root.join("FLAC Album");
@@ -367,9 +353,8 @@ fn cue_with_unprobeable_audio_is_invalid_and_siblings_still_scan() {
         .expect("expected an invalid candidate for the unprobeable CUE audio");
     assert_eq!(invalid.reason(), InvalidReason::DamagedAudio { count: 1 });
 
-    let sibling_scanned = items
-        .iter()
-        .any(|i| matches!(i, ScanItem::Valid(c) if c.name == "FLAC Album"));
+    let sibling_scanned =
+        items.iter().any(|i| matches!(i, ScanItem::Valid(c) if c.name == "FLAC Album"));
     assert!(sibling_scanned, "sibling FLAC release still scans");
 }
 
@@ -380,31 +365,16 @@ fn cue_with_unprobeable_audio_is_invalid_and_siblings_still_scan() {
 #[test]
 fn cue_with_unsupported_codec_leaves_the_sheet_unbound() {
     for (folder, audio_name, fixture, codec, source_codec) in [
-        (
-            "MP3 Album",
-            "album.mp3",
-            "placeholder-mp3.mp3",
-            "MP3",
-            "MP3",
-        ),
-        (
-            "Ogg Album",
-            "album.ogg",
-            "placeholder-vorbis.ogg",
-            "Vorbis",
-            "Vorbis",
-        ),
+        ("MP3 Album", "album.mp3", "placeholder-mp3.mp3", "MP3", "MP3"),
+        ("Ogg Album", "album.ogg", "placeholder-vorbis.ogg", "Vorbis", "Vorbis"),
     ] {
         let temp_dir = tempfile::tempdir().unwrap();
         let root = temp_dir.path();
 
         let album = root.join(folder);
         std::fs::create_dir(&album).unwrap();
-        std::fs::write(
-            album.join("album.cue"),
-            make_cue_content(audio_name, "Test Album"),
-        )
-        .unwrap();
+        std::fs::write(album.join("album.cue"), make_cue_content(audio_name, "Test Album"))
+            .unwrap();
         std::fs::write(album.join(audio_name), audio_format_fixture(fixture)).unwrap();
 
         let candidates = scan_valid(root.to_path_buf());
@@ -420,16 +390,10 @@ fn cue_with_unsupported_codec_leaves_the_sheet_unbound() {
         assert_eq!(sheets.len(), 1);
         assert_eq!(
             sheets[0].binding,
-            &SheetBinding::RefusedCodec {
-                codec: codec.to_string(),
-            },
+            &SheetBinding::RefusedCodec { codec: codec.to_string() },
             "{folder}: the refusal names the probed codec",
         );
-        assert_eq!(
-            files.audio().count(),
-            1,
-            "{folder}: the audio keeps its role",
-        );
+        assert_eq!(files.audio().count(), 1, "{folder}: the audio keeps its role",);
         assert_eq!(files.track_count(), 1, "{folder}: it imports as one track");
         assert_uniform_source_audio(
             files,
@@ -446,12 +410,7 @@ fn cue_with_unsupported_codec_leaves_the_sheet_unbound() {
 fn cue_with_supported_codec_yields_valid_source_audio() {
     for (folder, audio_name, fixture, codec) in [
         ("PCM Album", "album.wav", "placeholder-pcm.wav", "PCM"),
-        (
-            "WavPack Album",
-            "album.wv",
-            "placeholder-wavpack.wv",
-            "WavPack",
-        ),
+        ("WavPack Album", "album.wv", "placeholder-wavpack.wv", "WavPack"),
         ("DSD Album", "album.dsf", "placeholder-dsd.dsf", "DSD"),
     ] {
         let temp_dir = tempfile::tempdir().unwrap();
@@ -494,19 +453,12 @@ fn test_folder_with_only_images_not_detected() {
     std::fs::create_dir(&root).unwrap();
 
     std::fs::write(root.join("cover.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
-    std::fs::write(
-        root.join("back.png"),
-        [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A],
-    )
-    .unwrap();
+    std::fs::write(root.join("back.png"), [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A])
+        .unwrap();
 
     let candidates = scan_valid(root);
 
-    assert_eq!(
-        candidates.len(),
-        0,
-        "Folder with only images should not be detected"
-    );
+    assert_eq!(candidates.len(), 0, "Folder with only images should not be detected");
 }
 
 #[test]
@@ -522,11 +474,7 @@ fn test_video_ts_folder_not_detected() {
 
     let candidates = scan_valid(root);
 
-    assert_eq!(
-        candidates.len(),
-        0,
-        "VIDEO_TS folder (DVD rip) should not be detected"
-    );
+    assert_eq!(candidates.len(), 0, "VIDEO_TS folder (DVD rip) should not be detected");
 }
 
 #[test]
@@ -550,11 +498,7 @@ fn test_volume_folders_with_long_names_are_separate() {
     assert_eq!(candidates.len(), 2, "each volume should be a candidate");
     for c in &candidates {
         let name = c.path.file_name().and_then(|n| n.to_str()).unwrap();
-        assert!(
-            volumes.contains(&name),
-            "unexpected candidate name {:?}",
-            name,
-        );
+        assert!(volumes.contains(&name), "unexpected candidate name {:?}", name,);
     }
 }
 
@@ -570,11 +514,7 @@ fn test_zero_byte_files_ignored() {
 
     let candidates = scan_valid(root);
 
-    assert_eq!(
-        candidates.len(),
-        0,
-        "Folder with only 0-byte FLAC files should not be detected"
-    );
+    assert_eq!(candidates.len(), 0, "Folder with only 0-byte FLAC files should not be detected");
 }
 
 #[test]
@@ -589,11 +529,7 @@ fn test_mix_of_real_and_zero_byte_files_skips_candidate() {
 
     let candidates = scan_valid(root.clone());
 
-    assert_eq!(
-        candidates.len(),
-        0,
-        "Candidate with corrupt files should be skipped entirely"
-    );
+    assert_eq!(candidates.len(), 0, "Candidate with corrupt files should be skipped entirely");
 }
 
 /// A folder whose only defect is a damaged image is its audio: it is found,
@@ -626,10 +562,7 @@ fn a_damaged_image_leaves_the_release_found_without_it_as_cover() {
         "a damaged image is no artwork"
     );
     assert!(
-        candidate
-            .files
-            .cover_files()
-            .all(|entry| entry.file.relative_path != "front.png"),
+        candidate.files.cover_files().all(|entry| entry.file.relative_path != "front.png"),
         "a damaged image is offered to no cover picker"
     );
     assert_eq!(
@@ -644,19 +577,13 @@ fn a_damaged_image_leaves_the_release_found_without_it_as_cover() {
 #[test]
 fn per_track_flacs_with_missing_cue_audio_still_import() {
     let tmp = tempfile::TempDir::new().unwrap();
-    let album = tmp
-        .path()
-        .join("Collection")
-        .join("Artist - Album Title - (1991) {Label CAT-12345}");
+    let album =
+        tmp.path().join("Collection").join("Artist - Album Title - (1991) {Label CAT-12345}");
     std::fs::create_dir_all(&album).unwrap();
 
     // 12 per-track FLACs
     for i in 1..=12 {
-        std::fs::write(
-            album.join(format!("{:02} - Track {i}.flac", i)),
-            fake_flac(),
-        )
-        .unwrap();
+        std::fs::write(album.join(format!("{:02} - Track {i}.flac", i)), fake_flac()).unwrap();
     }
 
     // CUE sheet with missing referenced audio.
@@ -674,11 +601,8 @@ fn per_track_flacs_with_missing_cue_audio_still_import() {
     std::fs::create_dir_all(&artwork).unwrap();
     std::fs::write(artwork.join("front.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
     std::fs::write(artwork.join("back.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
-    std::fs::write(
-        artwork.join("disc.png"),
-        [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A],
-    )
-    .unwrap();
+    std::fs::write(artwork.join("disc.png"), [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A])
+        .unwrap();
 
     // folder.jpg at album root
     std::fs::write(album.join("folder.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
@@ -701,10 +625,7 @@ fn per_track_flacs_with_missing_cue_audio_still_import() {
             assert_eq!(candidate.files.track_count(), 12);
         }
         ScanItem::Invalid(invalid) => {
-            panic!(
-                "a sheet naming absent audio must not invalidate: {}",
-                invalid.reason()
-            )
+            panic!("a sheet naming absent audio must not invalidate: {}", invalid.reason())
         }
         ScanItem::Discovered(_) | ScanItem::Decided { .. } | ScanItem::Sidecar(_) => {
             panic!("terminal scan helper returned a progress item")
@@ -724,11 +645,8 @@ fn test_collect_release_candidate_files_cue_alac_source_audio() {
     let cue_name = format!("{stem}.cue");
 
     std::fs::write(root.join(&m4a_name), fake_m4a()).unwrap();
-    std::fs::write(
-        root.join(&cue_name),
-        make_cue_content_n_tracks(&m4a_name, "Album Title", 8),
-    )
-    .unwrap();
+    std::fs::write(root.join(&cue_name), make_cue_content_n_tracks(&m4a_name, "Album Title", 8))
+        .unwrap();
 
     let files = scan_files(root);
 
@@ -767,18 +685,11 @@ FILE "02 - Track Two.flac" WAVE
     let bound = files.bound_sheets();
     assert_eq!(bound.len(), 1);
     assert_eq!(
-        bound[0]
-            .audio_files
-            .iter()
-            .map(|(_, audio)| audio.file_name.as_str())
-            .collect::<Vec<_>>(),
+        bound[0].audio_files.iter().map(|(_, audio)| audio.file_name.as_str()).collect::<Vec<_>>(),
         vec!["01 - Track One.flac", "02 - Track Two.flac"],
     );
     assert_eq!(
-        files
-            .audio()
-            .map(|file| file.file_name.as_str())
-            .collect::<Vec<_>>(),
+        files.audio().map(|file| file.file_name.as_str()).collect::<Vec<_>>(),
         vec!["01 - Track One.flac", "02 - Track Two.flac"],
     );
     assert_eq!(bound[0].sheet.catalog.as_deref(), Some("0123456789012"));
@@ -800,17 +711,11 @@ fn bound_sheets_take_their_positions_as_discs_by_default() {
     )
     .unwrap();
     std::fs::write(root.join("beta.flac"), fake_flac()).unwrap();
-    std::fs::write(
-        root.join("beta.cue"),
-        make_cue_content_n_tracks("beta.flac", "Album Title", 3),
-    )
-    .unwrap();
+    std::fs::write(root.join("beta.cue"), make_cue_content_n_tracks("beta.flac", "Album Title", 3))
+        .unwrap();
     // Names audio the folder does not hold, so it never binds.
-    std::fs::write(
-        root.join("zeta.cue"),
-        make_cue_content_n_tracks("zeta.flac", "Album Title", 4),
-    )
-    .unwrap();
+    std::fs::write(root.join("zeta.cue"), make_cue_content_n_tracks("zeta.flac", "Album Title", 4))
+        .unwrap();
 
     let files = scan_files(root);
 
@@ -841,21 +746,15 @@ fn a_stored_disc_assignment_overrules_the_default_position() {
     )
     .unwrap();
     std::fs::write(root.join("beta.flac"), fake_flac()).unwrap();
-    std::fs::write(
-        root.join("beta.cue"),
-        make_cue_content_n_tracks("beta.flac", "Album Title", 3),
-    )
-    .unwrap();
+    std::fs::write(root.join("beta.cue"), make_cue_content_n_tracks("beta.flac", "Album Title", 3))
+        .unwrap();
 
     let scanned = scan_files(root);
 
     let mut sheet_discs = SheetDiscEdits::default();
     sheet_discs.set("alpha.cue".to_string(), SheetDisc::Disc { number: 2 });
     sheet_discs.set("beta.cue".to_string(), SheetDisc::Ignored);
-    let edits = CandidateFileEdits {
-        sheet_discs,
-        ..Default::default()
-    };
+    let edits = CandidateFileEdits { sheet_discs, ..Default::default() };
 
     let reopened = collect_release_candidate_files_with_scope(
         root,
@@ -869,10 +768,7 @@ fn a_stored_disc_assignment_overrules_the_default_position() {
             .track_sheets()
             .map(|sheet| (sheet.file.relative_path.as_str(), sheet.disc))
             .collect::<Vec<_>>(),
-        vec![
-            ("alpha.cue", SheetDisc::Disc { number: 2 }),
-            ("beta.cue", SheetDisc::Ignored),
-        ],
+        vec![("alpha.cue", SheetDisc::Disc { number: 2 }), ("beta.cue", SheetDisc::Ignored),],
     );
     // The ignored sheet carves nothing: its container is loose audio alongside
     // the two tracks carved by the other sheet.
@@ -893,11 +789,8 @@ fn test_collect_release_candidate_files_cue_ape_track_count() {
     let cue_name = format!("{stem}.cue");
 
     std::fs::write(root.join(&ape_name), fake_ape()).unwrap();
-    std::fs::write(
-        root.join(&cue_name),
-        make_cue_content_n_tracks(&ape_name, "Test Album", 15),
-    )
-    .unwrap();
+    std::fs::write(root.join(&cue_name), make_cue_content_n_tracks(&ape_name, "Test Album", 15))
+        .unwrap();
 
     let files = scan_files(root);
 
@@ -940,9 +833,7 @@ fn a_skipped_folder_lists_every_damaged_track_and_what_its_tags_say() {
     tag.set_artist("Track Artist".to_string());
     tag.insert_text(ItemKey::AlbumArtist, "Artist Name".to_string());
     tagged.insert_tag(tag);
-    tagged
-        .save_to_path(root.join("01.flac"), WriteOptions::default())
-        .unwrap();
+    tagged.save_to_path(root.join("01.flac"), WriteOptions::default()).unwrap();
     // Zero-filled, the way an interrupted copy leaves it.
     std::fs::write(root.join("02.flac"), vec![0u8; 4096]).unwrap();
     std::fs::write(root.join("03.flac"), b"").unwrap();
@@ -961,18 +852,8 @@ fn a_skipped_folder_lists_every_damaged_track_and_what_its_tags_say() {
             .collect::<Vec<_>>(),
         [
             ("01.flac", ProposedRole::Audio),
-            (
-                "02.flac",
-                ProposedRole::DamagedAudio {
-                    damage: AudioDamage::Unreadable
-                }
-            ),
-            (
-                "03.flac",
-                ProposedRole::DamagedAudio {
-                    damage: AudioDamage::Empty
-                }
-            ),
+            ("02.flac", ProposedRole::DamagedAudio { damage: AudioDamage::Unreadable }),
+            ("03.flac", ProposedRole::DamagedAudio { damage: AudioDamage::Empty }),
             ("front.jpg", ProposedRole::Image),
         ]
     );
@@ -983,8 +864,5 @@ fn a_skipped_folder_lists_every_damaged_track_and_what_its_tags_say() {
             artist: Some("Artist Name".to_string()),
         })
     );
-    assert_eq!(
-        invalid.cover().map(|file| file.relative_path.as_str()),
-        Some("front.jpg")
-    );
+    assert_eq!(invalid.cover().map(|file| file.relative_path.as_str()), Some("front.jpg"));
 }

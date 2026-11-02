@@ -25,31 +25,23 @@ impl CountingAudioFocus {
 
 impl crate::playback::AudioFocusSystem for CountingAudioFocus {
     fn request(&self) -> Result<(), crate::playback::AudioFocusRefused> {
-        self.requests
-            .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        self.requests.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
         if self.refuses {
-            Err(crate::playback::AudioFocusRefused(
-                "a call holds the speaker".to_string(),
-            ))
+            Err(crate::playback::AudioFocusRefused("a call holds the speaker".to_string()))
         } else {
             Ok(())
         }
     }
 
     fn release(&self) {
-        self.releases
-            .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        self.releases.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
     }
 }
 
 /// A service whose platform shares the speaker through `system`.
 async fn service_sharing_the_speaker(
     system: Arc<CountingAudioFocus>,
-) -> (
-    TempDir,
-    PlaybackService,
-    tokio_mpsc::UnboundedReceiver<PlaybackProgress>,
-) {
+) -> (TempDir, PlaybackService, tokio_mpsc::UnboundedReceiver<PlaybackProgress>) {
     let (home, mut service, progress_rx) =
         seeded_playback_service(&[(FOCUS_RELEASE, &[TRACK_T, FOCUS_NEXT])]).await;
     service.audio_focus = crate::playback::AudioFocus::Shared(system);
@@ -62,9 +54,7 @@ fn manually_paused(service: &mut PlaybackService) {
         test_prepared_track(TRACK_T, create_sparse_buffer(1_024)),
         TrackPhase::Paused(PausePhase::Manual),
     );
-    service
-        .audio_output
-        .set_state(crate::playback::audio_output::AudioState::Paused);
+    service.audio_output.set_state(crate::playback::audio_output::AudioState::Paused);
 }
 
 /// The release these tests play, and its second track.
@@ -137,14 +127,8 @@ async fn next_from_a_side_pause_the_system_refuses_loads_the_next_side_paused() 
     service.handle_next().await;
 
     assert_eq!(system.requests(), 1);
-    assert!(
-        current_phase_is_paused(&service, FOCUS_NEXT),
-        "the next side is current and paused"
-    );
-    assert_eq!(
-        service.audio_output.get_state(),
-        crate::playback::audio_output::AudioState::Paused
-    );
+    assert!(current_phase_is_paused(&service, FOCUS_NEXT), "the next side is current and paused");
+    assert_eq!(service.audio_output.get_state(), crate::playback::audio_output::AudioState::Paused);
 }
 
 #[tokio::test]
@@ -154,9 +138,7 @@ async fn a_countdown_the_system_refuses_loads_the_next_side_paused_and_stops_cou
     service.slot = side_paused_between(TRACK_T, FOCUS_NEXT, Some(countdown_deadline()));
     next_preloaded(&mut service).await;
 
-    service
-        .side_pause_countdown_elapsed(countdown_deadline())
-        .await;
+    service.side_pause_countdown_elapsed(countdown_deadline()).await;
 
     assert_eq!(system.requests(), 1);
     assert!(current_phase_is_paused(&service, FOCUS_NEXT));

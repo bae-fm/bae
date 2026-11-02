@@ -10,17 +10,11 @@
 #[tokio::test(flavor = "multi_thread")]
 async fn a_request_on_a_waiting_candidate_takes_the_next_slot() {
     let fixture = Fixture::new("request-upgrades-waiting").await;
-    fixture
-        .import
-        .register_artwork_analyzer(Arc::new(PerFolderBarcodeAnalyzer));
+    fixture.import.register_artwork_analyzer(Arc::new(PerFolderBarcodeAnalyzer));
     let mut dirs = Vec::new();
     for index in 0..MAX_IN_FLIGHT + 1 {
         let dir = fixture.barcode_candidate(&format!("Album {index}"));
-        std::fs::write(
-            dir.join(format!("playlist-{index}.m3u")),
-            format!("{index}"),
-        )
-        .unwrap();
+        std::fs::write(dir.join(format!("playlist-{index}.m3u")), format!("{index}")).unwrap();
         dirs.push(dir);
     }
     fixture.provider.route("/release?", 200, "{}");
@@ -30,10 +24,8 @@ async fn a_request_on_a_waiting_candidate_takes_the_next_slot() {
     let sweep = fixture.drain_automatic_task();
     // The cap's worth of lookups are out, and one candidate is still waiting.
     wait_for_request(&fixture.provider, "query=barcode", MAX_IN_FLIGHT).await;
-    let waiting = fixture
-        .first_queued(&dirs)
-        .await
-        .expect("one candidate is over the cap and waiting");
+    let waiting =
+        fixture.first_queued(&dirs).await.expect("one candidate is over the cap and waiting");
     let waiting_key = crate::import::CandidateKey::folder(&waiting);
     // Read from here, so the first state the waiting candidate reports is the
     // requested run's.
@@ -90,14 +82,8 @@ async fn await_run_priority(
 ) -> CallPriority {
     tokio::time::timeout(Duration::from_secs(20), async {
         loop {
-            if let ImportEvent::IdentifyStateChanged {
-                candidate_key,
-                priority,
-                ..
-            } = events
-                .recv()
-                .await
-                .expect("the import event bus stays open")
+            if let ImportEvent::IdentifyStateChanged { candidate_key, priority, .. } =
+                events.recv().await.expect("the import event bus stays open")
             {
                 if candidate_key == key.clone() {
                     return priority;
@@ -123,11 +109,7 @@ async fn a_request_superseding_a_run_keeps_the_rest_of_its_group() {
         "the two folders hold the same bytes"
     );
     let probed = fixture.probed_total_ms(&first);
-    fixture.provider.route(
-        "/discid/",
-        200,
-        discid_json("mb-group-1", "rg-group-1", &[probed, 0]),
-    );
+    fixture.provider.route("/discid/", 200, discid_json("mb-group-1", "rg-group-1", &[probed, 0]));
     fixture.provider.route(
         "/release/mb-group-1?",
         200,
@@ -173,10 +155,12 @@ async fn a_request_superseding_a_run_keeps_the_rest_of_its_group() {
         .unwrap();
     tokio::time::timeout(Duration::from_secs(10), async {
         while fixture
-            .identification_status(&crate::import::CandidateKey::folder(&running)).await
+            .identification_status(&crate::import::CandidateKey::folder(&running))
+            .await
             .is_some()
             || fixture
-                .identification_status(&crate::import::CandidateKey::folder(&other)).await
+                .identification_status(&crate::import::CandidateKey::folder(&other))
+                .await
                 .is_some()
         {
             tokio::time::sleep(Duration::from_millis(10)).await;
@@ -201,9 +185,7 @@ async fn automatic_off_leaves_the_queue_to_finish() {
     fixture.provider.hold("/discid/");
     fixture.scan(2).await;
 
-    fixture
-        .start_explicit_lookup_and_await_run(&requested)
-        .await;
+    fixture.start_explicit_lookup_and_await_run(&requested).await;
     let sweep = fixture.drain_automatic_task();
     wait_for_request(&fixture.provider, "/discid/", 2).await;
 
@@ -236,22 +218,14 @@ async fn a_requested_run_is_counted() {
     let fixture = Fixture::new("requested-is-counted").await;
     let dir = fixture.disc_id_candidate("Album");
     let probed = fixture.probed_total_ms(&dir);
-    fixture.provider.route(
-        "/discid/",
-        200,
-        discid_json("mb-counted", "rg-counted", &[probed, 0]),
-    );
+    fixture.provider.route("/discid/", 200, discid_json("mb-counted", "rg-counted", &[probed, 0]));
     fixture.provider.route(
         "/release/mb-counted?",
         200,
         release_json("mb-counted", "rg-counted", &[probed, 0]),
     );
     // Identified only when asked: nothing found here is identified on its own.
-    fixture
-        .manager
-        .set_identify_automatically(false)
-        .await
-        .unwrap();
+    fixture.manager.set_identify_automatically(false).await.unwrap();
     fixture.scan(1).await;
 
     let mut counts = fixture.import.every_identification_count_for_test();
@@ -269,11 +243,7 @@ async fn a_requested_run_is_counted() {
     })
     .await
     .expect("the batch a request opened drains");
-    assert_eq!(
-        progress.first(),
-        Some(&(0, 1)),
-        "the request opens a batch of one: {progress:?}"
-    );
+    assert_eq!(progress.first(), Some(&(0, 1)), "the request opens a batch of one: {progress:?}");
 }
 
 /// Admitting a candidate opens its pane on Find online — the page its run
@@ -288,12 +258,7 @@ async fn an_admitted_candidate_opens_on_find_online() {
     fixture.provider.hold("/discid/");
     fixture.scan(1).await;
     assert_eq!(
-        fixture
-            .pane(&dir)
-            .await
-            .expect("scanned")
-            .draft().unwrap().session
-            .presentation,
+        fixture.pane(&dir).await.expect("scanned").draft().unwrap().session.presentation,
         crate::import::MetadataPresentation::Draft,
         "a scanned candidate nobody has touched opens on its draft"
     );
@@ -302,12 +267,7 @@ async fn an_admitted_candidate_opens_on_find_online() {
     wait_for_request(&fixture.provider, "/discid/", 1).await;
 
     assert_eq!(
-        fixture
-            .pane(&dir)
-            .await
-            .expect("still scanned")
-            .draft().unwrap().session
-            .presentation,
+        fixture.pane(&dir).await.expect("still scanned").draft().unwrap().session.presentation,
         crate::import::MetadataPresentation::FindOnline,
         "the admission moved the pane to the page its run reports on"
     );

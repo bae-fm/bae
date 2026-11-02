@@ -27,10 +27,7 @@ fn a_name_fills_only_the_numbers_the_tags_leave_unstated() {
         numbers(None, Some(3)).or_file_name("2-07 Track Title.flac"),
         numbers(Some(2), Some(3))
     );
-    assert_eq!(
-        numbers(None, None).or_file_name("Track Title.flac"),
-        numbers(None, None)
-    );
+    assert_eq!(numbers(None, None).or_file_name("Track Title.flac"), numbers(None, None));
 }
 
 #[test]

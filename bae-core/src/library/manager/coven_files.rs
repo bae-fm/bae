@@ -106,16 +106,14 @@ impl LibraryManager {
         &self,
         image: &ImageRef,
     ) -> Result<Option<Vec<u8>>, LibraryError> {
-        self.read_library_image_bytes(&image.id, &image.image_type)
-            .await
+        self.read_library_image_bytes(&image.id, &image.image_type).await
     }
 
     pub async fn read_cover_image_bytes(
         &self,
         release_id: &str,
     ) -> Result<Option<Vec<u8>>, LibraryError> {
-        self.read_library_image_bytes(release_id, &LibraryImageType::Cover)
-            .await
+        self.read_library_image_bytes(release_id, &LibraryImageType::Cover).await
     }
 
     /// Read a library image's whole bytes by its subject id and kind; `None`

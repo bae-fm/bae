@@ -61,21 +61,11 @@ pub fn router(
     credential: SubsonicCredential,
     diagnostics: Diagnostics,
 ) -> Router {
-    let state = AppState {
-        services,
-        credential: Arc::new(credential),
-        diagnostics,
-    };
+    let state = AppState { services, credential: Arc::new(credential), diagnostics };
 
     Router::new()
         .nest("/rest", endpoints::mount())
-        .layer(axum::middleware::from_fn_with_state(
-            state.clone(),
-            auth::require_auth,
-        ))
-        .layer(axum::middleware::from_fn_with_state(
-            state.clone(),
-            endpoints::report_panics,
-        ))
+        .layer(axum::middleware::from_fn_with_state(state.clone(), auth::require_auth))
+        .layer(axum::middleware::from_fn_with_state(state.clone(), endpoints::report_panics))
         .with_state(state)
 }

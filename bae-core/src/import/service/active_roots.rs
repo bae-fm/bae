@@ -164,15 +164,10 @@ impl RootRemovalSchedule {
 fn busy_reason(path: &Path, parent: Option<&Path>) -> String {
     match parent {
         None => format!("{} is being removed", path.display()),
-        Some(parent) if parent == path => format!(
-            "{} is taking over the watched folders inside it",
-            parent.display()
-        ),
-        Some(parent) => format!(
-            "{} is being taken over by {}",
-            path.display(),
-            parent.display()
-        ),
+        Some(parent) if parent == path => {
+            format!("{} is taking over the watched folders inside it", parent.display())
+        }
+        Some(parent) => format!("{} is being taken over by {}", path.display(), parent.display()),
     }
 }
 
@@ -236,10 +231,7 @@ impl ActiveRoots {
     ) {
         match self.roots.get_mut(&path) {
             Some(RootActivity::Scanning(schedule)) => {
-                info!(
-                    "folder scan of {} queued behind the one running: {cause}",
-                    path.display()
-                );
+                info!("folder scan of {} queued behind the one running: {cause}", path.display());
                 schedule.pending = true;
                 if let Some(waiter) = waiter {
                     schedule.followup_waiters.push(waiter);
@@ -285,16 +277,8 @@ impl ActiveRoots {
             // Read whole after a failed removal, or no longer watched.
             Some(RootActivity::Removing(_)) => {}
             None => {
-                info!(
-                    "reading {folders:?} under {} again: {cause}",
-                    path.display()
-                );
-                self.start_pass(
-                    path,
-                    RootPass::Folders(folders),
-                    Vec::new(),
-                    Queued::default(),
-                );
+                info!("reading {folders:?} under {} again: {cause}", path.display());
+                self.start_pass(path, RootPass::Folders(folders), Vec::new(), Queued::default());
             }
         }
     }
@@ -308,9 +292,7 @@ impl ActiveRoots {
                 if schedule.whole_root {
                     schedule.scan.cancellation.cancel();
                     schedule.pending = true;
-                    schedule
-                        .followup_waiters
-                        .append(&mut schedule.current_waiters);
+                    schedule.followup_waiters.append(&mut schedule.current_waiters);
                 }
                 schedule.readings.push_back(request);
             }
@@ -319,12 +301,7 @@ impl ActiveRoots {
                 request.answer(Err(self.why_held(id, &path)));
             }
             None => {
-                self.start_pass(
-                    path,
-                    RootPass::Decision(request),
-                    Vec::new(),
-                    Queued::default(),
-                );
+                self.start_pass(path, RootPass::Decision(request), Vec::new(), Queued::default());
             }
         }
     }
@@ -356,32 +333,17 @@ impl ActiveRoots {
             changed: std::mem::take(&mut schedule.changed),
         };
         if let Some(reading) = queued.readings.pop_front() {
-            self.start_pass(
-                completion.path,
-                RootPass::Decision(reading),
-                Vec::new(),
-                queued,
-            );
+            self.start_pass(completion.path, RootPass::Decision(reading), Vec::new(), queued);
         } else if !queued.pending && !queued.changed.is_empty() {
             let folders = std::mem::take(&mut queued.changed);
-            self.start_pass(
-                completion.path,
-                RootPass::Folders(folders),
-                Vec::new(),
-                queued,
-            );
+            self.start_pass(completion.path, RootPass::Folders(folders), Vec::new(), queued);
         } else if queued.pending {
             info!(
                 "folder scan of {} starting again: one was queued while it ran",
                 completion.path.display()
             );
             let waiters = std::mem::take(&mut queued.followup_waiters);
-            self.start_pass(
-                completion.path,
-                RootPass::WholeRoot,
-                waiters,
-                Queued::default(),
-            );
+            self.start_pass(completion.path, RootPass::WholeRoot, waiters, Queued::default());
         }
     }
 
@@ -394,13 +356,10 @@ impl ActiveRoots {
         parent: Option<PathBuf>,
         completion: RefreshCompletion,
     ) {
-        let held = roots
-            .iter()
-            .chain(parent.iter())
-            .find_map(|path| match self.roots.get(path) {
-                Some(RootActivity::Removing(id)) => Some((path, *id)),
-                Some(RootActivity::Scanning(_)) | None => None,
-            });
+        let held = roots.iter().chain(parent.iter()).find_map(|path| match self.roots.get(path) {
+            Some(RootActivity::Removing(id)) => Some((path, *id)),
+            Some(RootActivity::Scanning(_)) | None => None,
+        });
         if let Some((path, id)) = held {
             match self.removals.get_mut(&id) {
                 Some(removal) if removal.is(&roots, parent.as_deref()) => {
@@ -413,10 +372,7 @@ impl ActiveRoots {
         }
         if let Some(parent) = &parent {
             if self.roots.contains_key(parent) {
-                answer(
-                    completion,
-                    Err(format!("{} is already watched", parent.display())),
-                );
+                answer(completion, Err(format!("{} is already watched", parent.display())));
                 return;
             }
         }
@@ -446,8 +402,7 @@ impl ActiveRoots {
             self.roots.insert(root.clone(), RootActivity::Removing(id));
         }
         if let Some(parent) = &parent {
-            self.roots
-                .insert(parent.clone(), RootActivity::Removing(id));
+            self.roots.insert(parent.clone(), RootActivity::Removing(id));
         }
         let backend = self.removal_backend.clone();
         let commit = self.folder_state_commit.clone();
@@ -469,19 +424,13 @@ impl ActiveRoots {
                     commit,
                 )
                 .await;
-                if completions
-                    .send(RootRemovalCompletion { id, result })
-                    .is_err()
-                {
+                if completions.send(RootRemovalCompletion { id, result }).is_err() {
                     debug!("folder scan coordinator ended before removal completion");
                 }
             },
             move |failed| {
                 let result = RootRemovalResult::Failed(failed.to_string());
-                if panicked_completions
-                    .send(RootRemovalCompletion { id, result })
-                    .is_err()
-                {
+                if panicked_completions.send(RootRemovalCompletion { id, result }).is_err() {
                     debug!("folder scan coordinator ended before a panicked removal completed");
                 }
             },
@@ -512,21 +461,14 @@ impl ActiveRoots {
         // A removal that panicked was reported where it ran.
         removal.task.ended().await;
         Some(match completion.result {
-            RootRemovalResult::Removed {
-                commit,
-                removed_keys,
-            } => {
+            RootRemovalResult::Removed { commit, removed_keys } => {
                 let scan_waiters = match removal.parent {
                     // The parent's read covers every folder a waiter asked about.
                     Some(parent) => {
                         self.start_pass(
                             parent,
                             RootPass::WholeRoot,
-                            removal
-                                .scan_waiters
-                                .into_iter()
-                                .map(|(_, waiter)| waiter)
-                                .collect(),
+                            removal.scan_waiters.into_iter().map(|(_, waiter)| waiter).collect(),
                             Queued::default(),
                         );
                         Vec::new()
@@ -556,10 +498,7 @@ impl ActiveRoots {
                     let waiters = waiters.remove(&root).unwrap_or_default();
                     self.start_pass(root, RootPass::WholeRoot, waiters, Queued::default());
                 }
-                RemovalOutcome::Failed {
-                    error,
-                    callers: removal.completions,
-                }
+                RemovalOutcome::Failed { error, callers: removal.completions }
             }
         })
     }
@@ -574,9 +513,7 @@ impl ActiveRoots {
 
     /// Why nothing else can be done with `path` while removal `id` holds it.
     fn why_held(&self, id: u64, path: &Path) -> String {
-        self.removals
-            .get(&id)
-            .map_or_else(|| missing_removal(id), |removal| removal.busy(path))
+        self.removals.get(&id).map_or_else(|| missing_removal(id), |removal| removal.busy(path))
     }
 
     /// Cancel every pass without waiting for it.
@@ -600,15 +537,10 @@ impl ActiveRoots {
             for reading in schedule.readings.drain(..) {
                 reading.answer(Err("folder scan service stopped".to_string()));
             }
-            for waiter in schedule
-                .current_waiters
-                .drain(..)
-                .chain(schedule.followup_waiters.drain(..))
+            for waiter in
+                schedule.current_waiters.drain(..).chain(schedule.followup_waiters.drain(..))
             {
-                if waiter
-                    .send(Err("folder scan service stopped".to_string()))
-                    .is_err()
-                {
+                if waiter.send(Err("folder scan service stopped".to_string())).is_err() {
                     debug!("folder refresh caller dropped during shutdown");
                 }
             }
@@ -642,11 +574,7 @@ impl ActiveRoots {
         self.next_scan_id += 1;
         let id = self.next_scan_id;
         let whole_root = matches!(pass, RootPass::WholeRoot);
-        let changed = if whole_root {
-            BTreeSet::new()
-        } else {
-            queued.changed
-        };
+        let changed = if whole_root { BTreeSet::new() } else { queued.changed };
         let scan = (self.starter)(id, path.clone(), pass, self.scan_completions.clone());
         self.roots.insert(
             path,

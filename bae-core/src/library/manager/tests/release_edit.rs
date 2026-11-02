@@ -57,10 +57,7 @@ async fn add_track_audio_sources(
             created_at: now,
         })
         .collect::<Vec<_>>();
-    manager
-        .insert_audio_format_with_segments_for_test(&audio_format, &segments)
-        .await
-        .unwrap();
+    manager.insert_audio_format_with_segments_for_test(&audio_format, &segments).await.unwrap();
     files
 }
 
@@ -80,9 +77,7 @@ async fn release_edit_seed_uses_persisted_track_ids() {
     )
     .await;
 
-    let seed = manager.open_release_edit(&release.id).await.unwrap()
-        .opened()
-        .clone();
+    let seed = manager.open_release_edit(&release.id).await.unwrap().opened().clone();
 
     assert_eq!(seed.edit.tracks[0].id, track.id);
 }
@@ -107,10 +102,7 @@ async fn an_applied_catalog_s_form_keeps_the_persisted_track_ids() {
     let response = make_mb_release_for_re_identify(source_release_id, source_group_id, 2);
     let raw_json = serde_json::to_string(&response).unwrap();
     manager.providers().musicbrainz().seed_release_cache(source_release_id, raw_json);
-    manager
-        .providers()
-        .musicbrainz()
-        .seed_release_group_json_cache(
+    manager.providers().musicbrainz().seed_release_group_json_cache(
         source_group_id,
         r#"{"id":"reset-editor-group"}"#.to_string(),
     );
@@ -121,17 +113,13 @@ async fn an_applied_catalog_s_form_keeps_the_persisted_track_ids() {
             &crate::import::PressingLink {
                 record: MetadataRef::new(Catalog::MusicBrainz, source_release_id),
                 partners: vec![],
-            }, &crate::import::CatalogApplySteps::unread(),
+            },
+            &crate::import::CatalogApplySteps::unread(),
         )
         .await
         .unwrap();
     assert_eq!(
-        applied
-            .edit
-            .tracks
-            .into_iter()
-            .map(|track| track.id)
-            .collect::<Vec<_>>(),
+        applied.edit.tracks.into_iter().map(|track| track.id).collect::<Vec<_>>(),
         persisted_ids
     );
 }
@@ -151,13 +139,10 @@ async fn an_applied_catalog_tells_its_catalog_read() {
         .providers()
         .musicbrainz()
         .seed_release_cache(source_release_id, serde_json::to_string(&response).unwrap());
-    manager
-        .providers()
-        .musicbrainz()
-        .seed_release_group_json_cache(
-            source_group_id,
-            r#"{"id":"steps-editor-group"}"#.to_string(),
-        );
+    manager.providers().musicbrainz().seed_release_group_json_cache(
+        source_group_id,
+        r#"{"id":"steps-editor-group"}"#.to_string(),
+    );
     let told = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
     let keep = told.clone();
     let steps = crate::import::CatalogApplySteps::new(move |step| keep.lock().unwrap().push(step));
@@ -177,12 +162,7 @@ async fn an_applied_catalog_tells_its_catalog_read() {
 
     assert_eq!(
         *told.lock().unwrap(),
-        vec![
-            Some(crate::import::CatalogApplyStep::ReadingRelease(
-                Catalog::MusicBrainz
-            )),
-            None,
-        ]
+        vec![Some(crate::import::CatalogApplyStep::ReadingRelease(Catalog::MusicBrainz)), None,]
     );
 }
 
@@ -221,11 +201,7 @@ async fn release_edit_seed_projects_track_sources_in_segment_order() {
     second.medium_id.clone_from(&second_disc.id);
     manager.database.insert_album(&album).await.unwrap();
     insert_release(&manager, &release).await;
-    manager
-        .database
-        .insert_release_medium(&second_disc)
-        .await
-        .unwrap();
+    manager.database.insert_release_medium(&second_disc).await.unwrap();
     manager.database.insert_track(&first).await.unwrap();
     manager.database.insert_track(&second).await.unwrap();
     add_track_audio_sources(
@@ -245,14 +221,9 @@ async fn release_edit_seed_projects_track_sources_in_segment_order() {
     .await;
     store_test_cover(&manager, &release.id, b"cover").await;
 
-    let seed = manager.open_release_edit(&release.id).await.unwrap()
-        .opened()
-        .clone();
+    let seed = manager.open_release_edit(&release.id).await.unwrap().opened().clone();
 
-    assert_eq!(
-        seed.cover.as_ref().map(|cover| cover.id.as_str()),
-        Some(release.id.as_str())
-    );
+    assert_eq!(seed.cover.as_ref().map(|cover| cover.id.as_str()), Some(release.id.as_str()));
     let sides = &seed.display.sides;
     assert_eq!(
         sides.iter().map(|side| &side.side).collect::<Vec<_>>(),
@@ -265,21 +236,14 @@ async fn release_edit_seed_projects_track_sources_in_segment_order() {
         panic!("a track on its own file is a run of its own");
     };
     assert_eq!(first_context.track_id, first.id);
-    assert_eq!(
-        first_context.sources[0].layout,
-        crate::album_detail::SourceAudioLayout::File
-    );
+    assert_eq!(first_context.sources[0].layout, crate::album_detail::SourceAudioLayout::File);
     // A track playing two files is no sheet's run, though a sheet carves both.
     let crate::album_detail::ReleaseEditTrackRun::Track(second_context) = &sides[1].runs[0] else {
         panic!("a track over two files is a run of its own");
     };
     assert_eq!(second_context.track_id, second.id);
     assert_eq!(
-        second_context
-            .sources
-            .iter()
-            .map(|source| source.name.as_str())
-            .collect::<Vec<_>>(),
+        second_context.sources.iter().map(|source| source.name.as_str()).collect::<Vec<_>>(),
         vec!["second-a.flac", "second-b.flac"]
     );
     assert!(matches!(
@@ -304,8 +268,12 @@ async fn release_metadata_edit_preserves_records_and_audio() {
     )
     .await;
     let identity = crate::import::ReleaseRecord::new(
-        &crate::import::MetadataRef::new(bae_catalogs::catalog::Catalog::MusicBrainz, "source-release"),
-        Some("source-group".to_string()));
+        &crate::import::MetadataRef::new(
+            bae_catalogs::catalog::Catalog::MusicBrainz,
+            "source-release",
+        ),
+        Some("source-group".to_string()),
+    );
     manager
         .database
         .insert_release_records(&release.id, std::slice::from_ref(&identity))
@@ -324,20 +292,28 @@ async fn release_metadata_edit_preserves_records_and_audio() {
             &release.id,
             &crate::import::ReleaseUserEdit {
                 album_title: "Edited Album".to_string(),
-                album_artist_assignments: vec![crate::import::Credited::plain(crate::import::ArtistAssignment::named(
-                    "Edited Album Artist",
-                ))],
+                album_artist_assignments: vec![crate::import::Credited::plain(
+                    crate::import::ArtistAssignment::named("Edited Album Artist"),
+                )],
                 album_year: Some(1984),
                 pressing: bae_types::pressing::Pressing {
                     year: Some(1991),
-                    labels: vec![bae_types::pressing::ReleaseLabel::of(Some("Edited Label"), Some("CAT-1"))],
-                    facts: bae_types::pressing::PressingFacts { area: Some(bae_types::pressing::area("US")), ..Default::default() },
+                    labels: vec![bae_types::pressing::ReleaseLabel::of(
+                        Some("Edited Label"),
+                        Some("CAT-1"),
+                    )],
+                    facts: bae_types::pressing::PressingFacts {
+                        area: Some(bae_types::pressing::area("US")),
+                        ..Default::default()
+                    },
                     barcodes: vec!["123456789".to_string()],
                 },
                 tracks: vec![crate::import::TrackUserEdit {
                     title: "Edited Track".to_string(),
                     artist_assignments: crate::import::TrackArtistAssignments::Explicit(vec![
-                        crate::import::Credited::plain(crate::import::ArtistAssignment::named("Edited Track Artist")),
+                        crate::import::Credited::plain(crate::import::ArtistAssignment::named(
+                            "Edited Track Artist",
+                        )),
                     ]),
                     file: None,
                 }],
@@ -361,14 +337,7 @@ async fn release_metadata_edit_preserves_records_and_audio() {
     };
     assert_eq!(segments(&audio_after), segments(&audio_before));
     assert_eq!(stored_after.files, stored_before.files);
-    assert_eq!(
-        manager
-            .database
-            .get_release_records(&release.id)
-            .await
-            .unwrap(),
-        vec![identity]
-    );
+    assert_eq!(manager.database.get_release_records(&release.id).await.unwrap(), vec![identity]);
     assert_eq!(stored_after.release.id, release.id);
     assert_eq!(stored_after.release.album_id, album.id);
     assert_eq!(stored_after.release.pressing.year, Some(1991));
@@ -398,33 +367,25 @@ async fn a_named_album_artist_already_in_the_library_is_linked() {
     let edit = crate::import::ReleaseUserEdit {
         album_title: "Album Title".to_string(),
         album_artist_assignments: vec![
-            crate::import::Credited::plain(crate::import::ArtistAssignment::named("Album Artist One")),
-            crate::import::Credited::plain(crate::import::ArtistAssignment::named("Album Artist Two")),
+            crate::import::Credited::plain(crate::import::ArtistAssignment::named(
+                "Album Artist One",
+            )),
+            crate::import::Credited::plain(crate::import::ArtistAssignment::named(
+                "Album Artist Two",
+            )),
         ],
         album_year: None,
         pressing: bae_types::pressing::Pressing::blank(),
         tracks: Vec::new(),
     };
-    manager
-        .apply_release_metadata_user_edit(&release.id, &edit)
-        .await
-        .unwrap();
+    manager.apply_release_metadata_user_edit(&release.id, &edit).await.unwrap();
     let artists = manager.get_artists_for_album(&album.id).await.unwrap();
 
-    manager
-        .apply_release_metadata_user_edit(&release.id, &edit)
-        .await
-        .unwrap();
+    manager.apply_release_metadata_user_edit(&release.id, &edit).await.unwrap();
 
+    assert_eq!(manager.get_artists_for_album(&album.id).await.unwrap(), artists);
     assert_eq!(
-        manager.get_artists_for_album(&album.id).await.unwrap(),
-        artists
-    );
-    assert_eq!(
-        artists
-            .into_iter()
-            .map(|artist| artist.artist.name)
-            .collect::<Vec<_>>(),
+        artists.into_iter().map(|artist| artist.artist.name).collect::<Vec<_>>(),
         vec!["Album Artist One", "Album Artist Two"]
     );
 }
@@ -437,26 +398,26 @@ async fn an_album_credit_list_naming_one_artist_twice_keeps_both_credits() {
     let edit = crate::import::ReleaseUserEdit {
         album_title: "Album Title".to_string(),
         album_artist_assignments: vec![
-            crate::import::Credited::plain(crate::import::ArtistAssignment::named("Album Artist One")),
-            crate::import::Credited::plain(crate::import::ArtistAssignment::named("Album Artist Two")),
-            crate::import::Credited::plain(crate::import::ArtistAssignment::named("Album Artist One")),
+            crate::import::Credited::plain(crate::import::ArtistAssignment::named(
+                "Album Artist One",
+            )),
+            crate::import::Credited::plain(crate::import::ArtistAssignment::named(
+                "Album Artist Two",
+            )),
+            crate::import::Credited::plain(crate::import::ArtistAssignment::named(
+                "Album Artist One",
+            )),
         ],
         album_year: None,
         pressing: bae_types::pressing::Pressing::blank(),
         tracks: Vec::new(),
     };
 
-    manager
-        .apply_release_metadata_user_edit(&release.id, &edit)
-        .await
-        .unwrap();
+    manager.apply_release_metadata_user_edit(&release.id, &edit).await.unwrap();
 
     let artists = manager.get_artists_for_album(&album.id).await.unwrap();
     assert_eq!(
-        artists
-            .iter()
-            .map(|artist| artist.artist.name.as_str())
-            .collect::<Vec<_>>(),
+        artists.iter().map(|artist| artist.artist.name.as_str()).collect::<Vec<_>>(),
         vec!["Album Artist One", "Album Artist Two", "Album Artist One"]
     );
     assert_eq!(artists[0].artist.id, artists[2].artist.id, "one library artist, credited twice");
@@ -468,8 +429,12 @@ fn credited_release_edit(track_artists: [&[&str]; 2]) -> crate::import::ReleaseU
     crate::import::ReleaseUserEdit {
         album_title: "Album Title".to_string(),
         album_artist_assignments: vec![
-            crate::import::Credited::plain(crate::import::ArtistAssignment::named("Album Artist One")),
-            crate::import::Credited::plain(crate::import::ArtistAssignment::named("Album Artist Two")),
+            crate::import::Credited::plain(crate::import::ArtistAssignment::named(
+                "Album Artist One",
+            )),
+            crate::import::Credited::plain(crate::import::ArtistAssignment::named(
+                "Album Artist Two",
+            )),
         ],
         album_year: Some(2024),
         pressing: bae_types::pressing::Pressing::blank(),
@@ -508,16 +473,10 @@ async fn saving_unchanged_metadata_writes_nothing() {
         &["Track Artist One", "Track Artist Two"],
         &["Track Artist One", "Track Artist Three"],
     ]);
-    manager
-        .apply_release_metadata_user_edit(&release.id, &edit)
-        .await
-        .unwrap();
+    manager.apply_release_metadata_user_edit(&release.id, &edit).await.unwrap();
     let writes = queued_write_rows(&manager).await;
 
-    manager
-        .apply_release_metadata_user_edit(&release.id, &edit)
-        .await
-        .unwrap();
+    manager.apply_release_metadata_user_edit(&release.id, &edit).await.unwrap();
 
     assert_eq!(queued_write_rows(&manager).await, writes);
 }
@@ -558,16 +517,8 @@ async fn changing_one_track_credit_writes_only_that_credit() {
         .iter()
         .filter(|row| row.starts_with("album_artists") || row.starts_with("track_artists"))
         .collect::<Vec<_>>();
-    assert_eq!(
-        credit_rows,
-        ["track_artists"],
-        "the one place whose artist changed"
-    );
-    assert_eq!(
-        rows[writes].iter().filter(|row| *row == "artists").count(),
-        1,
-        "the new artist"
-    );
+    assert_eq!(credit_rows, ["track_artists"], "the one place whose artist changed");
+    assert_eq!(rows[writes].iter().filter(|row| *row == "artists").count(), 1, "the new artist");
     let first_track = &manager.get_tracks_for_release(&release.id).await.unwrap()[0];
     assert_eq!(
         manager

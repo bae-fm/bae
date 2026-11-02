@@ -67,11 +67,8 @@ async fn the_interval_bounds_both_classes_together() {
 
     let mut handles = Vec::new();
     for i in 0..10 {
-        let priority = if i % 2 == 0 {
-            CallPriority::Interactive
-        } else {
-            CallPriority::Background
-        };
+        let priority =
+            if i % 2 == 0 { CallPriority::Interactive } else { CallPriority::Background };
         let limiter = Arc::clone(&limiter);
         let admissions = Arc::clone(&admissions);
         handles.push(tokio::spawn(async move {
@@ -155,20 +152,13 @@ async fn a_cancelled_waiter_costs_no_slot() {
 #[tokio::test(start_paused = true)]
 async fn an_uncontended_wait_neither_sleeps_nor_spawns_a_task() {
     let limiter = RateLimiter::new(INTERVAL);
-    let alive_before = tokio::runtime::Handle::current()
-        .metrics()
-        .num_alive_tasks();
+    let alive_before = tokio::runtime::Handle::current().metrics().num_alive_tasks();
 
     let start = Instant::now();
     drop(limiter.wait(CallPriority::Interactive).await);
 
     assert_eq!(start.elapsed(), Duration::ZERO);
-    assert_eq!(
-        tokio::runtime::Handle::current()
-            .metrics()
-            .num_alive_tasks(),
-        alive_before
-    );
+    assert_eq!(tokio::runtime::Handle::current().metrics().num_alive_tasks(), alive_before);
     assert!(!limiter.has_waiters_for_test());
 }
 
@@ -242,11 +232,8 @@ async fn a_refusal_holds_every_waiter_until_its_wait_passes() {
     let refused = limiter.wait(CallPriority::Interactive).await;
 
     let mut handles = Vec::new();
-    for priority in [
-        CallPriority::Interactive,
-        CallPriority::Background,
-        CallPriority::Background,
-    ] {
+    for priority in [CallPriority::Interactive, CallPriority::Background, CallPriority::Background]
+    {
         handles.push(spawn_stamped(&limiter, priority, &admissions));
     }
     queued_reaches(&limiter, CallPriority::Interactive, 1).await;
@@ -255,11 +242,7 @@ async fn a_refusal_holds_every_waiter_until_its_wait_passes() {
     let start = Instant::now();
     let told = Duration::from_secs(30);
     refused.answered(RateAnswer::Refused { wait: Some(told) });
-    handles.push(spawn_stamped(
-        &limiter,
-        CallPriority::Interactive,
-        &admissions,
-    ));
+    handles.push(spawn_stamped(&limiter, CallPriority::Interactive, &admissions));
     for handle in handles {
         handle.await.unwrap();
     }
@@ -267,16 +250,9 @@ async fn a_refusal_holds_every_waiter_until_its_wait_passes() {
     let mut times = admissions.lock().unwrap().clone();
     times.sort();
     assert_eq!(times.len(), 4);
-    assert!(
-        times[0] >= start + told,
-        "admitted {:?} into a {told:?} hold",
-        times[0] - start
-    );
+    assert!(times[0] >= start + told, "admitted {:?} into a {told:?} hold", times[0] - start);
     for pair in times.windows(2) {
-        assert!(
-            pair[1] - pair[0] >= INTERVAL,
-            "the hold let a burst through"
-        );
+        assert!(pair[1] - pair[0] >= INTERVAL, "the hold let a burst through");
     }
 }
 
@@ -286,10 +262,7 @@ async fn a_refusal_holds_every_waiter_until_its_wait_passes() {
 async fn a_refusal_without_a_wait_holds_one_window() {
     let limiter = RateLimiter::counted(INTERVAL, WINDOW);
     let start = Instant::now();
-    limiter
-        .wait(CallPriority::Background)
-        .await
-        .answered(RateAnswer::Refused { wait: None });
+    limiter.wait(CallPriority::Background).await.answered(RateAnswer::Refused { wait: None });
 
     drop(limiter.wait(CallPriority::Interactive).await);
     assert_eq!(start.elapsed(), WINDOW);
@@ -306,10 +279,7 @@ async fn a_spent_fixed_window_holds_until_it_resets() {
         limiter
             .wait(CallPriority::Background)
             .await
-            .answered(RateAnswer::Counted(WindowCount::Fixed {
-                remaining,
-                resets_in,
-            }));
+            .answered(RateAnswer::Counted(WindowCount::Fixed { remaining, resets_in }));
 
         drop(limiter.wait(CallPriority::Background).await);
         assert_eq!(start.elapsed(), expected, "{remaining} remaining");
@@ -370,11 +340,7 @@ async fn requests_no_count_can_hold_are_let_go() {
             .answered(RateAnswer::Counted(WindowCount::Rolling { remaining: 50 }));
     }
     let held_at_most = (WINDOW * 2).as_secs() as usize / INTERVAL.as_secs() as usize + 1;
-    assert!(
-        limiter.sent_in_ledger() <= held_at_most,
-        "{} requests kept",
-        limiter.sent_in_ledger()
-    );
+    assert!(limiter.sent_in_ledger() <= held_at_most, "{} requests kept", limiter.sent_in_ledger());
 }
 
 /// A count answered to a limiter that keeps none is a caller's bug: it panics,

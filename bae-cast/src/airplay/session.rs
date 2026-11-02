@@ -108,21 +108,14 @@ pub(crate) fn parse_transport(header: &str) -> Option<NegotiatedTransport> {
             }
         }
     }
-    Some(NegotiatedTransport {
-        server_port: server?,
-        control_port: control?,
-        timing_port: timing?,
-    })
+    Some(NegotiatedTransport { server_port: server?, control_port: control?, timing_port: timing? })
 }
 
 fn expect_success(step: &'static str, response: &RtspResponse) -> Result<(), RaopError> {
     if response.is_success() {
         Ok(())
     } else {
-        Err(RaopError::Rejected {
-            step,
-            status: response.status,
-        })
+        Err(RaopError::Rejected { step, status: response.status })
     }
 }
 
@@ -130,9 +123,7 @@ fn expect_success(step: &'static str, response: &RtspResponse) -> Result<(), Rao
 /// RECORD response — the ~2 s buffer the sender paces ahead by and offsets the
 /// position back by.
 fn parse_audio_latency(response: &RtspResponse) -> Option<u32> {
-    response
-        .header("Audio-Latency")
-        .and_then(|v| v.trim().parse().ok())
+    response.header("Audio-Latency").and_then(|v| v.trim().parse().ok())
 }
 
 /// Drive the §7.1 RTSP sequence to arm a receiver: OPTIONS, ANNOUNCE the SDP,
@@ -167,18 +158,13 @@ pub(crate) fn perform_handshake(
     let setup =
         conn.request(&RtspRequest::new(Method::Setup, uri).header("Transport", transport))?;
     expect_success("SETUP", &setup)?;
-    let negotiated = setup
-        .header("Transport")
-        .and_then(parse_transport)
-        .ok_or(RaopError::MissingTransport)?;
+    let negotiated =
+        setup.header("Transport").and_then(parse_transport).ok_or(RaopError::MissingTransport)?;
 
     let record = conn.request(
         &RtspRequest::new(Method::Record, uri)
             .header("Range", "npt=0-")
-            .header(
-                "RTP-Info",
-                format!("seq={initial_sequence};rtptime={initial_timestamp}"),
-            ),
+            .header("RTP-Info", format!("seq={initial_sequence};rtptime={initial_timestamp}")),
     )?;
     expect_success("RECORD", &record)?;
     // The receiver reports its audio latency on SETUP or RECORD; RECORD wins.
@@ -304,24 +290,14 @@ impl RaopSession {
                 channels: PCM_CHANNELS,
                 initial_timestamp,
             },
-            StreamSockets {
-                timing: timing_socket,
-                control: control_socket,
-            },
+            StreamSockets { timing: timing_socket, control: control_socket },
             clock,
             true, // RAOP sends periodic sync packets
             stream_control.clone(),
         )?;
 
-        let control = RaopControl {
-            rtsp: Arc::new(Mutex::new(conn)),
-            uri,
-            stream: stream_control,
-        };
-        Ok(RaopSession {
-            control,
-            _stream: stream,
-        })
+        let control = RaopControl { rtsp: Arc::new(Mutex::new(conn)), uri, stream: stream_control };
+        Ok(RaopSession { control, _stream: stream })
     }
 
     pub(crate) fn flush(&self) -> Result<(), RaopError> {
@@ -470,10 +446,7 @@ mod tests {
         );
 
         let (methods, announce_sdp, volume_body) = server.join().unwrap();
-        assert_eq!(
-            methods,
-            vec!["OPTIONS", "ANNOUNCE", "SETUP", "RECORD", "SET_PARAMETER"]
-        );
+        assert_eq!(methods, vec!["OPTIONS", "ANNOUNCE", "SETUP", "RECORD", "SET_PARAMETER"]);
         assert!(announce_sdp.contains("a=rtpmap:96 L16/44100/2"));
         assert!(
             volume_body.contains("volume: -15."),
@@ -499,10 +472,8 @@ mod tests {
         // The receiver's audio and control ports, bound so the stream's sends land.
         let audio = UdpSocket::bind(("127.0.0.1", 0)).unwrap();
         let control = UdpSocket::bind(("127.0.0.1", 0)).unwrap();
-        let (audio_port, control_port) = (
-            audio.local_addr().unwrap().port(),
-            control.local_addr().unwrap().port(),
-        );
+        let (audio_port, control_port) =
+            (audio.local_addr().unwrap().port(), control.local_addr().unwrap().port());
 
         let server = std::thread::spawn(move || {
             let (stream, _) = listener.accept().unwrap();

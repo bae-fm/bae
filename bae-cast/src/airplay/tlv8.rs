@@ -76,10 +76,7 @@ impl Tlv8 {
 
     /// The value for `ty`, or `None` if absent. The first item of that type.
     pub(crate) fn get(&self, ty: u8) -> Option<&[u8]> {
-        self.items
-            .iter()
-            .find(|(t, _)| *t == ty)
-            .map(|(_, v)| v.as_slice())
+        self.items.iter().find(|(t, _)| *t == ty).map(|(_, v)| v.as_slice())
     }
 
     /// The single-byte value for `ty` (state/method/error), or `None`.
@@ -155,10 +152,7 @@ mod tests {
             .push(tlv_type::SALT, vec![1, 2, 3, 4]);
         let bytes = tlv.encode();
         // type,len,value triples.
-        assert_eq!(
-            bytes,
-            vec![0x06, 1, 0x01, 0x00, 1, 0x00, 0x02, 4, 1, 2, 3, 4]
-        );
+        assert_eq!(bytes, vec![0x06, 1, 0x01, 0x00, 1, 0x00, 0x02, 4, 1, 2, 3, 4]);
 
         let back = Tlv8::decode(&bytes).unwrap();
         assert_eq!(back.get_u8(tlv_type::STATE), Some(state::M1));
@@ -190,9 +184,8 @@ mod tests {
     #[test]
     fn exact_255_value_then_other_type() {
         let value: Vec<u8> = vec![7u8; 255];
-        let tlv = Tlv8::new()
-            .push(tlv_type::PROOF, value.clone())
-            .push_u8(tlv_type::STATE, state::M3);
+        let tlv =
+            Tlv8::new().push(tlv_type::PROOF, value.clone()).push_u8(tlv_type::STATE, state::M3);
         let back = Tlv8::decode(&tlv.encode()).unwrap();
         assert_eq!(back.get(tlv_type::PROOF), Some(value.as_slice()));
         assert_eq!(back.get_u8(tlv_type::STATE), Some(state::M3));
@@ -203,10 +196,7 @@ mod tests {
         let tlv = Tlv8::new().push(tlv_type::ERROR, Vec::new());
         let bytes = tlv.encode();
         assert_eq!(bytes, vec![tlv_type::ERROR, 0]);
-        assert_eq!(
-            Tlv8::decode(&bytes).unwrap().get(tlv_type::ERROR),
-            Some([].as_slice())
-        );
+        assert_eq!(Tlv8::decode(&bytes).unwrap().get(tlv_type::ERROR), Some([].as_slice()));
     }
 
     #[test]

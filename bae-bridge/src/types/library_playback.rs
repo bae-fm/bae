@@ -30,9 +30,7 @@ impl BridgeDiscogsSaveOutcome {
         use bae_core::import::DiscogsSaveOutcome as O;
         match outcome {
             O::Valid => Self::Valid,
-            O::Unvalidated(error) => Self::Unvalidated {
-                detail: error.to_string(),
-            },
+            O::Unvalidated(error) => Self::Unvalidated { detail: error.to_string() },
             O::Rejected => Self::Rejected,
         }
     }
@@ -105,20 +103,14 @@ pub struct BridgeReleaseRecord {
 impl BridgeReleaseRecord {
     /// Native surfaces render catalog links; identity matching remains in core.
     pub(crate) fn from_core(record: bae_core::import::ReleaseRecord) -> Self {
-        Self {
-            catalog: BridgeCatalog::from_core(record.catalog()),
-            url: record.url(),
-        }
+        Self { catalog: BridgeCatalog::from_core(record.catalog()), url: record.url() }
     }
 }
 
 #[cfg(feature = "desktop")]
 impl BridgeMetadataRef {
     pub(crate) fn from_core(release_ref: bae_core::import::MetadataRef) -> Self {
-        Self {
-            catalog: BridgeCatalog::from_core(release_ref.catalog),
-            key: release_ref.key,
-        }
+        Self { catalog: BridgeCatalog::from_core(release_ref.catalog), key: release_ref.key }
     }
 
     pub(crate) fn into_core(self) -> bae_core::import::MetadataRef {
@@ -150,9 +142,7 @@ pub struct BridgeLibrary {
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeLibraryState {
     /// It opens: stored at its cloud home, or on this device only (`None`).
-    Openable {
-        storage: Option<super::BridgeStorageLocation>,
-    },
+    Openable { storage: Option<super::BridgeStorageLocation> },
     /// Its storage settings can't be read, which keeps it from opening.
     Unreadable { error: super::BridgeError },
     /// A reset or a restore of this device's copy stopped partway; it opens
@@ -647,33 +637,19 @@ pub struct BridgeSourceAudioDescriptor {
 /// bitrate — or the facts its files disagree on.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeSourceAudioSummary {
-    Uniform {
-        descriptor: BridgeSourceAudioDescriptor,
-    },
-    Mixed {
-        differences: Vec<BridgeSourceAudioDifference>,
-    },
+    Uniform { descriptor: BridgeSourceAudioDescriptor },
+    Mixed { differences: Vec<BridgeSourceAudioDifference> },
 }
 
 /// One fact a release's files disagree on, and its values, each once. A
 /// surface lists the values with its locale's list formatter.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeSourceAudioDifference {
-    Layout {
-        layouts: Vec<BridgeSourceAudioLayout>,
-    },
-    Codec {
-        codecs: Vec<String>,
-    },
-    SampleRate {
-        sample_rates_hz: Vec<i64>,
-    },
-    BitDepth {
-        bits_per_sample: Vec<i64>,
-    },
-    Channels {
-        channels: Vec<i64>,
-    },
+    Layout { layouts: Vec<BridgeSourceAudioLayout> },
+    Codec { codecs: Vec<String> },
+    SampleRate { sample_rates_hz: Vec<i64> },
+    BitDepth { bits_per_sample: Vec<i64> },
+    Channels { channels: Vec<i64> },
 }
 
 mirror_enum! {
@@ -936,15 +912,9 @@ pub struct BridgeFileVersion {
 
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeCoverSelection {
-    ReleaseImage {
-        file_id: String,
-    },
-    RemoteCover {
-        selection: BridgeRemoteCoverSelection,
-    },
-    EmbeddedCover {
-        source_file_id: String,
-    },
+    ReleaseImage { file_id: String },
+    RemoteCover { selection: BridgeRemoteCoverSelection },
+    EmbeddedCover { source_file_id: String },
 }
 
 /// A cover and the one image every slot showing it draws; the slot's size

@@ -44,16 +44,9 @@ async fn a_linked_row_is_read_without_opening_its_folders_files() {
         ReleaseFileScope::Recursive,
     );
     db.add_watched_import_folder(&root).await.unwrap();
-    let generation = db
-        .begin_folder_scan(&root, crate::import::VolumeKind::Local)
-        .await
-        .unwrap();
-    db.save_folder_scan_item(&root, generation, &ScanItem::Valid(candidate.clone()))
-        .await
-        .unwrap();
-    db.finish_folder_scan(&root, generation, None)
-        .await
-        .unwrap();
+    let generation = db.begin_folder_scan(&root, crate::import::VolumeKind::Local).await.unwrap();
+    db.save_folder_scan_item(&root, generation, &ScanItem::Valid(candidate.clone())).await.unwrap();
+    db.finish_folder_scan(&root, generation, None).await.unwrap();
     let record = crate::import::MetadataRef::new(Catalog::MusicBrainz, "mb-picked");
     db.save_source_release(
         &crate::import::payloads::ReleasePayloads::for_test(
@@ -69,12 +62,10 @@ async fn a_linked_row_is_read_without_opening_its_folders_files() {
     crate::import::CandidatePreparations::new(db.clone())
         .replace_link(
             &candidate.files.content_hash(),
-            Some(&crate::import::ReleaseLink::Pressing(
-                crate::import::PressingLink {
-                    record,
-                    partners: vec![],
-                },
-            )),
+            Some(&crate::import::ReleaseLink::Pressing(crate::import::PressingLink {
+                record,
+                partners: vec![],
+            })),
             &[],
         )
         .await
@@ -88,24 +79,15 @@ async fn a_linked_row_is_read_without_opening_its_folders_files() {
     if read.is_err() {
         // Let the read held on the pipe go: a writer opening and closing it
         // ends it.
-        drop(
-            std::fs::OpenOptions::new()
-                .write(true)
-                .custom_flags(libc::O_NONBLOCK)
-                .open(&log),
-        );
+        drop(std::fs::OpenOptions::new().write(true).custom_flags(libc::O_NONBLOCK).open(&log));
     }
-    let projection = read
-        .expect("the list read waited on the folder's rip log")
-        .unwrap();
+    let projection = read.expect("the list read waited on the folder's rip log").unwrap();
     assert_eq!(
         rows(&projection)[0].release_link,
-        Some(crate::import::ReleaseLink::Pressing(
-            crate::import::PressingLink {
-                record: crate::import::MetadataRef::new(Catalog::MusicBrainz, "mb-picked"),
-                partners: vec![],
-            },
-        )),
+        Some(crate::import::ReleaseLink::Pressing(crate::import::PressingLink {
+            record: crate::import::MetadataRef::new(Catalog::MusicBrainz, "mb-picked"),
+            partners: vec![],
+        },)),
         "the row reads its link from the tables"
     );
 }

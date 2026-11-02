@@ -6,10 +6,7 @@
 pub fn track_position_text(position: &crate::album_detail::TrackPosition) -> String {
     use crate::album_detail::TrackPosition;
     match position {
-        TrackPosition::Sided {
-            side_letter,
-            number,
-        } => format!("{side_letter}{number}"),
+        TrackPosition::Sided { side_letter, number } => format!("{side_letter}{number}"),
         // The disc is the group header; repeating it on every row is noise.
         TrackPosition::Disc { number, .. } | TrackPosition::Flat { number } => number.to_string(),
     }
@@ -21,9 +18,9 @@ pub fn track_position_text(position: &crate::album_detail::TrackPosition) -> Str
 pub fn track_side(position: &crate::album_detail::TrackPosition) -> crate::album_detail::TrackSide {
     use crate::album_detail::{TrackPosition, TrackSide};
     match position {
-        TrackPosition::Sided { side_letter, .. } => TrackSide::Sided {
-            side_letter: side_letter.clone(),
-        },
+        TrackPosition::Sided { side_letter, .. } => {
+            TrackSide::Sided { side_letter: side_letter.clone() }
+        }
         TrackPosition::Disc { disc, .. } => TrackSide::Disc { disc: *disc },
         TrackPosition::Flat { .. } => TrackSide::Flat,
     }
@@ -61,25 +58,16 @@ mod tests {
     use crate::album_detail::{TrackDetail, TrackPosition};
 
     fn sided(letter: &str, number: u32) -> TrackPosition {
-        TrackPosition::Sided {
-            side_letter: letter.to_string(),
-            number,
-        }
+        TrackPosition::Sided { side_letter: letter.to_string(), number }
     }
 
     #[test]
     fn track_position_text_renders_each_variant() {
         assert_eq!(
-            track_position_text(&TrackPosition::Sided {
-                side_letter: "A".to_string(),
-                number: 2
-            }),
+            track_position_text(&TrackPosition::Sided { side_letter: "A".to_string(), number: 2 }),
             "A2"
         );
-        assert_eq!(
-            track_position_text(&TrackPosition::Disc { disc: 2, number: 3 }),
-            "3"
-        );
+        assert_eq!(track_position_text(&TrackPosition::Disc { disc: 2, number: 3 }), "3");
         assert_eq!(track_position_text(&TrackPosition::Flat { number: 5 }), "5");
     }
 
@@ -105,19 +93,9 @@ mod tests {
         ];
         let groups = group_tracks_by_side(&tracks);
         assert_eq!(groups.len(), 2);
-        assert_eq!(
-            groups[0].side,
-            TrackSide::Sided {
-                side_letter: "A".to_string()
-            }
-        );
+        assert_eq!(groups[0].side, TrackSide::Sided { side_letter: "A".to_string() });
         assert_eq!(groups[0].tracks.len(), 2);
-        assert_eq!(
-            groups[1].side,
-            TrackSide::Sided {
-                side_letter: "B".to_string()
-            }
-        );
+        assert_eq!(groups[1].side, TrackSide::Sided { side_letter: "B".to_string() });
         assert_eq!(groups[1].tracks.len(), 1);
     }
 

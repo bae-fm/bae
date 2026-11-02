@@ -63,11 +63,7 @@ impl DurationClock {
     /// length undershoots the audio the decoder actually produces — so the
     /// countdown stops at "-0:00" instead of counting back up.
     pub fn remaining(position_ms: i64, duration_ms: u64) -> Self {
-        let elapsed_ms = if position_ms < 0 {
-            0
-        } else {
-            position_ms as u64
-        };
+        let elapsed_ms = if position_ms < 0 { 0 } else { position_ms as u64 };
         Self::from_seconds(duration_ms.saturating_sub(elapsed_ms) / 1000, true)
     }
 
@@ -116,10 +112,7 @@ impl SeekBarClocks {
         } else {
             DurationClock::playback_position(position_ms, Some(duration_ms))
         };
-        Self {
-            leading,
-            trailing: Some(DurationClock::from_seconds(duration_ms / 1000, false)),
-        }
+        Self { leading, trailing: Some(DurationClock::from_seconds(duration_ms / 1000, false)) }
     }
 }
 
@@ -181,12 +174,7 @@ mod tests {
     fn under_an_hour_has_no_hours_field() {
         assert_eq!(
             clock(187_000),
-            DurationClock {
-                negative: false,
-                hours: None,
-                minutes: 3,
-                seconds: 7,
-            },
+            DurationClock { negative: false, hours: None, minutes: 3, seconds: 7 },
         );
         assert_eq!(clock(187_999).seconds, 7);
         assert_eq!(clock(400).seconds, 0);
@@ -204,22 +192,12 @@ mod tests {
 
         assert_eq!(
             clock(3_600_000),
-            DurationClock {
-                negative: false,
-                hours: Some(1),
-                minutes: 0,
-                seconds: 0,
-            },
+            DurationClock { negative: false, hours: Some(1), minutes: 0, seconds: 0 },
         );
         // The 72-minute track every platform used to disagree about.
         assert_eq!(
             clock(4_354_000),
-            DurationClock {
-                negative: false,
-                hours: Some(1),
-                minutes: 12,
-                seconds: 34,
-            },
+            DurationClock { negative: false, hours: Some(1), minutes: 12, seconds: 34 },
         );
     }
 
@@ -238,21 +216,11 @@ mod tests {
     fn remaining_counts_down_from_the_position() {
         assert_eq!(
             DurationClock::remaining(50_000, 200_000),
-            DurationClock {
-                negative: true,
-                hours: None,
-                minutes: 2,
-                seconds: 30,
-            },
+            DurationClock { negative: true, hours: None, minutes: 2, seconds: 30 },
         );
         assert_eq!(
             DurationClock::remaining(0, 4_354_000),
-            DurationClock {
-                negative: true,
-                hours: Some(1),
-                minutes: 12,
-                seconds: 34,
-            },
+            DurationClock { negative: true, hours: Some(1), minutes: 12, seconds: 34 },
         );
     }
 
@@ -262,12 +230,7 @@ mod tests {
     fn remaining_clamps_at_the_end_of_the_track() {
         let at_end = DurationClock::remaining(200_000, 200_000);
         let past_end = DurationClock::remaining(200_001, 200_000);
-        let expected = DurationClock {
-            negative: true,
-            hours: None,
-            minutes: 0,
-            seconds: 0,
-        };
+        let expected = DurationClock { negative: true, hours: None, minutes: 0, seconds: 0 };
         assert_eq!(at_end, expected);
         assert_eq!(past_end, expected);
     }
@@ -288,48 +251,20 @@ mod tests {
 
     #[test]
     fn pregap_elapsed_clock_counts_down_with_ceiling() {
-        let expected_two = DurationClock {
-            negative: true,
-            hours: None,
-            minutes: 0,
-            seconds: 2,
-        };
-        assert_eq!(
-            SeekBarClocks::new(-2_000, Some(100_000), false).leading,
-            expected_two
-        );
-        assert_eq!(
-            SeekBarClocks::new(-1_001, Some(100_000), false).leading,
-            expected_two
-        );
+        let expected_two = DurationClock { negative: true, hours: None, minutes: 0, seconds: 2 };
+        assert_eq!(SeekBarClocks::new(-2_000, Some(100_000), false).leading, expected_two);
+        assert_eq!(SeekBarClocks::new(-1_001, Some(100_000), false).leading, expected_two);
 
-        let expected_one = DurationClock {
-            negative: true,
-            hours: None,
-            minutes: 0,
-            seconds: 1,
-        };
-        assert_eq!(
-            SeekBarClocks::new(-1_000, Some(100_000), false).leading,
-            expected_one
-        );
-        assert_eq!(
-            SeekBarClocks::new(-1, Some(100_000), false).leading,
-            expected_one
-        );
-        assert_eq!(
-            SeekBarClocks::new(0, Some(100_000), false).leading,
-            clock(0)
-        );
+        let expected_one = DurationClock { negative: true, hours: None, minutes: 0, seconds: 1 };
+        assert_eq!(SeekBarClocks::new(-1_000, Some(100_000), false).leading, expected_one);
+        assert_eq!(SeekBarClocks::new(-1, Some(100_000), false).leading, expected_one);
+        assert_eq!(SeekBarClocks::new(0, Some(100_000), false).leading, clock(0));
     }
 
     #[test]
     fn pregap_countdown_overrides_the_remaining_time_preference() {
         let pregap = SeekBarClocks::new(-1_000, Some(100_000), false).leading;
-        assert_eq!(
-            SeekBarClocks::new(-1_000, Some(100_000), true).leading,
-            pregap,
-        );
+        assert_eq!(SeekBarClocks::new(-1_000, Some(100_000), true).leading, pregap,);
     }
 
     /// With no known length there is no total, and nothing to count down to —
@@ -376,13 +311,7 @@ mod tests {
 
     #[test]
     fn hours_and_minutes_name_both() {
-        assert_eq!(
-            units(13_320_000),
-            DurationUnits::HoursAndMinutes {
-                hours: 3,
-                minutes: 42,
-            },
-        );
+        assert_eq!(units(13_320_000), DurationUnits::HoursAndMinutes { hours: 3, minutes: 42 },);
     }
 
     /// The label has no seconds field, so it names the nearest minute: 29 s of a
@@ -400,13 +329,7 @@ mod tests {
     #[test]
     fn rounding_carries_into_the_hours() {
         assert_eq!(units(14_385_000), DurationUnits::HoursOnly { hours: 4 });
-        assert_eq!(
-            units(14_369_000),
-            DurationUnits::HoursAndMinutes {
-                hours: 3,
-                minutes: 59,
-            },
-        );
+        assert_eq!(units(14_369_000), DurationUnits::HoursAndMinutes { hours: 3, minutes: 59 },);
     }
 
     /// A release whose tracks report no length has no total to name. Under half

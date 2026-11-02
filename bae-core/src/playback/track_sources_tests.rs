@@ -26,10 +26,7 @@ fn file_per_track(dir: &Path, count: usize) -> Vec<Track> {
     (0..count)
         .map(|n| {
             let name = format!("{n:02} Track.flac");
-            Track {
-                files: vec![write_file(dir, &name)],
-                name,
-            }
+            Track { files: vec![write_file(dir, &name)], name }
         })
         .collect()
 }
@@ -38,10 +35,7 @@ fn file_per_track(dir: &Path, count: usize) -> Vec<Track> {
 fn cue_image(dir: &Path, image: &str, count: usize) -> Vec<Track> {
     let path = write_file(dir, image);
     (0..count)
-        .map(|n| Track {
-            name: format!("{image} track {n}"),
-            files: vec![path.clone()],
-        })
+        .map(|n| Track { name: format!("{image} track {n}"), files: vec![path.clone()] })
         .collect()
 }
 
@@ -73,10 +67,7 @@ async fn run(dir: &Path, tracks: Vec<Track>, parallelism: usize) -> Run {
         |path: &PathBuf| {
             opens.fetch_add(1, Ordering::Relaxed);
             SourceStream::start(
-                Box::new(LocalReader::new(
-                    path,
-                    crate::diagnostics::Diagnostics::noop(),
-                )),
+                Box::new(LocalReader::new(path, crate::diagnostics::Diagnostics::noop())),
                 FILE_BYTES as u64,
                 Box::new(|_| {}),
             )
@@ -119,9 +110,7 @@ async fn run(dir: &Path, tracks: Vec<Track>, parallelism: usize) -> Run {
 
     // Every file is closed by the time the run returns.
     coven::assert_no_open_files_under(dir);
-    let peak_open = sampler
-        .finish()
-        .max(peak_seen_by_tracks.load(Ordering::SeqCst));
+    let peak_open = sampler.finish().max(peak_seen_by_tracks.load(Ordering::SeqCst));
     Run {
         names,
         opens: opens.load(Ordering::Relaxed),
@@ -231,10 +220,7 @@ async fn a_failed_track_stops_the_run_and_closes_every_file() {
         |track: &Track| track.files.clone(),
         |path: &PathBuf| {
             SourceStream::start(
-                Box::new(LocalReader::new(
-                    path,
-                    crate::diagnostics::Diagnostics::noop(),
-                )),
+                Box::new(LocalReader::new(path, crate::diagnostics::Diagnostics::noop())),
                 FILE_BYTES as u64,
                 Box::new(|_| {}),
             )
@@ -283,11 +269,7 @@ async fn a_dropped_pass_stops_the_streams_its_tracks_read() {
     let (reading_tx, reading) = tokio::sync::oneshot::channel();
     let (pass_dropped, pass_dropped_rx) = std::sync::mpsc::channel::<()>();
     let (next_read_tx, next_read) = tokio::sync::oneshot::channel();
-    let track_ends = Arc::new(Mutex::new(Some((
-        reading_tx,
-        pass_dropped_rx,
-        next_read_tx,
-    ))));
+    let track_ends = Arc::new(Mutex::new(Some((reading_tx, pass_dropped_rx, next_read_tx))));
 
     let mut pass = Box::pin(run_tracks_over_sources(
         tracks,
@@ -295,10 +277,7 @@ async fn a_dropped_pass_stops_the_streams_its_tracks_read() {
         |track: &Track| track.files.clone(),
         |path: &PathBuf| {
             SourceStream::start(
-                Box::new(LocalReader::new(
-                    path,
-                    crate::diagnostics::Diagnostics::noop(),
-                )),
+                Box::new(LocalReader::new(path, crate::diagnostics::Diagnostics::noop())),
                 FILE_BYTES as u64,
                 Box::new(|_| {}),
             )
@@ -307,10 +286,7 @@ async fn a_dropped_pass_stops_the_streams_its_tracks_read() {
             let (reading_tx, pass_dropped_rx, next_read_tx) =
                 track_ends.lock().unwrap().take().expect("one track runs");
             async move {
-                let stream = streams
-                    .into_values()
-                    .next()
-                    .expect("the track reads its file");
+                let stream = streams.into_values().next().expect("the track reads its file");
                 tokio::task::spawn_blocking(move || {
                     let mut reader = stream.new_reader();
                     let mut bytes = vec![0u8; 1024];
@@ -339,10 +315,7 @@ async fn a_dropped_pass_stops_the_streams_its_tracks_read() {
         .expect("the track reads again")
         .unwrap();
     assert!(
-        matches!(
-            next_read,
-            Err(bae_audio::sparse_buffer::BufferStop::Cancelled)
-        ),
+        matches!(next_read, Err(bae_audio::sparse_buffer::BufferStop::Cancelled)),
         "the dropped pass stopped its stream: {next_read:?}"
     );
 }
@@ -360,10 +333,7 @@ async fn a_track_that_panics_fails_the_run_and_closes_every_file() {
         |track: &Track| track.files.clone(),
         |path: &PathBuf| {
             SourceStream::start(
-                Box::new(LocalReader::new(
-                    path,
-                    crate::diagnostics::Diagnostics::noop(),
-                )),
+                Box::new(LocalReader::new(path, crate::diagnostics::Diagnostics::noop())),
                 FILE_BYTES as u64,
                 Box::new(|_| {}),
             )

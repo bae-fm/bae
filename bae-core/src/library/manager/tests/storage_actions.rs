@@ -32,9 +32,7 @@ async fn until<Value, Error: std::fmt::Debug>(
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn a_transition_reaches_the_reads_from_its_row() {
     let (manager, _temp_dir, album, release) = manager_with_release().await;
-    let services = crate::library::AppServices::for_test(manager.library.clone())
-        .await
-        .unwrap();
+    let services = crate::library::AppServices::for_test(manager.library.clone()).await.unwrap();
     let album_detail = services.subscribe_album_detail();
     album_detail.set(Some(album.id.clone())).unwrap();
     let release_detail = services.subscribe_release_detail();
@@ -46,12 +44,7 @@ async fn a_transition_reaches_the_reads_from_its_row() {
         },
         filter: crate::db::StorageFilter::All,
         search: String::new(),
-        windows: [crate::library::LibraryPageWindow {
-            offset: 0,
-            limit: 50,
-        }]
-        .into_iter()
-        .collect(),
+        windows: [crate::library::LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect(),
         selected: Default::default(),
     });
     let album_shows = |action: Option<ReleaseStorageAction>| {
@@ -64,40 +57,18 @@ async fn a_transition_reaches_the_reads_from_its_row() {
     };
     let release_shows = |action: Option<ReleaseStorageAction>| {
         move |snapshot: &crate::library::DetailSnapshot<crate::album_detail::ReleaseDetail>| {
-            snapshot
-                .value
-                .as_ref()
-                .is_some_and(|detail| detail.summary.transfer_action == action)
+            snapshot.value.as_ref().is_some_and(|detail| detail.summary.transfer_action == action)
         }
     };
     let row_shows = |status: StorageRowStatus| {
         move |snapshot: &crate::library::StorageBrowseSnapshot| {
-            snapshot
-                .windows
-                .iter()
-                .flat_map(|window| &window.rows)
-                .any(|row| row.status == status)
+            snapshot.windows.iter().flat_map(|window| &window.rows).any(|row| row.status == status)
         }
     };
 
-    until(
-        "the album shows no transition",
-        || album_detail.next(),
-        album_shows(None),
-    )
-    .await;
-    until(
-        "the release shows no transition",
-        || release_detail.next(),
-        release_shows(None),
-    )
-    .await;
-    until(
-        "the row rests",
-        || storage.next(),
-        row_shows(StorageRowStatus::Local),
-    )
-    .await;
+    until("the album shows no transition", || album_detail.next(), album_shows(None)).await;
+    until("the release shows no transition", || release_detail.next(), release_shows(None)).await;
+    until("the row rests", || storage.next(), row_shows(StorageRowStatus::Local)).await;
 
     assert!(manager
         .database
@@ -105,18 +76,9 @@ async fn a_transition_reaches_the_reads_from_its_row() {
         .await
         .unwrap());
     let unpinning = Some(ReleaseStorageAction::Unpin);
-    until(
-        "the album shows the transition",
-        || album_detail.next(),
-        album_shows(unpinning),
-    )
-    .await;
-    until(
-        "the release shows the transition",
-        || release_detail.next(),
-        release_shows(unpinning),
-    )
-    .await;
+    until("the album shows the transition", || album_detail.next(), album_shows(unpinning)).await;
+    until("the release shows the transition", || release_detail.next(), release_shows(unpinning))
+        .await;
     until(
         "the row shows the transition",
         || storage.next(),
@@ -124,34 +86,13 @@ async fn a_transition_reaches_the_reads_from_its_row() {
     )
     .await;
 
-    manager
-        .database
-        .end_release_storage_action(&release.id)
-        .await
-        .unwrap();
-    until(
-        "the album's transition ends",
-        || album_detail.next(),
-        album_shows(None),
-    )
-    .await;
-    until(
-        "the release's transition ends",
-        || release_detail.next(),
-        release_shows(None),
-    )
-    .await;
-    until(
-        "the row rests again",
-        || storage.next(),
-        row_shows(StorageRowStatus::Local),
-    )
-    .await;
+    manager.database.end_release_storage_action(&release.id).await.unwrap();
+    until("the album's transition ends", || album_detail.next(), album_shows(None)).await;
+    until("the release's transition ends", || release_detail.next(), release_shows(None)).await;
+    until("the row rests again", || storage.next(), row_shows(StorageRowStatus::Local)).await;
 
     drop((album_detail, release_detail, storage));
-    tokio::task::spawn_blocking(move || drop(services))
-        .await
-        .expect("tear the application down");
+    tokio::task::spawn_blocking(move || drop(services)).await.expect("tear the application down");
 }
 
 /// A transition's row is there while its work runs; a work that fails or
@@ -161,13 +102,7 @@ async fn a_transition_reaches_the_reads_from_its_row() {
 #[tokio::test]
 async fn a_failed_transition_ends_in_a_write_of_its_own() {
     let (manager, _temp_dir, _album, release) = manager_with_release().await;
-    let shown = || async {
-        manager
-            .database
-            .release_transfer_action(&release.id)
-            .await
-            .unwrap()
-    };
+    let shown = || async { manager.database.release_transfer_action(&release.id).await.unwrap() };
 
     let failed = manager
         .run_storage_action(&release.id, StoredTransition::Unpin, async {
@@ -180,10 +115,7 @@ async fn a_failed_transition_ends_in_a_write_of_its_own() {
     let Err(LibraryError::Storage(failure)) = failed else {
         panic!("{failed:?}");
     };
-    assert!(
-        failure.ends_with("Some(Unpin)"),
-        "the row is there while it runs: {failure}"
-    );
+    assert!(failure.ends_with("Some(Unpin)"), "the row is there while it runs: {failure}");
     assert_eq!(shown().await, None, "a failure ends it");
 
     let panicked = manager
@@ -221,27 +153,14 @@ async fn the_write_that_releases_a_releases_pins_ends_its_unpin() {
         || async { file_pinned(&manager, crate::sync::RELEASE_FILES_NAMESPACE, &file.id).await };
     assert!(pinned().await);
 
-    let refused = manager
-        .database
-        .unpin_release(&release.id, vec![file.file])
-        .await;
-    assert!(
-        refused.is_err(),
-        "no unpin was admitted for the write to end"
-    );
-    assert!(
-        pinned().await,
-        "a write that can't end the transition releases no pin"
-    );
+    let refused = manager.database.unpin_release(&release.id, vec![file.file]).await;
+    assert!(refused.is_err(), "no unpin was admitted for the write to end");
+    assert!(pinned().await, "a write that can't end the transition releases no pin");
 
     manager.unpin_release(&release.id).await.unwrap();
     assert!(!pinned().await, "the unpin released the pin");
     assert_eq!(
-        manager
-            .database
-            .release_transfer_action(&release.id)
-            .await
-            .unwrap(),
+        manager.database.release_transfer_action(&release.id).await.unwrap(),
         None,
         "and ended the transition"
     );
@@ -287,45 +206,25 @@ async fn the_write_that_switches_a_releases_files_ends_its_make_local() {
         .prepare_device_only(&refused_folder, paths, &stopped, |_| {})
         .await
         .unwrap();
-    let refused = manager
-        .database
-        .make_release_local(&release.id, prepared)
-        .await;
+    let refused = manager.database.make_release_local(&release.id, prepared).await;
+    assert!(refused.is_err(), "no make-local was admitted for the write to end");
     assert!(
-        refused.is_err(),
-        "no make-local was admitted for the write to end"
-    );
-    assert!(
-        release_files(&manager, &release.id)
-            .await
-            .iter()
-            .all(|file| file.stored),
+        release_files(&manager, &release.id).await.iter().all(|file| file.stored),
         "a write that can't end the transition switches no file"
     );
 
     let folder = temp_dir.path().join("local");
     std::fs::create_dir(&folder).unwrap();
     manager
-        .detach_release_audio_into(
-            &release.id,
-            &folder,
-            &crate::library::CancellationToken::new(),
-        )
+        .detach_release_audio_into(&release.id, &folder, &crate::library::CancellationToken::new())
         .await
         .unwrap();
     assert!(
-        release_files(&manager, &release.id)
-            .await
-            .iter()
-            .all(|file| !file.stored),
+        release_files(&manager, &release.id).await.iter().all(|file| !file.stored),
         "making it local switched every file here"
     );
     assert_eq!(
-        manager
-            .database
-            .release_transfer_action(&release.id)
-            .await
-            .unwrap(),
+        manager.database.release_transfer_action(&release.id).await.unwrap(),
         None,
         "and ended the transition"
     );
@@ -349,20 +248,10 @@ async fn a_release_in_a_transition_refuses_another() {
             Ok(())
         })
         .await;
-    assert!(
-        matches!(refused, Err(LibraryError::Storage(_))),
-        "{refused:?}"
-    );
-    assert!(
-        !ran.load(std::sync::atomic::Ordering::SeqCst),
-        "the refused work never runs"
-    );
+    assert!(matches!(refused, Err(LibraryError::Storage(_))), "{refused:?}");
+    assert!(!ran.load(std::sync::atomic::Ordering::SeqCst), "the refused work never runs");
     assert_eq!(
-        manager
-            .database
-            .release_transfer_action(&release.id)
-            .await
-            .unwrap(),
+        manager.database.release_transfer_action(&release.id).await.unwrap(),
         Some(ReleaseStorageAction::Unpin)
     );
 }
@@ -384,29 +273,12 @@ async fn the_write_that_queues_a_moves_files_ends_its_transition() {
     .await;
     manager.upload_release(&release.id, false).await.unwrap();
     assert_eq!(moving_file_count(&manager, &release.id).await, 1);
-    assert_eq!(
-        manager
-            .database
-            .release_transfer_action(&release.id)
-            .await
-            .unwrap(),
-        None
-    );
+    assert_eq!(manager.database.release_transfer_action(&release.id).await.unwrap(), None);
 
     let empty = insert_release_without_files(&manager).await;
     let refused = manager.upload_release(&empty, false).await;
-    assert!(
-        refused.is_err(),
-        "a release with no files has none to queue"
-    );
-    assert_eq!(
-        manager
-            .database
-            .release_transfer_action(&empty)
-            .await
-            .unwrap(),
-        None
-    );
+    assert!(refused.is_err(), "a release with no files has none to queue");
+    assert_eq!(manager.database.release_transfer_action(&empty).await.unwrap(), None);
 }
 
 /// A release with no files, in an album of its own in `manager`'s library.
@@ -426,13 +298,8 @@ async fn insert_release_without_files(manager: &TestManager) -> String {
 async fn a_release_made_local_lists_its_bytes_while_its_copies_download() {
     let (manager, temp_dir) = setup_test_manager().await;
     let home = connect_test_cloud(&manager).await;
-    let release_id = uploaded_release(
-        &manager,
-        &temp_dir.path().join("made-local"),
-        "Made Local",
-        false,
-    )
-    .await;
+    let release_id =
+        uploaded_release(&manager, &temp_dir.path().join("made-local"), "Made Local", false).await;
     let file = release_files(&manager, &release_id).await.remove(0);
     let reference = manager.release_file_ref(&file.id).await.unwrap();
     manager.evict_file_for_test(file.file).await.unwrap();
@@ -482,17 +349,11 @@ async fn a_release_made_local_lists_its_bytes_while_its_copies_download() {
     .await
     .expect("the release is listed while its copy downloads");
     assert!(listed.file_bytes_total > 0, "{listed:?}");
-    assert!(
-        listed.file_bytes_done < listed.file_bytes_total,
-        "{listed:?}"
-    );
+    assert!(listed.file_bytes_done < listed.file_bytes_total, "{listed:?}");
     assert!(listed.bytes_done < listed.bytes_total, "{listed:?}");
     assert!(listed.bytes_total >= listed.file_bytes_total, "{listed:?}");
 
     resume.send(()).unwrap();
     making.await.unwrap().unwrap();
-    assert!(
-        transfers.borrow().is_empty(),
-        "a release whose files switched is listed no more"
-    );
+    assert!(transfers.borrow().is_empty(), "a release whose files switched is listed no more");
 }

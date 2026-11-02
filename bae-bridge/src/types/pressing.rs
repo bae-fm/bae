@@ -20,12 +20,12 @@ pub enum BridgeReleaseArea {
 impl BridgeReleaseArea {
     pub(crate) fn from_core(area: bae_types::pressing::ReleaseArea) -> Self {
         match area {
-            bae_types::pressing::ReleaseArea::Country(country) => Self::Country {
-                code: country.code().to_string(),
-            },
-            bae_types::pressing::ReleaseArea::Region(region) => Self::Region {
-                region: BridgeRegion::from_core(region),
-            },
+            bae_types::pressing::ReleaseArea::Country(country) => {
+                Self::Country { code: country.code().to_string() }
+            }
+            bae_types::pressing::ReleaseArea::Region(region) => {
+                Self::Region { region: BridgeRegion::from_core(region) }
+            }
         }
     }
 
@@ -522,15 +522,11 @@ pub enum BridgeTermLabel {
 }
 
 fn localized(key: &str) -> BridgeTermLabel {
-    BridgeTermLabel::Localized {
-        key: key.to_string(),
-    }
+    BridgeTermLabel::Localized { key: key.to_string() }
 }
 
 fn verbatim(text: &str) -> BridgeTermLabel {
-    BridgeTermLabel::Verbatim {
-        text: text.to_string(),
-    }
+    BridgeTermLabel::Verbatim { text: text.to_string() }
 }
 
 /// One part of a pressing's line, in the order a surface shows them joined
@@ -625,9 +621,9 @@ pub fn bridge_medium_label(medium: BridgeMedium) -> BridgeTermLabel {
 pub fn bridge_discogs_detail_label(detail: BridgeDiscogsDetail) -> BridgeTermLabel {
     let detail = detail.into_core();
     match detail.wording() {
-        bae_types::pressing::discogs_detail::Wording::Word => BridgeTermLabel::Localized {
-            key: format!("core.pressing.discogs.{}", detail.key()),
-        },
+        bae_types::pressing::discogs_detail::Wording::Word => {
+            BridgeTermLabel::Localized { key: format!("core.pressing.discogs.{}", detail.key()) }
+        }
         bae_types::pressing::discogs_detail::Wording::Term => verbatim(detail.term()),
     }
 }
@@ -640,9 +636,9 @@ pub fn bridge_pressing_summary(facts: BridgePressingFacts) -> Vec<BridgeFactTerm
         .area
         .map(|area| match area {
             BridgeReleaseArea::Country { code } => BridgeFactTerm::Country { code },
-            BridgeReleaseArea::Region { region } => BridgeFactTerm::Worded {
-                label: localized(&bridge_region_key(region)),
-            },
+            BridgeReleaseArea::Region { region } => {
+                BridgeFactTerm::Worded { label: localized(&bridge_region_key(region)) }
+            }
         })
         .into_iter()
         .collect();
@@ -659,18 +655,11 @@ pub fn bridge_pressing_details(facts: BridgePressingFacts) -> Vec<BridgeFactTerm
         .status
         .filter(|status| *status != BridgeReleaseStatus::Official)
         .map(|status| localized(&bridge_release_status_key(status)));
-    let packaging = facts
-        .packaging
-        .map(|packaging| localized(&bridge_packaging_key(packaging)));
+    let packaging = facts.packaging.map(|packaging| localized(&bridge_packaging_key(packaging)));
     status
         .into_iter()
         .chain(packaging)
-        .chain(
-            facts
-                .discogs_details
-                .into_iter()
-                .map(bridge_discogs_detail_label),
-        )
+        .chain(facts.discogs_details.into_iter().map(bridge_discogs_detail_label))
         .map(|label| BridgeFactTerm::Worded { label })
         .collect()
 }
@@ -694,27 +683,19 @@ pub fn bridge_media_terms(media: Vec<BridgeMediaCount>) -> Vec<BridgeFactTerm> {
 /// Every ISO 3166-1 country code, for a picker to name and sort.
 #[uniffi::export]
 pub fn bridge_country_codes() -> Vec<String> {
-    bae_types::pressing::Country::all()
-        .map(|country| country.code().to_string())
-        .collect()
+    bae_types::pressing::Country::all().map(|country| country.code().to_string()).collect()
 }
 
 /// Every region, for a picker.
 #[uniffi::export]
 pub fn bridge_regions() -> Vec<BridgeRegion> {
-    bae_types::pressing::Region::ALL
-        .iter()
-        .map(|region| BridgeRegion::from_core(*region))
-        .collect()
+    bae_types::pressing::Region::ALL.iter().map(|region| BridgeRegion::from_core(*region)).collect()
 }
 
 /// Every medium, for a picker.
 #[uniffi::export]
 pub fn bridge_media() -> Vec<BridgeMedium> {
-    bae_types::pressing::Medium::ALL
-        .iter()
-        .map(|medium| BridgeMedium::from_core(*medium))
-        .collect()
+    bae_types::pressing::Medium::ALL.iter().map(|medium| BridgeMedium::from_core(*medium)).collect()
 }
 
 /// Every release status, for a picker.
@@ -752,10 +733,7 @@ pub enum BridgeReleaseName {
     Named { name: String },
     /// No name: its year and media, whichever it states. The media arrive
     /// worded, and the surface joins them after the year.
-    Described {
-        year: Option<i32>,
-        media: Vec<BridgeFactTerm>,
-    },
+    Described { year: Option<i32>, media: Vec<BridgeFactTerm> },
     /// No name and nothing to describe it by: its place among the album's
     /// releases, counted from one, worded with `core.release.numbered`.
     Numbered { number: i64 },
@@ -782,13 +760,8 @@ mod tests {
 
     fn japan_cd() -> BridgePressingFacts {
         BridgePressingFacts {
-            area: Some(BridgeReleaseArea::Country {
-                code: "JP".to_string(),
-            }),
-            media: vec![BridgeMediaCount {
-                medium: BridgeMedium::Cd,
-                count: 1,
-            }],
+            area: Some(BridgeReleaseArea::Country { code: "JP".to_string() }),
+            media: vec![BridgeMediaCount { medium: BridgeMedium::Cd, count: 1 }],
             status: None,
             packaging: None,
             discogs_details: Vec::new(),
@@ -801,30 +774,19 @@ mod tests {
         assert_eq!(
             bridge_pressing_summary(japan_cd()),
             vec![
-                BridgeFactTerm::Country {
-                    code: "JP".to_string()
-                },
-                BridgeFactTerm::Worded {
-                    label: verbatim("CD")
-                },
+                BridgeFactTerm::Country { code: "JP".to_string() },
+                BridgeFactTerm::Worded { label: verbatim("CD") },
             ]
         );
         let two_vinyl_in_europe = BridgePressingFacts {
-            area: Some(BridgeReleaseArea::Region {
-                region: BridgeRegion::UkAndEurope,
-            }),
-            media: vec![BridgeMediaCount {
-                medium: BridgeMedium::Vinyl,
-                count: 2,
-            }],
+            area: Some(BridgeReleaseArea::Region { region: BridgeRegion::UkAndEurope }),
+            media: vec![BridgeMediaCount { medium: BridgeMedium::Vinyl, count: 2 }],
             ..japan_cd()
         };
         assert_eq!(
             bridge_pressing_summary(two_vinyl_in_europe),
             vec![
-                BridgeFactTerm::Worded {
-                    label: localized("core.pressing.region.uk_and_europe")
-                },
+                BridgeFactTerm::Worded { label: localized("core.pressing.region.uk_and_europe") },
                 BridgeFactTerm::Counted {
                     count: 2,
                     label: localized("core.pressing.medium.vinyl")
@@ -846,24 +808,14 @@ mod tests {
         assert_eq!(
             bridge_pressing_details(promo),
             vec![
-                BridgeFactTerm::Worded {
-                    label: localized("core.pressing.status.promotion")
-                },
-                BridgeFactTerm::Worded {
-                    label: localized("core.pressing.packaging.digipak")
-                },
-                BridgeFactTerm::Worded {
-                    label: localized("core.pressing.discogs.reissue")
-                },
-                BridgeFactTerm::Worded {
-                    label: verbatim("FLAC")
-                },
+                BridgeFactTerm::Worded { label: localized("core.pressing.status.promotion") },
+                BridgeFactTerm::Worded { label: localized("core.pressing.packaging.digipak") },
+                BridgeFactTerm::Worded { label: localized("core.pressing.discogs.reissue") },
+                BridgeFactTerm::Worded { label: verbatim("FLAC") },
             ]
         );
-        let official = BridgePressingFacts {
-            status: Some(BridgeReleaseStatus::Official),
-            ..japan_cd()
-        };
+        let official =
+            BridgePressingFacts { status: Some(BridgeReleaseStatus::Official), ..japan_cd() };
         assert!(bridge_pressing_details(official).is_empty());
     }
 }

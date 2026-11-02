@@ -16,10 +16,7 @@ impl ImportService {
         message: String,
         services: &crate::import::ImportServices,
     ) -> Result<bool, crate::import::ImportError> {
-        let _commit = services
-            .folder_state_commit
-            .lock("store a failed scan")
-            .await;
+        let _commit = services.folder_state_commit.lock("store a failed scan").await;
         if services
             .library_manager
             .finish_folder_scan(root, generation, Some(&message))
@@ -44,18 +41,16 @@ impl ImportService {
         let on_network_volume =
             volume_kind(root, &services.diagnostics).await == VolumeKind::Network;
         let watched_folder = crate::import::WatchedFolder::from_path(root.to_path_buf());
-        services
-            .event_tx
-            .send(crate::import::handle::ImportEvent::Scan(
-                ScanEvent::FolderScanStatusChanged {
-                    status: crate::import::WatchedFolderScanStatus {
-                        watched_folder_path: watched_folder.path,
-                        watched_folder_name: watched_folder.name,
-                        status: crate::import::FolderScanStatus::Failed { error: message },
-                        on_network_volume,
-                    },
+        services.event_tx.send(crate::import::handle::ImportEvent::Scan(
+            ScanEvent::FolderScanStatusChanged {
+                status: crate::import::WatchedFolderScanStatus {
+                    watched_folder_path: watched_folder.path,
+                    watched_folder_name: watched_folder.name,
+                    status: crate::import::FolderScanStatus::Failed { error: message },
+                    on_network_volume,
                 },
-            ));
+            },
+        ));
     }
 
     /// Store `items` in one write, in the order the walk yielded them, each
@@ -83,15 +78,9 @@ impl ImportService {
             for (item, folder_date) in &dated {
                 let (item, edits_read) =
                     Self::with_stored_file_edits(item, library_manager).await?;
-                let seed = library_manager
-                    .scan_item_seed(&item, generation, reads.clone())
-                    .await?;
+                let seed = library_manager.scan_item_seed(&item, generation, reads.clone()).await?;
                 prepared.push((
-                    crate::db::ScanItemToWrite {
-                        item,
-                        seed,
-                        folder_date: *folder_date,
-                    },
+                    crate::db::ScanItemToWrite { item, seed, folder_date: *folder_date },
                     edits_read,
                 ));
             }
@@ -103,9 +92,7 @@ impl ImportService {
                 let Some((content_hash, read_revision)) = edits_read else {
                     continue;
                 };
-                let stored = library_manager
-                    .load_candidate_file_edits(content_hash)
-                    .await?;
+                let stored = library_manager.load_candidate_file_edits(content_hash).await?;
                 if stored.revision != *read_revision {
                     edited = true;
                     break;
@@ -116,9 +103,8 @@ impl ImportService {
                 continue;
             }
             let items = prepared.into_iter().map(|(to_write, _)| to_write).collect();
-            let Some(writes) = library_manager
-                .save_folder_scan_items(root, generation, items)
-                .await?
+            let Some(writes) =
+                library_manager.save_folder_scan_items(root, generation, items).await?
             else {
                 return Ok(None);
             };
@@ -162,9 +148,7 @@ impl ImportService {
             return Ok((item, None));
         };
         let content_hash = candidate.files.content_hash();
-        let edits = library_manager
-            .load_candidate_file_edits(&content_hash)
-            .await?;
+        let edits = library_manager.load_candidate_file_edits(&content_hash).await?;
         candidate.files.apply_candidate_file_edits(&edits)?;
         candidate.file_edit_revision = edits.revision;
         let revision = edits.revision;
@@ -183,11 +167,9 @@ impl ImportService {
         }
         let event_tx = &services.event_tx;
         for candidate_key in write.superseded_keys() {
-            event_tx.send(crate::import::handle::ImportEvent::Scan(
-                ScanEvent::CandidateRemoved {
-                    candidate_key: candidate_key.clone(),
-                },
-            ));
+            event_tx.send(crate::import::handle::ImportEvent::Scan(ScanEvent::CandidateRemoved {
+                candidate_key: candidate_key.clone(),
+            }));
         }
         Self::announce_item(item, write.found(), services).await?;
         if let Some(regrouped) = write.regrouped() {
@@ -202,18 +184,12 @@ impl ImportService {
         services: &crate::import::ImportServices,
     ) -> Result<(), crate::import::ImportError> {
         for candidate_key in &regrouped.removed {
-            services
-                .event_tx
-                .send(crate::import::handle::ImportEvent::Scan(
-                    ScanEvent::CandidateRemoved {
-                        candidate_key: candidate_key.clone(),
-                    },
-                ));
+            services.event_tx.send(crate::import::handle::ImportEvent::Scan(
+                ScanEvent::CandidateRemoved { candidate_key: candidate_key.clone() },
+            ));
         }
         for item in &regrouped.written {
-            let found = item
-                .persisted_key()
-                .is_some_and(|key| regrouped.found.contains(&key));
+            let found = item.persisted_key().is_some_and(|key| regrouped.found.contains(&key));
             Self::announce_item(item.clone(), found, services).await?;
         }
         Ok(())
@@ -240,10 +216,7 @@ impl ImportService {
         match item {
             ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) => {
                 event_tx.send(crate::import::handle::ImportEvent::Scan(if actionable {
-                    ScanEvent::FolderCandidate {
-                        candidate,
-                        found_while_automatic: automatic,
-                    }
+                    ScanEvent::FolderCandidate { candidate, found_while_automatic: automatic }
                 } else {
                     ScanEvent::CandidateDiscovered { candidate }
                 }));
@@ -280,10 +253,8 @@ impl ImportService {
         if items.is_empty() {
             return Ok(true);
         }
-        let Some(PersistedScanItems {
-            commit: _commit,
-            writes,
-        }) = Self::persist_scan_items(root, generation, items, reads, services).await?
+        let Some(PersistedScanItems { commit: _commit, writes }) =
+            Self::persist_scan_items(root, generation, items, reads, services).await?
         else {
             return Ok(false);
         };
@@ -370,10 +341,7 @@ impl ImportService {
         if cancellation.is_cancelled() {
             return Ok(());
         }
-        warn!(
-            "scan of {} failed ({error}); keeping previous candidates",
-            root.display()
-        );
+        warn!("scan of {} failed ({error}); keeping previous candidates", root.display());
         // Reported whether or not it can be stored. The stored status is what
         // the folder's mark reads back; the event is what raises the alert, and
         // a database that will not take the status is one more reason the user
@@ -381,10 +349,7 @@ impl ImportService {
         if let Err(status_error) =
             Self::record_scan_failure(root, generation, error.to_string(), services).await
         {
-            error!(
-                "{}'s failed scan could not be stored: {status_error}",
-                root.display()
-            );
+            error!("{}'s failed scan could not be stored: {status_error}", root.display());
             Self::announce_scan_failure(root, error.to_string(), services).await;
         }
         Err(error)
@@ -400,10 +365,7 @@ impl ImportService {
         let volume = volume_kind(root, &services.diagnostics).await;
         let on_network_volume = volume == VolumeKind::Network;
         let _commit = services.folder_state_commit.lock("begin a scan").await;
-        let generation = services
-            .library_manager
-            .begin_folder_scan_on(root, volume)
-            .await?;
+        let generation = services.library_manager.begin_folder_scan_on(root, volume).await?;
         let watched_folder = crate::import::WatchedFolder::from_path(root.to_path_buf());
         event_tx.send(crate::import::handle::ImportEvent::Scan(
             ScanEvent::FolderScanStatusChanged {
@@ -443,11 +405,8 @@ impl ImportService {
         // opens only the files that are new or changed since, and what this
         // one reads, which the drafts of the releases it finds are seeded
         // from.
-        let reads = Arc::new(
-            library_manager
-                .load_file_reads(root, services.file_tags.clone())
-                .await?,
-        );
+        let reads =
+            Arc::new(library_manager.load_file_reads(root, services.file_tags.clone()).await?);
         let walk_reads = reads.clone();
         let root_buf = root.to_path_buf();
         let dropped_item_root = root.to_path_buf();
@@ -560,12 +519,7 @@ impl ImportService {
                 // scan reads the folder the same way even if the naming rule
                 // changes under it. A reading is stored as a decision, not as a
                 // scan entry, after the items the walk yielded before it.
-                let ScanItem::Decided {
-                    key,
-                    decision,
-                    grouping,
-                } = item
-                else {
+                let ScanItem::Decided { key, decision, grouping } = item else {
                     items.push(item);
                     continue;
                 };
@@ -644,9 +598,8 @@ impl ImportService {
         // transaction: a newer decision or scan cannot be pruned by this
         // completed write, and `None` says one took the root first.
         let commit = services.folder_state_commit.lock("finish a scan").await;
-        let Some(crate::db::FinishedScan { pruned, regrouped }) = library_manager
-            .finish_folder_scan(root, generation, None)
-            .await?
+        let Some(crate::db::FinishedScan { pruned, regrouped }) =
+            library_manager.finish_folder_scan(root, generation, None).await?
         else {
             return Ok(());
         };
@@ -659,9 +612,9 @@ impl ImportService {
             pruned
         );
         for candidate_key in pruned {
-            event_tx.send(crate::import::handle::ImportEvent::Scan(
-                ScanEvent::CandidateRemoved { candidate_key },
-            ));
+            event_tx.send(crate::import::handle::ImportEvent::Scan(ScanEvent::CandidateRemoved {
+                candidate_key,
+            }));
         }
         let watched_folder = crate::import::WatchedFolder::from_path(root.to_path_buf());
         event_tx.send(crate::import::handle::ImportEvent::Scan(
@@ -675,9 +628,7 @@ impl ImportService {
             },
         ));
 
-        event_tx.send(crate::import::handle::ImportEvent::Scan(
-            ScanEvent::Finished,
-        ));
+        event_tx.send(crate::import::handle::ImportEvent::Scan(ScanEvent::Finished));
         drop(commit);
         Ok(())
     }

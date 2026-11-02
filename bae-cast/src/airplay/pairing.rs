@@ -75,12 +75,9 @@ impl TransientPairing {
         check_no_error(&tlv)?;
         expect_state(&tlv, state::M2)?;
 
-        let salt = tlv
-            .get(tlv_type::SALT)
-            .ok_or(PairingError::MissingField("salt"))?;
-        let b_pub = tlv
-            .get(tlv_type::PUBLIC_KEY)
-            .ok_or(PairingError::MissingField("public key"))?;
+        let salt = tlv.get(tlv_type::SALT).ok_or(PairingError::MissingField("salt"))?;
+        let b_pub =
+            tlv.get(tlv_type::PUBLIC_KEY).ok_or(PairingError::MissingField("public key"))?;
 
         let mut a = [0u8; 32];
         rand::rng().fill_bytes(&mut a);
@@ -200,27 +197,15 @@ mod tests {
             let salt = vec![0xA5u8; 16];
             // x = H(s | H(I | ":" | P)); v = g^x.
             let inner = h(&[PAIR_SETUP_USERNAME, b":", TRANSIENT_PIN]);
-            let x = h_int(&[
-                BigUint::from_bytes_be(&salt).to_bytes_be().as_slice(),
-                inner.as_slice(),
-            ]);
+            let x =
+                h_int(&[BigUint::from_bytes_be(&salt).to_bytes_be().as_slice(), inner.as_slice()]);
             let v = group.g.modpow(&x, &group.n);
             // k = H(N | PAD(g)); B = (k*v + g^b) mod N.
             let width = group.n.to_bytes_be().len();
-            let k = h_int(&[
-                group.n.to_bytes_be().as_slice(),
-                pad(width, &group.g).as_slice(),
-            ]);
+            let k = h_int(&[group.n.to_bytes_be().as_slice(), pad(width, &group.g).as_slice()]);
             let b = BigUint::from_bytes_be(&[0x7Cu8; 32]);
             let b_pub = (&k * &v + group.g.modpow(&b, &group.n)) % &group.n;
-            FakeReceiver {
-                group,
-                salt,
-                b,
-                b_pub,
-                v,
-                session: None,
-            }
+            FakeReceiver { group, salt, b, b_pub, v, session: None }
         }
 
         /// The M2 body: salt + B.
@@ -243,10 +228,7 @@ mod tests {
             let n = &self.group.n;
             let width = n.to_bytes_be().len();
             // u = H(PAD(A) | PAD(B)); S = (A * v^u)^b mod N; K = H(S).
-            let u = h_int(&[
-                pad(width, &a_pub).as_slice(),
-                pad(width, &self.b_pub).as_slice(),
-            ]);
+            let u = h_int(&[pad(width, &a_pub).as_slice(), pad(width, &self.b_pub).as_slice()]);
             let s = (&a_pub * self.v.modpow(&u, n) % n).modpow(&self.b, n);
             let key = h(&[s.to_bytes_be().as_slice()]);
 
@@ -266,10 +248,7 @@ mod tests {
             // M2 = H(A | M1 | K).
             let m2 = h(&[a_bytes.as_slice(), client_m1.as_slice(), key.as_slice()]);
             self.session = Some((key, client_m1, a_pub));
-            Tlv8::new()
-                .push_u8(tlv_type::STATE, state::M4)
-                .push(tlv_type::PROOF, m2)
-                .encode()
+            Tlv8::new().push_u8(tlv_type::STATE, state::M4).push(tlv_type::PROOF, m2).encode()
         }
 
         fn shared_key(&self) -> &[u8] {
@@ -313,10 +292,7 @@ mod tests {
             .push_u8(tlv_type::STATE, state::M2)
             .push_u8(tlv_type::ERROR, 0x02) // authentication
             .encode();
-        assert_eq!(
-            pairing.handle_m2(&err_body),
-            Err(PairingError::Rejected(0x02))
-        );
+        assert_eq!(pairing.handle_m2(&err_body), Err(PairingError::Rejected(0x02)));
     }
 
     /// Calling the steps out of order is refused.

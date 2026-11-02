@@ -47,11 +47,8 @@ async fn setup_test_manager_with_clock(clock: coven::ClockRef) -> (TestManager, 
 }
 
 /// A test manager whose bugs go to the returned reporter.
-async fn setup_test_manager_reporting_bugs() -> (
-    TestManager,
-    TempDir,
-    Arc<crate::diagnostics::RecordingBugReporter>,
-) {
+async fn setup_test_manager_reporting_bugs(
+) -> (TestManager, TempDir, Arc<crate::diagnostics::RecordingBugReporter>) {
     let bugs = Arc::new(crate::diagnostics::RecordingBugReporter::default());
     let (manager, temp_dir) = setup_test_manager_with(
         Arc::new(coven::SystemClock),
@@ -68,12 +65,7 @@ async fn setup_test_manager_with(
     let temp_dir = TempDir::new().unwrap();
     let app_dir = crate::config::AppDir::at(temp_dir.path()).unwrap();
     let installation = coven::TestCoven::new();
-    let storage = Arc::new(
-        MemoryStorage::builder()
-            .clock(clock.clone())
-            .build()
-            .unwrap(),
-    );
+    let storage = Arc::new(MemoryStorage::builder().clock(clock.clone()).build().unwrap());
     let handle = crate::library::configure_store(installation.builder(app_dir.store_layout()))
         .clock(clock.clone())
         .storage_connector(storage.clone())
@@ -103,25 +95,14 @@ async fn setup_test_manager_with(
         created_at: Utc::now(),
     };
     manager.database.insert_artist(&artist).await.unwrap();
-    (
-        TestManager {
-            library: manager,
-            storage,
-            installation,
-        },
-        temp_dir,
-    )
+    (TestManager { library: manager, storage, installation }, temp_dir)
 }
 
 // One-line reads and writes against the manager's database. Spelled out at a
 // call site each is `manager.database.x(..).await.unwrap()`, which rustfmt
 // breaks across five lines.
 async fn find_release(manager: &LibraryManager, release_id: &str) -> Option<DbRelease> {
-    manager
-        .database
-        .find_release_by_id(release_id)
-        .await
-        .unwrap()
+    manager.database.find_release_by_id(release_id).await.unwrap()
 }
 
 async fn find_album(manager: &LibraryManager, album_id: &str) -> Option<DbAlbum> {
@@ -129,11 +110,7 @@ async fn find_album(manager: &LibraryManager, album_id: &str) -> Option<DbAlbum>
 }
 
 async fn release_files(manager: &LibraryManager, release_id: &str) -> Vec<DbFile> {
-    manager
-        .database
-        .get_files_for_release(release_id)
-        .await
-        .unwrap()
+    manager.database.get_files_for_release(release_id).await.unwrap()
 }
 
 /// The coven file the release's cover row references.
@@ -148,34 +125,19 @@ async fn cover_file(manager: &LibraryManager, release_id: &str) -> coven::FileRe
 /// How many of a release's files wait in this device's upload queue: moving
 /// to the cloud from here.
 async fn moving_file_count(manager: &LibraryManager, release_id: &str) -> i64 {
-    manager
-        .count_pending_uploads_for_release(release_id)
-        .await
-        .unwrap()
+    manager.count_pending_uploads_for_release(release_id).await.unwrap()
 }
 
 async fn album_releases(manager: &LibraryManager, album_id: &str) -> Vec<DbRelease> {
-    manager
-        .database
-        .get_releases_for_album(album_id)
-        .await
-        .unwrap()
+    manager.database.get_releases_for_album(album_id).await.unwrap()
 }
 
 async fn has_pending_uploads(manager: &LibraryManager, release_id: &str) -> bool {
-    manager
-        .database
-        .has_pending_uploads_for_release(release_id)
-        .await
-        .unwrap()
+    manager.database.has_pending_uploads_for_release(release_id).await.unwrap()
 }
 
 async fn queued_upload_count(manager: &LibraryManager) -> i64 {
-    manager
-        .database
-        .queued_upload_count_for_test()
-        .await
-        .unwrap()
+    manager.database.queued_upload_count_for_test().await.unwrap()
 }
 
 /// Insert `release` with its first medium, one CD side, which

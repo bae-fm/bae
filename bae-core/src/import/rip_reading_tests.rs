@@ -49,17 +49,11 @@ fn read_folder(sheet: &CueSheet, format: &AudioFormat, documents: &[(&Path, &str
     read(RipArtifacts {
         documents: documents
             .iter()
-            .map(|(path, file)| RipDocument {
-                path,
-                file: Some(file),
-            })
+            .map(|(path, file)| RipDocument { path, file: Some(file) })
             .collect(),
         sheets: vec![RipSheet {
             sheet,
-            audio: vec![SheetAudioDuration {
-                file_reference: "Album.flac",
-                duration_ms: 120_000,
-            }],
+            audio: vec![SheetAudioDuration { file_reference: "Album.flac", duration_ms: 120_000 }],
             path: Path::new("/folder/Album.cue"),
             file: Some("Album.cue"),
         }],
@@ -83,24 +77,15 @@ fn a_bare_sheet_over_audio_at_a_cds_rate_proves_nothing_and_is_hashed() {
 #[test]
 fn a_sheet_over_audio_at_another_rate_is_not_a_cd_and_is_not_hashed() {
     let reading = read_folder(&sheet(None), &lossless(96_000, 24, 1), &[]);
-    assert_eq!(
-        reading.origin,
-        AudioOrigin {
-            source: None,
-            not_cd_rate: Some(96_000),
-        }
-    );
+    assert_eq!(reading.origin, AudioOrigin { source: None, not_cd_rate: Some(96_000) });
     assert_eq!(reading.disc_id, DiscIdReading::NotCdAudio);
 }
 
 /// A sheet a CD ripper wrote proves a CD rip, and is hashed.
 #[test]
 fn a_sheet_a_cd_ripper_wrote_proves_a_cd() {
-    let reading = read_folder(
-        &sheet(Some(CdRipper::ExactAudioCopy)),
-        &lossless(44_100, 16, 2),
-        &[],
-    );
+    let reading =
+        read_folder(&sheet(Some(CdRipper::ExactAudioCopy)), &lossless(44_100, 16, 2), &[]);
     assert_eq!(
         reading.origin.source,
         Some(AudioSource::CdRip {
@@ -125,17 +110,9 @@ fn an_accuraterip_report_that_found_the_disc_proves_a_cd() {
     )
     .unwrap();
     let absent = folder.path().join("absent.accurip");
-    std::fs::write(
-        &absent,
-        "[CUETools log; Date: 01.01.2000 00:00:00; Version: 2.1.5]\n",
-    )
-    .unwrap();
+    std::fs::write(&absent, "[CUETools log; Date: 01.01.2000 00:00:00; Version: 2.1.5]\n").unwrap();
 
-    let reading = read_folder(
-        &sheet(None),
-        &lossless(44_100, 16, 2),
-        &[(&found, "found.accurip")],
-    );
+    let reading = read_folder(&sheet(None), &lossless(44_100, 16, 2), &[(&found, "found.accurip")]);
     assert_eq!(
         reading.origin.source,
         Some(AudioSource::CdRip {
@@ -143,11 +120,8 @@ fn an_accuraterip_report_that_found_the_disc_proves_a_cd() {
             file: Some("found.accurip".to_string()),
         })
     );
-    let reading = read_folder(
-        &sheet(None),
-        &lossless(44_100, 16, 2),
-        &[(&absent, "absent.accurip")],
-    );
+    let reading =
+        read_folder(&sheet(None), &lossless(44_100, 16, 2), &[(&absent, "absent.accurip")]);
     assert_eq!(reading.origin, AudioOrigin::default());
 }
 
@@ -160,16 +134,10 @@ fn a_rip_log_proves_a_cd_and_is_the_disc_id() {
     let sheet = sheet(None);
     let format = lossless(96_000, 24, 2);
     let reading = read(RipArtifacts {
-        documents: vec![RipDocument {
-            path: &log,
-            file: Some("Album.log"),
-        }],
+        documents: vec![RipDocument { path: &log, file: Some("Album.log") }],
         sheets: vec![RipSheet {
             sheet: &sheet,
-            audio: vec![SheetAudioDuration {
-                file_reference: "Album.flac",
-                duration_ms: 120_000,
-            }],
+            audio: vec![SheetAudioDuration { file_reference: "Album.flac", duration_ms: 120_000 }],
             path: &log.with_file_name("Album.cue"),
             file: Some("Album.cue"),
         }],
@@ -190,10 +158,7 @@ fn a_rip_log_proves_a_cd_and_is_the_disc_id() {
         panic!("the log's table of contents hashes to a disc ID");
     };
     assert_eq!(
-        discs
-            .iter()
-            .map(|disc| disc.source_file.as_deref())
-            .collect::<Vec<_>>(),
+        discs.iter().map(|disc| disc.source_file.as_deref()).collect::<Vec<_>>(),
         vec![Some("Album.log")]
     );
 }
@@ -231,18 +196,9 @@ fn a_folder_with_a_log_per_disc_computes_every_disc_id() {
     }
     let sheet = sheet(None);
     let format = lossless(44_100, 16, 2);
-    let sheet_paths: Vec<_> = logs
-        .iter()
-        .map(|(log, _)| log.with_file_name("Album.cue"))
-        .collect();
+    let sheet_paths: Vec<_> = logs.iter().map(|(log, _)| log.with_file_name("Album.cue")).collect();
     let reading = read(RipArtifacts {
-        documents: logs
-            .iter()
-            .map(|(path, file)| RipDocument {
-                path,
-                file: Some(file),
-            })
-            .collect(),
+        documents: logs.iter().map(|(path, file)| RipDocument { path, file: Some(file) }).collect(),
         sheets: sheet_paths
             .iter()
             .map(|path| RipSheet {
@@ -262,10 +218,7 @@ fn a_folder_with_a_log_per_disc_computes_every_disc_id() {
         panic!("each log hashes to a disc ID");
     };
     assert_eq!(
-        discs
-            .iter()
-            .map(|disc| disc.source_file.as_deref())
-            .collect::<Vec<_>>(),
+        discs.iter().map(|disc| disc.source_file.as_deref()).collect::<Vec<_>>(),
         vec![Some("Disc 1/Album.log"), Some("Disc 2/Album.log")],
         "one disc ID per log, and no sheet beside a log is hashed"
     );
@@ -284,31 +237,16 @@ fn every_sheet_without_a_log_is_hashed_and_one_disc_is_kept_once() {
     let format = lossless(44_100, 16, 2);
     let rip_sheet = |sheet, path, file| RipSheet {
         sheet,
-        audio: vec![SheetAudioDuration {
-            file_reference: "Album.flac",
-            duration_ms: 200_000,
-        }],
+        audio: vec![SheetAudioDuration { file_reference: "Album.flac", duration_ms: 200_000 }],
         path,
         file: Some(file),
     };
     let reading = read(RipArtifacts {
         documents: Vec::new(),
         sheets: vec![
-            rip_sheet(
-                &one,
-                Path::new("/folder/Disc 1/Album.cue"),
-                "Disc 1/Album.cue",
-            ),
-            rip_sheet(
-                &one,
-                Path::new("/folder/Disc 1/Copy.cue"),
-                "Disc 1/Copy.cue",
-            ),
-            rip_sheet(
-                &other,
-                Path::new("/folder/Disc 2/Album.cue"),
-                "Disc 2/Album.cue",
-            ),
+            rip_sheet(&one, Path::new("/folder/Disc 1/Album.cue"), "Disc 1/Album.cue"),
+            rip_sheet(&one, Path::new("/folder/Disc 1/Copy.cue"), "Disc 1/Copy.cue"),
+            rip_sheet(&other, Path::new("/folder/Disc 2/Album.cue"), "Disc 2/Album.cue"),
         ],
         audio: vec![&format],
     });
@@ -316,10 +254,7 @@ fn every_sheet_without_a_log_is_hashed_and_one_disc_is_kept_once() {
         panic!("the sheets hash to disc IDs");
     };
     assert_eq!(
-        discs
-            .iter()
-            .map(|disc| disc.source_file.as_deref())
-            .collect::<Vec<_>>(),
+        discs.iter().map(|disc| disc.source_file.as_deref()).collect::<Vec<_>>(),
         vec![Some("Disc 1/Album.cue"), Some("Disc 2/Album.cue")]
     );
 }
@@ -329,11 +264,8 @@ fn every_sheet_without_a_log_is_hashed_and_one_disc_is_kept_once() {
 #[test]
 fn audio_off_a_cds_rate_with_no_sheet_is_absent() {
     let format = lossless(96_000, 24, 2);
-    let reading = read(RipArtifacts {
-        documents: Vec::new(),
-        sheets: Vec::new(),
-        audio: vec![&format],
-    });
+    let reading =
+        read(RipArtifacts { documents: Vec::new(), sheets: Vec::new(), audio: vec![&format] });
     assert_eq!(reading.origin.not_cd_rate, Some(96_000));
     assert_eq!(reading.disc_id, DiscIdReading::Absent);
 }

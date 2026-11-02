@@ -53,13 +53,7 @@ async fn a_503_without_a_zone_is_a_failure() {
         .await
         .expect_err("a failing server fails the lookup");
 
-    assert!(matches!(
-        error,
-        MusicBrainzError::Provider {
-            status: Some(503),
-            ..
-        }
-    ));
+    assert!(matches!(error, MusicBrainzError::Provider { status: Some(503), .. }));
     assert_eq!(requests.load(Ordering::SeqCst), attempts);
 }
 
@@ -68,16 +62,12 @@ async fn a_503_without_a_zone_is_a_failure() {
 #[tokio::test]
 async fn a_rate_refusal_holds_every_musicbrainz_request_until_its_reset() {
     let reset = chrono::Utc::now().timestamp() + 30;
-    let (url, requests, _) = mb_raw_server(vec![rate_refusal(&format!(
-        "x-ratelimit-reset: {reset}\r\n"
-    ))])
-    .await;
+    let (url, requests, _) =
+        mb_raw_server(vec![rate_refusal(&format!("x-ratelimit-reset: {reset}\r\n"))]).await;
     let musicbrainz = Arc::new(served_by(&url));
     let asking = Arc::clone(&musicbrainz);
     let asked = tokio::spawn(async move {
-        asking
-            .fetch_release_group_json("rg-held", CallPriority::Interactive)
-            .await
+        asking.fetch_release_group_json("rg-held", CallPriority::Interactive).await
     });
 
     let opens_at = tokio::time::timeout(Duration::from_secs(5), async {
@@ -116,19 +106,12 @@ impl crate::rate_limiter::load_model::Window for MusicBrainzSecond {
         let mut headers = reqwest::header::HeaderMap::new();
         headers.insert(
             reqwest::header::DATE,
-            chrono::DateTime::from_timestamp(seconds, 0)
-                .unwrap()
-                .to_rfc2822()
-                .parse()
-                .unwrap(),
+            chrono::DateTime::from_timestamp(seconds, 0).unwrap().to_rfc2822().parse().unwrap(),
         );
         headers.insert("x-ratelimit-limit", 1900.into());
         headers.insert("x-ratelimit-remaining", 1500.into());
         headers.insert("x-ratelimit-reset", (seconds + 2 - seconds % 2).into());
-        if self
-            .last
-            .is_some_and(|last| at - last < Duration::from_secs(1))
-        {
+        if self.last.is_some_and(|last| at - last < Duration::from_secs(1)) {
             headers.insert(RATE_ZONE, "per-ip".parse().unwrap());
             headers.insert(reqwest::header::RETRY_AFTER, 0.into());
             return (reqwest::StatusCode::SERVICE_UNAVAILABLE, headers);

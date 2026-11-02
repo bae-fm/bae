@@ -58,13 +58,9 @@ unsafe fn decode_audio_streaming_impl(
     // audio sample -- the whole "how long before playback starts" window.
     let decode_start = Instant::now();
 
-    let BufferInput {
-        mut fmt_ctx,
-        avio,
-        avio_ctx_ptr,
-        ..
-    } = open_buffer_input(&buffer, cancel_token.clone())
-        .map_err(|e| e.into_decode_error(&cancel_token))?;
+    let BufferInput { mut fmt_ctx, avio, avio_ctx_ptr, .. } =
+        open_buffer_input(&buffer, cancel_token.clone())
+            .map_err(|e| e.into_decode_error(&cancel_token))?;
 
     let (audio, codec_ctx) = match open_probed_audio_codec(fmt_ctx) {
         Ok(opened) => opened,
@@ -133,14 +129,7 @@ unsafe fn decode_audio_streaming_impl(
     }
 
     let resources = BufferDecodeResources {
-        core: Some(DecodeResources {
-            frame,
-            packet,
-            swr_ctx,
-            codec_ctx,
-            fmt_ctx,
-            avio,
-        }),
+        core: Some(DecodeResources { frame, packet, swr_ctx, codec_ctx, fmt_ctx, avio }),
         avio_ctx_ptr,
     };
     let mut out = TrackOutput::new(sink, &buffer, decode_start);

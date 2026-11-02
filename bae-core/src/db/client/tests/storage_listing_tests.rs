@@ -21,10 +21,7 @@ async fn insert_file(
     (id, release, name, size): (&str, &str, &str, u64),
 ) {
     let original = dir.join(id);
-    std::fs::File::create_new(&original)
-        .unwrap()
-        .set_len(size)
-        .unwrap();
+    std::fs::File::create_new(&original).unwrap().set_len(size).unwrap();
     db.insert_file_for_test(
         &NewReleaseFile::new(
             release,
@@ -40,18 +37,13 @@ async fn insert_file(
 }
 
 async fn exec(db: &Database, sql: &'static str) {
-    db.call(move |conn| conn.execute_batch(sql).map_err(DbError::from))
-        .await
-        .unwrap();
+    db.call(move |conn| conn.execute_batch(sql).map_err(DbError::from)).await.unwrap();
 }
 
 /// The Storage Manager list's release ids in `field` order, ascending.
 async fn page(db: &Database, field: StorageSortField) -> Vec<String> {
     db.get_storage_page(
-        &StorageSortCriterion {
-            field,
-            direction: SortDirection::Ascending,
-        },
+        &StorageSortCriterion { field, direction: SortDirection::Ascending },
         StorageFilter::All,
         0,
         50,
@@ -69,18 +61,8 @@ async fn the_storage_list_counts_and_sorts_by_files_as_they_change() {
     exec(&db, LIBRARY).await;
     // The first release has two files, of 10 and 20 bytes; the second none.
     for file in [
-        (
-            "d3edb846-9b0b-4a64-b0f6-3f117b686bc0",
-            RELEASE_EARLY,
-            "cover.jpg",
-            10,
-        ),
-        (
-            "161dd6f3-3bdd-4312-b5d3-8b9d83b53694",
-            RELEASE_EARLY,
-            "back.jpg",
-            20,
-        ),
+        ("d3edb846-9b0b-4a64-b0f6-3f117b686bc0", RELEASE_EARLY, "cover.jpg", 10),
+        ("161dd6f3-3bdd-4312-b5d3-8b9d83b53694", RELEASE_EARLY, "back.jpg", 20),
     ] {
         insert_file(&db, tmp.path(), file).await;
     }
@@ -88,52 +70,20 @@ async fn the_storage_list_counts_and_sorts_by_files_as_they_change() {
 
     assert_eq!(db.get_storage_count(StorageFilter::All).await.unwrap(), 2);
     assert_eq!(db.get_storage_count(StorageFilter::Local).await.unwrap(), 2);
-    assert_eq!(
-        db.get_storage_count(StorageFilter::Remote).await.unwrap(),
-        0
-    );
-    assert_eq!(
-        db.get_storage_total_size(StorageFilter::All).await.unwrap(),
-        30
-    );
-    assert_eq!(
-        page(&db, StorageSortField::FileCount).await,
-        ids(&[RELEASE_LATE, RELEASE_EARLY])
-    );
+    assert_eq!(db.get_storage_count(StorageFilter::Remote).await.unwrap(), 0);
+    assert_eq!(db.get_storage_total_size(StorageFilter::All).await.unwrap(), 30);
+    assert_eq!(page(&db, StorageSortField::FileCount).await, ids(&[RELEASE_LATE, RELEASE_EARLY]));
 
-    exec(
-        &db,
-        "DELETE FROM release_files WHERE id = '161dd6f3-3bdd-4312-b5d3-8b9d83b53694';",
-    )
-    .await;
+    exec(&db, "DELETE FROM release_files WHERE id = '161dd6f3-3bdd-4312-b5d3-8b9d83b53694';").await;
     for file in [
-        (
-            "f5008044-8ffe-4227-bdc3-238f85a6a4a6",
-            RELEASE_LATE,
-            "one.jpg",
-            1,
-        ),
-        (
-            "cda4c2ec-c6fa-422c-a224-d4f56ca5f3f3",
-            RELEASE_LATE,
-            "two.jpg",
-            2,
-        ),
+        ("f5008044-8ffe-4227-bdc3-238f85a6a4a6", RELEASE_LATE, "one.jpg", 1),
+        ("cda4c2ec-c6fa-422c-a224-d4f56ca5f3f3", RELEASE_LATE, "two.jpg", 2),
     ] {
         insert_file(&db, tmp.path(), file).await;
     }
-    assert_eq!(
-        db.get_storage_total_size(StorageFilter::All).await.unwrap(),
-        13
-    );
-    assert_eq!(
-        page(&db, StorageSortField::FileCount).await,
-        ids(&[RELEASE_EARLY, RELEASE_LATE])
-    );
-    assert_eq!(
-        page(&db, StorageSortField::TotalSize).await,
-        ids(&[RELEASE_LATE, RELEASE_EARLY])
-    );
+    assert_eq!(db.get_storage_total_size(StorageFilter::All).await.unwrap(), 13);
+    assert_eq!(page(&db, StorageSortField::FileCount).await, ids(&[RELEASE_EARLY, RELEASE_LATE]));
+    assert_eq!(page(&db, StorageSortField::TotalSize).await, ids(&[RELEASE_LATE, RELEASE_EARLY]));
 
     // Retitling the first album sorts its release after the second.
     exec(
@@ -141,30 +91,18 @@ async fn the_storage_list_counts_and_sorts_by_files_as_they_change() {
         "UPDATE albums SET title = 'Album Title C' WHERE id = '4991dfdb-eb0e-4ed7-b659-47cda1dbfb7d';",
     )
     .await;
-    assert_eq!(
-        page(&db, StorageSortField::AlbumTitle).await,
-        ids(&[RELEASE_LATE, RELEASE_EARLY])
-    );
+    assert_eq!(page(&db, StorageSortField::AlbumTitle).await, ids(&[RELEASE_LATE, RELEASE_EARLY]));
 
-    exec(
-        &db,
-        "DELETE FROM releases WHERE id = 'd439555e-9883-4037-a580-48ea33c2c57b';",
-    )
-    .await;
+    exec(&db, "DELETE FROM releases WHERE id = 'd439555e-9883-4037-a580-48ea33c2c57b';").await;
     assert_eq!(db.get_storage_count(StorageFilter::All).await.unwrap(), 1);
-    assert_eq!(
-        db.get_storage_total_size(StorageFilter::All).await.unwrap(),
-        3
-    );
+    assert_eq!(db.get_storage_total_size(StorageFilter::All).await.unwrap(), 3);
 }
 
 /// The plan SQLite chooses for `statement`, one detail line per step.
 async fn plan(db: &Database, statement: String) -> Vec<String> {
     db.read(move |sql| {
-        sql.query(&format!("EXPLAIN QUERY PLAN {statement}"), [], |row| {
-            row.get::<_, String>(3)
-        })
-        .map_err(DbError::from)
+        sql.query(&format!("EXPLAIN QUERY PLAN {statement}"), [], |row| row.get::<_, String>(3))
+            .map_err(DbError::from)
     })
     .await
     .unwrap()
@@ -176,15 +114,9 @@ async fn plan(db: &Database, statement: String) -> Vec<String> {
 async fn the_cloud_only_count_reads_one_index_of_the_listing() {
     let (db, _tmp) = super::temp_db().await;
     assert_eq!(
-        plan(
-            &db,
-            super::super::query::CLOUD_ONLY_RELEASE_COUNT.to_string()
-        )
-        .await,
-        vec![
-            "SEARCH listing USING COVERING INDEX idx_release_listing_cloud_only (stored=?)"
-                .to_string()
-        ]
+        plan(&db, super::super::query::CLOUD_ONLY_RELEASE_COUNT.to_string()).await,
+        vec!["SEARCH listing USING COVERING INDEX idx_release_listing_cloud_only (stored=?)"
+            .to_string()]
     );
 }
 
@@ -212,16 +144,9 @@ async fn the_uploading_releases_read_the_listing_in_queue_order() {
 #[tokio::test]
 async fn the_storage_sort_reads_a_window_from_an_index() {
     let (db, _tmp) = super::temp_db().await;
-    for filter in [
-        StorageFilter::All,
-        StorageFilter::Local,
-        StorageFilter::Remote,
-    ] {
+    for filter in [StorageFilter::All, StorageFilter::Local, StorageFilter::Remote] {
         for direction in [SortDirection::Ascending, SortDirection::Descending] {
-            let sort = StorageSortCriterion {
-                field: StorageSortField::Storage,
-                direction,
-            };
+            let sort = StorageSortCriterion { field: StorageSortField::Storage, direction };
             let order = super::super::query::storage_order(&sort);
             let steps = plan(
                 &db,
@@ -235,16 +160,12 @@ async fn the_storage_sort_reads_a_window_from_an_index() {
             )
             .await;
             assert!(
-                steps
-                    .iter()
-                    .any(|step| step.contains("USING INDEX idx_release_listing_")
-                        && step.contains("storage")),
+                steps.iter().any(|step| step.contains("USING INDEX idx_release_listing_")
+                    && step.contains("storage")),
                 "{filter:?} {direction:?}: {steps:?}"
             );
             assert!(
-                !steps
-                    .iter()
-                    .any(|step| step.contains("TEMP B-TREE FOR ORDER BY")),
+                !steps.iter().any(|step| step.contains("TEMP B-TREE FOR ORDER BY")),
                 "{filter:?} {direction:?}: {steps:?}"
             );
         }
@@ -269,11 +190,9 @@ fn counting_refreshes() -> rusqlite::Connection {
 /// How many refreshes of `release`'s listing row the writes since the count
 /// was last cleared asked for.
 fn refreshes(conn: &rusqlite::Connection, release: &str) -> i64 {
-    conn.query_row(
-        "SELECT count(*) FROM refreshed WHERE release_id = ?1",
-        [release],
-        |row| row.get(0),
-    )
+    conn.query_row("SELECT count(*) FROM refreshed WHERE release_id = ?1", [release], |row| {
+        row.get(0)
+    })
     .unwrap()
 }
 

@@ -48,22 +48,13 @@ impl LibraryStatusSubscription {
         &self,
         checks: impl IntoIterator<Item = LibraryCheck>,
     ) -> Result<u64, LibraryStatusSubscriptionError> {
-        self.query
-            .set(checks.into_iter().collect())
-            .map_err(LibraryStatusSubscriptionError::from)
+        self.query.set(checks.into_iter().collect()).map_err(LibraryStatusSubscriptionError::from)
     }
 
     pub async fn next(&self) -> Result<LibraryStatusSnapshot, LibraryStatusSubscriptionError> {
-        let event = self
-            .query
-            .next()
-            .await
-            .map_err(LibraryStatusSubscriptionError::from)?;
+        let event = self.query.next().await.map_err(LibraryStatusSubscriptionError::from)?;
         let request_revision = event.revision.0;
-        Ok(LibraryStatusSnapshot {
-            statuses: event.result?,
-            request_revision,
-        })
+        Ok(LibraryStatusSnapshot { statuses: event.result?, request_revision })
     }
 
     pub async fn cancel(&self) {

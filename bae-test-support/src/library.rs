@@ -19,9 +19,7 @@ pub fn tracing_init() {
 /// Open `dir/test.db` under the real clock and real UUID provider.
 async fn open_test_db(dir: &std::path::Path) -> bae_core::db::Database {
     bae_core::db::Database::new_test(
-        dir.join("test.db")
-            .to_str()
-            .expect("test database path is valid UTF-8"),
+        dir.join("test.db").to_str().expect("test database path is valid UTF-8"),
         std::sync::Arc::new(coven::SystemClock),
     )
     .await
@@ -98,11 +96,8 @@ fn manager_for_database(
 
 /// [`open_test_library`] over a fresh temp directory. The returned `TempDir`
 /// owns the database file, so it must outlive the manager.
-pub async fn setup_test_library() -> (
-    bae_core::library::LibraryManager,
-    bae_core::db::Database,
-    tempfile::TempDir,
-) {
+pub async fn setup_test_library(
+) -> (bae_core::library::LibraryManager, bae_core::db::Database, tempfile::TempDir) {
     tracing_init();
     let temp_dir = tempfile::TempDir::new().expect("test library temp dir");
     let (library_manager, database) = open_test_library(temp_dir.path()).await;
@@ -113,11 +108,8 @@ pub async fn setup_test_library() -> (
 /// test that writes audio into a folder and imports that folder. Returns
 /// (manager, album_dir, temp_dir); the `TempDir` owns both, so it must outlive
 /// the manager.
-pub async fn setup_test_library_with_album_dir() -> (
-    bae_core::library::LibraryManager,
-    std::path::PathBuf,
-    tempfile::TempDir,
-) {
+pub async fn setup_test_library_with_album_dir(
+) -> (bae_core::library::LibraryManager, std::path::PathBuf, tempfile::TempDir) {
     let (library_manager, _database, temp_dir) = setup_test_library().await;
     let album_dir = temp_dir.path().join("album");
     std::fs::create_dir_all(&album_dir).expect("test album dir");
@@ -174,16 +166,12 @@ pub fn multi_thread_runtime() -> tokio::runtime::Runtime {
 /// on it. The `TempDir` owns the library's files, so it must outlive both.
 ///
 /// [`AppServices`]: bae_core::library::AppServices
-pub fn runtime_with_services() -> (
-    tokio::runtime::Runtime,
-    bae_core::library::AppServices,
-    tempfile::TempDir,
-) {
+pub fn runtime_with_services(
+) -> (tokio::runtime::Runtime, bae_core::library::AppServices, tempfile::TempDir) {
     let runtime = multi_thread_runtime();
     let (manager, tmp) = setup_fresh_library(&runtime);
-    let services = runtime
-        .block_on(bae_core::library::AppServices::for_test(manager))
-        .expect("app services");
+    let services =
+        runtime.block_on(bae_core::library::AppServices::for_test(manager)).expect("app services");
     (runtime, services, tmp)
 }
 

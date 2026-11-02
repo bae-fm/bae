@@ -82,10 +82,7 @@ impl AppHandle {
     /// The admin changes this device asked for, each until the person
     /// dismisses its outcome.
     pub fn subscribe_admin_changes(&self) -> Arc<crate::AdminChangesSubscription> {
-        crate::screens::admin_changes(
-            self.services.subscribe_admin_changes(),
-            self.runtime.clone(),
-        )
+        crate::screens::admin_changes(self.services.subscribe_admin_changes(), self.runtime.clone())
     }
     /// This device's open invites, each with its stage and what coven holds
     /// its work for; other devices' invites are never listed.

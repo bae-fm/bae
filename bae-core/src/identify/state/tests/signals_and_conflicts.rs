@@ -2,8 +2,8 @@ use super::*;
 use crate::identify::IdentifyFailure;
 use crate::import::album_links::AlbumLinks;
 use crate::import::LookupChoices;
-use bae_catalogs::catalog::Catalog;
 use crate::signals::{BarcodeSignal, DiscIdSignal, Signals, SourcedValue, TextSignal};
+use bae_catalogs::catalog::Catalog;
 
 fn mk_result(release_id: &str, group_id: Option<&str>) -> MetadataResult {
     mk_result_from(Catalog::MusicBrainz, release_id, group_id)
@@ -33,10 +33,7 @@ fn started() -> IdentifyState {
 /// A run started with `providers`, nothing chosen or left out.
 fn started_with(providers: Vec<Catalog>) -> IdentifyState {
     let (state, effects) = started_with_choices(providers, LookupChoices::default());
-    assert!(
-        effects.is_empty(),
-        "with nothing chosen, Started dispatches no effects"
-    );
+    assert!(effects.is_empty(), "with nothing chosen, Started dispatches no effects");
     state
 }
 
@@ -50,7 +47,8 @@ fn ledger_of(state: &IdentifyState) -> crate::identify::IdentifyRunView {
         | crate::identify::IdentifyStateView::Failed { run, .. } => {
             run.expect("the run recorded its ledger")
         }
-        crate::identify::IdentifyStateView::Idle | crate::identify::IdentifyStateView::Error { .. } => {
+        crate::identify::IdentifyStateView::Idle
+        | crate::identify::IdentifyStateView::Error { .. } => {
             panic!("an idle or broken state lays out no run")
         }
     }
@@ -61,14 +59,7 @@ fn started_with_choices(
     providers: Vec<Catalog>,
     choices: LookupChoices,
 ) -> (IdentifyState, Vec<Effect>) {
-    step(
-        IdentifyState::Idle,
-        IdentifyEvent::Started {
-            providers,
-            choices,
-            title_search: None,
-        },
-    )
+    step(IdentifyState::Idle, IdentifyEvent::Started { providers, choices, title_search: None })
 }
 
 /// Choices leaving out the disc ID (when `disc_id`) and the named barcodes.
@@ -123,11 +114,7 @@ fn update(state: IdentifyState, signals: Signals) -> (IdentifyState, Vec<Effect>
 }
 
 /// One provider matched `barcode`.
-fn barcode_matched(
-    source: Catalog,
-    barcode: &str,
-    results: Vec<MetadataResult>,
-) -> IdentifyEvent {
+fn barcode_matched(source: Catalog, barcode: &str, results: Vec<MetadataResult>) -> IdentifyEvent {
     IdentifyEvent::BarcodeLookupAnswered {
         source,
         for_barcode: barcode.to_string(),
@@ -150,26 +137,16 @@ fn barcode_failed(source: Catalog, barcode: &str, failure: LookupFailure) -> Ide
 }
 
 fn lookup_barcode(source: Catalog, barcode: &str) -> Effect {
-    Effect::LookupBarcode {
-        source,
-        barcode: barcode.to_string(),
-    }
+    Effect::LookupBarcode { source, barcode: barcode.to_string() }
 }
 
 /// Barcodes read off the artwork; the reducer reads only their values.
 fn artwork_codes(values: &[&str]) -> Vec<SourcedValue> {
-    values
-        .iter()
-        .map(|v| SourcedValue::new(v.to_string()))
-        .collect()
+    values.iter().map(|v| SourcedValue::new(v.to_string())).collect()
 }
 
 fn signals(disc_id: DiscIdSignal, barcode: BarcodeSignal, catalogs: &[&str]) -> Signals {
-    signals_with_catalogs(
-        disc_id,
-        barcode,
-        catalogs.iter().map(|s| s.to_string()).collect(),
-    )
+    signals_with_catalogs(disc_id, barcode, catalogs.iter().map(|s| s.to_string()).collect())
 }
 
 fn signals_with_catalogs(
@@ -181,10 +158,7 @@ fn signals_with_catalogs(
         origin: crate::signals::AudioOrigin::default(),
         disc_id,
         barcode,
-        text: TextSignal::Settled {
-            catalogs,
-            free_text: vec![],
-        },
+        text: TextSignal::Settled { catalogs, free_text: vec![] },
         text_pool: Vec::new(),
         isrcs: Vec::new(),
         track_titles: Vec::new(),
@@ -198,7 +172,7 @@ fn disc(disc_id: &str) -> DiscIdSignal {
             disc_id: disc_id.to_string(),
             source_file: None,
         }],
-        }
+    }
 }
 
 /// A disc ID for five tracks, no barcode source, and the named catalog numbers.
@@ -213,26 +187,13 @@ fn disc_only_started() -> (IdentifyState, Vec<Effect>) {
 
 /// A disc ID, with the given barcodes settled.
 fn disc_and_codes(disc_id: &str, codes: &[&str]) -> Signals {
-    signals(
-        disc(disc_id),
-        BarcodeSignal::Settled {
-            codes: artwork_codes(codes),
-        },
-        &[],
-    )
+    signals(disc(disc_id), BarcodeSignal::Settled { codes: artwork_codes(codes) }, &[])
 }
 
 #[test]
 fn started_enters_triangulating_awaiting_signals() {
     match started_with(vec![MB, DG]) {
-        IdentifyState::Triangulating {
-            discid,
-            barcode,
-            catalog: _,
-            isrc,
-            search: _,
-            context,
-        } => {
+        IdentifyState::Triangulating { discid, barcode, catalog: _, isrc, search: _, context } => {
             assert!(matches!(discid, DiscidProgress::Computing));
             assert!(matches!(isrc, IsrcProgress::Reading));
             assert!(matches!(barcode, BarcodeProgress::Scanning));
@@ -248,27 +209,16 @@ fn started_enters_triangulating_awaiting_signals() {
 fn disc_computed_dispatches_lookup_idempotently() {
     let snapshot = || signals(disc("d"), BarcodeSignal::Scanning { codes: vec![] }, &[]);
     let (state, effects) = update(started(), snapshot());
-    assert!(effects
-        .iter()
-        .any(|e| matches!(e, Effect::LookupDiscid { .. })));
+    assert!(effects.iter().any(|e| matches!(e, Effect::LookupDiscid { .. })));
     // A repeated snapshot must not re-dispatch the lookup.
     let (_, effects) = update(state, snapshot());
-    assert!(
-        effects.is_empty(),
-        "disc-id lookup dispatched only once, got {effects:?}"
-    );
+    assert!(effects.is_empty(), "disc-id lookup dispatched only once, got {effects:?}");
 }
 
 #[test]
 fn no_disc_no_barcode_is_manual_only() {
-    let (state, effects) = update(
-        started(),
-        signals(
-            DiscIdSignal::Absent,
-            BarcodeSignal::Absent,
-            &[],
-        ),
-    );
+    let (state, effects) =
+        update(started(), signals(DiscIdSignal::Absent, BarcodeSignal::Absent, &[]));
     assert!(effects.is_empty());
     match state {
         IdentifyState::ManualOnly { track_count, .. } => assert_eq!(track_count, 5),
@@ -283,10 +233,7 @@ fn nothing_to_run_waits_for_the_settled_text() {
         origin: crate::signals::AudioOrigin::default(),
         disc_id: DiscIdSignal::Absent,
         barcode: BarcodeSignal::Absent,
-        text: TextSignal::Scanning {
-            catalogs: vec![],
-            free_text: vec![],
-        },
+        text: TextSignal::Scanning { catalogs: vec![], free_text: vec![] },
         text_pool: Vec::new(),
         isrcs: Vec::new(),
         track_titles: Vec::new(),
@@ -298,14 +245,7 @@ fn nothing_to_run_waits_for_the_settled_text() {
         "the run holds while the text is still scanning, got {state:?}"
     );
 
-    let (state, effects) = update(
-        state,
-        signals(
-            DiscIdSignal::Absent,
-            BarcodeSignal::Absent,
-            &[],
-        ),
-    );
+    let (state, effects) = update(state, signals(DiscIdSignal::Absent, BarcodeSignal::Absent, &[]));
     assert!(effects.is_empty());
     assert!(
         matches!(state, IdentifyState::ManualOnly { track_count: 5, .. }),
@@ -322,18 +262,9 @@ fn an_aborted_extraction_ends_the_run_as_an_error() {
     };
     let aborted = Signals {
         origin: crate::signals::AudioOrigin::default(),
-        disc_id: DiscIdSignal::Failed {
-            failure: failure.clone(),
-        },
-        barcode: BarcodeSignal::Failed {
-            failure: failure.clone(),
-            codes: vec![],
-        },
-        text: TextSignal::Failed {
-            failure: failure.clone(),
-            catalogs: vec![],
-            free_text: vec![],
-        },
+        disc_id: DiscIdSignal::Failed { failure: failure.clone() },
+        barcode: BarcodeSignal::Failed { failure: failure.clone(), codes: vec![] },
+        text: TextSignal::Failed { failure: failure.clone(), catalogs: vec![], free_text: vec![] },
         text_pool: Vec::new(),
         isrcs: Vec::new(),
         track_titles: Vec::new(),
@@ -350,9 +281,7 @@ fn an_aborted_extraction_ends_the_run_as_an_error() {
 /// run there: the lookup's answer lands on a run that is over.
 #[test]
 fn an_artwork_reading_that_breaks_ends_the_run_mid_lookup() {
-    let failure = crate::signals::InternalFailure {
-        detail: "OCR worker failed".to_string(),
-    };
+    let failure = crate::signals::InternalFailure { detail: "OCR worker failed".to_string() };
     let (state, _) = update(
         started(),
         signals(
@@ -376,10 +305,7 @@ fn an_artwork_reading_that_breaks_ends_the_run_mid_lookup() {
                     source_file: None,
                 }],
             },
-            BarcodeSignal::Failed {
-                failure: failure.clone(),
-                codes: vec![],
-            },
+            BarcodeSignal::Failed { failure: failure.clone(), codes: vec![] },
             &[],
         ),
     );
@@ -417,12 +343,7 @@ fn bae_breaking_during_a_lookup_ends_the_run_as_its_error() {
     let failure = crate::signals::InternalFailure {
         detail: "checking the library: the store is locked".to_string(),
     };
-    let (state, effects) = step(
-        state,
-        IdentifyEvent::Broke {
-            failure: failure.clone(),
-        },
-    );
+    let (state, effects) = step(state, IdentifyEvent::Broke { failure: failure.clone() });
     assert!(effects.is_empty());
     assert!(
         matches!(&state, IdentifyState::Error { failure: ended, .. } if *ended == failure),
@@ -436,10 +357,7 @@ fn bae_breaking_during_a_lookup_ends_the_run_as_its_error() {
 #[test]
 fn absent_barcode_offers_manual_search_where_scanned_and_empty_is_a_no_match() {
     let settle = |barcode: BarcodeSignal| {
-        let (state, effects) = update(
-            started(),
-            signals(DiscIdSignal::Absent, barcode, &[]),
-        );
+        let (state, effects) = update(started(), signals(DiscIdSignal::Absent, barcode, &[]));
         assert!(effects.is_empty(), "no codes to look up either way");
         state
     };
@@ -467,25 +385,19 @@ fn barcode_lookups_start_only_from_settled() {
         started_with(vec![MB, DG]),
         signals(
             DiscIdSignal::Absent,
-            BarcodeSignal::Scanning {
-                codes: artwork_codes(&["A"]),
-            },
+            BarcodeSignal::Scanning { codes: artwork_codes(&["A"]) },
             &[],
         ),
     );
     assert!(
-        !effects
-            .iter()
-            .any(|e| matches!(e, Effect::LookupBarcode { .. })),
+        !effects.iter().any(|e| matches!(e, Effect::LookupBarcode { .. })),
         "no barcode lookup while still scanning"
     );
     let (_, effects) = update(
         state,
         signals(
             DiscIdSignal::Absent,
-            BarcodeSignal::Settled {
-                codes: artwork_codes(&["A", "B"]),
-            },
+            BarcodeSignal::Settled { codes: artwork_codes(&["A", "B"]) },
             &[],
         ),
     );
@@ -508,17 +420,14 @@ fn disc_only_resolves_to_found_by_the_disc_id() {
         state,
         IdentifyEvent::DiscidLookupAnswered {
             disc_id: "d".into(),
-            outcome: Ok(DiscIdAnswer::for_test(vec![
-                pair("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e", Some("g-x")),
-            ])),
+            outcome: Ok(DiscIdAnswer::for_test(vec![pair(
+                "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e",
+                Some("g-x"),
+            )])),
         },
     );
     match state {
-        IdentifyState::Found {
-            findings: Findings { matches, .. },
-            ledger,
-            ..
-        } => {
+        IdentifyState::Found { findings: Findings { matches, .. }, ledger, .. } => {
             assert_eq!(matches.len(), 1);
             assert!(found_by_disc_id(ledger.as_ref(), &matches[0]));
         }
@@ -537,27 +446,16 @@ fn both_signals_intersect_to_found_combined() {
                 pair("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e", Some("g-x")),
                 pair("e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b", Some("g-x")),
             ])),
-            },
+        },
     );
     let (state, _) = step(
         state,
-        barcode_matched(
-            MB,
-            "BAR",
-            vec![pair("e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b", Some("g-x"))],
-        ),
+        barcode_matched(MB, "BAR", vec![pair("e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b", Some("g-x"))]),
     );
     match state {
-        IdentifyState::Found {
-            findings: Findings { matches, .. },
-            ledger,
-            ..
-        } => {
+        IdentifyState::Found { findings: Findings { matches, .. }, ledger, .. } => {
             assert_eq!(matches.len(), 1);
-            assert_eq!(
-                matches[0].release_id,
-                "e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b"
-            );
+            assert_eq!(matches[0].release_id, "e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b");
             assert!(found_by_disc_id(ledger.as_ref(), &matches[0]));
         }
         other => panic!("expected Found, got {other:?}"),
@@ -573,26 +471,18 @@ fn a_barcode_that_named_something_else_waits_under_the_disc_id_s_answer() {
         state,
         IdentifyEvent::DiscidLookupAnswered {
             disc_id: "d".into(),
-            outcome: Ok(DiscIdAnswer::for_test(vec![
-                pair("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e", Some("g-x")),
-            ])),
+            outcome: Ok(DiscIdAnswer::for_test(vec![pair(
+                "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e",
+                Some("g-x"),
+            )])),
         },
     );
     let (state, _) = step(
         state,
-        barcode_matched(
-            MB,
-            "BAR",
-            vec![pair("e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b", Some("g-y"))],
-        ),
+        barcode_matched(MB, "BAR", vec![pair("e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b", Some("g-y"))]),
     );
     match state {
-        IdentifyState::Found {
-            context,
-            findings: Findings { matches, .. },
-            ledger,
-            ..
-        } => {
+        IdentifyState::Found { context, findings: Findings { matches, .. }, ledger, .. } => {
             assert_eq!(matches.len(), 1);
             assert!(found_by_disc_id(ledger.as_ref(), &matches[0]));
             assert_eq!(context.disc.results().len(), 1);
@@ -611,9 +501,7 @@ fn every_code_is_asked_of_every_provider() {
         started_with(vec![MB, DG]),
         signals(
             DiscIdSignal::Absent,
-            BarcodeSignal::Settled {
-                codes: artwork_codes(&["A", "B"]),
-            },
+            BarcodeSignal::Settled { codes: artwork_codes(&["A", "B"]) },
             &[],
         ),
     );
@@ -628,25 +516,15 @@ fn every_code_is_asked_of_every_provider() {
     );
 
     // A match asks nothing more, and the run waits for the other answers.
-    let (state, effects) = step(
-        state,
-        barcode_matched(DG, "A", vec![discogs_pair("dg-a", Some("g-x"))]),
-    );
+    let (state, effects) =
+        step(state, barcode_matched(DG, "A", vec![discogs_pair("dg-a", Some("g-x"))]));
     assert!(effects.is_empty());
     assert!(matches!(state, IdentifyState::Triangulating { .. }));
     let (state, _) = step(state, barcode_missed(MB, "A"));
     let (state, _) = step(state, barcode_missed(DG, "B"));
     // The last answer settles the lookups.
-    let (state, _) = step(
-        state,
-        barcode_matched(MB, "B", vec![pair("mb-b", Some("g-y"))]),
-    );
-    let IdentifyState::Found {
-        context,
-        findings: Findings { matches, .. },
-        ..
-    } = state
-    else {
+    let (state, _) = step(state, barcode_matched(MB, "B", vec![pair("mb-b", Some("g-y"))]));
+    let IdentifyState::Found { context, findings: Findings { matches, .. }, .. } = state else {
         panic!("expected Found");
     };
     // Both codes' answers compete in the one ranking.
@@ -664,21 +542,13 @@ fn a_repeated_barcode_answer_is_ignored() {
         started(),
         signals(
             DiscIdSignal::Absent,
-            BarcodeSignal::Settled {
-                codes: artwork_codes(&["A", "B"]),
-            },
+            BarcodeSignal::Settled { codes: artwork_codes(&["A", "B"]) },
             &[],
         ),
     );
     let (state, _) = step(state, barcode_missed(MB, "A"));
-    let (state, effects) = step(
-        state,
-        barcode_failed(
-            MB,
-            "A",
-            LookupFailure::Provider { status: Some(500) },
-        ),
-    );
+    let (state, effects) =
+        step(state, barcode_failed(MB, "A", LookupFailure::Provider { status: Some(500) }));
     assert!(effects.is_empty());
     match &state {
         IdentifyState::Triangulating { barcode, .. } => {
@@ -698,10 +568,7 @@ fn barcode_lookup_failure_settles_failed() {
     assert!(effects.contains(&lookup_barcode(MB, "B")));
 
     let failure = LookupFailure::Provider { status: Some(500) };
-    let source_failure = SourceFailure {
-        source: MB,
-        failure: failure.clone(),
-    };
+    let source_failure = SourceFailure { source: MB, failure: failure.clone() };
     let (state, effects) = step(state, barcode_failed(MB, "A", failure));
     assert!(effects.is_empty());
     let (state, _) = step(state, barcode_missed(MB, "B"));
@@ -722,26 +589,16 @@ fn a_failed_provider_does_not_hide_the_other_s_answer() {
         started_with(vec![MB, DG]),
         signals(
             DiscIdSignal::Absent,
-            BarcodeSignal::Settled {
-                codes: artwork_codes(&["A", "B"]),
-            },
+            BarcodeSignal::Settled { codes: artwork_codes(&["A", "B"]) },
             &[],
         ),
     );
     let (state, _) = step(state, barcode_failed(DG, "A", LookupFailure::Timeout));
     let (state, _) = step(state, barcode_missed(DG, "B"));
     let (state, _) = step(state, barcode_missed(MB, "A"));
-    let (state, _) = step(
-        state,
-        barcode_matched(MB, "B", vec![pair("mb-b", Some("g-y"))]),
-    );
+    let (state, _) = step(state, barcode_matched(MB, "B", vec![pair("mb-b", Some("g-y"))]));
     match state {
-        IdentifyState::Failed {
-            failures,
-            context,
-            findings: Findings { matches, .. },
-            ..
-        } => {
+        IdentifyState::Failed { failures, context, findings: Findings { matches, .. }, .. } => {
             assert_eq!(
                 failures,
                 vec![crate::identify::IdentifyFailure::Barcode(SourceFailure {
@@ -767,17 +624,13 @@ fn failed_discid_lookup_preserves_track_count() {
         },
     );
     match state {
-        IdentifyState::Failed {
-            failures,
-            track_count,
-            ..
-        } => {
+        IdentifyState::Failed { failures, track_count, .. } => {
             assert_eq!(track_count, 5);
             assert_eq!(
                 failures,
-                vec![crate::identify::IdentifyFailure::DiscId(
-                    LookupFailure::Provider { status: Some(503) }
-                )]
+                vec![crate::identify::IdentifyFailure::DiscId(LookupFailure::Provider {
+                    status: Some(503)
+                })]
             );
         }
         other => panic!("expected Failed, got {other:?}"),
@@ -796,17 +649,11 @@ fn an_unchosen_catalog_number_narrows_nothing() {
         state,
         IdentifyEvent::DiscidLookupAnswered {
             disc_id: "d".into(),
-            outcome: Ok(DiscIdAnswer::for_test(vec![
-                r_a,
-                r_b,
-            ])),
-            },
+            outcome: Ok(DiscIdAnswer::for_test(vec![r_a, r_b])),
+        },
     );
     match state {
-        IdentifyState::Found {
-            findings: Findings { matches, .. },
-            ..
-        } => {
+        IdentifyState::Found { findings: Findings { matches, .. }, .. } => {
             assert_eq!(matches.len(), 2);
         }
         other => panic!("expected Found, got {other:?}"),
@@ -842,9 +689,7 @@ fn a_run_without_the_disc_id_source_dispatches_no_disc_id_lookup() {
     let (next, effects) = update(state, disc_only(&[]));
 
     assert!(
-        !effects
-            .iter()
-            .any(|effect| matches!(effect, Effect::LookupDiscid { .. })),
+        !effects.iter().any(|effect| matches!(effect, Effect::LookupDiscid { .. })),
         "no source was asked about the disc ID: {effects:?}"
     );
     let context = next.context().expect("a started run carries its context");

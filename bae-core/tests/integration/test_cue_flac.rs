@@ -31,10 +31,7 @@ async fn test_cue_flac_records_track_positions() {
     let temp_root = TempDir::new().expect("temp root");
     let (library_manager, release_id) = import_cue_flac_fixture(temp_root.path()).await;
     info!("Import completed, release_id: {}", release_id);
-    let tracks = library_manager
-        .get_tracks_for_release(&release_id)
-        .await
-        .expect("get tracks");
+    let tracks = library_manager.get_tracks_for_release(&release_id).await.expect("get tracks");
     assert_eq!(tracks.len(), 3, "Should have 3 tracks");
     // Check that each track has audio format with its sample window recorded
     for (i, track) in tracks.iter().enumerate() {
@@ -43,18 +40,12 @@ async fn test_cue_flac_records_track_positions() {
             .await
             .expect("get audio format")
             .unwrap_or_else(|| {
-                panic!(
-                    "Track {} '{}' should have audio format recorded",
-                    i + 1,
-                    track.title,
-                )
+                panic!("Track {} '{}' should have audio format recorded", i + 1, track.title,)
             });
         assert_eq!(audio_format.content_type, ContentType::Flac);
         // Track 1 starts at sample 0; later tracks start further into the file.
-        let resolved = library_manager
-            .resolve_track_audio(&track.id)
-            .await
-            .expect("resolve track audio");
+        let resolved =
+            library_manager.resolve_track_audio(&track.id).await.expect("resolve track audio");
         let segment = resolved
             .segments
             .iter()
@@ -84,10 +75,7 @@ async fn test_cue_flac_records_track_positions() {
             );
         }
         if i == 0 {
-            assert_eq!(
-                segment.span.start_sample, 0,
-                "the first CUE/FLAC track starts at sample 0",
-            );
+            assert_eq!(segment.span.start_sample, 0, "the first CUE/FLAC track starts at sample 0",);
             assert_eq!(
                 segment.span.start_byte, None,
                 "the first CUE/FLAC track starts at byte 0 (no prefetch, header covers it)",
@@ -123,10 +111,7 @@ async fn test_cue_flac_records_track_positions() {
                 i + 1,
             );
         } else {
-            assert_eq!(
-                segment.span.end_sample, None,
-                "the last CUE/FLAC track runs to EOF",
-            );
+            assert_eq!(segment.span.end_sample, None, "the last CUE/FLAC track runs to EOF",);
             assert_eq!(
                 segment.span.end_byte, None,
                 "the last CUE/FLAC track runs to EOF (no end byte)",
@@ -263,10 +248,7 @@ async fn test_cue_flac_decoded_duration_matches_cue_timing() {
     tracing_init();
     let temp_root = TempDir::new().expect("temp root");
     let (library_manager, release_id) = import_cue_flac_fixture(temp_root.path()).await;
-    let tracks = library_manager
-        .get_tracks_for_release(&release_id)
-        .await
-        .expect("get tracks");
+    let tracks = library_manager.get_tracks_for_release(&release_id).await.expect("get tracks");
     assert_eq!(tracks.len(), 3, "Should have exactly 3 tracks");
 
     // Test track 1 (first track, 0:00-0:08, which is 8 seconds before track 2's pregap)
@@ -288,26 +270,20 @@ async fn test_cue_flac_decoded_duration_matches_cue_timing() {
     let mut progress_rx = playback_handle.subscribe_progress();
     playback_handle.play(track1.id.clone());
 
-    let playback_duration_ms = support::next_matching(
-        &mut progress_rx,
-        Duration::from_secs(5),
-        |event| match event {
+    let playback_duration_ms =
+        support::next_matching(&mut progress_rx, Duration::from_secs(5), |event| match event {
             bae_core::playback::PlaybackProgress::StateChanged {
                 state: bae_core::playback::PlaybackState::Playing { track },
             } if track.track_id == track1.id => Some(track.duration_ms),
             _ => None,
-        },
-    )
-    .await;
+        })
+        .await;
 
     let duration_ms = playback_duration_ms
         .expect("Should get duration from playback")
         .expect("a CUE track has a length") as i64;
 
-    info!(
-        "Track 1: expected {}ms, playback duration {}ms",
-        expected_duration_ms, duration_ms
-    );
+    info!("Track 1: expected {}ms, playback duration {}ms", expected_duration_ms, duration_ms);
 
     // The reported duration is the track's CUE-derived metadata duration, so it
     // matches the CUE timing closely -- not cut short, and not the whole file.
@@ -329,10 +305,7 @@ fn copy_cue_flac_fixture_with_seektable(dir: &Path) {
     let cue_data = bae_test_support::read_fixture(&fixture_dir.join("Test Album.cue"));
     fs::write(dir.join("Test Album.flac"), &flac_data).expect("write flac");
     fs::write(dir.join("Test Album.cue"), &cue_data).expect("write cue");
-    info!(
-        "Copied CUE/FLAC fixture with seektable: {} bytes FLAC",
-        flac_data.len()
-    );
+    info!("Copied CUE/FLAC fixture with seektable: {} bytes FLAC", flac_data.len());
 }
 
 /// Import the 3-track CUE/FLAC fixture (storageless) under `temp_root` and return
@@ -374,11 +347,7 @@ impl CueFlacCaptureFixture {
             copy_cue_flac_fixture_with_seektable,
         )
         .await?;
-        assert_eq!(
-            imported.track_ids.len(),
-            3,
-            "Should have 3 tracks from CUE/FLAC"
-        );
+        assert_eq!(imported.track_ids.len(), 3, "Should have 3 tracks from CUE/FLAC");
         let (playback_handle, capture_stream_rx) =
             support::start_capture_playback(&library_manager, support::TestAudioDevice::Capture)
                 .await;
@@ -414,18 +383,12 @@ async fn test_cue_flac_export_single_track() {
     let temp_root = TempDir::new().expect("temp root");
     let (library_manager, release_id) = import_cue_flac_fixture(temp_root.path()).await;
 
-    let tracks = library_manager
-        .get_tracks_for_release(&release_id)
-        .await
-        .expect("get tracks");
+    let tracks = library_manager.get_tracks_for_release(&release_id).await.expect("get tracks");
     assert_eq!(tracks.len(), 3, "Should have 3 tracks");
 
     // Export track 2 (index 1) as FLAC
     let export_path = temp_root.path().join("exported_track2.flac");
-    library_manager
-        .save_track(&tracks[1].id, &export_path, "flac")
-        .await
-        .expect("export track");
+    library_manager.save_track(&tracks[1].id, &export_path, "flac").await.expect("export track");
 
     // Decode the exported file and check its duration
     let exported_data = std::fs::read(&export_path).expect("read exported file");
@@ -457,10 +420,7 @@ async fn test_cue_flac_export_single_track() {
         exported_duration_ms,
     );
 
-    info!(
-        "Exported track 2 duration: {}ms (expected ~10000ms)",
-        exported_duration_ms,
-    );
+    info!("Exported track 2 duration: {}ms (expected ~10000ms)", exported_duration_ms,);
 }
 
 /// Gapless continuity at a CUE/FLAC track boundary, through the real export path.
@@ -477,56 +437,30 @@ async fn test_cue_flac_gapless_track_boundary() {
     tracing_init();
     let temp_root = TempDir::new().expect("temp root");
     let (library_manager, release_id) = import_cue_flac_fixture(temp_root.path()).await;
-    let tracks = library_manager
-        .get_tracks_for_release(&release_id)
-        .await
-        .expect("get tracks");
+    let tracks = library_manager.get_tracks_for_release(&release_id).await.expect("get tracks");
     assert_eq!(tracks.len(), 3, "Should have 3 tracks");
 
     // Export track 1 and track 2 through the real export path, then decode each.
     let t1_path = temp_root.path().join("t1.flac");
-    library_manager
-        .save_track(&tracks[0].id, &t1_path, "flac")
-        .await
-        .expect("export track 1");
+    library_manager.save_track(&tracks[0].id, &t1_path, "flac").await.expect("export track 1");
     let t2_path = temp_root.path().join("t2.flac");
-    library_manager
-        .save_track(&tracks[1].id, &t2_path, "flac")
-        .await
-        .expect("export track 2");
-    let t1 = decode_audio(
-        support::filled_sparse_buffer(&std::fs::read(&t1_path).unwrap()),
-        None,
-        None,
-    )
-    .expect("decode track 1");
-    let t2 = decode_audio(
-        support::filled_sparse_buffer(&std::fs::read(&t2_path).unwrap()),
-        None,
-        None,
-    )
-    .expect("decode track 2");
+    library_manager.save_track(&tracks[1].id, &t2_path, "flac").await.expect("export track 2");
+    let t1 =
+        decode_audio(support::filled_sparse_buffer(&std::fs::read(&t1_path).unwrap()), None, None)
+            .expect("decode track 1");
+    let t2 =
+        decode_audio(support::filled_sparse_buffer(&std::fs::read(&t2_path).unwrap()), None, None)
+            .expect("decode track 2");
 
     // Ground truth: the source file decoded once.
     let source = bae_test_support::fixture_dir!("cue_flac", "Test Album.flac");
-    let full = decode_audio(
-        support::filled_sparse_buffer(&std::fs::read(&source).unwrap()),
-        None,
-        None,
-    )
-    .expect("decode full");
+    let full =
+        decode_audio(support::filled_sparse_buffer(&std::fs::read(&source).unwrap()), None, None)
+            .expect("decode full");
 
     // Concatenating the two exported tracks reproduces the continuous source.
-    let combined: Vec<i32> = t1
-        .samples
-        .iter()
-        .chain(t2.samples.iter())
-        .copied()
-        .collect();
-    assert!(
-        combined.len() <= full.samples.len(),
-        "track 1 + track 2 cannot exceed the full file",
-    );
+    let combined: Vec<i32> = t1.samples.iter().chain(t2.samples.iter()).copied().collect();
+    assert!(combined.len() <= full.samples.len(), "track 1 + track 2 cannot exceed the full file",);
     assert_eq!(
         combined,
         full.samples[..combined.len()],
@@ -570,9 +504,7 @@ fn generate_generated_pregap_album(dir: &Path) {
         .collect();
     bae_audio::init();
     let flac = bae_audio::encode_i32(
-        bae_audio::EncodeFormat::Flac {
-            bits_per_sample: 16,
-        },
+        bae_audio::EncodeFormat::Flac { bits_per_sample: 16 },
         &samples,
         SAMPLE_RATE,
         2,
@@ -638,19 +570,14 @@ async fn test_served_decode_starts_with_the_generated_pregap() {
     let services = bae_core::library::AppServices::for_test(library_manager)
         .await
         .expect("start the app services");
-    let audio = services
-        .resolve_track_audio(&imported.track_ids[1])
-        .await
-        .expect("resolve track 2");
+    let audio =
+        services.resolve_track_audio(&imported.track_ids[1]).await.expect("resolve track 2");
     let decode = services.open_track_decode(&audio);
 
     let decoded = tokio::task::spawn_blocking(move || {
         let mut sink = CollectedDecode::default();
         decode
-            .run_to_sink(
-                &mut sink,
-                std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
-            )
+            .run_to_sink(&mut sink, std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)))
             .map(|()| sink)
     })
     .await
@@ -665,10 +592,7 @@ async fn test_served_decode_starts_with_the_generated_pregap() {
         "2 s of generated pregap, then the track's 5 s"
     );
     assert!(
-        frames[..pregap_frames]
-            .iter()
-            .flat_map(|f| f.iter())
-            .all(|&s| s == 0),
+        frames[..pregap_frames].iter().flat_map(|f| f.iter()).all(|&s| s == 0),
         "the stream starts with the generated pregap's silence"
     );
     assert!(

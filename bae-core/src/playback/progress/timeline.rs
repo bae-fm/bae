@@ -106,11 +106,8 @@ impl<Point: Line + Clone> Told<Point> {
         if !self.point.same_line(next) {
             return true;
         }
-        let elapsed_ms = if self.point.moving() {
-            (now - self.at).num_milliseconds().max(0) as u64
-        } else {
-            0
-        };
+        let elapsed_ms =
+            if self.point.moving() { (now - self.at).num_milliseconds().max(0) as u64 } else { 0 };
         let expected = self.point.position_ms().saturating_add(elapsed_ms);
         expected.abs_diff(next.position_ms()) > JUMP_THRESHOLD_MS
     }
@@ -143,11 +140,7 @@ pub(super) struct TimelineFold {
 
 impl TimelineFold {
     pub(super) fn new() -> Self {
-        Self {
-            library: None,
-            seek_revision: 0,
-            preview: None,
-        }
+        Self { library: None, seek_revision: 0, preview: None }
     }
 
     /// The timeline after the positions and values read at `now`, or `None`
@@ -173,18 +166,15 @@ impl TimelineFold {
                 moving,
             }
         });
-        let preview = positions
-            .preview
-            .as_ref()
-            .map(|preview| PreviewTimelinePoint {
-                target: preview.target.clone(),
-                position_ms: preview.position_ms,
-                duration_ms: preview.duration_ms,
-                moving: matches!(
-                    &values.preview,
-                    PreviewState::Playing { target, .. } if *target == preview.target
-                ),
-            });
+        let preview = positions.preview.as_ref().map(|preview| PreviewTimelinePoint {
+            target: preview.target.clone(),
+            position_ms: preview.position_ms,
+            duration_ms: preview.duration_ms,
+            moving: matches!(
+                &values.preview,
+                PreviewState::Playing { target, .. } if *target == preview.target
+            ),
+        });
         let seeked = positions.seek_revision != self.seek_revision;
         self.seek_revision = positions.seek_revision;
         // A seek is a new line even when it lands where the line already was.

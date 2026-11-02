@@ -31,11 +31,7 @@ pub(super) struct FileBuffers {
 impl FileBuffers {
     /// Buffers whose readers `arbiter` prioritizes.
     pub(super) fn new(arbiter: Arc<FetchArbiter>) -> Self {
-        Self {
-            cached: HashMap::new(),
-            retired: Vec::new(),
-            arbiter,
-        }
+        Self { cached: HashMap::new(), retired: Vec::new(), arbiter }
     }
 
     /// Designate this track's buffer as the foreground for fetch priority, so
@@ -43,8 +39,7 @@ impl FileBuffers {
     /// to it. Called wherever a track becomes the current one.
     pub(super) fn mark_foreground(&self, prepared: &PlaybackPreparedTrack) {
         if let Some(segment) = prepared.segments.first() {
-            self.arbiter
-                .set_foreground(segment.buffer.id(), &prepared.track_id);
+            self.arbiter.set_foreground(segment.buffer.id(), &prepared.track_id);
         }
     }
 
@@ -109,10 +104,7 @@ impl FileBuffers {
     }
 
     pub(super) fn retired_track_ids(&self) -> Vec<&str> {
-        self.retired
-            .iter()
-            .map(|prepared| prepared.track_id.as_str())
-            .collect()
+        self.retired.iter().map(|prepared| prepared.track_id.as_str()).collect()
     }
 
     /// Seed the cache the way a prepare would, for tests that drive release and
@@ -135,10 +127,8 @@ pub(super) async fn prepare_track_for_playback(
     file_buffers: &mut FileBuffers,
     command_tx: &tokio_mpsc::UnboundedSender<PlaybackCommand>,
 ) -> Result<PlaybackPreparedTrack, PlaybackError> {
-    let resolved = library_manager
-        .resolve_track_audio(track_id)
-        .await
-        .map_err(PlaybackError::database)?;
+    let resolved =
+        library_manager.resolve_track_audio(track_id).await.map_err(PlaybackError::database)?;
 
     let is_ape = resolved.content_type == bae_util::content_type::ContentType::Ape;
     let mut prepared_segments = Vec::with_capacity(resolved.segments.len());
@@ -164,9 +154,7 @@ pub(super) async fn prepare_track_for_playback(
                     buffer.clone(),
                     playback_fill_error_handler(command_tx.clone(), buffer.id()),
                 );
-                file_buffers
-                    .cached
-                    .insert(segment.file_id.clone(), buffer.clone());
+                file_buffers.cached.insert(segment.file_id.clone(), buffer.clone());
                 buffer
             }
         };
@@ -181,11 +169,8 @@ pub(super) async fn prepare_track_for_playback(
 
     // Read the replay-gain mode once, here, and pass it down — rather than a
     // preferences read buried inside `finalize_playback_track`.
-    let replay_gain_mode = library_manager
-        .preferences()
-        .await
-        .map_err(PlaybackError::database)?
-        .replay_gain_mode;
+    let replay_gain_mode =
+        library_manager.preferences().await.map_err(PlaybackError::database)?.replay_gain_mode;
 
     Ok(finalize_playback_track(
         track_id.to_string(),
@@ -205,9 +190,6 @@ fn playback_fill_error_handler(
     buffer_id: u64,
 ) -> crate::playback::data_source::FillErrorHandler {
     Box::new(move |error| {
-        dispatch_command(
-            &command_tx,
-            PlaybackCommand::ReadFailed { buffer_id, error },
-        );
+        dispatch_command(&command_tx, PlaybackCommand::ReadFailed { buffer_id, error });
     })
 }

@@ -9,12 +9,12 @@ use super::*;
 
 /// A candidate ready to import into an album of its own.
 async fn importable(handle: &ImportServiceHandle, key: &crate::import::CandidateKey) {
+    handle.select_candidate_file_tags(key.clone()).await.unwrap();
     handle
-        .select_candidate_file_tags(key.clone())
-        .await
-        .unwrap();
-    handle
-        .set_candidate_album_artists(key, vec![crate::import::Credited::plain(crate::import::ArtistAssignment::named("Artist"))])
+        .set_candidate_album_artists(
+            key,
+            vec![crate::import::Credited::plain(crate::import::ArtistAssignment::named("Artist"))],
+        )
         .await
         .unwrap();
 }
@@ -63,32 +63,26 @@ async fn an_album_opened_while_another_release_imports_shows_at_once() {
     let other = TempDir::new().unwrap();
     let (_, shown_key, _) = picked_candidate(&manager, &tmp, "Shown Album").await;
     let (_, importing_key, _) = picked_candidate(&manager, &other, "Importing Album").await;
-    let handle = manager
-        .start_import_service(tokio::runtime::Handle::current())
+    let handle = manager.start_import_service(tokio::runtime::Handle::current()).await.unwrap();
+    let playback = manager
+        .start_playback_service_with_audio_device(
+            tokio::runtime::Handle::current(),
+            50,
+            false,
+            // No hardware behind it: this test never plays anything.
+            Box::new(crate::playback::audio_output::FailingAudioDevice),
+        )
         .await
-        .unwrap();
-    let playback = manager.start_playback_service_with_audio_device(
-        tokio::runtime::Handle::current(),
-        50,
-        false,
-        // No hardware behind it: this test never plays anything.
-        Box::new(crate::playback::audio_output::FailingAudioDevice),
-    )
-    .await
-    .expect("start playback");
+        .expect("start playback");
     let services = crate::library::AppServices::new(manager.clone(), playback, handle.clone());
     importable(&handle, &shown_key).await;
     importable(&handle, &importing_key).await;
     let mut events = handle.every_event();
     let shown_import = handle.start_import(&shown_key).await.unwrap().expect_queued();
-    let (_, shown_album) = await_import_outcome(&mut events, &shown_import)
-        .await
-        .expect("the shown album imports");
+    let (_, shown_album) =
+        await_import_outcome(&mut events, &shown_import).await.expect("the shown album imports");
 
-    let import = HeldImport::at(
-        &handle.event_tx,
-        crate::import::ImportPhase::MeasuringLoudness,
-    );
+    let import = HeldImport::at(&handle.event_tx, crate::import::ImportPhase::MeasuringLoudness);
     let importing = handle.start_import(&importing_key).await.unwrap().expect_queued();
     tokio::time::timeout(HANG_GUARD, handle.event_tx.send_held())
         .await
@@ -96,12 +90,9 @@ async fn an_album_opened_while_another_release_imports_shows_at_once() {
 
     let values = services.subscribe_album_detail();
     values.set(Some(shown_album.clone())).unwrap();
-    let shown = next_for(
-        &values,
-        &shown_album,
-        "the album detail arrives while the other import runs",
-    )
-    .await;
+    let shown =
+        next_for(&values, &shown_album, "the album detail arrives while the other import runs")
+            .await;
     assert_eq!(shown.album.id, shown_album);
     assert_eq!(
         shown.releases[0].playability,
@@ -109,15 +100,11 @@ async fn an_album_opened_while_another_release_imports_shows_at_once() {
         "the library records this device holding the originals"
     );
     drop(import);
-    await_import_outcome(&mut events, &importing)
-        .await
-        .expect("the held import finishes");
+    await_import_outcome(&mut events, &importing).await.expect("the held import finishes");
 
     // Dropping `services` joins the playback and import threads, so it happens
     // on a blocking thread.
     drop(values);
-    tokio::task::spawn_blocking(move || drop(services))
-        .await
-        .unwrap();
+    tokio::task::spawn_blocking(move || drop(services)).await.unwrap();
     shut_down(handle).await;
 }

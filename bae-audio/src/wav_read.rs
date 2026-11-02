@@ -46,9 +46,7 @@ pub fn parse_streamed_wav(bytes: &[u8]) -> Result<StreamedWav, String> {
     let mut format = None;
     let mut at = 12;
     loop {
-        let id = bytes
-            .get(at..at + 4)
-            .ok_or("stream ends before a data chunk")?;
+        let id = bytes.get(at..at + 4).ok_or("stream ends before a data chunk")?;
         let size = u32_at(at + 4)?;
         let body = at + 8;
         match id {

@@ -18,21 +18,14 @@ impl UnopenableFile {
         {
             use std::os::unix::fs::PermissionsExt;
             std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o000)).unwrap();
-            Self {
-                path: path.to_path_buf(),
-            }
+            Self { path: path.to_path_buf() }
         }
         #[cfg(windows)]
         {
             use std::os::windows::fs::OpenOptionsExt;
-            let exclusive = std::fs::OpenOptions::new()
-                .read(true)
-                .share_mode(0)
-                .open(path)
-                .unwrap();
-            Self {
-                _exclusive: exclusive,
-            }
+            let exclusive =
+                std::fs::OpenOptions::new().read(true).share_mode(0).open(path).unwrap();
+            Self { _exclusive: exclusive }
         }
     }
 }

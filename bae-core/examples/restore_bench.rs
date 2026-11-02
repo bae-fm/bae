@@ -43,13 +43,10 @@ fn main() {
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "--runs" => {
-                runs = args
-                    .next()
-                    .and_then(|value| value.parse().ok())
-                    .unwrap_or_else(|| {
-                        eprintln!("--runs requires a number");
-                        std::process::exit(2);
-                    })
+                runs = args.next().and_then(|value| value.parse().ok()).unwrap_or_else(|| {
+                    eprintln!("--runs requires a number");
+                    std::process::exit(2);
+                })
             }
             "--keep-devices" => remove_devices = false,
             "--downloads" => {
@@ -149,30 +146,17 @@ async fn bench(
     .map_err(|error| format!("open the active library failed: {error}"))?;
     eprintln!(
         "opened {} ({store_id}) in {:?}",
-        source
-            .store_name()
-            .await
-            .map_err(|error| error.to_string())?,
+        source.store_name().await.map_err(|error| error.to_string())?,
         opening.elapsed()
     );
     // Removing a device is an administrative change, which the sync loop
     // claims; the app always runs one.
-    source
-        .start_sync()
-        .await
-        .map_err(|error| format!("start_sync failed: {error}"))?;
+    source.start_sync().await.map_err(|error| format!("start_sync failed: {error}"))?;
     let code = source
         .restore_code_for_transfer()
         .await
         .map_err(|error| format!("restore_code_for_transfer failed: {error}"))?;
-    restore_runs(
-        &code,
-        None,
-        runs,
-        downloads,
-        remove_devices.then_some(&source),
-    )
-    .await?;
+    restore_runs(&code, None, runs, downloads, remove_devices.then_some(&source)).await?;
     source.close().await.map_err(|error| error.to_string())
 }
 
@@ -227,9 +211,7 @@ async fn restore_runs(
         let restoring = started.elapsed();
         let tracks = restored
             .read(|sql| {
-                Ok(sql.query_row("SELECT COUNT(*) FROM tracks", [], |row| {
-                    row.get::<_, i64>(0)
-                })?)
+                Ok(sql.query_row("SELECT COUNT(*) FROM tracks", [], |row| row.get::<_, i64>(0))?)
             })
             .await
             .map_err(|error| error.to_string())?;

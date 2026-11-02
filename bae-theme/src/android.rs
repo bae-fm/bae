@@ -92,19 +92,11 @@ fn write_kotlin(out: &mut String, theme: &Theme) -> std::fmt::Result {
 
     out.push_str("\nval AccentChoice.colors: AccentColors\n    get() =\n        when (this) {\n");
     for accent in &theme.accents {
-        writeln!(
-            out,
-            "            AccentChoice.{} ->",
-            accent.name.to_uppercase()
-        )?;
-        let roles: Roles = [
-            ("light", accent.light),
-            ("dark", accent.dark),
-            ("fill", accent.fill),
-        ]
-        .into_iter()
-        .map(|(name, colour)| (name.to_string(), colour))
-        .collect();
+        writeln!(out, "            AccentChoice.{} ->", accent.name.to_uppercase())?;
+        let roles: Roles = [("light", accent.light), ("dark", accent.dark), ("fill", accent.fill)]
+            .into_iter()
+            .map(|(name, colour)| (name.to_string(), colour))
+            .collect();
         roles_value(out, "AccentColors", &roles, 16)?;
     }
     out.push_str("        }\n");
@@ -128,11 +120,7 @@ fn write_kotlin(out: &mut String, theme: &Theme) -> std::fmt::Result {
          class ThemeText(\n    val style: TextStyle,\n    val uppercase: Boolean,\n) {\n    companion object {\n",
     );
     for (role, text) in &theme.text {
-        let family = if text.monospaced {
-            "FontFamily.Monospace"
-        } else {
-            "FontFamily.Default"
-        };
+        let family = if text.monospaced { "FontFamily.Monospace" } else { "FontFamily.Default" };
         writeln!(
             out,
             "        val {role} =\n            ThemeText(\n                TextStyle(\n                    \

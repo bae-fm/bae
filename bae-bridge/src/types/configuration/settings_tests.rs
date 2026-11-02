@@ -9,9 +9,7 @@ fn unexpected_import_data_is_distinct_from_domain_refusals() {
             catalog: Catalog::MusicBrainz,
             detail: "missing track title".into(),
         },
-        ImportError::CoverArt {
-            detail: "unsupported image decoder".into(),
-        },
+        ImportError::CoverArt { detail: "unsupported image decoder".into() },
         ImportError::MusicBrainz(bae_catalogs::musicbrainz::MusicBrainzError::Other(
             "invalid release JSON".into(),
         )),
@@ -27,9 +25,7 @@ fn unexpected_import_data_is_distinct_from_domain_refusals() {
 
 #[test]
 fn internal_import_failure_retains_its_category() {
-    let error = ImportError::Internal {
-        detail: "missing prepared bytes".into(),
-    };
+    let error = ImportError::Internal { detail: "missing prepared bytes".into() };
     assert!(matches!(BridgeError::from(error), BridgeError::Diagnostic {
         category: BridgeErrorCategory::Internal, detail
     } if detail.contains("missing prepared bytes")));
@@ -43,14 +39,8 @@ fn wrapped_library_failures_preserve_the_library_category() {
             || LibraryError::Database(bae_core::db::DbError::Message("read failed".into())),
             BridgeErrorCategory::Database,
         ),
-        (
-            || LibraryError::Internal("prepared state missing".into()),
-            BridgeErrorCategory::Internal,
-        ),
-        (
-            || LibraryError::Refused("identity needs review".into()),
-            BridgeErrorCategory::Import,
-        ),
+        (|| LibraryError::Internal("prepared state missing".into()), BridgeErrorCategory::Internal),
+        (|| LibraryError::Refused("identity needs review".into()), BridgeErrorCategory::Import),
     ];
     for (make_error, category) in cases {
         let direct = BridgeError::from(make_error());
@@ -69,22 +59,12 @@ fn an_import_refusal_inside_a_library_error_crosses_as_itself() {
     use bae_core::library::LibraryError;
     let cases = [
         (
-            ImportError::MetadataTrackCount {
-                folder_tracks: 10,
-                release_tracks: 12,
-            },
-            BridgeErrorCategory::MetadataTrackCount {
-                folder_tracks: 10,
-                release_tracks: 12,
-            },
+            ImportError::MetadataTrackCount { folder_tracks: 10, release_tracks: 12 },
+            BridgeErrorCategory::MetadataTrackCount { folder_tracks: 10, release_tracks: 12 },
         ),
         (
-            ImportError::TiedMediums {
-                mediums: vec![1, 3],
-            },
-            BridgeErrorCategory::TiedMediums {
-                mediums: vec![1, 3],
-            },
+            ImportError::TiedMediums { mediums: vec![1, 3] },
+            BridgeErrorCategory::TiedMediums { mediums: vec![1, 3] },
         ),
     ];
     for (error, category) in cases {
@@ -100,10 +80,7 @@ fn expected_provider_errors_remain_domain_failures() {
     use bae_catalogs::{discogs::client::DiscogsError, musicbrainz::MusicBrainzError};
     for error in [
         ImportError::MusicBrainz(MusicBrainzError::NotFound("release".into())),
-        ImportError::MusicBrainz(MusicBrainzError::Provider {
-            status: Some(500),
-            told_wait: None,
-        }),
+        ImportError::MusicBrainz(MusicBrainzError::Provider { status: Some(500), told_wait: None }),
         ImportError::MusicBrainz(MusicBrainzError::Timeout),
         ImportError::Discogs(DiscogsError::NotFound),
         ImportError::Discogs(DiscogsError::Provider {
@@ -114,10 +91,7 @@ fn expected_provider_errors_remain_domain_failures() {
     ] {
         assert!(matches!(
             BridgeError::from(error),
-            BridgeError::Diagnostic {
-                category: BridgeErrorCategory::Import,
-                ..
-            }
+            BridgeError::Diagnostic { category: BridgeErrorCategory::Import, .. }
         ));
     }
 }
@@ -126,45 +100,25 @@ fn expected_provider_errors_remain_domain_failures() {
 fn expected_local_and_draft_failures_keep_their_presentation() {
     for (error, expected) in [
         (
-            ImportError::LocalCover {
-                detail: "selected image disappeared".into(),
-            },
+            ImportError::LocalCover { detail: "selected image disappeared".into() },
             BridgeErrorCategory::Import,
         ),
         (
-            ImportError::LocalCover {
-                detail: "permission denied reading selected image".into(),
-            },
+            ImportError::LocalCover { detail: "permission denied reading selected image".into() },
             BridgeErrorCategory::Import,
         ),
         (
-            ImportError::MetadataTrackCount {
-                folder_tracks: 14,
-                release_tracks: 15,
-            },
-            BridgeErrorCategory::MetadataTrackCount {
-                folder_tracks: 14,
-                release_tracks: 15,
-            },
+            ImportError::MetadataTrackCount { folder_tracks: 14, release_tracks: 15 },
+            BridgeErrorCategory::MetadataTrackCount { folder_tracks: 14, release_tracks: 15 },
         ),
+        (ImportError::CandidateImportInProgress, BridgeErrorCategory::CandidateImportInProgress),
+        (ImportError::CandidateBeingIdentified, BridgeErrorCategory::CandidateBeingIdentified),
         (
-            ImportError::CandidateImportInProgress,
-            BridgeErrorCategory::CandidateImportInProgress,
-        ),
-        (
-            ImportError::CandidateBeingIdentified,
-            BridgeErrorCategory::CandidateBeingIdentified,
-        ),
-        (
-            ImportError::FilesAlreadyImported {
-                release_id: "release-1".into(),
-            },
+            ImportError::FilesAlreadyImported { release_id: "release-1".into() },
             BridgeErrorCategory::FilesAlreadyImported,
         ),
         (
-            ImportError::Config {
-                detail: "failed to open key store".into(),
-            },
+            ImportError::Config { detail: "failed to open key store".into() },
             BridgeErrorCategory::Config,
         ),
     ] {
@@ -187,10 +141,7 @@ fn artwork_request_conditions_remain_expected_at_the_bridge() {
         });
         assert!(matches!(
             BridgeError::from(error),
-            BridgeError::Diagnostic {
-                category: BridgeErrorCategory::Import,
-                ..
-            }
+            BridgeError::Diagnostic { category: BridgeErrorCategory::Import, .. }
         ));
     }
 }
@@ -204,10 +155,7 @@ async fn actual_artwork_data_failure_reaches_the_bridge_with_its_detail() {
         let (mut stream, _) = listener.accept().await.unwrap();
         let mut request = [0; 4096];
         let received = stream.read(&mut request).await.unwrap();
-        assert!(
-            received > 0,
-            "client must send a request before the response"
-        );
+        assert!(received > 0, "client must send a request before the response");
         let body = "invalid image ".repeat(30);
         let response = format!(
             "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
@@ -228,10 +176,7 @@ async fn actual_artwork_data_failure_reaches_the_bridge_with_its_detail() {
     assert!(detail.contains("not a valid image"), "{detail}");
     assert_eq!(
         BridgeError::from(error),
-        BridgeError::Diagnostic {
-            category: BridgeErrorCategory::ImportData,
-            detail
-        }
+        BridgeError::Diagnostic { category: BridgeErrorCategory::ImportData, detail }
     );
     server.await.unwrap();
 }

@@ -43,16 +43,10 @@ fn each_pull_answers_at_once_and_the_profiles_follow_a_new_one() {
     ));
     runtime.block_on(bae_test_support::connect_storage(&manager, &storage));
     let syncing = manager.clone();
-    let services = runtime
-        .block_on(bae_core::library::AppServices::for_test(manager))
-        .unwrap();
+    let services = runtime.block_on(bae_core::library::AppServices::for_test(manager)).unwrap();
     let handle = std::sync::Arc::new(
-        super::AppHandle::start(
-            services,
-            runtime,
-            bae_core::diagnostics::Diagnostics::noop(),
-        )
-        .unwrap(),
+        super::AppHandle::start(services, runtime, bae_core::diagnostics::Diagnostics::noop())
+            .unwrap(),
     );
 
     let queue = handle.subscribe_queue();
@@ -80,16 +74,9 @@ fn each_pull_answers_at_once_and_the_profiles_follow_a_new_one() {
     pull_until(&handle, || Box::pin(name.clone().next()), |_| true);
     let requested = handle.subscribe_requested_profile();
     assert!(pull_until(&handle, || Box::pin(requested.clone().next()), |_| true).is_none());
-    handle
-        .runtime
-        .block_on(handle.clone().create_profile("Ana".to_string()))
-        .unwrap();
+    handle.runtime.block_on(handle.clone().create_profile("Ana".to_string())).unwrap();
     assert_eq!(
-        pull_until(
-            &handle,
-            || Box::pin(requested.clone().next()),
-            Option::is_some
-        ),
+        pull_until(&handle, || Box::pin(requested.clone().next()), Option::is_some),
         Some(crate::types::BridgeRequestedProfile {
             name: "Ana".into(),
             state: crate::types::BridgeRequestedProfileState::Making,
@@ -97,20 +84,13 @@ fn each_pull_answers_at_once_and_the_profiles_follow_a_new_one() {
     );
     // The profile is written once sync has made Ana's private circle, and
     // the request ends with it.
-    handle
-        .runtime
-        .block_on(syncing.attach_and_start_sync())
-        .unwrap();
+    handle.runtime.block_on(syncing.attach_and_start_sync()).unwrap();
     pull_until(
         &handle,
         || Box::pin(profiles.clone().next()),
         |profiles: &Vec<crate::types::BridgePersonProfile>| profiles.len() == 1,
     );
-    pull_until(
-        &handle,
-        || Box::pin(requested.clone().next()),
-        Option::is_none,
-    );
+    pull_until(&handle, || Box::pin(requested.clone().next()), Option::is_none);
 
     handle.runtime.block_on(name.clone().cancel()).unwrap();
     assert!(matches!(
@@ -135,33 +115,21 @@ fn the_sync_status_follows_a_disconnect() {
         bae_core::providers::Providers::offline(),
     ));
     runtime.block_on(bae_test_support::connect_storage(&manager, &storage));
-    let services = runtime
-        .block_on(bae_core::library::AppServices::for_test(manager))
-        .unwrap();
+    let services = runtime.block_on(bae_core::library::AppServices::for_test(manager)).unwrap();
     let handle = std::sync::Arc::new(
-        super::AppHandle::start(
-            services,
-            runtime,
-            bae_core::diagnostics::Diagnostics::noop(),
-        )
-        .unwrap(),
+        super::AppHandle::start(services, runtime, bae_core::diagnostics::Diagnostics::noop())
+            .unwrap(),
     );
 
     let status = handle.subscribe_sync_status();
     let connected = handle.runtime.block_on(status.clone().next()).unwrap();
     assert!(connected.connected, "{connected:?}");
 
-    handle
-        .runtime
-        .block_on(handle.clone().disconnect_cloud_provider())
-        .unwrap();
+    handle.runtime.block_on(handle.clone().disconnect_cloud_provider()).unwrap();
     let disconnected = pull_until(
         &handle,
         || Box::pin(status.clone().next()),
         |status: &crate::types::BridgeSyncStatusSnapshot| !status.connected,
     );
-    assert_eq!(
-        disconnected.indicator,
-        crate::types::BridgeSyncIndicator::Unconnected
-    );
+    assert_eq!(disconnected.indicator, crate::types::BridgeSyncIndicator::Unconnected);
 }

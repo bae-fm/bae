@@ -39,19 +39,14 @@ fn index(position: &str, sub_tracks: Vec<DiscogsTrack>) -> DiscogsTrack {
 
 /// `count` rows `<prefix>1` … `<prefix><count>`.
 fn rows(prefix: &str, count: u32) -> Vec<DiscogsTrack> {
-    (1..=count)
-        .map(|n| track(&format!("{prefix}{n}")))
-        .collect()
+    (1..=count).map(|n| track(&format!("{prefix}{n}"))).collect()
 }
 
 fn formats(entries: &[(Medium, u32)]) -> StatedMedia {
     StatedMedia::Formats(
         entries
             .iter()
-            .map(|(medium, quantity)| StatedFormat {
-                medium: Some(*medium),
-                quantity: *quantity,
-            })
+            .map(|(medium, quantity)| StatedFormat { medium: Some(*medium), quantity: *quantity })
             .collect(),
     )
 }
@@ -60,12 +55,7 @@ fn formats(entries: &[(Medium, u32)]) -> StatedMedia {
 fn shape(mediums: &[MediumRows]) -> Vec<(Option<Medium>, Vec<String>)> {
     mediums
         .iter()
-        .map(|medium| {
-            (
-                medium.medium,
-                medium.rows.iter().map(|row| row.position.clone()).collect(),
-            )
-        })
+        .map(|medium| (medium.medium, medium.rows.iter().map(|row| row.position.clone()).collect()))
         .collect()
 }
 
@@ -90,12 +80,8 @@ fn a_mixed_box_splits_into_each_record_disc_and_video_with_its_carrier() {
     tracklist.extend(rows("CD2-", 10));
     tracklist.push(heading("The Video"));
     tracklist.push(track("BD-1"));
-    let media = formats(&[
-        (Medium::Vinyl, 2),
-        (Medium::Cd, 1),
-        (Medium::Cd, 1),
-        (Medium::BluRay, 1),
-    ]);
+    let media =
+        formats(&[(Medium::Vinyl, 2), (Medium::Cd, 1), (Medium::Cd, 1), (Medium::BluRay, 1)]);
 
     let mediums = split("1", &tracklist, &media);
 
@@ -113,10 +99,7 @@ fn a_mixed_box_splits_into_each_record_disc_and_video_with_its_carrier() {
             (Some(Medium::Vinyl), second_record),
             (Some(Medium::Cd), first_cd),
             (Some(Medium::Cd), positions(&rows("CD2-", 10))),
-            (
-                Some(Medium::BluRay),
-                vec![String::new(), "BD-1".to_string()]
-            ),
+            (Some(Medium::BluRay), vec![String::new(), "BD-1".to_string()]),
         ],
         "each heading goes with the medium of the row after it"
     );
@@ -134,10 +117,7 @@ fn a_box_that_restarts_at_side_a_splits_per_record() {
 
     let mediums = split("1", &tracklist, &formats(&[(Medium::Vinyl, 3)]));
 
-    let record = vec!["A1", "A2", "B1", "B2"]
-        .into_iter()
-        .map(String::from)
-        .collect::<Vec<_>>();
+    let record = vec!["A1", "A2", "B1", "B2"].into_iter().map(String::from).collect::<Vec<_>>();
     assert_eq!(
         shape(&mediums),
         vec![
@@ -162,16 +142,9 @@ fn numbered_discs_take_the_formats_in_order() {
         ]
     );
 
-    let cd_and_dvd = split(
-        "1",
-        &tracklist,
-        &formats(&[(Medium::Cd, 1), (Medium::Dvd, 1)]),
-    );
+    let cd_and_dvd = split("1", &tracklist, &formats(&[(Medium::Cd, 1), (Medium::Dvd, 1)]));
     assert_eq!(
-        cd_and_dvd
-            .iter()
-            .map(|medium| medium.medium)
-            .collect::<Vec<_>>(),
+        cd_and_dvd.iter().map(|medium| medium.medium).collect::<Vec<_>>(),
         vec![Some(Medium::Cd), Some(Medium::Dvd)]
     );
 }
@@ -185,20 +158,11 @@ fn a_miscounted_format_names_the_carrier_only_when_it_is_the_only_one() {
     discs.extend(rows("3-", 2));
     let one_carrier = split("1", &discs, &formats(&[(Medium::Cd, 1)]));
     assert_eq!(
-        one_carrier
-            .iter()
-            .map(|medium| medium.medium)
-            .collect::<Vec<_>>(),
+        one_carrier.iter().map(|medium| medium.medium).collect::<Vec<_>>(),
         vec![Some(Medium::Cd); 3]
     );
     let two_carriers = split("1", &discs, &formats(&[(Medium::Cd, 1), (Medium::Dvd, 1)]));
-    assert_eq!(
-        two_carriers
-            .iter()
-            .map(|medium| medium.medium)
-            .collect::<Vec<_>>(),
-        vec![None; 3]
-    );
+    assert_eq!(two_carriers.iter().map(|medium| medium.medium).collect::<Vec<_>>(), vec![None; 3]);
 
     let mut sides = Vec::new();
     for side in ["A", "B", "C", "D"] {
@@ -206,10 +170,7 @@ fn a_miscounted_format_names_the_carrier_only_when_it_is_the_only_one() {
     }
     let records = split("1", &sides, &formats(&[(Medium::Vinyl, 1)]));
     assert_eq!(
-        records
-            .iter()
-            .map(|medium| medium.medium)
-            .collect::<Vec<_>>(),
+        records.iter().map(|medium| medium.medium).collect::<Vec<_>>(),
         vec![Some(Medium::Vinyl); 2],
         "four sides are two records"
     );
@@ -219,10 +180,7 @@ fn a_miscounted_format_names_the_carrier_only_when_it_is_the_only_one() {
 fn a_tracklist_numbering_no_medium_is_one_medium() {
     let tracklist = rows("", 10);
     let mediums = split("1", &tracklist, &formats(&[(Medium::Cd, 1)]));
-    assert_eq!(
-        shape(&mediums),
-        vec![(Some(Medium::Cd), positions(&tracklist))]
-    );
+    assert_eq!(shape(&mediums), vec![(Some(Medium::Cd), positions(&tracklist))]);
 
     let unstated = split("1", &tracklist, &StatedMedia::Undescribed);
     assert_eq!(shape(&unstated), vec![(None, positions(&tracklist))]);
@@ -249,10 +207,7 @@ fn an_empty_tracklist_has_no_mediums() {
 #[test]
 fn rows_naming_no_disc_go_with_their_neighbours() {
     let mut tracklist = rows("1-", 9);
-    tracklist.push(index(
-        "",
-        vec![track("1-10a"), track("1-10b"), track("1-10c")],
-    ));
+    tracklist.push(index("", vec![track("1-10a"), track("1-10b"), track("1-10c")]));
     tracklist.push(heading("Second Disc"));
     tracklist.extend(rows("2-", 10));
     tracklist.push(heading("Trailing Heading"));
@@ -264,37 +219,16 @@ fn rows_naming_no_disc_go_with_their_neighbours() {
     let mut second = vec![String::new()];
     second.extend(positions(&rows("2-", 10)));
     second.push(String::new());
-    assert_eq!(
-        shape(&mediums),
-        vec![(Some(Medium::Cd), first), (Some(Medium::Cd), second)]
-    );
+    assert_eq!(shape(&mediums), vec![(Some(Medium::Cd), first), (Some(Medium::Cd), second)]);
 }
 
 #[test]
 fn positions_read_by_the_grammar() {
     assert_eq!(place("2-5"), Some(Place::Disc(2)));
     assert_eq!(place("1-10a"), Some(Place::Disc(1)));
-    assert_eq!(
-        place("CD2-3"),
-        Some(Place::Prefixed {
-            medium: Medium::Cd,
-            disc: Some(2)
-        })
-    );
-    assert_eq!(
-        place("BD-1"),
-        Some(Place::Prefixed {
-            medium: Medium::BluRay,
-            disc: None
-        })
-    );
-    assert_eq!(
-        place("dvd4"),
-        Some(Place::Prefixed {
-            medium: Medium::Dvd,
-            disc: None
-        })
-    );
+    assert_eq!(place("CD2-3"), Some(Place::Prefixed { medium: Medium::Cd, disc: Some(2) }));
+    assert_eq!(place("BD-1"), Some(Place::Prefixed { medium: Medium::BluRay, disc: None }));
+    assert_eq!(place("dvd4"), Some(Place::Prefixed { medium: Medium::Dvd, disc: None }));
     assert_eq!(place("B1ii"), Some(Place::Side(1)));
     assert_eq!(place("A"), Some(Place::Side(0)));
     assert_eq!(place("7"), None, "a plain number names no medium");

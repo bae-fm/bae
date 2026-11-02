@@ -242,14 +242,9 @@ pub fn bridge_artist_standing(
     assignment: BridgeArtistAssignment,
     resolutions: Vec<BridgeResolvedCredit>,
 ) -> Option<BridgeArtistStanding> {
-    let resolutions: Vec<_> = resolutions
-        .into_iter()
-        .map(BridgeResolvedCredit::into_core)
-        .collect();
-    assignment
-        .into_core()
-        .standing(&resolutions)
-        .map(BridgeArtistStanding::from_core)
+    let resolutions: Vec<_> =
+        resolutions.into_iter().map(BridgeResolvedCredit::into_core).collect();
+    assignment.into_core().standing(&resolutions).map(BridgeArtistStanding::from_core)
 }
 
 /// How the artist field holding `assignments` stands to the library, read
@@ -261,14 +256,10 @@ pub fn bridge_artists_standing(
     assignments: Vec<BridgeArtistAssignment>,
     resolutions: Vec<BridgeResolvedCredit>,
 ) -> Option<BridgeArtistsStanding> {
-    let assignments: Vec<_> = assignments
-        .into_iter()
-        .map(BridgeArtistAssignment::into_core)
-        .collect();
-    let resolutions: Vec<_> = resolutions
-        .into_iter()
-        .map(BridgeResolvedCredit::into_core)
-        .collect();
+    let assignments: Vec<_> =
+        assignments.into_iter().map(BridgeArtistAssignment::into_core).collect();
+    let resolutions: Vec<_> =
+        resolutions.into_iter().map(BridgeResolvedCredit::into_core).collect();
     bae_core::import::artists_standing(&assignments, &resolutions)
         .map(BridgeArtistsStanding::from_core)
 }
@@ -297,11 +288,7 @@ pub enum BridgeAudioFile {
     Standalone { file_id: String },
     /// One of several tracks the track sheet `sheet_id` carves out of
     /// `file_id`. `index` counts that sheet's playable tracks from zero.
-    SheetSlice {
-        file_id: String,
-        sheet_id: String,
-        index: u32,
-    },
+    SheetSlice { file_id: String, sheet_id: String, index: u32 },
 }
 
 /// Which disc of the release one track sheet's entries become. Mirror of
@@ -503,10 +490,7 @@ pub enum BridgeMappingTrackRun {
     /// Rows supplied independently rather than carved by a track sheet.
     Tracks { mappings: Vec<BridgeTrackMapping> },
     /// A track sheet and the entries it carves, which are its child rows.
-    Sheet {
-        sheet: BridgeSheetGroup,
-        entries: Vec<BridgeTrackMapping>,
-    },
+    Sheet { sheet: BridgeSheetGroup, entries: Vec<BridgeTrackMapping> },
 }
 
 /// One side or disc of the track table and the runs of rows on it, headed
@@ -585,21 +569,11 @@ mirror_enum! {
 /// the vocabulary's values. Mirrors `bae_core::import::PressingFactEdit`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgePressingFactEdit {
-    Area {
-        area: Option<BridgeReleaseArea>,
-    },
-    Media {
-        media: Vec<BridgeMediaCount>,
-    },
-    Status {
-        status: Option<BridgeReleaseStatus>,
-    },
-    Packaging {
-        packaging: Option<BridgePackaging>,
-    },
-    DiscogsDetails {
-        discogs_details: Vec<BridgeDiscogsDetail>,
-    },
+    Area { area: Option<BridgeReleaseArea> },
+    Media { media: Vec<BridgeMediaCount> },
+    Status { status: Option<BridgeReleaseStatus> },
+    Packaging { packaging: Option<BridgePackaging> },
+    DiscogsDetails { discogs_details: Vec<BridgeDiscogsDetail> },
 }
 
 #[cfg(feature = "desktop")]
@@ -618,10 +592,7 @@ impl BridgePressingFactEdit {
                 PressingFactEdit::Packaging(packaging.map(BridgePackaging::into_core))
             }
             Self::DiscogsDetails { discogs_details } => PressingFactEdit::DiscogsDetails(
-                discogs_details
-                    .into_iter()
-                    .map(BridgeDiscogsDetail::into_core)
-                    .collect(),
+                discogs_details.into_iter().map(BridgeDiscogsDetail::into_core).collect(),
             ),
         }
     }
@@ -721,15 +692,10 @@ pub struct BridgeReleaseEditTrackContext {
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeReleaseEditTrackRun {
     /// A track whose row names its own source.
-    Track {
-        track: BridgeReleaseEditTrackContext,
-    },
+    Track { track: BridgeReleaseEditTrackContext },
     /// Two or more consecutive tracks a CUE sheet carves from one file, which
     /// is named once above them.
-    Sheet {
-        source: BridgeReleaseEditTrackSource,
-        tracks: Vec<BridgeReleaseEditTrackContext>,
-    },
+    Sheet { source: BridgeReleaseEditTrackSource, tracks: Vec<BridgeReleaseEditTrackContext> },
 }
 
 /// One side of the release in the editor's track table and the runs of

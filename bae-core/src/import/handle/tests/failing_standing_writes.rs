@@ -13,10 +13,7 @@ async fn an_import_whose_claim_cannot_be_written_fails_and_claims_nothing() {
     let mut events = handle.every_event();
     crate::import::candidate_runtime::tests::fail_standing_writes(
         tmp.path(),
-        &[
-            ("INSERT", "NEW.import_step = 'queued'"),
-            ("UPDATE", "NEW.import_step = 'queued'"),
-        ],
+        &[("INSERT", "NEW.import_step = 'queued'"), ("UPDATE", "NEW.import_step = 'queued'")],
     )
     .await;
 

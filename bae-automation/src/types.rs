@@ -28,10 +28,7 @@ pub struct AutomationMcpConfig {
 
 impl From<McpConfig> for AutomationMcpConfig {
     fn from(value: McpConfig) -> Self {
-        Self {
-            enabled: value.enabled,
-            port: value.port,
-        }
+        Self { enabled: value.enabled, port: value.port }
     }
 }
 
@@ -102,33 +99,19 @@ pub struct AutomationSourceAudioDescriptor {
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationSourceAudioSummary {
-    Uniform {
-        descriptor: AutomationSourceAudioDescriptor,
-    },
-    Mixed {
-        differences: Vec<AutomationSourceAudioDifference>,
-    },
+    Uniform { descriptor: AutomationSourceAudioDescriptor },
+    Mixed { differences: Vec<AutomationSourceAudioDifference> },
 }
 
 /// One fact a release's files disagree on, and its values, each once.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case", tag = "fact")]
 pub enum AutomationSourceAudioDifference {
-    Layout {
-        layouts: Vec<AutomationSourceAudioLayout>,
-    },
-    Codec {
-        codecs: Vec<String>,
-    },
-    SampleRate {
-        sample_rates_hz: Vec<i64>,
-    },
-    BitDepth {
-        bits_per_sample: Vec<i64>,
-    },
-    Channels {
-        channels: Vec<i64>,
-    },
+    Layout { layouts: Vec<AutomationSourceAudioLayout> },
+    Codec { codecs: Vec<String> },
+    SampleRate { sample_rates_hz: Vec<i64> },
+    BitDepth { bits_per_sample: Vec<i64> },
+    Channels { channels: Vec<i64> },
 }
 
 impl AutomationCandidate {
@@ -226,10 +209,7 @@ pub enum AutomationStoreMarker {
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationDownloadProof {
-    Store {
-        marker: AutomationStoreMarker,
-        file: String,
-    },
+    Store { marker: AutomationStoreMarker, file: String },
     DeliverySet,
 }
 
@@ -237,13 +217,8 @@ pub enum AutomationDownloadProof {
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationAudioSource {
-    CdRip {
-        proof: AutomationCdProof,
-        file: Option<String>,
-    },
-    Download {
-        proof: AutomationDownloadProof,
-    },
+    CdRip { proof: AutomationCdProof, file: Option<String> },
+    Download { proof: AutomationDownloadProof },
 }
 
 /// Mirrors bae-core's `signals::AudioOrigin`.
@@ -257,16 +232,9 @@ pub struct AutomationAudioOrigin {
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationBarcodeSignal {
-    Scanning {
-        codes: Vec<String>,
-    },
-    Settled {
-        codes: Vec<String>,
-    },
-    Failed {
-        failure: AutomationInternalFailure,
-        codes: Vec<String>,
-    },
+    Scanning { codes: Vec<String> },
+    Settled { codes: Vec<String> },
+    Failed { failure: AutomationInternalFailure, codes: Vec<String> },
     Absent,
 }
 
@@ -274,19 +242,9 @@ pub enum AutomationBarcodeSignal {
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationTextSignal {
-    Scanning {
-        catalogs: Vec<String>,
-        free_text: Vec<String>,
-    },
-    Settled {
-        catalogs: Vec<String>,
-        free_text: Vec<String>,
-    },
-    Failed {
-        failure: AutomationInternalFailure,
-        catalogs: Vec<String>,
-        free_text: Vec<String>,
-    },
+    Scanning { catalogs: Vec<String>, free_text: Vec<String> },
+    Settled { catalogs: Vec<String>, free_text: Vec<String> },
+    Failed { failure: AutomationInternalFailure, catalogs: Vec<String>, free_text: Vec<String> },
 }
 
 /// Mirrors bae-core's `signals::Signals`.
@@ -349,19 +307,9 @@ pub struct AutomationToolbarSignal {
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationSearchQuery {
-    General {
-        artist: String,
-        album: String,
-        source: AutomationCatalog,
-    },
-    CatalogNumber {
-        catalog_number: String,
-        source: AutomationCatalog,
-    },
-    Barcode {
-        barcode: String,
-        source: AutomationCatalog,
-    },
+    General { artist: String, album: String, source: AutomationCatalog },
+    CatalogNumber { catalog_number: String, source: AutomationCatalog },
+    Barcode { barcode: String, source: AutomationCatalog },
 }
 
 /// A service that publishes descriptions of releases.
@@ -421,15 +369,8 @@ impl From<Catalog> for AutomationCatalog {
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationReleaseRecord {
-    Pressing {
-        release: AutomationMetadataRef,
-        album_key: Option<String>,
-        url: String,
-    },
-    Album {
-        album: AutomationMetadataRef,
-        url: String,
-    },
+    Pressing { release: AutomationMetadataRef, album_key: Option<String>, url: String },
+    Album { album: AutomationMetadataRef, url: String },
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -578,13 +519,8 @@ pub enum AutomationEvidenceSignal {
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationCoverSelection {
-    Remote {
-        image: AutomationRemoteImageSet,
-        source: AutomationCatalog,
-    },
-    Local {
-        path: String,
-    },
+    Remote { image: AutomationRemoteImageSet, source: AutomationCatalog },
+    Local { path: String },
 }
 
 /// Mirrors bae-core's `import::ImportStart`.

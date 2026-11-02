@@ -170,13 +170,7 @@ impl CandidateTrack {
     /// a track the folder gained after a source was applied. The source
     /// states nothing about it but where the folder puts it.
     pub fn unsourced(edit: RawTrackEdit<AudioFile>, place: crate::mediums::TrackPlace) -> Self {
-        Self {
-            edit,
-            place,
-            stated_length_ms: None,
-            roles: Vec::new(),
-            works: Vec::new(),
-        }
+        Self { edit, place, stated_length_ms: None, roles: Vec::new(), works: Vec::new() }
     }
 }
 
@@ -188,11 +182,7 @@ impl<Binding: TrackBinding> ReleaseDraft<Binding> {
             album_artist_assignments: self.album_artist_assignments.clone(),
             album_year: self.album_year.clone(),
             pressing: self.pressing.clone(),
-            tracks: self
-                .tracks
-                .iter()
-                .map(|track| track.edit.as_edit())
-                .collect(),
+            tracks: self.tracks.iter().map(|track| track.edit.as_edit()).collect(),
         }
     }
 
@@ -203,11 +193,7 @@ impl<Binding: TrackBinding> ReleaseDraft<Binding> {
     pub(crate) fn credits(&self) -> impl Iterator<Item = &ArtistCredit> {
         self.album_artist_assignments
             .iter()
-            .chain(
-                self.tracks
-                    .iter()
-                    .flat_map(|track| track.edit.artist_assignments.explicit()),
-            )
+            .chain(self.tracks.iter().flat_map(|track| track.edit.artist_assignments.explicit()))
             .filter_map(|credited| credited.artist.credit())
     }
 
@@ -215,14 +201,8 @@ impl<Binding: TrackBinding> ReleaseDraft<Binding> {
     /// tracks perform.
     pub fn with_tracks(&self, tracks: Vec<DraftTrack<Binding>>) -> Self {
         let works = self.works.keeping_performed(
-            tracks
-                .iter()
-                .flat_map(|track| track.works.iter().map(String::as_str)),
+            tracks.iter().flat_map(|track| track.works.iter().map(String::as_str)),
         );
-        Self {
-            tracks,
-            works,
-            ..self.clone()
-        }
+        Self { tracks, works, ..self.clone() }
     }
 }

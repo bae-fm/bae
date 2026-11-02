@@ -308,10 +308,7 @@ INDEX 01 01:00:00
     );
     // The first track starts at byte 0 (nothing to prefetch); the last runs
     // to EOF.
-    assert_eq!(
-        main_segments[0].start_byte, None,
-        "track 1 starts at byte 0"
-    );
+    assert_eq!(main_segments[0].start_byte, None, "track 1 starts at byte 0");
     assert_eq!(main_segments[2].end_byte, None, "track 3 runs to EOF");
 }
 
@@ -497,9 +494,7 @@ fn cue_backed_segments_ignore_rejected_index00_boundaries() {
     std::fs::write(
         &audio_path,
         bae_audio::encode_i32(
-            bae_audio::EncodeFormat::PcmWav {
-                bits_per_sample: 16,
-            },
+            bae_audio::EncodeFormat::PcmWav { bits_per_sample: 16 },
             &samples,
             75,
             2,
@@ -577,10 +572,7 @@ INDEX 01 11:01:30
     )
     .expect("build audio formats");
     let reports = bugs.reports();
-    assert!(
-        reports.is_empty(),
-        "the image's track starts read: {reports:?}"
-    );
+    assert!(reports.is_empty(), "the image's track starts read: {reports:?}");
     let main_segments: Vec<_> = built
         .audio_segments
         .iter()
@@ -590,9 +582,7 @@ INDEX 01 11:01:30
     assert_eq!(main_segments.len(), 4);
     for segment in &main_segments {
         assert!(
-            segment
-                .end_sample
-                .is_none_or(|end_sample| end_sample > segment.start_sample),
+            segment.end_sample.is_none_or(|end_sample| end_sample > segment.start_sample),
             "main segment must have a positive sample window: {segment:?}",
         );
     }
@@ -686,9 +676,7 @@ fn a_pregap_in_the_final_frames_of_the_file_before_gets_its_byte() {
             .map(|i| ((i as f64 * 0.013).sin() * 0.5 * i32::MAX as f64) as i32)
             .collect();
         bae_audio::encode_i32(
-            bae_audio::EncodeFormat::Flac {
-                bits_per_sample: 16,
-            },
+            bae_audio::EncodeFormat::Flac { bits_per_sample: 16 },
             &samples,
             sample_rate as u32,
             2,
@@ -744,10 +732,8 @@ FILE "second.flac" WAVE
             },
         })
         .collect();
-    let file_ids = HashMap::from([
-        (first_path, "first".to_string()),
-        (second_path, "second".to_string()),
-    ]);
+    let file_ids =
+        HashMap::from([(first_path, "first".to_string()), (second_path, "second".to_string())]);
 
     let built = ImportService::build_audio_formats(
         &tracks_to_files,
@@ -824,10 +810,8 @@ impl bae_audio::DecodedSink for PacketPlaces {
 fn assert_track_start_is_its_frame(name: &str, format: bae_audio::EncodeFormat) {
     let temp = tempfile::tempdir().expect("tempdir");
     let (bytes, segments) = crate::test_images::cue_image(temp.path(), name, format);
-    let track2 = segments
-        .iter()
-        .find(|segment| segment.start_sample > 0)
-        .expect("track 2's segment");
+    let track2 =
+        segments.iter().find(|segment| segment.start_sample > 0).expect("track 2's segment");
 
     let mut places = PacketPlaces::default();
     let buffer = bae_audio::sparse_buffer::create_sparse_buffer(bytes.len() as u64);
@@ -936,10 +920,7 @@ fn an_image_whose_track_starts_cannot_be_read_is_reported_as_a_bug() {
         panic!("one bug reported, got {reports:?}");
     };
     assert_eq!(operation, "read where each track of a CUE image starts");
-    assert!(
-        detail.contains(&path.display().to_string()),
-        "the report names the image: {detail}"
-    );
+    assert!(detail.contains(&path.display().to_string()), "the report names the image: {detail}");
     assert!(
         built
             .audio_segments

@@ -12,20 +12,12 @@ async fn a_candidate_nobody_selected_acquires_a_verdict() {
     fixture.provider.route(
         "/discid/",
         200,
-        discid_json(
-            "mb-auto-1",
-            "rg-auto-1",
-            &[probed / 2, probed - probed / 2],
-        ),
+        discid_json("mb-auto-1", "rg-auto-1", &[probed / 2, probed - probed / 2]),
     );
     fixture.provider.route(
         "/release/mb-auto-1?",
         200,
-        release_json(
-            "mb-auto-1",
-            "rg-auto-1",
-            &[probed / 2, probed - probed / 2],
-        ),
+        release_json("mb-auto-1", "rg-auto-1", &[probed / 2, probed - probed / 2]),
     );
     fixture.scan(1).await;
 
@@ -38,11 +30,7 @@ async fn a_candidate_nobody_selected_acquires_a_verdict() {
         crate::import::CandidateKey::folder(&dir),
         "the row names where the candidate was last seen"
     );
-    assert_eq!(
-        fixture.judgement_for(&dir).await,
-        (true, None),
-        "one match, counts agreeing"
-    );
+    assert_eq!(fixture.judgement_for(&dir).await, (true, None), "one match, counts agreeing");
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -67,9 +55,7 @@ async fn a_planned_candidate_is_queued_before_its_driver_reports() {
     assert_eq!(changed, key);
     assert_eq!(
         runtime.identification,
-        Some(crate::import::IdentificationRuntime::Queued(
-            crate::import::Admission::Automatic
-        ))
+        Some(crate::import::IdentificationRuntime::Queued(crate::import::Admission::Automatic))
     );
 
     fixture.provider.release();
@@ -88,7 +74,8 @@ async fn a_shared_identify_job_runs_one_member_and_leaves_the_rest_queued() {
     let fixture = Fixture::new("shared-job-status").await;
     let first = fixture.disc_id_candidate("First");
     let second = fixture.disc_id_candidate("Second");
-    let keys = [crate::import::CandidateKey::folder(&first), crate::import::CandidateKey::folder(&second)];
+    let keys =
+        [crate::import::CandidateKey::folder(&first), crate::import::CandidateKey::folder(&second)];
     fixture.provider.route("/discid/", 200, "{}");
     fixture.provider.hold("/discid/");
     fixture.scan(2).await;
@@ -123,9 +110,7 @@ async fn a_shared_identify_job_runs_one_member_and_leaves_the_rest_queued() {
              runtimes: {:?}; requests: {:?}; identifying: {:?}",
             fixture.import.candidate_runtimes().await.unwrap(),
             fixture.provider.requests(),
-            keys.iter()
-                .map(|key| fixture.import.is_identifying(key))
-                .collect::<Vec<_>>()
+            keys.iter().map(|key| fixture.import.is_identifying(key)).collect::<Vec<_>>()
         );
     }
 
@@ -160,10 +145,7 @@ async fn a_stored_verdict_is_not_re_fetched() {
     fixture.scan(1).await;
     fixture.drain_automatic().await;
     let after_first = fixture.provider.requests().len();
-    assert!(
-        after_first > 0,
-        "the first name has to actually ask the provider"
-    );
+    assert!(after_first > 0, "the first name has to actually ask the provider");
     assert!(fixture.identified_for(&dir).await.is_some());
     let answered = fixture.content_hash(&dir);
 
@@ -200,16 +182,11 @@ async fn a_stored_verdict_is_not_re_fetched() {
 async fn a_transport_failure_is_stored() {
     let fixture = Fixture::new("failure-stored").await;
     let dir = fixture.disc_id_candidate("Album");
-    fixture
-        .provider
-        .set_routes(vec![("/discid/", 400, "{}".to_string())]);
+    fixture.provider.set_routes(vec![("/discid/", 400, "{}".to_string())]);
     fixture.scan(1).await;
 
     fixture.drain_automatic().await;
-    let stored = fixture
-        .identified_for(&dir)
-        .await
-        .expect("the failed outcome is stored");
+    let stored = fixture.identified_for(&dir).await.expect("the failed outcome is stored");
     assert!(matches!(stored.verdict, TerminalVerdict::Failed { .. }));
 }
 
@@ -227,35 +204,23 @@ async fn a_transport_failure_is_stored() {
 #[tokio::test(flavor = "multi_thread")]
 async fn the_interactive_path_is_not_delayed_by_automatic_identification() {
     let fixture = Fixture::new("interactive-not-delayed").await;
-    fixture
-        .import
-        .register_artwork_analyzer(Arc::new(PerFolderBarcodeAnalyzer));
+    fixture.import.register_artwork_analyzer(Arc::new(PerFolderBarcodeAnalyzer));
     let mut dirs = Vec::new();
     for i in 0..8 {
         let dir = fixture.barcode_candidate(&format!("Album {i}"));
-        std::fs::write(
-            dir.join(format!("playlist-{i}.m3u")),
-            format!("candidate {i}"),
-        )
-        .unwrap();
+        std::fs::write(dir.join(format!("playlist-{i}.m3u")), format!("candidate {i}")).unwrap();
         dirs.push(dir);
     }
     let probed = fixture.probed_total_ms(&dirs[0]);
     // Added first, so the typed-search route below catches only what the
     // barcode lookups leave.
-    fixture.provider.route(
-        "/release?query=barcode",
-        200,
-        search_json("mb-flood-0", "rg-flood-0"),
-    );
+    fixture.provider.route("/release?query=barcode", 200, search_json("mb-flood-0", "rg-flood-0"));
     fixture.provider.route(
         "/release/mb-flood-0?",
         200,
         release_json("mb-flood-0", "rg-flood-0", &[probed, 0]),
     );
-    fixture
-        .provider
-        .route("/release?", 200, search_json("mb-typed", "rg-typed"));
+    fixture.provider.route("/release?", 200, search_json("mb-typed", "rg-typed"));
     fixture.scan(8).await;
 
     let sweep = fixture.drain_automatic_task();
@@ -381,10 +346,7 @@ fn a_document_lists_its_tracks_titles() {
     );
     let release = payloads.extract().unwrap();
     let document = crate::identify::documents::ReleaseDocument::of(
-        crate::import::source_release::PreparedRelease {
-            stored: release.clone(),
-            release,
-        },
+        crate::import::source_release::PreparedRelease { stored: release.clone(), release },
         &crate::import::catalog_reading::ReadAudio::of_lengths(&[200_000, 100_000, 300_000]),
     );
     assert_eq!(document.source_tracks, SourceTracks::Listed { count: 3 });
@@ -424,10 +386,7 @@ async fn a_skipped_candidate_is_not_identified() {
         "a skipped candidate costs the provider nothing: {:?}",
         fixture.provider.requests()
     );
-    assert!(
-        fixture.identified_for(&dir).await.is_none(),
-        "and produces no identification result"
-    );
+    assert!(fixture.identified_for(&dir).await.is_none(), "and produces no identification result");
 }
 
 /// An identification that settles on a release the catalogs hold no artwork
@@ -441,11 +400,7 @@ async fn a_settled_run_with_no_artwork_keeps_the_folders_own_cover() {
     std::fs::write(dir.join("cover.jpg"), [0xFF, 0xD8, 0xFF, 0xE0, 0x00]).unwrap();
     let probed = fixture.probed_total_ms(&dir);
     let lengths = [probed / 2, probed - probed / 2];
-    fixture.provider.route(
-        "/discid/",
-        200,
-        discid_json("mb-bare-1", "rg-bare-1", &lengths),
-    );
+    fixture.provider.route("/discid/", 200, discid_json("mb-bare-1", "rg-bare-1", &lengths));
     fixture.provider.route(
         "/release/mb-bare-1?",
         200,
@@ -484,7 +439,10 @@ async fn a_settled_run_with_no_artwork_keeps_the_folders_own_cover() {
             .pane(&dir)
             .await
             .expect("the identified candidate reads back")
-            .draft().unwrap().cover.clone()
+            .draft()
+            .unwrap()
+            .cover
+            .clone()
             .expect("the pane shows the stored selection")
             .selection,
         folders_own
@@ -501,31 +459,19 @@ async fn a_settled_run_with_no_artwork_keeps_the_folders_own_cover() {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_release_no_identifier_names_is_found_by_its_title() {
     let fixture = Fixture::new("found-by-title").await;
-    fixture
-        .import
-        .register_artwork_analyzer(Arc::new(BarcodeAnalyzer {
-            barcode: "0123456789012".to_string(),
-        }));
+    fixture.import.register_artwork_analyzer(Arc::new(BarcodeAnalyzer {
+        barcode: "0123456789012".to_string(),
+    }));
     // The folder name is what the pre-filled draft calls the release, and so
     // what the title search asks about.
     let dir = fixture.barcode_candidate("Album Title");
     let probed = fixture.probed_total_ms(&dir);
-    fixture
-        .provider
-        .route("query=barcode%3A", 200, r#"{"releases":[]}"#);
-    fixture.provider.route(
-        "query=release%3A",
-        200,
-        search_json("mb-by-title", "rg-by-title"),
-    );
+    fixture.provider.route("query=barcode%3A", 200, r#"{"releases":[]}"#);
+    fixture.provider.route("query=release%3A", 200, search_json("mb-by-title", "rg-by-title"));
     fixture.provider.route(
         "/release/mb-by-title?",
         200,
-        release_json(
-            "mb-by-title",
-            "rg-by-title",
-            &[probed / 2, probed - probed / 2],
-        ),
+        release_json("mb-by-title", "rg-by-title", &[probed / 2, probed - probed / 2]),
     );
     fixture.scan(1).await;
 
@@ -534,11 +480,8 @@ async fn a_release_no_identifier_names_is_found_by_its_title() {
     let verdict = identify_result(&fixture.stored_for(&dir).await.expect("a verdict is stored"))
         .verdict
         .clone();
-    let TerminalVerdict::Found {
-        findings:
-            crate::identify::Findings { matches, .. },
-        ..
-    } = &verdict
+    let TerminalVerdict::Found { findings: crate::identify::Findings { matches, .. }, .. } =
+        &verdict
     else {
         panic!("expected the title search's release, got {verdict:?}");
     };
@@ -565,7 +508,9 @@ async fn a_release_no_identifier_names_is_found_by_its_title() {
         "identification wrote the draft from the lone row"
     );
     assert_eq!(
-        pane.draft().unwrap().release_link
+        pane.draft()
+            .unwrap()
+            .release_link
             .as_ref()
             .and_then(crate::import::ReleaseLink::pressing)
             .expect("the settled row is the candidate's release")

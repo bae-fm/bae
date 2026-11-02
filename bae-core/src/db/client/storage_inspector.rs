@@ -121,10 +121,6 @@ pub(super) fn inspector_files_on(
             }),
             None => None,
         };
-        Ok(DbStorageInspectorFile {
-            file: row_to_file(row)?,
-            pin,
-            upload,
-        })
+        Ok(DbStorageInspectorFile { file: row_to_file(row)?, pin, upload })
     })?)
 }

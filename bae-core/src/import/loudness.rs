@@ -92,11 +92,7 @@ impl LoudnessProgress {
     }
 
     fn report_initial(&self) {
-        self.send(
-            self.scan_total_frames
-                .is_some_and(|total| total > 0)
-                .then_some(0),
-        );
+        self.send(self.scan_total_frames.is_some_and(|total| total > 0).then_some(0));
     }
 
     /// Count `frames` more of the scan as done and report where it stands.
@@ -110,10 +106,7 @@ impl LoudnessProgress {
             return;
         };
         let percent = (fraction * 100.0).round().clamp(0.0, 100.0) as u8;
-        let mut last_percent = self
-            .last_percent
-            .lock()
-            .expect("loudness progress mutex poisoned");
+        let mut last_percent = self.last_percent.lock().expect("loudness progress mutex poisoned");
         if *last_percent >= percent {
             return;
         }
@@ -122,16 +115,15 @@ impl LoudnessProgress {
     }
 
     fn send(&self, percent: Option<u8>) {
-        self.event_tx
-            .send(crate::import::handle::ImportEvent::ImportProgress {
-                candidate_key: self.candidate_key.clone(),
-                progress: crate::import::types::ImportProgress::Progress {
-                    id: self.release_id.clone(),
-                    percent,
-                    phase: crate::import::types::ImportPhase::MeasuringLoudness,
-                    import_id: self.import_id.clone(),
-                },
-            });
+        self.event_tx.send(crate::import::handle::ImportEvent::ImportProgress {
+            candidate_key: self.candidate_key.clone(),
+            progress: crate::import::types::ImportProgress::Progress {
+                id: self.release_id.clone(),
+                percent,
+                phase: crate::import::types::ImportPhase::MeasuringLoudness,
+                import_id: self.import_id.clone(),
+            },
+        });
     }
 }
 
@@ -260,9 +252,7 @@ impl LoudnessProgressSink {
         if let Some(e) = self.error {
             return Err(e);
         }
-        let state = self
-            .state
-            .ok_or_else(|| "decode produced no audio format".to_string())?;
+        let state = self.state.ok_or_else(|| "decode produced no audio format".to_string())?;
         state.meter.finish()
     }
 }
@@ -294,8 +284,7 @@ impl bae_audio::DecodedSink for LoudnessProgressSink {
     }
 
     fn on_stream(&mut self, stream: &bae_audio::DecodedStream) {
-        self.scrub_point_takers
-            .push(super::scrub_points::ScrubPointTaker::for_stream(stream));
+        self.scrub_point_takers.push(super::scrub_points::ScrubPointTaker::for_stream(stream));
     }
 
     fn on_packet(&mut self, packet: bae_audio::DecodedPacket) {
@@ -361,11 +350,9 @@ fn measure_track(
         Err(DecodeStop::ReadPanicked(failed)) => {
             TrackOutcome::ReadPanicked(diagnostics.bug(failed))
         }
-        Err(DecodeStop::Failed(reason)) => TrackOutcome::Decoded {
-            measured: None,
-            broken: Some(reason),
-            scrub_points: Vec::new(),
-        },
+        Err(DecodeStop::Failed(reason)) => {
+            TrackOutcome::Decoded { measured: None, broken: Some(reason), scrub_points: Vec::new() }
+        }
         Ok(scrub_points) => {
             // A decode that fails outright is broken, but so is one that
             // returns Ok over fatal errors or a truncated body — `broken_reason`
@@ -388,11 +375,7 @@ fn measure_track(
                     None
                 }
             };
-            TrackOutcome::Decoded {
-                measured,
-                broken,
-                scrub_points,
-            }
+            TrackOutcome::Decoded { measured, broken, scrub_points }
         }
     }
 }
@@ -447,10 +430,7 @@ fn decode_track(
                 .zip(per_segment)
                 .filter_map(|(segment, points)| {
                     let points = points.filter(|points| !points.is_empty())?;
-                    Some(crate::db::DbScrubPoints {
-                        audio_segment_id: segment.id.clone(),
-                        points,
-                    })
+                    Some(crate::db::DbScrubPoints { audio_segment_id: segment.id.clone(), points })
                 })
                 .collect())
         }
@@ -515,11 +495,9 @@ pub(super) async fn measure_loudness(
     let mut sources: HashMap<String, (PathBuf, u64)> = HashMap::new();
     for (path, file_id) in file_ids {
         let size =
-            *source_file_sizes
-                .get(path)
-                .ok_or_else(|| crate::import::ImportError::Internal {
-                    detail: format!("validated source size is missing for {}", path.display()),
-                })?;
+            *source_file_sizes.get(path).ok_or_else(|| crate::import::ImportError::Internal {
+                detail: format!("validated source size is missing for {}", path.display()),
+            })?;
         sources.insert(file_id.clone(), (path.clone(), size));
     }
 
@@ -560,19 +538,12 @@ pub(super) async fn measure_loudness(
                 })
         })
         .collect();
-    let scan_total_frames = track_total_frames
-        .iter()
-        .copied()
-        .try_fold(0u64, |total, track_total| {
+    let scan_total_frames =
+        track_total_frames.iter().copied().try_fold(0u64, |total, track_total| {
             track_total.map(|frames| total.saturating_add(frames))
         });
-    let progress = LoudnessProgress::new(
-        event_tx,
-        candidate_key,
-        release_id,
-        import_id,
-        scan_total_frames,
-    );
+    let progress =
+        LoudnessProgress::new(event_tx, candidate_key, release_id, import_id, scan_total_frames);
     progress.report_initial();
 
     // A track with no segments, or one reading a file the import holds no
@@ -587,9 +558,8 @@ pub(super) async fn measure_loudness(
             progress.advance(track_total_frames[index].unwrap_or(0));
             continue;
         }
-        if let Some(segment) = segments
-            .iter()
-            .find(|segment| !sources.contains_key(&segment.file_id))
+        if let Some(segment) =
+            segments.iter().find(|segment| !sources.contains_key(&segment.file_id))
         {
             warn!(
                 "loudness: cannot read segment source file {} for track {}; track stays unmeasured",
@@ -612,11 +582,7 @@ pub(super) async fn measure_loudness(
         measured_tracks,
         parallelism,
         |track: &MeasuredTrack| {
-            track
-                .segments
-                .iter()
-                .map(|segment| segment.file_id.clone())
-                .collect()
+            track.segments.iter().map(|segment| segment.file_id.clone()).collect()
         },
         |file_id: &String| {
             let (path, size) = &sources[file_id];
@@ -643,17 +609,12 @@ pub(super) async fn measure_loudness(
                 .map_err(|failed| diagnostics.bug(failed))?;
                 match outcome {
                     TrackOutcome::Unreadable(error) => {
-                        Err(crate::import::ImportError::SourceRead {
-                            track: label,
-                            error,
-                        })
+                        Err(crate::import::ImportError::SourceRead { track: label, error })
                     }
                     TrackOutcome::ReadPanicked(failed) => Err(failed.into()),
-                    TrackOutcome::Decoded {
-                        measured,
-                        broken,
-                        scrub_points,
-                    } => Ok((index, measured, broken, scrub_points)),
+                    TrackOutcome::Decoded { measured, broken, scrub_points } => {
+                        Ok((index, measured, broken, scrub_points))
+                    }
                 }
             }
         },
@@ -674,10 +635,7 @@ pub(super) async fn measure_loudness(
             track_peaks.push(peak_linear);
         }
         if let Some(reason) = broken {
-            warn!(
-                "import verify: track source for track {} looks broken: {reason}",
-                index + 1
-            );
+            warn!("import verify: track source for track {} looks broken: {reason}", index + 1);
             broken_tracks.push(format!(
                 "{} (track {}): {reason}",
                 tracks_to_files[index].db_track.title,
@@ -687,9 +645,7 @@ pub(super) async fn measure_loudness(
     }
 
     if !broken_tracks.is_empty() {
-        return Err(crate::import::ImportError::DecodeVerification {
-            broken: broken_tracks,
-        });
+        return Err(crate::import::ImportError::DecodeVerification { broken: broken_tracks });
     }
 
     let album_loudness = crate::loudness::album_loudness(&meters);

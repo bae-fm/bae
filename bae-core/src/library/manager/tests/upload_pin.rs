@@ -21,15 +21,9 @@ async fn upload_pins_as_the_stored_choice_says() {
     .await;
 
     manager.set_import_pinned(true).await.unwrap();
-    manager
-        .upload_releases(std::slice::from_ref(&kept.id))
-        .await
-        .unwrap();
+    manager.upload_releases(std::slice::from_ref(&kept.id)).await.unwrap();
     manager.set_import_pinned(false).await.unwrap();
-    manager
-        .upload_releases(std::slice::from_ref(&evictable.id))
-        .await
-        .unwrap();
+    manager.upload_releases(std::slice::from_ref(&evictable.id)).await.unwrap();
 
     manager.drain_uploads_expecting_work().await.unwrap();
     wait_for_kept_release(&manager, &kept.id).await;
@@ -55,20 +49,10 @@ async fn upload_pins_as_the_stored_choice_says() {
 async fn the_cloud_only_count_is_the_uploaded_releases_not_pinned() {
     let (manager, temp_dir) = setup_test_manager().await;
     connect_test_cloud_with_sync_loop(&manager).await;
-    upload_release_under_sync_loop(
-        &manager,
-        &temp_dir.path().join("pinned"),
-        "Pinned Album",
-        true,
-    )
-    .await;
-    upload_release_under_sync_loop(
-        &manager,
-        &temp_dir.path().join("cloud"),
-        "Cloud Album",
-        false,
-    )
-    .await;
+    upload_release_under_sync_loop(&manager, &temp_dir.path().join("pinned"), "Pinned Album", true)
+        .await;
+    upload_release_under_sync_loop(&manager, &temp_dir.path().join("cloud"), "Cloud Album", false)
+        .await;
     insert_local_release_with_files(
         &manager,
         &temp_dir.path().join("local"),
@@ -91,9 +75,12 @@ async fn the_cloud_only_count_is_the_uploaded_releases_not_pinned() {
 async fn a_kept_release_is_pinned_once_its_copy_lands() {
     let (manager, temp_dir) = setup_test_manager().await;
     let home = connect_test_cloud(&manager).await;
-    let release =
-        release_kept_here_waiting_for_its_copy(&manager, &temp_dir.path().join("kept"), "Album Title")
-            .await;
+    let release = release_kept_here_waiting_for_its_copy(
+        &manager,
+        &temp_dir.path().join("kept"),
+        "Album Title",
+    )
+    .await;
     let file_id = release_files(&manager, &release.id).await[0].id.clone();
     let file = manager.release_file_ref(&file_id).await.unwrap();
     assert_eq!(
@@ -137,10 +124,14 @@ async fn a_kept_release_is_pinned_once_its_copy_lands() {
 async fn a_kept_release_sorts_as_pinned_once_its_copies_land() {
     let (manager, temp_dir) = setup_test_manager().await;
     let home = connect_test_cloud(&manager).await;
-    let cloud = uploaded_release(&manager, &temp_dir.path().join("cloud"), "Album Title A", false).await;
-    let waiting =
-        release_kept_here_waiting_for_its_copy(&manager, &temp_dir.path().join("waiting"), "Album Title B")
-            .await;
+    let cloud =
+        uploaded_release(&manager, &temp_dir.path().join("cloud"), "Album Title A", false).await;
+    let waiting = release_kept_here_waiting_for_its_copy(
+        &manager,
+        &temp_dir.path().join("waiting"),
+        "Album Title B",
+    )
+    .await;
     let by_storage = || async {
         manager
             .database
@@ -162,10 +153,7 @@ async fn a_kept_release_sorts_as_pinned_once_its_copies_land() {
     use crate::album_detail::StoragePlace;
     assert_eq!(
         by_storage().await,
-        [
-            (cloud.clone(), StoragePlace::Cloud),
-            (waiting.id.clone(), StoragePlace::Cloud),
-        ]
+        [(cloud.clone(), StoragePlace::Cloud), (waiting.id.clone(), StoragePlace::Cloud),]
     );
 
     home.set_faults(coven::Faults::none()).await;
@@ -173,15 +161,10 @@ async fn a_kept_release_sorts_as_pinned_once_its_copies_land() {
     manager.database.pin(&refs).await.unwrap();
     assert_eq!(
         by_storage().await,
-        [
-            (waiting.id.clone(), StoragePlace::Pinned),
-            (cloud.clone(), StoragePlace::Cloud),
-        ]
+        [(waiting.id.clone(), StoragePlace::Pinned), (cloud.clone(), StoragePlace::Cloud),]
     );
     inspector_rows_until(&manager, &waiting.id, |rows| {
-        rows.files
-            .iter()
-            .all(|file| file.pin == Some(crate::album_detail::FilePin::Kept))
+        rows.files.iter().all(|file| file.pin == Some(crate::album_detail::FilePin::Kept))
     })
     .await;
 }

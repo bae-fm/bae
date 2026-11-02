@@ -60,10 +60,7 @@ pub enum ReleaseName {
     /// The name the person gave it.
     Named(String),
     /// No name: its year and media, whichever it states.
-    Described {
-        year: Option<i32>,
-        media: Vec<bae_types::pressing::MediaCount>,
-    },
+    Described { year: Option<i32>, media: Vec<bae_types::pressing::MediaCount> },
     /// No name and nothing to describe it by: its place among the album's
     /// releases, counted from one.
     Numbered(i64),
@@ -80,10 +77,9 @@ impl ReleaseName {
     ) -> Self {
         match release_name {
             Some(name) => Self::Named(name.to_string()),
-            None if year.is_some() || !media.is_empty() => Self::Described {
-                year,
-                media: media.to_vec(),
-            },
+            None if year.is_some() || !media.is_empty() => {
+                Self::Described { year, media: media.to_vec() }
+            }
             None => Self::Numbered(release_number),
         }
     }
@@ -210,9 +206,9 @@ pub fn release_download_status(
     match download {
         Some(DownloadPhase::Queued) => Some(ReleaseDownloadStatus::Queued),
         Some(DownloadPhase::Active { progress: () }) => Some(ReleaseDownloadStatus::Downloading),
-        Some(DownloadPhase::Failed { error }) => Some(ReleaseDownloadStatus::Failed {
-            error: error.clone(),
-        }),
+        Some(DownloadPhase::Failed { error }) => {
+            Some(ReleaseDownloadStatus::Failed { error: error.clone() })
+        }
         None if pinned => Some(ReleaseDownloadStatus::Downloaded),
         None if storage_actions.contains(&ReleaseStorageAction::Pin) => {
             Some(ReleaseDownloadStatus::Available)
@@ -410,23 +406,15 @@ mod tests {
     #[test]
     fn local_with_cloud_offers_upload() {
         // `pinned` is irrelevant for a local release.
-        assert_eq!(
-            available_storage_actions(Local, &Playable, false, true),
-            vec![Upload]
-        );
-        assert_eq!(
-            available_storage_actions(Local, &Playable, true, true),
-            vec![Upload]
-        );
+        assert_eq!(available_storage_actions(Local, &Playable, false, true), vec![Upload]);
+        assert_eq!(available_storage_actions(Local, &Playable, true, true), vec![Upload]);
     }
 
     /// Uploading reads this device's originals, so a release another device
     /// imported offers nothing to upload.
     #[test]
     fn local_without_its_originals_here_offers_nothing() {
-        let elsewhere = OnOtherDevice(OtherDevice::Active {
-            name: "Device A".to_string(),
-        });
+        let elsewhere = OnOtherDevice(OtherDevice::Active { name: "Device A".to_string() });
         assert_eq!(
             available_storage_actions(Local, &elsewhere, false, true),
             Vec::<ReleaseStorageAction>::new(),
@@ -485,17 +473,10 @@ mod tests {
         use crate::library::DownloadPhase;
         let cases = [
             (DownloadPhase::Queued, ReleaseDownloadStatus::Queued),
+            (DownloadPhase::Active { progress: () }, ReleaseDownloadStatus::Downloading),
             (
-                DownloadPhase::Active { progress: () },
-                ReleaseDownloadStatus::Downloading,
-            ),
-            (
-                DownloadPhase::Failed {
-                    error: "read failed".to_string(),
-                },
-                ReleaseDownloadStatus::Failed {
-                    error: "read failed".to_string(),
-                },
+                DownloadPhase::Failed { error: "read failed".to_string() },
+                ReleaseDownloadStatus::Failed { error: "read failed".to_string() },
             ),
         ];
         for (state, expected) in cases {

@@ -119,9 +119,9 @@ fn units_of(layout: &[(&ScannedFile, UnitContribution<'_>)]) -> Vec<AudioFile> {
     let mut units = Vec::new();
     for (file, contribution) in layout {
         match contribution {
-            UnitContribution::Whole => units.push(AudioFile::Standalone {
-                file_id: file.relative_path.clone(),
-            }),
+            UnitContribution::Whole => {
+                units.push(AudioFile::Standalone { file_id: file.relative_path.clone() })
+            }
             UnitContribution::Runs(sheets) => {
                 for sheet in sheets {
                     for (index, track) in sheet.sheet.playable_tracks().enumerate() {
@@ -158,11 +158,9 @@ pub(crate) fn audio_durations(
     audio_units(files)
         .iter()
         .map(|audio| {
-            durations
-                .duration_of(audio)
-                .ok_or_else(|| ImportError::UnusableFile {
-                    detail: format!("{} has no measured duration", audio.file_id()),
-                })
+            durations.duration_of(audio).ok_or_else(|| ImportError::UnusableFile {
+                detail: format!("{} has no measured duration", audio.file_id()),
+            })
         })
         .collect()
 }
@@ -187,9 +185,7 @@ pub(crate) fn folder_tracks(files: &CategorizedFiles) -> Vec<FolderTrack> {
         .carving_sheets()
         .into_iter()
         .map(|sheet| {
-            let disc = sheet
-                .disc_number()
-                .expect("a carving sheet has a disc assignment");
+            let disc = sheet.disc_number().expect("a carving sheet has a disc assignment");
             (sheet.file.relative_path.as_str(), disc)
         })
         .collect();
@@ -247,11 +243,7 @@ pub(crate) fn folder_tracks(files: &CategorizedFiles) -> Vec<FolderTrack> {
 /// a directive may resolve by stem, and a single-file sheet may be bound by
 /// the user.
 fn sheet_audio_ids<'a>(bound: &BoundTrackSheet<'a>) -> Vec<&'a str> {
-    bound
-        .audio_files
-        .iter()
-        .map(|(_, audio)| audio.relative_path.as_str())
-        .collect()
+    bound.audio_files.iter().map(|(_, audio)| audio.relative_path.as_str()).collect()
 }
 
 /// Bind each track to the audio holding its samples and yield the
@@ -287,23 +279,13 @@ pub(crate) fn resolve_track_files(
         let (audio, duration_ms) = match &audio {
             AudioFile::Standalone { .. } => {
                 let source_audio =
-                    file.source_audio
-                        .clone()
-                        .ok_or_else(|| ImportError::UnusableFile {
-                            detail: format!("{} has no scanned audio facts", file.relative_path),
-                        })?;
+                    file.source_audio.clone().ok_or_else(|| ImportError::UnusableFile {
+                        detail: format!("{} has no scanned audio facts", file.relative_path),
+                    })?;
                 let duration_ms = source_audio.duration_ms;
-                (
-                    TrackAudio::Standalone {
-                        file_path: file.path.clone(),
-                        source_audio,
-                    },
-                    duration_ms,
-                )
+                (TrackAudio::Standalone { file_path: file.path.clone(), source_audio }, duration_ms)
             }
-            AudioFile::SheetSlice {
-                sheet_id, index, ..
-            } => {
+            AudioFile::SheetSlice { sheet_id, index, .. } => {
                 let analysis = match analyses.get(sheet_id) {
                     Some(analysis) => Arc::clone(analysis),
                     None => {
@@ -315,13 +297,7 @@ pub(crate) fn resolve_track_files(
                 let cue_index = *index as usize;
                 let duration_ms =
                     crate::import::probe::sheet_track_duration_ms(&analysis, cue_index, sheet_id)?;
-                (
-                    TrackAudio::CueBacked {
-                        cue_pair: analysis,
-                        cue_index,
-                    },
-                    duration_ms,
-                )
+                (TrackAudio::CueBacked { cue_pair: analysis, cue_index }, duration_ms)
             }
         };
         let db_track = row.measured(duration_ms);
@@ -340,12 +316,11 @@ fn audio_file<'a>(
     files: &'a CategorizedFiles,
     audio: &AudioFile,
 ) -> Result<&'a ScannedFile, ImportError> {
-    files
-        .audio()
-        .find(|file| file.relative_path == audio.file_id())
-        .ok_or_else(|| ImportError::UnusableFile {
+    files.audio().find(|file| file.relative_path == audio.file_id()).ok_or_else(|| {
+        ImportError::UnusableFile {
             detail: format!("{} is no longer in the folder", audio.file_id()),
-        })
+        }
+    })
 }
 
 /// A file's name without its extension — the title an unnamed row writes.

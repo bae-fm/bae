@@ -32,10 +32,7 @@ pub fn read(release_id: &str, formats: &[DiscogsFormat]) -> FormatsReading {
     let mut packaging = None;
     let mut details: Vec<DiscogsDetail> = Vec::new();
     // An entry with a blank name states nothing.
-    for format in formats
-        .iter()
-        .filter(|format| !format.name.trim().is_empty())
-    {
+    for format in formats.iter().filter(|format| !format.name.trim().is_empty()) {
         let roles: Vec<Role> = format
             .descriptions
             .iter()
@@ -73,10 +70,7 @@ pub fn read(release_id: &str, formats: &[DiscogsFormat]) -> FormatsReading {
                     format = format.name.as_str(),
                     "a Discogs format name is outside Discogs's format list"
                 );
-                media.push(StatedFormat {
-                    medium: None,
-                    quantity: quantity(release_id, format),
-                });
+                media.push(StatedFormat { medium: None, quantity: quantity(release_id, format) });
             }
         }
         for role in roles {
@@ -163,10 +157,7 @@ mod tests {
         );
         assert_eq!(
             reading.media.counts(),
-            vec![bae_types::pressing::MediaCount {
-                medium: Medium::Vinyl,
-                count: 6
-            }]
+            vec![bae_types::pressing::MediaCount { medium: Medium::Vinyl, count: 6 }]
         );
         assert_eq!(reading.packaging, Some(Packaging::Box));
         assert_eq!(reading.status, None);
@@ -191,14 +182,7 @@ mod tests {
 
     #[test]
     fn an_unofficial_promotional_copy_is_a_bootleg() {
-        let reading = read(
-            "1",
-            &[format(
-                "Vinyl",
-                "1",
-                &["12\"", "Promo", "Unofficial Release"],
-            )],
-        );
+        let reading = read("1", &[format("Vinyl", "1", &["12\"", "Promo", "Unofficial Release"])]);
         assert_eq!(reading.status, Some(ReleaseStatus::Bootleg));
     }
 
@@ -215,10 +199,7 @@ mod tests {
         let unstated = read("1", &[format("Hybrid", "1", &["Album"])]);
         assert_eq!(
             unstated.media,
-            StatedMedia::Formats(vec![StatedFormat {
-                medium: None,
-                quantity: 1
-            }])
+            StatedMedia::Formats(vec![StatedFormat { medium: None, quantity: 1 }])
         );
     }
 
@@ -227,10 +208,7 @@ mod tests {
         let reading = read("1", &[format("Zorblax", "0", &["Reissue", "180 Gram"])]);
         assert_eq!(
             reading.media,
-            StatedMedia::Formats(vec![StatedFormat {
-                medium: None,
-                quantity: 1
-            }])
+            StatedMedia::Formats(vec![StatedFormat { medium: None, quantity: 1 }])
         );
         assert_eq!(reading.details, vec![DiscogsDetail::Reissue]);
         assert_eq!(read("1", &[]).media, StatedMedia::Undescribed);

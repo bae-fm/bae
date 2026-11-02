@@ -24,13 +24,8 @@ mirror_enum! {
 /// `bae_core::album_detail::OtherDevice`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeOtherDevice {
-    Active {
-        name: String,
-    },
-    Former {
-        name: String,
-        state: BridgeFormerDeviceState,
-    },
+    Active { name: String },
+    Former { name: String, state: BridgeFormerDeviceState },
 }
 
 mirror_enum! {
@@ -49,10 +44,8 @@ mirror_enum! {
 pub fn bridge_release_playability_line(
     playability: &BridgeReleasePlayability,
 ) -> Option<BridgeMessage> {
-    let message = |key: &str, args: Vec<BridgeMessageArg>| BridgeMessage {
-        key: key.to_string(),
-        args,
-    };
+    let message =
+        |key: &str, args: Vec<BridgeMessageArg>| BridgeMessage { key: key.to_string(), args };
     match playability {
         BridgeReleasePlayability::Playable => None,
         BridgeReleasePlayability::OnOtherDevice { device } => Some(match device {

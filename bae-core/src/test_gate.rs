@@ -46,8 +46,6 @@ impl Held {
         )]
         let _ = self.entered.send(());
         let (open, changed) = &*self.opened;
-        let _open = changed
-            .wait_while(open.lock().unwrap(), |open| !*open)
-            .unwrap();
+        let _open = changed.wait_while(open.lock().unwrap(), |open| !*open).unwrap();
     }
 }

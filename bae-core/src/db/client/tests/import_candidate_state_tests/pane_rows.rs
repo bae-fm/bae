@@ -4,11 +4,12 @@ mod preparation;
 
 use crate::import::folder_scanner::{CandidateFileEdits, SheetDisc};
 use crate::import::{
-    ArtistAssignment, AudioFile, CandidateEditField, CoverSelection,
-    ExistingArtist, ImportFailure, ArtistCredit, RawPressingEdit, RawReleaseEdit, RawTrackEdit,
-    TrackArtistAssignments,
+    ArtistAssignment, ArtistCredit, AudioFile, CandidateEditField, CoverSelection, ExistingArtist,
+    ImportFailure, RawPressingEdit, RawReleaseEdit, RawTrackEdit, TrackArtistAssignments,
 };
-use crate::signals::{BarcodeSignal, DiscIdSignal, InternalFailure, Signals, SourcedValue, TextSignal};
+use crate::signals::{
+    BarcodeSignal, DiscIdSignal, InternalFailure, Signals, SourcedValue, TextSignal,
+};
 
 #[path = "pane_rows/artist_identity_conflicts.rs"]
 mod artist_identity_conflicts;
@@ -31,10 +32,7 @@ fn settled_signals() -> Signals {
         origin: crate::signals::AudioOrigin::default(),
         disc_id: DiscIdSignal::Absent,
         barcode: BarcodeSignal::Absent,
-        text: TextSignal::Settled {
-            catalogs: Vec::new(),
-            free_text: Vec::new(),
-        },
+        text: TextSignal::Settled { catalogs: Vec::new(), free_text: Vec::new() },
         text_pool: Vec::new(),
         isrcs: Vec::new(),
         track_titles: Vec::new(),
@@ -46,7 +44,7 @@ async fn store_verdict(db: &Database, hash: &str, signals: Signals) -> bool {
     crate::import::CandidatePreparations::new(db.clone())
         .store_verdict(&NewImportCandidateVerdict {
             content_hash: hash.to_string(),
-file_edit_revision: 0,
+            file_edit_revision: 0,
             candidate_key: pane_candidate_key(),
             verdict: sample_verdict(),
             signals,
@@ -61,13 +59,16 @@ fn edited_row(id: &str, title: &str, file: Option<AudioFile>) -> RawTrackEdit {
     RawTrackEdit {
         id: id.to_string(),
         title: title.to_string(),
-        artist_assignments: TrackArtistAssignments::Explicit(vec![crate::import::Credited::plain(credit_named("Artist Name"))]),
+        artist_assignments: TrackArtistAssignments::Explicit(vec![crate::import::Credited::plain(
+            credit_named("Artist Name"),
+        )]),
         file,
     }
 }
 
 fn credit_named(name: &str) -> ArtistAssignment {
-    ArtistAssignment::Credit { credit: ArtistCredit {
+    ArtistAssignment::Credit {
+        credit: ArtistCredit {
             credited_as: None,
             name: name.to_string(),
             sort_name: None,
@@ -110,9 +111,7 @@ async fn store_candidate_state(
     files: &CategorizedFiles,
     folder_path: &Path,
 ) -> String {
-    let root = folder_path
-        .parent()
-        .expect("the candidate fixture has a watched root");
+    let root = folder_path.parent().expect("the candidate fixture has a watched root");
     let name = folder_path
         .file_name()
         .expect("the candidate fixture has a folder name")
@@ -158,9 +157,7 @@ fn metadata_draft(title: &str, artist: &str) -> RawReleaseEdit {
             id: "candidate-track-0".to_string(),
             title: "Track title".to_string(),
             artist_assignments: TrackArtistAssignments::AlbumArtists,
-            file: Some(AudioFile::Standalone {
-                file_id: "01 Track.flac".into(),
-            }),
+            file: Some(AudioFile::Standalone { file_id: "01 Track.flac".into() }),
         }],
     }
 }
@@ -171,11 +168,7 @@ async fn a_verdict_cannot_create_state_for_an_absent_candidate() {
     let hash = pane_candidate().content_hash();
 
     assert!(!store_verdict(&db, &hash, settled_signals()).await);
-    assert!(db
-        .load_import_candidate_state(&hash)
-        .await
-        .unwrap()
-        .is_none());
+    assert!(db.load_import_candidate_state(&hash).await.unwrap().is_none());
 }
 
 /// Every settled shape of every signal comes back as it went in, including
@@ -184,10 +177,7 @@ async fn a_verdict_cannot_create_state_for_an_absent_candidate() {
 async fn every_settled_signal_shape_round_trips() {
     use crate::signals::{AudioOrigin, AudioSource, CdProof, DownloadProof, StoreMarker};
     let cd_rip = |proof, file: Option<&str>| AudioOrigin {
-        source: Some(AudioSource::CdRip {
-            proof,
-            file: file.map(str::to_string),
-        }),
+        source: Some(AudioSource::CdRip { proof, file: file.map(str::to_string) }),
         not_cd_rate: None,
     };
     let cases: Vec<(&str, AudioOrigin, DiscIdSignal, BarcodeSignal, TextSignal)> = vec![
@@ -210,7 +200,10 @@ async fn every_settled_signal_shape_round_trips() {
             BarcodeSignal::Settled {
                 codes: vec![
                     // One code carries the image it was read off; one carries none.
-                    SourcedValue::in_file("0123456789012".to_string(), "Scans/back.jpg".to_string()),
+                    SourcedValue::in_file(
+                        "0123456789012".to_string(),
+                        "Scans/back.jpg".to_string(),
+                    ),
                     SourcedValue::new("9876543210987".to_string()),
                 ],
             },
@@ -224,29 +217,20 @@ async fn every_settled_signal_shape_round_trips() {
             AudioOrigin::default(),
             DiscIdSignal::Absent,
             BarcodeSignal::Absent,
-            TextSignal::Settled {
-                catalogs: Vec::new(),
-                free_text: Vec::new(),
-            },
+            TextSignal::Settled { catalogs: Vec::new(), free_text: Vec::new() },
         ),
         (
             "every signal failed to read",
             cd_rip(CdProof::AccurateRipReport, None),
             DiscIdSignal::Failed {
-                failure: InternalFailure {
-                    detail: "the rip log did not read".to_string(),
-                },
+                failure: InternalFailure { detail: "the rip log did not read".to_string() },
             },
             BarcodeSignal::Failed {
-                failure: InternalFailure {
-                    detail: "the artwork did not read".to_string(),
-                },
+                failure: InternalFailure { detail: "the artwork did not read".to_string() },
                 codes: vec![SourcedValue::new("0123456789012".to_string())],
             },
             TextSignal::Failed {
-                failure: InternalFailure {
-                    detail: "the artwork did not read".to_string(),
-                },
+                failure: InternalFailure { detail: "the artwork did not read".to_string() },
                 catalogs: vec!["CAT-2".to_string()],
                 free_text: vec!["Some Line".to_string()],
             },
@@ -256,23 +240,14 @@ async fn every_settled_signal_shape_round_trips() {
             cd_rip(CdProof::RipperSheet, Some("Album.cue")),
             DiscIdSignal::Absent,
             BarcodeSignal::Absent,
-            TextSignal::Settled {
-                catalogs: Vec::new(),
-                free_text: Vec::new(),
-            },
+            TextSignal::Settled { catalogs: Vec::new(), free_text: Vec::new() },
         ),
         (
             "a sheet left unhashed over audio no CD holds",
-            AudioOrigin {
-                source: None,
-                not_cd_rate: Some(96_000),
-            },
+            AudioOrigin { source: None, not_cd_rate: Some(96_000) },
             DiscIdSignal::NotCdAudio,
             BarcodeSignal::Absent,
-            TextSignal::Settled {
-                catalogs: Vec::new(),
-                free_text: Vec::new(),
-            },
+            TextSignal::Settled { catalogs: Vec::new(), free_text: Vec::new() },
         ),
         (
             "a store's download at a rate no CD plays at",
@@ -285,10 +260,7 @@ async fn every_settled_signal_shape_round_trips() {
             },
             DiscIdSignal::Absent,
             BarcodeSignal::Absent,
-            TextSignal::Settled {
-                catalogs: Vec::new(),
-                free_text: Vec::new(),
-            },
+            TextSignal::Settled { catalogs: Vec::new(), free_text: Vec::new() },
         ),
         (
             "a label's delivered download",
@@ -298,20 +270,14 @@ async fn every_settled_signal_shape_round_trips() {
             },
             DiscIdSignal::Absent,
             BarcodeSignal::Absent,
-            TextSignal::Settled {
-                catalogs: Vec::new(),
-                free_text: Vec::new(),
-            },
+            TextSignal::Settled { catalogs: Vec::new(), free_text: Vec::new() },
         ),
     ];
 
     // The tags' ISRCs ride along, in their order, a code tagged twice kept
     // twice; or none.
-    let isrcs = [
-        vec!["IT0000000002", "IT0000000001", "IT0000000002"],
-        vec!["YU0000000001"],
-        Vec::new(),
-    ];
+    let isrcs =
+        [vec!["IT0000000002", "IT0000000001", "IT0000000002"], vec!["YU0000000001"], Vec::new()];
     for (at, (what, origin, disc_id, barcode, text)) in cases.into_iter().enumerate() {
         let (db, _tmp) = empty_db().await;
         let (_, hash) = stored_pane_candidate(&db).await;
@@ -321,11 +287,8 @@ async fn every_settled_signal_shape_round_trips() {
             barcode,
             text,
             text_pool: Vec::new(),
-            isrcs: isrcs[at % isrcs.len()]
-                .iter()
-                .map(|code| code.to_string())
-                .collect(),
-                track_titles: Vec::new(),
+            isrcs: isrcs[at % isrcs.len()].iter().map(|code| code.to_string()).collect(),
+            track_titles: Vec::new(),
         };
 
         assert!(store_verdict(&db, &hash, signals.clone()).await, "{what}");
@@ -337,14 +300,7 @@ async fn every_settled_signal_shape_round_trips() {
             .unwrap()
             .signals
             .unwrap_or_else(|| panic!("{what}: the signals read back"));
-        assert_eq!(
-            stored,
-            Signals {
-                text_pool: Vec::new(),
-                ..signals
-            },
-            "{what}"
-        );
+        assert_eq!(stored, Signals { text_pool: Vec::new(), ..signals }, "{what}");
     }
 }
 
@@ -357,10 +313,7 @@ async fn a_scanning_signal_is_refused_and_writes_nothing() {
             origin: crate::signals::AudioOrigin::default(),
             disc_id: DiscIdSignal::Absent,
             barcode: BarcodeSignal::Scanning { codes: Vec::new() },
-            text: TextSignal::Settled {
-                catalogs: Vec::new(),
-                free_text: Vec::new(),
-            },
+            text: TextSignal::Settled { catalogs: Vec::new(), free_text: Vec::new() },
             text_pool: Vec::new(),
             isrcs: Vec::new(),
             track_titles: Vec::new(),
@@ -369,10 +322,7 @@ async fn a_scanning_signal_is_refused_and_writes_nothing() {
             origin: crate::signals::AudioOrigin::default(),
             disc_id: DiscIdSignal::Absent,
             barcode: BarcodeSignal::Absent,
-            text: TextSignal::Scanning {
-                catalogs: Vec::new(),
-                free_text: Vec::new(),
-            },
+            text: TextSignal::Scanning { catalogs: Vec::new(), free_text: Vec::new() },
             text_pool: Vec::new(),
             isrcs: Vec::new(),
             track_titles: Vec::new(),
@@ -385,7 +335,7 @@ async fn a_scanning_signal_is_refused_and_writes_nothing() {
         let error = crate::import::CandidatePreparations::new(db.clone())
             .store_verdict(&NewImportCandidateVerdict {
                 content_hash: hash.to_string(),
-file_edit_revision: 0,
+                file_edit_revision: 0,
                 candidate_key: pane_candidate_key(),
                 verdict: sample_verdict(),
                 signals: scanning,
@@ -403,10 +353,7 @@ file_edit_revision: 0,
             .await
             .unwrap()
             .expect("the discovered candidate remains");
-        assert!(
-            state.identify.is_none(),
-            "the refused write left no verdict"
-        );
+        assert!(state.identify.is_none(), "the refused write left no verdict");
     }
 }
 
@@ -431,10 +378,7 @@ async fn a_failure_on_a_discovered_candidate_is_replaced_then_cleared() {
         .unwrap()
         .failure
         .expect("the failure is stored");
-    assert_eq!(
-        failure.reason,
-        crate::import::ImportFailureReason::error("the folder vanished")
-    );
+    assert_eq!(failure.reason, crate::import::ImportFailureReason::error("the folder vanished"));
     assert_eq!(failure.failed_at, fixed_now());
     assert!(db
         .load_import_candidate_pane_rows(&hash)
@@ -452,12 +396,7 @@ async fn a_failure_on_a_discovered_candidate_is_replaced_then_cleared() {
     .await
     .unwrap();
     assert_eq!(
-        db.load_import_candidate_pane_rows(&hash)
-            .await
-            .unwrap()
-            .failure
-            .unwrap()
-            .reason,
+        db.load_import_candidate_pane_rows(&hash).await.unwrap().failure.unwrap().reason,
         crate::import::ImportFailureReason::error("the disc would not read"),
         "the second failure replaces the first"
     );
@@ -480,12 +419,10 @@ async fn an_active_import_omits_its_previous_persisted_failure_from_the_detail()
     db.move_candidate_import(
         &key,
         "import-1",
-        Some(crate::import::ImportStep::Running(
-            crate::import::ImportPhase::ReadingFiles,
-        )),
+        Some(crate::import::ImportStep::Running(crate::import::ImportPhase::ReadingFiles)),
     )
-        .await
-        .unwrap();
+    .await
+    .unwrap();
     let detail = db
         .load_import_candidate(&key)
         .await
@@ -519,9 +456,7 @@ async fn the_pane_s_import_status_says_the_step_the_import_is_at() {
         crate::import::ImportStep::Running(crate::import::ImportPhase::MeasuringLoudness),
         crate::import::ImportStep::Running(crate::import::ImportPhase::Finalizing),
     ] {
-        db.move_candidate_import(&key, "import-1", Some(step))
-            .await
-            .unwrap();
+        db.move_candidate_import(&key, "import-1", Some(step)).await.unwrap();
         let detail = db
             .load_import_candidate(&key)
             .await
@@ -541,10 +476,7 @@ fn remote_with_copies(url: &str) -> CoverSelection {
         RemoteImageSet::with_copies(
             url.to_string(),
             [250, 500]
-                .map(|max_edge| DownscaledCopy {
-                    url: format!("{url}-{max_edge}"),
-                    max_edge,
-                })
+                .map(|max_edge| DownscaledCopy { url: format!("{url}-{max_edge}"), max_edge })
                 .to_vec(),
         ),
         Catalog::MusicBrainz,
@@ -582,13 +514,7 @@ async fn a_cover_choice_round_trips_in_every_shape() {
             .await
             .unwrap();
 
-        assert_eq!(
-            db.load_import_candidate_pane_rows(&hash)
-                .await
-                .unwrap()
-                .cover,
-            Some(cover)
-        );
+        assert_eq!(db.load_import_candidate_pane_rows(&hash).await.unwrap().cover, Some(cover));
     }
 }
 
@@ -605,17 +531,8 @@ async fn a_new_cover_choice_leaves_none_of_the_old_copies() {
         CoverSelection::Local("cover.jpg".to_string()),
         remote_with_copies("https://example.invalid/second"),
     ] {
-        preparations
-            .set_cover(&hash, &cover, fetched_bytes(&cover).as_ref())
-            .await
-            .unwrap();
-        assert_eq!(
-            db.load_import_candidate_pane_rows(&hash)
-                .await
-                .unwrap()
-                .cover,
-            Some(cover)
-        );
+        preparations.set_cover(&hash, &cover, fetched_bytes(&cover).as_ref()).await.unwrap();
+        assert_eq!(db.load_import_candidate_pane_rows(&hash).await.unwrap().cover, Some(cover));
     }
 }
 
@@ -646,10 +563,7 @@ async fn a_remote_cover_round_trips_the_exact_prepared_bytes() {
         .unwrap();
 
     assert_eq!(
-        db.load_import_candidate_prepared_assets(&hash)
-            .await
-            .unwrap()
-            .remote_cover,
+        db.load_import_candidate_prepared_assets(&hash).await.unwrap().remote_cover,
         Some(image)
     );
 }
@@ -676,19 +590,10 @@ async fn a_remote_cover_without_exact_bytes_writes_nothing() {
         .await
         .expect_err("a remote selection requires its exact bytes");
 
-    let state = db
-        .load_import_candidate_state(&hash)
-        .await
-        .unwrap()
-        .expect("the candidate remains");
+    let state =
+        db.load_import_candidate_state(&hash).await.unwrap().expect("the candidate remains");
     assert_eq!(state.metadata_revision, 0);
-    assert_eq!(
-        db.load_import_candidate_pane_rows(&hash)
-            .await
-            .unwrap()
-            .cover,
-        None
-    );
+    assert_eq!(db.load_import_candidate_pane_rows(&hash).await.unwrap().cover, None);
 }
 
 #[tokio::test]
@@ -696,7 +601,9 @@ async fn a_stale_remote_cover_write_leaves_the_current_selection_and_bytes() {
     let (db, _tmp) = empty_db().await;
     let (_, hash) = stored_pane_candidate(&db).await;
     let current_cover = CoverSelection::Remote(
-        bae_catalogs::remote_image::RemoteImageSet::original("https://example.invalid/current".to_string()),
+        bae_catalogs::remote_image::RemoteImageSet::original(
+            "https://example.invalid/current".to_string(),
+        ),
         Catalog::Discogs,
     );
     let current_image = bae_catalogs::remote_image::RemoteImage {
@@ -715,7 +622,9 @@ async fn a_stale_remote_cover_write_leaves_the_current_selection_and_bytes() {
         .unwrap();
 
     let stale_cover = CoverSelection::Remote(
-        bae_catalogs::remote_image::RemoteImageSet::original("https://example.invalid/stale".to_string()),
+        bae_catalogs::remote_image::RemoteImageSet::original(
+            "https://example.invalid/stale".to_string(),
+        ),
         Catalog::MusicBrainz,
     );
     let stale_image = bae_catalogs::remote_image::RemoteImage {
@@ -734,10 +643,7 @@ async fn a_stale_remote_cover_write_leaves_the_current_selection_and_bytes() {
         .expect_err("revision zero is stale after the first selection");
 
     let rows = db.load_import_candidate_pane_rows(&hash).await.unwrap();
-    let assets = db
-        .load_import_candidate_prepared_assets(&hash)
-        .await
-        .unwrap();
+    let assets = db.load_import_candidate_prepared_assets(&hash).await.unwrap();
     assert_eq!(rows.cover, Some(current_cover));
     assert_eq!(assets.remote_cover, Some(current_image));
 }

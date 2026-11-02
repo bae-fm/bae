@@ -46,11 +46,7 @@ impl RendererMediaSource {
         cover_url: CoverUrlProvider,
         flavor: RendererFlavor,
     ) -> Self {
-        Self {
-            stream_url,
-            cover_url,
-            flavor,
-        }
+        Self { stream_url, cover_url, flavor }
     }
 
     /// Where the device fetches one track's stream and its `cover` from. The

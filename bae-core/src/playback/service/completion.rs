@@ -44,10 +44,8 @@ impl PlaybackService {
                 .as_ref()
                 .is_some_and(|completion| completion.audible_at <= self.clock.now())
         {
-            let completion = self
-                .audible_completion
-                .take()
-                .expect("the audible completion is present");
+            let completion =
+                self.audible_completion.take().expect("the audible completion is present");
             self.publish_completion(completion.fmt, completion.errors, completion.samples);
         }
     }
@@ -68,9 +66,7 @@ impl PlaybackService {
         });
         emit_progress(
             &self.progress_tx,
-            PlaybackProgress::TrackCompleted {
-                track_id: fmt.track_id.clone(),
-            },
+            PlaybackProgress::TrackCompleted { track_id: fmt.track_id.clone() },
         );
         emit_progress(
             &self.progress_tx,

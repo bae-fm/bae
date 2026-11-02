@@ -79,19 +79,13 @@ fn the_group_page_is_taken_over_every_weaker_statement() {
             discogs_release(11, Some(101)),
         ],
     );
-    assert_eq!(
-        payloads.album_statements().unwrap(),
-        AlbumLinks::Read(vec![master("201")])
-    );
+    assert_eq!(payloads.album_statements().unwrap(), AlbumLinks::Read(vec![master("201")]));
 }
 
 #[test]
 fn the_group_relations_the_release_embeds_are_its_page() {
     let payloads = release(&[], Some(&["https://www.discogs.com/master/201"]), vec![]);
-    assert_eq!(
-        payloads.album_statements().unwrap(),
-        AlbumLinks::Read(vec![master("201")])
-    );
+    assert_eq!(payloads.album_statements().unwrap(), AlbumLinks::Read(vec![master("201")]));
 }
 
 #[test]
@@ -105,10 +99,7 @@ fn a_wikidata_item_the_page_links_is_taken_over_a_release_link() {
             discogs_release(11, Some(101)),
         ],
     );
-    assert_eq!(
-        payloads.album_statements().unwrap(),
-        AlbumLinks::Read(vec![master("202")])
-    );
+    assert_eq!(payloads.album_statements().unwrap(), AlbumLinks::Read(vec![master("202")]));
 }
 
 #[test]
@@ -118,19 +109,13 @@ fn a_linked_release_names_its_master_when_nothing_stronger_does() {
         None,
         vec![group_document(&[]), discogs_release(11, Some(101))],
     );
-    assert_eq!(
-        payloads.album_statements().unwrap(),
-        AlbumLinks::Read(vec![master("101")])
-    );
+    assert_eq!(payloads.album_statements().unwrap(), AlbumLinks::Read(vec![master("101")]));
 }
 
 #[test]
 fn linked_releases_name_one_master_only_when_every_one_was_read() {
     let mut payloads = release(
-        &[
-            "https://www.discogs.com/release/11",
-            "https://www.discogs.com/release/12",
-        ],
+        &["https://www.discogs.com/release/11", "https://www.discogs.com/release/12"],
         None,
         vec![group_document(&[]), discogs_release(11, Some(101))],
     );
@@ -142,30 +127,17 @@ fn linked_releases_name_one_master_only_when_every_one_was_read() {
     assert_eq!(payloads.album_statements().unwrap(), AlbumLinks::Unread);
 
     let both = release(
-        &[
-            "https://www.discogs.com/release/11",
-            "https://www.discogs.com/release/12",
-        ],
+        &["https://www.discogs.com/release/11", "https://www.discogs.com/release/12"],
         None,
-        vec![
-            group_document(&[]),
-            discogs_release(11, Some(101)),
-            discogs_release(12, Some(101)),
-        ],
+        vec![group_document(&[]), discogs_release(11, Some(101)), discogs_release(12, Some(101))],
     );
-    assert_eq!(
-        both.album_statements().unwrap(),
-        AlbumLinks::Read(vec![master("101")])
-    );
+    assert_eq!(both.album_statements().unwrap(), AlbumLinks::Read(vec![master("101")]));
 }
 
 #[test]
 fn a_linked_release_that_was_not_fetched_leaves_the_album_unread() {
-    let mut payloads = release(
-        &["https://www.discogs.com/release/11"],
-        None,
-        vec![group_document(&[])],
-    );
+    let mut payloads =
+        release(&["https://www.discogs.com/release/11"], None, vec![group_document(&[])]);
     payloads.unfetched.push(UnfetchedDocument {
         document: PayloadSource::Discogs,
         key: "11".to_string(),
@@ -177,8 +149,5 @@ fn a_linked_release_that_was_not_fetched_leaves_the_album_unread() {
 #[test]
 fn documents_that_link_nothing_name_no_album() {
     let payloads = release(&[], None, vec![group_document(&[])]);
-    assert_eq!(
-        payloads.album_statements().unwrap(),
-        AlbumLinks::Read(Vec::new())
-    );
+    assert_eq!(payloads.album_statements().unwrap(), AlbumLinks::Read(Vec::new()));
 }

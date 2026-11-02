@@ -63,10 +63,7 @@ pub(crate) fn resolve_cue_audio_paths<'sheet, 'audio>(
     for reference in references {
         let audio = resolve_cue_audio_path(cue_path, reference, audio_files)?;
         if !used.insert(audio.as_path()) {
-            debug!(
-                "CUE {:?} resolves more than one FILE reference to {:?}",
-                cue_path, audio
-            );
+            debug!("CUE {:?} resolves more than one FILE reference to {:?}", cue_path, audio);
             return None;
         }
         resolved.push((reference, audio));
@@ -113,20 +110,16 @@ fn resolve_cue_audio_path<'a>(
             }
             let reference_dir = spelled_path(referenced.parent()?);
             let same_path = spelled_path(&referenced);
-            let same_name = audio_files
-                .iter()
-                .filter(|path| spelled_path(path) == same_path);
+            let same_name = audio_files.iter().filter(|path| spelled_path(path) == same_path);
             let same_stem = audio_files.iter().filter(|path| {
-                path.parent()
-                    .is_some_and(|dir| spelled_path(dir) == reference_dir)
+                path.parent().is_some_and(|dir| spelled_path(dir) == reference_dir)
                     && path.file_stem().is_some_and(|stem| {
                         spelled(&coven::path_text(Path::new(stem))) == file_stem
                     })
             });
-            for mut matches in [
-                Box::new(same_name) as Box<dyn Iterator<Item = &'a PathBuf>>,
-                Box::new(same_stem),
-            ] {
+            for mut matches in
+                [Box::new(same_name) as Box<dyn Iterator<Item = &'a PathBuf>>, Box::new(same_stem)]
+            {
                 if let Some(matched) = matches.next() {
                     if matches.next().is_some() {
                         debug!(
@@ -202,10 +195,7 @@ pub enum FolderScanError {
 
 impl FolderScanError {
     pub(crate) fn io(path: impl Into<PathBuf>, source: io::Error) -> Self {
-        Self::Io {
-            path: path.into(),
-            source,
-        }
+        Self::Io { path: path.into(), source }
     }
 }
 
@@ -217,10 +207,7 @@ struct DirEntry {
 
 impl CandidateFileIndex {
     pub fn new(files: Vec<FileEntry>) -> Self {
-        let mut tree = Self {
-            files,
-            dirs: BTreeMap::new(),
-        };
+        let mut tree = Self { files, dirs: BTreeMap::new() };
         tree.rebuild_index();
         tree
     }
@@ -252,11 +239,7 @@ impl CandidateFileIndex {
 
         for component in dir.components() {
             let child = parent.join(component.as_os_str());
-            self.dirs
-                .entry(parent.clone())
-                .or_default()
-                .subdirs
-                .insert(child.clone());
+            self.dirs.entry(parent.clone()).or_default().subdirs.insert(child.clone());
             self.dirs.entry(child.clone()).or_default();
             parent = child;
         }

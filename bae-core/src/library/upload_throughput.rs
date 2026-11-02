@@ -39,8 +39,7 @@ impl UploadThroughput {
                     .map(|moved| (file.file, moved.bytes_transferred, moved.bytes_total))
             })
         };
-        self.files
-            .retain(|id, _| measured().any(|(file, _, _)| file == *id));
+        self.files.retain(|id, _| measured().any(|(file, _, _)| file == *id));
         for (file, transferred, total) in measured() {
             self.record(file, transferred, total, now);
         }
@@ -53,12 +52,8 @@ impl UploadThroughput {
             total,
         });
         if transferred < measurement.transferred || total != measurement.total {
-            *measurement = Measurement {
-                samples: VecDeque::new(),
-                started: now,
-                transferred,
-                total,
-            };
+            *measurement =
+                Measurement { samples: VecDeque::new(), started: now, transferred, total };
         }
         let delta = transferred - measurement.transferred;
         if delta > 0 {

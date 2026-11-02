@@ -88,18 +88,13 @@ mod tests {
     #[test]
     fn the_table_is_musicbrainzs_own_list() {
         assert_eq!(
-            MUSICBRAINZ_RELEASE_PACKAGING
-                .iter()
-                .map(|(name, _)| *name)
-                .collect::<Vec<_>>(),
+            MUSICBRAINZ_RELEASE_PACKAGING.iter().map(|(name, _)| *name).collect::<Vec<_>>(),
             super::super::recorded(include_str!(
                 "../../test-fixtures/pressing-vocabulary/musicbrainz-release-packaging.txt"
             ))
         );
-        let named: Vec<_> = MUSICBRAINZ_RELEASE_PACKAGING
-            .iter()
-            .map(|(_, packaging)| *packaging)
-            .collect();
+        let named: Vec<_> =
+            MUSICBRAINZ_RELEASE_PACKAGING.iter().map(|(_, packaging)| *packaging).collect();
         assert_eq!(named, Packaging::ALL, "one packaging per MusicBrainz name");
     }
 

@@ -5,11 +5,7 @@ use super::*;
 use crate::renderer::{CastDevice, RendererKind};
 
 fn device(id: &str, name: &str, kind: RendererKind) -> CastDevice {
-    CastDevice {
-        id: id.to_string(),
-        name: name.to_string(),
-        kind,
-    }
+    CastDevice { id: id.to_string(), name: name.to_string(), kind }
 }
 
 /// A write replaces the whole list; the list reads by name, then id.
@@ -32,9 +28,7 @@ async fn each_write_lists_the_whole_picker_by_name() {
         ]
     );
 
-    db.replace_cast_devices(vec![device("cast-1", "Kitchen", RendererKind::Cast)])
-        .await
-        .unwrap();
+    db.replace_cast_devices(vec![device("cast-1", "Kitchen", RendererKind::Cast)]).await.unwrap();
     assert_eq!(
         db.cast_devices().await.unwrap(),
         vec![device("cast-1", "Kitchen", RendererKind::Cast)]
@@ -46,9 +40,7 @@ async fn each_write_lists_the_whole_picker_by_name() {
 #[tokio::test]
 async fn opening_empties_the_picker() {
     let (db, _tmp) = temp_db().await;
-    db.replace_cast_devices(vec![device("cast-1", "Kitchen", RendererKind::Cast)])
-        .await
-        .unwrap();
+    db.replace_cast_devices(vec![device("cast-1", "Kitchen", RendererKind::Cast)]).await.unwrap();
 
     db.clear_cast_devices().await.unwrap();
 

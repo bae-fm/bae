@@ -20,12 +20,11 @@ fn pinned_bytes(
         .map(|(id, (file, size))| match pins.get(id) {
             Some(pin) if pin.kept => *size,
             _ if fetched.contains(file) => *size,
-            Some(crate::db::DbFilePin {
-                downloading: Some(file),
-                ..
-            }) => moved.get(file).map_or(0, |progress| {
-                (*size as f64 * crate::library::file_transfers::fraction(*progress)) as u64
-            }),
+            Some(crate::db::DbFilePin { downloading: Some(file), .. }) => {
+                moved.get(file).map_or(0, |progress| {
+                    (*size as f64 * crate::library::file_transfers::fraction(*progress)) as u64
+                })
+            }
             _ => 0,
         })
         .try_fold(0u64, |total, bytes| total.checked_add(bytes))
@@ -48,10 +47,7 @@ impl LibraryManager {
             .cloned()
             .zip(pinnable.iter().map(|entry| (entry.file.id(), entry.bytes)))
             .collect();
-        let files = pinnable
-            .into_iter()
-            .map(|entry| entry.file)
-            .collect::<Vec<_>>();
+        let files = pinnable.into_iter().map(|entry| entry.file).collect::<Vec<_>>();
         let previous = self
             .database
             .files_pinned(&files.iter().map(coven::FileRef::id).collect::<Vec<_>>())
@@ -229,20 +225,12 @@ mod pinned_bytes_tests {
         ]
         .into_iter()
         .collect();
-        let moved = [(
-            file(1),
-            coven::TransferProgress {
-                bytes_transferred: 110,
-                bytes_total: 440,
-            },
-        )]
-        .into_iter()
-        .collect();
+        let moved =
+            [(file(1), coven::TransferProgress { bytes_transferred: 110, bytes_total: 440 })]
+                .into_iter()
+                .collect();
         let fetched = [file(11)].into_iter().collect();
 
-        assert_eq!(
-            pinned_bytes(&sizes, &pins, &moved, &fetched),
-            1_000 + 2_000 + 100
-        );
+        assert_eq!(pinned_bytes(&sizes, &pins, &moved, &fetched), 1_000 + 2_000 + 100);
     }
 }

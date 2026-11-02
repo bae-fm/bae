@@ -70,9 +70,7 @@ impl FailureColumns {
             | C::InviteJoining
             | C::StoreOwnerAccount
             | C::Renderer => {
-                return Err(DbError::Message(format!(
-                    "a sync start can't fail as {category:?}"
-                )));
+                return Err(DbError::Message(format!("a sync start can't fail as {category:?}")));
             }
         })
     }
@@ -163,9 +161,7 @@ fn access_name(access: OAuthAccess) -> &'static str {
 /// A stored value that names no class: the table's CHECKs keep this from
 /// happening, so it is a damaged row.
 fn unnamed(column: &str, value: &str) -> DbError {
-    DbError::Message(format!(
-        "sync_start_failure.{column} names no class: {value:?}"
-    ))
+    DbError::Message(format!("sync_start_failure.{column} names no class: {value:?}"))
 }
 
 /// The row's columns as read, before they are named back into a category.
@@ -201,18 +197,12 @@ impl StoredColumns {
 
     fn storage_failure(&self) -> Result<StorageFailure, DbError> {
         use StorageFailure as F;
-        let name = self
-            .storage_failure
-            .as_deref()
-            .ok_or_else(|| unnamed("storage_failure", "NULL"))?;
+        let name =
+            self.storage_failure.as_deref().ok_or_else(|| unnamed("storage_failure", "NULL"))?;
         Ok(match name {
             "provider_unavailable" => F::ProviderUnavailable,
-            "access_not_registered" => F::AccessNotRegistered {
-                required: self.required_access()?,
-            },
-            "access_not_granted" => F::AccessNotGranted {
-                required: self.required_access()?,
-            },
+            "access_not_registered" => F::AccessNotRegistered { required: self.required_access()? },
+            "access_not_granted" => F::AccessNotGranted { required: self.required_access()? },
             "dropbox_app_folder_not_shareable" => F::DropboxAppFolderNotShareable,
             "catch_up_required" => F::CatchUpRequired,
             "network" => F::Network,
@@ -277,10 +267,7 @@ impl StoredColumns {
                 .and_then(|value| u64::try_from(value).ok())
                 .ok_or_else(|| unnamed(column, &format!("{value:?}")))
         };
-        Ok((
-            bytes("size_bytes", self.size_bytes)?,
-            bytes("limit_bytes", self.limit_bytes)?,
-        ))
+        Ok((bytes("size_bytes", self.size_bytes)?, bytes("limit_bytes", self.limit_bytes)?))
     }
 }
 
@@ -306,13 +293,8 @@ pub(super) fn start_failure_on(sql: &SqlReadContext<'_>) -> Result<Option<UiErro
             },
         )
         .optional()?;
-    row.map(|(columns, detail)| {
-        Ok(UiError::Diagnostic {
-            category: columns.category()?,
-            detail,
-        })
-    })
-    .transpose()
+    row.map(|(columns, detail)| Ok(UiError::Diagnostic { category: columns.category()?, detail }))
+        .transpose()
 }
 
 impl Database {

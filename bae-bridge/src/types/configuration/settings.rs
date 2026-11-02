@@ -232,18 +232,12 @@ pub enum BridgeError {
     Cancelled,
     /// A specific entity was missing. User-facing and keyed; the UI localizes it.
     #[error("not found: {entity:?} {id}")]
-    NotFound {
-        entity: BridgeEntityKind,
-        id: String,
-    },
+    NotFound { entity: BridgeEntityKind, id: String },
     /// A diagnostic failure. The UI shows a generic per-category line; `detail`
     /// is the opaque Rust error chain for logs / a copyable disclosure, never
     /// translated.
     #[error("{category:?}: {detail}")]
-    Diagnostic {
-        category: BridgeErrorCategory,
-        detail: String,
-    },
+    Diagnostic { category: BridgeErrorCategory, detail: String },
 }
 
 impl BridgeError {
@@ -251,10 +245,7 @@ impl BridgeError {
         category: BridgeErrorCategory,
         detail: impl std::fmt::Display,
     ) -> Self {
-        BridgeError::Diagnostic {
-            category,
-            detail: detail.to_string(),
-        }
+        BridgeError::Diagnostic { category, detail: detail.to_string() }
     }
     pub(crate) fn database(detail: impl std::fmt::Display) -> Self {
         Self::diagnostic(BridgeErrorCategory::Database, detail)
@@ -659,9 +650,9 @@ impl BridgePlaybackErrorReason {
             PlaybackErrorReason::UploadPending => Self::UploadPending,
             PlaybackErrorReason::NotUploaded => Self::NotUploaded,
             PlaybackErrorReason::OriginalMissing => Self::OriginalMissing,
-            PlaybackErrorReason::AudioOutput { problem } => Self::AudioOutput {
-                problem: BridgeAudioOutputProblem::from_core(problem),
-            },
+            PlaybackErrorReason::AudioOutput { problem } => {
+                Self::AudioOutput { problem: BridgeAudioOutputProblem::from_core(problem) }
+            }
             PlaybackErrorReason::Diagnostic { failure, detail } => Self::Diagnostic {
                 error: BridgeError::Diagnostic {
                     category: BridgeErrorCategory::from_core(failure.category()),

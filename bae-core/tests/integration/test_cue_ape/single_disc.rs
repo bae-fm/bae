@@ -2,8 +2,8 @@ use bae_catalogs::discogs::models::DiscogsRelease;
 use bae_core::import::{ImportCommand, ImportDestination};
 use bae_core::library::LibraryManager;
 use bae_core::playback::{PlaybackProgress, PlaybackState, TrackTime};
-use bae_util::content_type::ContentType;
 use bae_test_support as support;
+use bae_util::content_type::ContentType;
 use std::path::Path;
 use std::time::Duration;
 use support::start_test_import;
@@ -32,11 +32,7 @@ fn create_test_discogs_release() -> DiscogsRelease {
         ..support::discogs_test_release(
             "test-cue-ape",
             "Test Album",
-            &[
-                ("Track One", "0:30"),
-                ("Track Two", "0:30"),
-                ("Track Three", "0:30"),
-            ],
+            &[("Track One", "0:30"), ("Track Two", "0:30"), ("Track Three", "0:30")],
         )
     }
 }
@@ -70,7 +66,8 @@ async fn import_cue_ape_fixture() -> (LibraryManager, String, TempDir) {
     copy_cue_ape_fixture(&album_dir);
 
     let (library_manager, _database) = open_test_library(&db_dir).await;
-    let release_id_key = seed_discogs_test_release(library_manager.providers(), create_test_discogs_release());
+    let release_id_key =
+        seed_discogs_test_release(library_manager.providers(), create_test_discogs_release());
     let release_id =
         support::import_folder_and_wait(&library_manager, album_dir, release_id_key).await;
     (library_manager, release_id, temp_root)
@@ -85,10 +82,7 @@ async fn test_cue_ape_records_correct_durations() {
     let (library_manager, release_id, _temp_root) = import_cue_ape_fixture().await;
     info!("Import completed, release_id: {}", release_id);
 
-    let tracks = library_manager
-        .get_tracks_for_release(&release_id)
-        .await
-        .expect("get tracks");
+    let tracks = library_manager.get_tracks_for_release(&release_id).await.expect("get tracks");
     assert_eq!(tracks.len(), 3, "Should have 3 tracks");
 
     // Core assertion: each track must have its own duration, NOT the full file duration
@@ -148,7 +142,8 @@ async fn test_cue_ape_track2_samples_match_xld_reference() {
     let ape_data = std::fs::read(&ape_path).expect("read ape");
 
     // Decode the full APE file (no seeking -- APE frames are stateful)
-    let full_decoded = decode_audio(support::filled_sparse_buffer(&ape_data), None, None).expect("decode full APE");
+    let full_decoded = decode_audio(support::filled_sparse_buffer(&ape_data), None, None)
+        .expect("decode full APE");
     let channels = full_decoded.channels as usize;
     let sample_rate = full_decoded.sample_rate;
 
@@ -166,26 +161,20 @@ async fn test_cue_ape_track2_samples_match_xld_reference() {
 
     // Decode XLD reference
     let ref_data = std::fs::read(&ref_path).expect("read reference");
-    let reference = decode_audio(support::filled_sparse_buffer(&ref_data), None, None).expect("decode reference");
+    let reference = decode_audio(support::filled_sparse_buffer(&ref_data), None, None)
+        .expect("decode reference");
 
     assert_eq!(reference.sample_rate, sample_rate, "sample rate mismatch");
-    assert_eq!(
-        reference.channels, full_decoded.channels,
-        "channel count mismatch"
-    );
+    assert_eq!(reference.channels, full_decoded.channels, "channel count mismatch");
 
     // Compare first 1 second
-    let compare_count = (sample_rate as usize * channels)
-        .min(track2_samples.len())
-        .min(reference.samples.len());
+    let compare_count =
+        (sample_rate as usize * channels).min(track2_samples.len()).min(reference.samples.len());
 
     let mut mismatches = 0;
     let mut first_mismatch = None;
-    for (i, (&actual, &truth)) in track2_samples
-        .iter()
-        .zip(reference.samples.iter())
-        .enumerate()
-        .take(compare_count)
+    for (i, (&actual, &truth)) in
+        track2_samples.iter().zip(reference.samples.iter()).enumerate().take(compare_count)
     {
         if actual != truth {
             mismatches += 1;
@@ -213,10 +202,7 @@ async fn test_cue_ape_track2_samples_match_xld_reference() {
 #[tokio::test]
 async fn test_cue_ape_records_track_timing() {
     let (library_manager, release_id, _temp_root) = import_cue_ape_fixture().await;
-    let tracks = library_manager
-        .get_tracks_for_release(&release_id)
-        .await
-        .expect("get tracks");
+    let tracks = library_manager.get_tracks_for_release(&release_id).await.expect("get tracks");
     assert_eq!(tracks.len(), 3);
 
     // Expected CUE timings in samples at 44100Hz:
@@ -232,17 +218,10 @@ async fn test_cue_ape_records_track_timing() {
             .expect("get audio format")
             .unwrap_or_else(|| panic!("Track {} should have audio format", i + 1));
 
-        assert_eq!(
-            af.content_type,
-            ContentType::Ape,
-            "Track {} should be APE",
-            i + 1
-        );
+        assert_eq!(af.content_type, ContentType::Ape, "Track {} should be APE", i + 1);
 
-        let resolved = library_manager
-            .resolve_track_audio(&track.id)
-            .await
-            .expect("resolve track audio");
+        let resolved =
+            library_manager.resolve_track_audio(&track.id).await.expect("resolve track audio");
         assert_eq!(resolved.segments.len(), 1);
         let segment = &resolved.segments[0];
 
@@ -253,12 +232,7 @@ async fn test_cue_ape_records_track_timing() {
             "Track {} start_sample",
             i + 1,
         );
-        assert_eq!(
-            segment.span.end_sample,
-            expected_end_sample[i],
-            "Track {} end_sample",
-            i + 1,
-        );
+        assert_eq!(segment.span.end_sample, expected_end_sample[i], "Track {} end_sample", i + 1,);
 
         info!(
             "Track {} '{}': start_sample={}, end_sample={:?}",
@@ -293,13 +267,10 @@ impl CueApeTestFixture {
             copy_cue_ape_fixture,
         )
         .await?;
-        assert_eq!(
-            imported.track_ids.len(),
-            3,
-            "Should have 3 tracks from CUE/APE"
-        );
+        assert_eq!(imported.track_ids.len(), 3, "Should have 3 tracks from CUE/APE");
         let (playback_handle, capture_stream_rx) =
-            support::start_capture_playback(&library_manager, support::TestAudioDevice::Capture).await;
+            support::start_capture_playback(&library_manager, support::TestAudioDevice::Capture)
+                .await;
         let progress_rx = playback_handle.subscribe_progress();
         Ok(Self {
             playback_handle,
@@ -350,8 +321,8 @@ async fn test_cue_ape_track_playback_matches_reference() {
         let fixture_dir = bae_test_support::fixture_dir!("cue_ape");
         let reference_data =
             std::fs::read(fixture_dir.join(reference_file)).expect("read reference");
-        let reference =
-            decode_audio(support::filled_sparse_buffer(&reference_data), None, None).expect("decode reference");
+        let reference = decode_audio(support::filled_sparse_buffer(&reference_data), None, None)
+            .expect("decode reference");
         let channels = reference.channels as usize;
         let sample_rate = reference.sample_rate;
         let reference_f32 = samples_as_f32(&reference);
@@ -404,13 +375,8 @@ async fn test_cue_ape_seek() {
     // Wait for playback to start
     let started =
         support::next_matching(&mut fixture.progress_rx, Duration::from_secs(5), |event| {
-            matches!(
-                event,
-                PlaybackProgress::StateChanged {
-                    state: PlaybackState::Playing { .. }
-                }
-            )
-            .then_some(())
+            matches!(event, PlaybackProgress::StateChanged { state: PlaybackState::Playing { .. } })
+                .then_some(())
         })
         .await;
     assert!(started.is_some(), "Playback should start");
@@ -427,8 +393,8 @@ async fn test_cue_ape_seek() {
     let fixture_dir = bae_test_support::fixture_dir!("cue_ape");
     let reference_data =
         std::fs::read(fixture_dir.join("02 Test Artist - Track Two.flac")).expect("read reference");
-    let reference =
-        decode_audio(support::filled_sparse_buffer(&reference_data), None, None).expect("decode reference");
+    let reference = decode_audio(support::filled_sparse_buffer(&reference_data), None, None)
+        .expect("decode reference");
     let channels = reference.channels as usize;
     let sample_rate = reference.sample_rate;
     let reference_f32 = samples_as_f32(&reference);
@@ -543,9 +509,7 @@ async fn test_cue_ape_auto_advance_no_replay() {
     // NOT mint a new stream — track 2 plays through the seek stream below, so
     // that single buffer holds track 1's tail followed by track 2.
     let _track1_play = fixture.next_capture_stream().await;
-    fixture
-        .playback_handle
-        .add_to_queue(vec![track2_id.clone()]);
+    fixture.playback_handle.add_to_queue(vec![track2_id.clone()]);
 
     // Wait for track 1 to start
     let started =
@@ -560,23 +524,17 @@ async fn test_cue_ape_auto_advance_no_replay() {
     let captured = fixture.next_capture_stream().await;
 
     // Wait for track 2 to start via auto-advance, then capture samples.
-    let track2_started = support::wait_until_playing(
-        &mut fixture.progress_rx,
-        &track2_id,
-        Duration::from_secs(15),
-    )
-    .await;
-    assert!(
-        track2_started,
-        "Track 2 should auto-advance after track 1 completes"
-    );
+    let track2_started =
+        support::wait_until_playing(&mut fixture.progress_rx, &track2_id, Duration::from_secs(15))
+            .await;
+    assert!(track2_started, "Track 2 should auto-advance after track 1 completes");
 
     // === GROUND TRUTH: XLD-split reference FLAC ===
     let fixture_dir = bae_test_support::fixture_dir!("cue_ape");
     let reference_data =
         std::fs::read(fixture_dir.join("02 Test Artist - Track Two.flac")).expect("read reference");
-    let reference =
-        decode_audio(support::filled_sparse_buffer(&reference_data), None, None).expect("decode reference");
+    let reference = decode_audio(support::filled_sparse_buffer(&reference_data), None, None)
+        .expect("decode reference");
     let channels = reference.channels as usize;
     let sample_rate = reference.sample_rate;
 

@@ -110,12 +110,9 @@ async fn every_kind() -> Library {
     ] {
         sql.push_str(&lib.drafted(display_path));
     }
-    for display_path in [
-        "Identified",
-        "Picked Among Several",
-        "Track Count Differs",
-        "Failed Import",
-    ] {
+    for display_path in
+        ["Identified", "Picked Among Several", "Track Count Differs", "Failed Import"]
+    {
         sql.push_str(&lib.linked(display_path));
         sql.push_str(&lib.valid_draft(display_path));
     }
@@ -172,10 +169,7 @@ async fn sorted(lib: &Library, view: ImportListView) -> Vec<String> {
 
 /// Each entry's count of one read, in the menu's order.
 fn counts(entries: &[PendingFilterEntry]) -> Vec<(PendingFilter, u32)> {
-    entries
-        .iter()
-        .map(|entry| (entry.filter, entry.count))
-        .collect()
+    entries.iter().map(|entry| (entry.filter, entry.count)).collect()
 }
 
 /// Each entry shows exactly the rows in the states it covers, with what is
@@ -199,16 +193,10 @@ async fn each_entry_shows_exactly_the_rows_of_its_states() {
                 "candidate Unread",
             ],
         ),
-        (
-            PendingFilter::InProgress,
-            vec!["candidate Identified", "candidate Several"],
-        ),
+        (PendingFilter::InProgress, vec!["candidate Identified", "candidate Several"]),
         (
             PendingFilter::Identified,
-            vec![
-                "candidate Picked Among Several",
-                "candidate Track Count Differs",
-            ],
+            vec!["candidate Picked Among Several", "candidate Track Count Differs"],
         ),
         (PendingFilter::Unmatched, vec!["candidate Pick Set Aside"]),
         (PendingFilter::NotLookedUp, vec!["candidate Unidentified"]),
@@ -251,10 +239,7 @@ async fn each_entry_counts_the_rows_it_holds() {
         .iter()
         .find(|entry| entry.filter == PendingFilter::InProgress)
         .expect("In Progress is an entry");
-    assert!(
-        !in_progress.selectable,
-        "an entry holding no row cannot be chosen"
-    );
+    assert!(!in_progress.selectable, "an entry holding no row cannot be chosen");
 
     running(&lib).await;
     let read = lib.shown(view(TriageTab::Pending)).await;
@@ -270,20 +255,14 @@ async fn each_entry_counts_the_rows_it_holds() {
         ]
     );
     assert_eq!(read.summary.counts.pending, 14);
-    assert!(read
-        .pending_filter_entries
-        .iter()
-        .all(|entry| entry.selectable));
+    assert!(read.pending_filter_entries.iter().all(|entry| entry.selectable));
     for entry in &read.pending_filter_entries {
         let shown = lib.shown(under(TriageTab::Pending, entry.filter)).await;
         assert_eq!(shown.total_count as u32, entry.count, "{:?}", entry.filter);
         if entry.filter != PendingFilter::All {
             assert_eq!(
                 shown.summary.narrowed,
-                Some(crate::import::NarrowedCount {
-                    shown: entry.count,
-                    total: 14
-                }),
+                Some(crate::import::NarrowedCount { shown: entry.count, total: 14 }),
                 "the list's count under {:?} is the entry's",
                 entry.filter
             );
@@ -311,24 +290,13 @@ async fn each_entry_counts_the_rows_it_holds() {
 async fn a_chosen_entry_holding_no_row_stays_chosen() {
     let lib = every_kind().await;
     running(&lib).await;
-    let list = lib
-        .open(under(TriageTab::Pending, PendingFilter::InProgress))
-        .await;
+    let list = lib.open(under(TriageTab::Pending, PendingFilter::InProgress)).await;
     assert_eq!(lib.read(list).await.total_count, 2);
     lib.run("DELETE FROM import_candidate_standing;").await;
     let ended = lib.read(list).await;
     assert_eq!(ended.total_count, 0);
-    assert_eq!(
-        ended.summary.narrowing.pending_filter,
-        PendingFilter::InProgress
-    );
-    assert_eq!(
-        ended.summary.narrowed,
-        Some(crate::import::NarrowedCount {
-            shown: 0,
-            total: 14
-        })
-    );
+    assert_eq!(ended.summary.narrowing.pending_filter, PendingFilter::InProgress);
+    assert_eq!(ended.summary.narrowed, Some(crate::import::NarrowedCount { shown: 0, total: 14 }));
 }
 
 /// Done and Skipped rows are past identification, so an entry chosen on
@@ -337,19 +305,10 @@ async fn a_chosen_entry_holding_no_row_stays_chosen() {
 async fn the_pending_filter_leaves_done_and_skipped_alone() {
     let lib = every_kind().await;
     for filter in PendingFilter::ENTRIES {
+        assert_eq!(lib.items(under(TriageTab::Done, filter)).await, ["candidate Imported"]);
+        assert_eq!(lib.items(under(TriageTab::Skipped, filter)).await, ["candidate Set Aside"]);
         assert_eq!(
-            lib.items(under(TriageTab::Done, filter)).await,
-            ["candidate Imported"]
-        );
-        assert_eq!(
-            lib.items(under(TriageTab::Skipped, filter)).await,
-            ["candidate Set Aside"]
-        );
-        assert_eq!(
-            lib.shown(under(TriageTab::Done, filter))
-                .await
-                .summary
-                .narrowed,
+            lib.shown(under(TriageTab::Done, filter)).await.summary.narrowed,
             None,
             "the entry leaves Done alone"
         );
@@ -373,19 +332,10 @@ async fn the_text_filter_composes_with_the_pending_filter() {
         "of the Needs You rows only the drafted ones read Album"
     );
     assert_eq!(needs_you.summary.counts.pending, 14);
-    assert!(lib
-        .items(texted(PendingFilter::Identified, "nothing"))
-        .await
-        .is_empty());
+    assert!(lib.items(texted(PendingFilter::Identified, "nothing")).await.is_empty());
     assert_eq!(
-        lib.shown(texted(PendingFilter::All, "several"))
-            .await
-            .summary
-            .narrowed,
-        Some(crate::import::NarrowedCount {
-            shown: 1,
-            total: 14
-        }),
+        lib.shown(texted(PendingFilter::All, "several")).await.summary.narrowed,
+        Some(crate::import::NarrowedCount { shown: 1, total: 14 }),
         "only the row with no draft reads its folder's name"
     );
     assert_eq!(
@@ -405,9 +355,7 @@ async fn the_text_filter_composes_with_the_pending_filter() {
 #[tokio::test]
 async fn locating_a_candidate_ignores_the_pending_filter() {
     let lib = every_kind().await;
-    let list = lib
-        .open(under(TriageTab::Pending, PendingFilter::Identified))
-        .await;
+    let list = lib.open(under(TriageTab::Pending, PendingFilter::Identified)).await;
     let location = lib
         .db
         .locate_import_candidate(list, &lib.key("Unidentified"))
@@ -472,48 +420,25 @@ async fn each_row_reads_back_in_the_standing_its_tables_put_it_in() {
     let read = lib.shown(view(TriageTab::Pending)).await;
     let standing = |display_path: &str| row_at(&read, display_path).1.standing.clone();
     let needs_you = |reason| Some(PendingStanding::NeedsYou { reason });
-    assert_eq!(
-        standing("Several"),
-        needs_you(NeedsYouReason::Matches { count: 3 })
-    );
-    assert_eq!(
-        standing("No Tracklist"),
-        needs_you(NeedsYouReason::NoTracklist)
-    );
+    assert_eq!(standing("Several"), needs_you(NeedsYouReason::Matches { count: 3 }));
+    assert_eq!(standing("No Tracklist"), needs_you(NeedsYouReason::NoTracklist));
     assert_eq!(
         standing("Medium"),
-        needs_you(NeedsYouReason::MediumMismatch {
-            folder: MediumConflict::CdRip,
-            releases: 2
-        })
+        needs_you(NeedsYouReason::MediumMismatch { folder: MediumConflict::CdRip, releases: 2 })
     );
     assert_eq!(standing("Not Found"), needs_you(NeedsYouReason::NotFound));
-    assert_eq!(
-        standing("Nothing Found"),
-        needs_you(NeedsYouReason::NotFound)
-    );
-    assert_eq!(
-        standing("Manual"),
-        needs_you(NeedsYouReason::NothingToLookUp)
-    );
+    assert_eq!(standing("Nothing Found"), needs_you(NeedsYouReason::NotFound));
+    assert_eq!(standing("Manual"), needs_you(NeedsYouReason::NothingToLookUp));
     assert_eq!(
         standing("Broke"),
         Some(PendingStanding::Error {
-            failure: InternalFailure {
-                detail: "bae broke".to_string()
-            }
+            failure: InternalFailure { detail: "bae broke".to_string() }
         })
     );
-    assert_eq!(
-        standing("Lookup Failed"),
-        Some(PendingStanding::LookupError)
-    );
+    assert_eq!(standing("Lookup Failed"), Some(PendingStanding::LookupError));
     assert_eq!(standing("Unread"), Some(PendingStanding::LookupError));
     assert_eq!(standing("Kept"), Some(PendingStanding::Unmatched));
-    assert_eq!(
-        standing("Kept Then Linked"),
-        Some(PendingStanding::Identified)
-    );
+    assert_eq!(standing("Kept Then Linked"), Some(PendingStanding::Identified));
     assert_eq!(
         standing("Fits"),
         Some(PendingStanding::Unmatched),
@@ -572,17 +497,11 @@ async fn running_work_decides_over_the_tables() {
     assert_eq!(
         standing("Not Written"),
         Some(PendingStanding::Error {
-            failure: InternalFailure {
-                detail: "disk full".to_string()
-            }
+            failure: InternalFailure { detail: "disk full".to_string() }
         })
     );
     assert_eq!(
-        row_at(&read, "Not Written")
-            .1
-            .standing
-            .as_ref()
-            .and_then(PendingStanding::badge),
+        row_at(&read, "Not Written").1.standing.as_ref().and_then(PendingStanding::badge),
         Some(crate::import::PendingBadge::Error)
     );
 
@@ -591,9 +510,7 @@ async fn running_work_decides_over_the_tables() {
     for display_path in releases {
         assert_eq!(
             row_at(&at_rest, display_path).1.standing,
-            Some(PendingStanding::NeedsYou {
-                reason: NeedsYouReason::NotFound
-            }),
+            Some(PendingStanding::NeedsYou { reason: NeedsYouReason::NotFound }),
             "{display_path}"
         );
     }
@@ -625,24 +542,15 @@ async fn a_row_shows_its_lookup_at_work_only_while_in_progress_counts_it() {
     use crate::import::IdentifyingStep;
     assert_eq!(
         shown("Queued"),
-        (
-            Some(PendingStanding::Identifying),
-            Some(IdentifyingStep::Queued)
-        )
+        (Some(PendingStanding::Identifying), Some(IdentifyingStep::Queued))
     );
     assert_eq!(
         shown("Running"),
-        (
-            Some(PendingStanding::Identifying),
-            Some(IdentifyingStep::Running)
-        )
+        (Some(PendingStanding::Identifying), Some(IdentifyingStep::Running))
     );
     assert_eq!(
         shown("Finalizing"),
-        (
-            Some(PendingStanding::Identifying),
-            Some(IdentifyingStep::Running)
-        )
+        (Some(PendingStanding::Identifying), Some(IdentifyingStep::Running))
     );
     assert_eq!(
         shown("Reading"),
@@ -668,14 +576,7 @@ async fn a_row_shows_its_lookup_at_work_only_while_in_progress_counts_it() {
 #[tokio::test]
 async fn a_pane_shows_a_pick_being_read_only_while_it_is_read() {
     let lib = Library::new().await;
-    let releases = [
-        "Queued",
-        "Running",
-        "Finalizing",
-        "Reading",
-        "Asked",
-        "Idle",
-    ];
+    let releases = ["Queued", "Running", "Finalizing", "Reading", "Asked", "Idle"];
     let mut sql = scanned_with_states(&lib, &releases);
     sql.push_str(&lib.identifying("Queued", "queued"));
     sql.push_str(&lib.identifying("Running", "running"));
@@ -696,10 +597,6 @@ async fn a_pane_shows_a_pick_being_read_only_while_it_is_read() {
         ("Asked", true),
         ("Idle", false),
     ] {
-        assert_eq!(
-            row_at(&read, display_path).1.reading_pick(),
-            reading,
-            "{display_path}"
-        );
+        assert_eq!(row_at(&read, display_path).1.reading_pick(), reading, "{display_path}");
     }
 }

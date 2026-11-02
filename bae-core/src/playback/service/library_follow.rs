@@ -54,12 +54,7 @@ where
             // closed store: the service plays on without the follow.
             |_| {},
         );
-        Self {
-            requests,
-            request,
-            reads,
-            task,
-        }
+        Self { requests, request, reads, task }
     }
 
     /// Point the read at `request`, unless it already reads it. A follow

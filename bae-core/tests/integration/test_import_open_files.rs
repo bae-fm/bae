@@ -27,9 +27,7 @@ const TRACKS_PER_DISC: usize = 100;
 /// it measures as many tracks at once as there are cores, and each track reads
 /// one file here.
 fn max_sources_open() -> usize {
-    std::thread::available_parallelism()
-        .expect("available parallelism")
-        .get()
+    std::thread::available_parallelism().expect("available parallelism").get()
 }
 
 /// Descriptors the import may hold above the idle library's, whatever the
@@ -57,19 +55,11 @@ struct LoweredFileLimit {
 
 impl LoweredFileLimit {
     fn to(soft: libc::rlim_t) -> Self {
-        let mut original = libc::rlimit {
-            rlim_cur: 0,
-            rlim_max: 0,
-        };
+        let mut original = libc::rlimit { rlim_cur: 0, rlim_max: 0 };
         // SAFETY: getrlimit/setrlimit write and read the rlimit we pass.
-        assert_eq!(
-            unsafe { libc::getrlimit(libc::RLIMIT_NOFILE, &mut original) },
-            0
-        );
-        let lowered = libc::rlimit {
-            rlim_cur: soft.min(original.rlim_max),
-            rlim_max: original.rlim_max,
-        };
+        assert_eq!(unsafe { libc::getrlimit(libc::RLIMIT_NOFILE, &mut original) }, 0);
+        let lowered =
+            libc::rlimit { rlim_cur: soft.min(original.rlim_max), rlim_max: original.rlim_max };
         assert_eq!(unsafe { libc::setrlimit(libc::RLIMIT_NOFILE, &lowered) }, 0);
         Self { original }
     }
@@ -83,20 +73,14 @@ impl Drop for LoweredFileLimit {
 }
 
 fn write_box_set(album_dir: &Path) {
-    let flac = fs::read(bae_test_support::fixture_dir!(
-        "flac",
-        "01 Test Track 1.flac"
-    ))
-    .expect("FLAC fixture");
+    let flac = fs::read(bae_test_support::fixture_dir!("flac", "01 Test Track 1.flac"))
+        .expect("FLAC fixture");
     for disc in 1..=DISCS {
         let disc_dir = album_dir.join(format!("CD{disc}"));
         fs::create_dir_all(&disc_dir).unwrap();
         for track in 1..=TRACKS_PER_DISC {
-            fs::write(
-                disc_dir.join(format!("{track:03} - Track Title {track}.flac")),
-                &flac,
-            )
-            .unwrap();
+            fs::write(disc_dir.join(format!("{track:03} - Track Title {track}.flac")), &flac)
+                .unwrap();
         }
     }
 }
@@ -165,10 +149,8 @@ async fn import_a_box_set_under_a_lowered_limit() {
         "the import held {peak_sources} source files open at once, over {} cores",
         max_sources_open()
     );
-    let tracks = library_manager
-        .get_tracks_for_release(&release_id)
-        .await
-        .expect("read imported tracks");
+    let tracks =
+        library_manager.get_tracks_for_release(&release_id).await.expect("read imported tracks");
     assert_eq!(tracks.len(), DISCS * TRACKS_PER_DISC);
 
     // Every source file the import opened is closed once it is done.

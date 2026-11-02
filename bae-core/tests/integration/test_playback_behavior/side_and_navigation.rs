@@ -1,13 +1,7 @@
 #[tokio::test]
 async fn sided_vinyl_boundary_pauses_on_auto_advance() {
-    assert_sided_boundary_pauses(
-        "Vinyl",
-        ["A1", "A2", "B1"],
-        1,
-        "A",
-        PlaybackPauseBoundary::Side,
-    )
-    .await;
+    assert_sided_boundary_pauses("Vinyl", ["A1", "A2", "B1"], 1, "A", PlaybackPauseBoundary::Side)
+        .await;
 }
 
 #[tokio::test]
@@ -29,18 +23,12 @@ async fn assert_sided_boundary_pauses(
     expected_side_label: &str,
     expected_boundary: PlaybackPauseBoundary,
 ) {
-    let mut fixture = SidePauseTestFixture::new(format, positions, true)
-        .await
-        .expect("side-pause fixture");
+    let mut fixture =
+        SidePauseTestFixture::new(format, positions, true).await.expect("side-pause fixture");
     let side_track_id = fixture.track_ids[start_track_index].clone();
 
-    let paused = fixture
-        .play_to_side_pause(
-            &side_track_id,
-            expected_side_label,
-            expected_boundary,
-        )
-        .await;
+    let paused =
+        fixture.play_to_side_pause(&side_track_id, expected_side_label, expected_boundary).await;
 
     match paused {
         PlaybackState::Paused { track, .. } => {
@@ -73,14 +61,8 @@ async fn same_side_auto_advance_does_not_side_pause() {
 
 #[tokio::test]
 async fn cd_multi_disc_boundary_pauses_on_auto_advance() {
-    assert_sided_boundary_pauses(
-        "CD",
-        ["1-1", "2-1", "2-2"],
-        0,
-        "1",
-        PlaybackPauseBoundary::Disc,
-    )
-    .await;
+    assert_sided_boundary_pauses("CD", ["1-1", "2-1", "2-2"], 0, "1", PlaybackPauseBoundary::Disc)
+        .await;
 }
 
 #[tokio::test]
@@ -119,9 +101,7 @@ async fn enabling_setting_mid_track_pauses_at_the_imminent_boundary() {
 
     fixture.seek_to_auto_advance();
 
-    fixture
-        .wait_for_side_pause("A", PlaybackPauseBoundary::Side)
-        .await;
+    fixture.wait_for_side_pause("A", PlaybackPauseBoundary::Side).await;
 }
 
 #[tokio::test]
@@ -178,10 +158,7 @@ async fn resume_from_side_pause_starts_next_side() {
     let side_a_track_id = fixture.track_ids[1].clone();
     let next_side_track_id = fixture.track_ids[2].clone();
 
-    fixture
-        .play_to_side_pause(
-            &side_a_track_id, "A", PlaybackPauseBoundary::Side)
-        .await;
+    fixture.play_to_side_pause(&side_a_track_id, "A", PlaybackPauseBoundary::Side).await;
 
     fixture.playback_handle.resume();
 
@@ -206,9 +183,7 @@ async fn side_boundary_pause_prevents_gapless_stream_handoff() {
     let _side_a_stream = fixture.next_capture_stream().await;
 
     fixture.seek_to_auto_advance();
-    fixture
-        .wait_for_side_pause("A", PlaybackPauseBoundary::Side)
-        .await;
+    fixture.wait_for_side_pause("A", PlaybackPauseBoundary::Side).await;
 
     fixture.playback_handle.resume();
     let _side_b_stream = fixture.next_capture_stream().await;
@@ -264,10 +239,7 @@ async fn assert_skip_preserves_play_state(direction: SkipDirection, start_paused
     if start_paused {
         fixture.playback_handle.pause();
         fixture
-            .wait_for_state(
-                |s| matches!(s, PlaybackState::Paused { .. }),
-                Duration::from_secs(2),
-            )
+            .wait_for_state(|s| matches!(s, PlaybackState::Paused { .. }), Duration::from_secs(2))
             .await
             .expect("playback should pause");
     }
@@ -328,19 +300,13 @@ async fn pause_and_seek_interact_in_both_orderings() {
     let track_id = fixture.track_ids[0].clone();
     fixture.playback_handle.play(track_id.clone());
     fixture
-        .wait_for_state(
-            |s| matches!(s, PlaybackState::Playing { .. }),
-            Duration::from_secs(5),
-        )
+        .wait_for_state(|s| matches!(s, PlaybackState::Playing { .. }), Duration::from_secs(5))
         .await
         .expect("should start playing");
 
     fixture.playback_handle.pause();
     fixture
-        .wait_for_state(
-            |s| matches!(s, PlaybackState::Paused { .. }),
-            Duration::from_secs(2),
-        )
+        .wait_for_state(|s| matches!(s, PlaybackState::Paused { .. }), Duration::from_secs(2))
         .await
         .expect("should be paused");
 
@@ -349,18 +315,12 @@ async fn pause_and_seek_interact_in_both_orderings() {
         .wait_for_seeked(Duration::from_secs(5))
         .await
         .expect("Seeked event after seeking while paused");
-    assert!(
-        seeked_ms >= 1900,
-        "seek should land near 2s, got {seeked_ms}ms"
-    );
+    assert!(seeked_ms >= 1900, "seek should land near 2s, got {seeked_ms}ms");
 
     // The seek holds Loading until the rebuilt decoder is ready, then settles
     // on the pause it had.
     let settled = fixture
-        .wait_for_state(
-            |s| !matches!(s, PlaybackState::Loading { .. }),
-            Duration::from_secs(5),
-        )
+        .wait_for_state(|s| !matches!(s, PlaybackState::Loading { .. }), Duration::from_secs(5))
         .await
         .expect("the seek settles");
     assert!(
@@ -370,10 +330,7 @@ async fn pause_and_seek_interact_in_both_orderings() {
 
     fixture.playback_handle.resume();
     fixture
-        .wait_for_state(
-            |s| matches!(s, PlaybackState::Playing { .. }),
-            Duration::from_secs(2),
-        )
+        .wait_for_state(|s| matches!(s, PlaybackState::Playing { .. }), Duration::from_secs(2))
         .await
         .expect("should resume playing");
     let advanced_ms = fixture
@@ -391,19 +348,13 @@ async fn pause_and_seek_interact_in_both_orderings() {
     let track_id = fixture.track_ids[0].clone();
     fixture.playback_handle.play(track_id.clone());
     fixture
-        .wait_for_state(
-            |s| matches!(s, PlaybackState::Playing { .. }),
-            Duration::from_secs(5),
-        )
+        .wait_for_state(|s| matches!(s, PlaybackState::Playing { .. }), Duration::from_secs(5))
         .await
         .expect("should start playing");
 
     let seek_target = Duration::from_secs(2);
     fixture.playback_handle.seek(TrackTime::from_duration(seek_target));
-    let seeked_ms = fixture
-        .wait_for_seeked(Duration::from_secs(2))
-        .await
-        .expect("Seeked event");
+    let seeked_ms = fixture.wait_for_seeked(Duration::from_secs(2)).await.expect("Seeked event");
     assert!(
         Duration::from_millis(seeked_ms).abs_diff(seek_target) < Duration::from_secs(1),
         "seek should land near 2s, got {seeked_ms}ms"
@@ -411,18 +362,12 @@ async fn pause_and_seek_interact_in_both_orderings() {
 
     fixture.playback_handle.pause();
     fixture
-        .wait_for_state(
-            |s| matches!(s, PlaybackState::Paused { .. }),
-            Duration::from_secs(2),
-        )
+        .wait_for_state(|s| matches!(s, PlaybackState::Paused { .. }), Duration::from_secs(2))
         .await
         .expect("should be paused");
     fixture.playback_handle.resume();
     fixture
-        .wait_for_state(
-            |s| matches!(s, PlaybackState::Playing { .. }),
-            Duration::from_secs(2),
-        )
+        .wait_for_state(|s| matches!(s, PlaybackState::Playing { .. }), Duration::from_secs(2))
         .await
         .expect("should resume playing");
     let maintained_ms = fixture
@@ -444,18 +389,12 @@ async fn test_fresh_play_always_starts_playing() {
 
     fixture.playback_handle.play(first_track_id.clone());
     let _playing_state = fixture
-        .wait_for_state(
-            |s| matches!(s, PlaybackState::Playing { .. }),
-            Duration::from_secs(5),
-        )
+        .wait_for_state(|s| matches!(s, PlaybackState::Playing { .. }), Duration::from_secs(5))
         .await;
 
     fixture.playback_handle.pause();
     let paused_state = fixture
-        .wait_for_state(
-            |s| matches!(s, PlaybackState::Paused { .. }),
-            Duration::from_secs(2),
-        )
+        .wait_for_state(|s| matches!(s, PlaybackState::Paused { .. }), Duration::from_secs(2))
         .await;
     assert!(paused_state.is_some(), "Should be paused");
 
@@ -474,10 +413,7 @@ async fn test_fresh_play_always_starts_playing() {
         )
         .await;
 
-    assert!(
-        new_play_state.is_some(),
-        "Fresh play should always start playing, not paused"
-    );
+    assert!(new_play_state.is_some(), "Fresh play should always start playing, not paused");
 }
 
 #[tokio::test]
@@ -488,10 +424,7 @@ async fn test_seek_while_playing_advances_position() {
 
     fixture.playback_handle.play(track_id.clone());
     let playing_state = fixture
-        .wait_for_state(
-            |s| matches!(s, PlaybackState::Playing { .. }),
-            Duration::from_secs(5),
-        )
+        .wait_for_state(|s| matches!(s, PlaybackState::Playing { .. }), Duration::from_secs(5))
         .await;
     assert!(playing_state.is_some(), "Should start playing");
 
@@ -499,10 +432,7 @@ async fn test_seek_while_playing_advances_position() {
     fixture.playback_handle.seek(TrackTime::from_duration(seek_target));
 
     let seeked_position = fixture.wait_for_seeked(Duration::from_secs(5)).await;
-    assert!(
-        seeked_position.is_some(),
-        "Should receive Seeked event after seeking while playing"
-    );
+    assert!(seeked_position.is_some(), "Should receive Seeked event after seeking while playing");
     let seeked_position_ms = seeked_position.unwrap();
     assert!(
         seeked_position_ms >= 1900,
@@ -542,18 +472,10 @@ async fn gapless_boundary_hands_off_without_rebuild() {
 
     // Leaves enough time before the end for the next track to be staged again.
     fixture.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(3)));
-    fixture
-        .wait_for_seeked(Duration::from_secs(5))
-        .await
-        .expect("the seek should land");
+    fixture.wait_for_seeked(Duration::from_secs(5)).await.expect("the seek should land");
 
-    let outcome = observe_boundary(
-        &mut fixture.progress_rx,
-        &first,
-        &second,
-        Duration::from_secs(8),
-    )
-    .await;
+    let outcome =
+        observe_boundary(&mut fixture.progress_rx, &first, &second, Duration::from_secs(8)).await;
     assert!(
         outcome.reached_incoming,
         "playback should cross into the second track at the first track's end"
@@ -607,34 +529,15 @@ async fn gapless_boundary_repreloads_following_track() {
         .expect("the first track should play");
 
     fixture.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(3)));
-    fixture
-        .wait_for_seeked(Duration::from_secs(5))
-        .await
-        .expect("the first seek should land");
-    let first_cross = observe_boundary(
-        &mut fixture.progress_rx,
-        &first,
-        &second,
-        Duration::from_secs(8),
-    )
-    .await;
-    assert!(
-        first_cross.reached_incoming,
-        "playback should cross into the second track"
-    );
+    fixture.wait_for_seeked(Duration::from_secs(5)).await.expect("the first seek should land");
+    let first_cross =
+        observe_boundary(&mut fixture.progress_rx, &first, &second, Duration::from_secs(8)).await;
+    assert!(first_cross.reached_incoming, "playback should cross into the second track");
 
     fixture.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(3)));
-    fixture
-        .wait_for_seeked(Duration::from_secs(5))
-        .await
-        .expect("the second seek should land");
-    let second_cross = observe_boundary(
-        &mut fixture.progress_rx,
-        &second,
-        &third,
-        Duration::from_secs(8),
-    )
-    .await;
+    fixture.wait_for_seeked(Duration::from_secs(5)).await.expect("the second seek should land");
+    let second_cross =
+        observe_boundary(&mut fixture.progress_rx, &second, &third, Duration::from_secs(8)).await;
     assert!(
         second_cross.reached_incoming,
         "the following track was re-preloaded, so the second boundary also crosses into it"
@@ -669,10 +572,7 @@ async fn boundary_advances_to_next_track_after_late_seek() {
 
     // 200 ms before the end of the 5 s track.
     fixture.playback_handle.seek(TrackTime::from_duration(Duration::from_millis(4800)));
-    fixture
-        .wait_for_seeked(Duration::from_secs(5))
-        .await
-        .expect("the seek should land");
+    fixture.wait_for_seeked(Duration::from_secs(5)).await.expect("the seek should land");
 
     fixture
         .wait_for_state(
@@ -685,10 +585,7 @@ async fn boundary_advances_to_next_track_after_late_seek() {
         wait_for_track_position(&mut fixture.progress_rx, &second, Duration::from_secs(3))
             .await
             .expect("a position update for the second track");
-    assert!(
-        position_ms < 1500,
-        "the next track starts from ~0, got {position_ms}ms"
-    );
+    assert!(position_ms < 1500, "the next track starts from ~0, got {position_ms}ms");
 }
 
 /// The staged next track survives seeks, so the track's end still crosses
@@ -711,23 +608,12 @@ async fn seek_preserves_staged_next_for_a_gapless_advance() {
     // Two seeks, so the second replaces a source that already carried the
     // staged track over once.
     fixture.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(1)));
-    fixture
-        .wait_for_seeked(Duration::from_secs(5))
-        .await
-        .expect("the first seek should land");
+    fixture.wait_for_seeked(Duration::from_secs(5)).await.expect("the first seek should land");
     fixture.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(3)));
-    fixture
-        .wait_for_seeked(Duration::from_secs(5))
-        .await
-        .expect("the second seek should land");
+    fixture.wait_for_seeked(Duration::from_secs(5)).await.expect("the second seek should land");
 
-    let outcome = observe_boundary(
-        &mut fixture.progress_rx,
-        &first,
-        &second,
-        Duration::from_secs(8),
-    )
-    .await;
+    let outcome =
+        observe_boundary(&mut fixture.progress_rx, &first, &second, Duration::from_secs(8)).await;
     assert!(
         outcome.reached_incoming,
         "the staged next should survive the seeks and play at the boundary"
@@ -750,8 +636,7 @@ async fn seek_with_dropped_capture_receiver_keeps_playing() {
     let first = lib.track_ids[0].clone();
 
     // Built here so the test owns the receiver it drops.
-    let (capture_device, capture_stream_rx) =
-        bae_core::playback::RealtimeCaptureAudioDevice::new();
+    let (capture_device, capture_stream_rx) = bae_core::playback::RealtimeCaptureAudioDevice::new();
     let mut capture_stream_rx = Some(capture_stream_rx);
     let handle = lib
         .library_manager
@@ -761,8 +646,8 @@ async fn seek_with_dropped_capture_receiver_keeps_playing() {
             true,
             Box::new(capture_device),
         )
-    .await
-    .expect("start playback");
+        .await
+        .expect("start playback");
     let mut progress_rx = handle.subscribe_progress();
 
     handle.play(first.clone());
@@ -780,28 +665,19 @@ async fn seek_with_dropped_capture_receiver_keeps_playing() {
     let mut saw_error = false;
     // `Some(true)` means the seek landed, `Some(false)` that playback stopped.
     let outcome =
-        support::next_matching(
-            &mut progress_rx,
-            Duration::from_secs(8),
-            |event| match event {
-                PlaybackProgress::Seeked { track_id, .. } if track_id == first => Some(true),
-                PlaybackProgress::PlaybackError { .. } => {
-                    saw_error = true;
-                    None
-                }
-                PlaybackProgress::StateChanged {
-                    state: PlaybackState::Stopped,
-                } => Some(false),
-                _ => None,
-            },
-        )
+        support::next_matching(&mut progress_rx, Duration::from_secs(8), |event| match event {
+            PlaybackProgress::Seeked { track_id, .. } if track_id == first => Some(true),
+            PlaybackProgress::PlaybackError { .. } => {
+                saw_error = true;
+                None
+            }
+            PlaybackProgress::StateChanged { state: PlaybackState::Stopped } => Some(false),
+            _ => None,
+        })
         .await;
     let (saw_seeked, saw_stopped) = (outcome == Some(true), outcome == Some(false));
     assert!(saw_seeked, "an in-place seek should land and emit Seeked");
-    assert!(
-        !saw_error,
-        "an in-place seek must not surface a PlaybackError"
-    );
+    assert!(!saw_error, "an in-place seek must not surface a PlaybackError");
     assert!(!saw_stopped, "an in-place seek must not stop playback");
 
     handle.stop();

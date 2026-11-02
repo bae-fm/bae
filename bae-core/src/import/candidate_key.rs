@@ -90,9 +90,7 @@ impl fmt::Debug for CandidateKey {
 
 impl rusqlite::types::ToSql for CandidateKey {
     fn to_sql(&self) -> rusqlite::Result<rusqlite::types::ToSqlOutput<'_>> {
-        Ok(rusqlite::types::ToSqlOutput::Borrowed(
-            rusqlite::types::ValueRef::Blob(&self.0),
-        ))
+        Ok(rusqlite::types::ToSqlOutput::Borrowed(rusqlite::types::ValueRef::Blob(&self.0)))
     }
 }
 

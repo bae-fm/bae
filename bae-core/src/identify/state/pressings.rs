@@ -30,11 +30,7 @@ pub enum PressingKey {
     /// `artist`, the one the record printing it credits; `None` on
     /// MusicBrainz, and where that record credits no one, or various
     /// artists.
-    CatalogNumber {
-        number: String,
-        label: String,
-        artist: Option<String>,
-    },
+    CatalogNumber { number: String, label: String, artist: Option<String> },
 }
 
 /// One catalog's lookup of one offered row's pressing.
@@ -78,10 +74,9 @@ impl PressingLookup {
 
     pub(super) fn failure(&self) -> Option<SourceFailure> {
         match &self.state {
-            LookupState::Failed { failure } => Some(SourceFailure {
-                source: self.source,
-                failure: failure.clone(),
-            }),
+            LookupState::Failed { failure } => {
+                Some(SourceFailure { source: self.source, failure: failure.clone() })
+            }
             LookupState::LookingUp | LookupState::Done { .. } => None,
         }
     }
@@ -91,13 +86,8 @@ impl PressingLookup {
 fn prints_under(result: &MetadataResult, number: &str, label: &str) -> bool {
     let asked = catalog_key(number);
     result.labels.iter().any(|stated| {
-        stated
-            .catalog_number()
-            .and_then(catalog_key)
-            .is_some_and(|key| Some(key) == asked)
-            && stated
-                .name()
-                .is_some_and(|name| same_label_name(name, label))
+        stated.catalog_number().and_then(catalog_key).is_some_and(|key| Some(key) == asked)
+            && stated.name().is_some_and(|name| same_label_name(name, label))
     })
 }
 
@@ -116,16 +106,12 @@ pub(super) fn keys_of(
                 .iter()
                 .flat_map(|record| &record.links)
                 .find(|release| release.catalog == catalog)
-                .map(|release| PressingKey::Link {
-                    release: release.clone(),
-                });
+                .map(|release| PressingKey::Link { release: release.clone() });
             let barcode = || {
                 row.iter()
                     .flat_map(|record| &record.barcodes)
                     .next()
-                    .map(|barcode| PressingKey::Barcode {
-                        barcode: barcode.clone(),
-                    })
+                    .map(|barcode| PressingKey::Barcode { barcode: barcode.clone() })
             };
             let number = || {
                 row.iter().find_map(|record| {
@@ -140,9 +126,7 @@ pub(super) fn keys_of(
                     })
                 })
             };
-            link.or_else(barcode)
-                .or_else(number)
-                .map(|key| (catalog, key))
+            link.or_else(barcode).or_else(number).map(|key| (catalog, key))
         })
         .collect()
 }

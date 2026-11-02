@@ -60,10 +60,7 @@ pub struct ReaderDemand {
 /// reader's position while holding a shared borrow of another field (the read
 /// loop publishes its position mid-iteration over `ranges`).
 fn publish_demand_pos(demands: &mut HashMap<u64, ReaderDemand>, id: u64, pos: u64) {
-    demands
-        .entry(id)
-        .and_modify(|d| d.pos = pos)
-        .or_insert(ReaderDemand { pos, ceiling: None });
+    demands.entry(id).and_modify(|d| d.pos = pos).or_insert(ReaderDemand { pos, ceiling: None });
 }
 
 /// The first gap the fill fetches next: the most-behind reader's first, up to
@@ -237,9 +234,7 @@ impl SparseStreamingBuffer {
     /// reported where it was caught: in the fill, or in the decoder whose read
     /// panicked.
     fn state(&self) -> MutexGuard<'_, SparseInner> {
-        self.inner
-            .lock()
-            .unwrap_or_else(|poisoned| self.recovered(poisoned.into_inner()))
+        self.inner.lock().unwrap_or_else(|poisoned| self.recovered(poisoned.into_inner()))
     }
 
     /// `inner`, which a panic left poisoned, with its bytes dropped and the
@@ -290,10 +285,7 @@ impl SparseStreamingBuffer {
             if parked >= count {
                 return;
             }
-            assert!(
-                Instant::now() < deadline,
-                "{count} reads never parked; {parked} did"
-            );
+            assert!(Instant::now() < deadline, "{count} reads never parked; {parked} did");
             std::thread::sleep(Duration::from_millis(1));
         }
     }
@@ -336,8 +328,7 @@ impl SparseStreamingBuffer {
             return;
         }
 
-        self.bytes_fetched
-            .fetch_add(bytes.len() as u64, Ordering::Relaxed);
+        self.bytes_fetched.fetch_add(bytes.len() as u64, Ordering::Relaxed);
 
         let mut inner = self.state();
         let new_end = offset + bytes.len() as u64;
@@ -389,22 +380,14 @@ impl SparseStreamingBuffer {
                 merged_data[dst_offset..dst_offset + bytes.len()].copy_from_slice(bytes);
 
                 inner.ranges.drain(start..=end);
-                inner.ranges.insert(
-                    start,
-                    BufferedRange {
-                        start: merged_start,
-                        data: merged_data,
-                    },
-                );
+                inner
+                    .ranges
+                    .insert(start, BufferedRange { start: merged_start, data: merged_data });
             }
             _ => {
-                inner.ranges.insert(
-                    insert_idx,
-                    BufferedRange {
-                        start: offset,
-                        data: bytes.to_vec(),
-                    },
-                );
+                inner
+                    .ranges
+                    .insert(insert_idx, BufferedRange { start: offset, data: bytes.to_vec() });
             }
         }
 
@@ -455,10 +438,7 @@ impl SparseStreamingBuffer {
                 // when the range reaches that far.
                 let tail = (range.end() > evicted.end).then(|| {
                     let cut = (evicted.end - range.start) as usize;
-                    BufferedRange {
-                        start: evicted.end,
-                        data: range.data.split_off(cut),
-                    }
+                    BufferedRange { start: evicted.end, data: range.data.split_off(cut) }
                 });
                 range.data.truncate((evicted.start - range.start) as usize);
                 range.data.shrink_to_fit();
@@ -928,10 +908,7 @@ impl BufferReader {
             .demands
             .entry(self.id)
             .and_modify(|d| d.ceiling = Some(ceiling))
-            .or_insert(ReaderDemand {
-                pos: self.read_pos,
-                ceiling: Some(ceiling),
-            });
+            .or_insert(ReaderDemand { pos: self.read_pos, ceiling: Some(ceiling) });
         self.buffer.wake_fill();
     }
 }

@@ -49,10 +49,8 @@ impl<Value> LiveReadSender<Value> {
 }
 
 /// A live read's channel: the task's end and the [`LiveRead`]'s.
-pub(crate) fn live_read_channel<Value>() -> (
-    LiveReadSender<Value>,
-    mpsc::UnboundedReceiver<LiveReadMessage<Value>>,
-) {
+pub(crate) fn live_read_channel<Value>(
+) -> (LiveReadSender<Value>, mpsc::UnboundedReceiver<LiveReadMessage<Value>>) {
     let (sender, values) = mpsc::unbounded_channel();
     (LiveReadSender(sender), values)
 }

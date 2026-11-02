@@ -54,11 +54,7 @@ pub(crate) fn wrap_aes_key(
     public_key: &RsaPublicKey,
     aes_key: &[u8],
 ) -> Result<Vec<u8>, rsa::Error> {
-    public_key.encrypt(
-        &mut super::secure_rng::SecureRng,
-        Oaep::new::<Sha1>(),
-        aes_key,
-    )
+    public_key.encrypt(&mut super::secure_rng::SecureRng, Oaep::new::<Sha1>(), aes_key)
 }
 
 /// The AES-128-CBC cipher a RAOP session applies to each audio packet, holding
@@ -94,11 +90,7 @@ impl RaopCipher {
         rng.fill_bytes(&mut key);
         rng.fill_bytes(&mut iv);
         let wrapped = wrap_aes_key(public_key, &key)?;
-        Ok(RaopCipher::Aes {
-            key,
-            iv,
-            rsaaeskey_b64: BASE64.encode(&wrapped),
-        })
+        Ok(RaopCipher::Aes { key, iv, rsaaeskey_b64: BASE64.encode(&wrapped) })
     }
 
     /// Build an AES cipher from an explicit key and IV (the RSA wrap is computed
@@ -111,11 +103,7 @@ impl RaopCipher {
         iv: [u8; AES_BLOCK],
     ) -> Result<Self, rsa::Error> {
         let wrapped = wrap_aes_key(public_key, &key)?;
-        Ok(RaopCipher::Aes {
-            key,
-            iv,
-            rsaaeskey_b64: BASE64.encode(&wrapped),
-        })
+        Ok(RaopCipher::Aes { key, iv, rsaaeskey_b64: BASE64.encode(&wrapped) })
     }
 
     /// Whether this stream is encrypted.
@@ -174,9 +162,7 @@ mod tests {
             return;
         }
         let cipher = cbc::Decryptor::<Aes128>::new(key.into(), iv.into());
-        cipher
-            .decrypt_padded_mut::<NoPadding>(&mut payload[..whole])
-            .expect("block-aligned");
+        cipher.decrypt_padded_mut::<NoPadding>(&mut payload[..whole]).expect("block-aligned");
     }
 
     #[test]
@@ -211,11 +197,7 @@ mod tests {
         cipher.encrypt_packet(&mut buf);
 
         assert_ne!(buf[..32], original[..32], "whole blocks are encrypted");
-        assert_eq!(
-            buf[32..],
-            original[32..],
-            "the sub-block tail stays plaintext"
-        );
+        assert_eq!(buf[32..], original[32..], "the sub-block tail stays plaintext");
 
         decrypt_packet(&key, &iv, &mut buf);
         assert_eq!(buf, original, "CBC decrypt recovers the payload");

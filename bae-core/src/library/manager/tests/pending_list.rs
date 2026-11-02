@@ -11,9 +11,7 @@ async fn pending_list_until(
     values: &mut coven::LiveQuery<crate::library::SyncStatusSnapshot>,
     matches: impl Fn(&[PendingItem]) -> bool,
 ) -> Vec<PendingItem> {
-    crate::followed::value_matching(values, |status| matches(&status.pending))
-        .await
-        .pending
+    crate::followed::value_matching(values, |status| matches(&status.pending)).await.pending
 }
 
 /// The text of the error behind `item`, with every cause below it.
@@ -59,12 +57,7 @@ async fn an_original_changed_since_its_import_fails_the_move() {
     let path = temp.path().join("changed/a.flac");
     let modified = std::fs::metadata(&path).unwrap().modified().unwrap();
     std::fs::write(&path, vec![b'b'; 1000]).unwrap();
-    std::fs::File::options()
-        .write(true)
-        .open(&path)
-        .unwrap()
-        .set_modified(modified)
-        .unwrap();
+    std::fs::File::options().write(true).open(&path).unwrap().set_modified(modified).unwrap();
     assert_eq!(manager.drain_uploads_expecting_work().await.unwrap(), 0);
 
     pending_list_until(&mut values, |items| {
@@ -79,10 +72,7 @@ async fn an_original_changed_since_its_import_fails_the_move() {
         })
     })
     .await;
-    assert!(release_files(&manager, &release.id)
-        .await
-        .iter()
-        .all(|file| !file.stored));
+    assert!(release_files(&manager, &release.id).await.iter().all(|file| !file.stored));
 }
 
 /// A retry that fails for the same reason keeps its record as it was, and the
@@ -151,7 +141,8 @@ async fn the_pending_list_keeps_the_order_its_records_arose_in() {
     };
     // A move's record as coven stores it begins with its subject, so two
     // records of one reason sort as their subjects' stored text does.
-    let stored = |id: coven::MoveId| serde_json::to_vec(&coven::PendingSubject::Move { id }).unwrap();
+    let stored =
+        |id: coven::MoveId| serde_json::to_vec(&coven::PendingSubject::Move { id }).unwrap();
     let first_path = temp.path().join("first/a.flac");
     std::fs::remove_file(&first_path).unwrap();
     assert_eq!(manager.drain_uploads_expecting_work().await.unwrap(), 0);
@@ -186,7 +177,11 @@ async fn the_pending_list_keeps_the_order_its_records_arose_in() {
         album_title: title.into(),
     };
     let listed = pending_list_until(&mut values, |items| {
-        items.iter().filter(|item| matches!(item.subject, PendingSubjectName::ReleaseFile { .. })).count() == 2
+        items
+            .iter()
+            .filter(|item| matches!(item.subject, PendingSubjectName::ReleaseFile { .. }))
+            .count()
+            == 2
     })
     .await;
     assert_eq!(
@@ -208,18 +203,10 @@ async fn the_pending_list_keeps_the_order_its_records_arose_in() {
 async fn a_failed_pins_retry_pins_the_release_again() {
     let (manager, temp_dir) = setup_test_manager().await;
     let home = connect_test_cloud(&manager).await;
-    let release_id = uploaded_release(
-        &manager,
-        &temp_dir.path().join("retry-pin"),
-        "Retry Pin",
-        false,
-    )
-    .await;
+    let release_id =
+        uploaded_release(&manager, &temp_dir.path().join("retry-pin"), "Retry Pin", false).await;
     for file in release_files(&manager, &release_id).await {
-        manager
-            .evict_file_for_test(file.file)
-            .await
-            .unwrap();
+        manager.evict_file_for_test(file.file).await.unwrap();
     }
     let mut values = manager.subscribe_sync_status();
     manager.start().unwrap();
@@ -231,13 +218,9 @@ async fn a_failed_pins_retry_pins_the_release_again() {
     })
     .await;
     manager.enqueue_pins(vec![release_id.clone()]).await.unwrap();
-    let retry = crate::library::PendingAction::RetryDownload {
-        release_id: release_id.clone(),
-    };
-    pending_list_until(&mut values, |items| {
-        items.iter().any(|item| item.wait.action == retry)
-    })
-    .await;
+    let retry = crate::library::PendingAction::RetryDownload { release_id: release_id.clone() };
+    pending_list_until(&mut values, |items| items.iter().any(|item| item.wait.action == retry))
+        .await;
 
     download_queue_until(&manager, |queue| {
         queue.rows.iter().any(|row| {
@@ -249,10 +232,8 @@ async fn a_failed_pins_retry_pins_the_release_again() {
     home.set_faults(coven::Faults::none()).await;
     manager.enqueue_pins(vec![release_id.clone()]).await.unwrap();
     wait_for_kept_release(&manager, &release_id).await;
-    pending_list_until(&mut values, |items| {
-        !items.iter().any(|item| item.wait.action == retry)
-    })
-    .await;
+    pending_list_until(&mut values, |items| !items.iter().any(|item| item.wait.action == retry))
+        .await;
     assert!(
         manager
             .library
@@ -267,7 +248,9 @@ async fn a_failed_pins_retry_pins_the_release_again() {
 /// Follow the inspector until it shows a value `accept` takes.
 #[cfg(feature = "test-utils")]
 async fn inspector_until(
-    inspector: &crate::library::DetailSubscription<crate::library::storage_inspector::StorageInspector>,
+    inspector: &crate::library::DetailSubscription<
+        crate::library::storage_inspector::StorageInspector,
+    >,
     accept: impl Fn(&crate::library::storage_inspector::StorageInspector) -> bool,
 ) -> crate::library::storage_inspector::StorageInspector {
     tokio::time::timeout(std::time::Duration::from_secs(10), async {
@@ -291,16 +274,17 @@ async fn inspector_rows_until(
     release_id: &str,
     accept: impl Fn(&crate::db::DbStorageInspector) -> bool,
 ) -> crate::db::DbStorageInspector {
-    let mut rows = manager
-        .database
-        .subscribe_storage_inspector(Some(release_id.to_string()));
+    let mut rows = manager.database.subscribe_storage_inspector(Some(release_id.to_string()));
     rows_until(&mut rows, accept).await
 }
 
 /// The first rows `rows` gives from now that `accept` takes.
 #[cfg(feature = "test-utils")]
 async fn rows_until(
-    rows: &mut coven::ReconfigurableLiveQuery<Option<String>, Option<crate::db::DbStorageInspector>>,
+    rows: &mut coven::ReconfigurableLiveQuery<
+        Option<String>,
+        Option<crate::db::DbStorageInspector>,
+    >,
     accept: impl Fn(&crate::db::DbStorageInspector) -> bool,
 ) -> crate::db::DbStorageInspector {
     tokio::time::timeout(std::time::Duration::from_secs(10), async {
@@ -322,9 +306,7 @@ async fn rows_until(
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn the_inspector_shows_each_files_upload_and_its_error() {
     let (manager, temp, release, file_id) = queued_upload_fixture("inspected").await;
-    let services = crate::library::AppServices::for_test(manager.library.clone())
-        .await
-        .unwrap();
+    let services = crate::library::AppServices::for_test(manager.library.clone()).await.unwrap();
     let inspector = services.subscribe_storage_inspector();
     inspector.set(Some(release.id.clone())).unwrap();
     use crate::library::storage_inspector::StorageInspectorTransfer;
@@ -332,10 +314,10 @@ async fn the_inspector_shows_each_files_upload_and_its_error() {
         value.files.iter().any(|row| row.file.id == file_id && row.upload.is_some())
     })
     .await;
-    assert!(waiting.transfers.iter().any(|transfer| matches!(
-        transfer,
-        StorageInspectorTransfer::Upload { .. }
-    )));
+    assert!(waiting
+        .transfers
+        .iter()
+        .any(|transfer| matches!(transfer, StorageInspectorTransfer::Upload { .. })));
 
     // The upload can't read a source that moved, so it waits on the file
     // with the error it met.
@@ -360,9 +342,7 @@ async fn the_inspector_shows_each_files_upload_and_its_error() {
 #[tokio::test]
 async fn the_inspector_shows_the_error_an_upload_met() {
     let (manager, _temp, release, file_id) = queued_upload_fixture("refused").await;
-    let services = crate::library::AppServices::for_test(manager.library.clone())
-        .await
-        .unwrap();
+    let services = crate::library::AppServices::for_test(manager.library.clone()).await.unwrap();
     let inspector = services.subscribe_storage_inspector();
     inspector.set(Some(release.id.clone())).unwrap();
     manager
@@ -400,25 +380,20 @@ async fn the_inspector_shows_each_files_pin_while_the_release_pins() {
     use crate::library::storage_inspector::StorageInspectorTransfer;
     let (manager, temp_dir) = setup_test_manager().await;
     connect_test_cloud(&manager).await;
-    let cloud = uploaded_release(&manager, &temp_dir.path().join("cloud"), "Album Title B", false).await;
-    inspector_rows_until(&manager, &cloud, |rows| {
-        rows.files.iter().all(|file| file.pin.is_none())
-    })
-    .await;
+    let cloud =
+        uploaded_release(&manager, &temp_dir.path().join("cloud"), "Album Title B", false).await;
+    inspector_rows_until(&manager, &cloud, |rows| rows.files.iter().all(|file| file.pin.is_none()))
+        .await;
 
-    let services = crate::library::AppServices::for_test(manager.library.clone())
-        .await
-        .unwrap();
+    let services = crate::library::AppServices::for_test(manager.library.clone()).await.unwrap();
     let inspector = services.subscribe_storage_inspector();
     inspector.set(Some(cloud.clone())).unwrap();
     manager.set_downloads_paused(true).await.unwrap();
     manager.enqueue_pins(vec![cloud.clone()]).await.unwrap();
     let pinning = inspector_until(&inspector, |value| !value.transfers.is_empty()).await;
     assert!(pinning.files.iter().all(|file| file.pin == Some(FilePin::Waiting)));
-    let [StorageInspectorTransfer::Download {
-        summary: Some(summary),
-        ..
-    }] = pinning.transfers.as_slice()
+    let [StorageInspectorTransfer::Download { summary: Some(summary), .. }] =
+        pinning.transfers.as_slice()
     else {
         panic!("the pinning release's download counts its files");
     };
@@ -451,22 +426,15 @@ async fn the_inspector_never_reads_a_pin_out_of_the_queue_before_its_files_are_k
     use crate::album_detail::FilePin;
     let (manager, temp_dir) = setup_test_manager().await;
     connect_test_cloud(&manager).await;
-    let cloud = uploaded_release(&manager, &temp_dir.path().join("cloud"), "Album Title B", false).await;
+    let cloud =
+        uploaded_release(&manager, &temp_dir.path().join("cloud"), "Album Title B", false).await;
     let kept = |value: &crate::db::DbStorageInspector| {
-        value
-            .files
-            .iter()
-            .all(|file| file.pin == Some(FilePin::Kept))
+        value.files.iter().all(|file| file.pin == Some(FilePin::Kept))
     };
-    let mut rows = manager
-        .database
-        .subscribe_storage_inspector(Some(cloud.clone()));
+    let mut rows = manager.database.subscribe_storage_inspector(Some(cloud.clone()));
 
     // The release as it stands before any pin: unpinned, out of the queue.
-    rows_until(&mut rows, |value| {
-        value.files.iter().all(|file| file.pin.is_none())
-    })
-    .await;
+    rows_until(&mut rows, |value| value.files.iter().all(|file| file.pin.is_none())).await;
     for round in 0..20 {
         manager.enqueue_pins(vec![cloud.clone()]).await.unwrap();
         // The read sends only what changes, so every value after the pin is
@@ -475,10 +443,7 @@ async fn the_inspector_never_reads_a_pin_out_of_the_queue_before_its_files_are_k
         tokio::time::timeout(std::time::Duration::from_secs(10), async {
             loop {
                 let event = rows.next().await.expect("the inspector's read runs");
-                let value = event
-                    .result
-                    .unwrap()
-                    .expect("the library holds the release");
+                let value = event.result.unwrap().expect("the library holds the release");
                 let queued = value.entries.download.is_some();
                 assert!(
                     queued || kept(&value),
@@ -493,9 +458,6 @@ async fn the_inspector_never_reads_a_pin_out_of_the_queue_before_its_files_are_k
         .expect("the pin finishes");
 
         manager.unpin_release(&cloud).await.unwrap();
-        rows_until(&mut rows, |value| {
-            value.files.iter().all(|file| file.pin.is_none())
-        })
-        .await;
+        rows_until(&mut rows, |value| value.files.iter().all(|file| file.pin.is_none())).await;
     }
 }

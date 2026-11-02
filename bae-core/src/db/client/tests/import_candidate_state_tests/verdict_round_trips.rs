@@ -11,23 +11,16 @@ async fn round_trip_preserves_the_verdict_and_its_ledger() {
     let row = new_candidate_row(&hash, &host_root("/music/Some Album"), &verdict);
     store_candidate_state(&db, &candidate, &row.candidate_key.test_folder()).await;
 
-    crate::import::CandidatePreparations::new(db.clone())
-        .store_verdict(&row)
-        .await
-        .unwrap();
+    crate::import::CandidatePreparations::new(db.clone()).store_verdict(&row).await.unwrap();
 
     let loaded = db.load_import_candidate_states().await.unwrap();
-    let loaded_row = loaded
-        .get(&hash)
-        .expect("row present under its content hash");
+    let loaded_row = loaded.get(&hash).expect("row present under its content hash");
     assert_eq!(
         loaded_row.candidate_key,
         crate::import::CandidateKey::folder(&host_root("/music/Some Album"))
     );
-    let identify = loaded_row
-        .identify
-        .as_ref()
-        .expect("a stored verdict reads back as an identify result");
+    let identify =
+        loaded_row.identify.as_ref().expect("a stored verdict reads back as an identify result");
     assert_eq!(
         identify.verdict, verdict,
         "the verdict must round-trip exactly, its ledger included"
@@ -45,24 +38,14 @@ async fn a_match_reads_its_album_first_year_from_its_stored_catalog_release() {
     let hash = candidate.content_hash();
     let mut findings = sample_findings();
     findings.matches[0].album_first_year = Some(1998);
-    let verdict = TerminalVerdict::Found {
-        findings,
-        track_count: 11,
-        ledger: None,
-    };
+    let verdict = TerminalVerdict::Found { findings, track_count: 11, ledger: None };
     let row = new_candidate_row(&hash, &host_root("/music/Some Album"), &verdict);
     store_candidate_state(&db, &candidate, &row.candidate_key.test_folder()).await;
-    crate::import::CandidatePreparations::new(db.clone())
-        .store_verdict(&row)
-        .await
-        .unwrap();
+    crate::import::CandidatePreparations::new(db.clone()).store_verdict(&row).await.unwrap();
     let first_year = || async {
         let loaded = db.load_import_candidate_states().await.unwrap();
-        let TerminalVerdict::Found { findings, .. } = &loaded[&hash]
-            .identify
-            .as_ref()
-            .expect("a stored verdict reads back")
-            .verdict
+        let TerminalVerdict::Found { findings, .. } =
+            &loaded[&hash].identify.as_ref().expect("a stored verdict reads back").verdict
         else {
             panic!("the stored verdict reads back as found");
         };
@@ -84,10 +67,7 @@ async fn a_match_reads_its_album_first_year_from_its_stored_catalog_release() {
 #[tokio::test]
 async fn a_stored_verdict_keeps_no_track_titles_or_notes() {
     let read_back = TerminalVerdict::Found {
-        findings: Findings {
-            named_notes: Vec::new(),
-            ..sample_findings()
-        },
+        findings: Findings { named_notes: Vec::new(), ..sample_findings() },
         track_count: 11,
         ledger: None,
     };
@@ -128,10 +108,8 @@ async fn round_trip_preserves_the_evidence_the_rows_are_paired_by() {
     musicbrainz.media = StatedMedia::PerMedium(vec![Some(Medium::Cd), None]);
     musicbrainz.status = Some(ReleaseStatus::Official);
     musicbrainz.packaging = Some(Packaging::JewelCase);
-    musicbrainz.links = vec![
-        MetadataRef::new(Catalog::Discogs, "42"),
-        MetadataRef::new(Catalog::Discogs, "43"),
-    ];
+    musicbrainz.links =
+        vec![MetadataRef::new(Catalog::Discogs, "42"), MetadataRef::new(Catalog::Discogs, "43")];
     let album = AlbumLinks::Read(vec![
         MetadataRef::new(Catalog::Discogs, "9"),
         MetadataRef::new(Catalog::Discogs, "7"),
@@ -144,23 +122,16 @@ async fn round_trip_preserves_the_evidence_the_rows_are_paired_by() {
     discogs.source_group_id = Some("7".to_string());
     discogs.barcodes = vec!["0 12345 67890 5".to_string(), "5051961234567".to_string()];
     discogs.media = StatedMedia::Formats(vec![
-        StatedFormat {
-            medium: Some(Medium::Cd),
-            quantity: 2,
-        },
-        StatedFormat {
-            medium: None,
-            quantity: 1,
-        },
+        StatedFormat { medium: Some(Medium::Cd), quantity: 2 },
+        StatedFormat { medium: None, quantity: 1 },
     ]);
     discogs.area = Some(ReleaseArea::Region(Region::UkAndEurope));
     discogs.status = Some(ReleaseStatus::Promotion);
     discogs.discogs_details = vec![DiscogsDetail::Reissue, DiscogsDetail::Size12In];
     // A cover with every copy the archive serves, one with Discogs's one
     // thumbnail, and one served at its one size.
-    musicbrainz.cover_art = Some(bae_catalogs::remote_image::RemoteCover::musicbrainz_release(
-        "rel-1",
-    ));
+    musicbrainz.cover_art =
+        Some(bae_catalogs::remote_image::RemoteCover::musicbrainz_release("rel-1"));
     discogs.cover_art = bae_catalogs::discogs::remote_cover_from_urls(
         Some("https://images.example/front.jpg"),
         Some("https://images.example/front-150.jpg"),
@@ -200,25 +171,12 @@ async fn round_trip_preserves_the_evidence_the_rows_are_paired_by() {
     };
     let row = new_candidate_row(&hash, &host_root("/music/Some Album"), &verdict);
     store_candidate_state(&db, &candidate, &row.candidate_key.test_folder()).await;
-    crate::import::CandidatePreparations::new(db.clone())
-        .store_verdict(&row)
-        .await
-        .unwrap();
+    crate::import::CandidatePreparations::new(db.clone()).store_verdict(&row).await.unwrap();
 
     let loaded = db.load_import_candidate_states().await.unwrap();
-    let stored = &loaded[&hash]
-        .identify
-        .as_ref()
-        .expect("a stored verdict reads back")
-        .verdict;
+    let stored = &loaded[&hash].identify.as_ref().expect("a stored verdict reads back").verdict;
     assert_eq!(*stored, verdict);
-    let TerminalVerdict::Found {
-        findings: Findings {
-            matches: stored_matches,
-            ..
-        },
-        ..
-    } = stored
+    let TerminalVerdict::Found { findings: Findings { matches: stored_matches, .. }, .. } = stored
     else {
         panic!("the verdict found releases");
     };
@@ -237,10 +195,7 @@ async fn round_trip_preserves_the_evidence_the_rows_are_paired_by() {
         "the pair joins the two groups on one card; the unread group is its own"
     );
     assert_eq!(
-        live[0]
-            .pressings()
-            .map(|pressing| pressing.releases.len())
-            .collect::<Vec<_>>(),
+        live[0].pressings().map(|pressing| pressing.releases.len()).collect::<Vec<_>>(),
         vec![2, 1, 1],
         "the linked pair is one row, the others their own"
     );
@@ -269,10 +224,7 @@ async fn the_candidate_s_text_round_trips_line_by_line() {
     row.signals.text_pool = pool.clone();
     store_candidate_state(&db, &candidate, &row.candidate_key.test_folder()).await;
 
-    crate::import::CandidatePreparations::new(db.clone())
-        .store_verdict(&row)
-        .await
-        .unwrap();
+    crate::import::CandidatePreparations::new(db.clone()).store_verdict(&row).await.unwrap();
 
     let loaded = db.load_import_candidate_states().await.unwrap();
     let stored = loaded
@@ -304,10 +256,7 @@ async fn a_failed_verdict_round_trips_what_its_answering_lookups_found() {
     };
     let row = new_candidate_row(&hash, &host_root("/music/Some Album"), &verdict);
     store_candidate_state(&db, &candidate, &row.candidate_key.test_folder()).await;
-    crate::import::CandidatePreparations::new(db.clone())
-        .store_verdict(&row)
-        .await
-        .unwrap();
+    crate::import::CandidatePreparations::new(db.clone()).store_verdict(&row).await.unwrap();
 
     let loaded = db.load_import_candidate_states().await.unwrap();
     let identify = loaded
@@ -332,10 +281,7 @@ async fn an_error_verdict_round_trips_its_failure() {
     let verdict = TerminalVerdict::Error { failure };
     let row = new_candidate_row(&hash, &host_root("/music/Some Album"), &verdict);
     store_candidate_state(&db, &candidate, &row.candidate_key.test_folder()).await;
-    crate::import::CandidatePreparations::new(db.clone())
-        .store_verdict(&row)
-        .await
-        .unwrap();
+    crate::import::CandidatePreparations::new(db.clone()).store_verdict(&row).await.unwrap();
 
     let loaded = db.load_import_candidate_states().await.unwrap();
     let identify = loaded
@@ -354,18 +300,12 @@ async fn a_verdict_with_no_ledger_reads_back_without_one() {
     let candidate =
         track_files_candidate(&[("01 Track.flac", 123_456), ("02 Track.flac", 234_567)]);
     let hash = candidate.content_hash();
-    let verdict = TerminalVerdict::Found {
-        findings: sample_findings(),
-        track_count: 11,
-        ledger: None,
-    };
+    let verdict =
+        TerminalVerdict::Found { findings: sample_findings(), track_count: 11, ledger: None };
     let row = new_candidate_row(&hash, &host_root("/music/Some Album"), &verdict);
     store_candidate_state(&db, &candidate, &row.candidate_key.test_folder()).await;
 
-    crate::import::CandidatePreparations::new(db.clone())
-        .store_verdict(&row)
-        .await
-        .unwrap();
+    crate::import::CandidatePreparations::new(db.clone()).store_verdict(&row).await.unwrap();
 
     let loaded = db.load_import_candidate_states().await.unwrap();
     let identify = loaded
@@ -388,10 +328,7 @@ async fn a_verdict_round_trips_its_narrowed_out_releases_apart_from_its_matches(
     left_out.release_id = "rel-narrowed".to_string();
     let verdict = TerminalVerdict::Found {
         findings: Findings {
-            narrowed_out: NarrowedOut {
-                matches: vec![left_out],
-                pressings: vec![0],
-            },
+            narrowed_out: NarrowedOut { matches: vec![left_out], pressings: vec![0] },
             ..sample_findings()
         },
         track_count: 11,
@@ -400,10 +337,7 @@ async fn a_verdict_round_trips_its_narrowed_out_releases_apart_from_its_matches(
     let row = new_candidate_row(&hash, &host_root("/music/Some Album"), &verdict);
     store_candidate_state(&db, &candidate, &row.candidate_key.test_folder()).await;
 
-    crate::import::CandidatePreparations::new(db.clone())
-        .store_verdict(&row)
-        .await
-        .unwrap();
+    crate::import::CandidatePreparations::new(db.clone()).store_verdict(&row).await.unwrap();
 
     let loaded = db.load_import_candidate_states().await.unwrap();
     let identify = loaded
@@ -413,30 +347,17 @@ async fn a_verdict_round_trips_its_narrowed_out_releases_apart_from_its_matches(
         .as_ref()
         .expect("a stored verdict reads back as an identify result");
     assert_eq!(identify.verdict, verdict);
-    let TerminalVerdict::Found {
-        findings: Findings {
-            matches,
-            narrowed_out,
-            ..
-        },
-        ..
-    } = &identify.verdict
+    let TerminalVerdict::Found { findings: Findings { matches, narrowed_out, .. }, .. } =
+        &identify.verdict
     else {
         panic!("a found verdict reads back as one");
     };
     assert_eq!(
-        matches
-            .iter()
-            .map(|result| result.release_id.as_str())
-            .collect::<Vec<_>>(),
+        matches.iter().map(|result| result.release_id.as_str()).collect::<Vec<_>>(),
         vec!["rel-1"]
     );
     assert_eq!(
-        narrowed_out
-            .matches
-            .iter()
-            .map(|result| result.release_id.as_str())
-            .collect::<Vec<_>>(),
+        narrowed_out.matches.iter().map(|result| result.release_id.as_str()).collect::<Vec<_>>(),
         vec!["rel-narrowed"]
     );
 }
@@ -460,17 +381,10 @@ async fn stored_and_read(verdict: &TerminalVerdict) -> (TerminalVerdict, Vec<Str
     let hash = candidate.content_hash();
     let row = new_candidate_row(&hash, &host_root("/music/Some Album"), verdict);
     store_candidate_state(&db, &candidate, &row.candidate_key.test_folder()).await;
-    crate::import::CandidatePreparations::new(db.clone())
-        .store_verdict(&row)
-        .await
-        .unwrap();
+    crate::import::CandidatePreparations::new(db.clone()).store_verdict(&row).await.unwrap();
     let loaded = db.load_import_candidate_states().await.unwrap();
-    let read = loaded[&hash]
-        .identify
-        .as_ref()
-        .expect("a stored verdict reads back")
-        .verdict
-        .clone();
+    let read =
+        loaded[&hash].identify.as_ref().expect("a stored verdict reads back").verdict.clone();
     let listings = db
         .read(move |sql| {
             sql.query(
@@ -510,23 +424,16 @@ async fn the_ledger_round_trips_every_cell_and_every_release_it_found() {
     let found = |releases: &[&MetadataResult]| {
         LookupView::answered(&releases.iter().map(|release| (*release).clone()).collect())
     };
-    let left_out = LookupView::NotAsked {
-        reason: NotAskedReason::LeftOut,
-    };
+    let left_out = LookupView::NotAsked { reason: NotAskedReason::LeftOut };
     let cell = |source, lookup| ProviderCell { source, lookup };
     let ledger = IdentifyRunView {
         providers: vec![Catalog::MusicBrainz, Catalog::Discogs],
         disc_id: DiscIdStepView::Read {
             discs: vec![
-                DiscIdRow {
-                    disc_id: "disc-1".to_string(),
-                    lookup: found(&[&offered, &set_aside]),
-                },
+                DiscIdRow { disc_id: "disc-1".to_string(), lookup: found(&[&offered, &set_aside]) },
                 DiscIdRow {
                     disc_id: "disc-2".to_string(),
-                    lookup: LookupView::Failed {
-                        failure: LookupFailure::Timeout,
-                    },
+                    lookup: LookupView::Failed { failure: LookupFailure::Timeout },
                 },
             ],
         },
@@ -576,29 +483,20 @@ async fn the_ledger_round_trips_every_cell_and_every_release_it_found() {
                     ],
                 },
             ],
-            candidates: vec![CatalogCandidateView {
-                value: "CAT-9".to_string(),
-            }],
+            candidates: vec![CatalogCandidateView { value: "CAT-9".to_string() }],
         },
         isrc: IsrcStepView::Read {
             isrcs: vec!["USAAA0000001".to_string(), "USAAA0000002".to_string()],
-            lookup: LookupView::NotAsked {
-                reason: NotAskedReason::NoCatalog,
-            },
+            lookup: LookupView::NotAsked { reason: NotAskedReason::NoCatalog },
         },
         search: SearchStepView::NotNeeded,
     };
     let verdict = TerminalVerdict::Failed {
-        failures: vec![crate::identify::IdentifyFailure::DiscId(
-            LookupFailure::Timeout,
-        )],
+        failures: vec![crate::identify::IdentifyFailure::DiscId(LookupFailure::Timeout)],
         findings: Findings {
             matches: vec![offered.clone(), catalogued.clone()],
             pressings: vec![0, 1],
-            narrowed_out: NarrowedOut {
-                matches: vec![set_aside.clone()],
-                pressings: vec![0],
-            },
+            narrowed_out: NarrowedOut { matches: vec![set_aside.clone()], pressings: vec![0] },
             medium_conflict: None,
             named_notes: Vec::new(),
         },
@@ -613,8 +511,7 @@ async fn the_ledger_round_trips_every_cell_and_every_release_it_found() {
     // disc ID's lookup found agree on it, and no other.
     let crate::identify::IdentifyStateView::Failed { agreements, .. } =
         crate::identify::IdentifyStateView::from(
-            read.clone()
-                .resume_state(Default::default(), Default::default()),
+            read.clone().resume_state(Default::default(), Default::default()),
         )
     else {
         panic!("a failed verdict resumes as Failed");
@@ -657,10 +554,7 @@ async fn the_ledger_round_trips_every_cell_and_every_release_it_found() {
         "and its cell lists it"
     );
     assert!(
-        !read
-            .named_releases()
-            .iter()
-            .any(|release| release.release_id == "rel-ruled-out"),
+        !read.named_releases().iter().any(|release| release.release_id == "rel-ruled-out"),
         "but the verdict names it nowhere else"
     );
 }
@@ -683,10 +577,7 @@ async fn the_ledger_round_trips_how_each_clue_stood() {
         isrc: IsrcStepView::Absent,
         search: SearchStepView::NoTitle,
     };
-    let verdict = TerminalVerdict::ManualOnly {
-        track_count: 11,
-        ledger: Some(quiet.clone()),
-    };
+    let verdict = TerminalVerdict::ManualOnly { track_count: 11, ledger: Some(quiet.clone()) };
     assert_eq!(stored_and_read(&verdict).await.0, verdict);
 
     let searched = release_on(Catalog::Discogs, "77");
@@ -705,10 +596,7 @@ async fn the_ledger_round_trips_how_each_clue_stood() {
                 album: "Album".to_string(),
                 artist: String::new(),
                 cells: vec![
-                    ProviderCell {
-                        source: Catalog::MusicBrainz,
-                        lookup: LookupView::NoMatch,
-                    },
+                    ProviderCell { source: Catalog::MusicBrainz, lookup: LookupView::NoMatch },
                     ProviderCell {
                         source: Catalog::Discogs,
                         lookup: LookupView::answered(&vec![searched]),
@@ -738,9 +626,7 @@ async fn a_ledger_with_a_lookup_under_way_is_not_stored() {
             lookup: LookupView::LookingUp,
         }],
     };
-    let verdict = TerminalVerdict::NotFoundAnywhere {
-        ledger: Some(ledger),
-    };
+    let verdict = TerminalVerdict::NotFoundAnywhere { ledger: Some(ledger) };
     let row = new_candidate_row(&hash, &host_root("/music/Some Album"), &verdict);
     store_candidate_state(&db, &candidate, &row.candidate_key.test_folder()).await;
     assert!(crate::import::CandidatePreparations::new(db.clone())

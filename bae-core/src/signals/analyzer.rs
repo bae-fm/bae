@@ -16,10 +16,7 @@ pub struct ArtworkAnalysis {
 impl ArtworkAnalysis {
     /// An image nothing was read off.
     pub fn empty() -> Self {
-        Self {
-            barcodes: Vec::new(),
-            text_lines: Vec::new(),
-        }
+        Self { barcodes: Vec::new(), text_lines: Vec::new() }
     }
 }
 

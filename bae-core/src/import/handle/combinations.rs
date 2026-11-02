@@ -12,13 +12,9 @@ impl ImportServiceHandle {
         &self,
         key: &CandidateKey,
     ) -> Result<Vec<std::path::PathBuf>, ImportError> {
-        let detail = self
-            .library_manager
-            .load_import_candidate(key)
-            .await?
-            .ok_or_else(|| ImportError::Internal {
-                detail: format!("{key} is no longer a candidate"),
-            })?;
+        let detail = self.library_manager.load_import_candidate(key).await?.ok_or_else(|| {
+            ImportError::Internal { detail: format!("{key} is no longer a candidate") }
+        })?;
         Ok(detail.candidate.source_folders())
     }
 
@@ -31,8 +27,7 @@ impl ImportServiceHandle {
         keys: Vec<CandidateKey>,
     ) -> Result<CandidateKey, ImportError> {
         let this = self.clone();
-        self.committed(async move { this.combine_candidates_write(keys).await })
-            .await
+        self.committed(async move { this.combine_candidates_write(keys).await }).await
     }
 
     async fn combine_candidates_write(
@@ -48,10 +43,7 @@ impl ImportServiceHandle {
         }
         let mut members = Vec::with_capacity(keys.len());
         {
-            let _commit = self
-                .folder_state_commit
-                .lock("check folders to combine")
-                .await;
+            let _commit = self.folder_state_commit.lock("check folders to combine").await;
             for key in &keys {
                 self.ensure_combination_idle(key).await?;
                 members.push(self.editable_candidate_for_commit(key).await?);
@@ -84,10 +76,7 @@ impl ImportServiceHandle {
             .map_err(|reason| ImportError::GroupingBlocked { reason })?;
         for candidate_key in keys {
             self.identification_ended(&candidate_key).await;
-            self.event_tx
-                .send(ImportEvent::Scan(ScanEvent::CandidateRemoved {
-                    candidate_key,
-                }));
+            self.event_tx.send(ImportEvent::Scan(ScanEvent::CandidateRemoved { candidate_key }));
         }
         self.announce_regrouped(&regrouped).await?;
         Ok(key)
@@ -100,10 +89,7 @@ impl ImportServiceHandle {
         members: &[crate::import::FolderCandidate],
     ) -> Result<Option<FolderReleaseDecisionKey>, ImportError> {
         let root = &members[0].watched_folder_path;
-        if members
-            .iter()
-            .any(|member| &member.watched_folder_path != root)
-        {
+        if members.iter().any(|member| &member.watched_folder_path != root) {
             return Ok(None);
         }
         let mut folder = members[0].path.clone();
@@ -117,14 +103,9 @@ impl ImportServiceHandle {
         if &folder == root || !folder.starts_with(root) {
             return Ok(None);
         }
-        let selected: std::collections::BTreeSet<CandidateKey> = members
-            .iter()
-            .map(crate::import::FolderCandidate::key)
-            .collect();
-        let below = self
-            .library_manager
-            .scanned_release_keys_at_or_below(root, &folder)
-            .await?;
+        let selected: std::collections::BTreeSet<CandidateKey> =
+            members.iter().map(crate::import::FolderCandidate::key).collect();
+        let below = self.library_manager.scanned_release_keys_at_or_below(root, &folder).await?;
         if below != selected {
             return Ok(None);
         }
@@ -145,15 +126,14 @@ impl ImportServiceHandle {
             FolderReleaseDecision::CombineAsOneRelease,
         )
         .await?;
-        self.library_manager
-            .folder_reading_grouping(&folder)
-            .await?
-            .ok_or_else(|| ImportError::Internal {
+        self.library_manager.folder_reading_grouping(&folder).await?.ok_or_else(|| {
+            ImportError::Internal {
                 detail: format!(
                     "{} was combined but no grouping is stored for it",
                     folder.relative_folder.text()
                 ),
-            })
+            }
+        })
     }
 
     /// Read the release at `key` as the releases it is made of, and answer
@@ -164,8 +144,7 @@ impl ImportServiceHandle {
     ) -> Result<Vec<CandidateKey>, ImportError> {
         let this = self.clone();
         let key = key.clone();
-        self.committed(async move { this.separate_candidate_write(&key).await })
-            .await
+        self.committed(async move { this.separate_candidate_write(&key).await }).await
     }
 
     async fn separate_candidate_write(
@@ -173,10 +152,7 @@ impl ImportServiceHandle {
         key: &CandidateKey,
     ) -> Result<Vec<CandidateKey>, ImportError> {
         {
-            let _commit = self
-                .folder_state_commit
-                .lock("check a release to separate")
-                .await;
+            let _commit = self.folder_state_commit.lock("check a release to separate").await;
             self.ensure_combination_idle(key).await?;
         }
         match self.library_manager.load_grouping(key).await? {
@@ -188,10 +164,7 @@ impl ImportServiceHandle {
                 .await
             }
             Some(crate::db::GroupingFacts::Picked { .. }) => {
-                let _commit = self
-                    .folder_state_commit
-                    .lock("separate a picked release")
-                    .await;
+                let _commit = self.folder_state_commit.lock("separate a picked release").await;
                 let (returned, regrouped) =
                     self.library_manager.separate_picked_grouping(key).await?;
                 let keys = crate::import::list::release_keys_in_path_order(&returned);
@@ -201,10 +174,9 @@ impl ImportServiceHandle {
                     .identifies_automatically()
                     .await
                     .map_err(crate::library::LibraryError::from)?;
-                self.event_tx
-                    .send(ImportEvent::Scan(ScanEvent::CandidateRemoved {
-                        candidate_key: key.clone(),
-                    }));
+                self.event_tx.send(ImportEvent::Scan(ScanEvent::CandidateRemoved {
+                    candidate_key: key.clone(),
+                }));
                 for item in returned {
                     let event = match item {
                         // Each release a separation returns is found, as
@@ -237,10 +209,9 @@ impl ImportServiceHandle {
         regrouped: &crate::db::GroupingChanges,
     ) -> Result<(), ImportError> {
         for candidate_key in &regrouped.removed {
-            self.event_tx
-                .send(ImportEvent::Scan(ScanEvent::CandidateRemoved {
-                    candidate_key: candidate_key.clone(),
-                }));
+            self.event_tx.send(ImportEvent::Scan(ScanEvent::CandidateRemoved {
+                candidate_key: candidate_key.clone(),
+            }));
         }
         let automatic = self
             .library_manager
@@ -270,11 +241,8 @@ impl ImportServiceHandle {
         &self,
         key: &crate::import::CandidateKey,
     ) -> Result<(), ImportError> {
-        let facts = self
-            .runtime
-            .standing_facts(key)
-            .await
-            .map_err(crate::library::LibraryError::from)?;
+        let facts =
+            self.runtime.standing_facts(key).await.map_err(crate::library::LibraryError::from)?;
         if facts.importing() {
             return Err(ImportError::CandidateImportInProgress);
         }

@@ -27,30 +27,18 @@ impl ReleaseDeletion {
         release_id: &str,
     ) -> Result<Self, DbError> {
         let album_id = sql
-            .query_row(
-                "SELECT album_id FROM releases WHERE id = ?",
-                params![release_id],
-                |row| row.get::<_, String>(0),
-            )
+            .query_row("SELECT album_id FROM releases WHERE id = ?", params![release_id], |row| {
+                row.get::<_, String>(0)
+            })
             .optional()?
             .ok_or_else(|| DbError::Message(format!("release not found: {release_id}")))?;
         let files = sql.query(
             "SELECT id, file FROM release_files WHERE release_id = ? ORDER BY id",
             params![release_id],
-            |row| {
-                Ok((
-                    row.get::<_, String>(0)?,
-                    row.get::<_, Option<coven::FileId>>(1)?,
-                ))
-            },
+            |row| Ok((row.get::<_, String>(0)?, row.get::<_, Option<coven::FileId>>(1)?)),
         )?;
         let cover = super::files::image_file_on(sql, &LibraryImageType::Cover, release_id)?;
-        Ok(Self {
-            release_id: release_id.to_string(),
-            album_id,
-            files,
-            cover,
-        })
+        Ok(Self { release_id: release_id.to_string(), album_id, files, cover })
     }
 
     pub(super) fn apply_on(&self, sql: &CovenWrite<'_>) -> Result<(), DbError> {

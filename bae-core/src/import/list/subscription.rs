@@ -61,11 +61,7 @@ impl ImportListSubscription {
         let list = manager.open_import_list(view).await?;
         let query = manager
             .until_closed(manager.subscribe_import_list(ImportListRequest { list, windows }));
-        Ok(Self {
-            list,
-            manager,
-            query,
-        })
+        Ok(Self { list, manager, query })
     }
 
     /// Show a different tab, filter or order. The windows are kept: the query
@@ -78,10 +74,7 @@ impl ImportListSubscription {
         &self,
         windows: LibraryPageWindows,
     ) -> Result<(), ImportListSubscriptionError> {
-        self.query.set(ImportListRequest {
-            list: self.list,
-            windows,
-        })?;
+        self.query.set(ImportListRequest { list: self.list, windows })?;
         Ok(())
     }
 
@@ -93,10 +86,7 @@ impl ImportListSubscription {
         group: FolderReleaseDecisionKey,
         folded: bool,
     ) -> Result<u64, ImportListSubscriptionError> {
-        Ok(self
-            .manager
-            .set_import_list_group_folded(self.list, group, folded)
-            .await?)
+        Ok(self.manager.set_import_list_group_folded(self.list, group, folded).await?)
     }
 
     /// Fold every group shut, or open them all, as one change.
@@ -104,10 +94,7 @@ impl ImportListSubscription {
         &self,
         folded: bool,
     ) -> Result<u64, ImportListSubscriptionError> {
-        Ok(self
-            .manager
-            .set_import_list_groups_folded(self.list, folded)
-            .await?)
+        Ok(self.manager.set_import_list_groups_folded(self.list, folded).await?)
     }
 
     /// Apply a change a person made by pointing at rows of the list, and
@@ -116,11 +103,7 @@ impl ImportListSubscription {
         &self,
         change: SelectionChange,
     ) -> Result<u64, ImportListSubscriptionError> {
-        match self
-            .manager
-            .change_import_list_selection(self.list, change)
-            .await?
-        {
+        match self.manager.change_import_list_selection(self.list, change).await? {
             SelectionWrite::Changed { revision } => Ok(revision),
             SelectionWrite::RunNotShown => Err(ImportListSubscriptionError::RunNotShown),
         }
@@ -144,10 +127,7 @@ impl ImportListSubscription {
         &self,
         candidate_key: &crate::import::CandidateKey,
     ) -> Result<Option<ImportCandidateListLocation>, ImportListSubscriptionError> {
-        Ok(self
-            .manager
-            .locate_import_candidate(self.list, candidate_key)
-            .await?)
+        Ok(self.manager.locate_import_candidate(self.list, candidate_key).await?)
     }
 
     /// The first candidate the identification count is still waiting on —
@@ -157,19 +137,12 @@ impl ImportListSubscription {
     pub async fn first_identifying_candidate(
         &self,
     ) -> Result<Option<crate::import::CandidateKey>, ImportListSubscriptionError> {
-        Ok(self
-            .manager
-            .first_identifying_import_candidate(self.list)
-            .await?)
+        Ok(self.manager.first_identifying_import_candidate(self.list).await?)
     }
 
     /// The list's next value.
     pub async fn next(&self) -> Result<ImportListSnapshot, ImportListSubscriptionError> {
-        let event = self
-            .query
-            .next()
-            .await
-            .map_err(ImportListSubscriptionError::from)?;
+        let event = self.query.next().await.map_err(ImportListSubscriptionError::from)?;
         let cause = event.cause;
         // A list read that fails takes the whole import tab with it — no
         // rows, no watched folders — so the reason is worth a line whether or

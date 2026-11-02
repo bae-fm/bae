@@ -26,9 +26,7 @@ fn write_tagged_audio(
         tag.set_track(track);
     }
     tagged.insert_tag(tag);
-    tagged
-        .save_to_path(path, WriteOptions::default())
-        .expect("write tags");
+    tagged.save_to_path(path, WriteOptions::default()).expect("write tags");
 }
 
 fn tagged_flac(album: &Path, name: &str, title: &str, disc: Option<u32>, track: Option<u32>) {
@@ -84,10 +82,7 @@ fn tagged_files_whose_names_carry_no_numbers_play_in_their_tags_order() {
     tagged_flac(&album, "Beta.flac", "Track Title One", Some(1), Some(1));
     tagged_flac(&album, "Gamma.flac", "Track Title Two", Some(1), Some(2));
 
-    assert_eq!(
-        audio_order(&scan_files(&album)),
-        ["Beta.flac", "Gamma.flac", "Alpha.flac"]
-    );
+    assert_eq!(audio_order(&scan_files(&album)), ["Beta.flac", "Gamma.flac", "Alpha.flac"]);
     assert_eq!(
         tag_draft(tmp.path()),
         [
@@ -143,10 +138,8 @@ fn a_file_s_tags_win_over_the_number_its_name_starts_with() {
         audio_order(&scan_files(&album)),
         ["02 Alpha.flac", "03 Beta.flac", "01 Gamma.flac"]
     );
-    let numbers: Vec<_> = tag_draft(tmp.path())
-        .into_iter()
-        .map(|(file, _, number, _)| (file, number))
-        .collect();
+    let numbers: Vec<_> =
+        tag_draft(tmp.path()).into_iter().map(|(file, _, number, _)| (file, number)).collect();
     assert_eq!(
         numbers,
         [

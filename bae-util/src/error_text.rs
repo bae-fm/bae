@@ -33,10 +33,8 @@ impl fmt::Display for CauseChain<'_> {
 fn redact_urls(text: &str) -> String {
     let mut redacted = String::with_capacity(text.len());
     let mut rest = text;
-    while let Some(start) = ["http://", "https://"]
-        .iter()
-        .filter_map(|scheme| rest.find(scheme))
-        .min()
+    while let Some(start) =
+        ["http://", "https://"].iter().filter_map(|scheme| rest.find(scheme)).min()
     {
         redacted.push_str(&rest[..start]);
         let end = rest[start..]

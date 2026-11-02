@@ -48,9 +48,7 @@ impl LabelName {
             .collect();
         Some(Self {
             stated: words.concat(),
-            initials: (2..=4)
-                .contains(&initials.chars().count())
-                .then_some(initials),
+            initials: (2..=4).contains(&initials.chars().count()).then_some(initials),
             written_initials: written_initials(name),
         })
     }
@@ -105,9 +103,7 @@ pub fn same_label_name(a: &str, b: &str) -> bool {
 /// a key is one name's own, and two labels with one key are the same label
 /// by name.
 pub fn label_name_key(name: &str) -> String {
-    LabelName::of(name)
-        .map(|name| name.stated)
-        .unwrap_or_default()
+    LabelName::of(name).map(|name| name.stated).unwrap_or_default()
 }
 
 /// `words` without the trade words they end on.
@@ -176,10 +172,7 @@ mod tests {
     #[test]
     fn every_trade_word_is_written_with_words() {
         for entry in TRADE_WORDS {
-            assert!(
-                !super::super::words(entry).is_empty(),
-                "{entry} is written with no words"
-            );
+            assert!(!super::super::words(entry).is_empty(), "{entry} is written with no words");
         }
         assert_eq!(tails().len(), TRADE_WORDS.len());
     }
@@ -192,10 +185,7 @@ mod tests {
     /// trails and however they are punctuated.
     #[test]
     fn a_name_keeps_only_what_names_the_label() {
-        assert_eq!(
-            stated("Warner Bros. Records").as_deref(),
-            Some("warnerbros")
-        );
+        assert_eq!(stated("Warner Bros. Records").as_deref(), Some("warnerbros"));
         assert_eq!(stated("Sony Music Entertainment").as_deref(), Some("sony"));
         assert_eq!(stated("Nonesuch Record Co.").as_deref(), Some("nonesuch"));
         assert_eq!(stated("Ninja Tune").as_deref(), Some("ninjatune"));
@@ -214,11 +204,8 @@ mod tests {
     /// words, or when one is written as the other's initials.
     #[test]
     fn two_names_name_one_label() {
-        let same = |a: &str, b: &str| {
-            LabelName::of(a)
-                .unwrap()
-                .same_label(&LabelName::of(b).unwrap())
-        };
+        let same =
+            |a: &str, b: &str| LabelName::of(a).unwrap().same_label(&LabelName::of(b).unwrap());
         assert!(same("Harbor Records", "Harbor"));
         assert!(same("ABC", "Alpha Beta Corporation"));
         assert!(same("Alpha Beta Corporation Records", "A.B.C."));
@@ -236,10 +223,7 @@ mod tests {
         assert_eq!(label_name_key("RHINO"), "rhino");
         assert_eq!(label_name_key("Warner Bros. Records Inc."), "warnerbros");
         assert_eq!(label_name_key("DFC"), "dfc");
-        assert_ne!(
-            label_name_key("DFC"),
-            label_name_key("Dance Floor Corporation")
-        );
+        assert_ne!(label_name_key("DFC"), label_name_key("Dance Floor Corporation"));
         assert_eq!(label_name_key("Records"), "");
     }
 

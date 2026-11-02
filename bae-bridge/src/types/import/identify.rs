@@ -179,10 +179,7 @@ pub enum BridgeBarcodeStep {
     /// There was a source and it held no code.
     NoCodes,
     /// One row per code; while `scanning`, more may come.
-    Rows {
-        scanning: bool,
-        rows: Vec<BridgeSignalValueRow>,
-    },
+    Rows { scanning: bool, rows: Vec<BridgeSignalValueRow> },
 }
 
 /// A catalog number the text offers that is not in effect. Mirrors
@@ -255,19 +252,9 @@ pub struct BridgeIdentifyRun {
 /// Mirrors `bae_core::signals::TextSignal`.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeTextSignal {
-    Scanning {
-        catalogs: Vec<String>,
-        free_text: Vec<String>,
-    },
-    Settled {
-        catalogs: Vec<String>,
-        free_text: Vec<String>,
-    },
-    Failed {
-        failure: BridgeInternalFailure,
-        catalogs: Vec<String>,
-        free_text: Vec<String>,
-    },
+    Scanning { catalogs: Vec<String>, free_text: Vec<String> },
+    Settled { catalogs: Vec<String>, free_text: Vec<String> },
+    Failed { failure: BridgeInternalFailure, catalogs: Vec<String>, free_text: Vec<String> },
 }
 
 /// The part of `bae_core::signals::Signals` a surface reads: the text pools

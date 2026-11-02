@@ -50,15 +50,7 @@ impl ImportServiceHandle {
         let snapshots = self.extraction.start(run, key.clone(), source, priority);
         let started = self
             .identify
-            .start(
-                run,
-                key.clone(),
-                subject,
-                priority,
-                choices,
-                title_search,
-                snapshots,
-            )
+            .start(run, key.clone(), subject, priority, choices, title_search, snapshots)
             .await;
         if !matches!(started, Ok(true)) {
             self.extraction.cancel(&key);
@@ -101,9 +93,7 @@ impl ImportServiceHandle {
         self.identify.cancel(candidate_key);
         self.extraction.cancel(candidate_key);
         #[cfg(any(test, feature = "test-utils"))]
-        self.runtime
-            .tell_every_change(std::iter::once(candidate_key))
-            .await;
+        self.runtime.tell_every_change(std::iter::once(candidate_key)).await;
     }
 
     /// Stop only the extraction behind `key`, for a run that reached its
@@ -168,10 +158,7 @@ impl ImportServiceHandle {
         files: &crate::import::CandidateFiles,
         failure: crate::import::SaveFailure,
     ) -> Result<(), crate::library::LibraryError> {
-        Ok(self
-            .runtime
-            .fail_identification(candidate_key, run, files, failure)
-            .await?)
+        Ok(self.runtime.fail_identification(candidate_key, run, files, failure).await?)
     }
 
     /// `run`'s answer is disposed of with no write ever asked for it. An
@@ -182,10 +169,7 @@ impl ImportServiceHandle {
         candidate_key: &crate::import::CandidateKey,
         run: crate::identify::IdentifyRunId,
     ) -> Result<(), crate::library::LibraryError> {
-        let import_asked = self
-            .runtime
-            .end_identification_answer(candidate_key, run)
-            .await?;
+        let import_asked = self.runtime.end_identification_answer(candidate_key, run).await?;
         if import_asked {
             info!("identification: {candidate_key}'s answer was given up; the Import asked of it is dropped");
         }

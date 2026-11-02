@@ -79,17 +79,14 @@ pub fn create_new_file(
     shown: &Path,
     subject: &str,
 ) -> Result<std::fs::File, CreateFileError> {
-    std::fs::OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .open(path)
-        .map_err(|error| match error.kind() {
-            std::io::ErrorKind::AlreadyExists => CreateFileError::Clash {
-                subject: subject.to_string(),
-                shown: shown.to_path_buf(),
-            },
-            _ => CreateFileError::Io(error),
-        })
+    std::fs::OpenOptions::new().write(true).create_new(true).open(path).map_err(|error| match error
+        .kind()
+    {
+        std::io::ErrorKind::AlreadyExists => {
+            CreateFileError::Clash { subject: subject.to_string(), shown: shown.to_path_buf() }
+        }
+        _ => CreateFileError::Io(error),
+    })
 }
 
 #[cfg(test)]
@@ -108,10 +105,7 @@ mod tests {
     #[test]
     fn a_files_names_are_its_folders_and_its_own_name() {
         assert_eq!(written("track.flac"), Path::new("track.flac"));
-        assert_eq!(
-            written("Disc 1/01 - Song.flac"),
-            Path::new("Disc 1").join("01 - Song.flac")
-        );
+        assert_eq!(written("Disc 1/01 - Song.flac"), Path::new("Disc 1").join("01 - Song.flac"));
     }
 
     /// Every name is written as coven writes it, the same on every
@@ -121,14 +115,8 @@ mod tests {
     #[test]
     fn a_name_is_written_as_coven_writes_it_on_every_platform() {
         assert_eq!(written(r"Caf\xE9.flac"), Path::new("Caf＼xE9.flac"));
-        assert_eq!(
-            written(r"CD1/Caf\xE9.flac"),
-            Path::new("CD1").join("Caf＼xE9.flac")
-        );
-        assert_eq!(
-            written("../escape.flac"),
-            Path::new(".．").join("escape.flac")
-        );
+        assert_eq!(written(r"CD1/Caf\xE9.flac"), Path::new("CD1").join("Caf＼xE9.flac"));
+        assert_eq!(written("../escape.flac"), Path::new(".．").join("escape.flac"));
         assert_eq!(written(r"C:\escape.flac"), Path::new("C：＼escape.flac"));
         for name in [r"Caf\xE9.flac", "../escape.flac", r"C:\escape.flac", "a\0b"] {
             let path = written(name);
@@ -143,10 +131,7 @@ mod tests {
     #[test]
     fn a_folder_name_is_one_name_whatever_it_holds() {
         let written = |name| folder_path(RELEASE, name).unwrap().local_path();
-        assert_eq!(
-            written("Album Title (2020)"),
-            Path::new("Album Title (2020)")
-        );
+        assert_eq!(written("Album Title (2020)"), Path::new("Album Title (2020)"));
         assert_eq!(written("../escape"), Path::new("..／escape"));
     }
 

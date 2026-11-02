@@ -34,7 +34,10 @@ async fn starvation_onset_reports_the_track_time_it_starved_at() {
     let (_home, manager) = seeded_library_manager_with_diagnostics(&[], diagnostics.clone()).await;
     let (mut service, _progress_rx) = playback_service_over(manager);
     let mut prepared = test_prepared_track("t", create_sparse_buffer(1_024));
-    prepared.timeline = TrackTimeline::new(Some(std::time::Duration::from_secs(10)), std::time::Duration::from_millis(2_000));
+    prepared.timeline = TrackTimeline::new(
+        Some(std::time::Duration::from_secs(10)),
+        std::time::Duration::from_millis(2_000),
+    );
     let fmt = prepared.track_fmt(StreamPosition::START);
     service.slot = active_slot(prepared, TrackPhase::Playing);
 
@@ -72,12 +75,8 @@ async fn starvation_past_fail_threshold_with_no_progress_escalates_to_error_and_
     let buffer = create_sparse_buffer(1_024);
     service.slot = active_slot(test_prepared_track("t", buffer), TrackPhase::Playing);
 
-    service
-        .handle_audio_event(starved_event("t", 500, 1_000, false))
-        .await;
-    service
-        .handle_audio_event(starved_event("t", 30_000, 1_000, false))
-        .await;
+    service.handle_audio_event(starved_event("t", 500, 1_000, false)).await;
+    service.handle_audio_event(starved_event("t", 30_000, 1_000, false)).await;
 
     let mut saw_error = false;
     while let Ok(progress) = progress_rx.try_recv() {
@@ -85,14 +84,8 @@ async fn starvation_past_fail_threshold_with_no_progress_escalates_to_error_and_
             saw_error = true;
         }
     }
-    assert!(
-        saw_error,
-        "a stalled starvation episode must surface a PlaybackError"
-    );
-    assert!(
-        matches!(service.slot, PlaybackSlot::Stopped),
-        "the stalled track must stop"
-    );
+    assert!(saw_error, "a stalled starvation episode must surface a PlaybackError");
+    assert!(matches!(service.slot, PlaybackSlot::Stopped), "the stalled track must stop");
 }
 
 /// An output that stops sending partway — an AirPlay conversion failing —
@@ -104,10 +97,8 @@ async fn an_output_that_stops_sending_stops_playback_and_reports_the_bug() {
     let diagnostics = crate::diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone());
     let (_home, manager) = seeded_library_manager_with_diagnostics(&[], diagnostics).await;
     let (mut service, mut progress_rx) = playback_service_over(manager);
-    service.slot = active_slot(
-        test_prepared_track("t", create_sparse_buffer(1_024)),
-        TrackPhase::Playing,
-    );
+    service.slot =
+        active_slot(test_prepared_track("t", create_sparse_buffer(1_024)), TrackPhase::Playing);
 
     service
         .handle_audio_event(AudioEvent::OutputFailed {
@@ -134,15 +125,9 @@ async fn starvation_with_advancing_samples_decoded_never_escalates() {
     let buffer = create_sparse_buffer(1_024);
     service.slot = active_slot(test_prepared_track("t", buffer), TrackPhase::Playing);
 
-    service
-        .handle_audio_event(starved_event("t", 500, 1_000, false))
-        .await;
-    service
-        .handle_audio_event(starved_event("t", 30_000, 1_100, false))
-        .await;
-    service
-        .handle_audio_event(starved_event("t", 60_000, 1_200, false))
-        .await;
+    service.handle_audio_event(starved_event("t", 500, 1_000, false)).await;
+    service.handle_audio_event(starved_event("t", 30_000, 1_100, false)).await;
+    service.handle_audio_event(starved_event("t", 60_000, 1_200, false)).await;
 
     let mut saw_error = false;
     while let Ok(progress) = progress_rx.try_recv() {
@@ -150,14 +135,8 @@ async fn starvation_with_advancing_samples_decoded_never_escalates() {
             saw_error = true;
         }
     }
-    assert!(
-        !saw_error,
-        "advancing samples_decoded must never escalate, regardless of starved_ms"
-    );
-    assert!(
-        matches!(service.slot, PlaybackSlot::Active(_)),
-        "the track must stay active"
-    );
+    assert!(!saw_error, "advancing samples_decoded must never escalate, regardless of starved_ms");
+    assert!(matches!(service.slot, PlaybackSlot::Active(_)), "the track must stay active");
 }
 
 /// `producer_finished` means a drained track awaiting `AutoAdvance`, not a stall.
@@ -167,12 +146,8 @@ async fn starvation_with_producer_finished_never_escalates() {
     let buffer = create_sparse_buffer(1_024);
     service.slot = active_slot(test_prepared_track("t", buffer), TrackPhase::Playing);
 
-    service
-        .handle_audio_event(starved_event("t", 500, 1_000, true))
-        .await;
-    service
-        .handle_audio_event(starved_event("t", 60_000, 1_000, true))
-        .await;
+    service.handle_audio_event(starved_event("t", 500, 1_000, true)).await;
+    service.handle_audio_event(starved_event("t", 60_000, 1_000, true)).await;
 
     let mut saw_error = false;
     while let Ok(progress) = progress_rx.try_recv() {
@@ -180,10 +155,7 @@ async fn starvation_with_producer_finished_never_escalates() {
             saw_error = true;
         }
     }
-    assert!(
-        !saw_error,
-        "producer_finished starvation is the completion path, never escalates"
-    );
+    assert!(!saw_error, "producer_finished starvation is the completion path, never escalates");
 }
 
 /// A `StarvationEnded` resets the watchdog, so the next episode starts fresh.
@@ -196,17 +168,11 @@ async fn starvation_ended_resets_the_episode_clock() {
     service.slot = active_slot(test_prepared_track("t", buffer), TrackPhase::Playing);
 
     // The first episode ends before reaching the fail threshold.
-    service
-        .handle_audio_event(starved_event("t", 500, 1_000, false))
-        .await;
-    service
-        .handle_audio_event(starvation_ended_event("t"))
-        .await;
+    service.handle_audio_event(starved_event("t", 500, 1_000, false)).await;
+    service.handle_audio_event(starvation_ended_event("t")).await;
 
     // A second episode begins at the same samples_decoded count.
-    service
-        .handle_audio_event(starved_event("t", 30_000, 1_000, false))
-        .await;
+    service.handle_audio_event(starved_event("t", 30_000, 1_000, false)).await;
 
     let mut saw_error = false;
     while let Ok(progress) = progress_rx.try_recv() {
@@ -219,10 +185,7 @@ async fn starvation_ended_resets_the_episode_clock() {
         "StarvationEnded must reset the episode; the first Starved event after \
          it establishes a fresh baseline rather than escalating immediately"
     );
-    assert!(
-        matches!(service.slot, PlaybackSlot::Active(_)),
-        "the track must stay active"
-    );
+    assert!(matches!(service.slot, PlaybackSlot::Active(_)), "the track must stay active");
 }
 
 /// A failure reported after playback already stopped emits no second Stopped.
@@ -231,10 +194,7 @@ async fn halt_on_error_noops_when_stopped() {
     let (_home, mut service, mut progress_rx) = test_playback_service().await;
     // The slot starts Stopped.
     service.halt_on_error().await;
-    assert!(
-        progress_rx.try_recv().is_err(),
-        "halting an already-stopped slot must emit nothing"
-    );
+    assert!(progress_rx.try_recv().is_err(), "halting an already-stopped slot must emit nothing");
 }
 
 /// A preview playing to its end tears the preview down and emits
@@ -246,21 +206,13 @@ async fn preview_completed_tears_down_and_emits_idle() {
     let buffer = create_sparse_buffer(1_024);
     let prepared = test_prepared_track("preview-file", buffer.clone());
     let pipeline = test_pipeline(&prepared, Box::new(TestAudioStream));
-    service
-        .preview
-        .set_active_for_test("preview-file".into(), pipeline, buffer.clone());
+    service.preview.set_active_for_test("preview-file".into(), pipeline, buffer.clone());
     assert!(service.preview.is_active());
 
     service.preview_completed();
 
-    assert!(
-        !service.preview.is_active(),
-        "completion tears the active preview down"
-    );
-    assert!(
-        buffer.is_cancelled(),
-        "completion cancels the preview buffer"
-    );
+    assert!(!service.preview.is_active(), "completion tears the active preview down");
+    assert!(buffer.is_cancelled(), "completion cancels the preview buffer");
     let mut saw_idle = false;
     while let Ok(progress) = progress_rx.try_recv() {
         if matches!(
@@ -282,20 +234,14 @@ async fn preview_completed_tears_down_and_emits_idle() {
 async fn an_invalidated_preview_that_cant_restart_ends_and_resumes_main() {
     let (_home, mut service, mut progress_rx) = test_playback_service().await;
     let main_buffer = create_sparse_buffer(1_024);
-    service.slot = active_slot(
-        test_prepared_track("t", main_buffer),
-        TrackPhase::Paused(PausePhase::Manual),
-    );
+    service.slot =
+        active_slot(test_prepared_track("t", main_buffer), TrackPhase::Paused(PausePhase::Manual));
 
     let buffer = create_sparse_buffer(1_024);
     let prepared = test_prepared_track("preview-file", buffer.clone());
-    let pipeline = test_pipeline(
-        &prepared,
-        Box::new(InvalidatedTestStream::new("device disconnected")),
-    );
-    service
-        .preview
-        .set_active_for_test("preview-file".into(), pipeline, buffer.clone());
+    let pipeline =
+        test_pipeline(&prepared, Box::new(InvalidatedTestStream::new("device disconnected")));
+    service.preview.set_active_for_test("preview-file".into(), pipeline, buffer.clone());
     service.preview.main_player_paused();
 
     service.follow_preview_output_device().await;
@@ -327,39 +273,24 @@ async fn playback_state_mapping() {
     service.slot = PlaybackSlot::Stopped;
     assert!(matches!(service.playback_state(), PlaybackState::Stopped));
 
-    service.slot = PlaybackSlot::Loading(LoadingTrack::Unprepared {
-        track_id: "t".to_string(),
-    });
+    service.slot = PlaybackSlot::Loading(LoadingTrack::Unprepared { track_id: "t".to_string() });
     assert!(matches!(
         service.playback_state(),
-        PlaybackState::Loading {
-            track: LoadingTrack::Unprepared { .. }
-        }
+        PlaybackState::Loading { track: LoadingTrack::Unprepared { .. } }
     ));
 
     let generation = service.next_load_generation();
     service.slot = active_slot(
         test_prepared_track("t", buffer.clone()),
-        TrackPhase::Loading {
-            generation,
-            target: PlayTarget::Playing,
-        },
+        TrackPhase::Loading { generation, target: PlayTarget::Playing },
     );
     assert!(matches!(
         service.playback_state(),
-        PlaybackState::Loading {
-            track: LoadingTrack::Prepared(_)
-        }
+        PlaybackState::Loading { track: LoadingTrack::Prepared(_) }
     ));
 
-    service.slot = active_slot(
-        test_prepared_track("t", buffer.clone()),
-        TrackPhase::Playing,
-    );
-    assert!(matches!(
-        service.playback_state(),
-        PlaybackState::Playing { .. }
-    ));
+    service.slot = active_slot(test_prepared_track("t", buffer.clone()), TrackPhase::Playing);
+    assert!(matches!(service.playback_state(), PlaybackState::Playing { .. }));
 
     service.slot = active_slot(
         test_prepared_track("t", buffer.clone()),
@@ -367,10 +298,7 @@ async fn playback_state_mapping() {
     );
     assert!(matches!(
         service.playback_state(),
-        PlaybackState::Paused {
-            reason: PlaybackPauseReason::Manual,
-            ..
-        }
+        PlaybackState::Paused { reason: PlaybackPauseReason::Manual, .. }
     ));
 
     service.slot = active_slot(
@@ -387,10 +315,7 @@ async fn playback_state_mapping() {
     );
     assert!(matches!(
         service.playback_state(),
-        PlaybackState::Paused {
-            reason: PlaybackPauseReason::SideEnded(_),
-            ..
-        }
+        PlaybackState::Paused { reason: PlaybackPauseReason::SideEnded(_), .. }
     ));
     // `playback_state` treats Completed as unreachable, so it has no case here.
 }
@@ -400,13 +325,11 @@ async fn playback_state_mapping() {
 #[test]
 fn track_start_position_cases() {
     use std::time::Duration;
-    let pregapped = TrackTimeline::new(Some(Duration::from_secs(60)), std::time::Duration::from_millis(3000));
+    let pregapped =
+        TrackTimeline::new(Some(Duration::from_secs(60)), std::time::Duration::from_millis(3000));
     let no_pregap = TrackTimeline::new(Some(Duration::from_secs(60)), std::time::Duration::ZERO);
 
-    assert_eq!(
-        TrackStart::Direct.position(pregapped),
-        StreamPosition::from_millis(3000)
-    );
+    assert_eq!(TrackStart::Direct.position(pregapped), StreamPosition::from_millis(3000));
     assert_eq!(TrackStart::Direct.position(no_pregap), StreamPosition::START);
     assert_eq!(TrackStart::Natural.position(pregapped), StreamPosition::START);
     assert_eq!(
@@ -431,10 +354,7 @@ fn a_generated_pregap_starts_the_track_past_it() {
     );
 
     assert_eq!(prepared.generated_pregap_frames, 88_200);
-    assert_eq!(
-        prepared.timeline.track_start(),
-        StreamPosition::from_millis(2000)
-    );
+    assert_eq!(prepared.timeline.track_start(), StreamPosition::from_millis(2000));
 }
 
 /// A stored pregap is counted in samples; its length on the track's timeline
@@ -452,10 +372,7 @@ fn a_stored_pregap_is_as_long_as_its_samples() {
     );
 
     assert_eq!(prepared.generated_pregap_frames, 0);
-    assert_eq!(
-        prepared.timeline.track_start(),
-        StreamPosition::from_millis(1500)
-    );
+    assert_eq!(prepared.timeline.track_start(), StreamPosition::from_millis(1500));
 }
 
 /// A seek bar's fill is a fraction of the track's length. A track with no
@@ -489,7 +406,10 @@ fn prepared_track_with_pregap_segments(
     let main_buffer = create_sparse_buffer(2_048);
     let mut prepared = test_prepared_track("track", main_buffer.clone());
     prepared.generated_pregap_frames = 441;
-    prepared.timeline = TrackTimeline::new(Some(std::time::Duration::from_secs(1)), std::time::Duration::from_millis(1010));
+    prepared.timeline = TrackTimeline::new(
+        Some(std::time::Duration::from_secs(1)),
+        std::time::Duration::from_millis(1010),
+    );
     prepared.segments = vec![
         PreparedAudioSegment {
             role: DbAudioSegmentRole::AudioPregap,
@@ -529,10 +449,7 @@ fn direct_start_skips_audio_and_generated_pregap_segments() {
     assert_eq!(decode.segment_count(), 1);
     assert_eq!(decode.segment_buffer_id(0), main_buffer.id());
     assert_eq!(decode.segment_target_sample(0), 44_100);
-    assert_eq!(
-        decode.segment_decode_start(0),
-        bae_audio::DecodeStart::Byte(2_000)
-    );
+    assert_eq!(decode.segment_decode_start(0), bae_audio::DecodeStart::Byte(2_000));
 }
 
 #[test]
@@ -545,8 +462,5 @@ fn natural_start_includes_audio_and_generated_pregap_segments() {
     assert_eq!(decode.segment_count(), 2);
     assert_eq!(decode.segment_buffer_id(0), pregap_buffer.id());
     assert_eq!(decode.segment_target_sample(0), 1_000);
-    assert_eq!(
-        decode.segment_decode_start(0),
-        bae_audio::DecodeStart::Byte(100)
-    );
+    assert_eq!(decode.segment_decode_start(0), bae_audio::DecodeStart::Byte(100));
 }

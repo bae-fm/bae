@@ -7,24 +7,21 @@ use super::*;
 
 /// Two picked candidates with their artists named, on one handle: enough to
 /// have one import running while another waits behind it.
-async fn two_importable() -> (ImportServiceHandle, [TempDir; 2], crate::import::CandidateKey, crate::import::CandidateKey) {
+async fn two_importable(
+) -> (ImportServiceHandle, [TempDir; 2], crate::import::CandidateKey, crate::import::CandidateKey) {
     let (manager, tmp) = setup_test_manager().await;
     let other = TempDir::new().unwrap();
     let (_, first, _) = picked_candidate(&manager, &tmp, "First Album").await;
     let (_, second, _) = picked_candidate(&manager, &other, "Second Album").await;
-    let handle = manager
-        .start_import_service(tokio::runtime::Handle::current())
-        .await
-        .unwrap();
+    let handle = manager.start_import_service(tokio::runtime::Handle::current()).await.unwrap();
     for key in [&first, &second] {
-        handle
-            .select_candidate_file_tags(key.clone())
-            .await
-            .unwrap();
+        handle.select_candidate_file_tags(key.clone()).await.unwrap();
         handle
             .set_candidate_album_artists(
                 key,
-                vec![crate::import::Credited::plain(crate::import::ArtistAssignment::named("Artist"))],
+                vec![crate::import::Credited::plain(crate::import::ArtistAssignment::named(
+                    "Artist",
+                ))],
             )
             .await
             .unwrap();
@@ -68,15 +65,8 @@ async fn await_cancelled(
 /// What a cancelled import leaves: nothing running for the candidate and no
 /// failure on its row.
 async fn assert_left_as_it_stood(handle: &ImportServiceHandle, key: &crate::import::CandidateKey) {
-    assert!(
-        handle.candidate_runtime(key).await.unwrap().is_none(),
-        "nothing is running for {key}"
-    );
-    let pane = handle
-        .candidate_pane(key)
-        .await
-        .unwrap()
-        .expect("the candidate reads back");
+    assert!(handle.candidate_runtime(key).await.unwrap().is_none(), "nothing is running for {key}");
+    let pane = handle.candidate_pane(key).await.unwrap().expect("the candidate reads back");
     assert!(pane.import_status.is_none(), "{key} records no failure");
 }
 
@@ -195,8 +185,7 @@ async fn store_state(handle: &ImportServiceHandle, library_dir: &Path) -> StoreS
     }
     files.sort();
     let mut rows = handle.library_manager.every_row_for_test().await;
-    rows.remove("list_order_versions")
-        .expect("the store holds the lists' move counts");
+    rows.remove("list_order_versions").expect("the store holds the lists' move counts");
     StoreState { rows, files }
 }
 
@@ -264,14 +253,14 @@ fn import_position(import: &crate::import::candidates::ImportInFlight) -> u8 {
 /// Import `key` once more and follow what the candidate shows while it does:
 /// it starts from the queue, its steps only ever move forward, and
 /// the release lands.
-async fn assert_imports_again_from_the_start(handle: &ImportServiceHandle, key: &crate::import::CandidateKey) {
+async fn assert_imports_again_from_the_start(
+    handle: &ImportServiceHandle,
+    key: &crate::import::CandidateKey,
+) {
     let mut events = handle.every_event();
     let mut changes = handle.runtime.every_change();
-    let import_id = handle
-        .start_import(key)
-        .await
-        .expect("the candidate imports again")
-        .expect_queued();
+    let import_id =
+        handle.start_import(key).await.expect("the candidate imports again").expect_queued();
     await_import_outcome(&mut events, &import_id)
         .await
         .unwrap_or_else(|error| panic!("the import after the first attempt failed: {error}"));
@@ -320,12 +309,7 @@ async fn cancelled_mid_run_leaves_the_store_as_it_was_and_starts_over() {
     await_cancelled(&mut events, &[&import_id]).await;
     // The measuring thread says where it had got after the import ended.
     held.release();
-    await_progress_of(
-        &mut events,
-        &import_id,
-        crate::import::ImportPhase::MeasuringLoudness,
-    )
-    .await;
+    await_progress_of(&mut events, &import_id, crate::import::ImportPhase::MeasuringLoudness).await;
 
     assert_left_as_it_stood(&handle, &key).await;
     assert_eq!(
@@ -354,25 +338,17 @@ async fn a_failed_import_leaves_only_its_failure_and_starts_over() {
     drop(blocked);
 
     let mut after = store_state(&handle, &library_dir).await;
+    assert_eq!(before.rows.remove("import_candidate_failure"), Some(Vec::new()));
     assert_eq!(
-        before.rows.remove("import_candidate_failure"),
-        Some(Vec::new())
-    );
-    assert_eq!(
-        after
-            .rows
-            .remove("import_candidate_failure")
-            .map(|rows| rows.len()),
+        after.rows.remove("import_candidate_failure").map(|rows| rows.len()),
         Some(1),
         "the failure is recorded"
     );
     // The list places the release by its failure — Found's import error,
     // under Needs You, with its last import failed — and no other row moves.
     let placement = |state: &mut StoreState| state.rows.remove("import_list_placement").unwrap();
-    let failed_row = format!(
-        "| candidate | {:?} |",
-        rusqlite::types::ValueRef::Blob(key.as_bytes())
-    );
+    let failed_row =
+        format!("| candidate | {:?} |", rusqlite::types::ValueRef::Blob(key.as_bytes()));
     assert_eq!(
         placement(&mut after),
         placement(&mut before)
@@ -392,20 +368,14 @@ async fn a_failed_import_leaves_only_its_failure_and_starts_over() {
     // Found's filter entries count it there with it.
     let entries = |state: &mut StoreState| state.rows.remove("import_list_entry_count").unwrap();
     assert_eq!(entries(&mut before), ["not_looked_up | Integer(2)"]);
-    assert_eq!(
-        entries(&mut after),
-        ["needs_you | Integer(1)", "not_looked_up | Integer(1)"]
-    );
+    assert_eq!(entries(&mut after), ["needs_you | Integer(1)", "not_looked_up | Integer(1)"]);
     assert_eq!(after, before, "the failed import left nothing else behind");
     assert!(handle.candidate_runtime(&key).await.unwrap().is_none(), "nothing is running");
 
     assert_imports_again_from_the_start(&handle, &key).await;
     let pane = handle.candidate_pane(&key).await.unwrap().unwrap();
     assert!(
-        matches!(
-            pane.import_status,
-            Some(crate::import::CandidateImportStatus::Complete { .. })
-        ),
+        matches!(pane.import_status, Some(crate::import::CandidateImportStatus::Complete { .. })),
         "the import that landed answers the one that failed"
     );
     shut_down(handle).await;
@@ -491,10 +461,7 @@ async fn an_import_asked_for_again_after_a_waiting_cancel_is_the_one_that_runs()
     assert_eq!(outcomes[&running_id], "complete");
     assert_eq!(outcomes[&again_id], "complete");
     assert_eq!(album_count(&handle).await, 2);
-    assert!(
-        handle.candidate_runtime(&waiting).await.unwrap().is_none(),
-        "nothing is left running"
-    );
+    assert!(handle.candidate_runtime(&waiting).await.unwrap().is_none(), "nothing is left running");
     shut_down(handle).await;
 }
 

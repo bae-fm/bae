@@ -38,12 +38,7 @@ impl ExportFixture {
             .await
             .expect("import service starts");
 
-        Self {
-            mgr,
-            handle,
-            cloud,
-            _temp: temp,
-        }
+        Self { mgr, handle, cloud, _temp: temp }
     }
 
     fn temp_path(&self) -> &Path {
@@ -114,10 +109,7 @@ async fn export_track_from_cloud_only_release() {
     assert_eq!(tracks.len(), 1);
 
     let out = f.temp_path().join("exported.flac");
-    f.mgr
-        .save_track(&tracks[0].id, &out, "flac")
-        .await
-        .expect("cloud-only track must save");
+    f.mgr.save_track(&tracks[0].id, &out, "flac").await.expect("cloud-only track must save");
 
     // FLAC is lossless: the exported file decodes to the same PCM as the
     // cloud copy.
@@ -147,9 +139,7 @@ async fn save_track_suggested_name_uses_the_preset_tokens() {
     presets.push(SavePreset {
         id: "title-only".to_string(),
         name: "Title only".to_string(),
-        codec: SaveCodec::Flac {
-            bit_depth: SaveBitDepth::Bits16,
-        },
+        codec: SaveCodec::Flac { bit_depth: SaveBitDepth::Bits16 },
         filename_tokens: vec![SaveFilenameToken::Title],
         pregap_placement: SavePregapPlacement::AppendToPreviousExceptHtoa,
         applies_to_track: true,
@@ -159,9 +149,7 @@ async fn save_track_suggested_name_uses_the_preset_tokens() {
     presets.push(SavePreset {
         id: "num-title".to_string(),
         name: "Number and title".to_string(),
-        codec: SaveCodec::Flac {
-            bit_depth: SaveBitDepth::Bits16,
-        },
+        codec: SaveCodec::Flac { bit_depth: SaveBitDepth::Bits16 },
         filename_tokens: vec![SaveFilenameToken::TrackNumber, SaveFilenameToken::Title],
         pregap_placement: SavePregapPlacement::AppendToPreviousExceptHtoa,
         applies_to_track: true,
@@ -182,20 +170,14 @@ async fn save_track_suggested_name_uses_the_preset_tokens() {
         .expect("num-title preset renders a stem");
 
     assert_eq!(title_only, "Track One");
-    assert_ne!(
-        title_only, num_title,
-        "a different token pattern must yield a different stem"
-    );
+    assert_ne!(title_only, num_title, "a different token pattern must yield a different stem");
     assert!(
         num_title.contains("Track One"),
         "the number-and-title stem still contains the title: {num_title}"
     );
 
     // An unknown preset id can't back a track suggestion.
-    let err = f
-        .mgr
-        .save_track_suggested_name(&tracks[0].id, "no-such-preset")
-        .await;
+    let err = f.mgr.save_track_suggested_name(&tracks[0].id, "no-such-preset").await;
     assert!(err.is_err(), "an unknown preset id is rejected");
 }
 
@@ -213,22 +195,12 @@ async fn save_cover_image_skips_the_read_when_not_embedding() {
     support::write_cover_png(&album_dir.join("cover.png"));
     let release_id = import_unknown_local(&f, &album_dir).await;
 
-    let with_cover = f
-        .mgr
-        .save_cover_image(&release_id, true)
-        .await
-        .expect("cover when embedding");
+    let with_cover = f.mgr.save_cover_image(&release_id, true).await.expect("cover when embedding");
     assert!(with_cover.is_some(), "embedding reads the release's cover");
 
-    let without_cover = f
-        .mgr
-        .save_cover_image(&release_id, false)
-        .await
-        .expect("no cover when not embedding");
-    assert!(
-        without_cover.is_none(),
-        "not embedding skips the cover read"
-    );
+    let without_cover =
+        f.mgr.save_cover_image(&release_id, false).await.expect("no cover when not embedding");
+    assert!(without_cover.is_none(), "not embedding skips the cover read");
 }
 
 /// Exporting a whole cloud-only release downloads each file and writes the
@@ -274,9 +246,7 @@ async fn export_release_single_file_with_cue_writes_image_and_cue() {
     let image_preset = SavePreset {
         id: "flac-image".to_string(),
         name: "FLAC image".to_string(),
-        codec: SaveCodec::Flac {
-            bit_depth: SaveBitDepth::Bits16,
-        },
+        codec: SaveCodec::Flac { bit_depth: SaveBitDepth::Bits16 },
         filename_tokens: vec![SaveFilenameToken::TrackNumber, SaveFilenameToken::Title],
         pregap_placement: SavePregapPlacement::SingleFileWithCue,
         applies_to_track: false,
@@ -290,13 +260,7 @@ async fn export_release_single_file_with_cue_writes_image_and_cue() {
     let target = f.temp_path().join("export-target");
     fs::create_dir_all(&target).unwrap();
     f.mgr
-        .export_release(
-            &release_id,
-            &target,
-            OutputKind::Save {
-                preset: image_preset,
-            },
-        )
+        .export_release(&release_id, &target, OutputKind::Save { preset: image_preset })
         .await
         .expect("single-file CUE release save must succeed");
 
@@ -330,10 +294,7 @@ async fn export_release_single_file_with_cue_writes_image_and_cue() {
         bae_audio::decode_audio(support::filled_sparse_buffer(&first_bytes), None, None).unwrap();
     let second_pcm =
         bae_audio::decode_audio(support::filled_sparse_buffer(&second_bytes), None, None).unwrap();
-    assert_eq!(
-        image_pcm.samples.len(),
-        first_pcm.samples.len() + second_pcm.samples.len()
-    );
+    assert_eq!(image_pcm.samples.len(), first_pcm.samples.len() + second_pcm.samples.len());
 }
 
 /// `Track?.flac` and `Track？.flac` are two names, and coven writes both as
@@ -369,10 +330,7 @@ async fn two_names_written_as_one_fail_the_export() {
         .await
         .expect_err("two files written at one path fail the export");
 
-    assert!(
-        error.to_string().contains("Track？.flac"),
-        "the error names the path: {error}"
-    );
+    assert!(error.to_string().contains("Track？.flac"), "the error names the path: {error}");
     assert!(
         fs::read_dir(&target).unwrap().next().is_none(),
         "the failed export leaves no release folder or staging folder"
@@ -423,9 +381,7 @@ async fn a_release_save_of_two_names_one_drive_holds_as_one_fails() {
         .expect_err("two tracks written at one path fail the save");
 
     assert!(
-        error
-            .to_string()
-            .contains("where another file of the release already is"),
+        error.to_string().contains("where another file of the release already is"),
         "the error names the clash: {error}"
     );
     assert!(
@@ -451,10 +407,7 @@ async fn export_release_missing_file_is_hard_error() {
 
     let target = f.temp_path().join("export-target");
     fs::create_dir_all(&target).unwrap();
-    let result = f
-        .mgr
-        .export_release(&release_id, &target, OutputKind::Export)
-        .await;
+    let result = f.mgr.export_release(&release_id, &target, OutputKind::Export).await;
     assert!(result.is_err(), "missing file must fail the export");
     assert!(
         fs::read_dir(&target).unwrap().next().is_none(),
@@ -467,9 +420,7 @@ fn flac_save_preset(id: &str, placement: SavePregapPlacement) -> SavePreset {
     SavePreset {
         id: id.to_string(),
         name: id.to_string(),
-        codec: SaveCodec::Flac {
-            bit_depth: SaveBitDepth::Bits16,
-        },
+        codec: SaveCodec::Flac { bit_depth: SaveBitDepth::Bits16 },
         filename_tokens: vec![SaveFilenameToken::TrackNumber, SaveFilenameToken::Title],
         pregap_placement: placement,
         applies_to_track: false,
@@ -504,9 +455,7 @@ async fn peak_sources_open_saving(
 }
 
 fn cores() -> usize {
-    std::thread::available_parallelism()
-        .expect("available parallelism")
-        .get()
+    std::thread::available_parallelism().expect("available parallelism").get()
 }
 
 /// Saving a release of a file per track opens each track's file only while
@@ -522,14 +471,7 @@ async fn a_release_save_holds_a_bounded_number_of_track_files_open() {
         support::write_tagged_flac(&album_dir, &format!("{n:02}.flac"), &format!("Track {n}"));
     }
     let release_id = import_unknown_local(&f, &album_dir).await;
-    assert_eq!(
-        f.mgr
-            .get_tracks_for_release(&release_id)
-            .await
-            .unwrap()
-            .len(),
-        24
-    );
+    assert_eq!(f.mgr.get_tracks_for_release(&release_id).await.unwrap().len(), 24);
 
     let per_track = peak_sources_open_saving(
         &f,
@@ -551,10 +493,7 @@ async fn a_release_save_holds_a_bounded_number_of_track_files_open() {
         flac_save_preset("image", SavePregapPlacement::SingleFileWithCue),
     )
     .await;
-    assert!(
-        image <= 1,
-        "the image save reads one track file at a time, not {image}"
-    );
+    assert!(image <= 1, "the image save reads one track file at a time, not {image}");
 }
 
 /// Saving a release whose tracks share one CUE image reads the image through
@@ -584,14 +523,7 @@ async fn a_release_save_reads_a_cue_image_through_one_open_file() {
     }
     fs::write(album_dir.join("Test Album.cue"), cue).unwrap();
     let release_id = import_unknown_local(&f, &album_dir).await;
-    assert_eq!(
-        f.mgr
-            .get_tracks_for_release(&release_id)
-            .await
-            .unwrap()
-            .len(),
-        12
-    );
+    assert_eq!(f.mgr.get_tracks_for_release(&release_id).await.unwrap().len(), 12);
 
     for preset in [
         flac_save_preset("tracks", SavePregapPlacement::AppendToPreviousExceptHtoa),
@@ -599,9 +531,6 @@ async fn a_release_save_reads_a_cue_image_through_one_open_file() {
     ] {
         let id = preset.id.clone();
         let peak = peak_sources_open_saving(&f, &release_id, &album_dir, preset).await;
-        assert!(
-            peak <= 1,
-            "the {id} save reads the image as one open file, not {peak}"
-        );
+        assert!(peak <= 1, "the {id} save reads the image as one open file, not {peak}");
     }
 }

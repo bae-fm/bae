@@ -346,12 +346,7 @@ pub(crate) fn musicbrainz_release_notes(release: &MbReleaseResponse) -> Vec<Stri
         .disambiguation
         .iter()
         .cloned()
-        .chain(
-            release
-                .annotation
-                .iter()
-                .flat_map(|annotation| lines(annotation)),
-        )
+        .chain(release.annotation.iter().flat_map(|annotation| lines(annotation)))
         .collect()
 }
 
@@ -359,20 +354,13 @@ pub(crate) fn musicbrainz_release_notes(release: &MbReleaseResponse) -> Vec<Stri
 /// Each line is a note of its own, so the one a row is named for is the line
 /// that says so, not the whole text around it.
 fn lines(prose: &str) -> impl Iterator<Item = String> + '_ {
-    prose
-        .lines()
-        .map(str::trim)
-        .filter(|line| !line.is_empty())
-        .map(str::to_string)
+    prose.lines().map(str::trim).filter(|line| !line.is_empty()).map(str::to_string)
 }
 
 /// What a Discogs release's format entries write beside their names, in
 /// order: the part of its notes a search result carries too.
 fn discogs_notes(formats: &[bae_catalogs::discogs::DiscogsFormat]) -> Vec<String> {
-    formats
-        .iter()
-        .filter_map(|format| format.text.clone())
-        .collect()
+    formats.iter().filter_map(|format| format.text.clone()).collect()
 }
 
 /// A release a disc-ID lookup answered, when exactly one of its mediums is the
@@ -382,12 +370,7 @@ fn mb_discid_release_to_metadata(discid: &str, r: MbReleaseResponse) -> Option<M
     let matching_media = r
         .media
         .iter()
-        .filter(|medium| {
-            medium
-                .discs
-                .iter()
-                .any(|registered| registered.id == discid)
-        })
+        .filter(|medium| medium.discs.iter().any(|registered| registered.id == discid))
         .count();
     match matching_media {
         1 => {}
@@ -524,9 +507,7 @@ pub(crate) async fn search_mb(
     params: ReleaseSearchParams,
     priority: CallPriority,
 ) -> Result<Vec<MetadataResult>, ImportError> {
-    let releases = musicbrainz
-        .search_releases_with_params(&params, priority)
-        .await?;
+    let releases = musicbrainz.search_releases_with_params(&params, priority).await?;
 
     Ok(releases
         .into_iter()
@@ -544,10 +525,7 @@ pub async fn search_discogs(
     priority: CallPriority,
 ) -> Result<Vec<MetadataResult>, DiscogsError> {
     let results = client.search_with_params(&params, priority).await?;
-    Ok(results
-        .into_iter()
-        .map(discogs_search_result_to_metadata)
-        .collect())
+    Ok(results.into_iter().map(discogs_search_result_to_metadata).collect())
 }
 
 /// The failure MusicBrainz answered with, or `None` for one bae met reading
@@ -574,9 +552,7 @@ fn transport_failure(error: &reqwest::Error) -> Option<LookupFailure> {
     } else if error.is_timeout() {
         Some(LookupFailure::Timeout)
     } else if let Some(status) = error.status() {
-        Some(LookupFailure::Provider {
-            status: Some(status.as_u16()),
-        })
+        Some(LookupFailure::Provider { status: Some(status.as_u16()) })
     } else {
         Some(LookupFailure::Network)
     }
@@ -619,9 +595,9 @@ pub(crate) fn provider_failure(error: &ImportError) -> Option<LookupFailure> {
         ImportError::RemoteImage(error) => remote_image_failure(error),
         ImportError::Discogs(error) => match error {
             DiscogsError::Transport(error) => transport_failure(error),
-            DiscogsError::Provider { status, .. } => Some(LookupFailure::Provider {
-                status: Some(status.as_u16()),
-            }),
+            DiscogsError::Provider { status, .. } => {
+                Some(LookupFailure::Provider { status: Some(status.as_u16()) })
+            }
             DiscogsError::InvalidApiKey => Some(LookupFailure::Provider { status: Some(401) }),
             DiscogsError::NotFound => Some(LookupFailure::Provider { status: Some(404) }),
             DiscogsError::Serialization(_) => None,
@@ -636,9 +612,9 @@ pub(crate) fn provider_failure(error: &ImportError) -> Option<LookupFailure> {
 pub(crate) fn remote_image_failure(error: &RemoteImageError) -> Option<LookupFailure> {
     match error {
         RemoteImageError::Transport { error, .. } => transport_failure(error),
-        RemoteImageError::Status { status, .. } => Some(LookupFailure::Provider {
-            status: Some(*status),
-        }),
+        RemoteImageError::Status { status, .. } => {
+            Some(LookupFailure::Provider { status: Some(*status) })
+        }
         RemoteImageError::Unusable { .. } | RemoteImageError::CacheTask(_) => None,
     }
 }
@@ -703,10 +679,9 @@ impl ProviderQuery for SearchQuery {
                 catalog_number: Some(catalog_number.clone()),
                 ..Default::default()
             },
-            SearchQuery::Barcode { barcode } => ReleaseSearchParams {
-                barcode: Some(barcode_query(barcode)),
-                ..Default::default()
-            },
+            SearchQuery::Barcode { barcode } => {
+                ReleaseSearchParams { barcode: Some(barcode_query(barcode)), ..Default::default() }
+            }
         }
     }
 
@@ -717,14 +692,12 @@ impl ProviderQuery for SearchQuery {
                 release_title: Some(album.clone()),
                 ..Default::default()
             },
-            SearchQuery::CatalogNumber { catalog_number } => DiscogsSearchParams {
-                catno: Some(catalog_number.clone()),
-                ..Default::default()
-            },
-            SearchQuery::Barcode { barcode } => DiscogsSearchParams {
-                barcode: Some(barcode_query(barcode)),
-                ..Default::default()
-            },
+            SearchQuery::CatalogNumber { catalog_number } => {
+                DiscogsSearchParams { catno: Some(catalog_number.clone()), ..Default::default() }
+            }
+            SearchQuery::Barcode { barcode } => {
+                DiscogsSearchParams { barcode: Some(barcode_query(barcode)), ..Default::default() }
+            }
         }
     }
 }
@@ -810,14 +783,10 @@ pub async fn search_provider(
 ) -> Result<Vec<MetadataResult>, ImportError> {
     let mut results = match source {
         Catalog::MusicBrainz => {
-            library_manager
-                .search_musicbrainz(query.musicbrainz_params(), priority)
-                .await?
+            library_manager.search_musicbrainz(query.musicbrainz_params(), priority).await?
         }
         Catalog::Discogs => {
-            library_manager
-                .search_discogs(query.discogs_params(), priority)
-                .await?
+            library_manager.search_discogs(query.discogs_params(), priority).await?
         }
         other => unreachable!("{} answers no searches", other.as_str()),
     };
@@ -833,14 +802,9 @@ pub async fn search_source(
     query: &impl ProviderQuery,
     priority: CallPriority,
 ) -> SourceLookup {
-    search_provider(library_manager, source, query, priority)
-        .await
-        .map_err(|error| {
-            failure_of(
-                &error,
-                &format!("asking {} a search for {query:?}", source.as_str()),
-            )
-        })
+    search_provider(library_manager, source, query, priority).await.map_err(|error| {
+        failure_of(&error, &format!("asking {} a search for {query:?}", source.as_str()))
+    })
 }
 
 /// The releases MusicBrainz has for a disc ID, each with its cover art and its
@@ -875,14 +839,9 @@ pub(crate) async fn lookup_by_isrcs(
     isrcs: &[String],
     priority: CallPriority,
 ) -> Result<Vec<MetadataResult>, Failure> {
-    let recordings = musicbrainz
-        .search_recordings_by_isrcs(isrcs, priority)
-        .await
-        .map_err(|error| {
-            mb_failure(
-                &error,
-                &format!("reading MusicBrainz's answer for ISRCs {isrcs:?}"),
-            )
+    let recordings =
+        musicbrainz.search_recordings_by_isrcs(isrcs, priority).await.map_err(|error| {
+            mb_failure(&error, &format!("reading MusicBrainz's answer for ISRCs {isrcs:?}"))
         })?;
     Ok(isrc_releases_to_metadata(isrcs, recordings))
 }

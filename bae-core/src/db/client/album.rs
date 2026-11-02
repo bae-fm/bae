@@ -14,10 +14,7 @@ impl Database {
         let primary: Option<Option<String>> = self
             .read(move |sql| {
                 sql.query_row(
-                    &format!(
-                        "SELECT {} FROM albums a WHERE a.id = ?",
-                        album_primary_release_sql()
-                    ),
+                    &format!("SELECT {} FROM albums a WHERE a.id = ?", album_primary_release_sql()),
                     params![album_id],
                     |row| row.get(0),
                 )
@@ -65,24 +62,19 @@ impl Database {
                     return Ok(None);
                 };
                 let pattern = search_pattern(query.as_str());
-                Ok(Some(
-                    search_library_on(&sql, &pattern, limit_i64).map_err(CovenError::from)?,
-                ))
+                Ok(Some(search_library_on(&sql, &pattern, limit_i64).map_err(CovenError::from)?))
             })
             .process(|raw| {
                 let Some(results) = raw else {
                     return Ok(LibrarySearchProjection::default());
                 };
-                Ok(LibrarySearchProjection {
-                    results: results.process()?,
-                })
+                Ok(LibrarySearchProjection { results: results.process()? })
             })
     }
 
     pub async fn insert_album(&self, album: &DbAlbum) -> Result<(), DbError> {
         let album = album.clone();
-        self.call_sql(move |sql| insert_album_row(&sql, &album))
-            .await
+        self.call_sql(move |sql| insert_album_row(&sql, &album)).await
     }
 
     /// Every album, sorted by `sort` — or `created_at DESC` (newest first) when
@@ -100,8 +92,7 @@ impl Database {
             order.clause()
         );
 
-        self.read(move |sql| sql.query(&query, [], row_to_album).map_err(DbError::from))
-            .await
+        self.read(move |sql| sql.query(&query, [], row_to_album).map_err(DbError::from)).await
     }
 
     /// One window of the album list under `sort`, read by its offset.
@@ -113,12 +104,10 @@ impl Database {
     ) -> Result<Vec<DbAlbumSummary>, DbError> {
         let (relation, order) = album_browse_order(sort, false);
         self.read(move |sql| {
-            Ok(
-                album_rows_on(&sql, &relation, &order, &order.everything(), limit, offset)?
-                    .into_iter()
-                    .map(|(row, _)| row)
-                    .collect::<Vec<_>>(),
-            )
+            Ok(album_rows_on(&sql, &relation, &order, &order.everything(), limit, offset)?
+                .into_iter()
+                .map(|(row, _)| row)
+                .collect::<Vec<_>>())
         })
         .process(|rows| rows.into_iter().map(AlbumSummaryRow::process).collect())
         .await
@@ -185,25 +174,18 @@ impl Database {
             .process(|(windows, total_count, row_count, sections)| {
                 let windows = windows
                     .into_iter()
-                    .map(
-                        |window: crate::library::LibraryBrowseWindow<AlbumSummaryRow>| {
-                            Ok(crate::library::LibraryBrowseWindow {
-                                window: window.window,
-                                rows: window
-                                    .rows
-                                    .into_iter()
-                                    .map(AlbumSummaryRow::process)
-                                    .collect::<Result<_, _>>()?,
-                            })
-                        },
-                    )
+                    .map(|window: crate::library::LibraryBrowseWindow<AlbumSummaryRow>| {
+                        Ok(crate::library::LibraryBrowseWindow {
+                            window: window.window,
+                            rows: window
+                                .rows
+                                .into_iter()
+                                .map(AlbumSummaryRow::process)
+                                .collect::<Result<_, _>>()?,
+                        })
+                    })
                     .collect::<Result<_, CovenError>>()?;
-                Ok(AlbumBrowseProjection {
-                    windows,
-                    total_count,
-                    row_count,
-                    sections,
-                })
+                Ok(AlbumBrowseProjection { windows, total_count, row_count, sections })
             })
     }
 
@@ -215,22 +197,18 @@ impl Database {
         &self,
         initial: BTreeSet<String>,
     ) -> coven::ReconfigurableLiveQuery<BTreeSet<String>, Vec<String>> {
-        self.inner
-            .handle
-            .subscribe_reconfigurable(initial, move |requested, sql| {
-                let requested =
-                    serde_json::to_string(requested).expect("album ids serialize as JSON");
-                let query = format!(
-                    "SELECT requested.value FROM json_each(?1) requested \
+        self.inner.handle.subscribe_reconfigurable(initial, move |requested, sql| {
+            let requested = serde_json::to_string(requested).expect("album ids serialize as JSON");
+            let query = format!(
+                "SELECT requested.value FROM json_each(?1) requested \
                      WHERE NOT EXISTS ( \
                          SELECT 1 FROM albums a \
                          WHERE a.id = requested.value AND {ALBUM_A_IS_SHOWN} \
                      ) \
                      ORDER BY requested.value"
-                );
-                sql.query(&query, [requested], |row| row.get::<_, String>(0))
-                    .map_err(CovenError::from)
-            })
+            );
+            sql.query(&query, [requested], |row| row.get::<_, String>(0)).map_err(CovenError::from)
+        })
     }
 
     /// The albums of `album_ids` the browse lists, each once at its first
@@ -298,8 +276,7 @@ impl Database {
     /// Find album by ID. Caller-provided ID — may not exist.
     pub async fn find_album_by_id(&self, album_id: &str) -> Result<Option<DbAlbum>, DbError> {
         let album_id = album_id.to_string();
-        self.read(move |sql| find_album_by_id_on(&sql, &album_id))
-            .await
+        self.read(move |sql| find_album_by_id_on(&sql, &album_id)).await
     }
 
     /// Follow `DbRelease.album_id` → `DbAlbum`. FK navigation — the row must
@@ -432,10 +409,7 @@ impl Database {
             // already primary stays where it is.
             let current: Option<String> = sql
                 .query_row(
-                    &format!(
-                        "SELECT {} FROM albums a WHERE a.id = ?",
-                        album_primary_release_sql()
-                    ),
+                    &format!("SELECT {} FROM albums a WHERE a.id = ?", album_primary_release_sql()),
                     params![album_id],
                     |row| row.get(0),
                 )
@@ -570,13 +544,7 @@ fn search_library_on(
         params![pattern, limit],
         row_to_work_summary,
     )?;
-    Ok(LibrarySearchRows {
-        albums,
-        artists,
-        tracks,
-        composers,
-        works,
-    })
+    Ok(LibrarySearchRows { albums, artists, tracks, composers, works })
 }
 
 #[derive(Clone, PartialEq)]
@@ -672,11 +640,7 @@ impl AlbumDetailRows {
         DbAlbumDetail {
             album: self.album,
             artists: self.artists,
-            releases: self
-                .releases
-                .into_iter()
-                .map(ReleaseDetailRows::process)
-                .collect(),
+            releases: self.releases.into_iter().map(ReleaseDetailRows::process).collect(),
             primary_release_id: self.primary_release_id,
             primary_cover_version: self.primary_cover_version,
         }
@@ -684,11 +648,9 @@ impl AlbumDetailRows {
 }
 
 fn album_count_on(sql: &SqlReadContext<'_>) -> Result<u64, DbError> {
-    sql.query_row("SELECT COUNT(*) FROM album_listing", [], |row| {
-        row.get::<_, i64>(0)
-    })
-    .map(|count| count as u64)
-    .map_err(DbError::from)
+    sql.query_row("SELECT COUNT(*) FROM album_listing", [], |row| row.get::<_, i64>(0))
+        .map(|count| count as u64)
+        .map_err(DbError::from)
 }
 
 /// The statement reading the album list's rows `seek` reads over
@@ -716,9 +678,7 @@ pub(super) fn album_rows_on(
 ) -> Result<Vec<Keyed<AlbumSummaryRow>>, DbError> {
     let statement = album_window_statement(relation, order, seek);
     Ok(seek.bound(limit, offset, |params| {
-        sql.query(&statement, params, |row| {
-            Ok((AlbumSummaryRow::read(row)?, order.key_of(row)?))
-        })
+        sql.query(&statement, params, |row| Ok((AlbumSummaryRow::read(row)?, order.key_of(row)?)))
     })?)
 }
 

@@ -10,12 +10,12 @@ impl crate::import::folder_scanner::DirectoryReader for ListingThatPanicsOnce {
         root: &Path,
         directory: &Path,
         cancellation: &crate::import::folder_scanner::ScanCancellation,
-    ) -> Result<crate::import::folder_scanner::DirectoryListing, crate::import::folder_scanner::FolderScanError>
-    {
+    ) -> Result<
+        crate::import::folder_scanner::DirectoryListing,
+        crate::import::folder_scanner::FolderScanError,
+    > {
         if directory.components().count() == 1
-            && !self
-                .panicked
-                .swap(true, std::sync::atomic::Ordering::SeqCst)
+            && !self.panicked.swap(true, std::sync::atomic::Ordering::SeqCst)
         {
             panic!("the listing broke");
         }
@@ -27,20 +27,17 @@ impl crate::import::folder_scanner::DirectoryReader for ListingThatPanicsOnce {
         root: &Path,
         folders: &[PathBuf],
         cancellation: &crate::import::folder_scanner::ScanCancellation,
-    ) -> Result<Vec<crate::import::folder_scanner::FolderTimes>, crate::import::folder_scanner::FolderScanError>
-    {
+    ) -> Result<
+        Vec<crate::import::folder_scanner::FolderTimes>,
+        crate::import::folder_scanner::FolderScanError,
+    > {
         crate::import::folder_scanner::OsDirectoryReader.folder_times(root, folders, cancellation)
     }
 }
 
 /// Where the stored scan of the only watched root stands.
 async fn root_scan_status(service: &ImportService) -> crate::import::FolderScanStatus {
-    let mut statuses = service
-        .library_manager
-        .load_folder_scan_progress()
-        .await
-        .unwrap()
-        .statuses;
+    let mut statuses = service.library_manager.load_folder_scan_progress().await.unwrap().statuses;
     assert_eq!(statuses.len(), 1, "one root is watched");
     statuses.remove(0).status
 }
@@ -60,28 +57,17 @@ async fn a_pass_that_panics_fails_the_scan_and_frees_the_root() {
         std::fs::create_dir_all(&folder).unwrap();
         std::fs::write(folder.join("track.flac"), flac()).unwrap();
     }
-    test.service
-        .library_manager
-        .add_watched_import_folder(&root)
-        .await
-        .unwrap();
+    test.service.library_manager.add_watched_import_folder(&root).await.unwrap();
     let (scan, _events) = test.scan_with(
         Arc::new(crate::import::file_tag_snapshot::LoftyFileTagReader),
-        Arc::new(ListingThatPanicsOnce {
-            panicked: std::sync::atomic::AtomicBool::new(false),
-        }),
+        Arc::new(ListingThatPanicsOnce { panicked: std::sync::atomic::AtomicBool::new(false) }),
     );
     let (commands, command_rx) = tokio::sync::mpsc::unbounded_channel();
     let (_fs_tx, fs_rx) = tokio::sync::mpsc::unbounded_channel();
     let coordinator = ImportService::start_watcher(command_rx, fs_rx, scan.services.clone());
     let refresh = || {
         let (completion, answered) = tokio::sync::oneshot::channel();
-        commands
-            .send(WatcherCommand::Refresh {
-                path: root.clone(),
-                completion,
-            })
-            .unwrap();
+        commands.send(WatcherCommand::Refresh { path: root.clone(), completion }).unwrap();
         answered
     };
 

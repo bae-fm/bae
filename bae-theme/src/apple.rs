@@ -58,14 +58,10 @@ fn write_swift(out: &mut String, theme: &Theme) -> std::fmt::Result {
     );
     for accent in &theme.accents {
         writeln!(out, "        case .{}:", accent.name)?;
-        let roles: Roles = [
-            ("light", accent.light),
-            ("dark", accent.dark),
-            ("fill", accent.fill),
-        ]
-        .into_iter()
-        .map(|(name, colour)| (name.to_string(), colour))
-        .collect();
+        let roles: Roles = [("light", accent.light), ("dark", accent.dark), ("fill", accent.fill)]
+            .into_iter()
+            .map(|(name, colour)| (name.to_string(), colour))
+            .collect();
         roles_value(out, "AccentColors", &roles, 12)?;
     }
     out.push_str("        }\n    }\n}\n");
@@ -108,11 +104,7 @@ fn write_swift(out: &mut String, theme: &Theme) -> std::fmt::Result {
          extension ThemeText {\n",
     );
     for (role, text) in &theme.text {
-        let design = if text.monospaced {
-            ".monospaced"
-        } else {
-            ".default"
-        };
+        let design = if text.monospaced { ".monospaced" } else { ".default" };
         writeln!(
             out,
             "    public static let {role} = ThemeText(\n        font: .theme(\n            macOS: {},\n            \
@@ -246,10 +238,7 @@ fn choice_enum<'a>(
     cases: impl Iterator<Item = &'a str>,
     standard: &str,
 ) -> std::fmt::Result {
-    writeln!(
-        out,
-        "\npublic enum {name}: String, CaseIterable, Sendable {{"
-    )?;
+    writeln!(out, "\npublic enum {name}: String, CaseIterable, Sendable {{")?;
     for case in cases {
         writeln!(out, "    case {case}")?;
     }

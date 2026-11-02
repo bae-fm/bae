@@ -32,10 +32,7 @@ pub(crate) async fn automation_candidate_from_folder(
             bae_core::identify::IdentifyStateView::from(folder.resumed_identify_state.clone()),
         ),
     };
-    let toolbar = toolbar
-        .into_iter()
-        .map(AutomationToolbarSignal::from_core)
-        .collect();
+    let toolbar = toolbar.into_iter().map(AutomationToolbarSignal::from_core).collect();
     // Whether each release the state names is in the library is read now,
     // live: the state itself carries no snapshot of it.
     let library_statuses = services
@@ -45,11 +42,7 @@ pub(crate) async fn automation_candidate_from_folder(
     Ok(AutomationCandidate::Valid {
         common: automation_candidate_common(
             &candidate.key(),
-            candidate
-                .source_folders()
-                .iter()
-                .map(|path| coven::path_text(path))
-                .collect(),
+            candidate.source_folders().iter().map(|path| coven::path_text(path)).collect(),
             candidate.name.clone(),
             &candidate.watched_folder_path,
             folder.skipped,
@@ -86,12 +79,12 @@ pub(crate) async fn automation_candidate_from_folder(
         edit: draft.map(|draft| {
             AutomationReleaseUserEdit::from_core(shaped_edit(&draft.metadata_draft, &draft.mapping))
         }),
-        failure: draft
-            .and_then(|draft| draft.failure.as_ref())
-            .map(|failure| AutomationImportFailure {
+        failure: draft.and_then(|draft| draft.failure.as_ref()).map(|failure| {
+            AutomationImportFailure {
                 error: failure.reason.detail.clone(),
                 failed_at: failure.failed_at.to_rfc3339(),
-            }),
+            }
+        }),
     })
 }
 
@@ -147,14 +140,13 @@ fn shaped_edit(
 ) -> bae_core::import::ReleaseUserEdit {
     let mut raw = edit.clone();
     raw.tracks = bae_core::import::mapping_tracks(mapping);
-    raw.shape()
-        .unwrap_or_else(|_| bae_core::import::ReleaseUserEdit {
-            album_title: raw.album_title.clone(),
-            album_artist_assignments: Vec::new(),
-            album_year: None,
-            pressing: bae_types::pressing::Pressing::blank(),
-            tracks: Vec::new(),
-        })
+    raw.shape().unwrap_or_else(|_| bae_core::import::ReleaseUserEdit {
+        album_title: raw.album_title.clone(),
+        album_artist_assignments: Vec::new(),
+        album_year: None,
+        pressing: bae_types::pressing::Pressing::blank(),
+        tracks: Vec::new(),
+    })
 }
 
 /// An unimportable folder. The import service records no runtime against one —
@@ -208,20 +200,19 @@ pub(crate) fn automation_import_status(
     }
     Some(match status? {
         // Running, with no progress reported yet.
-        CandidateImportStatus::Importing { .. } => AutomationImportStatus::Importing {
-            progress_percent: None,
-            step: None,
-        },
+        CandidateImportStatus::Importing { .. } => {
+            AutomationImportStatus::Importing { progress_percent: None, step: None }
+        }
         CandidateImportStatus::Complete { release } => AutomationImportStatus::Complete {
             release: AutomationImportedRelease::from_core(release.clone()),
         },
-        CandidateImportStatus::Error { failure } => AutomationImportStatus::Error {
-            error: failure.detail.clone(),
-        },
+        CandidateImportStatus::Error { failure } => {
+            AutomationImportStatus::Error { error: failure.detail.clone() }
+        }
         // An agent reads the reason in the log's own words.
-        CandidateImportStatus::Blocked { reason } => AutomationImportStatus::Error {
-            error: reason.to_string(),
-        },
+        CandidateImportStatus::Blocked { reason } => {
+            AutomationImportStatus::Error { error: reason.to_string() }
+        }
     })
 }
 

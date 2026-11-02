@@ -84,10 +84,7 @@ impl LibraryManager {
         projection: crate::db::ArtistSearchProjection,
         request_revision: u64,
     ) -> crate::library::ArtistSearchSnapshot {
-        let crate::db::ArtistSearchProjection {
-            windows,
-            total_count,
-        } = projection;
+        let crate::db::ArtistSearchProjection { windows, total_count } = projection;
         crate::library::ArtistSearchSnapshot {
             windows: windows
                 .into_iter()
@@ -120,14 +117,9 @@ impl LibraryManager {
         name: &str,
     ) -> Result<(), LibraryError> {
         if name.trim().is_empty() {
-            return Err(LibraryError::Refused(
-                "a credit name cannot be blank".into(),
-            ));
+            return Err(LibraryError::Refused("a credit name cannot be blank".into()));
         }
-        Ok(self
-            .database
-            .add_artist_credit_name(artist_id, name)
-            .await?)
+        Ok(self.database.add_artist_credit_name(artist_id, name).await?)
     }
 
     /// Rename one of an artist's other printed names; every credit printing
@@ -139,14 +131,9 @@ impl LibraryManager {
         name: &str,
     ) -> Result<(), LibraryError> {
         if name.trim().is_empty() {
-            return Err(LibraryError::Refused(
-                "a credit name cannot be blank".into(),
-            ));
+            return Err(LibraryError::Refused("a credit name cannot be blank".into()));
         }
-        Ok(self
-            .database
-            .rename_artist_credit_name(artist_id, key, name)
-            .await?)
+        Ok(self.database.rename_artist_credit_name(artist_id, key, name).await?)
     }
 
     /// Remove one of an artist's other printed names; every credit printing
@@ -156,10 +143,7 @@ impl LibraryManager {
         artist_id: &str,
         key: &str,
     ) -> Result<(), LibraryError> {
-        Ok(self
-            .database
-            .remove_artist_credit_name(artist_id, key)
-            .await?)
+        Ok(self.database.remove_artist_credit_name(artist_id, key).await?)
     }
 
     pub async fn get_artist_count(&self) -> Result<u64, LibraryError> {
@@ -199,11 +183,7 @@ impl LibraryManager {
                 .into_iter()
                 .map(|window| crate::library::LibraryBrowseWindow {
                     window: window.window,
-                    rows: window
-                        .rows
-                        .into_iter()
-                        .map(ArtistSummary::from_raw)
-                        .collect(),
+                    rows: window.rows.into_iter().map(ArtistSummary::from_raw).collect(),
                 })
                 .collect(),
             total_count: projection.total_count,

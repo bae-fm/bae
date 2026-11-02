@@ -42,23 +42,13 @@ impl RetryPolicy {
     /// span.
     pub const fn exponential(attempts: u32, first_wait: Duration, longest_wait: Duration) -> Self {
         assert!(attempts > 0, "a retry policy makes at least one attempt");
-        Self {
-            attempts,
-            first_wait,
-            longest_wait,
-            jitter: true,
-        }
+        Self { attempts, first_wait, longest_wait, jitter: true }
     }
 
     /// Wait the same `wait` before every repeat.
     pub const fn flat(attempts: u32, wait: Duration) -> Self {
         assert!(attempts > 0, "a retry policy makes at least one attempt");
-        Self {
-            attempts,
-            first_wait: wait,
-            longest_wait: wait,
-            jitter: false,
-        }
+        Self { attempts, first_wait: wait, longest_wait: wait, jitter: false }
     }
 
     pub fn attempts(&self) -> u32 {
@@ -70,9 +60,7 @@ impl RetryPolicy {
     /// `longest_wait`.
     fn span(&self, retry: u32) -> Duration {
         let doublings = retry.saturating_sub(1).min(31);
-        self.first_wait
-            .saturating_mul(1u32 << doublings)
-            .min(self.longest_wait)
+        self.first_wait.saturating_mul(1u32 << doublings).min(self.longest_wait)
     }
 
     /// The wait before repeat `retry`, with `draw` a number in `[0, 1)` that
@@ -244,10 +232,7 @@ mod tests {
         let policy = RetryPolicy::exponential(6, Duration::from_secs(1), Duration::from_secs(5));
         let spans: Vec<Duration> = (1..=5).map(|retry| policy.wait(retry, 0.999_999)).collect();
         assert_eq!(
-            spans
-                .iter()
-                .map(|wait| wait.as_secs_f64().round() as u64)
-                .collect::<Vec<_>>(),
+            spans.iter().map(|wait| wait.as_secs_f64().round() as u64).collect::<Vec<_>>(),
             vec![1, 2, 4, 5, 5]
         );
         assert_eq!(policy.wait(1, 0.0), Duration::from_millis(500));

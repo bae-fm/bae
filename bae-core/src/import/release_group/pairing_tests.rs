@@ -61,28 +61,19 @@ fn a_stated_link_pairs_despite_the_text_and_the_facts() {
 fn a_stated_link_names_the_record_that_stands_for_its_catalog() {
     let mut one = mb("mb-1", Some("group-x"), Some(1992));
     one.barcodes = vec!["012345678905".to_string()];
-    one.links = vec![crate::import::MetadataRef::new(
-        Catalog::Discogs,
-        "dg-linked",
-    )];
+    one.links = vec![crate::import::MetadataRef::new(Catalog::Discogs, "dg-linked")];
     let mut linked = discogs("dg-linked", Some("master-7"), Some(1992));
     linked.barcodes = vec!["012345678905".to_string()];
     let mut barcoded = discogs("dg-barcoded", Some("master-7"), Some(1992));
     barcoded.barcodes = vec!["012345678905".to_string()];
 
     let groups = grouped(vec![barcoded, one, linked]);
-    assert_eq!(
-        lead_ids(&groups[0]),
-        vec![vec!["mb-1", "dg-linked"], vec!["dg-barcoded"]]
-    );
+    assert_eq!(lead_ids(&groups[0]), vec![vec!["mb-1", "dg-linked"], vec!["dg-barcoded"]]);
     assert_eq!(
         groups[0].sections[0].pressings[0].pick(),
         crate::import::PressingLink {
             record: crate::import::MetadataRef::new(Catalog::MusicBrainz, "mb-1".to_string()),
-            partners: vec![crate::import::MetadataRef::new(
-                Catalog::Discogs,
-                "dg-linked"
-            )],
+            partners: vec![crate::import::MetadataRef::new(Catalog::Discogs, "dg-linked")],
         },
         "one record per catalog is claimed"
     );
@@ -108,10 +99,7 @@ fn a_link_combines_the_album_without_pairing_pressings() {
 fn label_spelling_neither_blocks_nor_fabricates_identity() {
     let mut one = mb("mb-1", Some("group-x"), Some(1992));
     one.barcodes = vec!["012345678905".to_string()];
-    one.labels = vec![bae_types::pressing::ReleaseLabel::of(
-        Some("Label Name Records"),
-        None,
-    )];
+    one.labels = vec![bae_types::pressing::ReleaseLabel::of(Some("Label Name Records"), None)];
     let mut other = discogs("dg-1", Some("master-7"), Some(1992));
     other.barcodes = vec!["012345678905".to_string()];
     other.labels = vec![bae_types::pressing::ReleaseLabel::of(Some("LN"), None)];
@@ -122,15 +110,10 @@ fn label_spelling_neither_blocks_nor_fabricates_identity() {
 
     // An agreeing label does not make a shared catalog number a pair.
     let mut one = mb("mb-2", Some("group-y"), None);
-    one.labels = vec![bae_types::pressing::ReleaseLabel::of(
-        Some("Label Name Records"),
-        Some("CAT-7"),
-    )];
+    one.labels =
+        vec![bae_types::pressing::ReleaseLabel::of(Some("Label Name Records"), Some("CAT-7"))];
     let mut other = discogs("dg-2", Some("master-8"), None);
-    other.labels = vec![bae_types::pressing::ReleaseLabel::of(
-        Some("Label Name"),
-        Some("CAT-7"),
-    )];
+    other.labels = vec![bae_types::pressing::ReleaseLabel::of(Some("Label Name"), Some("CAT-7"))];
     let groups = grouped(vec![one, other]);
     assert_eq!(rows(&groups), vec![vec!["mb-2"], vec!["dg-2"]]);
 }
@@ -147,10 +130,8 @@ fn equivalent_representations_pair_and_distinct_identifiers_do_not() {
     let mut other = discogs("dg-1", Some("master-7"), Some(1992));
     other.barcodes = vec!["0012345678905".to_string()];
     other.area = bae_types::pressing::ReleaseArea::discogs("Japan");
-    other.media = StatedMedia::Formats(vec![StatedFormat {
-        medium: Some(Medium::Cd),
-        quantity: 1,
-    }]);
+    other.media =
+        StatedMedia::Formats(vec![StatedFormat { medium: Some(Medium::Cd), quantity: 1 }]);
     let groups = grouped(vec![one, other]);
     assert_eq!(lead_ids(&groups[0]), vec![vec!["mb-1", "dg-1"]]);
 
@@ -188,10 +169,8 @@ fn meaningful_conflicts_prevent_inferred_pairs() {
 
     other.year = Some(1992);
     one.media = StatedMedia::PerMedium(vec![Some(Medium::Cd)]);
-    other.media = StatedMedia::Formats(vec![StatedFormat {
-        medium: Some(Medium::Vinyl),
-        quantity: 1,
-    }]);
+    other.media =
+        StatedMedia::Formats(vec![StatedFormat { medium: Some(Medium::Vinyl), quantity: 1 }]);
     let groups = grouped(vec![one, other]);
     assert_eq!(rows(&groups), vec![vec!["mb-1"], vec!["dg-1"]]);
 }
@@ -203,17 +182,11 @@ fn meaningful_conflicts_prevent_inferred_pairs() {
 fn a_pressing_recorded_under_two_countries_is_one_row() {
     let mut one = mb("mb-1", Some("group-x"), Some(1992));
     one.barcodes = vec!["4012345678901".to_string()];
-    one.labels = vec![bae_types::pressing::ReleaseLabel::of(
-        Some("Door Records"),
-        Some("DR 100"),
-    )];
+    one.labels = vec![bae_types::pressing::ReleaseLabel::of(Some("Door Records"), Some("DR 100"))];
     one.area = Some(bae_types::pressing::area("IT"));
     let mut other = discogs("dg-1", Some("master-7"), Some(1992));
     other.barcodes = vec!["4012345678901".to_string()];
-    other.labels = vec![bae_types::pressing::ReleaseLabel::of(
-        Some("Door"),
-        Some("DR-100"),
-    )];
+    other.labels = vec![bae_types::pressing::ReleaseLabel::of(Some("Door"), Some("DR-100"))];
     other.area = bae_types::pressing::ReleaseArea::discogs("Germany");
     let groups = grouped(vec![one, other]);
     assert_eq!(lead_ids(&groups[0]), vec![vec!["mb-1", "dg-1"]]);
@@ -232,10 +205,8 @@ fn a_file_release_is_not_the_cd_whose_catalog_number_it_carries() {
     let mut download = discogs("dg-1", Some("master-7"), Some(2013));
     download.labels = vec![bae_types::pressing::ReleaseLabel::of(None, Some("CAT-7"))];
     download.area = bae_types::pressing::ReleaseArea::discogs("Japan");
-    download.media = StatedMedia::Formats(vec![StatedFormat {
-        medium: Some(Medium::Digital),
-        quantity: 1,
-    }]);
+    download.media =
+        StatedMedia::Formats(vec![StatedFormat { medium: Some(Medium::Digital), quantity: 1 }]);
     let groups = grouped(vec![cd, download]);
     assert_eq!(rows(&groups), vec![vec!["mb-1"], vec!["dg-1"]]);
 }
@@ -264,11 +235,7 @@ fn reissues_pair_by_what_tells_them_apart_whatever_the_order() {
         rows.sort();
         assert_eq!(
             rows,
-            vec![
-                vec!["dg-undated"],
-                vec!["mb-1988", "dg-1988"],
-                vec!["mb-1991", "dg-1991"]
-            ],
+            vec![vec!["dg-undated"], vec!["mb-1988", "dg-1988"], vec!["mb-1991", "dg-1991"]],
             "{order:?}"
         );
         assert_eq!(pressing_count(records.to_vec()), 3);
@@ -298,14 +265,7 @@ fn an_ambiguous_member_settles_alone_but_its_rivals_stay_open() {
     let groups = grouped(vec![first, second, contested, below]);
     let mut rows = lead_ids(&groups[0]);
     rows.sort();
-    assert_eq!(
-        rows,
-        vec![
-            vec!["dg-contested"],
-            vec!["mb-first"],
-            vec!["mb-second", "dg-below"]
-        ]
-    );
+    assert_eq!(rows, vec![vec!["dg-contested"], vec!["mb-first"], vec!["mb-second", "dg-below"]]);
 }
 
 /// A pair joins two groups on the same card, and a source's other group
@@ -382,17 +342,11 @@ fn releases_sharing_a_catalog_number_are_not_one_pressing() {
     let mut one = mb("mb-1", Some("group-x"), Some(1992));
     one.labels = vec![bae_types::pressing::ReleaseLabel::of(None, Some("CAT-7 "))];
     one.area = Some(bae_types::pressing::area("JP"));
-    one.labels = vec![bae_types::pressing::ReleaseLabel::of(
-        Some("Label Name"),
-        None,
-    )];
+    one.labels = vec![bae_types::pressing::ReleaseLabel::of(Some("Label Name"), None)];
     let mut other = discogs("dg-1", Some("master-7"), Some(1992));
     other.labels = vec![bae_types::pressing::ReleaseLabel::of(None, Some("cat-7"))];
     other.area = bae_types::pressing::ReleaseArea::discogs("Japan");
-    other.labels = vec![bae_types::pressing::ReleaseLabel::of(
-        Some("Label Name"),
-        None,
-    )];
+    other.labels = vec![bae_types::pressing::ReleaseLabel::of(Some("Label Name"), None)];
 
     let groups = grouped(vec![one, other]);
     assert_eq!(rows(&groups), vec![vec!["mb-1"], vec!["dg-1"]]);
@@ -444,11 +398,7 @@ fn a_title_spelling_difference_does_not_block_a_barcode_pair() {
     assert_eq!(lead_ids(&groups[0]), vec![vec!["mb-1", "dg-1"]]);
     assert_eq!(groups[0].title, "Album Title: Subtitle");
     assert_eq!(
-        groups[0]
-            .sources
-            .iter()
-            .map(|source| source.source)
-            .collect::<Vec<_>>(),
+        groups[0].sources.iter().map(|source| source.source).collect::<Vec<_>>(),
         vec![Catalog::MusicBrainz, Catalog::Discogs]
     );
     assert_eq!(
@@ -478,10 +428,7 @@ fn a_barcode_pair_outranks_a_catalog_pair_for_the_same_release() {
     other.labels = vec![bae_types::pressing::ReleaseLabel::of(None, Some("CAT-7"))];
 
     let groups = grouped(vec![catalog_only, barcoded, other]);
-    assert_eq!(
-        lead_ids(&groups[0]),
-        vec![vec!["mb-catalog"], vec!["mb-barcode", "dg-1"]]
-    );
+    assert_eq!(lead_ids(&groups[0]), vec![vec!["mb-catalog"], vec!["mb-barcode", "dg-1"]]);
 }
 
 /// Releases with nothing to pair on stay their own rows, and the Discogs
@@ -492,9 +439,5 @@ fn unpaired_releases_are_single_source_pressings() {
         linked(mb("mb-1", Some("group-x"), Some(1992)), "master-7"),
         discogs("dg-1", Some("master-7"), Some(2001)),
     ]);
-    assert_eq!(
-        lead_ids(&groups[0]),
-        vec![vec!["mb-1"], vec!["dg-1"]],
-        "one card, two rows"
-    );
+    assert_eq!(lead_ids(&groups[0]), vec![vec!["mb-1"], vec!["dg-1"]], "one card, two rows");
 }

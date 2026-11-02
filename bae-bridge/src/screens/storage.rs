@@ -64,9 +64,7 @@ impl BridgeStorageQueues {
             active: run.active,
         };
         Self {
-            uploads: queues
-                .uploads
-                .map(|run| BridgeUploadQueueRun { paused: run.paused }),
+            uploads: queues.uploads.map(|run| BridgeUploadQueueRun { paused: run.paused }),
             pins: queues.pins.map(release),
             outputs: queues.outputs.map(release),
         }

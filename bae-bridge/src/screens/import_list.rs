@@ -66,10 +66,7 @@ impl ImportListSubscription {
         let runtime = self.runtime.clone();
         runtime
             .run("ImportListSubscription.set_view", move || async move {
-                self.inner
-                    .set_view(view.into_core())
-                    .await
-                    .map_err(list_error)
+                self.inner.set_view(view.into_core()).await.map_err(list_error)
             })
             .await
     }
@@ -83,15 +80,9 @@ impl ImportListSubscription {
     ) -> Result<u64, BridgeError> {
         let runtime = self.runtime.clone();
         runtime
-            .run(
-                "ImportListSubscription.set_group_folded",
-                move || async move {
-                    self.inner
-                        .set_group_folded(group.into_core()?, folded)
-                        .await
-                        .map_err(list_error)
-                },
-            )
+            .run("ImportListSubscription.set_group_folded", move || async move {
+                self.inner.set_group_folded(group.into_core()?, folded).await.map_err(list_error)
+            })
             .await
     }
 
@@ -103,15 +94,9 @@ impl ImportListSubscription {
     ) -> Result<u64, BridgeError> {
         let runtime = self.runtime.clone();
         runtime
-            .run(
-                "ImportListSubscription.set_all_groups_folded",
-                move || async move {
-                    self.inner
-                        .set_all_groups_folded(folded)
-                        .await
-                        .map_err(list_error)
-                },
-            )
+            .run("ImportListSubscription.set_all_groups_folded", move || async move {
+                self.inner.set_all_groups_folded(folded).await.map_err(list_error)
+            })
             .await
     }
 
@@ -123,17 +108,14 @@ impl ImportListSubscription {
     ) -> Result<Option<crate::types::BridgeImportCandidateListLocation>, BridgeError> {
         let runtime = self.runtime.clone();
         runtime
-            .run(
-                "ImportListSubscription.locate_candidate",
-                move || async move {
-                    Ok(self
-                        .inner
-                        .locate_candidate(&candidate_key.into())
-                        .await
-                        .map_err(list_error)?
-                        .map(crate::types::BridgeImportCandidateListLocation::from_core))
-                },
-            )
+            .run("ImportListSubscription.locate_candidate", move || async move {
+                Ok(self
+                    .inner
+                    .locate_candidate(&candidate_key.into())
+                    .await
+                    .map_err(list_error)?
+                    .map(crate::types::BridgeImportCandidateListLocation::from_core))
+            })
             .await
     }
 
@@ -143,17 +125,14 @@ impl ImportListSubscription {
     ) -> Result<Option<Vec<u8>>, BridgeError> {
         let runtime = self.runtime.clone();
         runtime
-            .run(
-                "ImportListSubscription.first_identifying_candidate",
-                move || async move {
-                    Ok(self
-                        .inner
-                        .first_identifying_candidate()
-                        .await
-                        .map_err(list_error)?
-                        .map(bae_core::import::CandidateKey::into_bytes))
-                },
-            )
+            .run("ImportListSubscription.first_identifying_candidate", move || async move {
+                Ok(self
+                    .inner
+                    .first_identifying_candidate()
+                    .await
+                    .map_err(list_error)?
+                    .map(bae_core::import::CandidateKey::into_bytes))
+            })
             .await
     }
 
@@ -179,15 +158,9 @@ impl ImportListSubscription {
     ) -> Result<u64, BridgeError> {
         let runtime = self.runtime.clone();
         runtime
-            .run(
-                "ImportListSubscription.change_selection",
-                move || async move {
-                    self.inner
-                        .change_selection(change.into_core())
-                        .await
-                        .map_err(list_error)
-                },
-            )
+            .run("ImportListSubscription.change_selection", move || async move {
+                self.inner.change_selection(change.into_core()).await.map_err(list_error)
+            })
             .await
     }
 
@@ -209,21 +182,18 @@ impl ImportListSubscription {
     ) -> Result<Vec<Vec<u8>>, BridgeError> {
         let runtime = self.runtime.clone();
         runtime
-            .run(
-                "ImportListSubscription.selection_source_folders",
-                move || async move {
-                    Ok(self
-                        .services
-                        .import_selection_source_folders(
-                            &self.inner.selected().await.map_err(list_error)?,
-                        )
-                        .await
-                        .map_err(BridgeError::from)?
-                        .iter()
-                        .map(|folder| coven::path_bytes(folder))
-                        .collect())
-                },
-            )
+            .run("ImportListSubscription.selection_source_folders", move || async move {
+                Ok(self
+                    .services
+                    .import_selection_source_folders(
+                        &self.inner.selected().await.map_err(list_error)?,
+                    )
+                    .await
+                    .map_err(BridgeError::from)?
+                    .iter()
+                    .map(|folder| coven::path_bytes(folder))
+                    .collect())
+            })
             .await
     }
 
@@ -232,23 +202,20 @@ impl ImportListSubscription {
     pub async fn combine_selection(self: std::sync::Arc<Self>) -> Result<Vec<u8>, BridgeError> {
         let runtime = self.runtime.clone();
         runtime
-            .run(
-                "ImportListSubscription.combine_selection",
-                move || async move {
-                    let key = self
-                        .services
-                        .combine_import_selection(&self.inner.selected().await.map_err(list_error)?)
-                        .await
-                        .map_err(BridgeError::from)?;
-                    self.inner
-                        .change_selection(bae_core::import::selection::SelectionChange::Replace {
-                            keys: vec![key.clone()],
-                        })
-                        .await
-                        .map_err(list_error)?;
-                    Ok(key.into_bytes())
-                },
-            )
+            .run("ImportListSubscription.combine_selection", move || async move {
+                let key = self
+                    .services
+                    .combine_import_selection(&self.inner.selected().await.map_err(list_error)?)
+                    .await
+                    .map_err(BridgeError::from)?;
+                self.inner
+                    .change_selection(bae_core::import::selection::SelectionChange::Replace {
+                        keys: vec![key.clone()],
+                    })
+                    .await
+                    .map_err(list_error)?;
+                Ok(key.into_bytes())
+            })
             .await
     }
 
@@ -259,28 +226,20 @@ impl ImportListSubscription {
     ) -> Result<Vec<Vec<u8>>, BridgeError> {
         let runtime = self.runtime.clone();
         runtime
-            .run(
-                "ImportListSubscription.separate_selection",
-                move || async move {
-                    let keys = self
-                        .services
-                        .separate_import_selection(
-                            &self.inner.selected().await.map_err(list_error)?,
-                        )
-                        .await
-                        .map_err(BridgeError::from)?;
-                    self.inner
-                        .change_selection(bae_core::import::selection::SelectionChange::Replace {
-                            keys: keys.clone(),
-                        })
-                        .await
-                        .map_err(list_error)?;
-                    Ok(keys
-                        .into_iter()
-                        .map(bae_core::import::CandidateKey::into_bytes)
-                        .collect())
-                },
-            )
+            .run("ImportListSubscription.separate_selection", move || async move {
+                let keys = self
+                    .services
+                    .separate_import_selection(&self.inner.selected().await.map_err(list_error)?)
+                    .await
+                    .map_err(BridgeError::from)?;
+                self.inner
+                    .change_selection(bae_core::import::selection::SelectionChange::Replace {
+                        keys: keys.clone(),
+                    })
+                    .await
+                    .map_err(list_error)?;
+                Ok(keys.into_iter().map(bae_core::import::CandidateKey::into_bytes).collect())
+            })
             .await
     }
 
@@ -294,46 +253,43 @@ impl ImportListSubscription {
     ) -> Result<Vec<crate::types::BridgeSelectionActionFailure>, BridgeError> {
         let runtime = self.runtime.clone();
         runtime
-            .run(
-                "ImportListSubscription.run_selection_action",
-                move || async move {
-                    let progress = self
-                        .selection_progress
-                        .lock()
-                        .unwrap()
-                        .clone()
-                        .map(crate::keyed_values::StreamWriter::new);
-                    let failures = self
-                        .services
-                        .run_import_selection_action(
-                            &self.inner.selected().await.map_err(list_error)?,
-                            action.into_core(),
-                            |completed, total| {
-                                if let Some(progress) = &progress {
-                                    progress.set(
-                                        String::new(),
-                                        crate::types::BridgeFastValue::SelectionActionProgress {
-                                            progress: crate::types::BridgeSelectionActionProgress {
-                                                completed,
-                                                total,
-                                            },
+            .run("ImportListSubscription.run_selection_action", move || async move {
+                let progress = self
+                    .selection_progress
+                    .lock()
+                    .unwrap()
+                    .clone()
+                    .map(crate::keyed_values::StreamWriter::new);
+                let failures = self
+                    .services
+                    .run_import_selection_action(
+                        &self.inner.selected().await.map_err(list_error)?,
+                        action.into_core(),
+                        |completed, total| {
+                            if let Some(progress) = &progress {
+                                progress.set(
+                                    String::new(),
+                                    crate::types::BridgeFastValue::SelectionActionProgress {
+                                        progress: crate::types::BridgeSelectionActionProgress {
+                                            completed,
+                                            total,
                                         },
-                                    );
-                                }
-                            },
-                        )
-                        .await
-                        .map_err(BridgeError::from)?;
-                    Ok(failures
-                        .into_iter()
-                        .map(|failure| crate::types::BridgeSelectionActionFailure {
-                            candidate_key: failure.candidate_key.into_bytes(),
-                            name: failure.name,
-                            error: BridgeError::from(failure.error),
-                        })
-                        .collect())
-                },
-            )
+                                    },
+                                );
+                            }
+                        },
+                    )
+                    .await
+                    .map_err(BridgeError::from)?;
+                Ok(failures
+                    .into_iter()
+                    .map(|failure| crate::types::BridgeSelectionActionFailure {
+                        candidate_key: failure.candidate_key.into_bytes(),
+                        name: failure.name,
+                        error: BridgeError::from(failure.error),
+                    })
+                    .collect())
+            })
             .await
     }
 

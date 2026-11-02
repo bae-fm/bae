@@ -44,9 +44,7 @@ pub fn write_tagged_flac(dir: &std::path::Path, filename: &str, title: &str) -> 
     tag.insert_text(ItemKey::AlbumArtist, "Artist Name".to_string());
     tag.set_track(1);
     tagged.insert_tag(tag);
-    tagged
-        .save_to_path(&dest, WriteOptions::default())
-        .expect("write tags");
+    tagged.save_to_path(&dest, WriteOptions::default()).expect("write tags");
 
     std::fs::read(&dest).unwrap()
 }
@@ -89,9 +87,7 @@ pub fn copy_and_tag(
     });
     tag.set_track(track);
     tagged.insert_tag(tag);
-    tagged
-        .save_to_path(&dest, WriteOptions::default())
-        .expect("save tags");
+    tagged.save_to_path(&dest, WriteOptions::default()).expect("save tags");
     dest
 }
 
@@ -186,17 +182,9 @@ impl RemoteImageHost {
         use axum::http::StatusCode;
 
         async fn handler(
-            State(HostState {
-                routes,
-                requests,
-                holds,
-            }): State<HostState>,
+            State(HostState { routes, requests, holds }): State<HostState>,
             request: Request,
-        ) -> (
-            StatusCode,
-            [(axum::http::HeaderName, &'static str); 1],
-            Vec<u8>,
-        ) {
+        ) -> (StatusCode, [(axum::http::HeaderName, &'static str); 1], Vec<u8>) {
             *requests
                 .lock()
                 .expect("image host requests mutex poisoned")
@@ -207,11 +195,7 @@ impl RemoteImageHost {
                 .expect("image host holds mutex poisoned")
                 .get(request.uri().path())
                 .cloned();
-            if let Some(HeldPath {
-                arrived,
-                mut released,
-            }) = held
-            {
+            if let Some(HeldPath { arrived, mut released }) = held {
                 arrived.notify_one();
                 released
                     .wait_for(|released| *released)
@@ -234,14 +218,11 @@ impl RemoteImageHost {
         let routes: ImageRoutes = std::sync::Arc::default();
         let requests: ImageRequests = std::sync::Arc::default();
         let holds: ImageHolds = std::sync::Arc::default();
-        let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
-            .await
-            .expect("the test image host binds");
+        let listener =
+            tokio::net::TcpListener::bind("127.0.0.1:0").await.expect("the test image host binds");
         let origin = format!(
             "http://{}",
-            listener
-                .local_addr()
-                .expect("the test image host has an address")
+            listener.local_addr().expect("the test image host has an address")
         );
         let app = axum::Router::new().fallback(handler).with_state(HostState {
             routes: routes.clone(),
@@ -253,12 +234,7 @@ impl RemoteImageHost {
                 .await
                 .expect("the test image host serves until the test ends");
         });
-        Self {
-            routes,
-            requests,
-            holds,
-            origin,
-        }
+        Self { routes, requests, holds, origin }
     }
 
     /// Where this host listens, for a test that routes only some hosts here
@@ -270,8 +246,7 @@ impl RemoteImageHost {
     /// `http` with the Cover Art Archive and this test's own image host sent
     /// here.
     pub fn route(&self, http: bae_util::http::Http) -> bae_util::http::Http {
-        http.serve("coverartarchive.org", &self.origin)
-            .serve(TEST_IMAGE_HOST, &self.origin)
+        http.serve("coverartarchive.org", &self.origin).serve(TEST_IMAGE_HOST, &self.origin)
     }
 
     /// Serve `bytes` as a MusicBrainz release's front image, at the original's
@@ -317,13 +292,7 @@ impl RemoteImageHost {
         self.holds
             .lock()
             .expect("image host holds mutex poisoned")
-            .insert(
-                path.to_string(),
-                HeldPath {
-                    arrived: arrived.clone(),
-                    released,
-                },
-            );
+            .insert(path.to_string(), HeldPath { arrived: arrived.clone(), released });
         ImageHold { arrived, release }
     }
 
@@ -338,15 +307,9 @@ impl RemoteImageHost {
     }
 
     fn answer_front(&self, release_id: &str, status: u16, bytes: Vec<u8>) {
-        let mut routes = self
-            .routes
-            .lock()
-            .expect("image host routes mutex poisoned");
+        let mut routes = self.routes.lock().expect("image host routes mutex poisoned");
         for suffix in ["front", "front-250", "front-500", "front-1200"] {
-            routes.insert(
-                format!("/release/{release_id}/{suffix}"),
-                (status, bytes.clone()),
-            );
+            routes.insert(format!("/release/{release_id}/{suffix}"), (status, bytes.clone()));
         }
     }
 }

@@ -66,90 +66,44 @@ impl From<coven::S3PrefixError> for BridgeError {
 impl BridgeStorageLocation {
     pub(crate) fn from_core(value: coven::StorageConfig) -> Self {
         match value {
-            coven::StorageConfig::S3 {
-                bucket,
-                region,
-                endpoint,
-                profile,
-                prefix,
-            } => Self::S3 {
+            coven::StorageConfig::S3 { bucket, region, endpoint, profile, prefix } => Self::S3 {
                 bucket,
                 region,
                 endpoint: endpoint.map(Into::into),
                 profile: profile.map(BridgeS3Profile::from_core),
                 prefix: prefix.into(),
             },
-            coven::StorageConfig::Dropbox {
-                location,
-                account_label,
-            } => Self::Dropbox {
+            coven::StorageConfig::Dropbox { location, account_label } => Self::Dropbox {
                 location: BridgeDropboxLocation::from_core(location),
                 account_label,
             },
-            coven::StorageConfig::OneDrive {
-                drive_id,
-                folder_id,
-                account_label,
-            } => Self::OneDrive {
-                drive_id,
-                folder_id,
-                account_label,
-            },
-            coven::StorageConfig::CloudKit {
-                container,
-                owner,
-                zone,
-            } => Self::CloudKit {
-                container,
-                owner,
-                zone,
-            },
+            coven::StorageConfig::OneDrive { drive_id, folder_id, account_label } => {
+                Self::OneDrive { drive_id, folder_id, account_label }
+            }
+            coven::StorageConfig::CloudKit { container, owner, zone } => {
+                Self::CloudKit { container, owner, zone }
+            }
         }
     }
 
     pub(crate) fn into_core(self) -> Result<coven::StorageConfig, BridgeError> {
         Ok(match self {
-            Self::S3 {
+            Self::S3 { bucket, region, endpoint, profile, prefix } => coven::StorageConfig::S3 {
                 bucket,
                 region,
-                endpoint,
-                profile,
-                prefix,
-            } => coven::StorageConfig::S3 {
-                bucket,
-                region,
-                endpoint: endpoint
-                    .map(|s| s.parse())
-                    .transpose()
-                    .map_err(BridgeError::config)?,
+                endpoint: endpoint.map(|s| s.parse()).transpose().map_err(BridgeError::config)?,
                 profile: profile.map(BridgeS3Profile::into_core),
                 prefix: coven::S3Prefix::parse(&prefix)?,
             },
-            Self::Dropbox {
-                location,
-                account_label,
-            } => coven::StorageConfig::Dropbox {
-                location: location.into_core(),
-                account_label,
-            },
-            Self::OneDrive {
-                drive_id,
-                folder_id,
-                account_label,
-            } => coven::StorageConfig::OneDrive {
-                drive_id,
-                folder_id,
-                account_label,
-            },
-            Self::CloudKit {
-                container,
-                owner,
-                zone,
-            } => coven::StorageConfig::CloudKit {
-                container,
-                owner,
-                zone,
-            },
+            Self::Dropbox { location, account_label } => {
+                coven::StorageConfig::Dropbox { location: location.into_core(), account_label }
+            }
+            Self::OneDrive { drive_id, folder_id, account_label } => {
+                coven::StorageConfig::OneDrive { drive_id, folder_id, account_label }
+            }
+            Self::CloudKit { container, owner, zone } => {
+                coven::StorageConfig::CloudKit { container, owner, zone }
+            }
         })
     }
 }
@@ -324,10 +278,7 @@ pub struct BridgeStorageFolder {
 #[cfg(feature = "oauth-providers")]
 impl BridgeStorageFolder {
     pub(crate) fn from_core(value: coven::StorageFolder) -> Self {
-        Self {
-            name: value.name,
-            location: BridgeStorageLocation::from_core(value.storage),
-        }
+        Self { name: value.name, location: BridgeStorageLocation::from_core(value.storage) }
     }
 }
 

@@ -73,9 +73,7 @@ pub struct DatadogDiagnosticsConfig {
 
 impl DatadogDiagnosticsConfig {
     fn is_complete(&self) -> bool {
-        self.required_values()
-            .iter()
-            .all(|value| !value.trim().is_empty())
+        self.required_values().iter().all(|value| !value.trim().is_empty())
     }
 
     fn normalized(self) -> Self {
@@ -108,14 +106,12 @@ impl DatadogDiagnosticsConfig {
 
     fn intake_url(&self) -> Result<Url, DiagnosticsError> {
         validate_datadog_site(&self.datadog_site)?;
-        let mut url = Url::parse(&format!(
-            "https://browser-intake-{}/api/v2/logs",
-            self.datadog_site
-        ))
-        .map_err(|source| DiagnosticsError::InvalidUrl {
-            site: self.datadog_site.clone(),
-            detail: source.to_string(),
-        })?;
+        let mut url =
+            Url::parse(&format!("https://browser-intake-{}/api/v2/logs", self.datadog_site))
+                .map_err(|source| DiagnosticsError::InvalidUrl {
+                    site: self.datadog_site.clone(),
+                    detail: source.to_string(),
+                })?;
         url.query_pairs_mut().append_pair("ddsource", &self.source);
         Ok(url)
     }
@@ -202,10 +198,7 @@ enum DiagnosticsInner {
 
 impl Diagnostics {
     pub fn noop() -> Self {
-        Self {
-            inner: Arc::new(DiagnosticsInner::Noop),
-            bugs: None,
-        }
+        Self { inner: Arc::new(DiagnosticsInner::Noop), bugs: None }
     }
 
     /// The sink `config` describes, reporting bugs to `bugs` as well as the
@@ -248,15 +241,8 @@ impl Diagnostics {
             .enable_all()
             .build()
             .map_err(DiagnosticsError::BuildRuntime)?;
-        let diagnostics = Self {
-            inner: Arc::new(DiagnosticsInner::Worker {
-                tx,
-                app,
-                clock,
-                session_id,
-            }),
-            bugs,
-        };
+        let diagnostics =
+            Self { inner: Arc::new(DiagnosticsInner::Worker { tx, app, clock, session_id }), bugs };
         // Never joined: the worker runs for the life of the process. After a
         // panic, events are dropped with a log line saying the worker stopped.
         diagnostics
@@ -271,10 +257,7 @@ impl Diagnostics {
 
     /// This sink, reporting the bugs core finds to `bugs` as well as the log.
     pub fn reporting_bugs_to(self, bugs: Arc<dyn BugReporter>) -> Self {
-        Self {
-            bugs: Some(bugs),
-            ..self
-        }
+        Self { bugs: Some(bugs), ..self }
     }
 
     /// Report a bug — code that broke its own guarantee — to the log at error
@@ -310,13 +293,7 @@ impl Diagnostics {
     /// stopped (normal at shutdown); that is logged at `debug` and the event is
     /// dropped, the same logged bail-out the old tracing layer used.
     pub fn event(&self, event: TelemetryEvent) {
-        let DiagnosticsInner::Worker {
-            tx,
-            app,
-            clock,
-            session_id,
-        } = self.inner.as_ref()
-        else {
+        let DiagnosticsInner::Worker { tx, app, clock, session_id } = self.inner.as_ref() else {
             return;
         };
         let diagnostic = DiagnosticEvent {
@@ -345,11 +322,8 @@ impl Diagnostics {
             return Ok(());
         };
         let (reply_tx, reply_rx) = oneshot::channel();
-        tx.send(WorkerMessage::Flush(reply_tx))
-            .map_err(|_| DiagnosticsError::WorkerStopped)?;
-        reply_rx
-            .await
-            .map_err(|_| DiagnosticsError::WorkerStopped)?
+        tx.send(WorkerMessage::Flush(reply_tx)).map_err(|_| DiagnosticsError::WorkerStopped)?;
+        reply_rx.await.map_err(|_| DiagnosticsError::WorkerStopped)?
     }
 }
 
@@ -377,14 +351,7 @@ impl DiagnosticsWorker {
         transport: Arc<dyn DiagnosticsTransport>,
         rx: mpsc::UnboundedReceiver<WorkerMessage>,
     ) -> Self {
-        Self {
-            config,
-            ids,
-            transport,
-            rx,
-            buffered: VecDeque::new(),
-            device_id: None,
-        }
+        Self { config, ids, transport, rx, buffered: VecDeque::new(), device_id: None }
     }
 
     async fn run(mut self) {
@@ -498,10 +465,7 @@ impl DatadogRequest {
         headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
         insert_str_header(&mut headers, "DD-API-KEY", &config.client_token)?;
         insert_str_header(&mut headers, "DD-EVP-ORIGIN", &config.source)?;
-        headers.insert(
-            "DD-EVP-ORIGIN-VERSION",
-            HeaderValue::from_static(DATADOG_ORIGIN_VERSION),
-        );
+        headers.insert("DD-EVP-ORIGIN-VERSION", HeaderValue::from_static(DATADOG_ORIGIN_VERSION));
         insert_str_header(&mut headers, "DD-REQUEST-ID", &request_id)?;
 
         Ok(Self {
@@ -517,10 +481,7 @@ fn insert_str_header(
     name: &'static str,
     value: &str,
 ) -> Result<(), DiagnosticsError> {
-    headers.insert(
-        name,
-        HeaderValue::from_str(value).map_err(DiagnosticsError::InvalidHeader)?,
-    );
+    headers.insert(name, HeaderValue::from_str(value).map_err(DiagnosticsError::InvalidHeader)?);
     Ok(())
 }
 
@@ -606,10 +567,8 @@ async fn send_with_retry(
             bae_util::retry::Repeat::Never
         }
     };
-    retry_with_backoff_if(RETRY, "diagnostics send", repeat, || {
-        transport.send(request.clone())
-    })
-    .await
+    retry_with_backoff_if(RETRY, "diagnostics send", repeat, || transport.send(request.clone()))
+        .await
 }
 
 pub fn should_retry(error: &DiagnosticsError) -> bool {
@@ -630,9 +589,7 @@ pub fn should_retry(error: &DiagnosticsError) -> bool {
 
 fn validate_datadog_site(site: &str) -> Result<(), DiagnosticsError> {
     let valid = !site.is_empty()
-        && site
-            .bytes()
-            .all(|b| b.is_ascii_alphanumeric() || b == b'.' || b == b'-')
+        && site.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'.' || b == b'-')
         && site.contains('.');
     if valid {
         Ok(())
@@ -653,10 +610,7 @@ pub struct RecordingBugReporter {
 impl RecordingBugReporter {
     /// Every `(operation, detail)` reported so far, in order.
     pub fn reports(&self) -> Vec<(String, String)> {
-        self.reports
-            .lock()
-            .expect("bug reports mutex poisoned")
-            .clone()
+        self.reports.lock().expect("bug reports mutex poisoned").clone()
     }
 }
 
@@ -690,10 +644,7 @@ impl RecordingTransport {
     }
 
     pub fn requests(&self) -> Vec<DatadogRequest> {
-        self.requests
-            .lock()
-            .expect("requests mutex is available")
-            .clone()
+        self.requests.lock().expect("requests mutex is available").clone()
     }
 
     /// Every event name across every recorded request body, in send order.
@@ -713,15 +664,8 @@ impl RecordingTransport {
 #[async_trait::async_trait]
 impl DiagnosticsTransport for RecordingTransport {
     async fn send(&self, request: DatadogRequest) -> Result<(), DiagnosticsError> {
-        self.requests
-            .lock()
-            .expect("requests mutex is available")
-            .push(request);
-        self.outcomes
-            .lock()
-            .expect("outcomes mutex is available")
-            .pop_front()
-            .unwrap_or(Ok(()))
+        self.requests.lock().expect("requests mutex is available").push(request);
+        self.outcomes.lock().expect("outcomes mutex is available").pop_front().unwrap_or(Ok(()))
     }
 }
 

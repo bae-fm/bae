@@ -15,21 +15,15 @@ async fn an_import_goes_where_the_stored_choice_says_as_it_starts() {
             title,
             "Artist",
             None,
-            &[TaggedTrack {
-                filename: "01 Track.flac",
-                title: "Track",
-                track_number: 1,
-            }],
+            &[TaggedTrack { filename: "01 Track.flac", title: "Track", track_number: 1 }],
         );
         keys.push(bae_core::import::CandidateKey::folder(&album));
     }
     let mut scan_rx = f.handle.every_scan_event_for_test();
-    f.handle
-        .add_watched_folder(collection.to_path_buf())
-        .await
-        .unwrap();
+    f.handle.add_watched_folder(collection.to_path_buf()).await.unwrap();
     // The scan reads both folders at once, so either can be found first.
-    let mut unfound: std::collections::HashSet<&bae_core::import::CandidateKey> = keys.iter().collect();
+    let mut unfound: std::collections::HashSet<&bae_core::import::CandidateKey> =
+        keys.iter().collect();
     wait_for_scan_event(&mut scan_rx, "both albums", |event| {
         if let ScanEvent::FolderCandidate { candidate: c, .. } = event {
             unfound.remove(&bae_core::import::CandidateKey::folder(&c.path));
@@ -38,10 +32,7 @@ async fn an_import_goes_where_the_stored_choice_says_as_it_starts() {
     })
     .await;
     for key in &keys {
-        f.handle
-            .select_candidate_file_tags(key.clone())
-            .await
-            .unwrap();
+        f.handle.select_candidate_file_tags(key.clone()).await.unwrap();
     }
 
     f.library_manager.set_import_to_cloud(true).await.unwrap();
@@ -70,12 +61,7 @@ async fn an_import_goes_where_the_stored_choice_says_as_it_starts() {
         "the release's one file uploads"
     );
     f.library_manager.wait_for_kept_release_for_test(&id).await;
-    let storage = f
-        .library_manager
-        .find_release_storage_summary(&id)
-        .await
-        .unwrap()
-        .unwrap();
+    let storage = f.library_manager.find_release_storage_summary(&id).await.unwrap().unwrap();
     assert!(storage.pinned, "the import keeps the selected offline pin");
 
     f.library_manager.set_import_to_cloud(false).await.unwrap();
@@ -89,7 +75,10 @@ async fn an_import_goes_where_the_stored_choice_says_as_it_starts() {
 }
 
 /// Start `key`'s import and return its first `Complete` or `RemoteUploadQueued`.
-async fn import_outcome(f: &ImportFixture, key: &bae_core::import::CandidateKey) -> bae_core::import::ImportProgress {
+async fn import_outcome(
+    f: &ImportFixture,
+    key: &bae_core::import::CandidateKey,
+) -> bae_core::import::ImportProgress {
     let import_id = f.handle.start_import(key).await.unwrap().expect_queued();
     let mut progress_rx = f.handle.subscribe_import(import_id);
     match support::wait_for_import_end(&mut progress_rx).await {
@@ -118,11 +107,7 @@ async fn a_local_import_s_queued_cover_is_not_its_release_uploading() {
             &album,
             title,
             "Artist",
-            &[TaggedTrack {
-                filename: "01 Track.flac",
-                title: "Track",
-                track_number: 1,
-            }],
+            &[TaggedTrack { filename: "01 Track.flac", title: "Track", track_number: 1 }],
         );
         let (id, _) = import_folder(
             &f,
@@ -141,16 +126,12 @@ async fn a_local_import_s_queued_cover_is_not_its_release_uploading() {
     }
 
     assert_eq!(
-        f.db.queued_upload_count_in_table_for_test("release_files")
-            .await
-            .unwrap(),
+        f.db.queued_upload_count_in_table_for_test("release_files").await.unwrap(),
         0,
         "no release's files wait to upload"
     );
     assert_eq!(
-        f.db.queued_upload_count_in_table_for_test("covers")
-            .await
-            .unwrap(),
+        f.db.queued_upload_count_in_table_for_test("covers").await.unwrap(),
         release_ids.len() as i64,
         "each cover waits to upload"
     );

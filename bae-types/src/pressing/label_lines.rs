@@ -24,11 +24,9 @@ pub fn label_lines(labels: &[ReleaseLabel]) -> Vec<LabelLine> {
     for label in labels {
         let number = label.catalog_number().map(str::to_string);
         let named = label.name().and_then(|name| {
-            by_name.iter_mut().find(|line| {
-                line.names
-                    .first()
-                    .is_some_and(|shown| same_label_name(shown, name))
-            })
+            by_name
+                .iter_mut()
+                .find(|line| line.names.first().is_some_and(|shown| same_label_name(shown, name)))
         });
         match named {
             Some(line) => line.catalog_numbers.extend(number),
@@ -42,9 +40,7 @@ pub fn label_lines(labels: &[ReleaseLabel]) -> Vec<LabelLine> {
     for line in by_name {
         let shared = (!line.names.is_empty() && !line.catalog_numbers.is_empty())
             .then(|| {
-                lines
-                    .iter_mut()
-                    .find(|shown| !shown.names.is_empty() && same_numbers(shown, &line))
+                lines.iter_mut().find(|shown| !shown.names.is_empty() && same_numbers(shown, &line))
             })
             .flatten();
         match shared {
@@ -59,11 +55,8 @@ pub fn label_lines(labels: &[ReleaseLabel]) -> Vec<LabelLine> {
 /// two spellings of one are.
 fn same_numbers(a: &LabelLine, b: &LabelLine) -> bool {
     let keys = |line: &LabelLine| {
-        let mut keys: Vec<String> = line
-            .catalog_numbers
-            .iter()
-            .filter_map(|number| catalog_key(number))
-            .collect();
+        let mut keys: Vec<String> =
+            line.catalog_numbers.iter().filter_map(|number| catalog_key(number)).collect();
         keys.sort();
         keys
     };
@@ -96,10 +89,7 @@ mod tests {
         ];
         assert_eq!(
             label_lines(&labels),
-            vec![
-                line(&["Label One"], &["AB-100", "EF-300"]),
-                line(&["Label Two"], &["CD-200"]),
-            ]
+            vec![line(&["Label One"], &["AB-100", "EF-300"]), line(&["Label Two"], &["CD-200"]),]
         );
     }
 

@@ -23,28 +23,17 @@ fn stated_through(mut release: MetadataResult, twin: &str, master: &str) -> Meta
 #[test]
 fn a_release_link_s_master_joins_the_albums_and_its_twin_joins_the_row() {
     let groups = grouped(vec![
-        stated_through(
-            mb("mb-us", Some("group-a"), Some(2006)),
-            "dg-us",
-            "master-7",
-        ),
+        stated_through(mb("mb-us", Some("group-a"), Some(2006)), "dg-us", "master-7"),
         discogs("dg-eu-1", Some("master-7"), Some(2006)),
         discogs("dg-eu-2", Some("master-7"), Some(2006)),
         discogs("dg-us", Some("master-7"), Some(2006)),
     ]);
     assert_eq!(groups.len(), 1, "one album, one card");
     assert_eq!(
-        groups[0]
-            .sources
-            .iter()
-            .map(|source| source.source)
-            .collect::<Vec<_>>(),
+        groups[0].sources.iter().map(|source| source.source).collect::<Vec<_>>(),
         vec![Catalog::MusicBrainz, Catalog::Discogs]
     );
-    assert_eq!(
-        rows(&groups),
-        vec![vec!["mb-us", "dg-us"], vec!["dg-eu-1"], vec!["dg-eu-2"]]
-    );
+    assert_eq!(rows(&groups), vec![vec!["mb-us", "dg-us"], vec!["dg-eu-1"], vec!["dg-eu-2"]]);
 }
 
 /// A twin filed under another master than any listed one joins its own
@@ -53,11 +42,7 @@ fn a_release_link_s_master_joins_the_albums_and_its_twin_joins_the_row() {
 #[test]
 fn a_twin_under_another_master_joins_no_listed_album() {
     let groups = grouped(vec![
-        stated_through(
-            mb("mb-us", Some("group-a"), Some(2006)),
-            "dg-us",
-            "master-8",
-        ),
+        stated_through(mb("mb-us", Some("group-a"), Some(2006)), "dg-us", "master-8"),
         discogs("dg-eu-1", Some("master-7"), Some(2006)),
         discogs("dg-us", Some("master-8"), Some(2006)),
     ]);
@@ -85,10 +70,7 @@ fn a_card_names_the_album_its_links_state_on_a_catalog_it_has_no_row_of() {
                 Catalog::MusicBrainz,
                 Some("https://musicbrainz.org/release-group/group-a".to_string())
             ),
-            (
-                Catalog::Discogs,
-                Some("https://www.discogs.com/master/8522".to_string())
-            ),
+            (Catalog::Discogs, Some("https://www.discogs.com/master/8522".to_string())),
         ]
     );
 }

@@ -16,9 +16,7 @@ const LIBRARY: &str = "
 
 async fn library() -> (Database, tempfile::TempDir) {
     let (db, tmp) = temp_db().await;
-    db.call(|sql| sql.execute_batch(LIBRARY).map_err(DbError::from))
-        .await
-        .unwrap();
+    db.call(|sql| sql.execute_batch(LIBRARY).map_err(DbError::from)).await.unwrap();
     (db, tmp)
 }
 
@@ -32,9 +30,7 @@ async fn a_release_is_in_one_transition_at_a_time() {
         .await
         .unwrap());
     assert!(
-        !db.begin_release_storage_action(RELEASE_A, StoredTransition::Unpin)
-            .await
-            .unwrap(),
+        !db.begin_release_storage_action(RELEASE_A, StoredTransition::Unpin).await.unwrap(),
         "a release in a transition refuses another"
     );
     assert_eq!(
@@ -45,10 +41,7 @@ async fn a_release_is_in_one_transition_at_a_time() {
 
     db.end_release_storage_action(RELEASE_A).await.unwrap();
     assert_eq!(db.release_transfer_action(RELEASE_A).await.unwrap(), None);
-    assert!(db
-        .begin_release_storage_action(RELEASE_A, StoredTransition::Upload)
-        .await
-        .unwrap());
+    assert!(db.begin_release_storage_action(RELEASE_A, StoredTransition::Upload).await.unwrap());
     assert_eq!(
         db.release_transfer_action(RELEASE_A).await.unwrap(),
         Some(ReleaseStorageAction::Upload)
@@ -81,9 +74,7 @@ async fn the_active_download_reads_as_a_pin() {
 #[tokio::test]
 async fn opening_ends_every_transition() {
     let (db, _tmp) = library().await;
-    db.begin_release_storage_action(RELEASE_A, StoredTransition::Unpin)
-        .await
-        .unwrap();
+    db.begin_release_storage_action(RELEASE_A, StoredTransition::Unpin).await.unwrap();
 
     db.clear_transfers().await.unwrap();
 

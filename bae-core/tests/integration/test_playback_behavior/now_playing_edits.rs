@@ -11,11 +11,7 @@ async fn playing_first_track(
         .expect("read the first track's release")
         .release_id;
     let mut progress = services.subscribe_playback_progress();
-    services.playback_play_release(
-        release_id.clone(),
-        Some(fixture.track_ids[0].clone()),
-        false,
-    );
+    services.playback_play_release(release_id.clone(), Some(fixture.track_ids[0].clone()), false);
     assert!(
         support::wait_until_playing(&mut progress, &fixture.track_ids[0], PLAY_START_BACKSTOP)
             .await,
@@ -91,12 +87,15 @@ async fn first_upcoming_until(
 }
 
 /// The queue's upcoming read over its first track.
-fn first_upcoming(services: &bae_core::library::AppServices) -> bae_core::library::QueueUpcomingSubscription {
+fn first_upcoming(
+    services: &bae_core::library::AppServices,
+) -> bae_core::library::QueueUpcomingSubscription {
     let queue = services.subscribe_queue_upcoming();
     queue
-        .set(bae_core::library::LibraryPageWindows::from([
-            bae_core::library::LibraryPageWindow { offset: 0, limit: 1 },
-        ]))
+        .set(bae_core::library::LibraryPageWindows::from([bae_core::library::LibraryPageWindow {
+            offset: 0,
+            limit: 1,
+        }]))
         .expect("the read takes its window");
     queue
 }
@@ -111,18 +110,15 @@ async fn a_changed_cover_reaches_the_paused_track_and_the_queue() {
     let track_id = fixture.track_ids[0].clone();
     let values = services.subscribe_playback_values();
     let queue = first_upcoming(&services);
-    let before = now_playing_until(&values, &track_id, "the paused track", |_| true)
-        .await
-        .cover_image;
+    let before =
+        now_playing_until(&values, &track_id, "the paused track", |_| true).await.cover_image;
     first_upcoming_until(&queue, |item| item.display.cover_image == before).await;
 
     let image_dir = TempDir::new().unwrap();
     let image_path = image_dir.path().join("front.gif");
-    let image_bytes = std::fs::read(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/test-fixtures/cover-art/solid.gif"
-    ))
-    .unwrap();
+    let image_bytes =
+        std::fs::read(concat!(env!("CARGO_MANIFEST_DIR"), "/test-fixtures/cover-art/solid.gif"))
+            .unwrap();
     std::fs::write(&image_path, &image_bytes).unwrap();
     let file = bae_core::db::NewReleaseFile::new(
         &release_id,
@@ -131,11 +127,7 @@ async fn a_changed_cover_reaches_the_paused_track_and_the_queue() {
         uuid::Uuid::new_v4().to_string(),
         chrono::Utc::now(),
     );
-    fixture
-        .library_manager
-        .add_external_file_for_test(&file, &image_path)
-        .await
-        .unwrap();
+    fixture.library_manager.add_external_file_for_test(&file, &image_path).await.unwrap();
     services
         .change_cover(
             &release_id,
@@ -147,14 +139,14 @@ async fn a_changed_cover_reaches_the_paused_track_and_the_queue() {
     let changed = |cover: &Option<bae_core::album_detail::ImageRef>| {
         cover.as_ref().is_some_and(|cover| {
             cover.id == release_id
-                && before
-                    .as_ref()
-                    .is_none_or(|before| before.version != cover.version)
+                && before.as_ref().is_none_or(|before| before.version != cover.version)
         })
     };
-    let after = now_playing_until(&values, &track_id, "the new cover", |display| changed(&display.cover_image))
-        .await
-        .cover_image;
+    let after = now_playing_until(&values, &track_id, "the new cover", |display| {
+        changed(&display.cover_image)
+    })
+    .await
+    .cover_image;
     let upcoming = first_upcoming_until(&queue, |item| changed(&item.display.cover_image)).await;
     assert_eq!(upcoming.display.cover_image, after, "the queue shows the same cover");
 }

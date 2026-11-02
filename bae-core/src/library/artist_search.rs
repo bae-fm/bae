@@ -48,10 +48,7 @@ impl ArtistSearchSubscription {
             + Sync
             + 'static,
     ) -> Self {
-        Self {
-            query,
-            resolve: std::sync::Arc::new(resolve),
-        }
+        Self { query, resolve: std::sync::Arc::new(resolve) }
     }
 
     /// Read `windows` of what `raw` finds from now on; a blank text is no
@@ -63,19 +60,12 @@ impl ArtistSearchSubscription {
         windows: LibraryPageWindows,
     ) -> Result<u64, LibrarySearchSubscriptionError> {
         self.query
-            .set(ArtistSearchView {
-                query: LibrarySearchQuery::parse(raw),
-                windows,
-            })
+            .set(ArtistSearchView { query: LibrarySearchQuery::parse(raw), windows })
             .map_err(LibrarySearchSubscriptionError::from)
     }
 
     pub async fn next(&self) -> Result<ArtistSearchSnapshot, LibrarySearchSubscriptionError> {
-        let event = self
-            .query
-            .next()
-            .await
-            .map_err(LibrarySearchSubscriptionError::from)?;
+        let event = self.query.next().await.map_err(LibrarySearchSubscriptionError::from)?;
         let request_revision = event.revision.0;
         Ok((self.resolve)(event.result?, request_revision))
     }

@@ -44,10 +44,8 @@ impl ImportService {
             });
         }
         let decided = crate::import::relative_folder::folder_below(root, &key.relative_folder);
-        let Some(std::path::Component::Normal(folder)) = decided
-            .strip_prefix(root)
-            .ok()
-            .and_then(|below| below.components().next())
+        let Some(std::path::Component::Normal(folder)) =
+            decided.strip_prefix(root).ok().and_then(|below| below.components().next())
         else {
             return Err(crate::import::ImportError::Watch {
                 detail: format!(
@@ -57,30 +55,22 @@ impl ImportService {
             });
         };
         let folder = folder.to_os_string();
-        if !scan
-            .services
-            .library_manager
-            .folder_reading_offered(key, target.1)
-            .await?
-        {
+        if !scan.services.library_manager.folder_reading_offered(key, target.1).await? {
             return Err(crate::import::ImportError::Watch {
-                detail: format!(
-                    "{} is not a current release boundary",
-                    key.relative_folder.text()
-                ),
+                detail: format!("{} is not a current release boundary", key.relative_folder.text()),
             });
         }
         let stored =
             Self::read_folder_again(root, &folder, Some(target), scan, cancellation).await?;
-        Ok(crate::import::list::release_keys_in_path_order(
-            stored.iter().filter(|item| match item {
+        Ok(crate::import::list::release_keys_in_path_order(stored.iter().filter(
+            |item| match item {
                 ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) => {
                     candidate.path.starts_with(&decided)
                 }
                 ScanItem::Invalid(candidate) => candidate.path.starts_with(&decided),
                 ScanItem::Decided { .. } | ScanItem::Sidecar(_) => false,
-            }),
-        ))
+            },
+        )))
     }
 
     /// Read again each folder directly under `root` whose contents changed
@@ -112,17 +102,10 @@ impl ImportService {
             if cancellation.is_cancelled() {
                 return;
             }
-            let message = format!(
-                "{} could not be read again: {error}",
-                coven::path_text(Path::new(folder))
-            );
+            let message =
+                format!("{} could not be read again: {error}", coven::path_text(Path::new(folder)));
             warn!("{}: {message}", coven::path_text(root));
-            match scan
-                .services
-                .library_manager
-                .current_folder_scan_generation(root)
-                .await
-            {
+            match scan.services.library_manager.current_folder_scan_generation(root).await {
                 Ok(Some(generation)) => {
                     if let Err(status_error) =
                         Self::record_scan_failure(root, generation, message.clone(), &scan.services)
@@ -183,11 +166,8 @@ impl ImportService {
             decisions.insert(key.relative_folder.clone(), reading.clone());
             (key.clone(), reading)
         });
-        let reads = Arc::new(
-            library_manager
-                .load_file_reads(root, services.file_tags.clone())
-                .await?,
-        );
+        let reads =
+            Arc::new(library_manager.load_file_reads(root, services.file_tags.clone()).await?);
         let walk_reads = reads.clone();
 
         let directories = services.directories.clone();
@@ -222,11 +202,7 @@ impl ImportService {
         let mut items = Vec::with_capacity(walked.items.len());
         for item in walked.items {
             let path = match &item {
-                ScanItem::Decided {
-                    key,
-                    decision,
-                    grouping,
-                } => {
+                ScanItem::Decided { key, decision, grouping } => {
                     scanned_decisions.push((
                         key.clone(),
                         crate::import::folder_scanner::FolderReading {
@@ -256,21 +232,13 @@ impl ImportService {
             })
             .await
             .map_err(|failed| services.diagnostics.bug(failed))??;
-            let seed = library_manager
-                .scan_item_seed(&item, stamp.generation, reads.clone())
-                .await?;
-            items.push(crate::db::ScanItemToWrite {
-                item,
-                seed,
-                folder_date,
-            });
+            let seed =
+                library_manager.scan_item_seed(&item, stamp.generation, reads.clone()).await?;
+            items.push(crate::db::ScanItemToWrite { item, seed, folder_date });
         }
         let prepared_at = started.elapsed();
 
-        let _commit = services
-            .folder_state_commit
-            .lock("store a folder reading")
-            .await;
+        let _commit = services.folder_state_commit.lock("store a folder reading").await;
         let locked_at = started.elapsed();
         if cancellation.is_cancelled() {
             return Err(crate::import::ImportError::Internal {
@@ -287,9 +255,8 @@ impl ImportService {
             else {
                 continue;
             };
-            let edits = library_manager
-                .load_candidate_file_edits(&candidate.files.content_hash())
-                .await?;
+            let edits =
+                library_manager.load_candidate_file_edits(&candidate.files.content_hash()).await?;
             if edits.revision != candidate.file_edit_revision {
                 return Err(crate::import::ImportError::Internal {
                     detail: format!(
@@ -300,11 +267,7 @@ impl ImportService {
                 });
             }
         }
-        let crate::db::FolderReadingWrite {
-            writes,
-            pruned,
-            regrouped,
-        } = library_manager
+        let crate::db::FolderReadingWrite { writes, pruned, regrouped } = library_manager
             .commit_folder_reading(crate::db::FolderReadingCommit {
                 watched_folder_path: root.to_path_buf(),
                 folder: folder.to_os_string(),
@@ -341,13 +304,9 @@ impl ImportService {
             Self::announce_scan_write(item, &write, services).await?;
         }
         for candidate_key in &pruned {
-            services
-                .event_tx
-                .send(crate::import::handle::ImportEvent::Scan(
-                    ScanEvent::CandidateRemoved {
-                        candidate_key: candidate_key.clone(),
-                    },
-                ));
+            services.event_tx.send(crate::import::handle::ImportEvent::Scan(
+                ScanEvent::CandidateRemoved { candidate_key: candidate_key.clone() },
+            ));
         }
         Self::announce_regrouped(&regrouped, services).await?;
         debug!(
@@ -399,21 +358,17 @@ fn read_top_level_folder(
         .map_err(|source| crate::import::folder_scanner::FolderScanError::io(root, source))?
         .is_dir()
     {
-        return Err(
-            crate::import::folder_scanner::FolderScanError::NotADirectory {
-                path: root.to_path_buf(),
-            }
-            .into(),
-        );
+        return Err(crate::import::folder_scanner::FolderScanError::NotADirectory {
+            path: root.to_path_buf(),
+        }
+        .into());
     }
     let absolute = root.join(folder);
     let present = match std::fs::metadata(&absolute) {
         Ok(metadata) => metadata.is_dir(),
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => false,
         Err(source) => {
-            return Err(
-                crate::import::folder_scanner::FolderScanError::io(&absolute, source).into(),
-            )
+            return Err(crate::import::folder_scanner::FolderScanError::io(&absolute, source).into())
         }
     };
     let mut seen = HashSet::new();
@@ -456,15 +411,9 @@ fn read_top_level_folder(
         });
     }
     if let Err(error) = watcher.retain_directories_under(root, &absolute, &seen) {
-        warn!(
-            "could not reconcile folder watches under {}: {error}",
-            absolute.display()
-        );
+        warn!("could not reconcile folder watches under {}: {error}", absolute.display());
     }
-    Ok(TopLevelReading {
-        items,
-        directory_mtimes,
-    })
+    Ok(TopLevelReading { items, directory_mtimes })
 }
 
 /// A key for a grouping the store has not seen: the key the release it reads

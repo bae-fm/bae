@@ -3,12 +3,11 @@
 use crate::import::IdentificationInFlight;
 
 /// What the runtime says identification is doing for `key`.
-async fn in_flight(runtime: &CandidateRuntime, key: &crate::import::CandidateKey) -> Option<IdentificationInFlight> {
-    runtime
-        .snapshot(key)
-        .await
-        .unwrap()?
-        .identification_in_flight()
+async fn in_flight(
+    runtime: &CandidateRuntime,
+    key: &crate::import::CandidateKey,
+) -> Option<IdentificationInFlight> {
+    runtime.snapshot(key).await.unwrap()?.identification_in_flight()
 }
 
 /// A key waiting on the queue reads as queued rather than as nothing started;
@@ -20,14 +19,8 @@ async fn a_queued_key_reads_as_queued_until_its_run_reports() {
     let key = &crate::import::CandidateKey::test("/watch/a/rel1");
     let files = scanned_key(&runtime, key).await;
 
-    runtime
-        .admit(vec![(key.clone(), files.clone())], Admission::Automatic)
-        .await
-        .unwrap();
-    assert_eq!(
-        in_flight(&runtime, key).await,
-        Some(IdentificationInFlight::Queued)
-    );
+    runtime.admit(vec![(key.clone(), files.clone())], Admission::Automatic).await.unwrap();
+    assert_eq!(in_flight(&runtime, key).await, Some(IdentificationInFlight::Queued));
 
     report(&runtime, key, &files, run(1), triangulating()).await;
     assert_eq!(
@@ -35,10 +28,7 @@ async fn a_queued_key_reads_as_queued_until_its_run_reports() {
         Some(IdentificationInFlight::Run(published(triangulating())))
     );
 
-    assert!(runtime
-        .publish_candidate_run(key, run(1), &manual_only(), None)
-        .await
-        .unwrap());
+    assert!(runtime.publish_candidate_run(key, run(1), &manual_only(), None).await.unwrap());
     runtime.run_answered(key, run(1), false).await.unwrap();
     assert_eq!(
         in_flight(&runtime, key).await,
@@ -57,26 +47,14 @@ async fn a_request_over_an_answer_being_written_waits_for_the_next_run() {
     let runtime = CandidateRuntime::for_test().await;
     let key = &crate::import::CandidateKey::test("/watch/a/rel1");
     let files = scanned_key(&runtime, key).await;
-    runtime
-        .admit(vec![(key.clone(), files.clone())], Admission::Automatic)
-        .await
-        .unwrap();
+    runtime.admit(vec![(key.clone(), files.clone())], Admission::Automatic).await.unwrap();
     report(&runtime, key, &files, run(1), manual_only()).await;
 
-    runtime
-        .admit(vec![(key.clone(), files.clone())], Admission::Requested)
-        .await
-        .unwrap();
-    assert_eq!(
-        in_flight(&runtime, key).await,
-        Some(IdentificationInFlight::Queued)
-    );
+    runtime.admit(vec![(key.clone(), files.clone())], Admission::Requested).await.unwrap();
+    assert_eq!(in_flight(&runtime, key).await, Some(IdentificationInFlight::Queued));
 
     runtime.end_identification_answer(key, run(1)).await.unwrap();
-    assert_eq!(
-        in_flight(&runtime, key).await,
-        Some(IdentificationInFlight::Queued)
-    );
+    assert_eq!(in_flight(&runtime, key).await, Some(IdentificationInFlight::Queued));
 }
 
 /// A library release's re-identify run is no list row's: its row holds it
@@ -86,18 +64,12 @@ async fn a_re_identify_run_is_held_by_the_runtime_alone() {
     let runtime = CandidateRuntime::for_test().await;
     let key = &crate::import::CandidateKey::reidentify("release-1");
 
-    runtime
-        .publish_release_run(key, run(1), &triangulating(), None)
-        .await
-        .unwrap();
+    runtime.publish_release_run(key, run(1), &triangulating(), None).await.unwrap();
     assert_eq!(
         in_flight(&runtime, key).await,
         Some(IdentificationInFlight::Run(published(triangulating())))
     );
-    runtime
-        .publish_release_run(key, run(1), &manual_only(), None)
-        .await
-        .unwrap();
+    runtime.publish_release_run(key, run(1), &manual_only(), None).await.unwrap();
     assert_eq!(
         in_flight(&runtime, key).await,
         Some(IdentificationInFlight::Run(published(manual_only())))

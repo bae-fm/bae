@@ -1,10 +1,10 @@
+mod album_detail_during_import;
+mod artist_pictures;
 mod candidate_mutation_race;
 mod commit_lock_waits;
 mod decisions_end_identification;
 mod edits_keep_the_selection;
 mod failing_standing_writes;
-mod album_detail_during_import;
-mod artist_pictures;
 mod import_cancellation;
 mod import_ownership;
 mod kept_draft;
@@ -79,10 +79,7 @@ async fn rescan_unread_into(manager: &LibraryManager, candidate: FolderCandidate
         folder_date: None,
     };
     manager.save_folder_scan_items(&root, generation, vec![unread]).await.unwrap();
-    manager
-        .finish_folder_scan(&root, generation, None)
-        .await
-        .unwrap();
+    manager.finish_folder_scan(&root, generation, None).await.unwrap();
 }
 
 /// The folder [`picked_candidate`] stores, under a watched root, not stored yet.
@@ -112,10 +109,7 @@ async fn unscanned_candidate(
     std::fs::create_dir_all(&folder).unwrap();
     let fixtures = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/flac");
     let mut files = Vec::new();
-    for (index, name) in ["01 Test Track 1.flac", "02 Test Track 2.flac"]
-        .into_iter()
-        .enumerate()
-    {
+    for (index, name) in ["01 Test Track 1.flac", "02 Test Track 2.flac"].into_iter().enumerate() {
         let relative_path = format!("{:02} Track.flac", index + 1);
         let path = folder.join(&relative_path);
         std::fs::copy(fixtures.join(name), &path).unwrap();
@@ -150,10 +144,7 @@ async fn unscanned_candidate(
         path: folder.clone(),
         file_root: folder.clone(),
         name: folder_name.to_string(),
-        files: CategorizedFiles {
-            files,
-            parts: Vec::new(),
-        },
+        files: CategorizedFiles { files, parts: Vec::new() },
         watched_folder_path: root.clone(),
         scope: ReleaseFileScope::Recursive,
         file_edit_revision: 0,
@@ -161,10 +152,7 @@ async fn unscanned_candidate(
         grouping: None,
     };
 
-    manager
-        .add_watched_import_folder(&root)
-        .await
-        .unwrap();
+    manager.add_watched_import_folder(&root).await.unwrap();
 
     let key = crate::import::CandidateKey::folder(&folder);
     let hash = candidate.files.content_hash();
@@ -185,10 +173,7 @@ async fn rescan_into(manager: &LibraryManager, candidate: FolderCandidate) {
         )
         .await
         .unwrap();
-    manager
-        .finish_folder_scan(&root, generation, None)
-        .await
-        .unwrap();
+    manager.finish_folder_scan(&root, generation, None).await.unwrap();
 }
 
 /// A running import service over a watched root holding one stored candidate —
@@ -257,17 +242,8 @@ async fn started(
     key: crate::import::CandidateKey,
     tmp: TempDir,
 ) -> StoredCandidate {
-    let handle = manager
-        .start_import_service(tokio::runtime::Handle::current())
-        .await
-        .unwrap();
-    StoredCandidate {
-        handle,
-        manager,
-        candidate,
-        key,
-        tmp,
-    }
+    let handle = manager.start_import_service(tokio::runtime::Handle::current()).await.unwrap();
+    StoredCandidate { handle, manager, candidate, key, tmp }
 }
 
 /// The handle, the key its controls address, and the hash its rows are stored
@@ -285,46 +261,32 @@ async fn pane_fixture_with(
     let hash = fixture.candidate.files.content_hash();
     let handle = fixture.handle;
     let key = fixture.key;
-    let revision = handle
-        .select_candidate_file_tags(key.clone())
-        .await
-        .unwrap();
+    let revision = handle.select_candidate_file_tags(key.clone()).await.unwrap();
     assert_eq!(revision, 1);
     assert_eq!(pane(&handle, &key).await.metadata_revision, revision);
     (handle, fixture.tmp, key, hash)
 }
 
-async fn pane(handle: &ImportServiceHandle, key: &crate::import::CandidateKey) -> crate::import::ImportCandidateDetail {
-    handle
-        .candidate_pane(key)
-        .await
-        .unwrap()
-        .expect("the picked candidate reads back")
+async fn pane(
+    handle: &ImportServiceHandle,
+    key: &crate::import::CandidateKey,
+) -> crate::import::ImportCandidateDetail {
+    handle.candidate_pane(key).await.unwrap().expect("the picked candidate reads back")
 }
 
 async fn shut_down(handle: ImportServiceHandle) {
-    tokio::task::spawn_blocking(move || handle.stop_and_join())
-        .await
-        .unwrap();
+    tokio::task::spawn_blocking(move || handle.stop_and_join()).await.unwrap();
 }
 
 #[tokio::test(flavor = "multi_thread")]
 async fn unlinked_cover_gallery_for_candidate_without_metadata() {
-    let StoredCandidate {
-        handle,
-        key,
-        tmp: _tmp,
-        ..
-    } = stored_candidate().await;
+    let StoredCandidate { handle, key, tmp: _tmp, .. } = stored_candidate().await;
     let gallery = handle
         .fetch_remote_covers(crate::import::cover_art::CoverTarget::Candidate(key))
         .await
         .unwrap();
     shut_down(handle).await;
-    assert_eq!(
-        gallery,
-        crate::import::cover_art::RemoteCoverGallery::Unlinked
-    );
+    assert_eq!(gallery, crate::import::cover_art::RemoteCoverGallery::Unlinked);
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -335,10 +297,7 @@ async fn unlinked_cover_gallery_for_file_tags() {
         .await
         .unwrap();
     shut_down(handle).await;
-    assert_eq!(
-        gallery,
-        crate::import::cover_art::RemoteCoverGallery::Unlinked
-    );
+    assert_eq!(gallery, crate::import::cover_art::RemoteCoverGallery::Unlinked);
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -357,37 +316,25 @@ async fn unlinked_cover_gallery_for_library_release() {
         )
         .await
         .unwrap();
-    let handle = manager
-        .start_import_service(tokio::runtime::Handle::current())
-        .await
-        .unwrap();
+    let handle = manager.start_import_service(tokio::runtime::Handle::current()).await.unwrap();
     let gallery = handle
         .fetch_remote_covers(crate::import::cover_art::CoverTarget::Release(release.id))
         .await
         .unwrap();
     shut_down(handle).await;
-    assert_eq!(
-        gallery,
-        crate::import::cover_art::RemoteCoverGallery::Unlinked
-    );
+    assert_eq!(gallery, crate::import::cover_art::RemoteCoverGallery::Unlinked);
 }
 
 #[tokio::test(flavor = "multi_thread")]
 async fn cover_gallery_reports_unconfigured_discogs_as_failure() {
     let (manager, _tmp, _album, release) =
         album_with("Album Title", &[discogs_identity("11", "22")]).await;
-    let handle = manager
-        .start_import_service(tokio::runtime::Handle::current())
-        .await
-        .unwrap();
+    let handle = manager.start_import_service(tokio::runtime::Handle::current()).await.unwrap();
     let result = handle
         .fetch_remote_covers(crate::import::cover_art::CoverTarget::Release(release.id))
         .await;
     shut_down(handle).await;
-    assert!(matches!(
-        result,
-        Err(crate::import::ImportError::DiscogsNotConfigured)
-    ));
+    assert!(matches!(result, Err(crate::import::ImportError::DiscogsNotConfigured)));
 }
 
 struct CountingFileTagReader {
@@ -419,11 +366,7 @@ impl CountingFileTagReader {
 
     /// A reader held at its first file until the gate opens, and what hears
     /// that it got there.
-    fn held() -> (
-        Self,
-        std::sync::mpsc::Receiver<()>,
-        crate::test_gate::Gate,
-    ) {
+    fn held() -> (Self, std::sync::mpsc::Receiver<()>, crate::test_gate::Gate) {
         let (gate, held, reached) = crate::test_gate::closed();
         let reader = Self {
             reads: std::sync::atomic::AtomicUsize::new(0),
@@ -497,9 +440,7 @@ async fn pick_file_tags(
     reader: std::sync::Arc<CountingFileTagReader>,
 ) -> Result<u64, crate::import::ImportError> {
     handle.file_tags = reader;
-    handle
-        .select_candidate_file_tags(key.clone())
-        .await
+    handle.select_candidate_file_tags(key.clone()).await
 }
 
 /// The file-tag reading stored for the candidate at `key`.
@@ -518,22 +459,13 @@ async fn stored_tags(
 }
 
 fn titles(snapshot: &crate::import::file_tag_snapshot::FileTagSnapshot) -> Vec<Option<&str>> {
-    snapshot
-        .files
-        .iter()
-        .map(|fact| fact.tags.title.as_deref())
-        .collect()
+    snapshot.files.iter().map(|fact| fact.tags.title.as_deref()).collect()
 }
 
 #[tokio::test(flavor = "multi_thread")]
 async fn one_unreadable_file_stores_no_partial_tag_snapshot() {
-    let StoredCandidate {
-        mut handle,
-        candidate,
-        key,
-        tmp: _tmp,
-        ..
-    } = unread_stored_candidate().await;
+    let StoredCandidate { mut handle, candidate, key, tmp: _tmp, .. } =
+        unread_stored_candidate().await;
     let reader = std::sync::Arc::new(CountingFileTagReader::failing(1));
 
     let error = pick_file_tags(&mut handle, &key, reader.clone())
@@ -544,29 +476,18 @@ async fn one_unreadable_file_stores_no_partial_tag_snapshot() {
 
     assert!(error.to_string().contains("fixture tag read 1 failed"));
     assert_eq!(reader.read_count(), 2);
-    assert!(
-        stored.is_none(),
-        "facts from the first file cannot land without the complete reading"
-    );
+    assert!(stored.is_none(), "facts from the first file cannot land without the complete reading");
 }
 
 #[tokio::test(flavor = "multi_thread")]
 async fn matching_file_observations_reuse_the_stored_tag_snapshot() {
-    let StoredCandidate {
-        mut handle,
-        candidate,
-        key,
-        tmp: _tmp,
-        ..
-    } = unread_stored_candidate().await;
+    let StoredCandidate { mut handle, candidate, key, tmp: _tmp, .. } =
+        unread_stored_candidate().await;
     let reader = std::sync::Arc::new(CountingFileTagReader::immediate());
 
     pick_file_tags(&mut handle, &key, reader.clone()).await.unwrap();
     assert_eq!(reader.read_count(), 2);
-    let read = handle
-        .read_file_tag_snapshot(&key, reader.clone())
-        .await
-        .unwrap();
+    let read = handle.read_file_tag_snapshot(&key, reader.clone()).await.unwrap();
 
     assert_eq!(Some(read.snapshot), stored_tags(&handle, &candidate, &key).await);
     assert_eq!(
@@ -579,22 +500,14 @@ async fn matching_file_observations_reuse_the_stored_tag_snapshot() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn changed_file_observations_read_the_tags_again() {
-    let StoredCandidate {
-        mut handle,
-        manager,
-        mut candidate,
-        key,
-        tmp,
-    } = unread_stored_candidate().await;
+    let StoredCandidate { mut handle, manager, mut candidate, key, tmp } =
+        unread_stored_candidate().await;
     let reader = std::sync::Arc::new(CountingFileTagReader::immediate());
 
     pick_file_tags(&mut handle, &key, reader.clone()).await.unwrap();
 
     let first_audio = tmp.path().join("watched/Album/01 Track.flac");
-    let audio = std::fs::OpenOptions::new()
-        .write(true)
-        .open(&first_audio)
-        .unwrap();
+    let audio = std::fs::OpenOptions::new().write(true).open(&first_audio).unwrap();
     audio
         .set_times(
             std::fs::FileTimes::new()
@@ -602,22 +515,13 @@ async fn changed_file_observations_read_the_tags_again() {
         )
         .unwrap();
 
-    let after_modified_time = handle
-        .read_file_tag_snapshot(&key, reader.clone())
-        .await
-        .unwrap()
-        .snapshot;
+    let after_modified_time =
+        handle.read_file_tag_snapshot(&key, reader.clone()).await.unwrap().snapshot;
     assert_eq!(reader.read_count(), 4);
-    assert_eq!(
-        titles(&after_modified_time),
-        vec![Some("Track Title 3"), Some("Track Title 4")]
-    );
+    assert_eq!(titles(&after_modified_time), vec![Some("Track Title 3"), Some("Track Title 4")]);
 
     let second_audio = tmp.path().join("watched/Album/02 Track.flac");
-    let mut audio = std::fs::OpenOptions::new()
-        .append(true)
-        .open(&second_audio)
-        .unwrap();
+    let mut audio = std::fs::OpenOptions::new().append(true).open(&second_audio).unwrap();
     std::io::Write::write_all(&mut audio, &[0]).unwrap();
     candidate
         .files
@@ -629,16 +533,9 @@ async fn changed_file_observations_read_the_tags_again() {
         .size = std::fs::metadata(&second_audio).unwrap().len();
     rescan_unread_into(&manager, candidate).await;
 
-    let after_size = handle
-        .read_file_tag_snapshot(&key, reader.clone())
-        .await
-        .unwrap()
-        .snapshot;
+    let after_size = handle.read_file_tag_snapshot(&key, reader.clone()).await.unwrap().snapshot;
     assert_eq!(reader.read_count(), 6);
-    assert_eq!(
-        titles(&after_size),
-        vec![Some("Track Title 5"), Some("Track Title 6")]
-    );
+    assert_eq!(titles(&after_size), vec![Some("Track Title 5"), Some("Track Title 6")]);
     shut_down(handle).await;
 }
 
@@ -647,36 +544,21 @@ async fn changed_file_observations_read_the_tags_again() {
 /// makes the candidate a different shape and its tags are read again.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_file_decision_makes_the_tags_read_again() {
-    let StoredCandidate {
-        mut handle,
-        manager,
-        candidate,
-        key,
-        tmp: _tmp,
-    } = unread_stored_candidate().await;
+    let StoredCandidate { mut handle, manager, candidate, key, tmp: _tmp } =
+        unread_stored_candidate().await;
     let reader = std::sync::Arc::new(CountingFileTagReader::immediate());
     pick_file_tags(&mut handle, &key, reader.clone()).await.unwrap();
 
     rescan_into(&manager, candidate).await;
 
-    let after_generation = handle
-        .read_file_tag_snapshot(&key, reader.clone())
-        .await
-        .unwrap()
-        .snapshot;
+    let after_generation =
+        handle.read_file_tag_snapshot(&key, reader.clone()).await.unwrap().snapshot;
     assert_eq!(reader.read_count(), 2);
-    assert_eq!(
-        titles(&after_generation),
-        vec![Some("Track Title 1"), Some("Track Title 2")]
-    );
+    assert_eq!(titles(&after_generation), vec![Some("Track Title 1"), Some("Track Title 2")]);
     shut_down(handle).await;
 
-    let StoredCandidate {
-        mut handle,
-        key,
-        tmp: _tmp,
-        ..
-    } = stored_candidate_with_sheet(SECOND_FILE_IN_TWO).await;
+    let StoredCandidate { mut handle, key, tmp: _tmp, .. } =
+        stored_candidate_with_sheet(SECOND_FILE_IN_TWO).await;
     let reader = std::sync::Arc::new(CountingFileTagReader::immediate());
     pick_file_tags(&mut handle, &key, reader.clone()).await.unwrap();
 
@@ -689,33 +571,19 @@ async fn a_file_decision_makes_the_tags_read_again() {
         .await
         .unwrap();
 
-    let after_file_edit = handle
-        .read_file_tag_snapshot(&key, reader.clone())
-        .await
-        .unwrap()
-        .snapshot;
+    let after_file_edit =
+        handle.read_file_tag_snapshot(&key, reader.clone()).await.unwrap().snapshot;
     assert_eq!(reader.read_count(), 4);
-    assert_eq!(
-        titles(&after_file_edit),
-        vec![Some("Track Title 3"), Some("Track Title 4")]
-    );
+    assert_eq!(titles(&after_file_edit), vec![Some("Track Title 3"), Some("Track Title 4")]);
     shut_down(handle).await;
 }
 
 #[tokio::test(flavor = "multi_thread")]
 async fn file_tags_cannot_restore_mappings_read_before_a_file_decision() {
-    let StoredCandidate {
-        handle,
-        candidate,
-        key,
-        tmp,
-        ..
-    } = stored_candidate_with_sheet(SECOND_FILE_IN_TWO).await;
+    let StoredCandidate { handle, candidate, key, tmp, .. } =
+        stored_candidate_with_sheet(SECOND_FILE_IN_TWO).await;
     let hash = candidate.files.content_hash();
-    handle
-        .select_candidate_file_tags(key.clone())
-        .await
-        .unwrap();
+    handle.select_candidate_file_tags(key.clone()).await.unwrap();
     let stale = handle
         .library_manager
         .load_import_candidate_preparation(&hash)
@@ -731,10 +599,7 @@ async fn file_tags_cannot_restore_mappings_read_before_a_file_decision() {
         .await
         .unwrap();
     let snapshot = handle
-        .read_file_tag_snapshot(
-            &key,
-            std::sync::Arc::new(CountingFileTagReader::immediate()),
-        )
+        .read_file_tag_snapshot(&key, std::sync::Arc::new(CountingFileTagReader::immediate()))
         .await
         .unwrap()
         .snapshot;
@@ -763,23 +628,15 @@ async fn file_tags_cannot_restore_mappings_read_before_a_file_decision() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn sheet_decisions_leave_the_draft_drawn_over_the_settled_audio() {
-    let StoredCandidate {
-        handle,
-        candidate,
-        key,
-        tmp: _tmp,
-        ..
-    } = stored_candidate_with_sheet(SECOND_FILE_IN_TWO).await;
+    let StoredCandidate { handle, candidate, key, tmp: _tmp, .. } =
+        stored_candidate_with_sheet(SECOND_FILE_IN_TWO).await;
     let hash = candidate.files.content_hash();
 
     for disc in [
         crate::import::folder_scanner::SheetDisc::Ignored,
         crate::import::folder_scanner::SheetDisc::Disc { number: 1 },
     ] {
-        handle
-            .set_sheet_disc(key.clone(), "Disc.cue".to_string(), disc)
-            .await
-            .unwrap();
+        handle.set_sheet_disc(key.clone(), "Disc.cue".to_string(), disc).await.unwrap();
         let settled = handle.get_release_candidate(&key).await.unwrap().unwrap();
         let preparation = handle
             .library_manager
@@ -816,10 +673,7 @@ async fn import_refuses_audio_changed_after_the_file_tags_pane_was_read() {
         .expect("the pane read stored a complete snapshot");
 
     let changed_audio = tmp.path().join("watched/Album/01 Track.flac");
-    let audio = std::fs::OpenOptions::new()
-        .write(true)
-        .open(&changed_audio)
-        .unwrap();
+    let audio = std::fs::OpenOptions::new().write(true).open(&changed_audio).unwrap();
     audio
         .set_times(
             std::fs::FileTimes::new()
@@ -846,10 +700,7 @@ async fn import_refuses_audio_changed_after_the_file_tags_pane_was_read() {
         .expect("a refused import preserves the pane snapshot");
     shut_down(handle).await;
 
-    assert_eq!(
-        after, before,
-        "refusing import must not replace the snapshot the pane displayed"
-    );
+    assert_eq!(after, before, "refusing import must not replace the snapshot the pane displayed");
     assert!(
         error.contains("changed after its import candidate was scanned"),
         "source validation names the stale scan: {error}"
@@ -860,36 +711,22 @@ async fn import_refuses_audio_changed_after_the_file_tags_pane_was_read() {
 /// so picking them reads them again and stores the reading of the newer one.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_scan_that_moves_during_tag_reading_makes_the_pick_read_again() {
-    let StoredCandidate {
-        mut handle,
-        manager,
-        candidate,
-        key,
-        tmp: _tmp,
-    } = unread_stored_candidate().await;
+    let StoredCandidate { mut handle, manager, candidate, key, tmp: _tmp } =
+        unread_stored_candidate().await;
     let (reader, reached, gate) = CountingFileTagReader::held();
     let reader = std::sync::Arc::new(reader);
     handle.file_tags = reader.clone();
     let operation = tokio::spawn({
         let handle = handle.clone();
         let key = key.clone();
-        async move {
-            handle
-                .select_candidate_file_tags(key)
-                .await
-        }
+        async move { handle.select_candidate_file_tags(key).await }
     });
-    reached
-        .recv_timeout(HANG_GUARD)
-        .expect("the tag reader reached the first audio file");
+    reached.recv_timeout(HANG_GUARD).expect("the tag reader reached the first audio file");
 
     rescan_into(&manager, candidate.clone()).await;
     gate.open();
 
-    operation
-        .await
-        .unwrap()
-        .expect("the pick reads the tags of the newer scan");
+    operation.await.unwrap().expect("the pick reads the tags of the newer scan");
     let stored = handle
         .library_manager
         .load_candidate_file_tag_snapshot(&candidate.watched_folder_path, &key)
@@ -918,12 +755,7 @@ fn track_rows(table: &crate::import::MappingTable) -> Vec<crate::import::RawTrac
 async fn a_pick_lands_and_is_announced_when_its_caller_is_torn_down() {
     use std::future::Future;
 
-    let StoredCandidate {
-        handle,
-        key,
-        tmp: _tmp,
-        ..
-    } = stored_candidate().await;
+    let StoredCandidate { handle, key, tmp: _tmp, .. } = stored_candidate().await;
     let mut events = handle.every_event();
 
     // One poll asks for the pick; dropping the future at the end of the block
@@ -932,10 +764,7 @@ async fn a_pick_lands_and_is_announced_when_its_caller_is_torn_down() {
         let mut pick = std::pin::pin!(handle.select_candidate_file_tags(key.clone()));
         let first_poll =
             std::future::poll_fn(|cx| std::task::Poll::Ready(pick.as_mut().poll(cx))).await;
-        assert!(
-            first_poll.is_pending(),
-            "the first poll asks for the pick and waits on it"
-        );
+        assert!(first_poll.is_pending(), "the first poll asks for the pick and waits on it");
     }
 
     tokio::time::timeout(HANG_GUARD, async {
@@ -972,19 +801,12 @@ async fn a_bulk_import_skips_a_row_being_identified_and_says_so() {
 
     let refused = handle.import_selected(&key).await;
 
-    assert!(matches!(
-        refused,
-        Err(crate::import::ImportError::CandidateBeingIdentified)
-    ));
-    let runtime = handle
-        .candidate_runtime(&key).await.unwrap()
-        .expect("the queued run is still the key's");
+    assert!(matches!(refused, Err(crate::import::ImportError::CandidateBeingIdentified)));
+    let runtime =
+        handle.candidate_runtime(&key).await.unwrap().expect("the queued run is still the key's");
     assert!(runtime.import.is_none(), "the skipped row is not claimed");
     assert!(
-        matches!(
-            runtime.identification,
-            Some(crate::import::IdentificationRuntime::Queued(_))
-        ),
+        matches!(runtime.identification, Some(crate::import::IdentificationRuntime::Queued(_))),
         "and its run is not cancelled"
     );
 

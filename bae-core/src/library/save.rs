@@ -144,10 +144,7 @@ struct OutputPathsGuard {
 
 impl OutputPathsGuard {
     fn new(paths: Vec<std::path::PathBuf>) -> Self {
-        Self {
-            paths,
-            committed: false,
-        }
+        Self { paths, committed: false }
     }
 
     fn commit(&mut self) {
@@ -276,10 +273,7 @@ impl SaveService {
             .file_name()
             .and_then(|name| name.to_str())
             .ok_or_else(|| {
-                format!(
-                    "audio image path has no UTF-8 filename: {}",
-                    output_audio_path.display()
-                )
+                format!("audio image path has no UTF-8 filename: {}", output_audio_path.display())
             })?
             .to_string();
 
@@ -377,48 +371,42 @@ impl SaveService {
         joined("encode a release image", encode).await??;
         let cue_tracks = tracks?;
 
-        blocking(
-            "write a release image's CUE sheet and tags",
-            move || -> Result<(), String> {
-                if cancel.load(Ordering::Relaxed) {
-                    return Err("export cancelled".to_string());
-                }
+        blocking("write a release image's CUE sheet and tags", move || -> Result<(), String> {
+            if cancel.load(Ordering::Relaxed) {
+                return Err("export cancelled".to_string());
+            }
 
-                let cue = render_cue_sheet(
-                    &release_title,
-                    &release_performer,
-                    catalog
-                        .as_deref()
-                        .map(str::trim)
-                        .filter(|catalog| !catalog.is_empty()),
-                    year,
-                    &audio_filename,
-                    cue_file_type,
-                    sample_rate,
-                    &cue_tracks,
-                );
-                std::fs::write(&output_cue_path, cue)
-                    .map_err(|e| format!("Failed to write CUE sheet: {e}"))?;
+            let cue = render_cue_sheet(
+                &release_title,
+                &release_performer,
+                catalog.as_deref().map(str::trim).filter(|catalog| !catalog.is_empty()),
+                year,
+                &audio_filename,
+                cue_file_type,
+                sample_rate,
+                &cue_tracks,
+            );
+            std::fs::write(&output_cue_path, cue)
+                .map_err(|e| format!("Failed to write CUE sheet: {e}"))?;
 
-                if cancel.load(Ordering::Relaxed) {
-                    return Err("export cancelled".to_string());
-                }
+            if cancel.load(Ordering::Relaxed) {
+                return Err("export cancelled".to_string());
+            }
 
-                write_tags(
-                    &output_audio_path,
-                    tag_type,
-                    &tags,
-                    None,
-                    total_tracks,
-                    cover_image_bytes.as_deref(),
-                )?;
+            write_tags(
+                &output_audio_path,
+                tag_type,
+                &tags,
+                None,
+                total_tracks,
+                cover_image_bytes.as_deref(),
+            )?;
 
-                if cancel.load(Ordering::Relaxed) {
-                    return Err("export cancelled".to_string());
-                }
-                Ok(())
-            },
-        )
+            if cancel.load(Ordering::Relaxed) {
+                return Err("export cancelled".to_string());
+            }
+            Ok(())
+        })
         .await??;
 
         output_guard.commit();
@@ -455,9 +443,7 @@ impl SaveService {
                 ExistingOutput::Refuse => {
                     use crate::storage::stored_name::{create_new_file, CreateFileError};
                     let name = Path::new(
-                        output_path
-                            .file_name()
-                            .expect("a track's output path names its file"),
+                        output_path.file_name().expect("a track's output path names its file"),
                     );
                     create_new_file(&output_path, name, &subject).map_err(|error| {
                         SaveError::Failed(match error {
@@ -474,12 +460,7 @@ impl SaveService {
             let mut output_guard = OutputPathsGuard::new(vec![output_path.clone()]);
             let mut encoder =
                 StreamingEncoder::seekable(format, Box::new(file), cancel_for_blocking.clone());
-            decode.run_to_sink(
-                sample_rate,
-                channels,
-                &mut encoder,
-                cancel_for_blocking.clone(),
-            )?;
+            decode.run_to_sink(sample_rate, channels, &mut encoder, cancel_for_blocking.clone())?;
             // `finish` closes the muxer and drops the file handle, so the tag
             // writer below reads a fully-flushed file.
             encoder.finish()?;
@@ -533,9 +514,7 @@ fn encode_image_track(
         .ok_or_else(|| "CUE pregap sample count overflow".to_string())?;
 
     let frames_before = encoder.frames_accepted();
-    track
-        .decode
-        .run_to_sink(sample_rate, channels, encoder, cancel)?;
+    track.decode.run_to_sink(sample_rate, channels, encoder, cancel)?;
     if let Some(error) = encoder.error() {
         return Err(SaveError::Failed(error.to_string()));
     }
@@ -567,24 +546,16 @@ fn encode_image_track(
 fn encode_format(codec: &crate::config::SaveCodec) -> EncodeFormat {
     use crate::config::SaveCodec;
     match codec {
-        SaveCodec::Flac { bit_depth } => EncodeFormat::Flac {
-            bits_per_sample: bit_depth.bits(),
-        },
-        SaveCodec::Mp3 { bitrate_kbps } => EncodeFormat::Mp3 {
-            bitrate_kbps: *bitrate_kbps,
-        },
-        SaveCodec::Aac { bitrate_kbps } => EncodeFormat::Aac {
-            bitrate_kbps: *bitrate_kbps,
-        },
-        SaveCodec::OpusOgg { bitrate_kbps } => EncodeFormat::OpusOgg {
-            bitrate_kbps: *bitrate_kbps,
-        },
-        SaveCodec::Wav { bit_depth } => EncodeFormat::PcmWav {
-            bits_per_sample: bit_depth.bits(),
-        },
-        SaveCodec::Aiff { bit_depth } => EncodeFormat::PcmAiff {
-            bits_per_sample: bit_depth.bits(),
-        },
+        SaveCodec::Flac { bit_depth } => EncodeFormat::Flac { bits_per_sample: bit_depth.bits() },
+        SaveCodec::Mp3 { bitrate_kbps } => EncodeFormat::Mp3 { bitrate_kbps: *bitrate_kbps },
+        SaveCodec::Aac { bitrate_kbps } => EncodeFormat::Aac { bitrate_kbps: *bitrate_kbps },
+        SaveCodec::OpusOgg { bitrate_kbps } => {
+            EncodeFormat::OpusOgg { bitrate_kbps: *bitrate_kbps }
+        }
+        SaveCodec::Wav { bit_depth } => EncodeFormat::PcmWav { bits_per_sample: bit_depth.bits() },
+        SaveCodec::Aiff { bit_depth } => {
+            EncodeFormat::PcmAiff { bits_per_sample: bit_depth.bits() }
+        }
     }
 }
 
@@ -626,28 +597,15 @@ fn render_cue_sheet(
     if let Some(year) = year {
         cue.push_str(&format!("REM DATE {year}\n"));
     }
-    cue.push_str(&format!(
-        "PERFORMER \"{}\"\n",
-        cue_string(release_performer)
-    ));
+    cue.push_str(&format!("PERFORMER \"{}\"\n", cue_string(release_performer)));
     cue.push_str(&format!("TITLE \"{}\"\n", cue_string(release_title)));
-    cue.push_str(&format!(
-        "FILE \"{}\" {}\n",
-        cue_string(audio_filename),
-        cue_file_type
-    ));
+    cue.push_str(&format!("FILE \"{}\" {}\n", cue_string(audio_filename), cue_file_type));
     for track in tracks {
         cue.push_str(&format!("  TRACK {:02} AUDIO\n", track.number));
         cue.push_str(&format!("    TITLE \"{}\"\n", cue_string(&track.title)));
-        cue.push_str(&format!(
-            "    PERFORMER \"{}\"\n",
-            cue_string(&track.performer)
-        ));
+        cue.push_str(&format!("    PERFORMER \"{}\"\n", cue_string(&track.performer)));
         if let Some(index_00) = track.index_00_sample_frame {
-            cue.push_str(&format!(
-                "    INDEX 00 {}\n",
-                cue_time(index_00, sample_rate)
-            ));
+            cue.push_str(&format!("    INDEX 00 {}\n", cue_time(index_00, sample_rate)));
         }
         cue.push_str(&format!(
             "    INDEX 01 {}\n",
@@ -746,9 +704,7 @@ fn write_tags(
         // The stored cover is already a ≤600 JPEG (resized at store time), so
         // embed its bytes directly — no second resize/JPEG pass here.
         tag.push_picture(
-            Picture::unchecked(data.to_vec())
-                .pic_type(PictureType::CoverFront)
-                .build(),
+            Picture::unchecked(data.to_vec()).pic_type(PictureType::CoverFront).build(),
         );
     }
 

@@ -53,15 +53,9 @@ impl From<WatchedPathError> for crate::import::ImportError {
 ///   folders.
 pub(crate) fn canonical_absolute_root(path: &Path) -> Result<PathBuf, WatchedPathError> {
     let refuse = |reason: &str| {
-        Err(WatchedPathError(format!(
-            "watched folder {reason}: {}",
-            coven::path_text(path)
-        )))
+        Err(WatchedPathError(format!("watched folder {reason}: {}", coven::path_text(path))))
     };
-    if path
-        .components()
-        .any(|component| matches!(component, Component::ParentDir))
-    {
+    if path.components().any(|component| matches!(component, Component::ParentDir)) {
         return refuse("must not contain `..`");
     }
     let canonical: PathBuf = path.components().collect();
@@ -98,15 +92,15 @@ pub(crate) fn candidate_relative_path(
     watched_folder_path: &Path,
     candidate_path: &Path,
 ) -> Result<RelativeFolder, crate::import::ImportError> {
-    let relative = candidate_path
-        .strip_prefix(watched_folder_path)
-        .map_err(|error| crate::import::ImportError::WatchedFolder {
+    let relative = candidate_path.strip_prefix(watched_folder_path).map_err(|error| {
+        crate::import::ImportError::WatchedFolder {
             detail: format!(
                 "{} is outside watched folder {}: {error}",
                 coven::path_text(candidate_path),
                 coven::path_text(watched_folder_path)
             ),
-        })?;
+        }
+    })?;
     Ok(RelativeFolder::of(relative)?)
 }
 
@@ -166,10 +160,8 @@ mod tests {
             host_root("/music/./rips"),
         ];
 
-        for spelling in spellings
-            .iter()
-            .map(PathBuf::as_path)
-            .chain(URL_SPELLINGS.iter().map(Path::new))
+        for spelling in
+            spellings.iter().map(PathBuf::as_path).chain(URL_SPELLINGS.iter().map(Path::new))
         {
             assert_eq!(
                 canonical_absolute_root(spelling).unwrap().as_os_str(),
@@ -201,9 +193,7 @@ mod tests {
             (r"\\?\C:\Music", r"\\?\C:\Music"),
         ] {
             assert_eq!(
-                canonical_absolute_root(Path::new(written))
-                    .unwrap()
-                    .as_os_str(),
+                canonical_absolute_root(Path::new(written)).unwrap().as_os_str(),
                 stored,
                 "{written}"
             );
@@ -221,11 +211,8 @@ mod tests {
         #[cfg(not(windows))]
         const SHARE_ROOTS: &[&str] = &[];
 
-        let spellings = [
-            host_root("/music/rips/"),
-            host_root("/music//rips"),
-            host_root("/music/./rips"),
-        ];
+        let spellings =
+            [host_root("/music/rips/"), host_root("/music//rips"), host_root("/music/./rips")];
 
         for written in spellings
             .iter()

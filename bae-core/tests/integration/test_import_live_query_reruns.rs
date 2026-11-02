@@ -50,10 +50,7 @@ fn folder(root: &Path, name: &str, size: u64) -> ScanItem {
         path,
         name: name.to_string(),
         files: CategorizedFiles {
-            files: vec![CandidateFile {
-                file,
-                role: FileRole::Audio,
-            }],
+            files: vec![CandidateFile { file, role: FileRole::Audio }],
             parts: Vec::new(),
         },
         watched_folder_path: root.to_path_buf(),
@@ -74,11 +71,7 @@ struct Counted {
 
 impl Counted {
     fn of(runs: &coven::LiveQueryRuns) -> Self {
-        Self {
-            runs: runs.runs(),
-            writes: runs.writes(),
-            equal: runs.equal(),
-        }
+        Self { runs: runs.runs(), writes: runs.writes(), equal: runs.equal() }
     }
 
     fn since(self, before: Self) -> Self {
@@ -114,18 +107,12 @@ async fn a_scan_leaves_the_open_candidate_pane_alone() {
 
     let root = temp.path().join("watched");
     db.add_watched_import_folder(&root).await.unwrap();
-    let generation = db
-        .begin_folder_scan(&root, bae_core::import::VolumeKind::Local)
-        .await
-        .unwrap();
+    let generation =
+        db.begin_folder_scan(&root, bae_core::import::VolumeKind::Local).await.unwrap();
     let seed = folder(&root, "0000 seed", 1_000);
-    let ScanItem::Valid(seed_candidate) = &seed else {
-        unreachable!("the folder is valid")
-    };
+    let ScanItem::Valid(seed_candidate) = &seed else { unreachable!("the folder is valid") };
     let key = CandidateKey::folder(&seed_candidate.path);
-    db.save_folder_scan_item(&root, generation, &seed)
-        .await
-        .unwrap();
+    db.save_folder_scan_item(&root, generation, &seed).await.unwrap();
 
     // The screen: the list's first page in path order, the scans' progress,
     // and the pane on the seed, each read as the app reads it.
@@ -139,14 +126,8 @@ async fn a_scan_leaves_the_open_candidate_pane_alone() {
             .await
             .unwrap(),
     );
-    list.set_windows(
-        std::iter::once(LibraryPageWindow {
-            offset: 0,
-            limit: 50,
-        })
-        .collect(),
-    )
-    .unwrap();
+    list.set_windows(std::iter::once(LibraryPageWindow { offset: 0, limit: 50 }).collect())
+        .unwrap();
     let list_runs = list.runs_for_test();
     let (list_tx, mut list_seen) = tokio::sync::watch::channel(0_u64);
     let reading = list.clone();
@@ -188,10 +169,7 @@ async fn a_scan_leaves_the_open_candidate_pane_alone() {
 
     settle(&mut list_seen, "the list", |total| *total == 1).await;
     settle(&mut progress_seen, "the progress", |found| *found == 1).await;
-    settle(&mut pane_seen, "the pane", |skipped| {
-        *skipped == Some(false)
-    })
-    .await;
+    settle(&mut pane_seen, "the pane", |skipped| *skipped == Some(false)).await;
     let list_before = Counted::of(&list_runs);
     let progress_before = Counted::of(&progress_runs);
     let pane_before = Counted::of(&pane_runs);
@@ -206,10 +184,7 @@ async fn a_scan_leaves_the_open_candidate_pane_alone() {
         .unwrap();
     }
     settle(&mut list_seen, "the list", |total| *total == WRITES + 1).await;
-    settle(&mut progress_seen, "the progress", |found| {
-        *found == WRITES + 1
-    })
-    .await;
+    settle(&mut progress_seen, "the progress", |found| *found == WRITES + 1).await;
     let list_counted = Counted::of(&list_runs).since(list_before);
     let progress_counted = Counted::of(&progress_runs).since(progress_before);
 
@@ -217,9 +192,7 @@ async fn a_scan_leaves_the_open_candidate_pane_alone() {
     // show closes them: once the pane shows it, it has run for everything
     // the scan wrote before it. Its runs, less the one that showed that
     // write, are the scan's.
-    db.set_import_candidate_skipped(&seed_candidate.path, true)
-        .await
-        .unwrap();
+    db.set_import_candidate_skipped(&seed_candidate.path, true).await.unwrap();
     settle(&mut pane_seen, "the pane", |skipped| *skipped == Some(true)).await;
     let pane_counted = Counted::of(&pane_runs).since(pane_before);
     let pane_counted = Counted {
@@ -229,15 +202,10 @@ async fn a_scan_leaves_the_open_candidate_pane_alone() {
     };
 
     println!("{WRITES} scan writes, runs (caused by a write, of those unchanged):");
-    for (name, counted) in [
-        ("candidate pane", pane_counted),
-        ("list", list_counted),
-        ("progress", progress_counted),
-    ] {
-        println!(
-            "  {name:14} {:5} ({:5}, {:5})",
-            counted.runs, counted.writes, counted.equal
-        );
+    for (name, counted) in
+        [("candidate pane", pane_counted), ("list", list_counted), ("progress", progress_counted)]
+    {
+        println!("  {name:14} {:5} ({:5}, {:5})", counted.runs, counted.writes, counted.equal);
     }
 
     // Coven reruns a query for a commit only when the commit changes a row
@@ -246,10 +214,7 @@ async fn a_scan_leaves_the_open_candidate_pane_alone() {
     // count is 0 on every run. A read coven can't keep to that candidate's
     // rows passes every write and reruns for nearly all of them, so there is
     // nothing in between for a looser bound to allow.
-    assert_eq!(
-        pane_counted.runs, 0,
-        "the scan's writes of other folders reran the candidate pane"
-    );
+    assert_eq!(pane_counted.runs, 0, "the scan's writes of other folders reran the candidate pane");
 
     list.cancel().await.unwrap();
     pane.cancel();

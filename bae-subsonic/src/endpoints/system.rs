@@ -22,10 +22,7 @@ pub(crate) async fn get_license(_: AppState, _: Params) -> Result<Option<Element
 /// folder covering everything.
 pub(crate) async fn get_music_folders(_: AppState, _: Params) -> Result<Option<Element>, SubError> {
     Ok(Some(
-        Element::new("musicFolders").child(
-            Element::new("musicFolder")
-                .attr("id", 0_i64)
-                .attr("name", "bae"),
-        ),
+        Element::new("musicFolders")
+            .child(Element::new("musicFolder").attr("id", 0_i64).attr("name", "bae")),
     ))
 }

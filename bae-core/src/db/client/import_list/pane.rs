@@ -87,12 +87,7 @@ pub(super) fn load_candidate_detail_on(
              FROM local_release_origin o JOIN releases r ON r.id = o.release_id \
              WHERE o.content_hash = ?",
             params![content_hash],
-            |row| {
-                Ok(ImportedRelease {
-                    release_id: row.get(0)?,
-                    album_id: row.get(1)?,
-                })
-            },
+            |row| Ok(ImportedRelease { release_id: row.get(0)?, album_id: row.get(1)? }),
         )
         .optional()?;
 
@@ -104,10 +99,7 @@ pub(super) fn load_candidate_detail_on(
              FROM scan_candidate c JOIN import_candidate_state s \
                ON s.content_hash = c.content_hash \
              WHERE c.watched_folder_path = ? AND c.path = ?",
-        params![
-            coven::path_bytes(&candidate.watched_folder_path),
-            candidate.key()
-        ],
+        params![coven::path_bytes(&candidate.watched_folder_path), candidate.key()],
         |row| row.get::<_, i64>(0),
     )?;
     let metadata_revision = u64::try_from(metadata_revision).map_err(|error| {
@@ -157,11 +149,8 @@ fn draft_rows_on(
     )?;
     // The linked pressing's stored releases: what names its records and
     // checks it against the library.
-    let claimed = claimed_releases_on(
-        sql,
-        candidate,
-        release_link.as_ref().and_then(ReleaseLink::pressing),
-    )?;
+    let claimed =
+        claimed_releases_on(sql, candidate, release_link.as_ref().and_then(ReleaseLink::pressing))?;
     // Every catalog record of what the candidate is linked to: the linked
     // pressing's releases describe it, an album names its own.
     let records = match &release_link {
@@ -175,9 +164,9 @@ fn draft_rows_on(
     };
     let cover_options = offered_covers(current, release_link.as_ref(), &claimed);
     let picked_library_status = match claimed.first() {
-        Some(release) => check_releases_in_library_on(sql, &[release.library_check()])?
-            .into_iter()
-            .next(),
+        Some(release) => {
+            check_releases_in_library_on(sql, &[release.library_check()])?.into_iter().next()
+        }
         None => None,
     };
     let album = candidate_album_on(sql, content_hash, &records)?;
@@ -211,24 +200,14 @@ fn candidate_album_on(
 ) -> Result<crate::import::DraftAlbum, DbError> {
     use crate::import::DraftAlbum;
     let title = |album_id: &str| -> Result<String, DbError> {
-        sql.query_row(
-            "SELECT title FROM albums WHERE id = ?",
-            params![album_id],
-            |row| row.get(0),
-        )
-        .map_err(DbError::from)
+        sql.query_row("SELECT title FROM albums WHERE id = ?", params![album_id], |row| row.get(0))
+            .map_err(DbError::from)
     };
     if let Some(album_id) = load_album_pick_on(sql, content_hash)? {
-        return Ok(DraftAlbum::Picked {
-            title: title(&album_id)?,
-            album_id,
-        });
+        return Ok(DraftAlbum::Picked { title: title(&album_id)?, album_id });
     }
     Ok(match album_records_name_on(sql, records, &[])? {
-        Some(album_id) => DraftAlbum::Named {
-            title: title(&album_id)?,
-            album_id,
-        },
+        Some(album_id) => DraftAlbum::Named { title: title(&album_id)?, album_id },
         None => DraftAlbum::New,
     })
 }
@@ -248,10 +227,8 @@ impl CandidateDetailRows {
         } = self;
         let listed = listed.listed(&candidate.key())?;
         let signals = current.as_ref().and_then(|state| state.signals.clone());
-        let lookup_choices = current
-            .as_ref()
-            .map(|state| state.lookup_choices.clone())
-            .unwrap_or_default();
+        let lookup_choices =
+            current.as_ref().map(|state| state.lookup_choices.clone()).unwrap_or_default();
 
         let audio = crate::signals::AudioFacts::of_files(&candidate.files)
             .map_err(|error| DbError::Message(error.to_string()))?;
@@ -259,10 +236,7 @@ impl CandidateDetailRows {
         let mut resumed_identify_state = crate::identify::IdentifyState::Idle;
         let identify = current.as_ref().and_then(|state| state.identify.as_ref());
         if let Some(identify) = identify {
-            verdict = Some(VerdictSummary::of(
-                &identify.verdict,
-                identify.kept_own_draft,
-            ));
+            verdict = Some(VerdictSummary::of(&identify.verdict, identify.kept_own_draft));
             // The candidate's own text is what the rows are judged and ordered
             // against, live or resumed: striking a number out re-orders the
             // rows the next time they are read, with nothing asked again.
@@ -301,9 +275,7 @@ impl CandidateDetailRows {
                     metadata_provenance: current
                         .as_ref()
                         .and_then(|state| state.metadata_provenance.clone()),
-                    release_link: current
-                        .as_ref()
-                        .and_then(|state| state.release_link.clone()),
+                    release_link: current.as_ref().and_then(|state| state.release_link.clone()),
                     metadata_author: current
                         .as_ref()
                         .map_or(crate::import::MetadataAuthor::Nobody, |state| {
@@ -407,9 +379,7 @@ fn chosen_cover(
     match chosen {
         None => None,
         Some(CoverSelection::Local(file_id)) => {
-            let image = files
-                .artwork()
-                .find(|image| &image.relative_path == file_id);
+            let image = files.artwork().find(|image| &image.relative_path == file_id);
             if image.is_none() {
                 tracing::warn!(
                     file_id,

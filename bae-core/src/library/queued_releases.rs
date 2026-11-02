@@ -62,11 +62,7 @@ pub(crate) struct QueuedReleases<Extra, Progress> {
 
 impl<Extra, Progress> Clone for QueuedReleases<Extra, Progress> {
     fn clone(&self) -> Self {
-        Self {
-            database: self.database.clone(),
-            shared: self.shared.clone(),
-            _extra: PhantomData,
-        }
+        Self { database: self.database.clone(), shared: self.shared.clone(), _extra: PhantomData }
     }
 }
 
@@ -79,11 +75,7 @@ where
         let (transfers, _) = watch::channel(BTreeMap::new());
         Self {
             database,
-            shared: Arc::new(Shared {
-                wake: Notify::new(),
-                running: Mutex::new(None),
-                transfers,
-            }),
+            shared: Arc::new(Shared { wake: Notify::new(), running: Mutex::new(None), transfers }),
             _extra: PhantomData,
         }
     }
@@ -115,10 +107,7 @@ where
     /// the next release; the in-flight one runs to completion. Resuming
     /// wakes the worker.
     pub(crate) async fn set_paused(&self, paused: bool) -> Result<(), LibraryError> {
-        let was_paused = self
-            .database
-            .set_release_queue_paused::<Extra>(paused)
-            .await?;
+        let was_paused = self.database.set_release_queue_paused::<Extra>(paused).await?;
         if was_paused && !paused {
             self.shared.wake.notify_one();
         }
@@ -127,9 +116,7 @@ where
 
     /// Take out a queued or failed entry; abort the active one's task.
     pub(crate) async fn cancel(&self, release_id: &str) -> Result<(), LibraryError> {
-        self.database
-            .cancel_queued_release::<Extra>(release_id)
-            .await?;
+        self.database.cancel_queued_release::<Extra>(release_id).await?;
         self.stop(|running| running == release_id);
         Ok(())
     }
@@ -159,9 +146,7 @@ where
     /// release, in which case nothing changes.
     pub(crate) fn set_active_progress(&self, release_id: &str, progress: Progress) -> bool {
         let mut running = self.shared.running.lock().unwrap();
-        let Some(running) = running
-            .as_mut()
-            .filter(|running| running.release_id == release_id)
+        let Some(running) = running.as_mut().filter(|running| running.release_id == release_id)
         else {
             return false;
         };
@@ -219,8 +204,7 @@ where
         crate::library::LibraryPageWindows,
         crate::library::ReleaseQueueWindows<Extra>,
     > {
-        self.database
-            .subscribe_release_queue_windows::<Extra>(initial)
+        self.database.subscribe_release_queue_windows::<Extra>(initial)
     }
 
     /// How many entries are in each phase now, and whether it is paused.
@@ -234,20 +218,15 @@ where
     }
 
     fn register(&self, release_id: &str, abort: tokio::task::AbortHandle, progress: Progress) {
-        *self.shared.running.lock().unwrap() = Some(Running {
-            release_id: release_id.to_string(),
-            abort,
-            progress,
-        });
+        *self.shared.running.lock().unwrap() =
+            Some(Running { release_id: release_id.to_string(), abort, progress });
     }
 
     /// Publish the running entry's progress once the table has it active,
     /// unless a cancel stopped it meanwhile.
     fn publish_started(&self, release_id: &str) {
         let running = self.shared.running.lock().unwrap();
-        let Some(running) = running
-            .as_ref()
-            .filter(|running| running.release_id == release_id)
+        let Some(running) = running.as_ref().filter(|running| running.release_id == release_id)
         else {
             return;
         };
@@ -267,10 +246,7 @@ where
         progress: Progress,
     ) -> Result<bool, LibraryError> {
         self.register(release_id, abort, progress);
-        let started = self
-            .database
-            .activate_queued_release::<Extra>(release_id)
-            .await?;
+        let started = self.database.activate_queued_release::<Extra>(release_id).await?;
         if started {
             self.publish_started(release_id);
         } else {
@@ -282,15 +258,10 @@ where
     /// Drop the running entry's task once the table no longer has it active.
     fn unregister(&self, release_id: &str) {
         let mut running = self.shared.running.lock().unwrap();
-        if running
-            .as_ref()
-            .is_some_and(|running| running.release_id == release_id)
-        {
+        if running.as_ref().is_some_and(|running| running.release_id == release_id) {
             *running = None;
         }
-        self.shared
-            .transfers
-            .send_if_modified(|transfers| transfers.remove(release_id).is_some());
+        self.shared.transfers.send_if_modified(|transfers| transfers.remove(release_id).is_some());
     }
 
     /// Drain the queue serially, one release at a time, forever. The caller
@@ -395,15 +366,11 @@ where
                 }
             }
 
-            let result = caught(label, outcome)
-                .await
-                .unwrap_or_else(|panic| Err(failed(panic)));
+            let result = caught(label, outcome).await.unwrap_or_else(|panic| Err(failed(panic)));
             let left = match &result {
                 Ok(()) => database.finish_queued_release::<Extra>(&release_id).await,
                 Err(error) => {
-                    database
-                        .fail_queued_release::<Extra>(&release_id, error.to_string())
-                        .await
+                    database.fail_queued_release::<Extra>(&release_id, error.to_string()).await
                 }
             };
             self.unregister(&release_id);

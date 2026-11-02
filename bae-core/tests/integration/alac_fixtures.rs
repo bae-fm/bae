@@ -22,9 +22,7 @@ use tempfile::TempDir;
 use tracing::info;
 
 fn fixture_dir() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("test-fixtures")
-        .join("alac")
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("test-fixtures").join("alac")
 }
 
 fn make_discogs_release(id: &str, title: &str, tracks: &[&str]) -> DiscogsRelease {
@@ -73,11 +71,7 @@ fn probe_alac_returns_content_type_alac() {
     assert_eq!(probe.content_type, ContentType::Alac);
     assert_eq!(probe.sample_rate, 44100);
     assert_eq!(probe.channels, 2);
-    assert_eq!(
-        probe.bits_per_sample,
-        Some(16),
-        "the probe states the ALAC fixture's 16-bit depth"
-    );
+    assert_eq!(probe.bits_per_sample, Some(16), "the probe states the ALAC fixture's 16-bit depth");
 }
 
 /// Probe on an AAC `.m4a` fixture must return `ContentType::Aac`. AAC is a
@@ -106,10 +100,7 @@ async fn import_standalone_alac_m4a() {
     let (library_manager, release_id) =
         import_single_m4a_fixture("silence-alac.m4a", temp_root.path()).await;
 
-    let tracks = library_manager
-        .get_tracks_for_release(&release_id)
-        .await
-        .expect("get tracks");
+    let tracks = library_manager.get_tracks_for_release(&release_id).await.expect("get tracks");
     assert_eq!(tracks.len(), 1, "standalone .m4a produces one track");
 
     let track = &tracks[0];
@@ -124,21 +115,13 @@ async fn import_standalone_alac_m4a() {
     assert_eq!(af.channels.get(), 2);
     assert_eq!(af.bits_per_sample.map(|bits| bits.get()), Some(16));
 
-    let resolved = library_manager
-        .resolve_track_audio(&track.id)
-        .await
-        .expect("resolve track audio");
+    let resolved =
+        library_manager.resolve_track_audio(&track.id).await.expect("resolve track audio");
     assert_eq!(resolved.segments.len(), 1);
     let segment = &resolved.segments[0];
 
-    assert_eq!(
-        segment.span.start_sample, 0,
-        "standalone track starts at sample 0"
-    );
-    assert_eq!(
-        segment.span.end_sample, None,
-        "standalone track runs to EOF (no end sample)"
-    );
+    assert_eq!(segment.span.start_sample, 0, "standalone track starts at sample 0");
+    assert_eq!(segment.span.end_sample, None, "standalone track runs to EOF (no end sample)");
 }
 
 /// Importing a standalone AAC `.m4a` must land with `ContentType::Aac` and
@@ -150,10 +133,7 @@ async fn import_standalone_aac_m4a() {
     let (library_manager, release_id) =
         import_single_m4a_fixture("silence-aac.m4a", temp_root.path()).await;
 
-    let tracks = library_manager
-        .get_tracks_for_release(&release_id)
-        .await
-        .expect("get tracks");
+    let tracks = library_manager.get_tracks_for_release(&release_id).await.expect("get tracks");
     assert_eq!(tracks.len(), 1);
 
     let track = &tracks[0];
@@ -167,10 +147,8 @@ async fn import_standalone_aac_m4a() {
     assert_eq!(af.sample_rate.get(), 44100);
     assert_eq!(af.channels.get(), 2);
 
-    let resolved = library_manager
-        .resolve_track_audio(&track.id)
-        .await
-        .expect("resolve track audio");
+    let resolved =
+        library_manager.resolve_track_audio(&track.id).await.expect("resolve track audio");
 
     assert_eq!(resolved.segments.len(), 1);
     assert_eq!(resolved.segments[0].span.start_sample, 0);
@@ -199,10 +177,7 @@ fn scanner_recognizes_cue_alac_pair() {
         |item| match item {
             ScanItem::Valid(c) => candidates.push(c),
             ScanItem::Invalid(c) => {
-                panic!(
-                    "ALAC fixture must scan as a valid release, got invalid: {}",
-                    c.reason()
-                )
+                panic!("ALAC fixture must scan as a valid release, got invalid: {}", c.reason())
             }
             ScanItem::Discovered(_) | ScanItem::Decided { .. } | ScanItem::Sidecar(_) => {}
         },
@@ -214,22 +189,12 @@ fn scanner_recognizes_cue_alac_pair() {
 
     let bound = candidate.files.bound_sheets();
     assert_eq!(bound.len(), 1, "the sheet binds to the .m4a it names");
-    assert_eq!(
-        bound[0].sheet.tracks.len(),
-        3,
-        "three tracks in the CUE sheet"
-    );
-    let summary = candidate
-        .files
-        .source_audio_summary()
-        .expect("source audio");
+    assert_eq!(bound[0].sheet.tracks.len(), 3, "three tracks in the CUE sheet");
+    let summary = candidate.files.source_audio_summary().expect("source audio");
     let bae_core::album_detail::SourceAudioSummary::Uniform { descriptor } = summary else {
         panic!("expected uniform source audio")
     };
-    assert_eq!(
-        descriptor.layout,
-        bae_core::album_detail::SourceAudioLayout::Cue
-    );
+    assert_eq!(descriptor.layout, bae_core::album_detail::SourceAudioLayout::Cue);
     assert_eq!(descriptor.format.codec, "ALAC");
 }
 
@@ -263,10 +228,7 @@ async fn import_cue_alac_pair() {
     let release_id =
         support::import_folder_and_wait(&library_manager, album_dir, release_id_key).await;
 
-    let tracks = library_manager
-        .get_tracks_for_release(&release_id)
-        .await
-        .expect("get tracks");
+    let tracks = library_manager.get_tracks_for_release(&release_id).await.expect("get tracks");
     assert_eq!(tracks.len(), 3);
 
     // CUE INDEX 01 times: 00:00:00, 00:03:00, 00:06:00.
@@ -284,32 +246,15 @@ async fn import_cue_alac_pair() {
             .expect("get audio format")
             .unwrap_or_else(|| panic!("track {} has no audio format", i + 1));
 
-        assert_eq!(
-            af.content_type,
-            ContentType::Alac,
-            "track {} content type",
-            i + 1
-        );
+        assert_eq!(af.content_type, ContentType::Alac, "track {} content type", i + 1);
 
-        let resolved = library_manager
-            .resolve_track_audio(&track.id)
-            .await
-            .expect("resolve track audio");
+        let resolved =
+            library_manager.resolve_track_audio(&track.id).await.expect("resolve track audio");
         assert_eq!(resolved.segments.len(), 1);
         let segment = &resolved.segments[0];
 
-        assert_eq!(
-            segment.span.start_sample,
-            START_SAMPLES[i],
-            "track {} start_sample",
-            i + 1
-        );
-        assert_eq!(
-            segment.span.end_sample,
-            END_SAMPLES[i],
-            "track {} end_sample",
-            i + 1
-        );
+        assert_eq!(segment.span.start_sample, START_SAMPLES[i], "track {} start_sample", i + 1);
+        assert_eq!(segment.span.end_sample, END_SAMPLES[i], "track {} end_sample", i + 1);
     }
 }
 
@@ -342,23 +287,15 @@ fn cue_alac_disc_id_is_stable() {
     let disc_id = read_rip_artifacts(&categorized).disc_id.computed();
 
     assert_eq!(track_count, 3, "three tracks in the CUE sheet");
-    let [computed]: [bae_core::signals::ComputedDiscId; 1] = disc_id
-        .try_into()
-        .expect("CUE+ALAC pair must produce one disc ID");
-    assert_eq!(
-        computed.disc_id.len(),
-        28,
-        "MusicBrainz disc IDs are 28-char base64 strings"
-    );
+    let [computed]: [bae_core::signals::ComputedDiscId; 1] =
+        disc_id.try_into().expect("CUE+ALAC pair must produce one disc ID");
+    assert_eq!(computed.disc_id.len(), 28, "MusicBrainz disc IDs are 28-char base64 strings");
     assert_eq!(
         computed.disc_id, EXPECTED_CUE_ALAC_DISC_ID,
         "disc ID drifted — CUE parsing, probe duration, or disc ID math changed",
     );
     assert!(
-        computed
-            .source_file
-            .as_deref()
-            .is_some_and(|file| file.ends_with(".cue")),
+        computed.source_file.as_deref().is_some_and(|file| file.ends_with(".cue")),
         "the sheet it was carved from rides with it, got {:?}",
         computed.source_file
     );

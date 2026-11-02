@@ -39,13 +39,9 @@ fn a_profile_request_shows_the_stop_that_ended_its_circle() {
                 .iter()
                 .any(|member| member.active_devices.iter().any(|d| d.id == tablet_id))
         };
-        laptop
-            .wait_until("the tablet's registration", tablet_active)
-            .await;
+        laptop.wait_until("the tablet's registration", tablet_active).await;
         laptop.manager().remove_device(tablet_id).await.unwrap();
-        laptop
-            .wait_until("the tablet's removal", || async { !tablet_active().await })
-            .await;
+        laptop.wait_until("the tablet's removal", || async { !tablet_active().await }).await;
 
         tablet.database().start_sync().await.unwrap();
         let stopped = RequestedProfile {

@@ -73,9 +73,6 @@ impl LookupCatalogPreferences {
 
 impl Default for LookupCatalogPreferences {
     fn default() -> Self {
-        Self {
-            musicbrainz: true,
-            discogs: true,
-        }
+        Self { musicbrainz: true, discogs: true }
     }
 }

@@ -2,9 +2,7 @@ use super::*;
 use DbUnstoredAudio::*;
 
 fn device_a() -> OtherDevice {
-    OtherDevice::Active {
-        name: "Device A".to_string(),
-    }
+    OtherDevice::Active { name: "Device A".to_string() }
 }
 
 #[test]
@@ -14,10 +12,7 @@ fn an_attached_release_plays_on_any_device() {
 
 #[test]
 fn a_local_release_plays_where_its_originals_are() {
-    assert_eq!(
-        release_playability(&[Original, Original]),
-        ReleasePlayability::Playable
-    );
+    assert_eq!(release_playability(&[Original, Original]), ReleasePlayability::Playable);
 }
 
 #[test]

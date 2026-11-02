@@ -6,8 +6,8 @@
 /// the decoded output may start slightly before the requested position — the
 /// actual alignment is recovered by correlating against the ground truth.
 fn check_seek_to_produces_correct_samples(sample_rate: u32, channels: u32, bits_per_sample: u32) {
-    use crate::track_stream::create_track_stream_pair_with_capacity;
     use crate::sparse_buffer::create_sparse_buffer;
+    use crate::track_stream::create_track_stream_pair_with_capacity;
     use std::thread;
 
     let duration_secs = 2;
@@ -23,13 +23,9 @@ fn check_seek_to_produces_correct_samples(sample_rate: u32, channels: u32, bits_
         }
     }
 
-    let flac_data = encode_i32(
-        EncodeFormat::Flac { bits_per_sample },
-        &original,
-        sample_rate,
-        channels,
-    )
-    .unwrap();
+    let flac_data =
+        encode_i32(EncodeFormat::Flac { bits_per_sample }, &original, sample_rate, channels)
+            .unwrap();
     let ground_truth = decode_audio(buffer_from(&flac_data), None, None).unwrap();
 
     let seek_sample = sample_rate as u64; // 1 second
@@ -69,11 +65,7 @@ fn check_seek_to_produces_correct_samples(sample_rate: u32, channels: u32, bits_
         seeked_samples.extend_from_slice(&buf[..n]);
     }
 
-    assert!(
-        seeked_samples.len() > 100,
-        "Not enough seeked samples: {}",
-        seeked_samples.len()
-    );
+    assert!(seeked_samples.len() > 100, "Not enough seeked samples: {}", seeked_samples.len());
 
     let scale = i32::MAX as f32;
 
@@ -97,9 +89,8 @@ fn check_seek_to_produces_correct_samples(sample_rate: u32, channels: u32, bits_
             break;
         }
         let mut err = 0.0f64;
-        for (&seeked, &truth) in seeked_samples[..window]
-            .iter()
-            .zip(&ground_truth.samples[offset..offset + window])
+        for (&seeked, &truth) in
+            seeked_samples[..window].iter().zip(&ground_truth.samples[offset..offset + window])
         {
             let diff = seeked as f64 - truth as f64 / scale as f64;
             err += diff * diff;
@@ -194,18 +185,16 @@ fn test_seek_to_stereo_96000_16bit() {
 /// signature; the seektable path never does it. Remove the flag and this fails.
 #[test]
 fn flac_seek_uses_seektable_not_binary_search() {
-    use crate::track_stream::create_track_stream_pair_with_capacity;
     use crate::sparse_buffer::create_sparse_buffer;
+    use crate::track_stream::create_track_stream_pair_with_capacity;
     use std::thread;
 
     init();
 
     // 30s synthetic stereo CUE/FLAC fixture (silence / white noise / brown noise)
     // carrying a 6-point seektable.
-    let path = concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/../bae-core/tests/fixtures/cue_flac/Test Album.flac"
-    );
+    let path =
+        concat!(env!("CARGO_MANIFEST_DIR"), "/../bae-core/tests/fixtures/cue_flac/Test Album.flac");
     let flac = std::fs::read(path).expect("read fixture");
     let file_len = flac.len() as u64;
 
@@ -281,15 +270,13 @@ fn flac_seek_uses_seektable_not_binary_search() {
 ///   where output begins.
 #[test]
 fn byte_seek_to_landing_is_sample_exact() {
-    use crate::track_stream::create_track_stream_pair_with_capacity;
     use crate::sparse_buffer::create_sparse_buffer;
+    use crate::track_stream::create_track_stream_pair_with_capacity;
     use std::thread;
 
     init();
-    let path = concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/../bae-core/tests/fixtures/cue_flac/Test Album.flac"
-    );
+    let path =
+        concat!(env!("CARGO_MANIFEST_DIR"), "/../bae-core/tests/fixtures/cue_flac/Test Album.flac");
     let flac = std::fs::read(path).expect("read fixture");
     let sample_rate = 44100u64;
     let channels = 2u32;
@@ -388,11 +375,7 @@ fn byte_seek_to_landing_is_sample_exact() {
         "a wrong landing byte still produced the target sample (len {}, mse {:.6}) -- \
          the byte-seek target is not driving where output begins",
         sabotaged.len(),
-        if sabotaged.len() >= 256 {
-            mse(&sabotaged, target)
-        } else {
-            f64::NAN
-        },
+        if sabotaged.len() >= 256 { mse(&sabotaged, target) } else { f64::NAN },
     );
 }
 
@@ -438,11 +421,7 @@ fn streaming_opus_encode_into_a_plain_write_sink_is_decodable() {
     encoder.finish().expect("streaming Opus encode");
 
     let bytes = out.0.lock().unwrap().clone();
-    assert!(
-        bytes.len() > 100,
-        "Opus/Ogg stream too small: {}",
-        bytes.len()
-    );
+    assert!(bytes.len() > 100, "Opus/Ogg stream too small: {}", bytes.len());
     assert_eq!(&bytes[0..4], b"OggS");
 
     let decoded = decode_audio(buffer_from(&bytes), None, None).expect("decode streamed Opus");
@@ -519,15 +498,8 @@ fn seekable_flac_encode_patches_streaminfo_total_samples() {
 
     let frames = 44_100u64; // 1s mono
     let samples: Vec<i32> = vec![0i32; frames as usize];
-    let flac = encode_i32(
-        EncodeFormat::Flac {
-            bits_per_sample: 16,
-        },
-        &samples,
-        44_100,
-        1,
-    )
-    .expect("encode FLAC");
+    let flac = encode_i32(EncodeFormat::Flac { bits_per_sample: 16 }, &samples, 44_100, 1)
+        .expect("encode FLAC");
     assert_eq!(&flac[0..4], b"fLaC");
 
     // STREAMINFO: byte 21 low nibble = total-samples bits 32..36, bytes 22..26
@@ -537,10 +509,7 @@ fn seekable_flac_encode_patches_streaminfo_total_samples() {
         | (u64::from(flac[23]) << 16)
         | (u64::from(flac[24]) << 8)
         | u64::from(flac[25]);
-    assert_eq!(
-        total, frames,
-        "STREAMINFO total_samples must be patched to the real frame count"
-    );
+    assert_eq!(total, frames, "STREAMINFO total_samples must be patched to the real frame count");
 }
 
 /// A PCM-shape change mid-encode (two decodes with different formats feeding
@@ -551,22 +520,15 @@ fn encoder_rejects_a_pcm_shape_change_mid_stream() {
     init();
 
     let mut encoder = StreamingEncoder::seekable(
-        EncodeFormat::Flac {
-            bits_per_sample: 16,
-        },
+        EncodeFormat::Flac { bits_per_sample: 16 },
         Box::new(std::io::Cursor::new(Vec::new())),
         Arc::new(std::sync::atomic::AtomicBool::new(false)),
     );
     encoder.on_format(44_100, 2);
     encoder.on_samples(&[0i32; 8820]);
     encoder.on_format(48_000, 2); // a second track probes to a different rate
-    assert!(
-        encoder.error().is_some(),
-        "the shape change must be recorded when it happens"
-    );
-    let err = encoder
-        .finish()
-        .expect_err("finish must surface the shape change");
+    assert!(encoder.error().is_some(), "the shape change must be recorded when it happens");
+    let err = encoder.finish().expect_err("finish must surface the shape change");
     assert!(err.contains("PCM shape changed"), "unexpected error: {err}");
 }
 
@@ -607,9 +569,7 @@ fn streaming_wav_encode_into_a_plain_write_sink_is_unsized_pcm() {
     for bits in [16u32, 24] {
         let out = SharedVec(Arc::new(Mutex::new(Vec::new())));
         let mut encoder = StreamingEncoder::streaming(
-            StreamEncodeFormat::PcmWav {
-                bits_per_sample: bits,
-            },
+            StreamEncodeFormat::PcmWav { bits_per_sample: bits },
             Box::new(out.clone()),
             Arc::new(std::sync::atomic::AtomicBool::new(false)),
         );
@@ -638,10 +598,7 @@ fn streaming_wav_encode_into_a_plain_write_sink_is_unsized_pcm() {
             .iter()
             .flat_map(|&s| s.to_le_bytes()[4 - bytes_per_sample..].to_vec())
             .collect();
-        assert!(
-            wav.data == expected,
-            "{bits}-bit data is the input's top {bits} bits"
-        );
+        assert!(wav.data == expected, "{bits}-bit data is the input's top {bits} bits");
     }
 }
 
@@ -671,15 +628,7 @@ fn stereo_flac_file(frames: usize) -> (tempfile::NamedTempFile, Vec<u8>) {
             (((i as f64 * 0.013).sin() * 0.5 + jitter * 0.05) * i32::MAX as f64) as i32
         })
         .collect();
-    let flac = encode_i32(
-        EncodeFormat::Flac {
-            bits_per_sample: 16,
-        },
-        &samples,
-        44_100,
-        2,
-    )
-    .unwrap();
+    let flac = encode_i32(EncodeFormat::Flac { bits_per_sample: 16 }, &samples, 44_100, 2).unwrap();
     let mut file = tempfile::NamedTempFile::new().unwrap();
     std::io::Write::write_all(&mut file, &flac).unwrap();
     std::io::Write::flush(&mut file).unwrap();
@@ -763,7 +712,8 @@ fn seek_landing_bytes_land_targets_in_a_flacs_final_frames() {
     );
     for (&target, &landing) in targets.iter().zip(&landings) {
         assert!(
-            decode_from_landing(&flac, landing, Some(target)) == ground.samples[target as usize * 2..],
+            decode_from_landing(&flac, landing, Some(target))
+                == ground.samples[target as usize * 2..],
             "target {target} decodes exactly from its landing"
         );
     }

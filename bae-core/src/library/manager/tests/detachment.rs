@@ -49,32 +49,15 @@ async fn check_release_detachment(devices: &crate::sync::test_devices::TwoDevice
         // The second device has cached the audio; detachment must still prevent playback.
         for file in &files {
             let expected = std::fs::read(original.path().join(&file.original_filename)).unwrap();
-            assert_eq!(
-                devices
-                    .b()
-                    .database()
-                    .read_release_file(&file.id)
-                    .await
-                    .unwrap(),
-                expected
-            );
+            assert_eq!(devices.b().database().read_release_file(&file.id).await.unwrap(), expected);
         }
         devices.pause().await;
         manager.database.unlock_store_key().await.unwrap();
-        manager
-            .detach_release_audio(&release.id, destination.path())
-            .await
-            .unwrap();
+        manager.detach_release_audio(&release.id, destination.path()).await.unwrap();
     } else {
-        manager
-            .cancel_release_transition(&release.id)
-            .await
-            .unwrap();
+        manager.cancel_release_transition(&release.id).await.unwrap();
         // Retrying the command cannot undo the local state.
-        manager
-            .cancel_release_transition(&release.id)
-            .await
-            .unwrap();
+        manager.cancel_release_transition(&release.id).await.unwrap();
     }
 
     // Cancelling the move leaves every file on this device only, as it was;
@@ -82,34 +65,14 @@ async fn check_release_detachment(devices: &crate::sync::test_devices::TwoDevice
     // changes either way.
     assert_eq!(moving_file_count(manager, &release.id).await, 0);
     for file in &files {
-        let row = manager
-            .database
-            .find_file_by_id(&file.id)
-            .await
-            .unwrap()
-            .unwrap();
+        let row = manager.database.find_file_by_id(&file.id).await.unwrap().unwrap();
         assert_eq!(row.file, file.file);
-        assert!(
-            !manager
-                .database
-                .find_file_by_id(&file.id)
-                .await
-                .unwrap()
-                .unwrap()
-                .stored
-        );
-        let path = if uploaded {
-            destination.path()
-        } else {
-            original.path()
-        }
-        .join(&file.original_filename);
+        assert!(!manager.database.find_file_by_id(&file.id).await.unwrap().unwrap().stored);
+        let path = if uploaded { destination.path() } else { original.path() }
+            .join(&file.original_filename);
         assert_eq!(manager.file_local_path(&file.id).await.unwrap(), Some(path));
         let expected = std::fs::read(original.path().join(&file.original_filename)).unwrap();
-        assert_eq!(
-            manager.database.read_release_file(&file.id).await.unwrap(),
-            expected
-        );
+        assert_eq!(manager.database.read_release_file(&file.id).await.unwrap(), expected);
     }
     assert_eq!(cover_file(manager, &release.id).await.id(), cover);
     manager.database.set_uploads_paused(false).await.unwrap();
@@ -121,30 +84,13 @@ async fn check_release_detachment(devices: &crate::sync::test_devices::TwoDevice
         )
         .await;
     for file in &files {
-        assert!(
-            !devices
-                .b()
-                .database()
-                .find_file_by_id(&file.id)
-                .await
-                .unwrap()
-                .unwrap()
-                .stored
-        );
-        assert!(devices
-            .b()
-            .manager()
-            .file_local_path(&file.id)
-            .await
-            .unwrap()
-            .is_none());
+        assert!(!devices.b().database().find_file_by_id(&file.id).await.unwrap().unwrap().stored);
+        assert!(devices.b().manager().file_local_path(&file.id).await.unwrap().is_none());
         let read = devices.b().database().read_release_file(&file.id).await;
         assert!(
             matches!(
                 read,
-                Err(crate::db::DbError::FileRead(
-                    coven::FileReadError::DeviceOnly { .. }
-                ))
+                Err(crate::db::DbError::FileRead(coven::FileReadError::DeviceOnly { .. }))
             ),
             "{read:?}"
         );
@@ -169,29 +115,12 @@ async fn cancelling_the_upload_of_a_release_kept_here_detaches_audio() {
     )
     .await;
     manager.upload_release(&release.id, true).await.unwrap();
-    manager
-        .cancel_release_transition(&release.id)
-        .await
-        .unwrap();
+    manager.cancel_release_transition(&release.id).await.unwrap();
     assert!(download_queue_now(&manager).await.rows.is_empty());
-    assert_eq!(
-        manager
-            .database
-            .queued_upload_count_for_test()
-            .await
-            .unwrap(),
-        0
-    );
+    assert_eq!(manager.database.queued_upload_count_for_test().await.unwrap(), 0);
     let files = release_files(&manager, &release.id).await;
     assert!(files.iter().all(|file| !file.stored));
-    assert_eq!(
-        manager
-            .database
-            .read_release_file(&files[0].id)
-            .await
-            .unwrap(),
-        b"audio"
-    );
+    assert_eq!(manager.database.read_release_file(&files[0].id).await.unwrap(), b"audio");
 }
 
 /// Cancelling every move needs no original: nothing was switched, so every
@@ -209,32 +138,15 @@ async fn cancelling_uploads_with_a_missing_original_keeps_every_release_here() {
     .await;
     std::fs::remove_file(temp.path().join("second/b.flac")).unwrap();
     manager.cancel_all_release_uploads().await.unwrap();
-    assert_eq!(
-        manager
-            .database
-            .queued_upload_count_for_test()
-            .await
-            .unwrap(),
-        0
-    );
+    assert_eq!(manager.database.queued_upload_count_for_test().await.unwrap(), 0);
     for release in [&first, &second] {
         for file in release_files(&manager, &release.id).await {
             assert!(!file.stored);
-            assert!(manager
-                .database
-                .external_file(&file.id)
-                .await
-                .unwrap()
-                .is_some());
+            assert!(manager.database.external_file(&file.id).await.unwrap().is_some());
         }
     }
     assert_eq!(
-        manager
-            .find_release_detail(&second.id)
-            .await
-            .unwrap()
-            .unwrap()
-            .playability,
+        manager.find_release_detail(&second.id).await.unwrap().unwrap().playability,
         crate::album_detail::ReleasePlayability::Playable,
         "the release is back on this device, as the library records it"
     );
@@ -245,17 +157,11 @@ async fn cancelling_every_upload_beside_a_new_cover_preserves_completed_audio_an
     let (manager, _temp, release, _) = queued_upload_fixture("completed").await;
     manager.drain_uploads_expecting_work().await.unwrap();
     manager.set_downloads_paused(true).await.unwrap();
-    manager
-        .enqueue_pins(vec![release.id.clone()])
-        .await
-        .unwrap();
+    manager.enqueue_pins(vec![release.id.clone()]).await.unwrap();
     store_test_cover(&manager, &release.id, b"cover").await;
     assert_eq!(download_queue_now(&manager).await.rows.len(), 1);
     manager.cancel_all_release_uploads().await.unwrap();
     assert_eq!(download_queue_now(&manager).await.rows.len(), 1);
-    assert!(release_files(&manager, &release.id)
-        .await
-        .iter()
-        .all(|file| file.stored));
+    assert!(release_files(&manager, &release.id).await.iter().all(|file| file.stored));
     cover_file(&manager, &release.id).await;
 }

@@ -61,7 +61,11 @@ fn seed_mb_release_with_works(
     );
 }
 
-async fn pick_mb(handle: &ImportServiceHandle, key: &crate::import::CandidateKey, release_id: &str) {
+async fn pick_mb(
+    handle: &ImportServiceHandle,
+    key: &crate::import::CandidateKey,
+    release_id: &str,
+) {
     handle
         .select_candidate_release(
             key.clone(),
@@ -71,7 +75,8 @@ async fn pick_mb(handle: &ImportServiceHandle, key: &crate::import::CandidateKey
                     release_id,
                 ),
                 partners: vec![],
-            }, crate::import::CatalogApplySteps::unread(),
+            },
+            crate::import::CatalogApplySteps::unread(),
         )
         .await
         .unwrap();
@@ -194,7 +199,9 @@ async fn the_pane_shows_each_tracks_stated_length_after_a_file_decision() {
     shut_down(fixture.handle).await;
 
     let rows: Vec<_> = pane
-        .draft().unwrap().mapping
+        .draft()
+        .unwrap()
+        .mapping
         .track_sides
         .iter()
         .flat_map(crate::import::MappingTrackSide::mappings)
@@ -213,13 +220,7 @@ async fn the_pane_shows_each_tracks_stated_length_after_a_file_decision() {
 /// nothing the candidate imports (B2).
 #[tokio::test(flavor = "multi_thread")]
 async fn a_release_stored_again_after_apply_changes_nothing_the_draft_imports() {
-    let StoredCandidate {
-        handle,
-        candidate,
-        key,
-        tmp: _tmp,
-        ..
-    } = stored_candidate().await;
+    let StoredCandidate { handle, candidate, key, tmp: _tmp, .. } = stored_candidate().await;
     let providers = handle.library_manager.providers();
     seed_mb_release_with_works(
         providers,
@@ -244,29 +245,23 @@ async fn a_release_stored_again_after_apply_changes_nothing_the_draft_imports() 
     let payloads = handle
         .library_manager
         .fetch_release_payloads(
-            &crate::import::MetadataRef::new(bae_catalogs::catalog::Catalog::MusicBrainz, "edited-release"),
+            &crate::import::MetadataRef::new(
+                bae_catalogs::catalog::Catalog::MusicBrainz,
+                "edited-release",
+            ),
             crate::import::payloads::ReadDepth::Complete,
             bae_catalogs::rate_limiter::CallPriority::Interactive,
         )
         .await
         .unwrap();
-    handle
-        .library_manager
-        .save_source_release(&payloads.extract().unwrap())
-        .await
-        .unwrap();
+    handle.library_manager.save_source_release(&payloads.extract().unwrap()).await.unwrap();
     assert_eq!(stored_draft(&handle, &hash).await, applied);
 
     let mut events = handle.every_event();
     let import_id = handle.start_import(&key).await.unwrap().expect_queued();
-    let (release_id, _album_id) = await_import_outcome(&mut events, &import_id)
-        .await
-        .expect("the import completes");
-    let written = handle
-        .library_manager
-        .track_sources_for_test(&release_id)
-        .await
-        .unwrap();
+    let (release_id, _album_id) =
+        await_import_outcome(&mut events, &import_id).await.expect("the import completes");
+    let written = handle.library_manager.track_sources_for_test(&release_id).await.unwrap();
     shut_down(handle).await;
 
     assert_eq!(
@@ -292,12 +287,7 @@ async fn a_release_stored_again_after_apply_changes_nothing_the_draft_imports() 
 #[tokio::test(flavor = "multi_thread")]
 async fn a_tags_draft_and_a_blank_draft_import_exactly_the_draft() {
     for from_tags in [true, false] {
-        let StoredCandidate {
-            handle,
-            key,
-            tmp: _tmp,
-            ..
-        } = stored_candidate().await;
+        let StoredCandidate { handle, key, tmp: _tmp, .. } = stored_candidate().await;
         if from_tags {
             handle.select_candidate_file_tags(key.clone()).await.unwrap();
         } else {
@@ -306,7 +296,9 @@ async fn a_tags_draft_and_a_blank_draft_import_exactly_the_draft() {
         handle
             .set_candidate_album_artists(
                 &key,
-                vec![crate::import::Credited::plain(crate::import::ArtistAssignment::named("Typed Artist"))],
+                vec![crate::import::Credited::plain(crate::import::ArtistAssignment::named(
+                    "Typed Artist",
+                ))],
             )
             .await
             .unwrap();
@@ -328,14 +320,9 @@ async fn a_tags_draft_and_a_blank_draft_import_exactly_the_draft() {
 
         let mut events = handle.every_event();
         let import_id = handle.start_import(&key).await.unwrap().expect_queued();
-        let (release_id, album_id) = await_import_outcome(&mut events, &import_id)
-            .await
-            .expect("the import completes");
-        let tracks = handle
-            .library_manager
-            .get_tracks_for_release(&release_id)
-            .await
-            .unwrap();
+        let (release_id, album_id) =
+            await_import_outcome(&mut events, &import_id).await.expect("the import completes");
+        let tracks = handle.library_manager.get_tracks_for_release(&release_id).await.unwrap();
         let album = handle
             .library_manager
             .get_album_by_id(&album_id)
@@ -393,10 +380,7 @@ async fn the_draft_keeps_its_barcode_rows_as_typed() {
     );
 
     set(&["5012345678900"]).await;
-    assert_eq!(
-        stored_draft(&fixture.handle, &hash).await.pressing.barcodes,
-        ["5012345678900"]
-    );
+    assert_eq!(stored_draft(&fixture.handle, &hash).await.pressing.barcodes, ["5012345678900"]);
 }
 
 /// The draft keeps its label rows as the form holds them, in order, each field

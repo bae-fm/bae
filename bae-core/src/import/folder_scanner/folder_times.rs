@@ -46,10 +46,7 @@ impl FolderTimes {
         let added = attributes::added(path)?;
         #[cfg(not(target_os = "macos"))]
         let added = None;
-        Ok(Self {
-            added,
-            ..Self::of_metadata(path)?
-        })
+        Ok(Self { added, ..Self::of_metadata(path)? })
     }
 
     /// What `path`'s metadata gives, which carries no date added.
@@ -66,10 +63,7 @@ impl FolderTimes {
     /// created, or last had an entry directly in it change, whichever came
     /// last; `None` when it gives none.
     pub(crate) fn latest(&self) -> Option<SystemTime> {
-        [self.added, self.created, self.modified]
-            .into_iter()
-            .flatten()
-            .max()
+        [self.added, self.created, self.modified].into_iter().flatten().max()
     }
 
     /// When the folder arrived, as far as the system says: its date added,
@@ -146,19 +140,12 @@ pub(crate) fn times_of_folders(
         }
     }
     cancellation.check()?;
-    let unread: Vec<usize> = (0..folders.len())
-        .filter(|index| times[*index].is_none())
-        .collect();
-    for (index, read) in unread
-        .iter()
-        .zip(read_each_at_once(root, folders, &unread, cancellation)?)
+    let unread: Vec<usize> = (0..folders.len()).filter(|index| times[*index].is_none()).collect();
+    for (index, read) in unread.iter().zip(read_each_at_once(root, folders, &unread, cancellation)?)
     {
         times[*index] = Some(read);
     }
-    Ok(times
-        .into_iter()
-        .map(|times| times.expect("every folder's dates are read"))
-        .collect())
+    Ok(times.into_iter().map(|times| times.expect("every folder's dates are read")).collect())
 }
 
 /// The dates of `folders[index]` for each of `indices`, in their order, each
@@ -205,10 +192,7 @@ fn read_each_at_once(
             });
         }
     });
-    if let Some(failed) = panicked
-        .into_inner()
-        .unwrap_or_else(std::sync::PoisonError::into_inner)
-    {
+    if let Some(failed) = panicked.into_inner().unwrap_or_else(std::sync::PoisonError::into_inner) {
         return Err(FolderScanError::Panicked(failed));
     }
     cancellation.check()?;
@@ -241,68 +225,38 @@ mod tests {
     #[test]
     fn a_folder_is_as_new_as_the_latest_date_the_system_gives() {
         // Just added: a copy that kept its old created and modified dates.
-        let added_last = FolderTimes {
-            added: at(30),
-            created: at(20),
-            modified: at(10),
-        };
+        let added_last = FolderTimes { added: at(30), created: at(20), modified: at(10) };
         assert_eq!(added_last.latest(), at(30));
         // Something just changed directly in it, long after it was added.
-        let modified_last = FolderTimes {
-            added: at(5),
-            created: at(5),
-            modified: at(60),
-        };
+        let modified_last = FolderTimes { added: at(5), created: at(5), modified: at(60) };
         assert_eq!(modified_last.latest(), at(60));
         // No date added kept, as on an SMB share.
-        let created_last = FolderTimes {
-            added: None,
-            created: at(50),
-            modified: at(40),
-        };
+        let created_last = FolderTimes { added: None, created: at(50), modified: at(40) };
         assert_eq!(created_last.latest(), at(50));
-        let only_modified = FolderTimes {
-            modified: at(10),
-            ..Default::default()
-        };
+        let only_modified = FolderTimes { modified: at(10), ..Default::default() };
         assert_eq!(only_modified.latest(), at(10));
         assert_eq!(FolderTimes::default().latest(), None);
     }
 
     #[test]
     fn a_folder_arrived_when_it_was_added_else_created_never_modified() {
-        let all = FolderTimes {
-            added: at(30),
-            created: at(20),
-            modified: at(60),
-        };
+        let all = FolderTimes { added: at(30), created: at(20), modified: at(60) };
         assert_eq!(all.arrival(), Some(FolderDate::AddedToDirectory(30_000)));
         let no_added = FolderTimes { added: None, ..all };
         assert_eq!(no_added.arrival(), Some(FolderDate::Created(20_000)));
-        let only_modified = FolderTimes {
-            modified: at(60),
-            ..Default::default()
-        };
+        let only_modified = FolderTimes { modified: at(60), ..Default::default() };
         assert_eq!(only_modified.arrival(), None);
     }
 
     #[test]
     fn unavailable_creation_time_is_absent_but_io_errors_propagate() {
         let path = Path::new("folder");
+        assert_eq!(creation_time(path, Err(io::ErrorKind::Unsupported.into())).unwrap(), None);
         assert_eq!(
-            creation_time(path, Err(io::ErrorKind::Unsupported.into())).unwrap(),
-            None
-        );
-        assert_eq!(
-            creation_time(path, Err(io::ErrorKind::PermissionDenied.into()))
-                .unwrap_err()
-                .kind(),
+            creation_time(path, Err(io::ErrorKind::PermissionDenied.into())).unwrap_err().kind(),
             io::ErrorKind::PermissionDenied
         );
-        assert_eq!(
-            creation_time(path, Ok(UNIX_EPOCH)).unwrap(),
-            Some(UNIX_EPOCH)
-        );
+        assert_eq!(creation_time(path, Ok(UNIX_EPOCH)).unwrap(), Some(UNIX_EPOCH));
     }
 
     #[test]
@@ -310,10 +264,7 @@ mod tests {
         let directory = tempfile::tempdir().unwrap();
         let date = FolderDate::read(directory.path()).unwrap();
         #[cfg(target_os = "macos")]
-        assert!(
-            matches!(date, Some(FolderDate::AddedToDirectory(_))),
-            "{date:?}"
-        );
+        assert!(matches!(date, Some(FolderDate::AddedToDirectory(_))), "{date:?}");
         #[cfg(not(target_os = "macos"))]
         let _ = date;
         assert!(FolderDate::read(&directory.path().join("missing")).is_err());
@@ -332,29 +283,16 @@ mod tests {
 
     #[test]
     fn newest_first_puts_the_undated_last_and_keeps_ties_in_order() {
-        let modified = |seconds| FolderTimes {
-            modified: at(seconds),
-            ..Default::default()
-        };
+        let modified = |seconds| FolderTimes { modified: at(seconds), ..Default::default() };
         let times = [
             FolderTimes::default(),
             modified(10),
-            FolderTimes {
-                added: at(40),
-                ..Default::default()
-            },
+            FolderTimes { added: at(40), ..Default::default() },
             modified(20),
             FolderTimes::default(),
             // Added long ago, and its latest date ties the folder before it.
-            FolderTimes {
-                added: at(1),
-                created: at(1),
-                modified: at(20),
-            },
-            FolderTimes {
-                created: at(30),
-                ..Default::default()
-            },
+            FolderTimes { added: at(1), created: at(1), modified: at(20) },
+            FolderTimes { created: at(30), ..Default::default() },
         ];
         assert_eq!(newest_first(&times), vec![2, 6, 3, 5, 1, 0, 4]);
     }
@@ -370,11 +308,7 @@ mod tests {
         for name in ["One", "Two"] {
             std::fs::create_dir(root.path().join(name)).unwrap();
         }
-        let folders = [
-            PathBuf::from("One"),
-            PathBuf::from("Missing"),
-            PathBuf::from("Two"),
-        ];
+        let folders = [PathBuf::from("One"), PathBuf::from("Missing"), PathBuf::from("Two")];
         let times = times_of_folders(root.path(), &folders, &ScanCancellation::new()).unwrap();
         assert_eq!(times.len(), 3);
         assert!(times[0].modified.is_some() && times[2].modified.is_some());
@@ -420,10 +354,7 @@ mod tests {
             .unwrap();
         std::fs::rename(&elsewhere, root.join("Arrives Later")).unwrap();
 
-        let folders = [
-            PathBuf::from("Already There"),
-            PathBuf::from("Arrives Later"),
-        ];
+        let folders = [PathBuf::from("Already There"), PathBuf::from("Arrives Later")];
         let times = times_of_folders(&root, &folders, &ScanCancellation::new()).unwrap();
         assert!(times[1].added > times[0].added, "{times:?}");
         assert!(times[0].modified > times[1].modified, "{times:?}");

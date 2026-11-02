@@ -64,10 +64,8 @@ const STOP_WORDS: &[&str] = &[
 /// The one normalization of a name: candidate text clusters by it, and an
 /// artist is found by it — see [`super::artist_name_key`].
 pub fn normalize(text: &str) -> String {
-    let decomposed: String = text
-        .nfd()
-        .filter(|c| !unicode_normalization::char::is_combining_mark(*c))
-        .collect();
+    let decomposed: String =
+        text.nfd().filter(|c| !unicode_normalization::char::is_combining_mark(*c)).collect();
     let s = decomposed.to_lowercase();
     let mut collapsed = String::with_capacity(s.len());
     let mut prev_space = false;
@@ -82,9 +80,7 @@ pub fn normalize(text: &str) -> String {
             prev_space = false;
         }
     }
-    collapsed
-        .trim_matches(|c: char| !c.is_alphanumeric())
-        .to_string()
+    collapsed.trim_matches(|c: char| !c.is_alphanumeric()).to_string()
 }
 
 #[cfg(test)]

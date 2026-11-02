@@ -35,11 +35,9 @@ pub(super) fn settle_credit_name(
 }
 
 fn own_name_key_on(conn: &CovenWrite<'_>, artist_id: &str) -> Result<String, DbError> {
-    conn.query_row(
-        "SELECT name_key FROM artists WHERE id = ?",
-        params![artist_id],
-        |row| row.get(0),
-    )
+    conn.query_row("SELECT name_key FROM artists WHERE id = ?", params![artist_id], |row| {
+        row.get(0)
+    })
     .optional()?
     .ok_or_else(|| DbError::Message(format!("artist {artist_id} is not in the library")))
 }
@@ -100,10 +98,7 @@ pub(super) fn credit_names_column(
         .into_iter()
         .map(|stored| ArtistCreditName {
             artist_id: stored.artist_id,
-            credit: CreditName {
-                key: stored.key,
-                name: stored.name,
-            },
+            credit: CreditName { key: stored.key, name: stored.name },
         })
         .collect())
 }
@@ -132,10 +127,7 @@ pub(super) fn credit_names_of_on(
                     row.get::<_, String>(0)?,
                     ArtistCreditName {
                         artist_id: row.get(1)?,
-                        credit: CreditName {
-                            key: row.get(2)?,
-                            name: row.get(3)?,
-                        },
+                        credit: CreditName { key: row.get(2)?, name: row.get(3)? },
                     },
                 ))
             })?
@@ -154,8 +146,7 @@ impl Database {
         artist_ids: &[String],
     ) -> Result<HashMap<String, Vec<ArtistCreditName>>, DbError> {
         let artist_ids = artist_ids.to_vec();
-        self.read(move |sql| credit_names_of_on(&sql, &artist_ids))
-            .await
+        self.read(move |sql| credit_names_of_on(&sql, &artist_ids)).await
     }
 
     /// Give `artist_id` the other printed name `name`. A name that folds to
@@ -182,11 +173,8 @@ impl Database {
         key: &str,
         name: &str,
     ) -> Result<(), DbError> {
-        let (artist_id, key, name) = (
-            artist_id.to_string(),
-            key.to_string(),
-            name.trim().to_string(),
-        );
+        let (artist_id, key, name) =
+            (artist_id.to_string(), key.to_string(), name.trim().to_string());
         let now = chrono::DateTime::<chrono::Utc>::from(self.inner.clock.now()).to_rfc3339();
         self.call_sql(move |sql| {
             let renamed = CreditName::of(&name);

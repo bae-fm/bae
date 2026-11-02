@@ -81,10 +81,7 @@ impl RendererSession {
                 on_panic_event(RendererSessionEvent::Ended(RendererError::Panicked(failed)))
             },
         )?;
-        Ok(Self {
-            command_tx: Some(command_tx),
-            thread: Some(thread),
-        })
+        Ok(Self { command_tx: Some(command_tx), thread: Some(thread) })
     }
 
     /// Load `media` on the renderer and start playing it.
@@ -114,10 +111,7 @@ impl RendererSession {
     }
 
     fn send(&self, command: SessionCommand) {
-        let sent = self
-            .command_tx
-            .as_ref()
-            .is_some_and(|tx| tx.send(command).is_ok());
+        let sent = self.command_tx.as_ref().is_some_and(|tx| tx.send(command).is_ok());
         if !sent {
             debug!("renderer session command dropped: the session thread has ended");
         }

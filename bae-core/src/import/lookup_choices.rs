@@ -85,10 +85,8 @@ impl SearchWords {
     /// no title — which is no words at all, and the draft's title stands.
     pub fn trimmed(self) -> Option<Self> {
         let album = self.album.trim();
-        (!album.is_empty()).then(|| Self {
-            album: album.to_string(),
-            artist: self.artist.trim().to_string(),
-        })
+        (!album.is_empty())
+            .then(|| Self { album: album.to_string(), artist: self.artist.trim().to_string() })
     }
 }
 
@@ -197,43 +195,24 @@ mod tests {
     fn one_change_leaves_every_other_choice_alone() {
         let out = held().edited(LookupChoiceEdit::ToggleDiscId);
         assert!(out.disc_id_excluded);
-        assert_eq!(
-            out,
-            LookupChoices {
-                disc_id_excluded: true,
-                ..held()
-            }
-        );
+        assert_eq!(out, LookupChoices { disc_id_excluded: true, ..held() });
         assert!(!out.edited(LookupChoiceEdit::ToggleDiscId).disc_id_excluded);
 
-        let barcode = |code: &str| LookupChoiceEdit::ToggleBarcode {
-            code: code.to_string(),
-        };
+        let barcode = |code: &str| LookupChoiceEdit::ToggleBarcode { code: code.to_string() };
         let out = held().edited(barcode("0123456789012"));
-        assert_eq!(
-            out.excluded_barcodes,
-            strings(&["0123456789012", "9999999999999"])
-        );
+        assert_eq!(out.excluded_barcodes, strings(&["0123456789012", "9999999999999"]));
         assert_eq!(out.chosen_catalogs, held().chosen_catalogs);
-        assert!(held()
-            .edited(barcode("9999999999999"))
-            .excluded_barcodes
-            .is_empty());
+        assert!(held().edited(barcode("9999999999999")).excluded_barcodes.is_empty());
     }
 
     /// Chosen numbers are looked up in the order they were chosen, and a
     /// number chosen again is taken out.
     #[test]
     fn a_catalog_number_joins_and_leaves_in_order() {
-        let catalog = |number: &str| LookupChoiceEdit::ToggleCatalog {
-            number: number.to_string(),
-        };
+        let catalog = |number: &str| LookupChoiceEdit::ToggleCatalog { number: number.to_string() };
         let added = held().edited(catalog("LBL 002"));
         assert_eq!(added.chosen_catalogs, strings(&["LBL 001", "LBL 002"]));
-        assert_eq!(
-            added.edited(catalog("LBL 001")).chosen_catalogs,
-            strings(&["LBL 002"])
-        );
+        assert_eq!(added.edited(catalog("LBL 001")).chosen_catalogs, strings(&["LBL 002"]));
     }
 
     /// Striking a number out chooses nothing and unchooses nothing: a chosen
@@ -241,9 +220,8 @@ mod tests {
     /// either.
     #[test]
     fn striking_a_number_out_or_back_chooses_nothing() {
-        let discounted = |number: &str| LookupChoiceEdit::ToggleDiscounted {
-            number: number.to_string(),
-        };
+        let discounted =
+            |number: &str| LookupChoiceEdit::ToggleDiscounted { number: number.to_string() };
         let struck = held().edited(discounted("LBL 001"));
         assert_eq!(struck.discounted_catalogs, strings(&["LBL 001", "LBL 100"]));
         assert_eq!(struck.chosen_catalogs, strings(&["LBL 001"]));
@@ -261,15 +239,10 @@ mod tests {
         });
         assert_eq!(
             typed.search_words,
-            Some(SearchWords {
-                album: "Album Title".to_string(),
-                artist: "Artist".to_string(),
-            })
+            Some(SearchWords { album: "Album Title".to_string(), artist: "Artist".to_string() })
         );
-        let cleared = typed.edited(LookupChoiceEdit::SearchBy {
-            album: String::new(),
-            artist: String::new(),
-        });
+        let cleared = typed
+            .edited(LookupChoiceEdit::SearchBy { album: String::new(), artist: String::new() });
         assert_eq!(cleared.search_words, None);
     }
 
@@ -285,10 +258,7 @@ mod tests {
             discounted_catalogs: strings(&["nj-8255"]),
         }
         .normalized();
-        assert_eq!(
-            normalized.chosen_catalogs,
-            strings(&["WPCR-80001", "NJ 8255", "COCQ 84487"])
-        );
+        assert_eq!(normalized.chosen_catalogs, strings(&["WPCR-80001", "NJ 8255", "COCQ 84487"]));
         assert_eq!(normalized.discounted_catalogs, strings(&["nj-8255"]));
     }
 
@@ -301,10 +271,7 @@ mod tests {
             ..LookupChoices::default()
         }
         .normalized();
-        assert_eq!(
-            normalized.chosen_catalogs,
-            strings(&["NJ-8255", "WPCR-80001"])
-        );
+        assert_eq!(normalized.chosen_catalogs, strings(&["NJ-8255", "WPCR-80001"]));
     }
 
     /// Typed words keep their letters and lose their edges; words naming no
@@ -321,10 +288,7 @@ mod tests {
         .normalized();
         assert_eq!(
             typed.search_words,
-            Some(SearchWords {
-                album: "Album Title".to_string(),
-                artist: "Artist".to_string(),
-            })
+            Some(SearchWords { album: "Album Title".to_string(), artist: "Artist".to_string() })
         );
         let blank = LookupChoices {
             search_words: Some(SearchWords {

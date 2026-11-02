@@ -16,9 +16,7 @@ use crate::db::{DbError, ScrubPoint};
 #[cfg(any(test, feature = "test-utils", desktop))]
 pub(super) fn encode(points: &[ScrubPoint]) -> Result<Vec<u8>, DbError> {
     if points.is_empty() {
-        return Err(DbError::Message(
-            "a segment with no scrub points stores no row".to_string(),
-        ));
+        return Err(DbError::Message("a segment with no scrub points stores no row".to_string()));
     }
     let mut blob = Vec::with_capacity(points.len() * 8);
     let mut before: Option<ScrubPoint> = None;
@@ -124,19 +122,13 @@ mod tests {
     use super::*;
 
     fn point(sample: u64, byte: u64, exact_from: u64) -> ScrubPoint {
-        ScrubPoint {
-            sample,
-            byte,
-            exact_from,
-        }
+        ScrubPoint { sample, byte, exact_from }
     }
 
     fn is_damaged(result: Result<Vec<ScrubPoint>, DbError>) -> bool {
         matches!(
             result,
-            Err(DbError::Coven(coven::CovenError::Database(
-                coven::DbError::DamagedDatabase
-            )))
+            Err(DbError::Coven(coven::CovenError::Database(coven::DbError::DamagedDatabase)))
         )
     }
 
@@ -173,10 +165,7 @@ mod tests {
             vec![point(20, 100, 19)],
             vec![],
         ] {
-            assert!(
-                matches!(encode(&points), Err(DbError::Message(_))),
-                "{points:?}"
-            );
+            assert!(matches!(encode(&points), Err(DbError::Message(_))), "{points:?}");
         }
     }
 
@@ -212,15 +201,9 @@ mod tests {
             vec![0x80],
             // A varint past 64 bits.
             vec![0xff; 11],
-            vec![
-                0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x02, 0, 0,
-            ],
+            vec![0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x02, 0, 0],
             // A step past the largest sample.
-            [
-                encode(&[point(u64::MAX, 0, u64::MAX)]).unwrap(),
-                vec![0, 0, 0],
-            ]
-            .concat(),
+            [encode(&[point(u64::MAX, 0, u64::MAX)]).unwrap(), vec![0, 0, 0]].concat(),
         ] {
             assert!(is_damaged(decode(&blob)), "{blob:?}");
         }

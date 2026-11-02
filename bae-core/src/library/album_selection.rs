@@ -52,15 +52,8 @@ impl AlbumSelectionSubscription {
     }
 
     pub async fn next(&self) -> Result<AlbumSelectionSnapshot, AlbumSelectionSubscriptionError> {
-        let event = self
-            .query
-            .next()
-            .await
-            .map_err(AlbumSelectionSubscriptionError::from)?;
-        Ok(AlbumSelectionSnapshot {
-            requested: event.request.clone(),
-            gone: event.result?,
-        })
+        let event = self.query.next().await.map_err(AlbumSelectionSubscriptionError::from)?;
+        Ok(AlbumSelectionSnapshot { requested: event.request.clone(), gone: event.result? })
     }
 
     pub async fn cancel(&self) {

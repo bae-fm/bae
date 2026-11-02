@@ -82,16 +82,12 @@ impl ReleaseGroup {
     /// Every row on the card that a run's agreement set aside, section by
     /// section.
     pub fn narrowed_out(&self) -> impl Iterator<Item = &Pressing> {
-        self.sections
-            .iter()
-            .flat_map(|section| &section.narrowed_out)
+        self.sections.iter().flat_map(|section| &section.narrowed_out)
     }
 
     /// Every row the card offers, section by section, taken out of it.
     pub fn into_pressings(self) -> impl Iterator<Item = Pressing> {
-        self.sections
-            .into_iter()
-            .flat_map(|section| section.pressings)
+        self.sections.into_iter().flat_map(|section| section.pressings)
     }
 }
 
@@ -161,9 +157,7 @@ impl Pressing {
             .map(|release| {
                 let reference =
                     crate::import::MetadataRef::new(release.source, release.release_id.clone());
-                releases
-                    .iter()
-                    .any(|other| other.links.contains(&reference))
+                releases.iter().any(|other| other.links.contains(&reference))
             })
             .collect();
         let mut order: Vec<usize> = (0..releases.len()).collect();
@@ -188,9 +182,7 @@ impl Pressing {
 
     /// The release a row picks when the person picks the row itself.
     pub fn lead(&self) -> &MetadataResult {
-        self.releases
-            .first()
-            .expect("a pressing is built from at least one release")
+        self.releases.first().expect("a pressing is built from at least one release")
     }
 
     /// What picking this row claims, as release references: the primary — the
@@ -207,15 +199,11 @@ impl Pressing {
         let mut releases = self.releases.iter().map(|release| {
             crate::import::MetadataRef::new(release.source, release.release_id.clone())
         });
-        let primary = releases
-            .next()
-            .expect("a pressing is built from at least one release");
+        let primary = releases.next().expect("a pressing is built from at least one release");
         let mut partners: Vec<crate::import::MetadataRef> = Vec::new();
         for release in releases {
             let claimed = release.catalog == primary.catalog
-                || partners
-                    .iter()
-                    .any(|partner| partner.catalog == release.catalog);
+                || partners.iter().any(|partner| partner.catalog == release.catalog);
             if !claimed {
                 partners.push(release);
             }
@@ -232,19 +220,14 @@ impl Pressing {
     pub fn agreements(&self, judged: &Judgements) -> Agreements {
         self.releases
             .iter()
-            .fold(Agreements::NONE, |so_far, release| {
-                so_far.with(judged.of_release(release))
-            })
+            .fold(Agreements::NONE, |so_far, release| so_far.with(judged.of_release(release)))
     }
 
     /// What picking this row claims — the primary release and each other
     /// catalog's record of the same pressing — as the link a pick stores.
     pub fn pick(&self) -> crate::import::PressingLink {
         let (primary, partners) = self.claims();
-        crate::import::PressingLink {
-            record: primary,
-            partners,
-        }
+        crate::import::PressingLink { record: primary, partners }
     }
 }
 
@@ -318,9 +301,7 @@ impl Bucket {
             return false;
         };
         let album = MetadataRef::new(other.source, group_id.clone());
-        self.members
-            .iter()
-            .any(|&at| releases[at].album_links.names(&album))
+        self.members.iter().any(|&at| releases[at].album_links.names(&album))
     }
 
     fn as_source(&self, read: impl Fn(usize) -> bool) -> ReleaseGroupSource {
@@ -399,19 +380,13 @@ pub fn form_rows(results: &[MetadataResult]) -> Vec<u32> {
 #[cfg(test)]
 pub(crate) fn pressing_count(results: Vec<MetadataResult>) -> usize {
     // Counting is order-blind, so there is nothing to rank the rows by.
-    group_results(unranked(results), None)
-        .iter()
-        .map(|group| group.pressings().count())
-        .sum()
+    group_results(unranked(results), None).iter().map(|group| group.pressings().count()).sum()
 }
 
 /// Every release with nothing said about it — what a caller hands over when
 /// the rows are not being ranked.
 pub fn unranked(results: Vec<MetadataResult>) -> Vec<Judged> {
-    results
-        .into_iter()
-        .map(|result| (result, Agreements::NONE))
-        .collect()
+    results.into_iter().map(|result| (result, Agreements::NONE)).collect()
 }
 
 /// Group results into album cards with one row per physical pressing.
@@ -575,9 +550,8 @@ fn merge_buckets(
         let mut next = 0;
         while next < joined.len() {
             let from = joined[next];
-            let reached: Vec<usize> = (0..buckets.len())
-                .filter(|&to| !placed[to] && joins(from, to))
-                .collect();
+            let reached: Vec<usize> =
+                (0..buckets.len()).filter(|&to| !placed[to] && joins(from, to)).collect();
             for to in reached {
                 placed[to] = true;
                 joined.push(to);
@@ -615,26 +589,16 @@ fn build_group(
     judgements: &Judgements,
     offered: usize,
 ) -> (ReleaseGroup, CardRank) {
-    let members: Vec<usize> = card
-        .iter()
-        .flat_map(|bucket| bucket.members.iter().copied())
-        .collect();
+    let members: Vec<usize> =
+        card.iter().flat_map(|bucket| bucket.members.iter().copied()).collect();
     let read = |at: usize| -> &MetadataResult {
-        releases[at]
-            .as_ref()
-            .expect("a release is read before its card takes it")
+        releases[at].as_ref().expect("a release is read before its card takes it")
     };
     // Whether a release's album links were read, or never needed asking.
-    let links_known = |at: usize| {
-        !matches!(
-            read(at).album_links,
-            crate::import::album_links::AlbumLinks::Unread
-        )
-    };
-    let mut sources: Vec<ReleaseGroupSource> = card
-        .iter()
-        .map(|bucket| bucket.as_source(links_known))
-        .collect();
+    let links_known =
+        |at: usize| !matches!(read(at).album_links, crate::import::album_links::AlbumLinks::Unread);
+    let mut sources: Vec<ReleaseGroupSource> =
+        card.iter().map(|bucket| bucket.as_source(links_known)).collect();
     // An album a record's statements name on a catalog the card holds no
     // record of is still the album's: the card names it with its page.
     for album in members.iter().flat_map(|&at| read(at).album_links.read()) {
@@ -648,11 +612,7 @@ fn build_group(
         }
     }
     sources.sort_by_key(|source| source_rank(source.source));
-    let lead = read(
-        *members
-            .first()
-            .expect("a card is built from at least one release"),
-    );
+    let lead = read(*members.first().expect("a card is built from at least one release"));
     let id = card
         .iter()
         .find_map(|bucket| bucket.source_group_id.clone())
@@ -666,11 +626,10 @@ fn build_group(
     let year_min = years.iter().min().copied();
     let year_max = years.iter().max().copied();
 
-    let splits = card.iter().enumerate().any(|(at, bucket)| {
-        card[at + 1..]
-            .iter()
-            .any(|other| other.source == bucket.source)
-    });
+    let splits = card
+        .iter()
+        .enumerate()
+        .any(|(at, bucket)| card[at + 1..].iter().any(|other| other.source == bucket.source));
     let headings: Vec<AlbumHeading> = card
         .iter()
         .map(|bucket| AlbumHeading {
@@ -702,36 +661,25 @@ fn build_group(
                     "a row is offered whole or set aside whole"
                 );
                 album = album.min(bucket_of(other));
-                records.push(
-                    releases[other]
-                        .take()
-                        .expect("a pressing's records are on one card"),
-                );
+                records.push(releases[other].take().expect("a pressing's records are on one card"));
             }
         }
         let pressing = Pressing::of(records, judgements);
         rows.push(CardRow {
             album,
             offered: at < offered,
-            row: Row {
-                agreements: pressing.agreements(judgements).count(),
-                pressing,
-            },
+            row: Row { agreements: pressing.agreements(judgements).count(), pressing },
         });
     }
     let label = agreed_label(rows.iter().map(|row| &row.row.pressing));
     let best = |offered: bool| {
-        rows.iter()
-            .filter(|row| row.offered == offered)
-            .map(|row| row.row.agreements)
-            .max()
+        rows.iter().filter(|row| row.offered == offered).map(|row| row.row.agreements).max()
     };
     let rank = match best(true) {
         Some(best) => CardRank { offers: true, best },
-        None => CardRank {
-            offers: false,
-            best: best(false).expect("a card holds at least one row"),
-        },
+        None => {
+            CardRank { offers: false, best: best(false).expect("a card holds at least one row") }
+        }
     };
     let section = |album: Option<AlbumHeading>, home: Option<usize>| -> Option<PressingSection> {
         let of = |offered: bool| -> Vec<Pressing> {
@@ -747,11 +695,7 @@ fn build_group(
             .map(|row| row.pressing)
             .collect()
         };
-        let section = PressingSection {
-            album,
-            pressings: of(true),
-            narrowed_out: of(false),
-        };
+        let section = PressingSection { album, pressings: of(true), narrowed_out: of(false) };
         (!section.pressings.is_empty() || !section.narrowed_out.is_empty()).then_some(section)
     };
     let sections: Vec<PressingSection> = if splits {
@@ -765,17 +709,7 @@ fn build_group(
     };
 
     (
-        ReleaseGroup {
-            id,
-            title,
-            artist,
-            label,
-            cover_art,
-            sources,
-            year_min,
-            year_max,
-            sections,
-        },
+        ReleaseGroup { id, title, artist, label, cover_art, sources, year_min, year_max, sections },
         rank,
     )
 }
@@ -826,10 +760,7 @@ struct Row {
 /// audio against; one nobody has asked yet, and one that answered with
 /// nothing, have neither.
 fn states_tracklist(release: &MetadataResult) -> bool {
-    matches!(
-        release.source_tracks,
-        Some(crate::import::search::SourceTracks::Listed { .. })
-    )
+    matches!(release.source_tracks, Some(crate::import::search::SourceTracks::Listed { .. }))
 }
 
 /// Where a source sits in the one order surfaces list sources in. The last
@@ -850,11 +781,7 @@ fn source_rank(source: Catalog) -> usize {
 fn ordered_rows(mut rows: Vec<Row>) -> Vec<Row> {
     rows.sort_by_key(|row| {
         let lead = row.pressing.lead();
-        (
-            std::cmp::Reverse(row.agreements),
-            lead.year.is_none(),
-            lead.year,
-        )
+        (std::cmp::Reverse(row.agreements), lead.year.is_none(), lead.year)
     });
     rows
 }

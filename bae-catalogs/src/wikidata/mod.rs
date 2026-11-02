@@ -76,10 +76,7 @@ pub enum WikidataError {
     /// response's `Retry-After` asked bae to wait before asking again, when it
     /// stated one.
     #[error("Wikidata returned an error response (status {status:?})")]
-    Provider {
-        status: Option<u16>,
-        told_wait: Option<Duration>,
-    },
+    Provider { status: Option<u16>, told_wait: Option<Duration> },
     /// A local/internal failure (JSON parsing, body read).
     #[error("Wikidata API error: {0}")]
     Other(String),
@@ -96,10 +93,7 @@ impl WikidataError {
         } else if e.is_timeout() {
             WikidataError::Timeout
         } else if let Some(status) = e.status() {
-            WikidataError::Provider {
-                status: Some(status.as_u16()),
-                told_wait: None,
-            }
+            WikidataError::Provider { status: Some(status.as_u16()), told_wait: None }
         } else {
             WikidataError::Network(e)
         }
@@ -160,10 +154,7 @@ fn wikidata_body(
     if response.is_success() {
         Ok(response.body)
     } else {
-        Err(WikidataError::Provider {
-            status: Some(response.status),
-            told_wait,
-        })
+        Err(WikidataError::Provider { status: Some(response.status), told_wait })
     }
 }
 
@@ -206,21 +197,14 @@ impl Wikidata {
         }
 
         let _admitted = self.limiter.wait(priority).await;
-        let response = self
-            .http
-            .execute(request)
-            .await
-            .map_err(WikidataError::from_reqwest)?;
+        let response = self.http.execute(request).await.map_err(WikidataError::from_reqwest)?;
         let status = response.status().as_u16();
         let told_wait = bae_util::http::told_wait(response.headers());
         let body = response.text().await.map_err(WikidataError::from_reqwest)?;
         let response = CachedResponse { status, body };
 
         if !response.is_success() {
-            warn!(
-                "Wikidata error response ({} from {}): {}",
-                status, key, response.body
-            );
+            warn!("Wikidata error response ({} from {}): {}", status, key, response.body);
         }
         if is_cacheable(status) {
             self.responses.put(key, response.clone());
@@ -240,10 +224,7 @@ impl Wikidata {
             Some(json) => (200, json),
             None => (404, String::new()),
         };
-        self.responses.put(
-            bae_util::http::response_key(&url),
-            CachedResponse { status, body },
-        );
+        self.responses.put(bae_util::http::response_key(&url), CachedResponse { status, body });
     }
 
     /// One item's entity document, as Wikidata returned it.
@@ -257,10 +238,7 @@ impl Wikidata {
         item: &str,
         priority: CallPriority,
     ) -> Result<String, WikidataError> {
-        wikidata_retry("Wikidata entity fetch", || {
-            self.fetch_entity_once(item, priority)
-        })
-        .await
+        wikidata_retry("Wikidata entity fetch", || self.fetch_entity_once(item, priority)).await
     }
 
     async fn fetch_entity_once(
@@ -273,9 +251,7 @@ impl Wikidata {
 
         let raw_json = match self.get(&url, priority).await {
             Ok(body) => body,
-            Err(WikidataError::Provider {
-                status: Some(404), ..
-            }) => {
+            Err(WikidataError::Provider { status: Some(404), .. }) => {
                 return Err(WikidataError::NotFound(item.to_string()));
             }
             Err(error) => return Err(error),
@@ -344,18 +320,17 @@ impl WikidataEntity {
     /// dozens, most of them about the album rather than about where to read
     /// more of it.
     pub fn catalog_pages(&self) -> Vec<CatalogPage> {
-        let mut pages = vec![CatalogPage::Group {
-            catalog: Catalog::Wikidata,
-            key: self.item.clone(),
-        }];
+        let mut pages =
+            vec![CatalogPage::Group { catalog: Catalog::Wikidata, key: self.item.clone() }];
         for (property, catalog) in CATALOG_PROPERTIES {
             let Some(values) = self.claims.get(*property) else {
                 continue;
             };
-            pages.extend(values.iter().map(|value| CatalogPage::Group {
-                catalog: *catalog,
-                key: value.clone(),
-            }));
+            pages.extend(
+                values
+                    .iter()
+                    .map(|value| CatalogPage::Group { catalog: *catalog, key: value.clone() }),
+            );
         }
         pages
     }

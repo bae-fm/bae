@@ -57,9 +57,7 @@ impl<I, E: Clone> State<I, E> {
         match self {
             Self::Disabled => ServerStatus::Disabled,
             Self::Running { url, .. } => ServerStatus::Running { url: url.clone() },
-            Self::Error { error } => ServerStatus::Error {
-                error: error.clone(),
-            },
+            Self::Error { error } => ServerStatus::Error { error: error.clone() },
         }
     }
 }
@@ -85,11 +83,7 @@ where
     E: ServerError + Send + 'static,
 {
     pub fn new(name: &'static str, bug: ReportBug) -> Self {
-        Self {
-            name,
-            inner: Arc::new(Mutex::new(State::Disabled)),
-            bug,
-        }
+        Self { name, inner: Arc::new(Mutex::new(State::Disabled)), bug }
     }
 
     pub async fn status(&self) -> ServerStatus<E> {
@@ -110,10 +104,7 @@ where
     {
         {
             let state = self.inner.lock().await;
-            if let State::Running {
-                identity: running, ..
-            } = &*state
-            {
+            if let State::Running { identity: running, .. } = &*state {
                 if *running == identity {
                     return state.status();
                 }
@@ -128,9 +119,7 @@ where
         let task = {
             let mut state = self.inner.lock().await;
             match std::mem::replace(&mut *state, State::Disabled) {
-                State::Running {
-                    cancellation, task, ..
-                } => {
+                State::Running { cancellation, task, .. } => {
                     cancellation.cancel();
                     Some(task)
                 }
@@ -148,9 +137,7 @@ where
     pub async fn record_error(&self, error: E) -> ServerStatus<E> {
         self.shutdown().await;
         let mut state = self.inner.lock().await;
-        *state = State::Error {
-            error: error.clone(),
-        };
+        *state = State::Error { error: error.clone() };
         ServerStatus::Error { error }
     }
 
@@ -192,10 +179,7 @@ where
                 Err(failed) => server_failed(format!("{name} server stopped: {}", bug(failed))),
             };
             let mut state = task_state.lock().await;
-            if let State::Running {
-                identity: running, ..
-            } = &*state
-            {
+            if let State::Running { identity: running, .. } = &*state {
                 if *running == task_identity {
                     *state = State::Error { error };
                 }
@@ -203,12 +187,7 @@ where
         });
 
         let status = ServerStatus::Running { url: url.clone() };
-        *self.inner.lock().await = State::Running {
-            identity,
-            url,
-            cancellation,
-            task,
-        };
+        *self.inner.lock().await = State::Running { identity, url, cancellation, task };
         status
     }
 }
@@ -260,10 +239,7 @@ mod tests {
         let ServerStatus::Error { error } = status else {
             panic!("a panicked server is in error, got {status:?}");
         };
-        assert!(
-            error.0.contains("the server broke its guarantee"),
-            "{error:?}"
-        );
+        assert!(error.0.contains("the server broke its guarantee"), "{error:?}");
         let reported = reported.lock().unwrap().clone();
         assert_eq!(reported.len(), 1, "{reported:?}");
         assert!(reported[0].is_panic());

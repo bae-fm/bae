@@ -52,24 +52,9 @@ fn decode_audio_scales_pcm_sample_formats_to_full_range_i32() {
     for case in cases {
         let decoded = decode_audio(buffer_from(&case.wav), None, None).unwrap();
         assert_eq!(decoded.samples.len(), 3, "{}", case.name);
-        assert!(
-            decoded.samples[0] < case.min_below,
-            "{}: {:?}",
-            case.name,
-            decoded.samples
-        );
-        assert!(
-            decoded.samples[1].abs() < 20_000_000,
-            "{}: {:?}",
-            case.name,
-            decoded.samples
-        );
-        assert!(
-            decoded.samples[2] > case.max_above,
-            "{}: {:?}",
-            case.name,
-            decoded.samples
-        );
+        assert!(decoded.samples[0] < case.min_below, "{}: {:?}", case.name, decoded.samples);
+        assert!(decoded.samples[1].abs() < 20_000_000, "{}: {:?}", case.name, decoded.samples);
+        assert!(decoded.samples[2] > case.max_above, "{}: {:?}", case.name, decoded.samples);
     }
 }
 
@@ -82,18 +67,10 @@ fn seek_landing_bytes_track_sample_positions() {
     let sample_rate = 44100u32;
     let seconds = 4usize;
     let total = sample_rate as usize * seconds;
-    let samples: Vec<i32> = (0..total)
-        .map(|i| ((i as f64 * 0.02).sin() * 0.5 * i32::MAX as f64) as i32)
-        .collect();
-    let flac = encode_i32(
-        EncodeFormat::Flac {
-            bits_per_sample: 16,
-        },
-        &samples,
-        sample_rate,
-        1,
-    )
-    .unwrap();
+    let samples: Vec<i32> =
+        (0..total).map(|i| ((i as f64 * 0.02).sin() * 0.5 * i32::MAX as f64) as i32).collect();
+    let flac =
+        encode_i32(EncodeFormat::Flac { bits_per_sample: 16 }, &samples, sample_rate, 1).unwrap();
 
     let mut file = tempfile::NamedTempFile::new().unwrap();
     std::io::Write::write_all(&mut file, &flac).unwrap();
@@ -102,18 +79,13 @@ fn seek_landing_bytes_track_sample_positions() {
     let file_size = flac.len() as u64;
 
     // Probe at second boundaries (0, 1s, 2s, 3s).
-    let probes: Vec<u64> = (0..seconds as u64)
-        .map(|s| s * sample_rate as u64)
-        .collect();
+    let probes: Vec<u64> = (0..seconds as u64).map(|s| s * sample_rate as u64).collect();
     let offsets = seek_landing_bytes(path, &probes).expect("seek_landing_bytes");
     assert_eq!(offsets.len(), probes.len());
 
     // Non-decreasing and within the file.
     for w in offsets.windows(2) {
-        assert!(
-            w[1] >= w[0],
-            "byte offsets must ascend with samples: {offsets:?}"
-        );
+        assert!(w[1] >= w[0], "byte offsets must ascend with samples: {offsets:?}");
     }
     assert!(
         *offsets.last().unwrap() < file_size,
@@ -187,54 +159,18 @@ fn seek_landing_bytes_follow_content_not_time_when_bitrate_swings() {
 #[test]
 fn content_type_from_codec_id_maps_every_named_codec() {
     use ffmpeg_sys_next::AVCodecID;
-    assert_eq!(
-        content_type_from_codec_id(AVCodecID::AV_CODEC_ID_FLAC),
-        ContentType::Flac
-    );
-    assert_eq!(
-        content_type_from_codec_id(AVCodecID::AV_CODEC_ID_MP3),
-        ContentType::Mp3
-    );
-    assert_eq!(
-        content_type_from_codec_id(AVCodecID::AV_CODEC_ID_APE),
-        ContentType::Ape
-    );
-    assert_eq!(
-        content_type_from_codec_id(AVCodecID::AV_CODEC_ID_ALAC),
-        ContentType::Alac
-    );
-    assert_eq!(
-        content_type_from_codec_id(AVCodecID::AV_CODEC_ID_AAC),
-        ContentType::Aac
-    );
-    assert_eq!(
-        content_type_from_codec_id(AVCodecID::AV_CODEC_ID_PCM_S16LE),
-        ContentType::Pcm
-    );
-    assert_eq!(
-        content_type_from_codec_id(AVCodecID::AV_CODEC_ID_PCM_F64BE),
-        ContentType::Pcm
-    );
-    assert_eq!(
-        content_type_from_codec_id(AVCodecID::AV_CODEC_ID_OPUS),
-        ContentType::Opus
-    );
-    assert_eq!(
-        content_type_from_codec_id(AVCodecID::AV_CODEC_ID_VORBIS),
-        ContentType::Vorbis
-    );
-    assert_eq!(
-        content_type_from_codec_id(AVCodecID::AV_CODEC_ID_WAVPACK),
-        ContentType::WavPack
-    );
-    assert_eq!(
-        content_type_from_codec_id(AVCodecID::AV_CODEC_ID_DSD_LSBF),
-        ContentType::Dsd
-    );
-    assert_eq!(
-        content_type_from_codec_id(AVCodecID::AV_CODEC_ID_DSD_MSBF),
-        ContentType::Dsd
-    );
+    assert_eq!(content_type_from_codec_id(AVCodecID::AV_CODEC_ID_FLAC), ContentType::Flac);
+    assert_eq!(content_type_from_codec_id(AVCodecID::AV_CODEC_ID_MP3), ContentType::Mp3);
+    assert_eq!(content_type_from_codec_id(AVCodecID::AV_CODEC_ID_APE), ContentType::Ape);
+    assert_eq!(content_type_from_codec_id(AVCodecID::AV_CODEC_ID_ALAC), ContentType::Alac);
+    assert_eq!(content_type_from_codec_id(AVCodecID::AV_CODEC_ID_AAC), ContentType::Aac);
+    assert_eq!(content_type_from_codec_id(AVCodecID::AV_CODEC_ID_PCM_S16LE), ContentType::Pcm);
+    assert_eq!(content_type_from_codec_id(AVCodecID::AV_CODEC_ID_PCM_F64BE), ContentType::Pcm);
+    assert_eq!(content_type_from_codec_id(AVCodecID::AV_CODEC_ID_OPUS), ContentType::Opus);
+    assert_eq!(content_type_from_codec_id(AVCodecID::AV_CODEC_ID_VORBIS), ContentType::Vorbis);
+    assert_eq!(content_type_from_codec_id(AVCodecID::AV_CODEC_ID_WAVPACK), ContentType::WavPack);
+    assert_eq!(content_type_from_codec_id(AVCodecID::AV_CODEC_ID_DSD_LSBF), ContentType::Dsd);
+    assert_eq!(content_type_from_codec_id(AVCodecID::AV_CODEC_ID_DSD_MSBF), ContentType::Dsd);
     assert_eq!(
         content_type_from_codec_id(AVCodecID::AV_CODEC_ID_DSD_LSBF_PLANAR),
         ContentType::Dsd
@@ -302,10 +238,7 @@ fn probe_reads_a_file_whose_name_is_not_utf8() {
 fn probe_audio_from_path_maps_audio_format_fixtures() {
     init();
     let fixture = |name: &str| {
-        format!(
-            "{}/../bae-core/test-fixtures/audio-format/{name}",
-            env!("CARGO_MANIFEST_DIR")
-        )
+        format!("{}/../bae-core/test-fixtures/audio-format/{name}", env!("CARGO_MANIFEST_DIR"))
     };
     for (name, expected) in [
         ("placeholder-pcm.wav", ContentType::Pcm),
@@ -365,15 +298,8 @@ fn i32_decode_fails_loud_when_the_buffer_is_cancelled_mid_stream() {
     }
 
     let samples = vec![0i32; 44_100 * 2]; // 1s stereo silence
-    let wav = encode_i32(
-        EncodeFormat::PcmWav {
-            bits_per_sample: 16,
-        },
-        &samples,
-        44_100,
-        2,
-    )
-    .unwrap();
+    let wav =
+        encode_i32(EncodeFormat::PcmWav { bits_per_sample: 16 }, &samples, 44_100, 2).unwrap();
 
     // Only the front half is ever delivered; the decode blocks on the rest
     // until the cancel below unblocks it.
@@ -397,10 +323,7 @@ fn i32_decode_fails_loud_when_the_buffer_is_cancelled_mid_stream() {
     buffer.cancel();
 
     let result = handle.join().expect("decode thread");
-    assert!(
-        result.is_err(),
-        "a cancelled input must fail the decode, not return a truncated Ok"
-    );
+    assert!(result.is_err(), "a cancelled input must fail the decode, not return a truncated Ok");
 }
 
 #[test]
@@ -410,15 +333,9 @@ fn test_decode_encode_roundtrip() {
     // 1 second of silence at 44100Hz stereo.
     let original_samples: Vec<i32> = vec![0i32; 44100 * 2];
 
-    let flac_data = encode_i32(
-        EncodeFormat::Flac {
-            bits_per_sample: 16,
-        },
-        &original_samples,
-        44100,
-        2,
-    )
-    .unwrap();
+    let flac_data =
+        encode_i32(EncodeFormat::Flac { bits_per_sample: 16 }, &original_samples, 44100, 2)
+            .unwrap();
 
     assert!(flac_data.len() > 42);
     assert_eq!(&flac_data[0..4], b"fLaC");
@@ -466,20 +383,11 @@ fn test_encode_mp3() {
         })
         .collect();
 
-    let mp3_data = encode_i32(
-        EncodeFormat::Mp3 { bitrate_kbps: 320 },
-        &samples,
-        sample_rate,
-        2,
-    )
-    .unwrap();
+    let mp3_data =
+        encode_i32(EncodeFormat::Mp3 { bitrate_kbps: 320 }, &samples, sample_rate, 2).unwrap();
 
     // An MP3 opens with either an ID3 tag or a frame sync word.
-    assert!(
-        mp3_data.len() > 100,
-        "MP3 data too small: {}",
-        mp3_data.len()
-    );
+    assert!(mp3_data.len() > 100, "MP3 data too small: {}", mp3_data.len());
     assert!(
         (mp3_data[0] == 0xFF && (mp3_data[1] & 0xE0) == 0xE0) || &mp3_data[0..3] == b"ID3",
         "Invalid MP3 header: {:02X} {:02X} {:02X}",
@@ -578,21 +486,12 @@ fn test_encode_aac() {
         })
         .collect();
 
-    let aac_data = encode_i32(
-        EncodeFormat::Aac { bitrate_kbps: 256 },
-        &samples,
-        sample_rate,
-        2,
-    )
-    .unwrap();
+    let aac_data =
+        encode_i32(EncodeFormat::Aac { bitrate_kbps: 256 }, &samples, sample_rate, 2).unwrap();
 
     // An MP4 file (the .m4a flavor the ipod muxer writes) opens with an `ftyp`
     // box: a 4-byte size, then the type "ftyp".
-    assert!(
-        aac_data.len() > 100,
-        "AAC data too small: {}",
-        aac_data.len()
-    );
+    assert!(aac_data.len() > 100, "AAC data too small: {}", aac_data.len());
     assert_eq!(&aac_data[4..8], b"ftyp", "AAC output missing ftyp box");
 
     let decoded = decode_audio(buffer_from(&aac_data), None, None).unwrap();
@@ -615,19 +514,10 @@ fn test_encode_opus_ogg() {
         })
         .collect();
 
-    let opus_data = encode_i32(
-        EncodeFormat::OpusOgg { bitrate_kbps: 192 },
-        &samples,
-        sample_rate,
-        2,
-    )
-    .unwrap();
+    let opus_data =
+        encode_i32(EncodeFormat::OpusOgg { bitrate_kbps: 192 }, &samples, sample_rate, 2).unwrap();
 
-    assert!(
-        opus_data.len() > 100,
-        "Opus/Ogg data too small: {}",
-        opus_data.len()
-    );
+    assert!(opus_data.len() > 100, "Opus/Ogg data too small: {}", opus_data.len());
     assert_eq!(&opus_data[0..4], b"OggS");
 
     let decoded = decode_audio(buffer_from(&opus_data), None, None).unwrap();
@@ -653,19 +543,11 @@ fn test_encode_aiff() {
         .collect();
 
     for bits_per_sample in [16u32, 24, 32] {
-        let aiff_data = encode_i32(
-            EncodeFormat::PcmAiff { bits_per_sample },
-            &samples,
-            sample_rate,
-            2,
-        )
-        .unwrap();
+        let aiff_data =
+            encode_i32(EncodeFormat::PcmAiff { bits_per_sample }, &samples, sample_rate, 2)
+                .unwrap();
 
-        assert_eq!(
-            &aiff_data[0..4],
-            b"FORM",
-            "AIFF ({bits_per_sample}-bit) missing FORM chunk"
-        );
+        assert_eq!(&aiff_data[0..4], b"FORM", "AIFF ({bits_per_sample}-bit) missing FORM chunk");
         assert_eq!(
             &aiff_data[8..12],
             b"AIFF",
@@ -695,15 +577,8 @@ fn test_encode_wav_32() {
         })
         .collect();
 
-    let wav_data = encode_i32(
-        EncodeFormat::PcmWav {
-            bits_per_sample: 32,
-        },
-        &samples,
-        sample_rate,
-        2,
-    )
-    .unwrap();
+    let wav_data =
+        encode_i32(EncodeFormat::PcmWav { bits_per_sample: 32 }, &samples, sample_rate, 2).unwrap();
 
     assert_eq!(&wav_data[0..4], b"RIFF");
     let decoded = decode_audio(buffer_from(&wav_data), None, None).unwrap();
@@ -731,15 +606,8 @@ fn test_flac_roundtrip_is_lossless() {
         })
         .collect();
 
-    let flac_data = encode_i32(
-        EncodeFormat::Flac {
-            bits_per_sample: 16,
-        },
-        &original,
-        sample_rate,
-        1,
-    )
-    .unwrap();
+    let flac_data =
+        encode_i32(EncodeFormat::Flac { bits_per_sample: 16 }, &original, sample_rate, 1).unwrap();
     let decoded = decode_audio(buffer_from(&flac_data), None, None).unwrap();
 
     let compare_len = original.len().min(decoded.samples.len());
@@ -747,11 +615,7 @@ fn test_flac_roundtrip_is_lossless() {
 
     let mut mismatches = 0;
     let mut max_diff = 0i32;
-    for (orig, dec) in original
-        .iter()
-        .zip(decoded.samples.iter())
-        .take(compare_len)
-    {
+    for (orig, dec) in original.iter().zip(decoded.samples.iter()).take(compare_len) {
         let diff = (orig - dec).abs();
         if diff > 0 {
             mismatches += 1;
@@ -770,24 +634,16 @@ fn test_flac_roundtrip_is_lossless() {
 
 #[test]
 fn test_streaming_decode() {
-    use crate::track_stream::create_track_stream_pair_with_capacity;
     use crate::sparse_buffer::create_sparse_buffer;
+    use crate::track_stream::create_track_stream_pair_with_capacity;
     use std::thread;
 
     init();
 
-    let samples: Vec<i32> = (0..44100)
-        .map(|i| ((i as f64 * 0.01).sin() * 0.5 * i32::MAX as f64) as i32)
-        .collect();
-    let flac_data = encode_i32(
-        EncodeFormat::Flac {
-            bits_per_sample: 16,
-        },
-        &samples,
-        44100,
-        1,
-    )
-    .unwrap();
+    let samples: Vec<i32> =
+        (0..44100).map(|i| ((i as f64 * 0.01).sin() * 0.5 * i32::MAX as f64) as i32).collect();
+    let flac_data =
+        encode_i32(EncodeFormat::Flac { bits_per_sample: 16 }, &samples, 44100, 1).unwrap();
 
     let buffer = create_sparse_buffer(flac_data.len() as u64);
     let (mut sink, mut source, _ready) = create_track_stream_pair_with_capacity(44100, 1, 100000);
@@ -836,8 +692,8 @@ fn test_streaming_decode() {
 
 #[test]
 fn test_streaming_decode_treats_cancelled_input_as_normal_stop() {
-    use crate::track_stream::create_track_stream_pair_with_capacity;
     use crate::sparse_buffer::create_sparse_buffer;
+    use crate::track_stream::create_track_stream_pair_with_capacity;
 
     init();
 
@@ -857,18 +713,15 @@ fn test_streaming_decode_treats_cancelled_input_as_normal_stop() {
         token,
     );
 
-    assert!(
-        matches!(result, Err(DecodeError::InputCancelled)),
-        "{result:?}"
-    );
+    assert!(matches!(result, Err(DecodeError::InputCancelled)), "{result:?}");
     assert!(!source.producer_finished());
     assert_eq!(source.samples_decoded(), 0);
 }
 
 #[test]
 fn streaming_decode_reports_truncated_flac_packet_stream() {
-    use crate::track_stream::create_track_stream_pair_with_capacity;
     use crate::sparse_buffer::create_sparse_buffer;
+    use crate::track_stream::create_track_stream_pair_with_capacity;
 
     init();
 
@@ -879,8 +732,7 @@ fn streaming_decode_reports_truncated_flac_packet_stream() {
     let (mut sink, source, _ready) = create_track_stream_pair_with_capacity(44100, 1, 100000);
     let token = Arc::new(std::sync::atomic::AtomicBool::new(false));
 
-    let error_count =
-        decode_audio_streaming(
+    let error_count = decode_audio_streaming(
         buffer,
         &mut sink,
         DecodeStart::StreamStart,
@@ -889,12 +741,9 @@ fn streaming_decode_reports_truncated_flac_packet_stream() {
         None,
         token,
     )
-            .expect("playback keeps the decodable prefix");
+    .expect("playback keeps the decodable prefix");
 
     assert!(error_count > 0, "truncation must remain observable");
-    assert!(
-        source.samples_decoded() > 0,
-        "the decodable prefix remains playable"
-    );
+    assert!(source.samples_decoded() > 0, "the decodable prefix remains playable");
     assert!(!source.producer_finished());
 }

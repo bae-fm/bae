@@ -49,20 +49,15 @@ fn assert_permutation(payloads: &ReleasePayloads, check: impl Fn(&ReleasePayload
     reversed.supporting.reverse();
     for document in &mut reversed.supporting {
         let mut json: serde_json::Value = serde_json::from_str(&document.json).unwrap();
-        if let Some(relations) = json
-            .get_mut("relations")
-            .and_then(serde_json::Value::as_array_mut)
+        if let Some(relations) = json.get_mut("relations").and_then(serde_json::Value::as_array_mut)
         {
             relations.reverse();
         }
-        if let Some(entities) = json
-            .get_mut("entities")
-            .and_then(serde_json::Value::as_object_mut)
+        if let Some(entities) = json.get_mut("entities").and_then(serde_json::Value::as_object_mut)
         {
             for entity in entities.values_mut() {
-                if let Some(claims) = entity
-                    .get_mut("claims")
-                    .and_then(serde_json::Value::as_object_mut)
+                if let Some(claims) =
+                    entity.get_mut("claims").and_then(serde_json::Value::as_object_mut)
                 {
                     for statements in claims.values_mut() {
                         statements.as_array_mut().unwrap().reverse();
@@ -76,24 +71,15 @@ fn assert_permutation(payloads: &ReleasePayloads, check: impl Fn(&ReleasePayload
     anchor["relations"].as_array_mut().unwrap().reverse();
     reversed.anchor = anchor.to_string();
     check(&reversed);
-    assert_eq!(
-        payloads.extract().unwrap().records(),
-        reversed.extract().unwrap().records()
-    );
+    assert_eq!(payloads.extract().unwrap().records(), reversed.extract().unwrap().records());
     assert_eq!(parsed(payloads).album_year, parsed(&reversed).album_year);
 }
 
 #[test]
 fn ambiguous_pressings_contribute_only_a_proven_common_parent() {
-    for parents in [
-        (Some(101), Some(102)),
-        (Some(101), None),
-        (Some(101), Some(101)),
-    ] {
-        let mut payloads = selected(&[
-            "https://www.discogs.com/release/11",
-            "https://www.discogs.com/release/12",
-        ]);
+    for parents in [(Some(101), Some(102)), (Some(101), None), (Some(101), Some(101))] {
+        let mut payloads =
+            selected(&["https://www.discogs.com/release/11", "https://www.discogs.com/release/12"]);
         payloads.supporting = vec![
             pressing(11, parents.0),
             pressing(12, parents.1),
@@ -102,28 +88,17 @@ fn ambiguous_pressings_contribute_only_a_proven_common_parent() {
         ];
         assert_permutation(&payloads, |payloads| {
             let same = parents == (Some(101), Some(101));
-            assert_eq!(
-                parsed(payloads).album_year,
-                Some(if same { 1971 } else { 2005 })
-            );
+            assert_eq!(parsed(payloads).album_year, Some(if same { 1971 } else { 2005 }));
             let records = payloads.extract().unwrap().records();
-            let discogs = records
-                .iter()
-                .find(|record| record.catalog() == Catalog::Discogs);
+            let discogs = records.iter().find(|record| record.catalog() == Catalog::Discogs);
             assert_eq!(
                 discogs.map(|record| record.url()),
                 same.then(|| "https://www.discogs.com/master/101".to_string())
             );
             assert!(discogs.is_none_or(|record| record.release_ref().is_none()));
-            assert_eq!(
-                payloads.extract().unwrap().covers().len(),
-                usize::from(same)
-            );
+            assert_eq!(payloads.extract().unwrap().covers().len(), usize::from(same));
             let parsed = parsed(payloads);
-            assert_eq!(
-                crate::import::release_values::value_labels(&parsed)[1],
-                "B1"
-            );
+            assert_eq!(crate::import::release_values::value_labels(&parsed)[1], "B1");
             assert_eq!(parsed.tracks[1].title, "Second Track");
         });
     }
@@ -131,10 +106,8 @@ fn ambiguous_pressings_contribute_only_a_proven_common_parent() {
 
 #[test]
 fn missing_ambiguous_pressing_does_not_prove_a_common_parent() {
-    let mut payloads = selected(&[
-        "https://www.discogs.com/release/11",
-        "https://www.discogs.com/release/12",
-    ]);
+    let mut payloads =
+        selected(&["https://www.discogs.com/release/11", "https://www.discogs.com/release/12"]);
     payloads.supporting = vec![pressing(11, Some(101)), master(101, 1971)];
     assert_permutation(&payloads, |payloads| {
         assert_eq!(parsed(payloads).album_year, Some(2005));
@@ -145,10 +118,8 @@ fn missing_ambiguous_pressing_does_not_prove_a_common_parent() {
 
 #[test]
 fn competing_direct_album_links_do_not_choose_by_key_or_order() {
-    let mut payloads = selected(&[
-        "https://www.discogs.com/master/101",
-        "https://www.discogs.com/master/102",
-    ]);
+    let mut payloads =
+        selected(&["https://www.discogs.com/master/101", "https://www.discogs.com/master/102"]);
     payloads.supporting = vec![master(101, 1971), master(102, 1982)];
     assert_permutation(&payloads, |payloads| {
         assert_eq!(parsed(payloads).album_year, Some(2005));
@@ -247,11 +218,9 @@ fn selected_parent_wins_over_conflicting_album_links() {
     let mut anchor: serde_json::Value = serde_json::from_str(&payloads.anchor).unwrap();
     anchor["release-group"] = json!({"id":"selected-group"});
     payloads.anchor = anchor.to_string();
-    for (id, year) in [
-        ("selected-group", "1980"),
-        ("other-group", "1971"),
-        ("another-group", "1972"),
-    ] {
+    for (id, year) in
+        [("selected-group", "1980"), ("other-group", "1971"), ("another-group", "1972")]
+    {
         payloads.supporting.push(SourcePayload::new(
             PayloadSource::MusicBrainzReleaseGroup,
             id,
@@ -261,10 +230,7 @@ fn selected_parent_wins_over_conflicting_album_links() {
     assert_permutation(&payloads, |payloads| {
         assert_eq!(parsed(payloads).album_year, Some(1980));
         assert_eq!(
-            payloads.extract().unwrap().records()[0]
-                .album_ref()
-                .unwrap()
-                .key,
+            payloads.extract().unwrap().records()[0].album_ref().unwrap().key,
             "selected-group"
         );
     });
@@ -274,10 +240,7 @@ fn selected_parent_wins_over_conflicting_album_links() {
 fn selected_album_url_precedes_counterpart_parent_inference() {
     for counterpart_urls in [
         vec!["https://www.discogs.com/release/11"],
-        vec![
-            "https://www.discogs.com/release/11",
-            "https://www.discogs.com/release/12",
-        ],
+        vec!["https://www.discogs.com/release/11", "https://www.discogs.com/release/12"],
     ] {
         let mut urls = counterpart_urls;
         urls.push("https://www.discogs.com/master/102");
@@ -295,10 +258,8 @@ fn selected_album_url_precedes_counterpart_parent_inference() {
                 vec![MetadataRef::new(Catalog::Discogs, "102")]
             );
             let records = payloads.extract().unwrap().records();
-            let discogs = records
-                .iter()
-                .find(|record| record.catalog() == Catalog::Discogs)
-                .unwrap();
+            let discogs =
+                records.iter().find(|record| record.catalog() == Catalog::Discogs).unwrap();
             if let Some(release) = discogs.release_ref() {
                 assert_eq!(release.key, "11");
                 assert_eq!(

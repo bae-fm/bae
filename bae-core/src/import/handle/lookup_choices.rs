@@ -22,8 +22,7 @@ impl ImportServiceHandle {
         let this = self.clone();
         let candidate_key = candidate_key.clone();
         self.committed(async move {
-            this.edit_candidate_lookup_choices_write(&candidate_key, edit)
-                .await
+            this.edit_candidate_lookup_choices_write(&candidate_key, edit).await
         })
         .await
     }
@@ -34,12 +33,11 @@ impl ImportServiceHandle {
         edit: LookupChoiceEdit,
     ) -> Result<ChoiceChange, crate::import::ImportError> {
         let _commit = self.folder_state_commit.lock("store lookup choices").await;
-        let projection = self
-            .library_manager
-            .load_import_candidate(candidate_key)
-            .await?
-            .ok_or_else(|| crate::import::ImportError::Internal {
-                detail: format!("{candidate_key} is not a scanned folder candidate"),
+        let projection =
+            self.library_manager.load_import_candidate(candidate_key).await?.ok_or_else(|| {
+                crate::import::ImportError::Internal {
+                    detail: format!("{candidate_key} is not a scanned folder candidate"),
+                }
             })?;
         let content_hash = projection.candidate.files.content_hash();
         let stored = &projection
@@ -53,9 +51,7 @@ impl ImportServiceHandle {
             true => ChoiceChange::Ranking,
             false => ChoiceChange::Lookups,
         };
-        self.library_manager
-            .save_import_candidate_lookup_choices(&content_hash, &choices)
-            .await?;
+        self.library_manager.save_import_candidate_lookup_choices(&content_hash, &choices).await?;
         Ok(change)
     }
 }

@@ -47,9 +47,7 @@ impl LoudnessMeter {
     /// Feed one interleaved-i32 chunk (frame-aligned: `len` a multiple of
     /// `channels`).
     pub fn add_chunk(&mut self, samples: &[i32]) -> Result<(), String> {
-        self.meter
-            .add_frames_i32(samples)
-            .map_err(|e| format!("ebur128 add_frames failed: {e:?}"))
+        self.meter.add_frames_i32(samples).map_err(|e| format!("ebur128 add_frames failed: {e:?}"))
     }
 
     /// Read the track's integrated loudness + true peak, returning the measurement
@@ -68,13 +66,7 @@ impl LoudnessMeter {
         }
 
         let peak_linear = max_true_peak(&self.meter, self.channels)?;
-        Ok((
-            self.meter,
-            Some(TrackLoudness {
-                loudness_lufs,
-                peak_linear,
-            }),
-        ))
+        Ok((self.meter, Some(TrackLoudness { loudness_lufs, peak_linear })))
     }
 }
 
@@ -82,9 +74,8 @@ impl LoudnessMeter {
 fn max_true_peak(meter: &EbuR128, channels: u32) -> Result<f64, String> {
     let mut peak = 0.0f64;
     for ch in 0..channels {
-        let p = meter
-            .true_peak(ch)
-            .map_err(|e| format!("ebur128 true_peak({ch}) failed: {e:?}"))?;
+        let p =
+            meter.true_peak(ch).map_err(|e| format!("ebur128 true_peak({ch}) failed: {e:?}"))?;
         if p > peak {
             peak = p;
         }
@@ -113,10 +104,7 @@ pub fn album_loudness(meters: &[EbuR128]) -> Option<f64> {
 /// Album true peak: the max of the per-track linear peaks. `None` when no track
 /// had a usable measurement.
 pub fn album_peak(track_peaks: &[f64]) -> Option<f64> {
-    track_peaks
-        .iter()
-        .copied()
-        .fold(None, |acc, p| Some(acc.map_or(p, |a: f64| a.max(p))))
+    track_peaks.iter().copied().fold(None, |acc, p| Some(acc.map_or(p, |a: f64| a.max(p))))
 }
 
 #[cfg(test)]
@@ -217,10 +205,7 @@ mod tests {
         let sr = 48_000;
         let silent = vec![0i32; sr as usize * 2 * 2];
         let (_, m) = measure_track(&silent, 2, sr).unwrap();
-        assert!(
-            m.is_none(),
-            "silence must measure as no usable loudness (unity gain at playback)"
-        );
+        assert!(m.is_none(), "silence must measure as no usable loudness (unity gain at playback)");
     }
 
     #[test]

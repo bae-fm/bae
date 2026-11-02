@@ -160,15 +160,8 @@ impl Inner {
     /// When the next slot opens, or `None` when it is open now.
     fn opens_at(&mut self, interval: Duration, now: Instant) -> Option<Instant> {
         let spaced = self.last_call.map(|last| last + interval);
-        let counted = self
-            .ledger
-            .as_mut()
-            .and_then(|ledger| ledger.spent_until(now));
-        [spaced, self.held_until, counted]
-            .into_iter()
-            .flatten()
-            .filter(|at| *at > now)
-            .max()
+        let counted = self.ledger.as_mut().and_then(|ledger| ledger.spent_until(now));
+        [spaced, self.held_until, counted].into_iter().flatten().filter(|at| *at > now).max()
     }
 
     /// Stamp an admission and return its number.
@@ -206,11 +199,7 @@ impl RateLimiter {
     }
 
     fn build(interval: Duration, ledger: Option<Ledger>) -> Self {
-        Self {
-            interval,
-            inner: Mutex::new(Inner::new(ledger)),
-            advanced: Notify::new(),
-        }
+        Self { interval, inner: Mutex::new(Inner::new(ledger)), advanced: Notify::new() }
     }
 
     /// The bookkeeping. Nothing done while it is held panics — a broken
@@ -219,9 +208,7 @@ impl RateLimiter {
     /// and the `Drop`s of [`Ticket`] and [`Admitted`] take it, where a panic
     /// must not start.
     fn lock(&self) -> std::sync::MutexGuard<'_, Inner> {
-        self.inner
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
+        self.inner.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
     }
 
     /// Wait for this call's admission slot, then stamp it. The first call, and
@@ -378,11 +365,7 @@ pub struct Admitted<'a> {
 
 impl<'a> Admitted<'a> {
     fn new(limiter: &'a RateLimiter, admission: u64) -> Self {
-        Self {
-            limiter,
-            admission,
-            settled: false,
-        }
+        Self { limiter, admission, settled: false }
     }
 
     /// What the provider's response said about its rate. A refusal holds every
@@ -415,12 +398,7 @@ struct Ticket<'a> {
 impl<'a> Ticket<'a> {
     fn take(limiter: &'a RateLimiter, priority: CallPriority) -> Self {
         let id = limiter.enqueue_ticket(priority);
-        Self {
-            limiter,
-            priority,
-            id,
-            queued: true,
-        }
+        Self { limiter, priority, id, queued: true }
     }
 }
 

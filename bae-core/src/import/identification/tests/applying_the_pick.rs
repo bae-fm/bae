@@ -31,32 +31,19 @@ async fn a_cover_the_host_fails_to_serve_is_stored_as_the_runs_lookup_failure() 
     // The release's document states the archive serves its front, so that is
     // the cover the pick fetches.
     release["cover-art-archive"]["front"] = serde_json::json!(true);
-    let mut discid: serde_json::Value = serde_json::from_str(&discid_json(
-        "mb-cover-1",
-        "rg-cover-1",
-        &[probed, 0],
-    ))
-    .expect("the disc ID fixture parses");
+    let mut discid: serde_json::Value =
+        serde_json::from_str(&discid_json("mb-cover-1", "rg-cover-1", &[probed, 0]))
+            .expect("the disc ID fixture parses");
     discid["releases"][0]["cover-art-archive"]["front"] = serde_json::json!(true);
-    fixture
-        .provider
-        .route("/release/mb-cover-1/front", 500, "server error");
+    fixture.provider.route("/release/mb-cover-1/front", 500, "server error");
     fixture.provider.route("/discid/", 200, discid.to_string());
-    fixture
-        .provider
-        .route("/release/mb-cover-1?", 200, release.to_string());
+    fixture.provider.route("/release/mb-cover-1?", 200, release.to_string());
     fixture.scan(1).await;
 
     fixture.drain_automatic().await;
 
-    let row = fixture
-        .stored_for(&dir)
-        .await
-        .expect("the candidate stores a row");
-    let TerminalVerdict::Failed {
-        failures, findings, ..
-    } = &identify_result(&row).verdict
-    else {
+    let row = fixture.stored_for(&dir).await.expect("the candidate stores a row");
+    let TerminalVerdict::Failed { failures, findings, .. } = &identify_result(&row).verdict else {
         panic!(
             "a cover the host fails to serve fails the run, got {:?}",
             identify_result(&row).verdict
@@ -64,12 +51,10 @@ async fn a_cover_the_host_fails_to_serve_is_stored_as_the_runs_lookup_failure() 
     };
     assert_eq!(
         failures,
-        &vec![crate::identify::IdentifyFailure::Cover(
-            crate::import::search::SourceFailure {
-                source: bae_catalogs::catalog::Catalog::MusicBrainz,
-                failure: crate::signals::LookupFailure::Provider { status: Some(500) },
-            }
-        )],
+        &vec![crate::identify::IdentifyFailure::Cover(crate::import::search::SourceFailure {
+            source: bae_catalogs::catalog::Catalog::MusicBrainz,
+            failure: crate::signals::LookupFailure::Provider { status: Some(500) },
+        })],
     );
     assert_eq!(
         findings.matches[0].release_id, "mb-cover-1",
@@ -88,10 +73,7 @@ async fn a_cover_the_host_fails_to_serve_is_stored_as_the_runs_lookup_failure() 
     );
 
     let (listed, live) = queue_item(&fixture, &key).await;
-    assert_eq!(
-        live.standing,
-        Some(crate::import::PendingStanding::LookupError)
-    );
+    assert_eq!(live.standing, Some(crate::import::PendingStanding::LookupError));
     assert!(
         listed
             .action_basis
@@ -110,21 +92,13 @@ async fn a_cover_the_host_fails_to_serve_is_stored_as_the_runs_lookup_failure() 
     );
 
     // The host recovers; Retry runs the candidate again.
-    fixture
-        .provider
-        .reroute("/release/mb-cover-1/front", 200, cover_png());
+    fixture.provider.reroute("/release/mb-cover-1/front", 200, cover_png());
     fixture.start_explicit_lookup(&dir);
-    tokio::time::timeout(
-        Duration::from_secs(30),
-        fixture.identification().drained_for_test(),
-    )
-    .await
-    .expect("the retried run ends");
-
-    let row = fixture
-        .stored_for(&dir)
+    tokio::time::timeout(Duration::from_secs(30), fixture.identification().drained_for_test())
         .await
-        .expect("the candidate keeps its row");
+        .expect("the retried run ends");
+
+    let row = fixture.stored_for(&dir).await.expect("the candidate keeps its row");
     assert!(
         matches!(&identify_result(&row).verdict, TerminalVerdict::Found { .. }),
         "the retried run finds the release, got {:?}",
@@ -140,21 +114,14 @@ async fn a_cover_the_host_fails_to_serve_is_stored_as_the_runs_lookup_failure() 
             partners: vec![],
         })),
     );
-    assert_eq!(
-        row.metadata_author,
-        crate::import::MetadataAuthor::Identification
-    );
+    assert_eq!(row.metadata_author, crate::import::MetadataAuthor::Identification);
     let pane = fixture.pane(&dir).await.expect("the candidate reads back");
     let cover = pane.draft().unwrap().cover.clone().expect("the applied release brings its cover");
     let crate::import::CoverSelection::Remote(image, source) = &cover.selection else {
         panic!("the cover is the catalog's, got {:?}", cover.selection);
     };
     assert_eq!(*source, bae_catalogs::catalog::Catalog::MusicBrainz);
-    assert!(
-        image.url.ends_with("/release/mb-cover-1/front"),
-        "{}",
-        image.url
-    );
+    assert!(image.url.ends_with("/release/mb-cover-1/front"), "{}", image.url);
     let assets = fixture
         .manager
         .load_import_candidate_prepared_assets(&fixture.content_hash(&dir))

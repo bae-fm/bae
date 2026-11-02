@@ -162,9 +162,7 @@ impl TrackTimeline {
     pub fn position_at_progress(self, ratio: f64) -> Option<StreamPosition> {
         let duration_ms = self.duration_ms()?;
         let into_track = (ratio.clamp(0.0, 1.0) * duration_ms as f64) as u64;
-        Some(StreamPosition::from_millis(
-            self.pregap.as_millis() as u64 + into_track,
-        ))
+        Some(StreamPosition::from_millis(self.pregap.as_millis() as u64 + into_track))
     }
 }
 
@@ -251,10 +249,7 @@ mod tests {
 
     #[test]
     fn track_time_no_pregap() {
-        assert_eq!(
-            timeline(60_000, 0).track_time(at(5000)),
-            TrackTime::from_millis(5000)
-        );
+        assert_eq!(timeline(60_000, 0).track_time(at(5000)), TrackTime::from_millis(5000));
     }
 
     #[test]
@@ -268,18 +263,12 @@ mod tests {
 
     #[test]
     fn track_time_subtracts_the_pregap() {
-        assert_eq!(
-            timeline(10_000, 2000).track_time(at(5000)),
-            TrackTime::from_millis(3000)
-        );
+        assert_eq!(timeline(10_000, 2000).track_time(at(5000)), TrackTime::from_millis(3000));
     }
 
     #[test]
     fn track_time_holds_at_the_duration_past_the_end() {
-        assert_eq!(
-            timeline(10_000, 2000).track_time(at(13_000)),
-            TrackTime::from_millis(10_000)
-        );
+        assert_eq!(timeline(10_000, 2000).track_time(at(13_000)), TrackTime::from_millis(10_000));
     }
 
     /// With no declared end there is nothing to hold the time at: it runs on

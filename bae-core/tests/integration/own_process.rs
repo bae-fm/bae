@@ -25,10 +25,7 @@ pub(crate) fn in_own_process(name: &str, body: impl FnOnce()) {
         .env(RAN, &ran)
         .status()
         .expect("run the test in its own process");
-    assert!(
-        status.success(),
-        "{name} failed in its own process: {status}"
-    );
+    assert!(status.success(), "{name} failed in its own process: {status}");
     assert!(
         ran.exists(),
         "{name} ran no test in its own process: no test in this binary has that name"

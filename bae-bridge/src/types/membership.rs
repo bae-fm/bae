@@ -40,18 +40,8 @@ pub struct BridgeActiveDevice {
 }
 impl BridgeActiveDevice {
     pub(crate) fn from_core(device: bae_core::sync::membership::ActiveDevice) -> Self {
-        let bae_core::sync::membership::ActiveDevice {
-            id,
-            name,
-            is_self,
-            can_remove,
-        } = device;
-        Self {
-            id: id.0,
-            name,
-            is_self,
-            can_remove,
-        }
+        let bae_core::sync::membership::ActiveDevice { id, name, is_self, can_remove } = device;
+        Self { id: id.0, name, is_self, can_remove }
     }
 }
 /// A removed or replaced device, which no longer has access.
@@ -64,11 +54,7 @@ pub struct BridgeFormerDevice {
 impl BridgeFormerDevice {
     fn from_core(device: bae_core::sync::membership::FormerDevice) -> Self {
         let bae_core::sync::membership::FormerDevice { id, name, state } = device;
-        Self {
-            id: id.0,
-            name,
-            state: BridgeFormerDeviceState::from_core(state),
-        }
+        Self { id: id.0, name, state: BridgeFormerDeviceState::from_core(state) }
     }
 }
 /// How a member, or an invite's person, reaches storage. On S3 only the key's
@@ -118,14 +104,8 @@ impl BridgeMember {
             access: BridgeMemberAccess::from_core(access),
             is_self,
             can_remove,
-            active_devices: active_devices
-                .into_iter()
-                .map(BridgeActiveDevice::from_core)
-                .collect(),
-            former_devices: former_devices
-                .into_iter()
-                .map(BridgeFormerDevice::from_core)
-                .collect(),
+            active_devices: active_devices.into_iter().map(BridgeActiveDevice::from_core).collect(),
+            former_devices: former_devices.into_iter().map(BridgeFormerDevice::from_core).collect(),
         }
     }
 }
@@ -136,14 +116,8 @@ pub struct BridgeMembership {
 }
 impl BridgeMembership {
     pub(crate) fn from_core(value: bae_core::sync::membership::Membership) -> Self {
-        let bae_core::sync::membership::Membership {
-            members,
-            self_is_admin,
-        } = value;
-        Self {
-            members: members.into_iter().map(BridgeMember::from_core).collect(),
-            self_is_admin,
-        }
+        let bae_core::sync::membership::Membership { members, self_is_admin } = value;
+        Self { members: members.into_iter().map(BridgeMember::from_core).collect(), self_is_admin }
     }
 }
 /// Someone in the library: their membership, and their profile once they
@@ -155,10 +129,7 @@ pub struct BridgePerson {
 }
 impl BridgePerson {
     pub(crate) fn from_core(value: bae_core::people::Person) -> Self {
-        let bae_core::people::Person {
-            profile,
-            membership,
-        } = value;
+        let bae_core::people::Person { profile, membership } = value;
         Self {
             profile: profile.map(BridgePersonProfile::from_core),
             membership: BridgeMember::from_core(membership),
@@ -173,34 +144,28 @@ pub enum BridgeProviderSignOut {
 impl BridgeProviderSignOut {
     pub(crate) fn from_core(value: coven::ProviderSignOut) -> Self {
         match value {
-            coven::ProviderSignOut::RemoveAppAccess { provider } => Self::RemoveAppAccess {
-                provider: BridgeCloudProvider::from_core(&provider),
-            },
+            coven::ProviderSignOut::RemoveAppAccess { provider } => {
+                Self::RemoveAppAccess { provider: BridgeCloudProvider::from_core(&provider) }
+            }
             coven::ProviderSignOut::RemoveFromAppleAccount => Self::RemoveFromAppleAccount,
         }
     }
 }
 #[derive(Clone, uniffi::Enum)]
 pub enum BridgeInviteAccess {
-    ProviderAccount {
-        email: String,
-    },
-    S3AccessKey {
-        access_key_id: String,
-        secret_access_key: String,
-    },
+    ProviderAccount { email: String },
+    S3AccessKey { access_key_id: String, secret_access_key: String },
 }
 impl BridgeInviteAccess {
     pub(crate) fn into_core(self) -> coven::InviteAccess {
         match self {
             Self::ProviderAccount { email } => coven::InviteAccess::ProviderAccount { email },
-            Self::S3AccessKey {
-                access_key_id,
-                secret_access_key,
-            } => coven::InviteAccess::S3AccessKey {
-                access_key_id,
-                secret_access_key: coven::SecretText::new(secret_access_key),
-            },
+            Self::S3AccessKey { access_key_id, secret_access_key } => {
+                coven::InviteAccess::S3AccessKey {
+                    access_key_id,
+                    secret_access_key: coven::SecretText::new(secret_access_key),
+                }
+            }
         }
     }
 }
@@ -216,9 +181,9 @@ impl BridgeInviteDelivery {
     pub(crate) fn into_core(self) -> coven::InviteDelivery {
         match self {
             Self::InPerson => coven::InviteDelivery::InPerson,
-            Self::Sent { lifetime } => coven::InviteDelivery::Sent {
-                lifetime: lifetime.into_core(),
-            },
+            Self::Sent { lifetime } => {
+                coven::InviteDelivery::Sent { lifetime: lifetime.into_core() }
+            }
         }
     }
 }
@@ -263,10 +228,7 @@ pub enum BridgeInviteShown {
     /// Sync is granting the invite's access; its code comes once it has.
     Granting,
     /// Its code, to show again, and how far its person has come.
-    Code {
-        code: String,
-        progress: BridgeInviteProgress,
-    },
+    Code { code: String, progress: BridgeInviteProgress },
 }
 /// How far an invite whose code can be shown has come.
 #[derive(Clone, uniffi::Enum)]
@@ -275,9 +237,7 @@ pub enum BridgeInviteProgress {
     Waiting,
     /// A sent invite's checked request, waiting for the admin to approve or
     /// decline; an in-person invite's needs nobody.
-    Deciding {
-        request: Arc<crate::BridgeJoinRequest>,
-    },
+    Deciding { request: Arc<crate::BridgeJoinRequest> },
     /// Its person is being let in; it can no longer be cancelled.
     Joining,
 }
@@ -336,23 +296,16 @@ mod tests {
                 member: coven::MemberId("00000000-0000-4000-8000-000000000002".parse().unwrap()),
                 invitee: Some("Dan".into()),
                 delivery: coven::InviteDeliveryKind::Sent,
-                access: coven::MemberAccess::S3AccessKey {
-                    access_key_id: "dan-key".into(),
-                },
+                access: coven::MemberAccess::S3AccessKey { access_key_id: "dan-key".into() },
                 expires_at: std::time::UNIX_EPOCH,
                 operation: coven::OperationId(1),
-                stage: coven::InviteStage::Waiting {
-                    code: "code".into(),
-                    request: None,
-                },
+                stage: coven::InviteStage::Waiting { code: "code".into(), request: None },
             },
             held: None,
         });
         assert_eq!(
             invite.access,
-            BridgeMemberAccess::S3AccessKey {
-                access_key_id: "dan-key".into()
-            }
+            BridgeMemberAccess::S3AccessKey { access_key_id: "dan-key".into() }
         );
         assert_eq!(invite.invitee.as_deref(), Some("Dan"));
         assert_eq!(invite.delivery, BridgeInviteDeliveryKind::Sent);

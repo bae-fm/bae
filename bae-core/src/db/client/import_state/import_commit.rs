@@ -14,16 +14,9 @@ pub(crate) fn require_import_commit_guard(
     guard: &ImportCommitGuard,
 ) -> Result<(), DbError> {
     match guard {
-        ImportCommitGuard::Candidate {
-            candidate_key,
-            source,
-            expectation,
-            import_id: _,
-        } => {
+        ImportCommitGuard::Candidate { candidate_key, source, expectation, import_id: _ } => {
             let current = load_committing_candidate(sql, candidate_key, expectation)?;
-            expectation
-                .verify(candidate_key, source, current.as_ref())
-                .map_err(DbError::Message)
+            expectation.verify(candidate_key, source, current.as_ref()).map_err(DbError::Message)
         }
         #[cfg(test)]
         ImportCommitGuard::UncheckedTestSetup { .. } => Ok(()),
@@ -41,12 +34,7 @@ pub(crate) fn end_import_attempt_of_commit(
     guard: &ImportCommitGuard,
 ) -> Result<(), DbError> {
     match guard {
-        ImportCommitGuard::Candidate {
-            candidate_key,
-            expectation,
-            import_id,
-            ..
-        } => {
+        ImportCommitGuard::Candidate { candidate_key, expectation, import_id, .. } => {
             super::delete_failure_on(sql, &expectation.candidate.content_hash)?;
             super::move_import_on(sql, candidate_key, import_id, None)
         }

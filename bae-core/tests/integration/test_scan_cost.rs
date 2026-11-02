@@ -26,10 +26,9 @@ const SIZES: [usize; 4] = [1_000, 5_000, 10_000, 20_000];
 /// The folder counts to scan: `SCAN_SIZES`, comma separated, else [`SIZES`].
 fn sizes() -> Vec<usize> {
     match std::env::var("SCAN_SIZES") {
-        Ok(text) => text
-            .split(',')
-            .map(|n| n.parse().expect("SCAN_SIZES lists folder counts"))
-            .collect(),
+        Ok(text) => {
+            text.split(',').map(|n| n.parse().expect("SCAN_SIZES lists folder counts")).collect()
+        }
         Err(_) => SIZES.to_vec(),
     }
 }
@@ -60,11 +59,8 @@ impl Shape {
 /// no two folders hold the same files.
 fn write_folders(root: &Path, shape: Shape, count: usize) {
     let source = root.with_extension("source.flac");
-    std::fs::copy(
-        support::fixture_dir!("flac", "01 Test Track 1.flac"),
-        &source,
-    )
-    .expect("copy the FLAC fixture");
+    std::fs::copy(support::fixture_dir!("flac", "01 Test Track 1.flac"), &source)
+        .expect("copy the FLAC fixture");
     for n in 0..count {
         let folder = shape.folder(root, n);
         std::fs::create_dir_all(&folder).unwrap();
@@ -80,10 +76,7 @@ async fn scan(
     root: &Path,
 ) -> (Vec<Duration>, Duration) {
     let start = Instant::now();
-    services
-        .import_add_watched_folder(root.to_path_buf())
-        .await
-        .unwrap();
+    services.import_add_watched_folder(root.to_path_buf()).await.unwrap();
     let mut announced = Vec::new();
     support::next_matching(events, Duration::from_secs(3_600), |event| match event {
         ScanEvent::FolderCandidate { .. } => {
@@ -116,19 +109,10 @@ async fn measure(shape: Shape, count: usize, list_open: bool) {
         false => None,
         true => {
             let list = std::sync::Arc::new(
-                services
-                    .subscribe_import_list(ImportListView::default())
-                    .await
-                    .unwrap(),
+                services.subscribe_import_list(ImportListView::default()).await.unwrap(),
             );
-            list.set_windows(
-                std::iter::once(LibraryPageWindow {
-                    offset: 0,
-                    limit: 50,
-                })
-                .collect(),
-            )
-            .unwrap();
+            list.set_windows(std::iter::once(LibraryPageWindow { offset: 0, limit: 50 }).collect())
+                .unwrap();
             let reading = list.clone();
             let reader = tokio::spawn(async move {
                 let mut answers = 0_u64;
@@ -151,10 +135,7 @@ async fn measure(shape: Shape, count: usize, list_open: bool) {
                 index => announced[index * stretch - 1],
             };
             let to = announced[(index + 1) * stretch - 1];
-            format!(
-                "{:.2}",
-                (to - from).as_secs_f64() * 1_000.0 / stretch as f64
-            )
+            format!("{:.2}", (to - from).as_secs_f64() * 1_000.0 / stretch as f64)
         })
         .collect();
     let layout = match shape {

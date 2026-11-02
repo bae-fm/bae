@@ -50,16 +50,14 @@ impl PlaybackService {
     pub(super) fn playback_state(&self) -> PlaybackState {
         match &self.slot {
             PlaybackSlot::Stopped => PlaybackState::Stopped,
-            PlaybackSlot::Loading(track) => PlaybackState::Loading {
-                track: track.clone(),
-            },
+            PlaybackSlot::Loading(track) => PlaybackState::Loading { track: track.clone() },
             PlaybackSlot::Active(cur) => match &cur.phase {
                 TrackPhase::Loading { .. } => PlaybackState::Loading {
                     track: LoadingTrack::Prepared(PlayingTrack::from_prepared(&cur.prepared)),
                 },
-                TrackPhase::Playing => PlaybackState::Playing {
-                    track: PlayingTrack::from_prepared(&cur.prepared),
-                },
+                TrackPhase::Playing => {
+                    PlaybackState::Playing { track: PlayingTrack::from_prepared(&cur.prepared) }
+                }
                 TrackPhase::Paused(pause) => PlaybackState::Paused {
                     track: PlayingTrack::from_prepared(&cur.prepared),
                     reason: pause.to_reason(),
@@ -148,9 +146,7 @@ impl PlaybackService {
     ) {
         let resolved = match &mut self.slot {
             PlaybackSlot::Active(cur) => match &cur.phase {
-                TrackPhase::Loading {
-                    generation: live, ..
-                } if *live == generation => {
+                TrackPhase::Loading { generation: live, .. } if *live == generation => {
                     if let TrackPhase::Loading { target, .. } =
                         std::mem::replace(&mut cur.phase, TrackPhase::Playing)
                     {
@@ -170,11 +166,7 @@ impl PlaybackService {
             }
             // This load reached Playing: if it's the one we timed, ship the
             // time-to-first-audio and clear the measurement.
-            if self
-                .first_audio_pending
-                .as_ref()
-                .is_some_and(|m| m.generation == generation)
-            {
+            if self.first_audio_pending.as_ref().is_some_and(|m| m.generation == generation) {
                 let measurement = self.first_audio_pending.take().expect("just checked Some");
                 self.record_telemetry(TelemetryEvent::FirstAudio {
                     track_id: LocalId(measurement.track_id),
@@ -210,17 +202,10 @@ impl PlaybackService {
         // The saved level is what the UI shows even when the session was muted —
         // that is the level unmuting puts back — so `VolumeChanged` carries it
         // either way, and the mute is announced on top.
-        self.volume
-            .restore(volume, is_muted, self.audio_output.as_ref());
-        emit_progress(
-            &self.progress_tx,
-            PlaybackProgress::VolumeChanged { volume },
-        );
+        self.volume.restore(volume, is_muted, self.audio_output.as_ref());
+        emit_progress(&self.progress_tx, PlaybackProgress::VolumeChanged { volume });
         if is_muted {
-            emit_progress(
-                &self.progress_tx,
-                PlaybackProgress::MuteChanged { is_muted: true },
-            );
+            emit_progress(&self.progress_tx, PlaybackProgress::MuteChanged { is_muted: true });
         }
 
         // Start the current track paused at the saved position, or at its start
@@ -284,15 +269,9 @@ impl PlaybackService {
             PlaybackSlot::Active(cur) => Some(cur.position.as_millis()),
             _ => None,
         };
-        let row = DbPlaybackState {
-            current: self.playback_queue.current().cloned(),
-            position_ms,
-        };
+        let row = DbPlaybackState { current: self.playback_queue.current().cloned(), position_ms };
         if let Err(e) = self.library_manager.save_playback_state(&row).await {
-            warn!(
-                "couldn't persist playback state (current entry {:?}): {e}",
-                row.current
-            );
+            warn!("couldn't persist playback state (current entry {:?}): {e}", row.current);
             self.telemetry_anomaly(AnomalyKind::ResumePersistFailed);
         }
     }
@@ -304,15 +283,9 @@ impl PlaybackService {
         let lifted_mute = self.volume.set(volume, self.audio_output.as_ref());
         self.renderer.set_remote_volume(volume);
         if lifted_mute {
-            emit_progress(
-                &self.progress_tx,
-                PlaybackProgress::MuteChanged { is_muted: false },
-            );
+            emit_progress(&self.progress_tx, PlaybackProgress::MuteChanged { is_muted: false });
         }
-        emit_progress(
-            &self.progress_tx,
-            PlaybackProgress::VolumeChanged { volume },
-        );
+        emit_progress(&self.progress_tx, PlaybackProgress::VolumeChanged { volume });
     }
 
     pub(super) fn pause(&mut self) {

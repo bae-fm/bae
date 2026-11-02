@@ -84,10 +84,7 @@ fn a_library_opens_holding_its_fixtures_albums() {
 
     let albums = app.runtime.block_on(app.services.get_albums(&[])).unwrap();
     assert_eq!(
-        albums
-            .iter()
-            .map(|album| album.title.as_str())
-            .collect::<Vec<_>>(),
+        albums.iter().map(|album| album.title.as_str()).collect::<Vec<_>>(),
         ["Album Title"]
     );
 }
@@ -112,25 +109,16 @@ fn a_library_opens_watching_its_fixtures_folders() {
 
     let app = open(&app_dir, &library_id, fixture, &installation);
 
-    let watched = app
-        .runtime
-        .block_on(app.services.import_watched_folders())
-        .unwrap();
+    let watched = app.runtime.block_on(app.services.import_watched_folders()).unwrap();
     assert_eq!(
-        watched
-            .iter()
-            .map(|folder| folder.path.as_path())
-            .collect::<Vec<_>>(),
+        watched.iter().map(|folder| folder.path.as_path()).collect::<Vec<_>>(),
         [std::path::Path::new(&music)]
     );
     let candidate = app
         .runtime
-        .block_on(
-            app.services
-                .import_get_candidate(&bae_core::import::CandidateKey::folder(
-                    &std::path::Path::new(&music).join("Album Folder"),
-                )),
-        )
+        .block_on(app.services.import_get_candidate(&bae_core::import::CandidateKey::folder(
+            &std::path::Path::new(&music).join("Album Folder"),
+        )))
         .unwrap();
     assert!(candidate.is_some(), "the folder's candidate is listed");
 }
@@ -156,8 +144,5 @@ fn a_fixture_that_cannot_be_read_fails_the_open() {
     let Err(error) = failed else {
         panic!("an open on a missing fixture must fail");
     };
-    assert!(
-        error.to_string().contains("missing.json"),
-        "the failure names the fixture: {error}"
-    );
+    assert!(error.to_string().contains("missing.json"), "the failure names the fixture: {error}");
 }

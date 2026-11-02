@@ -100,7 +100,5 @@ where
     H: Handler<T, AppState> + Copy,
     T: 'static,
 {
-    router
-        .route(&format!("/{name}"), get(handler))
-        .route(&format!("/{name}.view"), get(handler))
+    router.route(&format!("/{name}"), get(handler)).route(&format!("/{name}.view"), get(handler))
 }

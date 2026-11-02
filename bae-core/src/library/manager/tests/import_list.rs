@@ -41,11 +41,7 @@ async fn done_with_two_uploading(
         ));
         keys.push((name.to_string(), key));
     }
-    manager
-        .database
-        .execute_local_sql_for_test(&sql)
-        .await
-        .unwrap();
+    manager.database.execute_local_sql_for_test(&sql).await.unwrap();
     keys
 }
 
@@ -101,27 +97,20 @@ async fn done_runs_the_releases_still_uploading_first() {
         assert_eq!(done_names(&read_list(&manager, list, 0, 50).await), expected, "{order:?}");
     }
 
-    let list = manager
-        .open_import_list(done(crate::import::ImportListOrder::NewestFirst))
-        .await
-        .unwrap();
+    let list =
+        manager.open_import_list(done(crate::import::ImportListOrder::NewestFirst)).await.unwrap();
     let across = read_list(&manager, list, 1, 2).await;
     assert_eq!(done_names(&across), ["B", "D"], "a window across the two parts");
     assert_eq!(across.total_count, 4);
     assert_eq!(done_names(&read_list(&manager, list, 3, 5).await), ["A"]);
     let key = |name: &str| keys.iter().find(|(key, _)| key == name).unwrap().1.clone();
-    let location = manager
-        .locate_import_candidate(list, &key("A"))
-        .await
-        .unwrap()
-        .expect("A is on Done");
+    let location =
+        manager.locate_import_candidate(list, &key("A")).await.unwrap().expect("A is on Done");
     assert_eq!(location.visible_position, 3);
     manager
         .change_import_list_selection(
             list,
-            crate::import::selection::SelectionChange::Replace {
-                keys: vec![key("A"), key("B")],
-            },
+            crate::import::selection::SelectionChange::Replace { keys: vec![key("A"), key("B")] },
         )
         .await
         .unwrap();
@@ -130,10 +119,7 @@ async fn done_runs_the_releases_still_uploading_first() {
         .await
         .unwrap();
     let selected = read_list(&manager, list, 0, 0).await;
-    assert_eq!(
-        selected.summary.opened_at, 1,
-        "the view opens at B, still uploading, behind C"
-    );
+    assert_eq!(selected.summary.opened_at, 1, "the view opens at B, still uploading, behind C");
     assert_eq!(
         manager
             .load_import_list_selected(list)
@@ -183,10 +169,7 @@ async fn a_done_row_carries_its_release_upload() {
     )
     .await
     .unwrap();
-    let waiting = Some(crate::library::UploadProgress {
-        queued: 1,
-        uploading: 0,
-    });
+    let waiting = Some(crate::library::UploadProgress { queued: 1, uploading: 0 });
     assert_eq!(
         done_uploads(&subscription.next().await.unwrap().windows),
         [
@@ -209,10 +192,7 @@ async fn a_done_row_carries_its_release_upload() {
         let manager = manager.library.clone();
         async move { manager.drain_uploads_for_test().await }
     });
-    let sending = Some(crate::library::UploadProgress {
-        queued: 0,
-        uploading: 1,
-    });
+    let sending = Some(crate::library::UploadProgress { queued: 0, uploading: 1 });
     tokio::time::timeout(std::time::Duration::from_secs(10), async {
         while !done_uploads(&subscription.next().await.unwrap().windows)
             .iter()
@@ -251,10 +231,7 @@ async fn extending_on_done_selects_the_run_across_its_two_parts() {
     manager
         .change_import_list_selection(
             list,
-            crate::import::selection::SelectionChange::Extend {
-                from: key("A"),
-                to: key("B"),
-            },
+            crate::import::selection::SelectionChange::Extend { from: key("A"), to: key("B") },
         )
         .await
         .unwrap();
@@ -290,11 +267,7 @@ async fn setting_the_windows_reruns_the_list_as_a_request_change() {
 
     subscription
         .set_windows(
-            std::iter::once(crate::library::LibraryPageWindow {
-                offset: 0,
-                limit: 50,
-            })
-            .collect(),
+            std::iter::once(crate::library::LibraryPageWindow { offset: 0, limit: 50 }).collect(),
         )
         .expect("the first window is requested");
     let requested = subscription.next().await.expect("the requested value");

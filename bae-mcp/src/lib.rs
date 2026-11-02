@@ -83,14 +83,10 @@ impl McpServerController {
         if let Err(error) = config.validate() {
             return self
                 .server
-                .record_error(McpServerError::InvalidConfig {
-                    detail: error.to_string(),
-                })
+                .record_error(McpServerError::InvalidConfig { detail: error.to_string() })
                 .await;
         }
-        self.server
-            .apply(config.port, |port| self.start(port))
-            .await
+        self.server.apply(config.port, |port| self.start(port)).await
     }
 
     pub async fn status(&self) -> McpServerStatus {
@@ -103,10 +99,7 @@ impl McpServerController {
 
     async fn start(&self, port: u16) -> McpServerStatus {
         if let Err(e) = self.token_provider.as_ref()().await {
-            return self
-                .server
-                .record_error(McpServerError::TokenUnavailable { detail: e })
-                .await;
+            return self.server.record_error(McpServerError::TokenUnavailable { detail: e }).await;
         }
 
         let addr = SocketAddr::from(([127, 0, 0, 1], port));
@@ -164,11 +157,9 @@ async fn report_panics(
 ) -> Response {
     match caught("answer an MCP request", next.run(request)).await {
         Ok(response) => response,
-        Err(failed) => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            diagnostics.bug(failed).to_string(),
-        )
-            .into_response(),
+        Err(failed) => {
+            (StatusCode::INTERNAL_SERVER_ERROR, diagnostics.bug(failed).to_string()).into_response()
+        }
     }
 }
 
@@ -247,9 +238,7 @@ impl ServerHandler for BaeMcpServer {
         };
         match self.automation.call_tool(tool, args).await {
             Ok(value) => Ok(CallToolResult::structured(value)),
-            Err(error) => Ok(CallToolResult::structured_error(automation_error_value(
-                error,
-            )?)),
+            Err(error) => Ok(CallToolResult::structured_error(automation_error_value(error)?)),
         }
     }
 

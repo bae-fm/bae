@@ -21,11 +21,9 @@ pub(crate) enum SelectionWrite {
 
 fn view_revision(sql: &CovenWrite<'_>, list: ImportListId) -> Result<u64, DbError> {
     let revision = sql
-        .query_row(
-            "SELECT view_revision FROM import_list WHERE id = ?",
-            [list.0],
-            |row| row.get::<_, i64>(0),
-        )
+        .query_row("SELECT view_revision FROM import_list WHERE id = ?", [list.0], |row| {
+            row.get::<_, i64>(0)
+        })
         .optional()?
         .ok_or_else(|| DbError::Message(format!("import list {} is not open", list.0)))?;
     to_u64(revision, "a list's view revision")
@@ -33,11 +31,9 @@ fn view_revision(sql: &CovenWrite<'_>, list: ImportListId) -> Result<u64, DbErro
 
 fn selection_revision(sql: &CovenWrite<'_>, list: ImportListId) -> Result<u64, DbError> {
     let revision = sql
-        .query_row(
-            "SELECT selection_revision FROM import_list WHERE id = ?",
-            [list.0],
-            |row| row.get::<_, i64>(0),
-        )
+        .query_row("SELECT selection_revision FROM import_list WHERE id = ?", [list.0], |row| {
+            row.get::<_, i64>(0)
+        })
         .optional()?
         .ok_or_else(|| DbError::Message(format!("import list {} is not open", list.0)))?;
     to_u64(revision, "a list's selection revision")
@@ -45,10 +41,7 @@ fn selection_revision(sql: &CovenWrite<'_>, list: ImportListId) -> Result<u64, D
 
 /// The view moved: a fold folded or opened something.
 fn view_moved(sql: &CovenWrite<'_>, list: ImportListId) -> Result<(), DbError> {
-    sql.execute(
-        "UPDATE import_list SET view_revision = view_revision + 1 WHERE id = ?",
-        [list.0],
-    )?;
+    sql.execute("UPDATE import_list SET view_revision = view_revision + 1 WHERE id = ?", [list.0])?;
     Ok(())
 }
 
@@ -275,16 +268,11 @@ impl Database {
                     };
                     items.select_window(
                         sql,
-                        &LibraryPageWindow {
-                            offset: from.min(to),
-                            limit: from.abs_diff(to) + 1,
-                        },
+                        &LibraryPageWindow { offset: from.min(to), limit: from.abs_diff(to) + 1 },
                     )?;
                 }
             }
-            Ok(SelectionWrite::Changed {
-                revision: selection_revision(sql, list)?,
-            })
+            Ok(SelectionWrite::Changed { revision: selection_revision(sql, list)? })
         })
         .await
     }

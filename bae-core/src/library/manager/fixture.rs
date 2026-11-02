@@ -44,15 +44,9 @@ pub struct FixtureAlbum {
 #[derive(Error, Debug)]
 pub enum LibraryFixtureError {
     #[error("read library fixture {path}: {source}")]
-    Read {
-        path: PathBuf,
-        source: std::io::Error,
-    },
+    Read { path: PathBuf, source: std::io::Error },
     #[error("parse library fixture {path}: {source}")]
-    Parse {
-        path: PathBuf,
-        source: serde_json::Error,
-    },
+    Parse { path: PathBuf, source: serde_json::Error },
     #[error("the album {album} of the library fixture credits no artist")]
     NoArtist { album: String },
     #[error("read the cover {path} of the library fixture: {detail}")]
@@ -65,14 +59,10 @@ pub enum LibraryFixtureError {
 
 impl LibraryFixture {
     pub fn read(path: &std::path::Path) -> Result<Self, LibraryFixtureError> {
-        let bytes = std::fs::read(path).map_err(|source| LibraryFixtureError::Read {
-            path: path.to_path_buf(),
-            source,
-        })?;
-        serde_json::from_slice(&bytes).map_err(|source| LibraryFixtureError::Parse {
-            path: path.to_path_buf(),
-            source,
-        })
+        let bytes = std::fs::read(path)
+            .map_err(|source| LibraryFixtureError::Read { path: path.to_path_buf(), source })?;
+        serde_json::from_slice(&bytes)
+            .map_err(|source| LibraryFixtureError::Parse { path: path.to_path_buf(), source })
     }
 }
 
@@ -110,11 +100,9 @@ impl LibraryManager {
                 .await
                 .map_err(LibraryError::from)?;
         }
-        self.write_fixture_watched_folders(&fixture.watched_folders)
-            .await?;
+        self.write_fixture_watched_folders(&fixture.watched_folders).await?;
         if let Some((release_id, track_id, position_ms)) = resume {
-            self.write_resume_point(&release_id, track_id, Some(position_ms))
-                .await?;
+            self.write_resume_point(&release_id, track_id, Some(position_ms)).await?;
         }
         Ok(())
     }
@@ -127,15 +115,10 @@ impl LibraryManager {
         added: chrono::DateTime<chrono::Utc>,
         artists: &mut Vec<DbArtist>,
     ) -> Result<SeededAlbum, LibraryFixtureError> {
-        let credited: Vec<String> = album
-            .artists
-            .iter()
-            .map(|name| self.fixture_artist(name, added, artists))
-            .collect();
+        let credited: Vec<String> =
+            album.artists.iter().map(|name| self.fixture_artist(name, added, artists)).collect();
         if credited.is_empty() {
-            return Err(LibraryFixtureError::NoArtist {
-                album: album.title.clone(),
-            });
+            return Err(LibraryFixtureError::NoArtist { album: album.title.clone() });
         }
         let release_id = self.ids.new_id().to_string();
         let db_album = DbAlbum {
@@ -234,10 +217,8 @@ impl LibraryManager {
         release_id: &str,
         added: chrono::DateTime<chrono::Utc>,
     ) -> Result<(DbLibraryImage, Vec<u8>), LibraryFixtureError> {
-        let failed = |detail: String| LibraryFixtureError::Cover {
-            path: path.to_path_buf(),
-            detail,
-        };
+        let failed =
+            |detail: String| LibraryFixtureError::Cover { path: path.to_path_buf(), detail };
         let source = path.to_path_buf();
         let bytes = blocking("read a fixture cover", move || {
             let bytes = std::fs::read(&source).map_err(|error| error.to_string())?;

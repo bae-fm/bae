@@ -123,9 +123,8 @@ impl CoverStanding {
 /// Every surface that picks a cover applies this: a card's heading, a pick's
 /// default cover, and the cover options a pick offers.
 pub fn offered_covers(covers: impl IntoIterator<Item = RemoteCover>) -> Vec<RemoteCover> {
-    let (stated, unstated): (Vec<_>, Vec<_>) = covers
-        .into_iter()
-        .partition(|cover| cover.standing == CoverStanding::Stated);
+    let (stated, unstated): (Vec<_>, Vec<_>) =
+        covers.into_iter().partition(|cover| cover.standing == CoverStanding::Stated);
     if stated.is_empty() {
         unstated
     } else {
@@ -169,10 +168,7 @@ pub struct DownscaledCopy {
 impl RemoteImageSet {
     /// An image the catalog serves at one size only.
     pub fn original(url: String) -> Self {
-        Self {
-            url,
-            downscaled: Vec::new(),
-        }
+        Self { url, downscaled: Vec::new() }
     }
 
     /// The image with its downscaled copies, one per box size, smallest first.
@@ -220,10 +216,7 @@ impl RemoteCover {
         let front = format!("{ARCHIVE}/{entity}/{id}/front");
         let downscaled = ARCHIVE_COPY_EDGES
             .iter()
-            .map(|&max_edge| DownscaledCopy {
-                url: format!("{front}-{max_edge}"),
-                max_edge,
-            })
+            .map(|&max_edge| DownscaledCopy { url: format!("{front}-{max_edge}"), max_edge })
             .collect();
         Self {
             image: RemoteImageSet::with_copies(front, downscaled),
@@ -266,10 +259,7 @@ pub fn musicbrainz_release_cover(
 pub fn musicbrainz_album_cover(
     response: &crate::musicbrainz::MbReleaseResponse,
 ) -> Option<RemoteCover> {
-    response
-        .release_group
-        .as_ref()
-        .map(|group| RemoteCover::musicbrainz_release_group(&group.id))
+    response.release_group.as_ref().map(|group| RemoteCover::musicbrainz_release_group(&group.id))
 }
 
 /// Append `cover` unless the list already offers the same image. Two identity
@@ -277,10 +267,7 @@ pub fn musicbrainz_album_cover(
 /// show that image once — stated, when either of the two stated it.
 #[cfg(desktop)]
 pub fn push_unique_cover(covers: &mut Vec<RemoteCover>, cover: RemoteCover) {
-    match covers
-        .iter_mut()
-        .find(|existing| existing.image.url == cover.image.url)
-    {
+    match covers.iter_mut().find(|existing| existing.image.url == cover.image.url) {
         Some(existing) if cover.standing == CoverStanding::Stated => {
             existing.standing = CoverStanding::Stated;
         }
@@ -334,11 +321,7 @@ struct DiskImageAccess {
 
 impl DiskImageCache {
     fn new(dir: std::path::PathBuf, budget: u64) -> Self {
-        Self {
-            dir,
-            budget,
-            access: Mutex::new(DiskImageAccess::default()),
-        }
+        Self { dir, budget, access: Mutex::new(DiskImageAccess::default()) }
     }
 
     fn path_for(&self, url: &str) -> std::path::PathBuf {
@@ -351,10 +334,7 @@ impl DiskImageCache {
             Ok(raw) => raw,
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => return None,
             Err(error) => {
-                warn!(
-                    "Could not read the cached image at {}: {error}",
-                    path.display()
-                );
+                warn!("Could not read the cached image at {}: {error}", path.display());
                 return None;
             }
         };
@@ -370,10 +350,7 @@ impl DiskImageCache {
         } else if let Some(content_type) = header.strip_prefix("image ") {
             let content_type = ContentType::from_mime(content_type);
             raw.drain(..=header_end);
-            DiskImageEntry::Image(RemoteImage {
-                bytes: raw,
-                content_type,
-            })
+            DiskImageEntry::Image(RemoteImage { bytes: raw, content_type })
         } else {
             return self.discard(&path, "its entry kind is invalid");
         };
@@ -426,10 +403,7 @@ impl DiskImageCache {
         let mut entries = match self.measure() {
             Ok(entries) => entries,
             Err(error) => {
-                warn!(
-                    "Could not measure the image cache at {}: {error}",
-                    self.dir.display()
-                );
+                warn!("Could not measure the image cache at {}: {error}", self.dir.display());
                 return;
             }
         };
@@ -439,12 +413,10 @@ impl DiskImageCache {
         }
 
         self.with_access(|access| {
-            entries.sort_by_key(
-                |(path, modified, _)| match access.current_session.get(path) {
-                    Some(sequence) => CacheAccess::Current(*sequence),
-                    None => CacheAccess::Prior(*modified),
-                },
-            );
+            entries.sort_by_key(|(path, modified, _)| match access.current_session.get(path) {
+                Some(sequence) => CacheAccess::Current(*sequence),
+                None => CacheAccess::Prior(*modified),
+            });
         });
 
         let mut removed = Vec::new();
@@ -493,10 +465,7 @@ impl DiskImageCache {
     /// A cache file that cannot be read back as an entry is deleted; the caller
     /// then has nothing cached and fetches the image again.
     fn discard(&self, path: &std::path::Path, reason: &str) -> Option<DiskImageEntry> {
-        warn!(
-            "Discarding the cached image at {}: {reason}",
-            path.display()
-        );
+        warn!("Discarding the cached image at {}: {reason}", path.display());
         self.remove(path);
         None
     }
@@ -506,10 +475,7 @@ impl DiskImageCache {
             Ok(()) => true,
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => true,
             Err(error) => {
-                warn!(
-                    "Could not remove the cached image at {}: {error}",
-                    path.display()
-                );
+                warn!("Could not remove the cached image at {}: {error}", path.display());
                 false
             }
         }
@@ -517,10 +483,8 @@ impl DiskImageCache {
 
     fn record_access(&self, path: std::path::PathBuf) {
         self.with_access(|access| {
-            access.next = access
-                .next
-                .checked_add(1)
-                .expect("disk image cache access counter overflow");
+            access.next =
+                access.next.checked_add(1).expect("disk image cache access counter overflow");
             let sequence = access.next;
             access.current_session.insert(path, sequence);
         });
@@ -581,11 +545,8 @@ impl RemoteImageCache {
     pub fn for_test(http: Http) -> Self {
         let directory =
             tempfile::TempDir::new().expect("a temp directory for the remote image cache");
-        let mut cache = Self::in_dir(
-            http,
-            directory.path().to_path_buf(),
-            REMOTE_IMAGE_DISK_BUDGET,
-        );
+        let mut cache =
+            Self::in_dir(http, directory.path().to_path_buf(), REMOTE_IMAGE_DISK_BUDGET);
         cache._owned_dir = Some(Arc::new(directory));
         cache
     }
@@ -607,10 +568,8 @@ impl RemoteImageCache {
         }
 
         let active = {
-            let mut in_flight = self
-                .in_flight
-                .lock()
-                .expect("remote image in-flight mutex poisoned");
+            let mut in_flight =
+                self.in_flight.lock().expect("remote image in-flight mutex poisoned");
             in_flight
                 .entry(url.to_string())
                 .or_insert_with(|| Arc::new(tokio::sync::OnceCell::new()))
@@ -629,13 +588,9 @@ impl RemoteImageCache {
                 debug!("Downloading remote image from {owned_url}");
                 let entry =
                     match send_image_request(&http, &owned_url, "Cover art download").await? {
-                        ImageResponse::Body {
-                            bytes,
-                            content_type,
-                        } => DiskImageEntry::Image(RemoteImage {
-                            bytes,
-                            content_type,
-                        }),
+                        ImageResponse::Body { bytes, content_type } => {
+                            DiskImageEntry::Image(RemoteImage { bytes, content_type })
+                        }
                         ImageResponse::Nothing => {
                             debug!("No image is served at {owned_url}");
                             DiskImageEntry::Nothing
@@ -648,14 +603,8 @@ impl RemoteImageCache {
             .await
             .cloned();
 
-        let mut in_flight = self
-            .in_flight
-            .lock()
-            .expect("remote image in-flight mutex poisoned");
-        if in_flight
-            .get(url)
-            .is_some_and(|current| Arc::ptr_eq(current, &active))
-        {
+        let mut in_flight = self.in_flight.lock().expect("remote image in-flight mutex poisoned");
+        if in_flight.get(url).is_some_and(|current| Arc::ptr_eq(current, &active)) {
             in_flight.remove(url);
         }
         result
@@ -666,12 +615,10 @@ impl RemoteImageCache {
     }
 
     pub async fn fetch_required(&self, url: &str) -> Result<RemoteImage, RemoteImageError> {
-        self.fetch(url)
-            .await?
-            .ok_or_else(|| RemoteImageError::Status {
-                status: 404,
-                detail: format!("no image is served at {url}"),
-            })
+        self.fetch(url).await?.ok_or_else(|| RemoteImageError::Status {
+            status: 404,
+            detail: format!("no image is served at {url}"),
+        })
     }
 }
 
@@ -698,20 +645,15 @@ async fn write_disk(
     url: String,
     entry: DiskImageEntry,
 ) -> Result<(), RemoteImageError> {
-    blocking("write the remote image cache", move || {
-        disk.put(&url, &entry)
-    })
-    .await
-    .map_err(RemoteImageError::CacheTask)
+    blocking("write the remote image cache", move || disk.put(&url, &entry))
+        .await
+        .map_err(RemoteImageError::CacheTask)
 }
 
 /// What one image request returned. A 404 is an ordinary answer because cover
 /// addresses are derived without knowing whether their host has bytes there.
 enum ImageResponse {
-    Body {
-        bytes: Vec<u8>,
-        content_type: ContentType,
-    },
+    Body { bytes: Vec<u8>, content_type: ContentType },
     Nothing,
 }
 
@@ -739,10 +681,7 @@ async fn send_artwork_request(
             Ok(request) => request,
             Err(error) => {
                 return ClassifiedAttempt::Failed(
-                    RemoteImageError::Transport {
-                        context: "Failed to fetch image",
-                        error,
-                    },
+                    RemoteImageError::Transport { context: "Failed to fetch image", error },
                     Repeat::Never,
                 );
             }
@@ -756,10 +695,7 @@ async fn send_artwork_request(
                     Repeat::AfterBackoff
                 };
                 return ClassifiedAttempt::Failed(
-                    RemoteImageError::Transport {
-                        context: "Failed to fetch image",
-                        error,
-                    },
+                    RemoteImageError::Transport { context: "Failed to fetch image", error },
                     repeat,
                 );
             }
@@ -803,9 +739,9 @@ fn artwork_body_error(
         bae_util::http::HttpBodyError::Read(error) => {
             RemoteImageError::Transport { context, error }
         }
-        bae_util::http::HttpBodyError::TooLarge { .. } => RemoteImageError::Unusable {
-            detail: format!("{context}: {error}"),
-        },
+        bae_util::http::HttpBodyError::TooLarge { .. } => {
+            RemoteImageError::Unusable { detail: format!("{context}: {error}") }
+        }
     }
 }
 
@@ -824,10 +760,7 @@ async fn read_image_response(
     })?;
 
     debug!("Downloaded cover art ({} bytes)", bytes.len());
-    Ok(ImageResponse::Body {
-        bytes,
-        content_type,
-    })
+    Ok(ImageResponse::Body { bytes, content_type })
 }
 
 #[cfg(test)]

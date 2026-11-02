@@ -21,10 +21,7 @@ async fn a_lookup_started_by_hand_opens_a_batch() {
     let key = &crate::import::CandidateKey::test("/watch/a/rel1");
     let files = scanned_key(&runtime, key).await;
 
-    runtime
-        .admit(vec![(key.clone(), files.clone())], Admission::Requested)
-        .await
-        .unwrap();
+    runtime.admit(vec![(key.clone(), files.clone())], Admission::Requested).await.unwrap();
     assert_eq!(counts(&runtime, &mut last).await, vec![(0, 1)]);
 
     report(&runtime, key, &files, run(1), triangulating()).await;
@@ -34,10 +31,7 @@ async fn a_lookup_started_by_hand_opens_a_batch() {
         "the run starting is the same identification, still waited on"
     );
 
-    assert!(runtime
-        .publish_candidate_run(key, run(1), &manual_only(), None)
-        .await
-        .unwrap());
+    assert!(runtime.publish_candidate_run(key, run(1), &manual_only(), None).await.unwrap());
     runtime.run_answered(key, run(1), false).await.unwrap();
     assert_eq!(
         counts(&runtime, &mut last).await,
@@ -66,10 +60,7 @@ async fn the_sweeps_queue_is_counted_and_drains_to_nothing() {
 
     runtime
         .admit(
-            vec![
-                (first.clone(), first_files.clone()),
-                (second.clone(), second_files.clone()),
-            ],
+            vec![(first.clone(), first_files.clone()), (second.clone(), second_files.clone())],
             Admission::Automatic,
         )
         .await
@@ -121,17 +112,11 @@ async fn a_failed_write_ends_the_identification() {
     let key = &crate::import::CandidateKey::test("/watch/a/rel1");
     let files = scanned_key(&runtime, key).await;
 
-    runtime
-        .admit(vec![(key.clone(), files.clone())], Admission::Requested)
-        .await
-        .unwrap();
+    runtime.admit(vec![(key.clone(), files.clone())], Admission::Requested).await.unwrap();
     report(&runtime, key, &files, run(1), manual_only()).await;
     assert_eq!(counts(&runtime, &mut last).await, vec![(0, 1)]);
 
-    runtime
-        .fail_identification(key, run(1), &files, not_written("disk is full"))
-        .await
-        .unwrap();
+    runtime.fail_identification(key, run(1), &files, not_written("disk is full")).await.unwrap();
     assert_eq!(counts(&runtime, &mut last).await, vec![(0, 0)]);
     assert_eq!(
         identification(&runtime, key).await,
@@ -151,10 +136,7 @@ async fn a_cancelled_run_s_end_ends_its_identification() {
     let key = &crate::import::CandidateKey::test("/watch/a/rel1");
     let files = scanned_key(&runtime, key).await;
 
-    runtime
-        .admit(vec![(key.clone(), files.clone())], Admission::Requested)
-        .await
-        .unwrap();
+    runtime.admit(vec![(key.clone(), files.clone())], Admission::Requested).await.unwrap();
     report(&runtime, key, &files, run(1), triangulating()).await;
     assert_eq!(counts(&runtime, &mut last).await, vec![(0, 1)]);
 
@@ -175,10 +157,7 @@ async fn a_batch_after_a_drain_starts_from_zero() {
 
     runtime
         .admit(
-            vec![
-                (first.clone(), first_files.clone()),
-                (second.clone(), second_files),
-            ],
+            vec![(first.clone(), first_files.clone()), (second.clone(), second_files)],
             Admission::Automatic,
         )
         .await
@@ -189,10 +168,7 @@ async fn a_batch_after_a_drain_starts_from_zero() {
     runtime.withdraw(second).await.unwrap();
     assert_eq!(counts(&runtime, &mut last).await, vec![(0, 0)]);
 
-    runtime
-        .admit(vec![(first.clone(), first_files)], Admission::Requested)
-        .await
-        .unwrap();
+    runtime.admit(vec![(first.clone(), first_files)], Admission::Requested).await.unwrap();
     assert_eq!(counts(&runtime, &mut last).await, vec![(0, 1)]);
 }
 
@@ -205,14 +181,8 @@ async fn a_release_re_identified_in_its_own_sheet_is_not_counted() {
     let mut last = (0, 0);
     let key = &crate::import::CandidateKey::reidentify("release-1");
 
-    runtime
-        .publish_release_run(key, run(1), &triangulating(), None)
-        .await
-        .unwrap();
-    runtime
-        .publish_release_run(key, run(1), &manual_only(), None)
-        .await
-        .unwrap();
+    runtime.publish_release_run(key, run(1), &triangulating(), None).await.unwrap();
+    runtime.publish_release_run(key, run(1), &manual_only(), None).await.unwrap();
     assert!(
         runtime.snapshot(key).await.unwrap().is_some(),
         "the sheet reads its run off the runtime"

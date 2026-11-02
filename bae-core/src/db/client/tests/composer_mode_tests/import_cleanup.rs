@@ -93,25 +93,17 @@ struct Commit<'a> {
 /// Finalize `release` past the guard, which these tests have already satisfied
 /// by seeding the DB directly rather than going through the import queue. Its
 /// tracks sit on its one CD ([`test_track`]).
-async fn commit_import(
-    db: &Database,
-    release: &DbRelease,
-    commit: Commit<'_>,
-) {
+async fn commit_import(db: &Database, release: &DbRelease, commit: Commit<'_>) {
     let mediums = [crate::db::DbReleaseMedium::new_test(&release.id)];
     db.finalize_import_atomic(
         crate::db::ImportCommitGuard::UncheckedTestSetup { content_hash: None },
         commit.album,
         release,
         commit.track_files,
-        crate::db::ImportRows {
-            mediums: &mediums,
-            ..commit.rows
-        },
+        crate::db::ImportRows { mediums: &mediums, ..commit.rows },
         commit.files,
         commit.library_image,
         commit.artist_images,
-
     )
     .await
     .unwrap()
@@ -132,7 +124,8 @@ async fn finalize_refuses_metadata_that_changed_after_queue_admission() {
             )
             .with_test_flac_audio(),
             role: crate::import::folder_scanner::FileRole::Audio,
-        }], parts: Vec::new(), 
+        }],
+        parts: Vec::new(),
     };
     let candidate = super::candidate_with(
         std::path::Path::new(&root),
@@ -142,7 +135,10 @@ async fn finalize_refuses_metadata_that_changed_after_queue_admission() {
     );
     let content_hash = candidate.files.content_hash();
     db.add_watched_import_folder(std::path::Path::new(&root)).await.unwrap();
-    let generation = db.begin_folder_scan(std::path::Path::new(&root), crate::import::VolumeKind::Local).await.unwrap();
+    let generation = db
+        .begin_folder_scan(std::path::Path::new(&root), crate::import::VolumeKind::Local)
+        .await
+        .unwrap();
     db.save_folder_scan_item(
         std::path::Path::new(&root),
         generation,
@@ -153,11 +149,7 @@ async fn finalize_refuses_metadata_that_changed_after_queue_admission() {
     .expect("the current scan accepts the candidate");
 
     crate::import::CandidatePreparations::new(db.clone())
-        .set_field(
-            &content_hash,
-            crate::import::CandidateEditField::PressingYear,
-            "2026",
-        )
+        .set_field(&content_hash, crate::import::CandidateEditField::PressingYear, "2026")
         .await
         .unwrap();
     let release = DbRelease::new_test("album-never-written", "release-never-written");
@@ -167,7 +159,8 @@ async fn finalize_refuses_metadata_that_changed_after_queue_admission() {
                 candidate_key: crate::import::CandidateKey::folder(&candidate_path),
                 source: crate::import::release_candidate::CandidateSource {
                     path: candidate_path,
-                    scope: crate::import::folder_scanner::ReleaseFileScope::Direct, parts: Vec::new(), 
+                    scope: crate::import::folder_scanner::ReleaseFileScope::Direct,
+                    parts: Vec::new(),
                 },
                 expectation: crate::import::service::ImportExpectation {
                     candidate: crate::import::CandidateAsRead {
@@ -191,11 +184,7 @@ async fn finalize_refuses_metadata_that_changed_after_queue_admission() {
         .expect_err("the final transaction must re-check the queued metadata revision");
 
     assert!(error.to_string().contains("prepared metadata changed"));
-    assert!(db
-        .find_release_by_id("release-never-written")
-        .await
-        .unwrap()
-        .is_none());
+    assert!(db.find_release_by_id("release-never-written").await.unwrap().is_none());
 }
 
 async fn seeded_db() -> (Database, tempfile::TempDir) {
@@ -251,16 +240,8 @@ async fn finalize_import_persists_composer_work_and_role_rows() {
     db.insert_artist(&composer).await.unwrap();
 
     let album = test_album(ALBUM_A, "Album Title A", now);
-    let album_artists = [crate::db::DbAlbumArtist::new(
-        &album.id,
-        &album_artist.id,
-        0,
-        now,
-    )];
-    let release = DbRelease {
-
-        ..test_release(RELEASE_A, &album.id, now)
-    };
+    let album_artists = [crate::db::DbAlbumArtist::new(&album.id, &album_artist.id, 0, now)];
+    let release = DbRelease { ..test_release(RELEASE_A, &album.id, now) };
     let track_files = vec![crate::import::TrackFile {
         db_track: test_track(TRACK_A, &release.id, "Track Title A", now),
         audio: crate::import::TrackAudio::Standalone {
@@ -319,10 +300,7 @@ async fn finalize_import_persists_composer_work_and_role_rows() {
             album: Some(&album),
             track_files: &track_files,
             rows: crate::db::ImportRows {
-                artists: crate::db::ArtistCredits {
-                    credits: &credits,
-                    picked: &picked,
-                },
+                artists: crate::db::ArtistCredits { credits: &credits, picked: &picked },
                 works: &works,
                 work_artists: &work_artists,
                 track_works: &track_works,
@@ -336,11 +314,8 @@ async fn finalize_import_persists_composer_work_and_role_rows() {
     )
     .await;
 
-    let composer_detail = db
-        .find_composer_detail(&composer.id)
-        .await
-        .unwrap()
-        .expect("composer detail");
+    let composer_detail =
+        db.find_composer_detail(&composer.id).await.unwrap().expect("composer detail");
     assert_eq!(composer_detail.work_groups.len(), 1);
     assert_eq!(composer_detail.work_groups[0].works[0].work.id, WORK_A);
     let release_role_count = db
@@ -356,11 +331,7 @@ async fn finalize_import_persists_composer_work_and_role_rows() {
         .unwrap();
     assert_eq!(release_role_count, 1);
 
-    let work_detail = db
-        .find_work_detail(WORK_A)
-        .await
-        .unwrap()
-        .expect("work detail");
+    let work_detail = db.find_work_detail(WORK_A).await.unwrap().expect("work detail");
     assert_eq!(work_detail.tracks.len(), 1);
     let track_role_count = db
         .read(|conn| {
@@ -375,4 +346,3 @@ async fn finalize_import_persists_composer_work_and_role_rows() {
     .unwrap();
     assert_eq!(track_role_count, 1);
 }
-

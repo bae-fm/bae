@@ -118,11 +118,7 @@ static COUNTRIES: &[CountryRow] = &[
     country!("BM", "Bermuda"),
     country!("BN", "Brunei Darussalam", "Brunei"),
     country!("BO", "Bolivia"),
-    country!(
-        "BQ",
-        "Bonaire, Sint Eustatius and Saba",
-        "Caribbean Netherlands"
-    ),
+    country!("BQ", "Bonaire, Sint Eustatius and Saba", "Caribbean Netherlands"),
     country!("BR", "Brazil"),
     country!("BS", "Bahamas"),
     country!("BT", "Bhutan"),
@@ -149,13 +145,7 @@ static COUNTRIES: &[CountryRow] = &[
     country!("CX", "Christmas Island"),
     country!("CY", "Cyprus"),
     country!("CZ", "Czechia", "Czech Republic"),
-    country!(
-        "DE",
-        "Germany",
-        "West Germany",
-        "Western Germany",
-        "W. Germany"
-    ),
+    country!("DE", "Germany", "West Germany", "Western Germany", "W. Germany"),
     country!("DJ", "Djibouti"),
     country!("DK", "Denmark"),
     country!("DM", "Dominica"),
@@ -403,10 +393,7 @@ mod tests {
     fn every_abbreviation_is_capital_letters() {
         for country in COUNTRIES {
             for abbreviation in country.abbreviations {
-                assert!(
-                    abbreviation.chars().all(|c| c.is_ascii_uppercase()),
-                    "{abbreviation}"
-                );
+                assert!(abbreviation.chars().all(|c| c.is_ascii_uppercase()), "{abbreviation}");
             }
         }
     }

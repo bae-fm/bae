@@ -18,9 +18,7 @@ struct StatusSink {
 
 impl StatusSink {
     fn new() -> Self {
-        Self {
-            reported: Arc::new(Mutex::new(Vec::new())),
-        }
+        Self { reported: Arc::new(Mutex::new(Vec::new())) }
     }
 
     fn callback(&self) -> EventCallback {
@@ -93,10 +91,7 @@ fn session_routes_commands_to_the_channel() {
     };
     drop(session);
 
-    assert!(
-        applied,
-        "the session must route every command to the channel"
-    );
+    assert!(applied, "the session must route every command to the channel");
     let s = state.lock().unwrap();
     assert_eq!(s.loads[0].url, "http://host/track");
     assert_eq!(s.seeks[0], Duration::from_secs(42));
@@ -120,10 +115,7 @@ fn session_reports_polled_status_to_the_callback() {
     });
     drop(session);
 
-    assert!(
-        saw_playing,
-        "polled renderer status must flow to the status callback"
-    );
+    assert!(saw_playing, "polled renderer status must flow to the status callback");
 }
 
 #[test]
@@ -136,9 +128,7 @@ fn session_ends_on_receiver_side_stop() {
         .lock()
         .unwrap()
         .poll_script
-        .push_back(Err(RendererError::Connection(
-            "renderer stopped".to_string(),
-        )));
+        .push_back(Err(RendererError::Connection("renderer stopped".to_string())));
     let sink = StatusSink::new();
 
     let session = RendererSession::start(
@@ -155,10 +145,7 @@ fn session_ends_on_receiver_side_stop() {
     });
     drop(session);
 
-    assert!(
-        ended,
-        "a lost connection must end the session with why it was lost"
-    );
+    assert!(ended, "a lost connection must end the session with why it was lost");
 }
 
 /// A load the renderer refuses is reported with why, and the session goes on
@@ -205,12 +192,7 @@ fn session_reports_a_refused_command_and_continues() {
 #[test]
 fn session_reports_finished_for_queue_advance() {
     let channel = FakeChannel::new();
-    channel
-        .state
-        .lock()
-        .unwrap()
-        .poll_script
-        .push_back(Ok(status(RendererPlayerState::Finished)));
+    channel.state.lock().unwrap().poll_script.push_back(Ok(status(RendererPlayerState::Finished)));
     let sink = StatusSink::new();
 
     let session = RendererSession::start(

@@ -63,9 +63,7 @@ pub fn assert_captured_matches_reference(
         sample_ms(best_offset),
     );
 
-    let compare_count = compare_samples
-        .min(captured.len() - best_offset)
-        .min(reference.len());
+    let compare_count = compare_samples.min(captured.len() - best_offset).min(reference.len());
     for i in 0..compare_count {
         let diff = (captured[best_offset + i] - reference[i]).abs();
         assert!(

@@ -34,26 +34,16 @@ impl PlaybackService {
             PlaybackCommand::Play(track_id) => {
                 self.handle_play(track_id).await;
             }
-            PlaybackCommand::PlayRelease {
-                release_id,
-                start_track_id,
-                shuffle,
-            } => {
+            PlaybackCommand::PlayRelease { release_id, start_track_id, shuffle } => {
                 // A shuffled play starts wherever the shuffle puts first.
                 let start = match (shuffle, start_track_id) {
                     (true, _) => ReleaseStart::Shuffled,
                     (false, None) => ReleaseStart::First,
                     (false, Some(track_id)) => ReleaseStart::Track(track_id),
                 };
-                let fill = ContextFill::Release {
-                    release_id: release_id.clone(),
-                    start,
-                };
+                let fill = ContextFill::Release { release_id: release_id.clone(), start };
                 match self.playback_queue.play(fill).await {
-                    Ok(ContextFilled::Playing {
-                        current,
-                        track_count,
-                    }) => {
+                    Ok(ContextFilled::Playing { current, track_count }) => {
                         self.start_filled_context(
                             current.track_id,
                             PlaybackStartSource::Release,
@@ -81,15 +71,8 @@ impl PlaybackService {
             }
             PlaybackCommand::PlayReleases(release_ids) => {
                 // The source names exactly the releases that have tracks.
-                match self
-                    .playback_queue
-                    .play(ContextFill::Releases(release_ids))
-                    .await
-                {
-                    Ok(ContextFilled::Playing {
-                        current,
-                        track_count,
-                    }) => {
+                match self.playback_queue.play(ContextFill::Releases(release_ids)).await {
+                    Ok(ContextFilled::Playing { current, track_count }) => {
                         self.start_filled_context(
                             current.track_id,
                             PlaybackStartSource::Releases,
@@ -108,10 +91,7 @@ impl PlaybackService {
             }
             PlaybackCommand::PlayLibraryShuffled => {
                 match self.playback_queue.play(ContextFill::LibraryShuffled).await {
-                    Ok(ContextFilled::Playing {
-                        current,
-                        track_count,
-                    }) => {
+                    Ok(ContextFilled::Playing { current, track_count }) => {
                         self.start_filled_context(
                             current.track_id,
                             PlaybackStartSource::LibraryShuffled,
@@ -148,10 +128,7 @@ impl PlaybackService {
             PlaybackCommand::AutoAdvance { track_id } => {
                 self.handle_auto_advance(track_id).await;
             }
-            PlaybackCommand::TrackReady {
-                track_id,
-                generation,
-            } => {
+            PlaybackCommand::TrackReady { track_id, generation } => {
                 self.resolve_track_ready(track_id, generation).await;
             }
             PlaybackCommand::HaltOnError => {
@@ -225,10 +202,7 @@ impl PlaybackService {
             PlaybackCommand::RemoveFromQueue(entry_id) => {
                 match self.playback_queue.remove(entry_id).await {
                     Ok(Some(removed)) => {
-                        if self
-                            .current_track_id()
-                            .map(|id| id == removed.track_id)
-                            .unwrap_or(false)
+                        if self.current_track_id().map(|id| id == removed.track_id).unwrap_or(false)
                         {
                             self.stop().await;
                         } else {
@@ -302,9 +276,7 @@ impl PlaybackService {
                 self.preview_toggle_pause();
             }
             PlaybackCommand::PreviewSeekByRatio(ratio) => {
-                self.preview
-                    .seek_by_ratio(ratio, self.audio_device.as_ref())
-                    .await;
+                self.preview.seek_by_ratio(ratio, self.audio_device.as_ref()).await;
             }
             PlaybackCommand::PreviewCompleted => {
                 self.preview_completed();

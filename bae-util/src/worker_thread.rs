@@ -24,11 +24,7 @@ pub struct WorkerThread<M> {
 impl<M> Clone for WorkerThread<M> {
     // Derived `Clone` would demand `M: Clone`, which neither half needs.
     fn clone(&self) -> Self {
-        Self {
-            name: self.name,
-            tx: self.tx.clone(),
-            thread: self.thread.clone(),
-        }
+        Self { name: self.name, tx: self.tx.clone(), thread: self.thread.clone() }
     }
 }
 
@@ -45,11 +41,7 @@ impl<M> WorkerThread<M> {
         ) -> std::thread::JoinHandle<()>,
     ) -> Self {
         let (tx, rx) = mpsc::unbounded_channel();
-        Self {
-            name,
-            tx: tx.clone(),
-            thread: Arc::new(Mutex::new(Some(spawn(tx, rx)))),
-        }
+        Self { name, tx: tx.clone(), thread: Arc::new(Mutex::new(Some(spawn(tx, rx)))) }
     }
 
     pub fn send(&self, message: M) -> Result<(), mpsc::error::SendError<M>> {

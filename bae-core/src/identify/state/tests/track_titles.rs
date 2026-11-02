@@ -1,13 +1,7 @@
 // The order of the folder's track titles against what each read document
 // lists.
 
-const FOLDER_TITLES: [&str; 5] = [
-    "Song One",
-    "Song Two",
-    "Song Three",
-    "Song Four",
-    "Song Five",
-];
+const FOLDER_TITLES: [&str; 5] = ["Song One", "Song Two", "Song Three", "Song Four", "Song Five"];
 
 /// A run like `reading_documents`, over a folder whose tracks carry
 /// `FOLDER_TITLES`.
@@ -20,9 +14,7 @@ fn reading_titled_documents(
             track_titles: FOLDER_TITLES.iter().map(|title| title.to_string()).collect(),
             ..signals(
                 DiscIdSignal::Absent,
-                BarcodeSignal::Settled {
-                    codes: artwork_codes(&["A"]),
-                },
+                BarcodeSignal::Settled { codes: artwork_codes(&["A"]) },
                 &[],
             )
         },
@@ -91,8 +83,7 @@ fn the_row_listing_the_folder_s_titles_in_order_ranks_first() {
     assert_eq!(findings.matches.len(), 1);
     assert_eq!(findings.matches[0].release_id, "dg-in-order");
     assert_eq!(
-        findings.matches[0].track_titles[0],
-        "song one (Remastered)",
+        findings.matches[0].track_titles[0], "song one (Remastered)",
         "the document's titles are kept with its record"
     );
 }
@@ -106,14 +97,8 @@ fn agreeing_lifts_no_row_above_one_left_unread() {
     let (state, releases) = reading_titled_documents(vec![
         first_label_only("dg-in-order"),
         packed(first_label_only("dg-spelled"), bae_types::pressing::Packaging::Digipak),
-        packed(
-            first_label_only("dg-reordered"),
-            bae_types::pressing::Packaging::GatefoldCover,
-        ),
-        packed(
-            first_label_only("dg-unread"),
-            bae_types::pressing::Packaging::CardboardSleeve,
-        ),
+        packed(first_label_only("dg-reordered"), bae_types::pressing::Packaging::GatefoldCover),
+        packed(first_label_only("dg-unread"), bae_types::pressing::Packaging::CardboardSleeve),
     ]);
     let titled = |titles: &[&str]| crate::identify::documents::ReleaseDocument {
         track_titles: titles.iter().map(|title| title.to_string()).collect(),
@@ -154,11 +139,8 @@ fn agreeing_lifts_no_row_above_one_left_unread() {
     let IdentifyState::Found { findings, .. } = state else {
         panic!("expected Found, got {state:?}");
     };
-    let mut offered: Vec<&str> = findings
-        .matches
-        .iter()
-        .map(|result| result.release_id.as_str())
-        .collect();
+    let mut offered: Vec<&str> =
+        findings.matches.iter().map(|result| result.release_id.as_str()).collect();
     offered.sort();
     assert_eq!(offered, vec!["dg-in-order", "dg-spelled", "dg-unread"]);
 }

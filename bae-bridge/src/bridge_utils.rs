@@ -15,10 +15,7 @@ mirror_enum! {
 
 impl BridgeLookupCatalogSetting {
     pub(crate) fn from_core(entry: bae_core::config::LookupCatalogSetting) -> Self {
-        let bae_core::config::LookupCatalogSetting {
-            availability,
-            can_change,
-        } = entry;
+        let bae_core::config::LookupCatalogSetting { availability, can_change } = entry;
         let bae_core::import::CatalogAvailability { catalog, state } = availability;
         Self {
             catalog: BridgeCatalog::from_core(catalog),
@@ -38,32 +35,32 @@ mirror_enum! {
 impl BridgeSaveCodec {
     pub(crate) fn from_core(codec: &bae_core::config::SaveCodec) -> Self {
         match codec {
-            bae_core::config::SaveCodec::Flac { bit_depth } => BridgeSaveCodec::Flac {
-                bit_depth: BridgeSaveBitDepth::from_core(*bit_depth),
-            },
-            bae_core::config::SaveCodec::Mp3 { bitrate_kbps } => BridgeSaveCodec::Mp3 {
-                bitrate_kbps: *bitrate_kbps,
-            },
-            bae_core::config::SaveCodec::Aac { bitrate_kbps } => BridgeSaveCodec::Aac {
-                bitrate_kbps: *bitrate_kbps,
-            },
-            bae_core::config::SaveCodec::OpusOgg { bitrate_kbps } => BridgeSaveCodec::OpusOgg {
-                bitrate_kbps: *bitrate_kbps,
-            },
-            bae_core::config::SaveCodec::Wav { bit_depth } => BridgeSaveCodec::Wav {
-                bit_depth: BridgeSaveBitDepth::from_core(*bit_depth),
-            },
-            bae_core::config::SaveCodec::Aiff { bit_depth } => BridgeSaveCodec::Aiff {
-                bit_depth: BridgeSaveBitDepth::from_core(*bit_depth),
-            },
+            bae_core::config::SaveCodec::Flac { bit_depth } => {
+                BridgeSaveCodec::Flac { bit_depth: BridgeSaveBitDepth::from_core(*bit_depth) }
+            }
+            bae_core::config::SaveCodec::Mp3 { bitrate_kbps } => {
+                BridgeSaveCodec::Mp3 { bitrate_kbps: *bitrate_kbps }
+            }
+            bae_core::config::SaveCodec::Aac { bitrate_kbps } => {
+                BridgeSaveCodec::Aac { bitrate_kbps: *bitrate_kbps }
+            }
+            bae_core::config::SaveCodec::OpusOgg { bitrate_kbps } => {
+                BridgeSaveCodec::OpusOgg { bitrate_kbps: *bitrate_kbps }
+            }
+            bae_core::config::SaveCodec::Wav { bit_depth } => {
+                BridgeSaveCodec::Wav { bit_depth: BridgeSaveBitDepth::from_core(*bit_depth) }
+            }
+            bae_core::config::SaveCodec::Aiff { bit_depth } => {
+                BridgeSaveCodec::Aiff { bit_depth: BridgeSaveBitDepth::from_core(*bit_depth) }
+            }
         }
     }
 
     pub(crate) fn into_core(self) -> bae_core::config::SaveCodec {
         match self {
-            BridgeSaveCodec::Flac { bit_depth } => bae_core::config::SaveCodec::Flac {
-                bit_depth: bit_depth.into_core(),
-            },
+            BridgeSaveCodec::Flac { bit_depth } => {
+                bae_core::config::SaveCodec::Flac { bit_depth: bit_depth.into_core() }
+            }
             BridgeSaveCodec::Mp3 { bitrate_kbps } => {
                 bae_core::config::SaveCodec::Mp3 { bitrate_kbps }
             }
@@ -73,12 +70,12 @@ impl BridgeSaveCodec {
             BridgeSaveCodec::OpusOgg { bitrate_kbps } => {
                 bae_core::config::SaveCodec::OpusOgg { bitrate_kbps }
             }
-            BridgeSaveCodec::Wav { bit_depth } => bae_core::config::SaveCodec::Wav {
-                bit_depth: bit_depth.into_core(),
-            },
-            BridgeSaveCodec::Aiff { bit_depth } => bae_core::config::SaveCodec::Aiff {
-                bit_depth: bit_depth.into_core(),
-            },
+            BridgeSaveCodec::Wav { bit_depth } => {
+                bae_core::config::SaveCodec::Wav { bit_depth: bit_depth.into_core() }
+            }
+            BridgeSaveCodec::Aiff { bit_depth } => {
+                bae_core::config::SaveCodec::Aiff { bit_depth: bit_depth.into_core() }
+            }
         }
     }
 }
@@ -112,9 +109,9 @@ impl BridgeOutputKind {
     pub(crate) fn from_core(kind: &bae_core::library::OutputKind) -> Self {
         match kind {
             bae_core::library::OutputKind::Export => BridgeOutputKind::Export,
-            bae_core::library::OutputKind::Save { preset } => BridgeOutputKind::Save {
-                preset_name: preset.name.clone(),
-            },
+            bae_core::library::OutputKind::Save { preset } => {
+                BridgeOutputKind::Save { preset_name: preset.name.clone() }
+            }
         }
     }
 }
@@ -183,10 +180,8 @@ impl BridgeConfig {
     pub(crate) fn from_core(config: &bae_core::config::Config) -> Self {
         let discogs_status = config.prefs.discogs_token_status();
         let catalogs = config.prefs.lookup_catalog_settings();
-        let lookup_catalogs = catalogs
-            .into_iter()
-            .map(BridgeLookupCatalogSetting::from_core)
-            .collect();
+        let lookup_catalogs =
+            catalogs.into_iter().map(BridgeLookupCatalogSetting::from_core).collect();
         let prefs = &config.prefs;
         let bae_core::config::Preferences {
             // Read via the derived `discogs_token_status()` above.
@@ -236,25 +231,16 @@ impl BridgeConfig {
             max_concurrent_downloads: max_concurrent_downloads.get(),
             identify_automatically: *automatic,
             import_when_identified: *import_when_identified,
-            import_storage: BridgeImportStorage {
-                cloud: *cloud,
-                pinned: *pinned,
-            },
+            import_storage: BridgeImportStorage { cloud: *cloud, pinned: *pinned },
             lookup_catalogs,
             show_remaining_time: *show_remaining_time,
             library_full_width: *library_full_width,
-            save_presets: save_presets
-                .iter()
-                .map(BridgeSavePreset::from_core)
-                .collect(),
+            save_presets: save_presets.iter().map(BridgeSavePreset::from_core).collect(),
             default_track_save_preset: default_track_save_preset.clone(),
             default_release_save_preset: default_release_save_preset.clone(),
             cast_enabled: *cast_enabled,
             cast_transcode_format: BridgeCastTranscodeFormat::from_core(*cast_transcode_format),
-            mcp: BridgeMcpConfig {
-                enabled: *enabled,
-                port: *port,
-            },
+            mcp: BridgeMcpConfig { enabled: *enabled, port: *port },
             subsonic: BridgeSubsonicConfig {
                 enabled: *subsonic_enabled,
                 port: *subsonic_port,

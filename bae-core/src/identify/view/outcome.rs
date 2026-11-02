@@ -38,25 +38,14 @@ impl RunOutcome {
     pub(crate) fn of(state: &IdentifyState) -> Option<Self> {
         match state {
             IdentifyState::Idle => None,
-            IdentifyState::Triangulating {
-                discid,
-                barcode,
-                catalog,
-                isrc,
-                search,
-                context,
-            } => {
+            IdentifyState::Triangulating { discid, barcode, catalog, isrc, search, context } => {
                 let answers = LookupAnswers {
                     disc_id: discid.answers(),
                     barcode: barcode.results(),
                     catalog: catalog.results(),
                     isrc: isrc.results(),
                     search: search.results(),
-                    pressing: context
-                        .pressings
-                        .iter()
-                        .flat_map(PressingLookup::results)
-                        .collect(),
+                    pressing: context.pressings.iter().flat_map(PressingLookup::results).collect(),
                 };
                 let ledger =
                     run_view(discid, barcode, catalog, isrc, search, context).read_as(&answers);
@@ -104,25 +93,19 @@ impl PublishedRun {
     /// prints as a row left out.
     pub fn text(&self) -> CandidateText {
         let struck_out: Vec<String> = match self.outcome.ledger().map(|ledger| &ledger.catalog) {
-            Some(CatalogStepView::Numbers { rows, .. }) => rows
-                .iter()
-                .filter(|row| row.excluded)
-                .map(|row| row.value.clone())
-                .collect(),
+            Some(CatalogStepView::Numbers { rows, .. }) => {
+                rows.iter().filter(|row| row.excluded).map(|row| row.value.clone()).collect()
+            }
             Some(CatalogStepView::NoneFound) | None => Vec::new(),
         };
-        self.signals
-            .as_ref()
-            .map_or_else(CandidateText::default, |signals| {
-                CandidateText::of(&signals.text_pool, &struck_out, signals.barcode.codes())
-            })
+        self.signals.as_ref().map_or_else(CandidateText::default, |signals| {
+            CandidateText::of(&signals.text_pool, &struck_out, signals.barcode.codes())
+        })
     }
 
     /// The sample rate that rules a CD out, read off the run's signals.
     pub fn rate_ruling_out_cd(&self) -> Option<u32> {
-        self.signals
-            .as_ref()
-            .and_then(|signals| signals.origin.not_cd_rate)
+        self.signals.as_ref().and_then(|signals| signals.origin.not_cd_rate)
     }
 
     /// The run as every surface draws it.
@@ -135,11 +118,7 @@ impl IdentifyStateView {
     /// `outcome` as a surface renders it, its rows judged against `text`.
     pub fn of_outcome(outcome: RunOutcome, text: &CandidateText) -> Self {
         match outcome {
-            RunOutcome::Running {
-                ledger,
-                findings,
-                track_count,
-            } => {
+            RunOutcome::Running { ledger, findings, track_count } => {
                 let folded = fold(findings, Some(&ledger), text, track_count);
                 IdentifyStateView::Triangulating {
                     run: ledger,
@@ -148,11 +127,7 @@ impl IdentifyStateView {
                     narrowed_out_count: folded.narrowed_out_count,
                 }
             }
-            RunOutcome::Answered(TerminalVerdict::Found {
-                findings,
-                track_count,
-                ledger,
-            }) => {
+            RunOutcome::Answered(TerminalVerdict::Found { findings, track_count, ledger }) => {
                 let summary = VerdictSummary::of_found(&findings, track_count);
                 let folded = fold(findings, ledger.as_ref(), text, track_count);
                 IdentifyStateView::Found {
@@ -169,13 +144,9 @@ impl IdentifyStateView {
             RunOutcome::Answered(TerminalVerdict::NotFoundAnywhere { ledger }) => {
                 IdentifyStateView::NotFoundAnywhere { run: ledger }
             }
-            RunOutcome::Answered(TerminalVerdict::ManualOnly {
-                track_count,
-                ledger,
-            }) => IdentifyStateView::ManualOnly {
-                track_count,
-                run: ledger,
-            },
+            RunOutcome::Answered(TerminalVerdict::ManualOnly { track_count, ledger }) => {
+                IdentifyStateView::ManualOnly { track_count, run: ledger }
+            }
             RunOutcome::Answered(TerminalVerdict::Error { failure }) => {
                 IdentifyStateView::Error { failure }
             }
@@ -207,10 +178,7 @@ impl PublishedRun {
     /// The disc-ID, barcode, catalog and ISRC badges, read off the ledger
     /// the run shows; none for an outcome that lays no ledger out.
     pub fn toolbar(&self) -> Vec<ToolbarSignal> {
-        self.outcome
-            .ledger()
-            .map(IdentifyRunView::toolbar)
-            .unwrap_or_default()
+        self.outcome.ledger().map(IdentifyRunView::toolbar).unwrap_or_default()
     }
 }
 
@@ -222,10 +190,7 @@ fn lookups_state<'a>(lookups: impl IntoIterator<Item = &'a LookupView>) -> Optio
     if lookups.is_empty() {
         return None;
     }
-    if lookups
-        .iter()
-        .any(|lookup| matches!(lookup, LookupView::Queued | LookupView::LookingUp))
-    {
+    if lookups.iter().any(|lookup| matches!(lookup, LookupView::Queued | LookupView::LookingUp)) {
         return Some(SignalState::LookingUp);
     }
     let found: std::collections::HashSet<(bae_catalogs::catalog::Catalog, &str)> = lookups
@@ -234,9 +199,7 @@ fn lookups_state<'a>(lookups: impl IntoIterator<Item = &'a LookupView>) -> Optio
         .map(|release| (release.source, release.release_id.as_str()))
         .collect();
     if !found.is_empty() {
-        return Some(SignalState::Found {
-            count: found.len() as u32,
-        });
+        return Some(SignalState::Found { count: found.len() as u32 });
     }
     if let Some(failure) = lookups.iter().find_map(|lookup| match lookup {
         LookupView::Failed { failure } => Some(failure.clone()),
@@ -252,9 +215,7 @@ fn lookups_state<'a>(lookups: impl IntoIterator<Item = &'a LookupView>) -> Optio
         })
         .collect();
     if not_asked.len() == lookups.len() {
-        return Some(SignalState::NotAsked {
-            reason: not_asked[0],
-        });
+        return Some(SignalState::NotAsked { reason: not_asked[0] });
     }
     Some(SignalState::NoMatch)
 }
@@ -262,19 +223,11 @@ fn lookups_state<'a>(lookups: impl IntoIterator<Item = &'a LookupView>) -> Optio
 impl IdentifyRunView {
     /// The disc-ID, barcode, catalog and ISRC badges this ledger shows.
     pub fn toolbar(&self) -> Vec<ToolbarSignal> {
-        let option = |value: &str, chosen: bool| SignalOption {
-            value: value.to_string(),
-            chosen,
-        };
+        let option = |value: &str, chosen: bool| SignalOption { value: value.to_string(), chosen };
         let disc = match &self.disc_id {
             DiscIdStepView::Read { discs } => {
                 let excluded = discs.iter().all(|disc| {
-                    matches!(
-                        disc.lookup,
-                        LookupView::NotAsked {
-                            reason: NotAskedReason::LeftOut
-                        }
-                    )
+                    matches!(disc.lookup, LookupView::NotAsked { reason: NotAskedReason::LeftOut })
                 });
                 ToolbarSignal {
                     kind: SignalKind::DiscId,
@@ -282,10 +235,7 @@ impl IdentifyRunView {
                     state: lookups_state(discs.iter().map(|disc| &disc.lookup))
                         .unwrap_or(SignalState::Skipped),
                     excluded,
-                    options: discs
-                        .iter()
-                        .map(|disc| option(&disc.disc_id, !excluded))
-                        .collect(),
+                    options: discs.iter().map(|disc| option(&disc.disc_id, !excluded)).collect(),
                 }
             }
             DiscIdStepView::Reading => badge(SignalKind::DiscId, SignalState::LookingUp),
@@ -301,11 +251,9 @@ impl IdentifyRunView {
             BarcodeStepView::NoCodes => badge(SignalKind::Barcode, SignalState::NoMatch),
             BarcodeStepView::Rows { scanning, rows } => {
                 let lookups: Vec<&LookupView> = rows.iter().flat_map(cells).collect();
-                let matched = rows.iter().find(|row| {
-                    row.cells
-                        .iter()
-                        .any(|cell| !cell.lookup.releases().is_empty())
-                });
+                let matched = rows
+                    .iter()
+                    .find(|row| row.cells.iter().any(|cell| !cell.lookup.releases().is_empty()));
                 ToolbarSignal {
                     kind: SignalKind::Barcode,
                     shown: matched.or(rows.first()).map(|row| row.value.clone()),
@@ -315,20 +263,13 @@ impl IdentifyRunView {
                         lookups_state(lookups).unwrap_or(SignalState::NoMatch)
                     },
                     excluded: !rows.is_empty() && rows.iter().all(|row| row.excluded),
-                    options: rows
-                        .iter()
-                        .map(|row| option(&row.value, !row.excluded))
-                        .collect(),
+                    options: rows.iter().map(|row| option(&row.value, !row.excluded)).collect(),
                 }
             }
         };
         let catalog = match &self.catalog {
             CatalogStepView::NoneFound => badge(SignalKind::Catalog, SignalState::Skipped),
-            CatalogStepView::Numbers {
-                scanning,
-                rows,
-                candidates,
-            } => {
+            CatalogStepView::Numbers { scanning, rows, candidates } => {
                 let in_effect: Vec<&SignalValueRow> =
                     rows.iter().filter(|row| !row.excluded).collect();
                 let lookups: Vec<&LookupView> =
@@ -345,11 +286,7 @@ impl IdentifyRunView {
                     options: rows
                         .iter()
                         .map(|row| option(&row.value, !row.excluded))
-                        .chain(
-                            candidates
-                                .iter()
-                                .map(|candidate| option(&candidate.value, false)),
-                        )
+                        .chain(candidates.iter().map(|candidate| option(&candidate.value, false)))
                         .collect(),
                 }
             }
@@ -371,11 +308,5 @@ impl IdentifyRunView {
 
 /// A badge with no value.
 fn badge(kind: SignalKind, state: SignalState) -> ToolbarSignal {
-    ToolbarSignal {
-        kind,
-        shown: None,
-        state,
-        excluded: false,
-        options: Vec::new(),
-    }
+    ToolbarSignal { kind, shown: None, state, excluded: false, options: Vec::new() }
 }

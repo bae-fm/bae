@@ -18,9 +18,7 @@ async fn a_rerun_after_a_verdict_is_a_run_of_its_own() {
     let dir = fixture.disc_id_candidate("Album");
     let key = crate::import::CandidateKey::folder(&dir);
     let probed = fixture.probed_total_ms(&dir);
-    fixture
-        .provider
-        .set_routes(vec![("/discid/", 400, "{}".to_string())]);
+    fixture.provider.set_routes(vec![("/discid/", 400, "{}".to_string())]);
     fixture.scan(1).await;
 
     let mut events = fixture.import.every_event();
@@ -36,25 +34,19 @@ async fn a_rerun_after_a_verdict_is_a_run_of_its_own() {
     let failed_run = drain_events(&mut events)
         .into_iter()
         .filter_map(|event| match event {
-            ImportEvent::IdentifyStateChanged {
-                candidate_key, run, ..
-            } if candidate_key == key => Some(run),
+            ImportEvent::IdentifyStateChanged { candidate_key, run, .. }
+                if candidate_key == key =>
+            {
+                Some(run)
+            }
             _ => None,
         })
         .next_back()
         .expect("the failed run reported its states");
 
     fixture.provider.set_routes(vec![
-        (
-            "/discid/",
-            200,
-            discid_json("mb-retry-2", "rg-retry-2", &[probed, 0]),
-        ),
-        (
-            "/release/mb-retry-2?",
-            200,
-            release_json("mb-retry-2", "rg-retry-2", &[probed, 0]),
-        ),
+        ("/discid/", 200, discid_json("mb-retry-2", "rg-retry-2", &[probed, 0])),
+        ("/release/mb-retry-2?", 200, release_json("mb-retry-2", "rg-retry-2", &[probed, 0])),
     ]);
     fixture.identification().rerun_identify(key.clone());
     tokio::time::timeout(Duration::from_secs(15), async {
@@ -73,9 +65,11 @@ async fn a_rerun_after_a_verdict_is_a_run_of_its_own() {
     let runs: Vec<IdentifyRunId> = drain_events(&mut events)
         .into_iter()
         .filter_map(|event| match event {
-            ImportEvent::IdentifyStateChanged {
-                candidate_key, run, ..
-            } if candidate_key == key => Some(run),
+            ImportEvent::IdentifyStateChanged { candidate_key, run, .. }
+                if candidate_key == key =>
+            {
+                Some(run)
+            }
             _ => None,
         })
         .collect();
@@ -94,11 +88,9 @@ async fn a_rerun_after_a_verdict_is_a_run_of_its_own() {
 async fn a_run_restarted_over_a_shorter_provider_list_asks_only_what_is_left() {
     let fixture = Fixture::new("restart-drops-a-source").await;
     fixture.use_discogs().await;
-    fixture
-        .import
-        .register_artwork_analyzer(Arc::new(BarcodeAnalyzer {
-            barcode: PAIRED_BARCODE.to_string(),
-        }));
+    fixture.import.register_artwork_analyzer(Arc::new(BarcodeAnalyzer {
+        barcode: PAIRED_BARCODE.to_string(),
+    }));
     let dir = fixture.barcode_candidate("From Barcode");
     let key = crate::import::CandidateKey::folder(&dir);
     let probed = fixture.probed_total_ms(&dir);
@@ -117,23 +109,16 @@ async fn a_run_restarted_over_a_shorter_provider_list_asks_only_what_is_left() {
         200,
         discogs_search_json("70000201", PAIRED_BARCODE_AS_DISCOGS_PRINTS_IT),
     );
-    fixture
-        .provider
-        .route("/releases/70000201", 200, discogs_release_json("70000201"));
-    fixture
-        .manager
-        .providers()
-        .musicbrainz()
-        .seed_discogs_page_lookup(&[(bae_catalogs::musicbrainz::DiscogsPage::Release("70000201".to_string()), None)]);
+    fixture.provider.route("/releases/70000201", 200, discogs_release_json("70000201"));
+    fixture.manager.providers().musicbrainz().seed_discogs_page_lookup(&[(
+        bae_catalogs::musicbrainz::DiscogsPage::Release("70000201".to_string()),
+        None,
+    )]);
     // Hold MusicBrainz's answer, so the run is genuinely still asking when the
     // source is switched off rather than racing a run that already settled.
     fixture.provider.hold("/release?");
     // Identified only when asked: nothing found here is identified on its own.
-    fixture
-        .manager
-        .set_identify_automatically(false)
-        .await
-        .unwrap();
+    fixture.manager.set_identify_automatically(false).await.unwrap();
     fixture.scan(1).await;
 
     let mut events = fixture.import.every_event();
@@ -152,18 +137,13 @@ async fn a_run_restarted_over_a_shorter_provider_list_asks_only_what_is_left() {
 
     let row = fixture.await_identified_row(&dir).await;
     let verdict = identify_result(&row).verdict.clone();
-    let TerminalVerdict::Found {
-        findings: crate::identify::Findings { matches, .. },
-        ..
-    } = &verdict
+    let TerminalVerdict::Found { findings: crate::identify::Findings { matches, .. }, .. } =
+        &verdict
     else {
         panic!("expected a Found verdict, got {verdict:?}");
     };
     assert_eq!(
-        matches
-            .iter()
-            .map(|result| result.source)
-            .collect::<Vec<_>>(),
+        matches.iter().map(|result| result.source).collect::<Vec<_>>(),
         vec![bae_catalogs::catalog::Catalog::MusicBrainz],
         "the run that stored the answer asked only the source still switched on"
     );
@@ -181,29 +161,19 @@ async fn a_run_restarted_over_a_shorter_provider_list_asks_only_what_is_left() {
 #[tokio::test(flavor = "multi_thread")]
 async fn explicit_lookup_settles_its_lead_before_storing_the_verdict() {
     let fixture = Fixture::new("interactive-settles").await;
-    fixture
-        .import
-        .register_artwork_analyzer(Arc::new(BarcodeAnalyzer {
-            barcode: "0123456789012".to_string(),
-        }));
+    fixture.import.register_artwork_analyzer(Arc::new(BarcodeAnalyzer {
+        barcode: "0123456789012".to_string(),
+    }));
     let dir = fixture.barcode_candidate("From Barcode");
     let probed = fixture.probed_total_ms(&dir);
-    fixture.provider.route(
-        "/release?",
-        200,
-        search_json("mb-interactive-1", "rg-interactive-1"),
-    );
+    fixture.provider.route("/release?", 200, search_json("mb-interactive-1", "rg-interactive-1"));
     fixture.provider.route(
         "/release/mb-interactive-1?",
         200,
         release_json("mb-interactive-1", "rg-interactive-1", &[probed, 0]),
     );
     // Identified only when asked: nothing found here is identified on its own.
-    fixture
-        .manager
-        .set_identify_automatically(false)
-        .await
-        .unwrap();
+    fixture.manager.set_identify_automatically(false).await.unwrap();
     fixture.scan(1).await;
 
     // Exactly what a person asking to identify the candidate does.
@@ -213,10 +183,8 @@ async fn explicit_lookup_settles_its_lead_before_storing_the_verdict() {
         .expect("the explicit Lookup recorder stores the verdict");
 
     let verdict = identify_result(&row).verdict.clone();
-    let TerminalVerdict::Found {
-        findings: crate::identify::Findings { matches, .. },
-        ..
-    } = &verdict
+    let TerminalVerdict::Found { findings: crate::identify::Findings { matches, .. }, .. } =
+        &verdict
     else {
         panic!("expected a single-match Found, got {verdict:?}");
     };
@@ -244,12 +212,9 @@ async fn a_release_its_draft_cannot_be_read_from_is_no_match() {
     let fixture = Fixture::new("interactive-projection-failure").await;
     let dir = fixture.disc_id_candidate("Album");
     let probed = fixture.probed_total_ms(&dir);
-    let mut answer: serde_json::Value = serde_json::from_str(&discid_json(
-        "mb-projection-1",
-        "rg-projection-1",
-        &[probed, 0],
-    ))
-    .unwrap();
+    let mut answer: serde_json::Value =
+        serde_json::from_str(&discid_json("mb-projection-1", "rg-projection-1", &[probed, 0]))
+            .unwrap();
     // No artist credits: the tracklist lists the folder's tracks, and the
     // reader refuses a release with nobody credited. The run reads the
     // release from this answer. The release group goes too — not because its
@@ -260,20 +225,13 @@ async fn a_release_its_draft_cannot_be_read_from_is_no_match() {
     incomplete.remove("release-group");
     fixture.provider.route("/discid/", 200, answer.to_string());
     // Identified only when asked: nothing found here is identified on its own.
-    fixture
-        .manager
-        .set_identify_automatically(false)
-        .await
-        .unwrap();
+    fixture.manager.set_identify_automatically(false).await.unwrap();
     fixture.scan(1).await;
 
     fixture.start_explicit_lookup(&dir);
-    tokio::time::timeout(
-        Duration::from_secs(30),
-        fixture.identification().drained_for_test(),
-    )
-    .await
-    .expect("the explicit run ends");
+    tokio::time::timeout(Duration::from_secs(30), fixture.identification().drained_for_test())
+        .await
+        .expect("the explicit run ends");
 
     let (admitted, _) = fixture.judgement_for(&dir).await;
     assert!(!admitted, "an unreadable release is never admitted");
@@ -304,11 +262,7 @@ async fn interactive_lookup_runs_while_automatic_lookup_is_off() {
         release_json("mb-interactive-off", "rg-interactive-off", &[probed, 0]),
     );
     // Identified only when asked: nothing found here is identified on its own.
-    fixture
-        .manager
-        .set_identify_automatically(false)
-        .await
-        .unwrap();
+    fixture.manager.set_identify_automatically(false).await.unwrap();
     fixture.scan(1).await;
 
     fixture.start_explicit_lookup(&dir);
@@ -338,11 +292,7 @@ async fn explicit_lookup_stores_its_verdict_for_a_pre_filled_candidate() {
         release_json("mb-default-none", "rg-default-none", &[probed, 0]),
     );
     // Identified only when asked: nothing found here is identified on its own.
-    fixture
-        .manager
-        .set_identify_automatically(false)
-        .await
-        .unwrap();
+    fixture.manager.set_identify_automatically(false).await.unwrap();
     fixture.scan(1).await;
 
     fixture.start_explicit_lookup(&dir);
@@ -351,13 +301,7 @@ async fn explicit_lookup_stores_its_verdict_for_a_pre_filled_candidate() {
         .await
         .expect("an explicit lookup stores its verdict over a pre-filled draft");
     tokio::time::timeout(Duration::from_secs(5), async {
-        while fixture
-            .import
-            .standing_facts_for_test(&key)
-            .await
-            .identification
-            .is_some()
-        {
+        while fixture.import.standing_facts_for_test(&key).await.identification.is_some() {
             tokio::time::sleep(Duration::from_millis(20)).await;
         }
     })
@@ -384,11 +328,7 @@ async fn explicit_lookup_for_an_answered_candidate_runs_it_again() {
         release_json("mb-asked-again", "rg-asked-again", &[probed, 0]),
     );
     // Identified only when asked: nothing found here is identified on its own.
-    fixture
-        .manager
-        .set_identify_automatically(false)
-        .await
-        .unwrap();
+    fixture.manager.set_identify_automatically(false).await.unwrap();
     fixture.scan(1).await;
 
     let verdict = multi_match_verdict(&["mb-resume-1", "mb-resume-2"], "rg-resume-1");
@@ -443,11 +383,7 @@ async fn explicit_lookup_during_an_active_run_supersedes_it() {
     fixture.provider.route("/discid/", 200, "{}");
     fixture.provider.hold("/discid/");
     // Identified only when asked: nothing found here is identified on its own.
-    fixture
-        .manager
-        .set_identify_automatically(false)
-        .await
-        .unwrap();
+    fixture.manager.set_identify_automatically(false).await.unwrap();
     fixture.scan(1).await;
     let mut events = fixture.import.every_event();
 
@@ -458,10 +394,7 @@ async fn explicit_lookup_during_an_active_run_supersedes_it() {
             .await
             .expect("the active run reports its state")
             .expect("the import event bus remains open");
-        if let ImportEvent::IdentifyStateChanged {
-            candidate_key, run, ..
-        } = event
-        {
+        if let ImportEvent::IdentifyStateChanged { candidate_key, run, .. } = event {
             if candidate_key == key {
                 break run;
             }
@@ -473,12 +406,8 @@ async fn explicit_lookup_during_an_active_run_supersedes_it() {
 
     let replacement = tokio::time::timeout(Duration::from_secs(10), async {
         loop {
-            if let ImportEvent::IdentifyStateChanged {
-                candidate_key, run, ..
-            } = events
-                .recv()
-                .await
-                .expect("the import event bus remains open")
+            if let ImportEvent::IdentifyStateChanged { candidate_key, run, .. } =
+                events.recv().await.expect("the import event bus remains open")
             {
                 if candidate_key == key && run != first_run {
                     return run;
@@ -490,10 +419,7 @@ async fn explicit_lookup_during_an_active_run_supersedes_it() {
     fixture.provider.release();
 
     let replacement = replacement.expect("pressing again starts a run of its own");
-    assert_ne!(
-        replacement, first_run,
-        "the run in flight was superseded rather than joined"
-    );
+    assert_ne!(replacement, first_run, "the run in flight was superseded rather than joined");
     assert!(
         fixture.import.is_identifying(&key),
         "and the candidate is identifying under the new run"
@@ -512,32 +438,18 @@ async fn a_rerun_with_no_driver_runs_identification_again() {
     let dir = fixture.disc_id_candidate("Album");
     let probed = fixture.probed_total_ms(&dir);
     // Identified only when asked: nothing found here is identified on its own.
-    fixture
-        .manager
-        .set_identify_automatically(false)
-        .await
-        .unwrap();
+    fixture.manager.set_identify_automatically(false).await.unwrap();
     fixture.scan(1).await;
-    fixture
-        .archive("mb-rerun-1", "rg-rerun-1", &[probed, 0])
-        .await;
-    fixture
-        .store_settled_verdict(&dir, "mb-rerun-1", "rg-rerun-1",)
-        .await;
-    fixture.provider.route(
-        "/discid/",
-        200,
-        discid_json("mb-rerun-2", "rg-rerun-2", &[probed, 0]),
-    );
+    fixture.archive("mb-rerun-1", "rg-rerun-1", &[probed, 0]).await;
+    fixture.store_settled_verdict(&dir, "mb-rerun-1", "rg-rerun-1").await;
+    fixture.provider.route("/discid/", 200, discid_json("mb-rerun-2", "rg-rerun-2", &[probed, 0]));
     fixture.provider.route(
         "/release/mb-rerun-2?",
         200,
         release_json("mb-rerun-2", "rg-rerun-2", &[probed, 0]),
     );
 
-    fixture
-        .identification()
-        .rerun_identify(crate::import::CandidateKey::folder(&dir));
+    fixture.identification().rerun_identify(crate::import::CandidateKey::folder(&dir));
 
     wait_for_request(&fixture.provider, "/discid/", 1).await;
 }
@@ -552,42 +464,25 @@ async fn a_pick_during_an_explicit_lookup_stores_no_verdict() {
     fixture.provider.route("/discid/", 200, "{}");
     fixture.provider.hold("/discid/");
     // Identified only when asked: nothing found here is identified on its own.
-    fixture
-        .manager
-        .set_identify_automatically(false)
-        .await
-        .unwrap();
+    fixture.manager.set_identify_automatically(false).await.unwrap();
     fixture.scan(1).await;
 
     let mut events = fixture.import.every_event();
     fixture.start_explicit_lookup_and_await_run(&dir).await;
     wait_for_request(&fixture.provider, "/discid/", 1).await;
 
-    fixture
-        .import
-        .select_candidate_file_tags(key.clone())
-        .await
-        .expect("the pick lands");
+    fixture.import.select_candidate_file_tags(key.clone()).await.expect("the pick lands");
 
     assert!(
         !fixture.import.is_identifying(&key),
         "the pick ends the person's own run before it returns"
     );
-    await_run_state(&mut events, &key, |_, state| {
-        matches!(state, IdentifyState::Idle)
-    })
-    .await;
+    await_run_state(&mut events, &key, |_, state| matches!(state, IdentifyState::Idle)).await;
     fixture.provider.release();
 
     let stored = fixture.stored_for(&dir).await.expect("the pick is stored");
-    assert_eq!(
-        stored.metadata_provenance,
-        Some(crate::import::MetadataProvenance::FileMetadata)
-    );
-    assert!(
-        stored.identify.is_none(),
-        "the watcher on a cancelled run writes nothing"
-    );
+    assert_eq!(stored.metadata_provenance, Some(crate::import::MetadataProvenance::FileMetadata));
+    assert!(stored.identify.is_none(), "the watcher on a cancelled run writes nothing");
 }
 
 /// Changing what a candidate's identification asks about supersedes the run
@@ -603,20 +498,12 @@ async fn changing_the_choices_supersedes_the_run_and_frees_its_slot() {
     fixture.provider.route(
         "/discid/",
         200,
-        discid_json(
-            "mb-super-1",
-            "rg-super-1",
-            &[probed / 2, probed - probed / 2],
-        ),
+        discid_json("mb-super-1", "rg-super-1", &[probed / 2, probed - probed / 2]),
     );
     fixture.provider.route(
         "/release/mb-super-1?",
         200,
-        release_json(
-            "mb-super-1",
-            "rg-super-1",
-            &[probed / 2, probed - probed / 2],
-        ),
+        release_json("mb-super-1", "rg-super-1", &[probed / 2, probed - probed / 2]),
     );
     fixture.provider.hold("/discid/");
     fixture.scan(1).await;
@@ -633,9 +520,7 @@ async fn changing_the_choices_supersedes_the_run_and_frees_its_slot() {
         .import
         .edit_candidate_lookup_choices(
             &key,
-            crate::import::LookupChoiceEdit::ToggleBarcode {
-                code: "0123456789012".to_string(),
-            },
+            crate::import::LookupChoiceEdit::ToggleBarcode { code: "0123456789012".to_string() },
         )
         .await
         .unwrap();
@@ -650,41 +535,31 @@ async fn changing_the_choices_supersedes_the_run_and_frees_its_slot() {
         .unwrap();
 
     fixture.await_identified_row(&dir).await;
-    tokio::time::timeout(
-        Duration::from_secs(30),
-        fixture.identification().drained_for_test(),
-    )
-    .await
-    .expect("the queue lets go of the answered job");
+    tokio::time::timeout(Duration::from_secs(30), fixture.identification().drained_for_test())
+        .await
+        .expect("the queue lets go of the answered job");
     let runs: Vec<(IdentifyRunId, IdentifyState)> = drain_events(&mut events)
         .into_iter()
         .filter_map(|event| match event {
-            ImportEvent::IdentifyStateChanged {
-                candidate_key,
-                run,
-                state,
-                ..
-            } if candidate_key == key => Some((run, state)),
+            ImportEvent::IdentifyStateChanged { candidate_key, run, state, .. }
+                if candidate_key == key =>
+            {
+                Some((run, state))
+            }
             _ => None,
         })
         .collect();
     let superseded = sweeps_run;
     assert!(
-        runs.iter()
-            .any(|(run, state)| *run == superseded && matches!(state, IdentifyState::Idle)),
+        runs.iter().any(|(run, state)| *run == superseded && matches!(state, IdentifyState::Idle)),
         "the superseded run ends on Idle: {runs:?}"
     );
     assert!(
-        runs.iter()
-            .any(|(run, state)| *run != superseded && state.is_terminal()),
+        runs.iter().any(|(run, state)| *run != superseded && state.is_terminal()),
         "a new run answers under a new id: {runs:?}"
     );
     assert_eq!(
-        fixture
-            .import
-            .standing_facts_for_test(&key)
-            .await
-            .identification,
+        fixture.import.standing_facts_for_test(&key).await.identification,
         None,
         "the queue holds nothing for a candidate whose answer has landed"
     );
@@ -699,19 +574,9 @@ async fn an_edit_during_a_run_leaves_its_answer_to_land() {
     let dir = fixture.disc_id_candidate("Album");
     let key = crate::import::CandidateKey::folder(&dir);
     let probed = fixture.probed_total_ms(&dir);
-    fixture
-        .provider
-        .route("/discid/", 200, discid_json("mb-1", "rg-1", &[probed, 0]));
-    fixture.provider.route(
-        "/release/mb-1?",
-        200,
-        release_json("mb-1", "rg-1", &[probed, 0]),
-    );
-    fixture
-        .manager
-        .set_identify_automatically(false)
-        .await
-        .unwrap();
+    fixture.provider.route("/discid/", 200, discid_json("mb-1", "rg-1", &[probed, 0]));
+    fixture.provider.route("/release/mb-1?", 200, release_json("mb-1", "rg-1", &[probed, 0]));
+    fixture.manager.set_identify_automatically(false).await.unwrap();
     fixture.scan(1).await;
     fixture.provider.hold("/release/mb-1?");
     let mut events = fixture.import.every_event();
@@ -749,9 +614,11 @@ async fn an_edit_during_a_run_leaves_its_answer_to_land() {
     let runs: std::collections::HashSet<IdentifyRunId> = drain_events(&mut events)
         .into_iter()
         .filter_map(|event| match event {
-            ImportEvent::IdentifyStateChanged {
-                candidate_key, run, ..
-            } if candidate_key == key => Some(run),
+            ImportEvent::IdentifyStateChanged { candidate_key, run, .. }
+                if candidate_key == key =>
+            {
+                Some(run)
+            }
             _ => None,
         })
         .collect();

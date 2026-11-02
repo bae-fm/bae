@@ -31,9 +31,7 @@ impl ImportFailureReason {
 #[cfg(test)]
 impl ImportFailureReason {
     pub(crate) fn error(detail: impl Into<String>) -> Self {
-        Self {
-            detail: detail.into(),
-        }
+        Self { detail: detail.into() }
     }
 }
 
@@ -41,9 +39,7 @@ impl ImportFailureReason {
 impl ImportFailure {
     pub(crate) fn error_only(error: impl Into<String>, failed_at: DateTime<Utc>) -> Self {
         Self {
-            reason: ImportFailureReason {
-                detail: error.into(),
-            },
+            reason: ImportFailureReason { detail: error.into() },
             failed_at,
             identity_conflict: None,
         }

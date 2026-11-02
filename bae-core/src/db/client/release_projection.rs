@@ -81,14 +81,10 @@ fn storage_row_select(
     let filter = storage_filter(filter);
     let (listing, searched) = match rows {
         StorageRows::Listed => ("release_listing listing", "1".to_string()),
-        StorageRows::SearchedInOrder => (
-            "release_listing listing",
-            album_holds_sql("listing.album_id", ":search"),
-        ),
-        StorageRows::Found => (
-            FOUND_LISTING,
-            album_matches_sql("listing.album_id", ":search"),
-        ),
+        StorageRows::SearchedInOrder => {
+            ("release_listing listing", album_holds_sql("listing.album_id", ":search"))
+        }
+        StorageRows::Found => (FOUND_LISTING, album_matches_sql("listing.album_id", ":search")),
     };
     format!(
         "SELECT \
@@ -261,11 +257,7 @@ pub(super) fn storage_totals_on(
     query: Option<&crate::library::LibrarySearchQuery>,
 ) -> Result<(u64, u64, Option<StorageSearch>), DbError> {
     let Some(query) = query else {
-        return Ok((
-            storage_count_on(sql, filter)?,
-            storage_total_size_on(sql, filter)?,
-            None,
-        ));
+        return Ok((storage_count_on(sql, filter)?, storage_total_size_on(sql, filter)?, None));
     };
     let pattern = crate::library::search::search_pattern(query.as_str());
     let kept = storage_count_on(sql, filter)?;
@@ -278,11 +270,7 @@ pub(super) fn storage_totals_on(
             ":titles": super::list_windows::sql_bound(titles),
         },
         |row| {
-            Ok((
-                row.get::<_, bool>(0)?,
-                row.get::<_, i64>(1)? as u64,
-                row.get::<_, i64>(2)? as u64,
-            ))
+            Ok((row.get::<_, bool>(0)?, row.get::<_, i64>(1)? as u64, row.get::<_, i64>(2)? as u64))
         },
     )?;
     let (found, size) = match counted {
@@ -294,10 +282,7 @@ pub(super) fn storage_totals_on(
                 |row| Ok((row.get::<_, i64>(0)? as u64, row.get::<_, i64>(1)? as u64)),
             )?;
             let kept_size = storage_total_size_on(sql, filter)?;
-            match (
-                kept.checked_sub(unfound),
-                kept_size.checked_sub(unfound_size),
-            ) {
+            match (kept.checked_sub(unfound), kept_size.checked_sub(unfound_size)) {
                 (Some(found), Some(size)) => (found, size),
                 _ => {
                     return Err(DbError::Message(format!(
@@ -308,11 +293,7 @@ pub(super) fn storage_totals_on(
             }
         }
     };
-    let search = StorageSearch {
-        pattern,
-        kept,
-        found,
-    };
+    let search = StorageSearch { pattern, kept, found };
     Ok((found, size, Some(search)))
 }
 
@@ -357,9 +338,8 @@ pub(super) fn find_release_detail_context_on(
         return Ok(None);
     };
     let album_artists = get_artists_for_album_on(sql, &release.album_id)?;
-    let release_index: i64 = sql.query_row(RELEASE_INDEX_IN_ALBUM, params![release.id], |row| {
-        row.get(0)
-    })?;
+    let release_index: i64 =
+        sql.query_row(RELEASE_INDEX_IN_ALBUM, params![release.id], |row| row.get(0))?;
     let release_index = usize::try_from(release_index)
         .map_err(|error| DbError::Message(format!("release index {release_index}: {error}")))?;
     let is_compilation =
@@ -395,17 +375,15 @@ pub(super) fn process_storage_rows(
     rows: Vec<StorageRowParts>,
 ) -> Result<Vec<DbStorageRow>, DbError> {
     rows.into_iter()
-        .map(
-            |(release, release_cover_version, album, place, date_added)| {
-                Ok(DbStorageRow {
-                    release,
-                    date_added,
-                    release_cover_version,
-                    album: album.process()?,
-                    place,
-                })
-            },
-        )
+        .map(|(release, release_cover_version, album, place, date_added)| {
+            Ok(DbStorageRow {
+                release,
+                date_added,
+                release_cover_version,
+                album: album.process()?,
+                place,
+            })
+        })
         .collect()
 }
 
@@ -442,11 +420,9 @@ pub(super) fn storage_total_size_on(
     sql: &SqlReadContext<'_>,
     filter: StorageFilter,
 ) -> Result<u64, DbError> {
-    sql.query_row(&storage_total_size_query(filter), [], |row| {
-        row.get::<_, i64>(0)
-    })
-    .map(|size| size as u64)
-    .map_err(DbError::from)
+    sql.query_row(&storage_total_size_query(filter), [], |row| row.get::<_, i64>(0))
+        .map(|size| size as u64)
+        .map_err(DbError::from)
 }
 
 /// The statement [`storage_total_size_on`] reads.

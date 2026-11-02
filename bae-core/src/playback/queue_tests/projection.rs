@@ -20,7 +20,12 @@ async fn test_value_keeps_manual_and_context_separate() {
     assert_eq!(manual, names(&["m1", "m2"]));
     let context = value.context.expect("a release is playing");
     assert_eq!(
-        f.db.queue_upcoming().await.unwrap().iter().map(|i| f.name(&i.track_id)).collect::<Vec<_>>(),
+        f.db.queue_upcoming()
+            .await
+            .unwrap()
+            .iter()
+            .map(|i| f.name(&i.track_id))
+            .collect::<Vec<_>>(),
         names(&["t2", "t3"])
     );
     assert!(!context.shuffled);
@@ -70,12 +75,7 @@ async fn test_offset_windows_read_with_the_tail_length() {
         crate::library::LibraryPageWindow { offset: 125, limit: 20 },
     ]);
     let mut live = f.db.subscribe_queue_upcoming(windows);
-    let read = live
-        .next()
-        .await
-        .expect("the query stays open")
-        .result
-        .unwrap();
+    let read = live.next().await.expect("the query stays open").result.unwrap();
     let window_tracks: Vec<Vec<String>> = read
         .windows
         .iter()
@@ -83,7 +83,11 @@ async fn test_offset_windows_read_with_the_tail_length() {
         .collect();
     assert_eq!(window_tracks[0], tracks[1..4].to_vec());
     assert_eq!(window_tracks[1], tracks[101..121].to_vec());
-    assert_eq!(window_tracks[2], tracks[126..130].to_vec(), "a window past the end holds what remains");
+    assert_eq!(
+        window_tracks[2],
+        tracks[126..130].to_vec(),
+        "a window past the end holds what remains"
+    );
     assert_eq!(read.upcoming_total, 129);
 }
 

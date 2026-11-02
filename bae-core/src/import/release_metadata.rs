@@ -28,13 +28,9 @@ impl AlbumMetadata {
         } else {
             for SourceCredit { credit: artist, .. } in &mut self.artists {
                 if let Some(linked) =
-                    other
-                        .artists
-                        .iter()
-                        .map(|linked| &linked.credit)
-                        .find(|linked| {
-                            bae_types::text_match::same_artist_name(&linked.name, &artist.name)
-                        })
+                    other.artists.iter().map(|linked| &linked.credit).find(|linked| {
+                        bae_types::text_match::same_artist_name(&linked.name, &artist.name)
+                    })
                 {
                     artist.musicbrainz_artist_id = artist
                         .musicbrainz_artist_id
@@ -55,10 +51,7 @@ impl AlbumMetadata {
         if self.artists.is_empty() {
             return Err(ImportError::SourceData {
                 catalog,
-                detail: format!(
-                    "{} release {key} has no album artist",
-                    catalog.display_name()
-                ),
+                detail: format!("{} release {key} has no album artist", catalog.display_name()),
             });
         }
         Ok(())
@@ -83,12 +76,7 @@ mod tests {
     }
 
     fn album(artists: Vec<SourceCredit>) -> AlbumMetadata {
-        AlbumMetadata {
-            title: "Album Title".to_string(),
-            artists,
-            year: None,
-            first_year: None,
-        }
+        AlbumMetadata { title: "Album Title".to_string(), artists, year: None, first_year: None }
     }
 
     /// A linked document's artist fills in the ids of the artist it names,
@@ -97,10 +85,7 @@ mod tests {
     fn a_linked_artist_fills_in_the_ids_of_the_artist_it_names() {
         let mut own = album(vec![artist("Ärtist Name", None)]);
         own.fill_missing(album(vec![artist("ARTIST NAME", Some("mb-artist-1"))]));
-        assert_eq!(
-            own.artists[0].credit.musicbrainz_artist_id.as_deref(),
-            Some("mb-artist-1")
-        );
+        assert_eq!(own.artists[0].credit.musicbrainz_artist_id.as_deref(), Some("mb-artist-1"));
 
         let mut other = album(vec![artist("Other Name", None)]);
         other.fill_missing(album(vec![artist("Artist Name", Some("mb-artist-1"))]));

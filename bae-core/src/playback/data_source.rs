@@ -223,10 +223,7 @@ pub struct LocalReader {
 
 impl LocalReader {
     pub fn new(path: impl Into<std::path::PathBuf>, diagnostics: Diagnostics) -> Self {
-        Self {
-            path: path.into(),
-            diagnostics,
-        }
+        Self { path: path.into(), diagnostics }
     }
 }
 
@@ -280,14 +277,12 @@ impl AudioDataReader for LocalReader {
                     let path = &path;
                     async move {
                         let mut f = file.lock().await;
-                        f.seek(std::io::SeekFrom::Start(src_off))
-                            .await
-                            .map_err(|e| {
-                                PlaybackError::io(
-                                    format!("Failed to seek {} to {src_off}", path.display()),
-                                    e,
-                                )
-                            })?;
+                        f.seek(std::io::SeekFrom::Start(src_off)).await.map_err(|e| {
+                            PlaybackError::io(
+                                format!("Failed to seek {} to {src_off}", path.display()),
+                                e,
+                            )
+                        })?;
                         let mut buf = vec![0u8; len as usize];
                         f.read_exact(&mut buf).await.map_err(|e| {
                             PlaybackError::io(
@@ -368,14 +363,7 @@ impl CovenFileReader {
         prefetch_file_end: bool,
         diagnostics: Diagnostics,
     ) -> Self {
-        Self {
-            db,
-            file_id,
-            arbiter,
-            prefetch_byte,
-            prefetch_file_end,
-            diagnostics,
-        }
+        Self { db, file_id, arbiter, prefetch_byte, prefetch_file_end, diagnostics }
     }
 }
 
@@ -385,14 +373,8 @@ impl AudioDataReader for CovenFileReader {
         buffer: SharedSparseBuffer,
         on_error: FillErrorHandler,
     ) -> FillTask {
-        let CovenFileReader {
-            db,
-            file_id,
-            arbiter,
-            prefetch_byte,
-            prefetch_file_end,
-            diagnostics,
-        } = *self;
+        let CovenFileReader { db, file_id, arbiter, prefetch_byte, prefetch_file_end, diagnostics } =
+            *self;
         let buffer_id = buffer.id();
         let fill_buffer = buffer.clone();
         let prefetch_diagnostics = diagnostics.clone();
@@ -528,10 +510,7 @@ fn spawn_window_prefetch(
             let foreground = arbiter.is_foreground(buffer_id);
             let read = arbiter.read_progress(buffer_id, window);
             let result = arbiter
-                .run_gated(
-                    foreground,
-                    stream.read_at_reporting(off, window, read.progress()),
-                )
+                .run_gated(foreground, stream.read_at_reporting(off, window, read.progress()))
                 .await;
             match result {
                 Ok(data) => {

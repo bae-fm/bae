@@ -18,15 +18,9 @@ mirror_struct! {
 
 impl crate::types::BridgeUploadProgress {
     pub(super) fn from_core(progress: bae_core::library::UploadProgress) -> Self {
-        let activity = progress
-            .activity()
-            .map(crate::types::BridgeUploadActivity::from_core);
+        let activity = progress.activity().map(crate::types::BridgeUploadActivity::from_core);
         let bae_core::library::UploadProgress { queued, uploading } = progress;
-        Self {
-            queued,
-            uploading,
-            activity,
-        }
+        Self { queued, uploading, activity }
     }
 }
 mirror_enum! {
@@ -95,16 +89,8 @@ impl crate::types::BridgeDownloadCounts {
 
 impl crate::types::BridgeDownloadProgress {
     pub(super) fn from_core(p: bae_core::library::DownloadProgress) -> Self {
-        let bae_core::library::release_queue::ReleaseQueueProgress {
-            queued,
-            active,
-            failed,
-        } = p;
-        crate::types::BridgeDownloadProgress {
-            queued,
-            active,
-            failed,
-        }
+        let bae_core::library::release_queue::ReleaseQueueProgress { queued, active, failed } = p;
+        crate::types::BridgeDownloadProgress { queued, active, failed }
     }
 }
 
@@ -145,12 +131,7 @@ impl crate::types::BridgeOutputOp {
 
 impl crate::types::BridgeQueueEntry {
     pub(crate) fn from_core(i: bae_core::queue::QueueItem) -> Self {
-        let bae_core::queue::QueueItem {
-            entry_id,
-            track_id,
-            display,
-            duration_ms,
-        } = i;
+        let bae_core::queue::QueueItem { entry_id, track_id, display, duration_ms } = i;
         crate::types::BridgeQueueEntry {
             entry_id,
             track_id,
@@ -162,11 +143,7 @@ impl crate::types::BridgeQueueEntry {
 
 impl crate::types::BridgePlaybackContext {
     pub(super) fn from_core(context: bae_core::queue::ResolvedContext) -> Self {
-        let bae_core::queue::ResolvedContext {
-            source,
-            source_title,
-            shuffled,
-        } = context;
+        let bae_core::queue::ResolvedContext { source, source_title, shuffled } = context;
         crate::types::BridgePlaybackContext {
             kind: crate::types::BridgePlaybackSourceKind::from_core(&source),
             source_title,

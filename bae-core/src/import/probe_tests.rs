@@ -27,10 +27,7 @@ fn loose_tracks_yield_one_file_row_each() {
 
     let probed = source_durations(&categorize(dir)).expect("valid scanned audio has durations");
     assert_eq!(probed.units.len(), 2, "one row per audio file: {probed:?}");
-    assert!(probed
-        .units
-        .iter()
-        .all(|unit| matches!(unit.audio, AudioFile::Standalone { .. })));
+    assert!(probed.units.iter().all(|unit| matches!(unit.audio, AudioFile::Standalone { .. })));
 }
 
 /// Durations describe the bytes accepted by the scan. A later disk mutation
@@ -49,9 +46,7 @@ fn changed_file_bytes_do_not_replace_scanned_durations() {
 
     let probed = source_durations(&files).expect("valid scanned audio has durations");
     let scanned = probed
-        .duration_of(&AudioFile::Standalone {
-            file_id: "02 Test Track 2.flac".to_string(),
-        })
+        .duration_of(&AudioFile::Standalone { file_id: "02 Test Track 2.flac".to_string() })
         .expect("the scanned file has a duration");
     assert!(scanned > 0);
 }
@@ -80,9 +75,7 @@ fn a_cue_carved_container_yields_a_row_per_slice() {
 
     let probed = source_durations(&files).expect("valid CUE timing has durations");
     let container = probed
-        .duration_of(&AudioFile::Standalone {
-            file_id: container_id.clone(),
-        })
+        .duration_of(&AudioFile::Standalone { file_id: container_id.clone() })
         .expect("the container has a duration");
     let slices: Vec<u64> = (0..track_count)
         .map(|index| {
@@ -97,21 +90,15 @@ fn a_cue_carved_container_yields_a_row_per_slice() {
         .collect();
     assert_eq!(slices.len(), track_count);
     let carved: u64 = slices.iter().sum();
-    assert!(
-        carved <= container,
-        "the carved tracks fit in the container: {carved} vs {container}"
-    );
+    assert!(carved <= container, "the carved tracks fit in the container: {carved} vs {container}");
 }
 
 #[test]
 fn a_cue_track_starting_after_its_audio_is_rejected() {
     let tmp = TempDir::new().unwrap();
     let dir = tmp.path();
-    std::fs::copy(
-        Path::new("tests/fixtures/flac/01 Test Track 1.flac"),
-        dir.join("Audio.flac"),
-    )
-    .unwrap();
+    std::fs::copy(Path::new("tests/fixtures/flac/01 Test Track 1.flac"), dir.join("Audio.flac"))
+        .unwrap();
     std::fs::write(
         dir.join("Audio.cue"),
         "FILE \"Audio.flac\" WAVE\n  TRACK 01 AUDIO\n    TITLE \"Track Title\"\n    INDEX 01 99:00:00\n",
@@ -124,14 +111,8 @@ fn a_cue_track_starting_after_its_audio_is_rejected() {
         Some(crate::import::folder_scanner::SheetBinding::RefusedTiming { .. })
     ));
     assert!(matches!(
-        source_durations(&files)
-            .expect("unbound sheet leaves standalone audio")
-            .units
-            .as_slice(),
-        [SourceDuration {
-            audio: AudioFile::Standalone { .. },
-            ..
-        }]
+        source_durations(&files).expect("unbound sheet leaves standalone audio").units.as_slice(),
+        [SourceDuration { audio: AudioFile::Standalone { .. }, .. }]
     ));
 }
 
@@ -139,11 +120,8 @@ fn a_cue_track_starting_after_its_audio_is_rejected() {
 fn descending_cue_track_boundaries_are_rejected() {
     let tmp = TempDir::new().unwrap();
     let dir = tmp.path();
-    std::fs::copy(
-        Path::new("tests/fixtures/flac/01 Test Track 1.flac"),
-        dir.join("Audio.flac"),
-    )
-    .unwrap();
+    std::fs::copy(Path::new("tests/fixtures/flac/01 Test Track 1.flac"), dir.join("Audio.flac"))
+        .unwrap();
     std::fs::write(
         dir.join("Audio.cue"),
         "FILE \"Audio.flac\" WAVE\n  TRACK 01 AUDIO\n    TITLE \"Track One\"\n    INDEX 01 01:00:00\n  TRACK 02 AUDIO\n    TITLE \"Track Two\"\n    INDEX 01 00:30:00\n",
@@ -156,13 +134,7 @@ fn descending_cue_track_boundaries_are_rejected() {
         Some(crate::import::folder_scanner::SheetBinding::RefusedTiming { .. })
     ));
     assert!(matches!(
-        source_durations(&files)
-            .expect("unbound sheet leaves standalone audio")
-            .units
-            .as_slice(),
-        [SourceDuration {
-            audio: AudioFile::Standalone { .. },
-            ..
-        }]
+        source_durations(&files).expect("unbound sheet leaves standalone audio").units.as_slice(),
+        [SourceDuration { audio: AudioFile::Standalone { .. }, .. }]
     ));
 }

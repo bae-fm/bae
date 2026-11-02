@@ -22,9 +22,7 @@ pub(super) fn require_state_row(
     if present {
         return Ok(());
     }
-    Err(DbError::Message(format!(
-        "the {what} for {content_hash} has no candidate state row"
-    )))
+    Err(DbError::Message(format!("the {what} for {content_hash} has no candidate state row")))
 }
 
 /// One cover selection as its row states it: the kind, and whichever of the
@@ -37,12 +35,9 @@ pub(super) fn cover_columns(
         CoverSelection::Embedded(source_file_id) => {
             ("embedded", Some(source_file_id.as_str()), None, None)
         }
-        CoverSelection::Remote(image, source) => (
-            "remote",
-            None,
-            Some(image.url.as_str()),
-            Some(source.as_str()),
-        ),
+        CoverSelection::Remote(image, source) => {
+            ("remote", None, Some(image.url.as_str()), Some(source.as_str()))
+        }
     }
 }
 
@@ -55,10 +50,7 @@ pub(super) fn save_cover(
     let (kind, file_id, url, source) = cover_columns(cover);
     // The copies reference the previous choice's address, which the upsert
     // replaces, so they go first.
-    sql.execute(
-        "DELETE FROM import_candidate_cover_copy WHERE content_hash = ?",
-        [content_hash],
-    )?;
+    sql.execute("DELETE FROM import_candidate_cover_copy WHERE content_hash = ?", [content_hash])?;
     sql.execute(
         &format!(
             "INSERT INTO import_candidate_cover ({COVER_COLUMNS}) VALUES (?, ?, ?, ?, ?) \

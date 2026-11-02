@@ -73,18 +73,12 @@ pub fn import_status_of(
     failure: Option<&crate::import::ImportFailureReason>,
 ) -> Option<TriageImportStatus> {
     if let Some(release) = imported {
-        return Some(TriageImportStatus::Complete {
-            release: release.clone(),
-        });
+        return Some(TriageImportStatus::Complete { release: release.clone() });
     }
     if let Some(reason) = blocked {
-        return Some(TriageImportStatus::Blocked {
-            reason: reason.clone(),
-        });
+        return Some(TriageImportStatus::Blocked { reason: reason.clone() });
     }
-    failure.map(|failure| TriageImportStatus::Error {
-        failure: failure.clone(),
-    })
+    failure.map(|failure| TriageImportStatus::Error { failure: failure.clone() })
 }
 
 /// Where a candidate stands, as its row reads it from the standings table.
@@ -229,10 +223,7 @@ mod tests {
 
     #[test]
     fn a_row_with_no_draft_is_its_folder_and_nothing_else() {
-        assert_eq!(
-            TriageReading::of(None, None, Vec::new()),
-            TriageReading::Unidentified
-        );
+        assert_eq!(TriageReading::of(None, None, Vec::new()), TriageReading::Unidentified);
     }
 
     #[test]
@@ -254,9 +245,7 @@ mod tests {
         });
         assert_eq!(
             TriageReading::of(Some(&a_draft()), Some(&pick), described_in()),
-            TriageReading::Identified {
-                records: described_in()
-            }
+            TriageReading::Identified { records: described_in() }
         );
     }
 
@@ -270,11 +259,7 @@ mod tests {
         .expect("one album");
         let records = album.records();
         assert_eq!(
-            TriageReading::of(
-                Some(&a_draft()),
-                Some(&ReleaseLink::Album(album)),
-                records.clone()
-            ),
+            TriageReading::of(Some(&a_draft()), Some(&ReleaseLink::Album(album)), records.clone()),
             TriageReading::IdentifiedAlbum { records }
         );
     }

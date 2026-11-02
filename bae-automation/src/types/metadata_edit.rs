@@ -81,7 +81,5 @@ pub struct AutomationArtistCredit {
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationTrackArtistAssignments {
     AlbumArtists,
-    Explicit {
-        assignments: Vec<AutomationCredited>,
-    },
+    Explicit { assignments: Vec<AutomationCredited> },
 }

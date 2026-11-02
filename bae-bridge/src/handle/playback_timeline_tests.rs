@@ -19,11 +19,7 @@ fn the_timeline_starts_with_no_line_until_cancelled() {
         .expect("the pull reads");
     assert_eq!(
         first,
-        crate::types::BridgePlaybackTimeline {
-            library: None,
-            seek_revision: 0,
-            preview: None,
-        }
+        crate::types::BridgePlaybackTimeline { library: None, seek_revision: 0, preview: None }
     );
 
     handle.runtime.block_on(timeline.clone().cancel()).unwrap();

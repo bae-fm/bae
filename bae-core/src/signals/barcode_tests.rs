@@ -36,11 +36,7 @@ fn the_bars_and_their_printed_digits_spell_one_code() {
     };
     assert_eq!(
         codes(&analysis),
-        vec![
-            "0012345678905".to_string(),
-            "0012345678905".to_string(),
-            "5012345678900".to_string(),
-        ]
+        vec!["0012345678905".to_string(), "0012345678905".to_string(), "5012345678900".to_string(),]
     );
 }
 

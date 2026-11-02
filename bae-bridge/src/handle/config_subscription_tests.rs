@@ -36,15 +36,9 @@ fn the_preferences_follow_each_write_until_cancelled() {
     assert_eq!(first.max_concurrent_uploads, 3);
     assert_eq!(first.library_id.len(), 36, "{}", first.library_id);
 
-    handle
-        .runtime
-        .block_on(handle.clone().set_show_remaining_time(true))
-        .unwrap();
+    handle.runtime.block_on(handle.clone().set_show_remaining_time(true)).unwrap();
     pull_until(&handle, &values, |value| value.show_remaining_time);
-    handle
-        .runtime
-        .block_on(handle.clone().set_max_concurrent_uploads(5))
-        .unwrap();
+    handle.runtime.block_on(handle.clone().set_max_concurrent_uploads(5)).unwrap();
     let changed = pull_until(&handle, &values, |value| value.max_concurrent_uploads == 5);
     assert!(changed.show_remaining_time, "the earlier write stands");
 

@@ -14,11 +14,7 @@ async fn served_whole_file_then_window(
     const IMAGE_WINDOW: &str = "08c7fe07-b56a-4c63-8df6-ad2967fa0653";
     let (_home, mut service, _rx) =
         seeded_playback_service(&[(RELEASE, &[WHOLE_FILE, IMAGE_WINDOW])]).await;
-    service
-        .library_manager
-        .set_cast_transcode_format(transcode)
-        .await
-        .unwrap();
+    service.library_manager.set_cast_transcode_format(transcode).await.unwrap();
     seed_playable_track(&service.library_manager, RELEASE, WHOLE_FILE).await;
     seed_track_window(
         &service.library_manager,
@@ -63,10 +59,7 @@ async fn served_whole_file_then_window(
         "both tracks are loaded onto the device"
     );
     let s = state.lock().unwrap();
-    s.loads
-        .iter()
-        .map(|m| (m.url.clone(), m.content_type.clone()))
-        .collect()
+    s.loads.iter().map(|m| (m.url.clone(), m.content_type.clone())).collect()
 }
 
 /// A device plays the stream it is served, so each track is served as its own
@@ -83,7 +76,8 @@ async fn a_cue_image_track_is_served_as_its_own_window() {
         .await,
         [
             (
-                "http://renderer.local/stream?id=08c7ff07-b56a-4e16-8df6-ae2967fa0806&Raw".to_string(),
+                "http://renderer.local/stream?id=08c7ff07-b56a-4e16-8df6-ae2967fa0806&Raw"
+                    .to_string(),
                 "audio/flac".to_string()
             ),
             (
@@ -103,7 +97,9 @@ async fn a_cue_image_track_is_served_as_its_own_window() {
 async fn a_converted_track_goes_out_in_the_format_the_flavor_takes() {
     let window = |format: &str, mime: &str| {
         (
-            format!("http://renderer.local/stream?id=08c7fe07-b56a-4c63-8df6-ad2967fa0653&{format}"),
+            format!(
+                "http://renderer.local/stream?id=08c7fe07-b56a-4c63-8df6-ad2967fa0653&{format}"
+            ),
             mime.to_string(),
         )
     };
@@ -145,10 +141,8 @@ async fn served_stream_length(track_length_ms: u64) -> Option<std::time::Duratio
     // Two seconds of generated silence at 44.1 kHz.
     seed_track_window(&service.library_manager, RELEASE, TRACK, 0, None, Some(88_200)).await;
     fill_test_release(&mut service, RELEASE).await;
-    service.slot = active_slot(
-        test_prepared_track(TRACK, create_sparse_buffer(1_024)),
-        TrackPhase::Playing,
-    );
+    service.slot =
+        active_slot(test_prepared_track(TRACK, create_sparse_buffer(1_024)), TrackPhase::Playing);
     let channel = FakeChannel::new();
     let state = channel.state.clone();
 
@@ -164,9 +158,5 @@ async fn served_stream_length(track_length_ms: u64) -> Option<std::time::Duratio
 /// stream, so a length without the pregap would end the track early.
 #[tokio::test]
 async fn a_device_is_told_the_served_stream_length_pregap_included() {
-    assert_eq!(
-        served_stream_length(60_000).await,
-        Some(std::time::Duration::from_secs(62))
-    );
+    assert_eq!(served_stream_length(60_000).await, Some(std::time::Duration::from_secs(62)));
 }
-

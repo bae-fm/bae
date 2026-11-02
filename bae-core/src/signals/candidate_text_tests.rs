@@ -5,14 +5,7 @@ use super::*;
 fn cats(lines: &[String]) -> Vec<String> {
     let sourced: Vec<SourcedLine> = lines
         .iter()
-        .map(|t| {
-            SourcedLine::new(
-                Source::CueField {
-                    file_id: "Album.cue".to_string(),
-                },
-                t.clone(),
-            )
-        })
+        .map(|t| SourcedLine::new(Source::CueField { file_id: "Album.cue".to_string() }, t.clone()))
         .collect();
     catalog_numbers(&sourced)
 }
@@ -20,37 +13,24 @@ fn cats(lines: &[String]) -> Vec<String> {
 /// Lines that survive `should_reject_line` — the same predicate production
 /// applies before clustering.
 fn kept_lines(lines: &[String]) -> Vec<String> {
-    lines
-        .iter()
-        .filter(|l| !should_reject_line(l))
-        .cloned()
-        .collect()
+    lines.iter().filter(|l| !should_reject_line(l)).cloned().collect()
 }
 
 // MARK: - catalog_numbers — preserve separators verbatim
 
 #[test]
 fn catalogs_preserves_hyphen() {
-    assert_eq!(
-        cats(&["WPCR-80001".to_string()]),
-        vec!["WPCR-80001".to_string()],
-    );
+    assert_eq!(cats(&["WPCR-80001".to_string()]), vec!["WPCR-80001".to_string()],);
 }
 
 #[test]
 fn catalogs_preserves_inner_space() {
-    assert_eq!(
-        cats(&["COCQ 84487".to_string()]),
-        vec!["COCQ 84487".to_string()],
-    );
+    assert_eq!(cats(&["COCQ 84487".to_string()]), vec!["COCQ 84487".to_string()],);
 }
 
 #[test]
 fn catalogs_substring_match() {
-    assert_eq!(
-        cats(&["Part No. TOCP12345".to_string()]),
-        vec!["TOCP12345".to_string()],
-    );
+    assert_eq!(cats(&["Part No. TOCP12345".to_string()]), vec!["TOCP12345".to_string()],);
 }
 
 #[test]
@@ -75,35 +55,20 @@ fn catalogs_separator_variants_are_distinct() {
 
 #[test]
 fn catalogs_keep_a_joined_suffix_whole() {
-    assert_eq!(
-        cats(&["BVCK-15024/5".to_string()]),
-        vec!["BVCK-15024/5".to_string()],
-    );
-    assert_eq!(
-        cats(&["Label SD 19244-2".to_string()]),
-        vec!["SD 19244-2".to_string()],
-    );
+    assert_eq!(cats(&["BVCK-15024/5".to_string()]), vec!["BVCK-15024/5".to_string()],);
+    assert_eq!(cats(&["Label SD 19244-2".to_string()]), vec!["SD 19244-2".to_string()],);
 }
 
 #[test]
 fn catalogs_multi_disc_tilde_suffix() {
-    assert_eq!(
-        cats(&["BVCP 21011~2".to_string()]),
-        vec!["BVCP 21011".to_string()],
-    );
+    assert_eq!(cats(&["BVCP 21011~2".to_string()]), vec!["BVCP 21011".to_string()],);
 }
 
 /// A prefix that counts its discs: a digit before the separator, three after.
 #[test]
 fn catalogs_counted_prefix() {
-    assert_eq!(
-        cats(&["LABEL MD6-233".to_string()]),
-        vec!["MD6-233".to_string()],
-    );
-    assert_eq!(
-        cats(&["CDP7-46437".to_string()]),
-        vec!["CDP7-46437".to_string()],
-    );
+    assert_eq!(cats(&["LABEL MD6-233".to_string()]), vec!["MD6-233".to_string()],);
+    assert_eq!(cats(&["CDP7-46437".to_string()]), vec!["CDP7-46437".to_string()],);
 }
 
 // MARK: - catalog_numbers dedup
@@ -115,10 +80,7 @@ fn sourced_catalogs_dedup() {
         "WPCR-80001".to_string(), // duplicate — dropped
         "Z1 12345".to_string(),
     ];
-    assert_eq!(
-        cats(&raw),
-        vec!["WPCR-80001".to_string(), "Z1 12345".to_string()]
-    );
+    assert_eq!(cats(&raw), vec!["WPCR-80001".to_string(), "Z1 12345".to_string()]);
 }
 
 // MARK: - free_text
@@ -154,14 +116,7 @@ fn catalogs_empty_input() {
 fn brackets_accepts_catalog_shapes() {
     let folder = "Album Title [XX34b] (LABELA071) [Z1 12345]";
     let out = extract_folder_brackets(folder);
-    assert_eq!(
-        out,
-        vec![
-            "XX34b".to_string(),
-            "LABELA071".to_string(),
-            "Z1 12345".to_string(),
-        ],
-    );
+    assert_eq!(out, vec!["XX34b".to_string(), "LABELA071".to_string(), "Z1 12345".to_string(),],);
 }
 
 #[test]
@@ -190,18 +145,12 @@ fn brackets_rejects_over_length() {
 
 #[test]
 fn path_strips_year_and_bracket() {
-    assert_eq!(
-        strip_path_component("1989 - Album Title [XX34b]"),
-        Some("Album Title".to_string()),
-    );
+    assert_eq!(strip_path_component("1989 - Album Title [XX34b]"), Some("Album Title".to_string()),);
 }
 
 #[test]
 fn path_strips_dotted_year() {
-    assert_eq!(
-        strip_path_component("1989. Album Title"),
-        Some("Album Title".to_string()),
-    );
+    assert_eq!(strip_path_component("1989. Album Title"), Some("Album Title".to_string()),);
 }
 
 #[test]
@@ -280,23 +229,14 @@ fn filename_keeps_non_generic_image() {
 #[test]
 fn catalogs_single_letter_digit_prefix() {
     // `Z1 12345`, `T5 67890` — single letter + single digit, then ≥4 digits.
-    assert_eq!(
-        cats(&["Z1 12345".to_string()]),
-        vec!["Z1 12345".to_string()],
-    );
-    assert_eq!(
-        cats(&["T5-67890".to_string()]),
-        vec!["T5-67890".to_string()],
-    );
+    assert_eq!(cats(&["Z1 12345".to_string()]), vec!["Z1 12345".to_string()],);
+    assert_eq!(cats(&["T5-67890".to_string()]), vec!["T5-67890".to_string()],);
 }
 
 #[test]
 fn catalogs_substring_single_letter_digit() {
     // Embedded single-letter-digit catalog.
-    assert_eq!(
-        cats(&["Released on Z1 12345 in 2020".to_string()]),
-        vec!["Z1 12345".to_string()],
-    );
+    assert_eq!(cats(&["Released on Z1 12345 in 2020".to_string()]), vec!["Z1 12345".to_string()],);
 }
 
 // MARK: - catalog_numbers — no address rules
@@ -383,12 +323,7 @@ fn free_text_keeps_titles_with_colons_outside_credits() {
 // MARK: - cluster_lines
 
 fn artwork_line(path: &str, text: &str) -> SourcedLine {
-    SourcedLine::new(
-        Source::Artwork {
-            path: PathBuf::from(path),
-        },
-        text.to_string(),
-    )
+    SourcedLine::new(Source::Artwork { path: PathBuf::from(path) }, text.to_string())
 }
 
 fn path_line(text: &str) -> SourcedLine {
@@ -396,12 +331,7 @@ fn path_line(text: &str) -> SourcedLine {
 }
 
 fn cue_line(text: &str) -> SourcedLine {
-    SourcedLine::new(
-        Source::CueField {
-            file_id: "Album.cue".to_string(),
-        },
-        text.to_string(),
-    )
+    SourcedLine::new(Source::CueField { file_id: "Album.cue".to_string() }, text.to_string())
 }
 
 fn cluster_lines(lines: Vec<SourcedLine>) -> Vec<Cluster> {
@@ -433,11 +363,7 @@ fn cluster_groups_ocr_variants_together() {
 
 #[test]
 fn cluster_keeps_distinct_names_separate() {
-    let lines = vec![
-        path_line("Artist Alpha"),
-        path_line("Album Title B"),
-        cue_line("Name Two"),
-    ];
+    let lines = vec![path_line("Artist Alpha"), path_line("Album Title B"), cue_line("Name Two")];
     let clusters = cluster_lines(lines);
     assert_eq!(clusters.len(), 3);
     for c in &clusters {
@@ -449,10 +375,7 @@ fn cluster_keeps_distinct_names_separate() {
 /// what lets the service re-classify only new lines per emission.
 #[test]
 fn cluster_incremental_matches_whole_pool() {
-    let first = vec![
-        path_line("Artist Alpha"),
-        artwork_line("/a.jpg", "Album Title B"),
-    ];
+    let first = vec![path_line("Artist Alpha"), artwork_line("/a.jpg", "Album Title B")];
     let second = vec![
         artwork_line("/b.jpg", "Arist Alpha"),
         artwork_line("/c.jpg", "Album Title B"),
@@ -506,10 +429,7 @@ fn pick_representative_prefers_highest_source_weight() {
 fn pick_representative_prefers_mixed_case_over_all_caps() {
     let cluster = Cluster {
         normalized_centroid: "album title".to_string(),
-        members: vec![
-            artwork_line("/a.jpg", "ALBUM TITLE"),
-            artwork_line("/b.jpg", "Album Title"),
-        ],
+        members: vec![artwork_line("/a.jpg", "ALBUM TITLE"), artwork_line("/b.jpg", "Album Title")],
     };
     assert_eq!(cluster.pick_representative(), "Album Title");
 }
@@ -572,11 +492,7 @@ fn representative_prefix_and_title_land_in_different_clusters() {
         artwork_line("/b.jpg", "ALBUM TITLE"),
     ];
     let clusters = cluster_lines(lines);
-    assert_eq!(
-        clusters.len(),
-        2,
-        "expected two clusters for prefix vs plain, got {clusters:?}",
-    );
+    assert_eq!(clusters.len(), 2, "expected two clusters for prefix vs plain, got {clusters:?}",);
 }
 
 /// Equal source weight and case rank, so length decides: the clean full form

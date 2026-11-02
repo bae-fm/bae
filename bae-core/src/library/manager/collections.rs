@@ -24,9 +24,7 @@ impl LibraryManager {
         name: &str,
         sharing: Sharing,
     ) -> Result<Playlist, CollectionError> {
-        self.database
-            .create_playlist(self.ids.new_id(), name, sharing)
-            .await
+        self.database.create_playlist(self.ids.new_id(), name, sharing).await
     }
 
     pub async fn playlists(&self) -> Result<Vec<Playlist>, crate::db::DbError> {
@@ -73,9 +71,7 @@ impl LibraryManager {
         track: String,
     ) -> Result<uuid::Uuid, CollectionError> {
         let position = self.ids.new_id();
-        self.database
-            .append_playlist_entry(playlist, position, track)
-            .await?;
+        self.database.append_playlist_entry(playlist, position, track).await?;
         Ok(position)
     }
 
@@ -84,9 +80,7 @@ impl LibraryManager {
         playlist: uuid::Uuid,
         position: uuid::Uuid,
     ) -> Result<(), CollectionError> {
-        self.database
-            .remove_playlist_entry(playlist, position)
-            .await
+        self.database.remove_playlist_entry(playlist, position).await
     }
 
     pub async fn reorder_playlist(

@@ -158,9 +158,9 @@ impl AutomationIdentifyFailure {
     pub(crate) fn from_core(failure: bae_core::identify::IdentifyFailure) -> Self {
         use bae_core::identify::IdentifyFailure;
         match failure {
-            IdentifyFailure::DiscId(failure) => Self::DiscId {
-                failure: AutomationLookupFailure::from_core(failure),
-            },
+            IdentifyFailure::DiscId(failure) => {
+                Self::DiscId { failure: AutomationLookupFailure::from_core(failure) }
+            }
             IdentifyFailure::Barcode(failure) => Self::Barcode {
                 source: failure.source.into(),
                 failure: AutomationLookupFailure::from_core(failure.failure),
@@ -173,16 +173,16 @@ impl AutomationIdentifyFailure {
                 source: failure.source.into(),
                 failure: AutomationLookupFailure::from_core(failure.failure),
             },
-            IdentifyFailure::Isrc(failure) => Self::Isrc {
-                failure: AutomationLookupFailure::from_core(failure),
-            },
+            IdentifyFailure::Isrc(failure) => {
+                Self::Isrc { failure: AutomationLookupFailure::from_core(failure) }
+            }
             IdentifyFailure::Pressing(failure) => Self::Pressing {
                 source: failure.source.into(),
                 failure: AutomationLookupFailure::from_core(failure.failure),
             },
-            IdentifyFailure::ReleaseDetails(failure) => Self::ReleaseDetails {
-                failure: AutomationLookupFailure::from_core(failure),
-            },
+            IdentifyFailure::ReleaseDetails(failure) => {
+                Self::ReleaseDetails { failure: AutomationLookupFailure::from_core(failure) }
+            }
             IdentifyFailure::Cover(failure) => Self::Cover {
                 source: failure.source.into(),
                 failure: AutomationLookupFailure::from_core(failure.failure),
@@ -259,24 +259,18 @@ pub(crate) fn automation_identify_state(
     use bae_core::identify::IdentifyStateView;
     match view {
         IdentifyStateView::Idle => AutomationIdentifyState::Idle,
-        IdentifyStateView::Triangulating {
-            run,
-            groups,
-            agreements,
-            narrowed_out_count,
-        } => AutomationIdentifyState::Triangulating {
-            run: AutomationIdentifyRun::from_core(run),
-            groups: groups
-                .into_iter()
-                .map(AutomationReleaseGroup::from_core)
-                .collect(),
-            library_statuses: library_statuses
-                .into_iter()
-                .map(AutomationLibraryStatus::from_core)
-                .collect(),
-            agreements: automation_agreements(agreements),
-            narrowed_out_count,
-        },
+        IdentifyStateView::Triangulating { run, groups, agreements, narrowed_out_count } => {
+            AutomationIdentifyState::Triangulating {
+                run: AutomationIdentifyRun::from_core(run),
+                groups: groups.into_iter().map(AutomationReleaseGroup::from_core).collect(),
+                library_statuses: library_statuses
+                    .into_iter()
+                    .map(AutomationLibraryStatus::from_core)
+                    .collect(),
+                agreements: automation_agreements(agreements),
+                narrowed_out_count,
+            }
+        }
         IdentifyStateView::Found {
             run,
             groups,
@@ -288,10 +282,7 @@ pub(crate) fn automation_identify_state(
             offers_shared_album,
         } => AutomationIdentifyState::Found {
             run: run.map(AutomationIdentifyRun::from_core),
-            groups: groups
-                .into_iter()
-                .map(AutomationReleaseGroup::from_core)
-                .collect(),
+            groups: groups.into_iter().map(AutomationReleaseGroup::from_core).collect(),
             library_statuses: library_statuses
                 .into_iter()
                 .map(AutomationLibraryStatus::from_core)
@@ -326,10 +317,7 @@ pub(crate) fn automation_identify_state(
                 .into_iter()
                 .map(AutomationIdentifyFailure::from_core)
                 .collect(),
-            groups: groups
-                .into_iter()
-                .map(AutomationReleaseGroup::from_core)
-                .collect(),
+            groups: groups.into_iter().map(AutomationReleaseGroup::from_core).collect(),
             library_statuses: library_statuses
                 .into_iter()
                 .map(AutomationLibraryStatus::from_core)

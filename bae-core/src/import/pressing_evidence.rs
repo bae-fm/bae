@@ -219,15 +219,12 @@ impl PressingEvidence {
             _ => Comparison::Unknown,
         };
         // Differently written names are inconclusive, not different labels.
-        let label = if a
-            .labels
-            .iter()
-            .any(|name| b.labels.iter().any(|other| name.same_label(other)))
-        {
-            Comparison::Same
-        } else {
-            Comparison::Unknown
-        };
+        let label =
+            if a.labels.iter().any(|name| b.labels.iter().any(|other| name.same_label(other))) {
+                Comparison::Same
+            } else {
+                Comparison::Unknown
+            };
         Self {
             same_catalog: a.record.catalog == b.record.catalog,
             link: a.links.contains(&b.record) || b.links.contains(&a.record),
@@ -278,12 +275,7 @@ impl PressingEvidence {
         if contradicted && !self.link {
             return None;
         }
-        Some(Support {
-            link: self.link,
-            barcode,
-            catalog,
-            agreed,
-        })
+        Some(Support { link: self.link, barcode, catalog, agreed })
     }
 }
 

@@ -146,10 +146,7 @@ impl ImportListItem {
             ),
             Self::Candidate { row, .. } => candidate_stable_key(&row.candidate_key),
             Self::Invalid { candidate, .. } => {
-                format!(
-                    "invalid:{}",
-                    hex::encode(coven::path_bytes(&candidate.path))
-                )
+                format!("invalid:{}", hex::encode(coven::path_bytes(&candidate.path)))
             }
         }
     }
@@ -453,10 +450,7 @@ impl ImportCandidateDetailProjection {
         } = self;
         let import_step = facts.import;
         let importing = facts.importing();
-        let file_evidence = signals
-            .as_ref()
-            .map(crate::import::file_evidence)
-            .unwrap_or_default();
+        let file_evidence = signals.as_ref().map(crate::import::file_evidence).unwrap_or_default();
         let placement = listed.basis.placement;
         let live = CandidateLiveState::of(&listed.basis, facts, listed.standing);
         let (import_status, pane_placement, stage) = match stage {
@@ -512,9 +506,9 @@ impl ImportCandidateDetailProjection {
                             .flatten(),
                         records: draft_records(),
                     },
-                    TriageTab::Skipped => CandidatePanePlacement::Skipped {
-                        records: draft_records(),
-                    },
+                    TriageTab::Skipped => {
+                        CandidatePanePlacement::Skipped { records: draft_records() }
+                    }
                     TriageTab::Done => CandidatePanePlacement::Done,
                 };
                 let metadata_draft_is_blank = metadata_draft.is_blank();
@@ -578,9 +572,7 @@ pub enum CandidatePanePlacement {
     },
     /// Skipped, with every catalog the linked release is described in, as
     /// for Pending.
-    Skipped {
-        records: Vec<crate::import::ReleaseRecord>,
-    },
+    Skipped { records: Vec<crate::import::ReleaseRecord> },
     /// In the library.
     Done,
 }

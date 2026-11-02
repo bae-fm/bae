@@ -48,10 +48,7 @@ fn settled_signals() -> Signals {
         origin: crate::signals::AudioOrigin::default(),
         disc_id: DiscIdSignal::Absent,
         barcode: BarcodeSignal::Absent,
-        text: TextSignal::Settled {
-            catalogs: Vec::new(),
-            free_text: Vec::new(),
-        },
+        text: TextSignal::Settled { catalogs: Vec::new(), free_text: Vec::new() },
         text_pool: Vec::new(),
         isrcs: Vec::new(),
         track_titles: Vec::new(),
@@ -79,9 +76,8 @@ struct FakeState {
 
 impl FakeProvider {
     async fn start() -> Self {
-        let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
-            .await
-            .expect("fake provider binds");
+        let listener =
+            tokio::net::TcpListener::bind("127.0.0.1:0").await.expect("fake provider binds");
         let base_url = format!("http://{}", listener.local_addr().unwrap());
         let state = Arc::new(Mutex::new(FakeState::default()));
         let accept_state = state.clone();
@@ -100,11 +96,7 @@ impl FakeProvider {
     /// Answer any request containing `needle` with `status` and `body`; an
     /// earlier route wins over a later one.
     fn route(&self, needle: &str, status: u16, body: impl Into<Vec<u8>>) {
-        self.state
-            .lock()
-            .unwrap()
-            .routes
-            .push((needle.to_string(), status, body.into()));
+        self.state.lock().unwrap().routes.push((needle.to_string(), status, body.into()));
     }
 
     /// Answer requests containing `needle` with `status` and `body` from now
@@ -112,9 +104,7 @@ impl FakeProvider {
     fn reroute(&self, needle: &str, status: u16, body: impl Into<Vec<u8>>) {
         let mut state = self.state.lock().unwrap();
         state.routes.retain(|(existing, _, _)| existing != needle);
-        state
-            .routes
-            .insert(0, (needle.to_string(), status, body.into()));
+        state.routes.insert(0, (needle.to_string(), status, body.into()));
     }
 
     /// Replace every route.
@@ -160,10 +150,7 @@ impl FakeProvider {
     }
 
     fn count_containing(&self, needle: &str) -> usize {
-        self.requests()
-            .iter()
-            .filter(|target| target.contains(needle))
-            .count()
+        self.requests().iter().filter(|target| target.contains(needle)).count()
     }
 }
 
@@ -175,17 +162,12 @@ async fn await_run_state(
 ) -> IdentifyRunId {
     tokio::time::timeout(Duration::from_secs(20), async {
         loop {
-            match events
-                .recv()
-                .await
-                .expect("the import event bus stays open")
-            {
-                ImportEvent::IdentifyStateChanged {
-                    candidate_key,
-                    run,
-                    state,
-                    ..
-                } if candidate_key == key.clone() && accept(run, &state) => return run,
+            match events.recv().await.expect("the import event bus stays open") {
+                ImportEvent::IdentifyStateChanged { candidate_key, run, state, .. }
+                    if candidate_key == key.clone() && accept(run, &state) =>
+                {
+                    return run
+                }
                 _ => continue,
             }
         }
@@ -242,10 +224,7 @@ struct BarcodeAnalyzer {
 
 impl ArtworkAnalyzer for BarcodeAnalyzer {
     fn analyze(&self, _path: &Path) -> ArtworkAnalysis {
-        ArtworkAnalysis {
-            barcodes: vec![self.barcode.clone()],
-            text_lines: Vec::new(),
-        }
+        ArtworkAnalysis { barcodes: vec![self.barcode.clone()], text_lines: Vec::new() }
     }
 }
 
@@ -263,9 +242,7 @@ impl ArtworkAnalyzer for PerFolderBarcodeAnalyzer {
         let digits: String = folder.chars().filter(|c| c.is_ascii_digit()).collect();
         let ordinal: u32 = digits.parse().expect("a numbered candidate folder");
         ArtworkAnalysis {
-            barcodes: vec![bae_types::barcode::with_check_digit(&format!(
-                "01234567{ordinal:04}"
-            ))],
+            barcodes: vec![bae_types::barcode::with_check_digit(&format!("01234567{ordinal:04}"))],
             text_lines: Vec::new(),
         }
     }
@@ -358,18 +335,12 @@ impl Fixture {
             crate::providers::Providers::new(http),
         );
 
-        let import = manager
-            .start_import_service(tokio::runtime::Handle::current())
-            .await
-            .unwrap();
+        let import = manager.start_import_service(tokio::runtime::Handle::current()).await.unwrap();
 
         let root = temp.path().join("watched");
         std::fs::create_dir_all(&root).unwrap();
 
-        let context = Context {
-            import: import.clone(),
-            library_manager: manager.clone(),
-        };
+        let context = Context { import: import.clone(), library_manager: manager.clone() };
         Fixture {
             manager,
             database,
@@ -385,17 +356,13 @@ impl Fixture {
 
     /// The running queue, started on first use.
     fn identification(&self) -> &IdentificationHandle {
-        self.identification
-            .get_or_init(|| super::start(self.import.clone(), self.manager.clone()))
+        self.identification.get_or_init(|| super::start(self.import.clone(), self.manager.clone()))
     }
 
     /// A candidate folder with two FLACs and a rip log, so the disc ID computes.
     fn disc_id_candidate(&self, folder: &str) -> PathBuf {
         let dir = self.candidate_dir(folder);
-        copy_fixture(
-            Path::new("tests/fixtures/logs/test_album.log"),
-            &dir.join("test_album.log"),
-        );
+        copy_fixture(Path::new("tests/fixtures/logs/test_album.log"), &dir.join("test_album.log"));
         dir
     }
 
@@ -410,15 +377,10 @@ impl Fixture {
     fn candidate_dir(&self, folder: &str) -> PathBuf {
         // Part by part, so a nested folder is spelled as the scan spells its
         // key on every host.
-        let dir = folder
-            .split('/')
-            .fold(self.root.clone(), |dir, part| dir.join(part));
+        let dir = folder.split('/').fold(self.root.clone(), |dir, part| dir.join(part));
         std::fs::create_dir_all(&dir).unwrap();
         for name in FLAC_FIXTURES {
-            copy_fixture(
-                &Path::new("tests/fixtures/flac").join(name),
-                &dir.join(name),
-            );
+            copy_fixture(&Path::new("tests/fixtures/flac").join(name), &dir.join(name));
         }
         dir
     }
@@ -445,10 +407,7 @@ impl Fixture {
             "02 Test Artist - Track Two (White Noise).flac",
             "03 Test Artist - Track Three (Brown Noise).flac",
         ] {
-            copy_fixture(
-                &Path::new("tests/fixtures/cue_flac").join(file),
-                &dir.join(file),
-            );
+            copy_fixture(&Path::new("tests/fixtures/cue_flac").join(file), &dir.join(file));
         }
         dir
     }
@@ -473,10 +432,7 @@ impl Fixture {
     /// Read the watched folder `root` through `import`, returning once the
     /// read is over.
     async fn read_root(&self, import: &ImportServiceHandle, root: &Path) {
-        import
-            .refresh_watched_folder(root.to_path_buf())
-            .await
-            .unwrap();
+        import.refresh_watched_folder(root.to_path_buf()).await.unwrap();
     }
 
     /// The list holds `expected` candidates, as the reads already over left it.
@@ -496,8 +452,7 @@ impl Fixture {
 
     /// Ask to identify `dir`, as a person does.
     fn start_explicit_lookup(&self, dir: &Path) {
-        self.identification()
-            .rerun_identify(crate::import::CandidateKey::folder(dir));
+        self.identification().rerun_identify(crate::import::CandidateKey::folder(dir));
     }
 
     /// Ask to identify `dir` and wait until its run is registered.
@@ -537,8 +492,7 @@ impl Fixture {
     }
 
     fn count_release_lookups(&self, release_id: &str) -> usize {
-        self.provider
-            .count_containing(&format!("/release/{release_id}?"))
+        self.provider.count_containing(&format!("/release/{release_id}?"))
     }
 
     fn context(&self) -> Context {
@@ -567,18 +521,13 @@ impl Fixture {
         &self,
         key: &crate::import::CandidateKey,
     ) -> Option<crate::import::IdentificationStatus> {
-        self.import
-            .standing_facts_for_test(key)
-            .await
-            .identification
+        self.import.standing_facts_for_test(key).await.identification
     }
 
     /// The first of `dirs` the queue holds waiting.
     async fn first_queued(&self, dirs: &[PathBuf]) -> Option<PathBuf> {
         for dir in dirs {
-            if self
-                .identification_status(&crate::import::CandidateKey::folder(dir))
-                .await
+            if self.identification_status(&crate::import::CandidateKey::folder(dir)).await
                 == Some(crate::import::IdentificationStatus::Queued)
             {
                 return Some(dir.clone());
@@ -588,12 +537,7 @@ impl Fixture {
     }
 
     async fn stored(&self) -> BTreeMap<String, DbImportCandidateState> {
-        self.manager
-            .load_import_candidate_states()
-            .await
-            .unwrap()
-            .into_iter()
-            .collect()
+        self.manager.load_import_candidate_states().await.unwrap().into_iter().collect()
     }
 
     /// A candidate folder's content hash, read off disk.
@@ -656,10 +600,7 @@ impl Fixture {
     /// Store a fake Discogs key, so lookups ask both providers.
     async fn use_discogs(&self) {
         self.manager
-            .set_discogs_key(
-                "test-discogs-token",
-                crate::config::DiscogsValidation::Valid,
-            )
+            .set_discogs_key("test-discogs-token", crate::config::DiscogsValidation::Valid)
             .await
             .expect("the fake Discogs key is stored");
     }
@@ -680,13 +621,11 @@ impl Fixture {
         track_lengths: &[u64],
     ) {
         let mut release = stored_pressing(release_id, group_id, track_lengths);
-        release
-            .unfetched
-            .push(crate::import::source_release::UnfetchedDocument {
-                document: crate::import::PayloadSource::MusicBrainzReleaseGroup,
-                key: group_id.to_string(),
-                reason: crate::import::source_release::UnfetchedReason::Failed,
-            });
+        release.unfetched.push(crate::import::source_release::UnfetchedDocument {
+            document: crate::import::PayloadSource::MusicBrainzReleaseGroup,
+            key: group_id.to_string(),
+            reason: crate::import::source_release::UnfetchedReason::Failed,
+        });
         self.manager.save_source_release(&release).await.unwrap();
     }
 
@@ -753,8 +692,8 @@ impl Fixture {
             .expect("the scanned candidate is answerable");
         let mut draft = candidate.blank_draft();
         draft.album_title = "Album".to_string();
-        draft.album_artist_assignments = vec![crate::import::Credited::plain(
-            crate::import::ArtistAssignment::Credit {
+        draft.album_artist_assignments =
+            vec![crate::import::Credited::plain(crate::import::ArtistAssignment::Credit {
                 credit: crate::import::ArtistCredit {
                     credited_as: None,
                     name: "Artist".to_string(),
@@ -762,8 +701,7 @@ impl Fixture {
                     musicbrainz_artist_id: None,
                     discogs_artist_id: None,
                 },
-            },
-        )];
+            })];
         for (index, track) in draft.tracks.iter_mut().enumerate() {
             track.edit.title = format!("Track {}", index + 1);
         }
@@ -882,9 +820,7 @@ enum SettledDraft {
 
 /// The identify half of a stored row, which every row identification wrote has.
 fn identify_result(row: &DbImportCandidateState) -> &crate::db::DbCandidateIdentifyResult {
-    row.identify
-        .as_ref()
-        .expect("a row identification wrote carries its identify result")
+    row.identify.as_ref().expect("a row identification wrote carries its identify result")
 }
 
 impl Drop for Fixture {

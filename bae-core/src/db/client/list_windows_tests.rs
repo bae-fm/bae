@@ -22,10 +22,7 @@ fn orders() -> Vec<ListOrder> {
     vec![
         ListOrder::new(vec![SortTerm::ascending("t.id")]),
         ListOrder::new(vec![SortTerm::descending("t.id")]),
-        ListOrder::new(vec![
-            SortTerm::ascending("t.a").nullable(),
-            SortTerm::ascending("t.id"),
-        ]),
+        ListOrder::new(vec![SortTerm::ascending("t.a").nullable(), SortTerm::ascending("t.id")]),
         ListOrder::new(vec![
             SortTerm::descending("t.a").nullable(),
             SortTerm::ascending("t.b COLLATE NOCASE"),
@@ -62,9 +59,7 @@ fn read(
     params.push((":offset", &offset));
     let mut statement = conn.prepare(&statement)?;
     let rows = statement
-        .query_map(params.as_slice(), |row| {
-            Ok((row.get(0)?, order.key_of(row)?))
-        })?
+        .query_map(params.as_slice(), |row| Ok((row.get(0)?, order.key_of(row)?)))?
         .collect();
     rows
 }
@@ -87,10 +82,8 @@ fn a_window_read_from_either_neighbour_holds_its_offsets_rows() {
                 .collect::<Vec<_>>();
             let mut neighbours = Vec::new();
             if offset > 0 {
-                neighbours.push(Places::from([(
-                    offset - 1,
-                    everything[offset as usize - 1].1.clone(),
-                )]));
+                neighbours
+                    .push(Places::from([(offset - 1, everything[offset as usize - 1].1.clone())]));
             }
             if let Some((_, key)) = everything.get(offset as usize + 5) {
                 neighbours.push(Places::from([(offset + 5, key.clone())]));
@@ -103,10 +96,7 @@ fn a_window_read_from_either_neighbour_holds_its_offsets_rows() {
                     |seek, limit, offset| read(&conn, &order, seek, limit, offset),
                 )
                 .unwrap();
-                assert_eq!(
-                    windows[0].1, expected,
-                    "{order:?} at {offset} from {known:?}"
-                );
+                assert_eq!(windows[0].1, expected, "{order:?} at {offset} from {known:?}");
             }
         }
     }
@@ -120,30 +110,19 @@ fn adjacent_windows_read_together_chain_and_report_their_ends() {
     let order = orders().pop().unwrap();
     let everything = read(&conn, &order, &order.everything(), 1_000, 0).unwrap();
     let windows = LibraryPageWindows::from([
-        LibraryPageWindow {
-            offset: 50,
-            limit: 10,
-        },
-        LibraryPageWindow {
-            offset: 60,
-            limit: 10,
-        },
-        LibraryPageWindow {
-            offset: 195,
-            limit: 10,
-        },
+        LibraryPageWindow { offset: 50, limit: 10 },
+        LibraryPageWindow { offset: 60, limit: 10 },
+        LibraryPageWindow { offset: 195, limit: 10 },
     ]);
     let mut offsets_read = Vec::new();
-    let WindowsRead {
-        windows: answered,
-        found: places,
-    } = read_windows(&order, &windows, Places::new(), |seek, limit, offset| {
-        if seek.reads_everything() {
-            offsets_read.push(offset);
-        }
-        read(&conn, &order, seek, limit, offset)
-    })
-    .unwrap();
+    let WindowsRead { windows: answered, found: places } =
+        read_windows(&order, &windows, Places::new(), |seek, limit, offset| {
+            if seek.reads_everything() {
+                offsets_read.push(offset);
+            }
+            read(&conn, &order, seek, limit, offset)
+        })
+        .unwrap();
     assert_eq!(offsets_read, vec![50, 195]);
     for (window, ids) in &answered {
         let expected = everything
@@ -154,10 +133,7 @@ fn adjacent_windows_read_together_chain_and_report_their_ends() {
             .collect::<Vec<_>>();
         assert_eq!(ids, &expected, "{window:?}");
     }
-    assert_eq!(
-        places.keys().copied().collect::<Vec<_>>(),
-        vec![50, 59, 60, 69, 195, 199]
-    );
+    assert_eq!(places.keys().copied().collect::<Vec<_>>(), vec![50, 59, 60, 69, 195, 199]);
     for (place, key) in &places {
         assert_eq!(key, &everything[*place as usize].1);
     }

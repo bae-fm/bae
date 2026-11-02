@@ -16,10 +16,7 @@ impl coven::OAuthPresenter for RecordingPresenter {
         &self,
         authorization_url: &str,
     ) -> Result<coven::SecretText, coven::OAuthError> {
-        self.presented
-            .lock()
-            .unwrap()
-            .push(authorization_url.to_owned());
+        self.presented.lock().unwrap().push(authorization_url.to_owned());
         Err(coven::OAuthError::Cancelled)
     }
 }
@@ -32,18 +29,11 @@ async fn manager_signing_in_with(
     let temp_dir = TempDir::new().unwrap();
     let app_dir = crate::config::AppDir::at(temp_dir.path()).unwrap();
     let clock: coven::ClockRef = Arc::new(coven::SystemClock);
-    let storage = Arc::new(
-        MemoryStorage::builder()
-            .clock(clock.clone())
-            .build()
-            .unwrap(),
-    );
+    let storage = Arc::new(MemoryStorage::builder().clock(clock.clone()).build().unwrap());
     let handle =
         crate::library::configure_store(coven::TestCoven::new().builder(app_dir.store_layout()))
             .oauth_clients(coven::OAuthClients::new(
-                Some(coven::DropboxClients::FullDropbox {
-                    app_key: "dropbox-key".into(),
-                }),
+                Some(coven::DropboxClients::FullDropbox { app_key: "dropbox-key".into() }),
                 Some("onedrive-id".into()),
                 clock.clone(),
             ))

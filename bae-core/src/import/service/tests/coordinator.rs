@@ -2,10 +2,7 @@
 /// host's spelling.
 async fn rescan_and_wait(harness: &CoordinatorHarness, root: &str) -> PathBuf {
     let root = root_path(root);
-    harness
-        .commands
-        .send(WatcherCommand::Rescan(root.clone()))
-        .unwrap();
+    harness.commands.send(WatcherCommand::Rescan(root.clone())).unwrap();
     harness.scans.wait_for_count(1).await;
     root
 }
@@ -20,11 +17,7 @@ async fn removal_awaiting_its_cancelled_scan(
     let (completion, result) = tokio::sync::oneshot::channel();
     harness
         .commands
-        .send(WatcherCommand::Remove {
-            roots: vec![root],
-            parent: None,
-            completion,
-        })
+        .send(WatcherCommand::Remove { roots: vec![root], parent: None, completion })
         .unwrap();
     harness.scans.wait_for_cancellation(0).await;
     result
@@ -35,13 +28,7 @@ fn request_refresh(
     root: &str,
 ) -> tokio::sync::oneshot::Receiver<Result<(), String>> {
     let (completion, result) = tokio::sync::oneshot::channel();
-    harness
-        .commands
-        .send(WatcherCommand::Refresh {
-            path: root_path(root),
-            completion,
-        })
-        .unwrap();
+    harness.commands.send(WatcherCommand::Refresh { path: root_path(root), completion }).unwrap();
     result
 }
 
@@ -91,20 +78,14 @@ async fn assert_next_pass_reads_only_a_later_change(harness: &CoordinatorHarness
 
 /// Whether `result` has been answered yet.
 fn is_answered<T>(result: &mut tokio::sync::oneshot::Receiver<Result<T, String>>) -> bool {
-    !matches!(
-        result.try_recv(),
-        Err(tokio::sync::oneshot::error::TryRecvError::Empty)
-    )
+    !matches!(result.try_recv(), Err(tokio::sync::oneshot::error::TryRecvError::Empty))
 }
 
 #[tokio::test]
 async fn coordinator_coalesces_same_root_to_one_followup_scan() {
     let harness = CoordinatorHarness::new().await;
     let root = rescan_and_wait(&harness, "/music").await;
-    harness
-        .commands
-        .send(WatcherCommand::Rescan(root.clone()))
-        .unwrap();
+    harness.commands.send(WatcherCommand::Rescan(root.clone())).unwrap();
     harness.commands.send(WatcherCommand::Rescan(root)).unwrap();
     // Both rescans are taken while the first pass runs; otherwise its end
     // could be taken first, leaving the root idle for one rescan to start a
@@ -154,10 +135,7 @@ async fn coordinator_coalesces_duplicate_removals_for_one_root() {
     harness.scans.complete(0);
     assert_eq!(first_result.await.unwrap(), Ok(()));
     assert_eq!(second_result.await.unwrap(), Ok(()));
-    assert_eq!(
-        harness.removal_backend.calls.lock().unwrap().as_slice(),
-        ["uninstall", "remove"]
-    );
+    assert_eq!(harness.removal_backend.calls.lock().unwrap().as_slice(), ["uninstall", "remove"]);
     harness.shutdown().await;
 }
 
@@ -178,10 +156,7 @@ async fn coordinator_blocked_root_removal_does_not_block_another_roots_refresh()
     );
 
     harness.commands_handled().await;
-    assert!(
-        !is_answered(&mut remove_result),
-        "removal completed before its blocked scan"
-    );
+    assert!(!is_answered(&mut remove_result), "removal completed before its blocked scan");
     harness.scans.complete(0);
     harness.shutdown().await;
 }
@@ -196,16 +171,10 @@ async fn coordinator_removal_proceeds_once_its_cancelled_scan_ends_untold() {
     harness.scans.abort(0);
 
     assert_eq!(
-        tokio::time::timeout(HANG_GUARD, result)
-            .await
-            .expect("the removal is answered")
-            .unwrap(),
+        tokio::time::timeout(HANG_GUARD, result).await.expect("the removal is answered").unwrap(),
         Ok(())
     );
-    assert_eq!(
-        harness.removal_backend.calls.lock().unwrap().as_slice(),
-        ["uninstall", "remove"]
-    );
+    assert_eq!(harness.removal_backend.calls.lock().unwrap().as_slice(), ["uninstall", "remove"]);
     harness.shutdown().await;
 }
 
@@ -219,10 +188,7 @@ async fn coordinator_removal_uninstall_failure_restores_a_runnable_root_schedule
 
     let error = result.await.unwrap().unwrap_err();
     assert!(error.contains("injected uninstall failure"));
-    assert_eq!(
-        harness.removal_backend.calls.lock().unwrap().as_slice(),
-        ["uninstall"]
-    );
+    assert_eq!(harness.removal_backend.calls.lock().unwrap().as_slice(), ["uninstall"]);
     harness.scans.wait_for_count(2).await;
     harness.scans.complete(1);
     harness.shutdown().await;
@@ -243,11 +209,7 @@ async fn coordinator_removal_database_failure_reinstalls_and_rescans_before_retu
         ["uninstall", "remove", "reinstall"]
     );
     assert_eq!(
-        harness
-            .library_manager
-            .load_watched_import_folders()
-            .await
-            .unwrap(),
+        harness.library_manager.load_watched_import_folders().await.unwrap(),
         vec![crate::import::WatchedFolder::from_path(host_root("/music"))]
     );
     harness.scans.wait_for_count(2).await;
@@ -260,18 +222,12 @@ async fn coordinator_blocked_reinstall_does_not_block_another_roots_persistence(
     let harness = CoordinatorHarness::with_roots(&["/music/one", "/music/two"]).await;
     *harness.removal_backend.remove_error.lock().unwrap() =
         Some("injected database failure".to_string());
-    harness
-        .removal_backend
-        .block_reinstall
-        .store(true, std::sync::atomic::Ordering::SeqCst);
+    harness.removal_backend.block_reinstall.store(true, std::sync::atomic::Ordering::SeqCst);
     let remove_result = removal_awaiting_its_cancelled_scan(&harness, "/music/one").await;
     harness.scans.complete(0);
-    tokio::time::timeout(
-        HANG_GUARD,
-        harness.removal_backend.reinstall_started.notified(),
-    )
-    .await
-    .expect("failed durable removal did not start watch restoration");
+    tokio::time::timeout(HANG_GUARD, harness.removal_backend.reinstall_started.notified())
+        .await
+        .expect("failed durable removal did not start watch restoration");
 
     let refresh_result = request_refresh(&harness, "/music/two");
     harness.scans.wait_for_count(2).await;
@@ -329,10 +285,7 @@ async fn coordinator_removal_database_and_restore_failures_return_both_errors() 
 async fn coordinator_runs_different_roots_concurrently() {
     let harness = CoordinatorHarness::with_roots(&["/music/one", "/music/two"]).await;
     for root in ["/music/one", "/music/two"] {
-        harness
-            .commands
-            .send(WatcherCommand::Rescan(root_path(root)))
-            .unwrap();
+        harness.commands.send(WatcherCommand::Rescan(root_path(root))).unwrap();
     }
     harness.scans.wait_for_count(2).await;
     assert!(!harness.scans.cancellation(0).is_cancelled());
@@ -438,10 +391,7 @@ async fn changes_during_a_folder_reading_are_read_once_afterwards() {
 
     harness.scans.complete(0);
     harness.scans.wait_for_count(2).await;
-    assert_eq!(
-        harness.scans.folders(1),
-        Some(vec!["One".into(), "Two".into()])
-    );
+    assert_eq!(harness.scans.folders(1), Some(vec!["One".into(), "Two".into()]));
     harness.scans.complete(1);
     assert_next_pass_reads_only_a_later_change(&harness, 2).await;
     harness.shutdown().await;
@@ -469,10 +419,7 @@ async fn a_watch_that_lost_track_of_no_path_reads_the_root_whole() {
 async fn a_watch_that_lost_track_above_the_root_reads_it_whole() {
     let harness = CoordinatorHarness::new().await;
     let above = root_path("/music").parent().unwrap().to_path_buf();
-    harness
-        .fs_events
-        .send(Ok(vec![lost_track(Some(above))]))
-        .unwrap();
+    harness.fs_events.send(Ok(vec![lost_track(Some(above))])).unwrap();
 
     harness.scans.wait_for_count(1).await;
     assert_eq!(harness.scans.folders(0), None);
@@ -489,9 +436,7 @@ async fn a_watch_that_lost_track_inside_one_folder_reads_only_that_folder() {
     let harness = CoordinatorHarness::new().await;
     harness
         .fs_events
-        .send(Ok(vec![lost_track(Some(
-            root_path("/music").join("Artist").join("Album"),
-        ))]))
+        .send(Ok(vec![lost_track(Some(root_path("/music").join("Artist").join("Album")))]))
         .unwrap();
 
     harness.scans.wait_for_count(1).await;
@@ -532,10 +477,7 @@ async fn coordinator_completes_scan_while_filesystem_batches_remain_ready() {
     harness.scans.wait_for_count(1).await;
 
     let held = harness.scans.hold_starts();
-    harness
-        .commands
-        .send(WatcherCommand::Rescan(root_path("/other")))
-        .unwrap();
+    harness.commands.send(WatcherCommand::Rescan(root_path("/other"))).unwrap();
     for folder in 0..100 {
         harness
             .fs_events
@@ -549,10 +491,7 @@ async fn coordinator_completes_scan_while_filesystem_batches_remain_ready() {
     drop(held);
 
     assert_eq!(
-        tokio::time::timeout(HANG_GUARD, result)
-            .await
-            .expect("the refresh is answered")
-            .unwrap(),
+        tokio::time::timeout(HANG_GUARD, result).await.expect("the refresh is answered").unwrap(),
         Ok(())
     );
     harness.scans.wait_for_count(3).await;
@@ -572,19 +511,11 @@ async fn coordinator_completes_scan_while_filesystem_batches_remain_ready() {
 
 #[tokio::test]
 async fn cancelled_scan_task_does_not_begin_a_durable_generation() {
-    let TestService {
-        service,
-        preparations,
-        database: _,
-        temp: tmp,
-    } = setup_import_service().await;
+    let TestService { service, preparations, database: _, temp: tmp } =
+        setup_import_service().await;
     let root = tmp.path().join("watched");
     std::fs::create_dir(&root).unwrap();
-    service
-        .library_manager
-        .add_watched_import_folder(&root)
-        .await
-        .unwrap();
+    service.library_manager.add_watched_import_folder(&root).await.unwrap();
     let (watch_tx, _watch_rx) = tokio::sync::mpsc::unbounded_channel();
     let watcher = Arc::new(FolderWatcher::new(watch_tx, crate::diagnostics::Diagnostics::noop()));
     let (completion_tx, mut completion_rx) = tokio::sync::mpsc::unbounded_channel();
@@ -610,16 +541,8 @@ async fn cancelled_scan_task_does_not_begin_a_durable_generation() {
         .expect("scan task completion channel closed");
     scan.task.ended().await;
 
-    assert!(service
-        .library_manager
-        .load_folder_scan_snapshots()
-        .await
-        .unwrap()
-        .is_empty());
-    assert!(matches!(
-        events.try_recv(),
-        Err(tokio::sync::mpsc::error::TryRecvError::Empty)
-    ));
+    assert!(service.library_manager.load_folder_scan_snapshots().await.unwrap().is_empty());
+    assert!(matches!(events.try_recv(), Err(tokio::sync::mpsc::error::TryRecvError::Empty)));
 }
 
 /// A decision cancels the whole-root pass it arrives during, runs once that
@@ -689,17 +612,10 @@ async fn coordinator_queued_decision_hears_its_root_is_being_removed() {
     let (completion, removal_result) = tokio::sync::oneshot::channel();
     harness
         .commands
-        .send(WatcherCommand::Remove {
-            roots: vec![root.clone()],
-            parent: None,
-            completion,
-        })
+        .send(WatcherCommand::Remove { roots: vec![root.clone()], parent: None, completion })
         .unwrap();
 
-    assert_eq!(
-        decision_result.await.unwrap(),
-        Err(format!("{} is being removed", root.display()))
-    );
+    assert_eq!(decision_result.await.unwrap(), Err(format!("{} is being removed", root.display())));
     harness.scans.complete(0);
     assert_eq!(removal_result.await.unwrap(), Ok(()));
     harness.shutdown().await;
@@ -708,28 +624,14 @@ async fn coordinator_queued_decision_hears_its_root_is_being_removed() {
 #[tokio::test]
 async fn coordinator_shutdown_waits_for_active_scan() {
     let harness = CoordinatorHarness::new().await;
-    harness
-        .commands
-        .send(WatcherCommand::Rescan(root_path("/music")))
-        .unwrap();
+    harness.commands.send(WatcherCommand::Rescan(root_path("/music"))).unwrap();
     harness.scans.wait_for_count(1).await;
     let (shutdown_completion, shutdown_done) = std::sync::mpsc::channel();
-    harness
-        .commands
-        .send(WatcherCommand::Shutdown {
-            completion: shutdown_completion,
-        })
-        .unwrap();
+    harness.commands.send(WatcherCommand::Shutdown { completion: shutdown_completion }).unwrap();
     tokio::task::yield_now().await;
-    assert!(matches!(
-        shutdown_done.try_recv(),
-        Err(std::sync::mpsc::TryRecvError::Empty)
-    ));
+    assert!(matches!(shutdown_done.try_recv(), Err(std::sync::mpsc::TryRecvError::Empty)));
     harness.scans.complete(0);
-    tokio::task::spawn_blocking(move || shutdown_done.recv())
-        .await
-        .unwrap()
-        .unwrap();
+    tokio::task::spawn_blocking(move || shutdown_done.recv()).await.unwrap().unwrap();
 }
 
 #[tokio::test]
@@ -771,24 +673,12 @@ async fn cancelling_a_panicked_folder_walk_fails_and_reports_it() {
 /// folder for the next check.
 #[tokio::test]
 async fn a_network_folder_found_unchanged_is_checked_again() {
-    let TestService {
-        service,
-        temp: tmp,
-        ..
-    } = setup_import_service().await;
+    let TestService { service, temp: tmp, .. } = setup_import_service().await;
     let root = tmp.path().join("watched");
     std::fs::create_dir(&root).unwrap();
     let modified_at = directory_modified_at(&root).expect("the folder's mtime reads");
-    service
-        .library_manager
-        .add_watched_import_folder(&root)
-        .await
-        .unwrap();
-    service
-        .library_manager
-        .begin_folder_scan(&root)
-        .await
-        .unwrap();
+    service.library_manager.add_watched_import_folder(&root).await.unwrap();
+    service.library_manager.begin_folder_scan(&root).await.unwrap();
     service
         .library_manager
         .record_folder_scan_directories(&root, &[(root.clone(), modified_at)])
@@ -809,10 +699,7 @@ async fn a_network_folder_found_unchanged_is_checked_again() {
     );
 
     for check in ["first", "second"] {
-        assert!(
-            coordinator.start_network_check(root.clone()),
-            "the {check} check starts"
-        );
+        assert!(coordinator.start_network_check(root.clone()), "the {check} check starts");
         assert!(
             !coordinator.start_network_check(root.clone()),
             "one check of the folder runs at a time"
@@ -824,10 +711,7 @@ async fn a_network_folder_found_unchanged_is_checked_again() {
         assert_eq!(checked, root);
         assert_eq!(found, super::coordinator::NetworkCheck::Unchanged);
         coordinator
-            .take(super::coordinator::CoordinatorEvent::NetworkChecked {
-                root: checked,
-                found,
-            })
+            .take(super::coordinator::CoordinatorEvent::NetworkChecked { root: checked, found })
             .await;
     }
 }

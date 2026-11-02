@@ -74,10 +74,7 @@ impl Pool {
         rank_clusters_in_place(&mut ranked);
         let free_text = apply_free_text_cutoff(&ranked);
 
-        Classification {
-            catalogs,
-            free_text,
-        }
+        Classification { catalogs, free_text }
     }
 
     /// Every line the pass read, as read, in gathering order.
@@ -96,10 +93,9 @@ impl Pool {
 /// `None` when nothing is left; anything else unchanged.
 fn clustered_form(line: &SourcedLine) -> Option<SourcedLine> {
     match line.source {
-        Source::PathComponent => strip_path_component(&line.text).map(|text| SourcedLine {
-            text,
-            ..line.clone()
-        }),
+        Source::PathComponent => {
+            strip_path_component(&line.text).map(|text| SourcedLine { text, ..line.clone() })
+        }
         _ => Some(line.clone()),
     }
 }
@@ -112,12 +108,7 @@ mod tests {
     // MARK: - Pool::classify end-to-end (one-shot on a fresh pool)
 
     fn cue_line(text: &str) -> SourcedLine {
-        SourcedLine::new(
-            Source::CueField {
-                file_id: "Album.cue".to_string(),
-            },
-            text.to_string(),
-        )
+        SourcedLine::new(Source::CueField { file_id: "Album.cue".to_string() }, text.to_string())
     }
 
     fn path_line(text: &str) -> SourcedLine {
@@ -125,12 +116,7 @@ mod tests {
     }
 
     fn artwork_line(path: &str, text: &str) -> SourcedLine {
-        SourcedLine::new(
-            Source::Artwork {
-                path: PathBuf::from(path),
-            },
-            text.to_string(),
-        )
+        SourcedLine::new(Source::Artwork { path: PathBuf::from(path) }, text.to_string())
     }
 
     /// Push lines + brackets into a fresh pool and classify once, catalogs

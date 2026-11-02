@@ -17,10 +17,7 @@ impl LibraryManager {
         self.run_file_operation("attach release", move |_closing| async move {
             manager
                 .run_storage_action(&release_id, crate::db::StoredTransition::Upload, async {
-                    Ok(manager
-                        .database
-                        .attach_release_files(&release_id, pin)
-                        .await?)
+                    Ok(manager.database.attach_release_files(&release_id, pin).await?)
                 })
                 .await
         })
@@ -53,11 +50,7 @@ impl LibraryManager {
         release_id: &str,
         action: crate::db::StoredTransition,
     ) -> Result<(), LibraryError> {
-        match self
-            .database
-            .begin_release_storage_action(release_id, action)
-            .await?
-        {
+        match self.database.begin_release_storage_action(release_id, action).await? {
             true => Ok(()),
             false => Err(LibraryError::Storage(format!(
                 "release {release_id} already has an active storage transition"
@@ -82,10 +75,7 @@ impl LibraryManager {
             "end a release's storage transition",
             &bae_util::error_text::CauseChain(&cleanup),
         );
-        LibraryError::Cleanup {
-            operation: Box::new(operation),
-            cleanup: Box::new(cleanup),
-        }
+        LibraryError::Cleanup { operation: Box::new(operation), cleanup: Box::new(cleanup) }
     }
 
     /// Make an uploaded release local again into `new_path`, a folder the
@@ -140,10 +130,7 @@ impl LibraryManager {
                                 result = &mut call => result,
                             }
                             .map_err(|error| LibraryError::MakeLocal(Box::new(error)))?;
-                            Ok(manager
-                                .database
-                                .make_release_local(&release_id, prepared)
-                                .await?)
+                            Ok(manager.database.make_release_local(&release_id, prepared).await?)
                         },
                     )
                     .await
@@ -201,19 +188,13 @@ impl LibraryManager {
     pub async fn enqueue_pins(&self, release_ids: Vec<String>) -> Result<(), LibraryError> {
         let enqueued_at =
             chrono::DateTime::<chrono::Utc>::from(self.clock.now()).timestamp_millis();
-        match self
-            .database
-            .enqueue_pinnable_releases(release_ids, enqueued_at)
-            .await
-        {
+        match self.database.enqueue_pinnable_releases(release_ids, enqueued_at).await {
             Ok(true) => self.downloads.queued(),
             Ok(false) => debug!("enqueue_pins: nothing to pin"),
             Err(error) => {
                 let error = LibraryError::from(error);
-                self.diagnostics.report_bug(
-                    "queue releases to pin",
-                    &bae_util::error_text::CauseChain(&error),
-                );
+                self.diagnostics
+                    .report_bug("queue releases to pin", &bae_util::error_text::CauseChain(&error));
                 return Err(error);
             }
         }
@@ -298,8 +279,7 @@ impl LibraryManager {
     pub async fn unpin_release(&self, release_id: &str) -> Result<(), LibraryError> {
         let transfer_service = crate::storage::transfer::TransferService::new(self.clone());
         let rx = transfer_service.unpin_release(release_id.to_string());
-        self.drive_transfer(release_id, ReleaseStorageAction::Unpin, rx)
-            .await
+        self.drive_transfer(release_id, ReleaseStorageAction::Unpin, rx).await
     }
 
     /// Move Local releases to Cloud. Each release is admitted independently so
@@ -315,9 +295,7 @@ impl LibraryManager {
         release_ids: &[String],
     ) -> Result<UploadReleasesOutcome, LibraryError> {
         if release_ids.is_empty() {
-            return Err(LibraryError::Validation(
-                "upload batch has no releases".to_string(),
-            ));
+            return Err(LibraryError::Validation("upload batch has no releases".to_string()));
         }
 
         let mut selected = std::collections::HashSet::with_capacity(release_ids.len());
@@ -360,9 +338,8 @@ impl LibraryManager {
             }
         }
 
-        let receipt = (!admitted_release_ids.is_empty()).then_some(UploadReceipt {
-            release_ids: admitted_release_ids,
-        });
+        let receipt = (!admitted_release_ids.is_empty())
+            .then_some(UploadReceipt { release_ids: admitted_release_ids });
         if failures.is_empty() {
             return Ok(UploadReleasesOutcome::Complete {
                 receipt: receipt.expect("a non-empty successful command has a receipt"),
@@ -386,10 +363,8 @@ impl LibraryManager {
         // between files, reachable for exactly as long as the transfer runs:
         // its task holds the registration.
         let cancel = crate::library::CancellationToken::new();
-        let registration = self
-            .detach_cancels
-            .register(release_id, cancel.clone())
-            .ok_or_else(|| {
+        let registration =
+            self.detach_cancels.register(release_id, cancel.clone()).ok_or_else(|| {
                 LibraryError::Storage(format!(
                     "release {release_id} already has an active storage transition"
                 ))
@@ -401,8 +376,7 @@ impl LibraryManager {
             cancel,
             registration,
         );
-        self.drive_transfer(release_id, ReleaseStorageAction::DetachAudio, rx)
-            .await
+        self.drive_transfer(release_id, ReleaseStorageAction::DetachAudio, rx).await
     }
 
     /// Cancel the in-progress transition for a release, whatever it is. The
@@ -422,11 +396,7 @@ impl LibraryManager {
         if self.downloads.contains(release_id).await? {
             self.cancel_download(release_id).await?;
         }
-        if self
-            .database
-            .has_pending_uploads_for_release(release_id)
-            .await?
-        {
+        if self.database.has_pending_uploads_for_release(release_id).await? {
             return self.cancel_release_upload(release_id).await;
         }
         Ok(())
@@ -475,9 +445,8 @@ impl LibraryManager {
 impl UploadBatchFailure {
     fn from_errors(failures: Vec<(String, LibraryError)>) -> Self {
         let mut failures = failures.into_iter();
-        let (first_release_id, first_error) = failures
-            .next()
-            .expect("a partial upload outcome has at least one failure");
+        let (first_release_id, first_error) =
+            failures.next().expect("a partial upload outcome has at least one failure");
         let first_category = first_error.category();
         let mut same_category = true;
         let mut release_ids = vec![first_release_id.clone()];

@@ -25,10 +25,7 @@ async fn a_live_read_whose_task_panics_ends_with_its_failure() {
 
     let ended = read.next().await;
 
-    assert!(
-        matches!(ended, Err(LiveReadError::Failed(LibraryError::Internal(_)))),
-        "{ended:?}"
-    );
+    assert!(matches!(ended, Err(LiveReadError::Failed(LibraryError::Internal(_)))), "{ended:?}");
     assert_eq!(bugs.reports().len(), 1, "{:?}", bugs.reports());
 }
 

@@ -50,9 +50,7 @@ fn an_approval_is_listed_by_the_invites_name_until_dismissed() {
 
         let mut changes = manager.subscribe_admin_changes();
         let done = bae_core::followed::value_matching(&mut changes, |changes| {
-            changes
-                .iter()
-                .any(|change| change.state == AdminChangeState::Done)
+            changes.iter().any(|change| change.state == AdminChangeState::Done)
         })
         .await;
         let [AdminChange {

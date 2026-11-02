@@ -63,18 +63,13 @@ mod tests {
     #[test]
     fn the_table_is_musicbrainzs_own_list() {
         assert_eq!(
-            MUSICBRAINZ_RELEASE_STATUSES
-                .iter()
-                .map(|(name, _)| *name)
-                .collect::<Vec<_>>(),
+            MUSICBRAINZ_RELEASE_STATUSES.iter().map(|(name, _)| *name).collect::<Vec<_>>(),
             super::super::recorded(include_str!(
                 "../../test-fixtures/pressing-vocabulary/musicbrainz-release-statuses.txt"
             ))
         );
-        let mut statuses: Vec<_> = MUSICBRAINZ_RELEASE_STATUSES
-            .iter()
-            .map(|(_, status)| *status)
-            .collect();
+        let mut statuses: Vec<_> =
+            MUSICBRAINZ_RELEASE_STATUSES.iter().map(|(_, status)| *status).collect();
         statuses.sort_by_key(|status| status.key());
         let mut all = ReleaseStatus::ALL.to_vec();
         all.sort_by_key(|status| status.key());
@@ -87,10 +82,7 @@ mod tests {
             ReleaseStatus::musicbrainz("Pseudo-Release"),
             Some(ReleaseStatus::PseudoRelease)
         );
-        assert_eq!(
-            ReleaseStatus::musicbrainz("promotion"),
-            Some(ReleaseStatus::Promotion)
-        );
+        assert_eq!(ReleaseStatus::musicbrainz("promotion"), Some(ReleaseStatus::Promotion));
         assert_eq!(ReleaseStatus::musicbrainz("Promo"), None);
     }
 }

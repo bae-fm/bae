@@ -39,17 +39,9 @@ async fn aggregate_db() -> (Database, tempfile::TempDir) {
 async fn album_summary_orders_artist_names_and_release_ids_inside_aggregates() {
     let (db, _tmp) = aggregate_db().await;
     // The one album in the fixture, read the way the library page reads it.
-    let summary = db
-        .get_album_page(&[], 0, 1)
-        .await
-        .unwrap()
-        .pop()
-        .expect("album summary row");
+    let summary = db.get_album_page(&[], 0, 1).await.unwrap().pop().expect("album summary row");
 
-    assert_eq!(
-        summary.artist_names,
-        "Artist Name Primary, Artist Name First, Artist Name Second"
-    );
+    assert_eq!(summary.artist_names, "Artist Name Primary, Artist Name First, Artist Name Second");
     assert_eq!(summary.release_ids, vec![RELEASE_Z, RELEASE_A, RELEASE_B]);
 }
 
@@ -74,10 +66,7 @@ async fn release_storage_summary_orders_artist_names_inside_the_aggregate() {
         .unwrap()
         .expect("release storage summary row");
 
-    assert_eq!(
-        summary.artist_names,
-        "Artist Name Primary, Artist Name First, Artist Name Second"
-    );
+    assert_eq!(summary.artist_names, "Artist Name Primary, Artist Name First, Artist Name Second");
 }
 
 #[tokio::test]
@@ -87,10 +76,7 @@ async fn storage_page_orders_album_aggregate_columns_inside_aggregates() {
         field: StorageSortField::AlbumTitle,
         direction: SortDirection::Ascending,
     };
-    let rows = db
-        .get_storage_page(&sort, StorageFilter::All, 0, 10)
-        .await
-        .unwrap();
+    let rows = db.get_storage_page(&sort, StorageFilter::All, 0, 10).await.unwrap();
     let row = rows.first().expect("storage row");
 
     assert_eq!(
@@ -125,32 +111,21 @@ async fn album_and_storage_pages_list_credits_in_order_and_allow_none() {
     .await
     .unwrap();
 
-    let album_sort = [AlbumSortCriterion {
-        field: AlbumSortField::Title,
-        direction: SortDirection::Ascending,
-    }];
+    let album_sort =
+        [AlbumSortCriterion { field: AlbumSortField::Title, direction: SortDirection::Ascending }];
     let albums = db.get_album_page(&album_sort, 0, 10).await.unwrap();
     assert_eq!(albums.len(), 2);
     assert_eq!(albums[0].artist_names, "");
-    assert_eq!(
-        albums[1].artist_names,
-        "Artist Name First, Artist Name Second"
-    );
+    assert_eq!(albums[1].artist_names, "Artist Name First, Artist Name Second");
 
     let storage_sort = StorageSortCriterion {
         field: StorageSortField::AlbumTitle,
         direction: SortDirection::Ascending,
     };
-    let rows = db
-        .get_storage_page(&storage_sort, StorageFilter::All, 0, 10)
-        .await
-        .unwrap();
+    let rows = db.get_storage_page(&storage_sort, StorageFilter::All, 0, 10).await.unwrap();
     assert_eq!(rows.len(), 2);
     assert_eq!(rows[0].album.artist_names, "");
-    assert_eq!(
-        rows[1].album.artist_names,
-        "Artist Name First, Artist Name Second"
-    );
+    assert_eq!(rows[1].album.artist_names, "Artist Name First, Artist Name Second");
 }
 
 async fn queue_db() -> (Database, tempfile::TempDir) {
@@ -183,10 +158,7 @@ async fn queue_items_order_track_artist_names_inside_the_aggregate() {
     let items = super::queue_items(&db, &[TRACK_A]).await;
 
     assert_eq!(items.len(), 1);
-    assert_eq!(
-        items[0].display.artist_names,
-        "Track Artist Name First, Track Artist Name Second"
-    );
+    assert_eq!(items[0].display.artist_names, "Track Artist Name First, Track Artist Name Second");
 }
 
 async fn release_detail_db() -> (Database, tempfile::TempDir) {
@@ -217,28 +189,14 @@ async fn release_detail_db() -> (Database, tempfile::TempDir) {
 #[tokio::test]
 async fn release_detail_orders_track_artists_and_keeps_tracks_without_artists() {
     let (db, _tmp) = release_detail_db().await;
-    let detail = db
-        .find_release_detail(RELEASE_A)
-        .await
-        .unwrap()
-        .expect("release detail");
+    let detail = db.find_release_detail(RELEASE_A).await.unwrap().expect("release detail");
 
-    let track_ids: Vec<&str> = detail
-        .tracks
-        .iter()
-        .map(|track| track.track.id.as_str())
-        .collect();
+    let track_ids: Vec<&str> = detail.tracks.iter().map(|track| track.track.id.as_str()).collect();
     assert_eq!(track_ids, vec![TRACK_A, TRACK_B]);
 
-    let artist_names: Vec<&str> = detail.tracks[0]
-        .artists
-        .iter()
-        .map(|artist| artist.artist.name.as_str())
-        .collect();
-    assert_eq!(
-        artist_names,
-        vec!["Track Artist Name First", "Track Artist Name Second"]
-    );
+    let artist_names: Vec<&str> =
+        detail.tracks[0].artists.iter().map(|artist| artist.artist.name.as_str()).collect();
+    assert_eq!(artist_names, vec!["Track Artist Name First", "Track Artist Name Second"]);
     assert!(detail.tracks[1].artists.is_empty());
 }
 
@@ -250,15 +208,8 @@ async fn release_detail_orders_track_artists_and_keeps_tracks_without_artists() 
 async fn release_files_are_read_in_case_insensitive_natural_order() {
     let (db, tmp) = release_detail_db().await;
     // Inserted out of order, mixed case, with a two-digit number.
-    for (i, name) in [
-        "Track 10.flac",
-        "cover.jpg",
-        "Track 2.flac",
-        "Back.jpg",
-        "album.cue",
-    ]
-    .iter()
-    .enumerate()
+    for (i, name) in
+        ["Track 10.flac", "cover.jpg", "Track 2.flac", "Back.jpg", "album.cue"].iter().enumerate()
     {
         let mime = if name.ends_with(".flac") {
             "audio/flac"
@@ -282,38 +233,23 @@ async fn release_files_are_read_in_case_insensitive_natural_order() {
         )
         .await;
     }
-    let expected = vec![
-        "album.cue",
-        "Back.jpg",
-        "cover.jpg",
-        "Track 2.flac",
-        "Track 10.flac",
-    ];
+    let expected = vec!["album.cue", "Back.jpg", "cover.jpg", "Track 2.flac", "Track 10.flac"];
     let names = |files: &[DbFile]| -> Vec<String> {
         files.iter().map(|f| f.original_filename.clone()).collect()
     };
 
-    let read = db
-        .read(|sql| super::super::read::get_files_for_release_on(&sql, RELEASE_A))
-        .await
-        .unwrap();
+    let read =
+        db.read(|sql| super::super::read::get_files_for_release_on(&sql, RELEASE_A)).await.unwrap();
     assert_eq!(names(&read), expected, "the read");
     let listed = db.get_files_for_release(RELEASE_A).await.unwrap();
     assert_eq!(names(&listed), expected, "the release's file list");
-    let detail = db
-        .find_release_detail(RELEASE_A)
-        .await
-        .unwrap()
-        .expect("release detail");
+    let detail = db.find_release_detail(RELEASE_A).await.unwrap().expect("release detail");
     assert_eq!(names(&detail.files), expected, "the release's detail");
 
     let plan = db
         .read(|sql| {
             sql.query(
-                &format!(
-                    "EXPLAIN QUERY PLAN {}",
-                    super::super::read::RELEASE_FILES_IN_ORDER
-                ),
+                &format!("EXPLAIN QUERY PLAN {}", super::super::read::RELEASE_FILES_IN_ORDER),
                 [RELEASE_A],
                 |row| row.get::<_, String>(3),
             )
@@ -322,17 +258,13 @@ async fn release_files_are_read_in_case_insensitive_natural_order() {
         .await
         .unwrap();
     assert!(
-        plan.iter()
-            .any(|step| step.contains("USING INDEX idx_release_files_release_order")),
+        plan.iter().any(|step| step.contains("USING INDEX idx_release_files_release_order")),
         "the read walks the index: {plan:?}"
     );
     let detail_plan = db
         .read(|sql| {
             sql.query(
-                &format!(
-                    "EXPLAIN QUERY PLAN {}",
-                    super::super::storage_inspector::INSPECTOR_FILES
-                ),
+                &format!("EXPLAIN QUERY PLAN {}", super::super::storage_inspector::INSPECTOR_FILES),
                 [RELEASE_A],
                 |row| row.get::<_, String>(3),
             )
@@ -341,9 +273,7 @@ async fn release_files_are_read_in_case_insensitive_natural_order() {
         .await
         .unwrap();
     assert!(
-        detail_plan
-            .iter()
-            .any(|step| step.contains("USING INDEX idx_release_files_release_order"))
+        detail_plan.iter().any(|step| step.contains("USING INDEX idx_release_files_release_order"))
             && !detail_plan.iter().any(|step| step.contains("TEMP B-TREE")),
         "the detail's files walk the index with their pins and uploads: {detail_plan:?}"
     );
@@ -386,12 +316,7 @@ async fn release_files_are_read_in_each_order_the_storage_sheet_sorts_by() {
         .await;
     }
     let order = |column, descending| ReleaseFileOrder { column, descending };
-    let request = |order| {
-        Some(ReleaseFilesRequest {
-            release_id: RELEASE_A.to_string(),
-            order,
-        })
-    };
+    let request = |order| Some(ReleaseFilesRequest { release_id: RELEASE_A.to_string(), order });
     // The names of the first files the read gives for `asked`.
     async fn names(
         files: &mut coven::ReconfigurableLiveQuery<
@@ -461,11 +386,9 @@ async fn release_files_are_read_in_each_order_the_storage_sheet_sorts_by() {
         let statement = super::super::release_files::release_files_in(order(column, descending));
         let plan = db
             .read(move |sql| {
-                sql.query(
-                    &format!("EXPLAIN QUERY PLAN {statement}"),
-                    [RELEASE_A],
-                    |row| row.get::<_, String>(3),
-                )
+                sql.query(&format!("EXPLAIN QUERY PLAN {statement}"), [RELEASE_A], |row| {
+                    row.get::<_, String>(3)
+                })
                 .map_err(DbError::from)
             })
             .await
@@ -540,15 +463,10 @@ async fn release_records_are_read_in_catalog_order() {
     .await
     .unwrap();
 
-    let records = db
-        .read(|sql| super::super::read::get_release_records_on(&sql, RELEASE_A))
-        .await
-        .unwrap();
+    let records =
+        db.read(|sql| super::super::read::get_release_records_on(&sql, RELEASE_A)).await.unwrap();
     assert_eq!(
-        records
-            .iter()
-            .map(|record| record.catalog())
-            .collect::<Vec<_>>(),
+        records.iter().map(|record| record.catalog()).collect::<Vec<_>>(),
         [
             bae_catalogs::catalog::Catalog::MusicBrainz,
             bae_catalogs::catalog::Catalog::Discogs,
@@ -559,10 +477,7 @@ async fn release_records_are_read_in_catalog_order() {
     let plan = db
         .read(|sql| {
             sql.query(
-                &format!(
-                    "EXPLAIN QUERY PLAN {}",
-                    super::super::read::RELEASE_RECORDS_IN_ORDER
-                ),
+                &format!("EXPLAIN QUERY PLAN {}", super::super::read::RELEASE_RECORDS_IN_ORDER),
                 [RELEASE_A],
                 |row| row.get::<_, String>(3),
             )
@@ -571,8 +486,7 @@ async fn release_records_are_read_in_catalog_order() {
         .await
         .unwrap();
     assert!(
-        plan.iter()
-            .any(|step| step.contains("USING INDEX idx_release_records_release_order")),
+        plan.iter().any(|step| step.contains("USING INDEX idx_release_records_release_order")),
         "the read walks the index: {plan:?}"
     );
     assert!(
@@ -593,11 +507,8 @@ async fn a_releases_index_counts_the_releases_before_it() {
         ("0252dedb-ee39-4547-8803-438dbeb57a64", 1),
         ("64e79a1f-404a-4c34-809a-a3cb44bf1942", 2),
     ] {
-        let context = db
-            .find_release_detail_context(release_id)
-            .await
-            .unwrap()
-            .expect("the release exists");
+        let context =
+            db.find_release_detail_context(release_id).await.unwrap().expect("the release exists");
         assert_eq!(context.release_index, index, "{release_id}");
     }
 
@@ -616,8 +527,7 @@ async fn a_releases_index_counts_the_releases_before_it() {
         .await
         .unwrap();
     assert!(
-        plan.iter()
-            .any(|step| step.contains("idx_releases_album_id")),
+        plan.iter().any(|step| step.contains("idx_releases_album_id")),
         "the count reads the album's releases index: {plan:?}"
     );
 }
@@ -637,20 +547,14 @@ async fn a_tracks_neighbors_are_read_from_the_positions_index() {
     );
     assert_eq!(
         db.track_neighbors(TRACK_B).await.unwrap(),
-        Some(super::super::track::TrackNeighbors {
-            is_first: false,
-            next: None,
-        })
+        Some(super::super::track::TrackNeighbors { is_first: false, next: None })
     );
     assert_eq!(db.count_tracks_for_release(RELEASE_A).await.unwrap(), 2);
 
     let plan = db
         .read(|sql| {
             sql.query(
-                &format!(
-                    "EXPLAIN QUERY PLAN {}",
-                    super::super::track::TRACK_NEIGHBORS
-                ),
+                &format!("EXPLAIN QUERY PLAN {}", super::super::track::TRACK_NEIGHBORS),
                 [TRACK_A],
                 |row| row.get::<_, String>(3),
             )
@@ -674,9 +578,6 @@ async fn a_tracks_neighbors_are_read_from_the_positions_index() {
 /// `size` zero bytes written under `dir`.
 async fn insert_file(db: &Database, dir: &std::path::Path, file: NewReleaseFile, size: u64) {
     let original = dir.join(&file.id);
-    std::fs::File::create_new(&original)
-        .unwrap()
-        .set_len(size)
-        .unwrap();
+    std::fs::File::create_new(&original).unwrap().set_len(size).unwrap();
     db.insert_file_for_test(&file, &original).await.unwrap();
 }

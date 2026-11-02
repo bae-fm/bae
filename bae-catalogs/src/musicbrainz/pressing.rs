@@ -73,10 +73,8 @@ pub fn media<'a>(
     release_id: &str,
     formats: impl IntoIterator<Item = Option<&'a str>>,
 ) -> StatedMedia {
-    let media: Vec<Option<Medium>> = formats
-        .into_iter()
-        .map(|format| medium(release_id, format))
-        .collect();
+    let media: Vec<Option<Medium>> =
+        formats.into_iter().map(|format| medium(release_id, format)).collect();
     if media.is_empty() {
         StatedMedia::Undescribed
     } else {
@@ -121,10 +119,7 @@ mod tests {
             facts,
             PressingFacts {
                 area: Some(ReleaseArea::Country(Country::from_code("JP").unwrap())),
-                media: vec![MediaCount {
-                    medium: Medium::Cd,
-                    count: 1
-                }],
+                media: vec![MediaCount { medium: Medium::Cd, count: 1 }],
                 status: Some(ReleaseStatus::Official),
                 packaging: Some(Packaging::JewelCase),
                 discogs_details: Vec::new(),
@@ -145,14 +140,8 @@ mod tests {
         assert_eq!(
             facts.media,
             vec![
-                MediaCount {
-                    medium: Medium::Cd,
-                    count: 2
-                },
-                MediaCount {
-                    medium: Medium::Dvd,
-                    count: 1
-                },
+                MediaCount { medium: Medium::Cd, count: 2 },
+                MediaCount { medium: Medium::Dvd, count: 1 },
             ]
         );
         assert_eq!(facts.area, Some(ReleaseArea::Region(Region::Europe)));

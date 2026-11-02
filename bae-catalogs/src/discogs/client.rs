@@ -71,10 +71,7 @@ pub struct Discogs {
 
 impl Discogs {
     pub fn new(http: Http) -> Self {
-        Self::with_limiter(
-            http,
-            RateLimiter::counted(DISCOGS_REQUEST_INTERVAL, DISCOGS_WINDOW),
-        )
+        Self::with_limiter(http, RateLimiter::counted(DISCOGS_REQUEST_INTERVAL, DISCOGS_WINDOW))
     }
 
     /// One whose requests are not spaced and whose window holds nothing: a
@@ -95,10 +92,7 @@ impl Discogs {
     /// Put `body` where a request for `url` would look for it.
     #[cfg(any(test, feature = "test-utils"))]
     fn seed_response(&self, url: &str, status: u16, body: String) {
-        self.responses.put(
-            bae_util::http::response_key(url),
-            CachedResponse { status, body },
-        );
+        self.responses.put(bae_util::http::response_key(url), CachedResponse { status, body });
     }
 
     /// Pre-populate a release document, so a test can drive `prepare_release`
@@ -163,10 +157,7 @@ pub enum DiscogsError {
     /// `told_wait` is how long the response's `Retry-After` asked bae to wait
     /// before asking again, when it stated one.
     #[error("Discogs returned an error response (status {status})")]
-    Provider {
-        status: StatusCode,
-        told_wait: Option<Duration>,
-    },
+    Provider { status: StatusCode, told_wait: Option<Duration> },
     #[error("Invalid API key")]
     InvalidApiKey,
     #[error("Release not found")]
@@ -230,9 +221,7 @@ fn repeat_discogs(error: &DiscogsError) -> Repeat {
 /// counts the window in `X-Discogs-Ratelimit-Remaining`.
 fn discogs_rate_answer(status: StatusCode, headers: &HeaderMap) -> RateAnswer {
     if status == StatusCode::TOO_MANY_REQUESTS {
-        return RateAnswer::Refused {
-            wait: bae_util::http::told_wait(headers),
-        };
+        return RateAnswer::Refused { wait: bae_util::http::told_wait(headers) };
     }
     headers
         .get("x-discogs-ratelimit-remaining")
@@ -299,15 +288,9 @@ pub struct DiscogsSearchResult {
     /// them. Absent from the response for a release with none.
     #[serde(default)]
     pub barcode: Vec<String>,
-    #[serde(
-        default,
-        deserialize_with = "crate::serde_helpers::empty_string_as_none"
-    )]
+    #[serde(default, deserialize_with = "crate::serde_helpers::empty_string_as_none")]
     pub cover_image: Option<String>,
-    #[serde(
-        default,
-        deserialize_with = "crate::serde_helpers::empty_string_as_none"
-    )]
+    #[serde(default, deserialize_with = "crate::serde_helpers::empty_string_as_none")]
     pub thumb: Option<String>,
     #[serde(default, deserialize_with = "optional_master_id")]
     pub master_id: Option<u64>,
@@ -368,11 +351,7 @@ impl DiscogsClient {
         api_key: String,
         observer: Option<DiscogsValidationObserver>,
     ) -> Self {
-        Self {
-            discogs,
-            api_key,
-            observer,
-        }
+        Self { discogs, api_key, observer }
     }
 
     /// A 401 is the only error that proves the key is bad, and a success confirms it.
@@ -424,9 +403,7 @@ impl DiscogsClient {
         priority: CallPriority,
     ) -> Result<(CachedResponse, Option<Duration>), DiscogsError> {
         loop {
-            let attempt = request
-                .try_clone()
-                .expect("a Discogs request has no streamed body");
+            let attempt = request.try_clone().expect("a Discogs request has no streamed body");
             let admitted = self.discogs.limiter.wait(priority).await;
             let response = self.discogs.http.execute(attempt).await?;
             let rate = discogs_rate_answer(response.status(), response.headers());
@@ -489,8 +466,7 @@ impl DiscogsClient {
         params: &DiscogsSearchParams,
         priority: CallPriority,
     ) -> Result<Vec<DiscogsSearchResult>, DiscogsError> {
-        self.observed(self.search_with_params_inner(params, priority))
-            .await
+        self.observed(self.search_with_params_inner(params, priority)).await
     }
 
     async fn search_with_params_inner(
@@ -559,10 +535,8 @@ impl DiscogsClient {
         };
         let mut search_response = page_of(1).await?;
         if every_page {
-            let pages = search_response
-                .pagination
-                .as_ref()
-                .map_or(1, |pagination| pagination.pages);
+            let pages =
+                search_response.pagination.as_ref().map_or(1, |pagination| pagination.pages);
             if pages > CATALOG_SEARCH_PAGES {
                 warn!(
                     "Discogs catalog search for {:?} runs to {pages} pages; reading the first \
@@ -574,10 +548,7 @@ impl DiscogsClient {
                 search_response.results.extend(page_of(page).await?.results);
             }
         }
-        debug!(
-            "Discogs search returned {} total result(s)",
-            search_response.results.len()
-        );
+        debug!("Discogs search returned {} total result(s)", search_response.results.len());
         for (i, result) in search_response.results.iter().enumerate().take(3) {
             debug!(
                 "  Raw result {}: {} (type: {}, master_id: {:?})",
@@ -587,11 +558,8 @@ impl DiscogsClient {
                 result.master_id
             );
         }
-        let releases: Vec<_> = search_response
-            .results
-            .into_iter()
-            .filter(|r| r.result_type == "release")
-            .collect();
+        let releases: Vec<_> =
+            search_response.results.into_iter().filter(|r| r.result_type == "release").collect();
         debug!("  → {} release(s) after filtering", releases.len());
         Ok(releases)
     }
@@ -624,8 +592,7 @@ impl DiscogsClient {
         master_id: &str,
         priority: CallPriority,
     ) -> Result<(DiscogsMaster, String), DiscogsError> {
-        self.observed(self.get_master_inner(master_id, priority))
-            .await
+        self.observed(self.get_master_inner(master_id, priority)).await
     }
 
     async fn get_master_inner(
@@ -647,8 +614,7 @@ impl DiscogsClient {
         artist_id: &str,
         priority: CallPriority,
     ) -> Result<Option<String>, DiscogsError> {
-        self.observed(self.get_artist_image_inner(artist_id, priority))
-            .await
+        self.observed(self.get_artist_image_inner(artist_id, priority)).await
     }
 
     async fn get_artist_image_inner(

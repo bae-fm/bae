@@ -4,12 +4,12 @@ use axum::body::{to_bytes, Body};
 use axum::http::header::{CONTENT_LENGTH, CONTENT_RANGE, CONTENT_TYPE, RANGE};
 use axum::http::{Request, StatusCode};
 use axum::Router;
+use bae_catalogs::catalog::Catalog;
+use bae_catalogs::discogs::models::DiscogsRelease;
 use bae_core::config::SubsonicCredential;
 use bae_core::db::{DbAlbum, DbArtist, DbRelease, DbTrack};
-use bae_catalogs::discogs::models::DiscogsRelease;
 use bae_core::import::release_candidate::CandidateSource;
 use bae_core::import::{ImportCommand, ImportDestination, ReleaseFileScope};
-use bae_catalogs::catalog::Catalog;
 use bae_core::library::{AppServices, LibraryManager};
 use bae_test_support as support;
 use md5::{Digest, Md5};
@@ -22,10 +22,7 @@ const PASS: &str = "s3cret-pass";
 const SALT: &str = "abcdef";
 
 fn credential() -> SubsonicCredential {
-    SubsonicCredential {
-        username: USER.to_string(),
-        password: PASS.to_string(),
-    }
+    SubsonicCredential { username: USER.to_string(), password: PASS.to_string() }
 }
 
 fn token(password: &str, salt: &str) -> String {
@@ -80,25 +77,13 @@ async fn call_with_range(router: &Router, method: &str, qs: &str, range: Option<
     let response = router.clone().oneshot(request).await.unwrap();
     let status = response.status();
     let header = |name: &axum::http::HeaderName| {
-        response
-            .headers()
-            .get(name)
-            .map(|v| v.to_str().unwrap().to_string())
+        response.headers().get(name).map(|v| v.to_str().unwrap().to_string())
     };
     let content_type = header(&CONTENT_TYPE).unwrap_or_default();
     let content_length = header(&CONTENT_LENGTH);
     let content_range = header(&CONTENT_RANGE);
-    let body = to_bytes(response.into_body(), usize::MAX)
-        .await
-        .unwrap()
-        .to_vec();
-    Resp {
-        status,
-        content_type,
-        content_length,
-        content_range,
-        body,
-    }
+    let body = to_bytes(response.into_body(), usize::MAX).await.unwrap().to_vec();
+    Resp { status, content_type, content_length, content_range, body }
 }
 
 async fn new_manager() -> (LibraryManager, TempDir) {
@@ -201,17 +186,10 @@ async fn seed_library() -> Library {
     let cue_temp = TempDir::new().unwrap();
     let cue_dir = cue_temp.path().join("cue album");
     std::fs::create_dir_all(&cue_dir).unwrap();
-    std::fs::copy(
-        cue_fixture("Test Album.flac"),
-        cue_dir.join("Test Album.flac"),
-    )
-    .unwrap();
-    std::fs::copy(
-        cue_fixture("Test Album.cue"),
-        cue_dir.join("Test Album.cue"),
-    )
-    .unwrap();
-    let discogs_key = support::seed_discogs_test_release(manager.providers(), cue_discogs_release());
+    std::fs::copy(cue_fixture("Test Album.flac"), cue_dir.join("Test Album.flac")).unwrap();
+    std::fs::copy(cue_fixture("Test Album.cue"), cue_dir.join("Test Album.cue")).unwrap();
+    let discogs_key =
+        support::seed_discogs_test_release(manager.providers(), cue_discogs_release());
     let cue_import =
         support::start_test_import(tokio::runtime::Handle::current(), manager.clone()).await;
     let cue_id = "cue".to_string();
@@ -238,9 +216,7 @@ async fn seed_library() -> Library {
     let mut cue_rx = cue_import.subscribe_import(cue_id);
     let (cue_release, _cue_album) = support::wait_for_import_complete(&mut cue_rx).await;
 
-    let services = AppServices::for_test(manager.clone())
-        .await
-        .expect("app services");
+    let services = AppServices::for_test(manager.clone()).await.expect("app services");
     Library {
         services,
         manager,
@@ -273,49 +249,31 @@ async fn auth_gate() {
     // Spec: token auth. valid → ok; wrong token → 40; missing s/t → 10; short
     // salt → 40; token hex is case-insensitive.
     let (services, _t) = new_services().await;
-    let router = bae_subsonic::router(services, credential(), bae_core::diagnostics::Diagnostics::noop());
+    let router =
+        bae_subsonic::router(services, credential(), bae_core::diagnostics::Diagnostics::noop());
 
     let ok = call(&router, "ping", &authed("")).await;
     assert!(ok.text().contains(r#"status="ok""#), "valid: {}", ok.text());
 
-    let bad = call(
-        &router,
-        "ping",
-        &format!("u={USER}&s={SALT}&t=deadbeef&v=1&c=t"),
-    )
-    .await;
-    assert!(
-        bad.text().contains(r#"code="40""#),
-        "bad token: {}",
-        bad.text()
-    );
+    let bad = call(&router, "ping", &format!("u={USER}&s={SALT}&t=deadbeef&v=1&c=t")).await;
+    assert!(bad.text().contains(r#"code="40""#), "bad token: {}", bad.text());
 
     let missing_t = call(&router, "ping", &format!("u={USER}&s={SALT}&v=1&c=t")).await;
     assert!(missing_t.text().contains(r#"code="10""#), "missing t");
     let missing_s = call(&router, "ping", &format!("u={USER}&t=x&v=1&c=t")).await;
     assert!(missing_s.text().contains(r#"code="10""#), "missing s");
 
-    let short = call(
-        &router,
-        "ping",
-        &format!("u={USER}&s=abc&t={}&v=1&c=t", token(PASS, "abc")),
-    )
-    .await;
+    let short =
+        call(&router, "ping", &format!("u={USER}&s=abc&t={}&v=1&c=t", token(PASS, "abc"))).await;
     assert!(short.text().contains(r#"code="40""#), "short salt");
 
     let upper = call(
         &router,
         "ping",
-        &format!(
-            "u={USER}&s={SALT}&t={}&v=1&c=t",
-            token(PASS, SALT).to_uppercase()
-        ),
+        &format!("u={USER}&s={SALT}&t={}&v=1&c=t", token(PASS, SALT).to_uppercase()),
     )
     .await;
-    assert!(
-        upper.text().contains(r#"status="ok""#),
-        "uppercase hex token"
-    );
+    assert!(upper.text().contains(r#"status="ok""#), "uppercase hex token");
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -323,7 +281,8 @@ async fn envelope_formats() {
     // Spec: xml is the default; f=json yields JSON; f=jsonp wraps in the
     // callback; every envelope carries openSubsonic, version, and type.
     let (services, _t) = new_services().await;
-    let router = bae_subsonic::router(services, credential(), bae_core::diagnostics::Diagnostics::noop());
+    let router =
+        bae_subsonic::router(services, credential(), bae_core::diagnostics::Diagnostics::noop());
 
     let xml = call(&router, "ping", &authed("")).await;
     assert!(xml.content_type.contains("xml"));
@@ -349,7 +308,8 @@ async fn envelope_formats() {
 #[tokio::test(flavor = "multi_thread")]
 async fn system_endpoints() {
     let (services, _t) = new_services().await;
-    let router = bae_subsonic::router(services, credential(), bae_core::diagnostics::Diagnostics::noop());
+    let router =
+        bae_subsonic::router(services, credential(), bae_core::diagnostics::Diagnostics::noop());
 
     let license = call(&router, "getLicense", &authed("f=json")).await;
     assert_eq!(license.sub()["license"]["valid"], true);
@@ -365,7 +325,8 @@ async fn system_endpoints() {
 async fn malformed_and_wrong_kind_ids_are_not_found() {
     // Spec: a malformed id, or a wrong-kind id to getAlbum, is error 70.
     let (services, _t) = new_services().await;
-    let router = bae_subsonic::router(services, credential(), bae_core::diagnostics::Diagnostics::noop());
+    let router =
+        bae_subsonic::router(services, credential(), bae_core::diagnostics::Diagnostics::noop());
 
     let malformed = call(&router, "getAlbum", &authed("id=not-namespaced")).await;
     assert!(malformed.text().contains(r#"code="70""#));
@@ -379,16 +340,17 @@ async fn malformed_and_wrong_kind_ids_are_not_found() {
 #[tokio::test(flavor = "multi_thread")]
 async fn get_artists_indexes_and_counts() {
     let lib = seed_library().await;
-    let router = bae_subsonic::router(lib.services.clone(), credential(), bae_core::diagnostics::Diagnostics::noop());
+    let router = bae_subsonic::router(
+        lib.services.clone(),
+        credential(),
+        bae_core::diagnostics::Diagnostics::noop(),
+    );
 
     let resp = call(&router, "getArtists", &authed("f=json")).await;
     let artists = &resp.sub()["artists"];
     let indexes = artists["index"].as_array().unwrap();
     // Two artists in distinct buckets: "Artist Name" (A) and "Solo Artist" (S).
-    let letters: Vec<&str> = indexes
-        .iter()
-        .map(|i| i["name"].as_str().unwrap())
-        .collect();
+    let letters: Vec<&str> = indexes.iter().map(|i| i["name"].as_str().unwrap()).collect();
     assert!(letters.contains(&"A"), "buckets: {letters:?}");
     assert!(letters.contains(&"S"), "buckets: {letters:?}");
 
@@ -396,10 +358,7 @@ async fn get_artists_indexes_and_counts() {
     // a file-tags artist carries no musicBrainzId.
     let solo = find_artist(indexes, "Solo Artist");
     assert_eq!(solo["albumCount"], 1);
-    assert!(
-        solo.get("musicBrainzId").is_none(),
-        "file-tags artist has no mbid"
-    );
+    assert!(solo.get("musicBrainzId").is_none(), "file-tags artist has no mbid");
 
     // getIndexes shares the body under the legacy payload name.
     let legacy = call(&router, "getIndexes", &authed("f=json")).await;
@@ -417,26 +376,19 @@ fn find_artist<'a>(indexes: &'a [Value], name: &str) -> &'a Value {
 #[tokio::test(flavor = "multi_thread")]
 async fn get_artist_lists_releases_as_albums() {
     let lib = seed_library().await;
-    let router = bae_subsonic::router(lib.services.clone(), credential(), bae_core::diagnostics::Diagnostics::noop());
+    let router = bae_subsonic::router(
+        lib.services.clone(),
+        credential(),
+        bae_core::diagnostics::Diagnostics::noop(),
+    );
 
     // Resolve the per-track release's artist id, then browse the artist.
-    let album = call(
-        &router,
-        "getAlbum",
-        &authed(&format!("f=json&id=al-{}", lib.per_track_release)),
-    )
-    .await;
-    let artist_id = album.sub()["album"]["artistId"]
-        .as_str()
-        .unwrap()
-        .to_string();
+    let album =
+        call(&router, "getAlbum", &authed(&format!("f=json&id=al-{}", lib.per_track_release)))
+            .await;
+    let artist_id = album.sub()["album"]["artistId"].as_str().unwrap().to_string();
 
-    let resp = call(
-        &router,
-        "getArtist",
-        &authed(&format!("f=json&id={artist_id}")),
-    )
-    .await;
+    let resp = call(&router, "getArtist", &authed(&format!("f=json&id={artist_id}"))).await;
     let artist = &resp.sub()["artist"];
     let albums = artist["album"].as_array().unwrap();
     assert_eq!(albums.len(), 1, "one release for this artist");
@@ -451,14 +403,15 @@ async fn get_artist_lists_releases_as_albums() {
 #[tokio::test(flavor = "multi_thread")]
 async fn get_album_lists_songs_with_required_child_fields() {
     let lib = seed_library().await;
-    let router = bae_subsonic::router(lib.services.clone(), credential(), bae_core::diagnostics::Diagnostics::noop());
+    let router = bae_subsonic::router(
+        lib.services.clone(),
+        credential(),
+        bae_core::diagnostics::Diagnostics::noop(),
+    );
 
-    let resp = call(
-        &router,
-        "getAlbum",
-        &authed(&format!("f=json&id=al-{}", lib.per_track_release)),
-    )
-    .await;
+    let resp =
+        call(&router, "getAlbum", &authed(&format!("f=json&id=al-{}", lib.per_track_release)))
+            .await;
     let album = &resp.sub()["album"];
     assert_eq!(album["songCount"], 2);
     let songs = album["song"].as_array().unwrap();
@@ -477,14 +430,14 @@ async fn get_album_lists_songs_with_required_child_fields() {
 #[tokio::test(flavor = "multi_thread")]
 async fn get_album_cue_lists_its_windowed_tracks() {
     let lib = seed_library().await;
-    let router = bae_subsonic::router(lib.services.clone(), credential(), bae_core::diagnostics::Diagnostics::noop());
+    let router = bae_subsonic::router(
+        lib.services.clone(),
+        credential(),
+        bae_core::diagnostics::Diagnostics::noop(),
+    );
 
-    let resp = call(
-        &router,
-        "getAlbum",
-        &authed(&format!("f=json&id=al-{}", lib.cue_release)),
-    )
-    .await;
+    let resp =
+        call(&router, "getAlbum", &authed(&format!("f=json&id=al-{}", lib.cue_release))).await;
     let album = &resp.sub()["album"];
     assert_eq!(album["songCount"], 3, "CUE image has three tracks");
     let songs = album["song"].as_array().unwrap();
@@ -497,18 +450,16 @@ async fn get_album_cue_lists_its_windowed_tracks() {
 #[tokio::test(flavor = "multi_thread")]
 async fn get_song_and_unknown() {
     let lib = seed_library().await;
-    let router = bae_subsonic::router(lib.services.clone(), credential(), bae_core::diagnostics::Diagnostics::noop());
+    let router = bae_subsonic::router(
+        lib.services.clone(),
+        credential(),
+        bae_core::diagnostics::Diagnostics::noop(),
+    );
 
-    let album = call(
-        &router,
-        "getAlbum",
-        &authed(&format!("f=json&id=al-{}", lib.per_track_release)),
-    )
-    .await;
-    let song_id = album.sub()["album"]["song"][0]["id"]
-        .as_str()
-        .unwrap()
-        .to_string();
+    let album =
+        call(&router, "getAlbum", &authed(&format!("f=json&id=al-{}", lib.per_track_release)))
+            .await;
+    let song_id = album.sub()["album"]["song"][0]["id"].as_str().unwrap().to_string();
 
     let resp = call(&router, "getSong", &authed(&format!("f=json&id={song_id}"))).await;
     let song = &resp.sub()["song"];
@@ -526,7 +477,11 @@ async fn get_song_and_unknown() {
 #[tokio::test(flavor = "multi_thread")]
 async fn album_list2_orderings_and_paging() {
     let lib = seed_library().await;
-    let router = bae_subsonic::router(lib.services.clone(), credential(), bae_core::diagnostics::Diagnostics::noop());
+    let router = bae_subsonic::router(
+        lib.services.clone(),
+        credential(),
+        bae_core::diagnostics::Diagnostics::noop(),
+    );
 
     let names = |resp: &Resp| -> Vec<String> {
         resp.sub()["albumList2"]["album"]
@@ -537,12 +492,7 @@ async fn album_list2_orderings_and_paging() {
             .collect()
     };
 
-    let alpha = call(
-        &router,
-        "getAlbumList2",
-        &authed("f=json&type=alphabeticalByName"),
-    )
-    .await;
+    let alpha = call(&router, "getAlbumList2", &authed("f=json&type=alphabeticalByName")).await;
     let alpha_names = names(&alpha);
     assert_eq!(alpha_names.len(), 2);
     let mut sorted = alpha_names.clone();
@@ -552,50 +502,29 @@ async fn album_list2_orderings_and_paging() {
     // newest orders by created_at, most-recent first. The CUE release imports
     // after the per-track one, so "Test Album" leads "Solo Album".
     let newest = call(&router, "getAlbumList2", &authed("f=json&type=newest")).await;
-    assert_eq!(
-        names(&newest),
-        vec!["Test Album", "Solo Album"],
-        "newest by created_at"
-    );
+    assert_eq!(names(&newest), vec!["Test Album", "Solo Album"], "newest by created_at");
 
     // Paging: size=1 returns one, offset=1 returns the next.
-    let first = call(
-        &router,
-        "getAlbumList2",
-        &authed("f=json&type=alphabeticalByName&size=1"),
-    )
-    .await;
+    let first =
+        call(&router, "getAlbumList2", &authed("f=json&type=alphabeticalByName&size=1")).await;
     assert_eq!(names(&first).len(), 1);
-    let second = call(
-        &router,
-        "getAlbumList2",
-        &authed("f=json&type=alphabeticalByName&size=1&offset=1"),
-    )
-    .await;
+    let second =
+        call(&router, "getAlbumList2", &authed("f=json&type=alphabeticalByName&size=1&offset=1"))
+            .await;
     assert_eq!(names(&second).len(), 1);
     assert_ne!(names(&first)[0], names(&second)[0]);
 
     // byYear range filters (2001 for the per-track release; the CUE release is 2024).
-    let by_year = call(
-        &router,
-        "getAlbumList2",
-        &authed("f=json&type=byYear&fromYear=2000&toYear=2010"),
-    )
-    .await;
-    assert_eq!(
-        names(&by_year).len(),
-        1,
-        "only the 2001 release is in range"
-    );
+    let by_year =
+        call(&router, "getAlbumList2", &authed("f=json&type=byYear&fromYear=2000&toYear=2010"))
+            .await;
+    assert_eq!(names(&by_year).len(), 1, "only the 2001 release is in range");
 
     // byYear with toYear < fromYear reverses the order (descending by year):
     // both releases are in range, newest year first.
-    let descending = call(
-        &router,
-        "getAlbumList2",
-        &authed("f=json&type=byYear&fromYear=2024&toYear=2000"),
-    )
-    .await;
+    let descending =
+        call(&router, "getAlbumList2", &authed("f=json&type=byYear&fromYear=2024&toYear=2000"))
+            .await;
     assert_eq!(
         names(&descending),
         vec!["Test Album", "Solo Album"],
@@ -603,126 +532,67 @@ async fn album_list2_orderings_and_paging() {
     );
 
     // byGenre has no genre store → empty, not an error.
-    let by_genre = call(
-        &router,
-        "getAlbumList2",
-        &authed("f=json&type=byGenre&genre=Rock"),
-    )
-    .await;
-    let genre_empty = by_genre.sub()["albumList2"]
-        .get("album")
-        .and_then(|v| v.as_array())
-        .map_or(0, |a| a.len());
+    let by_genre = call(&router, "getAlbumList2", &authed("f=json&type=byGenre&genre=Rock")).await;
+    let genre_empty =
+        by_genre.sub()["albumList2"].get("album").and_then(|v| v.as_array()).map_or(0, |a| a.len());
     assert_eq!(genre_empty, 0, "byGenre is empty");
-    assert!(
-        !by_genre.text().contains("\"error\""),
-        "byGenre is not an error"
-    );
+    assert!(!by_genre.text().contains("\"error\""), "byGenre is not an error");
 
     // random returns `size` items.
-    let random = call(
-        &router,
-        "getAlbumList2",
-        &authed("f=json&type=random&size=1"),
-    )
-    .await;
+    let random = call(&router, "getAlbumList2", &authed("f=json&type=random&size=1")).await;
     assert_eq!(names(&random).len(), 1);
 
     // Unsupported types return an empty list, not an error. An empty list omits
     // the `album` array key entirely (Subsonic JSON convention).
     let frequent = call(&router, "getAlbumList2", &authed("f=json&type=frequent")).await;
-    let empty = frequent.sub()["albumList2"]
-        .get("album")
-        .and_then(|v| v.as_array())
-        .map_or(0, |a| a.len());
+    let empty =
+        frequent.sub()["albumList2"].get("album").and_then(|v| v.as_array()).map_or(0, |a| a.len());
     assert_eq!(empty, 0);
-    assert!(
-        !frequent.text().contains("\"error\""),
-        "frequent is not an error"
-    );
+    assert!(!frequent.text().contains("\"error\""), "frequent is not an error");
 }
 
 #[tokio::test(flavor = "multi_thread")]
 async fn search3_matches_and_caps() {
     let lib = seed_library().await;
-    let router = bae_subsonic::router(lib.services.clone(), credential(), bae_core::diagnostics::Diagnostics::noop());
+    let router = bae_subsonic::router(
+        lib.services.clone(),
+        credential(),
+        bae_core::diagnostics::Diagnostics::noop(),
+    );
 
     // A query matching the per-track album/artist.
     let hit = call(&router, "search3", &authed("f=json&query=Solo")).await;
     let result = &hit.sub()["searchResult3"];
     assert!(
-        result["artist"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .any(|a| a["name"] == "Solo Artist"),
+        result["artist"].as_array().unwrap().iter().any(|a| a["name"] == "Solo Artist"),
         "artist hit"
     );
     assert!(
-        result["album"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .any(|a| a["name"] == "Solo Album"),
+        result["album"].as_array().unwrap().iter().any(|a| a["name"] == "Solo Album"),
         "album hit"
     );
 
     // A query matching song titles returns song hits (the per-track titles are
     // "First Track"/"Second Track"; the CUE titles are "Track One/Two/Three").
     let song_hit = call(&router, "search3", &authed("f=json&query=Track")).await;
-    let hit_songs = song_hit.sub()["searchResult3"]["song"]
-        .as_array()
-        .unwrap()
-        .len();
+    let hit_songs = song_hit.sub()["searchResult3"]["song"].as_array().unwrap().len();
     assert!(hit_songs > 0, "song query returns song hits");
 
     // Per-kind caps: an empty query returns the whole library, capped by each
     // count. artistCount/albumCount cap their kinds independently.
-    let capped = call(
-        &router,
-        "search3",
-        &authed("f=json&query=&artistCount=1&albumCount=1&songCount=1"),
-    )
-    .await;
+    let capped =
+        call(&router, "search3", &authed("f=json&query=&artistCount=1&albumCount=1&songCount=1"))
+            .await;
     let capped = &capped.sub()["searchResult3"];
-    assert_eq!(
-        capped["artist"].as_array().unwrap().len(),
-        1,
-        "artistCount caps artists"
-    );
-    assert_eq!(
-        capped["album"].as_array().unwrap().len(),
-        1,
-        "albumCount caps albums"
-    );
-    assert_eq!(
-        capped["song"].as_array().unwrap().len(),
-        1,
-        "songCount caps songs"
-    );
+    assert_eq!(capped["artist"].as_array().unwrap().len(), 1, "artistCount caps artists");
+    assert_eq!(capped["album"].as_array().unwrap().len(), 1, "albumCount caps albums");
+    assert_eq!(capped["song"].as_array().unwrap().len(), 1, "songCount caps songs");
 
     // songOffset skips into the song list, so offset 1 differs from offset 0.
     let song_ids = |resp: &Resp| -> String {
-        resp.sub()["searchResult3"]["song"][0]["id"]
-            .as_str()
-            .unwrap()
-            .to_string()
+        resp.sub()["searchResult3"]["song"][0]["id"].as_str().unwrap().to_string()
     };
-    let first = call(
-        &router,
-        "search3",
-        &authed("f=json&query=&songCount=1&songOffset=0"),
-    )
-    .await;
-    let second = call(
-        &router,
-        "search3",
-        &authed("f=json&query=&songCount=1&songOffset=1"),
-    )
-    .await;
-    assert_ne!(
-        song_ids(&first),
-        song_ids(&second),
-        "songOffset pages the song list"
-    );
+    let first = call(&router, "search3", &authed("f=json&query=&songCount=1&songOffset=0")).await;
+    let second = call(&router, "search3", &authed("f=json&query=&songCount=1&songOffset=1")).await;
+    assert_ne!(song_ids(&first), song_ids(&second), "songOffset pages the song list");
 }

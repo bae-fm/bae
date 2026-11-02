@@ -145,10 +145,7 @@ impl EncodeFormat {
         use ffmpeg_sys_next::*;
 
         (*codec_ctx).sample_rate = sample_rate as c_int;
-        (*codec_ctx).time_base = AVRational {
-            num: 1,
-            den: sample_rate as c_int,
-        };
+        (*codec_ctx).time_base = AVRational { num: 1, den: sample_rate as c_int };
         (*codec_ctx).sample_fmt = sample_format;
         match self {
             Self::Flac { bits_per_sample } => {
@@ -266,11 +263,7 @@ unsafe fn allocate_write_avio(
         write_ctx as *mut WriteAvioContext as *mut c_void,
         None,
         Some(avio_write_callback),
-        if seekable {
-            Some(avio_write_seek_callback)
-        } else {
-            None
-        },
+        if seekable { Some(avio_write_seek_callback) } else { None },
     );
     if avio.is_null() {
         av_free(avio_buffer as *mut c_void);
@@ -412,18 +405,12 @@ impl OpenEncoder {
 
         let ret = av_frame_get_buffer(self.frame_packet.frame, 0);
         if ret < 0 {
-            return Err(format!(
-                "Failed to allocate frame buffer: {}",
-                av_err_str(ret)
-            ));
+            return Err(format!("Failed to allocate frame buffer: {}", av_err_str(ret)));
         }
 
         let ret = av_frame_make_writable(self.frame_packet.frame);
         if ret < 0 {
-            return Err(format!(
-                "Failed to make frame writable: {}",
-                av_err_str(ret)
-            ));
+            return Err(format!("Failed to make frame writable: {}", av_err_str(ret)));
         }
 
         format.write_samples(
@@ -473,8 +460,7 @@ impl OpenEncoder {
             ));
         }
         let out_offset = self.pending.len();
-        self.pending
-            .resize(out_offset + capacity_frames as usize * channels, 0);
+        self.pending.resize(out_offset + capacity_frames as usize * channels, 0);
         let input_ptr = samples.as_ptr() as *const u8;
         let output_ptr = self.pending[out_offset..].as_mut_ptr() as *mut u8;
         let converted = swr_convert(
@@ -487,8 +473,7 @@ impl OpenEncoder {
         if converted < 0 {
             return Err(format!("Failed to resample: {}", av_err_str(converted)));
         }
-        self.pending
-            .truncate(out_offset + converted as usize * channels);
+        self.pending.truncate(out_offset + converted as usize * channels);
         Ok(())
     }
 
@@ -512,18 +497,13 @@ impl OpenEncoder {
                 return Ok(());
             }
             let out_offset = self.pending.len();
-            self.pending
-                .resize(out_offset + capacity_frames as usize * channels, 0);
+            self.pending.resize(out_offset + capacity_frames as usize * channels, 0);
             let output_ptr = self.pending[out_offset..].as_mut_ptr() as *mut u8;
             let converted = swr_convert(self.swr_ctx, &output_ptr, capacity_frames, ptr::null(), 0);
             if converted < 0 {
-                return Err(format!(
-                    "Failed to drain resampler: {}",
-                    av_err_str(converted)
-                ));
+                return Err(format!("Failed to drain resampler: {}", av_err_str(converted)));
             }
-            self.pending
-                .truncate(out_offset + converted as usize * channels);
+            self.pending.truncate(out_offset + converted as usize * channels);
             if converted == 0 {
                 return Ok(());
             }
@@ -581,12 +561,7 @@ impl StreamingEncoder {
         out: Box<dyn std::io::Write + Send>,
         cancel: Arc<std::sync::atomic::AtomicBool>,
     ) -> Self {
-        Self::new(
-            format.into(),
-            WriteAvioContext::Streaming(out),
-            false,
-            cancel,
-        )
+        Self::new(format.into(), WriteAvioContext::Streaming(out), false, cancel)
     }
 
     fn new(
@@ -668,11 +643,7 @@ impl StreamingEncoder {
         format.configure_codec_context(codec_ctx.ptr, sample_format, output_rate, channels);
         let ret = avcodec_open2(codec_ctx.ptr, codec, ptr::null_mut());
         if ret < 0 {
-            return Err(format!(
-                "Failed to open {} encoder: {}",
-                format.label(),
-                av_err_str(ret)
-            ));
+            return Err(format!("Failed to open {} encoder: {}", format.label(), av_err_str(ret)));
         }
 
         let avio = allocate_write_avio(self.sink.as_mut(), self.seekable_sink)?;
@@ -690,11 +661,7 @@ impl StreamingEncoder {
         }
         (*fmt_ctx).pb = avio;
         (*fmt_ctx).flags |= AVFMT_FLAG_CUSTOM_IO as c_int;
-        let mut muxer = EncodeMuxer {
-            fmt_ctx,
-            avio,
-            write_trailer_on_drop: false,
-        };
+        let mut muxer = EncodeMuxer { fmt_ctx, avio, write_trailer_on_drop: false };
 
         let stream = avformat_new_stream(muxer.fmt_ctx, ptr::null());
         if stream.is_null() {
@@ -807,10 +774,9 @@ impl StreamingEncoder {
             }
             if !open.pending.is_empty() {
                 let remaining = open.pending.len();
-                open.encode_pending_frame(self.format, remaining)
-                    .inspect_err(|_| {
-                        open.muxer.write_trailer_on_drop = false;
-                    })?;
+                open.encode_pending_frame(self.format, remaining).inspect_err(|_| {
+                    open.muxer.write_trailer_on_drop = false;
+                })?;
             }
 
             if self.cancel.load(std::sync::atomic::Ordering::Relaxed) {
@@ -844,9 +810,7 @@ impl StreamingEncoder {
         // Free the muxer (and its AVIO over the sink) before flushing and
         // dropping the sink itself.
         drop(open);
-        self.sink
-            .flush()
-            .map_err(|e| format!("Failed to flush encode sink: {e}"))?;
+        self.sink.flush().map_err(|e| format!("Failed to flush encode sink: {e}"))?;
 
         debug!("Encoded {} stream finished", self.format.label());
         Ok(())
@@ -948,10 +912,7 @@ pub fn encode_i32(
     encoder.on_samples(samples);
     encoder.finish()?;
     let cursor = StdArc::try_unwrap(shared.0).map_err(|shared| {
-        format!(
-            "encode sink still shared after finish ({} holders)",
-            StdArc::strong_count(&shared)
-        )
+        format!("encode sink still shared after finish ({} holders)", StdArc::strong_count(&shared))
     })?;
     Ok(cursor.into_inner().unwrap().into_inner())
 }

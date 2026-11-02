@@ -10,10 +10,7 @@ pub struct BridgeUnsentWork {
 
 impl BridgeUnsentWork {
     pub(crate) fn from_core(work: coven::UnsentWork) -> Self {
-        Self {
-            writes: work.writes,
-            files: work.files,
-        }
+        Self { writes: work.writes, files: work.files }
     }
 }
 
@@ -78,9 +75,7 @@ impl AppHandle {
         self: std::sync::Arc<Self>,
     ) -> Result<BridgeUnsentWork, BridgeError> {
         self.run_exported("AppHandle.unsent_before_removal", |this| async move {
-            Ok(BridgeUnsentWork::from_core(
-                this.services.unsent_before_removal().await?,
-            ))
+            Ok(BridgeUnsentWork::from_core(this.services.unsent_before_removal().await?))
         })
         .await
     }
@@ -92,9 +87,8 @@ impl AppHandle {
         self: std::sync::Arc<Self>,
         closing: Option<std::sync::Arc<crate::BridgeLibraryClosing>>,
     ) -> Result<BridgeLibraryRemoval, BridgeError> {
-        let steps = closing.map_or_else(crate::screens::ClosingSteps::unread, |closing| {
-            closing.writer()
-        });
+        let steps =
+            closing.map_or_else(crate::screens::ClosingSteps::unread, |closing| closing.writer());
         self.runtime
             .clone()
             .run_to_completion(self.clone(), "remove library", move || async move {
@@ -142,32 +136,22 @@ mod tests {
         std::fs::create_dir_all(manager.library_path().join("cache")).unwrap();
         let services = runtime.block_on(AppServices::for_test(manager)).unwrap();
         let app = Arc::new(
-            AppHandle::start(
-                services,
-                runtime,
-                bae_core::diagnostics::Diagnostics::noop(),
-            )
-            .unwrap(),
+            AppHandle::start(services, runtime, bae_core::diagnostics::Diagnostics::noop())
+                .unwrap(),
         );
         let host = crate::BridgeHost::with_test_keyring(
             crate::BridgeDiagnostics::noop(),
             crate::BridgeAppDir::new(root.path().to_str().unwrap().into()).unwrap(),
         )
         .unwrap();
-        let libraries = bae_core::config::AppDir::under_home(root.path())
-            .unwrap()
-            .libraries();
+        let libraries = bae_core::config::AppDir::under_home(root.path()).unwrap().libraries();
         std::fs::set_permissions(&libraries, std::fs::Permissions::from_mode(0o555)).unwrap();
         let caller = tokio::runtime::Runtime::new().unwrap();
         let result = caller.block_on(app.clone().remove_library(None)).unwrap();
         let BridgeLibraryRemoval::Unfinished { removal } = result else {
             panic!("the directory left behind must be reported");
         };
-        assert!(
-            removal.error.to_string().contains("store was removed"),
-            "{}",
-            removal.error
-        );
+        assert!(removal.error.to_string().contains("store was removed"), "{}", removal.error);
         drop(app);
 
         caller.block_on(async {

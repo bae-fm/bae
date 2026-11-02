@@ -15,44 +15,25 @@ async fn ratings_and_playlist_edits_preserve_identity_order_and_audience() {
     let medium = test_uuid("collection-medium");
     db.execute_local_sql_for_test(&format!("INSERT INTO albums (id,title,created_at) VALUES ('collection-album','Collection','2026-01-01'); INSERT INTO releases (id, album_id, created_at, album_order) VALUES ('{release}','collection-album','2026-01-01', 0); INSERT INTO release_mediums (id,release_id,position,medium,side_count,created_at) VALUES ('{medium}','{release}',1,'cd',1,'2026-01-01'); INSERT INTO tracks (id,release_id,title,medium_id,side,track_number,position,duration_ms,created_at) VALUES ('{first}','{release}','First','{medium}',1,1,0,180000,'2026-01-01'), ('{second}','{release}','Second','{medium}',1,2,1,180000,'2026-01-01');")).await.unwrap();
     let target = RatingTarget::Track(first.clone());
-    db.set_rating(target.clone(), Some(Stars::Three))
-        .await
-        .unwrap();
-    db.set_rating(target.clone(), Some(Stars::Five))
-        .await
-        .unwrap();
+    db.set_rating(target.clone(), Some(Stars::Three)).await.unwrap();
+    db.set_rating(target.clone(), Some(Stars::Five)).await.unwrap();
     let ratings = db.ratings().await.unwrap();
     assert_eq!(ratings.len(), 1);
     assert_eq!(ratings[0].person, person.id);
     assert_eq!(ratings[0].stars, Stars::Five);
     db.set_rating(target, None).await.unwrap();
     assert!(db.ratings().await.unwrap().is_empty());
-    db.set_rating(
-        RatingTarget::Album("collection-album".into()),
-        Some(Stars::Two),
-    )
-    .await
-    .unwrap();
+    db.set_rating(RatingTarget::Album("collection-album".into()), Some(Stars::Two)).await.unwrap();
 
     let id = uuid::Uuid::new_v4();
-    let playlist = db
-        .create_playlist(id, "Evening", Sharing::Private)
-        .await
-        .unwrap();
-    assert_eq!(
-        playlist.audience,
-        coven::Audience::Circle(person.private_circle)
-    );
+    let playlist = db.create_playlist(id, "Evening", Sharing::Private).await.unwrap();
+    assert_eq!(playlist.audience, coven::Audience::Circle(person.private_circle));
     let a = uuid::Uuid::new_v4();
     let b = uuid::Uuid::new_v4();
     let c = uuid::Uuid::new_v4();
-    db.append_playlist_entry(id, a, first.clone())
-        .await
-        .unwrap();
+    db.append_playlist_entry(id, a, first.clone()).await.unwrap();
     db.append_playlist_entry(id, b, second).await.unwrap();
-    db.append_playlist_entry(id, c, first.clone())
-        .await
-        .unwrap();
+    db.append_playlist_entry(id, c, first.clone()).await.unwrap();
     assert!(matches!(
         db.reorder_playlist(id, vec![b, a]).await,
         Err(CollectionError::OrderChanged)
@@ -72,17 +53,9 @@ async fn ratings_and_playlist_edits_preserve_identity_order_and_audience() {
     );
     db.reorder_playlist(id, vec![c, b, a]).await.unwrap();
     let entries = db.playlist_entries(id).await.unwrap();
-    assert_eq!(
-        entries
-            .iter()
-            .map(|entry| entry.position_id)
-            .collect::<Vec<_>>(),
-        vec![c, b, a]
-    );
+    assert_eq!(entries.iter().map(|entry| entry.position_id).collect::<Vec<_>>(), vec![c, b, a]);
     assert_eq!(entries[0].track_id, first);
-    db.set_playlist_sharing(id, Sharing::Household)
-        .await
-        .unwrap();
+    db.set_playlist_sharing(id, Sharing::Household).await.unwrap();
     db.rename_playlist(id, "Gathering").await.unwrap();
     let playlists = db.playlists().await.unwrap();
     assert_eq!(playlists[0].audience, coven::Audience::Store);

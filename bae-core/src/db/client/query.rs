@@ -7,9 +7,7 @@ pub(crate) const SQL_MAX_IN_VARS: usize = 900;
 #[cfg(desktop)]
 pub(super) fn to_i64(value: u64, what: &str) -> Result<i64, DbError> {
     i64::try_from(value).map_err(|error| {
-        DbError::Message(format!(
-            "{what} {value} exceeds SQLite's integer range: {error}"
-        ))
+        DbError::Message(format!("{what} {value} exceeds SQLite's integer range: {error}"))
     })
 }
 
@@ -38,10 +36,7 @@ impl<'a> CandidateRows<'a> {
     pub(crate) fn filter(self, column: &str) -> CandidateFilter {
         match self {
             #[cfg(test)]
-            Self::All => CandidateFilter {
-                clause: String::new(),
-                binds: CandidateBinds::None,
-            },
+            Self::All => CandidateFilter { clause: String::new(), binds: CandidateBinds::None },
             Self::One(key) => CandidateFilter {
                 clause: format!("WHERE {column} = :candidate"),
                 binds: CandidateBinds::One(key.to_string()),
@@ -309,10 +304,7 @@ pub(super) fn listing_window_query(
     listing(
         Some(order),
         Some(&format!("WHERE {}", order.condition(seek))),
-        Some(&format!(
-            "ORDER BY {} LIMIT :limit OFFSET :offset",
-            order.ordering(seek)
-        )),
+        Some(&format!("ORDER BY {} LIMIT :limit OFFSET :offset", order.ordering(seek))),
     )
 }
 
@@ -343,15 +335,8 @@ pub(super) fn album_browse_order(
         .iter()
         .find(|c| c.field == AlbumSortField::Artist)
         .map_or(SortDirection::Ascending, |c| c.direction);
-    let mut grouped_sort = vec![AlbumSortCriterion {
-        field: AlbumSortField::Artist,
-        direction,
-    }];
-    grouped_sort.extend(
-        sort.iter()
-            .filter(|c| c.field != AlbumSortField::Artist)
-            .cloned(),
-    );
+    let mut grouped_sort = vec![AlbumSortCriterion { field: AlbumSortField::Artist, direction }];
+    grouped_sort.extend(sort.iter().filter(|c| c.field != AlbumSortField::Artist).cloned());
     if sort.is_empty() {
         grouped_sort.push(AlbumSortCriterion {
             field: AlbumSortField::DateAdded,

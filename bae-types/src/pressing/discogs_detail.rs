@@ -272,10 +272,7 @@ const DISCOGS_FORMAT_DESCRIPTIONS: &[(&str, Role)] = &[
     ("50cm", Role::Detail(DiscogsDetail::Size50Cm)),
     ("80 RPM", Role::Detail(DiscogsDetail::Rpm80)),
     ("90 RPM", Role::Detail(DiscogsDetail::Rpm90)),
-    (
-        "15/16 ips",
-        Role::Detail(DiscogsDetail::IpsFifteenSixteenths),
-    ),
+    ("15/16 ips", Role::Detail(DiscogsDetail::IpsFifteenSixteenths)),
     ("1 ⅞ ips", Role::Detail(DiscogsDetail::Ips1SevenEighths)),
     ("15 ips", Role::Detail(DiscogsDetail::Ips15)),
     ("3 ¾ ips", Role::Detail(DiscogsDetail::Ips3ThreeQuarters)),
@@ -288,10 +285,7 @@ const DISCOGS_FORMAT_DESCRIPTIONS: &[(&str, Role)] = &[
     ("2-Track Stereo", Role::Detail(DiscogsDetail::T2TrackStereo)),
     ("4-Track Mono", Role::Detail(DiscogsDetail::T4TrackMono)),
     ("4-Track Stereo", Role::Detail(DiscogsDetail::T4TrackStereo)),
-    (
-        "10.5\" NAB Reel",
-        Role::Detail(DiscogsDetail::NabReel10Point5In),
-    ),
+    ("10.5\" NAB Reel", Role::Detail(DiscogsDetail::NabReel10Point5In)),
     ("3\" Cine Reel", Role::Detail(DiscogsDetail::CineReel3In)),
     ("5\" Cine Reel", Role::Detail(DiscogsDetail::CineReel5In)),
     ("6\" Cine Reel", Role::Detail(DiscogsDetail::CineReel6In)),
@@ -365,10 +359,7 @@ const DISCOGS_FORMAT_DESCRIPTIONS: &[(&str, Role)] = &[
     ("Mini-Album", Role::ReleaseType),
     ("EP", Role::ReleaseType),
     ("Maxi-Single", Role::ReleaseType),
-    (
-        "Record Store Day",
-        Role::Detail(DiscogsDetail::RecordStoreDay),
-    ),
+    ("Record Store Day", Role::Detail(DiscogsDetail::RecordStoreDay)),
     ("Single", Role::ReleaseType),
     ("Compilation", Role::ReleaseType),
     ("Stereo", Role::Detail(DiscogsDetail::Stereo)),
@@ -383,23 +374,14 @@ const DISCOGS_FORMAT_DESCRIPTIONS: &[(&str, Role)] = &[
     ("Enhanced", Role::Detail(DiscogsDetail::Enhanced)),
     ("Etched", Role::Detail(DiscogsDetail::Etched)),
     ("Jukebox", Role::Detail(DiscogsDetail::Jukebox)),
-    (
-        "Limited Edition",
-        Role::Detail(DiscogsDetail::LimitedEdition),
-    ),
+    ("Limited Edition", Role::Detail(DiscogsDetail::LimitedEdition)),
     ("Mispress", Role::Detail(DiscogsDetail::Mispress)),
     ("Misprint", Role::Detail(DiscogsDetail::Misprint)),
     ("Mixed", Role::ReleaseType),
     ("Mixtape", Role::ReleaseType),
     ("Numbered", Role::Detail(DiscogsDetail::Numbered)),
-    (
-        "Partially Mixed",
-        Role::Detail(DiscogsDetail::PartiallyMixed),
-    ),
-    (
-        "Partially Unofficial",
-        Role::Detail(DiscogsDetail::PartiallyUnofficial),
-    ),
+    ("Partially Mixed", Role::Detail(DiscogsDetail::PartiallyMixed)),
+    ("Partially Unofficial", Role::Detail(DiscogsDetail::PartiallyUnofficial)),
     ("Picture Disc", Role::Detail(DiscogsDetail::PictureDisc)),
     ("Promo", Role::Status(ReleaseStatus::Promotion)),
     ("Reissue", Role::Detail(DiscogsDetail::Reissue)),
@@ -407,10 +389,7 @@ const DISCOGS_FORMAT_DESCRIPTIONS: &[(&str, Role)] = &[
     ("Repress", Role::Detail(DiscogsDetail::Repress)),
     ("Sampler", Role::ReleaseType),
     ("Special Cut", Role::Detail(DiscogsDetail::SpecialCut)),
-    (
-        "Special Edition",
-        Role::Detail(DiscogsDetail::SpecialEdition),
-    ),
+    ("Special Edition", Role::Detail(DiscogsDetail::SpecialEdition)),
     ("Styrene", Role::Detail(DiscogsDetail::Styrene)),
     ("Test Pressing", Role::Detail(DiscogsDetail::TestPressing)),
     ("Tour Recording", Role::Detail(DiscogsDetail::TourRecording)),
@@ -432,10 +411,7 @@ mod tests {
     #[test]
     fn the_table_is_discogss_own_list() {
         assert_eq!(
-            DISCOGS_FORMAT_DESCRIPTIONS
-                .iter()
-                .map(|(name, _)| *name)
-                .collect::<Vec<_>>(),
+            DISCOGS_FORMAT_DESCRIPTIONS.iter().map(|(name, _)| *name).collect::<Vec<_>>(),
             recorded(include_str!(
                 "../../test-fixtures/pressing-vocabulary/discogs-format-descriptions.txt"
             ))
@@ -464,10 +440,7 @@ mod tests {
         assert_eq!(role("reissue"), Some(Role::Detail(DiscogsDetail::Reissue)));
         assert_eq!(role("Promo"), Some(Role::Status(ReleaseStatus::Promotion)));
         assert_eq!(role("Album"), Some(Role::ReleaseType));
-        assert_eq!(
-            role("DualDisc"),
-            Some(Role::HybridCarrier(Medium::DualDisc))
-        );
+        assert_eq!(role("DualDisc"), Some(Role::HybridCarrier(Medium::DualDisc)));
         assert_eq!(role("180 Gram"), None);
     }
 }

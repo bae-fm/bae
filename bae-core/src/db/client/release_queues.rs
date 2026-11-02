@@ -213,9 +213,7 @@ pub(super) fn queue_window_rows_on<P: QueuedPayload>(
         ),
     );
     Ok(seek.bound(limit, offset, |params| {
-        sql.query(&statement, params, |row| {
-            Ok((queue_row::<P>(row)?, order.key_of(row)?))
-        })
+        sql.query(&statement, params, |row| Ok((queue_row::<P>(row)?, order.key_of(row)?)))
     })?)
 }
 
@@ -229,16 +227,12 @@ fn release_queue_windows_on<P: QueuedPayload>(
 ) -> Result<ReleaseQueueWindows<P>, DbError> {
     let versions = list_order_versions_on(sql, &[P::TABLE])?;
     let total_count: u64 =
-        sql.query_row(&format!("SELECT COUNT(*) FROM {}", P::TABLE), [], |row| {
-            row.get(0)
-        })?;
+        sql.query_row(&format!("SELECT COUNT(*) FROM {}", P::TABLE), [], |row| row.get(0))?;
     let order = queue_order();
-    let WindowsRead { windows, found } = read_windows(
-        &order,
-        windows,
-        places.under(&versions),
-        |seek, limit, offset| queue_window_rows_on::<P>(sql, &order, seek, limit, offset),
-    )?;
+    let WindowsRead { windows, found } =
+        read_windows(&order, windows, places.under(&versions), |seek, limit, offset| {
+            queue_window_rows_on::<P>(sql, &order, seek, limit, offset)
+        })?;
     places.keep(versions, found);
     Ok(ReleaseQueueWindows {
         windows: windows
@@ -250,11 +244,7 @@ fn release_queue_windows_on<P: QueuedPayload>(
 }
 
 fn paused_on(sql: &SqlReadContext<'_>, queue: &str) -> rusqlite::Result<bool> {
-    sql.query_row(
-        "SELECT paused FROM release_queues WHERE queue = ?",
-        [queue],
-        |row| row.get(0),
-    )
+    sql.query_row("SELECT paused FROM release_queues WHERE queue = ?", [queue], |row| row.get(0))
 }
 
 #[cfg(any(desktop, test, feature = "test-utils"))]
@@ -283,11 +273,7 @@ pub(super) fn release_queue_counts_on<P: QueuedPayload>(
         |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
     )?;
     Ok(ReleaseQueueCounts {
-        total: ReleaseQueueProgress {
-            queued,
-            active,
-            failed,
-        },
+        total: ReleaseQueueProgress { queued, active, failed },
         paused: paused_on(sql, P::QUEUE)?,
     })
 }
@@ -337,10 +323,8 @@ impl Database {
             );
             let mut added = false;
             for entry in &entries {
-                let mut values = vec![
-                    Value::Text(entry.release_id.clone()),
-                    Value::Integer(entry.created_at),
-                ];
+                let mut values =
+                    vec![Value::Text(entry.release_id.clone()), Value::Integer(entry.created_at)];
                 values.extend(entry.payload.values()?);
                 added |= sql.execute(&insert, rusqlite::params_from_iter(values))? > 0;
             }
@@ -391,10 +375,7 @@ impl Database {
         let release_id = release_id.to_string();
         self.read(move |sql| {
             Ok(sql.query_row(
-                &format!(
-                    "SELECT EXISTS (SELECT 1 FROM {} WHERE release_id = ?)",
-                    P::TABLE
-                ),
+                &format!("SELECT EXISTS (SELECT 1 FROM {} WHERE release_id = ?)", P::TABLE),
                 [release_id],
                 |row| row.get(0),
             )?)
@@ -453,10 +434,7 @@ impl Database {
         let release_id = release_id.to_string();
         self.call(move |sql| {
             Ok(sql.execute(
-                &format!(
-                    "DELETE FROM {} WHERE release_id = ? AND state = 'active'",
-                    P::TABLE
-                ),
+                &format!("DELETE FROM {} WHERE release_id = ? AND state = 'active'", P::TABLE),
                 [release_id],
             )? > 0)
         })
@@ -527,10 +505,9 @@ impl Database {
     ) -> Result<bool, DbError> {
         let release_id = release_id.to_string();
         self.call(move |sql| {
-            Ok(sql.execute(
-                &format!("DELETE FROM {} WHERE release_id = ?", P::TABLE),
-                [release_id],
-            )? > 0)
+            Ok(sql
+                .execute(&format!("DELETE FROM {} WHERE release_id = ?", P::TABLE), [release_id])?
+                > 0)
         })
         .await
     }
@@ -550,9 +527,7 @@ impl Database {
     pub(crate) fn subscribe_release_queue<P: QueuedPayload>(
         &self,
     ) -> coven::LiveQuery<ReleaseQueueSnapshot<P, ()>> {
-        self.inner
-            .handle
-            .subscribe(|sql| release_queue_on::<P>(&sql).map_err(CovenError::from))
+        self.inner.handle.subscribe(|sql| release_queue_on::<P>(&sql).map_err(CovenError::from))
     }
 
     /// Follow how many entries the queue holds and the windows `initial`

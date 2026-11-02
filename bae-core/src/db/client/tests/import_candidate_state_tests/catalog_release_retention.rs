@@ -140,11 +140,7 @@ async fn the_last_row_naming_a_catalog_release_takes_it_with_it() {
         exec_batch(&db, &naming).await;
         assert_eq!(stored(&db, "rel-1").await, (true, 1), "{case}: named, so kept");
         exec(&db, dropping, &[]).await;
-        assert_eq!(
-            stored(&db, "rel-1").await,
-            (false, 0),
-            "{case}: no row names it, so it goes"
-        );
+        assert_eq!(stored(&db, "rel-1").await, (false, 0), "{case}: no row names it, so it goes");
     }
 }
 
@@ -166,19 +162,9 @@ async fn a_release_two_candidates_name_stays_until_both_drop_it() {
         ),
     )
     .await;
-    exec(
-        &db,
-        "DELETE FROM import_candidate_release_link WHERE content_hash = 'a'",
-        &[],
-    )
-    .await;
+    exec(&db, "DELETE FROM import_candidate_release_link WHERE content_hash = 'a'", &[]).await;
     assert_eq!(stored(&db, "rel-1").await, (true, 1), "b's match still names it");
-    exec(
-        &db,
-        "DELETE FROM import_candidate_verdict WHERE content_hash = 'b'",
-        &[],
-    )
-    .await;
+    exec(&db, "DELETE FROM import_candidate_verdict WHERE content_hash = 'b'", &[]).await;
     assert_eq!(stored(&db, "rel-1").await, (false, 0), "nothing names it");
 }
 

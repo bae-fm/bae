@@ -4,13 +4,8 @@ async fn ignoring_a_cue_replaces_its_song_rows_with_whole_audio() {
     let dir = fixture.seed_cue_album("Album");
     fixture.scan(1).await;
     let hash = fixture.content_hash(&dir);
-    let before = fixture
-        .manager
-        .load_import_candidate_preparation(&hash)
-        .await
-        .unwrap()
-        .unwrap()
-        .draft;
+    let before =
+        fixture.manager.load_import_candidate_preparation(&hash).await.unwrap().unwrap().draft;
     assert_eq!(before.tracks.len(), 5);
     let unchanged = before
         .tracks
@@ -29,23 +24,15 @@ async fn ignoring_a_cue_replaces_its_song_rows_with_whole_audio() {
         .await
         .unwrap();
 
-    let after = fixture
-        .manager
-        .load_import_candidate_preparation(&hash)
-        .await
-        .unwrap()
-        .unwrap()
-        .draft;
+    let after =
+        fixture.manager.load_import_candidate_preparation(&hash).await.unwrap().unwrap().draft;
     assert_eq!(after.tracks.len(), 3, "one image plus two loose tracks");
     assert!(after
         .tracks
         .iter()
         .all(|track| matches!(track.edit.file, crate::import::AudioFile::Standalone { .. })));
     for track in unchanged {
-        assert!(
-            after.tracks.contains(&track),
-            "unaffected tracks retain identity and metadata"
-        );
+        assert!(after.tracks.contains(&track), "unaffected tracks retain identity and metadata");
     }
     assert_eq!(after.album_title, before.album_title);
     let image = after
@@ -67,13 +54,8 @@ async fn ignoring_a_cue_replaces_its_song_rows_with_whole_audio() {
         )
         .await
         .unwrap();
-    let restored = fixture
-        .manager
-        .load_import_candidate_preparation(&hash)
-        .await
-        .unwrap()
-        .unwrap()
-        .draft;
+    let restored =
+        fixture.manager.load_import_candidate_preparation(&hash).await.unwrap().unwrap().draft;
     assert_eq!(restored.tracks.len(), 5);
     let slices = restored
         .tracks
@@ -82,10 +64,7 @@ async fn ignoring_a_cue_replaces_its_song_rows_with_whole_audio() {
         .collect::<Vec<_>>();
     assert_eq!(slices.len(), 3);
     assert_eq!(slices[0].edit.title, "Track One (Silence)");
-    assert!(restored
-        .tracks
-        .iter()
-        .all(|track| track.edit.id != image.edit.id));
+    assert!(restored.tracks.iter().all(|track| track.edit.id != image.edit.id));
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -93,12 +72,8 @@ async fn a_claimed_candidate_refuses_sheet_decisions() {
     let fixture = Fixture::new("claimed-file-decisions").await;
     let dir = fixture.seed_cue_album("Album");
     fixture.scan(1).await;
-    fixture
-        .archive("mb-claimed-1", "rg-claimed-1", &[500, 500])
-        .await;
-    fixture
-        .store_settled_verdict(&dir, "mb-claimed-1", "rg-claimed-1",)
-        .await;
+    fixture.archive("mb-claimed-1", "rg-claimed-1", &[500, 500]).await;
+    fixture.store_settled_verdict(&dir, "mb-claimed-1", "rg-claimed-1").await;
     let key = crate::import::CandidateKey::folder(&dir);
     fixture.import.claim_candidate_for_import(&key, "import-1").await;
 
@@ -121,10 +96,7 @@ async fn a_claimed_candidate_refuses_sheet_decisions() {
             )
             .await,
     ] {
-        assert!(matches!(
-            result,
-            Err(crate::import::ImportError::CandidateImportInProgress)
-        ));
+        assert!(matches!(result, Err(crate::import::ImportError::CandidateImportInProgress)));
     }
 }
 
@@ -136,12 +108,8 @@ async fn a_cleared_sheet_can_be_bound_again() {
     let fixture = Fixture::new("rebind-after-clear").await;
     let dir = fixture.seed_cue_album("Album");
     fixture.scan(1).await;
-    fixture
-        .archive("mb-rebind-1", "rg-rebind-1", &[500, 500])
-        .await;
-    fixture
-        .store_settled_verdict(&dir, "mb-rebind-1", "rg-rebind-1",)
-        .await;
+    fixture.archive("mb-rebind-1", "rg-rebind-1", &[500, 500]).await;
+    fixture.store_settled_verdict(&dir, "mb-rebind-1", "rg-rebind-1").await;
     let key = crate::import::CandidateKey::folder(&dir);
 
     fixture
@@ -167,11 +135,8 @@ async fn a_cleared_sheet_can_be_bound_again() {
         .await
         .unwrap();
     assert!(
-        options[0]
-            .options
-            .iter()
-            .any(|option| option.file_id == "Test Album.flac"
-                && option.offer == crate::import::folder_scanner::SheetBindingOffer::Offered),
+        options[0].options.iter().any(|option| option.file_id == "Test Album.flac"
+            && option.offer == crate::import::folder_scanner::SheetBindingOffer::Offered),
         "the picker offers the container after the clear: {options:?}"
     );
 
@@ -195,12 +160,7 @@ async fn a_cleared_sheet_can_be_bound_again() {
         .expect("the sheet is still a sheet")
         .binding
         .audio_files()
-        .map(|files| {
-            files
-                .iter()
-                .map(|file| file.file_id.clone())
-                .collect::<Vec<_>>()
-        });
+        .map(|files| files.iter().map(|file| file.file_id.clone()).collect::<Vec<_>>());
     assert_eq!(bound, Some(vec!["Test Album.flac".to_string()]));
 
     // The draft grew with the slots: three blank tracks for three loose files
@@ -222,13 +182,8 @@ async fn changing_a_cues_disc_preserves_titles_but_updates_its_group() {
     fixture.scan(1).await;
     let hash = fixture.content_hash(&dir);
     let key = crate::import::CandidateKey::folder(&dir);
-    let before = fixture
-        .manager
-        .load_import_candidate_preparation(&hash)
-        .await
-        .unwrap()
-        .unwrap()
-        .draft;
+    let before =
+        fixture.manager.load_import_candidate_preparation(&hash).await.unwrap().unwrap().draft;
     fixture
         .import
         .set_sheet_disc(
@@ -238,26 +193,14 @@ async fn changing_a_cues_disc_preserves_titles_but_updates_its_group() {
         )
         .await
         .unwrap();
-    let after = fixture
-        .manager
-        .load_import_candidate_preparation(&hash)
-        .await
-        .unwrap()
-        .unwrap()
-        .draft;
+    let after =
+        fixture.manager.load_import_candidate_preparation(&hash).await.unwrap().unwrap().draft;
     assert_eq!(after.mediums.len(), 2, "the loose audio and the sheet's disc");
     for original in before.tracks {
-        let actual = after
-            .tracks
-            .iter()
-            .find(|track| track.edit.id == original.edit.id)
-            .unwrap();
+        let actual = after.tracks.iter().find(|track| track.edit.id == original.edit.id).unwrap();
         assert_eq!(actual.edit.title, original.edit.title);
         assert_eq!(actual.edit.file, original.edit.file);
-        if matches!(
-            actual.edit.file,
-            crate::import::AudioFile::SheetSlice { .. }
-        ) {
+        if matches!(actual.edit.file, crate::import::AudioFile::SheetSlice { .. }) {
             // The loose audio, which names no disc, is the first medium;
             // the sheet's slices are the second.
             assert_eq!(actual.place.medium.get(), 2);

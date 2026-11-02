@@ -24,24 +24,15 @@ async fn open(dir: &Path) -> AppServices {
 /// `count` one-track albums under `collection`, watched and scanned. Each
 /// track has its own name, so no two albums are the same files.
 async fn scan_albums(services: &AppServices, collection: &Path, count: usize) {
-    let flac = std::fs::read(bae_test_support::fixture_dir!(
-        "flac",
-        "01 Test Track 1.flac"
-    ))
-    .expect("FLAC fixture");
+    let flac = std::fs::read(bae_test_support::fixture_dir!("flac", "01 Test Track 1.flac"))
+        .expect("FLAC fixture");
     for n in 0..count {
         let album = collection.join(format!("Album {n}"));
         std::fs::create_dir_all(&album).unwrap();
         std::fs::write(album.join(format!("01 Track {n}.flac")), &flac).unwrap();
     }
-    services
-        .import_add_watched_folder(collection.to_path_buf())
-        .await
-        .unwrap();
-    let list = services
-        .subscribe_import_list(ImportListView::default())
-        .await
-        .unwrap();
+    services.import_add_watched_folder(collection.to_path_buf()).await.unwrap();
+    let list = services.subscribe_import_list(ImportListView::default()).await.unwrap();
     tokio::time::timeout(std::time::Duration::from_secs(10), async {
         loop {
             let snapshot = list.next().await.expect("the list answers");
@@ -79,22 +70,11 @@ async fn list_showing(
     count: u64,
 ) -> (ImportListSubscription, ImportListSnapshot) {
     let list = services.subscribe_import_list(view).await.unwrap();
-    list.set_windows(
-        std::iter::once(LibraryPageWindow {
-            offset: 0,
-            limit: 50,
-        })
-        .collect(),
-    )
-    .unwrap();
+    list.set_windows(std::iter::once(LibraryPageWindow { offset: 0, limit: 50 }).collect())
+        .unwrap();
     let snapshot = until(&list, |snapshot| {
         snapshot.total_count == count
-            && snapshot
-                .windows
-                .iter()
-                .map(|window| window.items.len() as u64)
-                .sum::<u64>()
-                == count
+            && snapshot.windows.iter().map(|window| window.items.len() as u64).sum::<u64>() == count
     })
     .await;
     (list, snapshot)
@@ -171,18 +151,12 @@ async fn rows_that_leave_the_filter_leave_the_selection() {
     let tmp = TempDir::new().unwrap();
     let services = open(&tmp.path().join("db")).await;
     scan_albums(&services, &tmp.path().join("Collection"), 3).await;
-    let not_looked_up = ImportListView {
-        pending_filter: PendingFilter::NotLookedUp,
-        ..ImportListView::default()
-    };
+    let not_looked_up =
+        ImportListView { pending_filter: PendingFilter::NotLookedUp, ..ImportListView::default() };
     let (list, shown) = list_showing(&services, not_looked_up, 3).await;
     let picked: Vec<bae_core::import::CandidateKey> = on_page(&shown).into_iter().take(2).collect();
-    let revision = list
-        .change_selection(SelectionChange::Replace {
-            keys: picked.clone(),
-        })
-        .await
-        .unwrap();
+    let revision =
+        list.change_selection(SelectionChange::Replace { keys: picked.clone() }).await.unwrap();
     let selected = until(&list, |snapshot| {
         snapshot.selection_revision >= revision && snapshot.selection.count == 2
     })
@@ -211,10 +185,7 @@ async fn rows_that_leave_the_filter_leave_the_selection() {
 
     list.set_view(ImportListView::default()).await.unwrap();
     let all = until(&list, |snapshot| on_page(snapshot).len() == 3).await;
-    assert!(
-        selected_on_page(&all).is_empty(),
-        "rows shown again come back unselected"
-    );
+    assert!(selected_on_page(&all).is_empty(), "rows shown again come back unselected");
     assert_eq!(all.selection.count, 0);
     services.close().await.unwrap();
 }
@@ -256,10 +227,7 @@ async fn a_filter_change_keeps_only_the_selected_rows_it_shows() {
 /// The list sorted by path, last to first, so the order it shows is the
 /// reverse of the keys' own.
 fn descending() -> ImportListView {
-    ImportListView {
-        order: ImportListOrder::PathDescending,
-        ..ImportListView::default()
-    }
+    ImportListView { order: ImportListOrder::PathDescending, ..ImportListView::default() }
 }
 
 /// The candidate keys `view` shows, top to bottom.
@@ -270,11 +238,7 @@ async fn shown_keys(
     let list = services
         .load_import_list(
             view,
-            std::iter::once(LibraryPageWindow {
-                offset: 0,
-                limit: 50,
-            })
-            .collect(),
+            std::iter::once(LibraryPageWindow { offset: 0, limit: 50 }).collect(),
         )
         .await
         .unwrap();
@@ -310,10 +274,7 @@ async fn select_out_of_order(
     .await;
     let mut in_view_order = picks.to_vec();
     in_view_order.sort_unstable();
-    in_view_order
-        .into_iter()
-        .map(|pick| shown[pick].clone())
-        .collect()
+    in_view_order.into_iter().map(|pick| shown[pick].clone()).collect()
 }
 
 /// The keys the runtime's changes bring to `reached`, in the order they get
@@ -335,10 +296,7 @@ async fn reached_in_order(
                     .collect(),
                     CandidateRuntimeChange::Removed { .. } => Vec::new(),
                 };
-            assert!(
-                arrivals.len() <= 1,
-                "one change brings one candidate at a time: {arrivals:?}"
-            );
+            assert!(arrivals.len() <= 1, "one change brings one candidate at a time: {arrivals:?}");
             order.extend(arrivals);
         }
     })
@@ -371,9 +329,7 @@ async fn a_bulk_identify_admits_the_rows_as_the_list_shows_them() {
 
     let admitted = reached_in_order(&mut changes, expected.len(), |runtime| {
         runtime.identification
-            == Some(bae_core::import::IdentificationRuntime::Queued(
-                Admission::Requested,
-            ))
+            == Some(bae_core::import::IdentificationRuntime::Queued(Admission::Requested))
     })
     .await;
     assert_eq!(admitted, expected);
@@ -389,16 +345,11 @@ async fn a_bulk_import_starts_the_rows_as_the_list_shows_them() {
     let services = open(&tmp.path().join("db")).await;
     scan_albums(&services, &tmp.path().join("Collection"), 4).await;
     for key in shown_keys(&services, descending()).await {
-        services
-            .import_select_candidate_file_tags(key.clone())
-            .await
-            .unwrap();
+        services.import_select_candidate_file_tags(key.clone()).await.unwrap();
         services
             .import_set_candidate_album_artists(
                 &key,
-                vec![bae_core::import::Credited::plain(ArtistAssignment::named(
-                    "Artist Name",
-                ))],
+                vec![bae_core::import::Credited::plain(ArtistAssignment::named("Artist Name"))],
             )
             .await
             .unwrap();
@@ -417,10 +368,8 @@ async fn a_bulk_import_starts_the_rows_as_the_list_shows_them() {
         .unwrap();
     assert!(failures.is_empty(), "{failures:?}");
 
-    let started = reached_in_order(&mut changes, expected.len(), |runtime| {
-        runtime.import.is_some()
-    })
-    .await;
+    let started =
+        reached_in_order(&mut changes, expected.len(), |runtime| runtime.import.is_some()).await;
     assert_eq!(started, expected);
     services.close().await.unwrap();
 }
@@ -438,28 +387,17 @@ async fn a_skipped_folder_is_selected_like_a_row_and_offers_nothing() {
     std::fs::create_dir_all(&broken).unwrap();
     std::fs::write(
         broken.join("01 Track.flac"),
-        std::fs::read(bae_test_support::fixture_dir!(
-            "flac",
-            "01 Test Track 1.flac"
-        ))
-        .unwrap(),
+        std::fs::read(bae_test_support::fixture_dir!("flac", "01 Test Track 1.flac")).unwrap(),
     )
     .unwrap();
     std::fs::write(broken.join("02 Track.flac"), b"").unwrap();
     scan_albums(&services, &collection, 1).await;
-    let skipped = ImportListView {
-        tab: TriageTab::Skipped,
-        ..ImportListView::default()
-    };
+    let skipped = ImportListView { tab: TriageTab::Skipped, ..ImportListView::default() };
     let (list, _) = list_showing(&services, skipped, 1).await;
     let key = bae_core::import::CandidateKey::folder(&broken);
 
-    let revision = list
-        .change_selection(SelectionChange::Replace {
-            keys: vec![key.clone()],
-        })
-        .await
-        .unwrap();
+    let revision =
+        list.change_selection(SelectionChange::Replace { keys: vec![key.clone()] }).await.unwrap();
     let selected = until(&list, |snapshot| {
         snapshot.selection_revision >= revision && snapshot.selection.count == 1
     })

@@ -13,7 +13,8 @@ fn state_with_catalog_offered(providers: Vec<Catalog>) -> IdentifyState {
         IdentifyEvent::DiscidLookupAnswered {
             disc_id: "disc-hash".into(),
             outcome: Ok(DiscIdAnswer::for_test(vec![
-                pair("rel-a", Some("g-x")), pair("rel-b", Some("g-x")),
+                pair("rel-a", Some("g-x")),
+                pair("rel-b", Some("g-x")),
             ])),
         },
     );
@@ -36,9 +37,7 @@ fn run_with_catalog_chosen(providers: Vec<Catalog>) -> (IdentifyState, Vec<Effec
         state,
         IdentifyEvent::DiscidLookupAnswered {
             disc_id: "disc-hash".into(),
-            outcome: Ok(DiscIdAnswer::for_test(vec![
-                pair("rel-a", Some("g-x")), numbered,
-            ])),
+            outcome: Ok(DiscIdAnswer::for_test(vec![pair("rel-a", Some("g-x")), numbered])),
         },
     );
     (state, chosen_effects)
@@ -50,9 +49,7 @@ fn toolbar_while_triangulating_shows_spinners() {
         started(),
         signals(
             disc("disc-hash"),
-            BarcodeSignal::Settled {
-                codes: artwork_codes(&["012345678905"]),
-            },
+            BarcodeSignal::Settled { codes: artwork_codes(&["012345678905"]) },
             &["LBL-001"],
         ),
     );
@@ -68,10 +65,7 @@ fn toolbar_while_triangulating_shows_spinners() {
 
     let barcode = &toolbar[1];
     assert_eq!(barcode.kind, SignalKind::Barcode);
-    assert_eq!(
-        barcode.shown.as_deref(),
-        Some("012345678905")
-    );
+    assert_eq!(barcode.shown.as_deref(), Some("012345678905"));
     assert_eq!(barcode.state, SignalState::LookingUp);
 
     // No number is chosen, so the catalog shows none and ran nothing.
@@ -80,11 +74,7 @@ fn toolbar_while_triangulating_shows_spinners() {
     assert_eq!(catalog.shown, None);
     assert_eq!(catalog.state, SignalState::Skipped);
     assert_eq!(
-        catalog
-            .options
-            .iter()
-            .map(|o| o.value.as_str())
-            .collect::<Vec<_>>(),
+        catalog.options.iter().map(|o| o.value.as_str()).collect::<Vec<_>>(),
         vec!["LBL-001"]
     );
     assert!(catalog.options.iter().all(|o| !o.chosen));
@@ -109,17 +99,11 @@ fn every_extracted_catalog_number_is_an_option_on_the_one_badge() {
         ),
     );
     let toolbar = state.toolbar();
-    let catalogs: Vec<&ToolbarSignal> = toolbar
-        .iter()
-        .filter(|s| s.kind == SignalKind::Catalog)
-        .collect();
+    let catalogs: Vec<&ToolbarSignal> =
+        toolbar.iter().filter(|s| s.kind == SignalKind::Catalog).collect();
     assert_eq!(catalogs.len(), 1);
     assert_eq!(
-        catalogs[0]
-            .options
-            .iter()
-            .map(|o| o.value.as_str())
-            .collect::<Vec<_>>(),
+        catalogs[0].options.iter().map(|o| o.value.as_str()).collect::<Vec<_>>(),
         vec!["LBL 001", "LBL 999"]
     );
 }
@@ -131,17 +115,10 @@ fn a_chosen_catalog_number_is_looked_up_from_the_start() {
     let (state, effects) = run_with_catalog_chosen(vec![MB]);
     assert_eq!(
         effects,
-        vec![Effect::LookupCatalog {
-            source: MB,
-            catalog: "LBL 001".to_string(),
-            artist: None,
-        }]
+        vec![Effect::LookupCatalog { source: MB, catalog: "LBL 001".to_string(), artist: None }]
     );
     let catalog_badge = badge(&state, SignalKind::Catalog);
-    assert_eq!(
-        catalog_badge.shown.as_deref(),
-        Some("LBL 001")
-    );
+    assert_eq!(catalog_badge.shown.as_deref(), Some("LBL 001"));
     assert_eq!(catalog_badge.state, SignalState::LookingUp);
 
     let (state, _) = step(
@@ -154,16 +131,9 @@ fn a_chosen_catalog_number_is_looked_up_from_the_start() {
         },
     );
     match state {
-        IdentifyState::Found {
-            findings: Findings { ref matches, .. },
-            ref ledger,
-            ..
-        } => {
+        IdentifyState::Found { findings: Findings { ref matches, .. }, ref ledger, .. } => {
             assert_eq!(
-                matches
-                    .iter()
-                    .map(|m| m.release_id.as_str())
-                    .collect::<Vec<_>>(),
+                matches.iter().map(|m| m.release_id.as_str()).collect::<Vec<_>>(),
                 vec!["rel-b"]
             );
             assert!(found_by_disc_id(ledger.as_ref(), &matches[0]));
@@ -172,10 +142,7 @@ fn a_chosen_catalog_number_is_looked_up_from_the_start() {
     }
     let catalog_badge = badge(&state, SignalKind::Catalog);
     assert_eq!(catalog_badge.state, SignalState::Found { count: 1 });
-    assert!(catalog_badge
-        .options
-        .iter()
-        .any(|o| o.value == "LBL 001" && o.chosen));
+    assert!(catalog_badge.options.iter().any(|o| o.value == "LBL 001" && o.chosen));
 }
 
 /// With no number chosen, none is asked about and the catalog takes no part.
@@ -195,25 +162,12 @@ fn a_chosen_number_the_snapshot_does_not_offer_leaves_the_run() {
     let (state, effects) = started_with_choices(vec![MB], choosing(&["GONE 001"]));
     assert_eq!(
         effects,
-        vec![Effect::LookupCatalog {
-            source: MB,
-            catalog: "GONE 001".to_string(),
-            artist: None,
-        }]
+        vec![Effect::LookupCatalog { source: MB, catalog: "GONE 001".to_string(), artist: None }]
     );
-    let (state, _) = update(
-        state,
-        signals(
-            DiscIdSignal::Absent,
-            BarcodeSignal::Absent,
-            &["LBL 001"],
-        ),
-    );
+    let (state, _) =
+        update(state, signals(DiscIdSignal::Absent, BarcodeSignal::Absent, &["LBL 001"]));
     // Nothing is left in flight to wait on.
-    assert!(
-        !matches!(state, IdentifyState::Triangulating { .. }),
-        "got {state:?}"
-    );
+    assert!(!matches!(state, IdentifyState::Triangulating { .. }), "got {state:?}");
     let catalog_badge = badge(&state, SignalKind::Catalog);
     assert_eq!(catalog_badge.state, SignalState::Skipped);
     assert!(catalog_badge.options.iter().all(|option| !option.chosen));
@@ -230,10 +184,7 @@ fn a_chosen_number_survives_a_snapshot_still_being_read() {
                 origin: crate::signals::AudioOrigin::default(),
                 disc_id: DiscIdSignal::Absent,
                 barcode: BarcodeSignal::Scanning { codes: Vec::new() },
-                text: TextSignal::Scanning {
-                    catalogs: Vec::new(),
-                    free_text: Vec::new(),
-                },
+                text: TextSignal::Scanning { catalogs: Vec::new(), free_text: Vec::new() },
                 text_pool: Vec::new(),
                 isrcs: Vec::new(),
                 track_titles: Vec::new(),
@@ -261,16 +212,11 @@ fn toolbar_shows_failed_disc_id_lookup() {
             outcome: Err(LookupFailure::Provider { status: Some(503) }),
         },
     );
-    let disc = state
-        .toolbar()
-        .into_iter()
-        .find(|s| s.kind == SignalKind::DiscId)
-        .expect("disc badge");
+    let disc =
+        state.toolbar().into_iter().find(|s| s.kind == SignalKind::DiscId).expect("disc badge");
     assert_eq!(
         disc.state,
-        SignalState::Failed {
-            failure: LookupFailure::Provider { status: Some(503) }
-        }
+        SignalState::Failed { failure: LookupFailure::Provider { status: Some(503) } }
     );
 }
 
@@ -278,19 +224,11 @@ fn toolbar_shows_failed_disc_id_lookup() {
 fn toolbar_shows_failed_barcode_lookup() {
     let (state, _) = update(started(), disc_and_codes("disc-hash", &["012345678905"]));
     let failure = LookupFailure::Provider { status: Some(500) };
-    let source_failure = SourceFailure {
-        source: Catalog::MusicBrainz,
-        failure: failure.clone(),
-    };
-    let (state, _) = step(
-        state,
-        barcode_failed(MB, "012345678905", source_failure.failure.clone()),
-    );
-    let barcode = state
-        .toolbar()
-        .into_iter()
-        .find(|s| s.kind == SignalKind::Barcode)
-        .expect("barcode badge");
+    let source_failure = SourceFailure { source: Catalog::MusicBrainz, failure: failure.clone() };
+    let (state, _) =
+        step(state, barcode_failed(MB, "012345678905", source_failure.failure.clone()));
+    let barcode =
+        state.toolbar().into_iter().find(|s| s.kind == SignalKind::Barcode).expect("barcode badge");
     assert_eq!(barcode.state, SignalState::Failed { failure });
 }
 
@@ -300,37 +238,24 @@ fn toolbar_keeps_failed_barcode_lookup_after_settle() {
         started(),
         signals(
             DiscIdSignal::Absent,
-            BarcodeSignal::Settled {
-                codes: artwork_codes(&["012345678905"]),
-            },
+            BarcodeSignal::Settled { codes: artwork_codes(&["012345678905"]) },
             &[],
         ),
     );
     let failure = LookupFailure::Provider { status: Some(500) };
-    let source_failure = SourceFailure {
-        source: Catalog::MusicBrainz,
-        failure: failure.clone(),
-    };
-    let (state, _) = step(
-        state,
-        barcode_failed(MB, "012345678905", source_failure.failure.clone()),
-    );
+    let source_failure = SourceFailure { source: Catalog::MusicBrainz, failure: failure.clone() };
+    let (state, _) =
+        step(state, barcode_failed(MB, "012345678905", source_failure.failure.clone()));
     assert!(matches!(state, IdentifyState::Failed { .. }));
-    let barcode = state
-        .toolbar()
-        .into_iter()
-        .find(|s| s.kind == SignalKind::Barcode)
-        .expect("barcode badge");
+    let barcode =
+        state.toolbar().into_iter().find(|s| s.kind == SignalKind::Barcode).expect("barcode badge");
     assert_eq!(barcode.state, SignalState::Failed { failure });
 }
 
 /// A failed disc-ID lookup still reads Failed once settled, not as a no-match.
 #[test]
 fn toolbar_keeps_failed_disc_id_lookup_after_settle() {
-    let (state, _) = update(
-        started(),
-        signals(disc("disc-hash"), BarcodeSignal::Absent, &[]),
-    );
+    let (state, _) = update(started(), signals(disc("disc-hash"), BarcodeSignal::Absent, &[]));
     let failure = LookupFailure::Provider { status: Some(503) };
     let (state, _) = step(
         state,
@@ -340,24 +265,14 @@ fn toolbar_keeps_failed_disc_id_lookup_after_settle() {
         },
     );
     assert!(matches!(state, IdentifyState::Failed { .. }));
-    let disc = state
-        .toolbar()
-        .into_iter()
-        .find(|s| s.kind == SignalKind::DiscId)
-        .expect("disc badge");
+    let disc =
+        state.toolbar().into_iter().find(|s| s.kind == SignalKind::DiscId).expect("disc badge");
     assert_eq!(disc.state, SignalState::Failed { failure });
 }
 
 #[test]
 fn toolbar_skipped_disc_and_barcode_in_manual_only() {
-    let (state, _) = update(
-        started(),
-        signals(
-            DiscIdSignal::Absent,
-            BarcodeSignal::Absent,
-            &[],
-        ),
-    );
+    let (state, _) = update(started(), signals(DiscIdSignal::Absent, BarcodeSignal::Absent, &[]));
     assert!(matches!(state, IdentifyState::ManualOnly { .. }));
     let toolbar = state.toolbar();
     let disc = &toolbar[0];
@@ -379,10 +294,7 @@ fn barcode_failure_before_disc_settles_is_retained_through_combine() {
     let (state, _) = update(started(), disc_and_codes("d", &["BAR"]));
 
     let failure = LookupFailure::Provider { status: Some(500) };
-    let source_failure = SourceFailure {
-        source: Catalog::MusicBrainz,
-        failure: failure.clone(),
-    };
+    let source_failure = SourceFailure { source: Catalog::MusicBrainz, failure: failure.clone() };
     let (state, _) = step(state, barcode_failed(MB, "BAR", failure.clone()));
     // Disc-ID hasn't settled yet — the barcode failure alone can't terminate.
     assert!(
@@ -394,9 +306,10 @@ fn barcode_failure_before_disc_settles_is_retained_through_combine() {
         state,
         IdentifyEvent::DiscidLookupAnswered {
             disc_id: "d".into(),
-            outcome: Ok(DiscIdAnswer::for_test(vec![
-                pair("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e", Some("g-x")),
-            ])),
+            outcome: Ok(DiscIdAnswer::for_test(vec![pair(
+                "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e",
+                Some("g-x"),
+            )])),
         },
     );
 
@@ -406,11 +319,8 @@ fn barcode_failure_before_disc_settles_is_retained_through_combine() {
             if failures == &vec![crate::identify::IdentifyFailure::Barcode(source_failure.clone())]
     ));
     // The terminal toolbar surfaces the retained barcode failure.
-    let barcode = state
-        .toolbar()
-        .into_iter()
-        .find(|s| s.kind == SignalKind::Barcode)
-        .expect("barcode badge");
+    let barcode =
+        state.toolbar().into_iter().find(|s| s.kind == SignalKind::Barcode).expect("barcode badge");
     assert_eq!(barcode.state, SignalState::Failed { failure });
 }
 
@@ -421,16 +331,8 @@ fn a_catalog_lookup_keeps_one_provider_s_answer_beside_the_other_s_failure() {
     assert_eq!(
         effects,
         vec![
-            Effect::LookupCatalog {
-                source: MB,
-                catalog: "LBL 001".to_string(),
-                artist: None,
-            },
-            Effect::LookupCatalog {
-                source: DG,
-                catalog: "LBL 001".to_string(),
-                artist: None,
-            },
+            Effect::LookupCatalog { source: MB, catalog: "LBL 001".to_string(), artist: None },
+            Effect::LookupCatalog { source: DG, catalog: "LBL 001".to_string(), artist: None },
         ]
     );
 
@@ -445,11 +347,8 @@ fn a_catalog_lookup_keeps_one_provider_s_answer_beside_the_other_s_failure() {
     );
     // MusicBrainz is still out, so the badge still spins and nothing settles.
     assert!(matches!(state, IdentifyState::Triangulating { .. }));
-    let catalog_badge = state
-        .toolbar()
-        .into_iter()
-        .find(|s| s.kind == SignalKind::Catalog)
-        .expect("catalog badge");
+    let catalog_badge =
+        state.toolbar().into_iter().find(|s| s.kind == SignalKind::Catalog).expect("catalog badge");
     assert_eq!(catalog_badge.state, SignalState::LookingUp);
 
     let (state, _) = step(
@@ -462,11 +361,7 @@ fn a_catalog_lookup_keeps_one_provider_s_answer_beside_the_other_s_failure() {
         },
     );
     match &state {
-        IdentifyState::Failed {
-            failures,
-            findings: Findings { matches, .. },
-            ..
-        } => {
+        IdentifyState::Failed { failures, findings: Findings { matches, .. }, .. } => {
             assert_eq!(
                 failures,
                 &vec![crate::identify::IdentifyFailure::Catalog(SourceFailure {
@@ -475,20 +370,14 @@ fn a_catalog_lookup_keeps_one_provider_s_answer_beside_the_other_s_failure() {
                 })]
             );
             assert_eq!(
-                matches
-                    .iter()
-                    .map(|m| m.release_id.as_str())
-                    .collect::<Vec<_>>(),
+                matches.iter().map(|m| m.release_id.as_str()).collect::<Vec<_>>(),
                 vec!["rel-b"]
             );
         }
         other => panic!("expected Failed with the surviving intersection, got {other:?}"),
     }
-    let catalog_badge = state
-        .toolbar()
-        .into_iter()
-        .find(|s| s.kind == SignalKind::Catalog)
-        .expect("catalog badge");
+    let catalog_badge =
+        state.toolbar().into_iter().find(|s| s.kind == SignalKind::Catalog).expect("catalog badge");
     assert_eq!(catalog_badge.state, SignalState::Found { count: 1 });
 }
 
@@ -499,16 +388,12 @@ fn toolbar_barcode_spins_until_every_provider_answers() {
         started_with(vec![MB, DG]),
         signals(
             DiscIdSignal::Absent,
-            BarcodeSignal::Settled {
-                codes: artwork_codes(&["012345678905"]),
-            },
+            BarcodeSignal::Settled { codes: artwork_codes(&["012345678905"]) },
             &[],
         ),
     );
-    let (state, _) = step(
-        state,
-        barcode_matched(DG, "012345678905", vec![discogs_pair("dg-1", Some("g-x"))]),
-    );
+    let (state, _) =
+        step(state, barcode_matched(DG, "012345678905", vec![discogs_pair("dg-1", Some("g-x"))]));
     let barcode = state.toolbar()[1].clone();
     assert_eq!(barcode.state, SignalState::LookingUp);
 

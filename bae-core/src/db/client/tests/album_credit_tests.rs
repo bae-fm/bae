@@ -83,13 +83,7 @@ async fn a_track_search_row_names_its_own_credits_else_its_albums() {
         .iter()
         .map(|track| (track.title.as_str(), track.artist_name.as_str()))
         .collect();
-    assert_eq!(
-        tracks,
-        [
-            ("Track Credited", "Artist C"),
-            ("Track Uncredited", "Various Artists"),
-        ]
-    );
+    assert_eq!(tracks, [("Track Credited", "Artist C"), ("Track Uncredited", "Various Artists"),]);
 }
 
 /// "A" sorts before "A & B", which sorts before "A & C", whatever the titles
@@ -123,17 +117,6 @@ async fn sorting_by_artist_compares_every_credit_in_order() {
         .unwrap();
 
     let expected = [ALBUM_A, ALBUM_AB, ALBUM_AC, ALBUM_VARIOUS];
-    assert_eq!(
-        storage
-            .iter()
-            .map(|row| row.album.id.as_str())
-            .collect::<Vec<_>>(),
-        expected
-    );
-    assert_eq!(
-        grid.iter()
-            .map(|album| album.id.as_str())
-            .collect::<Vec<_>>(),
-        expected
-    );
+    assert_eq!(storage.iter().map(|row| row.album.id.as_str()).collect::<Vec<_>>(), expected);
+    assert_eq!(grid.iter().map(|album| album.id.as_str()).collect::<Vec<_>>(), expected);
 }

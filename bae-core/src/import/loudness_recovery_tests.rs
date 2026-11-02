@@ -16,10 +16,7 @@ async fn measure_loudness_accepts_complete_audio_with_an_invalid_terminal_packet
     damaged.extend_from_slice(&clean[frame_start..frame_start + 16]);
     damaged.extend_from_slice(b"LYRICSBEGININD0000000LYRICS200TAG");
 
-    let temp = tempfile::Builder::new()
-        .suffix(".mp3")
-        .tempfile()
-        .expect("temp file");
+    let temp = tempfile::Builder::new().suffix(".mp3").tempfile().expect("temp file");
     std::fs::write(temp.path(), damaged).expect("damaged MP3 fixture");
     let probe = bae_audio::probe_audio_from_path(temp.path()).expect("damaged MP3 probe");
     let now = chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
@@ -50,9 +47,7 @@ async fn measure_loudness_accepts_complete_audio_with_an_invalid_terminal_packet
         "track-id",
         probe.content_type,
         std::num::NonZeroU32::new(probe.sample_rate).unwrap(),
-        probe
-            .bits_per_sample
-            .map(|bits| std::num::NonZeroU32::new(bits).unwrap()),
+        probe.bits_per_sample.map(|bits| std::num::NonZeroU32::new(bits).unwrap()),
         std::num::NonZeroU32::new(probe.channels).unwrap(),
         "format-id".to_string(),
         now,
@@ -70,10 +65,8 @@ async fn measure_loudness_accepts_complete_audio_with_an_invalid_terminal_packet
         created_at: now,
     }];
     let file_ids = HashMap::from([(temp.path().to_path_buf(), "file-id".to_string())]);
-    let source_file_sizes = HashMap::from([(
-        temp.path().to_path_buf(),
-        std::fs::metadata(temp.path()).unwrap().len(),
-    )]);
+    let source_file_sizes =
+        HashMap::from([(temp.path().to_path_buf(), std::fs::metadata(temp.path()).unwrap().len())]);
     let event_tx =
         crate::import::ImportEventBus::new(crate::import::CandidateRuntime::for_test().await);
 

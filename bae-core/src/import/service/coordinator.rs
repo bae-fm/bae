@@ -291,11 +291,7 @@ impl Coordinator {
                 active_roots
                     .change_folder_reading(path, FolderReadingRequest::new(target, completion));
             }
-            WatcherCommand::Remove {
-                roots,
-                parent,
-                completion,
-            } => {
+            WatcherCommand::Remove { roots, parent, completion } => {
                 active_roots.remove(roots, parent, completion);
             }
             #[cfg(test)]
@@ -318,12 +314,7 @@ impl Coordinator {
             return;
         };
         match outcome {
-            RemovalOutcome::Removed {
-                commit,
-                removed_keys,
-                scan_waiters,
-                callers,
-            } => {
+            RemovalOutcome::Removed { commit, removed_keys, scan_waiters, callers } => {
                 let folders = watched_folders(&self.library_manager).await;
                 for candidate_key in removed_keys {
                     self.event_tx.send(crate::import::handle::ImportEvent::Scan(
@@ -334,9 +325,7 @@ impl Coordinator {
                     ScanEvent::WatchedFoldersChanged { folders },
                 ));
                 for (path, waiter) in scan_waiters {
-                    if waiter
-                        .send(Err(format!("{} is no longer watched", path.display())))
-                        .is_err()
+                    if waiter.send(Err(format!("{} is no longer watched", path.display()))).is_err()
                     {
                         debug!("folder refresh caller dropped during removal");
                     }
@@ -398,10 +387,7 @@ impl Coordinator {
                 }
             },
             move |_| {
-                if panicked_answer
-                    .send((root, NetworkCheck::Moved(None)))
-                    .is_err()
-                {
+                if panicked_answer.send((root, NetworkCheck::Moved(None))).is_err() {
                     debug!("folder scan coordinator ended before a panicked check landed");
                 }
             },
@@ -419,10 +405,7 @@ async fn check_network_folder(
     let recorded = match library_manager.load_folder_scan_directories(root).await {
         Ok(recorded) => recorded,
         Err(error) => {
-            warn!(
-                "could not read what the last scan of {} saw: {error}",
-                root.display()
-            );
+            warn!("could not read what the last scan of {} saw: {error}", root.display());
             Vec::new()
         }
     };
@@ -443,10 +426,7 @@ async fn check_network_folder(
         }
     };
     if changes.as_ref().is_some_and(Vec::is_empty) {
-        debug!(
-            "network folder {} is as the last scan left it",
-            root.display()
-        );
+        debug!("network folder {} is as the last scan left it", root.display());
         return NetworkCheck::Unchanged;
     }
     NetworkCheck::Moved(changes)
@@ -498,11 +478,8 @@ async fn take_watch_report(
         if whole.contains(&root) {
             continue;
         }
-        let under: Vec<&Path> = changed
-            .iter()
-            .copied()
-            .filter(|path| path.starts_with(&root))
-            .collect();
+        let under: Vec<&Path> =
+            changed.iter().copied().filter(|path| path.starts_with(&root)).collect();
         let lost_track = events.iter().any(|event| {
             event.need_rescan() && event.paths.iter().any(|path| path.starts_with(&root))
         });
@@ -532,10 +509,7 @@ fn request_change(
         RootChange::WholeRoot => active_roots.request_scan(root, cause, None),
         RootChange::Folders(folders) => {
             if folders.is_empty() {
-                debug!(
-                    "a change under {} reaches nothing a scan reads: {cause}",
-                    root.display()
-                );
+                debug!("a change under {} reaches nothing a scan reads: {cause}", root.display());
             }
             active_roots.request_folders(root, folders, cause);
         }
@@ -545,10 +519,7 @@ fn request_change(
 /// Whether `root` holds tracks of its own. A failed read answers yes, which
 /// reads the whole root: right either way.
 async fn holds_its_own_release(library_manager: &LibraryManager, root: &Path) -> bool {
-    match library_manager
-        .load_folder_scan_item(&crate::import::CandidateKey::folder(root))
-        .await
-    {
+    match library_manager.load_folder_scan_item(&crate::import::CandidateKey::folder(root)).await {
         Ok(item) => item.is_some(),
         Err(error) => {
             warn!(
@@ -572,11 +543,7 @@ async fn watched_folders(library_manager: &LibraryManager) -> Vec<crate::import:
 }
 
 async fn watched_roots(library_manager: &LibraryManager) -> Vec<PathBuf> {
-    watched_folders(library_manager)
-        .await
-        .into_iter()
-        .map(|folder| folder.path)
-        .collect()
+    watched_folders(library_manager).await.into_iter().map(|folder| folder.path).collect()
 }
 
 /// Whether `path` is a watched folder, by the watched folders' key.

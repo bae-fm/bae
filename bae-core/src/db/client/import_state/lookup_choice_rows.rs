@@ -97,14 +97,8 @@ pub(super) fn replace_lookup_choices_on(
         params![
             content_hash,
             i64::from(choices.disc_id_excluded),
-            choices
-                .search_words
-                .as_ref()
-                .map(|words| words.album.as_str()),
-            choices
-                .search_words
-                .as_ref()
-                .map(|words| words.artist.as_str()),
+            choices.search_words.as_ref().map(|words| words.album.as_str()),
+            choices.search_words.as_ref().map(|words| words.artist.as_str()),
             content_hash,
         ],
     )?;
@@ -168,7 +162,6 @@ impl Database {
     ) -> Result<(), DbError> {
         let content_hash = content_hash.to_string();
         let choices = choices.clone();
-        self.call(move |sql| replace_lookup_choices_on(sql, &content_hash, &choices))
-            .await
+        self.call(move |sql| replace_lookup_choices_on(sql, &content_hash, &choices)).await
     }
 }

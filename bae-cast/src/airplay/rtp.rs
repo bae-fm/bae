@@ -32,9 +32,8 @@ impl NtpTime {
 
     /// Wall-clock now as an NTP timestamp.
     pub(crate) fn now() -> Self {
-        let since_epoch = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap_or_default();
+        let since_epoch =
+            std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default();
         Self::from_unix_nanos(since_epoch.as_nanos())
     }
 
@@ -136,15 +135,9 @@ mod tests {
 
     #[test]
     fn ntp_bytes_round_trip() {
-        let t = NtpTime {
-            seconds: 0x1234_5678,
-            fraction: 0x9ABC_DEF0,
-        };
+        let t = NtpTime { seconds: 0x1234_5678, fraction: 0x9ABC_DEF0 };
         assert_eq!(NtpTime::from_bytes(&t.to_bytes()), t);
-        assert_eq!(
-            t.to_bytes(),
-            [0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0]
-        );
+        assert_eq!(t.to_bytes(), [0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0]);
     }
 
     #[test]
@@ -181,10 +174,7 @@ mod tests {
     /// time in the middle; the first sync sets the extension bit.
     #[test]
     fn sync_packet_is_golden() {
-        let ntp = NtpTime {
-            seconds: 0x1111_2222,
-            fraction: 0x3333_4444,
-        };
+        let ntp = NtpTime { seconds: 0x1111_2222, fraction: 0x3333_4444 };
         let pkt = sync_packet(true, 0x5555_6666, ntp, 0x7777_8888);
         assert_eq!(
             pkt,
@@ -204,23 +194,14 @@ mod tests {
     /// the response origin and stamping the receive/transmit instants.
     #[test]
     fn timing_response_echoes_origin_and_stamps_now() {
-        let client_transmit = NtpTime {
-            seconds: 0xAAAA_BBBB,
-            fraction: 0xCCCC_DDDD,
-        };
+        let client_transmit = NtpTime { seconds: 0xAAAA_BBBB, fraction: 0xCCCC_DDDD };
         let mut request = vec![0x80, 0xD2, 0x00, 0x09, 0, 0, 0, 0];
         request.extend_from_slice(&[0u8; 8]); // origin (unused by responder)
         request.extend_from_slice(&[0u8; 8]); // receive
         request.extend_from_slice(&client_transmit.to_bytes()); // transmit (T1)
 
-        let received = NtpTime {
-            seconds: 1,
-            fraction: 2,
-        };
-        let sending = NtpTime {
-            seconds: 3,
-            fraction: 4,
-        };
+        let received = NtpTime { seconds: 1, fraction: 2 };
+        let sending = NtpTime { seconds: 3, fraction: 4 };
         let response = timing_response(&request, received, sending).unwrap();
 
         assert_eq!(response.len(), 32);
@@ -233,14 +214,8 @@ mod tests {
             client_transmit,
             "origin echoes the client's transmit timestamp"
         );
-        assert_eq!(
-            NtpTime::from_bytes(&response[16..24].try_into().unwrap()),
-            received
-        );
-        assert_eq!(
-            NtpTime::from_bytes(&response[24..32].try_into().unwrap()),
-            sending
-        );
+        assert_eq!(NtpTime::from_bytes(&response[16..24].try_into().unwrap()), received);
+        assert_eq!(NtpTime::from_bytes(&response[24..32].try_into().unwrap()), sending);
     }
 
     /// A datagram that isn't a timing request is not answered.

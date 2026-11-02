@@ -38,11 +38,7 @@ impl Drop for DropSignal {
 /// the receivers that say when it started and when it ended.
 fn waiting_feed(
     app: &AppHandle,
-) -> (
-    bae_core::library::CancellationToken,
-    mpsc::Receiver<()>,
-    mpsc::Receiver<()>,
-) {
+) -> (bae_core::library::CancellationToken, mpsc::Receiver<()>, mpsc::Receiver<()>) {
     let (started_tx, started) = mpsc::channel();
     let (ended_tx, ended) = mpsc::channel();
     let stop = bae_core::library::CancellationToken::new();
@@ -59,15 +55,11 @@ fn stopping_a_feed_ends_it() {
     let root = tempfile::tempdir().unwrap();
     let app = open_library(&root);
     let (stop, started, ended) = waiting_feed(&app);
-    started
-        .recv_timeout(Duration::from_secs(10))
-        .expect("the feed starts");
+    started.recv_timeout(Duration::from_secs(10)).expect("the feed starts");
 
     stop.cancel();
 
-    ended
-        .recv_timeout(Duration::from_secs(10))
-        .expect("stopping ends the feed");
+    ended.recv_timeout(Duration::from_secs(10)).expect("stopping ends the feed");
     app.close_library(None).unwrap();
 }
 
@@ -76,15 +68,11 @@ fn closing_the_library_ends_a_feed() {
     let root = tempfile::tempdir().unwrap();
     let app = open_library(&root);
     let (_stop, started, ended) = waiting_feed(&app);
-    started
-        .recv_timeout(Duration::from_secs(10))
-        .expect("the feed starts");
+    started.recv_timeout(Duration::from_secs(10)).expect("the feed starts");
 
     app.close_library(None).unwrap();
 
-    ended
-        .recv_timeout(Duration::from_secs(10))
-        .expect("closing the library ends the feed");
+    ended.recv_timeout(Duration::from_secs(10)).expect("closing the library ends the feed");
 }
 
 #[test]
@@ -95,11 +83,7 @@ fn a_feed_started_on_a_closed_library_never_runs() {
 
     let (_stop, started, _ended) = waiting_feed(&app);
 
-    assert_eq!(
-        started.recv(),
-        Err(mpsc::RecvError),
-        "the feed is dropped without starting"
-    );
+    assert_eq!(started.recv(), Err(mpsc::RecvError), "the feed is dropped without starting");
 }
 
 /// A library closed while the host still pulls one of its subscriptions
@@ -122,26 +106,18 @@ fn closing_a_library_cancels_a_waiting_pull_before_its_store_closes() {
     let (answered_tx, answered) = mpsc::channel();
     let waiting = members.clone();
     std::thread::spawn(move || {
-        let answer = tokio::runtime::Runtime::new()
-            .unwrap()
-            .block_on(waiting.next());
-        answered_tx
-            .send(answer.map(|_| ()))
-            .expect("the test waits for the answer");
+        let answer = tokio::runtime::Runtime::new().unwrap().block_on(waiting.next());
+        answered_tx.send(answer.map(|_| ())).expect("the test waits for the answer");
     });
     let (closed_tx, closed) = mpsc::channel();
     std::thread::spawn(move || {
-        closed_tx
-            .send(app.close_library(None))
-            .expect("the test waits for the close");
+        closed_tx.send(app.close_library(None)).expect("the test waits for the close");
     });
     closed
         .recv_timeout(Duration::from_secs(30))
         .expect("closing the library finishes")
         .expect("the library closes");
-    let answer = answered
-        .recv_timeout(Duration::from_secs(30))
-        .expect("the waiting pull answers");
+    let answer = answered.recv_timeout(Duration::from_secs(30)).expect("the waiting pull answers");
     assert!(
         matches!(answer, Err(BridgeError::Cancelled)),
         "the waiting pull answers that it was cancelled: {answer:?}"
@@ -153,11 +129,7 @@ struct HeardBugs(Mutex<mpsc::Sender<String>>);
 
 impl bae_core::diagnostics::BugReporter for HeardBugs {
     fn report(&self, operation: &str, _detail: &str) {
-        self.0
-            .lock()
-            .unwrap()
-            .send(operation.to_string())
-            .expect("the test hears the report");
+        self.0.lock().unwrap().send(operation.to_string()).expect("the test hears the report");
     }
 }
 
@@ -177,16 +149,12 @@ fn a_feed_that_panics_is_reported_and_others_go_on() {
         panic!("Callback interface failure: the host threw");
     });
     assert_eq!(
-        reports
-            .recv_timeout(Duration::from_secs(10))
-            .expect("the panic is reported"),
+        reports.recv_timeout(Duration::from_secs(10)).expect("the panic is reported"),
         "feed a stream"
     );
 
     let (_stop, started, _ended) = waiting_feed(&app);
-    started
-        .recv_timeout(Duration::from_secs(10))
-        .expect("another feed still starts");
+    started.recv_timeout(Duration::from_secs(10)).expect("another feed still starts");
     app.close_library(None).unwrap();
     assert!(reports.try_recv().is_err(), "the panic is reported once");
 }

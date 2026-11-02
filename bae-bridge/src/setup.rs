@@ -20,13 +20,7 @@ pub fn available_cloud_providers() -> Vec<BridgeCloudProvider> {
 
 impl BridgeLibrary {
     pub(crate) fn from_core_info(info: bae_core::config::LibraryInfo) -> Result<Self, BridgeError> {
-        let bae_core::config::LibraryInfo {
-            id,
-            name,
-            path,
-            is_active,
-            state,
-        } = info;
+        let bae_core::config::LibraryInfo { id, name, path, is_active, state } = info;
         let path = path
             .to_str()
             .ok_or_else(|| {
@@ -120,16 +114,14 @@ impl BridgeInviteInfo {
 }
 #[uniffi::export]
 pub fn decode_code_info(code: String) -> Result<BridgeCodeInfo, BridgeError> {
-    Ok(
-        match bae_core::sync::decode_code_info(&code).map_err(BridgeError::config)? {
-            coven::CodeInfo::Restore(metadata) => BridgeCodeInfo::Restore {
-                metadata: BridgeCodeMetadata::from_core(metadata),
-            },
-            coven::CodeInfo::Invite(invite) => BridgeCodeInfo::Invite {
-                invite: BridgeInviteInfo::from_core(invite),
-            },
-        },
-    )
+    Ok(match bae_core::sync::decode_code_info(&code).map_err(BridgeError::config)? {
+        coven::CodeInfo::Restore(metadata) => {
+            BridgeCodeInfo::Restore { metadata: BridgeCodeMetadata::from_core(metadata) }
+        }
+        coven::CodeInfo::Invite(invite) => {
+            BridgeCodeInfo::Invite { invite: BridgeInviteInfo::from_core(invite) }
+        }
+    })
 }
 
 /// A store a create, restore, join or device reset left open, held until an
@@ -145,11 +137,7 @@ pub struct OpenedLibrary {
 }
 impl OpenedLibrary {
     pub(crate) fn new(handle: coven::CovenHandle, host: Arc<BridgeHost>) -> Self {
-        Self {
-            store: handle.store_id(),
-            handle: std::sync::Mutex::new(Some(handle)),
-            host,
-        }
+        Self { store: handle.store_id(), handle: std::sync::Mutex::new(Some(handle)), host }
     }
 }
 #[uniffi::export]
@@ -165,10 +153,7 @@ impl OpenedLibrary {
         position_update_interval_ms: u32,
         restore_playback: bool,
     ) -> Result<Arc<crate::AppHandle>, BridgeError> {
-        let mut held = self
-            .handle
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let mut held = self.handle.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
         let handle = held.as_ref().ok_or_else(|| {
             BridgeError::from(bae_core::library::LibraryError::Internal(
                 "this library was already opened".to_string(),
@@ -186,11 +171,7 @@ impl OpenedLibrary {
 
 impl Drop for OpenedLibrary {
     fn drop(&mut self) {
-        let held = self
-            .handle
-            .get_mut()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .take();
+        let held = self.handle.get_mut().unwrap_or_else(std::sync::PoisonError::into_inner).take();
         if let Some(handle) = held {
             self.host.close_released(handle);
         }

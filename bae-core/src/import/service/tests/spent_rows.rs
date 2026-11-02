@@ -54,10 +54,7 @@ async fn seed_spent_rows(test: &TestService, content_hash: &str) {
             true => vec![content_hash.to_string()],
             false => Vec::new(),
         };
-        database
-            .execute_for_test(statement, params)
-            .await
-            .unwrap();
+        database.execute_for_test(statement, params).await.unwrap();
     }
 }
 
@@ -84,11 +81,8 @@ async fn spent_row_counts(test: &TestService, content_hash: &str) -> Vec<(&'stat
         "import_candidate_release_link_album",
         "import_candidate_cover",
     ] {
-        let count = test
-            .database
-            .count_rows_for_test(table, "content_hash", content_hash)
-            .await
-            .unwrap();
+        let count =
+            test.database.count_rows_for_test(table, "content_hash", content_hash).await.unwrap();
         counts.push((table, count));
     }
     counts
@@ -124,10 +118,7 @@ async fn an_import_deletes_what_it_spent_and_the_done_row_still_shows() {
     let content_hash = expectation.candidate.content_hash.clone();
     seed_spent_rows(&test, &content_hash).await;
     assert!(
-        spent_row_counts(&test, &content_hash)
-            .await
-            .iter()
-            .all(|(_, count)| *count > 0),
+        spent_row_counts(&test, &content_hash).await.iter().all(|(_, count)| *count > 0),
         "every spent table holds the candidate's rows before the import"
     );
 
@@ -184,20 +175,12 @@ async fn a_failed_import_keeps_what_a_retry_reads() {
     let blocked = crate::test_files::UnopenableFile::block(&folder.join("02 Track 2.flac"));
     test.service.queue_import_for_test(&candidate_key, "import-blocked").await;
     test.service
-        .do_import(
-            local_import_command("import-blocked", &candidate_key, &folder),
-            expectation,
-        )
+        .do_import(local_import_command("import-blocked", &candidate_key, &folder), expectation)
         .await;
     drop(blocked);
 
     assert!(
-        !test
-            .service
-            .library_manager
-            .is_content_hash_imported(&content_hash)
-            .await
-            .unwrap(),
+        !test.service.library_manager.is_content_hash_imported(&content_hash).await.unwrap(),
         "the import failed"
     );
     assert_eq!(spent_row_counts(&test, &content_hash).await, before);
@@ -233,10 +216,7 @@ async fn rescan_folder(test: &TestService, folder: &Path, name: &str) {
         .await
         .unwrap()
         .expect("the stored scan generation is current");
-    manager
-        .finish_folder_scan(folder, generation, None)
-        .await
-        .unwrap();
+    manager.finish_folder_scan(folder, generation, None).await.unwrap();
 }
 
 /// What the folder's row shows: its tab, title and artists.
@@ -329,8 +309,5 @@ async fn a_folder_whose_release_is_deleted_reads_as_its_blank_draft() {
     )
     .await;
     assert_eq!(drafts().await, 1, "the first write stores the draft");
-    assert_eq!(
-        shown_row(&test).await,
-        vec!["pending|Box Set Again|Artist Name".to_string()]
-    );
+    assert_eq!(shown_row(&test).await, vec!["pending|Box Set Again|Artist Name".to_string()]);
 }

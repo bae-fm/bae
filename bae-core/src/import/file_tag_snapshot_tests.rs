@@ -37,9 +37,7 @@ fn legacy_cyrillic_mp3() -> Vec<u8> {
     file.extend(frames);
 
     let existing_tag_size = 10
-        + PLACEHOLDER_MP3[6..10]
-            .iter()
-            .fold(0usize, |size, byte| (size << 7) | usize::from(*byte));
+        + PLACEHOLDER_MP3[6..10].iter().fold(0usize, |size, byte| (size << 7) | usize::from(*byte));
     file.extend_from_slice(&PLACEHOLDER_MP3[existing_tag_size..]);
     file
 }
@@ -59,18 +57,14 @@ fn legacy_cyrillic_multivalue_mp3() -> Vec<u8> {
     file.extend_from_slice(&synchsafe(frames.len()));
     file.extend(frames);
     let existing_tag_size = 10
-        + PLACEHOLDER_MP3[6..10]
-            .iter()
-            .fold(0usize, |size, byte| (size << 7) | usize::from(*byte));
+        + PLACEHOLDER_MP3[6..10].iter().fold(0usize, |size, byte| (size << 7) | usize::from(*byte));
     file.extend_from_slice(&PLACEHOLDER_MP3[existing_tag_size..]);
     file
 }
 
 fn legacy_cyrillic_id3v1_mp3() -> Vec<u8> {
     let existing_tag_size = 10
-        + PLACEHOLDER_MP3[6..10]
-            .iter()
-            .fold(0usize, |size, byte| (size << 7) | usize::from(*byte));
+        + PLACEHOLDER_MP3[6..10].iter().fold(0usize, |size, byte| (size << 7) | usize::from(*byte));
     let mut file = PLACEHOLDER_MP3[existing_tag_size..].to_vec();
     let mut tag = [0_u8; 128];
     tag[..3].copy_from_slice(b"TAG");
@@ -141,20 +135,13 @@ fn unsynchronised_id3v24_mp3(jpeg: &[u8]) -> Vec<u8> {
     file.extend_from_slice(&synchsafe(frames.len()));
     file.extend(frames);
     let existing_tag_size = 10
-        + PLACEHOLDER_MP3[6..10]
-            .iter()
-            .fold(0usize, |size, byte| (size << 7) | usize::from(*byte));
+        + PLACEHOLDER_MP3[6..10].iter().fold(0usize, |size, byte| (size << 7) | usize::from(*byte));
     file.extend_from_slice(&PLACEHOLDER_MP3[existing_tag_size..]);
     file
 }
 
 fn snapshot(embedded_cover: Option<EmbeddedCoverFact>) -> FileTagSnapshot {
-    FileTagSnapshot {
-        scan_generation: 1,
-        file_edit_revision: 0,
-        files: Vec::new(),
-        embedded_cover,
-    }
+    FileTagSnapshot { scan_generation: 1, file_edit_revision: 0, files: Vec::new(), embedded_cover }
 }
 
 #[derive(Default)]
@@ -170,10 +157,7 @@ impl FileTagReader for CountingReader {
                 album_title: Some("Album Alpha".to_string()),
                 album_artists: vec!["Artist Alpha".to_string()],
                 years: vec![2001],
-                numbers: crate::import::track_numbers::TrackNumbers {
-                    disc: None,
-                    track: Some(1),
-                },
+                numbers: crate::import::track_numbers::TrackNumbers { disc: None, track: Some(1) },
                 ..FileTags::untagged()
             },
             delivery: DeliveryTags::default(),
@@ -191,18 +175,13 @@ fn a_tag_s_isrc_is_read() {
     file.extend_from_slice(&synchsafe(frames.len()));
     file.extend(frames);
     let existing_tag_size = 10
-        + PLACEHOLDER_MP3[6..10]
-            .iter()
-            .fold(0usize, |size, byte| (size << 7) | usize::from(*byte));
+        + PLACEHOLDER_MP3[6..10].iter().fold(0usize, |size, byte| (size << 7) | usize::from(*byte));
     file.extend_from_slice(&PLACEHOLDER_MP3[existing_tag_size..]);
     let dir = tempfile::TempDir::new().unwrap();
     let path = dir.path().join("01.mp3");
     std::fs::write(&path, file).unwrap();
 
-    assert_eq!(
-        LoftyFileTagReader.read(&path).unwrap().delivery.isrcs,
-        ["IT-00G-91-70501"]
-    );
+    assert_eq!(LoftyFileTagReader.read(&path).unwrap().delivery.isrcs, ["IT-00G-91-70501"]);
 }
 
 #[test]
@@ -211,23 +190,12 @@ fn embedded_cover_in_an_unsynchronised_id3v24_tag_reads_as_the_original_image() 
     let path = dir.path().join("01.mp3");
     std::fs::write(&path, unsynchronised_id3v24_mp3(PLACEHOLDER_JPEG)).unwrap();
 
-    let (bytes, content_type) = LoftyFileTagReader
-        .read(&path)
-        .unwrap()
-        .embedded_cover
-        .expect("the tag carries a picture");
+    let (bytes, content_type) =
+        LoftyFileTagReader.read(&path).unwrap().embedded_cover.expect("the tag carries a picture");
 
     assert_eq!(content_type, ContentType::Jpeg);
     assert_eq!(bytes, PLACEHOLDER_JPEG);
-    assert_eq!(
-        LoftyFileTagReader
-            .read(&path)
-            .unwrap()
-            .tags
-            .title
-            .as_deref(),
-        Some("Track Alpha")
-    );
+    assert_eq!(LoftyFileTagReader.read(&path).unwrap().tags.title.as_deref(), Some("Track Alpha"));
 }
 
 #[test]
@@ -288,15 +256,8 @@ fn extraction_reads_every_file_before_returning_one_snapshot() {
     assert_eq!(snapshot.files.len(), 2);
     assert_eq!(reader.0.load(std::sync::atomic::Ordering::Relaxed), 2);
     assert_eq!(
-        snapshot
-            .files
-            .iter()
-            .map(|fact| &fact.observation)
-            .collect::<Vec<_>>(),
-        observe_audio_files(&files)
-            .unwrap()
-            .iter()
-            .collect::<Vec<_>>()
+        snapshot.files.iter().map(|fact| &fact.observation).collect::<Vec<_>>(),
+        observe_audio_files(&files).unwrap().iter().collect::<Vec<_>>()
     );
 }
 
@@ -324,9 +285,7 @@ fn embedded_artwork_becomes_the_file_tags_cover_selection() {
 
     assert_eq!(
         embedded_cover_selection(&snapshot),
-        Some(super::super::CoverSelection::Embedded(
-            "01.flac".to_string()
-        ))
+        Some(super::super::CoverSelection::Embedded("01.flac".to_string()))
     );
 }
 
@@ -343,10 +302,7 @@ fn unsupported_snapshot_artwork_is_not_selected_when_applying_file_tags() {
         data: b"BM".to_vec(),
     }));
     assert_eq!(embedded_cover_selection(&snapshot), None);
-    assert!(
-        snapshot.embedded_cover.is_some(),
-        "the stored observation is retained"
-    );
+    assert!(snapshot.embedded_cover.is_some(), "the stored observation is retained");
 }
 
 const PLACEHOLDER_FLAC: &[u8] = include_bytes!("../../tests/fixtures/flac/01 Test Track 1.flac");
@@ -378,10 +334,7 @@ fn m4a_with(dir: &Path, atoms: &[([u8; 4], &str)]) -> std::path::PathBuf {
         AtomData::UTF8("Track Alpha".to_string()),
     ));
     for (fourcc, value) in atoms {
-        ilst.insert(Atom::new(
-            AtomIdent::Fourcc(*fourcc),
-            AtomData::UTF8((*value).to_string()),
-        ));
+        ilst.insert(Atom::new(AtomIdent::Fourcc(*fourcc), AtomData::UTF8((*value).to_string())));
     }
     ilst.save_to_path(&path, WriteOptions::default()).unwrap();
     path
@@ -403,10 +356,7 @@ fn a_tag_s_label_and_copyright_are_read() {
         .unwrap()
         .delivery;
     assert_eq!(read.labels, ["Imprint Name"]);
-    assert_eq!(
-        read.copyrights,
-        ["(C) 1999 Imprint Name (P) 1999 Imprint Name"]
-    );
+    assert_eq!(read.copyrights, ["(C) 1999 Imprint Name (P) 1999 Imprint Name"]);
     let read = LoftyFileTagReader
         .read(&flac_with(dir.path(), &[("ORGANIZATION", "Other Imprint")]))
         .unwrap()
@@ -414,10 +364,7 @@ fn a_tag_s_label_and_copyright_are_read() {
     assert_eq!(read.labels, ["Other Imprint"]);
     assert_eq!(read.store, None);
     let read = LoftyFileTagReader
-        .read(&flac_with(
-            dir.path(),
-            &[("LABEL", "Imprint Name"), ("LABEL", "Second Imprint")],
-        ))
+        .read(&flac_with(dir.path(), &[("LABEL", "Imprint Name"), ("LABEL", "Second Imprint")]))
         .unwrap()
         .delivery;
     assert_eq!(read.labels, ["Imprint Name", "Second Imprint"]);
@@ -429,10 +376,7 @@ fn a_tag_s_label_and_copyright_are_read() {
 fn bandcamp_s_comment_marks_a_bandcamp_download() {
     let dir = tempfile::TempDir::new().unwrap();
     let read = LoftyFileTagReader
-        .read(&flac_with(
-            dir.path(),
-            &[("COMMENT", "Visit https://artistname.bandcamp.com")],
-        ))
+        .read(&flac_with(dir.path(), &[("COMMENT", "Visit https://artistname.bandcamp.com")]))
         .unwrap();
     assert_eq!(read.delivery.store, Some(StoreMarker::Bandcamp));
     let read = LoftyFileTagReader
@@ -447,18 +391,11 @@ fn bandcamp_s_comment_marks_a_bandcamp_download() {
 fn an_itunes_purchase_is_marked_by_its_purchase_atoms() {
     let dir = tempfile::TempDir::new().unwrap();
     for atom in [*b"purd", *b"apID", *b"ownr"] {
-        let read = LoftyFileTagReader
-            .read(&m4a_with(dir.path(), &[(atom, "placeholder")]))
-            .unwrap();
-        assert_eq!(
-            read.delivery.store,
-            Some(StoreMarker::ITunesPurchase),
-            "{atom:?}"
-        );
+        let read =
+            LoftyFileTagReader.read(&m4a_with(dir.path(), &[(atom, "placeholder")])).unwrap();
+        assert_eq!(read.delivery.store, Some(StoreMarker::ITunesPurchase), "{atom:?}");
     }
-    let read = LoftyFileTagReader
-        .read(&m4a_with(dir.path(), &[(*b"cnID", "1")]))
-        .unwrap();
+    let read = LoftyFileTagReader.read(&m4a_with(dir.path(), &[(*b"cnID", "1")])).unwrap();
     assert_eq!(read.delivery.store, None);
 }
 
@@ -503,10 +440,8 @@ fn every_year_a_file_s_dates_name_is_read() {
         .unwrap()
         .tags;
     assert_eq!(read.years, [2005, 1971]);
-    let read = LoftyFileTagReader
-        .read(&flac_with(dir.path(), &[("TITLE", "Track Alpha")]))
-        .unwrap()
-        .tags;
+    let read =
+        LoftyFileTagReader.read(&flac_with(dir.path(), &[("TITLE", "Track Alpha")])).unwrap().tags;
     assert!(read.years.is_empty());
 }
 

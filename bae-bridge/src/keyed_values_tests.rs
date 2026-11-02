@@ -11,10 +11,7 @@ fn fed_stream(
     let stream = Arc::new(KeyedValueStream::new(
         values.clone(),
         CancellationToken::new(),
-        OperationRuntime::new(
-            runtime.handle().clone(),
-            bae_core::diagnostics::Diagnostics::noop(),
-        ),
+        OperationRuntime::new(runtime.handle().clone(), bae_core::diagnostics::Diagnostics::noop()),
     ));
     (stream, StreamWriter::new(values.clone()), values)
 }
@@ -37,10 +34,7 @@ fn pulled_now(values: &StreamValues) -> Option<Result<Vec<Vec<u8>>, BridgeError>
 }
 
 fn keys(names: &[&str]) -> Option<Result<Vec<Vec<u8>>, BridgeError>> {
-    Some(Ok(names
-        .iter()
-        .map(|name| name.as_bytes().to_vec())
-        .collect()))
+    Some(Ok(names.iter().map(|name| name.as_bytes().to_vec()).collect()))
 }
 
 /// A key moving holds its latest value and is not pulled; only a key
@@ -85,16 +79,10 @@ fn the_keys_changed_since_the_last_pull_come_in_one_pull() {
 fn a_reset_pulls_the_keys_that_came_and_went() {
     let runtime = tokio::runtime::Runtime::new().unwrap();
     let (stream, writer, values) = fed_stream(&runtime);
-    writer.reset(HashMap::from([
-        (b"a".to_vec(), share(0.1)),
-        (b"b".to_vec(), share(0.2)),
-    ]));
+    writer.reset(HashMap::from([(b"a".to_vec(), share(0.1)), (b"b".to_vec(), share(0.2))]));
     pulled_now(&values);
 
-    writer.reset(HashMap::from([
-        (b"b".to_vec(), share(0.3)),
-        (b"c".to_vec(), share(0.4)),
-    ]));
+    writer.reset(HashMap::from([(b"b".to_vec(), share(0.3)), (b"c".to_vec(), share(0.4))]));
 
     assert_eq!(stream.latest(b"a".to_vec()), None);
     assert_eq!(stream.latest(b"b".to_vec()), Some(share(0.3)));
@@ -112,10 +100,7 @@ fn a_waiting_pull_answers_when_a_key_starts() {
 
     writer.set("a", share(0.5));
 
-    assert_eq!(
-        poll_once(pull.as_mut()),
-        Poll::Ready(Ok(vec![b"a".to_vec()]))
-    );
+    assert_eq!(poll_once(pull.as_mut()), Poll::Ready(Ok(vec![b"a".to_vec()])));
 }
 
 /// The host's pull runs on the stream's runtime and answers what changed.
@@ -158,10 +143,7 @@ fn a_failed_read_is_pulled_after_the_keys_it_emptied() {
 
     assert_eq!(stream.latest(b"a".to_vec()), None);
     assert_eq!(pulled_now(&values), keys(&["a"]));
-    assert_eq!(
-        pulled_now(&values),
-        Some(Err(BridgeError::internal("the read failed")))
-    );
+    assert_eq!(pulled_now(&values), Some(Err(BridgeError::internal("the read failed"))));
     assert_eq!(pulled_now(&values), None, "a failure is pulled once");
 
     writer.set("b", share(0.1));

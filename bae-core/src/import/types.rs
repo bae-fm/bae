@@ -75,11 +75,7 @@ pub struct CatalogAvailability {
 /// The sources an availability list says to ask, in list order. What a run's
 /// provider list and a search's dispatch are both a projection of.
 pub fn asked_sources(sources: &[CatalogAvailability]) -> Vec<Catalog> {
-    sources
-        .iter()
-        .filter(|entry| entry.state.is_on())
-        .map(|entry| entry.catalog)
-        .collect()
+    sources.iter().filter(|entry| entry.state.is_on()).map(|entry| entry.catalog).collect()
 }
 
 /// Whether `source` is the only one this library still asks, so switching it
@@ -182,11 +178,7 @@ pub struct SourcePayload {
 #[cfg(desktop)]
 impl SourcePayload {
     pub fn new(source: PayloadSource, source_release_id: impl Into<String>, json: String) -> Self {
-        Self {
-            source,
-            source_release_id: source_release_id.into(),
-            json,
-        }
+        Self { source, source_release_id: source_release_id.into(), json }
     }
 }
 
@@ -257,14 +249,9 @@ impl AlbumLink {
     /// catalog.
     pub fn new(albums: impl IntoIterator<Item = MetadataRef>) -> Option<Self> {
         let mut albums: Vec<MetadataRef> = albums.into_iter().collect();
-        albums.sort_by_key(|album| {
-            Catalog::ALL
-                .iter()
-                .position(|catalog| *catalog == album.catalog)
-        });
-        let repeated = albums
-            .windows(2)
-            .any(|pair| pair[0].catalog == pair[1].catalog);
+        albums
+            .sort_by_key(|album| Catalog::ALL.iter().position(|catalog| *catalog == album.catalog));
+        let repeated = albums.windows(2).any(|pair| pair[0].catalog == pair[1].catalog);
         (!albums.is_empty() && !repeated).then_some(Self { albums })
     }
 
@@ -350,20 +337,16 @@ pub enum DiscogsArtistImage {
 impl DiscogsArtistImage {
     pub fn discogs_artist_id(&self) -> &str {
         match self {
-            Self::Image {
-                discogs_artist_id, ..
+            Self::Image { discogs_artist_id, .. } | Self::Nothing { discogs_artist_id } => {
+                discogs_artist_id
             }
-            | Self::Nothing { discogs_artist_id } => discogs_artist_id,
         }
     }
 }
 
 impl MetadataRef {
     pub fn new(catalog: Catalog, key: impl Into<String>) -> Self {
-        Self {
-            catalog,
-            key: key.into(),
-        }
+        Self { catalog, key: key.into() }
     }
 }
 
@@ -373,27 +356,17 @@ impl MetadataRef {
 /// draft was read from, or the linked pressing — first.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ReleaseRecord {
-    Pressing {
-        release: MetadataRef,
-        album_key: Option<String>,
-    },
-    Album {
-        album: MetadataRef,
-    },
+    Pressing { release: MetadataRef, album_key: Option<String> },
+    Album { album: MetadataRef },
 }
 
 impl ReleaseRecord {
     pub fn new(release: &MetadataRef, album_key: Option<String>) -> Self {
-        Self::Pressing {
-            release: release.clone(),
-            album_key,
-        }
+        Self::Pressing { release: release.clone(), album_key }
     }
 
     pub fn album(album: &MetadataRef) -> Self {
-        Self::Album {
-            album: album.clone(),
-        }
+        Self::Album { album: album.clone() }
     }
 
     pub fn catalog(&self) -> Catalog {
@@ -426,11 +399,9 @@ impl ReleaseRecord {
 
     pub fn album_ref(&self) -> Option<MetadataRef> {
         match self {
-            Self::Pressing {
-                release, album_key, ..
-            } => album_key
-                .as_ref()
-                .map(|key| MetadataRef::new(release.catalog, key.clone())),
+            Self::Pressing { release, album_key, .. } => {
+                album_key.as_ref().map(|key| MetadataRef::new(release.catalog, key.clone()))
+            }
             Self::Album { album } => Some(album.clone()),
         }
     }
@@ -485,11 +456,7 @@ pub enum AudioFile {
     Standalone { file_id: String },
     /// One of several tracks a bound track sheet carves out of one container.
     /// `index` counts that sheet's playable tracks from zero.
-    SheetSlice {
-        file_id: String,
-        sheet_id: String,
-        index: u32,
-    },
+    SheetSlice { file_id: String, sheet_id: String, index: u32 },
 }
 
 impl AudioFile {
@@ -546,12 +513,7 @@ impl ReleaseEditSeed {
     /// tracks and the album — whatever its cover: the cover is written at
     /// once outside any session, so it never makes a session's values stale.
     pub fn holds_the_values_of(&self, opened: &Self) -> bool {
-        let Self {
-            edit,
-            cover: _,
-            display,
-            album,
-        } = self;
+        let Self { edit, cover: _, display, album } = self;
         *edit == opened.edit && *display == opened.display && *album == opened.album
     }
 }
@@ -598,17 +560,13 @@ impl ReleaseUserEdit {
         if self.album_artist_assignments.is_empty() {
             return Err(EditValidationError::NoAlbumArtist);
         }
-        for assignment in self
-            .album_artist_assignments
-            .iter()
-            .chain(
-                self.tracks
-                    .iter()
-                    .flat_map(|track| match &track.artist_assignments {
-                        TrackArtistAssignments::AlbumArtists => [].as_slice(),
-                        TrackArtistAssignments::Explicit(assignments) => assignments.as_slice(),
-                    }),
-            )
+        for assignment in
+            self.album_artist_assignments.iter().chain(self.tracks.iter().flat_map(|track| {
+                match &track.artist_assignments {
+                    TrackArtistAssignments::AlbumArtists => [].as_slice(),
+                    TrackArtistAssignments::Explicit(assignments) => assignments.as_slice(),
+                }
+            }))
         {
             if assignment.artist.is_blank() {
                 return Err(EditValidationError::EmptyArtistName);
@@ -651,14 +609,8 @@ pub struct TrackFile {
 #[cfg(desktop)]
 #[derive(Debug, Clone)]
 pub enum TrackAudio {
-    Standalone {
-        file_path: PathBuf,
-        source_audio: crate::import::folder_scanner::ScannedAudio,
-    },
-    CueBacked {
-        cue_pair: Arc<CueFlacAnalysis>,
-        cue_index: usize,
-    },
+    Standalone { file_path: PathBuf, source_audio: crate::import::folder_scanner::ScannedAudio },
+    CueBacked { cue_pair: Arc<CueFlacAnalysis>, cue_index: usize },
 }
 
 /// Parsed CUE sheet plus probed container analysis, shared across all tracks
@@ -675,9 +627,7 @@ impl CueFlacAnalysis {
     /// The audio a `FILE` directive of the sheet names, as the scan resolved
     /// and probed it.
     pub(crate) fn audio_file(&self, file_reference: &str) -> Option<&CueAnalyzedAudioFile> {
-        self.audio_files
-            .iter()
-            .find(|file| file.file_reference == file_reference)
+        self.audio_files.iter().find(|file| file.file_reference == file_reference)
     }
 }
 

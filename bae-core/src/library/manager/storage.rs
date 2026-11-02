@@ -13,11 +13,7 @@ impl LibraryManager {
     /// For the callers that need the user's actual file — the DiscID re-read of the
     /// rip's artifacts — rather than coven's locality-aware byte read.
     pub async fn file_local_path(&self, file_id: &str) -> Result<Option<PathBuf>, LibraryError> {
-        Ok(self
-            .database
-            .external_file(file_id)
-            .await?
-            .map(|ext| ext.path))
+        Ok(self.database.external_file(file_id).await?.map(|ext| ext.path))
     }
 }
 
@@ -33,10 +29,7 @@ impl LibraryManager {
         &self,
         release_id: &str,
     ) -> Result<bool, LibraryError> {
-        Ok(self
-            .database
-            .has_pending_uploads_for_release(release_id)
-            .await?)
+        Ok(self.database.has_pending_uploads_for_release(release_id).await?)
     }
 
     /// Test-only observability: how many upload entries a release's files still have
@@ -47,10 +40,7 @@ impl LibraryManager {
         &self,
         release_id: &str,
     ) -> Result<i64, LibraryError> {
-        Ok(self
-            .database
-            .count_pending_uploads_for_release(release_id)
-            .await?)
+        Ok(self.database.count_pending_uploads_for_release(release_id).await?)
     }
 
     /// Whether the person paused uploads, live.
@@ -80,8 +70,7 @@ impl LibraryManager {
     /// Cancel the release's move to the cloud: its files stay on this device
     /// only, as they were, and no row changes.
     pub async fn cancel_release_upload(&self, release_id: &str) -> Result<(), LibraryError> {
-        self.cancel_release_uploads(vec![release_id.to_string()])
-            .await
+        self.cancel_release_uploads(vec![release_id.to_string()]).await
     }
 
     pub async fn cancel_all_release_uploads(&self) -> Result<(), LibraryError> {
@@ -107,15 +96,8 @@ impl LibraryManager {
     /// A file leaves it unstored too, when its move failed.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn drain_uploads_for_test(&self) -> Result<coven::DrainOutcome, String> {
-        let before = self
-            .database
-            .uploads()
-            .await
-            .map_err(|error| error.to_string())?;
-        self.database
-            .set_uploads_paused(false)
-            .await
-            .map_err(|error| error.to_string())?;
+        let before = self.database.uploads().await.map_err(|error| error.to_string())?;
+        self.database.set_uploads_paused(false).await.map_err(|error| error.to_string())?;
         let drained = self.database.retry_uploads_now().await;
         let restored = self.database.set_uploads_paused(before.paused).await;
         restored.map_err(|error| {
@@ -127,28 +109,17 @@ impl LibraryManager {
             }
             coven::DrainOutcome::Drained { .. } | coven::DrainOutcome::QueueEmpty => {}
         }
-        let after = self
-            .database
-            .uploads()
-            .await
-            .map_err(|error| error.to_string())?;
+        let after = self.database.uploads().await.map_err(|error| error.to_string())?;
         if before.files.is_empty() {
             Ok(coven::DrainOutcome::QueueEmpty)
         } else {
             let mut uploaded = 0;
             for queued in &before.files {
-                if after
-                    .files
-                    .iter()
-                    .any(|remaining| remaining.file == queued.file)
-                {
+                if after.files.iter().any(|remaining| remaining.file == queued.file) {
                     continue;
                 }
-                let file = self
-                    .database
-                    .file_ref(queued.file)
-                    .await
-                    .map_err(|error| error.to_string())?;
+                let file =
+                    self.database.file_ref(queued.file).await.map_err(|error| error.to_string())?;
                 if matches!(file.place(), coven::FilePlace::Cloud { .. }) {
                     uploaded += 1;
                 }
@@ -167,9 +138,7 @@ impl LibraryManager {
     pub async fn drain_uploads_expecting_work(&self) -> Result<usize, String> {
         match self.drain_uploads_for_test().await? {
             coven::DrainOutcome::Drained { uploaded, .. } => Ok(uploaded),
-            other => Err(format!(
-                "expected a drain that attempted queued uploads, got {other:?}"
-            )),
+            other => Err(format!("expected a drain that attempted queued uploads, got {other:?}")),
         }
     }
 
@@ -182,17 +151,12 @@ impl LibraryManager {
         offset: u64,
         limit: u64,
     ) -> Result<StoragePage, LibraryError> {
-        let raw_rows = self
-            .database
-            .get_storage_page(sort, filter, offset, limit)
-            .await?;
+        let raw_rows = self.database.get_storage_page(sort, filter, offset, limit).await?;
         let total_count = self.database.get_storage_count(filter).await?;
 
         let has_cloud_home = self.has_cloud_home().await?;
-        let rows = raw_rows
-            .into_iter()
-            .map(|raw| StorageRow::from_raw(raw, has_cloud_home))
-            .collect();
+        let rows =
+            raw_rows.into_iter().map(|raw| StorageRow::from_raw(raw, has_cloud_home)).collect();
         Ok(StoragePage { rows, total_count })
     }
 

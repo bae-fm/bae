@@ -72,7 +72,9 @@ pub enum CandidateRuntimeChange {
         runtime: super::candidates::CandidateRuntimeSnapshot,
     },
     /// Nothing is running for the key any more.
-    Removed { key: CandidateKey },
+    Removed {
+        key: CandidateKey,
+    },
 }
 
 /// The files a candidate's runtime was recorded against; a scan reporting
@@ -205,10 +207,7 @@ impl CandidateRuntime {
     /// `key`'s row as the standings table reads it, for a test.
     #[cfg(test)]
     pub(crate) async fn stored_standing_for_test(&self, key: &CandidateKey) -> StoredStanding {
-        self.database
-            .load_candidate_standing(key)
-            .await
-            .expect("a test reads the standings table")
+        self.database.load_candidate_standing(key).await.expect("a test reads the standings table")
     }
 
     /// Another runtime over this one's library, holding nothing of what this
@@ -278,10 +277,7 @@ impl CandidateRuntime {
     /// Whether `run` is still the run `key`'s search is on.
     #[cfg(test)]
     pub(super) async fn search_run_is_current(&self, key: &CandidateKey, run: SearchRun) -> bool {
-        self.database
-            .candidate_search_run(key)
-            .await
-            .expect("a test reads the search it started")
+        self.database.candidate_search_run(key).await.expect("a test reads the search it started")
             == Some(run)
     }
 
@@ -295,9 +291,7 @@ impl CandidateRuntime {
         source: Catalog,
         outcome: Result<Vec<MetadataResult>, Failure>,
     ) -> Result<bool, DbError> {
-        self.database
-            .land_candidate_search(run, source, outcome)
-            .await
+        self.database.land_candidate_search(run, source, outcome).await
     }
 
     /// Land what `release`'s documents state its album is on whatever search
@@ -310,9 +304,7 @@ impl CandidateRuntime {
         release: &crate::import::MetadataRef,
         links: crate::import::album_links::AlbumLinks,
     ) -> Result<Vec<(String, Vec<crate::import::MetadataRef>)>, DbError> {
-        self.database
-            .land_candidate_search_pick(key, release, links)
-            .await
+        self.database.land_candidate_search_pick(key, release, links).await
     }
 
     /// The state `run` of the folder candidate `key` published, and the
@@ -378,9 +370,7 @@ impl CandidateRuntime {
     /// so the key ends.
     fn reshape(&self, candidate: &FolderCandidate) {
         let key = candidate.key();
-        self.held()
-            .shapes
-            .insert(key.clone(), CandidateShape::of(candidate));
+        self.held().shapes.insert(key.clone(), CandidateShape::of(candidate));
         self.end_candidate(&key);
     }
 
@@ -399,18 +389,12 @@ impl CandidateRuntime {
         let import_id = progress.import_id();
         let shown = {
             let mut inner = self.held();
-            let own = inner
-                .imports
-                .get(key)
-                .is_some_and(|report| report.import_id == import_id);
+            let own = inner.imports.get(key).is_some_and(|report| report.import_id == import_id);
             match progress {
                 ImportProgress::Preparing { .. } => {
                     inner.imports.insert(
                         key.clone(),
-                        ImportReport {
-                            import_id: import_id.to_string(),
-                            percent: None,
-                        },
+                        ImportReport { import_id: import_id.to_string(), percent: None },
                     );
                 }
                 ImportProgress::Progress { percent, .. } if own => {
@@ -448,10 +432,9 @@ impl CandidateRuntime {
     /// written before it is sent.
     pub(super) fn record_event(&self, event: &ImportEvent) {
         match event {
-            ImportEvent::ImportProgress {
-                candidate_key,
-                progress,
-            } => self.record_import_progress(candidate_key, progress),
+            ImportEvent::ImportProgress { candidate_key, progress } => {
+                self.record_import_progress(candidate_key, progress)
+            }
             // The driver records its own run's state, beside the standing it
             // writes, before it sends it.
             ImportEvent::IdentifyStateChanged { .. } => {}

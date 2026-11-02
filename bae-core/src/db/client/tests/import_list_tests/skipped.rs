@@ -16,11 +16,8 @@ async fn a_skipped_folder_is_listed_and_read_as_what_its_scan_read() {
     let (db, _tmp, root) = watched_root().await;
     db.add_watched_import_folder(&root).await.unwrap();
     let folder = PathBuf::from(&root).join("Half Copied");
-    let version = |name: &str, size| FileVersion {
-        path: folder.join(name),
-        size,
-        modified_at_ns: 1,
-    };
+    let version =
+        |name: &str, size| FileVersion { path: folder.join(name), size, modified_at_ns: 1 };
     let invalid = InvalidCandidate {
         path: folder.clone(),
         name: "Half Copied".to_string(),
@@ -36,9 +33,7 @@ async fn a_skipped_folder_is_listed_and_read_as_what_its_scan_read() {
             SkippedFile {
                 relative_path: "02.flac".to_string(),
                 file: version("02.flac", 4_096),
-                role: ProposedRole::DamagedAudio {
-                    damage: AudioDamage::Unreadable,
-                },
+                role: ProposedRole::DamagedAudio { damage: AudioDamage::Unreadable },
             },
             SkippedFile {
                 relative_path: "front.jpg".to_string(),
@@ -52,16 +47,9 @@ async fn a_skipped_folder_is_listed_and_read_as_what_its_scan_read() {
         }),
     };
     let key = invalid.key();
-    let generation = db
-        .begin_folder_scan(&root, crate::import::VolumeKind::Local)
-        .await
-        .unwrap();
-    db.save_folder_scan_item(&root, generation, &ScanItem::Invalid(invalid.clone()))
-        .await
-        .unwrap();
-    db.finish_folder_scan(&root, generation, None)
-        .await
-        .unwrap();
+    let generation = db.begin_folder_scan(&root, crate::import::VolumeKind::Local).await.unwrap();
+    db.save_folder_scan_item(&root, generation, &ScanItem::Invalid(invalid.clone())).await.unwrap();
+    db.finish_folder_scan(&root, generation, None).await.unwrap();
     let mut selecting = request(TriageTab::Skipped).await;
     selecting.selected.push(key.clone());
 
@@ -71,20 +59,16 @@ async fn a_skipped_folder_is_listed_and_read_as_what_its_scan_read() {
         .iter()
         .flat_map(|window| &window.items)
         .filter_map(|item| match item {
-            ImportListItem::Invalid {
-                candidate,
-                selected,
-                ..
-            } => Some((candidate.clone(), *selected)),
+            ImportListItem::Invalid { candidate, selected, .. } => {
+                Some((candidate.clone(), *selected))
+            }
             _ => None,
         })
         .collect();
     assert_eq!(listed, [(invalid.clone(), true)]);
     assert_eq!(
         invalid.cover_image(),
-        Some(crate::import::CoverImageSource::Local {
-            file: version("front.jpg", 4)
-        })
+        Some(crate::import::CoverImageSource::Local { file: version("front.jpg", 4) })
     );
 
     let mut detail = db.subscribe_invalid_candidate(Some(key.clone()));
@@ -97,41 +81,27 @@ async fn a_skipped_folder_is_listed_and_read_as_what_its_scan_read() {
         .expect("the key names a folder that failed validation");
     assert_eq!(read.candidate, invalid);
     assert_eq!(
-        read.images
-            .iter()
-            .map(|image| image.file_id.as_str())
-            .collect::<Vec<_>>(),
+        read.images.iter().map(|image| image.file_id.as_str()).collect::<Vec<_>>(),
         ["front.jpg"]
     );
     assert_eq!(
-        read.files
-            .iter()
-            .map(|file| (file.file_id.as_str(), file.role))
-            .collect::<Vec<_>>(),
+        read.files.iter().map(|file| (file.file_id.as_str(), file.role)).collect::<Vec<_>>(),
         [
             ("01.flac", crate::import::MappingRole::Audio),
             (
                 "02.flac",
-                crate::import::MappingRole::DamagedAudio {
-                    damage: AudioDamage::Unreadable
-                }
+                crate::import::MappingRole::DamagedAudio { damage: AudioDamage::Unreadable }
             ),
         ]
     );
 
-    let generation = db
-        .begin_folder_scan(&root, crate::import::VolumeKind::Local)
-        .await
-        .unwrap();
+    let generation = db.begin_folder_scan(&root, crate::import::VolumeKind::Local).await.unwrap();
     let again = db
         .save_folder_scan_item(&root, generation, &ScanItem::Invalid(invalid))
         .await
         .unwrap()
         .expect("the scan entry is written");
-    assert!(
-        !again.changed(),
-        "the folder read the same is stored unchanged"
-    );
+    assert!(!again.changed(), "the folder read the same is stored unchanged");
 }
 
 /// The pane looking into a folder that failed validation reads nothing for a
@@ -185,21 +155,11 @@ async fn a_skipped_folder_whose_files_show_one_name_is_listed_with_that_name() {
         files: vec![file(br"Caf\xE9.flac"), file(b"Caf\xE9.flac")],
         tags: None,
     };
-    let generation = db
-        .begin_folder_scan(&root, crate::import::VolumeKind::Local)
-        .await
-        .unwrap();
-    db.save_folder_scan_item(&root, generation, &ScanItem::Invalid(invalid.clone()))
-        .await
-        .unwrap();
-    db.finish_folder_scan(&root, generation, None)
-        .await
-        .unwrap();
+    let generation = db.begin_folder_scan(&root, crate::import::VolumeKind::Local).await.unwrap();
+    db.save_folder_scan_item(&root, generation, &ScanItem::Invalid(invalid.clone())).await.unwrap();
+    db.finish_folder_scan(&root, generation, None).await.unwrap();
 
-    let list = db
-        .load_import_list_read(request(TriageTab::Skipped).await)
-        .await
-        .unwrap();
+    let list = db.load_import_list_read(request(TriageTab::Skipped).await).await.unwrap();
     let listed: Vec<&InvalidCandidate> = list
         .windows
         .iter()
@@ -210,10 +170,5 @@ async fn a_skipped_folder_whose_files_show_one_name_is_listed_with_that_name() {
         })
         .collect();
     assert_eq!(listed, [&invalid]);
-    assert_eq!(
-        listed[0].reason(),
-        InvalidReason::SameName {
-            name: r"Caf\xE9.flac".to_string()
-        }
-    );
+    assert_eq!(listed[0].reason(), InvalidReason::SameName { name: r"Caf\xE9.flac".to_string() });
 }

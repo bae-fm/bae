@@ -4,10 +4,7 @@ async fn insert_pinnable_release(manager: &TestManager) -> String {
     let source = manager.library_path().join("pin-source");
     let release = uploaded_release(manager, &source, "Test Album", false).await;
     let file = release_files(manager, &release).await.remove(0);
-    manager
-        .evict_file_for_test(file.file)
-        .await
-        .unwrap();
+    manager.evict_file_for_test(file.file).await.unwrap();
     release
 }
 
@@ -22,8 +19,7 @@ async fn download_queue_enqueue_dedups_and_cancels_while_paused() {
     // Park the worker up front so nothing drains while we inspect state.
     manager.set_downloads_paused(true).await.unwrap();
 
-    manager.enqueue_pins(vec![release_id.clone()]).await
-        .unwrap();
+    manager.enqueue_pins(vec![release_id.clone()]).await.unwrap();
     let snap = download_queue_now(&manager).await;
     assert_eq!(snap.total.queued, 1);
     assert_eq!(snap.rows.len(), 1);
@@ -31,8 +27,7 @@ async fn download_queue_enqueue_dedups_and_cancels_while_paused() {
     assert!(snap.paused);
 
     // Re-enqueuing the same release is a no-op: still one entry.
-    manager.enqueue_pins(vec![release_id.clone()]).await
-        .unwrap();
+    manager.enqueue_pins(vec![release_id.clone()]).await.unwrap();
     assert_eq!(download_queue_now(&manager).await.rows.len(), 1);
 
     // Cancel drops the entry.
@@ -50,30 +45,14 @@ async fn download_queue_skips_already_pinned() {
     // A genuinely pinned release: made Remote with pin, so its file lands in
     // coven's offline cache.
     connect_test_cloud(&manager).await;
-    let release_id = uploaded_release(
-        &manager,
-        &temp_dir.path().join("pinned"),
-        "Test Album",
-        true,
-    )
-    .await;
-    let summary = manager
-        .find_release_storage_summary(&release_id)
-        .await
-        .unwrap()
-        .unwrap();
-    assert_eq!(
-        summary.storage_state,
-        crate::album_detail::ReleaseStorageState::Remote
-    );
-    assert!(
-        summary.pinned,
-        "the offline-cached file makes it read as pinned"
-    );
+    let release_id =
+        uploaded_release(&manager, &temp_dir.path().join("pinned"), "Test Album", true).await;
+    let summary = manager.find_release_storage_summary(&release_id).await.unwrap().unwrap();
+    assert_eq!(summary.storage_state, crate::album_detail::ReleaseStorageState::Remote);
+    assert!(summary.pinned, "the offline-cached file makes it read as pinned");
 
     manager.set_downloads_paused(true).await.unwrap();
-    manager.enqueue_pins(vec![release_id.clone()]).await
-        .unwrap();
+    manager.enqueue_pins(vec![release_id.clone()]).await.unwrap();
     assert!(download_queue_now(&manager).await.rows.is_empty());
 }
 
@@ -124,18 +103,10 @@ async fn download_queue_skips_local_release() {
         &[("a.flac", b"aaa")],
     )
     .await;
-    let summary = manager
-        .find_release_storage_summary(&release.id)
-        .await
-        .unwrap()
-        .unwrap();
-    assert_eq!(
-        summary.storage_state,
-        crate::album_detail::ReleaseStorageState::Local
-    );
+    let summary = manager.find_release_storage_summary(&release.id).await.unwrap().unwrap();
+    assert_eq!(summary.storage_state, crate::album_detail::ReleaseStorageState::Local);
 
-    manager.enqueue_pins(vec![release.id.clone()]).await
-        .unwrap();
+    manager.enqueue_pins(vec![release.id.clone()]).await.unwrap();
     assert!(
         download_queue_now(&manager).await.rows.is_empty(),
         "a local release is not enqueued for pinning"
@@ -151,8 +122,7 @@ async fn download_queue_failed_pin_retries() {
 
     manager.storage.set_online(false);
     // The evicted file cannot be fetched while storage is offline.
-    manager.enqueue_pins(vec![release_id.clone()]).await
-        .unwrap();
+    manager.enqueue_pins(vec![release_id.clone()]).await.unwrap();
 
     // Let the worker pick it up, fail, and mark it Failed.
     let failed = download_queue_until(&manager, |queue| {
@@ -180,10 +150,7 @@ async fn download_queue_failed_pin_retries() {
 
     // Cancelling clears it regardless of the in-flight retry.
     manager.cancel_download(&release_id).await.unwrap();
-    assert!(
-        download_queue_now(&manager).await.rows.is_empty(),
-        "cancel removes the entry"
-    );
+    assert!(download_queue_now(&manager).await.rows.is_empty(), "cancel removes the entry");
 }
 
 /// Pinning a release whose download failed queues that entry again, in its
@@ -261,10 +228,7 @@ async fn download_transfers_report_each_driven_file_progress() {
         String,
         crate::library::DownloadTransferProgress,
     >| {
-        transfers
-            .get("release-progress")
-            .expect("the active download has progress")
-            .clone()
+        transfers.get("release-progress").expect("the active download has progress").clone()
     };
     assert_eq!(bytes_done(&transfers.borrow_and_update()).bytes_done, 0);
 
@@ -273,9 +237,7 @@ async fn download_transfers_report_each_driven_file_progress() {
         let manager = manager.clone();
         let release_id = release_id.clone();
         tokio::spawn(async move {
-            manager
-                .drive_transfer(&release_id, ReleaseStorageAction::Pin, progress_rx)
-                .await
+            manager.drive_transfer(&release_id, ReleaseStorageAction::Pin, progress_rx).await
         })
     };
     for done in [3, 7] {
@@ -292,9 +254,7 @@ async fn download_transfers_report_each_driven_file_progress() {
         assert_eq!(progress.fraction, done as f64 / 7.0);
     }
     progress_tx
-        .send(TransferProgress::Complete {
-            release_id: release_id.clone(),
-        })
+        .send(TransferProgress::Complete { release_id: release_id.clone() })
         .expect("the transfer driver is listening");
     driver.await.unwrap().unwrap();
     pending.abort();
@@ -331,18 +291,13 @@ async fn download_bytes_send_no_new_sync_activity() {
         .unwrap());
     assert_eq!(
         crate::followed::value_matching(&mut activity, |_| true).await.downloads,
-        Some(crate::library::DownloadsInFlight {
-            active: 1,
-            queued: 0
-        })
+        Some(crate::library::DownloadsInFlight { active: 1, queued: 0 })
     );
 
     let next = activity.next();
     tokio::pin!(next);
     for bytes_done in [3, 7] {
-        assert!(manager
-            .downloads
-            .set_active_progress(&release_id, progress(bytes_done)));
+        assert!(manager.downloads.set_active_progress(&release_id, progress(bytes_done)));
         let polled = tokio::task::unconstrained(std::future::poll_fn(|cx| {
             std::task::Poll::Ready(std::future::Future::poll(next.as_mut(), cx))
         }))
@@ -368,7 +323,8 @@ async fn opening_a_library_empties_its_transfer_queues() {
         .create_store("Test Library")
         .await
         .unwrap();
-    let left = Database::from_handle(handle.clone(), clock.clone(), std::sync::Arc::new(coven::UuidIds));
+    let left =
+        Database::from_handle(handle.clone(), clock.clone(), std::sync::Arc::new(coven::UuidIds));
     left.enqueue_releases(vec![crate::library::DownloadEntry {
         release_id: REL_1.to_string(),
         created_at: 0,

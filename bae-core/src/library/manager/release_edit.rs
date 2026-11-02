@@ -60,9 +60,7 @@ impl ReleaseEditSession {
     }
 
     fn work(&self) -> std::sync::MutexGuard<'_, SessionWork> {
-        self.work
-            .lock()
-            .expect("a release edit session's lock is never held across a panic")
+        self.work.lock().expect("a release edit session's lock is never held across a panic")
     }
 
     /// What the person has done in the session so far.
@@ -97,29 +95,21 @@ impl LibraryManager {
         &self,
         release_id: &str,
     ) -> Result<crate::import::ReleaseEditSeed, LibraryError> {
-        let (context, edit_tracks) = self
-            .database
-            .find_release_edit_context(release_id)
-            .await?
-            .ok_or_else(|| LibraryError::Refused(format!("Release '{release_id}' not found")))?;
-        let release = &context.detail.release;
-        let album = self
-            .database
-            .find_album_by_id(&release.album_id)
-            .await?
-            .ok_or_else(|| {
-                LibraryError::Refused(format!("Album '{}' not found", release.album_id))
+        let (context, edit_tracks) =
+            self.database.find_release_edit_context(release_id).await?.ok_or_else(|| {
+                LibraryError::Refused(format!("Release '{release_id}' not found"))
             })?;
+        let release = &context.detail.release;
+        let album = self.database.find_album_by_id(&release.album_id).await?.ok_or_else(|| {
+            LibraryError::Refused(format!("Album '{}' not found", release.album_id))
+        })?;
         let display =
             crate::album_detail::ReleaseEditDisplayContext::from_raw(&context.detail, edit_tracks)?;
         let cover =
             crate::album_detail::cover_ref(release_id, context.detail.cover_version.clone());
 
-        let album_artist_assignments: Vec<crate::import::Credited> = context
-            .album_artists
-            .into_iter()
-            .map(crate::import::Credited::of_library)
-            .collect();
+        let album_artist_assignments: Vec<crate::import::Credited> =
+            context.album_artists.into_iter().map(crate::import::Credited::of_library).collect();
 
         let mut tracks = Vec::with_capacity(context.detail.tracks.len());
         for entry in &context.detail.tracks {
@@ -159,11 +149,7 @@ impl LibraryManager {
             tracks.iter().map(|(id, _)| id.as_str()),
         )?;
 
-        let DbAlbum {
-            id: album_id,
-            title,
-            ..
-        } = album;
+        let DbAlbum { id: album_id, title, .. } = album;
         Ok(crate::import::ReleaseEditSeed {
             edit,
             cover,
@@ -207,20 +193,15 @@ impl LibraryManager {
             .read(&audio)
             .map_err(|refusal| LibraryError::from(crate::import::ImportError::from(refusal)))?;
         if values.tracks.is_empty() {
-            return Err(LibraryError::from(
-                crate::import::ImportError::MetadataTrackCount {
-                    folder_tracks: u32::try_from(audio.lengths.len())
-                        .expect("a release holds fewer than 2^32 tracks"),
-                    release_tracks: 0,
-                },
-            ));
+            return Err(LibraryError::from(crate::import::ImportError::MetadataTrackCount {
+                folder_tracks: u32::try_from(audio.lengths.len())
+                    .expect("a release holds fewer than 2^32 tracks"),
+                release_tracks: 0,
+            }));
         }
         let mut seed = self.read_release_edit(release_id).await?;
-        let track_ids: Vec<String> = seed
-            .display
-            .tracks()
-            .map(|track| track.track_id.clone())
-            .collect();
+        let track_ids: Vec<String> =
+            seed.display.tracks().map(|track| track.track_id.clone()).collect();
         let draft = values.library_draft(track_ids);
         seed.edit = draft.release_edit();
         seed.display = seed.display.placed(
@@ -277,11 +258,10 @@ impl LibraryManager {
         current: crate::import::DraftAlbum,
     ) -> Result<crate::import::DraftAlbum, LibraryError> {
         let title = |album_id: String| async move {
-            let album = self
-                .database
-                .find_album_by_id(&album_id)
-                .await?
-                .ok_or_else(|| LibraryError::Refused(format!("Album '{album_id}' not found")))?;
+            let album =
+                self.database.find_album_by_id(&album_id).await?.ok_or_else(|| {
+                    LibraryError::Refused(format!("Album '{album_id}' not found"))
+                })?;
             Ok::<_, LibraryError>((album_id, album.title))
         };
         if let Some(picked) = &work.picked_album {
@@ -291,9 +271,7 @@ impl LibraryManager {
         let Some(applied) = &work.applied else {
             return Ok(current);
         };
-        let change = self
-            .records_change(release_id, applied.records.clone())
-            .await?;
+        let change = self.records_change(release_id, applied.records.clone()).await?;
         Ok(match change.new_album {
             Some(_) => crate::import::DraftAlbum::New,
             None => {
@@ -321,21 +299,12 @@ impl LibraryManager {
         edit: &crate::import::RawReleaseEdit,
     ) -> Result<(), LibraryError> {
         let release_id = session.release_id();
-        let SessionWork {
-            applied,
-            picked_album: album,
-        } = session.snapshot();
+        let SessionWork { applied, picked_album: album } = session.snapshot();
         let shaped = edit.shape()?;
         shaped.validate()?;
         let _writing = self.release_writes.lock().await;
-        if !self
-            .read_release_edit(release_id)
-            .await?
-            .holds_the_values_of(&session.opened)
-        {
-            return Err(LibraryError::ReleaseEditStale {
-                release_id: release_id.to_string(),
-            });
+        if !self.read_release_edit(release_id).await?.holds_the_values_of(&session.opened) {
+            return Err(LibraryError::ReleaseEditStale { release_id: release_id.to_string() });
         }
         let (current_album_id, release, current_album, existing_tracks) =
             self.load_release_for_edit(release_id).await?;
@@ -351,21 +320,17 @@ impl LibraryManager {
                 target_album_id: picked.clone(),
                 new_album: None,
             }),
-            (None, Some(applied)) => Some(
-                self.records_change(release_id, applied.records.clone())
-                    .await?,
-            ),
+            (None, Some(applied)) => {
+                Some(self.records_change(release_id, applied.records.clone()).await?)
+            }
             (None, None) => None,
         };
-        let target_album_id = change.as_ref().map_or(current_album_id.clone(), |change| {
-            change.target_album_id.clone()
-        });
+        let target_album_id = change
+            .as_ref()
+            .map_or(current_album_id.clone(), |change| change.target_album_id.clone());
         // A release the person moved into another album keeps that album's
         // own title and artists.
-        let album_fields = if album
-            .as_ref()
-            .is_some_and(|picked| *picked != current_album_id)
-        {
+        let album_fields = if album.as_ref().is_some_and(|picked| *picked != current_album_id) {
             crate::db::AlbumFields::Kept
         } else {
             crate::db::AlbumFields::Written
@@ -382,10 +347,7 @@ impl LibraryManager {
                     edit.pressing.labels.clone(),
                     &draft.pressing.labels,
                 );
-                draft.pressing = crate::import::RawPressingEdit {
-                    labels,
-                    ..edit.pressing.clone()
-                };
+                draft.pressing = crate::import::RawPressingEdit { labels, ..edit.pressing.clone() };
                 for (track, edited) in draft.tracks.iter_mut().zip(&edit.tracks) {
                     track.edit.title = edited.title.clone();
                     track.edit.artist_assignments = edited.artist_assignments.clone();
@@ -410,12 +372,9 @@ impl LibraryManager {
                 let album_row = if target_album_id == current_album_id {
                     current_album
                 } else {
-                    self.database
-                        .find_album_by_id(&target_album_id)
-                        .await?
-                        .ok_or_else(|| {
-                            LibraryError::Refused(format!("Album '{target_album_id}' not found"))
-                        })?
+                    self.database.find_album_by_id(&target_album_id).await?.ok_or_else(|| {
+                        LibraryError::Refused(format!("Album '{target_album_id}' not found"))
+                    })?
                 };
                 crate::db::ReleaseEditWrite::Fields(self.release_metadata_rows(
                     album_row,
@@ -425,9 +384,7 @@ impl LibraryManager {
                 )?)
             }
         };
-        self.database
-            .save_release_edit_atomic(change, write, album_fields)
-            .await?;
+        self.database.save_release_edit_atomic(change, write, album_fields).await?;
         Ok(())
     }
 }

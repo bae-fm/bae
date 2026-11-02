@@ -20,12 +20,7 @@ fn file_tag_snapshot_match(
     {
         return FileTagSnapshotMatch::CandidateChanged;
     }
-    if snapshot
-        .files
-        .iter()
-        .map(|fact| &fact.observation)
-        .eq(observations)
-    {
+    if snapshot.files.iter().map(|fact| &fact.observation).eq(observations) {
         FileTagSnapshotMatch::Current
     } else {
         FileTagSnapshotMatch::AudioChanged
@@ -129,10 +124,7 @@ impl ImportServiceHandle {
             })
             .await
             .map_err(|failed| self.library_manager.bug(failed))??;
-        Ok(FileTagSnapshotRead {
-            candidate,
-            snapshot,
-        })
+        Ok(FileTagSnapshotRead { candidate, snapshot })
     }
 
     /// Queue an import of the candidate as stored, ending its identification
@@ -145,8 +137,7 @@ impl ImportServiceHandle {
         let this = self.clone();
         let candidate_key = candidate_key.clone();
         self.committed(async move {
-            this.start_import_write(&candidate_key, ImportRequest::Candidate)
-                .await
+            this.start_import_write(&candidate_key, ImportRequest::Candidate).await
         })
         .await
     }
@@ -161,8 +152,7 @@ impl ImportServiceHandle {
         let this = self.clone();
         let candidate_key = candidate_key.clone();
         self.committed(async move {
-            this.start_import_write(&candidate_key, ImportRequest::Selection)
-                .await
+            this.start_import_write(&candidate_key, ImportRequest::Selection).await
         })
         .await
     }
@@ -177,9 +167,7 @@ impl ImportServiceHandle {
         let this = self.clone();
         let candidate_key = candidate_key.clone();
         self.committed(async move {
-            let started = this
-                .start_import_write(&candidate_key, ImportRequest::Candidate)
-                .await;
+            let started = this.start_import_write(&candidate_key, ImportRequest::Candidate).await;
             match &started {
                 Ok(_) => {}
                 // Another import owns the candidate and reports how it went.
@@ -240,13 +228,9 @@ impl ImportServiceHandle {
         };
         // Refused for every request kind: an import owns it, or this device
         // already imported its files, and one folder hash is one release here.
-        self.candidate_standing(candidate_key, &candidate)
-            .await?
-            .editable()?;
-        if let Some(release_id) = self
-            .library_manager
-            .release_imported_from(&candidate.files.content_hash())
-            .await?
+        self.candidate_standing(candidate_key, &candidate).await?.editable()?;
+        if let Some(release_id) =
+            self.library_manager.release_imported_from(&candidate.files.content_hash()).await?
         {
             return Err(crate::import::ImportError::FilesAlreadyImported { release_id });
         }
@@ -290,13 +274,9 @@ impl ImportServiceHandle {
                 ),
             })?;
         let metadata_provenance = preparation.metadata_provenance.clone();
-        let needs_file_tag_snapshot = matches!(
-            metadata_provenance,
-            Some(crate::import::MetadataProvenance::FileMetadata)
-        ) || matches!(
-            preparation.cover,
-            Some(crate::import::CoverSelection::Embedded(_))
-        );
+        let needs_file_tag_snapshot =
+            matches!(metadata_provenance, Some(crate::import::MetadataProvenance::FileMetadata))
+                || matches!(preparation.cover, Some(crate::import::CoverSelection::Embedded(_)));
         let file_tag_snapshot = if needs_file_tag_snapshot {
             let Some(stored) = self
                 .library_manager
@@ -374,9 +354,7 @@ impl ImportServiceHandle {
         // import can claim these files in between. Once claimed, the
         // candidate is not identification's to answer: the claim ends its
         // run in the same write, and its work stops.
-        self.runtime
-            .claim_for_import(candidate_key, &import_id, true)
-            .await?;
+        self.runtime.claim_for_import(candidate_key, &import_id, true).await?;
         self.identify.cancel(candidate_key);
         self.extraction.cancel(candidate_key);
         drop(commit);
@@ -394,18 +372,13 @@ impl ImportServiceHandle {
         let this = self.clone();
         let key = candidate_key.clone();
         self.committed(async move {
-            let _commit = this
-                .folder_state_commit
-                .lock("choose an import artist")
-                .await;
+            let _commit = this.folder_state_commit.lock("choose an import artist").await;
             let candidate = this.get_release_candidate(&key).await?.ok_or_else(|| {
                 crate::import::ImportError::Internal {
                     detail: format!("{key} is not a scanned folder candidate"),
                 }
             })?;
-            this.candidate_standing(&key, &candidate)
-                .await?
-                .editable()?;
+            this.candidate_standing(&key, &candidate).await?.editable()?;
             this.library_manager
                 .choose_import_artist_identity(
                     &candidate.files.content_hash(),
@@ -428,18 +401,13 @@ impl ImportServiceHandle {
         let this = self.clone();
         let key = candidate_key.clone();
         self.committed(async move {
-            let _commit = this
-                .folder_state_commit
-                .lock("choose an import label")
-                .await;
+            let _commit = this.folder_state_commit.lock("choose an import label").await;
             let candidate = this.get_release_candidate(&key).await?.ok_or_else(|| {
                 crate::import::ImportError::Internal {
                     detail: format!("{key} is not a scanned folder candidate"),
                 }
             })?;
-            this.candidate_standing(&key, &candidate)
-                .await?
-                .editable()?;
+            this.candidate_standing(&key, &candidate).await?.editable()?;
             this.library_manager
                 .choose_import_label_identity(
                     &candidate.files.content_hash(),
@@ -460,9 +428,7 @@ impl ImportServiceHandle {
         token: &str,
     ) -> Result<DiscogsSaveOutcome, crate::import::ImportError> {
         let check = DiscogsCheck::of(
-            self.library_manager
-                .try_discogs_key(token, CallPriority::Interactive)
-                .await,
+            self.library_manager.try_discogs_key(token, CallPriority::Interactive).await,
         );
         let validation = check.validation();
         match check {
@@ -487,9 +453,7 @@ impl ImportServiceHandle {
         self.library_manager
             .set_discogs_key(token, validation)
             .await
-            .map_err(|e| crate::import::ImportError::Config {
-                detail: e.to_string(),
-            })
+            .map_err(|e| crate::import::ImportError::Config { detail: e.to_string() })
     }
 
     /// Check a stored `Unvalidated` key against Discogs again; any other
@@ -511,11 +475,10 @@ impl ImportServiceHandle {
 
     /// Remove the stored Discogs key and its validation.
     pub async fn remove_discogs_token(&self) -> Result<(), crate::import::ImportError> {
-        self.library_manager.clear_discogs_key().await.map_err(|e| {
-            crate::import::ImportError::Config {
-                detail: e.to_string(),
-            }
-        })
+        self.library_manager
+            .clear_discogs_key()
+            .await
+            .map_err(|e| crate::import::ImportError::Config { detail: e.to_string() })
     }
 
     /// Store `command`'s folder as a scanned candidate carrying the command's
@@ -525,11 +488,8 @@ impl ImportServiceHandle {
         &self,
         mut command: ImportCommand,
     ) -> Result<String, crate::import::ImportError> {
-        let crate::import::release_candidate::CandidateSource {
-            path: folder,
-            scope,
-            ..
-        } = command.source.clone();
+        let crate::import::release_candidate::CandidateSource { path: folder, scope, .. } =
+            command.source.clone();
         let categorized =
             crate::import::folder_scanner::collect_release_candidate_files_with_scope(
                 &folder,
@@ -539,21 +499,16 @@ impl ImportServiceHandle {
         let watched_folder = crate::import::watched_folder::canonical_absolute_root(&folder)?;
         let candidate_key = crate::import::CandidateKey::folder(&watched_folder);
         let candidate_name =
-            coven::path_text(std::path::Path::new(folder.file_name().ok_or_else(
-                || crate::import::ImportError::Internal {
+            coven::path_text(std::path::Path::new(folder.file_name().ok_or_else(|| {
+                crate::import::ImportError::Internal {
                     detail: format!(
                         "test import folder has no directory name: {}",
                         coven::path_text(&folder)
                     ),
-                },
-            )?));
-        self.library_manager
-            .add_watched_import_folder(&watched_folder)
-            .await?;
-        let generation = self
-            .library_manager
-            .begin_folder_scan(&watched_folder)
-            .await?;
+                }
+            })?));
+        self.library_manager.add_watched_import_folder(&watched_folder).await?;
+        let generation = self.library_manager.begin_folder_scan(&watched_folder).await?;
         let candidate = crate::import::folder_scanner::FolderCandidate {
             path: watched_folder.clone(),
             file_root: watched_folder.clone(),
@@ -600,25 +555,18 @@ impl ImportServiceHandle {
             .await?;
         }
         if command.read_file_tags {
-            self.read_candidate_file_tags_write(command.candidate_key.clone())
-                .await?;
+            self.read_candidate_file_tags_write(command.candidate_key.clone()).await?;
         }
         if let Some(edit) = command.user_edit.clone() {
-            let state = self
-                .library_manager
-                .load_import_candidate_state(&content_hash)
-                .await?
-                .ok_or_else(|| crate::import::ImportError::Internal {
-                    detail: "test import has no candidate state".into(),
-                })?;
-            let rows = self
-                .library_manager
-                .load_import_candidate_pane_rows(&content_hash)
-                .await?;
-            let assets = self
-                .library_manager
-                .load_import_candidate_prepared_assets(&content_hash)
-                .await?;
+            let state =
+                self.library_manager.load_import_candidate_state(&content_hash).await?.ok_or_else(
+                    || crate::import::ImportError::Internal {
+                        detail: "test import has no candidate state".into(),
+                    },
+                )?;
+            let rows = self.library_manager.load_import_candidate_pane_rows(&content_hash).await?;
+            let assets =
+                self.library_manager.load_import_candidate_prepared_assets(&content_hash).await?;
             let draft = crate::import::pane::edit_over_audio(
                 crate::import::RawReleaseEdit::from_user_edit(edit, "test-import-track"),
                 &rows.draft,
@@ -647,8 +595,7 @@ impl ImportServiceHandle {
                 .await?;
         }
         if let Some(cover) = command.selected_cover.clone() {
-            self.set_candidate_cover(&command.candidate_key, cover)
-                .await?;
+            self.set_candidate_cover(&command.candidate_key, cover).await?;
         }
         let metadata_revision = self
             .library_manager
@@ -659,10 +606,8 @@ impl ImportServiceHandle {
             })?
             .metadata_revision;
         let file_tag_snapshot = if command.read_file_tags
-            || matches!(
-                command.selected_cover,
-                Some(crate::import::CoverSelection::Embedded(_))
-            ) {
+            || matches!(command.selected_cover, Some(crate::import::CoverSelection::Embedded(_)))
+        {
             let snapshot = self
                 .library_manager
                 .load_candidate_file_tag_snapshot(
@@ -686,8 +631,7 @@ impl ImportServiceHandle {
             },
             file_tag_snapshot,
         };
-        self.send_command_with_expectation(command, expectation)
-            .await
+        self.send_command_with_expectation(command, expectation).await
     }
 
     /// Claim the candidate under the folder-state commit lock, so an
@@ -702,9 +646,7 @@ impl ImportServiceHandle {
         let import_id = command.import_id.clone();
         let candidate_key = command.candidate_key.clone();
         let commit = self.folder_state_commit.lock("queue a test import").await;
-        self.runtime
-            .claim_for_import(&candidate_key, &import_id, false)
-            .await?;
+        self.runtime.claim_for_import(&candidate_key, &import_id, false).await?;
         drop(commit);
         self.send_claimed_command(command, expectation).await?;
         Ok(import_id)
@@ -722,15 +664,11 @@ impl ImportServiceHandle {
         self.import_cancels.register(&candidate_key, &import_id);
         if self
             .worker
-            .send(crate::import::service::ImportWorkerMessage::Import {
-                command,
-                expectation,
-            })
+            .send(crate::import::service::ImportWorkerMessage::Import { command, expectation })
             .is_err()
         {
             self.import_cancels.forget(&candidate_key, &import_id);
-            self.release_import_claim(&candidate_key, &import_id)
-                .await?;
+            self.release_import_claim(&candidate_key, &import_id).await?;
             return Err(crate::import::ImportError::Internal {
                 detail: "Failed to queue import command".to_string(),
             });
@@ -801,8 +739,7 @@ impl ImportServiceHandle {
             "cancel every waiting import",
             async move {
                 if let Err(error) = this.cancel_all_imports().await {
-                    this.library_manager
-                        .report_bug("cancel every waiting import", &error);
+                    this.library_manager.report_bug("cancel every waiting import", &error);
                 }
             },
             // Reported; no one waits to hear more.

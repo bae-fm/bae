@@ -40,9 +40,7 @@ impl SharedAlbum {
     /// offers fewer than two rows, rows of two cards, or rows a catalog files
     /// under two albums, and where no catalog names their album.
     pub fn of(groups: &[ReleaseGroup]) -> Option<Self> {
-        let mut offering = groups
-            .iter()
-            .filter(|group| group.pressings().next().is_some());
+        let mut offering = groups.iter().filter(|group| group.pressings().next().is_some());
         let card = offering.next()?;
         if offering.next().is_some() {
             return None;
@@ -111,17 +109,13 @@ pub(crate) fn shared_draft(
     readings: &[OfferedReading],
     folder_year: Option<i32>,
 ) -> CandidateDraft {
-    let offered: Vec<RawReleaseEdit> = readings
-        .iter()
-        .map(|reading| reading.edit.clone())
-        .collect();
+    let offered: Vec<RawReleaseEdit> =
+        readings.iter().map(|reading| reading.edit.clone()).collect();
     let offered = offered.as_slice();
     let mut draft = current.clone();
-    if let Some(title) = agreed(
-        offered,
-        |row| stated(&row.album_title),
-        |a, b| same_album_title(a, b),
-    ) {
+    if let Some(title) =
+        agreed(offered, |row| stated(&row.album_title), |a, b| same_album_title(a, b))
+    {
         draft.album_title = title.to_string();
     }
     if let Some(artists) = agreed(
@@ -184,9 +178,7 @@ pub(crate) fn shared_draft(
     ) {
         facts.discogs_details = details.clone();
     }
-    let tracks_agree = offered
-        .iter()
-        .all(|row| row.tracks.len() == current.tracks.len());
+    let tracks_agree = offered.iter().all(|row| row.tracks.len() == current.tracks.len());
     if tracks_agree {
         for (position, track) in draft.tracks.iter_mut().enumerate() {
             let edit = &mut track.edit;
@@ -291,12 +283,7 @@ fn same_track_artists(a: &TrackArtistAssignments, b: &TrackArtistAssignments) ->
 /// of them, so the draft's stand.
 fn shared_labels(current: &[RawLabelEdit], offered: &[RawReleaseEdit]) -> Vec<RawLabelEdit> {
     let listed = |row: &RawReleaseEdit| {
-        row.pressing
-            .labels
-            .iter()
-            .filter(|label| !label.is_blank())
-            .cloned()
-            .collect::<Vec<_>>()
+        row.pressing.labels.iter().filter(|label| !label.is_blank()).cloned().collect::<Vec<_>>()
     };
     let lists: Vec<Vec<RawLabelEdit>> = offered.iter().map(listed).collect();
     let Some(count) = lists.first().map(Vec::len) else {
@@ -315,10 +302,9 @@ fn shared_labels(current: &[RawLabelEdit], offered: &[RawReleaseEdit]) -> Vec<Ra
             label.name = name.to_string();
             // The ids every row states for the label, each where all agree.
             let ids = |id: fn(&RawLabelEdit) -> &Option<String>| {
-                agreed_values(
-                    lists.iter().map(|list| id(&list[position]).as_deref()),
-                    |a, b| a == b,
-                )
+                agreed_values(lists.iter().map(|list| id(&list[position]).as_deref()), |a, b| {
+                    a == b
+                })
                 .map(str::to_string)
             };
             label.musicbrainz_label_id = ids(|row| &row.musicbrainz_label_id);

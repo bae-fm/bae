@@ -32,11 +32,7 @@ fn track2_and_reference(
 
     let whole = play_decode(
         StreamDecodeParams::new(
-            vec![SegmentDecodeParams::new(
-                buffer(),
-                SegmentSpan::whole_file(),
-                0,
-            )],
+            vec![SegmentDecodeParams::new(buffer(), SegmentSpan::whole_file(), 0)],
             true,
             0,
             0,
@@ -55,16 +51,11 @@ fn a_wav_image_track_starts_at_its_first_sample() {
     bae_audio::init();
     let (played, reference) = track2_and_reference(
         "image.wav",
-        EncodeFormat::PcmWav {
-            bits_per_sample: 16,
-        },
+        EncodeFormat::PcmWav { bits_per_sample: 16 },
         ContentType::Pcm,
     );
     assert_eq!(played.len(), reference.len(), "sample count");
-    assert!(
-        played == reference,
-        "the track's samples differ from the image's"
-    );
+    assert!(played == reference, "the track's samples differ from the image's");
 }
 
 /// An MP3 image's track starts at its first sample: after a jump by byte, the
@@ -98,8 +89,5 @@ fn an_aac_image_track_starts_at_its_first_sample() {
         ContentType::Aac,
     );
     assert_eq!(played.len(), reference.len(), "sample count");
-    assert!(
-        played == reference,
-        "the track's samples differ from the image's"
-    );
+    assert!(played == reference, "the track's samples differ from the image's");
 }

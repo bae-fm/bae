@@ -31,10 +31,7 @@ pub(crate) struct OperationRuntime {
 
 impl OperationRuntime {
     pub(crate) fn new(runtime: Handle, diagnostics: Diagnostics) -> Self {
-        Self {
-            runtime,
-            diagnostics,
-        }
+        Self { runtime, diagnostics }
     }
 
     /// Run a fallible operation on its owning runtime. Dropping the returned
@@ -52,9 +49,7 @@ impl OperationRuntime {
     {
         let task = spawn(&self.runtime, build);
         let _abort = AbortOnDrop(task.abort_handle());
-        joined(operation, task)
-            .await
-            .map_err(|failed| self.failed(failed))?
+        joined(operation, task).await.map_err(|failed| self.failed(failed))?
     }
 
     /// Run an operation whose explicit domain cancellation must finish even if
@@ -133,9 +128,7 @@ mod tests {
     impl Drop for DropSignal {
         fn drop(&mut self) {
             if let Some(sender) = self.0.take() {
-                sender
-                    .send(())
-                    .expect("test observes the owned task being dropped");
+                sender.send(()).expect("test observes the owned task being dropped");
             }
         }
     }
@@ -186,10 +179,8 @@ mod tests {
             .join()
             .expect("foreign caller does not panic");
 
-        let (caller, constructed, polled) = result_rx
-            .recv()
-            .expect("receive test result")
-            .expect("owned operation succeeds");
+        let (caller, constructed, polled) =
+            result_rx.recv().expect("receive test result").expect("owned operation succeeds");
         assert_ne!(caller, constructed);
         assert_eq!(constructed, polled);
     }
@@ -274,10 +265,7 @@ mod tests {
         let reports = bugs.reports();
         assert_eq!(reports.len(), 1, "{reports:?}");
         assert_eq!(reports[0].0, "test operation");
-        assert!(
-            reports[0].1.contains("the operation broke its guarantee"),
-            "{reports:?}"
-        );
+        assert!(reports[0].1.contains("the operation broke its guarantee"), "{reports:?}");
         owned.shutdown_background();
     }
 
@@ -286,11 +274,7 @@ mod tests {
 
     impl bae_core::diagnostics::BugReporter for HeardBugs {
         fn report(&self, operation: &str, _detail: &str) {
-            self.0
-                .lock()
-                .unwrap()
-                .send(operation.to_string())
-                .expect("the test hears the report");
+            self.0.lock().unwrap().send(operation.to_string()).expect("the test hears the report");
         }
     }
 

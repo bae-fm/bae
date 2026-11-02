@@ -9,10 +9,7 @@ type Outcome = Findings;
 
 fn folder(line: &str) -> CandidateText {
     CandidateText::of(
-        &[TextLine {
-            text: line.to_string(),
-            origin: TextOrigin::FolderName,
-        }],
+        &[TextLine { text: line.to_string(), origin: TextOrigin::FolderName }],
         &[],
         &[],
     )
@@ -33,24 +30,14 @@ fn pressing(release_id: &str, year: Option<i32>) -> MetadataResult {
 
 fn search(results: Vec<MetadataResult>, text: &CandidateText) -> Outcome {
     combine_results(
-        LookupAnswers {
-            search: results,
-            ..LookupAnswers::default()
-        },
+        LookupAnswers { search: results, ..LookupAnswers::default() },
         text,
-        FolderAudio {
-            track_count: 10,
-            ..FolderAudio::UNPROVEN
-        },
+        FolderAudio { track_count: 10, ..FolderAudio::UNPROVEN },
     )
 }
 
 fn offered(outcome: &Outcome) -> Vec<&str> {
-    outcome
-        .matches
-        .iter()
-        .map(|result| result.release_id.as_str())
-        .collect()
+    outcome.matches.iter().map(|result| result.release_id.as_str()).collect()
 }
 
 /// A folder naming the year the album first came out names no edition: the
@@ -67,11 +54,7 @@ fn the_album_s_first_year_offers_every_edition() {
     let outcome = search(results.clone(), &text);
     assert_eq!(offered(&outcome), vec!["rel-1963", "rel-2005"]);
     for result in &results {
-        assert!(
-            !year_badge(result, &results, &text),
-            "{}",
-            result.release_id
-        );
+        assert!(!year_badge(result, &results, &text), "{}", result.release_id);
     }
 }
 
@@ -87,18 +70,11 @@ fn a_lone_year_with_no_first_year_names_no_pressing() {
         result.album_first_year = None;
         result
     };
-    let results = vec![
-        undated_album("rel-1963", 1963),
-        undated_album("rel-2005", 2005),
-    ];
+    let results = vec![undated_album("rel-1963", 1963), undated_album("rel-2005", 2005)];
     let outcome = search(results.clone(), &text);
     assert_eq!(offered(&outcome), vec!["rel-1963", "rel-2005"]);
     for result in &results {
-        assert!(
-            !year_badge(result, &results, &text),
-            "{}",
-            result.release_id
-        );
+        assert!(!year_badge(result, &results, &text), "{}", result.release_id);
     }
 }
 
@@ -116,13 +92,8 @@ fn a_later_year_picks_the_edition() {
         &remaster,
     );
     assert_eq!(offered(&outcome), vec!["rel-2005"]);
-    let outcome = search(
-        vec![
-            pressing("rel-1963", Some(1963)),
-            pressing("rel-undated", None),
-        ],
-        &remaster,
-    );
+    let outcome =
+        search(vec![pressing("rel-1963", Some(1963)), pressing("rel-undated", None)], &remaster);
     assert_eq!(offered(&outcome), vec!["rel-undated"]);
 }
 
@@ -158,22 +129,13 @@ fn the_later_of_two_folder_years_names_the_pressing() {
 fn the_folder_s_name_outranks_a_year_the_artwork_prints() {
     let text = CandidateText::of(
         &[
-            TextLine {
-                text: "1987 Album One".to_string(),
-                origin: TextOrigin::FolderName,
-            },
-            TextLine {
-                text: "(C) 1995 Label One".to_string(),
-                origin: TextOrigin::Artwork,
-            },
+            TextLine { text: "1987 Album One".to_string(), origin: TextOrigin::FolderName },
+            TextLine { text: "(C) 1995 Label One".to_string(), origin: TextOrigin::Artwork },
         ],
         &[],
         &[],
     );
-    let results = vec![
-        pressing("rel-1987", Some(1987)),
-        pressing("rel-1995", Some(1995)),
-    ];
+    let results = vec![pressing("rel-1987", Some(1987)), pressing("rel-1995", Some(1995))];
     let outcome = search(results.clone(), &text);
     assert_eq!(offered(&outcome), vec!["rel-1987"]);
     assert!(year_badge(&results[0], &results, &text));

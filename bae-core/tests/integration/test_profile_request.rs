@@ -23,10 +23,8 @@ async fn a_profile_asked_for_offline_is_written_once_its_circle_lands() {
 
     manager.create_profile("Robin").await.unwrap();
     assert!(database.profiles().await.unwrap().is_empty());
-    let requested = database
-        .query_texts_for_test("SELECT name FROM profile_request")
-        .await
-        .unwrap();
+    let requested =
+        database.query_texts_for_test("SELECT name FROM profile_request").await.unwrap();
     assert_eq!(requested, ["Robin"]);
     let running = database
         .query_texts_for_test(
@@ -37,16 +35,10 @@ async fn a_profile_asked_for_offline_is_written_once_its_circle_lands() {
         .unwrap();
     assert_eq!(running, ["CreateCircle"]);
     assert_eq!(
-        database
-            .query_texts_for_test("SELECT id FROM local_history")
-            .await
-            .unwrap(),
+        database.query_texts_for_test("SELECT id FROM local_history").await.unwrap(),
         [play.as_str()]
     );
-    assert!(matches!(
-        manager.create_profile("Robin").await,
-        Err(ProfileError::CirclePending(_))
-    ));
+    assert!(matches!(manager.create_profile("Robin").await, Err(ProfileError::CirclePending(_))));
 
     let profile = requested_profile(&manager).await;
     assert_eq!(profile.name, "Robin");

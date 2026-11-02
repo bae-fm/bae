@@ -39,10 +39,7 @@ fn a_tone_missing_a_surface_is_refused() {
                  [[tones]]\nname = \"slate\"\n[tones.light]\nbackground = \"#000000\"\nwell = \"#000000\"\n\
                  [tones.dark]\nbackground = \"#000000\"\n";
     let problems = theme_with(STANDARD, tones, SEMANTICS).unwrap_err();
-    assert_eq!(
-        problems,
-        ["tone slate.dark lacks `well`, which tone neutral.light has"]
-    );
+    assert_eq!(problems, ["tone slate.dark lacks `well`, which tone neutral.light has"]);
 }
 
 #[test]
@@ -83,17 +80,10 @@ fn both_platforms_carry_the_standard_choices() {
     let accent = &theme.accents[theme.standard.accent].name;
     let swift = apple::swift(&theme);
     let kotlin = android::kotlin(&theme);
-    assert!(swift.contains(&format!(
-        "    public static let standard = SurfaceTone.{tone}\n"
-    )));
-    assert!(swift.contains(&format!(
-        "    public static let standard = AccentChoice.{accent}\n"
-    )));
+    assert!(swift.contains(&format!("    public static let standard = SurfaceTone.{tone}\n")));
+    assert!(swift.contains(&format!("    public static let standard = AccentChoice.{accent}\n")));
     assert!(kotlin.contains(&format!("        val STANDARD = {}\n", tone.to_uppercase())));
-    assert!(kotlin.contains(&format!(
-        "        val STANDARD = {}\n",
-        accent.to_uppercase()
-    )));
+    assert!(kotlin.contains(&format!("        val STANDARD = {}\n", accent.to_uppercase())));
 }
 
 #[test]
@@ -120,21 +110,13 @@ fn both_platforms_carry_every_role() {
         assert!(swift.contains(&format!("    case {}\n", tone.name)));
         assert!(kotlin.contains(&format!("    {},\n", tone.name.to_uppercase())));
     }
-    for role in theme.tones[0]
-        .surfaces
-        .light
-        .keys()
-        .chain(theme.semantics.light.keys())
-    {
+    for role in theme.tones[0].surfaces.light.keys().chain(theme.semantics.light.keys()) {
         assert!(
             swift.contains(&format!("    let {role}: Color\n"))
                 || swift.contains(&format!("    public static let {role} = Color(\n")),
             "{role}"
         );
-        assert!(
-            kotlin.contains(&format!("    val {role}: Color,\n")),
-            "{role}"
-        );
+        assert!(kotlin.contains(&format!("    val {role}: Color,\n")), "{role}");
     }
 }
 
@@ -144,9 +126,7 @@ fn both_platforms_carry_every_opacity() {
     let swift = apple::swift(&theme);
     let kotlin = android::kotlin(&theme);
     for (role, value) in &theme.opacity {
-        assert!(swift.contains(&format!(
-            "    public static let {role}: Double = {value:?}\n"
-        )));
+        assert!(swift.contains(&format!("    public static let {role}: Double = {value:?}\n")));
         assert!(kotlin.contains(&format!("    const val {role}: Float = {value:?}f\n")));
     }
 }
@@ -157,9 +137,7 @@ fn both_platforms_carry_every_radius() {
     let swift = apple::swift(&theme);
     let kotlin = android::kotlin(&theme);
     for (role, value) in &theme.radius {
-        assert!(swift.contains(&format!(
-            "    public static let {role}: CGFloat = {value}\n"
-        )));
+        assert!(swift.contains(&format!("    public static let {role}: CGFloat = {value}\n")));
         assert!(kotlin.contains(&format!("    val {role} = {value}.dp\n")));
     }
 }
@@ -179,10 +157,7 @@ fn an_ios_size_names_a_dynamic_type_style() {
         "[text.body]\nweight = \"regular\"\nmacos = 13\nios = \"body\"",
         "[text.body]\nweight = \"regular\"\nmacos = 13\nios = \"huge\"",
     ));
-    assert_eq!(
-        theme.unwrap_err(),
-        ["text body: `huge` is not a Dynamic Type style"]
-    );
+    assert_eq!(theme.unwrap_err(), ["text body: `huge` is not a Dynamic Type style"]);
 }
 
 #[test]
@@ -211,9 +186,7 @@ fn both_platforms_carry_every_space_icon_and_size() {
     let swift = apple::swift(&theme);
     let kotlin = android::kotlin(&theme);
     for (role, value) in &theme.space {
-        assert!(swift.contains(&format!(
-            "    public static let {role}: CGFloat = {value}\n"
-        )));
+        assert!(swift.contains(&format!("    public static let {role}: CGFloat = {value}\n")));
         assert!(kotlin.contains(&format!("    val {role} = {value}.dp\n")));
     }
     for (role, icon) in &theme.icon {
@@ -221,9 +194,7 @@ fn both_platforms_carry_every_space_icon_and_size() {
         assert!(kotlin.contains(&format!("    val {role} = {}.dp\n", icon.sizes.android)));
     }
     for (role, lengths) in &theme.size {
-        assert!(swift.contains(&format!(
-            "    public static let {role}: CGFloat = .platform(\n"
-        )));
+        assert!(swift.contains(&format!("    public static let {role}: CGFloat = .platform(\n")));
         assert!(kotlin.contains(&format!("    val {role} = {}.dp\n", lengths.android)));
     }
 }

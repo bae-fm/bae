@@ -34,10 +34,7 @@ impl AudioFacts {
             files.track_count(),
             durations,
             track_lengths_ms,
-            files
-                .audio()
-                .filter_map(|file| file.source_audio.as_ref())
-                .map(|audio| &audio.format),
+            files.audio().filter_map(|file| file.source_audio.as_ref()).map(|audio| &audio.format),
         ))
     }
 
@@ -48,12 +45,7 @@ impl AudioFacts {
         track_lengths_ms: Vec<u64>,
         formats: impl IntoIterator<Item = &'a AudioFormat>,
     ) -> Self {
-        Self::of(
-            track_count,
-            SourceDurations::default(),
-            track_lengths_ms,
-            formats,
-        )
+        Self::of(track_count, SourceDurations::default(), track_lengths_ms, formats)
     }
 
     fn of<'a>(

@@ -241,10 +241,7 @@ pub(crate) fn stated_credits(credits: &[DisplayCredit]) -> Vec<crate::import::So
                 None if credit.credited_name.trim().is_empty() => return None,
                 None => ArtistCredit::named(credit.credited_name.trim()),
             };
-            Some(crate::import::SourceCredit {
-                credit: artist,
-                join: credit.join.clone(),
-            })
+            Some(crate::import::SourceCredit { credit: artist, join: credit.join.clone() })
         })
         .collect();
     crate::credits::drop_last_join(&mut stated, |credit| &mut credit.join);
@@ -283,10 +280,7 @@ pub(crate) struct SourceWork {
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) enum SourceWorkEvent {
     Composer(ArtistCredit),
-    Part {
-        direction: PartDirection,
-        work: SourceWork,
-    },
+    Part { direction: PartDirection, work: SourceWork },
 }
 
 /// Which way a MusicBrainz "parts" relation points from the work stating it:
@@ -307,10 +301,9 @@ impl SourceRelease {
                 links: Vec::new(),
                 album_links: crate::import::album_links::AlbumLinks::Read(Vec::new()),
             },
-            Catalog::Discogs => CatalogFacts::Discogs {
-                media: StatedMedia::Undescribed,
-                release_roles: Vec::new(),
-            },
+            Catalog::Discogs => {
+                CatalogFacts::Discogs { media: StatedMedia::Undescribed, release_roles: Vec::new() }
+            }
             other => unreachable!("no release is fetched from {}", other.as_str()),
         };
         Self {
@@ -326,10 +319,7 @@ impl SourceRelease {
                 pressing: Pressing::blank(),
             },
             other_records: Vec::new(),
-            covers: ReleaseCovers {
-                release: Vec::new(),
-                album: Vec::new(),
-            },
+            covers: ReleaseCovers { release: Vec::new(), album: Vec::new() },
             archive_release: None,
             archive_groups: Vec::new(),
             mediums: Vec::new(),
@@ -370,11 +360,7 @@ impl SourceRelease {
     /// level: its own first, then what the other catalogs say, in catalog
     /// order.
     pub fn records(&self) -> Vec<ReleaseRecord> {
-        release_records(
-            &self.release,
-            self.source_group_id.clone(),
-            self.other_records.clone(),
-        )
+        release_records(&self.release, self.source_group_id.clone(), self.other_records.clone())
     }
 
     /// The mediums the coverage names, in release order.
@@ -391,9 +377,7 @@ impl SourceRelease {
 
     /// The rows of the covered mediums, in tracklist order.
     pub(crate) fn covered_entries(&self, coverage: &MediumCoverage) -> Vec<TracklistEntry> {
-        self.covered_mediums(coverage)
-            .flat_map(|medium| medium.entries.iter().cloned())
-            .collect()
+        self.covered_mediums(coverage).flat_map(|medium| medium.entries.iter().cloned()).collect()
     }
 
     /// Every cover option this one release offers, its pressing's images
@@ -401,13 +385,7 @@ impl SourceRelease {
     /// [`bae_catalogs::remote_image::offered_covers`].
     pub(crate) fn covers(&self) -> Vec<RemoteCover> {
         let mut unique = Vec::new();
-        for cover in self
-            .covers
-            .release
-            .iter()
-            .chain(&self.covers.album)
-            .cloned()
-        {
+        for cover in self.covers.release.iter().chain(&self.covers.album).cloned() {
             bae_catalogs::remote_image::push_unique_cover(&mut unique, cover);
         }
         bae_catalogs::remote_image::offered_covers(unique)
@@ -438,10 +416,8 @@ impl SourceRelease {
                 other => not_fetched(other),
             }
         }
-        let covered_group = self
-            .archive_release
-            .as_ref()
-            .and_then(|archive| archive.group_id.as_deref());
+        let covered_group =
+            self.archive_release.as_ref().and_then(|archive| archive.group_id.as_deref());
         for group in &self.archive_groups {
             if covered_group == Some(group.as_str()) {
                 continue;
@@ -601,10 +577,7 @@ pub fn claimed_records(claimed: &[Vec<ReleaseRecord>]) -> Vec<ReleaseRecord> {
     for release in claimed {
         for record in release.iter().cloned() {
             let claimed_by_the_person = Some(record.catalog()) == own_catalog(release);
-            match records
-                .iter_mut()
-                .find(|existing| existing.catalog() == record.catalog())
-            {
+            match records.iter_mut().find(|existing| existing.catalog() == record.catalog()) {
                 Some(existing) if claimed_by_the_person => *existing = record,
                 Some(_) => {}
                 None => records.push(record),
@@ -612,11 +585,7 @@ pub fn claimed_records(claimed: &[Vec<ReleaseRecord>]) -> Vec<ReleaseRecord> {
         }
     }
     let applied = claimed.first().and_then(own_catalog);
-    records.sort_by_key(|record| {
-        (
-            Some(record.catalog()) != applied,
-            catalog_rank(record.catalog()),
-        )
-    });
+    records
+        .sort_by_key(|record| (Some(record.catalog()) != applied, catalog_rank(record.catalog())));
     records
 }

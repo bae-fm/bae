@@ -1,4 +1,7 @@
-fn scanned_candidate(root: &std::path::Path, name: &str) -> crate::import::folder_scanner::ScanItem {
+fn scanned_candidate(
+    root: &std::path::Path,
+    name: &str,
+) -> crate::import::folder_scanner::ScanItem {
     scanned_candidate_with_scope(
         root,
         name,
@@ -8,7 +11,10 @@ fn scanned_candidate(root: &std::path::Path, name: &str) -> crate::import::folde
 
 /// A folder read as one release: one candidate at the folder's key over
 /// everything below it.
-fn combined_candidate(root: &std::path::Path, name: &str) -> crate::import::folder_scanner::ScanItem {
+fn combined_candidate(
+    root: &std::path::Path,
+    name: &str,
+) -> crate::import::folder_scanner::ScanItem {
     scanned_candidate_with_scope(
         root,
         name,
@@ -39,11 +45,19 @@ async fn folder_scan_cache_writes_progressively_and_prunes_only_on_success() {
 
     let generation = db.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
     assert!(db.save_folder_scan_item(root, generation, &first).await.unwrap().is_some());
-    assert!(db.finish_folder_scan(root, generation, Some("share disconnected")).await.unwrap().is_some());
+    assert!(db
+        .finish_folder_scan(root, generation, Some("share disconnected"))
+        .await
+        .unwrap()
+        .is_some());
 
     let generation = db.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
     assert!(db.save_folder_scan_item(root, generation, &second).await.unwrap().is_some());
-    assert!(db.finish_folder_scan(root, generation, Some("directory unreadable")).await.unwrap().is_some());
+    assert!(db
+        .finish_folder_scan(root, generation, Some("directory unreadable"))
+        .await
+        .unwrap()
+        .is_some());
     let failed = db.load_folder_scan_snapshots().await.unwrap();
     assert_eq!(failed.len(), 1);
     assert_eq!(failed[0].items.len(), 2);
@@ -59,12 +73,10 @@ async fn folder_scan_cache_writes_progressively_and_prunes_only_on_success() {
     let complete = db.load_folder_scan_snapshots().await.unwrap();
     assert_eq!(complete[0].items.len(), 1);
     assert_eq!(complete[0].items[0].persisted_key(), second.persisted_key());
-    assert_eq!(
-        complete[0].status,
-        crate::import::FolderScanStatus::Complete
-    );
+    assert_eq!(complete[0].status, crate::import::FolderScanStatus::Complete);
 
-    assert!(db.save_folder_scan_item(root, generation - 1, &first).await.unwrap().is_none(),
+    assert!(
+        db.save_folder_scan_item(root, generation - 1, &first).await.unwrap().is_none(),
         "a superseded generation cannot overwrite the stored snapshot"
     );
 }
@@ -76,24 +88,16 @@ async fn folder_scan_item_rejects_a_mismatched_embedded_root_without_changing_th
     db.add_watched_import_folder(root).await.unwrap();
     let generation = db.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
     let existing = scanned_candidate(root, "Existing");
-    db.save_folder_scan_item(root, generation, &existing)
-        .await
-        .unwrap();
+    db.save_folder_scan_item(root, generation, &existing).await.unwrap();
 
     let mismatched = scanned_candidate(&host_root("/other/library"), "Injected");
-    let error = db
-        .save_folder_scan_item(root, generation, &mismatched)
-        .await
-        .unwrap_err();
+    let error = db.save_folder_scan_item(root, generation, &mismatched).await.unwrap_err();
 
     assert!(error.to_string().contains("does not belong"));
     let snapshot = db.load_folder_scan_snapshots().await.unwrap();
     assert_eq!(snapshot.len(), 1);
     assert_eq!(snapshot[0].items.len(), 1);
-    assert_eq!(
-        snapshot[0].items[0].persisted_key(),
-        existing.persisted_key()
-    );
+    assert_eq!(snapshot[0].items[0].persisted_key(), existing.persisted_key());
 }
 
 /// Whether this device imported a folder's files is a lookup by its hash,
@@ -104,8 +108,8 @@ async fn imported_content_hash_lookup_uses_its_unique_index() {
     let plan = db.content_hash_query_plan_for_test().await.unwrap();
 
     assert!(
-        plan.iter().any(|detail| detail.contains("INDEX")
-            && detail.contains("local_release_origin")),
+        plan.iter()
+            .any(|detail| detail.contains("INDEX") && detail.contains("local_release_origin")),
         "query plan did not use the content-hash index: {plan:?}"
     );
 }
@@ -163,12 +167,19 @@ async fn commit_reading_under(
 /// generation.
 async fn scanned_box_and_sibling(db: &Database, root: &std::path::Path) -> u64 {
     db.add_watched_import_folder(std::path::Path::new(root)).await.unwrap();
-    let generation = db.begin_folder_scan(std::path::Path::new(root), crate::import::VolumeKind::Local).await.unwrap();
+    let generation = db
+        .begin_folder_scan(std::path::Path::new(root), crate::import::VolumeKind::Local)
+        .await
+        .unwrap();
     for name in ["Box/CD1", "Box/CD2", "Other"] {
-        db.save_folder_scan_item(std::path::Path::new(root), generation, &scanned_candidate(root, name))
-            .await
-            .unwrap()
-            .expect("the scan generation is current");
+        db.save_folder_scan_item(
+            std::path::Path::new(root),
+            generation,
+            &scanned_candidate(root, name),
+        )
+        .await
+        .unwrap()
+        .expect("the scan generation is current");
     }
     db.finish_folder_scan(std::path::Path::new(root), generation, None)
         .await
@@ -239,16 +250,13 @@ async fn a_folder_reading_trades_its_entries_in_the_write_that_stores_the_decisi
     )
     .await
     .unwrap();
+    assert_eq!(removed_by(&combined), vec![key_of(root, "Box/CD1"), key_of(root, "Box/CD2")]);
+    assert_eq!(stored_keys(&db, root).await, vec![key_of(root, "Box"), key_of(root, "Other")]);
     assert_eq!(
-        removed_by(&combined),
-        vec![key_of(root, "Box/CD1"), key_of(root, "Box/CD2")]
-    );
-    assert_eq!(
-        stored_keys(&db, root).await,
-        vec![key_of(root, "Box"), key_of(root, "Other")]
-    );
-    assert_eq!(
-        db.load_folder_release_decisions(root).await.unwrap().get(&crate::import::RelativeFolder::test("Box"))
+        db.load_folder_release_decisions(root)
+            .await
+            .unwrap()
+            .get(&crate::import::RelativeFolder::test("Box"))
             .map(|reading| (reading.decision, reading.author)),
         Some((FolderReleaseDecision::CombineAsOneRelease, FolderReleaseDecisionAuthor::User))
     );
@@ -262,24 +270,20 @@ async fn a_folder_reading_trades_its_entries_in_the_write_that_stores_the_decisi
         root,
         "Box",
         FolderReleaseDecision::KeepAsSeparateReleases,
-        vec![
-            scanned_candidate(root, "Box/CD1"),
-            scanned_candidate(root, "Box/CD2"),
-        ],
+        vec![scanned_candidate(root, "Box/CD1"), scanned_candidate(root, "Box/CD2")],
     )
     .await
     .unwrap();
     assert_eq!(removed_by(&separated), vec![key_of(root, "Box")]);
     assert_eq!(
         stored_keys(&db, root).await,
-        vec![
-            key_of(root, "Box/CD1"),
-            key_of(root, "Box/CD2"),
-            key_of(root, "Other")
-        ]
+        vec![key_of(root, "Box/CD1"), key_of(root, "Box/CD2"), key_of(root, "Other")]
     );
     assert_eq!(
-        db.load_folder_release_decisions(root).await.unwrap().get(&crate::import::RelativeFolder::test("Box"))
+        db.load_folder_release_decisions(root)
+            .await
+            .unwrap()
+            .get(&crate::import::RelativeFolder::test("Box"))
             .map(|reading| (reading.decision, reading.author)),
         Some((FolderReleaseDecision::KeepAsSeparateReleases, FolderReleaseDecisionAuthor::User))
     );
@@ -316,26 +320,15 @@ async fn a_folder_reading_prunes_only_the_folder_and_below() {
     )
     .await
     .unwrap();
-    assert_eq!(
-        removed_by(&combined),
-        vec![key_of(root, "Box/CD1"), key_of(root, "Box/CD2")]
-    );
-    assert_eq!(
-        stored_keys(&db, root).await,
-        vec![key_of(root, "Box"), key_of(root, "Box 2")]
-    );
+    assert_eq!(removed_by(&combined), vec![key_of(root, "Box/CD1"), key_of(root, "Box/CD2")]);
+    assert_eq!(stored_keys(&db, root).await, vec![key_of(root, "Box"), key_of(root, "Box 2")]);
 
     // Read with nothing found, the folder's own entry is pruned and the
     // sibling stays.
-    let emptied = commit_reading(
-        &db,
-        root,
-        "Box",
-        FolderReleaseDecision::KeepAsSeparateReleases,
-        Vec::new(),
-    )
-    .await
-    .unwrap();
+    let emptied =
+        commit_reading(&db, root, "Box", FolderReleaseDecision::KeepAsSeparateReleases, Vec::new())
+            .await
+            .unwrap();
     assert_eq!(emptied.pruned, vec![key_of(root, "Box")]);
     assert_eq!(stored_keys(&db, root).await, vec![key_of(root, "Box 2")]);
 }
@@ -363,15 +356,16 @@ async fn a_folder_reading_taken_before_the_root_moved_stores_nothing() {
     .err()
     .expect("a reading of a root that moved is refused");
     assert!(error.to_string().contains("changed while it was being read again"), "{error}");
-    assert!(db.load_folder_release_decisions(root).await.unwrap().get(&crate::import::RelativeFolder::test("Box")).is_none());
+    assert!(db
+        .load_folder_release_decisions(root)
+        .await
+        .unwrap()
+        .get(&crate::import::RelativeFolder::test("Box"))
+        .is_none());
     assert_eq!(db.load_folder_scan_snapshots().await.unwrap()[0].generation, moved);
     assert_eq!(
         stored_keys(&db, root).await,
-        vec![
-            key_of(root, "Box/CD1"),
-            key_of(root, "Box/CD2"),
-            key_of(root, "Other")
-        ]
+        vec![key_of(root, "Box/CD1"), key_of(root, "Box/CD2"), key_of(root, "Other")]
     );
 }
 
@@ -398,15 +392,16 @@ async fn a_folder_reading_that_fails_partway_rolls_back_whole() {
     )
     .await
     .is_err());
-    assert!(db.load_folder_release_decisions(root).await.unwrap().get(&crate::import::RelativeFolder::test("Box")).is_none());
+    assert!(db
+        .load_folder_release_decisions(root)
+        .await
+        .unwrap()
+        .get(&crate::import::RelativeFolder::test("Box"))
+        .is_none());
     assert_eq!(db.load_folder_scan_snapshots().await.unwrap()[0].generation, generation);
     assert_eq!(
         stored_keys(&db, root).await,
-        vec![
-            key_of(root, "Box/CD1"),
-            key_of(root, "Box/CD2"),
-            key_of(root, "Other")
-        ]
+        vec![key_of(root, "Box/CD1"), key_of(root, "Box/CD2"), key_of(root, "Other")]
     );
 }
 
@@ -414,16 +409,10 @@ async fn a_folder_reading_that_fails_partway_rolls_back_whole() {
 async fn watched_root_overlap_uses_paths_not_sql_patterns() {
     let (db, _tmp) = empty_db().await;
     for root in ["/music/100%", "/music/name_value"] {
-        assert!(db
-            .add_watched_import_folder(&host_root(root))
-            .await
-            .unwrap());
+        assert!(db.add_watched_import_folder(&host_root(root)).await.unwrap());
     }
     for child in ["/music/100%/child", "/music/name_value/child"] {
-        let error = db
-            .add_watched_import_folder(&host_root(child))
-            .await
-            .unwrap_err();
+        let error = db.add_watched_import_folder(&host_root(child)).await.unwrap_err();
         assert!(error.to_string().contains("cannot overlap"), "{child}");
     }
 }
@@ -432,16 +421,10 @@ async fn watched_root_overlap_uses_paths_not_sql_patterns() {
 async fn watched_root_order_survives_middle_removal_and_later_add() {
     let (db, _tmp) = empty_db().await;
     for root in ["/one", "/two", "/three"] {
-        db.add_watched_import_folder(&host_root(root))
-            .await
-            .unwrap();
+        db.add_watched_import_folder(&host_root(root)).await.unwrap();
     }
-    db.remove_watched_import_folders(vec![host_root("/two")], None)
-        .await
-        .unwrap();
-    db.add_watched_import_folder(&host_root("/four"))
-        .await
-        .unwrap();
+    db.remove_watched_import_folders(vec![host_root("/two")], None).await.unwrap();
+    db.add_watched_import_folder(&host_root("/four")).await.unwrap();
     let paths: Vec<_> = db
         .load_watched_import_folders()
         .await
@@ -449,10 +432,7 @@ async fn watched_root_order_survives_middle_removal_and_later_add() {
         .into_iter()
         .map(|folder| folder.path)
         .collect();
-    assert_eq!(
-        paths,
-        vec![host_root("/one"), host_root("/three"), host_root("/four")]
-    );
+    assert_eq!(paths, vec![host_root("/one"), host_root("/three"), host_root("/four")]);
 }
 
 /// Every spelling of a watched folder is the same row, keyed by the canonical
@@ -470,16 +450,11 @@ async fn watched_root_spellings_settle_on_one_row() {
     #[cfg(not(windows))]
     const URL_SPELLINGS: &[&str] = &[];
 
-    let spellings = [
-        host_root("/music/rips/"),
-        host_root("/music//rips"),
-        host_root("/music/./rips"),
-    ];
+    let spellings =
+        [host_root("/music/rips/"), host_root("/music//rips"), host_root("/music/./rips")];
 
-    for spelling in spellings
-        .iter()
-        .map(PathBuf::as_path)
-        .chain(URL_SPELLINGS.iter().map(std::path::Path::new))
+    for spelling in
+        spellings.iter().map(PathBuf::as_path).chain(URL_SPELLINGS.iter().map(std::path::Path::new))
     {
         assert!(
             !db.add_watched_import_folder(spelling).await.unwrap(),
@@ -503,11 +478,7 @@ async fn watched_root_spellings_settle_on_one_row() {
 async fn watched_root_rejects_a_path_climbing_out_of_itself() {
     let (db, _tmp) = empty_db().await;
     let path = host_root("/music/../rips");
-    assert!(
-        db.add_watched_import_folder(&path).await.is_err(),
-        "{}",
-        path.display()
-    );
+    assert!(db.add_watched_import_folder(&path).await.is_err(), "{}", path.display());
 }
 
 /// Folder keys below the root that are not canonical — a doubled separator,
@@ -522,15 +493,9 @@ async fn corrupt_folder_keys_fail_when_loaded() {
     let stored_root = root.display().to_string();
     let doubled = format!("{stored_root}{sep}a{sep}{sep}b");
     let dotted = format!("{stored_root}{sep}a{sep}.{sep}b");
-    assert!(db
-        .set_import_candidate_skipped(std::path::Path::new(&doubled), true)
-        .await
-        .is_err());
+    assert!(db.set_import_candidate_skipped(std::path::Path::new(&doubled), true).await.is_err());
     db.call(move |conn| {
-        conn.execute(
-            "INSERT INTO skipped_import_candidates VALUES (?)",
-            [doubled.into_bytes()],
-        )?;
+        conn.execute("INSERT INTO skipped_import_candidates VALUES (?)", [doubled.into_bytes()])?;
         conn.execute(
             "INSERT INTO release_grouping (key, anchor_folder, combined, author) \
                  VALUES (CAST('grouping:corrupt' AS BLOB), ?, 1, 'user')",
@@ -575,9 +540,7 @@ async fn a_scan_entry_from_a_generation_the_root_never_reached_fails_when_loaded
     let root = &host_root("/mounted/library");
     db.add_watched_import_folder(root).await.unwrap();
     let generation = db.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
-    db.save_folder_scan_item(root, generation, &scanned_candidate(root, "Release"))
-        .await
-        .unwrap();
+    db.save_folder_scan_item(root, generation, &scanned_candidate(root, "Release")).await.unwrap();
     assert!(db.load_folder_scan_snapshots().await.is_ok());
 
     db.call(move |conn| {
@@ -611,7 +574,10 @@ async fn a_disc_assignment_survives_a_relaunch() {
     .unwrap();
     let root = folder.path().to_path_buf();
     db.add_watched_import_folder(std::path::Path::new(&root)).await.unwrap();
-    let generation = db.begin_folder_scan(std::path::Path::new(&root), crate::import::VolumeKind::Local).await.unwrap();
+    let generation = db
+        .begin_folder_scan(std::path::Path::new(&root), crate::import::VolumeKind::Local)
+        .await
+        .unwrap();
     let candidate = crate::import::folder_scanner::FolderCandidate {
         path: folder.path().to_path_buf(),
         file_root: folder.path().to_path_buf(),
@@ -630,44 +596,32 @@ async fn a_disc_assignment_survives_a_relaunch() {
     )
     .await
     .unwrap();
-    db.finish_folder_scan(std::path::Path::new(&root), generation, None)
-        .await
-        .unwrap();
+    db.finish_folder_scan(std::path::Path::new(&root), generation, None).await.unwrap();
 
     // The rip named its sheets the other way round: `alpha.cue` is disc two.
     let mut sheet_discs = SheetDiscEdits::default();
     sheet_discs.set("alpha.cue".to_string(), SheetDisc::Disc { number: 2 });
     sheet_discs.set("beta.cue".to_string(), SheetDisc::Disc { number: 1 });
-    let candidate_edits = CandidateFileEdits {
-        sheet_discs,
-        ..Default::default()
-    };
+    let candidate_edits = CandidateFileEdits { sheet_discs, ..Default::default() };
     let mut settled = scanned.clone();
-    settled
-        .apply_candidate_file_edits(&candidate_edits)
-        .unwrap();
+    settled.apply_candidate_file_edits(&candidate_edits).unwrap();
     let hash = scanned.content_hash();
     let (metadata_revision, mut draft) = current_draft(&db, &hash).await;
     draft.tracks = crate::import::pane::blank_candidate_draft(&settled).tracks;
-    crate::import::CandidatePreparations::new(db.clone()).store_file_decisions(
-        &as_read(&hash, metadata_revision),
-        &crate::import::CandidateKey::folder(folder.path()),
-        &candidate_edits,
-        &[(crate::import::CandidateKey::folder(folder.path()), settled)],
-        draft,
-    )
-    .await
-    .unwrap();
-
-    let current = db
-        .load_candidate_file_edits(&scanned.content_hash())
+    crate::import::CandidatePreparations::new(db.clone())
+        .store_file_decisions(
+            &as_read(&hash, metadata_revision),
+            &crate::import::CandidateKey::folder(folder.path()),
+            &candidate_edits,
+            &[(crate::import::CandidateKey::folder(folder.path()), settled)],
+            draft,
+        )
         .await
         .unwrap();
+
+    let current = db.load_candidate_file_edits(&scanned.content_hash()).await.unwrap();
     assert_eq!(current.revision, 1);
-    assert_eq!(
-        current.sheet_discs.get("alpha.cue"),
-        Some(&SheetDisc::Disc { number: 2 })
-    );
+    assert_eq!(current.sheet_discs.get("alpha.cue"), Some(&SheetDisc::Disc { number: 2 }));
 
     // The next scan reads the stored decisions.
     let stored = db.load_stored_candidate_edits().await.unwrap();
@@ -723,11 +677,8 @@ fn walkthrough_folder() -> tempfile::TempDir {
         tmp.path().join("cd.flac"),
     )
     .unwrap();
-    std::fs::copy(
-        fixtures.join("tests/fixtures/logs/test_album.log"),
-        tmp.path().join("rip.log"),
-    )
-    .unwrap();
+    std::fs::copy(fixtures.join("tests/fixtures/logs/test_album.log"), tmp.path().join("rip.log"))
+        .unwrap();
     let mut cue =
         String::from("PERFORMER \"Test Artist\"\nTITLE \"Album\"\nFILE \"cd.wav\" WAVE\n");
     for track in 1..=12 {
@@ -779,10 +730,7 @@ async fn a_rescan_never_takes_a_settled_row_back_to_tentative() {
         .await
         .unwrap()
         .expect("the first scan stores the candidate");
-    db.finish_folder_scan(root, generation, None)
-        .await
-        .unwrap()
-        .expect("the first scan completes");
+    db.finish_folder_scan(root, generation, None).await.unwrap().expect("the first scan completes");
 
     // The re-walk reaches the same folder again and reports it tentative first.
     let generation = db.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
@@ -803,10 +751,7 @@ async fn a_rescan_never_takes_a_settled_row_back_to_tentative() {
         .await
         .unwrap()
         .expect("the valid write is accepted");
-    db.finish_folder_scan(root, generation, None)
-        .await
-        .unwrap()
-        .expect("the re-walk completes");
+    db.finish_folder_scan(root, generation, None).await.unwrap().expect("the re-walk completes");
     let after = db.load_folder_scan_snapshots().await.unwrap();
     assert_eq!(after[0].items.len(), 1);
     assert!(matches!(after[0].items[0], ScanItem::Valid(_)));
@@ -872,15 +817,9 @@ async fn a_folder_reading_is_offered_as_the_stored_scan_reads_the_folder() {
     if let crate::import::folder_scanner::ScanItem::Valid(candidate) = &mut combined {
         candidate.grouping = Some(crate::import::CandidateKey::grouping("Box"));
     }
-    commit_reading(
-        &db,
-        root,
-        "Box",
-        FolderReleaseDecision::CombineAsOneRelease,
-        vec![combined],
-    )
-    .await
-    .unwrap();
+    commit_reading(&db, root, "Box", FolderReleaseDecision::CombineAsOneRelease, vec![combined])
+        .await
+        .unwrap();
     assert!(offered("Box", FolderReleaseDecision::KeepAsSeparateReleases).await);
     assert!(!offered("Box", FolderReleaseDecision::CombineAsOneRelease).await);
 }

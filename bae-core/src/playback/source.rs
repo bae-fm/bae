@@ -261,15 +261,11 @@ impl PlaybackSource {
         }
 
         let now = Instant::now();
-        let span = self.starvation.get_or_insert(StarvationSpan {
-            started: now,
-            last_logged: None,
-        });
+        let span =
+            self.starvation.get_or_insert(StarvationSpan { started: now, last_logged: None });
         let starved = now.duration_since(span.started);
         let should_log = starved >= STARVATION_LOG_AFTER
-            && span
-                .last_logged
-                .is_none_or(|last| now.duration_since(last) >= STARVATION_LOG_EVERY);
+            && span.last_logged.is_none_or(|last| now.duration_since(last) >= STARVATION_LOG_EVERY);
         if should_log {
             span.last_logged = Some(now);
         }
@@ -333,10 +329,7 @@ mod tests {
     }
 
     fn fmt_gain(track_id: &str, replay_gain_linear: f32) -> TrackFmt {
-        TrackFmt {
-            replay_gain_linear,
-            ..fmt(track_id)
-        }
+        TrackFmt { replay_gain_linear, ..fmt(track_id) }
     }
 
     /// A staged next track plays immediately after the current one: a single
@@ -361,10 +354,7 @@ mod tests {
         source.stage_next(src2, fmt("08c7fe07-b56a-4c63-8df6-ad2967fa0653"));
         assert!(source.has_next());
         assert!(!source.is_finished());
-        assert_eq!(
-            source.position_event().0.track_id,
-            "08c7ff07-b56a-4e16-8df6-ae2967fa0806"
-        );
+        assert_eq!(source.position_event().0.track_id, "08c7ff07-b56a-4e16-8df6-ae2967fa0806");
 
         // One pull spans the boundary: track 1 then track 2, contiguous.
         let mut out = [0.0f32; 8];
@@ -378,23 +368,14 @@ mod tests {
             AudioEvent::TrackCrossing(crossing) => crossing,
             event => panic!("expected crossing event, got {event:?}"),
         };
-        assert_eq!(
-            crossing.finished_fmt.track_id,
-            "08c7ff07-b56a-4e16-8df6-ae2967fa0806"
-        );
-        assert_eq!(
-            crossing.incoming_fmt.track_id,
-            "08c7fe07-b56a-4c63-8df6-ad2967fa0653"
-        );
+        assert_eq!(crossing.finished_fmt.track_id, "08c7ff07-b56a-4e16-8df6-ae2967fa0806");
+        assert_eq!(crossing.incoming_fmt.track_id, "08c7fe07-b56a-4c63-8df6-ad2967fa0653");
         assert_eq!(crossing.decode_error_count, 7);
         assert_eq!(crossing.samples_decoded, 3);
         assert!(audio_rx.pop().is_none());
 
         // After the crossing the fmt advanced to the new track.
-        assert_eq!(
-            source.position_event().0.track_id,
-            "08c7fe07-b56a-4c63-8df6-ad2967fa0653"
-        );
+        assert_eq!(source.position_event().0.track_id, "08c7fe07-b56a-4c63-8df6-ad2967fa0653");
 
         // Successor consumed; with both tracks drained the source is finished.
         assert!(!source.has_next());
@@ -416,10 +397,7 @@ mod tests {
         assert_eq!(source.pull_samples(&mut out, &mut audio_tx), 2);
         assert_eq!(&out[..2], &[1.0, 2.0]);
         assert!(source.is_finished());
-        assert!(
-            audio_rx.pop().is_none(),
-            "no boundary without a staged next"
-        );
+        assert!(audio_rx.pop().is_none(), "no boundary without a staged next");
     }
 
     /// Cancelling the staged successor invalidates the chain on
@@ -547,10 +525,7 @@ mod tests {
         assert!(!source.has_next(), "the staged next is cleared");
 
         // The callback now reads the replacement track's samples and fmt.
-        assert_eq!(
-            source.position_event().0.track_id,
-            "08c7fe07-b56a-4c63-8df6-ad2967fa0653"
-        );
+        assert_eq!(source.position_event().0.track_id, "08c7fe07-b56a-4c63-8df6-ad2967fa0653");
         let mut out = [0.0f32; 8];
         assert_eq!(source.pull_samples(&mut out, &mut audio_tx), 2);
         assert_eq!(&out[..2], &[9.0, 8.0]);
@@ -576,10 +551,7 @@ mod tests {
         assert!(source.is_finished());
 
         // First observation reports; the second doesn't (already reported).
-        assert!(
-            source.take_completion_event().is_some(),
-            "track 1's completion is reported once"
-        );
+        assert!(source.take_completion_event().is_some(), "track 1's completion is reported once");
         assert!(
             source.take_completion_event().is_none(),
             "track 1's completion is not reported twice"
@@ -596,9 +568,8 @@ mod tests {
         let mut out = [0.0f32; 8];
         assert_eq!(source.pull_samples(&mut out, &mut audio_tx), 1);
         assert!(source.is_finished());
-        let event = source
-            .take_completion_event()
-            .expect("track 2's completion is reported after replace");
+        let event =
+            source.take_completion_event().expect("track 2's completion is reported after replace");
         assert_eq!(event.0.track_id, "08c7fe07-b56a-4c63-8df6-ad2967fa0653");
         assert!(
             source.take_completion_event().is_none(),

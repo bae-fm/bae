@@ -26,10 +26,7 @@ pub fn catalog_key(stated: &str) -> Option<String> {
 /// [`super::words`] are: each piece is one or more of its words.
 #[cfg(desktop)]
 pub fn catalog_words(text: &str) -> Vec<String> {
-    printed_pieces(text)
-        .into_iter()
-        .map(|(_, piece)| super::squash(piece))
-        .collect()
+    printed_pieces(text).into_iter().map(|(_, piece)| super::squash(piece)).collect()
 }
 
 /// The catalog numbers `text` prints, as it writes them, each once in
@@ -130,9 +127,7 @@ fn joins(c: char) -> bool {
 /// Whether the characters on both sides of `at` are letters or digits.
 #[cfg(desktop)]
 fn joined(chars: &[char], at: usize) -> bool {
-    at.checked_sub(1)
-        .and_then(|before| chars.get(before))
-        .is_some_and(|c| c.is_alphanumeric())
+    at.checked_sub(1).and_then(|before| chars.get(before)).is_some_and(|c| c.is_alphanumeric())
         && chars.get(at + 1).is_some_and(|c| c.is_alphanumeric())
 }
 
@@ -148,9 +143,7 @@ mod tests {
 
     #[test]
     fn a_placeholder_is_no_number() {
-        for placeholder in [
-            "[none]", "none", "None", "(none)", "- none", "-none-", "", "--",
-        ] {
+        for placeholder in ["[none]", "none", "None", "(none)", "- none", "-none-", "", "--"] {
             assert_eq!(catalog_key(placeholder), None, "{placeholder}");
         }
     }
@@ -180,10 +173,7 @@ mod tests {
             printed_catalog_numbers("Label AB 12345-2 (1986) WPCR-80001"),
             vec!["AB 12345-2", "WPCR-80001"]
         );
-        assert_eq!(
-            printed_catalog_numbers("Z1 12345, MD6-233"),
-            vec!["Z1 12345", "MD6-233"]
-        );
+        assert_eq!(printed_catalog_numbers("Z1 12345, MD6-233"), vec!["Z1 12345", "MD6-233"]);
         assert_eq!(
             printed_catalog_numbers("BVCK-15024/5 BVCP 21011~2"),
             vec!["BVCK-15024/5", "BVCP 21011"]

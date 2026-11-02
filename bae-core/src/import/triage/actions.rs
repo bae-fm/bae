@@ -92,13 +92,7 @@ impl CandidateActionBasis {
         lookup: Option<StoredLookup>,
         separable: bool,
     ) -> Self {
-        Self {
-            actionable,
-            placement: *placement,
-            draft_valid,
-            lookup,
-            separable,
-        }
+        Self { actionable, placement: *placement, draft_valid, lookup, separable }
     }
 
     /// The commands these facts offer with `live` running for the candidate.
@@ -153,9 +147,7 @@ impl CandidateActionBasis {
             _ if identifying => {
                 let import_once_stored = matches!(
                     live.identification,
-                    Some(IdentificationStatus::ReadingPick {
-                        import_asked: false
-                    })
+                    Some(IdentificationStatus::ReadingPick { import_asked: false })
                 );
                 let mut actions = Vec::new();
                 // The pick's draft is what imports, not the one stored now,
@@ -228,11 +220,7 @@ impl CandidateLiveState {
         facts: TriageRuntimeFacts,
         standing: Option<PendingStanding>,
     ) -> Self {
-        Self {
-            actions: basis.actions(&facts),
-            standing,
-            facts,
-        }
+        Self { actions: basis.actions(&facts), standing, facts }
     }
 
     /// The lookup at work the row shows: the work its state counts, so only a
@@ -243,23 +231,18 @@ impl CandidateLiveState {
             return None;
         }
         // A row Identifying waits only while its lookup is queued.
-        Some(
-            if self.facts.identification == Some(IdentificationStatus::Queued) {
-                IdentifyingStep::Queued
-            } else {
-                IdentifyingStep::Running
-            },
-        )
+        Some(if self.facts.identification == Some(IdentificationStatus::Queued) {
+            IdentifyingStep::Queued
+        } else {
+            IdentifyingStep::Running
+        })
     }
 
     /// Whether the release the run picked unattended is being read in full
     /// before its answer is stored, which the pane shows on that release. An
     /// answer that picks nothing reads no release.
     pub fn reading_pick(&self) -> bool {
-        matches!(
-            self.facts.identification,
-            Some(IdentificationStatus::ReadingPick { .. })
-        )
+        matches!(self.facts.identification, Some(IdentificationStatus::ReadingPick { .. }))
     }
 }
 
@@ -283,10 +266,7 @@ mod tests {
     }
 
     fn identifying(status: IdentificationStatus) -> TriageRuntimeFacts {
-        TriageRuntimeFacts {
-            identification: Some(status),
-            import: None,
-        }
+        TriageRuntimeFacts { identification: Some(status), import: None }
     }
 
     /// Import is offered for a candidate on Pending — a failed attempt
@@ -302,17 +282,13 @@ mod tests {
         ] {
             let pending = placement.tab() == TriageTab::Pending;
             assert_eq!(
-                basis(placement, None)
-                    .actions(&rest)
-                    .contains(&CandidateAction::Import),
+                basis(placement, None).actions(&rest).contains(&CandidateAction::Import),
                 pending,
                 "{placement:?}"
             );
-            assert!(
-                !CandidateActionBasis::of(true, &placement, false, None, false)
-                    .actions(&rest)
-                    .contains(&CandidateAction::Import)
-            );
+            assert!(!CandidateActionBasis::of(true, &placement, false, None, false)
+                .actions(&rest)
+                .contains(&CandidateAction::Import));
             assert_eq!(
                 CandidateActionBasis::of(false, &placement, true, None, false)
                     .actions(&TriageRuntimeFacts::default()),
@@ -326,11 +302,7 @@ mod tests {
     fn skipped_candidates_offer_restore_without_replacing_metadata() {
         assert_eq!(
             basis(TriagePlacement::Skipped, None).actions(&TriageRuntimeFacts::default()),
-            vec![
-                CandidateAction::Restore,
-                CandidateAction::Combine,
-                CandidateAction::RevealFolder
-            ]
+            vec![CandidateAction::Restore, CandidateAction::Combine, CandidateAction::RevealFolder]
         );
     }
 
@@ -343,10 +315,7 @@ mod tests {
             crate::import::ImportStep::Preparing(crate::import::PrepareStep::Queued),
             crate::import::ImportStep::Running(crate::import::ImportPhase::ReadingFiles),
         ] {
-            let importing = TriageRuntimeFacts {
-                identification: None,
-                import: Some(step),
-            };
+            let importing = TriageRuntimeFacts { identification: None, import: Some(step) };
             for placement in [TriagePlacement::Pending, TriagePlacement::Failed] {
                 assert_eq!(
                     basis(placement, None).actions(&importing),
@@ -472,9 +441,7 @@ mod tests {
                 crate::import::ImportPhase::ReadingFiles,
             )),
         };
-        assert!(!grouped
-            .actions(&importing)
-            .contains(&CandidateAction::Separate));
+        assert!(!grouped.actions(&importing).contains(&CandidateAction::Separate));
     }
 
     /// A candidate is offered identifying only while no lookup is stored for
@@ -484,9 +451,7 @@ mod tests {
     fn only_a_candidate_with_no_stored_lookup_offers_identify() {
         let rest = TriageRuntimeFacts::default();
         for placement in [TriagePlacement::Pending, TriagePlacement::Failed] {
-            assert!(basis(placement, None)
-                .actions(&rest)
-                .contains(&CandidateAction::Identify));
+            assert!(basis(placement, None).actions(&rest).contains(&CandidateAction::Identify));
             for lookup in [StoredLookup::Answered, StoredLookup::Failed] {
                 assert!(
                     !basis(placement, Some(lookup))

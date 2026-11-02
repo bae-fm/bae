@@ -11,11 +11,8 @@ use std::collections::HashSet;
 use tracing::{debug, warn};
 
 fn discogs_role_is_composer(role: &str) -> bool {
-    let lowered = role
-        .chars()
-        .filter(|c| *c != '[' && *c != ']')
-        .collect::<String>()
-        .to_ascii_lowercase();
+    let lowered =
+        role.chars().filter(|c| *c != '[' && *c != ']').collect::<String>().to_ascii_lowercase();
     let compact = lowered.replace(['-', '_'], " ");
     compact.contains("composed by")
         || compact.contains("written by")
@@ -41,11 +38,7 @@ fn discogs_artist_ref(name: String, discogs_artist_id: Option<String>) -> Artist
 /// Discogs states none.
 fn discogs_join(join: Option<&str>) -> Option<String> {
     let join = join.map(str::trim).filter(|join| !join.is_empty())?;
-    Some(if join == "," {
-        ", ".to_string()
-    } else {
-        format!(" {join} ")
-    })
+    Some(if join == "," { ", ".to_string() } else { format!(" {join} ") })
 }
 
 /// A Discogs display credit list, place by place, with each artist's printed
@@ -99,10 +92,9 @@ pub(crate) fn metadata(release: &DiscogsRelease) -> super::release_metadata::Rel
     // title split.
     let release_refs: Vec<crate::import::SourceCredit> = if release.artists.is_empty() {
         match bae_catalogs::discogs::split_title(&release.title).and_then(|(artist, _)| artist) {
-            Some(name) => vec![crate::import::SourceCredit::plain(discogs_artist_ref(
-                name.to_owned(),
-                None,
-            ))],
+            Some(name) => {
+                vec![crate::import::SourceCredit::plain(discogs_artist_ref(name.to_owned(), None))]
+            }
             None => Vec::new(),
         }
     } else {
@@ -129,10 +121,7 @@ pub(crate) fn pressing(release: &DiscogsRelease) -> (Pressing, StatedMedia) {
         labels: release.labels.clone(),
         barcodes: release.barcodes.clone(),
         facts: PressingFacts {
-            area: release
-                .country
-                .as_deref()
-                .and_then(|name| area(&release.id, name)),
+            area: release.country.as_deref().and_then(|name| area(&release.id, name)),
             media: formats.media.counts(),
             status: formats.status,
             packaging: formats.packaging,
@@ -281,10 +270,7 @@ fn position_of(entry: &TracklistEntry) -> &str {
 
 /// The title a Discogs row prints; every Discogs row states one.
 fn title_of(entry: &TracklistEntry) -> &str {
-    entry
-        .title
-        .as_deref()
-        .expect("a Discogs tracklist row states its title")
+    entry.title.as_deref().expect("a Discogs tracklist row states its title")
 }
 
 /// What the covered mediums of a Discogs release say the audio's tracks are,
@@ -307,9 +293,7 @@ pub(crate) fn values(
     let processed = process_tracklist(&entries, audio_durations_ms);
     let covered_layout = covered_layout(&covered, &entries, &entry_mediums, &processed);
     let metadata = release.metadata.clone();
-    metadata
-        .album
-        .require_artists(Catalog::Discogs, release_id)?;
+    metadata.album.require_artists(Catalog::Discogs, release_id)?;
 
     let release_roles = match &release.catalog {
         CatalogFacts::Discogs { release_roles, .. } => release_roles
@@ -363,10 +347,8 @@ fn covered_layout(
     let track_mediums: Vec<usize> = processed
         .iter()
         .map(|pt| {
-            let first = pt
-                .source_tracks
-                .first()
-                .expect("a processed Discogs track is read from a row");
+            let first =
+                pt.source_tracks.first().expect("a processed Discogs track is read from a row");
             entries
                 .iter()
                 .zip(entry_mediums)
@@ -380,19 +362,15 @@ fn covered_layout(
         .map(|pt| {
             let letter = *pt.position.as_bytes().first()?;
             (letter.is_ascii_alphabetic()
-                && pt.position[1..]
-                    .bytes()
-                    .next()
-                    .is_some_and(|byte| byte.is_ascii_digit()))
+                && pt.position[1..].bytes().next().is_some_and(|byte| byte.is_ascii_digit()))
             .then(|| letter.to_ascii_uppercase())
         })
         .collect();
     let mut mediums = Vec::with_capacity(covered.len());
     let mut sides = vec![std::num::NonZeroU8::MIN; processed.len()];
     for (index, medium) in covered.iter().enumerate() {
-        let on_medium: Vec<usize> = (0..processed.len())
-            .filter(|track| track_mediums[*track] == index)
-            .collect();
+        let on_medium: Vec<usize> =
+            (0..processed.len()).filter(|track| track_mediums[*track] == index).collect();
         let sided = medium.medium.is_some_and(Medium::is_sided);
         let base = on_medium.iter().filter_map(|track| letters[*track]).min();
         let mut count = std::num::NonZeroU8::MIN;
@@ -406,10 +384,7 @@ fn covered_layout(
                 count = count.max(current);
             }
         }
-        mediums.push(crate::mediums::ReleaseMedium {
-            carrier: medium.medium,
-            sides: count,
-        });
+        mediums.push(crate::mediums::ReleaseMedium { carrier: medium.medium, sides: count });
     }
     let mut placer = crate::mediums::Placer::default();
     let places = processed
@@ -510,10 +485,7 @@ fn audio_from(audio: Option<&[u64]>, offset: usize) -> &[u64] {
 
 enum LayoutEntry<'a> {
     Index(&'a TracklistEntry),
-    Heading {
-        heading: &'a TracklistEntry,
-        children: &'a [TracklistEntry],
-    },
+    Heading { heading: &'a TracklistEntry, children: &'a [TracklistEntry] },
     Track(&'a TracklistEntry),
 }
 
@@ -592,43 +564,38 @@ fn candidate_layouts<'a>(
 ) -> std::collections::BTreeMap<usize, CandidateLayout<'a>> {
     let mut layouts = std::collections::BTreeMap::from([(
         0,
-        CandidateLayout {
-            tracks: Vec::new(),
-            expanded_groups: 0,
-        },
+        CandidateLayout { tracks: Vec::new(), expanded_groups: 0 },
     )]);
 
     let mut entry_index = 0;
     while entry_index < entries.len() {
         let entry = &entries[entry_index];
-        let (layout_entry, consumed) =
-            if entry.kind == EntryKind::Index && !entry.children.is_empty() {
-                (LayoutEntry::Index(entry), 1)
-            } else if entry.kind == EntryKind::Heading && title_of(entry) != "-" {
-                let mut end = entry_index + 1;
-                while end < entries.len()
-                    && entries[end].kind == EntryKind::Track
-                    && is_sub_track_position(position_of(&entries[end]))
-                {
-                    end += 1;
-                }
-                if end == entry_index + 1 {
-                    entry_index += 1;
-                    continue;
-                }
-                (
-                    LayoutEntry::Heading {
-                        heading: entry,
-                        children: &entries[entry_index + 1..end],
-                    },
-                    end - entry_index,
-                )
-            } else if entry.kind == EntryKind::Track {
-                (LayoutEntry::Track(entry), 1)
-            } else {
+        let (layout_entry, consumed) = if entry.kind == EntryKind::Index
+            && !entry.children.is_empty()
+        {
+            (LayoutEntry::Index(entry), 1)
+        } else if entry.kind == EntryKind::Heading && title_of(entry) != "-" {
+            let mut end = entry_index + 1;
+            while end < entries.len()
+                && entries[end].kind == EntryKind::Track
+                && is_sub_track_position(position_of(&entries[end]))
+            {
+                end += 1;
+            }
+            if end == entry_index + 1 {
                 entry_index += 1;
                 continue;
-            };
+            }
+            (
+                LayoutEntry::Heading { heading: entry, children: &entries[entry_index + 1..end] },
+                end - entry_index,
+            )
+        } else if entry.kind == EntryKind::Track {
+            (LayoutEntry::Track(entry), 1)
+        } else {
+            entry_index += 1;
+            continue;
+        };
         let mut combined = std::collections::BTreeMap::new();
         for prefix in layouts.values() {
             for option in layout_entry.options(audio, audio_offset + prefix.tracks.len()) {
@@ -686,11 +653,7 @@ fn heading_layouts<'a>(
             title: format!(
                 "{}: {}",
                 title_of(heading),
-                children
-                    .iter()
-                    .map(title_of)
-                    .collect::<Vec<_>>()
-                    .join(" \u{2013} ")
+                children.iter().map(title_of).collect::<Vec<_>>().join(" \u{2013} ")
             ),
             position,
             duration_ms: sum_track_durations(&sources),
@@ -752,9 +715,7 @@ fn index_layouts<'a>(
     } else {
         position_of(index).to_string()
     };
-    let duration_ms = index
-        .duration_ms
-        .or_else(|| sum_track_durations(&source_tracks));
+    let duration_ms = index.duration_ms.or_else(|| sum_track_durations(&source_tracks));
     let mut collapsed_sources = Vec::with_capacity(source_tracks.len() + 1);
     collapsed_sources.push(index);
     collapsed_sources.extend(source_tracks);

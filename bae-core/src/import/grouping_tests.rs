@@ -31,10 +31,8 @@ fn folder_at(root: &str, relative: &str) -> FolderCandidate {
 
 /// `members` read as one release, with no file decision stored for any.
 fn composed(members: &[FolderCandidate]) -> FolderCandidate {
-    let members: Vec<(FolderCandidate, CandidateFileEdits)> = members
-        .iter()
-        .map(|member| (member.clone(), CandidateFileEdits::default()))
-        .collect();
+    let members: Vec<(FolderCandidate, CandidateFileEdits)> =
+        members.iter().map(|member| (member.clone(), CandidateFileEdits::default())).collect();
     let (mut release, inherited) = compose(
         &crate::import::CandidateKey::grouping("test"),
         &members[0].0.watched_folder_path,
@@ -42,18 +40,12 @@ fn composed(members: &[FolderCandidate]) -> FolderCandidate {
         &[],
     )
     .unwrap();
-    release
-        .files
-        .apply_candidate_file_edits(&inherited)
-        .unwrap();
+    release.files.apply_candidate_file_edits(&inherited).unwrap();
     release
 }
 
 fn plain(members: &[FolderCandidate]) -> Vec<(FolderCandidate, CandidateFileEdits)> {
-    members
-        .iter()
-        .map(|member| (member.clone(), CandidateFileEdits::default()))
-        .collect()
+    members.iter().map(|member| (member.clone(), CandidateFileEdits::default())).collect()
 }
 
 /// Each track's disc and number as the folders lay them out.
@@ -69,34 +61,19 @@ fn layout(release: &FolderCandidate) -> Vec<(Option<u32>, u32)> {
 /// one on each — and not one file's place on disk moves.
 #[test]
 fn folders_under_one_folder_keep_their_paths_below_it_and_a_disc_each() {
-    let members = [
-        folder_at("/music", "Artist/Album/Disc 1"),
-        folder_at("/music", "Artist/Album/Disc 2"),
-    ];
+    let members =
+        [folder_at("/music", "Artist/Album/Disc 1"), folder_at("/music", "Artist/Album/Disc 2")];
     let release = composed(&members);
 
     assert_eq!(release.path, host_root("/music").join("Artist/Album"));
     assert_eq!(release.relative_folder.text(), "Artist/Album/Disc 1");
     assert_eq!(release.key(), crate::import::CandidateKey::grouping("test"));
     assert_eq!(
-        release
-            .files
-            .release_files()
-            .map(|file| file.relative_path.as_str())
-            .collect::<Vec<_>>(),
-        [
-            "Disc 1/01.flac",
-            "Disc 1/02.flac",
-            "Disc 2/01.flac",
-            "Disc 2/02.flac"
-        ]
+        release.files.release_files().map(|file| file.relative_path.as_str()).collect::<Vec<_>>(),
+        ["Disc 1/01.flac", "Disc 1/02.flac", "Disc 2/01.flac", "Disc 2/02.flac"]
     );
     assert_eq!(
-        release
-            .files
-            .release_files()
-            .map(|file| &file.path)
-            .collect::<Vec<_>>(),
+        release.files.release_files().map(|file| &file.path).collect::<Vec<_>>(),
         members
             .iter()
             .flat_map(|member| member.files.release_files().map(|file| &file.path))
@@ -104,31 +81,18 @@ fn folders_under_one_folder_keep_their_paths_below_it_and_a_disc_each() {
     );
     assert_eq!(
         release.source_folders(),
-        members
-            .iter()
-            .map(|member| member.path.clone())
-            .collect::<Vec<_>>()
+        members.iter().map(|member| member.path.clone()).collect::<Vec<_>>()
     );
-    assert_eq!(
-        layout(&release),
-        [(Some(1), 1), (Some(1), 2), (Some(2), 1), (Some(2), 2)]
-    );
+    assert_eq!(layout(&release), [(Some(1), 1), (Some(1), 2), (Some(2), 1), (Some(2), 2)]);
 }
 
 /// Folders under different watched folders share no folder, so each takes a
 /// prefix of its position and name, in the order they were given.
 #[test]
 fn folders_under_different_roots_take_their_position_and_name() {
-    let release = composed(&[
-        folder_at("/music", "Volume B"),
-        folder_at("/archive", "Volume A"),
-    ]);
+    let release = composed(&[folder_at("/music", "Volume B"), folder_at("/archive", "Volume A")]);
     assert_eq!(
-        release
-            .files
-            .release_files()
-            .map(|file| file.relative_path.as_str())
-            .collect::<Vec<_>>(),
+        release.files.release_files().map(|file| file.relative_path.as_str()).collect::<Vec<_>>(),
         [
             "01 - Volume B/01.flac",
             "01 - Volume B/02.flac",
@@ -136,10 +100,7 @@ fn folders_under_different_roots_take_their_position_and_name() {
             "02 - Volume A/02.flac"
         ]
     );
-    assert_eq!(
-        layout(&release),
-        [(Some(1), 1), (Some(1), 2), (Some(2), 1), (Some(2), 2)]
-    );
+    assert_eq!(layout(&release), [(Some(1), 1), (Some(1), 2), (Some(2), 1), (Some(2), 2)]);
 }
 
 #[test]
@@ -168,10 +129,7 @@ fn rejects_duplicate_members_and_overlapping_files() {
 #[test]
 fn file_metadata_keeps_the_releases_numbering_instead_of_the_tags() {
     use crate::import::file_tag_snapshot::{FileObservation, FileTagFact, FileTagSnapshot};
-    let release = composed(&[
-        folder_at("/music", "Volume B"),
-        folder_at("/archive", "Volume A"),
-    ]);
+    let release = composed(&[folder_at("/music", "Volume B"), folder_at("/archive", "Volume A")]);
     let snapshot = FileTagSnapshot {
         scan_generation: 1,
         file_edit_revision: 0,
@@ -207,10 +165,7 @@ fn file_metadata_keeps_the_releases_numbering_instead_of_the_tags() {
         .map(|(disc, number)| (disc, std::num::NonZeroU32::new(number)))
         .collect();
     assert_eq!(
-        edit.tracks
-            .iter()
-            .map(|track| track.place)
-            .collect::<Vec<_>>(),
+        edit.tracks.iter().map(|track| track.place).collect::<Vec<_>>(),
         crate::mediums::by_disc(&laid_out).1,
         "the folders' layout places the tracks, whatever their tags say"
     );
@@ -262,15 +217,10 @@ fn with_a_sheet_over_its_first_file(mut folder: FolderCandidate) -> FolderCandid
 fn a_members_file_decisions_carry_into_the_release() {
     let first = with_a_sheet_over_its_first_file(folder_at("/music", "Album/Disc 1"));
     let mut decided = CandidateFileEdits::default();
-    decided
-        .sheet_discs
-        .set("01.flac.cue".into(), SheetDisc::Ignored);
+    decided.sheet_discs.set("01.flac.cue".into(), SheetDisc::Ignored);
     let members = vec![
         (first, decided),
-        (
-            folder_at("/music", "Album/Disc 2"),
-            CandidateFileEdits::default(),
-        ),
+        (folder_at("/music", "Album/Disc 2"), CandidateFileEdits::default()),
     ];
     let (mut release, inherited) = compose(
         &crate::import::CandidateKey::grouping("test"),
@@ -279,10 +229,7 @@ fn a_members_file_decisions_carry_into_the_release() {
         &[],
     )
     .unwrap();
-    release
-        .files
-        .apply_candidate_file_edits(&inherited)
-        .unwrap();
+    release.files.apply_candidate_file_edits(&inherited).unwrap();
     assert!(release.files.carving_sheets().is_empty());
     assert_eq!(
         crate::import::audio_layout::audio_units(&release.files).len(),
@@ -314,12 +261,11 @@ fn sheets_take_discs_within_their_folders_run() {
 
 /// The folder picked releases all sit directly in, as the rule reads it.
 fn parent_of(members: &[FolderCandidate]) -> Option<PathBuf> {
-    shared_parent(members.iter().map(|member| {
-        (
-            member.watched_folder_path.as_path(),
-            member.file_root.as_path(),
-        )
-    }))
+    shared_parent(
+        members
+            .iter()
+            .map(|member| (member.watched_folder_path.as_path(), member.file_root.as_path())),
+    )
 }
 
 /// Releases sit in one folder when each is directly in it — two discs of
@@ -342,26 +288,11 @@ fn releases_sit_in_one_folder_only_when_each_is_directly_in_it() {
         ]),
         Some(album)
     );
+    assert_eq!(parent_of(&[disc("Artist/Album/Disc 1"), disc("Artist/Other/Disc 1")]), None);
+    assert_eq!(parent_of(&[disc("Artist/Album/Disc 1"), disc("Artist/Album/Disc 2/Bonus")]), None);
+    assert_eq!(parent_of(&[disc("Artist/Album"), disc("Artist/Album/Disc 1")]), None);
     assert_eq!(
-        parent_of(&[disc("Artist/Album/Disc 1"), disc("Artist/Other/Disc 1")]),
-        None
-    );
-    assert_eq!(
-        parent_of(&[
-            disc("Artist/Album/Disc 1"),
-            disc("Artist/Album/Disc 2/Bonus")
-        ]),
-        None
-    );
-    assert_eq!(
-        parent_of(&[disc("Artist/Album"), disc("Artist/Album/Disc 1")]),
-        None
-    );
-    assert_eq!(
-        parent_of(&[
-            folder_at("/music", "Album/Disc 1"),
-            folder_at("/other", "Album/Disc 2")
-        ]),
+        parent_of(&[folder_at("/music", "Album/Disc 1"), folder_at("/other", "Album/Disc 2")]),
         None
     );
     assert_eq!(parent_of(&[disc("Album A"), disc("Album B")]), None);
@@ -376,10 +307,8 @@ fn the_folder_the_releases_sit_in_gives_its_files_to_the_release() {
         file: ScannedFile::new(album.join("cover.jpg"), "cover.jpg".into(), 10, 1),
         role: FileRole::Artwork,
     };
-    let members = plain(&[
-        folder_at("/music", "Album/Disc 1"),
-        folder_at("/music", "Album/Disc 2"),
-    ]);
+    let members =
+        plain(&[folder_at("/music", "Album/Disc 1"), folder_at("/music", "Album/Disc 2")]);
     let (release, _) = compose(
         &crate::import::CandidateKey::grouping("test"),
         &host_root("/music"),
@@ -395,20 +324,11 @@ fn the_folder_the_releases_sit_in_gives_its_files_to_the_release() {
             .iter()
             .map(|entry| entry.file.relative_path.as_str())
             .collect::<Vec<_>>(),
-        [
-            "cover.jpg",
-            "Disc 1/01.flac",
-            "Disc 1/02.flac",
-            "Disc 2/01.flac",
-            "Disc 2/02.flac"
-        ]
+        ["cover.jpg", "Disc 1/01.flac", "Disc 1/02.flac", "Disc 2/01.flac", "Disc 2/02.flac"]
     );
     assert_eq!(release.files.artwork().count(), 1);
 
-    let apart = plain(&[
-        folder_at("/music", "Album/Disc 1"),
-        folder_at("/music", "Other/Disc 2"),
-    ]);
+    let apart = plain(&[folder_at("/music", "Album/Disc 1"), folder_at("/music", "Other/Disc 2")]);
     assert!(compose(
         &crate::import::CandidateKey::grouping("test"),
         &host_root("/music"),

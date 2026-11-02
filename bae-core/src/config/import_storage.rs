@@ -14,10 +14,7 @@ pub struct ImportStoragePreferences {
 
 impl Default for ImportStoragePreferences {
     fn default() -> Self {
-        Self {
-            cloud: true,
-            pinned: true,
-        }
+        Self { cloud: true, pinned: true }
     }
 }
 
@@ -28,9 +25,7 @@ impl super::Preferences {
     pub fn import_destination(&self, storage_configured: bool) -> crate::import::ImportDestination {
         let storage = self.import_storage;
         if storage.cloud && storage_configured {
-            crate::import::ImportDestination::Remote {
-                pin: storage.pinned,
-            }
+            crate::import::ImportDestination::Remote { pin: storage.pinned }
         } else {
             crate::import::ImportDestination::Local
         }

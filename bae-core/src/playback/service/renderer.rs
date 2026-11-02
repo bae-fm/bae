@@ -152,11 +152,7 @@ impl AirPlayRenderer {
         control: Arc<crate::playback::airplay_output::AirPlayControl>,
         saved_output: Box<dyn crate::playback::audio_output::AudioOutput>,
     ) -> Self {
-        Self {
-            device,
-            control,
-            saved_output,
-        }
+        Self { device, control, saved_output }
     }
 }
 
@@ -180,9 +176,7 @@ impl AirPlayConnect {
 
 impl std::fmt::Debug for AirPlayConnect {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("AirPlayConnect")
-            .field("device", &self.device)
-            .finish_non_exhaustive()
+        f.debug_struct("AirPlayConnect").field("device", &self.device).finish_non_exhaustive()
     }
 }
 
@@ -213,8 +207,7 @@ impl RemoteRenderer {
         // Serving is resolved here, where the track's stored audio is known, so
         // the URL and the MIME declared below come from the same decision.
         let served =
-            self.media_source
-                .serve_track(audio, transcode, display.cover_image.as_ref())?;
+            self.media_source.serve_track(audio, transcode, display.cover_image.as_ref())?;
         self.session.load(RendererMedia {
             url: served.url,
             content_type: served.content_type,
@@ -250,19 +243,13 @@ impl RemoteConnect {
         device: RemoteDevice,
         media_source: RendererMediaSource,
     ) -> Self {
-        Self {
-            channel,
-            device,
-            media_source,
-        }
+        Self { channel, device, media_source }
     }
 }
 
 impl std::fmt::Debug for RemoteConnect {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("RemoteConnect")
-            .field("device", &self.device)
-            .finish_non_exhaustive()
+        f.debug_struct("RemoteConnect").field("device", &self.device).finish_non_exhaustive()
     }
 }
 
@@ -296,11 +283,7 @@ impl PlaybackService {
     /// local pipeline down (keeping the queue), start the session, and reissue the
     /// current track to the device at its position.
     pub(super) async fn handle_play_on(&mut self, connect: RemoteConnect) {
-        let RemoteConnect {
-            channel,
-            device,
-            media_source,
-        } = connect;
+        let RemoteConnect { channel, device, media_source } = connect;
 
         let current = self.current_track_position();
         // Carry the current play/pause intent to the device.
@@ -331,11 +314,8 @@ impl PlaybackService {
             }
         };
         session.set_volume(volume);
-        self.renderer = Renderer::Remote(RemoteRenderer {
-            device: device.clone(),
-            session,
-            media_source,
-        });
+        self.renderer =
+            Renderer::Remote(RemoteRenderer { device: device.clone(), session, media_source });
         self.hand_over_to_device(device, current, target).await;
     }
 
@@ -350,9 +330,7 @@ impl PlaybackService {
     ) {
         emit_progress(
             &self.progress_tx,
-            PlaybackProgress::RemoteStatusChanged {
-                remote: RemotePlayback::On(device),
-            },
+            PlaybackProgress::RemoteStatusChanged { remote: RemotePlayback::On(device) },
         );
 
         match current {
@@ -401,8 +379,7 @@ impl PlaybackService {
                 },
             ),
             RendererSessionEvent::Ended(error) => {
-                self.end_remote_and_resume_local(RemoteEnd::Lost(error.to_string()))
-                    .await;
+                self.end_remote_and_resume_local(RemoteEnd::Lost(error.to_string())).await;
             }
         }
     }
@@ -425,9 +402,7 @@ impl PlaybackService {
         self.renderer = Renderer::Local;
         emit_progress(
             &self.progress_tx,
-            PlaybackProgress::RemoteStatusChanged {
-                remote: remote_playback,
-            },
+            PlaybackProgress::RemoteStatusChanged { remote: remote_playback },
         );
         self.teardown_local_playback();
 
@@ -534,17 +509,15 @@ impl PlaybackService {
             self.finish_listening().await;
         }
 
-        self.slot = PlaybackSlot::Loading(LoadingTrack::Unprepared {
-            track_id: track_id.to_string(),
-        });
+        self.slot =
+            PlaybackSlot::Loading(LoadingTrack::Unprepared { track_id: track_id.to_string() });
         self.emit_state();
 
         let resolved = match self.library_manager.resolve_track_audio(track_id).await {
             Ok(resolved) => resolved,
             Err(e) => {
                 error!("remote: failed to resolve track {track_id}: {e}");
-                self.fail_remote(PlaybackError::database(e).ui_reason())
-                    .await;
+                self.fail_remote(PlaybackError::database(e).ui_reason()).await;
                 return;
             }
         };
@@ -555,8 +528,7 @@ impl PlaybackService {
             Ok(display) => display,
             Err(e) => {
                 error!("remote: failed to read what track {track_id} shows: {e}");
-                self.fail_remote(PlaybackError::database(e).ui_reason())
-                    .await;
+                self.fail_remote(PlaybackError::database(e).ui_reason()).await;
                 return;
             }
         };
@@ -564,8 +536,7 @@ impl PlaybackService {
             Ok(prefs) => prefs,
             Err(e) => {
                 error!("remote: failed to read the preferences to load track {track_id}: {e}");
-                self.fail_remote(PlaybackError::database(e).ui_reason())
-                    .await;
+                self.fail_remote(PlaybackError::database(e).ui_reason()).await;
                 return;
             }
         };
@@ -602,8 +573,7 @@ impl PlaybackService {
             Ok(decoder) => decoder,
             Err(error) => {
                 error!("remote: failed to start the stand-in decoder for {track_id}: {error}");
-                self.fail_remote(crate::ui::PlaybackErrorReason::internal(error))
-                    .await;
+                self.fail_remote(crate::ui::PlaybackErrorReason::internal(error)).await;
                 return;
             }
         };
@@ -620,16 +590,11 @@ impl PlaybackService {
     /// A remote track load failed: surface the error and stop remote playback,
     /// dropping back to a stopped local renderer.
     async fn fail_remote(&mut self, reason: crate::ui::PlaybackErrorReason) {
-        emit_progress(
-            &self.progress_tx,
-            PlaybackProgress::PlaybackError { reason },
-        );
+        emit_progress(&self.progress_tx, PlaybackProgress::PlaybackError { reason });
         self.renderer = Renderer::Local;
         emit_progress(
             &self.progress_tx,
-            PlaybackProgress::RemoteStatusChanged {
-                remote: RemotePlayback::Local,
-            },
+            PlaybackProgress::RemoteStatusChanged { remote: RemotePlayback::Local },
         );
         self.stop().await;
     }
@@ -683,9 +648,7 @@ impl PlaybackService {
         self.audio_output = saved_output;
         emit_progress(
             &self.progress_tx,
-            PlaybackProgress::RemoteStatusChanged {
-                remote: remote_playback,
-            },
+            PlaybackProgress::RemoteStatusChanged { remote: remote_playback },
         );
 
         match current {

@@ -14,10 +14,7 @@ pub enum BarcodeSignal {
     /// Finished; empty `codes` means the sources were read and held none.
     Settled { codes: Vec<SourcedValue> },
     /// Artwork OCR failed before barcode extraction finished.
-    Failed {
-        failure: InternalFailure,
-        codes: Vec<SourcedValue>,
-    },
+    Failed { failure: InternalFailure, codes: Vec<SourcedValue> },
     /// No barcode source was read: no CUE `CATALOG`, and no artwork read.
     Absent,
 }
@@ -36,14 +33,8 @@ impl BarcodeSignal {
 /// The codes on one image: detector payloads first, then lines that are the
 /// digits printed under bars — which catch codes whose bars did not decode.
 pub(super) fn codes_in(analysis: &ArtworkAnalysis) -> impl Iterator<Item = Barcode> + '_ {
-    let detected = analysis
-        .barcodes
-        .iter()
-        .filter_map(|payload| Barcode::stated(payload));
-    let printed = analysis
-        .text_lines
-        .iter()
-        .filter_map(|line| Barcode::printed(line));
+    let detected = analysis.barcodes.iter().filter_map(|payload| Barcode::stated(payload));
+    let printed = analysis.text_lines.iter().filter_map(|line| Barcode::printed(line));
     detected.chain(printed)
 }
 

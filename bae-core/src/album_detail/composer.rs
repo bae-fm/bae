@@ -68,12 +68,8 @@ pub struct WorkReleaseSummary {
 impl WorkReleaseSummary {
     pub(crate) fn from_raw(raw: DbWorkReleaseSummary) -> Self {
         let cover = cover_ref(&raw.release_id, raw.cover_version);
-        let name = ReleaseName::of(
-            raw.release_name.as_deref(),
-            raw.year,
-            &raw.media,
-            raw.release_index,
-        );
+        let name =
+            ReleaseName::of(raw.release_name.as_deref(), raw.year, &raw.media, raw.release_index);
         Self {
             release_id: raw.release_id,
             album_id: raw.album_id,

@@ -11,13 +11,8 @@ impl BridgeS3Detection {
 }
 #[derive(Clone, uniffi::Enum)]
 pub enum BridgeS3Versioning {
-    Known {
-        state: BridgeS3BucketVersioning,
-    },
-    Failed {
-        failure: BridgeStorageFailure,
-        detail: String,
-    },
+    Known { state: BridgeS3BucketVersioning },
+    Failed { failure: BridgeStorageFailure, detail: String },
 }
 #[derive(Clone, uniffi::Enum)]
 pub enum BridgeS3Probe {
@@ -55,9 +50,9 @@ impl BridgeS3Detection {
     }
     pub fn versioning(&self) -> BridgeS3Versioning {
         match &self.detection.versioning {
-            Ok(state) => BridgeS3Versioning::Known {
-                state: BridgeS3BucketVersioning::from_core(*state),
-            },
+            Ok(state) => {
+                BridgeS3Versioning::Known { state: BridgeS3BucketVersioning::from_core(*state) }
+            }
             Err(error) => BridgeS3Versioning::Failed {
                 failure: BridgeStorageFailure::from_core(error.failure()),
                 detail: error.to_string(),

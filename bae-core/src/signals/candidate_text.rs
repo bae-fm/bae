@@ -376,10 +376,7 @@ pub(crate) fn cluster_lines_incremental(clusters: &mut Vec<Cluster>, new_lines: 
         if norm.chars().count() < MIN_CLUSTER_LEN {
             // Too short to compare, but still emitted as a singleton — dropping
             // it would lose real 2-3 char album titles.
-            clusters.push(Cluster {
-                normalized_centroid: norm,
-                members: vec![line.clone()],
-            });
+            clusters.push(Cluster { normalized_centroid: norm, members: vec![line.clone()] });
             continue;
         }
 
@@ -399,10 +396,7 @@ pub(crate) fn cluster_lines_incremental(clusters: &mut Vec<Cluster>, new_lines: 
                 continue;
             }
         }
-        clusters.push(Cluster {
-            normalized_centroid: norm,
-            members: vec![line.clone()],
-        });
+        clusters.push(Cluster { normalized_centroid: norm, members: vec![line.clone()] });
     }
 }
 
@@ -416,10 +410,8 @@ pub(crate) fn rank_clusters_in_place(clusters: &mut [Cluster]) {
 /// (common on single-image candidates, where every cluster is score-1), fall back
 /// to the top `FREE_TEXT_FALLBACK_TOP` — a useful dropdown beats an empty one.
 pub(crate) fn apply_free_text_cutoff(ranked: &[Cluster]) -> Vec<String> {
-    let above_threshold: Vec<&Cluster> = ranked
-        .iter()
-        .filter(|c| c.score() >= FREE_TEXT_MIN_SCORE)
-        .collect();
+    let above_threshold: Vec<&Cluster> =
+        ranked.iter().filter(|c| c.score() >= FREE_TEXT_MIN_SCORE).collect();
 
     if !above_threshold.is_empty() {
         return above_threshold

@@ -13,16 +13,14 @@ async fn a_pick_reads_back_as_the_same_answer() {
 
     // The settled verdict wrote the pick; nothing is routed, so everything
     // below is served from what identification archived.
-    fixture
-        .archive("mb-answer-1", "rg-answer-1", &[probed, 0])
-        .await;
-    fixture
-        .store_settled_verdict(&dir, "mb-answer-1", "rg-answer-1",)
-        .await;
+    fixture.archive("mb-answer-1", "rg-answer-1", &[probed, 0]).await;
+    fixture.store_settled_verdict(&dir, "mb-answer-1", "rg-answer-1").await;
 
     let resumed = fixture.pane(&dir).await.expect("the candidate reads back");
     let link = resumed
-        .draft().unwrap().release_link
+        .draft()
+        .unwrap()
+        .release_link
         .as_ref()
         .and_then(crate::import::ReleaseLink::pressing)
         .expect("a settled single match is a decision");
@@ -45,10 +43,8 @@ async fn a_pick_reads_back_as_the_same_answer() {
     );
 
     // The row carries the same decision for the sidebar's resume trigger.
-    let picked = queue_row(&fixture, &key)
-        .await
-        .release_link
-        .expect("the row carries the decision");
+    let picked =
+        queue_row(&fixture, &key).await.release_link.expect("the row carries the decision");
     assert_eq!(
         picked,
         crate::import::ReleaseLink::Pressing(crate::import::PressingLink {
@@ -117,12 +113,8 @@ async fn a_picked_release_is_what_the_row_leads_with() {
 
     // Identification settled on one release; the user searched and picked
     // another, whose documents the search archived.
-    fixture
-        .archive("mb-answer-1", "rg-answer-1", &[probed, 0])
-        .await;
-    fixture
-        .store_settled_verdict(&dir, "mb-answer-1", "rg-answer-1",)
-        .await;
+    fixture.archive("mb-answer-1", "rg-answer-1", &[probed, 0]).await;
+    fixture.store_settled_verdict(&dir, "mb-answer-1", "rg-answer-1").await;
     // The picked release is one identification never fetched, which is what a
     // manual search result is: its documents are archived by the pick itself.
     fixture.provider.route(
@@ -144,13 +136,16 @@ async fn a_picked_release_is_what_the_row_leads_with() {
         let key = key.clone();
         tokio::spawn(async move {
             import
-                .select_candidate_release(key, crate::import::PressingLink {
+                .select_candidate_release(
+                    key,
+                    crate::import::PressingLink {
                         record: crate::import::MetadataRef::new(
                             bae_catalogs::catalog::Catalog::MusicBrainz,
                             "mb-picked-1".to_string(),
                         ),
                         partners: vec![],
-                    }, crate::import::CatalogApplySteps::unread(),
+                    },
+                    crate::import::CatalogApplySteps::unread(),
                 )
                 .await
         })
@@ -169,16 +164,9 @@ async fn a_picked_release_is_what_the_row_leads_with() {
     }
     }).await.expect("a successful pick publishes its metadata change");
 
-    picking
-        .await
-        .expect("the pick task runs")
-        .expect("picking the searched release succeeds");
+    picking.await.expect("the pick task runs").expect("picking the searched release succeeds");
     assert_eq!(
-        fixture
-            .pane(&dir)
-            .await
-            .expect("the candidate reads back")
-            .file_evidence,
+        fixture.pane(&dir).await.expect("the candidate reads back").file_evidence,
         vec![crate::import::FileEvidence {
             signal: crate::import::EvidenceSignal::DiscId,
             value: SEEDED_DISC_ID.to_string(),
@@ -189,20 +177,16 @@ async fn a_picked_release_is_what_the_row_leads_with() {
     let row = queue_row(&fixture, &key).await;
     assert_eq!(
         row.release_link,
-        Some(crate::import::ReleaseLink::Pressing(
-            crate::import::PressingLink {
-                record: crate::import::MetadataRef::new(
-                    bae_catalogs::catalog::Catalog::MusicBrainz,
-                    "mb-picked-1".to_string(),
-                ),
-                partners: vec![],
-            }
-        )),
+        Some(crate::import::ReleaseLink::Pressing(crate::import::PressingLink {
+            record: crate::import::MetadataRef::new(
+                bae_catalogs::catalog::Catalog::MusicBrainz,
+                "mb-picked-1".to_string(),
+            ),
+            partners: vec![],
+        })),
         "the row is linked to the release the pick settled it on"
     );
-    let summary = row
-        .metadata_summary
-        .expect("the row shows the draft the pick read");
+    let summary = row.metadata_summary.expect("the row shows the draft the pick read");
     assert_eq!(summary.album_title, "Picked Album Title");
     assert_eq!(summary.album_artists, "Picked Artist Name");
 }
@@ -219,12 +203,8 @@ async fn a_pick_reads_back_as_the_identity_it_commits() {
     fixture.scan(1).await;
     let key = crate::import::CandidateKey::folder(&dir);
 
-    fixture
-        .archive("mb-answer-1", "rg-answer-1", &[probed, 0])
-        .await;
-    fixture
-        .store_settled_verdict(&dir, "mb-answer-1", "rg-answer-1",)
-        .await;
+    fixture.archive("mb-answer-1", "rg-answer-1", &[probed, 0]).await;
+    fixture.store_settled_verdict(&dir, "mb-answer-1", "rg-answer-1").await;
 
     let pick = crate::import::PressingLink {
         record: crate::import::MetadataRef::new(
@@ -235,7 +215,11 @@ async fn a_pick_reads_back_as_the_identity_it_commits() {
     };
     fixture
         .import
-        .select_candidate_release(key.clone(), pick.clone(), crate::import::CatalogApplySteps::unread())
+        .select_candidate_release(
+            key.clone(),
+            pick.clone(),
+            crate::import::CatalogApplySteps::unread(),
+        )
         .await
         .expect("picking the release succeeds");
 
@@ -264,11 +248,7 @@ async fn a_stored_verdict_takes_over_from_the_recorded_runtime_state() {
     let fixture = Fixture::new("verdict-takes-over").await;
     let dir = fixture.disc_id_candidate("Album");
     let probed = fixture.probed_total_ms(&dir);
-    fixture.provider.route(
-        "/discid/",
-        200,
-        discid_json("mb-own-1", "rg-own-1", &[probed, 0]),
-    );
+    fixture.provider.route("/discid/", 200, discid_json("mb-own-1", "rg-own-1", &[probed, 0]));
     fixture.provider.route(
         "/release/mb-own-1?",
         200,
@@ -279,16 +259,11 @@ async fn a_stored_verdict_takes_over_from_the_recorded_runtime_state() {
 
     fixture.drain_automatic().await;
 
-    assert!(
-        fixture.identified_for(&dir).await.is_some(),
-        "the candidate really was identified"
-    );
-    let pane = fixture
-        .pane(&dir)
-        .await
-        .expect("the identified candidate reads back");
+    assert!(fixture.identified_for(&dir).await.is_some(), "the candidate really was identified");
+    let pane = fixture.pane(&dir).await.expect("the identified candidate reads back");
     assert_eq!(
-        pane.draft().unwrap().metadata_draft.album_title, "Album",
+        pane.draft().unwrap().metadata_draft.album_title,
+        "Album",
         "the automatic release choice seeds the editable metadata draft"
     );
     // The write's event reaches the recorder through the bus; poll for it.
@@ -305,16 +280,16 @@ async fn a_stored_verdict_takes_over_from_the_recorded_runtime_state() {
         }
     })
     .await;
-    assert!(
-        cleared.is_ok(),
-        "the recorded terminal state clears once its verdict is stored"
-    );
+    assert!(cleared.is_ok(), "the recorded terminal state clears once its verdict is stored");
 }
 
 /// The list's row for one candidate, over the tabs that present a candidate's
 /// own reading — which of them it lands in is not what these tests are about.
 /// Done presents the library release instead.
-async fn queue_row(fixture: &Fixture, key: &crate::import::CandidateKey) -> crate::import::TriageRow {
+async fn queue_row(
+    fixture: &Fixture,
+    key: &crate::import::CandidateKey,
+) -> crate::import::TriageRow {
     queue_item(fixture, key).await.0
 }
 
@@ -324,27 +299,21 @@ async fn queue_item(
     fixture: &Fixture,
     key: &crate::import::CandidateKey,
 ) -> (crate::import::TriageRow, crate::import::CandidateLiveState) {
-    for tab in [
-        crate::import::TriageTab::Pending,
-        crate::import::TriageTab::Skipped,
-    ] {
-        let view = crate::import::ImportListView {
-            tab,
-            ..crate::import::ImportListView::default()
-        };
+    for tab in [crate::import::TriageTab::Pending, crate::import::TriageTab::Skipped] {
+        let view =
+            crate::import::ImportListView { tab, ..crate::import::ImportListView::default() };
         let projection = fixture.import.wait_for_list(view, |_| true).await;
-        let row = projection
-            .windows
-            .iter()
-            .flat_map(|window| &window.items)
-            .find_map(|item| match item {
-                crate::import::ImportListItem::Candidate { row, live, .. }
-                    if row.candidate_key == key.clone() =>
-                {
-                    Some((row.clone(), live.clone()))
-                }
-                _ => None,
-            });
+        let row =
+            projection.windows.iter().flat_map(|window| &window.items).find_map(
+                |item| match item {
+                    crate::import::ImportListItem::Candidate { row, live, .. }
+                        if row.candidate_key == key.clone() =>
+                    {
+                        Some((row.clone(), live.clone()))
+                    }
+                    _ => None,
+                },
+            );
         if let Some(row) = row {
             return row;
         }
@@ -363,20 +332,12 @@ async fn a_stored_verdict_carries_its_durations_and_signals() {
     fixture.provider.route(
         "/discid/",
         200,
-        discid_json(
-            "mb-signals-1",
-            "rg-signals-1",
-            &[probed / 2, probed - probed / 2],
-        ),
+        discid_json("mb-signals-1", "rg-signals-1", &[probed / 2, probed - probed / 2]),
     );
     fixture.provider.route(
         "/release/mb-signals-1?",
         200,
-        release_json(
-            "mb-signals-1",
-            "rg-signals-1",
-            &[probed / 2, probed - probed / 2],
-        ),
+        release_json("mb-signals-1", "rg-signals-1", &[probed / 2, probed - probed / 2]),
     );
     fixture.scan(1).await;
 
@@ -386,10 +347,7 @@ async fn a_stored_verdict_carries_its_durations_and_signals() {
     assert!(row.identify.is_some(), "the verdict is stored");
     let signals = row.signals.expect("the settled signals are stored");
     assert!(
-        matches!(
-            signals.disc_id,
-            crate::signals::DiscIdSignal::Computed { .. }
-        ),
+        matches!(signals.disc_id, crate::signals::DiscIdSignal::Computed { .. }),
         "the disc ID the lookup used reads back: {:?}",
         signals.disc_id
     );
@@ -409,10 +367,8 @@ async fn a_verdict_with_no_signals_reports_a_finalization_failure() {
         crate::import::CandidateFiles::of(&candidate),
         candidate,
         IdentifyRunId::for_test(1),
-        TerminalVerdict::NotFoundAnywhere { ledger: None }.resume_state(
-            Default::default(),
-            Default::default(),
-        ),
+        TerminalVerdict::NotFoundAnywhere { ledger: None }
+            .resume_state(Default::default(), Default::default()),
         CallPriority::Background,
         CancellationToken::new(),
     )
@@ -483,9 +439,7 @@ async fn a_verdict_write_ends_its_own_save_when_its_caller_is_torn_down() {
         .hold_answer_for_test(
             &key,
             run,
-            &row.verdict
-                .clone()
-                .resume_state(Default::default(), Default::default()),
+            &row.verdict.clone().resume_state(Default::default(), Default::default()),
         )
         .await;
     assert!(matches!(
@@ -496,15 +450,11 @@ async fn a_verdict_write_ends_its_own_save_when_its_caller_is_torn_down() {
     // One poll asks for the write; dropping the future at the end of the block
     // is the caller being torn down.
     {
-        let mut save = std::pin::pin!(fixture
-            .import
-            .save_candidate_verdict_if_current(&key, run, &row));
+        let mut save =
+            std::pin::pin!(fixture.import.save_candidate_verdict_if_current(&key, run, &row));
         let first_poll =
             std::future::poll_fn(|cx| std::task::Poll::Ready(save.as_mut().poll(cx))).await;
-        assert!(
-            first_poll.is_pending(),
-            "the first poll asks for the write and waits on it"
-        );
+        assert!(first_poll.is_pending(), "the first poll asks for the write and waits on it");
     }
 
     tokio::time::timeout(Duration::from_secs(10), async {
@@ -515,10 +465,7 @@ async fn a_verdict_write_ends_its_own_save_when_its_caller_is_torn_down() {
     .await
     .expect("the write ends the save it ran for");
     assert!(
-        fixture
-            .stored_for(&dir)
-            .await
-            .is_some_and(|row| row.identify.is_some()),
+        fixture.stored_for(&dir).await.is_some_and(|row| row.identify.is_some()),
         "the verdict landed"
     );
 }
@@ -580,15 +527,16 @@ async fn a_picked_row_states_what_each_claimed_source_says() {
         200,
         discogs_release_json_stating_pressing("70000301", "Other Label", 1988),
     );
-    fixture
-        .manager
-        .providers()
-        .musicbrainz()
-        .seed_discogs_page_lookup(&[(bae_catalogs::musicbrainz::DiscogsPage::Release("70000301".to_string()), None)]);
+    fixture.manager.providers().musicbrainz().seed_discogs_page_lookup(&[(
+        bae_catalogs::musicbrainz::DiscogsPage::Release("70000301".to_string()),
+        None,
+    )]);
 
     fixture
         .import
-        .select_candidate_release(key.clone(), crate::import::PressingLink {
+        .select_candidate_release(
+            key.clone(),
+            crate::import::PressingLink {
                 record: crate::import::MetadataRef::new(
                     bae_catalogs::catalog::Catalog::MusicBrainz,
                     "mb-stated-1".to_string(),
@@ -597,7 +545,8 @@ async fn a_picked_row_states_what_each_claimed_source_says() {
                     bae_catalogs::catalog::Catalog::Discogs,
                     "70000301",
                 )],
-            }, crate::import::CatalogApplySteps::unread(),
+            },
+            crate::import::CatalogApplySteps::unread(),
         )
         .await
         .expect("picking a paired pressing succeeds");

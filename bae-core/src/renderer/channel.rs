@@ -139,21 +139,14 @@ pub(crate) struct FakeChannel {
 #[cfg(test)]
 impl FakeChannel {
     pub(crate) fn new() -> Self {
-        Self {
-            state: std::sync::Arc::new(std::sync::Mutex::new(FakeChannelState::default())),
-        }
+        Self { state: std::sync::Arc::new(std::sync::Mutex::new(FakeChannelState::default())) }
     }
 }
 
 /// A status carrying `player_state` and nothing a test has to care about.
 #[cfg(test)]
 pub(crate) fn fake_status(player_state: RendererPlayerState) -> ReceiverStatus {
-    ReceiverStatus {
-        player_state,
-        position: None,
-        duration: None,
-        volume: Some(1.0),
-    }
+    ReceiverStatus { player_state, position: None, duration: None, volume: Some(1.0) }
 }
 
 #[cfg(test)]
@@ -198,8 +191,6 @@ impl RendererChannel for FakeChannel {
         if let Some(scripted) = state.poll_script.pop_front() {
             return scripted;
         }
-        Ok(state
-            .default_status
-            .unwrap_or_else(|| fake_status(RendererPlayerState::Playing)))
+        Ok(state.default_status.unwrap_or_else(|| fake_status(RendererPlayerState::Playing)))
     }
 }

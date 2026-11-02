@@ -106,8 +106,7 @@ impl FolderFacts {
     /// Whether the folder's years include the year the row's album first came
     /// out: it confirms the album, as its title and artist do.
     pub(crate) fn names_the_album_year(&self, records: &[MetadataResult]) -> bool {
-        self.album_first_year(records)
-            .is_some_and(|first| self.years.contains(&first))
+        self.album_first_year(records).is_some_and(|first| self.years.contains(&first))
     }
 
     /// The year the row's album first came out, as a record of it states or
@@ -132,16 +131,10 @@ impl FolderFacts {
     /// rest are read as [`StatedYears::of`] reads them, against the year the
     /// row's album first came out.
     pub(crate) fn pressing_year(&self, records: &[MetadataResult]) -> Option<i32> {
-        let titled: Vec<i32> = records
-            .iter()
-            .flat_map(|record| title_years(&record.title))
-            .collect();
-        let years: Vec<i32> = self
-            .years
-            .iter()
-            .copied()
-            .filter(|year| !titled.contains(year))
-            .collect();
+        let titled: Vec<i32> =
+            records.iter().flat_map(|record| title_years(&record.title)).collect();
+        let years: Vec<i32> =
+            self.years.iter().copied().filter(|year| !titled.contains(year)).collect();
         StatedYears::of(&years, self.album_first_year(records)).pressing
     }
 
@@ -185,9 +178,7 @@ impl FolderFacts {
         if areas.contains(&folder) {
             Fact::Agrees
         } else if matches!(folder, ReleaseArea::Country(_))
-            && areas
-                .iter()
-                .any(|area| matches!(area, ReleaseArea::Country(_)))
+            && areas.iter().any(|area| matches!(area, ReleaseArea::Country(_)))
         {
             Fact::Disagrees
         } else {
@@ -221,10 +212,7 @@ impl StatedYears {
         }
         let earliest = years.iter().copied().min();
         let latest = years.iter().copied().max();
-        Self {
-            album: earliest,
-            pressing: latest.filter(|latest| Some(*latest) != earliest),
-        }
+        Self { album: earliest, pressing: latest.filter(|latest| Some(*latest) != earliest) }
     }
 }
 
@@ -250,9 +238,7 @@ pub(crate) fn registration(records: &[MetadataResult], registered: Option<Releas
     if areas.contains(&registered) {
         Fact::Agrees
     } else if matches!(registered, ReleaseArea::Country(_))
-        && areas
-            .iter()
-            .any(|area| matches!(area, ReleaseArea::Country(_)))
+        && areas.iter().any(|area| matches!(area, ReleaseArea::Country(_)))
     {
         Fact::Disagrees
     } else {
@@ -277,19 +263,12 @@ pub(crate) fn track_titles(records: &[MetadataResult], folder: &[String]) -> Fac
     }
     let mut fact = Fact::StatesNothing;
     for record in records {
-        let listed: Vec<String> = record
-            .track_titles
-            .iter()
-            .map(|title| track_title_key(title))
-            .collect();
+        let listed: Vec<String> =
+            record.track_titles.iter().map(|title| track_title_key(title)).collect();
         if listed.len() != folder.len() || listed.iter().any(String::is_empty) {
             continue;
         }
-        if listed
-            .iter()
-            .zip(&folder)
-            .all(|(listed, spellings)| spellings.contains(listed))
-        {
+        if listed.iter().zip(&folder).all(|(listed, spellings)| spellings.contains(listed)) {
             return Fact::Agrees;
         }
         let mut stated: Vec<&String> = folder.iter().map(|spellings| &spellings[0]).collect();
@@ -323,10 +302,7 @@ fn title_spellings(title: &str) -> Vec<String> {
 
 /// The years a title writes as words of their own.
 fn title_years(title: &str) -> Vec<i32> {
-    bae_types::text_match::words(title)
-        .iter()
-        .filter_map(|word| year_of(word))
-        .collect()
+    bae_types::text_match::words(title).iter().filter_map(|word| year_of(word)).collect()
 }
 
 /// `word` as a year, when it is one: four digits, from 1900 to 2099.

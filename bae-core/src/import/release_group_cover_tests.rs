@@ -72,21 +72,16 @@ fn a_card_heading_prefers_a_stated_cover_to_an_unstated_address() {
             "LP" => bae_types::pressing::Medium::Vinyl,
             _ => bae_types::pressing::Medium::Cd,
         };
-        release.media = match release.source {
-            Catalog::Discogs => {
-                bae_types::pressing::StatedMedia::Formats(vec![bae_types::pressing::StatedFormat {
-                    medium: Some(medium),
-                    quantity: 1,
-                }])
-            }
-            _ => bae_types::pressing::StatedMedia::PerMedium(vec![Some(medium)]),
-        };
+        release.media =
+            match release.source {
+                Catalog::Discogs => bae_types::pressing::StatedMedia::Formats(vec![
+                    bae_types::pressing::StatedFormat { medium: Some(medium), quantity: 1 },
+                ]),
+                _ => bae_types::pressing::StatedMedia::PerMedium(vec![Some(medium)]),
+            };
         release
     };
-    let mut mb_2001 = cd(
-        linked(mb("mb-2001", Some("group-x"), Some(2001)), "master-7"),
-        "CD",
-    );
+    let mut mb_2001 = cd(linked(mb("mb-2001", Some("group-x"), Some(2001)), "master-7"), "CD");
     mb_2001.barcodes = vec!["012345678905".to_string()];
     mb_2001.cover_art = Some(RemoteCover::musicbrainz_release("mb-2001"));
     let mut dg_2001 = cd(discogs("dg-2001", Some("master-7"), Some(2001)), "CD");
@@ -94,10 +89,7 @@ fn a_card_heading_prefers_a_stated_cover_to_an_unstated_address() {
     dg_2001.cover_art = discogs_cover("dg-2001");
     let mut dg_1988 = cd(discogs("dg-1988", Some("master-7"), Some(1988)), "LP");
     dg_1988.cover_art = discogs_cover("dg-1988");
-    let mut mb_undated = cd(
-        linked(mb("mb-undated", Some("group-x"), None), "master-7"),
-        "CD",
-    );
+    let mut mb_undated = cd(linked(mb("mb-undated", Some("group-x"), None), "master-7"), "CD");
     mb_undated.cover_art = Some(RemoteCover::musicbrainz_release("mb-undated"));
 
     let groups = grouped(vec![mb_2001, dg_2001.clone(), dg_1988, mb_undated]);
@@ -117,8 +109,5 @@ fn a_card_heading_falls_back_to_an_unstated_address() {
 
     let groups = grouped(vec![stated_none, unstated]);
 
-    assert_eq!(
-        groups[0].cover_art,
-        Some(RemoteCover::musicbrainz_release("mb-search"))
-    );
+    assert_eq!(groups[0].cover_art, Some(RemoteCover::musicbrainz_release("mb-search")));
 }

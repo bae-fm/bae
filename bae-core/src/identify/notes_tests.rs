@@ -9,10 +9,7 @@ use bae_catalogs::catalog::Catalog;
 
 fn folder(line: &str) -> CandidateText {
     CandidateText::of(
-        &[TextLine {
-            text: line.to_string(),
-            origin: TextOrigin::FolderName,
-        }],
+        &[TextLine { text: line.to_string(), origin: TextOrigin::FolderName }],
         &[],
         &[],
     )
@@ -78,10 +75,7 @@ fn the_release_notes_cancel_what_both_rows_write_and_name_the_plant() {
     );
 
     assert_eq!(
-        named(
-            &[plant, country],
-            &folder("Made in W.-Germany by Discoplant")
-        ),
+        named(&[plant, country], &folder("Made in W.-Germany by Discoplant")),
         vec![Some("CD made in W-Germany by Discoplant".to_string()), None]
     );
 }
@@ -158,10 +152,7 @@ fn the_rows_own_names_in_a_note_name_no_pressing() {
 
     assert_eq!(
         named(
-            &[
-                pressing(7001, "© 1982 Artist Name.\r\nMarketed by Label Name."),
-                pressing(7002, ""),
-            ],
+            &[pressing(7001, "© 1982 Artist Name.\r\nMarketed by Label Name."), pressing(7002, ""),],
             &folder("Artist Name - Album Title [Label Name LN-100]")
         ),
         vec![None, None]

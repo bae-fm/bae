@@ -18,10 +18,7 @@ pub(super) struct Fixture {
 
 impl Fixture {
     pub(super) async fn list_candidates(&self) -> Vec<AutomationCandidate> {
-        self.automation
-            .list_candidates()
-            .await
-            .expect("the list reads")
+        self.automation.list_candidates().await.expect("the list reads")
     }
 
     pub(super) async fn get_candidate(
@@ -63,16 +60,9 @@ impl Fixture {
 pub(super) async fn automation_over() -> Fixture {
     let tmp = tempfile::TempDir::new().expect("a temp library dir");
     let (manager, _) = bae_test_support::open_test_library(tmp.path()).await;
-    let services = AppServices::for_test(manager.clone())
-        .await
-        .expect("the services start");
+    let services = AppServices::for_test(manager.clone()).await.expect("the services start");
     let automation = Automation::new(services.clone(), &tokio::runtime::Handle::current());
-    Fixture {
-        automation,
-        manager,
-        services,
-        tmp,
-    }
+    Fixture { automation, manager, services, tmp }
 }
 
 #[tokio::test]
@@ -81,17 +71,9 @@ async fn watched_folder_tool_reads_current_store_rows() {
     let root = fixture.root();
     for watched in [false, true, false] {
         if watched {
-            fixture
-                .manager
-                .add_watched_import_folder(&root)
-                .await
-                .unwrap();
+            fixture.manager.add_watched_import_folder(&root).await.unwrap();
         } else {
-            fixture
-                .manager
-                .remove_watched_import_folders(vec![root.clone()], None)
-                .await
-                .unwrap();
+            fixture.manager.remove_watched_import_folders(vec![root.clone()], None).await.unwrap();
         }
         let response = fixture
             .automation
@@ -150,10 +132,7 @@ fn candidate(root: &std::path::Path, name: &str) -> FolderCandidate {
 /// return the key automation names it by.
 pub(super) async fn scan(fixture: &Fixture, name: &str) -> String {
     let root = fixture.root();
-    write_scan(fixture, &root, |items| {
-        items.push(ScanItem::Valid(candidate(&root, name)))
-    })
-    .await;
+    write_scan(fixture, &root, |items| items.push(ScanItem::Valid(candidate(&root, name)))).await;
     key_of(&root, name)
 }
 
@@ -169,14 +148,8 @@ async fn write_scan(
     build: impl FnOnce(&mut Vec<ScanItem>),
 ) {
     let manager = &fixture.manager;
-    manager
-        .add_watched_import_folder(root)
-        .await
-        .expect("the root is watched");
-    let generation = manager
-        .begin_folder_scan(root)
-        .await
-        .expect("a scan generation opens");
+    manager.add_watched_import_folder(root).await.expect("the root is watched");
+    let generation = manager.begin_folder_scan(root).await.expect("a scan generation opens");
     let mut items = Vec::new();
     build(&mut items);
     for item in &items {
@@ -185,10 +158,7 @@ async fn write_scan(
             .await
             .expect("the scan item persists");
     }
-    manager
-        .finish_folder_scan(root, generation, None)
-        .await
-        .expect("the scan finishes");
+    manager.finish_folder_scan(root, generation, None).await.expect("the scan finishes");
 }
 
 fn keys(candidates: &[AutomationCandidate]) -> Vec<&str> {
@@ -244,23 +214,11 @@ async fn the_tables_are_the_answer() {
     .await;
 
     fixture.skip(&key_of(&root, "A")).await;
-    write_scan(&fixture, &root, |items| {
-        items.push(ScanItem::Valid(candidate(&root, "A")))
-    })
-    .await;
+    write_scan(&fixture, &root, |items| items.push(ScanItem::Valid(candidate(&root, "A")))).await;
 
-    assert_eq!(
-        keys(&fixture.list_candidates().await),
-        vec![key_of(&root, "A").as_str()]
-    );
-    let candidate = fixture
-        .get_candidate(&key_of(&root, "A"))
-        .await
-        .expect("still scanned");
-    assert!(
-        candidate.common().skipped,
-        "the stored decision is what is read"
-    );
+    assert_eq!(keys(&fixture.list_candidates().await), vec![key_of(&root, "A").as_str()]);
+    let candidate = fixture.get_candidate(&key_of(&root, "A")).await.expect("still scanned");
+    assert!(candidate.common().skipped, "the stored decision is what is read");
     assert_eq!(
         fixture
             .get_candidate(&key_of(&root, "B"))
@@ -301,10 +259,7 @@ async fn a_candidate_carries_the_import_service_s_runtime() {
     assert_eq!(json["runtime"]["import_status"]["kind"], "importing");
     assert_eq!(json["runtime"]["import_status"]["progress_percent"], 42);
     assert_eq!(json["runtime"]["import_status"]["step"]["kind"], "running");
-    assert_eq!(
-        json["runtime"]["import_status"]["step"]["phase"],
-        "measuring_loudness"
-    );
+    assert_eq!(json["runtime"]["import_status"]["step"]["phase"], "measuring_loudness");
     assert_eq!(json["runtime"]["identify_state"]["kind"], "idle");
 }
 
@@ -347,11 +302,7 @@ async fn a_scan_waited_on_names_a_folder_whose_read_failed() {
     let root = fixture.tmp.path().join("Gone");
     std::fs::create_dir_all(root.join("Album")).unwrap();
     let path = root.canonicalize().unwrap().to_string_lossy().into_owned();
-    fixture
-        .automation
-        .add_watched_folder(path.clone())
-        .await
-        .expect("the folder is watched");
+    fixture.automation.add_watched_folder(path.clone()).await.expect("the folder is watched");
     std::fs::remove_dir_all(&root).unwrap();
 
     let error = fixture

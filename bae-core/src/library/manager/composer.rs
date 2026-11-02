@@ -21,8 +21,7 @@ impl LibraryManager {
         crate::library::LibraryPageWindows,
         crate::db::ComposerBrowseProjection,
     > {
-        self.database
-            .subscribe_composer_browse(sort, initial_windows)
+        self.database.subscribe_composer_browse(sort, initial_windows)
     }
 
     pub(crate) fn resolve_composer_browse(
@@ -37,11 +36,7 @@ impl LibraryManager {
                 .into_iter()
                 .map(|window| crate::library::LibraryBrowseWindow {
                     window: window.window,
-                    rows: window
-                        .rows
-                        .into_iter()
-                        .map(ComposerSummary::from_raw)
-                        .collect(),
+                    rows: window.rows.into_iter().map(ComposerSummary::from_raw).collect(),
                 })
                 .collect(),
             total_count: projection.total_count,
@@ -103,11 +98,7 @@ impl LibraryManager {
         let mut inserts = Vec::new();
 
         for work in works {
-            match self
-                .database
-                .find_work_id_by_musicbrainz_id(&work.musicbrainz_work_id)
-                .await?
-            {
+            match self.database.find_work_id_by_musicbrainz_id(&work.musicbrainz_work_id).await? {
                 Some(existing_id) => ids.push(existing_id),
                 None => {
                     // The work's id is its MusicBrainz id's, so every device
@@ -152,16 +143,8 @@ impl LibraryManager {
 fn work_detail_of(raw: crate::db::DbWorkDetail) -> WorkDetail {
     WorkDetail {
         work: WorkSummary::from_raw(raw.work),
-        child_works: raw
-            .child_works
-            .into_iter()
-            .map(WorkSummary::from_raw)
-            .collect(),
-        releases: raw
-            .releases
-            .into_iter()
-            .map(WorkReleaseSummary::from_raw)
-            .collect(),
+        child_works: raw.child_works.into_iter().map(WorkSummary::from_raw).collect(),
+        releases: raw.releases.into_iter().map(WorkReleaseSummary::from_raw).collect(),
         tracks: raw.tracks,
     }
 }

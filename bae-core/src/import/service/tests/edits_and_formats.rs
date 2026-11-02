@@ -2,9 +2,12 @@ use crate::db::DbTrack;
 /// Deterministic clock for the audio-format tests — the exact instant is
 /// immaterial to what they assert, only that the same one feeds every row.
 fn test_clock() -> FixedClock {
-    FixedClock::new((chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
+    FixedClock::new(
+        (chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
             .unwrap()
-            .with_timezone(&chrono::Utc)).into())
+            .with_timezone(&chrono::Utc))
+        .into(),
+    )
 }
 
 /// Build the CUE-backed track list for a single-file CUE album, reusing
@@ -30,8 +33,10 @@ fn cue_backed_tracks(dir: &str) -> Vec<TrackFile> {
                 title: format!("Track {index}"),
                 medium_id: crate::db::identity::release_medium_id("rel", 1),
                 side: std::num::NonZeroU8::MIN,
-                track_number: std::num::NonZeroU32::new(u32::try_from(index + 1).expect("a test track number fits u32"))
-                    .expect("track numbers count from one"),
+                track_number: std::num::NonZeroU32::new(
+                    u32::try_from(index + 1).expect("a test track number fits u32"),
+                )
+                .expect("track numbers count from one"),
                 duration_ms: 180_000,
                 created_at: chrono::DateTime::<chrono::Utc>::from(coven::Clock::now(&test_clock())),
             },
@@ -56,20 +61,11 @@ fn build_audio_formats_gives_ape_cue_tracks_real_end_bytes() {
     bae_audio::init();
     let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/cue_ape");
     let tracks = cue_backed_tracks(dir);
-    assert_eq!(
-        tracks.len(),
-        3,
-        "fixture is a 3-track single-file CUE album"
-    );
+    assert_eq!(tracks.len(), 3, "fixture is a 3-track single-file CUE album");
 
-    let file_size = std::fs::metadata(format!("{dir}/Test Album.ape"))
-        .unwrap()
-        .len();
+    let file_size = std::fs::metadata(format!("{dir}/Test Album.ape")).unwrap().len();
     let mut file_ids = HashMap::new();
-    file_ids.insert(
-        PathBuf::from(format!("{dir}/Test Album.ape")),
-        "file-1".to_string(),
-    );
+    file_ids.insert(PathBuf::from(format!("{dir}/Test Album.ape")), "file-1".to_string());
 
     let built = ImportService::build_audio_formats(
         &tracks,
@@ -85,34 +81,17 @@ fn build_audio_formats_gives_ape_cue_tracks_real_end_bytes() {
         .iter()
         .filter(|segment| segment.role == crate::db::DbAudioSegmentRole::Main)
         .collect();
-    let ends: Vec<Option<u64>> = main_segments
-        .iter()
-        .map(|segment| segment.end_byte)
-        .collect();
+    let ends: Vec<Option<u64>> = main_segments.iter().map(|segment| segment.end_byte).collect();
     // Non-last tracks carry a real, ascending, in-file end byte.
     let e0 = ends[0].expect("track 1 (non-last) must have an end byte");
     let e1 = ends[1].expect("track 2 (non-last) must have an end byte");
-    assert!(
-        e0 > 0 && e0 < file_size,
-        "track 1 end within file: {e0} of {file_size}"
-    );
-    assert!(
-        e1 > 0 && e1 < file_size,
-        "track 2 end within file: {e1} of {file_size}"
-    );
+    assert!(e0 > 0 && e0 < file_size, "track 1 end within file: {e0} of {file_size}");
+    assert!(e1 > 0 && e1 < file_size, "track 2 end within file: {e1} of {file_size}");
     assert!(e1 > e0, "end bytes ascend track to track: {ends:?}");
     // The last track runs to EOF.
     assert_eq!(ends[2], None, "the last track runs to EOF");
 
     // Each track's end is the next track's start byte -- one boundary, not two.
-    assert_eq!(
-        main_segments[1].start_byte,
-        Some(e0),
-        "track 2 starts where track 1 ends"
-    );
-    assert_eq!(
-        main_segments[2].start_byte,
-        Some(e1),
-        "track 3 starts where track 2 ends"
-    );
+    assert_eq!(main_segments[1].start_byte, Some(e0), "track 2 starts where track 1 ends");
+    assert_eq!(main_segments[2].start_byte, Some(e1), "track 3 starts where track 2 ends");
 }

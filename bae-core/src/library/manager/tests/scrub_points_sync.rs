@@ -19,10 +19,7 @@ async fn check_scrub_points_sync(devices: &mut crate::sync::test_devices::TwoDev
     add_track_audio_sources(
         manager,
         &track,
-        &[(
-            "Album Title.flac",
-            crate::album_detail::SourceAudioLayout::File,
-        )],
+        &[("Album Title.flac", crate::album_detail::SourceAudioLayout::File)],
     )
     .await;
     let format = manager
@@ -31,28 +28,12 @@ async fn check_scrub_points_sync(devices: &mut crate::sync::test_devices::TwoDev
         .await
         .unwrap()
         .expect("the track's audio format");
-    let segment = manager
-        .database
-        .get_audio_segments_for_format(&format.id)
-        .await
-        .unwrap()
-        .remove(0);
+    let segment =
+        manager.database.get_audio_segments_for_format(&format.id).await.unwrap().remove(0);
     let points = [
-        ScrubPoint {
-            sample: 0,
-            byte: 8_288,
-            exact_from: 0,
-        },
-        ScrubPoint {
-            sample: 442_368,
-            byte: 1_760_512,
-            exact_from: 442_368,
-        },
-        ScrubPoint {
-            sample: 884_736,
-            byte: 3_512_840,
-            exact_from: 884_736,
-        },
+        ScrubPoint { sample: 0, byte: 8_288, exact_from: 0 },
+        ScrubPoint { sample: 442_368, byte: 1_760_512, exact_from: 442_368 },
+        ScrubPoint { sample: 884_736, byte: 3_512_840, exact_from: 884_736 },
     ];
     manager
         .database
@@ -69,11 +50,6 @@ async fn check_scrub_points_sync(devices: &mut crate::sync::test_devices::TwoDev
              FROM audio_segment_scrub_points",
         )
         .await;
-    let resolved = devices
-        .b()
-        .manager()
-        .resolve_track_audio(&track.id)
-        .await
-        .unwrap();
+    let resolved = devices.b().manager().resolve_track_audio(&track.id).await.unwrap();
     assert_eq!(resolved.segments[0].scrub_points.as_slice(), points);
 }

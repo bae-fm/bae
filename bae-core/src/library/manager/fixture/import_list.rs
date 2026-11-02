@@ -76,10 +76,7 @@ impl LibraryManager {
             let root =
                 crate::import::watched_folder::canonical_absolute_root(Path::new(&folder.path))
                     .map_err(|error| LibraryFixtureError::Invalid(error.to_string()))?;
-            self.database
-                .add_watched_import_folder(&root)
-                .await
-                .map_err(LibraryError::from)?;
+            self.database.add_watched_import_folder(&root).await.map_err(LibraryError::from)?;
             let generation = self
                 .database
                 .begin_folder_scan(&root, crate::import::VolumeKind::Local)
@@ -104,8 +101,7 @@ impl LibraryManager {
                 .await
                 .map_err(LibraryError::from)?;
             for (candidate, state) in &candidates {
-                self.write_fixture_candidate_state(candidate, *state)
-                    .await?;
+                self.write_fixture_candidate_state(candidate, *state).await?;
             }
         }
         Ok(())
@@ -197,12 +193,10 @@ impl LibraryManager {
                 self.preparations
                     .replace_link(
                         &content_hash,
-                        Some(&crate::import::ReleaseLink::Pressing(
-                            crate::import::PressingLink {
-                                record,
-                                partners: Vec::new(),
-                            },
-                        )),
+                        Some(&crate::import::ReleaseLink::Pressing(crate::import::PressingLink {
+                            record,
+                            partners: Vec::new(),
+                        })),
                         &[],
                     )
                     .await?;
@@ -275,10 +269,8 @@ fn fixture_candidate(
     candidate: &FixtureCandidate,
     file_count: &mut u64,
 ) -> Result<FolderCandidate, LibraryFixtureError> {
-    let path = candidate
-        .folder
-        .split('/')
-        .fold(root.to_path_buf(), |folder, part| folder.join(part));
+    let path =
+        candidate.folder.split('/').fold(root.to_path_buf(), |folder, part| folder.join(part));
     let relative_folder = crate::import::RelativeFolder::of(Path::new(&candidate.folder))
         .map_err(|error| LibraryFixtureError::Invalid(error.to_string()))?;
     let files = candidate
@@ -292,29 +284,21 @@ fn fixture_candidate(
                 content_type: bae_util::content_type::ContentType::Flac,
                 duration_ms: 180_000,
                 format: crate::album_detail::AudioFormat {
-                    codec: bae_util::content_type::ContentType::Flac
-                        .display_name()
-                        .to_string(),
+                    codec: bae_util::content_type::ContentType::Flac.display_name().to_string(),
                     sample_rate_hz: 44_100,
                     bits_per_sample: Some(16),
                     bitrate_kbps: None,
                     channels: 2,
                 },
             });
-            CandidateFile {
-                file,
-                role: FileRole::Audio,
-            }
+            CandidateFile { file, role: FileRole::Audio }
         })
         .collect();
     Ok(FolderCandidate {
         path: path.clone(),
         file_root: path,
         name: candidate.folder.clone(),
-        files: CategorizedFiles {
-            files,
-            parts: Vec::new(),
-        },
+        files: CategorizedFiles { files, parts: Vec::new() },
         watched_folder_path: root.to_path_buf(),
         scope: ReleaseFileScope::Recursive,
         file_edit_revision: 0,

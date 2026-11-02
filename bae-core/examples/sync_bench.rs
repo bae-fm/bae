@@ -22,13 +22,10 @@ fn main() {
         match arg.as_str() {
             "--home" => home = args.next(),
             "--seconds" => {
-                seconds = args
-                    .next()
-                    .and_then(|value| value.parse().ok())
-                    .unwrap_or_else(|| {
-                        eprintln!("--seconds requires a number");
-                        std::process::exit(2);
-                    })
+                seconds = args.next().and_then(|value| value.parse().ok()).unwrap_or_else(|| {
+                    eprintln!("--seconds requires a number");
+                    std::process::exit(2);
+                })
             }
             other => {
                 eprintln!("unknown argument {other}");
@@ -96,10 +93,7 @@ fn main() {
         let name = handle.store_name().await.map_err(|e| e.to_string())?;
         eprintln!("bench library: {name} ({store_id})");
         report_store_stats(&handle, "before").await?;
-        handle
-            .start_sync()
-            .await
-            .map_err(|e| format!("start_sync failed: {e}"))?;
+        handle.start_sync().await.map_err(|e| format!("start_sync failed: {e}"))?;
         eprintln!("running the sync loop for {seconds}s");
         tokio::time::sleep(std::time::Duration::from_secs(seconds)).await;
         report_store_stats(&handle, "after").await?;
@@ -116,15 +110,9 @@ async fn report_store_stats(handle: &coven::CovenHandle, label: &str) -> Result<
     let (albums, releases, tracks) = handle
         .read(|sql| {
             Ok((
-                sql.query_row("SELECT COUNT(*) FROM albums", [], |row| {
-                    row.get::<_, i64>(0)
-                })?,
-                sql.query_row("SELECT COUNT(*) FROM releases", [], |row| {
-                    row.get::<_, i64>(0)
-                })?,
-                sql.query_row("SELECT COUNT(*) FROM tracks", [], |row| {
-                    row.get::<_, i64>(0)
-                })?,
+                sql.query_row("SELECT COUNT(*) FROM albums", [], |row| row.get::<_, i64>(0))?,
+                sql.query_row("SELECT COUNT(*) FROM releases", [], |row| row.get::<_, i64>(0))?,
+                sql.query_row("SELECT COUNT(*) FROM tracks", [], |row| row.get::<_, i64>(0))?,
             ))
         })
         .await

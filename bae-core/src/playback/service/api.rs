@@ -35,18 +35,9 @@ impl PlaybackTrackInfo {
                     crate::album_detail::TrackSide::Disc { disc } => disc.to_string(),
                     crate::album_detail::TrackSide::Flat => place.medium.to_string(),
                 };
-                PlaybackTrackSide {
-                    medium: place.medium,
-                    side: place.side,
-                    boundary,
-                    label,
-                }
+                PlaybackTrackSide { medium: place.medium, side: place.side, boundary, label }
             });
-        Self {
-            track_id: track.id.clone(),
-            release_id: track.release_id.clone(),
-            side,
-        }
+        Self { track_id: track.id.clone(), release_id: track.release_id.clone(), side }
     }
 }
 
@@ -66,10 +57,7 @@ pub struct PlaybackTrackSide {
 
 impl PlayingTrack {
     pub(super) fn from_prepared(prepared: &PlaybackPreparedTrack) -> Self {
-        Self {
-            track_id: prepared.track_id.clone(),
-            duration_ms: prepared.timeline.duration_ms(),
-        }
+        Self { track_id: prepared.track_id.clone(), duration_ms: prepared.timeline.duration_ms() }
     }
 }
 
@@ -127,18 +115,12 @@ pub(super) struct SidePauseDecision {
 
 impl SidePauseDecision {
     pub(super) fn prompt(&self) -> PlaybackSidePausePrompt {
-        let SideBoundary {
-            id,
-            kind,
-            side_label,
-        } = &self.boundary;
+        let SideBoundary { id, kind, side_label } = &self.boundary;
         PlaybackSidePausePrompt {
             id: id.clone(),
             boundary: *kind,
             side_label: side_label.clone(),
-            countdown: self
-                .resumes_at
-                .map(|resumes_at| PlaybackSideCountdown { resumes_at }),
+            countdown: self.resumes_at.map(|resumes_at| PlaybackSideCountdown { resumes_at }),
         }
     }
 }
@@ -241,13 +223,7 @@ pub(crate) enum PlaybackCommand {
     #[cfg(any(test, feature = "test-utils"))]
     GetQueue(
         oneshot::Sender<
-            Result<
-                (
-                    crate::queue::ResolvedQueueSnapshot,
-                    Vec<crate::queue::QueueItem>,
-                ),
-                String,
-            >,
+            Result<(crate::queue::ResolvedQueueSnapshot, Vec<crate::queue::QueueItem>), String>,
         >,
     ),
     /// Save state, reply, then stop the loop.
@@ -279,16 +255,9 @@ pub(crate) enum PlaybackCommand {
 #[derive(Debug, Clone, PartialEq)]
 pub enum PlaybackState<Track = PlayingTrack> {
     Stopped,
-    Playing {
-        track: Track,
-    },
-    Paused {
-        track: Track,
-        reason: PlaybackPauseReason,
-    },
-    Loading {
-        track: LoadingTrack<Track>,
-    },
+    Playing { track: Track },
+    Paused { track: Track, reason: PlaybackPauseReason },
+    Loading { track: LoadingTrack<Track> },
 }
 
 /// The track a load is for: its id alone until the service has prepared it,
@@ -332,13 +301,8 @@ impl<Track> PlaybackState<Track> {
         Ok(match self {
             Self::Stopped => PlaybackState::Stopped,
             Self::Playing { track } => PlaybackState::Playing { track: f(track)? },
-            Self::Paused { track, reason } => PlaybackState::Paused {
-                track: f(track)?,
-                reason,
-            },
-            Self::Loading { track } => PlaybackState::Loading {
-                track: track.try_map_track(f)?,
-            },
+            Self::Paused { track, reason } => PlaybackState::Paused { track: f(track)?, reason },
+            Self::Loading { track } => PlaybackState::Loading { track: track.try_map_track(f)? },
         })
     }
 }
@@ -390,11 +354,7 @@ impl PlaybackHandle {
         progress_handle: PlaybackProgressHandle,
         track_downloads: tokio::sync::watch::Receiver<Option<crate::playback::TrackDownload>>,
     ) -> Self {
-        Self {
-            worker,
-            progress_handle,
-            track_downloads,
-        }
+        Self { worker, progress_handle, track_downloads }
     }
 
     /// The download a load of the playing track waits on: how much of its
@@ -415,11 +375,7 @@ impl PlaybackHandle {
         self.dispatch(PlaybackCommand::Play(track_id));
     }
     pub fn play_release(&self, release_id: String, start_track_id: Option<String>, shuffle: bool) {
-        self.dispatch(PlaybackCommand::PlayRelease {
-            release_id,
-            start_track_id,
-            shuffle,
-        });
+        self.dispatch(PlaybackCommand::PlayRelease { release_id, start_track_id, shuffle });
     }
     pub fn play_releases(&self, release_ids: Vec<String>) {
         self.dispatch(PlaybackCommand::PlayReleases(release_ids));
@@ -482,9 +438,9 @@ impl PlaybackHandle {
         sink: Box<dyn crate::playback::airplay_output::AirPlaySink>,
         device: crate::playback::RemoteDevice,
     ) {
-        self.dispatch(PlaybackCommand::PlayOnAirPlay(Box::new(
-            renderer::AirPlayConnect::new(sink, device),
-        )));
+        self.dispatch(PlaybackCommand::PlayOnAirPlay(Box::new(renderer::AirPlayConnect::new(
+            sink, device,
+        ))));
     }
     /// Stop remote or AirPlay playback and resume local playback, paused at the
     /// last position.
@@ -518,17 +474,10 @@ impl PlaybackHandle {
     #[cfg(any(test, feature = "test-utils"))]
     async fn queue_read(
         &self,
-    ) -> Result<
-        (
-            crate::queue::ResolvedQueueSnapshot,
-            Vec<crate::queue::QueueItem>,
-        ),
-        String,
-    > {
+    ) -> Result<(crate::queue::ResolvedQueueSnapshot, Vec<crate::queue::QueueItem>), String> {
         let (tx, rx) = oneshot::channel();
         self.dispatch(PlaybackCommand::GetQueue(tx));
-        rx.await
-            .map_err(|e| format!("playback loop dropped the queue response channel: {e}"))?
+        rx.await.map_err(|e| format!("playback loop dropped the queue response channel: {e}"))?
     }
     pub fn add_to_queue(&self, track_ids: Vec<String>) {
         self.dispatch(PlaybackCommand::AddToQueue(track_ids));

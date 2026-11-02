@@ -11,10 +11,13 @@ async fn direct_entry_import_records_no_catalog_and_reads_no_tags() {
     f.handle
         .send_command(ImportCommand {
             import_id: import_id.clone(),
-            candidate_key: bae_core::import::CandidateKey::from_bytes(b"direct-entry-candidate".to_vec()),
+            candidate_key: bae_core::import::CandidateKey::from_bytes(
+                b"direct-entry-candidate".to_vec(),
+            ),
             source: bae_core::import::release_candidate::CandidateSource {
                 path: album_dir,
-                scope: bae_core::import::ReleaseFileScope::Recursive, parts: Vec::new(), 
+                scope: bae_core::import::ReleaseFileScope::Recursive,
+                parts: Vec::new(),
             },
             selected_cover: None,
             destination: ImportDestination::Local,
@@ -22,7 +25,9 @@ async fn direct_entry_import_records_no_catalog_and_reads_no_tags() {
             read_file_tags: false,
             user_edit: Some(ReleaseUserEdit {
                 album_title: "Album Title".to_string(),
-                album_artist_assignments: vec![bae_core::import::Credited::plain(ArtistAssignment::named("Artist Name"))],
+                album_artist_assignments: vec![bae_core::import::Credited::plain(
+                    ArtistAssignment::named("Artist Name"),
+                )],
                 album_year: None,
                 pressing: bae_types::pressing::Pressing::blank(),
                 tracks: vec![TrackUserEdit {
@@ -40,18 +45,6 @@ async fn direct_entry_import_records_no_catalog_and_reads_no_tags() {
     let mut progress_rx = f.handle.subscribe_import(import_id);
     let (release_id, album_id) = support::wait_for_import_complete(&mut progress_rx).await;
 
-    assert!(f
-        .db
-        .get_release_records(&release_id)
-        .await
-        .unwrap()
-        .is_empty());
-    assert_eq!(
-        f.db.find_album_by_id(&album_id)
-            .await
-            .unwrap()
-            .unwrap()
-            .title,
-        "Album Title"
-    );
+    assert!(f.db.get_release_records(&release_id).await.unwrap().is_empty());
+    assert_eq!(f.db.find_album_by_id(&album_id).await.unwrap().unwrap().title, "Album Title");
 }

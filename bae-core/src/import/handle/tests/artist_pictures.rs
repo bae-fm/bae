@@ -52,29 +52,21 @@ impl DiscogsPick {
             .await
             .unwrap()
             .into_iter()
-            .find(|artist| artist.artist.discogs_artist_id.as_deref() == Some(&self.track_artist_id))
+            .find(|artist| {
+                artist.artist.discogs_artist_id.as_deref() == Some(&self.track_artist_id)
+            })
             .expect("the imported track credits the Discogs track artist")
             .artist
     }
 
     /// The bytes of the picture the library holds for `artist_id`, if any.
     async fn picture_of(&self, artist_id: &str) -> Option<Vec<u8>> {
-        let mut search = self.handle.library_manager.subscribe_artist_search(
-            crate::library::ArtistSearchView {
+        let mut search =
+            self.handle.library_manager.subscribe_artist_search(crate::library::ArtistSearchView {
                 query: crate::library::LibrarySearchQuery::parse("Track Artist"),
-                windows: [crate::library::LibraryPageWindow {
-                    offset: 0,
-                    limit: 50,
-                }]
-                .into(),
-            },
-        );
-        let found = search
-            .next()
-            .await
-            .expect("the artist search stays open")
-            .result
-            .unwrap();
+                windows: [crate::library::LibraryPageWindow { offset: 0, limit: 50 }].into(),
+            });
+        let found = search.next().await.expect("the artist search stays open").result.unwrap();
         let result = crate::library::LibraryManager::resolve_artist_search(found, 0)
             .windows
             .into_iter()
@@ -82,11 +74,7 @@ impl DiscogsPick {
             .find(|result| result.artist.id == artist_id)
             .expect("the track artist is searchable");
         let image = result.image?;
-        self.handle
-            .library_manager
-            .read_image_bytes(&image)
-            .await
-            .unwrap()
+        self.handle.library_manager.read_image_bytes(&image).await.unwrap()
     }
 }
 
@@ -120,8 +108,7 @@ fn assert_stored_large_picture(stored: Option<Vec<u8>>) {
 async fn picked_discogs_release() -> DiscogsPick {
     let images = bae_test_support::RemoteImageHost::start().await;
     let (handle, tmp, key, _hash) = pane_fixture_with(
-        bae_util::http::Http::for_test()
-            .serve(bae_test_support::TEST_IMAGE_HOST, images.origin()),
+        bae_util::http::Http::for_test().serve(bae_test_support::TEST_IMAGE_HOST, images.origin()),
     )
     .await;
     handle
@@ -158,11 +145,10 @@ async fn picked_discogs_release() -> DiscogsPick {
         .providers()
         .discogs()
         .seed_release_cache(&source_release_id, raw_release);
-    handle
-        .library_manager
-        .providers()
-        .musicbrainz()
-        .seed_discogs_page_lookup(&[(bae_catalogs::musicbrainz::DiscogsPage::Release(source_release_id.clone()), None)]);
+    handle.library_manager.providers().musicbrainz().seed_discogs_page_lookup(&[(
+        bae_catalogs::musicbrainz::DiscogsPage::Release(source_release_id.clone()),
+        None,
+    )]);
 
     handle
         .select_candidate_release(
@@ -173,7 +159,8 @@ async fn picked_discogs_release() -> DiscogsPick {
                     source_release_id,
                 ),
                 partners: vec![],
-            }, crate::import::CatalogApplySteps::unread(),
+            },
+            crate::import::CatalogApplySteps::unread(),
         )
         .await
         .expect("the pick asks Discogs for no artist");
@@ -196,17 +183,11 @@ async fn picked_discogs_release() -> DiscogsPick {
 async fn a_pick_fetches_no_artist_picture_and_the_import_stores_each_as_a_600_pixel_jpeg() {
     let pick = picked_discogs_release().await;
     let picture_url = pick.images.serve_image(&pick.picture_path, large_picture());
-    assert_eq!(
-        pick.images.requests(&pick.picture_path),
-        0,
-        "the pick downloads no artist picture"
-    );
+    assert_eq!(pick.images.requests(&pick.picture_path), 0, "the pick downloads no artist picture");
 
     pick.seed_artists(picture_url);
-    let (release_id, _album_id) = pick
-        .import()
-        .await
-        .unwrap_or_else(|error| panic!("import failed: {error}"));
+    let (release_id, _album_id) =
+        pick.import().await.unwrap_or_else(|error| panic!("import failed: {error}"));
 
     assert_eq!(
         pick.images.requests(&pick.picture_path),
@@ -222,20 +203,12 @@ async fn a_pick_fetches_no_artist_picture_and_the_import_stores_each_as_a_600_pi
 async fn an_artist_the_library_already_has_is_not_fetched_again() {
     let pick = picked_discogs_release().await;
     let existing = make_artist("Track Artist", Some(&pick.track_artist_id), None);
-    pick.handle
-        .library_manager
-        .insert_artist(&existing)
-        .await
-        .unwrap();
-    let picture_url = pick
-        .images
-        .serve_image(&pick.picture_path, bae_test_support::cover_png());
+    pick.handle.library_manager.insert_artist(&existing).await.unwrap();
+    let picture_url = pick.images.serve_image(&pick.picture_path, bae_test_support::cover_png());
 
     pick.seed_artists(picture_url);
-    let (release_id, _album_id) = pick
-        .import()
-        .await
-        .unwrap_or_else(|error| panic!("import failed: {error}"));
+    let (release_id, _album_id) =
+        pick.import().await.unwrap_or_else(|error| panic!("import failed: {error}"));
 
     assert_eq!(pick.track_artist(&release_id).await.id, existing.id);
     assert_eq!(
@@ -252,9 +225,7 @@ async fn a_picture_that_fails_to_download_fails_the_import_before_any_row_and_a_
     let picture_url = pick.images.fail_image(&pick.picture_path, 500);
     pick.seed_artists(picture_url);
 
-    pick.import()
-        .await
-        .expect_err("a picture that fails to download fails the import");
+    pick.import().await.expect_err("a picture that fails to download fails the import");
     let failed_requests = pick.images.requests(&pick.picture_path);
     assert!(failed_requests > 0, "the failed import asked for the picture");
     let rows = pick.handle.library_manager.every_row_for_test().await;
@@ -266,10 +237,8 @@ async fn a_picture_that_fails_to_download_fails_the_import_before_any_row_and_a_
     }
 
     pick.images.serve_image(&pick.picture_path, large_picture());
-    let (release_id, _album_id) = pick
-        .import()
-        .await
-        .unwrap_or_else(|error| panic!("the retry failed: {error}"));
+    let (release_id, _album_id) =
+        pick.import().await.unwrap_or_else(|error| panic!("the retry failed: {error}"));
 
     assert_eq!(
         pick.images.requests(&pick.picture_path),
@@ -326,15 +295,14 @@ async fn the_import_says_it_is_fetching_artist_pictures_while_it_fetches_them() 
         .collect();
     assert_eq!(
         steps,
-        vec![
-            ImportStep::Preparing(PrepareStep::ValidatingSourceFiles),
-            fetching,
-        ],
+        vec![ImportStep::Preparing(PrepareStep::ValidatingSourceFiles), fetching,],
         "the fetch is reported before the picture is asked for, and nothing is read yet"
     );
     assert_eq!(
         pick.handle
-            .candidate_runtime(&pick.key).await.unwrap()
+            .candidate_runtime(&pick.key)
+            .await
+            .unwrap()
             .and_then(|runtime| runtime.import)
             .map(|import| import.step),
         Some(fetching),
@@ -379,10 +347,7 @@ async fn a_file_changed_after_its_scan_fails_the_import_before_any_row() {
     let error = await_import_outcome(&mut events, &import_id)
         .await
         .expect_err("a file changed since its scan fails the import");
-    assert!(
-        error.contains("changed after its import candidate was scanned"),
-        "{error}"
-    );
+    assert!(error.contains("changed after its import candidate was scanned"), "{error}");
     let rows = pick.handle.library_manager.every_row_for_test().await;
     for table in ["releases", "release_files"] {
         assert!(

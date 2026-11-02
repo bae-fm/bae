@@ -36,7 +36,8 @@ async fn assert_reading_progress(destination: ImportDestination) {
             candidate_key.clone(),
             crate::import::release_candidate::CandidateSource {
                 path: folder,
-                scope: crate::import::ReleaseFileScope::Recursive, parts: Vec::new(), 
+                scope: crate::import::ReleaseFileScope::Recursive,
+                parts: Vec::new(),
             },
             expectation,
             destination,

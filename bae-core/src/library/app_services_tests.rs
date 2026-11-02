@@ -14,9 +14,8 @@ use tempfile::TempDir;
 async fn playing_app_services(track_count: usize) -> (AppServices, Vec<String>, TempDir) {
     let temp_dir = TempDir::new().unwrap();
     let db_path = temp_dir.path().join("test.db");
-    let database = Database::new_test(db_path.to_str().unwrap(), Arc::new(coven::SystemClock))
-        .await
-        .unwrap();
+    let database =
+        Database::new_test(db_path.to_str().unwrap(), Arc::new(coven::SystemClock)).await.unwrap();
 
     let artist = DbArtist {
         id: bae_test_support::test_uuid("e36744a5-1a36-460f-891c-e7e558034edf"),
@@ -83,10 +82,7 @@ async fn playing_app_services(track_count: usize) -> (AppServices, Vec<String>, 
 
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     let services = {
-        let import = manager
-            .start_import_service(tokio::runtime::Handle::current())
-            .await
-            .unwrap();
+        let import = manager.start_import_service(tokio::runtime::Handle::current()).await.unwrap();
         AppServices::new(manager, playback, import)
     };
     #[cfg(any(target_os = "ios", target_os = "android"))]
@@ -139,13 +135,7 @@ fn window_track_ids(snapshot: &crate::library::QueueUpcomingSnapshot) -> Vec<Vec
     snapshot
         .windows
         .iter()
-        .map(|window| {
-            window
-                .items
-                .iter()
-                .map(|item| item.track_id.as_str())
-                .collect()
-        })
+        .map(|window| window.items.iter().map(|item| item.track_id.as_str()).collect())
         .collect()
 }
 
@@ -166,14 +156,8 @@ async fn queue_upcoming_reads_every_window_of_a_live_context_tail_in_one_value()
     assert_eq!(
         window_track_ids(&value),
         vec![
-            track_ids[3..6]
-                .iter()
-                .map(String::as_str)
-                .collect::<Vec<_>>(),
-            track_ids[8..10]
-                .iter()
-                .map(String::as_str)
-                .collect::<Vec<_>>(),
+            track_ids[3..6].iter().map(String::as_str).collect::<Vec<_>>(),
+            track_ids[8..10].iter().map(String::as_str).collect::<Vec<_>>(),
         ]
     );
 }
@@ -212,17 +196,10 @@ async fn queue_upcoming_moves_its_windows_in_place() {
         value.windows.first().map(|window| window.window.offset) == Some(4)
     })
     .await;
-    assert_eq!(
-        moved.windows.len(),
-        1,
-        "the earlier window is no longer read"
-    );
+    assert_eq!(moved.windows.len(), 1, "the earlier window is no longer read");
     assert!(!moved.queue_changed, "only the windows moved");
     assert_eq!(moved.upcoming_total, 11);
-    assert_eq!(
-        window_track_ids(&moved),
-        vec![vec![track_ids[5].as_str(), track_ids[6].as_str()]]
-    );
+    assert_eq!(window_track_ids(&moved), vec![vec![track_ids[5].as_str(), track_ids[6].as_str()]]);
 }
 
 /// A change to the context lane reaches the windows through the subscription
@@ -238,25 +215,13 @@ async fn queue_upcoming_follows_queue_changes_without_resubscribing() {
     let skip_to = first.windows[0].items[0].entry_id.parse().unwrap();
 
     services.playback_skip_to_entry(skip_to);
-    let moved = upcoming_until(&subscription, |value| {
-        value.upcoming_total < first.upcoming_total
-    })
-    .await;
+    let moved =
+        upcoming_until(&subscription, |value| value.upcoming_total < first.upcoming_total).await;
     assert!(moved.queue_changed, "the queue changed under the windows");
+    assert_eq!(moved.upcoming_total, 8, "track_ids[3] plays; track_ids[4..] follow");
     assert_eq!(
-        moved.upcoming_total, 8,
-        "track_ids[3] plays; track_ids[4..] follow"
-    );
-    assert_eq!(
-        moved.windows[0]
-            .items
-            .iter()
-            .map(|item| item.track_id.as_str())
-            .collect::<Vec<_>>(),
-        track_ids[6..9]
-            .iter()
-            .map(String::as_str)
-            .collect::<Vec<_>>()
+        moved.windows[0].items.iter().map(|item| item.track_id.as_str()).collect::<Vec<_>>(),
+        track_ids[6..9].iter().map(String::as_str).collect::<Vec<_>>()
     );
 
     // Dropping the context empties the tail the windows read.
@@ -283,16 +248,11 @@ async fn a_release_session_keeps_its_choices_in_core() {
     services
         .edit_release_lookup_choices(
             release.clone(),
-            LookupChoiceEdit::ToggleCatalog {
-                number: "WPCR-80001".to_string(),
-            },
+            LookupChoiceEdit::ToggleCatalog { number: "WPCR-80001".to_string() },
         )
         .await
         .unwrap();
-    services
-        .identify_release_for_lookup(release.clone())
-        .await
-        .unwrap();
+    services.identify_release_for_lookup(release.clone()).await.unwrap();
 
     let held = services.release_lookup_choices().get(&key).cloned();
     let held = held.expect("the session's choices are held");
@@ -341,10 +301,7 @@ async fn a_queued_release_shows_its_title_as_edited_while_it_waits() {
     let release_id = "c61a9e19-f3ba-4728-842c-c59dbc82e238";
     let manager = &services.inner.manager;
     manager.set_outputs_paused(true).await.unwrap();
-    manager
-        .enqueue_export(release_id, temp_dir.path().join("export-out"))
-        .await
-        .unwrap();
+    manager.enqueue_export(release_id, temp_dir.path().join("export-out")).await.unwrap();
 
     let inspector = services.subscribe_storage_inspector();
     inspector.set(Some(release_id.to_string())).unwrap();
@@ -386,17 +343,12 @@ async fn a_queued_release_shows_its_title_as_edited_while_it_waits() {
         .unwrap();
 
     inspected_export_until(&inspector, |row| {
-        row.release
-            .as_ref()
-            .is_some_and(|release| release.title == "Renamed Album")
+        row.release.as_ref().is_some_and(|release| release.title == "Renamed Album")
     })
     .await;
     let read = services.output_snapshot().await.unwrap();
     assert_eq!(
-        read.rows[0]
-            .release
-            .as_ref()
-            .map(|release| release.title.as_str()),
+        read.rows[0].release.as_ref().map(|release| release.title.as_str()),
         Some("Renamed Album")
     );
     assert!(read.paused);
@@ -412,10 +364,7 @@ async fn the_storage_inspector_reads_the_release_it_is_set_to() {
     let release_id = "c61a9e19-f3ba-4728-842c-c59dbc82e238";
     let manager = &services.inner.manager;
     manager.set_outputs_paused(true).await.unwrap();
-    manager
-        .enqueue_export(release_id, temp_dir.path().join("export-out"))
-        .await
-        .unwrap();
+    manager.enqueue_export(release_id, temp_dir.path().join("export-out")).await.unwrap();
 
     let inspector = services.subscribe_storage_inspector();
     inspector.set(Some(release_id.to_string())).unwrap();
@@ -434,10 +383,7 @@ async fn the_storage_inspector_reads_the_release_it_is_set_to() {
         }
     };
     let [StorageInspectorTransfer::Output { operation }] = shown.transfers.as_slice() else {
-        panic!(
-            "only the export queue holds the release: {:?}",
-            shown.transfers
-        );
+        panic!("only the export queue holds the release: {:?}", shown.transfers);
     };
     assert_eq!(operation.op.release_id, release_id);
     assert!(shown.files.is_empty(), "the seeded release has no files");
@@ -478,9 +424,7 @@ async fn closing_the_library_ends_a_held_subscriptions_task_before_its_store_clo
 async fn closing_the_library_ends_a_held_live_reads_task_before_its_store_closes() {
     let (services, _track_ids, _temp_dir) = playing_app_services(3).await;
     let release = services.subscribe_release_detail();
-    release
-        .set(Some("c61a9e19-f3ba-4728-842c-c59dbc82e238".to_string()))
-        .unwrap();
+    release.set(Some("c61a9e19-f3ba-4728-842c-c59dbc82e238".to_string())).unwrap();
     tokio::time::timeout(std::time::Duration::from_secs(5), release.next())
         .await
         .expect("the release detail delivers")
@@ -517,10 +461,7 @@ async fn the_release_files_read_answers_the_request_it_is_set_to() {
     let files = services.subscribe_release_files();
     let request = |release_id: &str| ReleaseFilesRequest {
         release_id: release_id.to_string(),
-        order: ReleaseFileOrder {
-            column: ReleaseFileColumn::Size,
-            descending: true,
-        },
+        order: ReleaseFileOrder { column: ReleaseFileColumn::Size, descending: true },
     };
     let answer = |asked: ReleaseFilesRequest| {
         let files = &files;
@@ -539,11 +480,7 @@ async fn the_release_files_read_answers_the_request_it_is_set_to() {
         }
     };
     let held = answer(request("c61a9e19-f3ba-4728-842c-c59dbc82e238")).await;
-    assert_eq!(
-        held.map(|files| files.len()),
-        Some(0),
-        "the release holds no files"
-    );
+    assert_eq!(held.map(|files| files.len()), Some(0), "the release holds no files");
     assert!(answer(request("no-such-release")).await.is_none());
 }
 
@@ -587,16 +524,11 @@ fn a_track_decode_whose_read_panics_reports_it() {
         crate::diagnostics::Diagnostics::noop().reporting_bugs_to(reports.clone()),
     );
 
-    let result = decode.run_to_sink(
-        &mut DiscardingSink,
-        Arc::new(std::sync::atomic::AtomicBool::new(false)),
-    );
+    let result = decode
+        .run_to_sink(&mut DiscardingSink, Arc::new(std::sync::atomic::AtomicBool::new(false)));
 
     let error = result.expect_err("a read that panicked fails the decode");
     let reported = reports.reports();
     assert_eq!(reported.len(), 1, "{reported:?}");
-    assert_eq!(
-        reported[0].1, error,
-        "the decode fails with what was reported"
-    );
+    assert_eq!(reported[0].1, error, "the decode fails with what was reported");
 }

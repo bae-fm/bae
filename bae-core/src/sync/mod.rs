@@ -82,11 +82,7 @@ pub fn namespaces() -> Vec<Namespace> {
             Provenance::AppProvided,
             512 * 1024 * 1024, // 512 MiB
         ),
-        Namespace::new(
-            ARTIST_IMAGES_NAMESPACE,
-            Provenance::AppProvided,
-            256 * 1024 * 1024,
-        ),
+        Namespace::new(ARTIST_IMAGES_NAMESPACE, Provenance::AppProvided, 256 * 1024 * 1024),
         Namespace::new(
             AVATARS_NAMESPACE,
             Provenance::AppProvided,
@@ -226,11 +222,7 @@ mod tests {
             );
             assert_eq!(
                 table.identity(),
-                if shared {
-                    &RowIdentity::SharedKey
-                } else {
-                    &RowIdentity::IndependentUuid
-                }
+                if shared { &RowIdentity::SharedKey } else { &RowIdentity::IndependentUuid }
             );
             let keys: &[&str] = match table.name() {
                 "playlist_entries" => &["playlist_id", "position_id"],
@@ -259,9 +251,7 @@ mod tests {
                 .iter()
                 .map(|column| (column.column(), column.binding(), column.is_write_once()))
                 .collect();
-            let bound = Binding::Bound {
-                limit: coven::BOUND_FILE_LIMIT,
-            };
+            let bound = Binding::Bound { limit: coven::BOUND_FILE_LIMIT };
             let expected: &[(&str, &Binding, bool)] = match table.name() {
                 "release_files" => &[("file", &Binding::Trailing, false)],
                 "covers" | "artist_images" => &[("file", &bound, false)],
@@ -278,34 +268,14 @@ mod tests {
         assert_eq!(
             namespaces,
             [
-                (
-                    RELEASE_FILES_NAMESPACE,
-                    &Provenance::UserProvided,
-                    20 * 1024 * 1024 * 1024
-                ),
-                (
-                    COVERS_NAMESPACE,
-                    &Provenance::AppProvided,
-                    512 * 1024 * 1024
-                ),
-                (
-                    ARTIST_IMAGES_NAMESPACE,
-                    &Provenance::AppProvided,
-                    256 * 1024 * 1024
-                ),
-                (
-                    AVATARS_NAMESPACE,
-                    &Provenance::AppProvided,
-                    64 * 1024 * 1024
-                ),
+                (RELEASE_FILES_NAMESPACE, &Provenance::UserProvided, 20 * 1024 * 1024 * 1024),
+                (COVERS_NAMESPACE, &Provenance::AppProvided, 512 * 1024 * 1024),
+                (ARTIST_IMAGES_NAMESPACE, &Provenance::AppProvided, 256 * 1024 * 1024),
+                (AVATARS_NAMESPACE, &Provenance::AppProvided, 64 * 1024 * 1024),
             ]
         );
         assert_eq!(
-            tables
-                .iter()
-                .find(|t| t.name() == "covers")
-                .unwrap()
-                .identity(),
+            tables.iter().find(|t| t.name() == "covers").unwrap().identity(),
             &RowIdentity::SharedKey
         );
     }
@@ -500,11 +470,7 @@ mod tests {
         let tables = synced_tables();
         let synced: BTreeSet<&str> = tables.iter().map(SyncedTable::name).collect();
         let local: BTreeSet<&str> = DEVICE_LOCAL_TABLES.iter().copied().collect();
-        assert_eq!(
-            local.len(),
-            DEVICE_LOCAL_TABLES.len(),
-            "a device-local table is listed twice"
-        );
+        assert_eq!(local.len(), DEVICE_LOCAL_TABLES.len(), "a device-local table is listed twice");
         let undeclared: Vec<_> = schema
             .iter()
             .filter(|table| !synced.contains(*table) && !local.contains(*table))
@@ -514,17 +480,9 @@ mod tests {
             "tables neither synced nor listed as device-local: {undeclared:?}"
         );
         let both: Vec<_> = synced.intersection(&local).collect();
-        assert!(
-            both.is_empty(),
-            "tables both synced and device-local: {both:?}"
-        );
-        let missing: Vec<_> = synced
-            .union(&local)
-            .filter(|table| !schema.contains(*table))
-            .collect();
-        assert!(
-            missing.is_empty(),
-            "declared tables the schema doesn't create: {missing:?}"
-        );
+        assert!(both.is_empty(), "tables both synced and device-local: {both:?}");
+        let missing: Vec<_> =
+            synced.union(&local).filter(|table| !schema.contains(*table)).collect();
+        assert!(missing.is_empty(), "declared tables the schema doesn't create: {missing:?}");
     }
 }

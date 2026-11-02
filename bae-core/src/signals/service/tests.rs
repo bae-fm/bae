@@ -34,10 +34,7 @@ impl StubAnalyzer {
     }
 
     fn with(self, filename: &str, lines: Vec<String>) -> Self {
-        self.responses
-            .lock()
-            .unwrap()
-            .insert(filename.to_string(), lines);
+        self.responses.lock().unwrap().insert(filename.to_string(), lines);
         self
     }
 
@@ -58,22 +55,9 @@ impl ArtworkAnalyzer for StubAnalyzer {
         if let Some(gate) = &self.gate {
             gate.pass();
         }
-        let filename = path
-            .file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or_default()
-            .to_string();
-        let text_lines = self
-            .responses
-            .lock()
-            .unwrap()
-            .get(&filename)
-            .cloned()
-            .unwrap_or_default();
-        ArtworkAnalysis {
-            barcodes: Vec::new(),
-            text_lines,
-        }
+        let filename = path.file_name().and_then(|n| n.to_str()).unwrap_or_default().to_string();
+        let text_lines = self.responses.lock().unwrap().get(&filename).cloned().unwrap_or_default();
+        ArtworkAnalysis { barcodes: Vec::new(), text_lines }
     }
 }
 
@@ -87,20 +71,14 @@ impl ArtworkAnalyzer for PanicAnalyzer {
 
 /// Drain `SignalsUpdated` events until `expected` of them arrive, or time out.
 async fn collect_signals(rx: &mut UnboundedReceiver<ImportEvent>, expected: usize) -> Vec<Signals> {
-    collect_snapshots(rx, expected)
-        .await
-        .into_iter()
-        .map(|(signals, _)| signals)
-        .collect()
+    collect_snapshots(rx, expected).await.into_iter().map(|(signals, _)| signals).collect()
 }
 
 /// Wait until the run behind `watch` has ended, which drops its end.
 async fn run_ended(watch: &mut crate::signals::ExtractionWatch) {
-    tokio::time::timeout(Duration::from_secs(30), async {
-        while watch.changed().await.is_ok() {}
-    })
-    .await
-    .expect("the extraction ends");
+    tokio::time::timeout(Duration::from_secs(30), async { while watch.changed().await.is_ok() {} })
+        .await
+        .expect("the extraction ends");
 }
 
 /// No `SignalsUpdated` is left on `rx`: once the run has ended, the
@@ -124,10 +102,7 @@ async fn collect_snapshots(
             .await
             .expect("timed out collecting events")
             .expect("channel closed");
-        if let ImportEvent::SignalsUpdated {
-            signals, artwork, ..
-        } = event
-        {
+        if let ImportEvent::SignalsUpdated { signals, artwork, .. } = event {
             out.push((signals, artwork));
         }
     }
@@ -166,12 +141,8 @@ async fn make_library_manager_reporting_to(
 }
 
 /// Start a service; the bus sender comes back so a test can inject events.
-async fn make_service() -> (
-    ExtractionServiceHandle,
-    ImportEventBus,
-    UnboundedReceiver<ImportEvent>,
-    TempDir,
-) {
+async fn make_service(
+) -> (ExtractionServiceHandle, ImportEventBus, UnboundedReceiver<ImportEvent>, TempDir) {
     let candidates = CandidateRuntime::for_test().await;
     let tx = ImportEventBus::new(candidates.clone());
     let rx = tx.every_event();
@@ -209,11 +180,8 @@ async fn start_signals(
 }
 
 fn fixture_flac() -> Vec<u8> {
-    std::fs::read(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/tests/fixtures/flac/01 Test Track 1.flac"
-    ))
-    .expect("read FLAC fixture")
+    std::fs::read(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/flac/01 Test Track 1.flac"))
+        .expect("read FLAC fixture")
 }
 
 /// Just the JPEG magic — enough for `is_valid_image` to accept it.
@@ -288,16 +256,8 @@ async fn emits_fast_pass_then_ocr_then_settled() {
     assert_eq!(
         artwork,
         vec![
-            &ArtworkScan::Reading {
-                current: Some("Back.jpg".to_string()),
-                position: 1,
-                total: 2,
-            },
-            &ArtworkScan::Reading {
-                current: Some("Cover.jpg".to_string()),
-                position: 2,
-                total: 2,
-            },
+            &ArtworkScan::Reading { current: Some("Back.jpg".to_string()), position: 1, total: 2 },
+            &ArtworkScan::Reading { current: Some("Cover.jpg".to_string()), position: 2, total: 2 },
             &ArtworkScan::Done { total: 2 },
         ]
     );
@@ -419,11 +379,7 @@ FILE \"audio.flac\" WAVE\n  \
     let signals = collect_signals(&mut rx, 1).await;
     let final_signals = &signals[signals.len() - 1];
     assert!(
-        final_signals
-            .barcode
-            .codes()
-            .iter()
-            .any(|c| c.value == "0075678164521"),
+        final_signals.barcode.codes().iter().any(|c| c.value == "0075678164521"),
         "CUE CATALOG should surface as a barcode code, got {:?}",
         final_signals.barcode,
     );
@@ -519,10 +475,7 @@ FILE \"audio.flac\" WAVE\n  \
         ]
     );
     assert!(
-        settled
-            .text_pool
-            .iter()
-            .any(|line| line.text == "Artist Alpha"),
+        settled.text_pool.iter().any(|line| line.text == "Artist Alpha"),
         "the image's text still reaches the pool, got {:?}",
         settled.text_pool,
     );
@@ -553,10 +506,7 @@ async fn the_bars_and_their_printed_digits_are_one_sighting() {
     let signals = collect_signals(&mut rx, 2).await;
     assert_eq!(
         signals[1].barcode.codes(),
-        [SourcedValue::in_file(
-            "5012345678900".to_string(),
-            "Back.jpg".to_string()
-        )]
+        [SourcedValue::in_file("5012345678900".to_string(), "Back.jpg".to_string())]
     );
 }
 
@@ -589,14 +539,9 @@ fn non_utf8_cue_is_decoded_not_dropped() {
         .expect("scanned fixture audio has complete timing");
     let texts: Vec<&str> = pass.lines.iter().map(|l| l.text.as_str()).collect();
 
+    assert!(texts.contains(&"Artist Alpha"), "non-UTF-8 CUE dropped entirely; got {texts:?}",);
     assert!(
-        texts.contains(&"Artist Alpha"),
-        "non-UTF-8 CUE dropped entirely; got {texts:?}",
-    );
-    assert!(
-        texts
-            .iter()
-            .any(|t| t.starts_with("I Ain") && t.ends_with("t Got No Heart")),
+        texts.iter().any(|t| t.starts_with("I Ain") && t.ends_with("t Got No Heart")),
         "non-ASCII track title not recovered; got {texts:?}",
     );
 }
@@ -610,10 +555,7 @@ async fn text_files_feed_free_text() {
         &tmp,
         "Artist Alpha - Album Title B",
         &[],
-        &[(
-            "info.txt",
-            "Artist Alpha - Album Title B\nSome Other Thing\n",
-        )],
+        &[("info.txt", "Artist Alpha - Album Title B\nSome Other Thing\n")],
     );
 
     let analyzer: Arc<dyn ArtworkAnalyzer> = Arc::new(StubAnalyzer::new());
@@ -622,9 +564,7 @@ async fn text_files_feed_free_text() {
     let signals = collect_signals(&mut rx, 1).await;
     let final_free_text = signals[signals.len() - 1].text.free_text();
     assert!(
-        final_free_text
-            .iter()
-            .any(|s| s == "Artist Alpha - Album Title B"),
+        final_free_text.iter().any(|s| s == "Artist Alpha - Album Title B"),
         "expected path/text-file cluster to survive, got {final_free_text:?}",
     );
 }
@@ -682,12 +622,7 @@ FILE \"audio.flac\" WAVE\n  \
     );
 
     let signals = collect_signals(&mut rx, 1).await;
-    let codes: Vec<&str> = signals[0]
-        .barcode
-        .codes()
-        .iter()
-        .map(|c| c.value.as_str())
-        .collect();
+    let codes: Vec<&str> = signals[0].barcode.codes().iter().map(|c| c.value.as_str()).collect();
     assert_eq!(codes, vec!["0075678164521"]);
     assert!(
         matches!(signals[0].barcode, BarcodeSignal::Settled { .. }),
@@ -714,10 +649,10 @@ FILE "01 - Track.flac" WAVE
 "#;
     fs::write(folder.join("Album.cue"), cue).unwrap();
 
-    let analyzer: Arc<dyn ArtworkAnalyzer> = Arc::new(StubAnalyzer::new().with(
-        "Artist Alpha - Back Cover.jpg",
-        vec!["Made in US · 1976".to_string()],
-    ));
+    let analyzer: Arc<dyn ArtworkAnalyzer> = Arc::new(
+        StubAnalyzer::new()
+            .with("Artist Alpha - Back Cover.jpg", vec!["Made in US · 1976".to_string()]),
+    );
     let (_handle, mut rx, _run, _lib_tmp) = start_signals(folder, analyzer).await;
 
     let signals = collect_signals(&mut rx, 2).await;
@@ -750,21 +685,17 @@ FILE "01 - Track.flac" WAVE
 async fn a_line_read_twice_off_one_surface_is_pooled_once() {
     let tmp = TempDir::new().unwrap();
     let folder = build_release(&tmp, "Some Folder", &["front.jpg"], &[]);
-    let analyzer: Arc<dyn ArtworkAnalyzer> = Arc::new(StubAnalyzer::new().with(
-        "front.jpg",
-        vec![
-            "Atlantic Records".to_string(),
-            "Atlantic Records".to_string(),
-        ],
-    ));
+    let analyzer: Arc<dyn ArtworkAnalyzer> =
+        Arc::new(StubAnalyzer::new().with(
+            "front.jpg",
+            vec!["Atlantic Records".to_string(), "Atlantic Records".to_string()],
+        ));
     let (_handle, mut rx, _run, _lib_tmp) = start_signals(folder, analyzer).await;
 
     let signals = collect_signals(&mut rx, 2).await;
     let pool = &signals[signals.len() - 1].text_pool;
     assert_eq!(
-        pool.iter()
-            .filter(|line| line.text == "Atlantic Records")
-            .count(),
+        pool.iter().filter(|line| line.text == "Atlantic Records").count(),
         1,
         "got {pool:?}",
     );

@@ -93,17 +93,11 @@ struct DiscogsSection {
 impl DevResetProfile {
     /// Read the profile at `path`, which must be mode 600.
     pub fn read(path: &Path) -> Result<Self, DevResetProfileError> {
-        let read_error = |error| DevResetProfileError::Read {
-            path: path.to_path_buf(),
-            error,
-        };
+        let read_error = |error| DevResetProfileError::Read { path: path.to_path_buf(), error };
         let mode = std::fs::metadata(path).map_err(read_error)?.permissions();
         let mode = unix_mode(&mode);
         if mode != 0o600 {
-            return Err(DevResetProfileError::Exposed {
-                path: path.to_path_buf(),
-                mode,
-            });
+            return Err(DevResetProfileError::Exposed { path: path.to_path_buf(), mode });
         }
         let text = std::fs::read_to_string(path).map_err(read_error)?;
         Self::parse(path, &text)
@@ -115,17 +109,12 @@ impl DevResetProfile {
         let file: ProfileFile =
             toml::from_str(text).map_err(|error| DevResetProfileError::Malformed {
                 path: path.to_path_buf(),
-                line: error
-                    .span()
-                    .map(|span| text[..span.start].matches('\n').count() + 1),
+                line: error.span().map(|span| text[..span.start].matches('\n').count() + 1),
                 message: error.message().to_string(),
             })?;
         let required = |field: &'static str, value: String| {
             if value.trim().is_empty() {
-                Err(DevResetProfileError::Empty {
-                    path: path.to_path_buf(),
-                    field,
-                })
+                Err(DevResetProfileError::Empty { path: path.to_path_buf(), field })
             } else {
                 Ok(value)
             }
@@ -148,10 +137,7 @@ impl DevResetProfile {
         }
         // The refusal carries nothing beyond the field being empty.
         let library_name = LibraryName::parse(&file.library_name).map_err(|EmptyLibraryName| {
-            DevResetProfileError::Empty {
-                path: path.to_path_buf(),
-                field: "library_name",
-            }
+            DevResetProfileError::Empty { path: path.to_path_buf(), field: "library_name" }
         })?;
         Ok(Self {
             library_name,

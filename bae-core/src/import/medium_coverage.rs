@@ -24,17 +24,13 @@ pub(crate) struct MediumCoverage {
 impl MediumCoverage {
     /// No medium: what a release that lists no tracks is read over.
     pub(crate) fn none() -> Self {
-        Self {
-            positions: Vec::new(),
-        }
+        Self { positions: Vec::new() }
     }
 
     /// Every medium of a release with `count` of them.
     #[cfg(test)]
     pub(crate) fn all(count: usize) -> Self {
-        Self {
-            positions: (0..count).collect(),
-        }
+        Self { positions: (0..count).collect() }
     }
 
     pub(crate) fn covers(&self, position: usize) -> bool {
@@ -84,9 +80,7 @@ pub(crate) fn candidate_sets(mediums: &[MediumShape], wanted: usize) -> Vec<Medi
                 }
                 reachable = reachable.adding(&medium.counts);
                 if reachable.holds(wanted) {
-                    sets.push(MediumCoverage {
-                        positions: (start..=end).collect(),
-                    });
+                    sets.push(MediumCoverage { positions: (start..=end).collect() });
                 }
                 if reachable.is_empty() {
                     break;
@@ -143,9 +137,7 @@ fn subsets_reaching(
     sets: &mut Vec<MediumCoverage>,
 ) {
     if !chosen.is_empty() && reachable.holds(wanted) {
-        sets.push(MediumCoverage {
-            positions: chosen.clone(),
-        });
+        sets.push(MediumCoverage { positions: chosen.clone() });
     }
     for position in from..mediums.len() {
         let counts = &mediums[position].counts;
@@ -200,17 +192,10 @@ impl Fit {
             measured.len(),
             "a fitting layout states one length per measured track"
         );
-        let covered = || {
-            coverage
-                .positions
-                .iter()
-                .map(|&position| &mediums[position])
-        };
+        let covered = || coverage.positions.iter().map(|&position| &mediums[position]);
         let mut fit = Self {
             discs_held: Reverse(covered().filter(|medium| medium.holds_folder_disc).count()),
-            ruled_out: covered()
-                .filter(|medium| rules_out(origin, medium.carrier))
-                .count(),
+            ruled_out: covered().filter(|medium| rules_out(origin, medium.carrier)).count(),
             disagreeing: 0,
             unstated: 0,
             distance_ms: 0,
@@ -249,11 +234,7 @@ mod tests {
     use super::*;
 
     fn medium(count: usize) -> MediumShape {
-        MediumShape {
-            counts: BTreeSet::from([count]),
-            carrier: None,
-            holds_folder_disc: false,
-        }
+        MediumShape { counts: BTreeSet::from([count]), carrier: None, holds_folder_disc: false }
     }
 
     fn positions(sets: Vec<MediumCoverage>) -> Vec<Vec<usize>> {
@@ -263,34 +244,22 @@ mod tests {
     #[test]
     fn every_set_whose_counts_sum_to_the_folders_is_a_candidate() {
         let mediums = [medium(2), medium(1), medium(1), medium(3)];
-        assert_eq!(
-            positions(candidate_sets(&mediums, 3)),
-            vec![vec![0, 1], vec![0, 2], vec![3]]
-        );
+        assert_eq!(positions(candidate_sets(&mediums, 3)), vec![vec![0, 1], vec![0, 2], vec![3]]);
     }
 
     /// A Discogs medium with an index counts both ways, so a set reaches the
     /// folder's count through either layout.
     #[test]
     fn a_medium_with_several_layouts_reaches_the_folder_through_any() {
-        let suite = MediumShape {
-            counts: BTreeSet::from([10, 12]),
-            ..medium(0)
-        };
+        let suite = MediumShape { counts: BTreeSet::from([10, 12]), ..medium(0) };
         let mediums = [suite, medium(10)];
-        assert_eq!(
-            positions(candidate_sets(&mediums, 10)),
-            vec![vec![0], vec![1]]
-        );
+        assert_eq!(positions(candidate_sets(&mediums, 10)), vec![vec![0], vec![1]]);
         assert_eq!(positions(candidate_sets(&mediums, 22)), vec![vec![0, 1]]);
     }
 
     #[test]
     fn a_medium_that_lists_no_tracks_is_never_covered() {
-        let empty = MediumShape {
-            counts: BTreeSet::new(),
-            ..medium(0)
-        };
+        let empty = MediumShape { counts: BTreeSet::new(), ..medium(0) };
         let mediums = [empty, medium(2)];
         assert_eq!(positions(candidate_sets(&mediums, 2)), vec![vec![1]]);
     }
@@ -317,24 +286,13 @@ mod tests {
         stated: &[Option<u64>],
     ) -> Fit {
         let measured: Vec<u64> = stated.iter().map(|_| 200_000).collect();
-        Fit::of(
-            shape,
-            &MediumCoverage {
-                positions: set.to_vec(),
-            },
-            origin,
-            stated,
-            &measured,
-        )
+        Fit::of(shape, &MediumCoverage { positions: set.to_vec() }, origin, stated, &measured)
     }
 
     /// A medium that holds a folder's Disc ID decides over every length.
     #[test]
     fn a_disc_id_decides_before_lengths() {
-        let holds = MediumShape {
-            holds_folder_disc: true,
-            ..medium(1)
-        };
+        let holds = MediumShape { holds_folder_disc: true, ..medium(1) };
         let shape = [holds, medium(1)];
         let origin = AudioOrigin::default();
         assert!(
@@ -347,14 +305,8 @@ mod tests {
     /// and audio no CD plays rules out a CD.
     #[test]
     fn the_audio_origin_rules_out_carriers_before_lengths() {
-        let vinyl = MediumShape {
-            carrier: Some(Medium::Vinyl),
-            ..medium(1)
-        };
-        let cd = MediumShape {
-            carrier: Some(Medium::Cd),
-            ..medium(1)
-        };
+        let vinyl = MediumShape { carrier: Some(Medium::Vinyl), ..medium(1) };
+        let cd = MediumShape { carrier: Some(Medium::Cd), ..medium(1) };
         let shape = [vinyl, cd];
         let cd_rip = AudioOrigin {
             source: Some(crate::signals::AudioSource::CdRip {
@@ -364,10 +316,7 @@ mod tests {
             not_cd_rate: None,
         };
         assert!(fit(&shape, &[1], &cd_rip, &[None]) < fit(&shape, &[0], &cd_rip, &[Some(200_000)]));
-        let high_rate = AudioOrigin {
-            source: None,
-            not_cd_rate: Some(96_000),
-        };
+        let high_rate = AudioOrigin { source: None, not_cd_rate: Some(96_000) };
         assert!(
             fit(&shape, &[0], &high_rate, &[None])
                 < fit(&shape, &[1], &high_rate, &[Some(200_000)])

@@ -43,9 +43,7 @@ impl PlaybackClock for WallPlaybackClock {
     }
 
     fn sleep_until(&self, deadline: DateTime<Utc>) -> PlaybackSleep {
-        let remaining = (deadline - self.now())
-            .to_std()
-            .unwrap_or(std::time::Duration::ZERO);
+        let remaining = (deadline - self.now()).to_std().unwrap_or(std::time::Duration::ZERO);
         self.wall.sleep(remaining)
     }
 }
@@ -63,10 +61,7 @@ pub struct ManualPlaybackClock {
 impl ManualPlaybackClock {
     pub fn new(start: DateTime<Utc>) -> Self {
         let (now, _) = tokio::sync::watch::channel(start);
-        Self {
-            now,
-            waits: std::sync::Mutex::new(Vec::new()),
-        }
+        Self { now, waits: std::sync::Mutex::new(Vec::new()) }
     }
 
     /// The deadlines of the waits handed out that have neither completed nor
@@ -75,10 +70,7 @@ impl ManualPlaybackClock {
     pub fn pending_waits(&self) -> Vec<DateTime<Utc>> {
         let mut waits = self.waits.lock().unwrap();
         waits.retain(|wait| wait.strong_count() > 0);
-        waits
-            .iter()
-            .filter_map(|wait| wait.upgrade().map(|deadline| *deadline))
-            .collect()
+        waits.iter().filter_map(|wait| wait.upgrade().map(|deadline| *deadline)).collect()
     }
 
     pub fn advance(&self, by: std::time::Duration) {

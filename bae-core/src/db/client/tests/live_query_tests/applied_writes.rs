@@ -9,15 +9,7 @@ fn album_page_subscription_delivers_a_write_materialized_by_sync() {
         let writer = devices.a().database();
         let reader = devices.b().database();
         let mut live = reader.subscribe_album_browse(&[], false, first_page());
-        assert_eq!(
-            live.next()
-                .await
-                .expect("the query stays open")
-                .result
-                .unwrap()
-                .total_count,
-            0
-        );
+        assert_eq!(live.next().await.expect("the query stays open").result.unwrap().total_count, 0);
         exec_batch(writer, &format!(
             "INSERT INTO artists (id, name, name_key, created_at)
              VALUES ('{ARTIST_ID}', 'Artist Name', 'artist name', '2026-01-01T00:00:00Z');
@@ -54,15 +46,7 @@ fn composer_browse_subscription_delivers_listings_kept_by_applied_writes() {
             direction: SortDirection::Ascending,
         }];
         let mut live = reader.subscribe_composer_browse(&sort, first_page());
-        assert_eq!(
-            live.next()
-                .await
-                .expect("the query stays open")
-                .result
-                .unwrap()
-                .total_count,
-            0
-        );
+        assert_eq!(live.next().await.expect("the query stays open").result.unwrap().total_count, 0);
         let listed = async |live: &mut coven::ReconfigurableLiveQuery<
             crate::library::LibraryPageWindows,
             ComposerBrowseProjection,
@@ -70,12 +54,7 @@ fn composer_browse_subscription_delivers_listings_kept_by_applied_writes() {
                             expected: Vec<(&str, i64)>| {
             tokio::time::timeout(Duration::from_secs(20), async {
                 loop {
-                    let shown = live
-                        .next()
-                        .await
-                        .expect("the query stays open")
-                        .result
-                        .unwrap();
+                    let shown = live.next().await.expect("the query stays open").result.unwrap();
                     let rows = shown.windows[0]
                         .rows
                         .iter()
@@ -108,10 +87,7 @@ fn composer_browse_subscription_delivers_listings_kept_by_applied_writes() {
         )).await;
         devices
             .settle("the remote work credits", |_, db| async move {
-                db.find_composer_detail(OTHER_COMPOSER_ID)
-                    .await
-                    .unwrap()
-                    .is_some()
+                db.find_composer_detail(OTHER_COMPOSER_ID).await.unwrap().is_some()
             })
             .await;
         let credited = listed(&mut live, vec![(COMPOSER_ID, 1), (OTHER_COMPOSER_ID, 1)]).await;
@@ -125,10 +101,7 @@ fn composer_browse_subscription_delivers_listings_kept_by_applied_writes() {
         .await;
         devices
             .settle("the remote merge", |_, db| async move {
-                db.find_composer_detail(OTHER_COMPOSER_ID)
-                    .await
-                    .unwrap()
-                    .is_none()
+                db.find_composer_detail(OTHER_COMPOSER_ID).await.unwrap().is_none()
             })
             .await;
         let merged = listed(&mut live, vec![(COMPOSER_ID, 2)]).await;
@@ -158,39 +131,18 @@ fn library_search_finds_rows_applied_from_another_device() {
             .await;
         let found = reader.search_library("écrin", 10).await.unwrap();
         assert_eq!(
-            found
-                .albums
-                .iter()
-                .map(|album| album.id.as_str())
-                .collect::<Vec<_>>(),
+            found.albums.iter().map(|album| album.id.as_str()).collect::<Vec<_>>(),
             vec![ALBUM_ID]
         );
 
-        exec(
-            writer,
-            "UPDATE albums SET title = 'Renamed Album Title' WHERE id = ?1",
-            &[ALBUM_ID],
-        )
-        .await;
+        exec(writer, "UPDATE albums SET title = 'Renamed Album Title' WHERE id = ?1", &[ALBUM_ID])
+            .await;
         devices
             .settle("the remote rename", |_, db| async move {
                 db.find_album_by_id(ALBUM_ID).await.unwrap().unwrap().title == "Renamed Album Title"
             })
             .await;
-        assert!(reader
-            .search_library("écrin", 10)
-            .await
-            .unwrap()
-            .albums
-            .is_empty());
-        assert_eq!(
-            reader
-                .search_library("renamed album", 10)
-                .await
-                .unwrap()
-                .albums
-                .len(),
-            1
-        );
+        assert!(reader.search_library("écrin", 10).await.unwrap().albums.is_empty());
+        assert_eq!(reader.search_library("renamed album", 10).await.unwrap().albums.len(), 1);
     });
 }

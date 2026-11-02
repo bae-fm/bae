@@ -8,19 +8,13 @@ async fn profile_requires_membership_and_is_idempotent_after_setup() {
     let directory = tempfile::tempdir().unwrap();
     let (manager, database, storage) =
         storage_library(directory.path(), bae_core::providers::Providers::offline()).await;
-    assert!(matches!(
-        manager.create_profile("Robin").await,
-        Err(ProfileError::NotRegistered)
-    ));
+    assert!(matches!(manager.create_profile("Robin").await, Err(ProfileError::NotRegistered)));
     assert!(database.profiles().await.unwrap().is_empty());
     connect_storage(&manager, &storage).await;
     let profile = made_profile(&manager, "Robin").await;
     assert_eq!(profile.history_sharing, Sharing::Private);
     manager.create_profile("Robin").await.unwrap();
-    assert_eq!(
-        database.profile(profile.id).await.unwrap(),
-        Some(profile.clone())
-    );
+    assert_eq!(database.profile(profile.id).await.unwrap(), Some(profile.clone()));
     assert!(matches!(
         manager.create_profile("Another Name").await,
         Err(ProfileError::AlreadyExists)
@@ -30,10 +24,7 @@ async fn profile_requires_membership_and_is_idempotent_after_setup() {
     assert_eq!(people[0].profile.as_ref(), Some(&profile));
     assert!(people[0].membership.is_self);
     manager.rename_profile("New Name").await.unwrap();
-    manager
-        .set_history_sharing(Sharing::Household)
-        .await
-        .unwrap();
+    manager.set_history_sharing(Sharing::Household).await.unwrap();
     let profile = database.profile(profile.id).await.unwrap().unwrap();
     assert_eq!(profile.name, "New Name");
     assert_eq!(profile.history_sharing, Sharing::Household);
@@ -42,18 +33,12 @@ async fn profile_requires_membership_and_is_idempotent_after_setup() {
 
 /// A PNG of `width` by `height` pixels in one color.
 fn solid_png(width: u32, height: u32, color: [u8; 3]) -> Vec<u8> {
-    png(image::RgbImage::from_pixel(
-        width,
-        height,
-        image::Rgb(color),
-    ))
+    png(image::RgbImage::from_pixel(width, height, image::Rgb(color)))
 }
 
 fn png(image: image::RgbImage) -> Vec<u8> {
     let mut bytes = std::io::Cursor::new(Vec::new());
-    image::DynamicImage::ImageRgb8(image)
-        .write_to(&mut bytes, image::ImageFormat::Png)
-        .unwrap();
+    image::DynamicImage::ImageRgb8(image).write_to(&mut bytes, image::ImageFormat::Png).unwrap();
     bytes.into_inner()
 }
 
@@ -71,10 +56,7 @@ async fn a_profile_names_each_new_avatar_at_once() {
     let second_jpeg = bae_util::stored_image::stored_jpeg(&second_source).unwrap();
     manager.set_avatar(Some(first_source)).await.unwrap();
     let first = database.profile(profile.id).await.unwrap().unwrap();
-    assert_eq!(
-        manager.avatar(profile.id).await.unwrap().unwrap(),
-        first_jpeg
-    );
+    assert_eq!(manager.avatar(profile.id).await.unwrap().unwrap(), first_jpeg);
     manager.set_avatar(Some(second_source)).await.unwrap();
     let second = database.profile(profile.id).await.unwrap().unwrap();
     // The profile row references each new avatar's coven file from the write
@@ -82,31 +64,14 @@ async fn a_profile_names_each_new_avatar_at_once() {
     assert!(first.avatar_id.is_some());
     assert!(second.avatar_id.is_some());
     assert_ne!(first.avatar_id, second.avatar_id);
-    assert_eq!(
-        manager.avatar(profile.id).await.unwrap().unwrap(),
-        second_jpeg
-    );
+    assert_eq!(manager.avatar(profile.id).await.unwrap().unwrap(), second_jpeg);
     manager.drain_uploads_for_test().await.unwrap();
     let stored = database.profile(profile.id).await.unwrap().unwrap();
-    assert_eq!(
-        stored.avatar_id, second.avatar_id,
-        "the upload changes no row"
-    );
-    assert_eq!(
-        manager.avatar(profile.id).await.unwrap().unwrap(),
-        second_jpeg
-    );
+    assert_eq!(stored.avatar_id, second.avatar_id, "the upload changes no row");
+    assert_eq!(manager.avatar(profile.id).await.unwrap().unwrap(), second_jpeg);
     manager.set_avatar(None).await.unwrap();
     assert_eq!(manager.avatar(profile.id).await.unwrap(), None);
-    assert_eq!(
-        database
-            .profile(profile.id)
-            .await
-            .unwrap()
-            .unwrap()
-            .avatar_id,
-        None
-    );
+    assert_eq!(database.profile(profile.id).await.unwrap().unwrap().avatar_id, None);
     manager.close().await.unwrap();
 }
 
@@ -130,10 +95,7 @@ async fn an_oversized_avatar_is_stored_as_a_downscaled_jpeg() {
     manager.set_avatar(Some(photo)).await.unwrap();
 
     let stored = manager.avatar(profile.id).await.unwrap().unwrap();
-    assert_eq!(
-        image::guess_format(&stored).unwrap(),
-        image::ImageFormat::Jpeg
-    );
+    assert_eq!(image::guess_format(&stored).unwrap(), image::ImageFormat::Jpeg);
     let decoded = image::load_from_memory(&stored).unwrap();
     assert_eq!(
         (decoded.width(), decoded.height()),
@@ -205,13 +167,7 @@ impl Household {
             std::sync::Arc::new(coven::UuidIds),
         );
         let robin = made_profile_on(&owner, &database, "Robin").await;
-        Self {
-            _dir: dir,
-            owner,
-            storage,
-            clock,
-            robin,
-        }
+        Self { _dir: dir, owner, storage, clock, robin }
     }
 
     /// The owner's library on its storage, with no profile yet.
@@ -236,11 +192,7 @@ impl Household {
                 .unwrap(),
         );
         let builder = installation
-            .builder(
-                bae_core::config::AppDir::at(dir.path())
-                    .unwrap()
-                    .store_layout(),
-            )
+            .builder(bae_core::config::AppDir::at(dir.path()).unwrap().store_layout())
             .storage_connector(storage.clone());
         let builder = match sign_in {
             Some(sign_in) => sign_in.configure(builder),
@@ -283,16 +235,12 @@ impl Household {
                 access_key_id: key.into(),
                 secret_access_key: coven::SecretText::new("guest-secret".into()),
             },
-            _ => coven::InviteAccess::ProviderAccount {
-                email: GUEST_ACCOUNT.into(),
-            },
+            _ => coven::InviteAccess::ProviderAccount { email: GUEST_ACCOUNT.into() },
         };
         let (id, member, _operation) = Box::pin(self.owner.create_invite(
             target,
             access,
-            coven::InviteDelivery::Sent {
-                lifetime: coven::InviteLifetime::Day,
-            },
+            coven::InviteDelivery::Sent { lifetime: coven::InviteLifetime::Day },
         ))
         .await
         .unwrap();
@@ -325,11 +273,7 @@ impl Household {
             _ => coven::MemoryStorage::for_recipient(&self.storage, GUEST_ACCOUNT).unwrap(),
         };
         installation
-            .builder(
-                bae_core::config::AppDir::at(dir.path())
-                    .unwrap()
-                    .store_layout(),
-            )
+            .builder(bae_core::config::AppDir::at(dir.path()).unwrap().store_layout())
             .storage_connector(std::sync::Arc::new(storage))
     }
 
@@ -412,10 +356,7 @@ pub(super) struct Invited {
 }
 
 pub(super) fn new_member(name: &str) -> coven::InviteTarget {
-    coven::InviteTarget::NewMember {
-        role: coven::MemberRole::Member,
-        name: name.into(),
-    }
+    coven::InviteTarget::NewMember { role: coven::MemberRole::Member, name: name.into() }
 }
 
 /// Make a circle named `name` on `owner`, syncing until its entry lands.
@@ -427,10 +368,7 @@ async fn landed_circle(owner: &coven::CovenHandle, name: &str) -> coven::CircleI
         coven::OperationOutcome::Landed(_)
     ));
     owner.stop_sync().await.unwrap();
-    owner
-        .write(move |sql| Ok(sql.acknowledge_operation(operation)?))
-        .await
-        .unwrap();
+    owner.write(move |sql| Ok(sql.acknowledge_operation(operation)?)).await.unwrap();
     circle
 }
 
@@ -441,14 +379,8 @@ async fn landed_circle(owner: &coven::CovenHandle, name: &str) -> coven::CircleI
 #[tokio::test]
 async fn a_profile_takes_the_private_circle_already_made_for_it() {
     let (_dir, owner, _storage, clock) = Household::owner(coven::CloudProvider::S3, None).await;
-    let member = owner
-        .members()
-        .await
-        .unwrap()
-        .into_iter()
-        .find(|member| member.is_self)
-        .unwrap()
-        .id;
+    let member =
+        owner.members().await.unwrap().into_iter().find(|member| member.is_self).unwrap().id;
     let name = format!("bae-person:{member}");
     let made = landed_circle(&owner, &name).await;
     let database = bae_core::db::Database::from_handle(
@@ -462,14 +394,8 @@ async fn a_profile_takes_the_private_circle_already_made_for_it() {
     owner.close().await.unwrap();
 
     let (_dir, owner, _storage, clock) = Household::owner(coven::CloudProvider::S3, None).await;
-    let member = owner
-        .members()
-        .await
-        .unwrap()
-        .into_iter()
-        .find(|member| member.is_self)
-        .unwrap()
-        .id;
+    let member =
+        owner.members().await.unwrap().into_iter().find(|member| member.is_self).unwrap().id;
     let name = format!("bae-person:{member}");
     for _ in 0..2 {
         landed_circle(&owner, &name).await;
@@ -516,11 +442,7 @@ fn joining_writes_the_invites_name_and_cannot_edit_another_person() {
         assert_eq!(profile.name, "Rowan");
         assert_ne!(profile.id, owner_profile.id);
         assert_ne!(profile.private_circle, owner_profile.private_circle);
-        let members = guest
-            .circles()
-            .members(profile.private_circle)
-            .await
-            .unwrap();
+        let members = guest.circles().members(profile.private_circle).await.unwrap();
         assert_eq!(members.len(), 1);
         assert_eq!(members[0].member, profile.id);
         let error = guest
@@ -534,10 +456,7 @@ fn joining_writes_the_invites_name_and_cannot_edit_another_person() {
             .await
             .expect_err("only the profile's owner may rename it");
         assert!(
-            matches!(
-                error,
-                coven::CovenError::Database(coven::DbError::NotOwner { .. })
-            ),
+            matches!(error, coven::CovenError::Database(coven::DbError::NotOwner { .. })),
             "{error:?}"
         );
         guest.close().await.unwrap();
@@ -581,9 +500,7 @@ fn a_replacement_invite_writes_no_profile() {
         lost.close().await.unwrap();
         let again = household
             .invite(
-                coven::InviteTarget::ReplaceMemberKeys {
-                    member: invite.member,
-                },
+                coven::InviteTarget::ReplaceMemberKeys { member: invite.member },
                 "replacement-key",
             )
             .await;
@@ -609,10 +526,7 @@ fn a_replacement_invite_writes_no_profile() {
             household.clock.clone(),
             std::sync::Arc::new(coven::UuidIds),
         );
-        assert_eq!(
-            database.profile(rowan.id).await.unwrap(),
-            Some(rowan.clone())
-        );
+        assert_eq!(database.profile(rowan.id).await.unwrap(), Some(rowan.clone()));
         // The owner's membership lists each member's devices that can sync
         // apart from those that lost access, as coven's own member list has
         // them.
@@ -640,14 +554,8 @@ fn a_replacement_invite_writes_no_profile() {
                     member.role,
                     member.access,
                     member.is_self,
-                    active
-                        .into_iter()
-                        .map(|device| (device.id, device.name))
-                        .collect::<Vec<_>>(),
-                    former
-                        .into_iter()
-                        .map(|device| (device.id, device.name))
-                        .collect::<Vec<_>>(),
+                    active.into_iter().map(|device| (device.id, device.name)).collect::<Vec<_>>(),
+                    former.into_iter().map(|device| (device.id, device.name)).collect::<Vec<_>>(),
                 )
             })
             .collect();
@@ -679,17 +587,11 @@ fn a_replacement_invite_writes_no_profile() {
         // their profile; and the person using this device among them.
         let people = owner.people().await.unwrap();
         assert_eq!(
-            people
-                .iter()
-                .map(|person| person.membership.clone())
-                .collect::<Vec<_>>(),
+            people.iter().map(|person| person.membership.clone()).collect::<Vec<_>>(),
             membership.members
         );
         for person in &people {
-            assert_eq!(
-                person.profile,
-                owner.profile(person.membership.id).await.unwrap()
-            );
+            assert_eq!(person.profile, owner.profile(person.membership.id).await.unwrap());
         }
         assert!(people
             .iter()
@@ -756,10 +658,7 @@ fn a_stopped_join_resumes_and_writes_the_profile() {
         .await
         .unwrap();
         let (guest, profile) = joined.unwrap().unwrap();
-        assert_eq!(
-            joined_profile(&guest, &household, profile).await.name,
-            "Rowan"
-        );
+        assert_eq!(joined_profile(&guest, &household, profile).await.name, "Rowan");
         guest.close().await.unwrap();
         household.owner.close().await.unwrap();
     });
@@ -804,20 +703,14 @@ impl DropboxSignIn {
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let endpoint = format!("http://{}", listener.local_addr().unwrap());
         let server = tokio::spawn(async move { axum::serve(listener, router).await.unwrap() });
-        Self {
-            endpoint,
-            presented: std::sync::Arc::default(),
-            server,
-        }
+        Self { endpoint, presented: std::sync::Arc::default(), server }
     }
 
     fn configure(&self, builder: coven::CovenBuilder) -> coven::CovenBuilder {
         builder
             .oauth_clients(
                 coven::OAuthClients::new(
-                    Some(coven::DropboxClients::FullDropbox {
-                        app_key: "dropbox-key".into(),
-                    }),
+                    Some(coven::DropboxClients::FullDropbox { app_key: "dropbox-key".into() }),
                     None,
                     std::sync::Arc::new(coven::SystemClock),
                 )
@@ -856,13 +749,10 @@ impl coven::OAuthPresenter for CodePresenter {
         &self,
         authorization_url: &str,
     ) -> Result<coven::SecretText, coven::OAuthError> {
-        self.presented
-            .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        self.presented.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
         let url = url::Url::parse(authorization_url).unwrap();
         let (_, state) = url.query_pairs().find(|(name, _)| name == "state").unwrap();
-        Ok(coven::SecretText::new(format!(
-            "bae-test:/oauth?code=approved&state={state}"
-        )))
+        Ok(coven::SecretText::new(format!("bae-test:/oauth?code=approved&state={state}")))
     }
 }
 
@@ -935,10 +825,7 @@ fn a_stopped_dropbox_join_resumes_with_the_sign_in_it_kept() {
         .unwrap();
         let (guest, profile) = joined.unwrap().unwrap();
         assert_eq!(sign_in.presented(), presented);
-        assert_eq!(
-            joined_profile(&guest, &household, profile).await.name,
-            "Rowan"
-        );
+        assert_eq!(joined_profile(&guest, &household, profile).await.name, "Rowan");
         guest.close().await.unwrap();
         household.owner.close().await.unwrap();
     });
@@ -974,10 +861,7 @@ fn a_stopped_join_whose_sign_in_dropbox_refuses_signs_in_again_and_resumes() {
         .unwrap();
         let (guest, profile) = joined.unwrap().unwrap();
         assert_eq!(sign_in.presented(), presented + 1);
-        assert_eq!(
-            joined_profile(&guest, &household, profile).await.name,
-            "Rowan"
-        );
+        assert_eq!(joined_profile(&guest, &household, profile).await.name, "Rowan");
         guest.close().await.unwrap();
         household.owner.close().await.unwrap();
     });

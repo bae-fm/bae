@@ -1,4 +1,8 @@
-fn local_import_command(import_id: &str, candidate_key: &crate::import::CandidateKey, folder: &Path) -> ImportCommand {
+fn local_import_command(
+    import_id: &str,
+    candidate_key: &crate::import::CandidateKey,
+    folder: &Path,
+) -> ImportCommand {
     ImportCommand {
         import_id: import_id.to_string(),
         candidate_key: candidate_key.clone(),
@@ -29,12 +33,10 @@ async fn an_import_that_cannot_open_a_source_writes_nothing_and_a_retry_lands_it
         let disc_dir = folder.join(format!("CD{disc}"));
         std::fs::create_dir_all(&disc_dir).unwrap();
         for track in 1..=3 {
-            std::fs::copy(&fixture, disc_dir.join(format!("0{track} Track {track}.flac")))
-                .unwrap();
+            std::fs::copy(&fixture, disc_dir.join(format!("0{track} Track {track}.flac"))).unwrap();
         }
     }
-    let (candidate_key, stored) =
-        store_scanned_candidate(&test, &folder, "Box Set").await;
+    let (candidate_key, stored) = store_scanned_candidate(&test, &folder, "Box Set").await;
     let candidate = stored.candidate.clone();
     let expectation = || stored.clone();
 
@@ -45,10 +47,7 @@ async fn an_import_that_cannot_open_a_source_writes_nothing_and_a_retry_lands_it
     let blocked = crate::test_files::UnopenableFile::block(&folder.join(&blocked_name));
     test.service.queue_import_for_test(&candidate_key, "import-blocked").await;
     test.service
-        .do_import(
-            local_import_command("import-blocked", &candidate_key, &folder),
-            expectation(),
-        )
+        .do_import(local_import_command("import-blocked", &candidate_key, &folder), expectation())
         .await;
     drop(blocked);
 
@@ -66,16 +65,12 @@ async fn an_import_that_cannot_open_a_source_writes_nothing_and_a_retry_lands_it
         "the failure names the file that would not open: {detail}"
     );
     assert!(
-        test.service
-            .library_manager
-            .get_albums(&[])
-            .await
-            .unwrap()
-            .is_empty(),
+        test.service.library_manager.get_albums(&[]).await.unwrap().is_empty(),
         "a failed import writes no album"
     );
     assert!(
-        !test.service
+        !test
+            .service
             .library_manager
             .is_content_hash_imported(&candidate.content_hash)
             .await
@@ -101,20 +96,11 @@ async fn an_import_that_cannot_open_a_source_writes_nothing_and_a_retry_lands_it
 
     let albums = test.service.library_manager.get_albums(&[]).await.unwrap();
     assert_eq!(albums.len(), 1, "the retry writes the release once");
-    let releases = test
-        .service
-        .library_manager
-        .get_releases_for_album(&albums[0].id)
-        .await
-        .unwrap();
+    let releases =
+        test.service.library_manager.get_releases_for_album(&albums[0].id).await.unwrap();
     assert_eq!(releases.len(), 1);
     assert_eq!(
-        test.service
-            .library_manager
-            .get_tracks_for_release(&releases[0].id)
-            .await
-            .unwrap()
-            .len(),
+        test.service.library_manager.get_tracks_for_release(&releases[0].id).await.unwrap().len(),
         6
     );
 }

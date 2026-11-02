@@ -33,12 +33,9 @@ fn make_album(
 async fn insert_listed_album(db: &Database, listed: &ListedAlbum) {
     db.insert_album(&listed.album).await.unwrap();
     db.insert_album_artist(&listed.credit).await.unwrap();
-    db.insert_release(&DbRelease::new_test(
-        &listed.album.id,
-        &Uuid::new_v4().to_string(),
-    ))
-    .await
-    .unwrap();
+    db.insert_release(&DbRelease::new_test(&listed.album.id, &Uuid::new_v4().to_string()))
+        .await
+        .unwrap();
 }
 
 async fn insert_default_artist(db: &Database) -> String {
@@ -327,10 +324,8 @@ async fn test_album_index_matches_page_position() {
         insert_listed_album(&db, &make_album(title, &aid, Some(2000), i as i64)).await;
     }
 
-    let sort = [AlbumSortCriterion {
-        field: AlbumSortField::Title,
-        direction: SortDirection::Ascending,
-    }];
+    let sort =
+        [AlbumSortCriterion { field: AlbumSortField::Title, direction: SortDirection::Ascending }];
 
     // The paged list is the ground truth; the index query must agree with it.
     let page = db.get_album_page(&sort, 0, 100).await.unwrap();
@@ -342,10 +337,7 @@ async fn test_album_index_matches_page_position() {
     }
 
     // An id that isn't in the library has no position.
-    let missing = db
-        .get_album_index(&sort, "no-such-album", false)
-        .await
-        .unwrap();
+    let missing = db.get_album_index(&sort, "no-such-album", false).await.unwrap();
     assert_eq!(missing, None);
 }
 
@@ -380,10 +372,8 @@ async fn test_album_index_matches_page_position_on_ties() {
         insert_listed_album(&db, &make_album("Same Title", &aid, Some(2000), 0)).await;
     }
 
-    let sort = [AlbumSortCriterion {
-        field: AlbumSortField::Title,
-        direction: SortDirection::Ascending,
-    }];
+    let sort =
+        [AlbumSortCriterion { field: AlbumSortField::Title, direction: SortDirection::Ascending }];
     let page = db.get_album_page(&sort, 0, 100).await.unwrap();
     assert_eq!(page.len(), 8);
     for (position, summary) in page.iter().enumerate() {
@@ -406,10 +396,7 @@ async fn test_multi_criteria_year_asc_then_title_asc() {
 
     let albums = db
         .get_albums(&[
-            AlbumSortCriterion {
-                field: AlbumSortField::Year,
-                direction: SortDirection::Ascending,
-            },
+            AlbumSortCriterion { field: AlbumSortField::Year, direction: SortDirection::Ascending },
             AlbumSortCriterion {
                 field: AlbumSortField::Title,
                 direction: SortDirection::Ascending,

@@ -39,19 +39,11 @@ async fn a_new_library_starts_at_the_defaults() {
     let (db, _tmp) = temp_db().await;
     let prefs = db.preferences().await.unwrap();
     assert_eq!(prefs, Preferences::default());
-    assert_eq!(
-        prefs.transfer_limits(),
-        crate::config::default_transfer_limits()
-    );
-    assert_eq!(
-        prefs.max_concurrent_uploads.get(),
-        crate::config::DEFAULT_CONCURRENT_TRANSFERS
-    );
+    assert_eq!(prefs.transfer_limits(), crate::config::default_transfer_limits());
+    assert_eq!(prefs.max_concurrent_uploads.get(), crate::config::DEFAULT_CONCURRENT_TRANSFERS);
     assert_eq!(
         prefs.save_presets[0].codec,
-        SaveCodec::Flac {
-            bit_depth: SaveBitDepth::Bits24,
-        },
+        SaveCodec::Flac { bit_depth: SaveBitDepth::Bits24 },
         "the default FLAC preset writes 24-bit"
     );
 }
@@ -69,9 +61,7 @@ async fn every_preference_reads_back_as_set() {
             SavePreset {
                 id: "wav".to_string(),
                 name: "WAV \"24-bit\" — 設定".to_string(),
-                codec: SaveCodec::Wav {
-                    bit_depth: SaveBitDepth::Bits24,
-                },
+                codec: SaveCodec::Wav { bit_depth: SaveBitDepth::Bits24 },
                 filename_tokens: vec![
                     SaveFilenameToken::Artist,
                     SaveFilenameToken::Album,
@@ -89,9 +79,7 @@ async fn every_preference_reads_back_as_set() {
             SavePreset {
                 id: "image".to_string(),
                 name: "Image".to_string(),
-                codec: SaveCodec::Flac {
-                    bit_depth: SaveBitDepth::Bits16,
-                },
+                codec: SaveCodec::Flac { bit_depth: SaveBitDepth::Bits16 },
                 filename_tokens: Vec::new(),
                 pregap_placement: SavePregapPlacement::SingleFileWithCue,
                 applies_to_track: false,
@@ -107,24 +95,15 @@ async fn every_preference_reads_back_as_set() {
         max_concurrent_downloads: NonZeroU32::new(4).unwrap(),
         show_remaining_time: true,
         library_full_width: true,
-        import_storage: ImportStoragePreferences {
-            cloud: false,
-            pinned: false,
-        },
+        import_storage: ImportStoragePreferences { cloud: false, pinned: false },
         identification: IdentificationPreferences {
             automatic: false,
             import_when_identified: true,
-            catalogs: LookupCatalogPreferences {
-                musicbrainz: false,
-                discogs: true,
-            },
+            catalogs: LookupCatalogPreferences { musicbrainz: false, discogs: true },
         },
         cast_enabled: true,
         cast_transcode_format: CastTranscodeFormat::Wav,
-        mcp: McpConfig {
-            enabled: true,
-            port: 47778,
-        },
+        mcp: McpConfig { enabled: true, port: 47778 },
         subsonic: SubsonicConfig {
             enabled: true,
             port: 4534,
@@ -150,11 +129,7 @@ async fn each_choice_of_each_setting_reads_back() {
         set(&db, move |prefs| prefs.discogs = discogs).await;
         assert_eq!(db.preferences().await.unwrap().discogs, discogs);
     }
-    for mode in [
-        ReplayGainMode::Off,
-        ReplayGainMode::Track,
-        ReplayGainMode::Album,
-    ] {
+    for mode in [ReplayGainMode::Off, ReplayGainMode::Track, ReplayGainMode::Album] {
         set(&db, move |prefs| prefs.replay_gain_mode = mode).await;
         assert_eq!(db.preferences().await.unwrap().replay_gain_mode, mode);
     }
@@ -167,24 +142,15 @@ async fn each_choice_of_each_setting_reads_back() {
         SidePauseCountdown::Seconds60,
     ] {
         set(&db, move |prefs| prefs.side_pause_countdown = countdown).await;
-        assert_eq!(
-            db.preferences().await.unwrap().side_pause_countdown,
-            countdown
-        );
+        assert_eq!(db.preferences().await.unwrap().side_pause_countdown, countdown);
     }
     for codec in [
-        SaveCodec::Flac {
-            bit_depth: SaveBitDepth::Bits16,
-        },
+        SaveCodec::Flac { bit_depth: SaveBitDepth::Bits16 },
         SaveCodec::Mp3 { bitrate_kbps: 192 },
         SaveCodec::Aac { bitrate_kbps: 256 },
         SaveCodec::OpusOgg { bitrate_kbps: 128 },
-        SaveCodec::Wav {
-            bit_depth: SaveBitDepth::Bits24,
-        },
-        SaveCodec::Aiff {
-            bit_depth: SaveBitDepth::Bits32,
-        },
+        SaveCodec::Wav { bit_depth: SaveBitDepth::Bits24 },
+        SaveCodec::Aiff { bit_depth: SaveBitDepth::Bits32 },
     ] {
         let stored = codec.clone();
         set(&db, move |prefs| prefs.save_presets[0].codec = stored).await;
@@ -195,14 +161,8 @@ async fn each_choice_of_each_setting_reads_back() {
         SavePregapPlacement::AppendToPreviousIncludingHtoa,
         SavePregapPlacement::Exclude,
     ] {
-        set(&db, move |prefs| {
-            prefs.save_presets[1].pregap_placement = pregap
-        })
-        .await;
-        assert_eq!(
-            db.preferences().await.unwrap().save_presets[1].pregap_placement,
-            pregap
-        );
+        set(&db, move |prefs| prefs.save_presets[1].pregap_placement = pregap).await;
+        assert_eq!(db.preferences().await.unwrap().save_presets[1].pregap_placement, pregap);
     }
 }
 
@@ -221,10 +181,7 @@ async fn the_live_query_follows_only_what_changes() {
             Err(ConfigError::Config("refused".to_string()))
         })
         .await;
-    assert!(
-        matches!(refused, Err(ConfigError::Config(_))),
-        "{refused:?}"
-    );
+    assert!(matches!(refused, Err(ConfigError::Config(_))), "{refused:?}");
     set(&db, |prefs| prefs.show_remaining_time = false).await;
     set(&db, |prefs| prefs.show_remaining_time = true).await;
 
@@ -292,14 +249,7 @@ async fn the_schema_refuses_preferences_no_setter_writes() {
                 Ok(())
             })
             .await;
-        assert!(
-            matches!(refused, Err(ConfigError::Database(_))),
-            "{what}: {refused:?}"
-        );
-        assert_eq!(
-            db.preferences().await.unwrap(),
-            Preferences::default(),
-            "{what} wrote nothing"
-        );
+        assert!(matches!(refused, Err(ConfigError::Database(_))), "{what}: {refused:?}");
+        assert_eq!(db.preferences().await.unwrap(), Preferences::default(), "{what} wrote nothing");
     }
 }

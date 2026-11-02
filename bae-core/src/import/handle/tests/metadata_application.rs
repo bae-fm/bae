@@ -4,7 +4,12 @@ use super::*;
 use crate::import::CandidateEditField;
 
 /// A Discogs release with pressing metadata and no barcode.
-pub(super) fn seed_discogs_pressing(providers: &crate::providers::Providers, release_id: &str, label: &str, catalog_number: &str) {
+pub(super) fn seed_discogs_pressing(
+    providers: &crate::providers::Providers,
+    release_id: &str,
+    label: &str,
+    catalog_number: &str,
+) {
     seed_discogs_release(providers, release_id, label, catalog_number, &[]);
 }
 
@@ -43,7 +48,10 @@ fn seed_discogs_release(
         .expect("the rendered Discogs release parses");
     providers.discogs().seed_release_cache(release_id, raw_release);
     providers.discogs().seed_artist_image_response("1", None);
-    providers.musicbrainz().seed_discogs_page_lookup(&[(bae_catalogs::musicbrainz::DiscogsPage::Release(release_id.to_string()), None)]);
+    providers.musicbrainz().seed_discogs_page_lookup(&[(
+        bae_catalogs::musicbrainz::DiscogsPage::Release(release_id.to_string()),
+        None,
+    )]);
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -72,20 +80,19 @@ async fn resetting_to_the_tags_drops_what_was_typed() {
         )
         .await
         .unwrap();
-    handle
-        .select_candidate_file_tags(key.clone())
-        .await
-        .unwrap();
+    handle.select_candidate_file_tags(key.clone()).await.unwrap();
 
     let reset = pane(&handle, &key).await;
     shut_down(handle).await;
 
     assert_eq!(
-        reset.draft().unwrap().metadata_draft.album_title, from_tags.album_title,
+        reset.draft().unwrap().metadata_draft.album_title,
+        from_tags.album_title,
         "the title the tags state replaces the one that was typed over it"
     );
     assert_eq!(
-        reset.draft().unwrap().metadata_draft.pressing.labels, from_tags.pressing.labels,
+        reset.draft().unwrap().metadata_draft.pressing.labels,
+        from_tags.pressing.labels,
         "a field the tags leave blank goes back to blank"
     );
 }
@@ -95,10 +102,8 @@ async fn a_pick_replaces_typed_fields_with_the_catalog_metadata() {
     let (handle, _tmp, key, _hash) = pane_fixture().await;
     handle
         .library_manager
-        .set_discogs_key(
-            "test-discogs-token",
-            crate::config::DiscogsValidation::Valid,
-        ).await
+        .set_discogs_key("test-discogs-token", crate::config::DiscogsValidation::Valid)
+        .await
         .unwrap();
     handle
         .set_candidate_edit_field(
@@ -111,13 +116,16 @@ async fn a_pick_replaces_typed_fields_with_the_catalog_metadata() {
     let release_id = "70000101";
     seed_discogs_pressing(handle.library_manager.providers(), release_id, "Label Name", "CAT-1");
     handle
-        .select_candidate_release(key.clone(), crate::import::PressingLink {
+        .select_candidate_release(
+            key.clone(),
+            crate::import::PressingLink {
                 record: crate::import::MetadataRef::new(
                     bae_catalogs::catalog::Catalog::Discogs,
                     release_id.to_string(),
                 ),
                 partners: vec![],
-            }, crate::import::CatalogApplySteps::unread(),
+            },
+            crate::import::CatalogApplySteps::unread(),
         )
         .await
         .unwrap();
@@ -147,10 +155,7 @@ async fn applying_a_release_with_two_barcodes_keeps_both() {
     let (handle, _tmp, key, _hash) = pane_fixture().await;
     handle
         .library_manager
-        .set_discogs_key(
-            "test-discogs-token",
-            crate::config::DiscogsValidation::Valid,
-        )
+        .set_discogs_key("test-discogs-token", crate::config::DiscogsValidation::Valid)
         .await
         .unwrap();
     let release_id = "70000102";
@@ -162,13 +167,16 @@ async fn applying_a_release_with_two_barcodes_keeps_both() {
         &["5 012345 678900", "0 12345 67890 5"],
     );
     handle
-        .select_candidate_release(key.clone(), crate::import::PressingLink {
+        .select_candidate_release(
+            key.clone(),
+            crate::import::PressingLink {
                 record: crate::import::MetadataRef::new(
                     bae_catalogs::catalog::Catalog::Discogs,
                     release_id.to_string(),
                 ),
                 partners: vec![],
-            }, crate::import::CatalogApplySteps::unread(),
+            },
+            crate::import::CatalogApplySteps::unread(),
         )
         .await
         .unwrap();

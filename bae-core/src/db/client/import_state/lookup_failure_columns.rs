@@ -13,22 +13,12 @@ pub(super) struct FailureColumns {
 
 pub(super) fn failure_columns(failure: Option<&LookupFailure>) -> FailureColumns {
     match failure {
-        None => FailureColumns {
-            kind: None,
-            status: None,
-        },
-        Some(LookupFailure::Network) => FailureColumns {
-            kind: Some("network"),
-            status: None,
-        },
-        Some(LookupFailure::Timeout) => FailureColumns {
-            kind: Some("timeout"),
-            status: None,
-        },
-        Some(LookupFailure::Provider { status }) => FailureColumns {
-            kind: Some("provider"),
-            status: status.map(i64::from),
-        },
+        None => FailureColumns { kind: None, status: None },
+        Some(LookupFailure::Network) => FailureColumns { kind: Some("network"), status: None },
+        Some(LookupFailure::Timeout) => FailureColumns { kind: Some("timeout"), status: None },
+        Some(LookupFailure::Provider { status }) => {
+            FailureColumns { kind: Some("provider"), status: status.map(i64::from) }
+        }
     }
 }
 

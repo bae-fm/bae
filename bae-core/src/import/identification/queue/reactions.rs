@@ -87,22 +87,8 @@ async fn handle_event(
     event: ImportEvent,
 ) {
     match event {
-        ImportEvent::IdentifyStateChanged {
-            candidate_key,
-            run,
-            state,
-            ..
-        } => {
-            advance(
-                context,
-                queue,
-                settle_token,
-                settling,
-                &candidate_key,
-                run,
-                state,
-            )
-            .await;
+        ImportEvent::IdentifyStateChanged { candidate_key, run, state, .. } => {
+            advance(context, queue, settle_token, settling, &candidate_key, run, state).await;
         }
         ImportEvent::Scan(ScanEvent::FolderCandidate { candidate, .. }) => {
             follow(context, queue, &candidate.key()).await;
@@ -114,10 +100,7 @@ async fn handle_event(
         ImportEvent::Scan(ScanEvent::CandidateMetadataChanged { candidate_key }) => {
             queue.withdraw(context, &candidate_key).await;
         }
-        ImportEvent::Scan(ScanEvent::CandidateSkipChanged {
-            candidate_key,
-            skipped: true,
-        }) => {
+        ImportEvent::Scan(ScanEvent::CandidateSkipChanged { candidate_key, skipped: true }) => {
             queue.withdraw(context, &candidate_key).await;
         }
         // Gone, or taken by an import: a run left going would never finish.
@@ -163,11 +146,8 @@ async fn advance(
     // The run ended on its own; only its extraction may still be working.
     context.import.cancel_candidate_extraction(key);
     let settle_token = settle_token.child_token();
-    job.state = JobState::Settling {
-        representative: key.clone(),
-        run,
-        abandon: settle_token.clone(),
-    };
+    job.state =
+        JobState::Settling { representative: key.clone(), run, abandon: settle_token.clone() };
     let context = context.clone();
     settling.spawn(async move {
         let representative_key = candidate.key();
@@ -176,15 +156,7 @@ async fn advance(
             identity.clone(),
             representative_key,
             run,
-            settle_answer(
-                context.clone(),
-                identity,
-                candidate,
-                run,
-                state,
-                priority,
-                settle_token,
-            ),
+            settle_answer(context.clone(), identity, candidate, run, state, priority, settle_token),
         )
         .await
     });
@@ -198,13 +170,7 @@ pub(super) async fn finish(context: &Context, queue: &mut Queue, done: Finished)
             done.representative_key
         );
         // The Import was asked of this run, which another has replaced.
-        if matches!(
-            done.settled,
-            Settled::Stored {
-                import_asked: true,
-                ..
-            }
-        ) {
+        if matches!(done.settled, Settled::Stored { import_asked: true, .. }) {
             info!(
                 "identification: {}'s run was replaced; the Import asked of it is dropped",
                 done.representative_key
@@ -218,14 +184,8 @@ pub(super) async fn finish(context: &Context, queue: &mut Queue, done: Finished)
         super::withdraw(context, key).await;
     }
     match done.settled {
-        Settled::Stored {
-            picked_unattended,
-            import_asked,
-        } => {
-            info!(
-                "identification: stored the verdict for {}",
-                done.representative_key
-            );
+        Settled::Stored { picked_unattended, import_asked } => {
+            info!("identification: stored the verdict for {}", done.representative_key);
             // A stored row with no pick, its read having failed, imports
             // nothing, whoever asked.
             if picked_unattended {
@@ -239,10 +199,7 @@ pub(super) async fn finish(context: &Context, queue: &mut Queue, done: Finished)
         }
         // Nothing was stored, and nothing runs again on its own.
         Settled::Refused | Settled::Abandoned => {
-            info!(
-                "identification: {} stored no answer; its job is over",
-                done.representative_key
-            );
+            info!("identification: {} stored no answer; its job is over", done.representative_key);
         }
         Settled::WriteFailed { error } | Settled::Unwritable { error } => {
             for (key, files) in &marks {
@@ -255,9 +212,7 @@ pub(super) async fn finish(context: &Context, queue: &mut Queue, done: Finished)
                             key,
                             done.run,
                             files,
-                            crate::import::SaveFailure::NotWritten {
-                                error: error.clone(),
-                            },
+                            crate::import::SaveFailure::NotWritten { error: error.clone() },
                         )
                         .await,
                 );
@@ -274,9 +229,7 @@ pub(super) async fn finish(context: &Context, queue: &mut Queue, done: Finished)
                             key,
                             done.run,
                             files,
-                            crate::import::SaveFailure::Inapplicable {
-                                error: error.clone(),
-                            },
+                            crate::import::SaveFailure::Inapplicable { error: error.clone() },
                         )
                         .await,
                 );

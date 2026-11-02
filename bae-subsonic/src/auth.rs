@@ -89,12 +89,7 @@ mod tests {
     use super::*;
 
     fn params(pairs: &[(&str, &str)]) -> Params {
-        Params(
-            pairs
-                .iter()
-                .map(|(k, v)| (k.to_string(), v.to_string()))
-                .collect(),
-        )
+        Params(pairs.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect())
     }
 
     fn token(password: &str, salt: &str) -> String {
@@ -105,20 +100,13 @@ mod tests {
     }
 
     fn credential() -> SubsonicCredential {
-        SubsonicCredential {
-            username: "listener".to_string(),
-            password: "hunter2".to_string(),
-        }
+        SubsonicCredential { username: "listener".to_string(), password: "hunter2".to_string() }
     }
 
     #[test]
     fn valid_token_passes() {
         let salt = "abcdef";
-        let p = params(&[
-            ("u", "listener"),
-            ("s", salt),
-            ("t", &token("hunter2", salt)),
-        ]);
+        let p = params(&[("u", "listener"), ("s", salt), ("t", &token("hunter2", salt))]);
         assert!(check(&p, &credential()).is_ok());
     }
 
@@ -140,11 +128,7 @@ mod tests {
     #[test]
     fn short_salt_is_40() {
         let salt = "abcde"; // five chars
-        let p = params(&[
-            ("u", "listener"),
-            ("s", salt),
-            ("t", &token("hunter2", salt)),
-        ]);
+        let p = params(&[("u", "listener"), ("s", salt), ("t", &token("hunter2", salt))]);
         assert_eq!(check(&p, &credential()).unwrap_err().code, 40);
     }
 
@@ -165,11 +149,6 @@ mod tests {
     fn empty_credential_rejects_the_matching_request() {
         let salt = "abcdef";
         let request = params(&[("u", ""), ("s", salt), ("t", &token("", salt))]);
-        assert_eq!(
-            check(&request, &SubsonicCredential::empty())
-                .unwrap_err()
-                .code,
-            40
-        );
+        assert_eq!(check(&request, &SubsonicCredential::empty()).unwrap_err().code, 40);
     }
 }

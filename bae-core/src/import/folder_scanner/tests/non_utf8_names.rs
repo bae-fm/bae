@@ -50,17 +50,8 @@ fn two_files_showing_one_name_skip_their_folder() {
     let [ScanItem::Invalid(invalid)] = items.as_slice() else {
         panic!("one skipped folder: {items:?}");
     };
-    assert_eq!(
-        invalid.reason(),
-        InvalidReason::SameName {
-            name: r"Caf\xE9.flac".to_string()
-        }
-    );
-    let mut paths: Vec<PathBuf> = invalid
-        .files
-        .iter()
-        .map(|file| file.file.path.clone())
-        .collect();
+    assert_eq!(invalid.reason(), InvalidReason::SameName { name: r"Caf\xE9.flac".to_string() });
+    let mut paths: Vec<PathBuf> = invalid.files.iter().map(|file| file.file.path.clone()).collect();
     paths.sort();
     let mut expected = [album.join(r"Caf\xE9.flac"), album.join(latin1_name(".flac"))];
     expected.sort();
@@ -93,16 +84,11 @@ fn two_files_showing_one_name_make_the_sidecar_invalid() {
         panic!("one sidecar: {found:?}");
     };
     let SidecarFiles::Invalid(files) = &sidecar.files else {
-        panic!(
-            "two files showing one name leave the files unimportable: {:?}",
-            sidecar.files
-        );
+        panic!("two files showing one name leave the files unimportable: {:?}", sidecar.files);
     };
     assert_eq!(
         InvalidReason::of(files),
-        InvalidReason::SameName {
-            name: r"Caf\xE9.txt".to_string()
-        }
+        InvalidReason::SameName { name: r"Caf\xE9.txt".to_string() }
     );
 }
 

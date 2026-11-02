@@ -14,10 +14,7 @@ fn an_agency_code_names_its_territory() {
     assert_eq!(territory("FX0000000001"), country("FR"));
     assert_eq!(territory("UK0000000001"), country("GB"));
     assert_eq!(territory("BX0000000001"), country("BR"));
-    assert_eq!(
-        territory("YU0000000001"),
-        Some(ReleaseArea::Region(Region::Yugoslavia))
-    );
+    assert_eq!(territory("YU0000000001"), Some(ReleaseArea::Region(Region::Yugoslavia)));
 }
 
 /// The worldwide codes, a code the list does not hold, and what is not an
@@ -45,12 +42,7 @@ fn a_code_naming_no_territory_names_none() {
 #[test]
 fn most_recordings_name_where_they_were_registered() {
     assert_eq!(
-        registered_in([
-            "IT0000000001",
-            "IT0000000002",
-            "DE0000000003",
-            "ZZ0000000004"
-        ]),
+        registered_in(["IT0000000001", "IT0000000002", "DE0000000003", "ZZ0000000004"]),
         country("IT")
     );
     assert_eq!(registered_in(["IT0000000001", "DE0000000002"]), None);

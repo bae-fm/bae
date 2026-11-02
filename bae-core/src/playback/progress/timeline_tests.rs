@@ -19,17 +19,12 @@ fn position(track_id: &str, position_ms: i64) -> PlaybackPositions {
 }
 
 fn track(track_id: &str) -> crate::playback::PlayingTrack {
-    crate::playback::PlayingTrack {
-        track_id: track_id.into(),
-        duration_ms: Some(200_000),
-    }
+    crate::playback::PlayingTrack { track_id: track_id.into(), duration_ms: Some(200_000) }
 }
 
 fn playing(track_id: &str) -> PlaybackValues {
     PlaybackValues {
-        state: PlaybackState::Playing {
-            track: track(track_id),
-        },
+        state: PlaybackState::Playing { track: track(track_id) },
         ..PlaybackValues::initial()
     }
 }
@@ -57,10 +52,7 @@ fn ticks_on_the_line_tell_nothing() {
     let values = playing("track-1");
 
     let first = fold.next(&position("track-1", 10_000), &values, at(0));
-    assert_eq!(
-        line(&first.expect("the first position is a line")),
-        (10_000, true)
-    );
+    assert_eq!(line(&first.expect("the first position is a line")), (10_000, true));
 
     for tick in 1..=8 {
         let elapsed = tick * 250;
@@ -72,10 +64,7 @@ fn ticks_on_the_line_tell_nothing() {
     }
 
     let paused = fold.next(&position("track-1", 12_000), &paused("track-1"), at(2_000));
-    assert_eq!(
-        line(&paused.expect("a pause is a new line")),
-        (12_000, false)
-    );
+    assert_eq!(line(&paused.expect("a pause is a new line")), (12_000, false));
 }
 
 /// A position that lands off the line by more than the threshold tells the
@@ -87,21 +76,13 @@ fn a_position_off_the_line_tells_it_again() {
     fold.next(&position("track-1", 10_000), &values, at(0));
 
     let stalled = fold.next(&position("track-1", 10_500), &values, at(3_000));
-    assert_eq!(
-        line(&stalled.expect("a stall leaves the line")),
-        (10_500, true)
-    );
+    assert_eq!(line(&stalled.expect("a stall leaves the line")), (10_500, true));
 
     let mut fold = TimelineFold::new();
     let values = paused("track-1");
     fold.next(&position("track-1", 10_000), &values, at(0));
-    assert_eq!(
-        fold.next(&position("track-1", 10_400), &values, at(5_000)),
-        None
-    );
-    assert!(fold
-        .next(&position("track-1", 12_000), &values, at(6_000))
-        .is_some());
+    assert_eq!(fold.next(&position("track-1", 10_400), &values, at(5_000)), None);
+    assert!(fold.next(&position("track-1", 12_000), &values, at(6_000)).is_some());
 }
 
 /// A seek tells a new line even where the line already was, with its
@@ -114,9 +95,7 @@ fn a_seek_tells_a_new_line() {
 
     let mut seeked = position("track-1", 11_000);
     seeked.seek_revision = 1;
-    let timeline = fold
-        .next(&seeked, &values, at(1_000))
-        .expect("a seek is told");
+    let timeline = fold.next(&seeked, &values, at(1_000)).expect("a seek is told");
     assert_eq!(timeline.seek_revision, 1);
     assert_eq!(line(&timeline), (11_000, true));
 }
@@ -135,11 +114,7 @@ fn another_track_and_the_pregap_and_none_are_told() {
     assert_eq!((point.track_id.as_str(), point.position_ms), ("track-2", 0));
 
     let stopped = fold
-        .next(
-            &PlaybackPositions::initial(),
-            &PlaybackValues::initial(),
-            at(800),
-        )
+        .next(&PlaybackPositions::initial(), &PlaybackValues::initial(), at(800))
         .expect("no track is told");
     assert_eq!(stopped.library, None);
 }
@@ -179,8 +154,6 @@ fn a_pregap_stands_at_the_start_then_moves_once() {
 #[test]
 fn a_position_of_a_track_not_playing_does_not_move() {
     let mut fold = TimelineFold::new();
-    let timeline = fold
-        .next(&position("track-2", 0), &playing("track-1"), at(0))
-        .unwrap();
+    let timeline = fold.next(&position("track-2", 0), &playing("track-1"), at(0)).unwrap();
     assert_eq!(line(&timeline), (0, false));
 }

@@ -68,16 +68,12 @@ pub(super) async fn settled_or_failed(
     run: IdentifyRunId,
     settle: impl std::future::Future<Output = Finished>,
 ) -> Finished {
-    bae_util::task_failure::caught(SETTLE_ANSWER, settle)
-        .await
-        .unwrap_or_else(|failed| Finished {
-            identity,
-            representative_key,
-            run,
-            settled: Settled::WriteFailed {
-                error: context.library_manager.bug(failed).to_string(),
-            },
-        })
+    bae_util::task_failure::caught(SETTLE_ANSWER, settle).await.unwrap_or_else(|failed| Finished {
+        identity,
+        representative_key,
+        run,
+        settled: Settled::WriteFailed { error: context.library_manager.bug(failed).to_string() },
+    })
 }
 
 /// Settle one run's terminal answer and say what became of it, ending the
@@ -98,10 +94,7 @@ pub(super) async fn settle_answer(
         // A write that ran ended its own pending save.
         Settled::Stored { .. } | Settled::Refused | Settled::WriteFailed { .. } => Ok(()),
         Settled::Abandoned => {
-            context
-                .import
-                .end_identification_answer(&representative_key, run)
-                .await
+            context.import.end_identification_answer(&representative_key, run).await
         }
         Settled::Unwritable { error } => {
             context
@@ -110,9 +103,7 @@ pub(super) async fn settle_answer(
                     &representative_key,
                     run,
                     &files,
-                    crate::import::SaveFailure::NotWritten {
-                        error: error.clone(),
-                    },
+                    crate::import::SaveFailure::NotWritten { error: error.clone() },
                 )
                 .await
         }
@@ -123,9 +114,7 @@ pub(super) async fn settle_answer(
                     &representative_key,
                     run,
                     &files,
-                    crate::import::SaveFailure::Inapplicable {
-                        error: error.clone(),
-                    },
+                    crate::import::SaveFailure::Inapplicable { error: error.clone() },
                 )
                 .await
         }
@@ -135,12 +124,7 @@ pub(super) async fn settle_answer(
         &format!("end {representative_key}'s answer, which no verdict write ended"),
         ended,
     );
-    Finished {
-        identity,
-        representative_key,
-        run,
-        settled,
-    }
+    Finished { identity, representative_key, run, settled }
 }
 
 /// Turn one candidate's terminal state into a write, or say why none ran.
@@ -162,25 +146,14 @@ async fn settle_verdict(
         TerminalVerdict::try_from(state).expect("the queue settles only terminal identify states");
 
     // This run's own signals, not another run's of the same candidate.
-    let signals = match context
-        .import
-        .candidate_run_signals(&candidate.key(), run)
-        .await
-    {
+    let signals = match context.import.candidate_run_signals(&candidate.key(), run).await {
         Ok(Some(signals)) => signals,
         Ok(None) => {
             return Settled::Unwritable {
-                error: format!(
-                    "{} reached a verdict with no settled signals",
-                    candidate.key()
-                ),
+                error: format!("{} reached a verdict with no settled signals", candidate.key()),
             }
         }
-        Err(error) => {
-            return Settled::Unwritable {
-                error: error.to_string(),
-            }
-        }
+        Err(error) => return Settled::Unwritable { error: error.to_string() },
     };
     let settled_lead = match settle_lead(context, &mut verdict, &text, priority, token).await {
         Ok(settled_lead) => settled_lead,
@@ -189,36 +162,31 @@ async fn settle_verdict(
 
     let pick = match settled_lead {
         SettledLead::NoExternalRelease => None,
-        SettledLead::ExternalRelease {
-            link,
-            release,
-            partners,
-            stored,
-            pressing_year,
-        } => match lead_metadata(
-            context,
-            candidate,
-            &mut verdict,
-            &audio.expect("a terminal state that offers a release read it against measured audio"),
-            &release,
-            partners,
-            pressing_year,
-        )
-        .await
-        {
-            Ok(metadata) => {
-                // Read in full, so stored over the run's copies where those
-                // stopped short.
-                releases.extend(stored);
-                metadata.map(|metadata| crate::db::VerdictPick { link, metadata })
+        SettledLead::ExternalRelease { link, release, partners, stored, pressing_year } => {
+            match lead_metadata(
+                context,
+                candidate,
+                &mut verdict,
+                &audio.expect(
+                    "a terminal state that offers a release read it against measured audio",
+                ),
+                &release,
+                partners,
+                pressing_year,
+            )
+            .await
+            {
+                Ok(metadata) => {
+                    // Read in full, so stored over the run's copies where those
+                    // stopped short.
+                    releases.extend(stored);
+                    metadata.map(|metadata| crate::db::VerdictPick { link, metadata })
+                }
+                Err(settled) => return settled,
             }
-            Err(settled) => return settled,
-        },
+        }
     };
-    save(
-        context, token, run, candidate, &verdict, signals, pick, releases,
-    )
-    .await
+    save(context, token, run, candidate, &verdict, signals, pick, releases).await
 }
 
 /// The draft the picked release reads into, with the cover it is read with,
@@ -248,11 +216,7 @@ async fn lead_metadata(
                 error: format!("{} has no stored draft", candidate.key()),
             })
         }
-        Err(error) => {
-            return Err(Settled::Unwritable {
-                error: error.to_string(),
-            })
-        }
+        Err(error) => return Err(Settled::Unwritable { error: error.to_string() }),
     };
     // Files decided otherwise since the run read them make this an answer
     // for files the candidate no longer has.
@@ -274,17 +238,11 @@ async fn lead_metadata(
                 "identification: {} matched a release its draft cannot be read from: {error}",
                 candidate.key()
             );
-            Settled::Inapplicable {
-                error: error.to_string(),
-            }
+            Settled::Inapplicable { error: error.to_string() }
         })?;
     let cover = match context
         .import
-        .fetch_release_cover(
-            release,
-            &partners,
-            &crate::import::CatalogApplySteps::unread(),
-        )
+        .fetch_release_cover(release, &partners, &crate::import::CatalogApplySteps::unread())
         .await
     {
         Ok(cover) => cover,
@@ -306,19 +264,12 @@ async fn lead_metadata(
                 failure.error
             );
             verdict.fail(crate::identify::IdentifyFailure::Cover(
-                crate::import::search::SourceFailure {
-                    source: failure.source,
-                    failure: lookup,
-                },
+                crate::import::search::SourceFailure { source: failure.source, failure: lookup },
             ));
             return Ok(None);
         }
     };
-    Ok(Some(crate::import::external_metadata_with_cover(
-        source_draft,
-        release,
-        cover,
-    )))
+    Ok(Some(crate::import::external_metadata_with_cover(source_draft, release, cover)))
 }
 
 /// Write one row, with the catalog releases it may name, unless the answer
@@ -353,15 +304,10 @@ pub(super) async fn save(
         pick,
         releases,
     };
-    match context
-        .import
-        .save_candidate_verdict_if_current(&candidate_key, run, &row)
-        .await
-    {
-        Ok(crate::import::VerdictWrite::Stored { import_asked }) => Settled::Stored {
-            picked_unattended,
-            import_asked,
-        },
+    match context.import.save_candidate_verdict_if_current(&candidate_key, run, &row).await {
+        Ok(crate::import::VerdictWrite::Stored { import_asked }) => {
+            Settled::Stored { picked_unattended, import_asked }
+        }
         Ok(crate::import::VerdictWrite::Refused) => {
             info!(
                 "identification: refused the verdict for {candidate_key}: it can no longer be \
@@ -369,9 +315,7 @@ pub(super) async fn save(
             );
             Settled::Refused
         }
-        Err(e) => Settled::WriteFailed {
-            error: e.to_string(),
-        },
+        Err(e) => Settled::WriteFailed { error: e.to_string() },
     }
 }
 
@@ -387,12 +331,7 @@ async fn settle_lead(
     priority: CallPriority,
     token: &CancellationToken,
 ) -> Result<SettledLead, Settled> {
-    let TerminalVerdict::Found {
-        findings,
-        track_count,
-        ..
-    } = &*verdict
-    else {
+    let TerminalVerdict::Found { findings, track_count, .. } = &*verdict else {
         return Ok(SettledLead::NoExternalRelease);
     };
     let Ok(pick) = crate::identify::unattended_pick(
@@ -448,19 +387,12 @@ async fn settle_lead(
         }
     };
     let stored = std::iter::once(release.stored)
-        .chain(
-            prepared_partners
-                .iter()
-                .map(|partner| partner.stored.clone()),
-        )
+        .chain(prepared_partners.iter().map(|partner| partner.stored.clone()))
         .collect();
     Ok(SettledLead::ExternalRelease {
         link: pressing.pick(),
         release: release.release,
-        partners: prepared_partners
-            .into_iter()
-            .map(|partner| partner.release)
-            .collect(),
+        partners: prepared_partners.into_iter().map(|partner| partner.release).collect(),
         stored,
         pressing_year,
     })

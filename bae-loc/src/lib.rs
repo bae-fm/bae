@@ -97,9 +97,7 @@ impl Catalog {
 pub fn validate_namespace(id: &str) -> Result<(), String> {
     match id.split('.').next() {
         Some("core") | Some("ui") => Ok(()),
-        _ => Err(format!(
-            "message id {id:?} must start with `core.` or `ui.`"
-        )),
+        _ => Err(format!("message id {id:?} must start with `core.` or `ui.`")),
     }
 }
 

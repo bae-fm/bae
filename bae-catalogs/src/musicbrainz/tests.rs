@@ -21,10 +21,7 @@ fn test_release_search_params_build_query() {
         catalog_number: Some("TL-1234".to_string()),
         ..Default::default()
     };
-    assert_eq!(
-        params2.build_query(),
-        r#"artist:(+"Another" +"Artist") AND catno:"TL-1234""#
-    );
+    assert_eq!(params2.build_query(), r#"artist:(+"Another" +"Artist") AND catno:"TL-1234""#);
 }
 
 #[test]
@@ -43,10 +40,7 @@ fn release_search_params_ignore_blank_fields() {
         ..Default::default()
     };
     assert!(params.has_any_field());
-    assert_eq!(
-        params.build_query(),
-        r#"artist:(+"Artist" +"Name") AND date:2000"#
-    );
+    assert_eq!(params.build_query(), r#"artist:(+"Artist" +"Name") AND date:2000"#);
 }
 
 #[test]
@@ -59,10 +53,7 @@ fn release_search_params_escape_quoted_lucene_values() {
         QueryValueFormat::Quoted.render("release", r#"Backslash at end\"#),
         r#"release:"Backslash at end\\""#,
     );
-    assert_eq!(
-        QueryValueFormat::Quoted.render("artist", "Artist Name"),
-        r#"artist:"Artist Name""#,
-    );
+    assert_eq!(QueryValueFormat::Quoted.render("artist", "Artist Name"), r#"artist:"Artist Name""#,);
 }
 
 #[test]
@@ -104,10 +95,7 @@ fn stop_words_are_not_asked_for() {
         ..Default::default()
     };
     assert_eq!(params.build_query(), r#"release:(+"Words" +"Album")"#);
-    let params = ReleaseSearchParams {
-        artist: Some("The The".to_string()),
-        ..Default::default()
-    };
+    let params = ReleaseSearchParams { artist: Some("The The".to_string()), ..Default::default() };
     assert_eq!(params.build_query(), r#"artist:(+"The" +"The")"#);
 }
 
@@ -174,15 +162,9 @@ fn test_deserialize_mb_release_response() {
     assert_eq!(response.artist_credit[0].name, "All Star Cover Band");
     assert_eq!(response.media.len(), 1);
     assert_eq!(response.media[0].tracks.len(), 2);
-    assert_eq!(
-        response.media[0].tracks[0].title.as_deref(),
-        Some("Track One Title")
-    );
+    assert_eq!(response.media[0].tracks[0].title.as_deref(), Some("Track One Title"));
     assert_eq!(response.label_info.len(), 1);
-    assert_eq!(
-        response.label_info[0].catalog_number.as_deref(),
-        Some("3822202")
-    );
+    assert_eq!(response.label_info[0].catalog_number.as_deref(), Some("3822202"));
     assert_eq!(response.relations.len(), 1);
     assert!(response.has_front_cover());
 }
@@ -257,10 +239,7 @@ fn mb_release(release_id: &str, release_group_id: Option<&str>) -> MbReleaseResp
         label_info: vec![],
         media: vec![],
         relations: vec![],
-        cover_art_archive: crate::musicbrainz::MbCoverArtArchive {
-            front: false,
-            darkened: false,
-        },
+        cover_art_archive: crate::musicbrainz::MbCoverArtArchive { front: false, darkened: false },
     }
 }
 
@@ -281,9 +260,7 @@ async fn only_transient_musicbrainz_failures_are_retried() {
     };
     assert_eq!(repeat_mb(&MusicBrainzError::Timeout), Repeat::AfterBackoff);
     assert_eq!(
-        repeat_mb(&MusicBrainzError::Network(
-            bae_util::http::refused_request_error().await
-        )),
+        repeat_mb(&MusicBrainzError::Network(bae_util::http::refused_request_error().await)),
         Repeat::AfterBackoff
     );
     assert_eq!(provider(Some(503), None), Repeat::AfterBackoff);
@@ -294,22 +271,15 @@ async fn only_transient_musicbrainz_failures_are_retried() {
     );
     assert_eq!(provider(Some(429), None), Repeat::AfterBackoff);
 
-    assert_eq!(
-        repeat_mb(&MusicBrainzError::NotFound("disc".into())),
-        Repeat::Never
-    );
+    assert_eq!(repeat_mb(&MusicBrainzError::NotFound("disc".into())), Repeat::Never);
     assert_eq!(provider(Some(404), None), Repeat::Never);
     assert_eq!(provider(Some(400), None), Repeat::Never);
     assert_eq!(
-        repeat_mb(&MusicBrainzError::Other(
-            "At least one search field must be provided".into()
-        )),
+        repeat_mb(&MusicBrainzError::Other("At least one search field must be provided".into())),
         Repeat::Never
     );
     assert_eq!(
-        repeat_mb(&MusicBrainzError::Request(
-            bae_util::http::unbuildable_request_error()
-        )),
+        repeat_mb(&MusicBrainzError::Request(bae_util::http::unbuildable_request_error())),
         Repeat::Never
     );
 }
@@ -318,10 +288,7 @@ async fn only_transient_musicbrainz_failures_are_retried() {
 
 fn label_info(name: Option<&str>, catalog_number: Option<&str>) -> MbLabelInfo {
     MbLabelInfo {
-        label: Some(MbLabel {
-            id: None,
-            name: name.map(str::to_string),
-        }),
+        label: Some(MbLabel { id: None, name: name.map(str::to_string) }),
         catalog_number: catalog_number.map(str::to_string),
     }
 }
@@ -386,10 +353,7 @@ fn release_labels_leaves_out_empty_and_repeated_entries() {
     assert!(release_labels(&[]).is_empty());
     assert_eq!(
         release_labels(&[
-            MbLabelInfo {
-                label: None,
-                catalog_number: None,
-            },
+            MbLabelInfo { label: None, catalog_number: None },
             label_info(Some("Label A"), Some("AB 100")),
             label_info(Some("Label A"), Some("AB 100")),
         ]),
@@ -439,15 +403,10 @@ async fn mb_recording_server(
 pub(super) async fn mb_raw_server(
     responses: Vec<String>,
 ) -> (String, Arc<AtomicUsize>, Arc<Mutex<Vec<String>>>) {
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
-        .await
-        .expect("test listener should bind");
-    let url = format!(
-        "http://{}",
-        listener
-            .local_addr()
-            .expect("test listener should have an address")
-    );
+    let listener =
+        tokio::net::TcpListener::bind("127.0.0.1:0").await.expect("test listener should bind");
+    let url =
+        format!("http://{}", listener.local_addr().expect("test listener should have an address"));
     let request_count = Arc::new(AtomicUsize::new(0));
     let counted_requests = request_count.clone();
     let paths = Arc::new(Mutex::new(Vec::new()));
@@ -462,13 +421,10 @@ pub(super) async fn mb_raw_server(
             let mut buffer = [0; 4096];
             let count = stream.read(&mut buffer).await.expect("request is readable");
             let request = std::str::from_utf8(&buffer[..count]).expect("request header is UTF-8");
-            captured.lock().unwrap().push(
-                request
-                    .lines()
-                    .next()
-                    .expect("request line exists")
-                    .to_string(),
-            );
+            captured
+                .lock()
+                .unwrap()
+                .push(request.lines().next().expect("request line exists").to_string());
             let raw = remaining.next().unwrap_or_else(|| {
                 "HTTP/1.1 599 Response\r\nContent-Length: 18\r\n\r\nunscripted request".to_string()
             });
@@ -534,10 +490,7 @@ fn discogs_url_answers_keep_all_matching_targets_of_the_page_s_kind() {
 
     assert_eq!(
         parse_discogs_lookup(&[release_page("1")], &raw).unwrap(),
-        HashMap::from([(
-            release_page("1"),
-            vec!["release-a".into(), "release-b".into()]
-        )])
+        HashMap::from([(release_page("1"), vec!["release-a".into(), "release-b".into()])])
     );
     assert_eq!(
         parse_discogs_lookup(&[master_page("2")], &raw).unwrap(),
@@ -577,9 +530,7 @@ fn several_pages_are_answered_by_address() {
             (master_page("2"), vec!["group-a".into()]),
         ])
     );
-    assert!(parse_discogs_lookup(&asked[..2], r#"{"urls":[]}"#)
-        .unwrap()
-        .is_empty());
+    assert!(parse_discogs_lookup(&asked[..2], r#"{"urls":[]}"#).unwrap().is_empty());
     assert!(parse_discogs_lookup(
         &asked[..2],
         r#"{"urls":[{"resource":"https://www.discogs.com/release/9","relations":[]}]}"#
@@ -605,10 +556,7 @@ async fn a_lookup_names_every_page_s_address_in_one_request() {
         ),
         (
             vec![master_page("510002"), release_page("510001")],
-            vec![
-                "https://www.discogs.com/release/510001",
-                "https://www.discogs.com/master/510002",
-            ],
+            vec!["https://www.discogs.com/release/510001", "https://www.discogs.com/master/510002"],
             "release-group-rels release-rels",
         ),
     ] {
@@ -617,16 +565,10 @@ async fn a_lookup_names_every_page_s_address_in_one_request() {
             _ => r#"{"urls":[]}"#.to_string(),
         };
         let (url, requests, paths) = mb_recording_server(vec![(200, raw)]).await;
-        served_by(&url)
-            .lookup_discogs_pages(&pages, CallPriority::Interactive)
-            .await
-            .unwrap();
+        served_by(&url).lookup_discogs_pages(&pages, CallPriority::Interactive).await.unwrap();
         assert_eq!(requests.load(Ordering::SeqCst), 1);
         let request_line = paths.lock().unwrap()[0].clone();
-        let path = request_line
-            .split_whitespace()
-            .nth(1)
-            .expect("request names its URL");
+        let path = request_line.split_whitespace().nth(1).expect("request names its URL");
         let requested = reqwest::Url::parse(&format!("{url}{path}")).unwrap();
         assert_eq!(requested.path(), "/ws/2/url");
         let query: Vec<(String, String)> = requested.query_pairs().into_owned().collect();
@@ -643,10 +585,8 @@ async fn a_lookup_names_every_page_s_address_in_one_request() {
 
 #[tokio::test]
 async fn a_lookup_distinguishes_absence_empty_answers_and_failures() {
-    for pages in [
-        vec![release_page("510002")],
-        vec![release_page("510002"), master_page("510003")],
-    ] {
+    for pages in [vec![release_page("510002")], vec![release_page("510002"), master_page("510003")]]
+    {
         let empty = match pages.as_slice() {
             [_] => r#"{"relations":[]}"#,
             _ => {
@@ -660,9 +600,8 @@ async fn a_lookup_distinguishes_absence_empty_answers_and_failures() {
             (200, "broken JSON", "parse"),
         ] {
             let (url, requests) = mb_response_server(vec![(status, body.into())]).await;
-            let result = served_by(&url)
-                .lookup_discogs_pages(&pages, CallPriority::Interactive)
-                .await;
+            let result =
+                served_by(&url).lookup_discogs_pages(&pages, CallPriority::Interactive).await;
             match expected {
                 "missing" => assert!(result.unwrap().is_empty()),
                 "empty" => assert_eq!(
@@ -671,10 +610,7 @@ async fn a_lookup_distinguishes_absence_empty_answers_and_failures() {
                 ),
                 "provider" => assert!(matches!(
                     result,
-                    Err(MusicBrainzError::Provider {
-                        status: Some(400),
-                        told_wait: None,
-                    })
+                    Err(MusicBrainzError::Provider { status: Some(400), told_wait: None })
                 )),
                 "parse" => assert!(matches!(result, Err(MusicBrainzError::Other(_)))),
                 _ => unreachable!(),
@@ -688,11 +624,8 @@ async fn a_lookup_distinguishes_absence_empty_answers_and_failures() {
 /// the same pages asked again in any order.
 #[tokio::test]
 async fn a_lookup_retries_transient_failures_and_caches_the_answer() {
-    let (url, requests) = mb_response_server(vec![
-        (503, "unavailable".into()),
-        (200, r#"{"urls":[]}"#.into()),
-    ])
-    .await;
+    let (url, requests) =
+        mb_response_server(vec![(503, "unavailable".into()), (200, r#"{"urls":[]}"#.into())]).await;
     let musicbrainz = served_by(&url);
     for pages in [
         [release_page("510004"), master_page("510005")],
@@ -834,29 +767,15 @@ async fn transient_failures_are_not_kept() {
         .lookup_by_discid("disc-transient", CallPriority::Interactive)
         .await
         .expect_err("transient answers on every try exhaust the retries");
-    assert!(matches!(
-        error,
-        MusicBrainzError::Provider {
-            status: Some(429),
-            ..
-        }
-    ));
-    assert_eq!(
-        requests.load(Ordering::SeqCst),
-        attempts,
-        "each retry asked the server again"
-    );
+    assert!(matches!(error, MusicBrainzError::Provider { status: Some(429), .. }));
+    assert_eq!(requests.load(Ordering::SeqCst), attempts, "each retry asked the server again");
 
     let releases = musicbrainz
         .lookup_by_discid("disc-transient", CallPriority::Interactive)
         .await
         .expect("the provider recovered");
     assert_eq!(releases[0].0.id, "mb-after-transient");
-    assert_eq!(
-        requests.load(Ordering::SeqCst),
-        attempts + 1,
-        "the failed answer was not kept"
-    );
+    assert_eq!(requests.load(Ordering::SeqCst), attempts + 1, "the failed answer was not kept");
 }
 
 /// Each client keeps its own answers: two clients asking the same URL each
@@ -886,15 +805,9 @@ async fn two_clients_keep_their_own_answers() {
 #[tokio::test]
 async fn invalid_request_is_diagnostic_not_a_network_outage() {
     let musicbrainz = MusicBrainz::for_test(Http::for_test());
-    let error = musicbrainz
-        .get("not a URL", CallPriority::Interactive)
-        .await
-        .unwrap_err();
+    let error = musicbrainz.get("not a URL", CallPriority::Interactive).await.unwrap_err();
     assert!(matches!(&error, MusicBrainzError::Request(_)), "{error}");
-    assert!(
-        error.to_string().contains("relative URL without a base"),
-        "{error}"
-    );
+    assert!(error.to_string().contains("relative URL without a base"), "{error}");
 }
 
 /// A Discogs master's URL document as MusicBrainz serves it: the target type
@@ -941,21 +854,14 @@ async fn an_isrc_search_asks_every_code_at_once_and_reads_every_page() {
 
     let recordings = musicbrainz
         .search_recordings_by_isrcs(
-            &[
-                "XX0000000001".to_string(),
-                "XX0000000002".to_string(),
-                "XX0000000003".to_string(),
-            ],
+            &["XX0000000001".to_string(), "XX0000000002".to_string(), "XX0000000003".to_string()],
             CallPriority::Interactive,
         )
         .await
         .expect("the search answers");
 
     assert_eq!(
-        recordings
-            .iter()
-            .flat_map(|recording| &recording.isrcs)
-            .collect::<Vec<_>>(),
+        recordings.iter().flat_map(|recording| &recording.isrcs).collect::<Vec<_>>(),
         vec!["XX0000000001", "XX0000000002", "XX0000000003"]
     );
     assert_eq!(requests.load(Ordering::SeqCst), 2);

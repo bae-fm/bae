@@ -16,16 +16,9 @@ fn profiles_ratings_playlists_and_history_use_the_same_store() {
     ));
     runtime.block_on(bae_test_support::connect_storage(&manager, &storage));
     let made = runtime.block_on(bae_test_support::made_profile(&manager, "Robin"));
-    let services = runtime
-        .block_on(bae_core::library::AppServices::for_test(manager))
-        .unwrap();
+    let services = runtime.block_on(bae_core::library::AppServices::for_test(manager)).unwrap();
     let app = Arc::new(
-        AppHandle::start(
-            services,
-            runtime,
-            bae_core::diagnostics::Diagnostics::noop(),
-        )
-        .unwrap(),
+        AppHandle::start(services, runtime, bae_core::diagnostics::Diagnostics::noop()).unwrap(),
     );
     app.runtime.block_on(async {
         let share = app.clone().generate_restore_code().await.unwrap();
@@ -44,10 +37,7 @@ fn profiles_ratings_playlists_and_history_use_the_same_store() {
         };
         assert!(!metadata.carries_s3_key);
         assert_eq!(scanned.library_id, metadata.library_id);
-        assert_eq!(
-            metadata.library_id,
-            app.subscribe_config().next().await.unwrap().library_id
-        );
+        assert_eq!(metadata.library_id, app.subscribe_config().next().await.unwrap().library_id);
         assert_eq!(metadata.provider, BridgeCloudProvider::S3);
         assert_eq!(
             Some(metadata.location),
@@ -58,10 +48,7 @@ fn profiles_ratings_playlists_and_history_use_the_same_store() {
         // Asking again for the profile the person has, by its name, is done.
         app.clone().create_profile("Robin".into()).await.unwrap();
         let profile = BridgePersonProfile::from_core(made.clone());
-        app.clone()
-            .set_history_sharing(BridgeSharing::Household)
-            .await
-            .unwrap();
+        app.clone().set_history_sharing(BridgeSharing::Household).await.unwrap();
         assert_eq!(
             db.profile(coven::MemberId(profile.id.parse().unwrap()))
                 .await
@@ -77,9 +64,7 @@ fn profiles_ratings_playlists_and_history_use_the_same_store() {
         .unwrap();
         app.clone()
             .set_rating(
-                BridgeRatingTarget::Album {
-                    id: "bridge-album".into(),
-                },
+                BridgeRatingTarget::Album { id: "bridge-album".into() },
                 Some(BridgeStars::Four),
             )
             .await
@@ -89,30 +74,17 @@ fn profiles_ratings_playlists_and_history_use_the_same_store() {
         assert_eq!(ratings[0].stars, BridgeStars::Four);
         assert_eq!(ratings[0].person, profile.id);
         app.clone()
-            .set_rating(
-                BridgeRatingTarget::Album {
-                    id: "bridge-album".into(),
-                },
-                None,
-            )
+            .set_rating(BridgeRatingTarget::Album { id: "bridge-album".into() }, None)
             .await
             .unwrap();
         assert!(app.clone().ratings().await.unwrap().is_empty());
-        let playlist = app
-            .clone()
-            .create_playlist("Evening".into(), BridgeSharing::Private)
-            .await
-            .unwrap();
+        let playlist =
+            app.clone().create_playlist("Evening".into(), BridgeSharing::Private).await.unwrap();
         assert_eq!(
             playlist.audience,
-            BridgeAudience::Circle {
-                id: profile.private_circle.clone()
-            }
+            BridgeAudience::Circle { id: profile.private_circle.clone() }
         );
-        app.clone()
-            .rename_playlist(playlist.id.clone(), "Gathering".into())
-            .await
-            .unwrap();
+        app.clone().rename_playlist(playlist.id.clone(), "Gathering".into()).await.unwrap();
         app.clone()
             .set_playlist_sharing(playlist.id.clone(), BridgeSharing::Household)
             .await
@@ -128,10 +100,7 @@ fn profiles_ratings_playlists_and_history_use_the_same_store() {
         assert!(device.is_self);
         assert!(!device.can_remove);
         assert!(members.members[0].former_devices.is_empty());
-        assert_eq!(
-            app.clone().people().await.unwrap()[0].membership.id,
-            profile.id
-        );
+        assert_eq!(app.clone().people().await.unwrap()[0].membership.id, profile.id);
     });
     app.close_library(None).unwrap();
 }

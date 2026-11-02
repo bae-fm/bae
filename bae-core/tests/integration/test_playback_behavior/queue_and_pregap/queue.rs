@@ -5,15 +5,9 @@ async fn test_previous_track_navigation() {
     let second_track_id = fixture.track_ids[1].clone();
     fixture.playback_handle.play(first_track_id.clone());
     let first_track_state = fixture
-        .wait_for_state(
-            |s| matches!(s, PlaybackState::Playing { .. }),
-            Duration::from_secs(5),
-        )
+        .wait_for_state(|s| matches!(s, PlaybackState::Playing { .. }), Duration::from_secs(5))
         .await;
-    assert!(
-        first_track_state.is_some(),
-        "Should be playing first track after play command",
-    );
+    assert!(first_track_state.is_some(), "Should be playing first track after play command",);
     fixture.playback_handle.next();
     let second_track_state = fixture
         .wait_for_state(
@@ -27,14 +21,9 @@ async fn test_previous_track_navigation() {
             Duration::from_secs(5),
         )
         .await;
-    assert!(
-        second_track_state.is_some(),
-        "Should be playing second track after Next command",
-    );
+    assert!(second_track_state.is_some(), "Should be playing second track after Next command",);
     fixture.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(1)));
-    let _position = fixture
-        .wait_for_position_update(Duration::from_secs(2))
-        .await;
+    let _position = fixture.wait_for_position_update(Duration::from_secs(2)).await;
     fixture.playback_handle.previous();
     let previous_track_state = fixture
         .wait_for_state(
@@ -53,9 +42,7 @@ async fn test_previous_track_navigation() {
         "Should go to previous track when Previous is called early in track",
     );
     fixture.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(4)));
-    let _position = fixture
-        .wait_for_position_update(Duration::from_secs(2))
-        .await;
+    let _position = fixture.wait_for_position_update(Duration::from_secs(2)).await;
     fixture.playback_handle.previous();
     let restart_state = fixture
         .wait_for_state(
@@ -88,20 +75,12 @@ async fn test_same_position_seek_keeps_position_updates_flowing() {
     let track_id = &fixture.track_ids[0];
     fixture.playback_handle.play(track_id.clone());
     let playing_state = fixture
-        .wait_for_state(
-            |s| matches!(s, PlaybackState::Playing { .. }),
-            Duration::from_secs(5),
-        )
+        .wait_for_state(|s| matches!(s, PlaybackState::Playing { .. }), Duration::from_secs(5))
         .await;
-    assert!(
-        playing_state.is_some(),
-        "Should be playing after play command"
-    );
+    assert!(playing_state.is_some(), "Should be playing after play command");
     let seek_position = Duration::from_secs(2);
     fixture.playback_handle.seek(TrackTime::from_duration(seek_position));
-    let _position = fixture
-        .wait_for_position_update(Duration::from_secs(2))
-        .await;
+    let _position = fixture.wait_for_position_update(Duration::from_secs(2)).await;
     let current_pos_ms = fixture
         .wait_for_position_update(Duration::from_secs(2))
         .await
@@ -121,13 +100,8 @@ async fn test_same_position_seek_keeps_position_updates_flowing() {
             diff,
         );
     }
-    let position_update = fixture
-        .wait_for_position_update(Duration::from_secs(2))
-        .await;
-    assert!(
-        position_update.is_some(),
-        "Position updates should continue after skipped seek",
-    );
+    let position_update = fixture.wait_for_position_update(Duration::from_secs(2)).await;
+    assert!(position_update.is_some(), "Position updates should continue after skipped seek",);
 }
 #[tokio::test]
 async fn test_queue_maintained_after_previous_navigation() {
@@ -160,14 +134,9 @@ async fn test_queue_maintained_after_previous_navigation() {
             Duration::from_secs(5),
         )
         .await;
-    assert!(
-        second_track_state.is_some(),
-        "Should be playing second track after Next command",
-    );
+    assert!(second_track_state.is_some(), "Should be playing second track after Next command",);
     fixture.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(1)));
-    let _position = fixture
-        .wait_for_position_update(Duration::from_secs(2))
-        .await;
+    let _position = fixture.wait_for_position_update(Duration::from_secs(2)).await;
     fixture.playback_handle.previous();
     let back_to_first_state = fixture
         .wait_for_state(
@@ -186,9 +155,7 @@ async fn test_queue_maintained_after_previous_navigation() {
         "Should go back to first track when Previous is called from second track",
     );
     fixture.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(1)));
-    let _position = fixture
-        .wait_for_position_update(Duration::from_secs(2))
-        .await;
+    let _position = fixture.wait_for_position_update(Duration::from_secs(2)).await;
     fixture.playback_handle.next();
     let should_be_second_state = fixture
         .wait_for_state(
@@ -227,9 +194,7 @@ async fn assert_preload_refreshed_after_queue_mutation<F>(
     // `play` refills the context lane from the track's release, minting fresh
     // entry ids, and leaves Up Next alone — so capture the entries *after* play
     // settles: drain up to Playing, then read the current queue value.
-    let (played, entries) = fixture
-        .wait_for_playing_capturing_queue(Duration::from_secs(5))
-        .await;
+    let (played, entries) = fixture.wait_for_playing_capturing_queue(Duration::from_secs(5)).await;
     assert!(played, "track0 should start playing");
 
     mutate(&fixture.playback_handle, &entries);
@@ -238,8 +203,9 @@ async fn assert_preload_refreshed_after_queue_mutation<F>(
     let next_state = fixture
         .wait_for_state(
             |s| match s {
-                PlaybackState::Playing { track, .. }
-                | PlaybackState::Paused { track, .. } => track.track_id != track0,
+                PlaybackState::Playing { track, .. } | PlaybackState::Paused { track, .. } => {
+                    track.track_id != track0
+                }
                 _ => false,
             },
             Duration::from_secs(5),
@@ -264,11 +230,8 @@ async fn assert_preload_refreshed_after_queue_mutation<F>(
 #[tokio::test]
 async fn test_add_next_displaces_preloaded_track() {
     let mut fixture = PlaybackTestFixture::new().await;
-    let (track0, track1, track2) = (
-        fixture.track_ids[0].clone(),
-        fixture.track_ids[1].clone(),
-        fixture.track_ids[2].clone(),
-    );
+    let (track0, track1, track2) =
+        (fixture.track_ids[0].clone(), fixture.track_ids[1].clone(), fixture.track_ids[2].clone());
     let t2 = track2.clone();
     assert_preload_refreshed_after_queue_mutation(
         &mut fixture,
@@ -283,11 +246,8 @@ async fn test_add_next_displaces_preloaded_track() {
 #[tokio::test]
 async fn test_reorder_entry_displaces_preloaded_track() {
     let mut fixture = PlaybackTestFixture::new().await;
-    let (track0, track1, track2) = (
-        fixture.track_ids[0].clone(),
-        fixture.track_ids[1].clone(),
-        fixture.track_ids[2].clone(),
-    );
+    let (track0, track1, track2) =
+        (fixture.track_ids[0].clone(), fixture.track_ids[1].clone(), fixture.track_ids[2].clone());
     assert_preload_refreshed_after_queue_mutation(
         &mut fixture,
         vec![track1, track2.clone()],
@@ -301,11 +261,8 @@ async fn test_reorder_entry_displaces_preloaded_track() {
 #[tokio::test]
 async fn test_insert_in_queue_displaces_preloaded_track() {
     let mut fixture = PlaybackTestFixture::new().await;
-    let (track0, track1, track2) = (
-        fixture.track_ids[0].clone(),
-        fixture.track_ids[1].clone(),
-        fixture.track_ids[2].clone(),
-    );
+    let (track0, track1, track2) =
+        (fixture.track_ids[0].clone(), fixture.track_ids[1].clone(), fixture.track_ids[2].clone());
     let t2 = track2.clone();
     assert_preload_refreshed_after_queue_mutation(
         &mut fixture,
@@ -320,11 +277,8 @@ async fn test_insert_in_queue_displaces_preloaded_track() {
 #[tokio::test]
 async fn test_remove_entry_refreshes_preloaded_track() {
     let mut fixture = PlaybackTestFixture::new().await;
-    let (track0, track1, track2) = (
-        fixture.track_ids[0].clone(),
-        fixture.track_ids[1].clone(),
-        fixture.track_ids[2].clone(),
-    );
+    let (track0, track1, track2) =
+        (fixture.track_ids[0].clone(), fixture.track_ids[1].clone(), fixture.track_ids[2].clone());
     assert_preload_refreshed_after_queue_mutation(
         &mut fixture,
         vec![track1, track2.clone()],
@@ -379,11 +333,7 @@ async fn set_shuffle_permutes_and_unpermutes_the_context_lane_in_place() {
     // Shuffle on re-materializes the playing context into a shuffled order —
     // not merely a persisted seed.
     fixture.playback_handle.set_shuffle(true);
-    let shuffled = fixture
-        .playback_handle
-        .queue_value()
-        .await
-        .expect("queue value");
+    let shuffled = fixture.playback_handle.queue_value().await.expect("queue value");
     assert!(
         shuffled.context.as_ref().is_some_and(|c| c.shuffled),
         "SetShuffle(true) puts the lane in shuffled order"
@@ -392,16 +342,9 @@ async fn set_shuffle_permutes_and_unpermutes_the_context_lane_in_place() {
     // Shuffle off unpermutes the lane: the not-yet-played tail is the two tracks
     // after the current one, in release order.
     fixture.playback_handle.set_shuffle(false);
-    let sequential = fixture
-        .playback_handle
-        .queue_value()
-        .await
-        .expect("queue value");
+    let sequential = fixture.playback_handle.queue_value().await.expect("queue value");
     let ctx = sequential.context.expect("still a playing context");
-    assert!(
-        !ctx.shuffled,
-        "SetShuffle(false) puts the lane back in sequential order"
-    );
+    assert!(!ctx.shuffled, "SetShuffle(false) puts the lane back in sequential order");
     let upcoming: Vec<String> = fixture
         .playback_handle
         .queue_upcoming()
@@ -488,17 +431,10 @@ async fn play_library_shuffled_plays_a_shuffled_library_context() {
     let mut fixture = PlaybackTestFixture::new().await;
     fixture.playback_handle.play_library_shuffled();
     fixture
-        .wait_for_state(
-            |s| matches!(s, PlaybackState::Playing { .. }),
-            Duration::from_secs(5),
-        )
+        .wait_for_state(|s| matches!(s, PlaybackState::Playing { .. }), Duration::from_secs(5))
         .await
         .expect("a library track starts playing");
-    let proj = fixture
-        .playback_handle
-        .queue_value()
-        .await
-        .expect("queue value");
+    let proj = fixture.playback_handle.queue_value().await.expect("queue value");
     let ctx = proj.context.expect("a library context");
     assert!(
         matches!(ctx.source, bae_core::playback::ContextSource::Library),
@@ -519,10 +455,7 @@ async fn play_library_shuffled_is_a_no_op_on_an_empty_library() {
         Duration::from_secs(1),
     )
     .await;
-    assert!(
-        played.is_none(),
-        "an empty library has nothing to shuffle-play"
-    );
+    assert!(played.is_none(), "an empty library has nothing to shuffle-play");
     handle.stop();
 }
 
@@ -570,10 +503,7 @@ async fn set_muted_round_trips_and_set_volume_clears_mute() {
 
     // Mute again, then a non-zero SetVolume clears the mute.
     fixture.playback_handle.set_muted(true);
-    assert!(
-        wait_for_mute(&mut fixture.progress_rx, Duration::from_secs(3)).await,
-        "muted again"
-    );
+    assert!(wait_for_mute(&mut fixture.progress_rx, Duration::from_secs(3)).await, "muted again");
     fixture.playback_handle.set_volume(0.7);
     assert!(
         !wait_for_mute(&mut fixture.progress_rx, Duration::from_secs(3)).await,
@@ -587,9 +517,7 @@ async fn skip_to_entry_jumps_to_that_queue_entry() {
     let first = fixture.track_ids[0].clone();
     let third = fixture.track_ids[2].clone();
     fixture.playback_handle.play(first.clone());
-    let (played, entries) = fixture
-        .wait_for_playing_capturing_queue(Duration::from_secs(5))
-        .await;
+    let (played, entries) = fixture.wait_for_playing_capturing_queue(Duration::from_secs(5)).await;
     assert!(played, "the release starts playing");
     let target = entries
         .iter()
@@ -622,30 +550,13 @@ async fn clear_up_next_empties_the_manual_lane_keeping_the_context() {
         .await
         .expect("the release starts playing");
     fixture.playback_handle.add_to_queue(vec![second]);
-    let before = fixture
-        .playback_handle
-        .queue_value()
-        .await
-        .expect("queue value");
-    assert!(
-        !before.manual.is_empty(),
-        "the manual lane has the added track"
-    );
+    let before = fixture.playback_handle.queue_value().await.expect("queue value");
+    assert!(!before.manual.is_empty(), "the manual lane has the added track");
 
     fixture.playback_handle.clear_up_next();
-    let after = fixture
-        .playback_handle
-        .queue_value()
-        .await
-        .expect("queue value");
-    assert!(
-        after.manual.is_empty(),
-        "ClearUpNext empties the manual lane"
-    );
-    assert!(
-        after.context.is_some(),
-        "ClearUpNext leaves the playing context intact"
-    );
+    let after = fixture.playback_handle.queue_value().await.expect("queue value");
+    assert!(after.manual.is_empty(), "ClearUpNext empties the manual lane");
+    assert!(after.context.is_some(), "ClearUpNext leaves the playing context intact");
 }
 
 /// The counterpart: clearing "Playing From" drops the section the release
@@ -668,15 +579,8 @@ async fn clear_playing_from_drops_the_context_while_the_track_keeps_playing() {
 
     fixture.playback_handle.clear_playing_from();
 
-    let after = fixture
-        .playback_handle
-        .queue_value()
-        .await
-        .expect("queue value");
-    assert!(
-        after.context.is_none(),
-        "the context section leaves the snapshot entirely"
-    );
+    let after = fixture.playback_handle.queue_value().await.expect("queue value");
+    assert!(after.context.is_none(), "the context section leaves the snapshot entirely");
     let manual: Vec<String> = after.manual.iter().map(|e| e.track_id.clone()).collect();
     assert_eq!(manual, vec![queued], "Up Next is untouched");
     assert!(
@@ -702,16 +606,8 @@ async fn add_release_to_queue_appends_its_tracks_to_the_manual_lane() {
         .expect("the release starts playing");
     let release_id = current_release_id(&fixture.playback_handle).await;
     fixture.playback_handle.add_release_to_queue(release_id);
-    let proj = fixture
-        .playback_handle
-        .queue_value()
-        .await
-        .expect("queue value");
-    assert_eq!(
-        proj.manual.len(),
-        3,
-        "the release's three tracks are appended to the manual lane"
-    );
+    let proj = fixture.playback_handle.queue_value().await.expect("queue value");
+    assert_eq!(proj.manual.len(), 3, "the release's three tracks are appended to the manual lane");
 }
 
 #[tokio::test]
@@ -731,11 +627,7 @@ async fn add_release_next_puts_its_tracks_at_the_front_of_the_manual_lane() {
     fixture.playback_handle.add_to_queue(vec![second.clone()]);
     let release_id = current_release_id(&fixture.playback_handle).await;
     fixture.playback_handle.add_release_next(release_id);
-    let proj = fixture
-        .playback_handle
-        .queue_value()
-        .await
-        .expect("queue value");
+    let proj = fixture.playback_handle.queue_value().await.expect("queue value");
     assert_eq!(proj.manual.len(), 4, "three release tracks plus the marker");
     assert_eq!(
         proj.manual.last().unwrap().track_id,
@@ -750,9 +642,7 @@ async fn remove_currently_playing_entry_stops_playback() {
     let first = fixture.track_ids[0].clone();
     let second = fixture.track_ids[1].clone();
     fixture.playback_handle.play(first.clone());
-    let (played, entries) = fixture
-        .wait_for_playing_capturing_queue(Duration::from_secs(5))
-        .await;
+    let (played, entries) = fixture.wait_for_playing_capturing_queue(Duration::from_secs(5)).await;
     assert!(played, "the release starts playing");
 
     // Skip onto the second track so it's the current context entry, then remove
@@ -774,10 +664,7 @@ async fn remove_currently_playing_entry_stops_playback() {
 
     fixture.playback_handle.remove_entry(entry.id.clone());
     fixture
-        .wait_for_state(
-            |s| matches!(s, PlaybackState::Stopped),
-            Duration::from_secs(5),
-        )
+        .wait_for_state(|s| matches!(s, PlaybackState::Stopped), Duration::from_secs(5))
         .await
         .expect("removing the currently-playing entry stops playback");
 }
@@ -798,9 +685,7 @@ async fn play_release_starts_at_the_named_track() {
         .expect("the first track plays");
     let release_id = current_release_id(&fixture.playback_handle).await;
 
-    fixture
-        .playback_handle
-        .play_release(release_id, Some(third.clone()), false);
+    fixture.playback_handle.play_release(release_id, Some(third.clone()), false);
 
     fixture
         .wait_for_state(
@@ -828,16 +713,8 @@ async fn play_release_from_a_track_it_does_not_have_plays_nothing() {
         .expect("the third track plays");
     let release_id = current_release_id(&fixture.playback_handle).await;
     let before = (
-        fixture
-            .playback_handle
-            .queue_value()
-            .await
-            .expect("queue value"),
-        fixture
-            .playback_handle
-            .queue_upcoming()
-            .await
-            .expect("queue upcoming"),
+        fixture.playback_handle.queue_value().await.expect("queue value"),
+        fixture.playback_handle.queue_upcoming().await.expect("queue upcoming"),
     );
 
     fixture.playback_handle.play_release(
@@ -854,16 +731,8 @@ async fn play_release_from_a_track_it_does_not_have_plays_nothing() {
         .collect();
     assert!(other_track.is_empty(), "no other track starts: {other_track:?}");
     let after = (
-        fixture
-            .playback_handle
-            .queue_value()
-            .await
-            .expect("queue value"),
-        fixture
-            .playback_handle
-            .queue_upcoming()
-            .await
-            .expect("queue upcoming"),
+        fixture.playback_handle.queue_value().await.expect("queue value"),
+        fixture.playback_handle.queue_upcoming().await.expect("queue upcoming"),
     );
     assert_eq!(after, before, "the queue is left as it was");
 }
@@ -912,10 +781,7 @@ async fn tracks_deleted_clears_a_preloaded_next_then_stops_on_the_current() {
     // Delete B: current (A) survives, the preloaded next (B) is cleared and its
     // queued entry purged — no stop. A read sent after the deletion returns
     // sees it applied.
-    lib.library_manager
-        .delete_release(&b_release_id)
-        .await
-        .expect("delete release B");
+    lib.library_manager.delete_release(&b_release_id).await.expect("delete release B");
     let after = handle.queue_value().await.expect("queue value");
     assert!(
         !after.manual.iter().any(|e| e.track_id == b_first),
@@ -929,10 +795,7 @@ async fn tracks_deleted_clears_a_preloaded_next_then_stops_on_the_current() {
     );
 
     // Delete A: the current track is deleted → playback stops.
-    lib.library_manager
-        .delete_release(&a_release_id)
-        .await
-        .expect("delete release A");
+    lib.library_manager.delete_release(&a_release_id).await.expect("delete release A");
     wait_for_state_on(
         &mut progress,
         |s| matches!(s, PlaybackState::Stopped),

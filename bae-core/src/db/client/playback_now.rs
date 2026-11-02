@@ -28,9 +28,7 @@ impl Database {
     /// the row names a track the library no longer holds: the track was
     /// deleted, and playback has yet to move off it.
     pub(crate) fn subscribe_now_playing(&self) -> coven::LiveQuery<Option<NowPlayingValues>> {
-        self.inner
-            .handle
-            .subscribe(|sql| now_playing_on(&sql).map_err(CovenError::from))
+        self.inner.handle.subscribe(|sql| now_playing_on(&sql).map_err(CovenError::from))
     }
 
     /// What playback is doing now, as `subscribe_now_playing` reads it.
@@ -42,11 +40,9 @@ impl Database {
     /// The volume and mute the row holds, which resuming playback restores.
     pub async fn playback_level(&self) -> Result<(f32, bool), DbError> {
         self.read(|sql| {
-            Ok(
-                sql.query_row("SELECT volume, is_muted FROM playback_now", [], |row| {
-                    Ok((row.get("volume")?, row.get("is_muted")?))
-                })?,
-            )
+            Ok(sql.query_row("SELECT volume, is_muted FROM playback_now", [], |row| {
+                Ok((row.get("volume")?, row.get("is_muted")?))
+            })?)
         })
         .await
     }
@@ -57,9 +53,7 @@ impl PlaybackNowRow {
     /// failure; a failure counts up the row's failures.
     pub async fn apply(&self, change: &PlaybackChange) -> Result<(), DbError> {
         let change = change.clone();
-        self.db
-            .call(move |sql| apply_on(sql, &change).map_err(DbError::from))
-            .await
+        self.db.call(move |sql| apply_on(sql, &change).map_err(DbError::from)).await
     }
 }
 
@@ -120,14 +114,12 @@ fn apply_on(sql: &CovenWrite<'_>, change: &PlaybackChange) -> rusqlite::Result<(
         PlaybackChange::Preview(preview) => {
             let (kind, clip) = match preview {
                 PreviewState::Idle => ("idle", None),
-                PreviewState::Playing {
-                    target,
-                    duration_ms,
-                } => ("playing", Some((target, duration_ms))),
-                PreviewState::Paused {
-                    target,
-                    duration_ms,
-                } => ("paused", Some((target, duration_ms))),
+                PreviewState::Playing { target, duration_ms } => {
+                    ("playing", Some((target, duration_ms)))
+                }
+                PreviewState::Paused { target, duration_ms } => {
+                    ("paused", Some((target, duration_ms)))
+                }
             };
             let clip = clip.map(|(target, duration_ms)| {
                 let (path, start_sample, end_sample) = target.clone().into_sample_range();
@@ -306,18 +298,13 @@ fn state_from_row(row: &Row<'_>) -> rusqlite::Result<PlaybackState> {
     }
     let track_id: String = row.get("track_id")?;
     let duration_ms: Option<i64> = row.get("duration_ms")?;
-    let track = PlayingTrack {
-        track_id,
-        duration_ms: duration_ms.map(|duration| duration as u64),
-    };
+    let track = PlayingTrack { track_id, duration_ms: duration_ms.map(|duration| duration as u64) };
     Ok(match state.as_str() {
         "loading" => PlaybackState::Loading {
             track: if row.get::<_, bool>("prepared")? {
                 LoadingTrack::Prepared(track)
             } else {
-                LoadingTrack::Unprepared {
-                    track_id: track.track_id,
-                }
+                LoadingTrack::Unprepared { track_id: track.track_id }
             },
         },
         "playing" => PlaybackState::Playing { track },
@@ -358,16 +345,11 @@ fn remote_from_row(row: &Row<'_>) -> rusqlite::Result<RemotePlayback> {
     if remote == "local" {
         return Ok(RemotePlayback::Local);
     }
-    let device = RemoteDevice {
-        id: row.get("remote_device_id")?,
-        name: row.get("remote_device_name")?,
-    };
+    let device =
+        RemoteDevice { id: row.get("remote_device_id")?, name: row.get("remote_device_name")? };
     Ok(match remote.as_str() {
         "on" => RemotePlayback::On(device),
-        "ended" => RemotePlayback::Ended {
-            device,
-            detail: row.get("remote_end_detail")?,
-        },
+        "ended" => RemotePlayback::Ended { device, detail: row.get("remote_end_detail")? },
         other => return Err(unknown("remote", other)),
     })
 }
@@ -391,14 +373,8 @@ fn preview_from_row(row: &Row<'_>) -> rusqlite::Result<PreviewState> {
         PreviewTarget::sample_range(path, start_sample as u64, end_sample.map(|end| end as u64));
     let duration_ms = duration_ms as u64;
     Ok(match preview.as_str() {
-        "playing" => PreviewState::Playing {
-            target,
-            duration_ms,
-        },
-        "paused" => PreviewState::Paused {
-            target,
-            duration_ms,
-        },
+        "playing" => PreviewState::Playing { target, duration_ms },
+        "paused" => PreviewState::Paused { target, duration_ms },
         other => return Err(unknown("preview", other)),
     })
 }
@@ -409,10 +385,7 @@ fn failure_from_row(row: &Row<'_>) -> rusqlite::Result<Option<PlaybackFailure>> 
         return Ok(None);
     };
     let diagnostic = |failure| -> rusqlite::Result<PlaybackErrorReason> {
-        Ok(PlaybackErrorReason::Diagnostic {
-            failure,
-            detail: row.get("failure_detail")?,
-        })
+        Ok(PlaybackErrorReason::Diagnostic { failure, detail: row.get("failure_detail")? })
     };
     let reason = match failure.as_str() {
         "sync_disconnected" => PlaybackErrorReason::SyncDisconnected,
@@ -435,20 +408,15 @@ fn failure_from_row(row: &Row<'_>) -> rusqlite::Result<Option<PlaybackFailure>> 
         other => return Err(unknown("failure", other)),
     };
     let number: i64 = row.get("failures")?;
-    Ok(Some(PlaybackFailure {
-        number: number as u64,
-        reason,
-    }))
+    Ok(Some(PlaybackFailure { number: number as u64, reason }))
 }
 
 /// The row as the screens show it, with the queue's repeat mode and the
 /// playing track's current display; `None` while the row names a track the
 /// library no longer holds.
 fn now_playing_on(sql: &SqlReadContext<'_>) -> Result<Option<NowPlayingValues>, DbError> {
-    let (values, repeat_mode, failure) = sql.query_row(
-        "SELECT n.*, q.repeat FROM playback_now n, playback_queue q",
-        [],
-        |row| {
+    let (values, repeat_mode, failure) =
+        sql.query_row("SELECT n.*, q.repeat FROM playback_now n, playback_queue q", [], |row| {
             let repeat: String = row.get("repeat")?;
             Ok((
                 PlaybackValues {
@@ -461,8 +429,7 @@ fn now_playing_on(sql: &SqlReadContext<'_>) -> Result<Option<NowPlayingValues>, 
                 repeat_from_column(&repeat)?,
                 failure_from_row(row)?,
             ))
-        },
-    )?;
+        })?;
     // `Err(None)`: the library no longer holds the track.
     let playback = values.try_map_track(|track| match track_display_on(sql, &track.track_id) {
         Ok(Some(display)) => Ok(NowPlayingTrack { track, display }),
@@ -470,11 +437,7 @@ fn now_playing_on(sql: &SqlReadContext<'_>) -> Result<Option<NowPlayingValues>, 
         Err(error) => Err(Some(error)),
     });
     match playback {
-        Ok(playback) => Ok(Some(NowPlayingValues {
-            playback,
-            repeat_mode,
-            failure,
-        })),
+        Ok(playback) => Ok(Some(NowPlayingValues { playback, repeat_mode, failure })),
         Err(None) => Ok(None),
         Err(Some(error)) => Err(error),
     }

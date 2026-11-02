@@ -86,11 +86,7 @@ pub enum IdentifyFailure {
 pub enum TerminalVerdict {
     /// One or more results — what `combine` produced, and what the sidebar and
     /// the auto-import check both work from directly.
-    Found {
-        findings: Findings,
-        track_count: u32,
-        ledger: Option<IdentifyRunView>,
-    },
+    Found { findings: Findings, track_count: u32, ledger: Option<IdentifyRunView> },
     /// Both signals ran and settled on zero results. Distinct from a transport
     /// failure — nothing about this candidate's row goes unwritten; "we looked
     /// everywhere and there is nothing" is itself the answer.
@@ -99,10 +95,7 @@ pub enum TerminalVerdict {
     /// Distinct from `NotFoundAnywhere` — there, signals ran and matched
     /// nothing; here, none ran, so a reader offers manual search rather than
     /// claiming a lookup that never happened.
-    ManualOnly {
-        track_count: u32,
-        ledger: Option<IdentifyRunView>,
-    },
+    ManualOnly { track_count: u32, ledger: Option<IdentifyRunView> },
     /// At least one lookup failed, so what the others found must not be
     /// classified as a complete answer. `findings` is what they found — empty
     /// when nothing that answered returned anything.
@@ -156,27 +149,19 @@ impl TerminalVerdict {
                 failures.push(failure);
                 return;
             }
-            Self::Found {
-                findings,
-                track_count,
-                ledger,
-            } => (std::mem::take(findings), *track_count, ledger.take()),
-            Self::ManualOnly {
-                track_count,
-                ledger,
-            } => (Findings::default(), *track_count, ledger.take()),
+            Self::Found { findings, track_count, ledger } => {
+                (std::mem::take(findings), *track_count, ledger.take())
+            }
+            Self::ManualOnly { track_count, ledger } => {
+                (Findings::default(), *track_count, ledger.take())
+            }
             // Nothing counted the folder's tracks on the way to finding nothing.
             Self::NotFoundAnywhere { ledger } => (Findings::default(), 0, ledger.take()),
             Self::Error { .. } => {
                 unreachable!("an error settles no release to fetch the details of")
             }
         };
-        *self = Self::Failed {
-            failures: vec![failure],
-            findings,
-            track_count,
-            ledger,
-        };
+        *self = Self::Failed { failures: vec![failure], findings, track_count, ledger };
     }
 }
 
@@ -194,42 +179,21 @@ impl TryFrom<IdentifyState> for TerminalVerdict {
                 // The run's, and the candidate's text it judged against, which
                 // is stored on its own and read back beside these findings.
                 context: _,
-            } => Ok(Self::Found {
-                findings,
-                track_count,
-                ledger,
-            }),
+            } => Ok(Self::Found { findings, track_count, ledger }),
 
             IdentifyState::NotFoundAnywhere { ledger, context: _ } => {
                 Ok(Self::NotFoundAnywhere { ledger })
             }
 
-            IdentifyState::ManualOnly {
-                track_count,
-                ledger,
-                context: _,
-            } => Ok(Self::ManualOnly {
-                track_count,
-                ledger,
-            }),
+            IdentifyState::ManualOnly { track_count, ledger, context: _ } => {
+                Ok(Self::ManualOnly { track_count, ledger })
+            }
 
-            IdentifyState::Failed {
-                failures,
-                findings,
-                track_count,
-                ledger,
-                context: _,
-            } => Ok(Self::Failed {
-                failures,
-                findings,
-                track_count,
-                ledger,
-            }),
+            IdentifyState::Failed { failures, findings, track_count, ledger, context: _ } => {
+                Ok(Self::Failed { failures, findings, track_count, ledger })
+            }
 
-            IdentifyState::Error {
-                failure,
-                context: _,
-            } => Ok(Self::Error { failure }),
+            IdentifyState::Error { failure, context: _ } => Ok(Self::Error { failure }),
 
             other @ (IdentifyState::Idle | IdentifyState::Triangulating { .. }) => Err(other),
         }
@@ -243,9 +207,7 @@ impl TerminalVerdict {
     /// their library status is checked with the matches' rather than left
     /// unanswered.
     pub fn named_releases(&self) -> Vec<&MetadataResult> {
-        self.findings()
-            .map(|findings| findings.releases().collect())
-            .unwrap_or_default()
+        self.findings().map(|findings| findings.releases().collect()).unwrap_or_default()
     }
 
     /// The ledger the run showed, as it recorded it. `None` for a run
@@ -289,44 +251,23 @@ impl TerminalVerdict {
             ..SignalsContext::default()
         };
         match self {
-            Self::Found {
-                findings,
-                track_count,
-                ledger,
-            } => IdentifyState::Found {
-                findings,
-                track_count,
-                ledger,
-                context: context(),
-            },
-            Self::NotFoundAnywhere { ledger } => IdentifyState::NotFoundAnywhere {
-                ledger,
-                context: context(),
-            },
-            Self::ManualOnly {
-                track_count,
-                ledger,
-            } => IdentifyState::ManualOnly {
-                track_count,
-                ledger,
-                context: context(),
-            },
-            Self::Failed {
-                failures,
-                findings,
-                track_count,
-                ledger,
-            } => IdentifyState::Failed {
+            Self::Found { findings, track_count, ledger } => {
+                IdentifyState::Found { findings, track_count, ledger, context: context() }
+            }
+            Self::NotFoundAnywhere { ledger } => {
+                IdentifyState::NotFoundAnywhere { ledger, context: context() }
+            }
+            Self::ManualOnly { track_count, ledger } => {
+                IdentifyState::ManualOnly { track_count, ledger, context: context() }
+            }
+            Self::Failed { failures, findings, track_count, ledger } => IdentifyState::Failed {
                 failures,
                 findings,
                 track_count,
                 ledger,
                 context: context(),
             },
-            Self::Error { failure } => IdentifyState::Error {
-                failure,
-                context: context(),
-            },
+            Self::Error { failure } => IdentifyState::Error { failure, context: context() },
         }
     }
 }

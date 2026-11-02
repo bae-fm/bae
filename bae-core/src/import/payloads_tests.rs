@@ -99,11 +99,7 @@ fn cover_choices_include_cross_references_and_deduplicate_master_images() {
         (
             Catalog::Discogs,
             discogs.clone(),
-            SourcePayload::new(
-                PayloadSource::MusicBrainzDiscogsXref,
-                "123",
-                musicbrainz.clone(),
-            ),
+            SourcePayload::new(PayloadSource::MusicBrainzDiscogsXref, "123", musicbrainz.clone()),
         ),
         (
             Catalog::MusicBrainz,
@@ -112,14 +108,7 @@ fn cover_choices_include_cross_references_and_deduplicate_master_images() {
         ),
     ] {
         let covers = ReleasePayloads::for_test(
-            MetadataRef::new(
-                source,
-                if source == Catalog::Discogs {
-                    "123"
-                } else {
-                    "mb-release"
-                },
-            ),
+            MetadataRef::new(source, if source == Catalog::Discogs { "123" } else { "mb-release" }),
             anchor,
             vec![supporting, master.clone()],
         )
@@ -133,13 +122,7 @@ fn cover_choices_include_cross_references_and_deduplicate_master_images() {
         assert!(covers
             .iter()
             .all(|cover| cover.standing == bae_catalogs::remote_image::CoverStanding::Stated));
-        assert_eq!(
-            covers
-                .iter()
-                .filter(|cover| cover.source == Catalog::Discogs)
-                .count(),
-            2
-        );
+        assert_eq!(covers.iter().filter(|cover| cover.source == Catalog::Discogs).count(), 2);
         assert_eq!(
             covers
                 .iter()
@@ -147,9 +130,7 @@ fn cover_choices_include_cross_references_and_deduplicate_master_images() {
                 .count(),
             1
         );
-        assert!(covers
-            .iter()
-            .any(|cover| cover.image.url == "https://images.example/booklet.jpg"));
+        assert!(covers.iter().any(|cover| cover.image.url == "https://images.example/booklet.jpg"));
     }
 }
 
@@ -198,22 +179,13 @@ fn a_picks_covers_are_the_images_its_documents_state() {
     assert_eq!(covers.len(), 1, "{covers:?}");
     assert_eq!(covers[0].image.url, "https://images.example/front.jpg");
     assert_eq!(covers[0].source, Catalog::Discogs);
-    let alone = primary
-        .extract()
-        .expect("the primary's own artwork parses")
-        .covers();
+    let alone = primary.extract().expect("the primary's own artwork parses").covers();
     assert_eq!(alone.len(), 1, "{alone:?}");
     assert!(
-        alone[0]
-            .image
-            .url
-            .ends_with("/release-group/mb-group/front"),
+        alone[0].image.url.ends_with("/release-group/mb-group/front"),
         "with nothing stated, the album's unstated address is what is offered: {alone:?}"
     );
-    assert_eq!(
-        alone[0].standing,
-        bae_catalogs::remote_image::CoverStanding::Unstated
-    );
+    assert_eq!(alone[0].standing, bae_catalogs::remote_image::CoverStanding::Unstated);
 }
 
 /// A Discogs release reachable twice — cross-linked by the primary's own
@@ -225,11 +197,7 @@ fn a_release_reachable_twice_offers_its_images_once() {
         unillustrated_musicbrainz_release(
             serde_json::json!([{ "url": { "resource": "https://www.discogs.com/release/123" } }]),
         ),
-        vec![SourcePayload::new(
-            PayloadSource::Discogs,
-            "123",
-            illustrated_discogs_release(),
-        )],
+        vec![SourcePayload::new(PayloadSource::Discogs, "123", illustrated_discogs_release())],
     );
     let partner = ReleasePayloads::for_test(
         MetadataRef::new(Catalog::Discogs, "123"),
@@ -240,11 +208,7 @@ fn a_release_reachable_twice_offers_its_images_once() {
         &primary.extract().expect("the primary extracts"),
         &[partner.extract().expect("the partner extracts")],
     );
-    assert_eq!(
-        covers.len(),
-        1,
-        "the image reachable twice is offered once: {covers:?}"
-    );
+    assert_eq!(covers.len(), 1, "the image reachable twice is offered once: {covers:?}");
     assert_eq!(covers[0].image.url, "https://images.example/front.jpg");
 }
 
@@ -332,10 +296,7 @@ fn a_musicbrainz_release_records_every_catalog_it_links_out_to() {
         )],
     );
 
-    let records = payloads
-        .extract()
-        .expect("the stored documents read")
-        .records();
+    let records = payloads.extract().expect("the stored documents read").records();
     let described: Vec<(Catalog, &str, Option<String>, String)> = records
         .iter()
         .map(|record| {
@@ -356,12 +317,7 @@ fn a_musicbrainz_release_records_every_catalog_it_links_out_to() {
                 Some("mb-group".to_owned()),
                 "https://musicbrainz.org/release/mb-release".to_owned(),
             ),
-            (
-                Catalog::Discogs,
-                "4242",
-                None,
-                "https://www.discogs.com/release/4242".to_owned(),
-            ),
+            (Catalog::Discogs, "4242", None, "https://www.discogs.com/release/4242".to_owned(),),
             (
                 Catalog::AllMusic,
                 "mw0000424242",
@@ -404,10 +360,7 @@ fn a_musicbrainz_release_without_a_parent_keeps_it_unknown() {
         Vec::new(),
     );
 
-    let records = payloads
-        .extract()
-        .expect("the stored document reads")
-        .records();
+    let records = payloads.extract().expect("the stored document reads").records();
     assert_eq!(records.len(), 1);
     assert_eq!(records[0].album_ref(), None);
 }
@@ -421,19 +374,13 @@ fn a_group_link_does_not_invent_a_pressings_parent() {
         mb_release_with_relations(
             "mb-release",
             "mb-group",
-            &[
-                "https://www.discogs.com/master/909090",
-                "https://www.discogs.com/release/4242",
-            ],
+            &["https://www.discogs.com/master/909090", "https://www.discogs.com/release/4242"],
         )
         .to_string(),
         Vec::new(),
     );
 
-    let records = payloads
-        .extract()
-        .expect("the stored document reads")
-        .records();
+    let records = payloads.extract().expect("the stored document reads").records();
     let discogs = records
         .iter()
         .find(|record| record.catalog() == Catalog::Discogs)
@@ -465,19 +412,13 @@ fn the_archived_cross_reference_names_the_discogs_master() {
         )],
     );
 
-    let records = payloads
-        .extract()
-        .expect("the stored documents read")
-        .records();
+    let records = payloads.extract().expect("the stored documents read").records();
     let discogs = records
         .iter()
         .find(|record| record.catalog() == Catalog::Discogs)
         .expect("the linked Discogs release is a record");
     assert_eq!(discogs.key(), "4242");
-    assert_eq!(
-        discogs.album_ref().map(|album| album.key),
-        Some("909090".to_owned())
-    );
+    assert_eq!(discogs.album_ref().map(|album| album.key), Some("909090".to_owned()));
 }
 
 /// Wikidata's item for the album is the hub the catalogs MusicBrainz editors
@@ -503,10 +444,7 @@ fn an_archived_wikidata_item_records_the_catalogs_it_identifies() {
         ],
     );
 
-    let records = payloads
-        .extract()
-        .expect("the stored documents read")
-        .records();
+    let records = payloads.extract().expect("the stored documents read").records();
     let described: Vec<(Catalog, &str, Option<String>, String)> = records
         .iter()
         .map(|record| {
@@ -527,12 +465,7 @@ fn an_archived_wikidata_item_records_the_catalogs_it_identifies() {
                 Some("mb-group".to_owned()),
                 "https://musicbrainz.org/release/mb-release".to_owned(),
             ),
-            (
-                Catalog::Discogs,
-                "4242",
-                None,
-                "https://www.discogs.com/release/4242".to_owned(),
-            ),
+            (Catalog::Discogs, "4242", None, "https://www.discogs.com/release/4242".to_owned(),),
             (
                 Catalog::AllMusic,
                 "mw0000424242",
@@ -578,10 +511,7 @@ fn a_musicbrainz_link_outranks_the_item_on_the_same_catalog() {
         ],
     );
 
-    let records = payloads
-        .extract()
-        .expect("the stored documents read")
-        .records();
+    let records = payloads.extract().expect("the stored documents read").records();
     let spotify = records
         .iter()
         .find(|record| record.catalog() == Catalog::Spotify)
@@ -627,10 +557,7 @@ fn a_partner_outranks_what_the_primary_says_about_its_catalog() {
         "2222",
         "the picked Discogs release outranks the cross-linked one"
     );
-    assert_eq!(
-        records[1].album_ref().map(|album| album.key),
-        Some("909090".to_owned())
-    );
+    assert_eq!(records[1].album_ref().map(|album| album.key), Some("909090".to_owned()));
 }
 
 async fn test_database() -> (Database, tempfile::TempDir) {
@@ -676,16 +603,8 @@ fn a_discogs_release_reaches_its_master_through_the_anchor() {
         )],
     );
 
-    let parsed = payloads
-        .extract()
-        .unwrap()
-        .every_medium_values()
-        .expect("the documents map");
-    assert_eq!(
-        parsed.album_year,
-        Some(1967),
-        "the album year is the master's, not the pressing's"
-    );
+    let parsed = payloads.extract().unwrap().every_medium_values().expect("the documents map");
+    assert_eq!(parsed.album_year, Some(1967), "the album year is the master's, not the pressing's");
     assert_eq!(parsed.pressing.year, Some(1985));
 }
 
@@ -717,11 +636,7 @@ async fn an_items_records_are_stored_with_the_release() {
         .expect("the stored release reads back")
         .expect("the release is stored");
 
-    let catalogs: Vec<Catalog> = stored
-        .records()
-        .iter()
-        .map(|record| record.catalog())
-        .collect();
+    let catalogs: Vec<Catalog> = stored.records().iter().map(|record| record.catalog()).collect();
     assert_eq!(
         catalogs,
         vec![
@@ -749,9 +664,7 @@ async fn a_fetch_follows_the_item_musicbrainz_names() {
         group_id,
         wikidata_linked_release_group(group_id, "Q424242"),
     );
-    providers
-        .wikidata()
-        .seed_entity_cache("Q424242", Some(wikidata_item("Q424242")));
+    providers.wikidata().seed_entity_cache("Q424242", Some(wikidata_item("Q424242")));
 
     let payloads = providers
         .fetch_payloads(
@@ -813,10 +726,7 @@ async fn an_item_that_will_not_fetch_leaves_the_other_records_standing() {
         .expect("a release whose item will not fetch still identifies");
 
     assert!(
-        !payloads
-            .supporting
-            .iter()
-            .any(|document| document.source == PayloadSource::Wikidata),
+        !payloads.supporting.iter().any(|document| document.source == PayloadSource::Wikidata),
         "no item stands in for the one Wikidata did not return"
     );
     assert_eq!(
@@ -880,10 +790,7 @@ fn discogs_master_cross_reference_retains_album_links_without_claiming_a_pressin
         "7722",
         payloads.supporting[1].json.clone(),
     ));
-    let records = payloads
-        .extract()
-        .expect("linked album documents project")
-        .records();
+    let records = payloads.extract().expect("linked album documents project").records();
     assert!(records
         .iter()
         .any(|record| record.url() == "https://musicbrainz.org/release-group/linked-group"));
@@ -897,15 +804,8 @@ fn discogs_master_cross_reference_retains_album_links_without_claiming_a_pressin
     assert_eq!(parsed.album_year, Some(1966));
     assert_eq!(parsed.pressing.year, None);
     assert_eq!(
-        parsed
-            .tracks
-            .iter()
-            .map(|track| track.title.as_str())
-            .collect::<Vec<_>>(),
+        parsed.tracks.iter().map(|track| track.title.as_str()).collect::<Vec<_>>(),
         ["First Track", "Second Track"]
     );
-    assert_eq!(
-        crate::import::release_values::value_labels(&parsed),
-        ["A1", "B1"]
-    );
+    assert_eq!(crate::import::release_values::value_labels(&parsed), ["A1", "B1"]);
 }

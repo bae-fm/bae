@@ -14,10 +14,7 @@ fn the_watch_reports_the_first_device_that_joins_while_it_is_open() {
         let first = library.first();
         let adding = first.manager().add_device().await.unwrap();
         let mut watch = first.manager().subscribe_added_device(adding.watch);
-        assert_eq!(
-            watch.next().await.expect("the watch stays open").unwrap(),
-            None
-        );
+        assert_eq!(watch.next().await.expect("the watch stays open").unwrap(), None);
         let phone = library.restore(&adding.share.code, "Phone").await;
         let added = tokio::time::timeout(Duration::from_secs(20), async {
             loop {
@@ -48,10 +45,7 @@ fn the_watch_syncs_often_while_it_is_open() {
         let first = library.first();
         let adding = first.manager().add_device().await.unwrap();
         let mut watch = first.manager().subscribe_added_device(adding.watch);
-        assert_eq!(
-            watch.next().await.expect("the watch stays open").unwrap(),
-            None
-        );
+        assert_eq!(watch.next().await.expect("the watch stays open").unwrap(), None);
         let phone = library.restore(&adding.share.code, "Phone").await;
         let added = tokio::time::timeout(Duration::from_secs(15), async {
             loop {
@@ -103,12 +97,7 @@ fn the_watch_reports_a_device_that_joined_before_its_first_look() {
                 .unwrap()
                 .members
                 .iter()
-                .any(|member| {
-                    member
-                        .active_devices
-                        .iter()
-                        .any(|d| d.id == phone_device.id)
-                })
+                .any(|member| member.active_devices.iter().any(|d| d.id == phone_device.id))
             {
                 first.manager().trigger_sync();
                 tokio::time::sleep(Duration::from_millis(100)).await;

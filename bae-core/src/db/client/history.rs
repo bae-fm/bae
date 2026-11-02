@@ -12,13 +12,12 @@ impl Database {
         started_at: DateTime<Utc>,
     ) -> Result<HistoryPlay, DbError> {
         let audience = match self.own_person().await? {
-            Some(crate::people::Person {
-                profile: Some(profile),
-                membership,
-            }) => HistoryAudience::Person {
-                person: membership.id,
-                audience: profile.history_sharing.audience(profile.private_circle),
-            },
+            Some(crate::people::Person { profile: Some(profile), membership }) => {
+                HistoryAudience::Person {
+                    person: membership.id,
+                    audience: profile.history_sharing.audience(profile.private_circle),
+                }
+            }
             Some(_) | None => HistoryAudience::DevicePrivate,
         };
         Ok(HistoryPlay {
@@ -44,11 +43,7 @@ impl Database {
         let member = own.as_ref().map(|person| person.membership.id);
         match entry.audience {
             HistoryAudience::DevicePrivate => {
-                if let Some(crate::people::Person {
-                    profile: Some(profile),
-                    membership,
-                }) = own
-                {
+                if let Some(crate::people::Person { profile: Some(profile), membership }) = own {
                     entry.audience = HistoryAudience::Person {
                         person: membership.id,
                         audience: coven::Audience::Circle(profile.private_circle),
@@ -63,9 +58,7 @@ impl Database {
             HistoryAudience::Person { .. } => {}
         }
         let played_ms = i64::try_from(entry.played.as_millis()).map_err(|error| {
-            DbError::Message(format!(
-                "played duration exceeds SQLite's integer range: {error}"
-            ))
+            DbError::Message(format!("played duration exceeds SQLite's integer range: {error}"))
         })?;
         self.call(move |sql| {
             match entry.audience {

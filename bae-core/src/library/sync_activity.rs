@@ -60,12 +60,8 @@ impl UploadsInFlight {
     /// The list's line: how many files are being sent, then how many wait
     /// behind them, a zero dropped.
     pub fn summary_parts(&self) -> Vec<CountLabel> {
-        ReleaseQueueProgress {
-            queued: self.waiting,
-            active: self.sending,
-            failed: 0,
-        }
-        .summary_parts("core.queue.uploading")
+        ReleaseQueueProgress { queued: self.waiting, active: self.sending, failed: 0 }
+            .summary_parts("core.queue.uploading")
     }
 }
 
@@ -73,12 +69,8 @@ impl DownloadsInFlight {
     /// The list's line: how many releases are downloading, then how many
     /// wait behind them, a zero dropped.
     pub fn summary_parts(&self) -> Vec<CountLabel> {
-        ReleaseQueueProgress {
-            queued: self.queued,
-            active: self.active,
-            failed: 0,
-        }
-        .summary_parts("core.queue.downloading")
+        ReleaseQueueProgress { queued: self.queued, active: self.active, failed: 0 }
+            .summary_parts("core.queue.downloading")
     }
 }
 
@@ -92,20 +84,12 @@ impl SyncActivity {
     ) -> Self {
         let uploads = (uploads.sending > 0).then_some(UploadsInFlight {
             sending: uploads.sending,
-            waiting: if uploads.paused {
-                0
-            } else {
-                uploads.queued - uploads.sending
-            },
+            waiting: if uploads.paused { 0 } else { uploads.queued - uploads.sending },
         });
         let download_total = &downloads.total;
         let downloads = (download_total.active > 0).then_some(DownloadsInFlight {
             active: download_total.active,
-            queued: if downloads.paused {
-                0
-            } else {
-                download_total.queued
-            },
+            queued: if downloads.paused { 0 } else { download_total.queued },
         });
         Self {
             failure: status.shown_failure(),

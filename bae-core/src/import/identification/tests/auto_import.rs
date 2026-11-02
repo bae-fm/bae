@@ -16,11 +16,7 @@ async fn await_import_ending(
     tokio::time::timeout(Duration::from_secs(30), async {
         loop {
             let event = events.recv().await.expect("the import event bus stays open");
-            let ImportEvent::ImportProgress {
-                candidate_key,
-                progress,
-            } = event
-            else {
+            let ImportEvent::ImportProgress { candidate_key, progress } = event else {
                 continue;
             };
             if candidate_key != key.clone() {
@@ -66,11 +62,7 @@ async fn assert_no_import(
         .await
         .expect("the import worker stops");
     for event in drain_events(events) {
-        if let ImportEvent::ImportProgress {
-            candidate_key,
-            progress,
-        } = event
-        {
+        if let ImportEvent::ImportProgress { candidate_key, progress } = event {
             assert_ne!(
                 &candidate_key, key,
                 "nothing imports {key} after {after}, got {progress:?}"
@@ -86,8 +78,7 @@ impl Fixture {
         let probed = self.probed_total_ms(dir);
         let mut lengths = vec![0; tracks];
         lengths[0] = probed;
-        self.provider
-            .route("/discid/", 200, discid_json(release_id, group_id, &lengths));
+        self.provider.route("/discid/", 200, discid_json(release_id, group_id, &lengths));
         self.provider.route(
             &format!("/release/{release_id}?"),
             200,
@@ -101,19 +92,12 @@ impl Fixture {
         self.route_disc_id_match(dir, release_id, group_id, 2);
         self.scan(1).await;
         self.drain_automatic().await;
-        assert_eq!(
-            self.judgement_for(dir).await,
-            (true, None)
-        );
+        assert_eq!(self.judgement_for(dir).await, (true, None));
     }
 
     /// The failed import `dir`'s pane shows, if any.
     async fn import_failure(&self, dir: &Path) -> Option<crate::import::ImportFailure> {
-        self.manager
-            .load_import_candidate_pane_rows(&self.content_hash(dir))
-            .await
-            .unwrap()
-            .failure
+        self.manager.load_import_candidate_pane_rows(&self.content_hash(dir)).await.unwrap().failure
     }
 }
 
@@ -128,10 +112,7 @@ async fn an_automatic_run_that_settles_auto_importable_imports_its_candidate_onc
     let mut events = fixture.import.every_event();
 
     fixture.drain_automatic().await;
-    assert_eq!(
-        fixture.judgement_for(&dir).await,
-        (true, None)
-    );
+    assert_eq!(fixture.judgement_for(&dir).await, (true, None));
 
     let (imports, failure) = await_import_ending(&mut events, &key).await;
     assert_eq!(imports.len(), 1, "one import of the candidate: {imports:?}");
@@ -154,10 +135,7 @@ async fn an_automatic_run_that_settles_auto_importable_with_the_setting_off_impo
 
     fixture.drain_automatic().await;
 
-    assert_eq!(
-        fixture.judgement_for(&dir).await,
-        (true, None)
-    );
+    assert_eq!(fixture.judgement_for(&dir).await, (true, None));
     assert_no_import(&fixture, &mut events, &key, "the run settled with the setting off").await;
 }
 
@@ -166,11 +144,9 @@ async fn an_automatic_run_that_settles_auto_importable_with_the_setting_off_impo
 async fn an_automatic_run_that_settles_needing_you_imports_nothing() {
     let fixture = Fixture::new("auto-import-needs-you").await;
     fixture.manager.set_import_when_identified(true).await.unwrap();
-    fixture
-        .import
-        .register_artwork_analyzer(Arc::new(BarcodeAnalyzer {
-            barcode: PAIRED_BARCODE.to_string(),
-        }));
+    fixture.import.register_artwork_analyzer(Arc::new(BarcodeAnalyzer {
+        barcode: PAIRED_BARCODE.to_string(),
+    }));
     let dir = fixture.barcode_candidate("Album");
     let key = crate::import::CandidateKey::folder(&dir);
     fixture.provider.route(
@@ -186,10 +162,7 @@ async fn an_automatic_run_that_settles_needing_you_imports_nothing() {
 
     fixture.drain_automatic().await;
 
-    assert_eq!(
-        fixture.judgement_for(&dir).await,
-        (false, None)
-    );
+    assert_eq!(fixture.judgement_for(&dir).await, (false, None));
     assert_no_import(&fixture, &mut events, &key, "the run settled needing a person").await;
 }
 
@@ -215,14 +188,12 @@ async fn a_release_the_folder_rules_out_is_neither_applied_nor_imported() {
 
     assert_eq!(
         fixture.judgement_for(&dir).await,
-        (false, Some(FolderCheck::MediumDisagrees {
-            folder: crate::identify::MediumConflict::CdRip
-        }))
+        (
+            false,
+            Some(FolderCheck::MediumDisagrees { folder: crate::identify::MediumConflict::CdRip })
+        )
     );
-    let row = fixture
-        .stored_for(&dir)
-        .await
-        .expect("the candidate stores a row");
+    let row = fixture.stored_for(&dir).await.expect("the candidate stores a row");
     assert_ne!(
         row.metadata_author,
         crate::import::MetadataAuthor::Identification,
@@ -285,18 +256,13 @@ async fn a_run_a_person_asked_for_with_the_setting_off_imports_nothing() {
     let mut events = fixture.import.every_event();
 
     fixture.start_explicit_lookup(&dir);
-    tokio::time::timeout(
-        Duration::from_secs(30),
-        fixture.identification().drained_for_test(),
-    )
-    .await
-    .expect("the person's run ends");
+    tokio::time::timeout(Duration::from_secs(30), fixture.identification().drained_for_test())
+        .await
+        .expect("the person's run ends");
 
-    assert_eq!(
-        fixture.judgement_for(&dir).await,
-        (true, None)
-    );
-    assert_no_import(&fixture, &mut events, &key, "the person's run settled with the setting off").await;
+    assert_eq!(fixture.judgement_for(&dir).await, (true, None));
+    assert_no_import(&fixture, &mut events, &key, "the person's run settled with the setting off")
+        .await;
 }
 
 /// A release a person picks from their typed search is their choice, and
@@ -309,9 +275,7 @@ async fn a_release_picked_from_a_typed_search_is_not_imported() {
     let dir = fixture.disc_id_candidate("Album");
     let key = crate::import::CandidateKey::folder(&dir);
     let probed = fixture.probed_total_ms(&dir);
-    fixture
-        .provider
-        .route("/release?", 200, search_json("mb-typed", "rg-typed"));
+    fixture.provider.route("/release?", 200, search_json("mb-typed", "rg-typed"));
     fixture.provider.route(
         "/release/mb-typed?",
         200,
@@ -337,7 +301,9 @@ async fn a_release_picked_from_a_typed_search_is_not_imported() {
         loop {
             let landed = fixture
                 .import
-                .candidate_runtime(&key).await.unwrap()
+                .candidate_runtime(&key)
+                .await
+                .unwrap()
                 .and_then(|runtime| runtime.search)
                 .is_some_and(|search| {
                     matches!(
@@ -355,23 +321,25 @@ async fn a_release_picked_from_a_typed_search_is_not_imported() {
     .expect("the typed search lands its MusicBrainz results");
     fixture
         .import
-        .select_candidate_release(key.clone(), crate::import::PressingLink {
-            record: crate::import::MetadataRef::new(
-                bae_catalogs::catalog::Catalog::MusicBrainz,
-                "mb-typed".to_string(),
-            ),
-            partners: vec![],
-        }, crate::import::CatalogApplySteps::unread())
+        .select_candidate_release(
+            key.clone(),
+            crate::import::PressingLink {
+                record: crate::import::MetadataRef::new(
+                    bae_catalogs::catalog::Catalog::MusicBrainz,
+                    "mb-typed".to_string(),
+                ),
+                partners: vec![],
+            },
+            crate::import::CatalogApplySteps::unread(),
+        )
         .await
         .expect("the person's pick applies");
-    tokio::time::timeout(
-        Duration::from_secs(30),
-        fixture.identification().drained_for_test(),
-    )
-    .await
-    .expect("the queue has nothing left to do");
+    tokio::time::timeout(Duration::from_secs(30), fixture.identification().drained_for_test())
+        .await
+        .expect("the queue has nothing left to do");
 
-    assert_no_import(&fixture, &mut events, &key, "the person picked from their typed search").await;
+    assert_no_import(&fixture, &mut events, &key, "the person picked from their typed search")
+        .await;
 }
 
 /// An automatic start the import path refuses is the candidate's failed
@@ -421,14 +389,13 @@ async fn an_automatic_import_that_cannot_start_is_recorded_as_its_failed_import(
         .import_failure(&dir)
         .await
         .expect("the refused start is the candidate's failed import");
-    assert_eq!(
-        failure.reason,
-        crate::import::ImportFailureReason::error(error.to_string())
-    );
+    assert_eq!(failure.reason, crate::import::ImportFailureReason::error(error.to_string()));
     assert!(
         fixture
             .import
-            .candidate_runtime(&key).await.unwrap()
+            .candidate_runtime(&key)
+            .await
+            .unwrap()
             .is_none_or(|runtime| runtime.import.is_none()),
         "nothing claims the candidate"
     );
@@ -450,9 +417,6 @@ async fn an_automatic_import_behind_another_import_records_no_failure() {
         .await
         .expect_err("a candidate an import owns is not imported again");
 
-    assert!(
-        matches!(error, crate::import::ImportError::CandidateImportInProgress),
-        "{error}"
-    );
+    assert!(matches!(error, crate::import::ImportError::CandidateImportInProgress), "{error}");
     assert_eq!(fixture.import_failure(&dir).await, None);
 }

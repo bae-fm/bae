@@ -84,9 +84,8 @@ impl AppServices {
     ) -> Result<(), crate::library::LibraryError> {
         let choices = {
             let mut held = self.release_lookup_choices();
-            let choices = held
-                .entry(crate::import::CandidateKey::reidentify(&release_id))
-                .or_default();
+            let choices =
+                held.entry(crate::import::CandidateKey::reidentify(&release_id)).or_default();
             *choices = choices.clone().edited(edit);
             choices.clone()
         };
@@ -110,10 +109,7 @@ impl AppServices {
         '_,
         std::collections::HashMap<crate::import::CandidateKey, crate::import::LookupChoices>,
     > {
-        self.inner
-            .release_lookup_choices
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
+        self.inner.release_lookup_choices.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
     }
 
     async fn start_release_identification(
@@ -206,10 +202,7 @@ impl AppServices {
         candidate_key: &crate::import::CandidateKey,
         import_id: &str,
     ) {
-        self.inner
-            .import
-            .claim_candidate_for_import_for_test(candidate_key, import_id)
-            .await;
+        self.inner.import.claim_candidate_for_import_for_test(candidate_key, import_id).await;
     }
 
     /// Move an import's claim the way the worker's steps do, for a test with
@@ -221,10 +214,7 @@ impl AppServices {
         import_id: &str,
         step: crate::import::ImportStep,
     ) {
-        self.inner
-            .import
-            .move_candidate_import_for_test(candidate_key, import_id, step)
-            .await;
+        self.inner.import.move_candidate_import_for_test(candidate_key, import_id, step).await;
     }
 
     /// End an import's claim on a candidate the way the import's own ending
@@ -235,10 +225,7 @@ impl AppServices {
         candidate_key: &crate::import::CandidateKey,
         import_id: &str,
     ) {
-        self.inner
-            .import
-            .end_candidate_import_for_test(candidate_key, import_id)
-            .await;
+        self.inner.import.end_candidate_import_for_test(candidate_key, import_id).await;
     }
 
     /// What is in flight for `key`: the first value at once, then a value
@@ -322,10 +309,7 @@ impl AppServices {
         view: ImportListView,
         windows: crate::library::LibraryPageWindows,
     ) -> Result<crate::import::ImportListProjection, crate::library::LibraryError> {
-        self.inner
-            .manager
-            .load_import_list_once(view, windows)
-            .await
+        self.inner.manager.load_import_list_once(view, windows).await
     }
 
     /// One candidate as the pane reads it, once, with its standing.

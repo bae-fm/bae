@@ -24,12 +24,7 @@ impl TrackDecode {
         channels: u32,
         diagnostics: crate::diagnostics::Diagnostics,
     ) -> Self {
-        Self {
-            decode,
-            sample_rate,
-            channels,
-            diagnostics,
-        }
+        Self { decode, sample_rate, channels, diagnostics }
     }
 
     /// Decode the track into `sink`, announcing its stored format first: why
@@ -41,14 +36,14 @@ impl TrackDecode {
         sink: &mut dyn bae_audio::DecodedSink,
         cancel: Arc<std::sync::atomic::AtomicBool>,
     ) -> Result<(), String> {
-        self.decode
-            .run_to_sink(self.sample_rate, self.channels, sink, cancel)
-            .map_err(|error| match error {
+        self.decode.run_to_sink(self.sample_rate, self.channels, sink, cancel).map_err(|error| {
+            match error {
                 bae_audio::DecodeError::ReadPanicked(failed) => {
                     self.diagnostics.bug(failed).to_string()
                 }
                 error => error.to_string(),
-            })
+            }
+        })
     }
 
     /// Block until every file the decode reads has delivered its first bytes,
@@ -151,9 +146,7 @@ pub struct AppServices {
 
 impl std::fmt::Debug for AppServices {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("AppServices")
-            .field("manager", &self.inner.manager)
-            .finish_non_exhaustive()
+        f.debug_struct("AppServices").field("manager", &self.inner.manager).finish_non_exhaustive()
     }
 }
 
@@ -226,9 +219,7 @@ impl AppServices {
         stop: crate::library::CancellationToken,
         task: impl std::future::Future<Output = ()> + Send + 'static,
     ) -> Result<(), crate::library::LibraryError> {
-        self.inner
-            .manager
-            .spawn_stoppable_task(task_name, stop, task, |_| {})
+        self.inner.manager.spawn_stoppable_task(task_name, stop, task, |_| {})
     }
 
     /// Stop playback, then identification and import, telling `steps` as
@@ -258,10 +249,7 @@ impl AppServices {
         Ok(())
     }
 
-    #[cfg(all(
-        feature = "test-utils",
-        not(any(target_os = "ios", target_os = "android"))
-    ))]
+    #[cfg(all(feature = "test-utils", not(any(target_os = "ios", target_os = "android"))))]
     pub async fn for_test(manager: LibraryManager) -> Result<Self, crate::import::ImportError> {
         let playback = manager
             .start_playback_service_with_audio_device(
@@ -271,9 +259,7 @@ impl AppServices {
                 Box::new(crate::playback::audio_output::FailingAudioDevice),
             )
             .await?;
-        let import = manager
-            .start_import_service(tokio::runtime::Handle::current())
-            .await?;
+        let import = manager.start_import_service(tokio::runtime::Handle::current()).await?;
         Ok(Self::new(manager, playback, import))
     }
 
@@ -439,10 +425,7 @@ impl AppServices {
         source: bae_catalogs::catalog::Catalog,
         enabled: bool,
     ) -> Result<(), MetadataSourceSwitchError> {
-        self.inner
-            .manager
-            .set_metadata_source_enabled(source, enabled)
-            .await?;
+        self.inner.manager.set_metadata_source_enabled(source, enabled).await?;
         #[cfg(not(any(target_os = "ios", target_os = "android")))]
         {
             if !enabled {

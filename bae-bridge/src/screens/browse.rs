@@ -59,20 +59,14 @@ macro_rules! browse_subscription {
                 &self,
                 windows: Vec<crate::types::BridgeLibraryPageWindow>,
             ) -> Result<(), BridgeError> {
-                self.inner
-                    .set_windows(core_windows(windows))
-                    .map_err(browse_error)
+                self.inner.set_windows(core_windows(windows)).map_err(browse_error)
             }
 
             pub async fn next(self: Arc<Self>) -> Result<$snapshot, BridgeError> {
                 let runtime = self.runtime.clone();
                 runtime
                     .run(concat!(stringify!($object), ".next"), move || async move {
-                        self.inner
-                            .next()
-                            .await
-                            .map($snapshot::from_core)
-                            .map_err(browse_error)
+                        self.inner.next().await.map($snapshot::from_core).map_err(browse_error)
                     })
                     .await
             }
@@ -80,13 +74,10 @@ macro_rules! browse_subscription {
             pub async fn cancel(self: Arc<Self>) -> Result<(), BridgeError> {
                 let runtime = self.runtime.clone();
                 runtime
-                    .run(
-                        concat!(stringify!($object), ".cancel"),
-                        move || async move {
-                            self.inner.cancel().await;
-                            Ok(())
-                        },
-                    )
+                    .run(concat!(stringify!($object), ".cancel"), move || async move {
+                        self.inner.cancel().await;
+                        Ok(())
+                    })
                     .await
             }
         }
@@ -99,11 +90,7 @@ macro_rules! browse_subscription {
                         .into_iter()
                         .map(|window| $window {
                             window: crate::types::BridgeLibraryPageWindow::from_core(window.window),
-                            rows: window
-                                .rows
-                                .into_iter()
-                                .map(<$bridge_row>::from_core)
-                                .collect(),
+                            rows: window.rows.into_iter().map(<$bridge_row>::from_core).collect(),
                         })
                         .collect(),
                     total_count: snapshot.total_count,
@@ -166,25 +153,16 @@ fn browse_error(error: bae_core::library::LibraryBrowseSubscriptionError) -> Bri
 fn core_windows(
     windows: Vec<crate::types::BridgeLibraryPageWindow>,
 ) -> BTreeSet<bae_core::library::LibraryPageWindow> {
-    windows
-        .into_iter()
-        .map(crate::types::BridgeLibraryPageWindow::into_core)
-        .collect()
+    windows.into_iter().map(crate::types::BridgeLibraryPageWindow::into_core).collect()
 }
 
 impl crate::types::BridgeLibraryPageWindow {
     pub(crate) fn from_core(window: bae_core::library::LibraryPageWindow) -> Self {
-        Self {
-            offset: window.offset,
-            limit: window.limit,
-        }
+        Self { offset: window.offset, limit: window.limit }
     }
 
     pub(crate) fn into_core(self) -> bae_core::library::LibraryPageWindow {
-        bae_core::library::LibraryPageWindow {
-            offset: self.offset,
-            limit: self.limit,
-        }
+        bae_core::library::LibraryPageWindow { offset: self.offset, limit: self.limit }
     }
 }
 
@@ -236,9 +214,7 @@ impl DownloadBrowseSubscription {
         &self,
         windows: Vec<crate::types::BridgeLibraryPageWindow>,
     ) -> Result<(), BridgeError> {
-        self.inner
-            .set_windows(core_windows(windows))
-            .map_err(browse_error)
+        self.inner.set_windows(core_windows(windows)).map_err(browse_error)
     }
 
     pub async fn next(self: Arc<Self>) -> Result<BridgeDownloadBrowseSnapshot, BridgeError> {

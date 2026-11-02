@@ -63,19 +63,13 @@ fn moved_original_on(
              WHERE u.path = ?1",
             [coven::path_bytes(path)],
             |row| {
-                Ok((
-                    row.get::<_, String>(0)?,
-                    row.get::<_, String>(1)?,
-                    row.get::<_, String>(2)?,
-                ))
+                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?, row.get::<_, String>(2)?))
             },
         )
         .optional()?;
-    Ok(named.map(
-        |(release_id, file_name, album_title)| FileRow::ReleaseFile {
-            release_id,
-            file_name,
-            album_title,
-        },
-    ))
+    Ok(named.map(|(release_id, file_name, album_title)| FileRow::ReleaseFile {
+        release_id,
+        file_name,
+        album_title,
+    }))
 }

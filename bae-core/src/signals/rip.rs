@@ -74,9 +74,7 @@ impl StoreMarker {
     }
 
     pub fn from_key(key: &str) -> Option<Self> {
-        [Self::ITunesPurchase, Self::Bandcamp]
-            .into_iter()
-            .find(|marker| marker.key() == key)
+        [Self::ITunesPurchase, Self::Bandcamp].into_iter().find(|marker| marker.key() == key)
     }
 }
 
@@ -176,10 +174,7 @@ mod tests {
     /// not.
     #[test]
     fn lossless_audio_off_a_cds_rate_rules_it_out() {
-        assert_eq!(
-            rate_ruling_out_cd(&[format(96_000, Some(24), 1)]),
-            Some(96_000)
-        );
+        assert_eq!(rate_ruling_out_cd(&[format(96_000, Some(24), 1)]), Some(96_000));
         assert_eq!(
             rate_ruling_out_cd(&[format(48_000, Some(24), 2), format(96_000, Some(24), 2)]),
             Some(48_000)
@@ -202,11 +197,7 @@ mod tests {
 
     #[test]
     fn a_proof_reads_back_from_its_key() {
-        for proof in [
-            CdProof::RipLog,
-            CdProof::AccurateRipReport,
-            CdProof::RipperSheet,
-        ] {
+        for proof in [CdProof::RipLog, CdProof::AccurateRipReport, CdProof::RipperSheet] {
             assert_eq!(CdProof::from_key(proof.key()), Some(proof));
         }
     }

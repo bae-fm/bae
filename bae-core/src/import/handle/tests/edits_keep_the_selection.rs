@@ -36,18 +36,9 @@ fn candidate_rows(snapshot: &ImportListSnapshot) -> Vec<(String, &crate::import:
 /// pressing is.
 fn field_edits() -> Vec<DraftFieldEdit> {
     vec![
-        DraftFieldEdit::Text {
-            field: CandidateEditField::PressingYear,
-            value: "1997".to_string(),
-        },
-        DraftFieldEdit::Text {
-            field: CandidateEditField::PressingYear,
-            value: "1998".to_string(),
-        },
-        DraftFieldEdit::Text {
-            field: CandidateEditField::AlbumYear,
-            value: "1995".to_string(),
-        },
+        DraftFieldEdit::Text { field: CandidateEditField::PressingYear, value: "1997".to_string() },
+        DraftFieldEdit::Text { field: CandidateEditField::PressingYear, value: "1998".to_string() },
+        DraftFieldEdit::Text { field: CandidateEditField::AlbumYear, value: "1995".to_string() },
         DraftFieldEdit::Labels(vec![RawLabelEdit {
             name: "Label Name".to_string(),
             catalog_number: "CAT-2".to_string(),
@@ -71,29 +62,19 @@ async fn edits_under(view: ImportListView) {
     let opened = delivered(&list).await;
     let stable_key = crate::import::list::candidate_stable_key(&key);
     assert_eq!(
-        candidate_rows(&opened)
-            .into_iter()
-            .map(|(stable, _)| stable)
-            .collect::<Vec<_>>(),
+        candidate_rows(&opened).into_iter().map(|(stable, _)| stable).collect::<Vec<_>>(),
         vec![stable_key.clone()],
         "the view shows the identified row"
     );
-    let selected_at = list
-        .change_selection(SelectionChange::Replace {
-            keys: vec![key.clone()],
-        })
-        .await
-        .unwrap();
+    let selected_at =
+        list.change_selection(SelectionChange::Replace { keys: vec![key.clone()] }).await.unwrap();
     let selected = loop {
         let snapshot = delivered(&list).await;
         if snapshot.selection_revision >= selected_at {
             break snapshot;
         }
     };
-    assert_eq!(
-        selected.selection.single,
-        Some(SingleSelection::Candidate { key: key.clone() })
-    );
+    assert_eq!(selected.selection.single, Some(SingleSelection::Candidate { key: key.clone() }));
 
     for edit in field_edits() {
         handle.set_candidate_edit_field(&key, edit).await.unwrap();
@@ -140,18 +121,12 @@ async fn edits_under(view: ImportListView) {
         "the row keeps its key"
     );
     assert!(rows[0].1.selected, "the row stays selected");
-    assert_eq!(
-        edited.selection.single,
-        Some(SingleSelection::Candidate { key: key.clone() })
-    );
+    assert_eq!(edited.selection.single, Some(SingleSelection::Candidate { key: key.clone() }));
     assert_eq!(
         edited.selection_revision, selected.selection_revision,
         "no edit moved the selection"
     );
-    assert_eq!(
-        edited.view_revision, selected.view_revision,
-        "no edit moved the view"
-    );
+    assert_eq!(edited.view_revision, selected.view_revision, "no edit moved the view");
     let draft = super::pane(&handle, &key).await.draft().unwrap().metadata_draft.clone();
     assert_eq!(draft.pressing.year, "1998");
     shut_down(handle).await;
@@ -179,4 +154,3 @@ async fn edits_keep_the_row_selected_under_a_search_for_its_artist() {
     })
     .await;
 }
-

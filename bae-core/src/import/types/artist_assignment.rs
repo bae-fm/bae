@@ -15,13 +15,8 @@ use serde::{Deserialize, Serialize};
 /// it.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ArtistAssignment {
-    Picked {
-        artist: ExistingArtist,
-        credit_name: Option<crate::credits::CreditName>,
-    },
-    Credit {
-        credit: ArtistCredit,
-    },
+    Picked { artist: ExistingArtist, credit_name: Option<crate::credits::CreditName> },
+    Credit { credit: ArtistCredit },
 }
 
 /// One place in an album's or track's credit list: who is credited there, and
@@ -91,21 +86,14 @@ impl SourceCredit {
     /// The draft's credit for this place: the source's credit, left to be
     /// resolved when the draft is imported.
     pub fn credited(self) -> Credited {
-        Credited {
-            artist: ArtistAssignment::Credit {
-                credit: self.credit,
-            },
-            join: self.join,
-        }
+        Credited { artist: ArtistAssignment::Credit { credit: self.credit }, join: self.join }
     }
 
     /// The line `credits` print, as the picker's row shows a release's
     /// artists.
     pub fn line(credits: &[Self]) -> String {
         crate::credits::credit_line(
-            credits
-                .iter()
-                .map(|credit| (credit.credit.printed(), credit.join.as_deref())),
+            credits.iter().map(|credit| (credit.credit.printed(), credit.join.as_deref())),
         )
     }
 }
@@ -113,9 +101,7 @@ impl SourceCredit {
 /// The line `credits` print (see [`crate::credits::credit_line`]).
 pub fn credited_line(credits: &[Credited]) -> String {
     crate::credits::credit_line(
-        credits
-            .iter()
-            .map(|credited| (credited.artist.printed(), credited.join.as_deref())),
+        credits.iter().map(|credited| (credited.artist.printed(), credited.join.as_deref())),
     )
 }
 
@@ -243,31 +229,21 @@ pub enum ArtistsStanding {
 impl ArtistAssignment {
     /// A credit known only by name: what a person types.
     pub fn named(name: impl Into<String>) -> Self {
-        Self::Credit {
-            credit: ArtistCredit::named(name),
-        }
+        Self::Credit { credit: ArtistCredit::named(name) }
     }
 
     /// A library artist, printed by its own name.
     pub fn picked(artist: ExistingArtist) -> Self {
-        Self::Picked {
-            artist,
-            credit_name: None,
-        }
+        Self::Picked { artist, credit_name: None }
     }
 
     /// What this credit prints: a picked artist's chosen credit name, else
     /// its name; a credit's printed name, else its name.
     pub fn printed(&self) -> &str {
         match self {
-            Self::Picked {
-                artist,
-                credit_name,
-            } => credit_name
+            Self::Picked { artist, credit_name } => credit_name
                 .as_ref()
-                .map_or(artist.name.as_str(), |credit_name| {
-                    credit_name.name.as_str()
-                }),
+                .map_or(artist.name.as_str(), |credit_name| credit_name.name.as_str()),
             Self::Credit { credit } => credit.printed(),
         }
     }
@@ -291,16 +267,12 @@ impl ArtistAssignment {
             Self::Picked { .. } => return Some(ArtistStanding::Library),
             Self::Credit { credit } => credit,
         };
-        let resolved = resolutions
-            .iter()
-            .find(|resolved| resolved.credit == *credit)?;
+        let resolved = resolutions.iter().find(|resolved| resolved.credit == *credit)?;
         Some(match &resolved.resolution {
             CreditResolution::Library { .. } => ArtistStanding::Library,
             CreditResolution::New => ArtistStanding::New,
             CreditResolution::Ambiguous { artists } | CreditResolution::Conflicting { artists } => {
-                ArtistStanding::Choose {
-                    choices: artists.clone(),
-                }
+                ArtistStanding::Choose { choices: artists.clone() }
             }
         })
     }
@@ -328,13 +300,7 @@ impl ArtistAssignment {
 
     pub(super) fn normalized(self) -> Self {
         match self {
-            Self::Picked {
-                artist,
-                credit_name,
-            } => Self::Picked {
-                artist,
-                credit_name,
-            },
+            Self::Picked { artist, credit_name } => Self::Picked { artist, credit_name },
             Self::Credit { credit } => {
                 let name = credit.name.trim().to_string();
                 Self::Credit {

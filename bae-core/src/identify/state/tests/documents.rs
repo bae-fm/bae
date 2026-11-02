@@ -1,18 +1,12 @@
 /// A Discogs search result on the master `m-1` stating only its first label.
 fn first_label_only(release_id: &str) -> MetadataResult {
     let mut result = discogs_pair(release_id, Some("m-1"));
-    result.labels = vec![bae_types::pressing::ReleaseLabel::of(
-        Some("Label One"),
-        Some("AB-100"),
-    )];
+    result.labels = vec![bae_types::pressing::ReleaseLabel::of(Some("Label One"), Some("AB-100"))];
     result
 }
 
 /// `row` in `packaging`, so it shows other than a look-alike beside it.
-fn packed(
-    mut result: MetadataResult,
-    packaging: bae_types::pressing::Packaging,
-) -> MetadataResult {
+fn packed(mut result: MetadataResult, packaging: bae_types::pressing::Packaging) -> MetadataResult {
     result.packaging = Some(packaging);
     result
 }
@@ -24,13 +18,7 @@ fn reading_documents(
 ) -> (IdentifyState, Vec<crate::import::MetadataRef>) {
     let (state, _) = update(
         started_with(vec![DG]),
-        signals(
-            DiscIdSignal::Absent,
-            BarcodeSignal::Settled {
-                codes: artwork_codes(&["A"]),
-            },
-            &[],
-        ),
+        signals(DiscIdSignal::Absent, BarcodeSignal::Settled { codes: artwork_codes(&["A"]) }, &[]),
     );
     let (state, effects) = super::step(state, barcode_matched(DG, "A", results));
     let [Effect::ReadReleases { releases, .. }] = effects.as_slice() else {
@@ -54,7 +42,10 @@ fn document(labels: &[(&str, &str)], tracks: u32) -> crate::identify::documents:
         links: Vec::new(),
         album_links: crate::import::album_links::AlbumLinks::NotAsked,
         stored: std::sync::Arc::new(crate::import::source_release::SourceRelease::for_test(
-            crate::import::MetadataRef::new(bae_catalogs::catalog::Catalog::MusicBrainz, "release-1"),
+            crate::import::MetadataRef::new(
+                bae_catalogs::catalog::Catalog::MusicBrainz,
+                "release-1",
+            ),
         )),
     }
 }
@@ -63,31 +54,24 @@ fn read(
     release: &crate::import::MetadataRef,
     document: Result<crate::identify::documents::ReleaseDocument, LookupFailure>,
 ) -> crate::identify::documents::ReleaseReading {
-    crate::identify::documents::ReleaseReading {
-        release: release.clone(),
-        document,
-    }
+    crate::identify::documents::ReleaseReading { release: release.clone(), document }
 }
 
 /// Two tied search-result rows are both read in full before the run settles,
 /// and each then states every label its document lists.
 #[test]
 fn every_offered_row_is_read_in_full_before_the_run_settles() {
-    let (state, releases) =
-        reading_documents(vec![
-            first_label_only("dg-1"),
-            packed(first_label_only("dg-2"), bae_types::pressing::Packaging::Digipak),
-        ]);
+    let (state, releases) = reading_documents(vec![
+        first_label_only("dg-1"),
+        packed(first_label_only("dg-2"), bae_types::pressing::Packaging::Digipak),
+    ]);
     assert_eq!(releases.len(), 2, "both tied rows are read");
     assert!(matches!(state, IdentifyState::Triangulating { .. }));
     let full = document(&[("Label One", "AB-100"), ("Label One", "CD-200")], 5);
     let (state, _) = super::step(
         state,
         IdentifyEvent::ReleasesRead {
-            read: releases
-                .iter()
-                .map(|release| read(release, Ok(full.clone())))
-                .collect(),
+            read: releases.iter().map(|release| read(release, Ok(full.clone()))).collect(),
         },
     );
     let IdentifyState::Found { findings, .. } = state else {
@@ -105,11 +89,10 @@ fn every_offered_row_is_read_in_full_before_the_run_settles() {
 /// under "N more releases" either.
 #[test]
 fn the_row_whose_tracklist_fits_the_folder_ranks_first() {
-    let (state, releases) =
-        reading_documents(vec![
-            first_label_only("dg-long"),
-            packed(first_label_only("dg-fits"), bae_types::pressing::Packaging::Digipak),
-        ]);
+    let (state, releases) = reading_documents(vec![
+        first_label_only("dg-long"),
+        packed(first_label_only("dg-fits"), bae_types::pressing::Packaging::Digipak),
+    ]);
     let (state, _) = super::step(
         state,
         IdentifyEvent::ReleasesRead {
@@ -126,10 +109,7 @@ fn the_row_whose_tracklist_fits_the_folder_ranks_first() {
         panic!("expected Found, got {state:?}");
     };
     let ids = |results: &[MetadataResult]| {
-        results
-            .iter()
-            .map(|result| result.release_id.clone())
-            .collect::<Vec<_>>()
+        results.iter().map(|result| result.release_id.clone()).collect::<Vec<_>>()
     };
     assert_eq!(ids(&findings.matches), vec!["dg-fits"]);
     assert!(ids(&findings.narrowed_out.matches).is_empty());
@@ -140,11 +120,10 @@ fn the_row_whose_tracklist_fits_the_folder_ranks_first() {
 /// its own.
 #[test]
 fn a_row_whose_document_cannot_be_read_keeps_its_search_facts() {
-    let (state, releases) =
-        reading_documents(vec![
-            first_label_only("dg-read"),
-            packed(first_label_only("dg-unread"), bae_types::pressing::Packaging::Digipak),
-        ]);
+    let (state, releases) = reading_documents(vec![
+        first_label_only("dg-read"),
+        packed(first_label_only("dg-unread"), bae_types::pressing::Packaging::Digipak),
+    ]);
     let full = document(&[("Label One", "AB-100"), ("Label One", "CD-200")], 5);
     let (state, _) = super::step(
         state,
@@ -223,11 +202,8 @@ fn offered_ids(state: &IdentifyState) -> Vec<String> {
     let IdentifyState::Found { findings, .. } = state else {
         panic!("expected Found, got {state:?}");
     };
-    let mut ids: Vec<String> = findings
-        .matches
-        .iter()
-        .map(|result| result.release_id.clone())
-        .collect();
+    let mut ids: Vec<String> =
+        findings.matches.iter().map(|result| result.release_id.clone()).collect();
     ids.sort();
     ids
 }
@@ -270,10 +246,8 @@ fn every_pressing_of_the_named_album_is_read_before_its_tracks_rank_it() {
     let mut asked: Vec<&str> = releases.iter().map(|release| release.key.as_str()).collect();
     asked.sort();
     assert_eq!(asked, vec!["dg-cassette", "dg-cd-1", "dg-cd-2", "dg-lp"]);
-    let (state, effects) = super::step(
-        state,
-        read_with_tracks(releases, |id| if id == "dg-lp" { 7 } else { 5 }),
-    );
+    let (state, effects) =
+        super::step(state, read_with_tracks(releases, |id| if id == "dg-lp" { 7 } else { 5 }));
     assert!(effects.is_empty(), "{effects:?}");
     assert_eq!(offered_ids(&state), vec!["dg-cassette", "dg-cd-1", "dg-cd-2"]);
 }
@@ -366,18 +340,13 @@ fn tied_rows_rank_on_the_documents_this_run_reads() {
     let (state, releases) = reading_documents(vec![
         known,
         packed(first_label_only("dg-other-1"), bae_types::pressing::Packaging::Digipak),
-        packed(
-            first_label_only("dg-other-2"),
-            bae_types::pressing::Packaging::GatefoldCover,
-        ),
+        packed(first_label_only("dg-other-2"), bae_types::pressing::Packaging::GatefoldCover),
     ]);
     let mut asked: Vec<&str> = releases.iter().map(|release| release.key.as_str()).collect();
     asked.sort();
     assert_eq!(asked, vec!["dg-known", "dg-other-1", "dg-other-2"]);
-    let (state, _) = super::step(
-        state,
-        read_with_tracks(&releases, |id| if id == "dg-known" { 7 } else { 5 }),
-    );
+    let (state, _) =
+        super::step(state, read_with_tracks(&releases, |id| if id == "dg-known" { 7 } else { 5 }));
     assert_eq!(offered_ids(&state), vec!["dg-other-1", "dg-other-2"]);
 }
 
@@ -426,10 +395,8 @@ fn a_run_whose_every_row_lists_other_tracks_finds_nothing() {
         first_label_only("dg-long"),
         packed(first_label_only("dg-short"), bae_types::pressing::Packaging::Digipak),
     ]);
-    let (state, effects) = super::step(
-        state,
-        read_with_tracks(&releases, |id| if id == "dg-long" { 6 } else { 4 }),
-    );
+    let (state, effects) =
+        super::step(state, read_with_tracks(&releases, |id| if id == "dg-long" { 6 } else { 4 }));
     assert!(effects.is_empty(), "{effects:?}");
     assert!(
         matches!(state, IdentifyState::NotFoundAnywhere { .. }),
@@ -449,10 +416,7 @@ fn a_row_that_lists_other_tracks_lets_the_next_best_row_be_read() {
         state,
         search_answered(
             DG,
-            vec![
-                titled("dg-named", "1990-2000 Album"),
-                titled("dg-other", "Another Title"),
-            ],
+            vec![titled("dg-named", "1990-2000 Album"), titled("dg-other", "Another Title")],
         ),
     );
     let [Effect::ReadReleases { releases, .. }] = effects.as_slice() else {

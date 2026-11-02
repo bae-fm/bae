@@ -18,9 +18,7 @@ use std::path::PathBuf;
 /// store nothing here wrote.
 pub(super) fn decode(bytes: Vec<u8>) -> Result<PathBuf, DbError> {
     coven::path_from_bytes(bytes).map_err(|error| {
-        DbError::Message(format!(
-            "a stored path does not open on this device: {error}"
-        ))
+        DbError::Message(format!("a stored path does not open on this device: {error}"))
     })
 }
 
@@ -74,9 +72,7 @@ where
 #[cfg(desktop)]
 pub(super) fn hex_list<'a>(paths: impl Iterator<Item = &'a std::path::Path>) -> String {
     serde_json::to_string(
-        &paths
-            .map(|path| hex::encode(coven::path_bytes(path)))
-            .collect::<Vec<_>>(),
+        &paths.map(|path| hex::encode(coven::path_bytes(path))).collect::<Vec<_>>(),
     )
     .expect("hex text serializes as JSON")
 }
@@ -87,10 +83,6 @@ pub(super) fn hex_list<'a>(paths: impl Iterator<Item = &'a std::path::Path>) -> 
 pub(super) fn key_hex_list<'a>(
     keys: impl Iterator<Item = &'a crate::import::CandidateKey>,
 ) -> String {
-    serde_json::to_string(
-        &keys
-            .map(|key| hex::encode(key.as_bytes()))
-            .collect::<Vec<_>>(),
-    )
-    .expect("hex text serializes as JSON")
+    serde_json::to_string(&keys.map(|key| hex::encode(key.as_bytes())).collect::<Vec<_>>())
+        .expect("hex text serializes as JSON")
 }

@@ -41,10 +41,7 @@ pub(super) fn discogs(
     group_id: Option<&str>,
     year: Option<i32>,
 ) -> MetadataResult {
-    MetadataResult {
-        source: Catalog::Discogs,
-        ..mb(release_id, group_id, year)
-    }
+    MetadataResult { source: Catalog::Discogs, ..mb(release_id, group_id, year) }
 }
 
 /// `release` as its catalog states it: its album is `master` on Discogs.
@@ -63,11 +60,7 @@ pub(super) fn lead_ids(group: &ReleaseGroup) -> Vec<Vec<&str>> {
     group
         .pressings()
         .map(|pressing| {
-            pressing
-                .releases
-                .iter()
-                .map(|release| release.release_id.as_str())
-                .collect()
+            pressing.releases.iter().map(|release| release.release_id.as_str()).collect()
         })
         .collect()
 }
@@ -100,10 +93,7 @@ fn distinct_groups_keep_first_seen_order() {
         second,
         mb("rel-3", Some("group-b"), None),
     ]);
-    assert_eq!(
-        groups.iter().map(|g| g.id.as_str()).collect::<Vec<_>>(),
-        ["group-b", "group-a"]
-    );
+    assert_eq!(groups.iter().map(|g| g.id.as_str()).collect::<Vec<_>>(), ["group-b", "group-a"]);
     assert_eq!(groups[0].pressings().count(), 2);
     assert_eq!(groups[1].pressings().count(), 1);
 }
@@ -136,10 +126,8 @@ fn two_ungrouped_results_from_one_source_do_not_merge() {
 
 #[test]
 fn two_musicbrainz_groups_never_merge_with_each_other() {
-    let groups = grouped(vec![
-        mb("rel-1", Some("group-a"), None),
-        mb("rel-2", Some("group-b"), None),
-    ]);
+    let groups =
+        grouped(vec![mb("rel-1", Some("group-a"), None), mb("rel-2", Some("group-b"), None)]);
     assert_eq!(groups.len(), 2);
 }
 
@@ -235,10 +223,8 @@ fn a_linked_album_is_one_card_whatever_the_artist_text_and_the_order() {
 /// no reason to join them.
 #[test]
 fn albums_nothing_links_are_two_cards_whatever_their_text() {
-    let groups = grouped(vec![
-        mb("mb-1", Some("group-x"), None),
-        discogs("dg-1", Some("master-7"), None),
-    ]);
+    let groups =
+        grouped(vec![mb("mb-1", Some("group-x"), None), discogs("dg-1", Some("master-7"), None)]);
     assert_eq!(groups.len(), 2);
 
     // A group whose page could not be read links nothing either, and its
@@ -262,11 +248,7 @@ fn everything_the_links_connect_is_one_card() {
     ]);
     assert_eq!(groups.len(), 1);
     assert_eq!(
-        groups[0]
-            .sources
-            .iter()
-            .map(|source| source.source)
-            .collect::<Vec<_>>(),
+        groups[0].sources.iter().map(|source| source.source).collect::<Vec<_>>(),
         vec![Catalog::MusicBrainz, Catalog::MusicBrainz, Catalog::Discogs]
     );
 }
@@ -315,24 +297,15 @@ fn a_card_holding_two_albums_of_one_catalog_splits_its_rows_by_album() {
         sections,
         vec![
             (
-                Some((
-                    "Album Title (Live)",
-                    Some("https://musicbrainz.org/release-group/group-y")
-                )),
+                Some(("Album Title (Live)", Some("https://musicbrainz.org/release-group/group-y"))),
                 vec![vec!["mb-2"]],
             ),
             (
-                Some((
-                    "Album Title",
-                    Some("https://musicbrainz.org/release-group/group-x")
-                )),
+                Some(("Album Title", Some("https://musicbrainz.org/release-group/group-x"))),
                 vec![vec!["mb-1", "dg-1"]],
             ),
             (
-                Some((
-                    "Album Title",
-                    Some("https://www.discogs.com/master/master-7")
-                )),
+                Some(("Album Title", Some("https://www.discogs.com/master/master-7"))),
                 vec![vec!["dg-2"]],
             ),
         ]
@@ -374,10 +347,7 @@ fn rows_are_ordered_by_pressing_year_with_unknown_years_last() {
         mb("rel-2012", Some("group-x"), Some(2012)),
         mb("rel-1992", Some("group-x"), Some(1992)),
     ]);
-    assert_eq!(
-        lead_ids(&groups[0]),
-        vec![vec!["rel-1992"], vec!["rel-2012"], vec!["rel-undated"]]
-    );
+    assert_eq!(lead_ids(&groups[0]), vec![vec!["rel-1992"], vec!["rel-2012"], vec!["rel-undated"]]);
     assert_eq!(groups[0].year_min, Some(1992));
     assert_eq!(groups[0].year_max, Some(2012));
 }
@@ -436,10 +406,7 @@ fn the_same_group_id_across_sources_does_not_collide() {
 
     assert_eq!(groups.len(), 2);
     assert_eq!(
-        groups
-            .iter()
-            .map(|group| group.sources[0].source)
-            .collect::<Vec<_>>(),
+        groups.iter().map(|group| group.sources[0].source).collect::<Vec<_>>(),
         vec![Catalog::MusicBrainz, Catalog::Discogs]
     );
 }
@@ -450,10 +417,7 @@ fn the_same_group_id_across_sources_does_not_collide() {
 #[test]
 fn rows_either_side_of_the_disclosure_are_one_card() {
     let groups = group_formed_rows(
-        unranked(vec![linked(
-            mb("mb-1", Some("group-x"), Some(1992)),
-            "master-7",
-        )]),
+        unranked(vec![linked(mb("mb-1", Some("group-x"), Some(1992)), "master-7")]),
         &[0],
         unranked(vec![
             mb("mb-2", Some("group-z"), None),
@@ -463,17 +427,11 @@ fn rows_either_side_of_the_disclosure_are_one_card() {
         None,
     );
     assert_eq!(
-        groups
-            .iter()
-            .map(|group| group.id.as_str())
-            .collect::<Vec<_>>(),
+        groups.iter().map(|group| group.id.as_str()).collect::<Vec<_>>(),
         vec!["group-x", "group-z"]
     );
     let ids = |pressings: &[Pressing]| -> Vec<String> {
-        pressings
-            .iter()
-            .map(|pressing| pressing.lead().release_id.clone())
-            .collect()
+        pressings.iter().map(|pressing| pressing.lead().release_id.clone()).collect()
     };
     assert_eq!(ids(&groups[0].sections[0].pressings), vec!["mb-1"]);
     assert_eq!(ids(&groups[0].sections[0].narrowed_out), vec!["dg-1"]);
@@ -497,18 +455,11 @@ fn a_pressings_records_keep_their_own_facts() {
     discogs.discogs_details = vec![DiscogsDetail::Reissue];
     let groups = grouped(vec![musicbrainz, discogs]);
     let pressing = groups[0].sections[0].pressings[0].clone();
-    assert_eq!(
-        pressing.releases.len(),
-        2,
-        "the two records are one pressing"
-    );
+    assert_eq!(pressing.releases.len(), 2, "the two records are one pressing");
     let lead = pressing.lead().facts();
     assert_eq!(lead.area, Some(area("JP")));
     assert_eq!(lead.status, Some(ReleaseStatus::Official));
-    assert!(
-        lead.discogs_details.is_empty(),
-        "Discogs's details stay on its record"
-    );
+    assert!(lead.discogs_details.is_empty(), "Discogs's details stay on its record");
     let other = pressing.releases[1].facts();
     assert_eq!(other.status, Some(ReleaseStatus::Promotion));
     assert_eq!(other.discogs_details, vec![DiscogsDetail::Reissue]);

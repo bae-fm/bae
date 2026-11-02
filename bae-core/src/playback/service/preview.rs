@@ -104,9 +104,7 @@ impl PlaybackService {
             detail,
             "The preview's output stream can't go on on its device; starting it again on the current default"
         );
-        self.preview
-            .restart_on_current_device(self.audio_device.as_ref())
-            .await;
+        self.preview.restart_on_current_device(self.audio_device.as_ref()).await;
         if !self.preview.is_active() {
             self.preview_stop();
         }

@@ -42,9 +42,11 @@ pub async fn wait_until_playing(
 ) -> bool {
     use bae_core::playback::{PlaybackProgress, PlaybackState};
     next_matching(progress_rx, timeout_duration, |event| match event {
-        PlaybackProgress::StateChanged {
-            state: PlaybackState::Playing { track },
-        } if track.track_id == track_id => Some(()),
+        PlaybackProgress::StateChanged { state: PlaybackState::Playing { track } }
+            if track.track_id == track_id =>
+        {
+            Some(())
+        }
         _ => None,
     })
     .await
@@ -58,18 +60,14 @@ pub async fn wait_for_seek(
     track_id: &str,
 ) {
     use bae_core::playback::PlaybackProgress;
-    let seeked = next_matching(
-        progress_rx,
-        std::time::Duration::from_secs(10),
-        |event| match event {
-            PlaybackProgress::Seeked {
-                track_id: seeked_id,
-                ..
-            } if seeked_id == track_id => Some(()),
+    let seeked =
+        next_matching(progress_rx, std::time::Duration::from_secs(10), |event| match event {
+            PlaybackProgress::Seeked { track_id: seeked_id, .. } if seeked_id == track_id => {
+                Some(())
+            }
             _ => None,
-        },
-    )
-    .await;
+        })
+        .await;
     assert!(seeked.is_some(), "Should receive Seeked event");
 }
 
@@ -140,10 +138,7 @@ pub async fn start_capture_playback_with_clock(
 
 fn capture_device(
     device: TestAudioDevice,
-) -> (
-    Box<dyn bae_core::playback::AudioOutputDevice>,
-    CaptureStreamRx,
-) {
+) -> (Box<dyn bae_core::playback::AudioOutputDevice>, CaptureStreamRx) {
     match device {
         TestAudioDevice::Capture => {
             let (device, rx) = bae_core::playback::CaptureAudioDevice::new();

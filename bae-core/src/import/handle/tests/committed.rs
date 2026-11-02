@@ -28,12 +28,6 @@ async fn a_write_that_panics_fails_its_caller_and_is_reported() {
     let Err(ImportError::Internal { detail }) = result else {
         panic!("a panicked write fails as internal, got {result:?}");
     };
-    assert_eq!(
-        detail,
-        "a candidate write panicked: the write's bookkeeping broke"
-    );
-    assert_eq!(
-        bugs.reports(),
-        vec![("a candidate write".to_string(), detail)]
-    );
+    assert_eq!(detail, "a candidate write panicked: the write's bookkeeping broke");
+    assert_eq!(bugs.reports(), vec![("a candidate write".to_string(), detail)]);
 }

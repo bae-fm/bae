@@ -53,10 +53,7 @@ pub(crate) fn split(
     let carriers = carriers(release_id, &runs, media);
     runs.into_iter()
         .zip(carriers)
-        .map(|(run, medium)| MediumRows {
-            medium,
-            rows: run.rows,
-        })
+        .map(|(run, medium)| MediumRows { medium, rows: run.rows })
         .collect()
 }
 
@@ -109,10 +106,7 @@ impl RunKind {
             (Self::Disc(current), Place::Disc(disc)) => *current == disc,
             (
                 Self::Prefixed { medium, disc },
-                Place::Prefixed {
-                    medium: row_medium,
-                    disc: row_disc,
-                },
+                Place::Prefixed { medium: row_medium, disc: row_disc },
             ) => *medium == row_medium && *disc == row_disc,
             (Self::Sided(sides), Place::Side(side)) => {
                 let last = *sides.last().expect("a sided run has named a side");
@@ -140,10 +134,7 @@ fn runs(tracklist: &[DiscogsTrack]) -> Vec<Run> {
         };
         let continues = runs.last_mut().is_some_and(|run| run.kind.take(place));
         if !continues {
-            runs.push(Run {
-                kind: RunKind::of(place),
-                rows: Vec::new(),
-            });
+            runs.push(Run { kind: RunKind::of(place), rows: Vec::new() });
         }
         let run = runs.last_mut().expect("a placed row has a run");
         run.rows.append(&mut unplaced);
@@ -151,10 +142,9 @@ fn runs(tracklist: &[DiscogsTrack]) -> Vec<Run> {
     }
     match runs.last_mut() {
         Some(run) => run.rows.append(&mut unplaced),
-        None if !unplaced.is_empty() => runs.push(Run {
-            kind: RunKind::Unnumbered,
-            rows: unplaced,
-        }),
+        None if !unplaced.is_empty() => {
+            runs.push(Run { kind: RunKind::Unnumbered, rows: unplaced })
+        }
         None => {}
     }
     runs
@@ -181,9 +171,7 @@ fn row_place(row: &DiscogsTrack) -> Option<Place> {
 /// The place a Discogs position names, per the grammar in the module
 /// documentation.
 fn place(position: &str) -> Option<Place> {
-    let letters_end = position
-        .find(|c: char| !c.is_ascii_alphabetic())
-        .unwrap_or(position.len());
+    let letters_end = position.find(|c: char| !c.is_ascii_alphabetic()).unwrap_or(position.len());
     let (letters, rest) = position.split_at(letters_end);
     match letters.len() {
         0 => {
@@ -220,13 +208,8 @@ fn disc_number(text: &str) -> Option<u32> {
 
 /// A track number, with the sub-track letters Discogs may print after it.
 fn is_track_number(text: &str) -> bool {
-    let digits_end = text
-        .find(|c: char| !c.is_ascii_digit())
-        .unwrap_or(text.len());
-    digits_end > 0
-        && text[digits_end..]
-            .bytes()
-            .all(|byte| byte.is_ascii_alphabetic())
+    let digits_end = text.find(|c: char| !c.is_ascii_digit()).unwrap_or(text.len());
+    digits_end > 0 && text[digits_end..].bytes().all(|byte| byte.is_ascii_alphabetic())
 }
 
 /// Each run's carrier, from the release's format entries.
@@ -267,23 +250,17 @@ fn carriers(release_id: &str, runs: &[Run], media: &StatedMedia) -> Vec<Option<M
     }
     let is_sided_unit = |unit: &Option<Medium>| unit.is_some_and(Medium::is_sided);
     let sided: Vec<usize> = positions(runs, |kind| matches!(kind, RunKind::Sided(_)));
-    let unlettered: Vec<usize> = positions(runs, |kind| {
-        matches!(kind, RunKind::Disc(_) | RunKind::Unnumbered)
-    });
+    let unlettered: Vec<usize> =
+        positions(runs, |kind| matches!(kind, RunKind::Disc(_) | RunKind::Unnumbered));
     let sided_units: Vec<Option<Medium>> = units.iter().copied().filter(is_sided_unit).collect();
     let unlettered_units: Vec<Option<Medium>> = if sided.is_empty() {
         units
     } else {
-        units
-            .into_iter()
-            .filter(|unit| !is_sided_unit(unit))
-            .collect()
+        units.into_iter().filter(|unit| !is_sided_unit(unit)).collect()
     };
     for (group, group_units) in [(sided, sided_units), (unlettered, unlettered_units)] {
         for (index, carrier) in
-            group
-                .iter()
-                .zip(group_carriers(release_id, group.len(), &group_units))
+            group.iter().zip(group_carriers(release_id, group.len(), &group_units))
         {
             carriers[*index] = carrier;
         }
@@ -292,11 +269,7 @@ fn carriers(release_id: &str, runs: &[Run], media: &StatedMedia) -> Vec<Option<M
 }
 
 fn positions(runs: &[Run], is: impl Fn(&RunKind) -> bool) -> Vec<usize> {
-    runs.iter()
-        .enumerate()
-        .filter(|(_, run)| is(&run.kind))
-        .map(|(index, _)| index)
-        .collect()
+    runs.iter().enumerate().filter(|(_, run)| is(&run.kind)).map(|(index, _)| index).collect()
 }
 
 /// The carriers of `count` runs from the units their group may take.

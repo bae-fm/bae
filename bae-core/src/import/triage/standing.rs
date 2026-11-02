@@ -75,10 +75,7 @@ pub enum NeedsYouReason {
     NoTracklist,
     /// The folder's own files rule out every release found, of which there
     /// are `releases`.
-    MediumMismatch {
-        folder: MediumConflict,
-        releases: u32,
-    },
+    MediumMismatch { folder: MediumConflict, releases: u32 },
     /// No catalog has the folder.
     NotFound,
     /// The folder has nothing to look it up by.

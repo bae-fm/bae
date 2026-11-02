@@ -133,10 +133,7 @@ pub fn common_storage_actions(rows: &[StorageRow]) -> Vec<ReleaseStorageAction> 
         .storage_actions
         .iter()
         .copied()
-        .filter(|action| {
-            rest.iter()
-                .all(|row| row.release.storage_actions.contains(action))
-        })
+        .filter(|action| rest.iter().all(|row| row.release.storage_actions.contains(action)))
         .collect()
 }
 
@@ -192,9 +189,6 @@ mod tests {
             StorageRowStatus::of(StoragePlace::Uploading, Some(ReleaseStorageAction::Upload)),
             StorageRowStatus::Uploading
         );
-        assert_eq!(
-            StorageRowStatus::of(StoragePlace::Cloud, None),
-            StorageRowStatus::Cloud
-        );
+        assert_eq!(StorageRowStatus::of(StoragePlace::Cloud, None), StorageRowStatus::Cloud);
     }
 }

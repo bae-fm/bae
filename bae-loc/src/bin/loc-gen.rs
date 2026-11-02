@@ -55,19 +55,12 @@ fn parse_args() -> Result<Args, String> {
         i += 1;
     }
     let subcommand = subcommand.ok_or("expected a subcommand: `check`, `emit` or `locales`")?;
-    Ok(Args {
-        subcommand,
-        catalog,
-        target,
-        out_dir,
-    })
+    Ok(Args { subcommand, catalog, target, out_dir })
 }
 
 fn value<'a>(raw: &'a [String], i: &mut usize) -> Result<&'a str, String> {
     *i += 1;
-    raw.get(*i)
-        .map(String::as_str)
-        .ok_or_else(|| format!("`{}` needs a value", raw[*i - 1]))
+    raw.get(*i).map(String::as_str).ok_or_else(|| format!("`{}` needs a value", raw[*i - 1]))
 }
 
 fn run() -> Result<(), String> {
@@ -90,11 +83,7 @@ fn run() -> Result<(), String> {
     // `check` and `emit` both validate each message; emit must not write a
     // broken catalog out.
     if let Err(errs) = check::validate(&catalog) {
-        return Err(format!(
-            "{} catalog problem(s):\n  - {}",
-            errs.len(),
-            errs.join("\n  - ")
-        ));
+        return Err(format!("{} catalog problem(s):\n  - {}", errs.len(), errs.join("\n  - ")));
     }
 
     match args.subcommand.as_str() {

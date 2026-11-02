@@ -99,15 +99,12 @@ impl DlnaChannel {
             .send()
             .map_err(|e| RendererError::Connection(CauseChain(&e).to_string()))?;
         let status = response.status();
-        let body = response
-            .text()
-            .map_err(|e| RendererError::Connection(CauseChain(&e).to_string()))?;
+        let body =
+            response.text().map_err(|e| RendererError::Connection(CauseChain(&e).to_string()))?;
         if status.is_success() {
             Ok(body)
         } else {
-            Err(RendererError::Command(format!(
-                "renderer returned {status} to a SOAP action"
-            )))
+            Err(RendererError::Command(format!("renderer returned {status} to a SOAP action")))
         }
     }
 
@@ -180,10 +177,8 @@ impl DlnaChannel {
 
 impl RendererChannel for DlnaChannel {
     fn load(&mut self, media: &RendererMedia) -> Result<(), RendererError> {
-        self.playback = PlaybackTracking {
-            duration: media.duration,
-            ..PlaybackTracking::default()
-        };
+        self.playback =
+            PlaybackTracking { duration: media.duration, ..PlaybackTracking::default() };
         let metadata = DidlMetadata {
             title: &media.title,
             artist: &media.artist,
@@ -200,18 +195,15 @@ impl RendererChannel for DlnaChannel {
     }
 
     fn play(&mut self) -> Result<(), RendererError> {
-        self.post(&self.av_transport_url.clone(), soap::play())
-            .map(|_| ())
+        self.post(&self.av_transport_url.clone(), soap::play()).map(|_| ())
     }
 
     fn pause(&mut self) -> Result<(), RendererError> {
-        self.post(&self.av_transport_url.clone(), soap::pause())
-            .map(|_| ())
+        self.post(&self.av_transport_url.clone(), soap::pause()).map(|_| ())
     }
 
     fn seek(&mut self, position: Duration) -> Result<(), RendererError> {
-        self.post(&self.av_transport_url.clone(), soap::seek(position))
-            .map(|_| ())
+        self.post(&self.av_transport_url.clone(), soap::seek(position)).map(|_| ())
     }
 
     fn set_volume(&mut self, level: f32) -> Result<(), RendererError> {
@@ -226,8 +218,7 @@ impl RendererChannel for DlnaChannel {
         // Mark the stop as ours so the STOPPED it produces isn't misread as an
         // end-of-track that would advance the queue.
         self.playback.stopped_by_us = true;
-        self.post(&self.av_transport_url.clone(), soap::stop())
-            .map(|_| ())
+        self.post(&self.av_transport_url.clone(), soap::stop()).map(|_| ())
     }
 
     fn poll_status(&mut self) -> Result<ReceiverStatus, RendererError> {

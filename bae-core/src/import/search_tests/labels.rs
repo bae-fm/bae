@@ -22,15 +22,9 @@ fn a_catalog_number_lookup_keeps_only_its_number() {
         numbered("prefixed", Some("XLBL-719")),
         numbered("unnumbered", None),
     ];
-    SearchQuery::CatalogNumber {
-        catalog_number: "LBL 719".to_string(),
-    }
-    .keep_answers(&mut results);
+    SearchQuery::CatalogNumber { catalog_number: "LBL 719".to_string() }.keep_answers(&mut results);
     assert_eq!(
-        results
-            .iter()
-            .map(|result| result.release_id.as_str())
-            .collect::<Vec<_>>(),
+        results.iter().map(|result| result.release_id.as_str()).collect::<Vec<_>>(),
         vec!["exact", "hyphenated"]
     );
 }
@@ -52,15 +46,9 @@ fn a_catalog_number_lookup_keeps_a_release_by_its_second_labels_number() {
             ..MetadataResult::for_test(Catalog::MusicBrainz, "longer", None)
         },
     ];
-    SearchQuery::CatalogNumber {
-        catalog_number: "CL-719".to_string(),
-    }
-    .keep_answers(&mut results);
+    SearchQuery::CatalogNumber { catalog_number: "CL-719".to_string() }.keep_answers(&mut results);
     assert_eq!(
-        results
-            .iter()
-            .map(|result| result.release_id.as_str())
-            .collect::<Vec<_>>(),
+        results.iter().map(|result| result.release_id.as_str()).collect::<Vec<_>>(),
         vec!["two-labels"]
     );
 }
@@ -85,11 +73,7 @@ fn a_narrowed_catalog_number_search_names_the_artist_and_label_on_both_catalogs(
     assert_eq!(discogs.text.as_deref(), Some("Artist Name"));
     assert_eq!(discogs.label.as_deref(), Some("Label A"));
 
-    let alone = CatalogNumberSearch {
-        number: "AB 100".to_string(),
-        artist: None,
-        label: None,
-    };
+    let alone = CatalogNumberSearch { number: "AB 100".to_string(), artist: None, label: None };
     let musicbrainz = alone.musicbrainz_params();
     assert_eq!(
         (musicbrainz.artist, musicbrainz.label),
@@ -97,11 +81,7 @@ fn a_narrowed_catalog_number_search_names_the_artist_and_label_on_both_catalogs(
         "the number alone names no artist or label on MusicBrainz"
     );
     let discogs = alone.discogs_params();
-    assert_eq!(
-        (discogs.text, discogs.label),
-        (None, None),
-        "nor on Discogs"
-    );
+    assert_eq!((discogs.text, discogs.label), (None, None), "nor on Discogs");
 }
 
 /// A narrowed search keeps only the releases printing its number, as the
@@ -125,10 +105,7 @@ fn a_narrowed_catalog_number_search_keeps_only_its_number() {
     }
     .keep_answers(&mut results);
     assert_eq!(
-        results
-            .iter()
-            .map(|result| result.release_id.as_str())
-            .collect::<Vec<_>>(),
+        results.iter().map(|result| result.release_id.as_str()).collect::<Vec<_>>(),
         vec!["exact"]
     );
 }
@@ -162,11 +139,8 @@ fn a_musicbrainz_search_result_keeps_every_label() {
 #[test]
 fn a_discogs_search_result_reads_its_first_label() {
     let mut result = result_with_title("Artist - Album");
-    result.label = Some(vec![
-        "Label A".to_string(),
-        "Label B".to_string(),
-        "Pressing Plant".to_string(),
-    ]);
+    result.label =
+        Some(vec!["Label A".to_string(), "Label B".to_string(), "Pressing Plant".to_string()]);
     result.catno = Some("AB 100".to_string());
     assert_eq!(
         discogs_search_result_to_metadata(result).labels,

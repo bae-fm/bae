@@ -239,9 +239,7 @@ impl TrackStream {
 
         let channels = self.state.channels() as u64;
         if let Some(frames) = (pulled as u64).checked_div(channels) {
-            self.state
-                .position_samples
-                .fetch_add(frames, Ordering::Relaxed);
+            self.state.position_samples.fetch_add(frames, Ordering::Relaxed);
         }
 
         // Space freed: wake the decoder so it refills.
@@ -429,17 +427,11 @@ mod tests {
         let samples: Vec<f32> = (0..50).map(|i| i as f32 * 0.01).collect();
         sink.push_samples_blocking(&samples[..49]);
         assert!(
-            matches!(
-                ready_rx.try_recv(),
-                Err(oneshot::error::TryRecvError::Empty)
-            ),
+            matches!(ready_rx.try_recv(), Err(oneshot::error::TryRecvError::Empty)),
             "Ready signal should not fire below 50%"
         );
         sink.push_samples_blocking(&samples[49..]);
-        assert!(
-            ready_rx.try_recv().is_ok(),
-            "Ready signal should fire at 50%"
-        );
+        assert!(ready_rx.try_recv().is_ok(), "Ready signal should fire at 50%");
     }
 
     /// A track shorter than the threshold is ready once it finishes.
@@ -452,17 +444,11 @@ mod tests {
         let samples: Vec<f32> = (0..100).map(|i| i as f32 * 0.001).collect();
         sink.push_samples_blocking(&samples);
         assert!(
-            matches!(
-                ready_rx.try_recv(),
-                Err(oneshot::error::TryRecvError::Empty)
-            ),
+            matches!(ready_rx.try_recv(), Err(oneshot::error::TryRecvError::Empty)),
             "100 samples never reach the threshold"
         );
         sink.mark_finished();
-        assert!(
-            ready_rx.try_recv().is_ok(),
-            "Ready signal should fire on finish"
-        );
+        assert!(ready_rx.try_recv().is_ok(), "Ready signal should fire on finish");
     }
 
     /// The production producer pushes more samples than the ring holds, so it
@@ -542,10 +528,7 @@ mod tests {
         let mut out = vec![0.5f32; 200]; // 100 frames * 2 channels
         let n = source.pull_samples(&mut out);
         assert_eq!(n, 200);
-        assert!(
-            out[..200].iter().all(|&s| s == 0.0),
-            "silence frames are zeroed"
-        );
+        assert!(out[..200].iter().all(|&s| s == 0.0), "silence frames are zeroed");
     }
 
     /// A stream with zero channels can't form frames, so silence-frame pushing is

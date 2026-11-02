@@ -30,12 +30,12 @@ impl FileKind {
             .and_then(|extension| extension.to_str())
             .map(str::to_ascii_lowercase);
         match (content_type, extension.as_deref()) {
-            (content_type, _) if content_type.is_audio() => Self::Audio {
-                format: content_type.display_name().to_string(),
-            },
-            (content_type, _) if content_type.is_image() => Self::Image {
-                format: content_type.display_name().to_string(),
-            },
+            (content_type, _) if content_type.is_audio() => {
+                Self::Audio { format: content_type.display_name().to_string() }
+            }
+            (content_type, _) if content_type.is_image() => {
+                Self::Image { format: content_type.display_name().to_string() }
+            }
             (_, Some("cue")) => Self::CueSheet,
             (_, Some("log")) => Self::RipLog,
             (ContentType::Pdf, _) => Self::Pdf,
@@ -58,14 +58,10 @@ impl FilePlace {
     /// `/` between folders, as import stores it.
     pub(crate) fn of(original_filename: &str) -> Self {
         match original_filename.rsplit_once('/') {
-            Some((folder, name)) => Self {
-                name: name.to_string(),
-                folder: Some(folder.to_string()),
-            },
-            None => Self {
-                name: original_filename.to_string(),
-                folder: None,
-            },
+            Some((folder, name)) => {
+                Self { name: name.to_string(), folder: Some(folder.to_string()) }
+            }
+            None => Self { name: original_filename.to_string(), folder: None },
         }
     }
 }
@@ -78,46 +74,24 @@ mod tests {
     fn a_file_kind_reads_its_content_type_and_a_rips_extensions() {
         assert_eq!(
             FileKind::of(&ContentType::Flac, "01 Track Title.flac"),
-            FileKind::Audio {
-                format: "FLAC".into()
-            }
+            FileKind::Audio { format: "FLAC".into() }
         );
         assert_eq!(
             FileKind::of(&ContentType::Jpeg, "front.jpg"),
-            FileKind::Image {
-                format: "JPEG".into()
-            }
+            FileKind::Image { format: "JPEG".into() }
         );
-        assert_eq!(
-            FileKind::of(&ContentType::PlainText, "Album Title.cue"),
-            FileKind::CueSheet
-        );
-        assert_eq!(
-            FileKind::of(&ContentType::OctetStream, "Album Title.LOG"),
-            FileKind::RipLog
-        );
-        assert_eq!(
-            FileKind::of(&ContentType::PlainText, "notes.txt"),
-            FileKind::Text
-        );
-        assert_eq!(
-            FileKind::of(&ContentType::Pdf, "booklet.pdf"),
-            FileKind::Pdf
-        );
-        assert_eq!(
-            FileKind::of(&ContentType::OctetStream, "data.bin"),
-            FileKind::Other
-        );
+        assert_eq!(FileKind::of(&ContentType::PlainText, "Album Title.cue"), FileKind::CueSheet);
+        assert_eq!(FileKind::of(&ContentType::OctetStream, "Album Title.LOG"), FileKind::RipLog);
+        assert_eq!(FileKind::of(&ContentType::PlainText, "notes.txt"), FileKind::Text);
+        assert_eq!(FileKind::of(&ContentType::Pdf, "booklet.pdf"), FileKind::Pdf);
+        assert_eq!(FileKind::of(&ContentType::OctetStream, "data.bin"), FileKind::Other);
     }
 
     #[test]
     fn a_file_place_splits_its_folders_from_its_name() {
         assert_eq!(
             FilePlace::of("Disc 1/07 Track Title.flac"),
-            FilePlace {
-                name: "07 Track Title.flac".into(),
-                folder: Some("Disc 1".into()),
-            }
+            FilePlace { name: "07 Track Title.flac".into(), folder: Some("Disc 1".into()) }
         );
         assert_eq!(
             FilePlace::of("Scans/Booklet/page 1.jpg").folder.as_deref(),
@@ -125,10 +99,7 @@ mod tests {
         );
         assert_eq!(
             FilePlace::of("cover.jpg"),
-            FilePlace {
-                name: "cover.jpg".into(),
-                folder: None,
-            }
+            FilePlace { name: "cover.jpg".into(), folder: None }
         );
     }
 }

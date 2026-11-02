@@ -66,11 +66,7 @@ pub fn selection_offers(parts: &[SelectionPart]) -> Vec<SelectionOffer> {
     CandidateAction::ALL
         .into_iter()
         .filter_map(|action| {
-            let count = parts
-                .iter()
-                .filter(|part| part.takes(action))
-                .map(|part| part.count)
-                .sum();
+            let count = parts.iter().filter(|part| part.takes(action)).map(|part| part.count).sum();
             match action {
                 CandidateAction::Combine => (rows >= 2).then(|| SelectionOffer {
                     action,
@@ -79,11 +75,7 @@ pub fn selection_offers(parts: &[SelectionPart]) -> Vec<SelectionOffer> {
                         .iter()
                         .all(|part| part.actions.contains(&CandidateAction::Combine)),
                 }),
-                _ => (count > 0).then_some(SelectionOffer {
-                    action,
-                    count,
-                    enabled: true,
-                }),
+                _ => (count > 0).then_some(SelectionOffer { action, count, enabled: true }),
             }
         })
         .collect()
@@ -103,10 +95,7 @@ mod tests {
 
     /// One row offering `actions`.
     fn one(actions: &[CandidateAction]) -> SelectionPart {
-        SelectionPart {
-            actions: actions.to_vec(),
-            count: 1,
-        }
+        SelectionPart { actions: actions.to_vec(), count: 1 }
     }
 
     fn actions(offers: &[SelectionOffer]) -> Vec<CandidateAction> {
@@ -124,10 +113,7 @@ mod tests {
             A::Identify,
             A::Import,
         ])]);
-        assert_eq!(
-            actions(&offers),
-            vec![A::Import, A::Identify, A::Skip, A::RevealFolder]
-        );
+        assert_eq!(actions(&offers), vec![A::Import, A::Identify, A::Skip, A::RevealFolder]);
         assert!(offers.iter().all(|offer| offer.enabled));
     }
 
@@ -142,19 +128,12 @@ mod tests {
             one(&[A::Import, A::Identify, A::RevealFolder]),
             one(&[A::Identify, A::RevealFolder]),
         ]);
-        let count = |action| {
-            offers
-                .iter()
-                .find(|offer| offer.action == action)
-                .map(|offer| offer.count)
-        };
+        let count =
+            |action| offers.iter().find(|offer| offer.action == action).map(|offer| offer.count);
         assert_eq!(count(A::Import), Some(1));
         assert_eq!(count(A::Identify), Some(2));
         assert_eq!(count(A::Skip), None);
-        assert_eq!(
-            keys_for(&members, A::Import),
-            vec![crate::import::CandidateKey::test("Album")]
-        );
+        assert_eq!(keys_for(&members, A::Import), vec![crate::import::CandidateKey::test("Album")]);
     }
 
     /// A part counts each of its rows: an action is offered for as many rows
@@ -163,25 +142,14 @@ mod tests {
     #[test]
     fn each_part_counts_every_row_it_holds() {
         let offers = selection_offers(&[
-            SelectionPart {
-                actions: vec![A::Import, A::Combine],
-                count: 3,
-            },
+            SelectionPart { actions: vec![A::Import, A::Combine], count: 3 },
             one(&[A::Combine]),
         ]);
         assert_eq!(
             offers,
             vec![
-                SelectionOffer {
-                    action: A::Import,
-                    count: 3,
-                    enabled: true,
-                },
-                SelectionOffer {
-                    action: A::Combine,
-                    count: 4,
-                    enabled: true,
-                },
+                SelectionOffer { action: A::Import, count: 3, enabled: true },
+                SelectionOffer { action: A::Combine, count: 4, enabled: true },
             ]
         );
     }
@@ -190,18 +158,8 @@ mod tests {
     /// only when every member can be combined.
     #[test]
     fn combining_is_offered_over_the_whole_selection() {
-        let both = selection_offers(&[SelectionPart {
-            actions: vec![A::Combine],
-            count: 2,
-        }]);
-        assert_eq!(
-            both,
-            vec![SelectionOffer {
-                action: A::Combine,
-                count: 2,
-                enabled: true,
-            }]
-        );
+        let both = selection_offers(&[SelectionPart { actions: vec![A::Combine], count: 2 }]);
+        assert_eq!(both, vec![SelectionOffer { action: A::Combine, count: 2, enabled: true }]);
         let held_back = selection_offers(&[one(&[A::Combine]), one(&[A::CancelImport])]);
         let combine = held_back
             .iter()

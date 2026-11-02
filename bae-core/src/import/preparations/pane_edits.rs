@@ -64,10 +64,7 @@ impl CandidatePreparations {
     ) -> Result<u64, LibraryError> {
         self.set_field_edit(
             content_hash,
-            crate::import::DraftFieldEdit::Text {
-                field,
-                value: value.to_string(),
-            },
+            crate::import::DraftFieldEdit::Text { field, value: value.to_string() },
         )
         .await
     }
@@ -245,10 +242,7 @@ impl CandidatePreparations {
         })?;
         if let Some(expected) = expected_file_edit_revision {
             if prep.file_edits.revision != expected {
-                return Err(CandidateAsRead::files_moved(
-                    expected,
-                    CandidateWrite::PaneEdit,
-                ));
+                return Err(CandidateAsRead::files_moved(expected, CandidateWrite::PaneEdit));
             }
         }
         if let Some(expected) = expected_metadata_revision {
@@ -297,21 +291,17 @@ fn apply_track_edit(
     draft: &mut CandidateDraft,
     row: &crate::import::RawTrackEdit,
 ) -> Result<(), LibraryError> {
-    let track = draft
-        .tracks
-        .iter_mut()
-        .find(|track| track.edit.id == row.id)
-        .ok_or_else(|| LibraryError::Refused(format!("{} is not a row of this draft", row.id)))?;
+    let track =
+        draft.tracks.iter_mut().find(|track| track.edit.id == row.id).ok_or_else(|| {
+            LibraryError::Refused(format!("{} is not a row of this draft", row.id))
+        })?;
     if row.file.as_ref() != Some(&track.edit.file) {
         return Err(LibraryError::Refused(
             "track metadata edits cannot change a track's audio".into(),
         ));
     }
     track.edit.title.clone_from(&row.title);
-    track
-        .edit
-        .artist_assignments
-        .clone_from(&row.artist_assignments);
+    track.edit.artist_assignments.clone_from(&row.artist_assignments);
     Ok(())
 }
 
@@ -321,11 +311,8 @@ fn fill_track_artists(
     assignments: &TrackArtistAssignments,
 ) -> Result<(), LibraryError> {
     for track_id in track_ids {
-        let track = draft
-            .tracks
-            .iter_mut()
-            .find(|track| &track.edit.id == track_id)
-            .ok_or_else(|| {
+        let track =
+            draft.tracks.iter_mut().find(|track| &track.edit.id == track_id).ok_or_else(|| {
                 LibraryError::Refused(format!(
                     "track artist fill names {track_id}, which is not a row of this draft"
                 ))

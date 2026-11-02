@@ -43,11 +43,7 @@ fn a_lossy_sink_decode_from_a_sample_is_the_whole_decode_from_it() {
             let from = decode_audio(buffer_from(&bytes), Some(target), None)
                 .expect("decode from the target");
             let expected = &whole.samples[target as usize * channels..];
-            assert_eq!(
-                from.samples.len(),
-                expected.len(),
-                "{name} from {target}: sample count"
-            );
+            assert_eq!(from.samples.len(), expected.len(), "{name} from {target}: sample count");
             assert!(
                 from.samples == expected,
                 "{name} from {target}: the samples differ from the whole decode's"
@@ -85,10 +81,7 @@ fn stream_lossy(bytes: &[u8], sample_rate: u32, start: Option<u64>) -> Vec<f32> 
             break;
         }
     }
-    decoder
-        .join()
-        .expect("the decoder thread")
-        .expect("the streaming decode");
+    decoder.join().expect("the decoder thread").expect("the streaming decode");
     played
 }
 
@@ -112,11 +105,7 @@ fn a_lossy_streaming_decode_from_a_sample_plays_from_it() {
         for target in lossy_targets(sample_rate) {
             let from = stream_lossy(&bytes, sample_rate, Some(target));
             let expected = &whole[target as usize * 2..];
-            assert_eq!(
-                from.len(),
-                expected.len(),
-                "{name} from {target}: sample count"
-            );
+            assert_eq!(from.len(), expected.len(), "{name} from {target}: sample count");
             if name == "MP3" {
                 assert!(
                     from == expected,
@@ -127,9 +116,6 @@ fn a_lossy_streaming_decode_from_a_sample_plays_from_it() {
         // A start whose pre-roll reaches the stream's start decodes as the
         // whole decode does.
         let from = stream_lossy(&bytes, sample_rate, Some(1));
-        assert!(
-            from == whole[2..],
-            "{name} from 1: the samples differ from the whole decode's"
-        );
+        assert!(from == whole[2..], "{name} from 1: the samples differ from the whole decode's");
     }
 }

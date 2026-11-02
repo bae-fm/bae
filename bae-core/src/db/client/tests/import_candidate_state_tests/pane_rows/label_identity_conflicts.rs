@@ -46,15 +46,8 @@ async fn a_label_identity_conflict_round_trips_with_both_library_labels() {
         )),
     };
 
-    db.save_import_candidate_failure(&hash, 0, &expected)
-        .await
-        .unwrap();
+    db.save_import_candidate_failure(&hash, 0, &expected).await.unwrap();
 
-    let stored = db
-        .load_import_candidate_pane_rows(&hash)
-        .await
-        .unwrap()
-        .failure
-        .unwrap();
+    let stored = db.load_import_candidate_pane_rows(&hash).await.unwrap().failure.unwrap();
     assert_eq!(stored, expected);
 }

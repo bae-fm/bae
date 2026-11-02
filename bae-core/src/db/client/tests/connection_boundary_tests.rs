@@ -40,20 +40,14 @@ async fn processing_runs_off_the_runtime_and_preserves_database_errors() {
         .process(|_| -> Result<(), DbError> { panic!("a failed fetch must skip processing") })
         .await
         .unwrap_err();
-    assert!(matches!(
-        error,
-        DbError::Sqlite(rusqlite::Error::QueryReturnedNoRows)
-    ));
+    assert!(matches!(error, DbError::Sqlite(rusqlite::Error::QueryReturnedNoRows)));
 
     let error = db
         .read(|_| Ok(()))
         .process(|()| Err::<(), _>(DbError::Sqlite(rusqlite::Error::QueryReturnedNoRows)))
         .await
         .unwrap_err();
-    assert!(matches!(
-        error,
-        DbError::Sqlite(rusqlite::Error::QueryReturnedNoRows)
-    ));
+    assert!(matches!(error, DbError::Sqlite(rusqlite::Error::QueryReturnedNoRows)));
 }
 
 /// Every connection to a library knows the natural order bae's schema names:

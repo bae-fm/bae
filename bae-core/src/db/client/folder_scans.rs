@@ -83,9 +83,7 @@ impl ScanItemWrite {
     pub fn superseded_keys(&self) -> &[CandidateKey] {
         match self {
             Self::Unchanged => &[],
-            Self::Stored {
-                superseded_keys, ..
-            } => superseded_keys,
+            Self::Stored { superseded_keys, .. } => superseded_keys,
         }
     }
 
@@ -157,10 +155,8 @@ pub(super) fn replace_candidate_file_tag_snapshot_on(
     snapshot: &crate::import::file_tag_snapshot::FileTagSnapshot,
 ) -> Result<bool, DbError> {
     let expected_generation = generation_column(snapshot.scan_generation)?;
-    let expected_file_edit_revision = to_i64(
-        snapshot.file_edit_revision,
-        "a file-tag snapshot's file edit revision",
-    )?;
+    let expected_file_edit_revision =
+        to_i64(snapshot.file_edit_revision, "a file-tag snapshot's file edit revision")?;
     let matched = sql.execute(
         "UPDATE scan_candidate SET generation = generation \
          WHERE watched_folder_path = ? AND path = ? \
@@ -184,13 +180,10 @@ pub(super) fn replace_candidate_file_tag_snapshot_on(
         |row| Ok((row.get(0)?, row.get(1)?)),
     )?;
     if audio_files.len() != snapshot.files.len()
-        || audio_files
-            .iter()
-            .zip(&snapshot.files)
-            .any(|((relative_path, size), fact)| {
-                relative_path != &fact.observation.relative_path
-                    || u64::try_from(*size).ok() != Some(fact.observation.size)
-            })
+        || audio_files.iter().zip(&snapshot.files).any(|((relative_path, size), fact)| {
+            relative_path != &fact.observation.relative_path
+                || u64::try_from(*size).ok() != Some(fact.observation.size)
+        })
     {
         return Err(DbError::Message(format!(
             "file-tag snapshot for {candidate_path} does not cover its current audio files"
@@ -500,16 +493,9 @@ fn superseded_keys(
         return Ok(Vec::new());
     };
     let Some(coverage) = item.coverage() else {
-        return Err(DbError::Message(format!(
-            "{entry_key} is a release that reads no files"
-        )));
+        return Err(DbError::Message(format!("{entry_key} is a release that reads no files")));
     };
-    read::entries_reading(
-        sql,
-        watched_folder_path,
-        &coverage,
-        read::Readers::Besides(entry_key),
-    )
+    read::entries_reading(sql, watched_folder_path, &coverage, read::Readers::Besides(entry_key))
 }
 
 /// One scan item as a pass hands it to the store.
@@ -551,33 +537,22 @@ fn write_scan_item(
         ));
     };
     validate_scan_item_ownership(watched_folder_path, &entry_key, &to_write.item)?;
-    let EntryWrite::Stored {
-        replaced: superseded_keys,
-        found,
-    } = write_entry(
+    let EntryWrite::Stored { replaced: superseded_keys, found } = write_entry(
         sql,
         watched_folder_path,
         generation,
         to_write,
-        EntrySource::Scanned {
-            finding,
-            observed_at,
-        },
+        EntrySource::Scanned { finding, observed_at },
     )?
     else {
         return Ok(ScanItemWrite::Unchanged);
     };
     // A valid release takes its files from any sidecar holding them.
     let uncovered = sidecar::delete_sidecars_holding(sql, &to_write.item)?;
-    let touched: Vec<CandidateKey> = std::iter::once(entry_key)
-        .chain(superseded_keys.iter().cloned())
-        .collect();
+    let touched: Vec<CandidateKey> =
+        std::iter::once(entry_key).chain(superseded_keys.iter().cloned()).collect();
     let regrouped = super::release_groupings::rebuild_groupings(sql, &touched, &uncovered)?;
-    Ok(ScanItemWrite::Stored {
-        superseded_keys,
-        regrouped,
-        found,
-    })
+    Ok(ScanItemWrite::Stored { superseded_keys, regrouped, found })
 }
 
 /// Who writes an entry.
@@ -624,11 +599,7 @@ pub(super) fn write_entry(
     to_write: &ScanItemToWrite,
     source: EntrySource,
 ) -> Result<EntryWrite, DbError> {
-    let ScanItemToWrite {
-        item,
-        seed,
-        folder_date,
-    } = to_write;
+    let ScanItemToWrite { item, seed, folder_date } = to_write;
     let Some(entry_key) = item.persisted_key() else {
         return Err(DbError::Message(
             "a folder reading is stored as a decision, not as a scan entry".to_string(),
@@ -650,10 +621,7 @@ pub(super) fn write_entry(
     // Only a scan sees a folder. A grouping's release is dated by the folders
     // it takes in, so writing it must not record its folder as found now.
     let discovery = match source {
-        EntrySource::Scanned {
-            finding,
-            observed_at,
-        } => Some((
+        EntrySource::Scanned { finding, observed_at } => Some((
             finding,
             dates::FolderDiscovery::observe(sql, folder, *folder_date, observed_at)?,
         )),
@@ -724,14 +692,7 @@ pub(super) fn write_entry(
     for key in &removed_keys {
         delete_entry(sql, watched_folder_path, key)?;
     }
-    write::insert_item(
-        sql,
-        watched_folder_path,
-        generation,
-        item,
-        file_metadata.as_ref(),
-        source,
-    )?;
+    write::insert_item(sql, watched_folder_path, generation, item, file_metadata.as_ref(), source)?;
     // The candidate read with other files, or found invalid, is not what its
     // identification was of.
     let held = match item {
@@ -802,14 +763,12 @@ pub(super) fn validate_scan_item_ownership(
         ScanItem::Decided { .. } | ScanItem::Sidecar(_) => false,
     };
     let (item_root, item_path) = match item {
-        ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) => (
-            candidate.watched_folder_path.as_path(),
-            candidate.path.clone(),
-        ),
-        ScanItem::Invalid(candidate) => (
-            candidate.watched_folder_path.as_path(),
-            candidate.path.clone(),
-        ),
+        ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) => {
+            (candidate.watched_folder_path.as_path(), candidate.path.clone())
+        }
+        ScanItem::Invalid(candidate) => {
+            (candidate.watched_folder_path.as_path(), candidate.path.clone())
+        }
         ScanItem::Decided { key, .. } => (
             key.watched_folder_path.as_path(),
             crate::import::relative_folder::folder_below(
@@ -817,10 +776,9 @@ pub(super) fn validate_scan_item_ownership(
                 &key.relative_folder,
             ),
         ),
-        ScanItem::Sidecar(sidecar) => (
-            sidecar.watched_folder_path.as_path(),
-            sidecar.folder.clone(),
-        ),
+        ScanItem::Sidecar(sidecar) => {
+            (sidecar.watched_folder_path.as_path(), sidecar.folder.clone())
+        }
     };
     if item_root.as_os_str() != watched_folder_path.as_os_str()
         || (!grouped && !item_path.starts_with(root))
@@ -833,11 +791,7 @@ pub(super) fn validate_scan_item_ownership(
     match item {
         ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) if !grouped => {
             if !candidate.file_root.starts_with(root)
-                || candidate
-                    .files
-                    .parts
-                    .iter()
-                    .any(|part| !part.folder.starts_with(root))
+                || candidate.files.parts.iter().any(|part| !part.folder.starts_with(root))
             {
                 return Err(DbError::Message(format!(
                     "folder scan entry {entry_key} reads files outside its watched folder"

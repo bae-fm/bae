@@ -155,12 +155,7 @@ impl CandidateSearch {
         sources: Vec<(Catalog, SourceSearch)>,
         picked: Vec<PickedResult>,
     ) -> Self {
-        let mut search = Self {
-            query,
-            sources,
-            groups: Vec::new(),
-            picked,
-        };
+        let mut search = Self { query, sources, groups: Vec::new(), picked };
         search.regroup();
         search
     }
@@ -168,10 +163,7 @@ impl CandidateSearch {
     /// This source's part of the search, or `None` for a source the search was
     /// not started with.
     pub fn source(&self, source: Catalog) -> Option<&SourceSearch> {
-        self.sources
-            .iter()
-            .find(|(candidate, _)| *candidate == source)
-            .map(|(_, state)| state)
+        self.sources.iter().find(|(candidate, _)| *candidate == source).map(|(_, state)| state)
     }
 
     /// Land what a picked MusicBrainz release's documents state its album
@@ -194,15 +186,8 @@ impl CandidateSearch {
             .landed()
             .find(|result| result.source == release.catalog && result.release_id == release.key)
             .map(|result| result.source_group_id.clone())?;
-        let read = PickedResult {
-            release_id: release.key.clone(),
-            links,
-        };
-        match self
-            .picked
-            .iter_mut()
-            .find(|picked| picked.release_id == release.key)
-        {
+        let read = PickedResult { release_id: release.key.clone(), links };
+        match self.picked.iter_mut().find(|picked| picked.release_id == release.key) {
             Some(picked) => *picked = read,
             None => self.picked.push(read),
         }
@@ -249,10 +234,7 @@ impl CandidateSearch {
         self.is_settled()
             && self.groups.is_empty()
             && self.failed_sources().is_empty()
-            && self
-                .sources
-                .iter()
-                .any(|(_, state)| matches!(state, SourceSearch::Done { .. }))
+            && self.sources.iter().any(|(_, state)| matches!(state, SourceSearch::Done { .. }))
     }
 
     /// The sources whose part satisfies `predicate`, in source order.
@@ -320,17 +302,11 @@ mod tests {
     }
 
     fn availability(states: &[(Catalog, SourceAvailability)]) -> Vec<CatalogAvailability> {
-        states
-            .iter()
-            .map(|&(catalog, state)| CatalogAvailability { catalog, state })
-            .collect()
+        states.iter().map(|&(catalog, state)| CatalogAvailability { catalog, state }).collect()
     }
 
     fn query() -> SearchQuery {
-        SearchQuery::General {
-            artist: "Artist Name".to_string(),
-            album: "Album Title".to_string(),
-        }
+        SearchQuery::General { artist: "Artist Name".to_string(), album: "Album Title".to_string() }
     }
 
     fn result(source: Catalog, release_id: &str, group_id: &str) -> MetadataResult {
@@ -356,10 +332,7 @@ mod tests {
     fn search(musicbrainz: SourceSearch, discogs: SourceSearch) -> CandidateSearch {
         CandidateSearch::of(
             query(),
-            vec![
-                (Catalog::MusicBrainz, musicbrainz),
-                (Catalog::Discogs, discogs),
-            ],
+            vec![(Catalog::MusicBrainz, musicbrainz), (Catalog::Discogs, discogs)],
             Vec::new(),
         )
     }
@@ -370,10 +343,8 @@ mod tests {
         assert!(!started.has_no_matches());
         assert_eq!(started.status(), SearchStatus::Searching);
 
-        let failing = search(
-            failed(crate::signals::LookupFailure::Network),
-            SourceSearch::NotConfigured,
-        );
+        let failing =
+            search(failed(crate::signals::LookupFailure::Network), SourceSearch::NotConfigured);
         assert!(!failing.has_no_matches());
         assert_eq!(failing.status(), SearchStatus::Failed);
 
@@ -392,19 +363,11 @@ mod tests {
             SearchStatus::Searching
         );
         assert_eq!(
-            search(
-                done(found.clone()),
-                failed(crate::signals::LookupFailure::Timeout)
-            )
-            .status(),
+            search(done(found.clone()), failed(crate::signals::LookupFailure::Timeout)).status(),
             SearchStatus::Failed
         );
         assert_eq!(
-            search(
-                done(found),
-                done(vec![result(Catalog::Discogs, "dg-1", "master-7")])
-            )
-            .status(),
+            search(done(found), done(vec![result(Catalog::Discogs, "dg-1", "master-7")])).status(),
             SearchStatus::Found
         );
     }
@@ -459,10 +422,8 @@ mod tests {
         let numbered = |source: Catalog, release_id: &str, group_id: &str| {
             let mut found = result(source, release_id, group_id);
             found.barcodes = Vec::new();
-            found.labels = vec![bae_types::pressing::ReleaseLabel::of(
-                Some("Imprint"),
-                Some("LB 100"),
-            )];
+            found.labels =
+                vec![bae_types::pressing::ReleaseLabel::of(Some("Imprint"), Some("LB 100"))];
             done(vec![found])
         };
         let mut search = search(
@@ -476,10 +437,7 @@ mod tests {
             kept,
             Some(vec![(
                 "group-x".to_string(),
-                vec![crate::import::MetadataRef::new(
-                    Catalog::Discogs,
-                    "master-7"
-                )]
+                vec![crate::import::MetadataRef::new(Catalog::Discogs, "master-7")]
             )])
         );
         assert_eq!(search.groups.len(), 1);
@@ -497,14 +455,8 @@ mod tests {
         let read = CandidateSearch::of(
             query(),
             vec![
-                (
-                    Catalog::MusicBrainz,
-                    unpaired(Catalog::MusicBrainz, "mb-1", "group-x"),
-                ),
-                (
-                    Catalog::Discogs,
-                    unpaired(Catalog::Discogs, "dg-1", "master-7"),
-                ),
+                (Catalog::MusicBrainz, unpaired(Catalog::MusicBrainz, "mb-1", "group-x")),
+                (Catalog::Discogs, unpaired(Catalog::Discogs, "dg-1", "master-7")),
             ],
             vec![PickedResult {
                 release_id: "mb-1".to_string(),
@@ -527,10 +479,7 @@ mod tests {
                 (Catalog::Discogs, SourceSearch::Searching),
             ]
         );
-        assert_eq!(
-            search.searching_sources(),
-            vec![Catalog::MusicBrainz, Catalog::Discogs]
-        );
+        assert_eq!(search.searching_sources(), vec![Catalog::MusicBrainz, Catalog::Discogs]);
         assert!(!search.is_settled());
         assert!(search.groups.is_empty());
     }
@@ -538,10 +487,7 @@ mod tests {
     #[test]
     fn an_unconfigured_discogs_is_never_asked() {
         let started = CandidateSearch::started(query(), &discogs_unconfigured());
-        assert_eq!(
-            started.source(Catalog::Discogs),
-            Some(&SourceSearch::NotConfigured)
-        );
+        assert_eq!(started.source(Catalog::Discogs), Some(&SourceSearch::NotConfigured));
         assert_eq!(started.searching_sources(), vec![Catalog::MusicBrainz]);
         assert!(!started.is_settled(), "MusicBrainz is still looking");
 
@@ -591,10 +537,7 @@ mod tests {
 
         assert!(search.searching_sources().is_empty());
         assert!(search.is_settled());
-        assert!(
-            !search.has_no_matches(),
-            "no source answered, so nothing answered with nothing"
-        );
+        assert!(!search.has_no_matches(), "no source answered, so nothing answered with nothing");
     }
 
     /// The first source to land draws its groups while the other is still

@@ -39,10 +39,7 @@ impl BridgeSyncActivity {
             moving,
             needs_attention,
             failure: failure.map(super::BridgeError::from_core),
-            attention: attention
-                .into_iter()
-                .map(super::BridgePendingRecord::from_core)
-                .collect(),
+            attention: attention.into_iter().map(super::BridgePendingRecord::from_core).collect(),
             syncing,
             uploads: uploads.map(BridgeUploadsInFlight::from_core),
             downloads: downloads.map(BridgeDownloadsInFlight::from_core),
@@ -111,9 +108,9 @@ impl BridgeSyncRetryOutcome {
     pub(crate) fn from_core(outcome: bae_core::library::SyncRetryOutcome) -> Self {
         match outcome {
             bae_core::library::SyncRetryOutcome::Synced => Self::Synced,
-            bae_core::library::SyncRetryOutcome::Failed(error) => Self::Failed {
-                error: super::BridgeError::from_core(error),
-            },
+            bae_core::library::SyncRetryOutcome::Failed(error) => {
+                Self::Failed { error: super::BridgeError::from_core(error) }
+            }
             bae_core::library::SyncRetryOutcome::CoolingDown { until } => {
                 Self::CoolingDown { until }
             }

@@ -42,13 +42,8 @@ pub struct BridgeUploadBatchFailure {
 /// Per-release admission outcome for one upload command.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeUploadReleasesOutcome {
-    Complete {
-        receipt: BridgeUploadReceipt,
-    },
-    Partial {
-        receipt: Option<BridgeUploadReceipt>,
-        failure: BridgeUploadBatchFailure,
-    },
+    Complete { receipt: BridgeUploadReceipt },
+    Partial { receipt: Option<BridgeUploadReceipt>, failure: BridgeUploadBatchFailure },
 }
 
 mirror_struct! {
@@ -120,9 +115,7 @@ pub struct BridgeReleaseUploadTransfer {
 pub enum BridgeFastValue {
     /// How far a release's upload has got, of its whole size, and how fast
     /// its files being sent go together; keyed by release.
-    ReleaseUpload {
-        transfer: BridgeReleaseUploadTransfer,
-    },
+    ReleaseUpload { transfer: BridgeReleaseUploadTransfer },
     /// How far the files being sent have gone together, and how fast; a
     /// stream's one key, `""`, while any file is being sent.
     UploadTotal { transfer: BridgeUploadTransfer },
@@ -130,9 +123,7 @@ pub enum BridgeFastValue {
     /// keyed by file.
     FileShare { fraction: f64 },
     /// A downloading release's bytes and rate; keyed by release.
-    Download {
-        progress: BridgeDownloadTransferProgress,
-    },
+    Download { progress: BridgeDownloadTransferProgress },
     /// How far a release being made local has downloaded into the
     /// person's folder; keyed by release.
     MakeLocal { progress: BridgeMakeLocalProgress },
@@ -154,28 +145,20 @@ pub enum BridgeFastValue {
     OpenProgress { progress: super::BridgeOpenProgress },
     /// How far a setup call has come; a stream's one key, `""`, while it
     /// runs a step.
-    SetupProgress {
-        progress: super::BridgeSetupProgress,
-    },
+    SetupProgress { progress: super::BridgeSetupProgress },
     /// Where a restore or a join stands; a stream's one key, `""`, while it
     /// runs.
-    BootstrapStatus {
-        status: super::BridgeBootstrapStatus,
-    },
+    BootstrapStatus { status: super::BridgeBootstrapStatus },
     /// How far a storage setup has come; a stream's one key, `""`, while it
     /// runs a step.
-    StorageSetupProgress {
-        progress: super::BridgeStorageSetupProgress,
-    },
+    StorageSetupProgress { progress: super::BridgeStorageSetupProgress },
     /// The step a library's close or removal runs; a stream's one key, `""`,
     /// while it runs one.
     ClosingStep { step: super::BridgeClosingStep },
     /// How far a bulk action over an import list's selection has got; a
     /// stream's one key, `""`, while the action runs.
     #[cfg(feature = "desktop")]
-    SelectionActionProgress {
-        progress: super::BridgeSelectionActionProgress,
-    },
+    SelectionActionProgress { progress: super::BridgeSelectionActionProgress },
     /// The network read an apply of a catalog release waits on; a stream's
     /// one key, `""`, while it waits on one.
     #[cfg(feature = "desktop")]

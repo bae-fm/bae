@@ -67,10 +67,7 @@ struct Capturing;
 impl<S> Filter<S> for Capturing {
     fn enabled(&self, metadata: &Metadata<'_>, _: &Context<'_, S>) -> bool {
         CAPTURE.with(|capture| {
-            capture
-                .borrow()
-                .as_ref()
-                .is_some_and(|capture| *metadata.level() <= capture.level)
+            capture.borrow().as_ref().is_some_and(|capture| *metadata.level() <= capture.level)
         })
     }
 
@@ -105,10 +102,7 @@ impl CaptureGuard {
     fn start(level: tracing::Level) -> Self {
         install();
         CAPTURE.with(|capture| {
-            let earlier = capture.replace(Some(Capture {
-                level,
-                bytes: Vec::new(),
-            }));
+            let earlier = capture.replace(Some(Capture { level, bytes: Vec::new() }));
             assert!(earlier.is_none(), "a thread runs one capture at a time");
         });
         Self

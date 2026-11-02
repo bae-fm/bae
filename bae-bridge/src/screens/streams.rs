@@ -39,10 +39,7 @@ where
     let values = StreamValues::new();
     let stop = CancellationToken::new();
     let writer = StreamWriter::new(values.clone());
-    run(
-        stop.clone(),
-        Box::new(move |services| Box::pin(writes(services, writer))),
-    );
+    run(stop.clone(), Box::new(move |services| Box::pin(writes(services, writer))));
     Arc::new(KeyedValueStream::new(values, stop, runtime))
 }
 
@@ -56,10 +53,9 @@ fn write_release_changes<Progress>(
     use bae_core::library::ReleaseTransferChange;
     for change in changes {
         match change {
-            ReleaseTransferChange::Updated {
-                release_id,
-                progress,
-            } => writer.set(release_id, value(progress)),
+            ReleaseTransferChange::Updated { release_id, progress } => {
+                writer.set(release_id, value(progress))
+            }
             ReleaseTransferChange::Removed { release_id } => writer.remove(release_id.as_bytes()),
             ReleaseTransferChange::Reset(all) => writer.reset(
                 all.into_iter()
@@ -73,12 +69,9 @@ fn write_release_changes<Progress>(
 /// The files being sent together as their stream holds them: only while
 /// any is being sent.
 fn upload_total(transfer: bae_core::library::UploadTransfer) -> Option<BridgeFastValue> {
-    transfer
-        .bar
-        .is_some()
-        .then(|| BridgeFastValue::UploadTotal {
-            transfer: crate::types::BridgeUploadTransfer::from_core(transfer),
-        })
+    transfer.bar.is_some().then(|| BridgeFastValue::UploadTotal {
+        transfer: crate::types::BridgeUploadTransfer::from_core(transfer),
+    })
 }
 
 /// Write each batch of a file transfer watch, keyed by file id.
@@ -122,10 +115,9 @@ pub(crate) fn release_upload_transfers(
             };
             for change in changes {
                 match change {
-                    OutboxTransferChange::Updated {
-                        release_id,
-                        transfer,
-                    } => writer.set(release_id, upload(transfer)),
+                    OutboxTransferChange::Updated { release_id, transfer } => {
+                        writer.set(release_id, upload(transfer))
+                    }
                     OutboxTransferChange::Removed { release_id } => {
                         writer.remove(release_id.as_bytes())
                     }
@@ -292,10 +284,7 @@ pub(crate) fn import_percents(
                 .borrow_and_update()
                 .iter()
                 .map(|(key, percent)| {
-                    (
-                        key.as_bytes().to_vec(),
-                        BridgeFastValue::ImportPercent { percent: *percent },
-                    )
+                    (key.as_bytes().to_vec(), BridgeFastValue::ImportPercent { percent: *percent })
                 })
                 .collect();
             writer.reset(held);

@@ -22,11 +22,7 @@ fn a_stated_code_is_admitted_on_its_check_digit() {
     assert_eq!(stated("5012345678901"), None, "check digit fails");
     assert_eq!(stated("012345678906"), None, "check digit fails");
     assert_eq!(stated("12345671"), None, "neither EAN-8 nor UPC-E");
-    assert_eq!(
-        stated("26543210"),
-        None,
-        "UPC-E encodes number systems 0 and 1 only"
-    );
+    assert_eq!(stated("26543210"), None, "UPC-E encodes number systems 0 and 1 only");
     assert_eq!(stated("0123456784"), None, "no symbology has ten digits");
     assert_eq!(stated("ABC-1234"), None);
     assert_eq!(stated(""), None);
@@ -46,13 +42,9 @@ fn a_placeholder_is_no_code_whatever_its_check_digit() {
 /// symbology prints its gaps, or at fewer of them.
 #[test]
 fn a_printed_line_is_read_in_its_symbology_s_layout() {
-    for line in [
-        "5 012345 678900",
-        "5 012345678900",
-        "5012345 678900",
-        "5012345678900",
-        "5-012345-678900",
-    ] {
+    for line in
+        ["5 012345 678900", "5 012345678900", "5012345 678900", "5012345678900", "5-012345-678900"]
+    {
         assert_eq!(printed(line).as_deref(), Some("5012345678900"), "{line}");
     }
     for line in ["0 12345 67890 5", "0 1234567890 5", "012345678905"] {
@@ -104,10 +96,7 @@ fn comparison_keys_meet_only_where_the_encodings_define_it() {
 
 #[test]
 fn written_digits_read_the_digits_out_of_the_spacing() {
-    assert_eq!(
-        written_digits(" 5 012345-678900 ").as_deref(),
-        Some("5012345678900")
-    );
+    assert_eq!(written_digits(" 5 012345-678900 ").as_deref(), Some("5012345678900"));
     assert_eq!(written_digits("12"), Some("12".to_string()));
     assert_eq!(written_digits("- -"), None);
     assert_eq!(written_digits("ABC 123"), None);
@@ -126,11 +115,7 @@ fn a_number_a_shop_assigns_itself_is_no_code() {
         with_check_digit("41234567890"),
     ] {
         assert_eq!(stated(&code), None, "{code} is a shop's own number");
-        assert_eq!(
-            comparison_key(&code),
-            Err(Unusable::StoreInternal),
-            "{code}"
-        );
+        assert_eq!(comparison_key(&code), Err(Unusable::StoreInternal), "{code}");
     }
     let printed_sticker = with_check_digit("210000012345");
     let (first, rest) = printed_sticker.split_at(1);

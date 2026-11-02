@@ -60,17 +60,11 @@ async fn ordered_release_ids(
             pairs.sort_by_key(|pair| std::cmp::Reverse(pair.0.created_at));
         }
         "byYear" => {
-            let from = params
-                .int("fromYear")?
-                .ok_or_else(|| SubError::missing_param("fromYear"))?;
-            let to = params
-                .int("toYear")?
-                .ok_or_else(|| SubError::missing_param("toYear"))?;
-            let (lo, hi, descending) = if from <= to {
-                (from, to, false)
-            } else {
-                (to, from, true)
-            };
+            let from =
+                params.int("fromYear")?.ok_or_else(|| SubError::missing_param("fromYear"))?;
+            let to = params.int("toYear")?.ok_or_else(|| SubError::missing_param("toYear"))?;
+            let (lo, hi, descending) =
+                if from <= to { (from, to, false) } else { (to, from, true) };
             pairs.retain(|pair| {
                 pair_year(pair).is_some_and(|y| i64::from(y) >= lo && i64::from(y) <= hi)
             });
@@ -101,10 +95,7 @@ async fn release_album_pairs(
     let albums = services.get_albums(&[]).await.map_err(lib_err)?;
     let mut pairs = Vec::new();
     for album in albums {
-        let releases = services
-            .get_releases_for_album(&album.id)
-            .await
-            .map_err(lib_err)?;
+        let releases = services.get_releases_for_album(&album.id).await.map_err(lib_err)?;
         for release in releases {
             pairs.push((release, album.clone()));
         }
@@ -138,9 +129,7 @@ fn shuffle<T>(items: &mut [T]) {
 /// `getSong` — one song by id.
 pub(crate) async fn get_song(state: AppState, params: Params) -> Result<Option<Element>, SubError> {
     let services = &state.services;
-    let track_id = SubId::parse(params.require("id")?)?
-        .expect_track()?
-        .to_string();
+    let track_id = SubId::parse(params.require("id")?)?.expect_track()?.to_string();
 
     // The song must exist. `filter_existing_track_ids` gives a clean absence
     // (→ not found) instead of a generic error from a downstream resolve.
@@ -152,47 +141,22 @@ pub(crate) async fn get_song(state: AppState, params: Params) -> Result<Option<E
         return Err(SubError::not_found());
     }
 
-    let info = services
-        .get_playback_track_info(&track_id)
-        .await
-        .map_err(lib_err)?;
+    let info = services.get_playback_track_info(&track_id).await.map_err(lib_err)?;
     let release = services
         .get_release_by_id(&info.release_id)
         .await
         .map_err(lib_err)?
         .ok_or_else(SubError::not_found)?;
-    let tracks = services
-        .get_tracks_for_release(&info.release_id)
-        .await
-        .map_err(lib_err)?;
-    let track = tracks
-        .iter()
-        .find(|t| t.id == track_id)
-        .ok_or_else(SubError::not_found)?;
-    let files = services
-        .get_files_for_release(&info.release_id)
-        .await
-        .map_err(lib_err)?;
-    let display = services
-        .get_track_display(&track_id)
-        .await
-        .map_err(lib_err)?;
-    let mediums = services
-        .get_release_mediums(&info.release_id)
-        .await
-        .map_err(lib_err)?;
+    let tracks = services.get_tracks_for_release(&info.release_id).await.map_err(lib_err)?;
+    let track = tracks.iter().find(|t| t.id == track_id).ok_or_else(SubError::not_found)?;
+    let files = services.get_files_for_release(&info.release_id).await.map_err(lib_err)?;
+    let display = services.get_track_display(&track_id).await.map_err(lib_err)?;
+    let mediums = services.get_release_mediums(&info.release_id).await.map_err(lib_err)?;
     let cover_art = release_album_id3_with(services, &release).await?.cover_art;
 
-    let child = track_child(
-        services,
-        track,
-        &release,
-        &display.album_title,
-        &files,
-        &mediums,
-        cover_art,
-    )
-    .await?;
+    let child =
+        track_child(services, track, &release, &display.album_title, &files, &mediums, cover_art)
+            .await?;
     Ok(Some(child.to_element()))
 }
 
@@ -234,11 +198,7 @@ pub(crate) async fn search3(state: AppState, params: Params) -> Result<Option<El
             // album is a release); the release list is what the window pages.
             let mut release_ids = Vec::new();
             for hit in &results.albums {
-                for release in services
-                    .get_releases_for_album(&hit.id)
-                    .await
-                    .map_err(lib_err)?
-                {
+                for release in services.get_releases_for_album(&hit.id).await.map_err(lib_err)? {
                     release_ids.push(release.id);
                 }
             }
@@ -315,11 +275,8 @@ async fn whole_library(
     }
 
     // Albums (releases).
-    let release_ids: Vec<String> = release_album_pairs(services)
-        .await?
-        .into_iter()
-        .map(|pair| pair.0.id)
-        .collect();
+    let release_ids: Vec<String> =
+        release_album_pairs(services).await?.into_iter().map(|pair| pair.0.id).collect();
     for release_id in page(&release_ids, albums) {
         payload = payload.child(release_album_id3(services, release_id).await?.to_element());
     }
@@ -327,10 +284,7 @@ async fn whole_library(
     // Songs.
     let track_ids = services.get_all_track_ids().await.map_err(lib_err)?;
     for track_id in page(&track_ids, songs) {
-        let display = services
-            .get_track_display(track_id)
-            .await
-            .map_err(lib_err)?;
+        let display = services.get_track_display(track_id).await.map_err(lib_err)?;
         payload = payload.child(
             search_track_child(
                 services,

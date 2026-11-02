@@ -27,19 +27,13 @@ use crate::config::SaveFilenameToken::{Album, Artist, Title, TrackNumber, Year};
 #[test]
 fn default_pattern_all_present_pads_track_number() {
     let r = resolved("Track Title", 3, 10, None, Some(2001));
-    assert_eq!(
-        render_save_filename(&[TrackNumber, Title], &r),
-        "03 Track Title"
-    );
+    assert_eq!(render_save_filename(&[TrackNumber, Title], &r), "03 Track Title");
 }
 
 #[test]
 fn absent_values_drop_out_of_the_join() {
     let r = resolved("Track Title", 3, 10, None, None);
-    assert_eq!(
-        render_save_filename(&[TrackNumber, Title, Year], &r),
-        "03 Track Title"
-    );
+    assert_eq!(render_save_filename(&[TrackNumber, Title, Year], &r), "03 Track Title");
 }
 
 #[test]
@@ -58,10 +52,7 @@ fn slash_and_colon_are_written_as_coven_writes_them() {
     let r = resolved("Some/Weird:Title", 1, 1, None, None);
     let stem = render_save_filename(&[Title], &r);
     assert_eq!(stem, "Some/Weird:Title");
-    assert_eq!(
-        save_file_name(&stem, "flac"),
-        Path::new("Some／Weird：Title.flac")
-    );
+    assert_eq!(save_file_name(&stem, "flac"), Path::new("Some／Weird：Title.flac"));
 }
 
 #[test]
@@ -149,13 +140,10 @@ fn release_image_cue_writes_catalog_and_date() {
 /// tagged file's path.
 fn write_tags_to_encoded_flac(cover: Option<&[u8]>) -> (tempfile::TempDir, std::path::PathBuf) {
     bae_audio::init();
-    let samples: Vec<i32> = (0..4410)
-        .map(|i| ((i as f64 * 0.02).sin() * 0.5 * i32::MAX as f64) as i32)
-        .collect();
+    let samples: Vec<i32> =
+        (0..4410).map(|i| ((i as f64 * 0.02).sin() * 0.5 * i32::MAX as f64) as i32).collect();
     let flac = bae_audio::encode_i32(
-        bae_audio::EncodeFormat::Flac {
-            bits_per_sample: 16,
-        },
+        bae_audio::EncodeFormat::Flac { bits_per_sample: 16 },
         &samples,
         44100,
         1,
@@ -174,15 +162,7 @@ fn write_tags_to_encoded_flac(cover: Option<&[u8]>) -> (tempfile::TempDir, std::
     let dir = tempfile::TempDir::new().unwrap();
     let path = dir.path().join("tagged.flac");
     std::fs::write(&path, &flac).unwrap();
-    write_tags(
-        &path,
-        lofty::tag::TagType::VorbisComments,
-        &tags,
-        Some(3),
-        10,
-        cover,
-    )
-    .unwrap();
+    write_tags(&path, lofty::tag::TagType::VorbisComments, &tags, Some(3), 10, cover).unwrap();
     (dir, path)
 }
 
@@ -196,18 +176,14 @@ fn write_tags_writes_every_known_field() {
     let cover_bytes = {
         let img = image::RgbImage::from_pixel(8, 8, image::Rgb([120, 40, 200]));
         let mut buf = std::io::Cursor::new(Vec::new());
-        image::DynamicImage::ImageRgb8(img)
-            .write_to(&mut buf, image::ImageFormat::Png)
-            .unwrap();
+        image::DynamicImage::ImageRgb8(img).write_to(&mut buf, image::ImageFormat::Png).unwrap();
         buf.into_inner()
     };
 
     let (_dir, path) = write_tags_to_encoded_flac(Some(&cover_bytes));
 
     let tagged = lofty::read_from_path(&path).unwrap();
-    let tag = tagged
-        .tag(TagType::VorbisComments)
-        .expect("VorbisComments tag present");
+    let tag = tagged.tag(TagType::VorbisComments).expect("VorbisComments tag present");
     assert_eq!(tag.title().as_deref(), Some("Track Title"));
     assert_eq!(tag.artist().as_deref(), Some("Artist Name"));
     assert_eq!(tag.album().as_deref(), Some("Album Title"));
@@ -227,15 +203,10 @@ fn write_tags_without_cover_embeds_no_picture() {
     let (_dir, path) = write_tags_to_encoded_flac(None);
 
     let tagged = lofty::read_from_path(&path).unwrap();
-    let tag = tagged
-        .tag(TagType::VorbisComments)
-        .expect("VorbisComments tag present");
+    let tag = tagged.tag(TagType::VorbisComments).expect("VorbisComments tag present");
     assert_eq!(tag.title().as_deref(), Some("Track Title"));
     assert_eq!(tag.track(), Some(3));
-    assert!(
-        tag.pictures().is_empty(),
-        "no cover bytes means no embedded picture"
-    );
+    assert!(tag.pictures().is_empty(), "no cover bytes means no embedded picture");
 }
 
 /// AAC exports write MP4 `ilst` atoms. Encode a real .m4a, tag it with the
@@ -247,9 +218,8 @@ fn write_tags_round_trips_through_mp4_ilst() {
     use lofty::tag::TagType;
 
     bae_audio::init();
-    let samples: Vec<i32> = (0..44_100 * 2)
-        .map(|i| ((i as f64 * 0.02).sin() * 0.5 * i32::MAX as f64) as i32)
-        .collect();
+    let samples: Vec<i32> =
+        (0..44_100 * 2).map(|i| ((i as f64 * 0.02).sin() * 0.5 * i32::MAX as f64) as i32).collect();
     let m4a = bae_audio::encode_i32(
         bae_audio::EncodeFormat::Aac { bitrate_kbps: 256 },
         &samples,
@@ -261,9 +231,7 @@ fn write_tags_round_trips_through_mp4_ilst() {
     let cover_bytes = {
         let img = image::RgbImage::from_pixel(8, 8, image::Rgb([120, 40, 200]));
         let mut buf = std::io::Cursor::new(Vec::new());
-        image::DynamicImage::ImageRgb8(img)
-            .write_to(&mut buf, image::ImageFormat::Jpeg)
-            .unwrap();
+        image::DynamicImage::ImageRgb8(img).write_to(&mut buf, image::ImageFormat::Jpeg).unwrap();
         buf.into_inner()
     };
 
@@ -332,9 +300,7 @@ fn a_read_that_panics_fails_the_save_as_unfinished() {
     let file = std::fs::File::create(dir.path().join("image.flac")).unwrap();
     let cancel = Arc::new(AtomicBool::new(false));
     let mut encoder = StreamingEncoder::seekable(
-        EncodeFormat::Flac {
-            bits_per_sample: 16,
-        },
+        EncodeFormat::Flac { bits_per_sample: 16 },
         Box::new(file),
         cancel.clone(),
     );

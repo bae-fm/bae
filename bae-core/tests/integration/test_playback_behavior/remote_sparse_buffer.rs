@@ -16,18 +16,29 @@ impl RemoteMultiWindowPlayback {
         let temp_dir = TempDir::new()?;
         let album_dir = temp_dir.path().join("album");
         std::fs::create_dir_all(&album_dir)?;
-        let (library_manager, _, cloud) = support::storage_library(temp_dir.path(), bae_core::providers::Providers::offline()).await;
+        let (library_manager, _, cloud) =
+            support::storage_library(temp_dir.path(), bae_core::providers::Providers::offline())
+                .await;
         support::connect_storage(&library_manager, &cloud).await;
         generate_multi_window_cue_flac_files(&album_dir);
-        let release_key = seed_discogs_test_release(library_manager.providers(), create_multi_window_cue_album());
-        let import_handle = start_test_import(tokio::runtime::Handle::current(), library_manager.clone()).await;
+        let release_key =
+            seed_discogs_test_release(library_manager.providers(), create_multi_window_cue_album());
+        let import_handle =
+            start_test_import(tokio::runtime::Handle::current(), library_manager.clone()).await;
         let import_id = uuid::Uuid::new_v4().to_string();
-        import_handle.send_command(ImportCommand {
-            candidate_key: bae_core::import::CandidateKey::from_bytes(name.as_bytes().to_vec()),
-            destination: ImportDestination::Remote { pin: false },
-            ..support::folder_import(&import_id, album_dir.clone(), support::discogs_release(release_key))
-        }).await?;
-        let (release_id, _) = wait_for_import_complete(&mut import_handle.subscribe_import(import_id)).await;
+        import_handle
+            .send_command(ImportCommand {
+                candidate_key: bae_core::import::CandidateKey::from_bytes(name.as_bytes().to_vec()),
+                destination: ImportDestination::Remote { pin: false },
+                ..support::folder_import(
+                    &import_id,
+                    album_dir.clone(),
+                    support::discogs_release(release_key),
+                )
+            })
+            .await?;
+        let (release_id, _) =
+            wait_for_import_complete(&mut import_handle.subscribe_import(import_id)).await;
         library_manager.drain_uploads_expecting_work().await?;
         let files = library_manager.get_files_for_release(&release_id).await?;
         let flac = files
@@ -47,10 +58,24 @@ impl RemoteMultiWindowPlayback {
             library_manager.evict_file_for_test(file.file).await?;
         }
         std::fs::remove_dir_all(album_dir)?;
-        let track_ids = library_manager.get_tracks_for_release(&release_id).await?.into_iter().map(|track| track.id).collect();
-        let (playback_handle, capture_stream_rx) = start_capture_service(library_manager, tokio::runtime::Handle::current()).await;
+        let track_ids = library_manager
+            .get_tracks_for_release(&release_id)
+            .await?
+            .into_iter()
+            .map(|track| track.id)
+            .collect();
+        let (playback_handle, capture_stream_rx) =
+            start_capture_service(library_manager, tokio::runtime::Handle::current()).await;
         let progress_rx = playback_handle.subscribe_progress();
-        Ok(Self { playback_handle, progress_rx, track_ids, cloud, flac_object, _capture_stream_rx: capture_stream_rx, _temp_dir: temp_dir })
+        Ok(Self {
+            playback_handle,
+            progress_rx,
+            track_ids,
+            cloud,
+            flac_object,
+            _capture_stream_rx: capture_stream_rx,
+            _temp_dir: temp_dir,
+        })
     }
 
     async fn play_and_wait(&mut self, track_id: &str) {
@@ -70,10 +95,7 @@ async fn a_load_from_storage_tells_its_download() {
     // Hold the FLAC's body a byte past its header, so the load waits on it.
     let (reached, observed) = tokio::sync::oneshot::channel();
     let (resume, resumed) = tokio::sync::oneshot::channel();
-    playback
-        .cloud
-        .hold_body_at(playback.flac_object.clone(), 12, reached, resumed)
-        .await;
+    playback.cloud.hold_body_at(playback.flac_object.clone(), 12, reached, resumed).await;
     let mut downloads = playback.playback_handle.subscribe_track_downloads();
 
     playback.playback_handle.play(track.clone());
@@ -89,10 +111,7 @@ async fn a_load_from_storage_tells_its_download() {
     .await
     .expect("the waited load tells its download");
     assert_eq!(download.track_id, track);
-    assert!(
-        download.here < download.total,
-        "the held read has part of its bytes: {download:?}"
-    );
+    assert!(download.here < download.total, "the held read has part of its bytes: {download:?}");
 
     resume.send(()).expect("the held read waits");
     wait_for_state_on(
@@ -144,13 +163,8 @@ async fn auto_advance_crosses_gaplessly_over_remote_cloud() {
     playback.play_and_wait(&first).await;
 
     playback.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(54)));
-    let outcome = observe_boundary(
-        &mut playback.progress_rx,
-        &first,
-        &second,
-        Duration::from_secs(30),
-    )
-    .await;
+    let outcome =
+        observe_boundary(&mut playback.progress_rx, &first, &second, Duration::from_secs(30)).await;
     assert!(
         outcome.reached_incoming,
         "playback crosses into the second track over a real ranged cloud read"
@@ -183,11 +197,9 @@ async fn manual_next_into_a_pregap_track_over_remote_cloud() {
     .await
     .expect("the second track reaches Playing after a manual Next over a real ranged cloud read");
 
-    wait_for_track_position_where(&mut playback.progress_rx, &second, |ms| ms > 0)
-        .await
-        .expect(
-            "the rebuilt track's position advances — its bytes are fetched over the real cloud path",
-        );
+    wait_for_track_position_where(&mut playback.progress_rx, &second, |ms| ms > 0).await.expect(
+        "the rebuilt track's position advances — its bytes are fetched over the real cloud path",
+    );
 }
 
 /// Remote-cloud port of `manual_next_into_a_clean_track_promotes_the_preload`.
@@ -208,11 +220,9 @@ async fn manual_next_into_a_clean_track_over_remote_cloud() {
     .await
     .expect("the third track reaches Playing after a manual Next over a real ranged cloud read");
 
-    wait_for_track_position_where(&mut playback.progress_rx, &third, |ms| ms > 0)
-        .await
-        .expect(
-            "the promoted track's position advances — its bytes are fetched over the real cloud path",
-        );
+    wait_for_track_position_where(&mut playback.progress_rx, &third, |ms| ms > 0).await.expect(
+        "the promoted track's position advances — its bytes are fetched over the real cloud path",
+    );
 }
 
 /// Remote-cloud seek port: seeking within the last track over a real ranged
@@ -277,7 +287,8 @@ const SEEK_COST_BACKSTOP: Duration = Duration::from_secs(15);
 /// include their traffic.
 #[tokio::test(flavor = "multi_thread")]
 async fn seek_over_remote_cloud_costs_chunks_not_the_whole_file() {
-    let mut playback = RemoteMultiWindowPlayback::new("remote-seek-ranges").await
+    let mut playback = RemoteMultiWindowPlayback::new("remote-seek-ranges")
+        .await
         .expect("set up the private remote fixture");
 
     let last_track = playback.track_ids[2].clone();
@@ -343,4 +354,3 @@ async fn seek_over_remote_cloud_costs_chunks_not_the_whole_file() {
         "the seek took {elapsed:?}, past the {SEEK_COST_BACKSTOP:?} backstop"
     );
 }
-

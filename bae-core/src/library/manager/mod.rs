@@ -232,18 +232,12 @@ pub enum LibraryError {
     #[error("{0}")]
     Validation(String),
     #[error("{operation}; cleanup also failed: {cleanup}")]
-    Cleanup {
-        operation: Box<LibraryError>,
-        cleanup: Box<LibraryError>,
-    },
+    Cleanup { operation: Box<LibraryError>, cleanup: Box<LibraryError> },
 }
 
 impl LibraryError {
     pub(crate) fn file_read(operation: impl Into<String>, error: coven::FileReadError) -> Self {
-        Self::FileRead {
-            operation: operation.into(),
-            error: Box::new(error),
-        }
+        Self::FileRead { operation: operation.into(), error: Box::new(error) }
     }
 }
 
@@ -299,13 +293,8 @@ pub struct UploadBatchFailure {
 
 #[derive(Debug)]
 pub enum UploadReleasesOutcome {
-    Complete {
-        receipt: UploadReceipt,
-    },
-    Partial {
-        receipt: Option<UploadReceipt>,
-        failure: UploadBatchFailure,
-    },
+    Complete { receipt: UploadReceipt },
+    Partial { receipt: Option<UploadReceipt>, failure: UploadBatchFailure },
 }
 
 /// A stored name that names no file refuses the write it was for: the row it
@@ -445,10 +434,8 @@ impl TrackAudioMeta {
             .await?
             .ok_or_else(|| LibraryError::TrackMapping(format!("Track not found: {}", track_id)))?;
 
-        let audio_format = database
-            .find_audio_format_by_track_id(track_id)
-            .await?
-            .ok_or_else(|| {
+        let audio_format =
+            database.find_audio_format_by_track_id(track_id).await?.ok_or_else(|| {
                 LibraryError::TrackMapping(format!("No audio format for track: {}", track_id))
             })?;
 
@@ -479,9 +466,7 @@ impl TrackAudioMeta {
             )));
         }
         #[cfg(desktop)]
-        let audio_files = database
-            .get_audio_files_for_format(&audio_format.id)
-            .await?;
+        let audio_files = database.get_audio_files_for_format(&audio_format.id).await?;
 
         Ok(Self {
             track,
@@ -560,10 +545,7 @@ impl ResolvedTrackAudio {
             generated_pregap_samples: meta.audio_format.generated_pregap_samples,
             sample_rate: meta.audio_format.sample_rate,
             channels: meta.audio_format.channels,
-            bits_per_sample: meta
-                .audio_format
-                .bits_per_sample
-                .map(std::num::NonZeroU32::get),
+            bits_per_sample: meta.audio_format.bits_per_sample.map(std::num::NonZeroU32::get),
             content_type: meta.audio_format.content_type.clone(),
             track_loudness_lufs: meta.audio_format.track_loudness_lufs,
             track_peak_linear: meta.audio_format.track_peak_linear,
@@ -649,11 +631,7 @@ impl ResolvedTrackAudio {
         let gain = 10f64.powf((REPLAY_GAIN_TARGET_LUFS - loudness_lufs) / 20.0);
         // Cap the gain so the loudest true-peak sample can't exceed full scale.
         // A non-positive peak (no usable peak) imposes no cap.
-        let max_safe = if peak_linear > 0.0 {
-            1.0 / peak_linear
-        } else {
-            f64::INFINITY
-        };
+        let max_safe = if peak_linear > 0.0 { 1.0 / peak_linear } else { f64::INFINITY };
         gain.min(max_safe) as f32
     }
 }
@@ -788,9 +766,7 @@ pub fn generate_mcp_token() -> String {
 
 impl std::fmt::Debug for LibraryManager {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("LibraryManager")
-            .field("database", &self.database)
-            .finish_non_exhaustive()
+        f.debug_struct("LibraryManager").field("database", &self.database).finish_non_exhaustive()
     }
 }
 

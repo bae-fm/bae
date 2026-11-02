@@ -46,9 +46,7 @@ impl InternalFailure {
 /// panic was reported as a bug where it was caught.
 impl From<bae_util::task_failure::TaskFailed> for InternalFailure {
     fn from(failed: bae_util::task_failure::TaskFailed) -> Self {
-        Self {
-            detail: failed.to_string(),
-        }
+        Self { detail: failed.to_string() }
     }
 }
 

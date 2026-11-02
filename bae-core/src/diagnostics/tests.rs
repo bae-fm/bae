@@ -29,10 +29,8 @@ fn ids() -> IdSourceRef {
 }
 
 fn event() -> DiagnosticEvent {
-    let telemetry = TelemetryEvent::PlaybackStarted {
-        source: PlaybackStartSource::Release,
-        track_count: 4,
-    };
+    let telemetry =
+        TelemetryEvent::PlaybackStarted { source: PlaybackStartSource::Release, track_count: 4 };
     DiagnosticEvent {
         name: telemetry.name().to_string(),
         level: telemetry.level(),
@@ -133,10 +131,7 @@ fn datadog_request_uses_client_intake_shape() {
         request.url.as_str(),
         "https://browser-intake-datadoghq.com/api/v2/logs?ddsource=ios"
     );
-    assert_eq!(
-        header_value(&request, CONTENT_TYPE.as_str()),
-        "application/json"
-    );
+    assert_eq!(header_value(&request, CONTENT_TYPE.as_str()), "application/json");
     assert_eq!(header_value(&request, "DD-API-KEY"), "client-token");
     assert_eq!(header_value(&request, "DD-EVP-ORIGIN"), "ios");
     assert_eq!(header_value(&request, "DD-REQUEST-ID"), "request-id");
@@ -148,18 +143,10 @@ fn datadog_request_uses_client_intake_shape() {
 
 #[test]
 fn retry_decision_retries_transient_failures_only() {
-    assert!(should_retry(&DiagnosticsError::Status(
-        StatusCode::INTERNAL_SERVER_ERROR
-    )));
-    assert!(should_retry(&DiagnosticsError::Status(
-        StatusCode::TOO_MANY_REQUESTS
-    )));
-    assert!(!should_retry(&DiagnosticsError::Status(
-        StatusCode::BAD_REQUEST
-    )));
-    assert!(!should_retry(&DiagnosticsError::InvalidSite(
-        "bad/site".to_string()
-    )));
+    assert!(should_retry(&DiagnosticsError::Status(StatusCode::INTERNAL_SERVER_ERROR)));
+    assert!(should_retry(&DiagnosticsError::Status(StatusCode::TOO_MANY_REQUESTS)));
+    assert!(!should_retry(&DiagnosticsError::Status(StatusCode::BAD_REQUEST)));
+    assert!(!should_retry(&DiagnosticsError::InvalidSite("bad/site".to_string())));
 }
 
 #[tokio::test]
@@ -217,10 +204,7 @@ async fn device_id_enrichment_is_absent_before_and_present_after() {
     let requests = transport.requests();
     let before: serde_json::Value =
         serde_json::from_slice(&requests[0].body).expect("request body is JSON");
-    assert!(
-        before[0].get("device_id").is_none(),
-        "pre-enrichment event omits device_id entirely"
-    );
+    assert!(before[0].get("device_id").is_none(), "pre-enrichment event omits device_id entirely");
     let after: serde_json::Value =
         serde_json::from_slice(&requests[1].body).expect("request body is JSON");
     assert_eq!(after[0]["device_id"], "device-abc");
@@ -270,18 +254,10 @@ async fn distinct_constructions_get_distinct_session_ids() {
     )
     .expect("diagnostics starts");
 
-    let DiagnosticsInner::Worker {
-        session_id: first_session,
-        ..
-    } = first.inner.as_ref()
-    else {
+    let DiagnosticsInner::Worker { session_id: first_session, .. } = first.inner.as_ref() else {
         panic!("configured diagnostics runs a worker");
     };
-    let DiagnosticsInner::Worker {
-        session_id: second_session,
-        ..
-    } = second.inner.as_ref()
-    else {
+    let DiagnosticsInner::Worker { session_id: second_session, .. } = second.inner.as_ref() else {
         panic!("configured diagnostics runs a worker");
     };
     assert_ne!(first_session, second_session);
@@ -330,9 +306,7 @@ async fn a_transport_failure_names_its_cause() {
 #[tokio::test]
 async fn the_transport_sends_under_baes_http_policy() {
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
-        .await
-        .expect("the intake binds");
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.expect("the intake binds");
     let address = listener.local_addr().expect("the intake has an address");
     let intake = tokio::spawn(async move {
         let (mut stream, _) = listener.accept().await.expect("the transport connects");
@@ -375,10 +349,7 @@ fn a_bug_reaches_the_crash_reporter_the_platform_handed_in() {
 
     assert_eq!(
         reporter.reports(),
-        [(
-            "read the upload queue".to_string(),
-            "the database is locked".to_string()
-        )]
+        [("read the upload queue".to_string(), "the database is locked".to_string())]
     );
     Diagnostics::noop().report_bug("read the upload queue", &"logged only");
 }

@@ -37,11 +37,7 @@ impl Library {
         releases
             .iter()
             .map(|(display_path, at)| {
-                format!(
-                    "{}{}",
-                    self.scan(display_path),
-                    self.discovered(display_path, *at)
-                )
+                format!("{}{}", self.scan(display_path), self.discovered(display_path, *at))
             })
             .collect()
     }
@@ -60,11 +56,7 @@ async fn rows_order_by_watched_root_then_natural_path() {
     .await;
     assert_eq!(
         lib.items(view(TriageTab::Pending)).await,
-        [
-            "candidate Release 2",
-            "candidate Release 10",
-            "candidate Release 1"
-        ],
+        ["candidate Release 2", "candidate Release 10", "candidate Release 1"],
         "natural order within a root, and the roots in their stored order"
     );
 }
@@ -72,15 +64,9 @@ async fn rows_order_by_watched_root_then_natural_path() {
 #[tokio::test]
 async fn the_descending_order_reverses_the_whole_queue() {
     let lib = Library::new().await;
-    lib.run(&format!(
-        "{}{}",
-        lib.scan("Release 2"),
-        lib.scan("Release 10")
-    ))
-    .await;
+    lib.run(&format!("{}{}", lib.scan("Release 2"), lib.scan("Release 10"))).await;
     assert_eq!(
-        lib.items(ordered(TriageTab::Pending, ImportListOrder::PathDescending))
-            .await,
+        lib.items(ordered(TriageTab::Pending, ImportListOrder::PathDescending)).await,
         ["candidate Release 10", "candidate Release 2"]
     );
 }
@@ -94,80 +80,43 @@ async fn a_tentative_candidate_is_neither_a_row_nor_a_count() {
     let read = lib.shown(view(TriageTab::Pending)).await;
     assert!(sequence(&read).is_empty());
     assert_eq!(read.total_count, 0);
-    assert_eq!(
-        read.summary.counts,
-        crate::import::TriageTabCounts::default()
-    );
+    assert_eq!(read.summary.counts, crate::import::TriageTabCounts::default());
     assert!(!read.summary.has_groups);
 }
 
 #[tokio::test]
 async fn a_release_counts_pending_and_an_invalid_folder_counts_skipped() {
     let lib = Library::new().await;
-    lib.run(&format!(
-        "{}{}",
-        lib.scan("Release"),
-        lib.scan_as("Broken", "invalid")
-    ))
-    .await;
+    lib.run(&format!("{}{}", lib.scan("Release"), lib.scan_as("Broken", "invalid"))).await;
     let pending = lib.shown(view(TriageTab::Pending)).await;
     assert_eq!(
         pending.summary.counts,
-        crate::import::TriageTabCounts {
-            pending: 1,
-            done: 0,
-            skipped: 1,
-        }
+        crate::import::TriageTabCounts { pending: 1, done: 0, skipped: 1 }
     );
     assert_eq!(sequence(&pending), ["candidate Release"]);
-    assert_eq!(
-        lib.items(view(TriageTab::Skipped)).await,
-        ["invalid Broken"]
-    );
+    assert_eq!(lib.items(view(TriageTab::Skipped)).await, ["invalid Broken"]);
 }
 
 #[tokio::test]
 async fn a_collapsed_group_keeps_its_header_and_drops_its_entries() {
     let lib = Library::new().await;
-    lib.run(&format!(
-        "{}{}",
-        lib.scan("Group/Release 1"),
-        lib.scan("Group/Release 2")
-    ))
-    .await;
+    lib.run(&format!("{}{}", lib.scan("Group/Release 1"), lib.scan("Group/Release 2"))).await;
     let list = lib.open(view(TriageTab::Pending)).await;
-    lib.db
-        .set_import_list_group_folded(list, lib.group_key("Group"), true)
-        .await
-        .unwrap();
+    lib.db.set_import_list_group_folded(list, lib.group_key("Group"), true).await.unwrap();
     let read = lib.read(list).await;
     assert_eq!(sequence(&read), ["group Group"]);
     assert_eq!(read.total_count, 1);
-    let ImportListItem::GroupHeader {
-        expanded,
-        entry_count,
-        ..
-    } = &read.windows[0].items[0]
+    let ImportListItem::GroupHeader { expanded, entry_count, .. } = &read.windows[0].items[0]
     else {
         panic!("the header is the one item");
     };
     assert!(!expanded);
-    assert_eq!(
-        *entry_count, 2,
-        "the header still says how much is folded away"
-    );
+    assert_eq!(*entry_count, 2, "the header still says how much is folded away");
 
-    lib.db
-        .set_import_list_group_folded(list, lib.group_key("Group"), false)
-        .await
-        .unwrap();
+    lib.db.set_import_list_group_folded(list, lib.group_key("Group"), false).await.unwrap();
     assert_eq!(
         sequence(&lib.read(list).await),
-        [
-            "group Group",
-            "candidate Group/Release 1",
-            "candidate Group/Release 2"
-        ]
+        ["group Group", "candidate Group/Release 1", "candidate Group/Release 2"]
     );
 }
 
@@ -175,39 +124,17 @@ async fn a_collapsed_group_keeps_its_header_and_drops_its_entries() {
 #[tokio::test]
 async fn every_group_folds_and_opens_at_once() {
     let lib = Library::new().await;
-    lib.run(&format!(
-        "{}{}{}",
-        lib.scan("A/One"),
-        lib.scan("B/Two"),
-        lib.scan("Loose")
-    ))
-    .await;
-    let list = lib
-        .open(ordered(TriageTab::Pending, ImportListOrder::PathAscending))
-        .await;
-    let folded = lib
-        .db
-        .set_import_list_groups_folded(list, true)
-        .await
-        .unwrap();
+    lib.run(&format!("{}{}{}", lib.scan("A/One"), lib.scan("B/Two"), lib.scan("Loose"))).await;
+    let list = lib.open(ordered(TriageTab::Pending, ImportListOrder::PathAscending)).await;
+    let folded = lib.db.set_import_list_groups_folded(list, true).await.unwrap();
     let read = lib.read(list).await;
     assert_eq!(sequence(&read), ["group A", "group B", "candidate Loose"]);
     assert_eq!(read.view_revision, folded);
-    let opened = lib
-        .db
-        .set_import_list_groups_folded(list, false)
-        .await
-        .unwrap();
+    let opened = lib.db.set_import_list_groups_folded(list, false).await.unwrap();
     assert_eq!(opened, folded + 1, "each fold moves the view's revision");
     assert_eq!(
         sequence(&lib.read(list).await),
-        [
-            "group A",
-            "candidate A/One",
-            "group B",
-            "candidate B/Two",
-            "candidate Loose"
-        ]
+        ["group A", "candidate A/One", "group B", "candidate B/Two", "candidate Loose"]
     );
 }
 
@@ -219,9 +146,7 @@ fn header_positions(projection: &ImportListProjection) -> Vec<Option<u64>> {
         .iter()
         .flat_map(|window| &window.items)
         .map(|item| match item {
-            ImportListItem::Candidate {
-                header_position, ..
-            } => *header_position,
+            ImportListItem::Candidate { header_position, .. } => *header_position,
             ImportListItem::GroupHeader { .. } | ImportListItem::Invalid { .. } => None,
         })
         .collect()
@@ -240,9 +165,7 @@ async fn a_group_member_names_its_headers_position() {
         lib.scan("Loose")
     ))
     .await;
-    let read = lib
-        .shown(ordered(TriageTab::Pending, ImportListOrder::PathAscending))
-        .await;
+    let read = lib.shown(ordered(TriageTab::Pending, ImportListOrder::PathAscending)).await;
     assert_eq!(
         sequence(&read),
         [
@@ -254,10 +177,7 @@ async fn a_group_member_names_its_headers_position() {
             "candidate Loose"
         ]
     );
-    assert_eq!(
-        header_positions(&read),
-        [None, Some(0), Some(0), None, Some(3), None]
-    );
+    assert_eq!(header_positions(&read), [None, Some(0), Some(0), None, Some(3), None]);
 }
 
 /// A window that starts among a group's members names the header before it,
@@ -274,26 +194,9 @@ async fn a_window_starting_inside_a_group_names_the_header_before_it() {
         lib.scan("Loose")
     ))
     .await;
-    let list = lib
-        .open(ordered(TriageTab::Pending, ImportListOrder::PathAscending))
-        .await;
-    let read = lib
-        .read_through(
-            list,
-            LibraryPageWindow {
-                offset: 2,
-                limit: 3,
-            },
-        )
-        .await;
-    assert_eq!(
-        sequence(&read),
-        [
-            "candidate A/Disc 2",
-            "candidate A/Disc 3",
-            "candidate Loose"
-        ]
-    );
+    let list = lib.open(ordered(TriageTab::Pending, ImportListOrder::PathAscending)).await;
+    let read = lib.read_through(list, LibraryPageWindow { offset: 2, limit: 3 }).await;
+    assert_eq!(sequence(&read), ["candidate A/Disc 2", "candidate A/Disc 3", "candidate Loose"]);
     assert_eq!(header_positions(&read), [Some(0), Some(0), None]);
 }
 
@@ -314,13 +217,8 @@ async fn a_folded_lists_members_name_their_headers_position() {
         lib.scan("Loose")
     ))
     .await;
-    let list = lib
-        .open(ordered(TriageTab::Pending, ImportListOrder::PathAscending))
-        .await;
-    lib.db
-        .set_import_list_group_folded(list, lib.group_key("A"), true)
-        .await
-        .unwrap();
+    let list = lib.open(ordered(TriageTab::Pending, ImportListOrder::PathAscending)).await;
+    lib.db.set_import_list_group_folded(list, lib.group_key("A"), true).await.unwrap();
     let read = lib.read(list).await;
     assert_eq!(
         sequence(&read),
@@ -333,27 +231,9 @@ async fn a_folded_lists_members_name_their_headers_position() {
             "candidate Loose"
         ]
     );
-    assert_eq!(
-        header_positions(&read),
-        [None, None, Some(1), Some(1), Some(1), None]
-    );
-    let window = lib
-        .read_through(
-            list,
-            LibraryPageWindow {
-                offset: 3,
-                limit: 3,
-            },
-        )
-        .await;
-    assert_eq!(
-        sequence(&window),
-        [
-            "candidate B/Disc 2",
-            "candidate B/Disc 3",
-            "candidate Loose"
-        ]
-    );
+    assert_eq!(header_positions(&read), [None, None, Some(1), Some(1), Some(1), None]);
+    let window = lib.read_through(list, LibraryPageWindow { offset: 3, limit: 3 }).await;
+    assert_eq!(sequence(&window), ["candidate B/Disc 2", "candidate B/Disc 3", "candidate Loose"]);
     assert_eq!(header_positions(&window), [Some(1), Some(1), None]);
 }
 
@@ -374,14 +254,8 @@ async fn only_pending_groups_its_rows() {
     let pending = lib.shown(view(TriageTab::Pending)).await;
     assert!(sequence(&pending).is_empty(), "both rows left Pending");
     assert!(!pending.summary.has_groups);
-    assert_eq!(
-        lib.items(view(TriageTab::Done)).await,
-        ["candidate Group/Release 1"]
-    );
-    assert_eq!(
-        lib.items(view(TriageTab::Skipped)).await,
-        ["candidate Group/Release 2"]
-    );
+    assert_eq!(lib.items(view(TriageTab::Done)).await, ["candidate Group/Release 1"]);
+    assert_eq!(lib.items(view(TriageTab::Skipped)).await, ["candidate Group/Release 2"]);
 }
 
 /// Done is ordered by when the import happened, newest first, then by path.
@@ -401,8 +275,7 @@ async fn done_orders_by_newest_import_first() {
         ["candidate B new", "candidate C middle", "candidate A old"]
     );
     assert_eq!(
-        lib.items(ordered(TriageTab::Done, ImportListOrder::OldestFirst))
-            .await,
+        lib.items(ordered(TriageTab::Done, ImportListOrder::OldestFirst)).await,
         ["candidate A old", "candidate C middle", "candidate B new"]
     );
 }
@@ -412,19 +285,11 @@ async fn default_is_newest_first_and_groups_use_their_newest_member() {
     let lib = Library::new().await;
     lib.run(&format!(
         "{}{}",
-        lib.dated(&[
-            ("A/Old", 10),
-            ("B/Recent", 30),
-            ("A/New", 50),
-            ("Single", 40)
-        ]),
+        lib.dated(&[("A/Old", 10), ("B/Recent", 30), ("A/New", 50), ("Single", 40)]),
         lib.scan("Unknown")
     ))
     .await;
-    assert_eq!(
-        ImportListView::default().order,
-        ImportListOrder::NewestFirst
-    );
+    assert_eq!(ImportListView::default().order, ImportListOrder::NewestFirst);
     assert_eq!(
         lib.items(view(TriageTab::Pending)).await,
         [
@@ -438,8 +303,7 @@ async fn default_is_newest_first_and_groups_use_their_newest_member() {
         ]
     );
     assert_eq!(
-        lib.items(ordered(TriageTab::Pending, ImportListOrder::OldestFirst))
-            .await,
+        lib.items(ordered(TriageTab::Pending, ImportListOrder::OldestFirst)).await,
         [
             "group B",
             "candidate B/Recent",
@@ -451,12 +315,7 @@ async fn default_is_newest_first_and_groups_use_their_newest_member() {
         ]
     );
     let list = lib.open(view(TriageTab::Pending)).await;
-    let location = lib
-        .db
-        .locate_import_candidate(list, &lib.key("Single"))
-        .await
-        .unwrap()
-        .unwrap();
+    let location = lib.db.locate_import_candidate(list, &lib.key("Single")).await.unwrap().unwrap();
     assert_eq!(location.visible_position, 3);
 }
 
@@ -476,78 +335,40 @@ async fn dates_cross_watched_roots_and_ties_have_a_stable_natural_path_order() {
     .await;
     assert_eq!(
         lib.items(view(TriageTab::Pending)).await,
-        [
-            "candidate Newest",
-            "candidate Release 2",
-            "candidate Release 10"
-        ]
+        ["candidate Newest", "candidate Release 2", "candidate Release 10"]
     );
 }
 
 #[tokio::test]
 async fn name_orders_ignore_dates_and_case_ties_do_not_split_groups() {
     let lib = Library::new().await;
-    lib.run(&lib.dated(&[("Box/1", 10), ("box/2", 30), ("Box/3", 20)]))
-        .await;
+    lib.run(&lib.dated(&[("Box/1", 10), ("box/2", 30), ("Box/3", 20)])).await;
     assert_eq!(
-        lib.items(ordered(TriageTab::Pending, ImportListOrder::PathAscending))
-            .await,
-        [
-            "group Box",
-            "candidate Box/1",
-            "candidate Box/3",
-            "group box",
-            "candidate box/2"
-        ]
+        lib.items(ordered(TriageTab::Pending, ImportListOrder::PathAscending)).await,
+        ["group Box", "candidate Box/1", "candidate Box/3", "group box", "candidate box/2"]
     );
     assert_eq!(
-        lib.items(ordered(TriageTab::Pending, ImportListOrder::PathDescending))
-            .await,
-        [
-            "group box",
-            "candidate box/2",
-            "group Box",
-            "candidate Box/3",
-            "candidate Box/1"
-        ]
+        lib.items(ordered(TriageTab::Pending, ImportListOrder::PathDescending)).await,
+        ["group box", "candidate box/2", "group Box", "candidate Box/3", "candidate Box/1"]
     );
 }
 
 #[tokio::test]
 async fn filtering_collapsing_and_paging_preserve_group_date_order() {
     let lib = Library::new().await;
-    lib.run(&lib.dated(&[("A/Old", 10), ("B/Old", 20), ("A/New", 30)]))
-        .await;
-    let filtered = ImportListView {
-        filter_text: "Old".into(),
-        ..view(TriageTab::Pending)
-    };
+    lib.run(&lib.dated(&[("A/Old", 10), ("B/Old", 20), ("A/New", 30)])).await;
+    let filtered = ImportListView { filter_text: "Old".into(), ..view(TriageTab::Pending) };
     let list = lib.open(filtered).await;
     assert_eq!(
         sequence(&lib.read(list).await),
         ["group A", "candidate A/Old", "group B", "candidate B/Old"]
     );
     assert_eq!(
-        sequence(
-            &lib.read_through(
-                list,
-                LibraryPageWindow {
-                    offset: 1,
-                    limit: 2
-                }
-            )
-            .await
-        ),
+        sequence(&lib.read_through(list, LibraryPageWindow { offset: 1, limit: 2 }).await),
         ["candidate A/Old", "group B"]
     );
-    lib.db
-        .set_import_list_group_folded(list, lib.group_key("A"), true)
-        .await
-        .unwrap();
-    assert_eq!(
-        sequence(&lib.read(list).await),
-        ["group A", "group B", "candidate B/Old"]
-    );
+    lib.db.set_import_list_group_folded(list, lib.group_key("A"), true).await.unwrap();
+    assert_eq!(sequence(&lib.read(list).await), ["group A", "group B", "candidate B/Old"]);
 }
 
 /// A window past the end holds what is left of the list, and one wholly past
@@ -555,38 +376,13 @@ async fn filtering_collapsing_and_paging_preserve_group_date_order() {
 #[tokio::test]
 async fn a_window_past_the_end_holds_what_is_left() {
     let lib = Library::new().await;
-    lib.run(&format!(
-        "{}{}{}",
-        lib.scan("A"),
-        lib.scan("B"),
-        lib.scan("C")
-    ))
-    .await;
-    let list = lib
-        .open(ordered(TriageTab::Pending, ImportListOrder::PathAscending))
-        .await;
-    let read = lib
-        .read_through(
-            list,
-            LibraryPageWindow {
-                offset: 2,
-                limit: 5,
-            },
-        )
-        .await;
+    lib.run(&format!("{}{}{}", lib.scan("A"), lib.scan("B"), lib.scan("C"))).await;
+    let list = lib.open(ordered(TriageTab::Pending, ImportListOrder::PathAscending)).await;
+    let read = lib.read_through(list, LibraryPageWindow { offset: 2, limit: 5 }).await;
     assert_eq!(sequence(&read), ["candidate C"]);
     assert_eq!(read.total_count, 3);
-    assert!(sequence(
-        &lib.read_through(
-            list,
-            LibraryPageWindow {
-                offset: 5,
-                limit: 5
-            }
-        )
-        .await
-    )
-    .is_empty());
+    assert!(sequence(&lib.read_through(list, LibraryPageWindow { offset: 5, limit: 5 }).await)
+        .is_empty());
 }
 
 /// A group header is where a folder read as several releases offers to be read
@@ -608,10 +404,7 @@ async fn only_a_group_over_a_folder_read_as_several_offers_to_combine() {
     ))
     .await;
     let read = lib.shown(view(TriageTab::Pending)).await;
-    assert_eq!(
-        combinable(&read),
-        [("Box".to_string(), true), ("Singles".to_string(), false)]
-    );
+    assert_eq!(combinable(&read), [("Box".to_string(), true), ("Singles".to_string(), false)]);
 }
 
 /// A folder nothing has settled either way, holding several releases below a
@@ -653,11 +446,7 @@ async fn a_header_offers_to_combine_as_its_readings_and_rows_change() {
         lib.kept_apart("Singles/Label/Series")
     ))
     .await;
-    assert_eq!(
-        offers().await,
-        singles(true),
-        "every folder between is settled"
-    );
+    assert_eq!(offers().await, singles(true), "every folder between is settled");
     lib.run("DELETE FROM release_grouping WHERE key = CAST('reading Singles/Label' AS BLOB);")
         .await;
     assert_eq!(offers().await, singles(false), "Label is nearer again");
@@ -668,8 +457,7 @@ async fn a_header_offers_to_combine_as_its_readings_and_rows_change() {
     )
     .await;
     assert_eq!(offers().await, singles(false), "Singles is read as one");
-    lib.run("DELETE FROM release_grouping WHERE key = CAST('reading Singles' AS BLOB);")
-        .await;
+    lib.run("DELETE FROM release_grouping WHERE key = CAST('reading Singles' AS BLOB);").await;
     lib.run(&format!(
         "{}{}{}",
         lib.scan("Singles/Loose"),
@@ -682,11 +470,8 @@ async fn a_header_offers_to_combine_as_its_readings_and_rows_change() {
         singles(true),
         "a release on Done right below Singles is nearest to it"
     );
-    lib.run(&format!(
-        "DELETE FROM scan_candidate WHERE path = {};",
-        lib.sql("Singles/Loose")
-    ))
-    .await;
+    lib.run(&format!("DELETE FROM scan_candidate WHERE path = {};", lib.sql("Singles/Loose")))
+        .await;
     assert_eq!(offers().await, singles(false), "and gone, it is not");
 }
 
@@ -723,16 +508,12 @@ impl Library {
 #[tokio::test]
 async fn every_order_reads_its_windows_off_its_index() {
     let lib = Library::new().await;
-    lib.run(&format!("{}{}", lib.scan("Box/1"), lib.scan("Loose")))
-        .await;
+    lib.run(&format!("{}{}", lib.scan("Box/1"), lib.scan("Loose"))).await;
     for (order, index) in [
         (ImportListOrder::NewestFirst, "import_list_newest_first"),
         (ImportListOrder::OldestFirst, "import_list_oldest_first"),
         (ImportListOrder::PathAscending, "import_list_path_ascending"),
-        (
-            ImportListOrder::PathDescending,
-            "import_list_path_descending",
-        ),
+        (ImportListOrder::PathDescending, "import_list_path_descending"),
     ] {
         for tab in [TriageTab::Pending, TriageTab::Done, TriageTab::Skipped] {
             let list = lib.open(ordered(tab, order)).await;
@@ -759,9 +540,7 @@ async fn every_order_reads_its_windows_off_its_index() {
                     "{order:?} {tab:?}: {plan:?}"
                 );
                 assert!(
-                    !plan
-                        .iter()
-                        .any(|step| step.contains("TEMP B-TREE FOR ORDER BY")),
+                    !plan.iter().any(|step| step.contains("TEMP B-TREE FOR ORDER BY")),
                     "{order:?} {tab:?} sorts: {plan:?}"
                 );
             }
@@ -775,19 +554,13 @@ async fn every_order_reads_its_windows_off_its_index() {
 #[tokio::test]
 async fn a_search_reads_the_rows_its_index_finds() {
     let lib = Library::new().await;
-    lib.run(&format!("{}{}", lib.scan("Box/Wanted"), lib.scan("Loose")))
-        .await;
+    lib.run(&format!("{}{}", lib.scan("Box/Wanted"), lib.scan("Loose"))).await;
     for tab in [TriageTab::Pending, TriageTab::Done, TriageTab::Skipped] {
-        let list = lib
-            .open(ImportListView {
-                filter_text: "wanted".to_string(),
-                ..view(tab)
-            })
-            .await;
+        let list =
+            lib.open(ImportListView { filter_text: "wanted".to_string(), ..view(tab) }).await;
         for plan in lib.db.import_list_search_plans(list).await.unwrap() {
             assert!(
-                plan.iter()
-                    .any(|step| step.contains("VIRTUAL TABLE INDEX") && step.contains(":G")),
+                plan.iter().any(|step| step.contains("VIRTUAL TABLE INDEX") && step.contains(":G")),
                 "{tab:?}: {plan:?}"
             );
             assert!(
@@ -807,45 +580,26 @@ async fn a_search_reads_the_rows_its_index_finds() {
 #[tokio::test]
 async fn found_reads_its_windows_off_its_runs() {
     let lib = Library::new().await;
-    lib.run(&format!(
-        "{}{}{}",
-        lib.scan("Box/1"),
-        lib.scan("Other/1"),
-        lib.scan("Loose")
-    ))
-    .await;
+    lib.run(&format!("{}{}{}", lib.scan("Box/1"), lib.scan("Other/1"), lib.scan("Loose"))).await;
     for (order, index) in [
         (ImportListOrder::NewestFirst, "import_list_newest_first"),
         (ImportListOrder::OldestFirst, "import_list_oldest_first"),
         (ImportListOrder::PathAscending, "import_list_path_ascending"),
-        (
-            ImportListOrder::PathDescending,
-            "import_list_path_descending",
-        ),
+        (ImportListOrder::PathDescending, "import_list_path_descending"),
     ] {
         for folded in [false, true] {
             let list = lib.open(ordered(TriageTab::Pending, order)).await;
-            lib.db
-                .set_import_list_group_folded(list, lib.group_key("Box"), folded)
-                .await
-                .unwrap();
+            lib.db.set_import_list_group_folded(list, lib.group_key("Box"), folded).await.unwrap();
             // Found runs in one part, read by its offset off the three runs'
             // indexes, and by each seek from its first item, which searches
             // them, or reaches the row it holds every term up to the folder
             // and its number equal to by that number.
-            let plans = lib
-                .db
-                .import_list_window_plans(list)
-                .await
-                .unwrap()
-                .concat();
+            let plans = lib.db.import_list_window_plans(list).await.unwrap().concat();
             let (by_offset, seeks) = plans.split_first().expect("a part is read by its offset");
             assert!(!seeks.is_empty(), "{order:?} folded {folded}: {plans:?}");
             for run in ["_unfolded", "_headers", "_members"] {
                 assert!(
-                    by_offset
-                        .iter()
-                        .any(|step| step.contains(&format!("{index}{run} "))),
+                    by_offset.iter().any(|step| step.contains(&format!("{index}{run} "))),
                     "{order:?} folded {folded} reads {run}: {by_offset:?}"
                 );
             }

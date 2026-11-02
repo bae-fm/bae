@@ -53,12 +53,7 @@ impl Database {
         self.call(move |sql| {
             sql.execute(
                 "INSERT INTO playlists (id, person_id, name, audience) VALUES (?, ?, ?, ?)",
-                params![
-                    row.id.to_string(),
-                    row.person.to_string(),
-                    row.name,
-                    row.audience
-                ],
+                params![row.id.to_string(), row.person.to_string(), row.name, row.audience],
             )?;
             Ok(())
         })
@@ -118,9 +113,7 @@ impl Database {
         &self,
         id: uuid::Uuid,
     ) -> coven::LiveQuery<Vec<PlaylistEntry>> {
-        self.inner
-            .handle
-            .subscribe(move |sql| Ok(entries(&sql, id)?))
+        self.inner.handle.subscribe(move |sql| Ok(entries(&sql, id)?))
     }
 
     pub async fn append_playlist_entry(
@@ -145,11 +138,7 @@ impl Database {
                 "DELETE FROM playlist_entries WHERE playlist_id = ? AND position_id = ?",
                 params![playlist.to_string(), position.to_string()],
             )?;
-            Ok(if changed == 1 {
-                Ok(())
-            } else {
-                Err(CollectionError::Missing)
-            })
+            Ok(if changed == 1 { Ok(()) } else { Err(CollectionError::Missing) })
         })
         .await
     }
@@ -207,25 +196,18 @@ fn playlist_name(name: &str) -> Result<String, CollectionError> {
 }
 
 fn ratings(sql: &SqlReadContext<'_>) -> rusqlite::Result<Vec<Rating>> {
-    sql.query(
-        "SELECT person_id, album_id, track_id, stars FROM ratings ORDER BY id",
-        [],
-        |row| {
-            let target = match (
-                row.get::<_, Option<String>>(1)?,
-                row.get::<_, Option<String>>(2)?,
-            ) {
-                (Some(album), None) => RatingTarget::Album(album),
-                (None, Some(track)) => RatingTarget::Track(track),
-                _ => return Err(rusqlite::Error::InvalidQuery),
-            };
-            Ok(Rating {
-                person: coven::MemberId(uuid_column(row, 0)?),
-                target,
-                stars: Stars::from_sql(row.get(3)?)?,
-            })
-        },
-    )
+    sql.query("SELECT person_id, album_id, track_id, stars FROM ratings ORDER BY id", [], |row| {
+        let target = match (row.get::<_, Option<String>>(1)?, row.get::<_, Option<String>>(2)?) {
+            (Some(album), None) => RatingTarget::Album(album),
+            (None, Some(track)) => RatingTarget::Track(track),
+            _ => return Err(rusqlite::Error::InvalidQuery),
+        };
+        Ok(Rating {
+            person: coven::MemberId(uuid_column(row, 0)?),
+            target,
+            stars: Stars::from_sql(row.get(3)?)?,
+        })
+    })
 }
 
 /// Every playlist, by name; `playlists_name` serves the order.
@@ -250,9 +232,6 @@ fn playlists(sql: &SqlReadContext<'_>) -> rusqlite::Result<Vec<Playlist>> {
 
 fn entries(sql: &SqlReadContext<'_>, playlist: uuid::Uuid) -> rusqlite::Result<Vec<PlaylistEntry>> {
     sql.query(PLAYLIST_ENTRIES_SQL, [playlist.to_string()], |row| {
-        Ok(PlaylistEntry {
-            position_id: uuid_column(row, 0)?,
-            track_id: row.get(1)?,
-        })
+        Ok(PlaylistEntry { position_id: uuid_column(row, 0)?, track_id: row.get(1)? })
     })
 }

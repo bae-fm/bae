@@ -80,14 +80,10 @@ async fn resetting_an_unconnected_store_replaces_the_device_and_keeps_its_name()
     let store = handle.store_id();
     let device = handle.device_id();
     handle.close().await.unwrap();
-    let reopened = reset_device(
-        installation.builder(app_dir.store_layout()),
-        store,
-        "Replacement",
-        |_| {},
-    )
-    .await
-    .unwrap();
+    let reopened =
+        reset_device(installation.builder(app_dir.store_layout()), store, "Replacement", |_| {})
+            .await
+            .unwrap();
     assert_ne!(reopened.device_id(), device);
     assert_eq!(reopened.store_name().await.unwrap(), "Local Library");
     reopened.close().await.unwrap();
@@ -218,11 +214,7 @@ async fn a_failed_restore_over_this_devices_copy_leaves_it_to_open_or_retry() {
     let (_, _, other_code) =
         connected_library(&installation, &app_dir, &other_storage, "Elsewhere").await;
     let laptop = std::sync::Arc::new(storage.for_device());
-    let builder = || {
-        installation
-            .builder(app_dir.store_layout())
-            .storage_connector(laptop.clone())
-    };
+    let builder = || installation.builder(app_dir.store_layout()).storage_connector(laptop.clone());
     let (_sender, cancel) = watch::channel(false);
     let store = replaced.store;
     let restore = |code: String| {
@@ -261,10 +253,7 @@ async fn a_failed_restore_over_this_devices_copy_leaves_it_to_open_or_retry() {
         panic!("the code the replaced keys made restores nothing");
     };
     assert!(
-        matches!(
-            *stale,
-            coven::BootstrapError::Sync(coven::SyncError::MemberKeysReplaced { .. })
-        ),
+        matches!(*stale, coven::BootstrapError::Sync(coven::SyncError::MemberKeysReplaced { .. })),
         "{stale:?}"
     );
     opens_as(builder(), replaced.store, replaced.device).await;
@@ -313,15 +302,9 @@ async fn restoring_with_the_current_code_leaves_the_restored_copy() {
     assert_eq!(restored.store_name().await.unwrap(), "Household");
     assert_eq!(
         restored.device_reset().await.unwrap(),
-        Some(coven::DeviceReset {
-            old_device: replaced.device,
-            new_device: device,
-        })
+        Some(coven::DeviceReset { old_device: replaced.device, new_device: device })
     );
-    assert_eq!(
-        restored.restore_code().await.unwrap(),
-        replaced.current_code
-    );
+    assert_eq!(restored.restore_code().await.unwrap(), replaced.current_code);
     restored.close().await.unwrap();
     assert_eq!(
         app_dir
@@ -348,15 +331,9 @@ async fn stop_at_swap<T>(app_dir: &AppDir, replacing: impl std::future::Future<O
             std::task::Poll::Ready(std::future::Future::poll(replacing.as_mut(), cx))
         })
         .await;
-        assert!(
-            step.is_pending(),
-            "the replacement finished before its swap was seen"
-        );
+        assert!(step.is_pending(), "the replacement finished before its swap was seen");
         let listed = layout.stores().await.unwrap();
-        if listed
-            .iter()
-            .any(|listed| listed.unfinished_replacement.is_some())
-        {
+        if listed.iter().any(|listed| listed.unfinished_replacement.is_some()) {
             return;
         }
         tokio::task::yield_now().await;
@@ -403,9 +380,7 @@ async fn a_restore_stopped_after_its_swap_is_listed_and_finished_by_restoring_ag
 
     stop_at_swap(&app_dir, restore()).await;
 
-    let libraries = crate::config::Config::discover_libraries(&app_dir)
-        .await
-        .unwrap();
+    let libraries = crate::config::Config::discover_libraries(&app_dir).await.unwrap();
     assert_eq!(libraries.len(), 1);
     assert_eq!(libraries[0].id, store.to_string());
     assert_eq!(libraries[0].name, "Household");
@@ -442,9 +417,7 @@ async fn a_restore_stopped_after_its_swap_is_listed_and_finished_by_restoring_ag
     assert!(
         matches!(
             opening,
-            Err(crate::app::BootstrapError::ReplacementUnfinished(
-                coven::ReplacedBy::Restore
-            ))
+            Err(crate::app::BootstrapError::ReplacementUnfinished(coven::ReplacedBy::Restore))
         ),
         "{opening:?}"
     );
@@ -453,9 +426,7 @@ async fn a_restore_stopped_after_its_swap_is_listed_and_finished_by_restoring_ag
     let device = restored.device_id();
     assert_ne!(device, replaced.device);
     restored.close().await.unwrap();
-    let libraries = crate::config::Config::discover_libraries(&app_dir)
-        .await
-        .unwrap();
+    let libraries = crate::config::Config::discover_libraries(&app_dir).await.unwrap();
     assert!(
         matches!(
             libraries[..],
@@ -506,10 +477,7 @@ async fn removing_a_library_whose_restore_stopped_after_its_swap_deletes_both_co
     let counted = unsent_before_removal(builder(), store, |_| ())
         .await
         .expect_err("counting opens the library, which only finishing the restore allows");
-    assert!(
-        format!("{counted:?}").contains("ReplacementUnfinished"),
-        "{counted:?}"
-    );
+    assert!(format!("{counted:?}").contains("ReplacementUnfinished"), "{counted:?}");
 
     // The restored copy waits in a hidden directory inside the store's.
     let store_files = || {
@@ -533,20 +501,12 @@ async fn removing_a_library_whose_restore_stopped_after_its_swap_deletes_both_co
     assert!(app_dir.store_layout().stores().await.unwrap().is_empty());
     assert_eq!(store_files(), Vec::<String>::new());
     assert!(!app_dir.registered_library(&store.to_string()).exists());
-    assert!(crate::config::Config::discover_libraries(&app_dir)
+    assert!(crate::config::Config::discover_libraries(&app_dir).await.unwrap().is_empty());
+    assert_eq!(crate::config::Config::active_library_id(&app_dir).unwrap(), None);
+    assert!(UnfinishedRemoval::find(&app_dir, &crate::diagnostics::Diagnostics::noop())
         .await
         .unwrap()
-        .is_empty());
-    assert_eq!(
-        crate::config::Config::active_library_id(&app_dir).unwrap(),
-        None
-    );
-    assert!(
-        UnfinishedRemoval::find(&app_dir, &crate::diagnostics::Diagnostics::noop())
-            .await
-            .unwrap()
-            .is_none()
-    );
+        .is_none());
 }
 
 /// A library on this device is opened, not restored, so neither its readable
@@ -557,11 +517,7 @@ async fn saved_codes_for_libraries_on_this_device_are_not_offered() {
     let temp = tempfile::TempDir::new().unwrap();
     let layout = AppDir::at(temp.path()).unwrap().store_layout();
     let here = coven::TestCoven::new()
-        .create_closed_store(
-            &layout,
-            "On This Device",
-            std::sync::Arc::new(coven::UuidIds),
-        )
+        .create_closed_store(&layout, "On This Device", std::sync::Arc::new(coven::UuidIds))
         .await
         .unwrap()
         .id();
@@ -584,20 +540,12 @@ async fn saved_codes_for_libraries_on_this_device_are_not_offered() {
         reason: coven::UnreadableSavedCode::Format,
     };
     let offered = restorable_codes(
-        vec![
-            code(here),
-            unreadable(here),
-            code(elsewhere),
-            unreadable(unreadable_elsewhere),
-        ],
+        vec![code(here), unreadable(here), code(elsewhere), unreadable(unreadable_elsewhere)],
         &layout,
     )
     .await
     .unwrap();
-    assert_eq!(
-        offered,
-        vec![code(elsewhere), unreadable(unreadable_elsewhere)]
-    );
+    assert_eq!(offered, vec![code(elsewhere), unreadable(unreadable_elsewhere)]);
 }
 
 /// A library restored onto a new device reads its history from storage under
@@ -629,10 +577,7 @@ async fn a_restore_onto_a_new_device_loads_at_a_new_librarys_transfer_limits() {
     let default = std::num::NonZeroUsize::new(crate::config::DEFAULT_CONCURRENT_TRANSFERS as usize);
     assert_eq!(
         phone.transfer_limits(),
-        coven::TransferLimits {
-            uploads: default.unwrap(),
-            downloads: default.unwrap(),
-        }
+        coven::TransferLimits { uploads: default.unwrap(), downloads: default.unwrap() }
     );
     phone.close().await.unwrap();
 }
@@ -664,19 +609,13 @@ async fn a_restore_over_this_devices_copy_starts_at_a_new_librarys_preferences()
     )
     .await
     .unwrap();
-    assert_eq!(
-        restored.transfer_limits(),
-        crate::config::default_transfer_limits()
-    );
+    assert_eq!(restored.transfer_limits(), crate::config::default_transfer_limits());
     let database = crate::db::Database::from_handle(
         restored.clone(),
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::UuidIds),
     );
-    assert_eq!(
-        database.preferences().await.unwrap(),
-        crate::config::Preferences::default()
-    );
+    assert_eq!(database.preferences().await.unwrap(), crate::config::Preferences::default());
     restored.close().await.unwrap();
 }
 
@@ -725,9 +664,7 @@ async fn a_reset_reports_loading_the_library_in_order_to_its_end() {
         coven::LoadStep::Applying => 5,
     };
     assert!(
-        loading
-            .windows(2)
-            .all(|pair| order(&pair[0].step) <= order(&pair[1].step)),
+        loading.windows(2).all(|pair| order(&pair[0].step) <= order(&pair[1].step)),
         "{loading:?}"
     );
     // A library with no snapshot yet loads by applying its whole history,

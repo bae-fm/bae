@@ -27,10 +27,7 @@ pub(crate) fn candidate_track_id(position: usize) -> String {
 /// explicitly applied.
 pub(crate) fn blank_candidate_draft(files: &CategorizedFiles) -> CandidateDraft {
     let layout = crate::import::audio_layout::folder_tracks(files);
-    let numbering: Vec<_> = layout
-        .iter()
-        .map(|track| (track.disc, Some(track.number)))
-        .collect();
+    let numbering: Vec<_> = layout.iter().map(|track| (track.disc, Some(track.number))).collect();
     let (mediums, places) = crate::mediums::by_disc(&numbering);
     let tracks = layout
         .into_iter()
@@ -87,11 +84,7 @@ pub(crate) fn values_over_audio(
             release_tracks: track_count(values.tracks.len()),
         });
     }
-    let units = current
-        .tracks
-        .iter()
-        .map(|track| track.edit.file.clone())
-        .collect();
+    let units = current.tracks.iter().map(|track| track.edit.file.clone()).collect();
     let mut draft = values.candidate_draft(units);
     keep_row_identities(&mut draft.tracks, &current.tracks)?;
     Ok(draft)
@@ -197,11 +190,7 @@ pub(crate) fn keep_row_identities(
 ) -> Result<(), ImportError> {
     if fresh.len() != current.len() {
         return Err(ImportError::Internal {
-            detail: format!(
-                "{} tracks were read for a draft of {}",
-                fresh.len(),
-                current.len()
-            ),
+            detail: format!("{} tracks were read for a draft of {}", fresh.len(), current.len()),
         });
     }
     for (track, existing) in fresh.iter_mut().zip(current) {
@@ -227,10 +216,7 @@ pub(crate) fn draft_pane(
     draft: &CandidateDraft,
 ) -> Result<PanePick, ImportError> {
     let mapping = mapping_table(files, durations, draft)?;
-    Ok(PanePick {
-        edit: draft.release_edit(),
-        mapping,
-    })
+    Ok(PanePick { edit: draft.release_edit(), mapping })
 }
 
 /// The draft over the folder's new audio units: a unit the draft already
@@ -285,10 +271,7 @@ pub(crate) fn redraw_draft_for_files(
         })
         .collect();
     let (mediums, tracks) = without_empty_mediums(mediums, tracks);
-    CandidateDraft {
-        mediums,
-        ..draft.with_tracks(tracks)
-    }
+    CandidateDraft { mediums, ..draft.with_tracks(tracks) }
 }
 
 /// `mediums` with only the ones a track of `tracks` sits on, in order, and
@@ -298,10 +281,8 @@ fn without_empty_mediums(
     mediums: Vec<crate::mediums::ReleaseMedium>,
     mut tracks: Vec<CandidateTrack>,
 ) -> (Vec<crate::mediums::ReleaseMedium>, Vec<CandidateTrack>) {
-    let used: std::collections::BTreeSet<usize> = tracks
-        .iter()
-        .map(|track| track.place.medium_index())
-        .collect();
+    let used: std::collections::BTreeSet<usize> =
+        tracks.iter().map(|track| track.place.medium_index()).collect();
     let kept: Vec<usize> = used.into_iter().collect();
     for track in &mut tracks {
         let index = kept
@@ -310,10 +291,7 @@ fn without_empty_mediums(
             .expect("every track's medium is kept");
         track.place.medium = crate::mediums::medium_position(index);
     }
-    (
-        kept.into_iter().map(|index| mediums[index]).collect(),
-        tracks,
-    )
+    (kept.into_iter().map(|index| mediums[index]).collect(), tracks)
 }
 
 /// The draft a folder's stored file-tag reading makes, one track per audio

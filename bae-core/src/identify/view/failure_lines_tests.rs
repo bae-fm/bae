@@ -14,14 +14,10 @@ const DG: Catalog = Catalog::Discogs;
 /// release the run picked — is.
 #[test]
 fn a_failure_its_cell_shows_has_no_line_of_its_own() {
-    let catalog = IdentifyFailure::Catalog(SourceFailure {
-        source: DG,
-        failure: LookupFailure::Timeout,
-    });
-    let cover = IdentifyFailure::Cover(SourceFailure {
-        source: MB,
-        failure: LookupFailure::Network,
-    });
+    let catalog =
+        IdentifyFailure::Catalog(SourceFailure { source: DG, failure: LookupFailure::Timeout });
+    let cover =
+        IdentifyFailure::Cover(SourceFailure { source: MB, failure: LookupFailure::Network });
     let ledger = IdentifyRunView {
         providers: vec![MB, DG],
         disc_id: DiscIdStepView::Absent,
@@ -32,15 +28,10 @@ fn a_failure_its_cell_shows_has_no_line_of_its_own() {
                 value: "AB-1".to_string(),
                 excluded: false,
                 cells: vec![
-                    ProviderCell {
-                        source: MB,
-                        lookup: LookupView::NoMatch,
-                    },
+                    ProviderCell { source: MB, lookup: LookupView::NoMatch },
                     ProviderCell {
                         source: DG,
-                        lookup: LookupView::Failed {
-                            failure: LookupFailure::Timeout,
-                        },
+                        lookup: LookupView::Failed { failure: LookupFailure::Timeout },
                     },
                 ],
             }],

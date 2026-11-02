@@ -30,9 +30,8 @@ struct TestService {
 async fn setup_import_service() -> TestService {
     let temp_dir = TempDir::new().unwrap();
     let db_path = temp_dir.path().join("test.db");
-    let database = Database::new_test(db_path.to_str().unwrap(), Arc::new(coven::SystemClock))
-        .await
-        .unwrap();
+    let database =
+        Database::new_test(db_path.to_str().unwrap(), Arc::new(coven::SystemClock)).await.unwrap();
 
     let preparations = crate::import::CandidatePreparations::new(database.clone());
     // The runtime writes its standings into the library the import commits
@@ -99,9 +98,8 @@ async fn prepare_named_candidate(
         .expect("the scanned candidate has its initial preparation");
     let mut draft = preparation.draft;
     draft.album_title = album_title.to_string();
-    draft.album_artist_assignments = vec![crate::import::Credited::plain(
-        crate::import::ArtistAssignment::named("Artist Name"),
-    )];
+    draft.album_artist_assignments =
+        vec![crate::import::Credited::plain(crate::import::ArtistAssignment::named("Artist Name"))];
     preparations
         .apply_source(
             watched_folder_path,
@@ -139,16 +137,8 @@ async fn store_scanned_candidate(
     .unwrap();
     let content_hash = files.content_hash();
     let candidate_key = crate::import::CandidateKey::folder(folder);
-    service
-        .library_manager
-        .add_watched_import_folder(folder)
-        .await
-        .unwrap();
-    let generation = service
-        .library_manager
-        .begin_folder_scan(folder)
-        .await
-        .unwrap();
+    service.library_manager.add_watched_import_folder(folder).await.unwrap();
+    let generation = service.library_manager.begin_folder_scan(folder).await.unwrap();
     service
         .library_manager
         .save_folder_scan_item(
@@ -169,11 +159,7 @@ async fn store_scanned_candidate(
         .await
         .unwrap()
         .expect("the stored scan generation is current");
-    service
-        .library_manager
-        .finish_folder_scan(folder, generation, None)
-        .await
-        .unwrap();
+    service.library_manager.finish_folder_scan(folder, generation, None).await.unwrap();
     let metadata_revision = prepare_named_candidate(
         service,
         &test.preparations,
@@ -302,26 +288,17 @@ impl FakeScanStarter {
             .completion
             .take()
             .expect("fake scan has not completed");
-        finish
-            .send(())
-            .expect("the fake scan's task is still running");
-        completions
-            .send(completion)
-            .expect("coordinator still receives completions");
+        finish.send(()).expect("the fake scan's task is still running");
+        completions.send(completion).expect("coordinator still receives completions");
     }
 
     /// The folder decision the pass at `index` stores, if it is one.
     fn reading(
         &self,
         index: usize,
-    ) -> Option<(
-        crate::import::FolderReleaseDecisionKey,
-        crate::import::FolderReleaseDecision,
-    )> {
-        self.scans.lock().unwrap()[index]
-            .reading
-            .as_ref()
-            .map(|reading| reading.target().clone())
+    ) -> Option<(crate::import::FolderReleaseDecisionKey, crate::import::FolderReleaseDecision)>
+    {
+        self.scans.lock().unwrap()[index].reading.as_ref().map(|reading| reading.target().clone())
     }
 
     /// The changed folders the pass at `index` reads again, if it is one.
@@ -384,10 +361,7 @@ impl RootRemovalBackend for FakeRemovalBackend {
 
     async fn reinstall(&self, _path: &Path, _snapshot: &FolderWatchSnapshot) -> Result<(), String> {
         self.calls.lock().unwrap().push("reinstall");
-        if self
-            .block_reinstall
-            .load(std::sync::atomic::Ordering::SeqCst)
-        {
+        if self.block_reinstall.load(std::sync::atomic::Ordering::SeqCst) {
             self.reinstall_started.notify_one();
             self.release_reinstall.notified().await;
         }
@@ -430,12 +404,7 @@ impl CoordinatorHarness {
     /// [`root_path`] gives it.
     async fn with_roots(roots: &[&str]) -> Self {
         let roots: Vec<PathBuf> = roots.iter().map(|root| host_root(root)).collect();
-        let TestService {
-            service,
-            preparations,
-            database: _,
-            temp,
-        } = setup_import_service().await;
+        let TestService { service, preparations, database: _, temp } = setup_import_service().await;
         for root in &roots {
             service
                 .library_manager
@@ -508,9 +477,7 @@ impl CoordinatorHarness {
     /// has asked for the reads the report calls for.
     async fn watch_report(&self, report: WatchReport) {
         let (taken, wait) = tokio::sync::oneshot::channel();
-        self.commands
-            .send(WatcherCommand::WatchReport { report, taken })
-            .unwrap();
+        self.commands.send(WatcherCommand::WatchReport { report, taken }).unwrap();
         tokio::time::timeout(HANG_GUARD, wait)
             .await
             .expect("the coordinator takes the watch report")
@@ -526,23 +493,15 @@ impl CoordinatorHarness {
 
     async fn shutdown(&self) {
         let (completion, done) = std::sync::mpsc::channel();
-        self.commands
-            .send(WatcherCommand::Shutdown { completion })
-            .unwrap();
-        tokio::task::spawn_blocking(move || done.recv())
-            .await
-            .unwrap()
-            .unwrap();
+        self.commands.send(WatcherCommand::Shutdown { completion }).unwrap();
+        tokio::task::spawn_blocking(move || done.recv()).await.unwrap().unwrap();
         let thread = self
             .coordinator_thread
             .lock()
             .unwrap()
             .take()
             .expect("coordinator has not already shut down");
-        tokio::task::spawn_blocking(move || thread.join())
-            .await
-            .unwrap()
-            .unwrap();
+        tokio::task::spawn_blocking(move || thread.join()).await.unwrap().unwrap();
     }
 }
 
@@ -570,10 +529,7 @@ fn terminal_import_failure_preserves_a_label_identity_conflict() {
 
     let failure = ImportService::terminal_failure(&error, failed_at);
 
-    assert_eq!(
-        failure.identity_conflict,
-        Some(crate::import::IdentityConflict::Label(conflict))
-    );
+    assert_eq!(failure.identity_conflict, Some(crate::import::IdentityConflict::Label(conflict)));
 }
 
 #[test]
@@ -658,10 +614,7 @@ impl TestService {
     /// A scan over this service's library, and the stream it announces on.
     fn scan(
         &self,
-    ) -> (
-        TestScan,
-        tokio::sync::mpsc::UnboundedReceiver<crate::import::handle::ImportEvent>,
-    ) {
+    ) -> (TestScan, tokio::sync::mpsc::UnboundedReceiver<crate::import::handle::ImportEvent>) {
         self.scan_with(
             Arc::new(crate::import::file_tag_snapshot::LoftyFileTagReader),
             Arc::new(crate::import::folder_scanner::OsDirectoryReader),
@@ -674,10 +627,7 @@ impl TestService {
         &self,
         file_tags: Arc<dyn crate::import::file_tag_snapshot::FileTagReader>,
         directories: Arc<dyn crate::import::folder_scanner::DirectoryReader>,
-    ) -> (
-        TestScan,
-        tokio::sync::mpsc::UnboundedReceiver<crate::import::handle::ImportEvent>,
-    ) {
+    ) -> (TestScan, tokio::sync::mpsc::UnboundedReceiver<crate::import::handle::ImportEvent>) {
         let event_tx = crate::import::ImportEventBus::new(self.service.runtime.clone());
         let events = event_tx.every_event();
         let (fs_tx, fs_rx) = tokio::sync::mpsc::unbounded_channel();
@@ -686,10 +636,7 @@ impl TestService {
                 &self.service,
                 &self.preparations,
                 event_tx,
-                Arc::new(FolderWatcher::new(
-                    fs_tx,
-                    crate::diagnostics::Diagnostics::noop(),
-                )),
+                Arc::new(FolderWatcher::new(fs_tx, crate::diagnostics::Diagnostics::noop())),
                 file_tags,
                 directories,
             ),

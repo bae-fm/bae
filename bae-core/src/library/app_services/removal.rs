@@ -6,9 +6,7 @@ impl AppServices {
         &self,
         steps: &(dyn Fn(crate::library::ClosingStep) + Send + Sync),
     ) -> Result<(), crate::library::LibraryRemovalError> {
-        self.stop_workers(steps)
-            .await
-            .map_err(crate::library::LibraryRemovalError::Stop)?;
+        self.stop_workers(steps).await.map_err(crate::library::LibraryRemovalError::Stop)?;
         self.inner.manager.remove_library(steps).await
     }
     delegate_async!(manager, unsent_before_removal => unsent_before_removal() -> Result<coven::UnsentWork, crate::library::LibraryError>);

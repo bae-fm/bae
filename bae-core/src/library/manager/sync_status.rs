@@ -66,11 +66,9 @@ fn pass_failure(failure: &coven::PassFailure) -> UiError {
         coven::PassFailure::Failed { error } => {
             UiError::diagnostic(sync_failure_category(error), error)
         }
-        coven::PassFailure::Blocked {
-            slot,
-            reason,
-            error,
-        } => blocked_failure(slot, reason, error.as_deref()),
+        coven::PassFailure::Blocked { slot, reason, error } => {
+            blocked_failure(slot, reason, error.as_deref())
+        }
     }
 }
 
@@ -158,37 +156,22 @@ impl SyncStatusSnapshot {
     fn failure_recorded(&self) -> bool {
         use super::PendingSubjectName as N;
         use coven::{PendingReason as R, StatusFailure as F, SyncStatus as S};
-        self.pending.iter().any(
-            |item| match (&self.status, &item.subject, &item.wait.reason) {
-                (
-                    S::Offline { failure, .. }
-                    | S::Failed {
-                        failure: F::Storage(failure),
-                        ..
-                    },
-                    N::Connection,
-                    R::Storage {
-                        failure: recorded, ..
-                    },
-                ) => recorded == failure,
-                (S::Blocked { reason, .. }, N::LibraryChanges, recorded) => recorded == reason,
-                (
-                    S::Failed {
-                        failure: F::Operation(record),
-                        ..
-                    },
-                    N::Operation(kind),
-                    recorded,
-                ) => {
-                    let failed = match record.subject {
-                        coven::PendingSubject::Operation { kind, .. } => Some(kind),
-                        _ => None,
-                    };
-                    failed == Some(*kind) && *recorded == record.reason
-                }
-                _ => false,
-            },
-        )
+        self.pending.iter().any(|item| match (&self.status, &item.subject, &item.wait.reason) {
+            (
+                S::Offline { failure, .. } | S::Failed { failure: F::Storage(failure), .. },
+                N::Connection,
+                R::Storage { failure: recorded, .. },
+            ) => recorded == failure,
+            (S::Blocked { reason, .. }, N::LibraryChanges, recorded) => recorded == reason,
+            (S::Failed { failure: F::Operation(record), .. }, N::Operation(kind), recorded) => {
+                let failed = match record.subject {
+                    coven::PendingSubject::Operation { kind, .. } => Some(kind),
+                    _ => None,
+                };
+                failed == Some(*kind) && *recorded == record.reason
+            }
+            _ => false,
+        })
     }
 
     /// The failure the status line and the activity list show beside the
@@ -216,11 +199,9 @@ impl SyncStatusSnapshot {
             }
             // A device that opened already blocked has only the slot's
             // reason, which its pending record shows.
-            coven::SyncStatus::Blocked {
-                slot,
-                reason,
-                error: Some(error),
-            } => Some(blocked_failure(slot, reason, Some(error))),
+            coven::SyncStatus::Blocked { slot, reason, error: Some(error) } => {
+                Some(blocked_failure(slot, reason, Some(error)))
+            }
             coven::SyncStatus::Blocked { error: None, .. }
             | coven::SyncStatus::Disconnected
             | coven::SyncStatus::Stopped
@@ -255,27 +236,18 @@ impl SyncStatusSnapshot {
             super::PendingWait::of(record, None).retries_by_itself()
         };
         match &self.status {
-            S::Offline { .. }
-            | S::Failed {
-                failure: F::Storage(_) | F::Other,
-                ..
-            } => true,
+            S::Offline { .. } | S::Failed { failure: F::Storage(_) | F::Other, .. } => true,
             S::Blocked { slot, reason, .. } => retries(&coven::PendingRecord::new(
                 coven::PendingSubject::Slot(*slot),
                 reason.clone(),
             )),
+            S::Failed { failure: F::Operation(record), .. } => retries(record),
             S::Failed {
-                failure: F::Operation(record),
-                ..
-            } => retries(record),
-            S::Failed {
-                failure: F::UpdateRequired(_) | F::Removed | F::DeviceIdInUse(_),
-                ..
+                failure: F::UpdateRequired(_) | F::Removed | F::DeviceIdInUse(_), ..
             } => false,
-            S::Disconnected | S::Stopped | S::Syncing | S::Synced { .. } => self
-                .pending
-                .iter()
-                .any(|item| item.wait.retries_by_itself()),
+            S::Disconnected | S::Stopped | S::Syncing | S::Synced { .. } => {
+                self.pending.iter().any(|item| item.wait.retries_by_itself())
+            }
         }
     }
 
@@ -298,10 +270,7 @@ impl SyncStatusSnapshot {
             && matches!(
                 self.status,
                 coven::SyncStatus::Blocked { .. }
-                    | coven::SyncStatus::Failed {
-                        failure: coven::StatusFailure::Operation(_),
-                        ..
-                    }
+                    | coven::SyncStatus::Failed { failure: coven::StatusFailure::Operation(_), .. }
             );
         if logged_by_coven {
             return None;
@@ -317,9 +286,7 @@ impl SyncStatusSnapshot {
             return SyncIndicator::Unconnected;
         }
         if !self.pending.is_empty() {
-            return SyncIndicator::Waiting {
-                items: self.pending.len(),
-            };
+            return SyncIndicator::Waiting { items: self.pending.len() };
         }
         if self.error.is_some() {
             return SyncIndicator::Failed;
@@ -390,10 +357,9 @@ pub fn pending_action(record: &coven::PendingRecord, release_id: Option<&str>) -
             ..
         } => PendingAction::SignIn(*provider),
         R::FileUnavailable(coven::FileMissingReason::Source(_))
-        | R::Original {
-            failure: coven::FileSourceFailure::Missing,
-            ..
-        } => PendingAction::RestoreFile,
+        | R::Original { failure: coven::FileSourceFailure::Missing, .. } => {
+            PendingAction::RestoreFile
+        }
         R::FileUnavailable(coven::FileMissingReason::Lost) => PendingAction::Review,
         R::UpdateRequired(_) | R::Refused(_) => PendingAction::UpdateApp,
         R::MemberKeysReplaced { .. } => PendingAction::RestoreFromCode,
@@ -404,9 +370,9 @@ pub fn pending_action(record: &coven::PendingRecord, release_id: Option<&str>) -
             coven::Retry::AfterUpdate => PendingAction::UpdateApp,
             coven::Retry::AppAction => match (&record.subject, release_id) {
                 (S::Operation { id, .. }, _) => PendingAction::RetryOperation(*id),
-                (S::Download { .. }, Some(release_id)) => PendingAction::RetryDownload {
-                    release_id: release_id.to_string(),
-                },
+                (S::Download { .. }, Some(release_id)) => {
+                    PendingAction::RetryDownload { release_id: release_id.to_string() }
+                }
                 (S::Move { id }, Some(_)) => PendingAction::CancelUpload { id: *id },
                 _ => PendingAction::Review,
             },

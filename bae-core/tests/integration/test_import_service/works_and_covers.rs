@@ -77,7 +77,8 @@ async fn work_mbid_is_stored_beside_a_minted_row_id_and_shared_across_releases()
     support::tracing_init();
     let f = ImportFixture::new().await;
 
-    let first_mb = seed_mb_release_with_works(&f,
+    let first_mb = seed_mb_release_with_works(
+        &f,
         "mb-rel-first",
         "mb-group-first",
         "First Release",
@@ -103,7 +104,8 @@ async fn work_mbid_is_stored_beside_a_minted_row_id_and_shared_across_releases()
     .await
     .expect("first local MB import succeeds");
 
-    let second_mb = seed_mb_release_with_works(&f,
+    let second_mb = seed_mb_release_with_works(
+        &f,
         "mb-rel-second",
         "mb-group-second",
         "Second Release",
@@ -131,15 +133,8 @@ async fn work_mbid_is_stored_beside_a_minted_row_id_and_shared_across_releases()
 
     let (work_ids, linked_release_ids) = f.db.work_links_for_test(V3_WORK).await.unwrap();
 
-    assert_eq!(
-        work_ids.len(),
-        1,
-        "the work the two releases share is one row",
-    );
-    assert_ne!(
-        work_ids[0], V3_WORK,
-        "the row id is minted, not the MusicBrainz MBID",
-    );
+    assert_eq!(work_ids.len(), 1, "the work the two releases share is one row",);
+    assert_ne!(work_ids[0], V3_WORK, "the row id is minted, not the MusicBrainz MBID",);
     let mut expected = vec![first_release_id, second_release_id];
     expected.sort();
     assert_eq!(
@@ -210,10 +205,7 @@ async fn import_with_cover_art() {
     let (release_id, _) = support::wait_for_import_complete(&mut progress_rx).await;
 
     // Cover image row in DB
-    let cover =
-        f.db.find_library_image(&release_id, &LibraryImageType::Cover)
-            .await
-            .unwrap();
+    let cover = f.db.find_library_image(&release_id, &LibraryImageType::Cover).await.unwrap();
     assert!(cover.is_some(), "should have cover image in DB");
 
     // Cover bytes readable through the image ref path (coven's local store while Local).
@@ -263,19 +255,13 @@ async fn import_resizes_oversized_cover_to_jpeg_thumbnail() {
             .await
             .unwrap()
             .expect("cover image in DB");
-    assert_eq!(
-        cover.content_type,
-        bae_util::content_type::ContentType::Jpeg
-    );
+    assert_eq!(cover.content_type, bae_util::content_type::ContentType::Jpeg);
 
     // The stored file is a ≤600 JPEG downscaled from the 1000×1000 PNG source.
     let cover_bytes = support::read_cover_image_bytes(&f.library_manager, &release_id)
         .await
         .expect("cover file should be readable");
-    assert_eq!(
-        image::guess_format(&cover_bytes).unwrap(),
-        image::ImageFormat::Jpeg
-    );
+    assert_eq!(image::guess_format(&cover_bytes).unwrap(), image::ImageFormat::Jpeg);
     let decoded = image::load_from_memory(&cover_bytes).unwrap();
     assert_eq!((decoded.width(), decoded.height()), (600, 600));
 
@@ -333,21 +319,11 @@ async fn import_gif_and_webp_covers_stores_first_image_as_jpeg() {
             .await
             .unwrap_or_else(|error| panic!("{name}: {error}"));
         let cover =
-            f.db.find_library_image(&release_id, &LibraryImageType::Cover)
-                .await
-                .unwrap()
-                .unwrap();
-        assert_eq!(
-            cover.content_type,
-            bae_util::content_type::ContentType::Jpeg
-        );
-        let stored = support::read_cover_image_bytes(&f.library_manager, &release_id)
-            .await
-            .unwrap();
-        assert_eq!(
-            image::guess_format(&stored).unwrap(),
-            image::ImageFormat::Jpeg
-        );
+            f.db.find_library_image(&release_id, &LibraryImageType::Cover).await.unwrap().unwrap();
+        assert_eq!(cover.content_type, bae_util::content_type::ContentType::Jpeg);
+        let stored =
+            support::read_cover_image_bytes(&f.library_manager, &release_id).await.unwrap();
+        assert_eq!(image::guess_format(&stored).unwrap(), image::ImageFormat::Jpeg);
         let decoded = image::load_from_memory(&stored).unwrap();
         assert_eq!((decoded.width(), decoded.height()), dimensions);
         let pixel = decoded.to_rgb8().get_pixel(0, 0).0;

@@ -40,18 +40,13 @@ impl LibraryManager {
         };
         let sheet = crate::cue_flac::parse_cue_sheet(&playing.cue_sheet)
             .map_err(|error| invalid(error.to_string()))?;
-        let folder = playing
-            .cue_sheet
-            .parent()
-            .ok_or_else(|| invalid("names no folder".to_string()))?;
+        let folder =
+            playing.cue_sheet.parent().ok_or_else(|| invalid("names no folder".to_string()))?;
         // Each file the sheet names, probed, with what the scan reads of it.
         let mut audio_files: Vec<CueAnalyzedAudioFile> = Vec::new();
         let mut scanned_audio = Vec::new();
         for track in sheet.playable_tracks() {
-            if audio_files
-                .iter()
-                .any(|file| file.file_reference == track.file_reference)
-            {
+            if audio_files.iter().any(|file| file.file_reference == track.file_reference) {
                 continue;
             }
             let path = folder.join(&track.file_reference);
@@ -65,10 +60,7 @@ impl LibraryManager {
                 probe,
             });
         }
-        let analysis = Arc::new(CueFlacAnalysis {
-            cue_sheet: sheet,
-            audio_files,
-        });
+        let analysis = Arc::new(CueFlacAnalysis { cue_sheet: sheet, audio_files });
 
         let mut seeded = self
             .seeded_album(
@@ -110,10 +102,7 @@ impl LibraryManager {
             }
             tracks_to_files.push(TrackFile {
                 db_track,
-                audio: TrackAudio::CueBacked {
-                    cue_pair: analysis.clone(),
-                    cue_index: index,
-                },
+                audio: TrackAudio::CueBacked { cue_pair: analysis.clone(), cue_index: index },
             });
         }
         let current =
@@ -161,10 +150,7 @@ impl LibraryManager {
             .map_err(|failed| invalid(self.bug(failed).to_string()))?
             .map_err(|error| invalid(error.to_string()))?
         };
-        seeded.tracks = tracks_to_files
-            .into_iter()
-            .map(|track| track.db_track)
-            .collect();
+        seeded.tracks = tracks_to_files.into_iter().map(|track| track.db_track).collect();
         seeded.audio = Some(SeededAudio {
             files,
             audio_formats: built.audio_formats,
@@ -195,10 +181,7 @@ impl LibraryManager {
                 "the playing track {track_id} on release {release_id}"
             )));
         };
-        let row = crate::db::DbPlaybackState {
-            current: Some(current),
-            position_ms,
-        };
+        let row = crate::db::DbPlaybackState { current: Some(current), position_ms };
         self.save_playback_state(&row).await?;
         Ok(())
     }

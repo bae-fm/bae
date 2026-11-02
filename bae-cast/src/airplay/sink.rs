@@ -41,13 +41,7 @@ impl RaopSink {
         initial_volume: f32,
         diagnostics: Diagnostics,
     ) -> Self {
-        Self {
-            receiver,
-            rtsp_port,
-            encryption,
-            initial_volume,
-            diagnostics,
-        }
+        Self { receiver, rtsp_port, encryption, initial_volume, diagnostics }
     }
 }
 
@@ -115,12 +109,7 @@ impl Ap2Sink {
         timing: TimingProtocol,
         diagnostics: Diagnostics,
     ) -> Self {
-        Self {
-            receiver,
-            airplay_port,
-            timing,
-            diagnostics,
-        }
+        Self { receiver, airplay_port, timing, diagnostics }
     }
 }
 

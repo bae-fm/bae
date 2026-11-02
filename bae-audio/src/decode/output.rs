@@ -11,11 +11,7 @@ pub(super) enum InvalidPacketHandling {
 pub(super) enum FrameOutputWindow {
     Skip,
     Stop,
-    Emit {
-        skip_start: usize,
-        take_end: usize,
-        reached_end: bool,
-    },
+    Emit { skip_start: usize, take_end: usize, reached_end: bool },
 }
 
 /// The samples `[start, end)` a frame of `num_samples` holds: from its
@@ -74,11 +70,7 @@ pub(super) fn frame_output_window(
     }
 
     if skip_start < take_end {
-        FrameOutputWindow::Emit {
-            skip_start,
-            take_end,
-            reached_end,
-        }
+        FrameOutputWindow::Emit { skip_start, take_end, reached_end }
     } else if reached_end {
         FrameOutputWindow::Stop
     } else {
@@ -127,11 +119,7 @@ impl<'a> SinkOutput<'a> {
         sink: &'a mut dyn DecodedSink,
         cancel: &'a std::sync::atomic::AtomicBool,
     ) -> Self {
-        Self {
-            sink,
-            cancel,
-            converted: Vec::new(),
-        }
+        Self { sink, cancel, converted: Vec::new() }
     }
 }
 
@@ -277,10 +265,7 @@ pub(super) unsafe fn run_decode_loop(
             continue;
         }
         if ret < 0 {
-            return Err(format!(
-                "Failed to send packet to decoder: {}",
-                av_err_str(ret)
-            ));
+            return Err(format!("Failed to send packet to decoder: {}", av_err_str(ret)));
         }
         out.on_packet(crate::DecodedPacket {
             byte: u64::try_from(packet_position).ok(),
@@ -305,11 +290,7 @@ pub(super) unsafe fn run_decode_loop(
                     reached_stop = true;
                     break;
                 }
-                FrameOutputWindow::Emit {
-                    skip_start,
-                    take_end,
-                    reached_end,
-                } => {
+                FrameOutputWindow::Emit { skip_start, take_end, reached_end } => {
                     reached_stop = reached_end;
                     if !out.push(skip_start, take_end) {
                         consumer_stopped = true;
@@ -386,10 +367,7 @@ pub(super) unsafe fn convert_samples<T: Clone + Default>(
     let out_ptr = output_buf.as_mut_ptr() as *mut u8;
     let converted = swr_convert(swr_ctx, &out_ptr, input_samples, input_data, input_samples);
     if converted < 0 {
-        return Err(format!(
-            "Failed to convert decoded frame: {}",
-            av_err_str(converted)
-        ));
+        return Err(format!("Failed to convert decoded frame: {}", av_err_str(converted)));
     }
     output_buf.truncate(converted as usize * channels);
     Ok(output_buf)
@@ -485,11 +463,7 @@ pub(super) unsafe fn decode_packed_s64_packets_to_sink(
                 av_packet_unref(packet);
                 break;
             }
-            FrameOutputWindow::Emit {
-                skip_start,
-                take_end,
-                reached_end: window_reached_end,
-            } => {
+            FrameOutputWindow::Emit { skip_start, take_end, reached_end: window_reached_end } => {
                 sink.on_samples(&packet_samples[skip_start..take_end]);
                 reached_end = window_reached_end;
             }

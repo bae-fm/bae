@@ -26,10 +26,7 @@ async fn album_of_discs(
     std::fs::write(album.join("cover.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
     let root = crate::import::watched_folder::canonical_absolute_root(&root).unwrap();
     manager.add_watched_import_folder(&root).await.unwrap();
-    let handle = manager
-        .start_import_service(tokio::runtime::Handle::current())
-        .await
-        .unwrap();
+    let handle = manager.start_import_service(tokio::runtime::Handle::current()).await.unwrap();
     handle.refresh_watched_folder(root.clone()).await.unwrap();
     let reading = handle
         .library_manager
@@ -72,36 +69,21 @@ async fn two_discs_of_three_take_the_album_folders_cover() {
     let tmp = TempDir::new().unwrap();
     let (handle, album) =
         album_of_discs(&manager, &tmp, &["Disc 1", "Disc 2", "Disc 3"], false).await;
-    assert_eq!(
-        files_of(&handle, &key_of(&album.join("Disc 3"))).await,
-        ["01.flac"]
-    );
+    assert_eq!(files_of(&handle, &key_of(&album.join("Disc 3"))).await, ["01.flac"]);
 
     let key = handle
-        .combine_candidates(vec![
-            key_of(&album.join("Disc 1")),
-            key_of(&album.join("Disc 2")),
-        ])
+        .combine_candidates(vec![key_of(&album.join("Disc 1")), key_of(&album.join("Disc 2"))])
         .await
         .unwrap();
     assert!(matches!(
         handle.library_manager.load_grouping(&key).await.unwrap(),
         Some(crate::db::GroupingFacts::Picked { .. })
     ));
-    assert_eq!(
-        files_of(&handle, &key).await,
-        ["cover.jpg", "Disc 1/01.flac", "Disc 2/01.flac"]
-    );
-    assert_eq!(
-        files_of(&handle, &key_of(&album.join("Disc 3"))).await,
-        ["01.flac"]
-    );
+    assert_eq!(files_of(&handle, &key).await, ["cover.jpg", "Disc 1/01.flac", "Disc 2/01.flac"]);
+    assert_eq!(files_of(&handle, &key_of(&album.join("Disc 3"))).await, ["01.flac"]);
 
     handle.separate_candidate(&key).await.unwrap();
-    assert_eq!(
-        files_of(&handle, &key_of(&album.join("Disc 1"))).await,
-        ["01.flac"]
-    );
+    assert_eq!(files_of(&handle, &key_of(&album.join("Disc 1"))).await, ["01.flac"]);
     shut_down(handle).await;
 }
 
@@ -113,31 +95,19 @@ async fn a_folder_that_is_a_release_keeps_its_cover() {
     let (manager, _library) = setup_test_manager().await;
     let tmp = TempDir::new().unwrap();
     let (handle, album) = album_of_discs(&manager, &tmp, &["Disc 1", "Disc 2"], true).await;
-    assert_eq!(
-        files_of(&handle, &key_of(&album)).await,
-        ["00.flac", "cover.jpg"]
-    );
+    assert_eq!(files_of(&handle, &key_of(&album)).await, ["00.flac", "cover.jpg"]);
 
     let discs = handle
-        .combine_candidates(vec![
-            key_of(&album.join("Disc 1")),
-            key_of(&album.join("Disc 2")),
-        ])
+        .combine_candidates(vec![key_of(&album.join("Disc 1")), key_of(&album.join("Disc 2"))])
         .await
         .unwrap();
-    assert_eq!(
-        files_of(&handle, &discs).await,
-        ["Disc 1/01.flac", "Disc 2/01.flac"]
-    );
+    assert_eq!(files_of(&handle, &discs).await, ["Disc 1/01.flac", "Disc 2/01.flac"]);
     handle.separate_candidate(&discs).await.unwrap();
 
     let nested = handle
         .combine_candidates(vec![key_of(&album), key_of(&album.join("Disc 1"))])
         .await
         .unwrap();
-    assert_eq!(
-        files_of(&handle, &nested).await,
-        ["00.flac", "cover.jpg", "Disc 1/01.flac"]
-    );
+    assert_eq!(files_of(&handle, &nested).await, ["00.flac", "cover.jpg", "Disc 1/01.flac"]);
     shut_down(handle).await;
 }

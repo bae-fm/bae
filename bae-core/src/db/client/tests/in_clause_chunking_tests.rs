@@ -54,27 +54,14 @@ async fn filter_existing_track_ids_merges_chunks() {
 async fn a_queue_longer_than_one_in_clause_reads_every_track() {
     let (db, _tmp, track_ids) = chunked_track_db().await;
     let mut requested = track_ids.clone();
-    requested.insert(
-        SQL_MAX_IN_VARS / 2,
-        bae_test_support::test_uuid("missing-track"),
-    );
+    requested.insert(SQL_MAX_IN_VARS / 2, bae_test_support::test_uuid("missing-track"));
 
-    let added = db
-        .playback_queue_tables()
-        .add_manual(requested, ManualPlace::End)
-        .await
-        .unwrap();
-    assert_eq!(
-        added,
-        track_ids.len(),
-        "the track the library lacks is left out"
-    );
+    let added = db.playback_queue_tables().add_manual(requested, ManualPlace::End).await.unwrap();
+    assert_eq!(added, track_ids.len(), "the track the library lacks is left out");
 
     let items = db.queue_value().await.unwrap().manual;
     let resolved: Vec<&str> = items.iter().map(|item| item.track_id.as_str()).collect();
     let expected: Vec<&str> = track_ids.iter().map(String::as_str).collect();
     assert_eq!(resolved, expected);
-    assert!(items
-        .iter()
-        .all(|item| item.display.album_title == "Album Title A"));
+    assert!(items.iter().all(|item| item.display.album_title == "Album Title A"));
 }

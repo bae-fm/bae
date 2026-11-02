@@ -11,38 +11,23 @@ async fn import_list_wakes_on_a_scan_item() {
     let (db, _temp) = live_db().await;
     let root = &crate::import::watched_folder::host_root("/music");
     db.add_watched_import_folder(root).await.unwrap();
-    let generation = db
-        .begin_folder_scan(root, crate::import::VolumeKind::Local)
-        .await
-        .unwrap();
-    db.save_folder_scan_item(root, generation, &scan_candidate(root, "first"))
-        .await
-        .unwrap();
+    let generation = db.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
+    db.save_folder_scan_item(root, generation, &scan_candidate(root, "first")).await.unwrap();
 
     let mut live = db.subscribe_import_list(
         list_request(&db, crate::import::TriageTab::Pending, [(0, 50)]).await,
     );
-    let initial = live
-        .next()
-        .await
-        .expect("the query stays open")
-        .result
-        .unwrap();
+    let initial = live.next().await.expect("the query stays open").result.unwrap();
     assert_eq!(candidate_names(&initial), vec!["first".to_string()]);
 
-    db.save_folder_scan_item(root, generation, &scan_candidate(root, "second"))
-        .await
-        .unwrap();
+    db.save_folder_scan_item(root, generation, &scan_candidate(root, "second")).await.unwrap();
     let grown = tokio::time::timeout(Duration::from_secs(2), live.next())
         .await
         .expect("a scan item wakes the list")
         .expect("the query stays open")
         .result
         .unwrap();
-    assert_eq!(
-        candidate_names(&grown),
-        vec!["first".to_string(), "second".to_string()]
-    );
+    assert_eq!(candidate_names(&grown), vec!["first".to_string(), "second".to_string()]);
     assert_eq!(grown.total_count, 2);
 }
 
@@ -53,13 +38,8 @@ async fn folder_scan_progress_follows_the_walk_in_flight() {
     let (db, _temp) = live_db().await;
     let root = &crate::import::watched_folder::host_root("/music");
     db.add_watched_import_folder(root).await.unwrap();
-    let generation = db
-        .begin_folder_scan(root, crate::import::VolumeKind::Local)
-        .await
-        .unwrap();
-    db.save_folder_scan_item(root, generation, &scan_candidate(root, "first"))
-        .await
-        .unwrap();
+    let generation = db.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
+    db.save_folder_scan_item(root, generation, &scan_candidate(root, "first")).await.unwrap();
 
     let mut live = db.subscribe_folder_scan_progress();
     let initial = live
@@ -72,9 +52,7 @@ async fn folder_scan_progress_follows_the_walk_in_flight() {
     assert_eq!(initial.found_count, 1);
     assert_eq!(initial.folders[0].found_count, 1);
 
-    db.save_folder_scan_item(root, generation, &scan_candidate(root, "second"))
-        .await
-        .unwrap();
+    db.save_folder_scan_item(root, generation, &scan_candidate(root, "second")).await.unwrap();
     let grown = tokio::time::timeout(Duration::from_secs(2), live.next())
         .await
         .expect("a scan item wakes the scan progress")
@@ -92,10 +70,7 @@ async fn folder_scan_progress_follows_the_walk_in_flight() {
         .expect("the query stays open")
         .unwrap();
     assert_eq!(complete.activity, None);
-    assert!(matches!(
-        complete.statuses[0].status,
-        crate::import::FolderScanStatus::Complete
-    ));
+    assert!(matches!(complete.statuses[0].status, crate::import::FolderScanStatus::Complete));
 }
 
 /// Whether a watched folder is on a network volume is what its scan recorded
@@ -107,18 +82,11 @@ async fn folder_scan_progress_reads_the_volume_its_scan_recorded() {
     let (db, _temp) = live_db().await;
     let root = &crate::import::watched_folder::host_root("/music");
     db.add_watched_import_folder(root).await.unwrap();
-    let generation = db
-        .begin_folder_scan(root, crate::import::VolumeKind::Network)
-        .await
-        .unwrap();
+    let generation = db.begin_folder_scan(root, crate::import::VolumeKind::Network).await.unwrap();
     db.finish_folder_scan(root, generation, None).await.unwrap();
 
-    let progress = db
-        .subscribe_folder_scan_progress()
-        .next()
-        .await
-        .expect("the query stays open")
-        .unwrap();
+    let progress =
+        db.subscribe_folder_scan_progress().next().await.expect("the query stays open").unwrap();
 
     assert!(progress.statuses[0].on_network_volume);
 }
@@ -130,30 +98,18 @@ async fn folder_scan_progress_excludes_retained_previous_generation_rows() {
     let (db, _temp) = live_db().await;
     let root = &crate::import::watched_folder::host_root("/music");
     db.add_watched_import_folder(root).await.unwrap();
-    let old_generation = db
-        .begin_folder_scan(root, crate::import::VolumeKind::Local)
-        .await
-        .unwrap();
+    let old_generation =
+        db.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
     for name in ["retained", "encountered"] {
-        db.save_folder_scan_item(root, old_generation, &scan_candidate(root, name))
-            .await
-            .unwrap();
+        db.save_folder_scan_item(root, old_generation, &scan_candidate(root, name)).await.unwrap();
     }
-    db.finish_folder_scan(root, old_generation, None)
-        .await
-        .unwrap();
+    db.finish_folder_scan(root, old_generation, None).await.unwrap();
 
-    let current_generation = db
-        .begin_folder_scan(root, crate::import::VolumeKind::Local)
+    let current_generation =
+        db.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
+    db.save_folder_scan_item(root, current_generation, &scan_candidate(root, "encountered"))
         .await
         .unwrap();
-    db.save_folder_scan_item(
-        root,
-        current_generation,
-        &scan_candidate(root, "encountered"),
-    )
-    .await
-    .unwrap();
 
     let activity = db
         .subscribe_folder_scan_progress()
@@ -177,44 +133,24 @@ async fn import_list_sleeps_through_a_rescan_that_reconfirms_its_candidates() {
     let (db, _temp) = live_db().await;
     let root = &crate::import::watched_folder::host_root("/music");
     db.add_watched_import_folder(root).await.unwrap();
-    let generation = db
-        .begin_folder_scan(root, crate::import::VolumeKind::Local)
-        .await
-        .unwrap();
+    let generation = db.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
     for name in ["first", "second"] {
-        db.save_folder_scan_item(root, generation, &scan_candidate(root, name))
-            .await
-            .unwrap();
+        db.save_folder_scan_item(root, generation, &scan_candidate(root, name)).await.unwrap();
     }
     db.finish_folder_scan(root, generation, None).await.unwrap();
-    let rescan = db
-        .begin_folder_scan(root, crate::import::VolumeKind::Local)
-        .await
-        .unwrap();
+    let rescan = db.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
 
     let request = list_request(&db, crate::import::TriageTab::Pending, [(0, 50)]).await;
     let list = request.list;
     let mut live = db.subscribe_import_list(request);
-    let initial = live
-        .next()
-        .await
-        .expect("the query stays open")
-        .result
-        .unwrap();
-    assert_eq!(
-        candidate_names(&initial),
-        vec!["first".to_string(), "second".to_string()]
-    );
+    let initial = live.next().await.expect("the query stays open").result.unwrap();
+    assert_eq!(candidate_names(&initial), vec!["first".to_string(), "second".to_string()]);
 
     for name in ["first", "second"] {
-        db.save_folder_scan_item(root, rescan, &scan_candidate(root, name))
-            .await
-            .unwrap();
+        db.save_folder_scan_item(root, rescan, &scan_candidate(root, name)).await.unwrap();
     }
-    let moved = next_run_is_only_the_request(&mut live, through(list, [(0, 49)]))
-        .await
-        .result
-        .unwrap();
+    let moved =
+        next_run_is_only_the_request(&mut live, through(list, [(0, 49)])).await.result.unwrap();
     assert_eq!(moved.windows[0].items, initial.windows[0].items);
 }
 
@@ -226,20 +162,12 @@ async fn a_scans_progress_moves_the_scans_and_sends_the_list_nothing() {
     let (db, _temp) = live_db().await;
     let root = &crate::import::watched_folder::host_root("/music");
     db.add_watched_import_folder(root).await.unwrap();
-    let generation = db
-        .begin_folder_scan(root, crate::import::VolumeKind::Local)
-        .await
-        .unwrap();
+    let generation = db.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
     for name in ["first", "second"] {
-        db.save_folder_scan_item(root, generation, &scan_candidate(root, name))
-            .await
-            .unwrap();
+        db.save_folder_scan_item(root, generation, &scan_candidate(root, name)).await.unwrap();
     }
     db.finish_folder_scan(root, generation, None).await.unwrap();
-    let rescan = db
-        .begin_folder_scan(root, crate::import::VolumeKind::Local)
-        .await
-        .unwrap();
+    let rescan = db.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
 
     let request = list_request(&db, crate::import::TriageTab::Pending, [(0, 50)]).await;
     let list = request.list;
@@ -249,19 +177,11 @@ async fn a_scans_progress_moves_the_scans_and_sends_the_list_nothing() {
     let initial = subscription.next().await.expect("the query stays open");
     assert_eq!(initial.cause, coven::LiveQueryCause::Request);
     let found = |progress: crate::import::FolderScanProgress| {
-        progress
-            .activity
-            .expect("the rescan is in flight")
-            .found_count
+        progress.activity.expect("the rescan is in flight").found_count
     };
-    assert_eq!(
-        found(scans.next().await.expect("the query stays open").unwrap()),
-        0
-    );
+    assert_eq!(found(scans.next().await.expect("the query stays open").unwrap()), 0);
 
-    db.save_folder_scan_item(root, rescan, &scan_candidate(root, "first"))
-        .await
-        .unwrap();
+    db.save_folder_scan_item(root, rescan, &scan_candidate(root, "first")).await.unwrap();
     let progressed = tokio::time::timeout(Duration::from_secs(2), scans.next())
         .await
         .expect("the re-confirmed folder moves the scan progress")
@@ -279,10 +199,7 @@ async fn a_scans_progress_moves_the_scans_and_sends_the_list_nothing() {
         coven::LiveQueryCause::Request,
         "the scan's progress sent the list nothing"
     );
-    assert_eq!(
-        next.result.unwrap().windows[0].items,
-        initial.result.unwrap().windows[0].items
-    );
+    assert_eq!(next.result.unwrap().windows[0].items, initial.result.unwrap().windows[0].items);
 }
 
 /// The scan progress lists the watched folders in the order they are
@@ -299,17 +216,11 @@ async fn folder_scan_progress_lists_the_folders_in_their_order() {
         db.add_watched_import_folder(root).await.unwrap();
     }
     for root in roots.iter().rev() {
-        db.begin_folder_scan(root, crate::import::VolumeKind::Local)
-            .await
-            .unwrap();
+        db.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
     }
 
-    let progress = db
-        .subscribe_folder_scan_progress()
-        .next()
-        .await
-        .expect("the query stays open")
-        .unwrap();
+    let progress =
+        db.subscribe_folder_scan_progress().next().await.expect("the query stays open").unwrap();
     assert_eq!(
         progress
             .statuses
@@ -322,10 +233,7 @@ async fn folder_scan_progress_lists_the_folders_in_their_order() {
     let plan = db
         .read(|sql| {
             sql.query(
-                &format!(
-                    "EXPLAIN QUERY PLAN {}",
-                    super::super::folder_scans::FOLDER_SCAN_PROGRESS
-                ),
+                &format!("EXPLAIN QUERY PLAN {}", super::super::folder_scans::FOLDER_SCAN_PROGRESS),
                 [],
                 |row| row.get::<_, String>(3),
             )

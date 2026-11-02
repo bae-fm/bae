@@ -62,10 +62,7 @@ pub(super) fn import_label_write<'a>(
     parts: &'a LabelParts,
     candidate: Option<&'a str>,
 ) -> LabelWrite<'a> {
-    LabelWrite {
-        candidate,
-        ..label_write(parts)
-    }
+    LabelWrite { candidate, ..label_write(parts) }
 }
 
 /// What a write of labels takes along into its closure: an id for each label
@@ -79,10 +76,7 @@ impl Database {
     /// The [`LabelParts`] of a write of `labels`.
     pub(super) fn label_parts(&self, labels: &[ReleaseLabel]) -> LabelParts {
         LabelParts {
-            fresh_ids: labels
-                .iter()
-                .map(|_| self.inner.ids.new_id().to_string())
-                .collect(),
+            fresh_ids: labels.iter().map(|_| self.inner.ids.new_id().to_string()).collect(),
             now: chrono::DateTime::<chrono::Utc>::from(self.inner.clock.now()).to_rfc3339(),
         }
     }
@@ -158,11 +152,7 @@ struct Decided {
 impl Decided {
     /// `label` as this write leaves it.
     fn overlaid(&self, label: LabelRow) -> LabelRow {
-        self.fills
-            .iter()
-            .find(|filled| filled.id == label.id)
-            .cloned()
-            .unwrap_or(label)
+        self.fills.iter().find(|filled| filled.id == label.id).cloned().unwrap_or(label)
     }
 
     /// Link `label` to `existing`, filling in its catalog ids, and say which
@@ -200,15 +190,9 @@ pub(super) fn write_release_labels_on(
     for label in labels {
         let id = match label.name() {
             None => None,
-            Some(name) => Some(resolve_label_on(
-                tx,
-                label,
-                name,
-                &named_now,
-                &mut decided,
-                &mut rows,
-                write,
-            )?),
+            Some(name) => {
+                Some(resolve_label_on(tx, label, name, &named_now, &mut decided, &mut rows, write)?)
+            }
         };
         rows.push((id, label.catalog_number()));
     }
@@ -363,15 +347,11 @@ fn resolve_label_on(
         {
             Some(id) => id,
             None => {
-                let id = write
-                    .fresh_ids
-                    .get(decided.fresh_taken)
-                    .cloned()
-                    .ok_or_else(|| {
-                        IdentityWriteError::Unresolvable(format!(
-                            "label '{name}' is one more new label than the write has ids for"
-                        ))
-                    })?;
+                let id = write.fresh_ids.get(decided.fresh_taken).cloned().ok_or_else(|| {
+                    IdentityWriteError::Unresolvable(format!(
+                        "label '{name}' is one more new label than the write has ids for"
+                    ))
+                })?;
                 decided.fresh_taken += 1;
                 id
             }
@@ -396,30 +376,26 @@ fn import_answer_on(
     decided: &mut Decided,
     write: &LabelWrite<'_>,
 ) -> Result<Option<String>, IdentityWriteError> {
-    let (Some(hash), Some(musicbrainz), Some(discogs)) = (
-        write.candidate,
-        label.musicbrainz_label_id(),
-        label.discogs_label_id(),
-    ) else {
+    let (Some(hash), Some(musicbrainz), Some(discogs)) =
+        (write.candidate, label.musicbrainz_label_id(), label.discogs_label_id())
+    else {
         return Ok(None);
     };
-    Ok(
-        match super::label_identity_choice::chosen_label_on(tx, hash, discogs, musicbrainz)? {
-            Some(super::label_identity_choice::ChosenLabel::Library(chosen)) => Some(chosen.id),
-            Some(super::label_identity_choice::ChosenLabel::New(id)) => {
-                if !decided.inserts.iter().any(|pending| pending.id == id) {
-                    decided.inserts.push(LabelRow {
-                        id: id.clone(),
-                        name: name.to_string(),
-                        musicbrainz_label_id: None,
-                        discogs_label_id: None,
-                    });
-                }
-                Some(id)
+    Ok(match super::label_identity_choice::chosen_label_on(tx, hash, discogs, musicbrainz)? {
+        Some(super::label_identity_choice::ChosenLabel::Library(chosen)) => Some(chosen.id),
+        Some(super::label_identity_choice::ChosenLabel::New(id)) => {
+            if !decided.inserts.iter().any(|pending| pending.id == id) {
+                decided.inserts.push(LabelRow {
+                    id: id.clone(),
+                    name: name.to_string(),
+                    musicbrainz_label_id: None,
+                    discogs_label_id: None,
+                });
             }
-            None => None,
-        },
-    )
+            Some(id)
+        }
+        None => None,
+    })
 }
 
 fn contradicted(name: &str) -> IdentityWriteError {
@@ -477,14 +453,12 @@ fn label_by_catalog_id_on<Q: QueryOne>(
         return Ok(Some(filled.clone()));
     }
     let (column, identity) = match column {
-        CatalogColumn::Discogs => (
-            "discogs_label_id",
-            crate::db::identity::label_id(None, Some(catalog_id)),
-        ),
-        CatalogColumn::MusicBrainz => (
-            "musicbrainz_label_id",
-            crate::db::identity::label_id(Some(catalog_id), None),
-        ),
+        CatalogColumn::Discogs => {
+            ("discogs_label_id", crate::db::identity::label_id(None, Some(catalog_id)))
+        }
+        CatalogColumn::MusicBrainz => {
+            ("musicbrainz_label_id", crate::db::identity::label_id(Some(catalog_id), None))
+        }
     };
     Ok(sql
         .query_row(

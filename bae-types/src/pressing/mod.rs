@@ -234,8 +234,7 @@ impl ReleaseLabel {
             return;
         }
         if self.musicbrainz_label_id.is_none() {
-            self.musicbrainz_label_id
-                .clone_from(&other.musicbrainz_label_id);
+            self.musicbrainz_label_id.clone_from(&other.musicbrainz_label_id);
         }
         if self.discogs_label_id.is_none() {
             self.discogs_label_id.clone_from(&other.discogs_label_id);
@@ -268,12 +267,8 @@ impl<'de> serde::Deserialize<'de> for ReleaseLabel {
             #[serde(default)]
             discogs_label_id: Option<String>,
         }
-        let Stated {
-            name,
-            catalog_number,
-            musicbrainz_label_id,
-            discogs_label_id,
-        } = Stated::deserialize(deserializer)?;
+        let Stated { name, catalog_number, musicbrainz_label_id, discogs_label_id } =
+            Stated::deserialize(deserializer)?;
         Self::new(name, catalog_number)
             .map(|label| label.with_ids(musicbrainz_label_id, discogs_label_id))
             .ok_or_else(|| serde::de::Error::custom("a label states neither a name nor a number"))
@@ -312,18 +307,14 @@ impl Pressing {
 /// the way the unaccented ones do.
 #[cfg(desktop)]
 fn same_name(a: &str, b: &str) -> bool {
-    a.chars()
-        .flat_map(char::to_lowercase)
-        .eq(b.chars().flat_map(char::to_lowercase))
+    a.chars().flat_map(char::to_lowercase).eq(b.chars().flat_map(char::to_lowercase))
 }
 
 /// The names of a captured page: one per line, with the line naming the
 /// source left out.
 #[cfg(test)]
 fn recorded(page: &str) -> Vec<&str> {
-    page.lines()
-        .filter(|line| !line.is_empty() && !line.starts_with('#'))
-        .collect()
+    page.lines().filter(|line| !line.is_empty() && !line.starts_with('#')).collect()
 }
 
 /// The area a MusicBrainz release-country code names, for a test that states
@@ -337,8 +328,5 @@ pub fn area(code: &str) -> ReleaseArea {
 /// that states media.
 #[cfg(any(test, feature = "test-utils"))]
 pub fn made_of(medium: Medium, count: u32) -> PressingFacts {
-    PressingFacts {
-        media: vec![MediaCount { medium, count }],
-        ..PressingFacts::default()
-    }
+    PressingFacts { media: vec![MediaCount { medium, count }], ..PressingFacts::default() }
 }

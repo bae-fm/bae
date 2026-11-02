@@ -121,10 +121,7 @@ fn destination_label(destination: ImportDestination) -> &'static str {
 /// closing the channel because the last sender lives in the struct whose `Drop`
 /// joins the thread, so the channel could never close first.
 pub(crate) enum ImportWorkerMessage {
-    Import {
-        command: ImportCommand,
-        expectation: ImportExpectation,
-    },
+    Import { command: ImportCommand, expectation: ImportExpectation },
     Shutdown,
 }
 
@@ -151,24 +148,17 @@ impl ImportExpectation {
         current: Option<&crate::import::preparation::CommittingCandidate>,
     ) -> Result<(), String> {
         let Some(current) = current else {
-            return Err(format!(
-                "{candidate_key} is no longer a valid import candidate"
-            ));
+            return Err(format!("{candidate_key} is no longer a valid import candidate"));
         };
         if !current.actionable
             || current.source != *source
             || current.content_hash != self.candidate.content_hash
             || current.file_edit_revision != self.candidate.file_edit_revision
         {
-            return Err(format!(
-                "{candidate_key} changed before its import committed"
-            ));
+            return Err(format!("{candidate_key} changed before its import committed"));
         }
         if current.prepared_revisions
-            != Some((
-                self.candidate.file_edit_revision,
-                self.candidate.metadata_revision,
-            ))
+            != Some((self.candidate.file_edit_revision, self.candidate.metadata_revision))
         {
             return Err(format!(
                 "{candidate_key}'s prepared metadata changed before its import committed"
@@ -210,14 +200,8 @@ pub struct ImportService {
 fn downloaded_cover(
     image: bae_catalogs::remote_image::RemoteImage,
 ) -> Result<Vec<u8>, crate::import::ImportError> {
-    let bae_catalogs::remote_image::RemoteImage {
-        bytes,
-        content_type,
-    } = image;
-    if matches!(
-        content_type,
-        bae_util::content_type::ContentType::OctetStream
-    ) {
+    let bae_catalogs::remote_image::RemoteImage { bytes, content_type } = image;
+    if matches!(content_type, bae_util::content_type::ContentType::OctetStream) {
         return Err(crate::import::ImportError::CoverArt {
             detail: "Cover bytes aren't a recognized image format (PNG/JPEG/GIF/WebP/BMP)"
                 .to_string(),
@@ -242,10 +226,8 @@ fn changed_paths(events: &[notify::Event]) -> Vec<&Path> {
 /// an album is hundreds of events, and the first few name the cause.
 fn changed_events_summary(events: &[notify::Event]) -> String {
     const NAMED: usize = 6;
-    let changes: Vec<&notify::Event> = events
-        .iter()
-        .filter(|event| reports_a_change(&event.kind))
-        .collect();
+    let changes: Vec<&notify::Event> =
+        events.iter().filter(|event| reports_a_change(&event.kind)).collect();
     let named: Vec<String> = changes
         .iter()
         .take(NAMED)
@@ -268,16 +250,8 @@ fn changed_events_summary(events: &[notify::Event]) -> String {
         "{} of {} events count as changes ({ignored} ignored){}{}",
         changes.len(),
         events.len(),
-        if named.is_empty() {
-            String::new()
-        } else {
-            format!(": {}", named.join("; "))
-        },
-        if more > 0 {
-            format!(" and {more} more")
-        } else {
-            String::new()
-        }
+        if named.is_empty() { String::new() } else { format!(": {}", named.join("; ")) },
+        if more > 0 { format!(" and {more} more") } else { String::new() }
     )
 }
 
@@ -337,15 +311,10 @@ fn root_change(root: &Path, changed: &[&Path], holds_its_own_release: bool) -> R
         let Ok(relative) = path.strip_prefix(root) else {
             continue;
         };
-        let names: Vec<&std::ffi::OsStr> = relative
-            .components()
-            .map(|component| component.as_os_str())
-            .collect();
+        let names: Vec<&std::ffi::OsStr> =
+            relative.components().map(|component| component.as_os_str()).collect();
         // The encoded bytes are documented as safe to inspect for ASCII.
-        if names
-            .iter()
-            .any(|name| name.as_encoded_bytes().first() == Some(&b'.'))
-        {
+        if names.iter().any(|name| name.as_encoded_bytes().first() == Some(&b'.')) {
             continue;
         }
         let Some(first) = names.first() else {
@@ -431,11 +400,7 @@ fn network_changes(root: &Path, recorded: &[(PathBuf, i64)]) -> Option<Vec<PathB
 /// The watched roots that contain at least one of the `changed` paths, in
 /// `roots` order and without duplicates.
 fn affected_roots(changed: &[&Path], roots: &[PathBuf]) -> Vec<PathBuf> {
-    roots
-        .iter()
-        .filter(|root| changed.iter().any(|path| path.starts_with(root)))
-        .cloned()
-        .collect()
+    roots.iter().filter(|root| changed.iter().any(|path| path.starts_with(root))).cloned().collect()
 }
 
 fn roots_for_watch_error(error_paths: &[PathBuf], roots: &[PathBuf]) -> Vec<PathBuf> {
@@ -509,13 +474,7 @@ fn spawn_pass(
             }
         },
         move |_| {
-            if panicked_tx
-                .send(RootScanCompletion {
-                    id,
-                    path: panicked_path,
-                })
-                .is_err()
-            {
+            if panicked_tx.send(RootScanCompletion { id, path: panicked_path }).is_err() {
                 debug!("folder scan coordinator ended before a panicked pass completed");
             }
         },
@@ -541,10 +500,7 @@ impl ScanServices {
         services: crate::import::ImportServices,
         folder_watcher: Arc<FolderWatcher>,
     ) -> Self {
-        Self {
-            services,
-            folder_watcher,
-        }
+        Self { services, folder_watcher }
     }
 }
 
@@ -576,13 +532,8 @@ fn spawn_folder_reading(
     let reading_cancellation = cancellation.clone();
     let diagnostics = scan.services.diagnostics.clone();
     let pass_path = path.clone();
-    let task = spawn_pass(
-        "store a folder decision",
-        id,
-        path,
-        &diagnostics,
-        completion_tx,
-        async move {
+    let task =
+        spawn_pass("store a folder decision", id, path, &diagnostics, completion_tx, async move {
             let path = pass_path;
             let target = request.target().clone();
             // A reading that panics answers its caller as one that failed.
@@ -605,8 +556,7 @@ fn spawn_folder_reading(
                 );
             }
             request.answer(result);
-        },
-    );
+        });
     RootScanTask { cancellation, task }
 }
 
@@ -646,13 +596,8 @@ fn spawn_root_scan(
     let scan_cancellation = cancellation.clone();
     let diagnostics = scan.services.diagnostics.clone();
     let pass_path = path.clone();
-    let task = spawn_pass(
-        "scan a watched folder",
-        id,
-        path,
-        &diagnostics,
-        completion_tx,
-        async move {
+    let task =
+        spawn_pass("scan a watched folder", id, path, &diagnostics, completion_tx, async move {
             if !scan_cancellation.is_cancelled() {
                 // `rescan_and_reconcile` already recorded and announced any
                 // error; passing it on would show it twice.
@@ -663,8 +608,7 @@ fn spawn_root_scan(
                 let _ = ImportService::rescan_and_reconcile(&pass_path, &scan, &scan_cancellation)
                     .await;
             }
-        },
-    );
+        });
     RootScanTask { cancellation, task }
 }
 
@@ -750,14 +694,9 @@ async fn prepare(
         }
     }
     let payloads = steps
-        .during(
-            crate::import::CatalogApplyStep::ReadingRelease(release_ref.catalog),
-            read,
-        )
+        .during(crate::import::CatalogApplyStep::ReadingRelease(release_ref.catalog), read)
         .await?;
-    Ok(library_manager
-        .prepared_release(payloads.extract()?)
-        .await?)
+    Ok(library_manager.prepared_release(payloads.extract()?).await?)
 }
 
 /// Prepare every partner release of this pick: other catalogs' releases of the

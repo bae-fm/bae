@@ -185,10 +185,7 @@ const ENTITY_DOCUMENT: &str = r#"{
 }"#;
 
 fn group(catalog: Catalog, key: &str) -> CatalogPage {
-    CatalogPage::Group {
-        catalog,
-        key: key.to_string(),
-    }
+    CatalogPage::Group { catalog, key: key.to_string() }
 }
 
 /// An item's own page, then one page per identifier it states for a catalog
@@ -298,9 +295,7 @@ async fn only_transient_wikidata_failures_are_retried() {
     };
     assert_eq!(repeat(&WikidataError::Timeout), Repeat::AfterBackoff);
     assert_eq!(
-        repeat(&WikidataError::Network(
-            bae_util::http::refused_request_error().await
-        )),
+        repeat(&WikidataError::Network(bae_util::http::refused_request_error().await)),
         Repeat::AfterBackoff
     );
     assert_eq!(provider(None, None), Repeat::AfterBackoff);
@@ -311,23 +306,12 @@ async fn only_transient_wikidata_failures_are_retried() {
         "a stated wait replaces the backoff"
     );
 
-    assert_eq!(
-        repeat(&WikidataError::NotFound("Q424242".into())),
-        Repeat::Never
-    );
+    assert_eq!(repeat(&WikidataError::NotFound("Q424242".into())), Repeat::Never);
     assert_eq!(provider(Some(404), None), Repeat::Never);
+    assert_eq!(provider(Some(400), Some(Duration::from_secs(5))), Repeat::Never);
+    assert_eq!(repeat(&WikidataError::Other("Failed to parse JSON".into())), Repeat::Never);
     assert_eq!(
-        provider(Some(400), Some(Duration::from_secs(5))),
-        Repeat::Never
-    );
-    assert_eq!(
-        repeat(&WikidataError::Other("Failed to parse JSON".into())),
-        Repeat::Never
-    );
-    assert_eq!(
-        repeat(&WikidataError::Request(
-            bae_util::http::unbuildable_request_error()
-        )),
+        repeat(&WikidataError::Request(bae_util::http::unbuildable_request_error())),
         Repeat::Never
     );
 }

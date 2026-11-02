@@ -6,10 +6,7 @@ struct IdsThatPanicOnce {
 
 impl coven::IdSource for IdsThatPanicOnce {
     fn new_id(&self) -> uuid::Uuid {
-        if !self
-            .panicked
-            .swap(true, std::sync::atomic::Ordering::SeqCst)
-        {
+        if !self.panicked.swap(true, std::sync::atomic::Ordering::SeqCst) {
             panic!("the id source broke");
         }
         coven::IdSource::new_id(&coven::UuidIds)
@@ -33,18 +30,12 @@ async fn an_import_that_panics_is_recorded_as_failed_and_the_next_import_runs() 
         std::fs::copy(&fixture, folder.join(format!("0{track} Track {track}.flac"))).unwrap();
     }
     let (candidate_key, stored) = store_scanned_candidate(&test, &folder, "Album").await;
-    test.service.ids = Arc::new(IdsThatPanicOnce {
-        panicked: std::sync::atomic::AtomicBool::new(false),
-    });
+    test.service.ids =
+        Arc::new(IdsThatPanicOnce { panicked: std::sync::atomic::AtomicBool::new(false) });
 
+    test.service.queue_import_for_test(&candidate_key, "import-panics").await;
     test.service
-        .queue_import_for_test(&candidate_key, "import-panics")
-        .await;
-    test.service
-        .do_import(
-            local_import_command("import-panics", &candidate_key, &folder),
-            stored.clone(),
-        )
+        .do_import(local_import_command("import-panics", &candidate_key, &folder), stored.clone())
         .await;
 
     let failure = test
@@ -61,28 +52,15 @@ async fn an_import_that_panics_is_recorded_as_failed_and_the_next_import_runs() 
     );
     assert_eq!(
         bugs.reports(),
-        vec![(
-            "an import".to_string(),
-            "an import panicked: the id source broke".to_string()
-        )]
+        vec![("an import".to_string(), "an import panicked: the id source broke".to_string())]
     );
 
+    test.service.queue_import_for_test(&candidate_key, "import-again").await;
     test.service
-        .queue_import_for_test(&candidate_key, "import-again")
-        .await;
-    test.service
-        .do_import(
-            local_import_command("import-again", &candidate_key, &folder),
-            stored,
-        )
+        .do_import(local_import_command("import-again", &candidate_key, &folder), stored)
         .await;
     assert_eq!(
-        test.service
-            .library_manager
-            .get_albums(&[])
-            .await
-            .unwrap()
-            .len(),
+        test.service.library_manager.get_albums(&[]).await.unwrap().len(),
         1,
         "the next import lands the release"
     );

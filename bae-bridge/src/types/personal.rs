@@ -42,9 +42,7 @@ impl BridgeAudience {
     fn from_core(value: coven::Audience) -> Self {
         match value {
             coven::Audience::Store => Self::Store,
-            coven::Audience::Circle(id) => Self::Circle {
-                id: id.0.to_string(),
-            },
+            coven::Audience::Circle(id) => Self::Circle { id: id.0.to_string() },
         }
     }
 }
@@ -88,9 +86,7 @@ pub enum BridgeRequestedProfileState {
     /// once sync has made it.
     Making,
     /// The library refused the circle; asking again asks anew.
-    Refused {
-        reason: super::BridgeOperationRejection,
-    },
+    Refused { reason: super::BridgeOperationRejection },
     /// This device stopped for good before the circle was made; asking
     /// again asks anew.
     Stopped { stop: super::BridgeDeviceStop },
@@ -127,11 +123,7 @@ pub struct BridgeRating {
 }
 impl BridgeRating {
     pub(crate) fn from_core(value: bae_core::collections::Rating) -> Self {
-        let bae_core::collections::Rating {
-            person,
-            target,
-            stars,
-        } = value;
+        let bae_core::collections::Rating { person, target, stars } = value;
         Self {
             person: person.0.to_string(),
             target: BridgeRatingTarget::from_core(target),
@@ -149,12 +141,7 @@ pub struct BridgePlaylist {
 }
 impl BridgePlaylist {
     pub(crate) fn from_core(value: bae_core::collections::Playlist) -> Self {
-        let bae_core::collections::Playlist {
-            id,
-            person,
-            name,
-            audience,
-        } = value;
+        let bae_core::collections::Playlist { id, person, name, audience } = value;
         Self {
             id: id.to_string(),
             person: person.0.to_string(),
@@ -171,14 +158,8 @@ pub struct BridgePlaylistEntry {
 }
 impl BridgePlaylistEntry {
     pub(crate) fn from_core(value: bae_core::collections::PlaylistEntry) -> Self {
-        let bae_core::collections::PlaylistEntry {
-            position_id,
-            track_id,
-        } = value;
-        Self {
-            position_id: position_id.to_string(),
-            track_id,
-        }
+        let bae_core::collections::PlaylistEntry { position_id, track_id } = value;
+        Self { position_id: position_id.to_string(), track_id }
     }
 }
 

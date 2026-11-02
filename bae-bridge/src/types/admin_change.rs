@@ -10,26 +10,11 @@ pub struct BridgeAdminChange {
 /// What an admin change changes. A person without a profile has no name.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeAdminChangeKind {
-    RenameLibrary {
-        name: String,
-    },
-    SetRole {
-        member: String,
-        person: Option<String>,
-        role: super::BridgeMemberRole,
-    },
-    RemovePerson {
-        member: String,
-        person: Option<String>,
-    },
-    RemoveDevice {
-        device: u64,
-        name: String,
-    },
-    Approve {
-        member: String,
-        person: Option<String>,
-    },
+    RenameLibrary { name: String },
+    SetRole { member: String, person: Option<String>, role: super::BridgeMemberRole },
+    RemovePerson { member: String, person: Option<String> },
+    RemoveDevice { device: u64, name: String },
+    Approve { member: String, person: Option<String> },
 }
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeAdminChangeState {
@@ -38,50 +23,35 @@ pub enum BridgeAdminChangeState {
     /// The library has it.
     Done,
     /// The library refused it; nothing changed.
-    Refused {
-        reason: super::BridgeOperationRejection,
-    },
+    Refused { reason: super::BridgeOperationRejection },
     /// This device stopped for good before the change was made.
     Stopped { stop: super::BridgeDeviceStop },
 }
 impl BridgeAdminChange {
     pub(crate) fn from_core(value: bae_core::sync::admin_change::AdminChange) -> Self {
         use bae_core::sync::admin_change::{AdminChangeKind, AdminChangeState};
-        let bae_core::sync::admin_change::AdminChange {
-            operation,
-            change,
-            state,
-        } = value;
+        let bae_core::sync::admin_change::AdminChange { operation, change, state } = value;
         Self {
             operation: operation.0,
             change: match change {
                 AdminChangeKind::RenameLibrary { name } => {
                     BridgeAdminChangeKind::RenameLibrary { name }
                 }
-                AdminChangeKind::SetRole {
-                    member,
-                    person,
-                    role,
-                } => BridgeAdminChangeKind::SetRole {
-                    member: member.0.to_string(),
-                    person,
-                    role: super::BridgeMemberRole::from_core(role),
-                },
-                AdminChangeKind::RemovePerson { member, person } => {
-                    BridgeAdminChangeKind::RemovePerson {
+                AdminChangeKind::SetRole { member, person, role } => {
+                    BridgeAdminChangeKind::SetRole {
                         member: member.0.to_string(),
                         person,
+                        role: super::BridgeMemberRole::from_core(role),
                     }
                 }
-                AdminChangeKind::Approve { member, person } => BridgeAdminChangeKind::Approve {
-                    member: member.0.to_string(),
-                    person,
-                },
+                AdminChangeKind::RemovePerson { member, person } => {
+                    BridgeAdminChangeKind::RemovePerson { member: member.0.to_string(), person }
+                }
+                AdminChangeKind::Approve { member, person } => {
+                    BridgeAdminChangeKind::Approve { member: member.0.to_string(), person }
+                }
                 AdminChangeKind::RemoveDevice { device, name } => {
-                    BridgeAdminChangeKind::RemoveDevice {
-                        device: device.0,
-                        name,
-                    }
+                    BridgeAdminChangeKind::RemoveDevice { device: device.0, name }
                 }
             },
             state: match state {

@@ -146,9 +146,7 @@ impl ListedColumns {
                 },
                 "needs_you" => PendingStanding::NeedsYou {
                     reason: match self.needs_you_reason.as_deref() {
-                        Some("matches") => NeedsYouReason::Matches {
-                            count: pressings()?,
-                        },
+                        Some("matches") => NeedsYouReason::Matches { count: pressings()? },
                         Some("no_tracklist") => NeedsYouReason::NoTracklist,
                         Some("medium_mismatch") => NeedsYouReason::MediumMismatch {
                             folder: match self.reason_medium.as_deref() {
@@ -168,9 +166,6 @@ impl ListedColumns {
                 other => return Err(unreadable("a Found state", other)),
             }),
         };
-        Ok(ListedRelease {
-            basis: self.basis.basis(key)?,
-            standing,
-        })
+        Ok(ListedRelease { basis: self.basis.basis(key)?, standing })
     }
 }

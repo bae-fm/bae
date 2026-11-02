@@ -15,12 +15,12 @@ impl BridgeCatalogApplyStep {
     pub(crate) fn from_core(step: bae_core::import::CatalogApplyStep) -> Self {
         use bae_core::import::CatalogApplyStep as S;
         match step {
-            S::ReadingRelease(catalog) => Self::ReadingRelease {
-                catalog: BridgeCatalog::from_core(catalog),
-            },
-            S::FetchingCover(catalog) => Self::FetchingCover {
-                catalog: BridgeCatalog::from_core(catalog),
-            },
+            S::ReadingRelease(catalog) => {
+                Self::ReadingRelease { catalog: BridgeCatalog::from_core(catalog) }
+            }
+            S::FetchingCover(catalog) => {
+                Self::FetchingCover { catalog: BridgeCatalog::from_core(catalog) }
+            }
         }
     }
 }

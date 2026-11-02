@@ -36,13 +36,8 @@ async fn seed_track_window(
     use bae_util::content_type::ContentType;
     let now = chrono::Utc::now();
     let file_id = bae_test_support::test_uuid(&format!("{track_id}-file"));
-    let file = NewReleaseFile::new(
-        release_id,
-        "track.flac",
-        ContentType::Flac,
-        file_id.clone(),
-        now,
-    );
+    let file =
+        NewReleaseFile::new(release_id, "track.flac", ContentType::Flac, file_id.clone(), now);
     library_manager.add_file(&file, 4_096).await.unwrap();
     let audio_format_id = bae_test_support::test_uuid(&format!("{track_id}-af"));
     let audio_format = DbAudioFormat::new(
@@ -77,11 +72,7 @@ async fn seed_track_window(
 /// media.
 async fn remote_service(
     releases: &[(&str, &[&str])],
-) -> (
-    TempDir,
-    PlaybackService,
-    tokio_mpsc::UnboundedReceiver<PlaybackProgress>,
-) {
+) -> (TempDir, PlaybackService, tokio_mpsc::UnboundedReceiver<PlaybackProgress>) {
     let (home, service, rx) = seeded_playback_service(releases).await;
     for (release_id, tracks) in releases {
         for track_id in *tracks {
@@ -108,7 +99,9 @@ fn remote_connect(channel: FakeChannel) -> RemoteConnect {
         test_device(),
         crate::renderer::RendererMediaSource::new(
             test_stream_provider(),
-            Arc::new(|cover| format!("http://renderer.local/cover?id={}&v={}", cover.id, cover.version)),
+            Arc::new(|cover| {
+                format!("http://renderer.local/cover?id={}&v={}", cover.id, cover.version)
+            }),
             RendererFlavor::Cast,
         ),
     )
@@ -146,10 +139,7 @@ async fn remote_fixture_from(
     const RELEASE: &str = "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e";
     let (home, mut service, rx) = remote_service(&[(RELEASE, tracks)]).await;
     fill_test_release(&mut service, RELEASE).await;
-    service.slot = active_slot(
-        test_prepared_track(tracks[0], create_sparse_buffer(1_024)),
-        phase,
-    );
+    service.slot = active_slot(test_prepared_track(tracks[0], create_sparse_buffer(1_024)), phase);
     if let PlaybackSlot::Active(cur) = &mut service.slot {
         cur.position = position;
     }
@@ -166,18 +156,12 @@ async fn remote_fixture_from(
 #[tokio::test]
 async fn play_on_reissues_current_track_at_position() {
     let (_home, service, state, _rx) = playing_remote_fixture(
-        &[
-            "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
-            "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
-        ],
+        &["08c7ff07-b56a-4e16-8df6-ae2967fa0806", "08c7fe07-b56a-4c63-8df6-ad2967fa0653"],
         StreamPosition::from_millis(30_000),
     )
     .await;
 
-    assert!(
-        service.renderer.is_remote(),
-        "the renderer switches to Remote"
-    );
+    assert!(service.renderer.is_remote(), "the renderer switches to Remote");
     assert_eq!(
         service.slot.current_track_id(),
         Some("08c7ff07-b56a-4e16-8df6-ae2967fa0806"),
@@ -201,10 +185,7 @@ async fn play_on_reissues_current_track_at_position() {
 #[tokio::test]
 async fn remote_finished_advances_queue_and_loads_next() {
     let (_home, mut service, state, _rx) = playing_remote_fixture(
-        &[
-            "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
-            "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
-        ],
+        &["08c7ff07-b56a-4e16-8df6-ae2967fa0806", "08c7fe07-b56a-4c63-8df6-ad2967fa0653"],
         StreamPosition::START,
     )
     .await;
@@ -237,7 +218,8 @@ async fn remote_finished_advances_queue_and_loads_next() {
 #[tokio::test]
 async fn remote_status_feeds_progress() {
     let (_home, mut service, _state, mut rx) =
-        playing_remote_fixture(&["08c7ff07-b56a-4e16-8df6-ae2967fa0806"], StreamPosition::START).await;
+        playing_remote_fixture(&["08c7ff07-b56a-4e16-8df6-ae2967fa0806"], StreamPosition::START)
+            .await;
     // Drain the setup events.
     while rx.try_recv().is_ok() {}
 
@@ -252,12 +234,7 @@ async fn remote_status_feeds_progress() {
 
     let mut saw_position = false;
     while let Ok(progress) = rx.try_recv() {
-        if let PlaybackProgress::PositionUpdate {
-            position_ms,
-            track_id,
-            ..
-        } = progress
-        {
+        if let PlaybackProgress::PositionUpdate { position_ms, track_id, .. } = progress {
             if track_id == "08c7ff07-b56a-4e16-8df6-ae2967fa0806" && position_ms == 30_000 {
                 saw_position = true;
             }
@@ -275,7 +252,8 @@ async fn remote_status_feeds_progress() {
 #[tokio::test]
 async fn handing_over_announces_the_device_by_id() {
     let (_home, _service, _state, mut rx) =
-        playing_remote_fixture(&["08c7ff07-b56a-4e16-8df6-ae2967fa0806"], StreamPosition::START).await;
+        playing_remote_fixture(&["08c7ff07-b56a-4e16-8df6-ae2967fa0806"], StreamPosition::START)
+            .await;
 
     let mut announced = None;
     while let Ok(progress) = rx.try_recv() {
@@ -350,33 +328,22 @@ async fn a_refused_command_is_reported_and_the_device_kept() {
 #[tokio::test]
 async fn stop_remote_stops_device_and_returns_to_local() {
     let (_home, mut service, state, mut rx) =
-        playing_remote_fixture(&["08c7ff07-b56a-4e16-8df6-ae2967fa0806"], StreamPosition::START).await;
+        playing_remote_fixture(&["08c7ff07-b56a-4e16-8df6-ae2967fa0806"], StreamPosition::START)
+            .await;
     assert!(wait_until(|| !state.lock().unwrap().loads.is_empty()));
     while rx.try_recv().is_ok() {}
 
     service.handle_stop_remote().await;
 
-    assert!(
-        !service.renderer.is_remote(),
-        "the renderer returns to Local"
-    );
-    assert!(
-        wait_until(|| state.lock().unwrap().stops == 1),
-        "the device is told to stop"
-    );
+    assert!(!service.renderer.is_remote(), "the renderer returns to Local");
+    assert!(wait_until(|| state.lock().unwrap().stops == 1), "the device is told to stop");
     let mut saw_not_remote = false;
     while let Ok(progress) = rx.try_recv() {
-        if let PlaybackProgress::RemoteStatusChanged {
-            remote: RemotePlayback::Local,
-        } = progress
-        {
+        if let PlaybackProgress::RemoteStatusChanged { remote: RemotePlayback::Local } = progress {
             saw_not_remote = true;
         }
     }
-    assert!(
-        saw_not_remote,
-        "stopping remote playback announces local playback"
-    );
+    assert!(saw_not_remote, "stopping remote playback announces local playback");
 }
 
 /// A plain `stop()` while playing remotely must stop the device and return to
@@ -387,37 +354,26 @@ async fn stop_remote_stops_device_and_returns_to_local() {
 #[tokio::test]
 async fn stop_while_remote_stops_device_and_returns_to_local() {
     let (_home, mut service, state, mut rx) =
-        playing_remote_fixture(&["08c7ff07-b56a-4e16-8df6-ae2967fa0806"], StreamPosition::START).await;
+        playing_remote_fixture(&["08c7ff07-b56a-4e16-8df6-ae2967fa0806"], StreamPosition::START)
+            .await;
     assert!(wait_until(|| !state.lock().unwrap().loads.is_empty()));
     while rx.try_recv().is_ok() {}
 
     service.stop().await;
 
-    assert!(
-        !service.renderer.is_remote(),
-        "stop must return the renderer to local"
-    );
+    assert!(!service.renderer.is_remote(), "stop must return the renderer to local");
     assert!(
         wait_until(|| state.lock().unwrap().stops == 1),
         "stop must stop the device, not leave it playing"
     );
-    assert!(
-        matches!(service.slot, PlaybackSlot::Stopped),
-        "the slot must be Stopped after stop"
-    );
+    assert!(matches!(service.slot, PlaybackSlot::Stopped), "the slot must be Stopped after stop");
     let mut saw_not_remote = false;
     while let Ok(progress) = rx.try_recv() {
-        if let PlaybackProgress::RemoteStatusChanged {
-            remote: RemotePlayback::Local,
-        } = progress
-        {
+        if let PlaybackProgress::RemoteStatusChanged { remote: RemotePlayback::Local } = progress {
             saw_not_remote = true;
         }
     }
-    assert!(
-        saw_not_remote,
-        "stopping while remote announces local playback"
-    );
+    assert!(saw_not_remote, "stopping while remote announces local playback");
 }
 
 /// [`playing_remote_fixture`] over one track at position zero, waited until the
@@ -428,11 +384,9 @@ async fn remote_over_fake() -> (
     Arc<Mutex<FakeChannelState>>,
     tokio_mpsc::UnboundedReceiver<PlaybackProgress>,
 ) {
-    let (home, service, state, rx) = playing_remote_fixture(
-        &["08c7ff07-b56a-4e16-8df6-ae2967fa0806"],
-        StreamPosition::START,
-    )
-    .await;
+    let (home, service, state, rx) =
+        playing_remote_fixture(&["08c7ff07-b56a-4e16-8df6-ae2967fa0806"], StreamPosition::START)
+            .await;
     assert!(wait_until(|| !state.lock().unwrap().loads.is_empty()));
     (home, service, state, rx)
 }
@@ -463,10 +417,7 @@ async fn ending_remote_playback_after_an_advance_resumes_the_next_track_at_its_s
 
     service.handle_stop_remote().await;
 
-    assert_eq!(
-        service.current_track_position(),
-        Some((SECOND.to_string(), StreamPosition::START))
-    );
+    assert_eq!(service.current_track_position(), Some((SECOND.to_string(), StreamPosition::START)));
 }
 
 /// Ending remote playback right after a seek on the device resumes locally at
@@ -494,12 +445,7 @@ fn shown_positions(
 ) -> Vec<i64> {
     let mut shown = Vec::new();
     while let Ok(progress) = rx.try_recv() {
-        if let PlaybackProgress::Seeked {
-            track_id: tid,
-            position_ms,
-            ..
-        } = progress
-        {
+        if let PlaybackProgress::Seeked { track_id: tid, position_ms, .. } = progress {
             if tid == track_id {
                 shown.push(position_ms);
             }
@@ -572,11 +518,7 @@ async fn seek_while_remote_seeks_the_device() {
     let (_home, mut service, state, _rx) = remote_over_fake().await;
     service.seek(StreamPosition::from_duration(std::time::Duration::from_secs(45))).await;
     assert!(
-        wait_until(|| state
-            .lock()
-            .unwrap()
-            .seeks
-            .contains(&std::time::Duration::from_secs(45))),
+        wait_until(|| state.lock().unwrap().seeks.contains(&std::time::Duration::from_secs(45))),
         "seek while remote must seek the device"
     );
 }
@@ -614,18 +556,20 @@ async fn a_queued_track_renamed_while_another_plays_remotely_loads_with_its_new_
             RELEASE,
             &crate::import::ReleaseUserEdit {
                 album_title: "Album Title".to_string(),
-                album_artist_assignments: vec![crate::import::Credited::plain(crate::import::ArtistAssignment::Picked {
-                    credit_name: None,
-                    artist: crate::import::ExistingArtist {
-                        artist_id: bae_test_support::test_uuid(
-                            "e36744a5-1a36-460f-891c-e7e558034edf",
-                        ),
-                        name: "Artist Name".to_string(),
-                        sort_name: None,
-                        musicbrainz_artist_id: None,
-                        discogs_artist_id: None,
+                album_artist_assignments: vec![crate::import::Credited::plain(
+                    crate::import::ArtistAssignment::Picked {
+                        credit_name: None,
+                        artist: crate::import::ExistingArtist {
+                            artist_id: bae_test_support::test_uuid(
+                                "e36744a5-1a36-460f-891c-e7e558034edf",
+                            ),
+                            name: "Artist Name".to_string(),
+                            sort_name: None,
+                            musicbrainz_artist_id: None,
+                            discogs_artist_id: None,
+                        },
                     },
-                })],
+                )],
                 album_year: None,
                 pressing: bae_types::pressing::Pressing::blank(),
                 tracks: vec![

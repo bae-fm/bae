@@ -60,10 +60,6 @@ impl FileMetadataSeed {
             crate::import::file_tag_snapshot::embedded_cover_selection(&snapshot),
             candidate.files.artwork(),
         );
-        Ok(Self {
-            snapshot,
-            draft,
-            cover,
-        })
+        Ok(Self { snapshot, draft, cover })
     }
 }

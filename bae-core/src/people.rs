@@ -100,10 +100,7 @@ pub enum InviteShown {
     /// Sync is granting the invite's access; its code comes once it has.
     Granting,
     /// Its code, to show again, and how far its person has come.
-    Code {
-        code: String,
-        progress: InviteProgress,
-    },
+    Code { code: String, progress: InviteProgress },
 }
 
 /// How far an invite whose code can be shown has come.
@@ -135,10 +132,9 @@ pub fn invite_shown(invite: &coven::Invite) -> InviteShown {
                 }
             },
         },
-        coven::InviteStage::Approving { code, .. } => InviteShown::Code {
-            code: code.clone(),
-            progress: InviteProgress::Joining,
-        },
+        coven::InviteStage::Approving { code, .. } => {
+            InviteShown::Code { code: code.clone(), progress: InviteProgress::Joining }
+        }
     }
 }
 

@@ -43,10 +43,7 @@ impl ImportService {
         .await
         .map_err(|failed| diagnostics.bug(failed))?
         .map_err(|e| ImportError::LocalCover {
-            detail: format!(
-                "Failed to read cover art {}: {e}",
-                cover_file.path.display()
-            ),
+            detail: format!("Failed to read cover art {}: {e}", cover_file.path.display()),
         })?;
 
         Ok(bytes)

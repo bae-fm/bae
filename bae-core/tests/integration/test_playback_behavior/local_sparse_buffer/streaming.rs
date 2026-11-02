@@ -19,18 +19,10 @@ static MULTI_WINDOW_FLAC: std::sync::LazyLock<Vec<u8>> = std::sync::LazyLock::ne
     let pregap_samples = (SAMPLE_RATE * 58) as usize * 2..(SAMPLE_RATE * 60) as usize * 2;
     let mut rng = rand::rngs::StdRng::seed_from_u64(0x0bae);
     let samples: Vec<i32> = (0..frames * 2)
-        .map(|i| {
-            if pregap_samples.contains(&i) {
-                0
-            } else {
-                (rng.random::<i16>() as i32) << 16
-            }
-        })
+        .map(|i| if pregap_samples.contains(&i) { 0 } else { (rng.random::<i16>() as i32) << 16 })
         .collect();
     let flac = bae_audio::encode_i32(
-        bae_audio::EncodeFormat::Flac {
-            bits_per_sample: 16,
-        },
+        bae_audio::EncodeFormat::Flac { bits_per_sample: 16 },
         &samples,
         SAMPLE_RATE,
         2,
@@ -56,11 +48,8 @@ static MULTI_WINDOW_FLAC: std::sync::LazyLock<Vec<u8>> = std::sync::LazyLock::ne
 /// (ends at track 2's INDEX 00), track 2 spans 0:58–2:00 (62 s including its
 /// pregap), track 3 spans 2:00–3:00.
 fn generate_multi_window_cue_flac_files(dir: &std::path::Path) {
-    std::fs::write(
-        dir.join("Multi Window Album.flac"),
-        MULTI_WINDOW_FLAC.as_slice(),
-    )
-    .expect("write the multi-window FLAC");
+    std::fs::write(dir.join("Multi Window Album.flac"), MULTI_WINDOW_FLAC.as_slice())
+        .expect("write the multi-window FLAC");
 
     let cue = "\
 PERFORMER \"Test Artist\"
@@ -116,9 +105,13 @@ impl MultiWindowPlayback {
     /// Import this test's release into its own store.
     async fn new(name: &str) -> Self {
         let (library_manager, imported) = imported_release_setup(
-            create_multi_window_cue_album(), name, uuid::Uuid::new_v4().to_string(),
+            create_multi_window_cue_album(),
+            name,
+            uuid::Uuid::new_v4().to_string(),
             generate_multi_window_cue_flac_files,
-        ).await.expect("import the multi-window fixture");
+        )
+        .await
+        .expect("import the multi-window fixture");
         let temp_dir = imported.temp_dir;
         let track_ids = imported.track_ids;
         let runtime_handle = tokio::runtime::Handle::current();
@@ -153,10 +146,7 @@ async fn a_local_load_tells_no_download() {
     let track = playback.track_ids[0].clone();
     playback.play_and_wait(&track).await;
 
-    assert!(
-        !downloads.has_changed().expect("playback runs"),
-        "a local load tells no download"
-    );
+    assert!(!downloads.has_changed().expect("playback runs"), "a local load tells no download");
     assert_eq!(*downloads.borrow(), None);
 }
 
@@ -208,13 +198,8 @@ async fn auto_advance_crosses_gaplessly_within_a_multi_window_file() {
     // Track 1's raw timeline is 58 s (it ends at track 2's INDEX 00); seek near
     // the end so the boundary arrives in a few real-time seconds.
     playback.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(54)));
-    let outcome = observe_boundary(
-        &mut playback.progress_rx,
-        &first,
-        &second,
-        Duration::from_secs(25),
-    )
-    .await;
+    let outcome =
+        observe_boundary(&mut playback.progress_rx, &first, &second, Duration::from_secs(25)).await;
     assert!(
         outcome.reached_incoming,
         "playback crosses into the second track (through its pregap)"
@@ -227,26 +212,16 @@ async fn auto_advance_crosses_gaplessly_within_a_multi_window_file() {
     // The crossing events fire at the boundary whether or not audio flows, so
     // require the position to actually advance into track 2 before seeking --
     // a preload decoder starved at the pregap boundary pins it in place.
-    wait_for_position_advance(&mut playback.progress_rx)
-        .await
-        .expect(
-            "track 2's position must advance after the crossing -- its decoder must keep \
+    wait_for_position_advance(&mut playback.progress_rx).await.expect(
+        "track 2's position must advance after the crossing -- its decoder must keep \
              producing samples past the pregap boundary",
-        );
+    );
 
     // Track 2's raw timeline is 62 s (2 s pregap + 60 s).
     playback.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(58)));
-    let outcome = observe_boundary(
-        &mut playback.progress_rx,
-        &second,
-        &third,
-        Duration::from_secs(25),
-    )
-    .await;
-    assert!(
-        outcome.reached_incoming,
-        "playback crosses into the third track"
-    );
+    let outcome =
+        observe_boundary(&mut playback.progress_rx, &second, &third, Duration::from_secs(25)).await;
+    assert!(outcome.reached_incoming, "playback crosses into the third track");
     assert!(
         outcome.decode_stats_for_finishing && !outcome.completed_for_finishing,
         "the second boundary is gapless: the crossing handler re-preloaded track 3"
@@ -315,9 +290,7 @@ async fn manual_next_into_a_clean_track_promotes_the_preload() {
         "the third track reaches Playing after a manual Next, got {states:?}"
     );
     assert!(
-        !states
-            .iter()
-            .any(|s| matches!(s, PlaybackState::Loading { .. })),
+        !states.iter().any(|s| matches!(s, PlaybackState::Loading { .. })),
         "a pregap-free Next promotes the preloaded stream — no Loading arc, got {states:?}"
     );
 
@@ -447,10 +420,7 @@ async fn seek_into_an_unbuffered_region_emits_resolved_loading_before_seeked() {
     )
     .await;
     assert!(saw_loading, "the seek must emit a resolved Loading state");
-    assert!(
-        saw_seeked.is_some(),
-        "the seek must emit Seeked once the window lands"
-    );
+    assert!(saw_seeked.is_some(), "the seek must emit Seeked once the window lands");
 }
 
 // ============================================================================
@@ -476,18 +446,15 @@ async fn seek_past_end_of_track_signals_rather_than_hanging_over_sparse_buffer()
     // Track 3's raw timeline is 60s; 600s is far past the end.
     playback.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(600)));
 
-    let signaled = support::next_matching(
-        &mut playback.progress_rx,
-        Duration::from_secs(15),
-        |event| {
+    let signaled =
+        support::next_matching(&mut playback.progress_rx, Duration::from_secs(15), |event| {
             matches!(
                 event,
                 PlaybackProgress::Seeked { .. } | PlaybackProgress::PlaybackError { .. }
             )
             .then_some(())
-        },
-    )
-    .await;
+        })
+        .await;
     assert!(
         signaled.is_some(),
         "a seek past the end must signal (Seeked or PlaybackError), not freeze silently, \
@@ -514,10 +481,7 @@ async fn seek_by_ratio_maps_to_a_proportional_position_over_sparse_buffer() {
         .await
         .expect("Seeked for ratio 0.75");
 
-    assert!(
-        quarter > 1_000,
-        "ratio 0.25 should land well past the start, got {quarter}ms"
-    );
+    assert!(quarter > 1_000, "ratio 0.25 should land well past the start, got {quarter}ms");
     assert!(
         three_quarter > quarter + 1_000,
         "ratio 0.75 should land clearly later than 0.25 (quarter={quarter}ms three_quarter={three_quarter}ms)"
@@ -657,8 +621,12 @@ async fn stopping_playback_closes_the_files_it_streamed() {
 
     playback_handle.play(imported.track_ids[0].clone());
     assert!(
-        support::wait_until_playing(&mut progress_rx, &imported.track_ids[0], Duration::from_secs(5))
-            .await,
+        support::wait_until_playing(
+            &mut progress_rx,
+            &imported.track_ids[0],
+            Duration::from_secs(5)
+        )
+        .await,
         "the track plays"
     );
     assert!(

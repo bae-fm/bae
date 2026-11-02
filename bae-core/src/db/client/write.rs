@@ -233,11 +233,7 @@ pub(super) fn replace_release_media(
         .iter()
         .enumerate()
         .map(|(position, count)| {
-            (
-                crate::db::identity::release_media_id(release_id, position),
-                position,
-                count,
-            )
+            (crate::db::identity::release_media_id(release_id, position), position, count)
         })
         .collect();
     for id in stored.keys() {
@@ -340,11 +336,7 @@ pub(super) fn insert_track_artist_row(
     .map_err(DbError::from)
 }
 
-#[cfg(any(
-    test,
-    feature = "test-utils",
-    not(any(target_os = "ios", target_os = "android"))
-))]
+#[cfg(any(test, feature = "test-utils", not(any(target_os = "ios", target_os = "android"))))]
 pub(super) fn insert_work_row(conn: &CovenWrite<'_>, work: &DbWork) -> Result<(), DbError> {
     conn.execute(
         r#"
@@ -412,11 +404,7 @@ pub(super) fn insert_work_part_row(
     .map_err(DbError::from)
 }
 
-#[cfg(any(
-    test,
-    feature = "test-utils",
-    not(any(target_os = "ios", target_os = "android"))
-))]
+#[cfg(any(test, feature = "test-utils", not(any(target_os = "ios", target_os = "android"))))]
 pub(super) fn insert_track_work_row(
     conn: &CovenWrite<'_>,
     link: &DbTrackWork,
@@ -495,16 +483,10 @@ pub(super) fn insert_artist_role_row(
         ) VALUES (?, ?, ?, ?, ?, ?, ?)
         "#
     );
-    conn.execute(&sql, values)
-        .map(|_| ())
-        .map_err(DbError::from)
+    conn.execute(&sql, values).map(|_| ()).map_err(DbError::from)
 }
 
-#[cfg(any(
-    test,
-    feature = "test-utils",
-    not(any(target_os = "ios", target_os = "android"))
-))]
+#[cfg(any(test, feature = "test-utils", not(any(target_os = "ios", target_os = "android"))))]
 const INSERT_RELEASE_FILE_SQL: &str = r#"
     INSERT INTO release_files (
         id, release_id, original_filename, content_type, file,
@@ -523,11 +505,7 @@ const INSERT_RELEASE_FILE_SQL: &str = r#"
 
 /// Insert a release file row referencing `coven_file`, the coven file the
 /// write staged for it, once its name is checked to name a file.
-#[cfg(any(
-    test,
-    feature = "test-utils",
-    not(any(target_os = "ios", target_os = "android"))
-))]
+#[cfg(any(test, feature = "test-utils", not(any(target_os = "ios", target_os = "android"))))]
 pub(super) fn insert_release_file_row(
     conn: &CovenWrite<'_>,
     file: &NewReleaseFile,
@@ -535,35 +513,21 @@ pub(super) fn insert_release_file_row(
 ) -> Result<(), DbError> {
     crate::storage::stored_name::file_path(&file.release_id, &file.id, &file.original_filename)
         .map_err(|e| DbError::Message(e.to_string()))?;
-    let source_audio_layout = file
-        .source_audio
-        .as_ref()
-        .and_then(|audio| audio.layout)
-        .map(|layout| match layout {
+    let source_audio_layout =
+        file.source_audio.as_ref().and_then(|audio| audio.layout).map(|layout| match layout {
             crate::album_detail::SourceAudioLayout::File => "file",
             crate::album_detail::SourceAudioLayout::Cue => "cue",
         });
-    let source_audio_content_type = file
-        .source_audio
-        .as_ref()
-        .map(|audio| audio.content_type.as_str());
+    let source_audio_content_type =
+        file.source_audio.as_ref().map(|audio| audio.content_type.as_str());
     let source_audio_duration_ms = file.source_audio.as_ref().map(|audio| audio.duration_ms);
-    let source_audio_sample_rate_hz = file
-        .source_audio
-        .as_ref()
-        .map(|audio| audio.format.sample_rate_hz);
-    let source_audio_bits_per_sample = file
-        .source_audio
-        .as_ref()
-        .and_then(|audio| audio.format.bits_per_sample);
-    let source_audio_bitrate_kbps = file
-        .source_audio
-        .as_ref()
-        .and_then(|audio| audio.format.bitrate_kbps);
-    let source_audio_channels = file
-        .source_audio
-        .as_ref()
-        .map(|audio| audio.format.channels);
+    let source_audio_sample_rate_hz =
+        file.source_audio.as_ref().map(|audio| audio.format.sample_rate_hz);
+    let source_audio_bits_per_sample =
+        file.source_audio.as_ref().and_then(|audio| audio.format.bits_per_sample);
+    let source_audio_bitrate_kbps =
+        file.source_audio.as_ref().and_then(|audio| audio.format.bitrate_kbps);
+    let source_audio_channels = file.source_audio.as_ref().map(|audio| audio.format.channels);
     let created_at = file.created_at.to_rfc3339();
     conn.execute(
         INSERT_RELEASE_FILE_SQL,
@@ -586,11 +550,7 @@ pub(super) fn insert_release_file_row(
     Ok(())
 }
 
-#[cfg(any(
-    test,
-    feature = "test-utils",
-    not(any(target_os = "ios", target_os = "android"))
-))]
+#[cfg(any(test, feature = "test-utils", not(any(target_os = "ios", target_os = "android"))))]
 pub(super) fn insert_audio_format_row(
     conn: &CovenWrite<'_>,
     af: &DbAudioFormat,
@@ -619,11 +579,7 @@ pub(super) fn insert_audio_format_row(
     .map_err(DbError::from)
 }
 
-#[cfg(any(
-    test,
-    feature = "test-utils",
-    not(any(target_os = "ios", target_os = "android"))
-))]
+#[cfg(any(test, feature = "test-utils", not(any(target_os = "ios", target_os = "android"))))]
 pub(super) fn insert_audio_segment_row(
     conn: &CovenWrite<'_>,
     segment: &DbAudioSegment,
@@ -658,10 +614,7 @@ pub(super) fn insert_scrub_points_row(
 ) -> Result<(), DbError> {
     conn.execute(
         "INSERT INTO audio_segment_scrub_points (audio_format_segment_id, points) VALUES (?, ?)",
-        params![
-            points.audio_segment_id,
-            super::scrub_points_column::encode(&points.points)?,
-        ],
+        params![points.audio_segment_id, super::scrub_points_column::encode(&points.points)?,],
     )
     .map(|_| ())
     .map_err(DbError::from)
@@ -669,24 +622,14 @@ pub(super) fn insert_scrub_points_row(
 
 /// A count or a position as SQLite's signed integer. One past `i64::MAX`
 /// cannot be stored and fails the write.
-#[cfg(any(
-    test,
-    feature = "test-utils",
-    not(any(target_os = "ios", target_os = "android"))
-))]
+#[cfg(any(test, feature = "test-utils", not(any(target_os = "ios", target_os = "android"))))]
 fn sqlite_count(value: u64, what: &str) -> Result<i64, DbError> {
     i64::try_from(value).map_err(|error| {
-        DbError::Message(format!(
-            "{what} {value} exceeds SQLite's integer range: {error}"
-        ))
+        DbError::Message(format!("{what} {value} exceeds SQLite's integer range: {error}"))
     })
 }
 
-#[cfg(any(
-    test,
-    feature = "test-utils",
-    not(any(target_os = "ios", target_os = "android"))
-))]
+#[cfg(any(test, feature = "test-utils", not(any(target_os = "ios", target_os = "android"))))]
 fn optional_sqlite_count(value: Option<u64>, what: &str) -> Result<Option<i64>, DbError> {
     value.map(|value| sqlite_count(value, what)).transpose()
 }
@@ -728,20 +671,13 @@ pub(super) fn upsert_library_image_row(
 /// `insert_release_records`. Each row's id is its `(release, catalog)`, so a
 /// device that writes the same record set another device wrote writes the same
 /// rows.
-#[cfg(any(
-    test,
-    feature = "test-utils",
-    not(any(target_os = "ios", target_os = "android"))
-))]
+#[cfg(any(test, feature = "test-utils", not(any(target_os = "ios", target_os = "android"))))]
 pub(super) fn write_release_records(
     conn: &CovenWrite<'_>,
     release_id: &str,
     records: &[crate::import::ReleaseRecord],
 ) -> Result<(), DbError> {
-    conn.execute(
-        "DELETE FROM release_records WHERE release_id = ?",
-        params![release_id],
-    )?;
+    conn.execute("DELETE FROM release_records WHERE release_id = ?", params![release_id])?;
     for record in records {
         let (kind, album_key) = match record {
             crate::import::ReleaseRecord::Pressing { album_key, .. } => {
@@ -807,10 +743,7 @@ pub(super) fn replace_track_artists(
     artists: &[DbTrackArtist],
     now: &str,
 ) -> Result<(), DbError> {
-    if let Some(stray) = artists
-        .iter()
-        .find(|ta| !track_ids.contains(&ta.track_id.as_str()))
-    {
+    if let Some(stray) = artists.iter().find(|ta| !track_ids.contains(&ta.track_id.as_str())) {
         return Err(DbError::Message(format!(
             "a track artist names track {}, whose credits this write does not replace",
             stray.track_id

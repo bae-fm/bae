@@ -109,10 +109,7 @@ async fn reading_the_files_tags_ends_identification_in_its_write() {
         &handle,
         found(),
         async move {
-            deciding
-                .select_candidate_file_tags(decided_key)
-                .await
-                .unwrap();
+            deciding.select_candidate_file_tags(decided_key).await.unwrap();
         },
         |rows| {
             rows.iter().any(|(row, _)| {
@@ -157,7 +154,8 @@ async fn a_pick_ends_identification_in_its_write() {
                             release_id.to_string(),
                         ),
                         partners: vec![],
-                    }, crate::import::CatalogApplySteps::unread(),
+                    },
+                    crate::import::CatalogApplySteps::unread(),
                 )
                 .await
                 .unwrap();
@@ -184,10 +182,7 @@ async fn linking_the_shared_album_ends_identification_in_its_write() {
         &handle,
         found(),
         async move {
-            deciding
-                .link_candidate_shared_album(decided_key)
-                .await
-                .unwrap();
+            deciding.link_candidate_shared_album(decided_key).await.unwrap();
         },
         |rows| {
             rows.iter().any(|(row, _)| {
@@ -208,15 +203,9 @@ async fn a_skip_ends_identification_in_its_write() {
     let decided_key = key.clone();
     decision_never_beside_identifying(
         &handle,
-        ImportListView {
-            tab: TriageTab::Skipped,
-            ..ImportListView::default()
-        },
+        ImportListView { tab: TriageTab::Skipped, ..ImportListView::default() },
         async move {
-            deciding
-                .set_candidate_skipped(decided_key, true)
-                .await
-                .unwrap();
+            deciding.set_candidate_skipped(decided_key, true).await.unwrap();
         },
         |rows| rows.iter().any(|(row, _)| row.candidate_key == key),
     )
@@ -231,10 +220,7 @@ async fn combining_ends_its_folders_identification_in_its_write() {
     let second_root = TempDir::new().unwrap();
     let (_, first, _) = picked_candidate(&manager, &first_root, "Volume B").await;
     let (_, second, _) = picked_candidate(&manager, &second_root, "Volume A").await;
-    let handle = manager
-        .start_import_service(tokio::runtime::Handle::current())
-        .await
-        .unwrap();
+    let handle = manager.start_import_service(tokio::runtime::Handle::current()).await.unwrap();
     // A folder waiting for or running a run is refused a combination; one
     // whose answer is being written is combined, and the answer ends.
     // Each run has its own id, as the identify service hands them out.
@@ -256,9 +242,7 @@ async fn combining_ends_its_folders_identification_in_its_write() {
         async move {
             deciding.combine_candidates(members).await.unwrap();
         },
-        |rows| {
-            rows.iter().any(|(row, _)| row.candidate_key.as_bytes().starts_with(b"grouping:"))
-        },
+        |rows| rows.iter().any(|(row, _)| row.candidate_key.as_bytes().starts_with(b"grouping:")),
     )
     .await;
     for key in [&first, &second] {

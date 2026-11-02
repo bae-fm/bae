@@ -15,12 +15,7 @@ impl PlaybackService {
         phase: TrackPhase,
         position: StreamPosition,
     ) {
-        self.slot = PlaybackSlot::Active(CurrentTrack {
-            prepared,
-            decoder,
-            phase,
-            position,
-        });
+        self.slot = PlaybackSlot::Active(CurrentTrack { prepared, decoder, phase, position });
         self.mark_current_foreground();
         self.sync_audio_state();
         // A fresh install starts this track's starvation clock over, whatever
@@ -52,10 +47,7 @@ impl PlaybackService {
         let play_started_at = std::time::Instant::now();
         // Ask the system first: a start it refuses loads the track paused.
         let target = self.admit(target);
-        info!(
-            "Playing track: {} (start: {:?}, target: {:?})",
-            track_id, start, target
-        );
+        info!("Playing track: {} (start: {:?}, target: {:?})", track_id, start, target);
 
         // Report the start now — before prepare/decoder, which may fail and ship
         // their own `playback_failed`. A paused-target load isn't a start.
@@ -69,8 +61,7 @@ impl PlaybackService {
         if self.renderer.is_remote() {
             self.play_track_remote(track_id, start, target).await;
         } else {
-            self.play_track_local(track_id, start, target, play_started_at)
-                .await;
+            self.play_track_local(track_id, start, target, play_started_at).await;
         }
         self.show_paused_load_position();
     }
@@ -97,9 +88,8 @@ impl PlaybackService {
         self.retire_preloaded_track();
 
         // First Loading emission: bare, before the metadata lookup.
-        self.slot = PlaybackSlot::Loading(LoadingTrack::Unprepared {
-            track_id: track_id.to_string(),
-        });
+        self.slot =
+            PlaybackSlot::Loading(LoadingTrack::Unprepared { track_id: track_id.to_string() });
         self.sync_audio_state();
         self.emit_state();
 
@@ -117,9 +107,7 @@ impl PlaybackService {
                 self.telemetry_playback_failed(crate::diagnostics::PlaybackOperation::LoadContext);
                 emit_progress(
                     &self.progress_tx,
-                    PlaybackProgress::PlaybackError {
-                        reason: e.ui_reason(),
-                    },
+                    PlaybackProgress::PlaybackError { reason: e.ui_reason() },
                 );
                 // stop()'s cache-wide cancel releases the outgoing tracks'
                 // buffers.
@@ -134,18 +122,14 @@ impl PlaybackService {
 
         // Second Loading emission: carries the target track's metadata so the bar
         // switches from the prior track to the target while audio still downloads.
-        self.slot = PlaybackSlot::Loading(LoadingTrack::Prepared(PlayingTrack::from_prepared(
-            &prepared,
-        )));
+        self.slot =
+            PlaybackSlot::Loading(LoadingTrack::Prepared(PlayingTrack::from_prepared(&prepared)));
         self.emit_state();
 
         let start_position = start.position(prepared.timeline);
         let include_pregap = start.includes_pregap();
-        let start_sample_offset = if include_pregap {
-            start_position.frames(prepared.sample_rate)
-        } else {
-            0
-        };
+        let start_sample_offset =
+            if include_pregap { start_position.frames(prepared.sample_rate) } else { 0 };
         let decode = prepared.decode_params(start_sample_offset, include_pregap);
         let fmt = prepared.track_fmt(start_position);
         let generation = self.next_load_generation();
@@ -177,10 +161,7 @@ impl PlaybackService {
                 &format!("start the audio output for track {track_id}"),
                 &error,
             );
-            emit_progress(
-                &self.progress_tx,
-                PlaybackProgress::PlaybackError { reason },
-            );
+            emit_progress(&self.progress_tx, PlaybackProgress::PlaybackError { reason });
             self.stop().await;
             return;
         }
@@ -214,9 +195,7 @@ impl PlaybackService {
         // renderer here until history has applied its audible-position offset.
         self.teardown_local_playback();
         self.finish_listening().await;
-        let was_playing_on_device = self
-            .renderer
-            .return_to_local_for_stop(&mut self.audio_output);
+        let was_playing_on_device = self.renderer.return_to_local_for_stop(&mut self.audio_output);
         if was_playing_on_device {
             emit_progress(
                 &self.progress_tx,

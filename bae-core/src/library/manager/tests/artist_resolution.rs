@@ -28,17 +28,10 @@ async fn exact_various_artists_source_match_wins_over_the_other_provider_row() {
         musicbrainz_artist_id: Some(crate::db::VARIOUS_ARTISTS.musicbrainz.to_string()),
         created_at: manager.clock.now().into(),
     };
-    let resolved = manager
-        .find_or_create_artists(std::slice::from_ref(&incoming))
-        .await
-        .unwrap();
+    let resolved = manager.find_or_create_artists(std::slice::from_ref(&incoming)).await.unwrap();
 
     assert_eq!(resolved, [musicbrainz_artist.id]);
-    assert!(manager
-        .get_artist_by_id(&incoming.id)
-        .await
-        .unwrap()
-        .is_none());
+    assert!(manager.get_artist_by_id(&incoming.id).await.unwrap().is_none());
 }
 
 #[tokio::test]

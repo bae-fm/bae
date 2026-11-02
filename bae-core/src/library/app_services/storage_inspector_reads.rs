@@ -83,10 +83,7 @@ impl AppServices {
                             Some(inspector)
                         }
                     };
-                    let snapshot = crate::library::DetailSnapshot {
-                        id: Some(release_id),
-                        value,
-                    };
+                    let snapshot = crate::library::DetailSnapshot { id: Some(release_id), value };
                     if tx.send(Ok(snapshot)).is_err() {
                         return;
                     }

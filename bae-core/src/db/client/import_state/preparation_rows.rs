@@ -155,24 +155,22 @@ pub(super) fn load_preparation_on(
     }
     let assets = prepared_asset_rows::load_asset_rows_on(sql, content_hash)?;
     let (draft, cover) = pane_rows::load_draft_and_cover_on(sql, content_hash)?;
-    Ok(Some(CandidatePreparationRead::Stored(
-        CandidatePreparation {
-            content_hash: state.content_hash,
-            candidate_key: state.candidate_key,
-            file_edits: state.file_edits,
-            metadata_revision: state.metadata_revision,
-            author: state.metadata_author,
-            metadata: crate::import::CandidateMetadataDraft {
-                draft,
-                provenance: state.metadata_provenance,
-                cover,
-                assets,
-            },
-            link: state.release_link,
-            identification: state.identify,
-            signals: state.signals,
+    Ok(Some(CandidatePreparationRead::Stored(CandidatePreparation {
+        content_hash: state.content_hash,
+        candidate_key: state.candidate_key,
+        file_edits: state.file_edits,
+        metadata_revision: state.metadata_revision,
+        author: state.metadata_author,
+        metadata: crate::import::CandidateMetadataDraft {
+            draft,
+            provenance: state.metadata_provenance,
+            cover,
+            assets,
         },
-    )))
+        link: state.release_link,
+        identification: state.identify,
+        signals: state.signals,
+    })))
 }
 
 /// Write `prep` over what is stored, provided the stored revisions still
@@ -268,11 +266,9 @@ pub(super) fn save_preparation_on(
     }
     if stored.signals != prep.signals {
         match &prep.signals {
-            Some(signals) => store_signals(
-                sql,
-                super::verdict_rows::Owner::Candidate(content_hash),
-                signals,
-            )?,
+            Some(signals) => {
+                store_signals(sql, super::verdict_rows::Owner::Candidate(content_hash), signals)?
+            }
             // The values hang off the header, so this clears them too.
             None => delete_signals(sql, content_hash)?,
         }
@@ -312,13 +308,9 @@ pub(super) fn save_preparation_on(
     if stored.metadata.assets != prep.metadata.assets {
         prepared_asset_rows::store_asset_rows(sql, content_hash, &prep.metadata.assets)?;
     }
-    if (
-        &stored.file_edits.sheet_bindings,
-        &stored.file_edits.sheet_discs,
-    ) != (
-        &prep.file_edits.sheet_bindings,
-        &prep.file_edits.sheet_discs,
-    ) {
+    if (&stored.file_edits.sheet_bindings, &stored.file_edits.sheet_discs)
+        != (&prep.file_edits.sheet_bindings, &prep.file_edits.sheet_discs)
+    {
         delete_file_edits(sql, content_hash)?;
         insert_file_edits(sql, content_hash, &prep.file_edits)?;
     }
@@ -362,12 +354,7 @@ pub(super) fn save_preparation_on(
     // reshape lands only with a draft redrawn over the files it produced.
     for candidate in &reshaped {
         let units = crate::import::audio_layout::audio_units(&candidate.files);
-        let drawn = prep
-            .metadata
-            .draft
-            .tracks
-            .iter()
-            .map(|track| &track.edit.file);
+        let drawn = prep.metadata.draft.tracks.iter().map(|track| &track.edit.file);
         if !drawn.eq(units.iter()) {
             return Err(DbError::Message(format!(
                 "the draft stored for candidate {} is not drawn over its audio",
@@ -416,8 +403,7 @@ impl Database {
         content_hash: &str,
     ) -> Result<Option<CandidatePreparationRead>, DbError> {
         let content_hash = content_hash.to_string();
-        self.read(move |sql| load_preparation_on(&sql, &content_hash))
-            .await
+        self.read(move |sql| load_preparation_on(&sql, &content_hash)).await
     }
 
     /// Write one candidate's whole state, in one transaction, if its stored
@@ -428,8 +414,7 @@ impl Database {
         expected: CandidateSaveExpectation,
         extras: CandidateSaveExtras,
     ) -> Result<CandidateSaved, DbError> {
-        self.call(move |sql| save_preparation_on(sql, &prep, &expected, &extras))
-            .await
+        self.call(move |sql| save_preparation_on(sql, &prep, &expected, &extras)).await
     }
 
     /// [`Self::save_candidate_preparation`] for the verdict `run` reached:
@@ -444,20 +429,16 @@ impl Database {
         candidate_key: crate::import::CandidateKey,
         run: crate::identify::IdentifyRunId,
     ) -> Result<RunVerdictSaved, DbError> {
-        self.call(
-            move |sql| match save_preparation_on(sql, &prep, &expected, &extras)? {
-                CandidateSaved::Landed(_) => {
-                    Ok(RunVerdictSaved::Landed(super::change_identification_on(
-                        sql,
-                        &candidate_key,
-                        &crate::import::candidate_runtime::IdentificationChange::AnswerEnded {
-                            run,
-                        },
-                    )?))
-                }
-                CandidateSaved::Superseded => Ok(RunVerdictSaved::Superseded),
-            },
-        )
+        self.call(move |sql| match save_preparation_on(sql, &prep, &expected, &extras)? {
+            CandidateSaved::Landed(_) => {
+                Ok(RunVerdictSaved::Landed(super::change_identification_on(
+                    sql,
+                    &candidate_key,
+                    &crate::import::candidate_runtime::IdentificationChange::AnswerEnded { run },
+                )?))
+            }
+            CandidateSaved::Superseded => Ok(RunVerdictSaved::Superseded),
+        })
         .await
     }
 }

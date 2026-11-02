@@ -15,9 +15,7 @@ mirror_enum! {
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeRemoteCoverGallery {
     Unlinked,
-    Linked {
-        covers: Vec<super::BridgeRemoteCover>,
-    },
+    Linked { covers: Vec<super::BridgeRemoteCover> },
 }
 
 mirror_enum! {
