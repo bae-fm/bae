@@ -207,13 +207,29 @@ pub struct BridgeTrackPosition {
     pub seek_revision: u64,
 }
 
-/// How much of what a load of the playing track waits on from storage is
-/// here: the value its track's key holds in the track downloads'
-/// `KeyedValueStream` while the person waits on the load.
+/// The parts of the playing track whose bytes this device holds, as its
+/// seek bar draws them under the played part: the value its track's key
+/// holds in the track buffered `KeyedValueStream`. Sorted and none touching;
+/// none while none are here, one span from 0 to 1 once all are. Mirrors
+/// `bae_core::playback::TrackBuffered`.
 #[derive(Debug, Clone, PartialEq, uniffi::Record)]
-pub struct BridgeTrackDownload {
-    pub here: u64,
-    pub total: u64,
+pub struct BridgeTrackBuffered {
+    pub ranges: Vec<BridgeTrackSpan>,
+}
+
+/// A stretch of a track, as fractions of its length: the unit of
+/// [`BridgeTrackPosition::progress`]. Mirrors
+/// `bae_core::playback::TrackSpan`.
+#[derive(Debug, Clone, Copy, PartialEq, uniffi::Record)]
+pub struct BridgeTrackSpan {
+    pub start: f64,
+    pub end: f64,
+}
+
+mirror_struct! {
+    BridgeTrackSpan = bae_core::playback::TrackSpan,
+    from_core: pub(crate) fn,
+    fields: { start, end },
 }
 
 /// Where the preview is in its clip, and which clip that is.

@@ -543,3 +543,27 @@ fn empty_append_is_a_noop() {
     assert_eq!(buffer.get_ranges(), vec![(0, 4)]);
     assert_eq!(buffer.bytes_fetched(), 4);
 }
+
+/// The held ranges are told as windows land, merged where they touch, and
+/// as bytes are dropped; an eviction that drops nothing tells nothing.
+#[test]
+fn the_held_ranges_are_told_as_they_change() {
+    let buffer = create_sparse_buffer(40);
+    let mut held = buffer.subscribe_held();
+    assert_eq!(*held.borrow_and_update(), Vec::<Range<u64>>::new());
+
+    buffer.append_at(10, b"0123456789");
+    assert!(held.has_changed().expect("the buffer is alive"));
+    assert_eq!(*held.borrow_and_update(), vec![10..20]);
+
+    buffer.append_at(0, b"abcd");
+    buffer.append_at(4, b"efghij");
+    assert_eq!(*held.borrow_and_update(), vec![0..20]);
+    buffer.append_at(30, b"ABCD");
+    assert_eq!(*held.borrow_and_update(), vec![0..20, 30..34]);
+
+    buffer.evict(20..30);
+    assert!(!held.has_changed().expect("the buffer is alive"), "nothing held was dropped");
+    buffer.evict(5..15);
+    assert_eq!(*held.borrow_and_update(), vec![0..5, 15..20, 30..34]);
+}

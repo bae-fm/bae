@@ -84,6 +84,9 @@ impl PlaybackService {
             | PlaybackState::Playing { .. }
             | PlaybackState::Paused { .. } => None,
         });
+        if matches!(state, PlaybackState::Stopped) {
+            self.file_buffers.clear_playing();
+        }
         emit_progress(&self.progress_tx, PlaybackProgress::StateChanged { state });
     }
 

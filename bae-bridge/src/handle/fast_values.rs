@@ -61,12 +61,18 @@ impl AppHandle {
         crate::screens::playback_positions(self.runtime.clone(), self.run_feed())
     }
 
-    /// Write how much of what a load of the playing track waits on from
-    /// storage is here into a stream keyed by track id, the playing track's
-    /// alone, while the person waits on the load. A load read from this
-    /// device's own copy or the cache writes nothing.
-    pub fn feed_track_downloads(&self) -> Arc<KeyedValueStream> {
-        crate::screens::track_downloads(self.runtime.clone(), self.run_feed())
+    /// Write the parts of the playing track whose bytes this device holds
+    /// into a stream keyed by track id, the playing track's alone.
+    pub fn feed_track_buffered(&self) -> Arc<KeyedValueStream> {
+        crate::screens::track_buffered(self.runtime.clone(), self.run_feed())
+    }
+
+    /// Write that the playing track's load waits on storage into a stream
+    /// keyed by track id, the playing track's alone, while the person waits
+    /// on the load and it reads from storage. A load read from this device's
+    /// own copy or the cache writes nothing.
+    pub fn feed_track_storage_waits(&self) -> Arc<KeyedValueStream> {
+        crate::screens::track_storage_waits(self.runtime.clone(), self.run_feed())
     }
 }
 

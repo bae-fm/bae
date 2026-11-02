@@ -146,6 +146,25 @@ async fn play_and_wait_on(
     );
 }
 
+/// Wait until `follow` tells that this device holds every byte of
+/// `track_id`: one stretch from its start to its end.
+async fn wait_for_whole_track(
+    follow: &mut bae_core::playback::TrackBufferedFollow,
+    track_id: &str,
+) {
+    let whole = vec![bae_core::playback::TrackSpan { start: 0.0, end: 1.0 }];
+    tokio::time::timeout(PLAY_START_BACKSTOP, async {
+        loop {
+            let told = follow.next().await.expect("playback runs");
+            if told.is_some_and(|held| held.track_id == track_id && held.ranges == whole) {
+                return;
+            }
+        }
+    })
+    .await
+    .expect("the playing track's bytes all arrive");
+}
+
 /// Wait for the next `Seeked` event and return its `position_ms`, or `None` on
 /// timeout.
 async fn wait_for_seeked_on(

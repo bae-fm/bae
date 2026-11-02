@@ -3043,15 +3043,25 @@ start plays there. In each case the first sample played is the one asked for.
 Any other lossy track is seeked a little early and decoded up to the new
 position, so its decoder has the frames before it.
 
-While the person waits on a track to start, or on a seek to land, the
-windows its load reads from storage are a download the apps show in place of
-the seek bar: "Downloading the track…" over a bar of how much of those
-windows is here, summed over the reads of the playing track's file still
-running, from coven's count of each read's bytes in hand. Reading ahead while
-the track plays, a preload of the next track, and a load this device serves
-from its own copy or the cache show nothing, and the play/pause control never
-turns into a spinner: it shows pause while a track loads to play, and a press
-lands the load paused.
+The seek bar never leaves the player. Under the played part it draws, in a
+lighter fill, the parts of the playing track whose bytes its file's buffer
+holds, range by range: each byte range the buffer holds, cut to the track's
+own bytes, is placed in the track by the track's first and last byte and its
+scrub points (§3.7), with the bytes between two of them spread evenly over
+the time between. The fill grows as windows arrive, before and after the
+first sound; a track whose bytes are all held fills from its start to its
+end. What the buffer drops behind the playhead leaves the fill too, under
+the played part, so after a seek back past it the dropped stretch shows as a
+gap until the fill fetches it again. A track a receiver plays (§7.7),
+or one whose length is unknown, has no fill.
+
+While the person waits on a track to start, or on a seek to land, and one
+of the playing track's reads fetches from storage (coven tells a read that
+fetches how many of its bytes are in hand), an arc turns around the
+play/pause control. Reading ahead while the track plays, a preload of the
+next track, and a load this device serves from its own copy or the cache show
+no arc. The control itself shows pause while a track loads to play, and a
+press lands the load paused.
 
 Offline, a track whose bytes aren't on the device stops playback with a typed
 reason the UI shows. A decoder that stops producing for good is caught and
@@ -3529,8 +3539,10 @@ start, and the line that moves begins as the track does. The queue is a live
 subscription of its own. The playing track's position and
 a preview's, which move as audio plays, reach an app only in a
 `KeyedValueStream` (§10.2): the track's under its id, with the seeks applied
-so far. So does the download a load of the playing track waits on (§7.6),
-under the track's id while the person waits on the load. A seek the person
+so far. So do the parts of the playing track its buffer holds (§7.6), as
+fractions of its length under its id, and the playing track's wait on
+storage, under its id while the person waits on its load and it reads from
+storage. A seek the person
 drops is held in front of the track's position until core has applied it, so every view drawing that track — the seek bar,
 the queue's strip — shows where they dropped it meanwhile.
 
@@ -3687,7 +3699,8 @@ release's or track's id as UTF-8, or a candidate's key.
   the library's name, the watched folders' scans, and an import pane's
   library membership, which moves its checks in place.
 - **Fast values** — transfer bytes and rates, file shares, export
-  percents, playback and preview positions, a loading track's download,
+  percents, playback and preview positions, the parts of the playing track
+  its buffer holds and its load's wait on storage,
   import percents, and how far a
   bulk action has got, which core sends many times a second, and the steps
   of an open and of a setup call — reach an app

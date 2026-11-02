@@ -5,7 +5,7 @@
 //! - Cloud storage (storage releases with cloud backend)
 
 use crate::diagnostics::Diagnostics;
-use crate::playback::track_download::{FetchProgress, TrackDownload, TrackDownloads};
+use crate::playback::storage_wait::{FetchProgress, StorageWaits};
 use crate::playback::PlaybackError;
 use bae_audio::sparse_buffer::{SharedSparseBuffer, SourceReadError};
 use bae_util::task_failure::{caught, joined};
@@ -29,12 +29,12 @@ pub(crate) const FILL_WINDOW_SIZE: u64 = coven::CHUNK_SIZE as u64 * 64;
 /// track can't take bandwidth from the current track's start. One arbiter is
 /// shared by every reader through the playback service; the service designates
 /// the foreground via [`FetchArbiter::set_foreground`] whenever a track becomes
-/// current. The arbiter also counts the playing track's reads from storage
-/// toward the download its load waits on.
+/// current. The arbiter also hears which of the playing track's reads fetch
+/// from storage, so it knows whether the track's load waits on storage.
 pub struct FetchArbiter {
     /// The foreground (playing) track and the buffer it reads from, and the
     /// storage reads it waits on.
-    downloads: Arc<TrackDownloads>,
+    waits: Arc<StorageWaits>,
     /// Count of foreground fetches currently awaiting bytes. A preload fetch
     /// waits while this is non-zero.
     foreground_inflight: AtomicU64,
@@ -45,7 +45,7 @@ pub struct FetchArbiter {
 impl FetchArbiter {
     pub fn new() -> Arc<Self> {
         Arc::new(Self {
-            downloads: Arc::new(TrackDownloads::new()),
+            waits: Arc::new(StorageWaits::new()),
             foreground_inflight: AtomicU64::new(0),
             idle: Notify::new(),
         })
@@ -55,33 +55,31 @@ impl FetchArbiter {
     /// (playing) track. Wakes any waiting preload in case the previous
     /// foreground is gone.
     pub fn set_foreground(&self, buffer_id: u64, track_id: &str) {
-        self.downloads.set_foreground(buffer_id, track_id);
+        self.waits.set_foreground(buffer_id, track_id);
         self.idle.notify_waiters();
     }
 
     fn is_foreground(&self, buffer_id: u64) -> bool {
-        self.downloads.foreground_buffer() == Some(buffer_id)
+        self.waits.foreground_buffer() == Some(buffer_id)
     }
 
     /// The track a load the person waits on is for, or `None` once nothing
-    /// loads: while it is the playing track, its reads from storage are the
-    /// download that load waits on.
+    /// loads: while it is the playing track, its load waits on storage while
+    /// one of its reads fetches from there.
     pub(crate) fn set_waiting(&self, track_id: Option<&str>) {
-        self.downloads.set_waiting(track_id);
+        self.waits.set_waiting(track_id);
     }
 
-    /// The download the playing track's load waits on, `None` while no load
-    /// waits on storage.
-    pub(crate) fn subscribe_downloads(
-        &self,
-    ) -> tokio::sync::watch::Receiver<Option<TrackDownload>> {
-        self.downloads.subscribe()
+    /// The playing track while its load waits on storage, by id: `None`
+    /// while no load does.
+    pub(crate) fn subscribe_storage_waits(&self) -> tokio::sync::watch::Receiver<Option<String>> {
+        self.waits.subscribe()
     }
 
-    /// Where a read of `len` bytes into `buffer_id` tells coven's progress,
-    /// counted toward the playing track's download while it runs.
-    fn read_progress(&self, buffer_id: u64, len: u64) -> FetchProgress {
-        self.downloads.read(buffer_id, len)
+    /// Where a read into `buffer_id` hears from coven whether it fetches
+    /// from storage, while it runs.
+    fn read_progress(&self, buffer_id: u64) -> FetchProgress {
+        self.waits.read(buffer_id)
     }
 
     fn begin_foreground_fetch(&self) {
@@ -435,7 +433,7 @@ impl AudioDataReader for CovenFileReader {
                     let arbiter = &arbiter;
                     let fetched = &fetched;
                     async move {
-                        let read = arbiter.read_progress(buffer_id, len);
+                        let read = arbiter.read_progress(buffer_id);
                         let fut = stream.read_at_reporting(src_off, len, read.progress());
                         // The playing track fetches immediately; a preload waits
                         // while the playing track has a fetch in flight so it can't
@@ -508,7 +506,7 @@ fn spawn_window_prefetch(
         "prefetch a playback buffer window",
         async move {
             let foreground = arbiter.is_foreground(buffer_id);
-            let read = arbiter.read_progress(buffer_id, window);
+            let read = arbiter.read_progress(buffer_id);
             let result = arbiter
                 .run_gated(foreground, stream.read_at_reporting(off, window, read.progress()))
                 .await;

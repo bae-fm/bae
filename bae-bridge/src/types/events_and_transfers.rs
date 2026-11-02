@@ -131,10 +131,13 @@ pub enum BridgeFastValue {
     ExportPercent { percent: u8 },
     /// Where the playing track is; keyed by track, the playing one alone.
     TrackPosition { position: BridgeTrackPosition },
-    /// How much of what a load of the playing track waits on from storage
-    /// is here; keyed by track, the playing one alone, while the person
-    /// waits on its load.
-    TrackDownload { progress: BridgeTrackDownload },
+    /// The parts of the playing track whose bytes this device holds; keyed
+    /// by track, the playing one alone.
+    TrackBuffered { buffered: BridgeTrackBuffered },
+    /// The playing track's load waits on storage; keyed by track, the
+    /// playing one alone, while the person waits on its load and it reads
+    /// from storage.
+    TrackWaitsOnStorage,
     /// Where the preview is in its clip; a stream's one key, `""`, while a
     /// preview is loaded.
     PreviewPosition { position: BridgePreviewPosition },

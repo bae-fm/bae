@@ -21,23 +21,35 @@ fn the_upload_total_is_held_only_while_files_are_sent() {
     );
 }
 
-/// A load's download is held under its track's key, and nothing is held
-/// while no load waits on one.
+/// The playing track's held stretches are held under its track's key, and
+/// nothing is held while no track plays.
 #[test]
-fn a_track_download_is_held_under_its_track() {
-    let held = track_download(Some(bae_core::playback::TrackDownload {
+fn a_tracks_held_stretches_are_held_under_its_track() {
+    let held = track_buffered_held(Some(bae_core::playback::TrackBuffered {
         track_id: "track-1".into(),
-        here: 3,
-        total: 8,
+        ranges: vec![bae_core::playback::TrackSpan { start: 0.0, end: 0.25 }],
     }));
     assert_eq!(
         held,
         HashMap::from([(
             b"track-1".to_vec(),
-            BridgeFastValue::TrackDownload {
-                progress: crate::types::BridgeTrackDownload { here: 3, total: 8 },
+            BridgeFastValue::TrackBuffered {
+                buffered: crate::types::BridgeTrackBuffered {
+                    ranges: vec![crate::types::BridgeTrackSpan { start: 0.0, end: 0.25 }],
+                },
             },
         )])
     );
-    assert!(track_download(None).is_empty());
+    assert!(track_buffered_held(None).is_empty());
+}
+
+/// A load's wait on storage is held under its track's key, and nothing is
+/// held while no load waits on storage.
+#[test]
+fn a_storage_wait_is_held_under_its_track() {
+    assert_eq!(
+        track_storage_wait(Some("track-1".into())),
+        HashMap::from([(b"track-1".to_vec(), BridgeFastValue::TrackWaitsOnStorage)])
+    );
+    assert!(track_storage_wait(None).is_empty());
 }

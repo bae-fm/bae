@@ -49,6 +49,7 @@ use bae_audio::DecodeError;
 use crate::playback::source;
 use crate::playback::source::{TrackCrossing, TrackFmt};
 use crate::playback::timeline::{StreamPosition, TrackTimeline};
+use crate::playback::track_buffered::{PlayingBytes, TrackBytes};
 use crate::playback::PlayingTrack;
 use bae_audio::sparse_buffer::{create_sparse_buffer, SharedSparseBuffer};
 use bae_audio::track_stream::TrackStream;
@@ -206,6 +207,29 @@ impl PlaybackPreparedTrack {
     /// The distinct release files this track plays from.
     fn file_ids(&self) -> HashSet<&str> {
         self.segments.iter().map(|segment| segment.file_id.as_str()).collect()
+    }
+
+    /// The bytes that play this track from INDEX 01 to its end, its main
+    /// segment's, and the buffer holding them. `None` for a track whose
+    /// length is unknown, which no stretch is a fraction of, and for one with
+    /// no bytes here (a remote renderer plays it).
+    fn playing_bytes(&self) -> Option<PlayingBytes> {
+        let duration = self.timeline.duration()?;
+        let main = self.segments.iter().find(|segment| segment.role == DbAudioSegmentRole::Main)?;
+        let samples = match main.span.end_sample {
+            Some(end) => end.saturating_sub(main.span.start_sample),
+            None => (duration.as_secs_f64() * f64::from(self.sample_rate)) as u64,
+        };
+        Some(PlayingBytes {
+            track_id: self.track_id.clone(),
+            bytes: TrackBytes::new(
+                main.span,
+                main.buffer.get_total_size(),
+                main.scrub_points.as_slice(),
+                samples,
+            ),
+            held: main.buffer.subscribe_held(),
+        })
     }
 }
 

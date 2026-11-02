@@ -28,14 +28,18 @@ impl AppServices {
         self.inner.playback.subscribe_positions()
     }
 
-    /// The download a load of the playing track waits on, which changes as
-    /// its bytes arrive: how much of what the load reads from storage is
-    /// here, while the person waits on the load; `None` otherwise, and for a
-    /// load this device serves from its own copy or the cache.
-    pub fn subscribe_track_downloads(
-        &self,
-    ) -> tokio::sync::watch::Receiver<Option<crate::playback::TrackDownload>> {
-        self.inner.playback.subscribe_track_downloads()
+    /// The playing track while the person waits on its load and the load
+    /// reads from storage, by id; `None` otherwise, and for a load this
+    /// device serves from its own copy or the cache.
+    pub fn subscribe_storage_waits(&self) -> tokio::sync::watch::Receiver<Option<String>> {
+        self.inner.playback.subscribe_storage_waits()
+    }
+
+    /// The parts of the playing track whose bytes this device holds, as
+    /// fractions of its length, which change as its bytes arrive and as its
+    /// buffer drops what playback has passed.
+    pub fn follow_track_buffered(&self) -> crate::playback::TrackBufferedFollow {
+        self.inner.playback.follow_track_buffered()
     }
 
     /// Where playback is, for a surface that moves the position on itself,

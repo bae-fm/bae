@@ -346,24 +346,32 @@ pub struct PlaybackHandle {
     /// `Shutdown` ends it. Clones share one take-once join handle.
     worker: WorkerThread<PlaybackCommand>,
     progress_handle: PlaybackProgressHandle,
-    track_downloads: tokio::sync::watch::Receiver<Option<crate::playback::TrackDownload>>,
+    storage_waits: tokio::sync::watch::Receiver<Option<String>>,
+    playing_bytes:
+        tokio::sync::watch::Receiver<Option<crate::playback::track_buffered::PlayingBytes>>,
 }
 impl PlaybackHandle {
     pub(super) fn new(
         worker: WorkerThread<PlaybackCommand>,
         progress_handle: PlaybackProgressHandle,
-        track_downloads: tokio::sync::watch::Receiver<Option<crate::playback::TrackDownload>>,
+        storage_waits: tokio::sync::watch::Receiver<Option<String>>,
+        playing_bytes: tokio::sync::watch::Receiver<
+            Option<crate::playback::track_buffered::PlayingBytes>,
+        >,
     ) -> Self {
-        Self { worker, progress_handle, track_downloads }
+        Self { worker, progress_handle, storage_waits, playing_bytes }
     }
 
-    /// The download a load of the playing track waits on: how much of its
-    /// reads from storage is here, while the person waits on the load and it
-    /// reads from storage; `None` otherwise.
-    pub fn subscribe_track_downloads(
-        &self,
-    ) -> tokio::sync::watch::Receiver<Option<crate::playback::TrackDownload>> {
-        self.track_downloads.clone()
+    /// The playing track while the person waits on its load and the load
+    /// reads from storage, by id; `None` otherwise.
+    pub fn subscribe_storage_waits(&self) -> tokio::sync::watch::Receiver<Option<String>> {
+        self.storage_waits.clone()
+    }
+
+    /// The parts of the playing track whose bytes this device holds, as
+    /// they change.
+    pub fn follow_track_buffered(&self) -> crate::playback::TrackBufferedFollow {
+        crate::playback::TrackBufferedFollow::new(self.playing_bytes.clone())
     }
 
     /// Fire-and-forget; the service runs commands in order on its own thread.

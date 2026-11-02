@@ -84,11 +84,12 @@ impl RemoteMultiWindowPlayback {
 }
 
 /// While the person waits on a track whose file is read from storage, its
-/// load tells how much of what it waits on is here, under the track's id;
-/// once the track plays, nothing.
+/// load waits on storage, under the track's id, and none of the track is
+/// held yet; once the track plays, it waits on nothing, and its bytes go on
+/// arriving until all of them are held.
 #[tokio::test(flavor = "multi_thread")]
-async fn a_load_from_storage_tells_its_download() {
-    let mut playback = RemoteMultiWindowPlayback::new("remote-load-download")
+async fn a_load_from_storage_waits_on_storage() {
+    let mut playback = RemoteMultiWindowPlayback::new("remote-load-wait")
         .await
         .expect("set up the remote multi-window fixture");
     let track = playback.track_ids[0].clone();
@@ -96,22 +97,25 @@ async fn a_load_from_storage_tells_its_download() {
     let (reached, observed) = tokio::sync::oneshot::channel();
     let (resume, resumed) = tokio::sync::oneshot::channel();
     playback.cloud.hold_body_at(playback.flac_object.clone(), 12, reached, resumed).await;
-    let mut downloads = playback.playback_handle.subscribe_track_downloads();
+    let mut waits = playback.playback_handle.subscribe_storage_waits();
+    let mut buffered = playback.playback_handle.follow_track_buffered();
 
     playback.playback_handle.play(track.clone());
     observed.await.expect("the load reads the FLAC from storage");
-    let download = tokio::time::timeout(Duration::from_secs(30), async {
+    let waiting = tokio::time::timeout(Duration::from_secs(30), async {
         loop {
-            if let Some(download) = downloads.borrow_and_update().clone() {
-                return download;
+            if let Some(waiting) = waits.borrow_and_update().clone() {
+                return waiting;
             }
-            downloads.changed().await.expect("playback runs");
+            waits.changed().await.expect("playback runs");
         }
     })
     .await
-    .expect("the waited load tells its download");
-    assert_eq!(download.track_id, track);
-    assert!(download.here < download.total, "the held read has part of its bytes: {download:?}");
+    .expect("the waited load waits on storage");
+    assert_eq!(waiting, track);
+    let held = buffered.next().await.expect("playback runs").expect("a track plays");
+    assert_eq!(held.track_id, track);
+    assert_eq!(held.ranges, vec![], "none of the held read's bytes are here");
 
     resume.send(()).expect("the held read waits");
     wait_for_state_on(
@@ -121,7 +125,8 @@ async fn a_load_from_storage_tells_its_download() {
     )
     .await
     .expect("the track plays once its bytes arrive");
-    assert_eq!(*downloads.borrow(), None, "a playing track waits on no download");
+    assert_eq!(*waits.borrow(), None, "a playing track waits on no storage");
+    wait_for_whole_track(&mut buffered, &track).await;
 }
 
 /// Remote-cloud port of `switching_tracks_within_a_multi_window_file_keeps_streaming`:

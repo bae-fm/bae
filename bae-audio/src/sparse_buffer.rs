@@ -186,6 +186,11 @@ pub struct SparseStreamingBuffer {
     /// per-window fetch logs and the decoder's first-sample log carry it) and as
     /// the playback fetch arbiter's foreground designation.
     id: u64,
+    /// The byte ranges the buffer holds, sorted and none touching, told
+    /// each time they change: a window landing or bytes dropped. Kept apart
+    /// from the state lock, so a reader of the ranges never waits on a
+    /// decoder's read.
+    held: tokio::sync::watch::Sender<Vec<Range<u64>>>,
     /// Total bytes appended into this buffer (every fill window that landed,
     /// including a window re-fetched after a backward seek). Lets the decoder
     /// report how much was fetched from the source to reach the first audio
@@ -219,6 +224,7 @@ impl SparseStreamingBuffer {
             fill_wake: Arc::new(Notify::new()),
             next_reader_id: AtomicU64::new(0),
             id: NEXT_BUFFER_ID.fetch_add(1, Ordering::Relaxed),
+            held: tokio::sync::watch::Sender::new(Vec::new()),
             bytes_fetched: AtomicU64::new(0),
             #[cfg(any(test, feature = "test-instrumentation"))]
             read_log: Mutex::new(Vec::new()),
@@ -248,6 +254,7 @@ impl SparseStreamingBuffer {
             "a panic left the buffer's bytes partway through a change; dropping them for the fill to fetch again"
         );
         inner.ranges.clear();
+        self.tell_held(&inner);
         self.inner.clear_poison();
         self.wake_fill();
         inner
@@ -258,6 +265,17 @@ impl SparseStreamingBuffer {
     /// playback fetch arbiter.
     pub fn id(&self) -> u64 {
         self.id
+    }
+
+    /// The byte ranges the buffer holds now and each time they change,
+    /// sorted and none touching.
+    pub fn subscribe_held(&self) -> tokio::sync::watch::Receiver<Vec<Range<u64>>> {
+        self.held.subscribe()
+    }
+
+    /// Tell the byte ranges `inner` holds, which just changed.
+    fn tell_held(&self, inner: &SparseInner) {
+        self.held.send_replace(inner.ranges.iter().map(|range| range.start..range.end()).collect());
     }
 
     /// Total bytes appended into this buffer so far. Read by the decoder to
@@ -338,6 +356,7 @@ impl SparseStreamingBuffer {
         if let Some(last) = inner.ranges.last_mut() {
             if offset == last.end() {
                 last.data.extend_from_slice(bytes);
+                self.tell_held(&inner);
                 self.data_available.notify_all();
                 return;
             }
@@ -391,6 +410,7 @@ impl SparseStreamingBuffer {
             }
         }
 
+        self.tell_held(&inner);
         self.data_available.notify_all();
     }
 
@@ -422,10 +442,14 @@ impl SparseStreamingBuffer {
         }
         let mut inner = self.state();
         let mut kept = Vec::with_capacity(inner.ranges.len() + 1);
+        let mut dropped = false;
         for mut range in inner.ranges.drain(..) {
             if range.end() <= evicted.start || range.start >= evicted.end {
                 kept.push(range);
-            } else if range.start >= evicted.start {
+                continue;
+            }
+            dropped = true;
+            if range.start >= evicted.start {
                 // Only a tail past `evicted` survives: trim the front in place.
                 if range.end() > evicted.end {
                     let cut = (evicted.end - range.start) as usize;
@@ -447,6 +471,9 @@ impl SparseStreamingBuffer {
             }
         }
         inner.ranges = kept;
+        if dropped {
+            self.tell_held(&inner);
+        }
     }
 
     /// The first not-yet-buffered sub-range within `[from, limit)`, or `None`

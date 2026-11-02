@@ -653,7 +653,8 @@ impl PlaybackService {
     ) -> PlaybackHandle {
         let (progress_tx, progress_rx) = tokio_mpsc::unbounded_channel();
         let arbiter = FetchArbiter::new();
-        let track_downloads = arbiter.subscribe_downloads();
+        let storage_waits = arbiter.subscribe_storage_waits();
+        let (playing_bytes, playing_bytes_rx) = tokio::sync::watch::channel(None);
         let progress_handle = PlaybackProgressHandle::new(
             progress_rx,
             runtime_handle.clone(),
@@ -722,7 +723,7 @@ impl PlaybackService {
                             volume: OutputVolume::new(),
                             preview,
                             position_update_interval_ms,
-                            file_buffers: FileBuffers::new(arbiter),
+                            file_buffers: FileBuffers::new(arbiter, playing_bytes),
                             starvation_episode: None,
                             last_position_persist: None,
                             first_audio_pending: None,
@@ -745,7 +746,7 @@ impl PlaybackService {
                     });
                 })
             });
-        PlaybackHandle::new(worker, progress_handle, track_downloads)
+        PlaybackHandle::new(worker, progress_handle, storage_waits, playing_bytes_rx)
     }
 
     pub(super) async fn run(

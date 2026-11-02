@@ -136,18 +136,31 @@ impl MultiWindowPlayback {
     }
 }
 
-/// A load this device reads from its own copy waits on no download: the
-/// track plays without a download ever told.
+/// A load this device reads from its own copy waits on no storage, and the
+/// track's bytes come to be held whole: one stretch from its start to its
+/// end. Once playback stops, no track's bytes are followed.
 #[tokio::test(flavor = "multi_thread")]
-async fn a_local_load_tells_no_download() {
-    let mut playback = MultiWindowPlayback::new("local-load-download").await;
-    let downloads = playback.playback_handle.subscribe_track_downloads();
+async fn a_local_load_waits_on_no_storage_and_holds_the_whole_track() {
+    let mut playback = MultiWindowPlayback::new("local-load-wait").await;
+    let waits = playback.playback_handle.subscribe_storage_waits();
+    let mut buffered = playback.playback_handle.follow_track_buffered();
 
     let track = playback.track_ids[0].clone();
     playback.play_and_wait(&track).await;
+    wait_for_whole_track(&mut buffered, &track).await;
 
-    assert!(!downloads.has_changed().expect("playback runs"), "a local load tells no download");
-    assert_eq!(*downloads.borrow(), None);
+    assert!(!waits.has_changed().expect("playback runs"), "a local load waits on no storage");
+    assert_eq!(*waits.borrow(), None);
+
+    // Once playback stops, no track's bytes are followed.
+    playback.playback_handle.stop();
+    tokio::time::timeout(Duration::from_secs(20), async {
+        while let Some(held) = buffered.next().await.expect("playback runs") {
+            assert_eq!(held.track_id, track, "only the playing track is followed");
+        }
+    })
+    .await
+    .expect("a stop leaves no track followed");
 }
 
 /// Switching tracks within a single multi-window file must keep the shared

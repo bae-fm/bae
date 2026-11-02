@@ -228,17 +228,30 @@ pub(crate) fn playback_positions(
     })
 }
 
-/// The stream [`AppHandle::feed_track_downloads`](crate::AppHandle::feed_track_downloads) hands out.
-pub(crate) fn track_downloads(
+/// The stream [`AppHandle::feed_track_buffered`](crate::AppHandle::feed_track_buffered) hands out.
+pub(crate) fn track_buffered(
     runtime: OperationRuntime,
     run: impl RunFeed,
 ) -> Arc<KeyedValueStream> {
     feed(runtime, run, move |services, writer| async move {
-        let mut downloads = services.subscribe_track_downloads();
+        let mut buffered = services.follow_track_buffered();
+        while let Some(held) = buffered.next().await {
+            writer.reset(track_buffered_held(held));
+        }
+    })
+}
+
+/// The stream [`AppHandle::feed_track_storage_waits`](crate::AppHandle::feed_track_storage_waits) hands out.
+pub(crate) fn track_storage_waits(
+    runtime: OperationRuntime,
+    run: impl RunFeed,
+) -> Arc<KeyedValueStream> {
+    feed(runtime, run, move |services, writer| async move {
+        let mut waits = services.subscribe_storage_waits();
         loop {
-            let held = track_download(downloads.borrow_and_update().clone());
+            let held = track_storage_wait(waits.borrow_and_update().clone());
             writer.reset(held);
-            if downloads.changed().await.is_err() {
+            if waits.changed().await.is_err() {
                 return;
             }
         }
@@ -336,23 +349,35 @@ fn track_positions(
         .collect()
 }
 
-/// The download a load of the playing track waits on as its stream holds
-/// it: under the track's key, or nothing.
-fn track_download(
-    download: Option<bae_core::playback::TrackDownload>,
+/// The playing track's held stretches as their stream holds them: under its
+/// track's key, or nothing while no track plays.
+fn track_buffered_held(
+    buffered: Option<bae_core::playback::TrackBuffered>,
 ) -> HashMap<Vec<u8>, BridgeFastValue> {
-    download
-        .map(|download| {
+    buffered
+        .map(|buffered| {
             (
-                download.track_id.into_bytes(),
-                BridgeFastValue::TrackDownload {
-                    progress: crate::types::BridgeTrackDownload {
-                        here: download.here,
-                        total: download.total,
+                buffered.track_id.into_bytes(),
+                BridgeFastValue::TrackBuffered {
+                    buffered: crate::types::BridgeTrackBuffered {
+                        ranges: buffered
+                            .ranges
+                            .into_iter()
+                            .map(crate::types::BridgeTrackSpan::from_core)
+                            .collect(),
                     },
                 },
             )
         })
+        .into_iter()
+        .collect()
+}
+
+/// The track whose load waits on storage as its stream holds it: under its
+/// key, or nothing while no load does.
+fn track_storage_wait(waiting: Option<String>) -> HashMap<Vec<u8>, BridgeFastValue> {
+    waiting
+        .map(|track_id| (track_id.into_bytes(), BridgeFastValue::TrackWaitsOnStorage))
         .into_iter()
         .collect()
 }
