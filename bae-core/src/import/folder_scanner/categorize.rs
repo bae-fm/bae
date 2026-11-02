@@ -551,7 +551,7 @@ fn skipped_tags(
                 return Ok(Some(SkippedTags {
                     album_title,
                     artist: (!artists.is_empty()).then(|| {
-                        crate::credits::credit_line(
+                        bae_types::credits::credit_line(
                             artists.iter().map(|name| (name.as_str(), None)),
                         )
                     }),

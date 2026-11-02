@@ -244,7 +244,7 @@ pub(crate) fn stated_credits(credits: &[DisplayCredit]) -> Vec<crate::import::So
             Some(crate::import::SourceCredit { credit: artist, join: credit.join.clone() })
         })
         .collect();
-    crate::credits::drop_last_join(&mut stated, |credit| &mut credit.join);
+    bae_types::credits::drop_last_join(&mut stated, |credit| &mut credit.join);
     stated
 }
 

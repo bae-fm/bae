@@ -37,10 +37,10 @@ impl Credited {
             .into_iter()
             .map(|credited| Self {
                 artist: credited.artist.normalized(),
-                join: crate::credits::stated_join(credited.join.as_deref()),
+                join: bae_types::credits::stated_join(credited.join.as_deref()),
             })
             .collect();
-        crate::credits::drop_last_join(&mut credits, |credited| &mut credited.join);
+        bae_types::credits::drop_last_join(&mut credits, |credited| &mut credited.join);
         credits
     }
 
@@ -92,15 +92,15 @@ impl SourceCredit {
     /// The line `credits` print, as the picker's row shows a release's
     /// artists.
     pub fn line(credits: &[Self]) -> String {
-        crate::credits::credit_line(
+        bae_types::credits::credit_line(
             credits.iter().map(|credit| (credit.credit.printed(), credit.join.as_deref())),
         )
     }
 }
 
-/// The line `credits` print (see [`crate::credits::credit_line`]).
+/// The line `credits` print (see [`bae_types::credits::credit_line`]).
 pub fn credited_line(credits: &[Credited]) -> String {
-    crate::credits::credit_line(
+    bae_types::credits::credit_line(
         credits.iter().map(|credited| (credited.artist.printed(), credited.join.as_deref())),
     )
 }

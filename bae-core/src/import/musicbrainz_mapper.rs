@@ -288,10 +288,10 @@ pub(crate) fn artist_credits(
         };
         stated.push(SourceCredit {
             credit: artist,
-            join: crate::credits::stated_join(credit.joinphrase.as_deref()),
+            join: bae_types::credits::stated_join(credit.joinphrase.as_deref()),
         });
     }
-    crate::credits::drop_last_join(&mut stated, |credit| &mut credit.join);
+    bae_types::credits::drop_last_join(&mut stated, |credit| &mut credit.join);
     Ok(stated)
 }
 
@@ -365,7 +365,7 @@ fn tracklist_entry(track: &MbTrack, reported: &mut HashSet<String>) -> Tracklist
                 }
                 credited
             }),
-            join: crate::credits::stated_join(credit.joinphrase.as_deref()),
+            join: bae_types::credits::stated_join(credit.joinphrase.as_deref()),
         })
         .collect();
     let mut roles = Vec::new();

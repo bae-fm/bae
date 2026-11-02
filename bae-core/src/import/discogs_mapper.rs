@@ -51,7 +51,7 @@ pub(crate) fn discogs_credits(artists: &[DiscogsArtist]) -> Vec<crate::import::S
             join: discogs_join(artist.join.as_deref()),
         })
         .collect();
-    crate::credits::drop_last_join(&mut stated, |credit| &mut credit.join);
+    bae_types::credits::drop_last_join(&mut stated, |credit| &mut credit.join);
     stated
 }
 
@@ -420,7 +420,7 @@ fn discogs_track_values(pt: &ProcessedTrack, place: bae_types::mediums::TrackPla
             }
         }
     }
-    crate::credits::drop_last_join(&mut credits, |credit| &mut credit.join);
+    bae_types::credits::drop_last_join(&mut credits, |credit| &mut credit.join);
     TrackValues {
         title: pt.title.clone(),
         place,
