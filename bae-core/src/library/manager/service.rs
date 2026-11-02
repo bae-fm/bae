@@ -325,17 +325,6 @@ impl LibraryManager {
         self.diagnostics.bug(failed)
     }
 
-    /// Ship one `audio_format_orphaned` anomaly per orphan the release-detail
-    /// projection reported (a pure layer that can only detect and log them). A
-    /// zero count ships nothing.
-    pub(super) fn report_audio_format_orphans(&self, count: u32) {
-        for _ in 0..count {
-            self.diagnostics.event(TelemetryEvent::Anomaly {
-                kind: crate::diagnostics::AnomalyKind::AudioFormatOrphaned,
-            });
-        }
-    }
-
     /// Follow the sync status to log its failure and report a failed pass,
     /// each once, as it appears or changes. Call once after construction,
     /// with a tokio runtime available.

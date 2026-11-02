@@ -198,7 +198,6 @@ telemetry_value_enum! {
         SidePauseDesync => "side_pause_desync",
         PreloadStateMissing => "preload_state_missing",
         QueueEntryUnknown => "queue_entry_unknown",
-        AudioFormatOrphaned => "audio_format_orphaned",
         EncryptionKeyMissing => "encryption_key_missing",
     }
 }

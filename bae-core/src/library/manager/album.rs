@@ -226,9 +226,7 @@ impl LibraryManager {
                 cover: crate::db::cover_ref(&r.release.id, r.cover_version.clone()),
                 is_compilation: raw.album.is_compilation,
             };
-            let (detail, orphans) = ReleaseDetail::from_raw(r, &raw.artists, i, &ctx);
-            self.report_audio_format_orphans(orphans);
-            releases.push(detail);
+            releases.push(ReleaseDetail::from_raw(r, &raw.artists, i, &ctx));
         }
 
         AlbumDetail {

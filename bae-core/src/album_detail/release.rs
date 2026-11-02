@@ -169,18 +169,14 @@ impl ReleaseDetail {
     ///
     /// Both ordinary reads and subscriptions route through here, so the resolve
     /// logic stays in one place.
-    /// Resolve a raw release-detail row into the projection. The returned anomaly
-    /// count remains for the shared caller contract; source-audio facts no longer
-    /// depend on track-format joins and therefore add no orphan cases here.
     pub(crate) fn from_raw(
         raw: DbReleaseDetail,
         album_artists: &[crate::db::credits::LibraryCredit],
         release_index: usize,
         ctx: &ReleaseResolveCtx,
-    ) -> (ReleaseDetail, u32) {
+    ) -> ReleaseDetail {
         let release = raw.release;
         let download = raw.download;
-        let audio_format_orphans = 0u32;
 
         let tracks: Vec<TrackDetail> = raw
             .tracks
@@ -284,7 +280,7 @@ impl ReleaseDetail {
 
         let download_status =
             release_download_status(summary.pinned, &summary.storage_actions, download.as_ref());
-        let detail = ReleaseDetail {
+        ReleaseDetail {
             download_status,
             summary,
             name,
@@ -301,8 +297,7 @@ impl ReleaseDetail {
             gallery_items: gallery,
             playability,
             records: raw.records,
-        };
-        (detail, audio_format_orphans)
+        }
     }
 }
 

@@ -361,9 +361,7 @@ impl LibraryManager {
             cover: crate::db::cover_ref(release_id, raw.cover_version.clone()),
             is_compilation,
         };
-        let (detail, orphans) = ReleaseDetail::from_raw(raw, &album_artists, release_index, &ctx);
-        self.report_audio_format_orphans(orphans);
-        detail
+        ReleaseDetail::from_raw(raw, &album_artists, release_index, &ctx)
     }
 
     /// Resolved release detail for the album-detail view: a `ReleaseSummary` plus
