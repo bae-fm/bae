@@ -80,7 +80,7 @@ impl AppServices {
     pub async fn edit_release_lookup_choices(
         &self,
         release_id: String,
-        edit: crate::import::LookupChoiceEdit,
+        edit: crate::identify::LookupChoiceEdit,
     ) -> Result<(), crate::library::LibraryError> {
         let choices = {
             let mut held = self.release_lookup_choices();
@@ -107,7 +107,7 @@ impl AppServices {
         &self,
     ) -> std::sync::MutexGuard<
         '_,
-        std::collections::HashMap<crate::import::CandidateKey, crate::import::LookupChoices>,
+        std::collections::HashMap<crate::import::CandidateKey, crate::identify::LookupChoices>,
     > {
         self.inner.release_lookup_choices.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
     }
@@ -115,7 +115,7 @@ impl AppServices {
     async fn start_release_identification(
         &self,
         release_id: String,
-        choices: crate::import::LookupChoices,
+        choices: crate::identify::LookupChoices,
     ) -> Result<(), crate::library::LibraryError> {
         let candidate_key = crate::import::CandidateKey::reidentify(&release_id);
         let run = self.inner.import.new_identification_run();

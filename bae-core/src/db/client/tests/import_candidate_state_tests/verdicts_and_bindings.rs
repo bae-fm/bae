@@ -493,7 +493,7 @@ async fn a_transport_failure_round_trips_as_a_failed_verdict() {
         IdentifyState::Idle,
         IdentifyEvent::Started {
             providers: vec![bae_catalogs::catalog::LookupCatalog::MusicBrainz],
-            choices: crate::import::LookupChoices::default(),
+            choices: crate::identify::LookupChoices::default(),
             title_search: None,
         },
     );

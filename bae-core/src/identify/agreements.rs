@@ -158,7 +158,7 @@ impl CandidateText {
     /// rows unranked rather than none.
     pub fn of_stored(
         signals: Option<&crate::signals::Signals>,
-        choices: &crate::import::LookupChoices,
+        choices: &crate::identify::LookupChoices,
     ) -> Self {
         signals.map_or_else(Self::default, |signals| {
             Self::of(&signals.text_pool, &choices.discounted_catalogs, signals.barcode.codes())

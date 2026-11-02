@@ -15,8 +15,8 @@ use crate::catalog_model::{AudioOrigin, LookupFailure};
 use crate::identify::agreements::CandidateText;
 use crate::identify::combine::LookupAnswers;
 use crate::identify::documents::DocumentReading;
+use crate::identify::LookupChoices;
 use crate::identify::{IdentifyFailure, NotAskedReason};
-use crate::import::LookupChoices;
 use crate::signals::{
     ArtworkScan, AudioFacts, BarcodeSignal, DiscIdSignal, Signals, SourcedValue, TextSignal,
 };

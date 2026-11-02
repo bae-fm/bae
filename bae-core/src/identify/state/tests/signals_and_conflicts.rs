@@ -1,7 +1,7 @@
 use super::*;
 use crate::identify::IdentifyFailure;
 use crate::catalog_model::album_links::AlbumLinks;
-use crate::import::LookupChoices;
+use crate::identify::LookupChoices;
 use crate::signals::{BarcodeSignal, DiscIdSignal, Signals, SourcedValue, TextSignal};
 use bae_catalogs::catalog::{Catalog, LookupCatalog};
 

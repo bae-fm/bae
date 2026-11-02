@@ -236,7 +236,7 @@ async fn queue_upcoming_follows_queue_changes_without_resubscribing() {
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[tokio::test(flavor = "multi_thread")]
 async fn a_release_session_keeps_its_choices_in_core() {
-    use crate::import::LookupChoiceEdit;
+    use crate::identify::LookupChoiceEdit;
     let (services, _track_ids, _temp_dir) = playing_app_services(1).await;
     let key = crate::import::CandidateKey::reidentify("release-1");
     let release = "release-1".to_string();

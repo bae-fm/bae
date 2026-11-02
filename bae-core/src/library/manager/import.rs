@@ -235,7 +235,7 @@ impl LibraryManager {
     pub(crate) async fn save_import_candidate_lookup_choices(
         &self,
         content_hash: &str,
-        choices: &crate::import::LookupChoices,
+        choices: &crate::identify::LookupChoices,
     ) -> Result<(), LibraryError> {
         Ok(self.database.save_import_candidate_lookup_choices(content_hash, choices).await?)
     }

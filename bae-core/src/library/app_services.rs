@@ -111,7 +111,7 @@ struct AppServicesInner {
     /// on, so they are held here from the session's first run to its end.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     release_lookup_choices: std::sync::Mutex<
-        std::collections::HashMap<crate::import::CandidateKey, crate::import::LookupChoices>,
+        std::collections::HashMap<crate::import::CandidateKey, crate::identify::LookupChoices>,
     >,
 }
 

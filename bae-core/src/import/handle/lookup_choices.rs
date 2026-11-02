@@ -2,7 +2,7 @@
 //! decides it.
 
 use super::ImportServiceHandle;
-use crate::import::{ChoiceChange, LookupChoiceEdit};
+use crate::identify::{ChoiceChange, LookupChoiceEdit};
 
 impl ImportServiceHandle {
     /// Make one change to what this candidate's identification asks about,

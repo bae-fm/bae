@@ -389,7 +389,7 @@ pub struct DraftProjection {
     /// release offered, stored with the draft when it was applied.
     pub remote_covers: Vec<RemoteCover>,
     /// What this candidate's identification asks about, as the person left it.
-    pub lookup_choices: crate::import::LookupChoices,
+    pub lookup_choices: crate::identify::LookupChoices,
     /// The last import of this candidate that failed.
     pub failure: Option<ImportFailure>,
     /// Where the pane was when the person last left this candidate. `None`
@@ -691,7 +691,7 @@ pub struct CandidateDraftPane {
     /// What this candidate's identification asks about: the signals its runs
     /// leave out and the catalog numbers they look up. A control that changes
     /// one sends the whole value back, computed from this.
-    pub lookup_choices: crate::import::LookupChoices,
+    pub lookup_choices: crate::identify::LookupChoices,
     pub failure: Option<ImportFailure>,
     /// Where the pane was when the person last left this candidate, or where
     /// it opens for one nobody has touched.

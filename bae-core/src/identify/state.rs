@@ -22,7 +22,7 @@ use super::toolbar::{SignalKind, SignalOption, SignalState, ToolbarSignal};
 use super::view::{run_view, IdentifyRunView};
 use crate::catalog_model::search::{MetadataResult, SourceFailure};
 use crate::catalog_model::{InternalFailure, LookupFailure};
-use crate::import::LookupChoices;
+use crate::identify::LookupChoices;
 use crate::signals::{ArtworkScan, AudioFacts, BarcodeSignal, Signals};
 use bae_catalogs::catalog::LookupCatalog;
 

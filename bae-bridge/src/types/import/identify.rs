@@ -5,7 +5,7 @@ use super::super::*;
 
 /// One change a person makes to what a candidate's identification asks about
 /// or counts; core applies it to the choices it holds. Mirrors
-/// `bae_core::import::LookupChoiceEdit`.
+/// `bae_core::identify::LookupChoiceEdit`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeLookupChoiceEdit {
     /// Ask about the disc ID again, or leave it out.
@@ -23,7 +23,7 @@ pub enum BridgeLookupChoiceEdit {
 
 mirror_enum! {
     #[cfg(feature = "desktop")]
-    BridgeLookupChoiceEdit = bae_core::import::LookupChoiceEdit,
+    BridgeLookupChoiceEdit = bae_core::identify::LookupChoiceEdit,
     into_core: pub fn,
     variants: {
         ToggleDiscId,

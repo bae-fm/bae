@@ -9,8 +9,9 @@ use super::state::{
 };
 use crate::catalog_model::search::{CatalogNumberSearch, SearchQuery, SourceLookup};
 use crate::catalog_model::{Failure, InternalFailure};
+use crate::identify::LookupChoices;
 use crate::import::candidate_runtime::RunSubject;
-use crate::import::{CandidateRuntime, CandidateWork, ImportEvent, ImportEventBus, LookupChoices};
+use crate::import::{CandidateRuntime, CandidateWork, ImportEvent, ImportEventBus};
 use crate::library::LibraryManager;
 use crate::signals::{ExtractionWatch, SignalsSnapshot};
 use bae_catalogs::catalog::LookupCatalog;

@@ -10,7 +10,7 @@ async fn lookup_choices_round_trip_with_their_catalog_order() {
     let files = track_files_candidate(&[("01 Track.flac", 111), ("02 Track.flac", 222)]);
     let hash = store_candidate_state(&db, &files, &host_root("/music/Album")).await;
 
-    let choices = crate::import::LookupChoices {
+    let choices = crate::identify::LookupChoices {
         disc_id_excluded: true,
         excluded_barcodes: Vec::new(),
         chosen_catalogs: vec!["LBL 002".to_string(), "LBL 001".to_string()],
@@ -33,7 +33,7 @@ async fn writing_lookup_choices_replaces_what_stood_before() {
 
     db.save_import_candidate_lookup_choices(
         &hash,
-        &crate::import::LookupChoices {
+        &crate::identify::LookupChoices {
             disc_id_excluded: true,
             excluded_barcodes: vec!["0123456789012".to_string()],
             chosen_catalogs: vec!["LBL 001".to_string(), "LBL 002".to_string()],
@@ -43,7 +43,7 @@ async fn writing_lookup_choices_replaces_what_stood_before() {
     )
     .await
     .unwrap();
-    let replacement = crate::import::LookupChoices {
+    let replacement = crate::identify::LookupChoices {
         disc_id_excluded: false,
         excluded_barcodes: vec!["0123456789012".to_string()],
         chosen_catalogs: vec!["LBL 003".to_string()],
@@ -67,7 +67,7 @@ async fn a_candidate_with_no_stored_choices_reads_the_default() {
     let loaded = db.load_import_candidate_states().await.unwrap();
     assert_eq!(
         loaded.get(&hash).expect("the candidate reads back").lookup_choices,
-        crate::import::LookupChoices::default()
+        crate::identify::LookupChoices::default()
     );
 }
 
@@ -79,7 +79,7 @@ async fn choices_for_an_unknown_candidate_are_refused() {
     let error = db
         .save_import_candidate_lookup_choices(
             "0000000000000000000000000000000000000000000000000000000000000000",
-            &crate::import::LookupChoices {
+            &crate::identify::LookupChoices {
                 disc_id_excluded: true,
                 excluded_barcodes: Vec::new(),
                 chosen_catalogs: Vec::new(),
@@ -105,7 +105,7 @@ async fn struck_out_catalog_numbers_round_trip_beside_the_chosen_ones() {
     let files = track_files_candidate(&[("01 Track.flac", 111), ("02 Track.flac", 222)]);
     let hash = store_candidate_state(&db, &files, &host_root("/music/Album")).await;
 
-    let choices = crate::import::LookupChoices {
+    let choices = crate::identify::LookupChoices {
         disc_id_excluded: false,
         excluded_barcodes: Vec::new(),
         chosen_catalogs: vec!["LBL 002".to_string()],
@@ -128,14 +128,14 @@ async fn writing_the_choices_replaces_what_was_struck_out() {
 
     db.save_import_candidate_lookup_choices(
         &hash,
-        &crate::import::LookupChoices {
+        &crate::identify::LookupChoices {
             discounted_catalogs: vec!["LBL 001".to_string(), "LBL 002".to_string()],
             ..Default::default()
         },
     )
     .await
     .unwrap();
-    let replacement = crate::import::LookupChoices {
+    let replacement = crate::identify::LookupChoices {
         discounted_catalogs: vec!["LBL 002".to_string()],
         ..Default::default()
     };
@@ -154,7 +154,7 @@ async fn left_out_barcodes_round_trip_as_a_set() {
     let files = track_files_candidate(&[("01 Track.flac", 111), ("02 Track.flac", 222)]);
     let hash = store_candidate_state(&db, &files, &host_root("/music/Album")).await;
 
-    let choices = crate::import::LookupChoices {
+    let choices = crate::identify::LookupChoices {
         disc_id_excluded: false,
         excluded_barcodes: vec!["0123456789012".to_string(), "9999999999999".to_string()],
         chosen_catalogs: Vec::new(),
@@ -177,14 +177,14 @@ async fn writing_the_choices_replaces_the_left_out_barcodes() {
 
     db.save_import_candidate_lookup_choices(
         &hash,
-        &crate::import::LookupChoices {
+        &crate::identify::LookupChoices {
             excluded_barcodes: vec!["0123456789012".to_string(), "9999999999999".to_string()],
             ..Default::default()
         },
     )
     .await
     .unwrap();
-    let replacement = crate::import::LookupChoices {
+    let replacement = crate::identify::LookupChoices {
         excluded_barcodes: vec!["9999999999999".to_string()],
         ..Default::default()
     };
@@ -202,8 +202,8 @@ async fn typed_search_words_round_trip() {
     let files = track_files_candidate(&[("01 Track.flac", 111), ("02 Track.flac", 222)]);
     let hash = store_candidate_state(&db, &files, &host_root("/music/Album")).await;
 
-    let typed = crate::import::LookupChoices {
-        search_words: Some(crate::import::SearchWords {
+    let typed = crate::identify::LookupChoices {
+        search_words: Some(crate::identify::SearchWords {
             album: "Album Title".to_string(),
             artist: String::new(),
         }),
@@ -213,7 +213,7 @@ async fn typed_search_words_round_trip() {
     let loaded = db.load_import_candidate_states().await.unwrap();
     assert_eq!(loaded.get(&hash).expect("the candidate reads back").lookup_choices, typed);
 
-    db.save_import_candidate_lookup_choices(&hash, &crate::import::LookupChoices::default())
+    db.save_import_candidate_lookup_choices(&hash, &crate::identify::LookupChoices::default())
         .await
         .unwrap();
     let loaded = db.load_import_candidate_states().await.unwrap();

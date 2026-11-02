@@ -1,5 +1,5 @@
 use super::*;
-use crate::import::{ChoiceChange, LookupChoiceEdit, LookupChoices};
+use crate::identify::{ChoiceChange, LookupChoiceEdit, LookupChoices};
 
 fn barcode(code: &str) -> LookupChoiceEdit {
     LookupChoiceEdit::ToggleBarcode { code: code.to_string() }

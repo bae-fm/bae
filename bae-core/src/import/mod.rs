@@ -1,4 +1,4 @@
-// Every module but `error`, `lookup_choices`, `session` and `types` is the
+// Every module but `error`, `session` and `types` is the
 // import pipeline (scanning, transcoding, identification), which only the
 // desktop builds carry: mobile is a sync and playback client. Of `types`, only
 // the shared domain types compile on mobile.
@@ -55,7 +55,6 @@ mod import_failure;
 pub mod list;
 #[cfg(desktop)]
 pub(crate) mod local_artwork;
-pub mod lookup_choices;
 #[cfg(desktop)]
 mod loudness;
 #[cfg(desktop)]
@@ -289,7 +288,6 @@ pub use list::{
     ImportListWindow, ImportQueueSummary, ListedRelease, NarrowedCount, PendingFilter,
     PendingFilterEntry, ProjectedStage,
 };
-pub use lookup_choices::{ChoiceChange, LookupChoiceEdit, LookupChoices, SearchWords};
 #[cfg(desktop)]
 pub use mapping::{
     mapping_tracks, FolderFiles, InvalidCandidateDetail, MappingContainer, MappingEntry,

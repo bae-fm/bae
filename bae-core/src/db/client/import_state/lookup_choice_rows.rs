@@ -7,7 +7,7 @@
 //! decided nothing, which reads back as [`LookupChoices::default`].
 
 use super::*;
-use crate::import::{LookupChoices, SearchWords};
+use crate::identify::{LookupChoices, SearchWords};
 
 /// A candidate's lookup choices as columns of a read that joins its header
 /// row as `choices`, its lists riding on it as JSON arrays: the chosen

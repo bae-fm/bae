@@ -520,7 +520,7 @@ async fn changing_the_choices_supersedes_the_run_and_frees_its_slot() {
         .import
         .edit_candidate_lookup_choices(
             &key,
-            crate::import::LookupChoiceEdit::ToggleBarcode { code: "0123456789012".to_string() },
+            crate::identify::LookupChoiceEdit::ToggleBarcode { code: "0123456789012".to_string() },
         )
         .await
         .unwrap();

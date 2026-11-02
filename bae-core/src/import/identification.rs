@@ -28,9 +28,9 @@
 use super::folder_scanner::FolderCandidate;
 use super::handle::{ImportEvent, ImportServiceHandle, ScanEvent};
 use crate::db::NewImportCandidateVerdict;
+use crate::identify::LookupChoices;
 use crate::identify::{IdentifyRunId, IdentifyState, TerminalVerdict, TitleSearch};
 use crate::import::candidates::{Admission, CandidateFiles};
-use crate::import::LookupChoices;
 use crate::library::LibraryManager;
 use crate::signals::ExtractionSource;
 use bae_catalogs::rate_limiter::CallPriority;

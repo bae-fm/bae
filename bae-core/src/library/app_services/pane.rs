@@ -5,9 +5,8 @@
 
 use super::*;
 use crate::catalog_model::SearchQuery;
-use crate::import::{
-    ImportError, LookupChoiceEdit, PaneCommand, PaneMove, PaneOutcome, PressingLink,
-};
+use crate::identify::LookupChoiceEdit;
+use crate::import::{ImportError, PaneCommand, PaneMove, PaneOutcome, PressingLink};
 
 impl AppServices {
     /// Import the candidate the pane shows.
@@ -225,10 +224,10 @@ impl AppServices {
     async fn edit_candidate_lookup_choices(
         &self,
         candidate_key: crate::import::CandidateKey,
-        edit: crate::import::LookupChoiceEdit,
+        edit: crate::identify::LookupChoiceEdit,
     ) -> Result<(), crate::import::ImportError> {
         let change = self.inner.import.edit_candidate_lookup_choices(&candidate_key, edit).await?;
-        if change == crate::import::ChoiceChange::Lookups {
+        if change == crate::identify::ChoiceChange::Lookups {
             self.inner.identification.rerun_identify(candidate_key);
         }
         Ok(())

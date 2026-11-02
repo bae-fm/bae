@@ -34,7 +34,7 @@ impl ImportServiceHandle {
         key: crate::import::CandidateKey,
         source: crate::signals::ExtractionSource,
         priority: bae_catalogs::rate_limiter::CallPriority,
-        choices: crate::import::LookupChoices,
+        choices: crate::identify::LookupChoices,
         title_search: Option<crate::identify::TitleSearch>,
     ) -> Result<bool, crate::library::LibraryError> {
         let subject = match &source {

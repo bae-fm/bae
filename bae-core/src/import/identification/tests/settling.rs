@@ -717,7 +717,7 @@ async fn settling_a_lead_leaves_the_lookup_choices_alone() {
     );
     assert_eq!(
         pane.draft().unwrap().lookup_choices,
-        crate::import::LookupChoices::default(),
+        crate::identify::LookupChoices::default(),
         "the number the record carries and the folder prints is not chosen"
     );
 }
