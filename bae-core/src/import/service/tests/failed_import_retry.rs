@@ -26,6 +26,7 @@ fn local_import_command(
 #[tokio::test]
 async fn an_import_that_cannot_open_a_source_writes_nothing_and_a_retry_lands_it() {
     let test = setup_import_service().await;
+    let tables = test.service.tables.clone();
     let folder = test.temp.path().join("box-set");
     let fixture =
         Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/flac/01 Test Track 1.flac");
@@ -51,8 +52,7 @@ async fn an_import_that_cannot_open_a_source_writes_nothing_and_a_retry_lands_it
         .await;
     drop(blocked);
 
-    let failure = test
-        .database
+    let failure = tables
         .load_import_candidate_pane_rows(&candidate.content_hash)
         .await
         .unwrap()

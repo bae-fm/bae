@@ -17,7 +17,7 @@ impl ImportService {
         services: &crate::import::ImportServices,
     ) -> Result<bool, crate::import::ImportError> {
         let _commit = services.folder_state_commit.lock("store a failed scan").await;
-        if services.database.finish_folder_scan(root, generation, Some(&message)).await?.is_none() {
+        if services.tables.finish_folder_scan(root, generation, Some(&message)).await?.is_none() {
             return Ok(false);
         }
         Self::announce_scan_failure(root, message, services).await;
@@ -58,7 +58,7 @@ impl ImportService {
         reads: &Arc<crate::import::folder_scanner::FileReads>,
         services: &crate::import::ImportServices,
     ) -> Result<Option<PersistedScanItems>, crate::import::ImportError> {
-        let database = &services.database;
+        let tables = &services.tables;
         let mut dated = Vec::with_capacity(items.len());
         for item in items {
             let folder_date = Self::folder_date(&item, &services.diagnostics).await?;
@@ -71,9 +71,9 @@ impl ImportService {
             // share does, and every pane control waits on this lock.
             let mut prepared = Vec::with_capacity(dated.len());
             for (item, folder_date) in &dated {
-                let (item, edits_read) = Self::with_stored_file_edits(item, database).await?;
+                let (item, edits_read) = Self::with_stored_file_edits(item, tables).await?;
                 let seed = crate::import::file_metadata_seed::scan_item_seed(
-                    database,
+                    tables,
                     &services.diagnostics,
                     &item,
                     generation,
@@ -81,7 +81,11 @@ impl ImportService {
                 )
                 .await?;
                 prepared.push((
-                    crate::db::ScanItemToWrite { item, seed, folder_date: *folder_date },
+                    crate::import::tables::ScanItemToWrite {
+                        item,
+                        seed,
+                        folder_date: *folder_date,
+                    },
                     edits_read,
                 ));
             }
@@ -93,7 +97,7 @@ impl ImportService {
                 let Some((content_hash, read_revision)) = edits_read else {
                     continue;
                 };
-                let stored = database.load_candidate_file_edits(content_hash).await?;
+                let stored = tables.load_candidate_file_edits(content_hash).await?;
                 if stored.revision != *read_revision {
                     edited = true;
                     break;
@@ -104,8 +108,7 @@ impl ImportService {
                 continue;
             }
             let items = prepared.into_iter().map(|(to_write, _)| to_write).collect();
-            let Some(writes) = database.save_folder_scan_items(root, generation, items).await?
-            else {
+            let Some(writes) = tables.save_folder_scan_items(root, generation, items).await? else {
                 return Ok(None);
             };
             return Ok(Some(PersistedScanItems { commit, writes }));
@@ -141,14 +144,14 @@ impl ImportService {
     /// `None` for an item with no files to decide.
     async fn with_stored_file_edits(
         item: &ScanItem,
-        database: &crate::db::Database,
+        tables: &crate::import::tables::ImportTables,
     ) -> Result<(ScanItem, Option<(String, u64)>), crate::import::ImportError> {
         let mut item = item.clone();
         let (ScanItem::Discovered(candidate) | ScanItem::Valid(candidate)) = &mut item else {
             return Ok((item, None));
         };
         let content_hash = candidate.files.content_hash();
-        let edits = database.load_candidate_file_edits(&content_hash).await?;
+        let edits = tables.load_candidate_file_edits(&content_hash).await?;
         candidate.files.apply_candidate_file_edits(&edits)?;
         candidate.file_edit_revision = edits.revision;
         let revision = edits.revision;
@@ -159,7 +162,7 @@ impl ImportService {
     /// then the item itself. An unchanged row is announced to nobody.
     pub(super) async fn announce_scan_write(
         item: ScanItem,
-        write: &crate::db::ScanItemWrite,
+        write: &crate::import::tables::ScanItemWrite,
         services: &crate::import::ImportServices,
     ) -> Result<(), crate::import::ImportError> {
         if !write.changed() {
@@ -180,7 +183,7 @@ impl ImportService {
 
     /// Tell the runtime and the list about the releases groupings rebuilt.
     pub(super) async fn announce_regrouped(
-        regrouped: &crate::db::GroupingChanges,
+        regrouped: &crate::import::tables::GroupingChanges,
         services: &crate::import::ImportServices,
     ) -> Result<(), crate::import::ImportError> {
         for candidate_key in &regrouped.removed {
@@ -360,7 +363,7 @@ impl ImportService {
         let volume = volume_kind(root, &services.diagnostics).await;
         let on_network_volume = volume == VolumeKind::Network;
         let _commit = services.folder_state_commit.lock("begin a scan").await;
-        let generation = services.database.begin_folder_scan(root, volume).await?;
+        let generation = services.tables.begin_folder_scan(root, volume).await?;
         let watched_folder = crate::import::WatchedFolder::from_path(root.to_path_buf());
         event_tx.send(crate::import::handle::ImportEvent::Scan(
             ScanEvent::FolderScanStatusChanged {
@@ -387,20 +390,20 @@ impl ImportService {
     ) -> Result<(), crate::import::ImportError> {
         let services = &scan.services;
         let event_tx = &services.event_tx;
-        let database = &services.database;
+        let tables = &services.tables;
         let on_network_volume = volume == VolumeKind::Network;
         // What the user has decided about each candidate's files — which audio
         // each sheet describes, and which files are the release's tracks — read
         // once for the whole walk. A folder's roles are only what its filenames
         // propose until these land on top, so the walk takes them with it
         // rather than having every candidate corrected afterwards.
-        let stored_edits = database.load_stored_candidate_edits().await?;
-        let decisions = database.load_folder_release_decisions(root).await?;
+        let stored_edits = tables.load_stored_candidate_edits().await?;
+        let decisions = tables.load_folder_release_decisions(root).await?;
         // What the last pass over this root read of each file, so this one
         // opens only the files that are new or changed since, and what this
         // one reads, which the drafts of the releases it finds are seeded
         // from.
-        let reads = Arc::new(database.load_file_reads(root, services.file_tags.clone()).await?);
+        let reads = Arc::new(tables.load_file_reads(root, services.file_tags.clone()).await?);
         let walk_reads = reads.clone();
         let root_buf = root.to_path_buf();
         let dropped_item_root = root.to_path_buf();
@@ -537,7 +540,7 @@ impl ImportService {
                     .await?;
                     return Ok(());
                 }
-                database.record_scanned_folder_release_decision(&key, decision, &grouping).await?;
+                tables.record_scanned_folder_release_decision(&key, decision, &grouping).await?;
             }
             if !Self::store_scan_items(
                 root,
@@ -582,16 +585,14 @@ impl ImportService {
         // instead of walking. Cleared when the walk could not read every
         // directory, which leaves the next pass with nothing to conclude from
         // and so with a walk to do.
-        database
-            .record_folder_scan_directories(root, &directory_mtimes.unwrap_or_default())
-            .await?;
+        tables.record_folder_scan_directories(root, &directory_mtimes.unwrap_or_default()).await?;
 
         // The generation check, pruning, and status change share one
         // transaction: a newer decision or scan cannot be pruned by this
         // completed write, and `None` says one took the root first.
         let commit = services.folder_state_commit.lock("finish a scan").await;
-        let Some(crate::db::FinishedScan { pruned, regrouped }) =
-            database.finish_folder_scan(root, generation, None).await?
+        let Some(crate::import::tables::FinishedScan { pruned, regrouped }) =
+            tables.finish_folder_scan(root, generation, None).await?
         else {
             return Ok(());
         };

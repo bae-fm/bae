@@ -102,17 +102,18 @@ async fn a_scan_leaves_the_open_candidate_pane_alone() {
     let library = temp.path().join("library");
     std::fs::create_dir_all(&library).unwrap();
     let (manager, db, _) = bae_test_support::open_test_library(&library).await;
+    let tables = bae_core::import::tables::ImportTables::new(db.clone());
     manager.set_identify_automatically(false).await.unwrap();
     let services = AppServices::for_test(manager).await.unwrap();
 
     let root = temp.path().join("watched");
-    db.add_watched_import_folder(&root).await.unwrap();
+    tables.add_watched_import_folder(&root).await.unwrap();
     let generation =
-        db.begin_folder_scan(&root, bae_core::import::VolumeKind::Local).await.unwrap();
+        tables.begin_folder_scan(&root, bae_core::import::VolumeKind::Local).await.unwrap();
     let seed = folder(&root, "0000 seed", 1_000);
     let ScanItem::Valid(seed_candidate) = &seed else { unreachable!("the folder is valid") };
     let key = CandidateKey::folder(&seed_candidate.path);
-    db.save_folder_scan_item(&root, generation, &seed).await.unwrap();
+    tables.save_folder_scan_item(&root, generation, &seed).await.unwrap();
 
     // The screen: the list's first page in path order, the scans' progress,
     // and the pane on the seed, each read as the app reads it.
@@ -175,13 +176,14 @@ async fn a_scan_leaves_the_open_candidate_pane_alone() {
     let pane_before = Counted::of(&pane_runs);
 
     for n in 1..=WRITES {
-        db.save_folder_scan_item(
-            &root,
-            generation,
-            &folder(&root, &format!("{n:05} folder"), 2_000 + n),
-        )
-        .await
-        .unwrap();
+        tables
+            .save_folder_scan_item(
+                &root,
+                generation,
+                &folder(&root, &format!("{n:05} folder"), 2_000 + n),
+            )
+            .await
+            .unwrap();
     }
     settle(&mut list_seen, "the list", |total| *total == WRITES + 1).await;
     settle(&mut progress_seen, "the progress", |found| *found == WRITES + 1).await;
@@ -192,7 +194,7 @@ async fn a_scan_leaves_the_open_candidate_pane_alone() {
     // show closes them: once the pane shows it, it has run for everything
     // the scan wrote before it. Its runs, less the one that showed that
     // write, are the scan's.
-    db.set_import_candidate_skipped(&seed_candidate.path, true).await.unwrap();
+    tables.set_import_candidate_skipped(&seed_candidate.path, true).await.unwrap();
     settle(&mut pane_seen, "the pane", |skipped| *skipped == Some(true)).await;
     let pane_counted = Counted::of(&pane_runs).since(pane_before);
     let pane_counted = Counted {

@@ -1,6 +1,13 @@
 use super::*;
 
 impl Database {
+    /// This store with `clock` stamping its writes, for a test whose later
+    /// writes happen at another time than its first.
+    #[cfg(test)]
+    pub(crate) fn under_clock_for_test(&self, clock: ClockRef) -> Self {
+        Self::from_handle(self.inner.handle.clone(), clock, self.inner.ids.clone())
+    }
+
     /// Run `statement` with `params` in one write: how a test seeds rows no
     /// one call writes on its own.
     pub async fn execute_for_test(

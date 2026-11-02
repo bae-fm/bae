@@ -51,7 +51,7 @@ async fn a_key_s_runtime_query_shows_queued_then_running_from_the_table() {
     let runtime = CandidateRuntime::for_test().await;
     let key = &crate::import::CandidateKey::test("/watch/a/rel1");
     let files = scanned_key(&runtime, key).await;
-    let mut query = runtime.database.subscribe_candidate_runtime(key);
+    let mut query = runtime.tables.subscribe_candidate_runtime(key);
     assert_eq!(next_runtime(&mut query).await, None);
 
     runtime.admit(vec![(key.clone(), files.clone())], Admission::Requested).await.unwrap();
@@ -82,7 +82,7 @@ async fn a_key_s_runtime_query_shows_queued_then_running_from_the_table() {
 #[tokio::test]
 async fn the_import_counts_query_delivers_each_write_that_moves_them() {
     let runtime = CandidateRuntime::for_test().await;
-    let mut counts = runtime.database.subscribe_import_counts();
+    let mut counts = runtime.tables.subscribe_import_counts();
     let first = &crate::import::CandidateKey::test("/watch/a/rel1");
     let second = &crate::import::CandidateKey::test("/watch/a/rel2");
     let marks = vec![
@@ -124,7 +124,7 @@ async fn a_key_s_runtime_query_hears_only_its_key() {
     let first = &crate::import::CandidateKey::test("/watch/a/rel1");
     let second = &crate::import::CandidateKey::test("/watch/a/rel2");
     claim(&runtime, first).await;
-    let mut query = runtime.database.subscribe_candidate_runtime(first);
+    let mut query = runtime.tables.subscribe_candidate_runtime(first);
     assert_eq!(
         import_step(&next_runtime(&mut query).await),
         Some(ImportStep::Preparing(PrepareStep::ValidatingSourceFiles))
@@ -157,7 +157,7 @@ async fn an_import_percent_moves_the_percents_not_the_runtime() {
     let mut percents = runtime.watch_import_percents();
     measuring(&runtime, key, 40).await;
     within_five_seconds(percents.wait_for(|percents| percents.get(key) == Some(&40))).await;
-    let mut query = runtime.database.subscribe_candidate_runtime(key);
+    let mut query = runtime.tables.subscribe_candidate_runtime(key);
     assert_eq!(
         import_step(&next_runtime(&mut query).await),
         Some(ImportStep::Running(ImportPhase::MeasuringLoudness))

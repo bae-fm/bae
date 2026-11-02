@@ -12,7 +12,7 @@ impl ImportServiceHandle {
         windows: crate::library::LibraryPageWindows,
     ) -> Result<crate::import::ImportListSubscription, crate::import::ImportError> {
         Ok(crate::import::ImportListSubscription::open(
-            self.database.clone(),
+            self.tables.clone(),
             self.closing.child_token(),
             view,
             windows,
@@ -27,12 +27,10 @@ impl ImportServiceHandle {
         view: crate::import::ImportListView,
         windows: crate::library::LibraryPageWindows,
     ) -> Result<crate::import::ImportListProjection, crate::import::ImportError> {
-        let list = self.database.open_import_list(view).await?;
-        let projection = self
-            .database
-            .load_import_list(crate::import::ImportListRequest { list, windows })
-            .await;
-        self.database.close_import_list(list).await?;
+        let list = self.tables.open_import_list(view).await?;
+        let projection =
+            self.tables.load_import_list(crate::import::ImportListRequest { list, windows }).await;
+        self.tables.close_import_list(list).await?;
         Ok(projection?)
     }
 
@@ -43,7 +41,7 @@ impl ImportServiceHandle {
         &self,
     ) -> crate::live_query::LiveValues<crate::import::FolderScanProgress> {
         crate::live_query::LiveValues::new(
-            self.database.subscribe_folder_scan_progress(),
+            self.tables.subscribe_folder_scan_progress(),
             self.closing.child_token(),
         )
     }
@@ -53,7 +51,7 @@ impl ImportServiceHandle {
     /// Closing the library ends it.
     pub fn subscribe_counts(&self) -> crate::live_query::LiveValues<crate::import::ImportCounts> {
         crate::live_query::LiveValues::new(
-            self.database.subscribe_import_counts(),
+            self.tables.subscribe_import_counts(),
             self.closing.child_token(),
         )
     }
@@ -66,7 +64,7 @@ impl ImportServiceHandle {
         key: &crate::import::CandidateKey,
     ) -> crate::live_query::LiveValues<Option<crate::import::CandidateRuntimeSnapshot>> {
         crate::live_query::LiveValues::new(
-            self.database.subscribe_candidate_runtime(key),
+            self.tables.subscribe_candidate_runtime(key),
             self.closing.child_token(),
         )
     }
@@ -78,7 +76,7 @@ impl ImportServiceHandle {
         key: &crate::import::CandidateKey,
     ) -> Result<Option<crate::import::ImportCandidateDetail>, crate::import::ImportError> {
         Ok(self
-            .database
+            .tables
             .load_import_candidate(key)
             .await?
             .map(crate::import::ImportCandidateDetailProjection::resolve))
@@ -94,7 +92,7 @@ impl ImportServiceHandle {
         Option<crate::import::CandidateKey>,
         Option<crate::import::ImportCandidateDetailProjection>,
     > {
-        self.database.subscribe_import_candidate(initial)
+        self.tables.subscribe_import_candidate(initial)
     }
 
     /// The live read of the folder that failed validation the request names;
@@ -107,6 +105,6 @@ impl ImportServiceHandle {
         Option<crate::import::CandidateKey>,
         Option<crate::import::InvalidCandidateDetail>,
     > {
-        self.database.subscribe_invalid_candidate(initial)
+        self.tables.subscribe_invalid_candidate(initial)
     }
 }

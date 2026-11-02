@@ -16,7 +16,7 @@ use std::path::PathBuf;
 
 /// The path a column's bytes record. Bytes this platform never records are a
 /// store nothing here wrote.
-pub(super) fn decode(bytes: Vec<u8>) -> Result<PathBuf, DbError> {
+pub(crate) fn decode(bytes: Vec<u8>) -> Result<PathBuf, DbError> {
     coven::path_from_bytes(bytes).map_err(|error| {
         DbError::Message(format!("a stored path does not open on this device: {error}"))
     })
@@ -25,7 +25,7 @@ pub(super) fn decode(bytes: Vec<u8>) -> Result<PathBuf, DbError> {
 /// The path column `index` of `row` records. Bytes this platform never
 /// records fail the read: the row is one nothing here wrote.
 #[cfg(desktop)]
-pub(super) fn get<I: rusqlite::RowIndex>(
+pub(crate) fn get<I: rusqlite::RowIndex>(
     row: &rusqlite::Row<'_>,
     index: I,
 ) -> rusqlite::Result<PathBuf> {
@@ -34,7 +34,7 @@ pub(super) fn get<I: rusqlite::RowIndex>(
 
 /// [`get`] of a column that may be NULL.
 #[cfg(desktop)]
-pub(super) fn get_optional<I: rusqlite::RowIndex>(
+pub(crate) fn get_optional<I: rusqlite::RowIndex>(
     row: &rusqlite::Row<'_>,
     index: I,
 ) -> rusqlite::Result<Option<PathBuf>> {
@@ -57,7 +57,7 @@ impl rusqlite::types::FromSql for StoredPath {
 
 /// The path a column's `hex()` records, as a JSON document holds it.
 #[cfg(desktop)]
-pub(super) fn from_hex<'de, D>(deserializer: D) -> Result<PathBuf, D::Error>
+pub(crate) fn from_hex<'de, D>(deserializer: D) -> Result<PathBuf, D::Error>
 where
     D: serde::Deserializer<'de>,
 {
@@ -70,7 +70,7 @@ where
 /// `paths` as a JSON array of their bytes in hex, for a query that matches a
 /// column with `unhex(value)` over `json_each`.
 #[cfg(desktop)]
-pub(super) fn hex_list<'a>(paths: impl Iterator<Item = &'a std::path::Path>) -> String {
+pub(crate) fn hex_list<'a>(paths: impl Iterator<Item = &'a std::path::Path>) -> String {
     serde_json::to_string(
         &paths.map(|path| hex::encode(coven::path_bytes(path))).collect::<Vec<_>>(),
     )
@@ -80,7 +80,7 @@ pub(super) fn hex_list<'a>(paths: impl Iterator<Item = &'a std::path::Path>) -> 
 /// `keys` as a JSON array of their bytes in hex, for a query that matches a
 /// key column with `unhex(value)` over `json_each`.
 #[cfg(desktop)]
-pub(super) fn key_hex_list<'a>(
+pub(crate) fn key_hex_list<'a>(
     keys: impl Iterator<Item = &'a crate::import::CandidateKey>,
 ) -> String {
     serde_json::to_string(&keys.map(|key| hex::encode(key.as_bytes())).collect::<Vec<_>>())

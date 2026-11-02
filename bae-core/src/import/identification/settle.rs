@@ -206,7 +206,7 @@ async fn lead_metadata(
     pressing_year: Option<i32>,
 ) -> Result<Option<crate::import::CandidateMetadataDraft>, Settled> {
     let current = match crate::import::preparation::import_preparation(
-        &context.database,
+        &context.tables,
         &candidate.files.content_hash(),
     )
     .await

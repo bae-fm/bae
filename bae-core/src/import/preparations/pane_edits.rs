@@ -3,10 +3,10 @@
 //! saves it whole under the next metadata revision.
 
 use super::CandidatePreparations;
-use crate::db::{
+use crate::import::preparation::{CandidateAsRead, CandidatePreparation, CandidateWrite};
+use crate::import::tables::{
     CandidateSaveExpectation, CandidateSaveExtras, CandidateSaved, ScannedCandidateKey,
 };
-use crate::import::preparation::{CandidateAsRead, CandidatePreparation, CandidateWrite};
 use crate::import::{CandidateDraft, TrackArtistAssignments};
 
 impl CandidatePreparations {
@@ -262,7 +262,7 @@ impl CandidatePreparations {
         prep.metadata_revision += 1;
         let revision = prep.metadata_revision;
         match self
-            .database
+            .tables
             .save_candidate_preparation(prep, expected, CandidateSaveExtras::default())
             .await?
         {

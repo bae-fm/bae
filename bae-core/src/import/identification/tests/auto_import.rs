@@ -97,7 +97,7 @@ impl Fixture {
 
     /// The failed import `dir`'s pane shows, if any.
     async fn import_failure(&self, dir: &Path) -> Option<crate::import::ImportFailure> {
-        self.manager.load_import_candidate_pane_rows(&self.content_hash(dir)).await.unwrap().failure
+        self.context.tables.load_import_candidate_pane_rows(&self.content_hash(dir)).await.unwrap().failure
     }
 }
 

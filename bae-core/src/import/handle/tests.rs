@@ -12,26 +12,28 @@ use std::path::{Path, PathBuf};
 use tempfile::TempDir;
 use uuid::Uuid;
 
-async fn setup_test_manager() -> (LibraryManager, TempDir) {
+async fn setup_test_manager() -> (LibraryManager, Database, TempDir) {
     setup_test_manager_with(bae_util::http::Http::for_test()).await
 }
 
 /// A manager whose providers and image downloads send requests through `http`.
-async fn setup_test_manager_with(http: bae_util::http::Http) -> (LibraryManager, TempDir) {
+async fn setup_test_manager_with(
+    http: bae_util::http::Http,
+) -> (LibraryManager, Database, TempDir) {
     setup_test_manager_over(http, crate::diagnostics::Diagnostics::noop()).await
 }
 
 /// A manager reporting its bugs to `diagnostics`.
 async fn setup_test_manager_reporting_to(
     diagnostics: crate::diagnostics::Diagnostics,
-) -> (LibraryManager, TempDir) {
+) -> (LibraryManager, Database, TempDir) {
     setup_test_manager_over(bae_util::http::Http::for_test(), diagnostics).await
 }
 
 async fn setup_test_manager_over(
     http: bae_util::http::Http,
     diagnostics: crate::diagnostics::Diagnostics,
-) -> (LibraryManager, TempDir) {
+) -> (LibraryManager, Database, TempDir) {
     let temp_dir = TempDir::new().unwrap();
     let db_path = temp_dir.path().join("test.db");
     let database =
@@ -45,7 +47,7 @@ async fn setup_test_manager_over(
         tokio::runtime::Handle::current(),
     );
     let manager = LibraryManager::new(
-        database,
+        database.clone(),
         crate::config::AppDir::under_home(temp_dir.path()).unwrap(),
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::UuidIds),
@@ -54,7 +56,7 @@ async fn setup_test_manager_over(
         bae_catalogs::remote_image::RemoteImageCache::for_test(http.clone()),
         catalogs,
     );
-    (manager, temp_dir)
+    (manager, database, temp_dir)
 }
 
 fn make_artist(name: &str, discogs_id: Option<&str>, mb_id: Option<&str>) -> DbArtist {

@@ -17,12 +17,12 @@ use bae_types::pressing::{
 use rusqlite::Row;
 
 /// One pressing's facts as column values.
-pub(super) struct FactColumns {
-    pub(super) country: Option<&'static str>,
-    pub(super) region: Option<&'static str>,
-    pub(super) status: Option<&'static str>,
-    pub(super) packaging: Option<&'static str>,
-    pub(super) discogs_details: String,
+pub(crate) struct FactColumns {
+    pub(crate) country: Option<&'static str>,
+    pub(crate) region: Option<&'static str>,
+    pub(crate) status: Option<&'static str>,
+    pub(crate) packaging: Option<&'static str>,
+    pub(crate) discogs_details: String,
 }
 
 /// An area as the `country` and `region` columns that keep it: at most one
@@ -56,7 +56,7 @@ pub(super) fn area_of(
 }
 
 impl FactColumns {
-    pub(super) fn of(facts: &PressingFacts) -> Self {
+    pub(crate) fn of(facts: &PressingFacts) -> Self {
         let (country, region) = area_columns(facts.area);
         Self {
             country,
@@ -105,7 +105,7 @@ pub(super) fn release_barcodes_sql(release_id: &str) -> String {
 
 /// Read a `barcodes` column, a list of barcode rows read as one JSON array of
 /// strings: every barcode, in order.
-pub(super) fn read_barcodes(row: &Row, column: &str) -> rusqlite::Result<Vec<String>> {
+pub(crate) fn read_barcodes(row: &Row, column: &str) -> rusqlite::Result<Vec<String>> {
     let barcodes: String = row.get(column)?;
     serde_json::from_str::<Vec<String>>(&barcodes).map_err(|error| {
         column_conversion_error(row, column, format!("barcodes {barcodes:?}: {error}"))
@@ -114,7 +114,7 @@ pub(super) fn read_barcodes(row: &Row, column: &str) -> rusqlite::Result<Vec<Str
 
 /// Read the facts a row's columns hold. `prefix` is what a joined query puts
 /// before each column's name; a single-table query passes `""`.
-pub(super) fn read_facts(row: &Row, prefix: &str) -> rusqlite::Result<PressingFacts> {
+pub(crate) fn read_facts(row: &Row, prefix: &str) -> rusqlite::Result<PressingFacts> {
     let mut facts = read_facts_without_media(row, prefix)?;
     facts.media = read_media(row, &format!("{prefix}media"))?;
     Ok(facts)
@@ -122,7 +122,7 @@ pub(super) fn read_facts(row: &Row, prefix: &str) -> rusqlite::Result<PressingFa
 
 /// Media as a `media` column holds them: a JSON array of carriers and counts.
 #[cfg(desktop)]
-pub(super) fn media_column(media: &[MediaCount]) -> String {
+pub(crate) fn media_column(media: &[MediaCount]) -> String {
     serde_json::to_string(media).expect("media counts serialize")
 }
 
@@ -146,7 +146,7 @@ pub(super) fn read_media(row: &Row, column: &str) -> rusqlite::Result<Vec<MediaC
 
 /// Read every fact but the media, for a table that keeps a record's media in
 /// rows of their own.
-pub(super) fn read_facts_without_media(row: &Row, prefix: &str) -> rusqlite::Result<PressingFacts> {
+pub(crate) fn read_facts_without_media(row: &Row, prefix: &str) -> rusqlite::Result<PressingFacts> {
     let column = |name: &str| format!("{prefix}{name}");
     let country: Option<String> = row.get(column("country").as_str())?;
     let region: Option<String> = row.get(column("region").as_str())?;

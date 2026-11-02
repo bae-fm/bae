@@ -5,7 +5,7 @@ pub(crate) const SQL_MAX_IN_VARS: usize = 900;
 /// `value` as the integer SQLite stores, or the failure naming `what` when it
 /// is past SQLite's signed range.
 #[cfg(desktop)]
-pub(super) fn to_i64(value: u64, what: &str) -> Result<i64, DbError> {
+pub(crate) fn to_i64(value: u64, what: &str) -> Result<i64, DbError> {
     i64::try_from(value).map_err(|error| {
         DbError::Message(format!("{what} {value} exceeds SQLite's integer range: {error}"))
     })
@@ -73,7 +73,7 @@ impl CandidateFilter {
 
 /// One-row SELECT shared by coven's write [`CovenWrite`] and its read
 /// [`SqlReadContext`], used when artist resolution runs inside either context.
-pub(super) trait QueryOne {
+pub(crate) trait QueryOne {
     fn query_row<T, P: Params, F: FnOnce(&Row<'_>) -> rusqlite::Result<T>>(
         &self,
         sql: &str,
@@ -84,7 +84,7 @@ pub(super) trait QueryOne {
 
 /// Multi-row SELECT shared by coven's read and write SQL contexts. Kept
 /// separate from [`QueryOne`] so callers require only the queries they use.
-pub(super) trait QueryRows {
+pub(crate) trait QueryRows {
     fn query<T, P: Params, F: FnMut(&Row<'_>) -> rusqlite::Result<T>>(
         &self,
         sql: &str,
@@ -765,7 +765,7 @@ pub(super) fn storage_order(sort: &StorageSortCriterion) -> ListOrder {
 /// Each release with files in coven's upload queue, and where its first
 /// queued file stands in it, as the listing keeps them. Covers and other
 /// images in the queue are no release uploading.
-pub(super) const UPLOADING_RELEASES: &str =
+pub(crate) const UPLOADING_RELEASES: &str =
     "SELECT uploading.release_id, uploading.first_queued_position AS position \
      FROM release_listing uploading \
      WHERE uploading.first_queued_position IS NOT NULL";

@@ -9,10 +9,11 @@ use super::*;
 /// have one import running while another waits behind it.
 async fn two_importable(
 ) -> (ImportServiceHandle, [TempDir; 2], crate::import::CandidateKey, crate::import::CandidateKey) {
-    let (manager, tmp) = setup_test_manager().await;
+    let (manager, database, tmp) = setup_test_manager().await;
+    let tables = crate::import::tables::ImportTables::new(database);
     let other = TempDir::new().unwrap();
-    let (_, first, _) = picked_candidate(&manager, &tmp, "First Album").await;
-    let (_, second, _) = picked_candidate(&manager, &other, "Second Album").await;
+    let (_, first, _) = picked_candidate(&tables, &tmp, "First Album").await;
+    let (_, second, _) = picked_candidate(&tables, &other, "Second Album").await;
     let handle = manager.start_import_service(tokio::runtime::Handle::current()).await.unwrap();
     for key in [&first, &second] {
         handle.select_candidate_file_tags(key.clone()).await.unwrap();

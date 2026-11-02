@@ -43,7 +43,7 @@ pub(super) async fn store_two_pressings(handle: &ImportServiceHandle, hash: &str
     let providers = handle.catalogs.providers();
     super::lookup_choices::seed_mb_release_with_catalog(providers, "mb-pressing-1", "CAT-100");
     super::lookup_choices::seed_mb_release_with_catalog(providers, "mb-pressing-2", "CAT-200");
-    let prep = crate::import::preparation::import_preparation(&handle.database, hash)
+    let prep = crate::import::preparation::import_preparation(&handle.tables, hash)
         .await
         .unwrap()
         .expect("the fixture candidate is prepared");
@@ -90,8 +90,8 @@ fn album() -> AlbumLink {
 }
 
 async fn link(handle: &ImportServiceHandle, hash: &str) -> Option<ReleaseLink> {
-    handle
-        .database
+    let tables = handle.tables.clone();
+    tables
         .load_import_candidate_state(hash)
         .await
         .unwrap()

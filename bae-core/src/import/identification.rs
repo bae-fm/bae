@@ -58,9 +58,11 @@ const MAX_IN_FLIGHT: usize = 4;
 #[derive(Clone)]
 struct Context {
     import: ImportServiceHandle,
-    /// The library's store, which the queue reads candidates' stored state
+    /// The library's store, which the queue reads the person's preferences
     /// from.
     database: crate::db::Database,
+    /// Import's tables, which the queue reads candidates' stored state from.
+    tables: crate::import::tables::ImportTables,
     /// Where a bug in the queue's work is reported.
     diagnostics: crate::diagnostics::Diagnostics,
 }
@@ -96,16 +98,18 @@ enum Drain {
 }
 
 /// Start the identification queue over `import`, reading the store
-/// `database` and reporting bugs to `diagnostics`. There is one per import
+/// `database` and import's tables `tables`, and reporting bugs to
+/// `diagnostics`. There is one per import
 /// service, since it takes the service's event feed.
 pub(crate) fn start(
     import: ImportServiceHandle,
     database: crate::db::Database,
+    tables: crate::import::tables::ImportTables,
     diagnostics: crate::diagnostics::Diagnostics,
 ) -> IdentificationHandle {
     let token = CancellationToken::new();
     let tasks = TaskTracker::new();
-    let context = Context { import, database, diagnostics };
+    let context = Context { import, database, tables, diagnostics };
 
     let mut bus =
         context.import.take_event_feed().expect("one identification queue per import service");

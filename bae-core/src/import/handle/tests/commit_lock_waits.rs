@@ -121,8 +121,9 @@ async fn retitle(handle: &ImportServiceHandle, key: &crate::import::CandidateKey
 /// query delivers it.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_pane_edit_lands_while_a_scan_reads_another_folders_tags() {
-    let (manager, tmp) = setup_test_manager().await;
-    let (_candidate, key, _hash) = picked_candidate(&manager, &tmp, "Album").await;
+    let (manager, database, tmp) = setup_test_manager().await;
+    let tables = crate::import::tables::ImportTables::new(database);
+    let (_candidate, key, _hash) = picked_candidate(&tables, &tmp, "Album").await;
     let slow_root = tmp.path().join("slow share");
     audio_folder(&slow_root, "Other Album");
     let (reader, mut entered) = HeldTagReader::new();
@@ -156,9 +157,10 @@ async fn two_candidates() -> (
     crate::import::CandidateKey,
     [TempDir; 2],
 ) {
-    let (manager, tmp) = setup_test_manager().await;
+    let (manager, database, tmp) = setup_test_manager().await;
+    let tables = crate::import::tables::ImportTables::new(database);
     let other = TempDir::new().unwrap();
-    let (mut held_candidate, held_key, _) = unscanned_candidate(&manager, &tmp, "Held Album").await;
+    let (mut held_candidate, held_key, _) = unscanned_candidate(&tables, &tmp, "Held Album").await;
     std::fs::write(held_candidate.path.join("Disc.cue"), SECOND_FILE_IN_TWO).unwrap();
     held_candidate.files =
         crate::import::folder_scanner::collect_release_candidate_files_with_scope(
@@ -167,8 +169,8 @@ async fn two_candidates() -> (
             &crate::import::folder_scanner::StoredCandidateEdits::none(),
         )
         .unwrap();
-    rescan_unread_into(&manager, held_candidate.clone()).await;
-    let (_, edited_key, _) = picked_candidate(&manager, &other, "Edited Album").await;
+    rescan_unread_into(&tables, held_candidate.clone()).await;
+    let (_, edited_key, _) = picked_candidate(&tables, &other, "Edited Album").await;
     let (reader, entered) = HeldTagReader::new();
     let handle = manager
         .start_import_service_reading_tags_with(tokio::runtime::Handle::current(), reader.clone());

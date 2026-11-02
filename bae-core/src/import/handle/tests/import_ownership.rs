@@ -91,12 +91,11 @@ fn twin_of(original: &FolderCandidate, name: &str) -> FolderCandidate {
 
 /// Store `candidates`, all under one watched root, as the whole of a fresh
 /// scan generation of it.
-async fn rescan_all_into(manager: &LibraryManager, candidates: &[FolderCandidate]) {
+async fn rescan_all_into(tables: &crate::import::tables::ImportTables, candidates: &[FolderCandidate]) {
     let root = candidates[0].watched_folder_path.clone();
-    let generation = manager.begin_folder_scan(&root).await.unwrap();
+    let generation = tables.begin_folder_scan(&root, crate::import::VolumeKind::Local).await.unwrap();
     for candidate in candidates {
-        manager
-            .save_folder_scan_item(
+        crate::import::store_scan_item(tables, &crate::diagnostics::Diagnostics::noop(),
                 &root,
                 generation,
                 &crate::import::folder_scanner::ScanItem::Valid(candidate.clone()),
@@ -105,7 +104,7 @@ async fn rescan_all_into(manager: &LibraryManager, candidates: &[FolderCandidate
             .unwrap()
             .expect("the scan generation is current");
     }
-    manager.finish_folder_scan(&root, generation, None).await.unwrap();
+    tables.finish_folder_scan(&root, generation, None).await.unwrap();
 }
 
 /// Two folders whose files hash alike share one preparation. Both asked to
@@ -113,11 +112,12 @@ async fn rescan_all_into(manager: &LibraryManager, candidates: &[FolderCandidate
 /// hash taken and fails with the typed error, and the files make one release.
 #[tokio::test(flavor = "multi_thread")]
 async fn two_imports_of_the_same_files_asked_before_either_runs_make_one_release() {
-    let (manager, tmp) = setup_test_manager().await;
-    let (original, original_key, _) = picked_candidate(&manager, &tmp, "Album").await;
+    let (manager, database, tmp) = setup_test_manager().await;
+    let tables = crate::import::tables::ImportTables::new(database);
+    let (original, original_key, _) = picked_candidate(&tables, &tmp, "Album").await;
     let copy = twin_of(&original, "Copy");
     let copy_key = crate::import::CandidateKey::folder(&copy.path);
-    rescan_all_into(&manager, &[original, copy]).await;
+    rescan_all_into(&tables, &[original, copy]).await;
     let handle = manager.start_import_service(tokio::runtime::Handle::current()).await.unwrap();
     // Each folder's own tags are read; the draft they share is then given its
     // artist. Nothing changes it once an import is asked for.
@@ -172,8 +172,9 @@ async fn sheet_disc_of(
 /// folder holding the same files, and no folder holding others.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_file_decision_settles_every_folder_holding_the_same_files() {
-    let (manager, tmp) = setup_test_manager().await;
-    let (mut original, original_key, _) = picked_candidate(&manager, &tmp, "Album").await;
+    let (manager, database, tmp) = setup_test_manager().await;
+    let tables = crate::import::tables::ImportTables::new(database);
+    let (mut original, original_key, _) = picked_candidate(&tables, &tmp, "Album").await;
     std::fs::write(original.path.join("Disc.cue"), SECOND_FILE_IN_TWO).unwrap();
     original.files = crate::import::folder_scanner::collect_release_candidate_files_with_scope(
         &original.path,
@@ -192,7 +193,7 @@ async fn a_file_decision_settles_every_folder_holding_the_same_files() {
         &crate::import::folder_scanner::StoredCandidateEdits::none(),
     )
     .unwrap();
-    rescan_all_into(&manager, &[original, copy, other]).await;
+    rescan_all_into(&tables, &[original, copy, other]).await;
     let handle = manager.start_import_service(tokio::runtime::Handle::current()).await.unwrap();
     let (unsettled, _) = sheet_disc_of(&handle, &other_key).await;
 

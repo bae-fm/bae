@@ -37,7 +37,8 @@ impl crate::import::folder_scanner::DirectoryReader for ListingThatPanicsOnce {
 
 /// Where the stored scan of the only watched root stands.
 async fn root_scan_status(database: &Database) -> crate::import::FolderScanStatus {
-    let mut statuses = database.load_folder_scan_progress().await.unwrap().statuses;
+    let tables = crate::import::tables::ImportTables::new(database.clone());
+    let mut statuses = tables.load_folder_scan_progress().await.unwrap().statuses;
     assert_eq!(statuses.len(), 1, "one root is watched");
     statuses.remove(0).status
 }
@@ -48,6 +49,7 @@ async fn root_scan_status(database: &Database) -> crate::import::FolderScanStatu
 #[tokio::test]
 async fn a_pass_that_panics_fails_the_scan_and_frees_the_root() {
     let mut test = setup_import_service().await;
+    let tables = test.service.tables.clone();
     let bugs = Arc::new(crate::diagnostics::RecordingBugReporter::default());
     test.service.diagnostics =
         crate::diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone());
@@ -57,7 +59,7 @@ async fn a_pass_that_panics_fails_the_scan_and_frees_the_root() {
         std::fs::create_dir_all(&folder).unwrap();
         std::fs::write(folder.join("track.flac"), flac()).unwrap();
     }
-    test.database.add_watched_import_folder(&root).await.unwrap();
+    tables.add_watched_import_folder(&root).await.unwrap();
     let (scan, _events) = test.scan_with(
         Arc::new(crate::import::file_tag_snapshot::LoftyFileTagReader),
         Arc::new(ListingThatPanicsOnce { panicked: std::sync::atomic::AtomicBool::new(false) }),

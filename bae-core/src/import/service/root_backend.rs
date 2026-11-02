@@ -17,17 +17,17 @@ pub(super) trait RootRemovalBackend: Send + Sync {
 
 pub(super) struct ServiceRootRemovalBackend {
     folder_watcher: Arc<FolderWatcher>,
-    database: crate::db::Database,
+    tables: crate::import::tables::ImportTables,
     diagnostics: crate::diagnostics::Diagnostics,
 }
 
 impl ServiceRootRemovalBackend {
     pub(super) fn new(
         folder_watcher: Arc<FolderWatcher>,
-        database: crate::db::Database,
+        tables: crate::import::tables::ImportTables,
         diagnostics: crate::diagnostics::Diagnostics,
     ) -> Self {
-        Self { folder_watcher, database, diagnostics }
+        Self { folder_watcher, tables, diagnostics }
     }
 }
 
@@ -60,7 +60,7 @@ impl RootRemovalBackend for ServiceRootRemovalBackend {
         roots: &[PathBuf],
         parent: Option<&Path>,
     ) -> Result<Vec<crate::import::CandidateKey>, String> {
-        self.database
+        self.tables
             .remove_watched_import_folders(roots.to_vec(), parent.map(Path::to_path_buf))
             .await
             .map_err(|error| error.to_string())?

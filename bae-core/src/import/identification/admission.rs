@@ -17,7 +17,7 @@ pub(super) async fn admit_found(
             continue;
         };
         match context
-            .database
+            .tables
             .verdict_stored_for(&candidate.files.content_hash(), candidate.file_edit_revision)
             .await
         {
@@ -68,12 +68,12 @@ pub(super) async fn candidate_run_start(
     candidate: &FolderCandidate,
 ) -> Result<CandidateRunStart, crate::import::ImportError> {
     let content_hash = candidate.files.content_hash();
-    let Some(state) = context.database.load_import_candidate_state(&content_hash).await? else {
+    let Some(state) = context.tables.load_import_candidate_state(&content_hash).await? else {
         return Err(crate::import::ImportError::Internal {
             detail: format!("candidate {} has no persisted state row", candidate.key()),
         });
     };
-    let draft = context.database.load_import_candidate_pane_rows(&content_hash).await?.draft;
+    let draft = context.tables.load_import_candidate_pane_rows(&content_hash).await?.draft;
     let artist = crate::import::credited_line(&draft.album_artist_assignments);
     let title_search = match &state.lookup_choices.search_words {
         Some(words) => TitleSearch::of(&words.album, &words.artist),

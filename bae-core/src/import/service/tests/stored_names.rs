@@ -6,6 +6,7 @@
 #[cfg(windows)]
 #[tokio::test]
 async fn a_track_named_with_an_unpaired_surrogate_imports_and_exports() {
+    let tables = test.service.tables.clone();
     use std::os::windows::ffi::OsStringExt;
 
     let test = setup_import_service().await;
@@ -16,11 +17,11 @@ async fn a_track_named_with_an_unpaired_surrogate_imports_and_exports() {
         "Caf".encode_utf16().chain([0xD800]).chain(".flac".encode_utf16()).collect();
     std::fs::write(folder.join(std::ffi::OsString::from_wide(&name)), flac()).unwrap();
     let key = crate::import::CandidateKey::folder(&folder);
-    test.database.add_watched_import_folder(&root).await.unwrap();
+    tables.add_watched_import_folder(&root).await.unwrap();
     let (scan, _) = test.scan();
     scan.rescan(&root).await.unwrap();
     let candidate =
-        test.database.load_release_candidate(&key).await.unwrap().unwrap().unwrap();
+        tables.load_release_candidate(&key).await.unwrap().unwrap().unwrap();
     let hash = candidate.files.content_hash();
     let revision = prepare_named_candidate(
         &test.service,
@@ -31,8 +32,7 @@ async fn a_track_named_with_an_unpaired_surrogate_imports_and_exports() {
         "Album Title",
     )
     .await;
-    let reading = test
-        .database
+    let reading = tables
         .load_candidate_file_tag_snapshot(&root, &key)
         .await
         .unwrap()

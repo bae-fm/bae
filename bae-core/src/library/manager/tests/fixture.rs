@@ -162,10 +162,10 @@ fn fixture_candidate(
 
 /// Found's rows the import list reads, by display path, newest first.
 async fn found_rows(manager: &LibraryManager) -> crate::import::ImportListProjection {
+    let tables = crate::import::tables::ImportTables::new(manager.database.clone());
     let list =
-        manager.database.open_import_list(crate::import::ImportListView::default()).await.unwrap();
-    manager
-        .database
+        tables.open_import_list(crate::import::ImportListView::default()).await.unwrap();
+    tables
         .load_import_list(crate::import::ImportListRequest {
             list,
             windows: std::iter::once(crate::library::LibraryPageWindow { offset: 0, limit: 50 })
@@ -183,6 +183,7 @@ async fn fixture_candidates_land_on_found_in_their_states() {
     use crate::import::PendingStanding;
     use crate::library::FixtureCandidateState as State;
     let (manager, temp_dir) = setup_test_manager().await;
+    let tables = crate::import::tables::ImportTables::new(manager.database.clone());
     let root = temp_dir.path().join("watched").to_path_buf();
     let states = [
         ("Not Looked Up", State::NotLookedUp),
@@ -251,7 +252,7 @@ async fn fixture_candidates_land_on_found_in_their_states() {
             .collect::<Vec<_>>(),
         [root.as_path()]
     );
-    let scans = manager.database.load_folder_scan_progress().await.unwrap();
+    let scans = tables.load_folder_scan_progress().await.unwrap();
     assert_eq!(scans.activity, None, "no folder reads as being read");
     assert_eq!(
         scans

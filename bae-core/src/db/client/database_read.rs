@@ -4,7 +4,7 @@ use std::pin::Pin;
 
 /// A Coven read with the database client's error type at the calling boundary.
 #[must_use = "reads do not execute until awaited"]
-pub(super) struct DatabaseRead<'a, F> {
+pub(crate) struct DatabaseRead<'a, F> {
     read: coven::Read<'a, F>,
 }
 
@@ -19,7 +19,7 @@ where
         Self { read }
     }
 
-    pub(super) async fn process<P, T>(self, process: P) -> Result<T, DbError>
+    pub(crate) async fn process<P, T>(self, process: P) -> Result<T, DbError>
     where
         P: FnOnce(R) -> Result<T, DbError> + Send + 'static,
         T: Send + 'static,

@@ -197,6 +197,7 @@ async fn coordinator_removal_uninstall_failure_restores_a_runnable_root_schedule
 #[tokio::test]
 async fn coordinator_removal_database_failure_reinstalls_and_rescans_before_returning() {
     let harness = CoordinatorHarness::new().await;
+    let tables = crate::import::tables::ImportTables::new(harness.database.clone());
     *harness.removal_backend.remove_error.lock().unwrap() =
         Some("injected database failure".to_string());
     let result = removal_awaiting_its_cancelled_scan(&harness, "/music").await;
@@ -209,7 +210,7 @@ async fn coordinator_removal_database_failure_reinstalls_and_rescans_before_retu
         ["uninstall", "remove", "reinstall"]
     );
     assert_eq!(
-        harness.database.load_watched_import_folders().await.unwrap(),
+        tables.load_watched_import_folders().await.unwrap(),
         vec![crate::import::WatchedFolder::from_path(host_root("/music"))]
     );
     harness.scans.wait_for_count(2).await;
@@ -513,9 +514,10 @@ async fn coordinator_completes_scan_while_filesystem_batches_remain_ready() {
 async fn cancelled_scan_task_does_not_begin_a_durable_generation() {
     let TestService { service, manager: _, preparations, database, temp: tmp } =
         setup_import_service().await;
+    let tables = service.tables.clone();
     let root = tmp.path().join("watched");
     std::fs::create_dir(&root).unwrap();
-    service.database.add_watched_import_folder(&root).await.unwrap();
+    tables.add_watched_import_folder(&root).await.unwrap();
     let (watch_tx, _watch_rx) = tokio::sync::mpsc::unbounded_channel();
     let watcher = Arc::new(FolderWatcher::new(watch_tx, crate::diagnostics::Diagnostics::noop()));
     let (completion_tx, mut completion_rx) = tokio::sync::mpsc::unbounded_channel();
@@ -542,7 +544,7 @@ async fn cancelled_scan_task_does_not_begin_a_durable_generation() {
         .expect("scan task completion channel closed");
     scan.task.ended().await;
 
-    assert!(service.database.load_folder_scan_snapshots().await.unwrap().is_empty());
+    assert!(tables.load_folder_scan_snapshots().await.unwrap().is_empty());
     assert!(matches!(events.try_recv(), Err(tokio::sync::mpsc::error::TryRecvError::Empty)));
 }
 
@@ -674,13 +676,14 @@ async fn cancelling_a_panicked_folder_walk_fails_and_reports_it() {
 /// folder for the next check.
 #[tokio::test]
 async fn a_network_folder_found_unchanged_is_checked_again() {
-    let TestService { service, manager, database, temp: tmp, .. } = setup_import_service().await;
+    let TestService { service, temp: tmp, .. } = setup_import_service().await;
+    let tables = service.tables.clone();
     let root = tmp.path().join("watched");
     std::fs::create_dir(&root).unwrap();
     let modified_at = directory_modified_at(&root).expect("the folder's mtime reads");
-    service.database.add_watched_import_folder(&root).await.unwrap();
-    manager.begin_folder_scan(&root).await.unwrap();
-    database
+    tables.add_watched_import_folder(&root).await.unwrap();
+    tables.begin_folder_scan(&root, crate::import::VolumeKind::Local).await.unwrap();
+    tables
         .record_folder_scan_directories(&root, &[(root.clone(), modified_at)])
         .await
         .unwrap();
@@ -694,7 +697,7 @@ async fn a_network_folder_found_unchanged_is_checked_again() {
     let (mut coordinator, mut checks) = super::coordinator::Coordinator::new(
         active_roots,
         service.event_tx.clone(),
-        database,
+        tables,
         service.diagnostics.clone(),
     );
 

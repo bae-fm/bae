@@ -1,4 +1,4 @@
-mod client;
+pub(crate) mod client;
 pub mod credits;
 mod error;
 pub use error::DbError;
@@ -11,16 +11,12 @@ pub(crate) use client::resolved_in_an_empty_library;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) use client::ArtistCredits;
 pub(crate) use client::FileRow;
-#[cfg(desktop)]
-pub use client::ImportCommitError;
 pub(crate) use client::PendingRow;
 pub(crate) use client::QueueUpcomingRead;
 pub(crate) use client::QueuedPayload;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) use client::RecordsChange;
 pub(crate) use client::ReleaseMetadataRows;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(crate) use client::SelectionWrite;
 pub(crate) use client::StoredTransition;
 pub use client::{
     AlbumBrowseProjection, AlbumDetailProjection, ArtistBrowseProjection, ArtistDetailProjection,
@@ -30,20 +26,13 @@ pub use client::{
 };
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) use client::{AlbumFields, ReleaseEditWrite};
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(crate) use client::{
-    CandidatePaneWrite, CandidatePreparationRead, CandidateSaveExpectation, CandidateSaveExtras,
-    CandidateSaved, FolderReadingCommit, FolderReadingWrite, GroupingFacts, ImportClaim,
-    ImportRows, NewArtistImages, RunVerdictSaved, ScanItemSeed, ScanItemToWrite,
-    ScannedCandidateKey,
-};
 pub use client::{
     ContextFill, ContextFilled, ManualPlace, PlaybackNowRow, PlaybackQueueTables,
     PlaybackTimelineRow, ReleaseStart, ShuffleChange,
 };
 pub use client::{Database, IdentityWriteError, ReleaseDeletion};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub use client::{FinishedScan, GroupingChanges, ScanItemWrite};
+pub(crate) use client::{ImportRows, NewArtistImages};
 #[cfg(all(
     any(test, feature = "test-utils", debug_assertions),
     not(any(target_os = "ios", target_os = "android"))

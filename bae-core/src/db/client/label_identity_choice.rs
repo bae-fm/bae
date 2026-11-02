@@ -25,7 +25,7 @@ impl Database {
             super::artist_identity_choice::require_revision(sql, &hash, metadata_revision)?;
             if choice == Choice::ChangeMatch {
                 // Going back does not decide the label or dismiss its failure.
-                return super::import_state::move_pane_on(
+                return crate::import::tables::import_state::move_pane_on(
                     sql,
                     &hash,
                     crate::import::PaneMove::FindOnline,

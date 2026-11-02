@@ -83,7 +83,7 @@ async fn pick_mb(
 }
 
 async fn stored_draft(handle: &ImportServiceHandle, hash: &str) -> crate::import::CandidateDraft {
-    crate::import::preparation::import_preparation(&handle.database, hash)
+    crate::import::preparation::import_preparation(&handle.tables, hash)
         .await
         .unwrap()
         .expect("the candidate is prepared")

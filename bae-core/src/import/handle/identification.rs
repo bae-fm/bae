@@ -12,6 +12,7 @@ impl ImportServiceHandle {
         crate::import::identification::start(
             self.clone(),
             self.database.clone(),
+            self.tables.clone(),
             self.diagnostics.clone(),
         )
     }

@@ -343,9 +343,9 @@ impl From<crate::db::IdentityWriteError> for ImportError {
 /// An import's commit failed: its write failed, the library's artists changed
 /// under it, or another import of the same files landed first.
 #[cfg(desktop)]
-impl From<crate::db::ImportCommitError> for ImportError {
-    fn from(error: crate::db::ImportCommitError) -> Self {
-        use crate::db::ImportCommitError as E;
+impl From<crate::import::tables::ImportCommitError> for ImportError {
+    fn from(error: crate::import::tables::ImportCommitError) -> Self {
+        use crate::import::tables::ImportCommitError as E;
         match error {
             E::Write(error) => error.into(),
             E::LibraryChanged => Self::LibraryChanged,

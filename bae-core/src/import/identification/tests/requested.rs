@@ -602,8 +602,8 @@ async fn an_edit_during_a_run_leaves_its_answer_to_land() {
     assert_eq!(row.metadata_author, crate::import::MetadataAuthor::Identification);
     assert_eq!(
         fixture
-            .manager
-            .load_import_candidate_pane_rows(&fixture.content_hash(&dir))
+            .context
+            .tables.load_import_candidate_pane_rows(&fixture.content_hash(&dir))
             .await
             .unwrap()
             .draft

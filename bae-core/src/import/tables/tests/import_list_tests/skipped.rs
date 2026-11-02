@@ -1,0 +1,186 @@
+//! A folder that failed validation, as the list and the pane looking into it
+//! read it back.
+
+use super::*;
+
+/// A folder that failed validation is listed under Skipped as what the scan
+/// read of it — its files, what its tags call it, the image it leads with —
+/// selected like any row when the list selects it, and read whole by the pane that looks into it. A
+/// scan that finds it again finds it unchanged.
+#[tokio::test]
+async fn a_skipped_folder_is_listed_and_read_as_what_its_scan_read() {
+    use crate::import::folder_scanner::{
+        AudioDamage, InvalidCandidate, ProposedRole, SkippedFile, SkippedTags,
+    };
+
+    let (db, _tmp, root) = watched_root().await;
+    let tables = crate::import::tables::ImportTables::new(db.clone());
+    tables.add_watched_import_folder(&root).await.unwrap();
+    let folder = PathBuf::from(&root).join("Half Copied");
+    let version =
+        |name: &str, size| FileVersion { path: folder.join(name), size, modified_at_ns: 1 };
+    let invalid = InvalidCandidate {
+        path: folder.clone(),
+        name: "Half Copied".to_string(),
+        watched_folder_path: root.clone(),
+        relative_folder: crate::import::RelativeFolder::test("Half Copied"),
+        grouping: None,
+        files: vec![
+            SkippedFile {
+                relative_path: "01.flac".to_string(),
+                file: version("01.flac", 1_000),
+                role: ProposedRole::Audio,
+            },
+            SkippedFile {
+                relative_path: "02.flac".to_string(),
+                file: version("02.flac", 4_096),
+                role: ProposedRole::DamagedAudio { damage: AudioDamage::Unreadable },
+            },
+            SkippedFile {
+                relative_path: "front.jpg".to_string(),
+                file: version("front.jpg", 4),
+                role: ProposedRole::Image,
+            },
+        ],
+        tags: Some(SkippedTags {
+            album_title: "Album Title".to_string(),
+            artist: Some("Artist Name".to_string()),
+        }),
+    };
+    let key = invalid.key();
+    let generation =
+        tables.begin_folder_scan(&root, crate::import::VolumeKind::Local).await.unwrap();
+    tables
+        .save_folder_scan_item(&root, generation, &ScanItem::Invalid(invalid.clone()))
+        .await
+        .unwrap();
+    tables.finish_folder_scan(&root, generation, None).await.unwrap();
+    let mut selecting = request(TriageTab::Skipped).await;
+    selecting.selected.push(key.clone());
+
+    let list = tables.load_import_list_read(selecting).await.unwrap();
+    let listed: Vec<_> = list
+        .windows
+        .iter()
+        .flat_map(|window| &window.items)
+        .filter_map(|item| match item {
+            ImportListItem::Invalid { candidate, selected, .. } => {
+                Some((candidate.clone(), *selected))
+            }
+            _ => None,
+        })
+        .collect();
+    assert_eq!(listed, [(invalid.clone(), true)]);
+    assert_eq!(
+        invalid.cover_image(),
+        Some(crate::import::CoverImageSource::Local { file: version("front.jpg", 4) })
+    );
+
+    let mut detail = tables.subscribe_invalid_candidate(Some(key.clone()));
+    let read = detail
+        .next()
+        .await
+        .expect("the query stays open")
+        .result
+        .unwrap()
+        .expect("the key names a folder that failed validation");
+    assert_eq!(read.candidate, invalid);
+    assert_eq!(
+        read.images.iter().map(|image| image.file_id.as_str()).collect::<Vec<_>>(),
+        ["front.jpg"]
+    );
+    assert_eq!(
+        read.files.iter().map(|file| (file.file_id.as_str(), file.role)).collect::<Vec<_>>(),
+        [
+            ("01.flac", crate::import::MappingRole::Audio),
+            (
+                "02.flac",
+                crate::import::MappingRole::DamagedAudio { damage: AudioDamage::Unreadable }
+            ),
+        ]
+    );
+
+    let generation =
+        tables.begin_folder_scan(&root, crate::import::VolumeKind::Local).await.unwrap();
+    let again = tables
+        .save_folder_scan_item(&root, generation, &ScanItem::Invalid(invalid))
+        .await
+        .unwrap()
+        .expect("the scan entry is written");
+    assert!(!again.changed(), "the folder read the same is stored unchanged");
+}
+
+/// The pane looking into a folder that failed validation reads nothing for a
+/// folder that passed it: the key is answered by its kind, without reading
+/// the folder whole.
+#[tokio::test]
+async fn the_skipped_pane_reads_nothing_for_a_valid_folder() {
+    let (db, _tmp, root) = watched_root().await;
+    let tables = crate::import::tables::ImportTables::new(db.clone());
+    let valid = super::scanned(&db, &root, "Passed").await;
+
+    let read = tables
+        .subscribe_invalid_candidate(Some(valid.key()))
+        .next()
+        .await
+        .expect("the query stays open")
+        .result
+        .unwrap();
+    assert!(read.is_none(), "{read:?}");
+}
+
+/// A folder two of whose files show one name — one spelled `Caf\xE9.flac`, one
+/// whose name holds the Latin-1 byte — is stored with both, each by the bytes
+/// of its own path, and listed under Skipped naming the name they share. A
+/// Unix path holds any bytes; Windows can't spell the second name.
+#[cfg(unix)]
+#[tokio::test]
+async fn a_skipped_folder_whose_files_show_one_name_is_listed_with_that_name() {
+    use crate::import::folder_scanner::{
+        InvalidCandidate, InvalidReason, ProposedRole, SkippedFile,
+    };
+    use std::os::unix::ffi::OsStrExt;
+
+    let (db, _tmp, root) = watched_root().await;
+    let tables = crate::import::tables::ImportTables::new(db.clone());
+    tables.add_watched_import_folder(&root).await.unwrap();
+    let folder = PathBuf::from(&root).join("Album");
+    let file = |name: &[u8]| SkippedFile {
+        relative_path: r"Caf\xE9.flac".to_string(),
+        file: FileVersion {
+            path: folder.join(std::ffi::OsStr::from_bytes(name)),
+            size: 1_000,
+            modified_at_ns: 1,
+        },
+        role: ProposedRole::Audio,
+    };
+    let invalid = InvalidCandidate {
+        path: folder.clone(),
+        name: "Album".to_string(),
+        watched_folder_path: root.clone(),
+        relative_folder: crate::import::RelativeFolder::test("Album"),
+        grouping: None,
+        files: vec![file(br"Caf\xE9.flac"), file(b"Caf\xE9.flac")],
+        tags: None,
+    };
+    let generation =
+        tables.begin_folder_scan(&root, crate::import::VolumeKind::Local).await.unwrap();
+    tables
+        .save_folder_scan_item(&root, generation, &ScanItem::Invalid(invalid.clone()))
+        .await
+        .unwrap();
+    tables.finish_folder_scan(&root, generation, None).await.unwrap();
+
+    let list = tables.load_import_list_read(request(TriageTab::Skipped).await).await.unwrap();
+    let listed: Vec<&InvalidCandidate> = list
+        .windows
+        .iter()
+        .flat_map(|window| &window.items)
+        .filter_map(|item| match item {
+            ImportListItem::Invalid { candidate, .. } => Some(candidate),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(listed, [&invalid]);
+    assert_eq!(listed[0].reason(), InvalidReason::SameName { name: r"Caf\xE9.flac".to_string() });
+}

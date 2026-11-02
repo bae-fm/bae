@@ -1,0 +1,233 @@
+//! The candidate a library import commits, read inside the import's own
+//! transaction so the commit and the check that it still describes the
+//! prepared candidate are one.
+
+use super::*;
+use crate::db::client::artist_resolution::identity_write_failure;
+use crate::import::preparation::CommittingCandidate;
+
+/// Why an import's commit did not land. Nothing of it was written; the
+/// person may ask for the import again.
+#[derive(Debug, thiserror::Error)]
+pub enum ImportCommitError {
+    /// Writing the release's rows failed as any write that decides which
+    /// library artists and labels it names fails.
+    #[error(transparent)]
+    Write(#[from] IdentityWriteError),
+    /// The library's artists changed between preparing the commit and
+    /// writing it in a way that makes what was prepared for them wrong: the
+    /// import fetched pictures for artists that are no longer new, or not for
+    /// ones that now are. Importing again fetches against the library as it
+    /// now stands.
+    #[error("the library's artists changed while this import was being written; import it again")]
+    LibraryChanged,
+    /// Another import of the same files landed first: this device already
+    /// holds `release_id` for the folder hash, and one hash is one release
+    /// here.
+    #[error("this device already imported these files, as release {release_id}")]
+    FilesAlreadyImported { release_id: String },
+}
+
+impl From<rusqlite::Error> for ImportCommitError {
+    fn from(error: rusqlite::Error) -> Self {
+        Self::Write(error.into())
+    }
+}
+
+/// Carry an [`ImportCommitError`] out of the commit's coven write closure
+/// with its type intact, so [`import_commit_error`] can hand it back.
+pub(crate) fn import_commit_failure(error: ImportCommitError) -> CovenError {
+    match error {
+        ImportCommitError::Write(error) => identity_write_failure(error),
+        other => rusqlite::Error::UserFunctionError(Box::new(other)).into(),
+    }
+}
+
+/// The [`ImportCommitError`] the commit's coven write closure failed with.
+pub(crate) fn import_commit_error(error: CovenError) -> ImportCommitError {
+    match error {
+        CovenError::Database(coven::DbError::Sqlite(rusqlite::Error::UserFunctionError(host))) => {
+            match host.downcast::<ImportCommitError>() {
+                Ok(error) => *error,
+                Err(other) => ImportCommitError::Write(Database::identity_write_error(
+                    rusqlite::Error::UserFunctionError(other).into(),
+                )),
+            }
+        }
+        other => ImportCommitError::Write(Database::identity_write_error(other)),
+    }
+}
+
+/// Refuse the import unless the candidate is still exactly what the import
+/// was prepared from. The rows are read here; what must match is
+/// [`ImportExpectation::verify`](crate::import::service::ImportExpectation::verify)'s
+/// to say.
+pub(crate) fn require_import_commit_guard(
+    sql: &CovenWrite<'_>,
+    guard: &ImportCommitGuard,
+) -> Result<(), DbError> {
+    match guard {
+        ImportCommitGuard::Candidate { candidate_key, source, expectation, import_id: _ } => {
+            let current = load_committing_candidate(sql, candidate_key, expectation)?;
+            expectation.verify(candidate_key, source, current.as_ref()).map_err(DbError::Message)
+        }
+        #[cfg(test)]
+        ImportCommitGuard::UncheckedTestSetup { .. } => Ok(()),
+    }
+}
+
+/// End the import attempt the commit is, inside it: the release landing
+/// answers the failure an earlier attempt left, and ends the import's claim
+/// on the candidate, so no read sees the release beside the import still
+/// going or the import gone without its release. That failure stands until
+/// this write — an attempt that never commits, cancelled or failing with a
+/// failure of its own, leaves it as it found it or replaces it.
+pub(crate) fn end_import_attempt_of_commit(
+    sql: &CovenWrite<'_>,
+    guard: &ImportCommitGuard,
+) -> Result<(), DbError> {
+    match guard {
+        ImportCommitGuard::Candidate { candidate_key, expectation, import_id, .. } => {
+            super::delete_failure_on(sql, &expectation.candidate.content_hash)?;
+            super::move_import_on(sql, candidate_key, import_id, None)
+        }
+        #[cfg(test)]
+        ImportCommitGuard::UncheckedTestSetup { .. } => Ok(()),
+    }
+}
+
+/// Record, inside the commit, the folder hash of the files this device
+/// imported the release from: what places the folder in Done, wherever it is
+/// moved. One hash is one release on this device. The import was refused when
+/// asked for if this device already held the hash; an import of the same files
+/// that landed in between leaves the hash taken, and the unique hash refuses
+/// this commit whole as [`ImportCommitError::FilesAlreadyImported`].
+pub(crate) fn record_import_origin_on(
+    sql: &CovenWrite<'_>,
+    guard: &ImportCommitGuard,
+    release_id: &str,
+) -> Result<(), ImportCommitError> {
+    match guard {
+        ImportCommitGuard::Candidate { expectation, .. } => {
+            let content_hash = &expectation.candidate.content_hash;
+            match sql.execute(
+                "INSERT INTO local_release_origin (release_id, content_hash) VALUES (?1, ?2)",
+                params![release_id, content_hash],
+            ) {
+                Ok(_) => Ok(()),
+                // The unique hash is the one unique constraint the insert can
+                // break: the release id is the one this commit just made.
+                Err(rusqlite::Error::SqliteFailure(failure, message))
+                    if failure.extended_code == rusqlite::ffi::SQLITE_CONSTRAINT_UNIQUE =>
+                {
+                    let imported: Option<String> = sql
+                        .query_row(
+                            "SELECT release_id FROM local_release_origin WHERE content_hash = ?",
+                            [content_hash],
+                            |row| row.get(0),
+                        )
+                        .optional()?;
+                    match imported {
+                        Some(release_id) => {
+                            Err(ImportCommitError::FilesAlreadyImported { release_id })
+                        }
+                        None => Err(rusqlite::Error::SqliteFailure(failure, message).into()),
+                    }
+                }
+                Err(error) => Err(error.into()),
+            }
+        }
+        #[cfg(test)]
+        ImportCommitGuard::UncheckedTestSetup { .. } => Ok(()),
+    }
+}
+
+/// Delete, inside the commit, what the candidate holds that nothing reads once
+/// its release is in: the identify verdict (its releases and ledger go with
+/// it), what the person let the lookups use, where the pane was, the artist
+/// and label decisions this commit just resolved its credits and labels by,
+/// the library album picked for it, and its draft with its source, its cover
+/// and its link: the Done row and the imported folder's pane read the
+/// library release. The clues stay, since that pane marks the files they
+/// were read off, and so do the file decisions, which lay its files out. A
+/// commit that does not land deletes none of it, so a retry finds the
+/// candidate as the failed attempt left it.
+pub(crate) fn delete_what_the_import_spent_on(
+    sql: &CovenWrite<'_>,
+    guard: &ImportCommitGuard,
+) -> Result<(), DbError> {
+    match guard {
+        ImportCommitGuard::Candidate { expectation, .. } => {
+            let content_hash = expectation.candidate.content_hash.as_str();
+            for table in [
+                "import_candidate_verdict",
+                "import_candidate_lookup_choices",
+                "import_candidate_session",
+                "import_candidate_artist_identity_choice",
+                "import_candidate_label_identity_choice",
+                "import_candidate_album_pick",
+                // The draft takes its source and every row below it.
+                "import_candidate_edit",
+                // The cover takes its copies and its fetched bytes.
+                "import_candidate_cover",
+                // The link takes its partners and its albums.
+                "import_candidate_release_link",
+            ] {
+                sql.execute(
+                    &format!("DELETE FROM {table} WHERE content_hash = ?"),
+                    [content_hash],
+                )?;
+            }
+            Ok(())
+        }
+        #[cfg(test)]
+        ImportCommitGuard::UncheckedTestSetup { .. } => Ok(()),
+    }
+}
+
+/// The stored candidate at `candidate_key` as the commit sees it, or `None`
+/// when the scan no longer lists one there.
+fn load_committing_candidate(
+    sql: &CovenWrite<'_>,
+    candidate_key: &crate::import::CandidateKey,
+    expectation: &crate::import::service::ImportExpectation,
+) -> Result<Option<CommittingCandidate>, DbError> {
+    let Some(stored) = super::release_groupings::load_candidate_on(sql, candidate_key)? else {
+        return Ok(None);
+    };
+    let candidate = stored.candidate;
+    let revisions: Option<(i64, i64)> = sql
+        .query_row(
+            "SELECT edit_revision, metadata_revision FROM import_candidate_state \
+             WHERE content_hash = ?",
+            [expectation.candidate.content_hash.as_str()],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .optional()?;
+    let prepared_revisions = revisions
+        .map(|(edit, metadata)| {
+            Ok::<_, DbError>((
+                u64::try_from(edit).map_err(|error| {
+                    DbError::Message(format!("candidate file revision is negative: {error}"))
+                })?,
+                u64::try_from(metadata).map_err(|error| {
+                    DbError::Message(format!("candidate metadata revision is negative: {error}"))
+                })?,
+            ))
+        })
+        .transpose()?;
+    let file_tag_snapshot = super::folder_scans::load_candidate_file_tag_snapshot(
+        sql,
+        &candidate.watched_folder_path,
+        candidate_key,
+    )?
+    .and_then(|stored| stored.snapshot);
+    Ok(Some(CommittingCandidate {
+        actionable: stored.actionable,
+        source: candidate.source(),
+        content_hash: candidate.files.content_hash(),
+        file_edit_revision: candidate.file_edit_revision,
+        prepared_revisions,
+        file_tag_snapshot,
+    }))
+}

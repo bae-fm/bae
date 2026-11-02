@@ -8,8 +8,9 @@
 //! write as the change that moves it.
 
 use super::{CandidateRuntime, IdentificationChange, IdentificationMove, IdentificationStage};
-use crate::db::{DbError, ImportClaim};
+use crate::db::DbError;
 use crate::import::candidates::{Admission, CandidateFiles, SaveFailure};
+use crate::import::tables::ImportClaim;
 use crate::import::triage::TriageRuntimeFacts;
 use crate::import::CandidateKey;
 use crate::import::IdentifyRunId;
@@ -28,7 +29,7 @@ impl CandidateRuntime {
         &self,
         changes: Vec<(CandidateKey, IdentificationChange)>,
     ) -> Result<Vec<(CandidateKey, IdentificationMove)>, DbError> {
-        let moved = self.database.change_candidate_identifications(changes).await?;
+        let moved = self.tables.change_candidate_identifications(changes).await?;
         #[cfg(any(test, feature = "test-utils"))]
         self.tell_every_change(moved.iter().map(|(key, _)| key)).await;
         Ok(moved)
@@ -121,7 +122,7 @@ impl CandidateRuntime {
     ) -> Result<bool, DbError> {
         let outcome = super::published_outcome(key, run, state)?;
         let moved = self
-            .database
+            .tables
             .start_candidate_run(key, files, run, &outcome, state.read_releases())
             .await?;
         #[cfg(any(test, feature = "test-utils"))]
@@ -160,7 +161,7 @@ impl CandidateRuntime {
     /// re-identify run, which holds no standing, ends the same way when its
     /// sheet closes.
     pub(crate) async fn cancel_identification(&self, key: &CandidateKey) -> Result<(), DbError> {
-        self.database.cancel_candidate_identification(key).await?;
+        self.tables.cancel_candidate_identification(key).await?;
         #[cfg(any(test, feature = "test-utils"))]
         self.tell_every_change(std::iter::once(key)).await;
         Ok(())
@@ -183,7 +184,7 @@ impl CandidateRuntime {
     /// admitted, for a test; the live view carries it to everyone else.
     #[cfg(any(test, feature = "test-utils"))]
     pub(crate) async fn identification_progress(&self) -> Result<(u32, u32), DbError> {
-        self.database.load_identification_progress().await
+        self.tables.load_identification_progress().await
     }
 
     /// `run`'s answer for `files` could not be written; the standing says why.
@@ -229,7 +230,7 @@ impl CandidateRuntime {
         ending_identification: bool,
     ) -> Result<(), crate::import::ImportError> {
         let claim = self
-            .database
+            .tables
             .claim_candidate_import(
                 key,
                 import_id,
@@ -255,7 +256,7 @@ impl CandidateRuntime {
         import_id: &str,
         next: Option<ImportStep>,
     ) -> Result<(), DbError> {
-        self.database.move_candidate_import(key, import_id, next).await?;
+        self.tables.move_candidate_import(key, import_id, next).await?;
         #[cfg(any(test, feature = "test-utils"))]
         self.tell_every_change(std::iter::once(key)).await;
         Ok(())
@@ -263,7 +264,7 @@ impl CandidateRuntime {
 
     /// Whether an import owns `key`, read from its claim.
     pub(crate) async fn import_claimed(&self, key: &CandidateKey) -> Result<bool, DbError> {
-        Ok(self.database.load_candidate_standing(key).await?.import.is_some())
+        Ok(self.tables.load_candidate_standing(key).await?.import.is_some())
     }
 
     /// Where `key` stands, as its row reads it.
@@ -271,6 +272,6 @@ impl CandidateRuntime {
         &self,
         key: &CandidateKey,
     ) -> Result<TriageRuntimeFacts, DbError> {
-        Ok(self.database.load_candidate_standing(key).await?.facts())
+        Ok(self.tables.load_candidate_standing(key).await?.facts())
     }
 }

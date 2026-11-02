@@ -50,7 +50,7 @@ pub(super) fn release_upload_in_row(row: &Row<'_>) -> rusqlite::Result<Option<Db
 }
 
 /// What of the release `release_id` waits in this device's upload queue.
-pub(super) fn release_upload_on(
+pub(crate) fn release_upload_on(
     sql: &SqlReadContext<'_>,
     release_id: &str,
 ) -> Result<Option<DbReleaseUpload>, DbError> {

@@ -19,14 +19,14 @@ fn catalog_of(stored: &str) -> Result<Catalog, DbError> {
 
 /// One stored album link row's columns, as read.
 #[derive(serde::Deserialize)]
-pub(super) struct AlbumLinkRow {
+pub(crate) struct AlbumLinkRow {
     pub(super) catalog: String,
     pub(super) key: String,
 }
 
 impl AlbumLinkRow {
     /// The album the row names.
-    pub(super) fn album(self) -> Result<MetadataRef, DbError> {
+    pub(crate) fn album(self) -> Result<MetadataRef, DbError> {
         Ok(MetadataRef::new(catalog_of(&self.catalog)?, self.key))
     }
 }

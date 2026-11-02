@@ -112,6 +112,7 @@ async fn commit_import(db: &Database, release: &DbRelease, commit: Commit<'_>) {
 #[tokio::test]
 async fn finalize_refuses_metadata_that_changed_after_queue_admission() {
     let (db, tmp) = super::temp_db().await;
+    let tables = crate::import::tables::ImportTables::new(db.clone());
     let root = tmp.path().join("watch").to_path_buf();
     let candidate_path = std::path::PathBuf::from(&root).join("Album");
     let files = crate::import::folder_scanner::CategorizedFiles {
@@ -127,19 +128,19 @@ async fn finalize_refuses_metadata_that_changed_after_queue_admission() {
         }],
         parts: Vec::new(),
     };
-    let candidate = super::candidate_with(
+    let candidate = crate::import::tables::tests::candidate_with(
         std::path::Path::new(&root),
         "Album",
         files,
         crate::import::folder_scanner::ReleaseFileScope::Direct,
     );
     let content_hash = candidate.files.content_hash();
-    db.add_watched_import_folder(std::path::Path::new(&root)).await.unwrap();
-    let generation = db
+    tables.add_watched_import_folder(std::path::Path::new(&root)).await.unwrap();
+    let generation = tables
         .begin_folder_scan(std::path::Path::new(&root), crate::import::VolumeKind::Local)
         .await
         .unwrap();
-    db.save_folder_scan_item(
+    tables.save_folder_scan_item(
         std::path::Path::new(&root),
         generation,
         &crate::import::folder_scanner::ScanItem::Valid(candidate),

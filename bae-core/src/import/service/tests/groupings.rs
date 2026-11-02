@@ -1,14 +1,15 @@
 /// Each Pending group header with whether it can combine, and each row with
 /// whether it can separate.
 async fn offers(database: &Database) -> (Vec<(String, bool)>, Vec<(String, bool)>) {
-    let list = database
+    let tables = crate::import::tables::ImportTables::new(database.clone());
+    let list = tables
         .open_import_list(crate::import::ImportListView {
             order: crate::import::ImportListOrder::PathAscending,
             ..crate::import::ImportListView::default()
         })
         .await
         .unwrap();
-    let projection = database
+    let projection = tables
         .load_import_list(crate::import::ImportListRequest {
             list,
             windows: [crate::library::LibraryPageWindow { offset: 0, limit: 50 }]
@@ -37,12 +38,13 @@ async fn offers(database: &Database) -> (Vec<(String, bool)>, Vec<(String, bool)
 /// once.
 async fn scanned_root(releases: &[&str]) -> (TestService, TestScan, PathBuf) {
     let test = setup_import_service().await;
+    let tables = test.service.tables.clone();
     let root = test.temp.path().join("music");
     for release in releases {
         write_disc(&root.join(release), 1);
     }
     let root = crate::import::watched_folder::canonical_absolute_root(&root).unwrap();
-    test.database.add_watched_import_folder(&root).await.unwrap();
+    tables.add_watched_import_folder(&root).await.unwrap();
     let (scan, _events) = test.scan();
     scan.rescan(&root).await.unwrap();
     (test, scan, root)
@@ -114,9 +116,9 @@ async fn disc_folders_offer_to_separate_and_kept_apart_offer_to_combine() {
 #[tokio::test]
 async fn a_folders_release_keeps_its_key_across_readings() {
     let (test, scan, root) = scanned_root(&["Album/Disc 1", "Album/Disc 2"]).await;
-    let manager = &test.database;
+    let tables = test.service.tables.clone();
     let grouping_of = || async {
-        test.database
+        tables
             .load_folder_release_decisions(&root)
             .await
             .unwrap()
@@ -126,7 +128,7 @@ async fn a_folders_release_keeps_its_key_across_readings() {
     };
     let key = grouping_of().await;
     let stored_release = || async {
-        manager
+        tables
             .load_folder_scan_items(&root)
             .await
             .unwrap()
@@ -160,17 +162,17 @@ async fn a_folders_release_keeps_its_key_across_readings() {
 #[tokio::test]
 async fn a_folder_read_as_one_release_takes_its_own_files_and_numbers_its_discs() {
     let test = setup_import_service().await;
+    let tables = test.service.tables.clone();
     let root = test.temp.path().join("music");
     for disc in ["Album/Disc 1", "Album/Disc 2"] {
         write_disc(&root.join(disc), 2);
     }
     std::fs::write(root.join("Album/notes.txt"), "notes").unwrap();
     let root = crate::import::watched_folder::canonical_absolute_root(&root).unwrap();
-    test.database.add_watched_import_folder(&root).await.unwrap();
+    tables.add_watched_import_folder(&root).await.unwrap();
     let (scan, _events) = test.scan();
     scan.rescan(&root).await.unwrap();
-    let release = test
-        .database
+    let release = tables
         .load_folder_scan_items(&root)
         .await
         .unwrap()

@@ -40,7 +40,7 @@ impl ImportServiceHandle {
             });
         };
         if candidate.grouping.is_some() {
-            if self.database.set_grouping_skipped(&candidate_key, skipped).await? {
+            if self.tables.set_grouping_skipped(&candidate_key, skipped).await? {
                 if skipped {
                     self.identification_ended(&candidate_key).await;
                 }
@@ -51,7 +51,7 @@ impl ImportServiceHandle {
             }
             return Ok(());
         }
-        let changed = self.database.set_import_candidate_skipped(&candidate.path, skipped).await?;
+        let changed = self.tables.set_import_candidate_skipped(&candidate.path, skipped).await?;
         if changed {
             if skipped {
                 self.identification_ended(&candidate_key).await;
@@ -320,7 +320,7 @@ impl ImportServiceHandle {
             });
         };
         let current = crate::import::preparation::import_preparation(
-            &self.database,
+            &self.tables,
             &candidate.files.content_hash(),
         )
         .await?
@@ -359,7 +359,7 @@ impl ImportServiceHandle {
             // a newer generation, and the write only accepts tags read at the
             // current one: read again.
             let stored_generation = self
-                .database
+                .tables
                 .load_candidate_file_tag_snapshot(
                     &read.candidate.watched_folder_path,
                     &candidate_key,
@@ -449,7 +449,7 @@ impl ImportServiceHandle {
                         .map(crate::catalog_model::search::MetadataResult::of_release),
                 )
                 .collect();
-        let state = self.database.load_import_candidate_state(&content_hash).await?;
+        let state = self.tables.load_import_candidate_state(&content_hash).await?;
         let text = crate::identify::CandidateText::of_stored(
             state.as_ref().and_then(|state| state.signals.as_ref()),
             &state.as_ref().map(|state| state.lookup_choices.clone()).unwrap_or_default(),
@@ -517,7 +517,7 @@ impl ImportServiceHandle {
             });
         };
         let content_hash = candidate.files.content_hash();
-        let current = crate::import::preparation::import_preparation(&self.database, &content_hash)
+        let current = crate::import::preparation::import_preparation(&self.tables, &content_hash)
             .await?
             .ok_or_else(|| crate::import::ImportError::Internal {
                 detail: format!("{candidate_key} has no stored import preparation"),
@@ -574,7 +574,7 @@ impl ImportServiceHandle {
             });
         };
         let content_hash = candidate.files.content_hash();
-        let current = crate::import::preparation::import_preparation(&self.database, &content_hash)
+        let current = crate::import::preparation::import_preparation(&self.tables, &content_hash)
             .await?
             .ok_or_else(|| crate::import::ImportError::Internal {
                 detail: format!("{candidate_key} has no stored import preparation"),
@@ -664,7 +664,7 @@ impl ImportServiceHandle {
             ));
         }
         let preparation =
-            crate::import::preparation::import_preparation(&self.database, &content_hash)
+            crate::import::preparation::import_preparation(&self.tables, &content_hash)
                 .await?
                 .filter(|preparation| preparation.file_edit_revision == expected_revision)
                 .ok_or_else(|| crate::import::ImportError::Internal {
@@ -672,7 +672,7 @@ impl ImportServiceHandle {
                 "{candidate_key} has no complete preparation for file revision {expected_revision}"
             ),
                 })?;
-        let mut edits = self.database.load_candidate_file_edits(&content_hash).await?;
+        let mut edits = self.tables.load_candidate_file_edits(&content_hash).await?;
         if edits.revision != expected_revision {
             return Err(crate::import::ImportError::Internal {
                 detail: format!(
@@ -684,7 +684,7 @@ impl ImportServiceHandle {
 
         loop {
             let matching_files =
-                self.database.load_releases_reading(&content_hash, expected_revision).await?;
+                self.tables.load_releases_reading(&content_hash, expected_revision).await?;
             let matching_keys = matching_files
                 .iter()
                 .map(|(key, _)| key.clone())
@@ -711,7 +711,7 @@ impl ImportServiceHandle {
                     ),
                 })?;
             let stored = self
-                .database
+                .tables
                 .load_candidate_file_tag_snapshot(
                     &current_candidate.watched_folder_path,
                     candidate_key,
@@ -754,7 +754,7 @@ impl ImportServiceHandle {
             // A scan may have added or dropped a folder with these files while
             // this was prepared; if so, prepare again.
             let matching_now = self
-                .database
+                .tables
                 .load_releases_reading(&content_hash, expected_revision)
                 .await?
                 .into_iter()

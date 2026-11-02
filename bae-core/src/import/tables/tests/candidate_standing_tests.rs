@@ -1,0 +1,293 @@
+//! Each candidate's standing as the standings table stores and reads it back.
+
+use super::{empty_db, exec_batch};
+use crate::import::candidate_runtime::{
+    IdentificationChange, IdentificationStage, StoredIdentification, StoredImport, StoredStanding,
+};
+use crate::import::candidates::{Admission, CandidateFiles, SaveFailure};
+use crate::import::IdentifyRunId;
+
+/// Store `key` as a candidate the scan holds with `files`, as the scan would.
+async fn scanned(
+    db: &super::super::Database,
+    key: &crate::import::CandidateKey,
+    files: &CandidateFiles,
+) {
+    exec_batch(
+        db,
+        &format!(
+            "INSERT OR IGNORE INTO watched_import_folders (path, position)
+                 VALUES (CAST('/music' AS BLOB), 0);
+             INSERT OR IGNORE INTO folder_scan_roots (watched_folder_path, generation, status, volume)
+                 VALUES (CAST('/music' AS BLOB), 1, 'complete', 'local');
+             DELETE FROM scan_candidate WHERE path = X'{key}';
+             INSERT INTO scan_candidate (watched_folder_path, path, generation, kind, name,
+                 relative_folder, folder, file_root, scope, content_hash, file_edit_revision)
+                 VALUES (CAST('/music' AS BLOB), X'{key}', 1, 'valid', 'Album', X'{relative}',
+                     X'{key}', X'{key}', 'recursive', '{hash}', {revision});",
+            key = hex::encode(key.as_bytes()),
+            relative = hex::encode(
+                crate::import::RelativeFolder::of(
+                    key.test_folder().strip_prefix("/music").unwrap()
+                )
+                .unwrap()
+                .as_bytes()
+            ),
+            hash = files.content_hash,
+            revision = files.file_edit_revision,
+        ),
+    )
+    .await;
+}
+
+fn files_of(key: &crate::import::CandidateKey) -> CandidateFiles {
+    CandidateFiles { content_hash: format!("hash:{key}"), file_edit_revision: 0 }
+}
+
+fn run(number: u64) -> IdentifyRunId {
+    IdentifyRunId::for_test(number)
+}
+
+/// Apply `changes` to `key` one write each.
+async fn change(
+    db: &super::super::Database,
+    key: &crate::import::CandidateKey,
+    changes: Vec<IdentificationChange>,
+) {
+    let tables = crate::import::tables::ImportTables::new(db.clone());
+    for change in changes {
+        tables.change_candidate_identifications(vec![(key.clone(), change)]).await.unwrap();
+    }
+}
+
+/// Every stage a candidate's identification can reach, and every standing of
+/// its import, reads back as the change that reached it left it.
+#[tokio::test]
+async fn every_standing_reads_back_as_written() {
+    let (db, _tmp) = empty_db().await;
+    let tables = crate::import::tables::ImportTables::new(db.clone());
+    let admit = |key: &str| IdentificationChange::Admit {
+        files: files_of(&crate::import::CandidateKey::test(key)),
+        admission: Admission::Requested,
+    };
+    let start = |key: &str| IdentificationChange::RunStarted {
+        files: files_of(&crate::import::CandidateKey::test(key)),
+        run: run(1),
+    };
+    let answer = |reads_pick| IdentificationChange::RunAnswered { run: run(1), reads_pick };
+    let fail = |key: &str, failure| IdentificationChange::AnswerFailed {
+        files: files_of(&crate::import::CandidateKey::test(key)),
+        run: run(1),
+        failure,
+    };
+    let not_written = SaveFailure::NotWritten { error: "the disk is full".to_string() };
+    let inapplicable = SaveFailure::Inapplicable { error: "a track has no title".to_string() };
+    let cases = [
+        (
+            "/music/Queued",
+            vec![admit("/music/Queued")],
+            IdentificationStage::Queued { admission: Admission::Requested },
+        ),
+        (
+            "/music/Running",
+            vec![admit("/music/Running"), start("/music/Running")],
+            IdentificationStage::Running { run: run(1) },
+        ),
+        (
+            "/music/Finalizing",
+            vec![admit("/music/Finalizing"), start("/music/Finalizing"), answer(false)],
+            IdentificationStage::Finalizing { run: run(1) },
+        ),
+        (
+            "/music/Asked",
+            vec![
+                admit("/music/Asked"),
+                start("/music/Asked"),
+                answer(true),
+                IdentificationChange::ImportAsked,
+            ],
+            IdentificationStage::ReadingPick { run: run(1), import_asked: true },
+        ),
+        (
+            "/music/Not Written",
+            vec![fail("/music/Not Written", not_written.clone())],
+            IdentificationStage::Failed { failure: not_written },
+        ),
+        (
+            "/music/Inapplicable",
+            vec![fail("/music/Inapplicable", inapplicable.clone())],
+            IdentificationStage::Failed { failure: inapplicable },
+        ),
+    ];
+    for (key, changes, stage) in cases {
+        let key = &crate::import::CandidateKey::test(key);
+        scanned(&db, key, &files_of(key)).await;
+        change(&db, key, changes).await;
+        assert_eq!(
+            tables.load_candidate_standing(key).await.unwrap(),
+            StoredStanding {
+                identification: Some(StoredIdentification { files: files_of(key), stage }),
+                import: None,
+            },
+            "{key}"
+        );
+    }
+
+    let key = &crate::import::CandidateKey::test("/music/Import");
+    tables.claim_candidate_import(key, "import-1", None).await.unwrap();
+    for step in [
+        crate::import::ImportStep::Preparing(crate::import::PrepareStep::Queued),
+        crate::import::ImportStep::Preparing(crate::import::PrepareStep::ValidatingSourceFiles),
+        crate::import::ImportStep::Running(crate::import::ImportPhase::MeasuringLoudness),
+        crate::import::ImportStep::Running(crate::import::ImportPhase::Finalizing),
+    ] {
+        tables.move_candidate_import(key, "import-1", Some(step)).await.unwrap();
+        assert_eq!(
+            tables.load_candidate_standing(key).await.unwrap(),
+            StoredStanding {
+                identification: None,
+                import: Some(StoredImport { import_id: "import-1".to_string(), step }),
+            }
+        );
+    }
+}
+
+/// A candidate nothing is running for has no row: ending the last thing
+/// going for it removes the row it had.
+#[tokio::test]
+async fn nothing_running_removes_the_row() {
+    let (db, _tmp) = empty_db().await;
+    let tables = crate::import::tables::ImportTables::new(db.clone());
+    let key = &crate::import::CandidateKey::test("/music/Album");
+    scanned(&db, key, &files_of(key)).await;
+    change(
+        &db,
+        key,
+        vec![IdentificationChange::Admit { files: files_of(key), admission: Admission::Automatic }],
+    )
+    .await;
+    tables.claim_candidate_import(key, "import-1", None).await.unwrap();
+
+    change(&db, key, vec![IdentificationChange::Withdraw]).await;
+    assert_eq!(tables.load_candidate_standing(key).await.unwrap().identification, None);
+    tables.move_candidate_import(key, "import-1", None).await.unwrap();
+
+    assert!(tables.load_candidate_standings().await.unwrap().is_empty());
+    assert_eq!(tables.load_candidate_standing(key).await.unwrap(), StoredStanding::default());
+}
+
+/// A second claim on a candidate an import owns is refused by the row, and
+/// changes nothing — the identification change asked with it included.
+#[tokio::test]
+async fn a_claim_while_another_stands_is_refused_whole() {
+    let (db, _tmp) = empty_db().await;
+    let tables = crate::import::tables::ImportTables::new(db.clone());
+    let key = &crate::import::CandidateKey::test("/music/Album");
+    scanned(&db, key, &files_of(key)).await;
+    change(
+        &db,
+        key,
+        vec![
+            IdentificationChange::Admit { files: files_of(key), admission: Admission::Requested },
+            IdentificationChange::RunStarted { files: files_of(key), run: run(1) },
+        ],
+    )
+    .await;
+    tables.claim_candidate_import(key, "import-1", None).await.unwrap();
+    let claimed = tables.load_candidate_standing(key).await.unwrap();
+
+    assert_eq!(
+        tables
+            .claim_candidate_import(key, "import-2", Some(IdentificationChange::Cancelled))
+            .await
+            .unwrap(),
+        crate::import::tables::ImportClaim::Refused
+    );
+    assert_eq!(tables.load_candidate_standing(key).await.unwrap(), claimed);
+}
+
+/// Clearing the table, as the library opens, removes every standing.
+#[tokio::test]
+async fn clearing_removes_every_standing() {
+    let (db, _tmp) = empty_db().await;
+    let tables = crate::import::tables::ImportTables::new(db.clone());
+    for key in ["/music/One", "/music/Two"] {
+        let key = &crate::import::CandidateKey::test(key);
+        scanned(&db, key, &files_of(key)).await;
+        change(
+            &db,
+            key,
+            vec![IdentificationChange::Admit {
+                files: files_of(key),
+                admission: Admission::Automatic,
+            }],
+        )
+        .await;
+    }
+    tables
+        .claim_candidate_import(&crate::import::CandidateKey::test("/music/Two"), "import-1", None)
+        .await
+        .unwrap();
+    tables.clear_candidate_standings().await.unwrap();
+
+    assert!(tables.load_candidate_standings().await.unwrap().is_empty());
+}
+
+/// How many imports the import counts' live query counts in flight.
+async fn imports_in_flight(db: &super::super::Database) -> u32 {
+    let tables = crate::import::tables::ImportTables::new(db.clone());
+    tables
+        .subscribe_import_counts()
+        .next()
+        .await
+        .expect("the query stays open")
+        .unwrap()
+        .imports_in_flight
+}
+
+/// The imports in flight are the rows an import holds, whatever it has
+/// reached: a candidate only being identified is not one, and an import's
+/// ending takes its row out.
+#[tokio::test]
+async fn the_imports_in_flight_are_the_rows_an_import_holds() {
+    let (db, _tmp) = empty_db().await;
+    let tables = crate::import::tables::ImportTables::new(db.clone());
+    for key in ["/music/One", "/music/Two", "/music/Three"] {
+        let key = &crate::import::CandidateKey::test(key);
+        scanned(&db, key, &files_of(key)).await;
+        change(
+            &db,
+            key,
+            vec![IdentificationChange::Admit {
+                files: files_of(key),
+                admission: Admission::Automatic,
+            }],
+        )
+        .await;
+    }
+    assert_eq!(imports_in_flight(&db).await, 0);
+
+    tables
+        .claim_candidate_import(&crate::import::CandidateKey::test("/music/One"), "import-1", None)
+        .await
+        .unwrap();
+    tables
+        .claim_candidate_import(&crate::import::CandidateKey::test("/music/Two"), "import-2", None)
+        .await
+        .unwrap();
+    tables
+        .move_candidate_import(
+            &crate::import::CandidateKey::test("/music/Two"),
+            "import-2",
+            Some(crate::import::ImportStep::Running(crate::import::ImportPhase::Finalizing)),
+        )
+        .await
+        .unwrap();
+    assert_eq!(imports_in_flight(&db).await, 2);
+
+    tables
+        .move_candidate_import(&crate::import::CandidateKey::test("/music/One"), "import-1", None)
+        .await
+        .unwrap();
+    assert_eq!(imports_in_flight(&db).await, 1);
+}

@@ -7,8 +7,6 @@ use crate::queue::QueueItem;
 use bae_catalogs::catalog::Catalog;
 use bae_util::content_type::ContentType;
 use chrono::{DateTime, Utc};
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-use rusqlite::named_params;
 use rusqlite::{params, OptionalExtension, Params, Row};
 // coven owns production connections; row-mapping tests also use bare SQLite.
 use crate::db::DbError;
@@ -50,10 +48,10 @@ mod artist_search;
 use artist_credit_names::settle_credit_name;
 pub use artist_search::ArtistSearchProjection;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-mod artist_identity_choice;
+pub(crate) mod artist_identity_choice;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod artist_identity_merge;
-mod artist_resolution;
+pub(crate) mod artist_resolution;
 #[cfg(desktop)]
 mod label_identity_choice;
 mod label_resolution;
@@ -72,58 +70,27 @@ use artist_resolution::{identity_write_failure, relink};
 mod file_row;
 pub(crate) use file_row::FileRow;
 mod pending;
-mod queued_uploads;
+pub(crate) mod queued_uploads;
 mod sync_start_failure;
 mod sync_status;
 pub(crate) use pending::PendingRow;
 use sync_status::cloud_home_on;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-mod candidate_state_rows;
+pub(crate) mod candidate_state_rows;
 mod coven_capabilities;
 mod database_read;
-mod files;
-mod records;
+pub(crate) mod files;
+pub(crate) mod records;
 // Only identifying a release, a desktop operation, changes its records.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) use records::RecordsChange;
-// Watched folders, folder scans and the import candidate queue. Read
-// `import::watched_folder` and `import::FolderScanStatus`, both desktop-only,
-// and every caller is a gated import module — the mobile builds are sync and
-// playback clients with no import pipeline.
-#[cfg(desktop)]
-mod folder_scans;
-#[cfg(desktop)]
-pub use folder_scans::{FinishedScan, ScanItemWrite};
-#[cfg(desktop)]
-pub(crate) use folder_scans::{
-    FolderReadingCommit, FolderReadingWrite, ScanItemSeed, ScanItemToWrite,
-};
-#[cfg(desktop)]
-mod release_groupings;
-#[cfg(desktop)]
-pub use release_groupings::GroupingChanges;
-#[cfg(desktop)]
-pub(crate) use release_groupings::GroupingFacts;
-#[cfg(desktop)]
-mod import_content_hash;
-#[cfg(desktop)]
-mod import_list;
-#[cfg(desktop)]
-mod import_state;
-#[cfg(desktop)]
-pub(crate) use import_list::SelectionWrite;
-#[cfg(desktop)]
-pub use import_state::ImportCommitError;
-#[cfg(desktop)]
-pub(crate) use import_state::{
-    CandidatePaneWrite, CandidatePreparationRead, CandidateSaveExpectation, CandidateSaveExtras,
-    CandidateSaved, ImportClaim, RunVerdictSaved, ScannedCandidateKey,
-};
 mod admin_operations;
 #[cfg(desktop)]
-mod album_link_rows;
+pub(crate) mod album_link_rows;
 mod collections;
 mod history;
+#[cfg(desktop)]
+mod import_content_hash;
 mod membership;
 mod people;
 mod playback;
@@ -138,10 +105,10 @@ pub use playback_queue::{
     ContextFill, ContextFilled, ManualPlace, PlaybackQueueTables, ReleaseStart, ShuffleChange,
 };
 #[cfg(desktop)]
-mod downscaled_copies;
+pub(crate) mod downscaled_copies;
 mod playback_queue_reads;
 #[cfg(desktop)]
-mod source_releases;
+pub(crate) mod source_releases;
 pub(crate) use playback_queue_reads::QueueUpcomingRead;
 mod release;
 pub(crate) use release::ReleaseMetadataRows;
@@ -185,19 +152,17 @@ mod test_capabilities;
 mod track;
 
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;
 
-mod list_windows;
-mod path_column;
-mod pressing_columns;
-mod query;
-mod read;
+pub(crate) mod list_windows;
+pub(crate) mod path_column;
+pub(crate) mod pressing_columns;
+pub(crate) mod query;
+pub(crate) mod read;
 mod scrub_points_column;
 mod write;
 
 use album_search::*;
-#[cfg(desktop)]
-use list_windows::Places;
 use list_windows::{
     list_order_versions_on, read_windows, Keyed, KnownPlaces, ListOrder, Seek, SortTerm,
     WindowsRead,
@@ -273,7 +238,7 @@ impl Database {
 
     /// Run a pure read on Coven's bounded readers. Attach `.process()` for
     /// result assembly after releasing the connection.
-    fn read<R>(
+    pub(crate) fn read<R>(
         &self,
         f: impl for<'conn> FnOnce(SqlReadContext<'conn>) -> Result<R, DbError> + Send + 'static,
     ) -> database_read::DatabaseRead<
@@ -289,7 +254,7 @@ impl Database {
     }
 
     /// Run a write with a borrowed transaction context.
-    async fn call<R>(
+    pub(crate) async fn call<R>(
         &self,
         f: impl for<'ctx> FnOnce(&CovenWrite<'ctx>) -> Result<R, DbError> + Send + 'static,
     ) -> Result<R, DbError>
@@ -301,7 +266,7 @@ impl Database {
 
     /// Run an atomic write through coven: the closure's SQL and coven's
     /// steps in one transaction.
-    async fn call_sql<R>(
+    pub(crate) async fn call_sql<R>(
         &self,
         f: impl for<'ctx> FnOnce(CovenWrite<'ctx>) -> Result<R, DbError> + Send + 'static,
     ) -> Result<R, DbError>
@@ -329,6 +294,39 @@ impl Database {
             .write_bulk(move |sql| f(&sql).map_err(CovenError::from))
             .await
             .map_err(Self::coven_error)
+    }
+
+    /// A live query: coven reruns `query` for each write that touches what it
+    /// read.
+    #[cfg(desktop)]
+    pub(crate) fn subscribe<F, R>(&self, query: F) -> coven::LiveQuery<R>
+    where
+        F: Fn(SqlReadContext<'_>) -> Result<R, CovenError> + Send + Sync + 'static,
+        R: Send + 'static,
+    {
+        self.inner.handle.subscribe(query)
+    }
+
+    /// A live query whose request can be replaced without a new
+    /// subscription.
+    #[cfg(desktop)]
+    pub(crate) fn subscribe_reconfigurable<Q, F, R>(
+        &self,
+        initial_request: Q,
+        query: F,
+    ) -> coven::ReconfigurableLiveQuery<Q, R>
+    where
+        Q: Clone + PartialEq + Send + Sync + 'static,
+        F: Fn(&Q, SqlReadContext<'_>) -> Result<R, CovenError> + Send + Sync + 'static,
+        R: Send + 'static,
+    {
+        self.inner.handle.subscribe_reconfigurable(initial_request, query)
+    }
+
+    /// Now, by the clock the store's writes stamp their rows with.
+    #[cfg(desktop)]
+    pub(crate) fn now(&self) -> std::time::SystemTime {
+        self.inner.clock.now()
     }
 
     /// Run one coven write, its future boxed to keep it off the caller's

@@ -102,13 +102,14 @@ impl crate::import::folder_scanner::DirectoryReader for HeldListing {
 #[tokio::test]
 async fn a_candidate_is_announced_while_the_walk_still_reads_the_next_folder() {
     let test = setup_import_service().await;
+    let tables = test.service.tables.clone();
     let root = test.temp.path().join("watched");
     for name in ["Release A", "Release B"] {
         let folder = root.join(name);
         std::fs::create_dir_all(&folder).unwrap();
         std::fs::write(folder.join("track.flac"), flac()).unwrap();
     }
-    test.database.add_watched_import_folder(&root).await.unwrap();
+    tables.add_watched_import_folder(&root).await.unwrap();
     let (reader, mut entered) = HeldListing::new();
     let reader = Arc::new(reader);
     let (scan, mut events) = test

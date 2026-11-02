@@ -75,7 +75,8 @@ async fn read_list(
     offset: u64,
     limit: u64,
 ) -> crate::import::ImportListProjection {
-    database
+    let tables = crate::import::tables::ImportTables::new(database.clone());
+    tables
         .load_import_list(crate::import::ImportListRequest {
             list,
             windows: std::iter::once(crate::library::LibraryPageWindow { offset, limit }).collect(),
@@ -91,6 +92,7 @@ async fn read_list(
 #[tokio::test]
 async fn done_runs_the_releases_still_uploading_first() {
     let (manager, temp_dir) = setup_test_manager().await;
+    let tables = crate::import::tables::ImportTables::new(manager.database.clone());
     let keys = done_with_two_uploading(&manager, temp_dir.path()).await;
     let done = |order| crate::import::ImportListView {
         tab: crate::import::TriageTab::Done,
@@ -103,38 +105,35 @@ async fn done_runs_the_releases_still_uploading_first() {
         (crate::import::ImportListOrder::PathAscending, ["C", "B", "A", "D"]),
         (crate::import::ImportListOrder::PathDescending, ["C", "B", "D", "A"]),
     ] {
-        let list = manager.database.open_import_list(done(order)).await.unwrap();
+        let list = tables.open_import_list(done(order)).await.unwrap();
         assert_eq!(done_names(&read_list(&manager.database, list, 0, 50).await), expected, "{order:?}");
     }
 
     let list =
-        manager.database.open_import_list(done(crate::import::ImportListOrder::NewestFirst)).await.unwrap();
+        tables.open_import_list(done(crate::import::ImportListOrder::NewestFirst)).await.unwrap();
     let across = read_list(&manager.database, list, 1, 2).await;
     assert_eq!(done_names(&across), ["B", "D"], "a window across the two parts");
     assert_eq!(across.total_count, 4);
     assert_eq!(done_names(&read_list(&manager.database, list, 3, 5).await), ["A"]);
     let key = |name: &str| keys.iter().find(|(key, _)| key == name).unwrap().1.clone();
     let location =
-        manager.database.locate_import_candidate(list, &key("A")).await.unwrap().expect("A is on Done");
+        tables.locate_import_candidate(list, &key("A")).await.unwrap().expect("A is on Done");
     assert_eq!(location.visible_position, 3);
-    manager
-        .database
+    tables
         .change_import_list_selection(
             list,
             crate::import::selection::SelectionChange::Replace { keys: vec![key("A"), key("B")] },
         )
         .await
         .unwrap();
-    manager
-        .database
+    tables
         .set_import_list_view(list, done(crate::import::ImportListOrder::OldestFirst))
         .await
         .unwrap();
     let selected = read_list(&manager.database, list, 0, 0).await;
     assert_eq!(selected.summary.opened_at, 1, "the view opens at B, still uploading, behind C");
     assert_eq!(
-        manager
-            .database
+        tables
             .load_import_list_selected(list)
             .await
             .unwrap()
@@ -231,10 +230,10 @@ async fn a_done_row_carries_its_release_upload() {
 #[tokio::test]
 async fn extending_on_done_selects_the_run_across_its_two_parts() {
     let (manager, temp_dir) = setup_test_manager().await;
+    let tables = crate::import::tables::ImportTables::new(manager.database.clone());
     let keys = done_with_two_uploading(&manager, temp_dir.path()).await;
     let key = |name: &str| keys.iter().find(|(key, _)| key == name).unwrap().1.clone();
-    let list = manager
-        .database
+    let list = tables
         .open_import_list(crate::import::ImportListView {
             tab: crate::import::TriageTab::Done,
             order: crate::import::ImportListOrder::NewestFirst,
@@ -242,8 +241,7 @@ async fn extending_on_done_selects_the_run_across_its_two_parts() {
         })
         .await
         .unwrap();
-    manager
-        .database
+    tables
         .change_import_list_selection(
             list,
             crate::import::selection::SelectionChange::Extend { from: key("A"), to: key("B") },
@@ -251,8 +249,7 @@ async fn extending_on_done_selects_the_run_across_its_two_parts() {
         .await
         .unwrap();
     assert_eq!(
-        manager
-            .database
+        tables
             .load_import_list_selected(list)
             .await
             .unwrap()

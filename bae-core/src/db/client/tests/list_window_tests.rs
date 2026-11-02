@@ -703,7 +703,9 @@ async fn import_items(
     db: &Database,
     request: crate::import::ImportListRequest,
 ) -> Vec<Vec<crate::import::list::ImportListItem>> {
-    db.load_import_list(request)
+    let tables = crate::import::tables::ImportTables::new(db.clone());
+    tables
+        .load_import_list(request)
         .await
         .unwrap()
         .windows
@@ -720,8 +722,9 @@ async fn import_items(
 async fn a_scrolled_import_list_holds_its_offsets_items_across_a_scan() {
     use crate::import::{ImportListOrder, ImportListRequest, ImportListView, PendingFilter};
     let (db, tmp) = super::empty_db().await;
+    let tables = crate::import::tables::ImportTables::new(db.clone());
     super::window_cost::grow_import_list(&db, tmp.path(), 0, 300).await;
-    let list = db
+    let list = tables
         .open_import_list(ImportListView {
             tab: crate::import::TriageTab::Pending,
             filter_text: String::new(),
@@ -735,7 +738,7 @@ async fn a_scrolled_import_list_holds_its_offsets_items_across_a_scan() {
         list,
         windows: LibraryPageWindows::from([LibraryPageWindow { offset, limit: 10 }]),
     };
-    let mut query = db.subscribe_import_list(request(0));
+    let mut query = tables.subscribe_import_list(request(0));
     query.next().await.unwrap().result.unwrap();
     let requests = query.requests();
     let mut scroll = async |offset: u64| {

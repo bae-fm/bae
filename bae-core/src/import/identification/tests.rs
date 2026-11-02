@@ -352,6 +352,7 @@ impl Fixture {
         let context = Context {
             import: import.clone(),
             database: database.clone(),
+            tables: crate::import::tables::ImportTables::new(database.clone()),
             diagnostics: crate::diagnostics::Diagnostics::noop(),
         };
         Fixture {
@@ -551,7 +552,7 @@ impl Fixture {
     }
 
     async fn stored(&self) -> BTreeMap<String, DbImportCandidateState> {
-        self.manager.load_import_candidate_states().await.unwrap().into_iter().collect()
+        self.context.tables.load_import_candidate_states().await.unwrap().into_iter().collect()
     }
 
     /// A candidate folder's content hash, read off disk.

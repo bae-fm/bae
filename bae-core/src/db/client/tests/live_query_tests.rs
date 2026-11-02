@@ -5,8 +5,8 @@ use std::collections::BTreeSet;
 use std::time::Duration;
 
 const ARTIST_ID: &str = "96f0ef68-c284-4f74-b3f6-d9a4b48ee6d1";
-pub(super) const ALBUM_ID: &str = "975b724f-fce7-4fdb-85be-9f57fd9ba496";
-pub(super) const RELEASE_ID: &str = "44751464-1552-44be-8c5a-955cc5b61d12";
+pub(crate) const ALBUM_ID: &str = "975b724f-fce7-4fdb-85be-9f57fd9ba496";
+pub(crate) const RELEASE_ID: &str = "44751464-1552-44be-8c5a-955cc5b61d12";
 const OTHER_ALBUM_ID: &str = "5cf43aa4-8374-4ec4-bf08-239685a62f37";
 pub(super) const IDENTITY_ID: &str = "d9af7374-f7de-4d5b-8f9e-19b250ca2693";
 const OTHER_RELEASE_ID: &str = "79764470-a937-42fd-bbd4-fce67651c72e";
@@ -20,7 +20,7 @@ const COMPOSER_LINK_ID: &str = "8621fd15-044a-44dd-ae70-dd6de30e35da";
 const OTHER_COMPOSER_LINK_ID: &str = "49a10300-3036-4301-9e1b-a50a76a46032";
 const INSERTED_COMPOSER_LINK_ID: &str = "9168d755-3ed6-446c-a0ec-5f4039e18a6f";
 
-pub(super) async fn live_db() -> (Database, tempfile::TempDir) {
+pub(crate) async fn live_db() -> (Database, tempfile::TempDir) {
     let (db, temp) = super::temp_db().await;
     exec_batch(
         &db,
@@ -59,7 +59,7 @@ pub(super) async fn write_artist_image(db: &Database, artist: &str, content: &st
 /// move alone caused that run. Every commit since the query's last value is
 /// read into the same run, so one touching anything the query reads makes the
 /// cause `RequestAndDatabaseChanged`.
-pub(super) async fn next_run_is_only_the_request<Request, Value>(
+pub(crate) async fn next_run_is_only_the_request<Request, Value>(
     live: &mut coven::ReconfigurableLiveQuery<Request, Value>,
     request: Request,
 ) -> coven::ReconfigurableLiveQueryEvent<Request, Value>

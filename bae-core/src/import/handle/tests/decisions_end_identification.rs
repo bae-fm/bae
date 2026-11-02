@@ -215,11 +215,12 @@ async fn a_skip_ends_identification_in_its_write() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn combining_ends_its_folders_identification_in_its_write() {
-    let (manager, _library) = setup_test_manager().await;
+    let (manager, database, _library) = setup_test_manager().await;
+    let tables = crate::import::tables::ImportTables::new(database);
     let first_root = TempDir::new().unwrap();
     let second_root = TempDir::new().unwrap();
-    let (_, first, _) = picked_candidate(&manager, &first_root, "Volume B").await;
-    let (_, second, _) = picked_candidate(&manager, &second_root, "Volume A").await;
+    let (_, first, _) = picked_candidate(&tables, &first_root, "Volume B").await;
+    let (_, second, _) = picked_candidate(&tables, &second_root, "Volume A").await;
     let handle = manager.start_import_service(tokio::runtime::Handle::current()).await.unwrap();
     // A folder waiting for or running a run is refused a combination; one
     // whose answer is being written is combined, and the answer ends.

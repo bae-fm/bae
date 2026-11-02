@@ -4,14 +4,14 @@ use bae_core::import::folder_scanner::{
     ScannedFile,
 };
 use bae_core::import::{ImportEvent, ImportProgress};
-use bae_core::library::LibraryManager;
 use std::path::PathBuf;
 
 /// An `Automation` over a real library in a temporary directory, keeping the
-/// manager and services so tests can write the scan rows and runtime it reads.
+/// import tables and services so tests can write the scan rows and runtime it
+/// reads.
 pub(super) struct Fixture {
     automation: Automation,
-    manager: LibraryManager,
+    tables: bae_core::import::tables::ImportTables,
     services: AppServices,
     tmp: tempfile::TempDir,
 }
@@ -63,10 +63,11 @@ impl Fixture {
 
 pub(super) async fn automation_over() -> Fixture {
     let tmp = tempfile::TempDir::new().expect("a temp library dir");
-    let (manager, _, _) = bae_test_support::open_test_library(tmp.path()).await;
-    let services = AppServices::for_test(manager.clone()).await.expect("the services start");
+    let (manager, database, _) = bae_test_support::open_test_library(tmp.path()).await;
+    let services = AppServices::for_test(manager).await.expect("the services start");
     let automation = Automation::new(services.clone(), &tokio::runtime::Handle::current());
-    Fixture { automation, manager, services, tmp }
+    let tables = bae_core::import::tables::ImportTables::new(database);
+    Fixture { automation, tables, services, tmp }
 }
 
 #[tokio::test]
@@ -75,9 +76,9 @@ async fn watched_folder_tool_reads_current_store_rows() {
     let root = fixture.root();
     for watched in [false, true, false] {
         if watched {
-            fixture.manager.add_watched_import_folder(&root).await.unwrap();
+            fixture.tables.add_watched_import_folder(&root).await.unwrap();
         } else {
-            fixture.manager.remove_watched_import_folders(vec![root.clone()], None).await.unwrap();
+            fixture.tables.remove_watched_import_folders(vec![root.clone()], None).await.unwrap();
         }
         let response = fixture
             .automation
@@ -151,18 +152,26 @@ async fn write_scan(
     root: &std::path::Path,
     build: impl FnOnce(&mut Vec<ScanItem>),
 ) {
-    let manager = &fixture.manager;
-    manager.add_watched_import_folder(root).await.expect("the root is watched");
-    let generation = manager.begin_folder_scan(root).await.expect("a scan generation opens");
+    let tables = &fixture.tables;
+    tables.add_watched_import_folder(root).await.expect("the root is watched");
+    let generation = tables
+        .begin_folder_scan(root, bae_core::import::VolumeKind::Local)
+        .await
+        .expect("a scan generation opens");
     let mut items = Vec::new();
     build(&mut items);
     for item in &items {
-        manager
-            .save_folder_scan_item(root, generation, item)
-            .await
-            .expect("the scan item persists");
+        bae_core::import::store_scan_item(
+            tables,
+            &bae_core::diagnostics::Diagnostics::noop(),
+            root,
+            generation,
+            item,
+        )
+        .await
+        .expect("the scan item persists");
     }
-    manager.finish_folder_scan(root, generation, None).await.expect("the scan finishes");
+    tables.finish_folder_scan(root, generation, None).await.expect("the scan finishes");
 }
 
 fn keys(candidates: &[AutomationCandidate]) -> Vec<&str> {

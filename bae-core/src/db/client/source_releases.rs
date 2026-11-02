@@ -724,7 +724,7 @@ fn with_joined_albums_on<S: QueryRows>(
 
 /// The stored release `release` names, as import surfaces read it, or
 /// `None` when no row names it.
-pub(super) fn load_source_release_on<S: QueryOne + QueryRows>(
+pub(crate) fn load_source_release_on<S: QueryOne + QueryRows>(
     sql: &S,
     release: &crate::catalog_model::records::LookupRef,
 ) -> Result<Option<SourceRelease>, DbError> {
@@ -739,7 +739,7 @@ pub(super) fn load_source_release_on<S: QueryOne + QueryRows>(
 /// before the stored one was would otherwise overwrite a fuller read. A
 /// release no row names is not stored: a catalog release is stored only while
 /// something names it.
-pub(super) fn store_named_releases_on(
+pub(crate) fn store_named_releases_on(
     sql: &CovenWrite<'_>,
     releases: &[SourceRelease],
 ) -> Result<(), DbError> {
@@ -790,7 +790,7 @@ pub(super) fn store_named_releases_on(
 /// [`SourceRelease::records`] answers of it — read without the rest of the
 /// release: its tracklist, covers and credits stay unread. `None` when
 /// nothing stored it.
-pub(super) fn load_release_records_on<S: QueryOne + QueryRows>(
+pub(crate) fn load_release_records_on<S: QueryOne + QueryRows>(
     sql: &S,
     release: &crate::catalog_model::records::LookupRef,
 ) -> Result<Option<Vec<ReleaseRecord>>, DbError> {

@@ -439,7 +439,7 @@ pub(super) const RELEASE_RECORDS_IN_ORDER: &str =
 
 /// Every catalog's description of a release, in the order surfaces list
 /// catalogs.
-pub(super) fn get_release_records_on(
+pub(crate) fn get_release_records_on(
     sql: &SqlReadContext<'_>,
     release_id: &str,
 ) -> Result<Vec<crate::catalog_model::records::ReleaseRecord>, DbError> {
@@ -466,7 +466,7 @@ pub(super) fn get_release_records_on(
 /// Build a column-conversion error for a named column whose stored text the
 /// mapper could not turn into its typed value, so a corrupt column surfaces like
 /// any other bad read instead of panicking or silently mis-defaulting.
-pub(super) fn column_conversion_error(row: &Row, column: &str, message: String) -> rusqlite::Error {
+pub(crate) fn column_conversion_error(row: &Row, column: &str, message: String) -> rusqlite::Error {
     // The column was just read, so its index resolves; if it somehow doesn't,
     // that lookup error is itself a faithful failure to return.
     match row.as_ref().column_index(column) {
@@ -481,7 +481,7 @@ pub(super) fn column_conversion_error(row: &Row, column: &str, message: String) 
 
 /// Read a named rfc3339 timestamp column, surfacing a malformed value as a
 /// column-conversion error rather than panicking on the parse.
-pub(super) fn rfc3339_column(row: &Row, column: &str) -> rusqlite::Result<DateTime<Utc>> {
+pub(crate) fn rfc3339_column(row: &Row, column: &str) -> rusqlite::Result<DateTime<Utc>> {
     let raw: String = row.get(column)?;
     DateTime::parse_from_rfc3339(&raw).map(|dt| dt.with_timezone(&Utc)).map_err(|e| {
         column_conversion_error(

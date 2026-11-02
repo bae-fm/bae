@@ -5,6 +5,8 @@
 async fn pure_reads_use_the_read_connection() {
     let (db, tmp) = bae_test_support::temp_test_db().await;
 
+    let tables = bae_core::import::tables::ImportTables::new(db.clone());
+
     // A device-local write still uses the write connection.
     db.save_playback_state(&bae_core::db::DbPlaybackState { current: None, position_ms: None })
         .await
@@ -30,9 +32,9 @@ async fn pure_reads_use_the_read_connection() {
     db.has_pending_cloud_upload("missing").await.unwrap();
 
     // The tables the pane writes read back the same way.
-    db.load_import_candidate_state("missing").await.unwrap();
+    tables.load_import_candidate_state("missing").await.unwrap();
     assert_eq!(
-        db.load_import_candidate_pane_rows("missing").await.unwrap_err().to_string(),
+        tables.load_import_candidate_pane_rows("missing").await.unwrap_err().to_string(),
         "candidate missing has no state"
     );
 
@@ -44,19 +46,19 @@ async fn pure_reads_use_the_read_connection() {
 
     db.clear_playback_state().await.unwrap();
     db.clear_playback_state().await.unwrap();
-    db.add_watched_import_folder(std::path::Path::new(root)).await.unwrap();
-    assert!(!db.add_watched_import_folder(std::path::Path::new(root)).await.unwrap());
+    tables.add_watched_import_folder(std::path::Path::new(root)).await.unwrap();
+    assert!(!tables.add_watched_import_folder(std::path::Path::new(root)).await.unwrap());
     let album = std::path::Path::new(root).join("Album");
     let album = album.to_str().unwrap();
     let never_skipped = std::path::Path::new(root).join("Never Skipped");
-    db.set_import_candidate_skipped(std::path::Path::new(album), true).await.unwrap();
-    assert!(!db.set_import_candidate_skipped(std::path::Path::new(album), true).await.unwrap());
-    db.set_import_candidate_skipped(&never_skipped, false).await.unwrap();
-    let generation = db
+    tables.set_import_candidate_skipped(std::path::Path::new(album), true).await.unwrap();
+    assert!(!tables.set_import_candidate_skipped(std::path::Path::new(album), true).await.unwrap());
+    tables.set_import_candidate_skipped(&never_skipped, false).await.unwrap();
+    let generation = tables
         .begin_folder_scan(std::path::Path::new(root), bae_core::import::VolumeKind::Local)
         .await
         .unwrap();
-    assert!(db
+    assert!(tables
         .finish_folder_scan(std::path::Path::new(root), generation - 1, None)
         .await
         .unwrap()
@@ -114,7 +116,7 @@ async fn pure_reads_use_the_read_connection() {
         })
         .await
         .unwrap());
-    assert!(db
+    assert!(tables
         .remove_watched_import_folders(
             vec![std::path::PathBuf::from("/nothing/watches/this")],
             None

@@ -40,24 +40,24 @@ fn cover_jpeg() -> Vec<u8> {
 /// The folder is stored rather than scanned for: the pane's writes are what is
 /// under test, and a real scan would only make when they run less certain.
 async fn picked_candidate(
-    manager: &LibraryManager,
+    tables: &crate::import::tables::ImportTables,
     tmp: &TempDir,
     folder_name: &str,
 ) -> (FolderCandidate, crate::import::CandidateKey, String) {
-    let (candidate, key, hash) = unscanned_candidate(manager, tmp, folder_name).await;
-    rescan_into(manager, candidate.clone()).await;
+    let (candidate, key, hash) = unscanned_candidate(tables, tmp, folder_name).await;
+    rescan_into(tables, candidate.clone()).await;
     (candidate, key, hash)
 }
 
 /// [`picked_candidate`] as a scan stores a folder whose tags it could not
 /// read: a blank draft and no reading, so the first pick is what reads them.
 async fn unread_candidate(
-    manager: &LibraryManager,
+    tables: &crate::import::tables::ImportTables,
     tmp: &TempDir,
     folder_name: &str,
 ) -> (FolderCandidate, crate::import::CandidateKey, String) {
-    let (candidate, key, hash) = unscanned_candidate(manager, tmp, folder_name).await;
-    rescan_unread_into(manager, candidate.clone()).await;
+    let (candidate, key, hash) = unscanned_candidate(tables, tmp, folder_name).await;
+    rescan_unread_into(tables, candidate.clone()).await;
     (candidate, key, hash)
 }
 
@@ -70,16 +70,16 @@ fn set_modified(path: &Path, modified: std::time::SystemTime) {
 }
 
 /// [`rescan_into`] as a scan that could not read the folder's tags.
-async fn rescan_unread_into(manager: &LibraryManager, candidate: FolderCandidate) {
+async fn rescan_unread_into(tables: &crate::import::tables::ImportTables, candidate: FolderCandidate) {
     let root = candidate.watched_folder_path.clone();
-    let generation = manager.begin_folder_scan(&root).await.unwrap();
-    let unread = crate::db::ScanItemToWrite {
+    let generation = tables.begin_folder_scan(&root, crate::import::VolumeKind::Local).await.unwrap();
+    let unread = crate::import::tables::ScanItemToWrite {
         item: crate::import::folder_scanner::ScanItem::Valid(candidate),
-        seed: crate::db::ScanItemSeed::Tags(None),
+        seed: crate::import::tables::ScanItemSeed::Tags(None),
         folder_date: None,
     };
-    manager.database_for_test().save_folder_scan_items(&root, generation, vec![unread]).await.unwrap();
-    manager.finish_folder_scan(&root, generation, None).await.unwrap();
+    tables.save_folder_scan_items(&root, generation, vec![unread]).await.unwrap();
+    tables.finish_folder_scan(&root, generation, None).await.unwrap();
 }
 
 /// The folder [`picked_candidate`] stores, under a watched root, not stored yet.
@@ -91,7 +91,7 @@ async fn rescan_unread_into(manager: &LibraryManager, candidate: FolderCandidate
 /// otherwise be one release's files, and a decision about one would answer
 /// both.
 async fn unscanned_candidate(
-    manager: &LibraryManager,
+    tables: &crate::import::tables::ImportTables,
     tmp: &TempDir,
     folder_name: &str,
 ) -> (FolderCandidate, crate::import::CandidateKey, String) {
@@ -152,7 +152,7 @@ async fn unscanned_candidate(
         grouping: None,
     };
 
-    manager.add_watched_import_folder(&root).await.unwrap();
+    tables.add_watched_import_folder(&root).await.unwrap();
 
     let key = crate::import::CandidateKey::folder(&folder);
     let hash = candidate.files.content_hash();
@@ -162,18 +162,17 @@ async fn unscanned_candidate(
 /// Store `candidate` as the whole of a fresh scan generation of its own
 /// watched root — the stamp every later read of that candidate is checked
 /// against.
-async fn rescan_into(manager: &LibraryManager, candidate: FolderCandidate) {
+async fn rescan_into(tables: &crate::import::tables::ImportTables, candidate: FolderCandidate) {
     let root = candidate.watched_folder_path.clone();
-    let generation = manager.begin_folder_scan(&root).await.unwrap();
-    manager
-        .save_folder_scan_item(
+    let generation = tables.begin_folder_scan(&root, crate::import::VolumeKind::Local).await.unwrap();
+    crate::import::store_scan_item(tables, &crate::diagnostics::Diagnostics::noop(),
             &root,
             generation,
             &crate::import::folder_scanner::ScanItem::Valid(candidate),
         )
         .await
         .unwrap();
-    manager.finish_folder_scan(&root, generation, None).await.unwrap();
+    tables.finish_folder_scan(&root, generation, None).await.unwrap();
 }
 
 /// A running import service over a watched root holding one stored candidate —
@@ -204,7 +203,11 @@ const SECOND_FILE_IN_TWO: &str = concat!(
 
 /// Write `cue` beside `candidate`'s audio as `Disc.cue` and store the folder
 /// as a scan reads it now, so its sheet decisions have a sheet to act on.
-async fn add_sheet(manager: &LibraryManager, candidate: &mut FolderCandidate, cue: &str) {
+async fn add_sheet(
+    tables: &crate::import::tables::ImportTables,
+    candidate: &mut FolderCandidate,
+    cue: &str,
+) {
     std::fs::write(candidate.path.join("Disc.cue"), cue).unwrap();
     candidate.files = crate::import::folder_scanner::collect_release_candidate_files_with_scope(
         &candidate.path,
@@ -212,26 +215,28 @@ async fn add_sheet(manager: &LibraryManager, candidate: &mut FolderCandidate, cu
         &crate::import::folder_scanner::StoredCandidateEdits::none(),
     )
     .unwrap();
-    rescan_into(manager, candidate.clone()).await;
+    rescan_into(tables, candidate.clone()).await;
 }
 
 /// [`stored_candidate`] holding a `Disc.cue` of `cue`.
 async fn stored_candidate_with_sheet(cue: &str) -> StoredCandidate {
     let mut fixture = stored_candidate().await;
-    add_sheet(&fixture.manager, &mut fixture.candidate, cue).await;
+    add_sheet(&fixture.handle.tables, &mut fixture.candidate, cue).await;
     fixture
 }
 
 async fn stored_candidate_with(http: bae_util::http::Http) -> StoredCandidate {
-    let (manager, tmp) = setup_test_manager_with(http).await;
-    let (candidate, key, _hash) = picked_candidate(&manager, &tmp, "Album").await;
+    let (manager, database, tmp) = setup_test_manager_with(http).await;
+    let tables = crate::import::tables::ImportTables::new(database);
+    let (candidate, key, _hash) = picked_candidate(&tables, &tmp, "Album").await;
     started(manager, candidate, key, tmp).await
 }
 
 /// [`stored_candidate`] whose tags the scan could not read.
 async fn unread_stored_candidate() -> StoredCandidate {
-    let (manager, tmp) = setup_test_manager_with(bae_util::http::Http::for_test()).await;
-    let (candidate, key, _hash) = unread_candidate(&manager, &tmp, "Album").await;
+    let (manager, database, tmp) = setup_test_manager_with(bae_util::http::Http::for_test()).await;
+    let tables = crate::import::tables::ImportTables::new(database);
+    let (candidate, key, _hash) = unread_candidate(&tables, &tmp, "Album").await;
     started(manager, candidate, key, tmp).await
 }
 
@@ -461,8 +466,8 @@ async fn stored_tags(
     candidate: &crate::import::folder_scanner::FolderCandidate,
     key: &crate::import::CandidateKey,
 ) -> Option<crate::import::file_tag_snapshot::FileTagSnapshot> {
-    handle
-        .database
+    let tables = handle.tables.clone();
+    tables
         .load_candidate_file_tag_snapshot(&candidate.watched_folder_path, key)
         .await
         .unwrap()
@@ -512,7 +517,7 @@ async fn matching_file_observations_reuse_the_stored_tag_snapshot() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn changed_file_observations_read_the_tags_again() {
-    let StoredCandidate { mut handle, manager, mut candidate, key, tmp } =
+    let StoredCandidate { mut handle, mut candidate, key, tmp, .. } =
         unread_stored_candidate().await;
     let reader = std::sync::Arc::new(CountingFileTagReader::immediate());
 
@@ -543,7 +548,7 @@ async fn changed_file_observations_read_the_tags_again() {
         .unwrap()
         .file
         .size = std::fs::metadata(&second_audio).unwrap().len();
-    rescan_unread_into(&manager, candidate).await;
+    rescan_unread_into(&handle.tables, candidate).await;
 
     let after_size = handle.read_file_tag_snapshot(&key, reader.clone()).await.unwrap().snapshot;
     assert_eq!(reader.read_count(), 6);
@@ -556,12 +561,12 @@ async fn changed_file_observations_read_the_tags_again() {
 /// makes the candidate a different shape and its tags are read again.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_file_decision_makes_the_tags_read_again() {
-    let StoredCandidate { mut handle, manager, candidate, key, tmp: _tmp } =
+    let StoredCandidate { mut handle, candidate, key, tmp: _tmp, .. } =
         unread_stored_candidate().await;
     let reader = std::sync::Arc::new(CountingFileTagReader::immediate());
     pick_file_tags(&mut handle, &key, reader.clone()).await.unwrap();
 
-    rescan_into(&manager, candidate).await;
+    rescan_into(&handle.tables, candidate).await;
 
     let after_generation =
         handle.read_file_tag_snapshot(&key, reader.clone()).await.unwrap().snapshot;
@@ -596,7 +601,7 @@ async fn file_tags_cannot_restore_mappings_read_before_a_file_decision() {
         stored_candidate_with_sheet(SECOND_FILE_IN_TWO).await;
     let hash = candidate.files.content_hash();
     handle.select_candidate_file_tags(key.clone()).await.unwrap();
-    let stale = crate::import::preparation::import_preparation(&handle.database, &hash)
+    let stale = crate::import::preparation::import_preparation(&handle.tables, &hash)
         .await
         .unwrap()
         .expect("the candidate starts prepared");
@@ -648,7 +653,7 @@ async fn sheet_decisions_leave_the_draft_drawn_over_the_settled_audio() {
     ] {
         handle.set_sheet_disc(key.clone(), "Disc.cue".to_string(), disc).await.unwrap();
         let settled = handle.get_release_candidate(&key).await.unwrap().unwrap();
-        let preparation = crate::import::preparation::import_preparation(&handle.database, &hash)
+        let preparation = crate::import::preparation::import_preparation(&handle.tables, &hash)
             .await
             .unwrap()
             .expect("the candidate remains prepared");
@@ -670,9 +675,9 @@ async fn sheet_decisions_leave_the_draft_drawn_over_the_settled_audio() {
 #[tokio::test(flavor = "multi_thread")]
 async fn import_refuses_audio_changed_after_the_file_tags_pane_was_read() {
     let (handle, tmp, key, _hash) = pane_fixture().await;
+    let tables = handle.tables.clone();
     let root = tmp.path().join("watched");
-    let before = handle
-        .database
+    let before = tables
         .load_candidate_file_tag_snapshot(&root, &key)
         .await
         .unwrap()
@@ -698,8 +703,7 @@ async fn import_refuses_audio_changed_after_the_file_tags_pane_was_read() {
     let error = await_import_outcome(&mut events, &import_id)
         .await
         .expect_err("the changed audio cannot import");
-    let after = handle
-        .database
+    let after = tables
         .load_candidate_file_tag_snapshot(&root, &key)
         .await
         .unwrap()
@@ -719,7 +723,7 @@ async fn import_refuses_audio_changed_after_the_file_tags_pane_was_read() {
 /// so picking them reads them again and stores the reading of the newer one.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_scan_that_moves_during_tag_reading_makes_the_pick_read_again() {
-    let StoredCandidate { mut handle, manager, candidate, key, tmp: _tmp } =
+    let StoredCandidate { mut handle, candidate, key, tmp: _tmp, .. } =
         unread_stored_candidate().await;
     let (reader, reached, gate) = CountingFileTagReader::held();
     let reader = std::sync::Arc::new(reader);
@@ -731,12 +735,12 @@ async fn a_scan_that_moves_during_tag_reading_makes_the_pick_read_again() {
     });
     reached.recv_timeout(HANG_GUARD).expect("the tag reader reached the first audio file");
 
-    rescan_into(&manager, candidate.clone()).await;
+    rescan_into(&handle.tables, candidate.clone()).await;
     gate.open();
 
     operation.await.unwrap().expect("the pick reads the tags of the newer scan");
     let stored = handle
-        .database
+        .tables
         .load_candidate_file_tag_snapshot(&candidate.watched_folder_path, &key)
         .await
         .unwrap()

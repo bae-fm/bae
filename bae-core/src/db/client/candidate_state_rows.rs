@@ -41,7 +41,7 @@ pub(super) fn cover_columns(
     }
 }
 
-pub(super) fn save_cover(
+pub(crate) fn save_cover(
     sql: &CovenWrite<'_>,
     content_hash: &str,
     cover: &CoverSelection,

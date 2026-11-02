@@ -138,6 +138,7 @@ async fn an_import_reads_as_importing_until_its_release_is_written() {
 #[tokio::test(flavor = "multi_thread")]
 async fn the_library_opens_with_no_standing_a_crash_left() {
     let fixture = Fixture::new("standings-cleared-on-open").await;
+    let tables = fixture.context.tables.clone();
     let dir = fixture.disc_id_candidate("Album");
     fixture.scan(1).await;
     let running = crate::import::CandidateKey::folder(&dir);
@@ -146,8 +147,7 @@ async fn the_library_opens_with_no_standing_a_crash_left() {
         file_edit_revision: 0,
     };
     // What a run and an import left as the process that held them died.
-    fixture
-        .database
+    tables
         .change_candidate_identifications(vec![
             (
                 running.clone(),
@@ -166,8 +166,7 @@ async fn the_library_opens_with_no_standing_a_crash_left() {
         ])
         .await
         .unwrap();
-    fixture
-        .database
+    tables
         .claim_candidate_import(
             &crate::import::CandidateKey::test("/watched/Writing"),
             "import-1",
@@ -175,8 +174,7 @@ async fn the_library_opens_with_no_standing_a_crash_left() {
         )
         .await
         .unwrap();
-    fixture
-        .database
+    tables
         .move_candidate_import(
             &crate::import::CandidateKey::test("/watched/Writing"),
             "import-1",
@@ -184,12 +182,12 @@ async fn the_library_opens_with_no_standing_a_crash_left() {
         )
         .await
         .unwrap();
-    assert_eq!(fixture.database.load_candidate_standings().await.unwrap().len(), 2);
+    assert_eq!(tables.load_candidate_standings().await.unwrap().len(), 2);
 
     let reopened =
         fixture.manager.start_import_service(tokio::runtime::Handle::current()).await.unwrap();
 
-    assert!(fixture.database.load_candidate_standings().await.unwrap().is_empty());
+    assert!(tables.load_candidate_standings().await.unwrap().is_empty());
     tokio::task::spawn_blocking(move || reopened.stop_and_join())
         .await
         .expect("the reopened import service stops");

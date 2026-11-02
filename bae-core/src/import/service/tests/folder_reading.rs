@@ -66,7 +66,7 @@ impl DecisionFixture {
         }
         write_disc(&root.join("Other").join("Record"), 1);
         let root = crate::import::watched_folder::canonical_absolute_root(&root).unwrap();
-        test.database.add_watched_import_folder(&root).await.unwrap();
+        test.service.tables.add_watched_import_folder(&root).await.unwrap();
         let listing = Arc::new(RecordingListing::default());
         let (scan, _) = test.scan_with(
             Arc::new(crate::import::file_tag_snapshot::LoftyFileTagReader),
@@ -75,10 +75,6 @@ impl DecisionFixture {
         scan.rescan(&root).await.unwrap();
         listing.take();
         Self { test, scan, listing, root }
-    }
-
-    fn manager(&self) -> &LibraryManager {
-        &self.test.manager
     }
 
     fn album_key(&self) -> crate::import::FolderReleaseDecisionKey {
@@ -90,7 +86,7 @@ impl DecisionFixture {
 
     async fn stored_paths(&self) -> Vec<String> {
         let mut paths: Vec<String> = self
-            .manager()
+            .test.service.tables
             .load_folder_scan_items(&self.root)
             .await
             .unwrap()
@@ -109,10 +105,10 @@ impl DecisionFixture {
         decision: crate::import::FolderReleaseDecision,
         settled: &[&str],
     ) -> Vec<Vec<String>> {
-        let mut live = self.test.database.subscribe_import_list(crate::import::ImportListRequest {
+        let tables = self.test.service.tables.clone();
+        let mut live = tables.subscribe_import_list(crate::import::ImportListRequest {
             list: self
-                .test
-                .database
+                .test.service.tables
                 .open_import_list(crate::import::ImportListView {
                     order: crate::import::ImportListOrder::PathAscending,
                     ..crate::import::ImportListView::default()
@@ -195,7 +191,7 @@ async fn keeping_discs_separate_trades_the_combined_row_for_both_discs_at_once()
     );
     let other = fixture.root.join("Other").join("Record");
     let sibling_before = fixture
-        .manager()
+        .test.service.tables
         .load_folder_scan_item(&crate::import::CandidateKey::folder(&other))
         .await
         .unwrap();
@@ -218,8 +214,7 @@ async fn keeping_discs_separate_trades_the_combined_row_for_both_discs_at_once()
     );
     assert_eq!(
         fixture
-            .test
-            .database
+            .test.service.tables
             .load_folder_release_decisions(&fixture.root)
             .await
             .unwrap()
@@ -238,7 +233,7 @@ async fn keeping_discs_separate_trades_the_combined_row_for_both_discs_at_once()
     );
     assert_eq!(
         fixture
-            .manager()
+            .test.service.tables
             .load_folder_scan_item(&crate::import::CandidateKey::folder(&other))
             .await
             .unwrap(),
@@ -288,8 +283,7 @@ async fn a_folder_reading_refuses_a_root_that_moved_while_it_read() {
     let fixture = DecisionFixture::new(["Disc 1", "Disc 2"], 1).await;
     let before = fixture.stored_paths().await;
     let decisions_before = fixture
-        .test
-        .database
+        .test.service.tables
         .load_folder_release_decisions(&fixture.root)
         .await
         .unwrap()
@@ -323,7 +317,13 @@ async fn a_folder_reading_refuses_a_root_that_moved_while_it_read() {
     })
     .await
     .expect("the reading started walking");
-    fixture.manager().begin_folder_scan(&fixture.root).await.unwrap();
+    fixture
+        .test
+        .service
+        .tables
+        .begin_folder_scan(&fixture.root, crate::import::VolumeKind::Local)
+        .await
+        .unwrap();
     drop(held);
 
     let error = reading.await.unwrap().unwrap_err();
@@ -331,8 +331,7 @@ async fn a_folder_reading_refuses_a_root_that_moved_while_it_read() {
     assert_eq!(fixture.stored_paths().await, before);
     assert_eq!(
         fixture
-            .test
-            .database
+            .test.service.tables
             .load_folder_release_decisions(&fixture.root)
             .await
             .unwrap()
@@ -399,8 +398,9 @@ fn a_change_reads_the_folder_it_is_in_and_the_root_only_where_it_must() {
 #[tokio::test]
 async fn the_network_check_names_the_folders_that_moved() {
     let fixture = DecisionFixture::new(["Disc 1", "Disc 2"], 1).await;
+    let tables = fixture.test.service.tables.clone();
     let root = &fixture.root;
-    let recorded = fixture.test.database.load_folder_scan_directories(root).await.unwrap();
+    let recorded = tables.load_folder_scan_directories(root).await.unwrap();
     assert_eq!(network_changes(root, &recorded), Some(Vec::new()));
 
     write_disc(&root.join("Artist/Album/Disc 1"), 2);
@@ -423,7 +423,7 @@ async fn changed_folders_are_read_again_and_nothing_beside_them() {
     let root = &fixture.root;
     let album = root.join("Artist").join("Album");
     let album_before = fixture
-        .manager()
+        .test.service.tables
         .load_folder_scan_item(&crate::import::CandidateKey::folder(&album))
         .await
         .unwrap();
@@ -444,7 +444,7 @@ async fn changed_folders_are_read_again_and_nothing_beside_them() {
         vec!["Artist/Album".to_string(), "New/Record".to_string(), "Other/Record".to_string(),]
     );
     let other = fixture
-        .manager()
+        .test.service.tables
         .load_folder_scan_item(&crate::import::CandidateKey::folder(
             &root.join("Other").join("Record"),
         ))
@@ -463,7 +463,7 @@ async fn changed_folders_are_read_again_and_nothing_beside_them() {
     );
     assert_eq!(
         fixture
-            .manager()
+            .test.service.tables
             .load_folder_scan_item(&crate::import::CandidateKey::folder(&album))
             .await
             .unwrap(),

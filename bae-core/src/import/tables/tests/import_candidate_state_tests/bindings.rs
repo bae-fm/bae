@@ -1,0 +1,382 @@
+/// A binding the user cleared survives a relaunch: it is stored under the
+/// candidate's content hash, read back from a cold database, and the scan
+/// that follows reports the folder as they settled it rather than as its
+/// filenames read.
+///
+/// The scan is the point — a binding that round-tripped through SQLite but
+/// never reached a folder's roles would be a stored value nothing consumes.
+#[tokio::test]
+async fn a_cleared_binding_survives_a_relaunch() {
+    use crate::import::folder_scanner::{
+        collect_release_candidate_files_with_scope, CandidateFileEdits, SheetBindingEdits,
+        StoredCandidateEdits, UserSheetBinding,
+    };
+
+    let (db, _tmp) = empty_db().await;
+    let tables = crate::import::tables::ImportTables::new(db.clone());
+    let folder = walkthrough_folder();
+    let scanned = collect_release_candidate_files_with_scope(
+        folder.path(),
+        crate::import::ReleaseFileScope::Recursive,
+        &StoredCandidateEdits::none(),
+    )
+    .unwrap();
+    assert_eq!(scanned.track_count(), 12, "the unique same-stem audio is bound automatically");
+    let root = folder.path().to_path_buf();
+    tables.add_watched_import_folder(std::path::Path::new(&root)).await.unwrap();
+    let generation = tables
+        .begin_folder_scan(std::path::Path::new(&root), crate::import::VolumeKind::Local)
+        .await
+        .unwrap();
+    let candidate = crate::import::folder_scanner::FolderCandidate {
+        path: folder.path().to_path_buf(),
+        file_root: folder.path().to_path_buf(),
+        name: "Release".to_string(),
+        files: scanned.clone(),
+        watched_folder_path: std::path::PathBuf::from(&root),
+        scope: crate::import::ReleaseFileScope::Recursive,
+        file_edit_revision: 0,
+        relative_folder: crate::import::RelativeFolder::root(),
+        grouping: None,
+    };
+    tables.save_folder_scan_item(
+        std::path::Path::new(&root),
+        generation,
+        &crate::import::folder_scanner::ScanItem::Valid(candidate),
+    )
+    .await
+    .unwrap();
+    tables.finish_folder_scan(std::path::Path::new(&root), generation, None).await.unwrap();
+
+    let mut edits = SheetBindingEdits::default();
+    edits.set_reference("cd.cue".to_string(), "cd.wav".to_string(), UserSheetBinding::Cleared);
+    let candidate_edits = CandidateFileEdits { sheet_bindings: edits, ..Default::default() };
+    let mut settled = scanned.clone();
+    settled.apply_candidate_file_edits(&candidate_edits).unwrap();
+    let hash = scanned.content_hash();
+    let (metadata_revision, mut draft) = current_draft(&db, &hash).await;
+    draft.tracks = crate::import::pane::blank_candidate_draft(&settled).tracks;
+    crate::import::CandidatePreparations::new(db.clone())
+        .store_file_decisions(
+            &as_read(&hash, metadata_revision),
+            &crate::import::CandidateKey::folder(folder.path()),
+            &candidate_edits,
+            &[(crate::import::CandidateKey::folder(folder.path()), settled)],
+            draft,
+        )
+        .await
+        .unwrap();
+
+    let current = tables.load_candidate_file_edits(&scanned.content_hash()).await.unwrap();
+    assert_eq!(current.revision, 1);
+    assert_eq!(
+        current.sheet_bindings.get("cd.cue").and_then(|references| references.get("cd.wav")),
+        Some(&UserSheetBinding::Cleared)
+    );
+    assert_eq!(
+        tables.load_candidate_file_edits("missing").await.unwrap(),
+        CandidateFileEdits::default()
+    );
+
+    let restored = tables.load_folder_scan_snapshots().await.unwrap();
+    let crate::import::folder_scanner::ScanItem::Valid(restored_candidate) = &restored[0].items[0]
+    else {
+        panic!("the persisted candidate keeps its valid variant");
+    };
+    assert_eq!(restored_candidate.file_edit_revision, 1);
+    assert_eq!(restored_candidate.track_count(), 1);
+    assert!(restored_candidate.files.bound_sheets().is_empty());
+
+    // A subsequent scan reads the same decisions, at the revision they stand
+    // at, and derives the same shape as the candidate restored before that
+    // scan.
+    let stored = tables.load_stored_candidate_edits().await.unwrap();
+    assert_eq!(stored.revision_for_hash(&scanned.content_hash()), 1);
+    assert_eq!(stored.revision_for_hash("missing"), 0);
+    let reopened = collect_release_candidate_files_with_scope(
+        folder.path(),
+        crate::import::ReleaseFileScope::Recursive,
+        &stored,
+    )
+    .unwrap();
+
+    assert_eq!(
+        reopened.track_count(),
+        1,
+        "the cleared binding read back from disk is the one the scan applies"
+    );
+    assert!(reopened.bound_sheets().is_empty());
+}
+
+/// The pair that makes re-identification correct rather than incidental:
+/// changing a binding leaves the row's key alone, **and** clears the
+/// verdict stored under it.
+///
+/// The hash covers files and never decisions, so the edit addresses
+/// the same row rather than orphaning it — and that row's verdict was
+/// derived from the shape the folder no longer has, so the queue must
+/// answer the candidate again instead of trusting it.
+#[tokio::test]
+async fn changing_a_binding_keeps_the_hash_and_clears_the_verdict() {
+    use crate::import::folder_scanner::{
+        collect_release_candidate_files_with_scope, CandidateFileEdits, SheetBindingEdits,
+        StoredCandidateEdits, UserSheetBinding,
+    };
+
+    let (db, _tmp) = empty_db().await;
+    let tables = crate::import::tables::ImportTables::new(db.clone());
+    let folder = walkthrough_folder();
+    let proposed = collect_release_candidate_files_with_scope(
+        folder.path(),
+        crate::import::ReleaseFileScope::Recursive,
+        &StoredCandidateEdits::none(),
+    )
+    .unwrap();
+    assert_eq!(proposed.track_count(), 12);
+    let hash = proposed.content_hash();
+    store_candidate_state(&db, &proposed, folder.path()).await;
+
+    crate::import::CandidatePreparations::new(db.clone())
+        .store_verdict(&new_candidate_row(&hash, folder.path(), &sample_verdict()))
+        .await
+        .unwrap();
+    assert!(
+        tables.load_import_candidate_states()
+            .await
+            .unwrap()
+            .get(&hash)
+            .expect("the verdict is stored")
+            .identify
+            .is_some(),
+        "the candidate starts out identified"
+    );
+
+    let mut edits = SheetBindingEdits::default();
+    edits.set_reference("cd.cue".to_string(), "cd.wav".to_string(), UserSheetBinding::Cleared);
+    let mut settled = proposed.clone();
+    settled
+        .apply_candidate_file_edits(&CandidateFileEdits {
+            sheet_bindings: edits.clone(),
+            ..Default::default()
+        })
+        .unwrap();
+    let folder_path = crate::import::CandidateKey::folder(folder.path());
+    let (metadata_revision, mut draft) = current_draft(&db, &hash).await;
+    draft.tracks = crate::import::pane::blank_candidate_draft(&settled).tracks;
+    crate::import::CandidatePreparations::new(db.clone())
+        .store_file_decisions(
+            &as_read(&hash, metadata_revision),
+            &folder_path,
+            &CandidateFileEdits { sheet_bindings: edits, ..Default::default() },
+            &[(folder_path.clone(), settled)],
+            draft,
+        )
+        .await
+        .unwrap();
+
+    let unbound = collect_release_candidate_files_with_scope(
+        folder.path(),
+        crate::import::ReleaseFileScope::Recursive,
+        &tables.load_stored_candidate_edits().await.unwrap(),
+    )
+    .unwrap();
+    assert_eq!(
+        unbound.track_count(),
+        1,
+        "the folder really did change shape -- otherwise this proves nothing"
+    );
+    assert_eq!(
+        unbound.content_hash(),
+        hash,
+        "the hash covers files, never decisions, so the row stays addressable"
+    );
+
+    let row = tables
+        .load_import_candidate_states()
+        .await
+        .unwrap()
+        .remove(&hash)
+        .expect("the row is still found under the unchanged hash");
+    assert!(
+        row.identify.is_none(),
+        "the stored verdict described the folder before the binding; it must be cleared \
+         so the queue identifies the candidate again"
+    );
+    assert_eq!(
+        row.file_edits.sheet_bindings.get("cd.cue").and_then(|references| references.get("cd.wav")),
+        Some(&UserSheetBinding::Cleared),
+        "the decision that cleared the verdict is what the row now holds"
+    );
+}
+
+#[tokio::test]
+async fn folder_release_decision_is_idempotent_and_root_scoped() {
+    use crate::import::folder_scanner::{FolderReleaseDecision, FolderReleaseDecisionKey};
+
+    let (db, _tmp) = empty_db().await;
+    let tables = crate::import::tables::ImportTables::new(db.clone());
+    let other = host_root("/other/library");
+    let key = FolderReleaseDecisionKey {
+        watched_folder_path: host_root("/mounted/library"),
+        relative_folder: crate::import::RelativeFolder::test("Collection/Release Wrapper"),
+    };
+    tables.add_watched_import_folder(&key.watched_folder_path).await.unwrap();
+    tables.add_watched_import_folder(&other).await.unwrap();
+
+    store_user_folder_decision(&db, &key, FolderReleaseDecision::CombineAsOneRelease)
+        .await
+        .unwrap();
+    store_user_folder_decision(&db, &key, FolderReleaseDecision::CombineAsOneRelease)
+        .await
+        .unwrap();
+    store_user_folder_decision(
+        &db,
+        &FolderReleaseDecisionKey {
+            watched_folder_path: other,
+            relative_folder: key.relative_folder.clone(),
+        },
+        FolderReleaseDecision::KeepAsSeparateReleases,
+    )
+    .await
+    .unwrap();
+
+    let decisions = tables.load_folder_release_decisions(&key.watched_folder_path).await.unwrap();
+    assert_eq!(
+        decisions.get(&key.relative_folder).map(|reading| (reading.decision, reading.author)),
+        Some((
+            FolderReleaseDecision::CombineAsOneRelease,
+            crate::import::folder_scanner::FolderReleaseDecisionAuthor::User
+        ))
+    );
+}
+
+/// The CD ripper a sheet names is kept with the scan, so a folder read back
+/// from a cold database still proves the CD rip its sheet does.
+#[tokio::test]
+async fn a_sheet_s_ripper_survives_a_relaunch() {
+    use crate::import::folder_scanner::{
+        collect_release_candidate_files_with_scope, FolderCandidate, ScanItem, StoredCandidateEdits,
+    };
+
+    let (db, _tmp) = empty_db().await;
+    let tables = crate::import::tables::ImportTables::new(db.clone());
+    let folder = tempfile::TempDir::new().unwrap();
+    std::fs::copy(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("tests/fixtures/cue_flac/Test Album.flac"),
+        folder.path().join("cd.flac"),
+    )
+    .unwrap();
+    std::fs::write(
+        folder.path().join("cd.cue"),
+        "REM COMMENT \"ExactAudioCopy v1.1\"\nPERFORMER \"Artist One\"\nTITLE \"Album One\"\n\
+         FILE \"cd.wav\" WAVE\n  TRACK 01 AUDIO\n    INDEX 01 00:00:00\n",
+    )
+    .unwrap();
+    let scanned = collect_release_candidate_files_with_scope(
+        folder.path(),
+        crate::import::ReleaseFileScope::Recursive,
+        &StoredCandidateEdits::none(),
+    )
+    .unwrap();
+    let root = folder.path().to_path_buf();
+    tables.add_watched_import_folder(std::path::Path::new(&root)).await.unwrap();
+    let generation = tables
+        .begin_folder_scan(std::path::Path::new(&root), crate::import::VolumeKind::Local)
+        .await
+        .unwrap();
+    tables.save_folder_scan_item(
+        std::path::Path::new(&root),
+        generation,
+        &ScanItem::Valid(FolderCandidate {
+            path: folder.path().to_path_buf(),
+            file_root: folder.path().to_path_buf(),
+            name: "Release".to_string(),
+            files: scanned,
+            watched_folder_path: std::path::PathBuf::from(&root),
+            scope: crate::import::ReleaseFileScope::Recursive,
+            file_edit_revision: 0,
+            relative_folder: crate::import::RelativeFolder::root(),
+            grouping: None,
+        }),
+    )
+    .await
+    .unwrap();
+    tables.finish_folder_scan(std::path::Path::new(&root), generation, None).await.unwrap();
+
+    let restored = tables.load_folder_scan_snapshots().await.unwrap();
+    let ScanItem::Valid(restored) = &restored[0].items[0] else {
+        panic!("the persisted candidate keeps its valid variant");
+    };
+    let sheets: Vec<_> = restored.files.track_sheets().map(|sheet| sheet.sheet.ripper).collect();
+    assert_eq!(sheets, vec![Some(crate::cue_flac::CdRipper::ExactAudioCopy)]);
+}
+
+/// A sheet whose boundaries run past its audio reads back refused for its
+/// timing, with the audio it named, from a cold database — the pane says why
+/// the sheet carves nothing without working it out again.
+#[tokio::test]
+async fn a_timing_refusal_survives_a_relaunch() {
+    use crate::import::folder_scanner::{
+        collect_release_candidate_files_with_scope, FolderCandidate, ScanItem, SheetAudioFile,
+        SheetBinding, StoredCandidateEdits,
+    };
+
+    let (db, _tmp) = empty_db().await;
+    let tables = crate::import::tables::ImportTables::new(db.clone());
+    let folder = tempfile::TempDir::new().unwrap();
+    std::fs::copy(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("tests/fixtures/cue_flac/Test Album.flac"),
+        folder.path().join("cd.flac"),
+    )
+    .unwrap();
+    std::fs::write(
+        folder.path().join("cd.cue"),
+        "FILE \"cd.flac\" WAVE\n  TRACK 01 AUDIO\n    INDEX 01 99:00:00\n",
+    )
+    .unwrap();
+    let scanned = collect_release_candidate_files_with_scope(
+        folder.path(),
+        crate::import::ReleaseFileScope::Recursive,
+        &StoredCandidateEdits::none(),
+    )
+    .unwrap();
+    let refused = SheetBinding::RefusedTiming {
+        files: vec![SheetAudioFile {
+            file_reference: "cd.flac".to_string(),
+            file_id: "cd.flac".to_string(),
+        }],
+    };
+    assert_eq!(scanned.track_sheets().next().unwrap().binding, &refused);
+    let root = folder.path().to_path_buf();
+    tables.add_watched_import_folder(std::path::Path::new(&root)).await.unwrap();
+    let generation = tables
+        .begin_folder_scan(std::path::Path::new(&root), crate::import::VolumeKind::Local)
+        .await
+        .unwrap();
+    tables.save_folder_scan_item(
+        std::path::Path::new(&root),
+        generation,
+        &ScanItem::Valid(FolderCandidate {
+            path: folder.path().to_path_buf(),
+            file_root: folder.path().to_path_buf(),
+            name: "Release".to_string(),
+            files: scanned,
+            watched_folder_path: std::path::PathBuf::from(&root),
+            scope: crate::import::ReleaseFileScope::Recursive,
+            file_edit_revision: 0,
+            relative_folder: crate::import::RelativeFolder::root(),
+            grouping: None,
+        }),
+    )
+    .await
+    .unwrap();
+    tables.finish_folder_scan(std::path::Path::new(&root), generation, None).await.unwrap();
+
+    let restored = tables.load_folder_scan_snapshots().await.unwrap();
+    let ScanItem::Valid(restored) = &restored[0].items[0] else {
+        panic!("the persisted candidate keeps its valid variant");
+    };
+    assert_eq!(restored.files.track_sheets().next().unwrap().binding, &refused);
+}

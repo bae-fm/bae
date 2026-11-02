@@ -36,7 +36,7 @@ impl ImportServiceHandle {
         let candidate = self.editable_candidate(candidate_key).await?;
         let hash = candidate.files.content_hash();
         let revision = self
-            .database
+            .tables
             .load_import_candidate_state(&hash)
             .await?
             .ok_or_else(|| crate::import::ImportError::Internal {
@@ -94,7 +94,7 @@ impl ImportServiceHandle {
                     candidate.file_edit_revision,
                 )
                 .await?;
-            Ok(this.database.set_candidate_album_pick(&hash, album_id.as_deref()).await?)
+            Ok(this.tables.set_candidate_album_pick(&hash, album_id.as_deref()).await?)
         })
         .await
     }
@@ -287,7 +287,7 @@ impl ImportServiceHandle {
     ) -> Result<DraftEditBase, crate::import::ImportError> {
         let candidate = self.editable_candidate(candidate_key).await?;
         let hash = candidate.files.content_hash();
-        let preparation = crate::import::preparation::import_preparation(&self.database, &hash)
+        let preparation = crate::import::preparation::import_preparation(&self.tables, &hash)
             .await?
             .ok_or_else(|| crate::import::ImportError::Internal {
                 detail: format!("{candidate_key} has no stored import preparation"),

@@ -67,7 +67,7 @@ impl ImportService {
             // worker, so a write that will not land is a bug, reported with
             // the import's own failure, the one the person was waiting to see.
             if let Err(write) = self
-                .database
+                .tables
                 .fail_candidate_import(
                     &content_hash,
                     edit_revision,
@@ -144,7 +144,7 @@ impl ImportService {
             .map_err(crate::import::ImportError::from)?;
 
         let stored_candidate = match self
-            .database
+            .tables
             .load_release_candidate(&candidate_key)
             .await?
             .map_err(|reason| crate::import::ImportError::GroupingBlocked { reason })?
@@ -178,7 +178,7 @@ impl ImportService {
         let categorized = stored_candidate.files;
 
         let preparation =
-            crate::import::preparation::import_preparation(&self.database, &expected_content_hash)
+            crate::import::preparation::import_preparation(&self.tables, &expected_content_hash)
                 .await?
                 .ok_or_else(|| crate::import::ImportError::Internal {
                     detail: format!("{candidate_key} has no stored import preparation"),
@@ -230,7 +230,7 @@ impl ImportService {
         )?;
         let track_bindings = assembled.bindings;
 
-        let picked_album = self.database.candidate_album_pick(&categorized.content_hash()).await?;
+        let picked_album = self.tables.candidate_album_pick(&categorized.content_hash()).await?;
         let mut prepared = self
             .reconcile_prepared_release(assembled.parsed, records, picked_album, assembled.picked)
             .await?;

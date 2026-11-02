@@ -29,7 +29,7 @@ impl ImportServiceHandle {
     ) -> Result<bool, crate::import::ImportError> {
         self.move_candidate_pane(candidate_key, PaneMove::Automatic).await?;
         let stored = self
-            .database
+            .tables
             .load_import_candidate(candidate_key)
             .await?
             .is_some_and(|projection| projection.verdict.is_some());
@@ -48,7 +48,7 @@ impl ImportServiceHandle {
         content_hashes: Vec<String>,
     ) -> Result<(), crate::import::ImportError> {
         let _commit = self.folder_state_commit.lock("open panes on Find online").await;
-        self.database.move_import_candidate_panes(content_hashes, PaneMove::Admitted).await?;
+        self.tables.move_import_candidate_panes(content_hashes, PaneMove::Admitted).await?;
         Ok(())
     }
 
@@ -71,7 +71,7 @@ impl ImportServiceHandle {
         &self,
         candidate_key: &crate::import::CandidateKey,
     ) -> Result<(), crate::import::ImportError> {
-        if self.database.load_import_candidate(candidate_key).await?.is_none() {
+        if self.tables.load_import_candidate(candidate_key).await?.is_none() {
             return Ok(());
         }
         self.update_candidate_session(candidate_key, |session| session.error = None).await
@@ -131,7 +131,7 @@ impl ImportServiceHandle {
     ) -> Result<(), crate::import::ImportError> {
         let _commit = self.folder_state_commit.lock("store a pane session").await;
         let projection =
-            self.database.load_import_candidate(candidate_key).await?.ok_or_else(|| {
+            self.tables.load_import_candidate(candidate_key).await?.ok_or_else(|| {
                 crate::import::ImportError::Internal {
                     detail: format!("{candidate_key} is not a scanned folder candidate"),
                 }
@@ -144,7 +144,7 @@ impl ImportServiceHandle {
             })?
             .session_or_initial(projection.verdict.is_some());
         change(&mut session);
-        self.database.save_import_candidate_session(&content_hash, &session).await?;
+        self.tables.save_import_candidate_session(&content_hash, &session).await?;
         Ok(())
     }
 }

@@ -94,6 +94,8 @@ pub mod session;
 #[cfg(desktop)]
 pub(crate) mod shared_album;
 #[cfg(desktop)]
+pub mod tables;
+#[cfg(desktop)]
 pub(crate) mod track_numbers;
 #[cfg(desktop)]
 pub mod triage;
@@ -122,6 +124,8 @@ pub(crate) struct ImportServices {
     event_tx: handle::ImportEventBus,
     /// The library's store, which import reads and writes directly.
     database: crate::db::Database,
+    /// Import's own tables in that store.
+    tables: tables::ImportTables,
     /// The catalogs as this library may ask them.
     catalogs: CatalogSessions,
     /// The provider images candidates' covers and new artists' pictures are
@@ -165,6 +169,7 @@ impl ImportServices {
     ) -> Self {
         Self {
             event_tx,
+            tables: tables::ImportTables::new(database.clone()),
             database,
             catalogs,
             remote_images: RemoteImages::new(remote_images, diagnostics.clone()),
@@ -207,6 +212,8 @@ pub use error::ImportError;
 pub use error::{ArtistIdentityConflictChoice, IdentityConflict, LabelIdentityConflictChoice};
 #[cfg(desktop)]
 pub use file_evidence::{file_evidence, EvidenceSignal, FileEvidence};
+#[cfg(all(desktop, any(test, feature = "test-utils")))]
+pub use file_metadata_seed::store_scan_item;
 #[cfg(desktop)]
 pub use folder_scanner::{
     FolderCandidate, FolderReleaseDecision, FolderReleaseDecisionKey, InvalidCandidate,

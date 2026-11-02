@@ -55,7 +55,7 @@ impl ImportService {
             });
         };
         let folder = folder.to_os_string();
-        if !scan.services.database.folder_reading_offered(key, target.1).await? {
+        if !scan.services.tables.folder_reading_offered(key, target.1).await? {
             return Err(crate::import::ImportError::Watch {
                 detail: format!("{} is not a current release boundary", key.relative_folder.text()),
             });
@@ -105,7 +105,7 @@ impl ImportService {
             let message =
                 format!("{} could not be read again: {error}", coven::path_text(Path::new(folder)));
             warn!("{}: {message}", coven::path_text(root));
-            match scan.services.database.current_folder_scan_generation(root).await {
+            match scan.services.tables.current_folder_scan_generation(root).await {
                 Ok(Some(generation)) => {
                     if let Err(status_error) =
                         Self::record_scan_failure(root, generation, message.clone(), &scan.services)
@@ -147,10 +147,10 @@ impl ImportService {
     ) -> Result<Vec<ScanItem>, crate::import::ImportError> {
         let started = std::time::Instant::now();
         let services = &scan.services;
-        let database = &services.database;
-        let stamp = database.begin_folder_reading(root).await?;
-        let stored_edits = database.load_stored_candidate_edits().await?;
-        let mut decisions = database.load_folder_release_decisions(root).await?;
+        let tables = &services.tables;
+        let stamp = tables.begin_folder_reading(root).await?;
+        let stored_edits = tables.load_stored_candidate_edits().await?;
+        let mut decisions = tables.load_folder_release_decisions(root).await?;
         // The person's answer reads the folder under the grouping it already
         // has, when it has one: the release it reads as keeps its key.
         let decision = decision.map(|(key, decision)| {
@@ -166,7 +166,7 @@ impl ImportService {
             decisions.insert(key.relative_folder.clone(), reading.clone());
             (key.clone(), reading)
         });
-        let reads = Arc::new(database.load_file_reads(root, services.file_tags.clone()).await?);
+        let reads = Arc::new(tables.load_file_reads(root, services.file_tags.clone()).await?);
         let walk_reads = reads.clone();
 
         let directories = services.directories.clone();
@@ -218,9 +218,9 @@ impl ImportService {
                 ScanItem::Invalid(candidate) => candidate.path.clone(),
                 // A folder's sidecar files are no release: no date, no tags.
                 ScanItem::Sidecar(_) => {
-                    items.push(crate::db::ScanItemToWrite {
+                    items.push(crate::import::tables::ScanItemToWrite {
                         item,
-                        seed: crate::db::ScanItemSeed::Tags(None),
+                        seed: crate::import::tables::ScanItemSeed::Tags(None),
                         folder_date: None,
                     });
                     continue;
@@ -232,14 +232,14 @@ impl ImportService {
             .await
             .map_err(|failed| services.diagnostics.bug(failed))??;
             let seed = crate::import::file_metadata_seed::scan_item_seed(
-                database,
+                tables,
                 &services.diagnostics,
                 &item,
                 stamp.generation,
                 reads.clone(),
             )
             .await?;
-            items.push(crate::db::ScanItemToWrite { item, seed, folder_date });
+            items.push(crate::import::tables::ScanItemToWrite { item, seed, folder_date });
         }
         let prepared_at = started.elapsed();
 
@@ -260,7 +260,7 @@ impl ImportService {
             else {
                 continue;
             };
-            let edits = database.load_candidate_file_edits(&candidate.files.content_hash()).await?;
+            let edits = tables.load_candidate_file_edits(&candidate.files.content_hash()).await?;
             if edits.revision != candidate.file_edit_revision {
                 return Err(crate::import::ImportError::Internal {
                     detail: format!(
@@ -271,8 +271,8 @@ impl ImportService {
                 });
             }
         }
-        let crate::db::FolderReadingWrite { writes, pruned, regrouped } = database
-            .commit_folder_reading(crate::db::FolderReadingCommit {
+        let crate::import::tables::FolderReadingWrite { writes, pruned, regrouped } = tables
+            .commit_folder_reading(crate::import::tables::FolderReadingCommit {
                 watched_folder_path: root.to_path_buf(),
                 folder: folder.to_os_string(),
                 stamp,

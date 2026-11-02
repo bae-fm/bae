@@ -337,7 +337,7 @@ const ALBUM_BESIDE_RELEASE: &str = "SELECT \
 /// pressing on `idx_release_records_catalog_key`, its album on
 /// `idx_release_records_catalog_album` — and the rows come back in check
 /// order, each check's albums holding its pressing first, then by age.
-pub(super) fn check_releases_in_library_on(
+pub(crate) fn check_releases_in_library_on(
     sql: &(impl super::query::QueryOne + super::query::QueryRows),
     checks: &[LibraryCheck],
 ) -> Result<Vec<LibraryStatus>, DbError> {

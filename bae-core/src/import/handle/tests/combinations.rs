@@ -2,13 +2,14 @@ use super::*;
 
 #[tokio::test(flavor = "multi_thread")]
 async fn selected_folders_from_different_roots_import_as_one_release() {
-    let (manager, _library) = setup_test_manager().await;
+    let (manager, database, _library) = setup_test_manager().await;
+    let tables = crate::import::tables::ImportTables::new(database);
     let first_root = TempDir::new().unwrap();
     let second_root = TempDir::new().unwrap();
-    let (first, first_key, _) = picked_candidate(&manager, &first_root, "Volume B").await;
-    let (second, second_key, _) = picked_candidate(&manager, &second_root, "Volume A").await;
+    let (first, first_key, _) = picked_candidate(&tables, &first_root, "Volume B").await;
+    let (second, second_key, _) = picked_candidate(&tables, &second_root, "Volume A").await;
     let spare_root = TempDir::new().unwrap();
-    let (_spare, spare_key, _) = picked_candidate(&manager, &spare_root, "Volume C").await;
+    let (_spare, spare_key, _) = picked_candidate(&tables, &spare_root, "Volume C").await;
     let original_paths = first
         .files
         .release_files()
@@ -139,11 +140,12 @@ async fn pending(handle: &ImportServiceHandle) -> Vec<String> {
 /// brings them back as they were, drafts and all.
 #[tokio::test(flavor = "multi_thread")]
 async fn separating_picked_folders_returns_them_as_they_were() {
-    let (manager, _library) = setup_test_manager().await;
+    let (manager, database, _library) = setup_test_manager().await;
+    let tables = crate::import::tables::ImportTables::new(database);
     let first_root = TempDir::new().unwrap();
     let second_root = TempDir::new().unwrap();
-    let (first, first_key, _) = picked_candidate(&manager, &first_root, "Volume A").await;
-    let (_, second_key, _) = picked_candidate(&manager, &second_root, "Volume B").await;
+    let (first, first_key, _) = picked_candidate(&tables, &first_root, "Volume A").await;
+    let (_, second_key, _) = picked_candidate(&tables, &second_root, "Volume B").await;
     let handle = manager.start_import_service(tokio::runtime::Handle::current()).await.unwrap();
     let before = pane(&handle, &first_key).await.draft().unwrap().metadata_draft.clone();
     assert_eq!(pending(&handle).await.len(), 2);
@@ -156,12 +158,12 @@ async fn separating_picked_folders_returns_them_as_they_were() {
     assert_eq!(pending(&handle).await, vec![members[0].1.to_string()]);
     let order: Vec<crate::import::CandidateKey> = members.into_iter().map(|(key, _)| key).collect();
     assert!(matches!(
-        handle.database.load_grouping(&key).await.unwrap(),
-        Some(crate::db::GroupingFacts::Picked { members }) if members == order
+        tables.load_grouping(&key).await.unwrap(),
+        Some(crate::import::tables::GroupingFacts::Picked { members }) if members == order
     ));
 
     handle.separate_candidate(&key).await.unwrap();
-    assert!(handle.database.load_grouping(&key).await.unwrap().is_none());
+    assert!(tables.load_grouping(&key).await.unwrap().is_none());
     assert!(handle.get_release_candidate(&key).await.unwrap().is_none());
     assert_eq!(pending(&handle).await.len(), 2);
     assert_eq!(pane(&handle, &first_key).await.draft().unwrap().metadata_draft, before);
@@ -175,7 +177,8 @@ async fn separating_picked_folders_returns_them_as_they_were() {
 /// keeps the folder's releases apart.
 #[tokio::test(flavor = "multi_thread")]
 async fn combining_every_release_under_a_folder_reads_that_folder_as_one() {
-    let (manager, _library) = setup_test_manager().await;
+    let (manager, database, _library) = setup_test_manager().await;
+    let tables = crate::import::tables::ImportTables::new(database);
     let tmp = TempDir::new().unwrap();
     let root = tmp.path().join("music");
     let fixture =
@@ -186,7 +189,7 @@ async fn combining_every_release_under_a_folder_reads_that_folder_as_one() {
         std::fs::copy(&fixture, folder.join("01.flac")).unwrap();
     }
     let root = crate::import::watched_folder::canonical_absolute_root(&root).unwrap();
-    manager.add_watched_import_folder(&root).await.unwrap();
+    tables.add_watched_import_folder(&root).await.unwrap();
     let handle = manager.start_import_service(tokio::runtime::Handle::current()).await.unwrap();
     handle.refresh_watched_folder(root.clone()).await.unwrap();
     assert_eq!(
@@ -200,8 +203,8 @@ async fn combining_every_release_under_a_folder_reads_that_folder_as_one() {
 
     let key = handle.combine_candidates(keys.clone()).await.unwrap();
     assert_eq!(
-        handle.database.load_grouping(&key).await.unwrap(),
-        Some(crate::db::GroupingFacts::Anchored {
+        tables.load_grouping(&key).await.unwrap(),
+        Some(crate::import::tables::GroupingFacts::Anchored {
             folder: crate::import::FolderReleaseDecisionKey {
                 watched_folder_path: root.clone(),
                 relative_folder: crate::import::RelativeFolder::test("Artist"),
@@ -219,8 +222,8 @@ async fn combining_every_release_under_a_folder_reads_that_folder_as_one() {
         vec!["Artist/Live A".to_string(), "Artist/Live B".to_string()]
     );
     assert!(matches!(
-        handle.database.load_grouping(&key).await.unwrap(),
-        Some(crate::db::GroupingFacts::Anchored {
+        tables.load_grouping(&key).await.unwrap(),
+        Some(crate::import::tables::GroupingFacts::Anchored {
             decision: crate::import::FolderReleaseDecision::KeepAsSeparateReleases,
             ..
         })
@@ -233,7 +236,8 @@ async fn combining_every_release_under_a_folder_reads_that_folder_as_one() {
 /// read as numbers.
 #[tokio::test(flavor = "multi_thread")]
 async fn separating_picked_releases_answers_with_their_keys_in_path_order() {
-    let (manager, _library) = setup_test_manager().await;
+    let (manager, database, _library) = setup_test_manager().await;
+    let tables = crate::import::tables::ImportTables::new(database);
     let tmp = TempDir::new().unwrap();
     let root = tmp.path().join("music");
     let fixture =
@@ -244,7 +248,7 @@ async fn separating_picked_releases_answers_with_their_keys_in_path_order() {
         std::fs::copy(&fixture, folder.join("01.flac")).unwrap();
     }
     let root = crate::import::watched_folder::canonical_absolute_root(&root).unwrap();
-    manager.add_watched_import_folder(&root).await.unwrap();
+    tables.add_watched_import_folder(&root).await.unwrap();
     let handle = manager.start_import_service(tokio::runtime::Handle::current()).await.unwrap();
     handle.refresh_watched_folder(root.clone()).await.unwrap();
     let key_of = |live: &str| crate::import::CandidateKey::folder(&root.join("Artist").join(live));
@@ -252,8 +256,8 @@ async fn separating_picked_releases_answers_with_their_keys_in_path_order() {
     // Live 3 stays out, so the pick is not every release under `Artist/`.
     let key = handle.combine_candidates(vec![key_of("Live 10"), key_of("Live 2")]).await.unwrap();
     assert!(matches!(
-        handle.database.load_grouping(&key).await.unwrap(),
-        Some(crate::db::GroupingFacts::Picked { .. })
+        tables.load_grouping(&key).await.unwrap(),
+        Some(crate::import::tables::GroupingFacts::Picked { .. })
     ));
 
     assert_eq!(

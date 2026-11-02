@@ -19,6 +19,7 @@ impl coven::IdSource for IdsThatPanicOnce {
 #[tokio::test]
 async fn an_import_that_panics_is_recorded_as_failed_and_the_next_import_runs() {
     let mut test = setup_import_service().await;
+    let tables = test.service.tables.clone();
     let bugs = Arc::new(crate::diagnostics::RecordingBugReporter::default());
     test.service.diagnostics =
         crate::diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone());
@@ -38,8 +39,7 @@ async fn an_import_that_panics_is_recorded_as_failed_and_the_next_import_runs() 
         .do_import(local_import_command("import-panics", &candidate_key, &folder), stored.clone())
         .await;
 
-    let failure = test
-        .database
+    let failure = tables
         .load_import_candidate_pane_rows(&stored.candidate.content_hash)
         .await
         .unwrap()

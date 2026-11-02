@@ -48,6 +48,7 @@ async fn a_pick_with_a_partner_stores_it_and_archives_its_documents() {
     let (handle, _tmp, key, hash) =
         pane_fixture_with(bae_util::http::Http::for_test().serve("coverartarchive.org", &archive))
             .await;
+    let tables = handle.tables.clone();
     handle
         .catalogs
         .store_discogs_key("test-discogs-token", crate::config::DiscogsValidation::Valid)
@@ -78,8 +79,7 @@ async fn a_pick_with_a_partner_stores_it_and_archives_its_documents() {
         .await
         .unwrap();
 
-    let stored = handle
-        .database
+    let stored = tables
         .load_import_candidate_state(&hash)
         .await
         .unwrap()
@@ -101,7 +101,7 @@ async fn a_pick_with_a_partner_stores_it_and_archives_its_documents() {
         "the partner's own release is stored by the apply"
     );
     assert_eq!(
-        crate::import::preparation::import_preparation(&handle.database, &hash)
+        crate::import::preparation::import_preparation(&handle.tables, &hash)
             .await
             .unwrap()
             .expect("the picked candidate is prepared")
@@ -119,12 +119,12 @@ async fn a_pick_with_a_partner_stores_it_and_archives_its_documents() {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_partner_that_will_not_prepare_fails_the_apply() {
     let (handle, _tmp, key, hash) = pane_fixture().await;
+    let tables = handle.tables.clone();
 
     let mb_release_id = "unpaired-mb-rel-1";
     seed_mb_release(handle.catalogs.providers(), mb_release_id, "unpaired-mb-group-1");
 
-    let before = handle
-        .database
+    let before = tables
         .load_import_candidate_state(&hash)
         .await
         .unwrap()
@@ -150,8 +150,7 @@ async fn a_partner_that_will_not_prepare_fails_the_apply() {
         .expect_err("a partner that will not prepare fails the apply");
 
     assert_eq!(
-        handle
-            .database
+        tables
             .load_import_candidate_state(&hash)
             .await
             .unwrap()
@@ -169,12 +168,12 @@ async fn a_partner_that_will_not_prepare_fails_the_apply() {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_partner_repeating_the_primary_source_is_refused() {
     let (handle, _tmp, key, hash) = pane_fixture().await;
+    let tables = handle.tables.clone();
 
     let mb_release_id = "repeat-mb-rel-1";
     seed_mb_release(handle.catalogs.providers(), mb_release_id, "repeat-mb-group-1");
 
-    let before = handle
-        .database
+    let before = tables
         .load_import_candidate_state(&hash)
         .await
         .unwrap()
@@ -200,8 +199,7 @@ async fn a_partner_repeating_the_primary_source_is_refused() {
         .expect_err("two MusicBrainz releases for one pressing is refused");
 
     assert_eq!(
-        handle
-            .database
+        tables
             .load_import_candidate_state(&hash)
             .await
             .unwrap()
@@ -452,7 +450,7 @@ async fn numeric_vinyl_import_preserves_unknown_sides_and_track_order() {
         )
         .await
         .unwrap();
-    let draft = crate::import::preparation::import_preparation(&handle.database, &hash)
+    let draft = crate::import::preparation::import_preparation(&handle.tables, &hash)
         .await
         .unwrap()
         .unwrap()

@@ -183,9 +183,10 @@ pub struct ImportService {
     /// What the bus's events have said about every candidate, held here for
     /// the standing a commit ends.
     runtime: CandidateRuntime,
-    /// The library's store, which an import reads its candidate from and
-    /// writes its release into.
+    /// The library's store, which an import writes its release into.
     database: crate::db::Database,
+    /// Import's tables, which an import reads its candidate from.
+    tables: crate::import::tables::ImportTables,
     /// The catalogs an import asks for its new artists' pictures.
     catalogs: crate::import::CatalogSessions,
     /// Where those pictures are fetched through.
@@ -437,7 +438,7 @@ struct PersistedScanItems {
     commit: crate::import::FolderStateCommitGuard,
     /// Each item with what its write changed, in the order they were written;
     /// rows a write left as they were are not announced.
-    writes: Vec<(ScanItem, crate::db::ScanItemWrite)>,
+    writes: Vec<(ScanItem, crate::import::tables::ScanItemWrite)>,
 }
 
 struct RootScanTask {

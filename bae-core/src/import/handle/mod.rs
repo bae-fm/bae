@@ -328,6 +328,8 @@ pub struct ImportServiceHandle {
     worker: WorkerThread<crate::import::service::ImportWorkerMessage>,
     /// The library's store, which the handle reads and writes directly.
     database: crate::db::Database,
+    /// Import's own tables in that store.
+    tables: crate::import::tables::ImportTables,
     /// The catalogs as this library may ask them.
     catalogs: crate::import::CatalogSessions,
     /// Where a catalog release is read from storage or fetched.
@@ -455,7 +457,7 @@ impl ImportServiceHandle {
         key: &crate::import::CandidateKey,
     ) -> Result<Option<crate::import::folder_scanner::FolderCandidate>, crate::import::ImportError>
     {
-        self.database
+        self.tables
             .load_release_candidate(key)
             .await?
             .map_err(|reason| crate::import::ImportError::GroupingBlocked { reason })
@@ -474,6 +476,7 @@ impl ImportServiceHandle {
         let crate::import::ImportServices {
             event_tx,
             database,
+            tables,
             catalogs,
             remote_images,
             preparations,
@@ -506,6 +509,7 @@ impl ImportServiceHandle {
         Ok(Self {
             worker,
             database,
+            tables,
             catalogs,
             release_reads,
             remote_images,
@@ -734,7 +738,7 @@ impl ImportServiceHandle {
         &self,
         mut accept: impl FnMut(&crate::import::FolderScanProgress) -> bool,
     ) -> crate::import::FolderScanProgress {
-        let mut scans = self.database.subscribe_folder_scan_progress();
+        let mut scans = self.tables.subscribe_folder_scan_progress();
         loop {
             let progress = scans
                 .next()
@@ -772,7 +776,7 @@ impl ImportServiceHandle {
         &self,
         key: &crate::import::CandidateKey,
     ) -> Result<Option<ImportCandidateSnapshot>, crate::import::ImportError> {
-        let stored = self.database.load_folder_scan_item(key).await?;
+        let stored = self.tables.load_folder_scan_item(key).await?;
         let candidate = match stored {
             Some(crate::import::folder_scanner::ScanItem::Valid(candidate)) => {
                 Some((candidate, true))
@@ -832,7 +836,7 @@ impl ImportServiceHandle {
         candidate: &crate::import::folder_scanner::FolderCandidate,
     ) -> Result<crate::import::CandidateStanding, crate::import::ImportError> {
         Ok(crate::import::CandidateStanding {
-            skipped: self.database.is_release_candidate_skipped(candidate).await?,
+            skipped: self.tables.is_release_candidate_skipped(candidate).await?,
             imported: self
                 .database
                 .release_imported_from(&candidate.files.content_hash())

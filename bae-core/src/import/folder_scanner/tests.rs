@@ -87,19 +87,21 @@ async fn stored_scan(root: PathBuf, decisions: FolderReleaseDecisions) -> Vec<Sc
     )
     .await
     .unwrap();
-    db.add_watched_import_folder(&root).await.unwrap();
+    let tables = crate::import::tables::ImportTables::new(db.clone());
+    tables.add_watched_import_folder(&root).await.unwrap();
     for (folder, reading) in decisions.iter() {
-        db.store_folder_reading(
-            &FolderReleaseDecisionKey {
-                watched_folder_path: root.clone(),
-                relative_folder: folder.clone(),
-            },
-            reading,
-        )
-        .await
-        .unwrap();
+        tables
+            .store_folder_reading(
+                &FolderReleaseDecisionKey {
+                    watched_folder_path: root.clone(),
+                    relative_folder: folder.clone(),
+                },
+                reading,
+            )
+            .await
+            .unwrap();
     }
-    let decisions = db.load_folder_release_decisions(&root).await.unwrap();
+    let decisions = tables.load_folder_release_decisions(&root).await.unwrap();
     let mut walked = Vec::new();
     scan_for_candidates_with_decisions(
         root.clone(),
@@ -108,21 +110,25 @@ async fn stored_scan(root: PathBuf, decisions: FolderReleaseDecisions) -> Vec<Sc
         |item| walked.push(item),
     )
     .unwrap();
-    let generation = db.begin_folder_scan(&root, crate::import::VolumeKind::Local).await.unwrap();
+    let generation =
+        tables.begin_folder_scan(&root, crate::import::VolumeKind::Local).await.unwrap();
     for item in walked {
         match item {
-            ScanItem::Decided { key, decision, grouping } => {
-                db.record_scanned_folder_release_decision(&key, decision, &grouping).await.unwrap()
-            }
+            ScanItem::Decided { key, decision, grouping } => tables
+                .record_scanned_folder_release_decision(&key, decision, &grouping)
+                .await
+                .unwrap(),
             item => {
-                db.save_folder_scan_item(&root, generation, &item)
+                tables
+                    .save_folder_scan_item(&root, generation, &item)
                     .await
                     .unwrap()
                     .expect("the scan generation is current");
             }
         }
     }
-    db.finish_folder_scan(&root, generation, None)
+    tables
+        .finish_folder_scan(&root, generation, None)
         .await
         .unwrap()
         .expect("the scan generation is current");
@@ -130,7 +136,7 @@ async fn stored_scan(root: PathBuf, decisions: FolderReleaseDecisions) -> Vec<Sc
     // path order, then the folders that failed validation.
     let mut valid = Vec::new();
     let mut invalid = Vec::new();
-    for item in db.load_folder_scan_items(&root).await.unwrap() {
+    for item in tables.load_folder_scan_items(&root).await.unwrap() {
         match item {
             ScanItem::Invalid(_) => invalid.push(item),
             ScanItem::Discovered(_) | ScanItem::Valid(_) => valid.push(item),

@@ -411,9 +411,7 @@ async fn a_settled_run_with_no_artwork_keeps_the_folders_own_cover() {
 
     let folders_own = crate::import::CoverSelection::Local("cover.jpg".to_string());
     assert_eq!(
-        fixture
-            .manager
-            .load_import_candidate_preparation(&fixture.content_hash(&dir))
+        crate::import::preparation::import_preparation(&fixture.context.tables, &fixture.content_hash(&dir))
             .await
             .unwrap()
             .expect("the scanned candidate is prepared")
@@ -425,9 +423,7 @@ async fn a_settled_run_with_no_artwork_keeps_the_folders_own_cover() {
     fixture.drain_automatic().await;
 
     assert_eq!(
-        fixture
-            .manager
-            .load_import_candidate_preparation(&fixture.content_hash(&dir))
+        crate::import::preparation::import_preparation(&fixture.context.tables, &fixture.content_hash(&dir))
             .await
             .unwrap()
             .expect("the identified candidate is prepared")

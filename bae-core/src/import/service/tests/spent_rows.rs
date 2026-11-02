@@ -189,16 +189,15 @@ async fn a_failed_import_keeps_what_a_retry_reads() {
 /// Store the scanned folder `folder` again as its watched root's next scan
 /// reads it, as `name`.
 async fn rescan_folder(test: &TestService, folder: &Path, name: &str) {
-    let manager = &test.manager;
+    let tables = &test.service.tables;
     let files = crate::import::folder_scanner::collect_release_candidate_files_with_scope(
         folder,
         crate::import::ReleaseFileScope::Recursive,
         &crate::import::folder_scanner::StoredCandidateEdits::none(),
     )
     .unwrap();
-    let generation = manager.begin_folder_scan(folder).await.unwrap();
-    manager
-        .save_folder_scan_item(
+    let generation = tables.begin_folder_scan(folder, crate::import::VolumeKind::Local).await.unwrap();
+    crate::import::store_scan_item(tables, &crate::diagnostics::Diagnostics::noop(),
             folder,
             generation,
             &ScanItem::Valid(crate::import::folder_scanner::FolderCandidate {
@@ -216,7 +215,7 @@ async fn rescan_folder(test: &TestService, folder: &Path, name: &str) {
         .await
         .unwrap()
         .expect("the stored scan generation is current");
-    manager.finish_folder_scan(folder, generation, None).await.unwrap();
+    tables.finish_folder_scan(folder, generation, None).await.unwrap();
 }
 
 /// What the folder's row shows: its tab, title and artists.
@@ -238,6 +237,7 @@ async fn shown_row(test: &TestService) -> Vec<String> {
 #[tokio::test]
 async fn a_folder_whose_release_is_deleted_reads_as_its_blank_draft() {
     let test = setup_import_service().await;
+    let tables = test.service.tables.clone();
     let (folder, candidate_key, expectation) = spent_rows_candidate(&test).await;
     let content_hash = expectation.candidate.content_hash.clone();
     test.service.queue_import_for_test(&candidate_key, "import-1").await;
@@ -276,8 +276,7 @@ async fn a_folder_whose_release_is_deleted_reads_as_its_blank_draft() {
         .await
         .unwrap();
     assert_eq!(shown_row(&test).await, vec!["pending|Box Set Renamed|-".to_string()]);
-    let pane = test
-        .database
+    let pane = tables
         .load_import_candidate(&candidate_key)
         .await
         .unwrap()

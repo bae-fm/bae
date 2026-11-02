@@ -30,7 +30,7 @@ async fn removing_a_watched_folder_cancels_in_flight_extraction() {
         vec![0xFF, 0xD8, 0xFF, 0xE0, 0x00]
     }
 
-    let (manager, tmp) = setup_test_manager().await;
+    let (manager, _, tmp) = setup_test_manager().await;
     let root = tmp.path().join("watch-root");
     std::fs::create_dir_all(&root).unwrap();
     let release_folder = root.join("Artist Name - Album Title");
@@ -123,16 +123,16 @@ async fn removing_a_watched_folder_cancels_in_flight_extraction() {
 
 #[tokio::test]
 async fn removing_a_root_queued_behind_a_decision_does_not_deadlock() {
-    let (manager, _temp) = setup_test_manager().await;
+    let (manager, database, _temp) = setup_test_manager().await;
+    let tables = crate::import::tables::ImportTables::new(database);
     let root = crate::import::watched_folder::host_root("/music");
-    manager.add_watched_import_folder(&root).await.unwrap();
+    tables.add_watched_import_folder(&root).await.unwrap();
     let handle = manager.start_import_service(tokio::runtime::Handle::current()).await.unwrap();
     // A row under `Collection`, so the decision the removal races is one the
     // list offers.
     let folder = root.join("Collection").join("Album");
-    let generation = manager.begin_folder_scan(&root).await.unwrap();
-    manager
-        .save_folder_scan_item(
+    let generation = tables.begin_folder_scan(&root, crate::import::VolumeKind::Local).await.unwrap();
+    crate::import::store_scan_item(&tables, &crate::diagnostics::Diagnostics::noop(),
             &root,
             generation,
             &crate::import::folder_scanner::ScanItem::Valid(

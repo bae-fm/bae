@@ -3,6 +3,7 @@
 #[tokio::test]
 async fn regrouping_disc_folders_probes_each_audio_file_once() {
     let test = setup_import_service().await;
+    let tables = test.service.tables.clone();
     let root = test.temp.path().join("watched");
     let album = root.join("Album");
     let mut tracks = Vec::new();
@@ -15,13 +16,12 @@ async fn regrouping_disc_folders_probes_each_audio_file_once() {
         }
     }
     let root = crate::import::watched_folder::canonical_absolute_root(&root).unwrap();
-    test.database.add_watched_import_folder(&root).await.unwrap();
+    tables.add_watched_import_folder(&root).await.unwrap();
 
     let (scan, _) = test.scan();
     scan.rescan(&root).await.unwrap();
 
-    let releases: Vec<usize> = test
-        .database
+    let releases: Vec<usize> = tables
         .load_folder_scan_items(&root)
         .await
         .unwrap()
@@ -69,6 +69,7 @@ impl ReadableFiles {
 /// track, an empty one, and one FFmpeg finds nothing in — and two releases
 /// beside a booklet neither owns.
 async fn readable_root(test: &TestService) -> ReadableFiles {
+    let tables = test.service.tables.clone();
     let root = test.temp.path().join("watched");
     let album = root.join("Album");
     let broken = root.join("Broken");
@@ -97,7 +98,7 @@ async fn readable_root(test: &TestService) -> ReadableFiles {
     std::fs::write(&sheet, "FILE \"01.flac\" WAVE\n  TRACK 01 AUDIO\n    INDEX 01 00:00:00\n")
         .unwrap();
     let root = crate::import::watched_folder::canonical_absolute_root(&root).unwrap();
-    test.database.add_watched_import_folder(&root).await.unwrap();
+    tables.add_watched_import_folder(&root).await.unwrap();
     ReadableFiles {
         album: root.join("Album"),
         tracks: tracks
@@ -120,6 +121,7 @@ async fn readable_root(test: &TestService) -> ReadableFiles {
 #[tokio::test]
 async fn a_rescan_of_an_unchanged_folder_reads_none_of_its_files() {
     let test = setup_import_service().await;
+    let tables = test.service.tables.clone();
     let files = readable_root(&test).await;
     let tags = Arc::new(CountingTagReader::default());
     let (scan, _) =
@@ -132,8 +134,7 @@ async fn a_rescan_of_an_unchanged_folder_reads_none_of_its_files() {
         let expected = u64::from(!(*read == "tags" && path.ends_with("Broken/03.flac")));
         assert_eq!(*count, expected, "{read} of {}", path.display());
     }
-    let stored = test
-        .database
+    let stored = tables
         .load_folder_scan_items(std::path::Path::new(&root_key))
         .await
         .unwrap();
@@ -141,8 +142,7 @@ async fn a_rescan_of_an_unchanged_folder_reads_none_of_its_files() {
         stored.iter().any(|item| matches!(item, ScanItem::Invalid(_))),
         "the broken folder is stored as one that can't be imported: {stored:?}"
     );
-    let reading = test
-        .database
+    let reading = tables
         .load_candidate_file_tag_snapshot(
             &root_key,
             &crate::import::CandidateKey::folder(&files.album),
@@ -157,15 +157,14 @@ async fn a_rescan_of_an_unchanged_folder_reads_none_of_its_files() {
 
     assert_eq!(files.reads(&tags), first, "the rescan reads no file again");
     assert_eq!(
-        test.database
+        tables
             .load_folder_scan_items(std::path::Path::new(&root_key))
             .await
             .unwrap(),
         stored,
         "the rescan stores what the scan before it stored"
     );
-    let reread = test
-        .database
+    let reread = tables
         .load_candidate_file_tag_snapshot(
             &root_key,
             &crate::import::CandidateKey::folder(&files.album),
@@ -185,6 +184,7 @@ async fn a_rescan_of_an_unchanged_folder_reads_none_of_its_files() {
 #[tokio::test]
 async fn a_rescan_of_an_unchanged_multi_disc_album_reads_none_of_its_files() {
     let test = setup_import_service().await;
+    let tables = test.service.tables.clone();
     let watched = test.temp.path().join("watched");
     for disc in ["Disc 1", "Disc 2"] {
         let folder = watched.join("Album").join(disc);
@@ -195,7 +195,7 @@ async fn a_rescan_of_an_unchanged_multi_disc_album_reads_none_of_its_files() {
     }
     let root = crate::import::watched_folder::canonical_absolute_root(&watched).unwrap();
     let root_key = root.to_path_buf();
-    test.database
+    tables
         .add_watched_import_folder(std::path::Path::new(&root_key))
         .await
         .unwrap();
@@ -213,8 +213,7 @@ async fn a_rescan_of_an_unchanged_multi_disc_album_reads_none_of_its_files() {
             .collect::<Vec<_>>()
     };
     scan.rescan(&root).await.unwrap();
-    let stored = test
-        .database
+    let stored = tables
         .load_folder_scan_items(std::path::Path::new(&root_key))
         .await
         .unwrap();
@@ -233,7 +232,7 @@ async fn a_rescan_of_an_unchanged_multi_disc_album_reads_none_of_its_files() {
 
     assert_eq!(reads(), vec![(1, 1); 4], "the rescan reads no track again");
     assert_eq!(
-        test.database
+        tables
             .load_folder_scan_items(std::path::Path::new(&root_key))
             .await
             .unwrap(),
@@ -280,6 +279,7 @@ async fn a_rescan_reads_again_only_the_file_that_changed() {
 #[tokio::test]
 async fn a_release_whose_tracks_did_not_change_keeps_their_stored_tags() {
     let test = setup_import_service().await;
+    let tables = test.service.tables.clone();
     let files = readable_root(&test).await;
     let tags = Arc::new(CountingTagReader::default());
     let (scan, _) =
@@ -287,8 +287,7 @@ async fn a_release_whose_tracks_did_not_change_keeps_their_stored_tags() {
     let root_key = files.root.to_path_buf();
     let album_key = crate::import::CandidateKey::folder(&files.album);
     scan.rescan(&files.root).await.unwrap();
-    let reading = test
-        .database
+    let reading = tables
         .load_candidate_file_tag_snapshot(&root_key, &album_key)
         .await
         .unwrap()
@@ -299,8 +298,7 @@ async fn a_release_whose_tracks_did_not_change_keeps_their_stored_tags() {
     scan.rescan(&files.root).await.unwrap();
 
     assert_eq!(files.reads(&tags), before, "no file is read again");
-    let stored = test
-        .database
+    let stored = tables
         .load_candidate_file_tag_snapshot(&root_key, &album_key)
         .await
         .unwrap()
@@ -310,7 +308,7 @@ async fn a_release_whose_tracks_did_not_change_keeps_their_stored_tags() {
         reading.candidate.files.content_hash(),
         "the release holds a new file"
     );
-    let preparation = crate::import::preparation::import_preparation(&test.database, &stored.candidate.files.content_hash())
+    let preparation = crate::import::preparation::import_preparation(&test.service.tables, &stored.candidate.files.content_hash())
         .await
         .unwrap()
         .expect("the release with the new file is stored");
@@ -324,6 +322,7 @@ async fn a_release_whose_tracks_did_not_change_keeps_their_stored_tags() {
 #[tokio::test]
 async fn folders_whose_files_hash_alike_each_keep_their_tags() {
     let test = setup_import_service().await;
+    let tables = test.service.tables.clone();
     let watched = test.temp.path().join("watched");
     let modified =
         std::time::SystemTime::UNIX_EPOCH + std::time::Duration::from_secs(1_700_000_000);
@@ -340,7 +339,7 @@ async fn folders_whose_files_hash_alike_each_keep_their_tags() {
     }
     let root = crate::import::watched_folder::canonical_absolute_root(&watched).unwrap();
     let root_key = root.to_path_buf();
-    test.database
+    tables
         .add_watched_import_folder(std::path::Path::new(&root_key))
         .await
         .unwrap();
@@ -350,8 +349,7 @@ async fn folders_whose_files_hash_alike_each_keep_their_tags() {
     scan.rescan(&root).await.unwrap();
     let mut hashes = Vec::new();
     for folder in ["First", "Second"] {
-        let stored = test
-            .database
+        let stored = tables
             .load_candidate_file_tag_snapshot(
                 &root_key,
                 &crate::import::CandidateKey::folder(&root.join(folder)),
@@ -398,6 +396,7 @@ impl crate::import::file_tag_snapshot::FileTagReader for EmbeddingTagReader {
 #[tokio::test]
 async fn a_first_scan_reads_each_tracks_tags_once() {
     let test = setup_import_service().await;
+    let tables = test.service.tables.clone();
     let watched = test.temp.path().join("watched");
     let mut tracks = Vec::new();
     for disc in ["CD1", "CD2"] {
@@ -412,7 +411,7 @@ async fn a_first_scan_reads_each_tracks_tags_once() {
     write_test_jpeg(&picture_path);
     let root = crate::import::watched_folder::canonical_absolute_root(&watched).unwrap();
     let root_key = root.to_path_buf();
-    test.database
+    tables
         .add_watched_import_folder(std::path::Path::new(&root_key))
         .await
         .unwrap();
@@ -428,8 +427,7 @@ async fn a_first_scan_reads_each_tracks_tags_once() {
     for track in &tracks {
         assert_eq!(tags.counted.reads_of(&root.join(track)), 1, "{track}");
     }
-    let release = test
-        .database
+    let release = tables
         .load_folder_scan_items(std::path::Path::new(&root_key))
         .await
         .unwrap()
@@ -440,8 +438,7 @@ async fn a_first_scan_reads_each_tracks_tags_once() {
         })
         .expect("the discs read as one release");
     assert_eq!(release.files.audio().count(), 4);
-    let reading = test
-        .database
+    let reading = tables
         .load_candidate_file_tag_snapshot(std::path::Path::new(&root_key), &release.key())
         .await
         .unwrap()

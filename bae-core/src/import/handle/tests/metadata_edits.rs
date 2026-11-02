@@ -61,6 +61,7 @@ async fn assert_every_mutation_refused(
 #[tokio::test(flavor = "multi_thread")]
 async fn a_typed_field_lands_in_the_next_form_empty_included() {
     let (handle, _tmp, key, hash) = pane_fixture().await;
+    let tables = handle.tables.clone();
     let seeded = pane(&handle, &key).await;
     let seeded_artists = seeded.draft().unwrap().metadata_draft.clone().album_artist_assignments;
 
@@ -91,7 +92,7 @@ async fn a_typed_field_lands_in_the_next_form_empty_included() {
         .unwrap();
 
     assert_eq!(pane(&handle, &key).await.draft().unwrap().metadata_draft.album_title, "");
-    let stored = handle.database.load_import_candidate_pane_rows(&hash).await.unwrap();
+    let stored = tables.load_import_candidate_pane_rows(&hash).await.unwrap();
     assert_eq!(
         stored.draft.album_title,
         String::new(),
@@ -151,7 +152,7 @@ async fn a_track_edit_cannot_change_the_audio_it_plays() {
     let (handle, _tmp, key, hash) = pane_fixture().await;
     let before = track_rows(&pane(&handle, &key).await.draft().unwrap().mapping);
     let stored =
-        crate::import::preparation::import_preparation(&handle.database, &hash).await.unwrap().unwrap();
+        crate::import::preparation::import_preparation(&handle.tables, &hash).await.unwrap().unwrap();
 
     let error = handle
         .set_candidate_track_edit(
@@ -167,7 +168,7 @@ async fn a_track_edit_cannot_change_the_audio_it_plays() {
 
     assert!(error.to_string().contains("audio"), "{error}");
     assert_eq!(
-        crate::import::preparation::import_preparation(&handle.database, &hash)
+        crate::import::preparation::import_preparation(&handle.tables, &hash)
             .await
             .unwrap()
             .unwrap()
@@ -238,7 +239,7 @@ async fn changing_audio_preserves_the_metadata_of_surviving_tracks() {
         .await
         .unwrap();
 
-    let preparation = crate::import::preparation::import_preparation(&handle.database, &hash)
+    let preparation = crate::import::preparation::import_preparation(&handle.tables, &hash)
         .await
         .unwrap()
         .expect("the reshaped candidate remains prepared");
@@ -255,7 +256,7 @@ async fn changing_audio_preserves_the_metadata_of_surviving_tracks() {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_claimed_candidate_refuses_every_preparation_mutation() {
     let (handle, _tmp, key, hash) = pane_fixture().await;
-    let before = crate::import::preparation::import_preparation(&handle.database, &hash)
+    let before = crate::import::preparation::import_preparation(&handle.tables, &hash)
         .await
         .unwrap()
         .expect("the candidate is prepared");
@@ -275,7 +276,7 @@ async fn a_claimed_candidate_refuses_every_preparation_mutation() {
     })
     .await;
 
-    let after = crate::import::preparation::import_preparation(&handle.database, &hash)
+    let after = crate::import::preparation::import_preparation(&handle.tables, &hash)
         .await
         .unwrap()
         .expect("the candidate remains prepared");
@@ -387,7 +388,7 @@ async fn metadata_source_changes_keep_each_row_on_its_audio() {
             .collect::<Vec<_>>()
     };
     let before = rows(
-        &crate::import::preparation::import_preparation(&handle.database, &hash)
+        &crate::import::preparation::import_preparation(&handle.tables, &hash)
             .await
             .unwrap()
             .unwrap()
@@ -395,14 +396,14 @@ async fn metadata_source_changes_keep_each_row_on_its_audio() {
     );
 
     handle.select_candidate_file_tags(key.clone()).await.unwrap();
-    let reapplied = crate::import::preparation::import_preparation(&handle.database, &hash)
+    let reapplied = crate::import::preparation::import_preparation(&handle.tables, &hash)
         .await
         .unwrap()
         .expect("the reapplied source remains prepared");
     assert_eq!(rows(&reapplied.draft), before);
 
     handle.clear_candidate_metadata(key).await.unwrap();
-    let cleared = crate::import::preparation::import_preparation(&handle.database, &hash)
+    let cleared = crate::import::preparation::import_preparation(&handle.tables, &hash)
         .await
         .unwrap()
         .expect("the cleared source remains prepared");

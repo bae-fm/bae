@@ -203,14 +203,14 @@ async fn one_row_on_the_page() -> (
     crate::import::CandidateKey,
     crate::import::CandidateKey,
 ) {
-    let (manager, tmp) = setup_test_manager_with(bae_util::http::Http::for_test()).await;
-    let (first, first_key, _) = unscanned_candidate(&manager, &tmp, "Album").await;
-    let (second, second_key, _) = unscanned_candidate(&manager, &tmp, "Other Record").await;
+    let (manager, database, tmp) = setup_test_manager_with(bae_util::http::Http::for_test()).await;
+    let tables = crate::import::tables::ImportTables::new(database);
+    let (first, first_key, _) = unscanned_candidate(&tables, &tmp, "Album").await;
+    let (second, second_key, _) = unscanned_candidate(&tables, &tmp, "Other Record").await;
     let root = first.watched_folder_path.clone();
-    let generation = manager.begin_folder_scan(&root).await.unwrap();
+    let generation = tables.begin_folder_scan(&root, crate::import::VolumeKind::Local).await.unwrap();
     for candidate in [first, second] {
-        manager
-            .save_folder_scan_item(
+        crate::import::store_scan_item(&tables, &crate::diagnostics::Diagnostics::noop(),
                 &root,
                 generation,
                 &crate::import::folder_scanner::ScanItem::Valid(candidate),
@@ -218,7 +218,7 @@ async fn one_row_on_the_page() -> (
             .await
             .unwrap();
     }
-    manager.finish_folder_scan(&root, generation, None).await.unwrap();
+    tables.finish_folder_scan(&root, generation, None).await.unwrap();
     let handle = manager.start_import_service(tokio::runtime::Handle::current()).await.unwrap();
     for key in [&first_key, &second_key] {
         handle.select_candidate_file_tags(key.clone()).await.unwrap();

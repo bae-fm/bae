@@ -217,7 +217,7 @@ impl ImportServiceHandle {
             });
         };
         let state =
-            self.database.load_import_candidate_state(&candidate.files.content_hash()).await?;
+            self.tables.load_import_candidate_state(&candidate.files.content_hash()).await?;
         let link = match state.and_then(|state| state.release_link) {
             None => return Ok(RemoteCoverGallery::Unlinked),
             // An album's artwork is what each catalog shows for the album.
@@ -348,7 +348,7 @@ impl ImportServiceHandle {
             return Ok(false);
         };
         let Some(row) =
-            self.database.load_import_candidate_state(&candidate.files.content_hash()).await?
+            self.tables.load_import_candidate_state(&candidate.files.content_hash()).await?
         else {
             return Ok(false);
         };

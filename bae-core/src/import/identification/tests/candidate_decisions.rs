@@ -5,7 +5,7 @@ async fn ignoring_a_cue_replaces_its_song_rows_with_whole_audio() {
     fixture.scan(1).await;
     let hash = fixture.content_hash(&dir);
     let before =
-        fixture.manager.load_import_candidate_preparation(&hash).await.unwrap().unwrap().draft;
+        crate::import::preparation::import_preparation(&fixture.context.tables, &hash).await.unwrap().unwrap().draft;
     assert_eq!(before.tracks.len(), 5);
     let unchanged = before
         .tracks
@@ -25,7 +25,7 @@ async fn ignoring_a_cue_replaces_its_song_rows_with_whole_audio() {
         .unwrap();
 
     let after =
-        fixture.manager.load_import_candidate_preparation(&hash).await.unwrap().unwrap().draft;
+        crate::import::preparation::import_preparation(&fixture.context.tables, &hash).await.unwrap().unwrap().draft;
     assert_eq!(after.tracks.len(), 3, "one image plus two loose tracks");
     assert!(after
         .tracks
@@ -55,7 +55,7 @@ async fn ignoring_a_cue_replaces_its_song_rows_with_whole_audio() {
         .await
         .unwrap();
     let restored =
-        fixture.manager.load_import_candidate_preparation(&hash).await.unwrap().unwrap().draft;
+        crate::import::preparation::import_preparation(&fixture.context.tables, &hash).await.unwrap().unwrap().draft;
     assert_eq!(restored.tracks.len(), 5);
     let slices = restored
         .tracks
@@ -166,9 +166,7 @@ async fn a_cleared_sheet_can_be_bound_again() {
     // The draft grew with the slots: three blank tracks for three loose files
     // became the sheet's three entries plus the two loose files, each with a
     // mapping of its own.
-    let preparation = fixture
-        .manager
-        .load_import_candidate_preparation(&fixture.content_hash(&dir))
+    let preparation = crate::import::preparation::import_preparation(&fixture.context.tables, &fixture.content_hash(&dir))
         .await
         .unwrap()
         .expect("the rebound candidate is prepared");
@@ -183,7 +181,7 @@ async fn changing_a_cues_disc_preserves_titles_but_updates_its_group() {
     let hash = fixture.content_hash(&dir);
     let key = crate::import::CandidateKey::folder(&dir);
     let before =
-        fixture.manager.load_import_candidate_preparation(&hash).await.unwrap().unwrap().draft;
+        crate::import::preparation::import_preparation(&fixture.context.tables, &hash).await.unwrap().unwrap().draft;
     fixture
         .import
         .set_sheet_disc(
@@ -194,7 +192,7 @@ async fn changing_a_cues_disc_preserves_titles_but_updates_its_group() {
         .await
         .unwrap();
     let after =
-        fixture.manager.load_import_candidate_preparation(&hash).await.unwrap().unwrap().draft;
+        crate::import::preparation::import_preparation(&fixture.context.tables, &hash).await.unwrap().unwrap().draft;
     assert_eq!(after.mediums.len(), 2, "the loose audio and the sheet's disc");
     for original in before.tracks {
         let actual = after.tracks.iter().find(|track| track.edit.id == original.edit.id).unwrap();

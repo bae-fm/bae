@@ -24,18 +24,18 @@ use std::sync::Mutex;
 /// One term of a list's order: an SQL expression over the list's row, the
 /// way it runs, and whether it can be NULL, which sorts below every value.
 #[derive(Debug, Clone)]
-pub(super) struct SortTerm {
+pub(crate) struct SortTerm {
     expression: String,
     descending: bool,
     nullable: bool,
 }
 
 impl SortTerm {
-    pub(super) fn ascending(expression: impl Into<String>) -> Self {
+    pub(crate) fn ascending(expression: impl Into<String>) -> Self {
         Self { expression: expression.into(), descending: false, nullable: false }
     }
 
-    pub(super) fn descending(expression: impl Into<String>) -> Self {
+    pub(crate) fn descending(expression: impl Into<String>) -> Self {
         Self { descending: true, ..Self::ascending(expression) }
     }
 
@@ -47,7 +47,7 @@ impl SortTerm {
     }
 
     /// The same term over an expression that can be NULL.
-    pub(super) fn nullable(self) -> Self {
+    pub(crate) fn nullable(self) -> Self {
         Self { nullable: true, ..self }
     }
 
@@ -64,16 +64,16 @@ impl SortTerm {
 /// A list's order: terms that together tell any two of its rows apart, so
 /// each row has one place in it.
 #[derive(Debug, Clone)]
-pub(super) struct ListOrder {
+pub(crate) struct ListOrder {
     terms: Vec<SortTerm>,
 }
 
 /// The values a row has for its list's order terms, which say where it sits.
 #[derive(Debug, Clone, PartialEq)]
-pub(super) struct OrderKey(Vec<Value>);
+pub(crate) struct OrderKey(Vec<Value>);
 
 /// A list's row with its key.
-pub(super) type Keyed<R> = (R, OrderKey);
+pub(crate) type Keyed<R> = (R, OrderKey);
 
 /// The name of the result column holding a row's value for term `at`.
 fn key_column(at: usize) -> String {
@@ -97,7 +97,7 @@ enum Side {
 /// order's terms by place, so any statement sorting by the same terms — over
 /// other aliases, or by result column — can run it.
 #[derive(Debug, Clone)]
-pub(super) struct Seek {
+pub(crate) struct Seek {
     /// How many of the order's leading terms hold the row's values.
     equal: usize,
     /// What the term after them is held to; nothing for every row.
@@ -126,7 +126,7 @@ impl Seek {
 
     /// Run `run` with the seek's parameters and a window's `:limit` and
     /// `:offset`.
-    pub(super) fn bound<T>(
+    pub(crate) fn bound<T>(
         &self,
         limit: u64,
         offset: u64,
@@ -160,7 +160,7 @@ pub(super) fn sql_bound(value: u64) -> i64 {
 }
 
 impl ListOrder {
-    pub(super) fn new(terms: Vec<SortTerm>) -> Self {
+    pub(crate) fn new(terms: Vec<SortTerm>) -> Self {
         assert!(
             terms.last().is_some_and(|last| !last.nullable),
             "a list's order ends with a term that is never NULL"
@@ -169,7 +169,7 @@ impl ListOrder {
     }
 
     /// The order as an ORDER BY clause.
-    pub(super) fn clause(&self) -> String {
+    pub(crate) fn clause(&self) -> String {
         Self::ordered(&self.terms, false)
     }
 
@@ -182,7 +182,7 @@ impl ListOrder {
     }
 
     /// The order's terms as result columns, which [`Self::key_of`] reads.
-    pub(super) fn key_columns(&self) -> String {
+    pub(crate) fn key_columns(&self) -> String {
         self.terms
             .iter()
             .enumerate()
@@ -192,7 +192,7 @@ impl ListOrder {
     }
 
     /// Where `row` sits, from the columns [`Self::key_columns`] names.
-    pub(super) fn key_of(&self, row: &Row<'_>) -> rusqlite::Result<OrderKey> {
+    pub(crate) fn key_of(&self, row: &Row<'_>) -> rusqlite::Result<OrderKey> {
         (0..self.terms.len())
             .map(|at| row.get::<_, Value>(key_column(at).as_str()))
             .collect::<rusqlite::Result<_>>()
@@ -201,12 +201,12 @@ impl ListOrder {
 
     /// Every row of the list, in its order: the seek a window read by its
     /// offset runs.
-    pub(super) fn everything(&self) -> Seek {
+    pub(crate) fn everything(&self) -> Seek {
         Seek { equal: 0, past: None, from: 0, reversed: false, binds: Vec::new() }
     }
 
     /// The condition `seek` holds this order's rows to.
-    pub(super) fn condition(&self, seek: &Seek) -> String {
+    pub(crate) fn condition(&self, seek: &Seek) -> String {
         let term = |at: usize| &self.terms[at].expression;
         let past = seek.past.map(|past| match past {
             Past::Greater(at) => format!("({}) > {}", term(at), key_parameter(at)),
@@ -226,14 +226,14 @@ impl ListOrder {
     }
 
     /// The ORDER BY clause `seek` reads this order's rows in.
-    pub(super) fn ordering(&self, seek: &Seek) -> String {
+    pub(crate) fn ordering(&self, seek: &Seek) -> String {
         Self::ordered(&self.terms[seek.from..], seek.reversed)
     }
 
     /// The ORDER BY clause `seek` reads a compound statement in whose result
     /// columns hold this order's terms from column `first`, counted from one.
     #[cfg(desktop)]
-    pub(super) fn column_ordering(&self, seek: &Seek, first: usize) -> String {
+    pub(crate) fn column_ordering(&self, seek: &Seek, first: usize) -> String {
         (seek.from..self.terms.len())
             .map(|at| {
                 let column = first + at;
@@ -251,7 +251,7 @@ impl ListOrder {
     /// ([`Self::key_columns`]) of a subquery aliased `t`; a column keeps its
     /// expression's collation.
     #[cfg(desktop)]
-    pub(super) fn key_ordering(&self, t: &str) -> String {
+    pub(crate) fn key_ordering(&self, t: &str) -> String {
         self.terms
             .iter()
             .enumerate()
@@ -270,7 +270,7 @@ impl ListOrder {
     /// The seeks reading the rows after the row at `key`, then those reading
     /// the rows before it: what a test holds to the order's index.
     #[cfg(test)]
-    pub(super) fn seeks_beside(&self, key: &OrderKey) -> Vec<Seek> {
+    pub(crate) fn seeks_beside(&self, key: &OrderKey) -> Vec<Seek> {
         let mut seeks = self.seeks(key, Side::After);
         seeks.extend(self.seeks(key, Side::Before));
         seeks
@@ -324,25 +324,25 @@ impl ListOrder {
 }
 
 /// Where rows of a list sit: each one's key by its place.
-pub(super) type Places = BTreeMap<u64, OrderKey>;
+pub(crate) type Places = BTreeMap<u64, OrderKey>;
 
 /// Where some of a list's rows sat when one live query last read it, and what
 /// placed them then: the versions of the tables the list's order reads, and
 /// anything else that orders or narrows the list, such as a sort or a filter.
 /// `Kept` is what a read keeps of where its rows sat: their places, and
 /// whatever else a list keeps of them.
-pub(super) struct KnownPlaces<Standing, Kept = Places> {
+pub(crate) struct KnownPlaces<Standing, Kept = Places> {
     last: Mutex<Option<(Standing, Kept)>>,
 }
 
 impl<Standing: PartialEq, Kept: Clone + Default> KnownPlaces<Standing, Kept> {
-    pub(super) fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self { last: Mutex::new(None) }
     }
 
     /// What the last read kept, if the list stands where it stood for that
     /// read; nothing otherwise.
-    pub(super) fn under(&self, standing: &Standing) -> Kept {
+    pub(crate) fn under(&self, standing: &Standing) -> Kept {
         match &*self.last.lock().expect("known places lock poisoned") {
             Some((kept_under, kept)) if kept_under == standing => kept.clone(),
             _ => Kept::default(),
@@ -350,14 +350,14 @@ impl<Standing: PartialEq, Kept: Clone + Default> KnownPlaces<Standing, Kept> {
     }
 
     /// Keep what a read found, under what placed its rows.
-    pub(super) fn keep(&self, standing: Standing, kept: Kept) {
+    pub(crate) fn keep(&self, standing: Standing, kept: Kept) {
         *self.last.lock().expect("known places lock poisoned") = Some((standing, kept));
     }
 }
 
 /// The versions of the tables `sources` names, as `list_order_versions`
 /// holds them in this read.
-pub(super) fn list_order_versions_on(
+pub(crate) fn list_order_versions_on(
     sql: &SqlReadContext<'_>,
     sources: &[&str],
 ) -> rusqlite::Result<Vec<i64>> {
@@ -382,16 +382,16 @@ enum Start<'k> {
 
 /// What one read of a list's windows found: each window's rows, and where
 /// each window's first and last rows sit, which a later read may start from.
-pub(super) struct WindowsRead<R> {
-    pub(super) windows: Vec<(LibraryPageWindow, Vec<R>)>,
-    pub(super) found: Places,
+pub(crate) struct WindowsRead<R> {
+    pub(crate) windows: Vec<(LibraryPageWindow, Vec<R>)>,
+    pub(crate) found: Places,
 }
 
 /// Read each of `windows`, in offset order, from the known row beside it
 /// when there is one and by its offset otherwise. `read` runs the list's
 /// statement under a seek, for at most `limit` rows from `offset`, and gives
 /// each row with its key.
-pub(super) fn read_windows<R, E>(
+pub(crate) fn read_windows<R, E>(
     order: &ListOrder,
     windows: &LibraryPageWindows,
     mut known: Places,

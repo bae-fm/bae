@@ -168,7 +168,7 @@ pub(super) fn image_version_sql(alias: &str) -> String {
 
 /// The version of the cover of the release `release_id` (a SQL expression),
 /// found by the covers' key; NULL when the release has no cover.
-pub(super) fn cover_version_sql(release_id: &str) -> String {
+pub(crate) fn cover_version_sql(release_id: &str) -> String {
     format!(
         "(SELECT {version} FROM covers AS cover WHERE cover.id = {release_id})",
         version = image_version_sql("cover")

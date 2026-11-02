@@ -87,7 +87,7 @@ impl CandidateRuntime {
         &self,
         key: &CandidateKey,
     ) -> Result<Option<CandidateRuntimeSnapshot>, crate::import::ImportError> {
-        let stored = self.database.load_candidate_runtime(key).await?;
+        let stored = self.tables.load_candidate_runtime(key).await?;
         Ok(compose(key, &stored))
     }
 
@@ -95,7 +95,7 @@ impl CandidateRuntime {
     pub(crate) async fn snapshots(
         &self,
     ) -> Result<HashMap<CandidateKey, CandidateRuntimeSnapshot>, crate::import::ImportError> {
-        let stored = self.database.load_candidate_runtimes().await?;
+        let stored = self.tables.load_candidate_runtimes().await?;
         Ok(stored
             .iter()
             .filter_map(|(key, stored)| {

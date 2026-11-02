@@ -16,8 +16,9 @@ use super::{
     ImportCandidateListLocation, ImportListId, ImportListProjection, ImportListRequest,
     ImportListSnapshot, ImportListView,
 };
-use crate::db::{Database, DbError, SelectionWrite};
+use crate::db::DbError;
 use crate::import::selection::{SelectedRows, SelectionChange};
+use crate::import::tables::{ImportTables, SelectionWrite};
 use crate::import::FolderReleaseDecisionKey;
 use crate::library::{CancellationToken, LibraryPageWindows};
 use crate::live_query::CancellableLiveQuery;
@@ -47,7 +48,7 @@ impl From<crate::live_query::LiveQueryCancelled> for ImportListSubscriptionError
 /// closes.
 pub struct ImportListSubscription {
     list: ImportListId,
-    database: Database,
+    tables: ImportTables,
     query: CancellableLiveQuery<ImportListRequest, ImportListProjection>,
 }
 
@@ -55,23 +56,23 @@ impl ImportListSubscription {
     /// Open a list showing `view` through `windows`, with nothing folded and
     /// nothing selected, and the live query that reads it.
     pub(crate) async fn open(
-        database: Database,
+        tables: ImportTables,
         closing: CancellationToken,
         view: ImportListView,
         windows: LibraryPageWindows,
     ) -> Result<Self, DbError> {
-        let list = database.open_import_list(view).await?;
+        let list = tables.open_import_list(view).await?;
         let query = CancellableLiveQuery::new(
-            database.subscribe_import_list(ImportListRequest { list, windows }),
+            tables.subscribe_import_list(ImportListRequest { list, windows }),
             closing,
         );
-        Ok(Self { list, database, query })
+        Ok(Self { list, tables, query })
     }
 
     /// Show a different tab, filter or order. The windows are kept: the query
     /// reruns and the surface re-reads them. Answers with the view revision.
     pub async fn set_view(&self, view: ImportListView) -> Result<u64, ImportListSubscriptionError> {
-        Ok(self.database.set_import_list_view(self.list, view).await?)
+        Ok(self.tables.set_import_list_view(self.list, view).await?)
     }
 
     pub fn set_windows(
@@ -90,7 +91,7 @@ impl ImportListSubscription {
         group: FolderReleaseDecisionKey,
         folded: bool,
     ) -> Result<u64, ImportListSubscriptionError> {
-        Ok(self.database.set_import_list_group_folded(self.list, group, folded).await?)
+        Ok(self.tables.set_import_list_group_folded(self.list, group, folded).await?)
     }
 
     /// Fold every group shut, or open them all, as one change.
@@ -98,7 +99,7 @@ impl ImportListSubscription {
         &self,
         folded: bool,
     ) -> Result<u64, ImportListSubscriptionError> {
-        Ok(self.database.set_import_list_groups_folded(self.list, folded).await?)
+        Ok(self.tables.set_import_list_groups_folded(self.list, folded).await?)
     }
 
     /// Apply a change a person made by pointing at rows of the list, and
@@ -107,7 +108,7 @@ impl ImportListSubscription {
         &self,
         change: SelectionChange,
     ) -> Result<u64, ImportListSubscriptionError> {
-        match self.database.change_import_list_selection(self.list, change).await? {
+        match self.tables.change_import_list_selection(self.list, change).await? {
             SelectionWrite::Changed { revision } => Ok(revision),
             SelectionWrite::RunNotShown => Err(ImportListSubscriptionError::RunNotShown),
         }
@@ -115,13 +116,13 @@ impl ImportListSubscription {
 
     /// Select every row the list shows, whether or not a surface loaded it.
     pub async fn select_all(&self) -> Result<u64, ImportListSubscriptionError> {
-        Ok(self.database.select_all_in_import_list(self.list).await?)
+        Ok(self.tables.select_all_in_import_list(self.list).await?)
     }
 
     /// The selected rows, in the order the list shows them: what a bulk
     /// action runs over.
     pub async fn selected(&self) -> Result<SelectedRows, ImportListSubscriptionError> {
-        Ok(self.database.load_import_list_selected(self.list).await?)
+        Ok(self.tables.load_import_list_selected(self.list).await?)
     }
 
     /// The view and position that reveal the candidate at `candidate_key`
@@ -131,7 +132,7 @@ impl ImportListSubscription {
         &self,
         candidate_key: &crate::import::CandidateKey,
     ) -> Result<Option<ImportCandidateListLocation>, ImportListSubscriptionError> {
-        Ok(self.database.locate_import_candidate(self.list, candidate_key).await?)
+        Ok(self.tables.locate_import_candidate(self.list, candidate_key).await?)
     }
 
     /// The first candidate the identification count is still waiting on —
@@ -141,7 +142,7 @@ impl ImportListSubscription {
     pub async fn first_identifying_candidate(
         &self,
     ) -> Result<Option<crate::import::CandidateKey>, ImportListSubscriptionError> {
-        Ok(self.database.first_identifying_import_candidate(self.list).await?)
+        Ok(self.tables.first_identifying_import_candidate(self.list).await?)
     }
 
     /// The list's next value.
@@ -190,6 +191,6 @@ impl ImportListSubscription {
     /// go.
     pub async fn cancel(&self) -> Result<(), ImportListSubscriptionError> {
         self.query.close().await;
-        Ok(self.database.close_import_list(self.list).await?)
+        Ok(self.tables.close_import_list(self.list).await?)
     }
 }

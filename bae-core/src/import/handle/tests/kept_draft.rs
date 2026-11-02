@@ -6,7 +6,7 @@ use crate::import::{NeedsYouReason, PendingStanding};
 
 /// Store a verdict that found nothing for the fixture's candidate.
 async fn store_not_found(handle: &ImportServiceHandle, hash: &str) {
-    let prep = crate::import::preparation::import_preparation(&handle.database, hash)
+    let prep = crate::import::preparation::import_preparation(&handle.tables, hash)
         .await
         .unwrap()
         .expect("the fixture candidate is prepared");
@@ -94,6 +94,7 @@ async fn keeping_the_draft_with_no_lookup_is_refused() {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_pick_after_keeping_the_draft_is_identified() {
     let (handle, _tmp, key, hash) = pane_fixture().await;
+    let tables = handle.tables.clone();
     store_not_found(&handle, &hash).await;
     handle.keep_candidate_draft(key.clone()).await.unwrap();
     super::lookup_choices::seed_mb_release_with_catalog(
@@ -105,8 +106,7 @@ async fn a_pick_after_keeping_the_draft_is_identified() {
     super::lookup_choices::pick(&handle, &key, "kept-then-picked").await;
 
     assert_eq!(standing(&handle, &key).await, PendingStanding::Identified);
-    let kept = handle
-        .database
+    let kept = tables
         .load_import_candidate_state(&hash)
         .await
         .unwrap()

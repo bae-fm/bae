@@ -38,7 +38,7 @@ use super::handle::{ImportEvent, ScanEvent};
 use super::types::ImportProgress;
 use crate::catalog_model::search::{MetadataResult, SearchQuery};
 use crate::catalog_model::Failure;
-use crate::db::{Database, DbError};
+use crate::db::DbError;
 use crate::identify::signals::Signals;
 use crate::identify::{IdentifyState, RunOutcome};
 use crate::import::IdentifyRunId;
@@ -124,8 +124,8 @@ pub struct CandidateRuntime {
     /// Its own lock: work emits through the bus while holding it, and the
     /// bus records into `inner`.
     work: Arc<Mutex<work::WorkInFlight>>,
-    /// The library the standings table is in.
-    database: Database,
+    /// The standings table, in the library's store.
+    tables: crate::import::tables::ImportTables,
     /// Where a bug the runtime finds with no caller to fail is reported.
     diagnostics: crate::diagnostics::Diagnostics,
     /// The percent of each key's running import, apart from its snapshot: it
@@ -157,13 +157,16 @@ impl CandidateRuntime {
         crate::diagnostics::lock_or_crash(&self.diagnostics, "the candidate runtime", &self.inner)
     }
 
-    /// A runtime over the standings table of `database`, which the library
+    /// A runtime over the standings table in `tables`, which the library
     /// emptied as it opened, reporting its bugs to `diagnostics`.
-    pub(crate) fn new(database: Database, diagnostics: crate::diagnostics::Diagnostics) -> Self {
+    pub(crate) fn new(
+        tables: crate::import::tables::ImportTables,
+        diagnostics: crate::diagnostics::Diagnostics,
+    ) -> Self {
         Self {
             inner: Arc::default(),
             work: Arc::default(),
-            database,
+            tables,
             diagnostics,
             percents: Arc::new(watch::Sender::new(HashMap::new())),
             #[cfg(any(test, feature = "test-utils"))]
@@ -184,7 +187,7 @@ impl CandidateRuntime {
     pub async fn for_test() -> Self {
         let directory = tempfile::TempDir::new().expect("a test runtime has a directory");
         let path = directory.path().join("library.db");
-        let database = Database::new_test(
+        let database = crate::db::Database::new_test(
             path.to_str().expect("a temporary path is UTF-8"),
             Arc::new(coven::SystemClock),
         )
@@ -192,7 +195,10 @@ impl CandidateRuntime {
         .expect("a test runtime's database opens");
         Self {
             _test_directory: Some(Arc::new(directory)),
-            ..Self::new(database, crate::diagnostics::Diagnostics::noop())
+            ..Self::new(
+                crate::import::tables::ImportTables::new(database),
+                crate::diagnostics::Diagnostics::noop(),
+            )
         }
     }
 
@@ -200,23 +206,20 @@ impl CandidateRuntime {
     /// stores the rows a scan would.
     #[cfg(test)]
     pub(crate) async fn execute_local_sql_for_test(&self, statements: &str) {
-        self.database
-            .execute_local_sql_for_test(statements)
-            .await
-            .expect("a test's statements run");
+        self.tables.execute_local_sql_for_test(statements).await.expect("a test's statements run");
     }
 
     /// `key`'s row as the standings table reads it, for a test.
     #[cfg(test)]
     pub(crate) async fn stored_standing_for_test(&self, key: &CandidateKey) -> StoredStanding {
-        self.database.load_candidate_standing(key).await.expect("a test reads the standings table")
+        self.tables.load_candidate_standing(key).await.expect("a test reads the standings table")
     }
 
     /// Another runtime over this one's library, holding nothing of what this
     /// one holds, for a test of what the table alone decides.
     #[cfg(test)]
     pub(crate) fn over_the_same_library_for_test(&self) -> Self {
-        Self::new(self.database.clone(), self.diagnostics.clone())
+        Self::new(self.tables.clone(), self.diagnostics.clone())
     }
 
     /// The signals `run` of `key` last read, as the run's rows hold them:
@@ -227,7 +230,7 @@ impl CandidateRuntime {
         key: &CandidateKey,
         run: IdentifyRunId,
     ) -> Result<Option<Signals>, DbError> {
-        self.database.load_candidate_run_signals(key, run).await
+        self.tables.load_candidate_run_signals(key, run).await
     }
 
     /// Every move of the identification count from now on, for a test.
@@ -256,7 +259,7 @@ impl CandidateRuntime {
         key: &CandidateKey,
         search: &CandidateSearch,
     ) -> Result<SearchRun, DbError> {
-        self.database.start_candidate_search(key, search).await
+        self.tables.start_candidate_search(key, search).await
     }
 
     /// Put every failed part of `key`'s search back to searching, returning
@@ -266,20 +269,20 @@ impl CandidateRuntime {
         &self,
         key: &CandidateKey,
     ) -> Result<Option<(SearchRun, SearchQuery, Vec<LookupCatalog>)>, DbError> {
-        self.database.retry_candidate_search(key).await
+        self.tables.retry_candidate_search(key).await
     }
 
     /// Stop asking `source` on every search. Each keeps its run, so the
     /// other source's answer still lands; the dropped source's is refused
     /// because that part is no longer searching.
     pub(super) async fn switch_source_off(&self, source: LookupCatalog) -> Result<(), DbError> {
-        self.database.switch_search_source_off(source).await
+        self.tables.switch_search_source_off(source).await
     }
 
     /// Whether `run` is still the run `key`'s search is on.
     #[cfg(test)]
     pub(super) async fn search_run_is_current(&self, key: &CandidateKey, run: SearchRun) -> bool {
-        self.database.candidate_search_run(key).await.expect("a test reads the search it started")
+        self.tables.candidate_search_run(key).await.expect("a test reads the search it started")
             == Some(run)
     }
 
@@ -293,7 +296,7 @@ impl CandidateRuntime {
         source: LookupCatalog,
         outcome: Result<Vec<MetadataResult>, Failure>,
     ) -> Result<bool, DbError> {
-        self.database.land_candidate_search(run, source, outcome).await
+        self.tables.land_candidate_search(run, source, outcome).await
     }
 
     /// Land what `release`'s documents state its album is on whatever search
@@ -306,7 +309,7 @@ impl CandidateRuntime {
         release: &crate::catalog_model::records::LookupRef,
         links: crate::catalog_model::album_links::AlbumLinks,
     ) -> Result<Vec<(String, Vec<crate::catalog_model::records::MetadataRef>)>, DbError> {
-        self.database.land_candidate_search_pick(key, release, links).await
+        self.tables.land_candidate_search_pick(key, release, links).await
     }
 
     /// The state `run` of the folder candidate `key` published, and the
@@ -320,9 +323,7 @@ impl CandidateRuntime {
         signals: Option<&Signals>,
     ) -> Result<bool, DbError> {
         let outcome = published_outcome(key, run, state)?;
-        self.database
-            .publish_candidate_run(key, run, &outcome, state.read_releases(), signals)
-            .await
+        self.tables.publish_candidate_run(key, run, &outcome, state.read_releases(), signals).await
     }
 
     /// The state `run` of the library release whose re-identify key is `key`
@@ -336,9 +337,9 @@ impl CandidateRuntime {
         signals: Option<&Signals>,
     ) -> Result<(), DbError> {
         match RunOutcome::of(state) {
-            None => self.database.end_release_run(key, run).await,
+            None => self.tables.end_release_run(key, run).await,
             Some(outcome) => {
-                self.database
+                self.tables
                     .publish_release_run(key, run, &outcome, state.read_releases(), signals)
                     .await
             }

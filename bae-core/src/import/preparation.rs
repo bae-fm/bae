@@ -204,10 +204,10 @@ pub(crate) fn check_cover_bytes(
 /// device already imported holds no draft, so reading it fails as an import of
 /// those files does.
 pub(crate) async fn import_preparation(
-    database: &crate::db::Database,
+    tables: &crate::import::tables::ImportTables,
     content_hash: &str,
 ) -> Result<Option<crate::db::DbCandidateImportPreparation>, crate::import::ImportError> {
-    match database.load_import_candidate_preparation(content_hash).await? {
+    match tables.load_import_candidate_preparation(content_hash).await? {
         None => Ok(None),
         Some(crate::db::DbPreparationRead::Prepared(preparation)) => Ok(Some(preparation)),
         Some(crate::db::DbPreparationRead::Imported { release_id }) => {

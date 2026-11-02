@@ -59,10 +59,11 @@ async fn next_for(
 /// originals the library records, without asking the disk.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn an_album_opened_while_another_release_imports_shows_at_once() {
-    let (manager, tmp) = setup_test_manager().await;
+    let (manager, database, tmp) = setup_test_manager().await;
+    let tables = crate::import::tables::ImportTables::new(database);
     let other = TempDir::new().unwrap();
-    let (_, shown_key, _) = picked_candidate(&manager, &tmp, "Shown Album").await;
-    let (_, importing_key, _) = picked_candidate(&manager, &other, "Importing Album").await;
+    let (_, shown_key, _) = picked_candidate(&tables, &tmp, "Shown Album").await;
+    let (_, importing_key, _) = picked_candidate(&tables, &other, "Importing Album").await;
     let handle = manager.start_import_service(tokio::runtime::Handle::current()).await.unwrap();
     let playback = manager
         .start_playback_service_with_audio_device(

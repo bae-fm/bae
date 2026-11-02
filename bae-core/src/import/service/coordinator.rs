@@ -17,7 +17,7 @@ impl ImportService {
     ) -> std::thread::JoinHandle<()> {
         let removal_backend = Arc::new(ServiceRootRemovalBackend::new(
             scan.folder_watcher.clone(),
-            scan.services.database.clone(),
+            scan.services.tables.clone(),
             scan.services.diagnostics.clone(),
         ));
         let scan_for_starter = scan.clone();
@@ -36,7 +36,7 @@ impl ImportService {
     ) -> std::thread::JoinHandle<()> {
         let crate::import::ImportServices {
             event_tx,
-            database,
+            tables,
             folder_state_commit,
             diagnostics,
             ..
@@ -55,7 +55,7 @@ impl ImportService {
                         diagnostics.clone(),
                     );
                 let (mut coordinator, mut checked_rx) =
-                    Coordinator::new(active_roots, event_tx, database, diagnostics);
+                    Coordinator::new(active_roots, event_tx, tables, diagnostics);
                 let period = crate::import::volume::CHECK_PERIOD;
                 let mut periodic =
                     tokio::time::interval_at(tokio::time::Instant::now() + period, period);
@@ -163,7 +163,7 @@ pub(super) struct Coordinator {
     checking: HashSet<PathBuf>,
     checked_tx: mpsc::UnboundedSender<(PathBuf, NetworkCheck)>,
     event_tx: crate::import::handle::ImportEventBus,
-    database: crate::db::Database,
+    tables: crate::import::tables::ImportTables,
     diagnostics: crate::diagnostics::Diagnostics,
 }
 
@@ -174,7 +174,7 @@ impl Coordinator {
     pub(super) fn new(
         active_roots: ActiveRoots,
         event_tx: crate::import::handle::ImportEventBus,
-        database: crate::db::Database,
+        tables: crate::import::tables::ImportTables,
         diagnostics: crate::diagnostics::Diagnostics,
     ) -> (Self, NetworkChecks) {
         let (checked_tx, checked_rx) = mpsc::unbounded_channel();
@@ -184,7 +184,7 @@ impl Coordinator {
                 checking: HashSet::new(),
                 checked_tx,
                 event_tx,
-                database,
+                tables,
                 diagnostics,
             },
             checked_rx,
@@ -201,13 +201,8 @@ impl Coordinator {
                 self.active_roots.finish_scan(completion).await;
             }
             CoordinatorEvent::WatchReport(report) => {
-                take_watch_report(
-                    report,
-                    &self.database,
-                    &mut self.active_roots,
-                    &self.diagnostics,
-                )
-                .await;
+                take_watch_report(report, &self.tables, &mut self.active_roots, &self.diagnostics)
+                    .await;
             }
             CoordinatorEvent::NetworkChecked { root, found } => {
                 self.checking.remove(&root);
@@ -219,7 +214,7 @@ impl Coordinator {
                     None => RootChange::WholeRoot,
                     Some(changes) => {
                         let changes: Vec<&Path> = changes.iter().map(PathBuf::as_path).collect();
-                        let holds = holds_its_own_release(&self.database, &root).await;
+                        let holds = holds_its_own_release(&self.tables, &root).await;
                         root_change_of(&root, &changes, holds, &self.diagnostics).await
                     }
                 };
@@ -235,11 +230,11 @@ impl Coordinator {
     }
 
     async fn take_command(&mut self, command: WatcherCommand) {
-        let database = &self.database;
+        let tables = &self.tables;
         let active_roots = &mut self.active_roots;
         match command {
             WatcherCommand::RescanAll => {
-                for root in watched_roots(database).await {
+                for root in watched_roots(tables).await {
                     active_roots.request_scan(
                         root,
                         RootScanCause::Asked("every watched folder was asked for"),
@@ -248,7 +243,7 @@ impl Coordinator {
                 }
             }
             WatcherCommand::Rescan(path) => {
-                match database.is_watched_import_folder(&path).await {
+                match tables.is_watched_import_folder(&path).await {
                     Ok(true) => {}
                     Ok(false) => return,
                     Err(error) => {
@@ -267,7 +262,7 @@ impl Coordinator {
                 );
             }
             WatcherCommand::Refresh { path, completion } => {
-                let refused = match database.is_watched_import_folder(&path).await {
+                let refused = match tables.is_watched_import_folder(&path).await {
                     Ok(true) => None,
                     Ok(false) => Some(format!("{} is no longer watched", path.display())),
                     Err(error) => Some(format!(
@@ -297,7 +292,7 @@ impl Coordinator {
             }
             #[cfg(test)]
             WatcherCommand::WatchReport { report, taken } => {
-                take_watch_report(report, database, active_roots, &self.diagnostics).await;
+                take_watch_report(report, tables, active_roots, &self.diagnostics).await;
                 #[expect(
                     clippy::let_underscore_must_use,
                     reason = "a test that stopped waiting needs no answer"
@@ -316,7 +311,7 @@ impl Coordinator {
         };
         match outcome {
             RemovalOutcome::Removed { commit, removed_keys, scan_waiters, callers } => {
-                let folders = watched_folders(&self.database).await;
+                let folders = watched_folders(&self.tables).await;
                 for candidate_key in removed_keys {
                     self.event_tx.send(crate::import::handle::ImportEvent::Scan(
                         ScanEvent::CandidateRemoved { candidate_key },
@@ -351,7 +346,7 @@ impl Coordinator {
     /// Start the check of every network root not already being checked or
     /// removed.
     async fn check_network_folders(&mut self) {
-        let roots = watched_roots(&self.database).await;
+        let roots = watched_roots(&self.tables).await;
         for root in roots {
             if self.active_roots.is_being_removed(&root) {
                 continue;
@@ -371,7 +366,7 @@ impl Coordinator {
         if !self.checking.insert(root.clone()) {
             return false;
         }
-        let database = self.database.clone();
+        let tables = self.tables.clone();
         let diagnostics = self.diagnostics.clone();
         let answer = self.checked_tx.clone();
         let panicked_answer = self.checked_tx.clone();
@@ -382,7 +377,7 @@ impl Coordinator {
             &tokio::runtime::Handle::current(),
             "check a network folder",
             async move {
-                let found = check_network_folder(&database, &checked_root, &diagnostics).await;
+                let found = check_network_folder(&tables, &checked_root, &diagnostics).await;
                 if answer.send((checked_root, found)).is_err() {
                     debug!("folder scan coordinator ended before a check landed");
                 }
@@ -399,11 +394,11 @@ impl Coordinator {
 
 /// What the network folder `root` holds against what its last scan saw.
 async fn check_network_folder(
-    database: &crate::db::Database,
+    tables: &crate::import::tables::ImportTables,
     root: &Path,
     diagnostics: &crate::diagnostics::Diagnostics,
 ) -> NetworkCheck {
-    let recorded = match database.load_folder_scan_directories(root).await {
+    let recorded = match tables.load_folder_scan_directories(root).await {
         Ok(recorded) => recorded,
         Err(error) => {
             warn!("could not read what the last scan of {} saw: {error}", root.display());
@@ -436,14 +431,14 @@ async fn check_network_folder(
 /// Ask for the reads a filesystem watch's report calls for.
 async fn take_watch_report(
     report: WatchReport,
-    database: &crate::db::Database,
+    tables: &crate::import::tables::ImportTables,
     active_roots: &mut ActiveRoots,
     diagnostics: &crate::diagnostics::Diagnostics,
 ) {
     let events = match report {
         Ok(events) => events,
         Err(errors) => {
-            let roots = watched_roots(database).await;
+            let roots = watched_roots(tables).await;
             let mut error_paths = Vec::new();
             for e in errors {
                 error_paths.extend(e.paths.iter().cloned());
@@ -459,7 +454,7 @@ async fn take_watch_report(
     // A watch that lost track names where to start: no path,
     // or one holding a root, reads the whole root; one inside
     // a root reads that folder again.
-    let roots = watched_roots(database).await;
+    let roots = watched_roots(tables).await;
     let mut whole: HashSet<PathBuf> = HashSet::new();
     for event in events.iter().filter(|event| event.need_rescan()) {
         if event.paths.is_empty() {
@@ -484,7 +479,7 @@ async fn take_watch_report(
         let lost_track = events.iter().any(|event| {
             event.need_rescan() && event.paths.iter().any(|path| path.starts_with(&root))
         });
-        let holds = holds_its_own_release(database, &root).await;
+        let holds = holds_its_own_release(tables, &root).await;
         let change = root_change_of(&root, &under, holds, diagnostics).await;
         request_change(
             active_roots,
@@ -519,8 +514,8 @@ fn request_change(
 
 /// Whether `root` holds tracks of its own. A failed read answers yes, which
 /// reads the whole root: right either way.
-async fn holds_its_own_release(database: &crate::db::Database, root: &Path) -> bool {
-    match database.load_folder_scan_item(&crate::import::CandidateKey::folder(root)).await {
+async fn holds_its_own_release(tables: &crate::import::tables::ImportTables, root: &Path) -> bool {
+    match tables.load_folder_scan_item(&crate::import::CandidateKey::folder(root)).await {
         Ok(item) => item.is_some(),
         Err(error) => {
             warn!(
@@ -533,8 +528,10 @@ async fn holds_its_own_release(database: &crate::db::Database, root: &Path) -> b
 }
 
 /// What the store lists as watched; a failed read is logged and lists nothing.
-async fn watched_folders(database: &crate::db::Database) -> Vec<crate::import::WatchedFolder> {
-    match database.load_watched_import_folders().await {
+async fn watched_folders(
+    tables: &crate::import::tables::ImportTables,
+) -> Vec<crate::import::WatchedFolder> {
+    match tables.load_watched_import_folders().await {
         Ok(folders) => folders,
         Err(error) => {
             error!("could not read the watched folders: {error}");
@@ -543,6 +540,6 @@ async fn watched_folders(database: &crate::db::Database) -> Vec<crate::import::W
     }
 }
 
-async fn watched_roots(database: &crate::db::Database) -> Vec<PathBuf> {
-    watched_folders(database).await.into_iter().map(|folder| folder.path).collect()
+async fn watched_roots(tables: &crate::import::tables::ImportTables) -> Vec<PathBuf> {
+    watched_folders(tables).await.into_iter().map(|folder| folder.path).collect()
 }

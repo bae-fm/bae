@@ -78,24 +78,24 @@ impl FileMetadataSeed {
 /// and opens no file: the store keeps that entry and writes nothing for the
 /// folder.
 pub(crate) async fn scan_item_seed(
-    database: &crate::db::Database,
+    tables: &crate::import::tables::ImportTables,
     diagnostics: &crate::diagnostics::Diagnostics,
     item: &crate::import::folder_scanner::ScanItem,
     generation: u64,
     reads: std::sync::Arc<crate::import::folder_scanner::FileReads>,
-) -> Result<crate::db::ScanItemSeed, ImportError> {
-    use crate::db::ScanItemSeed;
+) -> Result<crate::import::tables::ScanItemSeed, ImportError> {
     use crate::import::folder_scanner::ScanItem;
+    use crate::import::tables::ScanItemSeed;
     let (ScanItem::Discovered(candidate) | ScanItem::Valid(candidate)) = item else {
         return Ok(ScanItemSeed::Tags(None));
     };
     if let (ScanItem::Discovered(_), Some(coverage)) = (item, item.coverage()) {
-        if database.settled_entry_reads(&candidate.watched_folder_path, &coverage).await? {
+        if tables.settled_entry_reads(&candidate.watched_folder_path, &coverage).await? {
             return Ok(ScanItemSeed::AlreadySettled);
         }
     }
     let folder = candidate.path.display().to_string();
-    let stored = database
+    let stored = tables
         .load_stored_file_tag_reading(
             &candidate.watched_folder_path,
             &candidate.key(),
@@ -118,4 +118,40 @@ pub(crate) async fn scan_item_seed(
             Ok(ScanItemSeed::Tags(None))
         }
     }
+}
+
+/// Store `item` under `generation` of `watched_folder_path` as a scan stores
+/// it, its draft seeded from its files' tags: the write of a scan a test
+/// makes without walking a folder. `None`, with nothing written, when
+/// `generation` is no longer the folder's.
+#[cfg(any(test, feature = "test-utils"))]
+pub async fn store_scan_item(
+    tables: &crate::import::tables::ImportTables,
+    diagnostics: &crate::diagnostics::Diagnostics,
+    watched_folder_path: &std::path::Path,
+    generation: u64,
+    item: &crate::import::folder_scanner::ScanItem,
+) -> Result<Option<crate::import::tables::ScanItemWrite>, ImportError> {
+    let seed = scan_item_seed(
+        tables,
+        diagnostics,
+        item,
+        generation,
+        std::sync::Arc::new(crate::import::folder_scanner::FileReads::new(std::sync::Arc::new(
+            crate::import::file_tag_snapshot::LoftyFileTagReader,
+        ))),
+    )
+    .await?;
+    let writes = tables
+        .save_folder_scan_items(
+            watched_folder_path,
+            generation,
+            vec![crate::import::tables::ScanItemToWrite {
+                item: item.clone(),
+                seed,
+                folder_date: None,
+            }],
+        )
+        .await?;
+    Ok(writes.map(|mut writes| writes.pop().expect("one item stores one write").1))
 }

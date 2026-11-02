@@ -40,8 +40,9 @@ async fn setup_import_service() -> TestService {
     let preparations = crate::import::CandidatePreparations::new(database.clone());
     // The runtime writes its standings into the library the import commits
     // into.
+    let tables = crate::import::tables::ImportTables::new(database.clone());
     let runtime = crate::import::CandidateRuntime::new(
-        database.clone(),
+        tables.clone(),
         crate::diagnostics::Diagnostics::noop(),
     );
     let catalogs = crate::import::CatalogSessions::new(
@@ -68,6 +69,7 @@ async fn setup_import_service() -> TestService {
             event_tx,
             runtime,
             database: database.clone(),
+            tables,
             catalogs,
             remote_images: crate::import::RemoteImages::new(
                 bae_catalogs::remote_image::RemoteImageCache::for_test(
@@ -108,11 +110,10 @@ async fn prepare_named_candidate(
     candidate_path: &crate::import::CandidateKey,
     album_title: &str,
 ) -> u64 {
-    let preparation =
-        crate::import::preparation::import_preparation(&service.database, content_hash)
-            .await
-            .unwrap()
-            .expect("the scanned candidate has its initial preparation");
+    let preparation = crate::import::preparation::import_preparation(&service.tables, content_hash)
+        .await
+        .unwrap()
+        .expect("the scanned candidate has its initial preparation");
     let mut draft = preparation.draft;
     draft.album_title = album_title.to_string();
     draft.album_artist_assignments =
@@ -146,7 +147,7 @@ async fn store_scanned_candidate(
     name: &str,
 ) -> (crate::import::CandidateKey, super::ImportExpectation) {
     let service = &test.service;
-    let manager = &test.manager;
+    let tables = &test.service.tables;
     let files = crate::import::folder_scanner::collect_release_candidate_files_with_scope(
         folder,
         crate::import::ReleaseFileScope::Recursive,
@@ -155,28 +156,30 @@ async fn store_scanned_candidate(
     .unwrap();
     let content_hash = files.content_hash();
     let candidate_key = crate::import::CandidateKey::folder(folder);
-    service.database.add_watched_import_folder(folder).await.unwrap();
-    let generation = manager.begin_folder_scan(folder).await.unwrap();
-    manager
-        .save_folder_scan_item(
-            folder,
-            generation,
-            &ScanItem::Valid(crate::import::folder_scanner::FolderCandidate {
-                path: folder.to_path_buf(),
-                file_root: folder.to_path_buf(),
-                name: name.to_string(),
-                files,
-                watched_folder_path: folder.to_path_buf(),
-                scope: crate::import::ReleaseFileScope::Recursive,
-                file_edit_revision: 0,
-                relative_folder: crate::import::RelativeFolder::test(name),
-                grouping: None,
-            }),
-        )
-        .await
-        .unwrap()
-        .expect("the stored scan generation is current");
-    service.database.finish_folder_scan(folder, generation, None).await.unwrap();
+    tables.add_watched_import_folder(folder).await.unwrap();
+    let generation =
+        tables.begin_folder_scan(folder, crate::import::VolumeKind::Local).await.unwrap();
+    crate::import::store_scan_item(
+        tables,
+        &crate::diagnostics::Diagnostics::noop(),
+        folder,
+        generation,
+        &ScanItem::Valid(crate::import::folder_scanner::FolderCandidate {
+            path: folder.to_path_buf(),
+            file_root: folder.to_path_buf(),
+            name: name.to_string(),
+            files,
+            watched_folder_path: folder.to_path_buf(),
+            scope: crate::import::ReleaseFileScope::Recursive,
+            file_edit_revision: 0,
+            relative_folder: crate::import::RelativeFolder::test(name),
+            grouping: None,
+        }),
+    )
+    .await
+    .unwrap()
+    .expect("the stored scan generation is current");
+    tables.finish_folder_scan(folder, generation, None).await.unwrap();
     let metadata_revision = prepare_named_candidate(
         service,
         &test.preparations,
@@ -186,8 +189,7 @@ async fn store_scanned_candidate(
         name,
     )
     .await;
-    let file_tag_snapshot = test
-        .database
+    let file_tag_snapshot = tables
         .load_candidate_file_tag_snapshot(folder, &candidate_key)
         .await
         .unwrap()
@@ -422,33 +424,38 @@ impl CoordinatorHarness {
     /// [`root_path`] gives it.
     async fn with_roots(roots: &[&str]) -> Self {
         let roots: Vec<PathBuf> = roots.iter().map(|root| host_root(root)).collect();
-        let TestService { service, manager, preparations, database, temp } =
+        let TestService { service, manager: _, preparations, database, temp } =
             setup_import_service().await;
+        let tables = service.tables.clone();
         for root in &roots {
-            service.database.add_watched_import_folder(std::path::Path::new(root)).await.unwrap();
+            tables.add_watched_import_folder(std::path::Path::new(root)).await.unwrap();
         }
         let (commands, command_rx) = tokio::sync::mpsc::unbounded_channel();
         let (fs_events, fs_rx) = tokio::sync::mpsc::unbounded_channel();
         if let Some(root) = roots.first() {
             let root_path = PathBuf::from(root);
-            let generation = manager.begin_folder_scan(std::path::Path::new(root)).await.unwrap();
-            manager
-                .save_folder_scan_item(
-                    std::path::Path::new(root),
-                    generation,
-                    &ScanItem::Invalid(crate::import::InvalidCandidate {
-                        path: root_path.join("Group/Release"),
-                        name: "Release".to_string(),
-                        watched_folder_path: std::path::PathBuf::from(&root),
-                        relative_folder: crate::import::RelativeFolder::test("Group/Release"),
-                        grouping: None,
-                        files: Vec::new(),
-                        tags: None,
-                    }),
-                )
+            let generation = tables
+                .begin_folder_scan(std::path::Path::new(root), crate::import::VolumeKind::Local)
                 .await
-                .unwrap()
-                .expect("the seeded scan generation is current");
+                .unwrap();
+            crate::import::store_scan_item(
+                &tables,
+                &crate::diagnostics::Diagnostics::noop(),
+                std::path::Path::new(root),
+                generation,
+                &ScanItem::Invalid(crate::import::InvalidCandidate {
+                    path: root_path.join("Group/Release"),
+                    name: "Release".to_string(),
+                    watched_folder_path: std::path::PathBuf::from(&root),
+                    relative_folder: crate::import::RelativeFolder::test("Group/Release"),
+                    grouping: None,
+                    files: Vec::new(),
+                    tags: None,
+                }),
+            )
+            .await
+            .unwrap()
+            .expect("the seeded scan generation is current");
         }
         let folder_state_commit = crate::import::FolderStateCommit::default();
         let (scans, starter) = FakeScanStarter::new();
@@ -461,6 +468,7 @@ impl CoordinatorHarness {
                 catalogs: service.catalogs.clone(),
                 remote_images: service.remote_images.clone(),
                 database: database.clone(),
+                tables: service.tables.clone(),
                 preparations: preparations.clone(),
                 clock: service.clock.clone(),
                 ids: service.ids.clone(),
@@ -602,6 +610,7 @@ fn test_scan_services(
         crate::import::ImportServices {
             event_tx,
             database: database.clone(),
+            tables: service.tables.clone(),
             catalogs: service.catalogs.clone(),
             remote_images: service.remote_images.clone(),
             preparations: preparations.clone(),

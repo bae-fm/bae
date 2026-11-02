@@ -69,9 +69,8 @@ pub struct DbCandidateIdentifyResult {
     pub kept_own_draft: bool,
 }
 
-/// One loaded candidate, as
-/// [`crate::db::Database::load_import_candidate_state`] returns it: the
-/// `import_candidate_state` row with the verdict, signals, provenance, and
+/// One loaded candidate, as a read of import's candidate state returns it:
+/// the `import_candidate_state` row with the verdict, signals, provenance, and
 /// file decisions that hang off it.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbImportCandidateState {

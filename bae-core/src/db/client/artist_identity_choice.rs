@@ -38,7 +38,7 @@ impl Database {
                 Choice::Neither => new_id.expect("Neither reserves an artist id"),
                 Choice::ChangeMatch => {
                     // Going back does not decide the credit or dismiss its failure.
-                    return super::import_state::move_pane_on(
+                    return crate::import::tables::import_state::move_pane_on(
                         sql,
                         &hash,
                         crate::import::PaneMove::FindOnline,
@@ -206,7 +206,7 @@ impl ArtistCredits<'_> {
     }
 }
 
-pub(super) fn resolve_import_credits_on<'a, Q: QueryOne + QueryRows>(
+pub(crate) fn resolve_import_credits_on<'a, Q: QueryOne + QueryRows>(
     sql: &Q,
     hash: &str,
     credits: impl IntoIterator<Item = &'a crate::catalog_model::credits::ArtistCredit>,

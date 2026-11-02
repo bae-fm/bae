@@ -123,8 +123,8 @@ async fn a_cover_the_host_fails_to_serve_is_stored_as_the_runs_lookup_failure() 
     assert_eq!(*source, bae_catalogs::catalog::Catalog::MusicBrainz);
     assert!(image.url.ends_with("/release/mb-cover-1/front"), "{}", image.url);
     let assets = fixture
-        .manager
-        .load_import_candidate_prepared_assets(&fixture.content_hash(&dir))
+        .context
+        .tables.load_import_candidate_prepared_assets(&fixture.content_hash(&dir))
         .await
         .unwrap();
     assert_eq!(

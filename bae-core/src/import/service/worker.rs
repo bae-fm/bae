@@ -19,9 +19,10 @@ impl ImportService {
         // No run, import or open list outlives the process that held it, so
         // the library opens with no candidate standing and no list, before
         // anything reads the list.
-        database.clear_candidate_standings().await?;
-        database.close_import_lists().await?;
-        let runtime = CandidateRuntime::new(database.clone(), diagnostics.clone());
+        let tables = crate::import::tables::ImportTables::new(database.clone());
+        tables.clear_candidate_standings().await?;
+        tables.close_import_lists().await?;
+        let runtime = CandidateRuntime::new(tables, diagnostics.clone());
         let event_tx = crate::import::handle::ImportEventBus::new(runtime.clone());
         let services = crate::import::ImportServices::new(
             event_tx,
@@ -52,7 +53,10 @@ impl ImportService {
         closing: tokio_util::sync::CancellationToken,
         file_tags: Arc<dyn crate::import::file_tag_snapshot::FileTagReader>,
     ) -> ImportServiceHandle {
-        let runtime = CandidateRuntime::new(database.clone(), diagnostics.clone());
+        let runtime = CandidateRuntime::new(
+            crate::import::tables::ImportTables::new(database.clone()),
+            diagnostics.clone(),
+        );
         let event_tx = crate::import::handle::ImportEventBus::new(runtime.clone());
         let mut services = crate::import::ImportServices::new(
             event_tx,
@@ -80,6 +84,7 @@ impl ImportService {
         let event_tx_for_worker = services.event_tx.clone();
         let runtime_for_worker = runtime.clone();
         let database = services.database.clone();
+        let tables = services.tables.clone();
         let clock = services.clock.clone();
         let ids = services.ids.clone();
         let import_cancels = services.import_cancels.clone();
@@ -107,6 +112,7 @@ impl ImportService {
                         event_tx: event_tx_for_worker,
                         runtime: runtime_for_worker,
                         database,
+                        tables,
                         catalogs,
                         remote_images,
                         clock,

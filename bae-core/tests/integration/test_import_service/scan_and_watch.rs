@@ -508,8 +508,7 @@ async fn a_folder_holding_watched_folders_takes_them_over_and_keeps_what_was_dec
         release.watched_folder_path, music,
         "the box is still read as one release, under the same key"
     );
-    let state = f
-        .library_manager
+    let state = bae_core::import::tables::ImportTables::new(f.db.clone())
         .load_import_candidate_state(&picked_hash)
         .await
         .unwrap()
@@ -537,7 +536,8 @@ async fn removing_a_watched_folder_forgets_what_was_decided_under_it() {
         .unwrap();
 
     f.handle.remove_watched_folder(artist.clone()).await.unwrap();
-    assert!(f.library_manager.load_skipped_import_candidates(&artist).await.unwrap().is_empty());
+    let tables = bae_core::import::tables::ImportTables::new(f.db.clone());
+    assert!(tables.load_skipped_import_candidates(&artist).await.unwrap().is_empty());
     f.handle.add_watched_folder(artist.clone()).await.unwrap();
     wait_for_reads(&f, "the folder is read again", &[&artist]).await;
 

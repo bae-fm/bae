@@ -51,7 +51,7 @@ pub enum IdentityWriteError {
 
 /// Carry an [`IdentityWriteError`] out of a coven write closure with its type
 /// intact, so [`Database::identity_write_error`] can hand it back.
-pub(super) fn identity_write_failure(error: IdentityWriteError) -> CovenError {
+pub(crate) fn identity_write_failure(error: IdentityWriteError) -> CovenError {
     match error {
         IdentityWriteError::Db(error) => CovenError::from(error),
         other => rusqlite::Error::UserFunctionError(Box::new(other)).into(),
@@ -126,7 +126,7 @@ impl Database {
 
     /// The [`IdentityWriteError`] a coven write closure failed with, or the
     /// database error it failed with otherwise.
-    pub(super) fn identity_write_error(error: CovenError) -> IdentityWriteError {
+    pub(crate) fn identity_write_error(error: CovenError) -> IdentityWriteError {
         match error {
             CovenError::Database(coven::DbError::Sqlite(rusqlite::Error::UserFunctionError(
                 host,

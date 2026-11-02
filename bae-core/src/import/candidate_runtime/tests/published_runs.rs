@@ -5,7 +5,7 @@ async fn stored_runs(
     runtime: &CandidateRuntime,
     key: &crate::import::CandidateKey,
 ) -> std::collections::BTreeMap<crate::import::IdentifyRunId, crate::identify::PublishedRun> {
-    runtime.database.load_candidate_runtime(key).await.expect("a test reads the runs table").runs
+    runtime.tables.load_candidate_runtime(key).await.expect("a test reads the runs table").runs
 }
 
 /// A folder candidate's run has its row only while the standing names it:
@@ -50,7 +50,7 @@ async fn opening_the_library_empties_every_run_s_published_state() {
     runtime.publish_release_run(release, run(1), &triangulating(), None).await.unwrap();
     assert!(!stored_runs(&runtime, release).await.is_empty());
 
-    runtime.database.clear_candidate_standings().await.unwrap();
+    runtime.tables.clear_candidate_standings().await.unwrap();
     assert!(stored_runs(&runtime, release).await.is_empty());
 }
 
@@ -263,7 +263,7 @@ async fn a_run_s_rows_go_with_it() {
     ];
     for table in owned {
         assert!(
-            runtime.database.count_rows_for_test(table, "identify_run", "1").await.unwrap() > 0,
+            runtime.tables.count_rows_for_test(table, "identify_run", "1").await.unwrap() > 0,
             "the run holds rows of {table}"
         );
     }
@@ -273,7 +273,7 @@ async fn a_run_s_rows_go_with_it() {
         .unwrap();
     for table in owned {
         assert_eq!(
-            runtime.database.count_rows_for_test(table, "identify_run", "1").await.unwrap(),
+            runtime.tables.count_rows_for_test(table, "identify_run", "1").await.unwrap(),
             0,
             "{table} keeps rows of a run that ended"
         );

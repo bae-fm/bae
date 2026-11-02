@@ -70,14 +70,14 @@ impl LibraryManager {
         &self,
         folders: &[FixtureWatchedFolder],
     ) -> Result<(), LibraryFixtureError> {
+        let tables = crate::import::tables::ImportTables::new(self.database.clone());
         let mut file_count = 0;
         for folder in folders {
             let root =
                 crate::import::watched_folder::canonical_absolute_root(Path::new(&folder.path))
                     .map_err(|error| LibraryFixtureError::Invalid(error.to_string()))?;
-            self.database.add_watched_import_folder(&root).await.map_err(LibraryError::from)?;
-            let generation = self
-                .database
+            tables.add_watched_import_folder(&root).await.map_err(LibraryError::from)?;
+            let generation = tables
                 .begin_folder_scan(&root, crate::import::VolumeKind::Local)
                 .await
                 .map_err(LibraryError::from)?;
@@ -90,15 +90,12 @@ impl LibraryManager {
                 })
                 .collect::<Result<_, LibraryFixtureError>>()?;
             for (candidate, _) in &candidates {
-                self.database
+                tables
                     .save_folder_scan_item(&root, generation, &ScanItem::Valid(candidate.clone()))
                     .await
                     .map_err(LibraryError::from)?;
             }
-            self.database
-                .finish_folder_scan(&root, generation, None)
-                .await
-                .map_err(LibraryError::from)?;
+            tables.finish_folder_scan(&root, generation, None).await.map_err(LibraryError::from)?;
             for (candidate, state) in &candidates {
                 self.write_fixture_candidate_state(candidate, *state).await?;
             }
@@ -113,6 +110,7 @@ impl LibraryManager {
         candidate: &FolderCandidate,
         state: FixtureCandidateState,
     ) -> Result<(), LibraryFixtureError> {
+        let tables = crate::import::tables::ImportTables::new(self.database.clone());
         let content_hash = candidate.files.content_hash();
         let track_count = candidate.files.files.len() as u32;
         match state {
@@ -172,8 +170,7 @@ impl LibraryManager {
                 .extract()
                 .map_err(|error| LibraryFixtureError::Invalid(error.to_string()))?;
                 // The draft as a pick reads it from the release: titled as it.
-                let mut draft = self
-                    .database
+                let mut draft = tables
                     .load_import_candidate_pane_rows(&content_hash)
                     .await
                     .map_err(LibraryError::from)?
@@ -204,7 +201,7 @@ impl LibraryManager {
                 Ok(())
             }
             FixtureCandidateState::ImportError => {
-                self.database
+                tables
                     .save_import_candidate_failure(
                         &content_hash,
                         candidate.file_edit_revision,
