@@ -28,7 +28,7 @@ file states what it calls things.
   storage in step. On screen it is "Sync", never "Cloud home".
 - **Signed out.** This device has no working sign-in for storage: none is
   saved, or the one it had expired. The status names the storage ("Signed out
-  of Dropbox"), and so does the button: "Sign In to Dropbox…" (Android "Sign in
+  of Dropbox"), on the Library page's Sync row too, and so does the button: "Sign In to Dropbox…" (Android "Sign in
   to Dropbox"), and for OneDrive and iCloud the same. S3 has no sign-in; its
   button is "Enter Access Key…".
 - **Storage access was denied.** This device is signed in, but that account
