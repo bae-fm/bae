@@ -370,7 +370,7 @@ impl ImportServiceHandle {
                 drop(commit);
                 continue;
             }
-            return Ok(self
+            return self
                 .preparations
                 .apply_file_metadata(
                     &read.candidate.watched_folder_path,
@@ -384,7 +384,7 @@ impl ImportServiceHandle {
                     &seed.draft,
                     seed.cover.as_ref(),
                 )
-                .await?);
+                .await;
         }
     }
 
@@ -473,8 +473,7 @@ impl ImportServiceHandle {
                 current.file_edit_revision,
             )
             .await?;
-        Ok(self
-            .preparations
+        self.preparations
             .apply_pick(
                 &candidate.watched_folder_path,
                 &crate::import::CandidateAsRead {
@@ -488,7 +487,7 @@ impl ImportServiceHandle {
                 settled_by_choice,
                 releases,
             )
-            .await?)
+            .await
     }
 
     /// Clear the candidate's draft, keeping its file decisions and its release
@@ -533,8 +532,7 @@ impl ImportServiceHandle {
                 current.file_edit_revision,
             )
             .await?;
-        Ok(self
-            .preparations
+        self.preparations
             .apply_source(
                 &candidate.watched_folder_path,
                 &crate::import::CandidateAsRead {
@@ -550,7 +548,7 @@ impl ImportServiceHandle {
                     assets: crate::import::CandidatePreparedAssets::default(),
                 },
             )
-            .await?)
+            .await
     }
 
     /// Keep the candidate's own draft over what its stored lookup offered:
@@ -589,14 +587,13 @@ impl ImportServiceHandle {
                 current.file_edit_revision,
             )
             .await?;
-        Ok(self
-            .preparations
+        self.preparations
             .keep_own_draft(&crate::import::CandidateAsRead {
                 content_hash: content_hash.clone(),
                 file_edit_revision: candidate.file_edit_revision,
                 metadata_revision: current.metadata_revision,
             })
-            .await?)
+            .await
     }
 
     /// Unlink the candidate from its release. The draft stays as it is.
@@ -627,14 +624,13 @@ impl ImportServiceHandle {
                 current.file_edit_revision,
             )
             .await?;
-        Ok(self
-            .preparations
+        self.preparations
             .unlink(&crate::import::CandidateAsRead {
                 content_hash,
                 file_edit_revision: candidate.file_edit_revision,
                 metadata_revision: current.metadata_revision,
             })
-            .await?)
+            .await
     }
 
     pub(crate) fn announce_metadata_changed(&self, candidate_key: crate::import::CandidateKey) {
@@ -665,8 +661,7 @@ impl ImportServiceHandle {
             return Err(crate::import::CandidateAsRead::files_moved(
                 offered_revision,
                 crate::import::preparation::CandidateWrite::FileDecisions,
-            )
-            .into());
+            ));
         }
         let preparation =
             crate::import::preparation::import_preparation(&self.database, &content_hash)

@@ -8,7 +8,6 @@ use crate::import::candidates::{
     CandidateRuntimeSnapshot, IdentificationRuntime, ImportInFlight, SavingAnswer,
 };
 use crate::import::CandidateKey;
-use crate::library::LibraryError;
 use std::collections::HashMap;
 
 /// `key`'s snapshot from its stored runtime; `None` when nothing is in
@@ -87,7 +86,7 @@ impl CandidateRuntime {
     pub(crate) async fn snapshot(
         &self,
         key: &CandidateKey,
-    ) -> Result<Option<CandidateRuntimeSnapshot>, LibraryError> {
+    ) -> Result<Option<CandidateRuntimeSnapshot>, crate::import::ImportError> {
         let stored = self.database.load_candidate_runtime(key).await?;
         Ok(compose(key, &stored))
     }
@@ -95,7 +94,7 @@ impl CandidateRuntime {
     /// Every key with something in flight right now, read from the tables.
     pub(crate) async fn snapshots(
         &self,
-    ) -> Result<HashMap<CandidateKey, CandidateRuntimeSnapshot>, LibraryError> {
+    ) -> Result<HashMap<CandidateKey, CandidateRuntimeSnapshot>, crate::import::ImportError> {
         let stored = self.database.load_candidate_runtimes().await?;
         Ok(stored
             .iter()

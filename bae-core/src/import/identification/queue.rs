@@ -273,7 +273,7 @@ impl Queue {
         &mut self,
         context: &Context,
         key: &crate::import::CandidateKey,
-    ) -> Result<(), crate::library::LibraryError> {
+    ) -> Result<(), crate::import::ImportError> {
         let Some(index) = self.index_of_key(key) else {
             return context.import.cancel_identification(key).await;
         };
@@ -285,7 +285,7 @@ impl Queue {
         &mut self,
         context: &Context,
         job: Job,
-    ) -> Result<(), crate::library::LibraryError> {
+    ) -> Result<(), crate::import::ImportError> {
         let mut ended = Ok(());
         match &job.state {
             JobState::Waiting => {}
@@ -379,7 +379,7 @@ impl Queue {
 pub(super) fn record(
     context: &Context,
     doing: &str,
-    written: Result<(), crate::library::LibraryError>,
+    written: Result<(), crate::import::ImportError>,
 ) {
     if let Err(error) = written {
         context.diagnostics.report_bug(&format!("identification: {doing}"), &error);
@@ -388,8 +388,8 @@ pub(super) fn record(
 
 /// Keep the first failure of several writes tried in turn.
 fn first_failure(
-    kept: &mut Result<(), crate::library::LibraryError>,
-    next: Result<(), crate::library::LibraryError>,
+    kept: &mut Result<(), crate::import::ImportError>,
+    next: Result<(), crate::import::ImportError>,
 ) {
     if kept.is_ok() {
         *kept = next;

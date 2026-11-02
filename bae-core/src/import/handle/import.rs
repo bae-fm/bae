@@ -237,25 +237,14 @@ impl ImportServiceHandle {
         // it and what follows imports the stored pick. Every request kind
         // waits: the read is not cancelled, and the draft it replaces is not
         // imported.
-        if self
-            .runtime
-            .ask_import_once_stored(candidate_key)
-            .await
-            .map_err(crate::library::LibraryError::from)?
-        {
+        if self.runtime.ask_import_once_stored(candidate_key).await? {
             info!("{candidate_key} imports once the release its run picked is read and stored");
             return Ok(ImportStart::WhenPickStored);
         }
         match request {
             ImportRequest::Candidate => {}
             ImportRequest::Selection => {
-                if self
-                    .runtime
-                    .standing_facts(candidate_key)
-                    .await
-                    .map_err(crate::library::LibraryError::from)?
-                    .identifying()
-                {
+                if self.runtime.standing_facts(candidate_key).await?.identifying() {
                     return Err(crate::import::ImportError::CandidateBeingIdentified);
                 }
             }
@@ -768,10 +757,7 @@ impl ImportServiceHandle {
         import_id: String,
     ) -> Result<(), crate::import::ImportError> {
         info!("Import of {candidate_key} was cancelled before it started");
-        self.runtime
-            .move_import(candidate_key, &import_id, None)
-            .await
-            .map_err(crate::library::LibraryError::from)?;
+        self.runtime.move_import(candidate_key, &import_id, None).await?;
         self.event_tx.send(ImportEvent::ImportProgress {
             candidate_key: candidate_key.clone(),
             progress: ImportProgress::Cancelled { import_id },

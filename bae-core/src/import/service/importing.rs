@@ -95,12 +95,12 @@ impl ImportService {
         failed_at: chrono::DateTime<chrono::Utc>,
     ) -> crate::import::ImportFailure {
         let identity_conflict = match error {
-            crate::import::ImportError::Db(
-                crate::library::LibraryError::ArtistIdentityConflict(conflict),
-            ) => Some(crate::import::IdentityConflict::Artist(conflict.as_ref().clone())),
-            crate::import::ImportError::Db(
-                crate::library::LibraryError::LabelIdentityConflict(conflict),
-            ) => Some(crate::import::IdentityConflict::Label(conflict.as_ref().clone())),
+            crate::import::ImportError::ArtistIdentityConflict(conflict) => {
+                Some(crate::import::IdentityConflict::Artist(conflict.as_ref().clone()))
+            }
+            crate::import::ImportError::LabelIdentityConflict(conflict) => {
+                Some(crate::import::IdentityConflict::Label(conflict.as_ref().clone()))
+            }
             _ => None,
         };
         crate::import::ImportFailure {
@@ -141,7 +141,6 @@ impl ImportService {
                 ),
             )
             .await
-            .map_err(crate::library::LibraryError::from)
             .map_err(crate::import::ImportError::from)?;
 
         let stored_candidate = match self
@@ -266,7 +265,6 @@ impl ImportService {
                     ),
                 )
                 .await
-                .map_err(crate::library::LibraryError::from)
                 .map_err(crate::import::ImportError::from)?;
         }
         let artist_images = self.fetch_discogs_artist_images(new_artists).await?;
@@ -467,7 +465,6 @@ impl ImportService {
                 ),
             )
             .await
-            .map_err(crate::library::LibraryError::from)
             .map_err(crate::import::ImportError::from)?;
         let mut bytes_read = 0u128;
         let mut last_release_percent = 0u8;
@@ -604,7 +601,6 @@ impl ImportService {
                 ),
             )
             .await
-            .map_err(crate::library::LibraryError::from)
             .map_err(crate::import::ImportError::from)?;
         let loudness = crate::import::loudness::measure_loudness(
             &self.event_tx,
@@ -679,7 +675,6 @@ impl ImportService {
                 ),
             )
             .await
-            .map_err(crate::library::LibraryError::from)
             .map_err(crate::import::ImportError::from)?;
 
         let commit_guard = crate::db::ImportCommitGuard::Candidate {
@@ -753,11 +748,7 @@ impl ImportService {
         picked: &[String],
         content_hash: Option<&str>,
     ) -> Result<std::collections::BTreeSet<String>, crate::import::ImportError> {
-        let resolved = self
-            .database
-            .resolve_artists(credits, picked, content_hash)
-            .await
-            .map_err(crate::library::LibraryError::from)?;
+        let resolved = self.database.resolve_artists(credits, picked, content_hash).await?;
         Ok(resolved.inserts.iter().filter_map(|artist| artist.discogs_artist_id.clone()).collect())
     }
 
@@ -785,8 +776,7 @@ impl ImportService {
         let expected = self
             .database
             .resolve_artists(rows.artists.credits, rows.artists.picked, guard.content_hash())
-            .await
-            .map_err(crate::library::LibraryError::from)?;
+            .await?;
         let expected_new_artists: Vec<String> =
             expected.inserts.iter().map(|artist| artist.id.clone()).collect();
         let artist_images =
@@ -807,8 +797,7 @@ impl ImportService {
                     images: &artist_images,
                 },
             )
-            .await
-            .map_err(crate::library::LibraryError::from)?;
+            .await?;
         Ok(())
     }
 
@@ -901,10 +890,7 @@ fn artist_image_rows(
             continue;
         };
         let Some(answer) = by_discogs_id.get(discogs_artist_id) else {
-            return Err(crate::library::LibraryError::from(
-                crate::db::IdentityWriteError::LibraryChanged,
-            )
-            .into());
+            return Err(crate::import::ImportError::LibraryChanged);
         };
         let crate::import::DiscogsArtistImage::Image { jpeg, .. } = answer else {
             continue;

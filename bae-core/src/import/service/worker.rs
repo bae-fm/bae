@@ -34,7 +34,7 @@ impl ImportService {
             diagnostics.clone(),
             closing,
         );
-        Ok(Self::start_with(runtime_handle, services, runtime, diagnostics)?)
+        Self::start_with(runtime_handle, services, runtime, diagnostics)
     }
 
     /// [`Self::start`] reading folders' tags through `file_tags`, for a test
@@ -75,7 +75,7 @@ impl ImportService {
         services: crate::import::ImportServices,
         runtime: CandidateRuntime,
         diagnostics: crate::diagnostics::Diagnostics,
-    ) -> Result<ImportServiceHandle, crate::library::LibraryError> {
+    ) -> Result<ImportServiceHandle, crate::import::ImportError> {
         let (fs_tx, fs_rx) = mpsc::unbounded_channel::<WatchReport>();
         let event_tx_for_worker = services.event_tx.clone();
         let runtime_for_worker = runtime.clone();

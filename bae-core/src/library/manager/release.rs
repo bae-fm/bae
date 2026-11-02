@@ -90,19 +90,6 @@ impl LibraryManager {
         Ok(self.database.get_release_mediums(release_id).await?)
     }
 
-    /// The library album an import carrying `records` joins, or `None` for a
-    /// new one (see [`crate::db::Database::album_records_name`]).
-    #[cfg(desktop)]
-    pub async fn find_existing_album_for_import(
-        &self,
-        records: &[crate::catalog_model::records::ReleaseRecord],
-    ) -> Result<Option<String>, crate::import::ImportError> {
-        self.database
-            .album_records_name(records, &[])
-            .await
-            .map_err(|e| crate::import::ImportError::Db(LibraryError::Database(e)))
-    }
-
     /// The audio a catalog release is read against for the library release
     /// `release_id`: its tracks' stored lengths, and what its own files say
     /// it was copied from.

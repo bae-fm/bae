@@ -12,7 +12,6 @@ use crate::db::DbCandidateIdentifyResult;
 use crate::identify::signals::Signals;
 use crate::import::folder_scanner::CandidateFileEdits;
 use crate::import::{CandidateMetadataDraft, CoverSelection, MetadataProvenance};
-use crate::library::LibraryError;
 
 /// One candidate as a caller last read it: which candidate it is, and the two
 /// revisions it stood at.
@@ -53,7 +52,7 @@ impl CandidateAsRead {
         &self,
         prep: &CandidatePreparation,
         write: CandidateWrite,
-    ) -> Result<(), LibraryError> {
+    ) -> Result<(), crate::import::ImportError> {
         if prep.file_edits.revision != self.file_edit_revision {
             return Err(Self::files_moved(self.file_edit_revision, write));
         }
@@ -64,8 +63,8 @@ impl CandidateAsRead {
     }
 
     /// The refusal for a candidate whose file decisions moved past `expected`.
-    pub(crate) fn files_moved(expected: u64, write: CandidateWrite) -> LibraryError {
-        LibraryError::Refused(match write {
+    pub(crate) fn files_moved(expected: u64, write: CandidateWrite) -> crate::import::ImportError {
+        crate::import::ImportError::Refused(match write {
             CandidateWrite::Metadata => format!(
                 "candidate changed before its metadata was stored: its files moved past \
                  revision {expected}"
@@ -81,8 +80,10 @@ impl CandidateAsRead {
     }
 
     /// The refusal for a candidate whose metadata moved past `expected`.
-    pub(crate) fn metadata_moved(expected: u64) -> LibraryError {
-        LibraryError::Refused(format!("candidate metadata changed from revision {expected}"))
+    pub(crate) fn metadata_moved(expected: u64) -> crate::import::ImportError {
+        crate::import::ImportError::Refused(format!(
+            "candidate metadata changed from revision {expected}"
+        ))
     }
 }
 

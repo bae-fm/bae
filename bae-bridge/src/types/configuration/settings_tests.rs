@@ -32,23 +32,36 @@ fn internal_import_failure_retains_its_category() {
     } if detail.contains("missing prepared bytes")));
 }
 
+/// A store failure, an internal fault or a refusal crosses with its class,
+/// whether the library or import met it.
 #[test]
-fn wrapped_library_failures_preserve_the_library_category() {
+fn store_internal_and_refused_failures_keep_their_category() {
     use bae_core::library::LibraryError;
-    let cases: [(fn() -> LibraryError, BridgeErrorCategory); 3] = [
+    let cases: [(BridgeError, BridgeErrorCategory); 6] = [
         (
-            || LibraryError::Database(bae_core::db::DbError::Message("read failed".into())),
+            LibraryError::Database(bae_core::db::DbError::Message("read failed".into())).into(),
             BridgeErrorCategory::Database,
         ),
-        (|| LibraryError::Internal("prepared state missing".into()), BridgeErrorCategory::Internal),
-        (|| LibraryError::Refused("identity needs review".into()), BridgeErrorCategory::Import),
+        (
+            ImportError::Database(bae_core::db::DbError::Message("read failed".into())).into(),
+            BridgeErrorCategory::Database,
+        ),
+        (
+            LibraryError::Internal("prepared state missing".into()).into(),
+            BridgeErrorCategory::Internal,
+        ),
+        (
+            ImportError::Internal { detail: "prepared state missing".into() }.into(),
+            BridgeErrorCategory::Internal,
+        ),
+        (LibraryError::Refused("identity needs review".into()).into(), BridgeErrorCategory::Import),
+        (ImportError::Refused("identity needs review".into()).into(), BridgeErrorCategory::Import),
     ];
-    for (make_error, category) in cases {
-        let direct = BridgeError::from(make_error());
+    for (error, category) in cases {
         assert!(
-            matches!(&direct, BridgeError::Diagnostic { category: actual, .. } if *actual == category)
+            matches!(&error, BridgeError::Diagnostic { category: actual, .. } if *actual == category),
+            "{error:?}"
         );
-        assert_eq!(BridgeError::from(ImportError::Db(make_error())), direct);
     }
 }
 

@@ -63,34 +63,30 @@ impl IdentificationHandle {
     pub async fn cancel(
         &self,
         candidate_keys: Vec<crate::import::CandidateKey>,
-    ) -> Result<(), crate::library::LibraryError> {
+    ) -> Result<(), crate::import::ImportError> {
         let (done, cancelled) = tokio::sync::oneshot::channel();
         self.send_cancel(Command::Cancel { candidate_keys, done })?;
         Self::await_cancel(cancelled).await
     }
 
     /// [`Self::cancel`] every job on the queue.
-    pub async fn cancel_all(&self) -> Result<(), crate::library::LibraryError> {
+    pub async fn cancel_all(&self) -> Result<(), crate::import::ImportError> {
         let (done, cancelled) = tokio::sync::oneshot::channel();
         self.send_cancel(Command::CancelAll { done })?;
         Self::await_cancel(cancelled).await
     }
 
-    fn send_cancel(&self, command: Command) -> Result<(), crate::library::LibraryError> {
-        self.commands.send(command).map_err(|error| {
-            crate::library::LibraryError::Internal(format!(
-                "the identification queue has stopped: {error}"
-            ))
+    fn send_cancel(&self, command: Command) -> Result<(), crate::import::ImportError> {
+        self.commands.send(command).map_err(|error| crate::import::ImportError::Internal {
+            detail: format!("the identification queue has stopped: {error}"),
         })
     }
 
     async fn await_cancel(
-        cancelled: tokio::sync::oneshot::Receiver<Result<(), crate::library::LibraryError>>,
-    ) -> Result<(), crate::library::LibraryError> {
-        cancelled.await.map_err(|error| {
-            crate::library::LibraryError::Internal(format!(
-                "the identification queue stopped before the cancel ended: {error}"
-            ))
+        cancelled: tokio::sync::oneshot::Receiver<Result<(), crate::import::ImportError>>,
+    ) -> Result<(), crate::import::ImportError> {
+        cancelled.await.map_err(|error| crate::import::ImportError::Internal {
+            detail: format!("the identification queue stopped before the cancel ended: {error}"),
         })?
     }
 

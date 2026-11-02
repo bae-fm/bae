@@ -221,13 +221,38 @@ pub enum ImportError {
     #[error(transparent)]
     Edit(#[from] crate::import::EditValidationError),
 
-    /// A library/DB operation failed (insert_import, finalize_import_atomic,
-    /// the artist credits it resolves, upload_release). Never a library
-    /// error that is itself an import error: that converts back to the
-    /// import error it carries.
+    /// A change to a candidate could not go ahead as asked: what it names
+    /// moved under it, or is not there, with why as text.
     #[cfg(desktop)]
-    #[error(transparent)]
-    Db(crate::library::LibraryError),
+    #[error("{0}")]
+    Refused(String),
+
+    /// Two library artists each hold one of a credit's catalog ids: the
+    /// conflict a person resolves on the import page.
+    #[cfg(desktop)]
+    #[error("Import error: {0}")]
+    ArtistIdentityConflict(Box<ArtistIdentityConflict>),
+
+    /// Two library labels each hold one of a label's catalog ids: the
+    /// conflict a person resolves on the import page.
+    #[cfg(desktop)]
+    #[error("Import error: {0}")]
+    LabelIdentityConflict(Box<LabelIdentityConflict>),
+
+    /// The release's credits cannot be linked to the library as it stands:
+    /// their ids contradict the artist or label they match, or a picked
+    /// artist no longer exists.
+    #[cfg(desktop)]
+    #[error("{detail}")]
+    Unresolvable { detail: String },
+
+    /// The library's artists changed between preparing the import's write
+    /// and committing it, in a way that makes what was prepared wrong.
+    /// Nothing was written; importing again prepares against the library as
+    /// it now stands.
+    #[cfg(desktop)]
+    #[error("the library's artists changed while this import was being written; import it again")]
+    LibraryChanged,
 
     /// A sheet-binding change could not be applied: the candidate, the sheet,
     /// or the audio named is not what it was when the picker offered it. Every
@@ -358,14 +383,20 @@ impl ImportError {
     }
 }
 
-/// A library error that is an import error is that import error again, so
-/// the two never wrap each other.
+/// An import's write to the library's records failed: a conflict a person
+/// resolves, credits that cannot be linked, artists that changed under it,
+/// another import of the same files that landed first, or the store.
 #[cfg(desktop)]
-impl From<crate::library::LibraryError> for ImportError {
-    fn from(error: crate::library::LibraryError) -> Self {
+impl From<crate::db::IdentityWriteError> for ImportError {
+    fn from(error: crate::db::IdentityWriteError) -> Self {
+        use crate::db::IdentityWriteError as E;
         match error {
-            crate::library::LibraryError::Import(error) => *error,
-            other => Self::Db(other),
+            E::ArtistIdentityConflict(conflict) => Self::ArtistIdentityConflict(conflict),
+            E::LabelIdentityConflict(conflict) => Self::LabelIdentityConflict(conflict),
+            E::Unresolvable(detail) => Self::Unresolvable { detail },
+            E::LibraryChanged => Self::LibraryChanged,
+            E::FilesAlreadyImported { release_id } => Self::FilesAlreadyImported { release_id },
+            E::Db(error) => Self::Database(error),
         }
     }
 }
@@ -388,7 +419,11 @@ impl ImportError {
             #[cfg(desktop)]
             Self::GroupingBlocked { reason } => reason.category(),
             #[cfg(desktop)]
-            Self::Db(error) => error.category(),
+            Self::Refused(_)
+            | Self::ArtistIdentityConflict(_)
+            | Self::LabelIdentityConflict(_)
+            | Self::Unresolvable { .. }
+            | Self::LibraryChanged => C::Import,
             #[cfg(desktop)]
             Self::Database(_)
             | Self::CatalogSession(crate::import::CatalogSessionError::Preferences(_)) => {
@@ -659,19 +694,14 @@ mod tests {
     }
 
     /// An import error that crosses into a library error stays the refusal it
-    /// is, so the library's category is the import's own; crossing back gives
-    /// the same import error, and a library error the import carried is that
-    /// library error again rather than a wrapped one.
+    /// is, so the library's category is the import's own, and a store failure
+    /// import met is the library's store failure.
     #[test]
     fn an_import_error_keeps_its_kind_through_a_library_error() {
         use crate::diagnostics::UiErrorCategory;
         use crate::library::LibraryError;
         let library = LibraryError::from(ImportError::TiedMediums { mediums: vec![1, 3] });
         assert_eq!(library.category(), UiErrorCategory::TiedMediums { mediums: vec![1, 3] });
-        assert!(matches!(
-            ImportError::from(library),
-            ImportError::TiedMediums { mediums } if mediums == [1, 3]
-        ));
 
         let library = LibraryError::from(ImportError::MetadataTrackCount {
             folder_tracks: 10,
@@ -682,8 +712,8 @@ mod tests {
             UiErrorCategory::MetadataTrackCount { folder_tracks: 10, release_tracks: 12 }
         );
 
-        let from_db = LibraryError::from(ImportError::Db(LibraryError::Database(
-            crate::db::DbError::Message("read failed".into()),
+        let from_db = LibraryError::from(ImportError::Database(crate::db::DbError::Message(
+            "read failed".into(),
         )));
         assert!(matches!(from_db, LibraryError::Database(_)), "{from_db:?}");
     }

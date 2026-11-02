@@ -470,7 +470,7 @@ impl ImportServiceHandle {
         services: crate::import::ImportServices,
         runtime: CandidateRuntime,
         runtime_handle: tokio::runtime::Handle,
-    ) -> Result<Self, crate::library::LibraryError> {
+    ) -> Result<Self, crate::import::ImportError> {
         let crate::import::ImportServices {
             event_tx,
             database,
@@ -624,7 +624,7 @@ impl ImportServiceHandle {
         &self,
     ) -> Result<
         HashMap<crate::import::CandidateKey, CandidateRuntimeSnapshot>,
-        crate::library::LibraryError,
+        crate::import::ImportError,
     > {
         self.runtime.snapshots().await
     }
@@ -634,7 +634,7 @@ impl ImportServiceHandle {
     pub async fn candidate_runtime(
         &self,
         key: &crate::import::CandidateKey,
-    ) -> Result<Option<CandidateRuntimeSnapshot>, crate::library::LibraryError> {
+    ) -> Result<Option<CandidateRuntimeSnapshot>, crate::import::ImportError> {
         self.runtime.snapshot(key).await
     }
 
@@ -706,7 +706,7 @@ impl ImportServiceHandle {
     pub async fn candidate_pane(
         &self,
         key: &crate::import::CandidateKey,
-    ) -> Result<Option<crate::import::ImportCandidateDetail>, crate::library::LibraryError> {
+    ) -> Result<Option<crate::import::ImportCandidateDetail>, crate::import::ImportError> {
         Ok(self
             .database
             .load_import_candidate(key)
@@ -798,7 +798,7 @@ impl ImportServiceHandle {
     pub async fn get_candidate(
         &self,
         key: &crate::import::CandidateKey,
-    ) -> Result<Option<ImportCandidateSnapshot>, crate::library::LibraryError> {
+    ) -> Result<Option<ImportCandidateSnapshot>, crate::import::ImportError> {
         let stored = self.database.load_folder_scan_item(key).await?;
         let candidate = match stored {
             Some(crate::import::folder_scanner::ScanItem::Valid(candidate)) => {
@@ -857,7 +857,7 @@ impl ImportServiceHandle {
         &self,
         key: &crate::import::CandidateKey,
         candidate: &crate::import::folder_scanner::FolderCandidate,
-    ) -> Result<crate::import::CandidateStanding, crate::library::LibraryError> {
+    ) -> Result<crate::import::CandidateStanding, crate::import::ImportError> {
         Ok(crate::import::CandidateStanding {
             skipped: self.database.is_release_candidate_skipped(candidate).await?,
             imported: self
@@ -911,7 +911,7 @@ impl ImportServiceHandle {
         &self,
         candidate_key: &crate::import::CandidateKey,
         import_id: &str,
-    ) -> Result<(), crate::library::LibraryError> {
+    ) -> Result<(), crate::import::ImportError> {
         let _commit = self.folder_state_commit.lock("release an import claim").await;
         Ok(self.runtime.move_import(candidate_key, import_id, None).await?)
     }

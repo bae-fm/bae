@@ -17,7 +17,7 @@ impl AppServices {
     delegate_async!(import, import_watched_folders => watched_folders() -> Result<Vec<crate::import::WatchedFolder>, crate::import::ImportError>);
     #[cfg(any(test, feature = "test-utils"))]
     delegate_sync!(import, import_emit_event_for_test => emit_event_for_test(event: crate::import::ImportEvent) -> ());
-    delegate_async!(import, import_get_candidate => get_candidate(key: &crate::import::CandidateKey) -> Result<Option<crate::import::ImportCandidateSnapshot>, crate::library::LibraryError>);
+    delegate_async!(import, import_get_candidate => get_candidate(key: &crate::import::CandidateKey) -> Result<Option<crate::import::ImportCandidateSnapshot>, crate::import::ImportError>);
     delegate_async!(import, import_read_watched_folders => read_watched_folders() -> Result<Vec<crate::import::WatchedFolderScanStatus>, crate::import::ImportError>);
     delegate_async!(import, import_set_candidate_skipped => set_candidate_skipped(candidate_key: crate::import::CandidateKey, skipped: bool) -> Result<(), crate::import::ImportError>);
     delegate_async!(import, import_search_with_status => search_with_status(query: crate::catalog_model::SearchQuery, source: bae_catalogs::catalog::LookupCatalog) -> Result<crate::import::GroupedSearchResults, crate::import::ImportError>);
@@ -97,7 +97,7 @@ impl AppServices {
     pub async fn end_release_identification(
         &self,
         release_id: &str,
-    ) -> Result<(), crate::library::LibraryError> {
+    ) -> Result<(), crate::import::ImportError> {
         let candidate_key = crate::import::CandidateKey::reidentify(release_id);
         self.release_lookup_choices().remove(&candidate_key);
         self.inner.identification.cancel(vec![candidate_key]).await
@@ -162,12 +162,12 @@ impl AppServices {
     pub async fn cancel_identification(
         &self,
         candidate_keys: Vec<crate::import::CandidateKey>,
-    ) -> Result<(), crate::library::LibraryError> {
+    ) -> Result<(), crate::import::ImportError> {
         self.inner.identification.cancel(candidate_keys).await
     }
 
     /// Take every candidate off the identification queue.
-    pub async fn cancel_all_identification(&self) -> Result<(), crate::library::LibraryError> {
+    pub async fn cancel_all_identification(&self) -> Result<(), crate::import::ImportError> {
         self.inner.identification.cancel_all().await
     }
 
@@ -180,7 +180,7 @@ impl AppServices {
             crate::import::CandidateKey,
             crate::import::CandidateRuntimeSnapshot,
         >,
-        crate::library::LibraryError,
+        crate::import::ImportError,
     > {
         self.inner.import.candidate_runtimes().await
     }
@@ -190,7 +190,7 @@ impl AppServices {
     pub async fn candidate_runtime(
         &self,
         key: &crate::import::CandidateKey,
-    ) -> Result<Option<crate::import::CandidateRuntimeSnapshot>, crate::library::LibraryError> {
+    ) -> Result<Option<crate::import::CandidateRuntimeSnapshot>, crate::import::ImportError> {
         self.inner.import.candidate_runtime(key).await
     }
 

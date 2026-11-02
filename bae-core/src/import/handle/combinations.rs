@@ -230,8 +230,7 @@ impl ImportServiceHandle {
         &self,
         key: &crate::import::CandidateKey,
     ) -> Result<(), ImportError> {
-        let facts =
-            self.runtime.standing_facts(key).await.map_err(crate::library::LibraryError::from)?;
+        let facts = self.runtime.standing_facts(key).await?;
         if facts.importing() {
             return Err(ImportError::CandidateImportInProgress);
         }

@@ -250,7 +250,7 @@ impl AppServices {
     }
 
     #[cfg(all(feature = "test-utils", not(any(target_os = "ios", target_os = "android"))))]
-    pub async fn for_test(manager: LibraryManager) -> Result<Self, crate::import::ImportError> {
+    pub async fn for_test(manager: LibraryManager) -> Result<Self, crate::library::LibraryError> {
         let playback = manager
             .start_playback_service_with_audio_device(
                 tokio::runtime::Handle::current(),

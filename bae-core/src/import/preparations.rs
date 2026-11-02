@@ -15,8 +15,8 @@ use crate::db::{
 };
 use crate::import::folder_scanner::CandidateFileEdits;
 use crate::import::preparation::{CandidateAsRead, CandidatePreparation, CandidateWrite};
+use crate::import::ImportError;
 use crate::import::MetadataAuthor;
-use crate::library::LibraryError;
 
 /// The writer. Held by `LibraryManager` beside the database it writes
 /// through; the import handle resolves keys, holds the commit lock, and
@@ -37,14 +37,12 @@ impl CandidatePreparations {
     async fn load_stored(
         &self,
         content_hash: &str,
-    ) -> Result<Option<CandidatePreparation>, LibraryError> {
+    ) -> Result<Option<CandidatePreparation>, ImportError> {
         match self.database.load_candidate_preparation(content_hash).await? {
             None => Ok(None),
             Some(crate::db::CandidatePreparationRead::Stored(prep)) => Ok(Some(prep)),
             Some(crate::db::CandidatePreparationRead::Imported { release_id }) => {
-                Err(LibraryError::Import(Box::new(super::ImportError::FilesAlreadyImported {
-                    release_id,
-                })))
+                Err(ImportError::FilesAlreadyImported { release_id })
             }
         }
     }
@@ -68,7 +66,7 @@ impl CandidatePreparations {
         verdict: &NewImportCandidateVerdict,
         candidate_key: &crate::import::CandidateKey,
         run: crate::import::IdentifyRunId,
-    ) -> Result<Option<crate::import::candidate_runtime::IdentificationMove>, LibraryError> {
+    ) -> Result<Option<crate::import::candidate_runtime::IdentificationMove>, ImportError> {
         let Some((prep, expected, extras)) = self.verdict_save(verdict).await? else {
             return Ok(None);
         };
@@ -90,7 +88,7 @@ impl CandidatePreparations {
     pub async fn store_verdict(
         &self,
         verdict: &NewImportCandidateVerdict,
-    ) -> Result<bool, LibraryError> {
+    ) -> Result<bool, ImportError> {
         let Some((prep, expected, extras)) = self.verdict_save(verdict).await? else {
             return Ok(false);
         };
@@ -109,7 +107,7 @@ impl CandidatePreparations {
         verdict: &NewImportCandidateVerdict,
     ) -> Result<
         Option<(CandidatePreparation, CandidateSaveExpectation, CandidateSaveExtras)>,
-        LibraryError,
+        ImportError,
     > {
         let Some(mut prep) = self.load_stored(&verdict.content_hash).await? else {
             return Ok(None);
@@ -184,11 +182,9 @@ impl CandidatePreparations {
             crate::import::folder_scanner::CategorizedFiles,
         )],
         draft: crate::import::CandidateDraft,
-    ) -> Result<(u64, Vec<crate::import::folder_scanner::FolderCandidate>), LibraryError> {
+    ) -> Result<(u64, Vec<crate::import::folder_scanner::FolderCandidate>), ImportError> {
         let next_revision = read.file_edit_revision.checked_add(1).ok_or_else(|| {
-            crate::library::LibraryError::Refused(
-                "candidate edit revision exhausted the u64 range".to_string(),
-            )
+            ImportError::Refused("candidate edit revision exhausted the u64 range".to_string())
         })?;
         let mut prep = self.load_stored(&read.content_hash).await?.ok_or_else(|| {
             CandidateAsRead::files_moved(read.file_edit_revision, CandidateWrite::FileDecisions)
@@ -232,11 +228,9 @@ impl CandidatePreparations {
         draft: &crate::import::RawReleaseEdit,
         provenance: Option<&crate::import::MetadataProvenance>,
         releases: &[crate::catalog_model::source_release::SourceRelease],
-    ) -> Result<u64, LibraryError> {
+    ) -> Result<u64, ImportError> {
         let prep = self.load_stored(content_hash).await?.ok_or_else(|| {
-            crate::library::LibraryError::Refused(
-                "metadata replacement has no candidate state row".into(),
-            )
+            ImportError::Refused("metadata replacement has no candidate state row".into())
         })?;
         let draft = super::pane::edit_over_audio(draft.clone(), &prep.metadata.draft)?;
         let metadata = crate::import::CandidateMetadataDraft {
@@ -258,11 +252,9 @@ impl CandidatePreparations {
         content_hash: &str,
         link: Option<&crate::import::ReleaseLink>,
         releases: &[crate::catalog_model::source_release::SourceRelease],
-    ) -> Result<(), LibraryError> {
+    ) -> Result<(), ImportError> {
         let mut prep = self.load_stored(content_hash).await?.ok_or_else(|| {
-            crate::library::LibraryError::Refused(
-                "link replacement has no candidate state row".into(),
-            )
+            ImportError::Refused("link replacement has no candidate state row".into())
         })?;
         prep.link = link.cloned();
         let expected = CandidateSaveExpectation {
@@ -274,7 +266,7 @@ impl CandidatePreparations {
             CandidateSaveExtras { releases: releases.to_vec(), ..CandidateSaveExtras::default() };
         match self.database.save_candidate_preparation(prep, expected, extras).await? {
             CandidateSaved::Landed(_) => Ok(()),
-            CandidateSaved::Superseded => Err(LibraryError::Refused(format!(
+            CandidateSaved::Superseded => Err(ImportError::Refused(format!(
                 "{content_hash} changed while its link was replaced"
             ))),
         }
@@ -286,7 +278,7 @@ impl CandidatePreparations {
         read: &CandidateAsRead,
         candidate_key: &crate::import::CandidateKey,
         metadata: &crate::import::CandidateMetadataDraft,
-    ) -> Result<u64, LibraryError> {
+    ) -> Result<u64, ImportError> {
         let prep = self.loaded_at(read).await?;
         let scanned = ScannedCandidateKey {
             watched_folder_path: watched_folder_path.to_path_buf(),
@@ -318,7 +310,7 @@ impl CandidatePreparations {
         metadata: &crate::import::CandidateMetadataDraft,
         settled_by_choice: crate::identify::TerminalVerdict,
         releases: Vec<crate::catalog_model::source_release::SourceRelease>,
-    ) -> Result<u64, LibraryError> {
+    ) -> Result<u64, ImportError> {
         let mut prep = self.loaded_at(read).await?;
         prep.link = Some(crate::import::ReleaseLink::Pressing(link.clone()));
         let scanned = ScannedCandidateKey {
@@ -356,12 +348,12 @@ impl CandidatePreparations {
         link: &crate::identify::AlbumLink,
         draft: crate::import::CandidateDraft,
         releases: Vec<crate::catalog_model::source_release::SourceRelease>,
-    ) -> Result<u64, LibraryError> {
+    ) -> Result<u64, ImportError> {
         let mut prep = self.loaded_at(read).await?;
         // Linking the album answers the folder, so the person keeping their
         // own draft over the verdict stands no more.
         let identification = prep.identification.as_mut().ok_or_else(|| {
-            LibraryError::Refused(format!(
+            ImportError::Refused(format!(
                 "{} has no lookup whose pressings to link the album of",
                 read.content_hash
             ))
@@ -390,7 +382,7 @@ impl CandidatePreparations {
         };
         match self.database.save_candidate_preparation(prep, expected, extras).await? {
             CandidateSaved::Landed(_) => Ok(revision),
-            CandidateSaved::Superseded => Err(LibraryError::Refused(format!(
+            CandidateSaved::Superseded => Err(ImportError::Refused(format!(
                 "{} changed while its album was being linked",
                 read.content_hash
             ))),
@@ -400,10 +392,10 @@ impl CandidatePreparations {
     /// The person keeps their own draft over what the stored verdict offered:
     /// none of its releases is the folder's, or it found none. The candidate
     /// is linked to no release; the draft stays as it is.
-    pub(crate) async fn keep_own_draft(&self, read: &CandidateAsRead) -> Result<u64, LibraryError> {
+    pub(crate) async fn keep_own_draft(&self, read: &CandidateAsRead) -> Result<u64, ImportError> {
         let prep = self.loaded_at(read).await?;
         if prep.identification.is_none() {
-            return Err(LibraryError::Refused(format!(
+            return Err(ImportError::Refused(format!(
                 "{} has no lookup whose offer to set aside",
                 read.content_hash
             )));
@@ -414,7 +406,7 @@ impl CandidatePreparations {
     /// The person unlinks the candidate from its release. The draft stays as
     /// it is, and a stored lookup stands set aside, so the candidate is
     /// unmatched rather than waiting on the lookup's offer again.
-    pub(crate) async fn unlink(&self, read: &CandidateAsRead) -> Result<u64, LibraryError> {
+    pub(crate) async fn unlink(&self, read: &CandidateAsRead) -> Result<u64, ImportError> {
         let prep = self.loaded_at(read).await?;
         self.set_link_aside(prep, read).await
     }
@@ -423,7 +415,7 @@ impl CandidatePreparations {
         &self,
         mut prep: CandidatePreparation,
         read: &CandidateAsRead,
-    ) -> Result<u64, LibraryError> {
+    ) -> Result<u64, ImportError> {
         prep.link = None;
         if let Some(identification) = prep.identification.as_mut() {
             identification.kept_own_draft = true;
@@ -440,7 +432,7 @@ impl CandidatePreparations {
             .await?
         {
             CandidateSaved::Landed(_) => Ok(revision),
-            CandidateSaved::Superseded => Err(LibraryError::Refused(format!(
+            CandidateSaved::Superseded => Err(ImportError::Refused(format!(
                 "{} changed while its release link was being set aside",
                 read.content_hash
             ))),
@@ -459,7 +451,7 @@ impl CandidatePreparations {
         snapshot: &crate::import::file_tag_snapshot::FileTagSnapshot,
         draft: &crate::import::CandidateDraft,
         cover: Option<&crate::import::CoverSelection>,
-    ) -> Result<u64, LibraryError> {
+    ) -> Result<u64, ImportError> {
         let prep = self.loaded_at(read).await?;
         let scanned = ScannedCandidateKey {
             watched_folder_path: watched_folder_path.to_path_buf(),
@@ -484,13 +476,11 @@ impl CandidatePreparations {
 
     /// The candidate at exactly the revisions a source projection was
     /// prepared against, or the refusal naming which one moved.
-    async fn loaded_at(
-        &self,
-        read: &CandidateAsRead,
-    ) -> Result<CandidatePreparation, LibraryError> {
-        let prep = self.load_stored(&read.content_hash).await?.ok_or_else(|| {
-            crate::library::LibraryError::Refused("candidate metadata row is missing".into())
-        })?;
+    async fn loaded_at(&self, read: &CandidateAsRead) -> Result<CandidatePreparation, ImportError> {
+        let prep = self
+            .load_stored(&read.content_hash)
+            .await?
+            .ok_or_else(|| ImportError::Refused("candidate metadata row is missing".into()))?;
         read.verify(&prep, CandidateWrite::Metadata)?;
         Ok(prep)
     }
@@ -508,7 +498,7 @@ impl CandidatePreparations {
         mut metadata: crate::import::CandidateMetadataDraft,
         file_tag_snapshot: Option<crate::import::file_tag_snapshot::FileTagSnapshot>,
         releases: Vec<crate::catalog_model::source_release::SourceRelease>,
-    ) -> Result<u64, LibraryError> {
+    ) -> Result<u64, ImportError> {
         settle_cover(&mut metadata, &mut prep.metadata);
         let expected = CandidateSaveExpectation {
             edit_revision: prep.file_edits.revision,
@@ -531,9 +521,9 @@ impl CandidatePreparations {
         };
         match self.database.save_candidate_preparation(prep, expected, extras).await? {
             CandidateSaved::Landed(_) => Ok(revision),
-            CandidateSaved::Superseded => Err(crate::library::LibraryError::Refused(
-                "candidate changed before its metadata was stored".into(),
-            )),
+            CandidateSaved::Superseded => {
+                Err(ImportError::Refused("candidate changed before its metadata was stored".into()))
+            }
         }
     }
 }

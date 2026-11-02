@@ -36,11 +36,7 @@ impl ImportServiceHandle {
     ) -> Result<(), crate::import::ImportError> {
         let sources = self.database.preferences().await?.metadata_sources();
         let search = CandidateSearch::started(query.clone(), &sources);
-        let run = self
-            .runtime
-            .start_search(&candidate_key, &search)
-            .await
-            .map_err(crate::library::LibraryError::from)?;
+        let run = self.runtime.start_search(&candidate_key, &search).await?;
         for source in search.searching_sources() {
             self.spawn_source_search(candidate_key.clone(), query.clone(), source, run);
         }
@@ -55,12 +51,7 @@ impl ImportServiceHandle {
         &self,
         candidate_key: crate::import::CandidateKey,
     ) -> Result<(), crate::import::ImportError> {
-        let Some((run, query, sources)) = self
-            .runtime
-            .retry_search(&candidate_key)
-            .await
-            .map_err(crate::library::LibraryError::from)?
-        else {
+        let Some((run, query, sources)) = self.runtime.retry_search(&candidate_key).await? else {
             debug!("retry_candidate_search: {candidate_key} has no source to re-ask");
             return Ok(());
         };
@@ -139,7 +130,7 @@ impl ImportServiceHandle {
         candidate_key: &crate::import::CandidateKey,
         release: &crate::catalog_model::records::LookupRef,
         links: crate::catalog_model::album_links::AlbumLinks,
-    ) -> Result<(), crate::library::LibraryError> {
+    ) -> Result<(), crate::import::ImportError> {
         let kept = self.runtime.land_picked(candidate_key, release, links).await?;
         if !kept.is_empty() {
             crate::import::identify_service::keep_album_links(&self.database, kept).await;

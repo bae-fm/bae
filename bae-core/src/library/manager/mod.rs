@@ -363,14 +363,11 @@ impl From<TaskFailed> for LibraryError {
 }
 
 /// Library operations that run import steps (a release editor's catalog
-/// apply, a cover download) report the import error itself. One that is a
-/// library error already (`ImportError::Db`) is that library error again, so
-/// the two never wrap each other.
+/// apply, a cover download) report the import error itself; a store failure
+/// import met is the library's store failure.
 impl From<crate::import::ImportError> for LibraryError {
     fn from(error: crate::import::ImportError) -> Self {
         match error {
-            #[cfg(not(any(target_os = "ios", target_os = "android")))]
-            crate::import::ImportError::Db(error) => error,
             #[cfg(not(any(target_os = "ios", target_os = "android")))]
             crate::import::ImportError::Database(error) => LibraryError::Database(error),
             other => LibraryError::Import(Box::new(other)),

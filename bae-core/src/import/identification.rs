@@ -73,10 +73,10 @@ enum Command {
     /// once the jobs are gone, or the first ending that could not be written.
     Cancel {
         candidate_keys: Vec<crate::import::CandidateKey>,
-        done: tokio::sync::oneshot::Sender<Result<(), crate::library::LibraryError>>,
+        done: tokio::sync::oneshot::Sender<Result<(), crate::import::ImportError>>,
     },
     /// A person cancelled every identification the queue holds.
-    CancelAll { done: tokio::sync::oneshot::Sender<Result<(), crate::library::LibraryError>> },
+    CancelAll { done: tokio::sync::oneshot::Sender<Result<(), crate::import::ImportError>> },
     /// Say when every release found so far has been admitted and every job
     /// `drain` names has ended.
     #[cfg(any(test, feature = "test-utils"))]

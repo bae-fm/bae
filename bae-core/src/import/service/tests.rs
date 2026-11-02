@@ -530,9 +530,9 @@ fn terminal_import_failure_preserves_a_label_identity_conflict() {
         discogs_label: label("by-discogs"),
         musicbrainz_label: label("by-musicbrainz"),
     };
-    let error = crate::import::ImportError::Db(crate::library::LibraryError::from(
+    let error = crate::import::ImportError::from(
         crate::db::IdentityWriteError::LabelIdentityConflict(Box::new(conflict.clone())),
-    ));
+    );
 
     let failure = ImportService::terminal_failure(&error, failed_at);
 
@@ -558,16 +558,15 @@ fn terminal_import_failure_preserves_an_artist_identity_conflict() {
         musicbrainz_artist_id: Some("musicbrainz-1".to_string()),
         discogs_artist_id: None,
     };
-    let error = crate::import::ImportError::Db(
+    let error = crate::import::ImportError::ArtistIdentityConflict(Box::new(
         crate::import::ArtistIdentityConflict {
             incoming_artist_name: "Mapped Artist".to_string(),
             discogs_artist_id: "discogs-1".to_string(),
             musicbrainz_artist_id: "musicbrainz-1".to_string(),
             discogs_artist: discogs_artist.clone(),
             musicbrainz_artist: musicbrainz_artist.clone(),
-        }
-        .into(),
-    );
+        },
+    ));
 
     let failure = ImportService::terminal_failure(&error, failed_at);
 

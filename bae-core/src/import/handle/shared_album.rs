@@ -92,8 +92,7 @@ impl ImportServiceHandle {
                 current.file_edit_revision,
             )
             .await?;
-        Ok(self
-            .preparations
+        self.preparations
             .apply_shared_album(
                 &candidate.watched_folder_path,
                 &crate::import::CandidateAsRead {
@@ -106,6 +105,6 @@ impl ImportServiceHandle {
                 draft,
                 releases,
             )
-            .await?)
+            .await
     }
 }

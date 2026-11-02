@@ -47,7 +47,7 @@ impl ImportServiceHandle {
         priority: bae_catalogs::rate_limiter::CallPriority,
         choices: crate::identify::LookupChoices,
         title_search: Option<crate::identify::TitleSearch>,
-    ) -> Result<bool, crate::library::LibraryError> {
+    ) -> Result<bool, crate::import::ImportError> {
         let subject = match &source {
             crate::import::extraction::ExtractionSource::Candidate { candidate } => {
                 crate::import::candidate_runtime::RunSubject::Candidate(
@@ -86,7 +86,7 @@ impl ImportServiceHandle {
     pub(crate) async fn cancel_identification(
         &self,
         candidate_key: &crate::import::CandidateKey,
-    ) -> Result<(), crate::library::LibraryError> {
+    ) -> Result<(), crate::import::ImportError> {
         self.identify.cancel(candidate_key);
         self.extraction.cancel(candidate_key);
         // Nothing is going to write what the cancelled run reached, including
@@ -149,7 +149,7 @@ impl ImportServiceHandle {
         &self,
         candidates: Vec<(crate::import::CandidateKey, crate::import::CandidateFiles)>,
         admission: crate::import::Admission,
-    ) -> Result<(), crate::library::LibraryError> {
+    ) -> Result<(), crate::import::ImportError> {
         Ok(self.runtime.admit(candidates, admission).await?)
     }
 
@@ -157,7 +157,7 @@ impl ImportServiceHandle {
     pub(crate) async fn withdraw_identification(
         &self,
         candidate_key: &crate::import::CandidateKey,
-    ) -> Result<(), crate::library::LibraryError> {
+    ) -> Result<(), crate::import::ImportError> {
         Ok(self.runtime.withdraw(candidate_key).await?)
     }
 
@@ -168,7 +168,7 @@ impl ImportServiceHandle {
         run: crate::import::IdentifyRunId,
         files: &crate::import::CandidateFiles,
         failure: crate::import::SaveFailure,
-    ) -> Result<(), crate::library::LibraryError> {
+    ) -> Result<(), crate::import::ImportError> {
         Ok(self.runtime.fail_identification(candidate_key, run, files, failure).await?)
     }
 
@@ -179,7 +179,7 @@ impl ImportServiceHandle {
         &self,
         candidate_key: &crate::import::CandidateKey,
         run: crate::import::IdentifyRunId,
-    ) -> Result<(), crate::library::LibraryError> {
+    ) -> Result<(), crate::import::ImportError> {
         let import_asked = self.runtime.end_identification_answer(candidate_key, run).await?;
         if import_asked {
             info!("identification: {candidate_key}'s answer was given up; the Import asked of it is dropped");

@@ -235,8 +235,7 @@ impl CandidateRuntime {
                 import_id,
                 ending_identification.then_some(IdentificationChange::Ended),
             )
-            .await
-            .map_err(crate::library::LibraryError::from)?;
+            .await?;
         match claim {
             ImportClaim::Refused => Err(crate::import::ImportError::CandidateImportInProgress),
             ImportClaim::Claimed { .. } => {

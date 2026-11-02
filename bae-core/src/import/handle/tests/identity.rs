@@ -380,7 +380,7 @@ async fn album_for_import(
     manager: &LibraryManager,
     identities: &[ReleaseRecord],
 ) -> Option<String> {
-    manager.find_existing_album_for_import(identities).await.unwrap()
+    manager.database_for_test().album_records_name(identities, &[]).await.unwrap()
 }
 
 #[tokio::test]
@@ -398,8 +398,8 @@ async fn test_same_pressing_finds_existing_album() {
     insert_with_identities(&manager, &album2, &release2, &identities2).await;
 
     let incoming2 = vec![discogs_identity("d-master-456", "d-rel-123")];
-    let result2 = manager.find_existing_album_for_import(&incoming2).await;
-    assert_eq!(result2.unwrap(), Some(album2.id));
+    let result2 = album_for_import(&manager, &incoming2).await;
+    assert_eq!(result2, Some(album2.id));
 }
 
 #[tokio::test]

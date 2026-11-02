@@ -36,7 +36,7 @@ impl ImportServiceHandle {
         candidate_key: &crate::import::CandidateKey,
         run: crate::import::IdentifyRunId,
         row: &crate::db::NewImportCandidateVerdict,
-    ) -> Result<VerdictWrite, crate::library::LibraryError> {
+    ) -> Result<VerdictWrite, crate::import::ImportError> {
         let this = self.clone();
         let candidate_key = candidate_key.clone();
         let row = row.clone();
@@ -63,9 +63,11 @@ impl ImportServiceHandle {
                         .await;
                     Err(match recorded {
                         Ok(()) => error,
-                        Err(recording) => crate::library::LibraryError::Internal(format!(
+                        Err(recording) => crate::import::ImportError::Internal {
+                            detail: format!(
                             "{error}; recording that it was not written failed too: {recording}"
-                        )),
+                        ),
+                        },
                     })
                 }
             }
@@ -81,7 +83,7 @@ impl ImportServiceHandle {
         candidate_key: &crate::import::CandidateKey,
         row: &crate::db::NewImportCandidateVerdict,
         run: crate::import::IdentifyRunId,
-    ) -> Result<Option<bool>, crate::library::LibraryError> {
+    ) -> Result<Option<bool>, crate::import::ImportError> {
         let Some(candidate) = self.answerable_candidate(candidate_key).await? else {
             return Ok(None);
         };
@@ -109,7 +111,7 @@ impl ImportServiceHandle {
     pub(crate) async fn answerable_candidate(
         &self,
         key: &crate::import::CandidateKey,
-    ) -> Result<Option<crate::import::folder_scanner::FolderCandidate>, crate::library::LibraryError>
+    ) -> Result<Option<crate::import::folder_scanner::FolderCandidate>, crate::import::ImportError>
     {
         let Some(candidate) = self.get_release_candidate(key).await? else {
             return Ok(None);

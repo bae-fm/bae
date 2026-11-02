@@ -66,13 +66,12 @@ pub(super) struct CandidateRunStart {
 pub(super) async fn candidate_run_start(
     context: &Context,
     candidate: &FolderCandidate,
-) -> Result<CandidateRunStart, crate::library::LibraryError> {
+) -> Result<CandidateRunStart, crate::import::ImportError> {
     let content_hash = candidate.files.content_hash();
     let Some(state) = context.database.load_import_candidate_state(&content_hash).await? else {
-        return Err(crate::library::LibraryError::Internal(format!(
-            "candidate {} has no persisted state row",
-            candidate.key()
-        )));
+        return Err(crate::import::ImportError::Internal {
+            detail: format!("candidate {} has no persisted state row", candidate.key()),
+        });
     };
     let draft = context.database.load_import_candidate_pane_rows(&content_hash).await?.draft;
     let artist = crate::import::credited_line(&draft.album_artist_assignments);

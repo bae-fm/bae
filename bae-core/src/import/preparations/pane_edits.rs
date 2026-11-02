@@ -8,7 +8,6 @@ use crate::db::{
 };
 use crate::import::preparation::{CandidateAsRead, CandidatePreparation, CandidateWrite};
 use crate::import::{CandidateDraft, TrackArtistAssignments};
-use crate::library::LibraryError;
 
 impl CandidatePreparations {
     /// Record the cover the user chose for this candidate, with the bytes
@@ -19,7 +18,7 @@ impl CandidatePreparations {
         content_hash: &str,
         cover: &crate::import::CoverSelection,
         remote_image: Option<&bae_catalogs::remote_image::RemoteImage>,
-    ) -> Result<u64, LibraryError> {
+    ) -> Result<u64, crate::import::ImportError> {
         let cover = cover.clone();
         let remote_image = remote_image.cloned();
         self.edit_candidate(None, content_hash, None, None, move |prep| {
@@ -37,7 +36,7 @@ impl CandidatePreparations {
         read: &CandidateAsRead,
         cover: &crate::import::CoverSelection,
         remote_image: Option<&bae_catalogs::remote_image::RemoteImage>,
-    ) -> Result<u64, LibraryError> {
+    ) -> Result<u64, crate::import::ImportError> {
         let cover = cover.clone();
         let remote_image = remote_image.cloned();
         self.edit_candidate(
@@ -61,7 +60,7 @@ impl CandidatePreparations {
         content_hash: &str,
         field: crate::import::CandidateEditField,
         value: &str,
-    ) -> Result<u64, LibraryError> {
+    ) -> Result<u64, crate::import::ImportError> {
         self.set_field_edit(
             content_hash,
             crate::import::DraftFieldEdit::Text { field, value: value.to_string() },
@@ -75,7 +74,7 @@ impl CandidatePreparations {
         &self,
         content_hash: &str,
         edit: crate::import::DraftFieldEdit,
-    ) -> Result<u64, LibraryError> {
+    ) -> Result<u64, crate::import::ImportError> {
         self.edit_candidate(None, content_hash, None, None, move |prep| {
             edit.apply(&mut prep.metadata.draft);
             Ok(())
@@ -95,7 +94,7 @@ impl CandidatePreparations {
         content_hash: &str,
         expected_file_edit_revision: u64,
         edit: crate::import::DraftFieldEdit,
-    ) -> Result<u64, LibraryError> {
+    ) -> Result<u64, crate::import::ImportError> {
         self.edit_candidate(
             Some(scanned_key(watched_folder_path, candidate_path)),
             content_hash,
@@ -117,9 +116,9 @@ impl CandidatePreparations {
         &self,
         content_hash: &str,
         assignments: &[crate::import::Credited],
-    ) -> Result<u64, LibraryError> {
+    ) -> Result<u64, crate::import::ImportError> {
         if assignments.is_empty() {
-            return Err(LibraryError::Refused(
+            return Err(crate::import::ImportError::Refused(
                 "a candidate album artist override cannot be empty".into(),
             ));
         }
@@ -137,9 +136,9 @@ impl CandidatePreparations {
         candidate_path: &crate::import::CandidateKey,
         read: &CandidateAsRead,
         assignments: &[crate::import::Credited],
-    ) -> Result<u64, LibraryError> {
+    ) -> Result<u64, crate::import::ImportError> {
         if assignments.is_empty() {
-            return Err(LibraryError::Refused(
+            return Err(crate::import::ImportError::Refused(
                 "a candidate album artist override cannot be empty".into(),
             ));
         }
@@ -157,7 +156,7 @@ impl CandidatePreparations {
         &self,
         content_hash: &str,
         row: &crate::import::RawTrackEdit,
-    ) -> Result<u64, LibraryError> {
+    ) -> Result<u64, crate::import::ImportError> {
         let row = row.clone();
         self.edit_candidate(None, content_hash, None, None, move |prep| {
             apply_track_edit(&mut prep.metadata.draft, &row)
@@ -172,7 +171,7 @@ impl CandidatePreparations {
         candidate_path: &crate::import::CandidateKey,
         read: &CandidateAsRead,
         row: &crate::import::RawTrackEdit,
-    ) -> Result<u64, LibraryError> {
+    ) -> Result<u64, crate::import::ImportError> {
         self.edit_read_candidate(watched_folder_path, candidate_path, read, |prep| {
             apply_track_edit(&mut prep.metadata.draft, row)
         })
@@ -186,9 +185,9 @@ impl CandidatePreparations {
         read: &CandidateAsRead,
         track_ids: &[String],
         assignments: &TrackArtistAssignments,
-    ) -> Result<u64, LibraryError> {
+    ) -> Result<u64, crate::import::ImportError> {
         if track_ids.is_empty() {
-            return Err(LibraryError::Refused(
+            return Err(crate::import::ImportError::Refused(
                 "a track artist fill must name at least one track".into(),
             ));
         }
@@ -206,8 +205,8 @@ impl CandidatePreparations {
         watched_folder_path: &std::path::Path,
         candidate_path: &crate::import::CandidateKey,
         read: &CandidateAsRead,
-        change: impl FnOnce(&mut CandidatePreparation) -> Result<(), LibraryError>,
-    ) -> Result<u64, LibraryError> {
+        change: impl FnOnce(&mut CandidatePreparation) -> Result<(), crate::import::ImportError>,
+    ) -> Result<u64, crate::import::ImportError> {
         self.edit_candidate(
             Some(scanned_key(watched_folder_path, candidate_path)),
             &read.content_hash,
@@ -233,10 +232,10 @@ impl CandidatePreparations {
         content_hash: &str,
         expected_file_edit_revision: Option<u64>,
         expected_metadata_revision: Option<u64>,
-        change: impl FnOnce(&mut CandidatePreparation) -> Result<(), LibraryError>,
-    ) -> Result<u64, LibraryError> {
+        change: impl FnOnce(&mut CandidatePreparation) -> Result<(), crate::import::ImportError>,
+    ) -> Result<u64, crate::import::ImportError> {
         let mut prep = self.load_stored(content_hash).await?.ok_or_else(|| {
-            LibraryError::Refused(format!(
+            crate::import::ImportError::Refused(format!(
                 "the metadata edit for {content_hash} has no candidate state row"
             ))
         })?;
@@ -268,7 +267,7 @@ impl CandidatePreparations {
             .await?
         {
             CandidateSaved::Landed(_) => Ok(revision),
-            CandidateSaved::Superseded => Err(LibraryError::Refused(format!(
+            CandidateSaved::Superseded => Err(crate::import::ImportError::Refused(format!(
                 "candidate {content_hash} changed while its edit was being stored"
             ))),
         }
@@ -290,13 +289,12 @@ fn scanned_key(
 fn apply_track_edit(
     draft: &mut CandidateDraft,
     row: &crate::import::RawTrackEdit,
-) -> Result<(), LibraryError> {
-    let track =
-        draft.tracks.iter_mut().find(|track| track.edit.id == row.id).ok_or_else(|| {
-            LibraryError::Refused(format!("{} is not a row of this draft", row.id))
-        })?;
+) -> Result<(), crate::import::ImportError> {
+    let track = draft.tracks.iter_mut().find(|track| track.edit.id == row.id).ok_or_else(|| {
+        crate::import::ImportError::Refused(format!("{} is not a row of this draft", row.id))
+    })?;
     if row.file.as_ref() != Some(&track.edit.file) {
-        return Err(LibraryError::Refused(
+        return Err(crate::import::ImportError::Refused(
             "track metadata edits cannot change a track's audio".into(),
         ));
     }
@@ -309,11 +307,11 @@ fn fill_track_artists(
     draft: &mut CandidateDraft,
     track_ids: &[String],
     assignments: &TrackArtistAssignments,
-) -> Result<(), LibraryError> {
+) -> Result<(), crate::import::ImportError> {
     for track_id in track_ids {
         let track =
             draft.tracks.iter_mut().find(|track| &track.edit.id == track_id).ok_or_else(|| {
-                LibraryError::Refused(format!(
+                crate::import::ImportError::Refused(format!(
                     "track artist fill names {track_id}, which is not a row of this draft"
                 ))
             })?;
