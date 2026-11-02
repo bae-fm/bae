@@ -19,11 +19,12 @@ impl ImportService {
         // anything reads the list.
         library_manager.clear_candidate_standings().await?;
         library_manager.close_import_lists().await?;
-        let runtime = CandidateRuntime::new(database, diagnostics.clone());
+        let runtime = CandidateRuntime::new(database.clone(), diagnostics.clone());
         let event_tx = crate::import::handle::ImportEventBus::new(runtime.clone());
         let services = crate::import::ImportServices::new(
             event_tx,
             library_manager.clone(),
+            database,
             preparations,
             clock.clone(),
             ids.clone(),
@@ -45,11 +46,12 @@ impl ImportService {
         ids: coven::IdSourceRef,
         file_tags: Arc<dyn crate::import::file_tag_snapshot::FileTagReader>,
     ) -> ImportServiceHandle {
-        let runtime = CandidateRuntime::new(database, diagnostics.clone());
+        let runtime = CandidateRuntime::new(database.clone(), diagnostics.clone());
         let event_tx = crate::import::handle::ImportEventBus::new(runtime.clone());
         let mut services = crate::import::ImportServices::new(
             event_tx,
             library_manager,
+            database,
             preparations,
             clock,
             ids,

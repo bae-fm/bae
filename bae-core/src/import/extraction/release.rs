@@ -1,7 +1,11 @@
-//! Extraction inputs for the `Release` source (re-identify): resolve a library
-//! release's files into a rip reading and its audio facts, and the artwork paths for the
-//! OCR pass. Reading the rip artifacts themselves lives in `import::discid`.
+//! Extraction inputs for the `Release` source (re-identify): read a library
+//! release's rows and files into a rip reading and its audio facts, and the
+//! artwork paths for the OCR pass. Reading the rip artifacts themselves lives
+//! in `import::discid`.
 
+use crate::db::{Database, DbError, LibraryImageType};
+use crate::diagnostics::Diagnostics;
+use bae_util::task_failure::TaskFailed;
 use std::path::PathBuf;
 use tracing::{debug, warn};
 
@@ -10,6 +14,18 @@ use tracing::{debug, warn};
 pub(crate) struct ReleaseIdentity {
     pub(crate) rip: crate::import::discid::RipReading,
     pub(crate) audio: crate::identify::signals::AudioFacts,
+}
+
+/// Why a library release's identity could not be read.
+#[derive(Debug, thiserror::Error)]
+pub(crate) enum ReleaseIdentityError {
+    #[error(transparent)]
+    Database(#[from] DbError),
+    #[error("release '{release_id}' not found")]
+    NotFound { release_id: String },
+    /// Reading the rip files panicked, reported as the bug it is.
+    #[error(transparent)]
+    Panicked(#[from] TaskFailed),
 }
 
 impl ReleaseIdentity {
@@ -29,26 +45,29 @@ impl ReleaseIdentity {
     }
 }
 
-/// Resolve the release's local files, pick out its rip documents, track
-/// sheets and audio, and read them the way a folder's are read (see
+/// Read the release's local files, pick out its rip documents, track sheets
+/// and audio, and read them the way a folder's are read (see
 /// [`crate::import::discid::read_rip_artifacts_from_paths`]). The track count
-/// and lengths come from the DB's track rows, not the files — those rows are
-/// the user's truth.
+/// and lengths come from the release's track rows, not the files — those rows
+/// are the user's truth. A panic reading the files is reported to
+/// `diagnostics`.
 ///
 /// A cloud-only release with no local copy has no files to read, so its
 /// reading proves nothing and computes no disc ID.
 pub(crate) async fn resolve_release_identity(
-    library_manager: &crate::library::LibraryManager,
+    database: &Database,
+    diagnostics: &Diagnostics,
     release_id: &str,
-) -> Result<ReleaseIdentity, crate::library::LibraryError> {
-    library_manager.get_release_by_id(release_id).await?.ok_or_else(|| {
-        crate::library::LibraryError::Refused(format!("Release '{release_id}' not found"))
-    })?;
-    let files = library_manager.get_files_with_originals_for_release(release_id).await?;
-    let tracks = library_manager.get_tracks_for_release(release_id).await?;
+) -> Result<ReleaseIdentity, ReleaseIdentityError> {
+    database
+        .find_release_by_id(release_id)
+        .await?
+        .ok_or_else(|| ReleaseIdentityError::NotFound { release_id: release_id.to_string() })?;
+    let files = database.get_files_with_originals_for_release(release_id).await?;
+    let tracks = database.get_tracks_for_release(release_id).await?;
     // The lengths a pick of this release is laid out against, so a document
     // is read against the discs these tracks are.
-    let track_lengths_ms = crate::library::stored_track_lengths(&tracks);
+    let track_lengths_ms: Vec<u64> = tracks.iter().map(|track| track.duration_ms).collect();
     // Original paths are the ones this device recorded at import.
     // A release imported elsewhere has no originals here, so yields no paths or
     // disc ID.
@@ -89,7 +108,7 @@ pub(crate) async fn resolve_release_identity(
         crate::import::discid::read_rip_artifacts_from_paths(&documents, &cue_paths, &audio_files)
     })
     .await
-    .map_err(|failed| library_manager.bug(failed))?;
+    .map_err(|failed| diagnostics.bug(failed))?;
 
     Ok(ReleaseIdentity { rip, audio })
 }
@@ -101,52 +120,51 @@ pub(crate) async fn resolve_release_identity(
 /// The cover's bytes live in coven's store, which exposes no path bae may
 /// compute, so they are read out and staged into a temp dir. That dir's guard
 /// comes back alongside the paths and must outlive the OCR pass; `None` when the
-/// release has no cover.
+/// release has no cover. A panic staging the cover is reported to
+/// `diagnostics`.
 pub(crate) async fn resolve_release_artwork_paths(
-    library_manager: &crate::library::LibraryManager,
+    database: &Database,
+    diagnostics: &Diagnostics,
     release_id: &str,
-) -> Result<(Vec<PathBuf>, Option<tempfile::TempDir>), crate::library::LibraryError> {
-    let files = library_manager.get_files_with_originals_for_release(release_id).await?;
+) -> Result<(Vec<PathBuf>, Option<tempfile::TempDir>), DbError> {
+    let files = database.get_files_with_originals_for_release(release_id).await?;
     let mut paths: Vec<PathBuf> = Vec::new();
 
     // The cover is one of several OCR inputs (the image files below are the
     // others), so a read/staging failure skips just the cover, logged, rather than
     // failing the whole resolve.
-    let cover_staging = match library_manager.cover_ref(release_id).await {
-        Ok(Some(image)) => {
-            match library_manager.read_image_bytes(&image).await {
-                Ok(Some(bytes)) => {
-                    let staging_release = release_id.to_string();
-                    match bae_util::task_failure::blocking("stage a cover for reading", move || {
-                        stage_cover_for_ocr(&staging_release, &bytes)
-                    })
-                    .await
-                    {
-                        Ok(Some((dir, cover_path))) => {
-                            paths.push(cover_path);
-                            Some(dir)
-                        }
-                        Ok(None) => None,
-                        // A staging that panicked skips the cover, as one
-                        // that failed does, reported as the bug it is.
-                        Err(failed) => {
-                            library_manager.bug(failed);
-                            None
-                        }
+    let cover_staging = match database
+        .library_image_file(release_id, &LibraryImageType::Cover)
+        .await
+    {
+        Ok(Some(file)) => match database.read_file(&file).await {
+            Ok(bytes) => {
+                let staging_release = release_id.to_string();
+                match bae_util::task_failure::blocking("stage a cover for reading", move || {
+                    stage_cover_for_ocr(&staging_release, &bytes)
+                })
+                .await
+                {
+                    Ok(Some((dir, cover_path))) => {
+                        paths.push(cover_path);
+                        Some(dir)
+                    }
+                    Ok(None) => None,
+                    // A staging that panicked skips the cover, as one
+                    // that failed does, reported as the bug it is.
+                    Err(failed) => {
+                        diagnostics.bug(failed);
+                        None
                     }
                 }
-                Ok(None) => {
-                    debug!("artwork OCR: release {release_id} has no cover file; skipping cover staging");
-                    None
-                }
-                Err(e) => {
-                    warn!(
+            }
+            Err(e) => {
+                warn!(
                     "artwork OCR: reading cover for release {release_id} failed: {e}; skipping cover"
                 );
-                    None
-                }
+                None
             }
-        }
+        },
         Ok(None) => {
             debug!("artwork OCR: release {release_id} has no cover file; skipping cover staging");
             None
@@ -214,7 +232,6 @@ mod tests {
     #[tokio::test]
     async fn resolve_release_artwork_paths_warns_on_missing_registered_image_file() {
         use crate::db::{Database, DbAlbum, DbArtist, DbRelease, NewReleaseFile};
-        use crate::library::LibraryManager;
         use bae_util::content_type::ContentType;
         use chrono::Utc;
         use uuid::Uuid;
@@ -238,17 +255,6 @@ mod tests {
             created_at: Utc::now(),
         };
         database.insert_artist(&artist).await.unwrap();
-
-        let manager = LibraryManager::new(
-            database.clone(),
-            crate::config::AppDir::under_home(temp.path()).unwrap(),
-            Arc::new(coven::SystemClock),
-            Arc::new(coven::UuidIds),
-            crate::diagnostics::Diagnostics::noop(),
-            tokio::runtime::Handle::current(),
-            bae_catalogs::remote_image::RemoteImageCache::for_test(bae_util::http::Http::for_test()),
-            crate::catalog_model::providers::Providers::offline(),
-        );
 
         let album = DbAlbum {
             id: Uuid::new_v4().to_string(),
@@ -292,8 +298,13 @@ mod tests {
         std::fs::remove_file(&missing_path).unwrap();
 
         let logs = capture_warn_logs_async(|| async {
-            let (paths, cover_staging) =
-                resolve_release_artwork_paths(&manager, &release.id).await.unwrap();
+            let (paths, cover_staging) = resolve_release_artwork_paths(
+                &database,
+                &crate::diagnostics::Diagnostics::noop(),
+                &release.id,
+            )
+            .await
+            .unwrap();
             assert!(paths.is_empty());
             assert!(cover_staging.is_none());
         })
@@ -316,7 +327,6 @@ mod tests {
     #[tokio::test]
     async fn test_resolve_release_identity_local() {
         use crate::db::{Database, DbAlbum, DbArtist, DbRelease, DbTrack, NewReleaseFile};
-        use crate::library::LibraryManager;
         use bae_util::content_type::ContentType;
         use chrono::Utc;
         use std::sync::Arc;
@@ -360,17 +370,6 @@ mod tests {
             created_at: Utc::now(),
         };
         database.insert_artist(&artist).await.unwrap();
-
-        let manager = LibraryManager::new(
-            database.clone(),
-            crate::config::AppDir::under_home(temp.path()).unwrap(),
-            Arc::new(coven::SystemClock),
-            Arc::new(coven::UuidIds),
-            crate::diagnostics::Diagnostics::noop(),
-            tokio::runtime::Handle::current(),
-            bae_catalogs::remote_image::RemoteImageCache::for_test(bae_util::http::Http::for_test()),
-            crate::catalog_model::providers::Providers::offline(),
-        );
 
         let album = DbAlbum {
             id: Uuid::new_v4().to_string(),
@@ -439,7 +438,13 @@ mod tests {
             database.insert_track(&track).await.unwrap();
         }
 
-        let identity = resolve_release_identity(&manager, &release.id).await.unwrap();
+        let identity = resolve_release_identity(
+            &database,
+            &crate::diagnostics::Diagnostics::noop(),
+            &release.id,
+        )
+        .await
+        .unwrap();
         let (rip, track_count) = (identity.rip, identity.audio.track_count);
 
         assert!(

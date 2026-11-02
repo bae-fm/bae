@@ -6,17 +6,12 @@ use super::*;
 #[tokio::test(flavor = "multi_thread")]
 async fn a_fast_pass_that_panics_says_why_there_is_no_pass_and_is_reported() {
     let bugs = Arc::new(crate::diagnostics::RecordingBugReporter::default());
-    let (library_manager, _lib_tmp) = make_library_manager_reporting_to(
-        crate::diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone()),
-    )
-    .await;
-    let fast_pass = run_fast_pass_blocking(
-        &library_manager,
-        || -> Result<FastPass, crate::import::ImportError> {
+    let diagnostics = crate::diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone());
+    let fast_pass =
+        run_fast_pass_blocking(&diagnostics, || -> Result<FastPass, crate::import::ImportError> {
             panic!("fast-pass blocking task panicked")
-        },
-    )
-    .await;
+        })
+        .await;
 
     let Err(detail) = fast_pass else {
         panic!("a fast pass that panics fails, not swallowed");
@@ -34,12 +29,13 @@ async fn an_aborted_extraction_fails_every_signal_in_one_snapshot() {
     let candidates = CandidateRuntime::for_test().await;
     let tx = ImportEventBus::new(candidates.clone());
     let mut rx = tx.every_event();
-    let (library_manager, _lib_tmp) = make_library_manager().await;
+    let (database, _lib_tmp) = make_database().await;
     let inner = ExtractionServiceInner {
         runtime_handle: tokio::runtime::Handle::current(),
         event_tx: tx,
         analyzer: std::sync::Mutex::new(None),
-        library_manager,
+        database,
+        diagnostics: crate::diagnostics::Diagnostics::noop(),
         settled: SessionCache::new("Settled folder signals", SETTLED_CAPACITY),
         candidates,
         image_reads: Arc::new(tokio::sync::Semaphore::new(IMAGES_IN_FLIGHT)),

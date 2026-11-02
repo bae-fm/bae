@@ -511,7 +511,7 @@ async fn coordinator_completes_scan_while_filesystem_batches_remain_ready() {
 
 #[tokio::test]
 async fn cancelled_scan_task_does_not_begin_a_durable_generation() {
-    let TestService { service, preparations, database: _, temp: tmp } =
+    let TestService { service, preparations, database, temp: tmp } =
         setup_import_service().await;
     let root = tmp.path().join("watched");
     std::fs::create_dir(&root).unwrap();
@@ -526,6 +526,7 @@ async fn cancelled_scan_task_does_not_begin_a_durable_generation() {
         root,
         test_scan_services(
             &service,
+            &database,
             &preparations,
             service.event_tx.clone(),
             watcher,

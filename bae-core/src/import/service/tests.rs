@@ -404,7 +404,7 @@ impl CoordinatorHarness {
     /// [`root_path`] gives it.
     async fn with_roots(roots: &[&str]) -> Self {
         let roots: Vec<PathBuf> = roots.iter().map(|root| host_root(root)).collect();
-        let TestService { service, preparations, database: _, temp } = setup_import_service().await;
+        let TestService { service, preparations, database, temp } = setup_import_service().await;
         for root in &roots {
             service
                 .library_manager
@@ -449,6 +449,7 @@ impl CoordinatorHarness {
             crate::import::ImportServices {
                 event_tx: service.event_tx,
                 library_manager: service.library_manager.clone(),
+                database,
                 preparations: preparations.clone(),
                 clock: service.clock.clone(),
                 ids: service.ids.clone(),
@@ -579,6 +580,7 @@ fn terminal_import_failure_preserves_an_artist_identity_conflict() {
 /// commit lock of their own.
 fn test_scan_services(
     service: &ImportService,
+    database: &crate::db::Database,
     preparations: &crate::import::CandidatePreparations,
     event_tx: crate::import::handle::ImportEventBus,
     folder_watcher: Arc<FolderWatcher>,
@@ -589,6 +591,7 @@ fn test_scan_services(
         crate::import::ImportServices {
             event_tx,
             library_manager: service.library_manager.clone(),
+            database: database.clone(),
             preparations: preparations.clone(),
             clock: service.clock.clone(),
             ids: service.ids.clone(),
@@ -634,6 +637,7 @@ impl TestService {
         let scan = TestScan {
             services: test_scan_services(
                 &self.service,
+                &self.database,
                 &self.preparations,
                 event_tx,
                 Arc::new(FolderWatcher::new(fs_tx, crate::diagnostics::Diagnostics::noop())),

@@ -22,7 +22,6 @@ use crate::identify::signals::{
 };
 use crate::import::IdentifyRunId;
 use crate::import::{CandidateRuntime, CandidateWork, ImportEvent, ImportEventBus};
-use crate::library::LibraryManager;
 use bae_catalogs::rate_limiter::CallPriority;
 use bae_util::session_cache::SessionCache;
 use std::collections::VecDeque;
@@ -66,8 +65,11 @@ struct ExtractionServiceInner {
     /// The platform's artwork analyzer; `None` where the platform has none, so
     /// artwork is no source at all.
     analyzer: Mutex<Option<Arc<dyn ArtworkAnalyzer>>>,
-    /// Resolves a release's files for the `Release` re-identify path.
-    library_manager: LibraryManager,
+    /// The library a `Release` re-identify reads the release's rows and
+    /// files from.
+    database: crate::db::Database,
+    /// Where a panic in a pass is reported as the bug it is.
+    diagnostics: crate::diagnostics::Diagnostics,
     /// Each folder's settled snapshot this session, so a later run over the
     /// same files does not read every image again.
     settled: SessionCache<SignalsSnapshot>,
@@ -120,13 +122,15 @@ impl ExtractionService {
         runtime_handle: tokio::runtime::Handle,
         event_tx: ImportEventBus,
         candidates: CandidateRuntime,
-        library_manager: LibraryManager,
+        database: crate::db::Database,
+        diagnostics: crate::diagnostics::Diagnostics,
     ) -> ExtractionServiceHandle {
         let inner = Arc::new(ExtractionServiceInner {
             runtime_handle,
             event_tx,
             analyzer: Mutex::new(None),
-            library_manager,
+            database,
+            diagnostics,
             settled: SessionCache::new("Settled folder signals", SETTLED_CAPACITY),
             candidates,
             image_reads: Arc::new(Semaphore::new(IMAGES_IN_FLIGHT)),
@@ -203,7 +207,7 @@ async fn run_extraction(
     )
     .await;
     if let Err(failed) = extracted {
-        let failure = InternalFailure::from(inner.library_manager.bug(failed));
+        let failure = InternalFailure::from(inner.diagnostics.bug(failed));
         emit_aborted_signals(
             &inner,
             &extraction,
@@ -235,7 +239,7 @@ async fn extract(
                 emit_signals(inner, extraction, settled);
                 return;
             }
-            let fast = match run_fast_pass_blocking(&inner.library_manager, move || {
+            let fast = match run_fast_pass_blocking(&inner.diagnostics, move || {
                 gather_non_ocr_sources(&candidate.source_folders(), &candidate.files)
             })
             .await
@@ -289,7 +293,9 @@ async fn extract(
         // from the library.
         ExtractionSource::Release { release_id } => {
             let (origin, audio, disc_id) =
-                match resolve_release_identity(&inner.library_manager, &release_id).await {
+                match resolve_release_identity(&inner.database, &inner.diagnostics, &release_id)
+                    .await
+                {
                     Ok(identity) => {
                         (identity.rip.origin, identity.audio, identity.rip.disc_id.into_signal())
                     }
@@ -313,7 +319,13 @@ async fn extract(
             // files cannot be read at all, so the extraction aborts.
             let analyzer = inner.analyzer.lock().unwrap().clone();
             let (artwork, _cover_staging) = if let Some(analyzer) = analyzer {
-                match resolve_release_artwork_paths(&inner.library_manager, &release_id).await {
+                match resolve_release_artwork_paths(
+                    &inner.database,
+                    &inner.diagnostics,
+                    &release_id,
+                )
+                .await
+                {
                     // A library release's images have no file id.
                     Ok((paths, staging)) => (
                         Artwork::read(
@@ -363,9 +375,9 @@ async fn extract(
 }
 
 /// The fast pass, or why it panicked or the folder's timing does not read. A
-/// panic is reported through `library_manager`.
+/// panic is reported to `diagnostics`.
 async fn run_fast_pass_blocking<F>(
-    library_manager: &LibraryManager,
+    diagnostics: &crate::diagnostics::Diagnostics,
     task: F,
 ) -> Result<FastPass, String>
 where
@@ -373,7 +385,7 @@ where
 {
     let pass = bae_util::task_failure::blocking("read a folder's signals", task)
         .await
-        .map_err(|failed| library_manager.bug(failed).to_string())?;
+        .map_err(|failed| diagnostics.bug(failed).to_string())?;
     pass.map_err(|error| {
         error!("signals: folder timing is invalid: {error}; aborting extraction");
         format!("folder timing is invalid: {error}")
@@ -453,14 +465,14 @@ impl<'a> ImageRead<'a> {
     }
 
     /// What the analyzer read off the image, or why it panicked, reported
-    /// through `library_manager`.
+    /// to `diagnostics`.
     async fn finish(
         self,
-        library_manager: &LibraryManager,
+        diagnostics: &crate::diagnostics::Diagnostics,
     ) -> Result<ArtworkAnalysis, InternalFailure> {
         bae_util::task_failure::joined(READ_IMAGE, self.task).await.map_err(|failed| {
             InternalFailure {
-                detail: format!("{:?}: {}", self.image.path, library_manager.bug(failed)),
+                detail: format!("{:?}: {}", self.image.path, diagnostics.bug(failed)),
             }
         })
     }
@@ -468,12 +480,12 @@ impl<'a> ImageRead<'a> {
 
 /// Wait out the reads a pass that is stopping no longer wants, so none
 /// outlives it: the files a pass reads (a library release's staged cover)
-/// last only until it returns. A read that panicked is reported through
-/// `library_manager`.
-async fn abandon(reads: VecDeque<ImageRead<'_>>, library_manager: &LibraryManager) {
+/// last only until it returns. A read that panicked is reported to
+/// `diagnostics`.
+async fn abandon(reads: VecDeque<ImageRead<'_>>, diagnostics: &crate::diagnostics::Diagnostics) {
     for read in reads {
         if let Err(failed) = bae_util::task_failure::joined(READ_IMAGE, read.task).await {
-            library_manager.bug(failed);
+            diagnostics.bug(failed);
         }
     }
 }
@@ -543,7 +555,7 @@ async fn stream_extraction(
             // same moment it is cancelled.
             while let Some(&image) = unstarted.peek() {
                 if token.is_cancelled() {
-                    abandon(in_flight, &inner.library_manager).await;
+                    abandon(in_flight, &inner.diagnostics).await;
                     return;
                 }
                 let permit = if in_flight.is_empty() {
@@ -575,9 +587,9 @@ async fn stream_extraction(
                 break;
             };
             let ArtworkImage { path, file_id } = read.image;
-            let analysis = read.finish(&inner.library_manager).await;
+            let analysis = read.finish(&inner.diagnostics).await;
             if token.is_cancelled() {
-                abandon(in_flight, &inner.library_manager).await;
+                abandon(in_flight, &inner.diagnostics).await;
                 return;
             }
             let analysis = match analysis {
@@ -590,7 +602,7 @@ async fn stream_extraction(
                         ArtworkScan::Failed { failure: failure.clone(), read: index as u32, total },
                         failure,
                     );
-                    abandon(in_flight, &inner.library_manager).await;
+                    abandon(in_flight, &inner.diagnostics).await;
                     return;
                 }
             };

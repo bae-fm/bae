@@ -111,8 +111,14 @@ impl LibraryManager {
         &self,
         release_id: &str,
     ) -> Result<crate::catalog_model::reading::ReadAudio, LibraryError> {
-        crate::import::extraction::release::resolve_release_identity(self, release_id)
-            .await?
+        use crate::import::extraction::release::{resolve_release_identity, ReleaseIdentityError};
+        resolve_release_identity(&self.database, &self.diagnostics, release_id)
+            .await
+            .map_err(|error| match error {
+                ReleaseIdentityError::Database(error) => LibraryError::Database(error),
+                ReleaseIdentityError::NotFound { .. } => LibraryError::Refused(error.to_string()),
+                ReleaseIdentityError::Panicked(failed) => LibraryError::from(failed),
+            })?
             .read_audio()
             .map_err(LibraryError::from)
     }
@@ -451,16 +457,6 @@ impl LibraryManager {
         Ok(self.database.get_files_for_release(release_id).await?)
     }
 
-    /// The release's files in their order, each with the path of the original
-    /// this device holds for it; `None` where it holds none.
-    #[cfg(desktop)]
-    pub(crate) async fn get_files_with_originals_for_release(
-        &self,
-        release_id: &str,
-    ) -> Result<Vec<(DbFile, Option<std::path::PathBuf>)>, LibraryError> {
-        Ok(self.database.get_files_with_originals_for_release(release_id).await?)
-    }
-
     pub async fn get_album_id_for_release(&self, release_id: &str) -> Result<String, LibraryError> {
         let album_id = self
             .database
@@ -506,12 +502,6 @@ impl LibraryManager {
 
         Ok(())
     }
-}
-
-/// Each of a library release's tracks' stored length, in track order.
-#[cfg(desktop)]
-pub(crate) fn stored_track_lengths(tracks: &[DbTrack]) -> Vec<u64> {
-    tracks.iter().map(|track| track.duration_ms).collect()
 }
 
 /// The cover [`ImageRef`] for one release from its cover's version, or `None`

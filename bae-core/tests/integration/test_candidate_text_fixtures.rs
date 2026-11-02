@@ -171,11 +171,11 @@ fn materialize(fixture: &Fixture, tmp: &TempDir) -> (PathBuf, HashMap<PathBuf, V
     (canonical_folder, ocr_map)
 }
 
-/// A throwaway `LibraryManager` over a temp dir, which must outlive it.
-async fn make_library_manager() -> (bae_core::library::LibraryManager, TempDir) {
+/// A throwaway library database over a temp dir, which must outlive it.
+async fn make_database() -> (bae_core::db::Database, TempDir) {
     let tmp = TempDir::new().expect("library temp dir");
-    let (manager, _db) = support::open_test_library(tmp.path()).await;
-    (manager, tmp)
+    let (_manager, database) = support::open_test_library(tmp.path()).await;
+    (database, tmp)
 }
 
 async fn drive_fixture(
@@ -185,12 +185,13 @@ async fn drive_fixture(
 ) -> (Vec<String>, Vec<String>) {
     let candidates = bae_core::import::CandidateRuntime::for_test().await;
     let tx = ImportEventBus::new(candidates.clone());
-    let (library_manager, _lib_tmp) = make_library_manager().await;
+    let (database, _lib_tmp) = make_database().await;
     let handle: ExtractionServiceHandle = ExtractionService::start(
         tokio::runtime::Handle::current(),
         tx,
         candidates,
-        library_manager,
+        database,
+        bae_core::diagnostics::Diagnostics::noop(),
     );
     let analyzer: Arc<dyn ArtworkAnalyzer> = Arc::new(FixtureAnalyzer::new(ocr_map));
     handle.register_analyzer(analyzer);

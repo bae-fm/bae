@@ -185,6 +185,8 @@ impl TrackRow {
 pub(crate) struct ImportServices {
     event_tx: handle::ImportEventBus,
     library_manager: crate::library::LibraryManager,
+    /// The library's store, which import reads and writes directly.
+    database: crate::db::Database,
     preparations: preparations::CandidatePreparations,
     clock: coven::ClockRef,
     ids: coven::IdSourceRef,
@@ -210,6 +212,7 @@ impl ImportServices {
     pub(crate) fn new(
         event_tx: handle::ImportEventBus,
         library_manager: crate::library::LibraryManager,
+        database: crate::db::Database,
         preparations: preparations::CandidatePreparations,
         clock: coven::ClockRef,
         ids: coven::IdSourceRef,
@@ -218,6 +221,7 @@ impl ImportServices {
         Self {
             event_tx,
             library_manager,
+            database,
             preparations,
             clock,
             ids,

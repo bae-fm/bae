@@ -110,35 +110,16 @@ async fn collect_snapshots(
     out
 }
 
-/// A throwaway `LibraryManager` over a temp dir, which must outlive it.
-async fn make_library_manager() -> (crate::library::LibraryManager, TempDir) {
-    make_library_manager_reporting_to(crate::diagnostics::Diagnostics::noop()).await
-}
-
-/// A library manager reporting its bugs to `diagnostics`.
-async fn make_library_manager_reporting_to(
-    diagnostics: crate::diagnostics::Diagnostics,
-) -> (crate::library::LibraryManager, TempDir) {
+/// A throwaway library database over a temp dir, which must outlive it.
+async fn make_database() -> (crate::db::Database, TempDir) {
     let tmp = TempDir::new().unwrap();
-    let clock: coven::ClockRef = Arc::new(coven::SystemClock);
-    let database =
-        crate::db::Database::new_test(tmp.path().join("test.db").to_str().unwrap(), clock.clone())
-            .await
-            .unwrap();
-
-    // Unique per test so keyring entries don't collide in the shared mock store.
-
-    let manager = crate::library::LibraryManager::new(
-        database,
-        crate::config::AppDir::under_home(tmp.path()).unwrap(),
-        clock,
-        Arc::new(coven::UuidIds),
-        diagnostics,
-        tokio::runtime::Handle::current(),
-        bae_catalogs::remote_image::RemoteImageCache::for_test(bae_util::http::Http::for_test()),
-        crate::catalog_model::providers::Providers::offline(),
-    );
-    (manager, tmp)
+    let database = crate::db::Database::new_test(
+        tmp.path().join("test.db").to_str().unwrap(),
+        Arc::new(coven::SystemClock),
+    )
+    .await
+    .unwrap();
+    (database, tmp)
 }
 
 /// Start a service; the bus sender comes back so a test can inject events.
@@ -147,12 +128,13 @@ async fn make_service(
     let candidates = CandidateRuntime::for_test().await;
     let tx = ImportEventBus::new(candidates.clone());
     let rx = tx.every_event();
-    let (library_manager, lib_tmp) = make_library_manager().await;
+    let (database, lib_tmp) = make_database().await;
     let handle = ExtractionService::start(
         tokio::runtime::Handle::current(),
         tx.clone(),
         candidates,
-        library_manager,
+        database,
+        crate::diagnostics::Diagnostics::noop(),
     );
     (handle, tx, rx, lib_tmp)
 }

@@ -462,6 +462,7 @@ impl ImportServiceHandle {
         let crate::import::ImportServices {
             event_tx,
             library_manager,
+            database,
             preparations,
             clock: _,
             ids,
@@ -482,7 +483,8 @@ impl ImportServiceHandle {
             runtime_handle.clone(),
             event_tx.clone(),
             runtime.clone(),
-            library_manager.clone(),
+            database,
+            diagnostics.clone(),
         );
         Ok(Self {
             worker,
