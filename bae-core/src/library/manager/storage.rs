@@ -42,11 +42,6 @@ impl LibraryManager {
         Ok(self.database.count_pending_uploads_for_release(release_id).await?)
     }
 
-    /// Whether the person paused uploads, live.
-    pub fn subscribe_uploads_paused(&self) -> coven::LiveQuery<bool> {
-        self.database.subscribe_uploads_paused()
-    }
-
     /// Retry failed uploads now: clear coven's durable retry delay and run its
     /// upload drain immediately. Connection, queue-state, and provider failures
     /// are returned to the caller instead of reporting that a retry ran.

@@ -28,6 +28,7 @@ macro_rules! release_file_columns {
          AS stored"
     };
 }
+#[cfg(desktop)]
 pub(crate) use release_file_columns;
 
 mod album;
@@ -248,7 +249,6 @@ impl Database {
 
     /// A live query: coven reruns `query` for each write that touches what it
     /// read.
-    #[cfg(desktop)]
     pub(crate) fn subscribe<F, R>(&self, query: F) -> coven::LiveQuery<R>
     where
         F: Fn(SqlReadContext<'_>) -> Result<R, CovenError> + Send + Sync + 'static,

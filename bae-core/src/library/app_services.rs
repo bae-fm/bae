@@ -692,7 +692,13 @@ impl AppServices {
     delegate_async!(manager, pending => pending() -> Result<Vec<coven::PendingRecord>, crate::library::LibraryError>);
     delegate_async!(manager, library_name => library_name() -> Result<String, crate::library::LibraryError>);
     delegate_values!(subscribe_library_name => subscribe_library_name() -> String);
-    delegate_values!(subscribe_uploads_paused => subscribe_uploads_paused() -> bool);
+
+    /// Whether the person paused uploads: the first value at once, then one
+    /// after each change.
+    pub fn subscribe_uploads_paused(&self) -> crate::live_query::LiveValues<bool> {
+        self.inner.manager.values_until_closed(self.inner.views.subscribe_uploads_paused())
+    }
+
     delegate_async!(manager, is_sync_paused => is_sync_paused() -> Result<bool, crate::library::LibraryError>);
 
     delegate_sync!(manager, watch_outbox_transfers => watch_outbox_transfers() -> crate::library::OutboxTransfersWatch);

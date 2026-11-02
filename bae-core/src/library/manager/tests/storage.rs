@@ -831,7 +831,7 @@ async fn the_sync_activity_follows_a_send_as_it_starts_and_ends() {
 #[tokio::test]
 async fn the_upload_pause_follows_each_change_with_an_empty_queue() {
     let (manager, _temp_dir) = setup_test_manager().await;
-    let mut paused = manager.subscribe_uploads_paused();
+    let mut paused = manager.views().subscribe_uploads_paused();
     assert!(!paused.next().await.unwrap().unwrap());
     manager.set_sync_paused(true).await.unwrap();
     assert!(paused.next().await.unwrap().unwrap());

@@ -76,7 +76,7 @@ pub(super) const UPLOAD_QUEUE_COUNTS: &str = "SELECT \
      (SELECT paused FROM coven_upload_pause)";
 
 /// Whether the person paused uploads, as coven's one row says.
-const UPLOADS_PAUSED: &str = "SELECT paused FROM coven_upload_pause";
+pub(crate) const UPLOADS_PAUSED: &str = "SELECT paused FROM coven_upload_pause";
 
 /// Each file this process is sending now and, when it is one of a release's
 /// files, its release and size. One row per upload in flight is read.
@@ -171,12 +171,6 @@ impl Database {
     /// coven's upload watch.
     pub(crate) fn subscribe_upload_transfers(&self) -> coven::TransferWatch {
         self.inner.handle.subscribe_upload_transfers()
-    }
-
-    /// Whether the person paused uploads, live, whether or not anything is
-    /// queued.
-    pub(crate) fn subscribe_uploads_paused(&self) -> coven::LiveQuery<bool> {
-        self.inner.handle.subscribe(|sql| Ok(sql.query_row(UPLOADS_PAUSED, [], |row| row.get(0))?))
     }
 
     /// Whether the person paused uploads now.
