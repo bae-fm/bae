@@ -99,30 +99,6 @@ private final class Recorder {
     }
 }
 
-@MainActor
-private func captureMappingPane(
-    candidate: Candidate,
-    runtime: BridgeCandidateRuntimeSnapshot?
-) async throws -> Data {
-    let size = NSSize(width: 1200, height: 760)
-    return try await SnapshotTestSupport.withHostedWindow(
-        ImportMappingPreview.make(
-            candidate: candidate,
-            storageCloud: .constant(false),
-            storagePinned: .constant(false),
-            runtime: runtime
-        )
-        .frame(width: size.width, height: size.height)
-        .importPreviewEnvironment()
-        .candidateReaderPreviewEnvironment(),
-        size: size
-    ) { _, host in
-        try await SnapshotTestSupport.settle(host)
-        let capture = try await SnapshotTestSupport.capturePNG(host, size: size)
-        return capture
-    }
-}
-
 private func runtime(
     _ identifyState: BridgeIdentifyState
 ) -> BridgeCandidateRuntimeSnapshot {
@@ -169,11 +145,16 @@ struct ImportMappingPaneTests {
         }
     }
 
+    /// A candidate opened on Find online lists the matches of the run it
+    /// resumed, or of a run arriving now in its place; a stored pick settles
+    /// the identity, and the pane draws the draft instead, whatever the run
+    /// left behind. How each looks is the find online scenes' and
+    /// `import-metadata-draft`'s.
     @MainActor
     @Test(
         "restored and arriving match lists appear inline until identity settles"
     )
-    func matchListsAppearInlineUntilIdentitySettles() async throws {
+    func matchListsAppearInlineUntilIdentitySettles() {
         var browsing = Candidate(
             detail: MappingFixtures.detail(
                 mapping: MappingFixtures.thirteenFileTable,
@@ -183,26 +164,23 @@ struct ImportMappingPaneTests {
             )
         )
         browsing.session.presentation = .findOnline
-        browsing.resumedIdentifyState = IdentifyState(
+        #expect(browsing.metadataPresentation == .findOnline)
+        let disagreement = IdentifyState(
             bridge: PreviewData.bridgeDisagreementState
         )
-        let restoredMatches = try await captureMappingPane(
-            candidate: browsing,
-            runtime: nil
-        )
+
+        browsing.resumedIdentifyState = disagreement
+        #expect(area(browsing, runtime: nil) == .groups)
 
         browsing.resumedIdentifyState = .manualOnly(trackCount: 11, run: nil)
-        let before = try await captureMappingPane(
-            candidate: browsing,
-            runtime: nil
+        #expect(area(browsing, runtime: nil) == .noSignals)
+        #expect(
+            area(
+                browsing,
+                runtime: runtime(PreviewData.bridgeDisagreementState)
+            )
+                == .groups
         )
-        #expect(restoredMatches != before)
-
-        let matches = try await captureMappingPane(
-            candidate: browsing,
-            runtime: runtime(PreviewData.bridgeDisagreementState)
-        )
-        #expect(matches != before)
 
         // A stored pick settles the identity: the match list gives way to the
         // release card, whatever the run left behind.
@@ -211,15 +189,21 @@ struct ImportMappingPaneTests {
                 mapping: MappingFixtures.thirteenFileTable
             )
         )
-        let settledConflict = try await captureMappingPane(
-            candidate: settled,
-            runtime: runtime(PreviewData.bridgeDisagreementState)
+        #expect(settled.metadataPresentation == .draft)
+    }
+
+    /// The result area the candidate's Find online page shows.
+    @MainActor
+    private func area(
+        _ candidate: Candidate,
+        runtime: BridgeCandidateRuntimeSnapshot?
+    ) -> FindOnlineResultArea {
+        FindOnlineResultArea(
+            identifyState: shownIdentifyState(
+                resumed: candidate.resumedIdentifyState,
+                runtime: runtime
+            )
         )
-        let settledWithoutConflict = try await captureMappingPane(
-            candidate: settled,
-            runtime: runtime(.manualOnly(trackCount: 11, run: nil))
-        )
-        #expect(settledConflict.elementsEqual(settledWithoutConflict))
     }
 
     // 1. Binding a track sheet is a decision about the folder, so it goes to
