@@ -42,13 +42,13 @@ struct SortCriteriaRowTests {
     }
 
     /// The field name is a menu label. An AppKit menu button renders a label
-    /// as its title and can drop the rest, so assert the pill still puts its
-    /// field on screen.
+    /// as its title and can drop the rest, so assert the pill's menu button
+    /// still carries its field.
     @MainActor
     @Test("the pill draws its field")
     func thePillDrawsItsField() async throws {
         let size = NSSize(width: 240, height: 44)
-        let drawn = try await FindOnlineRendering.pixels(
+        try await SnapshotTestSupport.withHostedWindow(
             SortCriterionPill(
                 criterion: .constant(
                     BridgeSortCriterion(
@@ -60,14 +60,21 @@ struct SortCriteriaRowTests {
                 canRemove: false,
                 onSetField: { _ in },
                 onRemove: {}
-            ),
+            )
+            .frame(width: size.width, height: size.height),
             size: size
-        )
-        let empty = try await FindOnlineRendering.pixels(
-            Color.clear,
-            size: size
-        )
-
-        #expect(drawn != empty)
+        ) { _, host in
+            try await SnapshotTestSupport.settle(host)
+            let menu = try #require(
+                SnapshotTestSupport.descendants(of: host)
+                    .compactMap { $0 as? NSPopUpButton }
+                    .first
+            )
+            let field = BridgeSortField.dateAdded.displayName
+            #expect(
+                menu.attributedTitle.string.contains(field),
+                "the menu reads \(menu.attributedTitle.string)"
+            )
+        }
     }
 }
