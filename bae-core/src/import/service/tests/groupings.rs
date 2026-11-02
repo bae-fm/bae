@@ -42,7 +42,7 @@ async fn scanned_root(releases: &[&str]) -> (TestService, TestScan, PathBuf) {
         write_disc(&root.join(release), 1);
     }
     let root = crate::import::watched_folder::canonical_absolute_root(&root).unwrap();
-    test.service.library_manager.add_watched_import_folder(&root).await.unwrap();
+    test.database.add_watched_import_folder(&root).await.unwrap();
     let (scan, _events) = test.scan();
     scan.rescan(&root).await.unwrap();
     (test, scan, root)
@@ -114,7 +114,7 @@ async fn disc_folders_offer_to_separate_and_kept_apart_offer_to_combine() {
 #[tokio::test]
 async fn a_folders_release_keeps_its_key_across_readings() {
     let (test, scan, root) = scanned_root(&["Album/Disc 1", "Album/Disc 2"]).await;
-    let manager = &test.service.library_manager;
+    let manager = &test.database;
     let grouping_of = || async {
         test.database
             .load_folder_release_decisions(&root)
@@ -166,12 +166,11 @@ async fn a_folder_read_as_one_release_takes_its_own_files_and_numbers_its_discs(
     }
     std::fs::write(root.join("Album/notes.txt"), "notes").unwrap();
     let root = crate::import::watched_folder::canonical_absolute_root(&root).unwrap();
-    test.service.library_manager.add_watched_import_folder(&root).await.unwrap();
+    test.database.add_watched_import_folder(&root).await.unwrap();
     let (scan, _events) = test.scan();
     scan.rescan(&root).await.unwrap();
     let release = test
-        .service
-        .library_manager
+        .database
         .load_folder_scan_items(&root)
         .await
         .unwrap()

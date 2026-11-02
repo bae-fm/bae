@@ -57,7 +57,7 @@ async fn a_pass_that_panics_fails_the_scan_and_frees_the_root() {
         std::fs::create_dir_all(&folder).unwrap();
         std::fs::write(folder.join("track.flac"), flac()).unwrap();
     }
-    test.service.library_manager.add_watched_import_folder(&root).await.unwrap();
+    test.database.add_watched_import_folder(&root).await.unwrap();
     let (scan, _events) = test.scan_with(
         Arc::new(crate::import::file_tag_snapshot::LoftyFileTagReader),
         Arc::new(ListingThatPanicsOnce { panicked: std::sync::atomic::AtomicBool::new(false) }),

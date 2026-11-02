@@ -39,8 +39,7 @@ async fn an_import_that_panics_is_recorded_as_failed_and_the_next_import_runs() 
         .await;
 
     let failure = test
-        .service
-        .library_manager
+        .database
         .load_import_candidate_pane_rows(&stored.candidate.content_hash)
         .await
         .unwrap()
@@ -60,7 +59,7 @@ async fn an_import_that_panics_is_recorded_as_failed_and_the_next_import_runs() 
         .do_import(local_import_command("import-again", &candidate_key, &folder), stored)
         .await;
     assert_eq!(
-        test.service.library_manager.get_albums(&[]).await.unwrap().len(),
+        test.database.get_albums(&[]).await.unwrap().len(),
         1,
         "the next import lands the release"
     );

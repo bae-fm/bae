@@ -180,7 +180,7 @@ async fn a_failed_import_keeps_what_a_retry_reads() {
     drop(blocked);
 
     assert!(
-        !test.service.library_manager.is_content_hash_imported(&content_hash).await.unwrap(),
+        !test.manager.is_content_hash_imported(&content_hash).await.unwrap(),
         "the import failed"
     );
     assert_eq!(spent_row_counts(&test, &content_hash).await, before);
@@ -189,7 +189,7 @@ async fn a_failed_import_keeps_what_a_retry_reads() {
 /// Store the scanned folder `folder` again as its watched root's next scan
 /// reads it, as `name`.
 async fn rescan_folder(test: &TestService, folder: &Path, name: &str) {
-    let manager = &test.service.library_manager;
+    let manager = &test.manager;
     let files = crate::import::folder_scanner::collect_release_candidate_files_with_scope(
         folder,
         crate::import::ReleaseFileScope::Recursive,
@@ -266,8 +266,7 @@ async fn a_folder_whose_release_is_deleted_reads_as_its_blank_draft() {
     assert_eq!(drafts().await, 0, "a scan seeds no draft for files imported here");
 
     let release_id = test
-        .service
-        .library_manager
+        .database
         .release_imported_from(&content_hash)
         .await
         .unwrap()
@@ -278,8 +277,7 @@ async fn a_folder_whose_release_is_deleted_reads_as_its_blank_draft() {
         .unwrap();
     assert_eq!(shown_row(&test).await, vec!["pending|Box Set Renamed|-".to_string()]);
     let pane = test
-        .service
-        .library_manager
+        .database
         .load_import_candidate(&candidate_key)
         .await
         .unwrap()

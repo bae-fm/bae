@@ -49,8 +49,6 @@ impl ImportService {
         picked_album: Option<String>,
         picked_artists: std::collections::HashSet<String>,
     ) -> Result<PreparedMetadata, crate::import::ImportError> {
-        let library_manager = &self.library_manager;
-
         let crate::import::ReleaseRows {
             album: mut db_album,
             release: mut db_release,
@@ -71,7 +69,7 @@ impl ImportService {
         // foreign key.
         let existing_album_id = match picked_album {
             Some(album_id) => Some(album_id),
-            None => library_manager.find_existing_album_for_import(&records).await?,
+            None => self.database.album_records_name(&records, &[]).await?,
         };
         match &existing_album_id {
             Some(album_id) => {
@@ -111,7 +109,7 @@ impl ImportService {
         // A work performed by an already-imported release keeps that release's
         // `works` row, so every link this import writes points at the resolved id
         // and only the works new to the library are inserted.
-        let resolved_works = library_manager.resolve_works_for_import(&work_graph.works).await?;
+        let resolved_works = self.database.resolve_works(&work_graph.works).await?;
         let work_id_map: HashMap<String, String> = work_graph
             .works
             .iter()

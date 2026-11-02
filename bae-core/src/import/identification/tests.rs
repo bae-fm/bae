@@ -578,7 +578,7 @@ impl Fixture {
         &self,
         release_id: &str,
     ) -> Option<crate::catalog_model::source_release::SourceRelease> {
-        self.manager
+        self.database
             .load_source_release(&crate::catalog_model::records::LookupRef::new(
                 bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                 release_id,
@@ -592,7 +592,7 @@ impl Fixture {
         &self,
         release_id: &str,
     ) -> Option<crate::catalog_model::source_release::SourceRelease> {
-        self.manager
+        self.database
             .load_source_release(&crate::catalog_model::records::LookupRef::new(
                 bae_catalogs::catalog::LookupCatalog::Discogs,
                 release_id,

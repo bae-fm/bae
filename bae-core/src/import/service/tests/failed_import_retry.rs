@@ -52,8 +52,7 @@ async fn an_import_that_cannot_open_a_source_writes_nothing_and_a_retry_lands_it
     drop(blocked);
 
     let failure = test
-        .service
-        .library_manager
+        .database
         .load_import_candidate_pane_rows(&candidate.content_hash)
         .await
         .unwrap()
@@ -65,13 +64,12 @@ async fn an_import_that_cannot_open_a_source_writes_nothing_and_a_retry_lands_it
         "the failure names the file that would not open: {detail}"
     );
     assert!(
-        test.service.library_manager.get_albums(&[]).await.unwrap().is_empty(),
+        test.database.get_albums(&[]).await.unwrap().is_empty(),
         "a failed import writes no album"
     );
     assert!(
         !test
-            .service
-            .library_manager
+            .manager
             .is_content_hash_imported(&candidate.content_hash)
             .await
             .unwrap(),
@@ -94,13 +92,13 @@ async fn an_import_that_cannot_open_a_source_writes_nothing_and_a_retry_lands_it
         .await
         .expect("the retried import lands");
 
-    let albums = test.service.library_manager.get_albums(&[]).await.unwrap();
+    let albums = test.database.get_albums(&[]).await.unwrap();
     assert_eq!(albums.len(), 1, "the retry writes the release once");
     let releases =
-        test.service.library_manager.get_releases_for_album(&albums[0].id).await.unwrap();
+        test.database.get_releases_for_album(&albums[0].id).await.unwrap();
     assert_eq!(releases.len(), 1);
     assert_eq!(
-        test.service.library_manager.get_tracks_for_release(&releases[0].id).await.unwrap().len(),
+        test.database.get_tracks_for_release(&releases[0].id).await.unwrap().len(),
         6
     );
 }

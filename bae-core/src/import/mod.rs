@@ -178,7 +178,7 @@ impl TrackRow {
     }
 }
 
-/// The import service's shared dependencies: the library it reads and writes,
+/// The import service's shared dependencies: the store it reads and writes,
 /// the one writer of candidates' stored state, coven's clock and id sources,
 /// the lock that serializes folder-state commits, and the channel every import
 /// event goes out on.
@@ -190,7 +190,6 @@ impl TrackRow {
 #[derive(Clone)]
 pub(crate) struct ImportServices {
     event_tx: handle::ImportEventBus,
-    library_manager: crate::library::LibraryManager,
     /// The library's store, which import reads and writes directly.
     database: crate::db::Database,
     /// The catalogs as this library may ask them.
@@ -225,7 +224,6 @@ pub(crate) struct ImportServices {
 impl ImportServices {
     pub(crate) fn new(
         event_tx: handle::ImportEventBus,
-        library_manager: crate::library::LibraryManager,
         database: crate::db::Database,
         catalogs: CatalogSessions,
         remote_images: bae_catalogs::remote_image::RemoteImageCache,
@@ -237,7 +235,6 @@ impl ImportServices {
     ) -> Self {
         Self {
             event_tx,
-            library_manager,
             database,
             catalogs,
             remote_images: RemoteImages::new(remote_images, diagnostics.clone()),

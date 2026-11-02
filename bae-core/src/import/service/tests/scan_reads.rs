@@ -15,14 +15,13 @@ async fn regrouping_disc_folders_probes_each_audio_file_once() {
         }
     }
     let root = crate::import::watched_folder::canonical_absolute_root(&root).unwrap();
-    test.service.library_manager.add_watched_import_folder(&root).await.unwrap();
+    test.database.add_watched_import_folder(&root).await.unwrap();
 
     let (scan, _) = test.scan();
     scan.rescan(&root).await.unwrap();
 
     let releases: Vec<usize> = test
-        .service
-        .library_manager
+        .database
         .load_folder_scan_items(&root)
         .await
         .unwrap()
@@ -98,7 +97,7 @@ async fn readable_root(test: &TestService) -> ReadableFiles {
     std::fs::write(&sheet, "FILE \"01.flac\" WAVE\n  TRACK 01 AUDIO\n    INDEX 01 00:00:00\n")
         .unwrap();
     let root = crate::import::watched_folder::canonical_absolute_root(&root).unwrap();
-    test.service.library_manager.add_watched_import_folder(&root).await.unwrap();
+    test.database.add_watched_import_folder(&root).await.unwrap();
     ReadableFiles {
         album: root.join("Album"),
         tracks: tracks
@@ -134,8 +133,7 @@ async fn a_rescan_of_an_unchanged_folder_reads_none_of_its_files() {
         assert_eq!(*count, expected, "{read} of {}", path.display());
     }
     let stored = test
-        .service
-        .library_manager
+        .database
         .load_folder_scan_items(std::path::Path::new(&root_key))
         .await
         .unwrap();
@@ -159,8 +157,7 @@ async fn a_rescan_of_an_unchanged_folder_reads_none_of_its_files() {
 
     assert_eq!(files.reads(&tags), first, "the rescan reads no file again");
     assert_eq!(
-        test.service
-            .library_manager
+        test.database
             .load_folder_scan_items(std::path::Path::new(&root_key))
             .await
             .unwrap(),
@@ -198,8 +195,7 @@ async fn a_rescan_of_an_unchanged_multi_disc_album_reads_none_of_its_files() {
     }
     let root = crate::import::watched_folder::canonical_absolute_root(&watched).unwrap();
     let root_key = root.to_path_buf();
-    test.service
-        .library_manager
+    test.database
         .add_watched_import_folder(std::path::Path::new(&root_key))
         .await
         .unwrap();
@@ -218,8 +214,7 @@ async fn a_rescan_of_an_unchanged_multi_disc_album_reads_none_of_its_files() {
     };
     scan.rescan(&root).await.unwrap();
     let stored = test
-        .service
-        .library_manager
+        .database
         .load_folder_scan_items(std::path::Path::new(&root_key))
         .await
         .unwrap();
@@ -238,8 +233,7 @@ async fn a_rescan_of_an_unchanged_multi_disc_album_reads_none_of_its_files() {
 
     assert_eq!(reads(), vec![(1, 1); 4], "the rescan reads no track again");
     assert_eq!(
-        test.service
-            .library_manager
+        test.database
             .load_folder_scan_items(std::path::Path::new(&root_key))
             .await
             .unwrap(),
@@ -316,10 +310,7 @@ async fn a_release_whose_tracks_did_not_change_keeps_their_stored_tags() {
         reading.candidate.files.content_hash(),
         "the release holds a new file"
     );
-    let preparation = test
-        .service
-        .library_manager
-        .load_import_candidate_preparation(&stored.candidate.files.content_hash())
+    let preparation = crate::import::preparation::import_preparation(&test.database, &stored.candidate.files.content_hash())
         .await
         .unwrap()
         .expect("the release with the new file is stored");
@@ -349,8 +340,7 @@ async fn folders_whose_files_hash_alike_each_keep_their_tags() {
     }
     let root = crate::import::watched_folder::canonical_absolute_root(&watched).unwrap();
     let root_key = root.to_path_buf();
-    test.service
-        .library_manager
+    test.database
         .add_watched_import_folder(std::path::Path::new(&root_key))
         .await
         .unwrap();
@@ -422,8 +412,7 @@ async fn a_first_scan_reads_each_tracks_tags_once() {
     write_test_jpeg(&picture_path);
     let root = crate::import::watched_folder::canonical_absolute_root(&watched).unwrap();
     let root_key = root.to_path_buf();
-    test.service
-        .library_manager
+    test.database
         .add_watched_import_folder(std::path::Path::new(&root_key))
         .await
         .unwrap();
@@ -440,8 +429,7 @@ async fn a_first_scan_reads_each_tracks_tags_once() {
         assert_eq!(tags.counted.reads_of(&root.join(track)), 1, "{track}");
     }
     let release = test
-        .service
-        .library_manager
+        .database
         .load_folder_scan_items(std::path::Path::new(&root_key))
         .await
         .unwrap()

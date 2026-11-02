@@ -4,21 +4,6 @@ use super::*;
 use crate::import::CandidateKey;
 
 impl LibraryManager {
-    /// The release stored at `key`, when it may be worked on — or why a
-    /// grouping's release cannot be.
-    pub(crate) async fn load_release_candidate(
-        &self,
-        key: &CandidateKey,
-    ) -> Result<
-        Result<
-            Option<crate::import::folder_scanner::FolderCandidate>,
-            crate::import::GroupingBlock,
-        >,
-        LibraryError,
-    > {
-        Ok(self.database.load_release_candidate(key).await?)
-    }
-
     pub(crate) fn subscribe_folder_scan_progress(
         &self,
     ) -> coven::LiveQuery<crate::import::FolderScanProgress> {
@@ -34,10 +19,6 @@ impl LibraryManager {
         key: &crate::import::CandidateKey,
     ) -> coven::LiveQuery<Option<crate::import::CandidateRuntimeSnapshot>> {
         self.database.subscribe_candidate_runtime(key)
-    }
-
-    pub(crate) async fn close_import_lists(&self) -> Result<(), LibraryError> {
-        Ok(self.database.close_import_lists().await?)
     }
 
     pub(crate) fn subscribe_invalid_candidate(
@@ -65,15 +46,6 @@ impl LibraryManager {
         key: &CandidateKey,
     ) -> Result<Option<crate::import::ImportCandidateDetailProjection>, LibraryError> {
         Ok(self.database.load_import_candidate(key).await?)
-    }
-
-    /// The stored release `release` names, as import surfaces read it, or
-    /// `None` when no row names it.
-    pub(crate) async fn load_source_release(
-        &self,
-        release: &crate::catalog_model::records::LookupRef,
-    ) -> Result<Option<crate::catalog_model::source_release::SourceRelease>, LibraryError> {
-        Ok(self.database.load_source_release(release).await?)
     }
 
     /// Store `release` with no row naming it, which only a test's setup
@@ -200,71 +172,6 @@ impl LibraryManager {
         Ok(self.database.load_folder_scan_item(entry_key).await?)
     }
 
-    /// The Discogs identities of the artists an import of `credits` would
-    /// create, whose pictures it fetches before it writes anything. An artist
-    /// the credits resolve to in the library keeps its own picture, so it is
-    /// not among them.
-    pub(crate) async fn new_discogs_artists(
-        &self,
-        credits: &[DbArtist],
-        picked: &[String],
-        content_hash: Option<&str>,
-    ) -> Result<std::collections::BTreeSet<String>, crate::import::ImportError> {
-        let resolved = self
-            .database
-            .resolve_artists(credits, picked, content_hash)
-            .await
-            .map_err(LibraryError::from)?;
-        Ok(resolved.inserts.iter().filter_map(|artist| artist.discogs_artist_id.clone()).collect())
-    }
-
-    /// Insert all of an import's data in one transaction, so the release exists
-    /// complete or not at all. A Remote import stages its files for the cloud
-    /// in the same write, kept here once stored when it asks for that.
-    ///
-    /// The pictures of the artists the import creates are staged from
-    /// `artist_images`, the ones fetched for [`Self::new_discogs_artists`],
-    /// against a read just before the write; the write fails if its own
-    /// artist resolution creates different artists, so no picture lands
-    /// without its artist.
-    pub(crate) async fn finalize_import_atomic(
-        &self,
-        guard: crate::db::ImportCommitGuard,
-        album: Option<&DbAlbum>,
-        release: &DbRelease,
-        tracks_to_files: &[crate::import::TrackFile],
-        rows: crate::db::ImportRows<'_>,
-        files: Vec<crate::import::service::PreparedImportFile>,
-        library_image: Option<(&DbLibraryImage, &[u8])>,
-        artist_images: &[crate::import::DiscogsArtistImage],
-    ) -> Result<(), LibraryError> {
-        let expected = self
-            .database
-            .resolve_artists(rows.artists.credits, rows.artists.picked, guard.content_hash())
-            .await?;
-        let expected_new_artists: Vec<String> =
-            expected.inserts.iter().map(|artist| artist.id.clone()).collect();
-        let artist_images = self.artist_image_rows(&expected.inserts, artist_images)?;
-        let artist_images: Vec<_> =
-            artist_images.iter().map(|(image, bytes)| (image, bytes.as_slice())).collect();
-        self.database
-            .finalize_import_atomic(
-                guard,
-                album,
-                release,
-                tracks_to_files,
-                rows,
-                files,
-                library_image,
-                crate::db::NewArtistImages {
-                    expected_new_artists: &expected_new_artists,
-                    images: &artist_images,
-                },
-            )
-            .await?;
-        Ok(())
-    }
-
     /// Every stored candidate row, keyed by content hash, for the tests that
     /// read back what identification stored.
     #[cfg(test)]
@@ -273,17 +180,6 @@ impl LibraryManager {
     ) -> Result<std::collections::HashMap<String, crate::db::DbImportCandidateState>, LibraryError>
     {
         Ok(self.database.load_import_candidate_states().await?)
-    }
-
-    /// The library album picked for the candidate `content_hash`, if one is.
-    pub(crate) async fn candidate_album_pick(
-        &self,
-        content_hash: &str,
-    ) -> Result<Option<String>, crate::import::ImportError> {
-        self.database
-            .candidate_album_pick(content_hash)
-            .await
-            .map_err(|error| crate::import::ImportError::Db(LibraryError::Database(error)))
     }
 
     pub async fn load_import_candidate_state(
@@ -338,27 +234,6 @@ impl LibraryManager {
             .database
             .save_import_candidate_failure(content_hash, edit_revision, failure)
             .await?)
-    }
-
-    /// Record that the import `import_id` of the candidate at
-    /// `candidate_key` failed, ending its claim in the same write.
-    pub(crate) async fn fail_candidate_import(
-        &self,
-        content_hash: &str,
-        edit_revision: u64,
-        failure: &crate::import::ImportFailure,
-        candidate_key: &CandidateKey,
-        import_id: &str,
-    ) -> Result<(), LibraryError> {
-        Ok(self
-            .database
-            .fail_candidate_import(content_hash, edit_revision, failure, candidate_key, import_id)
-            .await?)
-    }
-
-    /// Remove every candidate's standing, as the library opens.
-    pub(crate) async fn clear_candidate_standings(&self) -> Result<(), LibraryError> {
-        Ok(self.database.clear_candidate_standings().await?)
     }
 
     pub async fn load_candidate_file_edits(

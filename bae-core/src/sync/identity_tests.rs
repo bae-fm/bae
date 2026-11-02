@@ -191,11 +191,8 @@ fn one_catalog_work_performed_on_two_devices_is_one_work() {
                 musicbrainz_work_id: MB_WORK.to_string(),
                 created_at: chrono::Utc::now(),
             };
-            let resolved = device
-                .manager()
-                .resolve_works_for_import(std::slice::from_ref(&work))
-                .await
-                .unwrap();
+            let resolved =
+                device.database().resolve_works(std::slice::from_ref(&work)).await.unwrap();
             let track_work = DbTrackWork::new(
                 &track.id,
                 &resolved.ids[0],

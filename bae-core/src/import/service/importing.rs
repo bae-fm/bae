@@ -51,11 +51,11 @@ impl ImportService {
         };
         if let Err(e) = result {
             error!("Import failed: {}", e);
-            self.library_manager.record_telemetry(TelemetryEvent::ImportFailed {});
+            self.diagnostics.event(TelemetryEvent::ImportFailed {});
             // The failure is recorded as what it is; the progress event carries
             // the error's diagnostic text, which the variant Displays build
             // from their `#[from]` source messages.
-            let failed_at = self.library_manager.now();
+            let failed_at = self.clock.now().into();
             let failure = Self::terminal_failure(&e, failed_at);
             let error = e.to_string();
 
@@ -67,7 +67,7 @@ impl ImportService {
             // worker, so a write that will not land is a bug, reported with
             // the import's own failure, the one the person was waiting to see.
             if let Err(write) = self
-                .library_manager
+                .database
                 .fail_candidate_import(
                     &content_hash,
                     edit_revision,
@@ -121,7 +121,6 @@ impl ImportService {
         expectation: ImportExpectation,
         destination: ImportDestination,
     ) -> Result<(), ImportStop> {
-        let library_manager = &self.library_manager;
         let expected_content_hash = expectation.candidate.content_hash.clone();
         let expected_edit_revision = expectation.candidate.file_edit_revision;
 
@@ -145,12 +144,12 @@ impl ImportService {
             .map_err(crate::library::LibraryError::from)
             .map_err(crate::import::ImportError::from)?;
 
-        let stored_candidate = match library_manager
+        let stored_candidate = match self
+            .database
             .load_release_candidate(&candidate_key)
             .await?
-            .map_err(|reason| {
-            crate::import::ImportError::GroupingBlocked { reason }
-        })? {
+            .map_err(|reason| crate::import::ImportError::GroupingBlocked { reason })?
+        {
             Some(candidate) => candidate,
             _ => {
                 return Err(crate::import::ImportError::Internal {
@@ -179,12 +178,12 @@ impl ImportService {
         let source_name = stored_candidate.name.to_string();
         let categorized = stored_candidate.files;
 
-        let preparation = library_manager
-            .load_import_candidate_preparation(&expected_content_hash)
-            .await?
-            .ok_or_else(|| crate::import::ImportError::Internal {
-                detail: format!("{candidate_key} has no stored import preparation"),
-            })?;
+        let preparation =
+            crate::import::preparation::import_preparation(&self.database, &expected_content_hash)
+                .await?
+                .ok_or_else(|| crate::import::ImportError::Internal {
+                    detail: format!("{candidate_key} has no stored import preparation"),
+                })?;
         if preparation.file_edit_revision != expected_edit_revision
             || preparation.metadata_revision != expectation.candidate.metadata_revision
         {
@@ -220,7 +219,7 @@ impl ImportService {
         }
 
         let records = match &release_link {
-            Some(link) => linked_records(library_manager, link).await?,
+            Some(link) => linked_records(&self.database, link).await?,
             None => Vec::new(),
         };
         // The draft holds every value the release is written with; nothing
@@ -232,8 +231,7 @@ impl ImportService {
         )?;
         let track_bindings = assembled.bindings;
 
-        let picked_album =
-            library_manager.candidate_album_pick(&categorized.content_hash()).await?;
+        let picked_album = self.database.candidate_album_pick(&categorized.content_hash()).await?;
         let mut prepared = self
             .reconcile_prepared_release(assembled.parsed, records, picked_album, assembled.picked)
             .await?;
@@ -244,7 +242,7 @@ impl ImportService {
         // now, before any file is read or row written, the one thing an
         // import asks a provider for. A fetch that fails fails the import;
         // importing again fetches again.
-        let new_artists = library_manager
+        let new_artists = self
             .new_discogs_artists(
                 &prepared.artist_credits,
                 &prepared.picked_artists,
@@ -362,7 +360,7 @@ impl ImportService {
         let total_duration = import_start.elapsed();
         // The release is written (`run_import` succeeded via `?` above). Report
         // the real track count and the monotonic elapsed — never a zero default.
-        self.library_manager.record_telemetry(TelemetryEvent::ImportCompleted {
+        self.diagnostics.event(TelemetryEvent::ImportCompleted {
             track_count: tracks_to_files.len() as u32,
             duration_ms: total_duration,
         });
@@ -390,7 +388,6 @@ impl ImportService {
         files: ImportFiles<'_>,
         artist_images: &[crate::import::DiscogsArtistImage],
     ) -> Result<(), ImportStop> {
-        let library_manager = &self.library_manager;
         let ImportFiles { discovered: discovered_files, tracks: tracks_to_files } = files;
         let ImportRun { import_id, candidate_key } = run;
         let total_files = discovered_files.len();
@@ -424,7 +421,7 @@ impl ImportService {
 
         // Keyed by absolute path, the same key TrackFile uses, so disc-subfolder
         // siblings with identical bare filenames stay distinct.
-        let files_now = library_manager.now();
+        let files_now = self.clock.now().into();
         let mut prepared_files = Vec::with_capacity(total_files);
         let mut file_ids: HashMap<PathBuf, String> = HashMap::new();
         let mut source_audio_layouts = HashMap::new();
@@ -539,7 +536,7 @@ impl ImportService {
                 &db_release.id,
                 &file.relative_path,
                 resolve_file_content_type(entry)?,
-                library_manager.new_id(),
+                self.ids.new_id().to_string(),
                 files_now,
             );
             db_file.source_audio =
@@ -661,7 +658,8 @@ impl ImportService {
                 .await
                 .map_err(|failed| self.diagnostics.bug(failed))?
                 .map_err(|detail| crate::import::ImportError::CoverArt { detail })?;
-                let image = crate::db::DbLibraryImage::cover(&db_release.id, library_manager.now());
+                let image =
+                    crate::db::DbLibraryImage::cover(&db_release.id, self.clock.now().into());
                 Some((image, bytes))
             }
             None => None,
@@ -692,36 +690,35 @@ impl ImportService {
         };
         // Staging the originals queues a cloud import's uploads in the import
         // transaction.
-        library_manager
-            .finalize_import_atomic(
-                commit_guard,
-                new_album,
-                db_release,
-                tracks_to_files,
-                crate::db::ImportRows {
-                    mediums,
-                    track_artists,
-                    album_artists,
-                    works: &work_graph.works,
-                    work_artists: &work_graph.work_artists,
-                    work_parts: &work_graph.work_parts,
-                    track_works: &work_graph.track_works,
-                    release_artist_roles,
-                    track_artist_roles,
-                    artists: crate::db::ArtistCredits {
-                        credits: artist_credits,
-                        picked: picked_artists,
-                    },
-                    audio_formats: &built_audio.audio_formats,
-                    audio_segments: &built_audio.audio_segments,
-                    scrub_points: &loudness.scrub_points,
-                    records,
+        self.finalize_import_atomic(
+            commit_guard,
+            new_album,
+            db_release,
+            tracks_to_files,
+            crate::db::ImportRows {
+                mediums,
+                track_artists,
+                album_artists,
+                works: &work_graph.works,
+                work_artists: &work_graph.work_artists,
+                work_parts: &work_graph.work_parts,
+                track_works: &work_graph.track_works,
+                release_artist_roles,
+                track_artist_roles,
+                artists: crate::db::ArtistCredits {
+                    credits: artist_credits,
+                    picked: picked_artists,
                 },
-                prepared_files,
-                library_image,
-                artist_images,
-            )
-            .await?;
+                audio_formats: &built_audio.audio_formats,
+                audio_segments: &built_audio.audio_segments,
+                scrub_points: &loudness.scrub_points,
+                records,
+            },
+            prepared_files,
+            library_image,
+            artist_images,
+        )
+        .await?;
 
         let progress = match destination {
             ImportDestination::Remote { .. } => ImportProgress::RemoteUploadQueued {
@@ -746,6 +743,75 @@ impl ImportService {
 }
 
 impl ImportService {
+    /// The Discogs identities of the artists an import of `credits` would
+    /// create, whose pictures it fetches before it writes anything. An artist
+    /// the credits resolve to in the library keeps its own picture, so it is
+    /// not among them.
+    async fn new_discogs_artists(
+        &self,
+        credits: &[crate::db::DbArtist],
+        picked: &[String],
+        content_hash: Option<&str>,
+    ) -> Result<std::collections::BTreeSet<String>, crate::import::ImportError> {
+        let resolved = self
+            .database
+            .resolve_artists(credits, picked, content_hash)
+            .await
+            .map_err(crate::library::LibraryError::from)?;
+        Ok(resolved.inserts.iter().filter_map(|artist| artist.discogs_artist_id.clone()).collect())
+    }
+
+    /// Insert all of an import's data in one transaction, so the release
+    /// exists complete or not at all. A Remote import stages its files for
+    /// the cloud in the same write, kept here once stored when it asks for
+    /// that.
+    ///
+    /// The pictures of the artists the import creates are staged from
+    /// `artist_images`, the ones fetched for [`Self::new_discogs_artists`],
+    /// against a read just before the write; the write fails if its own
+    /// artist resolution creates different artists, so no picture lands
+    /// without its artist.
+    async fn finalize_import_atomic(
+        &self,
+        guard: crate::db::ImportCommitGuard,
+        album: Option<&DbAlbum>,
+        release: &DbRelease,
+        tracks_to_files: &[TrackFile],
+        rows: crate::db::ImportRows<'_>,
+        files: Vec<PreparedImportFile>,
+        library_image: Option<(&crate::db::DbLibraryImage, &[u8])>,
+        artist_images: &[crate::import::DiscogsArtistImage],
+    ) -> Result<(), crate::import::ImportError> {
+        let expected = self
+            .database
+            .resolve_artists(rows.artists.credits, rows.artists.picked, guard.content_hash())
+            .await
+            .map_err(crate::library::LibraryError::from)?;
+        let expected_new_artists: Vec<String> =
+            expected.inserts.iter().map(|artist| artist.id.clone()).collect();
+        let artist_images =
+            artist_image_rows(&expected.inserts, artist_images, self.clock.now().into())?;
+        let artist_images: Vec<_> =
+            artist_images.iter().map(|(image, bytes)| (image, bytes.as_slice())).collect();
+        self.database
+            .finalize_import_atomic(
+                guard,
+                album,
+                release,
+                tracks_to_files,
+                rows,
+                files,
+                library_image,
+                crate::db::NewArtistImages {
+                    expected_new_artists: &expected_new_artists,
+                    images: &artist_images,
+                },
+            )
+            .await
+            .map_err(crate::library::LibraryError::from)?;
+        Ok(())
+    }
+
     /// Discogs' answer for the picture of each artist `ids` names, asked now,
     /// one artist at a time, each picture downscaled to the JPEG bae stores.
     /// A provider or download failure, or a picture that does not decode,
@@ -787,7 +853,7 @@ impl ImportService {
 /// pressing is stored as every catalog its stored releases describe it in,
 /// the linked primary's own record first.
 async fn linked_records(
-    library_manager: &LibraryManager,
+    database: &crate::db::Database,
     link: &crate::import::ReleaseLink,
 ) -> Result<Vec<crate::catalog_model::records::ReleaseRecord>, crate::import::ImportError> {
     let link = match link {
@@ -796,7 +862,7 @@ async fn linked_records(
     };
     let mut claimed = Vec::new();
     for release in link.claimed() {
-        claimed.push(library_manager.load_source_release(release).await?.ok_or_else(|| {
+        claimed.push(database.load_source_release(release).await?.ok_or_else(|| {
             crate::import::ImportError::Internal {
                 detail: format!(
                     "the candidate is linked to {} release {} that nothing stored",
@@ -808,4 +874,47 @@ async fn linked_records(
     }
     let (primary, partners) = claimed.split_first().expect("a link claims at least its primary");
     Ok(records_for_commit(primary, partners))
+}
+
+/// The library image rows of the pictures `fetched` for the new artists an
+/// import creates, stamped `now`. An artist the import links to keeps its own
+/// picture; this constructs rows only.
+///
+/// A new Discogs artist with no answer among `fetched` was a library artist
+/// when the import fetched its pictures and is not one now: the library's
+/// artists changed under the import, which fails so it can be run again.
+fn artist_image_rows(
+    inserted_artists: &[crate::db::DbArtist],
+    fetched: &[crate::import::DiscogsArtistImage],
+    now: chrono::DateTime<chrono::Utc>,
+) -> Result<Vec<(crate::db::DbLibraryImage, Vec<u8>)>, crate::import::ImportError> {
+    let by_discogs_id: HashMap<_, _> =
+        fetched.iter().map(|answer| (answer.discogs_artist_id(), answer)).collect();
+    if by_discogs_id.len() != fetched.len() {
+        return Err(crate::import::ImportError::Internal {
+            detail: "fetched artist images contain a duplicate Discogs artist ID".into(),
+        });
+    }
+    let mut images = Vec::new();
+    for artist in inserted_artists {
+        let Some(discogs_artist_id) = artist.discogs_artist_id.as_deref() else {
+            continue;
+        };
+        let Some(answer) = by_discogs_id.get(discogs_artist_id) else {
+            return Err(crate::library::LibraryError::from(
+                crate::db::IdentityWriteError::LibraryChanged,
+            )
+            .into());
+        };
+        let crate::import::DiscogsArtistImage::Image { jpeg, .. } = answer else {
+            continue;
+        };
+        let row = crate::db::DbLibraryImage::stored_jpeg(
+            crate::db::LibraryImageType::Artist,
+            &artist.id,
+            now,
+        );
+        images.push((row, jpeg.clone()));
+    }
+    Ok(images)
 }

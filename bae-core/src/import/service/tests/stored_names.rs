@@ -16,11 +16,11 @@ async fn a_track_named_with_an_unpaired_surrogate_imports_and_exports() {
         "Caf".encode_utf16().chain([0xD800]).chain(".flac".encode_utf16()).collect();
     std::fs::write(folder.join(std::ffi::OsString::from_wide(&name)), flac()).unwrap();
     let key = crate::import::CandidateKey::folder(&folder);
-    test.service.library_manager.add_watched_import_folder(&root).await.unwrap();
+    test.database.add_watched_import_folder(&root).await.unwrap();
     let (scan, _) = test.scan();
     scan.rescan(&root).await.unwrap();
     let candidate =
-        test.service.library_manager.load_release_candidate(&key).await.unwrap().unwrap().unwrap();
+        test.database.load_release_candidate(&key).await.unwrap().unwrap().unwrap();
     let hash = candidate.files.content_hash();
     let revision = prepare_named_candidate(
         &test.service,
@@ -32,8 +32,7 @@ async fn a_track_named_with_an_unpaired_surrogate_imports_and_exports() {
     )
     .await;
     let reading = test
-        .service
-        .library_manager
+        .database
         .load_candidate_file_tag_snapshot(&root, &key)
         .await
         .unwrap()
@@ -60,7 +59,7 @@ async fn a_track_named_with_an_unpaired_surrogate_imports_and_exports() {
         .await
         .expect("the track imports");
 
-    let manager = &test.service.library_manager;
+    let manager = &test.database;
     let albums = manager.get_albums(&[]).await.unwrap();
     let [album] = albums.as_slice() else {
         panic!("one album: {albums:?}");

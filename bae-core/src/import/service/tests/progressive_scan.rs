@@ -108,7 +108,7 @@ async fn a_candidate_is_announced_while_the_walk_still_reads_the_next_folder() {
         std::fs::create_dir_all(&folder).unwrap();
         std::fs::write(folder.join("track.flac"), flac()).unwrap();
     }
-    test.service.library_manager.add_watched_import_folder(&root).await.unwrap();
+    test.database.add_watched_import_folder(&root).await.unwrap();
     let (reader, mut entered) = HeldListing::new();
     let reader = Arc::new(reader);
     let (scan, mut events) = test

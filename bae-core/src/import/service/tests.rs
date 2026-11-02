@@ -3,6 +3,7 @@ use crate::db::Database;
 use crate::import::folder_scanner::ScannedFile;
 use crate::import::import_cancel::ImportStop;
 use crate::import::watched_folder::host_root;
+use crate::library::LibraryManager;
 use bae_test_support::HANG_GUARD;
 use coven::FixedClock;
 use coven::SequentialIds;
@@ -20,6 +21,9 @@ fn root_path(posix: &str) -> PathBuf {
 /// database.
 struct TestService {
     service: ImportService,
+    /// The library over the same store, for a test that seeds a scan through
+    /// its fixture operations.
+    manager: LibraryManager,
     preparations: crate::import::CandidatePreparations,
     /// The library the service imports into, for a test that reads or seeds
     /// rows no call reads or writes on its own.
@@ -57,7 +61,7 @@ async fn setup_import_service() -> TestService {
             commands_rx,
             event_tx,
             runtime,
-            library_manager: manager,
+            database: database.clone(),
             catalogs: test_catalogs(&database),
             remote_images: crate::import::RemoteImages::new(
                 bae_catalogs::remote_image::RemoteImageCache::for_test(
@@ -70,6 +74,7 @@ async fn setup_import_service() -> TestService {
             import_cancels: Default::default(),
             diagnostics: crate::diagnostics::Diagnostics::noop(),
         },
+        manager,
         preparations,
         database,
         temp: temp_dir,
@@ -97,12 +102,11 @@ async fn prepare_named_candidate(
     candidate_path: &crate::import::CandidateKey,
     album_title: &str,
 ) -> u64 {
-    let preparation = service
-        .library_manager
-        .load_import_candidate_preparation(content_hash)
-        .await
-        .unwrap()
-        .expect("the scanned candidate has its initial preparation");
+    let preparation =
+        crate::import::preparation::import_preparation(&service.database, content_hash)
+            .await
+            .unwrap()
+            .expect("the scanned candidate has its initial preparation");
     let mut draft = preparation.draft;
     draft.album_title = album_title.to_string();
     draft.album_artist_assignments =
@@ -136,6 +140,7 @@ async fn store_scanned_candidate(
     name: &str,
 ) -> (crate::import::CandidateKey, super::ImportExpectation) {
     let service = &test.service;
+    let manager = &test.manager;
     let files = crate::import::folder_scanner::collect_release_candidate_files_with_scope(
         folder,
         crate::import::ReleaseFileScope::Recursive,
@@ -144,10 +149,9 @@ async fn store_scanned_candidate(
     .unwrap();
     let content_hash = files.content_hash();
     let candidate_key = crate::import::CandidateKey::folder(folder);
-    service.library_manager.add_watched_import_folder(folder).await.unwrap();
-    let generation = service.library_manager.begin_folder_scan(folder).await.unwrap();
-    service
-        .library_manager
+    service.database.add_watched_import_folder(folder).await.unwrap();
+    let generation = manager.begin_folder_scan(folder).await.unwrap();
+    manager
         .save_folder_scan_item(
             folder,
             generation,
@@ -166,7 +170,7 @@ async fn store_scanned_candidate(
         .await
         .unwrap()
         .expect("the stored scan generation is current");
-    service.library_manager.finish_folder_scan(folder, generation, None).await.unwrap();
+    service.database.finish_folder_scan(folder, generation, None).await.unwrap();
     let metadata_revision = prepare_named_candidate(
         service,
         &test.preparations,
@@ -395,7 +399,8 @@ struct CoordinatorHarness {
     commands: tokio::sync::mpsc::UnboundedSender<WatcherCommand>,
     fs_events: tokio::sync::mpsc::UnboundedSender<WatchReport>,
     scans: FakeScanStarter,
-    library_manager: LibraryManager,
+    /// The store the coordinator reads which folders are watched from.
+    database: Database,
     folder_state_commit: crate::import::FolderStateCommit,
     removal_backend: Arc<FakeRemovalBackend>,
     coordinator_thread: Mutex<Option<std::thread::JoinHandle<()>>>,
@@ -411,25 +416,17 @@ impl CoordinatorHarness {
     /// [`root_path`] gives it.
     async fn with_roots(roots: &[&str]) -> Self {
         let roots: Vec<PathBuf> = roots.iter().map(|root| host_root(root)).collect();
-        let TestService { service, preparations, database, temp } = setup_import_service().await;
+        let TestService { service, manager, preparations, database, temp } =
+            setup_import_service().await;
         for root in &roots {
-            service
-                .library_manager
-                .add_watched_import_folder(std::path::Path::new(root))
-                .await
-                .unwrap();
+            service.database.add_watched_import_folder(std::path::Path::new(root)).await.unwrap();
         }
         let (commands, command_rx) = tokio::sync::mpsc::unbounded_channel();
         let (fs_events, fs_rx) = tokio::sync::mpsc::unbounded_channel();
         if let Some(root) = roots.first() {
             let root_path = PathBuf::from(root);
-            let generation = service
-                .library_manager
-                .begin_folder_scan(std::path::Path::new(root))
-                .await
-                .unwrap();
-            service
-                .library_manager
+            let generation = manager.begin_folder_scan(std::path::Path::new(root)).await.unwrap();
+            manager
                 .save_folder_scan_item(
                     std::path::Path::new(root),
                     generation,
@@ -455,10 +452,9 @@ impl CoordinatorHarness {
             fs_rx,
             crate::import::ImportServices {
                 event_tx: service.event_tx,
-                library_manager: service.library_manager.clone(),
                 catalogs: service.catalogs.clone(),
                 remote_images: service.remote_images.clone(),
-                database,
+                database: database.clone(),
                 preparations: preparations.clone(),
                 clock: service.clock.clone(),
                 ids: service.ids.clone(),
@@ -476,7 +472,7 @@ impl CoordinatorHarness {
             commands,
             fs_events,
             scans,
-            library_manager: service.library_manager,
+            database,
             folder_state_commit,
             removal_backend,
             coordinator_thread: Mutex::new(Some(coordinator_thread)),
@@ -610,7 +606,6 @@ fn test_scan_services(
     ScanServices::new(
         crate::import::ImportServices {
             event_tx,
-            library_manager: service.library_manager.clone(),
             database: database.clone(),
             catalogs: service.catalogs.clone(),
             remote_images: service.remote_images.clone(),

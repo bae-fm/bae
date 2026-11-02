@@ -300,7 +300,6 @@ impl LibraryManager {
     ) -> Result<crate::import::ImportServiceHandle, crate::import::ImportError> {
         crate::import::ImportService::start(
             runtime_handle,
-            self.clone(),
             self.database.clone(),
             self.catalogs.clone(),
             self.remote_images.clone(),
@@ -323,7 +322,6 @@ impl LibraryManager {
     ) -> crate::import::ImportServiceHandle {
         crate::import::ImportService::start_reading_tags_with(
             runtime_handle,
-            self.clone(),
             self.database.clone(),
             self.catalogs.clone(),
             self.remote_images.clone(),
@@ -425,17 +423,6 @@ impl LibraryManager {
         steps(crate::library::ClosingStep::ClosingStore);
         self.database.close().await?;
         Ok(())
-    }
-
-    /// Read the injected wall clock without handing its service to callers.
-    #[cfg(desktop)]
-    pub(crate) fn now(&self) -> chrono::DateTime<chrono::Utc> {
-        self.clock.now().into()
-    }
-
-    #[cfg(desktop)]
-    pub(crate) fn new_id(&self) -> String {
-        self.ids.new_id().to_string()
     }
 
     pub(crate) fn record_telemetry(&self, event: TelemetryEvent) {

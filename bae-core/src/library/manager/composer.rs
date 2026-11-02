@@ -2,16 +2,6 @@
 
 use super::*;
 
-/// Desktop-only, with the import reconcile that is its one caller.
-#[cfg(desktop)]
-#[derive(Debug, Clone)]
-pub(crate) struct ResolvedImportWorks {
-    /// One id per input work, in input order.
-    pub ids: Vec<String>,
-    /// The works this library has not seen before, for finalize to insert.
-    pub inserts: Vec<crate::db::DbWork>,
-}
-
 impl LibraryManager {
     pub(crate) fn subscribe_composer_browse(
         &self,
@@ -82,38 +72,6 @@ impl LibraryManager {
             unlinked_track_roles: raw.unlinked_track_roles,
             default_work_id,
         })
-    }
-
-    /// Resolve each parsed work to the `works` row already holding its
-    /// MusicBrainz id, or to a row for finalize to insert under the id that
-    /// MusicBrainz id names. `ids` comes back in
-    /// input order, so a caller can zip it with `works` to remap the parsed ids
-    /// its work links carry. Desktop-only, with the import that calls it.
-    #[cfg(desktop)]
-    pub(crate) async fn resolve_works_for_import(
-        &self,
-        works: &[crate::db::DbWork],
-    ) -> Result<ResolvedImportWorks, LibraryError> {
-        let mut ids = Vec::with_capacity(works.len());
-        let mut inserts = Vec::new();
-
-        for work in works {
-            match self.database.find_work_id_by_musicbrainz_id(&work.musicbrainz_work_id).await? {
-                Some(existing_id) => ids.push(existing_id),
-                None => {
-                    // The work's id is its MusicBrainz id's, so every device
-                    // that meets this work writes one row.
-                    let work = crate::db::DbWork {
-                        id: crate::db::identity::work_id(&work.musicbrainz_work_id),
-                        ..work.clone()
-                    };
-                    ids.push(work.id.clone());
-                    inserts.push(work);
-                }
-            }
-        }
-
-        Ok(ResolvedImportWorks { ids, inserts })
     }
 
     #[cfg(test)]

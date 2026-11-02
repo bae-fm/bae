@@ -66,7 +66,7 @@ impl DecisionFixture {
         }
         write_disc(&root.join("Other").join("Record"), 1);
         let root = crate::import::watched_folder::canonical_absolute_root(&root).unwrap();
-        test.service.library_manager.add_watched_import_folder(&root).await.unwrap();
+        test.database.add_watched_import_folder(&root).await.unwrap();
         let listing = Arc::new(RecordingListing::default());
         let (scan, _) = test.scan_with(
             Arc::new(crate::import::file_tag_snapshot::LoftyFileTagReader),
@@ -78,7 +78,7 @@ impl DecisionFixture {
     }
 
     fn manager(&self) -> &LibraryManager {
-        &self.test.service.library_manager
+        &self.test.manager
     }
 
     fn album_key(&self) -> crate::import::FolderReleaseDecisionKey {

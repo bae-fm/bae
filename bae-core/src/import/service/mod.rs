@@ -3,7 +3,6 @@ use crate::import::candidate_runtime::CandidateRuntime;
 use crate::import::handle::ImportServiceHandle;
 use crate::import::handle::{ScanEvent, WatcherCommand};
 use crate::import::types::{ImportCommand, ImportDestination, ImportProgress};
-use crate::library::LibraryManager;
 
 use {
     crate::db::{
@@ -184,7 +183,9 @@ pub struct ImportService {
     /// What the bus's events have said about every candidate, held here for
     /// the standing a commit ends.
     runtime: CandidateRuntime,
-    library_manager: LibraryManager,
+    /// The library's store, which an import reads its candidate from and
+    /// writes its release into.
+    database: crate::db::Database,
     /// The catalogs an import asks for its new artists' pictures.
     catalogs: crate::import::CatalogSessions,
     /// Where those pictures are fetched through.

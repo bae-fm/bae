@@ -7,7 +7,6 @@ impl ImportService {
     /// is how the rest of the app submits import requests.
     pub(crate) async fn start(
         runtime_handle: tokio::runtime::Handle,
-        library_manager: LibraryManager,
         database: crate::db::Database,
         catalogs: crate::import::CatalogSessions,
         remote_images: bae_catalogs::remote_image::RemoteImageCache,
@@ -20,13 +19,12 @@ impl ImportService {
         // No run, import or open list outlives the process that held it, so
         // the library opens with no candidate standing and no list, before
         // anything reads the list.
-        library_manager.clear_candidate_standings().await?;
-        library_manager.close_import_lists().await?;
+        database.clear_candidate_standings().await?;
+        database.close_import_lists().await?;
         let runtime = CandidateRuntime::new(database.clone(), diagnostics.clone());
         let event_tx = crate::import::handle::ImportEventBus::new(runtime.clone());
         let services = crate::import::ImportServices::new(
             event_tx,
-            library_manager.clone(),
             database,
             catalogs,
             remote_images,
@@ -44,7 +42,6 @@ impl ImportService {
     #[cfg(test)]
     pub(crate) fn start_reading_tags_with(
         runtime_handle: tokio::runtime::Handle,
-        library_manager: LibraryManager,
         database: crate::db::Database,
         catalogs: crate::import::CatalogSessions,
         remote_images: bae_catalogs::remote_image::RemoteImageCache,
@@ -59,7 +56,6 @@ impl ImportService {
         let event_tx = crate::import::handle::ImportEventBus::new(runtime.clone());
         let mut services = crate::import::ImportServices::new(
             event_tx,
-            library_manager,
             database,
             catalogs,
             remote_images,
@@ -83,7 +79,7 @@ impl ImportService {
         let (fs_tx, fs_rx) = mpsc::unbounded_channel::<WatchReport>();
         let event_tx_for_worker = services.event_tx.clone();
         let runtime_for_worker = runtime.clone();
-        let library_manager = services.library_manager.clone();
+        let database = services.database.clone();
         let clock = services.clock.clone();
         let ids = services.ids.clone();
         let import_cancels = services.import_cancels.clone();
@@ -110,7 +106,7 @@ impl ImportService {
                         commands_rx,
                         event_tx: event_tx_for_worker,
                         runtime: runtime_for_worker,
-                        library_manager,
+                        database,
                         catalogs,
                         remote_images,
                         clock,

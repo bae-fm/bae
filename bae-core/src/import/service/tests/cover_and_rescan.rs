@@ -113,8 +113,7 @@ async fn retained_unsupported_embedded_cover_is_only_used_when_explicitly_select
         write_test_jpeg(&folder.join("front.jpg"));
         let root_text = root.to_string_lossy().into_owned();
         let key = crate::import::CandidateKey::folder(&folder);
-        test.service
-            .library_manager
+        test.database
             .add_watched_import_folder(std::path::Path::new(&root_text))
             .await
             .unwrap();
@@ -124,8 +123,7 @@ async fn retained_unsupported_embedded_cover_is_only_used_when_explicitly_select
         );
         scan.rescan(&root).await.unwrap();
         let candidate = test
-            .service
-            .library_manager
+            .database
             .load_release_candidate(&key)
             .await
             .unwrap()
@@ -141,10 +139,7 @@ async fn retained_unsupported_embedded_cover_is_only_used_when_explicitly_select
             "Cover Album",
         )
         .await;
-        let preparation = test
-            .service
-            .library_manager
-            .load_import_candidate_preparation(&hash)
+        let preparation = crate::import::preparation::import_preparation(&test.database, &hash)
             .await
             .unwrap()
             .unwrap();
@@ -218,8 +213,7 @@ async fn retained_unsupported_embedded_cover_is_only_used_when_explicitly_select
             };
             // The embedded artwork is no image the store reads, so a stored
             // cover is the folder's front.jpg.
-            test.service
-                .library_manager
+            test.manager
                 .get_library_image(&release_id, &crate::db::LibraryImageType::Cover)
                 .await
                 .unwrap()
@@ -240,15 +234,14 @@ async fn an_import_commits_after_a_pass_finds_its_folder_unchanged() {
     std::fs::write(folder.join("01.flac"), flac()).unwrap();
     let root_text = root.to_string_lossy().into_owned();
     let key = crate::import::CandidateKey::folder(&folder);
-    test.service
-        .library_manager
+    test.database
         .add_watched_import_folder(std::path::Path::new(&root_text))
         .await
         .unwrap();
     let (scan, _) = test.scan();
     scan.rescan(&root).await.unwrap();
     let candidate =
-        test.service.library_manager.load_release_candidate(&key).await.unwrap().unwrap().unwrap();
+        test.database.load_release_candidate(&key).await.unwrap().unwrap().unwrap();
     let hash = candidate.files.content_hash();
     let revision = prepare_named_candidate(
         &test.service,
@@ -337,7 +330,7 @@ async fn explicit_local_cover_with_no_discovered_images_is_an_error() {
 
 #[tokio::test]
 async fn selected_local_cover_path_must_match_discovered_file() {
-    let TestService { service, preparations, database, temp: tmp } =
+    let TestService { service, manager, preparations, database, temp: tmp } =
         setup_import_service().await;
     let folder = tmp.path().join("release");
     std::fs::create_dir(&folder).unwrap();
@@ -356,17 +349,17 @@ async fn selected_local_cover_path_must_match_discovered_file() {
     let expected_content_hash = files.content_hash();
     let watched_folder_path = folder.to_string_lossy().into_owned();
     service
-        .library_manager
+        .database
         .add_watched_import_folder(std::path::Path::new(&watched_folder_path))
         .await
         .unwrap();
-    let generation = service
-        .library_manager
+    let generation = manager
+        
         .begin_folder_scan(std::path::Path::new(&watched_folder_path))
         .await
         .unwrap();
-    service
-        .library_manager
+    manager
+        
         .save_folder_scan_item(
             std::path::Path::new(&watched_folder_path),
             generation,
@@ -386,7 +379,7 @@ async fn selected_local_cover_path_must_match_discovered_file() {
         .unwrap()
         .expect("the stored scan generation is current");
     service
-        .library_manager
+        .database
         .finish_folder_scan(std::path::Path::new(&watched_folder_path), generation, None)
         .await
         .unwrap();
@@ -493,10 +486,11 @@ async fn rescan_seeded_root(
     Result<(), crate::import::ImportError>,
 ) {
     let service = &test.service;
-    service.library_manager.add_watched_import_folder(root).await.unwrap();
-    let generation = service.library_manager.begin_folder_scan(root).await.unwrap();
-    service
-        .library_manager
+    let manager = &test.manager;
+    service.database.add_watched_import_folder(root).await.unwrap();
+    let generation = manager.begin_folder_scan(root).await.unwrap();
+    manager
+        
         .save_folder_scan_item(
             root,
             generation,
@@ -523,7 +517,7 @@ async fn rescan_seeded_root(
 /// The invalid candidates the stored scan of `root` still holds.
 async fn stored_invalid_candidates(service: &ImportService, root: &Path) -> usize {
     service
-        .library_manager
+        .database
         .load_folder_scan_items(root)
         .await
         .unwrap()
@@ -635,7 +629,7 @@ async fn a_second_pass_over_an_unchanged_folder_announces_nothing() {
         std::fs::write(album.join("01.flac"), flac()).unwrap();
         std::fs::write(album.join("02.flac"), flac()).unwrap();
     }
-    test.service.library_manager.add_watched_import_folder(&root).await.unwrap();
+    test.database.add_watched_import_folder(&root).await.unwrap();
 
     let (scan, mut events) = test.scan();
     let pass = async || scan.rescan(&root).await.expect("the pass reads the folder");
@@ -698,8 +692,7 @@ async fn pre_fill_seeds_the_discovered_candidate_from_its_file_tags() {
         .unwrap();
     }
     let root_text = root.to_string_lossy().into_owned();
-    test.service
-        .library_manager
+    test.database
         .add_watched_import_folder(std::path::Path::new(&root_text))
         .await
         .unwrap();
@@ -716,8 +709,7 @@ async fn pre_fill_seeds_the_discovered_candidate_from_its_file_tags() {
 
     let key = crate::import::CandidateKey::folder(&album);
     let detail = test
-        .service
-        .library_manager
+        .database
         .load_import_candidate(&key)
         .await
         .unwrap()
@@ -787,7 +779,7 @@ async fn a_pass_records_the_directories_it_read() {
     let album = root.join("Artist - Album");
     std::fs::create_dir_all(album.join("Artwork")).unwrap();
     std::fs::write(album.join("01.flac"), flac()).unwrap();
-    test.service.library_manager.add_watched_import_folder(&root).await.unwrap();
+    test.database.add_watched_import_folder(&root).await.unwrap();
 
     let (scan, _events) = test.scan();
     scan.rescan(&root).await.expect("the pass reads the folder");

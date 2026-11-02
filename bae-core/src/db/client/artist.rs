@@ -245,6 +245,34 @@ impl Database {
         .await
     }
 
+    /// Each of `works` resolved to the `works` row already holding its
+    /// MusicBrainz id, or to a row for an import's commit to insert under the
+    /// id that MusicBrainz id names.
+    #[cfg(desktop)]
+    pub(crate) async fn resolve_works(
+        &self,
+        works: &[crate::db::DbWork],
+    ) -> Result<ResolvedWorks, DbError> {
+        let mut ids = Vec::with_capacity(works.len());
+        let mut inserts = Vec::new();
+        for work in works {
+            match self.find_work_id_by_musicbrainz_id(&work.musicbrainz_work_id).await? {
+                Some(existing_id) => ids.push(existing_id),
+                None => {
+                    // The work's id is its MusicBrainz id's, so every device
+                    // that meets this work writes one row.
+                    let work = crate::db::DbWork {
+                        id: crate::db::identity::work_id(&work.musicbrainz_work_id),
+                        ..work.clone()
+                    };
+                    ids.push(work.id.clone());
+                    inserts.push(work);
+                }
+            }
+        }
+        Ok(ResolvedWorks { ids, inserts })
+    }
+
     #[cfg(test)]
     pub async fn find_work_detail(&self, work_id: &str) -> Result<Option<DbWorkDetail>, DbError> {
         let work_id = work_id.to_string();
@@ -550,6 +578,17 @@ fn composer_count_on(sql: &SqlReadContext<'_>) -> Result<u64, DbError> {
 
 /// The composer list's rows `seek` reads in `order`, at most `limit` from
 /// `offset`, each with its key.
+/// Parsed works resolved against the library's `works` rows.
+#[cfg(desktop)]
+#[derive(Debug, Clone)]
+pub(crate) struct ResolvedWorks {
+    /// One id per input work, in input order, so a caller can zip it with the
+    /// works to remap the parsed ids its work links carry.
+    pub(crate) ids: Vec<String>,
+    /// The works this library has not seen before, for the commit to insert.
+    pub(crate) inserts: Vec<crate::db::DbWork>,
+}
+
 pub(super) fn composer_rows_on(
     sql: &SqlReadContext<'_>,
     order: &ListOrder,

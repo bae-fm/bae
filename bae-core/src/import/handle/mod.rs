@@ -323,7 +323,7 @@ pub enum DiscogsSaveOutcome {
 /// Handle for sending import requests and subscribing to progress updates.
 #[derive(Clone)]
 pub struct ImportServiceHandle {
-    /// The import worker. Its `LibraryManager` clone holds coven's store-open
+    /// The import worker. Its clone of the store holds coven's store-open
     /// lock, so teardown must not return before it is joined.
     worker: WorkerThread<crate::import::service::ImportWorkerMessage>,
     /// The library's store, which the handle reads and writes directly.
@@ -473,7 +473,6 @@ impl ImportServiceHandle {
     ) -> Result<Self, crate::library::LibraryError> {
         let crate::import::ImportServices {
             event_tx,
-            library_manager: _,
             database,
             catalogs,
             remote_images,
