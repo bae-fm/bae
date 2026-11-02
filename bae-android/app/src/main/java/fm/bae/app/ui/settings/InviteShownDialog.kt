@@ -19,10 +19,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.AnnotatedString
 import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
 import fm.bae.app.LocaleErrorDisplays
@@ -36,6 +34,7 @@ import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.components.QRCodeImage
 import fm.bae.app.ui.components.WaitingIndicator
+import fm.bae.app.ui.components.rememberCopyText
 import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeInvite
@@ -143,7 +142,7 @@ private fun InviteCodeDialog(
     onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
-    val clipboard = LocalClipboardManager.current
+    val copy = rememberCopyText()
     val expires = remember(invite.expiresAt) { context.inviteExpiry(invite.expiresAt) }
     val title = invite.invitee ?: stringResource(R.string.invite_title)
     AlertDialog(
@@ -165,7 +164,7 @@ private fun InviteCodeDialog(
                             delivery = invite.delivery,
                             code = shown.code,
                             title = title,
-                            onCopy = { clipboard.setText(AnnotatedString(shown.code)) },
+                            onCopy = { copy(shown.code) },
                         )
                         InviteNote(stringResource(R.string.invite_expires, expires))
                     }

@@ -16,10 +16,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
@@ -31,6 +29,7 @@ import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.components.Eyebrow
 import fm.bae.app.ui.components.WaitingIndicator
+import fm.bae.app.ui.components.rememberCopyText
 import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -179,12 +178,12 @@ private fun ShownCode(
     code: String,
     onHide: () -> Unit,
 ) {
-    val clipboard = LocalClipboardManager.current
+    val copy = rememberCopyText()
     SelectionContainer {
         Text(text = code, style = ThemeText.mono.style)
     }
     Row(horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
-        TextButton(onClick = { clipboard.setText(AnnotatedString(code)) }) {
+        TextButton(onClick = { copy(code) }) {
             Text(stringResource(R.string.copy))
         }
         TextButton(onClick = onHide) {

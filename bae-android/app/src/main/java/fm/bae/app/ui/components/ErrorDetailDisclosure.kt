@@ -23,9 +23,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.DisplayError
@@ -63,8 +61,8 @@ fun ErrorDetailDisclosure(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            val clipboard = LocalClipboardManager.current
-            IconButton(onClick = { clipboard.setText(AnnotatedString(detail)) }) {
+            val copy = rememberCopyText()
+            IconButton(onClick = { copy(detail) }) {
                 Icon(
                     imageVector = Icons.Filled.ContentCopy,
                     contentDescription = stringResource(R.string.copy_details),

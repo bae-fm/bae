@@ -23,10 +23,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.BaeLogger
@@ -40,6 +38,7 @@ import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.components.QRCodeImage
 import fm.bae.app.ui.components.WaitingIndicator
+import fm.bae.app.ui.components.rememberCopyText
 import fm.bae.app.ui.rememberScreenScope
 import fm.bae.screensubscription.ScreenSubscription
 import fm.bae.screensubscription.pulled
@@ -167,7 +166,7 @@ internal fun AddDeviceDialogContent(
  */
 @Composable
 private fun AddDeviceShareContent(share: BridgeRestoreCodeShare) {
-    val clipboard = LocalClipboardManager.current
+    val copy = rememberCopyText()
     QRCodeImage(
         text = share.qrText,
         contentDescription = stringResource(R.string.recovery_code_title),
@@ -182,7 +181,7 @@ private fun AddDeviceShareContent(share: BridgeRestoreCodeShare) {
     SelectionContainer {
         Text(text = share.code, style = ThemeText.mono.style, textAlign = TextAlign.Center)
     }
-    TextButton(onClick = { clipboard.setText(AnnotatedString(share.code)) }) {
+    TextButton(onClick = { copy(share.code) }) {
         Icon(
             Icons.Filled.ContentCopy,
             contentDescription = null,
