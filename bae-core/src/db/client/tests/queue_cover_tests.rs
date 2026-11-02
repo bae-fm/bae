@@ -36,7 +36,7 @@ async fn cover_db() -> (Database, tempfile::TempDir) {
     (db, tmp)
 }
 
-async fn cover_of(db: &Database, track_id: &str) -> Option<crate::album_detail::ImageRef> {
+async fn cover_of(db: &Database, track_id: &str) -> Option<crate::db::ImageRef> {
     db.playback_queue_tables().clear_manual().await.unwrap();
     let items = super::queue_items(db, &[track_id]).await;
     assert_eq!(items.len(), 1);
@@ -44,8 +44,8 @@ async fn cover_of(db: &Database, track_id: &str) -> Option<crate::album_detail::
 }
 
 /// The release's cover reference, carrying the version of the cover stored for it.
-async fn cover_ref(db: &Database, release_id: &str) -> Option<crate::album_detail::ImageRef> {
-    Some(crate::album_detail::ImageRef {
+async fn cover_ref(db: &Database, release_id: &str) -> Option<crate::db::ImageRef> {
+    Some(crate::db::ImageRef {
         id: release_id.to_string(),
         version: super::stored_image_version(db, crate::sync::COVERS_NAMESPACE, release_id).await,
         image_type: LibraryImageType::Cover,

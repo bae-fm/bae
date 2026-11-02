@@ -47,7 +47,7 @@ pub struct DbTrackSearchResult {
 pub struct DbComposerSummary {
     pub artist: DbArtist,
     /// The artist's image, at the version its row read; `None` when it has none.
-    pub image: Option<crate::album_detail::ImageRef>,
+    pub image: Option<crate::db::ImageRef>,
     pub work_count: i64,
     pub linked_release_count: i64,
     pub unlinked_credit_count: i64,
@@ -59,7 +59,7 @@ pub struct DbComposerSummary {
 pub struct DbArtistSummary {
     pub artist: DbArtist,
     /// The artist's image, at the version its row read; `None` when it has none.
-    pub image: Option<crate::album_detail::ImageRef>,
+    pub image: Option<crate::db::ImageRef>,
     pub album_count: i64,
 }
 
@@ -80,7 +80,7 @@ pub struct DbWorkSummary {
     pub representative_release_id: Option<String>,
     /// That release's cover, at the version its row read; `None` when it has
     /// none.
-    pub representative_cover: Option<crate::album_detail::ImageRef>,
+    pub representative_cover: Option<crate::db::ImageRef>,
     pub composer_names: Option<String>,
     pub linked_release_count: i64,
 }

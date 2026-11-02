@@ -368,11 +368,8 @@ fn candidate_item(
             release_link: None,
             reading: TriageReading::of_library(get_release_records_on(sql, &imported.release_id)?),
             picked: None,
-            cover: crate::album_detail::cover_ref(
-                &imported.release_id,
-                release.library_cover.clone(),
-            )
-            .map(|image| crate::import::CoverImageSource::Library { image }),
+            cover: crate::db::cover_ref(&imported.release_id, release.library_cover.clone())
+                .map(|image| crate::import::CoverImageSource::Library { image }),
         },
         None => {
             let release_link = release.release_link.clone();

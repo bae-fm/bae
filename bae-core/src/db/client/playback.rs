@@ -161,7 +161,7 @@ pub(super) fn track_display_columns() -> String {
 pub(super) fn track_queue_meta_from_row(row: &Row<'_>) -> rusqlite::Result<TrackQueueMeta> {
     let release_id: String = row.get("release_id")?;
     // A release's cover image is keyed by the release's id.
-    let cover_image = crate::album_detail::cover_ref(&release_id, row.get("cover_version")?);
+    let cover_image = crate::db::cover_ref(&release_id, row.get("cover_version")?);
     Ok(TrackQueueMeta {
         display: crate::playback::TrackDisplay {
             title: row.get("title")?,

@@ -218,12 +218,12 @@ impl LibraryManager {
         let artist_names = crate::credits::library_line(&raw.artists);
         let primary_release_id = raw.primary_release_id;
 
-        let cover = crate::album_detail::cover_ref(&primary_release_id, raw.primary_cover_version);
+        let cover = crate::db::cover_ref(&primary_release_id, raw.primary_cover_version);
         let mut releases = Vec::with_capacity(raw.releases.len());
         for (i, r) in raw.releases.into_iter().enumerate() {
             let ctx = ReleaseResolveCtx {
                 has_cloud_home,
-                cover: crate::album_detail::cover_ref(&r.release.id, r.cover_version.clone()),
+                cover: crate::db::cover_ref(&r.release.id, r.cover_version.clone()),
                 is_compilation: raw.album.is_compilation,
             };
             let (detail, orphans) = ReleaseDetail::from_raw(r, &raw.artists, i, &ctx);

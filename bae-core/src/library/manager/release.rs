@@ -374,7 +374,7 @@ impl LibraryManager {
     ) -> ReleaseDetail {
         let ctx = ReleaseResolveCtx {
             has_cloud_home,
-            cover: crate::album_detail::cover_ref(release_id, raw.cover_version.clone()),
+            cover: crate::db::cover_ref(release_id, raw.cover_version.clone()),
             is_compilation,
         };
         let (detail, orphans) = ReleaseDetail::from_raw(raw, &album_artists, release_index, &ctx);
@@ -498,9 +498,5 @@ pub(crate) async fn cover_ref_for(
     database: &Database,
     release_id: &str,
 ) -> Result<Option<ImageRef>, LibraryError> {
-    Ok(database.cover_version(release_id).await?.map(|version| ImageRef {
-        id: release_id.to_string(),
-        version,
-        image_type: LibraryImageType::Cover,
-    }))
+    Ok(crate::db::cover_ref(release_id, database.cover_version(release_id).await?))
 }

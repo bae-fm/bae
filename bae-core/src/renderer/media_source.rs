@@ -14,8 +14,8 @@
 use std::sync::Arc;
 
 use super::{RendererFlavor, RendererStreamFormat};
-use crate::album_detail::ImageRef;
 use crate::config::CastTranscodeFormat;
+use crate::db::ImageRef;
 use crate::library::ResolvedTrackAudio;
 
 /// Mints the HTTP URL the renderer fetches a track's audio from, given the track

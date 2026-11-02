@@ -254,7 +254,7 @@ mod conversion_roundtrip {
 
     #[test]
     fn image_ref_round_trips() {
-        let core = bae_core::album_detail::ImageRef {
+        let core = bae_core::db::ImageRef {
             id: "rel-123".to_string(),
             version: "v1".to_string(),
             image_type: bae_core::db::LibraryImageType::Artist,
@@ -280,7 +280,7 @@ mod conversion_roundtrip {
                 musicbrainz_artist_id: Some("musicbrainz-1".to_string()),
                 created_at: "2026-01-01T00:00:00Z".parse().unwrap(),
             },
-            image: Some(bae_core::album_detail::ImageRef {
+            image: Some(bae_core::db::ImageRef {
                 id: "artist-1".to_string(),
                 version: "image-1".to_string(),
                 image_type: bae_core::db::LibraryImageType::Artist,

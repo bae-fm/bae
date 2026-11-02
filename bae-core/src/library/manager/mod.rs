@@ -27,13 +27,13 @@ use tracing::{debug, warn};
 
 use crate::album_detail::{
     AlbumDetail, AlbumSummary, ArtistDetail, ArtistSearchResult, ArtistSummary, ComposerDetail,
-    ComposerSummary, ComposerWorkGroup, GallerySource, ImageRef, ReleaseDetail, ReleaseResolveCtx,
+    ComposerSummary, ComposerWorkGroup, GallerySource, ReleaseDetail, ReleaseResolveCtx,
     ReleaseStorageSummary, SearchResults, StoragePage, StorageRow, WorkDetail, WorkReleaseSummary,
     WorkSummary,
 };
 use crate::db::{
     Database, DbAlbum, DbArtist, DbAudioFormat, DbAudioSegment, DbAudioSegmentRole, DbFile,
-    DbLibraryImage, DbRelease, DbTrack, LibraryImageType,
+    DbLibraryImage, DbRelease, DbTrack, ImageRef, LibraryImageType,
 };
 use crate::diagnostics::{Diagnostics, SyncOperation, TelemetryEvent};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]

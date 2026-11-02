@@ -30,7 +30,7 @@
 //! (covers, pin state, cloud-home presence) and hands that in, so the derivation
 //! lives with the type it produces.
 
-use crate::db::LibraryImageType;
+use crate::db::{cover_ref, ImageRef};
 use bae_types::mediums::{TrackPosition, TrackSide};
 use bae_types::release_storage::ReleaseStorageAction;
 
@@ -279,40 +279,6 @@ pub enum FilePin {
         file: coven::FileId,
     },
     Waiting,
-}
-
-/// A library image's reference: kind, subject id, and content version. The id is a
-/// release id for a cover and an artist id for an artist image; the version is the
-/// image's version (the coven file the row references, with the device that has
-/// it while it is on one device only), so it moves whenever the image's bytes do
-/// and again when such a file is stored. The UI passes the whole reference back to
-/// read bytes, so core dispatches to the right table rather than probe every image
-/// namespace.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ImageRef {
-    pub id: String,
-    pub version: String,
-    pub image_type: LibraryImageType,
-}
-
-/// The cover of the release `release_id` at `version`, as its row read it;
-/// `None` when the release has no cover.
-pub(crate) fn cover_ref(release_id: &str, version: Option<String>) -> Option<ImageRef> {
-    version.map(|version| ImageRef {
-        id: release_id.to_string(),
-        version,
-        image_type: LibraryImageType::Cover,
-    })
-}
-
-/// The image of the artist `artist_id` at `version`, as its row read it;
-/// `None` when the artist has no image.
-pub(crate) fn artist_image_ref(artist_id: &str, version: Option<String>) -> Option<ImageRef> {
-    version.map(|version| ImageRef {
-        id: artist_id.to_string(),
-        version,
-        image_type: LibraryImageType::Artist,
-    })
 }
 
 /// Where a gallery slot's bytes come from. Each variant is self-contained: a cover

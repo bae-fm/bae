@@ -136,7 +136,7 @@ async fn a_changed_cover_reaches_the_paused_track_and_the_queue() {
         .await
         .unwrap();
 
-    let changed = |cover: &Option<bae_core::album_detail::ImageRef>| {
+    let changed = |cover: &Option<bae_core::db::ImageRef>| {
         cover.as_ref().is_some_and(|cover| {
             cover.id == release_id
                 && before.as_ref().is_none_or(|before| before.version != cover.version)

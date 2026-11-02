@@ -467,7 +467,7 @@ pub(super) fn work_summary_query(filter: Option<&str>, tail: Option<&str>) -> St
 pub(super) fn row_to_work_summary(row: &Row<'_>) -> rusqlite::Result<DbWorkSummary> {
     let representative_release_id: Option<String> = row.get("representative_release_id")?;
     let representative_cover = match &representative_release_id {
-        Some(id) => crate::album_detail::cover_ref(id, row.get("representative_cover_version")?),
+        Some(id) => crate::db::cover_ref(id, row.get("representative_cover_version")?),
         None => None,
     };
     Ok(DbWorkSummary {
@@ -490,7 +490,7 @@ pub(super) fn row_to_work_summary(row: &Row<'_>) -> rusqlite::Result<DbWorkSumma
 pub(super) fn row_to_composer_summary(row: &Row<'_>) -> rusqlite::Result<DbComposerSummary> {
     let artist = row_to_artist_with_prefix(row, "artist_")?;
     Ok(DbComposerSummary {
-        image: crate::album_detail::artist_image_ref(&artist.id, row.get("artist_image_version")?),
+        image: crate::db::artist_image_ref(&artist.id, row.get("artist_image_version")?),
         artist,
         work_count: row.get("work_count")?,
         linked_release_count: row.get("linked_release_count")?,
@@ -501,7 +501,7 @@ pub(super) fn row_to_composer_summary(row: &Row<'_>) -> rusqlite::Result<DbCompo
 pub(super) fn row_to_artist_summary(row: &Row<'_>) -> rusqlite::Result<DbArtistSummary> {
     let artist = row_to_artist_with_prefix(row, "artist_")?;
     Ok(DbArtistSummary {
-        image: crate::album_detail::artist_image_ref(&artist.id, row.get("artist_image_version")?),
+        image: crate::db::artist_image_ref(&artist.id, row.get("artist_image_version")?),
         artist,
         album_count: row.get("album_count")?,
     })

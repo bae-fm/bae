@@ -174,7 +174,7 @@ async fn a_done_row_reads_its_library_release() {
     assert_eq!(
         done.cover,
         Some(crate::import::CoverImageSource::Library {
-            image: crate::album_detail::ImageRef {
+            image: crate::db::ImageRef {
                 id: RELEASE_ID.to_string(),
                 version,
                 image_type: LibraryImageType::Cover,

@@ -143,7 +143,7 @@ impl Database {
                         Ok(crate::library::LibraryBrowseSection {
                             id: row.get(0)?,
                             title: row.get(1)?,
-                            image: crate::album_detail::artist_image_ref(
+                            image: crate::db::artist_image_ref(
                                 &row.get::<_, String>(0)?,
                                 row.get(4)?,
                             ),

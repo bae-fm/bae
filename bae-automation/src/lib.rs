@@ -4,13 +4,14 @@ extern crate bae_mirror;
 use bae_catalogs::catalog::{Catalog, LookupCatalog};
 use bae_catalogs::remote_image::RemoteCover;
 use bae_core::album_detail::{
-    FileDetail, GalleryItem, GallerySource, ImageRef, ReleaseDetail, ReleaseStorageState,
-    SearchResults, TrackDetail,
+    FileDetail, GalleryItem, GallerySource, ReleaseDetail, ReleaseStorageState, SearchResults,
+    TrackDetail,
 };
 use bae_core::catalog_model::records::MetadataRef;
 use bae_core::catalog_model::search::MetadataResult;
 use bae_core::catalog_model::SearchQuery;
 use bae_core::config::McpConfig;
+use bae_core::db::ImageRef;
 use bae_core::db::LibraryStatus;
 use bae_core::identify::release_group::ReleaseGroup;
 use bae_core::identify::PressingLink;

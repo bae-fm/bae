@@ -217,7 +217,7 @@ mirror_enum! {
 /// `version` is the coven file the image's row names, with the device that has
 /// the file while it is on one device only, so it moves whenever the bytes do
 /// and again when such a file is stored. Mirrors
-/// `bae_core::album_detail::ImageRef`.
+/// `bae_core::db::ImageRef`.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeImageRef {
     pub id: String,
@@ -226,7 +226,7 @@ pub struct BridgeImageRef {
 }
 
 mirror_struct! {
-    BridgeImageRef = bae_core::album_detail::ImageRef,
+    BridgeImageRef = bae_core::db::ImageRef,
     from_core: pub fn,
     into_core: pub fn,
     fields: { id, version, image_type: (BridgeLibraryImageType) },

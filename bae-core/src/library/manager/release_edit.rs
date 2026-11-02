@@ -105,8 +105,7 @@ impl LibraryManager {
         })?;
         let display =
             crate::album_detail::ReleaseEditDisplayContext::from_raw(&context.detail, edit_tracks)?;
-        let cover =
-            crate::album_detail::cover_ref(release_id, context.detail.cover_version.clone());
+        let cover = crate::db::cover_ref(release_id, context.detail.cover_version.clone());
 
         let album_artist_assignments: Vec<crate::import::Credited> =
             context.album_artists.into_iter().map(crate::import::Credited::of_library).collect();

@@ -182,7 +182,7 @@ async fn track_display_carries_the_cover_version() {
     let display = manager.get_track_display(&track.id).await.unwrap();
     assert_eq!(
         display.cover_image,
-        Some(crate::album_detail::ImageRef {
+        Some(crate::db::ImageRef {
             id: release.id.clone(),
             version,
             image_type: LibraryImageType::Cover,

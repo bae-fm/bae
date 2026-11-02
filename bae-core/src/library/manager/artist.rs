@@ -58,10 +58,7 @@ impl LibraryManager {
                         .rows
                         .into_iter()
                         .map(|row| ArtistSearchResult {
-                            image: crate::album_detail::artist_image_ref(
-                                &row.artist.id,
-                                row.image_version,
-                            ),
+                            image: crate::db::artist_image_ref(&row.artist.id, row.image_version),
                             credit_names: row.credit_names,
                             artist: row.artist,
                         })

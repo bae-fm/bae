@@ -234,7 +234,7 @@ pub enum DraftAlbum {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReleaseEditSeed {
     pub edit: RawReleaseEdit,
-    pub cover: Option<crate::album_detail::ImageRef>,
+    pub cover: Option<crate::db::ImageRef>,
     pub display: crate::album_detail::ReleaseEditDisplayContext,
     pub album: DraftAlbum,
 }

@@ -278,7 +278,7 @@ pub(crate) fn artist_id3(
     name: &str,
     album_count: i64,
     music_brainz_id: Option<String>,
-    image: Option<&bae_core::album_detail::ImageRef>,
+    image: Option<&bae_core::db::ImageRef>,
 ) -> ArtistId3 {
     ArtistId3 {
         id: artist_wire_id(id),
