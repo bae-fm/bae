@@ -221,6 +221,31 @@ pub struct LibraryCheck {
     pub source_group_id: Option<String>,
 }
 
+#[cfg(desktop)]
+impl From<&crate::catalog_model::search::MetadataResult> for LibraryCheck {
+    fn from(r: &crate::catalog_model::search::MetadataResult) -> Self {
+        Self {
+            release_id: r.release_id.clone(),
+            source: r.source,
+            source_group_id: r.source_group_id.clone(),
+        }
+    }
+}
+
+#[cfg(desktop)]
+impl LibraryCheck {
+    /// The keys the pane checks `release` against the library by.
+    pub(crate) fn of_release(
+        release: &crate::catalog_model::source_release::SourceRelease,
+    ) -> Self {
+        Self {
+            source: release.release.catalog,
+            release_id: release.release.key.clone(),
+            source_group_id: release.source_group_id.clone(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct LibraryStatus {
     pub release_id: String,

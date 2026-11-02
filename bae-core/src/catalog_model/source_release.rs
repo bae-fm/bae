@@ -430,15 +430,6 @@ impl SourceRelease {
         Ok(covers)
     }
 
-    /// The keys the pane checks against the library.
-    pub(crate) fn library_check(&self) -> crate::db::LibraryCheck {
-        crate::db::LibraryCheck {
-            source: self.release.catalog,
-            release_id: self.release.key.clone(),
-            source_group_id: self.source_group_id.clone(),
-        }
-    }
-
     /// What this release states about its media.
     pub(crate) fn stated_media(&self) -> StatedMedia {
         self.catalog.stated_media(&self.mediums)

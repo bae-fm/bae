@@ -225,16 +225,6 @@ pub enum SourceTracks {
     Unreadable,
 }
 
-impl From<&MetadataResult> for crate::db::LibraryCheck {
-    fn from(r: &MetadataResult) -> Self {
-        crate::db::LibraryCheck {
-            release_id: r.release_id.clone(),
-            source: r.source,
-            source_group_id: r.source_group_id.clone(),
-        }
-    }
-}
-
 /// Full release details for the confirmation step.
 ///
 /// `facts` and `barcodes` are pressing-level fields the user can review or

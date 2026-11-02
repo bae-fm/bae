@@ -167,7 +167,9 @@ fn draft_rows_on(
     let cover_options = offered_covers(current, release_link.as_ref(), &claimed);
     let picked_library_status = match claimed.first() {
         Some(release) => {
-            check_releases_in_library_on(sql, &[release.library_check()])?.into_iter().next()
+            check_releases_in_library_on(sql, &[crate::db::LibraryCheck::of_release(release)])?
+                .into_iter()
+                .next()
         }
         None => None,
     };
