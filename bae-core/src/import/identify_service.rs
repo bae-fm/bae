@@ -12,7 +12,6 @@ use crate::identify::LookupChoices;
 use crate::import::candidate_runtime::RunSubject;
 use crate::import::extraction::{ExtractionWatch, SignalsSnapshot};
 use crate::import::{CandidateRuntime, CandidateWork, ImportEvent, ImportEventBus};
-use crate::library::LibraryManager;
 use bae_catalogs::catalog::LookupCatalog;
 use bae_catalogs::rate_limiter::CallPriority;
 use std::sync::Arc;
@@ -35,9 +34,21 @@ fn emit_step(tx: &mpsc::UnboundedSender<IdentifyEvent>, event: IdentifyEvent) {
 /// so a key added or a source switched on since joins the next run rather than
 /// this one.
 async fn run_providers(
-    library_manager: &LibraryManager,
+    database: &crate::db::Database,
 ) -> Result<Vec<LookupCatalog>, crate::db::DbError> {
-    Ok(crate::config::asked_sources(&library_manager.metadata_sources().await?))
+    Ok(crate::config::asked_sources(&database.preferences().await?.metadata_sources()))
+}
+
+/// Keep what release groups were read to be beyond the list that read them,
+/// so a stored release of either album names the other among its records.
+/// Keeping it failing leaves the list's answer standing, and is logged.
+pub(crate) async fn keep_album_links(
+    database: &crate::db::Database,
+    kept: Vec<(String, Vec<crate::catalog_model::records::MetadataRef>)>,
+) {
+    if let Err(error) = database.replace_group_album_links(kept).await {
+        tracing::error!("What the release groups were read to be was not kept: {error}");
+    }
 }
 
 /// What one provider's lookup came to: the provider's answer, or how bae
@@ -70,11 +81,15 @@ fn emit_answer(
 /// results, ready for combine, exactly like a barcode that matched nothing.
 async fn lookup_and_resolve(
     disc_id: &str,
-    library_manager: &crate::library::LibraryManager,
+    catalogs: &crate::import::CatalogSessions,
     priority: CallPriority,
 ) -> Result<crate::identify::DiscIdAnswer, Failure> {
-    let (results, documents) =
-        library_manager.lookup_musicbrainz_discid(disc_id, priority).await?.into_iter().unzip();
+    let (results, documents) = catalogs
+        .musicbrainz()
+        .lookup_musicbrainz_discid(disc_id, priority)
+        .await?
+        .into_iter()
+        .unzip();
     Ok(crate::identify::DiscIdAnswer { results, documents })
 }
 
@@ -85,7 +100,9 @@ pub struct IdentifyServiceHandle {
 }
 
 struct IdentifyServiceInner {
-    library_manager: LibraryManager,
+    /// The library's store: the sources it asks, and what release groups
+    /// were read to be.
+    database: crate::db::Database,
     /// The catalogs a run's lookups ask.
     catalogs: crate::import::CatalogSessions,
     /// Where a run reads the releases it ranks.
@@ -139,7 +156,7 @@ impl IdentifyServiceHandle {
     /// `candidates` is the runtime `event_tx` records into, which ends a
     /// removed or rebound candidate's run in the send that says so.
     pub fn new(
-        library_manager: LibraryManager,
+        database: crate::db::Database,
         catalogs: crate::import::CatalogSessions,
         release_reads: crate::import::ReleaseReads,
         runtime_handle: tokio::runtime::Handle,
@@ -148,7 +165,7 @@ impl IdentifyServiceHandle {
         diagnostics: crate::diagnostics::Diagnostics,
     ) -> IdentifyServiceHandle {
         let inner = Arc::new(IdentifyServiceInner {
-            library_manager,
+            database,
             catalogs,
             release_reads,
             runtime_handle,
@@ -209,7 +226,7 @@ impl IdentifyServiceHandle {
     ) -> Result<bool, crate::db::DbError> {
         // Read before the prior run is cancelled, so nothing comes between
         // the cancel and the start.
-        let providers = run_providers(&self.inner.library_manager).await?;
+        let providers = run_providers(&self.inner.database).await?;
         // A restart (the user re-selects after a scan refresh, or changes what
         // the run asks about) supersedes the prior run — a candidate is
         // identified once at a time.
@@ -482,7 +499,7 @@ impl Driver {
             // No caller waits on the driver to hear it: a bug.
             if let Err(error) = candidates.publish_release_run(key, run, state, signals).await {
                 self.inner
-                    .library_manager
+                    .diagnostics
                     .report_bug(&format!("store what {key}'s run {run:?} published"), &error);
             }
             return;
@@ -493,7 +510,7 @@ impl Driver {
                 // No caller waits on the driver to hear it: a bug.
                 if let Err(error) = candidates.run_ended(key, run).await {
                     self.inner
-                        .library_manager
+                        .diagnostics
                         .report_bug(&format!("record that {key}'s run {run:?} ended"), &error);
                 }
             }
@@ -515,7 +532,7 @@ impl Driver {
                 // answer says why, and the bug is reported.
                 Err(error) => {
                     self.inner
-                        .library_manager
+                        .diagnostics
                         .report_bug(&format!("record that {key}'s run {run:?} started"), &error);
                     *standing = RunStanding::Unheld;
                     emit_step(
@@ -544,7 +561,7 @@ impl Driver {
                     // moves it.
                     Err(error) => self
                         .inner
-                        .library_manager
+                        .diagnostics
                         .report_bug(&format!("store what {key}'s run {run:?} published"), &error),
                 }
                 if state.is_terminal() {
@@ -569,7 +586,7 @@ impl Driver {
             // No caller waits on the driver to hear it: a bug.
             Err(error) => self
                 .inner
-                .library_manager
+                .diagnostics
                 .report_bug(&format!("record that {key}'s run {run:?} answered"), &error),
         }
     }
@@ -617,9 +634,9 @@ fn dispatch_effect(
     let broke_tx = event_tx.clone();
     match effect {
         Effect::LookupDiscid { disc_id } => {
-            let library_manager = inner.library_manager.clone();
+            let catalogs = inner.catalogs.clone();
             spawn_until_cancelled(&runtime, &inner.diagnostics, &token, &broke_tx, async move {
-                let event = match lookup_and_resolve(&disc_id, &library_manager, priority).await {
+                let event = match lookup_and_resolve(&disc_id, &catalogs, priority).await {
                     Ok(answer) => {
                         IdentifyEvent::DiscidLookupAnswered { disc_id, outcome: Ok(answer) }
                     }
@@ -633,9 +650,10 @@ fn dispatch_effect(
         }
 
         Effect::LookupIsrcs { isrcs } => {
-            let library_manager = inner.library_manager.clone();
+            let catalogs = inner.catalogs.clone();
             spawn_until_cancelled(&runtime, &inner.diagnostics, &token, &broke_tx, async move {
-                let lookup = library_manager.lookup_musicbrainz_isrcs(&isrcs, priority).await;
+                let lookup =
+                    catalogs.musicbrainz().lookup_musicbrainz_isrcs(&isrcs, priority).await;
                 let answer = outcome_of(lookup);
                 emit_answer(&event_tx, answer, |outcome| IdentifyEvent::IsrcLookupAnswered {
                     outcome,
@@ -802,9 +820,9 @@ fn dispatch_effect(
         // What was read stays true whether or not the run stays current, so
         // cancelling the run does not stop it being kept.
         Effect::KeepAlbumLinks { kept } => {
-            let library_manager = inner.library_manager.clone();
+            let database = inner.database.clone();
             let keep = async move {
-                library_manager.keep_album_links(kept).await;
+                keep_album_links(&database, kept).await;
             };
             #[cfg(test)]
             let keep = inner.driver_tasks.track_future(keep);

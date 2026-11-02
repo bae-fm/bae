@@ -414,31 +414,6 @@ impl LibraryManager {
         self.diagnostics.bug(failed)
     }
 
-    #[cfg(desktop)]
-    pub(crate) async fn lookup_musicbrainz_discid(
-        &self,
-        discid: &str,
-        priority: bae_catalogs::rate_limiter::CallPriority,
-    ) -> Result<
-        Vec<(
-            crate::catalog_model::search::MetadataResult,
-            crate::catalog_model::payloads::DiscIdRelease,
-        )>,
-        crate::catalog_model::Failure,
-    > {
-        self.providers.lookup_musicbrainz_discid(discid, priority).await
-    }
-
-    #[cfg(desktop)]
-    pub(crate) async fn lookup_musicbrainz_isrcs(
-        &self,
-        isrcs: &[String],
-        priority: bae_catalogs::rate_limiter::CallPriority,
-    ) -> Result<Vec<crate::catalog_model::search::MetadataResult>, crate::catalog_model::Failure>
-    {
-        self.providers.lookup_musicbrainz_isrcs(isrcs, priority).await
-    }
-
     /// The Cover Art Archive's images of a MusicBrainz release, then of its
     /// group.
     #[cfg(desktop)]

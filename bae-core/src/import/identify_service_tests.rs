@@ -20,20 +20,10 @@ async fn setup_inner() -> (Arc<IdentifyServiceInner>, tempfile::TempDir) {
         tokio::runtime::Handle::current(),
     );
     let release_reads = crate::import::ReleaseReads::new(database.clone(), catalogs.clone());
-    let manager = LibraryManager::new(
-        database,
-        crate::config::AppDir::under_home(temp_dir.path()).unwrap(),
-        Arc::new(coven::SystemClock),
-        Arc::new(coven::UuidIds),
-        crate::diagnostics::Diagnostics::noop(),
-        tokio::runtime::Handle::current(),
-        bae_catalogs::remote_image::RemoteImageCache::for_test(bae_util::http::Http::for_test()),
-        crate::catalog_model::providers::Providers::offline(),
-    );
     let candidates = CandidateRuntime::for_test().await;
     let event_tx = ImportEventBus::new(candidates.clone());
     let handle = IdentifyServiceHandle::new(
-        manager,
+        database,
         catalogs,
         release_reads,
         tokio::runtime::Handle::current(),
@@ -340,7 +330,7 @@ async fn what_a_run_keeps_is_kept_by_the_step_that_ends_it() {
     )
     .extract()
     .unwrap();
-    inner.library_manager.save_source_release(&discogs).await.unwrap();
+    inner.database.save_source_release(&discogs).await.unwrap();
 
     let found = crate::catalog_model::search::MetadataResult::for_test(
         LookupCatalog::MusicBrainz,
@@ -403,7 +393,7 @@ async fn what_a_run_keeps_is_kept_by_the_step_that_ends_it() {
 
     drivers_ended(&inner).await;
     let stored = inner
-        .library_manager
+        .database
         .load_source_release(&LookupRef::new(LookupCatalog::Discogs, "4242"))
         .await
         .unwrap()

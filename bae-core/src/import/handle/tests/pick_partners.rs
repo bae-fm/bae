@@ -588,13 +588,14 @@ async fn a_pick_carries_the_album_a_reading_found_through_another_pressing() {
     let providers = handle.library_manager.providers();
     let group = "chain-mb-group";
     seed_discogs_release_in(providers, "70000012", Some("909"), None);
-    handle
-        .library_manager
-        .keep_album_links(vec![(
+    crate::import::identify_service::keep_album_links(
+        &handle.database,
+        vec![(
             group.to_string(),
             vec![crate::catalog_model::records::MetadataRef::new(bae_catalogs::catalog::Catalog::Discogs, "909")],
-        )])
-        .await;
+        )],
+    )
+    .await;
 
     let picked =
         crate::catalog_model::records::LookupRef::new(bae_catalogs::catalog::LookupCatalog::Discogs, "70000012");

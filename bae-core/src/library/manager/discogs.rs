@@ -84,20 +84,6 @@ impl LibraryManager {
         Ok(self.preferences().await?.discogs)
     }
 
-    /// Keep what release groups were read to be beyond the list that read
-    /// them, so a stored release of either album names the other among its
-    /// records. Keeping it failing leaves the list's answer standing, and is
-    /// logged.
-    #[cfg(desktop)]
-    pub(crate) async fn keep_album_links(
-        &self,
-        kept: Vec<(String, Vec<crate::catalog_model::records::MetadataRef>)>,
-    ) {
-        if let Err(error) = self.database.replace_group_album_links(kept).await {
-            tracing::error!("What the release groups were read to be was not kept: {error}");
-        }
-    }
-
     #[cfg(desktop)]
     pub(crate) async fn fetch_discogs_release_covers(
         &self,

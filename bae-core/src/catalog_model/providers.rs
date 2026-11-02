@@ -124,22 +124,6 @@ impl Providers {
         crate::catalog_model::search::search_mb(&self.musicbrainz, params, priority).await
     }
 
-    pub(crate) async fn lookup_musicbrainz_discid(
-        &self,
-        discid: &str,
-        priority: CallPriority,
-    ) -> Result<Vec<(MetadataResult, DiscIdRelease)>, Failure> {
-        crate::catalog_model::search::lookup_by_discid(&self.musicbrainz, discid, priority).await
-    }
-
-    pub(crate) async fn lookup_musicbrainz_isrcs(
-        &self,
-        isrcs: &[String],
-        priority: CallPriority,
-    ) -> Result<Vec<MetadataResult>, Failure> {
-        crate::catalog_model::search::lookup_by_isrcs(&self.musicbrainz, isrcs, priority).await
-    }
-
     /// The archive's images of a MusicBrainz release, then of its group.
     pub(crate) async fn musicbrainz_gallery(
         &self,
@@ -218,6 +202,31 @@ impl CatalogSession {
         priority: CallPriority,
     ) -> Result<Vec<MetadataResult>, CatalogError> {
         self.providers.search_musicbrainz(params, priority).await
+    }
+
+    /// The releases MusicBrainz lists under the disc ID `discid`, each with
+    /// its document as the answer states it.
+    pub(crate) async fn lookup_musicbrainz_discid(
+        &self,
+        discid: &str,
+        priority: CallPriority,
+    ) -> Result<Vec<(MetadataResult, DiscIdRelease)>, Failure> {
+        crate::catalog_model::search::lookup_by_discid(
+            &self.providers.musicbrainz,
+            discid,
+            priority,
+        )
+        .await
+    }
+
+    /// The releases MusicBrainz lists the recordings `isrcs` on.
+    pub(crate) async fn lookup_musicbrainz_isrcs(
+        &self,
+        isrcs: &[String],
+        priority: CallPriority,
+    ) -> Result<Vec<MetadataResult>, Failure> {
+        crate::catalog_model::search::lookup_by_isrcs(&self.providers.musicbrainz, isrcs, priority)
+            .await
     }
 
     pub(crate) async fn search_discogs(

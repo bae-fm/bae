@@ -112,9 +112,14 @@ impl CatalogSessions {
         catalog: LookupCatalog,
     ) -> Result<CatalogSession, CatalogSessionError> {
         match catalog {
-            LookupCatalog::MusicBrainz => Ok(CatalogSession::new(None, self.providers.clone())),
+            LookupCatalog::MusicBrainz => Ok(self.musicbrainz()),
             LookupCatalog::Discogs => self.session().await,
         }
+    }
+
+    /// The session that asks MusicBrainz alone, which needs no key.
+    pub(crate) fn musicbrainz(&self) -> CatalogSession {
+        CatalogSession::new(None, self.providers.clone())
     }
 
     /// The session a read of `release` asks with. A MusicBrainz release
@@ -131,7 +136,7 @@ impl CatalogSessions {
                     release_id = %release.key,
                     "Discogs cross-reference unavailable while fetching MusicBrainz release: {error}"
                 );
-                Ok(CatalogSession::new(None, self.providers.clone()))
+                Ok(self.musicbrainz())
             }
             Err(error) => Err(error),
         }

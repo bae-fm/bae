@@ -146,7 +146,7 @@ impl ImportServiceHandle {
     ) -> Result<(), crate::library::LibraryError> {
         let kept = self.runtime.land_picked(candidate_key, release, links).await?;
         if !kept.is_empty() {
-            self.library_manager.keep_album_links(kept).await;
+            crate::import::identify_service::keep_album_links(&self.database, kept).await;
         }
         Ok(())
     }
