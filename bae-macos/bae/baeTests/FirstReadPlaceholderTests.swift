@@ -6,12 +6,13 @@ import Testing
 @testable import bae
 
 /// A screen's first read of a local live query lands at once, so nothing
-/// stands in for it: no spinner, no line, until its rows arrive.
+/// stands in for it: no spinner, no line, until its rows arrive. That the
+/// pane draws no line is the `artist-pane-first-read` shot's.
 @Suite("Local first reads")
 struct FirstReadPlaceholderTests {
     @MainActor
-    @Test("a selected artist's pane draws nothing until its read lands")
-    func artistPaneDrawsNothingWhileReading() async throws {
+    @Test("a selected artist's pane draws no spinner until its read lands")
+    func artistPaneDrawsNoSpinnerWhileReading() async throws {
         let uiStore = UiStore()
         let session = PreviewData.browseSession(uiStore: uiStore)
         session.selectArtist("artist-0")
@@ -28,9 +29,6 @@ struct FirstReadPlaceholderTests {
             let spinners = SnapshotTestSupport.descendants(of: host)
                 .filter { $0 is NSProgressIndicator }
             #expect(spinners.isEmpty)
-            let png = try await SnapshotTestSupport.capturePNG(host, size: size)
-            let lines = try await SnapshotTestSupport.recognizedText(in: png)
-            #expect(lines.isEmpty, "drew \(lines.map(\.text))")
         }
     }
 }

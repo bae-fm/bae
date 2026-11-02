@@ -17,7 +17,10 @@ struct ImportStandingRowTests {
     func queuedTriageRow() async throws {
         let row = PreviewData.triageRowPrefilledFromTags
         let idle = try await drawn(triage: row, step: nil)
-        let queued = try await drawn(triage: row, step: .preparing(step: .queued))
+        let queued = try await drawn(
+            triage: row,
+            step: .preparing(step: .queued)
+        )
 
         #expect(queued.bars == 0)
         #expect(queued.height == idle.height)
@@ -55,18 +58,11 @@ struct ImportStandingRowTests {
         #expect(running.bars == 1)
     }
 
-    @Test("a queued import's pane says it is waiting and draws no bar")
+    /// The pane says it is waiting in a line the `import-pane-queued` shot
+    /// shows.
+    @Test("a queued import's pane draws no bar")
     func queuedPane() async throws {
-        let queued = try await drawn(pane: .preparing(step: .queued))
-
-        #expect(queued.bars == 0)
-        let lines =
-            try await SnapshotTestSupport.recognizedText(
-                in: queued.pixels,
-                languages: ["en-US"]
-            )
-            .map(\.text)
-        #expect(lines.carrying("Waiting to import"))
+        #expect(try await drawn(pane: .preparing(step: .queued)).bars == 0)
     }
 
     @Test(

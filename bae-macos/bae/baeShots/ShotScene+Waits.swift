@@ -4,9 +4,10 @@ import SwiftUI
 @testable import bae
 
 extension ShotScene {
-    /// Views in a wait that names itself in words beside its spinner: a
-    /// catalog still searching, a cast connecting, a Discogs key being
-    /// checked, the lightbox's image loading.
+    /// Views in a wait that names itself in words: a catalog still
+    /// searching, a cast connecting, a Discogs key being checked, the
+    /// lightbox's image loading, the run's own pick being read, an import
+    /// waiting its turn.
     static let waitScenes: [ShotScene] = [
         ShotScene(
             id: "import-search-searching",
@@ -64,6 +65,46 @@ extension ShotScene {
             size: CGSize(width: 640, height: 480)
         ) {
             AnyView(LightboxView<LightboxItem>.loadingPreview())
+        },
+        ShotScene(
+            id: "import-search-reading-pick",
+            size: CGSize(width: 620, height: 120)
+        ) {
+            let pressing = PreviewData.searchGroupExact.pressings[0]
+            return AnyView(
+                ImportSearchResultRow(
+                    pressing: pressing,
+                    isImporting: false,
+                    libraryStatus: nil,
+                    isSelected: true,
+                    loading: LoadingPick(
+                        releaseId: pressing.lead.releaseId,
+                        reading: .unattended
+                    ),
+                    onSelect: { _ in }
+                )
+                .frame(width: 620, height: 120, alignment: .top)
+                .importPreviewEnvironment()
+            )
+        },
+        ShotScene(
+            id: "import-pane-queued",
+            size: CGSize(width: 560, height: 400)
+        ) {
+            AnyView(
+                ImportingCandidatePane(
+                    candidate: PreviewData.folderCandidates[0],
+                    step: .preparing(step: .queued),
+                    coverContent: nil,
+                    onOpenImages: { _, _ in },
+                    onOpenDocument: { _, _ in },
+                    onPreview: { _ in },
+                    onStopPreview: {},
+                    previewingTarget: nil
+                )
+                .candidateReaderPreviewEnvironment()
+                .environment(ImageStore.stub())
+            )
         },
     ]
 }

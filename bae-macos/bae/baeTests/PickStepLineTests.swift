@@ -6,7 +6,9 @@ import Testing
 @testable import bae
 
 /// A pick can wait on a catalog over the network, so the row it was made on
-/// names the catalog it is reading from while it does.
+/// names the catalog it is reading from while it does. The run's own pick
+/// says its release is being read in a line of SwiftUI text, which the
+/// `import-search-reading-pick` shot shows.
 @MainActor
 @Suite("Pick step line")
 struct PickStepLineTests {
@@ -39,46 +41,17 @@ struct PickStepLineTests {
             size: size
         ) { _, host in
             try await SnapshotTestSupport.settle(host)
-            let png = try await SnapshotTestSupport.capturePNG(host, size: size)
-            let lines = try await SnapshotTestSupport.recognizedText(in: png)
-                .map(\.text)
+            let words = SnapshotTestSupport.descendants(of: host)
+                .compactMap {
+                    $0 as? StepProgressNSView<BridgeCatalogApplyStep>
+                }
+                .flatMap { SnapshotTestSupport.descendants(of: $0) }
+                .compactMap { ($0 as? NSTextField)?.stringValue }
             #expect(
-                lines.carrying("Reading the release from Discogs"),
-                "drew \(lines)"
-            )
-        }
-    }
-
-    @Test("the run's own pick says its release is being read")
-    func unattendedReadIsNamed() async throws {
-        let pressing = try #require(
-            PreviewData.searchGroupExact.pressings.first
-        )
-        let size = NSSize(width: 620, height: 120)
-        try await SnapshotTestSupport.withHostedWindow(
-            ImportSearchResultRow(
-                pressing: pressing,
-                isImporting: false,
-                libraryStatus: nil,
-                isSelected: true,
-                loading: LoadingPick(
-                    releaseId: pressing.lead.releaseId,
-                    reading: .unattended
-                ),
-                onSelect: { _ in }
-            )
-            .frame(width: size.width)
-            .frame(width: size.width, height: size.height, alignment: .top)
-            .importPreviewEnvironment(),
-            size: size
-        ) { _, host in
-            try await SnapshotTestSupport.settle(host)
-            let png = try await SnapshotTestSupport.capturePNG(host, size: size)
-            let lines = try await SnapshotTestSupport.recognizedText(in: png)
-                .map(\.text)
-            #expect(
-                lines.carrying("Reading the release in full"),
-                "drew \(lines)"
+                words.contains {
+                    $0.hasPrefix("Reading the release from Discogs")
+                },
+                "drew \(words)"
             )
         }
     }

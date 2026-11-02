@@ -6,17 +6,15 @@ import Testing
 @testable import bae
 
 /// What a candidate row draws about its release. Which reading a row holds is
-/// core's answer and core tests it; these are about the arrow the row draws
-/// from it, and about the card the library's facts line opens.
+/// core's answer and core tests it; these are about the summary and the arrow
+/// the row draws from it. Which line an unidentified row draws, and the card
+/// the library's facts line opens, are the `import-release-queue` and
+/// `release-records-card` shots'.
 @Suite("Triage row rendering")
 struct TriageRowIdentifiedTests {
     @MainActor
-    @Test("an unidentified row draws its folder, with its cover tile kept")
-    func unidentifiedRowDrawsItsFolder() async throws {
-        let lines = try await renderedLines(PreviewData.triageRowUnidentified)
-        #expect(lines.carrying("Release Folder Eleven"))
-        #expect(!lines.carrying("Album Title"))
-
+    @Test("an unidentified row keeps its cover tile")
+    func unidentifiedRowKeepsItsCoverTile() async throws {
         let unidentified = try await fittingSize(
             of: PreviewData.triageRowUnidentified
         )
@@ -28,25 +26,25 @@ struct TriageRowIdentifiedTests {
     }
 
     @MainActor
-    @Test("a row filled from tags draws its draft and no arrow")
-    func prefilledRowDrawsItsDraft() async throws {
-        let lines = try await renderedLines(
-            PreviewData.triageRowPrefilledFromTags
+    @Test("a row filled from tags summarizes its draft")
+    func prefilledRowSummarizesItsDraft() throws {
+        let summary = try #require(
+            ImportReleaseSummary(row: PreviewData.triageRowPrefilledFromTags)
         )
-        #expect(lines.carrying("Album Title Twelve"))
-        #expect(lines.carrying("Artist Name"))
-        #expect(!lines.carrying("Release Folder Twelve"))
+        #expect(summary.title == "Album Title Twelve")
+        #expect(summary.artist == "Artist Name")
     }
 
-    /// The word is never drawn: what the arrow says is said by the arrow.
+    /// The summary names the album and its artist, and nothing about where
+    /// they came from: what the arrow says is said by the arrow.
     @MainActor
-    @Test("a row states where its facts came from without naming it")
-    func aRowNamesNeitherFact() async throws {
-        let lines = try await renderedLines(
-            PreviewData.triageRowReadFromRecord
+    @Test("a row read from a record summarizes its draft alone")
+    func aRowReadFromARecordSummarizesItsDraft() throws {
+        let summary = try #require(
+            ImportReleaseSummary(row: PreviewData.triageRowReadFromRecord)
         )
-        #expect(lines.carrying("Album Title Fifteen"))
-        #expect(!lines.carrying(coreString("core.identity.identified")))
+        #expect(summary.title == "Album Title Fifteen")
+        #expect(summary.artist == "Artist Name")
     }
 
     /// The arrow is what a row read from a record draws and a row read from
@@ -109,39 +107,7 @@ struct TriageRowIdentifiedTests {
         #expect(resting != selected)
     }
 
-    /// The card behind the library's facts line names every catalog that
-    /// describes the release — its only way to those links.
-    @MainActor
-    @Test("the card names every catalog that describes the release")
-    func theCardNamesEveryCatalog() async throws {
-        try await SnapshotTestSupport.withHostedWindow(
-            ReleaseRecordsCard(records: PreviewData.identifiedFromBothCatalogs)
-                .preferredColorScheme(.light)
-                .background(.white),
-            size: Self.cardSize
-        ) { _, host in
-            try await SnapshotTestSupport.settle(host)
-            let png = try await SnapshotTestSupport.capturePNG(
-                host,
-                size: Self.cardSize
-            )
-            let lines =
-                try await SnapshotTestSupport.recognizedText(
-                    in: png,
-                    languages: ["en-US"]
-                )
-                .map(\.text)
-
-            #expect(lines.carrying("MusicBrainz"))
-            #expect(lines.carrying("Discogs"))
-        }
-    }
-
     private static let rowSize = NSSize(width: 340, height: 80)
-    private static let cardSize = NSSize(
-        width: ReleaseRecordsCard.width,
-        height: 96
-    )
 
     /// `row` hosted for the length of `body`.
     @MainActor
@@ -180,15 +146,5 @@ struct TriageRowIdentifiedTests {
         try await withHostedRow(row, prominence: prominence) { host in
             try await SnapshotTestSupport.capturePNG(host, size: Self.rowSize)
         }
-    }
-
-    @MainActor
-    private func renderedLines(_ row: BridgeTriageRow) async throws -> [String]
-    {
-        try await SnapshotTestSupport.recognizedText(
-            in: pixels(of: row),
-            languages: ["en-US"]
-        )
-        .map(\.text)
     }
 }

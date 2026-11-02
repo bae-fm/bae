@@ -62,6 +62,31 @@ struct ShotScene {
                 AnyView(PreviewScenes.albumDetail())
             },
             ShotScene(
+                id: "artist-pane-first-read",
+                size: CGSize(width: 520, height: 640)
+            ) {
+                let uiStore = UiStore()
+                let session = PreviewData.browseSession(uiStore: uiStore)
+                session.selectArtist("artist-0")
+                return AnyView(
+                    ArtistDetailPane(detail: nil)
+                        .environment(session)
+                        .environment(uiStore)
+                        .environment(ArtistEditor())
+                        .environment(ImageStore.stub())
+                )
+            },
+            ShotScene(
+                id: "release-records-card",
+                size: CGSize(width: ReleaseRecordsCard.width, height: 96)
+            ) {
+                AnyView(
+                    ReleaseRecordsCard(
+                        records: PreviewData.identifiedFromBothCatalogs
+                    )
+                )
+            },
+            ShotScene(
                 id: "album-detail-mixed-columns",
                 size: CGSize(width: 1100, height: 800)
             ) {
