@@ -4,6 +4,11 @@
 use super::empty_db;
 use crate::catalog_model::payloads::ReleasePayloads;
 use crate::catalog_model::records::{MetadataRef, PayloadSource, SourcePayload};
+use crate::catalog_model::test_documents::{
+    linked_discogs_master, linked_discogs_release, linked_musicbrainz_release,
+    linked_release_group, musicbrainz_release_with_relations, wikidata_item,
+    wikidata_linked_release_group,
+};
 use bae_catalogs::catalog::Catalog;
 
 /// A MusicBrainz release with everything its tracklist can state: a vinyl
@@ -453,4 +458,161 @@ async fn a_stored_release_carries_what_its_album_s_group_was_read_to_be() {
 
     db.replace_group_album_links(vec![("mb-group-same".to_string(), Vec::new())]).await.unwrap();
     assert_eq!(db.load_source_release(discogs.release()).await.unwrap(), Some(discogs));
+}
+
+/// A Discogs release stored with its master and the release group the
+/// master names back reads back as it was extracted.
+#[tokio::test]
+async fn a_release_with_its_master_and_group_reads_back_as_extracted() {
+    let (db, _tmp) = empty_db().await;
+    let fetched = ReleasePayloads::for_test(
+        MetadataRef::new(Catalog::Discogs, "7811"),
+        linked_discogs_release(),
+        vec![
+            SourcePayload::new(PayloadSource::DiscogsMaster, "7822", linked_discogs_master()),
+            SourcePayload::new(
+                PayloadSource::MusicBrainzDiscogsMasterXref,
+                "7822",
+                linked_release_group(),
+            ),
+        ],
+    )
+    .extract()
+    .unwrap();
+    db.save_source_release(&fetched).await.unwrap();
+    assert_eq!(db.load_source_release(fetched.release()).await.unwrap(), Some(fetched));
+}
+
+#[test]
+fn library_check_matches_detail_keys_with_and_without_source_groups() {
+    for group in [None, Some(789)] {
+        for source in [Catalog::Discogs, Catalog::MusicBrainz] {
+            let anchor = match source {
+                Catalog::Discogs => serde_json::json!({
+                    "id": 123, "title": "Album Title", "master_id": group
+                }),
+                Catalog::MusicBrainz => serde_json::json!({
+                    "id": "123", "title": "Album Title", "artist-credit": [],
+                    "label-info": [], "media": [], "relations": [],
+                    "cover-art-archive": { "front": false, "darkened": false },
+                    "release-group": group.map(|id| serde_json::json!({ "id": id.to_string() }))
+                }),
+                other => unreachable!("nothing fetches documents from {}", other.as_str()),
+            };
+            let payloads = ReleasePayloads::for_test(
+                MetadataRef::new(source, "123"),
+                anchor.to_string(),
+                Vec::new(),
+            );
+            let check = crate::db::LibraryCheck::of_release(&payloads.extract().unwrap());
+            let detail = payloads.extract().unwrap().detail(&[]);
+            assert_eq!(check.source, detail.source);
+            assert_eq!(check.release_id, detail.release_id);
+            assert_eq!(check.source_group_id, detail.source_group_id);
+            assert_eq!(check.source_group_id, group.map(|id| id.to_string()));
+        }
+    }
+}
+
+/// What Wikidata's item added when the release was fetched is stored with
+/// it, so a commit, a re-identify or a reset reads the same records with
+/// nothing asked of the network.
+#[tokio::test]
+async fn an_items_records_are_stored_with_the_release() {
+    let (database, _dir) = empty_db().await;
+    let fetched = ReleasePayloads::for_test(
+        MetadataRef::new(Catalog::MusicBrainz, "offline-mb-release"),
+        musicbrainz_release_with_relations("offline-mb-release", "offline-mb-group", &[])
+            .to_string(),
+        vec![
+            SourcePayload::new(
+                PayloadSource::MusicBrainzReleaseGroup,
+                "offline-mb-group",
+                wikidata_linked_release_group("offline-mb-group", "Q424242"),
+            ),
+            SourcePayload::new(PayloadSource::Wikidata, "Q424242", wikidata_item("Q424242")),
+        ],
+    )
+    .extract()
+    .expect("the documents extract");
+    database.save_source_release(&fetched).await.unwrap();
+
+    let stored = database
+        .load_source_release(fetched.release())
+        .await
+        .expect("the stored release reads back")
+        .expect("the release is stored");
+
+    let catalogs: Vec<Catalog> = stored.records().iter().map(|record| record.catalog()).collect();
+    assert_eq!(
+        catalogs,
+        vec![
+            Catalog::MusicBrainz,
+            Catalog::Discogs,
+            Catalog::AllMusic,
+            Catalog::Spotify,
+            Catalog::Wikidata,
+        ]
+    );
+}
+
+/// A cross-reference the catalog no longer answers is gone from the release
+/// once it is fetched again: the new extraction replaces the old one whole.
+#[tokio::test]
+async fn refetching_without_a_reverse_answer_removes_its_pressing_record() {
+    let (db, _temp) = empty_db().await;
+    let with_alias = ReleasePayloads::for_test(
+        MetadataRef::new(Catalog::Discogs, "7811"),
+        linked_discogs_release(),
+        vec![SourcePayload::new(
+            PayloadSource::MusicBrainzDiscogsXref,
+            "7811",
+            linked_musicbrainz_release(),
+        )],
+    );
+    db.save_source_release(&with_alias.extract().unwrap()).await.unwrap();
+    assert!(db
+        .load_source_release(&MetadataRef::new(Catalog::Discogs, "7811"))
+        .await
+        .unwrap()
+        .unwrap()
+        .records()
+        .iter()
+        .any(|record| record.catalog() == Catalog::MusicBrainz && record.release_ref().is_some()));
+    let without_alias = ReleasePayloads::for_test(
+        MetadataRef::new(Catalog::Discogs, "7811"),
+        linked_discogs_release(),
+        Vec::new(),
+    );
+    db.save_source_release(&without_alias.extract().unwrap()).await.unwrap();
+    assert!(!db
+        .load_source_release(&MetadataRef::new(Catalog::Discogs, "7811"))
+        .await
+        .unwrap()
+        .unwrap()
+        .records()
+        .iter()
+        .any(|record| record.catalog() == Catalog::MusicBrainz));
+}
+
+/// A parent a later fetch could not obtain does not come back from the
+/// earlier fetch: the stored release is the later fetch's, whole.
+#[tokio::test]
+async fn an_unavailable_supporting_document_does_not_return_from_an_earlier_fetch() {
+    let (db, _temp) = empty_db().await;
+    let earlier = ReleasePayloads::for_test(
+        MetadataRef::new(Catalog::Discogs, "7811"),
+        linked_discogs_release(),
+        vec![SourcePayload::new(PayloadSource::DiscogsMaster, "7822", linked_discogs_master())],
+    );
+    db.save_source_release(&earlier.extract().unwrap()).await.unwrap();
+    let later = ReleasePayloads::for_test(
+        MetadataRef::new(Catalog::Discogs, "7811"),
+        linked_discogs_release(),
+        Vec::new(),
+    )
+    .extract()
+    .unwrap();
+    db.save_source_release(&later).await.unwrap();
+    assert_eq!(db.load_source_release(later.release()).await.unwrap(), Some(later));
 }

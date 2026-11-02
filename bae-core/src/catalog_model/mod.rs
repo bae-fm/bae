@@ -35,6 +35,8 @@ pub mod rip;
 pub mod search;
 #[cfg(desktop)]
 pub mod source_release;
+#[cfg(all(test, desktop))]
+pub(crate) mod test_documents;
 pub mod works;
 
 pub use error::CatalogError;

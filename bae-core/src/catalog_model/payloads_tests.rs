@@ -1,9 +1,8 @@
 use super::*;
 use crate::catalog_model::source_release::{UnfetchedDocument, UnfetchedReason};
-use crate::db::Database;
-use chrono::{DateTime, Utc};
-use coven::FixedClock;
-use std::sync::Arc;
+use crate::catalog_model::test_documents::{
+    musicbrainz_release_with_relations, wikidata_item, wikidata_linked_release_group,
+};
 
 #[test]
 fn discogs_cover_choices_keep_every_image() {
@@ -30,43 +29,6 @@ fn discogs_cover_choices_keep_every_image() {
             max_edge: 150,
         }]
     );
-}
-
-#[test]
-fn library_check_matches_detail_keys_with_and_without_source_groups() {
-    for group in [None, Some(789)] {
-        for source in [Catalog::Discogs, Catalog::MusicBrainz] {
-            let anchor = match source {
-                Catalog::Discogs => serde_json::json!({
-                    "id": 123, "title": "Album Title", "master_id": group
-                }),
-                Catalog::MusicBrainz => serde_json::json!({
-                    "id": "123", "title": "Album Title", "artist-credit": [],
-                    "label-info": [], "media": [], "relations": [],
-                    "cover-art-archive": { "front": false, "darkened": false },
-                    "release-group": group.map(|id| serde_json::json!({ "id": id.to_string() }))
-                }),
-                other => unreachable!("nothing fetches documents from {}", other.as_str()),
-            };
-            let payloads = ReleasePayloads::for_test(
-                MetadataRef::new(source, "123"),
-                anchor.to_string(),
-                Vec::new(),
-            );
-            let check = crate::db::LibraryCheck::of_release(&payloads.extract().unwrap());
-            let detail = payloads.extract().unwrap().detail(&[]);
-            assert_eq!(check.source, detail.source);
-            assert_eq!(check.release_id, detail.release_id);
-            assert_eq!(check.source_group_id, detail.source_group_id);
-            assert_eq!(check.source_group_id, group.map(|id| id.to_string()));
-        }
-    }
-}
-
-fn now() -> DateTime<Utc> {
-    chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
-        .expect("a valid test instant")
-        .with_timezone(&Utc)
 }
 
 #[test]
@@ -212,58 +174,6 @@ fn a_release_reachable_twice_offers_its_images_once() {
     assert_eq!(covers[0].image.url, "https://images.example/front.jpg");
 }
 
-fn mb_release_with_relations(id: &str, group_id: &str, urls: &[&str]) -> serde_json::Value {
-    serde_json::json!({
-        "id": id,
-        "title": "Album Title",
-        "artist-credit": [],
-        "label-info": [],
-        "media": [],
-        "release-group": { "id": group_id },
-        "cover-art-archive": { "front": false, "darkened": false },
-        "relations": urls
-            .iter()
-            .map(|url| serde_json::json!({
-                "target-type": "url",
-                "type": "other databases",
-                "url": { "resource": url }
-            }))
-            .collect::<Vec<_>>(),
-    })
-}
-
-/// A release-group document whose url-rels name a Wikidata item, which is
-/// where MusicBrainz editors file the link.
-fn wikidata_linked_release_group(group: &str, item: &str) -> String {
-    serde_json::json!({
-        "id": group,
-        "relations": [
-            { "url": { "resource": format!("https://www.wikidata.org/wiki/{item}") } }
-        ]
-    })
-    .to_string()
-}
-
-/// One item's entity document, stating the album's key in three catalogs: the
-/// Discogs master nothing else names, plus two catalogs MusicBrainz links to
-/// neither of.
-fn wikidata_item(item: &str) -> String {
-    serde_json::json!({
-        "entities": {
-            item: {
-                "claims": {
-                    "P1954": [{ "mainsnak": { "datavalue": { "value": "909090" } } }],
-                    "P1729": [{ "mainsnak": { "datavalue": { "value": "mw0000424242" } } }],
-                    "P2205": [{
-                        "mainsnak": { "datavalue": { "value": "4242424242424242424242" } }
-                    }]
-                }
-            }
-        }
-    })
-    .to_string()
-}
-
 /// Every URL relation an editor filed on the release or on its release
 /// group is another catalog's description of the same object. An address
 /// no catalog bae knows publishes at is not one.
@@ -271,7 +181,7 @@ fn wikidata_item(item: &str) -> String {
 fn a_musicbrainz_release_records_every_catalog_it_links_out_to() {
     let payloads = ReleasePayloads::for_test(
         MetadataRef::new(Catalog::MusicBrainz, "mb-release"),
-        mb_release_with_relations(
+        musicbrainz_release_with_relations(
             "mb-release",
             "mb-group",
             &[
@@ -352,7 +262,7 @@ fn a_musicbrainz_release_records_every_catalog_it_links_out_to() {
 /// they list: it stands as its own group.
 #[test]
 fn a_musicbrainz_release_without_a_parent_keeps_it_unknown() {
-    let mut anchor = mb_release_with_relations("mb-release", "mb-group", &[]);
+    let mut anchor = musicbrainz_release_with_relations("mb-release", "mb-group", &[]);
     anchor["release-group"] = serde_json::Value::Null;
     let payloads = ReleasePayloads::for_test(
         MetadataRef::new(Catalog::MusicBrainz, "mb-release"),
@@ -371,7 +281,7 @@ fn a_musicbrainz_release_without_a_parent_keeps_it_unknown() {
 fn a_group_link_does_not_invent_a_pressings_parent() {
     let payloads = ReleasePayloads::for_test(
         MetadataRef::new(Catalog::MusicBrainz, "mb-release"),
-        mb_release_with_relations(
+        musicbrainz_release_with_relations(
             "mb-release",
             "mb-group",
             &["https://www.discogs.com/master/909090", "https://www.discogs.com/release/4242"],
@@ -396,7 +306,7 @@ fn a_group_link_does_not_invent_a_pressings_parent() {
 fn the_archived_cross_reference_names_the_discogs_master() {
     let payloads = ReleasePayloads::for_test(
         MetadataRef::new(Catalog::MusicBrainz, "mb-release"),
-        mb_release_with_relations(
+        musicbrainz_release_with_relations(
             "mb-release",
             "mb-group",
             &["https://www.discogs.com/release/4242"],
@@ -428,7 +338,7 @@ fn the_archived_cross_reference_names_the_discogs_master() {
 fn an_archived_wikidata_item_records_the_catalogs_it_identifies() {
     let payloads = ReleasePayloads::for_test(
         MetadataRef::new(Catalog::MusicBrainz, "mb-release"),
-        mb_release_with_relations(
+        musicbrainz_release_with_relations(
             "mb-release",
             "mb-group",
             &["https://www.discogs.com/release/4242"],
@@ -495,7 +405,7 @@ fn an_archived_wikidata_item_records_the_catalogs_it_identifies() {
 fn a_musicbrainz_link_outranks_the_item_on_the_same_catalog() {
     let payloads = ReleasePayloads::for_test(
         MetadataRef::new(Catalog::MusicBrainz, "mb-release"),
-        mb_release_with_relations(
+        musicbrainz_release_with_relations(
             "mb-release",
             "mb-group",
             &["https://open.spotify.com/album/9090909090909090909090"],
@@ -527,7 +437,7 @@ fn a_musicbrainz_link_outranks_the_item_on_the_same_catalog() {
 fn a_partner_outranks_what_the_primary_says_about_its_catalog() {
     let primary = ReleasePayloads::for_test(
         MetadataRef::new(Catalog::MusicBrainz, "mb-release"),
-        mb_release_with_relations(
+        musicbrainz_release_with_relations(
             "mb-release",
             "mb-group",
             &["https://www.discogs.com/release/1111"],
@@ -560,18 +470,6 @@ fn a_partner_outranks_what_the_primary_says_about_its_catalog() {
         "the picked Discogs release outranks the cross-linked one"
     );
     assert_eq!(records[1].album_ref().map(|album| album.key), Some("909090".to_owned()));
-}
-
-async fn test_database() -> (Database, tempfile::TempDir) {
-    let dir = tempfile::TempDir::new().expect("a temp library dir");
-    let path = dir.path().join("test.db");
-    let database = Database::new_test(
-        path.to_str().expect("a UTF-8 temp path"),
-        Arc::new(FixedClock::new((now()).into())),
-    )
-    .await
-    .expect("the test database opens");
-    (database, dir)
 }
 
 fn discogs_release(id: u64, master_id: u64, year: u32) -> serde_json::Value {
@@ -610,47 +508,6 @@ fn a_discogs_release_reaches_its_master_through_the_anchor() {
     assert_eq!(parsed.pressing.year, Some(1985));
 }
 
-/// What Wikidata's item added when the release was fetched is stored with
-/// it, so a commit, a re-identify or a reset reads the same records with
-/// nothing asked of the network.
-#[tokio::test]
-async fn an_items_records_are_stored_with_the_release() {
-    let (database, _dir) = test_database().await;
-    let fetched = ReleasePayloads::for_test(
-        MetadataRef::new(Catalog::MusicBrainz, "offline-mb-release"),
-        mb_release_with_relations("offline-mb-release", "offline-mb-group", &[]).to_string(),
-        vec![
-            SourcePayload::new(
-                PayloadSource::MusicBrainzReleaseGroup,
-                "offline-mb-group",
-                wikidata_linked_release_group("offline-mb-group", "Q424242"),
-            ),
-            SourcePayload::new(PayloadSource::Wikidata, "Q424242", wikidata_item("Q424242")),
-        ],
-    )
-    .extract()
-    .expect("the documents extract");
-    database.save_source_release(&fetched).await.unwrap();
-
-    let stored = database
-        .load_source_release(fetched.release())
-        .await
-        .expect("the stored release reads back")
-        .expect("the release is stored");
-
-    let catalogs: Vec<Catalog> = stored.records().iter().map(|record| record.catalog()).collect();
-    assert_eq!(
-        catalogs,
-        vec![
-            Catalog::MusicBrainz,
-            Catalog::Discogs,
-            Catalog::AllMusic,
-            Catalog::Spotify,
-            Catalog::Wikidata,
-        ]
-    );
-}
-
 /// Fetching a release follows the Wikidata item its MusicBrainz documents
 /// name, which is what lets the records it adds be stored with the release.
 #[tokio::test]
@@ -660,7 +517,7 @@ async fn a_fetch_follows_the_item_musicbrainz_names() {
     let group_id = "archives-item-mb-group";
     providers.musicbrainz().seed_release_cache(
         release_id,
-        mb_release_with_relations(release_id, group_id, &[]).to_string(),
+        musicbrainz_release_with_relations(release_id, group_id, &[]).to_string(),
     );
     providers.musicbrainz().seed_release_group_json_cache(
         group_id,
@@ -709,7 +566,7 @@ async fn an_item_that_will_not_fetch_leaves_the_other_records_standing() {
     let group_id = "missing-item-mb-group";
     providers.musicbrainz().seed_release_cache(
         release_id,
-        mb_release_with_relations(release_id, group_id, &[]).to_string(),
+        musicbrainz_release_with_relations(release_id, group_id, &[]).to_string(),
     );
     providers.musicbrainz().seed_release_group_json_cache(
         group_id,
