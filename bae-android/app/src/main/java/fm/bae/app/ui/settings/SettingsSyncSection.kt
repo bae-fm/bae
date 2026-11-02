@@ -12,6 +12,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
+import fm.bae.app.BaeLogger
 import fm.bae.app.OAuthProviders
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
@@ -25,8 +26,13 @@ import fm.bae.app.ui.components.Eyebrow
 import fm.bae.app.ui.components.LabeledValueRow
 import fm.bae.app.ui.components.PrimaryButton
 import fm.bae.app.ui.library.LibraryDestination
+import fm.bae.app.ui.rememberScreenScope
+import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeDeviceReset
+import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeStorageLocation
+
+private val logger = BaeLogger("bae.SettingsSyncSection")
 
 /**
  * Where the library is stored and how its sync stands: the cloud home's
@@ -87,8 +93,9 @@ internal fun SettingsSyncSection(
 }
 
 /**
- * The status line and, under it, the last failure, with Reset Device, after
- * its warning, where sync found another copy of this device.
+ * The status line and, under it, the last failure, with Reconnect where a
+ * start failed, or Reset Device, after its warning, where sync found another
+ * copy of this device.
  */
 @Composable
 private fun SyncStatus(
@@ -96,10 +103,23 @@ private fun SyncStatus(
     onOpenPending: () -> Unit,
     onResetDevice: (BridgeDeviceReset) -> Unit,
 ) {
+    val scope = rememberScreenScope()
     val line by session.syncStatusStore.line.collectAsState()
     val error by session.syncStatusStore.error.collectAsState()
     SyncStatusLine(line = line, onOpenPending = onOpenPending)
-    SyncFailureNotice(error = error)
+    SyncFailureNotice(
+        error = error,
+        onReconnect = {
+            scope.launch {
+                try {
+                    session.appHandle.reconnectSync()
+                } catch (e: BridgeException) {
+                    // Core records a start that fails again as the status's failure, which the notice shows.
+                    logger.error("Reconnect failed", e)
+                }
+            }
+        },
+    )
     DeviceResetOffer(session = session, error = error, onResetDevice = onResetDevice)
 }
 

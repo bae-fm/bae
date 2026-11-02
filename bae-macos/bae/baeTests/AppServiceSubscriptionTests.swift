@@ -82,7 +82,8 @@ struct SyncStatusSubscriptionTests {
         let synced = BridgeSyncStatusSnapshot(
             error: nil,
             pending: [],
-            indicator: .synced
+            indicator: .synced,
+            reconnectOffered: false
         )
         handle.deliverSyncStatus(synced)
         try await Wait.until { store.line == .read(.synced) }

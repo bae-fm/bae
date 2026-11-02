@@ -2731,7 +2731,13 @@ it has. While Android removes a release's download,
 its control says so in core's words for that transfer.
 
 - **Launching offline.** A failed connect at start-up opens the library with
-  sync not running, and the status line says why. *Reconnect* connects again, or
+  sync not running, and the status line says why, with *Reconnect* under the
+  failure, which starts sync again. Core offers it while a failed start leaves
+  sync stopped with storage set up on this device, and the apps show it
+  where core offers it: a running loop retries a failed pass by itself, and
+  with no storage set up on this device there is nothing to start, so signing
+  in again to the recorded storage is the way back instead. A pending record
+  waiting for storage offers *Reconnect* as well, which connects again, or
   runs the next cycle now when already connected. A start that breaks on a
   bug is reported as one and shows on the line the same way. Why the start
   failed is a row of this device's (`sync_start_failure`), kept until a

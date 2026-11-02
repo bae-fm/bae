@@ -12,11 +12,13 @@ import uniffi.bae_bridge.BridgeSyncIndicator
 import uniffi.bae_bridge.BridgeSyncStatusSnapshot
 
 /**
- * The last sync failure as a person sees it, and whether sync found another
- * copy of this device, which only a reset answers.
+ * The last sync failure as a person sees it, whether Reconnect is offered beside it (core says a start failed and left
+ * sync not running with storage set up on this device), and whether sync found another copy of this device, which only
+ * a reset answers.
  */
 data class SyncFailure(
     val error: DisplayError,
+    val offersReconnect: Boolean,
     val offersDeviceReset: Boolean,
 )
 
@@ -61,6 +63,7 @@ class SyncStatusStore {
                 errors.display(error)?.let { shown ->
                     SyncFailure(
                         shown,
+                        offersReconnect = status.reconnectOffered,
                         offersDeviceReset =
                             (error as? BridgeException.Diagnostic)?.category is BridgeErrorCategory.DeviceResetRequired,
                     )
@@ -72,7 +75,7 @@ class SyncStatusStore {
 
     /** The sync status couldn't be read: the line shows the read's failure until a read succeeds. */
     fun fail(error: DisplayError) {
-        _error.value = SyncFailure(error, offersDeviceReset = false)
+        _error.value = SyncFailure(error, offersReconnect = false, offersDeviceReset = false)
         _line.value = SyncLine.Unreadable
     }
 }

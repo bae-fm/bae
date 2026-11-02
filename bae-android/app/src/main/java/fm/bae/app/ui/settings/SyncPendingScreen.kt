@@ -184,7 +184,10 @@ internal fun SyncPendingScreen(
             modifier = Modifier.padding(horizontal = ThemeSpace.edge),
             verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
         ) {
-            SyncFailureNotice(error = failure)
+            SyncFailureNotice(
+                error = failure,
+                onReconnect = { runner.perform("reconnect sync") { session.appHandle.reconnectSync() } },
+            )
             DeviceResetOffer(session = session, error = failure, onResetDevice = actions.resetDevice)
             runner.signInSteps?.let { StorageSetupLine(it) }
             runner.error?.let { ErrorDetailDisclosure(it) }

@@ -46,6 +46,12 @@ public final class SyncStatusStore {
         }
         return false
     }
+    /// Whether Reconnect is offered beside the failure: core says a start
+    /// failed and left sync not running with storage set up on this device.
+    /// Not after a read failed, whose snapshot may no longer stand.
+    public var offersReconnect: Bool {
+        readError == nil && snapshot?.reconnectOffered == true
+    }
     /// The one line sync shows: what sync is doing, or "Waiting: 3 items";
     /// none with no storage set up on this device, which has no sync to
     /// describe.

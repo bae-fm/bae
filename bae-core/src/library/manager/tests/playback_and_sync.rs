@@ -466,6 +466,33 @@ async fn reconnect_sync_clears_the_failure_it_retries() {
     manager.close().await.unwrap();
 }
 
+/// A launch whose start failed with storage set up on this device, here
+/// because this session forgot the store keys, leaves sync not running and
+/// offers Reconnect beside why. Without storage set up on this device, as
+/// when its credentials are gone, a failed start offers no Reconnect: there
+/// is no sync to start, and signing in again is the way back.
+#[tokio::test]
+async fn only_a_failed_start_with_storage_set_up_offers_reconnect() {
+    let (manager, temp) = setup_test_manager().await;
+    connect_test_cloud(&manager).await;
+    manager.forget_encryption_key().await.unwrap();
+    manager.start().unwrap();
+    manager.attach_and_start_sync_at_startup().await;
+    let status = manager.sync_status().await.unwrap();
+    assert!(matches!(status.status, coven::SyncStatus::Stopped), "{status:?}");
+    assert!(status.error.is_some(), "the failed start is recorded: {status:?}");
+    assert!(status.reconnect_offered(), "{status:?}");
+
+    let manager = reopen_without_credentials(manager, &temp).await;
+    manager.start().unwrap();
+    manager.installation.fail_next_keychain_operation();
+    manager.attach_and_start_sync_at_startup().await;
+    let status = manager.sync_status().await.unwrap();
+    assert!(status.error.is_some(), "the failed start is recorded: {status:?}");
+    assert!(!status.reconnect_offered(), "{status:?}");
+    manager.close().await.unwrap();
+}
+
 /// Work asked of a closed library starts nothing, and the caller hears so
 /// rather than a log line: starting sync after close is refused.
 #[tokio::test]

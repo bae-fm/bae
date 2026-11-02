@@ -2,6 +2,8 @@ package fm.bae.app.ui.settings
 
 import android.content.Context
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.icons.Icons
@@ -27,6 +29,7 @@ import fm.bae.app.data.SyncFailure
 import fm.bae.app.data.SyncLine
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.DeviceResetDialog
+import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.components.Notice
 import fm.bae.app.ui.components.StatusTone
@@ -87,12 +90,26 @@ private fun syncIndicatorText(
     }
 }
 
-/** The last sync failure, under the status line, with its details to copy. */
+/**
+ * The last sync failure, under the status line, with its details to copy, and Reconnect where core offers it: a start
+ * failed and left sync not running.
+ */
 @Composable
-internal fun SyncFailureNotice(error: SyncFailure?) {
+internal fun SyncFailureNotice(
+    error: SyncFailure?,
+    onReconnect: () -> Unit,
+) {
     if (error == null) return
+    val context = LocalContext.current
     Notice(StatusTone.WARNING) {
-        ErrorDetailDisclosure(error = error.error, lineColor = LocalContentColor.current)
+        Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
+            ErrorDetailDisclosure(error = error.error, lineColor = LocalContentColor.current)
+            if (error.offersReconnect) {
+                OutlinedButton(onClick = onReconnect) {
+                    Text(context.coreString("core.pending.action.reconnect"))
+                }
+            }
+        }
     }
 }
 

@@ -341,16 +341,22 @@ pub struct BridgeSyncStatusSnapshot {
     /// lost this device's credentials for it: the app offers signing in to
     /// that location again.
     pub indicator: Option<BridgeSyncIndicator>,
+    /// Whether the app offers Reconnect beside `error`: a start failed and
+    /// left sync not running with storage set up on this device.
+    /// `AppHandle::reconnect_sync` starts it again.
+    pub reconnect_offered: bool,
 }
 
 impl BridgeSyncStatusSnapshot {
     pub(crate) fn from_core(snapshot: bae_core::library::SyncStatusSnapshot) -> Self {
         let indicator = snapshot.indicator().map(crate::types::BridgeSyncIndicator::from_core);
         let error = snapshot.shown_failure();
+        let reconnect_offered = snapshot.reconnect_offered();
         let bae_core::library::SyncStatusSnapshot { status: _, pending, error: _, retry_effect: _ } =
             snapshot;
         Self {
             indicator,
+            reconnect_offered,
             error: error.map(crate::types::BridgeError::from_core),
             pending: pending
                 .into_iter()

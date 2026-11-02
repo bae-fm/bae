@@ -2,6 +2,9 @@ package fm.bae.app.ui.settings
 
 import android.app.Application
 import android.content.ClipboardManager
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -32,8 +35,10 @@ class SyncFailureNoticeTest {
                     error =
                         SyncFailure(
                             DisplayError("Update the app to continue syncing."),
+                            offersReconnect = false,
                             offersDeviceReset = false,
                         ),
+                    onReconnect = {},
                 )
             }
         }
@@ -51,8 +56,10 @@ class SyncFailureNoticeTest {
                     error =
                         SyncFailure(
                             DisplayError("Couldn't reach the network.", detail),
+                            offersReconnect = false,
                             offersDeviceReset = false,
                         ),
+                    onReconnect = {},
                 )
             }
         }
@@ -72,10 +79,36 @@ class SyncFailureNoticeTest {
         )
     }
 
+    /** A start that failed offers Reconnect beside why, and pressing it reconnects; another failure offers none. */
+    @Test
+    fun aFailedStartOffersReconnect() {
+        var offered by mutableStateOf(true)
+        var reconnects = 0
+        compose.setContent {
+            BaeTheme {
+                SyncFailureNotice(
+                    error =
+                        SyncFailure(
+                            DisplayError("Sync couldn't start."),
+                            offersReconnect = offered,
+                            offersDeviceReset = false,
+                        ),
+                    onReconnect = { reconnects++ },
+                )
+            }
+        }
+
+        compose.onNodeWithText("Reconnect").performClick()
+        assertEquals(1, reconnects)
+
+        offered = false
+        compose.onNodeWithText("Reconnect").assertDoesNotExist()
+    }
+
     @Test
     fun withoutAFailureShowsNothing() {
         compose.setContent {
-            BaeTheme { SyncFailureNotice(error = null) }
+            BaeTheme { SyncFailureNotice(error = null, onReconnect = {}) }
         }
 
         compose.onNodeWithContentDescription("Copy details").assertDoesNotExist()

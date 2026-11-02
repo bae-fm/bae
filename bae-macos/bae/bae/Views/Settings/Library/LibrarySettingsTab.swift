@@ -218,7 +218,8 @@ private struct UploadPauseToggle: View {
                 snapshot: BridgeSyncStatusSnapshot(
                     error: nil,
                     pending: [],
-                    indicator: indicator
+                    indicator: indicator,
+                    reconnectOffered: false
                 )
             )
         )

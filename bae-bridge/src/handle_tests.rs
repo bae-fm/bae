@@ -546,6 +546,25 @@ fn a_healthy_sync_status_crosses_without_an_error() {
 
     assert!(bridge.error.is_none());
     assert_eq!(bridge.indicator, Some(crate::types::BridgeSyncIndicator::Synced));
+    assert!(!bridge.reconnect_offered);
+}
+
+/// A start that failed with storage set up crosses with why and with
+/// Reconnect offered beside it.
+#[test]
+fn a_failed_start_crosses_offering_reconnect() {
+    let snapshot = bae_core::library::SyncStatusSnapshot {
+        error: Some(bae_core::diagnostics::UiError::internal("the store key is missing")),
+        status: coven::SyncStatus::Stopped,
+        pending: Vec::new(),
+        retry_effect: coven::RetryEffect::NotSyncing,
+    };
+
+    let bridge = crate::types::BridgeSyncStatusSnapshot::from_core(snapshot);
+
+    assert_eq!(bridge.indicator, Some(crate::types::BridgeSyncIndicator::Failed));
+    assert!(bridge.error.is_some());
+    assert!(bridge.reconnect_offered);
 }
 
 /// The status line shows a failure the connection's pending record shows

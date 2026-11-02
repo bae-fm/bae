@@ -30,7 +30,18 @@ class SyncStatusStoreTest {
 
         sync.apply(status(error = failure), errors)
 
-        assertEquals(SyncFailure(shown(failure), offersDeviceReset = false), sync.error.value)
+        assertEquals(SyncFailure(shown(failure), offersReconnect = false, offersDeviceReset = false), sync.error.value)
+    }
+
+    /** A start that failed with storage set up offers Reconnect beside why, as core says. */
+    @Test
+    fun aFailedStartOffersReconnect() {
+        val sync = SyncStatusStore()
+        val start = BridgeException.Diagnostic(BridgeErrorCategory.Membership, "the store key is missing")
+
+        sync.apply(status(error = start, indicator = BridgeSyncIndicator.Failed, reconnectOffered = true), errors)
+
+        assertEquals(SyncFailure(shown(start), offersReconnect = true, offersDeviceReset = false), sync.error.value)
     }
 
     @Test
@@ -49,7 +60,7 @@ class SyncStatusStoreTest {
 
         sync.apply(status(error = copy), errors)
 
-        assertEquals(SyncFailure(shown(copy), offersDeviceReset = true), sync.error.value)
+        assertEquals(SyncFailure(shown(copy), offersReconnect = false, offersDeviceReset = true), sync.error.value)
     }
 
     @Test
@@ -73,7 +84,7 @@ class SyncStatusStoreTest {
 
         sync.fail(read)
         assertEquals(SyncLine.Unreadable, sync.line.value)
-        assertEquals(SyncFailure(read, offersDeviceReset = false), sync.error.value)
+        assertEquals(SyncFailure(read, offersReconnect = false, offersDeviceReset = false), sync.error.value)
 
         sync.apply(status(error = null), errors)
         assertEquals(SyncLine.Read(BridgeSyncIndicator.Synced), sync.line.value)
@@ -85,9 +96,11 @@ class SyncStatusStoreTest {
     private fun status(
         error: BridgeException?,
         indicator: BridgeSyncIndicator? = BridgeSyncIndicator.Synced,
+        reconnectOffered: Boolean = false,
     ) = BridgeSyncStatusSnapshot(
         error = error,
         pending = emptyList(),
         indicator = indicator,
+        reconnectOffered = reconnectOffered,
     )
 }

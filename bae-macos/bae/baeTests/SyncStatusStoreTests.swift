@@ -47,7 +47,8 @@ struct SyncStatusStoreTests {
             BridgeSyncStatusSnapshot(
                 error: .Diagnostic(category: .internal, detail: fault),
                 pending: [],
-                indicator: nil
+                indicator: nil,
+                reconnectOffered: false
             )
         )
 
@@ -85,7 +86,8 @@ struct SyncStatusStoreTests {
             BridgeSyncStatusSnapshot(
                 error: nil,
                 pending: [record],
-                indicator: .waiting(items: 1)
+                indicator: .waiting(items: 1),
+                reconnectOffered: false
             )
         )
 
@@ -115,6 +117,37 @@ struct SyncStatusStoreTests {
         #expect(sync.error == nil)
     }
 
+    /// A start that failed with storage set up offers Reconnect beside why,
+    /// as core says; a read that fails withdraws it with the snapshot.
+    @MainActor
+    @Test("a failed start offers Reconnect while its status stands")
+    func failedStartOffersReconnect() {
+        let sync = SyncStatusStore()
+        sync.apply(status(indicator: .synced))
+        #expect(!sync.offersReconnect)
+
+        sync.apply(
+            BridgeSyncStatusSnapshot(
+                error: .Diagnostic(
+                    category: .membership,
+                    detail: "the store key is missing"
+                ),
+                pending: [],
+                indicator: .failed,
+                reconnectOffered: true
+            )
+        )
+        #expect(sync.offersReconnect)
+
+        sync.fail(
+            BridgeError.Diagnostic(
+                category: .database,
+                detail: "the read failed"
+            )
+        )
+        #expect(!sync.offersReconnect)
+    }
+
     @MainActor
     @Test("a required app update renders its line")
     func requiredUpdateRendersItsLine() throws {
@@ -126,7 +159,8 @@ struct SyncStatusStoreTests {
                     detail: "schema 17 required"
                 ),
                 pending: [],
-                indicator: .synced
+                indicator: .synced,
+                reconnectOffered: false
             )
         )
         #expect(
@@ -141,7 +175,8 @@ struct SyncStatusStoreTests {
         BridgeSyncStatusSnapshot(
             error: nil,
             pending: [],
-            indicator: indicator
+            indicator: indicator,
+            reconnectOffered: false
         )
     }
 

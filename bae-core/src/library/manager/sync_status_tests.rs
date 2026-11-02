@@ -218,6 +218,23 @@ fn with_no_storage_on_this_device_the_line_names_nothing() {
     assert_eq!(status.indicator(), None);
 }
 
+/// Reconnect is offered where a failed start left sync not running with
+/// storage set up, and nowhere else: not without a failed start, not while
+/// a loop runs, and not with no storage on this device to start sync with.
+#[test]
+fn only_a_failed_start_with_storage_set_up_offers_reconnect() {
+    let start_failed = || Some(UiError::internal("the store key is missing"));
+    let offered = |status, error| {
+        read(status, Vec::new(), coven::RetryEffect::NotSyncing, error).reconnect_offered()
+    };
+    assert!(offered(coven::SyncStatus::Stopped, start_failed()));
+    assert!(!offered(coven::SyncStatus::Stopped, None));
+    assert!(!offered(coven::SyncStatus::Disconnected, start_failed()));
+    assert!(!offered(coven::SyncStatus::Syncing, start_failed()));
+    assert!(!offered(offline(), start_failed()));
+    assert!(!offered(synced(), start_failed()));
+}
+
 fn record(reason: coven::PendingReason) -> coven::PendingRecord {
     coven::PendingRecord::new(coven::PendingSubject::Connection, reason)
 }
