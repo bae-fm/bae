@@ -83,6 +83,7 @@ pub async fn start_library_services(
     let queue_tables = crate::db::PlaybackQueueTables::new(database.clone());
     let now_row = crate::db::PlaybackNowRow::new(database.clone());
     let timeline_row = crate::db::PlaybackTimelineRow::new(database.clone());
+    let track_deletions = manager.subscribe_track_deletions();
     let views = crate::library::views::LibraryViews::new(database.clone());
     let playback = match playback_output {
         PlaybackOutput::System(audio_focus) => crate::playback::PlaybackService::start(
@@ -90,6 +91,7 @@ pub async fn start_library_services(
             queue_tables,
             now_row,
             timeline_row,
+            track_deletions,
             diagnostics.clone(),
             runtime_handle.clone(),
             position_update_interval_ms,
@@ -104,6 +106,7 @@ pub async fn start_library_services(
                 queue_tables,
                 now_row,
                 timeline_row,
+                track_deletions,
                 diagnostics.clone(),
                 runtime_handle.clone(),
                 position_update_interval_ms,

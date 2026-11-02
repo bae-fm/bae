@@ -371,11 +371,13 @@ async fn start_capture_service_with_restore(
         .settle_playback_queue(restore_playback)
         .await
         .expect("settle the playback queue");
+    let track_deletions = library_manager.subscribe_track_deletions();
     let handle = bae_core::playback::PlaybackService::start_with_audio_device(
         library_manager,
         bae_core::db::PlaybackQueueTables::new(database.clone()),
         bae_core::db::PlaybackNowRow::new(database.clone()),
         bae_core::db::PlaybackTimelineRow::new(database.clone()),
+        track_deletions,
         bae_core::diagnostics::Diagnostics::noop(),
         runtime_handle,
         100,

@@ -261,6 +261,7 @@ async fn test_cue_flac_decoded_duration_matches_cue_timing() {
         bae_core::db::PlaybackQueueTables::new(database.clone()),
         bae_core::db::PlaybackNowRow::new(database.clone()),
         bae_core::db::PlaybackTimelineRow::new(database.clone()),
+        library_manager.subscribe_track_deletions(),
         bae_core::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
         100,

@@ -193,6 +193,7 @@ impl TestLibrary {
             crate::db::PlaybackQueueTables::new(self.database.clone()),
             crate::db::PlaybackNowRow::new(self.database.clone()),
             crate::db::PlaybackTimelineRow::new(self.database.clone()),
+            self.manager.subscribe_track_deletions(),
             self.diagnostics.clone(),
             tokio::runtime::Handle::current(),
             position_update_interval_ms,

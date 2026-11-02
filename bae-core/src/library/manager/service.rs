@@ -384,9 +384,7 @@ impl LibraryManager {
 
     /// Every deletion of tracks from now on, none dropped, as the ids each
     /// deleted.
-    pub(crate) fn subscribe_track_deletions(
-        &self,
-    ) -> tokio::sync::mpsc::UnboundedReceiver<Vec<String>> {
+    pub fn subscribe_track_deletions(&self) -> tokio::sync::mpsc::UnboundedReceiver<Vec<String>> {
         let (reader, deletions) = tokio::sync::mpsc::unbounded_channel();
         self.track_deletions.lock().unwrap().push(reader);
         deletions

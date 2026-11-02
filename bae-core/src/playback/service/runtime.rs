@@ -600,13 +600,16 @@ impl PlaybackService {
     /// `clock` is the service's time source for side-pause countdowns;
     /// production passes one over the library's wall clock. `audio_focus` is
     /// how the platform shares the speaker, asked before every start. Playback
-    /// changes the queue through `queue_tables` and writes what it is doing
-    /// and where it is into `now_row` and `timeline_row`.
+    /// changes the queue through `queue_tables`, writes what it is doing
+    /// and where it is into `now_row` and `timeline_row`, and lets go of a
+    /// track `track_deletions` names. Take `track_deletions` before the
+    /// library can delete anything, so no deletion goes unheard.
     pub fn start(
         library_manager: LibraryManager,
         queue_tables: crate::db::PlaybackQueueTables,
         now_row: crate::db::PlaybackNowRow,
         timeline_row: crate::db::PlaybackTimelineRow,
+        track_deletions: tokio_mpsc::UnboundedReceiver<Vec<String>>,
         diagnostics: Diagnostics,
         runtime_handle: tokio::runtime::Handle,
         position_update_interval_ms: u32,
@@ -619,6 +622,7 @@ impl PlaybackService {
             queue_tables,
             now_row,
             timeline_row,
+            track_deletions,
             diagnostics,
             runtime_handle,
             position_update_interval_ms,
@@ -638,6 +642,7 @@ impl PlaybackService {
         queue_tables: crate::db::PlaybackQueueTables,
         now_row: crate::db::PlaybackNowRow,
         timeline_row: crate::db::PlaybackTimelineRow,
+        track_deletions: tokio_mpsc::UnboundedReceiver<Vec<String>>,
         diagnostics: Diagnostics,
         runtime_handle: tokio::runtime::Handle,
         position_update_interval_ms: u32,
@@ -650,6 +655,7 @@ impl PlaybackService {
             queue_tables,
             now_row,
             timeline_row,
+            track_deletions,
             diagnostics,
             runtime_handle,
             position_update_interval_ms,
@@ -666,6 +672,7 @@ impl PlaybackService {
         queue_tables: crate::db::PlaybackQueueTables,
         now_row: crate::db::PlaybackNowRow,
         timeline_row: crate::db::PlaybackTimelineRow,
+        track_deletions: tokio_mpsc::UnboundedReceiver<Vec<String>>,
         diagnostics: Diagnostics,
         runtime_handle: tokio::runtime::Handle,
         position_update_interval_ms: u32,
@@ -687,8 +694,6 @@ impl PlaybackService {
             diagnostics.clone(),
         );
         let playback_queue = PlaybackQueue::new(queue_tables);
-        // Taken before the service runs, so no deletion lands unheard between.
-        let track_deletions = library_manager.subscribe_track_deletions();
         let progress_handle_for_completion = progress_handle.clone();
         let worker =
             WorkerThread::spawn("playback service thread", move |command_tx, command_rx| {
