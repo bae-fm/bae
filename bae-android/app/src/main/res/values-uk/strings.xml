@@ -79,6 +79,7 @@
     <string name="library_mode_composers">Композитори</string>
     <string name="library_mode_albums">Альбоми</string>
     <string name="library_mode_artists">Виконавці</string>
+    <string name="library_switch_view">Змінити подання</string>
     <string name="library_empty_artists">Немає виконавців</string>
     <string name="album_count">%1$d альбомів</string>
     <string name="artist_detail_load_failed">Не вдалося завантажити цього виконавця.</string>

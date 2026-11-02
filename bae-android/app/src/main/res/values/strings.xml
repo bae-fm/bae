@@ -110,6 +110,7 @@
     <string name="library_mode_composers">Composers</string>
     <string name="library_mode_albums">Albums</string>
     <string name="library_mode_artists">Artists</string>
+    <string name="library_switch_view">Switch view</string>
     <string name="library_empty_artists">No artists</string>
     <string name="album_count">%1$d Albums</string>
     <string name="artist_detail_load_failed">Couldn\'t load this artist.</string>

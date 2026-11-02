@@ -83,6 +83,7 @@
     <string name="library_mode_composers">Säveltäjät</string>
     <string name="library_mode_albums">Albumit</string>
     <string name="library_mode_artists">Esittäjät</string>
+    <string name="library_switch_view">Vaihda näkymää</string>
     <string name="library_empty_artists">Ei esittäjiä</string>
     <string name="album_count">%1$d albumia</string>
     <string name="artist_detail_load_failed">Tätä esittäjää ei voitu ladata.</string>

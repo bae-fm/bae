@@ -83,6 +83,7 @@
     <string name="library_mode_composers">Zeneszerzők</string>
     <string name="library_mode_albums">Albumok</string>
     <string name="library_mode_artists">Előadók</string>
+    <string name="library_switch_view">Nézet váltása</string>
     <string name="library_empty_artists">Nincs előadó</string>
     <string name="album_count">%1$d album</string>
     <string name="artist_detail_load_failed">Ezt az előadót nem sikerült betölteni.</string>

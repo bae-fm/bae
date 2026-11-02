@@ -1,0 +1,64 @@
+package fm.bae.app.ui.library
+
+import android.app.Application
+import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import fm.bae.app.ui.BaeTheme
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [35], application = Application::class)
+class LibraryHeaderTest {
+    @get:Rule
+    val compose = createComposeRule()
+
+    private fun showHeader(state: LibraryBrowserState) {
+        compose.setContent {
+            BaeTheme {
+                LibraryHeader(
+                    state = state,
+                    collapse = { 0f },
+                    onShuffleLibrary = {},
+                    onSettings = {},
+                    syncActivity = {},
+                )
+            }
+        }
+    }
+
+    @Test
+    fun theHeadingsMenuSwitchesViews() {
+        val state = LibraryBrowserState()
+        showHeader(state)
+
+        compose.onNodeWithText("Albums").performClick()
+        assertEquals(LibraryHeaderMenu.VIEWS, state.openMenu)
+        compose.onNodeWithText("Artists").performClick()
+
+        assertEquals(LibraryBrowserMode.ARTISTS, state.mode)
+        assertNull(state.openMenu)
+        compose.onNodeWithText("Artists").assertExists()
+        compose.onNodeWithText("Albums").assertDoesNotExist()
+    }
+
+    @Test
+    fun theHeadingFollowsTheScrollThroughTheFirstStretch() {
+        assertEquals(0f, headingCollapse(firstIndex = 0, firstOffset = 0, distance = 100f, scrolling = true))
+        assertEquals(0.3f, headingCollapse(firstIndex = 0, firstOffset = 30, distance = 100f, scrolling = true))
+        assertEquals(1f, headingCollapse(firstIndex = 0, firstOffset = 140, distance = 100f, scrolling = true))
+        assertEquals(1f, headingCollapse(firstIndex = 3, firstOffset = 0, distance = 100f, scrolling = true))
+    }
+
+    @Test
+    fun aScrollThatStopsPartWayLeavesTheHeadingAtTheNearerSize() {
+        assertEquals(0f, headingCollapse(firstIndex = 0, firstOffset = 30, distance = 100f, scrolling = false))
+        assertEquals(1f, headingCollapse(firstIndex = 0, firstOffset = 70, distance = 100f, scrolling = false))
+    }
+}

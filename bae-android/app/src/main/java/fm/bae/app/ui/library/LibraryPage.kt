@@ -1,19 +1,24 @@
 package fm.bae.app.ui.library
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.snapshotFlow
 import fm.bae.app.OpenLibrary
+import fm.bae.app.R
 import fm.bae.app.data.AlbumPageStore
 import kotlinx.coroutines.flow.distinctUntilChanged
 import uniffi.bae_bridge.BridgeSortCriterion
 
-internal enum class LibraryBrowserMode {
-    ALBUMS,
-    COMPOSERS,
-    ARTISTS,
+/** The library's views, in the order the heading's menu lists them. */
+internal enum class LibraryBrowserMode(
+    @StringRes val label: Int,
+) {
+    ALBUMS(R.string.library_mode_albums),
+    ARTISTS(R.string.library_mode_artists),
+    COMPOSERS(R.string.library_mode_composers),
 }
 
 /** Reports the album grid's parameters and visible rows to the session-owned

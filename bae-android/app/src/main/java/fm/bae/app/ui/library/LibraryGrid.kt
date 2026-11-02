@@ -19,6 +19,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
@@ -40,8 +41,8 @@ import fm.bae.app.ui.components.CoverImage
 import uniffi.bae_bridge.BridgeAlbum
 import uniffi.bae_bridge.BridgeLibraryBrowseSection
 
-// Enough fixture albums to fill several grid rows in the screenshot scene.
-private const val SCENE_ALBUM_COUNT = 9
+// Enough fixture albums to fill the screen below the scrolled scene's first row.
+private const val SCENE_ALBUM_COUNT = 24
 
 @Composable
 internal fun LibraryGridContent(
@@ -124,24 +125,43 @@ private fun LazyGridScope.albumItems(
 }
 
 /**
- * The `library-grid` screenshot scene: fixture albums with empty cover tiles in
- * the app chrome, needing no session.
+ * The library home screenshot scenes: the header over fixture albums with empty
+ * cover tiles, in the app chrome, needing no session. The grid starts at
+ * [firstAlbum], and [openMenu] shows that header menu open.
  */
 @Composable
-internal fun LibraryGridScene() {
+internal fun LibraryGridScene(
+    firstAlbum: Int,
+    openMenu: LibraryHeaderMenu?,
+) {
     BaeAppChrome {
-        LibraryGridSceneAlbums()
+        val state = remember { LibraryBrowserState().apply { this.openMenu = openMenu } }
+        val gridState = rememberLazyGridState(initialFirstVisibleItemIndex = firstAlbum)
+        val collapse = rememberHeadingCollapse(gridState)
+        Column(modifier = Modifier.fillMaxSize()) {
+            LibraryHeader(
+                state = state,
+                collapse = { collapse.value },
+                onShuffleLibrary = {},
+                onSettings = {},
+                syncActivity = {},
+            )
+            LibraryGridSceneAlbums(gridState)
+        }
     }
 }
 
-/** The library grid scene's albums, with no cover resolved: what other scenes show behind them. */
+/**
+ * The library scenes' albums, with no cover resolved, scrolled by [gridState];
+ * the mini player's scenes show them above the bar.
+ */
 @Composable
-internal fun LibraryGridSceneAlbums() {
+internal fun LibraryGridSceneAlbums(gridState: LazyGridState) {
     CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
         LibraryGridBacking(
             count = SCENE_ALBUM_COUNT,
             albumAt = { i -> PreviewData.album(id = "alb-$i", title = "Album ${i + 1}") },
-            gridState = rememberLazyGridState(),
+            gridState = gridState,
             onSelectAlbum = {},
         )
     }
@@ -150,7 +170,7 @@ internal fun LibraryGridSceneAlbums() {
 @Preview(showBackground = true)
 @Composable
 private fun LibraryGridScenePreview() {
-    LibraryGridScene()
+    LibraryGridScene(firstAlbum = 0, openMenu = null)
 }
 
 @Composable

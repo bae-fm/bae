@@ -83,6 +83,7 @@
     <string name="library_mode_composers">Συνθέτες</string>
     <string name="library_mode_albums">Άλμπουμ</string>
     <string name="library_mode_artists">Καλλιτέχνες</string>
+    <string name="library_switch_view">Αλλαγή προβολής</string>
     <string name="library_empty_artists">Κανένας καλλιτέχνης</string>
     <string name="album_count">%1$d άλμπουμ</string>
     <string name="artist_detail_load_failed">Δεν ήταν δυνατή η φόρτωση αυτού του καλλιτέχνη.</string>

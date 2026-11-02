@@ -79,6 +79,7 @@
     <string name="library_mode_composers">作曲者</string>
     <string name="library_mode_albums">アルバム</string>
     <string name="library_mode_artists">アーティスト</string>
+    <string name="library_switch_view">表示を切り替える</string>
     <string name="library_empty_artists">アーティストがいません</string>
     <string name="album_count">%1$d枚のアルバム</string>
     <string name="artist_detail_load_failed">このアーティストを読み込めませんでした。</string>

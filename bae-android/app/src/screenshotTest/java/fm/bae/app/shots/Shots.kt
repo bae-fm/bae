@@ -24,6 +24,7 @@ import fm.bae.app.ui.appearance.AppearanceStore
 import fm.bae.app.ui.appearance.SurfaceTone
 import fm.bae.app.ui.library.ErrorBanner
 import fm.bae.app.ui.library.LibraryGridScene
+import fm.bae.app.ui.library.LibraryHeaderMenu
 import fm.bae.app.ui.onboarding.WelcomeScene
 import fm.bae.app.ui.playback.FullPlayerScene
 import fm.bae.app.ui.playback.MiniPlayerScene
@@ -37,7 +38,8 @@ import fm.bae.app.ui.sync.SyncActivityList
 // composition from the production UI (defined in main next to its @Preview) in
 // the app chrome — never a capture-only re-layout. Rendered at a current phone
 // size, with additional light and tinted appearance captures. Function name ⇒ scene id:
-//   Welcome ⇒ welcome, LibraryGrid ⇒ library-grid, AlbumDetail ⇒ album-detail.
+//   Welcome ⇒ welcome, LibraryGrid ⇒ library-grid, LibraryGridScrolled ⇒
+//   library-grid-scrolled, LibraryViewMenu ⇒ library-view-menu, AlbumDetail ⇒ album-detail.
 
 private const val PHONE_SPEC = "spec:width=411dp,height=914dp,dpi=420"
 
@@ -47,10 +49,25 @@ fun Welcome() {
     WelcomeScene()
 }
 
+/** The library home at the top of the list: the full heading. */
 @Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
 fun LibraryGrid() {
-    LibraryGridScene()
+    LibraryGridScene(firstAlbum = 0, openMenu = null)
+}
+
+/** Scrolled down the grid: the heading in the slim bar. */
+@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun LibraryGridScrolled() {
+    LibraryGridScene(firstAlbum = 6, openMenu = null)
+}
+
+/** The heading's menu of views open. */
+@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun LibraryViewMenu() {
+    LibraryGridScene(firstAlbum = 0, openMenu = LibraryHeaderMenu.VIEWS)
 }
 
 @Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
@@ -68,7 +85,7 @@ fun WelcomeLight() {
 @Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_NO)
 @Composable
 fun LibraryGridLight() {
-    LibraryGridScene()
+    LibraryGridScene(firstAlbum = 0, openMenu = null)
 }
 
 @Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_NO)

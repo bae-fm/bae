@@ -79,6 +79,7 @@
     <string name="library_mode_composers">المؤلفون</string>
     <string name="library_mode_albums">الألبومات</string>
     <string name="library_mode_artists">الفنانون</string>
+    <string name="library_switch_view">تبديل العرض</string>
     <string name="library_empty_artists">لا يوجد فنانون</string>
     <string name="album_count">%1$d ألبومات</string>
     <string name="artist_detail_load_failed">تعذر تحميل هذا الفنان.</string>

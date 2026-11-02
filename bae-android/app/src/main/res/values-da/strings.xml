@@ -83,6 +83,7 @@
     <string name="library_mode_composers">Komponister</string>
     <string name="library_mode_albums">Album</string>
     <string name="library_mode_artists">Kunstnere</string>
+    <string name="library_switch_view">Skift visning</string>
     <string name="library_empty_artists">Ingen kunstnere</string>
     <string name="album_count">%1$d album</string>
     <string name="artist_detail_load_failed">Denne kunstner kunne ikke indlæses.</string>

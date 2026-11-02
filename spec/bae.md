@@ -197,6 +197,13 @@ artist's albums in the grid's sort. The artist list shows every artist an
 album's credits show, sorted by name or album count, ties going by name and
 then id.
 
+**Browsing.** The library shows one view at a time: albums, artists or
+composers. The view's name heads the page, and its menu switches views. At the
+top of the list the heading is full size; as the list scrolls it shrinks into a
+slim bar pinned above it, and a scroll that stops part way leaves it at the
+nearer size. On Android, the heading's end holds Search, Shuffle library, the
+view's sort menu, the sync activity indicator (§6.4) and Settings.
+
 A release has tracks, a cover, and the files its tracks play from. Its pressing
 facts are typed values in bae's own vocabulary (Appendix H), read from what the
 catalogs state, so a surface shows one shape whichever catalog stated them.

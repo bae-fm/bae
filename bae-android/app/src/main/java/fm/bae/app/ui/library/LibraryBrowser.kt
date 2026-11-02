@@ -5,20 +5,17 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.grid.LazyGridState
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.OpenLibrary
-import fm.bae.app.data.SyncActivityStore
-import fm.bae.app.ui.BaeTheme
-import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.playback.NowPlayingBar
-import fm.bae.fastvalues.LatestSource
+import fm.bae.app.ui.sync.SyncActivityButton
 import uniffi.bae_bridge.BridgeArtistSortCriterion
 import uniffi.bae_bridge.BridgeArtistSortField
 import uniffi.bae_bridge.BridgeComposerSortCriterion
@@ -26,7 +23,6 @@ import uniffi.bae_bridge.BridgeComposerSortField
 import uniffi.bae_bridge.BridgeSortCriterion
 import uniffi.bae_bridge.BridgeSortDirection
 import uniffi.bae_bridge.BridgeSortField
-import uniffi.bae_bridge.BridgeUploadTransfer
 
 private val DEFAULT_ALBUM_SORT =
     BridgeSortCriterion(BridgeSortField.DATE_ADDED, BridgeSortDirection.DESCENDING)
@@ -36,18 +32,22 @@ private val DEFAULT_ARTIST_SORT =
     BridgeArtistSortCriterion(BridgeArtistSortField.NAME, BridgeSortDirection.ASCENDING)
 
 /**
- * Browser chrome state, owned above the stack in [LibraryScreen] so tab, sort,
- * search, and grid scroll survive while a pushed destination hides the browser.
+ * Browser chrome state: the view, its sort, search, which header menu is open,
+ * and each view's scroll. Owned above the stack in [LibraryScreen] so they
+ * survive while a pushed destination hides the browser.
  */
 internal class LibraryBrowserState {
     var searchOpen by mutableStateOf(false)
     var searchQuery by mutableStateOf("")
     var mode by mutableStateOf(LibraryBrowserMode.ALBUMS)
+    var openMenu by mutableStateOf<LibraryHeaderMenu?>(null)
     var sortCriterion by mutableStateOf(DEFAULT_ALBUM_SORT)
     var groupAlbumsByArtist by mutableStateOf(false)
     var composerSortCriterion by mutableStateOf(DEFAULT_COMPOSER_SORT)
     var artistSortCriterion by mutableStateOf(DEFAULT_ARTIST_SORT)
     val gridState = LazyGridState()
+    val artistListState = LazyListState()
+    val composerListState = LazyListState()
 
     fun closeSearch() {
         searchOpen = false
@@ -55,7 +55,6 @@ internal class LibraryBrowserState {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun LibraryBrowser(
     session: OpenLibrary,
@@ -70,41 +69,35 @@ internal fun LibraryBrowser(
 ) {
     BackHandler(enabled = state.searchOpen) { state.closeSearch() }
     Column(modifier = Modifier.fillMaxSize()) {
-        LibraryBrowserChrome(
-            searchOpen = state.searchOpen,
-            searchQuery = state.searchQuery,
-            onSearchQueryChange = { state.searchQuery = it },
-            onOpenSearch = { state.searchOpen = true },
-            onCloseSearch = state::closeSearch,
-            mode = state.mode,
-            onModeChange = { state.mode = it },
-            sortCriterion = state.sortCriterion,
-            onSortChange = { state.sortCriterion = it },
-            groupAlbumsByArtist = state.groupAlbumsByArtist,
-            onGroupAlbumsByArtistChange = { state.groupAlbumsByArtist = it },
-            composerSortCriterion = state.composerSortCriterion,
-            onComposerSortChange = { state.composerSortCriterion = it },
-            artistSortCriterion = state.artistSortCriterion,
-            onArtistSortChange = { state.artistSortCriterion = it },
-            onShuffleLibrary = {
-                session.messages.perform("play the library shuffled") { session.appHandle.playLibraryShuffled() }
-            },
-            syncActivity = session.syncActivityStore,
-            uploadTransfer = session.outboxStore.totalProgress,
-            onOpenSyncSettings = onSyncStatus,
-            onOpenDownloads = onDownloads,
-            onSettings = onSettings,
-        )
+        if (state.searchOpen) {
+            LibrarySearchBar(
+                query = state.searchQuery,
+                onQueryChange = { state.searchQuery = it },
+                onClose = state::closeSearch,
+            )
+        } else {
+            val collapse = rememberHeadingCollapse(state)
+            LibraryHeader(
+                state = state,
+                collapse = { collapse.value },
+                onShuffleLibrary = {
+                    session.messages.perform("play the library shuffled") { session.appHandle.playLibraryShuffled() }
+                },
+                onSettings = onSettings,
+                syncActivity = {
+                    SyncActivityButton(
+                        store = session.syncActivityStore,
+                        uploadTransfer = session.outboxStore.totalProgress,
+                        onOpenSettings = onSyncStatus,
+                        onOpenDownloads = onDownloads,
+                    )
+                },
+            )
+        }
         LibraryBrowserContent(
             modifier = Modifier.fillMaxWidth().weight(1f),
             session = session,
-            searchQuery = state.searchQuery,
-            mode = state.mode,
-            sortCriterion = state.sortCriterion,
-            groupAlbumsByArtist = state.groupAlbumsByArtist,
-            composerSortCriterion = state.composerSortCriterion,
-            artistSortCriterion = state.artistSortCriterion,
-            gridState = state.gridState,
+            state = state,
             onSelectAlbum = onSelectAlbum,
             onSelectComposer = onSelectComposer,
             onSelectArtist = onSelectArtist,
@@ -114,57 +107,62 @@ internal fun LibraryBrowser(
     }
 }
 
+/** The heading's collapse, following the scroll of the view on screen. */
+@Composable
+private fun rememberHeadingCollapse(state: LibraryBrowserState): State<Float> =
+    when (state.mode) {
+        LibraryBrowserMode.ALBUMS -> rememberHeadingCollapse(state.gridState)
+        LibraryBrowserMode.ARTISTS -> rememberHeadingCollapse(state.artistListState)
+        LibraryBrowserMode.COMPOSERS -> rememberHeadingCollapse(state.composerListState)
+    }
+
 @Composable
 private fun LibraryBrowserContent(
     modifier: Modifier,
     session: OpenLibrary,
-    searchQuery: String,
-    mode: LibraryBrowserMode,
-    sortCriterion: BridgeSortCriterion,
-    groupAlbumsByArtist: Boolean,
-    composerSortCriterion: BridgeComposerSortCriterion,
-    artistSortCriterion: BridgeArtistSortCriterion,
-    gridState: LazyGridState,
+    state: LibraryBrowserState,
     onSelectAlbum: (String) -> Unit,
     onSelectComposer: (String) -> Unit,
     onSelectArtist: (String) -> Unit,
     onSelectWork: (String) -> Unit,
 ) {
     Box(modifier = modifier) {
-        if (searchQuery.isNotBlank()) {
+        if (state.searchQuery.isNotBlank()) {
             SearchResultsScreen(
                 session = session,
-                query = searchQuery,
+                query = state.searchQuery,
                 onSelectAlbum = onSelectAlbum,
                 onSelectArtist = onSelectArtist,
                 onSelectComposer = onSelectComposer,
                 onSelectWork = onSelectWork,
             )
         } else {
-            when (mode) {
+            when (state.mode) {
                 LibraryBrowserMode.ALBUMS -> {
                     AlbumBrowserContent(
                         session = session,
-                        sortCriterion = sortCriterion,
-                        groupByArtist = groupAlbumsByArtist,
-                        gridState = gridState,
+                        sortCriterion = state.sortCriterion,
+                        groupByArtist = state.groupAlbumsByArtist,
+                        gridState = state.gridState,
                         onSelectAlbum = onSelectAlbum,
-                    )
-                }
-
-                LibraryBrowserMode.COMPOSERS -> {
-                    ComposerBrowserContent(
-                        session = session,
-                        sortCriterion = composerSortCriterion,
-                        onSelectComposer = onSelectComposer,
                     )
                 }
 
                 LibraryBrowserMode.ARTISTS -> {
                     ArtistBrowserContent(
                         session = session,
-                        sortCriterion = artistSortCriterion,
+                        sortCriterion = state.artistSortCriterion,
+                        listState = state.artistListState,
                         onSelectArtist = onSelectArtist,
+                    )
+                }
+
+                LibraryBrowserMode.COMPOSERS -> {
+                    ComposerBrowserContent(
+                        session = session,
+                        sortCriterion = state.composerSortCriterion,
+                        listState = state.composerListState,
+                        onSelectComposer = onSelectComposer,
                     )
                 }
             }
@@ -203,6 +201,7 @@ private fun AlbumBrowserContent(
 private fun ComposerBrowserContent(
     session: OpenLibrary,
     sortCriterion: BridgeComposerSortCriterion,
+    listState: LazyListState,
     onSelectComposer: (String) -> Unit,
 ) {
     val page =
@@ -213,6 +212,7 @@ private fun ComposerBrowserContent(
     ComposerListContent(
         session = session,
         page = page,
+        listState = listState,
         onSelectComposer = onSelectComposer,
     )
 }
@@ -221,6 +221,7 @@ private fun ComposerBrowserContent(
 private fun ArtistBrowserContent(
     session: OpenLibrary,
     sortCriterion: BridgeArtistSortCriterion,
+    listState: LazyListState,
     onSelectArtist: (String) -> Unit,
 ) {
     val page =
@@ -231,89 +232,7 @@ private fun ArtistBrowserContent(
     ArtistListContent(
         session = session,
         page = page,
+        listState = listState,
         onSelectArtist = onSelectArtist,
     )
-}
-
-@Composable
-private fun LibraryBrowserChrome(
-    searchOpen: Boolean,
-    searchQuery: String,
-    onSearchQueryChange: (String) -> Unit,
-    onOpenSearch: () -> Unit,
-    onCloseSearch: () -> Unit,
-    mode: LibraryBrowserMode,
-    onModeChange: (LibraryBrowserMode) -> Unit,
-    sortCriterion: BridgeSortCriterion,
-    onSortChange: (BridgeSortCriterion) -> Unit,
-    groupAlbumsByArtist: Boolean,
-    onGroupAlbumsByArtistChange: (Boolean) -> Unit,
-    composerSortCriterion: BridgeComposerSortCriterion,
-    onComposerSortChange: (BridgeComposerSortCriterion) -> Unit,
-    artistSortCriterion: BridgeArtistSortCriterion,
-    onArtistSortChange: (BridgeArtistSortCriterion) -> Unit,
-    onShuffleLibrary: () -> Unit,
-    syncActivity: SyncActivityStore,
-    uploadTransfer: LatestSource<BridgeUploadTransfer>,
-    onOpenSyncSettings: () -> Unit,
-    onOpenDownloads: () -> Unit,
-    onSettings: () -> Unit,
-) {
-    if (searchOpen) {
-        LibrarySearchBar(
-            query = searchQuery,
-            onQueryChange = onSearchQueryChange,
-            onClose = onCloseSearch,
-        )
-    } else {
-        LibraryTopBar(
-            onOpenSearch = onOpenSearch,
-            onShuffleLibrary = onShuffleLibrary,
-            mode = mode,
-            sortCriterion = sortCriterion,
-            onSortChange = onSortChange,
-            groupAlbumsByArtist = groupAlbumsByArtist,
-            onGroupAlbumsByArtistChange = onGroupAlbumsByArtistChange,
-            composerSortCriterion = composerSortCriterion,
-            onComposerSortChange = onComposerSortChange,
-            artistSortCriterion = artistSortCriterion,
-            onArtistSortChange = onArtistSortChange,
-            syncActivity = syncActivity,
-            uploadTransfer = uploadTransfer,
-            onOpenSyncSettings = onOpenSyncSettings,
-            onOpenDownloads = onOpenDownloads,
-            onSettings = onSettings,
-        )
-    }
-    LibraryModeBar(mode = mode, onModeChange = onModeChange)
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun LibraryBrowserChromePreview() {
-    BaeTheme {
-        LibraryBrowserChrome(
-            searchOpen = false,
-            searchQuery = "",
-            onSearchQueryChange = {},
-            onOpenSearch = {},
-            onCloseSearch = {},
-            mode = LibraryBrowserMode.ALBUMS,
-            onModeChange = {},
-            sortCriterion = DEFAULT_ALBUM_SORT,
-            onSortChange = {},
-            groupAlbumsByArtist = false,
-            onGroupAlbumsByArtistChange = {},
-            composerSortCriterion = DEFAULT_COMPOSER_SORT,
-            onComposerSortChange = {},
-            artistSortCriterion = DEFAULT_ARTIST_SORT,
-            onArtistSortChange = {},
-            onShuffleLibrary = {},
-            syncActivity = SyncActivityStore({}).apply { apply(PreviewData.syncActivity(needsAttention = false)) },
-            uploadTransfer = PreviewData.uploadTransferSource(),
-            onOpenSyncSettings = {},
-            onOpenDownloads = {},
-            onSettings = {},
-        )
-    }
 }

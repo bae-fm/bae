@@ -83,6 +83,7 @@
     <string name="library_mode_composers">Kompositörer</string>
     <string name="library_mode_albums">Album</string>
     <string name="library_mode_artists">Artister</string>
+    <string name="library_switch_view">Byt vy</string>
     <string name="library_empty_artists">Inga artister</string>
     <string name="album_count">%1$d album</string>
     <string name="artist_detail_load_failed">Den här artisten kunde inte läsas in.</string>

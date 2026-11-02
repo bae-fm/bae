@@ -79,6 +79,7 @@
     <string name="library_mode_composers">Besteciler</string>
     <string name="library_mode_albums">Albümler</string>
     <string name="library_mode_artists">Sanatçılar</string>
+    <string name="library_switch_view">Görünümü değiştir</string>
     <string name="library_empty_artists">Sanatçı yok</string>
     <string name="album_count">%1$d Albüm</string>
     <string name="artist_detail_load_failed">Bu sanatçı yüklenemedi.</string>

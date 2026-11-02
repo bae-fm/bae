@@ -79,6 +79,7 @@
     <string name="library_mode_composers">Compositori</string>
     <string name="library_mode_albums">Album</string>
     <string name="library_mode_artists">Artisti</string>
+    <string name="library_switch_view">Cambia vista</string>
     <string name="library_empty_artists">Nessun artista</string>
     <string name="album_count">%1$d album</string>
     <string name="artist_detail_load_failed">Impossibile caricare questo artista.</string>

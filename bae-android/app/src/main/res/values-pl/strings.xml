@@ -79,6 +79,7 @@
     <string name="library_mode_composers">Kompozytorzy</string>
     <string name="library_mode_albums">Albumy</string>
     <string name="library_mode_artists">Wykonawcy</string>
+    <string name="library_switch_view">Przełącz widok</string>
     <string name="library_empty_artists">Brak wykonawców</string>
     <string name="album_count">%1$d albumów</string>
     <string name="artist_detail_load_failed">Nie udało się wczytać tego wykonawcy.</string>

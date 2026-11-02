@@ -79,6 +79,7 @@
     <string name="library_mode_composers">作曲者</string>
     <string name="library_mode_albums">專輯</string>
     <string name="library_mode_artists">藝人</string>
+    <string name="library_switch_view">切換檢視</string>
     <string name="library_empty_artists">沒有藝人</string>
     <string name="album_count">%1$d 張專輯</string>
     <string name="artist_detail_load_failed">無法載入此藝人。</string>

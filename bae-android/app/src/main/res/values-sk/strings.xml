@@ -85,6 +85,7 @@
     <string name="library_mode_composers">Skladatelia</string>
     <string name="library_mode_albums">Albumy</string>
     <string name="library_mode_artists">Interpreti</string>
+    <string name="library_switch_view">Prepnúť zobrazenie</string>
     <string name="library_empty_artists">Žiadni interpreti</string>
     <string name="album_count">%1$d albumov</string>
     <string name="artist_detail_load_failed">Tohto interpreta sa nepodarilo načítať.</string>

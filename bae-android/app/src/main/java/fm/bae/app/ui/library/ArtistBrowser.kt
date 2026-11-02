@@ -11,8 +11,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.ArrowDownward
@@ -74,6 +74,7 @@ internal fun rememberArtistPage(
 internal fun ArtistListContent(
     session: OpenLibrary,
     page: ArtistPageStore,
+    listState: LazyListState,
     onSelectArtist: (String) -> Unit,
 ) {
     LibraryPageContent(
@@ -81,7 +82,6 @@ internal fun ArtistListContent(
         page = page,
         emptyMessage = stringResource(R.string.library_empty_artists),
     ) {
-        val listState = rememberLazyListState()
         LaunchedEffect(page, listState) {
             snapshotFlow {
                 val visible = listState.layoutInfo.visibleItemsInfo

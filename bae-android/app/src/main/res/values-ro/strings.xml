@@ -84,6 +84,7 @@
     <string name="library_mode_composers">Compozitori</string>
     <string name="library_mode_albums">Albume</string>
     <string name="library_mode_artists">Artiști</string>
+    <string name="library_switch_view">Schimbă vizualizarea</string>
     <string name="library_empty_artists">Niciun artist</string>
     <string name="album_count">%1$d albume</string>
     <string name="artist_detail_load_failed">Acest artist nu a putut fi încărcat.</string>
