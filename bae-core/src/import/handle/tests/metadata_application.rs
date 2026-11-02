@@ -101,8 +101,8 @@ async fn resetting_to_the_tags_drops_what_was_typed() {
 async fn a_pick_replaces_typed_fields_with_the_catalog_metadata() {
     let (handle, _tmp, key, _hash) = pane_fixture().await;
     handle
-        .library_manager
-        .set_discogs_key("test-discogs-token", crate::config::DiscogsValidation::Valid)
+        .catalogs
+        .store_discogs_key("test-discogs-token", crate::config::DiscogsValidation::Valid)
         .await
         .unwrap();
     handle
@@ -154,8 +154,8 @@ async fn a_pick_replaces_typed_fields_with_the_catalog_metadata() {
 async fn applying_a_release_with_two_barcodes_keeps_both() {
     let (handle, _tmp, key, _hash) = pane_fixture().await;
     handle
-        .library_manager
-        .set_discogs_key("test-discogs-token", crate::config::DiscogsValidation::Valid)
+        .catalogs
+        .store_discogs_key("test-discogs-token", crate::config::DiscogsValidation::Valid)
         .await
         .unwrap();
     let release_id = "70000102";

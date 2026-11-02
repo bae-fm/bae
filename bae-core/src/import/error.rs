@@ -263,10 +263,10 @@ pub enum ImportError {
     #[error(transparent)]
     CatalogSession(#[from] crate::import::CatalogSessionError),
 
-    /// Config/keyring plumbing failed (Discogs key store/read).
+    /// The Discogs key, or what Discogs said of it, could not be written.
     #[cfg(desktop)]
-    #[error("configuration error: {detail}")]
-    Config { detail: String },
+    #[error(transparent)]
+    DiscogsKey(Box<crate::import::DiscogsKeyError>),
 
     /// A broken invariant, not a user condition: artist-id remap miss,
     /// non-UTF-8 path, work that panicked apart from its caller, closed command channel,
@@ -300,6 +300,13 @@ impl From<bae_catalogs::discogs::client::DiscogsError> for ImportError {
 impl From<bae_catalogs::remote_image::RemoteImageError> for ImportError {
     fn from(error: bae_catalogs::remote_image::RemoteImageError) -> Self {
         Self::Catalog(error.into())
+    }
+}
+
+#[cfg(desktop)]
+impl From<crate::import::DiscogsKeyError> for ImportError {
+    fn from(error: crate::import::DiscogsKeyError) -> Self {
+        Self::DiscogsKey(Box::new(error))
     }
 }
 
@@ -403,7 +410,11 @@ impl ImportError {
             Self::Catalog(error) => catalog_category(error),
             Self::Internal { .. } => C::Internal,
             #[cfg(desktop)]
-            Self::Config { .. } => C::Config,
+            Self::DiscogsKey(error) => match **error {
+                crate::import::DiscogsKeyError::Keyring(_)
+                | crate::import::DiscogsKeyError::Preferences(_) => C::Config,
+                crate::import::DiscogsKeyError::Task(_) => C::Internal,
+            },
             #[cfg(desktop)]
             Self::Scan(_)
             | Self::InvalidFolder(_)

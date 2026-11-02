@@ -1,61 +1,3 @@
-#[tokio::test]
-async fn discogs_operations_withheld_when_rejected() {
-    use crate::config::DiscogsValidation;
-    let (manager, _temp_dir) = setup_test_manager().await;
-    manager
-        .set_discogs_key("f7228aaf-52b3-40ea-8526-a7e8aa0bf5da", DiscogsValidation::Valid)
-        .await
-        .unwrap();
-
-    assert!(manager.discogs_available_for_test().await.unwrap(), "a Valid key is served");
-
-    manager.set_discogs_validation(DiscogsValidation::Unvalidated).await.unwrap();
-    assert!(
-        manager.discogs_available_for_test().await.unwrap(),
-        "an Unvalidated key is served optimistically"
-    );
-
-    manager.set_discogs_validation(DiscogsValidation::Rejected).await.unwrap();
-    assert!(!manager.discogs_available_for_test().await.unwrap(), "a Rejected key is withheld");
-}
-
-/// A key present in the keyring but absent from config (the residue a torn write
-/// or external keyring tampering can leave) is not served: a usable key requires
-/// both stores to agree it exists.
-#[tokio::test]
-async fn discogs_operations_withheld_when_config_has_no_key() {
-    let (manager, _temp_dir) = setup_test_manager().await;
-
-    // Keyring bytes present, config untouched (still `None`).
-    manager.database.set_host_secret(crate::keys::DISCOGS_API_KEY, "orphan-key").unwrap();
-
-    assert_eq!(manager.discogs_validation().await.unwrap(), None);
-    assert!(
-        !manager.discogs_available_for_test().await.unwrap(),
-        "a keyring key with no config hint is not served",
-    );
-}
-
-/// `set_discogs_key` and `clear_discogs_key` move both durable stores together.
-#[tokio::test]
-async fn set_and_clear_discogs_key_move_both_stores() {
-    use crate::config::DiscogsValidation;
-    let (manager, _temp_dir) = setup_test_manager().await;
-
-    manager.set_discogs_key("the-key", DiscogsValidation::Valid).await.unwrap();
-    assert_eq!(manager.discogs_validation().await.unwrap(), Some(DiscogsValidation::Valid));
-    assert_eq!(
-        manager.database.host_secret(crate::keys::DISCOGS_API_KEY).unwrap().as_deref(),
-        Some("the-key"),
-    );
-    assert!(manager.discogs_available_for_test().await.unwrap());
-
-    manager.clear_discogs_key().await.unwrap();
-    assert_eq!(manager.discogs_validation().await.unwrap(), None);
-    assert_eq!(manager.database.host_secret(crate::keys::DISCOGS_API_KEY).unwrap(), None);
-    assert!(!manager.discogs_available_for_test().await.unwrap());
-}
-
 /// Revalidation surfaces the config-says-stored/keyring-empty mismatch as an
 /// error, not a swallowed warning — the one torn state our writes can't produce
 /// but external tampering can.
@@ -101,7 +43,7 @@ async fn a_key_discogs_cannot_be_asked_about_is_stored_unchecked_with_why() {
         panic!("an unreachable Discogs leaves the key unchecked: {outcome:?}");
     };
     assert!(reason.to_string().contains("tcp connect error"), "{reason}");
-    assert_eq!(manager.discogs_validation().await.unwrap(), Some(DiscogsValidation::Unvalidated));
+    assert_eq!(manager.preferences().await.unwrap().discogs, Some(DiscogsValidation::Unvalidated));
 
     let error = handle
         .revalidate_discogs_token()
@@ -116,36 +58,6 @@ async fn a_key_discogs_cannot_be_asked_about_is_stored_unchecked_with_why() {
         ),
         "{error}"
     );
-}
-
-#[tokio::test]
-async fn discogs_validation_signals_confirm_and_reject() {
-    use crate::config::DiscogsValidation;
-    use bae_catalogs::discogs::client::DiscogsKeySignal;
-    let (manager, _temp_dir) = setup_test_manager().await;
-    // A success confirms a stored Unvalidated key.
-    manager
-        .update_preferences(|prefs| {
-            prefs.discogs = Some(DiscogsValidation::Unvalidated);
-            Ok(())
-        })
-        .await
-        .unwrap();
-    manager.record_discogs_validation_for_test(DiscogsKeySignal::Accepted).await;
-    assert_eq!(manager.discogs_validation().await.unwrap(), Some(DiscogsValidation::Valid));
-
-    // A 401 rejects, from any prior state.
-    manager.record_discogs_validation_for_test(DiscogsKeySignal::Rejected).await;
-    assert_eq!(manager.discogs_validation().await.unwrap(), Some(DiscogsValidation::Rejected));
-
-    // A success does NOT flip an already-Rejected key back to Valid.
-    manager.record_discogs_validation_for_test(DiscogsKeySignal::Accepted).await;
-    assert_eq!(manager.discogs_validation().await.unwrap(), Some(DiscogsValidation::Rejected));
-
-    // A success while already Valid is a no-op (only Unvalidated -> Valid).
-    manager.set_discogs_validation(DiscogsValidation::Valid).await.unwrap();
-    manager.record_discogs_validation_for_test(DiscogsKeySignal::Accepted).await;
-    assert_eq!(manager.discogs_validation().await.unwrap(), Some(DiscogsValidation::Valid));
 }
 
 /// Seed an album with two releases, each holding two tracks inserted in

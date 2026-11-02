@@ -675,10 +675,16 @@ impl LibraryManager {
     }
 }
 
-/// The providers a library asks, for a test to seed their answers.
+/// The providers a library asks, for a test to seed their answers, and the
+/// catalog sessions, for a test to store a Discogs key no check reaches
+/// Discogs for.
 #[cfg(all(any(test, feature = "test-utils"), desktop))]
 mod test_access {
     impl super::LibraryManager {
+        pub fn catalogs(&self) -> &crate::import::CatalogSessions {
+            &self.catalogs
+        }
+
         pub fn providers(&self) -> &crate::catalog_model::providers::Providers {
             self.catalogs.providers()
         }

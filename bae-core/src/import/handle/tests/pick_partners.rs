@@ -8,8 +8,8 @@ use bae_catalogs::musicbrainz::DiscogsPage;
 async fn linked_cover_gallery_can_be_empty() {
     let (handle, _tmp, key, _) = pane_fixture().await;
     handle
-        .library_manager
-        .set_discogs_key("test-discogs-token", crate::config::DiscogsValidation::Valid)
+        .catalogs
+        .store_discogs_key("test-discogs-token", crate::config::DiscogsValidation::Valid)
         .await
         .unwrap();
     let release_id = "70000003";
@@ -49,8 +49,8 @@ async fn a_pick_with_a_partner_stores_it_and_archives_its_documents() {
         pane_fixture_with(bae_util::http::Http::for_test().serve("coverartarchive.org", &archive))
             .await;
     handle
-        .library_manager
-        .set_discogs_key("test-discogs-token", crate::config::DiscogsValidation::Valid)
+        .catalogs
+        .store_discogs_key("test-discogs-token", crate::config::DiscogsValidation::Valid)
         .await
         .unwrap();
 
@@ -238,8 +238,8 @@ async fn a_pick_of_a_release_a_run_read_reads_the_rest() {
         pane_fixture_with(bae_util::http::Http::for_test().serve("coverartarchive.org", &archive))
             .await;
     handle
-        .library_manager
-        .set_discogs_key("test-discogs-token", crate::config::DiscogsValidation::Valid)
+        .catalogs
+        .store_discogs_key("test-discogs-token", crate::config::DiscogsValidation::Valid)
         .await
         .unwrap();
     let release = seed_linked_discogs_release(handle.library_manager.providers());
@@ -279,8 +279,8 @@ async fn a_pick_of_a_release_a_run_read_reads_the_rest() {
 
     let (scratch, _scratch_tmp, _, _) = pane_fixture().await;
     scratch
-        .library_manager
-        .set_discogs_key("test-discogs-token", crate::config::DiscogsValidation::Valid)
+        .catalogs
+        .store_discogs_key("test-discogs-token", crate::config::DiscogsValidation::Valid)
         .await
         .unwrap();
     seed_linked_discogs_release(scratch.library_manager.providers());
@@ -496,8 +496,8 @@ async fn an_import_commits_what_its_picked_releases_store_now() {
         pane_fixture_with(bae_util::http::Http::for_test().serve("coverartarchive.org", &archive))
             .await;
     handle
-        .library_manager
-        .set_discogs_key("test-discogs-token", crate::config::DiscogsValidation::Valid)
+        .catalogs
+        .store_discogs_key("test-discogs-token", crate::config::DiscogsValidation::Valid)
         .await
         .unwrap();
     let primary = "70000004";
@@ -581,8 +581,8 @@ async fn a_pick_carries_the_album_a_reading_found_through_another_pressing() {
         pane_fixture_with(bae_util::http::Http::for_test().serve("coverartarchive.org", &archive))
             .await;
     handle
-        .library_manager
-        .set_discogs_key("test-discogs-token", crate::config::DiscogsValidation::Valid)
+        .catalogs
+        .store_discogs_key("test-discogs-token", crate::config::DiscogsValidation::Valid)
         .await
         .unwrap();
     let providers = handle.library_manager.providers();
@@ -640,8 +640,8 @@ async fn a_pick_tells_each_catalog_read_it_waits_on() {
         pane_fixture_with(bae_util::http::Http::for_test().serve("coverartarchive.org", &archive))
             .await;
     handle
-        .library_manager
-        .set_discogs_key("test-discogs-token", crate::config::DiscogsValidation::Valid)
+        .catalogs
+        .store_discogs_key("test-discogs-token", crate::config::DiscogsValidation::Valid)
         .await
         .unwrap();
     let discogs_release_id = "70000021";

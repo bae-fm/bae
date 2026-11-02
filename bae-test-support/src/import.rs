@@ -31,12 +31,13 @@ pub async fn start_test_import(
 }
 
 /// Configure the provider credential used by seeded Discogs fixtures through
-/// the same library-manager capability production uses.
+/// the catalog sessions production stores it through.
 pub async fn configure_test_discogs(library_manager: &bae_core::library::LibraryManager) {
     library_manager
-        .set_discogs_key("test-discogs-token", bae_core::config::DiscogsValidation::Valid)
+        .catalogs()
+        .store_discogs_key("test-discogs-token", bae_core::config::DiscogsValidation::Valid)
         .await
-        .expect("test Discogs key is stored through the library manager");
+        .expect("test Discogs key is stored");
 }
 
 /// Wait for the import worker to finish, returning (release_id, album_id).

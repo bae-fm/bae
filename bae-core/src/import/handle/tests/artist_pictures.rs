@@ -112,8 +112,8 @@ async fn picked_discogs_release() -> DiscogsPick {
     )
     .await;
     handle
-        .library_manager
-        .set_discogs_key("test-discogs-token", crate::config::DiscogsValidation::Valid)
+        .catalogs
+        .store_discogs_key("test-discogs-token", crate::config::DiscogsValidation::Valid)
         .await
         .unwrap();
 

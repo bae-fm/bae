@@ -451,35 +451,46 @@ impl ImportServiceHandle {
         token: &str,
         validation: crate::config::DiscogsValidation,
     ) -> Result<(), crate::import::ImportError> {
-        self.library_manager
-            .set_discogs_key(token, validation)
-            .await
-            .map_err(|e| crate::import::ImportError::Config { detail: e.to_string() })
+        Ok(self.catalogs.store_discogs_key(token, validation).await?)
     }
 
     /// Check a stored `Unvalidated` key against Discogs again; any other
-    /// state, or no key, is left alone.
+    /// state, or no key, is left alone. A check Discogs could not answer
+    /// leaves the key unvalidated and fails with why, so the person who asked
+    /// is told rather than shown the same state again.
     pub async fn revalidate_discogs_token(&self) -> Result<(), crate::import::ImportError> {
+        use crate::catalog_model::providers::DiscogsCheck;
         use crate::config::DiscogsValidation;
 
-        if self
-            .library_manager
-            .discogs_validation()
-            .await
-            .map_err(crate::library::LibraryError::from)?
-            != Some(DiscogsValidation::Unvalidated)
-        {
+        if self.database.preferences().await?.discogs != Some(DiscogsValidation::Unvalidated) {
             return Ok(());
         }
-        self.library_manager.revalidate_discogs_token().await
+        let check = self.catalogs.session().await?.validate().await.ok_or_else(|| {
+            crate::import::ImportError::Internal {
+                detail: "config says a Discogs key is stored but the keyring has none".to_string(),
+            }
+        })?;
+        let validation = DiscogsValidation::of(&check);
+        self.database
+            .edit_preferences(move |prefs| {
+                if prefs.discogs.is_some() {
+                    prefs.discogs = Some(validation);
+                }
+                Ok(())
+            })
+            .await
+            .map_err(crate::import::DiscogsKeyError::from)?;
+        match check {
+            DiscogsCheck::Valid | DiscogsCheck::Rejected => Ok(()),
+            DiscogsCheck::Unchecked(error) => {
+                Err(crate::catalog_model::CatalogError::from(error).into())
+            }
+        }
     }
 
     /// Remove the stored Discogs key and its validation.
     pub async fn remove_discogs_token(&self) -> Result<(), crate::import::ImportError> {
-        self.library_manager
-            .clear_discogs_key()
-            .await
-            .map_err(|e| crate::import::ImportError::Config { detail: e.to_string() })
+        Ok(self.catalogs.clear_discogs_key().await?)
     }
 
     /// Store `command`'s folder as a scanned candidate carrying the command's

@@ -127,8 +127,8 @@ async fn reading_the_files_tags_ends_identification_in_its_write() {
 async fn a_pick_ends_identification_in_its_write() {
     let (handle, _tmp, key, _hash) = pane_fixture().await;
     handle
-        .library_manager
-        .set_discogs_key("test-discogs-token", crate::config::DiscogsValidation::Valid)
+        .catalogs
+        .store_discogs_key("test-discogs-token", crate::config::DiscogsValidation::Valid)
         .await
         .unwrap();
     let release_id = "70000301";

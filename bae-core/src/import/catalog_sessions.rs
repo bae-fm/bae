@@ -12,6 +12,7 @@ use crate::diagnostics::Diagnostics;
 use bae_catalogs::catalog::LookupCatalog;
 use bae_catalogs::discogs::client::{DiscogsClient, DiscogsError, DiscogsKeySignal};
 use bae_catalogs::rate_limiter::CallPriority;
+use bae_util::task_failure::blocking;
 use std::future::Future;
 use std::sync::Arc;
 use tracing::{debug, warn};
@@ -25,6 +26,19 @@ pub enum CatalogSessionError {
     Preferences(#[from] DbError),
     #[error("Keyring error: {0}")]
     Keyring(#[from] coven::KeyError),
+}
+
+/// Why the stored Discogs key, or what Discogs said of it, could not be
+/// written: the keyring or the preferences row refused the write, or the
+/// keyring write ran apart and gave no result.
+#[derive(Debug, thiserror::Error)]
+pub enum DiscogsKeyError {
+    #[error("Keyring error: {0}")]
+    Keyring(#[from] coven::KeyError),
+    #[error(transparent)]
+    Preferences(#[from] crate::config::ConfigError),
+    #[error(transparent)]
+    Task(#[from] bae_util::task_failure::TaskFailed),
 }
 
 /// The catalogs as this library may ask them: the providers, and the one
@@ -152,19 +166,65 @@ impl CatalogSessions {
         self.providers.discogs_client(key.to_string(), None).validate_token(priority).await
     }
 
+    /// Store `token` as the library's Discogs key, with what Discogs said of
+    /// it. The keyring bytes are written before the key's state is recorded:
+    /// a failure between the writes leaves Discogs disabled until the caller
+    /// retries, and the preferences never claim a key the keyring lacks. The
+    /// keyring write blocks, so it runs on a blocking thread.
+    pub async fn store_discogs_key(
+        &self,
+        token: &str,
+        validation: DiscogsValidation,
+    ) -> Result<(), DiscogsKeyError> {
+        self.change_discogs_key(async {
+            let database = self.database.clone();
+            let token = token.to_string();
+            blocking("store the Discogs key", move || {
+                database.set_host_secret(crate::keys::DISCOGS_API_KEY, &token)
+            })
+            .await
+            .map_err(|failed| self.diagnostics.bug(failed))??;
+            self.database
+                .edit_preferences(move |prefs| {
+                    prefs.discogs = Some(validation);
+                    Ok(())
+                })
+                .await?;
+            Ok(())
+        })
+        .await
+    }
+
+    /// Remove the library's Discogs key and its state. The state is cleared
+    /// before the keyring bytes, so a failure between the writes leaves
+    /// Discogs disabled rather than half-enabled.
+    pub(crate) async fn clear_discogs_key(&self) -> Result<(), DiscogsKeyError> {
+        self.change_discogs_key(async {
+            self.database
+                .edit_preferences(|prefs| {
+                    prefs.discogs = None;
+                    Ok(())
+                })
+                .await?;
+            let database = self.database.clone();
+            blocking("clear the Discogs key", move || {
+                database.delete_host_secret(crate::keys::DISCOGS_API_KEY)
+            })
+            .await
+            .map_err(|failed| self.diagnostics.bug(failed))??;
+            Ok(())
+        })
+        .await
+    }
+
     /// Run `change`, the writes that set or clear the stored key, with no
     /// session built in between, and drop the client built for the key it
     /// replaces.
-    pub(crate) async fn change_discogs_key<T>(&self, change: impl Future<Output = T>) -> T {
+    async fn change_discogs_key<T>(&self, change: impl Future<Output = T>) -> T {
         let mut client = self.discogs_client.lock().await;
         let changed = change.await;
         *client = None;
         changed
-    }
-
-    #[cfg(test)]
-    pub(crate) async fn record_discogs_validation_for_test(&self, signal: DiscogsKeySignal) {
-        record_discogs_validation_signal(&self.database, signal).await;
     }
 }
 
@@ -205,3 +265,7 @@ mod test_access {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "catalog_sessions_tests.rs"]
+mod tests;

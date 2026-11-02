@@ -600,7 +600,8 @@ impl Fixture {
     /// Store a fake Discogs key, so lookups ask both providers.
     async fn use_discogs(&self) {
         self.manager
-            .set_discogs_key("test-discogs-token", crate::config::DiscogsValidation::Valid)
+            .catalogs()
+            .store_discogs_key("test-discogs-token", crate::config::DiscogsValidation::Valid)
             .await
             .expect("the fake Discogs key is stored");
     }

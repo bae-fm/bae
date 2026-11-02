@@ -119,7 +119,9 @@ fn expected_local_and_draft_failures_keep_their_presentation() {
             BridgeErrorCategory::FilesAlreadyImported,
         ),
         (
-            ImportError::Config { detail: "failed to open key store".into() },
+            ImportError::from(bae_core::import::DiscogsKeyError::Keyring(
+                coven::KeyError::StoreClosed,
+            )),
             BridgeErrorCategory::Config,
         ),
     ] {

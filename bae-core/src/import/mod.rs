@@ -268,7 +268,7 @@ pub use candidates::{
     ImportedRelease, SaveFailure, SavingAnswer, WatchedFolderScanStatus,
 };
 #[cfg(desktop)]
-pub use catalog_sessions::{CatalogSessionError, CatalogSessions};
+pub use catalog_sessions::{CatalogSessionError, CatalogSessions, DiscogsKeyError};
 #[cfg(desktop)]
 pub use cover_art::{CoverChoice, CoverImageSource};
 pub use error::ImportError;
