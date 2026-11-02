@@ -88,6 +88,8 @@ struct IdentifyServiceInner {
     library_manager: LibraryManager,
     /// The catalogs a run's lookups ask.
     catalogs: crate::import::CatalogSessions,
+    /// Where a run reads the releases it ranks.
+    release_reads: crate::import::ReleaseReads,
     runtime_handle: tokio::runtime::Handle,
     event_tx: ImportEventBus,
     /// What each run publishes is recorded here, and a folder candidate's
@@ -139,6 +141,7 @@ impl IdentifyServiceHandle {
     pub fn new(
         library_manager: LibraryManager,
         catalogs: crate::import::CatalogSessions,
+        release_reads: crate::import::ReleaseReads,
         runtime_handle: tokio::runtime::Handle,
         event_tx: ImportEventBus,
         candidates: CandidateRuntime,
@@ -147,6 +150,7 @@ impl IdentifyServiceHandle {
         let inner = Arc::new(IdentifyServiceInner {
             library_manager,
             catalogs,
+            release_reads,
             runtime_handle,
             event_tx,
             candidates,
@@ -699,12 +703,12 @@ fn dispatch_effect(
         // Each record is read through the one place a pick reads it from, as
         // far as ranking it needs; picking an offered row reads the rest.
         Effect::ReadReleases { releases, audio } => {
-            let library_manager = inner.library_manager.clone();
+            let release_reads = inner.release_reads.clone();
             spawn_until_cancelled(&runtime, &inner.diagnostics, &token, &broke_tx, async move {
                 let mut read = Vec::with_capacity(releases.len());
                 for release in releases {
                     let Some(stored) =
-                        read_release(&library_manager, &release, priority, &event_tx).await
+                        read_release(&release_reads, &release, priority, &event_tx).await
                     else {
                         return;
                     };
@@ -724,14 +728,14 @@ fn dispatch_effect(
         // checked against the library as a search's answer is; a barcode or a
         // catalog number is searched on the one catalog.
         Effect::LookupPressing { source, key } => {
-            let library_manager = inner.library_manager.clone();
+            let release_reads = inner.release_reads.clone();
             let catalogs = inner.catalogs.clone();
             spawn_until_cancelled(&runtime, &inner.diagnostics, &token, &broke_tx, async move {
                 let lookup = match &key {
                     PressingKey::Link { release } => {
                         let read = ReleaseToRead::ReleaseLookup(release.clone());
                         let Some(stored) =
-                            read_release(&library_manager, &read, priority, &event_tx).await
+                            read_release(&release_reads, &read, priority, &event_tx).await
                         else {
                             return;
                         };
@@ -852,7 +856,7 @@ fn dispatch_effect(
 /// it needs, or why its catalog could not give it. `None` when bae broke
 /// reading it: the run has then been told, and ends.
 async fn read_release(
-    library_manager: &LibraryManager,
+    release_reads: &crate::import::ReleaseReads,
     read: &ReleaseToRead,
     priority: CallPriority,
     event_tx: &mpsc::UnboundedSender<IdentifyEvent>,
@@ -864,17 +868,16 @@ async fn read_release(
 > {
     let prepared = match read {
         ReleaseToRead::ReleaseLookup(release) => {
-            crate::import::service::prepare_release(
-                library_manager,
-                release,
-                crate::catalog_model::payloads::ReadDepth::Identification,
-                priority,
-            )
-            .await
+            release_reads
+                .release(
+                    release,
+                    crate::catalog_model::payloads::ReadDepth::Identification,
+                    priority,
+                )
+                .await
         }
         ReleaseToRead::DiscIdAnswer(answered) => {
-            crate::import::service::prepare_disc_id_release(library_manager, answered, priority)
-                .await
+            release_reads.disc_id_release(answered, priority).await
         }
     };
     let error = match prepared {

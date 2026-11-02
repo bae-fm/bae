@@ -371,6 +371,8 @@ impl From<crate::import::ImportError> for LibraryError {
         match error {
             #[cfg(not(any(target_os = "ios", target_os = "android")))]
             crate::import::ImportError::Db(error) => error,
+            #[cfg(not(any(target_os = "ios", target_os = "android")))]
+            crate::import::ImportError::Database(error) => LibraryError::Database(error),
             other => LibraryError::Import(Box::new(other)),
         }
     }

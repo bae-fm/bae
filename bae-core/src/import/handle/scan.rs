@@ -416,14 +416,10 @@ impl ImportServiceHandle {
         let values = reading?;
         // A partner that fails to load fails the pick, leaving the previous
         // one in place.
-        let prepared_partners = crate::import::service::prepare_partners(
-            &self.library_manager,
-            &link.record,
-            &link.partners,
-            CallPriority::Interactive,
-            steps,
-        )
-        .await?;
+        let prepared_partners = self
+            .release_reads
+            .partners(&link.record, &link.partners, CallPriority::Interactive, steps)
+            .await?;
         for partner in &prepared_partners {
             self.land_picked(
                 &candidate_key,

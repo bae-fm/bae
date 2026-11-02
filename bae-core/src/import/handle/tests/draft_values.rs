@@ -242,13 +242,17 @@ async fn a_release_stored_again_after_apply_changes_nothing_the_draft_imports() 
         &["Changed One", "Changed Two"],
         &[1_000, 1_000],
     );
+    let edited = crate::catalog_model::records::LookupRef::new(
+        bae_catalogs::catalog::LookupCatalog::MusicBrainz,
+        "edited-release",
+    );
     let payloads = handle
-        .library_manager
-        .fetch_release_payloads(
-            &crate::catalog_model::records::LookupRef::new(
-                bae_catalogs::catalog::LookupCatalog::MusicBrainz,
-                "edited-release",
-            ),
+        .catalogs
+        .release_read_session(&edited)
+        .await
+        .unwrap()
+        .fetch_payloads(
+            &edited,
             crate::catalog_model::payloads::ReadDepth::Complete,
             bae_catalogs::rate_limiter::CallPriority::Interactive,
         )

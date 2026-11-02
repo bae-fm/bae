@@ -294,23 +294,6 @@ impl LibraryManager {
         Ok(self.database.load_source_release(release).await?)
     }
 
-    /// The stored release `release` names, as its rows hold it beside how
-    /// import surfaces read it, or `None` when no row names it.
-    pub(crate) async fn load_prepared_release(
-        &self,
-        release: &crate::catalog_model::records::LookupRef,
-    ) -> Result<Option<crate::catalog_model::source_release::PreparedRelease>, LibraryError> {
-        Ok(self.database.load_prepared_release(release).await?)
-    }
-
-    /// `stored`, a release just fetched, beside how import surfaces read it.
-    pub(crate) async fn prepared_release(
-        &self,
-        stored: crate::catalog_model::source_release::SourceRelease,
-    ) -> Result<crate::catalog_model::source_release::PreparedRelease, LibraryError> {
-        Ok(self.database.prepared_release(stored).await?)
-    }
-
     /// Store `release` with no row naming it, which only a test's setup
     /// does.
     #[cfg(test)]

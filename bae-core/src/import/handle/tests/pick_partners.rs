@@ -244,8 +244,7 @@ async fn a_pick_of_a_release_a_run_read_reads_the_rest() {
         .unwrap();
     let release = seed_linked_discogs_release(handle.library_manager.providers());
 
-    let read_by_the_run = crate::import::service::prepare_release(
-        &handle.library_manager,
+    let read_by_the_run = handle.release_reads.release(
         &release,
         crate::catalog_model::payloads::ReadDepth::Identification,
         bae_catalogs::rate_limiter::CallPriority::Interactive,
@@ -285,8 +284,7 @@ async fn a_pick_of_a_release_a_run_read_reads_the_rest() {
         .await
         .unwrap();
     seed_linked_discogs_release(scratch.library_manager.providers());
-    let complete = crate::import::service::prepare_release(
-        &scratch.library_manager,
+    let complete = scratch.release_reads.release(
         &release,
         crate::catalog_model::payloads::ReadDepth::Complete,
         bae_catalogs::rate_limiter::CallPriority::Interactive,

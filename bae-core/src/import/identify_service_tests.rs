@@ -19,6 +19,7 @@ async fn setup_inner() -> (Arc<IdentifyServiceInner>, tempfile::TempDir) {
         crate::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
     );
+    let release_reads = crate::import::ReleaseReads::new(database.clone(), catalogs.clone());
     let manager = LibraryManager::new(
         database,
         crate::config::AppDir::under_home(temp_dir.path()).unwrap(),
@@ -34,6 +35,7 @@ async fn setup_inner() -> (Arc<IdentifyServiceInner>, tempfile::TempDir) {
     let handle = IdentifyServiceHandle::new(
         manager,
         catalogs,
+        release_reads,
         tokio::runtime::Handle::current(),
         event_tx,
         candidates,

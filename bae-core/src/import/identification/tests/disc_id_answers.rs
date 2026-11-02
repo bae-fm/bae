@@ -125,14 +125,11 @@ async fn picking_a_release_read_from_its_disc_id_answer_reads_it_in_full() {
 
     let scratch = Fixture::new("disc-id-complete").await;
     route_two_pressings(&scratch, fixture.probed_total_ms(&dir));
-    let complete = crate::import::service::prepare_release(
-        &scratch.manager,
-        &release,
-        crate::catalog_model::payloads::ReadDepth::Complete,
-        CallPriority::Interactive,
-    )
-    .await
-    .unwrap();
+    let (complete, _) = scratch
+        .import
+        .read_pick(&release, &[], CallPriority::Interactive)
+        .await
+        .unwrap();
     assert_eq!(picked, complete.release);
 }
 

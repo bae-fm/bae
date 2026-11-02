@@ -81,6 +81,8 @@ pub mod relative_folder;
 #[cfg(desktop)]
 pub mod release_candidate;
 #[cfg(desktop)]
+mod release_reads;
+#[cfg(desktop)]
 pub(crate) mod scrub_points;
 #[cfg(desktop)]
 pub mod selection;
@@ -313,6 +315,8 @@ pub use preparation::{CandidateAsRead, CandidatePreparation, MetadataAuthor};
 #[cfg(desktop)]
 pub use preparations::CandidatePreparations;
 pub use relative_folder::RelativeFolder;
+#[cfg(desktop)]
+pub use release_reads::ReleaseReads;
 #[cfg(desktop)]
 pub use service::ImportService;
 pub use session::{

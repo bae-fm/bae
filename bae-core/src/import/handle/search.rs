@@ -341,7 +341,7 @@ impl ImportServiceHandle {
                 }
             })?;
         }
-        crate::import::service::prepare_applied_release(&self.library_manager, release, steps).await
+        self.release_reads.applied_release(release, steps).await
     }
 
     /// Whether `release` is the one this candidate's stored verdict settled on:

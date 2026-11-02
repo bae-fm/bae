@@ -350,24 +350,7 @@ async fn settle_lead(
     let (primary, partners) = pressing.claims();
     let pressing_year = crate::identify::row_facts::folder_pressing_year(text, &pressing.releases);
 
-    let settle = async {
-        let release = crate::import::service::prepare_release(
-            &context.library_manager,
-            &primary,
-            crate::catalog_model::payloads::ReadDepth::Complete,
-            priority,
-        )
-        .await?;
-        let prepared_partners = crate::import::service::prepare_partners(
-            &context.library_manager,
-            &primary,
-            &partners,
-            priority,
-            &crate::import::CatalogApplySteps::unread(),
-        )
-        .await?;
-        Ok::<_, crate::import::ImportError>((release, prepared_partners))
-    };
+    let settle = context.import.read_pick(&primary, &partners, priority);
     let prepared = tokio::select! {
         biased;
         // Shutdown is not a provider answer and writes nothing.

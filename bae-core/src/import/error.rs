@@ -252,6 +252,11 @@ pub enum ImportError {
     #[error("folder watch failed: {detail}")]
     Watch { detail: String },
 
+    /// The library's store failed a read or a write import asked of it.
+    #[cfg(desktop)]
+    #[error(transparent)]
+    Database(#[from] crate::db::DbError),
+
     /// The session a catalog is asked with could not be had: the library's
     /// preferences or its keyring could not be read.
     #[cfg(desktop)]
@@ -372,7 +377,10 @@ impl ImportError {
             #[cfg(desktop)]
             Self::Db(error) => error.category(),
             #[cfg(desktop)]
-            Self::CatalogSession(crate::import::CatalogSessionError::Preferences(_)) => C::Database,
+            Self::Database(_)
+            | Self::CatalogSession(crate::import::CatalogSessionError::Preferences(_)) => {
+                C::Database
+            }
             #[cfg(desktop)]
             Self::CatalogSession(crate::import::CatalogSessionError::Keyring(error)) => {
                 crate::diagnostics::key_category(error)

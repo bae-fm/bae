@@ -329,6 +329,8 @@ pub struct ImportServiceHandle {
     library_manager: LibraryManager,
     /// The catalogs as this library may ask them.
     catalogs: crate::import::CatalogSessions,
+    /// Where a catalog release is read from storage or fetched.
+    release_reads: crate::import::ReleaseReads,
     /// The one writer of candidates' stored state.
     preparations: crate::import::CandidatePreparations,
     ids: coven::IdSourceRef,
@@ -475,9 +477,11 @@ impl ImportServiceHandle {
             import_cancels,
             diagnostics,
         } = services;
+        let release_reads = crate::import::ReleaseReads::new(database.clone(), catalogs.clone());
         let identify = crate::import::IdentifyServiceHandle::new(
             library_manager.clone(),
             catalogs.clone(),
+            release_reads.clone(),
             runtime_handle.clone(),
             event_tx.clone(),
             runtime.clone(),
@@ -494,6 +498,7 @@ impl ImportServiceHandle {
             worker,
             library_manager,
             catalogs,
+            release_reads,
             preparations,
             ids,
             file_tags,
@@ -507,6 +512,31 @@ impl ImportServiceHandle {
             runtime_handle,
             diagnostics,
         })
+    }
+
+    /// Every release a pick claims, read whole: `primary`, and its
+    /// `partners` on other catalogs, from storage or fetched now.
+    pub(crate) async fn read_pick(
+        &self,
+        primary: &crate::catalog_model::records::LookupRef,
+        partners: &[crate::catalog_model::records::LookupRef],
+        priority: bae_catalogs::rate_limiter::CallPriority,
+    ) -> Result<
+        (
+            crate::catalog_model::source_release::PreparedRelease,
+            Vec<crate::catalog_model::source_release::PreparedRelease>,
+        ),
+        crate::import::ImportError,
+    > {
+        let release = self
+            .release_reads
+            .release(primary, crate::catalog_model::payloads::ReadDepth::Complete, priority)
+            .await?;
+        let partners = self
+            .release_reads
+            .partners(primary, partners, priority, &crate::import::CatalogApplySteps::unread())
+            .await?;
+        Ok((release, partners))
     }
 
     /// Stop and join both worker threads; later calls do nothing. Called from

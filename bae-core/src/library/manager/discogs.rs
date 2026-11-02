@@ -84,37 +84,6 @@ impl LibraryManager {
         Ok(self.preferences().await?.discogs)
     }
 
-    #[cfg(desktop)]
-    pub(crate) async fn fetch_release_payloads(
-        &self,
-        release: &crate::catalog_model::records::LookupRef,
-        depth: crate::catalog_model::payloads::ReadDepth,
-        priority: CallPriority,
-    ) -> Result<crate::catalog_model::payloads::ReleasePayloads, crate::import::ImportError> {
-        Ok(self
-            .catalogs
-            .release_read_session(release)
-            .await?
-            .fetch_payloads(release, depth, priority)
-            .await?)
-    }
-
-    /// A release a Disc ID lookup returned, read for an identify run from
-    /// that answer (see [`crate::catalog_model::payloads::read_disc_id_release`]).
-    #[cfg(desktop)]
-    pub(crate) async fn read_disc_id_release_payloads(
-        &self,
-        answered: &crate::catalog_model::payloads::DiscIdRelease,
-        priority: CallPriority,
-    ) -> Result<crate::catalog_model::payloads::ReleasePayloads, crate::import::ImportError> {
-        Ok(self
-            .catalogs
-            .release_read_session(answered.release())
-            .await?
-            .read_disc_id_release(answered, priority)
-            .await?)
-    }
-
     /// Keep what release groups were read to be beyond the list that read
     /// them, so a stored release of either album names the other among its
     /// records. Keeping it failing leaves the list's answer standing, and is
@@ -255,20 +224,5 @@ impl LibraryManager {
     #[cfg(all(test, desktop))]
     pub(super) async fn record_discogs_validation_for_test(&self, signal: DiscogsKeySignal) {
         self.catalogs.record_discogs_validation_for_test(signal).await;
-    }
-
-    /// Whether a release on `catalog` can be fetched now: MusicBrainz always
-    /// can, and Discogs can when this library holds a key it may ask with.
-    #[cfg(desktop)]
-    pub(crate) async fn can_fetch_releases_from(
-        &self,
-        catalog: bae_catalogs::catalog::LookupCatalog,
-    ) -> Result<bool, LibraryError> {
-        match catalog {
-            bae_catalogs::catalog::LookupCatalog::MusicBrainz => Ok(true),
-            bae_catalogs::catalog::LookupCatalog::Discogs => {
-                Ok(self.catalogs.session().await?.asks_discogs())
-            }
-        }
     }
 }

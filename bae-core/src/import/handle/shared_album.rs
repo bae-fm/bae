@@ -64,13 +64,14 @@ impl ImportServiceHandle {
         let mut records = Vec::with_capacity(shared.leads.len());
         let mut releases = Vec::with_capacity(shared.leads.len());
         for lead in &shared.leads {
-            let prepared = crate::import::service::prepare_release(
-                &self.library_manager,
-                lead,
-                crate::catalog_model::payloads::ReadDepth::Complete,
-                CallPriority::Interactive,
-            )
-            .await?;
+            let prepared = self
+                .release_reads
+                .release(
+                    lead,
+                    crate::catalog_model::payloads::ReadDepth::Complete,
+                    CallPriority::Interactive,
+                )
+                .await?;
             let release = &prepared.release;
             records.push(crate::catalog_model::search::MetadataResult::of_release(release));
             offered.push(crate::import::shared_album::OfferedReading::of(
