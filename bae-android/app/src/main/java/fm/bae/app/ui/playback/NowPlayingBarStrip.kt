@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.RepeatOne
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -61,25 +62,30 @@ internal fun NowPlayingBarStrip(
     castEnded: @Composable () -> Unit,
 ) {
     Surface(color = MaterialTheme.colorScheme.surface, tonalElevation = 3.dp) {
-        Column(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = ThemeSpace.group, vertical = ThemeSpace.related),
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (failure != null) {
-                    ErrorText(message = failure.line, maxLines = 2, modifier = Modifier.weight(1f))
-                } else if (track != null) {
-                    NowPlayingTrackInfo(
-                        track = track,
-                        onExpand = onExpand,
-                    )
+        Column(modifier = Modifier.fillMaxWidth()) {
+            // A hairline along the top edge, so what scrolls above doesn't run
+            // straight into the bar.
+            HorizontalDivider(color = BaeTheme.colors.hairline)
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = ThemeSpace.group, vertical = ThemeSpace.related),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (failure != null) {
+                        ErrorText(message = failure.line, maxLines = 2, modifier = Modifier.weight(1f))
+                    } else if (track != null) {
+                        NowPlayingTrackInfo(
+                            track = track,
+                            onExpand = onExpand,
+                        )
+                    }
+                    transport()
                 }
-                transport()
+                progress()
+                castEnded()
             }
-            progress()
-            castEnded()
         }
     }
 }

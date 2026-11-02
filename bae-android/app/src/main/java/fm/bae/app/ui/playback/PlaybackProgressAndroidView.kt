@@ -36,7 +36,9 @@ import uniffi.bae_bridge.bridgeSeekBar
 
 private const val SEEK_BAR_MAX = 10_000
 private const val TIME_LABEL_TEXT_SIZE_SP = 11f
-private const val TIME_LABEL_WIDTH_DP = 48
+
+/** The space between a time label and the bar. */
+private const val TIME_LABEL_GAP_DP = 8
 private const val TRACK_HEIGHT_DP = 4
 
 /** What the seek bar draws: the [0,1] slider fraction and the two time labels core
@@ -205,9 +207,16 @@ internal class PlaybackProgressView(
         addView(leadingTextView)
         addView(
             seekBar,
-            LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f),
+            LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply {
+                marginStart = dp(TIME_LABEL_GAP_DP)
+                marginEnd = dp(TIME_LABEL_GAP_DP)
+            },
         )
         addView(trailingTextView)
+        // The bar runs to the labels: only the thumb's half, which it draws
+        // past either end of the line, pads it.
+        val thumbHalf = seekBar.thumb.intrinsicWidth / 2
+        seekBar.setPaddingRelative(thumbHalf, seekBar.paddingTop, thumbHalf, seekBar.paddingBottom)
     }
 
     /** The bar's line: the track, the parts held here over it, and the played part over those. */
@@ -316,14 +325,15 @@ internal class PlaybackProgressView(
         onSeekRatio(ratio)
     }
 
+    /** A time label in the body face, its digits all one width so the clock doesn't jostle as it ticks. */
     private fun timeLabel(): TextView =
         TextView(context).apply {
-            typeface = Typeface.MONOSPACE
+            typeface = Typeface.DEFAULT
+            fontFeatureSettings = "tnum"
             setTextSize(TypedValue.COMPLEX_UNIT_SP, TIME_LABEL_TEXT_SIZE_SP)
-            gravity = Gravity.CENTER
             layoutParams =
                 LayoutParams(
-                    dp(TIME_LABEL_WIDTH_DP),
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
                     ViewGroup.LayoutParams.WRAP_CONTENT,
                 )
         }
