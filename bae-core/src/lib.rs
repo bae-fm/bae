@@ -45,3 +45,4 @@ pub(crate) mod test_images;
 pub(crate) mod test_logs;
 #[cfg(test)]
 pub(crate) mod test_reads;
+pub mod track_audio;

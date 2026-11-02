@@ -436,7 +436,7 @@ fn test_track_fmt(track_id: &str) -> TrackFmt {
 /// Run `decode` to its end, as playback's decoder thread does, and return the
 /// samples it played.
 fn play_decode(
-    decode: crate::playback::stream_pipeline::StreamDecodeParams,
+    decode: crate::track_audio::StreamDecodeParams,
     sample_rate: u32,
     channels: u32,
 ) -> Vec<f32> {
@@ -493,7 +493,7 @@ fn import_scrub_points(
     span: crate::db::SegmentSpan,
     content_type: &bae_util::content_type::ContentType,
 ) -> Vec<crate::db::ScrubPoint> {
-    use crate::playback::stream_pipeline::{SegmentDecodeParams, StreamDecodeParams};
+    use crate::track_audio::{SegmentDecodeParams, StreamDecodeParams};
     let decode = StreamDecodeParams::new(
         vec![SegmentDecodeParams::new(filled_buffer(bytes), span, 0)],
         bae_audio::byte_jump_keeps_place(content_type),

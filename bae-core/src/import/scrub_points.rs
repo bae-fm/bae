@@ -12,7 +12,7 @@
 //! scrub start its decode at a known frame instead.
 
 use crate::db::ScrubPoint;
-use crate::playback::data_source::FILL_WINDOW_SIZE;
+use crate::track_audio::data_source::FILL_WINDOW_SIZE;
 use bae_audio::{DecodeStart, DecodedPacket, DecodedStream, AVIO_BUFFER_SIZE};
 use bae_util::content_type::ContentType;
 use tracing::{debug, warn};

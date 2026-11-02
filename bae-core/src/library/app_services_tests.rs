@@ -512,8 +512,8 @@ fn a_track_decode_whose_read_panics_reports_it() {
     buffer.panic_reads();
     let reports = Arc::new(crate::diagnostics::RecordingBugReporter::default());
     let decode = TrackDecode::new(
-        crate::playback::stream_pipeline::StreamDecodeParams::new(
-            vec![crate::playback::stream_pipeline::SegmentDecodeParams::new(
+        crate::track_audio::StreamDecodeParams::new(
+            vec![crate::track_audio::SegmentDecodeParams::new(
                 buffer,
                 crate::db::SegmentSpan::whole_file(),
                 0,

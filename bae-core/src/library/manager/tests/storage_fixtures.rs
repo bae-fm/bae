@@ -331,11 +331,11 @@ async fn playback_error_reason_for_file(
     manager: &LibraryManager,
     file: &DbFile,
 ) -> crate::playback::PlaybackErrorReason {
-    use crate::playback::data_source::{create_audio_reader, FetchArbiter};
+    use crate::track_audio::data_source::FetchArbiter;
     use bae_audio::sparse_buffer::create_sparse_buffer;
 
     let buffer = create_sparse_buffer(file.file_size as u64);
-    let reader = create_audio_reader(manager, &file.id, FetchArbiter::new(), None, false);
+    let reader = manager.create_audio_reader(&file.id, FetchArbiter::new(), None, false);
     let (error_tx, mut error_rx) = tokio::sync::mpsc::unbounded_channel();
     reader.start_reading(
         buffer.clone(),

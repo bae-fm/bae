@@ -8,8 +8,9 @@ use crate::playback::{AudioOutputProblem, PlaybackErrorReason};
 use crate::playback::{
     LoadingTrack, PlaybackChange, PlaybackPauseBoundary, PlaybackPauseReason,
     PlaybackSideCountdown, PlaybackSidePausePrompt, PlaybackState, PlayingTrack, PreviewState,
-    PreviewTarget, RemoteDevice, RemotePlayback,
+    RemoteDevice, RemotePlayback,
 };
+use crate::track_audio::PreviewTarget;
 
 async fn now(db: &Database) -> crate::playback::NowPlayingValues {
     db.now_playing().await.unwrap().expect("the library holds the track the row names")

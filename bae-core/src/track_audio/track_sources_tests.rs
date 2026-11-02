@@ -1,6 +1,6 @@
 use super::*;
 use crate::open_files_peak::OpenFilesPeak;
-use crate::playback::data_source::LocalReader;
+use crate::track_audio::data_source::LocalReader;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};

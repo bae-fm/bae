@@ -5,8 +5,8 @@
 //! - Cloud storage (storage releases with cloud backend)
 
 use crate::diagnostics::Diagnostics;
-use crate::playback::storage_wait::{FetchProgress, StorageWaits};
-use crate::playback::TrackReadError;
+use crate::track_audio::storage_wait::{FetchProgress, StorageWaits};
+use crate::track_audio::TrackReadError;
 use bae_audio::sparse_buffer::{SharedSparseBuffer, SourceReadError};
 use bae_util::task_failure::{caught, joined};
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -317,17 +317,6 @@ fn read_error_for_file_read(error: crate::db::DbError) -> TrackReadError {
         ) => TrackReadError::OriginalMissing,
         error => TrackReadError::internal(error.to_string()),
     }
-}
-
-/// Create a reader for a release file, read through coven.
-pub fn create_audio_reader(
-    library_manager: &crate::library::LibraryManager,
-    file_id: &str,
-    arbiter: Arc<FetchArbiter>,
-    prefetch_byte: Option<u64>,
-    prefetch_file_end: bool,
-) -> Box<dyn AudioDataReader> {
-    library_manager.create_audio_reader(file_id, arbiter, prefetch_byte, prefetch_file_end)
 }
 
 /// Streams a release file's plaintext from one opened source. The

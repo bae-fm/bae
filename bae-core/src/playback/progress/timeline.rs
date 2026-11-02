@@ -10,7 +10,7 @@ use chrono::{DateTime, Utc};
 
 use super::{PlaybackPositions, PlaybackValues, PreviewState};
 use crate::playback::service::PlaybackState;
-use crate::playback::PreviewTarget;
+use crate::track_audio::PreviewTarget;
 
 /// How far a position may land from where its line puts it before the line
 /// is told again: past the jitter of position ticks, which arrive a few times

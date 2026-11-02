@@ -7,7 +7,6 @@ mod clock;
 mod context;
 #[cfg(not(target_os = "android"))]
 pub mod cpal_output;
-pub mod data_source;
 // The formats bae puts Mac output devices back to; its tests run on any host.
 #[cfg(any(target_os = "macos", test))]
 mod device_formats;
@@ -22,18 +21,13 @@ mod output_rate;
 mod preview_player;
 pub mod progress;
 mod queue;
-mod read_error;
 mod repeat_mode;
 mod resampling_drain;
 pub mod service;
 pub mod source;
-mod storage_wait;
 pub mod stream_pipeline;
 pub mod timeline;
 mod track_buffered;
-// Whole-release passes (import loudness, release saves) are desktop-only.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(crate) mod track_sources;
 
 pub use audio_focus::{AudioFocus, AudioFocusRefused, AudioFocusSystem};
 #[cfg(feature = "test-utils")]
@@ -56,14 +50,12 @@ pub use error_reason::{AudioOutputProblem, PlaybackDiagnostic, PlaybackErrorReas
 pub use now_playing::{
     NowPlayingTrack, NowPlayingValues, PlaybackFailure, PlayingTrack, TrackDisplay,
 };
-pub use preview_player::PreviewTarget;
 pub use progress::{
     MediaControlPlayback, PlaybackChange, PlaybackPosition, PlaybackPositions, PlaybackProgress,
     PlaybackTimeline, PlaybackValues, PreviewPosition, PreviewState, PreviewTimelinePoint,
     RemoteDevice, RemotePlayback, TimelinePoint,
 };
 pub use queue::{NextEntry, PlaybackQueue, PreviousAction, QueueEntry, QueueEntryId};
-pub use read_error::TrackReadError;
 pub use repeat_mode::RepeatMode;
 pub use service::{
     LoadingTrack, PlaybackHandle, PlaybackPauseBoundary, PlaybackPauseReason, PlaybackService,

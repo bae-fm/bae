@@ -82,11 +82,11 @@ impl LibraryManager {
     pub(crate) fn create_audio_reader(
         &self,
         file_id: &str,
-        arbiter: Arc<crate::playback::data_source::FetchArbiter>,
+        arbiter: Arc<crate::track_audio::data_source::FetchArbiter>,
         prefetch_byte: Option<u64>,
         prefetch_file_end: bool,
-    ) -> Box<dyn crate::playback::data_source::AudioDataReader> {
-        Box::new(crate::playback::data_source::CovenFileReader::new(
+    ) -> Box<dyn crate::track_audio::data_source::AudioDataReader> {
+        Box::new(crate::track_audio::data_source::CovenFileReader::new(
             self.database.clone(),
             file_id.to_string(),
             arbiter,
@@ -101,7 +101,7 @@ impl LibraryManager {
     /// read of it that panics to the library's diagnostics.
     pub(crate) fn track_decode(
         &self,
-        decode: crate::playback::stream_pipeline::StreamDecodeParams,
+        decode: crate::track_audio::StreamDecodeParams,
         sample_rate: u32,
         channels: u32,
     ) -> crate::library::TrackDecode {

@@ -4,7 +4,7 @@
 
 use super::*;
 use crate::db::SegmentSpan;
-use crate::playback::stream_pipeline::{SegmentDecodeParams, StreamDecodeParams};
+use crate::track_audio::{SegmentDecodeParams, StreamDecodeParams};
 use bae_audio::EncodeFormat;
 use bae_util::content_type::ContentType;
 

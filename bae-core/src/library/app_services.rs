@@ -9,7 +9,7 @@ use std::sync::Arc;
 /// One track's stored audio, open for a single decode into a
 /// [`DecodedSink`](bae_audio::DecodedSink).
 pub struct TrackDecode {
-    decode: crate::playback::stream_pipeline::StreamDecodeParams,
+    decode: crate::track_audio::StreamDecodeParams,
     sample_rate: u32,
     channels: u32,
     /// The library's, which a read of the decode that panicked is reported
@@ -19,7 +19,7 @@ pub struct TrackDecode {
 
 impl TrackDecode {
     pub(crate) fn new(
-        decode: crate::playback::stream_pipeline::StreamDecodeParams,
+        decode: crate::track_audio::StreamDecodeParams,
         sample_rate: u32,
         channels: u32,
         diagnostics: crate::diagnostics::Diagnostics,
@@ -595,7 +595,7 @@ impl AppServices {
     delegate_sync!(playback, playback_play_on => play_on(channel: Box<dyn crate::renderer::RendererChannel>, device: crate::playback::RemoteDevice, media_source: crate::renderer::RendererMediaSource) -> ());
     delegate_sync!(playback, playback_play_on_airplay => play_on_airplay(sink: Box<dyn crate::playback::airplay_output::AirPlaySink>, device: crate::playback::RemoteDevice) -> ());
     delegate_sync!(playback, playback_stop_remote => stop_remote() -> ());
-    delegate_sync!(playback, playback_preview_play => preview_play(target: crate::playback::PreviewTarget) -> ());
+    delegate_sync!(playback, playback_preview_play => preview_play(target: crate::track_audio::PreviewTarget) -> ());
     delegate_sync!(playback, playback_preview_stop => preview_stop() -> ());
     delegate_sync!(playback, playback_preview_toggle_pause => preview_toggle_pause() -> ());
     delegate_sync!(playback, playback_preview_seek_by_ratio => preview_seek_by_ratio(ratio: f64) -> ());
@@ -619,10 +619,9 @@ impl AppServices {
         size: u64,
     ) -> bae_audio::sparse_buffer::SharedSparseBuffer {
         let buffer = bae_audio::sparse_buffer::create_sparse_buffer(size);
-        let reader = crate::playback::data_source::create_audio_reader(
-            &self.inner.manager,
+        let reader = self.inner.manager.create_audio_reader(
             file_id,
-            crate::playback::data_source::FetchArbiter::new(),
+            crate::track_audio::data_source::FetchArbiter::new(),
             None,
             false,
         );
@@ -643,7 +642,7 @@ impl AppServices {
     /// and seeks by. One stream per file the segments read; they close when
     /// the returned decode is dropped.
     pub fn open_track_decode(&self, audio: &crate::library::ResolvedTrackAudio) -> TrackDecode {
-        use crate::playback::stream_pipeline::{SegmentDecodeParams, StreamDecodeParams};
+        use crate::track_audio::{SegmentDecodeParams, StreamDecodeParams};
 
         let mut streams: std::collections::HashMap<
             &str,

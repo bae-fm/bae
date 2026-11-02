@@ -1,0 +1,55 @@
+//! A stretch of a file to audition.
+
+use std::path::{Path, PathBuf};
+use std::time::Duration;
+
+/// One local source window that can be auditioned. The sample span is relative
+/// to `path`; byte seek landings are absent because an import candidate has not
+/// recorded them yet.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PreviewTarget {
+    path: PathBuf,
+    span: crate::db::SegmentSpan,
+}
+
+impl PreviewTarget {
+    pub fn whole_file(path: PathBuf) -> Self {
+        Self { path, span: crate::db::SegmentSpan::whole_file() }
+    }
+
+    pub fn sample_range(path: PathBuf, start_sample: u64, end_sample: Option<u64>) -> Self {
+        Self {
+            path,
+            span: crate::db::SegmentSpan {
+                start_sample,
+                end_sample,
+                start_byte: None,
+                end_byte: None,
+            },
+        }
+    }
+
+    pub fn into_sample_range(self) -> (PathBuf, u64, Option<u64>) {
+        (self.path, self.span.start_sample, self.span.end_sample)
+    }
+
+    /// The file the stretch is of.
+    pub(crate) fn path(&self) -> &Path {
+        &self.path
+    }
+
+    /// The stretch of the file, in samples.
+    pub(crate) fn span(&self) -> crate::db::SegmentSpan {
+        self.span
+    }
+
+    pub(crate) fn duration(&self, file_duration: Duration, sample_rate: u32) -> Option<Duration> {
+        let start = Duration::from_secs_f64(self.span.start_sample as f64 / sample_rate as f64);
+        let end = self
+            .span
+            .end_sample
+            .map(|sample| Duration::from_secs_f64(sample as f64 / sample_rate as f64))
+            .unwrap_or(file_duration);
+        end.checked_sub(start).filter(|duration| !duration.is_zero())
+    }
+}

@@ -129,7 +129,7 @@ async fn test_preview_seek_while_paused_emits_position_update() {
     // Start preview — wait for it to reach Playing state.
     fixture
         .playback_handle
-        .preview_play(bae_core::playback::PreviewTarget::whole_file(preview_path));
+        .preview_play(bae_core::track_audio::PreviewTarget::whole_file(preview_path));
     let saw_playing =
         support::next_matching(&mut fixture.progress_rx, Duration::from_secs(5), |event| {
             matches!(

@@ -6,8 +6,8 @@
 use super::*;
 use crate::db::ScrubPoints;
 use crate::db::{ScrubPoint, SegmentSpan};
-use crate::playback::data_source::FILL_WINDOW_SIZE;
-use crate::playback::stream_pipeline::{SegmentDecodeParams, StreamDecodeParams};
+use crate::track_audio::data_source::FILL_WINDOW_SIZE;
+use crate::track_audio::{SegmentDecodeParams, StreamDecodeParams};
 use bae_audio::{encode_i32, EncodeFormat, AVIO_BUFFER_SIZE};
 use bae_util::content_type::ContentType;
 

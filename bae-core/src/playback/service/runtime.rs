@@ -193,7 +193,7 @@ impl PlaybackService {
     pub(super) async fn handle_read_failed(
         &mut self,
         buffer_id: u64,
-        error: Arc<crate::playback::TrackReadError>,
+        error: Arc<crate::track_audio::TrackReadError>,
     ) {
         if let PlaybackSlot::Active(cur) = &self.slot {
             if cur.prepared.reads_buffer(buffer_id) {

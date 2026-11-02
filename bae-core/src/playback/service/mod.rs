@@ -38,11 +38,11 @@ use crate::library::ResolvedTrackAudio;
 use crate::playback::audio_output::{
     AudioEvent, AudioEventReceiver, AudioOutput, AudioOutputDevice, AudioStream,
 };
-use crate::playback::data_source::{create_audio_reader, FetchArbiter};
 use crate::playback::error::PlaybackError;
 use crate::playback::preview_player::PreviewPlayer;
 use crate::playback::progress::emit_progress;
 use crate::playback::progress::{PlaybackProgress, PlaybackProgressHandle};
+use crate::track_audio::data_source::FetchArbiter;
 use bae_audio::DecodeError;
 // Imported by path so the sample feed reads `source::PlaybackSource`, apart
 // from the queue's `ContextSource`.
@@ -84,8 +84,9 @@ mod volume;
 
 use crate::playback::stream_pipeline::{
     cancel_and_join_decoder, log_stream_diagnostic, report_dropped_audio_events, spawn_decoder,
-    DecodeFailureReport, DecoderSetup, SegmentDecodeParams, StreamDecodeParams,
+    DecodeFailureReport, DecoderSetup,
 };
+use crate::track_audio::{SegmentDecodeParams, StreamDecodeParams};
 pub(crate) use api::{dispatch_command, PlaybackCommand};
 pub use api::{
     LoadingTrack, PlaybackHandle, PlaybackPauseBoundary, PlaybackPauseReason,

@@ -5,8 +5,8 @@
 
 use super::*;
 use crate::library::SaveTrackPlan;
-use crate::playback::stream_pipeline::{SegmentDecodeParams, StreamDecodeParams};
-use crate::playback::track_sources::SourceStream;
+use crate::track_audio::track_sources::SourceStream;
+use crate::track_audio::{SegmentDecodeParams, StreamDecodeParams};
 use std::collections::HashMap;
 use std::num::NonZeroUsize;
 
@@ -88,11 +88,11 @@ impl LibraryManager {
     /// file shorter than the stored size — fails the buffer, and the decode
     /// fails loudly with that read's error.
     fn open_save_source(&self, file: &crate::db::DbFile) -> SourceStream {
-        use crate::playback::data_source::{create_audio_reader, FetchArbiter};
+        use crate::track_audio::data_source::FetchArbiter;
 
         // A fresh arbiter per file: save has no foreground track to prioritize,
         // so every fetch runs ungated.
-        let reader = create_audio_reader(self, &file.id, FetchArbiter::new(), None, false);
+        let reader = self.create_audio_reader(&file.id, FetchArbiter::new(), None, false);
         let file_id = file.id.clone();
         SourceStream::start(
             reader,

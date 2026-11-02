@@ -98,7 +98,7 @@ async fn read_failure_on_the_preloaded_next_discards_it_and_keeps_playing() {
     service
         .handle_read_failed(
             preload_buffer.id(),
-            std::sync::Arc::new(crate::playback::TrackReadError::OriginalMissing),
+            std::sync::Arc::new(crate::track_audio::TrackReadError::OriginalMissing),
         )
         .await;
 
@@ -136,7 +136,7 @@ async fn read_failure_on_the_playing_track_reports_the_error() {
     service
         .handle_read_failed(
             current_buffer.id(),
-            std::sync::Arc::new(crate::playback::TrackReadError::OriginalMissing),
+            std::sync::Arc::new(crate::track_audio::TrackReadError::OriginalMissing),
         )
         .await;
 
@@ -162,7 +162,7 @@ async fn read_failure_on_a_buffer_out_of_play_is_ignored() {
     service
         .handle_read_failed(
             abandoned_buffer.id(),
-            std::sync::Arc::new(crate::playback::TrackReadError::OriginalMissing),
+            std::sync::Arc::new(crate::track_audio::TrackReadError::OriginalMissing),
         )
         .await;
 

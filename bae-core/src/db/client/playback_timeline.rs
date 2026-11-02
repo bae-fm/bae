@@ -3,7 +3,8 @@
 //! line it holds, and read by their live query.
 
 use super::*;
-use crate::playback::{PlaybackTimeline, PreviewTarget, PreviewTimelinePoint, TimelinePoint};
+use crate::playback::{PlaybackTimeline, PreviewTimelinePoint, TimelinePoint};
+use crate::track_audio::PreviewTarget;
 
 /// The `playback_timeline` row, as playback writes it.
 #[derive(Clone)]

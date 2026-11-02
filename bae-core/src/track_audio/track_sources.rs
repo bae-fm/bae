@@ -19,7 +19,7 @@ use std::future::Future;
 use std::hash::Hash;
 use std::num::NonZeroUsize;
 
-use crate::playback::data_source::{AudioDataReader, FillErrorHandler, FillTask};
+use crate::track_audio::data_source::{AudioDataReader, FillErrorHandler, FillTask};
 use bae_audio::sparse_buffer::create_sparse_buffer;
 use bae_audio::sparse_buffer::SharedSparseBuffer;
 use bae_util::task_failure::{caught, TaskFailed};

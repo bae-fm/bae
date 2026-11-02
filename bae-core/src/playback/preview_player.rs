@@ -19,62 +19,22 @@ use crate::diagnostics::{Diagnostics, ReportedTask};
 use crate::playback::audio_output::{
     AudioEvent, AudioEventReceiver, AudioOutput, AudioOutputDevice, AudioState,
 };
-use crate::playback::data_source::{AudioDataReader, LocalReader};
 use crate::playback::progress::{emit_progress, PlaybackProgress, PreviewState};
 use crate::playback::service::{dispatch_command, PlaybackCommand};
 use crate::playback::source::TrackFmt;
 use crate::playback::stream_pipeline::{
     log_stream_diagnostic, report_dropped_audio_events, start_stream_pipeline, DecodeFailureReport,
-    DecoderSetup, SegmentDecodeParams, StreamDecodeParams, StreamPipeline,
+    DecoderSetup, StreamPipeline,
 };
 use crate::playback::timeline::{StreamPosition, TrackTimeline};
+use crate::track_audio::data_source::{AudioDataReader, LocalReader};
+use crate::track_audio::{PreviewTarget, SegmentDecodeParams, StreamDecodeParams};
 use bae_audio::sparse_buffer::{create_sparse_buffer, SharedSparseBuffer};
 use bae_util::task_failure::{blocking, TaskFailed};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::time::Duration;
 use tokio::sync::mpsc as tokio_mpsc;
 use tracing::{error, info, warn};
-
-/// One local source window that can be auditioned. The sample span is relative
-/// to `path`; byte seek landings are absent because an import candidate has not
-/// recorded them yet.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct PreviewTarget {
-    path: PathBuf,
-    span: crate::db::SegmentSpan,
-}
-
-impl PreviewTarget {
-    pub fn whole_file(path: PathBuf) -> Self {
-        Self { path, span: crate::db::SegmentSpan::whole_file() }
-    }
-
-    pub fn sample_range(path: PathBuf, start_sample: u64, end_sample: Option<u64>) -> Self {
-        Self {
-            path,
-            span: crate::db::SegmentSpan {
-                start_sample,
-                end_sample,
-                start_byte: None,
-                end_byte: None,
-            },
-        }
-    }
-
-    pub fn into_sample_range(self) -> (PathBuf, u64, Option<u64>) {
-        (self.path, self.span.start_sample, self.span.end_sample)
-    }
-
-    fn duration(&self, file_duration: Duration, sample_rate: u32) -> Option<Duration> {
-        let start = Duration::from_secs_f64(self.span.start_sample as f64 / sample_rate as f64);
-        let end = self
-            .span
-            .end_sample
-            .map(|sample| Duration::from_secs_f64(sample as f64 / sample_rate as f64))
-            .unwrap_or(file_duration);
-        end.checked_sub(start).filter(|duration| !duration.is_zero())
-    }
-}
 
 /// The preview shape of a fill-error handler: the audition has one file and one
 /// buffer, so a failed byte fill can only mean this preview is unplayable — it
@@ -82,7 +42,7 @@ impl PreviewTarget {
 /// the buffer with the same error, unblocking the decoder.)
 fn preview_fill_error_handler(
     progress_tx: tokio_mpsc::UnboundedSender<PlaybackProgress>,
-) -> crate::playback::data_source::FillErrorHandler {
+) -> crate::track_audio::data_source::FillErrorHandler {
     Box::new(move |error| {
         emit_progress(
             &progress_tx,
@@ -230,22 +190,22 @@ impl PreviewPlayer {
             self.tear_down();
         }
 
-        let source_size = match tokio::fs::metadata(&target.path).await {
+        let source_size = match tokio::fs::metadata(target.path()).await {
             Ok(metadata) => metadata.len(),
             Err(e) => {
-                error!("Failed to stat preview file {}: {}", target.path.display(), e);
+                error!("Failed to stat preview file {}: {}", target.path().display(), e);
                 return PreviewPlayOutcome::SetupFailed;
             }
         };
 
-        let Some(probe) = probe_preview_audio(&self.diagnostics, &target.path).await else {
+        let Some(probe) = probe_preview_audio(&self.diagnostics, target.path()).await else {
             return PreviewPlayOutcome::SetupFailed;
         };
         let Some(duration) = target.duration(probe.duration, probe.sample_rate) else {
             error!(
-                path = %target.path.display(),
-                start_sample = target.span.start_sample,
-                end_sample = target.span.end_sample,
+                path = %target.path().display(),
+                start_sample = target.span().start_sample,
+                end_sample = target.span().end_sample,
                 "Preview target has an empty or reversed sample window"
             );
             return PreviewPlayOutcome::SetupFailed;
@@ -253,7 +213,7 @@ impl PreviewPlayer {
 
         let buffer = create_sparse_buffer(source_size);
         let reader: Box<dyn AudioDataReader> =
-            Box::new(LocalReader::new(&target.path, self.diagnostics.clone()));
+            Box::new(LocalReader::new(target.path(), self.diagnostics.clone()));
         reader.start_reading(buffer.clone(), preview_fill_error_handler(self.progress_tx.clone()));
 
         let started = self
@@ -271,7 +231,7 @@ impl PreviewPlayer {
             )
             .await;
         if started {
-            info!("Preview started: {}", target.path.display());
+            info!("Preview started: {}", target.path().display());
             PreviewPlayOutcome::Started
         } else {
             PreviewPlayOutcome::StreamStartFailed
@@ -484,7 +444,11 @@ impl PreviewPlayer {
         // landing byte exists for an unimported file, so the decoder sample-seeks.
         let start_offset = seek_to.map_or(0, |position| position.frames(source.sample_rate));
         let decode = StreamDecodeParams::new(
-            vec![SegmentDecodeParams::new(source.buffer.clone(), source.target.span, start_offset)],
+            vec![SegmentDecodeParams::new(
+                source.buffer.clone(),
+                source.target.span(),
+                start_offset,
+            )],
             true,
             0,
             0,
@@ -494,7 +458,7 @@ impl PreviewPlayer {
         // measurements) at unity gain. The listener reads position off this fmt,
         // carried on the event stream.
         let fmt = TrackFmt {
-            track_id: coven::path_text(&source.target.path),
+            track_id: coven::path_text(source.target.path()),
             timeline: source.timeline(),
             starts_at: seek_to.unwrap_or(StreamPosition::START),
             replay_gain_linear: 1.0,
@@ -706,7 +670,7 @@ impl PreviewPlayer {
     /// tests can exercise the completion/stop teardown seam without real audio.
     pub(crate) fn set_active_for_test(
         &mut self,
-        path: PathBuf,
+        path: std::path::PathBuf,
         pipeline: StreamPipeline,
         buffer: SharedSparseBuffer,
     ) {

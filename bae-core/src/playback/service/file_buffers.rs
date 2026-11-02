@@ -157,8 +157,7 @@ pub(super) async fn prepare_track_for_playback(
             }
             None => {
                 let buffer = create_sparse_buffer(segment.file_size);
-                let reader = create_audio_reader(
-                    library_manager,
+                let reader = library_manager.create_audio_reader(
                     &segment.file_id,
                     file_buffers.arbiter.clone(),
                     segment.span.start_byte,
@@ -202,7 +201,7 @@ pub(super) async fn prepare_track_for_playback(
 fn playback_fill_error_handler(
     command_tx: tokio_mpsc::UnboundedSender<PlaybackCommand>,
     buffer_id: u64,
-) -> crate::playback::data_source::FillErrorHandler {
+) -> crate::track_audio::data_source::FillErrorHandler {
     Box::new(move |error| {
         dispatch_command(&command_tx, PlaybackCommand::ReadFailed { buffer_id, error });
     })

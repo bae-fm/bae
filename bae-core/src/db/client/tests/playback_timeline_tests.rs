@@ -2,7 +2,8 @@
 //! schema refuses, and what starting playback leaves.
 
 use super::super::*;
-use crate::playback::{PlaybackTimeline, PreviewTarget, PreviewTimelinePoint, TimelinePoint};
+use crate::playback::{PlaybackTimeline, PreviewTimelinePoint, TimelinePoint};
+use crate::track_audio::PreviewTarget;
 
 fn timeline() -> PlaybackTimeline {
     PlaybackTimeline {

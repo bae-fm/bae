@@ -150,7 +150,7 @@ pub struct MappingFile {
     pub size: u64,
     pub path: PathBuf,
     /// The whole-file audition target when this file currently supplies audio.
-    pub preview_target: Option<crate::playback::PreviewTarget>,
+    pub preview_target: Option<crate::track_audio::PreviewTarget>,
     /// Playing time from the scan's stored facts. `None` for non-audio files.
     pub duration_ms: Option<u64>,
     pub audio_format: Option<bae_types::audio_format::AudioFormat>,
@@ -174,7 +174,7 @@ pub struct MappingEntry {
     pub container_id: String,
     pub container_name: String,
     /// The exact window of the container that auditioning this entry plays.
-    pub preview_target: crate::playback::PreviewTarget,
+    pub preview_target: crate::track_audio::PreviewTarget,
     pub audio_format: bae_types::audio_format::AudioFormat,
 }
 
@@ -452,7 +452,7 @@ impl RowBuilder<'_> {
                     .clone();
                 let sample_rate = u64::try_from(format.sample_rate_hz)
                     .expect("a scanned audio file has a non-negative sample rate");
-                let preview_target = crate::playback::PreviewTarget::sample_range(
+                let preview_target = crate::track_audio::PreviewTarget::sample_range(
                     audio.path.clone(),
                     crate::cue_flac::cue_frames_to_samples(track.start_cue_frames, sample_rate),
                     track
@@ -606,8 +606,9 @@ impl InvalidCandidateDetail {
                     file_id: scanned.relative_path.clone(),
                     name: scanned.relative_path.clone(),
                     size: scanned.size,
-                    preview_target: (role == MappingRole::Audio)
-                        .then(|| crate::playback::PreviewTarget::whole_file(scanned.path.clone())),
+                    preview_target: (role == MappingRole::Audio).then(|| {
+                        crate::track_audio::PreviewTarget::whole_file(scanned.path.clone())
+                    }),
                     path: scanned.path,
                     duration_ms: None,
                     audio_format: None,
@@ -688,7 +689,7 @@ fn bound_sheet(sheet: &BoundTrackSheet<'_>) -> SheetBound {
 /// The left half of a file's row: what the folder holds.
 fn mapping_file(entry: &CandidateFile, role: MappingRole, duration_ms: Option<u64>) -> MappingFile {
     let preview_target = (role == MappingRole::Audio)
-        .then(|| crate::playback::PreviewTarget::whole_file(entry.file.path.clone()));
+        .then(|| crate::track_audio::PreviewTarget::whole_file(entry.file.path.clone()));
     MappingFile {
         file_id: entry.file.relative_path.clone(),
         name: entry.file.relative_path.clone(),

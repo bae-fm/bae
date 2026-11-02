@@ -9,9 +9,9 @@ use crate::playback::{AudioOutputProblem, PlaybackDiagnostic, PlaybackErrorReaso
 use crate::playback::{
     LoadingTrack, NowPlayingTrack, NowPlayingValues, PlaybackChange, PlaybackFailure,
     PlaybackPauseBoundary, PlaybackPauseReason, PlaybackSideCountdown, PlaybackSidePausePrompt,
-    PlaybackState, PlaybackValues, PlayingTrack, PreviewState, PreviewTarget, RemoteDevice,
-    RemotePlayback,
+    PlaybackState, PlaybackValues, PlayingTrack, PreviewState, RemoteDevice, RemotePlayback,
 };
+use crate::track_audio::PreviewTarget;
 
 /// The `playback_now` row, as playback writes it.
 #[derive(Clone)]
