@@ -2,7 +2,7 @@ package fm.bae.app.ui
 
 import android.app.Application
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import fm.bae.app.BugReports
 import fm.bae.app.LocalBugReports
 import kotlinx.coroutines.CoroutineScope

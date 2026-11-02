@@ -3,7 +3,7 @@ package fm.bae.app.ui.appearance
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.Text
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.core.view.WindowCompat
 import fm.bae.app.ui.BaeTheme
 import kotlinx.coroutines.runBlocking
