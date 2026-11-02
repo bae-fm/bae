@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="group_by_artist">Групиране по изпълнител</string>
+    <string name="album_credited_with">заедно с %1$s</string>
+    <string name="album_year_credited_with">%1$s · заедно с %2$s</string>
     <string name="back">Назад</string>
     <string name="cancel">Отказ</string>
     <string name="retry">Повторен опит</string>

@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="group_by_artist">Gruppera efter artist</string>
+    <string name="album_credited_with">med %1$s</string>
+    <string name="album_year_credited_with">%1$s · med %2$s</string>
     <string name="back">Tillbaka</string>
     <string name="cancel">Avbryt</string>
     <string name="retry">Försök igen</string>

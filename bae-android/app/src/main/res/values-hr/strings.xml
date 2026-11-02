@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="group_by_artist">Grupiraj po izvođaču</string>
+    <string name="album_credited_with">zajedno s: %1$s</string>
+    <string name="album_year_credited_with">%1$s · zajedno s: %2$s</string>
     <string name="back">Natrag</string>
     <string name="cancel">Odustani</string>
     <string name="retry">Pokušaj ponovno</string>

@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="group_by_artist">按艺术家分组</string>
+    <string name="album_credited_with">合作：%1$s</string>
+    <string name="album_year_credited_with">%1$s · 合作：%2$s</string>
     <string name="back">返回</string>
     <string name="cancel">取消</string>
     <string name="retry">重试</string>

@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="group_by_artist">Groeperen op artiest</string>
+    <string name="album_credited_with">met %1$s</string>
+    <string name="album_year_credited_with">%1$s · met %2$s</string>
     <string name="back">Terug</string>
     <string name="cancel">Annuleren</string>
     <string name="retry">Opnieuw proberen</string>

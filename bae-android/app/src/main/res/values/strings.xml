@@ -13,6 +13,8 @@
 -->
 <resources>
     <string name="group_by_artist">Group by artist</string>
+    <string name="album_credited_with">with %1$s</string>
+    <string name="album_year_credited_with">%1$s · with %2$s</string>
     <!-- Common -->
     <string name="back">Back</string>
     <string name="cancel">Cancel</string>

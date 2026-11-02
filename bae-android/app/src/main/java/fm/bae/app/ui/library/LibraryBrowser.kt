@@ -145,6 +145,7 @@ private fun LibraryBrowserContent(
                         groupByArtist = state.groupAlbumsByArtist,
                         gridState = state.gridState,
                         onSelectAlbum = onSelectAlbum,
+                        onSelectArtist = onSelectArtist,
                     )
                 }
 
@@ -177,6 +178,7 @@ private fun AlbumBrowserContent(
     groupByArtist: Boolean,
     gridState: LazyGridState,
     onSelectAlbum: (String) -> Unit,
+    onSelectArtist: (String) -> Unit,
 ) {
     val page =
         rememberLibraryPage(
@@ -193,6 +195,7 @@ private fun AlbumBrowserContent(
             gridState = gridState,
             groupByArtist = groupByArtist,
             onSelectAlbum = onSelectAlbum,
+            onSelectArtist = onSelectArtist,
         )
     }
 }

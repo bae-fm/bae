@@ -10,20 +10,18 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -32,18 +30,14 @@ import fm.bae.app.R
 import fm.bae.app.data.AlbumPageStore
 import fm.bae.app.data.ImageStore
 import fm.bae.app.data.LocalImageStore
-import fm.bae.app.ui.BaeAppChrome
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.CoverImage
-import uniffi.bae_bridge.BridgeAlbum
+import uniffi.bae_bridge.BridgeAlbumAppearance
 import uniffi.bae_bridge.BridgeLibraryBrowseSection
-
-// Enough fixture albums to fill the screen below the scrolled scene's first row.
-private const val SCENE_ALBUM_COUNT = 24
 
 @Composable
 internal fun LibraryGridContent(
@@ -52,6 +46,7 @@ internal fun LibraryGridContent(
     gridState: LazyGridState,
     groupByArtist: Boolean,
     onSelectAlbum: (String) -> Unit,
+    onSelectArtist: (String) -> Unit,
 ) {
     LibraryPageContent(
         session = session,
@@ -61,24 +56,28 @@ internal fun LibraryGridContent(
         LibraryGridBacking(
             count = page.totalCount,
             sections = if (groupByArtist) page.sections else emptyList(),
-            albumAt = page.rows::get,
+            rowAt = page.rows::get,
             gridState = gridState,
             onSelectAlbum = onSelectAlbum,
+            onSelectArtist = onSelectArtist,
         )
     }
 }
 
 /**
- * The album grid, taking albums by index so the screenshot scene can render it
- * without a live session.
+ * The album grid, taking its rows by index so the screenshot scenes can render
+ * it without a live session. With [sections] it is grouped by artist: each
+ * group opens with the artist's header, pinned at the top while its albums
+ * scroll by.
  */
 @Composable
-private fun LibraryGridBacking(
+internal fun LibraryGridBacking(
     count: Int,
-    sections: List<BridgeLibraryBrowseSection> = emptyList(),
-    albumAt: (Int) -> BridgeAlbum?,
+    sections: List<BridgeLibraryBrowseSection>,
+    rowAt: (Int) -> BridgeAlbumAppearance?,
     gridState: LazyGridState,
     onSelectAlbum: (String) -> Unit,
+    onSelectArtist: (String) -> Unit,
 ) {
     LazyVerticalGrid(
         columns = GridCells.Adaptive(minSize = 150.dp),
@@ -89,19 +88,27 @@ private fun LibraryGridBacking(
         modifier = Modifier.fillMaxSize(),
     ) {
         if (sections.isEmpty()) {
-            albumItems(0 until count, albumAt, onSelectAlbum)
+            albumItems(0 until count, rowAt, grouped = false, onSelectAlbum)
         } else {
             sections.forEach { section ->
-                item(key = section.id, span = { GridItemSpan(maxLineSpan) }) {
-                    Text(
-                        text = section.title,
-                        style = ThemeText.rowTitle.style,
-                        modifier = Modifier.semantics { heading() },
+                stickyHeader(key = section.id, contentType = ARTIST_GROUP_HEADER) { index ->
+                    val pinned by remember(gridState, index) {
+                        derivedStateOf {
+                            gridState.firstVisibleItemIndex > index ||
+                                (gridState.firstVisibleItemIndex == index && gridState.firstVisibleItemScrollOffset > 0)
+                        }
+                    }
+                    ArtistGroupHeader(
+                        section = section,
+                        pinned = pinned,
+                        gridPadding = ThemeSpace.group,
+                        onClick = { onSelectArtist(section.id) },
                     )
                 }
                 albumItems(
                     section.window.offset.toInt() until (section.window.offset + section.window.limit).toInt(),
-                    albumAt,
+                    rowAt,
+                    grouped = true,
                     onSelectAlbum,
                 )
             }
@@ -109,16 +116,20 @@ private fun LibraryGridBacking(
     }
 }
 
+/** The content type of an artist's header among the grid's album cards. */
+private const val ARTIST_GROUP_HEADER = "artist-group-header"
+
 private fun LazyGridScope.albumItems(
     positions: IntRange,
-    albumAt: (Int) -> BridgeAlbum?,
+    rowAt: (Int) -> BridgeAlbumAppearance?,
+    grouped: Boolean,
     onSelectAlbum: (String) -> Unit,
 ) {
     items(positions.count(), key = { positions.first + it }) { local ->
         val index = positions.first + local
-        val album = albumAt(index)
-        if (album != null) {
-            AlbumGridCard(album = album, onClick = { onSelectAlbum(album.id) })
+        val row = rowAt(index)
+        if (row != null) {
+            AlbumGridCard(row = row, grouped = grouped, onClick = { onSelectAlbum(row.album.id) })
         } else {
             Spacer(modifier = Modifier.fillMaxWidth().aspectRatio(1f))
         }
@@ -126,70 +137,16 @@ private fun LazyGridScope.albumItems(
 }
 
 /**
- * The library home screenshot scenes: the header over fixture albums with empty
- * cover tiles, in the app chrome, needing no session. The grid starts at
- * [firstAlbum], and [openMenu] shows that header menu open.
+ * An album's card: its cover, title, and under it the album's artists, or in a
+ * group of the grid grouped by artist, its year and the album's other credits.
  */
-@Composable
-internal fun LibraryGridScene(
-    firstAlbum: Int,
-    openMenu: LibraryHeaderMenu?,
-) {
-    BaeAppChrome {
-        val state = remember { LibraryBrowserState().apply { this.openMenu = openMenu } }
-        val gridState = rememberLazyGridState(initialFirstVisibleItemIndex = firstAlbum)
-        val collapse = rememberHeadingCollapse(gridState)
-        Column(modifier = Modifier.fillMaxSize()) {
-            LibraryHeader(
-                state = state,
-                collapse = { collapse.value },
-                onShuffleLibrary = {},
-                onSettings = {},
-                syncActivity = {},
-            )
-            LibraryGridSceneAlbums(gridState)
-        }
-    }
-}
-
-/**
- * The library scenes' albums, with no cover resolved, scrolled by [gridState];
- * the mini player's scenes show them above the bar.
- */
-@Composable
-internal fun LibraryGridSceneAlbums(gridState: LazyGridState) {
-    CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
-        LibraryGridBacking(
-            count = SCENE_ALBUM_COUNT,
-            albumAt = ::sceneAlbum,
-            gridState = gridState,
-            onSelectAlbum = {},
-        )
-    }
-}
-
-/**
- * A scene's album at [index]: the first title and the third album's artists run
- * past a card's width, to show them cut short with "…".
- */
-private fun sceneAlbum(index: Int): BridgeAlbum =
-    PreviewData.album(
-        id = "alb-$index",
-        title = if (index == 0) "A Long Album Title That Runs Past the Card" else "Album ${index + 1}",
-        artistNames = if (index == 2) "Artist Name, Second Artist Name and Third Artist" else "Artist Name",
-    )
-
-@Preview(showBackground = true)
-@Composable
-private fun LibraryGridScenePreview() {
-    LibraryGridScene(firstAlbum = 0, openMenu = null)
-}
-
 @Composable
 private fun AlbumGridCard(
-    album: BridgeAlbum,
+    row: BridgeAlbumAppearance,
+    grouped: Boolean,
     onClick: () -> Unit,
 ) {
+    val album = row.album
     Column(modifier = Modifier.clickable(onClick = onClick)) {
         CoverImage(
             cover = album.cover,
@@ -206,7 +163,7 @@ private fun AlbumGridCard(
             overflow = TextOverflow.Ellipsis,
         )
         Text(
-            text = album.artistNames,
+            text = if (grouped) groupedCardLine(row) else album.artistNames,
             style = ThemeText.detail.style,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,
@@ -215,12 +172,28 @@ private fun AlbumGridCard(
     }
 }
 
+/** A grouped card's line: the year, and the album's other credits when it has any. */
+@Composable
+private fun groupedCardLine(row: BridgeAlbumAppearance): String {
+    val year = row.album.year?.toString()
+    val creditedWith = row.creditedWith
+    return when {
+        creditedWith == null -> year.orEmpty()
+        year == null -> stringResource(R.string.album_credited_with, creditedWith)
+        else -> stringResource(R.string.album_year_credited_with, year, creditedWith)
+    }
+}
+
 @Preview(showBackground = true)
 @Composable
 private fun AlbumGridCardPreview() {
     BaeTheme {
         CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
-            AlbumGridCard(album = PreviewData.album(), onClick = {})
+            AlbumGridCard(
+                row = BridgeAlbumAppearance(album = PreviewData.album(), creditedWith = "Another Artist"),
+                grouped = true,
+                onClick = {},
+            )
         }
     }
 }

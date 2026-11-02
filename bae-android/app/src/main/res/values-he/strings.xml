@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="group_by_artist">קיבוץ לפי אמן</string>
+    <string name="album_credited_with">עם %1$s</string>
+    <string name="album_year_credited_with">%1$s · עם %2$s</string>
     <string name="back">חזרה</string>
     <string name="cancel">ביטול</string>
     <string name="retry">נסה שוב</string>

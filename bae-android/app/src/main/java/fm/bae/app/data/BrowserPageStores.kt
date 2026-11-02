@@ -14,7 +14,7 @@ import fm.bae.screensubscription.PulledSubscription
 import fm.bae.screensubscription.ScreenSubscription
 import fm.bae.screensubscription.map
 import kotlinx.coroutines.CoroutineScope
-import uniffi.bae_bridge.BridgeAlbum
+import uniffi.bae_bridge.BridgeAlbumAppearance
 import uniffi.bae_bridge.BridgeArtistSortCriterion
 import uniffi.bae_bridge.BridgeArtistSummary
 import uniffi.bae_bridge.BridgeComposerSortCriterion
@@ -214,7 +214,7 @@ internal class AlbumPageStore(
     private val library: Library,
     appContext: Context,
     scope: CoroutineScope,
-) : WindowedBrowserPageStore<AlbumBrowseParameters, BridgeAlbum>(
+) : WindowedBrowserPageStore<AlbumBrowseParameters, BridgeAlbumAppearance>(
         appContext,
         scope,
         R.string.library_load_more_albums_failed,
@@ -226,10 +226,10 @@ internal class AlbumPageStore(
         activate(AlbumBrowseParameters(criterion, groupByArtist))
     }
 
-    override fun open(parameter: AlbumBrowseParameters): BrowseRowsQuery<BridgeAlbum> =
+    override fun open(parameter: AlbumBrowseParameters): BrowseRowsQuery<BridgeAlbumAppearance> =
         SnapshotRowsQuery(library.albumBrowse(listOf(parameter.criterion), parameter.groupByArtist)) { snapshot ->
             BrowseRows(
-                snapshot.windows.map { window -> window.window to window.rows.map { it.album } },
+                snapshot.windows.map { it.window to it.rows },
                 snapshot.rowCount.toInt(),
                 snapshot.sections,
             )

@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="group_by_artist">Sanatçıya göre grupla</string>
+    <string name="album_credited_with">%1$s ile</string>
+    <string name="album_year_credited_with">%1$s · %2$s ile</string>
     <string name="back">Geri</string>
     <string name="cancel">İptal</string>
     <string name="retry">Yeniden dene</string>

@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="group_by_artist">Grupează după artist</string>
+    <string name="album_credited_with">cu %1$s</string>
+    <string name="album_year_credited_with">%1$s · cu %2$s</string>
     <string name="back">Înapoi</string>
     <string name="cancel">Anulează</string>
     <string name="retry">Reîncearcă</string>

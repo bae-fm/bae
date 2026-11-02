@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="group_by_artist">Nach Interpret gruppieren</string>
+    <string name="album_credited_with">mit %1$s</string>
+    <string name="album_year_credited_with">%1$s · mit %2$s</string>
     <string name="back">Zurück</string>
     <string name="cancel">Abbrechen</string>
     <string name="retry">Erneut versuchen</string>
