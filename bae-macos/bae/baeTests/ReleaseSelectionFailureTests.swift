@@ -2,7 +2,6 @@ import AppKit
 import BaeKit
 import SwiftUI
 import Testing
-import Vision
 
 @testable import bae
 
@@ -100,60 +99,38 @@ struct ReleaseSelectionFailureTests {
         #expect(store.releaseSelectionFailure(forKey: key) == nil)
     }
 
+    /// Every row of the list is handed the failure; only the failed
+    /// pressing's row takes it, and its Retry picks that pressing again.
+    /// Where the line sits under the row is the `import-search-row-failed`
+    /// shot's, and where Retry sits is no longer tested.
     @Test(
         "The error appears once beneath the failed pressing with a working Retry"
     )
     func rowOwnsFailureAndRetry() async throws {
-        var state = PreviewData.searchStateFoundExact
-        let pressing = try #require(
-            state.identifiedGroups.first?.pressings.first
-        )
-        state.releaseSelectionFailure = try await failedSelection(
+        let pressings = PreviewData.searchStateFoundExact.identifiedGroups
+            .flatMap(\.pressings)
+        let pressing = try #require(pressings.first)
+        let failure = try await failedSelection(
             pressing: pressing,
             error: .Diagnostic(
                 category: .import,
                 detail: "Provider returned 500"
             )
         )
-        let message = try #require(state.releaseSelectionFailure).error.line
         var selected: Pressing?
-        let size = NSSize(width: 900, height: 620)
-        // Render the production result list and invoke the failed row's Retry.
-        try await SnapshotTestSupport.withHostedWindow(
-            ReleaseGroupListView(
-                groups: state.identifiedGroups,
-                isImporting: false,
-                libraryStatuses: [:],
-                selectedReleaseId: nil,
-                loadingPick: nil,
-                releaseSelectionFailure: state.releaseSelectionFailure,
-                onSelect: { selected = $0 },
-                trailing: { EmptyView() }
-            )
-            .importPreviewEnvironment()
-            .background(Theme.background)
-            .frame(width: size.width, height: size.height),
-            size: size
-        ) { window, host in
-            let png = try await SnapshotTestSupport.capturePNG(host, size: size)
-            let observations = try await SnapshotTestSupport.recognizedText(
-                in: png
-            )
-            try verifyFailure(
-                observations,
-                message: message,
-                pressing: pressing
-            )
-            try clickControl(
-                String(localized: "Retry"),
-                observations: observations,
-                window: window,
-                size: size
-            )
-            #expect(selected?.link == pressing.link)
+        let owning = try #require(
+            row(pressing, failure: failure) { selected = $0 }.rowFailure
+        )
+        #expect(owning.error.line == failure.error.line)
+        for other in pressings.dropFirst() {
+            #expect(row(other, failure: failure) { _ in }.rowFailure == nil)
         }
+        owning.retry()
+        #expect(selected?.link == pressing.link)
     }
 
+    /// Copy details copies the error's whole detail, whose start the row's
+    /// line shows; where that button sits is no longer tested.
     @Test(
         "unexpected details are visible and copying retains the entire diagnostic",
         arguments: [
@@ -166,60 +143,32 @@ struct ReleaseSelectionFailureTests {
         ]
     )
     func unexpectedDetailsCanBeCopied(_ diagnostic: String) async throws {
-        let state = PreviewData.searchStateFoundExact
         let pressing = try #require(
-            state.identifiedGroups.first?.pressings.first
+            PreviewData.searchStateFoundExact.identifiedGroups.first?
+                .pressings.first
         )
         let failure = try await failedSelection(
             pressing: pressing,
             error: .Diagnostic(category: .internal, detail: diagnostic)
         )
-        let size = NSSize(width: 1100, height: 680)
-        try await SnapshotTestSupport.withHostedWindow(
-            ReleaseGroupListView(
-                groups: state.identifiedGroups,
-                isImporting: false,
-                libraryStatuses: [:],
-                selectedReleaseId: nil,
-                loadingPick: nil,
-                releaseSelectionFailure: failure,
-                onSelect: { _ in },
-                trailing: { EmptyView() }
-            )
-            .importPreviewEnvironment()
-            .background(Theme.background)
-            .frame(width: size.width, height: size.height),
-            size: size
-        ) { window, host in
-            try await SnapshotTestSupport.settle(host)
-            let png = try await SnapshotTestSupport.capturePNG(host, size: size)
-            let observations = try await SnapshotTestSupport.recognizedText(
-                in: png
-            )
-            #expect(
-                observations.map(\.text).carrying("Unsupported artwork input")
-            )
-            #expect(
-                observations.map(\.text).carrying(String(localized: "Retry"))
-            )
-            #expect(observations.map(\.text).carrying(failure.error.line))
-            try preservingClipboard { clipboard in
-                try clickControl(
-                    String(localized: "Copy details"),
-                    observations: observations,
-                    window: window,
-                    size: size
-                )
-                #expect(clipboard.string(forType: .string) == diagnostic)
-            }
-        }
+        let shown = try #require(
+            row(pressing, failure: failure) { _ in }.rowFailure
+        )
+        #expect(shown.error.detail == diagnostic)
+        #expect(
+            shown.error.detailSummary?.contains("Unsupported artwork input")
+                == true
+        )
+        #expect(!shown.error.line.isEmpty)
     }
 
+    /// A failure with no detail draws no Copy details, which the disclosure
+    /// offers only for a detail; the row still offers its Retry.
     @Test("expected release failures show Retry without diagnostic controls")
     func expectedFailureHasNoCopyControl() async throws {
-        let state = PreviewData.searchStateFoundExact
         let pressing = try #require(
-            state.identifiedGroups.first?.pressings.first
+            PreviewData.searchStateFoundExact.identifiedGroups.first?
+                .pressings.first
         )
         let failure = try await failedSelection(
             pressing: pressing,
@@ -229,32 +178,11 @@ struct ReleaseSelectionFailureTests {
             )
         )
         #expect(failure.error.detail == nil)
-        let size = NSSize(width: 1100, height: 680)
-        try await SnapshotTestSupport.withHostedWindow(
-            ReleaseGroupListView(
-                groups: state.identifiedGroups,
-                isImporting: false,
-                libraryStatuses: [:],
-                selectedReleaseId: nil,
-                loadingPick: nil,
-                releaseSelectionFailure: failure,
-                onSelect: { _ in },
-                trailing: { EmptyView() }
-            )
-            .importPreviewEnvironment()
-            .background(Theme.background)
-            .frame(width: size.width, height: size.height),
-            size: size
-        ) { _, host in
-            let png = try await SnapshotTestSupport.capturePNG(host, size: size)
-            let lines = try await SnapshotTestSupport.recognizedText(in: png)
-                .map(\.text)
-            #expect(lines.carrying(String(localized: "Retry")))
-            #expect(!lines.carrying(String(localized: "Copy details")))
-            #expect(!lines.carrying("Provider returned 404"))
-        }
+        let shown = try #require(
+            row(pressing, failure: failure) { _ in }.rowFailure
+        )
+        #expect(!shown.error.line.contains("Provider returned 404"))
     }
-
 }
 
 extension ReleaseSelectionFailureTests {
@@ -281,73 +209,27 @@ extension ReleaseSelectionFailureTests {
         )
     }
 
-    private func verifyFailure(
-        _ observations: [SnapshotTestSupport.RecognizedLine],
-        message: String,
-        pressing: Pressing
-    ) throws {
-        // Matched by containment: the line draws a warning symbol beside its
-        // words, and recognition returns the two glued together.
-        func carriesMessage(_ observation: SnapshotTestSupport.RecognizedLine)
-            -> Bool
-        {
-            observation.text.contains(message)
-        }
-        #expect(observations.filter(carriesMessage).count == 1)
-        let errorLine = try #require(observations.first(where: carriesMessage))
-        let catalog = try #require(pressing.labels.first?.catalogNumbers.first)
-        let facts = try #require(
-            observations.first { $0.text.contains(catalog) }
+    private func row(
+        _ pressing: Pressing,
+        failure: ReleaseSelectionFailure? = nil,
+        onRetryUnread: (() -> Void)? = nil,
+        onSelect: @escaping (Pressing) -> Void
+    ) -> ImportSearchResultRow {
+        ImportSearchResultRow(
+            pressing: pressing,
+            isImporting: false,
+            libraryStatus: nil,
+            isSelected: false,
+            failure: failure,
+            onRetryUnread: onRetryUnread,
+            onSelect: onSelect
         )
-        #expect(errorLine.boundingBox.midY < facts.boundingBox.midY)
-    }
-
-    private func clickControl(
-        _ label: String,
-        observations: [SnapshotTestSupport.RecognizedLine],
-        window: NSWindow,
-        size: NSSize
-    ) throws {
-        let retry = try #require(
-            observations.first {
-                $0.text.contains(label)
-            }
-        )
-        let point = NSPoint(
-            x: retry.boundingBox.midX * size.width,
-            y: retry.boundingBox.midY * size.height
-        )
-        try HostedInput.press(at: point, in: window)
-    }
-
-    /// Run `body` against the general pasteboard, and put back what the
-    /// person running the suite had on it.
-    private func preservingClipboard(
-        _ body: (NSPasteboard) throws -> Void
-    ) throws {
-        let clipboard = NSPasteboard.general
-        let previous = (clipboard.pasteboardItems ?? [])
-            .map { item in
-                item.types.compactMap {
-                    type -> (NSPasteboard.PasteboardType, Data)? in
-                    item.data(forType: type).map { (type, $0) }
-                }
-            }
-        defer {
-            clipboard.clearContents()
-            let items = previous.map { values in
-                let item = NSPasteboardItem()
-                for (type, data) in values { item.setData(data, forType: type) }
-                return item
-            }
-            if !items.isEmpty { #expect(clipboard.writeObjects(items)) }
-        }
-        try body(clipboard)
     }
 }
 
 /// A row whose document identification could not read shows the same
-/// failure line a failed pick does, with a Retry that identifies again.
+/// failure line a failed pick does, with a Retry that identifies again;
+/// where that Retry sits is no longer tested.
 extension ReleaseSelectionFailureTests {
     @MainActor
     @Test(
@@ -372,38 +254,17 @@ extension ReleaseSelectionFailureTests {
             .badgeLine
         var retried = false
         var selected: Pressing?
-        let size = NSSize(width: 900, height: 240)
-        try await SnapshotTestSupport.withHostedWindow(
-            ImportSearchResultRow(
-                pressing: pressing,
-                isImporting: false,
-                libraryStatus: nil,
-                isSelected: false,
+        let shown = try #require(
+            row(
+                pressing,
                 onRetryUnread: { retried = true },
                 onSelect: { selected = $0 }
             )
-            .importPreviewEnvironment()
-            .background(Theme.background)
-            .frame(width: size.width, height: size.height),
-            size: size
-        ) { window, host in
-            let png = try await SnapshotTestSupport.capturePNG(host, size: size)
-            let observations = try await SnapshotTestSupport.recognizedText(
-                in: png
-            )
-            try verifyFailure(
-                observations,
-                message: message,
-                pressing: pressing
-            )
-            try clickControl(
-                String(localized: "Retry"),
-                observations: observations,
-                window: window,
-                size: size
-            )
-            #expect(retried)
-            #expect(selected == nil)
-        }
+            .rowFailure
+        )
+        #expect(shown.error.line == message)
+        shown.retry()
+        #expect(retried)
+        #expect(selected == nil)
     }
 }

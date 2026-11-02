@@ -105,7 +105,7 @@ struct ImportSearchResultRow: View {
 
     /// The row's failure and its retry: picking it again when loading the pick
     /// failed, or identifying again when a document could not be read.
-    private var rowFailure: (error: DisplayError, retry: () -> Void)? {
+    var rowFailure: (error: DisplayError, retry: () -> Void)? {
         if let failure, failure.matches(pressing) {
             return (failure.error, { onSelect(pressing) })
         }

@@ -233,7 +233,7 @@ struct ShotScene {
             ) {
                 AnyView(PreviewScenes.nowPlayingBar(.allHere))
             },
-        ] + storageManagerScenes + waitScenes
+        ] + storageManagerScenes + waitScenes + findOnlineScenes
         + coverPickerScenes
 }
 
