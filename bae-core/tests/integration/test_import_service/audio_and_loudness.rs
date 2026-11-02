@@ -7,7 +7,7 @@ async fn local_folder_import() {
     let f = ImportFixture::new().await;
 
     let release = discogs_release("Test Album", &["Track One", "Track Two", "Track Three"]);
-    let release_id_key = seed_discogs_test_release(f.catalogs.providers(), release);
+    let release_id_key = seed_discogs_test_release(&f.discogs,&f.musicbrainz, release);
 
     let album_dir = f.temp_path().join("album");
     fs::create_dir_all(&album_dir).unwrap();
@@ -127,7 +127,7 @@ async fn import_produces_audio_format_records() {
     let f = ImportFixture::new().await;
 
     let release = discogs_release("Format Album", &["Track"]);
-    let release_id_key = seed_discogs_test_release(f.catalogs.providers(), release);
+    let release_id_key = seed_discogs_test_release(&f.discogs,&f.musicbrainz, release);
 
     let album_dir = f.temp_path().join("album");
     fs::create_dir_all(&album_dir).unwrap();
@@ -164,7 +164,7 @@ async fn exact_metadata_import_stores_dsd_audio_format() {
     {
         let release = discogs_release(&format!("DSD Format Album {index}"), &["Track"]);
         let f = ImportFixture::new().await;
-        let release_id_key = seed_discogs_test_release(f.catalogs.providers(), release);
+        let release_id_key = seed_discogs_test_release(&f.discogs,&f.musicbrainz, release);
 
         let album_dir = f.temp_path().join("album");
         fs::create_dir_all(&album_dir).unwrap();
@@ -254,7 +254,7 @@ async fn loudness_measured_at_import_drives_playback_gain() {
     support::tracing_init();
 
     let release = discogs_release("Loudness Album", &["Quiet Track", "Loud Track"]);
-    let release_id_key = seed_discogs_test_release(f.catalogs.providers(), release);
+    let release_id_key = seed_discogs_test_release(&f.discogs,&f.musicbrainz, release);
 
     let album_dir = f.temp_path().join("album");
     fs::create_dir_all(&album_dir).unwrap();
@@ -355,7 +355,7 @@ async fn loudness_pass_advances_the_candidate_rows_percent() {
     support::tracing_init();
 
     let release = discogs_release("Loudness Album", &["Track One", "Track Two", "Track Three"]);
-    let release_id_key = seed_discogs_test_release(f.catalogs.providers(), release);
+    let release_id_key = seed_discogs_test_release(&f.discogs,&f.musicbrainz, release);
 
     let mut event_rx = f.handle.every_event();
 

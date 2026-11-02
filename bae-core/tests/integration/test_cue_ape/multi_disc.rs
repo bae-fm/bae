@@ -133,8 +133,10 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(destination: ImportDestinati
         std::fs::write(dir.join("CDImage.cue"), cue_body).expect("write cue");
     }
 
+    let musicbrainz = support::offline_musicbrainz();
+    let discogs = support::offline_discogs();
     let ((library_manager, database, catalogs, closing), storage) =
-        support::storage_library(&db_dir, bae_core::catalog_model::providers::Providers::offline()).await;
+        support::storage_library(&db_dir, support::providers_asking(&musicbrainz, &discogs)).await;
     if let ImportDestination::Remote { .. } = destination {
         support::connect_storage(&library_manager, &storage).await;
     }
@@ -159,7 +161,7 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(destination: ImportDestinati
             .collect(),
         ..support::discogs_test_release("test-multi-disc-cue-ape", "Multi-Disc Album", &[])
     };
-    let release_id_key = seed_discogs_test_release(catalogs.providers(), discogs_release);
+    let release_id_key = seed_discogs_test_release(&discogs, &musicbrainz, discogs_release);
     let import_handle =
         start_test_import(tokio::runtime::Handle::current(), &database, &catalogs, &closing).await;
 

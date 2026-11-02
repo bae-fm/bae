@@ -190,7 +190,7 @@ struct StoredCandidate {
 }
 
 async fn stored_candidate() -> StoredCandidate {
-    stored_candidate_with(bae_util::http::Http::for_test()).await
+    stored_candidate_with(crate::catalog_model::providers::Providers::offline()).await
 }
 
 /// A sheet carving the second of [`picked_candidate`]'s two files into two
@@ -225,8 +225,10 @@ async fn stored_candidate_with_sheet(cue: &str) -> StoredCandidate {
     fixture
 }
 
-async fn stored_candidate_with(http: bae_util::http::Http) -> StoredCandidate {
-    let (manager, database, tmp) = setup_test_manager_with(http).await;
+async fn stored_candidate_with(
+    providers: crate::catalog_model::providers::Providers,
+) -> StoredCandidate {
+    let (manager, database, tmp) = setup_test_manager_with(providers).await;
     let tables = crate::import::tables::ImportTables::new(database);
     let (candidate, key, _hash) = picked_candidate(&tables, &tmp, "Album").await;
     started(manager, candidate, key, tmp).await
@@ -234,7 +236,7 @@ async fn stored_candidate_with(http: bae_util::http::Http) -> StoredCandidate {
 
 /// [`stored_candidate`] whose tags the scan could not read.
 async fn unread_stored_candidate() -> StoredCandidate {
-    let (manager, database, tmp) = setup_test_manager_with(bae_util::http::Http::for_test()).await;
+    let (manager, database, tmp) = setup_test_manager().await;
     let tables = crate::import::tables::ImportTables::new(database);
     let (candidate, key, _hash) = unread_candidate(&tables, &tmp, "Album").await;
     started(manager, candidate, key, tmp).await
@@ -255,14 +257,14 @@ async fn started(
 /// under — with the folder's own tags already picked, which is what draws the
 /// edit form and the mapping table.
 async fn pane_fixture() -> (ImportServiceHandle, TempDir, crate::import::CandidateKey, String) {
-    pane_fixture_with(bae_util::http::Http::for_test()).await
+    pane_fixture_with(crate::catalog_model::providers::Providers::offline()).await
 }
 
-/// [`pane_fixture`] whose requests go through `http`.
+/// [`pane_fixture`] asking `providers`.
 async fn pane_fixture_with(
-    http: bae_util::http::Http,
+    providers: crate::catalog_model::providers::Providers,
 ) -> (ImportServiceHandle, TempDir, crate::import::CandidateKey, String) {
-    let fixture = picked_stored_candidate_with(http).await;
+    let fixture = picked_stored_candidate_with(providers).await;
     let hash = fixture.candidate.files.content_hash();
     (fixture.handle, fixture.tmp, fixture.key, hash)
 }
@@ -270,12 +272,14 @@ async fn pane_fixture_with(
 /// [`pane_fixture`] with the library it was started from, for a test that
 /// reads what an import wrote through the library's own operations.
 async fn picked_stored_candidate() -> StoredCandidate {
-    picked_stored_candidate_with(bae_util::http::Http::for_test()).await
+    picked_stored_candidate_with(crate::catalog_model::providers::Providers::offline()).await
 }
 
 /// [`stored_candidate_with`] with the folder's own tags already picked.
-async fn picked_stored_candidate_with(http: bae_util::http::Http) -> StoredCandidate {
-    let fixture = stored_candidate_with(http).await;
+async fn picked_stored_candidate_with(
+    providers: crate::catalog_model::providers::Providers,
+) -> StoredCandidate {
+    let fixture = stored_candidate_with(providers).await;
     let revision = fixture.handle.select_candidate_file_tags(fixture.key.clone()).await.unwrap();
     assert_eq!(revision, 1);
     assert_eq!(pane(&fixture.handle, &fixture.key).await.metadata_revision, revision);

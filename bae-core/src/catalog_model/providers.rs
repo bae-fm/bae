@@ -45,23 +45,32 @@ impl Providers {
         }
     }
 
-    /// Providers that send on `http` — a test transport routed to the test's
-    /// own fakes — and space no requests, since a fake has no rate to keep.
+    /// Providers asking the services a test built and keeps: fakes it seeds
+    /// with the answers it wants given, or clients whose requests it watches.
+    /// `http` is the transport the Cover Art Archive galleries are fetched
+    /// with.
     #[cfg(any(test, feature = "test-utils"))]
-    pub fn for_test(http: Http) -> Self {
-        Self {
-            musicbrainz: Arc::new(MusicBrainz::for_test(http.clone())),
-            discogs: Arc::new(Discogs::for_test(http.clone())),
-            wikidata: Arc::new(Wikidata::for_test(http.clone())),
-            http,
-        }
+    pub fn for_test(
+        http: Http,
+        musicbrainz: Arc<MusicBrainz>,
+        discogs: Arc<Discogs>,
+        wikidata: Arc<Wikidata>,
+    ) -> Self {
+        Self { http, musicbrainz, discogs, wikidata }
     }
 
-    /// Providers that reach nothing: every request fails fast on a port
-    /// nothing listens on, and only what a test seeds is answered.
+    /// Providers that reach nothing and answer nothing: every request fails
+    /// fast on a port nothing listens on, and no test holds their fakes to
+    /// seed.
     #[cfg(any(test, feature = "test-utils"))]
     pub fn offline() -> Self {
-        Self::for_test(Http::for_test())
+        let http = Http::for_test();
+        Self::for_test(
+            http.clone(),
+            Arc::new(MusicBrainz::for_test(http.clone())),
+            Arc::new(Discogs::for_test(http.clone())),
+            Arc::new(Wikidata::for_test(http)),
+        )
     }
 
     /// A client asking Discogs with `api_key`, over this app's Discogs
@@ -126,7 +135,7 @@ impl Providers {
 }
 
 /// What a test reaches past the operations for: the transport to build an
-/// image cache on, and the providers whose answers it seeds.
+/// image cache on.
 #[cfg(any(test, feature = "test-utils"))]
 mod test_access {
     use super::*;
@@ -134,18 +143,6 @@ mod test_access {
     impl Providers {
         pub fn http(&self) -> &Http {
             &self.http
-        }
-
-        pub fn musicbrainz(&self) -> &MusicBrainz {
-            &self.musicbrainz
-        }
-
-        pub fn discogs(&self) -> &Arc<Discogs> {
-            &self.discogs
-        }
-
-        pub fn wikidata(&self) -> &Wikidata {
-            &self.wikidata
         }
     }
 }

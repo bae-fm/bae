@@ -125,7 +125,8 @@ async fn reading_the_files_tags_ends_identification_in_its_write() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn a_pick_ends_identification_in_its_write() {
-    let (handle, _tmp, key, _hash) = pane_fixture().await;
+    let fakes = FakeCatalogs::offline();
+    let (handle, _tmp, key, _hash) = pane_fixture_with(fakes.providers()).await;
     handle
         .catalogs
         .store_discogs_key("test-discogs-token", crate::config::DiscogsValidation::Valid)
@@ -133,7 +134,7 @@ async fn a_pick_ends_identification_in_its_write() {
         .unwrap();
     let release_id = "70000301";
     super::metadata_application::seed_discogs_pressing(
-        handle.catalogs.providers(),
+        &fakes,
         release_id,
         "Label Name",
         "CAT-1",
@@ -173,8 +174,9 @@ async fn a_pick_ends_identification_in_its_write() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn linking_the_shared_album_ends_identification_in_its_write() {
-    let (handle, _tmp, key, hash) = pane_fixture().await;
-    super::shared_album::store_two_pressings(&handle, &hash).await;
+    let fakes = FakeCatalogs::offline();
+    let (handle, _tmp, key, hash) = pane_fixture_with(fakes.providers()).await;
+    super::shared_album::store_two_pressings(&handle, &fakes, &hash).await;
     identifying(&handle, &key).await;
     let deciding = handle.clone();
     let decided_key = key.clone();

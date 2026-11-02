@@ -10,11 +10,12 @@ async fn picked_with_front(
     release_id: &str,
 ) -> (ImportServiceHandle, TempDir, crate::import::CandidateKey, String) {
     let archive = bae_util::http::serve_not_found().await;
+    let fakes = FakeCatalogs::over(bae_util::http::Http::for_test().serve("coverartarchive.org", &archive));
     let (handle, tmp, key, hash) =
-        pane_fixture_with(bae_util::http::Http::for_test().serve("coverartarchive.org", &archive))
+        pane_fixture_with(fakes.providers())
             .await;
     super::lookup_choices::seed_mb_release_with_front(
-        handle.catalogs.providers(),
+        &fakes,
         release_id,
         "CAT-1",
     );
@@ -70,12 +71,13 @@ async fn unlinking_offers_no_catalog_cover() {
 #[tokio::test(flavor = "multi_thread")]
 async fn linking_the_album_offers_no_catalog_cover() {
     let archive = bae_util::http::serve_not_found().await;
+    let fakes = FakeCatalogs::over(bae_util::http::Http::for_test().serve("coverartarchive.org", &archive));
     let (handle, _tmp, key, hash) =
-        pane_fixture_with(bae_util::http::Http::for_test().serve("coverartarchive.org", &archive))
+        pane_fixture_with(fakes.providers())
             .await;
-    super::shared_album::store_two_pressings(&handle, &hash).await;
+    super::shared_album::store_two_pressings(&handle, &fakes, &hash).await;
     super::lookup_choices::seed_mb_release_with_front(
-        handle.catalogs.providers(),
+        &fakes,
         "mb-pressing-1",
         "CAT-100",
     );

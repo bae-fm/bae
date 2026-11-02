@@ -33,6 +33,7 @@ macro_rules! fixture_dir {
 pub const HANG_GUARD: std::time::Duration = std::time::Duration::from_secs(300);
 
 mod audio;
+mod catalogs;
 mod discogs;
 mod files;
 mod import;
@@ -45,6 +46,7 @@ pub use profiles::{made_profile, made_profile_on, requested_profile, requested_p
 pub use storage::{connect_storage, release_storage, remove_uploaded_file, storage_library};
 
 pub use audio::{assert_captured_matches_reference, filled_sparse_buffer, samples_as_f32};
+pub use catalogs::{offline_discogs, offline_musicbrainz, providers_asking};
 pub use discogs::{
     discogs_artist, discogs_fixture_id, discogs_test_release, discogs_track,
     seed_discogs_test_release,
@@ -55,13 +57,15 @@ pub use files::{
 };
 pub use import::{
     configure_test_discogs, discogs_release, folder_import, import_folder_and_wait,
-    imported_release_setup, start_import_service, start_test_import, try_wait_for_import_complete,
-    wait_for_import_complete, wait_for_import_end, DraftSource, ImportedRelease,
+    imported_release_setup, imported_release_setup_with, start_import_service, start_test_import,
+    try_wait_for_import_complete, wait_for_import_complete, wait_for_import_end, DraftSource,
+    ImportedRelease,
 };
 pub use library::{
     multi_thread_runtime, open_test_library, open_test_library_with, runtime_with_services,
-    setup_fresh_library, setup_test_library, setup_test_library_with_album_dir,
-    start_test_services, temp_test_db, test_library_from_handle, test_uuid, tracing_init,
+    setup_fresh_library, setup_test_library, setup_test_library_with,
+    setup_test_library_with_album_dir, start_test_services, temp_test_db, test_library_from_handle,
+    test_uuid, tracing_init,
 };
 pub use musicbrainz::{mb_medium, mb_release, mb_track, seed_mb_release};
 pub use playback::{

@@ -41,6 +41,7 @@ impl ExportFixture {
             &database,
             &catalogs,
             &closing,
+            bae_util::http::Http::for_test(),
         )
         .await;
 

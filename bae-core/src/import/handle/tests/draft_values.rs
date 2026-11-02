@@ -5,7 +5,7 @@
 /// length, credited to its own composer and performing its own work, the
 /// composers' and works' ids starting `credits`.
 fn seed_mb_release_with_works(
-    providers: &crate::catalog_model::providers::Providers,
+    fakes: &FakeCatalogs,
     release_id: &str,
     credits: &str,
     titles: &[&str],
@@ -45,7 +45,7 @@ fn seed_mb_release_with_works(
             })
         })
         .collect();
-    providers.musicbrainz().seed_release_cache(
+    fakes.musicbrainz().seed_release_cache(
         release_id,
         serde_json::json!({
             "id": release_id,
@@ -94,7 +94,9 @@ async fn stored_draft(handle: &ImportServiceHandle, hash: &str) -> crate::import
 /// tracks: the release's three tracks lie on `01 Track.flac` and the sheet's
 /// two slices.
 async fn three_track_draft() -> (StoredCandidate, String) {
-    let fixture = stored_candidate_with_sheet(SECOND_FILE_IN_TWO).await;
+    let fakes = FakeCatalogs::offline();
+    let mut fixture = stored_candidate_with(fakes.providers()).await;
+    add_sheet(&fixture.handle.tables, &mut fixture.candidate, SECOND_FILE_IN_TWO).await;
     fixture
         .handle
         .set_sheet_disc(
@@ -105,7 +107,7 @@ async fn three_track_draft() -> (StoredCandidate, String) {
         .await
         .unwrap();
     seed_mb_release_with_works(
-        fixture.handle.catalogs.providers(),
+        &fakes,
         "release-with-works",
         "release-with-works",
         &["First Track", "Second Track", "Third Track"],
@@ -218,11 +220,12 @@ async fn the_pane_shows_each_tracks_stated_length_after_a_file_decision() {
 /// nothing the candidate imports (B2).
 #[tokio::test(flavor = "multi_thread")]
 async fn a_release_stored_again_after_apply_changes_nothing_the_draft_imports() {
-    let StoredCandidate { handle, candidate, key, tmp: _tmp, .. } = stored_candidate().await;
+    let fakes = FakeCatalogs::offline();
+    let StoredCandidate { handle, candidate, key, tmp: _tmp, .. } =
+        stored_candidate_with(fakes.providers()).await;
     let tables = handle.tables.clone();
-    let providers = handle.catalogs.providers();
     seed_mb_release_with_works(
-        providers,
+        &fakes,
         "edited-release",
         "edited-release",
         &["First Track", "Second Track"],
@@ -235,7 +238,7 @@ async fn a_release_stored_again_after_apply_changes_nothing_the_draft_imports() 
     // The catalog's editors retitle the tracks and credit other composers;
     // the release is fetched and stored again over the copy applied.
     seed_mb_release_with_works(
-        providers,
+        &fakes,
         "edited-release",
         "changed",
         &["Changed One", "Changed Two"],

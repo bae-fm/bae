@@ -12,6 +12,8 @@ pub mod discogs_mapper;
 pub(crate) mod discogs_mediums;
 mod error;
 pub mod failure;
+#[cfg(all(test, desktop))]
+pub(crate) mod fake_catalogs;
 #[cfg(desktop)]
 pub mod isrc;
 #[cfg(desktop)]

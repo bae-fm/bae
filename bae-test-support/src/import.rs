@@ -13,9 +13,10 @@ fn import_terminal_ids(progress: &bae_core::import::ImportProgress) -> Option<(S
     }
 }
 
-/// [`start_import_service`] with the Discogs key stored through `catalogs` —
-/// the shared setup every import/playback test binary needs, so none of them
-/// keep a private copy that can drift from the others.
+/// [`start_import_service`] with the Discogs key stored through `catalogs`,
+/// downloading images over a transport that reaches nothing — the shared
+/// setup every import/playback test binary needs, so none of them keep a
+/// private copy that can drift from the others.
 pub async fn start_test_import(
     runtime_handle: tokio::runtime::Handle,
     database: &bae_core::db::Database,
@@ -23,12 +24,20 @@ pub async fn start_test_import(
     closing: &bae_core::library::CancellationToken,
 ) -> bae_core::import::ImportServiceHandle {
     configure_test_discogs(catalogs).await;
-    start_import_service(runtime_handle, database, catalogs, closing).await
+    start_import_service(
+        runtime_handle,
+        database,
+        catalogs,
+        closing,
+        bae_util::http::Http::for_test(),
+    )
+    .await
 }
 
 /// Start an [`ImportService`] over a test library's store, asking the catalogs
-/// through `catalogs`, the sessions the library was opened with. The
-/// library's `closing` token ends the service with the library.
+/// through `catalogs`, the sessions the library was opened with, and
+/// downloading images over `http`. The library's `closing` token ends the
+/// service with the library.
 ///
 /// [`ImportService`]: bae_core::import::ImportService
 pub async fn start_import_service(
@@ -36,12 +45,13 @@ pub async fn start_import_service(
     database: &bae_core::db::Database,
     catalogs: &bae_core::import::CatalogSessions,
     closing: &bae_core::library::CancellationToken,
+    http: bae_util::http::Http,
 ) -> bae_core::import::ImportServiceHandle {
     bae_core::import::ImportService::start(
         runtime_handle,
         database.clone(),
         catalogs.clone(),
-        bae_catalogs::remote_image::RemoteImageCache::for_test(catalogs.providers().http().clone()),
+        bae_catalogs::remote_image::RemoteImageCache::for_test(http),
         bae_core::diagnostics::Diagnostics::noop(),
         bae_core::import::CandidatePreparations::new(database.clone()),
         std::sync::Arc::new(coven::SystemClock),
@@ -268,10 +278,46 @@ pub async fn imported_release_setup<G>(
 where
     G: FnOnce(&std::path::Path),
 {
-    let ((library_manager, database, catalogs, closing), album_dir, temp_dir) =
-        setup_test_library_with_album_dir().await;
+    imported_release_setup_with(
+        &crate::offline_musicbrainz(),
+        &crate::offline_discogs(),
+        release,
+        candidate_key,
+        import_id,
+        generate_files,
+    )
+    .await
+}
 
-    let release_id_key = seed_discogs_test_release(catalogs.providers(), release);
+/// [`imported_release_setup`] over a library asking `musicbrainz` and
+/// `discogs`, the test's own fakes, which it keeps to seed the releases it
+/// imports next.
+pub async fn imported_release_setup_with<G>(
+    musicbrainz: &std::sync::Arc<bae_catalogs::musicbrainz::MusicBrainz>,
+    discogs: &std::sync::Arc<bae_catalogs::discogs::client::Discogs>,
+    release: bae_catalogs::discogs::DiscogsRelease,
+    candidate_key: &str,
+    import_id: String,
+    generate_files: G,
+) -> Result<
+    (
+        (
+            bae_core::library::LibraryManager,
+            bae_core::db::Database,
+            bae_core::import::CatalogSessions,
+            bae_core::library::CancellationToken,
+        ),
+        ImportedRelease,
+    ),
+    Box<dyn std::error::Error>,
+>
+where
+    G: FnOnce(&std::path::Path),
+{
+    let ((library_manager, database, catalogs, closing), album_dir, temp_dir) =
+        setup_test_library_with_album_dir(crate::providers_asking(musicbrainz, discogs)).await;
+
+    let release_id_key = seed_discogs_test_release(discogs, musicbrainz, release);
     generate_files(&album_dir);
 
     let (release_id, _album_id) = send_folder_import_and_wait(

@@ -196,14 +196,16 @@ async fn the_entry_counts_follow_what_is_running() {
 /// A watched root holding two stored candidates, each with its draft read
 /// from its own tags, and the list under All through a window that holds the
 /// first item alone: the key on that page, and the key off it.
-async fn one_row_on_the_page() -> (
+async fn one_row_on_the_page(
+    providers: crate::catalog_model::providers::Providers,
+) -> (
     ImportServiceHandle,
     TempDir,
     LiveImportList,
     crate::import::CandidateKey,
     crate::import::CandidateKey,
 ) {
-    let (manager, database, tmp) = setup_test_manager_with(bae_util::http::Http::for_test()).await;
+    let (manager, database, tmp) = setup_test_manager_with(providers).await;
     let tables = crate::import::tables::ImportTables::new(database);
     let (first, first_key, _) = unscanned_candidate(&tables, &tmp, "Album").await;
     let (second, second_key, _) = unscanned_candidate(&tables, &tmp, "Other Record").await;
@@ -274,7 +276,8 @@ fn counted(entries: &[crate::import::PendingFilterEntry], filter: PendingFilter)
 /// page but moves the row's count to In Progress, so the list delivers it.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_run_off_the_page_delivers_its_count() {
-    let (handle, _tmp, list, on_page, off_page) = one_row_on_the_page().await;
+    let (handle, _tmp, list, on_page, off_page) =
+        one_row_on_the_page(crate::catalog_model::providers::Providers::offline()).await;
 
     admit(&handle, &off_page).await;
     let moved = delivered(&list).await;
@@ -298,9 +301,10 @@ async fn a_run_off_the_page_delivers_its_count() {
 /// delivers it.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_verdict_off_the_page_delivers_its_count() {
-    let (handle, _tmp, list, _on_page, off_page) = one_row_on_the_page().await;
+    let fakes = FakeCatalogs::offline();
+    let (handle, _tmp, list, _on_page, off_page) = one_row_on_the_page(fakes.providers()).await;
     super::lookup_choices::seed_mb_release_with_catalog(
-        handle.catalogs.providers(),
+        &fakes,
         "off-the-page",
         "CAT-1",
     );

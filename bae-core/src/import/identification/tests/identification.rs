@@ -225,7 +225,7 @@ async fn the_interactive_path_is_not_delayed_by_automatic_identification() {
 
     let sweep = fixture.drain_automatic_task();
 
-    let musicbrainz = fixture.catalogs.providers().musicbrainz();
+    let musicbrainz = &fixture.musicbrainz;
     let waiting = tokio::time::timeout(Duration::from_secs(20), async {
         loop {
             let queued = musicbrainz.queued_requests(CallPriority::Background);
@@ -240,7 +240,7 @@ async fn the_interactive_path_is_not_delayed_by_automatic_identification() {
 
     let typed = fixture
         .catalogs
-        .providers()
+        .musicbrainz()
         .search_musicbrainz(
             bae_catalogs::musicbrainz::ReleaseSearchParams {
                 artist: Some("Artist".to_string()),

@@ -132,7 +132,9 @@ struct Library {
 /// Import a two-track file-per-track release (with a folder cover) and a
 /// three-track single-file CUE release into one manager.
 async fn seed_library() -> Library {
-    let ((manager, database, catalogs, closing), db_temp) = support::setup_test_library().await;
+    let musicbrainz = support::offline_musicbrainz();
+    let discogs = support::offline_discogs();
+    let ((manager, database, catalogs, closing), db_temp) = support::setup_test_library_with(support::providers_asking(&musicbrainz, &discogs)).await;
 
     // Per-track release, imported from file metadata (no network).
     let pt_temp = TempDir::new().unwrap();
@@ -193,7 +195,7 @@ async fn seed_library() -> Library {
     std::fs::copy(cue_fixture("Test Album.flac"), cue_dir.join("Test Album.flac")).unwrap();
     std::fs::copy(cue_fixture("Test Album.cue"), cue_dir.join("Test Album.cue")).unwrap();
     let discogs_key =
-        support::seed_discogs_test_release(catalogs.providers(), cue_discogs_release());
+        support::seed_discogs_test_release(&discogs, &musicbrainz, cue_discogs_release());
     let cue_import =
         support::start_test_import(tokio::runtime::Handle::current(), &database, &catalogs, &closing).await;
     let cue_id = "cue".to_string();

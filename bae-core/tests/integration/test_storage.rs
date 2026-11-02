@@ -8,7 +8,7 @@ use std::fs;
 use std::path::Path;
 use support::start_test_import;
 use support::tracing_init;
-use support::{open_test_library, seed_discogs_test_release, wait_for_import_complete};
+use support::{seed_discogs_test_release, wait_for_import_complete};
 use tempfile::TempDir;
 use tracing::info;
 
@@ -41,11 +41,15 @@ async fn test_local_import() {
         assert!(path.exists(), "Test file should exist: {:?}", path);
     }
 
-    let (library_manager, database, catalogs, closing) = open_test_library(&db_dir).await;
+    let musicbrainz = support::offline_musicbrainz();
+    let discogs = support::offline_discogs();
+    let (library_manager, database, catalogs, closing) =
+        support::open_test_library_with(&db_dir, support::providers_asking(&musicbrainz, &discogs))
+            .await;
     let runtime_handle = tokio::runtime::Handle::current();
 
     let discogs_release = create_test_discogs_release();
-    let release_id_key = seed_discogs_test_release(catalogs.providers(), discogs_release);
+    let release_id_key = seed_discogs_test_release(&discogs, &musicbrainz, discogs_release);
     let import_handle = start_test_import(runtime_handle, &database, &catalogs, &closing).await;
 
     let import_id = uuid::Uuid::new_v4().to_string();
@@ -138,11 +142,15 @@ async fn test_local_delete_preserves_files() {
         assert!(path.exists(), "Test file should exist: {:?}", path);
     }
 
-    let (library_manager, database, catalogs, closing) = open_test_library(&db_dir).await;
+    let musicbrainz = support::offline_musicbrainz();
+    let discogs = support::offline_discogs();
+    let (library_manager, database, catalogs, closing) =
+        support::open_test_library_with(&db_dir, support::providers_asking(&musicbrainz, &discogs))
+            .await;
     let runtime_handle = tokio::runtime::Handle::current();
 
     let discogs_release = create_test_discogs_release();
-    let release_id_key = seed_discogs_test_release(catalogs.providers(), discogs_release);
+    let release_id_key = seed_discogs_test_release(&discogs, &musicbrainz, discogs_release);
     let import_handle = start_test_import(runtime_handle, &database, &catalogs, &closing).await;
 
     let import_id = uuid::Uuid::new_v4().to_string();
@@ -198,11 +206,15 @@ async fn run_import_with_cover_test() {
     fs::create_dir_all(&db_dir).expect("Failed to create db dir");
     let file_data = generate_test_files(&album_dir);
     info!("Generated {} test files", file_data.len());
-    let (library_manager, database, catalogs, closing) = open_test_library(&db_dir).await;
+    let musicbrainz = support::offline_musicbrainz();
+    let discogs = support::offline_discogs();
+    let (library_manager, database, catalogs, closing) =
+        support::open_test_library_with(&db_dir, support::providers_asking(&musicbrainz, &discogs))
+            .await;
     let runtime_handle = tokio::runtime::Handle::current();
 
     let discogs_release = create_test_discogs_release();
-    let release_id_key = seed_discogs_test_release(catalogs.providers(), discogs_release);
+    let release_id_key = seed_discogs_test_release(&discogs, &musicbrainz, discogs_release);
     let import_handle = start_test_import(runtime_handle, &database, &catalogs, &closing).await;
     let selected_cover = "scans/back.jpg".to_string();
     let import_id = uuid::Uuid::new_v4().to_string();

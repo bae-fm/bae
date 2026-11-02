@@ -3,11 +3,12 @@ use crate::catalog_model::source_release::UnfetchedDocument;
 use std::sync::{Arc, Mutex};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
-/// A local server answering MusicBrainz and Discogs requests by path, and the
-/// providers whose requests reach it.
+/// A local server answering MusicBrainz and Discogs requests by path, the
+/// fakes whose requests reach it, and the providers asking them.
 struct ProviderServer {
     requests: Arc<Mutex<HashMap<String, usize>>>,
     task: tokio::task::JoinHandle<()>,
+    fakes: crate::catalog_model::fake_catalogs::FakeCatalogs,
     providers: crate::catalog_model::providers::Providers,
 }
 
@@ -58,11 +59,8 @@ impl ProviderServer {
             .serve("musicbrainz.org", &origin)
             .serve("api.discogs.com", &origin)
             .serve("www.wikidata.org", &origin);
-        Self {
-            requests,
-            task,
-            providers: crate::catalog_model::providers::Providers::for_test(http),
-        }
+        let fakes = crate::catalog_model::fake_catalogs::FakeCatalogs::over(http);
+        Self { requests, task, providers: fakes.providers(), fakes }
     }
 
     fn requests(&self) -> HashMap<String, usize> {
@@ -119,7 +117,7 @@ async fn failed_canonical_group_is_not_requested_again_through_another_alias() {
         (400, "Rejected group request".into()),
     )]))
     .await;
-    server.providers.musicbrainz().seed_release_cache(
+    server.fakes.musicbrainz().seed_release_cache(
         "selected",
         release_json(
             "selected",
@@ -129,15 +127,15 @@ async fn failed_canonical_group_is_not_requested_again_through_another_alias() {
     );
     for id in [910001, 910002] {
         server
-            .providers
+            .fakes
             .discogs()
             .seed_master_cache(&id.to_string(), serde_json::json!({"id":id}).to_string());
     }
-    server.providers.musicbrainz().seed_discogs_page_lookup(&[
+    server.fakes.musicbrainz().seed_discogs_page_lookup(&[
         (DiscogsPage::Master("910001".into()), Some("shared-group")),
         (DiscogsPage::Master("910002".into()), Some("shared-group")),
     ]);
-    let discogs = DiscogsClient::new(server.providers.discogs().clone(), "fixture-token".into());
+    let discogs = DiscogsClient::new(server.fakes.discogs().clone(), "fixture-token".into());
     let payloads = server
         .providers
         .fetch_payloads(
@@ -203,7 +201,7 @@ const BOTH_ADDRESSES: &str =
 #[tokio::test]
 async fn cyclic_release_and_album_links_fetch_each_document_once() {
     let server = ProviderServer::start(linked_pair_answers()).await;
-    let discogs = DiscogsClient::new(server.providers.discogs().clone(), "fixture-token".into());
+    let discogs = DiscogsClient::new(server.fakes.discogs().clone(), "fixture-token".into());
     let selected = LookupRef::new(LookupCatalog::MusicBrainz, "cycle-release");
     let payloads = tokio::time::timeout(
         std::time::Duration::from_secs(15),
@@ -254,7 +252,7 @@ async fn cyclic_release_and_album_links_fetch_each_document_once() {
 #[tokio::test]
 async fn a_linked_release_is_read_from_what_fetching_its_namer_fetched() {
     let server = ProviderServer::start(linked_pair_answers()).await;
-    let discogs = DiscogsClient::new(server.providers.discogs().clone(), "fixture-token".into());
+    let discogs = DiscogsClient::new(server.fakes.discogs().clone(), "fixture-token".into());
     let namer = LookupRef::new(LookupCatalog::MusicBrainz, "cycle-release");
     server
         .providers
@@ -290,7 +288,7 @@ fn stored_keys(payloads: &ReleasePayloads) -> Vec<DocumentKey> {
 #[tokio::test]
 async fn a_complete_read_of_a_discogs_release_asks_about_both_addresses_at_once() {
     let server = ProviderServer::start(linked_pair_answers()).await;
-    let discogs = DiscogsClient::new(server.providers.discogs().clone(), "fixture-token".into());
+    let discogs = DiscogsClient::new(server.fakes.discogs().clone(), "fixture-token".into());
     let payloads = server
         .providers
         .fetch_payloads(
@@ -354,8 +352,8 @@ async fn an_address_musicbrainz_does_not_know_is_absent_beside_one_it_does() {
     answers.remove("/ws/2/release-group/cycle-group");
     let server = ProviderServer::start(answers).await;
     let release = release_json("cycle-release", None, &["https://www.discogs.com/release/920001"]);
-    server.providers.musicbrainz().seed_release_cache("cycle-release", release);
-    let discogs = DiscogsClient::new(server.providers.discogs().clone(), "fixture-token".into());
+    server.fakes.musicbrainz().seed_release_cache("cycle-release", release);
+    let discogs = DiscogsClient::new(server.fakes.discogs().clone(), "fixture-token".into());
     let payloads = server
         .providers
         .fetch_payloads(
@@ -396,7 +394,7 @@ async fn a_failed_lookup_by_both_addresses_fails_both() {
         (400, "Rejected URL request".into()),
     );
     let server = ProviderServer::start(answers).await;
-    let discogs = DiscogsClient::new(server.providers.discogs().clone(), "fixture-token".into());
+    let discogs = DiscogsClient::new(server.fakes.discogs().clone(), "fixture-token".into());
     let payloads = server
         .providers
         .fetch_payloads(
@@ -444,7 +442,7 @@ async fn a_failed_lookup_by_both_addresses_fails_both() {
 #[tokio::test]
 async fn an_identification_read_of_a_discogs_release_asks_musicbrainz_nothing() {
     let server = ProviderServer::start(linked_pair_answers()).await;
-    let discogs = DiscogsClient::new(server.providers.discogs().clone(), "fixture-token".into());
+    let discogs = DiscogsClient::new(server.fakes.discogs().clone(), "fixture-token".into());
     let selected = LookupRef::new(LookupCatalog::Discogs, "920001");
     let payloads = server
         .providers
@@ -525,7 +523,7 @@ fn statement_answers() -> HashMap<String, (u16, String)> {
 async fn an_identification_read_of_a_musicbrainz_release_reads_what_its_statements_read() {
     let selected = LookupRef::new(LookupCatalog::MusicBrainz, "cycle-release");
     let server = ProviderServer::start(statement_answers()).await;
-    let discogs = DiscogsClient::new(server.providers.discogs().clone(), "fixture-token".into());
+    let discogs = DiscogsClient::new(server.fakes.discogs().clone(), "fixture-token".into());
     let identification = server
         .providers
         .fetch_payloads(
@@ -571,7 +569,7 @@ async fn an_identification_read_of_a_musicbrainz_release_reads_what_its_statemen
 
     let complete_server = ProviderServer::start(statement_answers()).await;
     let complete_discogs =
-        DiscogsClient::new(complete_server.providers.discogs().clone(), "fixture-token".into());
+        DiscogsClient::new(complete_server.fakes.discogs().clone(), "fixture-token".into());
     let complete = complete_server
         .providers
         .fetch_payloads(
@@ -605,7 +603,7 @@ async fn a_read_from_a_disc_id_answer_asks_for_no_release() {
         answers["/ws/2/release/cycle-release"].1.clone(),
     );
     let server = ProviderServer::start(answers).await;
-    let discogs = DiscogsClient::new(server.providers.discogs().clone(), "fixture-token".into());
+    let discogs = DiscogsClient::new(server.fakes.discogs().clone(), "fixture-token".into());
     let read = server
         .providers
         .read_disc_id_release(Some(&discogs), &answered, CallPriority::Interactive)
@@ -653,7 +651,7 @@ async fn a_read_from_a_disc_id_answer_asks_for_no_release() {
 
     let complete_server = ProviderServer::start(statement_answers()).await;
     let complete_discogs =
-        DiscogsClient::new(complete_server.providers.discogs().clone(), "fixture-token".into());
+        DiscogsClient::new(complete_server.fakes.discogs().clone(), "fixture-token".into());
     let complete = complete_server
         .providers
         .fetch_payloads(
@@ -687,15 +685,15 @@ async fn ambiguous_master_backlinks_do_not_fetch_or_claim_either_album() {
         ("url:https://www.discogs.com/release/930001".into(), (404, String::new())),
     ]))
     .await;
-    server.providers.discogs().seed_release_cache(
+    server.fakes.discogs().seed_release_cache(
         "930001",
         serde_json::json!({"id":930001,"title":"Album Title","master_id":930002}).to_string(),
     );
     server
-        .providers
+        .fakes
         .discogs()
         .seed_master_cache("930002", serde_json::json!({"id":930002}).to_string());
-    let discogs = DiscogsClient::new(server.providers.discogs().clone(), "fixture-token".into());
+    let discogs = DiscogsClient::new(server.fakes.discogs().clone(), "fixture-token".into());
     let selected = LookupRef::new(LookupCatalog::Discogs, "930001");
     let payloads = server
         .providers
@@ -759,16 +757,16 @@ async fn a_malformed_optional_group_is_skipped() {
 #[tokio::test]
 async fn a_malformed_reverse_alias_is_skipped() {
     let server = ProviderServer::start(HashMap::new()).await;
-    server.providers.discogs().seed_release_cache(
+    server.fakes.discogs().seed_release_cache(
         "940001",
         serde_json::json!({"id":940001,"title":"Selected Album"}).to_string(),
     );
     server
-        .providers
+        .fakes
         .musicbrainz()
         .seed_discogs_page_lookup(&[(DiscogsPage::Release("940001".into()), Some("mb-alias"))]);
-    server.providers.musicbrainz().seed_release_cache("mb-alias", "{}".into());
-    let discogs = DiscogsClient::new(server.providers.discogs().clone(), "fixture-token".into());
+    server.fakes.musicbrainz().seed_release_cache("mb-alias", "{}".into());
+    let discogs = DiscogsClient::new(server.fakes.discogs().clone(), "fixture-token".into());
     let fetched = server
         .providers
         .fetch_payloads(

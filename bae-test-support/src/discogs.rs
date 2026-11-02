@@ -131,8 +131,12 @@ fn discogs_fixture_artist_ids(
 ///
 /// The rendered ids are numeric, as the endpoint's are, so the returned id is
 /// not the (arbitrary) one the caller wrote on the fixture.
+///
+/// `discogs` and `musicbrainz` are the test's own fakes, the ones the
+/// providers its library asks were built over.
 pub fn seed_discogs_test_release(
-    providers: &bae_core::catalog_model::providers::Providers,
+    discogs: &bae_catalogs::discogs::client::Discogs,
+    musicbrainz: &bae_catalogs::musicbrainz::MusicBrainz,
     release: bae_catalogs::discogs::DiscogsRelease,
 ) -> String {
     let numeric = |value: &str| -> u64 {
@@ -157,14 +161,14 @@ pub fn seed_discogs_test_release(
     let master_id = release.master_id.as_deref().map(numeric);
 
     for artist_id in discogs_fixture_artist_ids(&release) {
-        providers.discogs().seed_artist_image_response(&numeric(&artist_id).to_string(), None);
+        discogs.seed_artist_image_response(&numeric(&artist_id).to_string(), None);
     }
 
     if let Some(master_id) = master_id {
         // Keyed by the rendered id, which is the one the parsed release names
         // and therefore the one the master fetch asks for.
         let master_json = serde_json::json!({ "id": master_id, "year": release.year });
-        providers.discogs().seed_master_cache(&master_id.to_string(), master_json.to_string());
+        discogs.seed_master_cache(&master_id.to_string(), master_json.to_string());
     }
 
     let raw_json = serde_json::json!({
@@ -214,7 +218,7 @@ pub fn seed_discogs_test_release(
     let parsed = bae_catalogs::discogs::documents::parse_discogs_release_json(&raw_json)
         .expect("the rendered test release parses as the endpoint's own JSON");
     let id = parsed.id.clone();
-    providers.discogs().seed_release_cache(&id, raw_json);
+    discogs.seed_release_cache(&id, raw_json);
     // A complete read asks MusicBrainz about the release's address and its
     // master's in one request; neither is linked from anything there.
     let lookups: Vec<_> =
@@ -226,6 +230,6 @@ pub fn seed_discogs_test_release(
             )
             .map(|page| (page, None))
             .collect();
-    providers.musicbrainz().seed_discogs_page_lookup(&lookups);
+    musicbrainz.seed_discogs_page_lookup(&lookups);
     id
 }

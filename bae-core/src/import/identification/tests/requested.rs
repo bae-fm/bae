@@ -110,7 +110,7 @@ async fn a_run_restarted_over_a_shorter_provider_list_asks_only_what_is_left() {
         discogs_search_json("70000201", PAIRED_BARCODE_AS_DISCOGS_PRINTS_IT),
     );
     fixture.provider.route("/releases/70000201", 200, discogs_release_json("70000201"));
-    fixture.catalogs.providers().musicbrainz().seed_discogs_page_lookup(&[(
+    fixture.musicbrainz.seed_discogs_page_lookup(&[(
         bae_catalogs::musicbrainz::DiscogsPage::Release("70000201".to_string()),
         None,
     )]);

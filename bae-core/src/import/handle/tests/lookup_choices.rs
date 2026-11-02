@@ -169,9 +169,10 @@ async fn striking_a_chosen_number_out_and_back_asks_for_a_run_each_way() {
 /// next run.
 #[tokio::test(flavor = "multi_thread")]
 async fn picking_a_record_the_folder_prints_the_number_of_chooses_nothing() {
-    let (handle, _tmp, key, hash) = pane_fixture().await;
+    let fakes = FakeCatalogs::offline();
+    let (handle, _tmp, key, hash) = pane_fixture_with(fakes.providers()).await;
     store_settled_text(&handle, &hash, "NJ-8255").await;
-    seed_mb_release_with_catalog(handle.catalogs.providers(), "chosen-mb-rel-1", "NJ 8255");
+    seed_mb_release_with_catalog(&fakes, "chosen-mb-rel-1", "NJ 8255");
 
     pick(&handle, &key, "chosen-mb-rel-1").await;
 
@@ -183,12 +184,13 @@ async fn picking_a_record_the_folder_prints_the_number_of_chooses_nothing() {
 /// A pick leaves the person's own choices as they were.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_pick_leaves_the_person_s_choices_as_they_were() {
-    let (handle, _tmp, key, hash) = pane_fixture().await;
+    let fakes = FakeCatalogs::offline();
+    let (handle, _tmp, key, hash) = pane_fixture_with(fakes.providers()).await;
     store_settled_text(&handle, &hash, "NJ-8255").await;
     edit(&handle, &key, [barcode("0123456789012"), catalog("WPCR-80001"), discounted("NJ-8255")])
         .await;
     let choices = pane(&handle, &key).await.draft().unwrap().lookup_choices.clone();
-    seed_mb_release_with_catalog(handle.catalogs.providers(), "chosen-mb-rel-2", "NJ 8255");
+    seed_mb_release_with_catalog(&fakes, "chosen-mb-rel-2", "NJ 8255");
 
     pick(&handle, &key, "chosen-mb-rel-2").await;
 
@@ -258,25 +260,25 @@ pub(super) async fn pick(
 /// A two-track MusicBrainz release carrying `catalog_number`, in no release
 /// group so the pick fetches no cover.
 pub(super) fn seed_mb_release_with_catalog(
-    providers: &crate::catalog_model::providers::Providers,
+    fakes: &FakeCatalogs,
     release_id: &str,
     catalog_number: &str,
 ) {
-    seed_mb_release(providers, release_id, catalog_number, false);
+    seed_mb_release(fakes, release_id, catalog_number, false);
 }
 
 /// [`seed_mb_release_with_catalog`]'s release, with the Cover Art Archive
 /// stating a front image for it.
 pub(super) fn seed_mb_release_with_front(
-    providers: &crate::catalog_model::providers::Providers,
+    fakes: &FakeCatalogs,
     release_id: &str,
     catalog_number: &str,
 ) {
-    seed_mb_release(providers, release_id, catalog_number, true);
+    seed_mb_release(fakes, release_id, catalog_number, true);
 }
 
 fn seed_mb_release(
-    providers: &crate::catalog_model::providers::Providers,
+    fakes: &FakeCatalogs,
     release_id: &str,
     catalog_number: &str,
     front: bool,
@@ -331,5 +333,5 @@ fn seed_mb_release(
         cover_art_archive: bae_catalogs::musicbrainz::MbCoverArtArchive { front, darkened: false },
     };
     let raw_json = serde_json::to_string(&response).expect("the test response serializes");
-    providers.musicbrainz().seed_release_cache(release_id, raw_json);
+    fakes.musicbrainz().seed_release_cache(release_id, raw_json);
 }

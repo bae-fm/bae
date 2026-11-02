@@ -39,10 +39,13 @@ fn offered(release_id: &str, year: i32) -> crate::catalog_model::search::Metadat
 /// Store a verdict offering two pressings of one album for the fixture's
 /// candidate, each seeded where a read of it finds it, under its own
 /// catalog number.
-pub(super) async fn store_two_pressings(handle: &ImportServiceHandle, hash: &str) {
-    let providers = handle.catalogs.providers();
-    super::lookup_choices::seed_mb_release_with_catalog(providers, "mb-pressing-1", "CAT-100");
-    super::lookup_choices::seed_mb_release_with_catalog(providers, "mb-pressing-2", "CAT-200");
+pub(super) async fn store_two_pressings(
+    handle: &ImportServiceHandle,
+    fakes: &FakeCatalogs,
+    hash: &str,
+) {
+    super::lookup_choices::seed_mb_release_with_catalog(fakes, "mb-pressing-1", "CAT-100");
+    super::lookup_choices::seed_mb_release_with_catalog(fakes, "mb-pressing-2", "CAT-200");
     let prep = crate::import::preparation::import_preparation(&handle.tables, hash)
         .await
         .unwrap()
@@ -105,8 +108,9 @@ async fn link(handle: &ImportServiceHandle, hash: &str) -> Option<ReleaseLink> {
 /// differ.
 #[tokio::test(flavor = "multi_thread")]
 async fn linking_the_album_takes_what_its_pressings_share() {
-    let (handle, _tmp, key, hash) = pane_fixture().await;
-    store_two_pressings(&handle, &hash).await;
+    let fakes = FakeCatalogs::offline();
+    let (handle, _tmp, key, hash) = pane_fixture_with(fakes.providers()).await;
+    store_two_pressings(&handle, &fakes, &hash).await;
     let before = pane(&handle, &key).await;
     let crate::identify::IdentifyStateView::Found { offers_shared_album, .. } =
         crate::identify::IdentifyStateView::from(before.resumed_identify_state.clone())
@@ -164,8 +168,9 @@ async fn linking_the_album_takes_what_its_pressings_share() {
 /// catalog, and no pressing's.
 #[tokio::test(flavor = "multi_thread")]
 async fn an_import_linked_to_an_album_stores_the_album() {
-    let (handle, _tmp, key, hash) = pane_fixture().await;
-    store_two_pressings(&handle, &hash).await;
+    let fakes = FakeCatalogs::offline();
+    let (handle, _tmp, key, hash) = pane_fixture_with(fakes.providers()).await;
+    store_two_pressings(&handle, &fakes, &hash).await;
     handle.link_candidate_shared_album(key.clone()).await.unwrap();
 
     let mut events = handle.every_event();
@@ -180,8 +185,9 @@ async fn an_import_linked_to_an_album_stores_the_album() {
 /// Picking a pressing after all replaces the album link with the pressing.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_pick_replaces_the_album_link() {
-    let (handle, _tmp, key, hash) = pane_fixture().await;
-    store_two_pressings(&handle, &hash).await;
+    let fakes = FakeCatalogs::offline();
+    let (handle, _tmp, key, hash) = pane_fixture_with(fakes.providers()).await;
+    store_two_pressings(&handle, &fakes, &hash).await;
     handle.link_candidate_shared_album(key.clone()).await.unwrap();
 
     super::lookup_choices::pick(&handle, &key, "mb-pressing-2").await;

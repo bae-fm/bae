@@ -29,7 +29,7 @@ async fn a_picked_release_writes_its_id_and_pressing_fields() {
     let f = ImportFixture::new().await;
 
     let release = discogs_release_rich("Album Title", "master-exact", &["Track One"]);
-    let release_id_key = seed_discogs_test_release(f.catalogs.providers(), release);
+    let release_id_key = seed_discogs_test_release(&f.discogs,&f.musicbrainz, release);
 
     let album_dir = f.temp_path().join("album");
     fs::create_dir_all(&album_dir).unwrap();
@@ -94,7 +94,7 @@ async fn a_user_edit_overlays_the_picked_release() {
     let f = ImportFixture::new().await;
 
     let release = discogs_release_rich("Album Title", "master-edit", &["Track One"]);
-    let release_id_key = seed_discogs_test_release(f.catalogs.providers(), release);
+    let release_id_key = seed_discogs_test_release(&f.discogs,&f.musicbrainz, release);
 
     let album_dir = f.temp_path().join("album");
     fs::create_dir_all(&album_dir).unwrap();
@@ -178,7 +178,7 @@ async fn a_linked_draft_read_from_the_tags_imports_under_the_link() {
     let f = ImportFixture::new().await;
 
     let release = discogs_release_rich("Album Title", "master-tags", &["Track One"]);
-    let release_id_key = seed_discogs_test_release(f.catalogs.providers(), release);
+    let release_id_key = seed_discogs_test_release(&f.discogs,&f.musicbrainz, release);
 
     let album_dir = f.temp_path().join("album");
     fs::create_dir_all(&album_dir).unwrap();
@@ -239,8 +239,8 @@ fn seed_discogs_for_xref(
     title: &str,
 ) -> String {
     let rendered_master = support::discogs_fixture_id(master_id);
-    f.catalogs.providers().discogs().seed_artist_image_response("1", None);
-    f.catalogs.providers().discogs().seed_master_cache(
+    f.discogs.seed_artist_image_response("1", None);
+    f.discogs.seed_master_cache(
         &rendered_master,
         serde_json::json!({ "id": rendered_master.parse::<u64>().expect("a rendered master id is numeric"), "year": 1996 }).to_string(),
     );
@@ -264,10 +264,10 @@ fn seed_discogs_for_xref(
     .to_string();
     bae_catalogs::discogs::documents::parse_discogs_release_json(&raw_json)
         .expect("the rendered Discogs release parses");
-    f.catalogs.providers().discogs().seed_release_cache(release_id, raw_json);
+    f.discogs.seed_release_cache(release_id, raw_json);
     // MusicBrainz is asked about the release's address and its master's in
     // one request; neither is linked from anything there.
-    f.catalogs.providers().musicbrainz().seed_discogs_page_lookup(&[
+    f.musicbrainz.seed_discogs_page_lookup(&[
         (bae_catalogs::musicbrainz::DiscogsPage::Release(release_id.to_string()), None),
         (bae_catalogs::musicbrainz::DiscogsPage::Master(rendered_master), None),
     ]);
@@ -291,8 +291,8 @@ fn seed_mb_with_discogs_xref(
         ..MbRelation::default()
     }];
     let raw_json = serde_json::to_string(&response).expect("the test response serializes");
-    f.catalogs.providers().musicbrainz().seed_release_cache(mb_release_id, raw_json);
-    f.catalogs.providers().musicbrainz().seed_release_group_json_cache(
+    f.musicbrainz.seed_release_cache(mb_release_id, raw_json);
+    f.musicbrainz.seed_release_group_json_cache(
         mb_group_id,
         serde_json::json!({ "id": mb_group_id }).to_string(),
     );
@@ -480,7 +480,7 @@ fn seed_mb_without_xref(
     title: &str,
 ) -> String {
     support::seed_mb_release(
-        f.catalogs.providers().musicbrainz(),
+        &f.musicbrainz,
         support::mb_release(mb_release_id, mb_group_id, title),
         mb_group_id,
     )

@@ -5,17 +5,17 @@ use crate::import::CandidateEditField;
 
 /// A Discogs release with pressing metadata and no barcode.
 pub(super) fn seed_discogs_pressing(
-    providers: &crate::catalog_model::providers::Providers,
+    fakes: &FakeCatalogs,
     release_id: &str,
     label: &str,
     catalog_number: &str,
 ) {
-    seed_discogs_release(providers, release_id, label, catalog_number, &[]);
+    seed_discogs_release(fakes, release_id, label, catalog_number, &[]);
 }
 
 /// [`seed_discogs_pressing`], printed with `barcodes`.
 fn seed_discogs_release(
-    providers: &crate::catalog_model::providers::Providers,
+    fakes: &FakeCatalogs,
     release_id: &str,
     label: &str,
     catalog_number: &str,
@@ -46,9 +46,9 @@ fn seed_discogs_release(
     .to_string();
     bae_catalogs::discogs::documents::parse_discogs_release_json(&raw_release)
         .expect("the rendered Discogs release parses");
-    providers.discogs().seed_release_cache(release_id, raw_release);
-    providers.discogs().seed_artist_image_response("1", None);
-    providers.musicbrainz().seed_discogs_page_lookup(&[(
+    fakes.discogs().seed_release_cache(release_id, raw_release);
+    fakes.discogs().seed_artist_image_response("1", None);
+    fakes.musicbrainz().seed_discogs_page_lookup(&[(
         bae_catalogs::musicbrainz::DiscogsPage::Release(release_id.to_string()),
         None,
     )]);
@@ -99,7 +99,8 @@ async fn resetting_to_the_tags_drops_what_was_typed() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn a_pick_replaces_typed_fields_with_the_catalog_metadata() {
-    let (handle, _tmp, key, _hash) = pane_fixture().await;
+    let fakes = FakeCatalogs::offline();
+    let (handle, _tmp, key, _hash) = pane_fixture_with(fakes.providers()).await;
     handle
         .catalogs
         .store_discogs_key("test-discogs-token", crate::config::DiscogsValidation::Valid)
@@ -114,7 +115,7 @@ async fn a_pick_replaces_typed_fields_with_the_catalog_metadata() {
         .unwrap();
 
     let release_id = "70000101";
-    seed_discogs_pressing(handle.catalogs.providers(), release_id, "Label Name", "CAT-1");
+    seed_discogs_pressing(&fakes, release_id, "Label Name", "CAT-1");
     handle
         .select_candidate_release(
             key.clone(),
@@ -152,7 +153,8 @@ async fn a_pick_replaces_typed_fields_with_the_catalog_metadata() {
 /// states both.
 #[tokio::test(flavor = "multi_thread")]
 async fn applying_a_release_with_two_barcodes_keeps_both() {
-    let (handle, _tmp, key, _hash) = pane_fixture().await;
+    let fakes = FakeCatalogs::offline();
+    let (handle, _tmp, key, _hash) = pane_fixture_with(fakes.providers()).await;
     handle
         .catalogs
         .store_discogs_key("test-discogs-token", crate::config::DiscogsValidation::Valid)
@@ -160,7 +162,7 @@ async fn applying_a_release_with_two_barcodes_keeps_both() {
         .unwrap();
     let release_id = "70000102";
     seed_discogs_release(
-        handle.catalogs.providers(),
+        &fakes,
         release_id,
         "Label Name",
         "CAT-1",

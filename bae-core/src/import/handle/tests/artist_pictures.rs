@@ -10,6 +10,8 @@ use super::*;
 /// transport.
 struct DiscogsPick {
     handle: ImportServiceHandle,
+    /// The catalog fakes the library asks, which the test seeds.
+    fakes: FakeCatalogs,
     /// The library the import writes the pictures into, whose stored bytes
     /// a test reads.
     manager: TestLibrary,
@@ -26,7 +28,7 @@ impl DiscogsPick {
     /// Discogs' artist documents: none for the album artist, and for the
     /// track artist one whose primary image is `picture_url`.
     fn seed_artists(&self, picture_url: String) {
-        let discogs = self.handle.catalogs.providers().discogs();
+        let discogs = self.fakes.discogs();
         discogs.seed_artist_image_response(&self.album_artist_id, None);
         discogs.seed_artist_image_response(&self.track_artist_id, Some(picture_url));
     }
@@ -110,10 +112,11 @@ fn assert_stored_large_picture(stored: Option<Vec<u8>>) {
 
 async fn picked_discogs_release() -> DiscogsPick {
     let images = bae_test_support::RemoteImageHost::start().await;
-    let StoredCandidate { handle, manager, key, tmp, .. } = picked_stored_candidate_with(
+    let fakes = FakeCatalogs::over(
         bae_util::http::Http::for_test().serve(bae_test_support::TEST_IMAGE_HOST, images.origin()),
-    )
-    .await;
+    );
+    let StoredCandidate { handle, manager, key, tmp, .. } =
+        picked_stored_candidate_with(fakes.providers()).await;
     handle
         .catalogs
         .store_discogs_key("test-discogs-token", crate::config::DiscogsValidation::Valid)
@@ -143,12 +146,8 @@ async fn picked_discogs_release() -> DiscogsPick {
     .to_string();
     bae_catalogs::discogs::documents::parse_discogs_release_json(&raw_release)
         .expect("the rendered Discogs release parses");
-    handle
-        .catalogs
-        .providers()
-        .discogs()
-        .seed_release_cache(&source_release_id, raw_release);
-    handle.catalogs.providers().musicbrainz().seed_discogs_page_lookup(&[(
+    fakes.discogs().seed_release_cache(&source_release_id, raw_release);
+    fakes.musicbrainz().seed_discogs_page_lookup(&[(
         bae_catalogs::musicbrainz::DiscogsPage::Release(source_release_id.clone()),
         None,
     )]);
@@ -170,6 +169,7 @@ async fn picked_discogs_release() -> DiscogsPick {
 
     DiscogsPick {
         handle,
+        fakes,
         manager,
         tmp,
         key,

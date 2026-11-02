@@ -26,9 +26,10 @@ fn linked_to(release_id: &str) -> crate::import::ReleaseLink {
 pub(super) async fn picked_fixture(
     release_id: &str,
 ) -> (ImportServiceHandle, TempDir, crate::import::CandidateKey) {
-    let (handle, tmp, key, _hash) = pane_fixture().await;
+    let fakes = FakeCatalogs::offline();
+    let (handle, tmp, key, _hash) = pane_fixture_with(fakes.providers()).await;
     super::lookup_choices::seed_mb_release_with_catalog(
-        handle.catalogs.providers(),
+        &fakes,
         release_id,
         "CAT-1",
     );

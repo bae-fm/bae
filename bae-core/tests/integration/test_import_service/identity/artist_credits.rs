@@ -16,7 +16,7 @@ fn discogs_album_folder(
     title: &str,
 ) -> (std::path::PathBuf, support::DraftSource) {
     let release = discogs_release(title, &["Track One"]);
-    let release_key = seed_discogs_test_release(f.catalogs.providers(), release);
+    let release_key = seed_discogs_test_release(&f.discogs,&f.musicbrainz, release);
     let dir = f.temp_path().join(dir_name);
     fs::create_dir_all(&dir).unwrap();
     generate_album_files(&dir, &["01 Track One.flac"]);
@@ -362,7 +362,7 @@ async fn a_discogs_credit_imports_with_its_printed_name_and_join() {
         },
         support::discogs_artist("discogs-artist-b", "Artist B"),
     ];
-    let release_key = seed_discogs_test_release(f.catalogs.providers(), release);
+    let release_key = seed_discogs_test_release(&f.discogs,&f.musicbrainz, release);
     let dir = f.temp_path().join("album-credited");
     fs::create_dir_all(&dir).unwrap();
     generate_album_files(&dir, &["01 Track One.flac"]);

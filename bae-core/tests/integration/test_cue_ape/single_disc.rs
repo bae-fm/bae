@@ -9,7 +9,7 @@ use std::path::Path;
 use std::time::Duration;
 use support::start_test_import;
 use support::{
-    assert_captured_matches_reference, open_test_library, samples_as_f32,
+    assert_captured_matches_reference, samples_as_f32,
     seed_discogs_test_release, tracing_init, wait_for_import_complete,
 };
 use tempfile::TempDir;
@@ -66,9 +66,11 @@ async fn import_cue_ape_fixture() -> (LibraryManager, String, TempDir) {
     std::fs::create_dir_all(&db_dir).expect("db dir");
     copy_cue_ape_fixture(&album_dir);
 
-    let (library_manager, database, catalogs, closing) = open_test_library(&db_dir).await;
+    let musicbrainz = support::offline_musicbrainz();
+    let discogs = support::offline_discogs();
+    let (library_manager, database, catalogs, closing) = support::open_test_library_with(&db_dir, support::providers_asking(&musicbrainz, &discogs)).await;
     let release_id_key =
-        seed_discogs_test_release(catalogs.providers(), create_test_discogs_release());
+        seed_discogs_test_release(&discogs, &musicbrainz, create_test_discogs_release());
     let release_id =
         support::import_folder_and_wait(&database, &catalogs, &closing, album_dir, release_id_key).await;
     (library_manager, release_id, temp_root)

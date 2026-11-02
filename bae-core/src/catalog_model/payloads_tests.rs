@@ -515,18 +515,19 @@ fn a_discogs_release_reaches_its_master_through_the_anchor() {
 /// name, which is what lets the records it adds be stored with the release.
 #[tokio::test]
 async fn a_fetch_follows_the_item_musicbrainz_names() {
-    let providers = crate::catalog_model::providers::Providers::offline();
+    let fakes = crate::catalog_model::fake_catalogs::FakeCatalogs::offline();
+    let providers = fakes.providers();
     let release_id = "archives-item-mb-release";
     let group_id = "archives-item-mb-group";
-    providers.musicbrainz().seed_release_cache(
+    fakes.musicbrainz().seed_release_cache(
         release_id,
         musicbrainz_release_with_relations(release_id, group_id, &[]).to_string(),
     );
-    providers.musicbrainz().seed_release_group_json_cache(
+    fakes.musicbrainz().seed_release_group_json_cache(
         group_id,
         wikidata_linked_release_group(group_id, "Q424242"),
     );
-    providers.wikidata().seed_entity_cache("Q424242", Some(wikidata_item("Q424242")));
+    fakes.wikidata().seed_entity_cache("Q424242", Some(wikidata_item("Q424242")));
 
     let payloads = providers
         .fetch_payloads(
@@ -564,18 +565,19 @@ async fn a_fetch_follows_the_item_musicbrainz_names() {
 /// for it again.
 #[tokio::test]
 async fn an_item_that_will_not_fetch_leaves_the_other_records_standing() {
-    let providers = crate::catalog_model::providers::Providers::offline();
+    let fakes = crate::catalog_model::fake_catalogs::FakeCatalogs::offline();
+    let providers = fakes.providers();
     let release_id = "missing-item-mb-release";
     let group_id = "missing-item-mb-group";
-    providers.musicbrainz().seed_release_cache(
+    fakes.musicbrainz().seed_release_cache(
         release_id,
         musicbrainz_release_with_relations(release_id, group_id, &[]).to_string(),
     );
-    providers.musicbrainz().seed_release_group_json_cache(
+    fakes.musicbrainz().seed_release_group_json_cache(
         group_id,
         wikidata_linked_release_group(group_id, "Q909090"),
     );
-    providers.wikidata().seed_entity_cache("Q909090", None);
+    fakes.wikidata().seed_entity_cache("Q909090", None);
 
     let payloads = providers
         .fetch_payloads(

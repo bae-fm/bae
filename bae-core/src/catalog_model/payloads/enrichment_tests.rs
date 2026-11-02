@@ -9,15 +9,16 @@ use serde_json::json;
 /// chain.
 #[tokio::test]
 async fn a_master_backlink_is_followed() {
-    let providers = crate::catalog_model::providers::Providers::offline();
-    providers.discogs().seed_release_cache("7811", linked_discogs_release());
-    providers.discogs().seed_master_cache("7822", linked_discogs_master());
-    providers.musicbrainz().seed_discogs_page_lookup(&[
+    let fakes = crate::catalog_model::fake_catalogs::FakeCatalogs::offline();
+    let providers = fakes.providers();
+    fakes.discogs().seed_release_cache("7811", linked_discogs_release());
+    fakes.discogs().seed_master_cache("7822", linked_discogs_master());
+    fakes.musicbrainz().seed_discogs_page_lookup(&[
         (bae_catalogs::musicbrainz::DiscogsPage::Release("7811".into()), None),
         (bae_catalogs::musicbrainz::DiscogsPage::Master("7822".into()), Some("album-group")),
     ]);
-    providers.musicbrainz().seed_release_group_json_cache("album-group", linked_release_group());
-    let client = DiscogsClient::new(providers.discogs().clone(), "test-token".into());
+    fakes.musicbrainz().seed_release_group_json_cache("album-group", linked_release_group());
+    let client = DiscogsClient::new(fakes.discogs().clone(), "test-token".into());
     let fetched = providers
         .fetch_payloads(
             Some(&client),

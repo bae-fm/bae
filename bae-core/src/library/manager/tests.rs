@@ -30,6 +30,8 @@ use uuid::Uuid;
 
 struct TestManager {
     library: TestLibrary,
+    /// The catalog fakes the library asks, which a test seeds.
+    fakes: crate::catalog_model::fake_catalogs::FakeCatalogs,
     storage: Arc<MemoryStorage>,
     installation: coven::TestCoven,
 }
@@ -77,10 +79,11 @@ async fn setup_test_manager_with(
         .unwrap();
     let database =
         Database::from_handle(handle, clock.clone(), std::sync::Arc::new(coven::UuidIds));
+    let fakes = crate::catalog_model::fake_catalogs::FakeCatalogs::offline();
     let manager = TestLibrary::open_with(
         database,
         app_dir,
-        crate::catalog_model::providers::Providers::offline(),
+        fakes.providers(),
         clock,
         Arc::new(coven::UuidIds),
         diagnostics,
@@ -97,7 +100,7 @@ async fn setup_test_manager_with(
         created_at: Utc::now(),
     };
     manager.database.insert_artist(&artist).await.unwrap();
-    (TestManager { library: manager, storage, installation }, temp_dir)
+    (TestManager { library: manager, fakes, storage, installation }, temp_dir)
 }
 
 // One-line reads and writes against the manager's database. Spelled out at a

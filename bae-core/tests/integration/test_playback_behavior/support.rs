@@ -444,6 +444,7 @@ impl PlaybackTestFixture {
             &self.database,
             &self.catalogs,
             &self.closing,
+            bae_util::http::Http::for_test(),
         )
         .await;
         let identification = import.start_identification_queue();

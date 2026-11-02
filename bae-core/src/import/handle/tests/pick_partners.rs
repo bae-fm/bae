@@ -6,14 +6,15 @@ use bae_catalogs::musicbrainz::DiscogsPage;
 
 #[tokio::test(flavor = "multi_thread")]
 async fn linked_cover_gallery_can_be_empty() {
-    let (handle, _tmp, key, _) = pane_fixture().await;
+    let fakes = FakeCatalogs::offline();
+    let (handle, _tmp, key, _) = pane_fixture_with(fakes.providers()).await;
     handle
         .catalogs
         .store_discogs_key("test-discogs-token", crate::config::DiscogsValidation::Valid)
         .await
         .unwrap();
     let release_id = "70000003";
-    seed_discogs_release(handle.catalogs.providers(), release_id);
+    seed_discogs_release(&fakes, release_id);
     handle
         .select_candidate_release(
             key.clone(),
@@ -45,8 +46,9 @@ async fn a_pick_with_a_partner_stores_it_and_archives_its_documents() {
     // The pick offers the partner's album address, which the archive holds
     // no image at.
     let archive = bae_util::http::serve_not_found().await;
+    let fakes = FakeCatalogs::over(bae_util::http::Http::for_test().serve("coverartarchive.org", &archive));
     let (handle, _tmp, key, hash) =
-        pane_fixture_with(bae_util::http::Http::for_test().serve("coverartarchive.org", &archive))
+        pane_fixture_with(fakes.providers())
             .await;
     let tables = handle.tables.clone();
     handle
@@ -56,9 +58,9 @@ async fn a_pick_with_a_partner_stores_it_and_archives_its_documents() {
         .unwrap();
 
     let discogs_release_id = "70000001";
-    seed_discogs_release(handle.catalogs.providers(), discogs_release_id);
+    seed_discogs_release(&fakes, discogs_release_id);
     let mb_release_id = "partner-mb-rel-1";
-    seed_mb_release(handle.catalogs.providers(), mb_release_id, "partner-mb-group-1");
+    seed_mb_release(&fakes, mb_release_id, "partner-mb-group-1");
     let partner = crate::catalog_model::records::LookupRef::new(
         bae_catalogs::catalog::LookupCatalog::MusicBrainz,
         mb_release_id.to_string(),
@@ -118,11 +120,12 @@ async fn a_pick_with_a_partner_stores_it_and_archives_its_documents() {
 /// unreachable while the primary reads fine.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_partner_that_will_not_prepare_fails_the_apply() {
-    let (handle, _tmp, key, hash) = pane_fixture().await;
+    let fakes = FakeCatalogs::offline();
+    let (handle, _tmp, key, hash) = pane_fixture_with(fakes.providers()).await;
     let tables = handle.tables.clone();
 
     let mb_release_id = "unpaired-mb-rel-1";
-    seed_mb_release(handle.catalogs.providers(), mb_release_id, "unpaired-mb-group-1");
+    seed_mb_release(&fakes, mb_release_id, "unpaired-mb-group-1");
 
     let before = tables
         .load_import_candidate_state(&hash)
@@ -167,11 +170,12 @@ async fn a_partner_that_will_not_prepare_fails_the_apply() {
 /// the identity the primary document states, so it is refused.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_partner_repeating_the_primary_source_is_refused() {
-    let (handle, _tmp, key, hash) = pane_fixture().await;
+    let fakes = FakeCatalogs::offline();
+    let (handle, _tmp, key, hash) = pane_fixture_with(fakes.providers()).await;
     let tables = handle.tables.clone();
 
     let mb_release_id = "repeat-mb-rel-1";
-    seed_mb_release(handle.catalogs.providers(), mb_release_id, "repeat-mb-group-1");
+    seed_mb_release(&fakes, mb_release_id, "repeat-mb-group-1");
 
     let before = tables
         .load_import_candidate_state(&hash)
@@ -214,10 +218,10 @@ async fn a_partner_repeating_the_primary_source_is_refused() {
 /// A Discogs release under a master, which MusicBrainz's lookup by its
 /// address links to a MusicBrainz release, seeded into the caches a read asks.
 fn seed_linked_discogs_release(
-    providers: &crate::catalog_model::providers::Providers,
+    fakes: &FakeCatalogs,
 ) -> crate::catalog_model::records::LookupRef {
-    seed_discogs_release_in(providers, "70000007", Some("70000008"), Some("linked-mb-rel-1"));
-    seed_mb_release(providers, "linked-mb-rel-1", "linked-mb-group-1");
+    seed_discogs_release_in(fakes, "70000007", Some("70000008"), Some("linked-mb-rel-1"));
+    seed_mb_release(fakes, "linked-mb-rel-1", "linked-mb-group-1");
     crate::catalog_model::records::LookupRef::new(
         bae_catalogs::catalog::LookupCatalog::Discogs,
         "70000007",
@@ -230,15 +234,15 @@ fn seed_linked_discogs_release(
 #[tokio::test(flavor = "multi_thread")]
 async fn a_pick_of_a_release_a_run_read_reads_the_rest() {
     let archive = bae_util::http::serve_not_found().await;
-    let (handle, _tmp, key, _) =
-        pane_fixture_with(bae_util::http::Http::for_test().serve("coverartarchive.org", &archive))
-            .await;
+    let fakes =
+        FakeCatalogs::over(bae_util::http::Http::for_test().serve("coverartarchive.org", &archive));
+    let (handle, _tmp, key, _) = pane_fixture_with(fakes.providers()).await;
     handle
         .catalogs
         .store_discogs_key("test-discogs-token", crate::config::DiscogsValidation::Valid)
         .await
         .unwrap();
-    let release = seed_linked_discogs_release(handle.catalogs.providers());
+    let release = seed_linked_discogs_release(&fakes);
 
     let read_by_the_run = handle.release_reads.release(
         &release,
@@ -273,13 +277,14 @@ async fn a_pick_of_a_release_a_run_read_reads_the_rest() {
         .expect("the pick stores its release");
     shut_down(handle).await;
 
-    let (scratch, _scratch_tmp, _, _) = pane_fixture().await;
+    let scratch_fakes = FakeCatalogs::offline();
+    let (scratch, _scratch_tmp, _, _) = pane_fixture_with(scratch_fakes.providers()).await;
     scratch
         .catalogs
         .store_discogs_key("test-discogs-token", crate::config::DiscogsValidation::Valid)
         .await
         .unwrap();
-    seed_linked_discogs_release(scratch.catalogs.providers());
+    seed_linked_discogs_release(&scratch_fakes);
     let complete = scratch.release_reads.release(
         &release,
         crate::catalog_model::payloads::ReadDepth::Complete,
@@ -298,8 +303,8 @@ async fn a_pick_of_a_release_a_run_read_reads_the_rest() {
 }
 
 /// A two-track Discogs release with no master, seeded into the release cache.
-fn seed_discogs_release(providers: &crate::catalog_model::providers::Providers, release_id: &str) {
-    seed_discogs_release_in(providers, release_id, None, None);
+fn seed_discogs_release(fakes: &FakeCatalogs, release_id: &str) {
+    seed_discogs_release_in(fakes, release_id, None, None);
 }
 
 /// A two-track Discogs release filed under `master`, when it names one,
@@ -308,13 +313,13 @@ fn seed_discogs_release(providers: &crate::catalog_model::providers::Providers, 
 /// from `linked`, when it names a MusicBrainz release, and the master's from
 /// no release group.
 fn seed_discogs_release_in(
-    providers: &crate::catalog_model::providers::Providers,
+    fakes: &FakeCatalogs,
     release_id: &str,
     master: Option<&str>,
     linked: Option<&str>,
 ) {
     if let Some(master) = master {
-        providers.discogs().seed_master_cache(
+        fakes.discogs().seed_master_cache(
             master,
             serde_json::json!({ "id": master.parse::<u64>().unwrap(), "title": "Album Title" })
                 .to_string(),
@@ -340,25 +345,25 @@ fn seed_discogs_release_in(
     .to_string();
     bae_catalogs::discogs::documents::parse_discogs_release_json(&raw_release)
         .expect("the rendered Discogs release parses");
-    providers.discogs().seed_release_cache(release_id, raw_release);
-    providers.discogs().seed_artist_image_response("1", None);
+    fakes.discogs().seed_release_cache(release_id, raw_release);
+    fakes.discogs().seed_artist_image_response("1", None);
     let lookups: Vec<_> = std::iter::once((DiscogsPage::Release(release_id.to_string()), linked))
         .chain(master.map(|master| (DiscogsPage::Master(master.to_string()), None)))
         .collect();
-    providers.musicbrainz().seed_discogs_page_lookup(&lookups);
+    fakes.musicbrainz().seed_discogs_page_lookup(&lookups);
 }
 
 /// A two-track MusicBrainz release, seeded into the caches the fetch path
 /// reads, so a partner resolves without a network call.
 fn seed_mb_release(
-    providers: &crate::catalog_model::providers::Providers,
+    fakes: &FakeCatalogs,
     release_id: &str,
     release_group_id: &str,
 ) {
-    providers
+    fakes
         .musicbrainz()
         .seed_release_cache(release_id, mb_release_json(release_id, release_group_id));
-    providers.musicbrainz().seed_release_group_json_cache(
+    fakes.musicbrainz().seed_release_group_json_cache(
         release_group_id,
         serde_json::json!({ "id": release_group_id }).to_string(),
     );
@@ -421,11 +426,10 @@ fn mb_release_json(release_id: &str, release_group_id: &str) -> String {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn numeric_vinyl_import_preserves_unknown_sides_and_track_order() {
-    let (handle, _tmp, key, hash) = pane_fixture().await;
+    let fakes = FakeCatalogs::offline();
+    let (handle, _tmp, key, hash) = pane_fixture_with(fakes.providers()).await;
     let release_id = "numeric-vinyl-release";
-    handle
-        .catalogs
-        .providers()
+    fakes
         .musicbrainz()
         .seed_release_cache(release_id, serde_json::json!({
         "id": release_id, "title": "Numbered Record",
@@ -486,8 +490,9 @@ async fn an_import_commits_what_its_picked_releases_store_now() {
     // The pick offers the partner's album address, which the archive holds
     // no image at.
     let archive = bae_util::http::serve_not_found().await;
+    let fakes = FakeCatalogs::over(bae_util::http::Http::for_test().serve("coverartarchive.org", &archive));
     let (handle, _tmp, key, _hash) =
-        pane_fixture_with(bae_util::http::Http::for_test().serve("coverartarchive.org", &archive))
+        pane_fixture_with(fakes.providers())
             .await;
     handle
         .catalogs
@@ -497,14 +502,12 @@ async fn an_import_commits_what_its_picked_releases_store_now() {
     let primary = "70000004";
     let partner = "refetched-partner-release";
     let group = "refetched-partner-group";
-    seed_discogs_release(handle.catalogs.providers(), primary);
-    seed_mb_release(handle.catalogs.providers(), partner, group);
+    seed_discogs_release(&fakes, primary);
+    seed_mb_release(&fakes, partner, group);
     let group_json = |allmusic: &str| {
         serde_json::json!({"id":group,"relations":[{"url":{"resource":format!("https://www.allmusic.com/album/{allmusic}")}}]}).to_string()
     };
-    handle
-        .catalogs
-        .providers()
+    fakes
         .musicbrainz()
         .seed_release_group_json_cache(group, group_json("mw111"));
     handle
@@ -571,17 +574,17 @@ async fn a_pick_carries_the_album_a_reading_found_through_another_pressing() {
     // The pick offers the joined group's album address, which the archive
     // holds no image at.
     let archive = bae_util::http::serve_not_found().await;
+    let fakes = FakeCatalogs::over(bae_util::http::Http::for_test().serve("coverartarchive.org", &archive));
     let (handle, _tmp, key, _hash) =
-        pane_fixture_with(bae_util::http::Http::for_test().serve("coverartarchive.org", &archive))
+        pane_fixture_with(fakes.providers())
             .await;
     handle
         .catalogs
         .store_discogs_key("test-discogs-token", crate::config::DiscogsValidation::Valid)
         .await
         .unwrap();
-    let providers = handle.catalogs.providers();
     let group = "chain-mb-group";
-    seed_discogs_release_in(providers, "70000012", Some("909"), None);
+    seed_discogs_release_in(&fakes, "70000012", Some("909"), None);
     crate::import::identify_service::keep_album_links(
         &handle.tables,
         vec![(
@@ -630,8 +633,9 @@ fn recorded() -> (
 #[tokio::test(flavor = "multi_thread")]
 async fn a_pick_tells_each_catalog_read_it_waits_on() {
     let archive = bae_util::http::serve_not_found().await;
+    let fakes = FakeCatalogs::over(bae_util::http::Http::for_test().serve("coverartarchive.org", &archive));
     let (handle, _tmp, key, _hash) =
-        pane_fixture_with(bae_util::http::Http::for_test().serve("coverartarchive.org", &archive))
+        pane_fixture_with(fakes.providers())
             .await;
     handle
         .catalogs
@@ -639,9 +643,9 @@ async fn a_pick_tells_each_catalog_read_it_waits_on() {
         .await
         .unwrap();
     let discogs_release_id = "70000021";
-    seed_discogs_release(handle.catalogs.providers(), discogs_release_id);
+    seed_discogs_release(&fakes, discogs_release_id);
     let mb_release_id = "steps-mb-rel-1";
-    seed_mb_release(handle.catalogs.providers(), mb_release_id, "steps-mb-group-1");
+    seed_mb_release(&fakes, mb_release_id, "steps-mb-group-1");
     let (steps, told) = recorded();
 
     handle
@@ -687,11 +691,12 @@ async fn a_pick_tells_each_catalog_read_it_waits_on() {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_pick_of_a_held_release_tells_no_read() {
     let archive = bae_util::http::serve_not_found().await;
+    let fakes = FakeCatalogs::over(bae_util::http::Http::for_test().serve("coverartarchive.org", &archive));
     let (handle, _tmp, key, _hash) =
-        pane_fixture_with(bae_util::http::Http::for_test().serve("coverartarchive.org", &archive))
+        pane_fixture_with(fakes.providers())
             .await;
     let mb_release_id = "steps-held-mb-rel-1";
-    seed_mb_release(handle.catalogs.providers(), mb_release_id, "steps-held-mb-group-1");
+    seed_mb_release(&fakes, mb_release_id, "steps-held-mb-group-1");
     let link = crate::identify::PressingLink {
         record: crate::catalog_model::records::LookupRef::new(
             bae_catalogs::catalog::LookupCatalog::MusicBrainz,

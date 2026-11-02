@@ -93,12 +93,13 @@ async fn keeping_the_draft_with_no_lookup_is_refused() {
 /// Identified, and the kept draft stands no more.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_pick_after_keeping_the_draft_is_identified() {
-    let (handle, _tmp, key, hash) = pane_fixture().await;
+    let fakes = FakeCatalogs::offline();
+    let (handle, _tmp, key, hash) = pane_fixture_with(fakes.providers()).await;
     let tables = handle.tables.clone();
     store_not_found(&handle, &hash).await;
     handle.keep_candidate_draft(key.clone()).await.unwrap();
     super::lookup_choices::seed_mb_release_with_catalog(
-        handle.catalogs.providers(),
+        &fakes,
         "kept-then-picked",
         "CAT-1",
     );

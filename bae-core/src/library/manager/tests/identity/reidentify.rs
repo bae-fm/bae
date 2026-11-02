@@ -30,16 +30,14 @@ async fn reidentify(manager: &LibraryManager, release_id: &str, link: crate::ide
 
 /// Seed the MusicBrainz release `release_id` of group `group_id`, listing
 /// `tracks` tracks, where `prepare_release` reads it.
-fn seed_musicbrainz(manager: &LibraryManager, release_id: &str, group_id: &str, tracks: usize) {
+fn seed_musicbrainz(manager: &TestManager, release_id: &str, group_id: &str, tracks: usize) {
     let response = make_mb_release_for_re_identify(release_id, group_id, tracks);
     manager
-        .catalogs
-        .providers()
+        .fakes
         .musicbrainz()
         .seed_release_cache(release_id, serde_json::to_string(&response).unwrap());
     manager
-        .catalogs
-        .providers()
+        .fakes
         .musicbrainz()
         .seed_release_group_json_cache(group_id, serde_json::json!({ "id": group_id }).to_string());
 }
@@ -313,9 +311,9 @@ async fn a_reidentify_leaves_none_of_the_previous_source_s_roles_or_works() {
         }],
     })
     .to_string();
-    manager.catalogs.providers().discogs().seed_release_cache(discogs_release_id, discogs_raw);
-    manager.catalogs.providers().discogs().seed_artist_image_response("1", None);
-    manager.catalogs.providers().musicbrainz().seed_discogs_page_lookup(&[(
+    manager.fakes.discogs().seed_release_cache(discogs_release_id, discogs_raw);
+    manager.fakes.discogs().seed_artist_image_response("1", None);
+    manager.fakes.musicbrainz().seed_discogs_page_lookup(&[(
         bae_catalogs::musicbrainz::DiscogsPage::Release(discogs_release_id.to_string()),
         None,
     )]);
@@ -610,15 +608,15 @@ async fn re_identify_with_a_partner_writes_both_identity_rows() {
     let mb_group_id = "partner-re-identify-mb-group-new";
     let response = make_mb_release_for_re_identify(mb_release_id, mb_group_id, 1);
     let raw_json = serde_json::to_string(&response).unwrap();
-    manager.catalogs.providers().musicbrainz().seed_release_cache(mb_release_id, raw_json);
-    manager.catalogs.providers().musicbrainz().seed_release_group_json_cache(
+    manager.fakes.musicbrainz().seed_release_cache(mb_release_id, raw_json);
+    manager.fakes.musicbrainz().seed_release_group_json_cache(
         mb_group_id,
         serde_json::json!({ "id": mb_group_id }).to_string(),
     );
 
     let discogs_release_id = "80000101";
     let discogs_master_id = "80009101";
-    manager.catalogs.providers().discogs().seed_master_cache(
+    manager.fakes.discogs().seed_master_cache(
         discogs_master_id,
         serde_json::json!({ "id": discogs_master_id, "year": 1996 }).to_string(),
     );
@@ -640,8 +638,8 @@ async fn re_identify_with_a_partner_writes_both_identity_rows() {
     .to_string();
     bae_catalogs::discogs::documents::parse_discogs_release_json(&discogs_raw)
         .expect("the rendered Discogs release parses");
-    manager.catalogs.providers().discogs().seed_release_cache(discogs_release_id, discogs_raw);
-    manager.catalogs.providers().musicbrainz().seed_discogs_page_lookup(&[
+    manager.fakes.discogs().seed_release_cache(discogs_release_id, discogs_raw);
+    manager.fakes.musicbrainz().seed_discogs_page_lookup(&[
         (bae_catalogs::musicbrainz::DiscogsPage::Release(discogs_release_id.to_string()), None),
         (bae_catalogs::musicbrainz::DiscogsPage::Master(discogs_master_id.to_string()), None),
     ]);

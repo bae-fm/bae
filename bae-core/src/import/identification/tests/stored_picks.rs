@@ -527,7 +527,7 @@ async fn a_picked_row_states_what_each_claimed_source_says() {
         200,
         discogs_release_json_stating_pressing("70000301", "Other Label", 1988),
     );
-    fixture.catalogs.providers().musicbrainz().seed_discogs_page_lookup(&[(
+    fixture.musicbrainz.seed_discogs_page_lookup(&[(
         bae_catalogs::musicbrainz::DiscogsPage::Release("70000301".to_string()),
         None,
     )]);

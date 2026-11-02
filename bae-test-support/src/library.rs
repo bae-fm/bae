@@ -130,8 +130,8 @@ async fn open_library(
 }
 
 /// Start the services of a library [`open_test_library`] opened, through the
-/// app's own step, with playback on a device that plays nothing and no
-/// stored queue restored.
+/// app's own step, with playback on a device that plays nothing, no stored
+/// queue restored, and image downloads that reach nothing.
 pub async fn start_test_services(
     manager: bae_core::library::LibraryManager,
     database: bae_core::db::Database,
@@ -139,7 +139,7 @@ pub async fn start_test_services(
     closing: bae_core::library::CancellationToken,
 ) -> bae_core::library::AppServices {
     let remote_images =
-        bae_catalogs::remote_image::RemoteImageCache::for_test(catalogs.providers().http().clone());
+        bae_catalogs::remote_image::RemoteImageCache::for_test(bae_util::http::Http::for_test());
     bae_core::app::start_library_services(
         manager,
         database,
@@ -172,16 +172,34 @@ pub async fn setup_test_library() -> (
     ),
     tempfile::TempDir,
 ) {
+    setup_test_library_with(bae_core::catalog_model::providers::Providers::offline()).await
+}
+
+/// [`setup_test_library`] asking `providers`, ones built over the test's own
+/// fakes.
+pub async fn setup_test_library_with(
+    providers: bae_core::catalog_model::providers::Providers,
+) -> (
+    (
+        bae_core::library::LibraryManager,
+        bae_core::db::Database,
+        bae_core::import::CatalogSessions,
+        bae_core::library::CancellationToken,
+    ),
+    tempfile::TempDir,
+) {
     tracing_init();
     let temp_dir = tempfile::TempDir::new().expect("test library temp dir");
-    let library = open_test_library(temp_dir.path()).await;
+    let library = open_test_library_with(temp_dir.path(), providers).await;
     (library, temp_dir)
 }
 
-/// [`setup_test_library`] with an `album/` directory made alongside it, for a
-/// test that writes audio into a folder and imports that folder. The
+/// [`setup_test_library_with`] with an `album/` directory made alongside it,
+/// for a test that writes audio into a folder and imports that folder. The
 /// `TempDir` owns both directories, so it must outlive the manager.
-pub async fn setup_test_library_with_album_dir() -> (
+pub async fn setup_test_library_with_album_dir(
+    providers: bae_core::catalog_model::providers::Providers,
+) -> (
     (
         bae_core::library::LibraryManager,
         bae_core::db::Database,
@@ -191,7 +209,7 @@ pub async fn setup_test_library_with_album_dir() -> (
     std::path::PathBuf,
     tempfile::TempDir,
 ) {
-    let (library, temp_dir) = setup_test_library().await;
+    let (library, temp_dir) = setup_test_library_with(providers).await;
     let album_dir = temp_dir.path().join("album");
     std::fs::create_dir_all(&album_dir).expect("test album dir");
     (library, album_dir, temp_dir)

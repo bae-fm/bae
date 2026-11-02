@@ -281,6 +281,9 @@ struct Fixture {
     /// The catalog sessions the library and its import ask through, which a
     /// test stores a Discogs key with.
     catalogs: crate::import::CatalogSessions,
+    /// The MusicBrainz client those sessions ask, which a test seeds answers
+    /// into and reads the waiting requests of.
+    musicbrainz: Arc<bae_catalogs::musicbrainz::MusicBrainz>,
     /// The services the queue runs on, for the tests that drive one step of it
     /// directly.
     context: Context,
@@ -324,14 +327,21 @@ impl Fixture {
             .serve("musicbrainz.org", &provider.base_url)
             .serve("coverartarchive.org", &provider.base_url)
             .serve("api.discogs.com", &provider.base_url);
+        // Production request spacing: admission order is part of what these
+        // tests measure.
+        let musicbrainz = Arc::new(bae_catalogs::musicbrainz::MusicBrainz::new(http.clone()));
+        let providers = crate::catalog_model::providers::Providers::for_test(
+            http.clone(),
+            musicbrainz.clone(),
+            Arc::new(bae_catalogs::discogs::client::Discogs::new(http.clone())),
+            Arc::new(bae_catalogs::wikidata::Wikidata::new(http)),
+        );
         // No Discogs key, so lookups ask MusicBrainz alone unless a test calls
         // `use_discogs`.
         let manager = TestLibrary::open_with(
             database.clone(),
             crate::config::AppDir::under_home(temp.path()).unwrap(),
-            // Production request spacing: admission order is part of what these
-            // tests measure.
-            crate::catalog_model::providers::Providers::new(http),
+            providers,
             clock,
             ids,
             crate::diagnostics::Diagnostics::noop(),
@@ -357,6 +367,7 @@ impl Fixture {
             import,
             provider,
             catalogs,
+            musicbrainz,
             context,
             identification: OnceLock::new(),
             root,

@@ -32,8 +32,9 @@ struct ImportFixture {
     storage: Arc<coven::MemoryStorage>,
     handle: bae_core::import::ImportServiceHandle,
     library_manager: LibraryManager,
-    /// The catalogs the library asks, for a test to seed their answers.
-    catalogs: bae_core::import::CatalogSessions,
+    /// The MusicBrainz and Discogs fakes the library asks, which a test seeds.
+    musicbrainz: Arc<bae_catalogs::musicbrainz::MusicBrainz>,
+    discogs: Arc<bae_catalogs::discogs::client::Discogs>,
     ids: Arc<dyn coven::IdSource>,
     /// The Cover Art Archive and image host this library's requests reach.
     /// Every MusicBrainz release group offers a derived cover address, and an
@@ -49,10 +50,16 @@ impl ImportFixture {
         let db_dir = temp.path().join("db");
         fs::create_dir_all(&db_dir).unwrap();
 
+        let http = images.route(bae_util::http::Http::for_test());
+        let musicbrainz = Arc::new(bae_catalogs::musicbrainz::MusicBrainz::for_test(http.clone()));
+        let discogs = Arc::new(bae_catalogs::discogs::client::Discogs::for_test(http.clone()));
         let ((library_manager, db, catalogs, closing), storage) = support::storage_library(
             &db_dir,
             bae_core::catalog_model::providers::Providers::for_test(
-                images.route(bae_util::http::Http::for_test()),
+                http.clone(),
+                musicbrainz.clone(),
+                discogs.clone(),
+                Arc::new(bae_catalogs::wikidata::Wikidata::for_test(http.clone())),
             ),
         )
         .await;
@@ -64,10 +71,21 @@ impl ImportFixture {
             &db,
             &catalogs,
             &closing,
+            http,
         )
         .await;
 
-        Self { db, storage, handle, library_manager, catalogs, ids, images, _temp: temp }
+        Self {
+            db,
+            storage,
+            handle,
+            library_manager,
+            musicbrainz,
+            discogs,
+            ids,
+            images,
+            _temp: temp,
+        }
     }
 
     fn temp_path(&self) -> &Path {

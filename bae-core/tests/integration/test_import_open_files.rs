@@ -94,8 +94,14 @@ fn a_box_set_import_holds_a_bounded_number_of_files_open() {
 }
 
 async fn import_a_box_set_under_a_lowered_limit() {
+    let musicbrainz = support::offline_musicbrainz();
+    let discogs = support::offline_discogs();
     let ((library_manager, database, catalogs, closing), album_dir, _temp) =
-        support::setup_test_library_with_album_dir().await;
+        support::setup_test_library_with_album_dir(support::providers_asking(
+            &musicbrainz,
+            &discogs,
+        ))
+        .await;
     write_box_set(&album_dir);
 
     let release = bae_catalogs::discogs::DiscogsRelease {
@@ -112,7 +118,7 @@ async fn import_a_box_set_under_a_lowered_limit() {
             .collect(),
         ..support::discogs_test_release("test-box-set-open-files", "Album Title", &[])
     };
-    let release_key = support::seed_discogs_test_release(catalogs.providers(), release);
+    let release_key = support::seed_discogs_test_release(&discogs, &musicbrainz, release);
     let import_handle = support::start_test_import(
         tokio::runtime::Handle::current(),
         &database,
