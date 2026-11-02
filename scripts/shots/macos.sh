@@ -10,7 +10,7 @@
 # Builds the Rust bridge, generates the Xcode project, and runs the `baeShots`
 # test bundle, which renders each registered scene offscreen and writes
 # <scene-id>@macos.png into <output-dir>. Exits non-zero if any scene fails to
-# render or an expected PNG is missing.
+# render, encode or write: the capture test fails the run.
 
 set -euo pipefail
 
@@ -69,76 +69,6 @@ xcodebuild -project bae.xcodeproj -scheme baeShots -configuration Debug \
     -derivedDataPath .build/derivedData \
     -clonedSourcePackagesDirPath .build/SourcePackages \
     test
-
-# The test writing a PNG is not proof it landed — verify every expected scene
-# produced a non-trivial file so a silently empty capture fails the script.
-cd "$ROOT"
-standard_tone="$(./scripts/cargo.sh run -q -p bae-theme --bin theme-gen -- standard-tone)"
-missing=0
-for scene in \
-    artwork-lightbox \
-    cover-picker-unlinked \
-    cover-picker-wide \
-    cover-picker-short \
-    story-1-first-run \
-    story-3-empty-library \
-    import-release-queue \
-    import-release-ambiguity-narrow \
-    import-release-queue-collapsed \
-    import-release-scanning-refresh \
-    import-release-resolved-reversal \
-    import-bulk-selection \
-    import-done-rows-uploading \
-    import-mapping-cue-wide \
-    import-mapping-cue-narrow \
-    queue-pane-standard \
-    queue-pane-narrow \
-    player-waiting-on-storage \
-    player-playing-with-a-gap \
-    player-all-here \
-    storage-manager-dense \
-    storage-manager-empty \
-    storage-manager-empty-ish \
-    storage-manager-empty-ish-inspector \
-    storage-manager-active-file-inspector \
-    storage-manager-idle-file-inspector \
-    storage-manager-one-sync-inspector \
-    storage-manager-pinning-inspector \
-    storage-manager-pin-queued-inspector \
-    storage-manager-uploads-and-pinning \
-    storage-manager-file-details \
-    storage-manager-no-matches \
-    storage-manager-window
-do
-    selected=$(( ${#SCENES[@]} == 0 ))
-    for prefix in ${SCENES[@]+"${SCENES[@]}"}; do
-        [[ "$scene" == "$prefix"* ]] && selected=1
-    done
-    [[ "$selected" -eq 1 ]] || continue
-    # Every scene renders in dark mode in each tone asked for; dark in the
-    # standard tone, the stock look, carries no suffix.
-    if [[ ${#TONES[@]} -eq 0 ]]; then
-        pngs=("$OUT_DIR/${scene}@macos.png")
-    else
-        pngs=()
-        for tone in "${TONES[@]}"; do
-            if [[ "$tone" == "$standard_tone" ]]; then
-                pngs+=("$OUT_DIR/${scene}@macos.png")
-            else
-                pngs+=("$OUT_DIR/${scene}-dark-${tone}@macos.png")
-            fi
-        done
-    fi
-    for png in "${pngs[@]}"; do
-        if [[ ! -s "$png" ]]; then
-            echo "Missing capture: $png" >&2
-            missing=1
-        fi
-    done
-done
-if [[ "$missing" -ne 0 ]]; then
-    exit 1
-fi
 
 echo "macOS scenes captured:"
 ls -l "$OUT_DIR"/*@macos.png

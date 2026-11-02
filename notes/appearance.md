@@ -68,6 +68,5 @@ accent. Action buttons do not add accent shadows or decorative gradients.
 
 The screenshot suites render production views in light and dark modes and all
 six tones. The macOS capture of the stock look, dark in the standard tone and
-accent, carries no suffix; `theme-gen standard-tone` names that tone for
-`scripts/shots/macos.sh`. Preference tests exercise persistence and refused writes; Android
+accent, carries no suffix. Preference tests exercise persistence and refused writes; Android
 also tests concurrent choices and cancellation during an accepted write.

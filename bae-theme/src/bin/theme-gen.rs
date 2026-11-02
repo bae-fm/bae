@@ -1,9 +1,6 @@
 //! `theme-gen emit --target {apple|android} --out-dir <dir> [--theme <path>]`
 //! writes the platform's generated theme under `<dir>`.
 //!
-//! `theme-gen standard-tone [--theme <path>]` prints the standard tone's name,
-//! for scripts that name files after it.
-//!
 //! `--theme` defaults to `design/theme.toml`, relative to the repo root the
 //! build scripts run from.
 
@@ -23,30 +20,26 @@ fn main() -> ExitCode {
     }
 }
 
-enum Command {
-    Emit,
-    StandardTone,
-}
-
 fn run() -> Result<(), String> {
     let raw: Vec<String> = std::env::args().skip(1).collect();
     let mut theme_path = PathBuf::from("design/theme.toml");
     let mut target = None;
     let mut out_dir = None;
-    let mut command = None;
+    let mut emit_asked = false;
     let mut args = raw.iter();
     while let Some(arg) = args.next() {
         let mut value = || args.next().cloned().ok_or_else(|| format!("`{arg}` needs a value"));
         match arg.as_str() {
-            "emit" if command.is_none() => command = Some(Command::Emit),
-            "standard-tone" if command.is_none() => command = Some(Command::StandardTone),
+            "emit" if !emit_asked => emit_asked = true,
             "--theme" => theme_path = PathBuf::from(value()?),
             "--target" => target = Some(value()?),
             "--out-dir" => out_dir = Some(PathBuf::from(value()?)),
             other => return Err(format!("unexpected argument `{other}`")),
         }
     }
-    let command = command.ok_or("expected the `emit` or `standard-tone` subcommand")?;
+    if !emit_asked {
+        return Err("expected the `emit` subcommand".to_string());
+    }
 
     let source = fs::read_to_string(&theme_path)
         .map_err(|error| format!("reading {}: {error}", theme_path.display()))?;
@@ -59,16 +52,7 @@ fn run() -> Result<(), String> {
         )
     })?;
 
-    match command {
-        Command::StandardTone => {
-            if target.is_some() || out_dir.is_some() {
-                return Err("standard-tone takes only --theme".to_string());
-            }
-            println!("{}", theme.tones[theme.standard.tone].name);
-            Ok(())
-        }
-        Command::Emit => emit(&theme, target, out_dir),
-    }
+    emit(&theme, target, out_dir)
 }
 
 /// Writes the `target` platform's generated theme under `out_dir`.
