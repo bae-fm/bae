@@ -202,7 +202,7 @@ async fn drive_fixture(
     )
     .expect("fixture scan");
     let mut run = handle.start(
-        bae_core::identify::IdentifyRunId::for_test(1),
+        bae_core::import::IdentifyRunId::for_test(1),
         key,
         ExtractionSource::Candidate {
             candidate: bae_core::import::FolderCandidate {

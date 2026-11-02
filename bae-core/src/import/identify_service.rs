@@ -1,14 +1,13 @@
-//! Stateful identify driver. Wraps the pure reducer with I/O, runtime, and
+//! Stateful identify driver. Wraps identify's pure reducer with I/O, runtime, and
 //! per-candidate cancellation. One `IdentifyServiceHandle` per app; each
 //! candidate runs in its own spawned driver task.
 
-use super::discid::lookup_and_resolve;
-use super::documents::ReleaseToRead;
-use super::state::{
-    step, Effect, IdentifyEvent, IdentifyState, LookupOutcome, PressingKey, TitleSearch,
-};
 use crate::catalog_model::search::{CatalogNumberSearch, SearchQuery, SourceLookup};
 use crate::catalog_model::{Failure, InternalFailure};
+use crate::identify::documents::ReleaseToRead;
+use crate::identify::state::{
+    step, Effect, IdentifyEvent, IdentifyState, LookupOutcome, PressingKey, TitleSearch,
+};
 use crate::identify::LookupChoices;
 use crate::import::candidate_runtime::RunSubject;
 use crate::import::{CandidateRuntime, CandidateWork, ImportEvent, ImportEventBus};
@@ -63,6 +62,20 @@ fn emit_answer(
         Ok(outcome) => emit_step(tx, answered(outcome)),
         Err(failure) => emit_step(tx, IdentifyEvent::Broke { failure }),
     }
+}
+
+/// Look up a disc ID on MusicBrainz, keeping each match's document as the
+/// answer states it. Empty when
+/// MB has no hits — which the reducer treats as a settled signal with zero
+/// results, ready for combine, exactly like a barcode that matched nothing.
+async fn lookup_and_resolve(
+    disc_id: &str,
+    library_manager: &crate::library::LibraryManager,
+    priority: CallPriority,
+) -> Result<crate::identify::DiscIdAnswer, Failure> {
+    let (results, documents) =
+        library_manager.lookup_musicbrainz_discid(disc_id, priority).await?.into_iter().unzip();
+    Ok(crate::identify::DiscIdAnswer { results, documents })
 }
 
 /// Thread-safe handle to the running identify service.
@@ -877,5 +890,5 @@ async fn read_release(
 }
 
 #[cfg(test)]
-#[path = "service_tests.rs"]
+#[path = "identify_service_tests.rs"]
 mod tests;

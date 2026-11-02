@@ -19,13 +19,13 @@
 //! and moved by each change to an identification in that change's own write.
 
 use super::*;
-use crate::identify::IdentifyRunId;
 use crate::import::candidate_runtime::{
     IdentificationChange, IdentificationMove, IdentificationStage, Identifying,
     StoredIdentification, StoredImport, StoredStanding,
 };
 use crate::import::candidates::{Admission, CandidateFiles, SaveFailure};
 use crate::import::triage::TriageRuntimeFacts;
+use crate::import::IdentifyRunId;
 use crate::import::{ImportCounts, ImportPhase, ImportStep, PrepareStep};
 
 /// Every column of a row but its key, in the order [`StandingColumns`] reads

@@ -5,7 +5,8 @@
 use crate::catalog_model::records::LookupRef;
 use super::super::{exec, exec_batch};
 use super::*;
-use crate::identify::{IdentifyRunId, RunOutcome};
+use crate::identify::RunOutcome;
+use crate::import::IdentifyRunId;
 use crate::catalog_model::source_release::{SourceRelease, UnfetchedDocument, UnfetchedReason};
 
 /// Candidate `a` with a draft, and MusicBrainz releases `rel-1` and `rel-2`

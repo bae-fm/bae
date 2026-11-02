@@ -122,7 +122,7 @@ async fn identifying_shows_a_queued_and_a_running_run_until_it_ends() {
     admit(&handle, &key).await;
     list.shows(&[&key]).await;
 
-    start_run(&handle, &key, crate::identify::IdentifyRunId::for_test(1)).await;
+    start_run(&handle, &key, crate::import::IdentifyRunId::for_test(1)).await;
     list.shows(&[&key]).await;
 
     handle.cancel_identification(&key).await.unwrap();

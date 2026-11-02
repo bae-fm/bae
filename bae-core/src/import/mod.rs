@@ -48,6 +48,8 @@ mod handle;
 #[cfg(desktop)]
 pub mod identification;
 #[cfg(desktop)]
+pub mod identify_service;
+#[cfg(desktop)]
 pub(crate) mod import_cancel;
 #[cfg(desktop)]
 mod import_failure;
@@ -272,6 +274,8 @@ pub use handle::{
 };
 #[cfg(desktop)]
 pub use identification::IdentificationHandle;
+#[cfg(desktop)]
+pub use identify_service::{IdentifyRunId, IdentifyServiceHandle};
 #[cfg(desktop)]
 pub use import_failure::{ImportFailure, ImportFailureReason};
 #[cfg(desktop)]

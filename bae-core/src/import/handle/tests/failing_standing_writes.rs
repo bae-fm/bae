@@ -36,7 +36,7 @@ async fn an_import_whose_claim_cannot_be_written_fails_and_claims_nothing() {
 async fn a_cancel_whose_end_cannot_be_written_fails_and_ends_nothing() {
     let (handle, tmp, key, _hash) = pane_fixture().await;
     admit(&handle, &key).await;
-    start_run(&handle, &key, crate::identify::IdentifyRunId::for_test(1)).await;
+    start_run(&handle, &key, crate::import::IdentifyRunId::for_test(1)).await;
     crate::import::candidate_runtime::tests::fail_standing_writes(
         tmp.path(),
         &[

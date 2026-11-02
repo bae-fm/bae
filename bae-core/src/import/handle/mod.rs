@@ -271,7 +271,7 @@ pub enum ImportEvent {
         /// The run this state belongs to. A settled run keeps reporting, so
         /// a consumer waiting on a later run of the candidate matches on this,
         /// not the key.
-        run: crate::identify::IdentifyRunId,
+        run: crate::import::IdentifyRunId,
         state: crate::identify::IdentifyState,
         /// The run's priority, which tells a candidate a person opened from
         /// one the automatic admission picked up.
@@ -285,7 +285,7 @@ pub enum ImportEvent {
         /// The identify run this snapshot was extracted for. Runs of one
         /// candidate share its key, so a run's verdict is stored beside only
         /// the snapshots that name that run.
-        run: crate::identify::IdentifyRunId,
+        run: crate::import::IdentifyRunId,
         signals: crate::signals::Signals,
         /// Where the artwork pass feeding the snapshot has got to, shown as the
         /// run's step. Kept outside the snapshot because a stored snapshot has
@@ -340,7 +340,7 @@ pub struct ImportServiceHandle {
     /// The identify driver and the extraction feeding it, held here because
     /// the commands that decide a candidate end its identification as part of
     /// their own write.
-    identify: crate::identify::IdentifyServiceHandle,
+    identify: crate::import::IdentifyServiceHandle,
     extraction: crate::signals::ExtractionServiceHandle,
     folder_state_commit: crate::import::FolderStateCommit,
     import_cancels: crate::import::import_cancel::ImportCancels,
@@ -471,7 +471,7 @@ impl ImportServiceHandle {
             import_cancels,
             diagnostics,
         } = services;
-        let identify = crate::identify::IdentifyServiceHandle::new(
+        let identify = crate::import::IdentifyServiceHandle::new(
             library_manager.clone(),
             runtime_handle.clone(),
             event_tx.clone(),
@@ -606,7 +606,7 @@ impl ImportServiceHandle {
     pub(crate) async fn hold_answer_for_test(
         &self,
         key: &crate::import::CandidateKey,
-        run: crate::identify::IdentifyRunId,
+        run: crate::import::IdentifyRunId,
         answer: &crate::identify::IdentifyState,
     ) {
         let candidate =

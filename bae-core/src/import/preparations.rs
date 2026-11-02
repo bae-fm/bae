@@ -67,7 +67,7 @@ impl CandidatePreparations {
         &self,
         verdict: &NewImportCandidateVerdict,
         candidate_key: &crate::import::CandidateKey,
-        run: crate::identify::IdentifyRunId,
+        run: crate::import::IdentifyRunId,
     ) -> Result<Option<crate::import::candidate_runtime::IdentificationMove>, LibraryError> {
         let Some((prep, expected, extras)) = self.verdict_save(verdict).await? else {
             return Ok(None);

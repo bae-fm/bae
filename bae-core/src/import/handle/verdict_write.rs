@@ -34,7 +34,7 @@ impl ImportServiceHandle {
     pub(crate) async fn save_candidate_verdict_if_current(
         &self,
         candidate_key: &crate::import::CandidateKey,
-        run: crate::identify::IdentifyRunId,
+        run: crate::import::IdentifyRunId,
         row: &crate::db::NewImportCandidateVerdict,
     ) -> Result<VerdictWrite, crate::library::LibraryError> {
         let this = self.clone();
@@ -80,7 +80,7 @@ impl ImportServiceHandle {
         &self,
         candidate_key: &crate::import::CandidateKey,
         row: &crate::db::NewImportCandidateVerdict,
-        run: crate::identify::IdentifyRunId,
+        run: crate::import::IdentifyRunId,
     ) -> Result<Option<bool>, crate::library::LibraryError> {
         let Some(candidate) = self.answerable_candidate(candidate_key).await? else {
             return Ok(None);

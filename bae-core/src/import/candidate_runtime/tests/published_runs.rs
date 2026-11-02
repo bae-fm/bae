@@ -4,7 +4,7 @@
 async fn stored_runs(
     runtime: &CandidateRuntime,
     key: &crate::import::CandidateKey,
-) -> std::collections::BTreeMap<crate::identify::IdentifyRunId, crate::identify::PublishedRun> {
+) -> std::collections::BTreeMap<crate::import::IdentifyRunId, crate::identify::PublishedRun> {
     runtime.database.load_candidate_runtime(key).await.expect("a test reads the runs table").runs
 }
 

@@ -69,7 +69,7 @@ async fn decision_never_beside_identifying(
 /// Put `key` mid-run: queued, then its run started.
 async fn identifying(handle: &ImportServiceHandle, key: &crate::import::CandidateKey) {
     admit(handle, key).await;
-    start_run(handle, key, crate::identify::IdentifyRunId::for_test(1)).await;
+    start_run(handle, key, crate::import::IdentifyRunId::for_test(1)).await;
     assert!(handle.standing_facts_for_test(key).await.identifying());
 }
 
@@ -228,7 +228,7 @@ async fn combining_ends_its_folders_identification_in_its_write() {
         handle
             .hold_answer_for_test(
                 key,
-                crate::identify::IdentifyRunId::for_test(run),
+                crate::import::IdentifyRunId::for_test(run),
                 &crate::import::candidate_runtime::tests::manual_only(),
             )
             .await;

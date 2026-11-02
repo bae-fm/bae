@@ -4,15 +4,14 @@
 //! confirmed, the album title when the folder's own keys name nothing, and
 //! each offered row's pressing on the catalog it has no record of — round
 //! after round until nothing new comes into effect, and `combine` ranks what
-//! they return. The service feeds it
-//! extraction snapshots and lookup results and publishes each state as an
+//! they return. Import's identify service feeds it extraction snapshots and
+//! lookup results and publishes each state as an
 //! `ImportEvent::IdentifyStateChanged`. [`view`] shapes a state for surfaces,
 //! [`verdict::TerminalVerdict`] is what a terminal state stores, and
 //! [`verdict_summary`] reads a stored verdict back as what the queue needs.
 
 pub mod agreements;
 pub mod combine;
-pub mod discid;
 pub mod documents;
 pub mod fit;
 pub(crate) mod look_alike;
@@ -23,7 +22,6 @@ pub(crate) mod notes;
 pub(crate) mod pressing_evidence;
 pub mod release_group;
 pub(crate) mod row_facts;
-pub mod service;
 pub mod shared_album;
 pub mod state;
 pub mod toolbar;
@@ -38,7 +36,6 @@ pub use lookup_choices::{ChoiceChange, LookupChoiceEdit, LookupChoices, SearchWo
 pub use medium::MediumConflict;
 pub use not_asked::NotAskedReason;
 pub use release_group::PressingLink;
-pub use service::{IdentifyRunId, IdentifyServiceHandle};
 pub use shared_album::{AlbumLink, SharedAlbum};
 pub use state::{
     BarcodeProgress, CatalogProgress, DiscIdAnswer, DiscLookup, DiscidProgress, IdentifyEvent,

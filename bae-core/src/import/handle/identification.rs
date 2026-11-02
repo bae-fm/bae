@@ -9,7 +9,7 @@ impl ImportServiceHandle {
     /// [`Self::start_identification`] so a consumer can subscribe to this
     /// handle's bus knowing which run it is waiting for before that run's
     /// first state is sent.
-    pub(crate) fn new_identification_run(&self) -> crate::identify::IdentifyRunId {
+    pub(crate) fn new_identification_run(&self) -> crate::import::IdentifyRunId {
         self.identify.new_run()
     }
 
@@ -30,7 +30,7 @@ impl ImportServiceHandle {
     /// the sources to ask can't be read, which fails.
     pub(crate) async fn start_identification(
         &self,
-        run: crate::identify::IdentifyRunId,
+        run: crate::import::IdentifyRunId,
         key: crate::import::CandidateKey,
         source: crate::signals::ExtractionSource,
         priority: bae_catalogs::rate_limiter::CallPriority,
@@ -154,7 +154,7 @@ impl ImportServiceHandle {
     pub(crate) async fn fail_identification(
         &self,
         candidate_key: &crate::import::CandidateKey,
-        run: crate::identify::IdentifyRunId,
+        run: crate::import::IdentifyRunId,
         files: &crate::import::CandidateFiles,
         failure: crate::import::SaveFailure,
     ) -> Result<(), crate::library::LibraryError> {
@@ -167,7 +167,7 @@ impl ImportServiceHandle {
     pub(crate) async fn end_identification_answer(
         &self,
         candidate_key: &crate::import::CandidateKey,
-        run: crate::identify::IdentifyRunId,
+        run: crate::import::IdentifyRunId,
     ) -> Result<(), crate::library::LibraryError> {
         let import_asked = self.runtime.end_identification_answer(candidate_key, run).await?;
         if import_asked {
@@ -181,7 +181,7 @@ impl ImportServiceHandle {
     pub(crate) async fn candidate_run_signals(
         &self,
         candidate_key: &crate::import::CandidateKey,
-        run: crate::identify::IdentifyRunId,
+        run: crate::import::IdentifyRunId,
     ) -> Result<Option<crate::signals::Signals>, crate::db::DbError> {
         self.runtime.run_signals(candidate_key, run).await
     }

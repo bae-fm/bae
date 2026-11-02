@@ -7,9 +7,9 @@
 //! its result, so a guard and the write it guards are one: no change is
 //! applied to a standing it did not read.
 
-use crate::identify::IdentifyRunId;
 use crate::import::candidates::{Admission, CandidateFiles, SaveFailure};
 use crate::import::triage::{IdentificationStatus, TriageRuntimeFacts};
+use crate::import::IdentifyRunId;
 use crate::import::ImportStep;
 
 /// One candidate's row: its identification and its import, each absent when

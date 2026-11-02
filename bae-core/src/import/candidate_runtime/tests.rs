@@ -96,8 +96,8 @@ pub(crate) fn signals_context(track_count: u32) -> crate::identify::state::Signa
     }
 }
 
-fn run(number: u64) -> crate::identify::IdentifyRunId {
-    crate::identify::IdentifyRunId::for_test(number)
+fn run(number: u64) -> crate::import::IdentifyRunId {
+    crate::import::IdentifyRunId::for_test(number)
 }
 
 /// A run's state partway through, which the runtime records as running.
@@ -230,7 +230,7 @@ async fn report(
     runtime: &CandidateRuntime,
     key: &crate::import::CandidateKey,
     files: &CandidateFiles,
-    run: crate::identify::IdentifyRunId,
+    run: crate::import::IdentifyRunId,
     state: crate::identify::IdentifyState,
 ) {
     assert!(runtime.run_started(key, files, run, &state).await.unwrap());

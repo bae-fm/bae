@@ -17,7 +17,7 @@ use super::fast_pass::{gather_non_ocr_sources, ArtworkImage, FastPass};
 use super::pool::Pool;
 use super::release::{resolve_release_artwork_paths, resolve_release_identity};
 use crate::catalog_model::{AudioOrigin, InternalFailure};
-use crate::identify::IdentifyRunId;
+use crate::import::IdentifyRunId;
 use crate::import::{CandidateRuntime, CandidateWork, ImportEvent, ImportEventBus};
 use crate::library::LibraryManager;
 use crate::signals::{

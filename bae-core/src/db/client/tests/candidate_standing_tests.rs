@@ -1,11 +1,11 @@
 //! Each candidate's standing as the standings table stores and reads it back.
 
 use super::{empty_db, exec_batch};
-use crate::identify::IdentifyRunId;
 use crate::import::candidate_runtime::{
     IdentificationChange, IdentificationStage, StoredIdentification, StoredImport, StoredStanding,
 };
 use crate::import::candidates::{Admission, CandidateFiles, SaveFailure};
+use crate::import::IdentifyRunId;
 
 /// Store `key` as a candidate the scan holds with `files`, as the scan would.
 async fn scanned(

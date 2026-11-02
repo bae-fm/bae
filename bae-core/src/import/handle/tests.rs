@@ -172,7 +172,7 @@ async fn admit(handle: &ImportServiceHandle, key: &crate::import::CandidateKey) 
 async fn start_run(
     handle: &ImportServiceHandle,
     key: &crate::import::CandidateKey,
-    run: crate::identify::IdentifyRunId,
+    run: crate::import::IdentifyRunId,
 ) {
     let candidate =
         handle.get_release_candidate(key).await.unwrap().expect("the candidate is stored");

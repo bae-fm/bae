@@ -427,7 +427,7 @@ impl Database {
         expected: CandidateSaveExpectation,
         extras: CandidateSaveExtras,
         candidate_key: crate::import::CandidateKey,
-        run: crate::identify::IdentifyRunId,
+        run: crate::import::IdentifyRunId,
     ) -> Result<RunVerdictSaved, DbError> {
         self.call(move |sql| match save_preparation_on(sql, &prep, &expected, &extras)? {
             CandidateSaved::Landed(_) => {

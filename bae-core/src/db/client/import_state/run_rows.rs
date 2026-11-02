@@ -20,9 +20,10 @@ use super::verdict_rows::{outcome_of, read_verdict_row, store_outcome, verdict_c
 use super::verdict_rows::{Outcome, Owner};
 use super::*;
 use crate::catalog_model::source_release::SourceRelease;
-use crate::identify::{IdentifyRunId, PublishedRun, RunOutcome};
+use crate::identify::{PublishedRun, RunOutcome};
 use crate::import::candidate_runtime::{IdentificationChange, IdentificationMove, StoredRuntime};
 use crate::import::candidates::CandidateFiles;
+use crate::import::IdentifyRunId;
 use crate::signals::Signals;
 use std::collections::BTreeMap;
 
