@@ -4,11 +4,19 @@ import SwiftUI
 @testable import bae
 
 extension ShotScene {
-    /// Library views whose looks the tests leave to the gallery: the volume
+    /// Library views whose looks the tests leave to the gallery: an album
+    /// whose release catalogs describe, its facts line carrying the record
+    /// arrow; the volume
     /// slider in the accent, a side whose positions run wider than a digit,
     /// a file's document panel over the window, and the add-device sheet's
     /// code and the device that joined from it.
     static let libraryScenes: [ShotScene] = [
+        ShotScene(
+            id: "album-detail-records",
+            size: CGSize(width: 1100, height: 800)
+        ) {
+            AnyView(PreviewData.albumExpansionScene(albumId: "a-01"))
+        },
         ShotScene(id: "volume-slider", size: CGSize(width: 152, height: 52)) {
             AnyView(
                 SlimSlider(value: 0.6, onChange: { _ in })
