@@ -702,15 +702,3 @@ impl LibraryManager {
         );
     }
 }
-
-/// The library's store, for a test that writes rows no operation writes.
-#[cfg(all(test, desktop))]
-mod test_access {
-    impl super::LibraryManager {
-        /// The store under the library, for a test that writes rows no
-        /// operation writes as it wants them.
-        pub(crate) fn database_for_test(&self) -> &crate::db::Database {
-            &self.database
-        }
-    }
-}

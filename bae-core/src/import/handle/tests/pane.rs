@@ -317,7 +317,7 @@ async fn unlinked_cover_gallery_for_file_tags() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn unlinked_cover_gallery_for_library_release() {
-    let (manager, _tmp) = setup_test_db_with_artist().await;
+    let (manager, _, _tmp) = setup_test_db_with_artist().await;
     let album = make_album("Album Title");
     let release = make_release(&album.id);
     manager
@@ -342,7 +342,7 @@ async fn unlinked_cover_gallery_for_library_release() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn cover_gallery_reports_unconfigured_discogs_as_failure() {
-    let (manager, _tmp, _album, release) =
+    let (manager, _, _tmp, _album, release) =
         album_with("Album Title", &[discogs_identity("11", "22")]).await;
     let handle = manager.start_import_service(tokio::runtime::Handle::current()).await.unwrap();
     let result = handle
