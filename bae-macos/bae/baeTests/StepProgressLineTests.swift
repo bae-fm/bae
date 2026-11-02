@@ -33,10 +33,12 @@ struct StepProgressLineTests {
                 abs(line.frame.height - line.steppingHeight) < 1,
                 "sized \(line.frame.height) for \(line.steppingHeight)"
             )
-            let png = try await SnapshotTestSupport.capturePNG(host, size: size)
-            let lines = try await SnapshotTestSupport.recognizedText(in: png)
-                .map(\.text)
-            #expect(lines.carrying("Stopping sync"), "drew \(lines)")
+            let words = SnapshotTestSupport.descendants(of: line)
+                .compactMap { ($0 as? NSTextField)?.stringValue }
+            #expect(
+                words.contains { $0.hasPrefix("Stopping sync") },
+                "drew \(words)"
+            )
         }
     }
 }
