@@ -175,8 +175,9 @@ struct ImportSelectionTests {
         #expect(!selection.isRunning)
     }
 
+    /// How the pane draws them is the `import-bulk-selection` shot's.
     @Test("The pane draws the selection's offers with their counts")
-    func selectionPaneRenders() async throws {
+    func selectionPaneRenders() {
         let selection = PreviewData.importSelection(
             of: [
                 PreviewData.importTabCandidate.key,
@@ -196,22 +197,6 @@ struct ImportSelectionTests {
         #expect(counts[.restore] == nil)
         #expect(counts[.combine] == .some(nil))
         #expect(counts[.revealFolder] == 2)
-        let size = NSSize(width: 720, height: 580)
-        try await SnapshotTestSupport.withHostedWindow(
-            ImportCandidateBulkSelectionPane(
-                storageCloud: .constant(true),
-                storagePinned: .constant(true),
-                onPerform: { _ in }
-            )
-            .environment(selection)
-            .environment(PreviewData.configStore())
-            .background(Theme.background)
-            .frame(width: size.width, height: size.height),
-            size: size
-        ) { _, host in
-            let png = try await SnapshotTestSupport.capturePNG(host, size: size)
-            #expect(!png.isEmpty)
-        }
     }
 }
 

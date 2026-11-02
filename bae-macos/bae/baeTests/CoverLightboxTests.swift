@@ -23,7 +23,11 @@ struct CoverLightboxTests {
             PreviewData.previewArtFile("Lightbox fixture")
         )
         let bytes = try Data(contentsOf: URL(fileURLWithPath: path))
-        let images = ImageStore(fetchRemoteImage: { _, _ in bytes })
+        let recorder = Reads()
+        let images = ImageStore(fetchRemoteImage: { image, pixels in
+            await recorder.read(Read(url: image.url, pixels: pixels))
+            return bytes
+        })
         var selected: CoverItem?
         var dismissed = false
         let size = NSSize(width: 960, height: 700)
@@ -40,31 +44,15 @@ struct CoverLightboxTests {
             size: size
         ) { window, host in
             // The covers load after the first layout; the click is aimed at
-            // them, so it waits until they are drawn.
-            _ = try await SnapshotTestSupport.steadyBitmap(of: host, size: size)
-            switch opening {
-            case .preview:
-                try HostedInput.click(
-                    at: NSPoint(x: 720, y: 420),
-                    in: window,
-                    count: 1
-                )
-            case .thumbnail:
-                try HostedInput.click(
-                    at: NSPoint(x: 240, y: 480),
-                    in: window,
-                    count: 1
-                )
-                try HostedInput.click(
-                    at: NSPoint(x: 240, y: 480),
-                    in: window,
-                    count: 2
-                )
-            case .space:
-                try HostedInput.keyEquivalent(.space, in: host)
+            // them, so it waits until both remote ones are read and laid out.
+            try await Wait.until {
+                Set(await recorder.reads.map(\.url)).count >= 2
             }
-            // The keys below are for the lightbox, so they wait until it is drawn.
-            _ = try await SnapshotTestSupport.steadyBitmap(of: host, size: size)
+            try await SnapshotTestSupport.settle(host)
+            try open(opening, window: window, host: host)
+            // The keys below are for the lightbox, so they wait until it is
+            // laid out.
+            try await SnapshotTestSupport.settle(host)
             // Return cannot save through the lightbox into the underlying picker.
             try HostedInput.keyEquivalent(.return, in: host)
             #expect(selected == nil)
@@ -79,6 +67,36 @@ struct CoverLightboxTests {
             #expect(
                 selected?.id == (opening == .thumbnail ? file.id : booklet.id)
             )
+        }
+    }
+
+    /// Open the lightbox the way `opening` names.
+    @MainActor
+    private func open(
+        _ opening: Opening,
+        window: NSWindow,
+        host: NSView
+    ) throws {
+        switch opening {
+        case .preview:
+            try HostedInput.click(
+                at: NSPoint(x: 720, y: 420),
+                in: window,
+                count: 1
+            )
+        case .thumbnail:
+            try HostedInput.click(
+                at: NSPoint(x: 240, y: 480),
+                in: window,
+                count: 1
+            )
+            try HostedInput.click(
+                at: NSPoint(x: 240, y: 480),
+                in: window,
+                count: 2
+            )
+        case .space:
+            try HostedInput.keyEquivalent(.space, in: host)
         }
     }
 

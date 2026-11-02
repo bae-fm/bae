@@ -237,17 +237,6 @@ final class StorageManagerLayoutTests: XCTestCase {
                 1,
                 "the release's upload summary draws the one bar"
             )
-            let screenshot = try await SnapshotTestSupport.capturePNG(
-                host,
-                size: size
-            )
-            let attachment = XCTAttachment(
-                data: screenshot,
-                uniformTypeIdentifier: "public.png"
-            )
-            attachment.name = "Storage inspector, one line per file"
-            attachment.lifetime = .keepAlways
-            add(attachment)
         }
     }
 
