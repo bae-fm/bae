@@ -6,7 +6,8 @@ import SwiftUI
 extension ShotScene {
     /// Library views whose looks the tests leave to the gallery: the volume
     /// slider in the accent, a side whose positions run wider than a digit,
-    /// and a file's document panel over the window.
+    /// a file's document panel over the window, and the add-device sheet's
+    /// code and the device that joined from it.
     static let libraryScenes: [ShotScene] = [
         ShotScene(id: "volume-slider", size: CGSize(width: 152, height: 52)) {
             AnyView(
@@ -52,7 +53,41 @@ extension ShotScene {
                 )
             )
         },
+        ShotScene(id: "add-device-code", size: CGSize(width: 400, height: 600))
+        {
+            AnyView(
+                AddDeviceSheetPreview(result: addingCode)
+                    .environment(AddDeviceSheetPreview.members())
+            )
+        },
+        ShotScene(id: "add-device-added", size: CGSize(width: 400, height: 600))
+        {
+            AnyView(
+                AddDeviceSheetPreview(result: addingCode)
+                    .environment(
+                        AddDeviceSheetPreview.members(
+                            addedDevice: BridgeActiveDevice(
+                                id: 7,
+                                name: "New Phone",
+                                isSelf: false,
+                                canRemove: true
+                            )
+                        )
+                    )
+            )
+        },
     ]
+
+    /// The recovery code the add-device sheet shows.
+    private static var addingCode: Result<BridgeAddDevice, Error> {
+        AddDeviceSheetPreview.adding(
+            BridgeRestoreCodeShare(
+                code: PreviewData.recoveryCode,
+                qrText: PreviewData.recoveryCode,
+                qrCarriesS3Key: false
+            )
+        )
+    }
 
     /// A ten-track side whose positions run "A1" to "A10", so its widest
     /// label is wider than a digit.

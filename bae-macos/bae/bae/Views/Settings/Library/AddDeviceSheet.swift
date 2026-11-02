@@ -118,7 +118,7 @@ struct AddDeviceSheet: View {
     // MARK: - Previews
 
     /// Holds the result the presenter normally writes after the sheet is up.
-    private struct AddDeviceSheetPreview: View {
+    struct AddDeviceSheetPreview: View {
         @State
         var result: Result<BridgeAddDevice, Error>?
 

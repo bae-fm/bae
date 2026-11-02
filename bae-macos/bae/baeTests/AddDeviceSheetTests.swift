@@ -10,8 +10,10 @@ import Testing
 /// sheet must re-render when that write lands rather than show the loading
 /// snapshot it opened with. Once it shows the code it runs the watch that
 /// came with it, and says so in place of the code once a new device joins.
-/// These drive the real sheet and assert the rendered pixels change when
-/// either lands.
+/// These drive the real sheet and check its view tree when either lands:
+/// the loading spinner gives way to the code's scroll view, which gives way
+/// to the joined device. What each says is the `add-device-code` and
+/// `add-device-added` shots'.
 @Suite("AddDeviceSheet binding")
 struct AddDeviceSheetTests {
     private static let adding = BridgeAddDevice(
@@ -35,19 +37,18 @@ struct AddDeviceSheetTests {
                 .environment(MembershipStore(handle: AddedDeviceHandle())),
             size: size
         ) { _, host in
-
             // Loading state (binding is nil).
-            let loading = try await SnapshotTestSupport.capturePNG(
-                host,
-                size: size
-            )
+            try await SnapshotTestSupport.settle(host)
+            #expect(count(NSProgressIndicator.self, in: host) == 1)
+            #expect(count(NSScrollView.self, in: host) == 0)
 
             // The presenter's off-main write lands: the binding resolves to a
-            // code, and the sheet draws something else.
+            // code, which the sheet shows in place of the spinner.
             holder.result = .success(Self.adding)
             try await Wait.until {
-                try await SnapshotTestSupport.capturePNG(host, size: size)
-                    != loading
+                try await SnapshotTestSupport.settle(host)
+                return count(NSProgressIndicator.self, in: host) == 0
+                    && count(NSScrollView.self, in: host) == 1
             }
         }
     }
@@ -70,10 +71,8 @@ struct AddDeviceSheetTests {
             let devices = try #require(handle.devices)
             // The live read's first value: no device has joined yet.
             devices.deliver(nil)
-            let code = try await SnapshotTestSupport.capturePNG(
-                host,
-                size: size
-            )
+            try await SnapshotTestSupport.settle(host)
+            #expect(count(NSScrollView.self, in: host) == 1)
 
             devices.deliver(
                 BridgeActiveDevice(
@@ -84,13 +83,22 @@ struct AddDeviceSheetTests {
                 )
             )
             try await Wait.until { store.addedDevice?.name == "New Phone" }
+            // The joined device takes the code's place.
             try await Wait.until {
-                try await SnapshotTestSupport.capturePNG(host, size: size)
-                    != code
+                try await SnapshotTestSupport.settle(host)
+                return count(NSScrollView.self, in: host) == 0
             }
         }
         // Closing the sheet ends the watch.
         try await Wait.until { handle.cancelled }
+    }
+
+    /// How many views of `kind` the hosted sheet holds.
+    @MainActor
+    private func count(_ kind: NSView.Type, in host: NSView) -> Int {
+        SnapshotTestSupport.descendants(of: host)
+            .filter { $0.isKind(of: kind) }
+            .count
     }
 }
 
