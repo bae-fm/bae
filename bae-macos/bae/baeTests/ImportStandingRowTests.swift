@@ -13,6 +13,7 @@ import Testing
 struct ImportStandingRowTests {
     private static let rowSize = NSSize(width: 340, height: 80)
 
+    /// The clock it draws instead is the `import-row-queued` shot's.
     @Test("a queued import's row keeps its two lines and draws no bar")
     func queuedTriageRow() async throws {
         let row = PreviewData.triageRowPrefilledFromTags
@@ -24,7 +25,6 @@ struct ImportStandingRowTests {
 
         #expect(queued.bars == 0)
         #expect(queued.height == idle.height)
-        #expect(queued.pixels != idle.pixels, "the queued row draws its clock")
     }
 
     @Test(
@@ -79,7 +79,6 @@ struct ImportStandingRowTests {
     private struct Drawn {
         let bars: Int
         let height: CGFloat
-        let pixels: Data
     }
 
     private func drawn(
@@ -163,11 +162,7 @@ struct ImportStandingRowTests {
                 bars: SnapshotTestSupport.descendants(of: host)
                     .filter { $0 is ProgressTrackNSView }
                     .count,
-                height: host.fittingSize.height,
-                pixels: try await SnapshotTestSupport.capturePNG(
-                    host,
-                    size: size
-                )
+                height: host.fittingSize.height
             )
         }
     }

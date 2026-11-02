@@ -226,7 +226,7 @@ struct ShotScene {
                 AnyView(PreviewScenes.nowPlayingBar(.allHere))
             },
         ] + storageManagerScenes + waitScenes + findOnlineScenes
-        + libraryScenes + coverPickerScenes + releaseScenes
+        + libraryScenes + importRowScenes + coverPickerScenes + releaseScenes
 }
 
 extension ShotScene {
