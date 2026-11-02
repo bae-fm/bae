@@ -271,7 +271,7 @@ impl ImportService {
                 .map_err(crate::library::LibraryError::from)
                 .map_err(crate::import::ImportError::from)?;
         }
-        let artist_images = library_manager.fetch_discogs_artist_images(new_artists).await?;
+        let artist_images = self.fetch_discogs_artist_images(new_artists).await?;
 
         prepared.selected_cover = selected_cover.clone();
 
@@ -742,6 +742,42 @@ impl ImportService {
 
         info!("Import complete for release {}", db_release.id);
         Ok(())
+    }
+}
+
+impl ImportService {
+    /// Discogs' answer for the picture of each artist `ids` names, asked now,
+    /// one artist at a time, each picture downscaled to the JPEG bae stores.
+    /// A provider or download failure, or a picture that does not decode,
+    /// fails the caller with it.
+    async fn fetch_discogs_artist_images(
+        &self,
+        ids: std::collections::BTreeSet<String>,
+    ) -> Result<Vec<crate::import::DiscogsArtistImage>, crate::import::ImportError> {
+        if ids.is_empty() {
+            return Ok(Vec::new());
+        }
+        let session = self.catalogs.session().await?;
+        let mut answers = Vec::with_capacity(ids.len());
+        for discogs_artist_id in ids {
+            let Some(source_url) = session.artist_image_url(&discogs_artist_id).await? else {
+                answers.push(crate::import::DiscogsArtistImage::Nothing { discogs_artist_id });
+                continue;
+            };
+            let Some(image) = self.remote_images.fetch(&source_url).await? else {
+                answers.push(crate::import::DiscogsArtistImage::Nothing { discogs_artist_id });
+                continue;
+            };
+            // Decoding and re-encoding the image is CPU work.
+            let jpeg = bae_util::task_failure::blocking("resize an artist picture", move || {
+                bae_util::stored_image::stored_jpeg(&image.bytes)
+            })
+            .await
+            .map_err(|failed| self.diagnostics.bug(failed))?
+            .map_err(|detail| crate::import::ImportError::CoverArt { detail })?;
+            answers.push(crate::import::DiscogsArtistImage::Image { discogs_artist_id, jpeg });
+        }
+        Ok(answers)
     }
 }
 

@@ -333,6 +333,8 @@ pub struct ImportServiceHandle {
     catalogs: crate::import::CatalogSessions,
     /// Where a catalog release is read from storage or fetched.
     release_reads: crate::import::ReleaseReads,
+    /// The provider images covers are fetched through.
+    remote_images: crate::import::RemoteImages,
     /// The one writer of candidates' stored state.
     preparations: crate::import::CandidatePreparations,
     ids: coven::IdSourceRef,
@@ -470,6 +472,7 @@ impl ImportServiceHandle {
             library_manager,
             database,
             catalogs,
+            remote_images,
             preparations,
             clock: _,
             ids,
@@ -502,6 +505,7 @@ impl ImportServiceHandle {
             database,
             catalogs,
             release_reads,
+            remote_images,
             preparations,
             ids,
             file_tags,

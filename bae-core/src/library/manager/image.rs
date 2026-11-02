@@ -76,7 +76,7 @@ impl LibraryManager {
                     .await
                     .map_err(|error| {
                         crate::import::ImportError::from(crate::catalog_model::CatalogError::from(
-                            self.remote_image_failed(error),
+                            error.reporting_cache_task(|failed| self.diagnostics.bug(failed)),
                         ))
                     })?
                     .bytes

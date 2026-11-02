@@ -299,7 +299,7 @@ impl ImportServiceHandle {
         let image = steps
             .during(
                 crate::import::CatalogApplyStep::FetchingCover(remote.source),
-                self.library_manager.fetch_remote_image(&remote.image.url),
+                self.remote_images.fetch(&remote.image.url),
             )
             .await
             .map_err(|error| CoverFetchFailure { source: remote.source, error })?;

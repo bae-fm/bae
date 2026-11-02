@@ -10,6 +10,7 @@ impl ImportService {
         library_manager: LibraryManager,
         database: crate::db::Database,
         catalogs: crate::import::CatalogSessions,
+        remote_images: bae_catalogs::remote_image::RemoteImageCache,
         diagnostics: crate::diagnostics::Diagnostics,
         preparations: crate::import::CandidatePreparations,
         clock: coven::ClockRef,
@@ -27,6 +28,7 @@ impl ImportService {
             library_manager.clone(),
             database,
             catalogs,
+            remote_images,
             preparations,
             clock.clone(),
             ids.clone(),
@@ -43,6 +45,7 @@ impl ImportService {
         library_manager: LibraryManager,
         database: crate::db::Database,
         catalogs: crate::import::CatalogSessions,
+        remote_images: bae_catalogs::remote_image::RemoteImageCache,
         diagnostics: crate::diagnostics::Diagnostics,
         preparations: crate::import::CandidatePreparations,
         clock: coven::ClockRef,
@@ -56,6 +59,7 @@ impl ImportService {
             library_manager,
             database,
             catalogs,
+            remote_images,
             preparations,
             clock,
             ids,
@@ -79,6 +83,8 @@ impl ImportService {
         let clock = services.clock.clone();
         let ids = services.ids.clone();
         let import_cancels = services.import_cancels.clone();
+        let catalogs = services.catalogs.clone();
+        let remote_images = services.remote_images.clone();
 
         // Constructed before the watcher task spawns; the task doesn't need the
         // watcher, only the `fs_rx` end of its event channel.
@@ -101,6 +107,8 @@ impl ImportService {
                         event_tx: event_tx_for_worker,
                         runtime: runtime_for_worker,
                         library_manager,
+                        catalogs,
+                        remote_images,
                         clock,
                         ids,
                         import_cancels,

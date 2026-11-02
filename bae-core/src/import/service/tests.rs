@@ -58,6 +58,13 @@ async fn setup_import_service() -> TestService {
             event_tx,
             runtime,
             library_manager: manager,
+            catalogs: test_catalogs(&database),
+            remote_images: crate::import::RemoteImages::new(
+                bae_catalogs::remote_image::RemoteImageCache::for_test(
+                    bae_util::http::Http::for_test(),
+                ),
+                crate::diagnostics::Diagnostics::noop(),
+            ),
             clock: Arc::new(coven::SystemClock),
             ids: Arc::new(coven::UuidIds),
             import_cancels: Default::default(),
@@ -449,7 +456,8 @@ impl CoordinatorHarness {
             crate::import::ImportServices {
                 event_tx: service.event_tx,
                 library_manager: service.library_manager.clone(),
-                catalogs: test_catalogs(&database),
+                catalogs: service.catalogs.clone(),
+                remote_images: service.remote_images.clone(),
                 database,
                 preparations: preparations.clone(),
                 clock: service.clock.clone(),
@@ -603,7 +611,8 @@ fn test_scan_services(
             event_tx,
             library_manager: service.library_manager.clone(),
             database: database.clone(),
-            catalogs: test_catalogs(database),
+            catalogs: service.catalogs.clone(),
+            remote_images: service.remote_images.clone(),
             preparations: preparations.clone(),
             clock: service.clock.clone(),
             ids: service.ids.clone(),

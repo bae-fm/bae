@@ -185,6 +185,10 @@ pub struct ImportService {
     /// the standing a commit ends.
     runtime: CandidateRuntime,
     library_manager: LibraryManager,
+    /// The catalogs an import asks for its new artists' pictures.
+    catalogs: crate::import::CatalogSessions,
+    /// Where those pictures are fetched through.
+    remote_images: crate::import::RemoteImages,
     clock: coven::ClockRef,
     ids: coven::IdSourceRef,
     import_cancels: crate::import::import_cancel::ImportCancels,

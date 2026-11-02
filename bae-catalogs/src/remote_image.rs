@@ -52,6 +52,17 @@ pub enum RemoteImageError {
     CacheTask(TaskFailed),
 }
 
+impl RemoteImageError {
+    /// This failure, a cache task's handed to `report` first: the cache cannot
+    /// report its own task panicking, so whoever asked it does.
+    pub fn reporting_cache_task(self, report: impl FnOnce(TaskFailed) -> TaskFailed) -> Self {
+        match self {
+            Self::CacheTask(failed) => Self::CacheTask(report(failed)),
+            error => error,
+        }
+    }
+}
+
 /// Where the Cover Art Archive serves images from. Every path under it is fixed
 /// by the entity's MusicBrainz id, so an image's address is knowable without
 /// asking the archive anything.

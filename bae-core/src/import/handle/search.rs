@@ -21,7 +21,7 @@ impl ImportServiceHandle {
         image: bae_catalogs::remote_image::RemoteImageSet,
         pixels: Option<u32>,
     ) -> Result<Option<bae_catalogs::remote_image::RemoteImage>, crate::import::ImportError> {
-        Ok(self.library_manager.fetch_remote_image(image.url_covering(pixels)).await?)
+        Ok(self.remote_images.fetch(image.url_covering(pixels)).await?)
     }
 
     /// Submit a candidate's typed search, stored before any source is asked,

@@ -83,6 +83,8 @@ pub mod release_candidate;
 #[cfg(desktop)]
 mod release_reads;
 #[cfg(desktop)]
+mod remote_images;
+#[cfg(desktop)]
 pub(crate) mod scrub_points;
 #[cfg(desktop)]
 pub mod selection;
@@ -193,6 +195,9 @@ pub(crate) struct ImportServices {
     database: crate::db::Database,
     /// The catalogs as this library may ask them.
     catalogs: CatalogSessions,
+    /// The provider images candidates' covers and new artists' pictures are
+    /// fetched through.
+    remote_images: RemoteImages,
     preparations: preparations::CandidatePreparations,
     clock: coven::ClockRef,
     ids: coven::IdSourceRef,
@@ -220,6 +225,7 @@ impl ImportServices {
         library_manager: crate::library::LibraryManager,
         database: crate::db::Database,
         catalogs: CatalogSessions,
+        remote_images: bae_catalogs::remote_image::RemoteImageCache,
         preparations: preparations::CandidatePreparations,
         clock: coven::ClockRef,
         ids: coven::IdSourceRef,
@@ -230,6 +236,7 @@ impl ImportServices {
             library_manager,
             database,
             catalogs,
+            remote_images: RemoteImages::new(remote_images, diagnostics.clone()),
             preparations,
             clock,
             ids,
@@ -317,6 +324,8 @@ pub use preparations::CandidatePreparations;
 pub use relative_folder::RelativeFolder;
 #[cfg(desktop)]
 pub use release_reads::ReleaseReads;
+#[cfg(desktop)]
+pub(crate) use remote_images::RemoteImages;
 #[cfg(desktop)]
 pub use service::ImportService;
 pub use session::{
