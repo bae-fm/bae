@@ -63,35 +63,30 @@
             #expect(browser.working == nil)
         }
 
-        @Test("the line names the listing its provider runs")
-        func lineNamesTheListing() async throws {
-            let size = NSSize(width: 420, height: 60)
-            try await SnapshotTestSupport.withHostedWindow(
-                FolderBrowserWorkLine(work: .listing, provider: .dropbox)
-                    .padding()
-                    .frame(width: size.width, height: size.height),
-                size: size
-            ) { _, host in
-                try await SnapshotTestSupport.settle(host)
-                let png = try await SnapshotTestSupport.capturePNG(
-                    host,
-                    size: size
-                )
-                let lines =
-                    try await SnapshotTestSupport.recognizedText(
-                        in: png
+        @Test("the line names the call its provider runs")
+        func lineNamesTheCall() {
+            func title(
+                _ work: StorageFolderBrowser.Work,
+                _ provider: StorageFolderBrowser.Provider
+            ) -> String {
+                String(
+                    localized: FolderBrowserWorkLine(
+                        work: work,
+                        provider: provider
                     )
-                    .map(\.text)
-                #expect(
-                    lines.carrying(
-                        String(
-                            localized: "Reading your shared Dropbox folders…"
-                        )
-                        .replacingOccurrences(of: "…", with: "")
-                    ),
-                    "drew \(lines)"
+                    .title
                 )
             }
+            #expect(title(.signingIn, .dropbox) == "Signing in…")
+            #expect(
+                title(.listing, .dropbox)
+                    == "Reading your shared Dropbox folders…"
+            )
+            #expect(
+                title(.listing, .oneDrive)
+                    == "Reading the folders on your OneDrive…"
+            )
+            #expect(title(.makingFolder, .oneDrive) == "Making the folder…")
         }
     }
 #endif

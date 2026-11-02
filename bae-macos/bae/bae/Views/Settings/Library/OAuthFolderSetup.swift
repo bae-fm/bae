@@ -133,7 +133,8 @@
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
 
-        private var title: LocalizedStringResource {
+        /// The words under the spinner, by the call running.
+        var title: LocalizedStringResource {
             switch (work, provider) {
             case (.signingIn, _):
                 LocalizedStringResource(
