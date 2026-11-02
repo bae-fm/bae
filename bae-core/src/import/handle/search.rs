@@ -133,7 +133,7 @@ impl ImportServiceHandle {
     ) -> Result<(), crate::import::ImportError> {
         let kept = self.runtime.land_picked(candidate_key, release, links).await?;
         if !kept.is_empty() {
-            crate::import::identify_service::keep_album_links(&self.database, kept).await;
+            crate::import::identify_service::keep_album_links(&self.tables, kept).await;
         }
         Ok(())
     }
@@ -230,7 +230,7 @@ impl ImportServiceHandle {
         };
         let mut claimed_releases = Vec::new();
         for claimed in link.claimed() {
-            claimed_releases.push(self.database.load_source_release(claimed).await?.ok_or_else(
+            claimed_releases.push(self.tables.load_source_release(claimed).await?.ok_or_else(
                 || crate::import::ImportError::Internal {
                     detail: format!(
                         "{key} names {} release {} that is not stored",
@@ -319,7 +319,7 @@ impl ImportServiceHandle {
     ) -> Result<crate::catalog_model::source_release::PreparedRelease, crate::import::ImportError>
     {
         if self.is_settled_lead(candidate_key, release).await? {
-            self.database.load_source_release(release).await?.ok_or_else(|| {
+            self.tables.load_source_release(release).await?.ok_or_else(|| {
                 crate::import::ImportError::Internal {
                     detail: format!(
                         "{candidate_key} settled on {} release {} but nothing stored it",

@@ -316,6 +316,7 @@ async fn what_a_run_keeps_is_kept_by_the_step_that_ends_it() {
     };
 
     let (inner, _tmp) = setup_inner().await;
+    let tables = crate::import::tables::ImportTables::new(inner.database.clone());
     let discogs = crate::catalog_model::payloads::ReleasePayloads::for_test(
         LookupRef::new(LookupCatalog::Discogs, "4242"),
         serde_json::json!({
@@ -330,7 +331,7 @@ async fn what_a_run_keeps_is_kept_by_the_step_that_ends_it() {
     )
     .extract()
     .unwrap();
-    inner.database.save_source_release(&discogs).await.unwrap();
+    tables.save_source_release(&discogs).await.unwrap();
 
     let found = crate::catalog_model::search::MetadataResult::for_test(
         LookupCatalog::MusicBrainz,
@@ -393,7 +394,7 @@ async fn what_a_run_keeps_is_kept_by_the_step_that_ends_it() {
 
     drivers_ended(&inner).await;
     let stored = inner
-        .database
+        .tables
         .load_source_release(&LookupRef::new(LookupCatalog::Discogs, "4242"))
         .await
         .unwrap()

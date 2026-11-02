@@ -180,6 +180,7 @@ fn release(key: &str) -> SourceRelease {
 #[tokio::test]
 async fn a_verdict_stores_only_the_releases_its_rows_name() {
     let (db, _tmp) = empty_db().await;
+    let tables = crate::import::tables::ImportTables::new(db.clone());
     let candidate = track_files_candidate(&[("01 Track.flac", 123_456)]);
     let hash = candidate.content_hash();
     let mut row = new_candidate_row(&hash, &host_root("/music/Some Album"), &sample_verdict());
@@ -191,16 +192,16 @@ async fn a_verdict_stores_only_the_releases_its_rows_name() {
     let named = LookupRef::new(LookupCatalog::MusicBrainz, "rel-1");
     let unnamed = LookupRef::new(LookupCatalog::MusicBrainz, "rel-unnamed");
     assert_eq!(
-        db.load_source_release(&named).await.unwrap(),
+        tables.load_source_release(&named).await.unwrap(),
         Some(release("rel-1")),
         "the verdict's match names it"
     );
-    assert_eq!(db.load_source_release(&unnamed).await.unwrap(), None);
+    assert_eq!(tables.load_source_release(&unnamed).await.unwrap(), None);
 
     row.verdict = TerminalVerdict::NotFoundAnywhere { ledger: None };
     row.releases = Vec::new();
     assert!(preparations.store_verdict(&row).await.unwrap());
-    assert_eq!(db.load_source_release(&named).await.unwrap(), None);
+    assert_eq!(tables.load_source_release(&named).await.unwrap(), None);
 }
 
 /// What a run in flight publishes keeps the releases it read that its rows
@@ -221,9 +222,9 @@ async fn a_run_s_rows_keep_the_releases_it_read_until_the_run_ends() {
     .await
     .unwrap();
     let named = LookupRef::new(LookupCatalog::MusicBrainz, "rel-1");
-    assert!(db.load_source_release(&named).await.unwrap().is_some());
+    assert!(tables.load_source_release(&named).await.unwrap().is_some());
     assert_eq!(
-        db.load_source_release(&LookupRef::new(LookupCatalog::MusicBrainz, "rel-unnamed"))
+        tables.load_source_release(&LookupRef::new(LookupCatalog::MusicBrainz, "rel-unnamed"))
             .await
             .unwrap(),
         None,
@@ -231,7 +232,7 @@ async fn a_run_s_rows_keep_the_releases_it_read_until_the_run_ends() {
     );
 
     tables.end_release_run(&key, run).await.unwrap();
-    assert_eq!(db.load_source_release(&named).await.unwrap(), None);
+    assert_eq!(tables.load_source_release(&named).await.unwrap(), None);
 }
 
 /// A write stores its copy of a release over the stored one only where its
@@ -263,7 +264,7 @@ async fn a_stored_release_is_replaced_only_by_a_copy_that_read_more() {
             )
             .await
             .unwrap();
-            db.load_source_release(&LookupRef::new(LookupCatalog::MusicBrainz, "rel-1"))
+            tables.load_source_release(&LookupRef::new(LookupCatalog::MusicBrainz, "rel-1"))
                 .await
                 .unwrap()
                 .expect("the run's match names it")

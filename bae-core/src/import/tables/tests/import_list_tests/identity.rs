@@ -14,21 +14,25 @@ async fn the_row_and_the_pane_name_the_same_records() {
     let tables = crate::import::tables::ImportTables::new(db.clone());
     let candidate = scanned(&db, &root, "Album").await;
     save_verdict(&db, &candidate, "mb-verdict").await;
-    db.save_source_release(
-        &crate::catalog_model::payloads::ReleasePayloads::for_test(
-            crate::catalog_model::records::LookupRef::new(LookupCatalog::MusicBrainz, "mb-linked"),
-            musicbrainz_release_linked_out("mb-linked", "mb-group").to_string(),
-            vec![crate::catalog_model::records::SourcePayload::new(
-                PayloadSource::MusicBrainzReleaseGroup,
-                "mb-group",
-                release_group_linked_out().to_string(),
-            )],
+    tables
+        .save_source_release(
+            &crate::catalog_model::payloads::ReleasePayloads::for_test(
+                crate::catalog_model::records::LookupRef::new(
+                    LookupCatalog::MusicBrainz,
+                    "mb-linked",
+                ),
+                musicbrainz_release_linked_out("mb-linked", "mb-group").to_string(),
+                vec![crate::catalog_model::records::SourcePayload::new(
+                    PayloadSource::MusicBrainzReleaseGroup,
+                    "mb-group",
+                    release_group_linked_out().to_string(),
+                )],
+            )
+            .extract()
+            .unwrap(),
         )
-        .extract()
-        .unwrap(),
-    )
-    .await
-    .unwrap();
+        .await
+        .unwrap();
     let draft = tables
         .load_import_candidate_pane_rows(&candidate.files.content_hash())
         .await

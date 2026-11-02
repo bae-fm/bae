@@ -190,17 +190,21 @@ async fn a_picked_row_reads_in_the_stored_releases_records() {
     let candidate = scanned(&db, &root, "Album").await;
     save_verdict(&db, &candidate, "mb-verdict").await;
 
-    db.save_source_release(
-        &crate::catalog_model::payloads::ReleasePayloads::for_test(
-            crate::catalog_model::records::LookupRef::new(LookupCatalog::MusicBrainz, "mb-picked"),
-            musicbrainz_release("mb-picked", "Picked Album").to_string(),
-            Vec::new(),
+    tables
+        .save_source_release(
+            &crate::catalog_model::payloads::ReleasePayloads::for_test(
+                crate::catalog_model::records::LookupRef::new(
+                    LookupCatalog::MusicBrainz,
+                    "mb-picked",
+                ),
+                musicbrainz_release("mb-picked", "Picked Album").to_string(),
+                Vec::new(),
+            )
+            .extract()
+            .unwrap(),
         )
-        .extract()
-        .unwrap(),
-    )
-    .await
-    .unwrap();
+        .await
+        .unwrap();
     let draft = tables
         .load_import_candidate_pane_rows(&candidate.files.content_hash())
         .await

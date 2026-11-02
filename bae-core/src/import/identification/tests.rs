@@ -585,7 +585,8 @@ impl Fixture {
         &self,
         release_id: &str,
     ) -> Option<crate::catalog_model::source_release::SourceRelease> {
-        self.database
+        let tables = self.context.tables.clone();
+        tables
             .load_source_release(&crate::catalog_model::records::LookupRef::new(
                 bae_catalogs::catalog::LookupCatalog::MusicBrainz,
                 release_id,
@@ -599,7 +600,8 @@ impl Fixture {
         &self,
         release_id: &str,
     ) -> Option<crate::catalog_model::source_release::SourceRelease> {
-        self.database
+        let tables = self.context.tables.clone();
+        tables
             .load_source_release(&crate::catalog_model::records::LookupRef::new(
                 bae_catalogs::catalog::LookupCatalog::Discogs,
                 release_id,
@@ -618,7 +620,8 @@ impl Fixture {
 
     /// Store a release directly, as a settle step would have.
     async fn archive(&self, release_id: &str, group_id: &str, track_lengths: &[u64]) {
-        self.manager
+        self.context
+            .tables
             .save_source_release(&stored_pressing(release_id, group_id, track_lengths))
             .await
             .unwrap();
@@ -637,7 +640,7 @@ impl Fixture {
             key: group_id.to_string(),
             reason: crate::catalog_model::source_release::UnfetchedReason::Failed,
         });
-        self.manager.save_source_release(&release).await.unwrap();
+        self.context.tables.save_source_release(&release).await.unwrap();
     }
 
     /// Store the verdict a settled lead produces, without running the pipeline.

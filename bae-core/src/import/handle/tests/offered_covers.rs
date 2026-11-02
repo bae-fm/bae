@@ -93,12 +93,13 @@ async fn linking_the_album_offers_no_catalog_cover() {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_release_stored_again_offers_what_it_holds_now() {
     let (handle, _tmp, key, _hash) = picked_with_front("refetched-release").await;
+    let tables = handle.tables.clone();
     let record = crate::catalog_model::records::LookupRef::new(
         bae_catalogs::catalog::LookupCatalog::MusicBrainz,
         "refetched-release".to_string(),
     );
     let mut stored = handle
-        .database
+        .tables
         .load_source_release(&record)
         .await
         .unwrap()
@@ -111,7 +112,7 @@ async fn a_release_stored_again_offers_what_it_holds_now() {
         source: bae_catalogs::catalog::Catalog::MusicBrainz,
         standing: bae_catalogs::remote_image::CoverStanding::Stated,
     });
-    handle.database.save_source_release(&stored).await.unwrap();
+    tables.save_source_release(&stored).await.unwrap();
     assert_eq!(
         offered(&handle, &key).await,
         [front_of("refetched-release"), "https://images.example/back.jpg".to_string()]

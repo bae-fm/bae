@@ -12,13 +12,13 @@ use bae_catalogs::rate_limiter::CallPriority;
 /// read, and the catalogs to fetch one from.
 #[derive(Clone)]
 pub struct ReleaseReads {
-    database: Database,
+    tables: crate::import::tables::ImportTables,
     catalogs: CatalogSessions,
 }
 
 impl ReleaseReads {
     pub(crate) fn new(database: Database, catalogs: CatalogSessions) -> Self {
-        Self { database, catalogs }
+        Self { tables: crate::import::tables::ImportTables::new(database), catalogs }
     }
 
     /// The release `release_ref` names, read to `depth`, from storage or
@@ -140,7 +140,7 @@ impl ReleaseReads {
         read: impl std::future::Future<Output = Result<ReleasePayloads, ImportError>>,
         steps: &CatalogApplySteps,
     ) -> Result<PreparedRelease, ImportError> {
-        if let Some(stored) = self.database.load_prepared_release(release_ref).await? {
+        if let Some(stored) = self.tables.load_prepared_release(release_ref).await? {
             let discogs_configured = self.catalogs.session().await?.asks_discogs();
             if !stored.stored.fetch_could_add(depth, discogs_configured) {
                 return Ok(stored);
@@ -149,6 +149,6 @@ impl ReleaseReads {
         let payloads = steps
             .during(CatalogApplyStep::ReadingRelease(release_ref.catalog.catalog()), read)
             .await?;
-        Ok(self.database.prepared_release(payloads.extract()?).await?)
+        Ok(self.tables.prepared_release(payloads.extract()?).await?)
     }
 }

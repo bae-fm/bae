@@ -131,7 +131,7 @@ fn store_run_on(
     }
     let owner = Owner::Run(run);
     store_outcome(sql, owner, Outcome::of(outcome), false)?;
-    crate::db::client::source_releases::store_named_releases_on(sql, releases)?;
+    crate::import::tables::source_releases::store_named_releases_on(sql, releases)?;
     if let Some(signals) = signals {
         store_signals(sql, owner, signals)?;
     }

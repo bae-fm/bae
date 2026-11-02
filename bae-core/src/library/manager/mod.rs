@@ -81,8 +81,6 @@ pub use fixture::{
 mod export;
 mod history;
 mod image;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-mod import;
 mod lifecycle;
 mod locality;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]

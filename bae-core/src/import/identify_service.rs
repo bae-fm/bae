@@ -43,10 +43,10 @@ async fn run_providers(
 /// so a stored release of either album names the other among its records.
 /// Keeping it failing leaves the list's answer standing, and is logged.
 pub(crate) async fn keep_album_links(
-    database: &crate::db::Database,
+    tables: &crate::import::tables::ImportTables,
     kept: Vec<(String, Vec<crate::catalog_model::records::MetadataRef>)>,
 ) {
-    if let Err(error) = database.replace_group_album_links(kept).await {
+    if let Err(error) = tables.replace_group_album_links(kept).await {
         tracing::error!("What the release groups were read to be was not kept: {error}");
     }
 }
@@ -100,9 +100,10 @@ pub struct IdentifyServiceHandle {
 }
 
 struct IdentifyServiceInner {
-    /// The library's store: the sources it asks, and what release groups
-    /// were read to be.
+    /// The library's store: the sources it asks.
     database: crate::db::Database,
+    /// Import's tables: what release groups were read to be.
+    tables: crate::import::tables::ImportTables,
     /// The catalogs a run's lookups ask.
     catalogs: crate::import::CatalogSessions,
     /// Where a run reads the releases it ranks.
@@ -165,6 +166,7 @@ impl IdentifyServiceHandle {
         diagnostics: crate::diagnostics::Diagnostics,
     ) -> IdentifyServiceHandle {
         let inner = Arc::new(IdentifyServiceInner {
+            tables: crate::import::tables::ImportTables::new(database.clone()),
             database,
             catalogs,
             release_reads,
@@ -820,9 +822,9 @@ fn dispatch_effect(
         // What was read stays true whether or not the run stays current, so
         // cancelling the run does not stop it being kept.
         Effect::KeepAlbumLinks { kept } => {
-            let database = inner.database.clone();
+            let tables = inner.tables.clone();
             let keep = async move {
-                keep_album_links(&database, kept).await;
+                keep_album_links(&tables, kept).await;
             };
             #[cfg(test)]
             let keep = inner.driver_tasks.track_future(keep);

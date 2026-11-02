@@ -60,7 +60,7 @@ async fn a_match_reads_its_album_first_year_from_its_stored_catalog_release() {
         let mut release = fetched_release("rel-1");
         release.metadata.album.first_year = Some(year);
         release.metadata.album.year = Some(year);
-        db.save_source_release(&release).await.unwrap();
+        tables.save_source_release(&release).await.unwrap();
         assert_eq!(first_year().await, Some(year));
     }
 }

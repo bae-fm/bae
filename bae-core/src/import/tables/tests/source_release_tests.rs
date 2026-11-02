@@ -180,6 +180,7 @@ fn discogs_documents() -> ReleasePayloads {
 #[tokio::test]
 async fn a_stored_release_reads_back_as_it_was_extracted() {
     let (db, _tmp) = empty_db().await;
+    let tables = crate::import::tables::ImportTables::new(db.clone());
     let mut musicbrainz = musicbrainz_documents().extract().unwrap();
     musicbrainz.unfetched.push(crate::catalog_model::source_release::UnfetchedDocument {
         document: PayloadSource::Discogs,
@@ -232,8 +233,8 @@ async fn a_stored_release_reads_back_as_it_was_extracted() {
         );
     }
     for extracted in [musicbrainz, discogs] {
-        db.save_source_release(&extracted).await.unwrap();
-        let stored = db
+        tables.save_source_release(&extracted).await.unwrap();
+        let stored = tables
             .load_source_release(extracted.release())
             .await
             .unwrap()
@@ -249,6 +250,7 @@ async fn a_stored_release_reads_back_its_album_links() {
     use crate::catalog_model::album_links::AlbumLinks;
     use crate::catalog_model::source_release::CatalogFacts;
     let (db, _tmp) = empty_db().await;
+    let tables = crate::import::tables::ImportTables::new(db.clone());
     let extracted = musicbrainz_documents().extract().unwrap();
     let CatalogFacts::MusicBrainz { album_links, .. } = &extracted.catalog else {
         panic!("a MusicBrainz release states MusicBrainz facts");
@@ -271,8 +273,8 @@ async fn a_stored_release_reads_back_its_album_links() {
             unreachable!("checked above");
         };
         *album_links = stated;
-        db.save_source_release(&release).await.unwrap();
-        assert_eq!(db.load_source_release(release.release()).await.unwrap(), Some(release));
+        tables.save_source_release(&release).await.unwrap();
+        assert_eq!(tables.load_source_release(release.release()).await.unwrap(), Some(release));
     }
 }
 
@@ -281,8 +283,9 @@ async fn a_stored_release_reads_back_its_album_links() {
 #[tokio::test]
 async fn saving_a_release_again_replaces_its_rows() {
     let (db, _tmp) = empty_db().await;
+    let tables = crate::import::tables::ImportTables::new(db.clone());
     let earlier = musicbrainz_documents().extract().unwrap();
-    db.save_source_release(&earlier).await.unwrap();
+    tables.save_source_release(&earlier).await.unwrap();
 
     let later = ReleasePayloads::for_test(
         LookupRef::new(LookupCatalog::MusicBrainz, "mb-release"),
@@ -298,9 +301,9 @@ async fn saving_a_release_again_replaces_its_rows() {
     )
     .extract()
     .unwrap();
-    db.save_source_release(&later).await.unwrap();
+    tables.save_source_release(&later).await.unwrap();
 
-    assert_eq!(db.load_source_release(later.release()).await.unwrap(), Some(later));
+    assert_eq!(tables.load_source_release(later.release()).await.unwrap(), Some(later));
 }
 
 /// A release's album year and media counts read back from what the store
@@ -310,6 +313,7 @@ async fn saving_a_release_again_replaces_its_rows() {
 async fn a_stored_release_reads_back_its_album_year_and_media_counts() {
     use bae_types::pressing::{MediaCount, Medium};
     let (db, _tmp) = empty_db().await;
+    let tables = crate::import::tables::ImportTables::new(db.clone());
     let musicbrainz = |media: serde_json::Value, group: Option<&str>| {
         let mut anchor = serde_json::json!({
             "id": "mb-release",
@@ -380,8 +384,8 @@ async fn a_stored_release_reads_back_its_album_year_and_media_counts() {
         (discogs(serde_json::json!([]), None), Some(2003), Vec::new()),
     ] {
         let extracted = payloads.extract().unwrap();
-        db.save_source_release(&extracted).await.unwrap();
-        let stored = db
+        tables.save_source_release(&extracted).await.unwrap();
+        let stored = tables
             .load_source_release(extracted.release())
             .await
             .unwrap()
@@ -397,14 +401,15 @@ async fn a_stored_release_reads_back_its_album_year_and_media_counts() {
 #[tokio::test]
 async fn a_release_whose_derived_facts_disagree_is_not_stored() {
     let (db, _tmp) = empty_db().await;
+    let tables = crate::import::tables::ImportTables::new(db.clone());
     let extracted = musicbrainz_documents().extract().unwrap();
     let mut year = extracted.clone();
     year.metadata.album.year = Some(1970);
     let mut media = extracted.clone();
     media.metadata.pressing.facts.media.clear();
     for release in [year, media] {
-        assert!(db.save_source_release(&release).await.is_err());
-        assert_eq!(db.load_source_release(release.release()).await.unwrap(), None);
+        assert!(tables.save_source_release(&release).await.is_err());
+        assert_eq!(tables.load_source_release(release.release()).await.unwrap(), None);
     }
 }
 
@@ -412,8 +417,9 @@ async fn a_release_whose_derived_facts_disagree_is_not_stored() {
 #[tokio::test]
 async fn an_unfetched_release_reads_as_nothing() {
     let (db, _tmp) = empty_db().await;
+    let tables = crate::import::tables::ImportTables::new(db.clone());
     assert_eq!(
-        db.load_source_release(&LookupRef::new(LookupCatalog::Discogs, "4242")).await.unwrap(),
+        tables.load_source_release(&LookupRef::new(LookupCatalog::Discogs, "4242")).await.unwrap(),
         None
     );
 }
@@ -447,19 +453,24 @@ async fn a_stored_release_carries_what_its_album_s_group_was_read_to_be() {
 
     // Stored first, then the statement read.
     let (db, _tmp) = empty_db().await;
-    db.save_source_release(&discogs).await.unwrap();
-    db.replace_group_album_links(statements()).await.unwrap();
-    let before = db.load_source_release(discogs.release()).await.unwrap();
+    let tables = crate::import::tables::ImportTables::new(db.clone());
+    tables.save_source_release(&discogs).await.unwrap();
+    tables.replace_group_album_links(statements()).await.unwrap();
+    let before = tables.load_source_release(discogs.release()).await.unwrap();
     assert_eq!(before.as_ref(), Some(&expected));
 
     // The statement read first, then stored.
     let (db_after, _tmp_after) = empty_db().await;
-    db_after.replace_group_album_links(statements()).await.unwrap();
-    db_after.save_source_release(&discogs).await.unwrap();
-    assert_eq!(db_after.load_source_release(discogs.release()).await.unwrap(), before);
+    let tables_after = crate::import::tables::ImportTables::new(db_after);
+    tables_after.replace_group_album_links(statements()).await.unwrap();
+    tables_after.save_source_release(&discogs).await.unwrap();
+    assert_eq!(tables_after.load_source_release(discogs.release()).await.unwrap(), before);
 
-    db.replace_group_album_links(vec![("mb-group-same".to_string(), Vec::new())]).await.unwrap();
-    assert_eq!(db.load_source_release(discogs.release()).await.unwrap(), Some(discogs));
+    tables
+        .replace_group_album_links(vec![("mb-group-same".to_string(), Vec::new())])
+        .await
+        .unwrap();
+    assert_eq!(tables.load_source_release(discogs.release()).await.unwrap(), Some(discogs));
 }
 
 /// A Discogs release stored with its master and the release group the
@@ -467,6 +478,7 @@ async fn a_stored_release_carries_what_its_album_s_group_was_read_to_be() {
 #[tokio::test]
 async fn a_release_with_its_master_and_group_reads_back_as_extracted() {
     let (db, _tmp) = empty_db().await;
+    let tables = crate::import::tables::ImportTables::new(db.clone());
     let fetched = ReleasePayloads::for_test(
         LookupRef::new(LookupCatalog::Discogs, "7811"),
         linked_discogs_release(),
@@ -481,8 +493,8 @@ async fn a_release_with_its_master_and_group_reads_back_as_extracted() {
     )
     .extract()
     .unwrap();
-    db.save_source_release(&fetched).await.unwrap();
-    assert_eq!(db.load_source_release(fetched.release()).await.unwrap(), Some(fetched));
+    tables.save_source_release(&fetched).await.unwrap();
+    assert_eq!(tables.load_source_release(fetched.release()).await.unwrap(), Some(fetched));
 }
 
 #[test]
@@ -521,6 +533,7 @@ fn library_check_matches_detail_keys_with_and_without_source_groups() {
 #[tokio::test]
 async fn an_items_records_are_stored_with_the_release() {
     let (database, _dir) = empty_db().await;
+    let tables = crate::import::tables::ImportTables::new(database.clone());
     let fetched = ReleasePayloads::for_test(
         LookupRef::new(LookupCatalog::MusicBrainz, "offline-mb-release"),
         musicbrainz_release_with_relations("offline-mb-release", "offline-mb-group", &[])
@@ -536,9 +549,9 @@ async fn an_items_records_are_stored_with_the_release() {
     )
     .extract()
     .expect("the documents extract");
-    database.save_source_release(&fetched).await.unwrap();
+    tables.save_source_release(&fetched).await.unwrap();
 
-    let stored = database
+    let stored = tables
         .load_source_release(fetched.release())
         .await
         .expect("the stored release reads back")
@@ -562,6 +575,7 @@ async fn an_items_records_are_stored_with_the_release() {
 #[tokio::test]
 async fn refetching_without_a_reverse_answer_removes_its_pressing_record() {
     let (db, _temp) = empty_db().await;
+    let tables = crate::import::tables::ImportTables::new(db.clone());
     let with_alias = ReleasePayloads::for_test(
         LookupRef::new(LookupCatalog::Discogs, "7811"),
         linked_discogs_release(),
@@ -571,8 +585,8 @@ async fn refetching_without_a_reverse_answer_removes_its_pressing_record() {
             linked_musicbrainz_release(),
         )],
     );
-    db.save_source_release(&with_alias.extract().unwrap()).await.unwrap();
-    assert!(db
+    tables.save_source_release(&with_alias.extract().unwrap()).await.unwrap();
+    assert!(tables
         .load_source_release(&LookupRef::new(LookupCatalog::Discogs, "7811"))
         .await
         .unwrap()
@@ -585,8 +599,8 @@ async fn refetching_without_a_reverse_answer_removes_its_pressing_record() {
         linked_discogs_release(),
         Vec::new(),
     );
-    db.save_source_release(&without_alias.extract().unwrap()).await.unwrap();
-    assert!(!db
+    tables.save_source_release(&without_alias.extract().unwrap()).await.unwrap();
+    assert!(!tables
         .load_source_release(&LookupRef::new(LookupCatalog::Discogs, "7811"))
         .await
         .unwrap()
@@ -601,12 +615,13 @@ async fn refetching_without_a_reverse_answer_removes_its_pressing_record() {
 #[tokio::test]
 async fn an_unavailable_supporting_document_does_not_return_from_an_earlier_fetch() {
     let (db, _temp) = empty_db().await;
+    let tables = crate::import::tables::ImportTables::new(db.clone());
     let earlier = ReleasePayloads::for_test(
         LookupRef::new(LookupCatalog::Discogs, "7811"),
         linked_discogs_release(),
         vec![SourcePayload::new(PayloadSource::DiscogsMaster, "7822", linked_discogs_master())],
     );
-    db.save_source_release(&earlier.extract().unwrap()).await.unwrap();
+    tables.save_source_release(&earlier.extract().unwrap()).await.unwrap();
     let later = ReleasePayloads::for_test(
         LookupRef::new(LookupCatalog::Discogs, "7811"),
         linked_discogs_release(),
@@ -614,6 +629,6 @@ async fn an_unavailable_supporting_document_does_not_return_from_an_earlier_fetc
     )
     .extract()
     .unwrap();
-    db.save_source_release(&later).await.unwrap();
-    assert_eq!(db.load_source_release(later.release()).await.unwrap(), Some(later));
+    tables.save_source_release(&later).await.unwrap();
+    assert_eq!(tables.load_source_release(later.release()).await.unwrap(), Some(later));
 }

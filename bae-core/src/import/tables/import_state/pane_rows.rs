@@ -14,7 +14,7 @@ mod writes;
 use super::verdict_rows::unreadable;
 use super::*;
 use crate::catalog_model::credits::ArtistCredit;
-use crate::db::client::downscaled_copies::{copies_json_sql, copies_of};
+use crate::import::tables::downscaled_copies::{copies_json_sql, copies_of};
 use crate::import::{
     ArtistAssignment, AudioFile, CandidateDraft, CandidateTrack, CoverSelection, Credited,
     MetadataAuthor, RawLabelEdit, RawPressingEdit, RawTrackEdit, TrackArtistAssignments,

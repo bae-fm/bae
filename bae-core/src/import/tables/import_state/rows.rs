@@ -315,7 +315,7 @@ fn match_entries_columns() -> String {
             "entry.ordinal"
         ),
         barcodes = child("import_candidate_match_barcode", "entry.barcode", "entry.ordinal"),
-        copies = crate::db::client::downscaled_copies::copies_json_sql(
+        copies = crate::import::tables::downscaled_copies::copies_json_sql(
             "import_candidate_match_cover_copy",
             "copy.content_hash IS found.content_hash AND copy.identify_run IS found.identify_run \
              AND copy.search_run IS found.search_run AND copy.position = found.position",
@@ -378,7 +378,7 @@ impl StoredMatchEntries {
         Ok(MatchEntries {
             labels: list(&self.labels, "labels")?,
             barcodes: list(&self.barcodes, "barcodes")?,
-            cover_copies: crate::db::client::downscaled_copies::copies_of(&self.cover_copies)?,
+            cover_copies: crate::import::tables::downscaled_copies::copies_of(&self.cover_copies)?,
             media: list::<StoredMatchMedium>(&self.media, "media")?
                 .into_iter()
                 .map(|stored| {

@@ -97,7 +97,7 @@ async fn a_pick_with_a_partner_stores_it_and_archives_its_documents() {
     );
 
     assert!(
-        handle.database.load_source_release(&partner).await.unwrap().is_some(),
+        tables.load_source_release(&partner).await.unwrap().is_some(),
         "the partner's own release is stored by the apply"
     );
     assert_eq!(
@@ -266,7 +266,7 @@ async fn a_pick_of_a_release_a_run_read_reads_the_rest() {
         .await
         .unwrap();
     let picked = handle
-        .database
+        .tables
         .load_source_release(&release)
         .await
         .unwrap()
@@ -528,7 +528,7 @@ async fn an_import_commits_what_its_picked_releases_store_now() {
     // another album on AllMusic: a pick references its releases rather than
     // copying them, so the import commits what the partner says now.
     handle
-        .database
+        .tables
         .save_source_release(
             &crate::catalog_model::payloads::ReleasePayloads::for_test(
                 crate::catalog_model::records::LookupRef::new(
@@ -583,7 +583,7 @@ async fn a_pick_carries_the_album_a_reading_found_through_another_pressing() {
     let group = "chain-mb-group";
     seed_discogs_release_in(providers, "70000012", Some("909"), None);
     crate::import::identify_service::keep_album_links(
-        &handle.database,
+        &handle.tables,
         vec![(
             group.to_string(),
             vec![crate::catalog_model::records::MetadataRef::new(bae_catalogs::catalog::Catalog::Discogs, "909")],
@@ -602,7 +602,7 @@ async fn a_pick_carries_the_album_a_reading_found_through_another_pressing() {
         .await
         .unwrap();
     let records = handle
-        .database
+        .tables
         .load_source_release(&picked)
         .await
         .unwrap()

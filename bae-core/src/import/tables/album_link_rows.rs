@@ -107,7 +107,7 @@ pub(super) fn joined_albums_on<S: QueryRows>(
     Ok(joined)
 }
 
-impl Database {
+impl ImportTables {
     /// Keep the albums reading these release groups found each to be,
     /// replacing whatever an earlier reading of the same group found. A group
     /// whose reading named nothing keeps nothing.
@@ -115,24 +115,25 @@ impl Database {
         &self,
         read: Vec<(String, Vec<MetadataRef>)>,
     ) -> Result<(), DbError> {
-        self.call(move |sql| {
-            for (group, albums) in &read {
-                sql.execute(
-                    "DELETE FROM release_group_album_link WHERE release_group = ?",
-                    params![group],
-                )?;
-                for album in albums {
+        self.database
+            .call(move |sql| {
+                for (group, albums) in &read {
                     sql.execute(
-                        &format!(
-                            "INSERT INTO release_group_album_link ({GROUP_LINK_COLUMNS}) \
-                             VALUES (?, ?, ?)"
-                        ),
-                        params![group, album.catalog.as_str(), album.key],
+                        "DELETE FROM release_group_album_link WHERE release_group = ?",
+                        params![group],
                     )?;
+                    for album in albums {
+                        sql.execute(
+                            &format!(
+                                "INSERT INTO release_group_album_link ({GROUP_LINK_COLUMNS}) \
+                             VALUES (?, ?, ?)"
+                            ),
+                            params![group, album.catalog.as_str(), album.key],
+                        )?;
+                    }
                 }
-            }
-            Ok(())
-        })
-        .await
+                Ok(())
+            })
+            .await
     }
 }

@@ -4,10 +4,13 @@
 //! commit runs them and db's row writers in one transaction; [`ImportTables`]
 //! runs them through the store for everything else.
 
+mod album_link_rows;
+mod downscaled_copies;
 mod folder_scans;
 mod import_list;
 pub(crate) mod import_state;
 mod release_groupings;
+mod source_releases;
 
 pub use folder_scans::{FinishedScan, ScanItemWrite};
 pub(crate) use folder_scans::{
@@ -34,6 +37,7 @@ use bae_catalogs::catalog::Catalog;
 use coven::{CovenError, CovenWrite, SqlReadContext};
 use rusqlite::{named_params, params, OptionalExtension, Row};
 use std::collections::HashMap;
+use std::str::FromStr;
 
 /// The library's store, as import reads and writes its own tables in it.
 #[derive(Clone, Debug)]

@@ -1,10 +1,6 @@
 use crate::db::credits::LibraryCredit;
 use crate::db::models::*;
-// The catalogs a record names belong to the import path, which the mobile
-// builds do not carry; the modules that read one are gated with it.
 use crate::queue::QueueItem;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-use bae_catalogs::catalog::Catalog;
 use bae_util::content_type::ContentType;
 use chrono::{DateTime, Utc};
 use rusqlite::{params, OptionalExtension, Params, Row};
@@ -18,8 +14,6 @@ use std::collections::{BTreeSet, HashMap, HashSet};
 // paths live on the types that carry them.
 #[cfg(any(test, feature = "test-utils"))]
 use std::path::Path;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-use std::str::FromStr;
 use std::sync::Arc;
 use tracing::warn;
 
@@ -85,8 +79,6 @@ pub(crate) mod records;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) use records::RecordsChange;
 mod admin_operations;
-#[cfg(desktop)]
-pub(crate) mod album_link_rows;
 mod collections;
 mod history;
 #[cfg(desktop)]
@@ -104,11 +96,7 @@ mod playback_queue;
 pub use playback_queue::{
     ContextFill, ContextFilled, ManualPlace, PlaybackQueueTables, ReleaseStart, ShuffleChange,
 };
-#[cfg(desktop)]
-pub(crate) mod downscaled_copies;
 mod playback_queue_reads;
-#[cfg(desktop)]
-pub(crate) mod source_releases;
 pub(crate) use playback_queue_reads::QueueUpcomingRead;
 mod release;
 pub(crate) use release::ReleaseMetadataRows;

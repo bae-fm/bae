@@ -3,6 +3,7 @@
 //! the set changes.
 
 use super::*;
+use bae_catalogs::catalog::Catalog;
 
 /// The statuses of every offered release come from one subscription: its
 /// checks move in place as the offers change, and a record write wakes the

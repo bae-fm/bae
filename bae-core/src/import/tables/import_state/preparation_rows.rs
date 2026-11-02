@@ -385,7 +385,7 @@ pub(super) fn save_preparation_on(
     }
     // The verdict, link and provenance written above name these, or some
     // of them; the rows naming a release that are gone took it with them.
-    crate::db::client::source_releases::store_named_releases_on(sql, &extras.releases)?;
+    crate::import::tables::source_releases::store_named_releases_on(sql, &extras.releases)?;
     if extras.ends_identification {
         super::change_identification_on(
             sql,

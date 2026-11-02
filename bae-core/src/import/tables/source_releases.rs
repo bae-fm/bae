@@ -125,7 +125,7 @@ pub(super) fn replace_source_release_on(
     let key = release.release.key.as_str();
     let metadata = &release.metadata;
     let pressing = &metadata.pressing;
-    let facts = super::pressing_columns::FactColumns::of(&pressing.facts);
+    let facts = crate::db::client::pressing_columns::FactColumns::of(&pressing.facts);
     sql.execute(
         "INSERT INTO source_release \
              (catalog, release_id, source_group_id, album_title, \
@@ -398,7 +398,9 @@ fn load_source_release_rows_on<S: QueryOne + QueryRows>(
                         // Read from their rows below.
                         labels: Vec::new(),
                         barcodes: Vec::new(),
-                        facts: super::pressing_columns::read_facts_without_media(row, "")?,
+                        facts: crate::db::client::pressing_columns::read_facts_without_media(
+                            row, "",
+                        )?,
                     },
                     row.get::<_, Option<String>>(3)?,
                     row.get::<_, Option<String>>(4)?,
@@ -516,7 +518,7 @@ fn load_source_release_rows_on<S: QueryOne + QueryRows>(
                     params![catalog, key],
                     |row| {
                         Ok(StatedFormat {
-                            medium: super::pressing_columns::keyed(
+                            medium: crate::db::client::pressing_columns::keyed(
                                 row,
                                 "medium",
                                 Medium::from_key,
@@ -818,7 +820,7 @@ pub(crate) fn load_release_records_on<S: QueryOne + QueryRows>(
     )))
 }
 
-impl Database {
+impl ImportTables {
     /// The stored release `release` names, as import surfaces read it, or
     /// `None` when no row names it.
     pub async fn load_source_release(
@@ -826,7 +828,7 @@ impl Database {
         release: &crate::catalog_model::records::LookupRef,
     ) -> Result<Option<SourceRelease>, DbError> {
         let release = release.clone();
-        self.read(move |sql| load_source_release_on(&sql, &release)).await
+        self.database.read(move |sql| load_source_release_on(&sql, &release)).await
     }
 
     /// The stored release `release` names, as its rows hold it beside how
@@ -836,14 +838,18 @@ impl Database {
         release: &crate::catalog_model::records::LookupRef,
     ) -> Result<Option<PreparedRelease>, DbError> {
         let release = release.clone();
-        self.read(move |sql| {
-            load_source_release_rows_on(&sql, &release)?
-                .map(|stored| {
-                    Ok(PreparedRelease { release: with_joined_albums_on(&sql, &stored)?, stored })
-                })
-                .transpose()
-        })
-        .await
+        self.database
+            .read(move |sql| {
+                load_source_release_rows_on(&sql, &release)?
+                    .map(|stored| {
+                        Ok(PreparedRelease {
+                            release: with_joined_albums_on(&sql, &stored)?,
+                            stored,
+                        })
+                    })
+                    .transpose()
+            })
+            .await
     }
 
     /// `stored`, a release just fetched, beside how import surfaces read it.
@@ -851,10 +857,11 @@ impl Database {
         &self,
         stored: SourceRelease,
     ) -> Result<PreparedRelease, DbError> {
-        self.read(move |sql| {
-            Ok(PreparedRelease { release: with_joined_albums_on(&sql, &stored)?, stored })
-        })
-        .await
+        self.database
+            .read(move |sql| {
+                Ok(PreparedRelease { release: with_joined_albums_on(&sql, &stored)?, stored })
+            })
+            .await
     }
 
     /// Store `release` with no row naming it, which only a test's setup
@@ -862,6 +869,6 @@ impl Database {
     #[cfg(test)]
     pub async fn save_source_release(&self, release: &SourceRelease) -> Result<(), DbError> {
         let release = release.clone();
-        self.call(move |sql| replace_source_release_on(sql, &release)).await
+        self.database.call(move |sql| replace_source_release_on(sql, &release)).await
     }
 }

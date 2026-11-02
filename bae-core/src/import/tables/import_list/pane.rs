@@ -11,11 +11,11 @@ use super::listed::{ListedColumns, LISTED_COLUMNS};
 use super::window::stored_embedded_cover;
 use super::*;
 use crate::db::client::records::{album_records_name_on, check_releases_in_library_on};
-use crate::db::client::source_releases::load_source_release_on;
 use crate::identify::PressingLink;
 use crate::identify::VerdictSummary;
 use crate::import::cover_art::CoverChoice;
 use crate::import::folder_scanner::{CategorizedFiles, FileVersion, FolderCandidate};
+use crate::import::tables::source_releases::load_source_release_on;
 use crate::import::{CoverSelection, ReleaseLink};
 use crate::import::{DraftProjection, ProjectedStage};
 

@@ -168,7 +168,7 @@ pub(crate) fn read_facts_without_media(row: &Row, prefix: &str) -> rusqlite::Res
 }
 
 /// A nullable column holding one vocabulary's key.
-pub(super) fn keyed<T>(
+pub(crate) fn keyed<T>(
     row: &Row,
     column: &str,
     from_key: fn(&str) -> Option<T>,

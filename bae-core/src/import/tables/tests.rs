@@ -77,4 +77,5 @@ mod import_list_live_query_tests;
 mod import_list_placement_tests;
 mod import_list_tests;
 mod release_grouping_tests;
+mod source_release_tests;
 mod watched_folder_tests;

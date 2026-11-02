@@ -175,7 +175,8 @@ async fn resizing_a_file_orphans_the_old_row_under_a_new_hash() {
 /// Store MusicBrainz release `release_id` as the setup of a write that names
 /// it, which then finds it stored.
 async fn fetched(db: &Database, release_id: &str) {
-    db.save_source_release(&fetched_release(release_id)).await.unwrap();
+    let tables = crate::import::tables::ImportTables::new(db.clone());
+    tables.save_source_release(&fetched_release(release_id)).await.unwrap();
 }
 
 /// The catalog release [`fetched`] stores.

@@ -54,17 +54,18 @@ async fn a_linked_row_is_read_without_opening_its_folders_files() {
     tables.finish_folder_scan(&root, generation, None).await.unwrap();
     let record =
         crate::catalog_model::records::LookupRef::new(LookupCatalog::MusicBrainz, "mb-picked");
-    db.save_source_release(
-        &crate::catalog_model::payloads::ReleasePayloads::for_test(
-            record.clone(),
-            musicbrainz_release("mb-picked", "Picked Album").to_string(),
-            Vec::new(),
+    tables
+        .save_source_release(
+            &crate::catalog_model::payloads::ReleasePayloads::for_test(
+                record.clone(),
+                musicbrainz_release("mb-picked", "Picked Album").to_string(),
+                Vec::new(),
+            )
+            .extract()
+            .unwrap(),
         )
-        .extract()
-        .unwrap(),
-    )
-    .await
-    .unwrap();
+        .await
+        .unwrap();
     crate::import::CandidatePreparations::new(db.clone())
         .replace_link(
             &candidate.files.content_hash(),

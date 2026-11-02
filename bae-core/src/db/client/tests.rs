@@ -224,9 +224,6 @@ mod album_group_tests;
 #[cfg(test)]
 mod album_credit_tests;
 
-#[cfg(test)]
-mod source_release_tests;
-
 mod local_foreign_keys;
 
 mod schema_tests;

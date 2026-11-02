@@ -219,6 +219,7 @@ async fn the_pane_shows_each_tracks_stated_length_after_a_file_decision() {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_release_stored_again_after_apply_changes_nothing_the_draft_imports() {
     let StoredCandidate { handle, candidate, key, tmp: _tmp, .. } = stored_candidate().await;
+    let tables = handle.tables.clone();
     let providers = handle.catalogs.providers();
     seed_mb_release_with_works(
         providers,
@@ -256,7 +257,7 @@ async fn a_release_stored_again_after_apply_changes_nothing_the_draft_imports() 
         )
         .await
         .unwrap();
-    handle.database.save_source_release(&payloads.extract().unwrap()).await.unwrap();
+    tables.save_source_release(&payloads.extract().unwrap()).await.unwrap();
     assert_eq!(stored_draft(&handle, &hash).await, applied);
 
     let mut events = handle.every_event();

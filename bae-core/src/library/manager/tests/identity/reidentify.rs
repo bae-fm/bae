@@ -11,8 +11,7 @@ async fn stored_for(
     catalog: LookupCatalog,
     release_id: &str,
 ) -> Option<crate::catalog_model::source_release::SourceRelease> {
-    manager
-        .database
+    crate::import::tables::ImportTables::new(manager.database.clone())
         .load_source_release(&crate::catalog_model::records::LookupRef::new(catalog, release_id))
         .await
         .unwrap()

@@ -218,7 +218,7 @@ impl ImportService {
         }
 
         let records = match &release_link {
-            Some(link) => linked_records(&self.database, link).await?,
+            Some(link) => linked_records(&self.tables, link).await?,
             None => Vec::new(),
         };
         // The draft holds every value the release is written with; nothing
@@ -842,7 +842,7 @@ impl ImportService {
 /// pressing is stored as every catalog its stored releases describe it in,
 /// the linked primary's own record first.
 async fn linked_records(
-    database: &crate::db::Database,
+    tables: &crate::import::tables::ImportTables,
     link: &crate::import::ReleaseLink,
 ) -> Result<Vec<crate::catalog_model::records::ReleaseRecord>, crate::import::ImportError> {
     let link = match link {
@@ -851,7 +851,7 @@ async fn linked_records(
     };
     let mut claimed = Vec::new();
     for release in link.claimed() {
-        claimed.push(database.load_source_release(release).await?.ok_or_else(|| {
+        claimed.push(tables.load_source_release(release).await?.ok_or_else(|| {
             crate::import::ImportError::Internal {
                 detail: format!(
                     "the candidate is linked to {} release {} that nothing stored",

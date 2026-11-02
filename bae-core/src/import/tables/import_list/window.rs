@@ -23,10 +23,10 @@ use super::*;
 use crate::db::client::files::cover_version_sql;
 use crate::db::client::queued_uploads::release_upload_on;
 use crate::db::client::read::get_release_records_on;
-use crate::db::client::source_releases::load_release_records_on;
 use crate::identify::PressingLink;
 use crate::import::folder_scanner::{FileVersion, ScanItem};
 use crate::import::list::{ImportListItem, ListedRelease};
+use crate::import::tables::source_releases::load_release_records_on;
 use crate::import::triage::{
     import_status_of, TriageGroup, TriageMetadataSummary, TriageReading, TriageRow,
 };
