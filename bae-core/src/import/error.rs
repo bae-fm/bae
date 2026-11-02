@@ -6,17 +6,7 @@
 //! chain. `do_import`, the terminal consumer, is the only place that turns this
 //! back into a string, for the user-facing `ImportProgress::Failed { error }`.
 
-/// Two exact provider identities that currently belong to different library
-/// artists. Import stops until the person chooses how this credit is used.
-#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
-#[error("artist '{incoming_artist_name}' has source IDs belonging to different library artists")]
-pub struct ArtistIdentityConflict {
-    pub incoming_artist_name: String,
-    pub discogs_artist_id: String,
-    pub musicbrainz_artist_id: String,
-    pub discogs_artist: crate::import::ExistingArtist,
-    pub musicbrainz_artist: crate::import::ExistingArtist,
-}
+use crate::db::{ArtistIdentityConflict, LabelIdentityConflict};
 
 /// The person's answer to an import's conflicting artist identities. Nothing
 /// selects an answer automatically. The first four answers decide this credit;
@@ -32,28 +22,6 @@ pub enum ArtistIdentityConflictChoice {
     /// Create an independent artist without either provider id when importing.
     Neither,
     ChangeMatch,
-}
-
-/// A library label as a write that decides labels names it.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ExistingLabel {
-    pub label_id: String,
-    pub name: String,
-    pub musicbrainz_label_id: Option<String>,
-    pub discogs_label_id: Option<String>,
-}
-
-/// A MusicBrainz and a Discogs id one incoming label carries that two
-/// library labels hold. Import stops until the person chooses how this label
-/// is used.
-#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
-#[error("label '{incoming_label_name}' has catalog ids belonging to different library labels")]
-pub struct LabelIdentityConflict {
-    pub incoming_label_name: String,
-    pub discogs_label_id: String,
-    pub musicbrainz_label_id: String,
-    pub discogs_label: ExistingLabel,
-    pub musicbrainz_label: ExistingLabel,
 }
 
 /// The person's answer to an import's conflicting label identities. Nothing
@@ -78,32 +46,6 @@ pub enum LabelIdentityConflictChoice {
 pub enum IdentityConflict {
     Artist(ArtistIdentityConflict),
     Label(LabelIdentityConflict),
-}
-
-/// Whether every catalog id two statements of one label carry agrees. An
-/// absent id makes no claim; two present ids of one catalog must be equal.
-pub(crate) fn label_ids_are_compatible(
-    label: &ExistingLabel,
-    musicbrainz_label_id: Option<&str>,
-    discogs_label_id: Option<&str>,
-) -> bool {
-    source_ids_are_compatible(label.musicbrainz_label_id.as_deref(), musicbrainz_label_id)
-        && source_ids_are_compatible(label.discogs_label_id.as_deref(), discogs_label_id)
-}
-
-/// Whether every provider ID both artists carry agrees. An absent ID makes no
-/// claim; two present IDs for the same provider must be equal.
-pub(crate) fn artist_source_ids_are_compatible(
-    artist: &crate::db::DbArtist,
-    discogs_artist_id: Option<&str>,
-    musicbrainz_artist_id: Option<&str>,
-) -> bool {
-    source_ids_are_compatible(artist.discogs_artist_id.as_deref(), discogs_artist_id)
-        && source_ids_are_compatible(artist.musicbrainz_artist_id.as_deref(), musicbrainz_artist_id)
-}
-
-fn source_ids_are_compatible(left: Option<&str>, right: Option<&str>) -> bool {
-    !matches!((left, right), (Some(left), Some(right)) if left != right)
 }
 
 /// Why an import failed. One class per distinguishable failure the pipeline

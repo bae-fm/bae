@@ -103,7 +103,7 @@ impl LabelRow {
 
     /// Whether no catalog id `label` carries contradicts this row's.
     fn agrees_with(&self, label: &ReleaseLabel) -> bool {
-        crate::import::label_ids_are_compatible(
+        crate::db::label_ids_are_compatible(
             &self.existing(),
             label.musicbrainz_label_id(),
             label.discogs_label_id(),
@@ -120,8 +120,8 @@ impl LabelRow {
         }
     }
 
-    pub(super) fn existing(&self) -> crate::import::ExistingLabel {
-        crate::import::ExistingLabel {
+    pub(super) fn existing(&self) -> crate::db::ExistingLabel {
+        crate::db::ExistingLabel {
             label_id: self.id.clone(),
             name: self.name.clone(),
             musicbrainz_label_id: self.musicbrainz_label_id.clone(),
@@ -283,7 +283,7 @@ fn resolve_label_on(
                         unreachable!("two catalog matches come from the label's two catalog ids")
                     };
                     return Err(IdentityWriteError::LabelIdentityConflict(Box::new(
-                        crate::import::LabelIdentityConflict {
+                        crate::db::LabelIdentityConflict {
                             incoming_label_name: name.to_string(),
                             discogs_label_id,
                             musicbrainz_label_id,

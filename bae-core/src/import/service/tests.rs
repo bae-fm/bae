@@ -523,13 +523,13 @@ fn terminal_import_failure_preserves_a_label_identity_conflict() {
     let failed_at = chrono::DateTime::parse_from_rfc3339("2026-01-15T12:00:00Z")
         .unwrap()
         .with_timezone(&chrono::Utc);
-    let label = |id: &str| crate::import::ExistingLabel {
+    let label = |id: &str| crate::db::ExistingLabel {
         label_id: id.to_string(),
         name: "Label Name".to_string(),
         musicbrainz_label_id: None,
         discogs_label_id: None,
     };
-    let conflict = crate::import::LabelIdentityConflict {
+    let conflict = crate::db::LabelIdentityConflict {
         incoming_label_name: "Label Name".to_string(),
         discogs_label_id: "7190".to_string(),
         musicbrainz_label_id: "mb-label".to_string(),
@@ -550,14 +550,14 @@ fn terminal_import_failure_preserves_an_artist_identity_conflict() {
     let failed_at = chrono::DateTime::parse_from_rfc3339("2026-01-15T12:00:00Z")
         .unwrap()
         .with_timezone(&chrono::Utc);
-    let discogs_artist = crate::import::ExistingArtist {
+    let discogs_artist = crate::db::ExistingArtist {
         artist_id: "artist-discogs".to_string(),
         name: "Artist One".to_string(),
         sort_name: None,
         musicbrainz_artist_id: None,
         discogs_artist_id: Some("discogs-1".to_string()),
     };
-    let musicbrainz_artist = crate::import::ExistingArtist {
+    let musicbrainz_artist = crate::db::ExistingArtist {
         artist_id: "artist-musicbrainz".to_string(),
         name: "Artist Two".to_string(),
         sort_name: None,
@@ -565,7 +565,7 @@ fn terminal_import_failure_preserves_an_artist_identity_conflict() {
         discogs_artist_id: None,
     };
     let error = crate::import::ImportError::ArtistIdentityConflict(Box::new(
-        crate::import::ArtistIdentityConflict {
+        crate::db::ArtistIdentityConflict {
             incoming_artist_name: "Mapped Artist".to_string(),
             discogs_artist_id: "discogs-1".to_string(),
             musicbrainz_artist_id: "musicbrainz-1".to_string(),
@@ -579,7 +579,7 @@ fn terminal_import_failure_preserves_an_artist_identity_conflict() {
     assert_eq!(failure.failed_at, failed_at);
     assert!(matches!(
         failure.identity_conflict,
-        Some(crate::import::IdentityConflict::Artist(crate::import::ArtistIdentityConflict {
+        Some(crate::import::IdentityConflict::Artist(crate::db::ArtistIdentityConflict {
             discogs_artist: actual_discogs,
             musicbrainz_artist: actual_musicbrainz,
             ..

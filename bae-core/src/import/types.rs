@@ -29,8 +29,7 @@ mod candidate_edit_field;
 pub use candidate_edit_field::{CandidateEditField, DraftFieldEdit, PressingFactEdit};
 mod artist_assignment;
 pub use artist_assignment::{
-    artists_standing, credited_line, ArtistAssignment, ArtistStanding, ArtistsStanding,
-    CreditResolution, Credited, ExistingArtist, ResolvedCredit,
+    artists_standing, credited_line, ArtistAssignment, ArtistStanding, ArtistsStanding, Credited,
 };
 mod raw_release_edit;
 mod release_edit_display;

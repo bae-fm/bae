@@ -213,7 +213,7 @@ fn read_credit(
     conn: &Connection,
     name: &str,
     discogs_artist_id: Option<&str>,
-) -> crate::import::CreditResolution {
+) -> crate::db::CreditResolution {
     resolve_credit_on(
         conn,
         &crate::catalog_model::credits::ArtistCredit {
@@ -227,19 +227,18 @@ fn read_credit(
     .unwrap()
 }
 
-fn artist_ids(artists: &[crate::import::ExistingArtist]) -> Vec<&str> {
+fn artist_ids(artists: &[crate::db::ExistingArtist]) -> Vec<&str> {
     artists.iter().map(|artist| artist.artist_id.as_str()).collect()
 }
 
 #[test]
 fn a_read_credit_is_new_until_the_library_holds_its_artist() {
     let conn = library();
-    assert_eq!(read_credit(&conn, "Artist Name", None), crate::import::CreditResolution::New);
+    assert_eq!(read_credit(&conn, "Artist Name", None), crate::db::CreditResolution::New);
 
     add_artist(&conn, "library-artist", "Ärtist Name", None, None);
 
-    let crate::import::CreditResolution::Library { artist } =
-        read_credit(&conn, "artist name", None)
+    let crate::db::CreditResolution::Library { artist } = read_credit(&conn, "artist name", None)
     else {
         panic!("the folded name names the library artist");
     };
@@ -252,7 +251,7 @@ fn a_read_credit_shared_by_two_library_artists_is_ambiguous() {
     add_artist(&conn, "first", "Artist Name", None, None);
     add_artist(&conn, "second", "Artist Name", None, Some("mb-2"));
 
-    let crate::import::CreditResolution::Ambiguous { artists } =
+    let crate::db::CreditResolution::Ambiguous { artists } =
         read_credit(&conn, "Artist Name", None)
     else {
         panic!("two artists share the name");
@@ -267,7 +266,7 @@ fn a_read_credit_with_another_catalog_id_than_the_named_artist_is_new() {
 
     assert_eq!(
         read_credit(&conn, "Artist Name", Some("discogs-y")),
-        crate::import::CreditResolution::New
+        crate::db::CreditResolution::New
     );
 }
 
@@ -289,7 +288,7 @@ fn a_read_credit_whose_ids_name_two_artists_is_conflicting() {
     )
     .unwrap();
 
-    let crate::import::CreditResolution::Conflicting { artists } = resolution else {
+    let crate::db::CreditResolution::Conflicting { artists } = resolution else {
         panic!("the credit's two ids name two artists");
     };
     assert_eq!(artist_ids(&artists), ["by-discogs", "by-musicbrainz"]);

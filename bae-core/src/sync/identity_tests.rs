@@ -5,8 +5,9 @@
 
 use super::test_devices::{run_two_device_test, TestDevice, TwoDevices};
 use crate::catalog_model::records::{MetadataRef, ReleaseRecord};
+use crate::db::ExistingArtist;
 use crate::db::{Database, DbAlbum, DbArtist, DbRelease, DbTrack, DbTrackWork, DbWork};
-use crate::import::{ArtistAssignment, ExistingArtist, ReleaseUserEdit};
+use crate::import::{ArtistAssignment, ReleaseUserEdit};
 use bae_catalogs::catalog::Catalog;
 
 const MB_ARTIST: &str = "5b11f4ce-a62d-471e-81fc-a69a8278c7da";

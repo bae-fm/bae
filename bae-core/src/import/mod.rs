@@ -274,11 +274,7 @@ pub use catalog_sessions::{CatalogSessionError, CatalogSessions, DiscogsKeyError
 #[cfg(desktop)]
 pub use cover_art::{CoverChoice, CoverImageSource};
 pub use error::ImportError;
-pub(crate) use error::{artist_source_ids_are_compatible, label_ids_are_compatible};
-pub use error::{
-    ArtistIdentityConflict, ArtistIdentityConflictChoice, ExistingLabel, IdentityConflict,
-    LabelIdentityConflict, LabelIdentityConflictChoice,
-};
+pub use error::{ArtistIdentityConflictChoice, IdentityConflict, LabelIdentityConflictChoice};
 #[cfg(desktop)]
 pub use file_evidence::{file_evidence, EvidenceSignal, FileEvidence};
 #[cfg(desktop)]
@@ -347,12 +343,12 @@ pub use types::ImportCommand;
 pub use types::ReleaseLink;
 pub use types::{
     artists_standing, credited_line, ArtistAssignment, ArtistStanding, ArtistsStanding, AudioFile,
-    CandidateDraft, CandidateEditField, CandidateTrack, CreditResolution, Credited, DraftAlbum,
-    DraftFieldEdit, DraftTrack, EditValidationError, ExistingArtist, LibraryDraft, LibraryTrack,
-    MetadataProvenance, PressingFactEdit, RawLabelEdit, RawPressingEdit, RawReleaseEdit,
-    RawTrackEdit, ReleaseDraft, ReleaseEditDisplayContext, ReleaseEditLoadError, ReleaseEditSeed,
-    ReleaseEditTrackContext, ReleaseEditTrackRun, ReleaseEditTrackSide, ReleaseEditTrackSource,
-    ReleaseUserEdit, ResolvedCredit, TrackArtistAssignments, TrackBinding, TrackUserEdit,
+    CandidateDraft, CandidateEditField, CandidateTrack, Credited, DraftAlbum, DraftFieldEdit,
+    DraftTrack, EditValidationError, LibraryDraft, LibraryTrack, MetadataProvenance,
+    PressingFactEdit, RawLabelEdit, RawPressingEdit, RawReleaseEdit, RawTrackEdit, ReleaseDraft,
+    ReleaseEditDisplayContext, ReleaseEditLoadError, ReleaseEditSeed, ReleaseEditTrackContext,
+    ReleaseEditTrackRun, ReleaseEditTrackSide, ReleaseEditTrackSource, ReleaseUserEdit,
+    TrackArtistAssignments, TrackBinding, TrackUserEdit,
 };
 #[cfg(desktop)]
 pub use types::{

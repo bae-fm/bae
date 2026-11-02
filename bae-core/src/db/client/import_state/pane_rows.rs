@@ -17,8 +17,7 @@ use super::*;
 use crate::catalog_model::credits::ArtistCredit;
 use crate::import::{
     ArtistAssignment, AudioFile, CandidateDraft, CandidateTrack, CoverSelection, Credited,
-    ExistingArtist, MetadataAuthor, RawLabelEdit, RawPressingEdit, RawTrackEdit,
-    TrackArtistAssignments,
+    MetadataAuthor, RawLabelEdit, RawPressingEdit, RawTrackEdit, TrackArtistAssignments,
 };
 use bae_catalogs::remote_image::RemoteImageSet;
 use std::str::FromStr;

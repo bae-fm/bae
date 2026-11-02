@@ -165,7 +165,7 @@ impl BridgeArtistSearchResult {
     pub(crate) fn from_core(result: bae_core::album_detail::ArtistSearchResult) -> Self {
         let bae_core::album_detail::ArtistSearchResult { artist, image, credit_names } = result;
         Self {
-            artist: BridgeExistingArtist::from_core(bae_core::import::ExistingArtist::from(artist)),
+            artist: BridgeExistingArtist::from_core(bae_core::db::ExistingArtist::from(artist)),
             image: image.map(BridgeImageRef::from_core),
             credit_names: credit_names.into_iter().map(BridgeArtistCreditName::from_core).collect(),
         }

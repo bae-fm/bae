@@ -146,9 +146,9 @@ pub enum LibraryError {
     #[error("{0}")]
     Refused(String),
     #[error("Import error: {0}")]
-    ArtistIdentityConflict(#[source] Box<crate::import::ArtistIdentityConflict>),
+    ArtistIdentityConflict(#[source] Box<crate::db::ArtistIdentityConflict>),
     #[error("Import error: {0}")]
-    LabelIdentityConflict(#[source] Box<crate::import::LabelIdentityConflict>),
+    LabelIdentityConflict(#[source] Box<crate::db::LabelIdentityConflict>),
     /// A verbatim release export (reproducing the imported file set) failed.
     #[error("Export error: {0}")]
     Export(String),
@@ -269,8 +269,8 @@ impl From<crate::db::IdentityWriteError> for LibraryError {
     }
 }
 
-impl From<crate::import::ArtistIdentityConflict> for LibraryError {
-    fn from(error: crate::import::ArtistIdentityConflict) -> Self {
+impl From<crate::db::ArtistIdentityConflict> for LibraryError {
+    fn from(error: crate::db::ArtistIdentityConflict) -> Self {
         Self::ArtistIdentityConflict(Box::new(error))
     }
 }

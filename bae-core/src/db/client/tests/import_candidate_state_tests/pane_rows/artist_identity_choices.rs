@@ -303,5 +303,5 @@ async fn repeated_credits_share_the_neither_artist_and_picked_credits_stay_picke
         })
         .await
         .unwrap();
-    assert_eq!(preview[0].resolution, crate::import::CreditResolution::New);
+    assert_eq!(preview[0].resolution, crate::db::CreditResolution::New);
 }

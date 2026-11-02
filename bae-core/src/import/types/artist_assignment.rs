@@ -3,6 +3,7 @@
 
 use super::trim_to_option;
 use crate::catalog_model::credits::{ArtistCredit, SourceCredit};
+use crate::db::{CreditResolution, ExistingArtist, ResolvedCredit};
 use serde::{Deserialize, Serialize};
 
 /// One artist credited on an album or track.
@@ -80,52 +81,6 @@ pub fn credited_line(credits: &[Credited]) -> String {
     bae_types::credits::credit_line(
         credits.iter().map(|credited| (credited.artist.printed(), credited.join.as_deref())),
     )
-}
-
-/// One artist already in the library, with the fields an editor needs to show
-/// and distinguish the selection. Candidate storage persists only `artist_id`;
-/// loading the candidate resolves the rest from the canonical artist row.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct ExistingArtist {
-    pub artist_id: String,
-    pub name: String,
-    pub sort_name: Option<String>,
-    pub musicbrainz_artist_id: Option<String>,
-    pub discogs_artist_id: Option<String>,
-}
-
-impl From<crate::db::DbArtist> for ExistingArtist {
-    fn from(artist: crate::db::DbArtist) -> Self {
-        Self {
-            artist_id: artist.id,
-            name: artist.name,
-            sort_name: artist.sort_name,
-            musicbrainz_artist_id: artist.musicbrainz_artist_id,
-            discogs_artist_id: artist.discogs_artist_id,
-        }
-    }
-}
-
-/// What the library holds for one credit, as it stands when read.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum CreditResolution {
-    /// The credit names this library artist.
-    Library { artist: ExistingArtist },
-    /// No library artist is this one: committing creates it.
-    New,
-    /// Several library artists carry the credit's name and no catalog id tells
-    /// them apart. Committing creates a new artist unless the person picks one.
-    Ambiguous { artists: Vec<ExistingArtist> },
-    /// The credit's catalog ids point at library artists that disagree with
-    /// it. Committing fails until the person picks one, or merges them.
-    Conflicting { artists: Vec<ExistingArtist> },
-}
-
-/// One credit and what it resolves to.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ResolvedCredit {
-    pub credit: ArtistCredit,
-    pub resolution: CreditResolution,
 }
 
 /// How one assigned artist stands to the library — what its badge says.

@@ -210,7 +210,7 @@ pub(super) fn resolve_import_credits_on<'a, Q: QueryOne + QueryRows>(
     sql: &Q,
     hash: &str,
     credits: impl IntoIterator<Item = &'a crate::catalog_model::credits::ArtistCredit>,
-) -> Result<Vec<crate::import::ResolvedCredit>, DbError> {
+) -> Result<Vec<crate::db::ResolvedCredit>, DbError> {
     super::artist_resolution::resolve_credits_with(credits, |credit| {
         Ok(
             match chosen_artist_on(
@@ -220,9 +220,9 @@ pub(super) fn resolve_import_credits_on<'a, Q: QueryOne + QueryRows>(
                 credit.musicbrainz_artist_id.as_deref(),
             )? {
                 Some(ChosenArtist::Library(artist)) => {
-                    crate::import::CreditResolution::Library { artist: artist.into() }
+                    crate::db::CreditResolution::Library { artist: artist.into() }
                 }
-                Some(ChosenArtist::New(_)) => crate::import::CreditResolution::New,
+                Some(ChosenArtist::New(_)) => crate::db::CreditResolution::New,
                 None => super::artist_resolution::resolve_credit_on(sql, credit)?,
             },
         )

@@ -20,7 +20,7 @@ async fn a_label_identity_conflict_round_trips_with_both_library_labels() {
     .await
     .unwrap();
     let existing = |id: &str, name: &str, musicbrainz: Option<&str>, discogs: Option<&str>| {
-        crate::import::ExistingLabel {
+        crate::db::ExistingLabel {
             label_id: id.to_string(),
             name: name.to_string(),
             musicbrainz_label_id: musicbrainz.map(str::to_string),
@@ -31,7 +31,7 @@ async fn a_label_identity_conflict_round_trips_with_both_library_labels() {
         reason: crate::import::ImportFailureReason::error("the label identities disagree"),
         failed_at: fixed_now(),
         identity_conflict: Some(crate::import::IdentityConflict::Label(
-            crate::import::LabelIdentityConflict {
+            crate::db::LabelIdentityConflict {
                 incoming_label_name: "Label Name".to_string(),
                 discogs_label_id: "7190".to_string(),
                 musicbrainz_label_id: "mb-label".to_string(),

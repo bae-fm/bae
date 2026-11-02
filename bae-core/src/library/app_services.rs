@@ -566,7 +566,7 @@ impl AppServices {
     delegate_async!(manager, save_track => save_track(track_id: &str, output_path: &std::path::Path, preset_id: &str) -> Result<(), crate::library::LibraryError>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     delegate_async!(manager, save_track_suggested_name => save_track_suggested_name(track_id: &str, preset_id: &str) -> Result<String, crate::library::LibraryError>);
-    delegate_async!(manager, resolve_release_edit_credits => resolve_release_edit_credits(edit: &crate::import::RawReleaseEdit) -> Result<Vec<crate::import::ResolvedCredit>, crate::library::LibraryError>);
+    delegate_async!(manager, resolve_release_edit_credits => resolve_release_edit_credits(edit: &crate::import::RawReleaseEdit) -> Result<Vec<crate::db::ResolvedCredit>, crate::library::LibraryError>);
     delegate_async!(manager, apply_release_metadata_user_edit => apply_release_metadata_user_edit(release_id: &str, edit: &crate::import::ReleaseUserEdit) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, search_library => search_library(query: &crate::library::LibrarySearchQuery) -> Result<crate::album_detail::SearchResults, crate::library::LibraryError>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]

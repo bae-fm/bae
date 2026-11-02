@@ -195,7 +195,7 @@ impl LibraryManager {
     pub async fn resolve_release_edit_credits(
         &self,
         edit: &crate::import::RawReleaseEdit,
-    ) -> Result<Vec<crate::import::ResolvedCredit>, LibraryError> {
+    ) -> Result<Vec<crate::db::ResolvedCredit>, LibraryError> {
         let credits: Vec<_> = edit.credits().cloned().collect();
         Ok(self.database.resolve_artist_credits(&credits).await?)
     }

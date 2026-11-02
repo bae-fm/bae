@@ -3,7 +3,7 @@ mod preparation;
 // rows the user typed.
 
 use crate::import::folder_scanner::{CandidateFileEdits, SheetDisc};
-use crate::import::{ArtistAssignment, AudioFile, CandidateEditField, CoverSelection, ExistingArtist, ImportFailure, RawPressingEdit, RawReleaseEdit, RawTrackEdit, TrackArtistAssignments};
+use crate::import::{ArtistAssignment, AudioFile, CandidateEditField, CoverSelection, ImportFailure, RawPressingEdit, RawReleaseEdit, RawTrackEdit, TrackArtistAssignments};
 use crate::catalog_model::credits::{ArtistCredit};
 use crate::identify::signals::{BarcodeSignal, DiscIdSignal, Signals, SourcedValue, TextSignal};
 use crate::catalog_model::{InternalFailure};

@@ -45,7 +45,7 @@ enum StageRows {
 struct DraftRows {
     pane_rows: DbCandidatePaneRows,
     cover_options: Vec<bae_catalogs::remote_image::RemoteCover>,
-    artist_resolutions: Vec<crate::import::ResolvedCredit>,
+    artist_resolutions: Vec<crate::db::ResolvedCredit>,
     records: Vec<crate::catalog_model::records::ReleaseRecord>,
     picked_library_status: Option<LibraryStatus>,
     album: crate::import::DraftAlbum,

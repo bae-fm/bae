@@ -2,10 +2,7 @@
 //! identity conflicts.
 
 use super::*;
-use crate::import::{
-    ArtistIdentityConflict, ExistingArtist, ExistingLabel, IdentityConflict, ImportFailure,
-    ImportFailureReason, LabelIdentityConflict,
-};
+use crate::import::{IdentityConflict, ImportFailure, ImportFailureReason};
 
 /// The diagnostic column read by both the list and the candidate pane.
 pub(crate) const FAILURE_REASON_COLUMNS: &str = "failure.error AS failure_error";

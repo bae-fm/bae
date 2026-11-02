@@ -182,7 +182,7 @@ async fn a_merged_artists_credit_prints_the_survivor_unless_a_printed_name_was_s
 async fn an_edit_prints_typed_artists_with_commas_and_drops_the_last_join() {
     let library = credited_library().await;
     let manager = &library.manager;
-    let artist_a = crate::import::ExistingArtist::from(
+    let artist_a = crate::db::ExistingArtist::from(
         manager.get_artist_by_id(CREDIT_ARTIST_A).await.unwrap().expect("Artist A"),
     );
     let edit = |album_artists: Vec<crate::import::Credited>| crate::import::ReleaseUserEdit {

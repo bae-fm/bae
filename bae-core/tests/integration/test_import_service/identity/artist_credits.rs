@@ -251,8 +251,8 @@ async fn open_tagged_pane(
 async fn next_resolution(
     pane: &mut PaneQuery,
     name: &str,
-    mut accept: impl FnMut(&bae_core::import::CreditResolution) -> bool,
-) -> bae_core::import::CreditResolution {
+    mut accept: impl FnMut(&bae_core::db::CreditResolution) -> bool,
+) -> bae_core::db::CreditResolution {
     tokio::time::timeout(HANG_GUARD, async {
         loop {
             let projection = pane
@@ -292,7 +292,7 @@ async fn an_open_pane_reads_its_credit_into_the_library_when_another_import_comm
     let (tagged_key, mut pane) = open_tagged_pane(&f, &tagged_dir).await;
 
     next_resolution(&mut pane, "Artist Name", |resolution| {
-        *resolution == bae_core::import::CreditResolution::New
+        *resolution == bae_core::db::CreditResolution::New
     })
     .await;
 
@@ -300,10 +300,10 @@ async fn an_open_pane_reads_its_credit_into_the_library_when_another_import_comm
     let catalog_artist = album_artist_id(&f, &catalog_album).await;
 
     let resolution = next_resolution(&mut pane, "Artist Name", |resolution| {
-        matches!(resolution, bae_core::import::CreditResolution::Library { .. })
+        matches!(resolution, bae_core::db::CreditResolution::Library { .. })
     })
     .await;
-    let bae_core::import::CreditResolution::Library { artist } = resolution else {
+    let bae_core::db::CreditResolution::Library { artist } = resolution else {
         unreachable!("accepted only a library artist")
     };
     assert_eq!(artist.artist_id, catalog_artist);
@@ -336,7 +336,7 @@ async fn a_pane_offers_the_library_artists_a_shared_name_could_be() {
 
     let resolution = next_resolution(&mut pane, "Artist Name", |_| true).await;
 
-    let bae_core::import::CreditResolution::Ambiguous { artists } = resolution else {
+    let bae_core::db::CreditResolution::Ambiguous { artists } = resolution else {
         panic!("expected the credit to be ambiguous, got {resolution:?}");
     };
     let mut offered: Vec<_> = artists.into_iter().map(|artist| artist.artist_id).collect();

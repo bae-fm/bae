@@ -17,17 +17,31 @@ use bae_util::content_type::ContentType;
 use chrono::{DateTime, Utc};
 use std::num::NonZeroU32;
 
+mod artist_identity;
 mod images;
 // Every type here describes the import queue's own state, which the mobile
 // builds leave out along with the import pipeline that produces it.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod import;
+mod label_identity;
 mod query;
 
+pub(crate) use artist_identity::artist_source_ids_are_compatible;
+pub use artist_identity::{
+    ArtistIdentityConflict, CreditResolution, ExistingArtist, ResolvedCredit,
+};
 pub use images::*;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use import::*;
+pub(crate) use label_identity::label_ids_are_compatible;
+pub use label_identity::{ExistingLabel, LabelIdentityConflict};
 pub use query::*;
+
+/// Whether two statements of one catalog id agree: an absent id makes no
+/// claim; two present ids must be equal.
+fn source_ids_are_compatible(left: Option<&str>, right: Option<&str>) -> bool {
+    !matches!((left, right), (Some(left), Some(right)) if left != right)
+}
 
 /// An individual artist or band. Linked to albums and tracks through the
 /// `album_artists` / `track_artists` junction tables, so an album or track can

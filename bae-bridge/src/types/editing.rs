@@ -158,7 +158,7 @@ mirror_struct! {
 }
 
 mirror_struct! {
-    BridgeExistingArtist = bae_core::import::ExistingArtist,
+    BridgeExistingArtist = bae_core::db::ExistingArtist,
     from_core: pub(crate) fn,
     #[cfg(feature = "desktop")]
     into_core: pub(crate) fn,
@@ -184,7 +184,7 @@ pub struct BridgeArtistCredit {
 }
 
 /// What the library holds for one credit, as it stood when read. Mirror of
-/// `bae_core::import::CreditResolution`.
+/// `bae_core::db::CreditResolution`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeCreditResolution {
     /// The credit names this library artist.
@@ -200,7 +200,7 @@ pub enum BridgeCreditResolution {
 }
 
 /// One credit and what it resolves to. Mirror of
-/// `bae_core::import::ResolvedCredit`.
+/// `bae_core::db::ResolvedCredit`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeResolvedCredit {
     pub credit: BridgeArtistCredit,

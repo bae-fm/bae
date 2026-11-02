@@ -23,6 +23,7 @@ mod metadata_provenance_tests {
 #[cfg(test)]
 mod edit_shaping_tests {
     use super::*;
+    use crate::db::ExistingArtist;
 
     fn existing_artist() -> ExistingArtist {
         ExistingArtist {

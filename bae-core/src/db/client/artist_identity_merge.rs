@@ -111,11 +111,11 @@ fn plan_artist_identity_merge<Q: QueryOne + QueryRows>(
         [&musicbrainz_library_id],
         row_to_artist,
     )?;
-    if !crate::import::artist_source_ids_are_compatible(
+    if !crate::db::artist_source_ids_are_compatible(
         &discogs_artist,
         Some(&discogs_artist_id),
         Some(&musicbrainz_artist_id),
-    ) || !crate::import::artist_source_ids_are_compatible(
+    ) || !crate::db::artist_source_ids_are_compatible(
         &musicbrainz_artist,
         Some(&discogs_artist_id),
         Some(&musicbrainz_artist_id),

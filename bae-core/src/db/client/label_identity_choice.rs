@@ -133,7 +133,7 @@ fn merge_labels_on(
         |id: &str| sql.query_row("SELECT * FROM labels WHERE id = ?", [id], LabelRow::from_row);
     let (surviving, absorbed_row) = (row(survivor)?, row(absorbed)?);
     for label in [&surviving, &absorbed_row] {
-        if !crate::import::label_ids_are_compatible(
+        if !crate::db::label_ids_are_compatible(
             &label.existing(),
             Some(&conflict.musicbrainz),
             Some(&conflict.discogs),

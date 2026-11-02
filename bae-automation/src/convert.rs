@@ -449,7 +449,7 @@ impl AutomationTrackUserEdit {
 }
 
 mirror_struct! {
-    AutomationExistingArtist = bae_core::import::ExistingArtist,
+    AutomationExistingArtist = bae_core::db::ExistingArtist,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
     fields: {

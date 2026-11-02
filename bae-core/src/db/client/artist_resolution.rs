@@ -35,11 +35,11 @@ pub enum IdentityWriteError {
     /// Two library artists each hold one of the credit's catalog ids — the
     /// conflict a person resolves on the import page.
     #[error(transparent)]
-    ArtistIdentityConflict(Box<crate::import::ArtistIdentityConflict>),
+    ArtistIdentityConflict(Box<crate::db::ArtistIdentityConflict>),
     /// Two library labels each hold one of the label's catalog ids — the
     /// conflict a person resolves on the import page.
     #[error(transparent)]
-    LabelIdentityConflict(Box<crate::import::LabelIdentityConflict>),
+    LabelIdentityConflict(Box<crate::db::LabelIdentityConflict>),
     /// The statement cannot be linked to the library as it stands: its ids
     /// contradict the artist or label they match, or a picked artist no
     /// longer exists.
@@ -131,7 +131,7 @@ impl Database {
     pub async fn resolve_artist_credits(
         &self,
         credits: &[crate::catalog_model::credits::ArtistCredit],
-    ) -> Result<Vec<crate::import::ResolvedCredit>, DbError> {
+    ) -> Result<Vec<crate::db::ResolvedCredit>, DbError> {
         let credits = credits.to_vec();
         self.read(move |sql| resolve_credits_on(&sql, &credits)).await
     }
@@ -339,8 +339,8 @@ pub(crate) fn resolved_in_an_empty_library(credits: &[DbArtist]) -> Vec<String> 
 pub(crate) fn resolve_credit_on<Q: QueryOne + QueryRows>(
     sql: &Q,
     credit: &crate::catalog_model::credits::ArtistCredit,
-) -> Result<crate::import::CreditResolution, DbError> {
-    use crate::import::CreditResolution;
+) -> Result<crate::db::CreditResolution, DbError> {
+    use crate::db::CreditResolution;
     let row = DbArtist {
         id: String::new(),
         name: credit.name.clone(),
@@ -372,7 +372,7 @@ pub(crate) fn resolve_credit_on<Q: QueryOne + QueryRows>(
 pub(crate) fn resolve_credits_on<'a, Q: QueryOne + QueryRows>(
     sql: &Q,
     credits: impl IntoIterator<Item = &'a crate::catalog_model::credits::ArtistCredit>,
-) -> Result<Vec<crate::import::ResolvedCredit>, DbError> {
+) -> Result<Vec<crate::db::ResolvedCredit>, DbError> {
     resolve_credits_with(credits, |credit| resolve_credit_on(sql, credit))
 }
 
@@ -380,14 +380,14 @@ pub(super) fn resolve_credits_with<'a>(
     credits: impl IntoIterator<Item = &'a crate::catalog_model::credits::ArtistCredit>,
     mut resolve: impl FnMut(
         &crate::catalog_model::credits::ArtistCredit,
-    ) -> Result<crate::import::CreditResolution, DbError>,
-) -> Result<Vec<crate::import::ResolvedCredit>, DbError> {
-    let mut resolved: Vec<crate::import::ResolvedCredit> = Vec::new();
+    ) -> Result<crate::db::CreditResolution, DbError>,
+) -> Result<Vec<crate::db::ResolvedCredit>, DbError> {
+    let mut resolved: Vec<crate::db::ResolvedCredit> = Vec::new();
     for credit in credits {
         if resolved.iter().any(|known| known.credit == *credit) {
             continue;
         }
-        resolved.push(crate::import::ResolvedCredit {
+        resolved.push(crate::db::ResolvedCredit {
             credit: credit.clone(),
             resolution: resolve(credit)?,
         });
@@ -482,7 +482,7 @@ pub(super) enum CatalogMatch {
 
 pub(super) enum CatalogConflict {
     /// Two different artists each hold one of the credit's ids.
-    Identity(Box<crate::import::ArtistIdentityConflict>),
+    Identity(Box<crate::db::ArtistIdentityConflict>),
     /// A matched artist holds a different id of the same catalog, or the
     /// library holds one id on several artists.
     Contradicted { artists: Vec<DbArtist>, detail: String },
@@ -497,13 +497,11 @@ impl CatalogConflict {
     }
 
     /// The library artists the credit's ids point at.
-    fn artists(self) -> Vec<crate::import::ExistingArtist> {
+    fn artists(self) -> Vec<crate::db::ExistingArtist> {
         match self {
             Self::Identity(conflict) => {
-                let crate::import::ArtistIdentityConflict {
-                    discogs_artist,
-                    musicbrainz_artist,
-                    ..
+                let crate::db::ArtistIdentityConflict {
+                    discogs_artist, musicbrainz_artist, ..
                 } = *conflict;
                 vec![discogs_artist, musicbrainz_artist]
             }
@@ -728,15 +726,13 @@ fn matching_artist(
             else {
                 unreachable!("two catalog matches come from the credit's two catalog ids")
             };
-            return Err(CatalogConflict::Identity(Box::new(
-                crate::import::ArtistIdentityConflict {
-                    incoming_artist_name: incoming.name.clone(),
-                    discogs_artist_id,
-                    musicbrainz_artist_id,
-                    discogs_artist: discogs.into(),
-                    musicbrainz_artist: musicbrainz.into(),
-                },
-            )));
+            return Err(CatalogConflict::Identity(Box::new(crate::db::ArtistIdentityConflict {
+                incoming_artist_name: incoming.name.clone(),
+                discogs_artist_id,
+                musicbrainz_artist_id,
+                discogs_artist: discogs.into(),
+                musicbrainz_artist: musicbrainz.into(),
+            })));
         }
         (Some(artist), _) | (_, Some(artist)) => Some(artist),
         (None, None) => None,
@@ -817,7 +813,7 @@ fn merge_artist_metadata(
 
 /// Whether no catalog id the two carry contradicts the other's.
 fn ids_agree(existing: &DbArtist, incoming: &DbArtist) -> bool {
-    crate::import::artist_source_ids_are_compatible(
+    crate::db::artist_source_ids_are_compatible(
         existing,
         incoming.discogs_artist_id.as_deref(),
         incoming.musicbrainz_artist_id.as_deref(),

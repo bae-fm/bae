@@ -325,7 +325,7 @@ async fn a_queued_release_shows_its_title_as_edited_while_it_waits() {
                 album_artist_assignments: vec![crate::import::Credited::plain(
                     crate::import::ArtistAssignment::Picked {
                         credit_name: None,
-                        artist: crate::import::ExistingArtist {
+                        artist: crate::db::ExistingArtist {
                             artist_id: bae_test_support::test_uuid(
                                 "e36744a5-1a36-460f-891c-e7e558034edf",
                             ),

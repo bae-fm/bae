@@ -25,7 +25,7 @@ mirror_struct! {
 }
 
 mirror_enum! {
-    BridgeCreditResolution = bae_core::import::CreditResolution,
+    BridgeCreditResolution = bae_core::db::CreditResolution,
     from_core: fn,
     into_core: fn,
     variants: {
@@ -37,7 +37,7 @@ mirror_enum! {
 }
 
 mirror_struct! {
-    BridgeResolvedCredit = bae_core::import::ResolvedCredit,
+    BridgeResolvedCredit = bae_core::db::ResolvedCredit,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
     fields: { credit: (BridgeArtistCredit), resolution: (BridgeCreditResolution) },
