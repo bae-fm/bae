@@ -149,7 +149,7 @@ async fn a_pick_ends_identification_in_its_write() {
                 .select_candidate_release(
                     decided_key,
                     crate::import::PressingLink {
-                        record: crate::import::MetadataRef::new(
+                        record: crate::catalog_model::records::MetadataRef::new(
                             bae_catalogs::catalog::Catalog::Discogs,
                             release_id.to_string(),
                         ),

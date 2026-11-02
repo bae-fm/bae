@@ -10,7 +10,7 @@ impl LibraryManager {
     pub async fn get_release_records(
         &self,
         release_id: &str,
-    ) -> Result<Vec<crate::import::ReleaseRecord>, LibraryError> {
+    ) -> Result<Vec<crate::catalog_model::records::ReleaseRecord>, LibraryError> {
         Ok(self.database.get_release_records(release_id).await?)
     }
 
@@ -95,7 +95,7 @@ impl LibraryManager {
     #[cfg(desktop)]
     pub async fn find_existing_album_for_import(
         &self,
-        records: &[crate::import::ReleaseRecord],
+        records: &[crate::catalog_model::records::ReleaseRecord],
     ) -> Result<Option<String>, crate::import::ImportError> {
         self.database
             .album_records_name(records, &[])

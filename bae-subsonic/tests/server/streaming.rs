@@ -412,12 +412,12 @@ async fn musicbrainz_id_surfaces_when_present() {
     let one = call(&router, "getArtist", &authed(&format!("f=json&id=ar-{artist_id}"))).await;
     assert_eq!(one.sub()["artist"]["musicBrainzId"], "mbid-abc-123", "getArtist emits mbid");
 
-    let group = bae_core::import::MetadataRef::new(Catalog::MusicBrainz, "mb-group");
-    let pressing = bae_core::import::MetadataRef::new(Catalog::MusicBrainz, "mb-pressing");
+    let group = bae_core::catalog_model::records::MetadataRef::new(Catalog::MusicBrainz, "mb-group");
+    let pressing = bae_core::catalog_model::records::MetadataRef::new(Catalog::MusicBrainz, "mb-pressing");
     for (record, expected) in [
-        (bae_core::import::ReleaseRecord::album(&group), None),
+        (bae_core::catalog_model::records::ReleaseRecord::album(&group), None),
         (
-            bae_core::import::ReleaseRecord::new(&pressing, Some(group.key.clone())),
+            bae_core::catalog_model::records::ReleaseRecord::new(&pressing, Some(group.key.clone())),
             Some(pressing.key.as_str()),
         ),
     ] {
@@ -491,7 +491,7 @@ async fn seed_lossy_release() -> (AppServices, String, Vec<TempDir>) {
             destination: ImportDestination::Local,
             read_file_tags: false,
             pick: Some(bae_core::import::PressingLink {
-                record: bae_core::import::MetadataRef::new(Catalog::Discogs, discogs_key),
+                record: bae_core::catalog_model::records::MetadataRef::new(Catalog::Discogs, discogs_key),
                 partners: vec![],
             }),
             user_edit: None,

@@ -13,7 +13,7 @@ async fn stored_for(
 ) -> Option<crate::catalog_model::source_release::SourceRelease> {
     manager
         .database
-        .load_source_release(&crate::import::MetadataRef::new(catalog, release_id))
+        .load_source_release(&crate::catalog_model::records::MetadataRef::new(catalog, release_id))
         .await
         .unwrap()
 }
@@ -61,7 +61,7 @@ async fn insert_editable_tracks(manager: &LibraryManager, release_id: &str, n: u
 
 fn musicbrainz_link(release_id: &str) -> crate::import::PressingLink {
     crate::import::PressingLink {
-        record: crate::import::MetadataRef::new(Catalog::MusicBrainz, release_id),
+        record: crate::catalog_model::records::MetadataRef::new(Catalog::MusicBrainz, release_id),
         partners: vec![],
     }
 }
@@ -321,7 +321,7 @@ async fn a_reidentify_leaves_none_of_the_previous_source_s_roles_or_works() {
         &manager,
         &release.id,
         crate::import::PressingLink {
-            record: crate::import::MetadataRef::new(Catalog::Discogs, discogs_release_id),
+            record: crate::catalog_model::records::MetadataRef::new(Catalog::Discogs, discogs_release_id),
             partners: vec![],
         },
     )
@@ -580,7 +580,7 @@ async fn a_session_s_save_is_refused_once_the_release_changed_under_it() {
 
 #[tokio::test]
 async fn re_identify_with_a_partner_writes_both_identity_rows() {
-    use crate::import::MetadataRef;
+    use crate::catalog_model::records::MetadataRef;
     use bae_catalogs::catalog::Catalog;
     let (manager, _temp_dir) = setup_test_manager().await;
     manager

@@ -5,7 +5,8 @@
 //! They hang off the draft row, and each track's off its track row.
 
 use super::*;
-use crate::import::{CreditedRole, GraphWork, WorkGraph, WorkPart};
+use crate::catalog_model::credits::CreditedRole;
+use crate::import::{GraphWork, WorkGraph, WorkPart};
 
 /// Write the values `draft` holds beside its rows besides its tracks': the
 /// works and the roles on the release. The draft row is already written.

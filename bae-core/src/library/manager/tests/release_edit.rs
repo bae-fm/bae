@@ -84,7 +84,7 @@ async fn release_edit_seed_uses_persisted_track_ids() {
 
 #[tokio::test]
 async fn an_applied_catalog_s_form_keeps_the_persisted_track_ids() {
-    use crate::import::MetadataRef;
+    use crate::catalog_model::records::MetadataRef;
     use bae_catalogs::catalog::Catalog;
     let (manager, _temp_dir, _album, release) = manager_with_release().await;
     insert_editable_tracks(&manager, &release.id, 2).await;
@@ -128,7 +128,7 @@ async fn an_applied_catalog_s_form_keeps_the_persisted_track_ids() {
 /// waits on, and that the read ended.
 #[tokio::test]
 async fn an_applied_catalog_tells_its_catalog_read() {
-    use crate::import::MetadataRef;
+    use crate::catalog_model::records::MetadataRef;
     use bae_catalogs::catalog::Catalog;
     let (manager, _temp_dir, _album, release) = manager_with_release().await;
     insert_editable_tracks(&manager, &release.id, 2).await;
@@ -267,8 +267,8 @@ async fn release_metadata_edit_preserves_records_and_audio() {
         &[("track.flac", crate::album_detail::SourceAudioLayout::File)],
     )
     .await;
-    let identity = crate::import::ReleaseRecord::new(
-        &crate::import::MetadataRef::new(
+    let identity = crate::catalog_model::records::ReleaseRecord::new(
+        &crate::catalog_model::records::MetadataRef::new(
             bae_catalogs::catalog::Catalog::MusicBrainz,
             "source-release",
         ),

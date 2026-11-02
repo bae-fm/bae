@@ -116,7 +116,7 @@ impl DraftSource {
 /// imported under.
 pub fn discogs_release(release_id: impl Into<String>) -> DraftSource {
     DraftSource::Pick(bae_core::import::PressingLink {
-        record: bae_core::import::MetadataRef::new(
+        record: bae_core::catalog_model::records::MetadataRef::new(
             bae_catalogs::catalog::Catalog::Discogs,
             release_id.into(),
         ),

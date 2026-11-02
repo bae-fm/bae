@@ -1,13 +1,13 @@
 use super::super::*;
 use super::*;
+use crate::catalog_model::records::ReleaseRecord;
 use crate::db::{identity, DbAlbum, DbAlbumArtist, DbArtist, DbRelease};
-use crate::import::ReleaseRecord;
 use bae_catalogs::catalog::Catalog;
 use chrono::Utc;
 
 fn record(source: Catalog, release_id: &str) -> ReleaseRecord {
     ReleaseRecord::new(
-        &crate::import::MetadataRef::new(source, release_id),
+        &crate::catalog_model::records::MetadataRef::new(source, release_id),
         Some(format!("group-{release_id}")),
     )
 }

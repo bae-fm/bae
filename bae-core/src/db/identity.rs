@@ -10,7 +10,7 @@
 //! shows it. These tables are declared `RowIdentity::SharedKey` in
 //! `sync::synced_tables`.
 
-use crate::import::ReleaseRecord;
+use crate::catalog_model::records::ReleaseRecord;
 use bae_catalogs::catalog::Catalog;
 
 /// bae's namespace for its name-based row ids.

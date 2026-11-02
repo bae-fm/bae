@@ -45,7 +45,7 @@ struct DraftRows {
     pane_rows: DbCandidatePaneRows,
     cover_options: Vec<bae_catalogs::remote_image::RemoteCover>,
     artist_resolutions: Vec<crate::import::ResolvedCredit>,
-    records: Vec<crate::import::ReleaseRecord>,
+    records: Vec<crate::catalog_model::records::ReleaseRecord>,
     picked_library_status: Option<LibraryStatus>,
     album: crate::import::DraftAlbum,
     embedded_cover: Option<(FileVersion, Vec<u8>)>,
@@ -200,7 +200,7 @@ fn draft_rows_on(
 fn candidate_album_on(
     sql: &SqlReadContext<'_>,
     content_hash: &str,
-    records: &[crate::import::ReleaseRecord],
+    records: &[crate::catalog_model::records::ReleaseRecord],
 ) -> Result<crate::import::DraftAlbum, DbError> {
     use crate::import::DraftAlbum;
     let title = |album_id: &str| -> Result<String, DbError> {

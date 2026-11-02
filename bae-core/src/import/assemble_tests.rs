@@ -1,7 +1,7 @@
 use super::*;
+use crate::catalog_model::credits::{ArtistCredit, CreditedRole};
 use crate::import::{
-    ArtistCredit, CandidateTrack, CreditedRole, ExistingArtist, GraphWork, RawPressingEdit,
-    RawTrackEdit, WorkGraph, WorkPart,
+    CandidateTrack, ExistingArtist, GraphWork, RawPressingEdit, RawTrackEdit, WorkGraph, WorkPart,
 };
 
 fn clock() -> coven::FixedClock {

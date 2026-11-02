@@ -12,13 +12,13 @@
 
 use super::*;
 use crate::catalog_model::album_links::AlbumLinks;
+use crate::catalog_model::records::{MetadataRef, ReleaseRecord};
 use crate::catalog_model::release_metadata::{AlbumMetadata, ReleaseMetadata};
 use crate::catalog_model::source_release::{
     ArchiveRelease, CatalogFacts, DisplayCredit, EntryKind, PartDirection, PerformedWork,
     PreparedRelease, ReleaseCovers, RoleCredit, SourceMedium, SourceRelease, SourceWork,
     SourceWorkEvent, TracklistEntry, UnfetchedDocument, UnfetchedReason,
 };
-use crate::import::{MetadataRef, ReleaseRecord};
 use bae_catalogs::remote_image::{CoverStanding, RemoteCover, RemoteImageSet};
 use bae_types::pressing::{Medium, Pressing, ReleaseLabel, StatedFormat, StatedMedia};
 use tracklist::{insert_entry, load_mediums, Numbering};
@@ -357,8 +357,11 @@ pub(super) fn replace_source_release_on(
     Ok(())
 }
 
-fn artist_at(row: &Row<'_>, first: usize) -> rusqlite::Result<crate::import::ArtistCredit> {
-    Ok(crate::import::ArtistCredit {
+fn artist_at(
+    row: &Row<'_>,
+    first: usize,
+) -> rusqlite::Result<crate::catalog_model::credits::ArtistCredit> {
+    Ok(crate::catalog_model::credits::ArtistCredit {
         name: row.get(first)?,
         sort_name: row.get(first + 1)?,
         musicbrainz_artist_id: row.get(first + 2)?,
@@ -460,8 +463,8 @@ fn load_source_release_rows_on<S: QueryOne + QueryRows>(
          ORDER BY position",
         params![catalog, key],
         |row| {
-            Ok(crate::import::SourceCredit {
-                credit: crate::import::ArtistCredit {
+            Ok(crate::catalog_model::credits::SourceCredit {
+                credit: crate::catalog_model::credits::ArtistCredit {
                     credited_as: row.get(4)?,
                     ..artist_at(row, 0)?
                 },
@@ -607,9 +610,10 @@ fn load_source_release_rows_on<S: QueryOne + QueryRows>(
         .into_iter()
         .map(|(document, document_key, reason)| {
             Ok(UnfetchedDocument {
-                document: crate::import::PayloadSource::from_str(&document).map_err(|error| {
-                    unreadable(&format!("unfetched document ({error})"), &document)
-                })?,
+                document: crate::catalog_model::records::PayloadSource::from_str(&document)
+                    .map_err(|error| {
+                        unreadable(&format!("unfetched document ({error})"), &document)
+                    })?,
                 key: document_key,
                 reason: match reason.as_str() {
                     "failed" => UnfetchedReason::Failed,

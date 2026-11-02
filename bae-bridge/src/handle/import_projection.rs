@@ -630,7 +630,7 @@ impl crate::types::BridgeCandidatePanePlacement {
     /// Not a copy: the folder check crosses with `rate`, the rate of the
     /// audio's files.
     fn from_core(placement: bae_core::import::CandidatePanePlacement, rate: Option<u32>) -> Self {
-        let records = |records: Vec<bae_core::import::ReleaseRecord>| {
+        let records = |records: Vec<bae_core::catalog_model::records::ReleaseRecord>| {
             records.into_iter().map(crate::types::BridgeReleaseRecord::from_core).collect()
         };
         match placement {

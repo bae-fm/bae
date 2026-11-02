@@ -44,7 +44,7 @@ pub struct Findings {
 /// A note of an offered release the folder's text names its row by.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NamedNote {
-    pub release: crate::import::MetadataRef,
+    pub release: crate::catalog_model::records::MetadataRef,
     pub note: String,
 }
 
@@ -187,7 +187,10 @@ pub fn combine_results(
         .iter()
         .filter_map(|result| {
             notes.get(&(result.source, result.release_id.clone())).map(|note| NamedNote {
-                release: crate::import::MetadataRef::new(result.source, &result.release_id),
+                release: crate::catalog_model::records::MetadataRef::new(
+                    result.source,
+                    &result.release_id,
+                ),
                 note: note.clone(),
             })
         })

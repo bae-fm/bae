@@ -14,7 +14,7 @@ async fn standing(
 
 fn linked_to(release_id: &str) -> crate::import::ReleaseLink {
     crate::import::ReleaseLink::Pressing(crate::import::PressingLink {
-        record: crate::import::MetadataRef::new(
+        record: crate::catalog_model::records::MetadataRef::new(
             bae_catalogs::catalog::Catalog::MusicBrainz,
             release_id.to_string(),
         ),

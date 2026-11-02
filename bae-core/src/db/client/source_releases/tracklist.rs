@@ -198,8 +198,8 @@ struct StoredArtist {
 }
 
 impl StoredArtist {
-    fn artist(self) -> crate::import::ArtistCredit {
-        crate::import::ArtistCredit {
+    fn artist(self) -> crate::catalog_model::credits::ArtistCredit {
+        crate::catalog_model::credits::ArtistCredit {
             name: self.name,
             sort_name: self.sort_name,
             musicbrainz_artist_id: self.musicbrainz_artist_id,
@@ -321,7 +321,7 @@ pub(super) fn load_mediums<S: QueryOne + QueryRows>(
                     let artist = artist.artist();
                     // The printed name is the credit's own where it is
                     // another than the artist's.
-                    crate::import::ArtistCredit {
+                    crate::catalog_model::credits::ArtistCredit {
                         credited_as: Some(credit.credited_name.trim())
                             .filter(|printed| !printed.is_empty() && *printed != artist.name)
                             .map(str::to_string),

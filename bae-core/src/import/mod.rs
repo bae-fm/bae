@@ -319,20 +319,19 @@ pub use triage::{
 #[cfg(desktop)]
 pub use types::ImportCommand;
 pub use types::{
-    artists_standing, credited_line, AlbumLink, ArtistAssignment, ArtistCredit, ArtistStanding,
-    ArtistsStanding, AudioFile, CandidateDraft, CandidateEditField, CandidateTrack,
-    CreditResolution, Credited, CreditedRole, DraftAlbum, DraftFieldEdit, DraftTrack,
-    EditValidationError, ExistingArtist, GraphWork, LibraryDraft, LibraryTrack, MetadataProvenance,
-    MetadataRef, PressingFactEdit, PressingLink, RawLabelEdit, RawPressingEdit, RawReleaseEdit,
-    RawTrackEdit, ReleaseDraft, ReleaseEditSeed, ReleaseLink, ReleaseRecord, ReleaseUserEdit,
-    ResolvedCredit, SourceCredit, TrackArtistAssignments, TrackBinding, TrackUserEdit, WorkGraph,
-    WorkPart,
+    artists_standing, credited_line, AlbumLink, ArtistAssignment, ArtistStanding, ArtistsStanding,
+    AudioFile, CandidateDraft, CandidateEditField, CandidateTrack, CreditResolution, Credited,
+    DraftAlbum, DraftFieldEdit, DraftTrack, EditValidationError, ExistingArtist, GraphWork,
+    LibraryDraft, LibraryTrack, MetadataProvenance, PressingFactEdit, PressingLink, RawLabelEdit,
+    RawPressingEdit, RawReleaseEdit, RawTrackEdit, ReleaseDraft, ReleaseEditSeed, ReleaseLink,
+    ReleaseUserEdit, ResolvedCredit, TrackArtistAssignments, TrackBinding, TrackUserEdit,
+    WorkGraph, WorkPart,
 };
 #[cfg(desktop)]
 pub use types::{
     CandidateMetadataDraft, CandidatePreparedAssets, CoverSelection, CueAnalyzedAudioFile,
     CueFlacAnalysis, DiscogsArtistImage, ImportDestination, ImportPhase, ImportProgress,
-    ImportStep, PayloadSource, PrepareStep, SourcePayload, TrackAudio, TrackFile,
+    ImportStep, PrepareStep, TrackAudio, TrackFile,
 };
 #[cfg(desktop)]
 pub use watched_folder::WatchedFolder;

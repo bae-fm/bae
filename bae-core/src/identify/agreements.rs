@@ -4,8 +4,8 @@
 //! folder's own code printed on the record.
 
 use super::row_facts::FolderFacts;
+use crate::catalog_model::records::MetadataRef;
 use crate::catalog_model::search::MetadataResult;
-use crate::import::MetadataRef;
 use crate::signals::{SourcedValue, TextLine, TextOrigin};
 use bae_types::pressing::{ReleaseArea, ReleaseLabel};
 use bae_types::text_match::{

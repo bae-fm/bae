@@ -1,5 +1,5 @@
 use super::*;
-use crate::import::MetadataRef;
+use crate::catalog_model::records::MetadataRef;
 use bae_catalogs::musicbrainz::{
     MbArtistCredit, MbArtistRef, MbMedium, MbRecording, MbReleaseResponse, MbTrack, MbWork,
 };
@@ -8,7 +8,7 @@ use bae_catalogs::musicbrainz::{
 /// as import.
 fn map(
     response: &MbReleaseResponse,
-    supporting: Vec<crate::import::SourcePayload>,
+    supporting: Vec<crate::catalog_model::records::SourcePayload>,
 ) -> Result<ReleaseValues, CatalogError> {
     let payloads: crate::catalog_model::payloads::ReleasePayloads =
         crate::catalog_model::payloads::ReleasePayloads::for_test(
@@ -502,9 +502,9 @@ fn pressing_reads_year_every_label_barcode_and_every_fact() {
     assert_eq!(parsed.album_year, Some(1969));
 }
 
-fn discogs_artist_document(name: &str) -> crate::import::SourcePayload {
-    crate::import::SourcePayload::new(
-        crate::import::PayloadSource::Discogs,
+fn discogs_artist_document(name: &str) -> crate::catalog_model::records::SourcePayload {
+    crate::catalog_model::records::SourcePayload::new(
+        crate::catalog_model::records::PayloadSource::Discogs,
         "99".to_string(),
         serde_json::json!({
             "id": 99,

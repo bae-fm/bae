@@ -7,7 +7,7 @@ const FOLDER_TITLES: [&str; 5] = ["Song One", "Song Two", "Song Three", "Song Fo
 /// `FOLDER_TITLES`.
 fn reading_titled_documents(
     results: Vec<MetadataResult>,
-) -> (IdentifyState, Vec<crate::import::MetadataRef>) {
+) -> (IdentifyState, Vec<crate::catalog_model::records::MetadataRef>) {
     let (state, _) = update(
         started_with(vec![DG]),
         Signals {

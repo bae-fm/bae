@@ -5,6 +5,7 @@
 
 #[cfg(desktop)]
 pub mod album_links;
+pub mod credits;
 #[cfg(desktop)]
 pub mod discogs_mapper;
 #[cfg(desktop)]
@@ -21,6 +22,7 @@ pub mod musicbrainz_mapper;
 pub mod payloads;
 #[cfg(desktop)]
 pub mod providers;
+pub mod records;
 #[cfg(desktop)]
 pub(crate) mod release_metadata;
 #[cfg(desktop)]

@@ -29,9 +29,9 @@
 //! `state::pressings`.
 
 use crate::catalog_model::album_links::AlbumLinks;
+use crate::catalog_model::records::MetadataRef;
 use crate::catalog_model::search::{MetadataResult, SourceTracks};
 use crate::catalog_model::LookupFailure;
-use crate::import::MetadataRef;
 use bae_types::pressing::ReleaseLabel;
 
 /// Where a run is with its offered rows' documents: each record's document,

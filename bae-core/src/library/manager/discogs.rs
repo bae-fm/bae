@@ -118,7 +118,7 @@ impl LibraryManager {
     #[cfg(desktop)]
     pub(crate) async fn fetch_release_payloads(
         &self,
-        release: &crate::import::MetadataRef,
+        release: &crate::catalog_model::records::MetadataRef,
         depth: crate::catalog_model::payloads::ReadDepth,
         priority: CallPriority,
     ) -> Result<crate::catalog_model::payloads::ReleasePayloads, crate::import::ImportError> {
@@ -164,7 +164,7 @@ impl LibraryManager {
     #[cfg(desktop)]
     async fn release_read_session(
         &self,
-        release: &crate::import::MetadataRef,
+        release: &crate::catalog_model::records::MetadataRef,
     ) -> Result<CatalogSession, crate::import::ImportError> {
         match self.catalog_session().await {
             Ok(session) => Ok(session),
@@ -186,7 +186,7 @@ impl LibraryManager {
     #[cfg(desktop)]
     pub(crate) async fn keep_album_links(
         &self,
-        kept: Vec<(String, Vec<crate::import::MetadataRef>)>,
+        kept: Vec<(String, Vec<crate::catalog_model::records::MetadataRef>)>,
     ) {
         if let Err(error) = self.database.replace_group_album_links(kept).await {
             tracing::error!("What the release groups were read to be was not kept: {error}");

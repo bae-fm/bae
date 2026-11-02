@@ -209,7 +209,7 @@ impl ArtistCredits<'_> {
 pub(super) fn resolve_import_credits_on<'a, Q: QueryOne + QueryRows>(
     sql: &Q,
     hash: &str,
-    credits: impl IntoIterator<Item = &'a crate::import::ArtistCredit>,
+    credits: impl IntoIterator<Item = &'a crate::catalog_model::credits::ArtistCredit>,
 ) -> Result<Vec<crate::import::ResolvedCredit>, DbError> {
     super::artist_resolution::resolve_credits_with(credits, |credit| {
         Ok(

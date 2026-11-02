@@ -85,7 +85,7 @@ mirror_enum! {
 }
 
 /// One catalog's key for an entity, whose kind is stated by its containing field. Mirrors
-/// `bae_core::import::MetadataRef`.
+/// `bae_core::catalog_model::records::MetadataRef`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeMetadataRef {
     pub catalog: BridgeCatalog,
@@ -102,19 +102,19 @@ pub struct BridgeReleaseRecord {
 
 impl BridgeReleaseRecord {
     /// Native surfaces render catalog links; identity matching remains in core.
-    pub(crate) fn from_core(record: bae_core::import::ReleaseRecord) -> Self {
+    pub(crate) fn from_core(record: bae_core::catalog_model::records::ReleaseRecord) -> Self {
         Self { catalog: BridgeCatalog::from_core(record.catalog()), url: record.url() }
     }
 }
 
 #[cfg(feature = "desktop")]
 impl BridgeMetadataRef {
-    pub(crate) fn from_core(release_ref: bae_core::import::MetadataRef) -> Self {
+    pub(crate) fn from_core(release_ref: bae_core::catalog_model::records::MetadataRef) -> Self {
         Self { catalog: BridgeCatalog::from_core(release_ref.catalog), key: release_ref.key }
     }
 
-    pub(crate) fn into_core(self) -> bae_core::import::MetadataRef {
-        bae_core::import::MetadataRef::new(self.catalog.into_core(), self.key)
+    pub(crate) fn into_core(self) -> bae_core::catalog_model::records::MetadataRef {
+        bae_core::catalog_model::records::MetadataRef::new(self.catalog.into_core(), self.key)
     }
 }
 

@@ -154,7 +154,7 @@ async fn picked_discogs_release() -> DiscogsPick {
         .select_candidate_release(
             key.clone(),
             crate::import::PressingLink {
-                record: crate::import::MetadataRef::new(
+                record: crate::catalog_model::records::MetadataRef::new(
                     bae_catalogs::catalog::Catalog::Discogs,
                     source_release_id,
                 ),

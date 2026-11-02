@@ -11,7 +11,8 @@ use super::verdict_rows::{
     identification_of, read_verdict_row, unreadable, verdict_columns, VerdictRow,
 };
 use super::*;
-use crate::import::{AlbumLink, MetadataProvenance, MetadataRef, PressingLink, ReleaseLink};
+use crate::catalog_model::records::MetadataRef;
+use crate::import::{AlbumLink, MetadataProvenance, PressingLink, ReleaseLink};
 use bae_catalogs::catalog::Catalog;
 use std::str::FromStr;
 

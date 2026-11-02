@@ -82,15 +82,6 @@ pub struct DraftTrack<Binding> {
     pub works: Vec<String>,
 }
 
-/// One artist a source credits in a role: who, which catalog said so, and
-/// the words it credits the role with.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct CreditedRole {
-    pub artist: ArtistCredit,
-    pub source: Catalog,
-    pub role: Option<String>,
-}
-
 /// The works a draft's tracks perform, and how they nest. Works come from
 /// MusicBrainz, which names them; each is held once.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]

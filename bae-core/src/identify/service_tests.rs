@@ -303,12 +303,12 @@ async fn a_cancel_mid_run_reports_idle_and_deregisters() {
 #[tokio::test(flavor = "multi_thread")]
 async fn what_a_run_keeps_is_kept_by_the_step_that_ends_it() {
     use crate::catalog_model::album_links::AlbumLinks;
+    use crate::catalog_model::records::{MetadataRef, SourcePayload};
     use crate::identify::documents::{DocumentReading, ReleaseDocument, ReleaseReading};
     use crate::identify::state::{
         BarcodeProgress, CatalogProgress, DiscidProgress, IsrcProgress, SearchProgress,
         SignalsContext,
     };
-    use crate::import::{MetadataRef, SourcePayload};
 
     let (inner, _tmp) = setup_inner().await;
     let discogs = crate::catalog_model::payloads::ReleasePayloads::for_test(

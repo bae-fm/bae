@@ -1,6 +1,6 @@
 use super::*;
+use crate::catalog_model::records::MetadataRef;
 use crate::catalog_model::source_release::SourceRelease;
-use crate::import::MetadataRef;
 use bae_catalogs::discogs::models::{DiscogsArtist, DiscogsRoleArtist, DiscogsTrack};
 
 /// A lone Discogs release document as bae keeps it: its own facts and
@@ -655,7 +655,10 @@ fn album_credits_keep_their_printed_names_and_joins() {
             ("Artist C", "Artist C", None),
         ]
     );
-    assert_eq!(crate::import::SourceCredit::line(&credits), "A Variation & Artist B, Artist C");
+    assert_eq!(
+        crate::catalog_model::credits::SourceCredit::line(&credits),
+        "A Variation & Artist B, Artist C"
+    );
 }
 
 /// Every Barcode identifier reaches the pressing as printed, each code once:
@@ -674,7 +677,7 @@ fn release_barcodes_reach_pressing_metadata() {
     assert_eq!(release.barcodes, ["0 12345 67890 5", "5 012345 678900"]);
     let payloads: crate::catalog_model::payloads::ReleasePayloads =
         crate::catalog_model::payloads::ReleasePayloads::for_test(
-            crate::import::MetadataRef::new(Catalog::Discogs, "123"),
+            crate::catalog_model::records::MetadataRef::new(Catalog::Discogs, "123"),
             json.to_string(),
             Vec::new(),
         );

@@ -15,7 +15,7 @@ fn packed(mut result: MetadataResult, packaging: bae_types::pressing::Packaging)
 /// its offered records' documents, with the records it asks for.
 fn reading_documents(
     results: Vec<MetadataResult>,
-) -> (IdentifyState, Vec<crate::import::MetadataRef>) {
+) -> (IdentifyState, Vec<crate::catalog_model::records::MetadataRef>) {
     let (state, _) = update(
         started_with(vec![DG]),
         signals(DiscIdSignal::Absent, BarcodeSignal::Settled { codes: artwork_codes(&["A"]) }, &[]),
@@ -42,7 +42,7 @@ fn document(labels: &[(&str, &str)], tracks: u32) -> crate::identify::documents:
         links: Vec::new(),
         album_links: crate::catalog_model::album_links::AlbumLinks::NotAsked,
         stored: std::sync::Arc::new(crate::catalog_model::source_release::SourceRelease::for_test(
-            crate::import::MetadataRef::new(
+            crate::catalog_model::records::MetadataRef::new(
                 bae_catalogs::catalog::Catalog::MusicBrainz,
                 "release-1",
             ),
@@ -51,7 +51,7 @@ fn document(labels: &[(&str, &str)], tracks: u32) -> crate::identify::documents:
 }
 
 fn read(
-    release: &crate::import::MetadataRef,
+    release: &crate::catalog_model::records::MetadataRef,
     document: Result<crate::identify::documents::ReleaseDocument, LookupFailure>,
 ) -> crate::identify::documents::ReleaseReading {
     crate::identify::documents::ReleaseReading { release: release.clone(), document }
@@ -187,7 +187,7 @@ fn titled(release_id: &str, title: &str) -> MetadataResult {
 /// Answer a read of `releases` with a document listing `tracks(id)` tracks
 /// for each.
 fn read_with_tracks(
-    releases: &[crate::import::MetadataRef],
+    releases: &[crate::catalog_model::records::MetadataRef],
     tracks: impl Fn(&str) -> u32,
 ) -> IdentifyEvent {
     IdentifyEvent::ReleasesRead {
@@ -314,7 +314,7 @@ fn a_document_s_barcode_joins_its_result_s() {
     };
     let mut result = first_label_only("dg-1");
     result.barcodes = vec!["0 12345 67890 5".to_string()];
-    let release = crate::import::MetadataRef::new(DG, "dg-1");
+    let release = crate::catalog_model::records::MetadataRef::new(DG, "dg-1");
     for (barcode, expected) in [
         ("012345678905", vec!["0 12345 67890 5"]),
         ("5051961234567", vec!["0 12345 67890 5", "5051961234567"]),
@@ -382,7 +382,7 @@ fn look_alike_rows_listed_once_are_read() {
     let (_, releases) = reading_documents(tied);
     assert_eq!(
         releases,
-        vec![crate::import::MetadataRef::new(DG, "dg-1")],
+        vec![crate::catalog_model::records::MetadataRef::new(DG, "dg-1")],
         "the look-alike kept, the lowest id, is read"
     );
 }

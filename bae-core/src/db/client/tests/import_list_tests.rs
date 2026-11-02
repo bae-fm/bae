@@ -5,12 +5,13 @@ use super::super::*;
 use crate::identify::TerminalVerdict;
 
 use super::{candidate, exec, fixed_now, watched_root};
+use crate::catalog_model::records::PayloadSource;
 use crate::catalog_model::search::{MetadataResult, SourceTracks};
 use crate::import::folder_scanner::{
     CandidateFile, FileRole, FileVersion, FolderCandidate, ScanItem, ScannedFile,
 };
 use crate::import::list::ImportListItem;
-use crate::import::{MetadataProvenance, PayloadSource, TriageTab};
+use crate::import::{MetadataProvenance, TriageTab};
 use std::path::PathBuf;
 
 mod dates;
@@ -184,7 +185,7 @@ async fn a_picked_row_reads_in_the_stored_releases_records() {
 
     db.save_source_release(
         &crate::catalog_model::payloads::ReleasePayloads::for_test(
-            crate::import::MetadataRef::new(Catalog::MusicBrainz, "mb-picked"),
+            crate::catalog_model::records::MetadataRef::new(Catalog::MusicBrainz, "mb-picked"),
             musicbrainz_release("mb-picked", "Picked Album").to_string(),
             Vec::new(),
         )
@@ -205,7 +206,7 @@ async fn a_picked_row_reads_in_the_stored_releases_records() {
             &crate::import::CandidateKey::folder(&candidate.path),
             &draft,
             Some(&MetadataProvenance::ExternalRelease {
-                record: crate::import::MetadataRef::new(
+                record: crate::catalog_model::records::MetadataRef::new(
                     Catalog::MusicBrainz,
                     "mb-picked".to_string(),
                 ),
@@ -218,7 +219,10 @@ async fn a_picked_row_reads_in_the_stored_releases_records() {
         .replace_link(
             &candidate.files.content_hash(),
             Some(&crate::import::ReleaseLink::Pressing(crate::import::PressingLink {
-                record: crate::import::MetadataRef::new(Catalog::MusicBrainz, "mb-picked"),
+                record: crate::catalog_model::records::MetadataRef::new(
+                    Catalog::MusicBrainz,
+                    "mb-picked",
+                ),
                 partners: vec![],
             })),
             &[],
@@ -230,8 +234,8 @@ async fn a_picked_row_reads_in_the_stored_releases_records() {
     assert_eq!(
         rows(&projection)[0].reading,
         crate::import::triage::TriageReading::Identified {
-            records: vec![crate::import::ReleaseRecord::new(
-                &crate::import::MetadataRef::new(Catalog::MusicBrainz, "mb-picked"),
+            records: vec![crate::catalog_model::records::ReleaseRecord::new(
+                &crate::catalog_model::records::MetadataRef::new(Catalog::MusicBrainz, "mb-picked"),
                 None,
             )],
         }
@@ -256,7 +260,7 @@ async fn a_pick_of_a_release_nothing_stored_is_refused() {
             &crate::import::CandidateKey::folder(&candidate.path),
             &draft,
             Some(&MetadataProvenance::ExternalRelease {
-                record: crate::import::MetadataRef::new(
+                record: crate::catalog_model::records::MetadataRef::new(
                     Catalog::MusicBrainz,
                     "mb-never-fetched".to_string(),
                 ),

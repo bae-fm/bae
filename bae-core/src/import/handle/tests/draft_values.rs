@@ -70,7 +70,7 @@ async fn pick_mb(
         .select_candidate_release(
             key.clone(),
             crate::import::PressingLink {
-                record: crate::import::MetadataRef::new(
+                record: crate::catalog_model::records::MetadataRef::new(
                     bae_catalogs::catalog::Catalog::MusicBrainz,
                     release_id,
                 ),
@@ -245,7 +245,7 @@ async fn a_release_stored_again_after_apply_changes_nothing_the_draft_imports() 
     let payloads = handle
         .library_manager
         .fetch_release_payloads(
-            &crate::import::MetadataRef::new(
+            &crate::catalog_model::records::MetadataRef::new(
                 bae_catalogs::catalog::Catalog::MusicBrainz,
                 "edited-release",
             ),

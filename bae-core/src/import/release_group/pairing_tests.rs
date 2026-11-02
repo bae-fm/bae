@@ -35,7 +35,7 @@ fn artist_spelling_does_not_block_established_identity() {
 fn a_stated_link_pairs_despite_the_text_and_the_facts() {
     let mut one = mb("mb-1", Some("group-x"), Some(1992));
     one.title = "Album Title: Subtitle".to_string();
-    one.links = vec![crate::import::MetadataRef::new(Catalog::Discogs, "dg-1")];
+    one.links = vec![crate::catalog_model::records::MetadataRef::new(Catalog::Discogs, "dg-1")];
     let mut other = discogs("dg-1", Some("master-7"), Some(1994));
     other.title = "Another Album".to_string();
     other.artist = Some("Other Artist".to_string());
@@ -48,8 +48,14 @@ fn a_stated_link_pairs_despite_the_text_and_the_facts() {
     assert_eq!(
         groups[0].sections[0].pressings[0].pick(),
         crate::import::PressingLink {
-            record: crate::import::MetadataRef::new(Catalog::MusicBrainz, "mb-1".to_string()),
-            partners: vec![crate::import::MetadataRef::new(Catalog::Discogs, "dg-1")],
+            record: crate::catalog_model::records::MetadataRef::new(
+                Catalog::MusicBrainz,
+                "mb-1".to_string()
+            ),
+            partners: vec![crate::catalog_model::records::MetadataRef::new(
+                Catalog::Discogs,
+                "dg-1"
+            )],
         }
     );
 }
@@ -61,7 +67,8 @@ fn a_stated_link_pairs_despite_the_text_and_the_facts() {
 fn a_stated_link_names_the_record_that_stands_for_its_catalog() {
     let mut one = mb("mb-1", Some("group-x"), Some(1992));
     one.barcodes = vec!["012345678905".to_string()];
-    one.links = vec![crate::import::MetadataRef::new(Catalog::Discogs, "dg-linked")];
+    one.links =
+        vec![crate::catalog_model::records::MetadataRef::new(Catalog::Discogs, "dg-linked")];
     let mut linked = discogs("dg-linked", Some("master-7"), Some(1992));
     linked.barcodes = vec!["012345678905".to_string()];
     let mut barcoded = discogs("dg-barcoded", Some("master-7"), Some(1992));
@@ -72,8 +79,14 @@ fn a_stated_link_names_the_record_that_stands_for_its_catalog() {
     assert_eq!(
         groups[0].sections[0].pressings[0].pick(),
         crate::import::PressingLink {
-            record: crate::import::MetadataRef::new(Catalog::MusicBrainz, "mb-1".to_string()),
-            partners: vec![crate::import::MetadataRef::new(Catalog::Discogs, "dg-linked")],
+            record: crate::catalog_model::records::MetadataRef::new(
+                Catalog::MusicBrainz,
+                "mb-1".to_string()
+            ),
+            partners: vec![crate::catalog_model::records::MetadataRef::new(
+                Catalog::Discogs,
+                "dg-linked"
+            )],
         },
         "one record per catalog is claimed"
     );
@@ -303,8 +316,14 @@ fn a_paired_row_is_picked_with_its_partner() {
     assert_eq!(
         groups[0].sections[0].pressings[0].pick(),
         crate::import::PressingLink {
-            record: crate::import::MetadataRef::new(Catalog::MusicBrainz, "mb-1".to_string()),
-            partners: vec![crate::import::MetadataRef::new(Catalog::Discogs, "dg-1")],
+            record: crate::catalog_model::records::MetadataRef::new(
+                Catalog::MusicBrainz,
+                "mb-1".to_string()
+            ),
+            partners: vec![crate::catalog_model::records::MetadataRef::new(
+                Catalog::Discogs,
+                "dg-1"
+            )],
         }
     );
 }
@@ -316,7 +335,10 @@ fn a_lone_row_is_picked_with_no_partner() {
     assert_eq!(
         groups[0].sections[0].pressings[0].pick(),
         crate::import::PressingLink {
-            record: crate::import::MetadataRef::new(Catalog::Discogs, "dg-1".to_string()),
+            record: crate::catalog_model::records::MetadataRef::new(
+                Catalog::Discogs,
+                "dg-1".to_string()
+            ),
             partners: vec![],
         }
     );

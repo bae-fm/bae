@@ -2,7 +2,8 @@
 //! person cannot tell which of them their copy is.
 
 use super::*;
-use crate::import::{AlbumLink, MetadataRef, PendingStanding, ReleaseLink};
+use crate::import::{AlbumLink, PendingStanding, ReleaseLink};
+use crate::catalog_model::records::{MetadataRef};
 
 const ALBUM: &str = "album-group-1";
 

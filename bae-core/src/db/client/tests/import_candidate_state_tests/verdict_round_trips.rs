@@ -87,7 +87,7 @@ async fn a_stored_verdict_keeps_no_track_titles_or_notes() {
 #[tokio::test]
 async fn round_trip_preserves_the_evidence_the_rows_are_paired_by() {
     use crate::catalog_model::album_links::AlbumLinks;
-    use crate::import::MetadataRef;
+    use crate::catalog_model::records::MetadataRef;
     use bae_catalogs::catalog::Catalog;
     use bae_types::pressing::{
         DiscogsDetail, Medium, Packaging, Region, ReleaseArea, ReleaseStatus, StatedFormat,

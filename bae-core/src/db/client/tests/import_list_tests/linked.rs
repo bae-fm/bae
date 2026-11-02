@@ -47,7 +47,7 @@ async fn a_linked_row_is_read_without_opening_its_folders_files() {
     let generation = db.begin_folder_scan(&root, crate::import::VolumeKind::Local).await.unwrap();
     db.save_folder_scan_item(&root, generation, &ScanItem::Valid(candidate.clone())).await.unwrap();
     db.finish_folder_scan(&root, generation, None).await.unwrap();
-    let record = crate::import::MetadataRef::new(Catalog::MusicBrainz, "mb-picked");
+    let record = crate::catalog_model::records::MetadataRef::new(Catalog::MusicBrainz, "mb-picked");
     db.save_source_release(
         &crate::catalog_model::payloads::ReleasePayloads::for_test(
             record.clone(),
@@ -85,7 +85,10 @@ async fn a_linked_row_is_read_without_opening_its_folders_files() {
     assert_eq!(
         rows(&projection)[0].release_link,
         Some(crate::import::ReleaseLink::Pressing(crate::import::PressingLink {
-            record: crate::import::MetadataRef::new(Catalog::MusicBrainz, "mb-picked"),
+            record: crate::catalog_model::records::MetadataRef::new(
+                Catalog::MusicBrainz,
+                "mb-picked"
+            ),
             partners: vec![],
         },)),
         "the row reads its link from the tables"

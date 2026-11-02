@@ -221,6 +221,25 @@ pub struct LibraryCheck {
     pub source_group_id: Option<String>,
 }
 
+impl DbArtist {
+    /// A fresh artist row carrying what `credit` says, which the write that
+    /// links it resolves to a library artist when it commits.
+    pub(crate) fn of_credit(
+        credit: &crate::catalog_model::credits::ArtistCredit,
+        ids: &dyn coven::IdSource,
+        now: chrono::DateTime<chrono::Utc>,
+    ) -> Self {
+        Self {
+            id: ids.new_id().to_string(),
+            name: credit.name.clone(),
+            sort_name: credit.sort_name.clone(),
+            discogs_artist_id: credit.discogs_artist_id.clone(),
+            musicbrainz_artist_id: credit.musicbrainz_artist_id.clone(),
+            created_at: now,
+        }
+    }
+}
+
 #[cfg(desktop)]
 impl From<&crate::catalog_model::search::MetadataResult> for LibraryCheck {
     fn from(r: &crate::catalog_model::search::MetadataResult) -> Self {

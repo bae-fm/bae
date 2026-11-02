@@ -7,6 +7,7 @@ use bae_core::album_detail::{
     AudioFormat, FileDetail, GalleryItem, GallerySource, ImageRef, ReleaseDetail,
     ReleaseStorageState, SearchResults, TrackDetail,
 };
+use bae_core::catalog_model::records::MetadataRef;
 use bae_core::catalog_model::search::MetadataResult;
 use bae_core::catalog_model::SearchQuery;
 use bae_core::config::McpConfig;
@@ -16,8 +17,8 @@ use bae_core::import::release_group::ReleaseGroup;
 use bae_core::import::{
     CandidateEditField, CandidateImportStatus, CandidateKey, CandidateRuntimeSnapshot,
     CoverSelection, GroupedSearchResults, ImportCandidateDetail, ImportError, ImportInFlight,
-    ImportListItem, ImportListView, ImportPhase, ImportStep, MetadataRef, PrepareStep,
-    PressingLink, TrackUserEdit, TriageTab,
+    ImportListItem, ImportListView, ImportPhase, ImportStep, PrepareStep, PressingLink,
+    TrackUserEdit, TriageTab,
 };
 use bae_core::library::{AppServices, LibraryError};
 use bae_types::mediums::{TrackPosition, TrackSide};

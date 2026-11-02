@@ -93,7 +93,7 @@ async fn linking_the_album_offers_no_catalog_cover() {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_release_stored_again_offers_what_it_holds_now() {
     let (handle, _tmp, key, _hash) = picked_with_front("refetched-release").await;
-    let record = crate::import::MetadataRef::new(
+    let record = crate::catalog_model::records::MetadataRef::new(
         bae_catalogs::catalog::Catalog::MusicBrainz,
         "refetched-release".to_string(),
     );

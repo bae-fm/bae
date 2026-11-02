@@ -1,8 +1,9 @@
+use crate::catalog_model::records::MetadataRef;
 use crate::diagnostics::TelemetryEvent;
 use crate::import::candidate_runtime::CandidateRuntime;
 use crate::import::handle::ImportServiceHandle;
 use crate::import::handle::{ScanEvent, WatcherCommand};
-use crate::import::types::{ImportCommand, ImportDestination, ImportProgress, MetadataRef};
+use crate::import::types::{ImportCommand, ImportDestination, ImportProgress};
 use crate::library::LibraryManager;
 use bae_catalogs::rate_limiter::CallPriority;
 
@@ -96,7 +97,7 @@ struct PreparedMetadata {
     picked_artists: Vec<String>,
     /// One per catalog that describes this release; empty for file metadata and
     /// direct entry.
-    records: Vec<crate::import::ReleaseRecord>,
+    records: Vec<crate::catalog_model::records::ReleaseRecord>,
     album_title: String,
 }
 
@@ -745,7 +746,7 @@ pub(crate) async fn prepare_partners(
 pub(crate) fn records_for_commit(
     primary: &crate::catalog_model::source_release::SourceRelease,
     partners: &[crate::catalog_model::source_release::SourceRelease],
-) -> Vec<crate::import::ReleaseRecord> {
+) -> Vec<crate::catalog_model::records::ReleaseRecord> {
     let claimed: Vec<_> = std::iter::once(primary)
         .chain(partners)
         .map(crate::catalog_model::source_release::SourceRelease::records)

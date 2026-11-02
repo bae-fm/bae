@@ -45,7 +45,7 @@ impl ImportService {
     pub(super) async fn reconcile_prepared_release(
         &self,
         parsed: crate::import::ReleaseRows,
-        records: Vec<crate::import::ReleaseRecord>,
+        records: Vec<crate::catalog_model::records::ReleaseRecord>,
         picked_album: Option<String>,
         picked_artists: std::collections::HashSet<String>,
     ) -> Result<PreparedMetadata, crate::import::ImportError> {

@@ -176,15 +176,17 @@ mirror_struct! {
 
 impl AutomationReleaseRecord {
     /// Adds core's page URL beside the catalog identity.
-    pub(crate) fn from_core(record: bae_core::import::ReleaseRecord) -> Self {
+    pub(crate) fn from_core(record: bae_core::catalog_model::records::ReleaseRecord) -> Self {
         let url = record.url();
         match record {
-            bae_core::import::ReleaseRecord::Pressing { release, album_key } => Self::Pressing {
-                release: AutomationMetadataRef::from_core(release),
-                album_key,
-                url,
-            },
-            bae_core::import::ReleaseRecord::Album { album } => {
+            bae_core::catalog_model::records::ReleaseRecord::Pressing { release, album_key } => {
+                Self::Pressing {
+                    release: AutomationMetadataRef::from_core(release),
+                    album_key,
+                    url,
+                }
+            }
+            bae_core::catalog_model::records::ReleaseRecord::Album { album } => {
                 Self::Album { album: AutomationMetadataRef::from_core(album), url }
             }
         }
@@ -444,7 +446,7 @@ mirror_struct! {
 }
 
 mirror_struct! {
-    AutomationArtistCredit = bae_core::import::ArtistCredit,
+    AutomationArtistCredit = bae_core::catalog_model::credits::ArtistCredit,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
     fields: { name, sort_name, musicbrainz_artist_id, discogs_artist_id, credited_as },
@@ -744,7 +746,7 @@ mod record_tests {
 
     #[test]
     fn album_identity_is_exposed_without_a_pressing_or_draft_claim() {
-        let record = bae_core::import::ReleaseRecord::album(&MetadataRef::new(
+        let record = bae_core::catalog_model::records::ReleaseRecord::album(&MetadataRef::new(
             Catalog::MusicBrainz,
             "group-1",
         ));
@@ -761,7 +763,7 @@ mod record_tests {
 
     #[test]
     fn pressing_identity_keeps_its_known_parent() {
-        let record = bae_core::import::ReleaseRecord::new(
+        let record = bae_core::catalog_model::records::ReleaseRecord::new(
             &MetadataRef::new(Catalog::Discogs, "42"),
             Some("73".into()),
         );

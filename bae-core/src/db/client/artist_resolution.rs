@@ -130,7 +130,7 @@ impl Database {
     /// What the library holds for each of `credits` as it stands now.
     pub async fn resolve_artist_credits(
         &self,
-        credits: &[crate::import::ArtistCredit],
+        credits: &[crate::catalog_model::credits::ArtistCredit],
     ) -> Result<Vec<crate::import::ResolvedCredit>, DbError> {
         let credits = credits.to_vec();
         self.read(move |sql| resolve_credits_on(&sql, &credits)).await
@@ -338,7 +338,7 @@ pub(crate) fn resolved_in_an_empty_library(credits: &[DbArtist]) -> Vec<String> 
 /// commits reads it again.
 pub(crate) fn resolve_credit_on<Q: QueryOne + QueryRows>(
     sql: &Q,
-    credit: &crate::import::ArtistCredit,
+    credit: &crate::catalog_model::credits::ArtistCredit,
 ) -> Result<crate::import::CreditResolution, DbError> {
     use crate::import::CreditResolution;
     let row = DbArtist {
@@ -371,15 +371,15 @@ pub(crate) fn resolve_credit_on<Q: QueryOne + QueryRows>(
 /// resolves it, in the order the credits first appear.
 pub(crate) fn resolve_credits_on<'a, Q: QueryOne + QueryRows>(
     sql: &Q,
-    credits: impl IntoIterator<Item = &'a crate::import::ArtistCredit>,
+    credits: impl IntoIterator<Item = &'a crate::catalog_model::credits::ArtistCredit>,
 ) -> Result<Vec<crate::import::ResolvedCredit>, DbError> {
     resolve_credits_with(credits, |credit| resolve_credit_on(sql, credit))
 }
 
 pub(super) fn resolve_credits_with<'a>(
-    credits: impl IntoIterator<Item = &'a crate::import::ArtistCredit>,
+    credits: impl IntoIterator<Item = &'a crate::catalog_model::credits::ArtistCredit>,
     mut resolve: impl FnMut(
-        &crate::import::ArtistCredit,
+        &crate::catalog_model::credits::ArtistCredit,
     ) -> Result<crate::import::CreditResolution, DbError>,
 ) -> Result<Vec<crate::import::ResolvedCredit>, DbError> {
     let mut resolved: Vec<crate::import::ResolvedCredit> = Vec::new();

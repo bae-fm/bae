@@ -9,11 +9,12 @@
 //! heading rows are laid out against it, are chosen when the release is read
 //! against the audio (see `import::catalog_reading`).
 
+use crate::catalog_model::credits::ArtistCredit;
 use crate::catalog_model::medium_coverage::MediumCoverage;
+use crate::catalog_model::records::{MetadataRef, ReleaseRecord};
 use crate::catalog_model::release_metadata::ReleaseMetadata;
 use crate::catalog_model::search::ImportSearchReleaseDetail;
 use crate::catalog_model::CatalogError;
-use crate::import::{ArtistCredit, MetadataRef, ReleaseRecord};
 use bae_catalogs::catalog::Catalog;
 use bae_catalogs::remote_image::RemoteCover;
 use bae_types::pressing::Pressing;
@@ -81,7 +82,7 @@ pub(crate) struct PreparedRelease {
 /// place of, and did not get.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UnfetchedDocument {
-    pub(crate) document: crate::import::PayloadSource,
+    pub(crate) document: crate::catalog_model::records::PayloadSource,
     pub(crate) key: String,
     pub(crate) reason: UnfetchedReason,
 }
@@ -233,8 +234,10 @@ pub(crate) struct DisplayCredit {
 /// A track's own credits as its display credits state them, place by place:
 /// a credit naming an artist as that artist, a printed name with no artist
 /// behind it as a credit of that name. The last credit's join is not kept.
-pub(crate) fn stated_credits(credits: &[DisplayCredit]) -> Vec<crate::import::SourceCredit> {
-    let mut stated: Vec<crate::import::SourceCredit> = credits
+pub(crate) fn stated_credits(
+    credits: &[DisplayCredit],
+) -> Vec<crate::catalog_model::credits::SourceCredit> {
+    let mut stated: Vec<crate::catalog_model::credits::SourceCredit> = credits
         .iter()
         .filter_map(|credit| {
             let artist = match &credit.artist {
@@ -242,7 +245,10 @@ pub(crate) fn stated_credits(credits: &[DisplayCredit]) -> Vec<crate::import::So
                 None if credit.credited_name.trim().is_empty() => return None,
                 None => ArtistCredit::named(credit.credited_name.trim()),
             };
-            Some(crate::import::SourceCredit { credit: artist, join: credit.join.clone() })
+            Some(crate::catalog_model::credits::SourceCredit {
+                credit: artist,
+                join: credit.join.clone(),
+            })
         })
         .collect();
     bae_types::credits::drop_last_join(&mut stated, |credit| &mut credit.join);
@@ -456,7 +462,7 @@ impl SourceRelease {
     /// The album's credits, printed as the catalog prints them.
     pub(crate) fn artist_line(&self) -> Option<String> {
         let artists = &self.metadata.album.artists;
-        (!artists.is_empty()).then(|| crate::import::SourceCredit::line(artists))
+        (!artists.is_empty()).then(|| crate::catalog_model::credits::SourceCredit::line(artists))
     }
 
     /// The pressing this release describes.

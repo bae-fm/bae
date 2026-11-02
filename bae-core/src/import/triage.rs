@@ -208,14 +208,20 @@ mod tests {
 
     /// The records a pick's documents describe a release in, as the reader
     /// of those documents hands them over.
-    fn described_in() -> Vec<crate::import::ReleaseRecord> {
+    fn described_in() -> Vec<crate::catalog_model::records::ReleaseRecord> {
         vec![
-            crate::import::ReleaseRecord::new(
-                &crate::import::MetadataRef::new(Catalog::MusicBrainz, "mb-1".to_string()),
+            crate::catalog_model::records::ReleaseRecord::new(
+                &crate::catalog_model::records::MetadataRef::new(
+                    Catalog::MusicBrainz,
+                    "mb-1".to_string(),
+                ),
                 None,
             ),
-            crate::import::ReleaseRecord::new(
-                &crate::import::MetadataRef::new(Catalog::Discogs, "discogs-1".to_string()),
+            crate::catalog_model::records::ReleaseRecord::new(
+                &crate::catalog_model::records::MetadataRef::new(
+                    Catalog::Discogs,
+                    "discogs-1".to_string(),
+                ),
                 None,
             ),
         ]
@@ -240,7 +246,10 @@ mod tests {
     #[test]
     fn a_link_reads_as_identified_in_the_records_it_is_handed() {
         let pick = ReleaseLink::Pressing(crate::import::PressingLink {
-            record: crate::import::MetadataRef::new(Catalog::MusicBrainz, "mb-1".to_string()),
+            record: crate::catalog_model::records::MetadataRef::new(
+                Catalog::MusicBrainz,
+                "mb-1".to_string(),
+            ),
             partners: Vec::new(),
         });
         assert_eq!(
@@ -252,11 +261,12 @@ mod tests {
     /// An album link reads as the album, pressing unknown, in its records.
     #[test]
     fn an_album_link_reads_as_its_album() {
-        let album = crate::import::AlbumLink::new([crate::import::MetadataRef::new(
-            Catalog::MusicBrainz,
-            "group-1",
-        )])
-        .expect("one album");
+        let album =
+            crate::import::AlbumLink::new([crate::catalog_model::records::MetadataRef::new(
+                Catalog::MusicBrainz,
+                "group-1",
+            )])
+            .expect("one album");
         let records = album.records();
         assert_eq!(
             TriageReading::of(Some(&a_draft()), Some(&ReleaseLink::Album(album)), records.clone()),

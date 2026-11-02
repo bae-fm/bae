@@ -2,6 +2,7 @@
 //! and how such a credit stands to the library when it is read.
 
 use super::trim_to_option;
+use crate::catalog_model::credits::{ArtistCredit, SourceCredit};
 use serde::{Deserialize, Serialize};
 
 /// One artist credited on an album or track.
@@ -29,6 +30,12 @@ pub struct Credited {
 }
 
 impl Credited {
+    /// The draft's credit for `credit`'s place: the source's credit, left to
+    /// be resolved when the draft is imported.
+    pub fn of_source(credit: SourceCredit) -> Self {
+        Self { artist: ArtistAssignment::Credit { credit: credit.credit }, join: credit.join }
+    }
+
     /// A credit list as stored: each credit normalized, each join kept only
     /// where it states something, and the last credit's join dropped, since
     /// nothing follows it.
@@ -68,36 +75,6 @@ impl Credited {
     }
 }
 
-/// One place in a credit list as a source states it: the artist, and what the
-/// source prints after it (`None` where it prints nothing of its own).
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct SourceCredit {
-    pub credit: ArtistCredit,
-    pub join: Option<String>,
-}
-
-impl SourceCredit {
-    /// `credit`, followed by the default separator: what a source that prints
-    /// no joining words states.
-    pub fn plain(credit: ArtistCredit) -> Self {
-        Self { credit, join: None }
-    }
-
-    /// The draft's credit for this place: the source's credit, left to be
-    /// resolved when the draft is imported.
-    pub fn credited(self) -> Credited {
-        Credited { artist: ArtistAssignment::Credit { credit: self.credit }, join: self.join }
-    }
-
-    /// The line `credits` print, as the picker's row shows a release's
-    /// artists.
-    pub fn line(credits: &[Self]) -> String {
-        bae_types::credits::credit_line(
-            credits.iter().map(|credit| (credit.credit.printed(), credit.join.as_deref())),
-        )
-    }
-}
-
 /// The line `credits` print (see [`bae_types::credits::credit_line`]).
 pub fn credited_line(credits: &[Credited]) -> String {
     bae_types::credits::credit_line(
@@ -125,53 +102,6 @@ impl From<crate::db::DbArtist> for ExistingArtist {
             sort_name: artist.sort_name,
             musicbrainz_artist_id: artist.musicbrainz_artist_id,
             discogs_artist_id: artist.discogs_artist_id,
-        }
-    }
-}
-
-/// What a source or a person said about an artist: the name it goes by, the
-/// catalog entries that name it, and the name the source printed for it where
-/// that is another (a MusicBrainz credit name, a Discogs `anv`).
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct ArtistCredit {
-    pub name: String,
-    pub sort_name: Option<String>,
-    pub musicbrainz_artist_id: Option<String>,
-    pub discogs_artist_id: Option<String>,
-    pub credited_as: Option<String>,
-}
-
-impl ArtistCredit {
-    /// A credit known only by `name`, printed as itself.
-    pub fn named(name: impl Into<String>) -> Self {
-        Self {
-            name: name.into(),
-            sort_name: None,
-            musicbrainz_artist_id: None,
-            discogs_artist_id: None,
-            credited_as: None,
-        }
-    }
-
-    /// What the credit prints: the name its source printed, else its name.
-    pub fn printed(&self) -> &str {
-        self.credited_as.as_deref().unwrap_or(&self.name)
-    }
-
-    /// A fresh artist row carrying what the credit says, which the write that
-    /// links it resolves to a library artist when it commits.
-    pub(crate) fn write_row(
-        &self,
-        ids: &dyn coven::IdSource,
-        now: chrono::DateTime<chrono::Utc>,
-    ) -> crate::db::DbArtist {
-        crate::db::DbArtist {
-            id: ids.new_id().to_string(),
-            name: self.name.clone(),
-            sort_name: self.sort_name.clone(),
-            discogs_artist_id: self.discogs_artist_id.clone(),
-            musicbrainz_artist_id: self.musicbrainz_artist_id.clone(),
-            created_at: now,
         }
     }
 }
@@ -294,7 +224,7 @@ impl ArtistAssignment {
                 musicbrainz_artist_id: artist.musicbrainz_artist_id.clone(),
                 created_at: now,
             },
-            Self::Credit { credit } => credit.write_row(ids, now),
+            Self::Credit { credit } => crate::db::DbArtist::of_credit(credit, ids, now),
         }
     }
 

@@ -3,10 +3,8 @@ mod preparation;
 // rows the user typed.
 
 use crate::import::folder_scanner::{CandidateFileEdits, SheetDisc};
-use crate::import::{
-    ArtistAssignment, ArtistCredit, AudioFile, CandidateEditField, CoverSelection, ExistingArtist,
-    ImportFailure, RawPressingEdit, RawReleaseEdit, RawTrackEdit, TrackArtistAssignments,
-};
+use crate::import::{ArtistAssignment, AudioFile, CandidateEditField, CoverSelection, ExistingArtist, ImportFailure, RawPressingEdit, RawReleaseEdit, RawTrackEdit, TrackArtistAssignments};
+use crate::catalog_model::credits::{ArtistCredit};
 use crate::signals::{BarcodeSignal, DiscIdSignal, Signals, SourcedValue, TextSignal};
 use crate::catalog_model::{InternalFailure};
 
@@ -654,7 +652,7 @@ async fn preparation_round_trips_a_drafts_roles_and_works() {
     let (db, _tmp) = empty_db().await;
     fetched(&db, "release-with-role").await;
     let (_, hash) = stored_pane_candidate(&db).await;
-    let credit = |name: &str, discogs: Option<&str>| crate::import::ArtistCredit {
+    let credit = |name: &str, discogs: Option<&str>| crate::catalog_model::credits::ArtistCredit {
         credited_as: None,
         name: name.to_string(),
         sort_name: None,
@@ -663,13 +661,13 @@ async fn preparation_round_trips_a_drafts_roles_and_works() {
     };
     let mut draft = candidate_draft("Release Title", "Artist Name");
     draft.tracks[0].stated_length_ms = Some(181_000);
-    draft.tracks[0].roles = vec![crate::import::CreditedRole {
+    draft.tracks[0].roles = vec![crate::catalog_model::credits::CreditedRole {
         artist: credit("Role Artist", Some("role-artist")),
         source: bae_catalogs::catalog::Catalog::Discogs,
         role: Some("Written-By".to_string()),
     }];
     draft.tracks[0].works = vec!["mb-work-child".to_string()];
-    draft.release_roles = vec![crate::import::CreditedRole {
+    draft.release_roles = vec![crate::catalog_model::credits::CreditedRole {
         artist: credit("Release Composer", None),
         source: bae_catalogs::catalog::Catalog::Discogs,
         role: None,

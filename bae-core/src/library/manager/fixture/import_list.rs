@@ -160,7 +160,10 @@ impl LibraryManager {
             }
             FixtureCandidateState::Identified => {
                 let release_id = self.ids.new_id().to_string();
-                let record = crate::import::MetadataRef::new(Catalog::MusicBrainz, &release_id);
+                let record = crate::catalog_model::records::MetadataRef::new(
+                    Catalog::MusicBrainz,
+                    &release_id,
+                );
                 let document = musicbrainz_release(candidate, &release_id);
                 let release = crate::catalog_model::payloads::ReleasePayloads::for_test(
                     record.clone(),

@@ -8,11 +8,11 @@
 //! into a candidate's draft ([`ReleaseValues::candidate_draft`]); the library
 //! editor's reset projects the editable ones ([`ReleaseValues::user_edit`]).
 
+use crate::catalog_model::credits::{ArtistCredit, CreditedRole, SourceCredit};
 use crate::catalog_model::source_release::{PartDirection, SourceWork, SourceWorkEvent};
 use crate::import::{
-    ArtistCredit, AudioFile, CandidateDraft, Credited, CreditedRole, GraphWork, RawPressingEdit,
-    RawTrackEdit, ReleaseUserEdit, SourceCredit, TrackArtistAssignments, TrackUserEdit, WorkGraph,
-    WorkPart,
+    AudioFile, CandidateDraft, Credited, GraphWork, RawPressingEdit, RawTrackEdit, ReleaseUserEdit,
+    TrackArtistAssignments, TrackUserEdit, WorkGraph, WorkPart,
 };
 use bae_types::pressing::Pressing;
 use std::collections::HashSet;
@@ -71,7 +71,7 @@ impl TrackCredits {
 /// The draft's credit list for `credits`, as stored (see
 /// [`Credited::normalized_list`]).
 fn credited_list<'a>(credits: impl Iterator<Item = &'a SourceCredit>) -> Vec<Credited> {
-    Credited::normalized_list(credits.cloned().map(SourceCredit::credited).collect())
+    Credited::normalized_list(credits.cloned().map(Credited::of_source).collect())
 }
 
 impl ReleaseValues {

@@ -17,10 +17,10 @@
 //! `text_match::track_title_key`. The tracks agree only where every row lists
 //! as many as the folder has.
 
+use crate::catalog_model::records::MetadataRef;
 use crate::import::release_group::ReleaseGroup;
 use crate::import::{
-    AlbumLink, CandidateDraft, Credited, MetadataRef, RawLabelEdit, RawReleaseEdit,
-    TrackArtistAssignments,
+    AlbumLink, CandidateDraft, Credited, RawLabelEdit, RawReleaseEdit, TrackArtistAssignments,
 };
 use bae_catalogs::catalog::Catalog;
 use bae_types::text_match;

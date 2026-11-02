@@ -184,8 +184,8 @@ async fn a_done_row_reads_its_library_release() {
     assert_eq!(
         done.reading,
         crate::import::triage::TriageReading::Identified {
-            records: vec![crate::import::ReleaseRecord::new(
-                &crate::import::MetadataRef::new(
+            records: vec![crate::catalog_model::records::ReleaseRecord::new(
+                &crate::catalog_model::records::MetadataRef::new(
                     bae_catalogs::catalog::Catalog::MusicBrainz,
                     "mb-release"
                 ),

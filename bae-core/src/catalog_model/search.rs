@@ -5,9 +5,9 @@
 use crate::catalog_model::album_links::AlbumLinks;
 use crate::catalog_model::parse_year;
 use crate::catalog_model::providers::CatalogSession;
+use crate::catalog_model::records::MetadataRef;
 use crate::catalog_model::CatalogError;
 use crate::catalog_model::{Failure, InternalFailure, LookupFailure};
-use crate::import::MetadataRef;
 use bae_catalogs::catalog::{parse_catalog_url, Catalog, CatalogPage};
 use bae_catalogs::discogs::client::{DiscogsClient, DiscogsError, DiscogsSearchParams};
 use bae_catalogs::musicbrainz::{self, MbReleaseResponse, ReleaseSearchParams, SearchRelease};

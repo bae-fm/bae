@@ -381,13 +381,13 @@ async fn a_pick_joins_the_search_s_cards_from_then_on() {
         .await
     );
     assert_eq!(search_of(&runtime, key).await.unwrap().groups.len(), 2);
-    let master = crate::import::MetadataRef::new(Catalog::Discogs, "master-7");
+    let master = crate::catalog_model::records::MetadataRef::new(Catalog::Discogs, "master-7");
     let links = crate::catalog_model::album_links::AlbumLinks::Read(vec![master.clone()]);
 
     let off_the_list = runtime
         .land_picked(
             key,
-            &crate::import::MetadataRef::new(Catalog::MusicBrainz, "mb-partner"),
+            &crate::catalog_model::records::MetadataRef::new(Catalog::MusicBrainz, "mb-partner"),
             links.clone(),
         )
         .await
@@ -398,7 +398,7 @@ async fn a_pick_joins_the_search_s_cards_from_then_on() {
     let kept = runtime
         .land_picked(
             key,
-            &crate::import::MetadataRef::new(Catalog::MusicBrainz, "mb-1"),
+            &crate::catalog_model::records::MetadataRef::new(Catalog::MusicBrainz, "mb-1"),
             links.clone(),
         )
         .await

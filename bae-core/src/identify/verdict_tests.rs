@@ -116,7 +116,10 @@ fn a_terminal_verdict_carries_the_ledger_its_run_recorded() {
         settled,
         IdentifyEvent::ReleasesRead {
             read: vec![crate::identify::documents::ReleaseReading {
-                release: crate::import::MetadataRef::new(Catalog::MusicBrainz, "rel-1"),
+                release: crate::catalog_model::records::MetadataRef::new(
+                    Catalog::MusicBrainz,
+                    "rel-1",
+                ),
                 document: Err(crate::catalog_model::LookupFailure::Network),
             }],
         },

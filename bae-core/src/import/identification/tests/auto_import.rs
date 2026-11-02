@@ -324,7 +324,7 @@ async fn a_release_picked_from_a_typed_search_is_not_imported() {
         .select_candidate_release(
             key.clone(),
             crate::import::PressingLink {
-                record: crate::import::MetadataRef::new(
+                record: crate::catalog_model::records::MetadataRef::new(
                     bae_catalogs::catalog::Catalog::MusicBrainz,
                     "mb-typed".to_string(),
                 ),

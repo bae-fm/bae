@@ -172,7 +172,7 @@ mirror_struct! {
 }
 
 /// What a source or a person said about an artist. Mirror of
-/// `bae_core::import::ArtistCredit`.
+/// `bae_core::catalog_model::credits::ArtistCredit`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, uniffi::Record)]
 pub struct BridgeArtistCredit {
     pub name: String,

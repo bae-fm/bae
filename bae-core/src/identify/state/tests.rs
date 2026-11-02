@@ -38,16 +38,17 @@ fn found_by_disc_id(
     result: &MetadataResult,
 ) -> bool {
     ledger.is_some_and(|ledger| {
-        ledger
-            .disc_id_releases()
-            .contains(&crate::import::MetadataRef::new(result.source, &result.release_id))
+        ledger.disc_id_releases().contains(&crate::catalog_model::records::MetadataRef::new(
+            result.source,
+            &result.release_id,
+        ))
     })
 }
 
 /// The records a read of documents asks for.
 fn records_read(
     releases: &[crate::identify::documents::ReleaseToRead],
-) -> Vec<crate::import::MetadataRef> {
+) -> Vec<crate::catalog_model::records::MetadataRef> {
     releases.iter().map(|release| release.release().clone()).collect()
 }
 

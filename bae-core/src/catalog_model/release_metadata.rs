@@ -1,5 +1,5 @@
+use crate::catalog_model::credits::SourceCredit;
 use crate::catalog_model::CatalogError;
-use crate::import::SourceCredit;
 use bae_catalogs::catalog::Catalog;
 use bae_types::pressing::Pressing;
 
@@ -70,9 +70,9 @@ mod tests {
     use super::*;
 
     fn artist(name: &str, musicbrainz_artist_id: Option<&str>) -> SourceCredit {
-        SourceCredit::plain(crate::import::ArtistCredit {
+        SourceCredit::plain(crate::catalog_model::credits::ArtistCredit {
             musicbrainz_artist_id: musicbrainz_artist_id.map(str::to_string),
-            ..crate::import::ArtistCredit::named(name)
+            ..crate::catalog_model::credits::ArtistCredit::named(name)
         })
     }
 

@@ -19,11 +19,11 @@ use super::rows::load_search_matches_on;
 use super::verdict_rows::unreadable;
 use super::*;
 use crate::catalog_model::album_links::AlbumLinks;
+use crate::catalog_model::records::MetadataRef;
 use crate::catalog_model::search::{MetadataResult, SearchQuery};
 use crate::catalog_model::{Failure, InternalFailure};
 use crate::import::candidate_search::{CandidateSearch, PickedResult, SearchRun, SourceSearch};
 use crate::import::candidates::CandidateFiles;
-use crate::import::MetadataRef;
 use bae_catalogs::catalog::Catalog;
 use std::str::FromStr;
 

@@ -33,7 +33,7 @@ pub(crate) struct ImportRows<'a> {
     pub audio_formats: &'a [DbAudioFormat],
     pub audio_segments: &'a [DbAudioSegment],
     pub scrub_points: &'a [DbScrubPoints],
-    pub records: &'a [crate::import::ReleaseRecord],
+    pub records: &'a [crate::catalog_model::records::ReleaseRecord],
 }
 
 /// Pictures for the new artists an import expects to create. Their bytes are

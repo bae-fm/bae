@@ -1,7 +1,7 @@
 //! Builds the run's ledger, one step at a time.
 
 use super::*;
-use crate::import::MetadataRef;
+use crate::catalog_model::records::MetadataRef;
 use std::collections::HashSet;
 
 /// Whether any identifier has found a release yet.

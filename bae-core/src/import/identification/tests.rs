@@ -575,7 +575,7 @@ impl Fixture {
         release_id: &str,
     ) -> Option<crate::catalog_model::source_release::SourceRelease> {
         self.manager
-            .load_source_release(&crate::import::MetadataRef::new(
+            .load_source_release(&crate::catalog_model::records::MetadataRef::new(
                 bae_catalogs::catalog::Catalog::MusicBrainz,
                 release_id,
             ))
@@ -589,7 +589,7 @@ impl Fixture {
         release_id: &str,
     ) -> Option<crate::catalog_model::source_release::SourceRelease> {
         self.manager
-            .load_source_release(&crate::import::MetadataRef::new(
+            .load_source_release(&crate::catalog_model::records::MetadataRef::new(
                 bae_catalogs::catalog::Catalog::Discogs,
                 release_id,
             ))
@@ -622,7 +622,7 @@ impl Fixture {
     ) {
         let mut release = stored_pressing(release_id, group_id, track_lengths);
         release.unfetched.push(crate::catalog_model::source_release::UnfetchedDocument {
-            document: crate::import::PayloadSource::MusicBrainzReleaseGroup,
+            document: crate::catalog_model::records::PayloadSource::MusicBrainzReleaseGroup,
             key: group_id.to_string(),
             reason: crate::catalog_model::source_release::UnfetchedReason::Failed,
         });
@@ -694,7 +694,7 @@ impl Fixture {
         draft.album_title = "Album".to_string();
         draft.album_artist_assignments =
             vec![crate::import::Credited::plain(crate::import::ArtistAssignment::Credit {
-                credit: crate::import::ArtistCredit {
+                credit: crate::catalog_model::credits::ArtistCredit {
                     credited_as: None,
                     name: "Artist".to_string(),
                     sort_name: None,
@@ -759,7 +759,7 @@ impl Fixture {
                         ..settled_signals()
                     },
                     pick: matches!(settled_draft, SettledDraft::Picked).then(|| {
-                        let record = crate::import::MetadataRef::new(
+                        let record = crate::catalog_model::records::MetadataRef::new(
                             bae_catalogs::catalog::Catalog::MusicBrainz,
                             release_id.to_string(),
                         );
@@ -804,7 +804,10 @@ fn stored_pressing(
     track_lengths: &[u64],
 ) -> crate::catalog_model::source_release::SourceRelease {
     crate::catalog_model::payloads::ReleasePayloads::for_test(
-        crate::import::MetadataRef::new(bae_catalogs::catalog::Catalog::MusicBrainz, release_id),
+        crate::catalog_model::records::MetadataRef::new(
+            bae_catalogs::catalog::Catalog::MusicBrainz,
+            release_id,
+        ),
         release_json(release_id, group_id, track_lengths),
         Vec::new(),
     )

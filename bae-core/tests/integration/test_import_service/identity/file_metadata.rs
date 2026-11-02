@@ -2,7 +2,7 @@
 
 fn file_tag_artist_assignment(name: &str) -> ArtistAssignment {
     ArtistAssignment::Credit {
-        credit: bae_core::import::ArtistCredit {
+        credit: bae_core::catalog_model::credits::ArtistCredit {
             credited_as: None,
             name: name.to_string(),
             sort_name: None,

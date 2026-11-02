@@ -29,9 +29,9 @@
 //! pressing year ordering the rows and the source name ordering the records
 //! within one.
 
+use crate::catalog_model::records::MetadataRef;
 use crate::catalog_model::search::MetadataResult;
 use crate::identify::agreements::Agreements;
-use crate::import::types::MetadataRef;
 use bae_catalogs::catalog::Catalog;
 use bae_catalogs::remote_image::RemoteCover;
 use pressing_sets::{formed_pressings, gather_pressings};
@@ -155,8 +155,10 @@ impl Pressing {
         let named: Vec<bool> = releases
             .iter()
             .map(|release| {
-                let reference =
-                    crate::import::MetadataRef::new(release.source, release.release_id.clone());
+                let reference = crate::catalog_model::records::MetadataRef::new(
+                    release.source,
+                    release.release_id.clone(),
+                );
                 releases.iter().any(|other| other.links.contains(&reference))
             })
             .collect();
@@ -195,12 +197,18 @@ impl Pressing {
     /// most about stands for it and the other is the same object already
     /// claimed. Deciding it here rather than on each surface is what keeps
     /// macOS, Windows, Linux and the sweep picking the same thing.
-    pub(crate) fn claims(&self) -> (crate::import::MetadataRef, Vec<crate::import::MetadataRef>) {
+    pub(crate) fn claims(
+        &self,
+    ) -> (crate::catalog_model::records::MetadataRef, Vec<crate::catalog_model::records::MetadataRef>)
+    {
         let mut releases = self.releases.iter().map(|release| {
-            crate::import::MetadataRef::new(release.source, release.release_id.clone())
+            crate::catalog_model::records::MetadataRef::new(
+                release.source,
+                release.release_id.clone(),
+            )
         });
         let primary = releases.next().expect("a pressing is built from at least one release");
-        let mut partners: Vec<crate::import::MetadataRef> = Vec::new();
+        let mut partners: Vec<crate::catalog_model::records::MetadataRef> = Vec::new();
         for release in releases {
             let claimed = release.catalog == primary.catalog
                 || partners.iter().any(|partner| partner.catalog == release.catalog);

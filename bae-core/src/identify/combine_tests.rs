@@ -464,7 +464,7 @@ fn the_ranking_s_leftovers_and_the_folder_s_are_one_list() {
 /// returned.
 fn rows(
     matches: &[MetadataResult],
-    by_disc_id: &HashSet<crate::import::MetadataRef>,
+    by_disc_id: &HashSet<crate::catalog_model::records::MetadataRef>,
     pressings: &[u32],
     text: &CandidateText,
 ) -> Vec<(Pressing, crate::identify::agreements::Agreements)> {
@@ -555,8 +555,10 @@ fn the_discogs_record_of_the_pressing_the_disc_id_named_is_offered_with_it() {
         &text,
         FolderAudio::UNPROVEN,
     );
-    let disc_id_returned =
-        HashSet::from([crate::import::MetadataRef::new(Catalog::MusicBrainz, "mb-album-two")]);
+    let disc_id_returned = HashSet::from([crate::catalog_model::records::MetadataRef::new(
+        Catalog::MusicBrainz,
+        "mb-album-two",
+    )]);
     let (matches, pressings) = found(outcome.clone());
     let offered = rows(&matches, &disc_id_returned, &pressings, &text);
     assert_eq!(offered.len(), 1, "one row, not two: {offered:?}");
@@ -569,11 +571,14 @@ fn the_discogs_record_of_the_pressing_the_disc_id_named_is_offered_with_it() {
     assert_eq!(
         offered[0].0.pick(),
         crate::import::PressingLink {
-            record: crate::import::MetadataRef::new(
+            record: crate::catalog_model::records::MetadataRef::new(
                 Catalog::MusicBrainz,
                 "mb-album-two".to_string()
             ),
-            partners: vec![crate::import::MetadataRef::new(Catalog::Discogs, "dg-1988")],
+            partners: vec![crate::catalog_model::records::MetadataRef::new(
+                Catalog::Discogs,
+                "dg-1988"
+            )],
         },
         "so picking the row claims both sources"
     );
@@ -694,7 +699,8 @@ fn a_search_that_answered_alone_is_offered_whole() {
 #[test]
 fn a_pressing_lookup_s_release_sits_on_the_row_it_was_asked_for() {
     let mut named = pair("mb-1", Some("group-1"));
-    named.links = vec![crate::import::MetadataRef::new(Catalog::Discogs, "dg-linked")];
+    named.links =
+        vec![crate::catalog_model::records::MetadataRef::new(Catalog::Discogs, "dg-linked")];
     let outcome = combine_results(
         LookupAnswers {
             disc_id: vec![vec![named]],

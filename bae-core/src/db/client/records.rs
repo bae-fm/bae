@@ -10,7 +10,7 @@ impl Database {
     pub async fn insert_release_records(
         &self,
         release_id: &str,
-        records: &[crate::import::ReleaseRecord],
+        records: &[crate::catalog_model::records::ReleaseRecord],
     ) -> Result<(), DbError> {
         let release_id = release_id.to_string();
         let records = records.to_vec();
@@ -21,7 +21,7 @@ impl Database {
     pub async fn get_release_records(
         &self,
         release_id: &str,
-    ) -> Result<Vec<crate::import::ReleaseRecord>, DbError> {
+    ) -> Result<Vec<crate::catalog_model::records::ReleaseRecord>, DbError> {
         let release_id = release_id.to_string();
         self.read(move |sql| get_release_records_on(&sql, &release_id)).await
     }
@@ -35,7 +35,7 @@ impl Database {
     /// else the oldest.
     pub async fn album_records_name(
         &self,
-        records: &[crate::import::ReleaseRecord],
+        records: &[crate::catalog_model::records::ReleaseRecord],
         excluding: &[String],
     ) -> Result<Option<String>, DbError> {
         let records = records.to_vec();
@@ -51,12 +51,12 @@ impl Database {
         &self,
         album_id: &str,
         release_id: &str,
-        records: &[crate::import::ReleaseRecord],
+        records: &[crate::catalog_model::records::ReleaseRecord],
     ) -> Result<AlbumBesideRelease, DbError> {
         let album_refs = serde_json::Value::from(
             records
                 .iter()
-                .filter_map(crate::import::ReleaseRecord::album_ref)
+                .filter_map(crate::catalog_model::records::ReleaseRecord::album_ref)
                 .map(|album| serde_json::json!([album.catalog.as_str(), album.key]))
                 .collect::<Vec<_>>(),
         )
@@ -137,7 +137,7 @@ impl Database {
 #[cfg(desktop)]
 pub(crate) struct RecordsChange {
     pub release_id: String,
-    pub records: Vec<crate::import::ReleaseRecord>,
+    pub records: Vec<crate::catalog_model::records::ReleaseRecord>,
     /// The album the release is in now.
     pub current_album_id: String,
     /// The album the release lands in.
@@ -257,7 +257,7 @@ pub(super) fn set_records_on(
 /// album is it if the library holds it, else the oldest.
 pub(crate) fn album_records_name_on(
     sql: &SqlReadContext<'_>,
-    records: &[crate::import::ReleaseRecord],
+    records: &[crate::catalog_model::records::ReleaseRecord],
     excluding: &[String],
 ) -> Result<Option<String>, DbError> {
     let excluding = serde_json::Value::from(excluding.to_vec()).to_string();

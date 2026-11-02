@@ -3,7 +3,7 @@
 
 use super::empty_db;
 use crate::catalog_model::payloads::ReleasePayloads;
-use crate::import::{MetadataRef, PayloadSource, SourcePayload};
+use crate::catalog_model::records::{MetadataRef, PayloadSource, SourcePayload};
 use bae_catalogs::catalog::Catalog;
 
 /// A MusicBrainz release with everything its tracklist can state: a vinyl
@@ -420,7 +420,7 @@ async fn an_unfetched_release_reads_as_nothing() {
 /// takes the album away again.
 #[tokio::test]
 async fn a_stored_release_carries_what_its_album_s_group_was_read_to_be() {
-    use crate::import::ReleaseRecord;
+    use crate::catalog_model::records::ReleaseRecord;
     use bae_catalogs::remote_image::RemoteCover;
 
     let master = |key: &str| MetadataRef::new(Catalog::Discogs, key);

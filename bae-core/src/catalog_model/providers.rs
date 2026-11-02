@@ -11,9 +11,9 @@ use std::sync::Arc;
 
 use crate::catalog_model::failure::Failure;
 use crate::catalog_model::payloads::{DiscIdRelease, ReadDepth, ReleasePayloads};
+use crate::catalog_model::records::MetadataRef;
 use crate::catalog_model::search::MetadataResult;
 use crate::catalog_model::CatalogError;
-use crate::import::MetadataRef;
 use bae_catalogs::discogs::client::{
     Discogs, DiscogsClient, DiscogsError, DiscogsSearchParams, DiscogsValidationObserver,
 };

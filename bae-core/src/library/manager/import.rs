@@ -287,7 +287,7 @@ impl LibraryManager {
     /// `None` when no row names it.
     pub(crate) async fn load_source_release(
         &self,
-        release: &crate::import::MetadataRef,
+        release: &crate::catalog_model::records::MetadataRef,
     ) -> Result<Option<crate::catalog_model::source_release::SourceRelease>, LibraryError> {
         Ok(self.database.load_source_release(release).await?)
     }
@@ -296,7 +296,7 @@ impl LibraryManager {
     /// import surfaces read it, or `None` when no row names it.
     pub(crate) async fn load_prepared_release(
         &self,
-        release: &crate::import::MetadataRef,
+        release: &crate::catalog_model::records::MetadataRef,
     ) -> Result<Option<crate::catalog_model::source_release::PreparedRelease>, LibraryError> {
         Ok(self.database.load_prepared_release(release).await?)
     }

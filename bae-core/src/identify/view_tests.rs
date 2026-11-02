@@ -380,7 +380,7 @@ fn a_settled_state_carries_the_ledger_its_last_frame_showed() {
         settled,
         IdentifyEvent::ReleasesRead {
             read: vec![crate::identify::documents::ReleaseReading {
-                release: crate::import::MetadataRef::new(MB, "mb-1"),
+                release: crate::catalog_model::records::MetadataRef::new(MB, "mb-1"),
                 document: Err(crate::catalog_model::LookupFailure::Network),
             }],
         },

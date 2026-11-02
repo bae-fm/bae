@@ -1,7 +1,7 @@
 use super::super::*;
 
 mirror_struct! {
-    BridgeArtistCredit = bae_core::import::ArtistCredit,
+    BridgeArtistCredit = bae_core::catalog_model::credits::ArtistCredit,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
     fields: { name, sort_name, musicbrainz_artist_id, discogs_artist_id, credited_as },

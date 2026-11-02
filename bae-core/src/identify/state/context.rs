@@ -10,13 +10,13 @@ use super::{
 };
 use crate::catalog_model::album_links::{self, GroupLinks};
 use crate::catalog_model::payloads::DiscIdRelease;
+use crate::catalog_model::records::MetadataRef;
 use crate::catalog_model::{AudioOrigin, LookupFailure};
 use crate::identify::agreements::CandidateText;
 use crate::identify::combine::LookupAnswers;
 use crate::identify::documents::DocumentReading;
 use crate::identify::{IdentifyFailure, NotAskedReason};
 use crate::import::LookupChoices;
-use crate::import::MetadataRef;
 use crate::signals::{
     ArtworkScan, AudioFacts, BarcodeSignal, DiscIdSignal, Signals, SourcedValue, TextSignal,
 };

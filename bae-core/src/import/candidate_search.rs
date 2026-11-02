@@ -19,11 +19,11 @@
 //! the lookups is [`crate::import::ImportServiceHandle::start_candidate_search`].
 
 use crate::catalog_model::album_links::{self, AlbumLinks, GroupLinks};
+use crate::catalog_model::records::MetadataRef;
 use crate::catalog_model::search::{MetadataResult, SearchQuery};
 use crate::catalog_model::Failure;
 use crate::config::{CatalogAvailability, SourceAvailability};
 use crate::import::release_group::{group_results, ReleaseGroup};
-use crate::import::types::MetadataRef;
 use bae_catalogs::catalog::Catalog;
 
 /// The run a stored search is on: what each catalog's answer names to land
@@ -376,8 +376,8 @@ mod tests {
         );
     }
 
-    fn musicbrainz(release_id: &str) -> crate::import::MetadataRef {
-        crate::import::MetadataRef::new(Catalog::MusicBrainz, release_id)
+    fn musicbrainz(release_id: &str) -> crate::catalog_model::records::MetadataRef {
+        crate::catalog_model::records::MetadataRef::new(Catalog::MusicBrainz, release_id)
     }
 
     /// A typed search reads nothing up front: its cards show each catalog's
@@ -396,10 +396,10 @@ mod tests {
         );
         assert_eq!(search.groups.len(), 2, "nothing joins before a pick");
 
-        let link = crate::import::MetadataRef::new(Catalog::Discogs, "master-7");
+        let link = crate::catalog_model::records::MetadataRef::new(Catalog::Discogs, "master-7");
         assert_eq!(
             search.record_picked(
-                &crate::import::MetadataRef::new(Catalog::Discogs, "dg-1"),
+                &crate::catalog_model::records::MetadataRef::new(Catalog::Discogs, "dg-1"),
                 AlbumLinks::Read(vec![link.clone()]),
             ),
             None,
@@ -441,7 +441,7 @@ mod tests {
             kept,
             Some(vec![(
                 "group-x".to_string(),
-                vec![crate::import::MetadataRef::new(Catalog::Discogs, "master-7")]
+                vec![crate::catalog_model::records::MetadataRef::new(Catalog::Discogs, "master-7")]
             )])
         );
         assert_eq!(search.groups.len(), 1);
@@ -464,7 +464,7 @@ mod tests {
             ],
             vec![PickedResult {
                 release_id: "mb-1".to_string(),
-                links: AlbumLinks::Read(vec![crate::import::MetadataRef::new(
+                links: AlbumLinks::Read(vec![crate::catalog_model::records::MetadataRef::new(
                     Catalog::Discogs,
                     "master-7",
                 )]),

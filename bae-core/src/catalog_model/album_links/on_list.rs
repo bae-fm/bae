@@ -14,8 +14,8 @@
 //! disagree on keeps them two rows of the one album.
 
 use super::{names_other_album, Found};
+use crate::catalog_model::records::MetadataRef;
 use crate::catalog_model::search::MetadataResult;
-use crate::import::MetadataRef;
 use bae_catalogs::catalog::Catalog;
 use bae_types::text_match::{album_title_words, catalog_key, LabelName};
 

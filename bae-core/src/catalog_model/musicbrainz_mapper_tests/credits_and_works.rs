@@ -687,7 +687,7 @@ fn a_track_credit_keeps_each_printed_name_and_join() {
         ]
     );
     assert_eq!(
-        crate::import::SourceCredit::line(credits),
+        crate::catalog_model::credits::SourceCredit::line(credits),
         "Artist A feat. B Printed & Nobody Named"
     );
 }

@@ -1,10 +1,10 @@
+use crate::catalog_model::credits::{ArtistCredit, CreditedRole};
 use crate::catalog_model::medium_coverage::MediumCoverage;
 use crate::catalog_model::source_release::{
     CatalogFacts, DisplayCredit, EntryKind, RoleCredit, SourceMedium, SourceRelease, TracklistEntry,
 };
 use crate::catalog_model::CatalogError;
 use crate::import::release_values::{position_number, ReleaseValues, TrackCredits, TrackValues};
-use crate::import::{ArtistCredit, CreditedRole};
 use bae_catalogs::catalog::Catalog;
 use bae_catalogs::discogs::{DiscogsArtist, DiscogsRelease, DiscogsRoleArtist, DiscogsTrack};
 use bae_types::pressing::{Medium, Pressing, PressingFacts, ReleaseArea, StatedMedia};
@@ -44,10 +44,12 @@ fn discogs_join(join: Option<&str>) -> Option<String> {
 
 /// A Discogs display credit list, place by place, with each artist's printed
 /// name and the joins between them; the last credit's join is not kept.
-pub(crate) fn discogs_credits(artists: &[DiscogsArtist]) -> Vec<crate::import::SourceCredit> {
-    let mut stated: Vec<crate::import::SourceCredit> = artists
+pub(crate) fn discogs_credits(
+    artists: &[DiscogsArtist],
+) -> Vec<crate::catalog_model::credits::SourceCredit> {
+    let mut stated: Vec<crate::catalog_model::credits::SourceCredit> = artists
         .iter()
-        .map(|artist| crate::import::SourceCredit {
+        .map(|artist| crate::catalog_model::credits::SourceCredit {
             credit: discogs_track_artist_ref(artist),
             join: discogs_join(artist.join.as_deref()),
         })
@@ -91,16 +93,21 @@ pub(crate) fn discogs_track_artist_ref(credit: &DiscogsArtist) -> ArtistCredit {
 pub(crate) fn metadata(release: &DiscogsRelease) -> super::release_metadata::ReleaseMetadata {
     // With no artists list, fall back to the artist half of the "Artist - Album"
     // title split.
-    let release_refs: Vec<crate::import::SourceCredit> = if release.artists.is_empty() {
-        match bae_catalogs::discogs::split_title(&release.title).and_then(|(artist, _)| artist) {
-            Some(name) => {
-                vec![crate::import::SourceCredit::plain(discogs_artist_ref(name.to_owned(), None))]
+    let release_refs: Vec<crate::catalog_model::credits::SourceCredit> =
+        if release.artists.is_empty() {
+            match bae_catalogs::discogs::split_title(&release.title).and_then(|(artist, _)| artist)
+            {
+                Some(name) => {
+                    vec![crate::catalog_model::credits::SourceCredit::plain(discogs_artist_ref(
+                        name.to_owned(),
+                        None,
+                    ))]
+                }
+                None => Vec::new(),
             }
-            None => Vec::new(),
-        }
-    } else {
-        discogs_credits(&release.artists)
-    };
+        } else {
+            discogs_credits(&release.artists)
+        };
 
     super::release_metadata::ReleaseMetadata {
         album: super::release_metadata::AlbumMetadata {
@@ -407,7 +414,7 @@ fn covered_layout(
 /// by Discogs artist id, first occurrence (and its join) winning.
 fn discogs_track_values(pt: &ProcessedTrack, place: bae_types::mediums::TrackPlace) -> TrackValues {
     let mut roles = Vec::new();
-    let mut credits: Vec<crate::import::SourceCredit> = Vec::new();
+    let mut credits: Vec<crate::catalog_model::credits::SourceCredit> = Vec::new();
     let mut seen_credit_ids: HashSet<Option<String>> = HashSet::new();
     for discogs_track in &pt.source_tracks {
         roles.extend(discogs_track.roles.iter().map(|role| CreditedRole {

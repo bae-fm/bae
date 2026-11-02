@@ -321,7 +321,7 @@ fn found_verdict(track_count: u32, source: Option<SourceTracks>) -> TerminalVerd
 fn the_lengths_a_source_states_do_not_decide() {
     let payloads: crate::catalog_model::payloads::ReleasePayloads =
         crate::catalog_model::payloads::ReleasePayloads::for_test(
-            crate::import::MetadataRef::new(bae_catalogs::catalog::Catalog::MusicBrainz, "mb-1"),
+            crate::catalog_model::records::MetadataRef::new(bae_catalogs::catalog::Catalog::MusicBrainz, "mb-1"),
             release_json("mb-1", "rg-1", &[200_000, 100_000, 300_000]),
             Vec::new(),
         );
@@ -341,7 +341,7 @@ fn the_lengths_a_source_states_do_not_decide() {
 #[test]
 fn a_document_lists_its_tracks_titles() {
     let payloads = crate::catalog_model::payloads::ReleasePayloads::for_test(
-        crate::import::MetadataRef::new(bae_catalogs::catalog::Catalog::MusicBrainz, "mb-1"),
+        crate::catalog_model::records::MetadataRef::new(bae_catalogs::catalog::Catalog::MusicBrainz, "mb-1"),
         release_json("mb-1", "rg-1", &[200_000, 100_000, 300_000]),
         Vec::new(),
     );

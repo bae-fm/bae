@@ -8,11 +8,11 @@
 //! import surfaces need out of it at once. The documents themselves are never
 //! stored: a set lives as long as the fetch that returned it.
 
+use crate::catalog_model::records::{MetadataRef, PayloadSource, ReleaseRecord, SourcePayload};
 use crate::catalog_model::source_release::{
     not_fetched, ArchiveRelease, CatalogFacts, ReleaseCovers, SourceRelease, UnfetchedDocument,
 };
 use crate::catalog_model::CatalogError;
-use crate::import::{MetadataRef, PayloadSource, ReleaseRecord, SourcePayload};
 use bae_catalogs::catalog::{parse_catalog_url, Catalog, CatalogPage};
 use bae_catalogs::discogs::client::DiscogsClient;
 use bae_catalogs::discogs::DiscogsRelease;

@@ -23,9 +23,9 @@ fn discogs(document: serde_json::Value) -> MetadataResult {
         id => id.to_string(),
     };
     let release = crate::catalog_model::payloads::ReleasePayloads::for_test(
-        crate::import::MetadataRef::new(Catalog::Discogs, id),
+        crate::catalog_model::records::MetadataRef::new(Catalog::Discogs, id),
         document.to_string(),
-        Vec::<crate::import::SourcePayload>::new(),
+        Vec::<crate::catalog_model::records::SourcePayload>::new(),
     )
     .extract()
     .expect("the release document is read");

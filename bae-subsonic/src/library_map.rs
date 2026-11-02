@@ -33,7 +33,7 @@ async fn release_mb_id(
         .await
         .map_err(lib_err)?
         .iter()
-        .filter_map(bae_core::import::ReleaseRecord::release_ref)
+        .filter_map(bae_core::catalog_model::records::ReleaseRecord::release_ref)
         .find(|release| release.catalog == Catalog::MusicBrainz)
         .map(|release| release.key.clone()))
 }

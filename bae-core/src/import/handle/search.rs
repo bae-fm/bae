@@ -138,7 +138,7 @@ impl ImportServiceHandle {
     pub(super) async fn land_picked(
         &self,
         candidate_key: &crate::import::CandidateKey,
-        release: &crate::import::MetadataRef,
+        release: &crate::catalog_model::records::MetadataRef,
         links: crate::catalog_model::album_links::AlbumLinks,
     ) -> Result<(), crate::library::LibraryError> {
         let kept = self.runtime.land_picked(candidate_key, release, links).await?;
@@ -277,14 +277,16 @@ impl ImportServiceHandle {
     /// record names, each once, in the records' order.
     async fn records_gallery(
         &self,
-        records: &[crate::import::ReleaseRecord],
+        records: &[crate::catalog_model::records::ReleaseRecord],
     ) -> Result<Vec<bae_catalogs::remote_image::RemoteCover>, crate::import::ImportError> {
         let mut covers = Vec::new();
         for record in records.iter().filter(|record| Catalog::LOOKUP.contains(&record.catalog())) {
             let gallery = match record {
-                crate::import::ReleaseRecord::Pressing { release, album_key, .. } => match release
-                    .catalog
-                {
+                crate::catalog_model::records::ReleaseRecord::Pressing {
+                    release,
+                    album_key,
+                    ..
+                } => match release.catalog {
                     Catalog::MusicBrainz => {
                         self.library_manager
                             .musicbrainz_gallery(&release.key, album_key.as_deref())
@@ -297,17 +299,19 @@ impl ImportServiceHandle {
                     }
                     other => unreachable!("{} serves no artwork", other.as_str()),
                 },
-                crate::import::ReleaseRecord::Album { album } => match album.catalog {
-                    Catalog::MusicBrainz => {
-                        self.library_manager.musicbrainz_group_gallery(&album.key).await?
+                crate::catalog_model::records::ReleaseRecord::Album { album } => {
+                    match album.catalog {
+                        Catalog::MusicBrainz => {
+                            self.library_manager.musicbrainz_group_gallery(&album.key).await?
+                        }
+                        Catalog::Discogs => {
+                            self.library_manager
+                                .fetch_discogs_master_covers(&album.key, CallPriority::Interactive)
+                                .await?
+                        }
+                        other => unreachable!("{} serves no artwork", other.as_str()),
                     }
-                    Catalog::Discogs => {
-                        self.library_manager
-                            .fetch_discogs_master_covers(&album.key, CallPriority::Interactive)
-                            .await?
-                    }
-                    other => unreachable!("{} serves no artwork", other.as_str()),
-                },
+                }
             };
             for cover in gallery {
                 bae_catalogs::remote_image::push_unique_cover(&mut covers, cover);
@@ -324,7 +328,7 @@ impl ImportServiceHandle {
     pub(super) async fn release_for_pick(
         &self,
         candidate_key: &crate::import::CandidateKey,
-        release: &crate::import::MetadataRef,
+        release: &crate::catalog_model::records::MetadataRef,
         steps: &crate::import::CatalogApplySteps,
     ) -> Result<crate::catalog_model::source_release::PreparedRelease, crate::import::ImportError>
     {
@@ -352,7 +356,7 @@ impl ImportServiceHandle {
     async fn is_settled_lead(
         &self,
         candidate_key: &crate::import::CandidateKey,
-        release: &crate::import::MetadataRef,
+        release: &crate::catalog_model::records::MetadataRef,
     ) -> Result<bool, crate::import::ImportError> {
         let Some(candidate) = self.get_release_candidate(candidate_key).await? else {
             return Ok(false);

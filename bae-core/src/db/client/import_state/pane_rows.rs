@@ -14,9 +14,10 @@ mod writes;
 use super::super::downscaled_copies::{copies_json_sql, copies_of};
 use super::verdict_rows::unreadable;
 use super::*;
+use crate::catalog_model::credits::ArtistCredit;
 use crate::import::{
-    ArtistAssignment, ArtistCredit, AudioFile, CandidateDraft, CandidateTrack, CoverSelection,
-    Credited, ExistingArtist, MetadataAuthor, RawLabelEdit, RawPressingEdit, RawTrackEdit,
+    ArtistAssignment, AudioFile, CandidateDraft, CandidateTrack, CoverSelection, Credited,
+    ExistingArtist, MetadataAuthor, RawLabelEdit, RawPressingEdit, RawTrackEdit,
     TrackArtistAssignments,
 };
 use bae_catalogs::remote_image::RemoteImageSet;

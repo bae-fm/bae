@@ -111,7 +111,7 @@ impl<'a> TrackRow<'a> {
 #[derive(PartialEq)]
 struct TrackRows<'a> {
     artists: &'a TrackArtistAssignments,
-    roles: &'a [crate::import::CreditedRole],
+    roles: &'a [crate::catalog_model::credits::CreditedRole],
     works: &'a [String],
 }
 
@@ -170,7 +170,7 @@ fn store_album_artist_assignments(
 struct DraftBody<'a> {
     mediums: &'a [bae_types::mediums::ReleaseMedium],
     tracks: &'a [CandidateTrack],
-    release_roles: &'a [crate::import::CreditedRole],
+    release_roles: &'a [crate::catalog_model::credits::CreditedRole],
     works: &'a crate::import::WorkGraph,
 }
 
