@@ -36,6 +36,9 @@ file states what it calls things.
   it; the person who manages the storage does.
 - **Sync failed.** Sync stopped on an error. The Sync row says only that; the
   Sync page says what went wrong and offers the fix where there is one.
+- **Checking sync…** Sync is starting or between passes. There is no "Sync
+  stopped": a sync that couldn't start is "Sync failed", with why and
+  Reconnect.
 - **Last synced.** When this device's copy last matched storage. Shown only
   on the Sync page, on its own line under the status.
 
