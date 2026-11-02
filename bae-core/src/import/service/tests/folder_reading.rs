@@ -218,7 +218,8 @@ async fn keeping_discs_separate_trades_the_combined_row_for_both_discs_at_once()
     );
     assert_eq!(
         fixture
-            .manager()
+            .test
+            .database
             .load_folder_release_decisions(&fixture.root)
             .await
             .unwrap()
@@ -287,7 +288,8 @@ async fn a_folder_reading_refuses_a_root_that_moved_while_it_read() {
     let fixture = DecisionFixture::new(["Disc 1", "Disc 2"], 1).await;
     let before = fixture.stored_paths().await;
     let decisions_before = fixture
-        .manager()
+        .test
+        .database
         .load_folder_release_decisions(&fixture.root)
         .await
         .unwrap()
@@ -329,7 +331,8 @@ async fn a_folder_reading_refuses_a_root_that_moved_while_it_read() {
     assert_eq!(fixture.stored_paths().await, before);
     assert_eq!(
         fixture
-            .manager()
+            .test
+            .database
             .load_folder_release_decisions(&fixture.root)
             .await
             .unwrap()
@@ -397,7 +400,7 @@ fn a_change_reads_the_folder_it_is_in_and_the_root_only_where_it_must() {
 async fn the_network_check_names_the_folders_that_moved() {
     let fixture = DecisionFixture::new(["Disc 1", "Disc 2"], 1).await;
     let root = &fixture.root;
-    let recorded = fixture.manager().load_folder_scan_directories(root).await.unwrap();
+    let recorded = fixture.test.database.load_folder_scan_directories(root).await.unwrap();
     assert_eq!(network_changes(root, &recorded), Some(Vec::new()));
 
     write_disc(&root.join("Artist/Album/Disc 1"), 2);

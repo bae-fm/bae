@@ -730,6 +730,13 @@ mod test_access {
             &self.catalogs
         }
 
+        /// The store under the library, for a test that writes rows no
+        /// operation writes as it wants them.
+        #[cfg(test)]
+        pub(crate) fn database_for_test(&self) -> &crate::db::Database {
+            &self.database
+        }
+
         pub fn providers(&self) -> &crate::catalog_model::providers::Providers {
             self.catalogs.providers()
         }

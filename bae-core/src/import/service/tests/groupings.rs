@@ -116,7 +116,7 @@ async fn a_folders_release_keeps_its_key_across_readings() {
     let (test, scan, root) = scanned_root(&["Album/Disc 1", "Album/Disc 2"]).await;
     let manager = &test.service.library_manager;
     let grouping_of = || async {
-        manager
+        test.database
             .load_folder_release_decisions(&root)
             .await
             .unwrap()

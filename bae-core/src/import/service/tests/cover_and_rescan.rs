@@ -797,7 +797,7 @@ async fn a_pass_records_the_directories_it_read() {
     let (scan, _events) = test.scan();
     scan.rescan(&root).await.expect("the pass reads the folder");
 
-    let recorded = test.service.library_manager.load_folder_scan_directories(&root).await.unwrap();
+    let recorded = test.database.load_folder_scan_directories(&root).await.unwrap();
     let mut paths: Vec<&Path> = recorded.iter().map(|(path, _)| path.as_path()).collect();
     paths.sort_unstable();
     assert_eq!(

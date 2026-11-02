@@ -132,7 +132,7 @@ async fn commit_reading_under(
     folder: &str,
     decision: crate::import::folder_scanner::FolderReleaseDecision,
     items: Vec<crate::import::folder_scanner::ScanItem>,
-    stamp: crate::db::FolderReadingStamp,
+    stamp: crate::db::client::folder_scans::FolderReadingStamp,
 ) -> Result<crate::db::FolderReadingWrite, crate::db::DbError> {
     db.commit_folder_reading(crate::db::FolderReadingCommit {
         watched_folder_path: root.to_path_buf(),

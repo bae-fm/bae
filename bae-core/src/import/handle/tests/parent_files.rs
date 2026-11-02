@@ -29,7 +29,7 @@ async fn album_of_discs(
     let handle = manager.start_import_service(tokio::runtime::Handle::current()).await.unwrap();
     handle.refresh_watched_folder(root.clone()).await.unwrap();
     let reading = handle
-        .library_manager
+        .database
         .load_folder_release_decisions(&root)
         .await
         .unwrap()

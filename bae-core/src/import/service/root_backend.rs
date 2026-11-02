@@ -17,12 +17,17 @@ pub(super) trait RootRemovalBackend: Send + Sync {
 
 pub(super) struct ServiceRootRemovalBackend {
     folder_watcher: Arc<FolderWatcher>,
-    library_manager: LibraryManager,
+    database: crate::db::Database,
+    diagnostics: crate::diagnostics::Diagnostics,
 }
 
 impl ServiceRootRemovalBackend {
-    pub(super) fn new(folder_watcher: Arc<FolderWatcher>, library_manager: LibraryManager) -> Self {
-        Self { folder_watcher, library_manager }
+    pub(super) fn new(
+        folder_watcher: Arc<FolderWatcher>,
+        database: crate::db::Database,
+        diagnostics: crate::diagnostics::Diagnostics,
+    ) -> Self {
+        Self { folder_watcher, database, diagnostics }
     }
 }
 
@@ -35,7 +40,7 @@ impl RootRemovalBackend for ServiceRootRemovalBackend {
             watcher.uninstall(&path)
         })
         .await
-        .map_err(|failed| self.library_manager.bug(failed).to_string())
+        .map_err(|failed| self.diagnostics.bug(failed).to_string())
     }
 
     async fn reinstall(&self, path: &Path, snapshot: &FolderWatchSnapshot) -> Result<(), String> {
@@ -46,7 +51,7 @@ impl RootRemovalBackend for ServiceRootRemovalBackend {
             watcher.reinstall(&path, &snapshot)
         })
         .await
-        .map_err(|failed| self.library_manager.bug(failed).to_string())?
+        .map_err(|failed| self.diagnostics.bug(failed).to_string())?
         .map_err(|error| error.to_string())
     }
 
@@ -55,7 +60,7 @@ impl RootRemovalBackend for ServiceRootRemovalBackend {
         roots: &[PathBuf],
         parent: Option<&Path>,
     ) -> Result<Vec<crate::import::CandidateKey>, String> {
-        self.library_manager
+        self.database
             .remove_watched_import_folders(roots.to_vec(), parent.map(Path::to_path_buf))
             .await
             .map_err(|error| error.to_string())?

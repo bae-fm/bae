@@ -78,7 +78,7 @@ async fn rescan_unread_into(manager: &LibraryManager, candidate: FolderCandidate
         seed: crate::db::ScanItemSeed::Tags(None),
         folder_date: None,
     };
-    manager.save_folder_scan_items(&root, generation, vec![unread]).await.unwrap();
+    manager.database_for_test().save_folder_scan_items(&root, generation, vec![unread]).await.unwrap();
     manager.finish_folder_scan(&root, generation, None).await.unwrap();
 }
 

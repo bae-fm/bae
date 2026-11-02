@@ -231,108 +231,7 @@ impl LibraryManager {
             &self.diagnostics,
         )
         .await;
-        self.begin_folder_scan_on(watched_folder_path, volume).await
-    }
-
-    /// [`Self::begin_folder_scan`] for a scan that has already asked which
-    /// volume the folder is on.
-    pub(crate) async fn begin_folder_scan_on(
-        &self,
-        watched_folder_path: &Path,
-        volume: crate::import::VolumeKind,
-    ) -> Result<u64, LibraryError> {
         Ok(self.database.begin_folder_scan(watched_folder_path, volume).await?)
-    }
-
-    pub async fn record_folder_scan_directories(
-        &self,
-        watched_folder_path: &Path,
-        directories: &[(PathBuf, i64)],
-    ) -> Result<(), LibraryError> {
-        Ok(self.database.record_folder_scan_directories(watched_folder_path, directories).await?)
-    }
-
-    pub async fn load_folder_scan_directories(
-        &self,
-        watched_folder_path: &Path,
-    ) -> Result<Vec<(PathBuf, i64)>, LibraryError> {
-        Ok(self.database.load_folder_scan_directories(watched_folder_path).await?)
-    }
-
-    /// Store scan items under `generation` in one write, each with the seed
-    /// the caller took from [`Self::scan_item_seed`] before the folder-state
-    /// commit lock.
-    pub(crate) async fn save_folder_scan_items(
-        &self,
-        watched_folder_path: &Path,
-        generation: u64,
-        items: Vec<crate::db::ScanItemToWrite>,
-    ) -> Result<
-        Option<Vec<(crate::import::folder_scanner::ScanItem, crate::db::ScanItemWrite)>>,
-        LibraryError,
-    > {
-        Ok(self.database.save_folder_scan_items(watched_folder_path, generation, items).await?)
-    }
-
-    /// The folder about to be stored as its own file tags describe it: the
-    /// reading of its tracks' tags its scan row keeps, and the draft and cover
-    /// they seed a candidate that has none with. It is taken from what `reads`
-    /// — the pass that found it — and the reading stored for it hold, and read
-    /// where neither knows. A folder whose tags cannot be read keeps no
-    /// reading and, when it has no draft, starts on a blank one; it is logged
-    /// rather than kept out of the queue. Reading audio files can be slow on a
-    /// network share, so it runs on a blocking thread and outside the
-    /// folder-state commit lock every pane control waits on.
-    ///
-    /// A tentative folder whose files a settled entry already reads takes no
-    /// seed and opens no file: the store keeps that entry and writes nothing
-    /// for the folder.
-    pub(crate) async fn scan_item_seed(
-        &self,
-        item: &crate::import::folder_scanner::ScanItem,
-        generation: u64,
-        reads: std::sync::Arc<crate::import::folder_scanner::FileReads>,
-    ) -> Result<crate::db::ScanItemSeed, LibraryError> {
-        use crate::db::ScanItemSeed;
-        use crate::import::folder_scanner::ScanItem;
-        let (ScanItem::Discovered(candidate) | ScanItem::Valid(candidate)) = item else {
-            return Ok(ScanItemSeed::Tags(None));
-        };
-        if let (ScanItem::Discovered(_), Some(coverage)) = (item, item.coverage()) {
-            if self.database.settled_entry_reads(&candidate.watched_folder_path, &coverage).await? {
-                return Ok(ScanItemSeed::AlreadySettled);
-            }
-        }
-        let folder = candidate.path.display().to_string();
-        let stored = self
-            .database
-            .load_stored_file_tag_reading(
-                &candidate.watched_folder_path,
-                &candidate.key(),
-                &candidate.file_root,
-            )
-            .await?;
-        let candidate = candidate.clone();
-        let read = blocking("read a folder's file tags", move || {
-            crate::import::file_metadata_seed::FileMetadataSeed::read(
-                &candidate,
-                generation,
-                &reads,
-                stored.as_ref(),
-            )
-        })
-        .await
-        .map_err(|failed| self.bug(failed))?;
-        match read {
-            Ok(seed) => Ok(ScanItemSeed::Tags(Some(seed))),
-            Err(error) => {
-                tracing::warn!(
-                    "{folder} keeps no reading of its file tags, and starts on a blank draft \
-                     if it has none: they could not be read: {error}"
-                );
-                Ok(ScanItemSeed::Tags(None))
-            }
-        }
     }
 
     #[cfg(any(test, feature = "test-utils"))]
@@ -342,16 +241,18 @@ impl LibraryManager {
         generation: u64,
         item: &crate::import::folder_scanner::ScanItem,
     ) -> Result<Option<crate::db::ScanItemWrite>, LibraryError> {
-        let seed = self
-            .scan_item_seed(
-                item,
-                generation,
-                std::sync::Arc::new(crate::import::folder_scanner::FileReads::new(
-                    std::sync::Arc::new(crate::import::file_tag_snapshot::LoftyFileTagReader),
-                )),
-            )
-            .await?;
+        let seed = crate::import::file_metadata_seed::scan_item_seed(
+            &self.database,
+            &self.diagnostics,
+            item,
+            generation,
+            std::sync::Arc::new(crate::import::folder_scanner::FileReads::new(
+                std::sync::Arc::new(crate::import::file_tag_snapshot::LoftyFileTagReader),
+            )),
+        )
+        .await?;
         let writes = self
+            .database
             .save_folder_scan_items(
                 watched_folder_path,
                 generation,
@@ -595,67 +496,11 @@ impl LibraryManager {
         Ok(self.database.clear_candidate_standings().await?)
     }
 
-    /// What the scans of `watched_folder_path` stored about each file they
-    /// read, for the next pass over it to start from, reading any other
-    /// track's tags through `tags`.
-    pub(crate) async fn load_file_reads(
-        &self,
-        watched_folder_path: &Path,
-        tags: std::sync::Arc<dyn crate::import::file_tag_snapshot::FileTagReader>,
-    ) -> Result<crate::import::folder_scanner::FileReads, LibraryError> {
-        Ok(self.database.load_file_reads(watched_folder_path, tags).await?)
-    }
-
-    /// Every candidate's user-set file decisions, keyed by content hash, so a
-    /// folder scan reports the roles the user settled.
-    pub async fn load_stored_candidate_edits(
-        &self,
-    ) -> Result<crate::import::folder_scanner::StoredCandidateEdits, LibraryError> {
-        Ok(self.database.load_stored_candidate_edits().await?)
-    }
-
     pub async fn load_candidate_file_edits(
         &self,
         content_hash: &str,
     ) -> Result<crate::import::folder_scanner::CandidateFileEdits, LibraryError> {
         Ok(self.database.load_candidate_file_edits(content_hash).await?)
-    }
-
-    /// Store the reading a scan settled on for one folder, never replacing the
-    /// user's own answer.
-    pub async fn record_scanned_folder_release_decision(
-        &self,
-        key: &crate::import::folder_scanner::FolderReleaseDecisionKey,
-        decision: crate::import::folder_scanner::FolderReleaseDecision,
-        grouping: &CandidateKey,
-    ) -> Result<(), LibraryError> {
-        Ok(self.database.record_scanned_folder_release_decision(key, decision, grouping).await?)
-    }
-
-    /// The generation `watched_folder_path` stands at, or `None` for a root
-    /// that has never been read.
-    pub(crate) async fn current_folder_scan_generation(
-        &self,
-        watched_folder_path: &Path,
-    ) -> Result<Option<u64>, LibraryError> {
-        Ok(self.database.current_folder_scan_generation(watched_folder_path).await?)
-    }
-
-    /// Begin reading one folder of a watched root again.
-    pub(crate) async fn begin_folder_reading(
-        &self,
-        watched_folder_path: &Path,
-    ) -> Result<crate::db::FolderReadingStamp, LibraryError> {
-        Ok(self.database.begin_folder_reading(watched_folder_path).await?)
-    }
-
-    /// Store one folder's new reading, with the decision that changed it, as
-    /// one write.
-    pub(crate) async fn commit_folder_reading(
-        &self,
-        commit: crate::db::FolderReadingCommit,
-    ) -> Result<crate::db::FolderReadingWrite, LibraryError> {
-        Ok(self.database.commit_folder_reading(commit).await?)
     }
 
     /// The grouping the folder `folder` is read as; `None` when no reading
@@ -667,16 +512,6 @@ impl LibraryManager {
         Ok(self.database.folder_reading_grouping(folder).await?)
     }
 
-    /// Whether reading the folder at `key` as `decision` is something the
-    /// stored scan offers.
-    pub(crate) async fn folder_reading_offered(
-        &self,
-        key: &crate::import::folder_scanner::FolderReleaseDecisionKey,
-        decision: crate::import::folder_scanner::FolderReleaseDecision,
-    ) -> Result<bool, LibraryError> {
-        Ok(self.database.folder_reading_offered(key, decision).await?)
-    }
-
     /// The keys of the scanned releases at `folder` or below it.
     pub(crate) async fn scanned_release_keys_at_or_below(
         &self,
@@ -684,12 +519,5 @@ impl LibraryManager {
         folder: &Path,
     ) -> Result<std::collections::BTreeSet<CandidateKey>, LibraryError> {
         Ok(self.database.scanned_release_keys_at_or_below(watched_folder_path, folder).await?)
-    }
-
-    pub async fn load_folder_release_decisions(
-        &self,
-        watched_folder_path: &Path,
-    ) -> Result<crate::import::folder_scanner::FolderReleaseDecisions, LibraryError> {
-        Ok(self.database.load_folder_release_decisions(watched_folder_path).await?)
     }
 }

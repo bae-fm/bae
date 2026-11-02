@@ -674,14 +674,13 @@ async fn cancelling_a_panicked_folder_walk_fails_and_reports_it() {
 /// folder for the next check.
 #[tokio::test]
 async fn a_network_folder_found_unchanged_is_checked_again() {
-    let TestService { service, temp: tmp, .. } = setup_import_service().await;
+    let TestService { service, database, temp: tmp, .. } = setup_import_service().await;
     let root = tmp.path().join("watched");
     std::fs::create_dir(&root).unwrap();
     let modified_at = directory_modified_at(&root).expect("the folder's mtime reads");
     service.library_manager.add_watched_import_folder(&root).await.unwrap();
     service.library_manager.begin_folder_scan(&root).await.unwrap();
-    service
-        .library_manager
+    database
         .record_folder_scan_directories(&root, &[(root.clone(), modified_at)])
         .await
         .unwrap();
@@ -695,7 +694,7 @@ async fn a_network_folder_found_unchanged_is_checked_again() {
     let (mut coordinator, mut checks) = super::coordinator::Coordinator::new(
         active_roots,
         service.event_tx.clone(),
-        service.library_manager.clone(),
+        database,
         service.diagnostics.clone(),
     );
 

@@ -28,7 +28,10 @@ use std::path::{Path, PathBuf};
 
 // `use super::*` also brings in the client's own `read` and `write`, hence `self::`.
 pub(super) use self::read::{load_candidate_file_tag_snapshot, load_item_by_key, RowSources};
-pub(crate) use self::reading::{FolderReadingCommit, FolderReadingStamp, FolderReadingWrite};
+/// Named only by a test that commits a reading under a stamp it took.
+#[cfg(test)]
+pub(crate) use self::reading::FolderReadingStamp;
+pub(crate) use self::reading::{FolderReadingCommit, FolderReadingWrite};
 
 /// Each watched folder's scan, in the order the folders are listed (their
 /// `position`, by its index), with the count of its current generation's

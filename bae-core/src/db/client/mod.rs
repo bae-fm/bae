@@ -96,7 +96,7 @@ mod folder_scans;
 pub use folder_scans::{FinishedScan, ScanItemWrite};
 #[cfg(desktop)]
 pub(crate) use folder_scans::{
-    FolderReadingCommit, FolderReadingStamp, FolderReadingWrite, ScanItemSeed, ScanItemToWrite,
+    FolderReadingCommit, FolderReadingWrite, ScanItemSeed, ScanItemToWrite,
 };
 #[cfg(desktop)]
 mod release_groupings;
