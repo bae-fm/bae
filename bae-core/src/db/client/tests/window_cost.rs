@@ -236,6 +236,7 @@ async fn measure_albums(db: &Database, n: u64) {
                 super::super::album::album_rows_on(
                     sql,
                     &query::album_browse_order(&[], true).0,
+                    true,
                     order,
                     seek,
                     limit,
@@ -247,6 +248,7 @@ async fn measure_albums(db: &Database, n: u64) {
                 super::super::album::album_rows_on(
                     sql,
                     &query::album_browse_order(&[], false).0,
+                    false,
                     order,
                     seek,
                     limit,

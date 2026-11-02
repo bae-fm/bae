@@ -101,6 +101,7 @@ macro_rules! browse_subscription {
                         .map(|section| crate::types::BridgeLibraryBrowseSection {
                             id: section.id,
                             title: section.title,
+                            image: section.image.map(crate::types::BridgeImageRef::from_core),
                             window: crate::types::BridgeLibraryPageWindow::from_core(
                                 section.window,
                             ),
@@ -120,7 +121,7 @@ browse_subscription! {
     built by album_browse,
     snapshot: BridgeAlbumBrowseSnapshot,
     window: BridgeAlbumBrowseWindow,
-    row: bae_core::album_detail::AlbumSummary => crate::types::BridgeAlbum,
+    row: bae_core::album_detail::AlbumAppearance => crate::types::BridgeAlbumAppearance,
 }
 
 browse_subscription! {

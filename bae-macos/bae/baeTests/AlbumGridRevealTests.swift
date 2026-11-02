@@ -132,16 +132,19 @@ struct AlbumGridRevealTests {
             BridgeLibraryBrowseSection(
                 id: "artist-a",
                 title: "Artist A",
+                image: nil,
                 window: .init(offset: 0, limit: 203)
             ),
             BridgeLibraryBrowseSection(
                 id: "artist-b",
                 title: "Artist B",
+                image: nil,
                 window: .init(offset: 203, limit: 202)
             ),
             BridgeLibraryBrowseSection(
                 id: "artist-c",
                 title: "Artist C",
+                image: nil,
                 window: .init(offset: 405, limit: 195)
             ),
         ]

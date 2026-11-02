@@ -193,7 +193,10 @@ added, either way; an album of unknown year sorts after every year ascending
 and before them descending, and albums the sort ties go by id. Grouped by
 artist, the grid lists an album under each artist its credits show, once per
 artist, the artists in order of sort name (else name) and then id, each
-artist's albums in the grid's sort. The artist list shows every artist an
+artist's albums in the grid's sort. Each artist's group carries the artist's
+picture and how many albums it holds, and each album listed in it carries its
+other credits, those besides that artist, printed as a line (none when that
+artist is its only credit). The artist list shows every artist an
 album's credits show, sorted by name or album count, ties going by name and
 then id.
 

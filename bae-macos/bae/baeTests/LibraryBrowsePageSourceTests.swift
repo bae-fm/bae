@@ -70,11 +70,13 @@ struct LibraryBrowsePageSourceTests {
             BridgeLibraryBrowseSection(
                 id: "artist-a",
                 title: "Artist A",
+                image: nil,
                 window: .init(offset: 0, limit: 75)
             ),
             BridgeLibraryBrowseSection(
                 id: "artist-b",
                 title: "Artist B",
+                image: nil,
                 window: .init(offset: 75, limit: 45)
             ),
         ]

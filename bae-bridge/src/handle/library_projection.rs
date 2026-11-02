@@ -342,6 +342,15 @@ mirror_struct! {
     },
 }
 
+mirror_struct! {
+    crate::types::BridgeAlbumAppearance = bae_core::album_detail::AlbumAppearance,
+    from_core: pub(crate) fn,
+    fields: {
+        album: (BridgeAlbum),
+        credited_with,
+    },
+}
+
 impl BridgeComposerSummary {
     pub(crate) fn from_core(s: bae_core::album_detail::ComposerSummary) -> Self {
         let bae_core::album_detail::ComposerSummary { raw } = s;

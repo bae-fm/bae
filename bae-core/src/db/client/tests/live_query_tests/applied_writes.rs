@@ -28,7 +28,7 @@ fn album_page_subscription_delivers_a_write_materialized_by_sync() {
             .expect("the query stays open")
             .result
             .unwrap();
-        assert_eq!(updated.windows[0].rows[0].title, "Synced Album");
+        assert_eq!(updated.windows[0].rows[0].album.title, "Synced Album");
     });
 }
 

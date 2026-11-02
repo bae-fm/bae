@@ -237,6 +237,17 @@ pub struct BridgeAlbum {
     pub cover: Option<BridgeImageRef>,
 }
 
+/// One row of the album grid: an album, listed once when the grid is flat and
+/// under each artist its credits show when grouped by artist.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeAlbumAppearance {
+    pub album: BridgeAlbum,
+    /// Grouped by artist: the album's credits other than the artist whose
+    /// group lists it, printed as a line; `None` when that artist is its only
+    /// credit, or when the grid is flat.
+    pub credited_with: Option<String>,
+}
+
 /// Local audio uses this device's paths; Remote audio is attached to its synced
 /// rows and queued for upload. Pinning is independent of that attachment and
 /// is carried on `BridgeReleaseSummary` and `BridgeRelease`.

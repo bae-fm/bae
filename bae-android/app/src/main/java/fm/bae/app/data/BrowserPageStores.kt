@@ -228,7 +228,11 @@ internal class AlbumPageStore(
 
     override fun open(parameter: AlbumBrowseParameters): BrowseRowsQuery<BridgeAlbum> =
         SnapshotRowsQuery(library.albumBrowse(listOf(parameter.criterion), parameter.groupByArtist)) { snapshot ->
-            BrowseRows(snapshot.windows.map { it.window to it.rows }, snapshot.rowCount.toInt(), snapshot.sections)
+            BrowseRows(
+                snapshot.windows.map { window -> window.window to window.rows.map { it.album } },
+                snapshot.rowCount.toInt(),
+                snapshot.sections,
+            )
         }
 }
 

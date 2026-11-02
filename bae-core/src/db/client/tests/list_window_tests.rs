@@ -123,7 +123,15 @@ async fn every_album_sort_seeks_its_windows_through_an_index() {
                 &db,
                 &order,
                 move |sql, order, seek, limit, offset| {
-                    super::super::album::album_rows_on(sql, &read, order, seek, limit, offset)
+                    super::super::album::album_rows_on(
+                        sql,
+                        &read,
+                        group_by_artist,
+                        order,
+                        seek,
+                        limit,
+                        offset,
+                    )
                 },
                 150,
             )
@@ -136,7 +144,14 @@ async fn every_album_sort_seeks_its_windows_through_an_index() {
                 &format!("albums {sort:?} grouped {group_by_artist}"),
                 &order,
                 key,
-                |seek| super::super::album::album_window_statement(&relation, &order, seek),
+                |seek| {
+                    super::super::album::album_window_statement(
+                        &relation,
+                        group_by_artist,
+                        &order,
+                        seek,
+                    )
+                },
                 Vec::new(),
                 sorted_within,
             )
@@ -636,7 +651,7 @@ async fn read_albums(
                 .unwrap()
                 .windows
                 .into_iter()
-                .map(|window| window.rows.into_iter().map(|album| album.id).collect())
+                .map(|window| window.rows.into_iter().map(|row| row.album.id).collect())
                 .collect();
         }
     }

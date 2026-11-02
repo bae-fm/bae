@@ -361,7 +361,7 @@ async fn delete_album_deletes_its_releases_and_what_they_own() {
         [crate::library::LibraryPageWindow { offset: 0, limit: 10 }].into(),
     );
     let listed = |browse: &crate::db::AlbumBrowseProjection| -> Vec<String> {
-        browse.windows[0].rows.iter().map(|album| album.id.clone()).collect()
+        browse.windows[0].rows.iter().map(|row| row.album.id.clone()).collect()
     };
     let before = browse.next().await.expect("the query stays open").result.unwrap();
     assert_eq!(listed(&before).len(), 2);

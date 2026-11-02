@@ -91,7 +91,7 @@ async fn a_fixture_album_credited_to_two_artists_is_listed_under_each() {
             let end = start + section.window.limit as usize;
             (
                 section.title.clone(),
-                rows[start..end].iter().map(|album| album.title.clone()).collect(),
+                rows[start..end].iter().map(|row| row.album.title.clone()).collect(),
             )
         })
         .collect();

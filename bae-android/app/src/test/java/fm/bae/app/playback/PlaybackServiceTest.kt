@@ -33,6 +33,7 @@ import org.robolectric.annotation.Config
 import uniffi.bae_bridge.AlbumBrowseSubscription
 import uniffi.bae_bridge.AlbumDetailSubscription
 import uniffi.bae_bridge.BridgeAlbum
+import uniffi.bae_bridge.BridgeAlbumAppearance
 import uniffi.bae_bridge.BridgeAlbumBrowseSnapshot
 import uniffi.bae_bridge.BridgeAlbumBrowseWindow
 import uniffi.bae_bridge.BridgeAlbumDetail
@@ -283,7 +284,7 @@ internal class FakeAlbumBrowseSubscription(
         events.trySend(
             Result.success(
                 BridgeAlbumBrowseSnapshot(
-                    windows = listOf(BridgeAlbumBrowseWindow(window, rows)),
+                    windows = listOf(BridgeAlbumBrowseWindow(window, rows.map(::flatGridRow))),
                     sections = emptyList(),
                     totalCount = totalCount,
                     rowCount = totalCount,
@@ -303,7 +304,7 @@ internal class FakeAlbumBrowseSubscription(
         val projected =
             windows.map { window ->
                 val values = rows(window.offset, window.limit)
-                BridgeAlbumBrowseWindow(window, values)
+                BridgeAlbumBrowseWindow(window, values.map(::flatGridRow))
             }
         events.trySend(
             Result.success(
@@ -404,3 +405,6 @@ internal class FakeComposerBrowseSubscription(
 }
 
 private fun queryFailure(): BridgeException = BridgeException.Diagnostic(BridgeErrorCategory.Internal, "temporary")
+
+/** An album as the flat grid lists it: once, in no artist's group. */
+private fun flatGridRow(album: BridgeAlbum) = BridgeAlbumAppearance(album = album, creditedWith = null)

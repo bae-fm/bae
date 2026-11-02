@@ -36,8 +36,8 @@ fn delete_album_takes_the_album_out_of_the_grid() {
     subscription
         .set_windows(vec![crate::types::BridgeLibraryPageWindow { offset: 0, limit: 10 }])
         .expect("request the grid's window");
-    let titles = |rows: &[crate::types::BridgeAlbum]| -> Vec<String> {
-        rows.iter().map(|album| album.title.clone()).collect()
+    let titles = |rows: &[crate::types::BridgeAlbumAppearance]| -> Vec<String> {
+        rows.iter().map(|row| row.album.title.clone()).collect()
     };
     let listed = loop {
         let snapshot =
@@ -50,8 +50,9 @@ fn delete_album_takes_the_album_out_of_the_grid() {
     let deleted = listed.windows[0]
         .rows
         .iter()
-        .find(|album| album.title == "Deleted Album")
+        .find(|row| row.album.title == "Deleted Album")
         .expect("the album to delete is listed")
+        .album
         .id
         .clone();
 

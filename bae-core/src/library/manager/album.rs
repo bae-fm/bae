@@ -65,14 +65,18 @@ impl LibraryManager {
         projection: crate::db::AlbumBrowseProjection,
         request_revision: u64,
         cause: coven::LiveQueryCause,
-    ) -> crate::library::LibraryBrowseSnapshot<AlbumSummary> {
+    ) -> crate::library::LibraryBrowseSnapshot<crate::album_detail::AlbumAppearance> {
         crate::library::LibraryBrowseSnapshot {
             windows: projection
                 .windows
                 .into_iter()
                 .map(|window| crate::library::LibraryBrowseWindow {
                     window: window.window,
-                    rows: window.rows.into_iter().map(AlbumSummary::from_raw).collect(),
+                    rows: window
+                        .rows
+                        .into_iter()
+                        .map(crate::album_detail::AlbumAppearance::from_raw)
+                        .collect(),
                 })
                 .collect(),
             total_count: projection.total_count,

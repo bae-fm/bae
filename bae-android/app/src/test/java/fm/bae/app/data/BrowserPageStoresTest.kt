@@ -28,8 +28,8 @@ class BrowserPageStoresTest {
         val store = RecordingPageStore(CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate))
         val sections =
             listOf(
-                BridgeLibraryBrowseSection("artist-a", "Artist A", BridgeLibraryPageWindow(0uL, 200uL)),
-                BridgeLibraryBrowseSection("artist-b", "Artist B", BridgeLibraryPageWindow(200uL, 300uL)),
+                BridgeLibraryBrowseSection("artist-a", "Artist A", null, BridgeLibraryPageWindow(0uL, 200uL)),
+                BridgeLibraryBrowseSection("artist-b", "Artist B", null, BridgeLibraryPageWindow(200uL, 300uL)),
             )
         store.activate("grouped")
         store.queries.single().emit(window(0), "album", sections)

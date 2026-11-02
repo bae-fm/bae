@@ -78,7 +78,7 @@ async fn artist_sections_cover_unloaded_albums_and_match_page_and_reveal_order()
             offset += section.window.limit;
         }
         assert_eq!(offset, 5);
-        assert_eq!(value.windows[0].rows[0], page[2]);
+        assert_eq!(value.windows[0].rows[0].album, page[2]);
     }
 }
 
@@ -136,15 +136,15 @@ async fn collaborations_appear_under_each_credit_but_count_once() {
         let start = section.window.offset as usize;
         let end = start + section.window.limit as usize;
         let albums = &rows[start..end];
-        assert!(albums.windows(2).all(|pair| pair[0].title > pair[1].title));
-        if albums.iter().any(|album| album.id == album_id) {
+        assert!(albums.windows(2).all(|pair| pair[0].album.title > pair[1].album.title));
+        if albums.iter().any(|row| row.album.id == album_id) {
             appearances.push(section.id.as_str());
         }
     }
     assert_eq!(appearances.into_iter().collect::<BTreeSet<_>>(), [ARTIST_A, ARTIST_B].into());
     assert_eq!(
         db.get_album_index(&sort, album_id, true).await.unwrap(),
-        rows.iter().position(|row| row.id == album_id).map(|i| i as u64)
+        rows.iter().position(|row| row.album.id == album_id).map(|i| i as u64)
     );
     let mut flat = db.subscribe_album_browse(
         &sort,
@@ -154,7 +154,7 @@ async fn collaborations_appear_under_each_credit_but_count_once() {
     let flat = flat.next().await.expect("the query stays open").result.unwrap();
     assert_eq!(flat.row_count, 5);
     assert!(flat.sections.is_empty());
-    assert_eq!(flat.windows[0].rows.iter().filter(|row| row.id == album_id).count(), 1);
+    assert_eq!(flat.windows[0].rows.iter().filter(|row| row.album.id == album_id).count(), 1);
     exec(&db, "DELETE FROM album_artists WHERE album_id = ? AND position = 1", &[album_id]).await;
     let removed = browse.next().await.expect("the query stays open").result.unwrap();
     assert_eq!(removed.row_count, 5);
@@ -187,7 +187,7 @@ async fn merged_and_repeated_credits_make_one_appearance_per_artist() {
     assert_eq!(merged.row_count, 5);
     assert_eq!(merged.sections.len(), 2);
     assert!(merged.sections.iter().all(|section| section.id != ARTIST_B));
-    assert_eq!(merged.windows[0].rows.iter().filter(|row| row.id == album_id).count(), 1);
+    assert_eq!(merged.windows[0].rows.iter().filter(|row| row.album.id == album_id).count(), 1);
 }
 
 /// The grid's selection comes back in the grid's order, whatever order its
@@ -219,4 +219,84 @@ async fn a_selection_is_read_in_the_grids_order() {
         .map(|album| album.title)
         .collect();
     assert_eq!(titles(grouped), expected);
+}
+
+/// Grouped by artist, a row names the album's other credits beside the
+/// artist whose group lists it, and nothing when that artist is the only
+/// credit; the flat grid names none.
+#[tokio::test]
+async fn a_grouped_row_names_the_albums_other_credits() {
+    let (db, _dir) = grouped_library().await;
+    let album_id = "00000000-0000-4000-8000-000000000000";
+    exec(
+        &db,
+        "INSERT INTO album_artists (id, album_id, artist_id, position, created_at) VALUES ('extra', ?, ?, 1, '2026-01-01T00:00:00Z')",
+        &[album_id, ARTIST_B],
+    )
+    .await;
+    let windows = [LibraryPageWindow { offset: 0, limit: 20 }];
+    let grouped = db
+        .subscribe_album_browse(&[], true, windows.clone().into())
+        .next()
+        .await
+        .expect("the query stays open")
+        .result
+        .unwrap();
+    let rows = &grouped.windows[0].rows;
+    let mut credited_with = BTreeSet::new();
+    for section in &grouped.sections {
+        let start = section.window.offset as usize;
+        let end = start + section.window.limit as usize;
+        for row in &rows[start..end] {
+            credited_with.insert((
+                section.id.as_str(),
+                row.album.title.as_str(),
+                row.credited_with.as_deref(),
+            ));
+        }
+    }
+    assert_eq!(
+        credited_with,
+        [
+            (ARTIST_A, "Album A", Some("Artist Name B")),
+            (ARTIST_A, "Album C", None),
+            (ARTIST_B, "Album A", Some("Artist Name A")),
+            (ARTIST_B, "Album B", None),
+            (ARTIST_B, "Album D", None),
+            (ARTIST_C, "Album E", None),
+        ]
+        .into()
+    );
+    let flat = db
+        .subscribe_album_browse(&[], false, windows.into())
+        .next()
+        .await
+        .expect("the query stays open")
+        .result
+        .unwrap();
+    assert!(flat.windows[0].rows.iter().all(|row| row.credited_with.is_none()));
+}
+
+/// An artist's group carries the artist's picture, and follows it as it
+/// changes; an artist without one carries none.
+#[tokio::test]
+async fn an_artist_section_carries_the_artists_picture() {
+    let (db, _dir) = grouped_library().await;
+    let mut browse = db.subscribe_album_browse(&[], true, BTreeSet::new());
+    let initial = browse.next().await.expect("the query stays open").result.unwrap();
+    assert!(initial.sections.iter().all(|section| section.image.is_none()));
+    let version =
+        super::live_query_tests::write_artist_image(&db, ARTIST_B, "artist image bytes").await;
+    let pictured = browse.next().await.expect("the query stays open").result.unwrap();
+    let images = pictured
+        .sections
+        .iter()
+        .map(|section| {
+            (section.id.as_str(), section.image.as_ref().map(|image| image.version.as_str()))
+        })
+        .collect::<BTreeSet<_>>();
+    assert_eq!(
+        images,
+        [(ARTIST_A, None), (ARTIST_B, Some(version.as_str())), (ARTIST_C, None)].into()
+    );
 }

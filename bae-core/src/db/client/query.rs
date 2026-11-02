@@ -367,8 +367,9 @@ pub(super) fn album_browse_sources(group_by_artist: bool) -> &'static [&'static 
 }
 
 /// The grid's sections when grouped by artist: each artist in the grouped
-/// order with its name, where its albums start in the rows and how many
-/// there are. `direction` is the grouped order's Artist direction.
+/// order with its name, where its albums start in the rows, how many there
+/// are, and the version of its picture. `direction` is the grouped order's
+/// Artist direction.
 pub(super) fn album_browse_sections_query(direction: SortDirection) -> String {
     let dir = sort_direction_sql(direction);
     let order = format!("artist.sort_key COLLATE NOCASE {dir}, artist.artist_id {dir}");
@@ -376,10 +377,23 @@ pub(super) fn album_browse_sections_query(direction: SortDirection) -> String {
         "SELECT artist.artist_id, artist.name, \
                 SUM(artist.album_count) OVER (ORDER BY {order} ROWS UNBOUNDED PRECEDING) \
                     - artist.album_count, \
-                artist.album_count \
+                artist.album_count, \
+                {image} AS image_version \
          FROM artist_listing artist \
-         ORDER BY {order}"
+         ORDER BY {order}",
+        image = super::files::artist_image_version_sql("artist.artist_id"),
     )
+}
+
+/// The artist whose group lists each row of the album grid (a SQL
+/// expression over `album_browse_order`'s relation): the group's artist when
+/// grouped by artist, else NULL.
+pub(super) fn album_group_artist_sql(group_by_artist: bool) -> &'static str {
+    if group_by_artist {
+        "artist.artist_id"
+    } else {
+        "NULL"
+    }
 }
 
 fn sort_direction_sql(direction: SortDirection) -> &'static str {
@@ -888,6 +902,20 @@ impl AlbumSummaryRow {
     }
 
     pub(super) fn process(self) -> Result<DbAlbumSummary, DbError> {
+        let credits = self.credits()?;
+        self.process_with(&credits)
+    }
+
+    /// The album's credits, in list order.
+    pub(super) fn credits(&self) -> Result<Vec<crate::credits::LibraryCredit>, DbError> {
+        super::read::credits_from_json(&self.album_credits)
+    }
+
+    /// The summary, its artist line printed from `credits`, the album's own.
+    pub(super) fn process_with(
+        self,
+        credits: &[crate::credits::LibraryCredit],
+    ) -> Result<DbAlbumSummary, DbError> {
         let release_ids = serde_json::from_str(&self.release_ids_json)
             .map_err(|error| DbError::Message(error.to_string()))?;
         Ok(DbAlbumSummary {
@@ -895,9 +923,7 @@ impl AlbumSummaryRow {
             title: self.title,
             year: self.year,
             is_compilation: self.is_compilation,
-            artist_names: crate::credits::library_line(&super::read::credits_from_json(
-                &self.album_credits,
-            )?),
+            artist_names: crate::credits::library_line(credits),
             release_ids,
             primary_release_id: self.primary_release_id,
             cover_version: self.primary_cover_version,

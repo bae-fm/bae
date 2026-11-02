@@ -94,7 +94,7 @@ async fn next_album_page_is_only_a_rename(
     shown: AlbumBrowseProjection,
     title: &str,
 ) -> AlbumBrowseProjection {
-    let album_id = shown.windows[0].rows[0].id.clone();
+    let album_id = shown.windows[0].rows[0].album.id.clone();
     exec(db, "UPDATE albums SET title = ?1 WHERE id = ?2", &[title, album_id.as_str()]).await;
     let renamed = tokio::time::timeout(Duration::from_secs(2), live.next())
         .await
@@ -103,7 +103,7 @@ async fn next_album_page_is_only_a_rename(
         .result
         .unwrap();
     let mut expected = shown;
-    expected.windows[0].rows[0].title = title.to_string();
+    expected.windows[0].rows[0].album.title = title.to_string();
     assert_eq!(renamed, expected, "the page carries more than the rename");
     renamed
 }
@@ -145,8 +145,8 @@ async fn album_browse_delivers_rows_count_and_cover_versions() {
 
     let initial = live.next().await.expect("the query stays open").result.unwrap();
     assert_eq!(initial.total_count, 1);
-    assert_eq!(initial.windows[0].rows[0].title, "Album Title");
-    assert_eq!(initial.windows[0].rows[0].cover_version, None);
+    assert_eq!(initial.windows[0].rows[0].album.title, "Album Title");
+    assert_eq!(initial.windows[0].rows[0].album.cover_version, None);
 
     let cover = super::write_cover(&db, RELEASE_ID, "cover bytes").await;
 
@@ -156,7 +156,7 @@ async fn album_browse_delivers_rows_count_and_cover_versions() {
         .expect("the query stays open")
         .result
         .unwrap();
-    assert_eq!(updated.windows[0].rows[0].cover_version.as_deref(), Some(cover.as_str()));
+    assert_eq!(updated.windows[0].rows[0].album.cover_version.as_deref(), Some(cover.as_str()));
 }
 
 /// A grid card shows its album's primary release's cover, so that is the one
@@ -182,7 +182,7 @@ async fn album_browse_reads_only_the_primary_releases_cover() {
         .expect("the query stays open")
         .result
         .unwrap();
-    assert_eq!(updated.windows[0].rows[0].cover_version.as_deref(), Some(primary.as_str()));
+    assert_eq!(updated.windows[0].rows[0].album.cover_version.as_deref(), Some(primary.as_str()));
 }
 
 #[tokio::test]
@@ -226,7 +226,7 @@ async fn album_browse_subscription_reconfigures_bounded_windows() {
         pages
             .windows
             .iter()
-            .map(|window| (window.window.clone(), window.rows[0].id.as_str()))
+            .map(|window| (window.window.clone(), window.rows[0].album.id.as_str()))
             .collect::<Vec<_>>(),
         vec![(first_window.clone(), ALBUM_ID), (second_window.clone(), OTHER_ALBUM_ID),]
     );
@@ -237,7 +237,7 @@ async fn album_browse_subscription_reconfigures_bounded_windows() {
     assert_eq!(second_page_event.request, second_page);
     assert_eq!(second_page_event.revision, second_page_revision);
     let second_page_initial = second_page_event.result.unwrap();
-    assert_eq!(second_page_initial.windows[0].rows[0].id, OTHER_ALBUM_ID);
+    assert_eq!(second_page_initial.windows[0].rows[0].album.id, OTHER_ALBUM_ID);
 
     exec(&db, "UPDATE albums SET title = 'Album Title Renamed' WHERE id = ?1", &[OTHER_ALBUM_ID])
         .await;
@@ -247,7 +247,7 @@ async fn album_browse_subscription_reconfigures_bounded_windows() {
         .expect("the query stays open");
     assert_eq!(renamed_event.revision, second_page_revision);
     let renamed = renamed_event.result.unwrap();
-    assert_eq!(renamed.windows[0].rows[0].title, "Album Title Renamed");
+    assert_eq!(renamed.windows[0].rows[0].album.title, "Album Title Renamed");
 
     exec(
         &db,
@@ -261,16 +261,16 @@ async fn album_browse_subscription_reconfigures_bounded_windows() {
         .expect("the query stays open")
         .result
         .unwrap();
-    assert_eq!(reordered.windows[0].rows[0].id, ALBUM_ID);
+    assert_eq!(reordered.windows[0].rows[0].album.id, ALBUM_ID);
 
     let first_page = [first_window].into_iter().collect::<BTreeSet<_>>();
     requests.set(first_page).unwrap();
     let reordered_first = live.next().await.expect("the query stays open").result.unwrap();
-    assert_eq!(reordered_first.windows[0].rows[0].id, OTHER_ALBUM_ID);
+    assert_eq!(reordered_first.windows[0].rows[0].album.id, OTHER_ALBUM_ID);
 
     requests.set([second_window].into_iter().collect::<BTreeSet<_>>()).unwrap();
     let hidden_other_album = live.next().await.expect("the query stays open").result.unwrap();
-    assert_eq!(hidden_other_album.windows[0].rows[0].id, ALBUM_ID);
+    assert_eq!(hidden_other_album.windows[0].rows[0].album.id, ALBUM_ID);
 
     // The edited album is outside the requested window, so its metadata
     // changes nothing the browse delivers.
@@ -301,8 +301,11 @@ async fn album_browse_subscription_reconfigures_bounded_windows() {
         [LibraryPageWindow { offset: 0, limit: 1 }].into_iter().collect::<BTreeSet<_>>();
     requests.set(other_album_page).unwrap();
     let covered = live.next().await.expect("the query stays open").result.unwrap();
-    assert_eq!(covered.windows[0].rows[0].id, OTHER_ALBUM_ID);
-    assert_eq!(covered.windows[0].rows[0].cover_version.as_deref(), Some(other_cover.as_str()));
+    assert_eq!(covered.windows[0].rows[0].album.id, OTHER_ALBUM_ID);
+    assert_eq!(
+        covered.windows[0].rows[0].album.cover_version.as_deref(),
+        Some(other_cover.as_str())
+    );
 
     let replaced_other_cover =
         super::write_cover(&db, OTHER_RELEASE_ID, "replaced other cover bytes").await;
@@ -313,7 +316,7 @@ async fn album_browse_subscription_reconfigures_bounded_windows() {
         .result
         .unwrap();
     assert_eq!(
-        cover_updated.windows[0].rows[0].cover_version.as_deref(),
+        cover_updated.windows[0].rows[0].album.cover_version.as_deref(),
         Some(replaced_other_cover.as_str())
     );
 

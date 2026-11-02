@@ -5,7 +5,7 @@
 //! `LibraryManager`.
 
 use super::*;
-use crate::db::{DbAlbum, DbAlbumSummary};
+use crate::db::{DbAlbum, DbAlbumAppearance, DbAlbumSummary};
 
 /// An album with its releases, each carrying tracks, files, and gallery.
 #[derive(Debug, Clone)]
@@ -61,6 +61,26 @@ impl AlbumSummary {
             release_ids: raw.release_ids,
             primary_release_id,
             cover,
+        }
+    }
+}
+
+/// One row of the album grid: an album, listed once when the grid is flat and
+/// under each artist its credits show when grouped by artist.
+#[derive(Debug, Clone)]
+pub struct AlbumAppearance {
+    pub album: AlbumSummary,
+    /// Grouped by artist: the album's credits other than the artist whose
+    /// group lists it, printed as a line; `None` when that artist is its only
+    /// credit, or when the grid is flat.
+    pub credited_with: Option<String>,
+}
+
+impl AlbumAppearance {
+    pub(crate) fn from_raw(raw: DbAlbumAppearance) -> AlbumAppearance {
+        AlbumAppearance {
+            album: AlbumSummary::from_raw(raw.album),
+            credited_with: raw.credited_with,
         }
     }
 }

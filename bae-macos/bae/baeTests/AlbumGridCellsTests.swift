@@ -11,11 +11,13 @@ struct AlbumGridCellsTests {
             BridgeLibraryBrowseSection(
                 id: "artist-a",
                 title: "Artist A",
+                image: nil,
                 window: .init(offset: 0, limit: 3)
             ),
             BridgeLibraryBrowseSection(
                 id: "artist-b",
                 title: "Artist B",
+                image: nil,
                 window: .init(offset: 3, limit: 2)
             ),
         ]

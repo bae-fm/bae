@@ -44,7 +44,10 @@ internal fun albumCollectionProjection(
     scope,
     query,
     CollectionSnapshotReader(
-        windows = { snapshot -> snapshot.windows.associate { it.window to it.rows } },
+        // The browse tree lists the flat grid, whose rows are each one album.
+        windows = { snapshot ->
+            snapshot.windows.associate { window -> window.window to window.rows.map { it.album } }
+        },
         totalCount = { it.totalCount.toInt() },
         cause = { it.cause },
     ),

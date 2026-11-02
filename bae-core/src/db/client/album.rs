@@ -104,9 +104,9 @@ impl Database {
     ) -> Result<Vec<DbAlbumSummary>, DbError> {
         let (relation, order) = album_browse_order(sort, false);
         self.read(move |sql| {
-            Ok(album_rows_on(&sql, &relation, &order, &order.everything(), limit, offset)?
+            Ok(album_rows_on(&sql, &relation, false, &order, &order.everything(), limit, offset)?
                 .into_iter()
-                .map(|(row, _)| row)
+                .map(|(appearance, _)| appearance.row)
                 .collect::<Vec<_>>())
         })
         .process(|rows| rows.into_iter().map(AlbumSummaryRow::process).collect())
@@ -143,6 +143,10 @@ impl Database {
                         Ok(crate::library::LibraryBrowseSection {
                             id: row.get(0)?,
                             title: row.get(1)?,
+                            image: crate::album_detail::artist_image_ref(
+                                &row.get::<_, String>(0)?,
+                                row.get(4)?,
+                            ),
                             window: crate::library::LibraryPageWindow {
                                 offset: row.get::<_, i64>(2)? as u64,
                                 limit: row.get::<_, i64>(3)? as u64,
@@ -161,7 +165,7 @@ impl Database {
                     requested,
                     places.under(&versions),
                     |seek, limit, offset| {
-                        album_rows_on(&sql, &relation, &order, seek, limit, offset)
+                        album_rows_on(&sql, &relation, group_by_artist, &order, seek, limit, offset)
                     },
                 )?;
                 places.keep(versions, found);
@@ -174,13 +178,13 @@ impl Database {
             .process(|(windows, total_count, row_count, sections)| {
                 let windows = windows
                     .into_iter()
-                    .map(|window: crate::library::LibraryBrowseWindow<AlbumSummaryRow>| {
+                    .map(|window: crate::library::LibraryBrowseWindow<AlbumAppearanceRow>| {
                         Ok(crate::library::LibraryBrowseWindow {
                             window: window.window,
                             rows: window
                                 .rows
                                 .into_iter()
-                                .map(AlbumSummaryRow::process)
+                                .map(AlbumAppearanceRow::process)
                                 .collect::<Result<_, _>>()?,
                         })
                     })
@@ -654,37 +658,76 @@ fn album_count_on(sql: &SqlReadContext<'_>) -> Result<u64, DbError> {
 }
 
 /// The statement reading the album list's rows `seek` reads over
-/// `relation` in `order`, at most `:limit` from `:offset`, each with its key.
-pub(super) fn album_window_statement(relation: &str, order: &ListOrder, seek: &Seek) -> String {
+/// `relation` (grouped by artist or not) in `order`, at most `:limit` from
+/// `:offset`, each with the artist whose group lists it and its key.
+pub(super) fn album_window_statement(
+    relation: &str,
+    group_by_artist: bool,
+    order: &ListOrder,
+    seek: &Seek,
+) -> String {
     format!(
-        "{select}, {keys} {relation} WHERE {condition} ORDER BY {ordering} \
-         LIMIT :limit OFFSET :offset",
+        "{select}, {group} AS group_artist_id, {keys} {relation} WHERE {condition} \
+         ORDER BY {ordering} LIMIT :limit OFFSET :offset",
         select = album_summary_select(),
+        group = album_group_artist_sql(group_by_artist),
         keys = order.key_columns(),
         condition = order.condition(seek),
         ordering = order.ordering(seek),
     )
 }
 
-/// The album list's rows `seek` reads over `relation` in `order`, at most
-/// `limit` from `offset`, each with its key.
+/// The album list's rows `seek` reads over `relation` (grouped by artist or
+/// not) in `order`, at most `limit` from `offset`, each with its key.
 pub(super) fn album_rows_on(
     sql: &SqlReadContext<'_>,
     relation: &str,
+    group_by_artist: bool,
     order: &ListOrder,
     seek: &Seek,
     limit: u64,
     offset: u64,
-) -> Result<Vec<Keyed<AlbumSummaryRow>>, DbError> {
-    let statement = album_window_statement(relation, order, seek);
+) -> Result<Vec<Keyed<AlbumAppearanceRow>>, DbError> {
+    let statement = album_window_statement(relation, group_by_artist, order, seek);
     Ok(seek.bound(limit, offset, |params| {
-        sql.query(&statement, params, |row| Ok((AlbumSummaryRow::read(row)?, order.key_of(row)?)))
+        sql.query(&statement, params, |row| {
+            Ok((
+                AlbumAppearanceRow {
+                    row: AlbumSummaryRow::read(row)?,
+                    group_artist_id: row.get("group_artist_id")?,
+                },
+                order.key_of(row)?,
+            ))
+        })
     })?)
+}
+
+/// One row of the album list as read: the album, and the artist whose group
+/// lists it when the list is grouped by artist.
+#[derive(Clone, PartialEq)]
+pub(super) struct AlbumAppearanceRow {
+    pub(super) row: AlbumSummaryRow,
+    group_artist_id: Option<String>,
+}
+
+impl AlbumAppearanceRow {
+    fn process(self) -> Result<DbAlbumAppearance, DbError> {
+        let credits = self.row.credits()?;
+        let credited_with = self.group_artist_id.and_then(|group| {
+            let others = credits
+                .iter()
+                .filter(|credit| credit.artist.id != group)
+                .cloned()
+                .collect::<Vec<_>>();
+            (!others.is_empty()).then(|| crate::credits::library_line(&others))
+        });
+        Ok(DbAlbumAppearance { album: self.row.process_with(&credits)?, credited_with })
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct AlbumBrowseProjection {
-    pub windows: Vec<crate::library::LibraryBrowseWindow<DbAlbumSummary>>,
+    pub windows: Vec<crate::library::LibraryBrowseWindow<DbAlbumAppearance>>,
     pub total_count: u64,
     pub row_count: u64,
     pub sections: Vec<crate::library::LibraryBrowseSection>,

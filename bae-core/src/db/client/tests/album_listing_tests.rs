@@ -72,7 +72,7 @@ async fn grouped(db: &Database) -> (Vec<(String, u64, u64)>, Vec<String>) {
             .iter()
             .map(|section| (section.id.clone(), section.window.offset, section.window.limit))
             .collect(),
-        shown.windows[0].rows.iter().map(|album| album.id.clone()).collect(),
+        shown.windows[0].rows.iter().map(|row| row.album.id.clone()).collect(),
     )
 }
 

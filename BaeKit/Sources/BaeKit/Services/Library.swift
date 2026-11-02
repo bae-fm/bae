@@ -292,7 +292,7 @@ extension LibraryBrowseQuery where Row == BridgeAlbum {
             values: PulledValues(subscription) { snapshot in
                 LibraryBrowseDelivery(
                     windows: snapshot.windows.map {
-                        .init(window: $0.window, rows: $0.rows)
+                        .init(window: $0.window, rows: $0.rows.map(\.album))
                     },
                     totalCount: Int(snapshot.rowCount),
                     itemCount: Int(snapshot.totalCount),

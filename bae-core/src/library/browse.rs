@@ -10,12 +10,19 @@ pub struct LibraryPageWindow {
 
 pub type LibraryPageWindows = BTreeSet<LibraryPageWindow>;
 
-/// A named section of a paged list. Its range includes unloaded rows, so
-/// clients can lay out every section without fetching every album.
+/// One artist's group in the album grid grouped by artist. Its range includes
+/// unloaded rows, so clients can lay out every section without fetching every
+/// album.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LibraryBrowseSection {
+    /// The artist's id.
     pub id: String,
+    /// The artist's name.
     pub title: String,
+    /// The artist's picture, if it has one.
+    pub image: Option<crate::album_detail::ImageRef>,
+    /// Where the artist's albums start in the grid's rows, and all of them:
+    /// never a page of them, so `limit` is how many albums the artist has.
     pub window: LibraryPageWindow,
 }
 
@@ -36,8 +43,10 @@ pub struct LibraryBrowseSnapshot<Row> {
     pub cause: coven::LiveQueryCause,
 }
 
-pub type AlbumBrowseSubscription =
-    LibraryBrowseSubscription<crate::db::AlbumBrowseProjection, crate::album_detail::AlbumSummary>;
+pub type AlbumBrowseSubscription = LibraryBrowseSubscription<
+    crate::db::AlbumBrowseProjection,
+    crate::album_detail::AlbumAppearance,
+>;
 pub type ArtistBrowseSubscription = LibraryBrowseSubscription<
     crate::db::ArtistBrowseProjection,
     crate::album_detail::ArtistSummary,
