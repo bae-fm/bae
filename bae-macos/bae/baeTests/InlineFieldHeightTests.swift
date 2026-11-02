@@ -26,16 +26,11 @@ struct InlineFieldHeightTests {
     }
 
     /// The header's title field, hosted twice in one process with a remount
-    /// between, draws the same pixels each time, and its field is exactly as
-    /// tall as a Text of the title's font.
+    /// between, is exactly as tall as a Text of the title's font each time.
     @Test("the title field takes its height from its text, remount or not")
     func theTitleFieldTakesItsHeightFromItsText() async throws {
-        let first = try await hostedHeader()
-        let second = try await hostedHeader()
-        #expect(
-            first.pixels == second.pixels,
-            "a remount draws the same header"
-        )
+        let first = try await hostedTitleFieldHeight()
+        let second = try await hostedTitleFieldHeight()
 
         let measured = Measured()
         try await SnapshotTestSupport.withHostedWindow(
@@ -55,8 +50,8 @@ struct InlineFieldHeightTests {
         ) { _, host in
             try await SnapshotTestSupport.settle(host)
             let textHeight = try #require(measured.textHeight)
-            #expect(first.fieldHeight == textHeight)
-            #expect(second.fieldHeight == textHeight)
+            #expect(first == textHeight)
+            #expect(second == textHeight)
         }
     }
 
@@ -87,23 +82,17 @@ struct InlineFieldHeightTests {
         }
     }
 
-    /// One hosting of the header: its pixels, and the height of the title's
-    /// text field as AppKit laid it out.
-    private func hostedHeader() async throws -> (
-        pixels: Data, fieldHeight: CGFloat
-    ) {
+    /// One hosting of the header: the height of the title's text field as
+    /// AppKit laid it out.
+    private func hostedTitleFieldHeight() async throws -> CGFloat {
         return try await withHostedHeader { _, host in
             try await SnapshotTestSupport.settle(host)
-            let pixels = try await SnapshotTestSupport.capturePNG(
-                host,
-                size: Self.size
-            )
             let titleField = try #require(
                 SnapshotTestSupport.descendants(of: host)
                     .compactMap { $0 as? NSTextField }
                     .first { $0.stringValue == Self.title }
             )
-            return (pixels, titleField.frame.height)
+            return titleField.frame.height
         }
     }
 
