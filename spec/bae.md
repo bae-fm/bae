@@ -2647,7 +2647,10 @@ and core sends no status line for it: there is no sync to describe. In its
 place Settings shows the recorded storage's rows and *Sign In*, which connects
 that location again, never other storage: a new access key for its S3 bucket,
 the provider's sign-in for Dropbox and OneDrive, iCloud's own setup for
-iCloud. A library with no recorded location offers setting up sync instead.
+iCloud. Why a start failed there, such as on a keychain locked for the
+session, shows under *Sign In* as it would under the line, with no
+*Reconnect*: there is no storage on this device to start sync with. A
+library with no recorded location offers setting up sync instead.
 
 Each record names what it is about in plain words. A file is named by the row
 on this device that references it: a release file by its file name and album, a

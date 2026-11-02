@@ -6,8 +6,7 @@ private let logger = Logger.bae("SyncStatusLine")
 
 /// The one line Settings shows for sync — what it is doing, or "Waiting: 3 items" —
 /// and, opened, each thing coven is waiting on with its action where the
-/// person can act; under it the last failure, with Reconnect where a start
-/// failed.
+/// person can act; under it the last failure (`SyncFailureLines`).
 struct SyncStatusLine: View {
     /// The library's cloud home, whose S3 access key the key sheet replaces.
     let location: BridgeStorageLocation
@@ -33,9 +32,6 @@ struct SyncStatusLine: View {
     /// The steps of the reconnect a sign-in runs; nil while none runs.
     @State
     private var signInSteps: StorageSetupSteps?
-    /// The Reconnect running after a failed start; nil while none runs.
-    @State
-    private var reconnectTask: Task<Void, Never>?
 
     var body: some View {
         DisclosureGroup(isExpanded: $expanded) {
@@ -58,35 +54,7 @@ struct SyncStatusLine: View {
         if let signInSteps {
             StepProgressLine(steps: signInSteps.steps) { EmptyView() }
         }
-        if let error = status.error {
-            ErrorDetailDisclosure(error: error)
-        }
-        if status.offersReconnect {
-            Button(localizedCoreString("core.pending.action.reconnect")) {
-                reconnect()
-            }
-            .disabled(reconnectTask != nil)
-        }
-        if status.offersDeviceReset {
-            Button(
-                localizedCoreString("core.sync.reset_device.confirm"),
-                role: .destructive,
-                action: onResetDevice
-            )
-        }
-    }
-
-    /// Start sync again after a failed start. A start that fails again is
-    /// recorded as the status's failure, which the line shows in place of
-    /// the last one.
-    private func reconnect() {
-        reconnectTask = Task {
-            defer { reconnectTask = nil }
-            do { try await sync.reconnectSync() }
-            catch {
-                logger.error("Reconnect failed: \(String(reflecting: error))")
-            }
-        }
+        SyncFailureLines(onResetDevice: onResetDevice)
     }
 
     private func perform(_ record: BridgePendingRecord) async throws {
@@ -135,6 +103,55 @@ struct SyncStatusLine: View {
             #endif
         case .systemAccount:
             try await sync.reconnectSync()
+        }
+    }
+}
+
+/// The last sync failure, under the status line or under Sign In where this
+/// device has no storage set up: Reconnect where a start failed with storage
+/// set up, and Reset Device where sync found another copy of this device.
+struct SyncFailureLines: View {
+    /// Offered when sync found another copy of this device.
+    let onResetDevice: () -> Void
+
+    @Environment(SyncStatusStore.self)
+    private var status
+    @Environment(Sync.self)
+    private var sync
+
+    /// The Reconnect running after a failed start; nil while none runs.
+    @State
+    private var reconnectTask: Task<Void, Never>?
+
+    var body: some View {
+        if let error = status.error {
+            ErrorDetailDisclosure(error: error)
+        }
+        if status.offersReconnect {
+            Button(localizedCoreString("core.pending.action.reconnect")) {
+                reconnect()
+            }
+            .disabled(reconnectTask != nil)
+        }
+        if status.offersDeviceReset {
+            Button(
+                localizedCoreString("core.sync.reset_device.confirm"),
+                role: .destructive,
+                action: onResetDevice
+            )
+        }
+    }
+
+    /// Start sync again after a failed start. A start that fails again is
+    /// recorded as the status's failure, which shows in place of the last
+    /// one.
+    private func reconnect() {
+        reconnectTask = Task {
+            defer { reconnectTask = nil }
+            do { try await sync.reconnectSync() }
+            catch {
+                logger.error("Reconnect failed: \(String(reflecting: error))")
+            }
         }
     }
 }

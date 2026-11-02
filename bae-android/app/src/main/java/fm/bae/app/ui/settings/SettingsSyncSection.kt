@@ -38,7 +38,8 @@ private val logger = BaeLogger("bae.SettingsSyncSection")
  * Where the library is stored and how its sync stands: the cloud home's
  * details, the one status line and upload pause — or, when this device no
  * longer holds its credentials for that storage, signing in to it again; or,
- * without a cloud home, the way to set one up.
+ * without a cloud home, the way to set one up. Under either, the last sync
+ * failure, such as a start that failed on a locked keychain.
  */
 @Composable
 internal fun SettingsSyncSection(
@@ -79,12 +80,10 @@ internal fun SettingsSyncSection(
                 CloudHomeRows(cloudHome.location)
                 if (line == SyncLine.NoStorage) {
                     StorageSignIn(session = session, location = cloudHome.location, oauthProviders = oauthProviders)
+                    SyncFailureOffers(session = session, onResetDevice = onResetDevice)
                 } else {
-                    SyncStatus(
-                        session = session,
-                        onOpenPending = { onPush(LibraryDestination.SyncPending) },
-                        onResetDevice = onResetDevice,
-                    )
+                    SyncStatusLine(line = line, onOpenPending = { onPush(LibraryDestination.SyncPending) })
+                    SyncFailureOffers(session = session, onResetDevice = onResetDevice)
                     SyncUploadPauseControl(session)
                 }
             }
@@ -93,20 +92,17 @@ internal fun SettingsSyncSection(
 }
 
 /**
- * The status line and, under it, the last failure, with Reconnect where a
- * start failed, or Reset Device, after its warning, where sync found another
- * copy of this device.
+ * The last sync failure, with Reconnect where a start failed with storage set
+ * up, or Reset Device, after its warning, where sync found another copy of this
+ * device.
  */
 @Composable
-private fun SyncStatus(
+private fun SyncFailureOffers(
     session: OpenLibrary,
-    onOpenPending: () -> Unit,
     onResetDevice: (BridgeDeviceReset) -> Unit,
 ) {
     val scope = rememberScreenScope()
-    val line by session.syncStatusStore.line.collectAsState()
     val error by session.syncStatusStore.error.collectAsState()
-    SyncStatusLine(line = line, onOpenPending = onOpenPending)
     SyncFailureNotice(
         error = error,
         onReconnect = {

@@ -62,6 +62,7 @@ struct LibrarySettingsTab: View {
                     CloudProviderConnectedSection(location: location)
                     if syncStatus.line == .noStorage {
                         StorageSignIn(location: location)
+                        SyncFailureLines(onResetDevice: onResetDevice)
                     }
                     else {
                         SyncStatusLine(
