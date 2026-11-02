@@ -116,7 +116,7 @@ pub(crate) type Outputs = QueuedReleases<output_snapshot::OutputRequest, u8>;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) struct SaveTrackPlan {
     resolved: manager::ResolvedSaveTags,
-    audio_meta: manager::TrackAudioMeta,
+    audio_meta: crate::db::TrackAudioMeta,
     window: manager::SaveWindow,
 }
 

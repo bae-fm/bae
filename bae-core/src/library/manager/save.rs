@@ -4,6 +4,7 @@
 //! [`super::output`]; the verbatim export arm in [`super::export`].
 
 use super::*;
+use crate::db::TrackAudioMeta;
 use crate::library::SaveTrackPlan;
 use crate::track_audio::track_sources::SourceStream;
 use crate::track_audio::{SegmentDecodeParams, StreamDecodeParams};

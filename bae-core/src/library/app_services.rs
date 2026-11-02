@@ -494,7 +494,7 @@ impl AppServices {
     delegate_async!(manager, get_artists_for_album => get_artists_for_album(album_id: &str) -> Result<Vec<crate::db::credits::LibraryCredit>, crate::library::LibraryError>);
     delegate_async!(manager, get_all_track_ids => get_all_track_ids() -> Result<Vec<String>, crate::library::LibraryError>);
     delegate_async!(manager, filter_existing_track_ids => filter_existing_track_ids(ids: &[String]) -> Result<Vec<String>, crate::library::LibraryError>);
-    delegate_async!(manager, resolve_track_audio => resolve_track_audio(track_id: &str) -> Result<crate::library::ResolvedTrackAudio, crate::library::LibraryError>);
+    delegate_async!(manager, resolve_track_audio => resolve_track_audio(track_id: &str) -> Result<crate::db::ResolvedTrackAudio, crate::library::LibraryError>);
     delegate_async!(manager, resolve_to_track_ids => resolve_to_track_ids(ids: &[String]) -> Result<Vec<String>, crate::library::LibraryError>);
     delegate_async!(manager, get_playback_track_info => get_playback_track_info(track_id: &str) -> Result<crate::playback::PlaybackTrackInfo, crate::library::LibraryError>);
     delegate_async!(manager, get_track_display => get_track_display(track_id: &str) -> Result<crate::playback::TrackDisplay, crate::library::LibraryError>);
@@ -634,7 +634,7 @@ impl AppServices {
     /// then positions in the track's stream, which a remote renderer reports
     /// and seeks by. One stream per file the segments read; they close when
     /// the returned decode is dropped.
-    pub fn open_track_decode(&self, audio: &crate::library::ResolvedTrackAudio) -> TrackDecode {
+    pub fn open_track_decode(&self, audio: &crate::db::ResolvedTrackAudio) -> TrackDecode {
         use crate::track_audio::{SegmentDecodeParams, StreamDecodeParams};
 
         let mut streams: std::collections::HashMap<

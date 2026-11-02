@@ -22,6 +22,7 @@ mod preview_player;
 pub mod progress;
 mod queue;
 mod repeat_mode;
+mod replay_gain;
 mod resampling_drain;
 pub mod service;
 pub mod source;
@@ -58,6 +59,7 @@ pub use progress::{
 };
 pub use queue::{NextEntry, PlaybackQueue, PreviousAction, QueueEntry, QueueEntryId};
 pub use repeat_mode::RepeatMode;
+pub use replay_gain::replay_gain_linear;
 pub use service::{
     LoadingTrack, PlaybackHandle, PlaybackPauseBoundary, PlaybackPauseReason, PlaybackService,
     PlaybackSideCountdown, PlaybackSidePausePrompt, PlaybackState, PlaybackTrackInfo,

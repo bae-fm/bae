@@ -17,8 +17,8 @@ impl LibraryManager {
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn insert_audio_format_with_segments_for_test(
         &self,
-        audio_format: &DbAudioFormat,
-        segments: &[DbAudioSegment],
+        audio_format: &crate::db::DbAudioFormat,
+        segments: &[crate::db::DbAudioSegment],
     ) -> Result<(), LibraryError> {
         self.database.insert_audio_format_with_segments_for_test(audio_format, segments).await?;
         Ok(())

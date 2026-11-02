@@ -7,6 +7,10 @@ pub mod migrations;
 mod models;
 pub(crate) mod schema;
 pub use schema::configure_store;
+mod resolved_track_audio;
+#[cfg(desktop)]
+pub(crate) use resolved_track_audio::TrackAudioMeta;
+pub use resolved_track_audio::{ResolvedTrackAudio, ResolvedTrackAudioSegment, TrackAudioError};
 pub mod source_audio;
 pub mod synced;
 pub(crate) mod watched_path;

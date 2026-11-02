@@ -90,7 +90,7 @@ impl LibraryManager {
     pub async fn get_audio_format_by_track_id(
         &self,
         track_id: &str,
-    ) -> Result<Option<DbAudioFormat>, LibraryError> {
+    ) -> Result<Option<crate::db::DbAudioFormat>, LibraryError> {
         Ok(self.database.find_audio_format_by_track_id(track_id).await?)
     }
 
@@ -99,9 +99,8 @@ impl LibraryManager {
     pub async fn resolve_track_audio(
         &self,
         track_id: &str,
-    ) -> Result<ResolvedTrackAudio, LibraryError> {
-        let meta = TrackAudioMeta::resolve(&self.database, track_id).await?;
-        Ok(ResolvedTrackAudio::from_meta(&meta))
+    ) -> Result<crate::db::ResolvedTrackAudio, LibraryError> {
+        Ok(crate::db::ResolvedTrackAudio::resolve(&self.database, track_id).await?)
     }
 
     /// What playback decides a side or disc pause with about a track: its

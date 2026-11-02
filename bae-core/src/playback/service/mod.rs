@@ -28,13 +28,13 @@
 
 use super::RepeatMode;
 use super::{NextEntry, PlaybackQueue, PreviousAction, QueueEntryId};
+use crate::db::ResolvedTrackAudio;
 use crate::db::{ContextFill, ContextFilled, DbAudioSegmentRole, DbPlaybackState, ReleaseStart};
 use crate::diagnostics::{
     AnomalyKind, Diagnostics, LocalId, PlaybackCommandKind, PlaybackOperation, PlaybackStartSource,
     ReportedThread, TelemetryEvent, TrackTransition,
 };
 use crate::library::LibraryManager;
-use crate::library::ResolvedTrackAudio;
 use crate::playback::audio_output::{
     AudioEvent, AudioEventReceiver, AudioOutput, AudioOutputDevice, AudioStream,
 };
@@ -398,7 +398,7 @@ fn finalize_playback_track(
 ) -> PlaybackPreparedTrack {
     let duration = Some(std::time::Duration::from_millis(resolved.duration_ms));
 
-    let replay_gain_linear = resolved.replay_gain_linear(replay_gain_mode);
+    let replay_gain_linear = crate::playback::replay_gain_linear(resolved, replay_gain_mode);
 
     PlaybackPreparedTrack {
         track_id,

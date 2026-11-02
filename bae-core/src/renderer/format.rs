@@ -12,7 +12,7 @@
 //! and the LOAD metadata (which reports the served MIME type) consult, so the
 //! URL and the declared content type never disagree.
 
-use crate::library::ResolvedTrackAudio;
+use crate::db::ResolvedTrackAudio;
 use crate::preferences::CastTranscodeFormat;
 use bae_util::content_type::ContentType;
 
@@ -111,8 +111,8 @@ impl RendererFlavor {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::db::ResolvedTrackAudioSegment;
     use crate::db::{DbAudioSegmentRole, SegmentSpan};
-    use crate::library::ResolvedTrackAudioSegment;
 
     /// A track stored as `content_type`, as one whole file when `whole_file`,
     /// else as a window of a CUE image.

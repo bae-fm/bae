@@ -9,8 +9,9 @@
 //! on, an earlier frame a decode can start at and play it exactly.
 
 use bae_catalogs::discogs::models::DiscogsRelease;
+use bae_core::db::ResolvedTrackAudio;
 use bae_core::db::ScrubPoint;
-use bae_core::library::{LibraryManager, ResolvedTrackAudio};
+use bae_core::library::LibraryManager;
 use bae_test_support as support;
 use std::path::Path;
 use tempfile::TempDir;
