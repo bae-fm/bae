@@ -69,7 +69,7 @@ impl PlaybackService {
         &self,
         operation: &str,
         error: &PlaybackError,
-    ) -> crate::ui::PlaybackErrorReason {
+    ) -> crate::playback::PlaybackErrorReason {
         let detail = bae_util::error_text::CauseChain(error);
         if error.is_bug() {
             self.library_manager.report_bug(operation, &detail);
@@ -89,7 +89,7 @@ impl PlaybackService {
         emit_progress(
             &self.progress_tx,
             PlaybackProgress::PlaybackError {
-                reason: crate::ui::PlaybackErrorReason::internal(detail),
+                reason: crate::playback::PlaybackErrorReason::internal(detail),
             },
         );
         self.stop().await;

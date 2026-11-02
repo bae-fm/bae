@@ -79,7 +79,7 @@ pub enum PlaybackChange {
     Remote(RemotePlayback),
     Preview(PreviewState),
     /// Playback failed; the row holds why until playback next plays.
-    Failed(crate::ui::PlaybackErrorReason),
+    Failed(crate::playback::PlaybackErrorReason),
 }
 
 /// Where playback is in what it plays: the library track's position and the
@@ -321,7 +321,7 @@ pub enum PlaybackProgress {
     /// Playback error (e.g. storage offline) — a typed reason the UI renders
     /// for its locale.
     PlaybackError {
-        reason: crate::ui::PlaybackErrorReason,
+        reason: crate::playback::PlaybackErrorReason,
     },
 
     // -- Internal events --
@@ -419,7 +419,7 @@ mod tests {
             values.apply(&PlaybackProgress::StateChanged { state: PlaybackState::Stopped }),
             None
         );
-        let failure = crate::ui::PlaybackErrorReason::SyncDisconnected;
+        let failure = crate::playback::PlaybackErrorReason::SyncDisconnected;
         for _ in 0..2 {
             assert_eq!(
                 values.apply(&PlaybackProgress::PlaybackError { reason: failure.clone() }),

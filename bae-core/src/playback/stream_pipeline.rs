@@ -56,7 +56,7 @@ impl DecodeFailureReport {
                 emit_progress(
                     progress_tx,
                     PlaybackProgress::PlaybackError {
-                        reason: crate::ui::PlaybackErrorReason::internal(format!(
+                        reason: crate::playback::PlaybackErrorReason::internal(format!(
                             "Playback decode failed: {message}"
                         )),
                     },

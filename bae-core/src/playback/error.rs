@@ -53,8 +53,8 @@ impl PlaybackError {
     /// this device can't reach the audio are user-actionable and keyed; every other mode
     /// is un-enumerable for the UI and goes to the diagnostic arm with the error
     /// chain as opaque, log-only detail.
-    pub fn ui_reason(&self) -> crate::ui::PlaybackErrorReason {
-        use crate::ui::PlaybackErrorReason;
+    pub fn ui_reason(&self) -> crate::playback::PlaybackErrorReason {
+        use crate::playback::PlaybackErrorReason;
         match self {
             PlaybackError::SyncDisconnected => PlaybackErrorReason::SyncDisconnected,
             PlaybackError::UploadPending => PlaybackErrorReason::UploadPending,
@@ -62,7 +62,7 @@ impl PlaybackError {
             PlaybackError::OriginalMissing => PlaybackErrorReason::OriginalMissing,
             PlaybackError::AudioOutput(error) => {
                 use crate::playback::AudioError;
-                use crate::ui::AudioOutputProblem;
+                use crate::playback::AudioOutputProblem;
                 let problem = match error {
                     AudioError::DeviceUnavailable => AudioOutputProblem::DeviceUnavailable,
                     AudioError::UnsupportedFormat { .. } => AudioOutputProblem::UnsupportedFormat,
@@ -117,7 +117,7 @@ impl From<bae_audio::sparse_buffer::ShortRead> for PlaybackError {
 mod tests {
     use super::*;
     use crate::playback::AudioError;
-    use crate::ui::{AudioOutputProblem, PlaybackErrorReason};
+    use crate::playback::{AudioOutputProblem, PlaybackErrorReason};
 
     /// A device's or a speaker's problem reaches the person by name and is no
     /// bug; bae's own failure is a bug and reads as one.
@@ -147,7 +147,7 @@ mod tests {
         let PlaybackErrorReason::Diagnostic { failure, detail } = error.ui_reason() else {
             panic!("an unexpected failure is a diagnostic");
         };
-        assert_eq!(failure, crate::ui::PlaybackDiagnostic::Internal);
+        assert_eq!(failure, crate::playback::PlaybackDiagnostic::Internal);
         assert!(detail.contains("RAOP key wrap"), "{detail}");
     }
 }

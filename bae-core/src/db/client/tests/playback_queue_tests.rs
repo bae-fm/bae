@@ -309,7 +309,7 @@ async fn opening_keeps_the_queue_only_to_resume_it() {
         }),
         crate::playback::PlaybackChange::Volume(0.5),
         crate::playback::PlaybackChange::Muted(true),
-        crate::playback::PlaybackChange::Failed(crate::ui::PlaybackErrorReason::NotUploaded),
+        crate::playback::PlaybackChange::Failed(crate::playback::PlaybackErrorReason::NotUploaded),
     ] {
         now.apply(&change).await.unwrap();
     }

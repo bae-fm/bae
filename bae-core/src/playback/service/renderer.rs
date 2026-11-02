@@ -306,7 +306,7 @@ impl PlaybackService {
                 emit_progress(
                     &self.progress_tx,
                     PlaybackProgress::PlaybackError {
-                        reason: crate::ui::PlaybackErrorReason::internal(error),
+                        reason: crate::playback::PlaybackErrorReason::internal(error),
                     },
                 );
                 self.stop().await;
@@ -375,7 +375,7 @@ impl PlaybackService {
             RendererSessionEvent::CommandFailed(error) => emit_progress(
                 &self.progress_tx,
                 PlaybackProgress::PlaybackError {
-                    reason: crate::ui::PlaybackErrorReason::renderer(error),
+                    reason: crate::playback::PlaybackErrorReason::renderer(error),
                 },
             ),
             RendererSessionEvent::Ended(error) => {
@@ -562,7 +562,7 @@ impl PlaybackService {
             paused,
         ) {
             error!("remote: failed to mint media URL for {track_id}: {reason}");
-            self.fail_remote(crate::ui::PlaybackErrorReason::internal(format!(
+            self.fail_remote(crate::playback::PlaybackErrorReason::internal(format!(
                 "couldn't build the audio URL for the renderer: {reason}"
             )))
             .await;
@@ -573,7 +573,7 @@ impl PlaybackService {
             Ok(decoder) => decoder,
             Err(error) => {
                 error!("remote: failed to start the stand-in decoder for {track_id}: {error}");
-                self.fail_remote(crate::ui::PlaybackErrorReason::internal(error)).await;
+                self.fail_remote(crate::playback::PlaybackErrorReason::internal(error)).await;
                 return;
             }
         };
@@ -589,7 +589,7 @@ impl PlaybackService {
 
     /// A remote track load failed: surface the error and stop remote playback,
     /// dropping back to a stopped local renderer.
-    async fn fail_remote(&mut self, reason: crate::ui::PlaybackErrorReason) {
+    async fn fail_remote(&mut self, reason: crate::playback::PlaybackErrorReason) {
         emit_progress(&self.progress_tx, PlaybackProgress::PlaybackError { reason });
         self.renderer = Renderer::Local;
         emit_progress(

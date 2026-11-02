@@ -15,6 +15,7 @@ mod device_formats;
 #[cfg(any(target_os = "android", test))]
 mod device_writer;
 mod error;
+mod error_reason;
 mod now_playing;
 #[cfg(any(target_os = "macos", test))]
 mod output_rate;
@@ -49,6 +50,7 @@ pub(crate) use clock::WallPlaybackClock;
 pub use clock::{PlaybackClock, PlaybackClockRef, PlaybackSleep};
 pub use context::ContextSource;
 pub use error::PlaybackError;
+pub use error_reason::{AudioOutputProblem, PlaybackDiagnostic, PlaybackErrorReason};
 pub use now_playing::{
     NowPlayingTrack, NowPlayingValues, PlaybackFailure, PlayingTrack, TrackDisplay,
 };

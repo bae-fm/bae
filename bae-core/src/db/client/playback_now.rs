@@ -5,13 +5,13 @@
 use super::playback::track_display_on;
 use super::playback_queue::repeat_from_column;
 use super::*;
+use crate::playback::{AudioOutputProblem, PlaybackDiagnostic, PlaybackErrorReason};
 use crate::playback::{
     LoadingTrack, NowPlayingTrack, NowPlayingValues, PlaybackChange, PlaybackFailure,
     PlaybackPauseBoundary, PlaybackPauseReason, PlaybackSideCountdown, PlaybackSidePausePrompt,
     PlaybackState, PlaybackValues, PlayingTrack, PreviewState, PreviewTarget, RemoteDevice,
     RemotePlayback,
 };
-use crate::ui::{AudioOutputProblem, PlaybackDiagnostic, PlaybackErrorReason};
 
 /// The `playback_now` row, as playback writes it.
 #[derive(Clone)]

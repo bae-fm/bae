@@ -56,5 +56,4 @@ pub(crate) mod test_images;
 pub(crate) mod test_logs;
 #[cfg(test)]
 pub(crate) mod test_reads;
-pub mod ui;
 pub mod util;

@@ -78,7 +78,7 @@ impl PlaybackService {
             emit_progress(
                 &self.progress_tx,
                 PlaybackProgress::PlaybackError {
-                    reason: crate::ui::PlaybackErrorReason::internal(format!(
+                    reason: crate::playback::PlaybackErrorReason::internal(format!(
                         "Playback stalled on track {track_id} for {starved_ms}ms with no progress"
                     )),
                 },

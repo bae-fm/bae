@@ -47,5 +47,5 @@ pub struct NowPlayingValues {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PlaybackFailure {
     pub number: u64,
-    pub reason: crate::ui::PlaybackErrorReason,
+    pub reason: crate::playback::PlaybackErrorReason,
 }

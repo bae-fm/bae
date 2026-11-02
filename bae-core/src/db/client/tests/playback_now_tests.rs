@@ -4,12 +4,12 @@
 use super::super::*;
 use super::playback_queue_tests::release_db;
 use super::*;
+use crate::playback::{AudioOutputProblem, PlaybackErrorReason};
 use crate::playback::{
     LoadingTrack, PlaybackChange, PlaybackPauseBoundary, PlaybackPauseReason,
     PlaybackSideCountdown, PlaybackSidePausePrompt, PlaybackState, PlayingTrack, PreviewState,
     PreviewTarget, RemoteDevice, RemotePlayback,
 };
-use crate::ui::{AudioOutputProblem, PlaybackErrorReason};
 
 async fn now(db: &Database) -> crate::playback::NowPlayingValues {
     db.now_playing().await.unwrap().expect("the library holds the track the row names")

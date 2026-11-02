@@ -317,7 +317,7 @@ async fn a_refused_command_is_reported_and_the_device_kept() {
     }
     assert_eq!(
         reported,
-        Some(crate::ui::PlaybackErrorReason::renderer(
+        Some(crate::playback::PlaybackErrorReason::renderer(
             "renderer command failed: LOAD failed: unsupported media",
         ))
     );

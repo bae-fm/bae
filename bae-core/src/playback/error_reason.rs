@@ -1,3 +1,5 @@
+//! Why playback stopped, in the words the person is shown.
+
 use crate::diagnostics::UiErrorCategory;
 
 /// Why playback couldn't start or continue. The cases where this device can't

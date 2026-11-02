@@ -285,8 +285,8 @@ async fn an_invalidated_stream_with_no_device_to_move_to_stops_playback() {
     assert!(
         reasons.iter().any(|reason| matches!(
             reason,
-            crate::ui::PlaybackErrorReason::AudioOutput {
-                problem: crate::ui::AudioOutputProblem::DeviceUnavailable
+            crate::playback::PlaybackErrorReason::AudioOutput {
+                problem: crate::playback::AudioOutputProblem::DeviceUnavailable
             }
         )),
         "the person is told the audio device isn't available: {reasons:?}"

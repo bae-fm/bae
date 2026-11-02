@@ -573,7 +573,7 @@ fn spawn_preview_listener(
             emit_progress(
                 &on_panic_progress,
                 PlaybackProgress::PlaybackError {
-                    reason: crate::ui::PlaybackErrorReason::internal(failed),
+                    reason: crate::playback::PlaybackErrorReason::internal(failed),
                 },
             );
             dispatch_command(&on_panic_command, PlaybackCommand::PreviewStop);
@@ -625,7 +625,7 @@ async fn listen_to_preview(
                     emit_progress(
                         &progress_tx,
                         PlaybackProgress::PlaybackError {
-                            reason: crate::ui::PlaybackErrorReason::internal(detail),
+                            reason: crate::playback::PlaybackErrorReason::internal(detail),
                         },
                     );
                     break;
@@ -644,7 +644,7 @@ async fn listen_to_preview(
             emit_progress(
                 &progress_tx,
                 PlaybackProgress::PlaybackError {
-                    reason: crate::ui::PlaybackErrorReason::internal(
+                    reason: crate::playback::PlaybackErrorReason::internal(
                         "Preview event queue dropped a required audio event".to_string(),
                     ),
                 },

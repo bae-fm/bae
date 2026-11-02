@@ -330,7 +330,7 @@ async fn release_on_the_first_device(
 async fn playback_error_reason_for_file(
     manager: &LibraryManager,
     file: &DbFile,
-) -> crate::ui::PlaybackErrorReason {
+) -> crate::playback::PlaybackErrorReason {
     use crate::playback::data_source::{create_audio_reader, FetchArbiter};
     use bae_audio::sparse_buffer::create_sparse_buffer;
 

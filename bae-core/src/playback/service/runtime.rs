@@ -137,7 +137,7 @@ impl PlaybackService {
                 emit_progress(
                     &progress_tx,
                     PlaybackProgress::PlaybackError {
-                        reason: crate::ui::PlaybackErrorReason::internal(failed),
+                        reason: crate::playback::PlaybackErrorReason::internal(failed),
                     },
                 )
             },
@@ -578,7 +578,7 @@ impl PlaybackService {
             emit_progress(
                 &self.progress_tx,
                 PlaybackProgress::PlaybackError {
-                    reason: crate::ui::PlaybackErrorReason::internal(
+                    reason: crate::playback::PlaybackErrorReason::internal(
                         "Playback event queue dropped a required audio event".to_string(),
                     ),
                 },
@@ -813,7 +813,7 @@ impl PlaybackService {
         emit_progress(
             &self.progress_tx,
             PlaybackProgress::PlaybackError {
-                reason: crate::ui::PlaybackErrorReason::internal(&failed),
+                reason: crate::playback::PlaybackErrorReason::internal(&failed),
             },
         );
         self.discard_output();
