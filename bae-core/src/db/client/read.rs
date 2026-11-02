@@ -385,7 +385,7 @@ pub(super) fn source_audio_layout_value(
     }
 }
 
-pub(super) fn row_to_file(row: &Row) -> rusqlite::Result<DbFile> {
+pub(crate) fn row_to_file(row: &Row) -> rusqlite::Result<DbFile> {
     let layout = row
         .get::<_, Option<String>>("source_audio_layout")?
         .map(|layout| source_audio_layout_value(&layout, 0))

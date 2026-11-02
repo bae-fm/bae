@@ -11,6 +11,7 @@ impl AppServices {
         let (request_tx, mut requests) = tokio::sync::watch::channel(None::<ReleaseFilesRequest>);
         let (tx, rx) = crate::library::live_read_channel();
         let manager = self.inner.manager.clone();
+        let views = self.inner.views.clone();
         let task = crate::library::CancellationToken::new();
         self.inner.manager.spawn_stoppable_subscription_task(
             "release files",
@@ -20,7 +21,7 @@ impl AppServices {
                 let mut request = None;
                 let mut query = reconfigurable_live_query_events(
                     &manager,
-                    manager.subscribe_release_files(None),
+                    views.subscribe_release_files(None),
                     tx.clone(),
                 );
                 loop {

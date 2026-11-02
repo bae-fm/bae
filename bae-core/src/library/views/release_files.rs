@@ -7,7 +7,7 @@ use crate::library::{ReleaseFileColumn, ReleaseFileOrder, ReleaseFilesRequest};
 
 /// The statement reading a release's files in `order`: the terms of the
 /// index serving it, every one of them backward when the order is.
-pub(super) fn release_files_in(order: ReleaseFileOrder) -> String {
+pub(crate) fn release_files_in(order: ReleaseFileOrder) -> String {
     let terms: &[&str] = match order.column {
         ReleaseFileColumn::Name => &["original_filename COLLATE natural_order", "id"],
         ReleaseFileColumn::Size => &["file_size", "original_filename COLLATE natural_order", "id"],
@@ -25,7 +25,7 @@ pub(super) fn release_files_in(order: ReleaseFileOrder) -> String {
         .join(", ");
     format!(
         "SELECT {} FROM release_files AS f WHERE f.release_id = ?1 ORDER BY {terms}",
-        release_file_columns!()
+        crate::db::client::release_file_columns!()
     )
 }
 
@@ -45,15 +45,14 @@ fn release_files_on(
     )?))
 }
 
-impl Database {
+impl LibraryViews {
     /// Follow the files of the release `initial` names, or none, in its
     /// order. Another release or order is a new request on the same query.
     pub(crate) fn subscribe_release_files(
         &self,
         initial: Option<ReleaseFilesRequest>,
     ) -> coven::ReconfigurableLiveQuery<Option<ReleaseFilesRequest>, Option<Vec<DbFile>>> {
-        self.inner
-            .handle
+        self.database
             .subscribe_reconfigurable(initial, |request, sql| {
                 let Some(request) = request else {
                     return Ok(None);

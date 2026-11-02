@@ -28,6 +28,7 @@ macro_rules! release_file_columns {
          AS stored"
     };
 }
+pub(crate) use release_file_columns;
 
 mod album;
 mod artist;
@@ -99,8 +100,6 @@ pub(crate) use release_queues::QueuedPayload;
 mod cast_devices;
 pub(crate) mod release_storage_action;
 pub(crate) use release_storage_action::StoredTransition;
-#[cfg(desktop)]
-mod release_files;
 #[cfg(all(
     any(test, feature = "test-utils", debug_assertions),
     not(any(target_os = "ios", target_os = "android"))

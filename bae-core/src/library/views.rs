@@ -11,6 +11,8 @@ pub(crate) mod artist_search;
 pub(crate) mod composer;
 mod models;
 pub(crate) mod release;
+#[cfg(desktop)]
+pub(crate) mod release_files;
 pub(crate) mod storage;
 
 pub use album::{AlbumBrowseProjection, AlbumDetailProjection, LibrarySearchProjection};

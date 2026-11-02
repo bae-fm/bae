@@ -355,7 +355,8 @@ async fn release_files_are_read_in_each_order_the_storage_sheet_sorts_by() {
         }
     }
     let first = request(order(ReleaseFileColumn::Name, false));
-    let mut files = db.subscribe_release_files(first.clone());
+    let mut files =
+        crate::library::views::LibraryViews::new(db.clone()).subscribe_release_files(first.clone());
     assert_eq!(
         names(&mut files, &first).await,
         ["album.cue", "cover.jpg", "Track 2.flac", "Track 10.flac"]
@@ -399,7 +400,8 @@ async fn release_files_are_read_in_each_order_the_storage_sheet_sorts_by() {
             expected,
             "{column:?} descending: {descending}"
         );
-        let statement = super::super::release_files::release_files_in(order(column, descending));
+        let statement =
+            crate::library::views::release_files::release_files_in(order(column, descending));
         let plan = db
             .read(move |sql| {
                 sql.query(&format!("EXPLAIN QUERY PLAN {statement}"), [RELEASE_A], |row| {
