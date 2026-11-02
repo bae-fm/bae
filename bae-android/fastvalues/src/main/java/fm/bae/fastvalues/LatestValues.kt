@@ -6,10 +6,6 @@ import androidx.annotation.VisibleForTesting
 import fm.bae.screensubscription.ScreenSubscription
 import fm.bae.screensubscription.pulled
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.channelFlow
 import uniffi.bae_bridge.AppHandleInterface
 import uniffi.bae_bridge.BridgeBootstrapStatus
 import uniffi.bae_bridge.BridgeClosingStep
@@ -22,7 +18,7 @@ import uniffi.bae_bridge.BridgeLibrarySetup
 import uniffi.bae_bridge.BridgeOpenProgress
 import uniffi.bae_bridge.BridgeSetupProgress
 import uniffi.bae_bridge.BridgeStorageSetupProgress
-import uniffi.bae_bridge.BridgeTrackDownload
+import uniffi.bae_bridge.BridgeTrackBuffered
 import uniffi.bae_bridge.BridgeTrackPosition
 import uniffi.bae_bridge.BridgeUploadTransfer
 import uniffi.bae_bridge.KeyedValueStream
@@ -122,11 +118,20 @@ class LatestStream<V : Any> private constructor(
             LatestStream(values) { (it as? BridgeFastValue.TrackPosition)?.position }
 
         /**
-         * How much of what a load of the playing track waits on from storage is here, by track id;
-         * a preview's holds [values] and nothing feeds it.
+         * The parts of the playing track whose bytes this device holds, by track id; a preview's
+         * holds [values] and nothing feeds it.
          */
-        fun trackDownloads(values: Map<String, BridgeTrackDownload>? = null) =
-            LatestStream(values) { (it as? BridgeFastValue.TrackDownload)?.progress }
+        fun trackBuffered(values: Map<String, BridgeTrackBuffered>? = null) =
+            LatestStream(values) { (it as? BridgeFastValue.TrackBuffered)?.buffered }
+
+        /**
+         * True under the playing track's id while its load waits on storage; a preview's holds
+         * true under each of [waiting] and nothing feeds it.
+         */
+        fun trackStorageWaits(waiting: Set<String>? = null): LatestStream<Boolean> =
+            LatestStream(waiting?.associateWith { true }) {
+                if (it is BridgeFastValue.TrackWaitsOnStorage) true else null
+            }
 
         /** Where a restore or join stands, while it runs; a preview's holds [value], fed by nothing. */
         fun bootstrapStatus(value: BridgeBootstrapStatus? = null): LatestStream<BridgeBootstrapStatus> =
@@ -234,12 +239,20 @@ fun LatestStream<BridgeTrackPosition>.feed(
 ): LatestFeed = fed(scope, reportBug, appHandle::feedPlaybackPositions)
 
 /** Fill from core. */
-@JvmName("feedTrackDownloads")
-fun LatestStream<BridgeTrackDownload>.feed(
+@JvmName("feedTrackBuffered")
+fun LatestStream<BridgeTrackBuffered>.feed(
     appHandle: AppHandleInterface,
     scope: CoroutineScope,
     reportBug: (BridgeException) -> Unit,
-): LatestFeed = fed(scope, reportBug, appHandle::feedTrackDownloads)
+): LatestFeed = fed(scope, reportBug, appHandle::feedTrackBuffered)
+
+/** Fill from core. */
+@JvmName("feedTrackStorageWaits")
+fun LatestStream<Boolean>.feed(
+    appHandle: AppHandleInterface,
+    scope: CoroutineScope,
+    reportBug: (BridgeException) -> Unit,
+): LatestFeed = fed(scope, reportBug, appHandle::feedTrackStorageWaits)
 
 /** A fed stream's feed, which stops when cancelled; the stream then holds nothing. */
 class LatestFeed internal constructor(
@@ -248,49 +261,6 @@ class LatestFeed internal constructor(
     /** Stop pulling and cancel the stream. */
     fun cancel() = pulls.stop()
 }
-
-/**
- * One key of a fast stream, which a composable hands to the View that draws
- * it. Only FrameFollowing reads its value.
- */
-@ConsistentCopyVisibility
-data class LatestSource<V : Any> internal constructor(
-    internal val stream: LatestStream<V>,
-    internal val key: String,
-) {
-    internal val latest: V? get() = stream.latest(key)
-}
-
-/**
- * The key's value each time it changes, for a screen whose value changes now
- * and then, such as where a join stands: while the key holds a value it is
- * read ten times a second and emitted when it changed; while it holds none,
- * nothing runs until it starts again. A value that comes and goes between two
- * reads is never seen.
- */
-fun <V : Any> LatestSource<V>.changes(): Flow<V?> =
-    channelFlow {
-        val started = Channel<Unit>(Channel.CONFLATED)
-        val changed = { started.trySend(Unit).let { } }
-        stream.activity.watch(key, changed)
-        try {
-            var shown = latest
-            send(shown)
-            while (true) {
-                if (shown == null) started.receive() else delay(READ_EVERY_MS)
-                val now = latest
-                if (now != shown) {
-                    shown = now
-                    send(now)
-                }
-            }
-        } finally {
-            stream.activity.stopWatching(key, changed)
-        }
-    }
-
-/** How often [changes] reads a key that holds a value. */
-private const val READ_EVERY_MS = 100L
 
 /** The main thread, where a written stream tells the Views watching a key. */
 private val mainThread by lazy { Handler(Looper.getMainLooper()) }

@@ -130,14 +130,20 @@ private fun LazyGridScope.albumItems(
 @Composable
 internal fun LibraryGridScene() {
     BaeAppChrome {
-        CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
-            LibraryGridBacking(
-                count = SCENE_ALBUM_COUNT,
-                albumAt = { i -> PreviewData.album(id = "alb-$i", title = "Album ${i + 1}") },
-                gridState = rememberLazyGridState(),
-                onSelectAlbum = {},
-            )
-        }
+        LibraryGridSceneAlbums()
+    }
+}
+
+/** The library grid scene's albums, with no cover resolved: what other scenes show behind them. */
+@Composable
+internal fun LibraryGridSceneAlbums() {
+    CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
+        LibraryGridBacking(
+            count = SCENE_ALBUM_COUNT,
+            albumAt = { i -> PreviewData.album(id = "alb-$i", title = "Album ${i + 1}") },
+            gridState = rememberLazyGridState(),
+            onSelectAlbum = {},
+        )
     }
 }
 

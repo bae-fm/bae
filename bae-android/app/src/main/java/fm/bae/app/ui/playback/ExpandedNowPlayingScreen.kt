@@ -57,6 +57,7 @@ import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.CoverImage
 import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.rememberScreenScope
+import fm.bae.fastvalues.LatestSource
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeRepeatMode
 import uniffi.bae_bridge.bridgeNextRepeatMode
@@ -121,13 +122,67 @@ fun ExpandedNowPlayingScreen(
     }
 }
 
-/** The player; a failed read of playback shows in place of the track, which is no longer known to be current. */
+/** The player wired to [session]. */
+@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 @Composable
 private fun ExpandedPlayer(
     session: OpenLibrary,
     track: fm.bae.app.playback.NowPlaying,
     failure: DisplayError?,
     onCollapse: () -> Unit,
+) {
+    val player = session.playback
+    val isPlaying by player.isPlayingOrLoading.collectAsState()
+    val loadingTrackId by player.loadingTrackId.collectAsState()
+    val repeatMode by player.repeatMode.collectAsState()
+    val volume by player.volume.collectAsState()
+    val isMuted by player.isMuted.collectAsState()
+    ExpandedPlayerContent(
+        track = track,
+        failure = failure,
+        onCollapse = onCollapse,
+        seek = { ExpandedSeekSection(session = session, player = player) },
+        transport = {
+            ExpandedTransportRow(
+                isPlaying = isPlaying,
+                storageWait = loadingTrackId?.let { player.trackStorageWaits.source(it) },
+                onPrevious = { player.seekToPreviousMediaItem() },
+                onPlayPause = { player.togglePlayPause() },
+                onNext = { player.seekToNextMediaItem() },
+            )
+        },
+        secondaryControls = {
+            ExpandedSecondaryControls(
+                repeatMode = repeatMode,
+                onCycleRepeat = { session.appHandle.setRepeatMode(bridgeNextRepeatMode(repeatMode)) },
+            )
+        },
+        volumeRow = {
+            ExpandedVolumeRow(
+                volume = volume,
+                isMuted = isMuted,
+                onSetMuted = { session.appHandle.setMuted(it) },
+                onSetVolume = { session.appHandle.setVolume(it) },
+            )
+        },
+    )
+}
+
+/**
+ * The player: the track's cover and names over the [seek] row, the
+ * [transport], the [secondaryControls] and the [volumeRow]. A failed read of
+ * playback shows in place of the track, which is no longer known to be
+ * current.
+ */
+@Composable
+internal fun ExpandedPlayerContent(
+    track: fm.bae.app.playback.NowPlaying,
+    failure: DisplayError?,
+    onCollapse: () -> Unit,
+    seek: @Composable () -> Unit,
+    transport: @Composable () -> Unit,
+    secondaryControls: @Composable () -> Unit,
+    volumeRow: @Composable () -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = ThemeSpace.section, vertical = ThemeSpace.related)) {
         IconButton(onClick = onCollapse) {
@@ -153,19 +208,19 @@ private fun ExpandedPlayer(
 
         Spacer(modifier = Modifier.height(ThemeSpace.section))
 
-        ExpandedSeekSection(session = session, player = session.playback)
+        seek()
 
         Spacer(modifier = Modifier.height(ThemeSpace.edge))
 
-        ExpandedTransportRow(player = session.playback)
+        transport()
 
         Spacer(modifier = Modifier.height(ThemeSpace.edge))
 
-        ExpandedSecondaryControls(session = session)
+        secondaryControls()
 
         Spacer(modifier = Modifier.height(ThemeSpace.related))
 
-        ExpandedVolumeRow(session = session)
+        volumeRow()
     }
 }
 
@@ -214,16 +269,20 @@ private fun ExpandedSeekSection(
     failure?.let { ErrorDetailDisclosure(it) }
 }
 
-@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 @Composable
-private fun ExpandedTransportRow(player: fm.bae.app.playback.BaeCorePlayer) {
-    val isPlaying by player.isPlayingOrLoading.collectAsState()
+internal fun ExpandedTransportRow(
+    isPlaying: Boolean,
+    storageWait: LatestSource<Boolean>?,
+    onPrevious: () -> Unit,
+    onPlayPause: () -> Unit,
+    onNext: () -> Unit,
+) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        IconButton(onClick = { player.seekToPreviousMediaItem() }) {
+        IconButton(onClick = onPrevious) {
             Icon(
                 Icons.Filled.SkipPrevious,
                 contentDescription = stringResource(R.string.previous_track),
@@ -234,10 +293,11 @@ private fun ExpandedTransportRow(player: fm.bae.app.playback.BaeCorePlayer) {
         PlayPauseControl(
             isPlaying = isPlaying,
             iconSize = 48.dp,
-            onToggle = { player.togglePlayPause() },
+            storageWait = storageWait,
+            onToggle = onPlayPause,
         )
         Spacer(modifier = Modifier.width(ThemeSpace.section))
-        IconButton(onClick = { player.seekToNextMediaItem() }) {
+        IconButton(onClick = onNext) {
             Icon(
                 Icons.Filled.SkipNext,
                 contentDescription = stringResource(R.string.next_track),
@@ -248,14 +308,16 @@ private fun ExpandedTransportRow(player: fm.bae.app.playback.BaeCorePlayer) {
 }
 
 @Composable
-private fun ExpandedSecondaryControls(session: OpenLibrary) {
-    val repeatMode by session.playback.repeatMode.collectAsState()
+internal fun ExpandedSecondaryControls(
+    repeatMode: BridgeRepeatMode,
+    onCycleRepeat: () -> Unit,
+) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        IconButton(onClick = { session.appHandle.setRepeatMode(bridgeNextRepeatMode(repeatMode)) }) {
+        IconButton(onClick = onCycleRepeat) {
             Icon(
                 imageVector = if (repeatMode == BridgeRepeatMode.TRACK) Icons.Filled.RepeatOne else Icons.Filled.Repeat,
                 contentDescription = stringResource(R.string.repeat_mode),
@@ -271,14 +333,17 @@ private fun ExpandedSecondaryControls(session: OpenLibrary) {
 }
 
 @Composable
-private fun ExpandedVolumeRow(session: OpenLibrary) {
-    val volume by session.playback.volume.collectAsState()
-    val isMuted by session.playback.isMuted.collectAsState()
+internal fun ExpandedVolumeRow(
+    volume: Float,
+    isMuted: Boolean,
+    onSetMuted: (Boolean) -> Unit,
+    onSetVolume: (Float) -> Unit,
+) {
     // Follow the finger from a local value while dragging; incoming volume
     // updates would otherwise snap the thumb back.
     var dragVolume by remember { mutableStateOf<Float?>(null) }
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        IconButton(onClick = { session.appHandle.setMuted(!isMuted) }) {
+        IconButton(onClick = { onSetMuted(!isMuted) }) {
             Icon(
                 imageVector = if (isMuted) Icons.AutoMirrored.Filled.VolumeOff else Icons.Filled.VolumeUp,
                 contentDescription = stringResource(if (isMuted) R.string.unmute else R.string.mute),
@@ -289,7 +354,7 @@ private fun ExpandedVolumeRow(session: OpenLibrary) {
             value = dragVolume ?: volume,
             onValueChange = {
                 dragVolume = it
-                session.appHandle.setVolume(it)
+                onSetVolume(it)
             },
             onValueChangeFinished = { dragVolume = null },
             valueRange = 0f..1f,

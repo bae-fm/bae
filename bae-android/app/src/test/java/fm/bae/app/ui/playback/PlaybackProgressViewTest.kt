@@ -13,7 +13,9 @@ import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowChoreographer
+import uniffi.bae_bridge.BridgeTrackBuffered
 import uniffi.bae_bridge.BridgeTrackPosition
+import uniffi.bae_bridge.BridgeTrackSpan
 import java.time.Duration
 
 @RunWith(RobolectricTestRunner::class)
@@ -82,7 +84,7 @@ class PlaybackProgressViewTest {
         val positions = LatestStream.written<BridgeTrackPosition>()
         positions.write(KEY, position(10_000))
 
-        view.bind(positions.source(KEY), ::labels, onSeekRatio = {}, onToggleRemaining = {})
+        view.bind(positions.source(KEY), buffered = null, state = ::labels, onSeekRatio = {}, onToggleRemaining = {})
 
         assertEquals("10000", view.leadingTextView.text.toString())
         assertEquals(1_000, view.seekBar.progress)
@@ -109,8 +111,8 @@ class PlaybackProgressViewTest {
         positions.write("first", position(10_000))
         positions.write("second", position(50_000))
 
-        view.bind(positions.source("first"), ::labels, onSeekRatio = {}, onToggleRemaining = {})
-        view.bind(positions.source("second"), ::labels, onSeekRatio = {}, onToggleRemaining = {})
+        view.bind(positions.source("first"), buffered = null, state = ::labels, onSeekRatio = {}, onToggleRemaining = {})
+        view.bind(positions.source("second"), buffered = null, state = ::labels, onSeekRatio = {}, onToggleRemaining = {})
         positions.write("first", position(20_000))
         shadowOf(Looper.getMainLooper()).idleFor(FRAME)
 
@@ -125,7 +127,7 @@ class PlaybackProgressViewTest {
         val positions = LatestStream.written<BridgeTrackPosition>()
         positions.write(KEY, position(10_000))
         val ratios = mutableListOf<Double>()
-        view.bind(positions.source(KEY), ::labels, onSeekRatio = { ratios += it }, onToggleRemaining = {})
+        view.bind(positions.source(KEY), buffered = null, state = ::labels, onSeekRatio = { ratios += it }, onToggleRemaining = {})
 
         view.beginTracking()
         view.seekBar.progress = 7_500
@@ -150,15 +152,37 @@ class PlaybackProgressViewTest {
         val positions = LatestStream.written<BridgeTrackPosition>()
         positions.write("first", position(10_000))
         positions.write("second", position(20_000))
-        view.bind(positions.source("first"), ::labels, onSeekRatio = {}, onToggleRemaining = {})
+        view.bind(positions.source("first"), buffered = null, state = ::labels, onSeekRatio = {}, onToggleRemaining = {})
         view.beginTracking()
         view.seekBar.progress = 7_500
         view.finishTracking()
         assertEquals("75000", view.leadingTextView.text.toString())
 
-        view.bind(positions.source("second"), ::labels, onSeekRatio = {}, onToggleRemaining = {})
+        view.bind(positions.source("second"), buffered = null, state = ::labels, onSeekRatio = {}, onToggleRemaining = {})
 
         assertEquals("20000", view.leadingTextView.text.toString())
+    }
+
+    /** The bar draws the parts of its track the buffered stream holds, and each change after. */
+    @Test
+    fun theBarDrawsTheHeldPartsOfItsTrack() {
+        val view = attachedView()
+        val positions = LatestStream.written<BridgeTrackPosition>()
+        val buffered = LatestStream.written<BridgeTrackBuffered>()
+        positions.write(KEY, position(10_000))
+        buffered.write(KEY, BridgeTrackBuffered(listOf(BridgeTrackSpan(0.0, 0.25))))
+
+        view.bind(positions.source(KEY), buffered.source(KEY), ::labels, onSeekRatio = {}, onToggleRemaining = {})
+
+        assertEquals(listOf(BridgeTrackSpan(0.0, 0.25)), view.heldRanges.ranges)
+
+        val gapped = listOf(BridgeTrackSpan(0.0, 0.25), BridgeTrackSpan(0.5, 0.75))
+        buffered.write(KEY, BridgeTrackBuffered(gapped))
+        shadowOf(Looper.getMainLooper()).idleFor(FRAME)
+        assertEquals(gapped, view.heldRanges.ranges)
+
+        view.bind(positions.source(KEY), buffered = null, state = ::labels, onSeekRatio = {}, onToggleRemaining = {})
+        assertEquals(emptyList<BridgeTrackSpan>(), view.heldRanges.ranges)
     }
 
     private fun attachedView(): PlaybackProgressView {

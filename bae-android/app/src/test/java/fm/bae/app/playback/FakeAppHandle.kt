@@ -191,7 +191,9 @@ internal open class FakeAppHandle(
 
     override fun feedPlaybackPositions(): KeyedValueStream = FakeKeyedValueStream()
 
-    override fun feedTrackDownloads(): KeyedValueStream = FakeKeyedValueStream()
+    override fun feedTrackBuffered(): KeyedValueStream = FakeKeyedValueStream()
+
+    override fun feedTrackStorageWaits(): KeyedValueStream = FakeKeyedValueStream()
 
     override fun triggerSync() {}
 

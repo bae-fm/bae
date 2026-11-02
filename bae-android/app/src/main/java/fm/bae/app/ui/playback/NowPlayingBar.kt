@@ -1,35 +1,20 @@
 package fm.bae.app.ui.playback
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.toggleable
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.List
-import androidx.compose.material.icons.filled.Repeat
-import androidx.compose.material.icons.filled.RepeatOne
-import androidx.compose.material.icons.filled.SkipNext
-import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -43,28 +28,19 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
-import fm.bae.app.data.ImageStore
-import fm.bae.app.data.LocalImageStore
 import fm.bae.app.data.castEndedFailure
 import fm.bae.app.playback.NowPlaying
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
-import fm.bae.app.ui.appearance.ThemeIcon
-import fm.bae.app.ui.appearance.ThemeRadius
-import fm.bae.app.ui.appearance.ThemeSize
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
-import fm.bae.app.ui.components.CoverImage
-import fm.bae.app.ui.components.ErrorText
 import fm.bae.app.ui.components.PrimaryButton
 import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.components.color
@@ -113,37 +89,27 @@ fun NowPlayingBar(session: OpenLibrary) {
     }
     track?.let { SidePauseAlert(session = session, track = it) }
 
-    Surface(color = MaterialTheme.colorScheme.surface, tonalElevation = 3.dp) {
-        Column(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = ThemeSpace.group, vertical = ThemeSpace.related),
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (failure != null) {
-                    ErrorText(message = failure.line, maxLines = 2, modifier = Modifier.weight(1f))
-                } else if (track != null) {
-                    NowPlayingTrackInfo(
-                        track = track,
-                        onExpand = { expanded = true },
-                    )
-                }
-                NowPlayingTransportButtons(
-                    session = session,
-                    player = player,
-                    repeatMode = repeatMode,
-                    onOpenQueue = { queueOpen = true },
-                )
-            }
+    NowPlayingBarStrip(
+        track = track,
+        failure = failure,
+        onExpand = { expanded = true },
+        transport = {
+            NowPlayingTransportButtons(
+                session = session,
+                player = player,
+                repeatMode = repeatMode,
+                onOpenQueue = { queueOpen = true },
+            )
+        },
+        progress = {
             PlaybackProgressAndroidView(
                 session = session,
                 player = player,
                 modifier = Modifier.fillMaxWidth(),
             )
-            CastEndedLine(session)
-        }
-    }
+        },
+        castEnded = { CastEndedLine(session) },
+    )
 }
 
 /** Why casting ended, when the last device's link was lost, until playback moves on. */
@@ -158,46 +124,6 @@ private fun CastEndedLine(session: OpenLibrary) {
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
     )
-}
-
-@Composable
-private fun RowScope.NowPlayingTrackInfo(
-    track: fm.bae.app.playback.NowPlaying,
-    onExpand: () -> Unit,
-) {
-    val nowPlayingDescription = stringResource(R.string.now_playing_track_by_artist, track.title, track.artist)
-    Row(
-        modifier =
-            Modifier
-                .weight(1f)
-                .clickable(onClick = onExpand)
-                // One TalkBack element named for the track, instead of an
-                // unnamed button and loose text.
-                .semantics(mergeDescendants = true) { contentDescription = nowPlayingDescription },
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        CoverImage(
-            cover = track.coverImage,
-            cornerRadius = ThemeRadius.artwork,
-            iconPadding = ThemeSpace.group,
-            modifier = Modifier.size(ThemeSize.barArtwork),
-        )
-        Spacer(modifier = Modifier.width(ThemeSpace.group))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = track.title,
-                style = ThemeText.rowTitle.style,
-                maxLines = 1,
-                modifier = Modifier.weight(1f, fill = false),
-            )
-            Text(
-                text = track.artist,
-                style = ThemeText.detail.style,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-            )
-        }
-    }
 }
 
 /** [SidePauseAlert] wired to [session]. */
@@ -358,57 +284,20 @@ private fun NowPlayingTransportButtons(
     onOpenQueue: () -> Unit,
 ) {
     val isPlaying by player.isPlayingOrLoading.collectAsState()
-    IconButton(onClick = { player.seekToPreviousMediaItem() }) {
-        Icon(Icons.Filled.SkipPrevious, contentDescription = stringResource(R.string.previous_track))
-    }
-    PlayPauseControl(
+    val loadingTrackId by player.loadingTrackId.collectAsState()
+    NowPlayingTransport(
         isPlaying = isPlaying,
-        iconSize = ThemeIcon.large,
-        onToggle = { player.togglePlayPause() },
+        storageWait = loadingTrackId?.let { player.trackStorageWaits.source(it) },
+        repeatMode = repeatMode,
+        onPrevious = { player.seekToPreviousMediaItem() },
+        onPlayPause = { player.togglePlayPause() },
+        onNext = { player.seekToNextMediaItem() },
+        castButton = { CastButton(session) },
+        onOpenQueue = onOpenQueue,
+        // `setRepeatMode` does not throw; the new mode arrives through the
+        // playback subscription.
+        onCycleRepeat = { session.appHandle.setRepeatMode(bridgeNextRepeatMode(repeatMode)) },
     )
-    IconButton(onClick = { player.seekToNextMediaItem() }) {
-        Icon(Icons.Filled.SkipNext, contentDescription = stringResource(R.string.next_track))
-    }
-    CastButton(session)
-    IconButton(onClick = onOpenQueue) {
-        Icon(Icons.AutoMirrored.Filled.List, contentDescription = stringResource(R.string.queue))
-    }
-    // `setRepeatMode` does not throw; the new mode arrives through the playback
-    // subscription.
-    IconButton(onClick = { session.appHandle.setRepeatMode(bridgeNextRepeatMode(repeatMode)) }) {
-        Icon(
-            imageVector = if (repeatMode == BridgeRepeatMode.TRACK) Icons.Filled.RepeatOne else Icons.Filled.Repeat,
-            contentDescription = stringResource(R.string.repeat_mode),
-            tint =
-                if (repeatMode == BridgeRepeatMode.OFF) {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                } else {
-                    MaterialTheme.colorScheme.primary
-                },
-        )
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun NowPlayingTrackInfoPreview() {
-    BaeTheme {
-        CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
-            Row {
-                NowPlayingTrackInfo(
-                    track =
-                        NowPlaying(
-                            trackId = "trk-1",
-                            title = "Track Title",
-                            artist = "Artist Name",
-                            coverImage = PreviewData.imageRef("rel-1"),
-                            sidePausePrompt = null,
-                        ),
-                    onExpand = {},
-                )
-            }
-        }
-    }
 }
 
 @Preview(showBackground = true)

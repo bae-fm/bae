@@ -35,8 +35,8 @@ import uniffi.bae_bridge.BridgeQueueAddition
 import uniffi.bae_bridge.BridgeQueueEntry
 import uniffi.bae_bridge.BridgeRepeatMode
 import uniffi.bae_bridge.BridgeTimelinePoint
+import uniffi.bae_bridge.BridgeTrackBuffered
 import uniffi.bae_bridge.BridgeTrackDisplay
-import uniffi.bae_bridge.BridgeTrackDownload
 import uniffi.bae_bridge.BridgeTrackPosition
 
 private const val TAG = "bae.BaeCorePlayer"
@@ -280,11 +280,18 @@ class BaeCorePlayer(
     val trackPositions: LatestStream<BridgeTrackPosition> = LatestStream.trackPositions()
 
     /**
-     * How much of what a load of the playing track waits on from storage is
-     * here, by track id, for the View that draws it each display frame: the
-     * session's to feed.
+     * The parts of the playing track whose bytes this device holds, by track
+     * id, for the seek bar that draws them each display frame: the session's
+     * to feed.
      */
-    val trackDownloads: LatestStream<BridgeTrackDownload> = LatestStream.trackDownloads()
+    val trackBuffered: LatestStream<BridgeTrackBuffered> = LatestStream.trackBuffered()
+
+    /**
+     * Whether the playing track's load waits on storage, by track id, for the
+     * spinner around Play that reads it each display frame: the session's to
+     * feed.
+     */
+    val trackStorageWaits: LatestStream<Boolean> = LatestStream.trackStorageWaits()
 
     // The in-app queue; the current track is not in it.
     private val _queue = MutableStateFlow(QueueProjection.EMPTY)

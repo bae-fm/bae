@@ -25,6 +25,9 @@ import fm.bae.app.ui.appearance.SurfaceTone
 import fm.bae.app.ui.library.ErrorBanner
 import fm.bae.app.ui.library.LibraryGridScene
 import fm.bae.app.ui.onboarding.WelcomeScene
+import fm.bae.app.ui.playback.FullPlayerScene
+import fm.bae.app.ui.playback.MiniPlayerScene
+import fm.bae.app.ui.playback.PlayerSceneState
 import fm.bae.app.ui.settings.AppearanceSection
 import fm.bae.app.ui.sync.SyncActivityList
 
@@ -188,4 +191,40 @@ fun SyncUpdateRequired() {
     BaeTheme {
         ErrorBanner(error = DisplayError(LocalContext.current.coreString("core.error.sync_update_required")))
     }
+}
+
+@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun MiniPlayerWaitingOnStorage() {
+    MiniPlayerScene(PlayerSceneState.WAITING_ON_STORAGE)
+}
+
+@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun MiniPlayerPlayingWithAGap() {
+    MiniPlayerScene(PlayerSceneState.PLAYING_WITH_A_GAP)
+}
+
+@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun MiniPlayerAllHere() {
+    MiniPlayerScene(PlayerSceneState.ALL_HERE)
+}
+
+@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun FullPlayerWaitingOnStorage() {
+    FullPlayerScene(PlayerSceneState.WAITING_ON_STORAGE)
+}
+
+@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun FullPlayerPlayingWithAGap() {
+    FullPlayerScene(PlayerSceneState.PLAYING_WITH_A_GAP)
+}
+
+@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun FullPlayerAllHere() {
+    FullPlayerScene(PlayerSceneState.ALL_HERE)
 }
