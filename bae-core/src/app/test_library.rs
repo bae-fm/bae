@@ -88,6 +88,11 @@ impl TestLibrary {
         &self.database
     }
 
+    /// Where the library reports its failures and telemetry.
+    pub(crate) fn diagnostics(&self) -> &Diagnostics {
+        &self.diagnostics
+    }
+
     /// The library's views over its store.
     pub(crate) fn views(&self) -> crate::library::views::LibraryViews {
         crate::library::views::LibraryViews::new(self.database.clone())

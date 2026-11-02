@@ -32,7 +32,6 @@ async fn a_command_that_panics_is_reported_and_the_next_is_served() {
     let diagnostics = crate::diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone());
     let (_home, manager) = seeded_library_manager_with_diagnostics(&[], diagnostics.clone()).await;
     let (mut service, mut progress_rx) = playback_service_over(&manager);
-    service.diagnostics = diagnostics;
     service.audio_output = Box::new(VolumePanicsOutput(AudioOutputControls::new(1.0)));
     let command_tx = service.command_tx.clone();
     let (_deletions_tx, deletions_rx) = tokio_mpsc::unbounded_channel();

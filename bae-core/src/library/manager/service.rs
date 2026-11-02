@@ -312,8 +312,7 @@ impl LibraryManager {
         self.diagnostics.event(event);
     }
 
-    /// Report a bug found outside the library's own operations — playback's —
-    /// to the log and the platform's crash reporter.
+    /// Report a bug to the log and the platform's crash reporter.
     pub(crate) fn report_bug(&self, operation: &str, error: &dyn std::fmt::Display) {
         self.diagnostics.report_bug(operation, error);
     }

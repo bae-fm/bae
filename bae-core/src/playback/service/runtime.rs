@@ -227,7 +227,7 @@ impl PlaybackService {
     }
 
     pub(super) fn record_telemetry(&self, event: TelemetryEvent) {
-        self.library_manager.record_telemetry(event);
+        self.diagnostics.event(event);
     }
 
     /// Restore playback from the device-local resume row at startup: a stored

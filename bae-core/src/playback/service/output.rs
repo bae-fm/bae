@@ -73,7 +73,7 @@ impl PlaybackService {
     ) -> crate::playback::PlaybackErrorReason {
         let detail = bae_util::error_text::CauseChain(error);
         if error.is_bug() {
-            self.library_manager.report_bug(operation, &detail);
+            self.diagnostics.report_bug(operation, &detail);
         } else {
             warn!("{operation}: the audio output didn't start: {detail}");
         }
@@ -86,7 +86,7 @@ impl PlaybackService {
     /// failure: report it, tell the person, and stop rather than play on with
     /// audio missing.
     pub(super) async fn output_stopped_sending(&mut self, detail: String) {
-        self.library_manager.report_bug("keep the audio output playing", &detail);
+        self.diagnostics.report_bug("keep the audio output playing", &detail);
         emit_progress(
             &self.progress_tx,
             PlaybackProgress::PlaybackError {

@@ -247,7 +247,7 @@ fn playback_service_over(
     let library_manager = LibraryManager::clone(library);
     let (command_tx, command_rx) = tokio_mpsc::unbounded_channel();
     let (progress_tx, progress_rx) = tokio_mpsc::unbounded_channel();
-    let diagnostics = crate::diagnostics::Diagnostics::noop();
+    let diagnostics = library.diagnostics().clone();
     let preview =
         PreviewPlayer::new(progress_tx.clone(), command_tx.clone(), 50, diagnostics.clone());
     let playback_queue =
