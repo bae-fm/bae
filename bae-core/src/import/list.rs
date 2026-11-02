@@ -27,10 +27,10 @@ use super::types::{MetadataProvenance, RawReleaseEdit, ReleaseLink};
 use super::watched_folder::WatchedFolder;
 use super::{FileEvidence, ImportFailure, ImportedRelease, WatchedFolderScanStatus};
 use crate::db::LibraryStatus;
+use crate::identify::signals::Signals;
 use crate::identify::{IdentifyState, VerdictSummary};
 use crate::import::CandidateSession;
 use crate::library::{LibraryPageWindow, LibraryPageWindows};
-use crate::signals::Signals;
 use bae_catalogs::remote_image::RemoteCover;
 
 mod path_order;

@@ -6,7 +6,7 @@
 use super::row_facts::FolderFacts;
 use crate::catalog_model::records::LookupRef;
 use crate::catalog_model::search::MetadataResult;
-use crate::signals::{SourcedValue, TextLine, TextOrigin};
+use crate::identify::signals::{SourcedValue, TextLine, TextOrigin};
 use bae_types::pressing::{ReleaseArea, ReleaseLabel};
 use bae_types::text_match::{
     bare_album_title, catalog_key, catalog_words, is_stop_word, squash, words, written_words,
@@ -157,7 +157,7 @@ impl CandidateText {
     /// read's. A candidate whose extraction never stored any text offers its
     /// rows unranked rather than none.
     pub fn of_stored(
-        signals: Option<&crate::signals::Signals>,
+        signals: Option<&crate::identify::signals::Signals>,
         choices: &crate::identify::LookupChoices,
     ) -> Self {
         signals.map_or_else(Self::default, |signals| {

@@ -1,5 +1,5 @@
 use super::*;
-use crate::signals::{TextLine, TextOrigin};
+use crate::identify::signals::{TextLine, TextOrigin};
 use bae_catalogs::catalog::LookupCatalog;
 
 fn text(lines: &[&str]) -> CandidateText {
@@ -314,7 +314,7 @@ fn a_barcode_s_digits_state_no_catalog_number() {
     let text = CandidateText::of(
         &[TextLine { text: "LBL-100 0 1234-56789-0 5".to_string(), origin: TextOrigin::Artwork }],
         &[],
-        &[crate::signals::SourcedValue::new("012345678905".to_string())],
+        &[crate::identify::signals::SourcedValue::new("012345678905".to_string())],
     );
     let facts = FolderFacts::of(&text, [&named, &barcoded]);
     assert!(facts.states_catalog("LBL-100"));

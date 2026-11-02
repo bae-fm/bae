@@ -35,9 +35,7 @@ pub mod people;
 pub mod playback;
 pub mod queue;
 pub mod renderer;
-// The extraction machinery (OCR, disc-ID compute) is desktop-only and gated
-// submodule-by-submodule inside `signals`. The module itself stays on every
-// target for the pure origin values (`origin`).
+#[cfg(desktop)]
 pub mod signals;
 pub mod storage;
 pub mod sync;

@@ -169,9 +169,9 @@ fn a_row_whose_document_cannot_be_read_keeps_its_search_facts() {
 /// A folder whose name writes the album as "Artist - 1990-2000 Album".
 fn titled_folder() -> Signals {
     let mut folder = signals(DiscIdSignal::Absent, BarcodeSignal::Absent, &[]);
-    folder.text_pool = vec![crate::signals::TextLine {
+    folder.text_pool = vec![crate::identify::signals::TextLine {
         text: "Artist - 1990-2000 Album".to_string(),
-        origin: crate::signals::TextOrigin::FolderName,
+        origin: crate::identify::signals::TextOrigin::FolderName,
     }];
     folder
 }

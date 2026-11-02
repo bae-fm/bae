@@ -235,7 +235,7 @@ impl CandidateDetailRows {
         let lookup_choices =
             current.as_ref().map(|state| state.lookup_choices.clone()).unwrap_or_default();
 
-        let audio = crate::signals::AudioFacts::of_files(&candidate.files)
+        let audio = crate::import::probe::audio_facts(&candidate.files)
             .map_err(|error| DbError::Message(error.to_string()))?;
         let mut verdict = None;
         let mut resumed_identify_state = crate::identify::IdentifyState::Idle;
@@ -263,17 +263,16 @@ impl CandidateDetailRows {
                     album,
                     embedded_cover,
                 } = *draft;
-                let pane = crate::import::pane::draft_pane(
-                    &candidate.files,
-                    &audio.durations,
-                    &pane_rows.draft,
-                )
-                .map_err(|error| {
-                    DbError::Message(format!(
-                        "candidate {} cannot be drawn: {error}",
-                        candidate.key()
-                    ))
-                })?;
+                let durations = crate::import::probe::source_durations(&candidate.files)
+                    .map_err(|error| DbError::Message(error.to_string()))?;
+                let pane =
+                    crate::import::pane::draft_pane(&candidate.files, &durations, &pane_rows.draft)
+                        .map_err(|error| {
+                            DbError::Message(format!(
+                                "candidate {} cannot be drawn: {error}",
+                                candidate.key()
+                            ))
+                        })?;
                 let cover =
                     chosen_cover(&candidate.files, pane_rows.cover.as_ref(), embedded_cover);
                 ProjectedStage::Drafting(Box::new(DraftProjection {

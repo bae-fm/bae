@@ -1,8 +1,8 @@
 use crate::catalog_model::rip::rate_ruling_out_cd;
 use crate::catalog_model::{AudioOrigin, AudioSource, CdProof};
 use crate::cue_flac::CueSheet;
+use crate::identify::signals::{ComputedDiscId, DiscIdSignal};
 use crate::import::folder_scanner::resolve_cue_audio_paths;
-use crate::signals::{ComputedDiscId, DiscIdSignal};
 use bae_types::audio_format::AudioFormat;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};

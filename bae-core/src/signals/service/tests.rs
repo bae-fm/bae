@@ -1,6 +1,7 @@
 use super::*;
+use crate::identify::signals::{ArtworkScan, TextOrigin};
 use crate::import::ScanEvent;
-use crate::signals::{ArtworkAnalysis, ArtworkAnalyzer, ArtworkScan, TextOrigin};
+use crate::signals::{ArtworkAnalysis, ArtworkAnalyzer};
 use bae_catalogs::rate_limiter::CallPriority;
 use std::collections::HashMap;
 use std::fs;

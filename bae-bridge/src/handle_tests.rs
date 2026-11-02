@@ -319,11 +319,11 @@ fn enqueue_export_missing_release_does_not_panic() {
 #[cfg(feature = "desktop")]
 #[test]
 fn a_run_s_signals_cross_with_its_runtime() {
-    let signals = bae_core::signals::Signals {
+    let signals = bae_core::identify::signals::Signals {
         origin: bae_core::catalog_model::AudioOrigin::default(),
-        disc_id: bae_core::signals::DiscIdSignal::Absent,
-        barcode: bae_core::signals::BarcodeSignal::Settled { codes: Vec::new() },
-        text: bae_core::signals::TextSignal::Settled {
+        disc_id: bae_core::identify::signals::DiscIdSignal::Absent,
+        barcode: bae_core::identify::signals::BarcodeSignal::Settled { codes: Vec::new() },
+        text: bae_core::identify::signals::TextSignal::Settled {
             catalogs: vec!["CAT-1".to_string()],
             free_text: vec!["Album Title".to_string()],
         },
@@ -331,7 +331,7 @@ fn a_run_s_signals_cross_with_its_runtime() {
         isrcs: Vec::new(),
         track_titles: Vec::new(),
     };
-    let running = |signals: Option<bae_core::signals::Signals>| {
+    let running = |signals: Option<bae_core::identify::signals::Signals>| {
         crate::types::BridgeCandidateRuntimeSnapshot::from_core(
             bae_core::import::CandidateRuntimeSnapshot {
                 identification: Some(bae_core::import::IdentificationRuntime::Running(

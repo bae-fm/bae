@@ -37,7 +37,7 @@ pub struct NewImportCandidateVerdict {
     /// barcodes, the classified text, and what every audio unit plays for.
     /// Stored beside the verdict so the pane and the queue read them back
     /// instead of extracting them again.
-    pub signals: crate::signals::Signals,
+    pub signals: crate::identify::signals::Signals,
     /// The release this verdict picked unattended and the draft read from
     /// it, or `None` where it picked none. Only a run that settled on one
     /// release picks one, and the pick replaces whatever link and draft
@@ -83,7 +83,7 @@ pub struct DbImportCandidateState {
     pub identify: Option<DbCandidateIdentifyResult>,
     /// The signals identification settled on, or `None` when nothing has
     /// extracted them.
-    pub signals: Option<crate::signals::Signals>,
+    pub signals: Option<crate::identify::signals::Signals>,
     /// What a person decided this candidate's identification asks about. Every
     /// run of it reads this at its start; the default is what a candidate
     /// nobody has decided anything about runs with.

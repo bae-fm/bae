@@ -2,9 +2,8 @@
 //! from the bars or read from the digits printed under them — or in a CUE
 //! `CATALOG` field. What counts as a code is [`bae_types::barcode`]'s to say.
 
-use super::{ArtworkAnalysis, SourcedValue};
+use super::SourcedValue;
 use crate::catalog_model::InternalFailure;
-use bae_types::barcode::Barcode;
 
 /// The codes found in a candidate's files, in discovery order, each once per
 /// file it was read off.
@@ -30,15 +29,3 @@ impl BarcodeSignal {
         }
     }
 }
-
-/// The codes on one image: detector payloads first, then lines that are the
-/// digits printed under bars — which catch codes whose bars did not decode.
-pub(super) fn codes_in(analysis: &ArtworkAnalysis) -> impl Iterator<Item = Barcode> + '_ {
-    let detected = analysis.barcodes.iter().filter_map(|payload| Barcode::stated(payload));
-    let printed = analysis.text_lines.iter().filter_map(|line| Barcode::printed(line));
-    detected.chain(printed)
-}
-
-#[cfg(test)]
-#[path = "barcode_tests.rs"]
-mod tests;

@@ -6,8 +6,8 @@
 use super::{Effect, LookupOutcome, SignalState, SignalsContext};
 use crate::catalog_model::search::{MetadataResult, SourceFailure};
 use crate::catalog_model::LookupFailure;
+use crate::identify::signals::DiscIdSignal;
 use crate::identify::NotAskedReason;
-use crate::signals::DiscIdSignal;
 use bae_catalogs::catalog::LookupCatalog;
 
 /// What one lookup produced: each match paired with its library status.

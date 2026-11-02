@@ -66,11 +66,11 @@ pub(super) async fn store_two_pressings(handle: &ImportServiceHandle, hash: &str
                 track_count: 2,
                 ledger: None,
             },
-            signals: crate::signals::Signals {
+            signals: crate::identify::signals::Signals {
                 origin: crate::catalog_model::AudioOrigin::default(),
-                disc_id: crate::signals::DiscIdSignal::Absent,
-                barcode: crate::signals::BarcodeSignal::Absent,
-                text: crate::signals::TextSignal::Settled {
+                disc_id: crate::identify::signals::DiscIdSignal::Absent,
+                barcode: crate::identify::signals::BarcodeSignal::Absent,
+                text: crate::identify::signals::TextSignal::Settled {
                     catalogs: Vec::new(),
                     free_text: Vec::new(),
                 },

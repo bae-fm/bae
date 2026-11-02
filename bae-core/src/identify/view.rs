@@ -20,8 +20,8 @@ use crate::catalog_model::LookupFailure;
 use crate::identify::release_group::{
     group_formed_rows, group_results, Judgements, Pressing, ReleaseGroup,
 };
+use crate::identify::signals::{ArtworkScan, DiscIdSignal};
 use crate::identify::SharedAlbum;
-use crate::signals::{ArtworkScan, DiscIdSignal};
 use bae_catalogs::catalog::LookupCatalog;
 
 /// One provider's lookup of one value: a cell of the ledger.

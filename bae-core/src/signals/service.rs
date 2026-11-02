@@ -17,12 +17,12 @@ use super::fast_pass::{gather_non_ocr_sources, ArtworkImage, FastPass};
 use super::pool::Pool;
 use super::release::{resolve_release_artwork_paths, resolve_release_identity};
 use crate::catalog_model::{AudioOrigin, InternalFailure};
+use crate::identify::signals::{
+    ArtworkScan, AudioFacts, BarcodeSignal, DiscIdSignal, Signals, SourcedValue, TextSignal,
+};
 use crate::import::IdentifyRunId;
 use crate::import::{CandidateRuntime, CandidateWork, ImportEvent, ImportEventBus};
 use crate::library::LibraryManager;
-use crate::signals::{
-    ArtworkScan, AudioFacts, BarcodeSignal, DiscIdSignal, Signals, SourcedValue, TextSignal,
-};
 use bae_catalogs::rate_limiter::CallPriority;
 use bae_util::session_cache::SessionCache;
 use std::collections::VecDeque;
@@ -596,7 +596,7 @@ async fn stream_extraction(
             };
 
             // One sighting per image a code was read off.
-            for code in super::barcode::codes_in(&analysis) {
+            for code in analysis.codes() {
                 let seen_here = gathered
                     .barcodes
                     .iter()

@@ -1,4 +1,4 @@
-//! The identify pipeline: matches a candidate's [`crate::signals::Signals`]
+//! The identify pipeline: matches a candidate's [`signals::Signals`]
 //! against external metadata. A pure reducer (`state::step`) asks every key
 //! in effect — disc ID, ISRCs, barcodes, the catalog numbers picked or
 //! confirmed, the album title when the folder's own keys name nothing, and
@@ -23,6 +23,7 @@ pub(crate) mod pressing_evidence;
 pub mod release_group;
 pub(crate) mod row_facts;
 pub mod shared_album;
+pub mod signals;
 pub mod state;
 pub mod toolbar;
 pub mod verdict;

@@ -26,8 +26,8 @@ impl AutomationBarcodeSignal {
     /// Not a copy: core keeps a code once per file it was read off, and this
     /// lists each code once.
     #[cfg(desktop)]
-    pub(crate) fn from_core(signal: bae_core::signals::BarcodeSignal) -> Self {
-        use bae_core::signals::{BarcodeSignal, SourcedValue};
+    pub(crate) fn from_core(signal: bae_core::identify::signals::BarcodeSignal) -> Self {
+        use bae_core::identify::signals::{BarcodeSignal, SourcedValue};
         match signal {
             BarcodeSignal::Scanning { codes } => {
                 Self::Scanning { codes: SourcedValue::values(&codes) }
@@ -46,7 +46,7 @@ impl AutomationBarcodeSignal {
 
 mirror_enum! {
     #[cfg(desktop)]
-    AutomationTextSignal = bae_core::signals::TextSignal,
+    AutomationTextSignal = bae_core::identify::signals::TextSignal,
     from_core: pub(crate) fn,
     variants: {
         Scanning { catalogs, free_text },
@@ -58,8 +58,8 @@ mirror_enum! {
 impl AutomationDiscIdSignal {
     /// Not a copy: the file each computed disc ID came from does not cross.
     #[cfg(desktop)]
-    pub(crate) fn from_core(signal: bae_core::signals::DiscIdSignal) -> Self {
-        use bae_core::signals::DiscIdSignal;
+    pub(crate) fn from_core(signal: bae_core::identify::signals::DiscIdSignal) -> Self {
+        use bae_core::identify::signals::DiscIdSignal;
         match signal {
             DiscIdSignal::Computed { discs } => {
                 Self::Computed { disc_ids: discs.into_iter().map(|disc| disc.disc_id).collect() }
@@ -124,7 +124,7 @@ impl AutomationAudioOrigin {
 impl AutomationSignals {
     /// Not a copy: the text pool does not cross.
     #[cfg(desktop)]
-    pub(crate) fn from_core(signals: bae_core::signals::Signals) -> Self {
+    pub(crate) fn from_core(signals: bae_core::identify::signals::Signals) -> Self {
         Self {
             origin: AutomationAudioOrigin::from_core(signals.origin),
             disc_id: AutomationDiscIdSignal::from_core(signals.disc_id),

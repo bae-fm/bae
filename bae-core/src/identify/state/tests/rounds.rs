@@ -24,25 +24,25 @@ fn credited(
 
 /// A run on both catalogs given a disc ID alone, its folder named `folder`.
 fn disc_run_of_folder(folder: &str, catalogs: &[&str]) -> IdentifyState {
-    disc_run_of_text(&[(folder, crate::signals::TextOrigin::FolderName)], catalogs)
+    disc_run_of_text(&[(folder, crate::identify::signals::TextOrigin::FolderName)], catalogs)
 }
 
 /// A run on both catalogs given a disc ID alone, its text the given lines.
 fn disc_run_of_text(
-    lines: &[(&str, crate::signals::TextOrigin)],
+    lines: &[(&str, crate::identify::signals::TextOrigin)],
     catalogs: &[&str],
 ) -> IdentifyState {
     let mut disc_signals = disc_only(catalogs);
     disc_signals.text_pool = lines
         .iter()
-        .map(|(text, origin)| crate::signals::TextLine { text: text.to_string(), origin: *origin })
+        .map(|(text, origin)| crate::identify::signals::TextLine { text: text.to_string(), origin: *origin })
         .collect();
     let (state, effects) = super::step(
         started_with(vec![MB, DG]),
         IdentifyEvent::SignalsUpdated {
             signals: disc_signals,
             audio: five_tracks(),
-            artwork: crate::signals::ArtworkScan::Absent,
+            artwork: crate::identify::signals::ArtworkScan::Absent,
         },
     );
     assert_eq!(effects, vec![Effect::LookupDiscid { disc_id: "d".into() }]);
@@ -152,8 +152,8 @@ fn a_number_the_text_prints_that_a_found_release_carries_is_searched_on_both_cat
 fn a_number_only_the_artwork_prints_is_not_confirmed_over_the_folder_names() {
     let state = disc_run_of_text(
         &[
-            ("Label AB-100", crate::signals::TextOrigin::FolderName),
-            ("XY-250", crate::signals::TextOrigin::Artwork),
+            ("Label AB-100", crate::identify::signals::TextOrigin::FolderName),
+            ("XY-250", crate::identify::signals::TextOrigin::Artwork),
         ],
         &["AB-100", "XY-250"],
     );
@@ -430,9 +430,9 @@ fn a_picked_number_is_searched_as_it_stands_and_not_again_under_an_artist() {
         vec![catalog_lookup_under(MB, "AB-100", None), catalog_lookup_under(DG, "AB-100", None),]
     );
     let mut signals = disc_only(&["AB-100"]);
-    signals.text_pool = vec![crate::signals::TextLine {
+    signals.text_pool = vec![crate::identify::signals::TextLine {
         text: "Label AB-100".to_string(),
-        origin: crate::signals::TextOrigin::FolderName,
+        origin: crate::identify::signals::TextOrigin::FolderName,
     }];
     let (state, mut asked) = update(state, signals);
     let (state, more) = step(

@@ -1,5 +1,5 @@
 use super::*;
-use crate::signals::TextOrigin;
+use crate::identify::signals::TextOrigin;
 use bae_catalogs::catalog::LookupCatalog;
 
 fn line(text: &str) -> TextLine {

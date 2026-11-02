@@ -43,7 +43,7 @@ fn the_audio_s_tags_feed_the_text_and_carry_their_isrcs() {
     let tagged: Vec<&str> = pass
         .lines
         .iter()
-        .filter(|line| TextOrigin::of_source(&line.source) == TextOrigin::FileTag)
+        .filter(|line| line.source.text_origin() == TextOrigin::FileTag)
         .map(|line| line.text.as_str())
         .collect();
     assert_eq!(tagged, vec!["Album Title", "Artist Name", "Imprint Name"]);

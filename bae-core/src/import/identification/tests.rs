@@ -6,11 +6,11 @@ use crate::catalog_model::search::{MetadataResult, SourceTracks};
 use crate::db::{
     Database, DbCandidateIdentifyResult, DbImportCandidateState, NewImportCandidateVerdict,
 };
+use crate::identify::signals::{BarcodeSignal, DiscIdSignal, Signals, TextSignal};
 use crate::identify::{FolderCheck, VerdictSummary};
 use crate::import::{FolderCandidate, ImportCandidateSnapshot};
 use crate::library::LibraryManager;
 use crate::signals::{ArtworkAnalysis, ArtworkAnalyzer};
-use crate::signals::{BarcodeSignal, DiscIdSignal, Signals, TextSignal};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -751,7 +751,7 @@ impl Fixture {
                     // A disc ID naming its log, for the evidence chip.
                     signals: Signals {
                         disc_id: DiscIdSignal::Computed {
-                            discs: vec![crate::signals::ComputedDiscId {
+                            discs: vec![crate::identify::signals::ComputedDiscId {
                                 disc_id: SEEDED_DISC_ID.to_string(),
                                 source_file: Some(SEEDED_DISC_ID_FILE.to_string()),
                             }],

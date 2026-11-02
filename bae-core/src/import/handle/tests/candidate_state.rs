@@ -1,6 +1,7 @@
 #[tokio::test(flavor = "multi_thread")]
 async fn removing_a_watched_folder_cancels_in_flight_extraction() {
-    use crate::signals::{ArtworkAnalysis, ArtworkAnalyzer, ExtractionSource, TextSignal};
+    use crate::signals::{ArtworkAnalysis, ArtworkAnalyzer, ExtractionSource};
+    use crate::identify::signals::TextSignal;
     use std::sync::atomic::{AtomicUsize, Ordering};
 
     // Counts calls and holds every one until the gate opens, so the removal

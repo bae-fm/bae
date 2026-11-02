@@ -1,8 +1,8 @@
 use super::*;
 use crate::catalog_model::records::LookupRef;
 use crate::db::Database;
+use crate::identify::signals::{BarcodeSignal, DiscIdSignal, Signals, TextSignal};
 use crate::identify::IdentifyState;
-use crate::signals::{BarcodeSignal, DiscIdSignal, Signals, TextSignal};
 use bae_catalogs::catalog::Catalog;
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedReceiver;
@@ -122,8 +122,8 @@ fn reported_states(events: &mut UnboundedReceiver<ImportEvent>) -> Vec<IdentifyS
 fn settled_snapshot() -> SignalsSnapshot {
     SignalsSnapshot {
         signals: absent_signals(),
-        audio: crate::signals::AudioFacts::default(),
-        artwork: crate::signals::ArtworkScan::Absent,
+        audio: crate::identify::signals::AudioFacts::default(),
+        artwork: crate::identify::signals::ArtworkScan::Absent,
     }
 }
 
@@ -136,8 +136,12 @@ fn scanning_snapshot() -> SignalsSnapshot {
             text: TextSignal::Scanning { catalogs: vec![], free_text: vec![] },
             ..absent_signals()
         },
-        audio: crate::signals::AudioFacts::default(),
-        artwork: crate::signals::ArtworkScan::Reading { current: None, position: 1, total: 1 },
+        audio: crate::identify::signals::AudioFacts::default(),
+        artwork: crate::identify::signals::ArtworkScan::Reading {
+            current: None,
+            position: 1,
+            total: 1,
+        },
     }
 }
 

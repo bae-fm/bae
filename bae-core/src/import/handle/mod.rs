@@ -286,11 +286,11 @@ pub enum ImportEvent {
         /// candidate share its key, so a run's verdict is stored beside only
         /// the snapshots that name that run.
         run: crate::import::IdentifyRunId,
-        signals: crate::signals::Signals,
+        signals: crate::identify::signals::Signals,
         /// Where the artwork pass feeding the snapshot has got to, shown as the
         /// run's step. Kept outside the snapshot because a stored snapshot has
         /// no pass.
-        artwork: crate::signals::ArtworkScan,
+        artwork: crate::identify::signals::ArtworkScan,
         /// The extraction's priority, as in
         /// [`ImportEvent::IdentifyStateChanged`].
         priority: bae_catalogs::rate_limiter::CallPriority,

@@ -3,7 +3,7 @@
 
 use super::*;
 use crate::catalog_model::search::SourceTracks;
-use crate::signals::{TextLine, TextOrigin};
+use crate::identify::signals::{TextLine, TextOrigin};
 
 type Outcome = Findings;
 

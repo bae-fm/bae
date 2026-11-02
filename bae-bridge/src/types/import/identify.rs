@@ -252,7 +252,7 @@ pub struct BridgeIdentifyRun {
     pub reading_artwork: bool,
 }
 
-/// Mirrors `bae_core::signals::TextSignal`.
+/// Mirrors `bae_core::identify::signals::TextSignal`.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeTextSignal {
     Scanning { catalogs: Vec<String>, free_text: Vec<String> },
@@ -260,7 +260,7 @@ pub enum BridgeTextSignal {
     Failed { failure: BridgeInternalFailure, catalogs: Vec<String>, free_text: Vec<String> },
 }
 
-/// The part of `bae_core::signals::Signals` a surface reads: the text pools
+/// The part of `bae_core::identify::signals::Signals` a surface reads: the text pools
 /// that feed the search form's autocomplete.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeSignals {

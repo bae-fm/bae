@@ -15,11 +15,11 @@ use crate::catalog_model::{AudioOrigin, LookupFailure};
 use crate::identify::agreements::CandidateText;
 use crate::identify::combine::LookupAnswers;
 use crate::identify::documents::DocumentReading;
-use crate::identify::LookupChoices;
-use crate::identify::{IdentifyFailure, NotAskedReason};
-use crate::signals::{
+use crate::identify::signals::{
     ArtworkScan, AudioFacts, BarcodeSignal, DiscIdSignal, Signals, SourcedValue, TextSignal,
 };
+use crate::identify::LookupChoices;
+use crate::identify::{IdentifyFailure, NotAskedReason};
 use bae_catalogs::catalog::LookupCatalog;
 
 /// The disc-ID signal and what asking about each of its disc IDs produced.

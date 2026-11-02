@@ -347,7 +347,7 @@ async fn a_stored_verdict_carries_its_durations_and_signals() {
     assert!(row.identify.is_some(), "the verdict is stored");
     let signals = row.signals.expect("the settled signals are stored");
     assert!(
-        matches!(signals.disc_id, crate::signals::DiscIdSignal::Computed { .. }),
+        matches!(signals.disc_id, crate::identify::signals::DiscIdSignal::Computed { .. }),
         "the disc ID the lookup used reads back: {:?}",
         signals.disc_id
     );

@@ -465,7 +465,7 @@ impl Driver {
     async fn record(
         &self,
         state: &IdentifyState,
-        signals: Option<&crate::signals::Signals>,
+        signals: Option<&crate::identify::signals::Signals>,
         standing: &mut RunStanding,
     ) {
         let candidates = &self.inner.candidates;

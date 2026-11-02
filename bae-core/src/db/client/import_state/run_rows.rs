@@ -20,11 +20,11 @@ use super::verdict_rows::{outcome_of, read_verdict_row, store_outcome, verdict_c
 use super::verdict_rows::{Outcome, Owner};
 use super::*;
 use crate::catalog_model::source_release::SourceRelease;
+use crate::identify::signals::Signals;
 use crate::identify::{PublishedRun, RunOutcome};
 use crate::import::candidate_runtime::{IdentificationChange, IdentificationMove, StoredRuntime};
 use crate::import::candidates::CandidateFiles;
 use crate::import::IdentifyRunId;
-use crate::signals::Signals;
 use std::collections::BTreeMap;
 
 /// What every run in flight, or `key`'s runs alone, last published, with the

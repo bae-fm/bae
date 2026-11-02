@@ -21,7 +21,7 @@ pub struct FolderAudio<'a> {
     pub mono: bool,
     pub track_count: u32,
     /// Each track's title, in order — see
-    /// [`crate::signals::Signals::track_titles`].
+    /// [`crate::identify::signals::Signals::track_titles`].
     pub track_titles: &'a [String],
     /// Where most of the tracks' recordings were registered, as their ISRC
     /// tags say — see [`crate::catalog_model::isrc::registered_in`].

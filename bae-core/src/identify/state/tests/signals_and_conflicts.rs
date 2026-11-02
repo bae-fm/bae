@@ -2,7 +2,7 @@ use super::*;
 use crate::identify::IdentifyFailure;
 use crate::catalog_model::album_links::AlbumLinks;
 use crate::identify::LookupChoices;
-use crate::signals::{BarcodeSignal, DiscIdSignal, Signals, SourcedValue, TextSignal};
+use crate::identify::signals::{BarcodeSignal, DiscIdSignal, Signals, SourcedValue, TextSignal};
 use bae_catalogs::catalog::{Catalog, LookupCatalog};
 
 fn mk_result(release_id: &str, group_id: Option<&str>) -> MetadataResult {
@@ -94,8 +94,8 @@ fn badge(state: &IdentifyState, kind: SignalKind) -> ToolbarSignal {
 }
 
 /// The audio every run in these tests is over: five tracks.
-fn five_tracks() -> crate::signals::AudioFacts {
-    crate::signals::AudioFacts {
+fn five_tracks() -> crate::identify::signals::AudioFacts {
+    crate::identify::signals::AudioFacts {
         track_count: 5,
         track_lengths_ms: vec![200_000; 5],
         ..Default::default()
@@ -108,7 +108,7 @@ fn update(state: IdentifyState, signals: Signals) -> (IdentifyState, Vec<Effect>
         IdentifyEvent::SignalsUpdated {
             signals,
             audio: five_tracks(),
-            artwork: crate::signals::ArtworkScan::Absent,
+            artwork: crate::identify::signals::ArtworkScan::Absent,
         },
     )
 }
@@ -168,7 +168,7 @@ fn signals_with_catalogs(
 /// A disc ID computed from no named file.
 fn disc(disc_id: &str) -> DiscIdSignal {
     DiscIdSignal::Computed {
-        discs: vec![crate::signals::ComputedDiscId {
+        discs: vec![crate::identify::signals::ComputedDiscId {
             disc_id: disc_id.to_string(),
             source_file: None,
         }],
@@ -286,7 +286,7 @@ fn an_artwork_reading_that_breaks_ends_the_run_mid_lookup() {
         started(),
         signals(
             DiscIdSignal::Computed {
-                discs: vec![crate::signals::ComputedDiscId {
+                discs: vec![crate::identify::signals::ComputedDiscId {
                     disc_id: "disc-1".to_string(),
                     source_file: None,
                 }],
@@ -300,7 +300,7 @@ fn an_artwork_reading_that_breaks_ends_the_run_mid_lookup() {
         state,
         signals(
             DiscIdSignal::Computed {
-                discs: vec![crate::signals::ComputedDiscId {
+                discs: vec![crate::identify::signals::ComputedDiscId {
                     disc_id: "disc-1".to_string(),
                     source_file: None,
                 }],
@@ -331,7 +331,7 @@ fn bae_breaking_during_a_lookup_ends_the_run_as_its_error() {
         started(),
         signals(
             DiscIdSignal::Computed {
-                discs: vec![crate::signals::ComputedDiscId {
+                discs: vec![crate::identify::signals::ComputedDiscId {
                     disc_id: "disc-1".to_string(),
                     source_file: None,
                 }],

@@ -99,12 +99,12 @@ fn sample_findings() -> Findings {
 }
 
 /// Settled signals with nothing found.
-fn sample_signals() -> crate::signals::Signals {
-    crate::signals::Signals {
+fn sample_signals() -> crate::identify::signals::Signals {
+    crate::identify::signals::Signals {
         origin: crate::catalog_model::AudioOrigin::default(),
-        disc_id: crate::signals::DiscIdSignal::Absent,
-        barcode: crate::signals::BarcodeSignal::Absent,
-        text: crate::signals::TextSignal::Settled { catalogs: Vec::new(), free_text: Vec::new() },
+        disc_id: crate::identify::signals::DiscIdSignal::Absent,
+        barcode: crate::identify::signals::BarcodeSignal::Absent,
+        text: crate::identify::signals::TextSignal::Settled { catalogs: Vec::new(), free_text: Vec::new() },
         text_pool: Vec::new(),
         isrcs: Vec::new(),
         track_titles: Vec::new(),
@@ -481,7 +481,7 @@ async fn a_moved_folder_hashes_identically_and_keeps_its_row() {
 async fn a_transport_failure_round_trips_as_a_failed_verdict() {
     use crate::identify::state::step as identify_step;
     use crate::identify::{IdentifyEvent, IdentifyState};
-    use crate::signals::{BarcodeSignal, DiscIdSignal, Signals, TextSignal};
+    use crate::identify::signals::{BarcodeSignal, DiscIdSignal, Signals, TextSignal};
     use crate::catalog_model::{LookupFailure};
 
     let (db, _tmp) = empty_db().await;
@@ -503,7 +503,7 @@ async fn a_transport_failure_round_trips_as_a_failed_verdict() {
             signals: Signals {
                 origin: crate::catalog_model::AudioOrigin::default(),
                 disc_id: DiscIdSignal::Computed {
-                    discs: vec![crate::signals::ComputedDiscId {
+                    discs: vec![crate::identify::signals::ComputedDiscId {
                         disc_id: "disc-hash".to_string(),
                         source_file: None,
                     }],
@@ -514,8 +514,8 @@ async fn a_transport_failure_round_trips_as_a_failed_verdict() {
                 isrcs: Vec::new(),
                 track_titles: Vec::new(),
             },
-            audio: crate::signals::AudioFacts::default(),
-            artwork: crate::signals::ArtworkScan::Absent,
+            audio: crate::identify::signals::AudioFacts::default(),
+            artwork: crate::identify::signals::ArtworkScan::Absent,
         },
     );
     let (state, _) = identify_step(

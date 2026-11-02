@@ -8,7 +8,7 @@ use super::*;
 use crate::catalog_model::{
     AudioOrigin, AudioSource, CdProof, DownloadProof, InternalFailure, StoreMarker,
 };
-use crate::signals::{
+use crate::identify::signals::{
     BarcodeSignal, ComputedDiscId, DiscIdSignal, Signals, SourcedValue, TextLine, TextSignal,
 };
 

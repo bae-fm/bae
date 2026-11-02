@@ -270,12 +270,14 @@ mod identify_mirrors {
     use bae_core::catalog_model::search::MetadataResult;
     use bae_core::catalog_model::LookupFailure;
     use bae_core::db::LibraryStatus;
+    use bae_core::identify::signals::{
+        BarcodeSignal, DiscIdSignal, Signals, SourcedValue, TextSignal,
+    };
     use bae_core::identify::state::{DiscIdEvidence, SignalsContext};
     use bae_core::identify::{
         BarcodeProgress, CatalogProgress, DiscidProgress, IdentifyState, LookupState,
         ProviderLookup, SignalKind, SignalState, ToolbarSignal, ValueLookup,
     };
-    use bae_core::signals::{BarcodeSignal, DiscIdSignal, Signals, SourcedValue, TextSignal};
     /// A result with every field the mirrors render filled in.
     fn metadata_result(release_id: &str, group_id: &str) -> MetadataResult {
         MetadataResult {
@@ -296,7 +298,7 @@ mod identify_mirrors {
     fn empty_context() -> SignalsContext {
         SignalsContext {
             providers: Vec::new(),
-            artwork: bae_core::signals::ArtworkScan::Absent,
+            artwork: bae_core::identify::signals::ArtworkScan::Absent,
             origin: bae_core::catalog_model::AudioOrigin::default(),
             disc: Default::default(),
             barcode: Default::default(),
@@ -505,7 +507,7 @@ mod identify_mirrors {
                 providers: vec![LookupCatalog::MusicBrainz, LookupCatalog::Discogs],
                 disc: DiscIdEvidence {
                     signal: DiscIdSignal::Computed {
-                        discs: vec![bae_core::signals::ComputedDiscId {
+                        discs: vec![bae_core::identify::signals::ComputedDiscId {
                             disc_id: "disc-hash".to_string(),
                             source_file: Some("rip.log".to_string()),
                         }],
@@ -587,7 +589,7 @@ mod identify_mirrors {
                 not_cd_rate: None,
             },
             disc_id: DiscIdSignal::Computed {
-                discs: vec![bae_core::signals::ComputedDiscId {
+                discs: vec![bae_core::identify::signals::ComputedDiscId {
                     disc_id: "disc-hash".to_string(),
                     source_file: None,
                 }],

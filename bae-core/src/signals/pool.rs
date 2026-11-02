@@ -6,7 +6,7 @@ use super::candidate_text::{
     self, apply_free_text_cutoff, catalog_numbers, cluster_lines_incremental,
     rank_clusters_in_place, strip_path_component, Cluster, Source, SourcedLine,
 };
-use crate::signals::{TextLine, TextOrigin};
+use crate::identify::signals::TextLine;
 use std::collections::HashSet;
 
 /// `bracket_catalogs` go straight to the catalog output, skipping the catalog
@@ -81,10 +81,7 @@ impl Pool {
     pub(super) fn text_lines(&self) -> Vec<TextLine> {
         self.lines
             .iter()
-            .map(|line| TextLine {
-                text: line.text.clone(),
-                origin: TextOrigin::of_source(&line.source),
-            })
+            .map(|line| TextLine { text: line.text.clone(), origin: line.source.text_origin() })
             .collect()
     }
 }

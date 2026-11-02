@@ -288,7 +288,7 @@ pub(super) async fn save(
     run: IdentifyRunId,
     candidate: &FolderCandidate,
     verdict: &TerminalVerdict,
-    signals: crate::signals::Signals,
+    signals: crate::identify::signals::Signals,
     pick: Option<crate::db::VerdictPick>,
     releases: Vec<crate::catalog_model::source_release::SourceRelease>,
 ) -> Settled {

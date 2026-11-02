@@ -9,7 +9,7 @@ use tracing::{debug, warn};
 /// artifacts say, and what its audio is.
 pub(crate) struct ReleaseIdentity {
     pub(crate) rip: crate::import::discid::RipReading,
-    pub(crate) audio: super::AudioFacts,
+    pub(crate) audio: crate::identify::signals::AudioFacts,
 }
 
 impl ReleaseIdentity {
@@ -80,7 +80,7 @@ pub(crate) async fn resolve_release_identity(
         }
     }
 
-    let audio = super::AudioFacts::of_release(
+    let audio = crate::identify::signals::AudioFacts::of(
         tracks.len() as u32,
         track_lengths_ms,
         audio_files.iter().map(|file| &file.format),

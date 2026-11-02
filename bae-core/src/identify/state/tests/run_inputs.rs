@@ -176,7 +176,7 @@ fn every_disc_id_is_asked_and_a_release_holding_every_disc_ranks_first() {
     folder.disc_id = DiscIdSignal::Computed {
         discs: ["disc-one", "disc-two"]
             .into_iter()
-            .map(|disc_id| crate::signals::ComputedDiscId {
+            .map(|disc_id| crate::identify::signals::ComputedDiscId {
                 disc_id: disc_id.to_string(),
                 source_file: None,
             })

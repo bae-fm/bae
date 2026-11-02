@@ -165,14 +165,14 @@ pub enum AutomationLookupFailure {
     Timeout,
 }
 
-/// Mirrors bae-core's `signals::InternalFailure`: how bae broke on its own
+/// Mirrors bae-core's `catalog_model::InternalFailure`: how bae broke on its own
 /// side.
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationInternalFailure {
     pub detail: String,
 }
 
-/// Mirrors bae-core's `signals::DiscIdSignal`.
+/// Mirrors bae-core's `identify::signals::DiscIdSignal`.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationDiscIdSignal {
@@ -188,7 +188,7 @@ pub enum AutomationDiscIdSignal {
     },
 }
 
-/// Mirrors bae-core's `signals::CdProof`.
+/// Mirrors bae-core's `catalog_model::CdProof`.
 #[derive(Debug, Clone, Copy, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum AutomationCdProof {
@@ -197,7 +197,7 @@ pub enum AutomationCdProof {
     RipperSheet,
 }
 
-/// Mirrors bae-core's `signals::StoreMarker`.
+/// Mirrors bae-core's `catalog_model::StoreMarker`.
 #[derive(Debug, Clone, Copy, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum AutomationStoreMarker {
@@ -205,7 +205,7 @@ pub enum AutomationStoreMarker {
     Bandcamp,
 }
 
-/// Mirrors bae-core's `signals::DownloadProof`.
+/// Mirrors bae-core's `catalog_model::DownloadProof`.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationDownloadProof {
@@ -213,7 +213,7 @@ pub enum AutomationDownloadProof {
     DeliverySet,
 }
 
-/// Mirrors bae-core's `signals::AudioSource`.
+/// Mirrors bae-core's `catalog_model::AudioSource`.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationAudioSource {
@@ -221,14 +221,14 @@ pub enum AutomationAudioSource {
     Download { proof: AutomationDownloadProof },
 }
 
-/// Mirrors bae-core's `signals::AudioOrigin`.
+/// Mirrors bae-core's `catalog_model::AudioOrigin`.
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationAudioOrigin {
     pub source: Option<AutomationAudioSource>,
     pub not_cd_rate: Option<u32>,
 }
 
-/// Mirrors bae-core's `signals::BarcodeSignal`, each code once.
+/// Mirrors bae-core's `identify::signals::BarcodeSignal`, each code once.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationBarcodeSignal {
@@ -238,7 +238,7 @@ pub enum AutomationBarcodeSignal {
     Absent,
 }
 
-/// Mirrors bae-core's `signals::TextSignal`.
+/// Mirrors bae-core's `identify::signals::TextSignal`.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationTextSignal {
@@ -247,7 +247,7 @@ pub enum AutomationTextSignal {
     Failed { failure: AutomationInternalFailure, catalogs: Vec<String>, free_text: Vec<String> },
 }
 
-/// Mirrors bae-core's `signals::Signals`.
+/// Mirrors bae-core's `identify::signals::Signals`.
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationSignals {
     pub origin: AutomationAudioOrigin,

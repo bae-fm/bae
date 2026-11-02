@@ -4,8 +4,8 @@
 
 use super::*;
 use crate::catalog_model::{AudioOrigin, AudioSource, CdProof};
+use crate::identify::signals::{TextLine, TextOrigin};
 use crate::identify::MediumConflict;
-use crate::signals::{TextLine, TextOrigin};
 use bae_types::pressing::{DiscogsDetail, Medium, StatedMedia};
 
 type Outcome = Findings;

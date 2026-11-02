@@ -119,7 +119,7 @@ fn rows_of(state: &IdentifyState) -> Vec<(MetadataResult, bool, u32)> {
 /// the read of its offered records' documents.
 fn disc_run_reading(
     results: Vec<MetadataResult>,
-    text_pool: Vec<crate::signals::TextLine>,
+    text_pool: Vec<crate::identify::signals::TextLine>,
 ) -> (IdentifyState, Vec<Effect>) {
     let mut disc_signals = disc_only(&[]);
     disc_signals.text_pool = text_pool;
@@ -128,7 +128,7 @@ fn disc_run_reading(
         IdentifyEvent::SignalsUpdated {
             signals: disc_signals,
             audio: five_tracks(),
-            artwork: crate::signals::ArtworkScan::Absent,
+            artwork: crate::identify::signals::ArtworkScan::Absent,
         },
     );
     assert!(
@@ -228,9 +228,9 @@ fn a_linked_release_s_note_word_breaks_the_tie() {
     use bae_types::pressing::Packaging::{Digipak, JewelCase};
     let reading = disc_run_reading(
         vec![packed_in(MB, "mb-1", "g-1", JewelCase), packed_in(MB, "mb-2", "g-1", Digipak)],
-        vec![crate::signals::TextLine {
+        vec![crate::identify::signals::TextLine {
             text: "Album Title (Pressed by Plantname)".to_string(),
-            origin: crate::signals::TextOrigin::FolderName,
+            origin: crate::identify::signals::TextOrigin::FolderName,
         }],
     );
     let (state, _, _) = answer_rounds(

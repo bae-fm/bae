@@ -212,13 +212,13 @@ async fn the_candidate_s_text_round_trips_line_by_line() {
         track_files_candidate(&[("01 Track.flac", 123_456), ("02 Track.flac", 234_567)]);
     let hash = candidate.content_hash();
     let pool = vec![
-        crate::signals::TextLine {
+        crate::identify::signals::TextLine {
             text: "AC-DC - Dirty Deeds Done Dirt Cheap [16033-2]".to_string(),
-            origin: crate::signals::TextOrigin::FolderName,
+            origin: crate::identify::signals::TextOrigin::FolderName,
         },
-        crate::signals::TextLine {
+        crate::identify::signals::TextLine {
             text: "Atlantic Records, Inc.".to_string(),
-            origin: crate::signals::TextOrigin::Artwork,
+            origin: crate::identify::signals::TextOrigin::Artwork,
         },
     ];
     let mut row = new_candidate_row(&hash, &host_root("/music/Some Album"), &sample_verdict());

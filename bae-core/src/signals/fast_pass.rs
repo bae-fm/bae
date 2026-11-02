@@ -3,9 +3,9 @@
 
 use super::candidate_text::{extract_folder_brackets, parse_filename_stem, Source, SourcedLine};
 use crate::catalog_model::{AudioOrigin, AudioSource, DownloadProof};
+use crate::identify::signals::{AudioFacts, DiscIdSignal, SourcedValue};
 use crate::import::discid::read_rip_artifacts;
 use crate::import::folder_scanner::CategorizedFiles;
-use crate::signals::{AudioFacts, DiscIdSignal, SourcedValue};
 use bae_types::barcode::Barcode;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
@@ -106,7 +106,7 @@ pub(super) fn gather_non_ocr_sources(
 
     // Rip evidence, disc ID, CUE barcodes and the audio facts all come off
     // one scan.
-    pass.audio = AudioFacts::of_files(categorized)?;
+    pass.audio = crate::import::probe::audio_facts(categorized)?;
     let rip = read_rip_artifacts(categorized);
     pass.origin = rip.origin;
     pass.disc_id = rip.disc_id.into_signal();

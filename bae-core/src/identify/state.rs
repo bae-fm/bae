@@ -22,8 +22,8 @@ use super::toolbar::{SignalKind, SignalOption, SignalState, ToolbarSignal};
 use super::view::{run_view, IdentifyRunView};
 use crate::catalog_model::search::{MetadataResult, SourceFailure};
 use crate::catalog_model::{InternalFailure, LookupFailure};
+use crate::identify::signals::{ArtworkScan, AudioFacts, BarcodeSignal, Signals};
 use crate::identify::LookupChoices;
-use crate::signals::{ArtworkScan, AudioFacts, BarcodeSignal, Signals};
 use bae_catalogs::catalog::LookupCatalog;
 
 /// One candidate's identify state. Every settled state carries the ledger its

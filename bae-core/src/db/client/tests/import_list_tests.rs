@@ -92,11 +92,11 @@ async fn store_verdict(db: &Database, candidate: &FolderCandidate, verdict: Term
             file_edit_revision: 0,
             candidate_key: candidate.key(),
             verdict,
-            signals: crate::signals::Signals {
+            signals: crate::identify::signals::Signals {
                 origin: crate::catalog_model::AudioOrigin::default(),
-                disc_id: crate::signals::DiscIdSignal::Absent,
-                barcode: crate::signals::BarcodeSignal::Absent,
-                text: crate::signals::TextSignal::Settled {
+                disc_id: crate::identify::signals::DiscIdSignal::Absent,
+                barcode: crate::identify::signals::BarcodeSignal::Absent,
+                text: crate::identify::signals::TextSignal::Settled {
                     catalogs: Vec::new(),
                     free_text: Vec::new(),
                 },
@@ -348,14 +348,14 @@ async fn a_verdict_the_folder_rules_out_reads_back_as_its_failed_check() {
             file_edit_revision: 0,
             candidate_key: candidate.key(),
             verdict: stored.clone(),
-            signals: crate::signals::Signals {
+            signals: crate::identify::signals::Signals {
                 origin: crate::catalog_model::AudioOrigin {
                     source: None,
                     not_cd_rate: Some(96_000)
                 },
-                disc_id: crate::signals::DiscIdSignal::Absent,
-                barcode: crate::signals::BarcodeSignal::Absent,
-                text: crate::signals::TextSignal::Settled {
+                disc_id: crate::identify::signals::DiscIdSignal::Absent,
+                barcode: crate::identify::signals::BarcodeSignal::Absent,
+                text: crate::identify::signals::TextSignal::Settled {
                     catalogs: Vec::new(),
                     free_text: Vec::new(),
                 },

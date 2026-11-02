@@ -1,12 +1,11 @@
-use super::codes_in;
-use crate::signals::ArtworkAnalysis;
+use super::ArtworkAnalysis;
 
 fn lines(texts: &[&str]) -> Vec<String> {
     texts.iter().map(|text| text.to_string()).collect()
 }
 
 fn codes(analysis: &ArtworkAnalysis) -> Vec<String> {
-    codes_in(analysis).map(|code| code.into_string()).collect()
+    analysis.codes().map(|code| code.into_string()).collect()
 }
 
 /// The digits printed under bars the detector could not decode are the code;

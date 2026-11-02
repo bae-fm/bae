@@ -4,7 +4,7 @@
 
 use super::*;
 use crate::catalog_model::search::musicbrainz_release_notes;
-use crate::signals::{TextLine, TextOrigin};
+use crate::identify::signals::{TextLine, TextOrigin};
 use bae_catalogs::catalog::LookupCatalog;
 
 fn folder(line: &str) -> CandidateText {

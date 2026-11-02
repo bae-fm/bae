@@ -18,14 +18,17 @@ fn mk_context(track_count: u32) -> SignalsContext {
     SignalsContext {
         origin: crate::catalog_model::AudioOrigin::default(),
         providers: Vec::new(),
-        artwork: crate::signals::ArtworkScan::Absent,
-        disc: DiscIdEvidence { signal: crate::signals::DiscIdSignal::Absent, ..Default::default() },
+        artwork: crate::identify::signals::ArtworkScan::Absent,
+        disc: DiscIdEvidence {
+            signal: crate::identify::signals::DiscIdSignal::Absent,
+            ..Default::default()
+        },
         barcode: BarcodeEvidence::default(),
         catalog: Default::default(),
         search: Default::default(),
         text: Default::default(),
         text_settled: true,
-        audio: crate::signals::AudioFacts {
+        audio: crate::identify::signals::AudioFacts {
             track_count,
             track_lengths_ms: vec![200_000; track_count as usize],
             ..Default::default()
@@ -86,7 +89,7 @@ fn found_keeps_its_matches_and_their_rows() {
 fn a_terminal_verdict_carries_the_ledger_its_run_recorded() {
     let mut context = mk_context(9);
     context.barcode.had_source = true;
-    context.barcode.codes = vec![crate::signals::SourcedValue::new("012345".to_string())];
+    context.barcode.codes = vec![crate::identify::signals::SourcedValue::new("012345".to_string())];
     context.providers = vec![LookupCatalog::MusicBrainz];
     let (settled, _) = step(
         IdentifyState::Triangulating {
@@ -212,7 +215,7 @@ fn a_recorded_discid_failure_derives_and_stores_as_failed() {
 fn signals_that_share_no_result_store_as_one_match_list() {
     let context = SignalsContext {
         disc: DiscIdEvidence {
-            signal: crate::signals::DiscIdSignal::Absent,
+            signal: crate::identify::signals::DiscIdSignal::Absent,
             answers: vec![vec![mk_result("rel-a")]],
             ..Default::default()
         },
@@ -248,7 +251,7 @@ fn signals_that_share_no_result_store_as_one_match_list() {
 fn a_union_reached_with_a_recorded_discid_failure_is_failed() {
     let context = SignalsContext {
         disc: DiscIdEvidence {
-            signal: crate::signals::DiscIdSignal::Absent,
+            signal: crate::identify::signals::DiscIdSignal::Absent,
             failures: vec![crate::catalog_model::LookupFailure::Network],
             ..Default::default()
         },

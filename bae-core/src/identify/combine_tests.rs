@@ -128,14 +128,18 @@ const FOLDER_BARCODE: &str = "0 12345 67890 5";
 
 /// A folder whose text is `lines` and whose files carry `barcode`.
 fn folder_carrying(lines: &[&str], barcode: &str) -> CandidateText {
-    let pool: Vec<crate::signals::TextLine> = lines
+    let pool: Vec<crate::identify::signals::TextLine> = lines
         .iter()
-        .map(|text| crate::signals::TextLine {
+        .map(|text| crate::identify::signals::TextLine {
             text: (*text).to_string(),
-            origin: crate::signals::TextOrigin::FolderName,
+            origin: crate::identify::signals::TextOrigin::FolderName,
         })
         .collect();
-    CandidateText::of(&pool, &[], &[crate::signals::SourcedValue::new(barcode.to_string())])
+    CandidateText::of(
+        &pool,
+        &[],
+        &[crate::identify::signals::SourcedValue::new(barcode.to_string())],
+    )
 }
 
 /// Signals that share no result each keep their answer, each row naming the
@@ -247,11 +251,11 @@ fn a_result_with_no_group_id_stays_in_the_set() {
 // MARK: - The candidate's own text judges what survived
 
 fn folder(lines: &[&str]) -> CandidateText {
-    let pool: Vec<crate::signals::TextLine> = lines
+    let pool: Vec<crate::identify::signals::TextLine> = lines
         .iter()
-        .map(|text| crate::signals::TextLine {
+        .map(|text| crate::identify::signals::TextLine {
             text: (*text).to_string(),
-            origin: crate::signals::TextOrigin::FolderName,
+            origin: crate::identify::signals::TextOrigin::FolderName,
         })
         .collect();
     CandidateText::of(&pool, &[], &[])

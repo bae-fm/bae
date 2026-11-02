@@ -338,7 +338,7 @@ impl BridgePressing {
 }
 
 mirror_enum! {
-    BridgeTextSignal = bae_core::signals::TextSignal,
+    BridgeTextSignal = bae_core::identify::signals::TextSignal,
     from_core: fn,
     variants: {
         Scanning { catalogs, free_text },
@@ -350,8 +350,8 @@ mirror_enum! {
 /// Not a `mirror_struct`: only the text pools cross; what a surface needs from
 /// the rest reaches it through the run's ledger and the file evidence.
 impl BridgeSignals {
-    pub(crate) fn from_core(s: bae_core::signals::Signals) -> Self {
-        let bae_core::signals::Signals {
+    pub(crate) fn from_core(s: bae_core::identify::signals::Signals) -> Self {
+        let bae_core::identify::signals::Signals {
             origin: _,
             disc_id: _,
             barcode: _,
@@ -510,12 +510,12 @@ mod tests {
     use super::*;
     use bae_catalogs::catalog::LookupCatalog;
     use bae_core::catalog_model::LookupFailure;
+    use bae_core::identify::signals::{DiscIdSignal, SourcedValue};
     use bae_core::identify::state::{BarcodeEvidence, DiscIdEvidence, SignalsContext};
     use bae_core::identify::{
         BarcodeProgress, CatalogProgress, DiscidProgress, IdentifyState, LookupState,
         ProviderLookup, ValueLookup,
     };
-    use bae_core::signals::{DiscIdSignal, SourcedValue};
 
     fn in_flight(barcode: BarcodeProgress) -> IdentifyState {
         IdentifyState::Triangulating {
@@ -526,7 +526,7 @@ mod tests {
             search: bae_core::identify::SearchProgress::Skipped,
             context: SignalsContext {
                 providers: vec![LookupCatalog::MusicBrainz, LookupCatalog::Discogs],
-                artwork: bae_core::signals::ArtworkScan::Absent,
+                artwork: bae_core::identify::signals::ArtworkScan::Absent,
                 origin: bae_core::catalog_model::AudioOrigin::default(),
                 disc: DiscIdEvidence { signal: DiscIdSignal::Absent, ..Default::default() },
                 barcode: BarcodeEvidence {
@@ -541,7 +541,10 @@ mod tests {
                 search: Default::default(),
                 text: Default::default(),
                 text_settled: true,
-                audio: bae_core::signals::AudioFacts { track_count: 9, ..Default::default() },
+                audio: bae_core::identify::signals::AudioFacts {
+                    track_count: 9,
+                    ..Default::default()
+                },
                 isrc: Default::default(),
                 track_titles: Vec::new(),
                 documents: bae_core::identify::documents::DocumentReading::Pending,
@@ -640,7 +643,7 @@ mod tests {
             };
             *discid = DiscidProgress::NotAsked { reason };
             context.disc.signal = DiscIdSignal::Computed {
-                discs: vec![bae_core::signals::ComputedDiscId {
+                discs: vec![bae_core::identify::signals::ComputedDiscId {
                     disc_id: "d".to_string(),
                     source_file: None,
                 }],

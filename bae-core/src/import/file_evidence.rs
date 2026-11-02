@@ -1,7 +1,7 @@
 //! Barcodes and disc IDs shown on the candidate files they were read off,
 //! whatever pressing is picked.
 
-use crate::signals::{DiscIdSignal, Signals};
+use crate::identify::signals::{DiscIdSignal, Signals};
 
 /// An extracted signal that can name the file it was read from.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -49,7 +49,7 @@ pub fn file_evidence(signals: &Signals) -> Vec<FileEvidence> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::signals::{BarcodeSignal, ComputedDiscId, SourcedValue, TextSignal};
+    use crate::identify::signals::{BarcodeSignal, ComputedDiscId, SourcedValue, TextSignal};
 
     fn signals() -> Signals {
         Signals {

@@ -2,6 +2,7 @@
 //! Album free text, plus the extractors for folder names and file names. Pure
 //! string work.
 
+use crate::identify::signals::TextOrigin;
 use bae_types::text_match::{normalize, printed_catalog_numbers, strip_trailing_brackets};
 use regex::Regex;
 use std::collections::HashSet;
@@ -242,7 +243,7 @@ pub(crate) fn parse_filename_stem(path: &Path) -> Vec<String> {
 /// Where a `SourcedLine` came from, which clustering weighs it by. A file
 /// source names its file, so one file's lines stay apart from another's.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum Source {
+pub(crate) enum Source {
     Artwork {
         path: PathBuf,
     },
@@ -260,6 +261,20 @@ pub enum Source {
     FileTag {
         file_id: String,
     },
+}
+
+impl Source {
+    /// The kind of surface this is, without its file.
+    pub(crate) fn text_origin(&self) -> TextOrigin {
+        match self {
+            Self::Artwork { .. } => TextOrigin::Artwork,
+            Self::PathComponent => TextOrigin::FolderName,
+            Self::FilenameGeneric { .. } => TextOrigin::Filename,
+            Self::CueField { .. } => TextOrigin::CueSheet,
+            Self::TextFile { .. } => TextOrigin::TextFile,
+            Self::FileTag { .. } => TextOrigin::FileTag,
+        }
+    }
 }
 
 /// A candidate line and where it came from, verbatim.

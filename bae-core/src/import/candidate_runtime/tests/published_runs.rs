@@ -79,12 +79,12 @@ fn barcode_half_answered() -> crate::identify::IdentifyState {
     
     let mut context = signals_context(9);
     context.providers = vec![LookupCatalog::MusicBrainz, LookupCatalog::Discogs];
-    context.artwork = crate::signals::ArtworkScan::Reading {
+    context.artwork = crate::identify::signals::ArtworkScan::Reading {
         current: Some("back.jpg".to_string()),
         position: 1,
         total: 2,
     };
-    context.barcode.codes = vec![crate::signals::SourcedValue::in_file(
+    context.barcode.codes = vec![crate::identify::signals::SourcedValue::in_file(
         "0123456789012".to_string(),
         "back.jpg".to_string(),
     )];
@@ -133,23 +133,23 @@ fn search_waiting() -> crate::identify::IdentifyState {
 
 /// What extraction read partway through: its artwork still being scanned,
 /// with one barcode and one line of text so far.
-fn scanning_signals() -> crate::signals::Signals {
-    crate::signals::Signals {
+fn scanning_signals() -> crate::identify::signals::Signals {
+    crate::identify::signals::Signals {
         origin: crate::catalog_model::AudioOrigin { source: None, not_cd_rate: Some(96_000) },
-        disc_id: crate::signals::DiscIdSignal::Absent,
-        barcode: crate::signals::BarcodeSignal::Scanning {
-            codes: vec![crate::signals::SourcedValue::in_file(
+        disc_id: crate::identify::signals::DiscIdSignal::Absent,
+        barcode: crate::identify::signals::BarcodeSignal::Scanning {
+            codes: vec![crate::identify::signals::SourcedValue::in_file(
                 "0123456789012".to_string(),
                 "back.jpg".to_string(),
             )],
         },
-        text: crate::signals::TextSignal::Scanning {
+        text: crate::identify::signals::TextSignal::Scanning {
             catalogs: vec!["CK 40579".to_string()],
             free_text: Vec::new(),
         },
-        text_pool: vec![crate::signals::TextLine {
+        text_pool: vec![crate::identify::signals::TextLine {
             text: "Kind of Blue CK 40579".to_string(),
-            origin: crate::signals::TextOrigin::Artwork,
+            origin: crate::identify::signals::TextOrigin::Artwork,
         }],
         isrcs: Vec::new(),
         track_titles: Vec::new(),

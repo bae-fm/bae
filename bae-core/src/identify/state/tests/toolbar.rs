@@ -25,9 +25,9 @@ fn state_with_catalog_offered(providers: Vec<LookupCatalog>) -> IdentifyState {
 fn run_with_catalog_chosen(providers: Vec<LookupCatalog>) -> (IdentifyState, Vec<Effect>) {
     let (state, chosen_effects) = started_with_choices(providers, choosing(&["LBL 001"]));
     let mut folder = signals(disc("disc-hash"), BarcodeSignal::Absent, &["LBL 001"]);
-    folder.text_pool = vec![crate::signals::TextLine {
+    folder.text_pool = vec![crate::identify::signals::TextLine {
         text: "Album [LBL 001]".to_string(),
-        origin: crate::signals::TextOrigin::FolderName,
+        origin: crate::identify::signals::TextOrigin::FolderName,
     }];
     let (state, _) = update(state, folder);
     // rel-b carries the chosen number, which the folder's text prints.
@@ -189,8 +189,8 @@ fn a_chosen_number_survives_a_snapshot_still_being_read() {
                 isrcs: Vec::new(),
                 track_titles: Vec::new(),
             },
-            audio: crate::signals::AudioFacts::default(),
-            artwork: crate::signals::ArtworkScan::Absent,
+            audio: crate::identify::signals::AudioFacts::default(),
+            artwork: crate::identify::signals::ArtworkScan::Absent,
         },
     );
     let catalog_badge = badge(&state, SignalKind::Catalog);

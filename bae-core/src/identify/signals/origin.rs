@@ -1,9 +1,6 @@
 //! Where what extraction read came from: the surface a line of text was read
 //! off, and the file a barcode was read off.
 
-#[cfg(desktop)]
-use super::candidate_text::Source;
-
 /// The surface a line of text was read off, which decides how ranking reads
 /// the line.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -57,21 +54,6 @@ impl std::str::FromStr for TextOrigin {
 }
 
 /// Extraction, which reads the sources, is desktop-only.
-#[cfg(desktop)]
-impl TextOrigin {
-    /// The kind of surface `source` is, without its file.
-    pub fn of_source(source: &Source) -> Self {
-        match source {
-            Source::Artwork { .. } => Self::Artwork,
-            Source::PathComponent => Self::FolderName,
-            Source::FilenameGeneric { .. } => Self::Filename,
-            Source::CueField { .. } => Self::CueSheet,
-            Source::TextFile { .. } => Self::TextFile,
-            Source::FileTag { .. } => Self::FileTag,
-        }
-    }
-}
-
 /// A barcode and the file it was read off; a code on two images is two of
 /// these.
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -7,13 +7,13 @@
 use super::{fold, run_view, IdentifyRunView, IdentifyStateView};
 use crate::identify::agreements::CandidateText;
 use crate::identify::combine::{combine_results, Findings, LookupAnswers};
+use crate::identify::signals::Signals;
 use crate::identify::state::{IdentifyState, PressingLookup};
 use crate::identify::toolbar::{SignalKind, SignalOption, SignalState, ToolbarSignal};
 use crate::identify::{
     BarcodeStepView, CatalogStepView, DiscIdStepView, IsrcStepView, LookupView, NotAskedReason,
     SignalValueRow, TerminalVerdict, VerdictSummary,
 };
-use crate::signals::Signals;
 
 /// How a run stands, as its rows hold it.
 #[derive(Debug, Clone, PartialEq)]

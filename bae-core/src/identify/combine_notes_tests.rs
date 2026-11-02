@@ -2,7 +2,7 @@
 //! everything else: the folder naming a word only one row's notes write.
 
 use super::*;
-use crate::signals::{TextLine, TextOrigin};
+use crate::identify::signals::{TextLine, TextOrigin};
 
 type Outcome = Findings;
 

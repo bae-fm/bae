@@ -69,11 +69,11 @@ async fn pure_reads_use_the_read_connection() {
                 &std::path::Path::new(root).join("Album")
             ),
             verdict: bae_core::identify::TerminalVerdict::NotFoundAnywhere { ledger: None },
-            signals: bae_core::signals::Signals {
+            signals: bae_core::identify::signals::Signals {
                 origin: bae_core::catalog_model::AudioOrigin::default(),
-                disc_id: bae_core::signals::DiscIdSignal::Absent,
-                barcode: bae_core::signals::BarcodeSignal::Absent,
-                text: bae_core::signals::TextSignal::Settled {
+                disc_id: bae_core::identify::signals::DiscIdSignal::Absent,
+                barcode: bae_core::identify::signals::BarcodeSignal::Absent,
+                text: bae_core::identify::signals::TextSignal::Settled {
                     catalogs: Vec::new(),
                     free_text: Vec::new(),
                 },

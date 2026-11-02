@@ -213,17 +213,17 @@ async fn store_settled_text(handle: &ImportServiceHandle, hash: &str, printed: &
             file_edit_revision: prep.file_edit_revision,
             candidate_key: crate::import::CandidateKey::from_bytes(Vec::new()),
             verdict: crate::identify::TerminalVerdict::ManualOnly { track_count: 1, ledger: None },
-            signals: crate::signals::Signals {
+            signals: crate::identify::signals::Signals {
                 origin: crate::catalog_model::AudioOrigin::default(),
-                disc_id: crate::signals::DiscIdSignal::Absent,
-                barcode: crate::signals::BarcodeSignal::Absent,
-                text: crate::signals::TextSignal::Settled {
+                disc_id: crate::identify::signals::DiscIdSignal::Absent,
+                barcode: crate::identify::signals::BarcodeSignal::Absent,
+                text: crate::identify::signals::TextSignal::Settled {
                     catalogs: vec![printed.to_string()],
                     free_text: Vec::new(),
                 },
-                text_pool: vec![crate::signals::TextLine {
+                text_pool: vec![crate::identify::signals::TextLine {
                     text: printed.to_string(),
-                    origin: crate::signals::TextOrigin::FolderName,
+                    origin: crate::identify::signals::TextOrigin::FolderName,
                 }],
                 isrcs: Vec::new(),
                 track_titles: Vec::new(),
