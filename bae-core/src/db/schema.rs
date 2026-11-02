@@ -166,18 +166,20 @@ pub(crate) fn bare_library_connection() -> rusqlite::Connection {
     .expect("coven_path_text registers");
     conn.create_collation(super::migrations::NATURAL_ORDER, super::migrations::natural_order)
         .expect("natural_order registers");
-    // The schema's triggers follow coven's `coven_files`, `coven_pins` and
-    // `coven_upload_queue`, which coven creates before it migrates; these
-    // tests pin and queue nothing, so tables of the same shape let the
-    // triggers exist, and a test whose rows reference a file writes the
-    // file's stand-in record itself.
+    // The schema's triggers follow coven's `coven_files`, `coven_pins`,
+    // `coven_upload_queue` and `coven_sync_status`, which coven creates
+    // before it migrates; these tests pin, queue and sync nothing, so tables
+    // of the same shape let the triggers exist, and a test whose rows
+    // reference a file writes the file's stand-in record itself.
     conn.execute_batch(
         "CREATE TABLE coven_files (id TEXT PRIMARY KEY NOT NULL, audience TEXT NOT NULL, \
          size INTEGER NOT NULL, hash BLOB, coordinates TEXT NOT NULL, \
          namespace TEXT NOT NULL, shares TEXT) STRICT, WITHOUT ROWID; \
          CREATE TABLE coven_pins (file TEXT PRIMARY KEY NOT NULL) STRICT, WITHOUT ROWID; \
          CREATE TABLE coven_upload_queue (file TEXT PRIMARY KEY NOT NULL, \
-         position INTEGER NOT NULL) STRICT, WITHOUT ROWID;",
+         position INTEGER NOT NULL) STRICT, WITHOUT ROWID; \
+         CREATE TABLE coven_sync_status (singleton INTEGER PRIMARY KEY NOT NULL, \
+         state TEXT NOT NULL, status BLOB NOT NULL) STRICT;",
     )
     .expect("the stand-in coven tables create");
     conn.execute_batch(include_str!("../../migrations/001_initial.sql"))
