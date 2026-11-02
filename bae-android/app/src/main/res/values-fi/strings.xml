@@ -69,7 +69,10 @@
     <string name="search_section_albums">Albumit</string>
     <string name="search_section_artists">Esittäjät</string>
     <string name="search_section_tracks">Raidat</string>
-    <string name="work_count">%1$d teosta</string>
+    <plurals name="work_count">
+        <item quantity="one">%1$d teos</item>
+        <item quantity="other">%1$d teosta</item>
+    </plurals>
     <string name="work_detail_load_failed">Tätä teosta ei voitu ladata.</string>
     <string name="work_detail_not_found">Teoksen tietoja ei löytynyt</string>
     <string name="composer_detail_load_failed">Tätä säveltäjää ei voitu ladata.</string>
@@ -86,7 +89,10 @@
     <string name="library_switch_view">Vaihda näkymää</string>
     <string name="more">Lisää</string>
     <string name="library_empty_artists">Ei esittäjiä</string>
-    <string name="album_count">%1$d albumia</string>
+    <plurals name="album_count">
+        <item quantity="one">%1$d albumi</item>
+        <item quantity="other">%1$d albumia</item>
+    </plurals>
     <string name="artist_detail_load_failed">Tätä esittäjää ei voitu ladata.</string>
     <string name="artist_detail_not_found">Esittäjän tietoja ei löytynyt</string>
     <string name="sort_name">Nimi</string>

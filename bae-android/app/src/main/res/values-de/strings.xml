@@ -65,7 +65,10 @@
     <string name="search_section_albums">Alben</string>
     <string name="search_section_artists">Künstler</string>
     <string name="search_section_tracks">Tracks</string>
-    <string name="work_count">%1$d Werke</string>
+    <plurals name="work_count">
+        <item quantity="one">%1$d Werk</item>
+        <item quantity="other">%1$d Werke</item>
+    </plurals>
     <string name="work_detail_load_failed">Dieses Werk konnte nicht geladen werden.</string>
     <string name="work_detail_not_found">Werkdetails nicht gefunden</string>
     <string name="composer_detail_load_failed">Dieser Komponist konnte nicht geladen werden.</string>
@@ -82,7 +85,10 @@
     <string name="library_switch_view">Ansicht wechseln</string>
     <string name="more">Mehr</string>
     <string name="library_empty_artists">Keine Künstler</string>
-    <string name="album_count">%1$d Alben</string>
+    <plurals name="album_count">
+        <item quantity="one">%1$d Album</item>
+        <item quantity="other">%1$d Alben</item>
+    </plurals>
     <string name="artist_detail_load_failed">Dieser Künstler konnte nicht geladen werden.</string>
     <string name="artist_detail_not_found">Künstlerdetails nicht gefunden</string>
     <string name="sort_name">Name</string>

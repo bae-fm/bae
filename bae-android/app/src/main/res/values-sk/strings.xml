@@ -71,7 +71,12 @@
     <string name="search_section_albums">Albumy</string>
     <string name="search_section_artists">Interpreti</string>
     <string name="search_section_tracks">Skladby</string>
-    <string name="work_count">%1$d diel</string>
+    <plurals name="work_count">
+        <item quantity="one">%1$d dielo</item>
+        <item quantity="few">%1$d diela</item>
+        <item quantity="many">%1$d diela</item>
+        <item quantity="other">%1$d diel</item>
+    </plurals>
     <string name="work_detail_load_failed">Toto dielo sa nepodarilo načítať.</string>
     <string name="work_detail_not_found">Podrobnosti o diele sa nenašli</string>
     <string name="composer_detail_load_failed">Tohto skladateľa sa nepodarilo načítať.</string>
@@ -88,7 +93,12 @@
     <string name="library_switch_view">Prepnúť zobrazenie</string>
     <string name="more">Viac</string>
     <string name="library_empty_artists">Žiadni interpreti</string>
-    <string name="album_count">%1$d albumov</string>
+    <plurals name="album_count">
+        <item quantity="one">%1$d album</item>
+        <item quantity="few">%1$d albumy</item>
+        <item quantity="many">%1$d albumu</item>
+        <item quantity="other">%1$d albumov</item>
+    </plurals>
     <string name="artist_detail_load_failed">Tohto interpreta sa nepodarilo načítať.</string>
     <string name="artist_detail_not_found">Podrobnosti o interpretovi sa nenašli</string>
     <string name="sort_name">Názov</string>

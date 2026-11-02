@@ -69,7 +69,10 @@
     <string name="search_section_albums">Άλμπουμ</string>
     <string name="search_section_artists">Καλλιτέχνες</string>
     <string name="search_section_tracks">Κομμάτια</string>
-    <string name="work_count">%1$d έργα</string>
+    <plurals name="work_count">
+        <item quantity="one">%1$d έργο</item>
+        <item quantity="other">%1$d έργα</item>
+    </plurals>
     <string name="work_detail_load_failed">Δεν ήταν δυνατή η φόρτωση αυτού του έργου.</string>
     <string name="work_detail_not_found">Δεν βρέθηκαν λεπτομέρειες έργου</string>
     <string name="composer_detail_load_failed">Δεν ήταν δυνατή η φόρτωση αυτού του συνθέτη.</string>
@@ -86,7 +89,10 @@
     <string name="library_switch_view">Αλλαγή προβολής</string>
     <string name="more">Περισσότερα</string>
     <string name="library_empty_artists">Κανένας καλλιτέχνης</string>
-    <string name="album_count">%1$d άλμπουμ</string>
+    <plurals name="album_count">
+        <item quantity="one">%1$d άλμπουμ</item>
+        <item quantity="other">%1$d άλμπουμ</item>
+    </plurals>
     <string name="artist_detail_load_failed">Δεν ήταν δυνατή η φόρτωση αυτού του καλλιτέχνη.</string>
     <string name="artist_detail_not_found">Δεν βρέθηκαν λεπτομέρειες καλλιτέχνη</string>
     <string name="sort_name">Όνομα</string>

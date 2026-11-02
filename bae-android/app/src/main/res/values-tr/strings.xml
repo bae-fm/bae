@@ -65,7 +65,10 @@
     <string name="search_section_albums">Albümler</string>
     <string name="search_section_artists">Sanatçılar</string>
     <string name="search_section_tracks">Parçalar</string>
-    <string name="work_count">%1$d Eser</string>
+    <plurals name="work_count">
+        <item quantity="one">%1$d eser</item>
+        <item quantity="other">%1$d eser</item>
+    </plurals>
     <string name="work_detail_load_failed">Bu eser yüklenemedi.</string>
     <string name="work_detail_not_found">Eser ayrıntısı bulunamadı</string>
     <string name="composer_detail_load_failed">Bu besteci yüklenemedi.</string>
@@ -82,7 +85,10 @@
     <string name="library_switch_view">Görünümü değiştir</string>
     <string name="more">Diğer</string>
     <string name="library_empty_artists">Sanatçı yok</string>
-    <string name="album_count">%1$d Albüm</string>
+    <plurals name="album_count">
+        <item quantity="one">%1$d albüm</item>
+        <item quantity="other">%1$d albüm</item>
+    </plurals>
     <string name="artist_detail_load_failed">Bu sanatçı yüklenemedi.</string>
     <string name="artist_detail_not_found">Sanatçı ayrıntısı bulunamadı</string>
     <string name="sort_name">Ad</string>

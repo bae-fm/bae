@@ -69,7 +69,10 @@
     <string name="search_section_albums">Albumok</string>
     <string name="search_section_artists">Előadók</string>
     <string name="search_section_tracks">Számok</string>
-    <string name="work_count">%1$d mű</string>
+    <plurals name="work_count">
+        <item quantity="one">%1$d mű</item>
+        <item quantity="other">%1$d mű</item>
+    </plurals>
     <string name="work_detail_load_failed">Ezt a művet nem sikerült betölteni.</string>
     <string name="work_detail_not_found">A mű adatlapja nem található</string>
     <string name="composer_detail_load_failed">Ezt a zeneszerzőt nem sikerült betölteni.</string>
@@ -86,7 +89,10 @@
     <string name="library_switch_view">Nézet váltása</string>
     <string name="more">Továbbiak</string>
     <string name="library_empty_artists">Nincs előadó</string>
-    <string name="album_count">%1$d album</string>
+    <plurals name="album_count">
+        <item quantity="one">%1$d album</item>
+        <item quantity="other">%1$d album</item>
+    </plurals>
     <string name="artist_detail_load_failed">Ezt az előadót nem sikerült betölteni.</string>
     <string name="artist_detail_not_found">Az előadó adatlapja nem található</string>
     <string name="sort_name">Név</string>

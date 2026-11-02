@@ -65,7 +65,14 @@
     <string name="search_section_albums">الألبومات</string>
     <string name="search_section_artists">الفنانون</string>
     <string name="search_section_tracks">المقاطع</string>
-    <string name="work_count">%1$d عمل</string>
+    <plurals name="work_count">
+        <item quantity="zero">%1$d عمل</item>
+        <item quantity="one">عمل واحد</item>
+        <item quantity="two">عملان</item>
+        <item quantity="few">%1$d أعمال</item>
+        <item quantity="many">%1$d عملًا</item>
+        <item quantity="other">%1$d عمل</item>
+    </plurals>
     <string name="work_detail_load_failed">تعذر تحميل هذا العمل.</string>
     <string name="work_detail_not_found">لم يتم العثور على تفاصيل العمل</string>
     <string name="composer_detail_load_failed">تعذر تحميل هذا المؤلف.</string>
@@ -82,7 +89,14 @@
     <string name="library_switch_view">تبديل العرض</string>
     <string name="more">المزيد</string>
     <string name="library_empty_artists">لا يوجد فنانون</string>
-    <string name="album_count">%1$d ألبومات</string>
+    <plurals name="album_count">
+        <item quantity="zero">%1$d ألبوم</item>
+        <item quantity="one">ألبوم واحد</item>
+        <item quantity="two">ألبومان</item>
+        <item quantity="few">%1$d ألبومات</item>
+        <item quantity="many">%1$d ألبومًا</item>
+        <item quantity="other">%1$d ألبوم</item>
+    </plurals>
     <string name="artist_detail_load_failed">تعذر تحميل هذا الفنان.</string>
     <string name="artist_detail_not_found">لم يتم العثور على تفاصيل الفنان</string>
     <string name="sort_name">الاسم</string>

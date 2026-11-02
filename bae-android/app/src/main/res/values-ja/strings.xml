@@ -65,7 +65,9 @@
     <string name="search_section_albums">アルバム</string>
     <string name="search_section_artists">アーティスト</string>
     <string name="search_section_tracks">トラック</string>
-    <string name="work_count">%1$d作品</string>
+    <plurals name="work_count">
+        <item quantity="other">%1$d作品</item>
+    </plurals>
     <string name="work_detail_load_failed">この作品を読み込めませんでした。</string>
     <string name="work_detail_not_found">作品の詳細が見つかりません</string>
     <string name="composer_detail_load_failed">この作曲者を読み込めませんでした。</string>
@@ -82,7 +84,9 @@
     <string name="library_switch_view">表示を切り替える</string>
     <string name="more">その他</string>
     <string name="library_empty_artists">アーティストがいません</string>
-    <string name="album_count">%1$d枚のアルバム</string>
+    <plurals name="album_count">
+        <item quantity="other">%1$d枚のアルバム</item>
+    </plurals>
     <string name="artist_detail_load_failed">このアーティストを読み込めませんでした。</string>
     <string name="artist_detail_not_found">アーティストの詳細が見つかりません</string>
     <string name="sort_name">名前</string>

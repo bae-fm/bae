@@ -65,7 +65,11 @@
     <string name="search_section_albums">Album</string>
     <string name="search_section_artists">Artisti</string>
     <string name="search_section_tracks">Brani</string>
-    <string name="work_count">%1$d opere</string>
+    <plurals name="work_count">
+        <item quantity="one">%1$d opera</item>
+        <item quantity="many">%1$d di opere</item>
+        <item quantity="other">%1$d opere</item>
+    </plurals>
     <string name="work_detail_load_failed">Impossibile caricare questa opera.</string>
     <string name="work_detail_not_found">Dettaglio opera non trovato</string>
     <string name="composer_detail_load_failed">Impossibile caricare questo compositore.</string>
@@ -82,7 +86,11 @@
     <string name="library_switch_view">Cambia vista</string>
     <string name="more">Altro</string>
     <string name="library_empty_artists">Nessun artista</string>
-    <string name="album_count">%1$d album</string>
+    <plurals name="album_count">
+        <item quantity="one">%1$d album</item>
+        <item quantity="many">%1$d di album</item>
+        <item quantity="other">%1$d album</item>
+    </plurals>
     <string name="artist_detail_load_failed">Impossibile caricare questo artista.</string>
     <string name="artist_detail_not_found">Dettaglio artista non trovato</string>
     <string name="sort_name">Nome</string>

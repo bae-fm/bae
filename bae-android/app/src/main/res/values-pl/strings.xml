@@ -65,7 +65,12 @@
     <string name="search_section_albums">Albumy</string>
     <string name="search_section_artists">Wykonawcy</string>
     <string name="search_section_tracks">Ścieżki</string>
-    <string name="work_count">%1$d utworów</string>
+    <plurals name="work_count">
+        <item quantity="one">%1$d utwór</item>
+        <item quantity="few">%1$d utwory</item>
+        <item quantity="many">%1$d utworów</item>
+        <item quantity="other">%1$d utworu</item>
+    </plurals>
     <string name="work_detail_load_failed">Nie udało się wczytać tego dzieła.</string>
     <string name="work_detail_not_found">Nie znaleziono szczegółów dzieła</string>
     <string name="composer_detail_load_failed">Nie udało się wczytać tego kompozytora.</string>
@@ -82,7 +87,12 @@
     <string name="library_switch_view">Przełącz widok</string>
     <string name="more">Więcej</string>
     <string name="library_empty_artists">Brak wykonawców</string>
-    <string name="album_count">%1$d albumów</string>
+    <plurals name="album_count">
+        <item quantity="one">%1$d album</item>
+        <item quantity="few">%1$d albumy</item>
+        <item quantity="many">%1$d albumów</item>
+        <item quantity="other">%1$d albumu</item>
+    </plurals>
     <string name="artist_detail_load_failed">Nie udało się wczytać tego wykonawcy.</string>
     <string name="artist_detail_not_found">Nie znaleziono szczegółów wykonawcy</string>
     <string name="sort_name">Nazwa</string>

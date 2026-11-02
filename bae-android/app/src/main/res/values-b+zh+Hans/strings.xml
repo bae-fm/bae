@@ -65,7 +65,9 @@
     <string name="search_section_albums">专辑</string>
     <string name="search_section_artists">艺人</string>
     <string name="search_section_tracks">曲目</string>
-    <string name="work_count">%1$d 部作品</string>
+    <plurals name="work_count">
+        <item quantity="other">%1$d 部作品</item>
+    </plurals>
     <string name="work_detail_load_failed">无法加载此作品。</string>
     <string name="work_detail_not_found">未找到作品详情</string>
     <string name="composer_detail_load_failed">无法加载此作曲家。</string>
@@ -82,7 +84,9 @@
     <string name="library_switch_view">切换视图</string>
     <string name="more">更多</string>
     <string name="library_empty_artists">没有艺人</string>
-    <string name="album_count">%1$d 张专辑</string>
+    <plurals name="album_count">
+        <item quantity="other">%1$d 张专辑</item>
+    </plurals>
     <string name="artist_detail_load_failed">无法加载此艺人。</string>
     <string name="artist_detail_not_found">未找到艺人详情</string>
     <string name="sort_name">名称</string>

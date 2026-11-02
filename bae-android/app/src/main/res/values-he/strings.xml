@@ -65,7 +65,11 @@
     <string name="search_section_albums">אלבומים</string>
     <string name="search_section_artists">אמנים</string>
     <string name="search_section_tracks">רצועות</string>
-    <string name="work_count">%1$d יצירות</string>
+    <plurals name="work_count">
+        <item quantity="one">יצירה אחת</item>
+        <item quantity="two">%1$d יצירות</item>
+        <item quantity="other">%1$d יצירות</item>
+    </plurals>
     <string name="work_detail_load_failed">לא ניתן לטעון את היצירה הזו.</string>
     <string name="work_detail_not_found">פרטי היצירה לא נמצאו</string>
     <string name="composer_detail_load_failed">לא ניתן לטעון את המלחין הזה.</string>
@@ -82,7 +86,11 @@
     <string name="library_switch_view">החלפת תצוגה</string>
     <string name="more">עוד</string>
     <string name="library_empty_artists">אין אמנים</string>
-    <string name="album_count">%1$d אלבומים</string>
+    <plurals name="album_count">
+        <item quantity="one">אלבום אחד</item>
+        <item quantity="two">%1$d אלבומים</item>
+        <item quantity="other">%1$d אלבומים</item>
+    </plurals>
     <string name="artist_detail_load_failed">לא ניתן לטעון את האמן הזה.</string>
     <string name="artist_detail_not_found">פרטי האמן לא נמצאו</string>
     <string name="sort_name">שם</string>

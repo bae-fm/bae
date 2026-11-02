@@ -69,7 +69,10 @@
     <string name="search_section_albums">Album</string>
     <string name="search_section_artists">Artister</string>
     <string name="search_section_tracks">Spor</string>
-    <string name="work_count">%1$d verk</string>
+    <plurals name="work_count">
+        <item quantity="one">%1$d verk</item>
+        <item quantity="other">%1$d verk</item>
+    </plurals>
     <string name="work_detail_load_failed">Dette verket kunne ikke lastes inn.</string>
     <string name="work_detail_not_found">Fant ikke detaljer om verket</string>
     <string name="composer_detail_load_failed">Denne komponisten kunne ikke lastes inn.</string>
@@ -86,7 +89,10 @@
     <string name="library_switch_view">Bytt visning</string>
     <string name="more">Mer</string>
     <string name="library_empty_artists">Ingen artister</string>
-    <string name="album_count">%1$d album</string>
+    <plurals name="album_count">
+        <item quantity="one">%1$d album</item>
+        <item quantity="other">%1$d album</item>
+    </plurals>
     <string name="artist_detail_load_failed">Denne artisten kunne ikke lastes inn.</string>
     <string name="artist_detail_not_found">Fant ikke detaljer om artisten</string>
     <string name="sort_name">Navn</string>

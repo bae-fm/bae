@@ -65,7 +65,10 @@
     <string name="search_section_albums">Albums</string>
     <string name="search_section_artists">Artiesten</string>
     <string name="search_section_tracks">Nummers</string>
-    <string name="work_count">%1$d werken</string>
+    <plurals name="work_count">
+        <item quantity="one">%1$d werk</item>
+        <item quantity="other">%1$d werken</item>
+    </plurals>
     <string name="work_detail_load_failed">Kan dit werk niet laden.</string>
     <string name="work_detail_not_found">Werkdetails niet gevonden</string>
     <string name="composer_detail_load_failed">Kan deze componist niet laden.</string>
@@ -82,7 +85,10 @@
     <string name="library_switch_view">Weergave wijzigen</string>
     <string name="more">Meer</string>
     <string name="library_empty_artists">Geen artiesten</string>
-    <string name="album_count">%1$d albums</string>
+    <plurals name="album_count">
+        <item quantity="one">%1$d album</item>
+        <item quantity="other">%1$d albums</item>
+    </plurals>
     <string name="artist_detail_load_failed">Kan deze artiest niet laden.</string>
     <string name="artist_detail_not_found">Artiestdetails niet gevonden</string>
     <string name="sort_name">Naam</string>

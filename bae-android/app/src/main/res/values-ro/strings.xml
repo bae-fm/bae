@@ -70,7 +70,11 @@
     <string name="search_section_albums">Albume</string>
     <string name="search_section_artists">Artiști</string>
     <string name="search_section_tracks">Piese</string>
-    <string name="work_count">%1$d opere</string>
+    <plurals name="work_count">
+        <item quantity="one">%1$d operă</item>
+        <item quantity="few">%1$d opere</item>
+        <item quantity="other">%1$d de opere</item>
+    </plurals>
     <string name="work_detail_load_failed">Această operă nu a putut fi încărcată.</string>
     <string name="work_detail_not_found">Detaliile operei nu au fost găsite</string>
     <string name="composer_detail_load_failed">Acest compozitor nu a putut fi încărcat.</string>
@@ -87,7 +91,11 @@
     <string name="library_switch_view">Schimbă vizualizarea</string>
     <string name="more">Mai multe</string>
     <string name="library_empty_artists">Niciun artist</string>
-    <string name="album_count">%1$d albume</string>
+    <plurals name="album_count">
+        <item quantity="one">%1$d album</item>
+        <item quantity="few">%1$d albume</item>
+        <item quantity="other">%1$d de albume</item>
+    </plurals>
     <string name="artist_detail_load_failed">Acest artist nu a putut fi încărcat.</string>
     <string name="artist_detail_not_found">Detaliile artistului nu au fost găsite</string>
     <string name="sort_name">Nume</string>

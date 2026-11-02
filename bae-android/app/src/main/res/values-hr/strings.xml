@@ -65,7 +65,11 @@
     <string name="search_section_albums">Albumi</string>
     <string name="search_section_artists">Izvođači</string>
     <string name="search_section_tracks">Pjesme</string>
-    <string name="work_count">%1$d djela</string>
+    <plurals name="work_count">
+        <item quantity="one">%1$d djelo</item>
+        <item quantity="few">%1$d djela</item>
+        <item quantity="other">%1$d djela</item>
+    </plurals>
     <string name="work_detail_load_failed">Nije moguće učitati ovo djelo.</string>
     <string name="work_detail_not_found">Detalji djela nisu pronađeni</string>
     <string name="composer_detail_load_failed">Nije moguće učitati ovog skladatelja.</string>
@@ -82,7 +86,11 @@
     <string name="library_switch_view">Promijeni prikaz</string>
     <string name="more">Više</string>
     <string name="library_empty_artists">Nema izvođača</string>
-    <string name="album_count">%1$d albuma</string>
+    <plurals name="album_count">
+        <item quantity="one">%1$d album</item>
+        <item quantity="few">%1$d albuma</item>
+        <item quantity="other">%1$d albuma</item>
+    </plurals>
     <string name="artist_detail_load_failed">Nije moguće učitati ovog izvođača.</string>
     <string name="artist_detail_not_found">Detalji izvođača nisu pronađeni</string>
     <string name="sort_name">Naziv</string>
