@@ -283,7 +283,8 @@ async fn the_inspectors_read_holds_the_releases_own_entries() {
     .await
     .unwrap();
 
-    let mut live = db.subscribe_storage_inspector(Some(RELEASE_B.to_string()));
+    let mut live = crate::library::views::LibraryViews::new(db.clone())
+        .subscribe_storage_inspector(Some(RELEASE_B.to_string()));
     let read = live.next().await.expect("the query stays open").result.unwrap();
     assert_eq!(read, None, "the library holds no RELEASE_B");
 

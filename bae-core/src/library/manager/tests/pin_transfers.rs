@@ -44,7 +44,7 @@ async fn a_file_a_pin_downloads_reads_as_downloading() {
     })
     .await
     .expect("the pin file watch names the file the pin downloads");
-    let pin_of = |rows: crate::db::DbStorageInspector| {
+    let pin_of = |rows: crate::library::views::DbStorageInspector| {
         rows.files.into_iter().find(|row| row.file.id == file.id).expect("the release's file").pin
     };
     assert_eq!(

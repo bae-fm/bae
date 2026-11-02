@@ -294,3 +294,38 @@ pub enum StorageFilter {
     Remote,
     Local,
 }
+
+/// What the Storage Manager's inspector shows of one release, read at once
+/// so its queue entries, its files' pins and its uploads are of one moment.
+#[cfg(desktop)]
+#[derive(Debug, Clone, PartialEq)]
+pub struct DbStorageInspector {
+    /// The release's files in their order, each with its pin and upload.
+    pub files: Vec<DbStorageInspectorFile>,
+    /// What of the release waits in this device's upload queue.
+    pub upload: Option<DbReleaseUpload>,
+    /// The release's entries in the download and export queues.
+    pub entries: crate::library::ReleaseQueueEntries,
+}
+
+/// One file of a release as the Storage Manager's inspector reads it: the
+/// file, where this device's pin of it stands (`None` while it isn't pinned
+/// or being pinned), and its upload while it waits in this device's upload
+/// queue.
+#[cfg(desktop)]
+#[derive(Debug, Clone, PartialEq)]
+pub struct DbStorageInspectorFile {
+    pub file: DbFile,
+    pub pin: Option<crate::album_detail::FilePin>,
+    pub upload: Option<DbFileUpload>,
+}
+
+/// One release file waiting in this device's upload queue, read with its
+/// row: the file being uploaded, whether this process is sending it now, and
+/// the record of what it waits for.
+#[derive(Debug, Clone, PartialEq)]
+pub struct DbFileUpload {
+    pub file: coven::FileId,
+    pub sending: bool,
+    pub pending: Option<coven::PendingRecord>,
+}

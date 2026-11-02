@@ -24,8 +24,8 @@ fn waiting() -> ReleaseUpload {
     ReleaseUpload { progress: UploadProgress { queued: 1, uploading: 0 }, summary: Vec::new() }
 }
 
-fn file(id: &str, pin: Option<FilePin>) -> crate::db::DbStorageInspectorFile {
-    crate::db::DbStorageInspectorFile {
+fn file(id: &str, pin: Option<FilePin>) -> crate::library::views::DbStorageInspectorFile {
+    crate::library::views::DbStorageInspectorFile {
         file: crate::db::DbFile {
             id: id.to_string(),
             release_id: "selected".to_string(),
@@ -48,7 +48,7 @@ fn counts(summary: &[crate::library::TransferCount]) -> Vec<(&str, u32)> {
 }
 
 fn shown(
-    files: Vec<crate::db::DbStorageInspectorFile>,
+    files: Vec<crate::library::views::DbStorageInspectorFile>,
     entries: &ReleaseQueueEntries,
     upload: Option<ReleaseUpload>,
 ) -> StorageInspector {

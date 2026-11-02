@@ -280,7 +280,10 @@ async fn release_files_are_read_in_case_insensitive_natural_order() {
     let detail_plan = db
         .read(|sql| {
             sql.query(
-                &format!("EXPLAIN QUERY PLAN {}", super::super::storage_inspector::INSPECTOR_FILES),
+                &format!(
+                    "EXPLAIN QUERY PLAN {}",
+                    crate::library::views::storage_inspector::INSPECTOR_FILES
+                ),
                 [RELEASE_A],
                 |row| row.get::<_, String>(3),
             )

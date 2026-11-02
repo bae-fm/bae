@@ -27,6 +27,7 @@ impl AppServices {
         let (id_tx, mut ids) = tokio::sync::watch::channel(None::<String>);
         let (tx, rx) = crate::library::live_read_channel();
         let manager = self.inner.manager.clone();
+        let views = self.inner.views.clone();
         let task = crate::library::CancellationToken::new();
         self.inner.manager.spawn_stoppable_subscription_task(
             "storage inspector",
@@ -36,7 +37,7 @@ impl AppServices {
                 let mut id: Option<String> = None;
                 let mut query = reconfigurable_live_query_events(
                     &manager,
-                    manager.subscribe_storage_inspector(None),
+                    views.subscribe_storage_inspector(None),
                     tx.clone(),
                 );
                 let mut told = Told::Nothing;
@@ -44,7 +45,7 @@ impl AppServices {
                 loop {
                     // The shown release as read: `None` once no such release
                     // exists.
-                    let rows: Option<crate::db::DbStorageInspector> = tokio::select! {
+                    let rows: Option<crate::library::views::DbStorageInspector> = tokio::select! {
                         changed = ids.changed() => {
                             if changed.is_err() { return; }
                             id = ids.borrow_and_update().clone();

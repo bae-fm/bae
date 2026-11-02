@@ -14,12 +14,12 @@ fn storage_inspector_on(
     }
     Ok(Some(DbStorageInspector {
         files: inspector_files_on(sql, release_id)?,
-        upload: super::queued_uploads::release_upload_on(sql, release_id)?,
-        entries: super::release_queues::release_queue_entries_on(sql, release_id)?,
+        upload: crate::db::client::queued_uploads::release_upload_on(sql, release_id)?,
+        entries: crate::db::client::release_queues::release_queue_entries_on(sql, release_id)?,
     }))
 }
 
-impl Database {
+impl LibraryViews {
     /// Follow the release `initial` names, or none, as the Storage Manager's
     /// inspector shows it, each value read in one go. Another release is a
     /// new request on the same query.
@@ -27,8 +27,7 @@ impl Database {
         &self,
         initial: Option<String>,
     ) -> coven::ReconfigurableLiveQuery<Option<String>, Option<DbStorageInspector>> {
-        self.inner
-            .handle
+        self.database
             .subscribe_reconfigurable(initial, |release_id, sql| {
                 let Some(release_id) = release_id else {
                     return Ok(None);
@@ -47,9 +46,9 @@ impl Database {
 /// coven keeps one (`coven_pending`), and the path of the original this
 /// device holds of it. A pin's download lists its file in
 /// `coven_downloading` before `coven_pins` holds a row for it.
-pub(super) const INSPECTOR_FILES: &str = concat!(
+pub(crate) const INSPECTOR_FILES: &str = concat!(
     "SELECT ",
-    release_file_columns!(),
+    crate::db::client::release_file_columns!(),
     ", pin.file IS NOT NULL AS pin_kept, \
         downloading.file AS downloading_file, \
         upload.file AS upload_file, upload.sending AS upload_sending, \
@@ -72,7 +71,7 @@ pub(super) const INSPECTOR_FILES: &str = concat!(
 /// original by its path.
 const MOVE_RECORDS: &str = "SELECT record, cause FROM coven_pending WHERE file IS NULL";
 
-pub(super) fn inspector_files_on(
+fn inspector_files_on(
     sql: &SqlReadContext<'_>,
     release_id: &str,
 ) -> Result<Vec<DbStorageInspectorFile>, DbError> {

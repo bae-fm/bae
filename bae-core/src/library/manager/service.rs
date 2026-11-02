@@ -528,16 +528,6 @@ impl LibraryManager {
         self.outputs.subscribe()
     }
 
-    /// Follow the release `initial` names as the storage inspector shows it,
-    /// each value read in one go.
-    #[cfg(desktop)]
-    pub(crate) fn subscribe_storage_inspector(
-        &self,
-        initial: Option<String>,
-    ) -> coven::ReconfigurableLiveQuery<Option<String>, Option<crate::db::DbStorageInspector>> {
-        self.database.subscribe_storage_inspector(initial)
-    }
-
     /// The percent the active export has reached, by release, and each
     /// change to it.
     #[cfg(desktop)]

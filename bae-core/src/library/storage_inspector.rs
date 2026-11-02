@@ -66,7 +66,7 @@ pub enum StorageInspectorTransfer {
 
 impl StorageInspector {
     /// The release `release_id` from one read of it, `rows`.
-    pub(crate) fn read(release_id: &str, rows: crate::db::DbStorageInspector) -> Self {
+    pub(crate) fn read(release_id: &str, rows: crate::library::views::DbStorageInspector) -> Self {
         Self::of(release_id, rows.files, &rows.entries, rows.upload.map(ReleaseUpload::from_raw))
     }
 
@@ -78,7 +78,7 @@ impl StorageInspector {
     /// file's pin and coven's fetch counting them.
     pub(crate) fn of(
         release_id: &str,
-        files: Vec<crate::db::DbStorageInspectorFile>,
+        files: Vec<crate::library::views::DbStorageInspectorFile>,
         entries: &ReleaseQueueEntries,
         upload: Option<ReleaseUpload>,
     ) -> Self {

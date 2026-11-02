@@ -280,7 +280,7 @@ pub(super) fn release_queue_counts_on<P: QueuedPayload>(
 
 /// `release_id`'s entries in the download and export queues.
 #[cfg(desktop)]
-pub(super) fn release_queue_entries_on(
+pub(crate) fn release_queue_entries_on(
     sql: &SqlReadContext<'_>,
     release_id: &str,
 ) -> Result<crate::library::ReleaseQueueEntries, DbError> {

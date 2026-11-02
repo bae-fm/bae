@@ -14,6 +14,8 @@ pub(crate) mod release;
 #[cfg(desktop)]
 pub(crate) mod release_files;
 pub(crate) mod storage;
+#[cfg(desktop)]
+pub(crate) mod storage_inspector;
 
 pub use album::{AlbumBrowseProjection, AlbumDetailProjection, LibrarySearchProjection};
 pub use artist::{ArtistBrowseProjection, ArtistDetailProjection};

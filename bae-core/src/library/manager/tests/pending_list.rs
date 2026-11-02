@@ -274,9 +274,9 @@ async fn inspector_until(
 async fn inspector_rows_until(
     manager: &LibraryManager,
     release_id: &str,
-    accept: impl Fn(&crate::db::DbStorageInspector) -> bool,
-) -> crate::db::DbStorageInspector {
-    let mut rows = manager.database.subscribe_storage_inspector(Some(release_id.to_string()));
+    accept: impl Fn(&crate::library::views::DbStorageInspector) -> bool,
+) -> crate::library::views::DbStorageInspector {
+    let mut rows = crate::library::views::LibraryViews::new(manager.database.clone()).subscribe_storage_inspector(Some(release_id.to_string()));
     rows_until(&mut rows, accept).await
 }
 
@@ -285,10 +285,10 @@ async fn inspector_rows_until(
 async fn rows_until(
     rows: &mut coven::ReconfigurableLiveQuery<
         Option<String>,
-        Option<crate::db::DbStorageInspector>,
+        Option<crate::library::views::DbStorageInspector>,
     >,
-    accept: impl Fn(&crate::db::DbStorageInspector) -> bool,
-) -> crate::db::DbStorageInspector {
+    accept: impl Fn(&crate::library::views::DbStorageInspector) -> bool,
+) -> crate::library::views::DbStorageInspector {
     tokio::time::timeout(std::time::Duration::from_secs(10), async {
         loop {
             let event = rows.next().await.expect("the inspector's read runs");
@@ -430,10 +430,10 @@ async fn the_inspector_never_reads_a_pin_out_of_the_queue_before_its_files_are_k
     connect_test_cloud(&manager).await;
     let cloud =
         uploaded_release(&manager, &temp_dir.path().join("cloud"), "Album Title B", false).await;
-    let kept = |value: &crate::db::DbStorageInspector| {
+    let kept = |value: &crate::library::views::DbStorageInspector| {
         value.files.iter().all(|file| file.pin == Some(FilePin::Kept))
     };
-    let mut rows = manager.database.subscribe_storage_inspector(Some(cloud.clone()));
+    let mut rows = crate::library::views::LibraryViews::new(manager.database.clone()).subscribe_storage_inspector(Some(cloud.clone()));
 
     // The release as it stands before any pin: unpinned, out of the queue.
     rows_until(&mut rows, |value| value.files.iter().all(|file| file.pin.is_none())).await;
