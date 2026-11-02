@@ -7,9 +7,7 @@
 //! be code-signed into that group to read them.
 
 fn main() {
-    // This example ships no telemetry; a no-op sink satisfies init_keyring.
-    if let Err(error) = bae_core::config::init_keyring(&bae_core::diagnostics::Diagnostics::noop())
-    {
+    if let Err(error) = bae_core::config::register_keyring_service() {
         eprintln!("initialize keyring failed: {error}");
         std::process::exit(1);
     }

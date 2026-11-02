@@ -88,9 +88,12 @@ pub struct BridgeDiagnostics {
 
 impl BridgeDiagnostics {
     pub(crate) fn init_keyring(&self) -> Result<(), BridgeError> {
-        bae_core::config::init_keyring(&self.inner).map_err(|error| BridgeError::Diagnostic {
-            category: crate::types::BridgeErrorCategory::Keyring,
-            detail: error.to_string(),
+        bae_core::config::register_keyring_service().map_err(|error| {
+            self.inner.event(TelemetryEvent::KeyringInitFailed {});
+            BridgeError::Diagnostic {
+                category: crate::types::BridgeErrorCategory::Keyring,
+                detail: error.to_string(),
+            }
         })
     }
 

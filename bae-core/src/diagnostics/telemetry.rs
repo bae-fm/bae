@@ -431,7 +431,7 @@ telemetry_events! {
     },
 
     /// Keyring store initialization failed — no default store installed, so every
-    /// credential read fails. Emitted directly by `init_keyring`.
+    /// credential read fails. Emitted by the bridge's `init_keyring`.
     KeyringInitFailed, "keyring_init_failed", Error {},
 
     /// An impossible-state site fired. `kind` names which one; the count per

@@ -72,8 +72,7 @@ fn main() {
         )
         .with_writer(std::io::stderr)
         .init();
-    if let Err(error) = bae_core::config::init_keyring(&bae_core::diagnostics::Diagnostics::noop())
-    {
+    if let Err(error) = bae_core::config::register_keyring_service() {
         eprintln!("initialize keyring failed: {error}");
         std::process::exit(1);
     }

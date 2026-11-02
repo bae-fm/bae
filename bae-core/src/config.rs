@@ -17,7 +17,7 @@ pub use catalog_availability::{
 };
 pub use identification::{IdentificationPreferences, LookupCatalogPreferences};
 pub use import_storage::ImportStoragePreferences;
-pub use keyring::init_keyring;
+pub use keyring::register_keyring_service;
 pub use presentation::LookupCatalogSetting;
 pub use save::{SaveBitDepth, SaveCodec, SaveFilenameToken, SavePregapPlacement, SavePreset};
 pub use server::{
