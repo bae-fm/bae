@@ -26,11 +26,14 @@ pub mod records;
 #[cfg(desktop)]
 pub(crate) mod release_metadata;
 #[cfg(desktop)]
+pub mod release_values;
+#[cfg(desktop)]
 pub mod rip;
 #[cfg(desktop)]
 pub mod search;
 #[cfg(desktop)]
 pub mod source_release;
+pub mod works;
 
 pub use error::CatalogError;
 pub use failure::{Failure, InternalFailure, LookupFailure};

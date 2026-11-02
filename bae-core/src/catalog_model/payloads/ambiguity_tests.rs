@@ -39,7 +39,7 @@ fn master(id: u64, year: u32) -> SourcePayload {
     )
 }
 
-fn parsed(payloads: &ReleasePayloads) -> crate::import::release_values::ReleaseValues {
+fn parsed(payloads: &ReleasePayloads) -> crate::catalog_model::release_values::ReleaseValues {
     payloads.extract().unwrap().every_medium_values().unwrap()
 }
 
@@ -98,7 +98,7 @@ fn ambiguous_pressings_contribute_only_a_proven_common_parent() {
             assert!(discogs.is_none_or(|record| record.release_ref().is_none()));
             assert_eq!(payloads.extract().unwrap().covers().len(), usize::from(same));
             let parsed = parsed(payloads);
-            assert_eq!(crate::import::release_values::value_labels(&parsed)[1], "B1");
+            assert_eq!(crate::catalog_model::release_values::value_labels(&parsed)[1], "B1");
             assert_eq!(parsed.tracks[1].title, "Second Track");
         });
     }

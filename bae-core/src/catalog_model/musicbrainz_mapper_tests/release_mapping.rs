@@ -19,7 +19,7 @@ fn map(
     payloads.extract().unwrap().every_medium_values()
 }
 
-use crate::import::release_values::committed_rows as rows;
+use crate::import::reading_draft::committed_rows as rows;
 
 /// The id of the `works` row the release's rows hold for a MusicBrainz work.
 fn work_row_id(parsed: &crate::import::ReleaseRows, musicbrainz_work_id: &str) -> String {
@@ -129,7 +129,7 @@ fn a_hybrid_sacd_rip_is_read_from_its_cd_layer() {
     let parsed = map_for_audio(&response, &[527_200, 284_000, 332_900]).unwrap();
 
     assert_eq!(
-        crate::import::release_values::value_labels(&parsed),
+        crate::catalog_model::release_values::value_labels(&parsed),
         ["1", "2", "3"],
         "one layer is one disc"
     );
@@ -160,7 +160,7 @@ fn one_disc_of_a_box_is_read_from_its_own_medium() {
         vec!["Track 5", "Track 6"]
     );
     assert_eq!(
-        crate::import::release_values::value_labels(&parsed),
+        crate::catalog_model::release_values::value_labels(&parsed),
         ["1", "2"],
         "the disc read is the reading's only medium"
     );
@@ -208,7 +208,7 @@ fn test_cd_two_media_each_one_side() {
     ]);
 
     let parsed = map(&response, vec![]).unwrap();
-    assert_eq!(crate::import::release_values::value_labels(&parsed), ["1-1", "1-2", "2-1", "2-2"]);
+    assert_eq!(crate::catalog_model::release_values::value_labels(&parsed), ["1-1", "1-2", "2-1", "2-2"]);
 }
 
 #[test]
@@ -230,7 +230,7 @@ fn numeric_vinyl_tracks_are_usable_without_side_boundaries() {
         bae_types::pressing::made_of(bae_types::pressing::Medium::Vinyl, 1).media
     );
     assert_eq!(
-        crate::import::release_values::value_labels(&parsed),
+        crate::catalog_model::release_values::value_labels(&parsed),
         (1..=12).map(|number| format!("A{number}")).collect::<Vec<_>>()
     );
 }
@@ -249,7 +249,7 @@ fn test_vinyl_one_medium_two_sides() {
     }]);
 
     let parsed = map(&response, vec![]).unwrap();
-    assert_eq!(crate::import::release_values::value_labels(&parsed), ["A1", "A2", "B1", "B2"]);
+    assert_eq!(crate::catalog_model::release_values::value_labels(&parsed), ["A1", "A2", "B1", "B2"]);
 }
 
 /// 2LP vinyl: two media, each with two sides of its own (A/B and C/D),
@@ -281,7 +281,7 @@ fn test_vinyl_two_media_four_sides() {
 
     let parsed = map(&response, vec![]).unwrap();
     assert_eq!(
-        crate::import::release_values::value_labels(&parsed),
+        crate::catalog_model::release_values::value_labels(&parsed),
         ["A1", "A2", "B1", "B2", "C1", "C2", "D1", "D2"]
     );
     assert!(
@@ -303,7 +303,7 @@ fn test_single_medium_cd_all_side_one() {
     }]);
 
     let parsed = map(&response, vec![]).unwrap();
-    assert_eq!(crate::import::release_values::value_labels(&parsed), ["1", "2", "3"]);
+    assert_eq!(crate::catalog_model::release_values::value_labels(&parsed), ["1", "2", "3"]);
 }
 
 /// A track whose position names no side is on the side of the track before
@@ -332,7 +332,7 @@ fn vinyl_track_without_a_position_is_on_the_side_before_it() {
     }]);
 
     let parsed = map(&response, vec![]).unwrap();
-    assert_eq!(crate::import::release_values::value_labels(&parsed), ["A1", "A2"]);
+    assert_eq!(crate::catalog_model::release_values::value_labels(&parsed), ["A1", "A2"]);
 }
 
 /// A printed number names no side: the track is on the side before it, with
@@ -346,7 +346,7 @@ fn vinyl_numeric_track_is_on_the_side_before_it() {
     }]);
 
     let parsed = map(&response, vec![]).unwrap();
-    assert_eq!(crate::import::release_values::value_labels(&parsed), ["A1", "A1"]);
+    assert_eq!(crate::catalog_model::release_values::value_labels(&parsed), ["A1", "A1"]);
 }
 
 #[test]

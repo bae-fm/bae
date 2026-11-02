@@ -672,16 +672,16 @@ async fn preparation_round_trips_a_drafts_roles_and_works() {
         source: bae_catalogs::catalog::Catalog::Discogs,
         role: None,
     }];
-    draft.works = crate::import::WorkGraph {
+    draft.works = crate::catalog_model::works::WorkGraph {
         works: vec![
-            crate::import::GraphWork {
+            crate::catalog_model::works::GraphWork {
                 musicbrainz_work_id: "mb-work-child".to_string(),
                 title: "Movement".to_string(),
                 disambiguation: None,
                 work_type: Some("Song".to_string()),
                 composers: vec![credit("Composer Name", None)],
             },
-            crate::import::GraphWork {
+            crate::catalog_model::works::GraphWork {
                 musicbrainz_work_id: "mb-work-parent".to_string(),
                 title: "Suite".to_string(),
                 disambiguation: Some("whole".to_string()),
@@ -689,7 +689,7 @@ async fn preparation_round_trips_a_drafts_roles_and_works() {
                 composers: Vec::new(),
             },
         ],
-        parts: vec![crate::import::WorkPart {
+        parts: vec![crate::catalog_model::works::WorkPart {
             parent: "mb-work-parent".to_string(),
             child: "mb-work-child".to_string(),
         }],

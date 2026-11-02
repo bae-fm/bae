@@ -154,7 +154,7 @@ fn vinyl_response() -> bae_catalogs::musicbrainz::MbReleaseResponse {
 /// The editor seed for a release: its reading's editable values.
 fn values_for(
     response: &bae_catalogs::musicbrainz::MbReleaseResponse,
-) -> crate::import::release_values::ReleaseValues {
+) -> crate::catalog_model::release_values::ReleaseValues {
     crate::catalog_model::payloads::ReleasePayloads::for_test(
         crate::catalog_model::records::MetadataRef::new(bae_catalogs::catalog::Catalog::MusicBrainz, &response.id),
         serde_json::to_string(response).expect("MusicBrainz fixture serializes"),
@@ -169,7 +169,7 @@ fn values_for(
 fn seed_for(
     response: &bae_catalogs::musicbrainz::MbReleaseResponse,
 ) -> crate::import::ReleaseUserEdit {
-    values_for(response).user_edit()
+    crate::import::reading_draft::user_edit(&values_for(response))
 }
 
 /// A reading numbers each track on its own side (A1, A2 -> 1, 2; B1 -> 1),
@@ -177,7 +177,7 @@ fn seed_for(
 #[test]
 fn a_reading_numbers_tracks_per_side() {
     assert_eq!(
-        crate::import::release_values::value_labels(&values_for(&vinyl_response())),
+        crate::catalog_model::release_values::value_labels(&values_for(&vinyl_response())),
         ["A1", "A2", "B1"]
     );
 }

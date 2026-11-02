@@ -10,14 +10,14 @@
 
 use crate::catalog_model::credits::{ArtistCredit, CreditedRole, SourceCredit};
 use crate::catalog_model::medium_coverage::MediumCoverage;
+use crate::catalog_model::release_values::{
+    position_number, ReleaseValues, TrackCredits, TrackValues, WorkGraphBuilder,
+};
 use crate::catalog_model::source_release::{
     DisplayCredit, EntryKind, PartDirection, PerformedWork, RoleCredit, SourceMedium,
     SourceRelease, SourceWork, SourceWorkEvent, TracklistEntry,
 };
 use crate::catalog_model::CatalogError;
-use crate::import::release_values::{
-    position_number, ReleaseValues, TrackCredits, TrackValues, WorkGraphBuilder,
-};
 use bae_catalogs::catalog::Catalog;
 use bae_catalogs::musicbrainz::{
     release_labels, MbArtistRef, MbRelation, MbReleaseResponse, MbTrack, MbWork,

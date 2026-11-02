@@ -14,6 +14,7 @@
 //! [`ImportDestination::Remote`] import then uploads to the cloud in the background.
 use crate::catalog_model::credits::{ArtistCredit, CreditedRole};
 use crate::catalog_model::records::{MetadataRef, ReleaseRecord};
+use crate::catalog_model::works::WorkGraph;
 #[cfg(desktop)]
 use crate::cue_flac::CueSheet;
 #[cfg(desktop)]
@@ -39,8 +40,8 @@ pub use raw_release_edit::{
 };
 mod candidate_draft;
 pub use candidate_draft::{
-    CandidateDraft, CandidateTrack, DraftTrack, GraphWork, LibraryDraft, LibraryTrack,
-    ReleaseDraft, TrackBinding, WorkGraph, WorkPart,
+    CandidateDraft, CandidateTrack, DraftTrack, LibraryDraft, LibraryTrack, ReleaseDraft,
+    TrackBinding,
 };
 #[cfg(desktop)]
 use std::{path::PathBuf, sync::Arc};

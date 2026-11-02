@@ -171,7 +171,7 @@ struct DraftBody<'a> {
     mediums: &'a [bae_types::mediums::ReleaseMedium],
     tracks: &'a [CandidateTrack],
     release_roles: &'a [crate::catalog_model::credits::CreditedRole],
-    works: &'a crate::import::WorkGraph,
+    works: &'a crate::catalog_model::works::WorkGraph,
 }
 
 impl<'a> DraftBody<'a> {

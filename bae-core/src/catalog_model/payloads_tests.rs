@@ -809,5 +809,5 @@ fn discogs_master_cross_reference_retains_album_links_without_claiming_a_pressin
         parsed.tracks.iter().map(|track| track.title.as_str()).collect::<Vec<_>>(),
         ["First Track", "Second Track"]
     );
-    assert_eq!(crate::import::release_values::value_labels(&parsed), ["A1", "B1"]);
+    assert_eq!(crate::catalog_model::release_values::value_labels(&parsed), ["A1", "B1"]);
 }

@@ -9,11 +9,11 @@
 //! else lays a tracklist out.
 
 use crate::catalog_model::medium_coverage::{candidate_sets, Fit, MediumCoverage, MediumShape};
+use crate::catalog_model::release_values::ReleaseValues;
 use crate::catalog_model::search::SourceTracks;
 use crate::catalog_model::source_release::{not_fetched, SourceRelease};
 use crate::catalog_model::AudioOrigin;
 use crate::catalog_model::CatalogError;
-use crate::import::release_values::ReleaseValues;
 use crate::import::ImportError;
 use bae_catalogs::catalog::Catalog;
 use std::collections::BTreeSet;

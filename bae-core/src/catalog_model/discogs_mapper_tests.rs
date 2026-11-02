@@ -39,7 +39,7 @@ fn map_with(
 ) -> Result<crate::import::ReleaseRows, CatalogError> {
     let stored = stored(release);
     super::values(&stored, &all_discs(&stored), audio_durations_ms)
-        .map(crate::import::release_values::committed_rows)
+        .map(crate::import::reading_draft::committed_rows)
 }
 
 /// Exercise track and credit mapping with the release's own metadata.
@@ -54,7 +54,7 @@ fn map_for_audio(
     map_with(release, Some(audio_durations_ms))
 }
 
-use crate::import::release_values::committed_artists;
+use crate::import::reading_draft::committed_artists;
 
 /// A tracklist's rows as a stored medium holds them.
 fn entries(rows: &[DiscogsTrack]) -> Vec<TracklistEntry> {
@@ -228,7 +228,7 @@ fn test_cd_multi_disc() {
     let release = with_formats(release, &[("CD", "2")]);
     let parsed = map(&release).unwrap();
     assert_eq!(
-        crate::import::release_values::row_labels(&parsed),
+        crate::import::reading_draft::row_labels(&parsed),
         ["1-1", "1-2", "1-3", "2-1", "2-2"],
         "each disc numbers its own tracks"
     );
@@ -261,7 +261,7 @@ fn test_vinyl_sides() {
     let release = with_formats(release, &[("Vinyl", "2")]);
     let parsed = map(&release).unwrap();
     assert_eq!(
-        crate::import::release_values::row_labels(&parsed),
+        crate::import::reading_draft::row_labels(&parsed),
         ["A1", "A2", "B1", "B2", "C1", "D1"],
         "the second record's sides letter on from the first's"
     );
@@ -317,7 +317,7 @@ fn test_2lp_vinyl_with_headings() {
 
     // 9 tracks: 2 on A, 2 on B (heading collapsed + Track Three), 3 on C, 2 on D
     assert_eq!(
-        crate::import::release_values::row_labels(&parsed),
+        crate::import::reading_draft::row_labels(&parsed),
         ["A1", "A2", "B1", "B2", "C1", "C2", "C3", "D1", "D2"]
     );
     assert_eq!(tracks[0].title, "Track One");
@@ -343,7 +343,7 @@ fn test_single_disc() {
         text: None,
     }];
     let parsed = map(&release).unwrap();
-    assert_eq!(crate::import::release_values::row_labels(&parsed), ["1", "2", "3"]);
+    assert_eq!(crate::import::reading_draft::row_labels(&parsed), ["1", "2", "3"]);
 }
 
 #[test]
@@ -607,7 +607,7 @@ fn a_track_with_no_position_is_numbered_by_its_place_on_its_disc() {
     );
     let parsed = map(&release).unwrap();
     assert_eq!(
-        crate::import::release_values::row_labels(&parsed),
+        crate::import::reading_draft::row_labels(&parsed),
         ["1-1", "1-2", "2-1", "2-2", "2-3"]
     );
 }

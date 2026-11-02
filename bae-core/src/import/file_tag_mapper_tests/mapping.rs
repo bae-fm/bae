@@ -94,7 +94,7 @@ fn map_tags_with_folder(
 /// Each track's number in the draft the reading makes: the number the tags
 /// state, else the track's place on its disc.
 fn draft_numbers(values: ReleaseValues) -> Vec<u32> {
-    crate::import::release_values::committed_rows(values)
+    crate::import::reading_draft::committed_rows(values)
         .tracks
         .iter()
         .map(|track| track.track_number.get())
@@ -216,7 +216,7 @@ fn cue_sheet_seeds_one_track_per_cue_entry_not_per_image_file() {
         parsed.tracks.iter().map(|t| t.title.as_str()).collect::<Vec<_>>(),
         ["Track One", "Track Two", "Track Three"]
     );
-    assert_eq!(crate::import::release_values::value_labels(&parsed), ["1", "2", "3"]);
+    assert_eq!(crate::catalog_model::release_values::value_labels(&parsed), ["1", "2", "3"]);
     assert_eq!(parsed.album_title, "Album Title");
     assert_eq!(parsed.album_year, Some(1970));
     assert_eq!(parsed.album_credits[0].credit.name, "Artist Name");
@@ -256,7 +256,7 @@ fn cue_multi_sheet_assigns_side_per_disc() {
     let disc2 = cue_sheet("Album Title", vec![cue_track(1, "D2 T1"), cue_track(2, "D2 T2")]);
     let parsed = map_cue_folder(vec![disc1, disc2], Some("Folder"));
 
-    assert_eq!(crate::import::release_values::value_labels(&parsed), ["1-1", "1-2", "2-1", "2-2"]);
+    assert_eq!(crate::catalog_model::release_values::value_labels(&parsed), ["1-1", "1-2", "2-1", "2-2"]);
 }
 
 /// Copy a fixture into `dest_dir/{name}` and stamp it with the given
@@ -358,7 +358,7 @@ fn flac_with_vorbis_comments_basic() {
     assert_eq!(parsed.tracks.len(), 2);
     assert_eq!(parsed.tracks[0].title, "Track One");
     assert_eq!(parsed.tracks[1].title, "Track Two");
-    assert_eq!(crate::import::release_values::value_labels(&parsed), ["1", "2"]);
+    assert_eq!(crate::catalog_model::release_values::value_labels(&parsed), ["1", "2"]);
 
     assert_eq!(
         parsed.album_credits.iter().map(|credit| credit.credit.name.as_str()).collect::<Vec<_>>(),
@@ -396,7 +396,7 @@ fn flac_multi_disc_groups_by_discnumber() {
 
     let parsed = map_tags(&files).unwrap();
 
-    assert_eq!(crate::import::release_values::value_labels(&parsed), ["1-1", "1-2", "2-1", "2-2"]);
+    assert_eq!(crate::catalog_model::release_values::value_labels(&parsed), ["1-1", "1-2", "2-1", "2-2"]);
     assert!(parsed.mediums.iter().all(|medium| medium.carrier.is_none()), "tags state no carrier");
 }
 
@@ -515,7 +515,7 @@ fn missing_optional_tags_yields_none_and_defaults() {
     let parsed = map_tags(&[f1, f2]).unwrap();
     assert_eq!(parsed.album_year, None);
     assert_eq!(parsed.pressing.year, None);
-    assert_eq!(crate::import::release_values::value_labels(&parsed), ["1", "2"]);
+    assert_eq!(crate::catalog_model::release_values::value_labels(&parsed), ["1", "2"]);
 }
 
 /// Supplied numbers remain unchanged; absent numbers use ordered position.
@@ -713,5 +713,5 @@ fn absent_numbers_take_their_place_on_their_own_disc() {
 fn cue_numbers_are_preserved_instead_of_recreated() {
     let sheet = cue_sheet("Album", vec![cue_track(4, "Fourth"), cue_track(7, "Seventh")]);
     let parsed = map_cue_folder(vec![sheet], None);
-    assert_eq!(crate::import::release_values::value_labels(&parsed), ["4", "7"]);
+    assert_eq!(crate::catalog_model::release_values::value_labels(&parsed), ["4", "7"]);
 }

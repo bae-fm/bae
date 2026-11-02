@@ -4,7 +4,7 @@ use serde_json::json;
 
 fn parse(
     payloads: &ReleasePayloads,
-) -> Result<crate::import::release_values::ReleaseValues, CatalogError> {
+) -> Result<crate::catalog_model::release_values::ReleaseValues, CatalogError> {
     payloads.extract().and_then(|release| release.every_medium_values())
 }
 
@@ -60,7 +60,7 @@ fn malformed_group_credit_preserves_selected_tracks_and_valid_supplemental_field
         parsed.tracks.iter().map(|track| track.title.as_str()).collect::<Vec<_>>(),
         ["First Track", "Second Track"]
     );
-    assert_eq!(crate::import::release_values::value_labels(&parsed), ["A1", "B1"]);
+    assert_eq!(crate::catalog_model::release_values::value_labels(&parsed), ["A1", "B1"]);
 }
 
 #[test]
@@ -88,7 +88,7 @@ fn malformed_linked_release_credit_keeps_its_valid_credit_and_fills_no_pressing_
         Some("linked-artist")
     );
     assert_eq!(parsed.tracks[1].title, "Second Track");
-    assert_eq!(crate::import::release_values::value_labels(&parsed)[1], "B1");
+    assert_eq!(crate::catalog_model::release_values::value_labels(&parsed)[1], "B1");
 }
 
 #[test]

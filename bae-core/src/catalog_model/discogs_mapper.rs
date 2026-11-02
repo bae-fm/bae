@@ -1,10 +1,12 @@
 use crate::catalog_model::credits::{ArtistCredit, CreditedRole};
 use crate::catalog_model::medium_coverage::MediumCoverage;
+use crate::catalog_model::release_values::{
+    position_number, ReleaseValues, TrackCredits, TrackValues,
+};
 use crate::catalog_model::source_release::{
     CatalogFacts, DisplayCredit, EntryKind, RoleCredit, SourceMedium, SourceRelease, TracklistEntry,
 };
 use crate::catalog_model::CatalogError;
-use crate::import::release_values::{position_number, ReleaseValues, TrackCredits, TrackValues};
 use bae_catalogs::catalog::Catalog;
 use bae_catalogs::discogs::{DiscogsArtist, DiscogsRelease, DiscogsRoleArtist, DiscogsTrack};
 use bae_types::pressing::{Medium, Pressing, PressingFacts, ReleaseArea, StatedMedia};

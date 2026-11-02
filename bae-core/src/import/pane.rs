@@ -5,10 +5,10 @@
 //! change to the folder's files redraws them. The pane renders that draft; it
 //! does not replay edits over a provider tracklist.
 
+use crate::catalog_model::release_values::ReleaseValues;
 use crate::import::folder_scanner::CategorizedFiles;
 use crate::import::mapping::{mapping_table, MappingTable};
 use crate::import::probe::SourceDurations;
-use crate::import::release_values::ReleaseValues;
 use crate::import::types::{CandidateDraft, CandidateTrack, RawReleaseEdit, RawTrackEdit};
 use crate::import::ImportError;
 
@@ -85,7 +85,7 @@ pub(crate) fn values_over_audio(
         });
     }
     let units = current.tracks.iter().map(|track| track.edit.file.clone()).collect();
-    let mut draft = values.candidate_draft(units);
+    let mut draft = crate::import::reading_draft::candidate_draft(values, units);
     keep_row_identities(&mut draft.tracks, &current.tracks)?;
     Ok(draft)
 }
@@ -94,7 +94,7 @@ pub(crate) fn values_over_audio(
 /// lists no tracks: it says nothing about them, so each keeps what it has —
 /// its title, credits, roles and works — and the works with it.
 pub(crate) fn album_over_draft(values: ReleaseValues, current: &CandidateDraft) -> CandidateDraft {
-    let album = values.candidate_draft(Vec::new());
+    let album = crate::import::reading_draft::candidate_draft(values, Vec::new());
     CandidateDraft {
         mediums: current.mediums.clone(),
         tracks: current.tracks.clone(),
@@ -311,7 +311,7 @@ pub(crate) fn file_metadata_draft(
             ),
         });
     }
-    Ok(values.candidate_draft(units))
+    Ok(crate::import::reading_draft::candidate_draft(values, units))
 }
 
 #[cfg(test)]

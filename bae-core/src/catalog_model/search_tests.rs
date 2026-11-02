@@ -505,7 +505,10 @@ fn mb_values_number_vinyl_sides_across_media() {
     ]);
 
     let values = mb_release(&response).every_medium_values().unwrap();
-    assert_eq!(crate::import::release_values::value_labels(&values), ["A1", "B1", "C1", "D1"]);
+    assert_eq!(
+        crate::catalog_model::release_values::value_labels(&values),
+        ["A1", "B1", "C1", "D1"]
+    );
 }
 
 #[test]
@@ -547,7 +550,7 @@ fn mb_values_put_an_unlettered_track_on_the_side_before_it() {
     }]);
 
     let values = mb_release(&response).every_medium_values().unwrap();
-    assert_eq!(crate::import::release_values::value_labels(&values), ["A1", "A1"]);
+    assert_eq!(crate::catalog_model::release_values::value_labels(&values), ["A1", "A1"]);
 }
 
 /// The picker's pressing fields are the pressing the commit stores: one

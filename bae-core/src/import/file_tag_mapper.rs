@@ -19,8 +19,8 @@
 #[cfg(test)]
 use super::file_tag_snapshot::{extract_file_tag_snapshot, LoftyFileTagReader};
 use super::file_tag_snapshot::{non_empty, years_in_date, FileTagFact, FileTagSnapshot, FileTags};
-use super::release_values::{ReleaseValues, TrackCredits, TrackValues};
 use crate::catalog_model::credits::ArtistCredit;
+use crate::catalog_model::release_values::{ReleaseValues, TrackCredits, TrackValues};
 use crate::cue_flac::CueSheet;
 use crate::identify::row_facts::StatedYears;
 use crate::import::folder_scanner::CategorizedFiles;

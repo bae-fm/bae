@@ -1,8 +1,7 @@
 use super::*;
 use crate::catalog_model::credits::{ArtistCredit, CreditedRole};
-use crate::import::{
-    CandidateTrack, ExistingArtist, GraphWork, RawPressingEdit, RawTrackEdit, WorkGraph, WorkPart,
-};
+use crate::catalog_model::works::{GraphWork, WorkGraph, WorkPart};
+use crate::import::{CandidateTrack, ExistingArtist, RawPressingEdit, RawTrackEdit};
 
 fn clock() -> coven::FixedClock {
     coven::FixedClock::new(
@@ -298,5 +297,5 @@ fn each_track_row_sits_on_the_medium_row_its_place_names() {
     );
     assert_eq!(parsed.tracks[0].medium_id, parsed.mediums[0].id);
     assert_eq!(parsed.tracks[1].medium_id, parsed.mediums[1].id);
-    assert_eq!(crate::import::release_values::row_labels(&parsed), ["1-1", "2-1"]);
+    assert_eq!(crate::import::reading_draft::row_labels(&parsed), ["1-1", "2-1"]);
 }

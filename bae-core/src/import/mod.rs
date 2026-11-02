@@ -73,14 +73,14 @@ pub mod preparations;
 pub(crate) mod pressing_evidence;
 #[cfg(desktop)]
 pub mod probe;
+/// What one reading of a source says a release is, as plain values.
+#[cfg(desktop)]
+pub(crate) mod reading_draft;
 pub mod relative_folder;
 #[cfg(desktop)]
 pub mod release_candidate;
 #[cfg(desktop)]
 pub mod release_group;
-/// What one reading of a source says a release is, as plain values.
-#[cfg(desktop)]
-pub(crate) mod release_values;
 #[cfg(desktop)]
 pub(crate) mod scrub_points;
 #[cfg(desktop)]
@@ -321,11 +321,10 @@ pub use types::ImportCommand;
 pub use types::{
     artists_standing, credited_line, AlbumLink, ArtistAssignment, ArtistStanding, ArtistsStanding,
     AudioFile, CandidateDraft, CandidateEditField, CandidateTrack, CreditResolution, Credited,
-    DraftAlbum, DraftFieldEdit, DraftTrack, EditValidationError, ExistingArtist, GraphWork,
-    LibraryDraft, LibraryTrack, MetadataProvenance, PressingFactEdit, PressingLink, RawLabelEdit,
+    DraftAlbum, DraftFieldEdit, DraftTrack, EditValidationError, ExistingArtist, LibraryDraft,
+    LibraryTrack, MetadataProvenance, PressingFactEdit, PressingLink, RawLabelEdit,
     RawPressingEdit, RawReleaseEdit, RawTrackEdit, ReleaseDraft, ReleaseEditSeed, ReleaseLink,
     ReleaseUserEdit, ResolvedCredit, TrackArtistAssignments, TrackBinding, TrackUserEdit,
-    WorkGraph, WorkPart,
 };
 #[cfg(desktop)]
 pub use types::{

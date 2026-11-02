@@ -100,7 +100,7 @@ async fn a_master_backlink_is_followed_and_the_stored_release_reads_back() {
     assert_eq!(parsed.album_title, "Selected Album");
     assert_eq!(parsed.album_year, Some(1980));
     assert_eq!(parsed.pressing.year, Some(2005));
-    assert_eq!(crate::import::release_values::value_labels(&parsed), ["A1", "B1"]);
+    assert_eq!(crate::catalog_model::release_values::value_labels(&parsed), ["A1", "B1"]);
     assert_eq!(parsed.album_credits[0].credit.musicbrainz_artist_id.as_deref(), Some("artist-id"));
     let (db, _temp) = database().await;
     db.save_source_release(&fetched).await.unwrap();
@@ -137,7 +137,7 @@ fn the_pressing_is_the_selected_record_s_alone() {
     assert!(parsed.pressing.barcodes.is_empty());
     assert_eq!(parsed.tracks.len(), 2);
     assert_eq!(parsed.tracks[1].title, "Second Track");
-    assert_eq!(crate::import::release_values::value_labels(&parsed)[1], "B1");
+    assert_eq!(crate::catalog_model::release_values::value_labels(&parsed)[1], "B1");
     let detail = payloads.extract().unwrap().detail(&[]);
     assert_eq!(detail.labels, parsed.pressing.labels);
     assert_eq!(detail.facts, parsed.pressing.facts);

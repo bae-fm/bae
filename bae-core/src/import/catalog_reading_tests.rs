@@ -183,7 +183,7 @@ fn a_cd_rip_of_the_mixed_box_reads_its_two_cds() {
             ],
             "the release holds the two CDs the rip covers, and none of the box's records"
         );
-        let labels = crate::import::release_values::value_labels(values);
+        let labels = crate::catalog_model::release_values::value_labels(values);
         assert_eq!(labels[0], "1-1");
         assert_eq!(labels[11], "1-12");
         assert_eq!(labels[12], "2-1", "disc 2 numbers its own tracks");

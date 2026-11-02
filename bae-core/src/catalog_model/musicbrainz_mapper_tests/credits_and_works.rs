@@ -87,7 +87,7 @@ fn nested_recording_work_imports_composer_work_graph() {
         .iter()
         .any(|part| { part.parent_work_id == parent_id && part.child_work_id == child_id }));
 
-    let committed = crate::import::release_values::committed_artists(&parsed);
+    let committed = crate::import::reading_draft::committed_artists(&parsed);
     let composer = parsed
         .artists
         .iter()
@@ -236,7 +236,7 @@ fn track_level_artist_credit_dedupes_against_release_artist_by_mb_id() {
 
     let parsed = rows(map(&response, vec![]).unwrap());
 
-    let committed = crate::import::release_values::committed_artists(&parsed);
+    let committed = crate::import::reading_draft::committed_artists(&parsed);
     assert!(
         parsed.track_artists.iter().any(|ta| ta.track_id == parsed.tracks[0].id
             && committed[&ta.artist_id] == committed[&parsed.album_artists[0].artist_id]),
@@ -339,7 +339,7 @@ fn known_mb_artist_ids_keep_same_name_artists_separate() {
 
     let parsed = rows(map(&response, vec![]).unwrap());
 
-    let committed = crate::import::release_values::committed_artists(&parsed);
+    let committed = crate::import::reading_draft::committed_artists(&parsed);
     let matching: Vec<_> =
         parsed.artists.iter().filter(|artist| artist.name == "Artist Name A").collect();
     let distinct: std::collections::HashSet<_> =

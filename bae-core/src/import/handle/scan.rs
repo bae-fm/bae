@@ -241,7 +241,7 @@ impl ImportServiceHandle {
     /// `pressing_year`, the folder's — see
     /// `identify::row_facts::folder_pressing_year`.
     pub(crate) fn external_candidate_draft(
-        values: crate::import::release_values::ReleaseValues,
+        values: crate::catalog_model::release_values::ReleaseValues,
         current: &crate::import::CandidateDraft,
         pressing_year: Option<i32>,
     ) -> Result<crate::import::CandidateDraft, crate::import::ImportError> {
@@ -264,7 +264,7 @@ impl ImportServiceHandle {
     pub(crate) async fn external_candidate_metadata(
         &self,
         release: &crate::catalog_model::source_release::SourceRelease,
-        values: crate::import::release_values::ReleaseValues,
+        values: crate::catalog_model::release_values::ReleaseValues,
         partners: Vec<crate::catalog_model::source_release::SourceRelease>,
         current: &crate::import::CandidateDraft,
         pressing_year: Option<i32>,

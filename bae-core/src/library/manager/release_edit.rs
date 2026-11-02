@@ -202,7 +202,7 @@ impl LibraryManager {
         let mut seed = self.read_release_edit(release_id).await?;
         let track_ids: Vec<String> =
             seed.display.tracks().map(|track| track.track_id.clone()).collect();
-        let draft = values.library_draft(track_ids);
+        let draft = crate::import::reading_draft::library_draft(values, track_ids);
         seed.edit = draft.release_edit();
         seed.display = seed.display.placed(
             draft
