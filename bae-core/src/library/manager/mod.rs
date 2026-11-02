@@ -258,13 +258,7 @@ impl From<crate::db::IdentityWriteError> for LibraryError {
                 Self::LabelIdentityConflict(conflict)
             }
             crate::db::IdentityWriteError::Db(error) => Self::Database(error),
-            crate::db::IdentityWriteError::FilesAlreadyImported { release_id } => {
-                Self::Import(Box::new(crate::import::ImportError::FilesAlreadyImported {
-                    release_id,
-                }))
-            }
-            other @ (crate::db::IdentityWriteError::Unresolvable(_)
-            | crate::db::IdentityWriteError::LibraryChanged) => Self::Refused(other.to_string()),
+            crate::db::IdentityWriteError::Unresolvable(detail) => Self::Refused(detail),
         }
     }
 }

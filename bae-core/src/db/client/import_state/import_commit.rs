@@ -5,6 +5,58 @@
 use super::*;
 use crate::import::preparation::CommittingCandidate;
 
+/// Why an import's commit did not land. Nothing of it was written; the
+/// person may ask for the import again.
+#[derive(Debug, thiserror::Error)]
+pub enum ImportCommitError {
+    /// Writing the release's rows failed as any write that decides which
+    /// library artists and labels it names fails.
+    #[error(transparent)]
+    Write(#[from] IdentityWriteError),
+    /// The library's artists changed between preparing the commit and
+    /// writing it in a way that makes what was prepared for them wrong: the
+    /// import fetched pictures for artists that are no longer new, or not for
+    /// ones that now are. Importing again fetches against the library as it
+    /// now stands.
+    #[error("the library's artists changed while this import was being written; import it again")]
+    LibraryChanged,
+    /// Another import of the same files landed first: this device already
+    /// holds `release_id` for the folder hash, and one hash is one release
+    /// here.
+    #[error("this device already imported these files, as release {release_id}")]
+    FilesAlreadyImported { release_id: String },
+}
+
+impl From<rusqlite::Error> for ImportCommitError {
+    fn from(error: rusqlite::Error) -> Self {
+        Self::Write(error.into())
+    }
+}
+
+/// Carry an [`ImportCommitError`] out of the commit's coven write closure
+/// with its type intact, so [`import_commit_error`] can hand it back.
+pub(crate) fn import_commit_failure(error: ImportCommitError) -> CovenError {
+    match error {
+        ImportCommitError::Write(error) => identity_write_failure(error),
+        other => rusqlite::Error::UserFunctionError(Box::new(other)).into(),
+    }
+}
+
+/// The [`ImportCommitError`] the commit's coven write closure failed with.
+pub(crate) fn import_commit_error(error: CovenError) -> ImportCommitError {
+    match error {
+        CovenError::Database(coven::DbError::Sqlite(rusqlite::Error::UserFunctionError(host))) => {
+            match host.downcast::<ImportCommitError>() {
+                Ok(error) => *error,
+                Err(other) => ImportCommitError::Write(Database::identity_write_error(
+                    rusqlite::Error::UserFunctionError(other).into(),
+                )),
+            }
+        }
+        other => ImportCommitError::Write(Database::identity_write_error(other)),
+    }
+}
+
 /// Refuse the import unless the candidate is still exactly what the import
 /// was prepared from. The rows are read here; what must match is
 /// [`ImportExpectation::verify`](crate::import::service::ImportExpectation::verify)'s
@@ -48,12 +100,12 @@ pub(crate) fn end_import_attempt_of_commit(
 /// moved. One hash is one release on this device. The import was refused when
 /// asked for if this device already held the hash; an import of the same files
 /// that landed in between leaves the hash taken, and the unique hash refuses
-/// this commit whole as [`IdentityWriteError::FilesAlreadyImported`].
+/// this commit whole as [`ImportCommitError::FilesAlreadyImported`].
 pub(crate) fn record_import_origin_on(
     sql: &CovenWrite<'_>,
     guard: &ImportCommitGuard,
     release_id: &str,
-) -> Result<(), IdentityWriteError> {
+) -> Result<(), ImportCommitError> {
     match guard {
         ImportCommitGuard::Candidate { expectation, .. } => {
             let content_hash = &expectation.candidate.content_hash;
@@ -76,7 +128,7 @@ pub(crate) fn record_import_origin_on(
                         .optional()?;
                     match imported {
                         Some(release_id) => {
-                            Err(IdentityWriteError::FilesAlreadyImported { release_id })
+                            Err(ImportCommitError::FilesAlreadyImported { release_id })
                         }
                         None => Err(rusqlite::Error::SqliteFailure(failure, message).into()),
                     }

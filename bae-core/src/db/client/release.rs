@@ -1,7 +1,7 @@
 #[cfg(desktop)]
 use super::import_state::{
-    delete_what_the_import_spent_on, end_import_attempt_of_commit, record_import_origin_on,
-    require_import_commit_guard,
+    delete_what_the_import_spent_on, end_import_attempt_of_commit, import_commit_error,
+    import_commit_failure, record_import_origin_on, require_import_commit_guard, ImportCommitError,
 };
 use super::*;
 mod storage;
@@ -558,7 +558,7 @@ impl Database {
         files: Vec<crate::import::service::PreparedImportFile>,
         library_image: Option<(&DbLibraryImage, &[u8])>,
         artist_images: NewArtistImages<'_>,
-    ) -> Result<(), IdentityWriteError> {
+    ) -> Result<(), ImportCommitError> {
         let album = album.cloned();
         let release = release.clone();
         let tracks: Vec<DbTrack> = tracks_to_files.iter().map(|tf| tf.db_track.clone()).collect();
@@ -631,7 +631,7 @@ impl Database {
                 let inserted: BTreeSet<String> =
                     resolved.inserts.iter().map(|artist| artist.id.clone()).collect();
                 if inserted != expected_new_artists {
-                    return Err(identity_write_failure(IdentityWriteError::LibraryChanged));
+                    return Err(import_commit_failure(ImportCommitError::LibraryChanged));
                 }
                 resolved.write_on(tx)?;
                 let artist_ids = resolved.id_map(&artist_credits);
@@ -662,7 +662,7 @@ impl Database {
                     &import_label_write(&labels, guard.content_hash()),
                 )
                 .map_err(identity_write_failure)?;
-                record_import_origin_on(tx, &guard, &release.id).map_err(identity_write_failure)?;
+                record_import_origin_on(tx, &guard, &release.id).map_err(import_commit_failure)?;
                 // The credits are resolved above, so the artist decisions
                 // this deletes have been read.
                 delete_what_the_import_spent_on(tx, &guard)?;
@@ -738,7 +738,7 @@ impl Database {
         )
         .await
         .map(|_| ())
-        .map_err(Self::identity_write_error)
+        .map_err(import_commit_error)
     }
 
     /// Delete a release in one write. Its album's next release in album order

@@ -113,6 +113,8 @@ mod import_state;
 #[cfg(desktop)]
 pub(crate) use import_list::SelectionWrite;
 #[cfg(desktop)]
+pub use import_state::ImportCommitError;
+#[cfg(desktop)]
 pub(crate) use import_state::{
     CandidatePaneWrite, CandidatePreparationRead, CandidateSaveExpectation, CandidateSaveExtras,
     CandidateSaved, ImportClaim, RunVerdictSaved, ScannedCandidateKey,

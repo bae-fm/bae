@@ -138,8 +138,8 @@ pub enum ImportError {
     /// This device already imported a release from these files: one folder
     /// hash is one release on a device (`local_release_origin`). Refused when
     /// the import is asked for, and by the commit when another import of the
-    /// same files landed first. Not desktop-only: the commit's write error
-    /// carries it on every platform.
+    /// same files landed first.
+    #[cfg(desktop)]
     #[error("this device already imported these files, as release {release_id}")]
     FilesAlreadyImported { release_id: String },
 
@@ -326,8 +326,7 @@ impl ImportError {
 }
 
 /// An import's write to the library's records failed: a conflict a person
-/// resolves, credits that cannot be linked, artists that changed under it,
-/// another import of the same files that landed first, or the store.
+/// resolves, credits or labels that cannot be linked, or the store.
 #[cfg(desktop)]
 impl From<crate::db::IdentityWriteError> for ImportError {
     fn from(error: crate::db::IdentityWriteError) -> Self {
@@ -336,9 +335,21 @@ impl From<crate::db::IdentityWriteError> for ImportError {
             E::ArtistIdentityConflict(conflict) => Self::ArtistIdentityConflict(conflict),
             E::LabelIdentityConflict(conflict) => Self::LabelIdentityConflict(conflict),
             E::Unresolvable(detail) => Self::Unresolvable { detail },
+            E::Db(error) => Self::Database(error),
+        }
+    }
+}
+
+/// An import's commit failed: its write failed, the library's artists changed
+/// under it, or another import of the same files landed first.
+#[cfg(desktop)]
+impl From<crate::db::ImportCommitError> for ImportError {
+    fn from(error: crate::db::ImportCommitError) -> Self {
+        use crate::db::ImportCommitError as E;
+        match error {
+            E::Write(error) => error.into(),
             E::LibraryChanged => Self::LibraryChanged,
             E::FilesAlreadyImported { release_id } => Self::FilesAlreadyImported { release_id },
-            E::Db(error) => Self::Database(error),
         }
     }
 }
@@ -383,6 +394,7 @@ impl ImportError {
             Self::CandidateImportInProgress => C::CandidateImportInProgress,
             #[cfg(desktop)]
             Self::CandidateBeingIdentified => C::CandidateBeingIdentified,
+            #[cfg(desktop)]
             Self::FilesAlreadyImported { .. } => C::FilesAlreadyImported,
             #[cfg(desktop)]
             Self::MetadataTrackCount { folder_tracks, release_tracks } => C::MetadataTrackCount {

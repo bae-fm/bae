@@ -45,18 +45,6 @@ pub enum IdentityWriteError {
     /// longer exists.
     #[error("{0}")]
     Unresolvable(String),
-    /// The library's artists changed between preparing the write and
-    /// committing it in a way that makes what was prepared for them wrong:
-    /// the import fetched pictures for artists that are no longer new, or not
-    /// for ones that now are. Nothing was written; importing again fetches
-    /// against the library as it now stands.
-    #[error("the library's artists changed while this import was being written; import it again")]
-    LibraryChanged,
-    /// The import's commit found that another import of the same files had
-    /// landed first: this device already holds `release_id` for the folder
-    /// hash, and one hash is one release here. Nothing was written.
-    #[error("this device already imported these files, as release {release_id}")]
-    FilesAlreadyImported { release_id: String },
     #[error(transparent)]
     Db(#[from] DbError),
 }

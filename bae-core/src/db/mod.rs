@@ -11,6 +11,8 @@ pub(crate) use client::resolved_in_an_empty_library;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) use client::ArtistCredits;
 pub(crate) use client::FileRow;
+#[cfg(desktop)]
+pub use client::ImportCommitError;
 pub(crate) use client::PendingRow;
 pub(crate) use client::QueueUpcomingRead;
 pub(crate) use client::QueuedPayload;
