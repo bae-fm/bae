@@ -111,7 +111,7 @@ impl ImportServiceHandle {
         }
         Ok(Some(FolderReleaseDecisionKey {
             watched_folder_path: root.clone(),
-            relative_folder: crate::import::watched_folder::candidate_relative_path(root, &folder)?,
+            relative_folder: crate::db::watched_path::candidate_relative_path(root, &folder)?,
         }))
     }
 

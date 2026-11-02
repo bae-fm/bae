@@ -32,7 +32,7 @@ fn candidate(root: &std::path::Path) -> FolderCandidate {
         watched_folder_path: root.to_path_buf(),
         scope: ReleaseFileScope::Recursive,
         file_edit_revision: 0,
-        relative_folder: crate::import::RelativeFolder::test("candidate-a"),
+        relative_folder: crate::db::RelativeFolder::test("candidate-a"),
         grouping: None,
     }
 }

@@ -84,7 +84,7 @@ fn twin_of(original: &FolderCandidate, name: &str) -> FolderCandidate {
     twin.path = folder.clone();
     twin.file_root = folder;
     twin.name = name.to_string();
-    twin.relative_folder = crate::import::RelativeFolder::test(name);
+    twin.relative_folder = crate::db::RelativeFolder::test(name);
     assert_eq!(twin.files.content_hash(), original.files.content_hash());
     twin
 }

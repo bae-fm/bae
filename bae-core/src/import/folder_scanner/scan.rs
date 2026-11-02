@@ -1,5 +1,6 @@
 use super::*;
-use crate::import::{CandidateKey, RelativeFolder};
+use crate::db::RelativeFolder;
+use crate::import::CandidateKey;
 use std::collections::HashSet;
 
 mod root;

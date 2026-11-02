@@ -125,7 +125,7 @@ async fn removing_a_watched_folder_cancels_in_flight_extraction() {
 async fn removing_a_root_queued_behind_a_decision_does_not_deadlock() {
     let (manager, database, _temp) = setup_test_manager().await;
     let tables = crate::import::tables::ImportTables::new(database);
-    let root = crate::import::watched_folder::host_root("/music");
+    let root = crate::db::watched_path::host_root("/music");
     tables.add_watched_import_folder(&root).await.unwrap();
     let handle = manager.start_import_service(tokio::runtime::Handle::current()).await.unwrap();
     // A row under `Collection`, so the decision the removal races is one the
@@ -147,7 +147,7 @@ async fn removing_a_root_queued_behind_a_decision_does_not_deadlock() {
                     watched_folder_path: root.clone(),
                     scope: crate::import::folder_scanner::ReleaseFileScope::Recursive,
                     file_edit_revision: 0,
-                    relative_folder: crate::import::RelativeFolder::test("Collection/Album"),
+                    relative_folder: crate::db::RelativeFolder::test("Collection/Album"),
                     grouping: None,
                 },
             ),
@@ -157,7 +157,7 @@ async fn removing_a_root_queued_behind_a_decision_does_not_deadlock() {
         .expect("the scan generation is current");
     let key = FolderReleaseDecisionKey {
         watched_folder_path: root.clone(),
-        relative_folder: crate::import::RelativeFolder::test("Collection"),
+        relative_folder: crate::db::RelativeFolder::test("Collection"),
     };
 
     let (decision_completion, decision_result) = tokio::sync::oneshot::channel();

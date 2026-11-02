@@ -145,7 +145,7 @@ async fn commit_reading_under(
         decision: Some((
             crate::import::folder_scanner::FolderReleaseDecisionKey {
                 watched_folder_path: root.to_path_buf(),
-                relative_folder: crate::import::RelativeFolder::test(folder),
+                relative_folder: crate::db::RelativeFolder::test(folder),
             },
             crate::import::folder_scanner::FolderReading {
                 decision,
@@ -263,7 +263,7 @@ async fn a_folder_reading_trades_its_entries_in_the_write_that_stores_the_decisi
         tables.load_folder_release_decisions(root)
             .await
             .unwrap()
-            .get(&crate::import::RelativeFolder::test("Box"))
+            .get(&crate::db::RelativeFolder::test("Box"))
             .map(|reading| (reading.decision, reading.author)),
         Some((FolderReleaseDecision::CombineAsOneRelease, FolderReleaseDecisionAuthor::User))
     );
@@ -290,7 +290,7 @@ async fn a_folder_reading_trades_its_entries_in_the_write_that_stores_the_decisi
         tables.load_folder_release_decisions(root)
             .await
             .unwrap()
-            .get(&crate::import::RelativeFolder::test("Box"))
+            .get(&crate::db::RelativeFolder::test("Box"))
             .map(|reading| (reading.decision, reading.author)),
         Some((FolderReleaseDecision::KeepAsSeparateReleases, FolderReleaseDecisionAuthor::User))
     );
@@ -369,7 +369,7 @@ async fn a_folder_reading_taken_before_the_root_moved_stores_nothing() {
         .load_folder_release_decisions(root)
         .await
         .unwrap()
-        .get(&crate::import::RelativeFolder::test("Box"))
+        .get(&crate::db::RelativeFolder::test("Box"))
         .is_none());
     assert_eq!(tables.load_folder_scan_snapshots().await.unwrap()[0].generation, moved);
     assert_eq!(
@@ -406,7 +406,7 @@ async fn a_folder_reading_that_fails_partway_rolls_back_whole() {
         .load_folder_release_decisions(root)
         .await
         .unwrap()
-        .get(&crate::import::RelativeFolder::test("Box"))
+        .get(&crate::db::RelativeFolder::test("Box"))
         .is_none());
     assert_eq!(tables.load_folder_scan_snapshots().await.unwrap()[0].generation, generation);
     assert_eq!(
@@ -604,7 +604,7 @@ async fn a_disc_assignment_survives_a_relaunch() {
         watched_folder_path: std::path::PathBuf::from(&root),
         scope: crate::import::ReleaseFileScope::Recursive,
         file_edit_revision: 0,
-        relative_folder: crate::import::RelativeFolder::root(),
+        relative_folder: crate::db::RelativeFolder::root(),
         grouping: None,
     };
     tables.save_folder_scan_item(
@@ -822,7 +822,7 @@ async fn a_folder_reading_is_offered_as_the_stored_scan_reads_the_folder() {
     scanned_box_and_sibling(&db, root).await;
     let key = |folder: &str| FolderReleaseDecisionKey {
         watched_folder_path: root.clone(),
-        relative_folder: crate::import::RelativeFolder::test(folder),
+        relative_folder: crate::db::RelativeFolder::test(folder),
     };
     let offered = |folder: &'static str, decision| {
         let db = db.clone();

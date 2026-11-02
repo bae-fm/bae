@@ -110,7 +110,7 @@ fn rows(projection: &crate::import::ImportListProjection) -> Vec<crate::import::
 async fn import_list_moves_a_row_to_done_when_this_device_imports_its_files() {
     let (db, _temp) = live_db().await;
     let tables = crate::import::tables::ImportTables::new(db.clone());
-    let root = &crate::import::watched_folder::host_root("/music");
+    let root = &crate::db::watched_path::host_root("/music");
     tables.add_watched_import_folder(root).await.unwrap();
     let candidate = scanned(&db, root, "release").await;
 
@@ -142,7 +142,7 @@ async fn import_list_moves_a_row_to_done_when_this_device_imports_its_files() {
 async fn a_done_row_reads_its_library_release() {
     let (db, _temp) = live_db().await;
     let tables = crate::import::tables::ImportTables::new(db.clone());
-    let root = &crate::import::watched_folder::host_root("/music");
+    let root = &crate::db::watched_path::host_root("/music");
     tables.add_watched_import_folder(root).await.unwrap();
     let candidate = scanned(&db, root, "release").await;
     record_import(&db, &candidate.files.content_hash()).await;
@@ -222,7 +222,7 @@ async fn a_done_row_reads_its_library_release() {
 async fn a_release_this_device_did_not_import_leaves_the_folder_in_found() {
     let (db, _temp) = live_db().await;
     let tables = crate::import::tables::ImportTables::new(db.clone());
-    let root = &crate::import::watched_folder::host_root("/music");
+    let root = &crate::db::watched_path::host_root("/music");
     tables.add_watched_import_folder(root).await.unwrap();
     let candidate = scanned(&db, root, "release").await;
     assert!(db.find_release_by_id(RELEASE_ID).await.unwrap().is_some());
@@ -243,7 +243,7 @@ async fn a_release_this_device_did_not_import_leaves_the_folder_in_found() {
 async fn a_moved_folder_stays_done() {
     let (db, _temp) = live_db().await;
     let tables = crate::import::tables::ImportTables::new(db.clone());
-    let root = &crate::import::watched_folder::host_root("/music");
+    let root = &crate::db::watched_path::host_root("/music");
     tables.add_watched_import_folder(root).await.unwrap();
     let imported = scanned(&db, root, "release").await;
     record_import(&db, &imported.files.content_hash()).await;
@@ -264,7 +264,7 @@ async fn a_moved_folder_stays_done() {
 async fn deleting_the_release_puts_its_folder_back_in_found() {
     let (db, _temp) = live_db().await;
     let tables = crate::import::tables::ImportTables::new(db.clone());
-    let root = &crate::import::watched_folder::host_root("/music");
+    let root = &crate::db::watched_path::host_root("/music");
     tables.add_watched_import_folder(root).await.unwrap();
     let candidate = scanned(&db, root, "release").await;
     record_import(&db, &candidate.files.content_hash()).await;
@@ -316,7 +316,7 @@ async fn one_folder_hash_records_one_release() {
 async fn the_pane_of_an_imported_candidate_is_placed_done() {
     let (db, _temp) = live_db().await;
     let tables = crate::import::tables::ImportTables::new(db.clone());
-    let root = &crate::import::watched_folder::host_root("/music");
+    let root = &crate::db::watched_path::host_root("/music");
     tables.add_watched_import_folder(root).await.unwrap();
     let candidate = scanned(&db, root, "release").await;
     let key = candidate.key();
@@ -367,7 +367,7 @@ async fn the_pane_of_an_imported_candidate_is_placed_done() {
 async fn import_list_moving_the_window_reruns_without_a_commit() {
     let (db, _temp) = live_db().await;
     let tables = crate::import::tables::ImportTables::new(db.clone());
-    let root = &crate::import::watched_folder::host_root("/music");
+    let root = &crate::db::watched_path::host_root("/music");
     tables.add_watched_import_folder(root).await.unwrap();
     let generation =
         tables.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
@@ -400,7 +400,7 @@ async fn import_list_moving_the_window_reruns_without_a_commit() {
 async fn import_list_withholds_a_commit_that_changes_nothing_it_reads() {
     let (db, _temp) = live_db().await;
     let tables = crate::import::tables::ImportTables::new(db.clone());
-    let root = &crate::import::watched_folder::host_root("/music");
+    let root = &crate::db::watched_path::host_root("/music");
     tables.add_watched_import_folder(root).await.unwrap();
     let generation =
         tables.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
@@ -441,7 +441,7 @@ async fn import_list_withholds_a_commit_that_changes_nothing_it_reads() {
 async fn import_candidate_moves_between_candidates_on_one_subscription() {
     let (db, _temp) = live_db().await;
     let tables = crate::import::tables::ImportTables::new(db.clone());
-    let root = &crate::import::watched_folder::host_root("/music");
+    let root = &crate::db::watched_path::host_root("/music");
     tables.add_watched_import_folder(root).await.unwrap();
     let generation =
         tables.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();

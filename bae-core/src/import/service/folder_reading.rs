@@ -43,7 +43,7 @@ impl ImportService {
                 ),
             });
         }
-        let decided = crate::import::relative_folder::folder_below(root, &key.relative_folder);
+        let decided = crate::db::watched_path::folder_below(root, &key.relative_folder);
         let Some(std::path::Component::Normal(folder)) =
             decided.strip_prefix(root).ok().and_then(|below| below.components().next())
         else {

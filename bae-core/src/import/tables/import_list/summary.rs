@@ -11,12 +11,13 @@ use super::listed::{BasisColumns, BASIS_COLUMNS};
 use super::order::{sorted_terms, tab_of, unit_join, uploading_cte, Item};
 use super::*;
 use crate::db::client::query::{QueryOne, QueryRows};
+use crate::db::RelativeFolder;
 use crate::import::list::{ImportCandidateListLocation, NarrowedCount};
 use crate::import::selection::{
     SelectedCandidate, SelectedRows, SelectionSummary, SingleSelection,
 };
 use crate::import::triage::{selection_offers, SelectionPart};
-use crate::import::{CandidateKey, PendingFilterEntry, RelativeFolder, TriageTabCounts};
+use crate::import::{CandidateKey, PendingFilterEntry, TriageTabCounts};
 
 /// Every tab's count, how many of Found's releases each filter entry holds,
 /// and whether Found has any group.

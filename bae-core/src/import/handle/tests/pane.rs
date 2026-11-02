@@ -148,7 +148,7 @@ async fn unscanned_candidate(
         watched_folder_path: root.clone(),
         scope: ReleaseFileScope::Recursive,
         file_edit_revision: 0,
-        relative_folder: crate::import::RelativeFolder::test(folder_name),
+        relative_folder: crate::db::RelativeFolder::test(folder_name),
         grouping: None,
     };
 

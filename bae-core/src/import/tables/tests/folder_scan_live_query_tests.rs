@@ -10,7 +10,7 @@ use std::time::Duration;
 async fn import_list_wakes_on_a_scan_item() {
     let (db, _temp) = live_db().await;
     let tables = crate::import::tables::ImportTables::new(db.clone());
-    let root = &crate::import::watched_folder::host_root("/music");
+    let root = &crate::db::watched_path::host_root("/music");
     tables.add_watched_import_folder(root).await.unwrap();
     let generation =
         tables.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
@@ -39,7 +39,7 @@ async fn import_list_wakes_on_a_scan_item() {
 async fn folder_scan_progress_follows_the_walk_in_flight() {
     let (db, _temp) = live_db().await;
     let tables = crate::import::tables::ImportTables::new(db.clone());
-    let root = &crate::import::watched_folder::host_root("/music");
+    let root = &crate::db::watched_path::host_root("/music");
     tables.add_watched_import_folder(root).await.unwrap();
     let generation =
         tables.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
@@ -85,7 +85,7 @@ async fn folder_scan_progress_follows_the_walk_in_flight() {
 async fn folder_scan_progress_reads_the_volume_its_scan_recorded() {
     let (db, _temp) = live_db().await;
     let tables = crate::import::tables::ImportTables::new(db.clone());
-    let root = &crate::import::watched_folder::host_root("/music");
+    let root = &crate::db::watched_path::host_root("/music");
     tables.add_watched_import_folder(root).await.unwrap();
     let generation =
         tables.begin_folder_scan(root, crate::import::VolumeKind::Network).await.unwrap();
@@ -107,7 +107,7 @@ async fn folder_scan_progress_reads_the_volume_its_scan_recorded() {
 async fn folder_scan_progress_excludes_retained_previous_generation_rows() {
     let (db, _temp) = live_db().await;
     let tables = crate::import::tables::ImportTables::new(db.clone());
-    let root = &crate::import::watched_folder::host_root("/music");
+    let root = &crate::db::watched_path::host_root("/music");
     tables.add_watched_import_folder(root).await.unwrap();
     let old_generation =
         tables.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
@@ -147,7 +147,7 @@ async fn folder_scan_progress_excludes_retained_previous_generation_rows() {
 async fn import_list_sleeps_through_a_rescan_that_reconfirms_its_candidates() {
     let (db, _temp) = live_db().await;
     let tables = crate::import::tables::ImportTables::new(db.clone());
-    let root = &crate::import::watched_folder::host_root("/music");
+    let root = &crate::db::watched_path::host_root("/music");
     tables.add_watched_import_folder(root).await.unwrap();
     let generation =
         tables.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
@@ -178,7 +178,7 @@ async fn import_list_sleeps_through_a_rescan_that_reconfirms_its_candidates() {
 async fn a_scans_progress_moves_the_scans_and_sends_the_list_nothing() {
     let (db, _temp) = live_db().await;
     let tables = crate::import::tables::ImportTables::new(db.clone());
-    let root = &crate::import::watched_folder::host_root("/music");
+    let root = &crate::db::watched_path::host_root("/music");
     tables.add_watched_import_folder(root).await.unwrap();
     let generation =
         tables.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
@@ -228,10 +228,8 @@ async fn a_scans_progress_moves_the_scans_and_sends_the_list_nothing() {
 async fn folder_scan_progress_lists_the_folders_in_their_order() {
     let (db, _temp) = live_db().await;
     let tables = crate::import::tables::ImportTables::new(db.clone());
-    let roots = [
-        crate::import::watched_folder::host_root("/zeta"),
-        crate::import::watched_folder::host_root("/alpha"),
-    ];
+    let roots =
+        [crate::db::watched_path::host_root("/zeta"), crate::db::watched_path::host_root("/alpha")];
     for root in &roots {
         tables.add_watched_import_folder(root).await.unwrap();
     }

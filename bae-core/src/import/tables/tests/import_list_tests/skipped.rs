@@ -23,7 +23,7 @@ async fn a_skipped_folder_is_listed_and_read_as_what_its_scan_read() {
         path: folder.clone(),
         name: "Half Copied".to_string(),
         watched_folder_path: root.clone(),
-        relative_folder: crate::import::RelativeFolder::test("Half Copied"),
+        relative_folder: crate::db::RelativeFolder::test("Half Copied"),
         grouping: None,
         files: vec![
             SkippedFile {
@@ -158,7 +158,7 @@ async fn a_skipped_folder_whose_files_show_one_name_is_listed_with_that_name() {
         path: folder.clone(),
         name: "Album".to_string(),
         watched_folder_path: root.clone(),
-        relative_folder: crate::import::RelativeFolder::test("Album"),
+        relative_folder: crate::db::RelativeFolder::test("Album"),
         grouping: None,
         files: vec![file(br"Caf\xE9.flac"), file(b"Caf\xE9.flac")],
         tags: None,

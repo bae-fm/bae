@@ -27,7 +27,7 @@ async fn scanned(
                      X'{key}', X'{key}', 'recursive', '{hash}', {revision});",
             key = hex::encode(key.as_bytes()),
             relative = hex::encode(
-                crate::import::RelativeFolder::of(
+                crate::db::RelativeFolder::of(
                     key.test_folder().strip_prefix("/music").unwrap()
                 )
                 .unwrap()

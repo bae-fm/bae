@@ -160,7 +160,7 @@ fn readings(
             .iter()
             .map(|(folder, decision, author)| {
                 (
-                    crate::import::RelativeFolder::test(folder),
+                    crate::db::RelativeFolder::test(folder),
                     FolderReading {
                         decision: *decision,
                         author: *author,

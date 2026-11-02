@@ -13,12 +13,12 @@
 //! caused, and of those, the ones whose result was unchanged.
 
 use bae_core::db::LibraryPageWindow;
+use bae_core::db::RelativeFolder;
 use bae_core::import::folder_scanner::{
     CandidateFile, CategorizedFiles, FileRole, ScanItem, ScannedAudio, ScannedFile,
 };
 use bae_core::import::{
-    CandidateKey, FolderCandidate, ImportListOrder, ImportListView, RelativeFolder,
-    ReleaseFileScope, TriageTab,
+    CandidateKey, FolderCandidate, ImportListOrder, ImportListView, ReleaseFileScope, TriageTab,
 };
 use bae_core::library::AppServices;
 use std::path::Path;

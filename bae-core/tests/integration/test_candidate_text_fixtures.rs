@@ -211,7 +211,7 @@ async fn drive_fixture(
         ExtractionSource::Candidate {
             candidate: bae_core::import::FolderCandidate {
                 name: folder.file_name().unwrap().to_string_lossy().into_owned(),
-                relative_folder: bae_core::import::RelativeFolder::root(),
+                relative_folder: bae_core::db::RelativeFolder::root(),
                 watched_folder_path: folder.clone(),
                 file_root: folder.clone(),
                 path: folder,

@@ -32,7 +32,7 @@ pub(crate) fn candidate_with(
         watched_folder_path: std::path::PathBuf::from(root),
         scope,
         file_edit_revision: 0,
-        relative_folder: crate::import::RelativeFolder::test(name),
+        relative_folder: crate::db::RelativeFolder::test(name),
         grouping: None,
     }
 }

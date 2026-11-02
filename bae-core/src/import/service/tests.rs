@@ -1,8 +1,8 @@
 use super::*;
+use crate::db::watched_path::host_root;
 use crate::db::Database;
 use crate::import::folder_scanner::ScannedFile;
 use crate::import::import_cancel::ImportStop;
-use crate::import::watched_folder::host_root;
 use crate::library::LibraryManager;
 use bae_test_support::HANG_GUARD;
 use coven::FixedClock;
@@ -172,7 +172,7 @@ async fn store_scanned_candidate(
             watched_folder_path: folder.to_path_buf(),
             scope: crate::import::ReleaseFileScope::Recursive,
             file_edit_revision: 0,
-            relative_folder: crate::import::RelativeFolder::test(name),
+            relative_folder: crate::db::RelativeFolder::test(name),
             grouping: None,
         }),
     )
@@ -447,7 +447,7 @@ impl CoordinatorHarness {
                     path: root_path.join("Group/Release"),
                     name: "Release".to_string(),
                     watched_folder_path: std::path::PathBuf::from(&root),
-                    relative_folder: crate::import::RelativeFolder::test("Group/Release"),
+                    relative_folder: crate::db::RelativeFolder::test("Group/Release"),
                     grouping: None,
                     files: Vec::new(),
                     tags: None,

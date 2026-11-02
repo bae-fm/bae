@@ -44,7 +44,7 @@ fn request_group_decision(
             target: (
                 crate::import::FolderReleaseDecisionKey {
                     watched_folder_path: root.to_path_buf(),
-                    relative_folder: crate::import::RelativeFolder::test("Group"),
+                    relative_folder: crate::db::RelativeFolder::test("Group"),
                 },
                 crate::import::FolderReleaseDecision::CombineAsOneRelease,
             ),
@@ -563,7 +563,7 @@ async fn coordinator_decision_replaces_a_running_root_pass_and_owes_it_again() {
     harness.scans.wait_for_count(2).await;
     assert_eq!(
         harness.scans.reading(1).map(|(key, _)| key.relative_folder),
-        Some(crate::import::RelativeFolder::test("Group")),
+        Some(crate::db::RelativeFolder::test("Group")),
         "the pass after the cancelled one is the folder reading"
     );
     // The reading is the fake pass's to answer now, and it has not.

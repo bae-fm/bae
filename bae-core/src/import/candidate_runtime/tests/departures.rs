@@ -15,7 +15,7 @@ fn invalid(candidate: &FolderCandidate) -> ImportEvent {
         path: candidate.path.clone(),
         name: "rel1".to_string(),
         watched_folder_path: candidate.watched_folder_path.clone(),
-        relative_folder: crate::import::RelativeFolder::test("rel1"),
+        relative_folder: crate::db::RelativeFolder::test("rel1"),
         grouping: candidate.grouping.clone(),
         files: Vec::new(),
         tags: None,

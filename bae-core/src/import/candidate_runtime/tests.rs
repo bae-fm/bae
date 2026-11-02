@@ -18,7 +18,7 @@ fn empty_categorized() -> CategorizedFiles {
 fn folder_candidate(key: &crate::import::CandidateKey, watched: &str) -> FolderCandidate {
     let path = key.test_folder();
     FolderCandidate {
-        relative_folder: crate::import::RelativeFolder::of(path.strip_prefix(watched).unwrap())
+        relative_folder: crate::db::RelativeFolder::of(path.strip_prefix(watched).unwrap())
             .unwrap(),
         name: format!("Candidate {}", path.display()),
         file_root: path.clone(),
@@ -151,7 +151,7 @@ async fn scanned_at(
                      X'{key}', X'{key}', 'recursive', '{hash}', {revision});",
             key = hex::encode(key.as_bytes()),
             relative = hex::encode(
-                crate::import::RelativeFolder::of(key.test_folder().strip_prefix("/watch").unwrap())
+                crate::db::RelativeFolder::of(key.test_folder().strip_prefix("/watch").unwrap())
                     .unwrap()
                     .as_bytes()
             ),

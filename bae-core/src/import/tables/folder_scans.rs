@@ -784,10 +784,7 @@ pub(super) fn validate_scan_item_ownership(
         }
         ScanItem::Decided { key, .. } => (
             key.watched_folder_path.as_path(),
-            crate::import::relative_folder::folder_below(
-                &key.watched_folder_path,
-                &key.relative_folder,
-            ),
+            crate::db::watched_path::folder_below(&key.watched_folder_path, &key.relative_folder),
         ),
         ScanItem::Sidecar(sidecar) => {
             (sidecar.watched_folder_path.as_path(), sidecar.folder.clone())
@@ -847,10 +844,8 @@ pub(super) fn store_folder_reading(
         decision,
         crate::import::folder_scanner::FolderReleaseDecision::CombineAsOneRelease
     );
-    let anchor = crate::import::relative_folder::folder_below(
-        &key.watched_folder_path,
-        &key.relative_folder,
-    );
+    let anchor =
+        crate::db::watched_path::folder_below(&key.watched_folder_path, &key.relative_folder);
     let covering = super::import_state::require_watched(sql, &anchor)?;
     if covering.as_os_str() != key.watched_folder_path.as_os_str() {
         return Err(DbError::Message(format!(

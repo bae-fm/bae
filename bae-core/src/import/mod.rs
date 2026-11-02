@@ -77,7 +77,6 @@ pub mod probe;
 /// What one reading of a source says a release is, as plain values.
 #[cfg(desktop)]
 pub(crate) mod reading_draft;
-pub mod relative_folder;
 #[cfg(desktop)]
 pub mod release_candidate;
 #[cfg(desktop)]
@@ -256,7 +255,6 @@ pub use mapping::{
 pub use preparation::{CandidateAsRead, CandidatePreparation, MetadataAuthor};
 #[cfg(desktop)]
 pub use preparations::CandidatePreparations;
-pub use relative_folder::RelativeFolder;
 #[cfg(desktop)]
 pub use release_reads::ReleaseReads;
 #[cfg(desktop)]

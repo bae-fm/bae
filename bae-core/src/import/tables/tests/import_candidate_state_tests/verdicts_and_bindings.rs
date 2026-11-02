@@ -5,7 +5,7 @@ use crate::identify::{
 };
 use crate::import::folder_scanner::{CandidateFile, CategorizedFiles, FileRole, ScannedFile};
 use crate::catalog_model::search::MetadataResult;
-use crate::import::watched_folder::host_root;
+use crate::db::watched_path::host_root;
 use coven::FixedClock;
 use std::path::PathBuf;
 

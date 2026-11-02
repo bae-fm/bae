@@ -5,6 +5,8 @@ pub use error::DbError;
 pub mod identity;
 mod models;
 pub mod source_audio;
+pub(crate) mod watched_path;
+pub use watched_path::{RelativeFolder, WatchedPathError};
 // Only an import names its own artist credits from outside `db`.
 pub use client::list_windows::{LibraryBrowseWindow, LibraryPageWindow, LibraryPageWindows};
 #[cfg(test)]

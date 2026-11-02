@@ -25,7 +25,7 @@ async fn album_of_discs(
         std::fs::copy(&fixture, album.join("00.flac")).unwrap();
     }
     std::fs::write(album.join("cover.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
-    let root = crate::import::watched_folder::canonical_absolute_root(&root).unwrap();
+    let root = crate::db::watched_path::canonical_absolute_root(&root).unwrap();
     tables.add_watched_import_folder(&root).await.unwrap();
     let handle = manager.start_import_service(tokio::runtime::Handle::current()).await.unwrap();
     handle.refresh_watched_folder(root.clone()).await.unwrap();
@@ -33,7 +33,7 @@ async fn album_of_discs(
         .load_folder_release_decisions(&root)
         .await
         .unwrap()
-        .get(&crate::import::RelativeFolder::test("Album"))
+        .get(&crate::db::RelativeFolder::test("Album"))
         .cloned()
         .expect("the scan read the album folder");
     if reading.decision == crate::import::FolderReleaseDecision::CombineAsOneRelease {

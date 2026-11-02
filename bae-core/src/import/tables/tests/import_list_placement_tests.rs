@@ -135,7 +135,7 @@ struct Library {
 impl Library {
     async fn new() -> Self {
         let (db, tmp) = empty_db().await;
-        let root = crate::import::watched_folder::host_root("/music");
+        let root = crate::db::watched_path::host_root("/music");
         let library = Self { db, _tmp: tmp, root };
         library.run(&library.watch(&library.root, 0)).await;
         library
@@ -210,7 +210,7 @@ impl Library {
     /// folder as `kind`.
     fn scan_folder(&self, relative: &std::path::Path, kind: &str) -> String {
         let folder = self.folder(relative);
-        let relative = crate::import::RelativeFolder::of(relative).unwrap();
+        let relative = crate::db::RelativeFolder::of(relative).unwrap();
         let name = coven::path_text(std::path::Path::new(folder.file_name().unwrap()));
         let hash = match kind {
             "invalid" => "NULL".to_string(),
@@ -230,9 +230,9 @@ impl Library {
 
     /// The folder `relative` below the watched folder.
     fn folder(&self, relative: &std::path::Path) -> std::path::PathBuf {
-        crate::import::relative_folder::folder_below(
+        crate::db::watched_path::folder_below(
             &self.root,
-            &crate::import::RelativeFolder::of(relative).unwrap(),
+            &crate::db::RelativeFolder::of(relative).unwrap(),
         )
     }
 
@@ -481,7 +481,7 @@ fn sql_blob(bytes: &[u8]) -> String {
 /// The folder at `display_path` below a watched folder as a SQL literal of its
 /// `RelativeFolder` bytes.
 fn sql_relative(display_path: &str) -> String {
-    sql_blob(crate::import::RelativeFolder::test(display_path).as_bytes())
+    sql_blob(crate::db::RelativeFolder::test(display_path).as_bytes())
 }
 
 /// The content hash the fixtures give the release at `display_path`.

@@ -371,26 +371,26 @@ fn catalog_rank_value(catalog: String) -> rusqlite::Result<i64> {
 /// folder it reads. Takes BLOBs only: rusqlite refuses TEXT for a `Vec<u8>`,
 /// so a path bound as text fails rather than matching nothing.
 ///
-/// [`RelativeFolder`]: crate::import::RelativeFolder
+/// [`RelativeFolder`]: crate::db::RelativeFolder
 fn folder_below_value(root: Vec<u8>, relative: Vec<u8>) -> rusqlite::Result<Vec<u8>> {
     let root = coven::path_from_bytes(root)
         .map_err(|error| rusqlite::Error::UserFunctionError(Box::new(error)))?;
-    let relative = crate::import::RelativeFolder::from_bytes(relative)
+    let relative = crate::db::RelativeFolder::from_bytes(relative)
         .map_err(|error| rusqlite::Error::UserFunctionError(Box::new(error)))?;
-    Ok(coven::path_bytes(&crate::import::relative_folder::folder_below(&root, &relative)))
+    Ok(coven::path_bytes(&crate::db::watched_path::folder_below(&root, &relative)))
 }
 
 /// `bae_folder_relative`: the [`RelativeFolder`] bytes of a folder below a
 /// watched folder, empty for the watched folder itself, NULL for one outside
 /// it. Takes BLOBs only, as `bae_folder_below` does.
 ///
-/// [`RelativeFolder`]: crate::import::RelativeFolder
+/// [`RelativeFolder`]: crate::db::RelativeFolder
 fn folder_relative_value(root: Vec<u8>, folder: Vec<u8>) -> rusqlite::Result<Option<Vec<u8>>> {
     let to_error =
         |error: coven::PathBytesError| rusqlite::Error::UserFunctionError(Box::new(error));
     let root = coven::path_from_bytes(root).map_err(to_error)?;
     let folder = coven::path_from_bytes(folder).map_err(to_error)?;
-    crate::import::relative_folder::folder_relative_below(&root, &folder)
+    crate::db::watched_path::folder_relative_below(&root, &folder)
         .map(|relative| relative.map(|relative| relative.as_bytes().to_vec()))
         .map_err(|error| rusqlite::Error::UserFunctionError(Box::new(error)))
 }

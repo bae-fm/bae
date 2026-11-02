@@ -2,12 +2,12 @@
 //! they take in, in the same write as whatever changes one of them.
 
 use super::{candidate, empty_db, folder_below};
+use crate::db::watched_path::host_root;
 use crate::import::folder_scanner::{
     AudioDamage, CandidateFile, FileRole, FolderCandidate, FolderSidecar, InvalidReason,
     ProposedRole, ScanItem, ScannedFile, SidecarFiles, SkippedFile,
 };
 use crate::import::grouping::GroupingBlock;
-use crate::import::watched_folder::host_root;
 
 /// `names` under one watched root, scanned to completion.
 async fn scanned(
@@ -153,7 +153,7 @@ async fn folders_whose_names_show_the_same_combine_into_no_importable_release() 
         folder.path = root.join(name);
         folder.file_root = folder.path.clone();
         folder.name = coven::path_text(name);
-        folder.relative_folder = crate::import::RelativeFolder::of(name).unwrap();
+        folder.relative_folder = crate::db::RelativeFolder::of(name).unwrap();
         folder
     };
     let (db, _temp, members) = scanned_folders(vec![

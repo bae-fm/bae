@@ -128,7 +128,7 @@ fn candidate(root: &std::path::Path, name: &str) -> FolderCandidate {
         watched_folder_path: root.to_path_buf(),
         scope: ReleaseFileScope::Recursive,
         file_edit_revision: 0,
-        relative_folder: bae_core::import::RelativeFolder::of(std::path::Path::new(name)).unwrap(),
+        relative_folder: bae_core::db::RelativeFolder::of(std::path::Path::new(name)).unwrap(),
         grouping: None,
     }
 }

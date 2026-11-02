@@ -22,10 +22,10 @@ impl ImportTables {
         // Spelled the way the add keyed them.
         let roots = roots
             .iter()
-            .map(|root| crate::import::watched_folder::canonical_absolute_root(root))
+            .map(|root| crate::db::watched_path::canonical_absolute_root(root))
             .collect::<Result<Vec<_>, _>>()?;
         let parent = parent
-            .map(|parent| crate::import::watched_folder::canonical_absolute_root(&parent))
+            .map(|parent| crate::db::watched_path::canonical_absolute_root(&parent))
             .transpose()?;
         if roots.is_empty() {
             return Err(DbError::Message("removing watched folders requires at least one".into()));
@@ -150,7 +150,7 @@ fn forget_folders_under(
 ) -> Result<Vec<CandidateKey>, DbError> {
     let mut removed = Vec::new();
     for root in roots {
-        let (below_first, below_past) = crate::import::relative_folder::paths_below(root);
+        let (below_first, below_past) = crate::db::watched_path::paths_below(root);
         let root = coven::path_bytes(root);
         let under = |column: &str| {
             format!("({column} = :root OR ({column} >= :below_first AND {column} < :below_past))")

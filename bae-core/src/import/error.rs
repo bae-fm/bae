@@ -209,8 +209,8 @@ pub enum ImportError {
     /// store refuses to key by: relative, climbing out of itself, or not the
     /// one canonical spelling.
     #[cfg(desktop)]
-    #[error("watched folder: {detail}")]
-    WatchedFolder { detail: String },
+    #[error(transparent)]
+    WatchedFolder(crate::db::WatchedPathError),
 
     /// A folder's OS-level filesystem watch could not be installed or
     /// removed (missing path, permissions). An OS/user condition, not a
@@ -423,7 +423,7 @@ impl ImportError {
             | Self::SourceRead { .. }
             | Self::Edit(_)
             | Self::SheetBinding { .. }
-            | Self::WatchedFolder { .. }
+            | Self::WatchedFolder(_)
             | Self::Watch { .. } => C::Import,
         }
     }
