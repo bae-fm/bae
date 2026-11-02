@@ -317,7 +317,7 @@ async fn opening_a_library_empties_its_transfer_queues() {
     let app_dir = crate::config::AppDir::at(temp_dir.path()).unwrap();
     let installation = coven::TestCoven::new();
     let clock: coven::ClockRef = Arc::new(coven::SystemClock);
-    let handle = crate::library::configure_store(installation.builder(app_dir.store_layout()))
+    let handle = crate::db::configure_store(installation.builder(app_dir.store_layout()))
         .clock(clock.clone())
         .storage_connector(Arc::new(MemoryStorage::builder().clock(clock.clone()).build().unwrap()))
         .create_store("Test Library")

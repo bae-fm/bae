@@ -377,7 +377,7 @@ impl Database {
             let mut staged = Vec::with_capacity(rows.len());
             for (file, original) in rows.iter().zip(prepared) {
                 let id = sql.put_user_file(
-                    crate::sync::RELEASE_FILES_NAMESPACE,
+                    crate::db::synced::RELEASE_FILES_NAMESPACE,
                     original,
                     coven::Place::DeviceOnly,
                 )?;

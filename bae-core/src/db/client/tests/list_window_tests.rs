@@ -276,7 +276,7 @@ fn reads_search_text_by_entry(steps: &[String]) -> bool {
 
 /// The search pattern of `text`, as a statement binds it.
 fn search_param(text: &str) -> Vec<(&'static str, rusqlite::types::Value)> {
-    vec![(":search", rusqlite::types::Value::Text(crate::library::search::search_pattern(text)))]
+    vec![(":search", rusqlite::types::Value::Text(crate::db::schema::search_pattern(text)))]
 }
 
 /// A searching Storage Manager list stays on its indexes under every sort
@@ -395,7 +395,7 @@ fn found_totals(
     sql.query_row(
         &storage_found_totals_query(filter),
         rusqlite::named_params! {
-            ":search": crate::library::search::search_pattern(text),
+            ":search": crate::db::schema::search_pattern(text),
             ":titles": titles,
         },
         |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
@@ -410,7 +410,7 @@ fn pass_totals(
 ) -> rusqlite::Result<(i64, i64)> {
     sql.query_row(
         &statement,
-        rusqlite::named_params! { ":search": crate::library::search::search_pattern(text) },
+        rusqlite::named_params! { ":search": crate::db::schema::search_pattern(text) },
         |row| Ok((row.get(0)?, row.get(1)?)),
     )
 }
@@ -479,7 +479,7 @@ async fn every_search_read_finds_the_same_releases() {
             let order = order.clone();
             let (counts, lists) = db
                 .read(move |sql| {
-                    let pattern = crate::library::search::search_pattern(text);
+                    let pattern = crate::db::schema::search_pattern(text);
                     let found = found_totals(&sql, filter, text, i64::MAX)
                         .map(|(_, count, size)| (count, size));
                     let unfound = pass_totals(&sql, storage_unfound_totals_query(filter), text)

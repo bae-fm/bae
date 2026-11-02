@@ -18,5 +18,5 @@ pub(crate) fn natural_order(left: &str, right: &str) -> std::cmp::Ordering {
 
 /// The ordered migration ladder. Versions are 1-based and contiguous.
 pub fn all() -> Vec<coven::Migration> {
-    vec![coven::Migration::addition(1, "initial", include_str!("../migrations/001_initial.sql"))]
+    vec![coven::Migration::addition(1, "initial", include_str!("../../migrations/001_initial.sql"))]
 }

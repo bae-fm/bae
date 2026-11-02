@@ -110,7 +110,7 @@ pub(crate) async fn write_cover(db: &super::Database, release: &str, content: &s
     let bytes = content.as_bytes();
     let image = crate::db::DbLibraryImage::cover(release, fixed_now());
     db.write_library_image(&image, bytes).await.unwrap();
-    stored_image_version(db, crate::sync::COVERS_NAMESPACE, release).await
+    stored_image_version(db, crate::db::synced::COVERS_NAMESPACE, release).await
 }
 
 /// The version reads should report for the image on `table`'s row `id`: the
@@ -119,8 +119,8 @@ pub(crate) async fn write_cover(db: &super::Database, release: &str, content: &s
 /// than from the version query.
 async fn stored_image_version(db: &super::Database, table: &str, id: &str) -> String {
     let image_type = match table {
-        crate::sync::COVERS_NAMESPACE => crate::db::LibraryImageType::Cover,
-        crate::sync::ARTIST_IMAGES_NAMESPACE => crate::db::LibraryImageType::Artist,
+        crate::db::synced::COVERS_NAMESPACE => crate::db::LibraryImageType::Cover,
+        crate::db::synced::ARTIST_IMAGES_NAMESPACE => crate::db::LibraryImageType::Artist,
         other => panic!("{other} holds no library images"),
     };
     let file = db.library_image_file(id, &image_type).await.unwrap().expect("the image row");

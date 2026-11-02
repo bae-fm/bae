@@ -341,7 +341,7 @@ async fn resolving_a_conflict_moves_the_absorbed_artists_image_to_the_survivor()
 
     assert_eq!(artist_image_file(&db, &discogs.id).await.id(), absorbed);
     assert_eq!(
-        db.queued_upload_count_in_namespace_for_test(crate::sync::ARTIST_IMAGES_NAMESPACE)
+        db.queued_upload_count_in_namespace_for_test(crate::db::synced::ARTIST_IMAGES_NAMESPACE)
             .await
             .unwrap(),
         1,

@@ -4,7 +4,7 @@ use super::super::*;
 /// `created_at` is valid, so a test can corrupt one column and prove the
 /// mapper rejects it.
 fn seeded_conn() -> Connection {
-    let conn = crate::library::bare_library_connection();
+    let conn = crate::db::schema::bare_library_connection();
     let now = "2026-01-01T00:00:00Z";
     conn.execute(
         "INSERT INTO artists (id, name, name_key, created_at) VALUES ('6c441836-aef7-4239-8a84-5336c4cce52c', 'Artist Name', 'artist name', ?)",

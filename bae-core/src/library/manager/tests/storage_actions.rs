@@ -150,8 +150,9 @@ async fn the_write_that_releases_a_releases_pins_ends_its_unpin() {
     manager.drain_uploads_expecting_work().await.unwrap();
     wait_for_kept_release(&manager, &release.id).await;
     let file = release_files(&manager, &release.id).await.remove(0);
-    let pinned =
-        || async { file_pinned(&manager, crate::sync::RELEASE_FILES_NAMESPACE, &file.id).await };
+    let pinned = || async {
+        file_pinned(&manager, crate::db::synced::RELEASE_FILES_NAMESPACE, &file.id).await
+    };
     assert!(pinned().await);
 
     let refused = manager.database.unpin_release(&release.id, vec![file.file]).await;

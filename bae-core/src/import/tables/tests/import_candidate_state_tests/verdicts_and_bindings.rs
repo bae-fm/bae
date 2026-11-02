@@ -222,7 +222,7 @@ async fn every_metadata_provenance_variant_survives_a_database_reopen() {
     let installation = coven::TestCoven::new();
     let layout = crate::config::AppDir::at(tmp.path()).unwrap().store_layout();
     let clock: coven::ClockRef = Arc::new(FixedClock::new(fixed_now().into()));
-    let handle = crate::library::configure_store(installation.builder(layout.clone()))
+    let handle = crate::db::configure_store(installation.builder(layout.clone()))
         .clock(clock.clone())
         .create_store("Test Library")
         .await
@@ -266,7 +266,7 @@ async fn every_metadata_provenance_variant_survives_a_database_reopen() {
     db.close().await.unwrap();
     drop(db);
 
-    let handle = crate::library::configure_store(installation.builder(layout))
+    let handle = crate::db::configure_store(installation.builder(layout))
         .clock(clock.clone())
         .open(id, |_| ())
         .await

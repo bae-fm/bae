@@ -4,7 +4,7 @@
 
 /// The albums whose credits library search finds (§2.3) for the search
 /// pattern the parameter `pattern` binds (see
-/// [`crate::library::search::search_pattern`]): the name of the artist a
+/// [`crate::db::schema::search_pattern`]): the name of the artist a
 /// credit shows, or the other name it prints, holds it. Each part reads its
 /// search table's index, and an album two credits find is listed twice, so
 /// the list is only read through `IN`.
@@ -25,7 +25,7 @@ pub(super) fn albums_credits_find_sql(pattern: &str) -> String {
 
 /// Whether the album `album_id` names is one library search finds (§2.3)
 /// for the search pattern the parameter `pattern` binds (see
-/// [`crate::library::search::search_pattern`]): its title, or the name of an
+/// [`crate::db::schema::search_pattern`]): its title, or the name of an
 /// artist one of its credits shows or the other name a credit prints, holds
 /// it. Each part reads its search table's index, so the test costs what the
 /// search finds, read once per statement; an album two parts find is listed

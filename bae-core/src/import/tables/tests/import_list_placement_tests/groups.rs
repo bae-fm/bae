@@ -152,7 +152,7 @@ async fn a_moved_release_changes_group() {
 /// own steps for the write of the release's scan row, its triggers' included.
 #[test]
 fn a_member_costs_the_same_however_large_its_group() {
-    let conn = crate::library::bare_library_connection();
+    let conn = crate::db::schema::bare_library_connection();
     let root = crate::db::watched_path::host_root("/music");
     let root_bytes = coven::path_bytes(&root);
     conn.execute(

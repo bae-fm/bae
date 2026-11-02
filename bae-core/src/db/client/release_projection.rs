@@ -259,7 +259,7 @@ pub(super) fn storage_totals_on(
     let Some(query) = query else {
         return Ok((storage_count_on(sql, filter)?, storage_total_size_on(sql, filter)?, None));
     };
-    let pattern = crate::library::search::search_pattern(query.as_str());
+    let pattern = crate::db::schema::search_pattern(query.as_str());
     let kept = storage_count_on(sql, filter)?;
     // The listing's release count stands in for how many albums there are.
     let titles = storage_found_titles(storage_count_on(sql, StorageFilter::All)?);

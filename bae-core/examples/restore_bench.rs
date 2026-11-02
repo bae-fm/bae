@@ -137,12 +137,11 @@ async fn bench(
     remove_devices: bool,
 ) -> Result<(), String> {
     let opening = Instant::now();
-    let source = bae_core::library::configure_store(
-        bae_core::library::Keychain::System.store_builder(app_dir),
-    )
-    .open(store_id, |_| ())
-    .await
-    .map_err(|error| format!("open the active library failed: {error}"))?;
+    let source =
+        bae_core::db::configure_store(bae_core::library::Keychain::System.store_builder(app_dir))
+            .open(store_id, |_| ())
+            .await
+            .map_err(|error| format!("open the active library failed: {error}"))?;
     eprintln!(
         "opened {} ({store_id}) in {:?}",
         source.store_name().await.map_err(|error| error.to_string())?,
@@ -185,7 +184,7 @@ async fn restore_runs(
             // at another download limit asks coven directly, configured as
             // bae configures its store.
             Some(downloads) => coven::restore_from_code(
-                bae_core::library::configure_store(builder)
+                bae_core::db::configure_store(builder)
                     .max_concurrent_uploads(crate_default_uploads())
                     .max_concurrent_downloads(downloads),
                 code,

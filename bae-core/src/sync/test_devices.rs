@@ -168,7 +168,7 @@ impl Library {
         let dir = TempDir::new().unwrap();
         let app = AppDir::at(dir.path()).unwrap();
         let installation = coven::TestCoven::new();
-        let handle = crate::library::configure_store(installation.builder(app.store_layout()))
+        let handle = crate::db::configure_store(installation.builder(app.store_layout()))
             .storage_connector(storage.clone())
             .create_store("Two Devices")
             .await
@@ -202,7 +202,7 @@ impl Library {
         let app = AppDir::at(dir.path()).unwrap();
         let installation = coven::TestCoven::new();
         let storage = Arc::new(self.storage.for_device());
-        let builder = crate::library::configure_store(installation.builder(app.store_layout()))
+        let builder = crate::db::configure_store(installation.builder(app.store_layout()))
             .storage_connector(storage.clone());
         let (_sender, cancel) = tokio::sync::watch::channel(false);
         let handle = coven::restore_from_code(
@@ -359,13 +359,12 @@ impl TestDevice {
     pub(crate) async fn reopen_with(&mut self, migrations: Vec<coven::Migration>) {
         self.close().await;
         let store = self.database().store_id();
-        let handle =
-            crate::library::configure_store(self.installation.builder(self.app.store_layout()))
-                .migrations(migrations)
-                .storage_connector(self.storage.clone())
-                .open(store, |_| ())
-                .await
-                .expect("open the device's store again");
+        let handle = crate::db::configure_store(self.installation.builder(self.app.store_layout()))
+            .migrations(migrations)
+            .storage_connector(self.storage.clone())
+            .open(store, |_| ())
+            .await
+            .expect("open the device's store again");
         self.library = RunningLibrary::new(self.app.clone(), handle);
         self.database().start_sync().await.unwrap();
     }

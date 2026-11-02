@@ -60,7 +60,7 @@ impl LibraryManager {
     ) -> Result<Self, crate::db::DbError> {
         let handle = match opening {
             LibraryOpening::Registered { builder, store, on_progress } => {
-                crate::library::configure_store(builder)
+                crate::db::configure_store(builder)
                     .clock(clock.clone())
                     .open(store, on_progress)
                     .await?

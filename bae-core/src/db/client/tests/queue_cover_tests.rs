@@ -47,7 +47,8 @@ async fn cover_of(db: &Database, track_id: &str) -> Option<crate::db::ImageRef> 
 async fn cover_ref(db: &Database, release_id: &str) -> Option<crate::db::ImageRef> {
     Some(crate::db::ImageRef {
         id: release_id.to_string(),
-        version: super::stored_image_version(db, crate::sync::COVERS_NAMESPACE, release_id).await,
+        version: super::stored_image_version(db, crate::db::synced::COVERS_NAMESPACE, release_id)
+            .await,
         image_type: LibraryImageType::Cover,
     })
 }

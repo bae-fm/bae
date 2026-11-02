@@ -8,7 +8,7 @@
 //! natural `UNIQUE` key. Each id here is a name-based UUID over a text key that
 //! spells the fact, so it stays an opaque UUID to everything that stores or
 //! shows it. These tables are declared `RowIdentity::SharedKey` in
-//! `sync::synced_tables`.
+//! `db::synced::synced_tables`.
 
 use crate::catalog_model::records::ReleaseRecord;
 use bae_catalogs::catalog::Catalog;

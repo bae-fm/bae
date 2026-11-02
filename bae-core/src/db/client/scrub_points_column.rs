@@ -173,7 +173,7 @@ mod tests {
     /// one that ends a varint is left to the reader to judge.
     #[test]
     fn the_table_refuses_a_blob_that_ends_inside_a_varint() {
-        let conn = crate::library::bare_library_connection();
+        let conn = crate::db::schema::bare_library_connection();
         conn.execute_batch("PRAGMA foreign_keys = OFF").unwrap();
         let insert = |blob: &[u8]| {
             conn.execute(

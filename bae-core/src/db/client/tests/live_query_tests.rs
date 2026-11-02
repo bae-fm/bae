@@ -52,7 +52,7 @@ pub(super) async fn write_artist_image(db: &Database, artist: &str, content: &st
     )
     .await
     .unwrap();
-    super::stored_image_version(db, crate::sync::ARTIST_IMAGES_NAMESPACE, artist).await
+    super::stored_image_version(db, crate::db::synced::ARTIST_IMAGES_NAMESPACE, artist).await
 }
 
 /// Move `live` to `request` and return the event answering it, asserting the

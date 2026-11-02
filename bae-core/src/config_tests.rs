@@ -213,11 +213,11 @@ async fn discovery_uses_coven_names_and_sorts_the_active_store_first() {
     let tmp = TempDir::new().unwrap();
     let app_dir = AppDir::at(tmp.path()).unwrap();
     let installation = coven::TestCoven::new();
-    let first = crate::library::configure_store(installation.builder(app_dir.store_layout()))
+    let first = crate::db::configure_store(installation.builder(app_dir.store_layout()))
         .create_store("First")
         .await
         .unwrap();
-    let second = crate::library::configure_store(installation.builder(app_dir.store_layout()))
+    let second = crate::db::configure_store(installation.builder(app_dir.store_layout()))
         .create_store("Second")
         .await
         .unwrap();
@@ -257,7 +257,7 @@ async fn discovery_lists_a_library_whose_settings_cant_be_read() {
     let installation = coven::TestCoven::new();
     let mut ids = Vec::new();
     for name in ["Openable", "Unreadable"] {
-        let handle = crate::library::configure_store(installation.builder(app_dir.store_layout()))
+        let handle = crate::db::configure_store(installation.builder(app_dir.store_layout()))
             .create_store(name)
             .await
             .unwrap();
@@ -311,7 +311,7 @@ async fn an_app_dir_under_a_fresh_home_exists_and_holds_a_new_store() {
     let app_dir = AppDir::under_home(home.path()).unwrap();
     assert!(home.path().join(".bae").is_dir());
     let installation = coven::TestCoven::new();
-    let handle = crate::library::configure_store(installation.builder(app_dir.store_layout()))
+    let handle = crate::db::configure_store(installation.builder(app_dir.store_layout()))
         .create_store("First")
         .await
         .unwrap();

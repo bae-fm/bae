@@ -95,7 +95,7 @@ async fn restore_cost(library: Library) {
     let owner_dir = tempfile::TempDir::new().unwrap();
     let app_dir = AppDir::at(owner_dir.path()).unwrap();
     let installation = TestCoven::new();
-    let handle = bae_core::library::configure_store(installation.builder(app_dir.store_layout()))
+    let handle = bae_core::db::configure_store(installation.builder(app_dir.store_layout()))
         .clock(clock.clone())
         .storage_connector(storage.clone())
         .create_store("Library")

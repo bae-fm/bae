@@ -359,7 +359,7 @@ impl Database {
                 DbError::Message(format!("database path has no parent: {database_path}"))
             })?;
         let installation = coven::TestCoven::new();
-        let handle = crate::library::configure_store(
+        let handle = crate::db::configure_store(
             installation.builder(crate::config::AppDir::at(root)?.store_layout()),
         )
         .clock(clock.clone())

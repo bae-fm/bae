@@ -1,6 +1,6 @@
 use super::*;
 
-use crate::library::search::search_pattern;
+use crate::db::schema::search_pattern;
 
 impl Database {
     /// Track ids for an album's primary release. `None` means no album carries

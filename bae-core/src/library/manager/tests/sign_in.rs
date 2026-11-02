@@ -31,7 +31,7 @@ async fn manager_signing_in_with(
     let clock: coven::ClockRef = Arc::new(coven::SystemClock);
     let storage = Arc::new(MemoryStorage::builder().clock(clock.clone()).build().unwrap());
     let handle =
-        crate::library::configure_store(coven::TestCoven::new().builder(app_dir.store_layout()))
+        crate::db::configure_store(coven::TestCoven::new().builder(app_dir.store_layout()))
             .oauth_clients(coven::OAuthClients::new(
                 Some(coven::DropboxClients::FullDropbox { app_key: "dropbox-key".into() }),
                 Some("onedrive-id".into()),

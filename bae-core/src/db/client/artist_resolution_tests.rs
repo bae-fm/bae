@@ -3,7 +3,7 @@ use super::*;
 const NOW: &str = "2026-01-01T00:00:00Z";
 
 fn library() -> Connection {
-    crate::library::bare_library_connection()
+    crate::db::schema::bare_library_connection()
 }
 
 fn add_artist(

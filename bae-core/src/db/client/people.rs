@@ -228,7 +228,7 @@ impl Database {
                 self.write_staged(
                     move |batch| {
                         Ok(batch.put_file(
-                            crate::sync::AVATARS_NAMESPACE,
+                            crate::db::synced::AVATARS_NAMESPACE,
                             bytes,
                             coven::Place::Cloud,
                         ))

@@ -4,7 +4,7 @@ const SCHEMA: &str = include_str!("../../../../migrations/001_initial.sql");
 /// is refused rather than stored.
 #[test]
 fn every_table_is_strict() {
-    let conn = crate::library::bare_library_connection();
+    let conn = crate::db::schema::bare_library_connection();
     let loose: Vec<String> = regex::Regex::new(r"(?m)^CREATE TABLE IF NOT EXISTS (\w+)")
         .unwrap()
         .captures_iter(SCHEMA)
@@ -26,7 +26,7 @@ fn every_table_is_strict() {
 /// it.
 #[test]
 fn every_update_of_trigger_names_columns_its_table_has() {
-    let conn = crate::library::bare_library_connection();
+    let conn = crate::db::schema::bare_library_connection();
     let update_of = regex::Regex::new(r"(?is)UPDATE OF\s+(.+?)\s+ON\s+(\w+)").unwrap();
     let triggers: Vec<(String, String)> = conn
         .prepare("SELECT name, sql FROM sqlite_master WHERE type = 'trigger'")

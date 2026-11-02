@@ -68,7 +68,7 @@ async fn setup_test_manager_with(
     let app_dir = crate::config::AppDir::at(temp_dir.path()).unwrap();
     let installation = coven::TestCoven::new();
     let storage = Arc::new(MemoryStorage::builder().clock(clock.clone()).build().unwrap());
-    let handle = crate::library::configure_store(installation.builder(app_dir.store_layout()))
+    let handle = crate::db::configure_store(installation.builder(app_dir.store_layout()))
         .clock(clock.clone())
         .storage_connector(storage.clone())
         .create_store("Test Library")

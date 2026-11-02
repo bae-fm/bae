@@ -136,7 +136,7 @@ pub(super) fn fresh_test_library(
     let app_dir = bae_core::config::AppDir::under_home(&root).unwrap();
     let handle = runtime
         .block_on(
-            bae_core::library::configure_store(installation.builder(app_dir.store_layout()))
+            bae_core::db::configure_store(installation.builder(app_dir.store_layout()))
                 .create_store("Test Library"),
         )
         .expect("test store");

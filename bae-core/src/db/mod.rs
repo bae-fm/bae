@@ -3,8 +3,12 @@ pub mod credits;
 mod error;
 pub use error::DbError;
 pub mod identity;
+pub mod migrations;
 mod models;
+pub(crate) mod schema;
+pub use schema::configure_store;
 pub mod source_audio;
+pub mod synced;
 pub(crate) mod watched_path;
 pub use watched_path::{RelativeFolder, WatchedPathError};
 // Only an import names its own artist credits from outside `db`.

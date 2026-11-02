@@ -536,7 +536,7 @@ mod tests {
         let temp = tempfile::tempdir().unwrap();
         let installation = coven::TestCoven::new();
         installation.fail_next_keychain_operation();
-        let failure = crate::library::configure_store(
+        let failure = crate::db::configure_store(
             installation.builder(crate::config::AppDir::at(temp.path()).unwrap().store_layout()),
         )
         .create_store("Unavailable Keychain")
@@ -556,7 +556,7 @@ mod tests {
         let temp = tempfile::tempdir().unwrap();
         let installation = coven::TestCoven::new();
         installation.fail_next_keychain_operation();
-        let failure = crate::library::configure_store(
+        let failure = crate::db::configure_store(
             installation.builder(crate::config::AppDir::at(temp.path()).unwrap().store_layout()),
         )
         .create_store("Keychain test")
@@ -611,7 +611,7 @@ mod tests {
         let installation = coven::TestCoven::new();
         let handle = runtime
             .block_on(
-                crate::library::configure_store(installation.builder(app_dir.store_layout()))
+                crate::db::configure_store(installation.builder(app_dir.store_layout()))
                     .create_store("Failing Bootstrap"),
             )
             .unwrap();

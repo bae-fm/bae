@@ -130,7 +130,7 @@ async fn deletion_refuses_an_unavailable_database_without_losing_rows() {
             manager.delete_release(&release.id).await.unwrap_err()
         };
         assert!(matches!(error, LibraryError::Database(_)), "{error}");
-        let handle = crate::library::configure_store(
+        let handle = crate::db::configure_store(
             manager.installation.builder(manager.app_dir.store_layout()),
         )
         .open(id, |_| ())
@@ -215,7 +215,7 @@ async fn delete_release_removes_its_cover_image() {
     // Give release1 a cover: a `covers` row plus its file in one coven batch.
     store_test_cover(&manager, &release1.id, b"image").await;
 
-    wait_for_published_file(&manager, crate::sync::COVERS_NAMESPACE, &release1.id).await;
+    wait_for_published_file(&manager, crate::db::synced::COVERS_NAMESPACE, &release1.id).await;
 
     manager.delete_release(&release1.id).await.unwrap();
 
@@ -242,7 +242,7 @@ async fn delete_album_removes_release_covers() {
     .await;
     store_test_cover(&manager, &release.id, b"image").await;
 
-    wait_for_published_file(&manager, crate::sync::COVERS_NAMESPACE, &release.id).await;
+    wait_for_published_file(&manager, crate::db::synced::COVERS_NAMESPACE, &release.id).await;
 
     manager.delete_album(&release.album_id).await.unwrap();
 

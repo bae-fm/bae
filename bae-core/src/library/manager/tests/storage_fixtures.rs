@@ -391,8 +391,8 @@ async fn finish_bound_uploads(manager: &LibraryManager) {
 #[cfg(feature = "test-utils")]
 async fn file_pinned(manager: &LibraryManager, namespace: &str, row_id: &str) -> bool {
     let file = match namespace {
-        crate::sync::RELEASE_FILES_NAMESPACE => manager.release_file_ref(row_id).await.unwrap(),
-        crate::sync::COVERS_NAMESPACE => cover_file(manager, row_id).await,
+        crate::db::synced::RELEASE_FILES_NAMESPACE => manager.release_file_ref(row_id).await.unwrap(),
+        crate::db::synced::COVERS_NAMESPACE => cover_file(manager, row_id).await,
         other => panic!("no pinned files in {other}"),
     };
     manager

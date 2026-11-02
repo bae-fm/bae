@@ -388,7 +388,11 @@ impl ImportTables {
                     let original_file_ids = originals
                         .into_iter()
                         .map(|(original, place)| {
-                            sql.put_user_file(crate::sync::RELEASE_FILES_NAMESPACE, original, place)
+                            sql.put_user_file(
+                                crate::db::synced::RELEASE_FILES_NAMESPACE,
+                                original,
+                                place,
+                            )
                         })
                         .collect::<Result<Vec<coven::FileId>, _>>()?;
                     let tx = &sql;

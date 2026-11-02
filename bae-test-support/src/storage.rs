@@ -15,7 +15,7 @@ pub async fn storage_library(
     let installation = coven::TestCoven::new();
     let storage =
         Arc::new(MemoryStorage::builder().clock(Arc::new(coven::SystemClock)).build().unwrap());
-    let handle = bae_core::library::configure_store(
+    let handle = bae_core::db::configure_store(
         installation
             .builder(bae_core::config::AppDir::under_home(directory).unwrap().store_layout()),
     )

@@ -4143,7 +4143,7 @@ queue empty and running, and no release in a storage transition.
 
 ## Appendix B. Synced tables
 
-From `bae_core::sync::synced_tables`. *Shared key* rows take an id computed
+From `bae_core::db::synced::synced_tables`. *Shared key* rows take an id computed
 from their fact (§2.6); *independent* rows a fresh id. Every synced table's
 rows reach every device that can read their audience: a local release's rows
 too (§4.2). *Audience* is the store unless the table names one (§5.3); *owner*

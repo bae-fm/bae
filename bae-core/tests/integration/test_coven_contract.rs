@@ -4,7 +4,7 @@
 async fn real_schema_opens_with_the_declarations_and_device_only_files() {
     let directory = tempfile::tempdir().unwrap();
     let installation = coven::TestCoven::new();
-    let handle = bae_core::library::configure_store(
+    let handle = bae_core::db::configure_store(
         installation
             .builder(bae_core::config::AppDir::at(directory.path()).unwrap().store_layout()),
     )
@@ -71,7 +71,7 @@ fn creation_retains_its_keyring_failure_through_cleanup() {
 async fn upload_cancellation_keeps_the_file_on_this_device_with_its_original() {
     let directory = tempfile::tempdir().unwrap();
     let installation = coven::TestCoven::new();
-    let handle = bae_core::library::configure_store(
+    let handle = bae_core::db::configure_store(
         installation
             .builder(bae_core::config::AppDir::at(directory.path()).unwrap().store_layout()),
     )

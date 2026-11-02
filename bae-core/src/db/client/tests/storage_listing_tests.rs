@@ -175,7 +175,7 @@ async fn the_storage_sort_reads_a_window_from_an_index() {
 /// A bare library connection that records every release whose listing row
 /// a write asks to refresh, in `refreshed`.
 fn counting_refreshes() -> rusqlite::Connection {
-    let conn = crate::library::bare_library_connection();
+    let conn = crate::db::schema::bare_library_connection();
     conn.execute_batch(
         "CREATE TEMP TABLE refreshed (release_id TEXT NOT NULL);
          CREATE TEMP TRIGGER count_refresh INSTEAD OF INSERT ON main.release_listing_refresh

@@ -16,8 +16,8 @@ impl LibraryImageType {
 
     pub fn namespace(&self) -> &'static str {
         match self {
-            LibraryImageType::Cover => crate::sync::COVERS_NAMESPACE,
-            LibraryImageType::Artist => crate::sync::ARTIST_IMAGES_NAMESPACE,
+            LibraryImageType::Cover => crate::db::synced::COVERS_NAMESPACE,
+            LibraryImageType::Artist => crate::db::synced::ARTIST_IMAGES_NAMESPACE,
         }
     }
 }

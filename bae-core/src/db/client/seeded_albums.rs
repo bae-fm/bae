@@ -68,7 +68,7 @@ impl Database {
                     .into_iter()
                     .map(|prepared| {
                         sql.put_user_file(
-                            crate::sync::RELEASE_FILES_NAMESPACE,
+                            crate::db::synced::RELEASE_FILES_NAMESPACE,
                             prepared,
                             coven::Place::Cloud,
                         )
