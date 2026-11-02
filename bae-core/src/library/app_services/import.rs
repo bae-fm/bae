@@ -46,9 +46,9 @@ impl AppServices {
     delegate_async!(import, import_set_candidate_track_edit => set_candidate_track_edit(candidate_key: &crate::import::CandidateKey, track: crate::import::RawTrackEdit) -> Result<(), crate::import::ImportError>);
     delegate_async!(import, import_set_candidate_track_artists => set_candidate_track_artists(candidate_key: &crate::import::CandidateKey, track_ids: Vec<String>, assignments: crate::import::TrackArtistAssignments) -> Result<(), crate::import::ImportError>);
     delegate_async!(import, load_import_candidate => load_candidate(key: &crate::import::CandidateKey) -> Result<Option<ImportCandidateDetail>, crate::import::ImportError>);
-    delegate_sync!(import, subscribe_folder_scans => subscribe_folder_scans() -> crate::library::LiveValues<crate::import::FolderScanProgress>);
-    delegate_sync!(import, subscribe_import_counts => subscribe_counts() -> crate::library::LiveValues<crate::import::ImportCounts>);
-    delegate_sync!(import, subscribe_candidate_runtime => subscribe_candidate_runtime(key: &crate::import::CandidateKey) -> crate::library::LiveValues<Option<crate::import::CandidateRuntimeSnapshot>>);
+    delegate_sync!(import, subscribe_folder_scans => subscribe_folder_scans() -> crate::live_query::LiveValues<crate::import::FolderScanProgress>);
+    delegate_sync!(import, subscribe_import_counts => subscribe_counts() -> crate::live_query::LiveValues<crate::import::ImportCounts>);
+    delegate_sync!(import, subscribe_candidate_runtime => subscribe_candidate_runtime(key: &crate::import::CandidateKey) -> crate::live_query::LiveValues<Option<crate::import::CandidateRuntimeSnapshot>>);
 
     /// Register the platform's artwork analyzer, which extraction reads
     /// barcodes and text off a candidate's images with.

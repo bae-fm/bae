@@ -46,7 +46,7 @@ pub use storage::*;
 pub(crate) use streams::*;
 
 /// A live query's values as the app pulls them: `$object` holds core's
-/// [`LiveValues`](bae_core::library::LiveValues) of `$core`, each pulled
+/// [`LiveValues`](bae_core::live_query::LiveValues) of `$core`, each pulled
 /// value converted to `$bridge` by `$convert`, and `$make` builds it. With
 /// `when present`, `$convert` answers an `Option`, and a pull passes over
 /// each value it answers `None` for, waiting for the next.
@@ -71,7 +71,7 @@ macro_rules! pulled_values {
         $(#[doc = $doc])*
         #[derive(uniffi::Object)]
         pub struct $object {
-            values: bae_core::library::LiveValues<$core>,
+            values: bae_core::live_query::LiveValues<$core>,
             runtime: crate::operation_runtime::OperationRuntime,
         }
 
@@ -108,7 +108,7 @@ macro_rules! pulled_values {
         }
 
         pub(crate) fn $make(
-            values: bae_core::library::LiveValues<$core>,
+            values: bae_core::live_query::LiveValues<$core>,
             runtime: crate::operation_runtime::OperationRuntime,
         ) -> Arc<$object> {
             Arc::new($object { values, runtime })
@@ -116,10 +116,10 @@ macro_rules! pulled_values {
     };
 }
 
-fn values_error(error: bae_core::library::LiveValuesError) -> BridgeError {
+fn values_error(error: bae_core::live_query::LiveValuesError) -> BridgeError {
     match error {
-        bae_core::library::LiveValuesError::Cancelled => BridgeError::Cancelled,
-        bae_core::library::LiveValuesError::Query(error) => BridgeError::database_query(error),
+        bae_core::live_query::LiveValuesError::Cancelled => BridgeError::Cancelled,
+        bae_core::live_query::LiveValuesError::Query(error) => BridgeError::database_query(error),
     }
 }
 

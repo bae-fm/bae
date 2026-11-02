@@ -1,4 +1,5 @@
-//! One coven live query, held so it can be reconfigured and cancelled.
+//! One coven live query, held so it can be reconfigured and cancelled, and
+//! [`LiveValues`], one a surface only pulls values from.
 //!
 //! A subscription hands a UI a stream of values and takes back requests for
 //! different ones. Three things make that work: the query, the handle that
@@ -7,12 +8,14 @@
 //! surface pulls values from — the browse lists, the searches, the import
 //! list — owns exactly this, and owns it through here.
 //!
-//! The cancellation is the library's too: one is made only by
-//! [`LibraryManager::until_closed`](crate::library::LibraryManager::until_closed),
-//! and closing the library cancels it before the store closes, so no
-//! subscription answers with the closed store.
+//! The cancellation is the library's too: one is made only by the library
+//! manager's `until_closed`, and closing the library cancels it before the
+//! store closes, so no subscription answers with the closed store.
 
 use tokio_util::sync::CancellationToken;
+
+mod values;
+pub use values::{LiveValues, LiveValuesError};
 
 /// The subscription is over: it was cancelled, or its query is gone or has
 /// ended.

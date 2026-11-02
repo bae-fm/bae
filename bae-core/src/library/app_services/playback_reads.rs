@@ -14,7 +14,7 @@ impl AppServices {
     /// [`subscribe_playback_positions`](Self::subscribe_playback_positions).
     pub fn subscribe_playback_values(
         &self,
-    ) -> crate::library::LiveValues<Option<crate::playback::NowPlayingValues>> {
+    ) -> crate::live_query::LiveValues<Option<crate::playback::NowPlayingValues>> {
         let manager = &self.inner.manager;
         manager.values_until_closed(manager.subscribe_now_playing())
     }
@@ -47,7 +47,7 @@ impl AppServices {
     /// once, then one each time playback leaves the line it holds.
     pub fn subscribe_playback_timeline(
         &self,
-    ) -> crate::library::LiveValues<crate::playback::PlaybackTimeline> {
+    ) -> crate::live_query::LiveValues<crate::playback::PlaybackTimeline> {
         let manager = &self.inner.manager;
         manager.values_until_closed(manager.subscribe_playback_timeline())
     }
@@ -56,7 +56,7 @@ impl AppServices {
     /// once, then one after each write that changes it.
     pub fn subscribe_cast_devices(
         &self,
-    ) -> crate::library::LiveValues<Vec<crate::renderer::CastDevice>> {
+    ) -> crate::live_query::LiveValues<Vec<crate::renderer::CastDevice>> {
         let manager = &self.inner.manager;
         manager.values_until_closed(manager.subscribe_cast_devices())
     }

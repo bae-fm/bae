@@ -34,7 +34,7 @@ pub async fn value_matching<T: Clone + PartialEq + std::fmt::Debug + Send + 'sta
 /// pulls from one live query: the first `values` gives that `matches`
 /// accepts, panicking as `value_matching` does.
 pub async fn pulled_matching<T: Clone + PartialEq + std::fmt::Debug + Send + 'static>(
-    values: &crate::library::LiveValues<T>,
+    values: &crate::live_query::LiveValues<T>,
     mut matches: impl FnMut(&T) -> bool,
 ) -> T {
     let mut last = None;

@@ -57,7 +57,7 @@ impl LibraryManager {
     /// library and its directory: the first value at once, then one after
     /// each write that changes them, until the surface cancels or the library
     /// closes.
-    pub fn subscribe_config(&self) -> crate::library::LiveValues<crate::config::Config> {
+    pub fn subscribe_config(&self) -> crate::live_query::LiveValues<crate::config::Config> {
         let store_id = self.database.store_id();
         let library_path = self.library_path();
         self.values_until_closed(self.database.subscribe_preferences().process(move |prefs| {
@@ -71,7 +71,7 @@ impl LibraryManager {
     pub fn follow_preferences<T: Clone + PartialEq + Send + 'static>(
         &self,
         part: impl Fn(crate::config::Preferences) -> T + Send + Sync + 'static,
-    ) -> crate::library::LiveValues<T> {
+    ) -> crate::live_query::LiveValues<T> {
         self.values_until_closed(
             self.database.subscribe_preferences().process(move |prefs| Ok(part(prefs))),
         )

@@ -34,7 +34,7 @@ async fn paused_on_first_track(
 /// paused and `accept` takes what it shows. The system media controls are
 /// handed the same value, so they must show it too.
 async fn now_playing_until(
-    values: &bae_core::library::LiveValues<Option<bae_core::playback::NowPlayingValues>>,
+    values: &bae_core::live_query::LiveValues<Option<bae_core::playback::NowPlayingValues>>,
     track_id: &str,
     what: &str,
     accept: impl Fn(&bae_core::playback::TrackDisplay) -> bool,

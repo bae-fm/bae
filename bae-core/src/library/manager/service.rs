@@ -361,8 +361,8 @@ impl LibraryManager {
     pub(crate) fn values_until_closed<T: Clone + PartialEq + Send + 'static>(
         &self,
         query: coven::LiveQuery<T>,
-    ) -> crate::library::LiveValues<T> {
-        crate::library::LiveValues::new(query, self.tasks.closing.child_token())
+    ) -> crate::live_query::LiveValues<T> {
+        crate::live_query::LiveValues::new(query, self.tasks.closing.child_token())
     }
 
     /// A file operation owns its rollback even when its caller disappears. A

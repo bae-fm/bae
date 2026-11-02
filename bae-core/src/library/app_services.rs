@@ -79,7 +79,7 @@ macro_rules! delegate_sync {
 /// cancels or the library closes.
 macro_rules! delegate_values {
     ($name:ident => $target:ident($($arg:ident: $ty:ty),* $(,)?) -> $value:ty) => {
-        pub fn $name(&self, $($arg: $ty),*) -> crate::library::LiveValues<$value> {
+        pub fn $name(&self, $($arg: $ty),*) -> crate::live_query::LiveValues<$value> {
             let manager = &self.inner.manager;
             manager.values_until_closed(manager.$target($($arg),*))
         }
@@ -265,7 +265,7 @@ impl AppServices {
 
     /// The library's preferences as the settings screens read them: the
     /// first value at once, then one after each write that changes them.
-    pub fn subscribe_config(&self) -> crate::library::LiveValues<crate::config::Config> {
+    pub fn subscribe_config(&self) -> crate::live_query::LiveValues<crate::config::Config> {
         self.inner.manager.subscribe_config()
     }
 
@@ -274,7 +274,7 @@ impl AppServices {
     pub fn follow_preferences<T: Clone + PartialEq + Send + 'static>(
         &self,
         part: impl Fn(crate::config::Preferences) -> T + Send + Sync + 'static,
-    ) -> crate::library::LiveValues<T> {
+    ) -> crate::live_query::LiveValues<T> {
         self.inner.manager.follow_preferences(part)
     }
 

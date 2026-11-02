@@ -144,7 +144,7 @@ async fn a_scan_leaves_the_open_candidate_pane_alone() {
         loop {
             let found = match progress.next().await {
                 Ok(read) => read,
-                Err(bae_core::library::LiveValuesError::Cancelled) => break,
+                Err(bae_core::live_query::LiveValuesError::Cancelled) => break,
                 Err(error) => panic!("the progress reads: {error}"),
             }
             .activity
