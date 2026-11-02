@@ -15,7 +15,7 @@ use std::sync::mpsc;
 use std::sync::Arc;
 use std::time::Duration;
 
-use crate::diagnostics::{Diagnostics, ReportedThread};
+use bae_diagnostics::{Diagnostics, ReportedThread};
 
 use tracing::{debug, warn};
 

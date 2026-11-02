@@ -4,10 +4,10 @@
 //! - Local files (non-storage releases, or storage releases with local backend)
 //! - Cloud storage (storage releases with cloud backend)
 
-use crate::diagnostics::Diagnostics;
 use crate::track_audio::storage_wait::{FetchProgress, StorageWaits};
 use crate::track_audio::TrackReadError;
 use bae_audio::sparse_buffer::{SharedSparseBuffer, SourceReadError};
+use bae_diagnostics::Diagnostics;
 use bae_util::task_failure::{caught, joined};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;

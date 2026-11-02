@@ -56,8 +56,8 @@ mirror_enum! {
 /// names the folder at fault.
 impl From<coven::S3PrefixError> for BridgeError {
     fn from(error: coven::S3PrefixError) -> Self {
-        BridgeError::from_core(bae_core::diagnostics::UiError::diagnostic(
-            bae_core::diagnostics::UiErrorCategory::S3Prefix(error.clone()),
+        BridgeError::from_core(bae_diagnostics::UiError::diagnostic(
+            bae_diagnostics::UiErrorCategory::S3Prefix(error.clone()),
             &error,
         ))
     }

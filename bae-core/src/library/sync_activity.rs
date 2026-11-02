@@ -1,10 +1,10 @@
 //! Everything sync is doing on this device at once, for the activity
 //! indicator in the app's title bar and the list it opens.
 
-use crate::diagnostics::UiError;
 use crate::library::release_queue::ReleaseQueueProgress;
 use crate::library::CountLabel;
 use crate::library::{PendingItem, ReleaseQueueCounts, SyncStatusSnapshot};
+use bae_diagnostics::UiError;
 
 /// What sync is doing now: the work that needs the person and the transfers
 /// moving bytes. How many bytes the uploads have moved is not part of it: it

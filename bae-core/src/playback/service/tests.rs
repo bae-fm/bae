@@ -198,8 +198,8 @@ async fn test_playback_service(
 /// assert typed events reach the wire. The transport replays success (the
 /// drained outcome queue defaults to `Ok`).
 fn recording_diagnostics(
-) -> (crate::diagnostics::Diagnostics, Arc<crate::diagnostics::RecordingTransport>) {
-    use crate::diagnostics::{
+) -> (bae_diagnostics::Diagnostics, Arc<bae_diagnostics::RecordingTransport>) {
+    use bae_diagnostics::{
         AppDiagnosticMetadata, DatadogDiagnosticsConfig, Diagnostics, RecordingTransport,
     };
     let transport = Arc::new(RecordingTransport::new(vec![]));
@@ -215,12 +215,11 @@ fn recording_diagnostics(
             git_commit: "abc123".to_string(),
         },
     };
-    let diagnostics = Diagnostics::with_transport(
+    let diagnostics = Diagnostics::recording_to(
         config,
         Arc::new(coven::SystemClock),
         Arc::new(coven::SequentialIds::new()),
         transport.clone(),
-        None,
     )
     .expect("diagnostics starts");
     (diagnostics, transport)
@@ -231,7 +230,7 @@ async fn seeded_playback_service(
 ) -> (SeededStore, PlaybackService, tokio_mpsc::UnboundedReceiver<PlaybackProgress>) {
     let store = seeded_store(releases).await;
     let (service, progress_rx) =
-        playback_service_over(&store, crate::diagnostics::Diagnostics::noop());
+        playback_service_over(&store, bae_diagnostics::Diagnostics::noop());
     (store, service, progress_rx)
 }
 
@@ -240,7 +239,7 @@ async fn seeded_playback_service(
 /// handlers without the actor loop.
 fn playback_service_over(
     database: &crate::db::Database,
-    diagnostics: crate::diagnostics::Diagnostics,
+    diagnostics: bae_diagnostics::Diagnostics,
 ) -> (PlaybackService, tokio_mpsc::UnboundedReceiver<PlaybackProgress>) {
     let (command_tx, command_rx) = tokio_mpsc::unbounded_channel();
     let (progress_tx, progress_rx) = tokio_mpsc::unbounded_channel();
@@ -393,8 +392,8 @@ fn test_resolved_track_audio(track_id: &str) -> ResolvedTrackAudio {
     }
 }
 
-fn finished_decoder_handle() -> crate::diagnostics::ReportedThread {
-    crate::diagnostics::Diagnostics::noop()
+fn finished_decoder_handle() -> bae_diagnostics::ReportedThread {
+    bae_diagnostics::Diagnostics::noop()
         .spawn_thread_reported("finished decoder", || {}, |_| {})
         .expect("spawn a decoder thread that finishes at once")
 }

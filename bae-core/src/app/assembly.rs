@@ -5,8 +5,8 @@
 //! each by name.
 
 use crate::db::{Database, DbError};
-use crate::diagnostics::Diagnostics;
 use crate::library::{AppServices, CancellationToken, LibraryError, LibraryManager};
+use bae_diagnostics::Diagnostics;
 use coven::{ClockRef, IdSourceRef};
 
 /// Where playback plays.

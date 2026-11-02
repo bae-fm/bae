@@ -111,7 +111,7 @@ mod tests {
     /// paused instead of the playback service unwinding.
     #[test]
     fn a_platform_that_throws_is_reported_and_refuses() {
-        let bugs = std::sync::Arc::new(bae_core::diagnostics::RecordingBugReporter::default());
+        let bugs = std::sync::Arc::new(bae_diagnostics::RecordingBugReporter::default());
         let throwing = PlatformAudioFocus::new(
             Box::new(Throwing),
             crate::BridgeDiagnostics::reporting_bugs_to(bugs.clone()),

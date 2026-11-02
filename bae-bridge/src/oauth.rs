@@ -168,7 +168,7 @@ mod tests {
     /// reported, instead of unwinding through coven.
     #[tokio::test]
     async fn a_sign_in_sheet_that_throws_fails_the_sign_in_and_is_reported() {
-        let bugs = std::sync::Arc::new(bae_core::diagnostics::RecordingBugReporter::default());
+        let bugs = std::sync::Arc::new(bae_diagnostics::RecordingBugReporter::default());
         let presenter = NativeOAuthPresenter::new(
             BridgeOAuthRedirects {
                 dropbox: "bae://dropbox".into(),

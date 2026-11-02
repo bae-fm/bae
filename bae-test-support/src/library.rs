@@ -109,7 +109,7 @@ async fn open_library(
     let catalogs = bae_core::import::CatalogSessions::new(
         providers,
         database.clone(),
-        bae_core::diagnostics::Diagnostics::noop(),
+        bae_diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
     );
     let closing = bae_core::library::CancellationToken::new();
@@ -120,7 +120,7 @@ async fn open_library(
         app_dir,
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::UuidIds),
-        bae_core::diagnostics::Diagnostics::noop(),
+        bae_diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
         remote_images,
     )
@@ -147,7 +147,7 @@ pub async fn start_test_services(
         closing,
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::UuidIds),
-        bae_core::diagnostics::Diagnostics::noop(),
+        bae_diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
         remote_images,
         50,

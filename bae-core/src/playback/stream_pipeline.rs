@@ -10,7 +10,6 @@
 //! diagnostic logging from here so the two players can't drift on the
 //! decode/seek mapping.
 
-use crate::diagnostics::{Diagnostics, ReportedThread};
 use crate::playback::audio_output::{
     audio_event_channel, AudioEvent, AudioEventReceiver, AudioOutput, AudioStream,
 };
@@ -21,6 +20,7 @@ use crate::playback::source::{PlaybackSource, TrackFmt};
 use crate::track_audio::StreamDecodeParams;
 use bae_audio::sparse_buffer::SharedSparseBuffer;
 use bae_audio::track_stream::{create_track_stream_pair, ReadyReceiver, TrackStream};
+use bae_diagnostics::{Diagnostics, ReportedThread};
 use bae_util::task_failure::blocking;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};

@@ -258,7 +258,7 @@ async fn measure(
         &crate::import::CandidateKey::test("cand"),
         "release-1",
         "import-1",
-        &crate::diagnostics::Diagnostics::noop(),
+        &bae_diagnostics::Diagnostics::noop(),
     )
     .await
     .unwrap()
@@ -290,7 +290,7 @@ async fn measure_failure(path: &std::path::Path, size: u64) -> crate::import::Im
         &crate::import::CandidateKey::test("cand"),
         "release-1",
         "import-1",
-        &crate::diagnostics::Diagnostics::noop(),
+        &bae_diagnostics::Diagnostics::noop(),
     )
     .await;
     assert!(audio_formats[0].track_loudness_lufs.is_none());
@@ -368,8 +368,8 @@ async fn a_read_that_panics_is_reported_and_measures_nothing() {
     let streams = HashMap::from([("file-0".to_string(), buffer)]);
     let event_tx =
         crate::import::ImportEventBus::new(crate::import::CandidateRuntime::for_test().await);
-    let reports = Arc::new(crate::diagnostics::RecordingBugReporter::default());
-    let diagnostics = crate::diagnostics::Diagnostics::noop().reporting_bugs_to(reports.clone());
+    let reports = Arc::new(bae_diagnostics::RecordingBugReporter::default());
+    let diagnostics = bae_diagnostics::Diagnostics::noop().reporting_bugs_to(reports.clone());
 
     let outcome = measure_track(&track, &streams, progress(&event_tx, None), &diagnostics);
 
@@ -544,7 +544,7 @@ async fn peak_open_sources(
         &crate::import::CandidateKey::test("cand"),
         "release-1",
         "import-1",
-        &crate::diagnostics::Diagnostics::noop(),
+        &bae_diagnostics::Diagnostics::noop(),
     )
     .await
     .expect("the pass measures every track");

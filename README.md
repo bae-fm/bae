@@ -28,6 +28,7 @@ You pick releases from MusicBrainz or Discogs, point bae at your files, and it h
 | Crate | Description |
 |-------|-------------|
 | `bae-core` | The library, schema, import, identification, files, playback, outputs, sync integration, settings |
+| `bae-diagnostics` | Telemetry, bug reports to the platform's crash reporter, and the error categories a person is shown |
 | `bae-catalogs` | The MusicBrainz, Discogs and Wikidata clients, their rate limits and covers, and what the catalogs say about a release in bae's terms |
 | `bae-audio` | The audio codec over FFmpeg and the streams a decoded track plays from |
 | `bae-types` | The domain values the catalogs, identification and the library share |

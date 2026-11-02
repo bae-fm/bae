@@ -212,7 +212,7 @@ async fn one_row_on_the_page(
     let root = first.watched_folder_path.clone();
     let generation = tables.begin_folder_scan(&root, crate::import::VolumeKind::Local).await.unwrap();
     for candidate in [first, second] {
-        crate::import::store_scan_item(&tables, &crate::diagnostics::Diagnostics::noop(),
+        crate::import::store_scan_item(&tables, &bae_diagnostics::Diagnostics::noop(),
                 &root,
                 generation,
                 &crate::import::folder_scanner::ScanItem::Valid(candidate),

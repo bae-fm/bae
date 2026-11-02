@@ -79,7 +79,7 @@ impl FileMetadataSeed {
 /// folder.
 pub(crate) async fn scan_item_seed(
     tables: &crate::import::tables::ImportTables,
-    diagnostics: &crate::diagnostics::Diagnostics,
+    diagnostics: &bae_diagnostics::Diagnostics,
     item: &crate::import::folder_scanner::ScanItem,
     generation: u64,
     reads: std::sync::Arc<crate::import::folder_scanner::FileReads>,
@@ -127,7 +127,7 @@ pub(crate) async fn scan_item_seed(
 #[cfg(any(test, feature = "test-utils"))]
 pub async fn store_scan_item(
     tables: &crate::import::tables::ImportTables,
-    diagnostics: &crate::diagnostics::Diagnostics,
+    diagnostics: &bae_diagnostics::Diagnostics,
     watched_folder_path: &std::path::Path,
     generation: u64,
     item: &crate::import::folder_scanner::ScanItem,

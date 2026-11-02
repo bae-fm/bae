@@ -10,8 +10,8 @@
 //! a lookup never sees a removal that is still waiting on coven.
 
 use crate::app_dir::{AppDir, AppDirError};
-use crate::diagnostics::Diagnostics;
 use crate::library::LibraryError;
+use bae_diagnostics::Diagnostics;
 use std::collections::{BTreeSet, HashSet};
 use tracing::{debug, warn};
 
@@ -34,9 +34,9 @@ pub enum LibraryRemovalError {
 }
 
 impl LibraryRemovalError {
-    pub fn category(&self) -> crate::diagnostics::UiErrorCategory {
+    pub fn category(&self) -> bae_diagnostics::UiErrorCategory {
         match self {
-            Self::Store(error) => crate::diagnostics::deletion_category(error),
+            Self::Store(error) => bae_diagnostics::deletion_category(error),
             Self::Stop(source) | Self::Record(source) | Self::Unfinished(source) => {
                 source.category()
             }
@@ -105,8 +105,8 @@ impl UnfinishedRemoval {
         !self.files_remain.is_empty()
     }
 
-    pub fn category(&self) -> crate::diagnostics::UiErrorCategory {
-        crate::diagnostics::UiErrorCategory::Config
+    pub fn category(&self) -> bae_diagnostics::UiErrorCategory {
+        bae_diagnostics::UiErrorCategory::Config
     }
 }
 

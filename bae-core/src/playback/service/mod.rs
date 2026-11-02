@@ -30,10 +30,6 @@ use super::RepeatMode;
 use super::{NextEntry, PlaybackQueue, PreviousAction, QueueEntryId};
 use crate::db::DbAudioSegmentRole;
 use crate::db::ResolvedTrackAudio;
-use crate::diagnostics::{
-    AnomalyKind, Diagnostics, LocalId, PlaybackCommandKind, PlaybackOperation, PlaybackStartSource,
-    ReportedThread, TelemetryEvent, TrackTransition,
-};
 use crate::playback::audio_output::{
     AudioEvent, AudioEventReceiver, AudioOutput, AudioOutputDevice, AudioStream,
 };
@@ -44,6 +40,10 @@ use crate::playback::progress::{PlaybackProgress, PlaybackProgressHandle};
 use crate::playback::tables::{ContextFill, ContextFilled, PlaybackResumeRow, ReleaseStart};
 use crate::track_audio::data_source::FetchArbiter;
 use bae_audio::DecodeError;
+use bae_diagnostics::{
+    AnomalyKind, Diagnostics, LocalId, PlaybackCommandKind, PlaybackOperation, PlaybackStartSource,
+    ReportedThread, TelemetryEvent, TrackTransition,
+};
 // Imported by path so the sample feed reads `source::PlaybackSource`, apart
 // from the queue's `ContextSource`.
 use crate::playback::source;

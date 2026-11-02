@@ -99,8 +99,7 @@ fn setting_up_s3_storage_writes_its_steps() {
     let services = runtime
         .block_on(bae_test_support::start_test_services(manager, database, catalogs, closing));
     let app = Arc::new(
-        super::AppHandle::start(services, runtime, bae_core::diagnostics::Diagnostics::noop())
-            .unwrap(),
+        super::AppHandle::start(services, runtime, bae_diagnostics::Diagnostics::noop()).unwrap(),
     );
     let host = crate::BridgeHost::with_test_keyring(
         crate::BridgeDiagnostics::noop(),

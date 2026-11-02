@@ -127,7 +127,7 @@ fn closing_a_library_cancels_a_waiting_pull_before_its_store_closes() {
 /// Sends the operation of each bug reported, for a test to wait on.
 struct HeardBugs(Mutex<mpsc::Sender<String>>);
 
-impl bae_core::diagnostics::BugReporter for HeardBugs {
+impl bae_diagnostics::BugReporter for HeardBugs {
     fn report(&self, operation: &str, _detail: &str) {
         self.0.lock().unwrap().send(operation.to_string()).expect("the test hears the report");
     }

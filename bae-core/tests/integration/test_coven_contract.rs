@@ -64,7 +64,7 @@ fn creation_retains_its_keyring_failure_through_cleanup() {
         operation: Box::new(operation),
         cleanup: Box::new(coven::StoreCreationError::Sync(coven::SyncError::NoStorage)),
     });
-    assert_eq!(error.category(), bae_core::diagnostics::UiErrorCategory::Keyring);
+    assert_eq!(error.category(), bae_diagnostics::UiErrorCategory::Keyring);
 }
 
 #[tokio::test]

@@ -69,7 +69,7 @@ fn enabled_config_requires_every_value() {
             DiagnosticsConfig::Enabled(incomplete),
             clock(),
             ids(),
-            Arc::new(crate::diagnostics::RecordingBugReporter::default()),
+            Arc::new(crate::RecordingBugReporter::default()),
         ),
         Err(DiagnosticsError::IncompleteConfig)
     ));

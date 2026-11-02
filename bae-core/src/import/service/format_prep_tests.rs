@@ -245,7 +245,7 @@ INDEX 01 01:00:00
         &file_ids,
         &test_clock(),
         &ids,
-        &crate::diagnostics::Diagnostics::noop(),
+        &bae_diagnostics::Diagnostics::noop(),
     )
     .expect("build audio formats");
 
@@ -337,7 +337,7 @@ fn build_audio_formats_uses_stored_standalone_facts() {
         &file_ids,
         &test_clock(),
         &ids,
-        &crate::diagnostics::Diagnostics::noop(),
+        &bae_diagnostics::Diagnostics::noop(),
     )
     .expect("build audio formats");
 
@@ -561,14 +561,14 @@ INDEX 01 11:01:30
         .into(),
     );
     let ids = coven::SequentialIds::new();
-    let bugs = Arc::new(crate::diagnostics::RecordingBugReporter::default());
+    let bugs = Arc::new(bae_diagnostics::RecordingBugReporter::default());
 
     let built = ImportService::build_audio_formats(
         &tracks_to_files,
         &file_ids,
         &clock,
         &ids,
-        &crate::diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone()),
+        &bae_diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone()),
     )
     .expect("build audio formats");
     let reports = bugs.reports();
@@ -740,7 +740,7 @@ FILE "second.flac" WAVE
         &file_ids,
         &test_clock(),
         &coven::SequentialIds::new(),
-        &crate::diagnostics::Diagnostics::noop(),
+        &bae_diagnostics::Diagnostics::noop(),
     )
     .expect("build audio formats");
 
@@ -900,14 +900,14 @@ fn an_image_whose_track_starts_cannot_be_read_is_reported_as_a_bug() {
             },
         })
         .collect();
-    let bugs = Arc::new(crate::diagnostics::RecordingBugReporter::default());
+    let bugs = Arc::new(bae_diagnostics::RecordingBugReporter::default());
 
     let built = ImportService::build_audio_formats(
         &tracks_to_files,
         &HashMap::from([(path.clone(), "image".to_string())]),
         &test_clock(),
         &coven::SequentialIds::new(),
-        &crate::diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone()),
+        &bae_diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone()),
     )
     .expect("the import goes on");
 

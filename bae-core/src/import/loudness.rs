@@ -340,7 +340,7 @@ fn measure_track(
     track: &MeasuredTrack,
     streams: &HashMap<String, SharedSparseBuffer>,
     progress: LoudnessProgress,
-    diagnostics: &crate::diagnostics::Diagnostics,
+    diagnostics: &bae_diagnostics::Diagnostics,
 ) -> TrackOutcome {
     let mut sink = LoudnessProgressSink::new(track.total_frames, progress);
     let decoded = decode_track(track, streams, &mut sink);
@@ -488,7 +488,7 @@ pub(super) async fn measure_loudness(
     candidate_key: &crate::import::CandidateKey,
     release_id: &str,
     import_id: &str,
-    diagnostics: &crate::diagnostics::Diagnostics,
+    diagnostics: &bae_diagnostics::Diagnostics,
 ) -> Result<LoudnessResult, crate::import::ImportError> {
     // Every source's validated size is established before any is opened, so a
     // missing size fails the pass before a single file is read.

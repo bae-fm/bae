@@ -158,7 +158,7 @@ impl LibraryManager {
                     }
                 },
                 |release_id, result| {
-                    let release_id = crate::diagnostics::LocalId(release_id.to_string());
+                    let release_id = bae_diagnostics::LocalId(release_id.to_string());
                     let is_save = running_is_save.load(Ordering::Relaxed);
                     self.diagnostics.event(match (is_save, result) {
                         (false, Ok(())) => TelemetryEvent::ExportCompleted { release_id },

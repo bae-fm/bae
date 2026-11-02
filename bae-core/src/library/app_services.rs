@@ -14,7 +14,7 @@ pub struct TrackDecode {
     channels: u32,
     /// The library's, which a read of the decode that panicked is reported
     /// to.
-    diagnostics: crate::diagnostics::Diagnostics,
+    diagnostics: bae_diagnostics::Diagnostics,
 }
 
 impl TrackDecode {
@@ -22,7 +22,7 @@ impl TrackDecode {
         decode: crate::track_audio::StreamDecodeParams,
         sample_rate: u32,
         channels: u32,
-        diagnostics: crate::diagnostics::Diagnostics,
+        diagnostics: bae_diagnostics::Diagnostics,
     ) -> Self {
         Self { decode, sample_rate, channels, diagnostics }
     }

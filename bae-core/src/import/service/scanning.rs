@@ -119,7 +119,7 @@ impl ImportService {
     /// sidecar files, which are no release.
     async fn folder_date(
         item: &ScanItem,
-        diagnostics: &crate::diagnostics::Diagnostics,
+        diagnostics: &bae_diagnostics::Diagnostics,
     ) -> Result<Option<crate::import::folder_scanner::FolderDate>, crate::import::ImportError> {
         let path = match item {
             ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) => candidate.path.clone(),
@@ -274,7 +274,7 @@ impl ImportService {
         cancellation: &crate::import::folder_scanner::ScanCancellation,
         item_rx: &mut mpsc::Receiver<ScanItem>,
         walk: FolderWalk,
-        diagnostics: &crate::diagnostics::Diagnostics,
+        diagnostics: &bae_diagnostics::Diagnostics,
     ) -> Result<(), crate::import::ImportError> {
         cancellation.cancel();
         while item_rx.recv().await.is_some() {}

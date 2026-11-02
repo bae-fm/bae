@@ -426,7 +426,7 @@ impl ImportServiceHandle {
 /// landing that cannot be written is reported as a bug.
 async fn land_source_search(
     runtime: &crate::import::CandidateRuntime,
-    diagnostics: &crate::diagnostics::Diagnostics,
+    diagnostics: &bae_diagnostics::Diagnostics,
     candidate_key: &crate::import::CandidateKey,
     run: SearchRun,
     source: LookupCatalog,

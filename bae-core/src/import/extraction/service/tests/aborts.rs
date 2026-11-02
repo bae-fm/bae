@@ -5,8 +5,8 @@ use super::*;
 
 #[tokio::test(flavor = "multi_thread")]
 async fn a_fast_pass_that_panics_says_why_there_is_no_pass_and_is_reported() {
-    let bugs = Arc::new(crate::diagnostics::RecordingBugReporter::default());
-    let diagnostics = crate::diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone());
+    let bugs = Arc::new(bae_diagnostics::RecordingBugReporter::default());
+    let diagnostics = bae_diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone());
     let fast_pass =
         run_fast_pass_blocking(&diagnostics, || -> Result<FastPass, crate::import::ImportError> {
             panic!("fast-pass blocking task panicked")
@@ -35,7 +35,7 @@ async fn an_aborted_extraction_fails_every_signal_in_one_snapshot() {
         event_tx: tx,
         analyzer: std::sync::Mutex::new(None),
         database,
-        diagnostics: crate::diagnostics::Diagnostics::noop(),
+        diagnostics: bae_diagnostics::Diagnostics::noop(),
         settled: SessionCache::new("Settled folder signals", SETTLED_CAPACITY),
         candidates,
         image_reads: Arc::new(tokio::sync::Semaphore::new(IMAGES_IN_FLIGHT)),

@@ -11,7 +11,7 @@
 
 use std::time::Duration;
 
-use crate::diagnostics::DiagnosticLevel;
+use crate::DiagnosticLevel;
 use bae_types::release_storage::ReleaseStorageAction;
 use coven::CloudProvider;
 

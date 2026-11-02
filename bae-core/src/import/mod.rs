@@ -147,7 +147,7 @@ pub(crate) struct ImportServices {
     /// worker that runs them.
     import_cancels: import_cancel::ImportCancels,
     /// Where a panic in import or scan work is reported as the bug it is.
-    diagnostics: crate::diagnostics::Diagnostics,
+    diagnostics: bae_diagnostics::Diagnostics,
     /// Cancelled when the library closes, before its store does: the live
     /// reads import opens end with it.
     closing: tokio_util::sync::CancellationToken,
@@ -163,7 +163,7 @@ impl ImportServices {
         preparations: preparations::CandidatePreparations,
         clock: coven::ClockRef,
         ids: coven::IdSourceRef,
-        diagnostics: crate::diagnostics::Diagnostics,
+        diagnostics: bae_diagnostics::Diagnostics,
         closing: tokio_util::sync::CancellationToken,
     ) -> Self {
         Self {

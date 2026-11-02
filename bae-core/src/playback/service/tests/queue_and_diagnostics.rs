@@ -26,7 +26,7 @@ async fn play_releases_concatenates_tracks_in_input_order() {
         (RELEASE_ONE_TRACK, &["5630a919-43ba-4766-842e-6f5badd886f6"]),
     ])
     .await;
-    let (mut service, _rx) = playback_service_over(&library, crate::diagnostics::Diagnostics::noop());
+    let (mut service, _rx) = playback_service_over(&library, bae_diagnostics::Diagnostics::noop());
 
     service
         .playback_queue
@@ -59,7 +59,7 @@ async fn play_releases_skips_a_release_without_tracks() {
         (RELEASE_ONE_TRACK, &["5630a919-43ba-4766-842e-6f5badd886f6", TRACK_T2B]),
     ])
     .await;
-    let (mut service, _rx) = playback_service_over(&library, crate::diagnostics::Diagnostics::noop());
+    let (mut service, _rx) = playback_service_over(&library, bae_diagnostics::Diagnostics::noop());
 
     service
         .playback_queue
@@ -648,10 +648,10 @@ async fn track_completion_ships_track_completed_with_decode_error_count() {
 
     diagnostics.flush().await.expect("flush succeeds");
     let bodies = transport.requests();
-    let events: Vec<crate::diagnostics::DiagnosticEvent> = bodies
+    let events: Vec<bae_diagnostics::DiagnosticEvent> = bodies
         .iter()
         .flat_map(|r| {
-            serde_json::from_slice::<Vec<crate::diagnostics::DiagnosticEvent>>(&r.body).unwrap()
+            serde_json::from_slice::<Vec<bae_diagnostics::DiagnosticEvent>>(&r.body).unwrap()
         })
         .collect();
     let completed = events

@@ -165,7 +165,7 @@ async fn write_scan(
     for item in &items {
         bae_core::import::store_scan_item(
             tables,
-            &bae_core::diagnostics::Diagnostics::noop(),
+            &bae_diagnostics::Diagnostics::noop(),
             root,
             generation,
             item,

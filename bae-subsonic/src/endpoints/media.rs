@@ -15,8 +15,8 @@ use bae_audio::sparse_buffer::SharedSparseBuffer;
 use bae_audio::{StreamEncodeFormat, StreamingEncoder};
 use bae_core::db::LibraryImageType;
 use bae_core::db::{ResolvedTrackAudio, ResolvedTrackAudioSegment};
-use bae_core::diagnostics::Diagnostics;
 use bae_core::library::AppServices;
+use bae_diagnostics::Diagnostics;
 use bae_util::task_failure::{blocking, caught_sync};
 use bytes::Bytes;
 use tokio::sync::mpsc;
@@ -428,7 +428,7 @@ mod tests {
     /// sent, never as if the stream were whole, and the panic is reported.
     #[tokio::test]
     async fn a_body_whose_producer_panics_ends_with_an_error() {
-        let bugs = Arc::new(bae_core::diagnostics::RecordingBugReporter::default());
+        let bugs = Arc::new(bae_diagnostics::RecordingBugReporter::default());
         let diagnostics = Diagnostics::noop().reporting_bugs_to(bugs.clone());
 
         let mut body = produce_body(&diagnostics, "test stream", |tx| {

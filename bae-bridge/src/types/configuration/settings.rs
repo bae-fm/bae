@@ -93,7 +93,7 @@ pub enum BridgeGroupingBlock {
 }
 
 mirror_enum! {
-    BridgeGroupingBlock = bae_core::diagnostics::GroupingBlockReason,
+    BridgeGroupingBlock = bae_diagnostics::GroupingBlockReason,
     from_core: pub(crate) fn,
     variants: {
         SourceChanged,
@@ -529,7 +529,7 @@ mirror_enum! {
     /// AirPlay receiver bae cannot drive, and a library whose replacement of
     /// this device's copy is unfinished, which the bootstrap reports — so
     /// only the outward direction is a mirror.
-    BridgeErrorCategory = bae_core::diagnostics::UiErrorCategory,
+    BridgeErrorCategory = bae_diagnostics::UiErrorCategory,
     from_core: pub(crate) fn,
     variants: {
         Database,
@@ -575,7 +575,7 @@ mirror_enum! {
     /// cancellation through the operation's result rather than as a `UiError`,
     /// and the only missing entity anyone is told about — the library the
     /// bootstrap could not open — is found before a `UiError` exists.
-    BridgeError = bae_core::diagnostics::UiError,
+    BridgeError = bae_diagnostics::UiError,
     from_core: pub(crate) fn,
     variants: {
         Diagnostic { category: (BridgeErrorCategory), detail },

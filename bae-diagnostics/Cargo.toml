@@ -1,0 +1,50 @@
+[package]
+name = "bae-diagnostics"
+version = "0.0.0-dev"
+authors = ["dima"]
+edition = "2021"
+license = "LicenseRef-UNLICENSED"
+publish = false
+
+[lib]
+name = "bae_diagnostics"
+path = "src/lib.rs"
+
+[dependencies]
+# The track times and storage actions telemetry events carry.
+bae-types = { workspace = true }
+# The outbound client the telemetry upload is sent with, its retries, the
+# error text a bug report carries, and the panic a reported task ends with.
+bae-util = { workspace = true }
+# The errors whose categories a person is shown, the cloud provider telemetry
+# names, and the clock and ids an event is stamped with.
+coven = { workspace = true }
+# The telemetry upload's request.
+reqwest = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+# The upload worker's queue, timer and task.
+tokio = { workspace = true, features = ["macros", "rt", "sync", "time"] }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+chrono = { workspace = true, features = ["serde"] }
+# The upload transport is a trait the tests replace.
+async-trait = { workspace = true }
+
+[dev-dependencies]
+# coven's deterministic clock and id fakes.
+coven = { workspace = true, features = ["test-utils"] }
+# The retry that sleeps no real time.
+bae-util = { workspace = true, features = ["test-utils"] }
+# The local server the transport tests send to.
+tokio = { workspace = true, features = ["macros", "net", "io-util", "rt-multi-thread", "test-util"] }
+
+[features]
+default = []
+# The bug reporter that keeps what it is handed and the transport that
+# records what it is asked to send, for the tests of every crate that builds
+# on this one. Dev/test-only: a production build never enables it.
+test-utils = []
+
+[lints]
+workspace = true

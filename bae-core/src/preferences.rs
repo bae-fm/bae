@@ -229,10 +229,10 @@ pub enum PreferencesError {
 impl PreferencesError {
     /// The class the person is shown: a row that can't be read or written
     /// is the database's failure, not a setting to fix.
-    pub fn category(&self) -> crate::diagnostics::UiErrorCategory {
+    pub fn category(&self) -> bae_diagnostics::UiErrorCategory {
         match self {
-            Self::Invalid(_) => crate::diagnostics::UiErrorCategory::Config,
-            Self::Database(_) => crate::diagnostics::UiErrorCategory::Database,
+            Self::Invalid(_) => bae_diagnostics::UiErrorCategory::Config,
+            Self::Database(_) => bae_diagnostics::UiErrorCategory::Database,
         }
     }
 }

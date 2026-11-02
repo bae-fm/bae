@@ -134,7 +134,7 @@ async fn make_service(
         tx.clone(),
         candidates,
         database,
-        crate::diagnostics::Diagnostics::noop(),
+        bae_diagnostics::Diagnostics::noop(),
     );
     (handle, tx, rx, lib_tmp)
 }

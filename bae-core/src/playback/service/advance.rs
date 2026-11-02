@@ -60,7 +60,7 @@ impl PlaybackService {
             Ok(None) => {}
             Err(e) => {
                 error!("couldn't read the queue's next track to preload: {e}");
-                self.telemetry_playback_failed(crate::diagnostics::PlaybackOperation::Preload);
+                self.telemetry_playback_failed(bae_diagnostics::PlaybackOperation::Preload);
             }
         }
     }
@@ -78,7 +78,7 @@ impl PlaybackService {
                 Ok(boundary) => boundary.is_some(),
                 Err(e) => {
                     error!("Failed to read the sides to preload track {track_id}: {e}");
-                    self.telemetry_playback_failed(crate::diagnostics::PlaybackOperation::Preload);
+                    self.telemetry_playback_failed(bae_diagnostics::PlaybackOperation::Preload);
                     return;
                 }
             },
@@ -97,7 +97,7 @@ impl PlaybackService {
             Ok(p) => p,
             Err(e) => {
                 error!("Failed to preload track {}: {}", track_id, e);
-                self.telemetry_playback_failed(crate::diagnostics::PlaybackOperation::Preload);
+                self.telemetry_playback_failed(bae_diagnostics::PlaybackOperation::Preload);
                 return;
             }
         };
@@ -129,7 +129,7 @@ impl PlaybackService {
             Ok(parts) => parts,
             Err(e) => {
                 error!("Failed to preload track {track_id}: {e}");
-                self.telemetry_playback_failed(crate::diagnostics::PlaybackOperation::Preload);
+                self.telemetry_playback_failed(bae_diagnostics::PlaybackOperation::Preload);
                 return;
             }
         };
@@ -504,7 +504,7 @@ impl PlaybackService {
             // Which track follows is unknown, so no preload is known to be it.
             Err(e) => {
                 error!("couldn't read the queue's next track to check the preload: {e}");
-                self.telemetry_playback_failed(crate::diagnostics::PlaybackOperation::Preload);
+                self.telemetry_playback_failed(bae_diagnostics::PlaybackOperation::Preload);
                 self.clear_next_track_state();
                 return;
             }

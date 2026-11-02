@@ -62,7 +62,7 @@ fn session_routes_commands_to_the_channel() {
     let sink = StatusSink::new();
 
     let session = RendererSession::start(
-        &crate::diagnostics::Diagnostics::noop(),
+        &bae_diagnostics::Diagnostics::noop(),
         Box::new(channel),
         sink.callback(),
     )
@@ -105,7 +105,7 @@ fn session_reports_polled_status_to_the_callback() {
     let sink = StatusSink::new();
 
     let session = RendererSession::start(
-        &crate::diagnostics::Diagnostics::noop(),
+        &bae_diagnostics::Diagnostics::noop(),
         Box::new(channel),
         sink.callback(),
     )
@@ -132,7 +132,7 @@ fn session_ends_on_receiver_side_stop() {
     let sink = StatusSink::new();
 
     let session = RendererSession::start(
-        &crate::diagnostics::Diagnostics::noop(),
+        &bae_diagnostics::Diagnostics::noop(),
         Box::new(channel),
         sink.callback(),
     )
@@ -158,7 +158,7 @@ fn session_reports_a_refused_command_and_continues() {
     let sink = StatusSink::new();
 
     let session = RendererSession::start(
-        &crate::diagnostics::Diagnostics::noop(),
+        &bae_diagnostics::Diagnostics::noop(),
         Box::new(channel),
         sink.callback(),
     )
@@ -196,7 +196,7 @@ fn session_reports_finished_for_queue_advance() {
     let sink = StatusSink::new();
 
     let session = RendererSession::start(
-        &crate::diagnostics::Diagnostics::noop(),
+        &bae_diagnostics::Diagnostics::noop(),
         Box::new(channel),
         sink.callback(),
     )

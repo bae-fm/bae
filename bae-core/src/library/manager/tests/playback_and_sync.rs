@@ -142,7 +142,7 @@ async fn test_library_play_unshuffles_into_the_library_order() {
 
 #[test]
 fn setup_failure_classes_retain_the_actionable_category() {
-    use crate::diagnostics::UiErrorCategory as C;
+    use bae_diagnostics::UiErrorCategory as C;
     use coven::StorageFailure as F;
     let missing_entitlement = || {
         coven::KeyError::MissingKeychainEntitlement(
@@ -214,7 +214,7 @@ fn every_storage_setup_failure_keeps_its_exact_user_action() {
         F::Network,
     ] {
         let error = LibraryError::CloudSetup(coven::StorageSetupError::Storage(failure.into()));
-        assert_eq!(error.category(), crate::diagnostics::UiErrorCategory::Storage(failure));
+        assert_eq!(error.category(), bae_diagnostics::UiErrorCategory::Storage(failure));
     }
 }
 
@@ -449,10 +449,10 @@ async fn reconnect_sync_clears_the_failure_it_retries() {
     manager.attach_and_start_sync_at_startup().await;
     let recorded =
         manager.sync_status().await.unwrap().error.expect("the failed startup connect is recorded");
-    let crate::diagnostics::UiError::Diagnostic { category, .. } = &recorded;
+    let bae_diagnostics::UiError::Diagnostic { category, .. } = &recorded;
     assert_eq!(
         *category,
-        crate::diagnostics::UiErrorCategory::KeyringLocked,
+        bae_diagnostics::UiErrorCategory::KeyringLocked,
         "a keychain refused for this session reads as locked: {recorded:?}"
     );
 

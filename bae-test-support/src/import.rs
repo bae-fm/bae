@@ -51,7 +51,7 @@ pub async fn start_import_service(
         database.clone(),
         catalogs.clone(),
         bae_catalogs::remote_image::RemoteImageCache::for_test(http),
-        bae_core::diagnostics::Diagnostics::noop(),
+        bae_diagnostics::Diagnostics::noop(),
         bae_core::import::CandidatePreparations::new(database.clone()),
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::UuidIds),

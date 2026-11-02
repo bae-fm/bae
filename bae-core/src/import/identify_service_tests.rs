@@ -16,7 +16,7 @@ async fn setup_inner() -> (Arc<IdentifyServiceInner>, tempfile::TempDir) {
     let catalogs = crate::import::CatalogSessions::new(
         bae_catalogs::providers::Providers::offline(),
         database.clone(),
-        crate::diagnostics::Diagnostics::noop(),
+        bae_diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
     );
     let release_reads = crate::import::ReleaseReads::new(database.clone(), catalogs.clone());
@@ -29,7 +29,7 @@ async fn setup_inner() -> (Arc<IdentifyServiceInner>, tempfile::TempDir) {
         tokio::runtime::Handle::current(),
         event_tx,
         candidates,
-        crate::diagnostics::Diagnostics::noop(),
+        bae_diagnostics::Diagnostics::noop(),
     );
     (handle.inner, temp_dir)
 }
@@ -426,7 +426,7 @@ async fn a_cancelled_run_drops_the_lookup_it_was_waiting_on() {
     let (event_tx, _event_rx) = mpsc::unbounded_channel();
     spawn_until_cancelled(
         &tokio::runtime::Handle::current(),
-        &crate::diagnostics::Diagnostics::noop(),
+        &bae_diagnostics::Diagnostics::noop(),
         &token,
         &event_tx,
         async move {
@@ -451,8 +451,8 @@ async fn a_cancelled_run_drops_the_lookup_it_was_waiting_on() {
 /// waiting on its answer hears the run broke, and ends it there.
 #[tokio::test]
 async fn a_lookup_that_panics_ends_its_run_as_broken() {
-    let bugs = Arc::new(crate::diagnostics::RecordingBugReporter::default());
-    let diagnostics = crate::diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone());
+    let bugs = Arc::new(bae_diagnostics::RecordingBugReporter::default());
+    let diagnostics = bae_diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone());
     let (event_tx, mut event_rx) = mpsc::unbounded_channel();
     spawn_until_cancelled(
         &tokio::runtime::Handle::current(),

@@ -48,16 +48,16 @@ async fn setup_test_manager() -> (TestManager, TempDir) {
 }
 
 async fn setup_test_manager_with_clock(clock: coven::ClockRef) -> (TestManager, TempDir) {
-    setup_test_manager_with(clock, crate::diagnostics::Diagnostics::noop()).await
+    setup_test_manager_with(clock, bae_diagnostics::Diagnostics::noop()).await
 }
 
 /// A test manager whose bugs go to the returned reporter.
 async fn setup_test_manager_reporting_bugs(
-) -> (TestManager, TempDir, Arc<crate::diagnostics::RecordingBugReporter>) {
-    let bugs = Arc::new(crate::diagnostics::RecordingBugReporter::default());
+) -> (TestManager, TempDir, Arc<bae_diagnostics::RecordingBugReporter>) {
+    let bugs = Arc::new(bae_diagnostics::RecordingBugReporter::default());
     let (manager, temp_dir) = setup_test_manager_with(
         Arc::new(coven::SystemClock),
-        crate::diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone()),
+        bae_diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone()),
     )
     .await;
     (manager, temp_dir, bugs)
@@ -65,7 +65,7 @@ async fn setup_test_manager_reporting_bugs(
 
 async fn setup_test_manager_with(
     clock: coven::ClockRef,
-    diagnostics: crate::diagnostics::Diagnostics,
+    diagnostics: bae_diagnostics::Diagnostics,
 ) -> (TestManager, TempDir) {
     let temp_dir = TempDir::new().unwrap();
     let app_dir = crate::app_dir::AppDir::at(temp_dir.path()).unwrap();
@@ -126,7 +126,7 @@ async fn reopen_without_credentials(manager: TestManager, temp_dir: &TempDir) ->
         manager.fakes.providers(),
         clock,
         Arc::new(coven::UuidIds),
-        crate::diagnostics::Diagnostics::noop(),
+        bae_diagnostics::Diagnostics::noop(),
     )
     .await;
     TestManager {

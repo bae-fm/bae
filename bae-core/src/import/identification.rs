@@ -64,7 +64,7 @@ struct Context {
     /// Import's tables, which the queue reads candidates' stored state from.
     tables: crate::import::tables::ImportTables,
     /// Where a bug in the queue's work is reported.
-    diagnostics: crate::diagnostics::Diagnostics,
+    diagnostics: bae_diagnostics::Diagnostics,
 }
 
 /// What the handle asks the queue's loop for.
@@ -105,7 +105,7 @@ pub(crate) fn start(
     import: ImportServiceHandle,
     database: crate::db::Database,
     tables: crate::import::tables::ImportTables,
-    diagnostics: crate::diagnostics::Diagnostics,
+    diagnostics: bae_diagnostics::Diagnostics,
 ) -> IdentificationHandle {
     let token = CancellationToken::new();
     let tasks = TaskTracker::new();

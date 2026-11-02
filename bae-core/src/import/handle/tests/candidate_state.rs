@@ -132,7 +132,7 @@ async fn removing_a_root_queued_behind_a_decision_does_not_deadlock() {
     // list offers.
     let folder = root.join("Collection").join("Album");
     let generation = tables.begin_folder_scan(&root, crate::import::VolumeKind::Local).await.unwrap();
-    crate::import::store_scan_item(&tables, &crate::diagnostics::Diagnostics::noop(),
+    crate::import::store_scan_item(&tables, &bae_diagnostics::Diagnostics::noop(),
             &root,
             generation,
             &crate::import::folder_scanner::ScanItem::Valid(

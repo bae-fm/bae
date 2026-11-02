@@ -1,8 +1,8 @@
-use crate::diagnostics::TelemetryEvent;
 use crate::import::candidate_runtime::CandidateRuntime;
 use crate::import::handle::ImportServiceHandle;
 use crate::import::handle::{ScanEvent, WatcherCommand};
 use crate::import::types::{ImportCommand, ImportDestination, ImportProgress};
+use bae_diagnostics::TelemetryEvent;
 
 use {
     crate::db::WorkGraphRows,
@@ -196,7 +196,7 @@ pub struct ImportService {
     import_cancels: crate::import::import_cancel::ImportCancels,
     /// Where every bug the import worker finds is reported: a write no
     /// caller waits on, and an image the blocking format prep can't read.
-    diagnostics: crate::diagnostics::Diagnostics,
+    diagnostics: bae_diagnostics::Diagnostics,
 }
 
 /// One downloaded cover as an import cover candidate. Its content type is
@@ -287,7 +287,7 @@ async fn root_change_of(
     root: &Path,
     changed: &[&Path],
     holds_its_own_release: bool,
-    diagnostics: &crate::diagnostics::Diagnostics,
+    diagnostics: &bae_diagnostics::Diagnostics,
 ) -> RootChange {
     let root = root.to_path_buf();
     let changed: Vec<PathBuf> = changed.iter().map(|path| path.to_path_buf()).collect();
@@ -445,7 +445,7 @@ struct RootScanTask {
     cancellation: crate::import::folder_scanner::ScanCancellation,
     /// The pass, which says it ended on the completion channel even when it
     /// panics.
-    task: crate::diagnostics::ReportedTask,
+    task: bae_diagnostics::ReportedTask,
 }
 
 /// One scan pass has ended. It carries no result because a scan records and
@@ -463,10 +463,10 @@ fn spawn_pass(
     name: &'static str,
     id: u64,
     path: PathBuf,
-    diagnostics: &crate::diagnostics::Diagnostics,
+    diagnostics: &bae_diagnostics::Diagnostics,
     completion_tx: mpsc::UnboundedSender<RootScanCompletion>,
     pass: impl std::future::Future<Output = ()> + Send + 'static,
-) -> crate::diagnostics::ReportedTask {
+) -> bae_diagnostics::ReportedTask {
     let panicked_tx = completion_tx.clone();
     let panicked_path = path.clone();
     diagnostics.spawn_reported(

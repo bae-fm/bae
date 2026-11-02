@@ -1,7 +1,7 @@
 use std::sync::{Arc, Mutex};
 
 use super::*;
-use crate::diagnostics::RecordingBugReporter;
+use crate::RecordingBugReporter;
 
 fn reporting() -> (Diagnostics, Arc<RecordingBugReporter>) {
     let reports = Arc::new(RecordingBugReporter::default());

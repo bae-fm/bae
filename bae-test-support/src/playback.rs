@@ -137,7 +137,7 @@ pub async fn start_playback_on(
         bae_core::playback::tables::PlaybackNowRow::new(database.clone()),
         bae_core::playback::tables::PlaybackTimelineRow::new(database.clone()),
         library_manager.subscribe_track_deletions(),
-        bae_core::diagnostics::Diagnostics::noop(),
+        bae_diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
         100,
         true,

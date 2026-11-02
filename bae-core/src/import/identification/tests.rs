@@ -344,7 +344,7 @@ impl Fixture {
             providers,
             clock,
             ids,
-            crate::diagnostics::Diagnostics::noop(),
+            bae_diagnostics::Diagnostics::noop(),
         )
         .await;
         let catalogs = manager.catalogs().clone();
@@ -358,7 +358,7 @@ impl Fixture {
             import: import.clone(),
             database: database.clone(),
             tables: crate::import::tables::ImportTables::new(database.clone()),
-            diagnostics: crate::diagnostics::Diagnostics::noop(),
+            diagnostics: bae_diagnostics::Diagnostics::noop(),
         };
         Fixture {
             manager,

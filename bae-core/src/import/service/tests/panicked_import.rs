@@ -20,9 +20,9 @@ impl coven::IdSource for IdsThatPanicOnce {
 async fn an_import_that_panics_is_recorded_as_failed_and_the_next_import_runs() {
     let mut test = setup_import_service().await;
     let tables = test.service.tables.clone();
-    let bugs = Arc::new(crate::diagnostics::RecordingBugReporter::default());
+    let bugs = Arc::new(bae_diagnostics::RecordingBugReporter::default());
     test.service.diagnostics =
-        crate::diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone());
+        bae_diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone());
     let folder = test.temp.path().join("album");
     std::fs::create_dir_all(&folder).unwrap();
     let fixture =

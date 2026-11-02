@@ -1,6 +1,6 @@
 use std::future::Future;
 
-use bae_core::diagnostics::Diagnostics;
+use bae_diagnostics::Diagnostics;
 use bae_util::task_failure::{joined, TaskFailed};
 use tokio::runtime::Handle;
 use tokio::task::JoinHandle;
@@ -118,7 +118,7 @@ mod tests {
     use std::future::pending;
     use std::sync::{mpsc, Arc};
 
-    use bae_core::diagnostics::RecordingBugReporter;
+    use bae_diagnostics::RecordingBugReporter;
     use tokio::sync::oneshot;
 
     use super::*;
@@ -272,7 +272,7 @@ mod tests {
     /// Sends the operation of each bug reported, for a test to wait on.
     struct HeardBugs(std::sync::Mutex<mpsc::Sender<String>>);
 
-    impl bae_core::diagnostics::BugReporter for HeardBugs {
+    impl bae_diagnostics::BugReporter for HeardBugs {
         fn report(&self, operation: &str, _detail: &str) {
             self.0.lock().unwrap().send(operation.to_string()).expect("the test hears the report");
         }

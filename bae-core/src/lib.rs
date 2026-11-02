@@ -8,7 +8,6 @@ pub mod cue_flac;
 pub mod db;
 #[cfg(all(feature = "dev-reset", unix))]
 pub mod dev_reset;
-pub mod diagnostics;
 pub mod history;
 #[cfg(desktop)]
 pub mod identify;

@@ -7,6 +7,7 @@ publish = false
 
 [dependencies]
 bae-core = { workspace = true }
+bae-diagnostics = { workspace = true }
 # Error text with its cause chain, for the protocol failures it reports.
 bae-util = { workspace = true }
 # The ephemeral Subsonic server the cast receiver fetches audio from: binds the
@@ -83,6 +84,8 @@ uuid = { workspace = true, features = ["v4"] }
 
 [dev-dependencies]
 bae-test-support = { workspace = true }
+# The bug reporter that keeps what it is handed.
+bae-diagnostics = { workspace = true, features = ["test-utils"] }
 tempfile = { workspace = true }
 reqwest = { workspace = true, features = ["rustls"] }
 

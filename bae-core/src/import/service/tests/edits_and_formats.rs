@@ -72,7 +72,7 @@ fn build_audio_formats_gives_ape_cue_tracks_real_end_bytes() {
         &file_ids,
         &test_clock(),
         &SequentialIds::new(),
-        &crate::diagnostics::Diagnostics::noop(),
+        &bae_diagnostics::Diagnostics::noop(),
     )
     .expect("build_audio_formats");
 

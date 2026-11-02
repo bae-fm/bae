@@ -61,7 +61,7 @@ async fn failed_creation_removes_the_partial_library() {
     .await
     .err()
     .unwrap();
-    assert_eq!(error.category(), crate::diagnostics::UiErrorCategory::KeyringLocked);
+    assert_eq!(error.category(), bae_diagnostics::UiErrorCategory::KeyringLocked);
     assert!(app_dir.store_layout().stores().await.unwrap().is_empty());
     assert!(!app_dir.active_library_pointer().exists());
 }
@@ -403,7 +403,7 @@ async fn a_restore_stopped_after_its_swap_is_listed_and_finished_by_restoring_ag
                 200,
                 false,
                 crate::playback::AudioFocus::Unshared,
-                crate::diagnostics::Diagnostics::noop(),
+                bae_diagnostics::Diagnostics::noop(),
                 builder,
                 |_| (),
                 |_, _| -> Result<(), crate::app::BootstrapError> {
@@ -491,7 +491,7 @@ async fn removing_a_library_whose_restore_stopped_after_its_swap_deletes_both_co
 
     remove_unopenable_library(
         &app_dir,
-        &crate::diagnostics::Diagnostics::noop(),
+        &bae_diagnostics::Diagnostics::noop(),
         &Keychain::InMemory(installation.clone()),
         store,
         &|_| (),
@@ -503,7 +503,7 @@ async fn removing_a_library_whose_restore_stopped_after_its_swap_deletes_both_co
     assert!(!app_dir.registered_library(&store.to_string()).exists());
     assert!(app_dir.discover_libraries().await.unwrap().is_empty());
     assert_eq!(app_dir.active_library_id().unwrap(), None);
-    assert!(UnfinishedRemoval::find(&app_dir, &crate::diagnostics::Diagnostics::noop())
+    assert!(UnfinishedRemoval::find(&app_dir, &bae_diagnostics::Diagnostics::noop())
         .await
         .unwrap()
         .is_none());

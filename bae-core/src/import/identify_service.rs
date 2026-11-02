@@ -120,7 +120,7 @@ struct IdentifyServiceInner {
     next_run: std::sync::atomic::AtomicU64,
     /// Where a run, a lookup or a write of what a run keeps that panics is
     /// reported.
-    diagnostics: crate::diagnostics::Diagnostics,
+    diagnostics: bae_diagnostics::Diagnostics,
     /// Every driver task, and every write of what a run keeps, for a test to
     /// wait until they have all returned.
     #[cfg(test)]
@@ -165,7 +165,7 @@ impl IdentifyServiceHandle {
         runtime_handle: tokio::runtime::Handle,
         event_tx: ImportEventBus,
         candidates: CandidateRuntime,
-        diagnostics: crate::diagnostics::Diagnostics,
+        diagnostics: bae_diagnostics::Diagnostics,
     ) -> IdentifyServiceHandle {
         let inner = Arc::new(IdentifyServiceInner {
             tables: crate::import::tables::ImportTables::new(database.clone()),
@@ -607,7 +607,7 @@ impl Driver {
 /// so the driver waiting on its answer goes on.
 fn spawn_until_cancelled(
     runtime: &tokio::runtime::Handle,
-    diagnostics: &crate::diagnostics::Diagnostics,
+    diagnostics: &bae_diagnostics::Diagnostics,
     token: &CancellationToken,
     event_tx: &mpsc::UnboundedSender<IdentifyEvent>,
     work: impl std::future::Future<Output = ()> + Send + 'static,

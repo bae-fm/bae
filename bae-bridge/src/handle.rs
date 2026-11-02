@@ -32,7 +32,7 @@ pub struct AppHandle {
     /// Where the handle's calls run, on the library's runtime.
     runtime: crate::operation_runtime::OperationRuntime,
     /// Where a bug in the handle's work with no caller to fail is reported.
-    diagnostics: bae_core::diagnostics::Diagnostics,
+    diagnostics: bae_diagnostics::Diagnostics,
     /// Retains the runtime that prepared coven and its session custody.
     _host: Option<std::sync::Arc<crate::BridgeHost>>,
     session: Session,
@@ -265,7 +265,7 @@ impl AppHandle {
     pub(crate) fn start(
         services: AppServices,
         runtime: tokio::runtime::Runtime,
-        diagnostics: bae_core::diagnostics::Diagnostics,
+        diagnostics: bae_diagnostics::Diagnostics,
     ) -> Result<Self, bae_core::app::BootstrapError> {
         #[cfg(feature = "desktop")]
         let desktop = {
@@ -322,7 +322,7 @@ impl AppHandle {
     pub(crate) fn start_for_host(
         services: AppServices,
         runtime: tokio::runtime::Runtime,
-        diagnostics: bae_core::diagnostics::Diagnostics,
+        diagnostics: bae_diagnostics::Diagnostics,
         host: std::sync::Arc<crate::BridgeHost>,
     ) -> Result<Self, bae_core::app::BootstrapError> {
         let mut app = Self::start(services, runtime, diagnostics)?;

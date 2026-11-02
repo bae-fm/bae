@@ -7,14 +7,11 @@ use bae_catalogs::remote_image::{RemoteImage, RemoteImageCache, RemoteImageError
 #[derive(Clone)]
 pub(crate) struct RemoteImages {
     cache: RemoteImageCache,
-    diagnostics: crate::diagnostics::Diagnostics,
+    diagnostics: bae_diagnostics::Diagnostics,
 }
 
 impl RemoteImages {
-    pub(crate) fn new(
-        cache: RemoteImageCache,
-        diagnostics: crate::diagnostics::Diagnostics,
-    ) -> Self {
+    pub(crate) fn new(cache: RemoteImageCache, diagnostics: bae_diagnostics::Diagnostics) -> Self {
         Self { cache, diagnostics }
     }
 

@@ -6,7 +6,7 @@ async fn stream_raw_serves_original_bytes_and_ranges() {
     let router = bae_subsonic::router(
         lib.services.clone(),
         credential(),
-        bae_core::diagnostics::Diagnostics::noop(),
+        bae_diagnostics::Diagnostics::noop(),
     );
     let song_id = first_song_id(&router, &lib.per_track_release).await;
 
@@ -43,7 +43,7 @@ async fn stream_raw_serves_a_cue_track_as_its_own_pcm() {
     let router = bae_subsonic::router(
         lib.services.clone(),
         credential(),
-        bae_core::diagnostics::Diagnostics::noop(),
+        bae_diagnostics::Diagnostics::noop(),
     );
     let album =
         call(&router, "getAlbum", &authed(&format!("f=json&id=al-{}", lib.cue_release))).await;
@@ -85,7 +85,7 @@ async fn stream_wav_is_the_tracks_pcm_in_an_unsized_wav() {
     let router = bae_subsonic::router(
         lib.services.clone(),
         credential(),
-        bae_core::diagnostics::Diagnostics::noop(),
+        bae_diagnostics::Diagnostics::noop(),
     );
     let song_id = first_song_id(&router, &lib.per_track_release).await;
 
@@ -126,7 +126,7 @@ async fn a_track_whose_original_is_gone_is_refused_with_the_reason() {
     let router = bae_subsonic::router(
         lib.services.clone(),
         credential(),
-        bae_core::diagnostics::Diagnostics::noop(),
+        bae_diagnostics::Diagnostics::noop(),
     );
     let album =
         call(&router, "getAlbum", &authed(&format!("f=json&id=al-{}", lib.per_track_release)))
@@ -162,7 +162,7 @@ async fn stream_transcode_mp3_is_chunked_and_decodes() {
     let router = bae_subsonic::router(
         lib.services.clone(),
         credential(),
-        bae_core::diagnostics::Diagnostics::noop(),
+        bae_diagnostics::Diagnostics::noop(),
     );
     let song_id = first_song_id(&router, &lib.per_track_release).await;
 
@@ -208,7 +208,7 @@ async fn cover_art_resolves_every_id_kind() {
     let router = bae_subsonic::router(
         lib.services.clone(),
         credential(),
-        bae_core::diagnostics::Diagnostics::noop(),
+        bae_diagnostics::Diagnostics::noop(),
     );
 
     // Album id serves the release cover.
@@ -251,7 +251,7 @@ async fn a_changed_cover_gets_a_new_cover_art_id() {
     let router = bae_subsonic::router(
         lib.services.clone(),
         credential(),
-        bae_core::diagnostics::Diagnostics::noop(),
+        bae_diagnostics::Diagnostics::noop(),
     );
     let album_query = authed(&format!("f=json&id=al-{}", lib.per_track_release));
     let cover_art = |album: &Resp| {
@@ -288,7 +288,7 @@ async fn an_artist_cover_art_is_the_artist_image() {
     let router = bae_subsonic::router(
         lib.services.clone(),
         credential(),
-        bae_core::diagnostics::Diagnostics::noop(),
+        bae_diagnostics::Diagnostics::noop(),
     );
     let album =
         call(&router, "getAlbum", &authed(&format!("f=json&id=al-{}", lib.per_track_release)))
@@ -325,7 +325,7 @@ async fn scrobble_is_an_accepted_no_op() {
     let router = bae_subsonic::router(
         lib.services.clone(),
         credential(),
-        bae_core::diagnostics::Diagnostics::noop(),
+        bae_diagnostics::Diagnostics::noop(),
     );
     let song_id = first_song_id(&router, &lib.per_track_release).await;
 
@@ -401,7 +401,7 @@ async fn musicbrainz_id_surfaces_when_present() {
 
     let services = bae_test_support::start_test_services(manager.clone(), database, catalogs, closing).await;
     let router =
-        bae_subsonic::router(services, credential(), bae_core::diagnostics::Diagnostics::noop());
+        bae_subsonic::router(services, credential(), bae_diagnostics::Diagnostics::noop());
 
     let artists = call(&router, "getArtists", &authed("f=json")).await;
     let sub = artists.sub();
@@ -441,7 +441,7 @@ async fn lossy_track_reports_bit_depth_zero() {
     // so FFmpeg reports a bit depth for it; Opus carries none.)
     let (services, release_id, _temps) = seed_lossy_release().await;
     let router =
-        bae_subsonic::router(services, credential(), bae_core::diagnostics::Diagnostics::noop());
+        bae_subsonic::router(services, credential(), bae_diagnostics::Diagnostics::noop());
 
     let album = call(&router, "getAlbum", &authed(&format!("f=json&id=al-{release_id}"))).await;
     let song = &album.sub()["album"]["song"][0];
@@ -524,7 +524,7 @@ fn decode_bytes(bytes: &[u8]) -> bae_audio::DecodedAudio {
     let buffer = create_sparse_buffer(bytes.len() as u64);
     let reader = Box::new(LocalReader::new(
         file.path().to_str().unwrap(),
-        bae_core::diagnostics::Diagnostics::noop(),
+        bae_diagnostics::Diagnostics::noop(),
     ));
     reader.start_reading(buffer.clone(), Box::new(|_| {}));
     bae_audio::decode_audio(buffer, None, None).expect("decode transcoded bytes")
@@ -589,7 +589,7 @@ async fn an_album_prints_its_credit_line_and_lists_every_credited_artist() {
         .unwrap();
     let services = bae_test_support::start_test_services(manager.clone(), database, catalogs, closing).await;
     let router =
-        bae_subsonic::router(services, credential(), bae_core::diagnostics::Diagnostics::noop());
+        bae_subsonic::router(services, credential(), bae_diagnostics::Diagnostics::noop());
 
     let response = call(&router, "getAlbumList2", &authed("f=json&type=alphabeticalByName")).await;
 

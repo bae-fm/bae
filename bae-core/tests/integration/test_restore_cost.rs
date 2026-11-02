@@ -123,7 +123,7 @@ async fn restore_cost(library: Library) {
     let catalogs = bae_core::import::CatalogSessions::new(
         providers,
         database.clone(),
-        bae_core::diagnostics::Diagnostics::noop(),
+        bae_diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
     );
     let manager = bae_core::app::open_library_manager(
@@ -133,7 +133,7 @@ async fn restore_cost(library: Library) {
         app_dir.clone(),
         clock.clone(),
         Arc::new(coven::UuidIds),
-        bae_core::diagnostics::Diagnostics::noop(),
+        bae_diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
         remote_images,
     )

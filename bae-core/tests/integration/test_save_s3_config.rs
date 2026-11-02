@@ -10,8 +10,8 @@
 
 use bae_test_support as support;
 
-use bae_core::diagnostics::UiErrorCategory;
 use bae_core::sync::S3ConfigData;
+use bae_diagnostics::UiErrorCategory;
 use support::setup_fresh_library;
 
 use crate::own_process::in_own_process;

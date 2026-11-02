@@ -6,12 +6,12 @@
 //! database the callback writes to.
 
 use crate::db::{Database, DbError};
-use crate::diagnostics::Diagnostics;
 use crate::preferences::DiscogsValidation;
 use bae_catalogs::catalog::LookupCatalog;
 use bae_catalogs::discogs::client::{DiscogsClient, DiscogsError, DiscogsKeySignal};
 use bae_catalogs::providers::{CatalogSession, Providers};
 use bae_catalogs::rate_limiter::CallPriority;
+use bae_diagnostics::Diagnostics;
 use bae_util::task_failure::blocking;
 use std::future::Future;
 use std::sync::Arc;

@@ -52,15 +52,15 @@ impl GroupingBlock {
     /// This block as a surface states it: its own line when the person can
     /// act on it, the generic import failure when its releases make no
     /// release, and its text as the untranslated detail.
-    pub fn ui_error(&self) -> crate::diagnostics::UiError {
-        crate::diagnostics::UiError::diagnostic(self.category(), self)
+    pub fn ui_error(&self) -> bae_diagnostics::UiError {
+        bae_diagnostics::UiError::diagnostic(self.category(), self)
     }
 
     /// The class a surface words this block in: its own line when the
     /// person can act on it, the generic import failure when its releases
     /// make no release.
-    pub fn category(&self) -> crate::diagnostics::UiErrorCategory {
-        use crate::diagnostics::{GroupingBlockReason as R, UiErrorCategory as C};
+    pub fn category(&self) -> bae_diagnostics::UiErrorCategory {
+        use bae_diagnostics::{GroupingBlockReason as R, UiErrorCategory as C};
         match self {
             Self::SourceChanged { .. } => C::GroupingBlocked(R::SourceChanged),
             Self::SourceGone { .. } => C::GroupingBlocked(R::SourceGone),

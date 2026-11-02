@@ -32,11 +32,11 @@ use crate::db::{
     Database, DbAlbum, DbArtist, DbFile, DbLibraryImage, DbRelease, DbTrack, ImageRef,
     LibraryImageType,
 };
-use crate::diagnostics::{Diagnostics, SyncOperation, TelemetryEvent};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 use crate::library::save::SaveService;
 use crate::library::sync_controller::SyncController;
 use crate::sync::S3ConfigData;
+use bae_diagnostics::{Diagnostics, SyncOperation, TelemetryEvent};
 use bae_types::release_storage::ReleaseStorageAction;
 use bae_util::task_failure::{blocking, caught, joined, TaskFailed};
 use coven::ClockRef;
@@ -99,7 +99,7 @@ mod pending_item;
 mod storage;
 mod sync;
 mod sync_status;
-use crate::diagnostics::{
+use bae_diagnostics::{
     cloud_home_category, cloud_setup_category, cloud_unlock_category, device_only_category,
     file_read_category, key_category, sync_category,
 };
@@ -284,7 +284,7 @@ pub struct UploadReceipt {
 #[derive(Debug)]
 pub struct UploadBatchFailure {
     pub release_ids: Vec<String>,
-    pub error: crate::diagnostics::UiError,
+    pub error: bae_diagnostics::UiError,
 }
 
 #[derive(Debug)]
@@ -306,8 +306,8 @@ impl LibraryError {
     /// failures carry the distinctions the cloud-setup and sharing flows show as
     /// different messages (bad credentials vs unreachable backend vs keyring vs
     /// membership); everything else maps to its general class.
-    pub fn category(&self) -> crate::diagnostics::UiErrorCategory {
-        use crate::diagnostics::UiErrorCategory as C;
+    pub fn category(&self) -> bae_diagnostics::UiErrorCategory {
+        use bae_diagnostics::UiErrorCategory as C;
         match self {
             LibraryError::Database(_) => C::Database,
             LibraryError::AppDir(error) => error.category(),
@@ -385,7 +385,7 @@ pub struct SyncStatusSnapshot {
     pub pending: Vec<PendingItem>,
     /// Why this device's last attempt to start sync failed, while that
     /// stands.
-    pub error: Option<crate::diagnostics::UiError>,
+    pub error: Option<bae_diagnostics::UiError>,
     /// What the person's retry would do now, as coven decides it: run a
     /// pass, or be answered at once without one.
     pub retry_effect: coven::RetryEffect,

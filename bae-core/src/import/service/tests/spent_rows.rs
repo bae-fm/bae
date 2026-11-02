@@ -197,7 +197,7 @@ async fn rescan_folder(test: &TestService, folder: &Path, name: &str) {
     )
     .unwrap();
     let generation = tables.begin_folder_scan(folder, crate::import::VolumeKind::Local).await.unwrap();
-    crate::import::store_scan_item(tables, &crate::diagnostics::Diagnostics::noop(),
+    crate::import::store_scan_item(tables, &bae_diagnostics::Diagnostics::noop(),
             folder,
             generation,
             &ScanItem::Valid(crate::import::folder_scanner::FolderCandidate {

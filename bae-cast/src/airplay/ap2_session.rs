@@ -439,7 +439,7 @@ impl Ap2Session {
     /// drive the encrypted SETUP/SETPEERS/SETRATEANCHORTIME/RECORD sequence, and
     /// start streaming `source` as ChaCha-encrypted audio.
     pub(crate) fn start(
-        diagnostics: &bae_core::diagnostics::Diagnostics,
+        diagnostics: &bae_diagnostics::Diagnostics,
         receiver: IpAddr,
         airplay_port: u16,
         source: Box<dyn PcmSource>,

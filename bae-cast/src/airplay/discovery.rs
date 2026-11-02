@@ -16,7 +16,7 @@ use std::collections::HashMap;
 use std::net::IpAddr;
 use std::thread::JoinHandle;
 
-use bae_core::diagnostics::Diagnostics;
+use bae_diagnostics::Diagnostics;
 use bae_util::task_failure::caught_sync;
 use mdns_sd::{ResolvedService, ServiceDaemon, ServiceEvent};
 use tracing::{debug, warn};

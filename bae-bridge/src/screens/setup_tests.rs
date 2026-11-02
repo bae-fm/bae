@@ -10,7 +10,7 @@ fn the_stream_holds_the_running_step_until_the_call_ends() {
     let runtime = tokio::runtime::Runtime::new().unwrap();
     let setup = library_setup(OperationRuntime::new(
         runtime.handle().clone(),
-        bae_core::diagnostics::Diagnostics::noop(),
+        bae_diagnostics::Diagnostics::noop(),
     ));
     let stream = setup.feed_setup_steps();
     let steps = setup.writer();

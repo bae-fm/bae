@@ -70,7 +70,7 @@ impl VolumeKind {
 /// `Local`, as a platform that will not say is.
 pub(crate) async fn volume_kind(
     path: &Path,
-    diagnostics: &crate::diagnostics::Diagnostics,
+    diagnostics: &bae_diagnostics::Diagnostics,
 ) -> VolumeKind {
     let path = path.to_path_buf();
     bae_util::task_failure::blocking("read which volume a folder is on", move || {
@@ -264,7 +264,7 @@ mod tests {
     async fn a_folder_on_this_machine_is_local() {
         let temp = tempfile::tempdir().unwrap();
         assert_eq!(
-            volume_kind(temp.path(), &crate::diagnostics::Diagnostics::noop()).await,
+            volume_kind(temp.path(), &bae_diagnostics::Diagnostics::noop()).await,
             VolumeKind::Local
         );
     }
@@ -277,7 +277,7 @@ mod tests {
         assert_eq!(
             volume_kind(
                 std::path::Path::new("/nowhere-at-all-1a2b3c"),
-                &crate::diagnostics::Diagnostics::noop()
+                &bae_diagnostics::Diagnostics::noop()
             )
             .await,
             VolumeKind::Local

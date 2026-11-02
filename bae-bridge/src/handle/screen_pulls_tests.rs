@@ -47,8 +47,7 @@ fn each_pull_answers_at_once_and_the_profiles_follow_a_new_one() {
     let services = runtime
         .block_on(bae_test_support::start_test_services(manager, database, catalogs, closing));
     let handle = std::sync::Arc::new(
-        super::AppHandle::start(services, runtime, bae_core::diagnostics::Diagnostics::noop())
-            .unwrap(),
+        super::AppHandle::start(services, runtime, bae_diagnostics::Diagnostics::noop()).unwrap(),
     );
 
     let queue = handle.subscribe_queue();
@@ -121,8 +120,7 @@ fn the_sync_status_follows_storage_being_set_up() {
     let services = runtime
         .block_on(bae_test_support::start_test_services(manager, database, catalogs, closing));
     let handle = std::sync::Arc::new(
-        super::AppHandle::start(services, runtime, bae_core::diagnostics::Diagnostics::noop())
-            .unwrap(),
+        super::AppHandle::start(services, runtime, bae_diagnostics::Diagnostics::noop()).unwrap(),
     );
 
     let status = handle.subscribe_sync_status();

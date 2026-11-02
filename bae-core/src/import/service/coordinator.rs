@@ -164,7 +164,7 @@ pub(super) struct Coordinator {
     checked_tx: mpsc::UnboundedSender<(PathBuf, NetworkCheck)>,
     event_tx: crate::import::handle::ImportEventBus,
     tables: crate::import::tables::ImportTables,
-    diagnostics: crate::diagnostics::Diagnostics,
+    diagnostics: bae_diagnostics::Diagnostics,
 }
 
 impl Coordinator {
@@ -175,7 +175,7 @@ impl Coordinator {
         active_roots: ActiveRoots,
         event_tx: crate::import::handle::ImportEventBus,
         tables: crate::import::tables::ImportTables,
-        diagnostics: crate::diagnostics::Diagnostics,
+        diagnostics: bae_diagnostics::Diagnostics,
     ) -> (Self, NetworkChecks) {
         let (checked_tx, checked_rx) = mpsc::unbounded_channel();
         (
@@ -396,7 +396,7 @@ impl Coordinator {
 async fn check_network_folder(
     tables: &crate::import::tables::ImportTables,
     root: &Path,
-    diagnostics: &crate::diagnostics::Diagnostics,
+    diagnostics: &bae_diagnostics::Diagnostics,
 ) -> NetworkCheck {
     let recorded = match tables.load_folder_scan_directories(root).await {
         Ok(recorded) => recorded,
@@ -433,7 +433,7 @@ async fn take_watch_report(
     report: WatchReport,
     tables: &crate::import::tables::ImportTables,
     active_roots: &mut ActiveRoots,
-    diagnostics: &crate::diagnostics::Diagnostics,
+    diagnostics: &bae_diagnostics::Diagnostics,
 ) {
     let events = match report {
         Ok(events) => events,

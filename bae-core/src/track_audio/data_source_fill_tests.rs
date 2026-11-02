@@ -1,6 +1,6 @@
 use super::*;
-use crate::diagnostics::RecordingBugReporter;
 use bae_audio::sparse_buffer::{create_sparse_buffer, BufferStop};
+use bae_diagnostics::RecordingBugReporter;
 
 async fn fill_that_panics() -> Result<(), FillFailure> {
     panic!("window index out of range")

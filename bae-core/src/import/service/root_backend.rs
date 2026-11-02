@@ -18,14 +18,14 @@ pub(super) trait RootRemovalBackend: Send + Sync {
 pub(super) struct ServiceRootRemovalBackend {
     folder_watcher: Arc<FolderWatcher>,
     tables: crate::import::tables::ImportTables,
-    diagnostics: crate::diagnostics::Diagnostics,
+    diagnostics: bae_diagnostics::Diagnostics,
 }
 
 impl ServiceRootRemovalBackend {
     pub(super) fn new(
         folder_watcher: Arc<FolderWatcher>,
         tables: crate::import::tables::ImportTables,
-        diagnostics: crate::diagnostics::Diagnostics,
+        diagnostics: bae_diagnostics::Diagnostics,
     ) -> Self {
         Self { folder_watcher, tables, diagnostics }
     }

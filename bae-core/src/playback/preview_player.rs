@@ -15,7 +15,6 @@
 //! keeps the ring fed; the audio callback outputs silence until the first
 //! samples land.
 
-use crate::diagnostics::{Diagnostics, ReportedTask};
 use crate::playback::audio_output::{
     AudioEvent, AudioEventReceiver, AudioOutput, AudioOutputDevice, AudioState,
 };
@@ -30,6 +29,7 @@ use crate::playback::timeline::{StreamPosition, TrackTimeline};
 use crate::track_audio::data_source::{AudioDataReader, LocalReader};
 use crate::track_audio::{PreviewTarget, SegmentDecodeParams, StreamDecodeParams};
 use bae_audio::sparse_buffer::{create_sparse_buffer, SharedSparseBuffer};
+use bae_diagnostics::{Diagnostics, ReportedTask};
 use bae_util::task_failure::{blocking, TaskFailed};
 use std::path::Path;
 use std::time::Duration;

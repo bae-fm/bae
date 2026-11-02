@@ -10,7 +10,7 @@ impl ImportService {
         database: crate::db::Database,
         catalogs: crate::import::CatalogSessions,
         remote_images: bae_catalogs::remote_image::RemoteImageCache,
-        diagnostics: crate::diagnostics::Diagnostics,
+        diagnostics: bae_diagnostics::Diagnostics,
         preparations: crate::import::CandidatePreparations,
         clock: coven::ClockRef,
         ids: coven::IdSourceRef,
@@ -46,7 +46,7 @@ impl ImportService {
         database: crate::db::Database,
         catalogs: crate::import::CatalogSessions,
         remote_images: bae_catalogs::remote_image::RemoteImageCache,
-        diagnostics: crate::diagnostics::Diagnostics,
+        diagnostics: bae_diagnostics::Diagnostics,
         preparations: crate::import::CandidatePreparations,
         clock: coven::ClockRef,
         ids: coven::IdSourceRef,
@@ -78,7 +78,7 @@ impl ImportService {
         runtime_handle: tokio::runtime::Handle,
         services: crate::import::ImportServices,
         runtime: CandidateRuntime,
-        diagnostics: crate::diagnostics::Diagnostics,
+        diagnostics: bae_diagnostics::Diagnostics,
     ) -> Result<ImportServiceHandle, crate::import::ImportError> {
         let (fs_tx, fs_rx) = mpsc::unbounded_channel::<WatchReport>();
         let event_tx_for_worker = services.event_tx.clone();

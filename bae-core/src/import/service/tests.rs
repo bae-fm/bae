@@ -41,10 +41,8 @@ async fn setup_import_service() -> TestService {
     // The runtime writes its standings into the library the import commits
     // into.
     let tables = crate::import::tables::ImportTables::new(database.clone());
-    let runtime = crate::import::CandidateRuntime::new(
-        tables.clone(),
-        crate::diagnostics::Diagnostics::noop(),
-    );
+    let runtime =
+        crate::import::CandidateRuntime::new(tables.clone(), bae_diagnostics::Diagnostics::noop());
     let library = crate::app::test_library::TestLibrary::open(
         database.clone(),
         crate::app_dir::AppDir::under_home(temp_dir.path()).unwrap(),
@@ -67,12 +65,12 @@ async fn setup_import_service() -> TestService {
                 bae_catalogs::remote_image::RemoteImageCache::for_test(
                     bae_util::http::Http::for_test(),
                 ),
-                crate::diagnostics::Diagnostics::noop(),
+                bae_diagnostics::Diagnostics::noop(),
             ),
             clock: Arc::new(coven::SystemClock),
             ids: Arc::new(coven::UuidIds),
             import_cancels: Default::default(),
-            diagnostics: crate::diagnostics::Diagnostics::noop(),
+            diagnostics: bae_diagnostics::Diagnostics::noop(),
         },
         manager,
         preparations,
@@ -153,7 +151,7 @@ async fn store_scanned_candidate(
         tables.begin_folder_scan(folder, crate::import::VolumeKind::Local).await.unwrap();
     crate::import::store_scan_item(
         tables,
-        &crate::diagnostics::Diagnostics::noop(),
+        &bae_diagnostics::Diagnostics::noop(),
         folder,
         generation,
         &ScanItem::Valid(crate::import::folder_scanner::FolderCandidate {
@@ -239,7 +237,7 @@ impl FakeScanStarter {
             let started_path = path.clone();
             // The pass ends when it is finished, or when its finish is
             // dropped unsent: it ended without telling the coordinator.
-            let task = crate::diagnostics::Diagnostics::noop().spawn_reported(
+            let task = bae_diagnostics::Diagnostics::noop().spawn_reported(
                 &tokio::runtime::Handle::current(),
                 "a fake pass",
                 async move {
@@ -432,7 +430,7 @@ impl CoordinatorHarness {
                 .unwrap();
             crate::import::store_scan_item(
                 &tables,
-                &crate::diagnostics::Diagnostics::noop(),
+                &bae_diagnostics::Diagnostics::noop(),
                 std::path::Path::new(root),
                 generation,
                 &ScanItem::Invalid(crate::import::InvalidCandidate {
@@ -654,7 +652,7 @@ impl TestService {
                 &self.database,
                 &self.preparations,
                 event_tx,
-                Arc::new(FolderWatcher::new(fs_tx, crate::diagnostics::Diagnostics::noop())),
+                Arc::new(FolderWatcher::new(fs_tx, bae_diagnostics::Diagnostics::noop())),
                 file_tags,
                 directories,
             ),

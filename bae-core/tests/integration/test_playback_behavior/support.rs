@@ -378,7 +378,7 @@ async fn start_capture_service_with_restore(
         bae_core::playback::tables::PlaybackNowRow::new(database.clone()),
         bae_core::playback::tables::PlaybackTimelineRow::new(database.clone()),
         track_deletions,
-        bae_core::diagnostics::Diagnostics::noop(),
+        bae_diagnostics::Diagnostics::noop(),
         runtime_handle,
         100,
         restore_playback,

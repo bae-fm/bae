@@ -165,7 +165,7 @@ async fn unscanned_candidate(
 async fn rescan_into(tables: &crate::import::tables::ImportTables, candidate: FolderCandidate) {
     let root = candidate.watched_folder_path.clone();
     let generation = tables.begin_folder_scan(&root, crate::import::VolumeKind::Local).await.unwrap();
-    crate::import::store_scan_item(tables, &crate::diagnostics::Diagnostics::noop(),
+    crate::import::store_scan_item(tables, &bae_diagnostics::Diagnostics::noop(),
             &root,
             generation,
             &crate::import::folder_scanner::ScanItem::Valid(candidate),

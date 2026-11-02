@@ -14,9 +14,9 @@
 use std::net::SocketAddr;
 use std::sync::Arc;
 
-use bae_core::diagnostics::Diagnostics;
 use bae_core::library::AppServices;
 use bae_core::preferences::{SubsonicConfig, SubsonicCredential};
+use bae_diagnostics::Diagnostics;
 use bae_util::server::{ServerController, ServerError, ServerStatus};
 
 /// Reads the Subsonic password from the keyring. `Ok(None)` means no password is

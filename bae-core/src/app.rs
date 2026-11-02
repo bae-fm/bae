@@ -12,11 +12,11 @@ mod assembly;
 #[cfg(test)]
 pub(crate) mod test_library;
 
-use crate::diagnostics::{AnomalyKind, Diagnostics, TelemetryEvent};
 use crate::library::AppServices;
 pub use assembly::{
     open_library_manager, start_library_services, PlaybackOutput, ServicesStartError,
 };
+use bae_diagnostics::{AnomalyKind, Diagnostics, TelemetryEvent};
 use coven::{ClockRef, SystemClock};
 use coven::{IdSourceRef, UuidIds};
 
@@ -674,7 +674,7 @@ mod tests {
             50,
             false,
             crate::playback::AudioFocus::Unshared,
-            crate::diagnostics::Diagnostics::noop(),
+            bae_diagnostics::Diagnostics::noop(),
             super::LibraryOpening::Open(handle.clone()),
             |_services, _runtime| -> Result<(), BootstrapError> {
                 unreachable!("the bootstrap fails before it composes an owner")

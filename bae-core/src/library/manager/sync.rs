@@ -260,7 +260,7 @@ impl LibraryManager {
     /// say why sync didn't start.
     async fn set_sync_error(&self, error: Option<&LibraryError>) {
         let failure =
-            error.map(|error| crate::diagnostics::UiError::diagnostic(error.category(), error));
+            error.map(|error| bae_diagnostics::UiError::diagnostic(error.category(), error));
         if let Err(error) = self.database.record_sync_start_failure(failure).await {
             self.diagnostics.report_bug("record why sync failed to start", &error);
         }

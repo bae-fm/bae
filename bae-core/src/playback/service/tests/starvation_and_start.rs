@@ -58,7 +58,7 @@ async fn starvation_onset_reports_the_track_time_it_starved_at() {
         .requests()
         .iter()
         .flat_map(|request| {
-            serde_json::from_slice::<Vec<crate::diagnostics::DiagnosticEvent>>(&request.body)
+            serde_json::from_slice::<Vec<bae_diagnostics::DiagnosticEvent>>(&request.body)
                 .expect("recorded request body is a diagnostic-event array")
         })
         .filter(|event| event.name == "playback_starved")
@@ -93,8 +93,8 @@ async fn starvation_past_fail_threshold_with_no_progress_escalates_to_error_and_
 /// with audio missing.
 #[tokio::test]
 async fn an_output_that_stops_sending_stops_playback_and_reports_the_bug() {
-    let bugs = Arc::new(crate::diagnostics::RecordingBugReporter::default());
-    let diagnostics = crate::diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone());
+    let bugs = Arc::new(bae_diagnostics::RecordingBugReporter::default());
+    let diagnostics = bae_diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone());
     let store = seeded_store(&[]).await;
     let (mut service, mut progress_rx) = playback_service_over(&store, diagnostics.clone());
     service.slot =

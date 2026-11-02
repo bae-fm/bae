@@ -191,7 +191,7 @@ async fn drive_fixture(
         tx,
         candidates,
         database,
-        bae_core::diagnostics::Diagnostics::noop(),
+        bae_diagnostics::Diagnostics::noop(),
     );
     let analyzer: Arc<dyn ArtworkAnalyzer> = Arc::new(FixtureAnalyzer::new(ocr_map));
     handle.register_analyzer(analyzer);

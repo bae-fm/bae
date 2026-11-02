@@ -34,7 +34,7 @@ pub(super) struct ActiveRoots {
     folder_state_commit: crate::import::FolderStateCommit,
     next_removal_id: u64,
     /// Where a removal that panics is reported.
-    diagnostics: crate::diagnostics::Diagnostics,
+    diagnostics: bae_diagnostics::Diagnostics,
 }
 
 /// What one root has going.
@@ -128,7 +128,7 @@ struct Queued {
 
 struct RootRemovalSchedule {
     /// The removal, which sends its completion even when it panics.
-    task: crate::diagnostics::ReportedTask,
+    task: bae_diagnostics::ReportedTask,
     /// The roots it stops watching.
     roots: Vec<PathBuf>,
     /// The folder holding exactly `roots` that it watches in their place.
@@ -191,7 +191,7 @@ impl ActiveRoots {
         starter: RootScanStarter,
         removal_backend: Arc<dyn RootRemovalBackend>,
         folder_state_commit: crate::import::FolderStateCommit,
-        diagnostics: crate::diagnostics::Diagnostics,
+        diagnostics: bae_diagnostics::Diagnostics,
     ) -> (
         Self,
         mpsc::UnboundedReceiver<RootScanCompletion>,

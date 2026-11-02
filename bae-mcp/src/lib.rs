@@ -7,7 +7,7 @@ use axum::response::{IntoResponse, Response};
 pub use bae_automation::Automation;
 
 use bae_automation::{AutomationError, AutomationTool};
-use bae_core::diagnostics::Diagnostics;
+use bae_diagnostics::Diagnostics;
 use bae_util::server::{ServerController, ServerError, ServerStatus};
 use bae_util::task_failure::caught;
 use rmcp::model::{

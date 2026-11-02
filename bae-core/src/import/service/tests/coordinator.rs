@@ -519,7 +519,7 @@ async fn cancelled_scan_task_does_not_begin_a_durable_generation() {
     std::fs::create_dir(&root).unwrap();
     tables.add_watched_import_folder(&root).await.unwrap();
     let (watch_tx, _watch_rx) = tokio::sync::mpsc::unbounded_channel();
-    let watcher = Arc::new(FolderWatcher::new(watch_tx, crate::diagnostics::Diagnostics::noop()));
+    let watcher = Arc::new(FolderWatcher::new(watch_tx, bae_diagnostics::Diagnostics::noop()));
     let (completion_tx, mut completion_rx) = tokio::sync::mpsc::unbounded_channel();
     let mut events = service.event_tx.every_event();
 
@@ -643,8 +643,8 @@ async fn cancelling_a_panicked_folder_walk_fails_and_reports_it() {
         panic!("folder walk panic");
     }
 
-    let bugs = Arc::new(crate::diagnostics::RecordingBugReporter::default());
-    let diagnostics = crate::diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone());
+    let bugs = Arc::new(bae_diagnostics::RecordingBugReporter::default());
+    let diagnostics = bae_diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone());
     let cancellation = crate::import::folder_scanner::ScanCancellation::new();
     let (item_tx, mut item_rx) = tokio::sync::mpsc::channel(1);
     drop(item_tx);

@@ -50,7 +50,7 @@ async fn manager_signing_in_with(
         bae_catalogs::providers::Providers::offline(),
         clock,
         Arc::new(coven::UuidIds),
-        crate::diagnostics::Diagnostics::noop(),
+        bae_diagnostics::Diagnostics::noop(),
     )
     .await;
     let manager = LibraryManager::clone(&library);

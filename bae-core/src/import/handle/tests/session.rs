@@ -3,7 +3,7 @@ use crate::import::{
     ImportError, MetadataPresentation, PaneCommand, PaneFailure, PaneMove, PaneOutcome, SearchForm,
     SearchTab,
 };
-use crate::diagnostics::{UiError, UiErrorCategory};
+use bae_diagnostics::{UiError, UiErrorCategory};
 
 /// The pane's state comes back with the candidate: each write lands on the
 /// next read, and a write of one part leaves the others where they were.

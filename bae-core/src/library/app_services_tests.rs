@@ -485,7 +485,7 @@ fn a_track_decode_whose_read_panics_reports_it() {
     let buffer = bae_audio::sparse_buffer::create_sparse_buffer(bytes.len() as u64);
     buffer.append_at(0, &bytes);
     buffer.panic_reads();
-    let reports = Arc::new(crate::diagnostics::RecordingBugReporter::default());
+    let reports = Arc::new(bae_diagnostics::RecordingBugReporter::default());
     let decode = TrackDecode::new(
         crate::track_audio::StreamDecodeParams::new(
             vec![crate::track_audio::SegmentDecodeParams::new(
@@ -499,7 +499,7 @@ fn a_track_decode_whose_read_panics_reports_it() {
         ),
         44_100,
         2,
-        crate::diagnostics::Diagnostics::noop().reporting_bugs_to(reports.clone()),
+        bae_diagnostics::Diagnostics::noop().reporting_bugs_to(reports.clone()),
     );
 
     let result = decode

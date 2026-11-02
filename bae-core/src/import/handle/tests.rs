@@ -22,19 +22,19 @@ async fn setup_test_manager() -> (TestLibrary, Database, TempDir) {
 async fn setup_test_manager_with(
     providers: bae_catalogs::providers::Providers,
 ) -> (TestLibrary, Database, TempDir) {
-    setup_test_manager_over(providers, crate::diagnostics::Diagnostics::noop()).await
+    setup_test_manager_over(providers, bae_diagnostics::Diagnostics::noop()).await
 }
 
 /// A library reporting its bugs to `diagnostics`.
 async fn setup_test_manager_reporting_to(
-    diagnostics: crate::diagnostics::Diagnostics,
+    diagnostics: bae_diagnostics::Diagnostics,
 ) -> (TestLibrary, Database, TempDir) {
     setup_test_manager_over(bae_catalogs::providers::Providers::offline(), diagnostics).await
 }
 
 async fn setup_test_manager_over(
     providers: bae_catalogs::providers::Providers,
-    diagnostics: crate::diagnostics::Diagnostics,
+    diagnostics: bae_diagnostics::Diagnostics,
 ) -> (TestLibrary, Database, TempDir) {
     let temp_dir = TempDir::new().unwrap();
     let db_path = temp_dir.path().join("test.db");

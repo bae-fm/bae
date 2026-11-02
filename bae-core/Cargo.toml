@@ -16,12 +16,12 @@ path = "src/lib.rs"
 [dependencies]
 bae-audio = { workspace = true }
 bae-catalogs = { workspace = true }
+bae-diagnostics = { workspace = true }
 bae-types = { workspace = true }
 bae-util = { workspace = true }
 coven = { workspace = true }
 rusqlite = { workspace = true }
-# The telemetry upload's request and the provider errors import classifies;
-# the transport is bae-util's.
+# The provider errors import classifies; the transport is bae-util's.
 reqwest = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
@@ -104,6 +104,8 @@ windows-sys = { workspace = true, features = ["Win32_Storage_FileSystem", "Win32
 # instrumentation bae-core's unit tests read: probe counts, buffer ranges and
 # reads.
 bae-audio = { workspace = true, features = ["test-utils", "test-instrumentation"] }
+# The bug reporter and telemetry transport that record what they are handed.
+bae-diagnostics = { workspace = true, features = ["test-utils"] }
 # The test transport and the retry that sleeps no real time, for bae-core's
 # own unit tests.
 bae-util = { workspace = true, features = ["test-utils"] }

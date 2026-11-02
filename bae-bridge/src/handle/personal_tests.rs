@@ -24,7 +24,7 @@ fn profiles_ratings_playlists_and_history_use_the_same_store() {
         closing,
     ));
     let app = Arc::new(
-        AppHandle::start(services, runtime, bae_core::diagnostics::Diagnostics::noop()).unwrap(),
+        AppHandle::start(services, runtime, bae_diagnostics::Diagnostics::noop()).unwrap(),
     );
     app.runtime.block_on(async {
         let share = app.clone().generate_restore_code().await.unwrap();

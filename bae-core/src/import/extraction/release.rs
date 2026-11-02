@@ -4,7 +4,7 @@
 //! in `import::discid`.
 
 use crate::db::{Database, DbError, LibraryImageType};
-use crate::diagnostics::Diagnostics;
+use bae_diagnostics::Diagnostics;
 use bae_util::task_failure::TaskFailed;
 use std::path::PathBuf;
 use tracing::{debug, warn};
@@ -298,7 +298,7 @@ mod tests {
         let logs = capture_warn_logs_async(|| async {
             let (paths, cover_staging) = resolve_release_artwork_paths(
                 &database,
-                &crate::diagnostics::Diagnostics::noop(),
+                &bae_diagnostics::Diagnostics::noop(),
                 &release.id,
             )
             .await
@@ -436,13 +436,10 @@ mod tests {
             database.insert_track(&track).await.unwrap();
         }
 
-        let identity = resolve_release_identity(
-            &database,
-            &crate::diagnostics::Diagnostics::noop(),
-            &release.id,
-        )
-        .await
-        .unwrap();
+        let identity =
+            resolve_release_identity(&database, &bae_diagnostics::Diagnostics::noop(), &release.id)
+                .await
+                .unwrap();
         let (rip, track_count) = (identity.rip, identity.audio.track_count);
 
         assert!(

@@ -749,6 +749,7 @@ version = "0.1.0"
 dependencies = [
  "bae-catalogs",
  "bae-core",
+ "bae-diagnostics",
  "bae-mirror",
  "bae-test-support",
  "bae-types",
@@ -771,6 +772,7 @@ dependencies = [
  "bae-catalogs",
  "bae-core",
  "bae-desktop",
+ "bae-diagnostics",
  "bae-loc",
  "bae-mirror",
  "bae-test-support",
@@ -801,6 +803,7 @@ dependencies = [
  "aes",
  "axum",
  "bae-core",
+ "bae-diagnostics",
  "bae-subsonic",
  "bae-test-support",
  "bae-util",
@@ -858,6 +861,7 @@ dependencies = [
  "axum",
  "bae-audio",
  "bae-catalogs",
+ "bae-diagnostics",
  "bae-test-support",
  "bae-types",
  "bae-util",
@@ -910,10 +914,28 @@ name = "bae-desktop"
 version = "0.1.0"
 dependencies = [
  "bae-core",
+ "bae-diagnostics",
  "bae-mcp",
  "bae-subsonic",
  "bae-test-support",
  "bae-util",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "bae-diagnostics"
+version = "0.0.0-dev"
+dependencies = [
+ "async-trait",
+ "bae-types",
+ "bae-util",
+ "chrono",
+ "coven",
+ "reqwest",
+ "serde",
+ "serde_json",
  "thiserror 2.0.18",
  "tokio",
  "tracing",
@@ -935,6 +957,7 @@ dependencies = [
  "axum",
  "bae-automation",
  "bae-core",
+ "bae-diagnostics",
  "bae-util",
  "rmcp",
  "serde_json",
@@ -954,6 +977,7 @@ dependencies = [
  "bae-audio",
  "bae-catalogs",
  "bae-core",
+ "bae-diagnostics",
  "bae-test-support",
  "bae-types",
  "bae-util",
@@ -977,6 +1001,7 @@ dependencies = [
  "bae-audio",
  "bae-catalogs",
  "bae-core",
+ "bae-diagnostics",
  "bae-util",
  "coven",
  "image",

@@ -171,7 +171,7 @@ pub(super) fn start_test_handle(
     let services = runtime
         .block_on(bae_test_support::start_test_services(manager, database, catalogs, closing));
     Arc::new(
-        super::AppHandle::start(services, runtime, bae_core::diagnostics::Diagnostics::noop())
+        super::AppHandle::start(services, runtime, bae_diagnostics::Diagnostics::noop())
             .expect("the bridge handle starts"),
     )
 }
@@ -517,7 +517,7 @@ fn a_failed_sync_status_crosses_with_its_fault() {
     let fault = "sync cycle: pull Store commits: database: retained Merge replay \
                  has an unresolved foreign-key dependency";
     let snapshot = bae_core::library::SyncStatusSnapshot {
-        error: Some(bae_core::diagnostics::UiError::internal(fault)),
+        error: Some(bae_diagnostics::UiError::internal(fault)),
         status: coven::SyncStatus::Disconnected,
         pending: Vec::new(),
         retry_effect: coven::RetryEffect::Pass,
@@ -555,7 +555,7 @@ fn a_healthy_sync_status_crosses_without_an_error() {
 #[test]
 fn a_failed_start_crosses_offering_reconnect() {
     let snapshot = bae_core::library::SyncStatusSnapshot {
-        error: Some(bae_core::diagnostics::UiError::internal("the store key is missing")),
+        error: Some(bae_diagnostics::UiError::internal("the store key is missing")),
         status: coven::SyncStatus::Stopped,
         pending: Vec::new(),
         retry_effect: coven::RetryEffect::NotSyncing,
@@ -707,9 +707,8 @@ fn dropping_a_handle_closes_its_library_before_its_runtime_ends() {
         catalogs,
         closing,
     ));
-    let app =
-        super::AppHandle::start(services, runtime, bae_core::diagnostics::Diagnostics::noop())
-            .expect("the bridge handle starts");
+    let app = super::AppHandle::start(services, runtime, bae_diagnostics::Diagnostics::noop())
+        .expect("the bridge handle starts");
 
     drop(app);
 

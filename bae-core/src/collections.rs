@@ -66,8 +66,8 @@ pub enum CollectionError {
 }
 
 impl CollectionError {
-    pub fn category(&self) -> crate::diagnostics::UiErrorCategory {
-        use crate::diagnostics::UiErrorCategory as C;
+    pub fn category(&self) -> bae_diagnostics::UiErrorCategory {
+        use bae_diagnostics::UiErrorCategory as C;
         match self {
             Self::EmptyName | Self::Missing | Self::OrderChanged => C::Config,
             Self::NotOwner => C::Membership,

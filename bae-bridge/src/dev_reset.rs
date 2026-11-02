@@ -48,8 +48,8 @@ fn profile_error(error: bae_core::dev_reset::DevResetProfileError) -> BridgeErro
     use bae_core::dev_reset::DevResetProfileError as E;
     match &error {
         E::Prefix { error: refusal, .. } => {
-            BridgeError::from_core(bae_core::diagnostics::UiError::diagnostic(
-                bae_core::diagnostics::UiErrorCategory::S3Prefix(refusal.clone()),
+            BridgeError::from_core(bae_diagnostics::UiError::diagnostic(
+                bae_diagnostics::UiErrorCategory::S3Prefix(refusal.clone()),
                 &error,
             ))
         }

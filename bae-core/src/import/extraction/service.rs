@@ -69,7 +69,7 @@ struct ExtractionServiceInner {
     /// files from.
     database: crate::db::Database,
     /// Where a panic in a pass is reported as the bug it is.
-    diagnostics: crate::diagnostics::Diagnostics,
+    diagnostics: bae_diagnostics::Diagnostics,
     /// Each folder's settled snapshot this session, so a later run over the
     /// same files does not read every image again.
     settled: SessionCache<SignalsSnapshot>,
@@ -123,7 +123,7 @@ impl ExtractionService {
         event_tx: ImportEventBus,
         candidates: CandidateRuntime,
         database: crate::db::Database,
-        diagnostics: crate::diagnostics::Diagnostics,
+        diagnostics: bae_diagnostics::Diagnostics,
     ) -> ExtractionServiceHandle {
         let inner = Arc::new(ExtractionServiceInner {
             runtime_handle,
@@ -377,7 +377,7 @@ async fn extract(
 /// The fast pass, or why it panicked or the folder's timing does not read. A
 /// panic is reported to `diagnostics`.
 async fn run_fast_pass_blocking<F>(
-    diagnostics: &crate::diagnostics::Diagnostics,
+    diagnostics: &bae_diagnostics::Diagnostics,
     task: F,
 ) -> Result<FastPass, String>
 where
@@ -468,7 +468,7 @@ impl<'a> ImageRead<'a> {
     /// to `diagnostics`.
     async fn finish(
         self,
-        diagnostics: &crate::diagnostics::Diagnostics,
+        diagnostics: &bae_diagnostics::Diagnostics,
     ) -> Result<ArtworkAnalysis, InternalFailure> {
         bae_util::task_failure::joined(READ_IMAGE, self.task).await.map_err(|failed| {
             InternalFailure {
@@ -482,7 +482,7 @@ impl<'a> ImageRead<'a> {
 /// outlives it: the files a pass reads (a library release's staged cover)
 /// last only until it returns. A read that panicked is reported to
 /// `diagnostics`.
-async fn abandon(reads: VecDeque<ImageRead<'_>>, diagnostics: &crate::diagnostics::Diagnostics) {
+async fn abandon(reads: VecDeque<ImageRead<'_>>, diagnostics: &bae_diagnostics::Diagnostics) {
     for read in reads {
         if let Err(failed) = bae_util::task_failure::joined(READ_IMAGE, read.task).await {
             diagnostics.bug(failed);

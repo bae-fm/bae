@@ -13,7 +13,7 @@ pub(super) struct LibraryFollow<Request, Value> {
     requests: coven::LiveQueryRequests<Request>,
     request: Request,
     reads: tokio::sync::mpsc::UnboundedReceiver<(Request, Value)>,
-    task: crate::diagnostics::ReportedTask,
+    task: bae_diagnostics::ReportedTask,
 }
 
 impl<Request, Value> LibraryFollow<Request, Value>
@@ -30,7 +30,7 @@ where
         mut query: coven::ReconfigurableLiveQuery<Request, Value>,
         request: Request,
         what: &'static str,
-        diagnostics: &crate::diagnostics::Diagnostics,
+        diagnostics: &bae_diagnostics::Diagnostics,
     ) -> Self {
         let requests = query.requests();
         let (tx, reads) = tokio::sync::mpsc::unbounded_channel();
@@ -109,7 +109,7 @@ mod tests {
             crate::playback::tables::subscribe_playback_track_infos(&database, Vec::new()),
             Vec::new(),
             "the tracks' sides",
-            &crate::diagnostics::Diagnostics::noop(),
+            &bae_diagnostics::Diagnostics::noop(),
         );
 
         database.close().await.unwrap();
@@ -143,7 +143,7 @@ mod tests {
             crate::playback::tables::subscribe_playback_track_infos(&database, Vec::new()),
             Vec::new(),
             "the tracks' sides",
-            &crate::diagnostics::Diagnostics::noop(),
+            &bae_diagnostics::Diagnostics::noop(),
         );
         database.close().await.unwrap();
         follow_ends(&mut follow).await;

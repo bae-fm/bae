@@ -28,7 +28,7 @@ impl PlaybackProgressHandle {
         clock: crate::playback::PlaybackClockRef,
         row: crate::playback::tables::PlaybackNowRow,
         timeline_row: crate::playback::tables::PlaybackTimelineRow,
-        diagnostics: crate::diagnostics::Diagnostics,
+        diagnostics: bae_diagnostics::Diagnostics,
     ) -> Self {
         let subscriptions: Arc<Mutex<Vec<tokio_mpsc::UnboundedSender<PlaybackProgress>>>> =
             Arc::new(Mutex::new(Vec::new()));
@@ -137,7 +137,7 @@ mod tests {
             Arc::new(crate::playback::ManualPlaybackClock::new(chrono::Utc::now())),
             crate::playback::tables::PlaybackNowRow::new(db.clone()),
             crate::playback::tables::PlaybackTimelineRow::new(db.clone()),
-            crate::diagnostics::Diagnostics::noop(),
+            bae_diagnostics::Diagnostics::noop(),
         );
         (handle, progress_tx, db, tmp)
     }

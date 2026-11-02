@@ -4,7 +4,7 @@
 
 use super::super::*;
 use super::temp_db;
-use crate::diagnostics::{UiError, UiErrorCategory as C};
+use bae_diagnostics::{UiError, UiErrorCategory as C};
 use coven::{DropboxAccess, OAuthAccess, OwnBucketReason, StorageFailure as F};
 
 fn failure(category: C) -> UiError {

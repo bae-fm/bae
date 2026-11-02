@@ -343,7 +343,7 @@ async fn opening_a_library_empties_its_transfer_queues() {
         bae_catalogs::providers::Providers::offline(),
         clock,
         Arc::new(coven::UuidIds),
-        crate::diagnostics::Diagnostics::noop(),
+        bae_diagnostics::Diagnostics::noop(),
     )
     .await;
 

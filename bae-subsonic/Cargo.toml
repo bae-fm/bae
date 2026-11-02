@@ -11,6 +11,7 @@ path = "src/lib.rs"
 
 [dependencies]
 bae-core = { workspace = true }
+bae-diagnostics = { workspace = true }
 # The catalog a release's links name.
 bae-catalogs = { workspace = true }
 # The transcode encoder and the buffer a served track streams from.
@@ -32,6 +33,8 @@ bae-test-support = { workspace = true }
 # The catalog fakes and releases the server tests seed.
 bae-catalogs = { workspace = true, features = ["test-utils"] }
 bae-core = { workspace = true, features = ["test-utils"] }
+# The bug reporter that keeps what it is handed.
+bae-diagnostics = { workspace = true, features = ["test-utils"] }
 # The pressing values the server tests seed releases with.
 bae-types = { workspace = true }
 # The WAV reader the transcode tests check served bytes with.

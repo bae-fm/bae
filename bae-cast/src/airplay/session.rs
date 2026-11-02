@@ -235,7 +235,7 @@ impl RaopSession {
     /// Connect to `receiver`, run the handshake, and start streaming `source`.
     /// `cipher` is the negotiated encryption ([`RaopCipher::none`] for `et=0`).
     pub(crate) fn start(
-        diagnostics: &bae_core::diagnostics::Diagnostics,
+        diagnostics: &bae_diagnostics::Diagnostics,
         receiver: IpAddr,
         rtsp_port: u16,
         source: Box<dyn PcmSource>,
@@ -501,7 +501,7 @@ mod tests {
         });
 
         let session = RaopSession::start(
-            &bae_core::diagnostics::Diagnostics::noop(),
+            &bae_diagnostics::Diagnostics::noop(),
             addr.ip(),
             addr.port(),
             Box::new(SilentSource),

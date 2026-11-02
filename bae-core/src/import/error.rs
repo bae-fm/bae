@@ -358,16 +358,16 @@ impl ImportError {
     /// This failure as a surface states it: its class, which the surface
     /// words in the person's language, and its own text as the untranslated
     /// detail.
-    pub fn ui_error(&self) -> crate::diagnostics::UiError {
-        crate::diagnostics::UiError::diagnostic(self.category(), self)
+    pub fn ui_error(&self) -> bae_diagnostics::UiError {
+        bae_diagnostics::UiError::diagnostic(self.category(), self)
     }
 
     /// The class a surface words this failure in. Expected refusals and
     /// provider failures are kept apart from unusable source data and
     /// internal faults, and every variant chooses its class, so a new failure
     /// has to say how it is shown.
-    pub fn category(&self) -> crate::diagnostics::UiErrorCategory {
-        use crate::diagnostics::UiErrorCategory as C;
+    pub fn category(&self) -> bae_diagnostics::UiErrorCategory {
+        use bae_diagnostics::UiErrorCategory as C;
         match self {
             #[cfg(desktop)]
             Self::GroupingBlocked { reason } => reason.category(),
@@ -384,10 +384,10 @@ impl ImportError {
             }
             #[cfg(desktop)]
             Self::CatalogSession(crate::import::CatalogSessionError::Keyring(error)) => {
-                crate::diagnostics::key_category(error)
+                bae_diagnostics::key_category(error)
             }
             #[cfg(desktop)]
-            Self::Sync(error) => crate::diagnostics::sync_category(error),
+            Self::Sync(error) => bae_diagnostics::sync_category(error),
             #[cfg(desktop)]
             Self::ImportWriting => C::Import,
             #[cfg(desktop)]
@@ -431,8 +431,7 @@ impl ImportError {
 
 /// The class a surface words a catalog's failure in: provider failures apart
 /// from data bae cannot read and its own faults.
-fn catalog_category(error: &bae_catalogs::CatalogError) -> crate::diagnostics::UiErrorCategory {
-    use crate::diagnostics::UiErrorCategory as C;
+fn catalog_category(error: &bae_catalogs::CatalogError) -> bae_diagnostics::UiErrorCategory {
     #[cfg(desktop)]
     use bae_catalogs::discogs::client::DiscogsError;
     #[cfg(desktop)]
@@ -441,6 +440,7 @@ fn catalog_category(error: &bae_catalogs::CatalogError) -> crate::diagnostics::U
     #[cfg(desktop)]
     use bae_catalogs::wikidata::WikidataError;
     use bae_catalogs::CatalogError;
+    use bae_diagnostics::UiErrorCategory as C;
     match error {
         #[cfg(desktop)]
         CatalogError::SourceData { .. } => C::ImportData,
@@ -543,8 +543,8 @@ mod tests {
     /// could not build the request or finish its cache task.
     #[tokio::test]
     async fn a_failed_remote_image_fetch_shows_as_whose_failure_it_is() {
-        use crate::diagnostics::UiErrorCategory;
         use bae_catalogs::remote_image::RemoteImageError;
+        use bae_diagnostics::UiErrorCategory;
         let category = |error: RemoteImageError| ImportError::from(error).category();
         let transport = |error: reqwest::Error| RemoteImageError::Transport {
             context: "Failed to fetch image",
@@ -609,7 +609,7 @@ mod tests {
                 bae_catalogs::wikidata::WikidataError::Timeout
             ))
         ));
-        assert_eq!(err.category(), crate::diagnostics::UiErrorCategory::Import);
+        assert_eq!(err.category(), bae_diagnostics::UiErrorCategory::Import);
     }
 
     /// A Discogs server error likewise survives the conversion so a retry
@@ -649,8 +649,8 @@ mod tests {
     /// import met is the library's store failure.
     #[test]
     fn an_import_error_keeps_its_kind_through_a_library_error() {
-        use crate::diagnostics::UiErrorCategory;
         use crate::library::LibraryError;
+        use bae_diagnostics::UiErrorCategory;
         let library = LibraryError::from(ImportError::TiedMediums { mediums: vec![1, 3] });
         assert_eq!(library.category(), UiErrorCategory::TiedMediums { mediums: vec![1, 3] });
 
@@ -702,9 +702,9 @@ mod tests {
                 .await
                 .expect_err("nothing answers there");
             assert!(matches!(error, MusicBrainzError::Network(_)), "{error}");
-            let crate::diagnostics::UiError::Diagnostic { category, detail } =
+            let bae_diagnostics::UiError::Diagnostic { category, detail } =
                 ImportError::from(error).ui_error();
-            assert_eq!(category, crate::diagnostics::UiErrorCategory::Import);
+            assert_eq!(category, bae_diagnostics::UiErrorCategory::Import);
             assert!(detail.contains(cause), "{detail}");
             assert!(!detail.contains("disc-unreachable"), "{detail}");
         }
@@ -729,9 +729,9 @@ mod tests {
             matches!(error, bae_catalogs::discogs::client::DiscogsError::Transport(_)),
             "{error}"
         );
-        let crate::diagnostics::UiError::Diagnostic { category, detail } =
+        let bae_diagnostics::UiError::Diagnostic { category, detail } =
             ImportError::from(error).ui_error();
-        assert_eq!(category, crate::diagnostics::UiErrorCategory::Import);
+        assert_eq!(category, bae_diagnostics::UiErrorCategory::Import);
         assert!(detail.contains("tcp connect error"), "{detail}");
     }
 }

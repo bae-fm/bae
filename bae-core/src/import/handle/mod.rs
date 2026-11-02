@@ -358,7 +358,7 @@ pub struct ImportServiceHandle {
     watcher: WorkerThread<WatcherCommand>,
     runtime_handle: tokio::runtime::Handle,
     /// Where a panic in work the handle starts and nobody awaits is reported.
-    diagnostics: crate::diagnostics::Diagnostics,
+    diagnostics: bae_diagnostics::Diagnostics,
     /// Cancelled when the library closes, before its store does: every list
     /// the handle opens ends with it.
     closing: tokio_util::sync::CancellationToken,

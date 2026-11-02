@@ -41,7 +41,7 @@ async fn closing_a_playing_library_leaves_none_of_its_files_open() {
         closing,
         clock.clone(),
         std::sync::Arc::new(coven::UuidIds),
-        bae_core::diagnostics::Diagnostics::noop(),
+        bae_diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
         bae_catalogs::remote_image::RemoteImageCache::for_test(bae_util::http::Http::for_test()),
         100,

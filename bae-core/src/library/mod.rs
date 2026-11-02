@@ -133,11 +133,11 @@ pub enum RestoreFromCodeError {
 impl RestoreFromCodeError {
     /// What the person can do about the failure: fix the code, the cloud
     /// credentials, or the keyring, or retry once the cloud is reachable.
-    pub fn category(&self) -> crate::diagnostics::UiErrorCategory {
+    pub fn category(&self) -> bae_diagnostics::UiErrorCategory {
         match self {
             Self::Profile(error) => error.category(),
-            Self::Cancelled => crate::diagnostics::UiErrorCategory::Internal,
-            Self::Restore(error) => crate::diagnostics::bootstrap_category(error),
+            Self::Cancelled => bae_diagnostics::UiErrorCategory::Internal,
+            Self::Restore(error) => bae_diagnostics::bootstrap_category(error),
         }
     }
 }
@@ -149,9 +149,9 @@ pub enum CreateLibraryError {
 }
 
 impl CreateLibraryError {
-    pub fn category(&self) -> crate::diagnostics::UiErrorCategory {
+    pub fn category(&self) -> bae_diagnostics::UiErrorCategory {
         match self {
-            Self::Store(error) => crate::diagnostics::creation_category(error),
+            Self::Store(error) => bae_diagnostics::creation_category(error),
         }
     }
 }
@@ -164,8 +164,8 @@ pub struct TemporaryDirectoryError(#[from] coven::TemporaryDirectoryError);
 
 #[cfg(target_os = "android")]
 impl TemporaryDirectoryError {
-    pub fn category(&self) -> crate::diagnostics::UiErrorCategory {
-        crate::diagnostics::UiErrorCategory::Config
+    pub fn category(&self) -> bae_diagnostics::UiErrorCategory {
+        bae_diagnostics::UiErrorCategory::Config
     }
 }
 
@@ -581,10 +581,10 @@ pub enum SavedRestoreCodesError {
 }
 
 impl SavedRestoreCodesError {
-    pub fn category(&self) -> crate::diagnostics::UiErrorCategory {
+    pub fn category(&self) -> bae_diagnostics::UiErrorCategory {
         match self {
-            Self::Keychain(error) => crate::diagnostics::bootstrap_category(error),
-            Self::Stores(_) => crate::diagnostics::UiErrorCategory::Config,
+            Self::Keychain(error) => bae_diagnostics::bootstrap_category(error),
+            Self::Stores(_) => bae_diagnostics::UiErrorCategory::Config,
         }
     }
 }
@@ -595,8 +595,8 @@ impl SavedRestoreCodesError {
 pub struct ForgetSavedRestoreCodeError(#[from] coven::BootstrapError);
 
 impl ForgetSavedRestoreCodeError {
-    pub fn category(&self) -> crate::diagnostics::UiErrorCategory {
-        crate::diagnostics::bootstrap_category(&self.0)
+    pub fn category(&self) -> bae_diagnostics::UiErrorCategory {
+        bae_diagnostics::bootstrap_category(&self.0)
     }
 }
 

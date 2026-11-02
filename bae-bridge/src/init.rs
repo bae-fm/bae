@@ -2,7 +2,7 @@ use std::backtrace::Backtrace;
 use std::sync::{Arc, Once};
 
 use bae_core::app::{bootstrap, BootstrapError};
-use bae_core::diagnostics::{
+use bae_diagnostics::{
     AppDiagnosticMetadata, AppStartFailureKind, DatadogDiagnosticsConfig, Diagnostics,
     DiagnosticsConfig, DiagnosticsError, Screen, TelemetryEvent,
 };
@@ -28,7 +28,7 @@ struct PlatformBugReporter(Box<dyn BridgeBugReporter>);
 /// A throw from the platform's reporter, which uniffi raises in Rust as a
 /// panic, is logged: there is nowhere else to report it, and a report made
 /// from a `Drop` or a teardown must not panic.
-impl bae_core::diagnostics::BugReporter for PlatformBugReporter {
+impl bae_diagnostics::BugReporter for PlatformBugReporter {
     fn report(&self, operation: &str, detail: &str) {
         if let Err(failed) = bae_util::task_failure::caught_sync("report a bug", || {
             self.0.report(operation.to_string(), detail.to_string())
@@ -253,9 +253,7 @@ impl BridgeDiagnostics {
 
     /// A sink that sends nothing and reports each bug to `bugs`.
     #[cfg(test)]
-    pub(crate) fn reporting_bugs_to(
-        bugs: Arc<dyn bae_core::diagnostics::BugReporter>,
-    ) -> Arc<Self> {
+    pub(crate) fn reporting_bugs_to(bugs: Arc<dyn bae_diagnostics::BugReporter>) -> Arc<Self> {
         Arc::new(Self { inner: Diagnostics::noop().reporting_bugs_to(bugs) })
     }
 }
@@ -291,8 +289,7 @@ pub fn configure_diagnostics(
     install_panic_logging();
     let clock = Arc::new(coven::SystemClock);
     let ids = Arc::new(coven::UuidIds);
-    let bugs: Arc<dyn bae_core::diagnostics::BugReporter> =
-        Arc::new(PlatformBugReporter(bug_reporter));
+    let bugs: Arc<dyn bae_diagnostics::BugReporter> = Arc::new(PlatformBugReporter(bug_reporter));
     let inner = match Diagnostics::configure(config.into_core(), clock, ids, bugs.clone()) {
         Ok(diagnostics) => diagnostics,
         Err(error) => {

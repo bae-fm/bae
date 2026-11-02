@@ -8,7 +8,7 @@
 
 use crate::renderer::published_devices::PublishedDevices;
 use crate::renderer::RendererDevice;
-use bae_core::diagnostics::Diagnostics;
+use bae_diagnostics::Diagnostics;
 
 /// One protocol's live browse: everything it holds while it is reading the
 /// network. Started against the list it publishes into, and stopped as a whole.

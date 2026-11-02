@@ -127,7 +127,7 @@ pub struct CandidateRuntime {
     /// The standings table, in the library's store.
     tables: crate::import::tables::ImportTables,
     /// Where a bug the runtime finds with no caller to fail is reported.
-    diagnostics: crate::diagnostics::Diagnostics,
+    diagnostics: bae_diagnostics::Diagnostics,
     /// The percent of each key's running import, apart from its snapshot: it
     /// moves many times a second, and the step only a few times an import.
     percents: Arc<watch::Sender<HashMap<CandidateKey, u32>>>,
@@ -154,14 +154,14 @@ impl CandidateRuntime {
     /// several steps under it, so a panic while it is held leaves it partway
     /// through a change: taking it then reports that and ends the process.
     fn held(&self) -> std::sync::MutexGuard<'_, Inner> {
-        crate::diagnostics::lock_or_crash(&self.diagnostics, "the candidate runtime", &self.inner)
+        bae_diagnostics::lock_or_crash(&self.diagnostics, "the candidate runtime", &self.inner)
     }
 
     /// A runtime over the standings table in `tables`, which the library
     /// emptied as it opened, reporting its bugs to `diagnostics`.
     pub(crate) fn new(
         tables: crate::import::tables::ImportTables,
-        diagnostics: crate::diagnostics::Diagnostics,
+        diagnostics: bae_diagnostics::Diagnostics,
     ) -> Self {
         Self {
             inner: Arc::default(),
@@ -197,7 +197,7 @@ impl CandidateRuntime {
             _test_directory: Some(Arc::new(directory)),
             ..Self::new(
                 crate::import::tables::ImportTables::new(database),
-                crate::diagnostics::Diagnostics::noop(),
+                bae_diagnostics::Diagnostics::noop(),
             )
         }
     }

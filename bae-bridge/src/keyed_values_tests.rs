@@ -11,7 +11,7 @@ fn fed_stream(
     let stream = Arc::new(KeyedValueStream::new(
         values.clone(),
         CancellationToken::new(),
-        OperationRuntime::new(runtime.handle().clone(), bae_core::diagnostics::Diagnostics::noop()),
+        OperationRuntime::new(runtime.handle().clone(), bae_diagnostics::Diagnostics::noop()),
     ));
     (stream, StreamWriter::new(values.clone()), values)
 }

@@ -19,7 +19,7 @@ use tracing::{debug, warn};
 use crate::renderer::protocol_discovery::{Browse, ProtocolDiscovery};
 use crate::renderer::published_devices::PublishedDevices;
 use crate::renderer::{RendererConnection, RendererDevice};
-use bae_core::diagnostics::Diagnostics;
+use bae_diagnostics::Diagnostics;
 use bae_util::error_text::CauseChain;
 use bae_util::task_failure::caught_sync;
 

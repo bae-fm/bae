@@ -457,11 +457,11 @@ impl UploadBatchFailure {
         }
         Self {
             release_ids,
-            error: crate::diagnostics::UiError::Diagnostic {
+            error: bae_diagnostics::UiError::Diagnostic {
                 category: if same_category {
                     first_category
                 } else {
-                    crate::diagnostics::UiErrorCategory::Internal
+                    bae_diagnostics::UiErrorCategory::Internal
                 },
                 detail: details.join("\n"),
             },

@@ -90,7 +90,7 @@ async fn i32_decode_streams_from_a_live_fill_and_stays_windowed() {
     std::io::Write::write_all(&mut temp, &wav).unwrap();
     std::io::Write::flush(&mut temp).unwrap();
     let buffer = create_sparse_buffer(wav.len() as u64);
-    Box::new(LocalReader::new(temp.path(), crate::diagnostics::Diagnostics::noop()))
+    Box::new(LocalReader::new(temp.path(), bae_diagnostics::Diagnostics::noop()))
         .start_reading(buffer.clone(), Box::new(|_| {}));
 
     let streamed = tokio::task::spawn_blocking({
@@ -143,7 +143,7 @@ async fn i32_decode_names_the_read_error_when_the_first_read_fails() {
         .expect_err("reading a directory fails")
         .kind();
     let buffer = create_sparse_buffer(64 * 1024);
-    Box::new(LocalReader::new(dir.path(), crate::diagnostics::Diagnostics::noop()))
+    Box::new(LocalReader::new(dir.path(), bae_diagnostics::Diagnostics::noop()))
         .start_reading(buffer.clone(), Box::new(|_| {}));
 
     let result = tokio::task::spawn_blocking(move || decode_audio(buffer, None, None).map(|_| ()))

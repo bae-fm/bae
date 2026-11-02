@@ -56,7 +56,7 @@ impl BridgeLibraryRemoval {
 
 impl BridgeUnfinishedRemoval {
     pub(crate) fn new(
-        category: bae_core::diagnostics::UiErrorCategory,
+        category: bae_diagnostics::UiErrorCategory,
         why: &dyn std::fmt::Display,
         files_remain: bool,
     ) -> Self {
@@ -138,8 +138,7 @@ mod tests {
         let services = runtime
             .block_on(bae_test_support::start_test_services(manager, database, catalogs, closing));
         let app = Arc::new(
-            AppHandle::start(services, runtime, bae_core::diagnostics::Diagnostics::noop())
-                .unwrap(),
+            AppHandle::start(services, runtime, bae_diagnostics::Diagnostics::noop()).unwrap(),
         );
         let host = crate::BridgeHost::with_test_keyring(
             crate::BridgeDiagnostics::noop(),

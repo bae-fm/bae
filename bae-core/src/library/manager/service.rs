@@ -361,7 +361,7 @@ impl LibraryManager {
         last: Option<&SyncStatusSnapshot>,
         snapshot: &SyncStatusSnapshot,
     ) {
-        if let Some(crate::diagnostics::UiError::Diagnostic { category, detail }) =
+        if let Some(bae_diagnostics::UiError::Diagnostic { category, detail }) =
             snapshot.failure_to_log(last)
         {
             tracing::warn!(?category, "sync failure: {detail}");

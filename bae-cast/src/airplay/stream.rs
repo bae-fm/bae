@@ -19,8 +19,8 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
-use bae_core::diagnostics::{Diagnostics, ReportedThread};
 use bae_core::playback::airplay_output::{PcmSource, PCM_SAMPLE_RATE};
+use bae_diagnostics::{Diagnostics, ReportedThread};
 use bae_util::task_failure::TaskFailed;
 use tracing::{debug, warn};
 
@@ -645,7 +645,7 @@ mod tests {
     /// `spawn_audio_thread`, and the stream reads as healthy.
     #[test]
     fn a_sender_that_panics_fails_the_stream_and_is_reported() {
-        let bugs = Arc::new(bae_core::diagnostics::RecordingBugReporter::default());
+        let bugs = Arc::new(bae_diagnostics::RecordingBugReporter::default());
         let diagnostics = Diagnostics::noop().reporting_bugs_to(bugs.clone());
         let (handle, control) =
             audio_thread(&diagnostics, Box::new(PanickingSource), Arc::new(AtomicBool::new(false)));

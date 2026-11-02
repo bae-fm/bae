@@ -52,7 +52,7 @@ async fn explicit_bmp_cover_is_rejected() {
     let error = ImportService::pick_folder_cover(
         &discovered,
         "cover.bmp",
-        &crate::diagnostics::Diagnostics::noop(),
+        &bae_diagnostics::Diagnostics::noop(),
     )
     .await
     .unwrap_err();
@@ -81,7 +81,7 @@ async fn a_damaged_image_is_never_picked_as_the_cover() {
     let error = ImportService::pick_folder_cover(
         &discovered,
         "front.png",
-        &crate::diagnostics::Diagnostics::noop(),
+        &bae_diagnostics::Diagnostics::noop(),
     )
     .await
     .unwrap_err();
@@ -301,7 +301,7 @@ async fn explicit_local_cover_missing_from_discovered_images_is_an_error() {
     let err = ImportService::pick_folder_cover(
         &discovered,
         "cover.bmp",
-        &crate::diagnostics::Diagnostics::noop(),
+        &bae_diagnostics::Diagnostics::noop(),
     )
     .await
     .unwrap_err();
@@ -317,7 +317,7 @@ async fn explicit_local_cover_with_no_discovered_images_is_an_error() {
     let err = ImportService::pick_folder_cover(
         &[],
         "cover.bmp",
-        &crate::diagnostics::Diagnostics::noop(),
+        &bae_diagnostics::Diagnostics::noop(),
     )
     .await
     .unwrap_err();
@@ -356,7 +356,7 @@ async fn selected_local_cover_path_must_match_discovered_file() {
     let generation = tables.begin_folder_scan(std::path::Path::new(&watched_folder_path), crate::import::VolumeKind::Local)
         .await
         .unwrap();
-    crate::import::store_scan_item(&tables, &crate::diagnostics::Diagnostics::noop(),
+    crate::import::store_scan_item(&tables, &bae_diagnostics::Diagnostics::noop(),
             std::path::Path::new(&watched_folder_path),
             generation,
             &ScanItem::Valid(crate::import::folder_scanner::FolderCandidate {
@@ -461,7 +461,7 @@ async fn unreadable_selected_cover_is_an_error() {
     let result = ImportService::pick_folder_cover(
         &discovered,
         "cover.jpg",
-        &crate::diagnostics::Diagnostics::noop(),
+        &bae_diagnostics::Diagnostics::noop(),
     )
     .await;
 
@@ -484,7 +484,7 @@ async fn rescan_seeded_root(
     let tables = &service.tables;
     tables.add_watched_import_folder(root).await.unwrap();
     let generation = tables.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
-    crate::import::store_scan_item(tables, &crate::diagnostics::Diagnostics::noop(),
+    crate::import::store_scan_item(tables, &bae_diagnostics::Diagnostics::noop(),
             root,
             generation,
             &ScanItem::Invalid(crate::import::InvalidCandidate {

@@ -400,7 +400,7 @@ impl ImportService {
         file_ids: &HashMap<PathBuf, String>,
         clock: &dyn coven::Clock,
         ids: &dyn coven::IdSource,
-        bugs: &crate::diagnostics::Diagnostics,
+        bugs: &bae_diagnostics::Diagnostics,
     ) -> Result<BuiltAudioFormats, ImportError> {
         let now = chrono::DateTime::<chrono::Utc>::from(clock.now());
         let mut audio_formats = Vec::with_capacity(tracks_to_files.len());

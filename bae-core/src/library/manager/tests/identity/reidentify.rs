@@ -213,7 +213,7 @@ async fn a_reidentify_that_does_not_fit_the_stored_tracks_is_refused() {
         .expect_err("a release of 12 tracks cannot lay out 10");
     assert_eq!(
         err.category(),
-        crate::diagnostics::UiErrorCategory::MetadataTrackCount { folder_tracks: 10, release_tracks: 12 },
+        bae_diagnostics::UiErrorCategory::MetadataTrackCount { folder_tracks: 10, release_tracks: 12 },
         "the editor names the refusal, not a generic import failure: {err}"
     );
     assert!(manager.database.get_release_records(&release.id).await.unwrap().is_empty());
@@ -548,7 +548,7 @@ async fn a_session_s_save_is_refused_once_the_release_changed_under_it() {
         matches!(&refused, LibraryError::ReleaseEditStale { release_id } if *release_id == release.id),
         "{refused}"
     );
-    assert_eq!(refused.category(), crate::diagnostics::UiErrorCategory::ReleaseChangedSinceOpened);
+    assert_eq!(refused.category(), bae_diagnostics::UiErrorCategory::ReleaseChangedSinceOpened);
     let held = |manager: &LibraryManager| {
         let release_id = release.id.clone();
         let manager = manager.clone();

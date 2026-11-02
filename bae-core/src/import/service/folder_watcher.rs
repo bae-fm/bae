@@ -20,8 +20,8 @@ use tokio::sync::mpsc;
 use tracing::{debug, error};
 
 use super::watch_batches::{RootEvent, WatchReport, WatchedRoot};
-use crate::diagnostics::lock_or_crash;
 use crate::import::ImportError;
+use bae_diagnostics::lock_or_crash;
 
 trait WatchBackend: Send {
     fn watch(&mut self, path: &Path, mode: RecursiveMode) -> notify::Result<()>;
@@ -79,7 +79,7 @@ pub(super) struct FolderWatchSnapshot {
 /// take the lock reports that and ends the process.
 pub(crate) struct FolderWatcher {
     state: Arc<Mutex<Result<Watches, String>>>,
-    diagnostics: crate::diagnostics::Diagnostics,
+    diagnostics: bae_diagnostics::Diagnostics,
 }
 
 /// The watch table, as a poisoned lock on it is reported.
@@ -97,7 +97,7 @@ impl FolderWatcher {
     /// paths it touched.
     pub(crate) fn new(
         fs_tx: mpsc::UnboundedSender<WatchReport>,
-        diagnostics: crate::diagnostics::Diagnostics,
+        diagnostics: bae_diagnostics::Diagnostics,
     ) -> Self {
         let (raw_tx, raw_rx) = std::sync::mpsc::channel();
         let state = Arc::new(Mutex::new(Ok(Watches {
@@ -380,7 +380,7 @@ mod tests {
     fn watcher(fake: &FakeWatches) -> FolderWatcher {
         let fake = fake.clone();
         FolderWatcher {
-            diagnostics: crate::diagnostics::Diagnostics::noop(),
+            diagnostics: bae_diagnostics::Diagnostics::noop(),
             state: Arc::new(Mutex::new(Ok(Watches {
                 open: Box::new(move |root: &Path| {
                     let mut opened = fake.opened.lock().unwrap();
@@ -613,7 +613,7 @@ mod tests {
         let album = root.join("Album");
         std::fs::create_dir(&album).unwrap();
         let (fs_tx, mut fs_rx) = mpsc::unbounded_channel();
-        let watcher = FolderWatcher::new(fs_tx, crate::diagnostics::Diagnostics::noop());
+        let watcher = FolderWatcher::new(fs_tx, bae_diagnostics::Diagnostics::noop());
         watcher.install_directory(&root, &root).unwrap();
         watcher.install_directory(&root, &album).unwrap();
 

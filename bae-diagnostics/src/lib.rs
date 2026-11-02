@@ -228,6 +228,18 @@ impl Diagnostics {
         Self::with_transport(config, clock, ids, Arc::new(transport), Some(bugs))
     }
 
+    /// A sink shipping its events to `transport`, which keeps them, for a test
+    /// asserting which events an operation sent. Bugs go to the log alone.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn recording_to(
+        config: DatadogDiagnosticsConfig,
+        clock: ClockRef,
+        ids: IdSourceRef,
+        transport: Arc<RecordingTransport>,
+    ) -> Result<Self, DiagnosticsError> {
+        Self::with_transport(config, clock, ids, transport, None)
+    }
+
     /// A sink shipping its events through `transport` from a worker thread of
     /// its own, reporting bugs to `bugs` (when there is a reporter) as well
     /// as the log. A panic in the worker is reported there: crash reporting
@@ -636,13 +648,13 @@ impl BugReporter for RecordingBugReporter {
 /// of outcomes (defaulting to success once the queue drains). Shared by the
 /// diagnostics worker tests and the service-level emission tests, which assert
 /// the typed events reach the wire.
-#[cfg(test)]
+#[cfg(any(test, feature = "test-utils"))]
 pub struct RecordingTransport {
     requests: std::sync::Mutex<Vec<DatadogRequest>>,
     outcomes: std::sync::Mutex<VecDeque<Result<(), DiagnosticsError>>>,
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "test-utils"))]
 impl RecordingTransport {
     pub fn new(outcomes: Vec<Result<(), DiagnosticsError>>) -> Self {
         Self {
@@ -668,7 +680,7 @@ impl RecordingTransport {
     }
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "test-utils"))]
 #[async_trait::async_trait]
 impl DiagnosticsTransport for RecordingTransport {
     async fn send(&self, request: DatadogRequest) -> Result<(), DiagnosticsError> {

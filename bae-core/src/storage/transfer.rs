@@ -11,9 +11,9 @@
 
 use std::future::Future;
 
-use crate::diagnostics::{LocalId, TelemetryEvent};
 use crate::library::queued_releases::RunningOp;
 use crate::library::{DownloadTransferProgress, LibraryError, LibraryManager};
+use bae_diagnostics::{LocalId, TelemetryEvent};
 use bae_types::release_storage::ReleaseStorageAction;
 use bae_util::task_failure::{caught, TaskFailed};
 use tokio::sync::mpsc;
@@ -318,7 +318,7 @@ fn send_progress(tx: &ProgressTx, progress: TransferProgress) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::diagnostics::{
+    use bae_diagnostics::{
         AppDiagnosticMetadata, DatadogDiagnosticsConfig, DiagnosticEvent, Diagnostics,
         RecordingTransport,
     };
@@ -349,12 +349,11 @@ mod tests {
                 git_commit: "abc123".to_string(),
             },
         };
-        let diagnostics = Diagnostics::with_transport(
+        let diagnostics = Diagnostics::recording_to(
             config,
             Arc::new(coven::SystemClock),
             Arc::new(coven::SequentialIds::new()),
             transport.clone(),
-            None,
         )
         .expect("diagnostics starts");
 

@@ -137,7 +137,7 @@ async fn served_stream_length(track_length_ms: u64) -> Option<std::time::Duratio
     const RELEASE: &str = "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e";
     const TRACK: &str = "08c7ff07-b56a-4e16-8df6-ae2967fa0806";
     let store = seeded_store_with_track_length(&[(RELEASE, &[TRACK])], track_length_ms).await;
-    let (mut service, _rx) = playback_service_over(&store, crate::diagnostics::Diagnostics::noop());
+    let (mut service, _rx) = playback_service_over(&store, bae_diagnostics::Diagnostics::noop());
     // Two seconds of generated silence at 44.1 kHz.
     seed_track_window(&store, RELEASE, TRACK, 0, None, Some(88_200)).await;
     fill_test_release(&mut service, RELEASE).await;

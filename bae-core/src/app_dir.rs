@@ -142,8 +142,8 @@ impl AppDir {
                     Ok(storage) => LibraryState::Openable(storage),
                     Err(error) => {
                         tracing::warn!(store = %store.id, %error, "a library's settings can't be read");
-                        LibraryState::Unreadable(crate::diagnostics::UiError::diagnostic(
-                            crate::diagnostics::cloud_home_category(&error),
+                        LibraryState::Unreadable(bae_diagnostics::UiError::diagnostic(
+                            bae_diagnostics::cloud_home_category(&error),
                             format_args!("Cloud home error: {error}"),
                         ))
                     }
@@ -194,7 +194,7 @@ pub enum LibraryState {
     /// It opens: stored at its cloud home, or on this device only (`None`).
     Openable(Option<coven::StorageConfig>),
     /// Its storage settings can't be read, which keeps it from opening.
-    Unreadable(crate::diagnostics::UiError),
+    Unreadable(bae_diagnostics::UiError),
     /// A reset or a restore of this device's copy put the new copy in place
     /// of the old one but stopped before it finished. The library opens once
     /// the call named here runs again and finishes it; coven refuses the
@@ -274,8 +274,8 @@ pub enum AppDirError {
 impl AppDirError {
     /// The class the person is shown: a file or a store layout that can't
     /// be read or written is a configuration to fix.
-    pub fn category(&self) -> crate::diagnostics::UiErrorCategory {
-        crate::diagnostics::UiErrorCategory::Config
+    pub fn category(&self) -> bae_diagnostics::UiErrorCategory {
+        bae_diagnostics::UiErrorCategory::Config
     }
 }
 

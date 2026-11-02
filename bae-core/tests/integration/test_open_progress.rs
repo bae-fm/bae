@@ -32,7 +32,7 @@ fn opening_a_library_with_a_migration_to_run_reports_migrating_it() {
         200,
         false,
         bae_core::playback::AudioFocus::Unshared,
-        bae_core::diagnostics::Diagnostics::noop(),
+        bae_diagnostics::Diagnostics::noop(),
         installation.builder(app_dir.store_layout()),
         {
             let reported = reported.clone();

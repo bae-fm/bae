@@ -258,7 +258,7 @@ async fn auth_gate() {
     // salt → 40; token hex is case-insensitive.
     let (services, _t) = new_services().await;
     let router =
-        bae_subsonic::router(services, credential(), bae_core::diagnostics::Diagnostics::noop());
+        bae_subsonic::router(services, credential(), bae_diagnostics::Diagnostics::noop());
 
     let ok = call(&router, "ping", &authed("")).await;
     assert!(ok.text().contains(r#"status="ok""#), "valid: {}", ok.text());
@@ -290,7 +290,7 @@ async fn envelope_formats() {
     // callback; every envelope carries openSubsonic, version, and type.
     let (services, _t) = new_services().await;
     let router =
-        bae_subsonic::router(services, credential(), bae_core::diagnostics::Diagnostics::noop());
+        bae_subsonic::router(services, credential(), bae_diagnostics::Diagnostics::noop());
 
     let xml = call(&router, "ping", &authed("")).await;
     assert!(xml.content_type.contains("xml"));
@@ -317,7 +317,7 @@ async fn envelope_formats() {
 async fn system_endpoints() {
     let (services, _t) = new_services().await;
     let router =
-        bae_subsonic::router(services, credential(), bae_core::diagnostics::Diagnostics::noop());
+        bae_subsonic::router(services, credential(), bae_diagnostics::Diagnostics::noop());
 
     let license = call(&router, "getLicense", &authed("f=json")).await;
     assert_eq!(license.sub()["license"]["valid"], true);
@@ -334,7 +334,7 @@ async fn malformed_and_wrong_kind_ids_are_not_found() {
     // Spec: a malformed id, or a wrong-kind id to getAlbum, is error 70.
     let (services, _t) = new_services().await;
     let router =
-        bae_subsonic::router(services, credential(), bae_core::diagnostics::Diagnostics::noop());
+        bae_subsonic::router(services, credential(), bae_diagnostics::Diagnostics::noop());
 
     let malformed = call(&router, "getAlbum", &authed("id=not-namespaced")).await;
     assert!(malformed.text().contains(r#"code="70""#));
@@ -351,7 +351,7 @@ async fn get_artists_indexes_and_counts() {
     let router = bae_subsonic::router(
         lib.services.clone(),
         credential(),
-        bae_core::diagnostics::Diagnostics::noop(),
+        bae_diagnostics::Diagnostics::noop(),
     );
 
     let resp = call(&router, "getArtists", &authed("f=json")).await;
@@ -387,7 +387,7 @@ async fn get_artist_lists_releases_as_albums() {
     let router = bae_subsonic::router(
         lib.services.clone(),
         credential(),
-        bae_core::diagnostics::Diagnostics::noop(),
+        bae_diagnostics::Diagnostics::noop(),
     );
 
     // Resolve the per-track release's artist id, then browse the artist.
@@ -414,7 +414,7 @@ async fn get_album_lists_songs_with_required_child_fields() {
     let router = bae_subsonic::router(
         lib.services.clone(),
         credential(),
-        bae_core::diagnostics::Diagnostics::noop(),
+        bae_diagnostics::Diagnostics::noop(),
     );
 
     let resp =
@@ -441,7 +441,7 @@ async fn get_album_cue_lists_its_windowed_tracks() {
     let router = bae_subsonic::router(
         lib.services.clone(),
         credential(),
-        bae_core::diagnostics::Diagnostics::noop(),
+        bae_diagnostics::Diagnostics::noop(),
     );
 
     let resp =
@@ -461,7 +461,7 @@ async fn get_song_and_unknown() {
     let router = bae_subsonic::router(
         lib.services.clone(),
         credential(),
-        bae_core::diagnostics::Diagnostics::noop(),
+        bae_diagnostics::Diagnostics::noop(),
     );
 
     let album =
@@ -488,7 +488,7 @@ async fn album_list2_orderings_and_paging() {
     let router = bae_subsonic::router(
         lib.services.clone(),
         credential(),
-        bae_core::diagnostics::Diagnostics::noop(),
+        bae_diagnostics::Diagnostics::noop(),
     );
 
     let names = |resp: &Resp| -> Vec<String> {
@@ -565,7 +565,7 @@ async fn search3_matches_and_caps() {
     let router = bae_subsonic::router(
         lib.services.clone(),
         credential(),
-        bae_core::diagnostics::Diagnostics::noop(),
+        bae_diagnostics::Diagnostics::noop(),
     );
 
     // A query matching the per-track album/artist.

@@ -50,9 +50,9 @@ async fn root_scan_status(database: &Database) -> crate::import::FolderScanStatu
 async fn a_pass_that_panics_fails_the_scan_and_frees_the_root() {
     let mut test = setup_import_service().await;
     let tables = test.service.tables.clone();
-    let bugs = Arc::new(crate::diagnostics::RecordingBugReporter::default());
+    let bugs = Arc::new(bae_diagnostics::RecordingBugReporter::default());
     test.service.diagnostics =
-        crate::diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone());
+        bae_diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone());
     let root = test.temp.path().join("watched");
     for name in ["Release A", "Release B"] {
         let folder = root.join(name);

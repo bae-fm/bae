@@ -7,6 +7,7 @@ members = [
     "bae-cast",
     "bae-core",
     "bae-desktop",
+    "bae-diagnostics",
     "bae-loc",
     "bae-mcp",
     "bae-mirror",
@@ -69,6 +70,7 @@ bae-cast = { path = "bae-cast" }
 bae-catalogs = { path = "bae-catalogs" }
 bae-core = { path = "bae-core" }
 bae-desktop = { path = "bae-desktop" }
+bae-diagnostics = { path = "bae-diagnostics" }
 bae-loc = { path = "bae-loc" }
 bae-mcp = { path = "bae-mcp" }
 bae-mirror = { path = "bae-mirror" }

@@ -8,8 +8,8 @@ use crate::import::ImportError;
 /// reporter hears of it once.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_write_that_panics_fails_its_caller_and_is_reported() {
-    let bugs = Arc::new(crate::diagnostics::RecordingBugReporter::default());
-    let diagnostics = crate::diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone());
+    let bugs = Arc::new(bae_diagnostics::RecordingBugReporter::default());
+    let diagnostics = bae_diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone());
     let (manager, _, _tmp) = setup_test_manager_reporting_to(diagnostics).await;
     let handle = manager.start_import().await.expect("start the import service");
 

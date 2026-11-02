@@ -66,7 +66,7 @@ pub enum PaneCommand {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PaneFailure {
     pub command: PaneCommand,
-    pub error: crate::diagnostics::UiError,
+    pub error: bae_diagnostics::UiError,
 }
 
 /// What a pane command came to: it ran, or it failed and the pane states why.

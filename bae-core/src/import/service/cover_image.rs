@@ -20,7 +20,7 @@ impl ImportService {
     pub(super) async fn pick_folder_cover(
         discovered_files: &[CandidateFile],
         selected_cover_path: &str,
-        diagnostics: &crate::diagnostics::Diagnostics,
+        diagnostics: &bae_diagnostics::Diagnostics,
     ) -> Result<Vec<u8>, crate::import::ImportError> {
         use crate::import::ImportError;
 
