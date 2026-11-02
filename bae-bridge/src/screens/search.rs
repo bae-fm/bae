@@ -22,12 +22,12 @@ pub struct BridgeLibrarySearchSnapshot {
 /// starts with no query.
 #[derive(uniffi::Object)]
 pub struct LibrarySearchSubscription {
-    inner: bae_core::library::LibrarySearchSubscription,
+    inner: bae_core::library::LiveLibrarySearch,
     runtime: crate::operation_runtime::OperationRuntime,
 }
 
 pub(crate) fn library_search(
-    inner: bae_core::library::LibrarySearchSubscription,
+    inner: bae_core::library::LiveLibrarySearch,
     runtime: crate::operation_runtime::OperationRuntime,
 ) -> Arc<LibrarySearchSubscription> {
     Arc::new(LibrarySearchSubscription { inner, runtime })
@@ -72,10 +72,10 @@ impl LibrarySearchSubscription {
     }
 }
 
-fn search_error(error: bae_core::library::LibrarySearchSubscriptionError) -> BridgeError {
+fn search_error(error: bae_core::library::LiveLibrarySearchError) -> BridgeError {
     match error {
-        bae_core::library::LibrarySearchSubscriptionError::Cancelled => BridgeError::Cancelled,
-        bae_core::library::LibrarySearchSubscriptionError::Query(error) => {
+        bae_core::library::LiveLibrarySearchError::Cancelled => BridgeError::Cancelled,
+        bae_core::library::LiveLibrarySearchError::Query(error) => {
             BridgeError::database_query(error)
         }
     }
@@ -105,12 +105,12 @@ pub struct BridgeArtistSearchSnapshot {
 /// until `set_view` names them.
 #[derive(uniffi::Object)]
 pub struct ArtistSearchSubscription {
-    inner: bae_core::library::ArtistSearchSubscription,
+    inner: bae_core::library::LiveArtistSearch,
     runtime: crate::operation_runtime::OperationRuntime,
 }
 
 pub(crate) fn artist_search(
-    inner: bae_core::library::ArtistSearchSubscription,
+    inner: bae_core::library::LiveArtistSearch,
     runtime: crate::operation_runtime::OperationRuntime,
 ) -> Arc<ArtistSearchSubscription> {
     Arc::new(ArtistSearchSubscription { inner, runtime })
@@ -201,7 +201,7 @@ pub struct BridgeLibraryStatusSnapshot {
 #[cfg(feature = "desktop")]
 #[derive(uniffi::Object)]
 pub struct LibraryStatusSubscription {
-    inner: bae_core::library::LibraryStatusSubscription,
+    inner: bae_core::library::LiveLibraryStatus,
     runtime: crate::operation_runtime::OperationRuntime,
 }
 
@@ -257,10 +257,10 @@ impl LibraryStatusSubscription {
 }
 
 #[cfg(feature = "desktop")]
-fn status_error(error: bae_core::library::LibraryStatusSubscriptionError) -> BridgeError {
+fn status_error(error: bae_core::library::LiveLibraryStatusError) -> BridgeError {
     match error {
-        bae_core::library::LibraryStatusSubscriptionError::Cancelled => BridgeError::Cancelled,
-        bae_core::library::LibraryStatusSubscriptionError::Query(error) => {
+        bae_core::library::LiveLibraryStatusError::Cancelled => BridgeError::Cancelled,
+        bae_core::library::LiveLibraryStatusError::Query(error) => {
             BridgeError::database_query(error)
         }
     }
@@ -268,7 +268,7 @@ fn status_error(error: bae_core::library::LibraryStatusSubscriptionError) -> Bri
 
 #[cfg(feature = "desktop")]
 pub(crate) fn library_statuses(
-    inner: bae_core::library::LibraryStatusSubscription,
+    inner: bae_core::library::LiveLibraryStatus,
     runtime: crate::operation_runtime::OperationRuntime,
 ) -> Arc<LibraryStatusSubscription> {
     Arc::new(LibraryStatusSubscription { inner, runtime })

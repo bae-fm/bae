@@ -69,4 +69,4 @@ pub struct ReleaseQueueRun {
 /// A live read of the Storage Manager list. The view changes in place
 /// through [`LiveRead::set`](super::LiveRead::set); the upload queue, pin
 /// markers, and sync state the rows are resolved against move the same read.
-pub type StorageBrowseSubscription = super::LiveRead<StorageBrowseView, StorageBrowseSnapshot>;
+pub type LiveStorageBrowse = super::LiveRead<StorageBrowseView, StorageBrowseSnapshot>;

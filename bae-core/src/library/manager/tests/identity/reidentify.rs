@@ -532,7 +532,7 @@ async fn a_session_s_save_is_refused_once_the_release_changed_under_it() {
     manager.database.insert_album(&album).await.unwrap();
     insert_release(&manager, &release).await;
     insert_editable_tracks(&manager, &release.id, 2).await;
-    let titled = |session: &ReleaseEditSession, title: &str| {
+    let titled = |session: &ReleaseEdit, title: &str| {
         let mut edit = session.opened().edit.clone();
         edit.album_title = title.to_string();
         edit.album_artist_assignments = vec![crate::import::Credited::plain(

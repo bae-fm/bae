@@ -241,9 +241,9 @@ pub use list::{
     CandidateStage, DraftProjection, FolderScanActivity, FolderScanProgress, ImportCandidateDetail,
     ImportCandidateDetailProjection, ImportCandidateListLocation, ImportCounts, ImportListId,
     ImportListItem, ImportListNarrowing, ImportListOrder, ImportListProjection, ImportListRequest,
-    ImportListSnapshot, ImportListSubscription, ImportListSubscriptionError, ImportListView,
-    ImportListWindow, ImportQueueSummary, ListedRelease, NarrowedCount, PendingFilter,
-    PendingFilterEntry, ProjectedStage,
+    ImportListSnapshot, ImportListView, ImportListWindow, ImportQueueSummary, ListedRelease,
+    LiveImportList, LiveImportListError, NarrowedCount, PendingFilter, PendingFilterEntry,
+    ProjectedStage,
 };
 #[cfg(desktop)]
 pub use mapping::{

@@ -5,12 +5,12 @@
 //! off the page delivers one.
 
 use super::*;
-use crate::import::{ImportListSubscription, ImportListView, PendingFilter};
+use crate::import::{LiveImportList, ImportListView, PendingFilter};
 
 /// The list under one filter entry, and the keys and filter entries its last
 /// snapshot carried.
 struct LiveList {
-    list: ImportListSubscription,
+    list: LiveImportList,
     shown: Option<Vec<crate::import::CandidateKey>>,
     entries: Vec<crate::import::PendingFilterEntry>,
 }
@@ -199,7 +199,7 @@ async fn the_entry_counts_follow_what_is_running() {
 async fn one_row_on_the_page() -> (
     ImportServiceHandle,
     TempDir,
-    ImportListSubscription,
+    LiveImportList,
     crate::import::CandidateKey,
     crate::import::CandidateKey,
 ) {
@@ -257,7 +257,7 @@ fn candidate_key(item: &crate::import::ImportListItem) -> Option<&crate::import:
 }
 
 /// The next snapshot the list delivers.
-async fn delivered(list: &ImportListSubscription) -> crate::import::ImportListSnapshot {
+async fn delivered(list: &LiveImportList) -> crate::import::ImportListSnapshot {
     tokio::time::timeout(HANG_GUARD, list.next())
         .await
         .expect("the list delivers")

@@ -6,7 +6,7 @@ use bae_core::db::LibraryPageWindow;
 use bae_core::import::selection::{SelectionChange, SelectionSummary, SingleSelection};
 use bae_core::import::{
     Admission, ArtistAssignment, CandidateAction, CandidateRuntimeChange, CandidateRuntimeSnapshot,
-    ImportListItem, ImportListOrder, ImportListSnapshot, ImportListSubscription, ImportListView,
+    ImportListItem, ImportListOrder, ImportListSnapshot, ImportListView, LiveImportList,
     PendingFilter, TriageTab,
 };
 use bae_core::library::AppServices;
@@ -48,7 +48,7 @@ async fn scan_albums(services: &AppServices, collection: &Path, count: usize) {
 
 /// The list's snapshots until one `accept` admits.
 async fn until(
-    list: &ImportListSubscription,
+    list: &LiveImportList,
     accept: impl Fn(&ImportListSnapshot) -> bool,
 ) -> ImportListSnapshot {
     tokio::time::timeout(std::time::Duration::from_secs(20), async {
@@ -69,7 +69,7 @@ async fn list_showing(
     services: &AppServices,
     view: ImportListView,
     count: u64,
-) -> (ImportListSubscription, ImportListSnapshot) {
+) -> (LiveImportList, ImportListSnapshot) {
     let list = services.subscribe_import_list(view).await.unwrap();
     list.set_windows(std::iter::once(LibraryPageWindow { offset: 0, limit: 50 }).collect())
         .unwrap();
@@ -257,7 +257,7 @@ async fn shown_keys(
 /// order, and return the selected keys in the order the list shows them.
 async fn select_out_of_order(
     services: &AppServices,
-    list: &ImportListSubscription,
+    list: &LiveImportList,
     view: ImportListView,
     picks: &[usize],
 ) -> Vec<bae_core::import::CandidateKey> {

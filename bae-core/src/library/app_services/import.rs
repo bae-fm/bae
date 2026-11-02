@@ -2,7 +2,7 @@
 //! event bus, and the list and per-candidate subscriptions.
 
 use super::*;
-use crate::import::{ImportCandidateDetail, ImportListSubscription, ImportListView};
+use crate::import::{ImportCandidateDetail, ImportListView, LiveImportList};
 
 impl AppServices {
     delegate_async!(import, import_candidate_source_folders => candidate_source_folders(key: &crate::import::CandidateKey) -> Result<Vec<std::path::PathBuf>, crate::import::ImportError>);
@@ -268,7 +268,7 @@ impl AppServices {
     pub async fn subscribe_import_list(
         &self,
         view: ImportListView,
-    ) -> Result<ImportListSubscription, crate::library::LibraryError> {
+    ) -> Result<LiveImportList, crate::library::LibraryError> {
         Ok(self.inner.import.open_list(view, crate::db::LibraryPageWindows::new()).await?)
     }
 
@@ -288,8 +288,7 @@ impl AppServices {
     /// selection. Another candidate is a new key on the same read.
     pub fn subscribe_import_candidate(
         &self,
-    ) -> crate::library::DetailSubscription<ImportCandidateDetail, crate::import::CandidateKey>
-    {
+    ) -> crate::library::LiveDetail<ImportCandidateDetail, crate::import::CandidateKey> {
         self.read_import_candidate(self.inner.import.subscribe_candidate(None))
     }
 
@@ -299,7 +298,7 @@ impl AppServices {
     pub fn subscribe_import_candidate_with_runs_for_test(
         &self,
     ) -> (
-        crate::library::DetailSubscription<ImportCandidateDetail, crate::import::CandidateKey>,
+        crate::library::LiveDetail<ImportCandidateDetail, crate::import::CandidateKey>,
         coven::LiveQueryRuns,
     ) {
         let query = self.inner.import.subscribe_candidate(None);
@@ -314,8 +313,7 @@ impl AppServices {
             Option<crate::import::CandidateKey>,
             Option<crate::import::ImportCandidateDetailProjection>,
         >,
-    ) -> crate::library::DetailSubscription<ImportCandidateDetail, crate::import::CandidateKey>
-    {
+    ) -> crate::library::LiveDetail<ImportCandidateDetail, crate::import::CandidateKey> {
         let (key_tx, mut keys) = tokio::sync::watch::channel(None::<crate::import::CandidateKey>);
         let (tx, rx) = crate::library::live_read_channel();
         let manager = self.inner.manager.clone();
@@ -352,6 +350,6 @@ impl AppServices {
                 }
             }
         });
-        crate::library::DetailSubscription::new(key_tx, rx, task)
+        crate::library::LiveDetail::new(key_tx, rx, task)
     }
 }

@@ -120,7 +120,7 @@ fn windows(windows: &[(u64, u64)]) -> crate::db::LibraryPageWindows {
 /// before it — the value for the empty initial window set, or one resolved
 /// before the queue reached the state a test drives it to.
 async fn upcoming_until(
-    subscription: &crate::library::QueueUpcomingSubscription,
+    subscription: &crate::library::LiveQueueUpcoming,
     accept: impl Fn(&crate::library::QueueUpcomingSnapshot) -> bool,
 ) -> crate::library::QueueUpcomingSnapshot {
     loop {
@@ -270,9 +270,7 @@ async fn a_release_session_keeps_its_choices_in_core() {
 /// entry as `matches` looks for.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 async fn inspected_export_until(
-    inspector: &crate::library::DetailSubscription<
-        crate::library::storage_inspector::StorageInspector,
-    >,
+    inspector: &crate::library::LiveDetail<crate::library::storage_inspector::StorageInspector>,
     matches: impl Fn(&crate::library::OutputPhaseRow) -> bool,
 ) -> crate::library::OutputPhaseRow {
     use crate::library::storage_inspector::StorageInspectorTransfer;

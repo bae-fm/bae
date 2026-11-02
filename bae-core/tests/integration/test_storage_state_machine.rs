@@ -11,7 +11,7 @@ use bae_core::db::{
     StorageSortCriterion, StorageSortField,
 };
 use bae_core::library::{
-    AppServices, CancellationToken, LibraryManager, StorageBrowseSubscription, StorageBrowseView,
+    AppServices, CancellationToken, LibraryManager, LiveStorageBrowse, StorageBrowseView,
 };
 use bae_util::content_type::ContentType;
 use chrono::Utc;
@@ -460,7 +460,7 @@ async fn detaching_audio_whose_names_write_as_one_is_refused() {
 // ---------------------------------------------------------------------------
 
 async fn next_storage_release(
-    subscription: &StorageBrowseSubscription,
+    subscription: &LiveStorageBrowse,
     release_id: &str,
 ) -> bae_core::album_detail::ReleaseSummary {
     loop {

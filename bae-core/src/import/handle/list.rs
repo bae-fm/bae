@@ -10,8 +10,8 @@ impl ImportServiceHandle {
         &self,
         view: crate::import::ImportListView,
         windows: crate::db::LibraryPageWindows,
-    ) -> Result<crate::import::ImportListSubscription, crate::import::ImportError> {
-        Ok(crate::import::ImportListSubscription::open(
+    ) -> Result<crate::import::LiveImportList, crate::import::ImportError> {
+        Ok(crate::import::LiveImportList::open(
             self.tables.clone(),
             self.closing.child_token(),
             view,

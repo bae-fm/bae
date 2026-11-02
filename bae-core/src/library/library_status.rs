@@ -14,7 +14,7 @@ pub struct LibraryStatusSnapshot {
 }
 
 #[derive(Debug, thiserror::Error)]
-pub enum LibraryStatusSubscriptionError {
+pub enum LiveLibraryStatusError {
     #[error("library status subscription cancelled")]
     Cancelled,
     #[error(transparent)]
@@ -22,7 +22,7 @@ pub enum LibraryStatusSubscriptionError {
 }
 
 /// The live query ending is this subscription's cancellation.
-impl From<crate::live_query::LiveQueryCancelled> for LibraryStatusSubscriptionError {
+impl From<crate::live_query::LiveQueryCancelled> for LiveLibraryStatusError {
     fn from(_: crate::live_query::LiveQueryCancelled) -> Self {
         Self::Cancelled
     }
@@ -31,11 +31,11 @@ impl From<crate::live_query::LiveQueryCancelled> for LibraryStatusSubscriptionEr
 /// The library membership of a set of offered releases. A new set of offers
 /// is a new request on the same query, and one read per database change
 /// answers every release in it.
-pub struct LibraryStatusSubscription {
+pub struct LiveLibraryStatus {
     query: CancellableLiveQuery<BTreeSet<LibraryCheck>, Vec<LibraryStatus>>,
 }
 
-impl LibraryStatusSubscription {
+impl LiveLibraryStatus {
     pub(crate) fn new(
         query: CancellableLiveQuery<BTreeSet<LibraryCheck>, Vec<LibraryStatus>>,
     ) -> Self {
@@ -47,12 +47,12 @@ impl LibraryStatusSubscription {
     pub fn set_checks(
         &self,
         checks: impl IntoIterator<Item = LibraryCheck>,
-    ) -> Result<u64, LibraryStatusSubscriptionError> {
-        self.query.set(checks.into_iter().collect()).map_err(LibraryStatusSubscriptionError::from)
+    ) -> Result<u64, LiveLibraryStatusError> {
+        self.query.set(checks.into_iter().collect()).map_err(LiveLibraryStatusError::from)
     }
 
-    pub async fn next(&self) -> Result<LibraryStatusSnapshot, LibraryStatusSubscriptionError> {
-        let event = self.query.next().await.map_err(LibraryStatusSubscriptionError::from)?;
+    pub async fn next(&self) -> Result<LibraryStatusSnapshot, LiveLibraryStatusError> {
+        let event = self.query.next().await.map_err(LiveLibraryStatusError::from)?;
         let request_revision = event.revision.0;
         Ok(LibraryStatusSnapshot { statuses: event.result?, request_revision })
     }

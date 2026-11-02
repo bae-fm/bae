@@ -14,7 +14,7 @@ use crate::types::BridgeError;
 /// list shows, so changing it and acting on it are this list's to do.
 #[derive(uniffi::Object)]
 pub struct ImportListSubscription {
-    inner: bae_core::import::ImportListSubscription,
+    inner: bae_core::import::LiveImportList,
     services: bae_core::library::AppServices,
     runtime: crate::operation_runtime::OperationRuntime,
     /// Where the next bulk action reports how far it has got: the stream
@@ -23,7 +23,7 @@ pub struct ImportListSubscription {
 }
 
 pub(crate) fn import_list(
-    inner: bae_core::import::ImportListSubscription,
+    inner: bae_core::import::LiveImportList,
     services: bae_core::library::AppServices,
     runtime: crate::operation_runtime::OperationRuntime,
 ) -> std::sync::Arc<ImportListSubscription> {
@@ -318,15 +318,13 @@ impl ImportListSubscription {
     }
 }
 
-fn list_error(error: bae_core::import::ImportListSubscriptionError) -> BridgeError {
+fn list_error(error: bae_core::import::LiveImportListError) -> BridgeError {
     match error {
-        bae_core::import::ImportListSubscriptionError::Cancelled => BridgeError::Cancelled,
-        error @ bae_core::import::ImportListSubscriptionError::RunNotShown => {
+        bae_core::import::LiveImportListError::Cancelled => BridgeError::Cancelled,
+        error @ bae_core::import::LiveImportListError::RunNotShown => {
             BridgeError::internal(error.to_string())
         }
-        bae_core::import::ImportListSubscriptionError::Query(error) => {
-            BridgeError::database_query(error)
-        }
-        bae_core::import::ImportListSubscriptionError::Database(error) => BridgeError::from(error),
+        bae_core::import::LiveImportListError::Query(error) => BridgeError::database_query(error),
+        bae_core::import::LiveImportListError::Database(error) => BridgeError::from(error),
     }
 }

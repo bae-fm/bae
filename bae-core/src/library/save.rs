@@ -129,9 +129,9 @@ pub(crate) enum ExistingOutput {
     Refuse,
 }
 
-struct CancelOnDrop(Arc<AtomicBool>);
+struct CancelSaveOnDrop(Arc<AtomicBool>);
 
-impl Drop for CancelOnDrop {
+impl Drop for CancelSaveOnDrop {
     fn drop(&mut self) {
         self.0.store(true, Ordering::Relaxed);
     }
@@ -261,7 +261,7 @@ impl SaveService {
         }
 
         let cancel = Arc::new(AtomicBool::new(false));
-        let _cancel_guard = CancelOnDrop(Arc::clone(&cancel));
+        let _cancel_guard = CancelSaveOnDrop(Arc::clone(&cancel));
 
         let sample_rate = plans[0].audio_meta.audio_format.sample_rate.get();
         let channels = plans[0].audio_meta.audio_format.channels.get();
@@ -425,7 +425,7 @@ impl SaveService {
         debug!("Exporting track {} to {}", track_id, output_path.display());
 
         let cancel = Arc::new(AtomicBool::new(false));
-        let _cancel_guard = CancelOnDrop(Arc::clone(&cancel));
+        let _cancel_guard = CancelSaveOnDrop(Arc::clone(&cancel));
 
         let format = encode_format(&codec);
         let tag_type = codec_tag_type(&codec);

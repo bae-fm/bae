@@ -14,7 +14,7 @@ pub struct QueueItem {
 /// The context lane resolved for display: what it plays from (so the UI labels
 /// the section — a release vs the library) and whether it was ordered by
 /// shuffle. Its tracks are read in windows through a
-/// [`crate::library::QueueUpcomingSubscription`]. Carried separately from the
+/// [`crate::library::LiveQueueUpcoming`]. Carried separately from the
 /// manual lane so each UI renders the two as distinct sections.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ResolvedContext {

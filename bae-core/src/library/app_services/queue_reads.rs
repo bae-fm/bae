@@ -32,7 +32,7 @@ impl AppServices {
     /// points it at the new windows.
     ///
     /// [`LiveRead::set`]: crate::library::LiveRead::set
-    pub fn subscribe_queue_upcoming(&self) -> crate::library::QueueUpcomingSubscription {
+    pub fn subscribe_queue_upcoming(&self) -> crate::library::LiveQueueUpcoming {
         let (windows_tx, mut windows) =
             tokio::sync::watch::channel(crate::db::LibraryPageWindows::new());
         let (tx, rx) = crate::library::live_read_channel();
@@ -67,6 +67,6 @@ impl AppServices {
                 }
             },
         );
-        crate::library::QueueUpcomingSubscription::new(windows_tx, rx, task)
+        crate::library::LiveQueueUpcoming::new(windows_tx, rx, task)
     }
 }

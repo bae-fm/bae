@@ -66,8 +66,8 @@ impl BridgeHost {
     }
 }
 
-struct CancelOnDrop(Arc<BootstrapCancellation>);
-impl Drop for CancelOnDrop {
+struct CancelBootstrapOnDrop(Arc<BootstrapCancellation>);
+impl Drop for CancelBootstrapOnDrop {
     fn drop(&mut self) {
         self.0.cancel();
     }
@@ -123,7 +123,7 @@ impl BridgeHost {
         cancellation: Arc<BootstrapCancellation>,
     ) -> Result<BridgeBootstrapResult, BridgeError> {
         let cancel = cancellation.cancel.subscribe();
-        let _cancel_on_drop = CancelOnDrop(cancellation);
+        let _cancel_on_drop = CancelBootstrapOnDrop(cancellation);
         let steps = setup.writer();
         self.operations
             .clone()
@@ -165,7 +165,7 @@ impl BridgeHost {
         let store = coven::StoreId(library_id.parse().map_err(BridgeError::config)?);
         let report = opening.report();
         let cancel = cancellation.cancel.subscribe();
-        let _cancel_on_drop = CancelOnDrop(cancellation);
+        let _cancel_on_drop = CancelBootstrapOnDrop(cancellation);
         let steps = setup.writer();
         self.operations
             .clone()
@@ -202,7 +202,7 @@ impl BridgeHost {
         cancellation: Arc<BootstrapCancellation>,
     ) -> Result<BridgeBootstrapResult, BridgeError> {
         let cancel = cancellation.cancel.subscribe();
-        let _cancel_on_drop = CancelOnDrop(cancellation);
+        let _cancel_on_drop = CancelBootstrapOnDrop(cancellation);
         let steps = setup.writer();
         self.operations
             .clone()

@@ -65,7 +65,7 @@ async fn now_playing_until(
 
 /// The queue's first upcoming item once `accept` takes it.
 async fn first_upcoming_until(
-    queue: &bae_core::library::QueueUpcomingSubscription,
+    queue: &bae_core::library::LiveQueueUpcoming,
     accept: impl Fn(&bae_core::queue::QueueItem) -> bool,
 ) -> bae_core::queue::QueueItem {
     tokio::time::timeout(Duration::from_secs(10), async {
@@ -89,7 +89,7 @@ async fn first_upcoming_until(
 /// The queue's upcoming read over its first track.
 fn first_upcoming(
     services: &bae_core::library::AppServices,
-) -> bae_core::library::QueueUpcomingSubscription {
+) -> bae_core::library::LiveQueueUpcoming {
     let queue = services.subscribe_queue_upcoming();
     queue
         .set(bae_core::db::LibraryPageWindows::from([bae_core::db::LibraryPageWindow {

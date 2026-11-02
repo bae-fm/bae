@@ -6,12 +6,12 @@ use super::*;
 use crate::import::selection::{SelectionChange, SingleSelection};
 use crate::import::{
     ArtistAssignment, CandidateEditField, Credited, DraftFieldEdit, ImportListItem,
-    ImportListSnapshot, ImportListSubscription, ImportListView, PendingFilter, PressingFactEdit,
+    ImportListSnapshot, LiveImportList, ImportListView, PendingFilter, PressingFactEdit,
     RawLabelEdit,
 };
 
 /// The next snapshot the list delivers.
-async fn delivered(list: &ImportListSubscription) -> ImportListSnapshot {
+async fn delivered(list: &LiveImportList) -> ImportListSnapshot {
     tokio::time::timeout(HANG_GUARD, list.next())
         .await
         .expect("the list delivers")

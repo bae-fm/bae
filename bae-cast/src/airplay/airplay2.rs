@@ -42,13 +42,13 @@ fn pair_verify_nonce(label: &[u8; 8]) -> Nonce {
 /// secret once M4 arrives. The sender's Ed25519 identity is ephemeral: transient
 /// sessions store nothing.
 pub(crate) struct PairVerify {
-    phase: Phase,
+    phase: PairVerifyPhase,
     ephemeral: StaticSecret,
     ephemeral_public: PublicKey,
     signing: SigningKey,
 }
 
-enum Phase {
+enum PairVerifyPhase {
     Init,
     /// M1 sent; awaiting the receiver's M2 (its ephemeral key + signed identity).
     AwaitingM2,
@@ -62,7 +62,7 @@ impl PairVerify {
         let ephemeral = StaticSecret::random_from_rng(SecureRng);
         let ephemeral_public = PublicKey::from(&ephemeral);
         PairVerify {
-            phase: Phase::Init,
+            phase: PairVerifyPhase::Init,
             ephemeral,
             ephemeral_public,
             signing: SigningKey::generate(&mut SecureRng),
@@ -71,10 +71,10 @@ impl PairVerify {
 
     /// The M1 body: state M1 and our ephemeral X25519 public key.
     pub(crate) fn start(&mut self) -> Result<Vec<u8>, PairingError> {
-        if !matches!(self.phase, Phase::Init) {
+        if !matches!(self.phase, PairVerifyPhase::Init) {
             return Err(PairingError::WrongState);
         }
-        self.phase = Phase::AwaitingM2;
+        self.phase = PairVerifyPhase::AwaitingM2;
         Ok(Tlv8::new()
             .push_u8(tlv_type::STATE, state::M1)
             .push(tlv_type::PUBLIC_KEY, self.ephemeral_public.as_bytes().to_vec())
@@ -90,7 +90,7 @@ impl PairVerify {
     /// long-term key. Decryption's AEAD tag still authenticates that both sides
     /// derived the same key.
     pub(crate) fn handle_m2(&mut self, response_body: &[u8]) -> Result<Vec<u8>, PairingError> {
-        if !matches!(self.phase, Phase::AwaitingM2) {
+        if !matches!(self.phase, PairVerifyPhase::AwaitingM2) {
             return Err(PairingError::WrongState);
         }
         let tlv = Tlv8::decode(response_body)?;
@@ -144,7 +144,7 @@ impl PairVerify {
             .encrypt(&pair_verify_nonce(b"PV-Msg03"), Payload { msg: &inner, aad: &[] })
             .map_err(|_| PairingError::Rejected(0x02))?;
 
-        self.phase = Phase::AwaitingM4(shared);
+        self.phase = PairVerifyPhase::AwaitingM4(shared);
         Ok(Tlv8::new()
             .push_u8(tlv_type::STATE, state::M3)
             .push(tlv_type::ENCRYPTED_DATA, sealed)
@@ -154,7 +154,9 @@ impl PairVerify {
     /// Handle the receiver's M4: on success, the pair-verify shared secret the
     /// audio cipher keys from.
     pub(crate) fn handle_m4(&mut self, response_body: &[u8]) -> Result<[u8; 32], PairingError> {
-        let Phase::AwaitingM4(shared) = std::mem::replace(&mut self.phase, Phase::Done) else {
+        let PairVerifyPhase::AwaitingM4(shared) =
+            std::mem::replace(&mut self.phase, PairVerifyPhase::Done)
+        else {
             return Err(PairingError::WrongState);
         };
         let tlv = Tlv8::decode(response_body)?;

@@ -11,7 +11,7 @@ use bae_util::task_failure::TaskFailed;
 use reactions::{finish, handle_events};
 
 /// One candidate on the queue, and which admission put it there.
-struct Entry {
+struct QueuedCandidate {
     candidate: FolderCandidate,
     admission: Admission,
 }
@@ -21,7 +21,7 @@ struct Entry {
 struct Job {
     identity: CandidateFiles,
     /// At least one: a job is removed with its last member.
-    members: Vec<Entry>,
+    members: Vec<QueuedCandidate>,
     state: JobState,
 }
 
@@ -186,7 +186,7 @@ impl Queue {
             }
             content_hashes.push(identity.content_hash.clone());
             let mark = (key, identity.clone());
-            let entry = Entry { candidate, admission };
+            let entry = QueuedCandidate { candidate, admission };
             match (self.index_of_identity(&identity), admission) {
                 (Some(index), Admission::Automatic) => self.jobs[index].members.push(entry),
                 (Some(index), Admission::Requested) => {

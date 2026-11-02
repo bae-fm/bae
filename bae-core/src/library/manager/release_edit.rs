@@ -1,6 +1,6 @@
 //! A library release's edit sessions.
 //!
-//! Each open editor owns a session of its own ([`ReleaseEditSession`]): the
+//! Each open editor owns a session of its own ([`ReleaseEdit`]): the
 //! release's values as the library held them when it opened, and what the
 //! person did in it beyond the form the editor keeps — a catalog applied,
 //! which replaces every value the release holds (titles, credits, mediums and
@@ -21,7 +21,7 @@ use super::*;
 
 /// One open editor's session on a library release.
 #[derive(Debug)]
-pub struct ReleaseEditSession {
+pub struct ReleaseEdit {
     release_id: String,
     /// The release as the library held it when the session opened: what the
     /// editor first showed, and what a save requires the library still holds.
@@ -47,7 +47,7 @@ struct AppliedCatalog {
     records: Vec<crate::catalog_model::records::ReleaseRecord>,
 }
 
-impl ReleaseEditSession {
+impl ReleaseEdit {
     /// The release this session edits.
     pub fn release_id(&self) -> &str {
         &self.release_id
@@ -73,11 +73,8 @@ impl LibraryManager {
     /// Open an edit session on a library release: its values as the library
     /// holds them, with no catalog applied and no album picked. Every editor
     /// opens its own; a session on the same release elsewhere is untouched.
-    pub async fn open_release_edit(
-        &self,
-        release_id: &str,
-    ) -> Result<ReleaseEditSession, LibraryError> {
-        Ok(ReleaseEditSession {
+    pub async fn open_release_edit(&self, release_id: &str) -> Result<ReleaseEdit, LibraryError> {
+        Ok(ReleaseEdit {
             release_id: release_id.to_string(),
             opened: self.read_release_edit(release_id).await?,
             work: std::sync::Mutex::default(),
@@ -167,7 +164,7 @@ impl LibraryManager {
     /// `steps`.
     pub async fn apply_release_edit_catalog(
         &self,
-        session: &ReleaseEditSession,
+        session: &ReleaseEdit,
         link: &crate::identify::PressingLink,
         steps: &crate::import::CatalogApplySteps,
     ) -> Result<crate::import::ReleaseEditSeed, LibraryError> {
@@ -225,7 +222,7 @@ impl LibraryManager {
     /// the library does not hold cannot be picked.
     pub async fn set_release_edit_album(
         &self,
-        session: &ReleaseEditSession,
+        session: &ReleaseEdit,
         album_id: Option<String>,
     ) -> Result<crate::import::DraftAlbum, LibraryError> {
         let release_id = session.release_id();
@@ -292,7 +289,7 @@ impl LibraryManager {
     /// between that check and the write.
     pub async fn save_release_edit(
         &self,
-        session: &ReleaseEditSession,
+        session: &ReleaseEdit,
         edit: &crate::import::RawReleaseEdit,
     ) -> Result<(), LibraryError> {
         let release_id = session.release_id();

@@ -39,7 +39,7 @@ impl Drop for HeldImport<'_> {
 
 /// The next value the detail read delivers for `album_id`.
 async fn next_for(
-    values: &crate::library::DetailSubscription<crate::album_detail::AlbumDetail>,
+    values: &crate::library::LiveDetail<crate::album_detail::AlbumDetail>,
     album_id: &str,
     waiting_for: &str,
 ) -> crate::album_detail::AlbumDetail {

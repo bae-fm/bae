@@ -6,7 +6,7 @@ use super::*;
 /// or a pick; releasing the session discards it, writing nothing.
 #[derive(uniffi::Object)]
 pub struct ReleaseEditSession {
-    inner: bae_core::library::ReleaseEditSession,
+    inner: bae_core::library::ReleaseEdit,
     services: AppServices,
     runtime: crate::operation_runtime::OperationRuntime,
 }

@@ -93,7 +93,7 @@ mod release;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod release_edit;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub use release_edit::ReleaseEditSession;
+pub use release_edit::ReleaseEdit;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod save;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]

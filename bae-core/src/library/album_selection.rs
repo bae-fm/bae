@@ -13,7 +13,7 @@ pub struct AlbumSelectionSnapshot {
 }
 
 #[derive(Debug, thiserror::Error)]
-pub enum AlbumSelectionSubscriptionError {
+pub enum LiveAlbumSelectionError {
     #[error("album selection subscription cancelled")]
     Cancelled,
     #[error(transparent)]
@@ -21,7 +21,7 @@ pub enum AlbumSelectionSubscriptionError {
 }
 
 /// The live query ending is this subscription's cancellation.
-impl From<crate::live_query::LiveQueryCancelled> for AlbumSelectionSubscriptionError {
+impl From<crate::live_query::LiveQueryCancelled> for LiveAlbumSelectionError {
     fn from(_: crate::live_query::LiveQueryCancelled) -> Self {
         Self::Cancelled
     }
@@ -31,11 +31,11 @@ impl From<crate::live_query::LiveQueryCancelled> for AlbumSelectionSubscriptionE
 /// they sit — what leaves the selection. A new selection is a new request on
 /// the same query, and one read per database change answers every selected
 /// album.
-pub struct AlbumSelectionSubscription {
+pub struct LiveAlbumSelection {
     query: CancellableLiveQuery<BTreeSet<String>, Vec<String>>,
 }
 
-impl AlbumSelectionSubscription {
+impl LiveAlbumSelection {
     pub(crate) fn new(query: CancellableLiveQuery<BTreeSet<String>, Vec<String>>) -> Self {
         Self { query }
     }
@@ -44,15 +44,15 @@ impl AlbumSelectionSubscription {
     pub fn set_albums(
         &self,
         album_ids: impl IntoIterator<Item = String>,
-    ) -> Result<(), AlbumSelectionSubscriptionError> {
+    ) -> Result<(), LiveAlbumSelectionError> {
         self.query
             .set(album_ids.into_iter().collect())
             .map(|_| ())
-            .map_err(AlbumSelectionSubscriptionError::from)
+            .map_err(LiveAlbumSelectionError::from)
     }
 
-    pub async fn next(&self) -> Result<AlbumSelectionSnapshot, AlbumSelectionSubscriptionError> {
-        let event = self.query.next().await.map_err(AlbumSelectionSubscriptionError::from)?;
+    pub async fn next(&self) -> Result<AlbumSelectionSnapshot, LiveAlbumSelectionError> {
+        let event = self.query.next().await.map_err(LiveAlbumSelectionError::from)?;
         Ok(AlbumSelectionSnapshot { requested: event.request.clone(), gone: event.result? })
     }
 

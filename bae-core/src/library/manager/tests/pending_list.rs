@@ -248,7 +248,7 @@ async fn a_failed_pins_retry_pins_the_release_again() {
 /// Follow the inspector until it shows a value `accept` takes.
 #[cfg(feature = "test-utils")]
 async fn inspector_until(
-    inspector: &crate::library::DetailSubscription<
+    inspector: &crate::library::LiveDetail<
         crate::library::storage_inspector::StorageInspector,
     >,
     accept: impl Fn(&crate::library::storage_inspector::StorageInspector) -> bool,

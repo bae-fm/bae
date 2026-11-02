@@ -29,26 +29,20 @@ pub struct LibraryBrowseSnapshot<Row> {
     pub cause: coven::LiveQueryCause,
 }
 
-pub type AlbumBrowseSubscription = LibraryBrowseSubscription<
-    crate::db::AlbumBrowseProjection,
-    crate::album_detail::AlbumAppearance,
->;
-pub type ArtistBrowseSubscription = LibraryBrowseSubscription<
-    crate::db::ArtistBrowseProjection,
-    crate::album_detail::ArtistSummary,
->;
-pub type ComposerBrowseSubscription = LibraryBrowseSubscription<
-    crate::db::ComposerBrowseProjection,
-    crate::album_detail::ComposerSummary,
->;
+pub type LiveAlbumBrowse =
+    LiveLibraryBrowse<crate::db::AlbumBrowseProjection, crate::album_detail::AlbumAppearance>;
+pub type LiveArtistBrowse =
+    LiveLibraryBrowse<crate::db::ArtistBrowseProjection, crate::album_detail::ArtistSummary>;
+pub type LiveComposerBrowse =
+    LiveLibraryBrowse<crate::db::ComposerBrowseProjection, crate::album_detail::ComposerSummary>;
 
 /// The download queue as the Downloads pane draws it: its windows, each row
 /// an entry beside its release.
-pub type DownloadBrowseSubscription =
-    LibraryBrowseSubscription<crate::library::ReleaseQueueWindows<()>, crate::library::DownloadRow>;
+pub type LiveDownloadBrowse =
+    LiveLibraryBrowse<crate::library::ReleaseQueueWindows<()>, crate::library::DownloadRow>;
 
 #[derive(Debug, thiserror::Error)]
-pub enum LibraryBrowseSubscriptionError {
+pub enum LiveLibraryBrowseError {
     #[error("browse subscription cancelled")]
     Cancelled,
     #[error(transparent)]
@@ -56,20 +50,20 @@ pub enum LibraryBrowseSubscriptionError {
 }
 
 /// The live query ending is this subscription's cancellation.
-impl From<crate::live_query::LiveQueryCancelled> for LibraryBrowseSubscriptionError {
+impl From<crate::live_query::LiveQueryCancelled> for LiveLibraryBrowseError {
     fn from(_: crate::live_query::LiveQueryCancelled) -> Self {
         Self::Cancelled
     }
 }
 
-pub struct LibraryBrowseSubscription<Projection, Row> {
+pub struct LiveLibraryBrowse<Projection, Row> {
     query: CancellableLiveQuery<LibraryPageWindows, Projection>,
     resolve: Arc<
         dyn Fn(Projection, u64, coven::LiveQueryCause) -> LibraryBrowseSnapshot<Row> + Send + Sync,
     >,
 }
 
-impl<Projection, Row> LibraryBrowseSubscription<Projection, Row>
+impl<Projection, Row> LiveLibraryBrowse<Projection, Row>
 where
     Projection: Clone + PartialEq + Send + 'static,
     Row: Send + 'static,
@@ -84,15 +78,12 @@ where
         Self { query, resolve: Arc::new(resolve) }
     }
 
-    pub fn set_windows(
-        &self,
-        windows: LibraryPageWindows,
-    ) -> Result<(), LibraryBrowseSubscriptionError> {
-        self.query.set(windows).map(|_| ()).map_err(LibraryBrowseSubscriptionError::from)
+    pub fn set_windows(&self, windows: LibraryPageWindows) -> Result<(), LiveLibraryBrowseError> {
+        self.query.set(windows).map(|_| ()).map_err(LiveLibraryBrowseError::from)
     }
 
-    pub async fn next(&self) -> Result<LibraryBrowseSnapshot<Row>, LibraryBrowseSubscriptionError> {
-        let event = self.query.next().await.map_err(LibraryBrowseSubscriptionError::from)?;
+    pub async fn next(&self) -> Result<LibraryBrowseSnapshot<Row>, LiveLibraryBrowseError> {
+        let event = self.query.next().await.map_err(LiveLibraryBrowseError::from)?;
         let revision = event.revision.0;
         let cause = event.cause;
         let projection = event.result?;

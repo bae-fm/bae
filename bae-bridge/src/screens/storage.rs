@@ -78,12 +78,12 @@ impl BridgeStorageQueues {
 /// names them.
 #[derive(uniffi::Object)]
 pub struct StorageBrowseSubscription {
-    inner: bae_core::library::StorageBrowseSubscription,
+    inner: bae_core::library::LiveStorageBrowse,
     runtime: crate::operation_runtime::OperationRuntime,
 }
 
 pub(crate) fn storage_browse(
-    inner: bae_core::library::StorageBrowseSubscription,
+    inner: bae_core::library::LiveStorageBrowse,
     runtime: crate::operation_runtime::OperationRuntime,
 ) -> std::sync::Arc<StorageBrowseSubscription> {
     std::sync::Arc::new(StorageBrowseSubscription { inner, runtime })

@@ -32,7 +32,7 @@ enum Stage {
     Writing,
 }
 
-struct Entry {
+struct RegisteredImport {
     import_id: String,
     stage: Stage,
     token: CancellationToken,
@@ -89,7 +89,7 @@ pub(crate) enum ImportRunEnd<T> {
 /// import that followed it.
 #[derive(Clone, Default)]
 pub(crate) struct ImportCancels {
-    entries: Arc<Mutex<HashMap<crate::import::CandidateKey, Entry>>>,
+    entries: Arc<Mutex<HashMap<crate::import::CandidateKey, RegisteredImport>>>,
     /// Holds every run after it starts, until a test lets it through — so a
     /// test cancels an import that is genuinely running.
     #[cfg(test)]
@@ -102,7 +102,7 @@ impl ImportCancels {
     pub(crate) fn register(&self, candidate_key: &crate::import::CandidateKey, import_id: &str) {
         self.entries.lock().unwrap().insert(
             candidate_key.clone(),
-            Entry {
+            RegisteredImport {
                 import_id: import_id.to_string(),
                 stage: Stage::Waiting,
                 token: CancellationToken::new(),

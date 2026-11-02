@@ -37,12 +37,12 @@ impl crate::types::BridgeReleaseFilesRequest {
 /// order changes. It shows nothing until `set_request` names a release.
 #[derive(uniffi::Object)]
 pub struct ReleaseFilesSubscription {
-    inner: bae_core::library::ReleaseFilesSubscription,
+    inner: bae_core::library::LiveReleaseFiles,
     runtime: crate::operation_runtime::OperationRuntime,
 }
 
 pub(crate) fn release_files(
-    inner: bae_core::library::ReleaseFilesSubscription,
+    inner: bae_core::library::LiveReleaseFiles,
     runtime: crate::operation_runtime::OperationRuntime,
 ) -> std::sync::Arc<ReleaseFilesSubscription> {
     std::sync::Arc::new(ReleaseFilesSubscription { inner, runtime })

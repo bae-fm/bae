@@ -12,7 +12,7 @@ impl AppServices {
     /// new id on the same read.
     pub fn subscribe_album_detail(
         &self,
-    ) -> crate::library::DetailSubscription<crate::album_detail::AlbumDetail> {
+    ) -> crate::library::LiveDetail<crate::album_detail::AlbumDetail> {
         let manager = self.inner.manager.clone();
         detail_read(
             manager.clone(),
@@ -31,7 +31,7 @@ impl AppServices {
     /// same read.
     pub fn subscribe_release_detail(
         &self,
-    ) -> crate::library::DetailSubscription<crate::album_detail::ReleaseDetail> {
+    ) -> crate::library::LiveDetail<crate::album_detail::ReleaseDetail> {
         let (id_tx, mut ids) = tokio::sync::watch::channel(None::<String>);
         let (tx, rx) = crate::library::live_read_channel();
         let manager = self.inner.manager.clone();
@@ -76,14 +76,14 @@ impl AppServices {
                 }
             },
         );
-        crate::library::DetailSubscription::new(id_tx, rx, task)
+        crate::library::LiveDetail::new(id_tx, rx, task)
     }
 
     /// The artist detail view's artist as it changes; another artist is a
     /// new id on the same read.
     pub fn subscribe_artist_detail(
         &self,
-    ) -> crate::library::DetailSubscription<crate::album_detail::ArtistDetail> {
+    ) -> crate::library::LiveDetail<crate::album_detail::ArtistDetail> {
         let manager = self.inner.manager.clone();
         detail_read(
             manager.clone(),
@@ -99,7 +99,7 @@ impl AppServices {
     /// is a new id on the same read.
     pub fn subscribe_composer_detail(
         &self,
-    ) -> crate::library::DetailSubscription<crate::album_detail::ComposerDetail> {
+    ) -> crate::library::LiveDetail<crate::album_detail::ComposerDetail> {
         let manager = self.inner.manager.clone();
         detail_read(
             manager.clone(),
@@ -116,7 +116,7 @@ impl AppServices {
     #[cfg(desktop)]
     pub fn subscribe_invalid_candidate(
         &self,
-    ) -> crate::library::DetailSubscription<
+    ) -> crate::library::LiveDetail<
         crate::import::InvalidCandidateDetail,
         crate::import::CandidateKey,
     > {
@@ -132,7 +132,7 @@ impl AppServices {
     /// on the same read.
     pub fn subscribe_work_detail(
         &self,
-    ) -> crate::library::DetailSubscription<crate::album_detail::WorkDetail> {
+    ) -> crate::library::LiveDetail<crate::album_detail::WorkDetail> {
         let manager = self.inner.manager.clone();
         detail_read(
             manager.clone(),
@@ -154,7 +154,7 @@ fn detail_read<Projection, Value, Id>(
         + Send
         + 'static,
     resolve: impl Fn(Projection) -> Option<Value> + Send + 'static,
-) -> crate::library::DetailSubscription<Value, Id>
+) -> crate::library::LiveDetail<Value, Id>
 where
     Projection: Clone + PartialEq + Send + 'static,
     Value: Send + 'static,
@@ -194,5 +194,5 @@ where
             }
         },
     );
-    crate::library::DetailSubscription::new(id_tx, rx, task)
+    crate::library::LiveDetail::new(id_tx, rx, task)
 }

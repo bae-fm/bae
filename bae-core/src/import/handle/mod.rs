@@ -710,7 +710,7 @@ impl ImportServiceHandle {
     pub async fn subscribe_whole_list(
         &self,
         view: crate::import::ImportListView,
-    ) -> crate::import::ImportListSubscription {
+    ) -> crate::import::LiveImportList {
         self.subscribe_list_window(
             view,
             crate::db::LibraryPageWindow { offset: 0, limit: u64::MAX },
@@ -725,7 +725,7 @@ impl ImportServiceHandle {
         &self,
         view: crate::import::ImportListView,
         window: crate::db::LibraryPageWindow,
-    ) -> crate::import::ImportListSubscription {
+    ) -> crate::import::LiveImportList {
         self.open_list(view, std::iter::once(window).collect())
             .await
             .expect("the import list opens")

@@ -10,14 +10,14 @@ use crate::library::LibraryError;
 impl AppServices {
     /// The download queue as the Downloads pane draws it: how many entries it
     /// holds, and the windows the pane asks for, none until the first
-    /// [`set_windows`](crate::library::LibraryBrowseSubscription::set_windows).
+    /// [`set_windows`](crate::library::LiveLibraryBrowse::set_windows).
     /// One query serves every window, and reads them again as an entry
     /// comes, goes, starts or fails, or a release a window shows changes.
-    pub fn subscribe_download_browse(&self) -> crate::library::DownloadBrowseSubscription {
+    pub fn subscribe_download_browse(&self) -> crate::library::LiveDownloadBrowse {
         let manager = &self.inner.manager;
         let query = manager
             .until_closed(manager.subscribe_download_windows(crate::db::LibraryPageWindows::new()));
-        crate::library::LibraryBrowseSubscription::new(
+        crate::library::LiveLibraryBrowse::new(
             query,
             |read: crate::library::ReleaseQueueWindows<()>, request_revision, cause| {
                 crate::library::LibraryBrowseSnapshot {

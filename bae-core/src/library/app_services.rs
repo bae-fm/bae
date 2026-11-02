@@ -282,27 +282,24 @@ impl AppServices {
         &self,
         sort: &[crate::db::AlbumSortCriterion],
         group_by_artist: bool,
-    ) -> crate::library::AlbumBrowseSubscription {
+    ) -> crate::library::LiveAlbumBrowse {
         let manager = self.inner.manager.clone();
         let query = manager.until_closed(manager.subscribe_album_browse(
             sort,
             group_by_artist,
             std::collections::BTreeSet::new(),
         ));
-        crate::library::LibraryBrowseSubscription::new(
-            query,
-            move |projection, request_revision, cause| {
-                manager.resolve_album_browse(projection, request_revision, cause)
-            },
-        )
+        crate::library::LiveLibraryBrowse::new(query, move |projection, request_revision, cause| {
+            manager.resolve_album_browse(projection, request_revision, cause)
+        })
     }
 
     /// Which of the albums the grid has selected are gone from the library,
     /// as one live query whose ids move in place as the selection changes; it
     /// starts with none.
-    pub fn subscribe_album_selection(&self) -> crate::library::AlbumSelectionSubscription {
+    pub fn subscribe_album_selection(&self) -> crate::library::LiveAlbumSelection {
         let manager = &self.inner.manager;
-        crate::library::AlbumSelectionSubscription::new(
+        crate::library::LiveAlbumSelection::new(
             manager
                 .until_closed(manager.subscribe_album_selection(std::collections::BTreeSet::new())),
         )
@@ -310,10 +307,10 @@ impl AppServices {
 
     /// One live library search, pointed at a new query in place as the
     /// person types; it starts with no query.
-    pub fn subscribe_library_search(&self) -> crate::library::LibrarySearchSubscription {
+    pub fn subscribe_library_search(&self) -> crate::library::LiveLibrarySearch {
         let manager = self.inner.manager.clone();
         let query = manager.until_closed(manager.subscribe_library_search(None));
-        crate::library::LibrarySearchSubscription::new(query, move |projection| {
+        crate::library::LiveLibrarySearch::new(query, move |projection| {
             manager.resolve_library_search_projection(projection)
         })
     }
@@ -321,9 +318,9 @@ impl AppServices {
     /// One live search of the library's artists for an artist picker,
     /// pointed at a new text and new windows in place as the person types and
     /// scrolls; it starts with no text and no windows.
-    pub fn subscribe_artist_search(&self) -> crate::library::ArtistSearchSubscription {
+    pub fn subscribe_artist_search(&self) -> crate::library::LiveArtistSearch {
         let manager = &self.inner.manager;
-        crate::library::ArtistSearchSubscription::new(
+        crate::library::LiveArtistSearch::new(
             manager.until_closed(manager.subscribe_artist_search(
                 crate::library::ArtistSearchView {
                     query: None,
@@ -337,9 +334,9 @@ impl AppServices {
     /// The library membership of the releases an import pane offers, as one
     /// live query whose checks move in place as the pane's offers change; it
     /// starts with none.
-    pub fn subscribe_library_statuses(&self) -> crate::library::LibraryStatusSubscription {
+    pub fn subscribe_library_statuses(&self) -> crate::library::LiveLibraryStatus {
         let manager = &self.inner.manager;
-        crate::library::LibraryStatusSubscription::new(
+        crate::library::LiveLibraryStatus::new(
             manager.until_closed(
                 manager.subscribe_library_statuses(std::collections::BTreeSet::new()),
             ),
@@ -349,32 +346,26 @@ impl AppServices {
     pub fn subscribe_artist_browse(
         &self,
         sort: &[crate::db::ArtistSortCriterion],
-    ) -> crate::library::ArtistBrowseSubscription {
+    ) -> crate::library::LiveArtistBrowse {
         let manager = self.inner.manager.clone();
         let query = manager
             .until_closed(manager.subscribe_artist_browse(sort, std::collections::BTreeSet::new()));
-        crate::library::LibraryBrowseSubscription::new(
-            query,
-            move |projection, request_revision, cause| {
-                manager.resolve_artist_browse(projection, request_revision, cause)
-            },
-        )
+        crate::library::LiveLibraryBrowse::new(query, move |projection, request_revision, cause| {
+            manager.resolve_artist_browse(projection, request_revision, cause)
+        })
     }
 
     pub fn subscribe_composer_browse(
         &self,
         sort: &[crate::db::ComposerSortCriterion],
-    ) -> crate::library::ComposerBrowseSubscription {
+    ) -> crate::library::LiveComposerBrowse {
         let manager = self.inner.manager.clone();
         let query = manager.until_closed(
             manager.subscribe_composer_browse(sort, std::collections::BTreeSet::new()),
         );
-        crate::library::LibraryBrowseSubscription::new(
-            query,
-            move |projection, request_revision, cause| {
-                manager.resolve_composer_browse(projection, request_revision, cause)
-            },
-        )
+        crate::library::LiveLibraryBrowse::new(query, move |projection, request_revision, cause| {
+            manager.resolve_composer_browse(projection, request_revision, cause)
+        })
     }
 
     pub fn subscribe_playback_progress(
@@ -551,13 +542,13 @@ impl AppServices {
     delegate_async!(manager, dropbox_shared_folders => dropbox_shared_folders() -> Result<Vec<coven::StorageFolder>, crate::library::LibraryError>);
     delegate_async!(manager, get_album_id_for_release => get_album_id_for_release(release_id: &str) -> Result<String, crate::library::LibraryError>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    delegate_async!(manager, open_release_edit => open_release_edit(release_id: &str) -> Result<crate::library::ReleaseEditSession, crate::library::LibraryError>);
+    delegate_async!(manager, open_release_edit => open_release_edit(release_id: &str) -> Result<crate::library::ReleaseEdit, crate::library::LibraryError>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    delegate_async!(manager, apply_release_edit_catalog => apply_release_edit_catalog(session: &crate::library::ReleaseEditSession, link: &crate::identify::PressingLink, steps: &crate::import::CatalogApplySteps) -> Result<crate::import::ReleaseEditSeed, crate::library::LibraryError>);
+    delegate_async!(manager, apply_release_edit_catalog => apply_release_edit_catalog(session: &crate::library::ReleaseEdit, link: &crate::identify::PressingLink, steps: &crate::import::CatalogApplySteps) -> Result<crate::import::ReleaseEditSeed, crate::library::LibraryError>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    delegate_async!(manager, save_release_edit => save_release_edit(session: &crate::library::ReleaseEditSession, edit: &crate::import::RawReleaseEdit) -> Result<(), crate::library::LibraryError>);
+    delegate_async!(manager, save_release_edit => save_release_edit(session: &crate::library::ReleaseEdit, edit: &crate::import::RawReleaseEdit) -> Result<(), crate::library::LibraryError>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    delegate_async!(manager, set_release_edit_album => set_release_edit_album(session: &crate::library::ReleaseEditSession, album_id: Option<String>) -> Result<crate::import::DraftAlbum, crate::library::LibraryError>);
+    delegate_async!(manager, set_release_edit_album => set_release_edit_album(session: &crate::library::ReleaseEdit, album_id: Option<String>) -> Result<crate::import::DraftAlbum, crate::library::LibraryError>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     delegate_async!(manager, enqueue_export => enqueue_export(release_id: &str, target_dir: std::path::PathBuf) -> Result<(), crate::library::LibraryError>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]

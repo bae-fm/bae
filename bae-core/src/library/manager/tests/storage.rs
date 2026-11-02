@@ -555,7 +555,7 @@ async fn making_a_release_remote_without_storage_requires_configuration() {
 
 #[cfg(feature = "test-utils")]
 async fn next_storage_value(
-    values: &crate::library::StorageBrowseSubscription,
+    values: &crate::library::LiveStorageBrowse,
 ) -> crate::library::StorageBrowseSnapshot {
     tokio::time::timeout(std::time::Duration::from_secs(5), values.next())
         .await

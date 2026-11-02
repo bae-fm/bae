@@ -8,7 +8,7 @@
 async fn list_subscription(
     fixture: &Fixture,
     windows: crate::db::LibraryPageWindows,
-) -> crate::import::ImportListSubscription {
+) -> crate::import::LiveImportList {
     fixture
         .import
         .open_list(crate::import::ImportListView::default(), windows)
@@ -22,7 +22,7 @@ fn page_window(offset: u64, limit: u64) -> crate::db::LibraryPageWindows {
 
 /// The list's next snapshot.
 async fn next_page(
-    list: &crate::import::ImportListSubscription,
+    list: &crate::import::LiveImportList,
 ) -> crate::import::ImportListSnapshot {
     tokio::time::timeout(Duration::from_secs(20), list.next())
         .await

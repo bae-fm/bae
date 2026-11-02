@@ -23,9 +23,7 @@ impl AppServices {
     /// change that leaves what it shows as it was sends nothing; how fast its
     /// uploads and downloads go are their transfers. Another release is a
     /// new id on the same read.
-    pub fn subscribe_storage_inspector(
-        &self,
-    ) -> crate::library::DetailSubscription<StorageInspector> {
+    pub fn subscribe_storage_inspector(&self) -> crate::library::LiveDetail<StorageInspector> {
         let (id_tx, mut ids) = tokio::sync::watch::channel(None::<String>);
         let (tx, rx) = crate::library::live_read_channel();
         let manager = self.inner.manager.clone();
@@ -90,6 +88,6 @@ impl AppServices {
                 }
             },
         );
-        crate::library::DetailSubscription::new(id_tx, rx, task)
+        crate::library::LiveDetail::new(id_tx, rx, task)
     }
 }

@@ -39,5 +39,4 @@ pub struct ReleaseFilesSnapshot {
 /// A live read of one release's files in one order. The release and order
 /// change in place through [`LiveRead::set`](super::LiveRead::set); `None`
 /// reads nothing.
-pub type ReleaseFilesSubscription =
-    super::LiveRead<Option<ReleaseFilesRequest>, ReleaseFilesSnapshot>;
+pub type LiveReleaseFiles = super::LiveRead<Option<ReleaseFilesRequest>, ReleaseFilesSnapshot>;

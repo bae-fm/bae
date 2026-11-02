@@ -31,26 +31,22 @@ mod sync_activity;
 pub(crate) mod sync_controller;
 mod upload_progress;
 mod upload_throughput;
-pub use album_selection::{
-    AlbumSelectionSnapshot, AlbumSelectionSubscription, AlbumSelectionSubscriptionError,
-};
+pub use album_selection::{AlbumSelectionSnapshot, LiveAlbumSelection, LiveAlbumSelectionError};
 pub use app_services::*;
-pub use artist_search::{ArtistSearchSnapshot, ArtistSearchSubscription, ArtistSearchView};
+pub use artist_search::{ArtistSearchSnapshot, ArtistSearchView, LiveArtistSearch};
 pub use browse::*;
 pub use closing_step::ClosingStep;
 
 /// Where a storage setup reports each step coven runs, as coven reports it.
 pub type StorageSetupSteps<'a> =
     &'a (dyn Fn(coven::Progress<coven::StorageSetupStep>) + Send + Sync);
-pub use detail::{DetailSnapshot, DetailSubscription};
+pub use detail::{DetailSnapshot, LiveDetail};
 pub use download_snapshot::{
     DownloadEntry, DownloadPhase, DownloadProgress, DownloadRow, DownloadSnapshot,
     DownloadTransferProgress, QueuedDownload,
 };
 pub use file_transfers::{FileTransferChange, FileTransfersWatch};
-pub use library_status::{
-    LibraryStatusSnapshot, LibraryStatusSubscription, LibraryStatusSubscriptionError,
-};
+pub use library_status::{LibraryStatusSnapshot, LiveLibraryStatus, LiveLibraryStatusError};
 pub(crate) use live_read::{live_read_channel, SubscriptionReader};
 pub use live_read::{LiveRead, LiveReadError};
 pub use local_lifecycle::{
@@ -67,12 +63,12 @@ pub use output_snapshot::{
     OutputEntry, OutputKind, OutputOp, OutputPhase, OutputPhaseRow, OutputPhaseSnapshot,
     OutputProgress, OutputRow, OutputSnapshot, OutputState,
 };
-pub use queue_upcoming::{QueueUpcomingSnapshot, QueueUpcomingSubscription, QueueUpcomingWindow};
+pub use queue_upcoming::{LiveQueueUpcoming, QueueUpcomingSnapshot, QueueUpcomingWindow};
 pub(crate) use queued_releases::QueuedReleases;
 #[cfg(desktop)]
 pub use release_files::{
-    ReleaseFileColumn, ReleaseFileOrder, ReleaseFilesRequest, ReleaseFilesSnapshot,
-    ReleaseFilesSubscription,
+    LiveReleaseFiles, ReleaseFileColumn, ReleaseFileOrder, ReleaseFilesRequest,
+    ReleaseFilesSnapshot,
 };
 #[cfg(desktop)]
 pub use release_queue::ReleaseQueueEntries;
@@ -85,12 +81,12 @@ pub use release_transfers::{
     OutputTransfersWatch, ReleaseTransferChange, ReleaseTransfersWatch,
 };
 pub use search::{
-    LibrarySearchQuery, LibrarySearchSnapshot, LibrarySearchSubscription,
-    LibrarySearchSubscriptionError, SEARCH_RESULT_LIMIT,
+    LibrarySearchQuery, LibrarySearchSnapshot, LiveLibrarySearch, LiveLibrarySearchError,
+    SEARCH_RESULT_LIMIT,
 };
 pub use storage_browse::{
-    ReleaseQueueRun, StorageBrowseSnapshot, StorageBrowseSubscription, StorageBrowseView,
-    StorageQueues, UploadQueueRun,
+    LiveStorageBrowse, ReleaseQueueRun, StorageBrowseSnapshot, StorageBrowseView, StorageQueues,
+    UploadQueueRun,
 };
 pub use sync_activity::{DownloadsInFlight, SyncActivity, UploadQueueCounts, UploadsInFlight};
 pub use upload_progress::{UploadActivity, UploadBar, UploadProgress, UploadState};

@@ -41,18 +41,12 @@ macro_rules! detail_subscription {
         /// A read that shows nothing until `set_id` names an item.
         #[derive(uniffi::Object)]
         pub struct $object {
-            inner: bae_core::library::DetailSubscription<
-                <$bridge_value as DetailValue>::Core,
-                $core_id,
-            >,
+            inner: bae_core::library::LiveDetail<<$bridge_value as DetailValue>::Core, $core_id>,
             runtime: crate::operation_runtime::OperationRuntime,
         }
 
         pub(crate) fn $make(
-            inner: bae_core::library::DetailSubscription<
-                <$bridge_value as DetailValue>::Core,
-                $core_id,
-            >,
+            inner: bae_core::library::LiveDetail<<$bridge_value as DetailValue>::Core, $core_id>,
             runtime: crate::operation_runtime::OperationRuntime,
         ) -> Arc<$object> {
             Arc::new($object { inner, runtime })

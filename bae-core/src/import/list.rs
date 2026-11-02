@@ -40,13 +40,13 @@ mod subscription;
 pub(crate) use path_order::release_keys_in_path_order;
 pub(crate) use pending_filter::pending_filter_entries;
 pub use pending_filter::{PendingFilter, PendingFilterEntry};
-pub use subscription::{ImportListSubscription, ImportListSubscriptionError};
+pub use subscription::{LiveImportList, LiveImportListError};
 
 pub use super::triage::TriageTab;
 
 /// What the list is currently showing: which tab, which filters, and in which
 /// direction. Which groups it folds shut is the list's too, written on their
-/// own ([`ImportListSubscription::set_group_folded`]).
+/// own ([`LiveImportList::set_group_folded`]).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ImportListView {
     pub tab: TriageTab,

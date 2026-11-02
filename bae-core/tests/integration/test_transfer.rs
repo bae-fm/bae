@@ -12,7 +12,7 @@ use bae_core::db::{
     StorageSortField,
 };
 use bae_core::library::{
-    AppServices, CancellationToken, LibraryManager, StorageBrowseSubscription, StorageBrowseView,
+    AppServices, CancellationToken, LibraryManager, LiveStorageBrowse, StorageBrowseView,
 };
 use bae_core::storage::transfer::{TransferProgress, TransferService};
 use bae_util::content_type::ContentType;
@@ -125,7 +125,7 @@ fn failed(events: &[TransferProgress]) -> bool {
 }
 
 async fn expect_storage_state(
-    subscription: &StorageBrowseSubscription,
+    subscription: &LiveStorageBrowse,
     release_id: &str,
     expected: ReleaseStorageState,
 ) {

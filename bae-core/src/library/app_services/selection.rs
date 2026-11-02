@@ -1,6 +1,6 @@
 //! Acting on the import list's selection on [`AppServices`]. The list
 //! subscription owns the selection
-//! ([`ImportListSubscription`](crate::import::ImportListSubscription)) and
+//! ([`LiveImportList`](crate::import::LiveImportList)) and
 //! hands its selected rows here, in the order the list shows them.
 
 use super::*;

@@ -40,7 +40,7 @@ pub struct LibrarySearchSnapshot {
 }
 
 #[derive(Debug, thiserror::Error)]
-pub enum LibrarySearchSubscriptionError {
+pub enum LiveLibrarySearchError {
     #[error("search subscription cancelled")]
     Cancelled,
     #[error(transparent)]
@@ -48,7 +48,7 @@ pub enum LibrarySearchSubscriptionError {
 }
 
 /// The live query ending is this subscription's cancellation.
-impl From<crate::live_query::LiveQueryCancelled> for LibrarySearchSubscriptionError {
+impl From<crate::live_query::LiveQueryCancelled> for LiveLibrarySearchError {
     fn from(_: crate::live_query::LiveQueryCancelled) -> Self {
         Self::Cancelled
     }
@@ -57,7 +57,7 @@ impl From<crate::live_query::LiveQueryCancelled> for LibrarySearchSubscriptionEr
 /// A live library search whose query changes in place: one reconfigurable
 /// query for as long as the search field is open, instead of a new live query
 /// per keystroke.
-pub struct LibrarySearchSubscription {
+pub struct LiveLibrarySearch {
     query: crate::live_query::CancellableLiveQuery<
         Option<LibrarySearchQuery>,
         crate::db::LibrarySearchProjection,
@@ -69,7 +69,7 @@ pub struct LibrarySearchSubscription {
     >,
 }
 
-impl LibrarySearchSubscription {
+impl LiveLibrarySearch {
     pub(crate) fn new(
         query: crate::live_query::CancellableLiveQuery<
             Option<LibrarySearchQuery>,
@@ -85,12 +85,12 @@ impl LibrarySearchSubscription {
 
     /// Search for `raw`, parsed as every surface parses a query: a blank one is
     /// no search. Returns the revision the answer will carry.
-    pub fn set_query(&self, raw: &str) -> Result<u64, LibrarySearchSubscriptionError> {
-        self.query.set(LibrarySearchQuery::parse(raw)).map_err(LibrarySearchSubscriptionError::from)
+    pub fn set_query(&self, raw: &str) -> Result<u64, LiveLibrarySearchError> {
+        self.query.set(LibrarySearchQuery::parse(raw)).map_err(LiveLibrarySearchError::from)
     }
 
-    pub async fn next(&self) -> Result<LibrarySearchSnapshot, LibrarySearchSubscriptionError> {
-        let event = self.query.next().await.map_err(LibrarySearchSubscriptionError::from)?;
+    pub async fn next(&self) -> Result<LibrarySearchSnapshot, LiveLibrarySearchError> {
+        let event = self.query.next().await.map_err(LiveLibrarySearchError::from)?;
         let request_revision = event.revision.0;
         let query = event.request.clone();
         let projection = event.result?;

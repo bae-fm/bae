@@ -1,13 +1,13 @@
 //! The Storage sheet's live read of a release's files on [`AppServices`].
 
 use super::*;
-use crate::library::{ReleaseFilesRequest, ReleaseFilesSnapshot, ReleaseFilesSubscription};
+use crate::library::{LiveReleaseFiles, ReleaseFilesRequest, ReleaseFilesSnapshot};
 
 impl AppServices {
     /// The files of the release the subscription is set to, in the order it
     /// asks for, as they change: each value answers the request set last.
     /// Another release or order is a new request on the same read.
-    pub fn subscribe_release_files(&self) -> ReleaseFilesSubscription {
+    pub fn subscribe_release_files(&self) -> LiveReleaseFiles {
         let (request_tx, mut requests) = tokio::sync::watch::channel(None::<ReleaseFilesRequest>);
         let (tx, rx) = crate::library::live_read_channel();
         let manager = self.inner.manager.clone();
@@ -47,6 +47,6 @@ impl AppServices {
                 }
             },
         );
-        ReleaseFilesSubscription::new(request_tx, rx, task)
+        LiveReleaseFiles::new(request_tx, rx, task)
     }
 }

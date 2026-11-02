@@ -2,7 +2,7 @@
 //! open, moved in place to each text the person types and to the windows of
 //! its list on screen.
 
-use super::search::{LibrarySearchQuery, LibrarySearchSubscriptionError};
+use super::search::{LibrarySearchQuery, LiveLibrarySearchError};
 use crate::album_detail::ArtistSearchResult;
 use crate::db::{LibraryBrowseWindow, LibraryPageWindows};
 
@@ -26,7 +26,7 @@ pub struct ArtistSearchSnapshot {
 }
 
 /// A live artist search whose text and windows change in place.
-pub struct ArtistSearchSubscription {
+pub struct LiveArtistSearch {
     query: crate::live_query::CancellableLiveQuery<
         ArtistSearchView,
         crate::db::ArtistSearchProjection,
@@ -37,7 +37,7 @@ pub struct ArtistSearchSubscription {
     >,
 }
 
-impl ArtistSearchSubscription {
+impl LiveArtistSearch {
     pub(crate) fn new(
         query: crate::live_query::CancellableLiveQuery<
             ArtistSearchView,
@@ -58,14 +58,14 @@ impl ArtistSearchSubscription {
         &self,
         raw: &str,
         windows: LibraryPageWindows,
-    ) -> Result<u64, LibrarySearchSubscriptionError> {
+    ) -> Result<u64, LiveLibrarySearchError> {
         self.query
             .set(ArtistSearchView { query: LibrarySearchQuery::parse(raw), windows })
-            .map_err(LibrarySearchSubscriptionError::from)
+            .map_err(LiveLibrarySearchError::from)
     }
 
-    pub async fn next(&self) -> Result<ArtistSearchSnapshot, LibrarySearchSubscriptionError> {
-        let event = self.query.next().await.map_err(LibrarySearchSubscriptionError::from)?;
+    pub async fn next(&self) -> Result<ArtistSearchSnapshot, LiveLibrarySearchError> {
+        let event = self.query.next().await.map_err(LiveLibrarySearchError::from)?;
         let request_revision = event.revision.0;
         Ok((self.resolve)(event.result?, request_revision))
     }

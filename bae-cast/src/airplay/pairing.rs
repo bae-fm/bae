@@ -32,10 +32,10 @@ const TRANSIENT_PIN: &[u8] = b"3939";
 /// The transient pair-setup state machine. Built, then driven M1→M3, yielding the
 /// SRP shared secret once M4 arrives.
 pub(crate) struct TransientPairing {
-    phase: Phase,
+    phase: PairSetupPhase,
 }
 
-enum Phase {
+enum PairSetupPhase {
     /// Nothing sent yet.
     Init,
     /// M1 sent; waiting for the receiver's M2 (salt + B).
@@ -48,16 +48,16 @@ enum Phase {
 
 impl TransientPairing {
     pub(crate) fn new() -> Self {
-        TransientPairing { phase: Phase::Init }
+        TransientPairing { phase: PairSetupPhase::Init }
     }
 
     /// The body of the first `POST /pair-setup` (M1): method 0, state M1, and the
     /// transient flag.
     pub(crate) fn start(&mut self) -> Result<Vec<u8>, PairingError> {
-        if !matches!(self.phase, Phase::Init) {
+        if !matches!(self.phase, PairSetupPhase::Init) {
             return Err(PairingError::WrongState);
         }
-        self.phase = Phase::AwaitingM2;
+        self.phase = PairSetupPhase::AwaitingM2;
         Ok(Tlv8::new()
             .push_u8(tlv_type::METHOD, 0)
             .push_u8(tlv_type::STATE, state::M1)
@@ -68,7 +68,7 @@ impl TransientPairing {
     /// Handle the receiver's M2 (salt + B): run the SRP exchange and return the
     /// M3 body (`{State=M3, PublicKey=A, Proof=M1}`) to POST.
     pub(crate) fn handle_m2(&mut self, response_body: &[u8]) -> Result<Vec<u8>, PairingError> {
-        if !matches!(self.phase, Phase::AwaitingM2) {
+        if !matches!(self.phase, PairSetupPhase::AwaitingM2) {
             return Err(PairingError::WrongState);
         }
         let tlv = Tlv8::decode(response_body)?;
@@ -96,14 +96,16 @@ impl TransientPairing {
             .push(tlv_type::PROOF, client.proof_m1()?.to_vec())
             .encode();
 
-        self.phase = Phase::AwaitingM4(Box::new(client));
+        self.phase = PairSetupPhase::AwaitingM4(Box::new(client));
         Ok(m3)
     }
 
     /// Handle the receiver's M4: verify its server proof (when present) and return
     /// the SRP shared secret the stream keys derive from.
     pub(crate) fn handle_m4(&mut self, response_body: &[u8]) -> Result<Vec<u8>, PairingError> {
-        let Phase::AwaitingM4(client) = std::mem::replace(&mut self.phase, Phase::Done) else {
+        let PairSetupPhase::AwaitingM4(client) =
+            std::mem::replace(&mut self.phase, PairSetupPhase::Done)
+        else {
             return Err(PairingError::WrongState);
         };
         let tlv = Tlv8::decode(response_body)?;

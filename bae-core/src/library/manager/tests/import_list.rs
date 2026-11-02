@@ -64,7 +64,7 @@ async fn open_list(
     manager: &LibraryManager,
     view: crate::import::ImportListView,
     windows: crate::db::LibraryPageWindows,
-) -> Result<crate::import::ImportListSubscription, crate::import::ImportError> {
+) -> Result<crate::import::LiveImportList, crate::import::ImportError> {
     manager.start_import_service(tokio::runtime::Handle::current()).await?.open_list(view, windows).await
 }
 
@@ -324,11 +324,11 @@ async fn cancelling_closes_the_list() {
         .is_empty());
     assert!(matches!(
         subscription.set_view(crate::import::ImportListView::default()).await,
-        Err(crate::import::ImportListSubscriptionError::Database(_))
+        Err(crate::import::LiveImportListError::Database(_))
     ));
     assert!(matches!(
         subscription.next().await,
-        Err(crate::import::ImportListSubscriptionError::Cancelled)
+        Err(crate::import::LiveImportListError::Cancelled)
     ));
 }
 
@@ -360,13 +360,13 @@ async fn closing_the_library_cancels_a_waiting_read_before_the_store_closes() {
         .expect("the waiting read ends")
         .unwrap();
     assert!(
-        matches!(read, Err(crate::import::ImportListSubscriptionError::Cancelled)),
+        matches!(read, Err(crate::import::LiveImportListError::Cancelled)),
         "the waiting read is cancelled: {read:?}"
     );
     assert!(
         matches!(
             subscription.next().await,
-            Err(crate::import::ImportListSubscriptionError::Cancelled)
+            Err(crate::import::LiveImportListError::Cancelled)
         ),
         "a read after the close is cancelled too"
     );

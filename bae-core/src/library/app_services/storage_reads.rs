@@ -13,7 +13,7 @@ impl AppServices {
     pub fn subscribe_storage_browse(
         &self,
         initial: crate::library::StorageBrowseView,
-    ) -> crate::library::StorageBrowseSubscription {
+    ) -> crate::library::LiveStorageBrowse {
         let (view_tx, mut views) = tokio::sync::watch::channel(initial);
         let (tx, rx) = crate::library::live_read_channel();
         let manager = self.inner.manager.clone();
@@ -62,6 +62,6 @@ impl AppServices {
                 }
             },
         );
-        crate::library::StorageBrowseSubscription::new(view_tx, rx, task)
+        crate::library::LiveStorageBrowse::new(view_tx, rx, task)
     }
 }

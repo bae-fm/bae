@@ -25,7 +25,7 @@ use crate::library::CancellationToken;
 use crate::live_query::CancellableLiveQuery;
 
 #[derive(Debug, thiserror::Error)]
-pub enum ImportListSubscriptionError {
+pub enum LiveImportListError {
     #[error("import list subscription cancelled")]
     Cancelled,
     #[error("the list does not show both ends of the run of rows to select")]
@@ -37,7 +37,7 @@ pub enum ImportListSubscriptionError {
 }
 
 /// The live query ending is this subscription's cancellation.
-impl From<crate::live_query::LiveQueryCancelled> for ImportListSubscriptionError {
+impl From<crate::live_query::LiveQueryCancelled> for LiveImportListError {
     fn from(_: crate::live_query::LiveQueryCancelled) -> Self {
         Self::Cancelled
     }
@@ -47,13 +47,13 @@ impl From<crate::live_query::LiveQueryCancelled> for ImportListSubscriptionError
 /// before the store does. Dropped without [`Self::cancel`], its live query
 /// ends and its row stays until the library next opens, when every list
 /// closes.
-pub struct ImportListSubscription {
+pub struct LiveImportList {
     list: ImportListId,
     tables: ImportTables,
     query: CancellableLiveQuery<ImportListRequest, ImportListProjection>,
 }
 
-impl ImportListSubscription {
+impl LiveImportList {
     /// Open a list showing `view` through `windows`, with nothing folded and
     /// nothing selected, and the live query that reads it.
     pub(crate) async fn open(
@@ -72,14 +72,11 @@ impl ImportListSubscription {
 
     /// Show a different tab, filter or order. The windows are kept: the query
     /// reruns and the surface re-reads them. Answers with the view revision.
-    pub async fn set_view(&self, view: ImportListView) -> Result<u64, ImportListSubscriptionError> {
+    pub async fn set_view(&self, view: ImportListView) -> Result<u64, LiveImportListError> {
         Ok(self.tables.set_import_list_view(self.list, view).await?)
     }
 
-    pub fn set_windows(
-        &self,
-        windows: LibraryPageWindows,
-    ) -> Result<(), ImportListSubscriptionError> {
+    pub fn set_windows(&self, windows: LibraryPageWindows) -> Result<(), LiveImportListError> {
         self.query.set(ImportListRequest { list: self.list, windows })?;
         Ok(())
     }
@@ -91,15 +88,12 @@ impl ImportListSubscription {
         &self,
         group: FolderReleaseDecisionKey,
         folded: bool,
-    ) -> Result<u64, ImportListSubscriptionError> {
+    ) -> Result<u64, LiveImportListError> {
         Ok(self.tables.set_import_list_group_folded(self.list, group, folded).await?)
     }
 
     /// Fold every group shut, or open them all, as one change.
-    pub async fn set_all_groups_folded(
-        &self,
-        folded: bool,
-    ) -> Result<u64, ImportListSubscriptionError> {
+    pub async fn set_all_groups_folded(&self, folded: bool) -> Result<u64, LiveImportListError> {
         Ok(self.tables.set_import_list_groups_folded(self.list, folded).await?)
     }
 
@@ -108,21 +102,21 @@ impl ImportListSubscription {
     pub async fn change_selection(
         &self,
         change: SelectionChange,
-    ) -> Result<u64, ImportListSubscriptionError> {
+    ) -> Result<u64, LiveImportListError> {
         match self.tables.change_import_list_selection(self.list, change).await? {
             SelectionWrite::Changed { revision } => Ok(revision),
-            SelectionWrite::RunNotShown => Err(ImportListSubscriptionError::RunNotShown),
+            SelectionWrite::RunNotShown => Err(LiveImportListError::RunNotShown),
         }
     }
 
     /// Select every row the list shows, whether or not a surface loaded it.
-    pub async fn select_all(&self) -> Result<u64, ImportListSubscriptionError> {
+    pub async fn select_all(&self) -> Result<u64, LiveImportListError> {
         Ok(self.tables.select_all_in_import_list(self.list).await?)
     }
 
     /// The selected rows, in the order the list shows them: what a bulk
     /// action runs over.
-    pub async fn selected(&self) -> Result<SelectedRows, ImportListSubscriptionError> {
+    pub async fn selected(&self) -> Result<SelectedRows, LiveImportListError> {
         Ok(self.tables.load_import_list_selected(self.list).await?)
     }
 
@@ -132,7 +126,7 @@ impl ImportListSubscription {
     pub async fn locate_candidate(
         &self,
         candidate_key: &crate::import::CandidateKey,
-    ) -> Result<Option<ImportCandidateListLocation>, ImportListSubscriptionError> {
+    ) -> Result<Option<ImportCandidateListLocation>, LiveImportListError> {
         Ok(self.tables.locate_import_candidate(self.list, candidate_key).await?)
     }
 
@@ -142,13 +136,13 @@ impl ImportListSubscription {
     /// a row.
     pub async fn first_identifying_candidate(
         &self,
-    ) -> Result<Option<crate::import::CandidateKey>, ImportListSubscriptionError> {
+    ) -> Result<Option<crate::import::CandidateKey>, LiveImportListError> {
         Ok(self.tables.first_identifying_import_candidate(self.list).await?)
     }
 
     /// The list's next value.
-    pub async fn next(&self) -> Result<ImportListSnapshot, ImportListSubscriptionError> {
-        let event = self.query.next().await.map_err(ImportListSubscriptionError::from)?;
+    pub async fn next(&self) -> Result<ImportListSnapshot, LiveImportListError> {
+        let event = self.query.next().await.map_err(LiveImportListError::from)?;
         let cause = event.cause;
         // A list read that fails takes the whole import tab with it — no
         // rows, no watched folders — so the reason is worth a line whether or
@@ -190,7 +184,7 @@ impl ImportListSubscription {
 
     /// End the live query and close the list: its row, folds and selection
     /// go.
-    pub async fn cancel(&self) -> Result<(), ImportListSubscriptionError> {
+    pub async fn cancel(&self) -> Result<(), LiveImportListError> {
         self.query.close().await;
         Ok(self.tables.close_import_list(self.list).await?)
     }
