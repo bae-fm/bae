@@ -79,7 +79,7 @@ async fn a_fixture_album_credited_to_two_artists_is_listed_under_each() {
     let mut browse = manager.subscribe_album_browse(
         &[],
         true,
-        [crate::library::LibraryPageWindow { offset: 0, limit: 10 }].into(),
+        [crate::db::LibraryPageWindow { offset: 0, limit: 10 }].into(),
     );
     let grouped = browse.next().await.expect("the query stays open").result.unwrap();
     let rows = &grouped.windows[0].rows;
@@ -168,7 +168,7 @@ async fn found_rows(manager: &LibraryManager) -> crate::import::ImportListProjec
     tables
         .load_import_list(crate::import::ImportListRequest {
             list,
-            windows: std::iter::once(crate::library::LibraryPageWindow { offset: 0, limit: 50 })
+            windows: std::iter::once(crate::db::LibraryPageWindow { offset: 0, limit: 50 })
                 .collect(),
         })
         .await

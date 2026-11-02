@@ -180,7 +180,7 @@ impl LibraryManager {
         let windows = projection
             .windows
             .into_iter()
-            .map(|window| crate::library::LibraryBrowseWindow {
+            .map(|window| crate::db::LibraryBrowseWindow {
                 window: window.window,
                 rows: window.rows.into_iter().map(&resolve).collect(),
             })

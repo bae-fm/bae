@@ -16,8 +16,8 @@
 
 use super::*;
 use crate::db::client::query::{QueryOne, QueryRows};
+use crate::db::LibraryPageWindow;
 use crate::import::{FolderReleaseDecisionKey, ImportListOrder, TriageTab};
-use crate::library::LibraryPageWindow;
 use rusqlite::ToSql;
 
 /// What one item of the list is, by the placement's `item` column.
@@ -664,7 +664,7 @@ impl<'a> Items<'a> {
                 .collect();
             let WindowsRead { windows: read, found: places } = read_windows(
                 &order,
-                &crate::library::LibraryPageWindows::from([LibraryPageWindow { offset, limit }]),
+                &crate::db::LibraryPageWindows::from([LibraryPageWindow { offset, limit }]),
                 in_part,
                 |seek, limit, offset| self.window_of(sql, part, &order, seek, limit, offset),
             )?;

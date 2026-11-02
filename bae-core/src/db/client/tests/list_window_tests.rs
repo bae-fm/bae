@@ -4,7 +4,7 @@
 
 use super::super::list_windows::OrderKey;
 use super::super::*;
-use crate::library::{LibraryPageWindow, LibraryPageWindows};
+use crate::db::{LibraryPageWindow, LibraryPageWindows};
 
 /// The plan of `statement` under `seek`'s parameters and `extra`, one line
 /// per step.

@@ -52,7 +52,7 @@ impl LibraryManager {
         crate::library::ArtistSearchSnapshot {
             windows: windows
                 .into_iter()
-                .map(|window| crate::library::LibraryBrowseWindow {
+                .map(|window| crate::db::LibraryBrowseWindow {
                     window: window.window,
                     rows: window
                         .rows
@@ -124,9 +124,9 @@ impl LibraryManager {
     pub(crate) fn subscribe_artist_browse(
         &self,
         sort: &[crate::db::ArtistSortCriterion],
-        initial_windows: crate::library::LibraryPageWindows,
+        initial_windows: crate::db::LibraryPageWindows,
     ) -> coven::ReconfigurableLiveQuery<
-        crate::library::LibraryPageWindows,
+        crate::db::LibraryPageWindows,
         crate::db::ArtistBrowseProjection,
     > {
         self.database.subscribe_artist_browse(sort, initial_windows)
@@ -142,7 +142,7 @@ impl LibraryManager {
             windows: projection
                 .windows
                 .into_iter()
-                .map(|window| crate::library::LibraryBrowseWindow {
+                .map(|window| crate::db::LibraryBrowseWindow {
                     window: window.window,
                     rows: window.rows.into_iter().map(ArtistSummary::from_raw).collect(),
                 })

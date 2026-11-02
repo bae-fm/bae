@@ -3,7 +3,8 @@
 
 use super::super::*;
 use super::{exec, exec_batch};
-use crate::library::{ArtistSearchView, LibraryPageWindow, LibrarySearchQuery};
+use crate::db::LibraryPageWindow;
+use crate::library::{ArtistSearchView, LibrarySearchQuery};
 use std::time::Duration;
 
 const FIRST: &str = "1a7c1f53-6d0e-4f43-9a52-0c3f3a9f0a01";
@@ -39,7 +40,7 @@ fn view(text: &str, windows: &[LibraryPageWindow]) -> ArtistSearchView {
 }
 
 fn ids(
-    window: &crate::library::LibraryBrowseWindow<super::super::artist_search::DbArtistSearchRow>,
+    window: &crate::db::LibraryBrowseWindow<super::super::artist_search::DbArtistSearchRow>,
 ) -> Vec<&str> {
     window.rows.iter().map(|row| row.artist.id.as_str()).collect()
 }

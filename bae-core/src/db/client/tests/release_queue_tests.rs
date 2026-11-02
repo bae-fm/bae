@@ -244,11 +244,10 @@ async fn a_window_reads_its_entries_and_the_queue_length() {
     let releases: Vec<String> =
         (0..5).map(|i| bae_test_support::test_uuid(&format!("window-release-{i}"))).collect();
     db.enqueue_releases(releases.iter().map(|id| download(id)).collect()).await.unwrap();
-    let mut live =
-        db.subscribe_release_queue_windows::<()>(crate::library::LibraryPageWindows::from([
-            crate::library::LibraryPageWindow { offset: 1, limit: 2 },
-            crate::library::LibraryPageWindow { offset: 9, limit: 2 },
-        ]));
+    let mut live = db.subscribe_release_queue_windows::<()>(crate::db::LibraryPageWindows::from([
+        crate::db::LibraryPageWindow { offset: 1, limit: 2 },
+        crate::db::LibraryPageWindow { offset: 9, limit: 2 },
+    ]));
     let read = live.next().await.expect("the query stays open").result.unwrap();
     assert_eq!(read.total_count, 5);
     let shown: Vec<Vec<String>> = read

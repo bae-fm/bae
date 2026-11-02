@@ -8,7 +8,7 @@ use super::*;
 /// found.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ArtistSearchProjection {
-    pub windows: Vec<crate::library::LibraryBrowseWindow<DbArtistSearchRow>>,
+    pub windows: Vec<crate::db::LibraryBrowseWindow<DbArtistSearchRow>>,
     pub total_count: u64,
 }
 
@@ -28,7 +28,7 @@ impl Database {
     pub async fn search_artists(
         &self,
         query: &crate::library::LibrarySearchQuery,
-        window: crate::library::LibraryPageWindow,
+        window: crate::db::LibraryPageWindow,
     ) -> Result<Vec<DbArtist>, DbError> {
         let query = query.clone();
         self.read(move |sql| {
@@ -55,7 +55,7 @@ impl Database {
                     windows: view
                         .windows
                         .iter()
-                        .map(|window| crate::library::LibraryBrowseWindow {
+                        .map(|window| crate::db::LibraryBrowseWindow {
                             window: window.clone(),
                             rows: Vec::new(),
                         })
@@ -68,7 +68,7 @@ impl Database {
                 .windows
                 .iter()
                 .map(|window| {
-                    Ok(crate::library::LibraryBrowseWindow {
+                    Ok(crate::db::LibraryBrowseWindow {
                         window: window.clone(),
                         rows: artist_search_rows_on(&sql, query, window)?,
                     })
@@ -120,7 +120,7 @@ fn artist_search_count_on(
 fn artist_search_rows_on(
     sql: &SqlReadContext<'_>,
     query: &crate::library::LibrarySearchQuery,
-    window: &crate::library::LibraryPageWindow,
+    window: &crate::db::LibraryPageWindow,
 ) -> Result<Vec<DbArtistSearchRow>, DbError> {
     sql.query(
         &format!(

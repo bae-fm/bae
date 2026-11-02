@@ -1,5 +1,5 @@
 use super::super::*;
-use crate::library::LibraryPageWindow;
+use crate::db::LibraryPageWindow;
 use std::collections::BTreeSet;
 
 const BRAVO: &str = "f392a38b-f264-41a0-a225-c6935b8a8262";

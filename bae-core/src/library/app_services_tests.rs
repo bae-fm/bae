@@ -112,11 +112,8 @@ async fn queue_value_with_context(services: &AppServices) -> crate::queue::Resol
     }
 }
 
-fn windows(windows: &[(u64, u64)]) -> crate::library::LibraryPageWindows {
-    windows
-        .iter()
-        .map(|&(offset, limit)| crate::library::LibraryPageWindow { offset, limit })
-        .collect()
+fn windows(windows: &[(u64, u64)]) -> crate::db::LibraryPageWindows {
+    windows.iter().map(|&(offset, limit)| crate::db::LibraryPageWindow { offset, limit }).collect()
 }
 
 /// The subscription's next value that `accept` takes, skipping the ones

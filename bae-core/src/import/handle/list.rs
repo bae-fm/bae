@@ -9,7 +9,7 @@ impl ImportServiceHandle {
     pub async fn open_list(
         &self,
         view: crate::import::ImportListView,
-        windows: crate::library::LibraryPageWindows,
+        windows: crate::db::LibraryPageWindows,
     ) -> Result<crate::import::ImportListSubscription, crate::import::ImportError> {
         Ok(crate::import::ImportListSubscription::open(
             self.tables.clone(),
@@ -25,7 +25,7 @@ impl ImportServiceHandle {
     pub async fn load_list(
         &self,
         view: crate::import::ImportListView,
-        windows: crate::library::LibraryPageWindows,
+        windows: crate::db::LibraryPageWindows,
     ) -> Result<crate::import::ImportListProjection, crate::import::ImportError> {
         let list = self.tables.open_import_list(view).await?;
         let projection =

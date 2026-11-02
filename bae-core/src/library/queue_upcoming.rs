@@ -1,7 +1,7 @@
 //! The context's upcoming tail, read through one live subscription whose
 //! windows move as the queue scrolls.
 
-use super::{LibraryPageWindow, LibraryPageWindows};
+use crate::db::{LibraryPageWindow, LibraryPageWindows};
 
 /// One requested window of the upcoming tail, with the entries in it.
 #[derive(Debug, Clone, PartialEq)]

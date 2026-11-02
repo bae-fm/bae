@@ -36,7 +36,7 @@ pub(super) fn through(
         list,
         windows: windows
             .into_iter()
-            .map(|(offset, limit)| crate::library::LibraryPageWindow { offset, limit })
+            .map(|(offset, limit)| crate::db::LibraryPageWindow { offset, limit })
             .collect(),
     }
 }

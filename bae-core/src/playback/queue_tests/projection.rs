@@ -69,10 +69,10 @@ async fn test_offset_windows_read_with_the_tail_length() {
     let mut f = release(&refs).await;
     f.play_from("t000").await;
 
-    let windows = crate::library::LibraryPageWindows::from([
-        crate::library::LibraryPageWindow { offset: 0, limit: 3 },
-        crate::library::LibraryPageWindow { offset: 100, limit: 20 },
-        crate::library::LibraryPageWindow { offset: 125, limit: 20 },
+    let windows = crate::db::LibraryPageWindows::from([
+        crate::db::LibraryPageWindow { offset: 0, limit: 3 },
+        crate::db::LibraryPageWindow { offset: 100, limit: 20 },
+        crate::db::LibraryPageWindow { offset: 125, limit: 20 },
     ]);
     let mut live = f.db.subscribe_queue_upcoming(windows);
     let read = live.next().await.expect("the query stays open").result.unwrap();
@@ -167,8 +167,8 @@ async fn test_reorder_context_to_end() {
 async fn test_the_queue_screens_follow_a_play_and_the_clears() {
     let mut f = release_and_manual(&["t1", "t2", "t3"], &["m1"]).await;
     let mut value = f.db.subscribe_queue_value();
-    let mut upcoming = f.db.subscribe_queue_upcoming(crate::library::LibraryPageWindows::from([
-        crate::library::LibraryPageWindow { offset: 0, limit: 10 },
+    let mut upcoming = f.db.subscribe_queue_upcoming(crate::db::LibraryPageWindows::from([
+        crate::db::LibraryPageWindow { offset: 0, limit: 10 },
     ]));
     let wait = std::time::Duration::from_secs(10);
     macro_rules! value_until {

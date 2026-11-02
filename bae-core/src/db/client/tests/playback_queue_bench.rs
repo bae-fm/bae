@@ -258,8 +258,8 @@ async fn playback_queue_bench_library_play() {
 
     // The queue screens open, each following the queue as it changes.
     let mut value = db.subscribe_queue_value();
-    let mut upcoming = db.subscribe_queue_upcoming(crate::library::LibraryPageWindows::from([
-        crate::library::LibraryPageWindow { offset: 0, limit: 100 },
+    let mut upcoming = db.subscribe_queue_upcoming(crate::db::LibraryPageWindows::from([
+        crate::db::LibraryPageWindow { offset: 0, limit: 100 },
     ]));
     value.next().await.unwrap().unwrap();
     upcoming.next().await.unwrap();

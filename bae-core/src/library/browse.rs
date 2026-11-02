@@ -1,14 +1,6 @@
+use crate::db::{LibraryBrowseWindow, LibraryPageWindow, LibraryPageWindows};
 use crate::live_query::CancellableLiveQuery;
-use std::collections::BTreeSet;
 use std::sync::Arc;
-
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct LibraryPageWindow {
-    pub offset: u64,
-    pub limit: u64,
-}
-
-pub type LibraryPageWindows = BTreeSet<LibraryPageWindow>;
 
 /// One artist's group in the album grid grouped by artist. Its range includes
 /// unloaded rows, so clients can lay out every section without fetching every
@@ -24,12 +16,6 @@ pub struct LibraryBrowseSection {
     /// Where the artist's albums start in the grid's rows, and all of them:
     /// never a page of them, so `limit` is how many albums the artist has.
     pub window: LibraryPageWindow,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct LibraryBrowseWindow<Row> {
-    pub window: LibraryPageWindow,
-    pub rows: Vec<Row>,
 }
 
 #[derive(Debug, Clone)]

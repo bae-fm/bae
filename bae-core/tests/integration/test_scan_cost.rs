@@ -15,8 +15,9 @@
 //! 5,000, 10,000 and 20,000 folders, or the sizes `SCAN_SIZES` lists
 //! (`SCAN_SIZES=5000,20000`).
 
+use bae_core::db::LibraryPageWindow;
 use bae_core::import::{ImportListView, ScanEvent};
-use bae_core::library::{AppServices, LibraryPageWindow};
+use bae_core::library::AppServices;
 use bae_test_support as support;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};

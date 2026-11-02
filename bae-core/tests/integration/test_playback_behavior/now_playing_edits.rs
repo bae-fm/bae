@@ -92,7 +92,7 @@ fn first_upcoming(
 ) -> bae_core::library::QueueUpcomingSubscription {
     let queue = services.subscribe_queue_upcoming();
     queue
-        .set(bae_core::library::LibraryPageWindows::from([bae_core::library::LibraryPageWindow {
+        .set(bae_core::db::LibraryPageWindows::from([bae_core::db::LibraryPageWindow {
             offset: 0,
             limit: 1,
         }]))

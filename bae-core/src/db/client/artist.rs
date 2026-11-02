@@ -87,8 +87,8 @@ impl Database {
     pub(crate) fn subscribe_composer_browse(
         &self,
         sort: &[ComposerSortCriterion],
-        initial_windows: crate::library::LibraryPageWindows,
-    ) -> coven::ReconfigurableLiveQuery<crate::library::LibraryPageWindows, ComposerBrowseProjection>
+        initial_windows: crate::db::LibraryPageWindows,
+    ) -> coven::ReconfigurableLiveQuery<crate::db::LibraryPageWindows, ComposerBrowseProjection>
     {
         let order = composer_order(sort);
         let places = KnownPlaces::new();
@@ -103,7 +103,7 @@ impl Database {
             Ok(ComposerBrowseProjection {
                 windows: windows
                     .into_iter()
-                    .map(|(window, rows)| crate::library::LibraryBrowseWindow { window, rows })
+                    .map(|(window, rows)| crate::db::LibraryBrowseWindow { window, rows })
                     .collect(),
                 total_count,
             })
@@ -136,9 +136,8 @@ impl Database {
     pub(crate) fn subscribe_artist_browse(
         &self,
         sort: &[ArtistSortCriterion],
-        initial_windows: crate::library::LibraryPageWindows,
-    ) -> coven::ReconfigurableLiveQuery<crate::library::LibraryPageWindows, ArtistBrowseProjection>
-    {
+        initial_windows: crate::db::LibraryPageWindows,
+    ) -> coven::ReconfigurableLiveQuery<crate::db::LibraryPageWindows, ArtistBrowseProjection> {
         let order = artist_order(sort);
         let places = KnownPlaces::new();
         self.inner.handle.subscribe_reconfigurable(initial_windows, move |requested, sql| {
@@ -152,7 +151,7 @@ impl Database {
             Ok(ArtistBrowseProjection {
                 windows: windows
                     .into_iter()
-                    .map(|(window, rows)| crate::library::LibraryBrowseWindow { window, rows })
+                    .map(|(window, rows)| crate::db::LibraryBrowseWindow { window, rows })
                     .collect(),
                 total_count,
             })
@@ -625,7 +624,7 @@ fn artist_count_on(sql: &SqlReadContext<'_>) -> Result<u64, DbError> {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ComposerBrowseProjection {
-    pub windows: Vec<crate::library::LibraryBrowseWindow<DbComposerSummary>>,
+    pub windows: Vec<crate::db::LibraryBrowseWindow<DbComposerSummary>>,
     pub total_count: u64,
 }
 
@@ -636,7 +635,7 @@ pub struct ComposerDetailProjection {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ArtistBrowseProjection {
-    pub windows: Vec<crate::library::LibraryBrowseWindow<DbArtistSummary>>,
+    pub windows: Vec<crate::db::LibraryBrowseWindow<DbArtistSummary>>,
     pub total_count: u64,
 }
 

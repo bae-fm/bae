@@ -591,9 +591,9 @@ impl LibraryManager {
     /// names of them, as the Downloads pane draws them.
     pub(crate) fn subscribe_download_windows(
         &self,
-        initial: crate::library::LibraryPageWindows,
+        initial: crate::db::LibraryPageWindows,
     ) -> coven::ReconfigurableLiveQuery<
-        crate::library::LibraryPageWindows,
+        crate::db::LibraryPageWindows,
         crate::library::ReleaseQueueWindows<()>,
     > {
         self.downloads.subscribe_windows(initial)

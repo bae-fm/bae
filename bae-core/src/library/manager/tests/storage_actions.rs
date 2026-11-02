@@ -45,7 +45,7 @@ async fn a_transition_reaches_the_reads_from_its_row() {
         },
         filter: crate::db::StorageFilter::All,
         search: String::new(),
-        windows: [crate::library::LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect(),
+        windows: [crate::db::LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect(),
         selected: Default::default(),
     });
     let album_shows = |action: Option<ReleaseStorageAction>| {

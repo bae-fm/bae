@@ -6,6 +6,7 @@ pub mod identity;
 mod models;
 pub mod source_audio;
 // Only an import names its own artist credits from outside `db`.
+pub use client::list_windows::{LibraryBrowseWindow, LibraryPageWindow, LibraryPageWindows};
 #[cfg(test)]
 pub(crate) use client::resolved_in_an_empty_library;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]

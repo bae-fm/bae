@@ -1,6 +1,6 @@
 use super::super::*;
 use super::{exec, exec_batch, temp_db, ARTIST_A, ARTIST_B, ARTIST_C};
-use crate::library::LibraryPageWindow;
+use crate::db::LibraryPageWindow;
 
 async fn grouped_library() -> (Database, tempfile::TempDir) {
     let (db, dir) = temp_db().await;

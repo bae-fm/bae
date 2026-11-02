@@ -52,9 +52,9 @@ impl LibraryManager {
         &self,
         sort: &[crate::db::AlbumSortCriterion],
         group_by_artist: bool,
-        initial_windows: crate::library::LibraryPageWindows,
+        initial_windows: crate::db::LibraryPageWindows,
     ) -> coven::ReconfigurableLiveQuery<
-        crate::library::LibraryPageWindows,
+        crate::db::LibraryPageWindows,
         crate::db::AlbumBrowseProjection,
     > {
         self.database.subscribe_album_browse(sort, group_by_artist, initial_windows)
@@ -70,7 +70,7 @@ impl LibraryManager {
             windows: projection
                 .windows
                 .into_iter()
-                .map(|window| crate::library::LibraryBrowseWindow {
+                .map(|window| crate::db::LibraryBrowseWindow {
                     window: window.window,
                     rows: window
                         .rows

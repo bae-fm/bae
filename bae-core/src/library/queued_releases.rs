@@ -199,9 +199,9 @@ where
     /// names of them, as its pane draws them.
     pub(crate) fn subscribe_windows(
         &self,
-        initial: crate::library::LibraryPageWindows,
+        initial: crate::db::LibraryPageWindows,
     ) -> coven::ReconfigurableLiveQuery<
-        crate::library::LibraryPageWindows,
+        crate::db::LibraryPageWindows,
         crate::library::ReleaseQueueWindows<Extra>,
     > {
         self.database.subscribe_release_queue_windows::<Extra>(initial)

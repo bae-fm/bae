@@ -89,7 +89,7 @@ impl Listed {
     /// end: about the window's end times the tab's releases over the releases
     /// the search keeps. Otherwise it is read from the tab's rows in order,
     /// each tested.
-    pub(super) fn shown(&self, window: &crate::library::LibraryPageWindow) -> Shown<'static> {
+    pub(super) fn shown(&self, window: &crate::db::LibraryPageWindow) -> Shown<'static> {
         let narrowed = match (self.reads, self.narrowed) {
             (Reads::Search, Some(narrowed)) => narrowed,
             (Reads::Search, None) | (Reads::Order, _) => return Shown::View,

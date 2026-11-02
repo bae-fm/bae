@@ -115,7 +115,7 @@ impl DecisionFixture {
                 })
                 .await
                 .unwrap(),
-            windows: [crate::library::LibraryPageWindow { offset: 0, limit: 50 }]
+            windows: [crate::db::LibraryPageWindow { offset: 0, limit: 50 }]
                 .into_iter()
                 .collect(),
         });

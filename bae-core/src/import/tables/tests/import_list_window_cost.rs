@@ -71,9 +71,10 @@ async fn measure_import_list(db: &Database, n: u64) {
             .unwrap();
         let request = |offset| ImportListRequest {
             list,
-            windows: crate::library::LibraryPageWindows::from([
-                crate::library::LibraryPageWindow { offset, limit: LIMIT },
-            ]),
+            windows: crate::db::LibraryPageWindows::from([crate::db::LibraryPageWindow {
+                offset,
+                limit: LIMIT,
+            }]),
         };
         for (at, offset) in offsets(n) {
             let away = if offset >= n / 2 { offset - n / 4 } else { offset + n / 4 };

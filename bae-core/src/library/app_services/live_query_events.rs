@@ -157,7 +157,7 @@ mod tests {
             tokio::sync::mpsc::unbounded_channel::<Result<(), crate::library::LibraryError>>();
         let mut events = super::reconfigurable_live_query_events(
             &manager,
-            manager.subscribe_queue_upcoming(crate::library::LibraryPageWindows::new()),
+            manager.subscribe_queue_upcoming(crate::db::LibraryPageWindows::new()),
             reader,
         );
         database.close().await.unwrap();
@@ -168,7 +168,7 @@ mod tests {
         .await
         .expect("the query ends with its store");
 
-        events.set([crate::library::LibraryPageWindow { offset: 0, limit: 10 }].into());
+        events.set([crate::db::LibraryPageWindow { offset: 0, limit: 10 }].into());
 
         assert!(events.recv().await.is_none(), "the ended query reads nothing");
     }

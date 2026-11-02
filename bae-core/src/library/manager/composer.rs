@@ -6,9 +6,9 @@ impl LibraryManager {
     pub(crate) fn subscribe_composer_browse(
         &self,
         sort: &[crate::db::ComposerSortCriterion],
-        initial_windows: crate::library::LibraryPageWindows,
+        initial_windows: crate::db::LibraryPageWindows,
     ) -> coven::ReconfigurableLiveQuery<
-        crate::library::LibraryPageWindows,
+        crate::db::LibraryPageWindows,
         crate::db::ComposerBrowseProjection,
     > {
         self.database.subscribe_composer_browse(sort, initial_windows)
@@ -24,7 +24,7 @@ impl LibraryManager {
             windows: projection
                 .windows
                 .into_iter()
-                .map(|window| crate::library::LibraryBrowseWindow {
+                .map(|window| crate::db::LibraryBrowseWindow {
                     window: window.window,
                     rows: window.rows.into_iter().map(ComposerSummary::from_raw).collect(),
                 })

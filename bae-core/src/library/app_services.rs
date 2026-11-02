@@ -327,7 +327,7 @@ impl AppServices {
             manager.until_closed(manager.subscribe_artist_search(
                 crate::library::ArtistSearchView {
                     query: None,
-                    windows: crate::library::LibraryPageWindows::new(),
+                    windows: crate::db::LibraryPageWindows::new(),
                 },
             )),
             LibraryManager::resolve_artist_search,

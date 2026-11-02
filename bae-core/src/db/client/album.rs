@@ -120,9 +120,8 @@ impl Database {
         &self,
         sort: &[AlbumSortCriterion],
         group_by_artist: bool,
-        initial_windows: crate::library::LibraryPageWindows,
-    ) -> coven::ReconfigurableLiveQuery<crate::library::LibraryPageWindows, AlbumBrowseProjection>
-    {
+        initial_windows: crate::db::LibraryPageWindows,
+    ) -> coven::ReconfigurableLiveQuery<crate::db::LibraryPageWindows, AlbumBrowseProjection> {
         let (relation, order) = album_browse_order(sort, group_by_artist);
         let sources = album_browse_sources(group_by_artist);
         let places = KnownPlaces::new();
@@ -147,7 +146,7 @@ impl Database {
                                 &row.get::<_, String>(0)?,
                                 row.get(4)?,
                             ),
-                            window: crate::library::LibraryPageWindow {
+                            window: crate::db::LibraryPageWindow {
                                 offset: row.get::<_, i64>(2)? as u64,
                                 limit: row.get::<_, i64>(3)? as u64,
                             },
@@ -171,15 +170,15 @@ impl Database {
                 places.keep(versions, found);
                 let windows = windows
                     .into_iter()
-                    .map(|(window, rows)| crate::library::LibraryBrowseWindow { window, rows })
+                    .map(|(window, rows)| crate::db::LibraryBrowseWindow { window, rows })
                     .collect::<Vec<_>>();
                 Ok((windows, total_count, row_count, sections))
             })
             .process(|(windows, total_count, row_count, sections)| {
                 let windows = windows
                     .into_iter()
-                    .map(|window: crate::library::LibraryBrowseWindow<AlbumAppearanceRow>| {
-                        Ok(crate::library::LibraryBrowseWindow {
+                    .map(|window: crate::db::LibraryBrowseWindow<AlbumAppearanceRow>| {
+                        Ok(crate::db::LibraryBrowseWindow {
                             window: window.window,
                             rows: window
                                 .rows
@@ -727,7 +726,7 @@ impl AlbumAppearanceRow {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct AlbumBrowseProjection {
-    pub windows: Vec<crate::library::LibraryBrowseWindow<DbAlbumAppearance>>,
+    pub windows: Vec<crate::db::LibraryBrowseWindow<DbAlbumAppearance>>,
     pub total_count: u64,
     pub row_count: u64,
     pub sections: Vec<crate::library::LibraryBrowseSection>,

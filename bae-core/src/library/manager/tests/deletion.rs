@@ -358,7 +358,7 @@ async fn delete_album_deletes_its_releases_and_what_they_own() {
     let mut browse = manager.subscribe_album_browse(
         &[],
         false,
-        [crate::library::LibraryPageWindow { offset: 0, limit: 10 }].into(),
+        [crate::db::LibraryPageWindow { offset: 0, limit: 10 }].into(),
     );
     let listed = |browse: &crate::db::AlbumBrowseProjection| -> Vec<String> {
         browse.windows[0].rows.iter().map(|row| row.album.id.clone()).collect()

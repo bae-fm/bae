@@ -15,9 +15,8 @@ impl AppServices {
     /// comes, goes, starts or fails, or a release a window shows changes.
     pub fn subscribe_download_browse(&self) -> crate::library::DownloadBrowseSubscription {
         let manager = &self.inner.manager;
-        let query = manager.until_closed(
-            manager.subscribe_download_windows(crate::library::LibraryPageWindows::new()),
-        );
+        let query = manager
+            .until_closed(manager.subscribe_download_windows(crate::db::LibraryPageWindows::new()));
         crate::library::LibraryBrowseSubscription::new(
             query,
             |read: crate::library::ReleaseQueueWindows<()>, request_revision, cause| {

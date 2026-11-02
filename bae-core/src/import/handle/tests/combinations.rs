@@ -121,7 +121,7 @@ async fn pending(handle: &ImportServiceHandle) -> Vec<String> {
                 order: crate::import::ImportListOrder::PathAscending,
                 ..crate::import::ImportListView::default()
             },
-            [crate::library::LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect(),
+            [crate::db::LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect(),
         )
         .await
         .unwrap();

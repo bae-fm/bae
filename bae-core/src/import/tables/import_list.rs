@@ -129,7 +129,7 @@ fn list_row(
 
 #[derive(Clone, PartialEq)]
 struct ImportListRows {
-    windows: Vec<(crate::library::LibraryPageWindow, Vec<window::WindowItemRows>)>,
+    windows: Vec<(crate::db::LibraryPageWindow, Vec<window::WindowItemRows>)>,
     total_count: u64,
     summary: ImportQueueSummary,
     pending_filter_entries: Vec<crate::import::PendingFilterEntry>,
@@ -309,7 +309,7 @@ impl ImportTables {
         self.database
             .read(move |sql| {
                 let row = list_row(&sql, list)?;
-                let everything = crate::library::LibraryPageWindow { offset: 0, limit: u64::MAX };
+                let everything = crate::db::LibraryPageWindow { offset: 0, limit: u64::MAX };
                 let keys = |shown| -> Result<Vec<String>, DbError> {
                     Ok(row
                         .items(shown)

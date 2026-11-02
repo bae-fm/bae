@@ -77,11 +77,9 @@ impl LibraryManager {
     /// Follow the windows `initial` names of the context lane's upcoming tracks.
     pub(crate) fn subscribe_queue_upcoming(
         &self,
-        initial: crate::library::LibraryPageWindows,
-    ) -> coven::ReconfigurableLiveQuery<
-        crate::library::LibraryPageWindows,
-        crate::db::QueueUpcomingRead,
-    > {
+        initial: crate::db::LibraryPageWindows,
+    ) -> coven::ReconfigurableLiveQuery<crate::db::LibraryPageWindows, crate::db::QueueUpcomingRead>
+    {
         self.database.subscribe_queue_upcoming(initial)
     }
 

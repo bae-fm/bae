@@ -12,7 +12,7 @@ async fn offers(database: &Database) -> (Vec<(String, bool)>, Vec<(String, bool)
     let projection = tables
         .load_import_list(crate::import::ImportListRequest {
             list,
-            windows: [crate::library::LibraryPageWindow { offset: 0, limit: 50 }]
+            windows: [crate::db::LibraryPageWindow { offset: 0, limit: 50 }]
                 .into_iter()
                 .collect(),
         })

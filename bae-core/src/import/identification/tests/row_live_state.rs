@@ -7,7 +7,7 @@
 /// A list subscription over the Pending tab, asking for `windows`.
 async fn list_subscription(
     fixture: &Fixture,
-    windows: crate::library::LibraryPageWindows,
+    windows: crate::db::LibraryPageWindows,
 ) -> crate::import::ImportListSubscription {
     fixture
         .import
@@ -16,8 +16,8 @@ async fn list_subscription(
         .expect("the list opens")
 }
 
-fn page_window(offset: u64, limit: u64) -> crate::library::LibraryPageWindows {
-    std::iter::once(crate::library::LibraryPageWindow { offset, limit }).collect()
+fn page_window(offset: u64, limit: u64) -> crate::db::LibraryPageWindows {
+    std::iter::once(crate::db::LibraryPageWindow { offset, limit }).collect()
 }
 
 /// The list's next snapshot.

@@ -269,7 +269,7 @@ impl AppServices {
         &self,
         view: ImportListView,
     ) -> Result<ImportListSubscription, crate::library::LibraryError> {
-        Ok(self.inner.import.open_list(view, crate::library::LibraryPageWindows::new()).await?)
+        Ok(self.inner.import.open_list(view, crate::db::LibraryPageWindows::new()).await?)
     }
 
     /// One read of a list showing `view` through `windows`, for a caller
@@ -277,7 +277,7 @@ impl AppServices {
     pub async fn load_import_list(
         &self,
         view: ImportListView,
-        windows: crate::library::LibraryPageWindows,
+        windows: crate::db::LibraryPageWindows,
     ) -> Result<crate::import::ImportListProjection, crate::library::LibraryError> {
         Ok(self.inner.import.load_list(view, windows).await?)
     }

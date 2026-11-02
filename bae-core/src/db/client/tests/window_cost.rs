@@ -176,11 +176,10 @@ async fn measure<R: Send + 'static>(
 ) {
     let order = std::sync::Arc::new(order);
     for (at, offset) in offsets(n) {
-        let window =
-            crate::library::LibraryPageWindows::from([crate::library::LibraryPageWindow {
-                offset,
-                limit: LIMIT,
-            }]);
+        let window = crate::db::LibraryPageWindows::from([crate::db::LibraryPageWindow {
+            offset,
+            limit: LIMIT,
+        }]);
         // The row beside the window: after it at the top, before it below.
         let beside = if offset == 0 { offset + LIMIT } else { offset - 1 };
         let key = {

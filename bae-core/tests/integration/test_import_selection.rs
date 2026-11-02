@@ -2,13 +2,14 @@
 //! only the rows it shows, and a bulk action runs in core over the selected
 //! keys in the order the list shows them.
 
+use bae_core::db::LibraryPageWindow;
 use bae_core::import::selection::{SelectionChange, SelectionSummary, SingleSelection};
 use bae_core::import::{
     Admission, ArtistAssignment, CandidateAction, CandidateRuntimeChange, CandidateRuntimeSnapshot,
     ImportListItem, ImportListOrder, ImportListSnapshot, ImportListSubscription, ImportListView,
     PendingFilter, TriageTab,
 };
-use bae_core::library::{AppServices, LibraryPageWindow};
+use bae_core::library::AppServices;
 use bae_test_support as support;
 use std::path::Path;
 use tempfile::TempDir;

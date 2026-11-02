@@ -140,9 +140,9 @@ impl ImportListSubscription {
         &self,
         windows: Vec<crate::types::BridgeLibraryPageWindow>,
     ) -> Result<(), BridgeError> {
-        let windows: BTreeSet<bae_core::library::LibraryPageWindow> = windows
+        let windows: BTreeSet<bae_core::db::LibraryPageWindow> = windows
             .into_iter()
-            .map(|window| bae_core::library::LibraryPageWindow {
+            .map(|window| bae_core::db::LibraryPageWindow {
                 offset: window.offset,
                 limit: window.limit,
             })

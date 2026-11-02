@@ -67,7 +67,7 @@ impl DiscogsPick {
         let mut search =
             self.handle.database.subscribe_artist_search(crate::library::ArtistSearchView {
                 query: crate::library::LibrarySearchQuery::parse("Track Artist"),
-                windows: [crate::library::LibraryPageWindow { offset: 0, limit: 50 }].into(),
+                windows: [crate::db::LibraryPageWindow { offset: 0, limit: 50 }].into(),
             });
         let found = search.next().await.expect("the artist search stays open").result.unwrap();
         let result = crate::library::LibraryManager::resolve_artist_search(found, 0)

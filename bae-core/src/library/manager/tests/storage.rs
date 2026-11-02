@@ -442,7 +442,7 @@ async fn a_pin_reaches_the_storage_view_without_a_sync_cycle() {
         },
         filter: crate::db::StorageFilter::All,
         search: String::new(),
-        windows: [crate::library::LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect(),
+        windows: [crate::db::LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect(),
         selected: Default::default(),
     });
     let pinned = |value: &crate::library::StorageBrowseSnapshot| {
@@ -572,8 +572,8 @@ async fn the_storage_view_moves_one_subscription() {
     let (manager, _temp_dir) = setup_test_manager().await;
     seed_albums(&manager, 3).await;
     let services = crate::library::AppServices::for_test(manager.clone()).await.unwrap();
-    let window = |offset, limit| crate::library::LibraryPageWindow { offset, limit };
-    let view = |direction, filter, windows: &[crate::library::LibraryPageWindow]| {
+    let window = |offset, limit| crate::db::LibraryPageWindow { offset, limit };
+    let view = |direction, filter, windows: &[crate::db::LibraryPageWindow]| {
         crate::library::StorageBrowseView {
             sort: crate::db::StorageSortCriterion {
                 field: crate::db::StorageSortField::AlbumTitle,
@@ -766,7 +766,7 @@ async fn a_storage_row_counts_the_file_being_sent() {
         },
         filter: crate::db::StorageFilter::All,
         search: String::new(),
-        windows: [crate::library::LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect(),
+        windows: [crate::db::LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect(),
         selected: Default::default(),
     });
     home.set_faults(coven::Faults {

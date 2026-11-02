@@ -17,10 +17,11 @@ use super::{
     ImportListSnapshot, ImportListView,
 };
 use crate::db::DbError;
+use crate::db::LibraryPageWindows;
 use crate::import::selection::{SelectedRows, SelectionChange};
 use crate::import::tables::{ImportTables, SelectionWrite};
 use crate::import::FolderReleaseDecisionKey;
-use crate::library::{CancellationToken, LibraryPageWindows};
+use crate::library::CancellationToken;
 use crate::live_query::CancellableLiveQuery;
 
 #[derive(Debug, thiserror::Error)]

@@ -473,9 +473,7 @@ async fn transition_completions_deliver_storage_values() {
         },
         filter: StorageFilter::All,
         search: String::new(),
-        windows: [bae_core::library::LibraryPageWindow { offset: 0, limit: 50 }]
-            .into_iter()
-            .collect(),
+        windows: [bae_core::db::LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect(),
         selected: Default::default(),
     });
     expect_storage_state(&values, &release_id, ReleaseStorageState::Local).await;
@@ -518,9 +516,7 @@ async fn selected_releases_leave_the_local_list_with_their_upload() {
         filter: StorageFilter::Local,
         search: String::new(),
         // One row on screen, so one selected release sits outside it.
-        windows: [bae_core::library::LibraryPageWindow { offset: 0, limit: 1 }]
-            .into_iter()
-            .collect(),
+        windows: [bae_core::db::LibraryPageWindow { offset: 0, limit: 1 }].into_iter().collect(),
         selected: selected.clone(),
     });
     let next = || async {
@@ -593,9 +589,7 @@ async fn a_selection_is_offered_the_actions_all_its_releases_allow() {
         filter: StorageFilter::All,
         search: String::new(),
         // One row on screen, so one selected release sits outside it.
-        windows: [bae_core::library::LibraryPageWindow { offset: 0, limit: 1 }]
-            .into_iter()
-            .collect(),
+        windows: [bae_core::db::LibraryPageWindow { offset: 0, limit: 1 }].into_iter().collect(),
         selected: selected.iter().map(|id| (*id).clone()).collect(),
     };
     let values = services.subscribe_storage_browse(view(&[&pinned, &unpinned]));

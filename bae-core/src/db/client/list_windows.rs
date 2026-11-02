@@ -15,11 +15,24 @@
 //! the next read starts from them only while those versions still stand.
 
 use super::*;
-use crate::library::{LibraryPageWindow, LibraryPageWindows};
 use rusqlite::types::Value;
 use rusqlite::ToSql;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Mutex;
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct LibraryPageWindow {
+    pub offset: u64,
+    pub limit: u64,
+}
+
+pub type LibraryPageWindows = BTreeSet<LibraryPageWindow>;
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct LibraryBrowseWindow<Row> {
+    pub window: LibraryPageWindow,
+    pub rows: Vec<Row>,
+}
 
 /// One term of a list's order: an SQL expression over the list's row, the
 /// way it runs, and whether it can be NULL, which sorts below every value.

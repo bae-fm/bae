@@ -1,6 +1,6 @@
 use super::super::*;
 use super::{exec, exec_batch};
-use crate::library::LibraryPageWindow;
+use crate::db::LibraryPageWindow;
 use std::collections::BTreeSet;
 use std::time::Duration;
 
@@ -87,10 +87,7 @@ where
 /// before the rename, would show in that page too.
 async fn next_album_page_is_only_a_rename(
     db: &Database,
-    live: &mut coven::ReconfigurableLiveQuery<
-        crate::library::LibraryPageWindows,
-        AlbumBrowseProjection,
-    >,
+    live: &mut coven::ReconfigurableLiveQuery<crate::db::LibraryPageWindows, AlbumBrowseProjection>,
     shown: AlbumBrowseProjection,
     title: &str,
 ) -> AlbumBrowseProjection {
@@ -113,7 +110,7 @@ async fn next_album_page_is_only_a_rename(
 async fn next_composer_page_is_only_a_rename(
     db: &Database,
     live: &mut coven::ReconfigurableLiveQuery<
-        crate::library::LibraryPageWindows,
+        crate::db::LibraryPageWindows,
         ComposerBrowseProjection,
     >,
     shown: ComposerBrowseProjection,

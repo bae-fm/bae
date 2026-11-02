@@ -3,8 +3,8 @@
 //! its list on screen.
 
 use super::search::{LibrarySearchQuery, LibrarySearchSubscriptionError};
-use super::{LibraryBrowseWindow, LibraryPageWindows};
 use crate::album_detail::ArtistSearchResult;
+use crate::db::{LibraryBrowseWindow, LibraryPageWindows};
 
 /// What an artist picker reads: the artists its text finds, parsed as every
 /// library search parses a query (`None` is no search), in the windows of its

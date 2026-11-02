@@ -41,7 +41,7 @@ impl Database {
     /// queue rows show them.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn queue_upcoming(&self) -> Result<Vec<QueueItem>, DbError> {
-        let all = crate::library::LibraryPageWindows::from([crate::library::LibraryPageWindow {
+        let all = crate::db::LibraryPageWindows::from([crate::db::LibraryPageWindow {
             offset: 0,
             limit: u64::MAX,
         }]);
@@ -54,8 +54,8 @@ impl Database {
     /// ones through its request handle.
     pub(crate) fn subscribe_queue_upcoming(
         &self,
-        initial: crate::library::LibraryPageWindows,
-    ) -> coven::ReconfigurableLiveQuery<crate::library::LibraryPageWindows, QueueUpcomingRead> {
+        initial: crate::db::LibraryPageWindows,
+    ) -> coven::ReconfigurableLiveQuery<crate::db::LibraryPageWindows, QueueUpcomingRead> {
         self.inner
             .handle
             .subscribe_reconfigurable(initial, |windows, sql| {
@@ -179,7 +179,7 @@ fn queue_value_on(
 
 fn queue_upcoming_on(
     sql: &SqlReadContext<'_>,
-    windows: &crate::library::LibraryPageWindows,
+    windows: &crate::db::LibraryPageWindows,
 ) -> Result<QueueUpcomingRead, DbError> {
     let head = queue_head_on(sql)?;
     let windows = windows

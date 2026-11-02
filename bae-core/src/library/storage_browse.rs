@@ -1,7 +1,7 @@
 //! The Storage Manager list, read through one live query whose sort, filter,
 //! search text and windows change in place.
 
-use super::{LibraryBrowseWindow, LibraryPageWindows};
+use crate::db::{LibraryBrowseWindow, LibraryPageWindows};
 
 /// What the Storage Manager shows: the list under one sort, filter and
 /// search text, the windows of it on screen, and the releases selected in it.

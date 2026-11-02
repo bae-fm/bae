@@ -49,7 +49,7 @@ async fn seeded_db() -> (Database, tempfile::TempDir) {
 async fn search(db: &Database, text: &str) -> Vec<DbArtist> {
     db.search_artists(
         &crate::library::LibrarySearchQuery::parse(text).expect("the text is not blank"),
-        crate::library::LibraryPageWindow { offset: 0, limit: 10 },
+        crate::db::LibraryPageWindow { offset: 0, limit: 10 },
     )
     .await
     .unwrap()

@@ -471,7 +471,7 @@ pub struct StorageBrowseRequest {
     pub sort: StorageSortCriterion,
     pub filter: StorageFilter,
     pub search: String,
-    pub windows: crate::library::LibraryPageWindows,
+    pub windows: crate::db::LibraryPageWindows,
     pub selected: BTreeSet<String>,
 }
 
@@ -487,7 +487,7 @@ pub struct StorageBrowseProjection {
     /// Whether the search text narrows the list: it is a library search,
     /// not blank.
     pub searching: bool,
-    pub windows: Vec<crate::library::LibraryBrowseWindow<DbStorageRow>>,
+    pub windows: Vec<crate::db::LibraryBrowseWindow<DbStorageRow>>,
     pub total_count: u64,
     pub total_size: u64,
     pub selected: Vec<DbStorageRow>,

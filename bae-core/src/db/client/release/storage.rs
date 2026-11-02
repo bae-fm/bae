@@ -175,7 +175,7 @@ impl Database {
                     let windows = windows
                         .into_iter()
                         .map(|(window, rows)| {
-                            Ok(crate::library::LibraryBrowseWindow {
+                            Ok(crate::db::LibraryBrowseWindow {
                                 window,
                                 rows: super::release_projection::process_storage_rows(rows)?,
                             })

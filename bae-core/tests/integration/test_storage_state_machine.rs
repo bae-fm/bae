@@ -498,9 +498,7 @@ async fn storage_subscription_delivers_actions_on_cloud_home_transition() {
         },
         filter: StorageFilter::All,
         search: String::new(),
-        windows: [bae_core::library::LibraryPageWindow { offset: 0, limit: 50 }]
-            .into_iter()
-            .collect(),
+        windows: [bae_core::db::LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect(),
         selected: Default::default(),
     });
     let before = next_storage_release(&values, &release_id).await;
