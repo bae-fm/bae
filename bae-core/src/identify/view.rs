@@ -20,7 +20,7 @@ use crate::catalog_model::LookupFailure;
 use crate::identify::release_group::{
     group_formed_rows, group_results, Judgements, Pressing, ReleaseGroup,
 };
-use crate::import::shared_album::SharedAlbum;
+use crate::identify::SharedAlbum;
 use crate::signals::{ArtworkScan, DiscIdSignal};
 use bae_catalogs::catalog::LookupCatalog;
 

@@ -353,7 +353,7 @@ impl CandidatePreparations {
         watched_folder_path: &std::path::Path,
         read: &CandidateAsRead,
         candidate_key: &crate::import::CandidateKey,
-        link: &crate::import::AlbumLink,
+        link: &crate::identify::AlbumLink,
         draft: crate::import::CandidateDraft,
         releases: Vec<crate::catalog_model::source_release::SourceRelease>,
     ) -> Result<u64, LibraryError> {

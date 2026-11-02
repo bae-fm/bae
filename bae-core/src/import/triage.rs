@@ -263,7 +263,7 @@ mod tests {
     #[test]
     fn an_album_link_reads_as_its_album() {
         let album =
-            crate::import::AlbumLink::new([crate::catalog_model::records::MetadataRef::new(
+            crate::identify::AlbumLink::new([crate::catalog_model::records::MetadataRef::new(
                 Catalog::MusicBrainz,
                 "group-1",
             )])

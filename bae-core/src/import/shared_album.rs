@@ -1,11 +1,4 @@
-//! Linking a folder to the album its offered pressings are of, when the person
-//! cannot tell which of them their copy is.
-//!
-//! A list offers several pressings of one album when its offered rows — the
-//! ones above the set-aside disclosure — are at least two, all on one album's
-//! card, and every lookup catalog that files them files them under one album:
-//! one MusicBrainz release group, one Discogs master. The link names those
-//! albums and no pressing; the copy may be one no catalog lists.
+//! What picking several pressings of one album reads onto a folder.
 //!
 //! What the rows agree on is applied to the draft, one field at a time, as the
 //! top-ranked row spells it; a field they disagree on, or that one of them
@@ -17,59 +10,10 @@
 //! `text_match::track_title_key`. The tracks agree only where every row lists
 //! as many as the folder has.
 
-use crate::catalog_model::records::MetadataRef;
-use crate::identify::release_group::ReleaseGroup;
 use crate::import::{
-    AlbumLink, CandidateDraft, Credited, RawLabelEdit, RawReleaseEdit, TrackArtistAssignments,
+    CandidateDraft, Credited, RawLabelEdit, RawReleaseEdit, TrackArtistAssignments,
 };
-use bae_catalogs::catalog::LookupCatalog;
 use bae_types::text_match;
-
-/// The offered rows of a list that are several pressings of one album.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SharedAlbum {
-    /// Each offered row's lead — the release picking the row reads — in the
-    /// list's order, most agreed-with first.
-    pub leads: Vec<crate::catalog_model::records::LookupRef>,
-    /// The album the rows are pressings of.
-    pub link: AlbumLink,
-}
-
-impl SharedAlbum {
-    /// The album a list's cards offer several pressings of; `None` where it
-    /// offers fewer than two rows, rows of two cards, or rows a catalog files
-    /// under two albums, and where no catalog names their album.
-    pub fn of(groups: &[ReleaseGroup]) -> Option<Self> {
-        let mut offering = groups.iter().filter(|group| group.pressings().next().is_some());
-        let card = offering.next()?;
-        if offering.next().is_some() {
-            return None;
-        }
-        let rows: Vec<_> = card.pressings().collect();
-        if rows.len() < 2 {
-            return None;
-        }
-        let mut albums = Vec::new();
-        for catalog in LookupCatalog::ALL {
-            let mut named = rows
-                .iter()
-                .flat_map(|row| &row.releases)
-                .filter(|release| release.source == catalog)
-                .filter_map(|release| release.source_group_id.as_deref());
-            let Some(album) = named.next() else {
-                continue;
-            };
-            if named.any(|other| other != album) {
-                return None;
-            }
-            albums.push(MetadataRef::new(catalog.catalog(), album));
-        }
-        Some(Self {
-            leads: rows.iter().map(|row| row.lead().release()).collect(),
-            link: AlbumLink::new(albums)?,
-        })
-    }
-}
 
 /// What picking one offered row reads onto the folder: its editable fields,
 /// and the mediums and track places it lays the audio on.

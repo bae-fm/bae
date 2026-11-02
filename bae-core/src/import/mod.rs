@@ -82,7 +82,7 @@ pub mod selection;
 pub(crate) mod service;
 pub mod session;
 #[cfg(desktop)]
-pub mod shared_album;
+pub(crate) mod shared_album;
 #[cfg(desktop)]
 pub(crate) mod track_numbers;
 #[cfg(desktop)]
@@ -310,6 +310,8 @@ pub use triage::{
 };
 #[cfg(desktop)]
 pub use types::ImportCommand;
+#[cfg(desktop)]
+pub use types::ReleaseLink;
 pub use types::{
     artists_standing, credited_line, ArtistAssignment, ArtistStanding, ArtistsStanding, AudioFile,
     CandidateDraft, CandidateEditField, CandidateTrack, CreditResolution, Credited, DraftAlbum,
@@ -318,8 +320,6 @@ pub use types::{
     RawTrackEdit, ReleaseDraft, ReleaseEditSeed, ReleaseUserEdit, ResolvedCredit,
     TrackArtistAssignments, TrackBinding, TrackUserEdit,
 };
-#[cfg(desktop)]
-pub use types::{AlbumLink, ReleaseLink};
 #[cfg(desktop)]
 pub use types::{
     CandidateMetadataDraft, CandidatePreparedAssets, CoverSelection, CueAnalyzedAudioFile,

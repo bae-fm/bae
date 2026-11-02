@@ -3,7 +3,8 @@
 
 use crate::catalog_model::records::LookupRef;
 use super::*;
-use crate::import::{AlbumLink, PendingStanding, ReleaseLink};
+use crate::import::{PendingStanding, ReleaseLink};
+use crate::identify::AlbumLink;
 use crate::catalog_model::records::{MetadataRef};
 
 const ALBUM: &str = "album-group-1";

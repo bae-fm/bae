@@ -13,8 +13,6 @@
 //! An import always lands as a local, playable release. An
 //! [`ImportDestination::Remote`] import then uploads to the cloud in the background.
 use crate::catalog_model::credits::{ArtistCredit, CreditedRole};
-#[cfg(desktop)]
-use crate::catalog_model::records::{MetadataRef, ReleaseRecord};
 use crate::catalog_model::works::WorkGraph;
 #[cfg(desktop)]
 use crate::cue_flac::CueSheet;
@@ -22,8 +20,6 @@ use crate::cue_flac::CueSheet;
 use crate::db::DbTrack;
 #[cfg(desktop)]
 use bae_audio::ProbeResult;
-#[cfg(desktop)]
-use bae_catalogs::catalog::Catalog;
 use serde::{Deserialize, Serialize};
 #[cfg(desktop)]
 mod progress;
@@ -77,7 +73,7 @@ pub enum MetadataProvenance {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ReleaseLink {
     Pressing(crate::identify::PressingLink),
-    Album(AlbumLink),
+    Album(crate::identify::AlbumLink),
 }
 
 #[cfg(desktop)]
@@ -88,43 +84,6 @@ impl ReleaseLink {
             Self::Pressing(pressing) => Some(pressing),
             Self::Album(_) => None,
         }
-    }
-}
-
-/// The album a candidate is linked to while its pressing is unknown: one
-/// album per catalog that files it — a MusicBrainz release group, a Discogs
-/// master — in catalog order, at least one.
-///
-/// It claims no pressing, not even one of the pressings it was chosen among:
-/// the folder's copy may be one no catalog lists.
-#[cfg(desktop)]
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct AlbumLink {
-    albums: Vec<MetadataRef>,
-}
-
-#[cfg(desktop)]
-impl AlbumLink {
-    /// The link naming `albums`, put in catalog order. `None` for no album,
-    /// or for two albums of one catalog: a link names the album once per
-    /// catalog.
-    pub fn new(albums: impl IntoIterator<Item = MetadataRef>) -> Option<Self> {
-        let mut albums: Vec<MetadataRef> = albums.into_iter().collect();
-        albums
-            .sort_by_key(|album| Catalog::ALL.iter().position(|catalog| *catalog == album.catalog));
-        let repeated = albums.windows(2).any(|pair| pair[0].catalog == pair[1].catalog);
-        (!albums.is_empty() && !repeated).then_some(Self { albums })
-    }
-
-    /// The album in each catalog, in catalog order.
-    pub fn albums(&self) -> &[MetadataRef] {
-        &self.albums
-    }
-
-    /// Every catalog's record of the album, in catalog order: what an import
-    /// of a candidate linked to it stores.
-    pub fn records(&self) -> Vec<ReleaseRecord> {
-        self.albums.iter().map(ReleaseRecord::album).collect()
     }
 }
 

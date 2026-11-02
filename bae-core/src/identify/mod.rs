@@ -24,6 +24,7 @@ pub(crate) mod pressing_evidence;
 pub mod release_group;
 pub(crate) mod row_facts;
 pub mod service;
+pub mod shared_album;
 pub mod state;
 pub mod toolbar;
 pub mod verdict;
@@ -38,6 +39,7 @@ pub use medium::MediumConflict;
 pub use not_asked::NotAskedReason;
 pub use release_group::PressingLink;
 pub use service::{IdentifyRunId, IdentifyServiceHandle};
+pub use shared_album::{AlbumLink, SharedAlbum};
 pub use state::{
     BarcodeProgress, CatalogProgress, DiscIdAnswer, DiscLookup, DiscidProgress, IdentifyEvent,
     IdentifyState, IsrcProgress, LookupOutcome, LookupResults, LookupState, ProviderLookup,
