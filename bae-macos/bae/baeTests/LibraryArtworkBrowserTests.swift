@@ -2,23 +2,22 @@ import AppKit
 import BaeKit
 import SwiftUI
 import Testing
-import Vision
 
 @testable import bae
 
 @MainActor
 struct LibraryArtworkBrowserTests {
-    @Test(
-        "Library artwork opens on its cover and switches layouts without reloading or saving"
-    )
+    /// Library artwork opens in the lightbox, where Return saves nothing and
+    /// Escape leaves without saving. The lightbox's words are the
+    /// `artwork-lightbox` shot's.
+    @Test("Library artwork opens in the lightbox without saving")
     func libraryEntry() async throws {
         let art = remote("Booklet", source: .discogs)
         var lookups = 0
         var saved: BridgeCoverSelection?
         var dismissed = false
-        let size = NSSize(width: 960, height: 700)
         try await withLibraryBrowser(
-            size: size,
+            layout: .lightbox,
             fetch: {
                 lookups += 1
                 return .linked(covers: [art])
@@ -26,49 +25,82 @@ struct LibraryArtworkBrowserTests {
             onSelect: { saved = $0 },
             onDone: { dismissed = true },
             body: { window, host in
-                var observations = try await text(in: host, size: size)
-                #expect(
-                    labels(observations)
-                        .carrying(String(localized: "Current Cover"))
-                )
-                #expect(
-                    !labels(observations)
-                        .carrying(String(localized: "Use This Cover"))
-                )
-                try click(
-                    "Browse all images",
-                    observations: observations,
-                    window: window,
-                    size: size
-                )
-                observations = try await text(in: host, size: size)
-                #expect(
-                    labels(observations).carrying(String(localized: "Images"))
-                )
+                try await SnapshotTestSupport.settle(host)
+                try HostedInput.keyEquivalent(.return, in: host)
+                try await SnapshotTestSupport.settle(host)
                 #expect(saved == nil)
-                // Advance the shared cursor to the provider booklet in grid mode.
-                try HostedInput.keyDown(.rightArrow, in: window)
+                try HostedInput.keyDown(.escape, in: window)
+                try await Wait.until { dismissed }
+                #expect(saved == nil)
+                #expect(lookups == 1)
+            }
+        )
+    }
+
+    /// Space opens the image the grid's cursor is on, the release's cover, in
+    /// the lightbox, and Escape brings the grid back with the keyboard on it,
+    /// without looking the covers up again; Return then saves the image the
+    /// cursor moved to.
+    @Test("Library artwork saves the image picked in the grid")
+    func gridSavesThePick() async throws {
+        let art = remote("Booklet", source: .discogs)
+        var lookups = 0
+        var saved: BridgeCoverSelection?
+        var dismissed = false
+        try await withLibraryBrowser(
+            layout: .grid,
+            fetch: {
+                lookups += 1
+                return .linked(covers: [art])
+            },
+            onSelect: { saved = $0 },
+            onDone: { dismissed = true },
+            body: { window, host in
+                try await Wait.until { lookups > 0 }
                 try await SnapshotTestSupport.settle(host)
                 try HostedInput.keyEquivalent(.space, in: host)
-                observations = try await text(in: host, size: size)
-                #expect(labels(observations).carrying("Discogs"))
-                try HostedInput.keyEquivalent(.return, in: host)
-                #expect(saved == nil)
-                try click(
-                    "Browse all images",
-                    observations: observations,
-                    window: window,
-                    size: size
-                )
-                // Back in the grid, whose layout a reload would start from.
                 try await SnapshotTestSupport.settle(host)
-                #expect(lookups == 1)
+                try HostedInput.keyDown(.escape, in: window)
+                try await SnapshotTestSupport.settle(host)
                 #expect(!dismissed)
+                try HostedInput.keyDown(.rightArrow, in: window)
+                try await SnapshotTestSupport.settle(host)
                 try HostedInput.keyEquivalent(.return, in: host)
                 try await Wait.until { dismissed }
                 #expect(saved == art.coverChoice.selection)
+                #expect(lookups == 1, "looked up \(lookups) times")
             }
         )
+    }
+
+    /// Browse all images, in the lightbox, switches the browser to its grid
+    /// with the image shown still the cursor's; where that button sits is no
+    /// longer tested.
+    @Test("Browsing all images from the lightbox keeps the image shown")
+    func browsingAllKeepsTheCursor() {
+        let cover = CoverItem(
+            releaseId: "release",
+            cover: BridgeImageRef(
+                id: "release",
+                version: "v1",
+                imageType: .cover
+            )
+        )
+        let booklet = CoverItem(
+            coverChoice: remote("Booklet", source: .discogs).coverChoice,
+            label: "Booklet"
+        )
+        var browser = ArtworkBrowserState(layout: .lightbox)
+        browser.update(
+            currentCover: cover,
+            remoteItems: [booklet],
+            releaseItems: [],
+            selectedCover: nil
+        )
+        browser.cursor?.select(id: booklet.id)
+        browser.layout = .grid
+        #expect(browser.cursor?.current.id == booklet.id)
+        #expect(browser.currentCover == cover)
     }
 
     @Test(
@@ -122,11 +154,11 @@ struct LibraryArtworkBrowserTests {
         #expect(cover.selection == nil)
     }
 
-    @Test(
-        "The empty library lightbox remains navigable and exposes identification"
-    )
+    /// The empty lightbox offers to find the release (the
+    /// `artwork-lightbox-unlinked` shot); its Find release… runs
+    /// `onFindRelease` as is, so where that button sits is no longer tested.
+    @Test("The empty library lightbox can be left")
     func emptyLightbox() async throws {
-        var identified = false
         var dismissed = false
         let size = NSSize(width: 800, height: 520)
         try await SnapshotTestSupport.withHostedWindow(
@@ -135,7 +167,7 @@ struct LibraryArtworkBrowserTests {
                 releaseItems: [],
                 selectedCover: nil,
                 initialLayout: .lightbox,
-                onFindRelease: { identified = true },
+                onFindRelease: {},
                 onSelect: { _ in Issue.record("Empty artwork cannot be saved")
                 },
                 onDone: { dismissed = true }
@@ -143,19 +175,8 @@ struct LibraryArtworkBrowserTests {
             .environment(ImageStore.stub())
             .frame(width: size.width, height: size.height),
             size: size
-        ) { window, host in
-            let observations = try await text(in: host, size: size)
-            #expect(
-                labels(observations)
-                    .carrying(String(localized: "No linked release"))
-            )
-            try click(
-                "Find release…",
-                observations: observations,
-                window: window,
-                size: size
-            )
-            #expect(identified)
+        ) { _, host in
+            try await SnapshotTestSupport.settle(host)
             try HostedInput.keyEquivalent(.escape, in: host)
             #expect(dismissed)
         }
@@ -243,16 +264,31 @@ extension LibraryArtworkBrowserTests {
         #expect(browser.showsReleaseFiles)
     }
 
-    @Test(
-        "The lightbox distinguishes loading, missing identity, empty results, and lookup failure",
-        arguments: [
-            RemoteCoverItems.loading([]), .unlinked, .linked([]),
+    /// What the lightbox says of each state is the `artwork-lightbox-fetching`,
+    /// `-unlinked`, `-none-found` and `-lookup-failed` shots'. The grid is
+    /// laid out behind it with its saving spinner in every state, so a
+    /// lookup still out spins more than the rest.
+    @Test("The lightbox spins only while its lookup is out")
+    func lookupStateInLightbox() async throws {
+        let settled = [
+            RemoteCoverItems.unlinked, .linked([]),
             .failed([], failure: DisplayError(line: "Lookup failed")),
         ]
-    )
-    func lookupStateInLightbox(_ remoteItems: RemoteCoverItems) async throws {
+        let resting = try await lightboxSpinners(.linked([]))
+        for remoteItems in settled {
+            #expect(
+                try await lightboxSpinners(remoteItems) == resting,
+                "\(remoteItems)"
+            )
+        }
+        #expect(try await lightboxSpinners(.loading([])) > resting)
+    }
+
+    private func lightboxSpinners(_ remoteItems: RemoteCoverItems)
+        async throws -> Int
+    {
         let size = NSSize(width: 800, height: 520)
-        try await SnapshotTestSupport.withHostedWindow(
+        return try await SnapshotTestSupport.withHostedWindow(
             CoverGalleryView(
                 remoteItems: remoteItems,
                 releaseItems: [],
@@ -265,38 +301,23 @@ extension LibraryArtworkBrowserTests {
             .frame(width: size.width, height: size.height),
             size: size
         ) { _, host in
-            let visible = labels(try await text(in: host, size: size))
-            #expect(
-                visible.carrying(String(localized: "No remote covers found"))
-                    == (remoteItems == .linked([]))
-            )
-            #expect(
-                visible.carrying(String(localized: "No linked release"))
-                    == (remoteItems == .unlinked)
-            )
-            #expect(
-                visible.carrying(String(localized: "Fetching covers..."))
-                    == remoteItems.isLoading
-            )
-            #expect(
-                visible.carrying(String(localized: "No cover art available"))
-                    == !remoteItems.isLoading
-            )
-            if case .failed = remoteItems {
-                #expect(visible.carrying("Lookup failed"))
-            }
+            try await SnapshotTestSupport.settle(host)
+            return SnapshotTestSupport.descendants(of: host)
+                .filter { $0 is NSProgressIndicator }
+                .count
         }
     }
 }
 
 extension LibraryArtworkBrowserTests {
     private func withLibraryBrowser<Value>(
-        size: NSSize,
+        layout: ArtworkBrowserState.Layout,
         fetch: @escaping () async throws -> BridgeRemoteCoverGallery,
         onSelect: @escaping (BridgeCoverSelection) async throws -> Void,
         onDone: @escaping () -> Void,
         body: (NSWindow, NSHostingView<AnyView>) async throws -> Value
     ) async throws -> Value {
+        let size = NSSize(width: 960, height: 700)
         let album = try #require(PreviewData.albumDetails["a-01"])
         var bridge = try #require(
             album.releases.first { $0.id == album.album.primaryReleaseId }
@@ -332,7 +353,7 @@ extension LibraryArtworkBrowserTests {
                 CoverSheetView(
                     releaseId: release.id,
                     initialRelease: release,
-                    initialLayout: .lightbox,
+                    initialLayout: layout,
                     fetchRemoteCovers: fetch,
                     onSelect: onSelect,
                     onDone: onDone
@@ -370,48 +391,5 @@ extension LibraryArtworkBrowserTests {
             ),
             label: name
         )
-    }
-
-    private func labels(_ observations: [SnapshotTestSupport.RecognizedLine])
-        -> [String]
-    {
-        observations.map(\.text)
-    }
-
-    private func text(in host: NSView, size: NSSize) async throws
-        -> [SnapshotTestSupport.RecognizedLine]
-    {
-        let png = try await SnapshotTestSupport.capturePNG(host, size: size)
-        return try await SnapshotTestSupport.recognizedText(in: png)
-    }
-
-    /// Click where `label` was drawn.
-    ///
-    /// These buttons are drawn by SwiftUI: the AppKit control behind one
-    /// carries no title and publishes no accessibility name, so where its
-    /// words landed is the only handle on it. Matched by containment, because
-    /// a button that draws a symbol beside its words comes back with the two
-    /// glued together.
-    private func click(
-        _ label: String,
-        observations: [SnapshotTestSupport.RecognizedLine],
-        window: NSWindow,
-        size: NSSize
-    ) throws {
-        let localized = String(localized: String.LocalizationValue(label))
-            .replacingOccurrences(of: "…", with: "...")
-        let observation = try #require(
-            observations.first {
-                $0.text
-                    .replacingOccurrences(of: "…", with: "...")
-                    .contains(localized)
-            },
-            "\(localized) is not among \(labels(observations))"
-        )
-        let point = NSPoint(
-            x: observation.boundingBox.midX * size.width,
-            y: observation.boundingBox.midY * size.height
-        )
-        try HostedInput.press(at: point, in: window)
     }
 }
