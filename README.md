@@ -49,7 +49,6 @@ You pick releases from MusicBrainz or Discogs, point bae at your files, and it h
 | `bae-mirror` | The macros that write field-for-field conversions |
 | `bae-loc` | The string catalog and each platform's resources |
 | `bae-theme` | The shared theme, written as Swift and Kotlin |
-| `bae-test-support` | Helpers for bae-core's integration tests |
 | `bae-uniffi-bindgen` | The bindings generator |
 
 ## Roadmap

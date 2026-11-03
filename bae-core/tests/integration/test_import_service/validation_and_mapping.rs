@@ -21,7 +21,7 @@ fn truncate_flac_body(path: &Path) {
 /// import and then fail at play time.
 #[tokio::test]
 async fn a_track_that_does_not_decode_fully_fails_its_import() {
-    support::tracing_init();
+    bae_util::test_logs::install();
     let f = ImportFixture::new().await;
 
     let album_dir = f.temp_path().join("album");
@@ -40,7 +40,7 @@ async fn a_track_that_does_not_decode_fully_fails_its_import() {
         &album_dir,
         None,
         ImportDestination::Local,
-        support::DraftSource::FileTags,
+        bae_import::test_imports::DraftSource::FileTags,
     )
     .await
     .expect_err("an album with a broken track must fail its import");
@@ -85,7 +85,7 @@ fn seed_two_credit_mb_release(f: &ImportFixture, mb_release_id: &str, mb_group_i
 /// with its MusicBrainz id: an unedited pick must not read as removing one.
 #[tokio::test]
 async fn two_credit_mb_release_keeps_both_album_artists() {
-    support::tracing_init();
+    bae_util::test_logs::install();
     let f = ImportFixture::new().await;
     let mb_id = seed_two_credit_mb_release(&f, "two-credit-mb-rel", "two-credit-mb-group");
 
@@ -119,7 +119,7 @@ async fn two_credit_mb_release_keeps_both_album_artists() {
         .unwrap();
     let import_id = f.handle.start_import(&candidate_key).await.unwrap().expect_queued();
     let mut rx = f.handle.subscribe_import(import_id);
-    let (_release_id, album_id) = support::wait_for_import_complete(&mut rx).await;
+    let (_release_id, album_id) = bae_import::test_imports::wait_for_import_complete(&mut rx).await;
 
     let artists = f.db.get_artists_for_album(&album_id).await.unwrap();
     let names: Vec<&str> = artists.iter().map(|a| a.artist.name.as_str()).collect();
@@ -280,7 +280,7 @@ async fn candidate_pane(
 /// and the result it stored stay as the pick before left them.
 #[tokio::test]
 async fn a_release_listing_another_track_count_is_refused_and_changes_nothing() {
-    support::tracing_init();
+    bae_util::test_logs::install();
     for release_tracks in [10, 14] {
         let f = ImportFixture::new().await;
         let fitting = seed_mb_release_with_track_count(&f, "mb-rel-fits", "mb-group-fits", 12);
@@ -342,7 +342,7 @@ async fn a_release_listing_another_track_count_is_refused_and_changes_nothing() 
 /// folder is linked to it and the draft is read from it.
 #[tokio::test]
 async fn a_release_listing_the_folder_s_track_count_applies() {
-    support::tracing_init();
+    bae_util::test_logs::install();
     let f = ImportFixture::new().await;
     let fitting = seed_mb_release_with_track_count(&f, "mb-rel-fits", "mb-group-fits", 12);
     let candidate_key = scanned_folder_of(&f, 12).await;
@@ -377,7 +377,7 @@ async fn a_release_listing_the_folder_s_track_count_applies() {
 /// fields, and each track keeps what it had, on the audio it plays.
 #[tokio::test]
 async fn a_release_listing_no_tracks_applies() {
-    support::tracing_init();
+    bae_util::test_logs::install();
     let f = ImportFixture::new().await;
     let lists_nothing =
         seed_mb_release_with_media(&f, "mb-rel-no-tracks", "mb-group-no-tracks", vec![]);
@@ -412,7 +412,7 @@ async fn a_release_listing_no_tracks_applies() {
 /// file in its place.
 #[tokio::test]
 async fn the_commit_binds_each_track_to_the_audio_in_its_place() {
-    support::tracing_init();
+    bae_util::test_logs::install();
     let f = ImportFixture::new().await;
     let mb_id = seed_mb_release_with_track_count(&f, "mb-rel-repair", "mb-group-repair", 3);
 
@@ -430,7 +430,7 @@ async fn the_commit_binds_each_track_to_the_audio_in_its_place() {
     assert!(f.handle.set_candidate_track_edit(&candidate_key, tracks[0].clone()).await.is_err());
     let import_id = f.handle.start_import(&candidate_key).await.unwrap().expect_queued();
     let mut rx = f.handle.subscribe_import(import_id);
-    let (release_id, _album_id) = support::wait_for_import_complete(&mut rx).await;
+    let (release_id, _album_id) = bae_import::test_imports::wait_for_import_complete(&mut rx).await;
 
     assert_eq!(
         committed_track_files(&f, &release_id).await,
@@ -478,7 +478,7 @@ fn seed_mb_release_with_front_cover(
 /// the user changed nothing, not that they want no cover.
 #[tokio::test]
 async fn an_import_with_no_cover_pick_takes_the_release_s_own_cover() {
-    support::tracing_init();
+    bae_util::test_logs::install();
 
     let f = ImportFixture::new().await;
 
@@ -502,7 +502,7 @@ async fn an_import_with_no_cover_pick_takes_the_release_s_own_cover() {
         &album_dir,
         None,
         ImportDestination::Local,
-        support::DraftSource::Pick(bae_identify::PressingLink {
+        bae_import::test_imports::DraftSource::Pick(bae_identify::PressingLink {
             record: bae_catalogs::records::LookupRef::new(LookupCatalog::MusicBrainz, release_id_key),
             partners: vec![],
         }),
@@ -520,7 +520,7 @@ async fn an_import_with_no_cover_pick_takes_the_release_s_own_cover() {
 /// than landing without it.
 #[tokio::test]
 async fn an_import_fails_when_the_release_s_own_cover_will_not_download() {
-    support::tracing_init();
+    bae_util::test_logs::install();
 
     let f = ImportFixture::new().await;
 
@@ -542,7 +542,7 @@ async fn an_import_fails_when_the_release_s_own_cover_will_not_download() {
         &album_dir,
         None,
         ImportDestination::Local,
-        support::DraftSource::Pick(bae_identify::PressingLink {
+        bae_import::test_imports::DraftSource::Pick(bae_identify::PressingLink {
             record: bae_catalogs::records::LookupRef::new(LookupCatalog::MusicBrainz, release_id_key),
             partners: vec![],
         }),

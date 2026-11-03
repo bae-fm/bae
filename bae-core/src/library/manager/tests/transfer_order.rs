@@ -1,6 +1,5 @@
 /// The releases uploading run in the order their uploads were admitted, not
 /// in their titles' order.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn uploading_releases_keep_their_admission_order() {
     let (manager, temp_dir) = setup_test_manager().await;
@@ -24,7 +23,6 @@ async fn uploading_releases_keep_their_admission_order() {
     assert_eq!(manager.database.uploading_releases().await.unwrap(), vec![first.id, second.id],);
 }
 
-#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn upload_keeps_every_file_in_the_queue() {
     let (manager, temp_dir) = setup_test_manager().await;

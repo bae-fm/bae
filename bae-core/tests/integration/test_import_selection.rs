@@ -10,16 +10,16 @@ use bae_import::{
     ImportListItem, ImportListOrder, ImportListSnapshot, ImportListView, LiveImportList,
     PendingFilter, TriageTab,
 };
-use bae_test_support as support;
 use std::path::Path;
 use tempfile::TempDir;
 
 /// A library at `dir` with automatic identification off, so nothing but the
 /// test acts on the candidates.
 async fn open(dir: &Path) -> AppServices {
-    let (manager, database, catalogs, closing) = support::open_test_library(dir).await;
+    let (manager, database, catalogs, closing) =
+        bae_core::test_libraries::open_test_library(dir).await;
     manager.set_identify_automatically(false).await.unwrap();
-    bae_test_support::start_test_services(manager, database, catalogs, closing).await
+    bae_core::test_libraries::start_test_services(manager, database, catalogs, closing).await
 }
 
 /// `count` one-track albums under `collection`, watched and scanned. Each
@@ -113,7 +113,7 @@ fn on_page(snapshot: &ImportListSnapshot) -> Vec<bae_import::CandidateKey> {
 /// skipped row leaves the selection as it leaves the rows Found shows.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_bulk_action_runs_over_every_selected_row() {
-    support::tracing_init();
+    bae_util::test_logs::install();
     let tmp = TempDir::new().unwrap();
     let services = open(&tmp.path().join("db")).await;
     scan_albums(&services, &tmp.path().join("Collection"), 3).await;
@@ -148,7 +148,7 @@ async fn a_bulk_action_runs_over_every_selected_row() {
 /// again, they come back unselected.
 #[tokio::test(flavor = "multi_thread")]
 async fn rows_that_leave_the_filter_leave_the_selection() {
-    support::tracing_init();
+    bae_util::test_logs::install();
     let tmp = TempDir::new().unwrap();
     let services = open(&tmp.path().join("db")).await;
     scan_albums(&services, &tmp.path().join("Collection"), 3).await;
@@ -196,7 +196,7 @@ async fn rows_that_leave_the_filter_leave_the_selection() {
 /// back unselected.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_filter_change_keeps_only_the_selected_rows_it_shows() {
-    support::tracing_init();
+    bae_util::test_logs::install();
     let tmp = TempDir::new().unwrap();
     let services = open(&tmp.path().join("db")).await;
     scan_albums(&services, &tmp.path().join("Collection"), 3).await;
@@ -307,7 +307,7 @@ async fn reached_in_order(
 /// the list shows them, not the keys' own order, so the top rows start first.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_bulk_identify_admits_the_rows_as_the_list_shows_them() {
-    support::tracing_init();
+    bae_util::test_logs::install();
     let tmp = TempDir::new().unwrap();
     let services = open(&tmp.path().join("db")).await;
     scan_albums(&services, &tmp.path().join("Collection"), 4).await;
@@ -338,7 +338,7 @@ async fn a_bulk_identify_admits_the_rows_as_the_list_shows_them() {
 /// list shows them.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_bulk_import_starts_the_rows_as_the_list_shows_them() {
-    support::tracing_init();
+    bae_util::test_logs::install();
     let tmp = TempDir::new().unwrap();
     let services = open(&tmp.path().join("db")).await;
     scan_albums(&services, &tmp.path().join("Collection"), 4).await;
@@ -377,7 +377,7 @@ async fn a_bulk_import_starts_the_rows_as_the_list_shows_them() {
 /// nothing to do.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_skipped_folder_is_selected_like_a_row_and_offers_nothing() {
-    support::tracing_init();
+    bae_util::test_logs::install();
     let tmp = TempDir::new().unwrap();
     let services = open(&tmp.path().join("db")).await;
     let collection = tmp.path().join("Collection");

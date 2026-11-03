@@ -76,7 +76,6 @@ tracing-etw = { workspace = true }
 tracing-journald = { workspace = true }
 
 [dev-dependencies]
-bae-test-support = { workspace = true }
 # The validation-reason ↔ catalog cross-check test loads the master catalog.
 bae-loc = { workspace = true }
 bae-core = { workspace = true, features = ["test-utils"] }

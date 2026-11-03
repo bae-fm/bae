@@ -150,7 +150,7 @@ pub(super) fn fresh_test_library(
                 .create_store("Test Library"),
         )
         .expect("test store");
-    let library = runtime.block_on(bae_test_support::test_library_from_handle(
+    let library = runtime.block_on(bae_core::test_libraries::test_library_from_handle(
         handle,
         &root,
         bae_catalogs::providers::Providers::offline(),
@@ -168,8 +168,9 @@ pub(super) fn start_test_handle(
         bae_core::library::CancellationToken,
     ),
 ) -> Arc<super::AppHandle> {
-    let services = runtime
-        .block_on(bae_test_support::start_test_services(manager, database, catalogs, closing));
+    let services = runtime.block_on(bae_core::test_libraries::start_test_services(
+        manager, database, catalogs, closing,
+    ));
     Arc::new(
         super::AppHandle::start(services, runtime, bae_diagnostics::Diagnostics::noop())
             .expect("the bridge handle starts"),
@@ -687,12 +688,12 @@ fn dropping_a_handle_closes_its_library_before_its_runtime_ends() {
         .expect("test runtime");
     let directory = tempfile::TempDir::new().expect("library directory");
     let ((manager, database, catalogs, closing), storage) =
-        runtime.block_on(bae_test_support::storage_library(
+        runtime.block_on(bae_core::test_libraries::storage_library(
             directory.path(),
             bae_catalogs::providers::Providers::offline(),
         ));
     runtime.block_on(async {
-        bae_test_support::connect_storage(&manager, &storage).await;
+        bae_core::test_libraries::connect_storage(&manager, &storage).await;
         manager.set_sync_paused(false).await.expect("resume sync");
         manager.attach_and_start_sync_at_startup().await;
         let mut status = manager.subscribe_sync_status();
@@ -701,7 +702,7 @@ fn dropping_a_handle_closes_its_library_before_its_runtime_ends() {
         })
         .await;
     });
-    let services = runtime.block_on(bae_test_support::start_test_services(
+    let services = runtime.block_on(bae_core::test_libraries::start_test_services(
         manager,
         database.clone(),
         catalogs,

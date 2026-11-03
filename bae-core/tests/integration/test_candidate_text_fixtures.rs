@@ -9,7 +9,6 @@ use bae_import::extraction::service::{
 };
 use bae_import::extraction::{ArtworkAnalysis, ArtworkAnalyzer};
 use bae_import::ImportEventBus;
-use bae_test_support as support;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fs;
@@ -60,7 +59,7 @@ struct Expected {
 }
 
 fn fixtures_dir() -> PathBuf {
-    bae_test_support::fixture_dir!("candidate_text")
+    std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/candidate_text")
 }
 
 fn load_fixture(path: &Path) -> Fixture {
@@ -174,7 +173,7 @@ fn materialize(fixture: &Fixture, tmp: &TempDir) -> (PathBuf, HashMap<PathBuf, V
 /// A throwaway library database over a temp dir, which must outlive it.
 async fn make_database() -> (bae_db::Database, TempDir) {
     let tmp = TempDir::new().expect("library temp dir");
-    let (_manager, database, ..) = support::open_test_library(tmp.path()).await;
+    let (_manager, database, ..) = bae_core::test_libraries::open_test_library(tmp.path()).await;
     (database, tmp)
 }
 

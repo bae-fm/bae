@@ -4,8 +4,6 @@
 //! bytes are downloaded from the cloud home and decrypted with the release's
 //! item key — the same verified read pin and unmanage use.
 
-use bae_test_support as support;
-
 use bae_core::library::{LibraryManager, OutputKind};
 use bae_preferences::{
     SaveBitDepth, SaveCodec, SaveFilenameToken, SavePregapPlacement, SavePreset,
@@ -30,10 +28,14 @@ impl ExportFixture {
         fs::create_dir_all(&db_dir).unwrap();
 
         let ((mgr, database, catalogs, closing), cloud) =
-            support::storage_library(&db_dir, bae_catalogs::providers::Providers::offline()).await;
-        support::connect_storage(&mgr, &cloud).await;
+            bae_core::test_libraries::storage_library(
+                &db_dir,
+                bae_catalogs::providers::Providers::offline(),
+            )
+            .await;
+        bae_core::test_libraries::connect_storage(&mgr, &cloud).await;
 
-        let handle = support::start_import_service(
+        let handle = bae_import::test_imports::start_import_service(
             tokio::runtime::Handle::current(),
             &database,
             &catalogs,
@@ -58,15 +60,16 @@ impl ExportFixture {
 async fn import_then_strand_in_cloud(f: &ExportFixture, album_dir: &Path) -> (String, Vec<u8>) {
     let import_id = "import-then-strand-in-cloud".to_string();
     f.handle
-        .send_command(support::folder_import(
+        .send_command(bae_import::test_imports::folder_import(
             &import_id,
             album_dir.to_path_buf(),
-            support::DraftSource::FileTags,
+            bae_import::test_imports::DraftSource::FileTags,
         ))
         .await
         .unwrap();
     let mut progress_rx = f.handle.subscribe_import(import_id);
-    let (release_id, _album_id) = support::wait_for_import_complete(&mut progress_rx).await;
+    let (release_id, _album_id) =
+        bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
 
     let files = f.mgr.get_files_for_release(&release_id).await.unwrap();
     assert_eq!(files.len(), 1);
@@ -86,15 +89,16 @@ async fn import_then_strand_in_cloud(f: &ExportFixture, album_dir: &Path) -> (St
 async fn import_unknown_local(f: &ExportFixture, album_dir: &Path) -> String {
     let import_id = "import-unknown-local".to_string();
     f.handle
-        .send_command(support::folder_import(
+        .send_command(bae_import::test_imports::folder_import(
             &import_id,
             album_dir.to_path_buf(),
-            support::DraftSource::FileTags,
+            bae_import::test_imports::DraftSource::FileTags,
         ))
         .await
         .unwrap();
     let mut progress_rx = f.handle.subscribe_import(import_id);
-    let (release_id, _album_id) = support::wait_for_import_complete(&mut progress_rx).await;
+    let (release_id, _album_id) =
+        bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
     release_id
 }
 
@@ -102,11 +106,12 @@ async fn import_unknown_local(f: &ExportFixture, album_dir: &Path) -> String {
 /// audio and re-encodes it — no "pin the release before exporting" dead-end.
 #[tokio::test]
 async fn export_track_from_cloud_only_release() {
-    support::tracing_init();
+    bae_util::test_logs::install();
     let f = ExportFixture::new().await;
     let album_dir = f.temp_path().join("album");
     fs::create_dir_all(&album_dir).unwrap();
-    let original_bytes = support::write_tagged_flac(&album_dir, "01.flac", "Track One");
+    let original_bytes =
+        bae_import::test_fixtures::write_tagged_flac(&album_dir, "01.flac", "Track One");
     let (release_id, _) = import_then_strand_in_cloud(&f, &album_dir).await;
 
     let tracks = f.mgr.get_tracks_for_release(&release_id).await.unwrap();
@@ -138,11 +143,11 @@ async fn export_track_from_cloud_only_release() {
 /// same track. DB-only — no audio or cloud read.
 #[tokio::test]
 async fn save_track_suggested_name_uses_the_preset_tokens() {
-    support::tracing_init();
+    bae_util::test_logs::install();
     let f = ExportFixture::new().await;
     let album_dir = f.temp_path().join("album");
     fs::create_dir_all(&album_dir).unwrap();
-    support::write_tagged_flac(&album_dir, "01.flac", "Track One");
+    bae_import::test_fixtures::write_tagged_flac(&album_dir, "01.flac", "Track One");
     let release_id = import_unknown_local(&f, &album_dir).await;
     let tracks = f.mgr.get_tracks_for_release(&release_id).await.unwrap();
 
@@ -197,13 +202,13 @@ async fn save_track_suggested_name_uses_the_preset_tokens() {
 /// file read is skipped entirely.
 #[tokio::test]
 async fn save_cover_image_skips_the_read_when_not_embedding() {
-    support::tracing_init();
+    bae_util::test_logs::install();
     let f = ExportFixture::new().await;
     let album_dir = f.temp_path().join("album");
     fs::create_dir_all(&album_dir).unwrap();
-    support::write_tagged_flac(&album_dir, "01.flac", "Track One");
+    bae_import::test_fixtures::write_tagged_flac(&album_dir, "01.flac", "Track One");
     // A folder cover so the imported release actually has art to embed.
-    support::write_cover_png(&album_dir.join("cover.png"));
+    bae_import::test_fixtures::write_cover_png(&album_dir.join("cover.png"));
     let release_id = import_unknown_local(&f, &album_dir).await;
 
     let with_cover = f.mgr.save_cover_image(&release_id, true).await.expect("cover when embedding");
@@ -218,11 +223,11 @@ async fn save_cover_image_skips_the_read_when_not_embedding() {
 /// raw bytes — byte-identical to what was uploaded.
 #[tokio::test]
 async fn export_release_from_cloud_only_release() {
-    support::tracing_init();
+    bae_util::test_logs::install();
     let f = ExportFixture::new().await;
     let album_dir = f.temp_path().join("album");
     fs::create_dir_all(&album_dir).unwrap();
-    support::write_tagged_flac(&album_dir, "01.flac", "Track One");
+    bae_import::test_fixtures::write_tagged_flac(&album_dir, "01.flac", "Track One");
     let (release_id, original_bytes) = import_then_strand_in_cloud(&f, &album_dir).await;
 
     let target = f.temp_path().join("export-target");
@@ -246,12 +251,14 @@ async fn export_release_from_cloud_only_release() {
 
 #[tokio::test]
 async fn export_release_single_file_with_cue_writes_image_and_cue() {
-    support::tracing_init();
+    bae_util::test_logs::install();
     let f = ExportFixture::new().await;
     let album_dir = f.temp_path().join("album");
     fs::create_dir_all(&album_dir).unwrap();
-    let first_bytes = support::write_tagged_flac(&album_dir, "01.flac", "Track One");
-    let second_bytes = support::write_tagged_flac(&album_dir, "02.flac", "Track Two");
+    let first_bytes =
+        bae_import::test_fixtures::write_tagged_flac(&album_dir, "01.flac", "Track One");
+    let second_bytes =
+        bae_import::test_fixtures::write_tagged_flac(&album_dir, "02.flac", "Track Two");
     let release_id = import_unknown_local(&f, &album_dir).await;
 
     let image_preset = SavePreset {
@@ -325,12 +332,12 @@ async fn export_release_single_file_with_cue_writes_image_and_cue() {
 #[cfg(not(windows))]
 #[tokio::test]
 async fn two_names_written_as_one_fail_the_export() {
-    support::tracing_init();
+    bae_util::test_logs::install();
     let f = ExportFixture::new().await;
     let album_dir = f.temp_path().join("album");
     fs::create_dir_all(&album_dir).unwrap();
-    support::write_tagged_flac(&album_dir, "Track?.flac", "Track One");
-    support::write_tagged_flac(&album_dir, "Track？.flac", "Track Two");
+    bae_import::test_fixtures::write_tagged_flac(&album_dir, "Track?.flac", "Track One");
+    bae_import::test_fixtures::write_tagged_flac(&album_dir, "Track？.flac", "Track Two");
     let release_id = import_unknown_local(&f, &album_dir).await;
     let mut names: Vec<String> = f
         .mgr
@@ -373,7 +380,7 @@ fn folds_case(dir: &Path) -> bool {
 /// write one track over the other, and leaves nothing behind.
 #[tokio::test]
 async fn a_release_save_of_two_names_one_drive_holds_as_one_fails() {
-    support::tracing_init();
+    bae_util::test_logs::install();
     let f = ExportFixture::new().await;
     // Only a drive that folds case can hold the two names as one; on a
     // case-sensitive one (Linux's usual drives) both files are written and
@@ -384,8 +391,8 @@ async fn a_release_save_of_two_names_one_drive_holds_as_one_fails() {
     }
     let album_dir = f.temp_path().join("album");
     fs::create_dir_all(&album_dir).unwrap();
-    support::write_tagged_flac(&album_dir, "01.flac", "Track Title");
-    support::write_tagged_flac(&album_dir, "02.flac", "track title");
+    bae_import::test_fixtures::write_tagged_flac(&album_dir, "01.flac", "Track Title");
+    bae_import::test_fixtures::write_tagged_flac(&album_dir, "02.flac", "track title");
     let release_id = import_unknown_local(&f, &album_dir).await;
     let mut preset = flac_save_preset("titles", SavePregapPlacement::AppendToPreviousExceptHtoa);
     preset.filename_tokens = vec![SaveFilenameToken::Title];
@@ -415,16 +422,16 @@ async fn a_release_save_of_two_names_one_drive_holds_as_one_fails() {
 /// no partial silent success.
 #[tokio::test]
 async fn export_release_missing_file_is_hard_error() {
-    support::tracing_init();
+    bae_util::test_logs::install();
     let f = ExportFixture::new().await;
     let album_dir = f.temp_path().join("album");
     fs::create_dir_all(&album_dir).unwrap();
-    support::write_tagged_flac(&album_dir, "01.flac", "Track One");
+    bae_import::test_fixtures::write_tagged_flac(&album_dir, "01.flac", "Track One");
     let (release_id, _) = import_then_strand_in_cloud(&f, &album_dir).await;
 
     // Blow away the seeded file.
     let files = f.mgr.get_files_for_release(&release_id).await.unwrap();
-    support::remove_uploaded_file(&f.mgr, &f.cloud, &files[0].id).await;
+    bae_core::test_libraries::remove_uploaded_file(&f.mgr, &f.cloud, &files[0].id).await;
 
     let target = f.temp_path().join("export-target");
     fs::create_dir_all(&target).unwrap();
@@ -484,12 +491,16 @@ fn cores() -> usize {
 /// at a time for an image the tracks stream into in order.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_release_save_holds_a_bounded_number_of_track_files_open() {
-    support::tracing_init();
+    bae_util::test_logs::install();
     let f = ExportFixture::new().await;
     let album_dir = f.temp_path().join("album");
     fs::create_dir_all(&album_dir).unwrap();
     for n in 1..=24 {
-        support::write_tagged_flac(&album_dir, &format!("{n:02}.flac"), &format!("Track {n}"));
+        bae_import::test_fixtures::write_tagged_flac(
+            &album_dir,
+            &format!("{n:02}.flac"),
+            &format!("Track {n}"),
+        );
     }
     let release_id = import_unknown_local(&f, &album_dir).await;
     assert_eq!(f.mgr.get_tracks_for_release(&release_id).await.unwrap().len(), 24);
@@ -522,7 +533,7 @@ async fn a_release_save_holds_a_bounded_number_of_track_files_open() {
 /// new image.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_release_save_reads_a_cue_image_through_one_open_file() {
-    support::tracing_init();
+    bae_util::test_logs::install();
     let f = ExportFixture::new().await;
     let album_dir = f.temp_path().join("album");
     fs::create_dir_all(&album_dir).unwrap();

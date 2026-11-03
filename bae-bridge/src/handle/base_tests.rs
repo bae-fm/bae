@@ -87,7 +87,7 @@ fn setting_up_s3_storage_writes_its_steps() {
         .build()
         .unwrap();
     let ((manager, database, catalogs, closing), storage) =
-        runtime.block_on(bae_test_support::storage_library(
+        runtime.block_on(bae_core::test_libraries::storage_library(
             root.path(),
             bae_catalogs::providers::Providers::offline(),
         ));
@@ -96,8 +96,9 @@ fn setting_up_s3_storage_writes_its_steps() {
     else {
         panic!("the memory provider uses S3 configuration");
     };
-    let services = runtime
-        .block_on(bae_test_support::start_test_services(manager, database, catalogs, closing));
+    let services = runtime.block_on(bae_core::test_libraries::start_test_services(
+        manager, database, catalogs, closing,
+    ));
     let app = Arc::new(
         super::AppHandle::start(services, runtime, bae_diagnostics::Diagnostics::noop()).unwrap(),
     );

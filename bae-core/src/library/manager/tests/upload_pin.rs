@@ -1,6 +1,5 @@
 /// A move to the cloud keeps the release here as the stored import storage
 /// choice says at the moment it moves, with nothing passed beside the releases.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn upload_pins_as_the_stored_choice_says() {
     let (manager, temp_dir) = setup_test_manager().await;
@@ -48,7 +47,6 @@ async fn upload_pins_as_the_stored_choice_says() {
 /// asks coven to keep each, and coven downloads its copy from storage; until
 /// that copy lands, the Storage Manager's list and the release's own summary
 /// both read the release as not pinned, and the copy landing pins it.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn a_kept_release_is_pinned_once_its_copy_lands() {
     let (manager, temp_dir) = setup_test_manager().await;
@@ -93,7 +91,6 @@ async fn a_kept_release_is_pinned_once_its_copy_lands() {
 
 /// A release whose kept copies haven't landed sorts with the releases in the
 /// cloud only, and as pinned once they land.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn a_kept_release_sorts_as_pinned_once_its_copies_land() {
     let (manager, temp_dir) = setup_test_manager().await;

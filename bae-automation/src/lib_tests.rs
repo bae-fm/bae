@@ -789,14 +789,14 @@ mod release_album {
 
     /// Write one tagged fixture track into `dir`.
     fn one_track(dir: &std::path::Path) {
-        bae_test_support::write_tagged_flac(dir, "01 Track One.flac", "Track One");
+        bae_import::test_fixtures::write_tagged_flac(dir, "01 Track One.flac", "Track One");
     }
 
     #[tokio::test(flavor = "multi_thread")]
     async fn release_album_set_moves_the_release_into_the_album_it_names() {
         let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
         let ((manager, database, catalogs, closing), imported) =
-            bae_test_support::imported_release_setup_with(
+            bae_core::test_libraries::imported_release_setup_with(
                 &fakes,
                 bae_catalogs::test_releases::discogs_test_release(
                     "album-set-moved",
@@ -818,7 +818,7 @@ mod release_album {
                 "Picked Album",
                 &[("Track One", "0:10")],
             ));
-        let picked_release = bae_test_support::import_folder_and_wait(
+        let picked_release = bae_import::test_imports::import_folder_and_wait(
             &database,
             &catalogs,
             &closing,
@@ -833,9 +833,13 @@ mod release_album {
             .await
             .expect("the release's own album");
         assert_ne!(moved_from, picked_album);
-        let services =
-            bae_test_support::start_test_services(manager.clone(), database, catalogs, closing)
-                .await;
+        let services = bae_core::test_libraries::start_test_services(
+            manager.clone(),
+            database,
+            catalogs,
+            closing,
+        )
+        .await;
         let automation = Automation::new(services, &tokio::runtime::Handle::current());
 
         automation

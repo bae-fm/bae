@@ -1,14 +1,12 @@
 //! Where an import keeps its files, and what deleting a release leaves.
 use bae_catalogs::discogs::models::DiscogsRelease;
 use bae_db::LibraryImageType;
+use bae_import::test_imports::start_test_import;
+use bae_import::test_imports::wait_for_import_complete;
 use bae_import::{CoverSelection, ImportCommand};
-use bae_test_support as support;
 use bae_util::content_type::ContentType;
 use std::fs;
 use std::path::Path;
-use support::start_test_import;
-use support::tracing_init;
-use support::wait_for_import_complete;
 use tempfile::TempDir;
 use tracing::info;
 
@@ -16,14 +14,14 @@ use tracing::info;
 /// format records still land.
 #[tokio::test]
 async fn test_import_with_cover_selection() {
-    tracing_init();
+    bae_util::test_logs::install();
     run_import_with_cover_test().await;
 }
 
 /// A local import leaves its files where they were.
 #[tokio::test]
 async fn test_local_import() {
-    tracing_init();
+    bae_util::test_logs::install();
 
     let temp_root = TempDir::new().expect("temp root");
     let album_dir = temp_root.path().join("album");
@@ -43,7 +41,7 @@ async fn test_local_import() {
 
     let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
     let (library_manager, database, catalogs, closing) =
-        support::open_test_library_with(&db_dir, fakes.providers()).await;
+        bae_core::test_libraries::open_test_library_with(&db_dir, fakes.providers()).await;
     let runtime_handle = tokio::runtime::Handle::current();
 
     let discogs_release = create_test_discogs_release();
@@ -52,10 +50,10 @@ async fn test_local_import() {
 
     let import_id = uuid::Uuid::new_v4().to_string();
     import_handle
-        .send_command(support::folder_import(
+        .send_command(bae_import::test_imports::folder_import(
             &import_id,
             album_dir.clone(),
-            support::discogs_release(release_id_key),
+            bae_import::test_imports::discogs_release(release_id_key),
         ))
         .await
         .expect("send command");
@@ -122,7 +120,7 @@ async fn test_local_import() {
 /// Deleting a local release removes its records and leaves its files on disk.
 #[tokio::test]
 async fn test_local_delete_preserves_files() {
-    tracing_init();
+    bae_util::test_logs::install();
 
     let temp_root = TempDir::new().expect("temp root");
     let album_dir = temp_root.path().join("album");
@@ -142,7 +140,7 @@ async fn test_local_delete_preserves_files() {
 
     let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
     let (library_manager, database, catalogs, closing) =
-        support::open_test_library_with(&db_dir, fakes.providers()).await;
+        bae_core::test_libraries::open_test_library_with(&db_dir, fakes.providers()).await;
     let runtime_handle = tokio::runtime::Handle::current();
 
     let discogs_release = create_test_discogs_release();
@@ -151,10 +149,10 @@ async fn test_local_delete_preserves_files() {
 
     let import_id = uuid::Uuid::new_v4().to_string();
     import_handle
-        .send_command(support::folder_import(
+        .send_command(bae_import::test_imports::folder_import(
             &import_id,
             album_dir.clone(),
-            support::discogs_release(release_id_key),
+            bae_import::test_imports::discogs_release(release_id_key),
         ))
         .await
         .expect("send command");
@@ -204,7 +202,7 @@ async fn run_import_with_cover_test() {
     info!("Generated {} test files", file_data.len());
     let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
     let (library_manager, database, catalogs, closing) =
-        support::open_test_library_with(&db_dir, fakes.providers()).await;
+        bae_core::test_libraries::open_test_library_with(&db_dir, fakes.providers()).await;
     let runtime_handle = tokio::runtime::Handle::current();
 
     let discogs_release = create_test_discogs_release();
@@ -215,10 +213,10 @@ async fn run_import_with_cover_test() {
     import_handle
         .send_command(ImportCommand {
             selected_cover: Some(CoverSelection::Local(selected_cover.clone())),
-            ..support::folder_import(
+            ..bae_import::test_imports::folder_import(
                 &import_id,
                 album_dir.clone(),
-                support::discogs_release(release_id_key),
+                bae_import::test_imports::discogs_release(release_id_key),
             )
         })
         .await
@@ -302,7 +300,7 @@ async fn run_import_with_cover_test() {
         .expect("Cover should exist in the covers table");
     assert_eq!(cover.content_type, ContentType::Jpeg);
     // Only the selected image is BACK_SCAN_DIMS; every other one is 1x1.
-    let stored = support::read_cover_image_bytes(&library_manager, &release_id)
+    let stored = bae_core::test_libraries::read_cover_image_bytes(&library_manager, &release_id)
         .await
         .expect("the cover file is readable");
     let decoded = image::load_from_memory(&stored).expect("the stored cover decodes");
@@ -339,7 +337,7 @@ fn create_test_discogs_release() -> DiscogsRelease {
 
 fn generate_test_files(dir: &Path) -> Vec<Vec<u8>> {
     let fixture_path = bae_import::test_fixtures::flac_dir().join("01 Test Track 1.flac");
-    let flac_template = bae_test_support::read_fixture(&fixture_path);
+    let flac_template = bae_import::test_fixtures::read_fixture(&fixture_path);
     let files = ["01 Track One.flac", "02 Track Two.flac", "03 Track Three.flac"];
     let bae_dir = dir.join(".bae");
     fs::create_dir_all(&bae_dir).expect("Failed to create .bae directory");

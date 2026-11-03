@@ -16,7 +16,6 @@ async fn release_detail_has_no_cover_without_a_cover_row() {
 /// synced row makes such a value durable. So the display resolver that fires on
 /// every sync cycle must treat it as a missing asset rather than panic: a panic
 /// here crash-loops every device, every cycle.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn find_release_detail_does_not_panic_on_traversal_filenames_from_a_peer() {
     let (manager, _temp_dir) = setup_test_manager().await;

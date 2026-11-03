@@ -6,7 +6,6 @@
 /// Four imported releases on Done — A, then C and B with uploads queued in
 /// that order, then D, written in that order — under a watched folder, each
 /// listed for the folder it was imported from.
-#[cfg(feature = "test-utils")]
 async fn done_with_two_uploading(
     manager: &TestManager,
     dir: &std::path::Path,
@@ -88,7 +87,6 @@ async fn read_list(
 /// Done runs the releases coven still has uploads queued for first, the first
 /// to go first, and then the rest in the view's order: whichever order the
 /// view asks for, what is still uploading leads.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn done_runs_the_releases_still_uploading_first() {
     let (manager, temp_dir) = setup_test_manager().await;
@@ -165,7 +163,6 @@ fn done_uploads(
 /// A Done row carries how its release's upload stands, as the Storage
 /// Manager counts it: its files waiting, then one being sent, and nothing
 /// once they are stored. The list's live read follows each step.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn a_done_row_carries_its_release_upload() {
     let (manager, temp_dir) = setup_test_manager().await;
@@ -226,7 +223,6 @@ async fn a_done_row_carries_its_release_upload() {
 
 /// A run of rows selected on Done takes the rows between its ends across the
 /// part still uploading and the rest, both ends included.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn extending_on_done_selects_the_run_across_its_two_parts() {
     let (manager, temp_dir) = setup_test_manager().await;

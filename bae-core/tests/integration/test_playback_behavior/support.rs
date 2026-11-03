@@ -4,12 +4,12 @@ use bae_import::{ImportCommand, ImportDestination};
 use bae_core::library::LibraryManager;
 use bae_playback::{LoadingTrack, PlaybackPauseBoundary, PlaybackPauseReason, PlaybackProgress, PlaybackSideCountdown, PlaybackState, RepeatMode};
 use bae_types::track_time::{TrackTime};
-use bae_test_support as support;
 use coven::{IdSource, SequentialIds};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use support::start_test_import;
-use support::{imported_release_setup, open_test_library, tracing_init, wait_for_import_complete};
+use bae_import::test_imports::start_test_import;
+use bae_core::test_libraries::{imported_release_setup, open_test_library};
+use bae_import::test_imports::wait_for_import_complete;
 use bae_audio::test_samples::samples_as_f32;
 use tempfile::TempDir;
 use tracing::debug;
@@ -440,7 +440,7 @@ impl PlaybackTestFixture {
     /// The services over this fixture's library and playback, as an app
     /// holds them.
     async fn services(&self) -> bae_core::library::AppServices {
-        let import = support::start_import_service(
+        let import = bae_import::test_imports::start_import_service(
             tokio::runtime::Handle::current(),
             &self.database,
             &self.catalogs,

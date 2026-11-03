@@ -1,6 +1,6 @@
+use bae_core::test_libraries::{connect_storage, storage_library};
 use bae_db::history::HistoryAudience;
 use bae_db::people::Sharing;
-use bae_test_support::{connect_storage, storage_library};
 use bae_util::test_ids::test_uuid;
 use std::time::Duration;
 
@@ -25,7 +25,7 @@ async fn qualifying_plays_keep_their_identity_and_original_audience() {
     assert!(db.record_play(&local).await.unwrap());
     assert_eq!(db.history().await.unwrap()[0].audience, HistoryAudience::DevicePrivate);
     connect_storage(&manager, &storage).await;
-    let person = bae_test_support::made_profile(&manager, "Robin").await;
+    let person = bae_core::test_libraries::made_profile(&manager, "Robin").await;
     let private = HistoryAudience::Person {
         person: person.id,
         audience: coven::Audience::Circle(person.private_circle),

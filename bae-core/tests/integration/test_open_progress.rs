@@ -16,7 +16,7 @@ fn opening_a_library_with_a_migration_to_run_reports_migrating_it() {
     let directory = TempDir::new().unwrap();
     let app_dir = AppDir::under_home(directory.path()).unwrap();
     let installation = coven::TestCoven::new();
-    let store = bae_test_support::multi_thread_runtime()
+    let store = bae_core::test_libraries::multi_thread_runtime()
         .block_on(installation.create_closed_store(
             &app_dir.store_layout(),
             "Household",

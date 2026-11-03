@@ -118,7 +118,7 @@ fn generate_test_flac_files(dir: &std::path::Path) -> Vec<Vec<u8>> {
     for fixture_name in fixture_files {
         let fixture_path = fixture_dir.join(fixture_name);
         let test_path = dir.join(fixture_name);
-        let data = bae_test_support::read_fixture(&fixture_path);
+        let data = bae_import::test_fixtures::read_fixture(&fixture_path);
         fs::write(&test_path, &data).expect("Failed to copy FLAC fixture");
         file_data.push(data);
     }
@@ -131,12 +131,12 @@ fn generate_cue_flac_files(dir: &std::path::Path) {
 
     let flac_src = fixture_dir.join("Test Album.flac");
     let flac_dst = dir.join("Test Album.flac");
-    let flac_data = bae_test_support::read_fixture(&flac_src);
+    let flac_data = bae_import::test_fixtures::read_fixture(&flac_src);
     fs::write(&flac_dst, &flac_data).expect("Failed to copy FLAC fixture");
 
     let cue_src = fixture_dir.join("Test Album.cue");
     let cue_dst = dir.join("Test Album.cue");
-    let cue_data = bae_test_support::read_fixture(&cue_src);
+    let cue_data = bae_import::test_fixtures::read_fixture(&cue_src);
     fs::write(&cue_dst, &cue_data).expect("Failed to copy CUE fixture");
 }
 
@@ -186,7 +186,7 @@ impl CueFlacTestFixture {
                 .await?;
         assert_eq!(imported.track_ids.len(), 3, "Should have 3 tracks from CUE/FLAC");
         let (playback_handle, capture_stream_rx) =
-            support::start_capture_playback(&library_manager, &database, device).await;
+            bae_core::test_libraries::start_capture_playback(&library_manager, &database, device).await;
         let progress_rx = playback_handle.subscribe_progress();
         Ok(Self {
             playback_handle,
@@ -261,7 +261,7 @@ impl SidePauseTestFixture {
         // the track's boundary.
         let clock =
             Arc::new(bae_playback::ManualPlaybackClock::new(side_pause_clock_start()));
-        let (playback_handle, capture_stream_rx) = support::start_capture_playback_with_clock(&library_manager, &database,
+        let (playback_handle, capture_stream_rx) = bae_core::test_libraries::start_capture_playback_with_clock(&library_manager, &database,
             bae_playback::test_capture::TestAudioDevice::RealtimeCapture,
             clock.clone(),
         )

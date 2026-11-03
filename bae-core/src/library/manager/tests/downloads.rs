@@ -37,7 +37,6 @@ async fn download_queue_enqueue_dedups_and_cancels_while_paused() {
 }
 
 /// An already-pinned release is skipped at enqueue rather than re-downloaded.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn download_queue_skips_already_pinned() {
     let (manager, temp_dir) = setup_test_manager().await;
@@ -91,7 +90,6 @@ async fn a_pin_request_queues_what_it_can_in_the_order_asked() {
 /// A Local release has nothing to pin — it is already fully on disk —
 /// so `enqueue_pins` skips it rather than queueing a download that would fail. The
 /// album grid's bulk pin reaches this path with a mixed local/remote selection.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn download_queue_skips_local_release() {
     let (manager, temp_dir) = setup_test_manager().await;
@@ -196,7 +194,6 @@ async fn pinning_a_failed_download_queues_it_again_in_its_place() {
 
 /// Each step of bytes a pin drives reaches the active download's progress,
 /// read apart from the queue's table.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn download_transfers_report_each_driven_file_progress() {
     use crate::storage::transfer::TransferProgress;

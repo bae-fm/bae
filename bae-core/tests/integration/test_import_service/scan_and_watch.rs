@@ -1,7 +1,7 @@
 /// A folder scan finds each album in a multi-album folder as its own candidate.
 #[tokio::test]
 async fn folder_scan_produces_candidates() {
-    support::tracing_init();
+    bae_util::test_logs::install();
     let f = ImportFixture::new().await;
 
     let collection = f.temp_path().join("Collection");
@@ -39,7 +39,7 @@ async fn folder_scan_produces_candidates() {
 /// filesystem-event timing does not matter.
 #[tokio::test]
 async fn watcher_reconciles_added_and_removed_candidates() {
-    support::tracing_init();
+    bae_util::test_logs::install();
     let f = ImportFixture::new().await;
 
     let collection = f.temp_path().join("Collection");
@@ -183,7 +183,7 @@ async fn wait_for_scan_event(
 /// watching it.
 #[tokio::test]
 async fn remove_watched_folder_drops_folder_and_candidates() {
-    support::tracing_init();
+    bae_util::test_logs::install();
     let f = ImportFixture::new().await;
 
     let collection = f.temp_path().join("Collection");
@@ -283,7 +283,7 @@ async fn remove_watched_folder_drops_folder_and_candidates() {
 
 #[tokio::test]
 async fn unavailable_watched_folder_remains_durable_and_reports_scan_failure() {
-    support::tracing_init();
+    bae_util::test_logs::install();
     let f = ImportFixture::new().await;
 
     let missing = f.temp_path().join("does-not-exist");
@@ -304,7 +304,7 @@ async fn unavailable_watched_folder_remains_durable_and_reports_scan_failure() {
 /// carrying the error.
 #[tokio::test]
 async fn scan_whose_stored_decisions_cannot_be_read_records_the_failure() {
-    support::tracing_init();
+    bae_util::test_logs::install();
     let f = ImportFixture::new().await;
     let root = f.temp_path().join("Collection");
     let album = root.join("Artist - Album");
@@ -343,7 +343,7 @@ async fn scan_whose_stored_decisions_cannot_be_read_records_the_failure() {
 /// could not be read reports its status again.
 #[tokio::test]
 async fn adding_an_already_watched_folder_reads_it_again() {
-    support::tracing_init();
+    bae_util::test_logs::install();
     let f = ImportFixture::new().await;
     let root = f.temp_path().join("Collection");
     let album = root.join("Artist - Album");
@@ -381,7 +381,7 @@ async fn adding_an_already_watched_folder_reads_it_again() {
 /// than watching an overlapping root.
 #[tokio::test]
 async fn adding_a_folder_inside_a_watched_one_reads_the_watched_one_again() {
-    support::tracing_init();
+    bae_util::test_logs::install();
     let f = ImportFixture::new().await;
     let root = f.temp_path().join("Collection");
     let album = root.join("Artist - Album");
@@ -455,7 +455,7 @@ async fn scanned_folder(
 /// folder read as one release, and a pick made under them all stay.
 #[tokio::test]
 async fn a_folder_holding_watched_folders_takes_them_over_and_keeps_what_was_decided() {
-    support::tracing_init();
+    bae_util::test_logs::install();
     let f = ImportFixture::new().await;
     let music = f.temp_path().join("Music");
     let artist = music.join("Artist");
@@ -524,7 +524,7 @@ async fn a_folder_holding_watched_folders_takes_them_over_and_keeps_what_was_dec
 /// again starts fresh.
 #[tokio::test]
 async fn removing_a_watched_folder_forgets_what_was_decided_under_it() {
-    support::tracing_init();
+    bae_util::test_logs::install();
     let f = ImportFixture::new().await;
     let artist = f.temp_path().join("Music/Artist");
     let album = album_dir(&f, "Music/Artist/Album");
@@ -550,7 +550,7 @@ async fn removing_a_watched_folder_forgets_what_was_decided_under_it() {
 /// removals.
 #[tokio::test]
 async fn refresh_missing_watched_folder_records_failure_and_preserves_candidates() {
-    support::tracing_init();
+    bae_util::test_logs::install();
     let f = ImportFixture::new().await;
     let root = f.temp_path().join("unplugged-drive");
     let album = root.join("Artist - Album");
@@ -587,7 +587,7 @@ async fn refresh_missing_watched_folder_records_failure_and_preserves_candidates
 /// tabs and broadcasts `CandidateSkipChanged`; repeating it emits nothing.
 #[tokio::test]
 async fn set_candidate_skipped_flips_flag_and_is_idempotent() {
-    support::tracing_init();
+    bae_util::test_logs::install();
     let f = ImportFixture::new().await;
 
     let collection = f.temp_path().join("Collection");
@@ -654,7 +654,7 @@ async fn set_candidate_skipped_flips_flag_and_is_idempotent() {
 /// the release puts it back in Found.
 #[tokio::test]
 async fn a_done_row_follows_its_folder_and_its_release() {
-    support::tracing_init();
+    bae_util::test_logs::install();
     let f = ImportFixture::new().await;
 
     let collection = f.temp_path().join("Collection");
@@ -690,7 +690,7 @@ async fn a_done_row_follows_its_folder_and_its_release() {
         .unwrap();
     let import_id = f.handle.start_import(&album_key).await.unwrap().expect_queued();
     let mut progress_rx = f.handle.subscribe_import(import_id);
-    let (release_id, album_id) = support::wait_for_import_complete(&mut progress_rx).await;
+    let (release_id, album_id) = bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
     let release = bae_import::ImportedRelease { release_id: release_id.clone(), album_id };
 
     let done = done_row(&f, "the imported folder", &album_key).await;
@@ -740,7 +740,7 @@ async fn done_row(
 /// the same files, to the hash — names the release imported from them.
 #[tokio::test]
 async fn a_folder_whose_files_this_device_imported_is_done() {
-    support::tracing_init();
+    bae_util::test_logs::install();
     let f = ImportFixture::new().await;
 
     let collection = f.temp_path().join("Collection");
@@ -789,7 +789,7 @@ async fn a_folder_whose_files_this_device_imported_is_done() {
         f.handle.select_candidate_file_tags(key.clone()).await.unwrap();
         let import_id = f.handle.start_import(key).await.unwrap().expect_queued();
         let mut progress_rx = f.handle.subscribe_import(import_id);
-        release_ids.push(support::wait_for_import_complete(&mut progress_rx).await.0);
+        release_ids.push(bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await.0);
     }
 
     // One read of the Done tab holding all four folders.

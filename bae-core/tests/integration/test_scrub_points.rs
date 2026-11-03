@@ -12,7 +12,6 @@ use bae_catalogs::discogs::models::DiscogsRelease;
 use bae_core::library::LibraryManager;
 use bae_db::ResolvedTrackAudio;
 use bae_db::ScrubPoint;
-use bae_test_support as support;
 use std::path::Path;
 use tempfile::TempDir;
 
@@ -230,7 +229,7 @@ struct Imported {
 
 /// Import `release` from the folder `write_files` fills.
 async fn import(release: DiscogsRelease, write_files: impl FnOnce(&Path)) -> Imported {
-    let ((library_manager, ..), imported) = support::imported_release_setup(
+    let ((library_manager, ..), imported) = bae_core::test_libraries::imported_release_setup(
         release,
         "test",
         uuid::Uuid::new_v4().to_string(),
@@ -247,7 +246,7 @@ async fn import(release: DiscogsRelease, write_files: impl FnOnce(&Path)) -> Imp
 
 #[tokio::test]
 async fn a_single_file_album_without_a_seektable_stores_points_per_segment() {
-    support::tracing_init();
+    bae_util::test_logs::install();
     let album = noise_flac(75, 7);
     let imported = import(
         release(
@@ -302,7 +301,7 @@ FILE \"Album Title.flac\" WAVE
 
 #[tokio::test]
 async fn per_track_files_without_a_seektable_store_points() {
-    support::tracing_init();
+    bae_util::test_logs::install();
     let files = [noise_flac(25, 11), noise_flac(32, 13)];
     let written = files.clone();
     let imported = import(
@@ -329,7 +328,7 @@ async fn per_track_files_without_a_seektable_store_points() {
 /// as much as one with no table.
 #[tokio::test]
 async fn a_seektable_of_placeholders_counts_as_none() {
-    support::tracing_init();
+    bae_util::test_logs::install();
     let flac = with_seektable(&noise_flac(25, 17), &[PLACEHOLDER; 4]);
     let imported =
         import(release("scrub-points-placeholders", &[("Track One", "0:25")]), move |dir| {
@@ -346,7 +345,7 @@ async fn a_seektable_of_placeholders_counts_as_none() {
 /// lands up to 30 seconds before its target and decodes forward from there.
 #[tokio::test]
 async fn a_seektable_sparser_than_ten_seconds_stores_points() {
-    support::tracing_init();
+    bae_util::test_logs::install();
     let flac = with_seek_points(&noise_flac(45, 19), 30 * u64::from(SAMPLE_RATE), u64::MAX);
     let imported =
         import(release("scrub-points-sparse-seektable", &[("Track One", "0:45")]), move |dir| {
@@ -363,7 +362,7 @@ async fn a_seektable_sparser_than_ten_seconds_stores_points() {
 /// seek past its last point to decode up to 25 seconds forward.
 #[tokio::test]
 async fn a_seektable_that_stops_short_of_the_end_stores_points() {
-    support::tracing_init();
+    bae_util::test_logs::install();
     let flac = with_seek_points(&noise_flac(45, 23), TEN_SECONDS, 20 * u64::from(SAMPLE_RATE));
     let imported =
         import(release("scrub-points-short-seektable", &[("Track One", "0:45")]), move |dir| {
@@ -381,7 +380,7 @@ async fn a_seektable_that_stops_short_of_the_end_stores_points() {
 /// would.
 #[tokio::test]
 async fn a_seektable_no_sparser_than_ten_seconds_stores_no_points() {
-    support::tracing_init();
+    bae_util::test_logs::install();
     let flac = with_seek_points(&noise_flac(45, 29), TEN_SECONDS, u64::MAX);
     let imported =
         import(release("scrub-points-dense-seektable", &[("Track One", "0:45")]), move |dir| {
@@ -396,7 +395,7 @@ async fn a_seektable_no_sparser_than_ten_seconds_stores_no_points() {
 /// own index, so import stores no points.
 #[tokio::test]
 async fn a_file_with_a_seektable_stores_no_points() {
-    support::tracing_init();
+    bae_util::test_logs::install();
     let fixture_dir = bae_audio::test_fixtures::cue_flac_dir();
     let imported = import(
         release(
@@ -409,8 +408,11 @@ async fn a_file_with_a_seektable_stores_no_points() {
         ),
         move |dir| {
             for name in ["Test Album.flac", "Test Album.cue"] {
-                std::fs::write(dir.join(name), support::read_fixture(&fixture_dir.join(name)))
-                    .unwrap();
+                std::fs::write(
+                    dir.join(name),
+                    bae_import::test_fixtures::read_fixture(&fixture_dir.join(name)),
+                )
+                .unwrap();
             }
         },
     )
@@ -427,7 +429,7 @@ async fn a_file_with_a_seektable_stores_no_points() {
 
 #[tokio::test]
 async fn per_track_mp3s_store_points() {
-    support::tracing_init();
+    bae_util::test_logs::install();
     let files = [noise_mp3(25, 11), noise_mp3(32, 13)];
     let written = files.clone();
     let imported = import(

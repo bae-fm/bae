@@ -3,8 +3,6 @@
 //! A release becomes Remote when attached, including while uploads are pending.
 //! Pins independently keep its audio available offline; covers remain shared.
 
-use bae_test_support as support;
-
 use bae_core::album_detail::ReleaseStorageState;
 use bae_core::library::views::{StorageFilter, StorageSortCriterion, StorageSortField};
 use bae_core::library::{CancellationToken, LibraryManager, LiveStorageBrowse, StorageBrowseView};
@@ -31,7 +29,11 @@ async fn setup_manager(
     ),
     Arc<MemoryStorage>,
 ) {
-    support::storage_library(tmp.path(), bae_catalogs::providers::Providers::offline()).await
+    bae_core::test_libraries::storage_library(
+        tmp.path(),
+        bae_catalogs::providers::Providers::offline(),
+    )
+    .await
 }
 
 async fn setup_with_cloud(
@@ -46,7 +48,7 @@ async fn setup_with_cloud(
     Arc<MemoryStorage>,
 ) {
     let (library, storage) = setup_manager(tmp).await;
-    support::connect_storage(&library.0, &storage).await;
+    bae_core::test_libraries::connect_storage(&library.0, &storage).await;
     (library, storage)
 }
 
@@ -140,7 +142,7 @@ async fn create_remote_cloud_only_release(
     mgr.drain_uploads_expecting_work().await.unwrap();
     assert_eq!(db.queued_upload_count_for_test().await.unwrap(), 0);
     assert_eq!(
-        support::release_storage(db, &release_id).await,
+        bae_core::test_libraries::release_storage(db, &release_id).await,
         (ReleaseStorageState::Remote, false),
         "release is Remote (cloud-only) once the transition is accepted"
     );
@@ -186,9 +188,13 @@ async fn test_multiple_releases_independent_completion() {
     assert!(settled.rows.is_empty(), "offline copy failed: {settled:?}");
     // Each completed upload carried its file's pin to the stored file, which
     // is pinned once its copy from storage lands.
-    let services =
-        bae_test_support::start_test_services(mgr.clone(), database.clone(), catalogs, closing)
-            .await;
+    let services = bae_core::test_libraries::start_test_services(
+        mgr.clone(),
+        database.clone(),
+        catalogs,
+        closing,
+    )
+    .await;
     for release_id in [&release_a, &release_b] {
         let release = services.subscribe_release_detail();
         release.set(Some(release_id.clone())).unwrap();
@@ -205,11 +211,11 @@ async fn test_multiple_releases_independent_completion() {
     }
 
     assert_eq!(
-        support::release_storage(&database, &release_a).await,
+        bae_core::test_libraries::release_storage(&database, &release_a).await,
         (ReleaseStorageState::Remote, true)
     );
     assert_eq!(
-        support::release_storage(&database, &release_b).await,
+        bae_core::test_libraries::release_storage(&database, &release_b).await,
         (ReleaseStorageState::Remote, true)
     );
 }
@@ -251,7 +257,7 @@ async fn test_manage_refused_without_cloud_storage() {
         "no upload may be enqueued when the pipeline can't drain it"
     );
     assert_eq!(
-        support::release_storage(&db, &release_id).await,
+        bae_core::test_libraries::release_storage(&db, &release_id).await,
         (ReleaseStorageState::Local, false)
     );
 }
@@ -277,7 +283,7 @@ async fn attached_release_turns_remote_once_its_uploads_finish() {
 
     // Queued uploads leave every row without a stored file.
     assert_eq!(
-        support::release_storage(&db, &release_id).await,
+        bae_core::test_libraries::release_storage(&db, &release_id).await,
         (ReleaseStorageState::Local, false)
     );
 
@@ -286,7 +292,7 @@ async fn attached_release_turns_remote_once_its_uploads_finish() {
 
     // Each completed upload names its file, and the pin state is unchanged.
     assert_eq!(
-        support::release_storage(&db, &release_id).await,
+        bae_core::test_libraries::release_storage(&db, &release_id).await,
         (ReleaseStorageState::Remote, false)
     );
 }
@@ -313,7 +319,7 @@ async fn upload_failure_keeps_attachment_and_pending_work() {
     assert_eq!(count, 0, "no upload should succeed");
 
     assert_eq!(
-        support::release_storage(&db, &release_id).await,
+        bae_core::test_libraries::release_storage(&db, &release_id).await,
         (ReleaseStorageState::Local, false)
     );
     assert_ne!(mgr.count_pending_uploads_for_release(&release_id).await.unwrap(), 0);
@@ -357,7 +363,7 @@ async fn truncated_source_fails_its_move_without_sending() {
         assert!(source_dir.join(name).exists());
     }
     assert_eq!(
-        support::release_storage(&db, &release_id).await,
+        bae_core::test_libraries::release_storage(&db, &release_id).await,
         (ReleaseStorageState::Local, false)
     );
 }
@@ -387,7 +393,7 @@ async fn detaching_audio_updates_summary_and_original_paths() {
 
     // Release is Local, and each file's original path names its new copy.
     assert_eq!(
-        support::release_storage(&db, &release_id).await,
+        bae_core::test_libraries::release_storage(&db, &release_id).await,
         (ReleaseStorageState::Local, false)
     );
     for (file_id, name, _) in &files {
@@ -414,7 +420,7 @@ async fn detaching_audio_with_a_missing_file_fails_leaving_summary_remote() {
 
     // Remove the SECOND file's file from the cloud so its cache-miss read 404s.
     // `files` carries `(file_id, original_filename, plaintext)`.
-    support::remove_uploaded_file(&mgr, &cloud, &files[1].0).await;
+    bae_core::test_libraries::remove_uploaded_file(&mgr, &cloud, &files[1].0).await;
 
     let new_path = tmp.path().join("exported");
     std::fs::create_dir(&new_path).unwrap();
@@ -423,7 +429,7 @@ async fn detaching_audio_with_a_missing_file_fails_leaving_summary_remote() {
     assert!(result.is_err(), "missing file must be a hard error");
 
     assert_eq!(
-        support::release_storage(&db, &release_id).await,
+        bae_core::test_libraries::release_storage(&db, &release_id).await,
         (ReleaseStorageState::Remote, false)
     );
     assert_eq!(std::fs::read_dir(&new_path).unwrap().count(), 0, "no copy is left");
@@ -461,7 +467,7 @@ async fn detaching_audio_whose_names_write_as_one_is_refused() {
         "{error:?}"
     );
     assert_eq!(
-        support::release_storage(&db, &release_id).await,
+        bae_core::test_libraries::release_storage(&db, &release_id).await,
         (ReleaseStorageState::Remote, false)
     );
     assert_eq!(std::fs::read_dir(&new_path).unwrap().count(), 0, "no copy is made");
@@ -504,7 +510,8 @@ async fn storage_subscription_delivers_actions_on_cloud_home_transition() {
     let (release_id, _files) = create_local_release(&mgr, &source_dir, &[("a.flac", b"a")]).await;
 
     let services =
-        bae_test_support::start_test_services(mgr.clone(), database, catalogs, closing).await;
+        bae_core::test_libraries::start_test_services(mgr.clone(), database, catalogs, closing)
+            .await;
     let values = services.subscribe_storage_browse(StorageBrowseView {
         sort: StorageSortCriterion {
             field: StorageSortField::AlbumTitle,
@@ -518,7 +525,7 @@ async fn storage_subscription_delivers_actions_on_cloud_home_transition() {
     let before = next_storage_release(&values, &release_id).await;
     assert!(before.storage_actions.is_empty(), "no cloud home → no storage actions");
 
-    support::connect_storage(&mgr, &cloud).await;
+    bae_core::test_libraries::connect_storage(&mgr, &cloud).await;
     // The disk's answer for the release's originals is a value of its own,
     // and may land before or after the cloud home's.
     tokio::time::timeout(std::time::Duration::from_secs(5), async {

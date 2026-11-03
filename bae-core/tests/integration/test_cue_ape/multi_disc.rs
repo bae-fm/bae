@@ -107,7 +107,7 @@ async fn test_cue_ape_next_track() {
 /// bytes-never-copied (Local), bytes-uploaded-and-pinned (Remote + pin),
 /// and bytes-uploaded-cloud-only (Remote, no pin).
 async fn assert_multi_disc_cue_ape_per_disc_mapping(destination: ImportDestination) {
-    tracing_init();
+    bae_util::test_logs::install();
     let temp_root = TempDir::new().expect("temp root");
     let album_dir = temp_root.path().join("album");
     let cd1_dir = album_dir.join("CD1");
@@ -135,9 +135,9 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(destination: ImportDestinati
 
     let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
     let ((library_manager, database, catalogs, closing), storage) =
-        support::storage_library(&db_dir, fakes.providers()).await;
+        bae_core::test_libraries::storage_library(&db_dir, fakes.providers()).await;
     if let ImportDestination::Remote { .. } = destination {
-        support::connect_storage(&library_manager, &storage).await;
+        bae_core::test_libraries::connect_storage(&library_manager, &storage).await;
     }
 
     // Discogs multi-disc tracklist: positions "1-1".."1-3", "2-1".."2-3",
@@ -168,10 +168,10 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(destination: ImportDestinati
     import_handle
         .send_command(ImportCommand {
             destination,
-            ..support::folder_import(
+            ..bae_import::test_imports::folder_import(
                 &import_id,
                 album_dir,
-                support::discogs_release(release_id_key),
+                bae_import::test_imports::discogs_release(release_id_key),
             )
         })
         .await

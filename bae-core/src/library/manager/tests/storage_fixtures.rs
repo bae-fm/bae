@@ -6,7 +6,6 @@
 // `include!`d into `manager::tests` beside the tests that use them.
 
 /// Connect injected storage and pause uploads while a test seeds its queue.
-#[cfg(feature = "test-utils")]
 async fn connect_test_cloud(manager: &TestManager) -> Arc<MemoryStorage> {
     connect_test_cloud_with_sync_loop(manager).await;
     manager.database.stop_sync().await.unwrap();
@@ -20,7 +19,6 @@ async fn connect_test_cloud(manager: &TestManager) -> Arc<MemoryStorage> {
     manager.storage.clone()
 }
 
-#[cfg(feature = "test-utils")]
 async fn connect_test_cloud_with_sync_loop(manager: &TestManager) -> Arc<MemoryStorage> {
     manager
         .database
@@ -44,7 +42,6 @@ async fn connect_test_cloud_with_sync_loop(manager: &TestManager) -> Arc<MemoryS
 /// An attached release whose files are queued in coven and have not uploaded.
 /// The releases uploading and each release's upload read this committed queue.
 /// The manager must already be connected via [`connect_test_cloud`].
-#[cfg(feature = "test-utils")]
 async fn insert_release_with_queued_uploads(
     manager: &LibraryManager,
     dir: &std::path::Path,
@@ -68,13 +65,11 @@ async fn insert_release_with_queued_uploads(
 /// A release id paired with its album id, for the fixtures that make a release
 /// Remote through the real transition (which mints its own album) and then need
 /// to name that album.
-#[cfg(feature = "test-utils")]
 struct ReleaseRef {
     id: String,
     album_id: String,
 }
 
-#[cfg(feature = "test-utils")]
 impl ReleaseRef {
     async fn of(manager: &LibraryManager, id: String) -> Self {
         let album_id = find_release(manager, &id).await.expect("the release exists").album_id;
@@ -83,7 +78,6 @@ impl ReleaseRef {
 }
 
 /// Wait for the current file's upload to leave coven's durable queue.
-#[cfg(feature = "test-utils")]
 async fn wait_for_published_file(manager: &LibraryManager, table: &str, row_id: &str) {
     let mut queued = manager.database.subscribe_row_file_queued_for_test(table, row_id);
     manager.database.sync_now();
@@ -98,7 +92,6 @@ async fn wait_for_published_file(manager: &LibraryManager, table: &str, row_id: 
 /// on disk, attached for upload (`pin` keeps its offline copy), then uploaded.
 /// Returns its id. The manager
 /// must already be connected via [`connect_test_cloud`].
-#[cfg(feature = "test-utils")]
 async fn uploaded_release(
     manager: &LibraryManager,
     dir: &std::path::Path,
@@ -109,7 +102,6 @@ async fn uploaded_release(
         .await
 }
 
-#[cfg(feature = "test-utils")]
 async fn uploaded_release_with_files(
     manager: &LibraryManager,
     dir: &std::path::Path,
@@ -132,7 +124,6 @@ async fn uploaded_release_with_files(
 /// can't be read, so coven can't fetch their copies until the test clears
 /// the storage's faults. The manager must already be connected via
 /// [`connect_test_cloud`].
-#[cfg(feature = "test-utils")]
 async fn release_kept_here_waiting_for_its_copy(
     manager: &TestManager,
     dir: &std::path::Path,
@@ -184,7 +175,6 @@ async fn release_kept_here_waiting_for_its_copy(
 }
 
 /// The coven file each of a release's files carries.
-#[cfg(feature = "test-utils")]
 async fn release_file_refs(manager: &LibraryManager, release_id: &str) -> Vec<coven::FileRef> {
     let mut refs = Vec::new();
     for file in release_files(manager, release_id).await {
@@ -195,7 +185,6 @@ async fn release_file_refs(manager: &LibraryManager, release_id: &str) -> Vec<co
 
 /// Wait for every file of a release kept here as it moved to the cloud to be
 /// kept whole on this device.
-#[cfg(feature = "test-utils")]
 async fn wait_for_kept_release(manager: &LibraryManager, release_id: &str) {
     manager.wait_for_kept_release_for_test(release_id).await;
 }
@@ -204,7 +193,6 @@ async fn wait_for_kept_release(manager: &LibraryManager, release_id: &str) {
 /// [`connect_test_cloud_with_sync_loop`]: the loop drains the queue, so this
 /// waits for the upload to finish rather than counting a drain pass this
 /// test does not own.
-#[cfg(feature = "test-utils")]
 async fn upload_release_under_sync_loop(
     manager: &LibraryManager,
     dir: &std::path::Path,
@@ -226,13 +214,11 @@ async fn upload_release_under_sync_loop(
     release.id
 }
 
-#[cfg(feature = "test-utils")]
 async fn wait_for_landed_upload(manager: &LibraryManager, release_id: &str) {
     wait_for_settled_uploads(manager, release_id).await;
     assert!(release_files(manager, release_id).await.iter().all(|file| file.stored));
 }
 
-#[cfg(feature = "test-utils")]
 async fn insert_partially_uploaded_release(
     manager: &LibraryManager,
     temp_dir: &std::path::Path,
@@ -261,7 +247,6 @@ async fn insert_partially_uploaded_release(
     release
 }
 
-#[cfg(feature = "test-utils")]
 async fn insert_local_release_with_files(
     manager: &LibraryManager,
     dir: &std::path::Path,
@@ -380,7 +365,6 @@ async fn store_test_cover(manager: &LibraryManager, release_id: &str, bytes: &[u
 /// files, and coven's worker starts a bound upload as its write commits, so
 /// this joins that upload rather than racing it. A retry while uploads are
 /// paused tries only bound uploads, so the paused queue stays as it was.
-#[cfg(feature = "test-utils")]
 async fn finish_bound_uploads(manager: &LibraryManager) {
     manager.database.retry_uploads_now().await.unwrap();
 }
@@ -388,7 +372,6 @@ async fn finish_bound_uploads(manager: &LibraryManager) {
 /// Whether coven keeps the coven file a row references in the pinned cache.
 /// Asked of that row's own file rather than through a release's pin marker,
 /// which counts the release's files and never its cover.
-#[cfg(feature = "test-utils")]
 async fn file_pinned(manager: &LibraryManager, namespace: &str, row_id: &str) -> bool {
     let file = match namespace {
         bae_db::synced::RELEASE_FILES_NAMESPACE => manager.release_file_ref(row_id).await.unwrap(),

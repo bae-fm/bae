@@ -3852,7 +3852,6 @@ bindings export none of their symbols.
 | bae-mirror | the macros that write field-for-field conversions |
 | bae-loc | the string catalog: checks it and writes each platform's resources |
 | bae-theme | the shared theme, written as Swift and Kotlin |
-| bae-test-support | helpers for bae-core's integration tests that open a library |
 | bae-uniffi-bindgen | the bindings generator |
 
 bae-cast stands between bae-playback, which holds the renderer session, and

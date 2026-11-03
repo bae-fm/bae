@@ -29,7 +29,6 @@ async fn until<Value, Error: std::fmt::Debug>(
 /// Beginning and ending a release's transition reaches the album detail,
 /// the release detail and the Storage Manager, each read from the row: while
 /// it runs the release shows it and offers no storage action.
-#[cfg(feature = "test-utils")]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn a_transition_reaches_the_reads_from_its_row() {
     let (manager, _temp_dir, album, release) = manager_with_release().await;
@@ -134,7 +133,6 @@ async fn a_failed_transition_ends_in_a_write_of_its_own() {
 /// Unpinning releases a release's pins in the write that ends its
 /// transition: a write that can't end it releases nothing, so the release
 /// never shows the unpin once its files are evictable.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn the_write_that_releases_a_releases_pins_ends_its_unpin() {
     let (manager, temp_dir) = setup_test_manager().await;
@@ -170,7 +168,6 @@ async fn the_write_that_releases_a_releases_pins_ends_its_unpin() {
 /// Making a release local switches its files in the write that ends its
 /// transition: a write that can't end it switches nothing, so the release
 /// never shows the transition once its files are here.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn the_write_that_switches_a_releases_files_ends_its_make_local() {
     let (manager, temp_dir) = setup_test_manager().await;
@@ -257,7 +254,6 @@ async fn a_release_in_a_transition_refuses_another() {
 /// A move to the cloud shows as a transition until the write that queues its
 /// files, which ends it; one whose files can't be queued ends it in a write
 /// of its own.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn the_write_that_queues_a_moves_files_ends_its_transition() {
     let (manager, temp_dir) = setup_test_manager().await;
@@ -291,7 +287,6 @@ async fn insert_release_without_files(manager: &TestManager) -> String {
 /// While a release's copies download into the person's folder, the release
 /// is listed with the bytes of the file coven downloads and of the whole
 /// release; once its files have switched it is listed no more.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn a_release_made_local_lists_its_bytes_while_its_copies_download() {
     let (manager, temp_dir) = setup_test_manager().await;

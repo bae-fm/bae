@@ -2,7 +2,6 @@
 /// cloud holding one "Test Album" release whose single 1000-byte `a.flac` is
 /// queued for upload. Returns the release and the id of that queued file;
 /// `folder` names the source directory under the temp dir.
-#[cfg(feature = "test-utils")]
 async fn queued_upload_fixture(folder: &str) -> (TestManager, TempDir, DbRelease, String) {
     let (manager, temp_dir) = setup_test_manager().await;
     connect_test_cloud(&manager).await;
@@ -22,7 +21,6 @@ async fn queued_upload_fixture(folder: &str) -> (TestManager, TempDir, DbRelease
 /// generic diagnostic. Stopping releases coven's storage for transfers, so
 /// coven raises `FileReadError::NoStorage` for the cloud miss, and
 /// `read_error_for_file_read` maps it.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn remote_read_with_sync_stopped_reports_sync_disconnected() {
     use bae_playback::PlaybackErrorReason;
@@ -46,7 +44,6 @@ async fn remote_read_with_sync_stopped_reports_sync_disconnected() {
 
 /// An upload whose original vanished cannot finish by waiting. Playback reports
 /// the source failure, and the pending list offers restoring the file.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn pending_upload_with_missing_source_reports_the_missing_original() {
     use bae_playback::PlaybackErrorReason;
@@ -144,10 +141,9 @@ async fn cancelling_a_completed_upload_preserves_the_attachment() {
     assert_eq!(std::fs::read(temp.path().join("completed/a.flac")).unwrap().len(), 1000);
 }
 
-// Needs the test-utils mock cloud home with its sync loop: audio detachment is only
+// Needs the mock cloud home with its sync loop: audio detachment is only
 // offered a release whose upload has been accepted, so the transition has
 // to run all the way through a cycle and retire its intent first.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn unmanage_cancelled_before_copy_leaves_release_remote() {
     let (manager, temp_dir) = setup_test_manager().await;
@@ -253,7 +249,6 @@ async fn an_upload_whose_row_is_deleted_leaves_the_queue() {
 /// An original that changes before its upload fails its release's move: the
 /// pending list names the file and offers Cancel Upload, which ends the move,
 /// and the release stays on this device only.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn a_changed_original_fails_the_move_until_its_upload_is_cancelled() {
     let (manager, temp, release, _file_id) = queued_upload_fixture("changed").await;
@@ -321,7 +316,6 @@ async fn an_upload_missing_its_original_is_listed_by_name() {
 /// A release's cover, carried by the `covers` row whose key is the release
 /// id, is no file of the release's upload: its reference is bound, so it
 /// uploads through the pause that keeps the release's file waiting.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn a_releases_cover_is_no_file_of_its_upload() {
     let (manager, temp_dir) = setup_test_manager().await;
@@ -358,7 +352,6 @@ async fn a_releases_cover_is_no_file_of_its_upload() {
 /// An upload command has queued every release it admitted before it
 /// returns, so the release's row reads its upload as the command's caller
 /// finishes.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn an_upload_queues_each_release_before_returning() {
     let (manager, temp_dir) = setup_test_manager().await;
@@ -390,7 +383,6 @@ async fn an_upload_queues_each_release_before_returning() {
     }
 }
 
-#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn an_active_target_does_not_block_sibling_cloud_admissions() {
     let (manager, temp_dir) = setup_test_manager().await;
@@ -450,7 +442,6 @@ async fn an_active_target_does_not_block_sibling_cloud_admissions() {
     }
 }
 
-#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn an_upload_batch_refuses_duplicate_release_ids_without_admission() {
     let (manager, temp_dir) = setup_test_manager().await;
@@ -540,7 +531,6 @@ async fn transfer_concurrency_settings_apply_to_the_open_store() {
 /// A release moved to the cloud to be kept here goes through no download
 /// queue entry: once its move finishes, coven keeps each file whole on this
 /// device itself, and the release is pinned.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn a_release_kept_here_is_pinned_once_its_move_finishes() {
     let (manager, temp) = setup_test_manager().await;

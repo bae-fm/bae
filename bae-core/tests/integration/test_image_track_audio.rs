@@ -7,7 +7,6 @@
 
 use bae_audio::EncodeFormat;
 use bae_catalogs::discogs::models::DiscogsRelease;
-use bae_test_support as support;
 
 const SAMPLE_RATE: u32 = 44_100;
 /// Every track's length.
@@ -45,7 +44,7 @@ async fn import_image(
     extension: &str,
     format: EncodeFormat,
 ) -> (bae_core::library::LibraryManager, String, Vec<u8>, tempfile::TempDir) {
-    support::tracing_init();
+    bae_util::test_logs::install();
     bae_audio::init();
     let image =
         bae_audio::encode_i32(format, &image_samples(), SAMPLE_RATE, 2).expect("encode the image");
@@ -59,7 +58,7 @@ async fn import_image(
             &[("Track One", "0:03"), ("Track Two", "0:03"), ("Track Three", "0:03")],
         )
     };
-    let ((library_manager, ..), imported) = support::imported_release_setup(
+    let ((library_manager, ..), imported) = bae_core::test_libraries::imported_release_setup(
         release,
         "test",
         uuid::Uuid::new_v4().to_string(),

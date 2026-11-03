@@ -5,7 +5,6 @@
 // `include!`d into `manager::tests`.
 
 /// What a reader of the transfer watch holds after applying `changes`.
-#[cfg(feature = "test-utils")]
 fn apply_transfer_changes(
     held: &mut Option<crate::library::OutboxTransfers>,
     changes: Vec<crate::library::OutboxTransferChange>,
@@ -30,7 +29,6 @@ fn apply_transfer_changes(
 /// Only the releases with files being sent have a transfer: files that only
 /// wait have none. While a file is sent the total has a bar, and
 /// once every file is sent the file and its release leave and the bar goes.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn the_transfers_name_only_the_files_being_sent() {
     let (manager, temp_dir) = setup_test_manager().await;
@@ -99,7 +97,6 @@ async fn the_transfers_name_only_the_files_being_sent() {
 
 /// The total's watch tells the files being sent together as they stand
 /// first, and then only as they change.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn the_total_transfer_is_told_first_and_then_as_it_changes() {
     let (manager, temp_dir) = setup_test_manager().await;
@@ -147,7 +144,6 @@ async fn the_total_transfer_is_told_first_and_then_as_it_changes() {
 /// moment its send starts: its stored files count as done, and a file sent in
 /// one request counts its share as its object goes, before the provider
 /// answers. Its file's own share is told by file.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn a_file_sent_in_one_request_moves_its_release_as_it_goes() {
     let (manager, temp_dir) = setup_test_manager().await;

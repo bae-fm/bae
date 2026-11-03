@@ -1,8 +1,8 @@
 //! A profile asked for while the person's private circle is made: the
 //! request coven's operation answers, and the write that ends it (§5.4).
 
+use bae_core::test_libraries::{connect_storage, requested_profile, storage_library};
 use bae_db::people::{ProfileError, Sharing};
-use bae_test_support::{connect_storage, requested_profile, storage_library};
 
 /// Robin asks for her profile with sync stopped. The write journals her
 /// private circle and records the request, offline too; she has no profile

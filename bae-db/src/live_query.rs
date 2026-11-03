@@ -28,7 +28,7 @@ pub struct CancellableLiveQuery<Request, Projection> {
     cancellation: CancellationToken,
     /// The query's run count, held here because a waiting read holds the
     /// query itself.
-    #[cfg(feature = "test-utils")]
+    #[cfg(any(test, feature = "test-utils"))]
     runs: coven::LiveQueryRuns,
 }
 
@@ -44,7 +44,7 @@ where
     ) -> Self {
         Self {
             requests: std::sync::Mutex::new(Some(query.requests())),
-            #[cfg(feature = "test-utils")]
+            #[cfg(any(test, feature = "test-utils"))]
             runs: query.runs(),
             query: tokio::sync::Mutex::new(Some(query)),
             cancellation,
@@ -52,7 +52,7 @@ where
     }
 
     /// A handle that counts the query's runs.
-    #[cfg(feature = "test-utils")]
+    #[cfg(any(test, feature = "test-utils"))]
     pub fn runs(&self) -> coven::LiveQueryRuns {
         self.runs.clone()
     }

@@ -13,7 +13,7 @@ use bae_playback::test_capture::{
 /// public one expose its fields. Each test binary keeps its own (private)
 /// fixture around what this returns.
 pub async fn start_capture_playback(
-    library_manager: &bae_core::library::LibraryManager,
+    library_manager: &crate::library::LibraryManager,
     database: &bae_db::Database,
     device: TestAudioDevice,
 ) -> (bae_playback::PlaybackHandle, CaptureStreamRx) {
@@ -24,7 +24,7 @@ pub async fn start_capture_playback(
 /// [`start_capture_playback`] on a playback clock the test supplies, so the
 /// test decides when a side-pause countdown runs out.
 pub async fn start_capture_playback_with_clock(
-    library_manager: &bae_core::library::LibraryManager,
+    library_manager: &crate::library::LibraryManager,
     database: &bae_db::Database,
     device: TestAudioDevice,
     clock: bae_playback::PlaybackClockRef,
@@ -39,7 +39,7 @@ pub async fn start_capture_playback_with_clock(
 /// countdowns on `clock`. It resumes the stored queue and reports its position
 /// every 100 ms.
 pub async fn start_playback_on(
-    library_manager: &bae_core::library::LibraryManager,
+    library_manager: &crate::library::LibraryManager,
     database: &bae_db::Database,
     device: Box<dyn bae_playback::AudioOutputDevice>,
     clock: bae_playback::PlaybackClockRef,

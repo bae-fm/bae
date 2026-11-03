@@ -399,7 +399,7 @@ async fn musicbrainz_id_surfaces_when_present() {
         .await
         .unwrap();
 
-    let services = bae_test_support::start_test_services(manager.clone(), database, catalogs, closing).await;
+    let services = bae_core::test_libraries::start_test_services(manager.clone(), database, catalogs, closing).await;
     let router =
         bae_subsonic::router(services, credential(), bae_diagnostics::Diagnostics::noop());
 
@@ -457,7 +457,7 @@ async fn lossy_track_reports_bit_depth_zero() {
 /// Import the single-file lossy Opus fixture through the normal import path.
 async fn seed_lossy_release() -> (AppServices, String, Vec<TempDir>) {
     let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
-    let ((manager, database, catalogs, closing), db_temp) = support::setup_test_library_with(fakes.providers()).await;
+    let ((manager, database, catalogs, closing), db_temp) = bae_core::test_libraries::setup_test_library_with(fakes.providers()).await;
     let temp = TempDir::new().unwrap();
     let dir = temp.path().join("lossy album");
     std::fs::create_dir_all(&dir).unwrap();
@@ -472,7 +472,7 @@ async fn seed_lossy_release() -> (AppServices, String, Vec<TempDir>) {
         },
     );
     let import =
-        support::start_test_import(tokio::runtime::Handle::current(), &database, &catalogs, &closing).await;
+        bae_import::test_imports::start_test_import(tokio::runtime::Handle::current(), &database, &catalogs, &closing).await;
     let import_id = "lossy".to_string();
     import
         .send_command(ImportCommand {
@@ -498,8 +498,8 @@ async fn seed_lossy_release() -> (AppServices, String, Vec<TempDir>) {
         .await
         .unwrap();
     let mut rx = import.subscribe_import(import_id);
-    let (release_id, _album) = support::wait_for_import_complete(&mut rx).await;
-    let services = bae_test_support::start_test_services(manager, database, catalogs, closing).await;
+    let (release_id, _album) = bae_import::test_imports::wait_for_import_complete(&mut rx).await;
+    let services = bae_core::test_libraries::start_test_services(manager, database, catalogs, closing).await;
     (services, release_id, vec![db_temp, temp])
 }
 
@@ -584,7 +584,7 @@ async fn an_album_prints_its_credit_line_and_lists_every_credited_artist() {
         .insert_album_with_release_and_tracks(&album, &credits, &release, &[], &[], &[])
         .await
         .unwrap();
-    let services = bae_test_support::start_test_services(manager.clone(), database, catalogs, closing).await;
+    let services = bae_core::test_libraries::start_test_services(manager.clone(), database, catalogs, closing).await;
     let router =
         bae_subsonic::router(services, credential(), bae_diagnostics::Diagnostics::noop());
 

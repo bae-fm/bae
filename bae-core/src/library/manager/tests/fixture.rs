@@ -431,7 +431,6 @@ async fn a_fixtures_playing_album_lays_its_tracks_over_the_disc_image() {
 
 /// Playback starts on the fixture's resume row: paused on the track it
 /// names, at the start of that track's pregap.
-#[cfg(feature = "test-utils")]
 #[tokio::test(flavor = "multi_thread")]
 async fn playback_resumes_the_fixtures_playing_album_in_the_pregap() {
     let (manager, temp_dir) = setup_test_manager().await;

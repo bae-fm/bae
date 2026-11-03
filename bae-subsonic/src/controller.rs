@@ -205,13 +205,14 @@ mod tests {
     use std::sync::Arc;
 
     use bae_core::library::AppServices;
-    use bae_test_support as support;
     use tempfile::TempDir;
 
     async fn test_manager() -> (AppServices, TempDir) {
-        let ((manager, database, catalogs, closing), temp) = support::setup_test_library().await;
+        let ((manager, database, catalogs, closing), temp) =
+            bae_core::test_libraries::setup_test_library().await;
         let services =
-            bae_test_support::start_test_services(manager, database, catalogs, closing).await;
+            bae_core::test_libraries::start_test_services(manager, database, catalogs, closing)
+                .await;
         (services, temp)
     }
 

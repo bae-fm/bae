@@ -1,6 +1,6 @@
 #[tokio::test]
 async fn direct_entry_import_records_no_catalog_and_reads_no_tags() {
-    support::tracing_init();
+    bae_util::test_logs::install();
 
     let f = ImportFixture::new().await;
     let album_dir = f.temp_path().join("direct-entry-album");
@@ -43,7 +43,7 @@ async fn direct_entry_import_records_no_catalog_and_reads_no_tags() {
         .unwrap();
 
     let mut progress_rx = f.handle.subscribe_import(import_id);
-    let (release_id, album_id) = support::wait_for_import_complete(&mut progress_rx).await;
+    let (release_id, album_id) = bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
 
     assert!(f.db.get_release_records(&release_id).await.unwrap().is_empty());
     assert_eq!(f.db.find_album_by_id(&album_id).await.unwrap().unwrap().title, "Album Title");

@@ -2,7 +2,7 @@
 /// where they were.
 #[tokio::test]
 async fn local_folder_import() {
-    support::tracing_init();
+    bae_util::test_logs::install();
 
     let f = ImportFixture::new().await;
 
@@ -18,16 +18,16 @@ async fn local_folder_import() {
 
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
-        .send_command(support::folder_import(
+        .send_command(bae_import::test_imports::folder_import(
             &import_id,
             album_dir.clone(),
-            support::discogs_release(release_id_key),
+            bae_import::test_imports::discogs_release(release_id_key),
         ))
         .await
         .unwrap();
 
     let mut progress_rx = f.handle.subscribe_import(import_id);
-    let (release_id, _album_id) = support::wait_for_import_complete(&mut progress_rx).await;
+    let (release_id, _album_id) = bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
 
     // The release's files resolve to the folder they were imported from.
     assert!(f.db.get_files_for_release(&release_id).await.unwrap().iter().all(|file| !file.stored));
@@ -53,7 +53,7 @@ async fn local_folder_import() {
 async fn import_progress_names_every_operation_before_loudness() {
     use bae_import::{ImportEvent, ImportPhase, ImportProgress, ImportStep, PrepareStep};
 
-    support::tracing_init();
+    bae_util::test_logs::install();
 
     let f = ImportFixture::new().await;
     let mut events = f.handle.every_event();
@@ -71,7 +71,7 @@ async fn import_progress_names_every_operation_before_loudness() {
 
     let import_id = f.ids.new_id().to_string();
     f.handle
-        .send_command(support::folder_import(&import_id, album_dir, support::DraftSource::FileTags))
+        .send_command(bae_import::test_imports::folder_import(&import_id, album_dir, bae_import::test_imports::DraftSource::FileTags))
         .await
         .unwrap();
 
@@ -122,7 +122,7 @@ async fn import_progress_names_every_operation_before_loudness() {
 
 #[tokio::test]
 async fn import_produces_audio_format_records() {
-    support::tracing_init();
+    bae_util::test_logs::install();
 
     let f = ImportFixture::new().await;
 
@@ -135,16 +135,16 @@ async fn import_produces_audio_format_records() {
 
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
-        .send_command(support::folder_import(
+        .send_command(bae_import::test_imports::folder_import(
             &import_id,
             album_dir,
-            support::discogs_release(release_id_key),
+            bae_import::test_imports::discogs_release(release_id_key),
         ))
         .await
         .unwrap();
 
     let mut progress_rx = f.handle.subscribe_import(import_id);
-    let (release_id, _) = support::wait_for_import_complete(&mut progress_rx).await;
+    let (release_id, _) = bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
 
     let tracks = f.db.get_tracks_for_release(&release_id).await.unwrap();
     assert_eq!(tracks.len(), 1);
@@ -157,7 +157,7 @@ async fn import_produces_audio_format_records() {
 
 #[tokio::test]
 async fn exact_metadata_import_stores_dsd_audio_format() {
-    support::tracing_init();
+    bae_util::test_logs::install();
 
     for (index, fixture_name, import_name) in
         [(1, "placeholder-dsd.dsf", "01 Track.dsf"), (2, "placeholder-dsd.dff", "01 Track.dff")]
@@ -177,16 +177,16 @@ async fn exact_metadata_import_stores_dsd_audio_format() {
 
         let import_id = uuid::Uuid::new_v4().to_string();
         f.handle
-            .send_command(support::folder_import(
+            .send_command(bae_import::test_imports::folder_import(
                 &import_id,
                 album_dir,
-                support::discogs_release(release_id_key),
+                bae_import::test_imports::discogs_release(release_id_key),
             ))
             .await
             .unwrap();
 
         let mut progress_rx = f.handle.subscribe_import(import_id);
-        let (release_id, _) = support::wait_for_import_complete(&mut progress_rx).await;
+        let (release_id, _) = bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
 
         let files = f.db.get_files_for_release(&release_id).await.unwrap();
         assert_eq!(files.len(), 1, "{fixture_name}");
@@ -249,7 +249,7 @@ async fn loudness_measured_at_import_drives_playback_gain() {
 
     use bae_preferences::ReplayGainMode;
 
-    support::tracing_init();
+    bae_util::test_logs::install();
 
     let release = discogs_release("Loudness Album", &["Quiet Track", "Loud Track"]);
     let release_id_key = f.fakes.seed_discogs_test_release(release);
@@ -264,16 +264,16 @@ async fn loudness_measured_at_import_drives_playback_gain() {
 
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
-        .send_command(support::folder_import(
+        .send_command(bae_import::test_imports::folder_import(
             &import_id,
             album_dir,
-            support::discogs_release(release_id_key),
+            bae_import::test_imports::discogs_release(release_id_key),
         ))
         .await
         .unwrap();
 
     let mut progress_rx = f.handle.subscribe_import(import_id);
-    let (release_id, _) = support::wait_for_import_complete(&mut progress_rx).await;
+    let (release_id, _) = bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
 
     // ── Stored measurements ──
     let tracks = f.db.get_tracks_for_release(&release_id).await.unwrap();
@@ -350,7 +350,7 @@ async fn loudness_pass_advances_the_candidate_rows_percent() {
 
     use bae_import::{ImportEvent, ImportPhase, ImportProgress};
 
-    support::tracing_init();
+    bae_util::test_logs::install();
 
     let release = discogs_release("Loudness Album", &["Track One", "Track Two", "Track Three"]);
     let release_id_key = f.fakes.seed_discogs_test_release(release);
@@ -367,16 +367,16 @@ async fn loudness_pass_advances_the_candidate_rows_percent() {
 
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
-        .send_command(support::folder_import(
+        .send_command(bae_import::test_imports::folder_import(
             &import_id,
             album_dir,
-            support::discogs_release(release_id_key),
+            bae_import::test_imports::discogs_release(release_id_key),
         ))
         .await
         .unwrap();
 
     let mut progress_rx = f.handle.subscribe_import(import_id);
-    let _ = support::wait_for_import_complete(&mut progress_rx).await;
+    let _ = bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
 
     let mut percents = Vec::new();
     while let Ok(event) = event_rx.try_recv() {

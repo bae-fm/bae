@@ -81,12 +81,12 @@ async fn finish_move(f: &ImportFixture, release_id: &str, files: &[(String, cove
 /// stores every file.
 #[tokio::test]
 async fn a_local_import_moves_to_the_cloud_and_cancelling_the_move_keeps_it_here() {
-    support::tracing_init();
+    bae_util::test_logs::install();
     let f = ImportFixture::new().await;
     f.connect_cloud().await;
     let album = two_track_album(&f, "Album One");
     let (id, _) =
-        import_folder(&f, &album, None, ImportDestination::Local, support::DraftSource::FileTags)
+        import_folder(&f, &album, None, ImportDestination::Local, bae_import::test_imports::DraftSource::FileTags)
             .await
             .unwrap();
     let files = release_file_ids(&f, &id).await;
@@ -115,7 +115,7 @@ async fn a_local_import_moves_to_the_cloud_and_cancelling_the_move_keeps_it_here
 /// the cloud again as any local release does.
 #[tokio::test]
 async fn a_cloud_import_s_upload_cancels_to_a_release_on_this_device() {
-    support::tracing_init();
+    bae_util::test_logs::install();
     let f = ImportFixture::new().await;
     f.connect_cloud().await;
     let album = two_track_album(&f, "Album One");
@@ -124,7 +124,7 @@ async fn a_cloud_import_s_upload_cancels_to_a_release_on_this_device() {
         &album,
         None,
         ImportDestination::Remote { pin: false },
-        support::DraftSource::FileTags,
+        bae_import::test_imports::DraftSource::FileTags,
     )
     .await
     .unwrap();
@@ -147,7 +147,7 @@ async fn a_cloud_import_s_upload_cancels_to_a_release_on_this_device() {
 /// copies coven wrote, and moves back to the cloud as one move.
 #[tokio::test]
 async fn a_release_made_local_moves_back_to_the_cloud() {
-    support::tracing_init();
+    bae_util::test_logs::install();
     let f = ImportFixture::new().await;
     f.connect_cloud().await;
     let album = two_track_album(&f, "Album One");
@@ -156,7 +156,7 @@ async fn a_release_made_local_moves_back_to_the_cloud() {
         &album,
         None,
         ImportDestination::Remote { pin: false },
-        support::DraftSource::FileTags,
+        bae_import::test_imports::DraftSource::FileTags,
     )
     .await
     .unwrap();

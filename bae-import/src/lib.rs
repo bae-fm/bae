@@ -104,7 +104,7 @@ pub(crate) mod shared_album;
 pub mod tables;
 #[cfg(test)]
 pub(crate) mod test_files;
-#[cfg(any(test, feature = "test-utils"))]
+#[cfg(all(desktop, any(test, feature = "test-utils")))]
 pub mod test_fixtures;
 #[cfg(test)]
 pub(crate) mod test_gate;
@@ -112,6 +112,8 @@ pub(crate) mod test_gate;
 pub(crate) mod test_images;
 #[cfg(all(test, desktop))]
 pub(crate) mod test_import;
+#[cfg(all(desktop, any(test, feature = "test-utils")))]
+pub mod test_imports;
 #[cfg(test)]
 pub(crate) mod test_reads;
 #[cfg(desktop)]

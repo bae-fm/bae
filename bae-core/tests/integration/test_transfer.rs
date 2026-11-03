@@ -2,9 +2,6 @@
 //! Coven uses MemoryStorage for cloud reads and writes; bae owns the release
 //! transitions, their progress, and their subscribed storage values.
 
-use bae_test_support as support;
-use support::tracing_init;
-
 use bae_core::album_detail::GallerySource;
 use bae_core::album_detail::ReleaseStorageState;
 use bae_core::library::views::{StorageFilter, StorageSortCriterion, StorageSortField};
@@ -22,7 +19,7 @@ use uuid::Uuid;
 // ---------------------------------------------------------------------------
 
 async fn setup(tmp: &TempDir) -> LibraryManager {
-    support::open_test_library(tmp.path()).await.0
+    bae_core::test_libraries::open_test_library(tmp.path()).await.0
 }
 
 async fn setup_with_cloud(
@@ -33,9 +30,12 @@ async fn setup_with_cloud(
     bae_import::CatalogSessions,
     bae_core::library::CancellationToken,
 ) {
-    let (library, storage) =
-        support::storage_library(tmp.path(), bae_catalogs::providers::Providers::offline()).await;
-    support::connect_storage(&library.0, &storage).await;
+    let (library, storage) = bae_core::test_libraries::storage_library(
+        tmp.path(),
+        bae_catalogs::providers::Providers::offline(),
+    )
+    .await;
+    bae_core::test_libraries::connect_storage(&library.0, &storage).await;
     library
 }
 
@@ -98,7 +98,7 @@ async fn create_remote_release(
     let count = mgr.drain_uploads_expecting_work().await.unwrap();
     assert_eq!(count, named.len(), "all files uploaded");
     assert_eq!(
-        support::release_storage(db, &release_id).await,
+        bae_core::test_libraries::release_storage(db, &release_id).await,
         (ReleaseStorageState::Remote, false),
         "Remote (cloud-only) after the drain"
     );
@@ -156,7 +156,7 @@ async fn expect_storage_state(
 /// it finishes.
 #[tokio::test]
 async fn uploads_are_counted_before_drain() {
-    tracing_init();
+    bae_util::test_logs::install();
     let tmp = TempDir::new().unwrap();
     let (mgr, ..) = setup_with_cloud(&tmp).await;
     let source = tmp.path().join("src");
@@ -187,14 +187,14 @@ async fn uploads_are_counted_before_drain() {
 /// reference — no cloud round-trip and no bae path into coven's store.
 #[tokio::test]
 async fn test_cover_file_stored_via_local_files_is_readable() {
-    tracing_init();
+    bae_util::test_logs::install();
     let tmp = TempDir::new().unwrap();
     let mgr = setup(&tmp).await;
     let (_a, release_id, _f) = create_local_release(&mgr, &tmp.path().join("src"), &[]).await;
 
     // No cover row yet → no bytes.
     assert!(
-        support::read_cover_image_bytes(&mgr, &release_id).await.is_none(),
+        bae_core::test_libraries::read_cover_image_bytes(&mgr, &release_id).await.is_none(),
         "no cover before one is stored"
     );
 
@@ -216,7 +216,7 @@ async fn test_cover_file_stored_via_local_files_is_readable() {
     .unwrap();
 
     // read_image_bytes serves it from coven's local store, byte-for-byte.
-    let read = support::read_cover_image_bytes(&mgr, &release_id)
+    let read = bae_core::test_libraries::read_cover_image_bytes(&mgr, &release_id)
         .await
         .expect("cover resolves to bytes once stored");
     assert_eq!(read, bytes, "the stored cover reads back byte-for-byte");
@@ -230,7 +230,7 @@ async fn test_cover_file_stored_via_local_files_is_readable() {
 /// cache.
 #[tokio::test]
 async fn test_pin_rejects_local_release() {
-    tracing_init();
+    bae_util::test_logs::install();
     let tmp = TempDir::new().unwrap();
     let mgr = setup(&tmp).await;
     let (_a, release_id, _f) =
@@ -247,7 +247,7 @@ async fn test_pin_rejects_local_release() {
 /// Unpin rejects a Local release: it has no remote files to drop from the cache.
 #[tokio::test]
 async fn test_unpin_rejects_local_release() {
-    tracing_init();
+    bae_util::test_logs::install();
     let tmp = TempDir::new().unwrap();
     let mgr = setup(&tmp).await;
     let (_a, release_id, _f) =
@@ -265,7 +265,7 @@ async fn test_unpin_rejects_local_release() {
 #[tokio::test]
 async fn a_release_detail_says_where_its_download_stands() {
     use bae_core::album_detail::ReleaseDownloadStatus;
-    tracing_init();
+    bae_util::test_logs::install();
     let tmp = TempDir::new().unwrap();
     let (mgr, db, ..) = setup_with_cloud(&tmp).await;
     let release_id =
@@ -295,7 +295,7 @@ async fn a_release_detail_says_where_its_download_stands() {
 /// how coven's download races the pins query, so none is asserted.
 #[tokio::test]
 async fn test_pin_remote_fetches_into_pinned_cache() {
-    tracing_init();
+    bae_util::test_logs::install();
     let tmp = TempDir::new().unwrap();
     let (mgr, db, ..) = setup_with_cloud(&tmp).await;
     let release_id = create_remote_release(
@@ -338,7 +338,7 @@ async fn test_pin_remote_fetches_into_pinned_cache() {
         "the pin reports every byte before it completes"
     );
     assert_eq!(
-        support::release_storage(&db, &release_id).await,
+        bae_core::test_libraries::release_storage(&db, &release_id).await,
         (ReleaseStorageState::Remote, true)
     );
 }
@@ -347,7 +347,7 @@ async fn test_pin_remote_fetches_into_pinned_cache() {
 /// are, and unpinned again once they aren't, each from its own live read.
 #[tokio::test]
 async fn the_detail_views_follow_a_releases_pin() {
-    tracing_init();
+    bae_util::test_logs::install();
     let tmp = TempDir::new().unwrap();
     let (mgr, database, catalogs, closing) = setup_with_cloud(&tmp).await;
     let release_id = create_remote_release(
@@ -364,7 +364,8 @@ async fn the_detail_views_follow_a_releases_pin() {
         .expect("the library holds the release")
         .album_id;
     let services =
-        bae_test_support::start_test_services(mgr.clone(), database, catalogs, closing).await;
+        bae_core::test_libraries::start_test_services(mgr.clone(), database, catalogs, closing)
+            .await;
     let release = services.subscribe_release_detail();
     release.set(Some(release_id.clone())).unwrap();
     let album = services.subscribe_album_detail();
@@ -411,7 +412,7 @@ async fn the_detail_views_follow_a_releases_pin() {
 /// into the evictable cache, so it reads as (Remote, not pinned).
 #[tokio::test]
 async fn test_unpin_remote_drops_from_pinned_cache() {
-    tracing_init();
+    bae_util::test_logs::install();
     let tmp = TempDir::new().unwrap();
     let (mgr, db, ..) = setup_with_cloud(&tmp).await;
     let release_id =
@@ -427,13 +428,13 @@ async fn test_unpin_remote_drops_from_pinned_cache() {
         .await
         .expect("pin task completes");
     assert_eq!(
-        support::release_storage(&db, &release_id).await,
+        bae_core::test_libraries::release_storage(&db, &release_id).await,
         (ReleaseStorageState::Remote, true)
     );
 
     mgr.unpin_release(&release_id).await.unwrap();
     assert_eq!(
-        support::release_storage(&db, &release_id).await,
+        bae_core::test_libraries::release_storage(&db, &release_id).await,
         (ReleaseStorageState::Remote, false)
     );
 }
@@ -445,7 +446,7 @@ async fn test_unpin_remote_drops_from_pinned_cache() {
 /// Reading a Local release whose original file vanished returns an error.
 #[tokio::test]
 async fn test_missing_external_source_maps_to_error() {
-    tracing_init();
+    bae_util::test_logs::install();
     let tmp = TempDir::new().unwrap();
     let mgr = setup(&tmp).await;
     let source_dir = tmp.path().join("src");
@@ -469,14 +470,15 @@ async fn test_missing_external_source_maps_to_error() {
 /// Manager value without a separate library event or another read from the UI.
 #[tokio::test]
 async fn transition_completions_deliver_storage_values() {
-    tracing_init();
+    bae_util::test_logs::install();
     let tmp = TempDir::new().unwrap();
     let (mgr, database, catalogs, closing) = setup_with_cloud(&tmp).await;
     let source_dir = tmp.path().join("src");
     let (_a, release_id, _named) =
         create_local_release(&mgr, &source_dir, &[("a.flac", b"round-trip-bytes")]).await;
     let services =
-        bae_test_support::start_test_services(mgr.clone(), database, catalogs, closing).await;
+        bae_core::test_libraries::start_test_services(mgr.clone(), database, catalogs, closing)
+            .await;
     let values = services.subscribe_storage_browse(StorageBrowseView {
         sort: StorageSortCriterion {
             field: StorageSortField::AlbumTitle,
@@ -506,7 +508,7 @@ async fn transition_completions_deliver_storage_values() {
 /// answer together.
 #[tokio::test]
 async fn selected_releases_leave_the_local_list_with_their_upload() {
-    tracing_init();
+    bae_util::test_logs::install();
     let tmp = TempDir::new().unwrap();
     let (mgr, database, catalogs, closing) = setup_with_cloud(&tmp).await;
     let (_a, first, _) =
@@ -517,7 +519,8 @@ async fn selected_releases_leave_the_local_list_with_their_upload() {
     mgr.upload_release(&second, false).await.unwrap();
 
     let services =
-        bae_test_support::start_test_services(mgr.clone(), database, catalogs, closing).await;
+        bae_core::test_libraries::start_test_services(mgr.clone(), database, catalogs, closing)
+            .await;
     let selected: std::collections::BTreeSet<String> =
         [first.clone(), second.clone()].into_iter().collect();
     let values = services.subscribe_storage_browse(StorageBrowseView {
@@ -579,7 +582,7 @@ async fn selected_releases_leave_the_local_list_with_their_upload() {
 /// whether or not each selected release sits in a window.
 #[tokio::test]
 async fn a_selection_is_offered_the_actions_all_its_releases_allow() {
-    tracing_init();
+    bae_util::test_logs::install();
     let tmp = TempDir::new().unwrap();
     let (mgr, database, catalogs, closing) = setup_with_cloud(&tmp).await;
     let pinned = create_remote_release(
@@ -603,7 +606,8 @@ async fn a_selection_is_offered_the_actions_all_its_releases_allow() {
         .expect("pin task completes");
 
     let services =
-        bae_test_support::start_test_services(mgr.clone(), database, catalogs, closing).await;
+        bae_core::test_libraries::start_test_services(mgr.clone(), database, catalogs, closing)
+            .await;
     let view = |selected: &[&String]| StorageBrowseView {
         sort: StorageSortCriterion {
             field: StorageSortField::AlbumTitle,

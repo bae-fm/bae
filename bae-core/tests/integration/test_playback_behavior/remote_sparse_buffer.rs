@@ -12,15 +12,15 @@ struct RemoteMultiWindowPlayback {
 
 impl RemoteMultiWindowPlayback {
     async fn new(name: &str) -> Result<Self, Box<dyn std::error::Error>> {
-        tracing_init();
+        bae_util::test_logs::install();
         let temp_dir = TempDir::new()?;
         let album_dir = temp_dir.path().join("album");
         std::fs::create_dir_all(&album_dir)?;
         let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
         let ((library_manager, database, catalogs, closing), cloud) =
-            support::storage_library(temp_dir.path(), fakes.providers())
+            bae_core::test_libraries::storage_library(temp_dir.path(), fakes.providers())
                 .await;
-        support::connect_storage(&library_manager, &cloud).await;
+        bae_core::test_libraries::connect_storage(&library_manager, &cloud).await;
         generate_multi_window_cue_flac_files(&album_dir);
         let release_key =
             fakes.seed_discogs_test_release(create_multi_window_cue_album());
@@ -31,10 +31,10 @@ impl RemoteMultiWindowPlayback {
             .send_command(ImportCommand {
                 candidate_key: bae_import::CandidateKey::from_bytes(name.as_bytes().to_vec()),
                 destination: ImportDestination::Remote { pin: false },
-                ..support::folder_import(
+                ..bae_import::test_imports::folder_import(
                     &import_id,
                     album_dir.clone(),
-                    support::discogs_release(release_key),
+                    bae_import::test_imports::discogs_release(release_key),
                 )
             })
             .await?;

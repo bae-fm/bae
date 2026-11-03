@@ -3,7 +3,6 @@
 /// `source_folder_name`, made Remote with pin so its files stay readable from
 /// the offline cache. Returns its id. The manager must already be connected via
 /// [`connect_test_cloud`].
-#[cfg(feature = "test-utils")]
 async fn make_exportable_release(
     manager: &LibraryManager,
     source_dir: &std::path::Path,
@@ -20,7 +19,6 @@ async fn make_exportable_release(
 }
 
 /// Wait until coven no longer lists this release's uploads.
-#[cfg(feature = "test-utils")]
 async fn wait_for_settled_uploads(manager: &LibraryManager, release_id: &str) {
     for tick in 0..2_000 {
         if tick % 50 == 0 {
@@ -34,7 +32,6 @@ async fn wait_for_settled_uploads(manager: &LibraryManager, release_id: &str) {
     panic!("release {release_id} never finished its upload");
 }
 
-#[cfg(feature = "test-utils")]
 async fn insert_export_release_rows(
     manager: &LibraryManager,
     source_dir: &std::path::Path,
@@ -71,7 +68,6 @@ async fn insert_export_release_rows(
 /// have. coven applies a pulled changeset straight into SQLite, so bae's own
 /// row-write never sees it: the export copy-out and audio detachment build each
 /// path from the names as they read them.
-#[cfg(feature = "test-utils")]
 async fn insert_local_export_release_named(
     manager: &LibraryManager,
     source_dir: &std::path::Path,
@@ -92,7 +88,6 @@ async fn insert_local_export_release_named(
     release.id
 }
 
-#[cfg(feature = "test-utils")]
 enum PeerName<'a> {
     OriginalFilename(&'a str),
     SourceFolderName(&'a str),
@@ -130,7 +125,6 @@ async fn output_queue_enqueue_dedups_and_cancels_while_paused() {
 /// `<target>/<source_folder_name>/<original_filename>` (including nested
 /// subfolders), and the export changes no release state — it stays Remote with
 /// no new cloud-outbox rows.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn export_writes_exact_bytes_in_source_folder_and_leaves_release_remote() {
     let (manager, temp_dir) = setup_test_manager().await;
@@ -177,7 +171,6 @@ async fn export_writes_exact_bytes_in_source_folder_and_leaves_release_remote() 
 
 /// A file named `..` is an ordinary name: coven writes it as `.．`, so the
 /// export writes the file inside its folder and nothing outside the target.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn export_writes_a_parent_name_inside_its_folder() {
     let (manager, temp_dir) = setup_test_manager().await;
@@ -205,7 +198,6 @@ async fn export_writes_a_parent_name_inside_its_folder() {
 
 /// An absolute path's leading `/` gives an empty name, which names no file:
 /// the export writes nothing.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn export_refuses_an_absolute_original_filename() {
     let (manager, temp_dir) = setup_test_manager().await;
@@ -229,7 +221,6 @@ async fn export_refuses_an_absolute_original_filename() {
 
 /// A folder name is one name, `/` included: coven writes `../escape-folder`
 /// as `..／escape-folder`, one folder inside the target.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn export_writes_a_folder_name_holding_a_slash_as_one_folder() {
     let (manager, temp_dir) = setup_test_manager().await;
@@ -256,7 +247,6 @@ async fn export_writes_a_folder_name_holding_a_slash_as_one_folder() {
 
 /// A write error (an unwritable target) marks the export `Failed` with a message
 /// and keeps it in the queue until it is cancelled.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn export_write_error_marks_failed_until_cancelled() {
     let (manager, temp_dir) = setup_test_manager().await;
@@ -296,7 +286,6 @@ async fn export_write_error_marks_failed_until_cancelled() {
 /// earlier file has already been written to staging) leaves NO output at the
 /// final `<target>/<source_folder_name>/` path — the staging directory is
 /// removed, so the export is all-or-nothing.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn export_mid_failure_leaves_no_partial_output_at_final_path() {
     let (manager, temp_dir) = setup_test_manager().await;

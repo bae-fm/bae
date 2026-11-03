@@ -4,7 +4,6 @@
 //! scan → import. All through real infrastructure.
 
 use bae_catalogs::catalog::LookupCatalog;
-use bae_test_support as support;
 
 use bae_catalogs::catalog::Catalog;
 use bae_catalogs::discogs::models::DiscogsRelease;
@@ -52,11 +51,11 @@ impl ImportFixture {
         let http = images.route(bae_util::http::Http::for_test());
         let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::over(http.clone());
         let ((library_manager, db, catalogs, closing), storage) =
-            support::storage_library(&db_dir, fakes.providers()).await;
+            bae_core::test_libraries::storage_library(&db_dir, fakes.providers()).await;
         let ids: Arc<dyn coven::IdSource> = Arc::new(coven::UuidIds);
-        support::configure_test_discogs(&catalogs).await;
+        bae_import::test_imports::configure_test_discogs(&catalogs).await;
 
-        let handle = support::start_import_service(
+        let handle = bae_import::test_imports::start_import_service(
             tokio::runtime::Handle::current(),
             &db,
             &catalogs,
@@ -75,7 +74,7 @@ impl ImportFixture {
     /// No sync loop behind the connection: the remote-import tests drain the
     /// upload queue themselves and assert what that pass moved.
     async fn connect_cloud(&self) {
-        support::connect_storage(&self.library_manager, &self.storage).await;
+        bae_core::test_libraries::connect_storage(&self.library_manager, &self.storage).await;
     }
 }
 
@@ -84,19 +83,23 @@ async fn import_folder(
     album_dir: &Path,
     selected_cover: Option<CoverSelection>,
     destination: ImportDestination,
-    draft_source: support::DraftSource,
+    draft_source: bae_import::test_imports::DraftSource,
 ) -> Result<(String, String), String> {
     let import_id = f.ids.new_id().to_string();
     f.handle
         .send_command(ImportCommand {
             selected_cover,
             destination,
-            ..support::folder_import(&import_id, album_dir.to_path_buf(), draft_source)
+            ..bae_import::test_imports::folder_import(
+                &import_id,
+                album_dir.to_path_buf(),
+                draft_source,
+            )
         })
         .await
         .map_err(|error| error.to_string())?;
     let mut progress_rx = f.handle.subscribe_import(import_id);
-    support::try_wait_for_import_complete(&mut progress_rx).await
+    bae_import::test_imports::try_wait_for_import_complete(&mut progress_rx).await
 }
 
 async fn assert_release_has_external_ref(f: &ImportFixture, release_id: &str) {

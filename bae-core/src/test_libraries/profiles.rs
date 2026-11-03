@@ -1,12 +1,12 @@
 //! Profiles made as the app makes them: asked for, then written once sync
 //! has made the person's private circle (§5.4).
 
-use bae_core::followed::value_matching;
-use bae_core::library::LibraryManager;
+use crate::followed::value_matching;
+use crate::library::LibraryManager;
 use bae_db::{people::PersonProfile, Database};
 
 /// Ask for this device's person's profile named `name`, sync until the
-/// manager has written it, then stop sync again, as [`crate::connect_storage`]
+/// manager has written it, then stop sync again, as [`super::connect_storage`]
 /// leaves it.
 pub async fn made_profile(manager: &LibraryManager, name: &str) -> PersonProfile {
     manager.create_profile(name).await.unwrap();

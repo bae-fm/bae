@@ -150,7 +150,6 @@ async fn deletion_refuses_an_unavailable_database_without_losing_rows() {
 /// so it has to carry the `covers` row's version, not just the release id — and
 /// it has to be absent when the release has no cover at all, rather than naming
 /// a row that isn't there.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn track_display_carries_the_cover_version() {
     let (manager, _temp_dir) = setup_test_manager().await;
@@ -194,7 +193,6 @@ async fn track_display_carries_the_cover_version() {
 /// to `releases`), including a cover whose file really did reach the cloud —
 /// the delete plan reads the published cover's file reference before the row
 /// goes, so a lookup failure there would take the delete down with it.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn delete_release_removes_its_cover_image() {
     let (manager, temp_dir) = setup_test_manager().await;
@@ -229,7 +227,6 @@ async fn delete_release_removes_its_cover_image() {
 
 /// delete_album removes each release's cover too (same helper, second wiring
 /// site): the cover row is gone with its release.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn delete_album_removes_release_covers() {
     let (manager, temp_dir) = setup_test_manager().await;
@@ -297,7 +294,6 @@ async fn test_delete_album_deletes_all_releases() {
 /// the coven files they reference with the pins on them. The person's own
 /// files stay, another album stays whole, and the album's live reads follow
 /// the delete: the grid stops listing it and its detail reads none.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn delete_album_deletes_its_releases_and_what_they_own() {
     let (manager, temp) = setup_test_manager().await;

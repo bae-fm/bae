@@ -3,7 +3,7 @@
 /// 5. Two sequential imports both succeed and produce separate albums.
 #[tokio::test]
 async fn two_sequential_imports() {
-    support::tracing_init();
+    bae_util::test_logs::install();
 
     let f = ImportFixture::new().await;
 
@@ -24,16 +24,16 @@ async fn two_sequential_imports() {
 
         let import_id = uuid::Uuid::new_v4().to_string();
         f.handle
-            .send_command(support::folder_import(
+            .send_command(bae_import::test_imports::folder_import(
                 &import_id,
                 album_dir,
-                support::discogs_release(release_keys[i].clone()),
+                bae_import::test_imports::discogs_release(release_keys[i].clone()),
             ))
             .await
             .unwrap();
 
         let mut progress_rx = f.handle.subscribe_import(import_id);
-        let (release_id, _) = support::wait_for_import_complete(&mut progress_rx).await;
+        let (release_id, _) = bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
         release_ids.push(release_id);
     }
 
@@ -54,7 +54,7 @@ async fn two_sequential_imports() {
 /// files hash apart, own distinct release, track and file rows.
 #[tokio::test]
 async fn repeated_imports_keep_independent_copies() {
-    support::tracing_init();
+    bae_util::test_logs::install();
     let f = ImportFixture::new().await;
     f.connect_cloud().await;
     let pressing = f.fakes.seed_discogs_test_release(discogs_release("Album Title", &["Track"]),
@@ -87,7 +87,7 @@ async fn repeated_imports_keep_independent_copies() {
             &album_dir,
             None,
             destination,
-            support::discogs_release(pressing.clone()),
+            bae_import::test_imports::discogs_release(pressing.clone()),
         )
         .await
         .expect("each import creates another copy");
@@ -129,7 +129,7 @@ async fn repeated_imports_keep_independent_copies() {
 /// the cloud rather than rolled back.
 #[tokio::test]
 async fn a_remote_import_without_a_cloud_connection_queues_its_uploads() {
-    support::tracing_init();
+    bae_util::test_logs::install();
     let f = ImportFixture::new().await;
 
     let album_dir = f.temp_path().join("remote");
@@ -147,7 +147,7 @@ async fn a_remote_import_without_a_cloud_connection_queues_its_uploads() {
         &album_dir,
         None,
         ImportDestination::Remote { pin: false },
-        support::DraftSource::FileTags,
+        bae_import::test_imports::DraftSource::FileTags,
     )
     .await
     .expect("a Remote import commits with no cloud connected");

@@ -38,14 +38,15 @@ fn each_pull_answers_at_once_and_the_profiles_follow_a_new_one() {
         .unwrap();
     // A library with its storage, which making a profile needs.
     let ((manager, database, catalogs, closing), storage) =
-        runtime.block_on(bae_test_support::storage_library(
+        runtime.block_on(bae_core::test_libraries::storage_library(
             root.path(),
             bae_catalogs::providers::Providers::offline(),
         ));
-    runtime.block_on(bae_test_support::connect_storage(&manager, &storage));
+    runtime.block_on(bae_core::test_libraries::connect_storage(&manager, &storage));
     let syncing = manager.clone();
-    let services = runtime
-        .block_on(bae_test_support::start_test_services(manager, database, catalogs, closing));
+    let services = runtime.block_on(bae_core::test_libraries::start_test_services(
+        manager, database, catalogs, closing,
+    ));
     let handle = std::sync::Arc::new(
         super::AppHandle::start(services, runtime, bae_diagnostics::Diagnostics::noop()).unwrap(),
     );
@@ -112,13 +113,14 @@ fn the_sync_status_follows_storage_being_set_up() {
         .build()
         .unwrap();
     let ((manager, database, catalogs, closing), storage) =
-        runtime.block_on(bae_test_support::storage_library(
+        runtime.block_on(bae_core::test_libraries::storage_library(
             root.path(),
             bae_catalogs::providers::Providers::offline(),
         ));
     let setup = manager.clone();
-    let services = runtime
-        .block_on(bae_test_support::start_test_services(manager, database, catalogs, closing));
+    let services = runtime.block_on(bae_core::test_libraries::start_test_services(
+        manager, database, catalogs, closing,
+    ));
     let handle = std::sync::Arc::new(
         super::AppHandle::start(services, runtime, bae_diagnostics::Diagnostics::noop()).unwrap(),
     );
@@ -127,7 +129,7 @@ fn the_sync_status_follows_storage_being_set_up() {
     let unset = handle.runtime.block_on(status.clone().next()).unwrap();
     assert_eq!(unset.indicator, None, "{unset:?}");
 
-    handle.runtime.block_on(bae_test_support::connect_storage(&setup, &storage));
+    handle.runtime.block_on(bae_core::test_libraries::connect_storage(&setup, &storage));
     pull_until(
         &handle,
         || Box::pin(status.clone().next()),

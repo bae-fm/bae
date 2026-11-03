@@ -4,7 +4,6 @@
 //! ALAC/AAC bytes (generated once with Homebrew ffmpeg, checked into
 //! bae-import's `test-fixtures/alac/`). Nothing is mocked: every assertion
 //! runs through the same code paths production uses.
-use bae_test_support as support;
 
 use bae_audio::{decode_audio, probe_audio_from_path};
 use bae_catalogs::discogs::models::DiscogsRelease;
@@ -17,7 +16,6 @@ use bae_import::folder_scanner::{
 };
 use bae_util::content_type::ContentType;
 use std::path::{Path, PathBuf};
-use support::tracing_init;
 use tempfile::TempDir;
 use tracing::info;
 
@@ -49,14 +47,19 @@ async fn import_single_m4a_fixture(
 
     let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
     let (library_manager, database, catalogs, closing) =
-        support::open_test_library_with(&db_dir, fakes.providers()).await;
+        bae_core::test_libraries::open_test_library_with(&db_dir, fakes.providers()).await;
 
     let discogs_release = make_discogs_release("test-m4a", "Album Title", &["Track One"]);
     let release_id_key = fakes.seed_discogs_test_release(discogs_release);
 
-    let release_id =
-        support::import_folder_and_wait(&database, &catalogs, &closing, album_dir, release_id_key)
-            .await;
+    let release_id = bae_import::test_imports::import_folder_and_wait(
+        &database,
+        &catalogs,
+        &closing,
+        album_dir,
+        release_id_key,
+    )
+    .await;
     (library_manager, release_id)
 }
 
@@ -98,7 +101,7 @@ fn probe_aac_returns_content_type_aac() {
 /// don't have CUE boundaries, so the whole file is one track.
 #[tokio::test]
 async fn import_standalone_alac_m4a() {
-    tracing_init();
+    bae_util::test_logs::install();
     let temp_root = TempDir::new().expect("temp root");
     let (library_manager, release_id) =
         import_single_m4a_fixture("silence-alac.m4a", temp_root.path()).await;
@@ -131,7 +134,7 @@ async fn import_standalone_alac_m4a() {
 /// the same full-file segment shape as ALAC.
 #[tokio::test]
 async fn import_standalone_aac_m4a() {
-    tracing_init();
+    bae_util::test_logs::install();
     let temp_root = TempDir::new().expect("temp root");
     let (library_manager, release_id) =
         import_single_m4a_fixture("silence-aac.m4a", temp_root.path()).await;
@@ -208,7 +211,7 @@ fn scanner_recognizes_cue_alac_pair() {
 /// The last track has no `end_sample` because it runs to EOF.
 #[tokio::test]
 async fn import_cue_alac_pair() {
-    tracing_init();
+    bae_util::test_logs::install();
     let temp_root = TempDir::new().expect("temp root");
     let album_dir = temp_root.path().join("album");
     let db_dir = temp_root.path().join("db");
@@ -221,7 +224,7 @@ async fn import_cue_alac_pair() {
 
     let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
     let (library_manager, database, catalogs, closing) =
-        support::open_test_library_with(&db_dir, fakes.providers()).await;
+        bae_core::test_libraries::open_test_library_with(&db_dir, fakes.providers()).await;
 
     let discogs_release = make_discogs_release(
         "test-cue-alac",
@@ -230,9 +233,14 @@ async fn import_cue_alac_pair() {
     );
     let release_id_key = fakes.seed_discogs_test_release(discogs_release);
 
-    let release_id =
-        support::import_folder_and_wait(&database, &catalogs, &closing, album_dir, release_id_key)
-            .await;
+    let release_id = bae_import::test_imports::import_folder_and_wait(
+        &database,
+        &catalogs,
+        &closing,
+        album_dir,
+        release_id_key,
+    )
+    .await;
 
     let tracks = library_manager.get_tracks_for_release(&release_id).await.expect("get tracks");
     assert_eq!(tracks.len(), 3);

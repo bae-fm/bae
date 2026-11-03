@@ -6,7 +6,6 @@
 /// While a pin downloads a file, the release reads it as downloading, by the
 /// file coven fetches, and the pin file watch names that file; once kept, it
 /// reads as kept and downloads no more.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn a_file_a_pin_downloads_reads_as_downloading() {
     let (manager, temp_dir) = setup_test_manager().await;
@@ -64,7 +63,6 @@ async fn a_file_a_pin_downloads_reads_as_downloading() {
 /// A pin's bytes never fall back as a file lands, even while its pins query
 /// lags behind coven's download watch: the file counts its share while it
 /// downloads and its whole size once kept, never nothing in between.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn a_pins_bytes_never_fall_back_as_a_file_lands() {
     let (manager, temp_dir) = setup_test_manager().await;

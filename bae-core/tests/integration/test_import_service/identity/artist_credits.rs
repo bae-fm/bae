@@ -14,13 +14,13 @@ fn discogs_album_folder(
     f: &ImportFixture,
     dir_name: &str,
     title: &str,
-) -> (std::path::PathBuf, support::DraftSource) {
+) -> (std::path::PathBuf, bae_import::test_imports::DraftSource) {
     let release = discogs_release(title, &["Track One"]);
     let release_key = f.fakes.seed_discogs_test_release(release);
     let dir = f.temp_path().join(dir_name);
     fs::create_dir_all(&dir).unwrap();
     generate_album_files(&dir, &["01 Track One.flac"]);
-    (dir, support::discogs_release(release_key))
+    (dir, bae_import::test_imports::discogs_release(release_key))
 }
 
 /// A folder whose only metadata is its files' tags, crediting `artist`.
@@ -45,12 +45,12 @@ fn tagged_album_folder(
 async fn import_and_wait(
     f: &ImportFixture,
     dir: std::path::PathBuf,
-    provenance: support::DraftSource,
+    provenance: bae_import::test_imports::DraftSource,
 ) -> (String, String) {
     let import_id = uuid::Uuid::new_v4().to_string();
-    f.handle.send_command(support::folder_import(&import_id, dir, provenance)).await.unwrap();
+    f.handle.send_command(bae_import::test_imports::folder_import(&import_id, dir, provenance)).await.unwrap();
     let mut progress_rx = f.handle.subscribe_import(import_id);
-    support::wait_for_import_complete(&mut progress_rx).await
+    bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await
 }
 
 /// Every library artist whose name folds to `name`'s.
@@ -98,13 +98,13 @@ fn library_artist(name: &str, discogs_artist_id: Option<&str>) -> bae_db::DbArti
 
 #[tokio::test]
 async fn a_tagged_album_after_a_catalog_album_joins_its_artist() {
-    support::tracing_init();
+    bae_util::test_logs::install();
     let f = ImportFixture::new().await;
     let (catalog_dir, catalog) = discogs_album_folder(&f, "album-one", "Album One");
     let tagged_dir = tagged_album_folder(&f, "album-two", "Album Two", "Artist Name");
 
     let (_, catalog_album) = import_and_wait(&f, catalog_dir, catalog).await;
-    let (_, tagged_album) = import_and_wait(&f, tagged_dir, support::DraftSource::FileTags).await;
+    let (_, tagged_album) = import_and_wait(&f, tagged_dir, bae_import::test_imports::DraftSource::FileTags).await;
 
     let artists = artists_named(&f, "Artist Name").await;
     assert_eq!(artists.len(), 1, "one artist, got {artists:?}");
@@ -118,12 +118,12 @@ async fn a_tagged_album_after_a_catalog_album_joins_its_artist() {
 
 #[tokio::test]
 async fn a_catalog_album_after_a_tagged_album_gives_its_artist_the_catalog_id() {
-    support::tracing_init();
+    bae_util::test_logs::install();
     let f = ImportFixture::new().await;
     let (catalog_dir, catalog) = discogs_album_folder(&f, "album-one", "Album One");
     let tagged_dir = tagged_album_folder(&f, "album-two", "Album Two", "Artist Name");
 
-    let (_, tagged_album) = import_and_wait(&f, tagged_dir, support::DraftSource::FileTags).await;
+    let (_, tagged_album) = import_and_wait(&f, tagged_dir, bae_import::test_imports::DraftSource::FileTags).await;
     let tagged_artist = album_artist_id(&f, &tagged_album).await;
     let (_, catalog_album) = import_and_wait(&f, catalog_dir, catalog).await;
 
@@ -139,7 +139,7 @@ async fn a_catalog_album_after_a_tagged_album_gives_its_artist_the_catalog_id() 
 
 #[tokio::test]
 async fn two_albums_queued_together_make_one_artist() {
-    support::tracing_init();
+    bae_util::test_logs::install();
     let f = ImportFixture::new().await;
     let (catalog_dir, catalog) = discogs_album_folder(&f, "album-one", "Album One");
     let tagged_dir = tagged_album_folder(&f, "album-two", "Album Two", "Artist Name");
@@ -149,19 +149,19 @@ async fn two_albums_queued_together_make_one_artist() {
     let mut catalog_rx = f.handle.subscribe_import(catalog_import.clone());
     let mut tagged_rx = f.handle.subscribe_import(tagged_import.clone());
     f.handle
-        .send_command(support::folder_import(&catalog_import, catalog_dir, catalog))
+        .send_command(bae_import::test_imports::folder_import(&catalog_import, catalog_dir, catalog))
         .await
         .unwrap();
     f.handle
-        .send_command(support::folder_import(
+        .send_command(bae_import::test_imports::folder_import(
             &tagged_import,
             tagged_dir,
-            support::DraftSource::FileTags,
+            bae_import::test_imports::DraftSource::FileTags,
         ))
         .await
         .unwrap();
-    let (_, catalog_album) = support::wait_for_import_complete(&mut catalog_rx).await;
-    let (_, tagged_album) = support::wait_for_import_complete(&mut tagged_rx).await;
+    let (_, catalog_album) = bae_import::test_imports::wait_for_import_complete(&mut catalog_rx).await;
+    let (_, tagged_album) = bae_import::test_imports::wait_for_import_complete(&mut tagged_rx).await;
 
     let artists = artists_named(&f, "Artist Name").await;
     assert_eq!(artists.len(), 1, "one artist, got {artists:?}");
@@ -173,7 +173,7 @@ async fn two_albums_queued_together_make_one_artist() {
 /// one the folder means: the import makes a new artist rather than guess.
 #[tokio::test]
 async fn a_name_two_library_artists_share_imports_as_a_new_artist() {
-    support::tracing_init();
+    bae_util::test_logs::install();
     let f = ImportFixture::new().await;
     let first = library_artist("Artist Name", None);
     let second = library_artist("Artist Name", Some("discogs-other"));
@@ -181,7 +181,7 @@ async fn a_name_two_library_artists_share_imports_as_a_new_artist() {
     f.library_manager.insert_artist(&second).await.unwrap();
     let tagged_dir = tagged_album_folder(&f, "album-two", "Album Two", "Artist Name");
 
-    let (_, album) = import_and_wait(&f, tagged_dir, support::DraftSource::FileTags).await;
+    let (_, album) = import_and_wait(&f, tagged_dir, bae_import::test_imports::DraftSource::FileTags).await;
 
     let album_artist = album_artist_id(&f, &album).await;
     assert_ne!(album_artist, first.id);
@@ -193,7 +193,7 @@ async fn a_name_two_library_artists_share_imports_as_a_new_artist() {
 /// different artist.
 #[tokio::test]
 async fn a_library_artist_with_another_discogs_id_is_not_the_credit() {
-    support::tracing_init();
+    bae_util::test_logs::install();
     let f = ImportFixture::new().await;
     let other = library_artist("Artist Name", Some("discogs-other"));
     f.library_manager.insert_artist(&other).await.unwrap();
@@ -210,15 +210,15 @@ async fn a_library_artist_with_another_discogs_id_is_not_the_credit() {
 
 #[tokio::test]
 async fn a_credit_meets_its_artist_however_the_name_is_cased_or_accented() {
-    support::tracing_init();
+    bae_util::test_logs::install();
     let f = ImportFixture::new().await;
     let existing = library_artist("artist name", None);
     f.library_manager.insert_artist(&existing).await.unwrap();
     let accented_dir = tagged_album_folder(&f, "album-two", "Album Two", "Ärtist Name");
     let cased_dir = tagged_album_folder(&f, "album-three", "Album Three", "ARTIST NAME");
 
-    let (_, accented) = import_and_wait(&f, accented_dir, support::DraftSource::FileTags).await;
-    let (_, cased) = import_and_wait(&f, cased_dir, support::DraftSource::FileTags).await;
+    let (_, accented) = import_and_wait(&f, accented_dir, bae_import::test_imports::DraftSource::FileTags).await;
+    let (_, cased) = import_and_wait(&f, cased_dir, bae_import::test_imports::DraftSource::FileTags).await;
 
     assert_eq!(album_artist_id(&f, &accented).await, existing.id);
     assert_eq!(album_artist_id(&f, &cased).await, existing.id);
@@ -286,7 +286,7 @@ async fn next_resolution(
 /// credit as that library artist, and importing the tagged album joins it.
 #[tokio::test]
 async fn an_open_pane_reads_its_credit_into_the_library_when_another_import_commits() {
-    support::tracing_init();
+    bae_util::test_logs::install();
     let f = ImportFixture::new().await;
     let (catalog_dir, catalog) = discogs_album_folder(&f, "album-one", "Album One");
     let tagged_dir = tagged_album_folder(&f, "album-two", "Album Two", "Artist Name");
@@ -311,7 +311,7 @@ async fn an_open_pane_reads_its_credit_into_the_library_when_another_import_comm
 
     let import_id = f.handle.start_import(&tagged_key).await.unwrap().expect_queued();
     let mut progress_rx = f.handle.subscribe_import(import_id);
-    let (_, tagged_album) = support::wait_for_import_complete(&mut progress_rx).await;
+    let (_, tagged_album) = bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
 
     let artists = artists_named(&f, "Artist Name").await;
     assert_eq!(artists.len(), 1, "one artist, got {artists:?}");
@@ -326,7 +326,7 @@ async fn an_open_pane_reads_its_credit_into_the_library_when_another_import_comm
 /// from, and leaves the credit to import as a new artist if nobody picks.
 #[tokio::test]
 async fn a_pane_offers_the_library_artists_a_shared_name_could_be() {
-    support::tracing_init();
+    bae_util::test_logs::install();
     let f = ImportFixture::new().await;
     let first = library_artist("Artist Name", None);
     let second = library_artist("Artist Name", Some("discogs-other"));
@@ -352,7 +352,7 @@ async fn a_pane_offers_the_library_artists_a_shared_name_could_be() {
 /// credit links the artist by its own name.
 #[tokio::test]
 async fn a_discogs_credit_imports_with_its_printed_name_and_join() {
-    support::tracing_init();
+    bae_util::test_logs::install();
     let f = ImportFixture::new().await;
     let mut release = discogs_release("Album Credited", &["Track One"]);
     release.artists = vec![
@@ -368,7 +368,7 @@ async fn a_discogs_credit_imports_with_its_printed_name_and_join() {
     fs::create_dir_all(&dir).unwrap();
     generate_album_files(&dir, &["01 Track One.flac"]);
 
-    let (_, album_id) = import_and_wait(&f, dir, support::discogs_release(release_key)).await;
+    let (_, album_id) = import_and_wait(&f, dir, bae_import::test_imports::discogs_release(release_key)).await;
 
     let album =
         bae_core::library::views::LibraryViews::new(f.db.clone()).find_album_detail(&album_id).await.unwrap().expect("the imported album");

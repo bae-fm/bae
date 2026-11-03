@@ -8,7 +8,6 @@
 /// A syncing library on a clock that never moves, so no backoff ends by
 /// itself: a pass after a failed one runs only because a retry ended its
 /// wait.
-#[cfg(feature = "test-utils")]
 async fn library_on_a_stopped_clock() -> (TestManager, TempDir, Arc<coven::FixedClock>) {
     let clock = Arc::new(coven::FixedClock::new(std::time::UNIX_EPOCH));
     let (manager, temp_dir) = setup_test_manager_with_clock(clock.clone()).await;
@@ -18,7 +17,6 @@ async fn library_on_a_stopped_clock() -> (TestManager, TempDir, Arc<coven::Fixed
 }
 
 /// Follow the status until `accept` takes it.
-#[cfg(feature = "test-utils")]
 async fn status_until(
     manager: &TestManager,
     accept: impl Fn(&SyncStatusSnapshot) -> bool,
@@ -29,7 +27,6 @@ async fn status_until(
 
 /// The next request fails as `failure`, answered with HTTP `response`, or
 /// with no answer when `None`.
-#[cfg(feature = "test-utils")]
 fn next_request_fails(failure: coven::StorageFailure, response: Option<u16>) -> coven::Faults {
     coven::Faults { fail_next: 1, failure, response, ..coven::Faults::none() }
 }
@@ -38,7 +35,6 @@ fn next_request_fails(failure: coven::StorageFailure, response: Option<u16>) -> 
 /// the failure beside the connection's record coven saved for it. Storage
 /// works again afterwards, so only coven's wait stands between the library
 /// and its next pass.
-#[cfg(feature = "test-utils")]
 async fn fail_a_pass(manager: &TestManager, faults: coven::Faults) -> SyncStatusSnapshot {
     let mut values = manager.subscribe_sync_status();
     manager.storage.set_faults(faults).await;
@@ -56,7 +52,6 @@ async fn fail_a_pass(manager: &TestManager, faults: coven::Faults) -> SyncStatus
 /// a pass at once, which syncs: storage unreachable, a server error,
 /// throttling without a cooldown, a conflict, an expired upload session. A
 /// missing object fails no pass here: the pass reads it as absent.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn each_offered_failure_is_retried_by_a_pass_that_syncs() {
     use coven::StorageFailure as F;
@@ -93,7 +88,6 @@ async fn each_offered_failure_is_retried_by_a_pass_that_syncs() {
 /// Each failure only the person can clear, or that never retries, offers no
 /// Retry Now: coven holds every pass for it, and a retry would answer with
 /// the failure at once, sending nothing to storage.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn each_failure_the_person_clears_offers_no_retry() {
     use coven::StorageFailure as F;
@@ -132,7 +126,6 @@ async fn each_failure_the_person_clears_offers_no_retry() {
 /// A 429 asking every request to wait ten minutes offers no Retry Now while
 /// the wait lasts: a retry would only say when it ends. Once it ends Retry
 /// Now is offered again, and retrying runs a pass that syncs.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn a_provider_cooldown_offers_no_retry_until_it_ends() {
     let (manager, _temp_dir, clock) = library_on_a_stopped_clock().await;

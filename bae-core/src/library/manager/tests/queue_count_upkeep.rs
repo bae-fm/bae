@@ -10,7 +10,6 @@
 
 /// Each release whose listed queued count or first place differs from the
 /// ones probed from its files in coven's queue: none when the triggers kept up.
-#[cfg(feature = "test-utils")]
 async fn queue_listing_disagreements(manager: &LibraryManager) -> Vec<String> {
     manager
         .database
@@ -37,7 +36,6 @@ async fn queue_listing_disagreements(manager: &LibraryManager) -> Vec<String> {
 
 /// The releases with files in coven's queue, in the order their first files
 /// wait, probed file by file.
-#[cfg(feature = "test-utils")]
 async fn probed_uploading_releases(manager: &LibraryManager) -> Vec<String> {
     manager
         .database
@@ -53,7 +51,6 @@ async fn probed_uploading_releases(manager: &LibraryManager) -> Vec<String> {
 /// Random writes against the probe: after each, every release's listed
 /// queued count and first place are the probed ones, and so are the
 /// releases uploading, in the order read from them.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn the_listed_queue_counts_follow_every_upload_and_file_write() {
     use rand::{Rng, SeedableRng};

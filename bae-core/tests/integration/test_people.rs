@@ -1,7 +1,7 @@
-use bae_db::people::{ProfileError, Sharing};
-use bae_test_support::{
+use bae_core::test_libraries::{
     connect_storage, made_profile, made_profile_on, requested_profile_on, storage_library,
 };
+use bae_db::people::{ProfileError, Sharing};
 
 #[tokio::test]
 async fn profile_requires_membership_and_is_idempotent_after_setup() {
@@ -283,7 +283,7 @@ impl Household {
         &self,
         dir: &std::path::Path,
     ) -> (bae_core::library::LibraryManager, bae_core::library::views::LibraryViews) {
-        let (manager, database, ..) = bae_test_support::test_library_from_handle(
+        let (manager, database, ..) = bae_core::test_libraries::test_library_from_handle(
             self.owner.clone(),
             dir,
             bae_catalogs::providers::Providers::offline(),

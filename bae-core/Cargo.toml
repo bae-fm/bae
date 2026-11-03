@@ -95,10 +95,6 @@ bae-types = { workspace = true, features = ["test-utils"] }
 # fakes and documents, and the requests the rate limiter queued and admitted,
 # which its unit tests read.
 bae-catalogs = { workspace = true, features = ["test-utils", "test-instrumentation"] }
-# Shared integration-test helpers. A real crate rather than a `tests/support`
-# include so they compile once and `dead_code` stays armed on them; the cycle
-# back to bae-core is dev-only, which Cargo allows.
-bae-test-support = { workspace = true }
 tokio = { workspace = true, features = ["test-util"] }
 # The log output of the bench examples and of the tests that time a
 # library's creation and restore.

@@ -64,10 +64,10 @@ impl Fixture {
 pub(super) async fn automation_over() -> Fixture {
     let tmp = tempfile::TempDir::new().expect("a temp library dir");
     let (manager, database, catalogs, closing) =
-        bae_test_support::open_test_library(tmp.path()).await;
+        bae_core::test_libraries::open_test_library(tmp.path()).await;
     let tables = bae_import::tables::ImportTables::new(database.clone());
     let services =
-        bae_test_support::start_test_services(manager, database, catalogs, closing).await;
+        bae_core::test_libraries::start_test_services(manager, database, catalogs, closing).await;
     let automation = Automation::new(services.clone(), &tokio::runtime::Handle::current());
     Fixture { automation, tables, services, tmp }
 }
@@ -288,7 +288,7 @@ async fn a_scan_waited_on_answers_with_what_every_folder_read_found() {
     for (root, album) in [(&first, "Album One"), (&second, "Album Two")] {
         let album = root.join(album);
         std::fs::create_dir_all(&album).unwrap();
-        bae_test_support::write_tagged_flac(&album, "01 Track.flac", "Track");
+        bae_import::test_fixtures::write_tagged_flac(&album, "01 Track.flac", "Track");
         fixture
             .automation
             .add_watched_folder(root.to_string_lossy().into_owned())

@@ -74,7 +74,7 @@ const V3_WORK: &str = "e0dc7948-f188-3346-adee-db5cfb6361a9";
 /// MBID, with an id the sync layer accepts.
 #[tokio::test]
 async fn work_mbid_is_stored_beside_a_minted_row_id_and_shared_across_releases() {
-    support::tracing_init();
+    bae_util::test_logs::install();
     let f = ImportFixture::new().await;
 
     let first_mb = seed_mb_release_with_works(
@@ -96,7 +96,7 @@ async fn work_mbid_is_stored_beside_a_minted_row_id_and_shared_across_releases()
         &first_dir,
         None,
         ImportDestination::Local,
-        support::DraftSource::Pick(bae_identify::PressingLink {
+        bae_import::test_imports::DraftSource::Pick(bae_identify::PressingLink {
             record: bae_catalogs::records::LookupRef::new(LookupCatalog::MusicBrainz, first_mb),
             partners: vec![],
         }),
@@ -123,7 +123,7 @@ async fn work_mbid_is_stored_beside_a_minted_row_id_and_shared_across_releases()
         &second_dir,
         None,
         ImportDestination::Local,
-        support::DraftSource::Pick(bae_identify::PressingLink {
+        bae_import::test_imports::DraftSource::Pick(bae_identify::PressingLink {
             record: bae_catalogs::records::LookupRef::new(LookupCatalog::MusicBrainz, second_mb),
             partners: vec![],
         }),
@@ -153,7 +153,7 @@ async fn assert_cover_row_describes_stored_bytes(f: &ImportFixture, release_id: 
         .await
         .unwrap()
         .expect("cover row");
-    let bytes = support::read_cover_image_bytes(&f.library_manager, release_id)
+    let bytes = bae_core::test_libraries::read_cover_image_bytes(&f.library_manager, release_id)
         .await
         .expect("cover file readable");
     let file = f
@@ -177,7 +177,7 @@ async fn assert_cover_row_describes_stored_bytes(f: &ImportFixture, release_id: 
 /// 6. Import with local cover art: covers row + the cover file in coven's local store.
 #[tokio::test]
 async fn import_with_cover_art() {
-    support::tracing_init();
+    bae_util::test_logs::install();
 
     let f = ImportFixture::new().await;
 
@@ -192,24 +192,24 @@ async fn import_with_cover_art() {
     f.handle
         .send_command(ImportCommand {
             selected_cover: Some(CoverSelection::Local("scans/back.jpg".to_string())),
-            ..support::folder_import(
+            ..bae_import::test_imports::folder_import(
                 &import_id,
                 album_dir,
-                support::discogs_release(release_id_key),
+                bae_import::test_imports::discogs_release(release_id_key),
             )
         })
         .await
         .unwrap();
 
     let mut progress_rx = f.handle.subscribe_import(import_id);
-    let (release_id, _) = support::wait_for_import_complete(&mut progress_rx).await;
+    let (release_id, _) = bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
 
     // Cover image row in DB
     let cover = f.db.find_library_image(&release_id, &LibraryImageType::Cover).await.unwrap();
     assert!(cover.is_some(), "should have cover image in DB");
 
     // Cover bytes readable through the image ref path (coven's local store while Local).
-    let cover_bytes = support::read_cover_image_bytes(&f.library_manager, &release_id)
+    let cover_bytes = bae_core::test_libraries::read_cover_image_bytes(&f.library_manager, &release_id)
         .await
         .expect("cover file should be readable");
     assert!(!cover_bytes.is_empty(), "cover bytes should not be empty");
@@ -222,7 +222,7 @@ async fn import_with_cover_art() {
 /// `covers` row records JPEG, not the source PNG.
 #[tokio::test]
 async fn import_resizes_oversized_cover_to_jpeg_thumbnail() {
-    support::tracing_init();
+    bae_util::test_logs::install();
 
     let f = ImportFixture::new().await;
 
@@ -237,17 +237,17 @@ async fn import_resizes_oversized_cover_to_jpeg_thumbnail() {
     f.handle
         .send_command(ImportCommand {
             selected_cover: Some(CoverSelection::Local(cover_path)),
-            ..support::folder_import(
+            ..bae_import::test_imports::folder_import(
                 &import_id,
                 album_dir,
-                support::discogs_release(release_id_key),
+                bae_import::test_imports::discogs_release(release_id_key),
             )
         })
         .await
         .unwrap();
 
     let mut progress_rx = f.handle.subscribe_import(import_id);
-    let (release_id, _) = support::wait_for_import_complete(&mut progress_rx).await;
+    let (release_id, _) = bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
 
     // The row records the stored format (JPEG), not the source PNG.
     let cover =
@@ -258,7 +258,7 @@ async fn import_resizes_oversized_cover_to_jpeg_thumbnail() {
     assert_eq!(cover.content_type, bae_util::content_type::ContentType::Jpeg);
 
     // The stored file is a ≤600 JPEG downscaled from the 1000×1000 PNG source.
-    let cover_bytes = support::read_cover_image_bytes(&f.library_manager, &release_id)
+    let cover_bytes = bae_core::test_libraries::read_cover_image_bytes(&f.library_manager, &release_id)
         .await
         .expect("cover file should be readable");
     assert_eq!(image::guess_format(&cover_bytes).unwrap(), image::ImageFormat::Jpeg);
@@ -306,23 +306,23 @@ async fn import_gif_and_webp_covers_stores_first_image_as_jpeg() {
         f.handle
             .send_command(ImportCommand {
                 selected_cover: Some(CoverSelection::Local(name.to_string())),
-                ..support::folder_import(
+                ..bae_import::test_imports::folder_import(
                     &import_id,
                     album_dir.clone(),
-                    support::discogs_release(release_id_key),
+                    bae_import::test_imports::discogs_release(release_id_key),
                 )
             })
             .await
             .unwrap();
         let mut progress_rx = f.handle.subscribe_import(import_id);
-        let (release_id, _) = support::try_wait_for_import_complete(&mut progress_rx)
+        let (release_id, _) = bae_import::test_imports::try_wait_for_import_complete(&mut progress_rx)
             .await
             .unwrap_or_else(|error| panic!("{name}: {error}"));
         let cover =
             f.db.find_library_image(&release_id, &LibraryImageType::Cover).await.unwrap().unwrap();
         assert_eq!(cover.content_type, bae_util::content_type::ContentType::Jpeg);
         let stored =
-            support::read_cover_image_bytes(&f.library_manager, &release_id).await.unwrap();
+            bae_core::test_libraries::read_cover_image_bytes(&f.library_manager, &release_id).await.unwrap();
         assert_eq!(image::guess_format(&stored).unwrap(), image::ImageFormat::Jpeg);
         let decoded = image::load_from_memory(&stored).unwrap();
         assert_eq!((decoded.width(), decoded.height()), dimensions);

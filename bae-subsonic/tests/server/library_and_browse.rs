@@ -10,7 +10,6 @@ use bae_db::{DbAlbum, DbArtist, DbRelease, DbTrack};
 use bae_import::release_candidate::CandidateSource;
 use bae_import::{ImportCommand, ImportDestination, ReleaseFileScope};
 use bae_core::library::{AppServices, LibraryManager};
-use bae_test_support as support;
 use md5::{Digest, Md5};
 use serde_json::Value;
 use tempfile::TempDir;
@@ -91,12 +90,12 @@ async fn new_manager() -> ((
     bae_import::CatalogSessions,
     bae_core::library::CancellationToken,
 ), TempDir) {
-    support::setup_test_library().await
+    bae_core::test_libraries::setup_test_library().await
 }
 
 async fn new_services() -> (AppServices, TempDir) {
     let ((manager, database, catalogs, closing), temp) = new_manager().await;
-    let services = bae_test_support::start_test_services(manager, database, catalogs, closing).await;
+    let services = bae_core::test_libraries::start_test_services(manager, database, catalogs, closing).await;
     (services, temp)
 }
 
@@ -125,13 +124,13 @@ struct Library {
 /// three-track single-file CUE release into one manager.
 async fn seed_library() -> Library {
     let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
-    let ((manager, database, catalogs, closing), db_temp) = support::setup_test_library_with(fakes.providers()).await;
+    let ((manager, database, catalogs, closing), db_temp) = bae_core::test_libraries::setup_test_library_with(fakes.providers()).await;
 
     // Per-track release, imported from file metadata (no network).
     let pt_temp = TempDir::new().unwrap();
     let pt_dir = pt_temp.path().join("solo album");
     std::fs::create_dir_all(&pt_dir).unwrap();
-    support::copy_and_tag(
+    bae_import::test_fixtures::copy_and_tag(
         &flac_fixture("01 Test Track 1.flac"),
         &pt_dir,
         "01.flac",
@@ -142,7 +141,7 @@ async fn seed_library() -> Library {
         2001,
         1,
     );
-    support::copy_and_tag(
+    bae_import::test_fixtures::copy_and_tag(
         &flac_fixture("02 Test Track 2.flac"),
         &pt_dir,
         "02.flac",
@@ -153,10 +152,10 @@ async fn seed_library() -> Library {
         2001,
         2,
     );
-    support::write_cover_png(&pt_dir.join("cover.png"));
+    bae_import::test_fixtures::write_cover_png(&pt_dir.join("cover.png"));
 
     let import =
-        support::start_test_import(tokio::runtime::Handle::current(), &database, &catalogs, &closing).await;
+        bae_import::test_imports::start_test_import(tokio::runtime::Handle::current(), &database, &catalogs, &closing).await;
     let import_id = "pt".to_string();
     import
         .send_command(ImportCommand {
@@ -176,7 +175,7 @@ async fn seed_library() -> Library {
         .await
         .unwrap();
     let mut rx = import.subscribe_import(import_id);
-    let (per_track_release, _album) = support::wait_for_import_complete(&mut rx).await;
+    let (per_track_release, _album) = bae_import::test_imports::wait_for_import_complete(&mut rx).await;
 
     // CUE-image release, imported against a seeded Discogs release (cached, no
     // network) so it exercises the single-file-with-CUE track windows.
@@ -188,7 +187,7 @@ async fn seed_library() -> Library {
     let discogs_key =
         fakes.seed_discogs_test_release(cue_discogs_release());
     let cue_import =
-        support::start_test_import(tokio::runtime::Handle::current(), &database, &catalogs, &closing).await;
+        bae_import::test_imports::start_test_import(tokio::runtime::Handle::current(), &database, &catalogs, &closing).await;
     let cue_id = "cue".to_string();
     cue_import
         .send_command(ImportCommand {
@@ -214,9 +213,9 @@ async fn seed_library() -> Library {
         .await
         .unwrap();
     let mut cue_rx = cue_import.subscribe_import(cue_id);
-    let (cue_release, _cue_album) = support::wait_for_import_complete(&mut cue_rx).await;
+    let (cue_release, _cue_album) = bae_import::test_imports::wait_for_import_complete(&mut cue_rx).await;
 
-    let services = bae_test_support::start_test_services(manager.clone(), database, catalogs, closing).await;
+    let services = bae_core::test_libraries::start_test_services(manager.clone(), database, catalogs, closing).await;
     Library {
         services,
         manager,

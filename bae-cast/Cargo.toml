@@ -91,7 +91,8 @@ rand_core = { workspace = true }
 uuid = { workspace = true, features = ["v4"] }
 
 [dev-dependencies]
-bae-test-support = { workspace = true }
+# The test libraries the session tests open and play.
+bae-core = { workspace = true, features = ["test-utils"] }
 # The bug reporter that keeps what it is handed.
 bae-diagnostics = { workspace = true, features = ["test-utils"] }
 tempfile = { workspace = true }

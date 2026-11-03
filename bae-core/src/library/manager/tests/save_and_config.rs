@@ -154,7 +154,6 @@ async fn removal_releases_custody_and_preferences() {
 
 /// What removal would lose is read without removing anything; the removal
 /// then discards it.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn removal_discards_the_unsent_work_it_reports() {
     let (manager, _temp) = setup_test_manager().await;

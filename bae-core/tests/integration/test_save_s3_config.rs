@@ -8,11 +8,9 @@
 //! secret) are coven's own `S3CloudHome::probe` tests; bae's contribution is the
 //! atomicity asserted here.
 
-use bae_test_support as support;
-
 use bae_core::sync::S3ConfigData;
+use bae_core::test_libraries::setup_fresh_library;
 use bae_diagnostics::UiErrorCategory;
-use support::setup_fresh_library;
 
 use crate::own_process::in_own_process;
 

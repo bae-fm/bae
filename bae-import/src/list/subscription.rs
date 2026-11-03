@@ -177,7 +177,7 @@ impl LiveImportList {
 
     /// A handle that counts the list's live query runs, for a test that
     /// measures which writes rerun it.
-    #[cfg(feature = "test-utils")]
+    #[cfg(any(test, feature = "test-utils"))]
     pub fn runs_for_test(&self) -> coven::LiveQueryRuns {
         self.query.runs()
     }

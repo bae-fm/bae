@@ -11,13 +11,13 @@ fn profiles_ratings_playlists_and_history_use_the_same_store() {
         .build()
         .unwrap();
     let ((manager, db, catalogs, closing), storage) =
-        runtime.block_on(bae_test_support::storage_library(
+        runtime.block_on(bae_core::test_libraries::storage_library(
             root.path(),
             bae_catalogs::providers::Providers::offline(),
         ));
-    runtime.block_on(bae_test_support::connect_storage(&manager, &storage));
-    let made = runtime.block_on(bae_test_support::made_profile(&manager, "Robin"));
-    let services = runtime.block_on(bae_test_support::start_test_services(
+    runtime.block_on(bae_core::test_libraries::connect_storage(&manager, &storage));
+    let made = runtime.block_on(bae_core::test_libraries::made_profile(&manager, "Robin"));
+    let services = runtime.block_on(bae_core::test_libraries::start_test_services(
         manager,
         db.clone(),
         catalogs,

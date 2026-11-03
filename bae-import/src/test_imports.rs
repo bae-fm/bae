@@ -1,11 +1,10 @@
-//! Running the import service over a folder and waiting for what it lands.
+//! Running the import service over a test store's folder and waiting for
+//! what it lands, for the tests of this crate and the crates above it.
 
-use crate::library::setup_test_library_with_album_dir;
-
-fn import_terminal_ids(progress: &bae_import::ImportProgress) -> Option<(String, String)> {
+fn import_terminal_ids(progress: &crate::ImportProgress) -> Option<(String, String)> {
     match progress {
-        bae_import::ImportProgress::Complete { id, album_id, .. }
-        | bae_import::ImportProgress::RemoteUploadQueued { id, album_id, .. } => {
+        crate::ImportProgress::Complete { id, album_id, .. }
+        | crate::ImportProgress::RemoteUploadQueued { id, album_id, .. } => {
             Some((id.clone(), album_id.clone()))
         }
         _ => None,
@@ -19,9 +18,9 @@ fn import_terminal_ids(progress: &bae_import::ImportProgress) -> Option<(String,
 pub async fn start_test_import(
     runtime_handle: tokio::runtime::Handle,
     database: &bae_db::Database,
-    catalogs: &bae_import::CatalogSessions,
-    closing: &bae_core::library::CancellationToken,
-) -> bae_import::ImportServiceHandle {
+    catalogs: &crate::CatalogSessions,
+    closing: &tokio_util::sync::CancellationToken,
+) -> crate::ImportServiceHandle {
     configure_test_discogs(catalogs).await;
     start_import_service(
         runtime_handle,
@@ -38,21 +37,21 @@ pub async fn start_test_import(
 /// downloading images over `http`. The library's `closing` token ends the
 /// service with the library.
 ///
-/// [`ImportService`]: bae_import::ImportService
+/// [`ImportService`]: crate::ImportService
 pub async fn start_import_service(
     runtime_handle: tokio::runtime::Handle,
     database: &bae_db::Database,
-    catalogs: &bae_import::CatalogSessions,
-    closing: &bae_core::library::CancellationToken,
+    catalogs: &crate::CatalogSessions,
+    closing: &tokio_util::sync::CancellationToken,
     http: bae_util::http::Http,
-) -> bae_import::ImportServiceHandle {
-    bae_import::ImportService::start(
+) -> crate::ImportServiceHandle {
+    crate::ImportService::start(
         runtime_handle,
         database.clone(),
         catalogs.clone(),
         bae_catalogs::remote_image::RemoteImageCache::for_test(http),
         bae_diagnostics::Diagnostics::noop(),
-        bae_import::CandidatePreparations::new(database.clone()),
+        crate::CandidatePreparations::new(database.clone()),
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::UuidIds),
         closing.child_token(),
@@ -63,7 +62,7 @@ pub async fn start_import_service(
 
 /// Store the Discogs key seeded Discogs fixtures are asked for with, through
 /// `catalogs`, the sessions the test built its library over.
-pub async fn configure_test_discogs(catalogs: &bae_import::CatalogSessions) {
+pub async fn configure_test_discogs(catalogs: &crate::CatalogSessions) {
     catalogs
         .store_discogs_key("test-discogs-token", bae_preferences::DiscogsValidation::Valid)
         .await
@@ -75,7 +74,7 @@ pub async fn configure_test_discogs(catalogs: &bae_import::CatalogSessions) {
 /// Local imports emit `Complete`; remote imports emit `RemoteUploadQueued`,
 /// since remote completion waits on the upload. Panics on failure.
 pub async fn wait_for_import_complete(
-    progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<bae_import::ImportProgress>,
+    progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<crate::ImportProgress>,
 ) -> (String, String) {
     try_wait_for_import_complete(progress_rx)
         .await
@@ -84,13 +83,13 @@ pub async fn wait_for_import_complete(
 
 /// Like [`wait_for_import_complete`], returning the failure instead of panicking.
 pub async fn try_wait_for_import_complete(
-    progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<bae_import::ImportProgress>,
+    progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<crate::ImportProgress>,
 ) -> Result<(String, String), String> {
     let end = wait_for_import_end(progress_rx).await;
     match import_terminal_ids(&end) {
         Some(ids) => Ok(ids),
         None => match end {
-            bae_import::ImportProgress::Failed { error, .. } => Err(error),
+            crate::ImportProgress::Failed { error, .. } => Err(error),
             _ => unreachable!("an import ends complete, queued for upload, or failed"),
         },
     }
@@ -99,12 +98,12 @@ pub async fn try_wait_for_import_complete(
 /// The import's first `Complete`, `RemoteUploadQueued` or `Failed`. Panics if
 /// the progress ends without one or none comes before [`bae_util::test_channels::HANG_GUARD`].
 pub async fn wait_for_import_end(
-    progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<bae_import::ImportProgress>,
-) -> bae_import::ImportProgress {
+    progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<crate::ImportProgress>,
+) -> crate::ImportProgress {
     let ended = async {
         while let Some(progress) = progress_rx.recv().await {
             if import_terminal_ids(&progress).is_some()
-                || matches!(progress, bae_import::ImportProgress::Failed { .. })
+                || matches!(progress, crate::ImportProgress::Failed { .. })
             {
                 return progress;
             }
@@ -128,13 +127,11 @@ pub enum DraftSource {
 
 impl DraftSource {
     /// `command` reading its draft from this source.
-    pub fn onto(self, command: bae_import::ImportCommand) -> bae_import::ImportCommand {
+    pub fn onto(self, command: crate::ImportCommand) -> crate::ImportCommand {
         match self {
-            Self::FileTags => {
-                bae_import::ImportCommand { pick: None, read_file_tags: true, ..command }
-            }
+            Self::FileTags => crate::ImportCommand { pick: None, read_file_tags: true, ..command },
             Self::Pick(link) => {
-                bae_import::ImportCommand { pick: Some(link), read_file_tags: false, ..command }
+                crate::ImportCommand { pick: Some(link), read_file_tags: false, ..command }
             }
         }
     }
@@ -164,37 +161,39 @@ pub fn discogs_release(release_id: impl Into<String>) -> DraftSource {
 /// ```ignore
 /// ImportCommand {
 ///     destination: ImportDestination::Remote { pin: false },
-///     ..support::folder_import(&import_id, album_dir, DraftSource::FileTags)
+///     ..bae_import::test_imports::folder_import(&import_id, album_dir, DraftSource::FileTags)
 /// }
 /// ```
 pub fn folder_import(
     import_id: &str,
     folder: impl Into<std::path::PathBuf>,
     draft_source: DraftSource,
-) -> bae_import::ImportCommand {
-    draft_source.onto(bae_import::ImportCommand {
+) -> crate::ImportCommand {
+    draft_source.onto(crate::ImportCommand {
         import_id: import_id.to_string(),
-        candidate_key: bae_import::CandidateKey::from_bytes(b"test".to_vec()),
-        source: bae_import::release_candidate::CandidateSource {
+        candidate_key: crate::CandidateKey::from_bytes(b"test".to_vec()),
+        source: crate::release_candidate::CandidateSource {
             path: folder.into(),
-            scope: bae_import::ReleaseFileScope::Recursive,
+            scope: crate::ReleaseFileScope::Recursive,
             parts: Vec::new(),
         },
         selected_cover: None,
-        destination: bae_import::ImportDestination::Local,
+        destination: crate::ImportDestination::Local,
         pick: None,
         read_file_tags: false,
         user_edit: None,
     })
 }
 
-/// Send one folder import and wait for the worker to finish it, returning
-/// (release_id, album_id). The service is started here and dropped on return —
-/// by then the import has landed everything it writes.
-async fn send_folder_import_and_wait(
+/// Send one folder import of `album_dir` as the already-seeded Discogs release
+/// `release_id_key`, under `candidate_key` and `import_id`, and wait for the
+/// worker to finish it, returning (release_id, album_id). The service is
+/// started here and dropped on return — by then the import has landed
+/// everything it writes.
+pub async fn send_folder_import_and_wait(
     database: &bae_db::Database,
-    catalogs: &bae_import::CatalogSessions,
-    closing: &bae_core::library::CancellationToken,
+    catalogs: &crate::CatalogSessions,
+    closing: &tokio_util::sync::CancellationToken,
     album_dir: std::path::PathBuf,
     release_id_key: String,
     candidate_key: &str,
@@ -203,8 +202,8 @@ async fn send_folder_import_and_wait(
     let import_handle =
         start_test_import(tokio::runtime::Handle::current(), database, catalogs, closing).await;
     import_handle
-        .send_command(bae_import::ImportCommand {
-            candidate_key: bae_import::CandidateKey::from_bytes(candidate_key.as_bytes().to_vec()),
+        .send_command(crate::ImportCommand {
+            candidate_key: crate::CandidateKey::from_bytes(candidate_key.as_bytes().to_vec()),
             ..folder_import(&import_id, album_dir, discogs_release(release_id_key))
         })
         .await
@@ -218,8 +217,8 @@ async fn send_folder_import_and_wait(
 /// the import landed. Panics if the import fails.
 pub async fn import_folder_and_wait(
     database: &bae_db::Database,
-    catalogs: &bae_import::CatalogSessions,
-    closing: &bae_core::library::CancellationToken,
+    catalogs: &crate::CatalogSessions,
+    closing: &tokio_util::sync::CancellationToken,
     album_dir: impl Into<std::path::PathBuf>,
     release_id_key: String,
 ) -> String {
@@ -235,99 +234,4 @@ pub async fn import_folder_and_wait(
     .await
     .expect("the test import service accepts and completes the folder import");
     release_id
-}
-
-/// What an import landed, beside the library it landed in. Holds no service of
-/// its own, so a fixture can keep it whole while handing the library's parts
-/// to whatever it starts.
-pub struct ImportedRelease {
-    pub track_ids: Vec<String>,
-    pub release_id: String,
-    /// The folder the audio was written into, for a test that reads a real file.
-    pub album_dir: std::path::PathBuf,
-    /// Owns the library's files, so it must outlive the manager.
-    pub temp_dir: tempfile::TempDir,
-}
-
-/// Import one Discogs-identified release from a folder, on the calling test's
-/// runtime, and return the library beside what it landed: open a fresh library, seed `release` for the fake Discogs
-/// endpoint, write the audio with `generate_files`, run the import to
-/// completion, and read back the tracks it landed. The arrange every playback
-/// test binary starts from.
-pub async fn imported_release_setup<G>(
-    release: bae_catalogs::discogs::DiscogsRelease,
-    candidate_key: &str,
-    import_id: String,
-    generate_files: G,
-) -> Result<
-    (
-        (
-            bae_core::library::LibraryManager,
-            bae_db::Database,
-            bae_import::CatalogSessions,
-            bae_core::library::CancellationToken,
-        ),
-        ImportedRelease,
-    ),
-    Box<dyn std::error::Error>,
->
-where
-    G: FnOnce(&std::path::Path),
-{
-    imported_release_setup_with(
-        &bae_catalogs::fake_catalogs::FakeCatalogs::offline(),
-        release,
-        candidate_key,
-        import_id,
-        generate_files,
-    )
-    .await
-}
-
-/// [`imported_release_setup`] over a library asking `fakes`, the test's own
-/// catalog fakes, which it keeps to seed the releases it imports next.
-pub async fn imported_release_setup_with<G>(
-    fakes: &bae_catalogs::fake_catalogs::FakeCatalogs,
-    release: bae_catalogs::discogs::DiscogsRelease,
-    candidate_key: &str,
-    import_id: String,
-    generate_files: G,
-) -> Result<
-    (
-        (
-            bae_core::library::LibraryManager,
-            bae_db::Database,
-            bae_import::CatalogSessions,
-            bae_core::library::CancellationToken,
-        ),
-        ImportedRelease,
-    ),
-    Box<dyn std::error::Error>,
->
-where
-    G: FnOnce(&std::path::Path),
-{
-    let ((library_manager, database, catalogs, closing), album_dir, temp_dir) =
-        setup_test_library_with_album_dir(fakes.providers()).await;
-
-    let release_id_key = fakes.seed_discogs_test_release(release);
-    generate_files(&album_dir);
-
-    let (release_id, _album_id) = send_folder_import_and_wait(
-        &database,
-        &catalogs,
-        &closing,
-        album_dir.clone(),
-        release_id_key,
-        candidate_key,
-        import_id,
-    )
-    .await?;
-    let tracks = library_manager.get_tracks_for_release(&release_id).await?;
-    let track_ids: Vec<String> = tracks.iter().map(|t| t.id.clone()).collect();
-
-    Ok((
-        (library_manager, database, catalogs, closing),
-        ImportedRelease { track_ids, release_id, album_dir, temp_dir },
-    ))
 }

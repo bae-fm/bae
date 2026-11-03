@@ -17,7 +17,7 @@ fn file_tag_artist_assignment(name: &str) -> ArtistAssignment {
 /// from what's on disk. No external source consulted.
 #[tokio::test]
 async fn file_metadata_import_seeds_from_the_folder_and_writes_no_identity() {
-    support::tracing_init();
+    bae_util::test_logs::install();
 
     let f = ImportFixture::new().await;
     let album_dir = f.temp_path().join("album");
@@ -35,12 +35,12 @@ async fn file_metadata_import_seeds_from_the_folder_and_writes_no_identity() {
 
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
-        .send_command(support::folder_import(&import_id, album_dir, support::DraftSource::FileTags))
+        .send_command(bae_import::test_imports::folder_import(&import_id, album_dir, bae_import::test_imports::DraftSource::FileTags))
         .await
         .unwrap();
 
     let mut progress_rx = f.handle.subscribe_import(import_id);
-    let (release_id, album_id) = support::wait_for_import_complete(&mut progress_rx).await;
+    let (release_id, album_id) = bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
 
     let release = f.db.find_release_by_id(&release_id).await.unwrap().unwrap();
     // One year the tags state is the album's; it names no pressing.
@@ -62,7 +62,7 @@ async fn file_metadata_import_seeds_from_the_folder_and_writes_no_identity() {
 
 #[tokio::test]
 async fn the_seeded_draft_for_a_cue_folder_matches_its_commit_layout() {
-    support::tracing_init();
+    bae_util::test_logs::install();
 
     let f = ImportFixture::new().await;
     let album_dir = f.temp_path().join("cue-album");
@@ -108,13 +108,13 @@ async fn the_seeded_draft_for_a_cue_folder_matches_its_commit_layout() {
     f.handle
         .send_command(ImportCommand {
             candidate_key: bae_import::CandidateKey::from_bytes(b"cue".to_vec()),
-            ..support::folder_import(&import_id, album_dir, support::DraftSource::FileTags)
+            ..bae_import::test_imports::folder_import(&import_id, album_dir, bae_import::test_imports::DraftSource::FileTags)
         })
         .await
         .unwrap();
 
     let mut progress_rx = f.handle.subscribe_import(import_id);
-    let (release_id, album_id) = support::wait_for_import_complete(&mut progress_rx).await;
+    let (release_id, album_id) = bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
     let album = f.db.find_album_by_id(&album_id).await.unwrap().unwrap();
     assert_eq!(draft.album_title, album.title);
 
@@ -171,7 +171,7 @@ async fn the_seeded_draft_for_a_cue_folder_matches_its_commit_layout() {
 /// image, no remote selection) gets that embedded picture as its cover.
 #[tokio::test]
 async fn file_metadata_import_seeds_embedded_cover_when_no_folder_image() {
-    support::tracing_init();
+    bae_util::test_logs::install();
 
     let f = ImportFixture::new().await;
     let album_dir = f.temp_path().join("album");
@@ -185,12 +185,12 @@ async fn file_metadata_import_seeds_embedded_cover_when_no_folder_image() {
 
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
-        .send_command(support::folder_import(&import_id, album_dir, support::DraftSource::FileTags))
+        .send_command(bae_import::test_imports::folder_import(&import_id, album_dir, bae_import::test_imports::DraftSource::FileTags))
         .await
         .unwrap();
 
     let mut progress_rx = f.handle.subscribe_import(import_id);
-    let (release_id, _) = support::wait_for_import_complete(&mut progress_rx).await;
+    let (release_id, _) = bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
 
     f.db.find_library_image(&release_id, &LibraryImageType::Cover)
         .await
@@ -199,7 +199,7 @@ async fn file_metadata_import_seeds_embedded_cover_when_no_folder_image() {
 
     // The embedded picture (≤600) keeps its dimensions but the store path
     // re-encodes it to JPEG, so assert on the decoded image, not raw bytes.
-    let bytes = support::read_cover_image_bytes(&f.library_manager, &release_id)
+    let bytes = bae_core::test_libraries::read_cover_image_bytes(&f.library_manager, &release_id)
         .await
         .expect("cover file readable");
     assert_eq!(image::guess_format(&bytes).unwrap(), image::ImageFormat::Jpeg);
@@ -217,7 +217,7 @@ const FOLDER_IMAGE_DIMS: (u32, u32) = (40, 30);
 /// embeds artwork, from file metadata with no explicit cover choice, and
 /// return the stored cover's width and height.
 async fn file_metadata_cover_dims_beside(folder_image: &str) -> (u32, u32) {
-    support::tracing_init();
+    bae_util::test_logs::install();
 
     let f = ImportFixture::new().await;
     let album_dir = f.temp_path().join("album");
@@ -234,18 +234,18 @@ async fn file_metadata_cover_dims_beside(folder_image: &str) -> (u32, u32) {
 
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
-        .send_command(support::folder_import(&import_id, album_dir, support::DraftSource::FileTags))
+        .send_command(bae_import::test_imports::folder_import(&import_id, album_dir, bae_import::test_imports::DraftSource::FileTags))
         .await
         .unwrap();
 
     let mut progress_rx = f.handle.subscribe_import(import_id);
-    let (release_id, _) = support::wait_for_import_complete(&mut progress_rx).await;
+    let (release_id, _) = bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
 
     f.db.find_library_image(&release_id, &LibraryImageType::Cover)
         .await
         .unwrap()
         .expect("a cover should be written");
-    let bytes = support::read_cover_image_bytes(&f.library_manager, &release_id)
+    let bytes = bae_core::test_libraries::read_cover_image_bytes(&f.library_manager, &release_id)
         .await
         .expect("cover file readable");
     let decoded = image::load_from_memory(&bytes).unwrap();
@@ -269,7 +269,7 @@ async fn file_metadata_import_embedded_cover_wins_over_other_folder_images() {
 /// the library, a file-metadata import lands on a fresh album.
 #[tokio::test]
 async fn file_metadata_import_always_creates_a_fresh_album() {
-    support::tracing_init();
+    bae_util::test_logs::install();
 
     let f = ImportFixture::new().await;
 
@@ -285,16 +285,16 @@ async fn file_metadata_import_always_creates_a_fresh_album() {
     f.handle
         .send_command(ImportCommand {
             candidate_key: bae_import::CandidateKey::from_bytes(b"identified".to_vec()),
-            ..support::folder_import(
+            ..bae_import::test_imports::folder_import(
                 &import_id,
                 identified_dir,
-                support::discogs_release(release_id_key),
+                bae_import::test_imports::discogs_release(release_id_key),
             )
         })
         .await
         .unwrap();
     let mut rx = f.handle.subscribe_import(import_id);
-    let (_, identified_album_id) = support::wait_for_import_complete(&mut rx).await;
+    let (_, identified_album_id) = bae_import::test_imports::wait_for_import_complete(&mut rx).await;
 
     // Second import: file metadata, same album title in tags. Must NOT
     // attach to the identified album.
@@ -312,12 +312,12 @@ async fn file_metadata_import_always_creates_a_fresh_album() {
     f.handle
         .send_command(ImportCommand {
             candidate_key: bae_import::CandidateKey::from_bytes(b"file-tags".to_vec()),
-            ..support::folder_import(&import_id2, file_tags_dir, support::DraftSource::FileTags)
+            ..bae_import::test_imports::folder_import(&import_id2, file_tags_dir, bae_import::test_imports::DraftSource::FileTags)
         })
         .await
         .unwrap();
     let mut rx2 = f.handle.subscribe_import(import_id2);
-    let (_, file_tags_album_id) = support::wait_for_import_complete(&mut rx2).await;
+    let (_, file_tags_album_id) = bae_import::test_imports::wait_for_import_complete(&mut rx2).await;
 
     assert_ne!(
         identified_album_id, file_tags_album_id,
@@ -331,7 +331,7 @@ async fn file_metadata_import_always_creates_a_fresh_album() {
 /// the edits.
 #[tokio::test]
 async fn file_metadata_import_with_user_edit_overlay() {
-    support::tracing_init();
+    bae_util::test_logs::install();
 
     let f = ImportFixture::new().await;
     let album_dir = f.temp_path().join("album");
@@ -379,13 +379,13 @@ async fn file_metadata_import_with_user_edit_overlay() {
     f.handle
         .send_command(ImportCommand {
             user_edit: Some(edit),
-            ..support::folder_import(&import_id, album_dir, support::DraftSource::FileTags)
+            ..bae_import::test_imports::folder_import(&import_id, album_dir, bae_import::test_imports::DraftSource::FileTags)
         })
         .await
         .unwrap();
 
     let mut progress_rx = f.handle.subscribe_import(import_id);
-    let (release_id, album_id) = support::wait_for_import_complete(&mut progress_rx).await;
+    let (release_id, album_id) = bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
 
     let release = f.db.find_release_by_id(&release_id).await.unwrap().unwrap();
     assert_eq!(release.pressing.year, Some(2010));
@@ -424,7 +424,7 @@ async fn file_metadata_import_with_user_edit_overlay() {
 /// the user fills it, and the completed preparation is what import commits.
 #[tokio::test]
 async fn file_metadata_import_with_no_tags_seeds_title_from_folder_name() {
-    support::tracing_init();
+    bae_util::test_logs::install();
 
     let f = ImportFixture::new().await;
     let album_dir = f.temp_path().join("Mystery Rip");
@@ -456,7 +456,7 @@ async fn file_metadata_import_with_no_tags_seeds_title_from_folder_name() {
     let import_id = f.handle.start_import(&candidate_key).await.unwrap().expect_queued();
 
     let mut progress_rx = f.handle.subscribe_import(import_id);
-    let (release_id, album_id) = support::wait_for_import_complete(&mut progress_rx).await;
+    let (release_id, album_id) = bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
 
     let album = f.db.find_album_by_id(&album_id).await.unwrap().unwrap();
     assert_eq!(album.title, "Mystery Rip", "untagged rip takes the folder name as its album title",);

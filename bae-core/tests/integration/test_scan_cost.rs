@@ -18,7 +18,6 @@
 use bae_core::library::AppServices;
 use bae_db::LibraryPageWindow;
 use bae_import::{ImportListView, ScanEvent};
-use bae_test_support as support;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
@@ -105,10 +104,11 @@ async fn measure(shape: Shape, count: usize, list_open: bool) {
     write_folders(&root, shape, count);
     let library = temp.path().join("library");
     std::fs::create_dir_all(&library).unwrap();
-    let (manager, database, catalogs, closing) = support::open_test_library(&library).await;
+    let (manager, database, catalogs, closing) =
+        bae_core::test_libraries::open_test_library(&library).await;
     manager.set_identify_automatically(false).await.unwrap();
     let services =
-        bae_test_support::start_test_services(manager, database, catalogs, closing).await;
+        bae_core::test_libraries::start_test_services(manager, database, catalogs, closing).await;
     let mut events = services.every_scan_event_for_test();
 
     let list = match list_open {

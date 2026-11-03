@@ -11,7 +11,6 @@
 //! open at once to stay within a constant and none of them to remain open once
 //! the import is done.
 
-use bae_test_support as support;
 use bae_util::open_files_peak::OpenFilesPeak;
 
 use crate::own_process::in_own_process;
@@ -89,14 +88,17 @@ fn write_box_set(album_dir: &Path) {
 fn a_box_set_import_holds_a_bounded_number_of_files_open() {
     in_own_process(
         "test_import_open_files::a_box_set_import_holds_a_bounded_number_of_files_open",
-        || support::multi_thread_runtime().block_on(import_a_box_set_under_a_lowered_limit()),
+        || {
+            bae_core::test_libraries::multi_thread_runtime()
+                .block_on(import_a_box_set_under_a_lowered_limit())
+        },
     );
 }
 
 async fn import_a_box_set_under_a_lowered_limit() {
     let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
     let ((library_manager, database, catalogs, closing), album_dir, _temp) =
-        support::setup_test_library_with_album_dir(fakes.providers()).await;
+        bae_core::test_libraries::setup_test_library_with_album_dir(fakes.providers()).await;
     write_box_set(&album_dir);
 
     let release = bae_catalogs::discogs::DiscogsRelease {
@@ -118,7 +120,7 @@ async fn import_a_box_set_under_a_lowered_limit() {
         )
     };
     let release_key = fakes.seed_discogs_test_release(release);
-    let import_handle = support::start_test_import(
+    let import_handle = bae_import::test_imports::start_test_import(
         tokio::runtime::Handle::current(),
         &database,
         &catalogs,
@@ -132,15 +134,15 @@ async fn import_a_box_set_under_a_lowered_limit() {
     let started = Instant::now();
     let import_id = uuid::Uuid::new_v4().to_string();
     import_handle
-        .send_command(support::folder_import(
+        .send_command(bae_import::test_imports::folder_import(
             &import_id,
             album_dir.clone(),
-            support::discogs_release(release_key),
+            bae_import::test_imports::discogs_release(release_key),
         ))
         .await
         .expect("import command is accepted");
     let mut progress_rx = import_handle.subscribe_import(import_id);
-    let result = support::try_wait_for_import_complete(&mut progress_rx).await;
+    let result = bae_import::test_imports::try_wait_for_import_complete(&mut progress_rx).await;
     let peak_sources = sampler.finish();
     eprintln!(
         "{} tracks imported in {:.1?} with at most {peak_sources} source files open at once",

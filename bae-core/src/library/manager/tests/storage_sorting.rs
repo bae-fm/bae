@@ -205,7 +205,6 @@ async fn storage_page_sort_by_date_added() {
 
 /// The release ids of the Storage Manager list under `filter`, sorted by
 /// storage in `direction`.
-#[cfg(feature = "test-utils")]
 async fn by_storage(
     manager: &LibraryManager,
     filter: crate::library::views::StorageFilter,
@@ -227,7 +226,6 @@ async fn by_storage(
 /// or downloading to be pinned, then the local, the pinned and the
 /// cloud-only ones, whatever their titles; descending reverses it, and each
 /// filter keeps the order among the releases it shows.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn storage_page_sort_by_storage_state() {
     let (manager, temp_dir) = setup_test_manager().await;
@@ -304,7 +302,6 @@ use crate::library::views::StorageFilter;
 /// downloading, in the write that changes the queue: a failure, a cancel, a
 /// finish and the queue emptied as the library opens each return it to its
 /// resting place, and a retry or a refreshed listing row keep it pinning.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn a_release_sorts_as_pinning_while_the_download_queue_holds_it() {
     let (manager, temp_dir) = setup_test_manager().await;
@@ -359,7 +356,6 @@ async fn a_release_sorts_as_pinning_while_the_download_queue_holds_it() {
 
 /// The queues the Storage Manager's list value carries, as one read of it
 /// finds them.
-#[cfg(feature = "test-utils")]
 async fn listed_queues(manager: &LibraryManager) -> crate::library::StorageQueues {
     let mut browse = crate::library::views::LibraryViews::new(manager.database.clone()).subscribe_storage_browse(crate::library::views::StorageBrowseRequest {
         sort: crate::library::views::StorageSortCriterion {
@@ -377,7 +373,6 @@ async fn listed_queues(manager: &LibraryManager) -> crate::library::StorageQueue
 /// The list's value carries each transfer queue while it holds work waiting
 /// or under way, with whether it is paused and the release a serial queue
 /// runs; a queue holding only a failed entry holds none.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn the_storage_list_carries_the_queues_holding_work() {
     use crate::library::{ReleaseQueueRun, StorageQueues, UploadQueueRun};

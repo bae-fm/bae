@@ -40,7 +40,6 @@ bae-identify = { workspace = true }
 bae-import = { workspace = true, features = ["test-utils"] }
 # The readers and read errors the streaming tests drive.
 bae-track-audio = { workspace = true }
-bae-test-support = { workspace = true }
 # The catalog fakes and releases the server tests seed.
 bae-catalogs = { workspace = true, features = ["test-utils"] }
 bae-core = { workspace = true, features = ["test-utils"] }

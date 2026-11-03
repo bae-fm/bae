@@ -2,7 +2,7 @@
 /// caller names only the candidate.
 #[tokio::test]
 async fn an_import_goes_where_the_stored_choice_says_as_it_starts() {
-    support::tracing_init();
+    bae_util::test_logs::install();
     let f = ImportFixture::new().await;
     f.connect_cloud().await;
     let collection = f.temp_path().join("Collection");
@@ -86,7 +86,7 @@ async fn import_outcome(
 ) -> bae_import::ImportProgress {
     let import_id = f.handle.start_import(key).await.unwrap().expect_queued();
     let mut progress_rx = f.handle.subscribe_import(import_id);
-    match support::wait_for_import_end(&mut progress_rx).await {
+    match bae_import::test_imports::wait_for_import_end(&mut progress_rx).await {
         bae_import::ImportProgress::Failed { error, .. } => {
             panic!("the import of {key} failed: {error}")
         }
@@ -101,7 +101,7 @@ async fn import_outcome(
 /// library's other files.
 #[tokio::test]
 async fn a_local_import_s_queued_cover_is_not_its_release_uploading() {
-    support::tracing_init();
+    bae_util::test_logs::install();
     let f = ImportFixture::new().await;
     let collection = f.temp_path().join("Collection");
     let mut release_ids = Vec::new();
@@ -119,7 +119,7 @@ async fn a_local_import_s_queued_cover_is_not_its_release_uploading() {
             &album,
             None,
             ImportDestination::Local,
-            support::DraftSource::FileTags,
+            bae_import::test_imports::DraftSource::FileTags,
         )
         .await
         .expect("a local import commits with no storage connected");

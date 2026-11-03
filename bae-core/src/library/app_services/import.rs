@@ -259,7 +259,7 @@ impl AppServices {
 
     /// Every key's runtime as each write of its standing leaves it, in the
     /// order they land, from now on, for a test.
-    #[cfg(feature = "test-utils")]
+    #[cfg(any(test, feature = "test-utils"))]
     pub fn every_candidate_runtime_change_for_test(
         &self,
     ) -> tokio::sync::mpsc::UnboundedReceiver<bae_import::CandidateRuntimeChange> {
@@ -267,7 +267,7 @@ impl AppServices {
     }
 
     /// Every scan event from now on, none dropped, for a test.
-    #[cfg(feature = "test-utils")]
+    #[cfg(any(test, feature = "test-utils"))]
     pub fn every_scan_event_for_test(
         &self,
     ) -> tokio::sync::mpsc::UnboundedReceiver<bae_import::ScanEvent> {
@@ -305,7 +305,7 @@ impl AppServices {
 
     /// [`Self::subscribe_import_candidate`], with a handle that counts its
     /// live query's runs, for a test that measures which writes rerun it.
-    #[cfg(feature = "test-utils")]
+    #[cfg(any(test, feature = "test-utils"))]
     pub fn subscribe_import_candidate_with_runs_for_test(
         &self,
     ) -> (

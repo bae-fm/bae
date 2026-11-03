@@ -30,7 +30,7 @@ fn library_with_fixture(
     let dir = TempDir::new().unwrap();
     let app_dir = AppDir::under_home(dir.path()).unwrap();
     let installation = TestCoven::new();
-    let runtime = bae_test_support::multi_thread_runtime();
+    let runtime = bae_core::test_libraries::multi_thread_runtime();
     let id = runtime.block_on(async {
         let handle = create_library(
             installation.builder(app_dir.store_layout()),

@@ -638,7 +638,7 @@ async fn seek_with_dropped_capture_receiver_keeps_playing() {
     // Built here so the test owns the receiver it drops.
     let (capture_device, capture_stream_rx) = bae_playback::RealtimeCaptureAudioDevice::new();
     let mut capture_stream_rx = Some(capture_stream_rx);
-    let handle = support::start_playback_on(
+    let handle = bae_core::test_libraries::start_playback_on(
         &lib.library_manager,
         &lib.database,
         Box::new(capture_device),

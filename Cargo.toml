@@ -18,7 +18,6 @@ members = [
     "bae-playback",
     "bae-preferences",
     "bae-subsonic",
-    "bae-test-support",
     "bae-theme",
     "bae-track-audio",
     "bae-types",
@@ -88,7 +87,6 @@ bae-mirror = { path = "bae-mirror" }
 bae-playback = { path = "bae-playback" }
 bae-preferences = { path = "bae-preferences" }
 bae-subsonic = { path = "bae-subsonic" }
-bae-test-support = { path = "bae-test-support" }
 bae-track-audio = { path = "bae-track-audio" }
 bae-types = { path = "bae-types" }
 bae-util = { path = "bae-util" }

@@ -10,3 +10,5 @@ pub mod library_name;
 pub mod people;
 pub mod storage;
 pub mod sync;
+#[cfg(all(desktop, any(test, feature = "test-utils")))]
+pub mod test_libraries;

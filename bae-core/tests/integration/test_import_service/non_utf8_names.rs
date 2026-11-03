@@ -60,7 +60,7 @@ async fn import_scanned(f: &ImportFixture, album: &Path) -> String {
     f.handle.select_candidate_file_tags(key.clone()).await.unwrap();
     let import_id = f.handle.start_import(&key).await.unwrap().expect_queued();
     let mut progress_rx = f.handle.subscribe_import(import_id);
-    let (release_id, _) = support::try_wait_for_import_complete(&mut progress_rx)
+    let (release_id, _) = bae_import::test_imports::try_wait_for_import_complete(&mut progress_rx)
         .await
         .expect("the import completes");
     release_id
@@ -72,7 +72,7 @@ async fn import_scanned(f: &ImportFixture, album: &Path) -> String {
 #[cfg(target_os = "linux")]
 #[tokio::test]
 async fn a_track_whose_name_is_not_utf8_is_scanned_and_imported_under_its_escaped_name() {
-    support::tracing_init();
+    bae_util::test_logs::install();
     let f = ImportFixture::new().await;
     let collection = f.temp_path().join("Collection");
     let (album, track) = album_with_a_latin1_name(&collection);
@@ -111,7 +111,7 @@ async fn a_track_whose_name_is_not_utf8_is_scanned_and_imported_under_its_escape
 #[cfg(target_os = "linux")]
 #[tokio::test]
 async fn a_track_whose_name_is_not_utf8_exports_under_the_name_coven_writes() {
-    support::tracing_init();
+    bae_util::test_logs::install();
     let f = ImportFixture::new().await;
     let collection = f.temp_path().join("Collection");
     let (album, track) = album_with_a_latin1_name(&collection);
@@ -140,7 +140,7 @@ async fn a_track_whose_name_is_not_utf8_exports_under_the_name_coven_writes() {
 #[cfg(target_os = "linux")]
 #[tokio::test]
 async fn a_track_whose_name_is_not_utf8_uploads() {
-    support::tracing_init();
+    bae_util::test_logs::install();
     let f = ImportFixture::new().await;
     f.connect_cloud().await;
     let collection = f.temp_path().join("Collection");
@@ -153,7 +153,7 @@ async fn a_track_whose_name_is_not_utf8_uploads() {
     f.library_manager.set_import_to_cloud(true).await.unwrap();
     let import_id = f.handle.start_import(&key).await.unwrap().expect_queued();
     let mut progress_rx = f.handle.subscribe_import(import_id);
-    let outcome = support::wait_for_import_end(&mut progress_rx).await;
+    let outcome = bae_import::test_imports::wait_for_import_end(&mut progress_rx).await;
     let bae_import::ImportProgress::RemoteUploadQueued { id, .. } = outcome else {
         panic!("the cloud choice queues the release's upload: {outcome:?}");
     };
@@ -176,7 +176,7 @@ async fn a_track_whose_name_is_not_utf8_uploads() {
 #[cfg(target_os = "linux")]
 #[tokio::test]
 async fn two_tracks_showing_one_name_are_skipped_with_that_name() {
-    support::tracing_init();
+    bae_util::test_logs::install();
     let f = ImportFixture::new().await;
     let collection = f.temp_path().join("Collection");
     let album = collection.join("Album");

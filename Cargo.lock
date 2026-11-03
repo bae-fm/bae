@@ -769,7 +769,6 @@ dependencies = [
  "bae-import",
  "bae-mirror",
  "bae-preferences",
- "bae-test-support",
  "bae-types",
  "bae-util",
  "coven",
@@ -799,7 +798,6 @@ dependencies = [
  "bae-mirror",
  "bae-playback",
  "bae-preferences",
- "bae-test-support",
  "bae-track-audio",
  "bae-types",
  "bae-util",
@@ -833,7 +831,6 @@ dependencies = [
  "bae-playback",
  "bae-preferences",
  "bae-subsonic",
- "bae-test-support",
  "bae-util",
  "base64 0.22.1",
  "cbc",
@@ -896,7 +893,6 @@ dependencies = [
  "bae-import",
  "bae-playback",
  "bae-preferences",
- "bae-test-support",
  "bae-track-audio",
  "bae-types",
  "bae-util",
@@ -963,7 +959,6 @@ dependencies = [
  "bae-mcp",
  "bae-preferences",
  "bae-subsonic",
- "bae-test-support",
  "bae-util",
  "thiserror 2.0.18",
  "tokio",
@@ -1129,7 +1124,6 @@ dependencies = [
  "bae-identify",
  "bae-import",
  "bae-preferences",
- "bae-test-support",
  "bae-track-audio",
  "bae-types",
  "bae-util",
@@ -1143,28 +1137,6 @@ dependencies = [
  "tokio-stream",
  "tower",
  "tracing",
-]
-
-[[package]]
-name = "bae-test-support"
-version = "0.0.0-dev"
-dependencies = [
- "bae-app-dir",
- "bae-catalogs",
- "bae-core",
- "bae-db",
- "bae-diagnostics",
- "bae-identify",
- "bae-import",
- "bae-playback",
- "bae-preferences",
- "bae-util",
- "coven",
- "lofty",
- "tempfile",
- "tokio",
- "tracing-subscriber",
- "uuid",
 ]
 
 [[package]]

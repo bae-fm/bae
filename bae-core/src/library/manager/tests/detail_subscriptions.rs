@@ -131,7 +131,6 @@ async fn album_detail_moves_between_albums_on_one_subscription() {
 /// A release's storage choices follow the cloud home within its one read:
 /// a local release offers none until storage is set up, then offers its
 /// upload, with nothing asked of the subscription in between.
-#[cfg(feature = "test-utils")]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn release_detail_offers_storage_once_a_cloud_home_is_set_up() {
     let (manager, temp_dir) = setup_test_manager().await;

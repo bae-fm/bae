@@ -1,10 +1,10 @@
 //! Libraries whose storage calls reach an isolated in-memory provider.
 
-use bae_core::followed::value_matching;
+use crate::followed::value_matching;
 use std::sync::Arc;
 
+use crate::library::{CancellationToken, LibraryManager};
 use bae_catalogs::providers::Providers;
-use bae_core::library::{CancellationToken, LibraryManager};
 use coven::{MemoryStorage, Storage};
 
 /// Create a store with its own keychain and an injected provider, before setup.
@@ -26,7 +26,7 @@ pub async fn storage_library(
     .await
     .unwrap();
     let (manager, database, catalogs, closing) =
-        crate::test_library_from_handle(handle, directory, providers).await;
+        super::test_library_from_handle(handle, directory, providers).await;
     manager.start().unwrap();
     ((manager, database, catalogs, closing), storage)
 }
@@ -39,7 +39,7 @@ pub async fn connect_storage(manager: &LibraryManager, storage: &MemoryStorage) 
     };
     manager
         .save_s3_config(
-            bae_core::sync::S3ConfigData {
+            crate::sync::S3ConfigData {
                 bucket,
                 region,
                 endpoint: endpoint.map(|url| url.to_string()),
@@ -86,8 +86,8 @@ pub async fn remove_uploaded_file(
 pub async fn release_storage(
     database: &bae_db::Database,
     release_id: &str,
-) -> (bae_core::album_detail::ReleaseStorageState, bool) {
-    let summary = bae_core::library::views::LibraryViews::new(database.clone())
+) -> (crate::album_detail::ReleaseStorageState, bool) {
+    let summary = crate::library::views::LibraryViews::new(database.clone())
         .find_release_detail(release_id)
         .await
         .unwrap()

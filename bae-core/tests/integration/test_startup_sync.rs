@@ -53,7 +53,7 @@ fn local_startup_returns_while_storage_is_pending_and_reports_its_failure() {
         sleeping: tokio::sync::Notify::new(),
     });
     let storage = Arc::new(coven::MemoryStorage::builder().clock(clock.clone()).build().unwrap());
-    let setup = bae_test_support::multi_thread_runtime();
+    let setup = bae_core::test_libraries::multi_thread_runtime();
     let library_id = setup.block_on(async {
         let handle = bae_core::library::create_library(
             installation.builder(layout.clone()).storage_connector(storage.clone()),

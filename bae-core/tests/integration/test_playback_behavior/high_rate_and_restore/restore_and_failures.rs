@@ -1,11 +1,11 @@
 async fn restore_test_library() -> RestoreTestLibrary {
     let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
-    let ((library_manager, database, catalogs, closing), album_dir, temp_dir) = support::setup_test_library_with_album_dir(fakes.providers()).await;
+    let ((library_manager, database, catalogs, closing), album_dir, temp_dir) = bae_core::test_libraries::setup_test_library_with_album_dir(fakes.providers()).await;
     let runtime_handle = tokio::runtime::Handle::current();
     let _ = generate_test_flac_files(&album_dir);
     let release_id_key =
         fakes.seed_discogs_test_release(create_test_album());
-    support::import_folder_and_wait(&database, &catalogs, &closing, album_dir, release_id_key).await;
+    bae_import::test_imports::import_folder_and_wait(&database, &catalogs, &closing, album_dir, release_id_key).await;
     let releases = library_manager
         .get_releases_for_album(&bae_core::library::views::LibraryViews::new(database.clone()).get_albums(&[]).await.unwrap()[0].id)
         .await
@@ -30,7 +30,7 @@ async fn restore_test_library() -> RestoreTestLibrary {
 /// file).
 async fn empty_test_library(
 ) -> (LibraryManager, bae_db::Database, tokio::runtime::Handle, TempDir) {
-    tracing_init();
+    bae_util::test_logs::install();
     let temp_dir = TempDir::new().unwrap();
     let (library_manager, database, ..) = open_test_library(temp_dir.path()).await;
     (library_manager, database, tokio::runtime::Handle::current(), temp_dir)
@@ -52,10 +52,10 @@ async fn import_second_release(lib: &RestoreTestLibrary) -> (String, Vec<String>
     import_handle
         .send_command(ImportCommand {
             candidate_key: bae_import::CandidateKey::from_bytes(b"second".to_vec()),
-            ..support::folder_import(
+            ..bae_import::test_imports::folder_import(
                 &import_id,
                 source.path().to_path_buf(),
-                support::discogs_release(release_key),
+                bae_import::test_imports::discogs_release(release_key),
             )
         })
         .await
@@ -210,15 +210,15 @@ impl CloudOnlyPlaybackFixture {
     /// import originals so resolution lands on the cloud reader. The mock cloud
     /// is returned so the test can arm a read failure before playing.
     async fn new() -> Result<Self, Box<dyn std::error::Error>> {
-        tracing_init();
+        bae_util::test_logs::install();
         let temp_dir = TempDir::new()?;
         let album_dir = temp_dir.path().join("album");
         std::fs::create_dir_all(&album_dir)?;
         let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
         let ((library_manager, database, catalogs, closing), cloud) =
-            support::storage_library(temp_dir.path(), fakes.providers())
+            bae_core::test_libraries::storage_library(temp_dir.path(), fakes.providers())
                 .await;
-        support::connect_storage(&library_manager, &cloud).await;
+        bae_core::test_libraries::connect_storage(&library_manager, &cloud).await;
 
         let runtime_handle = tokio::runtime::Handle::current();
         let discogs_release = create_test_album();
@@ -232,10 +232,10 @@ impl CloudOnlyPlaybackFixture {
         import_handle
             .send_command(ImportCommand {
                 destination: ImportDestination::Remote { pin: false },
-                ..support::folder_import(
+                ..bae_import::test_imports::folder_import(
                     &import_id,
                     album_dir.clone(),
-                    support::discogs_release(release_id_key),
+                    bae_import::test_imports::discogs_release(release_id_key),
                 )
             })
             .await

@@ -122,12 +122,15 @@ encoding_rs = { workspace = true }
 
 [features]
 default = []
-# The fixture audio (tests/fixtures), the test seams of the import service
-# and its parts, and the values a test reads back, for the tests of every
-# crate that builds on this one; coven's and bae-db's give those seams the
-# live queries' runs and test databases they read. Dev/test-only: a
-# production build never enables it.
-test-utils = ["coven/test-utils", "bae-db/test-utils"]
+# The fixture audio (tests/fixtures) and copies of it tagged as a test says,
+# an import service run over a test store's folder, the test seams of the
+# import service and its parts, and the values a test reads back, for the
+# tests of every crate that builds on this one; coven's and bae-db's give
+# those seams the live queries' runs and test databases they read,
+# bae-catalogs' and bae-util's the catalog fakes, the stand-in image host and
+# the test transport the runs ask. Dev/test-only: a production build never
+# enables it.
+test-utils = ["coven/test-utils", "bae-db/test-utils", "bae-catalogs/test-utils", "bae-util/test-utils"]
 
 [lints]
 workspace = true

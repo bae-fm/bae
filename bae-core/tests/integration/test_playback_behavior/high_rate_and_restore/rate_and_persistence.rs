@@ -12,12 +12,12 @@ impl HighSampleRateTestFixture {
     async fn new() -> Result<Self, Box<dyn std::error::Error>> {
         let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
         let ((library_manager, database, catalogs, closing), album_dir, temp_dir) =
-            support::setup_test_library_with_album_dir(fakes.providers()).await;
+            bae_core::test_libraries::setup_test_library_with_album_dir(fakes.providers()).await;
         let runtime_handle = tokio::runtime::Handle::current();
 
         let fixture_path = bae_import::test_fixtures::flac_dir().join("96khz_test.flac");
         let test_path = album_dir.join("01 96kHz Track.flac");
-        std::fs::write(&test_path, bae_test_support::read_fixture(&fixture_path))
+        std::fs::write(&test_path, bae_import::test_fixtures::read_fixture(&fixture_path))
             .expect("copy the 96 kHz FLAC fixture");
 
         // Create release with one track
@@ -33,7 +33,7 @@ impl HighSampleRateTestFixture {
         let release_id_key =
             fakes.seed_discogs_test_release(discogs_release);
 
-        support::import_folder_and_wait(&database, &catalogs, &closing, album_dir, release_id_key).await;
+        bae_import::test_imports::import_folder_and_wait(&database, &catalogs, &closing, album_dir, release_id_key).await;
 
         let albums = bae_core::library::views::LibraryViews::new(database.clone()).get_albums(&[]).await?;
         let releases = library_manager.get_releases_for_album(&albums[0].id).await?;
@@ -326,11 +326,11 @@ async fn test_cue_flac_seek_respects_track_end_boundary() {
 /// the library's files.
 async fn imported_library_without_playback() -> (LibraryManager, bae_db::Database, TempDir) {
     let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
-    let ((library_manager, database, catalogs, closing), album_dir, temp_dir) = support::setup_test_library_with_album_dir(fakes.providers()).await;
+    let ((library_manager, database, catalogs, closing), album_dir, temp_dir) = bae_core::test_libraries::setup_test_library_with_album_dir(fakes.providers()).await;
     let _ = generate_test_flac_files(&album_dir);
     let release_id_key =
         fakes.seed_discogs_test_release(create_test_album());
-    support::import_folder_and_wait(&database, &catalogs, &closing, album_dir, release_id_key).await;
+    bae_import::test_imports::import_folder_and_wait(&database, &catalogs, &closing, album_dir, release_id_key).await;
     (library_manager, database, temp_dir)
 }
 
@@ -348,7 +348,7 @@ async fn imported_library_without_playback() -> (LibraryManager, bae_db::Databas
 /// snapshot instead of the test's new service.
 #[tokio::test]
 async fn test_restore_emits_seeked_at_saved_position() {
-    tracing_init();
+    bae_util::test_logs::install();
 
     // Build a library + import tracks, but do NOT start a playback service.
     let (library_manager, database, _temp_dir) = imported_library_without_playback().await;
@@ -386,7 +386,7 @@ async fn test_restore_emits_seeked_at_saved_position() {
 /// resumes a live session but never re-cues a finished one.
 #[tokio::test]
 async fn test_play_persists_then_stop_clears_playback_state() {
-    tracing_init();
+    bae_util::test_logs::install();
 
     let (library_manager, database, _temp_dir) = imported_library_without_playback().await;
     let runtime_handle = tokio::runtime::Handle::current();

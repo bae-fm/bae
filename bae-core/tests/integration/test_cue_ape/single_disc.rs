@@ -3,12 +3,11 @@ use bae_import::{ImportCommand, ImportDestination};
 use bae_core::library::LibraryManager;
 use bae_playback::{PlaybackProgress, PlaybackState};
 use bae_types::track_time::{TrackTime};
-use bae_test_support as support;
 use bae_util::content_type::ContentType;
 use std::path::Path;
 use std::time::Duration;
-use support::start_test_import;
-use support::{tracing_init, wait_for_import_complete};
+use bae_import::test_imports::start_test_import;
+use bae_import::test_imports::wait_for_import_complete;
 use bae_audio::test_samples::{assert_captured_matches_reference, samples_as_f32};
 use tempfile::TempDir;
 use tracing::info;
@@ -56,7 +55,7 @@ const FULL_FILE_DURATION_MS: u64 = 90000;
 /// manager, the imported release id, and the temp root that owns both the
 /// album folder and the database.
 async fn import_cue_ape_fixture() -> (LibraryManager, String, TempDir) {
-    tracing_init();
+    bae_util::test_logs::install();
     let temp_root = TempDir::new().expect("temp root");
     let album_dir = temp_root.path().join("album");
     let db_dir = temp_root.path().join("db");
@@ -65,11 +64,11 @@ async fn import_cue_ape_fixture() -> (LibraryManager, String, TempDir) {
     copy_cue_ape_fixture(&album_dir);
 
     let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
-    let (library_manager, database, catalogs, closing) = support::open_test_library_with(&db_dir, fakes.providers()).await;
+    let (library_manager, database, catalogs, closing) = bae_core::test_libraries::open_test_library_with(&db_dir, fakes.providers()).await;
     let release_id_key =
         fakes.seed_discogs_test_release(create_test_discogs_release());
     let release_id =
-        support::import_folder_and_wait(&database, &catalogs, &closing, album_dir, release_id_key).await;
+        bae_import::test_imports::import_folder_and_wait(&database, &catalogs, &closing, album_dir, release_id_key).await;
     (library_manager, release_id, temp_root)
 }
 
@@ -132,7 +131,7 @@ async fn test_cue_ape_records_correct_durations() {
 async fn test_cue_ape_track2_samples_match_xld_reference() {
     use bae_audio::decode_audio;
 
-    tracing_init();
+    bae_util::test_logs::install();
 
     let fixture_dir = bae_import::test_fixtures::cue_ape_dir();
 
@@ -260,7 +259,7 @@ impl CueApeTestFixture {
     /// The 3-track CUE/APE album, imported and playing through a full-speed
     /// capture sink.
     async fn with_capture() -> Result<Self, Box<dyn std::error::Error>> {
-        let ((library_manager, database, ..), imported) = support::imported_release_setup(
+        let ((library_manager, database, ..), imported) = bae_core::test_libraries::imported_release_setup(
             create_test_discogs_release(),
             "test",
             uuid::Uuid::new_v4().to_string(),
@@ -269,7 +268,7 @@ impl CueApeTestFixture {
         .await?;
         assert_eq!(imported.track_ids.len(), 3, "Should have 3 tracks from CUE/APE");
         let (playback_handle, capture_stream_rx) =
-            support::start_capture_playback(&library_manager, &database, bae_playback::test_capture::TestAudioDevice::Capture)
+            bae_core::test_libraries::start_capture_playback(&library_manager, &database, bae_playback::test_capture::TestAudioDevice::Capture)
                 .await;
         let progress_rx = playback_handle.subscribe_progress();
         Ok(Self {

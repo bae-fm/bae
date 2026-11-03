@@ -102,11 +102,11 @@ async fn a_scan_leaves_the_open_candidate_pane_alone() {
     let library = temp.path().join("library");
     std::fs::create_dir_all(&library).unwrap();
     let (manager, database, catalogs, closing) =
-        bae_test_support::open_test_library(&library).await;
+        bae_core::test_libraries::open_test_library(&library).await;
     let tables = bae_import::tables::ImportTables::new(database.clone());
     manager.set_identify_automatically(false).await.unwrap();
     let services =
-        bae_test_support::start_test_services(manager, database, catalogs, closing).await;
+        bae_core::test_libraries::start_test_services(manager, database, catalogs, closing).await;
 
     let root = temp.path().join("watched");
     tables.add_watched_import_folder(&root).await.unwrap();

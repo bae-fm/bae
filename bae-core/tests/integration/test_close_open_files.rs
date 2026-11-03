@@ -4,7 +4,6 @@
 //! behind can fail removing the library there, and elsewhere passes unseen;
 //! listing this process's open files catches it on every platform.
 
-use bae_test_support as support;
 use std::time::Duration;
 
 /// Copy the three fixture tracks into `dir`.
@@ -24,14 +23,15 @@ async fn closing_a_playing_library_leaves_none_of_its_files_open() {
         "Close Test Album",
         &[("Test Track 1", "0:10"), ("Test Track 2", "0:10"), ("Test Track 3", "0:10")],
     );
-    let ((manager, database, catalogs, closing), imported) = support::imported_release_setup(
-        release,
-        "test",
-        uuid::Uuid::new_v4().to_string(),
-        write_tracks,
-    )
-    .await
-    .expect("import the release");
+    let ((manager, database, catalogs, closing), imported) =
+        bae_core::test_libraries::imported_release_setup(
+            release,
+            "test",
+            uuid::Uuid::new_v4().to_string(),
+            write_tracks,
+        )
+        .await
+        .expect("import the release");
     let (device, _capture) = bae_playback::RealtimeCaptureAudioDevice::new();
     let clock: coven::ClockRef = std::sync::Arc::new(coven::SystemClock);
     let services = bae_core::app::start_library_services(

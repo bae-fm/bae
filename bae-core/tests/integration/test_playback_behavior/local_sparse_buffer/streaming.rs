@@ -618,7 +618,7 @@ async fn auto_advance_plays_pregap_over_sparse_buffer() {
 /// and stopping closes it: nothing under the album stays open.
 #[tokio::test]
 async fn stopping_playback_closes_the_files_it_streamed() {
-    tracing_init();
+    bae_util::test_logs::install();
     let import_ids = SequentialIds::new();
     let ((library_manager, database, ..), imported) = imported_release_setup(
         create_test_album(),

@@ -6,7 +6,6 @@
 
 /// Follow the pending list as the running library does, and wait for the
 /// first list `matches` accepts.
-#[cfg(feature = "test-utils")]
 async fn pending_list_until(
     values: &mut coven::LiveQuery<crate::library::SyncStatusSnapshot>,
     matches: impl Fn(&[PendingItem]) -> bool,
@@ -15,14 +14,12 @@ async fn pending_list_until(
 }
 
 /// The text of the error behind `item`, with every cause below it.
-#[cfg(feature = "test-utils")]
 fn cause_text(item: &PendingItem) -> Option<String> {
     item.wait.cause.clone()
 }
 
 /// A file this device is uploading is named on the pending list by its file
 /// name and its album, not by coven's ids.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn a_waiting_upload_is_named_by_its_file_and_album() {
     let (manager, temp, _release, _file_id) = queued_upload_fixture("named").await;
@@ -48,7 +45,6 @@ async fn a_waiting_upload_is_named_by_its_file_and_album() {
 /// that kept its size and modification time: the upload checks what it reads
 /// against the hashes the import's read recorded, so the pending list names
 /// the original as changed and no file switches to the cloud.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn an_original_changed_since_its_import_fails_the_move() {
     let (manager, temp, release, _file_id) = queued_upload_fixture("changed").await;
@@ -77,7 +73,6 @@ async fn an_original_changed_since_its_import_fails_the_move() {
 
 /// A retry that fails for the same reason keeps its record as it was, and the
 /// list still shows the error the retry met, not the first attempt's.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn a_retry_that_fails_again_shows_its_own_error() {
     let (manager, _temp, _release, _file_id) = queued_upload_fixture("retried").await;
@@ -113,7 +108,6 @@ async fn a_retry_that_fails_again_shows_its_own_error() {
 /// The pending list keeps the order its records arose in, whatever coven's
 /// ids for them: a move whose original went missing first stays first after
 /// a later one's does, though the later record sorts first.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn the_pending_list_keeps_the_order_its_records_arose_in() {
     let (manager, temp, first, _file_id) = queued_upload_fixture("first").await;
@@ -198,7 +192,6 @@ async fn the_pending_list_keeps_the_order_its_records_arose_in() {
 /// A pin the download queue couldn't finish waits on the pending list,
 /// offering Retry, which pins the release again: the pin lands and the
 /// record goes.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn a_failed_pins_retry_pins_the_release_again() {
     let (manager, temp_dir) = setup_test_manager().await;
@@ -248,7 +241,6 @@ async fn a_failed_pins_retry_pins_the_release_again() {
 }
 
 /// Follow the inspector until it shows a value `accept` takes.
-#[cfg(feature = "test-utils")]
 async fn inspector_until(
     inspector: &crate::library::LiveDetail<
         crate::library::storage_inspector::StorageInspector,
@@ -270,7 +262,6 @@ async fn inspector_until(
 /// The first rows the inspector's read gives for the release `release_id`
 /// that `accept` takes: its files with each one's pin as coven's tables hold
 /// it, whether or not the inspector shows it.
-#[cfg(feature = "test-utils")]
 async fn inspector_rows_until(
     manager: &LibraryManager,
     release_id: &str,
@@ -281,7 +272,6 @@ async fn inspector_rows_until(
 }
 
 /// The first rows `rows` gives from now that `accept` takes.
-#[cfg(feature = "test-utils")]
 async fn rows_until(
     rows: &mut coven::ReconfigurableLiveQuery<
         Option<String>,
@@ -304,7 +294,6 @@ async fn rows_until(
 /// The Storage Manager inspector shows each of its release's files beside
 /// its upload while one waits, and the error a failed upload met while this
 /// process holds it.
-#[cfg(feature = "test-utils")]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn the_inspector_shows_each_files_upload_and_its_error() {
     let (manager, temp, release, file_id) = queued_upload_fixture("inspected").await;
@@ -340,7 +329,6 @@ async fn the_inspector_shows_each_files_upload_and_its_error() {
 
 /// An upload storage refused waits on its own record, and the inspector
 /// shows the error coven kept beside it.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn the_inspector_shows_the_error_an_upload_met() {
     let (manager, _temp, release, file_id) = queued_upload_fixture("refused").await;
@@ -375,7 +363,6 @@ async fn the_inspector_shows_the_error_an_upload_met() {
 /// release waits in the download queue the inspector shows each file's pin
 /// and counts them; once the download has kept every file it leaves the
 /// queue, and the inspector shows no pin but each file kept.
-#[cfg(feature = "test-utils")]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn the_inspector_shows_each_files_pin_while_the_release_pins() {
     use crate::album_detail::FilePin;
@@ -422,7 +409,6 @@ async fn the_inspector_shows_each_files_pin_while_the_release_pins() {
 /// file kept, never out of it with a file not yet kept. The download worker
 /// keeps the files and then takes the release out of the queue, one write
 /// after the other, so each pin passes through both.
-#[cfg(feature = "test-utils")]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn the_inspector_never_reads_a_pin_out_of_the_queue_before_its_files_are_kept() {
     use crate::album_detail::FilePin;

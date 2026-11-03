@@ -89,7 +89,6 @@ async fn storage_page_sorts_album_title_descending() {
 /// the Storage Manager row context menu renders — pinned offers unpin +
 /// audio detachment, cloud-only offers pin + audio detachment, local offers upload.
 /// With a cloud home present every remote/local transition is open.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn storage_page_rows_carry_state_appropriate_actions() {
     use bae_types::release_storage::ReleaseStorageAction::{DetachAudio, Pin, Unpin, Upload};
@@ -135,7 +134,6 @@ async fn storage_page_rows_carry_state_appropriate_actions() {
 
 /// Each release of an album carries its own pin state, read from that
 /// release's own listing row.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn album_detail_releases_carry_their_own_pin_state() {
     let (manager, temp_dir) = setup_test_manager().await;
@@ -262,7 +260,6 @@ async fn storage_count_matches_filtered_page_total() {
 /// `filter` — the same universe `get_storage_page` pages over — independent of
 /// how many pages have loaded. For each filter, the aggregate must equal the
 /// sum of `total_size` over that filter's full (unpaginated) storage page.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn storage_total_size_matches_page_total_size_sum() {
     let (manager, temp_dir) = setup_test_manager().await;
@@ -324,7 +321,6 @@ async fn storage_total_size_matches_page_total_size_sum() {
 }
 
 /// Audio stays pinned while the cover remains in its separate evictable cache.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn unpin_release_releases_audio_and_keeps_cover_evictable() {
     let (manager, temp_dir) = setup_test_manager().await;
@@ -366,7 +362,6 @@ async fn unpin_release_releases_audio_and_keeps_cover_evictable() {
 }
 
 /// Pin progress counts only the release's files; cover art keeps its own budget.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn pin_release_counts_audio_and_keeps_cover_evictable() {
     let (manager, temp_dir) = setup_test_manager().await;
@@ -419,7 +414,6 @@ async fn pin_release_counts_audio_and_keeps_cover_evictable() {
 
 /// A pin reaches the storage view as it lands, from coven's pin-state watch:
 /// no sync cycle runs behind this connection and no transfer reports it.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn a_pin_reaches_the_storage_view_without_a_sync_cycle() {
     let (manager, temp_dir) = setup_test_manager().await;
@@ -471,7 +465,6 @@ async fn a_pin_reaches_the_storage_view_without_a_sync_cycle() {
 
 /// A pin the provider refuses — bad credentials, a missing bucket — is about
 /// the cloud setup the person fixes, not an internal fault.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn a_pin_the_provider_refuses_is_a_cloud_setup_failure() {
     let (manager, temp_dir) = setup_test_manager().await;
@@ -510,7 +503,6 @@ async fn a_pin_the_provider_refuses_is_a_cloud_setup_failure() {
 /// A pin that cannot reach the cloud is a network failure the person retries
 /// once they are back online, not an internal fault: coven's typed reason
 /// reaches the category the UI renders.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn a_pin_the_cloud_cannot_serve_is_a_network_failure() {
     let (manager, temp_dir) = setup_test_manager().await;
@@ -553,7 +545,6 @@ async fn making_a_release_remote_without_storage_requires_configuration() {
     assert_eq!(error.category(), bae_diagnostics::UiErrorCategory::Config, "{error}");
 }
 
-#[cfg(feature = "test-utils")]
 async fn next_storage_value(
     values: &crate::library::LiveStorageBrowse,
 ) -> crate::library::StorageBrowseSnapshot {
@@ -566,7 +557,6 @@ async fn next_storage_value(
 /// The Storage Manager reads through one subscription: moving its windows,
 /// its sort, or its filter delivers the new view on the same subscription,
 /// with the filtered set's count and total size beside every value.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn the_storage_view_moves_one_subscription() {
     let (manager, _temp_dir) = setup_test_manager().await;
@@ -678,7 +668,6 @@ async fn check_upload_offered(
 /// The Storage Manager row of a release with files waiting to upload says
 /// how many wait, offers only cancelling, and reads as settled once they
 /// have uploaded.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn a_storage_row_reads_its_queued_upload_from_the_queue() {
     let (manager, temp_dir) = setup_test_manager().await;
@@ -739,7 +728,6 @@ async fn a_storage_row_reads_its_queued_upload_from_the_queue() {
 
 /// A file being sent counts as uploading in its release's row while its
 /// upload is in flight.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn a_storage_row_counts_the_file_being_sent() {
     let (manager, temp_dir) = setup_test_manager().await;
@@ -790,7 +778,6 @@ async fn a_storage_row_counts_the_file_being_sent() {
 
 /// The sync activity counts the file being sent as its send starts, while
 /// nothing joins or leaves the queue, and drops it as the send ends.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn the_sync_activity_follows_a_send_as_it_starts_and_ends() {
     let (manager, temp_dir) = setup_test_manager().await;
@@ -827,7 +814,6 @@ async fn the_sync_activity_follows_a_send_as_it_starts_and_ends() {
 
 /// Whether uploads are paused reads from coven's pause, with nothing queued
 /// too, and follows each change.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn the_upload_pause_follows_each_change_with_an_empty_queue() {
     let (manager, _temp_dir) = setup_test_manager().await;

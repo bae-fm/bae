@@ -6,13 +6,11 @@
 // `include!`d into `manager::tests`.
 
 /// One release the harness wrote, and where its files stand.
-#[cfg(feature = "test-utils")]
 struct HarnessRelease {
     id: String,
     stage: HarnessStage,
 }
 
-#[cfg(feature = "test-utils")]
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum HarnessStage {
     Local,
@@ -23,7 +21,6 @@ enum HarnessStage {
 /// Each release whose listed pinned or file count differs from the one probed
 /// from its files, or that has no listing row: none when the triggers kept
 /// up.
-#[cfg(feature = "test-utils")]
 async fn listing_disagreements(manager: &LibraryManager) -> Vec<String> {
     manager
         .database
@@ -47,7 +44,6 @@ async fn listing_disagreements(manager: &LibraryManager) -> Vec<String> {
 
 /// The releases whose every file `coven_pins` lists, probed file by
 /// file.
-#[cfg(feature = "test-utils")]
 async fn probed_pinned_releases(manager: &LibraryManager) -> std::collections::BTreeSet<String> {
     manager
         .database
@@ -65,7 +61,6 @@ async fn probed_pinned_releases(manager: &LibraryManager) -> std::collections::B
 }
 
 /// The pinned marker each release shows in the Storage Manager list.
-#[cfg(feature = "test-utils")]
 async fn listed_pinned_releases(manager: &LibraryManager) -> std::collections::BTreeSet<String> {
     crate::library::views::LibraryViews::new(manager.database.clone())
         .get_db_storage_page(
@@ -88,7 +83,6 @@ async fn listed_pinned_releases(manager: &LibraryManager) -> std::collections::B
 /// Random writes against the probe: after each, every release's listed pinned
 /// and file counts are the probed ones, and so are the list's pinned markers
 /// read from them.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn the_listed_pinned_count_follows_every_pin_and_file_write() {
     use rand::{Rng, SeedableRng};

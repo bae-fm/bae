@@ -24,7 +24,7 @@ fn discogs_release_rich(title: &str, master_id: &str, tracks: &[&str]) -> Discog
 /// number, and what the pressing is) seed from the picked release.
 #[tokio::test]
 async fn a_picked_release_writes_its_id_and_pressing_fields() {
-    support::tracing_init();
+    bae_util::test_logs::install();
 
     let f = ImportFixture::new().await;
 
@@ -37,16 +37,16 @@ async fn a_picked_release_writes_its_id_and_pressing_fields() {
 
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
-        .send_command(support::folder_import(
+        .send_command(bae_import::test_imports::folder_import(
             &import_id,
             album_dir,
-            support::discogs_release(release_id_key.clone()),
+            bae_import::test_imports::discogs_release(release_id_key.clone()),
         ))
         .await
         .unwrap();
 
     let mut progress_rx = f.handle.subscribe_import(import_id);
-    let (release_id, _album_id) = support::wait_for_import_complete(&mut progress_rx).await;
+    let (release_id, _album_id) = bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
 
     let release = f.db.find_release_by_id(&release_id).await.unwrap().unwrap();
     assert_eq!(release.pressing.year, Some(1996));
@@ -89,7 +89,7 @@ async fn a_picked_release_writes_its_id_and_pressing_fields() {
 /// the seed: what the user typed lands, and what they left empty stays empty.
 #[tokio::test]
 async fn a_user_edit_overlays_the_picked_release() {
-    support::tracing_init();
+    bae_util::test_logs::install();
 
     let f = ImportFixture::new().await;
 
@@ -129,17 +129,17 @@ async fn a_user_edit_overlays_the_picked_release() {
     f.handle
         .send_command(ImportCommand {
             user_edit: Some(edit),
-            ..support::folder_import(
+            ..bae_import::test_imports::folder_import(
                 &import_id,
                 album_dir,
-                support::discogs_release(release_id_key.clone()),
+                bae_import::test_imports::discogs_release(release_id_key.clone()),
             )
         })
         .await
         .unwrap();
 
     let mut progress_rx = f.handle.subscribe_import(import_id);
-    let (release_id, _album_id) = support::wait_for_import_complete(&mut progress_rx).await;
+    let (release_id, _album_id) = bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
 
     let release = f.db.find_release_by_id(&release_id).await.unwrap().unwrap();
     assert_eq!(
@@ -173,7 +173,7 @@ async fn a_user_edit_overlays_the_picked_release() {
 /// longer reads the draft.
 #[tokio::test]
 async fn a_linked_draft_read_from_the_tags_imports_under_the_link() {
-    support::tracing_init();
+    bae_util::test_logs::install();
 
     let f = ImportFixture::new().await;
 
@@ -194,17 +194,17 @@ async fn a_linked_draft_read_from_the_tags_imports_under_the_link() {
     f.handle
         .send_command(ImportCommand {
             read_file_tags: true,
-            ..support::folder_import(
+            ..bae_import::test_imports::folder_import(
                 &import_id,
                 album_dir,
-                support::discogs_release(release_id_key.clone()),
+                bae_import::test_imports::discogs_release(release_id_key.clone()),
             )
         })
         .await
         .unwrap();
 
     let mut progress_rx = f.handle.subscribe_import(import_id);
-    let (release_id, _album_id) = support::wait_for_import_complete(&mut progress_rx).await;
+    let (release_id, _album_id) = bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
 
     let release = f.db.find_release_by_id(&release_id).await.unwrap().unwrap();
     let album = f.db.find_album_by_id(&release.album_id).await.unwrap().unwrap();
@@ -303,7 +303,7 @@ fn seed_mb_with_discogs_xref(
 /// carrying its own catalog's key.
 #[tokio::test]
 async fn a_cross_link_writes_both_catalogs_records() {
-    support::tracing_init();
+    bae_util::test_logs::install();
 
     let f = ImportFixture::new().await;
 
@@ -322,10 +322,10 @@ async fn a_cross_link_writes_both_catalogs_records() {
 
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
-        .send_command(support::folder_import(
+        .send_command(bae_import::test_imports::folder_import(
             &import_id,
             album_dir,
-            support::DraftSource::Pick(bae_identify::PressingLink {
+            bae_import::test_imports::DraftSource::Pick(bae_identify::PressingLink {
                 record: bae_catalogs::records::LookupRef::new(LookupCatalog::MusicBrainz, mb_id.clone()),
                 partners: vec![],
             }),
@@ -334,7 +334,7 @@ async fn a_cross_link_writes_both_catalogs_records() {
         .unwrap();
 
     let mut progress_rx = f.handle.subscribe_import(import_id);
-    let (release_id, _) = support::wait_for_import_complete(&mut progress_rx).await;
+    let (release_id, _) = bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
 
     let records = f.db.get_release_records(&release_id).await.unwrap();
     assert_eq!(records.len(), 2, "expected MB + Discogs records");
@@ -368,7 +368,7 @@ async fn a_cross_link_writes_both_catalogs_records() {
 /// other.
 #[tokio::test]
 async fn a_pick_with_a_partner_writes_both_records() {
-    support::tracing_init();
+    bae_util::test_logs::install();
 
     let f = ImportFixture::new().await;
 
@@ -381,10 +381,10 @@ async fn a_pick_with_a_partner_writes_both_records() {
 
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
-        .send_command(support::folder_import(
+        .send_command(bae_import::test_imports::folder_import(
             &import_id,
             album_dir,
-            support::DraftSource::Pick(bae_identify::PressingLink {
+            bae_import::test_imports::DraftSource::Pick(bae_identify::PressingLink {
                 record: bae_catalogs::records::LookupRef::new(LookupCatalog::MusicBrainz, mb_id.clone()),
                 partners: vec![bae_catalogs::records::LookupRef::new(
                     LookupCatalog::Discogs,
@@ -396,7 +396,7 @@ async fn a_pick_with_a_partner_writes_both_records() {
         .unwrap();
 
     let mut progress_rx = f.handle.subscribe_import(import_id);
-    let (release_id, _) = support::wait_for_import_complete(&mut progress_rx).await;
+    let (release_id, _) = bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
 
     let records = f.db.get_release_records(&release_id).await.unwrap();
     assert_eq!(records.len(), 2, "expected MB + Discogs records");
@@ -424,7 +424,7 @@ async fn a_pick_with_a_partner_writes_both_records() {
 /// it names the picked pressing rather than the cross-referenced one.
 #[tokio::test]
 async fn a_partner_replaces_an_inferred_record_of_the_same_catalog() {
-    support::tracing_init();
+    bae_util::test_logs::install();
 
     let f = ImportFixture::new().await;
 
@@ -444,10 +444,10 @@ async fn a_partner_replaces_an_inferred_record_of_the_same_catalog() {
 
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
-        .send_command(support::folder_import(
+        .send_command(bae_import::test_imports::folder_import(
             &import_id,
             album_dir,
-            support::DraftSource::Pick(bae_identify::PressingLink {
+            bae_import::test_imports::DraftSource::Pick(bae_identify::PressingLink {
                 record: bae_catalogs::records::LookupRef::new(LookupCatalog::MusicBrainz, mb_id.clone()),
                 partners: vec![bae_catalogs::records::LookupRef::new(
                     LookupCatalog::Discogs,
@@ -459,7 +459,7 @@ async fn a_partner_replaces_an_inferred_record_of_the_same_catalog() {
         .unwrap();
 
     let mut progress_rx = f.handle.subscribe_import(import_id);
-    let (release_id, _) = support::wait_for_import_complete(&mut progress_rx).await;
+    let (release_id, _) = bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
 
     let records = f.db.get_release_records(&release_id).await.unwrap();
     let discogs: Vec<_> =
