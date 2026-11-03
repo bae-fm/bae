@@ -1,21 +1,21 @@
+//! What the runtime holds apart from the table: how far each key's import
+//! is, and the files each scanned key was recorded with, so a scan that
+//! drops or reshapes a key ends its work. Fixtures the runtime's other
+//! tests share.
+
 use super::*;
-use crate::candidate_search::{CandidateSearch, SourceSearch};
+use crate::candidates::CandidateFiles;
 use crate::candidates::ImportInFlight;
-use crate::candidates::{
-    Admission, CandidateFiles, IdentificationRuntime, SaveFailure, SavingAnswer,
-};
 use crate::folder_scanner::{CategorizedFiles, InvalidCandidate};
 use crate::types::{ImportPhase, ImportProgress, PrepareStep};
 use crate::ImportStep;
-use bae_catalogs::catalog::{Catalog, LookupCatalog};
-use bae_preferences::{CatalogAvailability, SourceAvailability};
 use std::path::PathBuf;
 
-fn empty_categorized() -> CategorizedFiles {
+pub(super) fn empty_categorized() -> CategorizedFiles {
     CategorizedFiles { files: Vec::new(), parts: Vec::new() }
 }
 
-fn folder_candidate(key: &crate::CandidateKey, watched: &str) -> FolderCandidate {
+pub(super) fn folder_candidate(key: &crate::CandidateKey, watched: &str) -> FolderCandidate {
     let path = key.test_folder();
     FolderCandidate {
         relative_folder: bae_db::RelativeFolder::of(path.strip_prefix(watched).unwrap()).unwrap(),
@@ -30,11 +30,11 @@ fn folder_candidate(key: &crate::CandidateKey, watched: &str) -> FolderCandidate
     }
 }
 
-fn scanned(candidate: FolderCandidate) -> ImportEvent {
+pub(super) fn scanned(candidate: FolderCandidate) -> ImportEvent {
     ImportEvent::Scan(ScanEvent::FolderCandidate { candidate, found_while_automatic: false })
 }
 
-fn progress(key: &crate::CandidateKey, percent: u8) -> ImportEvent {
+pub(super) fn progress(key: &crate::CandidateKey, percent: u8) -> ImportEvent {
     ImportEvent::ImportProgress {
         candidate_key: key.clone(),
         progress: ImportProgress::Progress {
@@ -48,7 +48,7 @@ fn progress(key: &crate::CandidateKey, percent: u8) -> ImportEvent {
 
 /// Claim `key` for the import every [`progress`] reports on, and take it up
 /// as the worker does: its first step written, then reported.
-async fn claim(runtime: &CandidateRuntime, key: &crate::CandidateKey) {
+pub(super) async fn claim(runtime: &CandidateRuntime, key: &crate::CandidateKey) {
     runtime.claim_for_import(key, "imp-1", false).await.unwrap();
     runtime
         .move_import(key, "imp-1", Some(ImportStep::Preparing(PrepareStep::ValidatingSourceFiles)))
@@ -65,7 +65,7 @@ async fn claim(runtime: &CandidateRuntime, key: &crate::CandidateKey) {
 
 /// Move `key`'s import to measuring loudness, as the worker writes it before
 /// it starts, and report `percent` of it, as the measuring does.
-async fn measuring(runtime: &CandidateRuntime, key: &crate::CandidateKey, percent: u8) {
+pub(super) async fn measuring(runtime: &CandidateRuntime, key: &crate::CandidateKey, percent: u8) {
     runtime
         .move_import(key, "imp-1", Some(ImportStep::Running(ImportPhase::MeasuringLoudness)))
         .await
@@ -95,7 +95,7 @@ pub(crate) fn signals_context(track_count: u32) -> bae_identify::state::SignalsC
     }
 }
 
-fn run(number: u64) -> crate::IdentifyRunId {
+pub(super) fn run(number: u64) -> crate::IdentifyRunId {
     crate::IdentifyRunId::for_test(number)
 }
 
@@ -130,7 +130,7 @@ pub(crate) fn published(state: bae_identify::IdentifyState) -> bae_identify::Pub
 /// Store `key` as a candidate the scan holds under `/watch` with `revision`
 /// of its file decisions, as the scan would, and return the files it is
 /// identified as.
-async fn scanned_at(
+pub(super) async fn scanned_at(
     runtime: &CandidateRuntime,
     key: &crate::CandidateKey,
     revision: u64,
@@ -160,7 +160,10 @@ async fn scanned_at(
     files
 }
 
-async fn scanned_key(runtime: &CandidateRuntime, key: &crate::CandidateKey) -> CandidateFiles {
+pub(super) async fn scanned_key(
+    runtime: &CandidateRuntime,
+    key: &crate::CandidateKey,
+) -> CandidateFiles {
     scanned_at(runtime, key, 0).await
 }
 
@@ -222,7 +225,7 @@ pub(crate) async fn fail_standing_writes(directory: &std::path::Path, failing: &
 
 /// Report `state` as `run` of `key` does: the run started with it stored,
 /// then its answer written — the way the identify driver reports.
-async fn report(
+pub(super) async fn report(
     runtime: &CandidateRuntime,
     key: &crate::CandidateKey,
     files: &CandidateFiles,
@@ -236,14 +239,14 @@ async fn report(
 }
 
 /// What the table says `key`'s identification is.
-async fn identification(
+pub(super) async fn identification(
     runtime: &CandidateRuntime,
     key: &crate::CandidateKey,
 ) -> Option<crate::IdentificationStatus> {
     runtime.standing_facts(key).await.unwrap().identification
 }
 
-fn extracted_signals() -> bae_identify::signals::Signals {
+pub(super) fn extracted_signals() -> bae_identify::signals::Signals {
     bae_identify::signals::Signals {
         origin: bae_catalogs::AudioOrigin::default(),
         disc_id: bae_identify::signals::DiscIdSignal::Absent,
@@ -326,102 +329,6 @@ async fn a_finished_import_leaves_nothing_in_flight() {
     }
 }
 
-/// An answer still being written keeps the key: only the import half ends.
-#[tokio::test]
-async fn a_finished_import_keeps_a_key_whose_answer_is_still_being_written() {
-    let runtime = CandidateRuntime::for_test().await;
-    let key = &crate::CandidateKey::test("/watch/a/rel1");
-    let files = scanned_key(&runtime, key).await;
-    runtime.admit(vec![(key.clone(), files.clone())], Admission::Automatic).await.unwrap();
-    report(&runtime, key, &files, run(1), manual_only()).await;
-    claim(&runtime, key).await;
-
-    runtime.move_import(key, "imp-1", None).await.unwrap();
-    let recorded = runtime.snapshot(key).await.unwrap().expect("the answer keeps the key");
-    assert!(recorded.import.is_none());
-    assert!(matches!(
-        recorded.identification,
-        Some(IdentificationRuntime::Saving(SavingAnswer {
-            state: bae_identify::PublishedRun {
-                outcome: bae_identify::RunOutcome::Answered(
-                    bae_identify::TerminalVerdict::ManualOnly { .. }
-                ),
-                ..
-            },
-            ..
-        }))
-    ));
-}
-
-/// A reader that joins after imports started reads every one of them.
-#[tokio::test]
-async fn a_late_reader_reads_every_running_key() {
-    let runtime = CandidateRuntime::for_test().await;
-    claim(&runtime, &crate::CandidateKey::test("/watch/a/rel1")).await;
-    measuring(&runtime, &crate::CandidateKey::test("/watch/a/rel1"), 10).await;
-    claim(&runtime, &crate::CandidateKey::test("/watch/a/rel2")).await;
-
-    let running = runtime.snapshots().await.unwrap();
-    assert_eq!(running.len(), 2);
-    assert_eq!(
-        running[&crate::CandidateKey::test("/watch/a/rel1")].import,
-        Some(ImportInFlight { step: ImportStep::Running(ImportPhase::MeasuringLoudness) })
-    );
-    assert!(running[&crate::CandidateKey::test("/watch/a/rel2")].import.is_some());
-}
-
-/// A preparing step reads back as the step the worker wrote.
-#[tokio::test]
-async fn a_preparing_step_is_the_step_written() {
-    let runtime = CandidateRuntime::for_test().await;
-    let key = &crate::CandidateKey::test("/watch/a/rel1");
-    claim(&runtime, key).await;
-
-    runtime
-        .move_import(key, "imp-1", Some(ImportStep::Preparing(PrepareStep::FetchingArtistPictures)))
-        .await
-        .unwrap();
-
-    assert_eq!(
-        runtime
-            .snapshot(key)
-            .await
-            .unwrap()
-            .and_then(|runtime| runtime.import)
-            .expect("preparation is in flight"),
-        ImportInFlight { step: ImportStep::Preparing(PrepareStep::FetchingArtistPictures) }
-    );
-}
-
-/// An admission is one write, so the whole of what it opened stands at once;
-/// withdrawing is per key, because that is how the queue lets keys go.
-#[tokio::test]
-async fn an_admission_is_one_write_and_each_key_leaves_on_its_own() {
-    let runtime = CandidateRuntime::for_test().await;
-    let first = &crate::CandidateKey::test("/watch/a/rel1");
-    let second = &crate::CandidateKey::test("/watch/a/rel2");
-    let marks = vec![
-        (first.clone(), scanned_key(&runtime, first).await),
-        (second.clone(), scanned_key(&runtime, second).await),
-    ];
-
-    runtime.admit(marks, Admission::Automatic).await.unwrap();
-
-    let queued = runtime.snapshots().await.unwrap();
-    assert_eq!(queued.len(), 2);
-    for key in [first, second] {
-        assert_eq!(
-            queued[key].identification,
-            Some(IdentificationRuntime::Queued(Admission::Automatic))
-        );
-    }
-
-    runtime.withdraw(first).await.unwrap();
-    assert!(runtime.snapshot(first).await.unwrap().is_none());
-    runtime.withdraw(second).await.unwrap();
-    assert!(runtime.snapshots().await.unwrap().is_empty());
-}
-
 /// An import's claim stands whatever the scan reports about its candidate.
 #[tokio::test]
 async fn a_claim_survives_the_scan_reporting_the_key() {
@@ -456,160 +363,73 @@ async fn a_rescan_reporting_new_files_ends_the_key_s_work() {
     assert!(work.is_cancelled());
 }
 
-/// A run's terminal state is its answer, and answering is not running: the
-/// table moves it to being written, and the pane draws the answer.
+// The scan dropping or reshaping a candidate ends the work in flight for it:
+// that work read files the candidate no longer has.
+
+/// Start extraction and an identify run on `key`, returning their tokens.
+fn start_both(
+    runtime: &CandidateRuntime,
+    key: &crate::CandidateKey,
+) -> [tokio_util::sync::CancellationToken; 2] {
+    [CandidateWork::Extraction, CandidateWork::Identify]
+        .map(|work| runtime.start_work(work, key.clone(), |token, _| token))
+}
+
+fn invalid(candidate: &FolderCandidate) -> ImportEvent {
+    ImportEvent::Scan(ScanEvent::InvalidCandidate(InvalidCandidate {
+        path: candidate.path.clone(),
+        name: "rel1".to_string(),
+        watched_folder_path: candidate.watched_folder_path.clone(),
+        relative_folder: bae_db::RelativeFolder::test("rel1"),
+        grouping: candidate.grouping.clone(),
+        files: Vec::new(),
+        tags: None,
+    }))
+}
+
 #[tokio::test]
-async fn a_terminal_state_moves_the_run_to_being_written() {
-    let runtime = CandidateRuntime::for_test().await;
-    let key = &crate::CandidateKey::test("/watch/a/rel1");
-    let files = scanned_key(&runtime, key).await;
-    runtime.admit(vec![(key.clone(), files.clone())], Admission::Automatic).await.unwrap();
+async fn a_candidate_leaving_or_reshaped_ends_its_work() {
+    for grouping in [None, Some(crate::CandidateKey::grouping("group-1"))] {
+        let mut candidate =
+            folder_candidate(&crate::CandidateKey::test("/watch/a/rel1"), "/watch/a");
+        candidate.grouping = grouping;
+        let key = candidate.key();
+        let mut reshaped = candidate.clone();
+        reshaped.file_edit_revision = 1;
+        let departures = [
+            ("reshaped", scanned(reshaped.clone())),
+            (
+                "reshaped while not yet actionable",
+                ImportEvent::Scan(ScanEvent::CandidateDiscovered { candidate: reshaped }),
+            ),
+            (
+                "rebound",
+                ImportEvent::Scan(ScanEvent::CandidateBindingChanged {
+                    candidate: candidate.clone(),
+                }),
+            ),
+            ("invalid", invalid(&candidate)),
+            (
+                "removed",
+                ImportEvent::Scan(ScanEvent::CandidateRemoved { candidate_key: key.clone() }),
+            ),
+        ];
+        for (name, departure) in departures {
+            let runtime = CandidateRuntime::for_test().await;
+            runtime.record_event(&scanned(candidate.clone()));
+            let tokens = start_both(&runtime, &key);
+            let other = start_both(&runtime, &crate::CandidateKey::test("/watch/a/other"));
 
-    report(&runtime, key, &files, run(1), triangulating()).await;
-    assert!(matches!(
-        runtime.snapshot(key).await.unwrap().and_then(|runtime| runtime.identification),
-        Some(IdentificationRuntime::Running(bae_identify::PublishedRun {
-            outcome: bae_identify::RunOutcome::Running { .. },
-            ..
-        }))
-    ));
+            runtime.record_event(&departure);
 
-    assert!(runtime.publish_candidate_run(key, run(1), &manual_only(), None).await.unwrap());
-    assert!(runtime.run_answered(key, run(1), false).await.unwrap());
-    assert_eq!(identification(&runtime, key).await, Some(crate::IdentificationStatus::Finalizing));
-    assert!(matches!(
-        runtime.snapshot(key).await.unwrap().and_then(|runtime| runtime.identification),
-        Some(IdentificationRuntime::Saving(SavingAnswer {
-            state: bae_identify::PublishedRun {
-                outcome: bae_identify::RunOutcome::Answered(
-                    bae_identify::TerminalVerdict::ManualOnly { .. }
-                ),
-                ..
-            },
-            import_asked: false,
-        }))
-    ));
+            assert!(
+                tokens.iter().all(|token| token.is_cancelled()),
+                "{key} {name}: its work goes on"
+            );
+            assert!(
+                other.iter().all(|token| !token.is_cancelled()),
+                "{key} {name}: another key's work ended"
+            );
+        }
+    }
 }
-
-/// A cancelled run's end ends that run and nothing else: a run that took the
-/// key over keeps it, and a run that lost its wait reports into nothing.
-#[tokio::test]
-async fn a_run_s_end_ends_only_that_run() {
-    let runtime = CandidateRuntime::for_test().await;
-    let key = &crate::CandidateKey::test("/watch/a/rel1");
-    let files = scanned_key(&runtime, key).await;
-    runtime.admit(vec![(key.clone(), files.clone())], Admission::Automatic).await.unwrap();
-    report(&runtime, key, &files, run(2), triangulating()).await;
-
-    assert!(
-        !runtime.run_started(key, &files, run(1), &triangulating()).await.unwrap(),
-        "a run that lost its wait holds no standing"
-    );
-    runtime.run_ended(key, run(1)).await.unwrap();
-    assert_eq!(
-        identification(&runtime, key).await,
-        Some(crate::IdentificationStatus::Running),
-        "another run's ending does not end the run that replaced it"
-    );
-
-    runtime.run_ended(key, run(2)).await.unwrap();
-    assert!(runtime.snapshot(key).await.unwrap().is_none());
-}
-
-/// An answer is over when its write says so, and the run id says whose write
-/// it was.
-#[tokio::test]
-async fn a_write_ends_the_answer_it_ran_for_and_no_other() {
-    let runtime = CandidateRuntime::for_test().await;
-    let key = &crate::CandidateKey::test("/watch/a/rel1");
-    let files = scanned_key(&runtime, key).await;
-    runtime.admit(vec![(key.clone(), files.clone())], Admission::Automatic).await.unwrap();
-    report(&runtime, key, &files, run(1), manual_only()).await;
-
-    runtime.end_identification_answer(key, run(2)).await.unwrap();
-    assert_eq!(
-        identification(&runtime, key).await,
-        Some(crate::IdentificationStatus::Finalizing),
-        "another run's write says nothing about this answer"
-    );
-
-    runtime.end_identification_answer(key, run(1)).await.unwrap();
-    assert!(runtime.snapshot(key).await.unwrap().is_none());
-}
-
-/// A write that did not land, which another run may land.
-fn not_written(error: &str) -> SaveFailure {
-    SaveFailure::NotWritten { error: error.to_string() }
-}
-
-/// A write that failed leaves the error where a row can say so, and nothing
-/// waiting on a commit that is not coming; the next run's start clears it.
-#[tokio::test]
-async fn a_failed_write_stands_until_the_next_run_starts() {
-    let runtime = CandidateRuntime::for_test().await;
-    let key = &crate::CandidateKey::test("/watch/a/rel1");
-    let files = scanned_key(&runtime, key).await;
-    runtime.admit(vec![(key.clone(), files.clone())], Admission::Automatic).await.unwrap();
-    report(&runtime, key, &files, run(1), manual_only()).await;
-
-    runtime
-        .fail_identification(key, run(1), &files, not_written("database write failed"))
-        .await
-        .unwrap();
-    assert_eq!(
-        identification(&runtime, key).await,
-        Some(crate::IdentificationStatus::FinalizationFailed {
-            failure: not_written("database write failed"),
-        })
-    );
-    assert_eq!(
-        runtime.snapshot(key).await.unwrap().and_then(|runtime| runtime.identification),
-        Some(IdentificationRuntime::SaveFailed(not_written("database write failed")))
-    );
-
-    runtime.admit(vec![(key.clone(), files.clone())], Admission::Requested).await.unwrap();
-    report(&runtime, key, &files, run(2), triangulating()).await;
-    assert_eq!(identification(&runtime, key).await, Some(crate::IdentificationStatus::Running));
-}
-
-/// A claimed import outlives the run's write: the key keeps the half that is
-/// still happening.
-#[tokio::test]
-async fn a_finished_answer_keeps_a_key_whose_import_is_running() {
-    let runtime = CandidateRuntime::for_test().await;
-    let key = &crate::CandidateKey::test("/watch/a/rel1");
-    let files = scanned_key(&runtime, key).await;
-    runtime.admit(vec![(key.clone(), files.clone())], Admission::Automatic).await.unwrap();
-    report(&runtime, key, &files, run(1), manual_only()).await;
-    claim(&runtime, key).await;
-
-    runtime.end_identification_answer(key, run(1)).await.unwrap();
-
-    let recorded = runtime.snapshot(key).await.unwrap().expect("the claim keeps the key");
-    assert!(recorded.identification.is_none());
-    assert!(recorded.import.is_some());
-}
-
-/// A cancel ends whatever run or answer the key holds and what every run of
-/// it published, and leaves its wait.
-#[tokio::test]
-async fn a_cancel_ends_the_run_and_what_it_published() {
-    let runtime = CandidateRuntime::for_test().await;
-    let key = &crate::CandidateKey::test("/watch/a/rel1");
-    let files = scanned_key(&runtime, key).await;
-    runtime.admit(vec![(key.clone(), files.clone())], Admission::Automatic).await.unwrap();
-    report(&runtime, key, &files, run(1), manual_only()).await;
-
-    runtime.cancel_identification(key).await.unwrap();
-    assert!(runtime.snapshot(key).await.unwrap().is_none());
-}
-
-include!("tests/claims.rs");
-include!("tests/counting.rs");
-include!("tests/departures.rs");
-include!("tests/failing_writes.rs");
-include!("tests/in_flight.rs");
-include!("tests/published_runs.rs");
-include!("tests/reading_the_pick.rs");
-include!("tests/searches.rs");
-include!("tests/watches.rs");

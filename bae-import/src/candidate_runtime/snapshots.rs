@@ -116,3 +116,7 @@ impl CandidateRuntime {
         self.percents.subscribe()
     }
 }
+
+#[cfg(test)]
+#[path = "snapshots_tests.rs"]
+mod tests;

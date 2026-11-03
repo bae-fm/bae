@@ -32,23 +32,17 @@
 //! follows one key's as a live query of those tables.
 
 use super::candidate_key::CandidateKey;
-use super::candidate_search::{CandidateSearch, SearchRun};
 use super::folder_scanner::{FolderCandidate, ReleaseFileScope};
 use super::handle::{ImportEvent, ScanEvent};
 use super::types::ImportProgress;
-use crate::IdentifyRunId;
-use bae_catalogs::catalog::LookupCatalog;
-use bae_catalogs::search::{MetadataResult, SearchQuery};
-use bae_catalogs::Failure;
-use bae_db::DbError;
-use bae_identify::signals::Signals;
-use bae_identify::{IdentifyState, RunOutcome};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use tokio::sync::watch;
 use tracing::debug;
 
+mod published_runs;
+mod searches;
 mod snapshots;
 mod standing_writes;
 mod stored_standing;
@@ -62,6 +56,7 @@ pub(crate) use stored_standing::{
 pub(crate) use work::CandidateWork;
 
 #[cfg(test)]
+#[path = "candidate_runtime_tests.rs"]
 pub(crate) mod tests;
 
 /// One key's runtime after a write of its standing, or its removal, as the
@@ -222,17 +217,6 @@ impl CandidateRuntime {
         Self::new(self.tables.clone(), self.diagnostics.clone())
     }
 
-    /// The signals `run` of `key` last read, as the run's rows hold them:
-    /// what the settle of its answer stores beside its verdict. `None` once
-    /// the run's rows are gone.
-    pub(super) async fn run_signals(
-        &self,
-        key: &CandidateKey,
-        run: IdentifyRunId,
-    ) -> Result<Option<Signals>, DbError> {
-        self.tables.load_candidate_run_signals(key, run).await
-    }
-
     /// Every move of the identification count from now on, for a test.
     #[cfg(any(test, feature = "test-utils"))]
     pub(crate) fn every_count(&self) -> tokio::sync::mpsc::UnboundedReceiver<(u32, u32)> {
@@ -250,100 +234,6 @@ impl CandidateRuntime {
         let (reader, changes) = tokio::sync::mpsc::unbounded_channel();
         self.every_change.lock().unwrap().push(reader);
         changes
-    }
-
-    /// Store `search`, just started, as `key`'s in place of any search it
-    /// had, and return the run each catalog's answer names to land on it.
-    pub(super) async fn start_search(
-        &self,
-        key: &CandidateKey,
-        search: &CandidateSearch,
-    ) -> Result<SearchRun, DbError> {
-        self.tables.start_candidate_search(key, search).await
-    }
-
-    /// Put every failed part of `key`'s search back to searching, returning
-    /// the run it is on, the query and the catalogs to ask again; `None` when
-    /// there is nothing to ask again.
-    pub(super) async fn retry_search(
-        &self,
-        key: &CandidateKey,
-    ) -> Result<Option<(SearchRun, SearchQuery, Vec<LookupCatalog>)>, DbError> {
-        self.tables.retry_candidate_search(key).await
-    }
-
-    /// Stop asking `source` on every search. Each keeps its run, so the
-    /// other source's answer still lands; the dropped source's is refused
-    /// because that part is no longer searching.
-    pub(super) async fn switch_source_off(&self, source: LookupCatalog) -> Result<(), DbError> {
-        self.tables.switch_search_source_off(source).await
-    }
-
-    /// Whether `run` is still the run `key`'s search is on.
-    #[cfg(test)]
-    pub(super) async fn search_run_is_current(&self, key: &CandidateKey, run: SearchRun) -> bool {
-        self.tables.candidate_search_run(key).await.expect("a test reads the search it started")
-            == Some(run)
-    }
-
-    /// Land `source`'s answer on its part of the search `run`, if that part
-    /// is still searching; `false` when the search was replaced or ended, or
-    /// the part settled or was switched off. The landing decides in its own
-    /// write, so an answer of an older search never writes over a newer one.
-    pub(super) async fn land_search(
-        &self,
-        run: SearchRun,
-        source: LookupCatalog,
-        outcome: Result<Vec<MetadataResult>, Failure>,
-    ) -> Result<bool, DbError> {
-        self.tables.land_candidate_search(run, source, outcome).await
-    }
-
-    /// Land what `release`'s documents state its album is on whatever search
-    /// `key` is on now — a statement about the release stays true whichever
-    /// search holds it — returning what to keep; nothing when the key has no
-    /// search, or its search does not hold the release.
-    pub(super) async fn land_picked(
-        &self,
-        key: &CandidateKey,
-        release: &bae_catalogs::records::LookupRef,
-        links: bae_catalogs::album_links::AlbumLinks,
-    ) -> Result<Vec<(String, Vec<bae_catalogs::records::MetadataRef>)>, DbError> {
-        self.tables.land_candidate_search_pick(key, release, links).await
-    }
-
-    /// The state `run` of the folder candidate `key` published, and the
-    /// signals it last read where it read new ones, stored if the key's
-    /// standing still names the run; whether they were.
-    pub(crate) async fn publish_candidate_run(
-        &self,
-        key: &CandidateKey,
-        run: IdentifyRunId,
-        state: &IdentifyState,
-        signals: Option<&Signals>,
-    ) -> Result<bool, DbError> {
-        let outcome = published_outcome(key, run, state)?;
-        self.tables.publish_candidate_run(key, run, &outcome, state.read_releases(), signals).await
-    }
-
-    /// The state `run` of the library release whose re-identify key is `key`
-    /// published, with the signals it last read where it read new ones, or
-    /// its end with `Idle`.
-    pub(crate) async fn publish_release_run(
-        &self,
-        key: &CandidateKey,
-        run: IdentifyRunId,
-        state: &IdentifyState,
-        signals: Option<&Signals>,
-    ) -> Result<(), DbError> {
-        match RunOutcome::of(state) {
-            None => self.tables.end_release_run(key, run).await,
-            Some(outcome) => {
-                self.tables
-                    .publish_release_run(key, run, &outcome, state.read_releases(), signals)
-                    .await
-            }
-        }
     }
 
     /// The scan dropped or reshaped the key: its work in flight ends. Its
@@ -468,15 +358,4 @@ impl CandidateRuntime {
             ) => {}
         }
     }
-}
-
-/// How `state`, which `run` of `key` published, stands; a run publishes no
-/// `Idle` while it runs.
-pub(crate) fn published_outcome(
-    key: &CandidateKey,
-    run: IdentifyRunId,
-    state: &IdentifyState,
-) -> Result<RunOutcome, DbError> {
-    RunOutcome::of(state)
-        .ok_or_else(|| DbError::Message(format!("{key}'s run {run:?} published no state to store")))
 }

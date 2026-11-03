@@ -1,3 +1,11 @@
+//! What each run published, and the signals it read, stored beside the
+//! standings while the run stands.
+
+use super::*;
+use crate::candidate_runtime::tests::*;
+use crate::candidates::{Admission, IdentificationRuntime};
+use bae_catalogs::catalog::LookupCatalog;
+
 // What each run published, as `import_identify_run` stores it.
 
 /// What `key`'s runs published, as stored.
@@ -76,7 +84,7 @@ async fn a_release_run_that_ends_goes_alone() {
 /// with a release while the other is still looking.
 fn barcode_half_answered() -> bae_identify::IdentifyState {
     use bae_identify::{LookupState, ProviderLookup, ValueLookup};
-    
+
     let mut context = signals_context(9);
     context.providers = vec![LookupCatalog::MusicBrainz, LookupCatalog::Discogs];
     context.artwork = bae_identify::signals::ArtworkScan::Reading {
@@ -105,7 +113,10 @@ fn barcode_half_answered() -> bae_identify::IdentifyState {
                             )],
                         },
                     },
-                    ProviderLookup { source: LookupCatalog::Discogs, state: LookupState::LookingUp },
+                    ProviderLookup {
+                        source: LookupCatalog::Discogs,
+                        state: LookupState::LookingUp,
+                    },
                 ],
             }],
         },

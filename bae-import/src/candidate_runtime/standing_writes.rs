@@ -120,7 +120,7 @@ impl CandidateRuntime {
         run: IdentifyRunId,
         state: &bae_identify::IdentifyState,
     ) -> Result<bool, DbError> {
-        let outcome = super::published_outcome(key, run, state)?;
+        let outcome = super::published_runs::published_outcome(key, run, state)?;
         let moved = self
             .tables
             .start_candidate_run(key, files, run, &outcome, state.read_releases())
@@ -275,3 +275,7 @@ impl CandidateRuntime {
         Ok(self.tables.load_candidate_standing(key).await?.facts())
     }
 }
+
+#[cfg(test)]
+#[path = "standing_writes_tests.rs"]
+mod tests;

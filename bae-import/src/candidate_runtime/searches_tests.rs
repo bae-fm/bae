@@ -1,3 +1,13 @@
+//! A person's typed search stored beside the standings: each catalog's
+//! answer landing on the run it was asked for, a retry, a source switched
+//! off, and a picked release's documents joining it.
+
+use super::*;
+use crate::candidate_runtime::tests::*;
+use crate::candidate_search::{CandidateSearch, SourceSearch};
+use bae_catalogs::catalog::{Catalog, LookupCatalog};
+use bae_preferences::{CatalogAvailability, SourceAvailability};
+
 // A candidate's typed search, stored: which answers land, and which are
 // refused.
 
@@ -78,8 +88,13 @@ async fn two_landings_on_one_run_both_stand() {
         .await
     );
     assert!(
-        land(&runtime, run, LookupCatalog::Discogs, Ok(vec![search_result(LookupCatalog::Discogs, "dg-1")]),)
-            .await
+        land(
+            &runtime,
+            run,
+            LookupCatalog::Discogs,
+            Ok(vec![search_result(LookupCatalog::Discogs, "dg-1")]),
+        )
+        .await
     );
 
     let landed =
@@ -193,11 +208,7 @@ async fn a_retry_re_asks_only_the_failed_sources() {
         "a settled search has no source to re-ask"
     );
     assert!(
-        runtime
-            .retry_search(&crate::CandidateKey::test("/watch/a/rel2"))
-            .await
-            .unwrap()
-            .is_none(),
+        runtime.retry_search(&crate::CandidateKey::test("/watch/a/rel2")).await.unwrap().is_none(),
         "a key with no search has none either"
     );
 }
@@ -247,19 +258,32 @@ async fn only_a_part_still_searching_takes_an_answer() {
             key,
             &CandidateSearch::started(
                 search_query(),
-                &[CatalogAvailability { catalog: LookupCatalog::Discogs, state: SourceAvailability::On }],
+                &[CatalogAvailability {
+                    catalog: LookupCatalog::Discogs,
+                    state: SourceAvailability::On,
+                }],
             ),
         )
         .await
         .unwrap();
 
     assert!(
-        land(&runtime, run, LookupCatalog::Discogs, Ok(vec![search_result(LookupCatalog::Discogs, "dg-1")]),)
-            .await
+        land(
+            &runtime,
+            run,
+            LookupCatalog::Discogs,
+            Ok(vec![search_result(LookupCatalog::Discogs, "dg-1")]),
+        )
+        .await
     );
     assert!(
-        !land(&runtime, run, LookupCatalog::Discogs, Ok(vec![search_result(LookupCatalog::Discogs, "dg-2")]),)
-            .await,
+        !land(
+            &runtime,
+            run,
+            LookupCatalog::Discogs,
+            Ok(vec![search_result(LookupCatalog::Discogs, "dg-2")]),
+        )
+        .await,
         "a part that answered takes no second answer"
     );
     assert!(
@@ -357,11 +381,12 @@ async fn a_pick_joins_the_search_s_cards_from_then_on() {
     let key = &crate::CandidateKey::test("/watch/a/rel1");
     scanned_key(&runtime, key).await;
     let run = started_search(&runtime, key).await;
-    let grouped =
-        |source: LookupCatalog, release_id: &str, group: &str| bae_catalogs::search::MetadataResult {
+    let grouped = |source: LookupCatalog, release_id: &str, group: &str| {
+        bae_catalogs::search::MetadataResult {
             source_group_id: Some(group.to_string()),
             ..search_result(source, release_id)
-        };
+        }
+    };
     assert!(
         land(
             &runtime,
@@ -408,9 +433,6 @@ async fn a_pick_joins_the_search_s_cards_from_then_on() {
     assert_eq!(search.groups.len(), 1, "the picked result joins the cards");
     assert_eq!(
         search.picked,
-        vec![crate::candidate_search::PickedResult {
-            release_id: "mb-1".to_string(),
-            links,
-        }]
+        vec![crate::candidate_search::PickedResult { release_id: "mb-1".to_string(), links }]
     );
 }
