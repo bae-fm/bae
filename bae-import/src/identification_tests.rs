@@ -95,7 +95,7 @@ impl ArtworkAnalyzer for PerFolderBarcodeAnalyzer {
 pub(crate) struct Fixture {
     /// What the fixture's import service was started from, for a test that
     /// starts another over the same store or writes a preference.
-    pub(crate) parts: crate::test_import::TestImport,
+    pub(crate) parts: crate::tests::import::TestImport,
     /// The store under `import`, for a test that breaks a row directly.
     pub(crate) database: Database,
     /// The writer the handle uses, for tests that write a candidate directly.
@@ -159,7 +159,7 @@ impl Fixture {
         );
         // No Discogs key, so lookups ask MusicBrainz alone unless a test calls
         // `use_discogs`.
-        let parts = crate::test_import::TestImport::new(
+        let parts = crate::tests::import::TestImport::new(
             database.clone(),
             providers,
             clock,

@@ -5,7 +5,7 @@
 
 use super::*;
 use crate::identification::tests::*;
-use crate::test_import::TestImport;
+use crate::tests::import::TestImport;
 use crate::PendingStanding;
 use bae_catalogs::fake_catalogs::FakeCatalogs;
 use bae_catalogs::records::MetadataRef;
@@ -589,8 +589,8 @@ impl CountingFileTagReader {
 
     /// A reader held at its first file until the gate opens, and what hears
     /// that it got there.
-    pub(super) fn held() -> (Self, std::sync::mpsc::Receiver<()>, crate::test_gate::Gate) {
-        let (gate, held, reached) = crate::test_gate::closed();
+    pub(super) fn held() -> (Self, std::sync::mpsc::Receiver<()>, crate::tests::gate::Gate) {
+        let (gate, held, reached) = crate::tests::gate::closed();
         let reader = Self {
             reads: std::sync::atomic::AtomicUsize::new(0),
             fail_on_read: None,

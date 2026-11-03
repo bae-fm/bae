@@ -47,7 +47,7 @@ fn matches_any(path: &Path, alternatives: &[Magic]) -> io::Result<bool> {
 /// corruption, so it must not block the import.
 pub(crate) fn is_valid_image(path: &Path) -> io::Result<bool> {
     #[cfg(test)]
-    crate::test_reads::record(crate::test_reads::FileRead::ImageCheck, path);
+    crate::tests::reads::record(crate::tests::reads::FileRead::ImageCheck, path);
     // Ahead of the dispatch: an empty file is corrupt whatever its extension,
     // so an unrecognized one must not pass it through.
     if fs::metadata(path)?.len() == 0 {

@@ -263,7 +263,7 @@ async fn an_image_read_that_panics_fails_the_text_and_barcode_signals() {
 async fn cancelled_ocr_run_does_not_settle() {
     let tmp = TempDir::new().unwrap();
     let folder = build_release(&tmp, "Some Folder", &["p1.jpg", "p2.jpg", "p3.jpg"], &[]);
-    let (gate, held, entries) = crate::test_gate::closed();
+    let (gate, held, entries) = crate::tests::gate::closed();
     let analyzer: Arc<dyn ArtworkAnalyzer> = Arc::new(
         StubAnalyzer::new()
             .with("p1.jpg", vec!["Artist A".to_string()])
@@ -473,7 +473,7 @@ struct ConcurrencyAnalyzer {
     reading: AtomicUsize,
     most_at_once: AtomicUsize,
     calls: AtomicUsize,
-    gate: crate::test_gate::Held,
+    gate: crate::tests::gate::Held,
 }
 
 impl ArtworkAnalyzer for ConcurrencyAnalyzer {
@@ -508,7 +508,7 @@ async fn bound_reached_and_held(
     .unwrap()
 }
 
-fn concurrency_analyzer(gate: crate::test_gate::Held) -> Arc<ConcurrencyAnalyzer> {
+fn concurrency_analyzer(gate: crate::tests::gate::Held) -> Arc<ConcurrencyAnalyzer> {
     Arc::new(ConcurrencyAnalyzer {
         reading: AtomicUsize::new(0),
         most_at_once: AtomicUsize::new(0),
@@ -524,7 +524,7 @@ async fn no_more_than_the_bound_are_read_at_once() {
     let tmp = TempDir::new().unwrap();
     let images = image_names(IMAGES_IN_FLIGHT * 3);
     let folder = folder_with(&tmp, &images);
-    let (gate, held, entries) = crate::test_gate::closed();
+    let (gate, held, entries) = crate::tests::gate::closed();
     let analyzer = concurrency_analyzer(held);
     let (_handle, mut rx, mut run, _lib_tmp) = start_signals(folder, analyzer.clone()).await;
 
@@ -551,7 +551,7 @@ async fn passes_running_at_once_share_the_bound() {
     let names: Vec<&str> = images.iter().map(String::as_str).collect();
     let first = build_release(&tmp, "Album Title A", &names, &[]);
     let second = build_release(&tmp, "Album Title B", &names, &[]);
-    let (gate, held, entries) = crate::test_gate::closed();
+    let (gate, held, entries) = crate::tests::gate::closed();
     let analyzer = concurrency_analyzer(held);
     let (handle, _tx, mut rx, _lib_tmp) = make_service().await;
     handle.register_analyzer(analyzer.clone());

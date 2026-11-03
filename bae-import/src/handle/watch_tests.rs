@@ -16,7 +16,7 @@ async fn removing_a_watched_folder_cancels_in_flight_extraction() {
     // lands while the pass has as many reads under way as it may.
     struct HeldAnalyzer {
         calls: AtomicUsize,
-        held: crate::test_gate::Held,
+        held: crate::tests::gate::Held,
     }
     impl ArtworkAnalyzer for HeldAnalyzer {
         fn analyze(&self, _path: &Path) -> ArtworkAnalysis {
@@ -49,7 +49,7 @@ async fn removing_a_watched_folder_cancels_in_flight_extraction() {
     }
 
     let import_handle = parts.start().await.unwrap();
-    let (gate, held, reached) = crate::test_gate::closed();
+    let (gate, held, reached) = crate::tests::gate::closed();
     let analyzer = std::sync::Arc::new(HeldAnalyzer { calls: AtomicUsize::new(0), held });
     import_handle.register_artwork_analyzer(analyzer.clone());
 

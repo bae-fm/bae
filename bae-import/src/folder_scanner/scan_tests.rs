@@ -10,7 +10,7 @@ use std::sync::Arc;
 /// Reads directories normally, except inside `blocked`, where it is held.
 struct BlockingReader {
     blocked: PathBuf,
-    held: crate::test_gate::Held,
+    held: crate::tests::gate::Held,
 }
 
 impl DirectoryReader for BlockingReader {
@@ -39,7 +39,7 @@ impl DirectoryReader for BlockingReader {
 /// A scan of `root` running on its own thread, suspended inside `blocked`
 /// until [`SuspendedScan::finish`] opens the gate.
 struct SuspendedScan {
-    gate: crate::test_gate::Gate,
+    gate: crate::tests::gate::Gate,
     /// Announces that the walk reached the blocked directory.
     entered: std::sync::mpsc::Receiver<()>,
     items: std::sync::mpsc::Receiver<ScanItem>,
@@ -48,7 +48,7 @@ struct SuspendedScan {
 
 impl SuspendedScan {
     fn spawn(root: PathBuf, blocked: &str) -> Self {
-        let (gate, held, entered) = crate::test_gate::closed();
+        let (gate, held, entered) = crate::tests::gate::closed();
         let (item_tx, items) = std::sync::mpsc::channel();
         let reader = BlockingReader { blocked: PathBuf::from(blocked), held };
         let thread = std::thread::spawn(move || {

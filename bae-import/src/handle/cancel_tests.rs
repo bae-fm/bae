@@ -330,7 +330,7 @@ async fn a_failed_import_leaves_only_its_failure_and_starts_over() {
     let library_dir = tmp[0].path().to_path_buf();
     let mut before = store_state(&handle, &library_dir).await;
     let blocked =
-        crate::test_files::UnopenableFile::block(&key.test_folder().join("02 Track.flac"));
+        crate::tests::files::UnopenableFile::block(&key.test_folder().join("02 Track.flac"));
     let mut events = handle.every_event();
     let import_id = handle.start_import(&key).await.unwrap().expect_queued();
     await_import_outcome(&mut events, &import_id)
@@ -389,7 +389,7 @@ async fn a_cancelled_retry_leaves_the_failure_it_retried() {
     let (handle, tmp, key, _) = two_importable().await;
     let library_dir = tmp[0].path().to_path_buf();
     let blocked =
-        crate::test_files::UnopenableFile::block(&key.test_folder().join("02 Track.flac"));
+        crate::tests::files::UnopenableFile::block(&key.test_folder().join("02 Track.flac"));
     let mut events = handle.every_event();
     let failed = handle.start_import(&key).await.unwrap().expect_queued();
     let error = await_import_outcome(&mut events, &failed)

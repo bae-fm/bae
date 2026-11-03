@@ -20,7 +20,7 @@ use tokio::sync::mpsc::UnboundedReceiver;
 /// until the test opens it, so a test can act mid-OCR.
 pub(super) struct StubAnalyzer {
     responses: StdMutex<HashMap<String, Vec<String>>>,
-    gate: Option<crate::test_gate::Held>,
+    gate: Option<crate::tests::gate::Held>,
     calls: std::sync::atomic::AtomicUsize,
 }
 
@@ -38,7 +38,7 @@ impl StubAnalyzer {
         self
     }
 
-    pub(super) fn gated(mut self, gate: crate::test_gate::Held) -> Self {
+    pub(super) fn gated(mut self, gate: crate::tests::gate::Held) -> Self {
         self.gate = Some(gate);
         self
     }
@@ -635,7 +635,7 @@ async fn candidate_removed_event_cancels_in_flight_extraction() {
     let images: Vec<String> = (1..=IMAGES_IN_FLIGHT + 2).map(|n| format!("p{n}.jpg")).collect();
     let image_names: Vec<&str> = images.iter().map(String::as_str).collect();
     let folder = build_release(&tmp, "Some Folder", &image_names, &[]);
-    let (gate, held, entries) = crate::test_gate::closed();
+    let (gate, held, entries) = crate::tests::gate::closed();
     let analyzer = Arc::new(
         image_names
             .iter()
@@ -701,7 +701,7 @@ async fn restart_for_same_key_cancels_prior_then_starts_fresh() {
 async fn three_starts_cancel_each_predecessor() {
     let tmp = TempDir::new().unwrap();
     let folder = build_release(&tmp, "Some Folder", &["p1.jpg"], &[]);
-    let (gate, held, entries) = crate::test_gate::closed();
+    let (gate, held, entries) = crate::tests::gate::closed();
     let analyzer: Arc<dyn ArtworkAnalyzer> =
         Arc::new(StubAnalyzer::new().with("p1.jpg", vec!["Artist A".to_string()]).gated(held));
     let (handle, _tx, mut rx, _lib_tmp) = make_service().await;

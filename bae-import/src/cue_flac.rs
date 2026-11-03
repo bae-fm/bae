@@ -248,7 +248,7 @@ impl PendingCueTrack {
 /// Read and parse the sheet at `cue_path`, whatever its text encoding.
 pub fn parse_cue_sheet(cue_path: &Path) -> Result<CueSheet, CueFlacError> {
     #[cfg(test)]
-    crate::test_reads::record(crate::test_reads::FileRead::CueParse, cue_path);
+    crate::tests::reads::record(crate::tests::reads::FileRead::CueParse, cue_path);
     parse_cue_content(&bae_util::text_encoding::read_text_file(cue_path)?.text)
 }
 /// Parse CUE sheet content.

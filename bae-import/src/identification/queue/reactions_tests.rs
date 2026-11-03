@@ -11,8 +11,8 @@ use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
 
-/// An analyzer held at each image behind a [`crate::test_gate::Gate`].
-struct GatedAnalyzer(crate::test_gate::Held);
+/// An analyzer held at each image behind a [`crate::tests::gate::Gate`].
+struct GatedAnalyzer(crate::tests::gate::Held);
 
 impl ArtworkAnalyzer for GatedAnalyzer {
     fn analyze(&self, _path: &Path) -> ArtworkAnalysis {
@@ -408,7 +408,7 @@ async fn an_import_start_takes_a_queued_candidate_out_of_work_and_progress() {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_candidate_removed_mid_flight_does_not_wedge_the_queue() {
     let fixture = Fixture::new("removed-mid-flight").await;
-    let (gate, held, entered) = crate::test_gate::closed();
+    let (gate, held, entered) = crate::tests::gate::closed();
     fixture.import.register_artwork_analyzer(Arc::new(GatedAnalyzer(held)));
     let dir = fixture.barcode_candidate("Vanishing");
     let hash = fixture.content_hash(&dir);

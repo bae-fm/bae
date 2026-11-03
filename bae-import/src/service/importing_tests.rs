@@ -120,7 +120,7 @@ async fn an_import_that_cannot_open_a_source_writes_nothing_and_a_retry_lands_it
     // modification time are unchanged, so the import's identity check passes
     // and the failure is the open itself.
     let blocked_name = Path::new("CD2").join("02 Track 2.flac");
-    let blocked = crate::test_files::UnopenableFile::block(&folder.join(&blocked_name));
+    let blocked = crate::tests::files::UnopenableFile::block(&folder.join(&blocked_name));
     test.service.queue_import_for_test(&candidate_key, "import-blocked").await;
     test.service
         .do_import(local_import_command("import-blocked", &candidate_key, &folder), expectation())
@@ -417,7 +417,7 @@ async fn a_failed_import_keeps_what_a_retry_reads() {
     seed_spent_rows(&test, &content_hash).await;
     let before = spent_row_counts(&test, &content_hash).await;
 
-    let blocked = crate::test_files::UnopenableFile::block(&folder.join("02 Track 2.flac"));
+    let blocked = crate::tests::files::UnopenableFile::block(&folder.join("02 Track 2.flac"));
     test.service.queue_import_for_test(&candidate_key, "import-blocked").await;
     test.service
         .do_import(local_import_command("import-blocked", &candidate_key, &folder), expectation)

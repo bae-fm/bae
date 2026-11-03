@@ -68,7 +68,7 @@ struct ReadableFiles {
 impl ReadableFiles {
     /// How many times each of them has been read, by each read.
     fn reads(&self, tags: &CountingTagReader) -> Vec<(PathBuf, &'static str, u64)> {
-        use crate::test_reads::{count, FileRead};
+        use crate::tests::reads::{count, FileRead};
         let mut reads = Vec::new();
         for track in &self.tracks {
             reads.push((track.clone(), "probe", bae_audio::test_reads::probes(track)));

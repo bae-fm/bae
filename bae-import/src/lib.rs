@@ -102,20 +102,10 @@ pub mod session;
 pub(crate) mod shared_album;
 #[cfg(desktop)]
 pub mod tables;
-#[cfg(test)]
-pub(crate) mod test_files;
 #[cfg(all(desktop, any(test, feature = "test-utils")))]
 pub mod test_fixtures;
-#[cfg(test)]
-pub(crate) mod test_gate;
-#[cfg(all(test, desktop))]
-pub(crate) mod test_images;
-#[cfg(all(test, desktop))]
-pub(crate) mod test_import;
 #[cfg(all(desktop, any(test, feature = "test-utils")))]
 pub mod test_imports;
-#[cfg(test)]
-pub(crate) mod test_reads;
 #[cfg(desktop)]
 pub(crate) mod track_numbers;
 #[cfg(desktop)]
@@ -315,3 +305,7 @@ pub use types::{
 };
 #[cfg(desktop)]
 pub use watched_folder::WatchedFolder;
+
+#[cfg(test)]
+#[path = "lib_tests.rs"]
+mod tests;

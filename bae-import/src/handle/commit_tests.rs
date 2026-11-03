@@ -4,7 +4,7 @@
 
 use super::*;
 use crate::handle::tests::*;
-use crate::test_import::TestImport;
+use crate::tests::import::TestImport;
 use crate::ImportError;
 use bae_db::Database;
 use bae_util::test_channels::HANG_GUARD;

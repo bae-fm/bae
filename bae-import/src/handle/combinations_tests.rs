@@ -7,7 +7,7 @@
 use super::*;
 use crate::handle::tests::*;
 use crate::identification::tests::*;
-use crate::test_import::TestImport;
+use crate::tests::import::TestImport;
 use std::path::Path;
 use std::path::PathBuf;
 use tempfile::TempDir;
