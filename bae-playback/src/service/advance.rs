@@ -1,15 +1,17 @@
 use super::*;
 
-/// The service's follow of the sides of the staged crossing's tracks, reading
-/// nothing until a crossing is staged.
-pub(super) fn staged_sides_follow(
+/// A follow of the facts of the tracks it is pointed at, which the library
+/// still holds, reading nothing until it is pointed at some. `what` names the
+/// tracks in the log of a failed read.
+pub(super) fn track_infos_follow(
     database: &bae_db::Database,
+    what: &'static str,
     diagnostics: &Diagnostics,
 ) -> LibraryFollow<Vec<String>, Vec<PlaybackTrackInfo>> {
     LibraryFollow::new(
         crate::tables::subscribe_playback_track_infos(database, Vec::new()),
         Vec::new(),
-        "the staged crossing's sides",
+        what,
         diagnostics,
     )
 }
@@ -19,11 +21,41 @@ impl PlaybackService {
         self.preloaded_next.as_ref().map(PreloadedNext::track_id)
     }
 
-    /// The library deleted `track_ids`. Their queue rows left with them; the
-    /// entry playing may be one of them.
-    pub(super) async fn handle_tracks_deleted(&mut self, track_ids: Vec<String>) {
-        let ids: HashSet<String> = track_ids.into_iter().collect();
+    /// The tracks playback holds: the queue's entry playing and the preloaded
+    /// next track, the ones whose deletion moves playback on.
+    fn held_tracks(&self) -> Vec<String> {
+        self.playback_queue
+            .current_track_id()
+            .into_iter()
+            .chain(self.next_track_id())
+            .map(str::to_string)
+            .collect()
+    }
 
+    /// Point the held-tracks follow at the tracks playback holds now.
+    pub(super) fn follow_held_tracks(&mut self) {
+        let held = self.held_tracks();
+        self.held_tracks.follow(held);
+    }
+
+    /// The library holds `infos` of the tracks `held` names: those it no
+    /// longer holds were deleted, here or on another device.
+    pub(super) async fn handle_held_tracks(
+        &mut self,
+        held: Vec<String>,
+        infos: Vec<PlaybackTrackInfo>,
+    ) {
+        let still_held: HashSet<&str> = infos.iter().map(|info| info.track_id.as_str()).collect();
+        let deleted: HashSet<String> =
+            held.into_iter().filter(|track_id| !still_held.contains(track_id.as_str())).collect();
+        if !deleted.is_empty() {
+            self.handle_tracks_deleted(deleted).await;
+        }
+    }
+
+    /// The library deleted `ids`. Their queue rows left with them; the entry
+    /// playing may be one of them.
+    async fn handle_tracks_deleted(&mut self, ids: HashSet<String>) {
         if self.playback_queue.forget_deleted_current(&ids) {
             self.stop().await;
 

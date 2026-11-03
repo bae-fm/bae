@@ -459,6 +459,10 @@ pub struct PlaybackService {
     /// The sides of the staged crossing's tracks, whose crossing is taken back
     /// when an edit puts a side or disc boundary between them.
     staged_sides: LibraryFollow<Vec<String>, Vec<PlaybackTrackInfo>>,
+    /// The tracks playback holds, as the library still holds them: one it
+    /// no longer holds was deleted, by this device or by another one whose
+    /// deletion arrived by sync, and playback moves off it.
+    held_tracks: LibraryFollow<Vec<String>, Vec<PlaybackTrackInfo>>,
 }
 
 /// A pending first-audio timing: the load whose arrival at Playing it measures,

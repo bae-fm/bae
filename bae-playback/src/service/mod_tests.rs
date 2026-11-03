@@ -247,7 +247,10 @@ pub(super) fn playback_service_over(
         PreviewPlayer::new(progress_tx.clone(), command_tx.clone(), 50, diagnostics.clone());
     let playback_queue =
         PlaybackQueue::new(crate::tables::PlaybackQueueTables::new(database.clone()));
-    let staged_sides = advance::staged_sides_follow(database, &diagnostics);
+    let staged_sides =
+        advance::track_infos_follow(database, "the staged crossing's sides", &diagnostics);
+    let held_tracks =
+        advance::track_infos_follow(database, "the tracks playback holds", &diagnostics);
     let service = PlaybackService {
         database: database.clone(),
         ids: Arc::new(coven::UuidIds),
@@ -279,6 +282,7 @@ pub(super) fn playback_service_over(
         renderer: Renderer::Local,
         clock: Arc::new(crate::ManualPlaybackClock::new(test_clock_start())),
         staged_sides,
+        held_tracks,
     };
     (service, progress_rx)
 }

@@ -195,20 +195,12 @@ impl LibraryManager {
             .await?
             .ok_or_else(|| LibraryError::Refused(format!("Release not found: {release_id}")))?;
 
-        // Read the track ids before the delete cascades them away — the player
-        // stops a deleted track it plays or has loaded next. The queue's rows
-        // leave in the delete's own transaction.
-        let track_ids: Vec<String> =
-            self.get_tracks_for_release(release_id).await?.into_iter().map(|t| t.id).collect();
-
+        // The queue's rows leave in the delete's own transaction, and the
+        // player, following the tracks it holds, moves off a deleted one.
         let deletion = self.database.plan_release_deletion(release_id).await?;
         // Deletion is a local transaction. Each coven file of the release goes
         // with its last reference, which takes its upload off the queue.
         self.database.delete_release_with_cleanup(deletion).await?;
-
-        if !track_ids.is_empty() {
-            self.tracks_deleted(track_ids);
-        }
 
         Ok(())
     }

@@ -21,24 +21,16 @@ impl LibraryManager {
             return Err(LibraryError::Refused(format!("Album not found: {album_id}")));
         }
 
-        // Read every release's track ids before the delete cascades them away —
-        // the player stops a deleted track it plays or has loaded next. The
-        // queue's rows leave in the delete's own transaction.
-        let mut all_track_ids = Vec::new();
+        // The queue's rows leave in the delete's own transaction, and the
+        // player, following the tracks it holds, moves off a deleted one.
         let mut deletions = Vec::new();
         for release in &releases {
-            let tracks = self.get_tracks_for_release(&release.id).await?;
-            all_track_ids.extend(tracks.into_iter().map(|t| t.id));
             // Each plan names the rows and coven files it was read against;
             // the write refuses a release that changed since.
             deletions.push(self.database.plan_release_deletion(&release.id).await?);
         }
 
         self.database.delete_album_with_cleanup(album_id, deletions).await?;
-
-        if !all_track_ids.is_empty() {
-            self.tracks_deleted(all_track_ids);
-        }
 
         Ok(())
     }

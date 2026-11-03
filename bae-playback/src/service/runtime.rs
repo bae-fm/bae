@@ -601,15 +601,13 @@ impl PlaybackService {
     /// how the platform shares the speaker, asked before every start. Playback
     /// changes the queue through `queue_tables`, writes what it is doing
     /// and where it is into `now_row` and `timeline_row`, and lets go of a
-    /// track `track_deletions` names. Take `track_deletions` before the
-    /// library can delete anything, so no deletion goes unheard.
+    /// track it holds once the library no longer holds it.
     pub fn start(
         database: bae_db::Database,
         ids: coven::IdSourceRef,
         queue_tables: crate::tables::PlaybackQueueTables,
         now_row: crate::tables::PlaybackNowRow,
         timeline_row: crate::tables::PlaybackTimelineRow,
-        track_deletions: tokio_mpsc::UnboundedReceiver<Vec<String>>,
         diagnostics: Diagnostics,
         runtime_handle: tokio::runtime::Handle,
         position_update_interval_ms: u32,
@@ -623,7 +621,6 @@ impl PlaybackService {
             queue_tables,
             now_row,
             timeline_row,
-            track_deletions,
             diagnostics,
             runtime_handle,
             position_update_interval_ms,
@@ -644,7 +641,6 @@ impl PlaybackService {
         queue_tables: crate::tables::PlaybackQueueTables,
         now_row: crate::tables::PlaybackNowRow,
         timeline_row: crate::tables::PlaybackTimelineRow,
-        track_deletions: tokio_mpsc::UnboundedReceiver<Vec<String>>,
         diagnostics: Diagnostics,
         runtime_handle: tokio::runtime::Handle,
         position_update_interval_ms: u32,
@@ -658,7 +654,6 @@ impl PlaybackService {
             queue_tables,
             now_row,
             timeline_row,
-            track_deletions,
             diagnostics,
             runtime_handle,
             position_update_interval_ms,
@@ -676,7 +671,6 @@ impl PlaybackService {
         queue_tables: crate::tables::PlaybackQueueTables,
         now_row: crate::tables::PlaybackNowRow,
         timeline_row: crate::tables::PlaybackTimelineRow,
-        track_deletions: tokio_mpsc::UnboundedReceiver<Vec<String>>,
         diagnostics: Diagnostics,
         runtime_handle: tokio::runtime::Handle,
         position_update_interval_ms: u32,
@@ -733,7 +727,16 @@ impl PlaybackService {
                             position_update_interval_ms,
                             diagnostics.clone(),
                         );
-                        let staged_sides = advance::staged_sides_follow(&database, &diagnostics);
+                        let staged_sides = advance::track_infos_follow(
+                            &database,
+                            "the staged crossing's sides",
+                            &diagnostics,
+                        );
+                        let held_tracks = advance::track_infos_follow(
+                            &database,
+                            "the tracks playback holds",
+                            &diagnostics,
+                        );
                         let mut service = PlaybackService {
                             database,
                             ids,
@@ -762,6 +765,7 @@ impl PlaybackService {
                             renderer: Renderer::Local,
                             clock,
                             staged_sides,
+                            held_tracks,
                         };
                         // "Restore on launch" off starts with nothing in playback;
                         // opening the library emptied the queue for it.
@@ -774,26 +778,27 @@ impl PlaybackService {
                         } else {
                             debug!("restore on launch is off; starting with nothing in playback");
                         }
-                        service.run(track_deletions).await;
+                        service.run().await;
                     });
                 })
             });
         PlaybackHandle::new(worker, progress_handle, arbiter, playing_bytes_rx)
     }
 
-    pub(super) async fn run(
-        &mut self,
-        mut track_deletions: tokio_mpsc::UnboundedReceiver<Vec<String>>,
-    ) {
+    pub(super) async fn run(&mut self) {
         info!("PlaybackService started");
         let mut audio_event_tick = tokio::time::interval(std::time::Duration::from_millis(10));
         audio_event_tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
         let mut countdown = side_countdown::SideCountdownWait::new();
         loop {
-            let follows = caught_sync("follow the side countdown and the staged sides", || {
-                countdown.follow(self.side_pause_countdown_deadline(), self.clock.as_ref());
-                self.follow_staged_sides();
-            });
+            let follows = caught_sync(
+                "follow the side countdown, the staged sides and the held tracks",
+                || {
+                    countdown.follow(self.side_pause_countdown_deadline(), self.clock.as_ref());
+                    self.follow_staged_sides();
+                    self.follow_held_tracks();
+                },
+            );
             if let Err(failed) = follows {
                 self.recover_from_panic(failed).await;
                 continue;
@@ -803,12 +808,12 @@ impl PlaybackService {
                 _ = audio_event_tick.tick(), if self.output.is_some() || !self.buffered_listening.is_empty() || self.audible_completion.is_some() || self.preview.is_active() => Wake::AudioTick,
                 deadline = countdown.elapsed(), if countdown.is_armed() => Wake::CountdownElapsed(deadline),
                 Some(command) = self.command_rx.recv() => Wake::Command(command),
-                Some(track_ids) = track_deletions.recv() => Wake::TracksDeleted(track_ids),
+                (held, infos) = self.held_tracks.next() => Wake::HeldTracks { held, infos },
                 else => break,
             };
             // One wake at a time under one boundary: a panic in it is reported
             // and stops playback with an error, and the loop serves the next.
-            match caught("serve playback", self.serve(wake, &mut track_deletions)).await {
+            match caught("serve playback", self.serve(wake)).await {
                 Ok(ControlFlow::Continue(())) => {}
                 Ok(ControlFlow::Break(())) => break,
                 Err(failed) => self.recover_from_panic(failed).await,
@@ -818,11 +823,7 @@ impl PlaybackService {
     }
 
     /// Act on what woke the loop. `Break` once a shutdown has been served.
-    async fn serve(
-        &mut self,
-        wake: Wake,
-        track_deletions: &mut tokio_mpsc::UnboundedReceiver<Vec<String>>,
-    ) -> ControlFlow<()> {
+    async fn serve(&mut self, wake: Wake) -> ControlFlow<()> {
         match wake {
             Wake::StagedSides(sides) => self.handle_staged_crossing_sides(sides).await,
             Wake::AudioTick => {
@@ -832,8 +833,8 @@ impl PlaybackService {
                 self.publish_audible_completion();
             }
             Wake::CountdownElapsed(deadline) => self.side_pause_countdown_elapsed(deadline).await,
-            Wake::Command(command) => return self.handle_command(command, track_deletions).await,
-            Wake::TracksDeleted(track_ids) => self.handle_tracks_deleted(track_ids).await,
+            Wake::Command(command) => return self.handle_command(command).await,
+            Wake::HeldTracks { held, infos } => self.handle_held_tracks(held, infos).await,
         }
         ControlFlow::Continue(())
     }
@@ -883,7 +884,12 @@ enum Wake {
     AudioTick,
     CountdownElapsed(chrono::DateTime<chrono::Utc>),
     Command(PlaybackCommand),
-    TracksDeleted(Vec<String>),
+    /// The library's facts of the tracks playback holds, `held`, which
+    /// leave out each one it no longer holds.
+    HeldTracks {
+        held: Vec<String>,
+        infos: Vec<PlaybackTrackInfo>,
+    },
 }
 
 #[cfg(test)]

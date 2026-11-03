@@ -49,7 +49,6 @@ pub async fn start_library_services(
     let queue_tables = bae_playback::tables::PlaybackQueueTables::new(database.clone());
     let now_row = bae_playback::tables::PlaybackNowRow::new(database.clone());
     let timeline_row = bae_playback::tables::PlaybackTimelineRow::new(database.clone());
-    let track_deletions = manager.subscribe_track_deletions();
     let views = bae_views::LibraryViews::new(database.clone());
     // No discovery outlives the process that ran it: the cast picker's list
     // starts empty, before anything that writes or reads it can.
@@ -62,7 +61,6 @@ pub async fn start_library_services(
             queue_tables,
             now_row,
             timeline_row,
-            track_deletions,
             diagnostics.clone(),
             runtime_handle.clone(),
             position_update_interval_ms,
@@ -77,7 +75,6 @@ pub async fn start_library_services(
             queue_tables,
             now_row,
             timeline_row,
-            track_deletions,
             diagnostics.clone(),
             runtime_handle.clone(),
             position_update_interval_ms,

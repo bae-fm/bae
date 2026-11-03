@@ -6,21 +6,10 @@ use std::ops::ControlFlow;
 
 impl PlaybackService {
     /// Act on `command`. `Break` once a shutdown has been served.
-    pub(super) async fn handle_command(
-        &mut self,
-        command: PlaybackCommand,
-        track_deletions: &mut tokio_mpsc::UnboundedReceiver<Vec<String>>,
-    ) -> ControlFlow<()> {
+    pub(super) async fn handle_command(&mut self, command: PlaybackCommand) -> ControlFlow<()> {
         // Apply a boundary the callback already crossed before a command can
         // replace its source and discard the finishing track's last samples.
         self.drain_current_audio_events().await;
-        // A deletion sent before this command applies before it, so the
-        // command reads and edits the queue the library left. The
-        // deletions arrive on a channel of their own, which the loop's
-        // select may poll after this one.
-        while let Ok(track_ids) = track_deletions.try_recv() {
-            self.handle_tracks_deleted(track_ids).await;
-        }
         // One event per user-intent command, at the point the loop picks it
         // up. Internal/system commands, queries, and continuous inputs map to
         // `None` and ship nothing.

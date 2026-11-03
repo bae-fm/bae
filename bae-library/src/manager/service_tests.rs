@@ -1,5 +1,5 @@
-//! The manager's service: work run apart from its caller that panics, track
-//! deletions, closing, emptying the transfer queues as the library opens, the
+//! The manager's service: work run apart from its caller that panics,
+//! closing, emptying the transfer queues as the library opens, the
 //! upload transfer watches, and the import list a surface opens over the
 //! library.
 
@@ -9,25 +9,6 @@ use crate::test_libraries::TestLibrary;
 use crate::{LiveRead, LiveReadError};
 use coven::MemoryStorage;
 use tempfile::TempDir;
-
-/// Every deletion reaches the player, however many land before it reads them:
-/// one it missed would leave deleted tracks in its queue.
-#[tokio::test]
-async fn every_track_deletion_reaches_a_reader_that_fell_behind() {
-    let (manager, _temp_dir) = setup_test_manager().await;
-    let mut deletions = manager.subscribe_track_deletions();
-    let deleted = 2_048;
-    for index in 0..deleted {
-        manager.tracks_deleted(vec![format!("track-{index}")]);
-    }
-
-    let mut heard = Vec::new();
-    while let Ok(track_ids) = deletions.try_recv() {
-        heard.extend(track_ids);
-    }
-    assert_eq!(heard.len(), deleted);
-    assert_eq!(heard.first().map(String::as_str), Some("track-0"));
-}
 
 /// No transfer outlives the process that ran it: a library opened over a
 /// store whose queues still hold entries opens with both empty and running.

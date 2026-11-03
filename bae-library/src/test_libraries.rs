@@ -264,7 +264,6 @@ impl TestLibrary {
             bae_playback::tables::PlaybackQueueTables::new(self.database.clone()),
             bae_playback::tables::PlaybackNowRow::new(self.database.clone()),
             bae_playback::tables::PlaybackTimelineRow::new(self.database.clone()),
-            self.manager.subscribe_track_deletions(),
             self.diagnostics.clone(),
             tokio::runtime::Handle::current(),
             position_update_interval_ms,

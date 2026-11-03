@@ -74,7 +74,6 @@ impl LibraryManager {
             diagnostics,
             runtime_handle,
             tasks: BackgroundTasks::new(closing),
-            track_deletions: Arc::default(),
             sync,
             detach_cancels: Default::default(),
             make_local_transfers: crate::make_local_transfers::MakeLocalTransfers::new(),
@@ -379,25 +378,9 @@ impl LibraryManager {
         }
     }
 
-    /// Every deletion of tracks from now on, none dropped, as the ids each
-    /// deleted.
-    pub fn subscribe_track_deletions(&self) -> tokio::sync::mpsc::UnboundedReceiver<Vec<String>> {
-        let (reader, deletions) = tokio::sync::mpsc::unbounded_channel();
-        self.track_deletions.lock().unwrap().push(reader);
-        deletions
-    }
-
     /// Follow the sync status, each value read from its tables in one go.
     pub fn subscribe_sync_status(&self) -> coven::LiveQuery<bae_db::SyncStatusSnapshot> {
         self.database.subscribe(bae_db::sync_status_on)
-    }
-
-    /// Tell every reader these tracks are deleted.
-    pub(super) fn tracks_deleted(&self, track_ids: Vec<String>) {
-        self.track_deletions
-            .lock()
-            .unwrap()
-            .retain(|reader| reader.send(track_ids.clone()).is_ok());
     }
 
     /// How far and how fast each release with files being sent goes, and

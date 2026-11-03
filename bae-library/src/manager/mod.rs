@@ -431,9 +431,6 @@ pub struct LibraryManager {
     /// pending subscriptions, startup sync), which each hold a clone of it and
     /// so of the store. [`LibraryManager::close`] ends them all.
     tasks: service::BackgroundTasks,
-    /// The readers of every deletion of tracks, each hearing all of them in
-    /// order, as the ids deleted: the player drops them from its queue.
-    track_deletions: Arc<std::sync::Mutex<Vec<tokio::sync::mpsc::UnboundedSender<Vec<String>>>>>,
     /// The cloud-sync responsibility: the provider connection and the
     /// upload pause.
     sync: SyncController,

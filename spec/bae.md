@@ -3000,7 +3000,10 @@ removable, reorderable and skipped to on its own.
 | Clear Up Next | empties Up Next only |
 | Clear playing from | drops what's playing from; the current track plays on, then Up Next, then playback stops |
 
-A track deleted from the library leaves every place it sits in the queue.
+A track deleted from the library leaves every place it sits in the queue. A
+deleted track that is playing stops, and playback goes on with what's next;
+one loaded to play next is let go. This holds whichever device deleted it:
+another device's deletion reaches this device's player when it syncs here.
 
 ### 7.2 Repeat, shuffle, previous
 

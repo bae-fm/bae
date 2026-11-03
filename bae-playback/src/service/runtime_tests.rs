@@ -279,8 +279,7 @@ async fn a_play_command_ships_playback_command_started_and_track_started() {
     );
     let (shutdown_tx, _shutdown_rx) = tokio::sync::oneshot::channel::<()>();
     dispatch_command(&commands, PlaybackCommand::Shutdown(shutdown_tx));
-    let (_deletions_tx, track_deletions) = tokio_mpsc::unbounded_channel();
-    service.run(track_deletions).await;
+    service.run().await;
 
     diagnostics.flush().await.expect("flush succeeds");
     let names = transport.event_names();
@@ -374,7 +373,6 @@ async fn a_command_that_panics_is_reported_and_the_next_is_served() {
     let (mut service, mut progress_rx) = playback_service_over(&store, diagnostics.clone());
     service.audio_output = Box::new(VolumePanicsOutput(AudioOutputControls::new(1.0)));
     let command_tx = service.command_tx.clone();
-    let (_deletions_tx, deletions_rx) = tokio_mpsc::unbounded_channel();
     let (volume_tx, volume_rx) = oneshot::channel();
     let (saved_tx, saved_rx) = oneshot::channel();
     let (shutdown_tx, shutdown_rx) = oneshot::channel();
@@ -382,7 +380,7 @@ async fn a_command_that_panics_is_reported_and_the_next_is_served() {
     dispatch_command(&command_tx, PlaybackCommand::SaveState(saved_tx));
     dispatch_command(&command_tx, PlaybackCommand::Shutdown(shutdown_tx));
 
-    service.run(deletions_rx).await;
+    service.run().await;
 
     assert!(volume_rx.await.is_err(), "the command that panicked answers nothing");
     saved_rx.await.expect("the next command is served");
@@ -399,4 +397,46 @@ async fn a_command_that_panics_is_reported_and_the_next_is_served() {
             "serve playback panicked: volume cell missing".to_string()
         )]
     );
+}
+
+/// A track deleted where this device's library didn't delete it — another
+/// device's deletion, arriving by sync — leaves the player all the same: the
+/// playing track's row going stops playback.
+#[tokio::test]
+async fn a_playing_track_deleted_by_sync_stops_playback() {
+    const RELEASE: &str = "c61a9e19-f3ba-4728-842c-c59dbc82e238";
+    let (store, mut service, mut progress_rx) =
+        seeded_playback_service(&[(RELEASE, &[TRACK_A])]).await;
+    fill_test_release(&mut service, RELEASE).await;
+    service.slot =
+        active_slot(test_prepared_track(TRACK_A, create_sparse_buffer(1_024)), TrackPhase::Playing);
+    let commands = service.command_tx.clone();
+    let database: bae_db::Database = (*store).clone();
+
+    let delete_then_watch = async move {
+        database
+            .call(|sql| {
+                sql.execute("DELETE FROM tracks WHERE id = ?", [TRACK_A])?;
+                Ok(())
+            })
+            .await
+            .expect("the track's row is deleted");
+        let stopped = tokio::time::timeout(std::time::Duration::from_secs(10), async {
+            while let Some(progress) = progress_rx.recv().await {
+                if matches!(
+                    progress,
+                    PlaybackProgress::StateChanged { state: PlaybackState::Stopped }
+                ) {
+                    return;
+                }
+            }
+        })
+        .await;
+        let (shutdown_tx, _shutdown_rx) = oneshot::channel();
+        dispatch_command(&commands, PlaybackCommand::Shutdown(shutdown_tx));
+        stopped
+    };
+    let ((), stopped) = tokio::join!(service.run(), delete_then_watch);
+
+    assert!(stopped.is_ok(), "deleting the playing track's row stops playback");
 }
