@@ -46,7 +46,6 @@ mod service;
 
 mod album;
 mod artist;
-mod cast_devices;
 mod collections;
 mod config;
 mod coven_files;

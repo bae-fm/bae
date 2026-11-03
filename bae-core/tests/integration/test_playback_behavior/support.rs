@@ -454,6 +454,7 @@ impl PlaybackTestFixture {
             self.library_manager.clone(),
             bae_core::library::views::LibraryViews::new(self.database.clone()),
             self.playback_handle.clone(),
+            bae_core::renderer::CastPicker::new(self.database.clone()),
             import,
             identification,
         )

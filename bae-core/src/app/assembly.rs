@@ -85,6 +85,10 @@ pub async fn start_library_services(
     let timeline_row = crate::playback::tables::PlaybackTimelineRow::new(database.clone());
     let track_deletions = manager.subscribe_track_deletions();
     let views = crate::library::views::LibraryViews::new(database.clone());
+    // No discovery outlives the process that ran it: the cast picker's list
+    // starts empty, before anything that writes or reads it can.
+    let cast_picker = crate::renderer::CastPicker::new(database.clone());
+    cast_picker.clear().await?;
     let playback = match playback_output {
         PlaybackOutput::System(audio_focus) => crate::playback::PlaybackService::start(
             database.clone(),
@@ -138,10 +142,10 @@ pub async fn start_library_services(
         // Queue-wide identification runs whether or not anyone has the Import
         // section open: opening a view is not what starts it.
         let identification = import.start_identification_queue();
-        Ok(AppServices::new(manager, views, playback, import, identification))
+        Ok(AppServices::new(manager, views, playback, cast_picker, import, identification))
     }
     #[cfg(not(desktop))]
-    Ok(AppServices::new(manager, views, playback))
+    Ok(AppServices::new(manager, views, playback, cast_picker))
 }
 
 /// Why the library's services did not start.
@@ -150,6 +154,9 @@ pub enum ServicesStartError {
     /// Settling the playback queue failed.
     #[error(transparent)]
     Library(#[from] LibraryError),
+    /// Emptying the cast picker's list failed.
+    #[error(transparent)]
+    Database(#[from] DbError),
     /// The import service did not start.
     #[cfg(desktop)]
     #[error(transparent)]

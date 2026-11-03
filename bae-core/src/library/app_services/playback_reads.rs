@@ -57,8 +57,7 @@ impl AppServices {
     pub fn subscribe_cast_devices(
         &self,
     ) -> crate::live_query::LiveValues<Vec<crate::renderer::CastDevice>> {
-        let manager = &self.inner.manager;
-        manager.values_until_closed(manager.subscribe_cast_devices())
+        self.inner.manager.values_until_closed(self.inner.cast_picker.subscribe())
     }
 
     /// List `devices` as the cast picker's receivers in place of the last
@@ -66,7 +65,7 @@ impl AppServices {
     pub async fn show_cast_devices(
         &self,
         devices: Vec<crate::renderer::CastDevice>,
-    ) -> Result<(), crate::library::LibraryError> {
-        self.inner.manager.show_cast_devices(devices).await
+    ) -> Result<(), crate::db::DbError> {
+        self.inner.cast_picker.show(devices).await
     }
 }

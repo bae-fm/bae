@@ -93,6 +93,11 @@ impl TestLibrary {
         crate::library::views::LibraryViews::new(self.database.clone())
     }
 
+    /// The cast picker's list over its store.
+    pub(crate) fn cast_picker(&self) -> crate::renderer::CastPicker {
+        crate::renderer::CastPicker::new(self.database.clone())
+    }
+
     /// The catalog sessions the library asks through.
     pub(crate) fn catalogs(&self) -> &CatalogSessions {
         &self.catalogs

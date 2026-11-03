@@ -57,39 +57,56 @@ fn cast_devices_on(sql: &SqlReadContext<'_>) -> Result<Vec<CastDevice>, DbError>
     })?)
 }
 
-/// List `devices` in place of every receiver listed, in one write.
-pub(crate) async fn replace_cast_devices(
-    database: &Database,
-    devices: Vec<CastDevice>,
-) -> Result<(), DbError> {
-    database
-        .call(move |sql| {
-            sql.execute("DELETE FROM cast_device", [])?;
-            for device in &devices {
-                sql.execute(
-                    "INSERT INTO cast_device (id, name, kind) VALUES (?1, ?2, ?3)",
-                    params![device.id, device.name, kind_column(device.kind)],
-                )?;
-            }
-            Ok(())
-        })
-        .await
+/// The picker's list in the library's store: the receivers discovery last
+/// found, which the picker shows.
+#[derive(Clone)]
+pub struct CastPicker {
+    database: Database,
 }
 
-/// Follow the receivers the picker lists.
-pub(crate) fn subscribe_cast_devices(database: &Database) -> coven::LiveQuery<Vec<CastDevice>> {
-    database.subscribe(|sql| cast_devices_on(&sql).map_err(CovenError::from))
-}
+impl CastPicker {
+    /// The picker's list over the library's store, `database`.
+    pub fn new(database: Database) -> Self {
+        Self { database }
+    }
 
-/// Empty the picker's list: what the library opens with, since no
-/// discovery outlives the process that ran it.
-pub(crate) async fn clear_cast_devices(database: &Database) -> Result<(), DbError> {
-    database
-        .call(|sql| {
-            sql.execute("DELETE FROM cast_device", [])?;
-            Ok(())
-        })
-        .await
+    /// List `devices` in place of every receiver listed, in one write.
+    pub async fn show(&self, devices: Vec<CastDevice>) -> Result<(), DbError> {
+        self.database
+            .call(move |sql| {
+                sql.execute("DELETE FROM cast_device", [])?;
+                for device in &devices {
+                    sql.execute(
+                        "INSERT INTO cast_device (id, name, kind) VALUES (?1, ?2, ?3)",
+                        params![device.id, device.name, kind_column(device.kind)],
+                    )?;
+                }
+                Ok(())
+            })
+            .await
+    }
+
+    /// Follow the receivers the picker lists.
+    pub fn subscribe(&self) -> coven::LiveQuery<Vec<CastDevice>> {
+        self.database.subscribe(|sql| cast_devices_on(&sql).map_err(CovenError::from))
+    }
+
+    /// Empty the list: what the library opens with, since no discovery
+    /// outlives the process that ran it.
+    pub async fn clear(&self) -> Result<(), DbError> {
+        self.database
+            .call(|sql| {
+                sql.execute("DELETE FROM cast_device", [])?;
+                Ok(())
+            })
+            .await
+    }
+
+    /// The receivers the picker lists now.
+    #[cfg(test)]
+    async fn devices(&self) -> Result<Vec<CastDevice>, DbError> {
+        self.database.read(|sql| cast_devices_on(&sql)).await
+    }
 }
 
 #[cfg(test)]

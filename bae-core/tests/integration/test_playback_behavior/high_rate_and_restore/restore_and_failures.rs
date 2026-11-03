@@ -270,6 +270,7 @@ impl CloudOnlyPlaybackFixture {
             library_manager,
             bae_core::library::views::LibraryViews::new(database.clone()),
             playback_handle.clone(),
+            bae_core::renderer::CastPicker::new(database.clone()),
             import_handle,
             identification,
         );

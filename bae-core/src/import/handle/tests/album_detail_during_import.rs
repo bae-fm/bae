@@ -71,6 +71,7 @@ async fn an_album_opened_while_another_release_imports_shows_at_once() {
         manager.clone(),
         manager.views(),
         playback,
+        manager.cast_picker(),
         handle.clone(),
         handle.start_identification_queue(),
     );

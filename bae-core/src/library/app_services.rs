@@ -109,6 +109,8 @@ struct AppServicesInner {
     /// The library's views, for the reads a screen shows as they are.
     views: crate::library::views::LibraryViews,
     playback: PlaybackHandle,
+    /// The cast picker's list, which casting writes and the picker reads.
+    cast_picker: crate::renderer::CastPicker,
     /// The import service, which also owns the identify driver and the
     /// extraction feeding it: one of each per library, reached through it.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -167,6 +169,7 @@ impl AppServices {
         manager: LibraryManager,
         views: crate::library::views::LibraryViews,
         playback: PlaybackHandle,
+        cast_picker: crate::renderer::CastPicker,
         #[cfg(not(any(target_os = "ios", target_os = "android")))] import: ImportServiceHandle,
         #[cfg(not(any(target_os = "ios", target_os = "android")))]
         identification: IdentificationHandle,
@@ -176,6 +179,7 @@ impl AppServices {
                 manager,
                 views,
                 playback,
+                cast_picker,
                 #[cfg(not(any(target_os = "ios", target_os = "android")))]
                 import,
                 #[cfg(not(any(target_os = "ios", target_os = "android")))]
