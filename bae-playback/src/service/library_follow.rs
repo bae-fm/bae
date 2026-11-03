@@ -7,7 +7,7 @@
 //! branch never throws away a read in flight; the loop's only branch is a
 //! channel receive.
 
-use tracing::{error, warn};
+use tracing::{debug, warn};
 
 pub(super) struct LibraryFollow<Request, Value> {
     requests: coven::LiveQueryRequests<Request>,
@@ -21,11 +21,14 @@ where
     Request: Clone + PartialEq + Send + Sync + std::fmt::Debug + 'static,
     Value: Clone + PartialEq + Send + 'static,
 {
-    /// Follow `query` on a task of its own. A read that fails is logged under
-    /// `what` and the follow keeps running: the next change reads again. One
-    /// that fails because the store closed or its handle failed ends the
-    /// query, and the follow reads nothing more. A follow that panics is
-    /// reported through `diagnostics` and reads nothing more either.
+    /// Follow `query` on a task of its own. A read that fails is a bug,
+    /// reported through `diagnostics` under `what`: playback learns that a
+    /// track it holds was deleted only from these reads. While the store is
+    /// open the follow keeps running, and the next change reads again. A
+    /// failure because the store closed, reported as no bug, or because its
+    /// handle failed ends the query, and the follow reads nothing more. A
+    /// follow that panics is reported through `diagnostics` and reads nothing
+    /// more either.
     pub(super) fn new(
         mut query: coven::ReconfigurableLiveQuery<Request, Value>,
         request: Request,
@@ -34,6 +37,8 @@ where
     ) -> Self {
         let requests = query.requests();
         let (tx, reads) = tokio::sync::mpsc::unbounded_channel();
+        let bugs = diagnostics.clone();
+        let operation = format!("read {what} for playback");
         let task = diagnostics.spawn_reported(
             &tokio::runtime::Handle::current(),
             "follow a library read for playback",
@@ -46,7 +51,15 @@ where
                                 return;
                             }
                         }
-                        Err(error) => error!("reading {what} for {request:?} failed: {error}"),
+                        // Closing the store ends the follow, and playback with
+                        // it: the last read says so.
+                        Err(coven::CovenError::Database(coven::DbError::StoreClosed)) => {
+                            debug!("the store closed, so {what} is read no more");
+                        }
+                        Err(error) => bugs.report_bug(
+                            &operation,
+                            &format_args!("reading for {request:?} failed: {error}"),
+                        ),
                     }
                 }
             },
