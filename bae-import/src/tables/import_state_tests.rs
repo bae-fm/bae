@@ -2,6 +2,7 @@
 //! the candidate-state fixtures the import tables' tests share.
 
 use crate::folder_scanner::CategorizedFiles;
+use crate::tables::folder_scans::tests::*;
 use crate::tables::tests::*;
 use crate::tables::NewImportCandidateVerdict;
 use crate::{
@@ -11,19 +12,18 @@ use crate::{
 use bae_catalogs::catalog::LookupCatalog;
 use bae_catalogs::credits::ArtistCredit;
 use bae_catalogs::search::MetadataResult;
+use bae_db::test_fixtures::empty_db;
 use bae_db::test_fixtures::fixed_now;
 use bae_db::test_fixtures::temp_db;
 use bae_db::watched_path::host_root;
+use bae_db::{Database, DbArtist};
 use bae_identify::signals::{BarcodeSignal, DiscIdSignal, Signals, TextSignal};
 use bae_identify::{
     DiscIdStepView, Findings, IdentifyRunView, LookupView, NarrowedOut, TerminalVerdict,
 };
+use rusqlite::params;
 use std::path::Path;
 use std::path::PathBuf;
-
-use bae_db::test_fixtures::empty_db;
-use bae_db::{Database, DbArtist};
-use rusqlite::params;
 
 /// Two overlapping folders added at once: the overlap check and the insert
 /// are one decision, so exactly one of them is watched and the other is
@@ -680,4 +680,40 @@ async fn overlapping_stored_roots_fail_to_load() {
     .unwrap();
     let error = tables.load_watched_import_folders().await.unwrap_err();
     assert!(error.to_string().contains("cannot overlap"), "{error}");
+}
+
+/// A folder is offered combined while two releases or more are read from it
+/// or below it, and offered separate while the release read from it is its
+/// grouping.
+#[tokio::test]
+async fn a_folder_reading_is_offered_as_the_stored_scan_reads_the_folder() {
+    use crate::folder_scanner::{FolderReleaseDecision, FolderReleaseDecisionKey};
+
+    let (db, _tmp) = empty_db().await;
+    let root = &host_root("/mounted/library");
+    scanned_box_and_sibling(&db, root).await;
+    let key = |folder: &str| FolderReleaseDecisionKey {
+        watched_folder_path: root.clone(),
+        relative_folder: bae_db::RelativeFolder::test(folder),
+    };
+    let offered = |folder: &'static str, decision| {
+        let db = db.clone();
+        let tables = crate::tables::ImportTables::new(db.clone());
+        let key = key(folder);
+        async move { tables.folder_reading_offered(&key, decision).await.unwrap() }
+    };
+    assert!(offered("Box", FolderReleaseDecision::CombineAsOneRelease).await);
+    assert!(!offered("Other", FolderReleaseDecision::CombineAsOneRelease).await);
+    assert!(!offered("Box", FolderReleaseDecision::KeepAsSeparateReleases).await);
+
+    // Read as one release, the folder's release is its grouping.
+    let mut combined = combined_candidate(root, "Box");
+    if let crate::folder_scanner::ScanItem::Valid(candidate) = &mut combined {
+        candidate.grouping = Some(crate::CandidateKey::grouping("Box"));
+    }
+    commit_reading(&db, root, "Box", FolderReleaseDecision::CombineAsOneRelease, vec![combined])
+        .await
+        .unwrap();
+    assert!(offered("Box", FolderReleaseDecision::KeepAsSeparateReleases).await);
+    assert!(!offered("Box", FolderReleaseDecision::CombineAsOneRelease).await);
 }

@@ -146,3 +146,7 @@ impl StoredCueTrack {
         })
     }
 }
+
+#[cfg(test)]
+#[path = "track_sheets_tests.rs"]
+mod tests;

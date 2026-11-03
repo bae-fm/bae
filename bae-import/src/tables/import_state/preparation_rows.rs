@@ -370,7 +370,7 @@ pub(super) fn save_preparation_on(
         })?;
         if snapshot.file_edit_revision != prep.file_edits.revision
             || Some(snapshot.scan_generation) != scan_generation
-            || !super::folder_scans::replace_candidate_file_tag_snapshot_on(
+            || !super::folder_scans::tag_snapshot::replace_candidate_file_tag_snapshot_on(
                 sql,
                 &scanned.watched_folder_path,
                 &scanned.candidate_path,

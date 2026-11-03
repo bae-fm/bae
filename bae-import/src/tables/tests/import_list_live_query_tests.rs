@@ -2,7 +2,7 @@
 //! Done follows what this device imported.
 
 use super::super::*;
-use super::exec;
+use super::{exec, scan_candidate};
 use bae_db::test_fixtures::live_query::{
     live_db, next_run_is_only_the_request, ALBUM_ID, RELEASE_ID,
 };
@@ -39,13 +39,6 @@ pub(super) fn through(
             .map(|(offset, limit)| bae_db::LibraryPageWindow { offset, limit })
             .collect(),
     }
-}
-
-pub(super) fn scan_candidate(
-    root: &std::path::Path,
-    name: &str,
-) -> crate::folder_scanner::ScanItem {
-    crate::folder_scanner::ScanItem::Valid(super::candidate(root, name))
 }
 
 pub(super) fn candidate_names(projection: &crate::ImportListProjection) -> Vec<String> {

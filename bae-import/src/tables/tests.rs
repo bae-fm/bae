@@ -69,7 +69,6 @@ pub(crate) async fn watched_root() -> (Database, tempfile::TempDir, std::path::P
 }
 
 mod draftless_candidate_tests;
-mod file_tag_snapshot_tests;
 mod folder_scan_live_query_tests;
 mod import_candidate_state_tests;
 mod import_list_live_query_tests;
@@ -111,4 +110,11 @@ pub(crate) fn scanned_candidate_with_scope(
         track_files_candidate(&[("01.flac", 123)]),
         scope,
     ))
+}
+
+pub(crate) fn scan_candidate(
+    root: &std::path::Path,
+    name: &str,
+) -> crate::folder_scanner::ScanItem {
+    crate::folder_scanner::ScanItem::Valid(candidate(root, name))
 }

@@ -285,7 +285,7 @@ pub(super) fn write_sidecar(
         )?;
     }
     let regrouped =
-        super::super::release_groupings::rebuild_groupings(sql, &superseded_keys, &touched)?;
+        crate::tables::release_groupings::rebuild_groupings(sql, &superseded_keys, &touched)?;
     Ok(ScanItemWrite::Stored { superseded_keys, regrouped, found: false })
 }
 

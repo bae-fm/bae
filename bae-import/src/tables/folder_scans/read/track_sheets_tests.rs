@@ -1,43 +1,6 @@
-#[tokio::test]
-async fn folder_release_decision_is_idempotent_and_root_scoped() {
-    use crate::folder_scanner::{FolderReleaseDecision, FolderReleaseDecisionKey};
+//! A scan's track sheets as stored and read back from a cold database.
 
-    let (db, _tmp) = empty_db().await;
-    let tables = crate::tables::ImportTables::new(db.clone());
-    let other = host_root("/other/library");
-    let key = FolderReleaseDecisionKey {
-        watched_folder_path: host_root("/mounted/library"),
-        relative_folder: bae_db::RelativeFolder::test("Collection/Release Wrapper"),
-    };
-    tables.add_watched_import_folder(&key.watched_folder_path).await.unwrap();
-    tables.add_watched_import_folder(&other).await.unwrap();
-
-    store_user_folder_decision(&db, &key, FolderReleaseDecision::CombineAsOneRelease)
-        .await
-        .unwrap();
-    store_user_folder_decision(&db, &key, FolderReleaseDecision::CombineAsOneRelease)
-        .await
-        .unwrap();
-    store_user_folder_decision(
-        &db,
-        &FolderReleaseDecisionKey {
-            watched_folder_path: other,
-            relative_folder: key.relative_folder.clone(),
-        },
-        FolderReleaseDecision::KeepAsSeparateReleases,
-    )
-    .await
-    .unwrap();
-
-    let decisions = tables.load_folder_release_decisions(&key.watched_folder_path).await.unwrap();
-    assert_eq!(
-        decisions.get(&key.relative_folder).map(|reading| (reading.decision, reading.author)),
-        Some((
-            FolderReleaseDecision::CombineAsOneRelease,
-            crate::folder_scanner::FolderReleaseDecisionAuthor::User
-        ))
-    );
-}
+use bae_db::test_fixtures::empty_db;
 
 /// The CD ripper a sheet names is kept with the scan, so a folder read back
 /// from a cold database still proves the CD rip its sheet does.
@@ -73,23 +36,24 @@ async fn a_sheet_s_ripper_survives_a_relaunch() {
         .begin_folder_scan(std::path::Path::new(&root), crate::VolumeKind::Local)
         .await
         .unwrap();
-    tables.save_folder_scan_item(
-        std::path::Path::new(&root),
-        generation,
-        &ScanItem::Valid(FolderCandidate {
-            path: folder.path().to_path_buf(),
-            file_root: folder.path().to_path_buf(),
-            name: "Release".to_string(),
-            files: scanned,
-            watched_folder_path: std::path::PathBuf::from(&root),
-            scope: crate::ReleaseFileScope::Recursive,
-            file_edit_revision: 0,
-            relative_folder: bae_db::RelativeFolder::root(),
-            grouping: None,
-        }),
-    )
-    .await
-    .unwrap();
+    tables
+        .save_folder_scan_item(
+            std::path::Path::new(&root),
+            generation,
+            &ScanItem::Valid(FolderCandidate {
+                path: folder.path().to_path_buf(),
+                file_root: folder.path().to_path_buf(),
+                name: "Release".to_string(),
+                files: scanned,
+                watched_folder_path: std::path::PathBuf::from(&root),
+                scope: crate::ReleaseFileScope::Recursive,
+                file_edit_revision: 0,
+                relative_folder: bae_db::RelativeFolder::root(),
+                grouping: None,
+            }),
+        )
+        .await
+        .unwrap();
     tables.finish_folder_scan(std::path::Path::new(&root), generation, None).await.unwrap();
 
     let restored = tables.load_folder_scan_snapshots().await.unwrap();
@@ -142,23 +106,24 @@ async fn a_timing_refusal_survives_a_relaunch() {
         .begin_folder_scan(std::path::Path::new(&root), crate::VolumeKind::Local)
         .await
         .unwrap();
-    tables.save_folder_scan_item(
-        std::path::Path::new(&root),
-        generation,
-        &ScanItem::Valid(FolderCandidate {
-            path: folder.path().to_path_buf(),
-            file_root: folder.path().to_path_buf(),
-            name: "Release".to_string(),
-            files: scanned,
-            watched_folder_path: std::path::PathBuf::from(&root),
-            scope: crate::ReleaseFileScope::Recursive,
-            file_edit_revision: 0,
-            relative_folder: bae_db::RelativeFolder::root(),
-            grouping: None,
-        }),
-    )
-    .await
-    .unwrap();
+    tables
+        .save_folder_scan_item(
+            std::path::Path::new(&root),
+            generation,
+            &ScanItem::Valid(FolderCandidate {
+                path: folder.path().to_path_buf(),
+                file_root: folder.path().to_path_buf(),
+                name: "Release".to_string(),
+                files: scanned,
+                watched_folder_path: std::path::PathBuf::from(&root),
+                scope: crate::ReleaseFileScope::Recursive,
+                file_edit_revision: 0,
+                relative_folder: bae_db::RelativeFolder::root(),
+                grouping: None,
+            }),
+        )
+        .await
+        .unwrap();
     tables.finish_folder_scan(std::path::Path::new(&root), generation, None).await.unwrap();
 
     let restored = tables.load_folder_scan_snapshots().await.unwrap();

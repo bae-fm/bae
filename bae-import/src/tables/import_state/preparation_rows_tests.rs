@@ -1,6 +1,9 @@
 //! One candidate's whole state saved as a unit.
 
+use crate::folder_scanner::FolderCandidate;
+use crate::tables::folder_scans::tag_snapshot::tests::*;
 use crate::tables::import_state::tests::*;
+use crate::tables::tests::*;
 use crate::CoverSelection;
 use bae_catalogs::catalog::Catalog;
 use bae_db::test_fixtures::empty_db;
@@ -33,4 +36,136 @@ async fn a_remote_cover_without_exact_bytes_writes_nothing() {
         tables.load_import_candidate_state(&hash).await.unwrap().expect("the candidate remains");
     assert_eq!(state.metadata_revision, 0);
     assert_eq!(tables.load_import_candidate_pane_rows(&hash).await.unwrap().cover, None);
+}
+
+fn save_expectation(
+    candidate: &FolderCandidate,
+    preparation: &crate::preparation::CandidatePreparation,
+) -> crate::tables::CandidateSaveExpectation {
+    crate::tables::CandidateSaveExpectation {
+        edit_revision: preparation.file_edits.revision,
+        metadata_revision: preparation.metadata_revision,
+        scanned: Some(crate::tables::ScannedCandidateKey {
+            watched_folder_path: candidate.watched_folder_path.clone(),
+            candidate_path: crate::CandidateKey::folder(&candidate.path),
+        }),
+    }
+}
+
+#[tokio::test]
+async fn superseded_preparation_leaves_snapshot_facts_and_cover_unchanged() {
+    let (db, _tmp, root) = watched_root().await;
+    let tables = crate::tables::ImportTables::new(db.clone());
+    let (candidate, generation) = scanned_tagged_candidate(&db, &root).await;
+    let key = crate::CandidateKey::folder(&candidate.path);
+    let hash = candidate.files.content_hash();
+    let reading = tag_snapshot(generation, 0);
+    tables.replace_candidate_file_tag_snapshot(&root, &key, &reading).await.unwrap();
+    let mut stale =
+        tables.load_candidate_preparation(&hash).await.unwrap().unwrap().stored().unwrap();
+    let expected = save_expectation(&candidate, &stale);
+    crate::CandidatePreparations::new(db.clone())
+        .set_field(&hash, crate::CandidateEditField::AlbumTitle, "Newer album")
+        .await
+        .unwrap();
+    let before = tables.load_candidate_preparation(&hash).await.unwrap().unwrap().stored().unwrap();
+    stale.metadata_revision += 1;
+    let mut replacement = reading.clone();
+    replacement.files[0].tags.title = Some("Stale title".into());
+    replacement.embedded_cover.as_mut().unwrap().data = vec![9, 8, 7];
+    let result = tables
+        .save_candidate_preparation(
+            stale,
+            expected,
+            crate::tables::CandidateSaveExtras {
+                file_tag_snapshot: Some(replacement),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+    assert!(matches!(result, crate::tables::CandidateSaved::Superseded));
+    assert_eq!(
+        tables.load_candidate_preparation(&hash).await.unwrap().unwrap().stored().unwrap(),
+        before
+    );
+    assert_eq!(
+        tables.load_candidate_file_tag_snapshot(&root, &key).await.unwrap().unwrap().snapshot,
+        Some(reading)
+    );
+}
+
+#[tokio::test]
+async fn preparation_reshape_stores_complete_tags_after_their_file_rows() {
+    let (db, _tmp, root) = watched_root().await;
+    let tables = crate::tables::ImportTables::new(db.clone());
+    let (candidate, generation) = scanned_tagged_candidate(&db, &root).await;
+    let key = crate::CandidateKey::folder(&candidate.path);
+    let hash = candidate.files.content_hash();
+    let mut prep =
+        tables.load_candidate_preparation(&hash).await.unwrap().unwrap().stored().unwrap();
+    let expected = save_expectation(&candidate, &prep);
+    prep.file_edits.revision += 1;
+    prep.metadata_revision += 1;
+    let reading = tag_snapshot(generation, prep.file_edits.revision);
+    let result = tables
+        .save_candidate_preparation(
+            prep,
+            expected,
+            crate::tables::CandidateSaveExtras {
+                file_tag_snapshot: Some(reading.clone()),
+                reshaped_files: Some(vec![(key.clone(), candidate.files)]),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+    assert!(matches!(result, crate::tables::CandidateSaved::Landed(_)));
+    let stored = tables.load_candidate_file_tag_snapshot(&root, &key).await.unwrap().unwrap();
+    assert_eq!(stored.candidate.file_edit_revision, 1);
+    assert_eq!(stored.snapshot, Some(reading));
+    assert_eq!(stored_reading_rows(&db, &root, &key).await, (1, 2));
+}
+
+#[tokio::test]
+async fn preparation_save_rejects_incomplete_or_unowned_tag_readings_atomically() {
+    for invalid_cover in [false, true] {
+        let (db, _tmp, root) = watched_root().await;
+        let tables = crate::tables::ImportTables::new(db.clone());
+        let (candidate, generation) = scanned_tagged_candidate(&db, &root).await;
+        let key = crate::CandidateKey::folder(&candidate.path);
+        let hash = candidate.files.content_hash();
+        let original = tag_snapshot(generation, 0);
+        tables.replace_candidate_file_tag_snapshot(&root, &key, &original).await.unwrap();
+        let before =
+            tables.load_candidate_preparation(&hash).await.unwrap().unwrap().stored().unwrap();
+        let expected = save_expectation(&candidate, &before);
+        let mut prep = before.clone();
+        prep.metadata_revision += 1;
+        let mut invalid = original.clone();
+        if invalid_cover {
+            invalid.embedded_cover.as_mut().unwrap().source_relative_path = "unread.flac".into();
+        } else {
+            invalid.files.pop();
+        }
+        assert!(tables
+            .save_candidate_preparation(
+                prep,
+                expected,
+                crate::tables::CandidateSaveExtras {
+                    file_tag_snapshot: Some(invalid),
+                    ..Default::default()
+                }
+            )
+            .await
+            .is_err());
+        assert_eq!(
+            tables.load_candidate_preparation(&hash).await.unwrap().unwrap().stored().unwrap(),
+            before
+        );
+        assert_eq!(
+            tables.load_candidate_file_tag_snapshot(&root, &key).await.unwrap().unwrap().snapshot,
+            Some(original)
+        );
+    }
 }

@@ -18,7 +18,7 @@ pub(crate) fn delete_entry(
     key: &CandidateKey,
 ) -> Result<(), DbError> {
     delete_entry_row(sql, watched_folder_path, key)?;
-    super::super::import_state::end_file_work_unless_of_on(sql, key, None)
+    crate::tables::import_state::end_file_work_unless_of_on(sql, key, None)
 }
 
 fn delete_entry_row(
@@ -162,7 +162,7 @@ pub(super) fn prune_other_generations(
     // The candidates the pass did not find leave the scan, and their
     // identifications with them.
     for key in &pruned {
-        super::super::import_state::end_file_work_unless_of_on(sql, key, None)?;
+        crate::tables::import_state::end_file_work_unless_of_on(sql, key, None)?;
     }
     Ok(pruned)
 }
@@ -372,7 +372,7 @@ pub(crate) fn ensure_candidate_state(
     // seed.
     let cover = match seed {
         CandidateStateSeed::Blank { draft, cover } => {
-            super::super::import_state::insert_draft(
+            crate::tables::import_state::insert_draft(
                 sql,
                 &content_hash,
                 draft,
@@ -381,7 +381,7 @@ pub(crate) fn ensure_candidate_state(
             cover
         }
         CandidateStateSeed::FileMetadata(seed) => {
-            super::super::import_state::insert_file_tags_draft(sql, &content_hash, &seed.draft)?;
+            crate::tables::import_state::insert_file_tags_draft(sql, &content_hash, &seed.draft)?;
             crate::local_artwork::folder_cover(seed.cover.clone(), files.artwork())
         }
     };

@@ -42,7 +42,7 @@ pub(crate) struct FolderReadingWrite {
     /// Entries under the folder the new reading no longer yields.
     pub(crate) pruned: Vec<CandidateKey>,
     /// Releases groupings rebuilt without the pruned entries.
-    pub(crate) regrouped: super::super::release_groupings::GroupingChanges,
+    pub(crate) regrouped: crate::tables::release_groupings::GroupingChanges,
 }
 
 impl ImportTables {
@@ -247,7 +247,7 @@ impl ImportTables {
                         )?;
                     }
                 }
-                let regrouped = super::super::release_groupings::rebuild_groupings(
+                let regrouped = crate::tables::release_groupings::rebuild_groupings(
                     sql,
                     &pruned,
                     &pruned_sidecars,

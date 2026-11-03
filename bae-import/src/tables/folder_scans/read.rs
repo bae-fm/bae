@@ -197,7 +197,7 @@ pub(crate) fn load_candidate_file_tag_snapshot(
     candidate_path: &CandidateKey,
 ) -> Result<Option<DbCandidateFileTagSnapshot>, DbError> {
     let Some(stored_candidate) =
-        super::super::release_groupings::load_candidate_on(sql, candidate_path)?
+        crate::tables::release_groupings::load_candidate_on(sql, candidate_path)?
     else {
         return Ok(None);
     };

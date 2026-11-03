@@ -70,3 +70,7 @@ impl ImportTables {
             .process(|statuses| Ok(FolderScanProgress::of(statuses)))
     }
 }
+
+#[cfg(test)]
+#[path = "progress_tests.rs"]
+mod tests;
