@@ -2,9 +2,10 @@
 # which scripts/owner-dependency-boundary.sh installs at a pinned coven
 # revision and runs on this workspace.
 
-# The rule groups bae holds itself to: its crates depend only downward, and
-# an owner never hands out what it holds.
-rules = ["crate-dependencies", "owner-dependencies"]
+# The rule groups bae holds itself to: its crates depend only downward, no
+# struct exists only to be taken apart, and an owner never hands out what it
+# holds.
+rules = ["component-bundles", "crate-dependencies", "owner-dependencies"]
 
 # The code generator for the bindings answers only to the conventions.
 tools = ["bae-uniffi-bindgen"]
