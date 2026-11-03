@@ -198,7 +198,7 @@
     <string name="appearance_amber">Borostyán</string>
     <string name="appearance_green">Zöld</string>
     <string name="appearance_teal">Türkiz</string>
-    <string name="appearance_save_failed">A megjelenést nem sikerült menteni: %1$s</string>
+    <string name="appearance_save_failed">A megjelenést nem sikerült menteni.</string>
     <string name="appearance_midnight">Éjkék</string>
     <string name="appearance_forest">Erdőzöld</string>
     <string name="appearance_sand">Homok</string>

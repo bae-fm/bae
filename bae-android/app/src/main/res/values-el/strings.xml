@@ -198,7 +198,7 @@
     <string name="appearance_amber">Κεχριμπάρι</string>
     <string name="appearance_green">Πράσινο</string>
     <string name="appearance_teal">Γαλαζοπράσινο</string>
-    <string name="appearance_save_failed">Δεν ήταν δυνατή η αποθήκευση της εμφάνισης: %1$s</string>
+    <string name="appearance_save_failed">Δεν ήταν δυνατή η αποθήκευση της εμφάνισης.</string>
     <string name="appearance_midnight">Μεσάνυχτα</string>
     <string name="appearance_forest">Δάσος</string>
     <string name="appearance_sand">Άμμος</string>

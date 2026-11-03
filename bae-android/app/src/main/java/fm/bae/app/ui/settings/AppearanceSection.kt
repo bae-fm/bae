@@ -28,11 +28,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import fm.bae.app.BaeLogger
+import fm.bae.app.DisplayError
 import fm.bae.app.R
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.AccentChoice
@@ -44,25 +47,29 @@ import fm.bae.app.ui.appearance.ThemeSize
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.appearance.colors
-import fm.bae.app.ui.components.ErrorText
+import fm.bae.app.ui.components.ErrorDetailDisclosure
 import fm.bae.app.ui.components.Eyebrow
 import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.launch
 import java.io.IOException
+
+private val logger = BaeLogger("bae.AppearanceSection")
 
 @Composable
 internal fun AppearanceSection() {
     val store = LocalAppearanceStore.current
     val preferences by store.preferences.collectAsState()
     val scope = rememberScreenScope()
-    var error by remember { mutableStateOf<String?>(null) }
+    val context = LocalContext.current
+    var error by remember { mutableStateOf<DisplayError?>(null) }
     val save: (suspend () -> Unit) -> Unit = { change ->
         scope.launch {
             try {
                 change()
                 error = null
             } catch (failure: IOException) {
-                error = failure.localizedMessage ?: failure.toString()
+                logger.error("saving appearance failed", failure)
+                error = DisplayError(context.getString(R.string.appearance_save_failed), failure.toString())
             }
         }
     }
@@ -87,9 +94,7 @@ internal fun AppearanceSection() {
             label = { it.label },
             onSelect = { save { store.setTone(it) } },
         )
-        error?.let {
-            ErrorText(stringResource(R.string.appearance_save_failed, it))
-        }
+        error?.let { ErrorDetailDisclosure(it) }
     }
 }
 

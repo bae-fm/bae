@@ -198,7 +198,7 @@
     <string name="appearance_amber">Meripihka</string>
     <string name="appearance_green">Vihreä</string>
     <string name="appearance_teal">Turkoosi</string>
-    <string name="appearance_save_failed">Ulkoasua ei voitu tallentaa: %1$s</string>
+    <string name="appearance_save_failed">Ulkoasua ei voitu tallentaa.</string>
     <string name="appearance_midnight">Keskiyö</string>
     <string name="appearance_forest">Metsä</string>
     <string name="appearance_sand">Hiekka</string>

@@ -16,9 +16,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import fm.bae.app.BaeLogger
+import fm.bae.app.BugReports
 import fm.bae.app.DisplayError
+import fm.bae.app.LocalBugReports
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
+import fm.bae.app.coreString
 import fm.bae.app.displayError
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.ErrorDetailDisclosure
@@ -32,11 +35,16 @@ private val logger = BaeLogger("bae.QueueFailures")
  */
 internal class QueueFailures(
     private val context: Context,
+    private val bugs: BugReports,
 ) {
     var command by mutableStateOf<DisplayError?>(null)
         private set
 
-    /** Run a queue command; a failure is logged and shown, a success clears the last one. */
+    /**
+     * Run a queue command; a failure is logged and shown, a success clears the
+     * last one. A queue command fails only with a typed bridge error, so any
+     * other exception is a bug: reported, and shown as "Something went wrong".
+     */
     fun run(
         operation: String,
         action: () -> Unit,
@@ -49,8 +57,8 @@ internal class QueueFailures(
                 logger.error("$operation failed", e)
                 context.displayError(e)
             } catch (e: Exception) {
-                logger.error("$operation failed", e)
-                DisplayError(e.toString())
+                bugs.reportShownInPlace(operation, e)
+                DisplayError(context.coreString("core.error.category.internal"))
             }
     }
 }
@@ -58,7 +66,8 @@ internal class QueueFailures(
 @Composable
 internal fun rememberQueueFailures(): QueueFailures {
     val context = LocalContext.current
-    return remember { QueueFailures(context) }
+    val bugs = LocalBugReports.current
+    return remember { QueueFailures(context, bugs) }
 }
 
 /** The last queue command that failed, above the lanes; nothing while none has. */

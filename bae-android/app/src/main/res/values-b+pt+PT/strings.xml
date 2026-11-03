@@ -198,7 +198,7 @@
     <string name="appearance_amber">Âmbar</string>
     <string name="appearance_green">Verde</string>
     <string name="appearance_teal">Turquesa</string>
-    <string name="appearance_save_failed">Não foi possível guardar o aspeto: %1$s</string>
+    <string name="appearance_save_failed">Não foi possível guardar o aspeto.</string>
     <string name="appearance_midnight">Meia-noite</string>
     <string name="appearance_forest">Floresta</string>
     <string name="appearance_sand">Areia</string>

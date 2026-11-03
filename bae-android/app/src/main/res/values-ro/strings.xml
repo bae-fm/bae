@@ -202,7 +202,7 @@
     <string name="appearance_amber">Chihlimbar</string>
     <string name="appearance_green">Verde</string>
     <string name="appearance_teal">Turcoaz</string>
-    <string name="appearance_save_failed">Aspectul nu a putut fi salvat: %1$s</string>
+    <string name="appearance_save_failed">Aspectul nu a putut fi salvat.</string>
     <string name="appearance_midnight">Miez de noapte</string>
     <string name="appearance_forest">Pădure</string>
     <string name="appearance_sand">Nisip</string>

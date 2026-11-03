@@ -49,7 +49,8 @@ class BaeApp : Application() {
     var startupError: StartupError? = null
         private set
 
-    var platformStartupError: String? = null
+    /** Android's certificate verification failing to start: a bug, already reported. */
+    var platformStartupError: RuntimeException? = null
         private set
 
     /** Bugs reported without crashing, for the whole run; the app's snackbar tells the person. */
@@ -70,8 +71,8 @@ class BaeApp : Application() {
         try {
             AndroidRuntime.initialize(this)
         } catch (error: RuntimeException) {
-            platformStartupError = error.toString()
-            logger.error("Failed to initialize Android TLS", error)
+            platformStartupError = error
+            bugs.reportShownInPlace("initialize Android TLS", error)
             return
         }
         // bae's directory lives under the app's private files dir: Android app

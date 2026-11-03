@@ -206,7 +206,7 @@
     <string name="appearance_amber">Jantárový</string>
     <string name="appearance_green">Zelený</string>
     <string name="appearance_teal">Modrozelený</string>
-    <string name="appearance_save_failed">Vzhľad sa nepodarilo uložiť: %1$s</string>
+    <string name="appearance_save_failed">Vzhľad sa nepodarilo uložiť.</string>
     <string name="appearance_midnight">Polnočný</string>
     <string name="appearance_forest">Lesný</string>
     <string name="appearance_sand">Piesočný</string>

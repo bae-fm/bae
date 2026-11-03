@@ -130,7 +130,10 @@ private fun PlayableReleaseDownloadControl(
     }
 }
 
-/** Unpins [releaseId] and returns the error to show, or null on success; [onSettled] runs either way. */
+/**
+ * Unpins [releaseId] and returns the error to show, or null on success; [onSettled] runs either way.
+ * Any failure but a typed bridge error is a bug, left to the screen scope's bug handler.
+ */
 private suspend fun runUnpin(
     session: OpenLibrary,
     releaseId: String,
@@ -145,9 +148,6 @@ private suspend fun runUnpin(
     } catch (e: BridgeException) {
         logger.error("unpinRelease failed for $releaseId", e)
         context.displayError(e)
-    } catch (e: Exception) {
-        logger.error("unpinRelease failed for $releaseId", e)
-        DisplayError(e.message ?: e::class.java.simpleName)
     } finally {
         onSettled()
     }

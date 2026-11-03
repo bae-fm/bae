@@ -198,7 +198,7 @@
     <string name="appearance_amber">Bärnsten</string>
     <string name="appearance_green">Grön</string>
     <string name="appearance_teal">Turkos</string>
-    <string name="appearance_save_failed">Kunde inte spara utseendet: %1$s</string>
+    <string name="appearance_save_failed">Kunde inte spara utseendet.</string>
     <string name="appearance_midnight">Midnatt</string>
     <string name="appearance_forest">Skog</string>
     <string name="appearance_sand">Sand</string>

@@ -198,7 +198,7 @@
     <string name="appearance_amber">Rav</string>
     <string name="appearance_green">Grønn</string>
     <string name="appearance_teal">Turkis</string>
-    <string name="appearance_save_failed">Kunne ikke lagre utseendet: %1$s</string>
+    <string name="appearance_save_failed">Kunne ikke lagre utseendet.</string>
     <string name="appearance_midnight">Midnatt</string>
     <string name="appearance_forest">Skog</string>
     <string name="appearance_sand">Sand</string>
