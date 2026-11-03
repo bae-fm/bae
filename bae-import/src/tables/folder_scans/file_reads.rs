@@ -2,7 +2,8 @@
 //! file, for the next pass over the root to take rather than read again (see
 //! [`FileReads`]).
 
-use super::read::{load_items, RowSources, StoredFileTags, FILE_TAG_COLUMNS};
+use super::read::{load_items, RowSources};
+use super::tag_snapshot::{StoredFileTags, FILE_TAG_COLUMNS};
 use super::*;
 use crate::file_tag_snapshot::{FileTagReader, FileTagSnapshot, FileTags};
 use crate::folder_scanner::{Coverage, FileReads, FileVersion};
@@ -66,7 +67,11 @@ impl ImportTables {
                 if stored_root.as_ref() != Some(&file_root) {
                     return Ok(None);
                 }
-                read::load_file_tag_snapshot(&sql, &watched_folder_path, &candidate_path)
+                super::tag_snapshot::load_file_tag_snapshot(
+                    &sql,
+                    &watched_folder_path,
+                    &candidate_path,
+                )
             })
             .await
     }

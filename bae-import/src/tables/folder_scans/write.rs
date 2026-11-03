@@ -69,77 +69,6 @@ const OVER_STORED_ROW: &str = "ON CONFLICT (watched_folder_path, path) DO UPDATE
      content_hash = excluded.content_hash, file_edit_revision = excluded.file_edit_revision, \
      grouping_key = excluded.grouping_key, source_kind = excluded.source_kind";
 
-/// Replace one candidate's stored file-tag reading, inside the caller's
-/// transaction.
-pub(crate) fn replace_candidate_file_tag_snapshot(
-    sql: &CovenWrite<'_>,
-    watched_folder_path: &Path,
-    candidate_path: &CandidateKey,
-    snapshot: &crate::file_tag_snapshot::FileTagSnapshot,
-) -> Result<(), DbError> {
-    sql.execute(
-        "DELETE FROM scan_candidate_tag_snapshot \
-         WHERE watched_folder_path = ? AND candidate_path = ?",
-        params![coven::path_bytes(watched_folder_path), candidate_path],
-    )?;
-    let (cover_source, cover_content_type, cover_data) = match &snapshot.embedded_cover {
-        Some(cover) => (
-            Some(cover.source_relative_path.as_str()),
-            Some(cover.content_type.as_str()),
-            Some(cover.data.as_slice()),
-        ),
-        None => (None, None, None),
-    };
-    sql.execute(
-        "INSERT INTO scan_candidate_tag_snapshot \
-             (watched_folder_path, candidate_path, scan_generation, file_edit_revision, \
-              embedded_cover_source_relative_path, embedded_cover_content_type, \
-              embedded_cover_data) \
-         VALUES (?, ?, ?, ?, ?, ?, ?)",
-        params![
-            coven::path_bytes(watched_folder_path),
-            candidate_path,
-            to_i64(snapshot.scan_generation, "a file-tag snapshot's scan generation")?,
-            to_i64(snapshot.file_edit_revision, "a file-tag snapshot's file edit revision")?,
-            cover_source,
-            cover_content_type,
-            cover_data,
-        ],
-    )?;
-    for fact in &snapshot.files {
-        let tags = &fact.tags;
-        sql.execute(
-            "INSERT INTO scan_candidate_file_tag \
-                 (watched_folder_path, candidate_path, relative_path, file_size, \
-                  modified_at_ns, title, track_artists, album_title, \
-                  album_artists, compilation, years, track_number, disc_number) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            params![
-                coven::path_bytes(watched_folder_path),
-                candidate_path,
-                fact.observation.relative_path,
-                to_i64(fact.observation.size, "a file-tag observation's size")?,
-                fact.observation.modified_at_ns,
-                tags.title,
-                tag_values_json(&tags.track_artists)?,
-                tags.album_title,
-                tag_values_json(&tags.album_artists)?,
-                tags.compilation,
-                tag_values_json(&tags.years)?,
-                tags.numbers.track.map(i64::from),
-                tags.numbers.disc.map(i64::from),
-            ],
-        )?;
-    }
-    Ok(())
-}
-
-/// A multi-valued tag's values as their JSON array column holds them.
-fn tag_values_json<T: serde::Serialize>(values: &[T]) -> Result<String, DbError> {
-    serde_json::to_string(values)
-        .map_err(|error| DbError::Message(format!("a file tag's values do not encode: {error}")))
-}
-
 /// Delete every scanned row, not a grouping's, stamped with another
 /// generation than `generation`, ending each candidate's identification, and
 /// return their keys.
@@ -256,7 +185,12 @@ fn insert_candidate(
     // The reading belongs to the scan row, so a seed always stores it, while
     // its draft only fills a candidate that has none.
     if let Some(seed) = file_metadata {
-        replace_candidate_file_tag_snapshot(sql, watched_folder_path, &path, &seed.snapshot)?;
+        super::tag_snapshot::replace_candidate_file_tag_snapshot(
+            sql,
+            watched_folder_path,
+            &path,
+            &seed.snapshot,
+        )?;
     }
     Ok(())
 }

@@ -6,8 +6,8 @@
 //!
 //! [`write`] stores candidate rows, [`read`] loads them back, [`sidecar`]
 //! stores a folder's sidecar files, [`file_reads`] reads what they say was
-//! read of each file, and [`tag_snapshot`] stores what a candidate's files'
-//! tags read.
+//! read of each file, and [`tag_snapshot`] stores and reads back what a
+//! candidate's files' tags read.
 
 pub(super) mod columns;
 mod dates;
@@ -17,7 +17,7 @@ pub(super) mod read;
 mod reading;
 mod sidecar;
 pub(super) mod tag_snapshot;
-pub(super) mod write;
+mod write;
 
 use super::release_groupings::{store_folder_reading, validate_decision_key_ownership};
 use super::*;
@@ -27,11 +27,12 @@ use bae_db::client::query::{QueryOne, QueryRows};
 use std::path::{Path, PathBuf};
 
 // `use super::*` also brings in the client's own `read` and `write`, hence `self::`.
-pub(super) use self::read::{load_candidate_file_tag_snapshot, load_item_by_key, RowSources};
+pub(super) use self::read::{load_item_by_key, RowSources};
 /// Named only by a test that commits a reading under a stamp it took.
 #[cfg(test)]
 pub(crate) use self::reading::FolderReadingStamp;
 pub(crate) use self::reading::{FolderReadingCommit, FolderReadingWrite};
+pub(super) use self::tag_snapshot::load_candidate_file_tag_snapshot;
 
 /// Each watched folder's scan, in the order the folders are listed (their
 /// `position`, by its index), with the count of its current generation's
@@ -593,7 +594,7 @@ pub(super) fn write_entry(
     // audio it was read from.
     let carried = match file_metadata.is_some() {
         true => None,
-        false => read::load_file_tag_snapshot(sql, watched_folder_path, &entry_key)?
+        false => tag_snapshot::load_file_tag_snapshot(sql, watched_folder_path, &entry_key)?
             .filter(|snapshot| item_was_read_for(item, snapshot)),
     };
     let removed_keys = match source {
@@ -617,7 +618,7 @@ pub(super) fn write_entry(
     };
     super::import_state::end_file_work_unless_of_on(sql, &entry_key, held.as_ref())?;
     if let Some(snapshot) = carried {
-        write::replace_candidate_file_tag_snapshot(
+        tag_snapshot::replace_candidate_file_tag_snapshot(
             sql,
             watched_folder_path,
             &entry_key,
