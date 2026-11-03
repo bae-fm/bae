@@ -92,6 +92,39 @@ pub(super) fn load_candidate_on(
 
 /// Whether the person set this release aside: a grouping's own flag, or a
 /// folder's row in the skip table.
+/// Forget every grouping anchored at or taking a release from a folder at or
+/// below `folders`. Returns the keys of the grouping releases that were listed
+/// and went with them.
+pub(super) fn forget_at_or_below(
+    sql: &CovenWrite<'_>,
+    folders: &super::watched_folders::FoldersAtOrBelow,
+) -> Result<Vec<CandidateKey>, DbError> {
+    use super::watched_folders::FoldersAtOrBelow;
+    let groupings: Vec<(CandidateKey, bool)> = sql.query(
+        &format!(
+            "SELECT grouping.key, \
+                    EXISTS (SELECT 1 FROM scan_candidate WHERE path = grouping.key) \
+             FROM (SELECT key FROM release_grouping WHERE {anchored} \
+                   UNION \
+                   SELECT grouping_key AS key FROM release_grouping_member \
+                   WHERE {member}) AS grouping \
+             ORDER BY grouping.key",
+            anchored = FoldersAtOrBelow::condition("anchor_folder"),
+            member = FoldersAtOrBelow::condition("member_folder"),
+        ),
+        &folders.params(),
+        |row| Ok((row.get(0)?, row.get(1)?)),
+    )?;
+    let mut removed = Vec::new();
+    for (key, listed) in groupings {
+        sql.execute("DELETE FROM release_grouping WHERE key = ?", [&key])?;
+        if listed {
+            removed.push(key);
+        }
+    }
+    Ok(removed)
+}
+
 pub(super) fn skipped_on(
     sql: &(impl QueryOne + QueryRows),
     candidate: &FolderCandidate,

@@ -102,6 +102,21 @@ impl FolderDiscovery {
     }
 }
 
+/// Forget when every folder at or below `folders` was found.
+pub(crate) fn forget_discovery_at_or_below(
+    sql: &CovenWrite<'_>,
+    folders: &crate::tables::watched_folders::FoldersAtOrBelow,
+) -> Result<(), DbError> {
+    sql.execute(
+        &format!(
+            "DELETE FROM folder_discovery WHERE {}",
+            crate::tables::watched_folders::FoldersAtOrBelow::condition("folder")
+        ),
+        &folders.params(),
+    )?;
+    Ok(())
+}
+
 #[cfg(test)]
 #[path = "dates_tests.rs"]
 mod tests;

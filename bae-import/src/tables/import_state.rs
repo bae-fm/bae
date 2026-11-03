@@ -42,7 +42,7 @@ pub(crate) use preparation_rows::{
 };
 pub(super) use release_link_rows::{read_release_link, RELEASE_LINK_COLUMNS};
 pub(super) use rows::load_states_on;
-pub(super) use seed_rows::{ensure_candidate_state, CandidateStateSeed};
+pub(super) use seed_rows::{ensure_candidate_state, forget_at_or_below, CandidateStateSeed};
 use session_rows::load_session_on;
 use signal_rows::{delete_signals, store_signals};
 pub(crate) use standing_rows::ImportClaim;

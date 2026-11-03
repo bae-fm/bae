@@ -73,6 +73,29 @@ pub(crate) fn ensure_candidate_state(
     Ok(())
 }
 
+/// Forget every folder at or below `folders` that files were found at, and
+/// the state of every candidate found only there.
+pub(crate) fn forget_at_or_below(
+    sql: &CovenWrite<'_>,
+    folders: &crate::tables::watched_folders::FoldersAtOrBelow,
+) -> Result<(), DbError> {
+    let under = crate::tables::watched_folders::FoldersAtOrBelow::condition("folder");
+    let found: Vec<String> = sql.query(
+        &format!("SELECT DISTINCT content_hash FROM import_candidate_folder WHERE {under}"),
+        &folders.params(),
+        |row| row.get(0),
+    )?;
+    sql.execute(&format!("DELETE FROM import_candidate_folder WHERE {under}"), &folders.params())?;
+    sql.execute(
+        "DELETE FROM import_candidate_state \
+         WHERE content_hash IN (SELECT value FROM json_each(?)) \
+           AND NOT EXISTS (SELECT 1 FROM import_candidate_folder AS found \
+                           WHERE found.content_hash = import_candidate_state.content_hash)",
+        [serde_json::Value::from(found).to_string()],
+    )?;
+    Ok(())
+}
+
 #[cfg(test)]
 #[path = "seed_rows_tests.rs"]
 mod tests;

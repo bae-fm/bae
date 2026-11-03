@@ -50,6 +50,7 @@ pub(super) const FOLDER_SCAN_PROGRESS: &str = "SELECT roots.watched_folder_path,
      JOIN folder_scan_roots AS roots ON roots.watched_folder_path = watched.path \
      ORDER BY watched.position";
 
+pub(super) use self::dates::forget_discovery_at_or_below;
 pub(super) use self::file_decisions::settle_candidate_files;
 pub(super) use self::sidecar::load_sidecar;
 use self::sidecar::load_sidecars;

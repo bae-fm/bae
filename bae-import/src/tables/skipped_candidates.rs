@@ -10,6 +10,21 @@ use bae_db::RelativeFolder;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
+/// Forget every candidate set aside at or below `folders`.
+pub(super) fn forget_at_or_below(
+    sql: &CovenWrite<'_>,
+    folders: &super::watched_folders::FoldersAtOrBelow,
+) -> Result<(), DbError> {
+    sql.execute(
+        &format!(
+            "DELETE FROM skipped_import_candidates WHERE {}",
+            super::watched_folders::FoldersAtOrBelow::condition("candidate_path")
+        ),
+        &folders.params(),
+    )?;
+    Ok(())
+}
+
 impl ImportTables {
     /// Every skipped candidate under one root, by its path below the root:
     /// what the tests of skipping and of removing a watched folder read back.

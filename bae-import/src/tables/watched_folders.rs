@@ -8,6 +8,36 @@ use std::path::{Path, PathBuf};
 
 mod removal;
 
+/// The folders at or below one folder, as a condition on a stored folder
+/// column: the range each owner of rows kept by folder forgets when the
+/// folder stops being watched.
+pub(crate) struct FoldersAtOrBelow {
+    folder: Vec<u8>,
+    below_first: Vec<u8>,
+    below_past: Vec<u8>,
+}
+
+impl FoldersAtOrBelow {
+    pub(crate) fn of(folder: &Path) -> Self {
+        let (below_first, below_past) = bae_db::watched_path::paths_below(folder);
+        Self { folder: coven::path_bytes(folder), below_first, below_past }
+    }
+
+    /// `column` names one of the folders, given [`Self::params`]. Read on the
+    /// column's index, as a range.
+    pub(crate) fn condition(column: &str) -> String {
+        format!("({column} = :root OR ({column} >= :below_first AND {column} < :below_past))")
+    }
+
+    pub(crate) fn params(&self) -> [(&'static str, &dyn rusqlite::ToSql); 3] {
+        [
+            (":root", &self.folder),
+            (":below_first", &self.below_first),
+            (":below_past", &self.below_past),
+        ]
+    }
+}
+
 /// `folder`, a stored folder under the watched folder `root`, as the folder
 /// below it.
 pub(super) fn relative_below(root: &Path, folder: &Path) -> Result<RelativeFolder, DbError> {

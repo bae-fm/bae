@@ -141,72 +141,19 @@ fn watch_in_place_of(
 }
 
 /// Delete what is known about the folders under `roots` and the state of
-/// every candidate found only there. Returns the keys of the grouping
-/// releases that went with their groupings. Each table is read and written
-/// by the range of folders at or below each root, on its folder index.
+/// every candidate found only there, each through the owner of its rows.
+/// Returns the keys of the grouping releases that went with their groupings.
 fn forget_folders_under(
     sql: &CovenWrite<'_>,
     roots: &[PathBuf],
 ) -> Result<Vec<CandidateKey>, DbError> {
     let mut removed = Vec::new();
     for root in roots {
-        let (below_first, below_past) = bae_db::watched_path::paths_below(root);
-        let root = coven::path_bytes(root);
-        let under = |column: &str| {
-            format!("({column} = :root OR ({column} >= :below_first AND {column} < :below_past))")
-        };
-        let params = rusqlite::named_params! {
-            ":root": root,
-            ":below_first": below_first,
-            ":below_past": below_past,
-        };
-        for (table, column) in
-            [("skipped_import_candidates", "candidate_path"), ("folder_discovery", "folder")]
-        {
-            sql.execute(&format!("DELETE FROM {table} WHERE {}", under(column)), params)?;
-        }
-        // A grouping goes with its anchor folder or any folder it takes a
-        // release from.
-        let groupings: Vec<(CandidateKey, bool)> = sql.query(
-            &format!(
-                "SELECT grouping.key, \
-                        EXISTS (SELECT 1 FROM scan_candidate WHERE path = grouping.key) \
-                 FROM (SELECT key FROM release_grouping WHERE {anchored} \
-                       UNION \
-                       SELECT grouping_key AS key FROM release_grouping_member \
-                       WHERE {member}) AS grouping \
-                 ORDER BY grouping.key",
-                anchored = under("anchor_folder"),
-                member = under("member_folder"),
-            ),
-            params,
-            |row| Ok((row.get(0)?, row.get(1)?)),
-        )?;
-        for (key, listed) in groupings {
-            sql.execute("DELETE FROM release_grouping WHERE key = ?", [&key])?;
-            if listed {
-                removed.push(key);
-            }
-        }
-        let found: Vec<String> = sql.query(
-            &format!(
-                "SELECT DISTINCT content_hash FROM import_candidate_folder WHERE {}",
-                under("folder")
-            ),
-            params,
-            |row| row.get(0),
-        )?;
-        sql.execute(
-            &format!("DELETE FROM import_candidate_folder WHERE {}", under("folder")),
-            params,
-        )?;
-        sql.execute(
-            "DELETE FROM import_candidate_state \
-             WHERE content_hash IN (SELECT value FROM json_each(?)) \
-               AND NOT EXISTS (SELECT 1 FROM import_candidate_folder AS found \
-                               WHERE found.content_hash = import_candidate_state.content_hash)",
-            [serde_json::Value::from(found).to_string()],
-        )?;
+        let folders = super::FoldersAtOrBelow::of(root);
+        crate::tables::skipped_candidates::forget_at_or_below(sql, &folders)?;
+        crate::tables::folder_scans::forget_discovery_at_or_below(sql, &folders)?;
+        removed.extend(crate::tables::release_groupings::forget_at_or_below(sql, &folders)?);
+        crate::tables::import_state::forget_at_or_below(sql, &folders)?;
     }
     Ok(removed)
 }
