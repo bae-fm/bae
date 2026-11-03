@@ -11,6 +11,8 @@ import Testing
 @MainActor
 @Suite("LibrarySessionOpener")
 struct LibrarySessionOpenerTests {
+    private let host = TestHost.make()
+
     private typealias TestOpener = LibrarySessionOpener<FakeHandle, AppService>
 
     @Test("a keychain that refused is not a failure the user has to act on")
@@ -31,7 +33,7 @@ struct LibrarySessionOpenerTests {
         let waiter = OutcomeWaiter()
         opener.open(
             libraryId: "lib-1",
-            progress: LibraryOpenProgress(host: TestHost.shared)
+            progress: LibraryOpenProgress(host: host)
         ) { waiter.record($0) }
         let outcome = await waiter.value()
 
@@ -61,7 +63,7 @@ struct LibrarySessionOpenerTests {
         let waiter = OutcomeWaiter()
         opener.open(
             libraryId: "lib-1",
-            progress: LibraryOpenProgress(host: TestHost.shared)
+            progress: LibraryOpenProgress(host: host)
         ) { waiter.record($0) }
         let outcome = await waiter.value()
 
@@ -96,11 +98,11 @@ struct LibrarySessionOpenerTests {
         let second = OutcomeWaiter()
         opener.open(
             libraryId: "parked",
-            progress: LibraryOpenProgress(host: TestHost.shared)
+            progress: LibraryOpenProgress(host: host)
         ) { first.record($0) }
         opener.open(
             libraryId: "failing",
-            progress: LibraryOpenProgress(host: TestHost.shared)
+            progress: LibraryOpenProgress(host: host)
         ) { second.record($0) }
 
         // The second open runs to completion while the first is parked.
@@ -142,7 +144,7 @@ struct LibrarySessionOpenerTests {
         let waiter = OutcomeWaiter()
         opener.open(
             libraryId: "lib-3",
-            progress: LibraryOpenProgress(host: TestHost.shared)
+            progress: LibraryOpenProgress(host: host)
         ) { waiter.record($0) }
         let outcome = await waiter.value()
 
@@ -174,7 +176,7 @@ struct LibrarySessionOpenerTests {
         let waiter = OutcomeWaiter()
         opener.open(
             libraryId: "lib-4",
-            progress: LibraryOpenProgress(host: TestHost.shared)
+            progress: LibraryOpenProgress(host: host)
         ) { waiter.record($0) }
         let outcome = await waiter.value()
 

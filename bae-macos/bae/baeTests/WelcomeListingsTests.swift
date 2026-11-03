@@ -30,6 +30,8 @@ private enum WelcomeTestError: Error {
 @MainActor
 @Suite("WelcomeListings")
 struct WelcomeListingsTests {
+    private let host = TestHost.make()
+
     private let bridge = WelcomeBridge()
 
     private var setup: LibrarySetup {
@@ -51,10 +53,11 @@ struct WelcomeListingsTests {
 
     private var removals: LibraryRemovals {
         let bridge = bridge
+        let host = host
         return LibraryRemovals(
-            makeOpenProgress: { LibraryOpenProgress(host: TestHost.shared) },
-            makeRemovalSteps: { LibraryClosingSteps(host: TestHost.shared) },
-            makeFinishingSteps: { LibrarySetupSteps(host: TestHost.shared) },
+            makeOpenProgress: { LibraryOpenProgress(host: host) },
+            makeRemovalSteps: { LibraryClosingSteps(host: host) },
+            makeFinishingSteps: { LibrarySetupSteps(host: host) },
             unsentOfClosed: { _, _ in throw WelcomeTestError.notUsed },
             removeClosed: { libraryId, _, _ in await bridge.remove(libraryId) },
             removeUnopenable: { _, _ in throw WelcomeTestError.notUsed },

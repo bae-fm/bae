@@ -63,7 +63,7 @@ struct ReleaseEditorWaitTests {
                 open: { _ in opened },
                 searchAlbums: { _ in [] },
                 cover: { _ in nil },
-                catalogApply: { CatalogApplySteps(host: TestHost.shared) }
+                catalogApply: { CatalogApplySteps(host: TestHost.make()) }
             )
         )
     }

@@ -24,9 +24,11 @@ private actor ClosedLibraryBridge {
 }
 
 /// The removals a bridge call reads while it runs, set once they exist.
+/// Held weakly: the removals hold that call, so a strong hold would keep
+/// both, and the test's host with them, past the test.
 @MainActor
 private final class WatchedRemovals {
-    var removals: LibraryRemovals?
+    weak var removals: LibraryRemovals?
 }
 
 private func library(_ state: BridgeLibraryState) -> BridgeLibrary {
@@ -52,14 +54,17 @@ private let unopenable: [BridgeLibrary] = [
 @MainActor
 @Suite("LibraryRemovals closed libraries")
 struct LibraryRemovalsClosedLibraryTests {
+    private let host = TestHost.make()
+
     private let bridge = ClosedLibraryBridge()
 
     private var removals: LibraryRemovals {
         let bridge = bridge
+        let host = host
         return LibraryRemovals(
-            makeOpenProgress: { LibraryOpenProgress(host: TestHost.shared) },
-            makeRemovalSteps: { LibraryClosingSteps(host: TestHost.shared) },
-            makeFinishingSteps: { LibrarySetupSteps(host: TestHost.shared) },
+            makeOpenProgress: { LibraryOpenProgress(host: host) },
+            makeRemovalSteps: { LibraryClosingSteps(host: host) },
+            makeFinishingSteps: { LibrarySetupSteps(host: host) },
             unsentOfClosed: { libraryId, _ in await bridge.unsent(libraryId) },
             removeClosed: { libraryId, _, _ in await bridge.remove(libraryId) },
             removeUnopenable: { libraryId, _ in
@@ -138,9 +143,9 @@ struct LibraryRemovalsClosedLibraryTests {
     @Test("a refused removal of a library that can't open shows why")
     func refusedUnopenableRemovalShowsError() async {
         let removals = LibraryRemovals(
-            makeOpenProgress: { LibraryOpenProgress(host: TestHost.shared) },
-            makeRemovalSteps: { LibraryClosingSteps(host: TestHost.shared) },
-            makeFinishingSteps: { LibrarySetupSteps(host: TestHost.shared) },
+            makeOpenProgress: { LibraryOpenProgress(host: host) },
+            makeRemovalSteps: { LibraryClosingSteps(host: host) },
+            makeFinishingSteps: { LibrarySetupSteps(host: host) },
             unsentOfClosed: { _, _ in
                 Issue.record("nothing is counted")
                 return BridgeUnsentWork(writes: 0, files: 0)
@@ -169,9 +174,9 @@ struct LibraryRemovalsClosedLibraryTests {
     func uncountedRemovalWritesItsSteps() async {
         let watched = WatchedRemovals()
         let removals = LibraryRemovals(
-            makeOpenProgress: { LibraryOpenProgress(host: TestHost.shared) },
-            makeRemovalSteps: { LibraryClosingSteps(host: TestHost.shared) },
-            makeFinishingSteps: { LibrarySetupSteps(host: TestHost.shared) },
+            makeOpenProgress: { LibraryOpenProgress(host: host) },
+            makeRemovalSteps: { LibraryClosingSteps(host: host) },
+            makeFinishingSteps: { LibrarySetupSteps(host: host) },
             unsentOfClosed: { _, _ in
                 Issue.record("nothing is counted")
                 return BridgeUnsentWork(writes: 0, files: 0)
@@ -200,9 +205,9 @@ struct LibraryRemovalsClosedLibraryTests {
     @Test("a count that can't be read shows why and asks nothing")
     func unreadableCountShowsError() async {
         let removals = LibraryRemovals(
-            makeOpenProgress: { LibraryOpenProgress(host: TestHost.shared) },
-            makeRemovalSteps: { LibraryClosingSteps(host: TestHost.shared) },
-            makeFinishingSteps: { LibrarySetupSteps(host: TestHost.shared) },
+            makeOpenProgress: { LibraryOpenProgress(host: host) },
+            makeRemovalSteps: { LibraryClosingSteps(host: host) },
+            makeFinishingSteps: { LibrarySetupSteps(host: host) },
             unsentOfClosed: { _, _ in
                 throw BridgeError.Diagnostic(category: .database, detail: "x")
             },
@@ -312,6 +317,8 @@ private actor UnfinishedRemovalBridge {
 @MainActor
 @Suite("LibraryRemovals unfinished removals")
 struct LibraryRemovalsUnfinishedTests {
+    private let host = TestHost.make()
+
     private func settled(_ removals: LibraryRemovals) async {
         for _ in 0..<1_000 where removals.isRetrying {
             await Task.yield()
@@ -322,9 +329,9 @@ struct LibraryRemovalsUnfinishedTests {
     func retryFinishesAnEarlierRemoval() async {
         let bridge = UnfinishedRemovalBridge(failures: 1)
         let removals = LibraryRemovals(
-            makeOpenProgress: { LibraryOpenProgress(host: TestHost.shared) },
-            makeRemovalSteps: { LibraryClosingSteps(host: TestHost.shared) },
-            makeFinishingSteps: { LibrarySetupSteps(host: TestHost.shared) },
+            makeOpenProgress: { LibraryOpenProgress(host: host) },
+            makeRemovalSteps: { LibraryClosingSteps(host: host) },
+            makeFinishingSteps: { LibrarySetupSteps(host: host) },
             unsentOfClosed: { _, _ in BridgeUnsentWork(writes: 0, files: 0) },
             removeClosed: { _, _, _ in .removed },
             removeUnopenable: { _, _ in .removed },
@@ -358,9 +365,9 @@ struct LibraryRemovalsUnfinishedTests {
     @Test("a removal that stopped before the delete shows without Retry")
     func stoppedBeforeTheDelete() async {
         let removals = LibraryRemovals(
-            makeOpenProgress: { LibraryOpenProgress(host: TestHost.shared) },
-            makeRemovalSteps: { LibraryClosingSteps(host: TestHost.shared) },
-            makeFinishingSteps: { LibrarySetupSteps(host: TestHost.shared) },
+            makeOpenProgress: { LibraryOpenProgress(host: host) },
+            makeRemovalSteps: { LibraryClosingSteps(host: host) },
+            makeFinishingSteps: { LibrarySetupSteps(host: host) },
             unsentOfClosed: { _, _ in BridgeUnsentWork(writes: 0, files: 0) },
             removeClosed: { _, _, _ in .removed },
             removeUnopenable: { _, _ in .removed },
@@ -383,9 +390,9 @@ struct LibraryRemovalsUnfinishedTests {
     @Test("nothing shows when no removal was left unfinished")
     func nothingLeft() async {
         let removals = LibraryRemovals(
-            makeOpenProgress: { LibraryOpenProgress(host: TestHost.shared) },
-            makeRemovalSteps: { LibraryClosingSteps(host: TestHost.shared) },
-            makeFinishingSteps: { LibrarySetupSteps(host: TestHost.shared) },
+            makeOpenProgress: { LibraryOpenProgress(host: host) },
+            makeRemovalSteps: { LibraryClosingSteps(host: host) },
+            makeFinishingSteps: { LibrarySetupSteps(host: host) },
             unsentOfClosed: { _, _ in BridgeUnsentWork(writes: 0, files: 0) },
             removeClosed: { _, _, _ in .removed },
             removeUnopenable: { _, _ in .removed },

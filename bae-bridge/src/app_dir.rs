@@ -29,3 +29,17 @@ impl BridgeAppDir {
         Ok(Arc::new(Self { inner }))
     }
 }
+
+/// A test's or a preview's bae directory, alongside the in-memory keychain
+/// its host keeps keys in.
+#[cfg(all(any(test, feature = "test-keyring"), desktop))]
+#[uniffi::export]
+impl BridgeAppDir {
+    /// A bae directory in a new folder of the system's temporary directory,
+    /// removed with what it holds once the host built over it ends.
+    #[uniffi::constructor]
+    pub fn temporary() -> Result<Arc<Self>, BridgeError> {
+        let inner = bae_app_dir::AppDir::temporary().map_err(BridgeError::config)?;
+        Ok(Arc::new(Self { inner }))
+    }
+}

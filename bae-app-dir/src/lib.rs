@@ -19,6 +19,10 @@ const LIBRARIES_DIRNAME: &str = "libraries";
 #[derive(Debug, Clone)]
 pub struct AppDir {
     path: PathBuf,
+    /// The temporary folder a test's or a preview's directory is, removed
+    /// once the last clone of the directory is gone.
+    #[cfg(any(test, feature = "test-utils"))]
+    _temporary: Option<std::sync::Arc<tempfile::TempDir>>,
 }
 
 impl AppDir {
@@ -34,6 +38,18 @@ impl AppDir {
         Self::create(path.into())
     }
 
+    /// An app directory that is a new folder in the system's temporary
+    /// directory, removed with everything in it once the last clone of this
+    /// directory is gone: the home of a test's or a preview's host.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn temporary() -> std::io::Result<Self> {
+        let folder = tempfile::Builder::new().prefix("bae-").tempdir()?;
+        Ok(Self {
+            path: folder.path().to_path_buf(),
+            _temporary: Some(std::sync::Arc::new(folder)),
+        })
+    }
+
     fn create(path: PathBuf) -> std::io::Result<Self> {
         std::fs::create_dir_all(&path).map_err(|error| {
             std::io::Error::new(
@@ -41,7 +57,11 @@ impl AppDir {
                 format!("create app directory {}: {error}", path.display()),
             )
         })?;
-        Ok(Self { path })
+        Ok(Self {
+            path,
+            #[cfg(any(test, feature = "test-utils"))]
+            _temporary: None,
+        })
     }
 
     /// Delete everything under the app directory, leaving it empty: a dev

@@ -22,3 +22,15 @@ fn an_opened_store_keeps_its_original_custody() {
     assert_eq!(caller.block_on(app.clone().library_name()).unwrap(), "Session Library");
     app.close_library(None).unwrap();
 }
+
+/// A host over a temporary bae directory, as a test or a preview starts one,
+/// takes the directory with it when it ends.
+#[test]
+fn a_temporary_bae_directory_ends_with_its_host() {
+    let app_dir = BridgeAppDir::temporary().unwrap();
+    let path = app_dir.core().libraries().parent().unwrap().to_path_buf();
+    let host = BridgeHost::with_test_keyring(BridgeDiagnostics::noop(), app_dir).unwrap();
+    assert!(path.is_dir(), "{path:?} is the host's bae directory while it runs");
+    drop(host);
+    assert!(!path.exists(), "{path:?} outlived its host");
+}

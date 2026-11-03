@@ -10,7 +10,7 @@ private final class RestoreRecordingHost: BridgeHost, @unchecked Sendable {
 
     init() {
         (restoredCodes, record) = AsyncStream.makeStream(of: String.self)
-        super.init(unsafeFromHandle: TestHost.shared.uniffiCloneHandle())
+        super.init(unsafeFromHandle: TestHost.make().uniffiCloneHandle())
     }
 
     required init(unsafeFromHandle handle: UInt64) {

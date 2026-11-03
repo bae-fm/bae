@@ -345,7 +345,7 @@ private func makeAppService(
         ),
         seed: emptySeed,
         deviceName: "Test Mac",
-        host: TestHost.shared
+        host: TestHost.make()
     )
 }
 
