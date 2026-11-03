@@ -764,3 +764,13 @@ pub(super) fn scan_with_reader<R: DirectoryReader, F: FnMut(ScanItem)>(
         on_item,
     )
 }
+
+/// The Latin-1 spelling of `Café` followed by `rest`: a name that isn't
+/// UTF-8.
+#[cfg(target_os = "linux")]
+pub(super) fn latin1_name(rest: &str) -> std::ffi::OsString {
+    use std::os::unix::ffi::OsStringExt;
+    let mut name = b"Caf\xE9".to_vec();
+    name.extend_from_slice(rest.as_bytes());
+    std::ffi::OsString::from_vec(name)
+}

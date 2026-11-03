@@ -5,8 +5,12 @@
 use crate::AppServices;
 use bae_db::{Database, DbError};
 use bae_diagnostics::Diagnostics;
-use bae_library::{CancellationToken, LibraryError, LibraryManager};
-use coven::{ClockRef, IdSourceRef};
+#[cfg(desktop)]
+use bae_library::CancellationToken;
+use bae_library::{LibraryError, LibraryManager};
+#[cfg(desktop)]
+use coven::ClockRef;
+use coven::IdSourceRef;
 
 /// Where playback plays.
 pub enum PlaybackOutput {

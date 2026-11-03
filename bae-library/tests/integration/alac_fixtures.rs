@@ -8,11 +8,11 @@
 use bae_audio::{decode_audio, probe_audio_from_path};
 use bae_catalogs::discogs::models::DiscogsRelease;
 use bae_import::cue_flac::parse_cue_sheet;
-use bae_import::discid::read_rip_artifacts;
 use bae_import::folder_scanner::{
     collect_release_candidate_files_with_scope, scan_for_candidates_with_decisions,
     FolderReleaseDecisions, ScanItem, StoredCandidateEdits,
 };
+use bae_import::rip_reading::read_rip_artifacts;
 use bae_util::content_type::ContentType;
 use std::path::{Path, PathBuf};
 use tempfile::TempDir;

@@ -3,6 +3,7 @@
 
 use super::*;
 use bae_import::{ImportCandidateDetail, ImportListView, LiveImportList};
+use bae_library::live_query_events::reconfigurable_live_query_events;
 
 impl AppServices {
     /// The library albums a parsed, non-blank query finds, as the album

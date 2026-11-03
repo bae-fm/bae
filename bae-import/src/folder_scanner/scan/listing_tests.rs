@@ -3,20 +3,14 @@
 //! natural name order.
 
 use crate::folder_scanner::tests::*;
+#[cfg(target_os = "linux")]
+use crate::folder_scanner::{FileRole, InvalidReason, ProposedRole, ScanItem};
+#[cfg(target_os = "linux")]
+use std::path::PathBuf;
 
 // ── Names that aren't UTF-8 ─────────────────────────────────────────────────
 //
 // Only Linux takes such a name: macOS and Windows store names as Unicode.
-
-/// The Latin-1 spelling of `Café` followed by `rest`: a name that isn't
-/// UTF-8.
-#[cfg(target_os = "linux")]
-fn latin1_name(rest: &str) -> std::ffi::OsString {
-    use std::os::unix::ffi::OsStringExt;
-    let mut name = b"Caf\xE9".to_vec();
-    name.extend_from_slice(rest.as_bytes());
-    std::ffi::OsString::from_vec(name)
-}
 
 /// A file whose name isn't UTF-8 is read like any other: the scan lists its
 /// release, with the file under its escaped name and its path as it is.
