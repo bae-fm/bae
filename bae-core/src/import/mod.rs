@@ -84,8 +84,6 @@ mod release_reads;
 #[cfg(desktop)]
 mod remote_images;
 #[cfg(desktop)]
-pub(crate) mod scrub_points;
-#[cfg(desktop)]
 pub mod selection;
 #[cfg(desktop)]
 pub(crate) mod service;

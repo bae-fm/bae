@@ -463,13 +463,13 @@ fn filled_buffer(bytes: &[u8]) -> SharedSparseBuffer {
 
 /// Takes a verifying decode's scrub points as import's sink does, and
 /// discards its samples.
-struct TakesScrubPoints(Option<crate::import::scrub_points::ScrubPointTaker>);
+struct TakesScrubPoints(Option<bae_track_audio::scrub_points::ScrubPointTaker>);
 
 impl bae_audio::DecodedSink for TakesScrubPoints {
     fn on_format(&mut self, _sample_rate: u32, _channels: u32) {}
     fn on_samples(&mut self, _samples: &[i32]) {}
     fn on_stream(&mut self, stream: &bae_audio::DecodedStream) {
-        self.0 = crate::import::scrub_points::ScrubPointTaker::for_stream(stream);
+        self.0 = bae_track_audio::scrub_points::ScrubPointTaker::for_stream(stream);
     }
     fn on_packet(&mut self, packet: bae_audio::DecodedPacket) {
         if let Some(taker) = self.0.as_mut() {

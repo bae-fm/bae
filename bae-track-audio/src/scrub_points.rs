@@ -1,4 +1,5 @@
-//! Scrub points, picked from the frames the import's verifying decode reads.
+//! Scrub points, picked from the frames a verifying decode reads: the one
+//! import runs over every file it stores.
 //!
 //! A FLAC with no SEEKTABLE gives FFmpeg nothing to seek a sample by, so a
 //! scrub binary-searches the file, one fetch per step over the cloud; one
@@ -11,9 +12,9 @@
 //! its frame's exact byte and first sample. A few of those, stored, let a
 //! scrub start its decode at a known frame instead.
 
+use crate::data_source::FILL_WINDOW_SIZE;
 use bae_audio::{DecodeStart, DecodedPacket, DecodedStream, AVIO_BUFFER_SIZE};
 use bae_db::ScrubPoint;
-use bae_track_audio::data_source::FILL_WINDOW_SIZE;
 use bae_util::content_type::ContentType;
 use tracing::{debug, warn};
 
@@ -68,7 +69,7 @@ impl ReadFrame {
 }
 
 /// Collects the frames of one segment's decode, then picks its scrub points.
-pub(crate) struct ScrubPointTaker {
+pub struct ScrubPointTaker {
     codec: Codec,
     sample_rate: u32,
     /// The segment's end: frames from here on belong to what follows it.
@@ -86,7 +87,7 @@ impl ScrubPointTaker {
     /// decoded from a frame start; or an MP3, decoded from the stream's start.
     /// Every other format bae decodes seeks by an index of its own or by
     /// arithmetic.
-    pub(crate) fn for_stream(stream: &DecodedStream) -> Option<Self> {
+    pub fn for_stream(stream: &DecodedStream) -> Option<Self> {
         let codec = match stream.content_type {
             ContentType::Flac => {
                 let spacing = SPACING_SECONDS * u64::from(stream.sample_rate);
@@ -134,7 +135,7 @@ impl ScrubPointTaker {
         })
     }
 
-    pub(crate) fn observe(&mut self, packet: DecodedPacket) {
+    pub fn observe(&mut self, packet: DecodedPacket) {
         self.largest_frame = self.largest_frame.max(packet.size);
         let (Some(sample), Some(byte)) = (packet.sample, packet.byte) else {
             self.unplaced += 1;
@@ -150,7 +151,7 @@ impl ScrubPointTaker {
     }
 
     /// The segment's scrub points, in sample order.
-    pub(crate) fn finish(self) -> Vec<ScrubPoint> {
+    pub fn finish(self) -> Vec<ScrubPoint> {
         if self.unplaced > 0 {
             warn!(
                 "{} packets had no byte position or timestamp; scrub points skip them",

@@ -164,7 +164,7 @@ struct LoudnessProgressSink {
     progress: LoudnessProgress,
     /// One entry per segment decoded so far, in order: the taker of its scrub
     /// points, when its file needs them.
-    scrub_point_takers: Vec<Option<super::scrub_points::ScrubPointTaker>>,
+    scrub_point_takers: Vec<Option<bae_track_audio::scrub_points::ScrubPointTaker>>,
 }
 
 impl LoudnessProgressSink {
@@ -188,7 +188,7 @@ impl LoudnessProgressSink {
     fn take_scrub_points(&mut self) -> Vec<Option<Vec<bae_db::ScrubPoint>>> {
         std::mem::take(&mut self.scrub_point_takers)
             .into_iter()
-            .map(|taker| taker.map(super::scrub_points::ScrubPointTaker::finish))
+            .map(|taker| taker.map(bae_track_audio::scrub_points::ScrubPointTaker::finish))
             .collect()
     }
 
@@ -284,7 +284,8 @@ impl bae_audio::DecodedSink for LoudnessProgressSink {
     }
 
     fn on_stream(&mut self, stream: &bae_audio::DecodedStream) {
-        self.scrub_point_takers.push(super::scrub_points::ScrubPointTaker::for_stream(stream));
+        self.scrub_point_takers
+            .push(bae_track_audio::scrub_points::ScrubPointTaker::for_stream(stream));
     }
 
     fn on_packet(&mut self, packet: bae_audio::DecodedPacket) {

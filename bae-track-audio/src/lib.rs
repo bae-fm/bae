@@ -8,6 +8,10 @@ pub mod data_source;
 mod decode;
 mod preview_target;
 mod read_error;
+// Only import's verifying decode takes scrub points, and the import pipeline
+// is desktop-only.
+#[cfg(desktop)]
+pub mod scrub_points;
 mod storage_wait;
 // Whole-release passes (import loudness, release saves) are desktop-only.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
