@@ -14,8 +14,12 @@ async fn playing_first_track(fixture: &PlaybackTestFixture) -> String {
         false,
     );
     assert!(
-        bae_playback::test_capture::wait_until_playing(&mut progress, &fixture.track_ids[0], PLAY_START_BACKSTOP)
-            .await,
+        bae_playback::test_capture::wait_until_playing(
+            &mut progress,
+            &fixture.track_ids[0],
+            PLAY_START_BACKSTOP
+        )
+        .await,
         "the first track plays"
     );
     release_id
@@ -96,10 +100,7 @@ async fn first_upcoming_until(
 fn first_upcoming(library: &TestLibrary) -> bae_library::LiveQueueUpcoming {
     let queue = bae_library::subscribe_queue_upcoming(library);
     queue
-        .set(bae_db::LibraryPageWindows::from([bae_db::LibraryPageWindow {
-            offset: 0,
-            limit: 1,
-        }]))
+        .set(bae_db::LibraryPageWindows::from([bae_db::LibraryPageWindow { offset: 0, limit: 1 }]))
         .expect("the read takes its window");
     queue
 }
@@ -109,86 +110,92 @@ fn first_upcoming(library: &TestLibrary) -> bae_library::LiveQueueUpcoming {
 /// with no track change.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_changed_cover_reaches_the_paused_track_and_the_queue() {
-    let fixture = PlaybackTestFixture::new().await;
-    let release_id = paused_on_first_track(&fixture).await;
-    let track_id = fixture.track_ids[0].clone();
-    let values = playback_values(&fixture);
-    let queue = first_upcoming(&fixture.library);
-    let before =
-        now_playing_until(&values, &track_id, "the paused track", |_| true).await.cover_image;
-    first_upcoming_until(&queue, |item| item.display.cover_image == before).await;
+    with_fixture(PlaybackTestFixture::new(), async |fixture| {
+        let release_id = paused_on_first_track(fixture).await;
+        let track_id = fixture.track_ids[0].clone();
+        let values = playback_values(fixture);
+        let queue = first_upcoming(&fixture.library);
+        let before =
+            now_playing_until(&values, &track_id, "the paused track", |_| true).await.cover_image;
+        first_upcoming_until(&queue, |item| item.display.cover_image == before).await;
 
-    let image_dir = TempDir::new().unwrap();
-    let image_path = image_dir.path().join("front.gif");
-    let image_bytes = bae_util::test_cover_art::SOLID_GIF.to_vec();
-    std::fs::write(&image_path, &image_bytes).unwrap();
-    let file = bae_db::NewReleaseFile::new(
-        &release_id,
-        "front.gif",
-        bae_util::content_type::ContentType::Gif,
-        uuid::Uuid::new_v4().to_string(),
-        chrono::Utc::now(),
-    );
-    fixture.library.add_external_file_for_test(&file, &image_path).await.unwrap();
-    fixture
-        .library
-        .change_cover(
+        let image_dir = TempDir::new().unwrap();
+        let image_path = image_dir.path().join("front.gif");
+        let image_bytes = bae_util::test_cover_art::SOLID_GIF.to_vec();
+        std::fs::write(&image_path, &image_bytes).unwrap();
+        let file = bae_db::NewReleaseFile::new(
             &release_id,
-            bae_library::CoverSelection::ReleaseImage { file_id: file.id },
-        )
-        .await
-        .unwrap();
+            "front.gif",
+            bae_util::content_type::ContentType::Gif,
+            uuid::Uuid::new_v4().to_string(),
+            chrono::Utc::now(),
+        );
+        fixture.library.add_external_file_for_test(&file, &image_path).await.unwrap();
+        fixture
+            .library
+            .change_cover(
+                &release_id,
+                bae_library::CoverSelection::ReleaseImage { file_id: file.id },
+            )
+            .await
+            .unwrap();
 
-    let changed = |cover: &Option<bae_db::ImageRef>| {
-        cover.as_ref().is_some_and(|cover| {
-            cover.id == release_id
-                && before.as_ref().is_none_or(|before| before.version != cover.version)
+        let changed = |cover: &Option<bae_db::ImageRef>| {
+            cover.as_ref().is_some_and(|cover| {
+                cover.id == release_id
+                    && before.as_ref().is_none_or(|before| before.version != cover.version)
+            })
+        };
+        let after = now_playing_until(&values, &track_id, "the new cover", |display| {
+            changed(&display.cover_image)
         })
-    };
-    let after = now_playing_until(&values, &track_id, "the new cover", |display| {
-        changed(&display.cover_image)
+        .await
+        .cover_image;
+        let upcoming =
+            first_upcoming_until(&queue, |item| changed(&item.display.cover_image)).await;
+        assert_eq!(upcoming.display.cover_image, after, "the queue shows the same cover");
     })
-    .await
-    .cover_image;
-    let upcoming = first_upcoming_until(&queue, |item| changed(&item.display.cover_image)).await;
-    assert_eq!(upcoming.display.cover_image, after, "the queue shows the same cover");
+    .await;
 }
 
 /// Renaming the paused track and its album shows the new names in the
 /// now-playing value and on the queue's rows, with no track change.
 #[tokio::test(flavor = "multi_thread")]
 async fn renamed_titles_reach_the_paused_track_and_the_queue() {
-    let fixture = PlaybackTestFixture::new().await;
-    let release_id = paused_on_first_track(&fixture).await;
-    let track_id = fixture.track_ids[0].clone();
-    let values = playback_values(&fixture);
-    let queue = first_upcoming(&fixture.library);
-    now_playing_until(&values, &track_id, "the paused track", |_| true).await;
-    first_upcoming_until(&queue, |_| true).await;
+    with_fixture(PlaybackTestFixture::new(), async |fixture| {
+        let release_id = paused_on_first_track(fixture).await;
+        let track_id = fixture.track_ids[0].clone();
+        let values = playback_values(fixture);
+        let queue = first_upcoming(&fixture.library);
+        now_playing_until(&values, &track_id, "the paused track", |_| true).await;
+        first_upcoming_until(&queue, |_| true).await;
 
-    let mut edit = fixture
-        .library
-        .open_release_edit(&release_id)
-        .await
-        .expect("read the release's edit form")
-        .opened()
-        .clone()
-        .edit;
-    edit.album_title = "Renamed Album".to_string();
-    edit.tracks[0].title = "Renamed Opening Track".to_string();
-    edit.tracks[1].title = "Renamed Second Track".to_string();
-    fixture
-        .library
-        .apply_release_metadata_user_edit(&release_id, &edit.shape().expect("the edit shapes"))
-        .await
-        .expect("apply the edit");
+        let mut edit = fixture
+            .library
+            .open_release_edit(&release_id)
+            .await
+            .expect("read the release's edit form")
+            .opened()
+            .clone()
+            .edit;
+        edit.album_title = "Renamed Album".to_string();
+        edit.tracks[0].title = "Renamed Opening Track".to_string();
+        edit.tracks[1].title = "Renamed Second Track".to_string();
+        fixture
+            .library
+            .apply_release_metadata_user_edit(&release_id, &edit.shape().expect("the edit shapes"))
+            .await
+            .expect("apply the edit");
 
-    now_playing_until(&values, &track_id, "the new names", |display| {
-        display.title == "Renamed Opening Track" && display.album_title == "Renamed Album"
-    })
-    .await;
-    first_upcoming_until(&queue, |item| {
-        item.display.title == "Renamed Second Track" && item.display.album_title == "Renamed Album"
+        now_playing_until(&values, &track_id, "the new names", |display| {
+            display.title == "Renamed Opening Track" && display.album_title == "Renamed Album"
+        })
+        .await;
+        first_upcoming_until(&queue, |item| {
+            item.display.title == "Renamed Second Track"
+                && item.display.album_title == "Renamed Album"
+        })
+        .await;
     })
     .await;
 }
@@ -197,35 +204,40 @@ async fn renamed_titles_reach_the_paused_track_and_the_queue() {
 /// them: a value is sent only when one changes.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_playing_track_moves_its_positions_without_sending_a_value() {
-    let fixture = PlaybackTestFixture::new().await;
-    playing_first_track(&fixture).await;
-    let track_id = fixture.track_ids[0].clone();
-    let values = playback_values(&fixture);
-    let mut positions = fixture.playback_handle.subscribe_positions();
-    let value = tokio::time::timeout(Duration::from_secs(10), values.next())
-        .await
-        .expect("the playing value arrives")
-        .expect("the playback values resolve")
-        .expect("the library holds the playing track");
-    let PlaybackState::Playing { track } = value.playback.state else {
-        panic!("the first value shows the track playing, not {:?}", value.playback.state);
-    };
-    assert_eq!(track.track.track_id, track_id);
-
-    let mut seen = Vec::new();
-    while seen.len() < 3 {
-        tokio::time::timeout(Duration::from_secs(10), positions.changed())
+    with_fixture(PlaybackTestFixture::new(), async |fixture| {
+        playing_first_track(fixture).await;
+        let track_id = fixture.track_ids[0].clone();
+        let values = playback_values(fixture);
+        let mut positions = fixture.playback_handle.subscribe_positions();
+        let value = tokio::time::timeout(Duration::from_secs(10), values.next())
             .await
-            .expect("the playing track's position moves")
-            .expect("the positions stay open");
-        let position = positions.borrow_and_update().library.clone();
-        if let Some(position) = position.filter(|position| position.track_id == track_id) {
-            seen.push(position.position_ms);
+            .expect("the playing value arrives")
+            .expect("the playback values resolve")
+            .expect("the library holds the playing track");
+        let PlaybackState::Playing { track } = value.playback.state else {
+            panic!("the first value shows the track playing, not {:?}", value.playback.state);
+        };
+        assert_eq!(track.track.track_id, track_id);
+
+        let mut seen = Vec::new();
+        while seen.len() < 3 {
+            tokio::time::timeout(Duration::from_secs(10), positions.changed())
+                .await
+                .expect("the playing track's position moves")
+                .expect("the positions stay open");
+            let position = positions.borrow_and_update().library.clone();
+            if let Some(position) = position.filter(|position| position.track_id == track_id) {
+                seen.push(position.position_ms);
+            }
         }
-    }
-    assert!(seen.windows(2).all(|pair| pair[0] < pair[1]), "the position moves forward: {seen:?}");
-    assert!(
-        tokio::time::timeout(Duration::from_millis(500), values.next()).await.is_err(),
-        "no playback value follows the positions"
-    );
+        assert!(
+            seen.windows(2).all(|pair| pair[0] < pair[1]),
+            "the position moves forward: {seen:?}"
+        );
+        assert!(
+            tokio::time::timeout(Duration::from_millis(500), values.next()).await.is_err(),
+            "no playback value follows the positions"
+        );
+    })
+    .await;
 }

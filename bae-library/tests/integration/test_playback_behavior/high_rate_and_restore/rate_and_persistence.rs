@@ -4,8 +4,16 @@ struct HighSampleRateTestFixture {
     playback_handle: bae_playback::PlaybackHandle,
     progress_rx: tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
     track_id: String,
+    library: TestLibrary,
     _capture_stream_rx: bae_playback::test_capture::CaptureStreamRx,
     _temp_dir: TempDir,
+}
+
+impl PlaybackFixture for HighSampleRateTestFixture {
+    async fn close(self) {
+        self.playback_handle.shutdown().await;
+        self.library.close().await.expect("close the test library");
+    }
 }
 
 impl HighSampleRateTestFixture {
@@ -21,7 +29,10 @@ impl HighSampleRateTestFixture {
 
         // Create release with one track
         let discogs_release = DiscogsRelease {
-            artists: vec![bae_catalogs::test_releases::discogs_artist("test-artist-1", "Test Artist")],
+            artists: vec![bae_catalogs::test_releases::discogs_artist(
+                "test-artist-1",
+                "Test Artist",
+            )],
             master_id: Some("test-master-96khz".to_string()),
             ..bae_catalogs::test_releases::discogs_test_release(
                 "high-sample-rate-test",
@@ -29,12 +40,12 @@ impl HighSampleRateTestFixture {
                 &[("96kHz Track", "0:03")],
             )
         };
-        let release_id_key =
-            fakes.seed_discogs_test_release(discogs_release);
+        let release_id_key = fakes.seed_discogs_test_release(discogs_release);
 
         library.import_folder(album_dir, release_id_key).await;
 
-        let albums = bae_views::LibraryViews::new(library.database().clone()).get_albums(&[]).await?;
+        let albums =
+            bae_views::LibraryViews::new(library.database().clone()).get_albums(&[]).await?;
         let releases = library.get_releases_for_album(&albums[0].id).await?;
         let tracks = library.get_tracks_for_release(&releases[0].id).await?;
         let track_id = tracks[0].id.clone();
@@ -51,14 +62,14 @@ impl HighSampleRateTestFixture {
             audio_format.sample_rate
         );
 
-        let (playback_handle, capture_stream_rx) =
-            start_capture_service(&library).await;
+        let (playback_handle, capture_stream_rx) = start_capture_service(&library).await;
         let progress_rx = playback_handle.subscribe_progress();
 
         Ok(Self {
             playback_handle,
             progress_rx,
             track_id,
+            library,
             _capture_stream_rx: capture_stream_rx,
             _temp_dir: temp_dir,
         })
@@ -85,18 +96,19 @@ async fn test_high_sample_rate_position_calculation() {
 
     // Wait for track to complete, keeping the last position seen before it.
     let mut final_position_ms: Option<i64> = None;
-    let track_completed =
-        bae_util::test_channels::next_matching(&mut fixture.progress_rx, Duration::from_secs(10), |event| {
-            match event {
-                PlaybackProgress::PositionUpdate { position_ms, .. } => {
-                    final_position_ms = Some(position_ms);
-                    None
-                }
-                PlaybackProgress::TrackCompleted { .. } => Some(()),
-                _ => None,
+    let track_completed = bae_util::test_channels::next_matching(
+        &mut fixture.progress_rx,
+        Duration::from_secs(10),
+        |event| match event {
+            PlaybackProgress::PositionUpdate { position_ms, .. } => {
+                final_position_ms = Some(position_ms);
+                None
             }
-        })
-        .await;
+            PlaybackProgress::TrackCompleted { .. } => Some(()),
+            _ => None,
+        },
+    )
+    .await;
 
     assert!(track_completed.is_some(), "Track should complete");
 
@@ -141,60 +153,63 @@ async fn test_high_sample_rate_position_calculation() {
 ///    (typically 4096 samples at 44.1kHz) from the keyframe alignment
 #[tokio::test]
 async fn test_seek_lands_near_target_position() {
-    let mut fixture = PlaybackTestFixture::new().await;
+    with_fixture(PlaybackTestFixture::new(), async |fixture| {
+        let track_id = fixture.track_ids[0].clone();
 
-    let track_id = fixture.track_ids[0].clone();
+        // Play the track (5 seconds at 44.1kHz mono = 220500 total samples)
+        fixture.playback_handle.play(track_id.clone());
 
-    // Play the track (5 seconds at 44.1kHz mono = 220500 total samples)
-    fixture.playback_handle.play(track_id.clone());
+        // Wait for playback to start
+        let playing_state = fixture
+            .wait_for_state(|s| matches!(s, PlaybackState::Playing { .. }), Duration::from_secs(5))
+            .await;
+        assert!(playing_state.is_some(), "Should start playing");
 
-    // Wait for playback to start
-    let playing_state = fixture
-        .wait_for_state(|s| matches!(s, PlaybackState::Playing { .. }), Duration::from_secs(5))
-        .await;
-    assert!(playing_state.is_some(), "Should start playing");
+        // Seek to 2.5 seconds
+        let seek_position = Duration::from_millis(2500);
+        fixture.playback_handle.seek(TrackTime::from_duration(seek_position));
 
-    // Seek to 2.5 seconds
-    let seek_position = Duration::from_millis(2500);
-    fixture.playback_handle.seek(TrackTime::from_duration(seek_position));
+        // Wait for seek to complete
+        let seeked = fixture.wait_for_seeked(Duration::from_secs(3)).await;
+        assert!(seeked.is_some(), "Should receive Seeked event");
 
-    // Wait for seek to complete
-    let seeked = fixture.wait_for_seeked(Duration::from_secs(3)).await;
-    assert!(seeked.is_some(), "Should receive Seeked event");
-
-    // Wait for track to complete and get decode stats
-    let decode_stats =
-        bae_util::test_channels::next_matching(&mut fixture.progress_rx, Duration::from_secs(10), |event| {
-            match event {
+        // Wait for track to complete and get decode stats
+        let decode_stats = bae_util::test_channels::next_matching(
+            &mut fixture.progress_rx,
+            Duration::from_secs(10),
+            |event| match event {
                 PlaybackProgress::DecodeStats {
                     error_count,
                     samples_decoded,
                     track_id: stats_track_id,
                 } if stats_track_id == track_id => Some((error_count, samples_decoded)),
                 _ => None,
-            }
-        })
+            },
+        )
         .await;
 
-    let (_error_count, samples_decoded) =
-        decode_stats.expect("Should receive DecodeStats after track completes");
+        let (_error_count, samples_decoded) =
+            decode_stats.expect("Should receive DecodeStats after track completes");
 
-    // Track is 5 seconds at 44.1kHz mono = 220500 total samples
-    // After seeking to 2.5s, remaining = 2.5s = 110250 samples
-    //
-    // avformat_seek_file lands on the keyframe at or before the target,
-    // so decoded output may include up to one FLAC frame of extra samples
-    // (typically 4096 samples). The exact amount depends on frame alignment.
-    let expected_min: u64 = 110250; // Exact 2.5s at 44.1kHz mono
-    let max_frame_overshoot: u64 = 4608; // Max FLAC blocksize at 44.1kHz
+        // Track is 5 seconds at 44.1kHz mono = 220500 total samples
+        // After seeking to 2.5s, remaining = 2.5s = 110250 samples
+        //
+        // avformat_seek_file lands on the keyframe at or before the target,
+        // so decoded output may include up to one FLAC frame of extra samples
+        // (typically 4096 samples). The exact amount depends on frame alignment.
+        let expected_min: u64 = 110250; // Exact 2.5s at 44.1kHz mono
+        let max_frame_overshoot: u64 = 4608; // Max FLAC blocksize at 44.1kHz
 
-    assert!(
-        samples_decoded >= expected_min && samples_decoded <= expected_min + max_frame_overshoot,
-        "After seeking to 2.5s in a 5s track, expected {}..{} samples but got {}.",
-        expected_min,
-        expected_min + max_frame_overshoot,
-        samples_decoded,
-    );
+        assert!(
+            samples_decoded >= expected_min
+                && samples_decoded <= expected_min + max_frame_overshoot,
+            "After seeking to 2.5s in a 5s track, expected {}..{} samples but got {}.",
+            expected_min,
+            expected_min + max_frame_overshoot,
+            samples_decoded,
+        );
+    })
+    .await;
 }
 
 /// CUE/FLAC seek must not play past the track's end boundary.
@@ -209,114 +224,131 @@ async fn test_cue_flac_seek_respects_track_end_boundary() {
     // Real-time capture: at full speed track 2's decoder finishes the whole
     // track before the seek restarts it at 5s, so its sample count overshoots
     // the boundary (flaky under load). Real-time keeps the decoder on the seek.
-    let mut fixture = CueFlacTestFixture::new(bae_playback::test_capture::TestAudioDevice::RealtimeCapture)
-        .await
-        .expect("set up CUE/FLAC realtime capture fixture");
+    with_fixture(
+        async {
+            CueFlacTestFixture::new(bae_playback::test_capture::TestAudioDevice::RealtimeCapture)
+                .await
+                .expect("set up CUE/FLAC realtime capture fixture")
+        },
+        async |fixture| {
+            let track_id = fixture.track_ids[1].clone();
 
-    let track_id = fixture.track_ids[1].clone();
+            fixture.playback_handle.play(track_id.clone());
+            // Drain the play stream; the seek below mints a fresh one. Track 2 then
+            // advances gaplessly into track 3 within that same seek stream, so we assert
+            // on the decoder's own sample count rather than the captured buffer length.
+            let _play_stream = fixture.next_capture_stream().await;
 
-    fixture.playback_handle.play(track_id.clone());
-    // Drain the play stream; the seek below mints a fresh one. Track 2 then
-    // advances gaplessly into track 3 within that same seek stream, so we assert
-    // on the decoder's own sample count rather than the captured buffer length.
-    let _play_stream = fixture.next_capture_stream().await;
+            // Wait for playback to start
+            let started = bae_util::test_channels::next_matching(
+                &mut fixture.progress_rx,
+                Duration::from_secs(5),
+                |event| {
+                    matches!(
+                        event,
+                        PlaybackProgress::StateChanged { state: PlaybackState::Playing { .. } }
+                    )
+                    .then_some(())
+                },
+            )
+            .await;
+            assert!(started.is_some(), "Playback should start");
 
-    // Wait for playback to start
-    let started =
-        bae_util::test_channels::next_matching(&mut fixture.progress_rx, Duration::from_secs(5), |event| {
-            matches!(event, PlaybackProgress::StateChanged { state: PlaybackState::Playing { .. } })
-                .then_some(())
-        })
-        .await;
-    assert!(started.is_some(), "Playback should start");
+            // Seek to 5s into track 2
+            let seek_position_ms: u64 = 5000;
+            fixture
+                .playback_handle
+                .seek(TrackTime::from_duration(Duration::from_millis(seek_position_ms)));
+            let mut captured = fixture.next_capture_stream().await;
 
-    // Seek to 5s into track 2
-    let seek_position_ms: u64 = 5000;
-    fixture.playback_handle.seek(TrackTime::from_duration(Duration::from_millis(seek_position_ms)));
-    let mut captured = fixture.next_capture_stream().await;
+            bae_playback::test_capture::wait_for_seek(&mut fixture.progress_rx, &track_id).await;
 
-    bae_playback::test_capture::wait_for_seek(&mut fixture.progress_rx, &track_id).await;
+            // Wait for the track's decode stats. Under gapless playback the seeked track
+            // advances into the next track within one persistent stream, so it reports
+            // its decode stats at the boundary rather than via TrackCompleted.
+            let decoded_samples = bae_util::test_channels::next_matching(
+                &mut fixture.progress_rx,
+                Duration::from_secs(30),
+                |event| match event {
+                    PlaybackProgress::DecodeStats {
+                        track_id: ref tid, samples_decoded, ..
+                    } if *tid == track_id => Some(samples_decoded),
+                    _ => None,
+                },
+            )
+            .await
+            .expect("Track 2 should report decode stats");
 
-    // Wait for the track's decode stats. Under gapless playback the seeked track
-    // advances into the next track within one persistent stream, so it reports
-    // its decode stats at the boundary rather than via TrackCompleted.
-    let decoded_samples =
-        bae_util::test_channels::next_matching(&mut fixture.progress_rx, Duration::from_secs(30), |event| {
-            match event {
-                PlaybackProgress::DecodeStats { track_id: ref tid, samples_decoded, .. }
-                    if *tid == track_id =>
-                {
-                    Some(samples_decoded)
-                }
-                _ => None,
-            }
-        })
-        .await
-        .expect("Track 2 should report decode stats");
+            let captured_snapshot: Vec<f32> = captured.samples();
 
-    let captured_snapshot: Vec<f32> = captured.samples();
+            // Decode reference and compare at the seek position
+            let fixture_dir = bae_audio::test_fixtures::cue_flac_dir();
+            let reference_data =
+                std::fs::read(fixture_dir.join("02 Test Artist - Track Two (White Noise).flac"))
+                    .expect("read reference");
+            let reference = decode_audio(
+                bae_audio::test_samples::filled_sparse_buffer(&reference_data),
+                None,
+                None,
+            )
+            .expect("decode reference");
+            let channels = reference.channels as usize;
+            let sample_rate = reference.sample_rate;
+            let reference_f32 = samples_as_f32(&reference);
 
-    // Decode reference and compare at the seek position
-    let fixture_dir = bae_audio::test_fixtures::cue_flac_dir();
-    let reference_data =
-        std::fs::read(fixture_dir.join("02 Test Artist - Track Two (White Noise).flac"))
-            .expect("read reference");
-    let reference = decode_audio(bae_audio::test_samples::filled_sparse_buffer(&reference_data), None, None)
-        .expect("decode reference");
-    let channels = reference.channels as usize;
-    let sample_rate = reference.sample_rate;
-    let reference_f32 = samples_as_f32(&reference);
+            // Track 2 runs 10s from INDEX 01 (10s to 20s in the file). After seeking to
+            // 5s into it, 5s remain. The decoder must stop at track 2's end boundary
+            // (stop_at), decoding ~5s — not bleeding into track 3. We assert on the decoder's own
+            // sample count rather than the captured buffer length, since under gapless
+            // playback the buffer continues into track 3 via a separate decoder.
+            let track_remaining_ms: u64 = 10_000 - seek_position_ms; // 5s
+            let max_allowed_ms = track_remaining_ms + 2000; // 5s + 2s tolerance for frame alignment
+            let max_allowed_samples = max_allowed_ms * sample_rate as u64 / 1000 * channels as u64;
 
-    // Track 2 runs 10s from INDEX 01 (10s to 20s in the file). After seeking to
-    // 5s into it, 5s remain. The decoder must stop at track 2's end boundary
-    // (stop_at), decoding ~5s — not bleeding into track 3. We assert on the decoder's own
-    // sample count rather than the captured buffer length, since under gapless
-    // playback the buffer continues into track 3 via a separate decoder.
-    let track_remaining_ms: u64 = 10_000 - seek_position_ms; // 5s
-    let max_allowed_ms = track_remaining_ms + 2000; // 5s + 2s tolerance for frame alignment
-    let max_allowed_samples = max_allowed_ms * sample_rate as u64 / 1000 * channels as u64;
-
-    // If bleeding into track 3, we'd see ~15s of decoded audio. Our limit is ~7s.
-    assert!(
-        decoded_samples <= max_allowed_samples,
-        "Track 2's decoder ran past its end boundary: decoded {} samples ({:.1}s), \
+            // If bleeding into track 3, we'd see ~15s of decoded audio. Our limit is ~7s.
+            assert!(
+                decoded_samples <= max_allowed_samples,
+                "Track 2's decoder ran past its end boundary: decoded {} samples ({:.1}s), \
          max expected {} ({:.1}s). The decoder must stop at the track's end sample.",
-        decoded_samples,
-        decoded_samples as f64 / channels as f64 / sample_rate as f64,
-        max_allowed_samples,
-        max_allowed_ms as f64 / 1000.0,
-    );
+                decoded_samples,
+                decoded_samples as f64 / channels as f64 / sample_rate as f64,
+                max_allowed_samples,
+                max_allowed_ms as f64 / 1000.0,
+            );
 
-    // Verify the captured audio is from the right region using SAD alignment
-    let skip_samples = (seek_position_ms * sample_rate as u64 / 1000) as usize * channels;
-    if skip_samples < reference_f32.len() {
-        let reference_from_seek = &reference_f32[skip_samples..];
-        let snippet_len =
-            (200 * channels).min(captured_snapshot.len()).min(reference_from_seek.len());
-        let mut sad: f64 = 0.0;
-        for i in 0..snippet_len {
-            sad += (captured_snapshot[i] as f64 - reference_from_seek[i] as f64).abs();
-        }
-        let avg_diff = sad / snippet_len as f64;
+            // Verify the captured audio is from the right region using SAD alignment
+            let skip_samples = (seek_position_ms * sample_rate as u64 / 1000) as usize * channels;
+            if skip_samples < reference_f32.len() {
+                let reference_from_seek = &reference_f32[skip_samples..];
+                let snippet_len =
+                    (200 * channels).min(captured_snapshot.len()).min(reference_from_seek.len());
+                let mut sad: f64 = 0.0;
+                for i in 0..snippet_len {
+                    sad += (captured_snapshot[i] as f64 - reference_from_seek[i] as f64).abs();
+                }
+                let avg_diff = sad / snippet_len as f64;
 
-        // The streaming decoder's f32 output can differ from the i32->f32 reference
-        // due to different FFmpeg code paths. Allow a generous tolerance for the
-        // secondary alignment check; the primary assertion is the sample count.
-        assert!(
-            avg_diff < 0.5,
-            "Post-seek audio doesn't match reference at {}ms (avg diff {:.4})",
-            seek_position_ms,
-            avg_diff,
-        );
-    }
+                // The streaming decoder's f32 output can differ from the i32->f32 reference
+                // due to different FFmpeg code paths. Allow a generous tolerance for the
+                // secondary alignment check; the primary assertion is the sample count.
+                assert!(
+                    avg_diff < 0.5,
+                    "Post-seek audio doesn't match reference at {}ms (avg diff {:.4})",
+                    seek_position_ms,
+                    avg_diff,
+                );
+            }
 
-    debug!(
-        "Track ended correctly: {} captured samples ({:.1}s), max allowed {} ({:.1}s).",
-        captured_snapshot.len(),
-        captured_snapshot.len() as f64 / channels as f64 / sample_rate as f64,
-        max_allowed_samples,
-        max_allowed_ms as f64 / 1000.0,
-    );
+            debug!(
+                "Track ended correctly: {} captured samples ({:.1}s), max allowed {} ({:.1}s).",
+                captured_snapshot.len(),
+                captured_snapshot.len() as f64 / channels as f64 / sample_rate as f64,
+                max_allowed_samples,
+                max_allowed_ms as f64 / 1000.0,
+            );
+        },
+    )
+    .await;
 }
 
 /// The three-track FLAC album imported into a fresh library with no playback
@@ -325,10 +357,10 @@ async fn test_cue_flac_seek_respects_track_end_boundary() {
 /// the library's files.
 async fn imported_library_without_playback() -> (TestLibrary, TempDir) {
     let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
-    let (library, album_dir, temp_dir) = bae_library::test_libraries::setup_test_library_with_album_dir(fakes.providers()).await;
+    let (library, album_dir, temp_dir) =
+        bae_library::test_libraries::setup_test_library_with_album_dir(fakes.providers()).await;
     let _ = generate_test_flac_files(&album_dir);
-    let release_id_key =
-        fakes.seed_discogs_test_release(create_test_album());
+    let release_id_key = fakes.seed_discogs_test_release(create_test_album());
     library.import_folder(album_dir, release_id_key).await;
     (library, temp_dir)
 }
@@ -352,7 +384,13 @@ async fn test_restore_emits_seeked_at_saved_position() {
     // Build a library + import tracks, but do NOT start a playback service.
     let (library, _temp_dir) = imported_library_without_playback().await;
     let releases = library
-        .get_releases_for_album(&bae_views::LibraryViews::new(library.database().clone()).get_albums(&[]).await.unwrap()[0].id)
+        .get_releases_for_album(
+            &bae_views::LibraryViews::new(library.database().clone())
+                .get_albums(&[])
+                .await
+                .unwrap()[0]
+                .id,
+        )
         .await
         .unwrap();
     let tracks = library.get_tracks_for_release(&releases[0].id).await.unwrap();
@@ -388,16 +426,20 @@ async fn test_play_persists_then_stop_clears_playback_state() {
 
     let (library, _temp_dir) = imported_library_without_playback().await;
     let release_id = library
-        .get_releases_for_album(&bae_views::LibraryViews::new(library.database().clone()).get_albums(&[]).await.unwrap()[0].id)
+        .get_releases_for_album(
+            &bae_views::LibraryViews::new(library.database().clone())
+                .get_albums(&[])
+                .await
+                .unwrap()[0]
+                .id,
+        )
         .await
         .unwrap()[0]
         .id
         .clone();
-    let first_track =
-        library.get_tracks_for_release(&release_id).await.unwrap()[0].id.clone();
+    let first_track = library.get_tracks_for_release(&release_id).await.unwrap()[0].id.clone();
 
-    let (handle, _capture_rx) =
-        start_capture_service(&library).await;
+    let (handle, _capture_rx) = start_capture_service(&library).await;
 
     // Playing a release persists the row: current is the first track, and the
     // queue plays from the release.
@@ -405,7 +447,9 @@ async fn test_play_persists_then_stop_clears_playback_state() {
     let deadline = Instant::now() + Duration::from_secs(5);
     let mut persisted = None;
     while Instant::now() < deadline {
-        if let Some(row) = bae_playback::tables::load_playback_state(library.database()).await.unwrap() {
+        if let Some(row) =
+            bae_playback::tables::load_playback_state(library.database()).await.unwrap()
+        {
             persisted = Some(row);
             break;
         }
@@ -441,23 +485,25 @@ async fn test_play_persists_then_stop_clears_playback_state() {
 /// last discrete event (track load, pause, seek) captured, usually 0.
 #[tokio::test]
 async fn test_position_persists_periodically_while_playing() {
-    let mut fixture = PlaybackTestFixture::new().await;
-    let track_id = fixture.track_ids[0].clone();
+    with_fixture(PlaybackTestFixture::new(), async |fixture| {
+        let track_id = fixture.track_ids[0].clone();
 
-    fixture.playback_handle.play(track_id.clone());
-    fixture
-        .wait_for_state(|s| matches!(s, PlaybackState::Playing { .. }), Duration::from_secs(5))
-        .await
-        .expect("the track should start playing");
+        fixture.playback_handle.play(track_id.clone());
+        fixture
+            .wait_for_state(|s| matches!(s, PlaybackState::Playing { .. }), Duration::from_secs(5))
+            .await
+            .expect("the track should start playing");
 
-    // No Shutdown, no SaveState — only the ordinary play-progress ticks. The
-    // track's load persisted position 0, so a later position is a periodic
-    // write.
-    let first_persisted_ms = persisted_position_past(&mut fixture, 0).await;
+        // No Shutdown, no SaveState — only the ordinary play-progress ticks. The
+        // track's load persisted position 0, so a later position is a periodic
+        // write.
+        let first_persisted_ms = persisted_position_past(fixture, 0).await;
 
-    // The stored position keeps climbing — proof this is a periodic write, not
-    // a one-shot at track start.
-    persisted_position_past(&mut fixture, first_persisted_ms).await;
+        // The stored position keeps climbing — proof this is a periodic write, not
+        // a one-shot at track start.
+        persisted_position_past(fixture, first_persisted_ms).await;
+    })
+    .await;
 }
 
 /// The `playback_state` row's position once it passes `floor_ms`, read again

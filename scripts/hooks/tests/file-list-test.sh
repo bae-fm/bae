@@ -168,7 +168,8 @@ printf 'staged\n' > partial.txt
 git add partial.txt
 printf 'staged\npreexisting\n' > partial.txt
 CHANGED_FILES=partial.txt
-partial_state=$(mktemp)
+# Kept in the planted repository's git dir, which the EXIT trap removes.
+partial_state=$(mktemp "$repo/.git/partial-state.XXXXXX")
 record_staged_worktree_state "$partial_state"
 partial_index_before=$(git rev-parse :partial.txt)
 run_stage_formatter_changes "$partial_state" 0
@@ -181,7 +182,7 @@ fi
 printf 'staged\n' > clean.txt
 git add clean.txt
 CHANGED_FILES=clean.txt
-clean_state=$(mktemp)
+clean_state=$(mktemp "$repo/.git/clean-state.XXXXXX")
 record_staged_worktree_state "$clean_state"
 printf 'formatted\n' > clean.txt
 run_stage_formatter_changes "$clean_state" 1

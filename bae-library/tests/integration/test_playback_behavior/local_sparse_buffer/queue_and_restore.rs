@@ -6,54 +6,56 @@ async fn assert_skip_preserves_play_state_over_sparse_buffer(
     direction: SkipDirection,
     start_paused: bool,
 ) {
-    let mut playback = MultiWindowPlayback::new("multi-window-skip-state").await;
-    let first = playback.track_ids[0].clone();
-    let second = playback.track_ids[1].clone();
+    with_fixture(MultiWindowPlayback::new("multi-window-skip-state"), async |playback| {
+        let first = playback.track_ids[0].clone();
+        let second = playback.track_ids[1].clone();
 
-    let (start_track_id, target_track_id) = match direction {
-        SkipDirection::Next => (first, second),
-        SkipDirection::Previous => (second, first),
-    };
+        let (start_track_id, target_track_id) = match direction {
+            SkipDirection::Next => (first, second),
+            SkipDirection::Previous => (second, first),
+        };
 
-    playback.play_and_wait(&start_track_id).await;
+        playback.play_and_wait(&start_track_id).await;
 
-    if start_paused {
-        playback.playback_handle.pause();
-        wait_for_state_on(
+        if start_paused {
+            playback.playback_handle.pause();
+            wait_for_state_on(
+                &mut playback.progress_rx,
+                |s| matches!(s, PlaybackState::Paused { .. }),
+                Duration::from_secs(5),
+            )
+            .await
+            .expect("playback should pause");
+        }
+
+        // Previous needs to land inside its 3s "step back" window; Next has no
+        // such window. Pressed immediately after play_and_wait/pause either way.
+        match direction {
+            SkipDirection::Next => playback.playback_handle.next(),
+            SkipDirection::Previous => playback.playback_handle.previous(),
+        }
+
+        let landed = wait_for_state_on(
             &mut playback.progress_rx,
-            |s| matches!(s, PlaybackState::Paused { .. }),
-            Duration::from_secs(5),
+            |s| {
+                let (track, is_paused) = match s {
+                    PlaybackState::Playing { track, .. } => (track, false),
+                    PlaybackState::Paused { track, .. } => (track, true),
+                    _ => return false,
+                };
+                track.track_id == target_track_id && is_paused == start_paused
+            },
+            Duration::from_secs(25),
         )
-        .await
-        .expect("playback should pause");
-    }
-
-    // Previous needs to land inside its 3s "step back" window; Next has no
-    // such window. Pressed immediately after play_and_wait/pause either way.
-    match direction {
-        SkipDirection::Next => playback.playback_handle.next(),
-        SkipDirection::Previous => playback.playback_handle.previous(),
-    }
-
-    let landed = wait_for_state_on(
-        &mut playback.progress_rx,
-        |s| {
-            let (track, is_paused) = match s {
-                PlaybackState::Playing { track, .. } => (track, false),
-                PlaybackState::Paused { track, .. } => (track, true),
-                _ => return false,
-            };
-            track.track_id == target_track_id && is_paused == start_paused
-        },
-        Duration::from_secs(25),
-    )
+        .await;
+        assert!(
+            landed.is_some(),
+            "{} while {} should land on the adjacent track in the same play/pause state",
+            direction.label(),
+            if start_paused { "paused" } else { "playing" },
+        );
+    })
     .await;
-    assert!(
-        landed.is_some(),
-        "{} while {} should land on the adjacent track in the same play/pause state",
-        direction.label(),
-        if start_paused { "paused" } else { "playing" },
-    );
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -82,51 +84,53 @@ async fn previous_while_playing_stays_playing_over_sparse_buffer() {
 /// buffer rather than a fully-buffered file.
 #[tokio::test(flavor = "multi_thread")]
 async fn previous_navigation_over_sparse_buffer() {
-    let mut playback = MultiWindowPlayback::new("multi-window-previous-nav").await;
-    let first = playback.track_ids[0].clone();
-    let second = playback.track_ids[1].clone();
-    playback.play_and_wait(&first).await;
+    with_fixture(MultiWindowPlayback::new("multi-window-previous-nav"), async |playback| {
+        let first = playback.track_ids[0].clone();
+        let second = playback.track_ids[1].clone();
+        playback.play_and_wait(&first).await;
 
-    playback.playback_handle.next();
-    wait_for_state_on(
-        &mut playback.progress_rx,
-        |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == second),
-        Duration::from_secs(25),
-    )
-    .await
-    .expect("Next should switch to the second track");
-
-    // Pressed as soon as the seek lands (well inside the 3s window): Previous
-    // steps back.
-    playback.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(1)));
-    bae_playback::test_capture::wait_for_seek(&mut playback.progress_rx, &second).await;
-    playback.playback_handle.previous();
-    wait_for_state_on(
-        &mut playback.progress_rx,
-        |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == first),
-        Duration::from_secs(25),
-    )
-    .await
-    .expect("Previous called early in the track should go to the previous track");
-
-    // Pressed late in the track: Previous restarts the current one. A position
-    // past the seek target is reported after every update the stream before
-    // the seek queued, so none of those can be read as the restart's.
-    playback.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(10)));
-    wait_for_track_position_where(&mut playback.progress_rx, &first, |ms| ms >= 10_000)
+        playback.playback_handle.next();
+        wait_for_state_on(
+            &mut playback.progress_rx,
+            |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == second),
+            Duration::from_secs(25),
+        )
         .await
-        .expect("the seek to 10s lands and plays on");
-    playback.playback_handle.previous();
-    wait_for_state_on(
-        &mut playback.progress_rx,
-        |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == first),
-        Duration::from_secs(25),
-    )
-    .await
-    .expect("Previous called late in the track should restart it");
-    wait_for_track_position_where(&mut playback.progress_rx, &first, |ms| ms < 3_000)
+        .expect("Next should switch to the second track");
+
+        // Pressed as soon as the seek lands (well inside the 3s window): Previous
+        // steps back.
+        playback.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(1)));
+        bae_playback::test_capture::wait_for_seek(&mut playback.progress_rx, &second).await;
+        playback.playback_handle.previous();
+        wait_for_state_on(
+            &mut playback.progress_rx,
+            |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == first),
+            Duration::from_secs(25),
+        )
         .await
-        .expect("restart should reset the position from 10s to near 0");
+        .expect("Previous called early in the track should go to the previous track");
+
+        // Pressed late in the track: Previous restarts the current one. A position
+        // past the seek target is reported after every update the stream before
+        // the seek queued, so none of those can be read as the restart's.
+        playback.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(10)));
+        wait_for_track_position_where(&mut playback.progress_rx, &first, |ms| ms >= 10_000)
+            .await
+            .expect("the seek to 10s lands and plays on");
+        playback.playback_handle.previous();
+        wait_for_state_on(
+            &mut playback.progress_rx,
+            |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == first),
+            Duration::from_secs(25),
+        )
+        .await
+        .expect("Previous called late in the track should restart it");
+        wait_for_track_position_where(&mut playback.progress_rx, &first, |ms| ms < 3_000)
+            .await
+            .expect("restart should reset the position from 10s to near 0");
+    })
+    .await;
 }
 
 /// Multi-window port of `seek_preserves_staged_next_for_a_gapless_advance`:
@@ -135,32 +139,35 @@ async fn previous_navigation_over_sparse_buffer() {
 /// on-demand fetch rather than reading an already-buffered preload.
 #[tokio::test(flavor = "multi_thread")]
 async fn seek_preserves_staged_next_over_sparse_buffer() {
-    let mut playback = MultiWindowPlayback::new("multi-window-seek-preserves-next").await;
-    let first = playback.track_ids[0].clone();
-    let second = playback.track_ids[1].clone();
-    playback.play_and_wait(&first).await;
+    with_fixture(MultiWindowPlayback::new("multi-window-seek-preserves-next"), async |playback| {
+        let first = playback.track_ids[0].clone();
+        let second = playback.track_ids[1].clone();
+        playback.play_and_wait(&first).await;
 
-    // Seek twice to stress the take-out/re-stage across an already-re-staged
-    // source, then let the boundary arrive.
-    playback.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(30)));
-    wait_for_seeked_on(&mut playback.progress_rx, Duration::from_secs(20))
-        .await
-        .expect("first seek lands");
-    playback.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(56)));
-    wait_for_seeked_on(&mut playback.progress_rx, Duration::from_secs(20))
-        .await
-        .expect("second seek lands");
+        // Seek twice to stress the take-out/re-stage across an already-re-staged
+        // source, then let the boundary arrive.
+        playback.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(30)));
+        wait_for_seeked_on(&mut playback.progress_rx, Duration::from_secs(20))
+            .await
+            .expect("first seek lands");
+        playback.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(56)));
+        wait_for_seeked_on(&mut playback.progress_rx, Duration::from_secs(20))
+            .await
+            .expect("second seek lands");
 
-    let outcome =
-        observe_boundary(&mut playback.progress_rx, &first, &second, Duration::from_secs(25)).await;
-    assert!(
-        outcome.reached_incoming,
-        "playback crosses into the second track after two re-staging seeks"
-    );
-    assert!(
-        outcome.decode_stats_for_finishing && !outcome.completed_for_finishing,
-        "the boundary stays gapless: the staged next survived both seeks"
-    );
+        let outcome =
+            observe_boundary(&mut playback.progress_rx, &first, &second, Duration::from_secs(25))
+                .await;
+        assert!(
+            outcome.reached_incoming,
+            "playback crosses into the second track after two re-staging seeks"
+        );
+        assert!(
+            outcome.decode_stats_for_finishing && !outcome.completed_for_finishing,
+            "the boundary stays gapless: the staged next survived both seeks"
+        );
+    })
+    .await;
 }
 
 /// Multi-window port of `test_restore_emits_seeked_at_saved_position` over
@@ -169,46 +176,46 @@ async fn seek_preserves_staged_next_over_sparse_buffer() {
 /// rather than starving on a stale/cancelled buffer.
 #[tokio::test(flavor = "multi_thread")]
 async fn restore_at_position_over_sparse_buffer_resumes_and_advances() {
-    let mut playback = MultiWindowPlayback::new("multi-window-restore").await;
-    let last_track = playback.track_ids[2].clone();
-    playback.play_and_wait(&last_track).await;
+    with_fixture(MultiWindowPlayback::new("multi-window-restore"), async |playback| {
+        let last_track = playback.track_ids[2].clone();
+        playback.play_and_wait(&last_track).await;
 
-    let target = Duration::from_secs(20);
-    playback.playback_handle.seek(TrackTime::from_duration(target));
-    wait_for_seeked_on(&mut playback.progress_rx, Duration::from_secs(20))
+        let target = Duration::from_secs(20);
+        playback.playback_handle.seek(TrackTime::from_duration(target));
+        wait_for_seeked_on(&mut playback.progress_rx, Duration::from_secs(20))
+            .await
+            .expect("the seek before shutdown lands");
+
+        // Persist and tear the service down. The second service below starts
+        // completely cold — no shared file buffer cache, no preload — the same
+        // as a real app relaunch reopening the same library.
+        playback.playback_handle.shutdown().await;
+
+        let (handle, _capture_rx) = start_capture_service(&playback.library).await;
+        let mut progress_rx = handle.subscribe_progress();
+
+        wait_for_state_on(
+            &mut progress_rx,
+            |s| matches!(s, PlaybackState::Paused { track, .. } if track.track_id == last_track),
+            Duration::from_secs(20),
+        )
         .await
-        .expect("the seek before shutdown lands");
+        .expect("restart should restore paused at the saved track");
 
-    // Persist and tear the service down. The second service below starts
-    // completely cold — no shared file buffer cache, no preload — the same
-    // as a real app relaunch reopening the same library.
-    playback.playback_handle.shutdown().await;
-
-    let (handle, _capture_rx) =
-        start_capture_service(&playback.library)
-            .await;
-    let mut progress_rx = handle.subscribe_progress();
-
-    wait_for_state_on(
-        &mut progress_rx,
-        |s| matches!(s, PlaybackState::Paused { track, .. } if track.track_id == last_track),
-        Duration::from_secs(20),
-    )
-    .await
-    .expect("restart should restore paused at the saved track");
-
-    handle.resume();
-    wait_for_state_on(
-        &mut progress_rx,
-        |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == last_track),
-        Duration::from_secs(20),
-    )
-    .await
-    .expect("resume after restore should start playing");
-
-    wait_for_position_advance(&mut progress_rx)
+        handle.resume();
+        wait_for_state_on(
+            &mut progress_rx,
+            |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == last_track),
+            Duration::from_secs(20),
+        )
         .await
-        .expect("resumed playback must keep advancing from the restored position");
+        .expect("resume after restore should start playing");
+
+        wait_for_position_advance(&mut progress_rx)
+            .await
+            .expect("resumed playback must keep advancing from the restored position");
+    })
+    .await;
 }
 
 /// With the "Restore on launch" preference off, a service that starts over a
@@ -218,52 +225,52 @@ async fn restore_at_position_over_sparse_buffer_resumes_and_advances() {
 /// preference on resumes nothing from before it.
 #[tokio::test(flavor = "multi_thread")]
 async fn restore_off_starts_with_nothing_in_playback_and_forgets_the_session() {
-    let mut playback = MultiWindowPlayback::new("multi-window-restore-off").await;
-    let track = playback.track_ids[0].clone();
-    playback.play_and_wait(&track).await;
+    with_fixture(MultiWindowPlayback::new("multi-window-restore-off"), async |playback| {
+        let track = playback.track_ids[0].clone();
+        playback.play_and_wait(&track).await;
 
-    // Persist mid-track and tear the service down, like an app quit.
-    playback.playback_handle.shutdown().await;
-    assert!(
-        bae_playback::tables::load_playback_state(playback.library.database())
-            .await
-            .expect("read the resume row")
-            .is_some(),
-        "shutdown persists a resume row while a track is current"
-    );
+        // Persist mid-track and tear the service down, like an app quit.
+        playback.playback_handle.shutdown().await;
+        assert!(
+            bae_playback::tables::load_playback_state(playback.library.database())
+                .await
+                .expect("read the resume row")
+                .is_some(),
+            "shutdown persists a resume row while a track is current"
+        );
 
-    // Relaunch with the preference off.
-    let (handle, _capture_rx) = start_capture_service_with_restore(&playback.library,
-        false,
-    )
+        // Relaunch with the preference off.
+        let (handle, _capture_rx) =
+            start_capture_service_with_restore(&playback.library, false).await;
+        let mut progress_rx = handle.subscribe_progress();
+
+        // No restored Paused/Playing state may surface. The bounded window is
+        // generous relative to how fast a restore emits (immediately at startup).
+        let restored = wait_for_state_on(
+            &mut progress_rx,
+            |s| matches!(s, PlaybackState::Paused { .. } | PlaybackState::Playing { .. }),
+            Duration::from_secs(3),
+        )
+        .await;
+        assert!(
+            restored.is_none(),
+            "restore-off must not surface a restored playback state, got {restored:?}"
+        );
+
+        let queue = handle.queue_value().await.expect("queue value");
+        assert!(
+            queue.manual.is_empty() && queue.context.is_none(),
+            "restore-off starts with an empty queue"
+        );
+        assert!(
+            bae_playback::tables::load_playback_state(playback.library.database())
+                .await
+                .expect("re-read the resume row")
+                .is_none(),
+            "restore-off forgets the resume row with the queue"
+        );
+    })
     .await;
-    let mut progress_rx = handle.subscribe_progress();
-
-    // No restored Paused/Playing state may surface. The bounded window is
-    // generous relative to how fast a restore emits (immediately at startup).
-    let restored = wait_for_state_on(
-        &mut progress_rx,
-        |s| matches!(s, PlaybackState::Paused { .. } | PlaybackState::Playing { .. }),
-        Duration::from_secs(3),
-    )
-    .await;
-    assert!(
-        restored.is_none(),
-        "restore-off must not surface a restored playback state, got {restored:?}"
-    );
-
-    let queue = handle.queue_value().await.expect("queue value");
-    assert!(
-        queue.manual.is_empty() && queue.context.is_none(),
-        "restore-off starts with an empty queue"
-    );
-    assert!(
-        bae_playback::tables::load_playback_state(playback.library.database())
-            .await
-            .expect("re-read the resume row")
-            .is_none(),
-        "restore-off forgets the resume row with the queue"
-    );
 }
 
 /// A relaunch that resumes the session comes back at the volume and mute it
@@ -271,41 +278,50 @@ async fn restore_off_starts_with_nothing_in_playback_and_forgets_the_session() {
 /// volume, muted.
 #[tokio::test]
 async fn a_resumed_session_comes_back_at_its_volume_and_mute() {
-    let mut playback = MultiWindowPlayback::new("multi-window-restore-volume").await;
-    let track = playback.track_ids[0].clone();
-    playback.play_and_wait(&track).await;
-    playback.playback_handle.set_volume(0.3);
-    playback.playback_handle.set_muted(true);
-    let mut progress_rx = playback.playback_handle.subscribe_progress();
-    bae_util::test_channels::next_matching(&mut progress_rx, Duration::from_secs(3), |event| match event {
-        PlaybackProgress::MuteChanged { is_muted: true } => Some(()),
-        _ => None,
-    })
-    .await
-    .expect("the mute lands");
-    playback.playback_handle.shutdown().await;
+    with_fixture(MultiWindowPlayback::new("multi-window-restore-volume"), async |playback| {
+        let track = playback.track_ids[0].clone();
+        playback.play_and_wait(&track).await;
+        playback.playback_handle.set_volume(0.3);
+        playback.playback_handle.set_muted(true);
+        let mut progress_rx = playback.playback_handle.subscribe_progress();
+        bae_util::test_channels::next_matching(&mut progress_rx, Duration::from_secs(3), |event| {
+            match event {
+                PlaybackProgress::MuteChanged { is_muted: true } => Some(()),
+                _ => None,
+            }
+        })
+        .await
+        .expect("the mute lands");
+        playback.playback_handle.shutdown().await;
 
-    let (handle, _capture_rx) = start_capture_service_with_restore(&playback.library,
-        true,
-    )
-    .await;
-    // Restore runs on the service's thread once its audio device is open,
-    // after this subscribes.
-    let mut progress_rx = handle.subscribe_progress();
-    let mut announced = (None, None);
-    bae_util::test_channels::next_matching(&mut progress_rx, Duration::from_secs(20), |event| {
-        match event {
-            PlaybackProgress::VolumeChanged { volume } => announced.0 = Some(volume),
-            PlaybackProgress::MuteChanged { is_muted } => announced.1 = Some(is_muted),
-            _ => {}
-        }
-        announced.0.zip(announced.1)
+        let (handle, _capture_rx) =
+            start_capture_service_with_restore(&playback.library, true).await;
+        // Restore runs on the service's thread once its audio device is open,
+        // after this subscribes.
+        let mut progress_rx = handle.subscribe_progress();
+        let mut announced = (None, None);
+        bae_util::test_channels::next_matching(
+            &mut progress_rx,
+            Duration::from_secs(20),
+            |event| {
+                match event {
+                    PlaybackProgress::VolumeChanged { volume } => announced.0 = Some(volume),
+                    PlaybackProgress::MuteChanged { is_muted } => announced.1 = Some(is_muted),
+                    _ => {}
+                }
+                announced.0.zip(announced.1)
+            },
+        )
+        .await
+        .expect("restore announces the volume and the mute");
+        assert_eq!(announced, (Some(0.3), Some(true)));
+        assert_eq!(
+            bae_playback::tables::playback_level(playback.library.database()).await.unwrap(),
+            (0.3, true)
+        );
+        handle.shutdown().await;
     })
-    .await
-    .expect("restore announces the volume and the mute");
-    assert_eq!(announced, (Some(0.3), Some(true)));
-    assert_eq!(bae_playback::tables::playback_level(playback.library.database()).await.unwrap(), (0.3, true));
-    handle.shutdown().await;
+    .await;
 }
 
 /// Multi-window analog of `assert_preload_refreshed_after_queue_mutation`,
@@ -364,75 +380,83 @@ async fn assert_preload_refreshed_over_sparse_buffer<F>(
 
 #[tokio::test(flavor = "multi_thread")]
 async fn add_next_displaces_preloaded_track_over_sparse_buffer() {
-    let mut playback = MultiWindowPlayback::new("multi-window-add-next-displace").await;
-    let (track0, track1, track2) = (
-        playback.track_ids[0].clone(),
-        playback.track_ids[1].clone(),
-        playback.track_ids[2].clone(),
-    );
-    let t2 = track2.clone();
-    assert_preload_refreshed_over_sparse_buffer(
-        &mut playback,
-        vec![track1],
-        &track0,
-        &track2,
-        move |h, _entries| h.add_next(vec![t2]),
-    )
+    with_fixture(MultiWindowPlayback::new("multi-window-add-next-displace"), async |playback| {
+        let (track0, track1, track2) = (
+            playback.track_ids[0].clone(),
+            playback.track_ids[1].clone(),
+            playback.track_ids[2].clone(),
+        );
+        let t2 = track2.clone();
+        assert_preload_refreshed_over_sparse_buffer(
+            playback,
+            vec![track1],
+            &track0,
+            &track2,
+            move |h, _entries| h.add_next(vec![t2]),
+        )
+        .await;
+    })
     .await;
 }
 
 #[tokio::test(flavor = "multi_thread")]
 async fn remove_entry_refreshes_preloaded_track_over_sparse_buffer() {
-    let mut playback = MultiWindowPlayback::new("multi-window-remove-entry-refresh").await;
-    let (track0, track1, track2) = (
-        playback.track_ids[0].clone(),
-        playback.track_ids[1].clone(),
-        playback.track_ids[2].clone(),
-    );
-    assert_preload_refreshed_over_sparse_buffer(
-        &mut playback,
-        vec![track1, track2.clone()],
-        &track0,
-        &track2,
-        |h, entries| h.remove_entry(entries[0].id.clone()),
-    )
+    with_fixture(MultiWindowPlayback::new("multi-window-remove-entry-refresh"), async |playback| {
+        let (track0, track1, track2) = (
+            playback.track_ids[0].clone(),
+            playback.track_ids[1].clone(),
+            playback.track_ids[2].clone(),
+        );
+        assert_preload_refreshed_over_sparse_buffer(
+            playback,
+            vec![track1, track2.clone()],
+            &track0,
+            &track2,
+            |h, entries| h.remove_entry(entries[0].id.clone()),
+        )
+        .await;
+    })
     .await;
 }
 
 #[tokio::test(flavor = "multi_thread")]
 async fn reorder_entry_displaces_preloaded_track_over_sparse_buffer() {
-    let mut playback = MultiWindowPlayback::new("multi-window-reorder-displace").await;
-    let (track0, track1, track2) = (
-        playback.track_ids[0].clone(),
-        playback.track_ids[1].clone(),
-        playback.track_ids[2].clone(),
-    );
-    assert_preload_refreshed_over_sparse_buffer(
-        &mut playback,
-        vec![track1, track2.clone()],
-        &track0,
-        &track2,
-        |h, entries| h.reorder_entry(entries[1].id.clone(), Some(entries[0].id.clone())),
-    )
+    with_fixture(MultiWindowPlayback::new("multi-window-reorder-displace"), async |playback| {
+        let (track0, track1, track2) = (
+            playback.track_ids[0].clone(),
+            playback.track_ids[1].clone(),
+            playback.track_ids[2].clone(),
+        );
+        assert_preload_refreshed_over_sparse_buffer(
+            playback,
+            vec![track1, track2.clone()],
+            &track0,
+            &track2,
+            |h, entries| h.reorder_entry(entries[1].id.clone(), Some(entries[0].id.clone())),
+        )
+        .await;
+    })
     .await;
 }
 
 #[tokio::test(flavor = "multi_thread")]
 async fn insert_in_queue_displaces_preloaded_track_over_sparse_buffer() {
-    let mut playback = MultiWindowPlayback::new("multi-window-insert-displace").await;
-    let (track0, track1, track2) = (
-        playback.track_ids[0].clone(),
-        playback.track_ids[1].clone(),
-        playback.track_ids[2].clone(),
-    );
-    let t2 = track2.clone();
-    assert_preload_refreshed_over_sparse_buffer(
-        &mut playback,
-        vec![track1],
-        &track0,
-        &track2,
-        move |h, _entries| h.insert_in_queue(vec![t2], 0),
-    )
+    with_fixture(MultiWindowPlayback::new("multi-window-insert-displace"), async |playback| {
+        let (track0, track1, track2) = (
+            playback.track_ids[0].clone(),
+            playback.track_ids[1].clone(),
+            playback.track_ids[2].clone(),
+        );
+        let t2 = track2.clone();
+        assert_preload_refreshed_over_sparse_buffer(
+            playback,
+            vec![track1],
+            &track0,
+            &track2,
+            move |h, _entries| h.insert_in_queue(vec![t2], 0),
+        )
+        .await;
+    })
     .await;
 }
 
@@ -441,31 +465,33 @@ async fn insert_in_queue_displaces_preloaded_track_over_sparse_buffer() {
 /// it as current.
 #[tokio::test(flavor = "multi_thread")]
 async fn skip_to_entry_jumps_to_that_queue_entry_over_sparse_buffer() {
-    let mut playback = MultiWindowPlayback::new("multi-window-skip-to-entry").await;
-    let first = playback.track_ids[0].clone();
-    let third = playback.track_ids[2].clone();
-    playback.playback_handle.play(first.clone());
-    let (played, entries) = wait_for_playing_capturing_queue_on(
-        &playback.playback_handle,
-        &mut playback.progress_rx,
-        Duration::from_secs(25),
-    )
-    .await;
-    assert!(played, "the release starts playing");
-    let target = entries
-        .iter()
-        .find(|e| e.track_id == third)
-        .expect("the third track is queued in the context");
-    playback.playback_handle.skip_to_entry(target.id.clone());
-    wait_for_state_on(
-        &mut playback.progress_rx,
-        |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == third),
-        Duration::from_secs(25),
-    )
-    .await
-    .expect("SkipTo jumps to the targeted entry");
+    with_fixture(MultiWindowPlayback::new("multi-window-skip-to-entry"), async |playback| {
+        let first = playback.track_ids[0].clone();
+        let third = playback.track_ids[2].clone();
+        playback.playback_handle.play(first.clone());
+        let (played, entries) = wait_for_playing_capturing_queue_on(
+            &playback.playback_handle,
+            &mut playback.progress_rx,
+            Duration::from_secs(25),
+        )
+        .await;
+        assert!(played, "the release starts playing");
+        let target = entries
+            .iter()
+            .find(|e| e.track_id == third)
+            .expect("the third track is queued in the context");
+        playback.playback_handle.skip_to_entry(target.id.clone());
+        wait_for_state_on(
+            &mut playback.progress_rx,
+            |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == third),
+            Duration::from_secs(25),
+        )
+        .await
+        .expect("SkipTo jumps to the targeted entry");
 
-    assert_position_advances(&mut playback.progress_rx).await;
+        assert_position_advances(&mut playback.progress_rx).await;
+    })
+    .await;
 }
 
 /// Multi-window port of
@@ -473,25 +499,27 @@ async fn skip_to_entry_jumps_to_that_queue_entry_over_sparse_buffer() {
 /// the lane must not disturb the currently-playing track's audio.
 #[tokio::test(flavor = "multi_thread")]
 async fn set_shuffle_rearranges_the_context_lane_over_sparse_buffer() {
-    let mut playback = MultiWindowPlayback::new("multi-window-set-shuffle").await;
-    let first = playback.track_ids[0].clone();
-    playback.play_and_wait(&first).await;
+    with_fixture(MultiWindowPlayback::new("multi-window-set-shuffle"), async |playback| {
+        let first = playback.track_ids[0].clone();
+        playback.play_and_wait(&first).await;
 
-    playback.playback_handle.set_shuffle(true);
-    let shuffled = playback.playback_handle.queue_value().await.expect("queue value");
-    assert!(
-        shuffled.context.as_ref().is_some_and(|c| c.shuffled),
-        "SetShuffle(true) puts the lane in shuffled order"
-    );
+        playback.playback_handle.set_shuffle(true);
+        let shuffled = playback.playback_handle.queue_value().await.expect("queue value");
+        assert!(
+            shuffled.context.as_ref().is_some_and(|c| c.shuffled),
+            "SetShuffle(true) puts the lane in shuffled order"
+        );
 
-    playback.playback_handle.set_shuffle(false);
-    let sequential = playback.playback_handle.queue_value().await.expect("queue value");
-    assert!(
-        !sequential.context.expect("still a playing context").shuffled,
-        "SetShuffle(false) puts the lane back in sequential order"
-    );
+        playback.playback_handle.set_shuffle(false);
+        let sequential = playback.playback_handle.queue_value().await.expect("queue value");
+        assert!(
+            !sequential.context.expect("still a playing context").shuffled,
+            "SetShuffle(false) puts the lane back in sequential order"
+        );
 
-    assert_position_advances(&mut playback.progress_rx).await;
+        assert_position_advances(&mut playback.progress_rx).await;
+    })
+    .await;
 }
 
 // ============================================================================

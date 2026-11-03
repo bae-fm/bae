@@ -4,118 +4,148 @@
 
 #[tokio::test]
 async fn test_direct_play_skips_pregap() {
-    let mut fixture = CueFlacTestFixture::new(bae_playback::test_capture::TestAudioDevice::RealtimeCapture)
-        .await
-        .expect("set up CUE/FLAC realtime capture fixture");
-    let pregapped_track_id = fixture.track_ids[1].clone();
-
-    fixture.playback_handle.play(pregapped_track_id.clone());
-    wait_for_state_on(
-        &mut fixture.progress_rx,
-        |s| {
-            matches!(s, PlaybackState::Playing { track, .. }
-                if track.track_id == pregapped_track_id)
+    with_fixture(
+        async {
+            CueFlacTestFixture::new(bae_playback::test_capture::TestAudioDevice::RealtimeCapture)
+                .await
+                .expect("set up CUE/FLAC realtime capture fixture")
         },
-        Duration::from_secs(5),
-    )
-    .await
-    .expect("the pregapped track should start playing");
+        async |fixture| {
+            let pregapped_track_id = fixture.track_ids[1].clone();
 
-    let first_position = first_position_of(&mut fixture.progress_rx, &pregapped_track_id).await;
-    assert!(
-        first_position >= 0,
-        "direct play should skip the 2s pregap and start the track at 0; \
+            fixture.playback_handle.play(pregapped_track_id.clone());
+            wait_for_state_on(
+                &mut fixture.progress_rx,
+                |s| {
+                    matches!(s, PlaybackState::Playing { track, .. }
+                if track.track_id == pregapped_track_id)
+                },
+                Duration::from_secs(5),
+            )
+            .await
+            .expect("the pregapped track should start playing");
+
+            let first_position =
+                first_position_of(&mut fixture.progress_rx, &pregapped_track_id).await;
+            assert!(
+                first_position >= 0,
+                "direct play should skip the 2s pregap and start the track at 0; \
          got {first_position}ms (a played pregap starts below zero)",
-    );
-    wait_for_track_position_where(&mut fixture.progress_rx, &pregapped_track_id, |ms| ms > 600)
-        .await
-        .expect("the position should climb into the track after the skipped pregap");
+            );
+            wait_for_track_position_where(&mut fixture.progress_rx, &pregapped_track_id, |ms| {
+                ms > 600
+            })
+            .await
+            .expect("the position should climb into the track after the skipped pregap");
+        },
+    )
+    .await;
 }
 
 #[tokio::test]
 async fn test_next_button_skips_pregap() {
-    let mut fixture = CueFlacTestFixture::new(bae_playback::test_capture::TestAudioDevice::RealtimeCapture)
-        .await
-        .expect("set up CUE/FLAC realtime capture fixture");
-    let first_track_id = fixture.track_ids[0].clone();
-    let pregapped_track_id = fixture.track_ids[1].clone();
-
-    fixture.playback_handle.play(first_track_id.clone());
-    wait_for_state_on(
-        &mut fixture.progress_rx,
-        |s| matches!(s, PlaybackState::Playing { .. }),
-        Duration::from_secs(5),
-    )
-    .await
-    .expect("the first track should start playing");
-
-    // Next is a direct selection: it skips the incoming track's pregap.
-    fixture.playback_handle.next();
-    wait_for_state_on(
-        &mut fixture.progress_rx,
-        |s| {
-            matches!(s, PlaybackState::Playing { track, .. }
-                if track.track_id == pregapped_track_id)
+    with_fixture(
+        async {
+            CueFlacTestFixture::new(bae_playback::test_capture::TestAudioDevice::RealtimeCapture)
+                .await
+                .expect("set up CUE/FLAC realtime capture fixture")
         },
-        Duration::from_secs(5),
-    )
-    .await
-    .expect("Next should switch to the pregapped track");
+        async |fixture| {
+            let first_track_id = fixture.track_ids[0].clone();
+            let pregapped_track_id = fixture.track_ids[1].clone();
 
-    let first_position = first_position_of(&mut fixture.progress_rx, &pregapped_track_id).await;
-    assert!(
-        first_position >= 0,
-        "Next should skip the 2s pregap and start the track at 0; \
+            fixture.playback_handle.play(first_track_id.clone());
+            wait_for_state_on(
+                &mut fixture.progress_rx,
+                |s| matches!(s, PlaybackState::Playing { .. }),
+                Duration::from_secs(5),
+            )
+            .await
+            .expect("the first track should start playing");
+
+            // Next is a direct selection: it skips the incoming track's pregap.
+            fixture.playback_handle.next();
+            wait_for_state_on(
+                &mut fixture.progress_rx,
+                |s| {
+                    matches!(s, PlaybackState::Playing { track, .. }
+                if track.track_id == pregapped_track_id)
+                },
+                Duration::from_secs(5),
+            )
+            .await
+            .expect("Next should switch to the pregapped track");
+
+            let first_position =
+                first_position_of(&mut fixture.progress_rx, &pregapped_track_id).await;
+            assert!(
+                first_position >= 0,
+                "Next should skip the 2s pregap and start the track at 0; \
          got {first_position}ms (a played pregap starts below zero)",
-    );
-    wait_for_track_position_where(&mut fixture.progress_rx, &pregapped_track_id, |ms| ms > 600)
-        .await
-        .expect("the position should climb into the track after the skipped pregap");
+            );
+            wait_for_track_position_where(&mut fixture.progress_rx, &pregapped_track_id, |ms| {
+                ms > 600
+            })
+            .await
+            .expect("the position should climb into the track after the skipped pregap");
+        },
+    )
+    .await;
 }
 
 #[tokio::test]
 async fn test_auto_advance_plays_pregap() {
-    let mut fixture = CueFlacTestFixture::new(bae_playback::test_capture::TestAudioDevice::RealtimeCapture)
-        .await
-        .expect("set up CUE/FLAC realtime capture fixture");
-    let first_track_id = fixture.track_ids[0].clone();
-    let pregapped_track_id = fixture.track_ids[1].clone();
+    with_fixture(
+        async {
+            CueFlacTestFixture::new(bae_playback::test_capture::TestAudioDevice::RealtimeCapture)
+                .await
+                .expect("set up CUE/FLAC realtime capture fixture")
+        },
+        async |fixture| {
+            let first_track_id = fixture.track_ids[0].clone();
+            let pregapped_track_id = fixture.track_ids[1].clone();
 
-    fixture.playback_handle.play(first_track_id.clone());
-    wait_for_state_on(
-        &mut fixture.progress_rx,
-        |s| {
-            matches!(s, PlaybackState::Playing { track, .. }
+            fixture.playback_handle.play(first_track_id.clone());
+            wait_for_state_on(
+                &mut fixture.progress_rx,
+                |s| {
+                    matches!(s, PlaybackState::Playing { track, .. }
                 if track.track_id == first_track_id)
-        },
-        Duration::from_secs(5),
-    )
-    .await
-    .expect("the first track should start playing");
+                },
+                Duration::from_secs(5),
+            )
+            .await
+            .expect("the first track should start playing");
 
-    // Track 1 runs 0–8s; seek near its end so it crosses into track 2's pregap.
-    fixture.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(7)));
-    wait_for_state_on(
-        &mut fixture.progress_rx,
-        |s| {
-            matches!(s, PlaybackState::Playing { track, .. }
+            // Track 1 runs 0–8s; seek near its end so it crosses into track 2's pregap.
+            fixture.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(7)));
+            wait_for_state_on(
+                &mut fixture.progress_rx,
+                |s| {
+                    matches!(s, PlaybackState::Playing { track, .. }
                 if track.track_id == pregapped_track_id)
-        },
-        Duration::from_secs(10),
-    )
-    .await
-    .expect("playback should auto-advance into the pregapped track");
+                },
+                Duration::from_secs(10),
+            )
+            .await
+            .expect("playback should auto-advance into the pregapped track");
 
-    let first_position = first_position_of(&mut fixture.progress_rx, &pregapped_track_id).await;
-    assert!(
-        first_position < 0,
-        "auto-advance should play the pregap with a negative countdown; \
+            let first_position =
+                first_position_of(&mut fixture.progress_rx, &pregapped_track_id).await;
+            assert!(
+                first_position < 0,
+                "auto-advance should play the pregap with a negative countdown; \
          the track's first position was {first_position}ms",
-    );
+            );
 
-    wait_for_track_position_where(&mut fixture.progress_rx, &pregapped_track_id, |ms| ms > 600)
-        .await
-        .expect("once the pregap passes, position should climb into the track");
+            wait_for_track_position_where(&mut fixture.progress_rx, &pregapped_track_id, |ms| {
+                ms > 600
+            })
+            .await
+            .expect("once the pregap passes, position should climb into the track");
+        },
+    )
+    .await;
 }
 
 /// Seeking 3 s into CUE/FLAC track 2, which starts mid-album after a 2 s
@@ -127,79 +157,93 @@ async fn test_cue_flac_seek() {
 
     // Real-time capture: at full speed the decoder can finish track 2 and move
     // to the next track before the seek lands, leaving nothing after the seek.
-    let mut fixture = CueFlacTestFixture::new(bae_playback::test_capture::TestAudioDevice::RealtimeCapture)
-        .await
-        .expect("set up CUE/FLAC realtime capture fixture");
+    with_fixture(
+        async {
+            CueFlacTestFixture::new(bae_playback::test_capture::TestAudioDevice::RealtimeCapture)
+                .await
+                .expect("set up CUE/FLAC realtime capture fixture")
+        },
+        async |fixture| {
+            let track_id = fixture.track_ids[1].clone();
 
-    let track_id = fixture.track_ids[1].clone();
+            fixture.playback_handle.play(track_id.clone());
+            // The seek below starts a new capture stream.
+            let _play_stream = fixture.next_capture_stream().await;
 
-    fixture.playback_handle.play(track_id.clone());
-    // The seek below starts a new capture stream.
-    let _play_stream = fixture.next_capture_stream().await;
-
-    let started =
-        bae_util::test_channels::next_matching(&mut fixture.progress_rx, Duration::from_secs(5), |event| {
-            matches!(event, PlaybackProgress::StateChanged { state: PlaybackState::Playing { .. } })
-                .then_some(())
-        })
-        .await;
-    assert!(started.is_some(), "Playback should start");
-
-    fixture.playback_handle.seek(TrackTime::from_millis(3_000));
-    let mut captured = fixture.next_capture_stream().await;
-
-    bae_playback::test_capture::wait_for_seek(&mut fixture.progress_rx, &track_id).await;
-
-    let fixture_dir = bae_audio::test_fixtures::cue_flac_dir();
-    let reference_data =
-        std::fs::read(fixture_dir.join("02 Test Artist - Track Two (White Noise).flac"))
-            .expect("read reference");
-    let reference = decode_audio(bae_audio::test_samples::filled_sparse_buffer(&reference_data), None, None)
-        .expect("decode reference");
-    let channels = reference.channels as usize;
-    let sample_rate = reference.sample_rate;
-    let reference_f32 = samples_as_f32(&reference);
-
-    // One second of samples.
-    let target_samples = sample_rate as usize * channels;
-    let captured_snapshot =
-        captured.wait_for_samples(target_samples, Duration::from_secs(60))
+            let started = bae_util::test_channels::next_matching(
+                &mut fixture.progress_rx,
+                Duration::from_secs(5),
+                |event| {
+                    matches!(
+                        event,
+                        PlaybackProgress::StateChanged { state: PlaybackState::Playing { .. } }
+                    )
+                    .then_some(())
+                },
+            )
             .await;
+            assert!(started.is_some(), "Playback should start");
 
-    assert!(!captured_snapshot.is_empty(), "No samples captured after seek",);
+            fixture.playback_handle.seek(TrackTime::from_millis(3_000));
+            let mut captured = fixture.next_capture_stream().await;
 
-    // Search the whole reference for the match.
-    let snippet_len = 200 * channels;
-    let step = 100 * channels;
+            bae_playback::test_capture::wait_for_seek(&mut fixture.progress_rx, &track_id).await;
 
-    let mut best_sad: f64 = f64::MAX;
-    let mut best_ref_offset: usize = 0;
+            let fixture_dir = bae_audio::test_fixtures::cue_flac_dir();
+            let reference_data =
+                std::fs::read(fixture_dir.join("02 Test Artist - Track Two (White Noise).flac"))
+                    .expect("read reference");
+            let reference = decode_audio(
+                bae_audio::test_samples::filled_sparse_buffer(&reference_data),
+                None,
+                None,
+            )
+            .expect("decode reference");
+            let channels = reference.channels as usize;
+            let sample_rate = reference.sample_rate;
+            let reference_f32 = samples_as_f32(&reference);
 
-    let search_end = reference_f32.len().saturating_sub(snippet_len);
-    for ref_offset in (0..search_end).step_by(step) {
-        let mut sad: f64 = 0.0;
-        for i in 0..snippet_len.min(captured_snapshot.len()) {
-            sad += (captured_snapshot[i] as f64 - reference_f32[ref_offset + i] as f64).abs();
-            if sad > best_sad {
-                break;
+            // One second of samples.
+            let target_samples = sample_rate as usize * channels;
+            let captured_snapshot =
+                captured.wait_for_samples(target_samples, Duration::from_secs(60)).await;
+
+            assert!(!captured_snapshot.is_empty(), "No samples captured after seek",);
+
+            // Search the whole reference for the match.
+            let snippet_len = 200 * channels;
+            let step = 100 * channels;
+
+            let mut best_sad: f64 = f64::MAX;
+            let mut best_ref_offset: usize = 0;
+
+            let search_end = reference_f32.len().saturating_sub(snippet_len);
+            for ref_offset in (0..search_end).step_by(step) {
+                let mut sad: f64 = 0.0;
+                for i in 0..snippet_len.min(captured_snapshot.len()) {
+                    sad +=
+                        (captured_snapshot[i] as f64 - reference_f32[ref_offset + i] as f64).abs();
+                    if sad > best_sad {
+                        break;
+                    }
+                }
+                if sad < best_sad {
+                    best_sad = sad;
+                    best_ref_offset = ref_offset;
+                }
             }
-        }
-        if sad < best_sad {
-            best_sad = sad;
-            best_ref_offset = ref_offset;
-        }
-    }
 
-    let ref_time_ms = best_ref_offset as f64 / channels as f64 / sample_rate as f64 * 1000.0;
-    let avg_diff = best_sad / snippet_len as f64;
+            let ref_time_ms =
+                best_ref_offset as f64 / channels as f64 / sample_rate as f64 * 1000.0;
+            let avg_diff = best_sad / snippet_len as f64;
 
-    assert!(
-        (ref_time_ms - 3_000.0).abs() < 20.0,
-        "the seek to 3 s into the track played audio from {ref_time_ms:.1}ms into it",
-    );
+            assert!(
+                (ref_time_ms - 3_000.0).abs() < 20.0,
+                "the seek to 3 s into the track played audio from {ref_time_ms:.1}ms into it",
+            );
 
-    // This only checks where the audio came from; test_cue_flac.rs checks exact samples.
-    assert!(
+            // This only checks where the audio came from; test_cue_flac.rs checks exact samples.
+            assert!(
         avg_diff < 0.5,
         "Post-seek audio average difference too high ({:.4}), audio may be from wrong position.\n\
          Best alignment at {:.1}ms in reference.",
@@ -207,10 +251,13 @@ async fn test_cue_flac_seek() {
         ref_time_ms,
     );
 
-    debug!(
-        "Post-seek CUE/FLAC audio aligned at {:.1}ms in reference (avg_diff {:.4}).",
-        ref_time_ms, avg_diff,
-    );
+            debug!(
+                "Post-seek CUE/FLAC audio aligned at {:.1}ms in reference (avg_diff {:.4}).",
+                ref_time_ms, avg_diff,
+            );
+        },
+    )
+    .await;
 }
 
 /// A seek counts from the track's start (INDEX 01), as the player shows it: on
@@ -218,32 +265,40 @@ async fn test_cue_flac_seek() {
 /// from there.
 #[tokio::test]
 async fn seek_lands_at_the_track_time_it_names() {
-    let mut fixture = CueFlacTestFixture::new(bae_playback::test_capture::TestAudioDevice::RealtimeCapture)
-        .await
-        .expect("set up CUE/FLAC realtime capture fixture");
-    let track_id = fixture.track_ids[1].clone();
-    play_and_wait_on(&fixture.playback_handle, &mut fixture.progress_rx, &track_id).await;
+    with_fixture(
+        async {
+            CueFlacTestFixture::new(bae_playback::test_capture::TestAudioDevice::RealtimeCapture)
+                .await
+                .expect("set up CUE/FLAC realtime capture fixture")
+        },
+        async |fixture| {
+            let track_id = fixture.track_ids[1].clone();
+            play_and_wait_on(&fixture.playback_handle, &mut fixture.progress_rx, &track_id).await;
 
-    fixture.playback_handle.seek(TrackTime::from_millis(4_000));
-    let seeked =
-        bae_util::test_channels::next_matching(
-            &mut fixture.progress_rx,
-            PLAY_START_BACKSTOP,
-            |event| match event {
-                PlaybackProgress::Seeked { position_ms, track_id: tid, .. } if tid == track_id => {
-                    Some(position_ms)
-                }
-                _ => None,
-            },
-        )
-        .await
-        .expect("the seek reports where it landed");
-    assert_eq!(seeked, 4_000, "the seek shows the track time it named");
-    wait_for_track_position_where(&mut fixture.progress_rx, &track_id, |ms| {
-        (4_000..5_000).contains(&ms)
-    })
-    .await
-    .expect("playback goes on from 4 s into the track");
+            fixture.playback_handle.seek(TrackTime::from_millis(4_000));
+            let seeked = bae_util::test_channels::next_matching(
+                &mut fixture.progress_rx,
+                PLAY_START_BACKSTOP,
+                |event| match event {
+                    PlaybackProgress::Seeked { position_ms, track_id: tid, .. }
+                        if tid == track_id =>
+                    {
+                        Some(position_ms)
+                    }
+                    _ => None,
+                },
+            )
+            .await
+            .expect("the seek reports where it landed");
+            assert_eq!(seeked, 4_000, "the seek shows the track time it named");
+            wait_for_track_position_where(&mut fixture.progress_rx, &track_id, |ms| {
+                (4_000..5_000).contains(&ms)
+            })
+            .await
+            .expect("playback goes on from 4 s into the track");
+        },
+    )
+    .await;
 }
 
 /// A restore with no saved position starts CUE/FLAC track 2 at its start, past
@@ -263,13 +318,14 @@ async fn restore_without_a_saved_position_shows_the_track_start() {
         .await
         .unwrap();
 
-    let (handle, _capture_rx) =
-        start_capture_service(&library).await;
+    let (handle, _capture_rx) = start_capture_service(&library).await;
     let mut progress_rx = handle.subscribe_progress();
     let shown =
-        bae_util::test_channels::next_matching(&mut progress_rx, PLAY_START_BACKSTOP, |event| match event {
-            PlaybackProgress::Seeked { position_ms, .. } => Some(position_ms),
-            _ => None,
+        bae_util::test_channels::next_matching(&mut progress_rx, PLAY_START_BACKSTOP, |event| {
+            match event {
+                PlaybackProgress::Seeked { position_ms, .. } => Some(position_ms),
+                _ => None,
+            }
         })
         .await;
     assert_eq!(shown, Some(0), "the restored track shows its start");
@@ -283,66 +339,73 @@ async fn restore_without_a_saved_position_shows_the_track_start() {
 async fn test_direct_play_skips_pregap_cue_flac() {
     use bae_audio::decode_audio;
 
-    let mut fixture = CueFlacTestFixture::new(bae_playback::test_capture::TestAudioDevice::Capture)
-        .await
-        .expect("set up CUE/FLAC capture fixture");
+    with_fixture(
+        async {
+            CueFlacTestFixture::new(bae_playback::test_capture::TestAudioDevice::Capture)
+                .await
+                .expect("set up CUE/FLAC capture fixture")
+        },
+        async |fixture| {
+            let track_id = fixture.track_ids[1].clone();
 
-    let track_id = fixture.track_ids[1].clone();
+            // The capture device takes audio faster than real time, so the track can
+            // finish before its Playing state is reported; the audio it captures is
+            // what shows where playback started.
+            fixture.playback_handle.play(track_id);
+            let mut captured = fixture.next_capture_stream().await;
 
-    // The capture device takes audio faster than real time, so the track can
-    // finish before its Playing state is reported; the audio it captures is
-    // what shows where playback started.
-    fixture.playback_handle.play(track_id);
-    let mut captured = fixture.next_capture_stream().await;
+            // XLD splits at INDEX 01, so the reference has no pregap.
+            let fixture_dir = bae_audio::test_fixtures::cue_flac_dir();
+            let reference_data =
+                std::fs::read(fixture_dir.join("02 Test Artist - Track Two (White Noise).flac"))
+                    .expect("read reference");
+            let reference = decode_audio(
+                bae_audio::test_samples::filled_sparse_buffer(&reference_data),
+                None,
+                None,
+            )
+            .expect("decode reference");
+            let channels = reference.channels as usize;
+            let sample_rate = reference.sample_rate;
+            let reference_f32 = samples_as_f32(&reference);
 
-    // XLD splits at INDEX 01, so the reference has no pregap.
-    let fixture_dir = bae_audio::test_fixtures::cue_flac_dir();
-    let reference_data =
-        std::fs::read(fixture_dir.join("02 Test Artist - Track Two (White Noise).flac"))
-            .expect("read reference");
-    let reference = decode_audio(bae_audio::test_samples::filled_sparse_buffer(&reference_data), None, None)
-        .expect("decode reference");
-    let channels = reference.channels as usize;
-    let sample_rate = reference.sample_rate;
-    let reference_f32 = samples_as_f32(&reference);
+            // Two seconds of samples.
+            let target_samples = sample_rate as usize * channels * 2;
+            let captured_snapshot =
+                captured.wait_for_samples(target_samples, Duration::from_secs(60)).await;
 
-    // Two seconds of samples.
-    let target_samples = sample_rate as usize * channels * 2;
-    let captured_snapshot =
-        captured.wait_for_samples(target_samples, Duration::from_secs(60))
-            .await;
+            // Had the pregap played, the start of the reference would not be found
+            // within the first tenth of a second.
+            let snippet_len = 500 * channels;
+            let max_alignment = sample_rate as usize * channels / 10;
 
-    // Had the pregap played, the start of the reference would not be found
-    // within the first tenth of a second.
-    let snippet_len = 500 * channels;
-    let max_alignment = sample_rate as usize * channels / 10;
+            assert!(
+                captured_snapshot.len() > max_alignment + snippet_len,
+                "Not enough captured samples: {}",
+                captured_snapshot.len(),
+            );
 
-    assert!(
-        captured_snapshot.len() > max_alignment + snippet_len,
-        "Not enough captured samples: {}",
-        captured_snapshot.len(),
-    );
-
-    let mut best_max_diff: f32 = f32::MAX;
-    let mut best_offset: usize = 0;
-    for offset in 0..max_alignment.min(captured_snapshot.len().saturating_sub(snippet_len)) {
-        let mut max_diff: f32 = 0.0;
-        for i in 0..snippet_len.min(reference_f32.len()) {
-            let diff = (captured_snapshot[offset + i] - reference_f32[i]).abs();
-            max_diff = max_diff.max(diff);
-            if max_diff > best_max_diff {
-                break;
+            let mut best_max_diff: f32 = f32::MAX;
+            let mut best_offset: usize = 0;
+            for offset in 0..max_alignment.min(captured_snapshot.len().saturating_sub(snippet_len))
+            {
+                let mut max_diff: f32 = 0.0;
+                for i in 0..snippet_len.min(reference_f32.len()) {
+                    let diff = (captured_snapshot[offset + i] - reference_f32[i]).abs();
+                    max_diff = max_diff.max(diff);
+                    if max_diff > best_max_diff {
+                        break;
+                    }
+                }
+                if max_diff < best_max_diff {
+                    best_max_diff = max_diff;
+                    best_offset = offset;
+                }
             }
-        }
-        if max_diff < best_max_diff {
-            best_max_diff = max_diff;
-            best_offset = offset;
-        }
-    }
 
-    let offset_ms = best_offset as f64 / channels as f64 / sample_rate as f64 * 1000.0;
+            let offset_ms = best_offset as f64 / channels as f64 / sample_rate as f64 * 1000.0;
 
-    assert!(
+            assert!(
         best_max_diff < 0.01,
         "Direct play did not skip pregap: captured audio doesn't match reference at INDEX 01.\n\
          Best offset {:.1}ms, max sample diff {:.6}",
@@ -350,24 +413,27 @@ async fn test_direct_play_skips_pregap_cue_flac() {
         best_max_diff,
     );
 
-    let compare_count = (sample_rate as usize * channels)
-        .min(captured_snapshot.len() - best_offset)
-        .min(reference_f32.len());
+            let compare_count = (sample_rate as usize * channels)
+                .min(captured_snapshot.len() - best_offset)
+                .min(reference_f32.len());
 
-    for i in 0..compare_count {
-        let diff = (captured_snapshot[best_offset + i] - reference_f32[i]).abs();
-        assert!(
-            diff < 0.01,
-            "AUDIO MISMATCH at index {} ({:.1}ms): pregap may not be properly skipped",
-            i,
-            i as f64 / channels as f64 / sample_rate as f64 * 1000.0,
-        );
-    }
+            for i in 0..compare_count {
+                let diff = (captured_snapshot[best_offset + i] - reference_f32[i]).abs();
+                assert!(
+                    diff < 0.01,
+                    "AUDIO MISMATCH at index {} ({:.1}ms): pregap may not be properly skipped",
+                    i,
+                    i as f64 / channels as f64 / sample_rate as f64 * 1000.0,
+                );
+            }
 
-    debug!(
+            debug!(
         "Direct play correctly skips pregap ({} samples match after INDEX 01, offset {:.1}ms).",
         compare_count, offset_ms,
     );
+        },
+    )
+    .await;
 }
 
 /// A three-track CUE album over one FLAC of tones written here. Track 2 has a
@@ -442,31 +508,45 @@ fn create_back_album() -> DiscogsRelease {
 /// to track 1.
 #[tokio::test]
 async fn back_twice_on_a_pregapped_track_reaches_the_previous_track() {
-    let mut fixture = CueFlacTestFixture::import(
-        bae_playback::test_capture::TestAudioDevice::RealtimeCapture,
-        create_back_album(),
-        generate_back_album_files,
+    with_fixture(
+        async {
+            CueFlacTestFixture::import(
+                bae_playback::test_capture::TestAudioDevice::RealtimeCapture,
+                create_back_album(),
+                generate_back_album_files,
+            )
+            .await
+            .expect("set up the Back album fixture")
+        },
+        async |fixture| {
+            let first_track_id = fixture.track_ids[0].clone();
+            let pregapped_track_id = fixture.track_ids[1].clone();
+            assert_back_twice_reaches_previous(fixture, &pregapped_track_id, &first_track_id).await;
+        },
     )
-    .await
-    .expect("set up the Back album fixture");
-    let first_track_id = fixture.track_ids[0].clone();
-    let pregapped_track_id = fixture.track_ids[1].clone();
-    assert_back_twice_reaches_previous(&mut fixture, &pregapped_track_id, &first_track_id).await;
+    .await;
 }
 
 /// Back on track 3, which has no pregap, works the same way.
 #[tokio::test]
 async fn back_twice_on_a_track_without_pregap_reaches_the_previous_track() {
-    let mut fixture = CueFlacTestFixture::import(
-        bae_playback::test_capture::TestAudioDevice::RealtimeCapture,
-        create_back_album(),
-        generate_back_album_files,
+    with_fixture(
+        async {
+            CueFlacTestFixture::import(
+                bae_playback::test_capture::TestAudioDevice::RealtimeCapture,
+                create_back_album(),
+                generate_back_album_files,
+            )
+            .await
+            .expect("set up the Back album fixture")
+        },
+        async |fixture| {
+            let pregapped_track_id = fixture.track_ids[1].clone();
+            let plain_track_id = fixture.track_ids[2].clone();
+            assert_back_twice_reaches_previous(fixture, &plain_track_id, &pregapped_track_id).await;
+        },
     )
-    .await
-    .expect("set up the Back album fixture");
-    let pregapped_track_id = fixture.track_ids[1].clone();
-    let plain_track_id = fixture.track_ids[2].clone();
-    assert_back_twice_reaches_previous(&mut fixture, &plain_track_id, &pregapped_track_id).await;
+    .await;
 }
 
 /// Play the 10 s `track_id`, press Back 5 s in (it restarts), then press Back
@@ -529,43 +609,69 @@ async fn assert_back_twice_reaches_previous(
 /// that position: the restart has to show it, or the bar keeps showing 5 s.
 #[tokio::test]
 async fn back_on_a_paused_track_shows_the_track_start() {
-    let mut fixture = CueFlacTestFixture::import(
-        bae_playback::test_capture::TestAudioDevice::RealtimeCapture,
-        create_back_album(),
-        generate_back_album_files,
-    )
-    .await
-    .expect("set up the Back album fixture");
-    let pregapped_track_id = fixture.track_ids[1].clone();
-    play_and_wait_on(&fixture.playback_handle, &mut fixture.progress_rx, &pregapped_track_id).await;
-    fixture.playback_handle.seek_by_ratio(0.5);
-    wait_for_track_position_where(&mut fixture.progress_rx, &pregapped_track_id, |ms| ms >= 5_000)
-        .await
-        .expect("the seek lands halfway into the track and plays on");
-    pause_on_back_album(&mut fixture, &pregapped_track_id).await;
+    with_fixture(
+        async {
+            CueFlacTestFixture::import(
+                bae_playback::test_capture::TestAudioDevice::RealtimeCapture,
+                create_back_album(),
+                generate_back_album_files,
+            )
+            .await
+            .expect("set up the Back album fixture")
+        },
+        async |fixture| {
+            let pregapped_track_id = fixture.track_ids[1].clone();
+            play_and_wait_on(
+                &fixture.playback_handle,
+                &mut fixture.progress_rx,
+                &pregapped_track_id,
+            )
+            .await;
+            fixture.playback_handle.seek_by_ratio(0.5);
+            wait_for_track_position_where(&mut fixture.progress_rx, &pregapped_track_id, |ms| {
+                ms >= 5_000
+            })
+            .await
+            .expect("the seek lands halfway into the track and plays on");
+            pause_on_back_album(fixture, &pregapped_track_id).await;
 
-    fixture.playback_handle.previous();
-    assert_paused_load_shows_start(&mut fixture, &pregapped_track_id).await;
+            fixture.playback_handle.previous();
+            assert_paused_load_shows_start(fixture, &pregapped_track_id).await;
+        },
+    )
+    .await;
 }
 
 /// Next on the paused track 2 goes to track 3 still paused, and shows track 3
 /// at its start rather than nothing.
 #[tokio::test]
 async fn next_on_a_paused_track_shows_the_next_track_start() {
-    let mut fixture = CueFlacTestFixture::import(
-        bae_playback::test_capture::TestAudioDevice::RealtimeCapture,
-        create_back_album(),
-        generate_back_album_files,
-    )
-    .await
-    .expect("set up the Back album fixture");
-    let pregapped_track_id = fixture.track_ids[1].clone();
-    let next_track_id = fixture.track_ids[2].clone();
-    play_and_wait_on(&fixture.playback_handle, &mut fixture.progress_rx, &pregapped_track_id).await;
-    pause_on_back_album(&mut fixture, &pregapped_track_id).await;
+    with_fixture(
+        async {
+            CueFlacTestFixture::import(
+                bae_playback::test_capture::TestAudioDevice::RealtimeCapture,
+                create_back_album(),
+                generate_back_album_files,
+            )
+            .await
+            .expect("set up the Back album fixture")
+        },
+        async |fixture| {
+            let pregapped_track_id = fixture.track_ids[1].clone();
+            let next_track_id = fixture.track_ids[2].clone();
+            play_and_wait_on(
+                &fixture.playback_handle,
+                &mut fixture.progress_rx,
+                &pregapped_track_id,
+            )
+            .await;
+            pause_on_back_album(fixture, &pregapped_track_id).await;
 
-    fixture.playback_handle.next();
-    assert_paused_load_shows_start(&mut fixture, &next_track_id).await;
+            fixture.playback_handle.next();
+            assert_paused_load_shows_start(fixture, &next_track_id).await;
+        },
+    )
+    .await;
 }
 
 /// Pause the playing `track_id` and wait until it reports Paused.

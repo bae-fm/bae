@@ -6,26 +6,30 @@ struct RemoteMultiWindowPlayback {
     cloud: Arc<coven::MemoryStorage>,
     /// Where the album's FLAC is stored.
     flac_object: coven::ObjectPath,
+    library: TestLibrary,
     _capture_stream_rx: bae_playback::test_capture::CaptureStreamRx,
     _temp_dir: TempDir,
 }
 
 impl RemoteMultiWindowPlayback {
-    async fn new(name: &str) -> Result<Self, Box<dyn std::error::Error>> {
+    async fn new(name: &str) -> Self {
+        Self::import(name).await.expect("set up the remote multi-window fixture")
+    }
+
+    /// Import the multi-window album into a library on memory storage,
+    /// upload it, and drop every local copy, so playback reads storage.
+    async fn import(name: &str) -> Result<Self, Box<dyn std::error::Error>> {
         bae_util::test_logs::install();
         let temp_dir = TempDir::new()?;
         let album_dir = temp_dir.path().join("album");
         std::fs::create_dir_all(&album_dir)?;
         let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
         let (library, cloud) =
-            bae_library::test_libraries::storage_library(temp_dir.path(), fakes.providers())
-                .await;
+            bae_library::test_libraries::storage_library(temp_dir.path(), fakes.providers()).await;
         bae_library::test_libraries::connect_storage(&library, &cloud).await;
         generate_multi_window_cue_flac_files(&album_dir);
-        let release_key =
-            fakes.seed_discogs_test_release(create_multi_window_cue_album());
-        let import_handle =
-            library.start_discogs_import().await;
+        let release_key = fakes.seed_discogs_test_release(create_multi_window_cue_album());
+        let import_handle = library.start_discogs_import().await;
         let import_id = uuid::Uuid::new_v4().to_string();
         import_handle
             .send_command(ImportCommand {
@@ -50,11 +54,8 @@ impl RemoteMultiWindowPlayback {
         let coven::FilePlace::Cloud { location, .. } = flac_ref.place() else {
             panic!("the uploaded FLAC is stored");
         };
-        let flac_object = coven::ObjectPath::file(
-            library.store_id(),
-            location.uploader(),
-            location.object(),
-        );
+        let flac_object =
+            coven::ObjectPath::file(library.store_id(), location.uploader(), location.object());
         for file in files {
             library.evict_file_for_test(file.file).await?;
         }
@@ -65,8 +66,7 @@ impl RemoteMultiWindowPlayback {
             .into_iter()
             .map(|track| track.id)
             .collect();
-        let (playback_handle, capture_stream_rx) =
-            start_capture_service(&library).await;
+        let (playback_handle, capture_stream_rx) = start_capture_service(&library).await;
         let progress_rx = playback_handle.subscribe_progress();
         Ok(Self {
             playback_handle,
@@ -74,6 +74,7 @@ impl RemoteMultiWindowPlayback {
             track_ids,
             cloud,
             flac_object,
+            library,
             _capture_stream_rx: capture_stream_rx,
             _temp_dir: temp_dir,
         })
@@ -84,50 +85,57 @@ impl RemoteMultiWindowPlayback {
     }
 }
 
+impl PlaybackFixture for RemoteMultiWindowPlayback {
+    async fn close(self) {
+        self.playback_handle.shutdown().await;
+        self.library.close().await.expect("close the test library");
+    }
+}
+
 /// While the person waits on a track whose file is read from storage, its
 /// load waits on storage, under the track's id, and none of the track is
 /// held yet; once the track plays, it waits on nothing, and its bytes go on
 /// arriving until all of them are held.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_load_from_storage_waits_on_storage() {
-    let mut playback = RemoteMultiWindowPlayback::new("remote-load-wait")
-        .await
-        .expect("set up the remote multi-window fixture");
-    let track = playback.track_ids[0].clone();
-    // Hold the FLAC's body a byte past its header, so the load waits on it.
-    let (reached, observed) = tokio::sync::oneshot::channel();
-    let (resume, resumed) = tokio::sync::oneshot::channel();
-    playback.cloud.hold_body_at(playback.flac_object.clone(), 12, reached, resumed).await;
-    let mut waits = playback.playback_handle.subscribe_storage_waits();
-    let mut buffered = playback.playback_handle.follow_track_buffered();
+    with_fixture(RemoteMultiWindowPlayback::new("remote-load-wait"), async |playback| {
+        let track = playback.track_ids[0].clone();
+        // Hold the FLAC's body a byte past its header, so the load waits on it.
+        let (reached, observed) = tokio::sync::oneshot::channel();
+        let (resume, resumed) = tokio::sync::oneshot::channel();
+        playback.cloud.hold_body_at(playback.flac_object.clone(), 12, reached, resumed).await;
+        let mut waits = playback.playback_handle.subscribe_storage_waits();
+        let mut buffered = playback.playback_handle.follow_track_buffered();
 
-    playback.playback_handle.play(track.clone());
-    observed.await.expect("the load reads the FLAC from storage");
-    let waiting = tokio::time::timeout(Duration::from_secs(30), async {
-        loop {
-            if let Some(waiting) = waits.waiting() {
-                return waiting;
+        playback.playback_handle.play(track.clone());
+        observed.await.expect("the load reads the FLAC from storage");
+        let waiting = tokio::time::timeout(Duration::from_secs(30), async {
+            loop {
+                if let Some(waiting) = waits.waiting() {
+                    return waiting;
+                }
+                waits.changed().await.expect("playback runs");
             }
-            waits.changed().await.expect("playback runs");
-        }
-    })
-    .await
-    .expect("the waited load waits on storage");
-    assert_eq!(waiting, track);
-    let held = buffered.next().await.expect("playback runs").expect("a track plays");
-    assert_eq!(held.track_id, track);
-    assert_eq!(held.ranges, vec![], "none of the held read's bytes are here");
+        })
+        .await
+        .expect("the waited load waits on storage");
+        assert_eq!(waiting, track);
+        let held = buffered.next().await.expect("playback runs").expect("a track plays");
+        assert_eq!(held.track_id, track);
+        assert_eq!(held.ranges, vec![], "none of the held read's bytes are here");
 
-    resume.send(()).expect("the held read waits");
-    wait_for_state_on(
+        resume.send(()).expect("the held read waits");
+        wait_for_state_on(
         &mut playback.progress_rx,
         |s| matches!(s, PlaybackState::Playing { track: playing, .. } if playing.track_id == track),
         Duration::from_secs(30),
     )
     .await
     .expect("the track plays once its bytes arrive");
-    assert_eq!(waits.waiting(), None, "a playing track waits on no storage");
-    wait_for_whole_track(&mut buffered, &track).await;
+        assert_eq!(waits.waiting(), None, "a playing track waits on no storage");
+        wait_for_whole_track(&mut buffered, &track).await;
+    })
+    .await;
 }
 
 /// Remote-cloud port of `switching_tracks_within_a_multi_window_file_keeps_streaming`:
@@ -135,25 +143,24 @@ async fn a_load_from_storage_waits_on_storage() {
 /// cloud read, not a local-disk read.
 #[tokio::test(flavor = "multi_thread")]
 async fn switching_tracks_within_a_multi_window_file_over_remote_cloud() {
-    let mut playback = RemoteMultiWindowPlayback::new("multi-window-remote-switch")
-        .await
-        .expect("set up the remote multi-window fixture");
+    with_fixture(RemoteMultiWindowPlayback::new("multi-window-remote-switch"), async |playback| {
+        let last_track = playback.track_ids[2].clone();
+        playback.play_and_wait(&last_track).await;
 
-    let last_track = playback.track_ids[2].clone();
-    playback.play_and_wait(&last_track).await;
-
-    let middle_track = playback.track_ids[1].clone();
-    playback.playback_handle.play(middle_track.clone());
-    let playing = wait_for_state_on(
-        &mut playback.progress_rx,
-        |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == middle_track),
-        Duration::from_secs(30),
-    )
+        let middle_track = playback.track_ids[1].clone();
+        playback.playback_handle.play(middle_track.clone());
+        let playing = wait_for_state_on(
+            &mut playback.progress_rx,
+            |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == middle_track),
+            Duration::from_secs(30),
+        )
+        .await;
+        assert!(
+            playing.is_some(),
+            "the middle track reaches Playing after the switch over a real ranged cloud read"
+        );
+    })
     .await;
-    assert!(
-        playing.is_some(),
-        "the middle track reaches Playing after the switch over a real ranged cloud read"
-    );
 }
 
 /// Remote-cloud port of `auto_advance_crosses_gaplessly_within_a_multi_window_file`:
@@ -161,99 +168,104 @@ async fn switching_tracks_within_a_multi_window_file_over_remote_cloud() {
 /// cloud read.
 #[tokio::test(flavor = "multi_thread")]
 async fn auto_advance_crosses_gaplessly_over_remote_cloud() {
-    let mut playback = RemoteMultiWindowPlayback::new("multi-window-remote-gapless")
-        .await
-        .expect("set up the remote multi-window fixture");
-    let first = playback.track_ids[0].clone();
-    let second = playback.track_ids[1].clone();
-    playback.play_and_wait(&first).await;
+    with_fixture(RemoteMultiWindowPlayback::new("multi-window-remote-gapless"), async |playback| {
+        let first = playback.track_ids[0].clone();
+        let second = playback.track_ids[1].clone();
+        playback.play_and_wait(&first).await;
 
-    playback.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(54)));
-    let outcome =
-        observe_boundary(&mut playback.progress_rx, &first, &second, Duration::from_secs(30)).await;
-    assert!(
-        outcome.reached_incoming,
-        "playback crosses into the second track over a real ranged cloud read"
-    );
-    assert!(
-        outcome.decode_stats_for_finishing && !outcome.completed_for_finishing,
-        "the boundary is gapless: decode stats without TrackCompleted"
-    );
+        playback.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(54)));
+        let outcome =
+            observe_boundary(&mut playback.progress_rx, &first, &second, Duration::from_secs(30))
+                .await;
+        assert!(
+            outcome.reached_incoming,
+            "playback crosses into the second track over a real ranged cloud read"
+        );
+        assert!(
+            outcome.decode_stats_for_finishing && !outcome.completed_for_finishing,
+            "the boundary is gapless: decode stats without TrackCompleted"
+        );
 
-    wait_for_position_advance(&mut playback.progress_rx)
-        .await
-        .expect("track 2's position must advance after the crossing over a real ranged cloud read");
+        wait_for_position_advance(&mut playback.progress_rx).await.expect(
+            "track 2's position must advance after the crossing over a real ranged cloud read",
+        );
+    })
+    .await;
 }
 
 /// Remote-cloud port of `manual_next_into_a_pregap_track_rebuilds_and_keeps_streaming`.
 #[tokio::test(flavor = "multi_thread")]
 async fn manual_next_into_a_pregap_track_over_remote_cloud() {
-    let mut playback = RemoteMultiWindowPlayback::new("multi-window-remote-next-pregap")
+    with_fixture(RemoteMultiWindowPlayback::new("multi-window-remote-next-pregap"), async |playback| {
+        let [first, second] = [playback.track_ids[0].clone(), playback.track_ids[1].clone()];
+        playback.play_and_wait(&first).await;
+
+        playback.playback_handle.next();
+        wait_for_state_on(
+            &mut playback.progress_rx,
+            |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == second),
+            Duration::from_secs(30),
+        )
         .await
-        .expect("set up the remote multi-window fixture");
-    let [first, second] = [playback.track_ids[0].clone(), playback.track_ids[1].clone()];
-    playback.play_and_wait(&first).await;
+        .expect(
+            "the second track reaches Playing after a manual Next over a real ranged cloud read",
+        );
 
-    playback.playback_handle.next();
-    wait_for_state_on(
-        &mut playback.progress_rx,
-        |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == second),
-        Duration::from_secs(30),
-    )
-    .await
-    .expect("the second track reaches Playing after a manual Next over a real ranged cloud read");
-
-    wait_for_track_position_where(&mut playback.progress_rx, &second, |ms| ms > 0).await.expect(
+        wait_for_track_position_where(&mut playback.progress_rx, &second, |ms| ms > 0).await.expect(
         "the rebuilt track's position advances — its bytes are fetched over the real cloud path",
     );
+    })
+    .await;
 }
 
 /// Remote-cloud port of `manual_next_into_a_clean_track_promotes_the_preload`.
 #[tokio::test(flavor = "multi_thread")]
 async fn manual_next_into_a_clean_track_over_remote_cloud() {
-    let mut playback = RemoteMultiWindowPlayback::new("multi-window-remote-next-preload")
+    with_fixture(RemoteMultiWindowPlayback::new("multi-window-remote-next-preload"), async |playback| {
+        let [second, third] = [playback.track_ids[1].clone(), playback.track_ids[2].clone()];
+        playback.play_and_wait(&second).await;
+
+        playback.playback_handle.next();
+        wait_for_state_on(
+            &mut playback.progress_rx,
+            |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == third),
+            Duration::from_secs(30),
+        )
         .await
-        .expect("set up the remote multi-window fixture");
-    let [second, third] = [playback.track_ids[1].clone(), playback.track_ids[2].clone()];
-    playback.play_and_wait(&second).await;
+        .expect(
+            "the third track reaches Playing after a manual Next over a real ranged cloud read",
+        );
 
-    playback.playback_handle.next();
-    wait_for_state_on(
-        &mut playback.progress_rx,
-        |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == third),
-        Duration::from_secs(30),
-    )
-    .await
-    .expect("the third track reaches Playing after a manual Next over a real ranged cloud read");
-
-    wait_for_track_position_where(&mut playback.progress_rx, &third, |ms| ms > 0).await.expect(
+        wait_for_track_position_where(&mut playback.progress_rx, &third, |ms| ms > 0).await.expect(
         "the promoted track's position advances — its bytes are fetched over the real cloud path",
     );
+    })
+    .await;
 }
 
 /// Remote-cloud seek port: seeking within the last track over a real ranged
 /// cloud read must still land near the target and keep streaming.
 #[tokio::test(flavor = "multi_thread")]
 async fn seek_within_the_last_track_over_remote_cloud() {
-    let mut playback = RemoteMultiWindowPlayback::new("multi-window-remote-seek")
-        .await
-        .expect("set up the remote multi-window fixture");
-    let last_track = playback.track_ids[2].clone();
-    playback.play_and_wait(&last_track).await;
+    with_fixture(RemoteMultiWindowPlayback::new("multi-window-remote-seek"), async |playback| {
+        let last_track = playback.track_ids[2].clone();
+        playback.play_and_wait(&last_track).await;
 
-    let target = Duration::from_secs(20);
-    playback.playback_handle.seek(TrackTime::from_duration(target));
-    let landed = wait_for_seeked_on(&mut playback.progress_rx, Duration::from_secs(30))
-        .await
-        .expect("a seek within the last track emits Seeked over a real ranged cloud read");
-    assert!(
-        Duration::from_millis(landed).abs_diff(target) < Duration::from_secs(2),
-        "should land near {target:?}, got {landed}ms"
-    );
+        let target = Duration::from_secs(20);
+        playback.playback_handle.seek(TrackTime::from_duration(target));
+        let landed = wait_for_seeked_on(&mut playback.progress_rx, Duration::from_secs(30))
+            .await
+            .expect("a seek within the last track emits Seeked over a real ranged cloud read");
+        assert!(
+            Duration::from_millis(landed).abs_diff(target) < Duration::from_secs(2),
+            "should land near {target:?}, got {landed}ms"
+        );
 
-    wait_for_position_advance(&mut playback.progress_rx)
-        .await
-        .expect("audio must keep flowing after the seek over a real ranged cloud read");
+        wait_for_position_advance(&mut playback.progress_rx)
+            .await
+            .expect("audio must keep flowing after the seek over a real ranged cloud read");
+    })
+    .await;
 }
 
 /// No single ranged read may exceed this. The fill asks for one 4 MiB window at a
@@ -293,70 +305,69 @@ const SEEK_COST_BACKSTOP: Duration = Duration::from_secs(15);
 /// include their traffic.
 #[tokio::test(flavor = "multi_thread")]
 async fn seek_over_remote_cloud_costs_chunks_not_the_whole_file() {
-    let mut playback = RemoteMultiWindowPlayback::new("remote-seek-ranges")
-        .await
-        .expect("set up the private remote fixture");
+    with_fixture(RemoteMultiWindowPlayback::new("remote-seek-ranges"), async |playback| {
+        let last_track = playback.track_ids[2].clone();
+        playback.play_and_wait(&last_track).await;
 
-    let last_track = playback.track_ids[2].clone();
-    playback.play_and_wait(&last_track).await;
+        // Whatever starting the track cost is already paid; measure the seek alone.
+        let first_read = playback.cloud.reads().await.len();
 
-    // Whatever starting the track cost is already paid; measure the seek alone.
-    let first_read = playback.cloud.reads().await.len();
+        // Near the end of the last track (it runs 2:00–3:00 of the file, so this
+        // lands ~10 s from the end). Deliberately not mid-track: with a track ceiling
+        // set the fill reads ahead to the end of the *current track*, which for a
+        // seek to 0:20 would pull the remaining ~40 s — read-ahead the seek did not
+        // need, swamping the thing being measured. Landing near the end leaves only a
+        // short tail to read ahead into, so what the counter sees is the seek's own
+        // window.
+        let target = Duration::from_secs(50);
+        let started = Instant::now();
+        playback.playback_handle.seek(TrackTime::from_duration(target));
+        let landed = wait_for_seeked_on(&mut playback.progress_rx, SEEK_COST_BACKSTOP)
+            .await
+            .expect("the seek must land within the backstop over a chunked ranged read");
+        assert!(
+            Duration::from_millis(landed).abs_diff(target) < Duration::from_secs(2),
+            "the seek should land near {target:?}, got {landed}ms"
+        );
+        wait_for_position_advance(&mut playback.progress_rx)
+            .await
+            .expect("audio must flow from the completed chunked-range seek");
+        let elapsed = started.elapsed();
 
-    // Near the end of the last track (it runs 2:00–3:00 of the file, so this
-    // lands ~10 s from the end). Deliberately not mid-track: with a track ceiling
-    // set the fill reads ahead to the end of the *current track*, which for a
-    // seek to 0:20 would pull the remaining ~40 s — read-ahead the seek did not
-    // need, swamping the thing being measured. Landing near the end leaves only a
-    // short tail to read ahead into, so what the counter sees is the seek's own
-    // window.
-    let target = Duration::from_secs(50);
-    let started = Instant::now();
-    playback.playback_handle.seek(TrackTime::from_duration(target));
-    let landed = wait_for_seeked_on(&mut playback.progress_rx, SEEK_COST_BACKSTOP)
-        .await
-        .expect("the seek must land within the backstop over a chunked ranged read");
-    assert!(
-        Duration::from_millis(landed).abs_diff(target) < Duration::from_secs(2),
-        "the seek should land near {target:?}, got {landed}ms"
-    );
-    wait_for_position_advance(&mut playback.progress_rx)
-        .await
-        .expect("audio must flow from the completed chunked-range seek");
-    let elapsed = started.elapsed();
-
-    // Ranged reads are the measurement, not `exact_full_read_count`: that counter
-    // is bucket-wide and the sync loop reads whole objects (commits, snapshots)
-    // throughout, so it climbs by the hundreds here for reasons that have nothing
-    // to do with playback.
-    //
-    // Three checks, catching different regressions. That any ranged read happened
-    // at all is what says the file was served by range: were the whole-object
-    // download back, the audio would arrive as one full read and this list would
-    // be empty. The largest single read is the property itself — a range costs its
-    // own bytes — and is independent of how many windows read-ahead pulled. The
-    // total is the coarse backstop that no seek drags the file across.
-    let all_reads = playback.cloud.reads().await;
-    let reads = &all_reads[first_read..];
-    let range_bytes: u64 = reads.iter().map(|(_, _, length)| *length).sum();
-    let largest = reads.iter().map(|(_, _, length)| *length).max();
-    let largest = largest.expect(
-        "the seek served no ranged read at all -- the file was fetched whole, not by range",
-    );
-    assert!(
-        largest <= SEEK_LARGEST_RANGE_BOUND,
-        "the seek's largest single ranged read was {largest} bytes (bound \
+        // Ranged reads are the measurement, not `exact_full_read_count`: that counter
+        // is bucket-wide and the sync loop reads whole objects (commits, snapshots)
+        // throughout, so it climbs by the hundreds here for reasons that have nothing
+        // to do with playback.
+        //
+        // Three checks, catching different regressions. That any ranged read happened
+        // at all is what says the file was served by range: were the whole-object
+        // download back, the audio would arrive as one full read and this list would
+        // be empty. The largest single read is the property itself — a range costs its
+        // own bytes — and is independent of how many windows read-ahead pulled. The
+        // total is the coarse backstop that no seek drags the file across.
+        let all_reads = playback.cloud.reads().await;
+        let reads = &all_reads[first_read..];
+        let range_bytes: u64 = reads.iter().map(|(_, _, length)| *length).sum();
+        let largest = reads.iter().map(|(_, _, length)| *length).max();
+        let largest = largest.expect(
+            "the seek served no ranged read at all -- the file was fetched whole, not by range",
+        );
+        assert!(
+            largest <= SEEK_LARGEST_RANGE_BOUND,
+            "the seek's largest single ranged read was {largest} bytes (bound \
          {SEEK_LARGEST_RANGE_BOUND}); a chunked range must cost the chunks it covers, not the \
          31,922,637-byte file. All reads: {reads:?}",
-    );
-    assert!(
-        range_bytes < SEEK_RANGE_BYTES_BOUND,
-        "the seek fetched {range_bytes} bytes from the cloud across {} reads (bound \
+        );
+        assert!(
+            range_bytes < SEEK_RANGE_BYTES_BOUND,
+            "the seek fetched {range_bytes} bytes from the cloud across {} reads (bound \
          {SEEK_RANGE_BYTES_BOUND}); a seek must not drag the whole file across",
-        reads.len(),
-    );
-    assert!(
-        elapsed < SEEK_COST_BACKSTOP,
-        "the seek took {elapsed:?}, past the {SEEK_COST_BACKSTOP:?} backstop"
-    );
+            reads.len(),
+        );
+        assert!(
+            elapsed < SEEK_COST_BACKSTOP,
+            "the seek took {elapsed:?}, past the {SEEK_COST_BACKSTOP:?} backstop"
+        );
+    })
+    .await;
 }

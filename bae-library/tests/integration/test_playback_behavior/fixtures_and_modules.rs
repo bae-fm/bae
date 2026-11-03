@@ -2,98 +2,109 @@
 /// track so the UI can show it while audio fills, then `Playing`.
 #[tokio::test]
 async fn play_emits_bare_loading_then_loading_with_metadata_then_playing() {
-    let mut fixture = PlaybackTestFixture::new().await;
-    assert!(!fixture.track_ids.is_empty(), "fixture must import at least one playable track");
-    let track_id = fixture.track_ids[0].clone();
+    with_fixture(PlaybackTestFixture::new(), async |fixture| {
+        assert!(!fixture.track_ids.is_empty(), "fixture must import at least one playable track");
+        let track_id = fixture.track_ids[0].clone();
 
-    fixture.playback_handle.play(track_id.clone());
-    let states = fixture
-        .collect_states_until(
-            |s| matches!(s, PlaybackState::Playing { .. }),
-            Duration::from_secs(5),
-        )
-        .await;
+        fixture.playback_handle.play(track_id.clone());
+        let states = fixture
+            .collect_states_until(
+                |s| matches!(s, PlaybackState::Playing { .. }),
+                Duration::from_secs(5),
+            )
+            .await;
 
-    let loading: Vec<&PlaybackState> =
-        states.iter().filter(|s| matches!(s, PlaybackState::Loading { .. })).collect();
-    assert!(
-        loading.len() >= 2,
-        "expected a bare Loading then a Loading with the prepared track, got {states:?}"
-    );
+        let loading: Vec<&PlaybackState> =
+            states.iter().filter(|s| matches!(s, PlaybackState::Loading { .. })).collect();
+        assert!(
+            loading.len() >= 2,
+            "expected a bare Loading then a Loading with the prepared track, got {states:?}"
+        );
 
-    match loading[0] {
-        PlaybackState::Loading { track: LoadingTrack::Unprepared { track_id: id } } => {
-            assert_eq!(id, &track_id)
+        match loading[0] {
+            PlaybackState::Loading { track: LoadingTrack::Unprepared { track_id: id } } => {
+                assert_eq!(id, &track_id)
+            }
+            other => panic!("first Loading is emitted before the track is prepared, got {other:?}"),
         }
-        other => panic!("first Loading is emitted before the track is prepared, got {other:?}"),
-    }
 
-    let prepared_loading = loading
-        .iter()
-        .find_map(|s| match s {
-            PlaybackState::Loading { track: LoadingTrack::Prepared(track) } => Some(track),
-            _ => None,
-        })
-        .expect("a Loading carrying the prepared track must be emitted");
-    assert_eq!(prepared_loading.track_id, track_id);
+        let prepared_loading = loading
+            .iter()
+            .find_map(|s| match s {
+                PlaybackState::Loading { track: LoadingTrack::Prepared(track) } => Some(track),
+                _ => None,
+            })
+            .expect("a Loading carrying the prepared track must be emitted");
+        assert_eq!(prepared_loading.track_id, track_id);
 
-    let playing = states.last().expect("at least one state should be collected");
-    assert!(
-        matches!(playing, PlaybackState::Playing { track, .. } if track.track_id == track_id),
-        "the terminal state must be Playing for the requested track, got {playing:?}"
-    );
+        let playing = states.last().expect("at least one state should be collected");
+        assert!(
+            matches!(playing, PlaybackState::Playing { track, .. } if track.track_id == track_id),
+            "the terminal state must be Playing for the requested track, got {playing:?}"
+        );
+    })
+    .await;
 }
 
 /// `seek` does no bounds check, so a seek past the end of a track must still
 /// produce a `Seeked` or a `PlaybackError` rather than nothing.
 #[tokio::test]
 async fn seek_past_end_of_track_signals_rather_than_hanging() {
-    let mut fixture = PlaybackTestFixture::new().await;
-    fixture.playback_handle.play(fixture.track_ids[0].clone());
-    fixture
-        .wait_for_state(|s| matches!(s, PlaybackState::Playing { .. }), Duration::from_secs(5))
-        .await
-        .expect("track should start playing");
+    with_fixture(PlaybackTestFixture::new(), async |fixture| {
+        fixture.playback_handle.play(fixture.track_ids[0].clone());
+        fixture
+            .wait_for_state(|s| matches!(s, PlaybackState::Playing { .. }), Duration::from_secs(5))
+            .await
+            .expect("track should start playing");
 
-    // Fixture tracks are 5 s long.
-    fixture.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(600)));
+        // Fixture tracks are 5 s long.
+        fixture.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(600)));
 
-    let signaled =
-        bae_util::test_channels::next_matching(&mut fixture.progress_rx, Duration::from_secs(8), |event| {
-            matches!(
-                event,
-                PlaybackProgress::Seeked { .. } | PlaybackProgress::PlaybackError { .. }
-            )
-            .then_some(())
-        })
+        let signaled = bae_util::test_channels::next_matching(
+            &mut fixture.progress_rx,
+            Duration::from_secs(8),
+            |event| {
+                matches!(
+                    event,
+                    PlaybackProgress::Seeked { .. } | PlaybackProgress::PlaybackError { .. }
+                )
+                .then_some(())
+            },
+        )
         .await;
-    assert!(
-        signaled.is_some(),
-        "a seek past the end must signal (Seeked or PlaybackError), not freeze silently"
-    );
+        assert!(
+            signaled.is_some(),
+            "a seek past the end must signal (Seeked or PlaybackError), not freeze silently"
+        );
+    })
+    .await;
 }
 
 /// On a track with no pregap, `seek_by_ratio` maps the ratio straight onto the
 /// duration, so 0.5 lands well past the start and clearly before 1.0.
 #[tokio::test]
 async fn seek_by_ratio_maps_to_a_proportional_position() {
-    let mut fixture = PlaybackTestFixture::new().await;
-    fixture.playback_handle.play(fixture.track_ids[0].clone());
-    fixture
-        .wait_for_state(|s| matches!(s, PlaybackState::Playing { .. }), Duration::from_secs(5))
-        .await
-        .expect("track should start playing");
+    with_fixture(PlaybackTestFixture::new(), async |fixture| {
+        fixture.playback_handle.play(fixture.track_ids[0].clone());
+        fixture
+            .wait_for_state(|s| matches!(s, PlaybackState::Playing { .. }), Duration::from_secs(5))
+            .await
+            .expect("track should start playing");
 
-    fixture.playback_handle.seek_by_ratio(0.5);
-    let mid = fixture.wait_for_seeked(Duration::from_secs(5)).await.expect("Seeked for ratio 0.5");
-    fixture.playback_handle.seek_by_ratio(1.0);
-    let end = fixture.wait_for_seeked(Duration::from_secs(5)).await.expect("Seeked for ratio 1.0");
+        fixture.playback_handle.seek_by_ratio(0.5);
+        let mid =
+            fixture.wait_for_seeked(Duration::from_secs(5)).await.expect("Seeked for ratio 0.5");
+        fixture.playback_handle.seek_by_ratio(1.0);
+        let end =
+            fixture.wait_for_seeked(Duration::from_secs(5)).await.expect("Seeked for ratio 1.0");
 
-    assert!(mid > 1_000, "ratio 0.5 should land well past the start, got {mid}ms");
-    assert!(
-        end > mid + 1_000,
-        "ratio 1.0 should land clearly later than 0.5 (mid={mid}ms end={end}ms)"
-    );
+        assert!(mid > 1_000, "ratio 0.5 should land well past the start, got {mid}ms");
+        assert!(
+            end > mid + 1_000,
+            "ratio 1.0 should land clearly later than 0.5 (mid={mid}ms end={end}ms)"
+        );
+    })
+    .await;
 }
 
 /// The three-track album matching the `flac` fixtures.
@@ -165,12 +176,22 @@ struct CueFlacTestFixture {
     playback_handle: bae_playback::PlaybackHandle,
     progress_rx: tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
     track_ids: Vec<String>,
+    library: TestLibrary,
     capture_stream_rx: bae_playback::test_capture::CaptureStreamRx,
     _temp_dir: TempDir,
 }
 
+impl PlaybackFixture for CueFlacTestFixture {
+    async fn close(self) {
+        self.playback_handle.shutdown().await;
+        self.library.close().await.expect("close the test library");
+    }
+}
+
 impl CueFlacTestFixture {
-    async fn new(device: bae_playback::test_capture::TestAudioDevice) -> Result<Self, Box<dyn std::error::Error>> {
+    async fn new(
+        device: bae_playback::test_capture::TestAudioDevice,
+    ) -> Result<Self, Box<dyn std::error::Error>> {
         Self::import(device, create_cue_flac_test_album(), generate_cue_flac_files).await
     }
 
@@ -192,6 +213,7 @@ impl CueFlacTestFixture {
             playback_handle,
             progress_rx,
             track_ids: imported.track_ids,
+            library,
             capture_stream_rx,
             _temp_dir: imported.temp_dir,
         })
@@ -216,6 +238,13 @@ struct SidePauseTestFixture {
     /// side-pause countdown runs out exactly when the test says.
     clock: Arc<bae_playback::ManualPlaybackClock>,
     _temp_dir: TempDir,
+}
+
+impl PlaybackFixture for SidePauseTestFixture {
+    async fn close(self) {
+        self.playback_handle.shutdown().await;
+        self.library.close().await.expect("close the test library");
+    }
 }
 
 impl SidePauseTestFixture {
@@ -259,13 +288,14 @@ impl SidePauseTestFixture {
 
         // Paced to wall-clock time so commands issued after play land before
         // the track's boundary.
-        let clock =
-            Arc::new(bae_playback::ManualPlaybackClock::new(side_pause_clock_start()));
-        let (playback_handle, capture_stream_rx) = bae_library::test_libraries::start_capture_playback_with_clock(&library,
-            bae_playback::test_capture::TestAudioDevice::RealtimeCapture,
-            clock.clone(),
-        )
-        .await;
+        let clock = Arc::new(bae_playback::ManualPlaybackClock::new(side_pause_clock_start()));
+        let (playback_handle, capture_stream_rx) =
+            bae_library::test_libraries::start_capture_playback_with_clock(
+                &library,
+                bae_playback::test_capture::TestAudioDevice::RealtimeCapture,
+                clock.clone(),
+            )
+            .await;
         let progress_rx = playback_handle.subscribe_progress();
         Ok(Self {
             playback_handle,
@@ -282,10 +312,7 @@ impl SidePauseTestFixture {
     /// Toggle `pause_between_sides` the way `AppServices::set_pause_between_sides`
     /// does; this fixture has no `AppServices`.
     async fn set_pause_between_sides_mid_track(&self, enabled: bool) {
-        self.library
-            .set_pause_between_sides(enabled)
-            .await
-            .expect("set_pause_between_sides");
+        self.library.set_pause_between_sides(enabled).await.expect("set_pause_between_sides");
         if enabled {
             self.playback_handle.reevaluate_side_pause_staging();
         }

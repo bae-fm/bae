@@ -1,14 +1,17 @@
+use bae_audio::test_samples::samples_as_f32;
 use bae_catalogs::discogs::models::DiscogsRelease;
-use bae_preferences::SidePauseCountdown;
+use bae_import::test_imports::wait_for_import_complete;
 use bae_import::{ImportCommand, ImportDestination};
-use bae_playback::{LoadingTrack, PlaybackPauseBoundary, PlaybackPauseReason, PlaybackProgress, PlaybackSideCountdown, PlaybackState, RepeatMode};
-use bae_types::track_time::{TrackTime};
+use bae_library::test_libraries::{imported_release_setup, open_test_library, TestLibrary};
+use bae_playback::{
+    LoadingTrack, PlaybackPauseBoundary, PlaybackPauseReason, PlaybackProgress,
+    PlaybackSideCountdown, PlaybackState, RepeatMode,
+};
+use bae_preferences::SidePauseCountdown;
+use bae_types::track_time::TrackTime;
 use coven::{IdSource, SequentialIds};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use bae_library::test_libraries::{imported_release_setup, open_test_library, TestLibrary};
-use bae_import::test_imports::wait_for_import_complete;
-use bae_audio::test_samples::samples_as_f32;
 use tempfile::TempDir;
 use tracing::debug;
 
@@ -108,12 +111,16 @@ async fn wait_for_position_advance(
     let anchor = next_position(progress_rx, Duration::from_secs(30))
         .await
         .expect("no position update arrived within 30s of requesting one");
-    bae_util::test_channels::next_matching(progress_rx, Duration::from_secs(10), |event| match event {
-        PlaybackProgress::PositionUpdate { position_ms, .. } if position_ms > anchor => {
-            Some(position_ms)
-        }
-        _ => None,
-    })
+    bae_util::test_channels::next_matching(
+        progress_rx,
+        Duration::from_secs(10),
+        |event| match event {
+            PlaybackProgress::PositionUpdate { position_ms, .. } if position_ms > anchor => {
+                Some(position_ms)
+            }
+            _ => None,
+        },
+    )
     .await
 }
 
@@ -144,10 +151,7 @@ async fn play_and_wait_on(
 
 /// Wait until `follow` tells that this device holds every byte of
 /// `track_id`: one stretch from its start to its end.
-async fn wait_for_whole_track(
-    follow: &mut bae_playback::TrackBufferedFollow,
-    track_id: &str,
-) {
+async fn wait_for_whole_track(follow: &mut bae_playback::TrackBufferedFollow, track_id: &str) {
     let whole = vec![bae_playback::TrackSpan { start: 0.0, end: 1.0 }];
     tokio::time::timeout(PLAY_START_BACKSTOP, async {
         loop {
@@ -195,13 +199,17 @@ async fn settled_events_on(
 ) -> Vec<PlaybackProgress> {
     handle.set_volume(SENTINEL_VOLUME);
     let mut events = Vec::new();
-    bae_util::test_channels::next_matching(progress_rx, Duration::from_secs(10), |event| match event {
-        PlaybackProgress::VolumeChanged { volume } if volume == SENTINEL_VOLUME => Some(()),
-        other => {
-            events.push(other);
-            None
-        }
-    })
+    bae_util::test_channels::next_matching(
+        progress_rx,
+        Duration::from_secs(10),
+        |event| match event {
+            PlaybackProgress::VolumeChanged { volume } if volume == SENTINEL_VOLUME => Some(()),
+            other => {
+                events.push(other);
+                None
+            }
+        },
+    )
     .await
     .expect("the sentinel volume change arrives within 10s");
     events
@@ -369,6 +377,25 @@ async fn start_capture_service_with_restore(
     (handle, capture_stream_rx)
 }
 
+/// A playback service over a library in a temporary directory.
+trait PlaybackFixture {
+    /// Stop playback, then close the library; the directory goes with the
+    /// fixture after both.
+    async fn close(self);
+}
+
+/// Run `test` over the fixture `setup` builds, then close it before its
+/// directory is deleted: a library still working as its directory is
+/// deleted recreates files in it and leaves the directory behind.
+async fn with_fixture<F: PlaybackFixture>(
+    setup: impl std::future::Future<Output = F>,
+    test: impl AsyncFnOnce(&mut F),
+) {
+    let mut fixture = setup.await;
+    test(&mut fixture).await;
+    fixture.close().await;
+}
+
 /// A playback service over an imported three-track album.
 struct PlaybackTestFixture {
     playback_handle: bae_playback::PlaybackHandle,
@@ -382,6 +409,13 @@ struct PlaybackTestFixture {
     _capture_stream_rx: bae_playback::CapturedStreams,
     _temp_dir: TempDir,
 }
+impl PlaybackFixture for PlaybackTestFixture {
+    async fn close(self) {
+        self.playback_handle.shutdown().await;
+        self.library.close().await.expect("close the test library");
+    }
+}
+
 impl PlaybackTestFixture {
     async fn new() -> Self {
         let (library, imported) = imported_release_setup(
@@ -434,12 +468,14 @@ impl PlaybackTestFixture {
     }
     /// Wait for a position update with timeout (returns position in ms)
     async fn wait_for_position_update(&mut self, timeout_duration: Duration) -> Option<u64> {
-        bae_util::test_channels::next_matching(&mut self.progress_rx, timeout_duration, |event| match event {
-            PlaybackProgress::PositionUpdate { position_ms, .. } => Some(
-                u64::try_from(position_ms)
-                    .expect("this helper expects playback at or after track start"),
-            ),
-            _ => None,
+        bae_util::test_channels::next_matching(&mut self.progress_rx, timeout_duration, |event| {
+            match event {
+                PlaybackProgress::PositionUpdate { position_ms, .. } => Some(
+                    u64::try_from(position_ms)
+                        .expect("this helper expects playback at or after track start"),
+                ),
+                _ => None,
+            }
         })
         .await
     }
@@ -452,12 +488,16 @@ impl PlaybackTestFixture {
         timeout_duration: Duration,
     ) -> Option<u64> {
         let floor = i64::try_from(floor_ms).expect("position floor exceeds i64 range");
-        bae_util::test_channels::next_matching(&mut self.progress_rx, timeout_duration, |event| match event {
-            PlaybackProgress::PositionUpdate { position_ms, .. } if position_ms > floor => Some(
-                u64::try_from(position_ms)
-                    .expect("position past a nonnegative floor is nonnegative"),
-            ),
-            _ => None,
+        bae_util::test_channels::next_matching(&mut self.progress_rx, timeout_duration, |event| {
+            match event {
+                PlaybackProgress::PositionUpdate { position_ms, .. } if position_ms > floor => {
+                    Some(
+                        u64::try_from(position_ms)
+                            .expect("position past a nonnegative floor is nonnegative"),
+                    )
+                }
+                _ => None,
+            }
         })
         .await
     }
