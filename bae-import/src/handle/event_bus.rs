@@ -1,5 +1,5 @@
 //! The import event channel: every event recorded in the candidate runtime,
-//! then handed to every reader.
+//! then handed to every reader, and the readers the handle gives out.
 
 use super::*;
 
@@ -220,6 +220,61 @@ impl ImportEventBus {
             .changed
             .wait_while(state, |state| matches!(state, HoldState::Held))
             .unwrap();
+    }
+}
+
+impl ImportServiceHandle {
+    /// Every `ImportProgress` of `import_id` from its start, none dropped.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn subscribe_import(
+        &self,
+        import_id: String,
+    ) -> tokio::sync::mpsc::UnboundedReceiver<ImportProgress> {
+        let mut events = self.event_tx.every_event_from_start();
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+        self.runtime_handle.spawn(async move {
+            while let Some(event) = events.recv().await {
+                if tx.is_closed() {
+                    break;
+                }
+                if let ImportEvent::ImportProgress { progress, .. } = event {
+                    if progress.import_id() == import_id && tx.send(progress).is_err() {
+                        break;
+                    }
+                }
+            }
+        });
+        rx
+    }
+
+    /// Every import event since the service started, for the one
+    /// identification queue that takes it (see
+    /// [`super::ImportEventBus::take_feed`]).
+    pub(crate) fn take_event_feed(&self) -> Option<mpsc::UnboundedReceiver<ImportEvent>> {
+        self.event_tx.take_feed()
+    }
+
+    /// Every import event from now on, none dropped, for a test to wait on.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn every_event(&self) -> mpsc::UnboundedReceiver<ImportEvent> {
+        self.event_tx.every_event()
+    }
+
+    /// Every scan event from now on, none dropped, for a test to wait on.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn every_scan_event_for_test(&self) -> mpsc::UnboundedReceiver<ScanEvent> {
+        let mut events = self.event_tx.every_event();
+        let (reader, scan_events) = mpsc::unbounded_channel();
+        self.runtime_handle.spawn(async move {
+            while let Some(event) = events.recv().await {
+                if let ImportEvent::Scan(event) = event {
+                    if reader.send(event).is_err() {
+                        break;
+                    }
+                }
+            }
+        });
+        scan_events
     }
 }
 
