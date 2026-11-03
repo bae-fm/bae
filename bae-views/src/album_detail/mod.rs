@@ -32,7 +32,6 @@
 
 use bae_db::source_audio::{SourceAudioFile, SourceAudioSummary};
 use bae_db::{cover_ref, GallerySource, ImageRef};
-use bae_types::mediums::{TrackPosition, TrackSide};
 use bae_types::release_storage::ReleaseStorageAction;
 
 mod album;
@@ -43,6 +42,7 @@ mod playability;
 mod release;
 mod search;
 mod storage;
+mod track;
 
 pub use album::*;
 pub use artist::*;
@@ -53,6 +53,8 @@ pub use playability::ReleasePlayability;
 pub use release::*;
 pub use search::*;
 pub use storage::*;
+pub(crate) use track::group_tracks_by_side;
+pub use track::{TrackDetail, TrackGroup};
 
 /// What a release is called where a list of an album's releases names it.
 /// Each surface words it in the reader's language.
@@ -201,40 +203,6 @@ pub fn release_download_status(
     }
 }
 
-/// Track with resolved artist names and a structured display position.
-#[derive(Debug, Clone)]
-pub struct TrackDetail {
-    pub id: String,
-    pub title: String,
-    pub duration_ms: u64,
-    /// Effective artist names for display -- the track's own artists when it
-    /// has per-track artist rows, otherwise the album artists. Always
-    /// populated so UI consumers can render a row label without joining
-    /// artist data themselves.
-    pub artist_names: String,
-    /// The artist to show on the track row, or `None` when the row should show
-    /// none. Set only for a compilation, whose header names no single artist so
-    /// each row needs its own; on a single-artist album the row would only repeat
-    /// the header. Whether a row shows an artist is a domain decision, made here.
-    pub display_artist: Option<String>,
-    /// Core-rendered position string: "A1"/"3"/"5", or the stable prefix
-    /// when the source has no track number.
-    pub position_text: String,
-    /// Structured position retained for side/disc grouping.
-    pub position: TrackPosition,
-}
-
-/// The tracks of one side. A single-side release has one `Flat` group.
-#[derive(Debug, Clone)]
-pub struct TrackGroup {
-    pub side: TrackSide,
-    pub tracks: Vec<TrackDetail>,
-    /// Playing time of this group's tracks. A multi-disc release shows it
-    /// under each disc, where the album-wide total alone reads as belonging to
-    /// the last disc.
-    pub total_duration_ms: u64,
-}
-
 /// A file with pre-computed display fields.
 #[derive(Debug, Clone, PartialEq)]
 pub struct FileDetail {
@@ -292,77 +260,6 @@ pub struct GalleryItem {
     pub source: GallerySource,
 }
 
-/// Group pre-sorted tracks by consecutive side. Two tracks share a group when
-/// their positions resolve to the same [`TrackSide`] (same side letter, same
-/// disc, or both flat).
-pub(crate) fn group_tracks_by_side(tracks: &[TrackDetail]) -> Vec<TrackGroup> {
-    let mut groups: Vec<TrackGroup> = Vec::new();
-    for track in tracks {
-        let side = track.position.side();
-        if let Some(last) = groups.last_mut() {
-            if last.side == side {
-                last.tracks.push(track.clone());
-                last.total_duration_ms += track.duration_ms;
-                continue;
-            }
-        }
-        groups.push(TrackGroup {
-            side,
-            tracks: vec![track.clone()],
-            total_duration_ms: track.duration_ms,
-        });
-    }
-    groups
-}
-
 #[cfg(test)]
 #[path = "mod_tests.rs"]
 mod tests;
-
-#[cfg(test)]
-mod group_tests {
-    use super::*;
-
-    fn sided(letter: &str, number: u32) -> TrackPosition {
-        TrackPosition::Sided { side_letter: letter.to_string(), number }
-    }
-
-    fn track(id: &str, position: TrackPosition) -> TrackDetail {
-        TrackDetail {
-            id: id.to_string(),
-            title: String::new(),
-            duration_ms: 180_000,
-            artist_names: String::new(),
-            display_artist: None,
-            position_text: position.text(),
-            position,
-        }
-    }
-
-    #[test]
-    fn group_by_side_splits_on_side_letter() {
-        let tracks = vec![
-            track("a1", sided("A", 1)),
-            track("a2", sided("A", 2)),
-            track("b1", sided("B", 1)),
-        ];
-        let groups = group_tracks_by_side(&tracks);
-        assert_eq!(groups.len(), 2);
-        assert_eq!(groups[0].side, TrackSide::Sided { side_letter: "A".to_string() });
-        assert_eq!(groups[0].tracks.len(), 2);
-        assert_eq!(groups[1].side, TrackSide::Sided { side_letter: "B".to_string() });
-        assert_eq!(groups[1].tracks.len(), 1);
-    }
-
-    #[test]
-    fn group_by_side_single_flat_group() {
-        let tracks = vec![
-            track("1", TrackPosition::Flat { number: 1 }),
-            track("2", TrackPosition::Flat { number: 2 }),
-        ];
-        let groups = group_tracks_by_side(&tracks);
-        assert_eq!(groups.len(), 1);
-        assert_eq!(groups[0].side, TrackSide::Flat);
-        assert_eq!(groups[0].tracks.len(), 2);
-    }
-}
