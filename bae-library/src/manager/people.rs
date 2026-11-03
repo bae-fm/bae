@@ -198,3 +198,7 @@ impl LibraryManager {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "people_tests.rs"]
+mod tests;

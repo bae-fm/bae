@@ -43,3 +43,7 @@ impl LibraryManager {
         Ok(())
     }
 }
+
+#[cfg(test)]
+#[path = "album_tests.rs"]
+mod tests;

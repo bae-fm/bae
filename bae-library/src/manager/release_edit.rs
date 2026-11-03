@@ -445,3 +445,7 @@ fn raw_release_edit_with_persisted_track_ids<'a>(
             .collect(),
     })
 }
+
+#[cfg(test)]
+#[path = "release_edit_tests.rs"]
+mod tests;

@@ -101,3 +101,7 @@ impl LibraryManager {
         Ok(())
     }
 }
+
+#[cfg(test)]
+#[path = "image_tests.rs"]
+mod tests;

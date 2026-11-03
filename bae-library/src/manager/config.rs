@@ -428,3 +428,7 @@ impl LibraryManager {
         Ok(stored?)
     }
 }
+
+#[cfg(test)]
+#[path = "config_tests.rs"]
+mod tests;

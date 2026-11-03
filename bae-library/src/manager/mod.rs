@@ -39,6 +39,7 @@ mod artist;
 mod collections;
 mod config;
 mod coven_files;
+mod downloads;
 #[cfg(all(
     any(test, feature = "test-utils", debug_assertions),
     not(any(target_os = "ios", target_os = "android"))
@@ -74,14 +75,13 @@ mod records;
 mod release;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod release_edit;
+mod release_metadata;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use release_edit::ReleaseEdit;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod save;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) use save::SaveWindow;
-#[cfg(test)]
-mod hold;
 mod storage;
 mod sync;
 use bae_diagnostics::{
@@ -89,6 +89,7 @@ use bae_diagnostics::{
     file_read_category, key_category, sync_category,
 };
 mod track;
+mod uploads;
 
 /// Outcome of `resolve_records_target_album` — where a release should
 /// land after a `set_records` call. `new_album` carries the album row
@@ -468,7 +469,7 @@ pub struct LibraryManager {
     release_writes: Arc<tokio::sync::Mutex<()>>,
     /// Where a test holds each run of a pin's query of its release's pins.
     #[cfg(test)]
-    pin_reads_hold: Arc<hold::Hold>,
+    pin_reads_hold: Arc<pin::Hold>,
 }
 
 pub fn generate_mcp_token() -> String {
@@ -486,4 +487,5 @@ impl std::fmt::Debug for LibraryManager {
 }
 
 #[cfg(test)]
+#[path = "mod_tests.rs"]
 mod tests;

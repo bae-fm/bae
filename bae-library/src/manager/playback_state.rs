@@ -92,3 +92,7 @@ impl LibraryManager {
         Ok(bae_playback::tables::settle_playback_queue(&self.database, resume).await?)
     }
 }
+
+#[cfg(test)]
+#[path = "playback_state_tests.rs"]
+mod tests;

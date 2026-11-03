@@ -1,0 +1,359 @@
+//! Making this device's copy of a library: creating a library, restoring
+//! one from a restore code, joining one from an invite, and resetting or
+//! replacing this device's copy.
+
+mod auth;
+
+use bae_app_dir::AppDir;
+use bae_db::configure_store;
+use tokio::sync::watch;
+
+use crate::Keychain;
+
+#[derive(Debug, thiserror::Error)]
+pub enum RestoreFromCodeError {
+    #[error(transparent)]
+    Profile(#[from] bae_db::people::ProfileError),
+    #[error("restore cancelled")]
+    Cancelled,
+    #[error("restore failed: {0}")]
+    Restore(#[source] Box<coven::BootstrapError>),
+}
+
+impl RestoreFromCodeError {
+    /// What the person can do about the failure: fix the code, the cloud
+    /// credentials, or the keyring, or retry once the cloud is reachable.
+    pub fn category(&self) -> bae_diagnostics::UiErrorCategory {
+        match self {
+            Self::Profile(error) => error.category(),
+            Self::Cancelled => bae_diagnostics::UiErrorCategory::Internal,
+            Self::Restore(error) => bae_diagnostics::bootstrap_category(error),
+        }
+    }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum CreateLibraryError {
+    #[error(transparent)]
+    Store(#[from] coven::StoreCreationError),
+}
+
+impl CreateLibraryError {
+    pub fn category(&self) -> bae_diagnostics::UiErrorCategory {
+        match self {
+            Self::Store(error) => bae_diagnostics::creation_category(error),
+        }
+    }
+}
+
+/// `builder` with its file transfers limited as `limits` says, per direction.
+pub(crate) fn with_transfer_limits(
+    builder: coven::CovenBuilder,
+    limits: coven::TransferLimits,
+) -> coven::CovenBuilder {
+    builder.max_concurrent_uploads(limits.uploads).max_concurrent_downloads(limits.downloads)
+}
+
+/// `builder` configured as bae's store for loading a library from storage,
+/// under the default transfer limits: the library's own preferences are in
+/// the store being loaded, so they apply once it opens.
+fn loading_builder(builder: coven::CovenBuilder) -> coven::CovenBuilder {
+    with_transfer_limits(configure_store(builder), bae_app_dir::default_transfer_limits())
+}
+
+/// Create a store and retain its open handle, including its identity custody.
+pub async fn create_library(
+    builder: coven::CovenBuilder,
+    name: crate::library_name::LibraryName,
+) -> Result<coven::CovenHandle, CreateLibraryError> {
+    Ok(configure_store(builder).create_store(name.as_str()).await?)
+}
+
+pub async fn create_library_default(
+    app_dir: &AppDir,
+) -> Result<coven::CovenHandle, CreateLibraryError> {
+    create_library(
+        Keychain::System.store_builder(app_dir),
+        crate::library_name::generate_library_name(),
+    )
+    .await
+}
+
+/// Restore with a separately entered S3 key and coven's own OAuth presentation.
+/// The returned handle retains session custody; the caller keeps it for the
+/// running library instead of reopening from a second configuration copy.
+pub async fn restore_from_code(
+    mut builder: coven::CovenBuilder,
+    code: &str,
+    s3_credentials: Option<coven::S3Credentials>,
+    device_name: &str,
+    on_status: impl Fn(coven::BootstrapStatus),
+    cancel: &watch::Receiver<bool>,
+) -> Result<coven::CovenHandle, RestoreFromCodeError> {
+    let metadata = auth::code_metadata(code)?;
+    auth::authenticate(&mut builder, metadata.oauth_access, cancel).await?;
+    coven::restore_from_code(
+        loading_builder(builder),
+        code,
+        s3_credentials,
+        device_name,
+        on_status,
+        cancel,
+    )
+    .await
+    .map_err(restore_error)
+}
+
+pub async fn restore_from_saved_code(
+    mut builder: coven::CovenBuilder,
+    saved: &coven::SavedRestoreCode,
+    s3_credentials: Option<coven::S3Credentials>,
+    device_name: &str,
+    on_status: impl Fn(coven::BootstrapStatus),
+    cancel: &watch::Receiver<bool>,
+) -> Result<Option<coven::CovenHandle>, RestoreFromCodeError> {
+    auth::authenticate(&mut builder, saved.location.oauth_access(), cancel).await?;
+    coven::restore_from_saved_code(
+        loading_builder(builder),
+        saved,
+        s3_credentials,
+        device_name,
+        on_status,
+        cancel,
+    )
+    .await
+    .map_err(restore_error)
+}
+
+/// The membership is established even if asking for its profile failed.
+/// Retain this handle and retry profile creation; do not join as another
+/// identity. The profile request is `None` for an invite that replaced an
+/// existing member's keys: that person keeps the row they already have
+/// (§5.4). An asked-for profile is written once sync has made the person's
+/// private circle.
+pub type JoinedLibrary = (coven::CovenHandle, Option<Result<(), bae_db::people::ProfileError>>);
+
+/// The app's hold on a running join: cancel it before its request is sent, or
+/// check for approval at once. One control covers coven's join and any
+/// provider sign-in bae runs for it.
+pub struct JoinControl {
+    sign_in: watch::Sender<bool>,
+    join: coven::JoinControl,
+}
+
+impl JoinControl {
+    pub fn new() -> Self {
+        Self { sign_in: watch::channel(false).0, join: coven::JoinControl::new() }
+    }
+
+    /// Cancel the join. Once its request may have been sent, coven keeps the
+    /// join and the call ends with `BootstrapError::JoinRequestSent`.
+    pub fn cancel(&self) {
+        self.sign_in.send_replace(true);
+        self.join.cancel();
+    }
+
+    /// End the join's wait so the next check for approval runs now.
+    pub fn check_now(&self) {
+        self.join.check_now();
+    }
+}
+
+impl Default for JoinControl {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Join a library from an invite. The person's profile takes the name the
+/// admin typed in the invite (§5.4). Dropping the call keeps the join for
+/// `resume_join`.
+pub async fn join_with_invite(
+    mut builder: coven::CovenBuilder,
+    code: &str,
+    device_name: &str,
+    clock: coven::ClockRef,
+    on_status: impl Fn(coven::BootstrapStatus),
+    control: &JoinControl,
+) -> Result<Option<JoinedLibrary>, RestoreFromCodeError> {
+    let invite = invite_info(code)?;
+    auth::authenticate(&mut builder, invite.metadata.oauth_access, &control.sign_in.subscribe())
+        .await?;
+    let joined = Box::pin(coven::join_with_invite(
+        loading_builder(builder),
+        code,
+        device_name,
+        on_status,
+        &control.join,
+    ))
+    .await
+    .map_err(restore_error)?;
+    Ok(match joined {
+        Some(handle) => Some(with_profile(handle, invite.invitee.as_deref(), clock).await),
+        None => None,
+    })
+}
+
+/// The joins this device has under way, each as its saved invite reads.
+pub async fn unfinished_joins(
+    builder: &coven::CovenBuilder,
+) -> Result<Vec<coven::InviteInfo>, RestoreFromCodeError> {
+    builder.unfinished_joins().await.map_err(restore_error)
+}
+
+/// Continue a join from `unfinished_joins` after bae restarted. coven keeps
+/// the join's provider sign-in on the device beside it, so this signs in only
+/// when coven asks for one: when the kept sign-in is gone, or the provider
+/// refuses it. It then signs in with the access the listed join names and
+/// resumes once more. Each call consumes its builder, so `builder` makes one
+/// for each (§5.6).
+pub async fn resume_join(
+    builder: impl Fn() -> coven::CovenBuilder,
+    join: &coven::InviteInfo,
+    clock: coven::ClockRef,
+    on_status: impl Fn(coven::BootstrapStatus),
+    control: &JoinControl,
+) -> Result<Option<JoinedLibrary>, RestoreFromCodeError> {
+    let (store, on_status, coven_control) = (join.metadata.store_id, &on_status, &control.join);
+    let resume = move |builder: coven::CovenBuilder| {
+        Box::pin(loading_builder(builder).resume_join(store, on_status, coven_control))
+    };
+    let joined = match resume(builder()).await {
+        Err(coven::BootstrapError::OAuth(coven::OAuthError::Reauthorize(_))) => {
+            let mut signed_in = builder();
+            auth::authenticate(
+                &mut signed_in,
+                join.metadata.oauth_access,
+                &control.sign_in.subscribe(),
+            )
+            .await?;
+            resume(signed_in).await
+        }
+        resumed => resumed,
+    }
+    .map_err(restore_error)?;
+    Ok(match joined {
+        Some(handle) => Some(with_profile(handle, join.invitee.as_deref(), clock).await),
+        None => None,
+    })
+}
+
+/// The invite a code holds; a restore code is refused before any sign-in.
+fn invite_info(code: &str) -> Result<coven::InviteInfo, RestoreFromCodeError> {
+    match coven::decode_code_info(code) {
+        Ok(coven::CodeInfo::Invite(invite)) => Ok(invite),
+        Ok(coven::CodeInfo::Restore(_)) => {
+            Err(restore_error(coven::BootstrapError::Code(coven::CodeError::WrongKind {
+                expected: coven::CodeKind::Invite,
+                actual: coven::CodeKind::Restore,
+            })))
+        }
+        Err(error) => Err(restore_error(coven::BootstrapError::Code(error))),
+    }
+}
+
+/// Ask for the joined person's profile with the invite's name; an invite
+/// that replaced an existing member's keys names nobody, and asks for
+/// nothing.
+async fn with_profile(
+    handle: coven::CovenHandle,
+    invitee: Option<&str>,
+    clock: coven::ClockRef,
+) -> JoinedLibrary {
+    let profile = match invitee {
+        Some(name) => Some(
+            bae_db::Database::from_handle(
+                handle.clone(),
+                clock,
+                std::sync::Arc::new(coven::UuidIds),
+            )
+            .create_profile(name)
+            .await,
+        ),
+        None => None,
+    };
+    (handle, profile)
+}
+
+/// Replace this device after the caller has warned that unsent edits are discarded.
+/// Coven checks storage and custody before replacing the installation. Calling
+/// it again finishes a reset that stopped after the new copy took the old
+/// one's place; for a restore that stopped there, coven refuses it and changes
+/// nothing. The reset loads the whole store from storage, as a restore does,
+/// and reports how far it has come to `on_status`. The returned handle is
+/// ready to open in bae; there is no post-reset notification.
+pub async fn reset_device(
+    builder: coven::CovenBuilder,
+    store: coven::StoreId,
+    device_name: &str,
+    on_status: impl Fn(coven::BootstrapStatus),
+) -> Result<coven::CovenHandle, RestoreFromCodeError> {
+    loading_builder(builder)
+        .reset_device(store, device_name, on_status)
+        .await
+        .map_err(restore_error)
+}
+
+/// Restore a library this device holds but can no longer send for, because
+/// another of the person's devices replaced their keys. The code must be the
+/// person's current restore code for this library. Coven loads the library
+/// from storage under a new device id beside this device's copy, which stays
+/// and opens as before until the load is complete, then takes its place. A
+/// restore that fails leaves this device's copy, and calling again with the
+/// same code retries it, or finishes one that stopped after the swap; for a
+/// reset that stopped there, coven refuses it and changes nothing. The caller
+/// closed the library and warned that edits on this device that haven't
+/// synced are discarded. When this device's custody already holds the code's
+/// keys, the call just opens the library, and that open's steps go to
+/// `on_open_progress`, as any open's do; every other status goes to
+/// `on_status`.
+pub async fn restore_replacing_device(
+    mut builder: coven::CovenBuilder,
+    store: coven::StoreId,
+    code: &str,
+    s3_credentials: Option<coven::S3Credentials>,
+    device_name: &str,
+    on_status: impl Fn(coven::BootstrapStatus),
+    on_open_progress: impl Fn(coven::Progress<coven::OpenStep>),
+    cancel: &watch::Receiver<bool>,
+) -> Result<coven::CovenHandle, RestoreFromCodeError> {
+    // Coven refuses an invite or another library's code too, but only after
+    // the provider sign-in below; refusing it first asks for no sign-in the
+    // restore would never use.
+    let refused = |error| restore_error(coven::BootstrapError::Code(error));
+    let access = match coven::decode_code_info(code).map_err(refused)? {
+        coven::CodeInfo::Restore(metadata) if metadata.store_id == store => metadata.oauth_access,
+        coven::CodeInfo::Restore(metadata) => {
+            return Err(refused(coven::CodeError::WrongStore {
+                expected: store,
+                actual: metadata.store_id,
+            }))
+        }
+        coven::CodeInfo::Invite { .. } => {
+            return Err(refused(coven::CodeError::WrongKind {
+                expected: coven::CodeKind::Restore,
+                actual: coven::CodeKind::Invite,
+            }))
+        }
+    };
+    auth::authenticate(&mut builder, access, cancel).await?;
+    let status = |status| match status {
+        coven::BootstrapStatus::Opening(progress) => on_open_progress(progress),
+        status => on_status(status),
+    };
+    loading_builder(builder)
+        .restore_device(store, code, s3_credentials, device_name, status, cancel)
+        .await
+        .map_err(restore_error)
+}
+
+fn restore_error(error: coven::BootstrapError) -> RestoreFromCodeError {
+    match error {
+        coven::BootstrapError::Cancelled => RestoreFromCodeError::Cancelled,
+        error => RestoreFromCodeError::Restore(Box::new(error)),
+    }
+}
+
+#[cfg(test)]
+#[path = "bootstrap_tests.rs"]
+mod tests;

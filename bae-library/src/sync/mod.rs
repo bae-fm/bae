@@ -11,11 +11,6 @@ pub use coven::{decode_code_info, restore_from_code};
 pub mod membership;
 pub mod restore_code;
 
-#[cfg(test)]
-mod identity_tests;
-#[cfg(test)]
-pub(crate) mod test_devices;
-
 /// S3 configuration data for save_s3_config.
 pub struct S3ConfigData {
     pub bucket: String,

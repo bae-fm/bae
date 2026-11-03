@@ -279,3 +279,7 @@ impl LibraryManager {
         Ok(self.database.storage_config().await?)
     }
 }
+
+#[cfg(test)]
+#[path = "sync_tests.rs"]
+mod tests;

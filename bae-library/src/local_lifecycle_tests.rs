@@ -1,4 +1,4 @@
-use super::local_lifecycle::{
+use super::{
     finish_removals, remove_local_library, remove_unopenable_library, LibraryRemovalError,
     UnfinishedRemoval,
 };
@@ -78,8 +78,8 @@ impl Home {
             .collect()
     }
 
-    fn keychain(&self) -> super::Keychain {
-        super::Keychain::InMemory(self.installation.clone())
+    fn keychain(&self) -> crate::Keychain {
+        crate::Keychain::InMemory(self.installation.clone())
     }
 
     fn directory(&self, id: coven::StoreId) -> std::path::PathBuf {
@@ -117,7 +117,7 @@ impl Home {
     ) {
         let reached = tokio::sync::Notify::new();
         let diagnostics = Diagnostics::noop();
-        let removal = super::local_lifecycle::remove_recorded(
+        let removal = super::remove_recorded(
             &self.app_dir,
             &diagnostics,
             id,
@@ -415,7 +415,7 @@ async fn a_lookup_during_a_removal_waits_for_it() {
         let deleting = deleting.clone();
         let delete_may_finish = delete_may_finish.clone();
         async move {
-            super::local_lifecycle::remove_recorded(
+            super::remove_recorded(
                 &home.app_dir,
                 &Diagnostics::noop(),
                 id,
@@ -509,7 +509,7 @@ async fn a_library_whose_settings_cant_be_read_is_removed_without_opening() {
     remove_unopenable_library(
         &home.app_dir,
         &Diagnostics::noop(),
-        &super::Keychain::InMemory(home.installation.clone()),
+        &crate::Keychain::InMemory(home.installation.clone()),
         id,
         &|step| steps.lock().unwrap().push(step),
     )
@@ -517,7 +517,7 @@ async fn a_library_whose_settings_cant_be_read_is_removed_without_opening() {
     .unwrap();
     assert_eq!(
         *steps.lock().unwrap(),
-        [super::ClosingStep::LeavingLibrary, super::ClosingStep::DeletingFiles]
+        [crate::ClosingStep::LeavingLibrary, crate::ClosingStep::DeletingFiles]
     );
     assert_eq!(home.stores().await, 1);
     assert!(!home.directory(id).exists());
@@ -539,7 +539,7 @@ async fn an_unopenable_removal_coven_refuses_removes_nothing() {
     let error = remove_unopenable_library(
         &home.app_dir,
         &Diagnostics::noop(),
-        &super::Keychain::InMemory(home.installation.clone()),
+        &crate::Keychain::InMemory(home.installation.clone()),
         id,
         &|_| (),
     )

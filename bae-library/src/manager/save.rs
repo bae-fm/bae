@@ -507,3 +507,7 @@ fn media_catalog_number(barcodes: &[String]) -> Option<String> {
         Err(_) => None,
     }
 }
+
+#[cfg(test)]
+#[path = "save_tests.rs"]
+mod tests;

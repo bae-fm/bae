@@ -122,3 +122,7 @@ impl LibraryManager {
         bae_playback::tables::subscribe_now_playing(&self.database)
     }
 }
+
+#[cfg(test)]
+#[path = "track_tests.rs"]
+mod tests;

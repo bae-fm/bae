@@ -65,3 +65,7 @@ impl LibraryManager {
         Ok(self.database.release_memory().await?)
     }
 }
+
+#[cfg(test)]
+#[path = "lifecycle_tests.rs"]
+mod tests;

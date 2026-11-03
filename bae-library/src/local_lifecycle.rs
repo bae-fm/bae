@@ -385,3 +385,7 @@ async fn file_work<T: Send + 'static>(
 fn io_at(path: &std::path::Path, error: std::io::Error) -> LibraryError {
     LibraryError::Io(std::io::Error::new(error.kind(), format!("{}: {error}", path.display())))
 }
+
+#[cfg(test)]
+#[path = "local_lifecycle_tests.rs"]
+mod tests;

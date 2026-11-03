@@ -91,3 +91,7 @@ impl LibraryManager {
         Ok(self.database.find_or_create_artists(artists).await?)
     }
 }
+
+#[cfg(test)]
+#[path = "artist_tests.rs"]
+mod tests;

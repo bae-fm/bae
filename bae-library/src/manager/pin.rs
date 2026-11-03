@@ -209,95 +209,42 @@ impl LibraryManager {
     }
 }
 
+/// Where a test holds each run of a pin's query of its release's pins, whose
+/// timing it doesn't otherwise control: while held, each run waits; dropping
+/// the returned guard lets them through.
 #[cfg(test)]
-mod pin_count_tests {
-    use super::PinCount;
-    use bae_db::DbFilePin;
-    use std::collections::BTreeMap;
+#[derive(Default)]
+pub(crate) struct Hold {
+    held: std::sync::Mutex<bool>,
+    released: std::sync::Condvar,
+}
 
-    fn file(n: u128) -> coven::FileId {
-        coven::FileId(uuid::Uuid::from_u128(n))
+#[cfg(test)]
+impl Hold {
+    /// Wait, blocking this thread, until no test holds the work.
+    pub(crate) fn wait(&self) {
+        let _released = self.released.wait_while(self.held.lock().unwrap(), |held| *held).unwrap();
     }
 
-    fn pin(kept: bool, downloading: Option<coven::FileId>) -> DbFilePin {
-        DbFilePin { kept, downloading }
-    }
-
-    /// A kept file counts its whole size, as does a file whose download
-    /// ended and waits for the pin's write; a file downloading counts the
-    /// share of its size its object has moved, and a file waiting, or
-    /// downloading but not yet told, counts none.
-    #[test]
-    fn a_pin_holds_its_kept_and_fetched_files_and_each_downloads_share() {
-        let sizes: BTreeMap<String, (coven::FileId, u64)> = [
-            ("kept".to_string(), (file(10), 1_000)),
-            ("fetched".to_string(), (file(11), 2_000)),
-            ("downloading".to_string(), (file(1), 400)),
-            ("untold".to_string(), (file(2), 300)),
-            ("waiting".to_string(), (file(12), 200)),
-        ]
-        .into_iter()
-        .collect();
-        let mut count = PinCount::default();
-        assert_eq!(count.bytes(&sizes), None, "nothing is counted before the pins are read");
-        count.read(
-            [
-                ("kept".to_string(), pin(true, None)),
-                ("fetched".to_string(), pin(false, None)),
-                ("downloading".to_string(), pin(false, Some(file(1)))),
-                ("untold".to_string(), pin(false, Some(file(2)))),
-                ("waiting".to_string(), pin(false, None)),
-            ]
-            .into_iter()
-            .collect(),
-        );
-        count.heard(vec![
-            coven::TransferChange::Updated {
-                file: file(1),
-                progress: coven::TransferProgress { bytes_transferred: 110, bytes_total: 440 },
-            },
-            coven::TransferChange::Updated {
-                file: file(11),
-                progress: coven::TransferProgress { bytes_transferred: 1, bytes_total: 2 },
-            },
-        ]);
-        count.heard(vec![coven::TransferChange::Removed { file: file(11) }]);
-
-        assert_eq!(count.bytes(&sizes), Some(1_000 + 2_000 + 100));
-    }
-
-    /// A file whose download the pins say ended before the watch does keeps
-    /// counting: its bytes never fall back while the watch catches up.
-    #[test]
-    fn a_download_the_pins_end_before_the_watch_keeps_its_bytes() {
-        let sizes: BTreeMap<String, (coven::FileId, u64)> =
-            [("a".to_string(), (file(1), 400)), ("b".to_string(), (file(2), 400))]
-                .into_iter()
-                .collect();
-        let mut count = PinCount::default();
-        count.read(
-            [
-                ("a".to_string(), pin(false, Some(file(1)))),
-                ("b".to_string(), pin(false, Some(file(2)))),
-            ]
-            .into_iter()
-            .collect(),
-        );
-        count.heard(vec![coven::TransferChange::Updated {
-            file: file(1),
-            progress: coven::TransferProgress { bytes_transferred: 440, bytes_total: 440 },
-        }]);
-        assert_eq!(count.bytes(&sizes), Some(400));
-
-        // The download of `a` ended; `b` still downloads, so neither is kept.
-        count.read(
-            [("a".to_string(), pin(false, None)), ("b".to_string(), pin(false, Some(file(2))))]
-                .into_iter()
-                .collect(),
-        );
-        assert_eq!(count.bytes(&sizes), Some(400));
-        // Then the watch says so too.
-        assert!(count.heard(vec![coven::TransferChange::Removed { file: file(1) }]));
-        assert_eq!(count.bytes(&sizes), Some(400));
+    /// Hold the work until the returned guard drops.
+    pub(crate) fn hold(self: &Arc<Self>) -> Held {
+        *self.held.lock().unwrap() = true;
+        Held(self.clone())
     }
 }
+
+/// Lets the held work through when dropped.
+#[cfg(test)]
+pub(crate) struct Held(Arc<Hold>);
+
+#[cfg(test)]
+impl Drop for Held {
+    fn drop(&mut self) {
+        *self.0.held.lock().unwrap() = false;
+        self.0.released.notify_all();
+    }
+}
+
+#[cfg(test)]
+#[path = "pin_tests.rs"]
+mod tests;

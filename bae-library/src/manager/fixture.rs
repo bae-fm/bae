@@ -233,3 +233,7 @@ impl LibraryManager {
         Ok((image, bytes))
     }
 }
+
+#[cfg(test)]
+#[path = "fixture_tests.rs"]
+mod tests;

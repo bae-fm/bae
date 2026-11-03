@@ -326,6 +326,21 @@ ImageHold = "RemoteImageHost"
 # what it built, each store to write and read. It is test-utils code, which
 # the views' tests compile, so the checker reads it as production code.
 "bae-db/src/test_devices.rs" = ["TwoStores::a", "TwoStores::b"]
+# One person's devices of a test library, syncing over shared memory storage:
+# it creates the first device and restores more from its code, and hands the
+# test, the final owner of what it built, each device and the manager and
+# store it runs. It is test-utils code, which the library's integration tests
+# compile, so the checker reads it as production code.
+"bae-library/src/test_libraries/devices.rs" = [
+    "TestDevice::manager",
+    "TestDevice::database",
+    "TwoDevices::a",
+    "TwoDevices::b",
+    "TwoDevices::a_mut",
+    "TwoDevices::b_mut",
+    "DeviceLibrary::first",
+    "DeviceLibrary::restore",
+]
 # A test's library: it opens the library as the app's opening step does, and
 # hands the test, the final owner of what it built, the manager, the parts the
 # app's step hands the library's services, and the services it builds over

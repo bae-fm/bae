@@ -1,14 +1,17 @@
 //! Test libraries for the tests of this crate and the crates above it: a
 //! library opened as the app opens one, the services a test starts over it,
 //! the runtime the tests around them need, playback on a capture device,
-//! profiles, a library over in-memory storage, and a release imported into a
-//! fresh library.
+//! profiles, a library over in-memory storage, a release imported into a
+//! fresh library, and the devices of one person's library syncing over shared
+//! storage.
 
+mod devices;
 mod playback;
 mod profiles;
 mod records;
 mod storage;
 
+pub use devices::{run_library_test, run_two_device_test, DeviceLibrary, TestDevice, TwoDevices};
 pub use playback::{start_capture_playback, start_capture_playback_with_clock};
 pub use profiles::{made_profile, made_profile_on, requested_profile, requested_profile_on};
 pub use records::{

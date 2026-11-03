@@ -226,3 +226,7 @@ pub(super) fn total_bytes(
         })
     })
 }
+
+#[cfg(test)]
+#[path = "coven_files_tests.rs"]
+mod tests;
