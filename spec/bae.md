@@ -3938,6 +3938,16 @@ The schema is `bae-db/migrations/001_initial.sql`, which coven applies as
 migration 1. Every table is `STRICT`. "Syncs" means coven syncs its rows
 (Appendix B); every other table stays on the device.
 
+A list is stored as rows, one per item, when its items have an identity of
+their own, when a query filters, sorts, joins, counts or indexes them, or when
+they are edited one at a time: a release's labels, barcodes and media are
+rows. A list that is only ever set whole and read whole is one JSON value in
+one column: a release's Discogs details, a draft's media, a failed verdict's
+lookup failures, a queued save's preset. coven merges a synced row cell by
+cell, so a synced JSON list is one cell: two devices that change it at once
+keep one device's whole list, never a mix of both. Their editors set the
+whole list at once, so there are no finer edits to merge.
+
 bae gives coven the collation `natural_order`, which coven registers on every
 connection to a library: it orders text the way a person reads folder names
 ("Disc 2" before "Disc 10", case aside, then by bytes, so two different
