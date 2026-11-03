@@ -20,6 +20,7 @@ mod event_bus;
 mod file_decisions;
 mod file_tags;
 mod identification;
+mod identity_choices;
 mod import;
 mod list;
 mod lookup_choices;
