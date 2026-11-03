@@ -54,7 +54,6 @@ use crate::CandidateKey;
 use bae_catalogs::catalog::LookupCatalog;
 use bae_catalogs::records::LookupRef;
 use rows::load_states_rows_on;
-use std::path::Path;
 use std::str::FromStr;
 use verdict_rows::{delete_verdict, store_verdict};
 

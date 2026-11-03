@@ -259,6 +259,42 @@ pub(crate) fn entries_reading(
 
 // ── Candidates ──────────────────────────────────────────────────────────────
 
+/// The scan generation the valid candidate at `candidate_path` under
+/// `watched_folder_path` is stored at, refused unless the scan still lists it
+/// with the files `content_hash` names at `expected_file_edit_revision`: what a
+/// write prepared against those files checks before it lands.
+pub(crate) fn require_current_candidate(
+    sql: &CovenWrite<'_>,
+    watched_folder_path: &Path,
+    candidate_path: &CandidateKey,
+    content_hash: &str,
+    expected_file_edit_revision: u64,
+) -> Result<u64, DbError> {
+    let current: Option<(String, i64, i64)> = sql
+        .query_row(
+            "SELECT content_hash, generation, file_edit_revision \
+             FROM scan_candidate WHERE watched_folder_path = ? AND path = ? AND kind = 'valid'",
+            params![coven::path_bytes(watched_folder_path), candidate_path],
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+        )
+        .optional()?;
+    let expected_file_edit_revision =
+        to_i64(expected_file_edit_revision, "candidate file revision")?;
+    let Some((current_hash, generation, current_file_edit_revision)) = current else {
+        return Err(DbError::Message(format!(
+            "candidate changed before metadata was stored: {candidate_path} is no longer valid"
+        )));
+    };
+    if current_hash != content_hash || current_file_edit_revision != expected_file_edit_revision {
+        return Err(DbError::Message(format!(
+            "candidate changed before metadata was stored: {candidate_path} no longer names the prepared files"
+        )));
+    }
+    u64::try_from(generation).map_err(|error| {
+        DbError::Message(format!("candidate scan generation is negative: {error}"))
+    })
+}
+
 /// The files of the entry joined as `candidate`, as a JSON array in their
 /// order: each with its sheet and the audio that sheet describes.
 fn files_json_sql() -> String {
