@@ -7,7 +7,7 @@ use bae_diagnostics::TelemetryEvent;
 use {
     crate::audio_layout::resolve_track_files,
     crate::folder_scanner::ScanItem,
-    crate::types::{CoverSelection, ImportPhase, PrepareStep, TrackFile},
+    crate::types::{ImportPhase, PrepareStep, TrackFile},
     bae_db::WorkGraphRows,
     bae_db::{
         DbAlbum, DbAlbumArtist, DbRelease, DbReleaseArtistRole, DbTrackArtist, DbTrackArtistRole,
@@ -80,13 +80,6 @@ struct PreparedMetadata {
     /// The release's tracks, each bound to its audio and measured by the
     /// commit (`resolve_track_files`).
     track_rows: Vec<bae_db::TrackRow>,
-    /// The cover the person picked for this candidate, whatever its source.
-    selected_cover: Option<CoverSelection>,
-    /// The exact prepared bytes of a picked remote cover.
-    remote_cover_image: Option<Vec<u8>>,
-    /// The file-tag snapshot's artwork; its content type is checked, then
-    /// dropped by the resize.
-    embedded_cover: Option<(Vec<u8>, bae_util::content_type::ContentType)>,
     existing_album_id: Option<String>,
     track_artists: Vec<DbTrackArtist>,
     /// Empty when the release joins an album already in the library.
@@ -204,22 +197,6 @@ pub struct ImportService {
     /// Where every bug the import worker finds is reported: a write no
     /// caller waits on, and an image the blocking format prep can't read.
     diagnostics: bae_diagnostics::Diagnostics,
-}
-
-/// One downloaded cover as an import cover candidate. Its content type is
-/// checked and dropped: the resize re-encodes the bytes, so it does not
-/// describe what is stored.
-fn downloaded_cover(
-    image: bae_catalogs::remote_image::RemoteImage,
-) -> Result<Vec<u8>, crate::ImportError> {
-    let bae_catalogs::remote_image::RemoteImage { bytes, content_type } = image;
-    if matches!(content_type, bae_util::content_type::ContentType::OctetStream) {
-        return Err(crate::ImportError::CoverArt {
-            detail: "Cover bytes aren't a recognized image format (PNG/JPEG/GIF/WebP/BMP)"
-                .to_string(),
-        });
-    }
-    Ok(bytes)
 }
 
 /// What the blocking folder walk returns: whether it read the tree, every

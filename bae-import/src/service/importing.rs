@@ -1,3 +1,4 @@
+use super::cover_image::ImportCover;
 use super::*;
 use crate::import_cancel::{ImportRunEnd, ImportStop};
 use crate::types::{ImportStep, TrackAudio};
@@ -194,8 +195,6 @@ impl ImportService {
             .into());
         }
         let release_link = preparation.release_link;
-        let selected_cover = preparation.cover;
-        let prepared_assets = preparation.assets;
 
         let file_tag_snapshot = expectation.file_tag_snapshot.as_ref();
         if let Some(snapshot) = file_tag_snapshot {
@@ -208,14 +207,12 @@ impl ImportService {
                 .into());
             }
         }
-        if matches!(selected_cover, Some(CoverSelection::Embedded(_)))
-            && file_tag_snapshot.is_none()
-        {
-            return Err(crate::ImportError::Internal {
-                detail: format!("{candidate_key}'s embedded cover has no prepared tag snapshot"),
-            }
-            .into());
-        }
+        let cover = ImportCover::selected(
+            preparation.cover.as_ref(),
+            preparation.assets.remote_cover,
+            file_tag_snapshot,
+            &candidate_key,
+        )?;
 
         let records = match &release_link {
             Some(link) => linked_records(&self.tables, link).await?,
@@ -269,27 +266,6 @@ impl ImportService {
         }
         let artist_images = self.fetch_discogs_artist_images(new_artists).await?;
 
-        prepared.selected_cover = selected_cover.clone();
-
-        // The selected remote cover and its exact prepared bytes are one
-        // candidate revision. Import validates that pair and never fetches it.
-        let remote_cover_data = match (&selected_cover, prepared_assets.remote_cover) {
-            (Some(CoverSelection::Remote(_, _)), Some(image)) => Some(downloaded_cover(image)?),
-            (Some(CoverSelection::Remote(_, _)), None) => {
-                return Err(crate::ImportError::Internal {
-                    detail: "selected remote cover has no prepared bytes".into(),
-                }
-                .into());
-            }
-            (Some(CoverSelection::Local(_) | CoverSelection::Embedded(_)) | None, None) => None,
-            (Some(CoverSelection::Local(_) | CoverSelection::Embedded(_)) | None, Some(_)) => {
-                return Err(crate::ImportError::Internal {
-                    detail: "prepared remote-cover bytes have no remote cover selection".into(),
-                }
-                .into());
-            }
-        };
-
         // Each track row becomes a TrackFile's DbTrack, bound to the audio
         // its slot named and measured by it. Past here the tracks live in
         // `tracks_to_files`.
@@ -297,46 +273,6 @@ impl ImportService {
             std::mem::take(&mut prepared.track_rows).into_iter().zip(track_bindings).collect(),
             &categorized,
         )?;
-
-        // File metadata captured its embedded image in the same snapshot that
-        // seeded the pane, so the worker never opens the tags a second time.
-        // A stored embedded selection names the source audio exactly; no
-        // different snapshot image may silently stand in for it.
-        let embedded_cover = if file_tag_snapshot.is_some() {
-            let cover = file_tag_snapshot.and_then(|snapshot| snapshot.embedded_cover.as_ref());
-            match (&selected_cover, cover) {
-                (Some(CoverSelection::Embedded(source_file_id)), Some(cover))
-                    if &cover.source_relative_path == source_file_id =>
-                {
-                    Some((cover.data.clone(), cover.content_type.clone()))
-                }
-                (Some(CoverSelection::Embedded(source_file_id)), Some(cover)) => {
-                    return Err(crate::ImportError::Internal {
-                        detail: format!(
-                            "Selected embedded cover {source_file_id} does not match snapshot source {}",
-                            cover.source_relative_path
-                        ),
-                    }
-                    .into())
-                }
-                (Some(CoverSelection::Embedded(source_file_id)), None) => {
-                    return Err(crate::ImportError::Internal {
-                        detail: format!(
-                            "Selected embedded cover {source_file_id} is absent from the file-tag snapshot"
-                        ),
-                    }
-                    .into())
-                }
-                _ => None,
-            }
-        } else {
-            None
-        };
-
-        // No storage yet: the winning cover's bytes go to coven's local store below
-        // and its row is written by finalize.
-        prepared.remote_cover_image = remote_cover_data;
-        prepared.embedded_cover = embedded_cover;
 
         debug!(
             "Prepared album '{}' (release: {}) with {} tracks",
@@ -351,6 +287,7 @@ impl ImportService {
             destination,
             &mut prepared,
             ImportFiles { discovered: &categorized.files, tracks: &tracks_to_files },
+            cover,
             &artist_images,
         )
         .await?;
@@ -384,6 +321,7 @@ impl ImportService {
         destination: ImportDestination,
         prepared: &mut PreparedMetadata,
         files: ImportFiles<'_>,
+        cover: Option<ImportCover>,
         artist_images: &[crate::DiscogsArtistImage],
     ) -> Result<(), ImportStop> {
         let ImportFiles { discovered: discovered_files, tracks: tracks_to_files } = files;
@@ -402,9 +340,6 @@ impl ImportService {
             artist_credits,
             picked_artists,
             records,
-            selected_cover,
-            remote_cover_image,
-            embedded_cover,
             ..
         } = prepared;
         let new_album = existing_album_id.is_none().then_some(&*db_album);
@@ -619,44 +554,18 @@ impl ImportService {
         db_release.album_loudness_lufs = loudness.album_loudness_lufs;
         db_release.album_peak_linear = loudness.album_peak_linear;
 
-        // The candidate's stored cover selection is what it commits with, and
-        // the only thing: the image a person chose, the one its
-        // identification fetched, or the folder's own cover the scan stored
-        // for it. Nothing is chosen here. Finalize writes the winner's bytes
-        // and row in one coven batch.
-        let cover_candidate = match selected_cover.as_ref() {
-            Some(CoverSelection::Remote(_, _)) => match remote_cover_image.take() {
-                Some(remote) => Some(remote),
-                None => {
-                    return Err(crate::ImportError::Internal {
-                        detail: "selected remote cover produced no downloaded image".to_string(),
-                    }
-                    .into())
-                }
-            },
-            Some(CoverSelection::Local(path)) => {
-                Some(Self::pick_folder_cover(discovered_files, path, &self.diagnostics).await?)
-            }
-            Some(CoverSelection::Embedded(_)) => {
-                embedded_cover.take().map(|(bytes, _content_type)| bytes)
-            }
-            None => None,
-        };
-        // Resize the winner to a ≤600px JPEG thumbnail — one funnel for all three
-        // sources — and build the row from that output, so its hash, size and
-        // content type describe the file that gets stored rather than its source.
-        let cover_winner = match cover_candidate {
-            Some(source) => {
-                // Decoding and re-encoding the image is CPU work.
-                let bytes = blocking("resize the import's cover", move || {
-                    bae_util::stored_image::stored_jpeg(&source)
-                })
-                .await
-                .map_err(|failed| self.diagnostics.bug(failed))?
-                .map_err(|detail| crate::ImportError::CoverArt { detail })?;
-                let image = bae_db::DbLibraryImage::cover(&db_release.id, self.clock.now().into());
-                Some((image, bytes))
-            }
+        // Finalize writes the cover's bytes and row in one coven batch.
+        let cover_winner = match cover {
+            Some(cover) => Some(
+                cover
+                    .stored(
+                        discovered_files,
+                        &db_release.id,
+                        self.clock.now().into(),
+                        &self.diagnostics,
+                    )
+                    .await?,
+            ),
             None => None,
         };
         let library_image = cover_winner.as_ref().map(|(image, bytes)| (image, bytes.as_slice()));

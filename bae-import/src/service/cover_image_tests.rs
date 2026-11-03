@@ -24,13 +24,9 @@ async fn explicit_bmp_cover_is_rejected() {
         artwork(ScannedFile::new(jpg.clone(), "front.jpg".to_string(), 9, 1)),
     ];
 
-    let error = ImportService::pick_folder_cover(
-        &discovered,
-        "cover.bmp",
-        &bae_diagnostics::Diagnostics::noop(),
-    )
-    .await
-    .unwrap_err();
+    let error = folder_cover(&discovered, "cover.bmp", &bae_diagnostics::Diagnostics::noop())
+        .await
+        .unwrap_err();
     assert!(matches!(error, crate::ImportError::LocalCover { .. }));
 }
 
@@ -50,13 +46,9 @@ async fn a_damaged_image_is_never_picked_as_the_cover() {
         role: crate::folder_scanner::FileRole::DamagedImage,
     }];
 
-    let error = ImportService::pick_folder_cover(
-        &discovered,
-        "front.png",
-        &bae_diagnostics::Diagnostics::noop(),
-    )
-    .await
-    .unwrap_err();
+    let error = folder_cover(&discovered, "front.png", &bae_diagnostics::Diagnostics::noop())
+        .await
+        .unwrap_err();
     assert!(matches!(error, crate::ImportError::LocalCover { .. }));
 }
 
@@ -193,13 +185,9 @@ async fn explicit_local_cover_missing_from_discovered_images_is_an_error() {
     let discovered =
         vec![artwork(ScannedFile::new(fallback.clone(), "front.jpg".to_string(), 9, 1))];
 
-    let err = ImportService::pick_folder_cover(
-        &discovered,
-        "cover.bmp",
-        &bae_diagnostics::Diagnostics::noop(),
-    )
-    .await
-    .unwrap_err();
+    let err = folder_cover(&discovered, "cover.bmp", &bae_diagnostics::Diagnostics::noop())
+        .await
+        .unwrap_err();
 
     assert!(
         matches!(&err, crate::ImportError::LocalCover { detail } if detail.contains("Selected cover") && detail.contains("not found")),
@@ -210,9 +198,7 @@ async fn explicit_local_cover_missing_from_discovered_images_is_an_error() {
 #[tokio::test]
 async fn explicit_local_cover_with_no_discovered_images_is_an_error() {
     let err =
-        ImportService::pick_folder_cover(&[], "cover.bmp", &bae_diagnostics::Diagnostics::noop())
-            .await
-            .unwrap_err();
+        folder_cover(&[], "cover.bmp", &bae_diagnostics::Diagnostics::noop()).await.unwrap_err();
 
     assert!(
         matches!(&err, crate::ImportError::LocalCover { detail } if detail.contains("Selected cover") && detail.contains("not found")),
@@ -350,12 +336,8 @@ async fn unreadable_selected_cover_is_an_error() {
     std::fs::set_permissions(&cover, std::fs::Permissions::from_mode(0o000)).unwrap();
     let discovered = vec![artwork(ScannedFile::new(cover.clone(), "cover.jpg".to_string(), 9, 1))];
 
-    let result = ImportService::pick_folder_cover(
-        &discovered,
-        "cover.jpg",
-        &bae_diagnostics::Diagnostics::noop(),
-    )
-    .await;
+    let result =
+        folder_cover(&discovered, "cover.jpg", &bae_diagnostics::Diagnostics::noop()).await;
 
     std::fs::set_permissions(&cover, std::fs::Permissions::from_mode(0o600)).unwrap();
     let err = result.unwrap_err();
@@ -363,4 +345,61 @@ async fn unreadable_selected_cover_is_an_error() {
         matches!(&err, crate::ImportError::LocalCover { detail } if detail.contains("Failed to read cover art")),
         "got: {err}"
     );
+}
+
+fn snapshot_with_cover(
+    source_relative_path: Option<&str>,
+) -> crate::file_tag_snapshot::FileTagSnapshot {
+    crate::file_tag_snapshot::FileTagSnapshot {
+        scan_generation: 1,
+        file_edit_revision: 0,
+        files: Vec::new(),
+        embedded_cover: source_relative_path.map(|path| {
+            crate::file_tag_snapshot::EmbeddedCoverFact {
+                source_relative_path: path.to_string(),
+                content_type: bae_util::content_type::ContentType::Jpeg,
+                data: vec![1, 2, 3],
+            }
+        }),
+    }
+}
+
+#[test]
+fn an_embedded_cover_is_the_snapshot_artwork_of_the_audio_it_names() {
+    let key = crate::CandidateKey::test("album");
+    let selection = CoverSelection::Embedded("01.flac".into());
+    let snapshot = snapshot_with_cover(Some("01.flac"));
+    let cover = ImportCover::selected(Some(&selection), None, Some(&snapshot), &key).unwrap();
+    assert!(matches!(cover, Some(ImportCover::Embedded(bytes)) if bytes == [1, 2, 3]));
+
+    for snapshot in
+        [Some(snapshot_with_cover(Some("02.flac"))), Some(snapshot_with_cover(None)), None]
+    {
+        let error = ImportCover::selected(Some(&selection), None, snapshot.as_ref(), &key)
+            .err()
+            .expect("no other artwork stands in for the named audio's");
+        assert!(matches!(error, crate::ImportError::Internal { .. }));
+    }
+}
+
+#[test]
+fn a_remote_cover_and_its_prepared_bytes_come_together() {
+    let key = crate::CandidateKey::test("album");
+    let image = bae_catalogs::remote_image::RemoteImage {
+        bytes: vec![1, 2, 3],
+        content_type: bae_util::content_type::ContentType::Jpeg,
+    };
+    let local = CoverSelection::Local("cover.jpg".into());
+    let error = ImportCover::selected(Some(&local), Some(image.clone()), None, &key)
+        .err()
+        .expect("prepared bytes without a remote selection");
+    assert!(matches!(error, crate::ImportError::Internal { .. }));
+    let error = ImportCover::selected(None, Some(image), None, &key)
+        .err()
+        .expect("prepared bytes without any selection");
+    assert!(matches!(error, crate::ImportError::Internal { .. }));
+    assert!(matches!(
+        ImportCover::selected(Some(&local), None, None, &key),
+        Ok(Some(ImportCover::Local(path))) if path == "cover.jpg"
+    ));
 }
