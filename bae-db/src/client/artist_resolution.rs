@@ -9,8 +9,9 @@
 //! 1. **A catalog id is decisive.** A credit carrying a MusicBrainz or Discogs
 //!    id is the library artist holding that id, followed through any merge. Two
 //!    different artists holding the credit's two ids is the conflict a person
-//!    settles on the import page; a matched artist holding a different id of the
-//!    same catalog is refused outright.
+//!    settles on the import page; one id held by several artists, or a matched
+//!    artist holding a different id, is refused, and the import page offers
+//!    the artists it names to pick from.
 //! 2. **Otherwise the name.** A credit is the one library artist whose
 //!    `name_key`, or one of whose other printed names (`artist_credits`),
 //!    equals the credit's folded name and whose catalog ids do not contradict
@@ -491,7 +492,7 @@ impl CatalogConflict {
 
 /// The catalog-id step: the library artist the credit's Discogs and
 /// MusicBrainz ids name, as `staged` (this write's own fills) leaves it.
-pub(super) fn catalog_match_on<Q: QueryOne>(
+pub(super) fn catalog_match_on<Q: QueryRows>(
     sql: &Q,
     credit: &DbArtist,
     staged: &[(String, DbArtist)],
@@ -501,7 +502,7 @@ pub(super) fn catalog_match_on<Q: QueryOne>(
             "Discogs",
             &credit.name,
             id,
-            artist_by_catalog_id_on(sql, CatalogColumn::Discogs, id)?,
+            artists_by_catalog_id_on(sql, CatalogColumn::Discogs, id)?,
             staged,
             |artist| artist.discogs_artist_id.as_deref(),
         ) {
@@ -515,7 +516,7 @@ pub(super) fn catalog_match_on<Q: QueryOne>(
             "MusicBrainz",
             &credit.name,
             id,
-            artist_by_catalog_id_on(sql, CatalogColumn::MusicBrainz, id)?,
+            artists_by_catalog_id_on(sql, CatalogColumn::MusicBrainz, id)?,
             staged,
             |artist| artist.musicbrainz_artist_id.as_deref(),
         ) {
@@ -545,7 +546,7 @@ pub(super) fn catalog_match_on<Q: QueryOne>(
                 "MusicBrainz",
                 &credit.name,
                 va.musicbrainz,
-                artist_by_catalog_id_on(sql, CatalogColumn::MusicBrainz, va.musicbrainz)?,
+                artists_by_catalog_id_on(sql, CatalogColumn::MusicBrainz, va.musicbrainz)?,
                 staged,
                 |artist| artist.musicbrainz_artist_id.as_deref(),
             ),
@@ -553,7 +554,7 @@ pub(super) fn catalog_match_on<Q: QueryOne>(
                 "Discogs",
                 &credit.name,
                 va.discogs,
-                artist_by_catalog_id_on(sql, CatalogColumn::Discogs, va.discogs)?,
+                artists_by_catalog_id_on(sql, CatalogColumn::Discogs, va.discogs)?,
                 staged,
                 |artist| artist.discogs_artist_id.as_deref(),
             ),
@@ -612,14 +613,15 @@ enum CatalogColumn {
     MusicBrainz,
 }
 
-/// The artist whose `column` holds `catalog_id`, or whose row the catalog id
-/// names (its column may have been filled in or edited since), followed
-/// through any merge to the artist it shows as.
-fn artist_by_catalog_id_on<Q: QueryOne>(
+/// Every artist whose `column` holds `catalog_id`, or whose row the catalog
+/// id names (its column may have been filled in or edited since), followed
+/// through any merge to the artist it shows as. More than one is a library
+/// holding one catalog entry on several artists.
+fn artists_by_catalog_id_on<Q: QueryRows>(
     sql: &Q,
     column: CatalogColumn,
     catalog_id: &str,
-) -> Result<Option<DbArtist>, DbError> {
+) -> Result<Vec<DbArtist>, DbError> {
     let (column, identity) = match column {
         CatalogColumn::Discogs => {
             ("discogs_artist_id", crate::identity::artist_id(None, Some(catalog_id)))
@@ -628,18 +630,17 @@ fn artist_by_catalog_id_on<Q: QueryOne>(
             ("musicbrainz_artist_id", crate::identity::artist_id(Some(catalog_id), None))
         }
     };
-    sql.query_row(
+    sql.query(
         &format!(
             "SELECT a.* FROM artists a WHERE a.id IN ( \
                  SELECT {} FROM artists named \
                  WHERE named.{column} = ?1 OR named.id = ?2) \
-             ORDER BY a.id = ?2 DESC, a.id LIMIT 1",
+             ORDER BY a.id",
             shown_artist_id("named.id")
         ),
         params![catalog_id, identity],
         row_to_artist,
     )
-    .optional()
     .map_err(DbError::from)
 }
 
@@ -649,41 +650,37 @@ fn artist_by_id_on<Q: QueryOne>(sql: &Q, artist_id: &str) -> Result<Option<DbArt
         .map_err(DbError::from)
 }
 
+/// The one library artist a credit's `source` id names, as this write's own
+/// fills (`staged_updates`) leave it: the artists the library holds it on
+/// (`stored`), and the artists this write is giving it. More than one is a
+/// contradiction a person settles; none is no match.
 fn exact_artist(
     source: &str,
     incoming_name: &str,
     source_id: &str,
-    stored: Option<DbArtist>,
+    stored: Vec<DbArtist>,
     staged_updates: &[(String, DbArtist)],
     external_id: impl for<'a> Fn(&'a DbArtist) -> Option<&'a str>,
 ) -> Result<Option<DbArtist>, CatalogConflict> {
-    let staged_matches: Vec<&DbArtist> = staged_updates
-        .iter()
-        .map(|(_, artist)| artist)
-        .filter(|artist| external_id(artist) == Some(source_id))
-        .collect();
-    if staged_matches.len() > 1 {
+    let staged = |id: &str| {
+        staged_updates.iter().find(|(staged_id, _)| staged_id == id).map(|(_, artist)| artist)
+    };
+    let mut named: Vec<DbArtist> =
+        stored.into_iter().map(|artist| staged(&artist.id).cloned().unwrap_or(artist)).collect();
+    for (id, artist) in staged_updates {
+        if external_id(artist) == Some(source_id) && !named.iter().any(|named| named.id == *id) {
+            named.push(artist.clone());
+        }
+    }
+    if named.len() > 1 {
         return Err(CatalogConflict::Contradicted {
-            artists: staged_matches.into_iter().cloned().collect(),
+            artists: named,
             detail: format!(
-                "artist '{incoming_name}' has a {source} source ID staged for multiple library artists"
+                "artist '{incoming_name}' has a {source} source ID belonging to multiple library artists"
             ),
         });
     }
-    let staged = staged_matches.first().map(|artist| (*artist).clone());
-    match (stored, staged) {
-        (Some(stored), Some(staged)) if stored.id != staged.id => {
-            Err(CatalogConflict::Contradicted {
-                artists: vec![stored, staged],
-                detail: format!(
-                    "artist '{incoming_name}' has a {source} source ID belonging to multiple library artists"
-                ),
-            })
-        }
-        (Some(_), Some(staged)) => Ok(Some(staged)),
-        (Some(stored), None) => Ok(Some(stored)),
-        (None, staged) => Ok(staged),
-    }
+    Ok(named.pop())
 }
 
 fn matching_artist(

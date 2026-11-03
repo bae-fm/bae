@@ -218,6 +218,39 @@ fn two_artists_holding_the_credits_two_ids_are_the_identity_conflict() {
     assert_eq!(conflict.musicbrainz_artist.artist_id, "by-musicbrainz");
 }
 
+#[test]
+fn a_catalog_id_two_library_artists_hold_refuses_the_write() {
+    let conn = library();
+    add_artist(&conn, "first", "Artist Name", Some("discogs-1"), None);
+    add_artist(&conn, "second", "Artist Name", Some("discogs-1"), None);
+
+    let error = resolve_artists_on(
+        &conn,
+        &[credit("credit", "Artist Name", Some("discogs-1"), None)],
+        &HashSet::new(),
+    )
+    .unwrap_err();
+
+    assert!(matches!(error, IdentityWriteError::Unresolvable(_)), "{error}");
+}
+
+#[test]
+fn a_catalog_id_on_its_own_row_and_on_another_artist_refuses_the_write() {
+    let conn = library();
+    let identity = crate::identity::artist_id(Some("mb-1"), None).unwrap();
+    add_artist(&conn, &identity, "Artist Name", None, None);
+    add_artist(&conn, "filled-in", "Artist Name", None, Some("mb-1"));
+
+    let error = resolve_artists_on(
+        &conn,
+        &[credit("credit", "Artist Name", None, Some("mb-1"))],
+        &HashSet::new(),
+    )
+    .unwrap_err();
+
+    assert!(matches!(error, IdentityWriteError::Unresolvable(_)), "{error}");
+}
+
 fn read_credit(
     conn: &Connection,
     name: &str,
@@ -297,6 +330,20 @@ fn a_read_credit_whose_ids_name_two_artists_is_conflicting() {
         panic!("the credit's two ids name two artists");
     };
     assert_eq!(artist_ids(&artists), ["by-discogs", "by-musicbrainz"]);
+}
+
+#[test]
+fn a_read_credit_whose_id_two_artists_hold_is_conflicting() {
+    let conn = library();
+    add_artist(&conn, "first", "Artist One", Some("discogs-1"), None);
+    add_artist(&conn, "second", "Artist Two", Some("discogs-1"), None);
+
+    let crate::CreditResolution::Conflicting { artists } =
+        read_credit(&conn, "Artist Name", Some("discogs-1"))
+    else {
+        panic!("two artists hold the credit's id");
+    };
+    assert_eq!(artist_ids(&artists), ["first", "second"]);
 }
 
 fn make_artist(name: &str, discogs_id: Option<&str>, mb_id: Option<&str>) -> DbArtist {

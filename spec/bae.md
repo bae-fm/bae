@@ -376,8 +376,13 @@ name.
   artist Y, and the library holds X and Y as separate artists. The write is
   refused, and the import page shows the conflict for the person to settle
   (§3.7). bae never settles it on its own.
-- **A contradicting id.** A credit whose name matches an artist that holds a
-  different id of the same catalog is refused outright.
+- **One id, two artists.** The library holds a credit's id on two artists,
+  as when two devices apart each gave it to a different artist of that name.
+  The write is refused, and the import page offers both artists for the
+  person to pick the one the credit names. bae never picks one on its own.
+- **A contradicting id.** A credit whose id names an artist that holds a
+  different id of either catalog is refused outright. A credit whose name
+  alone matches such an artist is not that artist (rule 2).
 
 **Record labels.** A label row holds a name, its name key, and the label's
 MusicBrainz and Discogs ids where known. A release's label row names one, or
