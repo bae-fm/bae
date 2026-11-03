@@ -54,7 +54,3 @@ pub use candidate_draft::{
 };
 #[cfg(desktop)]
 pub use candidate_draft::{CandidateMetadataDraft, CandidatePreparedAssets};
-
-#[cfg(test)]
-#[path = "types_tests.rs"]
-mod tests;

@@ -283,3 +283,7 @@ impl RawPressingEdit {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "raw_release_edit_tests.rs"]
+mod tests;
