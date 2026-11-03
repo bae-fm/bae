@@ -6,6 +6,7 @@
 //! form.
 
 use super::*;
+use bae_catalogs::credits::ArtistCredit;
 
 /// Edit-metadata form values exactly as the editor holds them — text the user
 /// typed, not yet normalized. Artist assignments retain their identity while

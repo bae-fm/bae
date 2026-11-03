@@ -11,6 +11,11 @@
 use super::*;
 #[cfg(desktop)]
 use crate::CoverSelection;
+#[cfg(desktop)]
+use bae_catalogs::credits::ArtistCredit;
+use bae_catalogs::credits::CreditedRole;
+use bae_catalogs::works::WorkGraph;
+use serde::{Deserialize, Serialize};
 
 /// A release's draft: the editor's album fields, one [`DraftTrack`] per
 /// track, and the release-level values the source stated. Its tracks are

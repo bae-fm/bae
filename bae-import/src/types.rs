@@ -1,20 +1,7 @@
-//! Import type definitions.
-//!
-//! Every import follows the same flow, whether the tracks are individual files
-//! or one container plus a CUE sheet, and whether the metadata came from
-//! MusicBrainz, Discogs, the files' own tags, or direct entry:
-//!
-//! 1. **Preparation** ([`PrepareStep`]) — validate that the stored candidate's
-//!    source files still have the identities recorded by the scan.
-//! 2. **Running** ([`ImportPhase`]) — read and hash each file where it already
-//!    sits (no bytes move, no transcode), measure per-track loudness by decoding,
-//!    and write every row in one transaction.
-//!
-//! An import always lands as a local, playable release. An
-//! [`ImportDestination::Remote`] import then uploads to the cloud in the background.
-use bae_catalogs::credits::{ArtistCredit, CreditedRole};
-use bae_catalogs::works::WorkGraph;
-use serde::{Deserialize, Serialize};
+//! The values import and the release editor share: a candidate's draft,
+//! the editor's form and the edit it shapes, artist credits, and (desktop)
+//! an import run's command and progress.
+
 #[cfg(desktop)]
 mod import_run;
 #[cfg(desktop)]
