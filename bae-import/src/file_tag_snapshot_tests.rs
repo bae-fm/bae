@@ -284,7 +284,7 @@ fn embedded_artwork_becomes_the_file_tags_cover_selection() {
 
     assert_eq!(
         embedded_cover_selection(&snapshot),
-        Some(super::super::CoverSelection::Embedded("01.flac".to_string()))
+        Some(crate::CoverSelection::Embedded("01.flac".to_string()))
     );
 }
 

@@ -558,4 +558,5 @@ fn parse_u64_time_field(input: &str, token: Option<&str>) -> Result<u64, CueFlac
         .map_err(|error| CueFlacError::CueParsing(format!("invalid CUE time {input:?}: {error}")))
 }
 #[cfg(test)]
+#[path = "cue_flac_tests.rs"]
 mod tests;

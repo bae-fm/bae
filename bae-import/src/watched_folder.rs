@@ -40,12 +40,5 @@ pub(crate) fn paths_overlap(left: &Path, right: &Path) -> bool {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn root_path_uses_the_full_path_as_name() {
-        let folder = WatchedFolder::from_path(PathBuf::from("/"));
-        assert_eq!(folder.name, "/");
-    }
-}
+#[path = "watched_folder_tests.rs"]
+mod tests;
