@@ -42,9 +42,12 @@ public enum BaeHost {
         }
     }
 
-    #if DEBUG
+    #if DEBUG && os(macOS)
         /// A host over a fresh bae directory under the temporary directory,
-        /// for a preview's attempt, which reads no real library.
+        /// whose keys stay in an in-memory keychain, for a preview's attempt,
+        /// which reads no real library and never the person's keychain. Only
+        /// the macOS app's previews use it, and every debug macOS bridge has
+        /// the in-memory keychain (`build-macos.sh` adds `test-keyring`).
         public static func preview() -> BridgeHost {
             let home = FileManager.default.temporaryDirectory
                 .appendingPathComponent("bae-preview-\(UUID().uuidString)")
@@ -58,7 +61,12 @@ public enum BaeHost {
                     "The preview's bae directory could not be created: \(error)"
                 )
             }
-            return make(diagnostics: BaeDiagnostics.disabled(), appDir: appDir)
+            return make {
+                try BridgeHost.withTestKeyring(
+                    diagnostics: BaeDiagnostics.disabled(),
+                    appDir: appDir
+                )
+            }
         }
     #endif
 }

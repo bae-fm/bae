@@ -92,7 +92,7 @@ public final class LibrarySetup: Sendable, Observable {
         )
     }
 
-    #if DEBUG
+    #if DEBUG && os(macOS)
         /// Serves `libraries` and `savedCodes`; every other operation
         /// throws. A restore, join or delete started from a preview fails at
         /// once.
