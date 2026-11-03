@@ -1,12 +1,11 @@
 //! Reconcile a release's rows, built from its draft, against existing library
-//! state: match the release to an existing album, and resolve its works —
-//! yielding the [`super::PreparedMetadata`] the worker runs the import from.
-//! Its artist credits stay credits until the commit resolves them.
-
-use std::collections::HashMap;
+//! state: match the release to an existing album — yielding the
+//! [`super::PreparedMetadata`] the worker runs the import from. Its artist
+//! credits stay credits until the commit resolves them. Its works need no
+//! matching: a work's id is its MusicBrainz id's, so a work the library
+//! already holds is the row the import writes.
 
 use super::{ImportService, PreparedMetadata};
-use bae_db::WorkGraphRows;
 
 fn retain_referenced_artists(
     artists: &mut Vec<bae_db::DbArtist>,
@@ -30,8 +29,8 @@ fn retain_referenced_artists(
 
 impl ImportService {
     /// Reconcile the release's rows against existing library state — yielding
-    /// the [`PreparedMetadata`] the worker runs the import from. Pure DB reads
-    /// and string remapping — no network.
+    /// the [`PreparedMetadata`] the worker runs the import from. Pure DB reads,
+    /// no network.
     ///
     /// A release joins the library album `picked_album` names, else the one its
     /// records name; one with neither — read from its files or from nothing —
@@ -105,49 +104,6 @@ impl ImportService {
             .map(|artist| artist.id.clone())
             .collect();
 
-        // A work performed by an already-imported release keeps that release's
-        // `works` row, so every link this import writes points at the resolved id
-        // and only the works new to the library are inserted.
-        let resolved_works = self.database.resolve_works(&work_graph.works).await?;
-        let work_id_map: HashMap<String, String> = work_graph
-            .works
-            .iter()
-            .zip(resolved_works.ids.iter())
-            .map(|(work, id)| (work.id.clone(), id.clone()))
-            .collect();
-
-        // A work_artists row points at both an artist and a work, and a
-        // work_parts row at two works: the work ends are remapped here, the
-        // artist end when the commit resolves the credits.
-        let remapped_work_artists = remap_links(
-            &work_graph.work_artists,
-            &work_id_map,
-            "work artist work",
-            |link| &link.work_id,
-            |link, work_id| link.work_id = work_id,
-        )?;
-        let work_parts_by_parent = remap_links(
-            &work_graph.work_parts,
-            &work_id_map,
-            "work part parent",
-            |part| &part.parent_work_id,
-            |part, work_id| part.parent_work_id = work_id,
-        )?;
-        let remapped_work_parts = remap_links(
-            &work_parts_by_parent,
-            &work_id_map,
-            "work part child",
-            |part| &part.child_work_id,
-            |part, work_id| part.child_work_id = work_id,
-        )?;
-        let remapped_track_works = remap_links(
-            &work_graph.track_works,
-            &work_id_map,
-            "track work",
-            |link| &link.work_id,
-            |link, work_id| link.work_id = work_id,
-        )?;
-
         Ok(PreparedMetadata {
             db_album,
             db_release,
@@ -156,12 +112,7 @@ impl ImportService {
             existing_album_id,
             track_artists,
             album_artists,
-            work_graph: WorkGraphRows {
-                works: resolved_works.inserts,
-                work_artists: remapped_work_artists,
-                work_parts: remapped_work_parts,
-                track_works: remapped_track_works,
-            },
+            work_graph,
             release_artist_roles,
             track_artist_roles,
             artist_credits: artists,
@@ -175,29 +126,3 @@ impl ImportService {
 #[cfg(test)]
 #[path = "reconcile_tests.rs"]
 mod tests;
-
-/// Remap the parsed (temporary) IDs a link row points at to their actual DB IDs.
-///
-/// A `ReleaseRows`'s link rows reference artist and work IDs minted when the
-/// rows were built; reconcile may have resolved those to existing DB rows. `label` names
-/// the endpoint being remapped in the unmapped-ID error.
-fn remap_links<T: Clone>(
-    links: &[T],
-    id_map: &HashMap<String, String>,
-    label: &str,
-    target_id: impl Fn(&T) -> &str,
-    assign_target_id: impl Fn(&mut T, String),
-) -> Result<Vec<T>, crate::ImportError> {
-    links
-        .iter()
-        .map(|link| {
-            let parsed_id = target_id(link);
-            let actual_id = id_map.get(parsed_id).ok_or_else(|| crate::ImportError::Internal {
-                detail: format!("{label} ID {parsed_id} not found in the import's ID map"),
-            })?;
-            let mut remapped = link.clone();
-            assign_target_id(&mut remapped, actual_id.clone());
-            Ok(remapped)
-        })
-        .collect()
-}

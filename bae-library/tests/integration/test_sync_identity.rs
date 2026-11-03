@@ -185,18 +185,16 @@ fn one_catalog_work_performed_on_two_devices_is_one_work() {
                 .await
                 .unwrap();
             let work = DbWork {
-                id: uuid::Uuid::new_v4().to_string(),
+                id: bae_db::identity::work_id(MB_WORK),
                 title: "Work".to_string(),
                 disambiguation: None,
                 work_type: None,
                 musicbrainz_work_id: MB_WORK.to_string(),
                 created_at: chrono::Utc::now(),
             };
-            let resolved =
-                device.database().resolve_works(std::slice::from_ref(&work)).await.unwrap();
             let track_work = DbTrackWork::new(
                 &track.id,
-                &resolved.ids[0],
+                &work.id,
                 0,
                 Catalog::MusicBrainz,
                 uuid::Uuid::new_v4().to_string(),
@@ -204,7 +202,7 @@ fn one_catalog_work_performed_on_two_devices_is_one_work() {
             );
             device
                 .database()
-                .insert_composition_fixture_rows(&resolved.inserts, &[track_work])
+                .insert_composition_fixture_rows(&[work], &[track_work])
                 .await
                 .unwrap();
             releases.push(release.id);
