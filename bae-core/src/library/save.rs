@@ -1,7 +1,7 @@
 use crate::library::SaveTrackPlan;
-use crate::track_audio::track_sources::{run_tracks_over_sources, SourceStream};
 use bae_audio::sparse_buffer::SharedSparseBuffer;
 use bae_audio::{EncodeFormat, StreamingEncoder};
+use bae_track_audio::track_sources::{run_tracks_over_sources, SourceStream};
 use bae_util::task_failure::{blocking, joined, TaskFailed};
 use std::collections::HashMap;
 use std::num::NonZeroUsize;
@@ -178,7 +178,7 @@ struct ImageTrack {
     title: String,
     performer: String,
     audio_pregap_samples: Option<u64>,
-    decode: crate::track_audio::StreamDecodeParams,
+    decode: bae_track_audio::StreamDecodeParams,
     reply: tokio::sync::oneshot::Sender<Result<CueTrack, SaveError>>,
 }
 

@@ -4,7 +4,7 @@
 
 use super::*;
 use crate::playback::{PlaybackTimeline, PreviewTimelinePoint, TimelinePoint};
-use crate::track_audio::PreviewTarget;
+use bae_track_audio::PreviewTarget;
 
 /// The `playback_timeline` row, as playback writes it.
 #[derive(Clone)]

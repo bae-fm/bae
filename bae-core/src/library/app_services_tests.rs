@@ -484,8 +484,8 @@ fn a_track_decode_whose_read_panics_reports_it() {
     buffer.panic_reads();
     let reports = Arc::new(bae_diagnostics::RecordingBugReporter::default());
     let decode = TrackDecode::new(
-        crate::track_audio::StreamDecodeParams::new(
-            vec![crate::track_audio::SegmentDecodeParams::new(
+        bae_track_audio::StreamDecodeParams::new(
+            vec![bae_track_audio::SegmentDecodeParams::new(
                 buffer,
                 bae_db::SegmentSpan::whole_file(),
                 0,

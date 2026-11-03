@@ -14,7 +14,7 @@
 //! task must survive the switch).
 
 use super::*;
-use crate::track_audio::data_source::AudioDataReader;
+use bae_track_audio::data_source::AudioDataReader;
 
 pub(super) struct FileBuffers {
     /// Full-file buffers keyed by release file id.
@@ -158,7 +158,7 @@ pub(super) async fn prepare_track_for_playback(
             }
             None => {
                 let buffer = create_sparse_buffer(segment.file_size);
-                let reader = Box::new(crate::track_audio::data_source::CovenFileReader::new(
+                let reader = Box::new(bae_track_audio::data_source::CovenFileReader::new(
                     database.clone(),
                     segment.file_id.clone(),
                     file_buffers.arbiter.clone(),
@@ -203,7 +203,7 @@ pub(super) async fn prepare_track_for_playback(
 fn playback_fill_error_handler(
     command_tx: tokio_mpsc::UnboundedSender<PlaybackCommand>,
     buffer_id: u64,
-) -> crate::track_audio::data_source::FillErrorHandler {
+) -> bae_track_audio::data_source::FillErrorHandler {
     Box::new(move |error| {
         dispatch_command(&command_tx, PlaybackCommand::ReadFailed { buffer_id, error });
     })

@@ -17,10 +17,10 @@ use crate::playback::error::PlaybackError;
 use crate::playback::progress::{emit_progress, PlaybackProgress};
 use crate::playback::service::log_streaming_decode_failure;
 use crate::playback::source::{PlaybackSource, TrackFmt};
-use crate::track_audio::StreamDecodeParams;
 use bae_audio::sparse_buffer::SharedSparseBuffer;
 use bae_audio::track_stream::{create_track_stream_pair, ReadyReceiver, TrackStream};
 use bae_diagnostics::{Diagnostics, ReportedThread};
+use bae_track_audio::StreamDecodeParams;
 use bae_util::task_failure::blocking;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
@@ -401,8 +401,8 @@ pub(crate) fn report_dropped_audio_events(
 mod tests {
     use super::*;
     use crate::playback::audio_output::{CaptureAudioOutput, FailingAudioOutput};
-    use crate::track_audio::SegmentDecodeParams;
     use bae_audio::sparse_buffer::create_sparse_buffer;
+    use bae_track_audio::SegmentDecodeParams;
 
     fn one_segment_decode(buffer: SharedSparseBuffer) -> StreamDecodeParams {
         StreamDecodeParams::new(

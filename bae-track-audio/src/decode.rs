@@ -13,7 +13,7 @@ use std::sync::Arc;
 /// followed by `trailing_silence_frames` (a save relocating the next track's
 /// generated pregap; always 0 for playback).
 #[derive(Clone)]
-pub(crate) struct StreamDecodeParams {
+pub struct StreamDecodeParams {
     segments: Vec<SegmentDecodeParams>,
     /// Whether the demuxer may jump by byte to a segment's recorded start_byte:
     /// whether the codec's frames keep their place after a byte jump
@@ -27,9 +27,9 @@ pub(crate) struct StreamDecodeParams {
 /// its bytes stream through, the sample offset into the segment where output
 /// starts (a mid-track seek; 0 for a natural start), and where the decode
 /// starts reading. The lead-in trim target derives from these via
-/// [`Self::target_sample`], the demuxer start via [`Self::decode_start`].
+/// `target_sample`, the demuxer start via `decode_start`.
 #[derive(Clone)]
-pub(crate) struct SegmentDecodeParams {
+pub struct SegmentDecodeParams {
     buffer: SharedSparseBuffer,
     span: bae_db::SegmentSpan,
     start_offset: u64,
@@ -53,18 +53,14 @@ enum SegmentStart {
 impl SegmentDecodeParams {
     /// A window with no scrub point to start at: a natural start jumps to the
     /// span's landing byte, a mid-track seek seeks by sample.
-    pub(crate) fn new(
-        buffer: SharedSparseBuffer,
-        span: bae_db::SegmentSpan,
-        start_offset: u64,
-    ) -> Self {
+    pub fn new(buffer: SharedSparseBuffer, span: bae_db::SegmentSpan, start_offset: u64) -> Self {
         Self { buffer, span, start_offset, start: SegmentStart::Span }
     }
 
     /// A start `start_offset` samples into the segment that decodes from
     /// `point`, a stored frame that plays the target exactly, forward to the
     /// target.
-    pub(crate) fn from_scrub_point(
+    pub fn from_scrub_point(
         buffer: SharedSparseBuffer,
         span: bae_db::SegmentSpan,
         start_offset: u64,
@@ -75,7 +71,7 @@ impl SegmentDecodeParams {
 
     /// A start `start_offset` samples into the segment that decodes from the
     /// stream's first frame forward to the target.
-    pub(crate) fn from_stream_start(
+    pub fn from_stream_start(
         buffer: SharedSparseBuffer,
         span: bae_db::SegmentSpan,
         start_offset: u64,
@@ -110,7 +106,7 @@ impl SegmentDecodeParams {
 }
 
 impl StreamDecodeParams {
-    pub(crate) fn new(
+    pub fn new(
         segments: Vec<SegmentDecodeParams>,
         byte_seekable: bool,
         leading_silence_frames: u64,
@@ -120,27 +116,27 @@ impl StreamDecodeParams {
     }
 
     #[cfg(desktop)]
-    pub(crate) fn leading_silence_frames(&self) -> u64 {
+    pub fn leading_silence_frames(&self) -> u64 {
         self.leading_silence_frames
     }
 
-    #[cfg(test)]
-    pub(crate) fn segment_count(&self) -> usize {
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn segment_count(&self) -> usize {
         self.segments.len()
     }
 
-    #[cfg(test)]
-    pub(crate) fn segment_buffer_id(&self, index: usize) -> u64 {
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn segment_buffer_id(&self, index: usize) -> u64 {
         self.segments[index].buffer.id()
     }
 
-    #[cfg(test)]
-    pub(crate) fn segment_target_sample(&self, index: usize) -> u64 {
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn segment_target_sample(&self, index: usize) -> u64 {
         self.segments[index].target_sample()
     }
 
-    #[cfg(test)]
-    pub(crate) fn segment_decode_start(&self, index: usize) -> bae_audio::DecodeStart {
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn segment_decode_start(&self, index: usize) -> bae_audio::DecodeStart {
         self.segments[index].decode_start(self.byte_seekable)
     }
 
@@ -150,7 +146,7 @@ impl StreamDecodeParams {
     /// its header at once) learns of an unreadable file here rather than
     /// partway through. The bytes land in the segments' own buffers, so the
     /// decode reads them from there.
-    pub(crate) fn wait_readable(&self) -> Result<(), BufferStop> {
+    pub fn wait_readable(&self) -> Result<(), BufferStop> {
         for segment in &self.segments {
             segment.buffer.new_reader().read(&mut [0u8; 1])?;
         }
@@ -161,7 +157,7 @@ impl StreamDecodeParams {
     /// or by sample), trims lead-in at the segment's target sample, and stops at
     /// the segment's end sample. Shared by the play/seek, preload, and preview
     /// paths so they can't drift on the seek/trim mapping.
-    pub(crate) fn run_decoder(
+    pub fn run_decoder(
         &self,
         sink: &mut TrackSink,
         cancel: Arc<AtomicBool>,
@@ -204,7 +200,7 @@ impl StreamDecodeParams {
         Ok(())
     }
 
-    /// Decode this window into a [`DecodedSink`] — the save re-encoder's
+    /// Decode this window into a [`DecodedSink`](bae_audio::DecodedSink) — the save re-encoder's
     /// driver, sharing the per-segment seek derivation with [`Self::run_decoder`]:
     /// announce the stored format, push the leading silence, decode each
     /// segment, push the trailing silence. Blocking; run it off the async
@@ -217,7 +213,7 @@ impl StreamDecodeParams {
     /// the caller to report as the bug it is.
     // The Subsonic transcode drives it on every platform; save and export on
     // desktop.
-    pub(crate) fn run_to_sink(
+    pub fn run_to_sink(
         &self,
         sample_rate: u32,
         channels: u32,
@@ -240,7 +236,7 @@ impl StreamDecodeParams {
         Ok(())
     }
 
-    /// Decode this window into a verifying [`DecodedSink`] — import's loudness
+    /// Decode this window into a verifying [`DecodedSink`](bae_audio::DecodedSink) — import's loudness
     /// pass, which meters the stored audio and checks it decodes whole. Seeks
     /// each segment as [`Self::run_to_sink`] does; invalid packets are
     /// discarded and counted rather than failing the decode, so the sink can
@@ -250,7 +246,7 @@ impl StreamDecodeParams {
     /// Each segment's decode announces its stream to `sink` before its packets
     /// (`DecodedSink::on_stream`), so a sink can tell the segments apart.
     #[cfg(desktop)]
-    pub(crate) fn verify_to_sink(
+    pub fn verify_to_sink(
         &self,
         sink: &mut dyn bae_audio::DecodedSink,
         cancel: Arc<AtomicBool>,
@@ -294,7 +290,7 @@ fn push_silence_to_sink(
     Ok(())
 }
 
-#[cfg(all(test, feature = "test-utils"))]
+#[cfg(test)]
 mod tests {
     use super::*;
     use bae_audio::sparse_buffer::create_sparse_buffer;
@@ -323,7 +319,7 @@ mod tests {
         bae_audio::init();
         let path = std::path::Path::new(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/tests/fixtures/cue_flac/Test Album.flac"
+            "/../bae-core/tests/fixtures/cue_flac/Test Album.flac"
         ));
         let bytes = std::fs::read(path).unwrap();
         let start_sample = 20 * 44_100;

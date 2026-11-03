@@ -34,16 +34,16 @@ impl PreviewTarget {
     }
 
     /// The file the stretch is of.
-    pub(crate) fn path(&self) -> &Path {
+    pub fn path(&self) -> &Path {
         &self.path
     }
 
     /// The stretch of the file, in samples.
-    pub(crate) fn span(&self) -> bae_db::SegmentSpan {
+    pub fn span(&self) -> bae_db::SegmentSpan {
         self.span
     }
 
-    pub(crate) fn duration(&self, file_duration: Duration, sample_rate: u32) -> Option<Duration> {
+    pub fn duration(&self, file_duration: Duration, sample_rate: u32) -> Option<Duration> {
         let start = Duration::from_secs_f64(self.span.start_sample as f64 / sample_rate as f64);
         let end = self
             .span

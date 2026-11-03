@@ -795,6 +795,7 @@ dependencies = [
  "bae-mirror",
  "bae-preferences",
  "bae-test-support",
+ "bae-track-audio",
  "bae-types",
  "bae-util",
  "coven",
@@ -887,6 +888,7 @@ dependencies = [
  "bae-diagnostics",
  "bae-preferences",
  "bae-test-support",
+ "bae-track-audio",
  "bae-types",
  "bae-util",
  "base64 0.22.1",
@@ -1045,6 +1047,7 @@ dependencies = [
  "bae-diagnostics",
  "bae-preferences",
  "bae-test-support",
+ "bae-track-audio",
  "bae-types",
  "bae-util",
  "bytes",
@@ -1087,6 +1090,21 @@ version = "0.1.0"
 dependencies = [
  "serde",
  "toml",
+]
+
+[[package]]
+name = "bae-track-audio"
+version = "0.0.0-dev"
+dependencies = [
+ "bae-audio",
+ "bae-db",
+ "bae-diagnostics",
+ "bae-util",
+ "coven",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]

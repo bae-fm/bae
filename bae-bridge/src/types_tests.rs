@@ -665,7 +665,7 @@ fn a_preview_target_whose_name_is_not_utf8_comes_back_as_its_path() {
 
     let path =
         std::path::Path::new("/music/Album").join(std::ffi::OsStr::from_bytes(b"Caf\xE9.flac"));
-    let target = bae_core::track_audio::PreviewTarget::sample_range(path.clone(), 0, Some(44_100));
+    let target = bae_track_audio::PreviewTarget::sample_range(path.clone(), 0, Some(44_100));
     let crossed = BridgePreviewTarget::from_core(target);
     assert_eq!(crossed.path, b"/music/Album/Caf\xE9.flac");
     let back = crossed.into_core().expect("a path core gave the app comes back");

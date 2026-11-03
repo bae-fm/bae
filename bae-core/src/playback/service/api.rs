@@ -182,7 +182,7 @@ pub(crate) enum PlaybackCommand {
     /// the buffer serves right now, so it decides what breaks.
     ReadFailed {
         buffer_id: u64,
-        error: Arc<crate::track_audio::TrackReadError>,
+        error: Arc<bae_track_audio::TrackReadError>,
     },
     Previous,
     /// Seek to this time in the current track, as the player shows it.
@@ -219,7 +219,7 @@ pub(crate) enum PlaybackCommand {
     /// Skip to the queue row with this id (manual, pregap skipped).
     SkipTo(QueueEntryId),
     /// Preview a local source window (the same target stops; another switches).
-    PreviewPlay(crate::track_audio::PreviewTarget),
+    PreviewPlay(bae_track_audio::PreviewTarget),
     /// Stop any active preview.
     PreviewStop,
     /// Toggle pause/resume on the active preview.
@@ -590,7 +590,7 @@ impl PlaybackHandle {
         self.dispatch(PlaybackCommand::ReevaluateSidePauseStaging);
     }
     /// Preview a local source window. The same target stops; another switches.
-    pub fn preview_play(&self, target: crate::track_audio::PreviewTarget) {
+    pub fn preview_play(&self, target: bae_track_audio::PreviewTarget) {
         self.dispatch(PlaybackCommand::PreviewPlay(target));
     }
     /// Stop any active preview.

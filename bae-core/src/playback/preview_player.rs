@@ -26,10 +26,10 @@ use crate::playback::stream_pipeline::{
     DecoderSetup, StreamPipeline,
 };
 use crate::playback::timeline::{StreamPosition, TrackTimeline};
-use crate::track_audio::data_source::{AudioDataReader, LocalReader};
-use crate::track_audio::{PreviewTarget, SegmentDecodeParams, StreamDecodeParams};
 use bae_audio::sparse_buffer::{create_sparse_buffer, SharedSparseBuffer};
 use bae_diagnostics::{Diagnostics, ReportedTask};
+use bae_track_audio::data_source::{AudioDataReader, LocalReader};
+use bae_track_audio::{PreviewTarget, SegmentDecodeParams, StreamDecodeParams};
 use bae_util::task_failure::{blocking, TaskFailed};
 use std::path::Path;
 use std::time::Duration;
@@ -42,7 +42,7 @@ use tracing::{error, info, warn};
 /// the buffer with the same error, unblocking the decoder.)
 fn preview_fill_error_handler(
     progress_tx: tokio_mpsc::UnboundedSender<PlaybackProgress>,
-) -> crate::track_audio::data_source::FillErrorHandler {
+) -> bae_track_audio::data_source::FillErrorHandler {
     Box::new(move |error| {
         emit_progress(
             &progress_tx,

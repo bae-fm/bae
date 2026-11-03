@@ -4,8 +4,8 @@
 //! - Local files (non-storage releases, or storage releases with local backend)
 //! - Cloud storage (storage releases with cloud backend)
 
-use crate::track_audio::storage_wait::{FetchProgress, StorageWaits};
-use crate::track_audio::TrackReadError;
+use crate::storage_wait::{FetchProgress, StorageWaits};
+use crate::TrackReadError;
 use bae_audio::sparse_buffer::{SharedSparseBuffer, SourceReadError};
 use bae_diagnostics::Diagnostics;
 use bae_util::task_failure::{caught, joined};
@@ -20,7 +20,7 @@ use tracing::{debug, error, info};
 /// the most-behind reader, and the file's first window with one AVIO buffer
 /// past it; import spaces a FLAC's scrub points so a seek to one reads from a
 /// single window (an MP3's 10 seconds fit in one at any bitrate).
-pub(crate) const FILL_WINDOW_SIZE: u64 = coven::CHUNK_SIZE as u64 * 64;
+pub const FILL_WINDOW_SIZE: u64 = coven::CHUNK_SIZE as u64 * 64;
 
 /// Prioritizes audio byte fetches so the track the user is waiting to hear gets
 /// the bandwidth. One foreground track is designated at a time -- the playing
@@ -66,13 +66,13 @@ impl FetchArbiter {
     /// The track a load the person waits on is for, or `None` once nothing
     /// loads: while it is the playing track, its load waits on storage while
     /// one of its reads fetches from there.
-    pub(crate) fn set_waiting(&self, track_id: Option<&str>) {
+    pub fn set_waiting(&self, track_id: Option<&str>) {
         self.waits.set_waiting(track_id);
     }
 
     /// The playing track while its load waits on storage, by id: `None`
     /// while no load does.
-    pub(crate) fn subscribe_storage_waits(&self) -> tokio::sync::watch::Receiver<Option<String>> {
+    pub fn subscribe_storage_waits(&self) -> tokio::sync::watch::Receiver<Option<String>> {
         self.waits.subscribe()
     }
 
@@ -342,7 +342,7 @@ pub struct CovenFileReader {
 }
 
 impl CovenFileReader {
-    pub(crate) fn new(
+    pub fn new(
         db: bae_db::Database,
         file_id: String,
         arbiter: Arc<FetchArbiter>,

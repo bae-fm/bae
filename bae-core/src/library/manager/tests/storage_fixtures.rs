@@ -331,7 +331,7 @@ async fn playback_error_reason_for_file(
     manager: &LibraryManager,
     file: &DbFile,
 ) -> crate::playback::PlaybackErrorReason {
-    use crate::track_audio::data_source::FetchArbiter;
+    use bae_track_audio::data_source::FetchArbiter;
     use bae_audio::sparse_buffer::create_sparse_buffer;
 
     let buffer = create_sparse_buffer(file.file_size as u64);

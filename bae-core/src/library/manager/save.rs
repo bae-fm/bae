@@ -5,9 +5,9 @@
 
 use super::*;
 use crate::library::SaveTrackPlan;
-use crate::track_audio::track_sources::SourceStream;
-use crate::track_audio::{SegmentDecodeParams, StreamDecodeParams};
 use bae_db::TrackAudioMeta;
+use bae_track_audio::track_sources::SourceStream;
+use bae_track_audio::{SegmentDecodeParams, StreamDecodeParams};
 use std::collections::HashMap;
 use std::num::NonZeroUsize;
 
@@ -89,7 +89,7 @@ impl LibraryManager {
     /// file shorter than the stored size — fails the buffer, and the decode
     /// fails loudly with that read's error.
     fn open_save_source(&self, file: &bae_db::DbFile) -> SourceStream {
-        use crate::track_audio::data_source::FetchArbiter;
+        use bae_track_audio::data_source::FetchArbiter;
 
         // A fresh arbiter per file: save has no foreground track to prioritize,
         // so every fetch runs ungated.

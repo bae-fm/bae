@@ -36,7 +36,6 @@ use crate::playback::preview_player::PreviewPlayer;
 use crate::playback::progress::emit_progress;
 use crate::playback::progress::{PlaybackProgress, PlaybackProgressHandle};
 use crate::playback::tables::{ContextFill, ContextFilled, PlaybackResumeRow, ReleaseStart};
-use crate::track_audio::data_source::FetchArbiter;
 use bae_audio::DecodeError;
 use bae_db::DbAudioSegmentRole;
 use bae_db::ResolvedTrackAudio;
@@ -44,6 +43,7 @@ use bae_diagnostics::{
     AnomalyKind, Diagnostics, LocalId, PlaybackCommandKind, PlaybackOperation, PlaybackStartSource,
     ReportedThread, TelemetryEvent, TrackTransition,
 };
+use bae_track_audio::data_source::FetchArbiter;
 // Imported by path so the sample feed reads `source::PlaybackSource`, apart
 // from the queue's `ContextSource`.
 use crate::playback::source;
@@ -86,7 +86,6 @@ use crate::playback::stream_pipeline::{
     cancel_and_join_decoder, log_stream_diagnostic, report_dropped_audio_events, spawn_decoder,
     DecodeFailureReport, DecoderSetup,
 };
-use crate::track_audio::{SegmentDecodeParams, StreamDecodeParams};
 pub(crate) use api::{dispatch_command, PlaybackCommand};
 pub use api::{
     LoadingTrack, PlaybackHandle, PlaybackPauseBoundary, PlaybackPauseReason,
@@ -94,6 +93,7 @@ pub use api::{
     PlaybackTrackSide,
 };
 use api::{SideBoundary, SidePauseDecision};
+use bae_track_audio::{SegmentDecodeParams, StreamDecodeParams};
 use file_buffers::{prepare_track_for_playback, FileBuffers};
 use library_follow::LibraryFollow;
 use renderer::{RemoteConnect, RemoteEnd, Renderer};

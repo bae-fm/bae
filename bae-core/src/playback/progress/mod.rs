@@ -12,8 +12,8 @@ use tracing::warn;
 #[derive(Debug, Clone, PartialEq)]
 pub enum PreviewState {
     Idle,
-    Playing { target: crate::track_audio::PreviewTarget, duration_ms: u64 },
-    Paused { target: crate::track_audio::PreviewTarget, duration_ms: u64 },
+    Playing { target: bae_track_audio::PreviewTarget, duration_ms: u64 },
+    Paused { target: bae_track_audio::PreviewTarget, duration_ms: u64 },
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -32,7 +32,7 @@ pub struct PlaybackPosition {
 /// never shows one preview's position against another preview.
 #[derive(Debug, Clone, PartialEq)]
 pub struct PreviewPosition {
-    pub target: crate::track_audio::PreviewTarget,
+    pub target: bae_track_audio::PreviewTarget,
     pub duration_ms: u64,
     pub position_ms: u64,
     pub progress: f64,
@@ -48,7 +48,7 @@ pub enum MediaControlPlayback {
     /// The library playback, whose state is [`PlaybackValues::state`].
     Library,
     Preview {
-        target: crate::track_audio::PreviewTarget,
+        target: bae_track_audio::PreviewTarget,
         duration_ms: u64,
         is_playing: bool,
     },
@@ -371,8 +371,8 @@ pub(crate) fn emit_progress(
 mod tests {
     use super::*;
 
-    fn preview_target(path: &str) -> crate::track_audio::PreviewTarget {
-        crate::track_audio::PreviewTarget::sample_range(path.into(), 0, None)
+    fn preview_target(path: &str) -> bae_track_audio::PreviewTarget {
+        bae_track_audio::PreviewTarget::sample_range(path.into(), 0, None)
     }
 
     #[test]

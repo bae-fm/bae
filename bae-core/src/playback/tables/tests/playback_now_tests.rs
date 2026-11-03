@@ -10,7 +10,7 @@ use crate::playback::{
     PlaybackSideCountdown, PlaybackSidePausePrompt, PlaybackState, PlayingTrack, PreviewState,
     RemoteDevice, RemotePlayback,
 };
-use crate::track_audio::PreviewTarget;
+use bae_track_audio::PreviewTarget;
 
 async fn now(db: &Database) -> crate::playback::NowPlayingValues {
     now_playing(db).await.unwrap().expect("the library holds the track the row names")

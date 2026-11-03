@@ -14,10 +14,10 @@ use std::sync::Arc;
 use tracing::{debug, warn};
 
 use crate::import::types::TrackFile;
-use crate::track_audio::data_source::LocalReader;
-use crate::track_audio::track_sources::{run_tracks_over_sources, SourceStream};
-use crate::track_audio::{SegmentDecodeParams, StreamDecodeParams};
 use bae_audio::sparse_buffer::SharedSparseBuffer;
+use bae_track_audio::data_source::LocalReader;
+use bae_track_audio::track_sources::{run_tracks_over_sources, SourceStream};
+use bae_track_audio::{SegmentDecodeParams, StreamDecodeParams};
 
 /// The album loudness/peak and the scrub points the decodes gave.
 pub(super) struct LoudnessResult {

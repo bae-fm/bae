@@ -3,7 +3,7 @@
 
 use super::super::*;
 use crate::playback::{PlaybackTimeline, PreviewTimelinePoint, TimelinePoint};
-use crate::track_audio::PreviewTarget;
+use bae_track_audio::PreviewTarget;
 
 fn timeline() -> PlaybackTimeline {
     PlaybackTimeline {

@@ -17,6 +17,7 @@ members = [
     "bae-subsonic",
     "bae-test-support",
     "bae-theme",
+    "bae-track-audio",
     "bae-types",
     "bae-uniffi-bindgen",
     "bae-util",
@@ -82,6 +83,7 @@ bae-mirror = { path = "bae-mirror" }
 bae-preferences = { path = "bae-preferences" }
 bae-subsonic = { path = "bae-subsonic" }
 bae-test-support = { path = "bae-test-support" }
+bae-track-audio = { path = "bae-track-audio" }
 bae-types = { path = "bae-types" }
 bae-util = { path = "bae-util" }
 

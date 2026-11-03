@@ -48,7 +48,7 @@ impl PlaybackService {
 
     /// Preview a local source window. The same target toggles off (and resumes
     /// main); a different target switches and pauses the main player.
-    pub(super) async fn preview_play(&mut self, target: crate::track_audio::PreviewTarget) {
+    pub(super) async fn preview_play(&mut self, target: bae_track_audio::PreviewTarget) {
         if self.preview.current_target() == Some(&target) {
             self.preview_stop();
             return;

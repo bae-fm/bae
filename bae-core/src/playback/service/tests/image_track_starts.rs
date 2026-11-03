@@ -3,9 +3,9 @@
 //! sample, and seeks by sample to any other.
 
 use super::*;
-use crate::track_audio::{SegmentDecodeParams, StreamDecodeParams};
 use bae_audio::EncodeFormat;
 use bae_db::SegmentSpan;
+use bae_track_audio::{SegmentDecodeParams, StreamDecodeParams};
 use bae_util::content_type::ContentType;
 
 /// Start track 2 of a `format` image as playback does on a natural start,

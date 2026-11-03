@@ -11,7 +11,7 @@ use crate::playback::{
     PlaybackPauseBoundary, PlaybackPauseReason, PlaybackSideCountdown, PlaybackSidePausePrompt,
     PlaybackState, PlaybackValues, PlayingTrack, PreviewState, RemoteDevice, RemotePlayback,
 };
-use crate::track_audio::PreviewTarget;
+use bae_track_audio::PreviewTarget;
 
 /// The `playback_now` row, as playback writes it.
 #[derive(Clone)]

@@ -7,11 +7,11 @@
 //! than the window a scrub fetches.
 
 use super::*;
-use crate::track_audio::data_source::FILL_WINDOW_SIZE;
-use crate::track_audio::{SegmentDecodeParams, StreamDecodeParams};
 use bae_audio::{encode_i32, EncodeFormat};
 use bae_db::ScrubPoints;
 use bae_db::{ScrubPoint, SegmentSpan};
+use bae_track_audio::data_source::FILL_WINDOW_SIZE;
+use bae_track_audio::{SegmentDecodeParams, StreamDecodeParams};
 use bae_util::content_type::ContentType;
 
 /// A stream's sample rate and channel count.
@@ -392,7 +392,7 @@ async fn scrub_fetching(
                     let log = log.clone();
                     async move {
                         log.lock().unwrap().push((start, start + len));
-                        Ok::<_, crate::track_audio::TrackReadError>(
+                        Ok::<_, bae_track_audio::TrackReadError>(
                             bytes[start as usize..(start + len) as usize].to_vec(),
                         )
                     }

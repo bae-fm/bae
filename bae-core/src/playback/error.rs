@@ -97,10 +97,10 @@ impl PlaybackError {
 /// device can't reach the audio is theirs to act on and keyed; every other
 /// failure goes to the diagnostic arm with the error as log-only detail.
 pub(crate) fn read_failure_reason(
-    error: &crate::track_audio::TrackReadError,
+    error: &bae_track_audio::TrackReadError,
 ) -> crate::playback::PlaybackErrorReason {
     use crate::playback::PlaybackErrorReason;
-    use crate::track_audio::TrackReadError;
+    use bae_track_audio::TrackReadError;
     match error {
         TrackReadError::SyncDisconnected => PlaybackErrorReason::SyncDisconnected,
         TrackReadError::NotUploaded => PlaybackErrorReason::NotUploaded,

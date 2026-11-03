@@ -19,7 +19,7 @@ use std::future::Future;
 use std::hash::Hash;
 use std::num::NonZeroUsize;
 
-use crate::track_audio::data_source::{AudioDataReader, FillErrorHandler, FillTask};
+use crate::data_source::{AudioDataReader, FillErrorHandler, FillTask};
 use bae_audio::sparse_buffer::create_sparse_buffer;
 use bae_audio::sparse_buffer::SharedSparseBuffer;
 use bae_util::task_failure::{caught, TaskFailed};
@@ -35,7 +35,7 @@ const TRACK_WORK: &str = "work on one track";
 /// decoding it run on blocking threads that nothing can abort, and what stops
 /// them is their next read finding the stream stopped; left running, they
 /// would go on decoding, and reporting, for a pass that no longer exists.
-pub(crate) struct SourceStream {
+pub struct SourceStream {
     buffer: StopOnDrop,
     fill: FillTask,
 }
@@ -51,11 +51,7 @@ impl Drop for StopOnDrop {
 
 impl SourceStream {
     /// Start streaming a source of `size` bytes through `reader`.
-    pub(crate) fn start(
-        reader: Box<dyn AudioDataReader>,
-        size: u64,
-        on_error: FillErrorHandler,
-    ) -> Self {
+    pub fn start(reader: Box<dyn AudioDataReader>, size: u64, on_error: FillErrorHandler) -> Self {
         let buffer = create_sparse_buffer(size);
         let fill = reader.start_reading(buffer.clone(), on_error);
         Self { buffer: StopOnDrop(buffer), fill }
@@ -80,7 +76,7 @@ impl SourceStream {
 /// before this returns either way. A track whose work panics fails the pass
 /// with the error `panicked` makes of it, which is where the caller reports
 /// it.
-pub(crate) async fn run_tracks_over_sources<K, T, R, E, Fut>(
+pub async fn run_tracks_over_sources<K, T, R, E, Fut>(
     tracks: Vec<T>,
     parallelism: NonZeroUsize,
     files_of: impl Fn(&T) -> Vec<K>,

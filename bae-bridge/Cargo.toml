@@ -27,6 +27,8 @@ bae-app-dir = { workspace = true }
 bae-db = { workspace = true }
 # The preferences the settings screens mirror.
 bae-preferences = { workspace = true }
+# The stretch of a file a preview plays.
+bae-track-audio = { workspace = true }
 bae-diagnostics = { workspace = true }
 # The catalogs, covers and image sets the bridge mirrors.
 bae-catalogs = { workspace = true }

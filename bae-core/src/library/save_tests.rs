@@ -284,8 +284,8 @@ fn a_read_that_panics_fails_the_save_as_unfinished() {
         title: "Track Title".to_string(),
         performer: "Artist Name".to_string(),
         audio_pregap_samples: None,
-        decode: crate::track_audio::StreamDecodeParams::new(
-            vec![crate::track_audio::SegmentDecodeParams::new(
+        decode: bae_track_audio::StreamDecodeParams::new(
+            vec![bae_track_audio::SegmentDecodeParams::new(
                 buffer,
                 bae_db::SegmentSpan::whole_file(),
                 0,

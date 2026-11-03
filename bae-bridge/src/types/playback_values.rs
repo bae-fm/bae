@@ -12,15 +12,15 @@ pub struct BridgePreviewTarget {
 }
 
 impl BridgePreviewTarget {
-    pub(crate) fn from_core(target: bae_core::track_audio::PreviewTarget) -> Self {
+    pub(crate) fn from_core(target: bae_track_audio::PreviewTarget) -> Self {
         let (path, start_sample, end_sample) = target.into_sample_range();
         Self { path: coven::path_bytes(&path), start_sample, end_sample }
     }
 
     pub(crate) fn into_core(
         self,
-    ) -> Result<bae_core::track_audio::PreviewTarget, crate::types::BridgeError> {
-        Ok(bae_core::track_audio::PreviewTarget::sample_range(
+    ) -> Result<bae_track_audio::PreviewTarget, crate::types::BridgeError> {
+        Ok(bae_track_audio::PreviewTarget::sample_range(
             crate::path_bytes::path_from_app(self.path)?,
             self.start_sample,
             self.end_sample,

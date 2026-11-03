@@ -1,0 +1,50 @@
+[package]
+name = "bae-track-audio"
+version = "0.0.0-dev"
+authors = ["dima"]
+edition = "2021"
+license = "LicenseRef-UNLICENSED"
+publish = false
+# The `desktop` cfg, defined once in bae-util's build script for every crate
+# with desktop-only code.
+build = "../bae-util/build.rs"
+
+[lib]
+name = "bae_track_audio"
+path = "src/lib.rs"
+
+[dependencies]
+# The sparse buffers the readers fill, and the decode they feed.
+bae-audio = { workspace = true }
+# The stored files a track's audio is read from, and what was resolved of it.
+bae-db = { workspace = true }
+# The bugs a failed fill reports.
+bae-diagnostics = { workspace = true }
+# Work whose panic comes back as a value.
+bae-util = { workspace = true }
+# The store's files, their reads and the transfers a read waits on.
+coven = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true, features = ["fs", "io-util", "rt", "sync", "macros"] }
+tracing = { workspace = true }
+
+[dev-dependencies]
+# The test codec helpers the decode tests write their inputs with.
+bae-audio = { workspace = true, features = ["test-utils", "test-instrumentation"] }
+# The bug reporter that keeps what it is handed.
+bae-diagnostics = { workspace = true, features = ["test-utils"] }
+# The sampler of the files a read holds open at once.
+bae-util = { workspace = true, features = ["test-utils"] }
+# The check that a read left no file open.
+coven = { workspace = true, features = ["test-utils"] }
+tempfile = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "test-util", "time"] }
+
+[features]
+default = []
+# What a test of a crate above reads back of a decode's windows. Dev/test-only:
+# a production build never enables it.
+test-utils = []
+
+[lints]
+workspace = true

@@ -146,7 +146,7 @@ async fn a_track_whose_original_is_gone_is_refused_with_the_reason() {
         assert_eq!(sub["status"], "failed", "{format}: {sub}");
         assert_eq!(
             sub["error"]["message"],
-            bae_core::track_audio::TrackReadError::OriginalMissing.to_string(),
+            bae_track_audio::TrackReadError::OriginalMissing.to_string(),
             "{format}: {sub}"
         );
     }
@@ -515,7 +515,7 @@ async fn first_song_id(router: &Router, release_id: &str) -> String {
 /// buffer through the local reader, and running the real decoder.
 fn decode_bytes(bytes: &[u8]) -> bae_audio::DecodedAudio {
     use bae_audio::sparse_buffer::create_sparse_buffer;
-    use bae_core::track_audio::data_source::{AudioDataReader, LocalReader};
+    use bae_track_audio::data_source::{AudioDataReader, LocalReader};
     use std::io::Write;
 
     let mut file = tempfile::NamedTempFile::new().unwrap();

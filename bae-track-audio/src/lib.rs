@@ -11,8 +11,8 @@ mod read_error;
 mod storage_wait;
 // Whole-release passes (import loudness, release saves) are desktop-only.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(crate) mod track_sources;
+pub mod track_sources;
 
-pub(crate) use decode::{SegmentDecodeParams, StreamDecodeParams};
+pub use decode::{SegmentDecodeParams, StreamDecodeParams};
 pub use preview_target::PreviewTarget;
 pub use read_error::TrackReadError;

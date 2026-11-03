@@ -765,8 +765,8 @@ FILE "second.flac" WAVE
         buffer
     };
     let ground = bae_audio::decode_audio(buffer(), None, None).expect("decode first");
-    let decode = crate::track_audio::StreamDecodeParams::new(
-        vec![crate::track_audio::SegmentDecodeParams::new(buffer(), pregap.span(), 0)],
+    let decode = bae_track_audio::StreamDecodeParams::new(
+        vec![bae_track_audio::SegmentDecodeParams::new(buffer(), pregap.span(), 0)],
         true,
         0,
         0,

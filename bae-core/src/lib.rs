@@ -33,4 +33,3 @@ pub(crate) mod test_gate;
 pub(crate) mod test_images;
 #[cfg(test)]
 pub(crate) mod test_reads;
-pub mod track_audio;
