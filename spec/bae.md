@@ -758,6 +758,13 @@ Each Pending row is in exactly one state. The first that applies wins:
     set it aside.
 11. **Needs you**: the lookup left the answer to the person.
 
+A Pending row's title line reads from its draft. A row with no draft, from the
+tags or anywhere else, names its folder. A row with one shows the draft's
+album title and credits, and, while the draft is linked to a catalog's
+pressing or album, an arrow after the title: its facts were read from a
+catalog record. On every other row the arrow is hidden, not removed, so the
+title line keeps its width whichever way the row reads.
+
 A filter narrows Pending to one group of these states: needs you, in progress,
 identified, unmatched, or not looked up. Each entry counts the Pending rows it
 holds, whatever the list shows. Text typed into the search keeps the rows
