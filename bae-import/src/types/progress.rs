@@ -1,35 +1,3 @@
-/// Whether an import attaches its files for background upload. Every release's
-/// rows sync; a local import keeps its file paths only on this device.
-#[cfg(desktop)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ImportDestination {
-    /// Files stay in place on this device; never uploaded.
-    Local,
-    /// Stage files with coven for the cloud in the import transaction and
-    /// upload them in the background.
-    Remote {
-        /// Whether this device keeps the files whole once they are stored,
-        /// pinned rather than evictable.
-        pin: bool,
-    },
-}
-
-#[cfg(desktop)]
-impl ImportDestination {
-    /// Where an import goes: to the cloud, pinned as chosen, when the stored
-    /// choice is the cloud and the library has a cloud home; locally otherwise.
-    pub fn of(
-        storage: bae_preferences::ImportStoragePreferences,
-        storage_configured: bool,
-    ) -> Self {
-        if storage.cloud && storage_configured {
-            Self::Remote { pin: storage.pinned }
-        } else {
-            Self::Local
-        }
-    }
-}
-
 /// Progress updates during import
 #[cfg(desktop)]
 #[derive(Debug, Clone)]

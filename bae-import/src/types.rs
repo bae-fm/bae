@@ -13,16 +13,16 @@
 //! An import always lands as a local, playable release. An
 //! [`ImportDestination::Remote`] import then uploads to the cloud in the background.
 #[cfg(desktop)]
-use crate::cue_flac::CueSheet;
-#[cfg(desktop)]
 use crate::CoverSelection;
-#[cfg(desktop)]
-use bae_audio::ProbeResult;
 use bae_catalogs::credits::{ArtistCredit, CreditedRole};
 use bae_catalogs::works::WorkGraph;
-#[cfg(desktop)]
-use bae_db::DbTrack;
 use serde::{Deserialize, Serialize};
+#[cfg(desktop)]
+mod import_run;
+#[cfg(desktop)]
+pub use import_run::{
+    CueAnalyzedAudioFile, CueFlacAnalysis, ImportCommand, ImportDestination, TrackAudio, TrackFile,
+};
 #[cfg(desktop)]
 mod progress;
 #[cfg(desktop)]
@@ -47,8 +47,6 @@ pub use candidate_draft::{
     CandidateDraft, CandidateTrack, DraftTrack, LibraryDraft, LibraryTrack, ReleaseDraft,
     TrackBinding,
 };
-#[cfg(desktop)]
-use std::{path::PathBuf, sync::Arc};
 
 /// What the current draft's values were read from. Direct entry and a
 /// cleared draft carry no provenance.
@@ -300,76 +298,6 @@ impl TrackArtistAssignments {
             *assignments = Credited::normalized_list(std::mem::take(assignments));
         }
     }
-}
-
-/// One import track's metadata and the audio that supplies its samples.
-/// The metadata has the same shape whether the audio is a whole file or a
-/// track described by a CUE sheet.
-#[cfg(desktop)]
-#[derive(Debug, Clone)]
-pub struct TrackFile {
-    pub db_track: DbTrack,
-    pub audio: TrackAudio,
-}
-
-/// The resolved audio source for an import track. CUE sources share their
-/// sheet's analysis and identify the playable track within it.
-#[cfg(desktop)]
-#[derive(Debug, Clone)]
-pub enum TrackAudio {
-    Standalone { file_path: PathBuf, source_audio: crate::folder_scanner::ScannedAudio },
-    CueBacked { cue_pair: Arc<CueFlacAnalysis>, cue_index: usize },
-}
-
-/// Parsed CUE sheet plus probed container analysis, shared across all tracks
-/// that live inside the same file.
-#[cfg(desktop)]
-#[derive(Debug)]
-pub struct CueFlacAnalysis {
-    pub cue_sheet: CueSheet,
-    pub audio_files: Vec<CueAnalyzedAudioFile>,
-}
-
-#[cfg(desktop)]
-impl CueFlacAnalysis {
-    /// The audio a `FILE` directive of the sheet names, as the scan resolved
-    /// and probed it.
-    pub(crate) fn audio_file(&self, file_reference: &str) -> Option<&CueAnalyzedAudioFile> {
-        self.audio_files.iter().find(|file| file.file_reference == file_reference)
-    }
-}
-
-#[cfg(desktop)]
-#[derive(Debug)]
-pub struct CueAnalyzedAudioFile {
-    pub file_reference: String,
-    pub path: PathBuf,
-    pub probe: ProbeResult,
-}
-
-/// Import command sent to the service worker.
-///
-/// Carries only identifiers, never provider payloads. The worker consumes the
-/// candidate's stored draft and its prepared cover bytes; the one provider
-/// work it does is fetching the Discogs pictures of the artists it creates.
-///
-#[derive(Debug)]
-#[cfg(desktop)]
-pub struct ImportCommand {
-    pub import_id: String,
-    pub candidate_key: crate::CandidateKey,
-    pub source: super::release_candidate::CandidateSource,
-    #[cfg(any(test, feature = "test-utils"))]
-    pub selected_cover: Option<CoverSelection>,
-    pub destination: ImportDestination,
-    /// The release a test import picks for the candidate first.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub pick: Option<bae_identify::PressingLink>,
-    /// Whether a test import then reads the draft from the files' tags.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub read_file_tags: bool,
-    #[cfg(any(test, feature = "test-utils"))]
-    pub user_edit: Option<ReleaseUserEdit>,
 }
 
 #[cfg(test)]
