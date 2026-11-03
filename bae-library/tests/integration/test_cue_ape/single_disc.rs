@@ -1,75 +1,4 @@
-use bae_catalogs::discogs::models::DiscogsRelease;
-use bae_import::{ImportCommand, ImportDestination};
-use bae_library::LibraryManager;
-use bae_playback::{PlaybackProgress, PlaybackState};
-use bae_types::track_time::{TrackTime};
-use bae_util::content_type::ContentType;
-use std::path::Path;
-use std::time::Duration;
-use bae_import::test_imports::wait_for_import_complete;
-use bae_audio::test_samples::{assert_captured_matches_reference, samples_as_f32};
-use tempfile::TempDir;
-use tracing::info;
-
-fn copy_cue_ape_fixture(dir: &Path) {
-    use std::fs;
-    let fixture_dir = bae_import::test_fixtures::cue_ape_dir();
-    let ape_data = fs::read(fixture_dir.join("Test Album.ape"))
-        .unwrap_or_else(|_| panic!("CUE/APE fixture not found at {:?}", fixture_dir));
-    let cue_data = fs::read(fixture_dir.join("Test Album.cue"))
-        .unwrap_or_else(|_| panic!("CUE/APE fixture not found at {:?}", fixture_dir));
-    fs::write(dir.join("Test Album.ape"), &ape_data).expect("write ape");
-    fs::write(dir.join("Test Album.cue"), &cue_data).expect("write cue");
-    info!("Copied CUE/APE fixture: {} bytes APE", ape_data.len());
-}
-
-fn create_test_discogs_release() -> DiscogsRelease {
-    DiscogsRelease {
-        master_id: Some("test-master".to_string()),
-        ..bae_catalogs::test_releases::discogs_test_release(
-            "test-cue-ape",
-            "Test Album",
-            &[("Track One", "0:30"), ("Track Two", "0:30"), ("Track Three", "0:30")],
-        )
-    }
-}
-
-/// Ground truth durations derived from CUE INDEX 01 timings.
-/// CUE frames are 1/75th of a second.
-///
-/// Track boundaries (INDEX 01):
-///   1: 00:00:00 (0ms)
-///   2: 00:30:00 (30000ms)
-///   3: 01:00:00 (60000ms)
-/// Full file: 90000ms
-const EXPECTED_DURATIONS_MS: [u64; 3] = [
-    30000, // Track 1: 0 -> 30000
-    30000, // Track 2: 30000 -> 60000
-    30000, // Track 3: 60000 -> 90000
-];
-
-const FULL_FILE_DURATION_MS: u64 = 90000;
-
-/// Import the 3-track CUE/APE fixture into a fresh library, returning the
-/// manager, the imported release id, and the temp root that owns both the
-/// album folder and the database.
-async fn import_cue_ape_fixture() -> (bae_library::test_libraries::TestLibrary, String, TempDir) {
-    bae_util::test_logs::install();
-    let temp_root = TempDir::new().expect("temp root");
-    let album_dir = temp_root.path().join("album");
-    let db_dir = temp_root.path().join("db");
-    std::fs::create_dir_all(&album_dir).expect("album dir");
-    std::fs::create_dir_all(&db_dir).expect("db dir");
-    copy_cue_ape_fixture(&album_dir);
-
-    let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
-    let library = bae_library::test_libraries::open_test_library_with(&db_dir, fakes.providers()).await;
-    let release_id_key =
-        fakes.seed_discogs_test_release(create_test_discogs_release());
-    let release_id =
-        library.import_folder(album_dir, release_id_key).await;
-    (library, release_id, temp_root)
-}
+use super::*;
 
 /// Regression: CUE+APE imports must store per-track durations, not the full file duration.
 ///
@@ -140,8 +69,9 @@ async fn test_cue_ape_track2_samples_match_xld_reference() {
     let ape_data = std::fs::read(&ape_path).expect("read ape");
 
     // Decode the full APE file (no seeking -- APE frames are stateful)
-    let full_decoded = decode_audio(bae_audio::test_samples::filled_sparse_buffer(&ape_data), None, None)
-        .expect("decode full APE");
+    let full_decoded =
+        decode_audio(bae_audio::test_samples::filled_sparse_buffer(&ape_data), None, None)
+            .expect("decode full APE");
     let channels = full_decoded.channels as usize;
     let sample_rate = full_decoded.sample_rate;
 
@@ -159,8 +89,9 @@ async fn test_cue_ape_track2_samples_match_xld_reference() {
 
     // Decode XLD reference
     let ref_data = std::fs::read(&ref_path).expect("read reference");
-    let reference = decode_audio(bae_audio::test_samples::filled_sparse_buffer(&ref_data), None, None)
-        .expect("decode reference");
+    let reference =
+        decode_audio(bae_audio::test_samples::filled_sparse_buffer(&ref_data), None, None)
+            .expect("decode reference");
 
     assert_eq!(reference.sample_rate, sample_rate, "sample rate mismatch");
     assert_eq!(reference.channels, full_decoded.channels, "channel count mismatch");
@@ -218,8 +149,7 @@ async fn test_cue_ape_records_track_timing() {
 
         assert_eq!(af.content_type, ContentType::Ape, "Track {} should be APE", i + 1);
 
-        let resolved =
-            library.resolve_track_audio(&track.id).await.expect("resolve track audio");
+        let resolved = library.resolve_track_audio(&track.id).await.expect("resolve track audio");
         assert_eq!(resolved.segments.len(), 1);
         let segment = &resolved.segments[0];
 
@@ -245,44 +175,6 @@ async fn test_cue_ape_records_track_timing() {
 // ============================================================================
 // Playback fixture — imports the CUE+APE album and sets up playback
 // ============================================================================
-
-struct CueApeTestFixture {
-    playback_handle: bae_playback::PlaybackHandle,
-    progress_rx: tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
-    track_ids: Vec<String>,
-    capture_stream_rx: bae_playback::test_capture::CaptureStreamRx,
-    _temp_dir: TempDir,
-}
-
-impl CueApeTestFixture {
-    /// The 3-track CUE/APE album, imported and playing through a full-speed
-    /// capture sink.
-    async fn with_capture() -> Result<Self, Box<dyn std::error::Error>> {
-        let (library, imported) = bae_library::test_libraries::imported_release_setup(
-            create_test_discogs_release(),
-            "test",
-            uuid::Uuid::new_v4().to_string(),
-            copy_cue_ape_fixture,
-        )
-        .await?;
-        assert_eq!(imported.track_ids.len(), 3, "Should have 3 tracks from CUE/APE");
-        let (playback_handle, capture_stream_rx) =
-            bae_library::test_libraries::start_capture_playback(&library, bae_playback::test_capture::TestAudioDevice::Capture)
-                .await;
-        let progress_rx = playback_handle.subscribe_progress();
-        Ok(Self {
-            playback_handle,
-            progress_rx,
-            track_ids: imported.track_ids,
-            capture_stream_rx,
-            _temp_dir: imported.temp_dir,
-        })
-    }
-
-    async fn next_capture_stream(&mut self) -> bae_playback::CapturedStream {
-        bae_playback::test_capture::next_capture_stream(&mut self.capture_stream_rx).await
-    }
-}
 
 // ============================================================================
 // Playback tests
@@ -319,8 +211,12 @@ async fn test_cue_ape_track_playback_matches_reference() {
         let fixture_dir = bae_import::test_fixtures::cue_ape_dir();
         let reference_data =
             std::fs::read(fixture_dir.join(reference_file)).expect("read reference");
-        let reference = decode_audio(bae_audio::test_samples::filled_sparse_buffer(&reference_data), None, None)
-            .expect("decode reference");
+        let reference = decode_audio(
+            bae_audio::test_samples::filled_sparse_buffer(&reference_data),
+            None,
+            None,
+        )
+        .expect("decode reference");
         let channels = reference.channels as usize;
         let sample_rate = reference.sample_rate;
         let reference_f32 = samples_as_f32(&reference);
@@ -331,8 +227,7 @@ async fn test_cue_ape_track_playback_matches_reference() {
         let max_alignment = sample_rate as usize * channels * 2;
         let needed = max_alignment + 500 * channels;
         let captured_snapshot =
-            captured.wait_for_samples(needed + 1, Duration::from_secs(60))
-                .await;
+            captured.wait_for_samples(needed + 1, Duration::from_secs(60)).await;
         assert!(
             captured_snapshot.len() > needed,
             "not enough captured samples after 60s for {label}: {} (needed {needed})",
@@ -371,12 +266,15 @@ async fn test_cue_ape_seek() {
     let _play_stream = fixture.next_capture_stream().await;
 
     // Wait for playback to start
-    let started =
-        bae_util::test_channels::next_matching(&mut fixture.progress_rx, Duration::from_secs(5), |event| {
+    let started = bae_util::test_channels::next_matching(
+        &mut fixture.progress_rx,
+        Duration::from_secs(5),
+        |event| {
             matches!(event, PlaybackProgress::StateChanged { state: PlaybackState::Playing { .. } })
                 .then_some(())
-        })
-        .await;
+        },
+    )
+    .await;
     assert!(started.is_some(), "Playback should start");
 
     // Seek to 27s — capture the new stream and wait for new audio post-seek
@@ -391,16 +289,16 @@ async fn test_cue_ape_seek() {
     let fixture_dir = bae_import::test_fixtures::cue_ape_dir();
     let reference_data =
         std::fs::read(fixture_dir.join("02 Test Artist - Track Two.flac")).expect("read reference");
-    let reference = decode_audio(bae_audio::test_samples::filled_sparse_buffer(&reference_data), None, None)
-        .expect("decode reference");
+    let reference =
+        decode_audio(bae_audio::test_samples::filled_sparse_buffer(&reference_data), None, None)
+            .expect("decode reference");
     let channels = reference.channels as usize;
     let sample_rate = reference.sample_rate;
     let reference_f32 = samples_as_f32(&reference);
 
     let needed_for_seek = sample_rate as usize * channels;
     let captured_snapshot =
-        captured.wait_for_samples(needed_for_seek, Duration::from_secs(60))
-            .await;
+        captured.wait_for_samples(needed_for_seek, Duration::from_secs(60)).await;
 
     assert!(
         captured_snapshot.len() >= needed_for_seek,
@@ -510,9 +408,12 @@ async fn test_cue_ape_auto_advance_no_replay() {
     fixture.playback_handle.add_to_queue(vec![track2_id.clone()]);
 
     // Wait for track 1 to start
-    let started =
-        bae_playback::test_capture::wait_until_playing(&mut fixture.progress_rx, &track1_id, Duration::from_secs(5))
-            .await;
+    let started = bae_playback::test_capture::wait_until_playing(
+        &mut fixture.progress_rx,
+        &track1_id,
+        Duration::from_secs(5),
+    )
+    .await;
     assert!(started, "Track 1 should start playing");
 
     // Seek to 28s into the 30s track so it completes quickly, then gaplessly
@@ -522,17 +423,21 @@ async fn test_cue_ape_auto_advance_no_replay() {
     let mut captured = fixture.next_capture_stream().await;
 
     // Wait for track 2 to start via auto-advance, then capture samples.
-    let track2_started =
-        bae_playback::test_capture::wait_until_playing(&mut fixture.progress_rx, &track2_id, Duration::from_secs(15))
-            .await;
+    let track2_started = bae_playback::test_capture::wait_until_playing(
+        &mut fixture.progress_rx,
+        &track2_id,
+        Duration::from_secs(15),
+    )
+    .await;
     assert!(track2_started, "Track 2 should auto-advance after track 1 completes");
 
     // === GROUND TRUTH: XLD-split reference FLAC ===
     let fixture_dir = bae_import::test_fixtures::cue_ape_dir();
     let reference_data =
         std::fs::read(fixture_dir.join("02 Test Artist - Track Two.flac")).expect("read reference");
-    let reference = decode_audio(bae_audio::test_samples::filled_sparse_buffer(&reference_data), None, None)
-        .expect("decode reference");
+    let reference =
+        decode_audio(bae_audio::test_samples::filled_sparse_buffer(&reference_data), None, None)
+            .expect("decode reference");
     let channels = reference.channels as usize;
     let sample_rate = reference.sample_rate;
 
@@ -547,8 +452,7 @@ async fn test_cue_ape_auto_advance_no_replay() {
     // alignment would exceed tolerance.
     let max_alignment = sample_rate as usize * channels * 5;
     let needed = max_alignment + 500 * channels;
-    let captured_snapshot =
-        captured.wait_for_samples(needed + 1, Duration::from_secs(60)).await;
+    let captured_snapshot = captured.wait_for_samples(needed + 1, Duration::from_secs(60)).await;
     assert!(
         captured_snapshot.len() > needed,
         "not enough captured samples after 60s: {} (needed {needed})",

@@ -1,3 +1,5 @@
+use super::*;
+
 // ──────────────────────────────────── media ─────────────────────────────────
 
 #[tokio::test(flavor = "multi_thread")]
@@ -393,9 +395,10 @@ async fn musicbrainz_id_surfaces_when_present() {
         .await
         .unwrap();
 
-    let services = bae_app::test_services::start_services(&library).await.expect("the test library's services start");
-    let router =
-        bae_subsonic::router(services, credential(), bae_diagnostics::Diagnostics::noop());
+    let services = bae_app::test_services::start_services(&library)
+        .await
+        .expect("the test library's services start");
+    let router = bae_subsonic::router(services, credential(), bae_diagnostics::Diagnostics::noop());
 
     let artists = call(&router, "getArtists", &authed("f=json")).await;
     let sub = artists.sub();
@@ -434,8 +437,7 @@ async fn lossy_track_reports_bit_depth_zero() {
     // (AAC-in-MP4 is unsuitable: the MP4 sound sample entry always declares 16,
     // so FFmpeg reports a bit depth for it; Opus carries none.)
     let (services, release_id, _temps) = seed_lossy_release().await;
-    let router =
-        bae_subsonic::router(services, credential(), bae_diagnostics::Diagnostics::noop());
+    let router = bae_subsonic::router(services, credential(), bae_diagnostics::Diagnostics::noop());
 
     let album = call(&router, "getAlbum", &authed(&format!("f=json&id=al-{release_id}"))).await;
     let song = &album.sub()["album"]["song"][0];
@@ -451,7 +453,8 @@ async fn lossy_track_reports_bit_depth_zero() {
 /// Import the single-file lossy Opus fixture through the normal import path.
 async fn seed_lossy_release() -> (AppServices, String, Vec<TempDir>) {
     let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
-    let (library, db_temp) = bae_library::test_libraries::setup_test_library_with(fakes.providers()).await;
+    let (library, db_temp) =
+        bae_library::test_libraries::setup_test_library_with(fakes.providers()).await;
     let temp = TempDir::new().unwrap();
     let dir = temp.path().join("lossy album");
     std::fs::create_dir_all(&dir).unwrap();
@@ -459,14 +462,19 @@ async fn seed_lossy_release() -> (AppServices, String, Vec<TempDir>) {
     std::fs::copy(&fixture, dir.join("track.opus")).unwrap();
 
     let discogs_key = fakes.seed_discogs_test_release(DiscogsRelease {
-            country: None,
-            labels: vec![],
-            artists: vec![bae_catalogs::test_releases::discogs_artist("discogs-lossy-artist", "Lossy Artist")],
-            ..bae_catalogs::test_releases::discogs_test_release("test-lossy", "Lossy Album", &[("Only Track", "0:10")])
-        },
-    );
-    let import =
-        library.start_discogs_import().await;
+        country: None,
+        labels: vec![],
+        artists: vec![bae_catalogs::test_releases::discogs_artist(
+            "discogs-lossy-artist",
+            "Lossy Artist",
+        )],
+        ..bae_catalogs::test_releases::discogs_test_release(
+            "test-lossy",
+            "Lossy Album",
+            &[("Only Track", "0:10")],
+        )
+    });
+    let import = library.start_discogs_import().await;
     let import_id = "lossy".to_string();
     import
         .send_command(ImportCommand {
@@ -482,9 +490,9 @@ async fn seed_lossy_release() -> (AppServices, String, Vec<TempDir>) {
             read_file_tags: false,
             pick: Some(bae_identify::PressingLink {
                 record: bae_catalogs::records::LookupRef::new(
-            bae_catalogs::catalog::LookupCatalog::Discogs,
-            discogs_key,
-        ),
+                    bae_catalogs::catalog::LookupCatalog::Discogs,
+                    discogs_key,
+                ),
                 partners: vec![],
             }),
             user_edit: None,
@@ -493,7 +501,9 @@ async fn seed_lossy_release() -> (AppServices, String, Vec<TempDir>) {
         .unwrap();
     let mut rx = import.subscribe_import(import_id);
     let (release_id, _album) = bae_import::test_imports::wait_for_import_complete(&mut rx).await;
-    let services = bae_app::test_services::start_services(&library).await.expect("the test library's services start");
+    let services = bae_app::test_services::start_services(&library)
+        .await
+        .expect("the test library's services start");
     (services, release_id, vec![db_temp, temp])
 }
 
@@ -578,9 +588,10 @@ async fn an_album_prints_its_credit_line_and_lists_every_credited_artist() {
         .insert_album_with_release_and_tracks(&album, &credits, &release, &[], &[], &[])
         .await
         .unwrap();
-    let services = bae_app::test_services::start_services(&library).await.expect("the test library's services start");
-    let router =
-        bae_subsonic::router(services, credential(), bae_diagnostics::Diagnostics::noop());
+    let services = bae_app::test_services::start_services(&library)
+        .await
+        .expect("the test library's services start");
+    let router = bae_subsonic::router(services, credential(), bae_diagnostics::Diagnostics::noop());
 
     let response = call(&router, "getAlbumList2", &authed("f=json&type=alphabeticalByName")).await;
 

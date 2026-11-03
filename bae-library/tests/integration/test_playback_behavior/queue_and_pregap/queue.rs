@@ -1,3 +1,6 @@
+use crate::test_playback_behavior::fixtures::*;
+use crate::test_playback_behavior::support::*;
+
 #[tokio::test]
 async fn test_previous_track_navigation() {
     with_fixture(PlaybackTestFixture::new(), async |fixture| {

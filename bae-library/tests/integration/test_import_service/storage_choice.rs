@@ -1,3 +1,5 @@
+use super::*;
+
 /// An import goes where the stored storage choice says when it starts; the
 /// caller names only the candidate.
 #[tokio::test]
@@ -22,8 +24,7 @@ async fn an_import_goes_where_the_stored_choice_says_as_it_starts() {
     let mut scan_rx = f.handle.every_scan_event_for_test();
     f.handle.add_watched_folder(collection.to_path_buf()).await.unwrap();
     // The scan reads both folders at once, so either can be found first.
-    let mut unfound: std::collections::HashSet<&bae_import::CandidateKey> =
-        keys.iter().collect();
+    let mut unfound: std::collections::HashSet<&bae_import::CandidateKey> = keys.iter().collect();
     wait_for_scan_event(&mut scan_rx, "both albums", |event| {
         if let ScanEvent::FolderCandidate { candidate: c, .. } = event {
             unfound.remove(&bae_import::CandidateKey::folder(&c.path));
@@ -71,10 +72,7 @@ async fn an_import_goes_where_the_stored_choice_says_as_it_starts() {
 
     f.library.set_import_to_cloud(false).await.unwrap();
     assert!(
-        matches!(
-            import_outcome(&f, &keys[1]).await,
-            bae_import::ImportProgress::Complete { .. }
-        ),
+        matches!(import_outcome(&f, &keys[1]).await, bae_import::ImportProgress::Complete { .. }),
         "the local choice completes the release where it is"
     );
 }

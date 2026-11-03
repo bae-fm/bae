@@ -272,12 +272,59 @@ fn discogs_release(title: &str, tracks: &[&str]) -> DiscogsRelease {
 
 // ── Tests ───────────────────────────────────────────────────────────────────
 
-include!("test_import_service/scan_and_watch.rs");
-include!("test_import_service/audio_and_loudness.rs");
-include!("test_import_service/reimports.rs");
-include!("test_import_service/storage_choice.rs");
-include!("test_import_service/cloud_moves.rs");
-include!("test_import_service/works_and_covers.rs");
-include!("test_import_service/identity.rs");
-include!("test_import_service/validation_and_mapping.rs");
-include!("test_import_service/non_utf8_names.rs");
+mod audio_and_loudness;
+mod cloud_moves;
+mod identity;
+// Files whose names aren't UTF-8. Only Linux takes such a name: macOS and
+// Windows store names as Unicode.
+#[cfg(target_os = "linux")]
+mod non_utf8_names;
+mod reimports;
+mod scan_and_watch;
+mod storage_choice;
+mod validation_and_mapping;
+mod works_and_covers;
+
+/// coven verifies a file's plaintext against its record's content hash on
+/// every cloud fetch, so the coven file a `covers` row references must hold
+/// the bytes actually stored — the resized thumbnail the import writes, never
+/// the image it was made from — and their size. The record carries the
+/// file's hash once it is stored.
+async fn assert_cover_row_describes_stored_bytes(f: &ImportFixture, release_id: &str) {
+    f.library
+        .database()
+        .find_library_image(release_id, &LibraryImageType::Cover)
+        .await
+        .unwrap()
+        .expect("cover row");
+    let bytes = bae_library::test_libraries::read_cover_image_bytes(&f.library, release_id)
+        .await
+        .expect("cover file readable");
+    let file = f
+        .library
+        .library_image_file_for_test(release_id, &LibraryImageType::Cover)
+        .await
+        .unwrap()
+        .expect("the cover's file");
+    if let coven::FilePlace::Cloud { content_hash, .. } = file.place() {
+        let stored_hash: String =
+            content_hash.as_bytes().iter().map(|byte| format!("{byte:02x}")).collect();
+        assert_eq!(stored_hash, bae_util::fs::hash_bytes(&bytes));
+    }
+    assert_eq!(
+        file.size(),
+        bytes.len() as u64,
+        "the cover's coven file must be the size of the stored bytes",
+    );
+}
+
+/// Wait for a scan event matching `pred`; panics at the hang guard.
+async fn wait_for_scan_event(
+    rx: &mut tokio::sync::mpsc::UnboundedReceiver<ScanEvent>,
+    what: &str,
+    mut pred: impl FnMut(&ScanEvent) -> bool,
+) {
+    bae_util::test_channels::next_matching(rx, HANG_GUARD, |event| pred(&event).then_some(()))
+        .await
+        .unwrap_or_else(|| panic!("timed out waiting for {what}"));
+}

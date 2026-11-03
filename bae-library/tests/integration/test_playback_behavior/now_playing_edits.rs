@@ -1,3 +1,5 @@
+use crate::test_playback_behavior::support::*;
+
 /// `fixture`'s playback playing its first track with the queue's context
 /// holding the rest of the release, and that release's id.
 async fn playing_first_track(fixture: &PlaybackTestFixture) -> String {
@@ -31,13 +33,6 @@ async fn paused_on_first_track(fixture: &PlaybackTestFixture) -> String {
     let release_id = playing_first_track(fixture).await;
     fixture.playback_handle.pause();
     release_id
-}
-
-/// The now-playing values of `fixture`'s library, as a screen reads them.
-fn playback_values(
-    fixture: &PlaybackTestFixture,
-) -> bae_db::live_query::LiveValues<Option<bae_playback::NowPlayingValues>> {
-    fixture.library.values_until_closed(fixture.library.subscribe_now_playing())
 }
 
 /// What the now-playing value shows for `track_id`, once a value shows it

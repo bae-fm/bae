@@ -1,6 +1,8 @@
+use crate::test_playback_behavior::fixtures::*;
+use crate::test_playback_behavior::support::*;
+
 /// A track whose name isn't UTF-8 plays: playback opens the original by the
-/// path the import recorded. Only Linux takes such a name.
-#[cfg(target_os = "linux")]
+/// path the import recorded.
 #[tokio::test]
 async fn a_track_whose_name_is_not_utf8_plays() {
     use std::os::unix::ffi::OsStrExt;
@@ -27,10 +29,12 @@ async fn a_track_whose_name_is_not_utf8_plays() {
     let [track_id] = imported.track_ids.as_slice() else {
         panic!("one track: {:?}", imported.track_ids);
     };
-    let (playback_handle, _capture_stream_rx) = bae_library::test_libraries::start_capture_playback(&library,
-        bae_playback::test_capture::TestAudioDevice::RealtimeCapture,
-    )
-    .await;
+    let (playback_handle, _capture_stream_rx) =
+        bae_library::test_libraries::start_capture_playback(
+            &library,
+            bae_playback::test_capture::TestAudioDevice::RealtimeCapture,
+        )
+        .await;
     let mut progress_rx = playback_handle.subscribe_progress();
 
     playback_handle.play(track_id.clone());

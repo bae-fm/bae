@@ -1,3 +1,6 @@
+use crate::test_playback_behavior::fixtures::*;
+use crate::test_playback_behavior::support::*;
+
 /// Playback over uploaded files with neither originals nor cached audio present.
 struct RemoteMultiWindowPlayback {
     playback_handle: bae_playback::PlaybackHandle,

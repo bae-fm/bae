@@ -1,23 +1,27 @@
-use bae_audio::test_samples::samples_as_f32;
-use bae_catalogs::discogs::models::DiscogsRelease;
-use bae_import::test_imports::wait_for_import_complete;
-use bae_import::{ImportCommand, ImportDestination};
-use bae_library::test_libraries::{imported_release_setup, open_test_library, TestLibrary};
-use bae_playback::{
+use super::fixtures::*;
+
+pub(super) use bae_audio::test_samples::samples_as_f32;
+pub(super) use bae_catalogs::discogs::models::DiscogsRelease;
+pub(super) use bae_import::test_imports::wait_for_import_complete;
+pub(super) use bae_import::{ImportCommand, ImportDestination};
+pub(super) use bae_library::test_libraries::{
+    imported_release_setup, open_test_library, TestLibrary,
+};
+pub(super) use bae_playback::{
     LoadingTrack, PlaybackPauseBoundary, PlaybackPauseReason, PlaybackProgress,
     PlaybackSideCountdown, PlaybackState, RepeatMode,
 };
-use bae_preferences::SidePauseCountdown;
-use bae_types::track_time::TrackTime;
-use coven::{IdSource, SequentialIds};
-use std::sync::Arc;
-use std::time::{Duration, Instant};
-use tempfile::TempDir;
-use tracing::debug;
+pub(super) use bae_preferences::SidePauseCountdown;
+pub(super) use bae_types::track_time::TrackTime;
+pub(super) use coven::{IdSource, SequentialIds};
+pub(super) use std::sync::Arc;
+pub(super) use std::time::{Duration, Instant};
+pub(super) use tempfile::TempDir;
+pub(super) use tracing::debug;
 
 /// Return the first `StateChanged` state that satisfies `predicate`, or `None`
 /// on timeout.
-async fn wait_for_state_on<F>(
+pub(super) async fn wait_for_state_on<F>(
     progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
     predicate: F,
     timeout_duration: Duration,
@@ -34,7 +38,7 @@ where
 
 /// Collect every StateChanged state in arrival order until one satisfies `done`
 /// (that final state is included) or the timeout elapses.
-async fn collect_states_on<F>(
+pub(super) async fn collect_states_on<F>(
     progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
     done: F,
     timeout_duration: Duration,
@@ -57,7 +61,7 @@ where
 
 /// The next `PositionUpdate`'s track-relative `position_ms`, or `None` if none
 /// arrives within `timeout_duration`.
-async fn next_position(
+pub(super) async fn next_position(
     progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
     timeout_duration: Duration,
 ) -> Option<i64> {
@@ -71,12 +75,12 @@ async fn next_position(
 /// How long a playing track's position may take to reach the mark a test waits
 /// for before the wait counts as a stall. Tests assert only that the position
 /// gets there, not how fast.
-const POSITION_BACKSTOP: Duration = Duration::from_secs(10);
+pub(super) const POSITION_BACKSTOP: Duration = Duration::from_secs(10);
 
 /// The first `position_ms` reported for `track_id`. Where a track starts is
 /// what tells a skipped pregap (it starts at 0) from a played one (it starts
 /// counting up from a negative value).
-async fn first_position_of(
+pub(super) async fn first_position_of(
     progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
     track_id: &str,
 ) -> i64 {
@@ -87,7 +91,7 @@ async fn first_position_of(
 
 /// The first `position_ms` reported for `track_id` that satisfies `reached`,
 /// or `None` if none does within `POSITION_BACKSTOP`.
-async fn wait_for_track_position_where(
+pub(super) async fn wait_for_track_position_where(
     progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
     track_id: &str,
     reached: impl Fn(i64) -> bool,
@@ -105,7 +109,7 @@ async fn wait_for_track_position_where(
 
 /// Return the first `position_ms` greater than the first position update seen,
 /// or `None` if the position does not advance.
-async fn wait_for_position_advance(
+pub(super) async fn wait_for_position_advance(
     progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
 ) -> Option<i64> {
     let anchor = next_position(progress_rx, Duration::from_secs(30))
@@ -126,10 +130,10 @@ async fn wait_for_position_advance(
 
 /// How long `play` may take to reach `Playing` before the wait counts as a
 /// hang. Tests assert only that `Playing` arrives, not how fast.
-const PLAY_START_BACKSTOP: Duration = Duration::from_secs(30);
+pub(super) const PLAY_START_BACKSTOP: Duration = Duration::from_secs(30);
 
 /// Play `track_id` and wait for it to reach `Playing`.
-async fn play_and_wait_on(
+pub(super) async fn play_and_wait_on(
     handle: &bae_playback::PlaybackHandle,
     progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
     track_id: &str,
@@ -151,7 +155,10 @@ async fn play_and_wait_on(
 
 /// Wait until `follow` tells that this device holds every byte of
 /// `track_id`: one stretch from its start to its end.
-async fn wait_for_whole_track(follow: &mut bae_playback::TrackBufferedFollow, track_id: &str) {
+pub(super) async fn wait_for_whole_track(
+    follow: &mut bae_playback::TrackBufferedFollow,
+    track_id: &str,
+) {
     let whole = vec![bae_playback::TrackSpan { start: 0.0, end: 1.0 }];
     tokio::time::timeout(PLAY_START_BACKSTOP, async {
         loop {
@@ -167,7 +174,7 @@ async fn wait_for_whole_track(follow: &mut bae_playback::TrackBufferedFollow, tr
 
 /// Wait for the next `Seeked` event and return its `position_ms`, or `None` on
 /// timeout.
-async fn wait_for_seeked_on(
+pub(super) async fn wait_for_seeked_on(
     progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
     timeout_duration: Duration,
 ) -> Option<u64> {
@@ -183,7 +190,7 @@ async fn wait_for_seeked_on(
 
 /// The volume `settled_events_on` sets as its sentinel: no test sets it
 /// otherwise, so its `VolumeChanged` is unmistakable.
-const SENTINEL_VOLUME: f32 = 0.4321;
+pub(super) const SENTINEL_VOLUME: f32 = 0.4321;
 
 /// Every progress event up to a sentinel command sent now, in arrival order,
 /// sentinel excluded. The service handles commands one at a time in the order
@@ -193,7 +200,7 @@ const SENTINEL_VOLUME: f32 = 0.4321;
 /// and `subscribe_positions()` hold what those events left. Setting the
 /// volume steers neither transport nor the queue, and leaves a side-pause
 /// countdown running.
-async fn settled_events_on(
+pub(super) async fn settled_events_on(
     handle: &bae_playback::PlaybackHandle,
     progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
 ) -> Vec<PlaybackProgress> {
@@ -216,7 +223,7 @@ async fn settled_events_on(
 }
 
 /// The `StateChanged` states among `events`.
-fn states_in(events: &[PlaybackProgress]) -> Vec<&PlaybackState> {
+pub(super) fn states_in(events: &[PlaybackProgress]) -> Vec<&PlaybackState> {
     events
         .iter()
         .filter_map(|event| match event {
@@ -229,7 +236,7 @@ fn states_in(events: &[PlaybackProgress]) -> Vec<&PlaybackState> {
 /// Wait for `Playing` and return whether it arrived, plus the queue entries at
 /// that moment. `play` gives queue entries fresh ids, so a test that edits the
 /// queue must use these.
-async fn wait_for_playing_capturing_queue_on(
+pub(super) async fn wait_for_playing_capturing_queue_on(
     playback_handle: &bae_playback::PlaybackHandle,
     progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
     timeout_duration: Duration,
@@ -257,7 +264,7 @@ async fn wait_for_playing_capturing_queue_on(
 
 /// Assert that the playing position advances. This catches a stalled audio
 /// stream that a queue-only assertion would miss.
-async fn assert_position_advances(
+pub(super) async fn assert_position_advances(
     progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
 ) {
     wait_for_position_advance(progress_rx)
@@ -268,7 +275,7 @@ async fn assert_position_advances(
 /// Return the first `position_ms` reported for `track_id`, or `None` on
 /// timeout. Updates for other tracks are skipped, since one for the finishing
 /// track can still arrive right after a boundary.
-async fn wait_for_track_position(
+pub(super) async fn wait_for_track_position(
     progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
     track_id: &str,
     timeout_duration: Duration,
@@ -283,7 +290,7 @@ async fn wait_for_track_position(
 }
 
 /// Wait for the next `MuteChanged` and return its flag, or panic on timeout.
-async fn wait_for_mute(
+pub(super) async fn wait_for_mute(
     progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
     timeout_duration: Duration,
 ) -> bool {
@@ -298,17 +305,17 @@ async fn wait_for_mute(
 /// The progress events a track boundary produced. A gapless handoff reports the
 /// finishing track's `DecodeStats` with no `TrackCompleted`, and no `Loading`
 /// state for the incoming track; a stream rebuild reports both.
-struct BoundaryOutcome {
-    decode_stats_for_finishing: bool,
-    completed_for_finishing: bool,
-    loading_for_incoming: bool,
-    reached_incoming: bool,
-    decode_errors: u32,
+pub(super) struct BoundaryOutcome {
+    pub(super) decode_stats_for_finishing: bool,
+    pub(super) completed_for_finishing: bool,
+    pub(super) loading_for_incoming: bool,
+    pub(super) reached_incoming: bool,
+    pub(super) decode_errors: u32,
 }
 
 /// Record what the boundary from `finishing` to `incoming` produced, until
 /// `incoming` reaches `Playing` or the timeout elapses.
-async fn observe_boundary(
+pub(super) async fn observe_boundary(
     progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
     finishing: &str,
     incoming: &str,
@@ -354,7 +361,7 @@ async fn observe_boundary(
 /// Start a playback service on a capture sink paced to wall-clock time, so no
 /// audio device is needed. Hold the returned receiver for the service's
 /// lifetime.
-async fn start_capture_service(
+pub(super) async fn start_capture_service(
     library: &TestLibrary,
 ) -> (bae_playback::PlaybackHandle, bae_playback::test_capture::CaptureStreamRx) {
     start_capture_service_with_restore(library, true).await
@@ -362,7 +369,7 @@ async fn start_capture_service(
 
 /// `start_capture_service` with the platform's "Restore on launch" preference
 /// explicit, for tests that cover the restore-off launch path.
-async fn start_capture_service_with_restore(
+pub(super) async fn start_capture_service_with_restore(
     library: &TestLibrary,
     restore_playback: bool,
 ) -> (bae_playback::PlaybackHandle, bae_playback::test_capture::CaptureStreamRx) {
@@ -378,7 +385,7 @@ async fn start_capture_service_with_restore(
 }
 
 /// A playback service over a library in a temporary directory.
-trait PlaybackFixture {
+pub(super) trait PlaybackFixture {
     /// Stop playback, then close the library; the directory goes with the
     /// fixture after both.
     async fn close(self);
@@ -387,7 +394,7 @@ trait PlaybackFixture {
 /// Run `test` over the fixture `setup` builds, then close it before its
 /// directory is deleted: a library still working as its directory is
 /// deleted recreates files in it and leaves the directory behind.
-async fn with_fixture<F: PlaybackFixture>(
+pub(super) async fn with_fixture<F: PlaybackFixture>(
     setup: impl std::future::Future<Output = F>,
     test: impl AsyncFnOnce(&mut F),
 ) {
@@ -397,17 +404,17 @@ async fn with_fixture<F: PlaybackFixture>(
 }
 
 /// A playback service over an imported three-track album.
-struct PlaybackTestFixture {
-    playback_handle: bae_playback::PlaybackHandle,
-    progress_rx: tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
-    track_ids: Vec<String>,
-    album_dir: std::path::PathBuf,
+pub(super) struct PlaybackTestFixture {
+    pub(super) playback_handle: bae_playback::PlaybackHandle,
+    pub(super) progress_rx: tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
+    pub(super) track_ids: Vec<String>,
+    pub(super) album_dir: std::path::PathBuf,
     /// The library the album was imported into, which tests read and edit
     /// directly.
-    library: TestLibrary,
+    pub(super) library: TestLibrary,
     /// Dropping this receiver would make stream creation fail.
-    _capture_stream_rx: bae_playback::CapturedStreams,
-    _temp_dir: TempDir,
+    pub(super) _capture_stream_rx: bae_playback::CapturedStreams,
+    pub(super) _temp_dir: TempDir,
 }
 impl PlaybackFixture for PlaybackTestFixture {
     async fn close(self) {
@@ -417,7 +424,7 @@ impl PlaybackFixture for PlaybackTestFixture {
 }
 
 impl PlaybackTestFixture {
-    async fn new() -> Self {
+    pub(super) async fn new() -> Self {
         let (library, imported) = imported_release_setup(
             create_test_album(),
             "playback",
@@ -444,7 +451,7 @@ impl PlaybackTestFixture {
         }
     }
     /// Wait for a specific state change with timeout
-    async fn wait_for_state<F>(
+    pub(super) async fn wait_for_state<F>(
         &mut self,
         predicate: F,
         timeout_duration: Duration,
@@ -455,7 +462,7 @@ impl PlaybackTestFixture {
         wait_for_state_on(&mut self.progress_rx, predicate, timeout_duration).await
     }
     /// See `wait_for_playing_capturing_queue_on`.
-    async fn wait_for_playing_capturing_queue(
+    pub(super) async fn wait_for_playing_capturing_queue(
         &mut self,
         timeout_duration: Duration,
     ) -> (bool, Vec<bae_playback::QueueEntry>) {
@@ -467,7 +474,10 @@ impl PlaybackTestFixture {
         .await
     }
     /// Wait for a position update with timeout (returns position in ms)
-    async fn wait_for_position_update(&mut self, timeout_duration: Duration) -> Option<u64> {
+    pub(super) async fn wait_for_position_update(
+        &mut self,
+        timeout_duration: Duration,
+    ) -> Option<u64> {
         bae_util::test_channels::next_matching(&mut self.progress_rx, timeout_duration, |event| {
             match event {
                 PlaybackProgress::PositionUpdate { position_ms, .. } => Some(
@@ -482,7 +492,7 @@ impl PlaybackTestFixture {
     /// Wait for the first position update past `floor_ms`, or `None` on
     /// timeout. The first update after a seek can still report the seek target,
     /// so only a position past it proves playback moved.
-    async fn wait_for_position_past(
+    pub(super) async fn wait_for_position_past(
         &mut self,
         floor_ms: u64,
         timeout_duration: Duration,
@@ -502,16 +512,16 @@ impl PlaybackTestFixture {
         .await
     }
     /// Wait for a Seeked event with timeout (returns position in ms)
-    async fn wait_for_seeked(&mut self, timeout_duration: Duration) -> Option<u64> {
+    pub(super) async fn wait_for_seeked(&mut self, timeout_duration: Duration) -> Option<u64> {
         wait_for_seeked_on(&mut self.progress_rx, timeout_duration).await
     }
     /// See `settled_events_on`.
-    async fn settled_events(&mut self) -> Vec<PlaybackProgress> {
+    pub(super) async fn settled_events(&mut self) -> Vec<PlaybackProgress> {
         settled_events_on(&self.playback_handle, &mut self.progress_rx).await
     }
     /// Collect every `StateChanged` state in arrival order until one satisfies
     /// `done` (that final state is included) or the timeout elapses.
-    async fn collect_states_until<F>(
+    pub(super) async fn collect_states_until<F>(
         &mut self,
         done: F,
         timeout_duration: Duration,
@@ -521,4 +531,26 @@ impl PlaybackTestFixture {
     {
         collect_states_on(&mut self.progress_rx, done, timeout_duration).await
     }
+}
+
+#[derive(Clone, Copy)]
+pub(super) enum SkipDirection {
+    Next,
+    Previous,
+}
+
+impl SkipDirection {
+    pub(super) fn label(self) -> &'static str {
+        match self {
+            SkipDirection::Next => "Next",
+            SkipDirection::Previous => "Previous",
+        }
+    }
+}
+
+/// The now-playing values of `fixture`'s library, as a screen reads them.
+pub(super) fn playback_values(
+    fixture: &PlaybackTestFixture,
+) -> bae_db::live_query::LiveValues<Option<bae_playback::NowPlayingValues>> {
+    fixture.library.values_until_closed(fixture.library.subscribe_now_playing())
 }

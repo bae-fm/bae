@@ -1,3 +1,5 @@
+use super::*;
+
 // ── Artist credits resolve against the library when the import commits ─────
 //
 // Two folders credit one artist: "Album One" is picked from a Discogs release
@@ -48,7 +50,10 @@ async fn import_and_wait(
     provenance: bae_import::test_imports::DraftSource,
 ) -> (String, String) {
     let import_id = uuid::Uuid::new_v4().to_string();
-    f.handle.send_command(bae_import::test_imports::folder_import(&import_id, dir, provenance)).await.unwrap();
+    f.handle
+        .send_command(bae_import::test_imports::folder_import(&import_id, dir, provenance))
+        .await
+        .unwrap();
     let mut progress_rx = f.handle.subscribe_import(import_id);
     bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await
 }
@@ -75,7 +80,9 @@ async fn artists_named(f: &ImportFixture, name: &str) -> Vec<bae_db::DbArtist> {
 
 /// The artist the album's first credit names.
 async fn album_artist_id(f: &ImportFixture, album_id: &str) -> String {
-    f.library.database().get_artists_for_album(album_id)
+    f.library
+        .database()
+        .get_artists_for_album(album_id)
         .await
         .unwrap()
         .first()
@@ -104,7 +111,8 @@ async fn a_tagged_album_after_a_catalog_album_joins_its_artist() {
     let tagged_dir = tagged_album_folder(&f, "album-two", "Album Two", "Artist Name");
 
     let (_, catalog_album) = import_and_wait(&f, catalog_dir, catalog).await;
-    let (_, tagged_album) = import_and_wait(&f, tagged_dir, bae_import::test_imports::DraftSource::FileTags).await;
+    let (_, tagged_album) =
+        import_and_wait(&f, tagged_dir, bae_import::test_imports::DraftSource::FileTags).await;
 
     let artists = artists_named(&f, "Artist Name").await;
     assert_eq!(artists.len(), 1, "one artist, got {artists:?}");
@@ -123,7 +131,8 @@ async fn a_catalog_album_after_a_tagged_album_gives_its_artist_the_catalog_id() 
     let (catalog_dir, catalog) = discogs_album_folder(&f, "album-one", "Album One");
     let tagged_dir = tagged_album_folder(&f, "album-two", "Album Two", "Artist Name");
 
-    let (_, tagged_album) = import_and_wait(&f, tagged_dir, bae_import::test_imports::DraftSource::FileTags).await;
+    let (_, tagged_album) =
+        import_and_wait(&f, tagged_dir, bae_import::test_imports::DraftSource::FileTags).await;
     let tagged_artist = album_artist_id(&f, &tagged_album).await;
     let (_, catalog_album) = import_and_wait(&f, catalog_dir, catalog).await;
 
@@ -149,7 +158,11 @@ async fn two_albums_queued_together_make_one_artist() {
     let mut catalog_rx = f.handle.subscribe_import(catalog_import.clone());
     let mut tagged_rx = f.handle.subscribe_import(tagged_import.clone());
     f.handle
-        .send_command(bae_import::test_imports::folder_import(&catalog_import, catalog_dir, catalog))
+        .send_command(bae_import::test_imports::folder_import(
+            &catalog_import,
+            catalog_dir,
+            catalog,
+        ))
         .await
         .unwrap();
     f.handle
@@ -160,8 +173,10 @@ async fn two_albums_queued_together_make_one_artist() {
         ))
         .await
         .unwrap();
-    let (_, catalog_album) = bae_import::test_imports::wait_for_import_complete(&mut catalog_rx).await;
-    let (_, tagged_album) = bae_import::test_imports::wait_for_import_complete(&mut tagged_rx).await;
+    let (_, catalog_album) =
+        bae_import::test_imports::wait_for_import_complete(&mut catalog_rx).await;
+    let (_, tagged_album) =
+        bae_import::test_imports::wait_for_import_complete(&mut tagged_rx).await;
 
     let artists = artists_named(&f, "Artist Name").await;
     assert_eq!(artists.len(), 1, "one artist, got {artists:?}");
@@ -181,7 +196,8 @@ async fn a_name_two_library_artists_share_imports_as_a_new_artist() {
     f.library.insert_artist(&second).await.unwrap();
     let tagged_dir = tagged_album_folder(&f, "album-two", "Album Two", "Artist Name");
 
-    let (_, album) = import_and_wait(&f, tagged_dir, bae_import::test_imports::DraftSource::FileTags).await;
+    let (_, album) =
+        import_and_wait(&f, tagged_dir, bae_import::test_imports::DraftSource::FileTags).await;
 
     let album_artist = album_artist_id(&f, &album).await;
     assert_ne!(album_artist, first.id);
@@ -217,8 +233,10 @@ async fn a_credit_meets_its_artist_however_the_name_is_cased_or_accented() {
     let accented_dir = tagged_album_folder(&f, "album-two", "Album Two", "Ärtist Name");
     let cased_dir = tagged_album_folder(&f, "album-three", "Album Three", "ARTIST NAME");
 
-    let (_, accented) = import_and_wait(&f, accented_dir, bae_import::test_imports::DraftSource::FileTags).await;
-    let (_, cased) = import_and_wait(&f, cased_dir, bae_import::test_imports::DraftSource::FileTags).await;
+    let (_, accented) =
+        import_and_wait(&f, accented_dir, bae_import::test_imports::DraftSource::FileTags).await;
+    let (_, cased) =
+        import_and_wait(&f, cased_dir, bae_import::test_imports::DraftSource::FileTags).await;
 
     assert_eq!(album_artist_id(&f, &accented).await, existing.id);
     assert_eq!(album_artist_id(&f, &cased).await, existing.id);
@@ -311,7 +329,8 @@ async fn an_open_pane_reads_its_credit_into_the_library_when_another_import_comm
 
     let import_id = f.handle.start_import(&tagged_key).await.unwrap().expect_queued();
     let mut progress_rx = f.handle.subscribe_import(import_id);
-    let (_, tagged_album) = bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
+    let (_, tagged_album) =
+        bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
 
     let artists = artists_named(&f, "Artist Name").await;
     assert_eq!(artists.len(), 1, "one artist, got {artists:?}");
@@ -368,10 +387,14 @@ async fn a_discogs_credit_imports_with_its_printed_name_and_join() {
     fs::create_dir_all(&dir).unwrap();
     generate_album_files(&dir, &["01 Track One.flac"]);
 
-    let (_, album_id) = import_and_wait(&f, dir, bae_import::test_imports::discogs_release(release_key)).await;
+    let (_, album_id) =
+        import_and_wait(&f, dir, bae_import::test_imports::discogs_release(release_key)).await;
 
-    let album =
-        bae_views::LibraryViews::new(f.library.database().clone()).find_album_detail(&album_id).await.unwrap().expect("the imported album");
+    let album = bae_views::LibraryViews::new(f.library.database().clone())
+        .find_album_detail(&album_id)
+        .await
+        .unwrap()
+        .expect("the imported album");
     assert_eq!(album.artist_names, "A Variation & Artist B");
     assert_eq!(album.artists[0].artist.name, "Artist A");
     assert_eq!(album.artists[0].printed(), "A Variation");

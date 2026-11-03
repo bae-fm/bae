@@ -1,9 +1,7 @@
-// Files whose names aren't UTF-8. Only Linux takes such a name: macOS and
-// Windows store names as Unicode.
+use super::*;
 
 /// The Latin-1 spelling of `Café` followed by `extension`: a name that isn't
 /// UTF-8.
-#[cfg(target_os = "linux")]
 fn latin1_name(extension: &str) -> std::ffi::OsString {
     use std::os::unix::ffi::OsStringExt;
     let mut name = b"Caf\xE9.".to_vec();
@@ -13,7 +11,6 @@ fn latin1_name(extension: &str) -> std::ffi::OsString {
 
 /// `Collection/Album` holding one tagged track named with the Latin-1 bytes
 /// of `Café.flac`; the folder and the track's path.
-#[cfg(target_os = "linux")]
 fn album_with_a_latin1_name(collection: &Path) -> (std::path::PathBuf, std::path::PathBuf) {
     let album = collection.join("Album");
     fs::create_dir_all(&album).unwrap();
@@ -31,7 +28,6 @@ fn album_with_a_latin1_name(collection: &Path) -> (std::path::PathBuf, std::path
 
 /// Watch `collection` and return the releases its first scan lists, once the
 /// scan has finished.
-#[cfg(target_os = "linux")]
 async fn scanned_releases(
     f: &ImportFixture,
     collection: &Path,
@@ -54,7 +50,6 @@ async fn scanned_releases(
 
 /// Import the release the scan listed for `album`, from its files' tags, and
 /// return its id once the import completes.
-#[cfg(target_os = "linux")]
 async fn import_scanned(f: &ImportFixture, album: &Path) -> String {
     let key = bae_import::CandidateKey::folder(album);
     f.handle.select_candidate_file_tags(key.clone()).await.unwrap();
@@ -69,7 +64,6 @@ async fn import_scanned(f: &ImportFixture, album: &Path) -> String {
 /// A track whose name isn't UTF-8 doesn't fail its folder's scan: the release
 /// is listed with the track under its escaped name, imports under that name,
 /// and the library records the track's own path, which opens it.
-#[cfg(target_os = "linux")]
 #[tokio::test]
 async fn a_track_whose_name_is_not_utf8_is_scanned_and_imported_under_its_escaped_name() {
     bae_util::test_logs::install();
@@ -98,8 +92,13 @@ async fn a_track_whose_name_is_not_utf8_is_scanned_and_imported_under_its_escape
         panic!("the release holds the track: {files:?}");
     };
     assert_eq!(file.original_filename, r"Caf\xE9.flac");
-    let original =
-        f.library.database().external_file(&file.id).await.unwrap().expect("the track's original is recorded");
+    let original = f
+        .library
+        .database()
+        .external_file(&file.id)
+        .await
+        .unwrap()
+        .expect("the track's original is recorded");
     assert_eq!(original.path, track);
     let release = f.library.database().find_release_by_id(&release_id).await.unwrap().unwrap();
     assert_eq!(release.source_folder_name.as_deref(), Some("Album"));
@@ -108,7 +107,6 @@ async fn a_track_whose_name_is_not_utf8_is_scanned_and_imported_under_its_escape
 /// A track whose name isn't UTF-8 exports under the name coven writes for its
 /// escaped name, `Caf＼xE9.flac`: a stored name is a label, written the same
 /// way on every platform, so the export doesn't recreate the Latin-1 bytes.
-#[cfg(target_os = "linux")]
 #[tokio::test]
 async fn a_track_whose_name_is_not_utf8_exports_under_the_name_coven_writes() {
     bae_util::test_logs::install();
@@ -137,7 +135,6 @@ async fn a_track_whose_name_is_not_utf8_exports_under_the_name_coven_writes() {
 }
 
 /// A track whose name isn't UTF-8 uploads: coven reads it by its own path.
-#[cfg(target_os = "linux")]
 #[tokio::test]
 async fn a_track_whose_name_is_not_utf8_uploads() {
     bae_util::test_logs::install();
@@ -173,7 +170,6 @@ async fn a_track_whose_name_is_not_utf8_uploads() {
 /// A track spelled `Caf\xE9.flac` and one whose name is the Latin-1 bytes of
 /// `Café.flac` show one name, which a release can't hold twice: the folder is
 /// listed under Skipped, naming it.
-#[cfg(target_os = "linux")]
 #[tokio::test]
 async fn two_tracks_showing_one_name_are_skipped_with_that_name() {
     bae_util::test_logs::install();
@@ -187,20 +183,15 @@ async fn two_tracks_showing_one_name_are_skipped_with_that_name() {
     assert!(scanned_releases(&f, &collection).await.is_empty());
 
     let expected = bae_import::InvalidReason::SameName { name: r"Caf\xE9.flac".to_string() };
-    wait_for_tab(
-        &f,
-        "the folder under Skipped",
-        bae_import::TriageTab::Skipped,
-        |snapshot| {
-            snapshot.windows.iter().flat_map(|window| &window.items).any(|item| match item {
-                bae_import::ImportListItem::Invalid { candidate, .. } => {
-                    candidate.path == album
-                        && candidate.reason() == expected
-                        && candidate.files.len() == 2
-                }
-                _ => false,
-            })
-        },
-    )
+    wait_for_tab(&f, "the folder under Skipped", bae_import::TriageTab::Skipped, |snapshot| {
+        snapshot.windows.iter().flat_map(|window| &window.items).any(|item| match item {
+            bae_import::ImportListItem::Invalid { candidate, .. } => {
+                candidate.path == album
+                    && candidate.reason() == expected
+                    && candidate.files.len() == 2
+            }
+            _ => false,
+        })
+    })
     .await;
 }

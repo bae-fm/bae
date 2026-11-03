@@ -1,3 +1,6 @@
+use crate::test_playback_behavior::fixtures::*;
+use crate::test_playback_behavior::support::*;
+
 /// Test fixture for high sample rate (96kHz) FLAC playback.
 /// This catches bugs where the playback pipeline assumes 44.1kHz.
 struct HighSampleRateTestFixture {
@@ -527,18 +530,4 @@ async fn persisted_position_past(fixture: &mut PlaybackTestFixture, floor_ms: u6
             return persisted_ms;
         }
     }
-}
-
-/// An imported test library with no playback service running, so a test can
-/// write a `playback_state` row and then start its own service to exercise
-/// restore without racing a fixture's service for the row.
-struct RestoreTestLibrary {
-    /// The library, which a test's own playback and import services run
-    /// over.
-    library: TestLibrary,
-    /// The catalog fakes the library asks, which a test that imports again
-    /// seeds.
-    fakes: bae_catalogs::fake_catalogs::FakeCatalogs,
-    track_ids: Vec<String>,
-    _temp_dir: TempDir,
 }

@@ -1,3 +1,5 @@
+use super::*;
+
 // ── File metadata as a metadata source ──────────────────────────────────────
 
 fn file_tag_artist_assignment(name: &str) -> ArtistAssignment {
@@ -35,12 +37,17 @@ async fn file_metadata_import_seeds_from_the_folder_and_writes_no_identity() {
 
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
-        .send_command(bae_import::test_imports::folder_import(&import_id, album_dir, bae_import::test_imports::DraftSource::FileTags))
+        .send_command(bae_import::test_imports::folder_import(
+            &import_id,
+            album_dir,
+            bae_import::test_imports::DraftSource::FileTags,
+        ))
         .await
         .unwrap();
 
     let mut progress_rx = f.handle.subscribe_import(import_id);
-    let (release_id, album_id) = bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
+    let (release_id, album_id) =
+        bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
 
     let release = f.library.database().find_release_by_id(&release_id).await.unwrap().unwrap();
     // One year the tags state is the album's; it names no pressing.
@@ -108,13 +115,18 @@ async fn the_seeded_draft_for_a_cue_folder_matches_its_commit_layout() {
     f.handle
         .send_command(ImportCommand {
             candidate_key: bae_import::CandidateKey::from_bytes(b"cue".to_vec()),
-            ..bae_import::test_imports::folder_import(&import_id, album_dir, bae_import::test_imports::DraftSource::FileTags)
+            ..bae_import::test_imports::folder_import(
+                &import_id,
+                album_dir,
+                bae_import::test_imports::DraftSource::FileTags,
+            )
         })
         .await
         .unwrap();
 
     let mut progress_rx = f.handle.subscribe_import(import_id);
-    let (release_id, album_id) = bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
+    let (release_id, album_id) =
+        bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
     let album = f.library.database().find_album_by_id(&album_id).await.unwrap().unwrap();
     assert_eq!(draft.album_title, album.title);
 
@@ -122,7 +134,11 @@ async fn the_seeded_draft_for_a_cue_folder_matches_its_commit_layout() {
     assert_eq!(release.pressing.year, None, "the tags state no year");
     assert!(release.pressing.facts.media.is_empty(), "and no medium");
 
-    let album_detail = bae_views::LibraryViews::new(f.library.database().clone()).find_album_detail(&album_id).await.unwrap().expect("album detail");
+    let album_detail = bae_views::LibraryViews::new(f.library.database().clone())
+        .find_album_detail(&album_id)
+        .await
+        .unwrap()
+        .expect("album detail");
     let committed_album_artist_assignments: Vec<ArtistAssignment> = album_detail
         .artists
         .iter()
@@ -134,12 +150,11 @@ async fn the_seeded_draft_for_a_cue_folder_matches_its_commit_layout() {
         bae_import::Credited::plain_list(committed_album_artist_assignments)
     );
 
-    let release_detail =
-        bae_views::LibraryViews::new(f.library.database().clone())
-            .find_db_release_detail(&release_id)
-            .await
-            .unwrap()
-            .expect("release detail");
+    let release_detail = bae_views::LibraryViews::new(f.library.database().clone())
+        .find_db_release_detail(&release_id)
+        .await
+        .unwrap()
+        .expect("release detail");
     let committed_tracks: Vec<(String, TrackArtistAssignments)> = release_detail
         .tracks
         .iter()
@@ -185,14 +200,21 @@ async fn file_metadata_import_seeds_embedded_cover_when_no_folder_image() {
 
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
-        .send_command(bae_import::test_imports::folder_import(&import_id, album_dir, bae_import::test_imports::DraftSource::FileTags))
+        .send_command(bae_import::test_imports::folder_import(
+            &import_id,
+            album_dir,
+            bae_import::test_imports::DraftSource::FileTags,
+        ))
         .await
         .unwrap();
 
     let mut progress_rx = f.handle.subscribe_import(import_id);
-    let (release_id, _) = bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
+    let (release_id, _) =
+        bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
 
-    f.library.database().find_library_image(&release_id, &LibraryImageType::Cover)
+    f.library
+        .database()
+        .find_library_image(&release_id, &LibraryImageType::Cover)
         .await
         .unwrap()
         .expect("embedded cover should be written when no folder/remote image exists");
@@ -234,14 +256,21 @@ async fn file_metadata_cover_dims_beside(folder_image: &str) -> (u32, u32) {
 
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
-        .send_command(bae_import::test_imports::folder_import(&import_id, album_dir, bae_import::test_imports::DraftSource::FileTags))
+        .send_command(bae_import::test_imports::folder_import(
+            &import_id,
+            album_dir,
+            bae_import::test_imports::DraftSource::FileTags,
+        ))
         .await
         .unwrap();
 
     let mut progress_rx = f.handle.subscribe_import(import_id);
-    let (release_id, _) = bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
+    let (release_id, _) =
+        bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
 
-    f.library.database().find_library_image(&release_id, &LibraryImageType::Cover)
+    f.library
+        .database()
+        .find_library_image(&release_id, &LibraryImageType::Cover)
         .await
         .unwrap()
         .expect("a cover should be written");
@@ -294,7 +323,8 @@ async fn file_metadata_import_always_creates_a_fresh_album() {
         .await
         .unwrap();
     let mut rx = f.handle.subscribe_import(import_id);
-    let (_, identified_album_id) = bae_import::test_imports::wait_for_import_complete(&mut rx).await;
+    let (_, identified_album_id) =
+        bae_import::test_imports::wait_for_import_complete(&mut rx).await;
 
     // Second import: file metadata, same album title in tags. Must NOT
     // attach to the identified album.
@@ -312,12 +342,17 @@ async fn file_metadata_import_always_creates_a_fresh_album() {
     f.handle
         .send_command(ImportCommand {
             candidate_key: bae_import::CandidateKey::from_bytes(b"file-tags".to_vec()),
-            ..bae_import::test_imports::folder_import(&import_id2, file_tags_dir, bae_import::test_imports::DraftSource::FileTags)
+            ..bae_import::test_imports::folder_import(
+                &import_id2,
+                file_tags_dir,
+                bae_import::test_imports::DraftSource::FileTags,
+            )
         })
         .await
         .unwrap();
     let mut rx2 = f.handle.subscribe_import(import_id2);
-    let (_, file_tags_album_id) = bae_import::test_imports::wait_for_import_complete(&mut rx2).await;
+    let (_, file_tags_album_id) =
+        bae_import::test_imports::wait_for_import_complete(&mut rx2).await;
 
     assert_ne!(
         identified_album_id, file_tags_album_id,
@@ -379,13 +414,18 @@ async fn file_metadata_import_with_user_edit_overlay() {
     f.handle
         .send_command(ImportCommand {
             user_edit: Some(edit),
-            ..bae_import::test_imports::folder_import(&import_id, album_dir, bae_import::test_imports::DraftSource::FileTags)
+            ..bae_import::test_imports::folder_import(
+                &import_id,
+                album_dir,
+                bae_import::test_imports::DraftSource::FileTags,
+            )
         })
         .await
         .unwrap();
 
     let mut progress_rx = f.handle.subscribe_import(import_id);
-    let (release_id, album_id) = bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
+    let (release_id, album_id) =
+        bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
 
     let release = f.library.database().find_release_by_id(&release_id).await.unwrap().unwrap();
     assert_eq!(release.pressing.year, Some(2010));
@@ -456,7 +496,8 @@ async fn file_metadata_import_with_no_tags_seeds_title_from_folder_name() {
     let import_id = f.handle.start_import(&candidate_key).await.unwrap().expect_queued();
 
     let mut progress_rx = f.handle.subscribe_import(import_id);
-    let (release_id, album_id) = bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
+    let (release_id, album_id) =
+        bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
 
     let album = f.library.database().find_album_by_id(&album_id).await.unwrap().unwrap();
     assert_eq!(album.title, "Mystery Rip", "untagged rip takes the folder name as its album title",);

@@ -1,3 +1,6 @@
+use crate::test_playback_behavior::fixtures::*;
+use crate::test_playback_behavior::support::*;
+
 /// Multi-window analog of `assert_skip_preserves_play_state`: Next/Previous
 /// must land on the adjacent track in the same play/pause state — exercised
 /// here against the sparse buffer's promotion/rebuild paths (the single-window

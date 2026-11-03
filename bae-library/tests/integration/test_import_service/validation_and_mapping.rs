@@ -1,3 +1,5 @@
+use super::*;
+
 /// Cut a FLAC's audio in half, keeping every metadata block, so it decodes far
 /// fewer samples than its STREAMINFO declares.
 fn truncate_flac_body(path: &Path) {
@@ -48,8 +50,18 @@ async fn a_track_that_does_not_decode_fully_fails_its_import() {
         err.contains("decode verification failed") && err.contains("Broken Track (track 1)"),
         "the failure must name the broken track, got: {err}",
     );
-    assert!(bae_views::LibraryViews::new(f.library.database().clone()).get_albums(&[]).await.unwrap().is_empty(), "a failed import writes no album",);
-    assert!(f.library.database().get_all_track_ids().await.unwrap().is_empty(), "a failed import writes no track",);
+    assert!(
+        bae_views::LibraryViews::new(f.library.database().clone())
+            .get_albums(&[])
+            .await
+            .unwrap()
+            .is_empty(),
+        "a failed import writes no album",
+    );
+    assert!(
+        f.library.database().get_all_track_ids().await.unwrap().is_empty(),
+        "a failed import writes no track",
+    );
 }
 
 // ── album artists survive the confirmation editor ────────────────────────
@@ -74,9 +86,7 @@ fn seed_two_credit_mb_release(f: &ImportFixture, mb_release_id: &str, mb_group_i
         },
         ..bae_catalogs::test_releases::mb_release(mb_release_id, mb_group_id, "Split Album")
     };
-    let mb_release_id = f.fakes.seed_musicbrainz_response(response,
-        mb_group_id,
-    );
+    let mb_release_id = f.fakes.seed_musicbrainz_response(response, mb_group_id);
     f.images.serve_front(&mb_release_id, bae_catalogs::test_image_host::cover_png());
     mb_release_id
 }
@@ -110,7 +120,10 @@ async fn two_credit_mb_release_keeps_both_album_artists() {
         .select_candidate_release(
             candidate_key.clone(),
             bae_identify::PressingLink {
-                record: bae_catalogs::records::LookupRef::new(LookupCatalog::MusicBrainz, mb_id.clone()),
+                record: bae_catalogs::records::LookupRef::new(
+                    LookupCatalog::MusicBrainz,
+                    mb_id.clone(),
+                ),
                 partners: vec![],
             },
             bae_import::CatalogApplySteps::unread(),
@@ -137,13 +150,21 @@ fn seed_mb_release_with_track_count(
 ) -> String {
     let tracks = (1..=track_count)
         .map(|position| {
-            let mut track = bae_catalogs::test_releases::mb_track(position as i64, &format!("Source Track {position}"));
+            let mut track = bae_catalogs::test_releases::mb_track(
+                position as i64,
+                &format!("Source Track {position}"),
+            );
             let recording = track.recording.as_mut().expect("a recorded track");
             recording.id = Some(format!("rec-slots-{position}"));
             track
         })
         .collect();
-    seed_mb_release_with_media(f, mb_release_id, mb_group_id, vec![bae_catalogs::test_releases::mb_medium(tracks)])
+    seed_mb_release_with_media(
+        f,
+        mb_release_id,
+        mb_group_id,
+        vec![bae_catalogs::test_releases::mb_medium(tracks)],
+    )
 }
 
 /// Seed a plain MusicBrainz release on `media`, credited to one artist.
@@ -174,16 +195,18 @@ fn seed_mb_release_with_media(
         },
         ..bae_catalogs::test_releases::mb_release(mb_release_id, mb_group_id, "Album Title")
     };
-    let mb_release_id = f.fakes.seed_musicbrainz_response(response,
-        mb_group_id,
-    );
+    let mb_release_id = f.fakes.seed_musicbrainz_response(response, mb_group_id);
     f.images.serve_front(&mb_release_id, bae_catalogs::test_image_host::cover_png());
     mb_release_id
 }
 
 /// A release's tracks in track order, each with the file its samples come from.
 async fn committed_track_files(f: &ImportFixture, release_id: &str) -> Vec<(String, String)> {
-    f.library.database().committed_track_files_for_test(release_id).await.expect("read committed track files")
+    f.library
+        .database()
+        .committed_track_files_for_test(release_id)
+        .await
+        .expect("read committed track files")
 }
 
 /// Scan `album_dir` in and pick `mb_id` for it, returning the candidate key and
@@ -209,7 +232,10 @@ async fn pick_release_for_folder(
         .select_candidate_release(
             candidate_key.clone(),
             bae_identify::PressingLink {
-                record: bae_catalogs::records::LookupRef::new(LookupCatalog::MusicBrainz, mb_id.to_string()),
+                record: bae_catalogs::records::LookupRef::new(
+                    LookupCatalog::MusicBrainz,
+                    mb_id.to_string(),
+                ),
                 partners: vec![],
             },
             bae_import::CatalogApplySteps::unread(),
@@ -226,10 +252,7 @@ async fn pick_release_for_folder(
 }
 
 /// Scan in a folder of `track_count` audio files and return its candidate key.
-async fn scanned_folder_of(
-    f: &ImportFixture,
-    track_count: usize,
-) -> bae_import::CandidateKey {
+async fn scanned_folder_of(f: &ImportFixture, track_count: usize) -> bae_import::CandidateKey {
     let collection = f.temp_path().join("collection");
     let album_dir = collection.join("album");
     fs::create_dir_all(&album_dir).unwrap();
@@ -262,7 +285,10 @@ async fn pick_release(
 
 fn pressing_link(mb_id: &str) -> bae_identify::PressingLink {
     bae_identify::PressingLink {
-        record: bae_catalogs::records::LookupRef::new(LookupCatalog::MusicBrainz, mb_id.to_string()),
+        record: bae_catalogs::records::LookupRef::new(
+            LookupCatalog::MusicBrainz,
+            mb_id.to_string(),
+        ),
         partners: vec![],
     }
 }
@@ -357,7 +383,10 @@ async fn a_release_listing_the_folder_s_track_count_applies() {
     assert_eq!(
         pane.draft().unwrap().metadata_provenance,
         Some(bae_import::MetadataProvenance::ExternalRelease {
-            record: bae_catalogs::records::LookupRef::new(LookupCatalog::MusicBrainz, fitting.clone()),
+            record: bae_catalogs::records::LookupRef::new(
+                LookupCatalog::MusicBrainz,
+                fitting.clone()
+            ),
         })
     );
     let titles: Vec<_> = pane
@@ -394,7 +423,10 @@ async fn a_release_listing_no_tracks_applies() {
     assert_eq!(
         after.draft().unwrap().metadata_provenance,
         Some(bae_import::MetadataProvenance::ExternalRelease {
-            record: bae_catalogs::records::LookupRef::new(LookupCatalog::MusicBrainz, lists_nothing.clone()),
+            record: bae_catalogs::records::LookupRef::new(
+                LookupCatalog::MusicBrainz,
+                lists_nothing.clone()
+            ),
         })
     );
     assert_eq!(after.draft().unwrap().metadata_draft.album_title, "Album Title");
@@ -503,17 +535,25 @@ async fn an_import_with_no_cover_pick_takes_the_release_s_own_cover() {
         None,
         ImportDestination::Local,
         bae_import::test_imports::DraftSource::Pick(bae_identify::PressingLink {
-            record: bae_catalogs::records::LookupRef::new(LookupCatalog::MusicBrainz, release_id_key),
+            record: bae_catalogs::records::LookupRef::new(
+                LookupCatalog::MusicBrainz,
+                release_id_key,
+            ),
             partners: vec![],
         }),
     )
     .await
     .expect("the import succeeds");
 
-    f.library.database().find_library_image(&release_id, &LibraryImageType::Cover).await.unwrap().expect(
-        "the release document says the archive holds a front image, so the import \
+    f.library
+        .database()
+        .find_library_image(&release_id, &LibraryImageType::Cover)
+        .await
+        .unwrap()
+        .expect(
+            "the release document says the archive holds a front image, so the import \
              must land one",
-    );
+        );
 }
 
 /// When the release's own cover will not download, the import fails rather
@@ -543,7 +583,10 @@ async fn an_import_fails_when_the_release_s_own_cover_will_not_download() {
         None,
         ImportDestination::Local,
         bae_import::test_imports::DraftSource::Pick(bae_identify::PressingLink {
-            record: bae_catalogs::records::LookupRef::new(LookupCatalog::MusicBrainz, release_id_key),
+            record: bae_catalogs::records::LookupRef::new(
+                LookupCatalog::MusicBrainz,
+                release_id_key,
+            ),
             partners: vec![],
         }),
     )

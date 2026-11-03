@@ -1,7 +1,9 @@
+use super::support::*;
+
 /// Playing a track emits a bare `Loading`, then `Loading` with the prepared
 /// track so the UI can show it while audio fills, then `Playing`.
 #[tokio::test]
-async fn play_emits_bare_loading_then_loading_with_metadata_then_playing() {
+pub(super) async fn play_emits_bare_loading_then_loading_with_metadata_then_playing() {
     with_fixture(PlaybackTestFixture::new(), async |fixture| {
         assert!(!fixture.track_ids.is_empty(), "fixture must import at least one playable track");
         let track_id = fixture.track_ids[0].clone();
@@ -49,7 +51,7 @@ async fn play_emits_bare_loading_then_loading_with_metadata_then_playing() {
 /// `seek` does no bounds check, so a seek past the end of a track must still
 /// produce a `Seeked` or a `PlaybackError` rather than nothing.
 #[tokio::test]
-async fn seek_past_end_of_track_signals_rather_than_hanging() {
+pub(super) async fn seek_past_end_of_track_signals_rather_than_hanging() {
     with_fixture(PlaybackTestFixture::new(), async |fixture| {
         fixture.playback_handle.play(fixture.track_ids[0].clone());
         fixture
@@ -83,7 +85,7 @@ async fn seek_past_end_of_track_signals_rather_than_hanging() {
 /// On a track with no pregap, `seek_by_ratio` maps the ratio straight onto the
 /// duration, so 0.5 lands well past the start and clearly before 1.0.
 #[tokio::test]
-async fn seek_by_ratio_maps_to_a_proportional_position() {
+pub(super) async fn seek_by_ratio_maps_to_a_proportional_position() {
     with_fixture(PlaybackTestFixture::new(), async |fixture| {
         fixture.playback_handle.play(fixture.track_ids[0].clone());
         fixture
@@ -108,7 +110,7 @@ async fn seek_by_ratio_maps_to_a_proportional_position() {
 }
 
 /// The three-track album matching the `flac` fixtures.
-fn create_test_album() -> DiscogsRelease {
+pub(super) fn create_test_album() -> DiscogsRelease {
     DiscogsRelease {
         artists: vec![bae_catalogs::test_releases::discogs_artist("test-artist-1", "Test Artist")],
         master_id: Some("test-master-123".to_string()),
@@ -120,7 +122,7 @@ fn create_test_album() -> DiscogsRelease {
     }
 }
 /// Copy the `flac` fixtures into `dir` and return their bytes.
-fn generate_test_flac_files(dir: &std::path::Path) -> Vec<Vec<u8>> {
+pub(super) fn generate_test_flac_files(dir: &std::path::Path) -> Vec<Vec<u8>> {
     use std::fs;
     let fixture_dir = bae_import::test_fixtures::flac_dir();
     let fixture_files =
@@ -136,7 +138,7 @@ fn generate_test_flac_files(dir: &std::path::Path) -> Vec<Vec<u8>> {
     file_data
 }
 /// Copy the `cue_flac` fixture's FLAC and CUE files into `dir`.
-fn generate_cue_flac_files(dir: &std::path::Path) {
+pub(super) fn generate_cue_flac_files(dir: &std::path::Path) {
     use std::fs;
     let fixture_dir = bae_audio::test_fixtures::cue_flac_dir();
 
@@ -152,7 +154,7 @@ fn generate_cue_flac_files(dir: &std::path::Path) {
 }
 
 /// The three-track album matching the `cue_flac` fixture.
-fn create_cue_flac_test_album() -> DiscogsRelease {
+pub(super) fn create_cue_flac_test_album() -> DiscogsRelease {
     DiscogsRelease {
         country: Some("Test Country".to_string()),
         artists: vec![bae_catalogs::test_releases::discogs_artist("test-artist-1", "Test Artist")],
@@ -172,13 +174,13 @@ fn create_cue_flac_test_album() -> DiscogsRelease {
 /// Playback of a single-file CUE/FLAC album: the `cue_flac` fixture, or one a
 /// test writes through `import`. Tests that seek or pause need
 /// `TestAudioDevice::RealtimeCapture`.
-struct CueFlacTestFixture {
-    playback_handle: bae_playback::PlaybackHandle,
-    progress_rx: tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
-    track_ids: Vec<String>,
-    library: TestLibrary,
-    capture_stream_rx: bae_playback::test_capture::CaptureStreamRx,
-    _temp_dir: TempDir,
+pub(super) struct CueFlacTestFixture {
+    pub(super) playback_handle: bae_playback::PlaybackHandle,
+    pub(super) progress_rx: tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
+    pub(super) track_ids: Vec<String>,
+    pub(super) library: TestLibrary,
+    pub(super) capture_stream_rx: bae_playback::test_capture::CaptureStreamRx,
+    pub(super) _temp_dir: TempDir,
 }
 
 impl PlaybackFixture for CueFlacTestFixture {
@@ -189,7 +191,7 @@ impl PlaybackFixture for CueFlacTestFixture {
 }
 
 impl CueFlacTestFixture {
-    async fn new(
+    pub(super) async fn new(
         device: bae_playback::test_capture::TestAudioDevice,
     ) -> Result<Self, Box<dyn std::error::Error>> {
         Self::import(device, create_cue_flac_test_album(), generate_cue_flac_files).await
@@ -197,7 +199,7 @@ impl CueFlacTestFixture {
 
     /// Import a three-track CUE/FLAC album that `generate_files` writes, and
     /// play it through `device`.
-    async fn import(
+    pub(super) async fn import(
         device: bae_playback::test_capture::TestAudioDevice,
         album: DiscogsRelease,
         generate_files: impl FnOnce(&std::path::Path),
@@ -220,24 +222,24 @@ impl CueFlacTestFixture {
     }
 
     /// The next transition's captured stream, in the order streams were created.
-    async fn next_capture_stream(&mut self) -> bae_playback::CapturedStream {
+    pub(super) async fn next_capture_stream(&mut self) -> bae_playback::CapturedStream {
         bae_playback::test_capture::next_capture_stream(&mut self.capture_stream_rx).await
     }
 }
 
 /// The side-pause album playing through a capture sink, plus the library
 /// manager the side-pause setting is written through.
-struct SidePauseTestFixture {
-    playback_handle: bae_playback::PlaybackHandle,
-    library: TestLibrary,
-    progress_rx: tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
-    track_ids: Vec<String>,
-    release_id: String,
-    capture_stream_rx: bae_playback::test_capture::CaptureStreamRx,
+pub(super) struct SidePauseTestFixture {
+    pub(super) playback_handle: bae_playback::PlaybackHandle,
+    pub(super) library: TestLibrary,
+    pub(super) progress_rx: tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
+    pub(super) track_ids: Vec<String>,
+    pub(super) release_id: String,
+    pub(super) capture_stream_rx: bae_playback::test_capture::CaptureStreamRx,
     /// The service's playback clock. Nothing moves it but the test, so a
     /// side-pause countdown runs out exactly when the test says.
-    clock: Arc<bae_playback::ManualPlaybackClock>,
-    _temp_dir: TempDir,
+    pub(super) clock: Arc<bae_playback::ManualPlaybackClock>,
+    pub(super) _temp_dir: TempDir,
 }
 
 impl PlaybackFixture for SidePauseTestFixture {
@@ -248,7 +250,7 @@ impl PlaybackFixture for SidePauseTestFixture {
 }
 
 impl SidePauseTestFixture {
-    async fn new(
+    pub(super) async fn new(
         format: &str,
         positions: [&str; 3],
         pause_between_sides: bool,
@@ -257,13 +259,13 @@ impl SidePauseTestFixture {
     }
 
     /// A vinyl A1/A2/B1 fixture that pauses between sides with `countdown`.
-    async fn with_countdown(
+    pub(super) async fn with_countdown(
         countdown: SidePauseCountdown,
     ) -> Result<Self, Box<dyn std::error::Error>> {
         Self::with_settings("Vinyl", ["A1", "A2", "B1"], true, countdown).await
     }
 
-    async fn with_settings(
+    pub(super) async fn with_settings(
         format: &str,
         positions: [&str; 3],
         pause_between_sides: bool,
@@ -311,14 +313,14 @@ impl SidePauseTestFixture {
 
     /// Toggle `pause_between_sides` the way `AppServices::set_pause_between_sides`
     /// does; this fixture has no `AppServices`.
-    async fn set_pause_between_sides_mid_track(&self, enabled: bool) {
+    pub(super) async fn set_pause_between_sides_mid_track(&self, enabled: bool) {
         self.library.set_pause_between_sides(enabled).await.expect("set_pause_between_sides");
         if enabled {
             self.playback_handle.reevaluate_side_pause_staging();
         }
     }
 
-    async fn wait_for_state<F>(
+    pub(super) async fn wait_for_state<F>(
         &mut self,
         predicate: F,
         timeout_duration: Duration,
@@ -330,15 +332,15 @@ impl SidePauseTestFixture {
     }
 
     /// See `settled_events_on`.
-    async fn settled_events(&mut self) -> Vec<PlaybackProgress> {
+    pub(super) async fn settled_events(&mut self) -> Vec<PlaybackProgress> {
         settled_events_on(&self.playback_handle, &mut self.progress_rx).await
     }
 
-    async fn next_capture_stream(&mut self) -> bae_playback::CapturedStream {
+    pub(super) async fn next_capture_stream(&mut self) -> bae_playback::CapturedStream {
         bae_playback::test_capture::next_capture_stream(&mut self.capture_stream_rx).await
     }
 
-    fn play_release_from(&self, track_id: &str) {
+    pub(super) fn play_release_from(&self, track_id: &str) {
         self.playback_handle.play_release(
             self.release_id.clone(),
             Some(track_id.to_string()),
@@ -348,12 +350,12 @@ impl SidePauseTestFixture {
 
     /// Seek to 200 ms before the end of the 5 s track. Commands run in order, so
     /// anything that must apply at the boundary goes before this.
-    fn seek_to_auto_advance(&self) {
+    pub(super) fn seek_to_auto_advance(&self) {
         self.playback_handle
             .seek(TrackTime::from_duration(Duration::from_secs(4) + Duration::from_millis(800)));
     }
 
-    async fn wait_for_playing_track(
+    pub(super) async fn wait_for_playing_track(
         &mut self,
         track_id: &str,
         timeout_duration: Duration,
@@ -367,7 +369,7 @@ impl SidePauseTestFixture {
         .expect(message);
     }
 
-    async fn play_track_and_wait(&mut self, track_id: &str) {
+    pub(super) async fn play_track_and_wait(&mut self, track_id: &str) {
         self.play_release_from(track_id);
         self.wait_for_playing_track(
             track_id,
@@ -377,7 +379,7 @@ impl SidePauseTestFixture {
         .await;
     }
 
-    async fn wait_for_side_pause(
+    pub(super) async fn wait_for_side_pause(
         &mut self,
         expected_side_label: &str,
         expected_boundary: PlaybackPauseBoundary,
@@ -399,7 +401,7 @@ impl SidePauseTestFixture {
         .expect("side boundary should pause")
     }
 
-    async fn play_to_side_pause(
+    pub(super) async fn play_to_side_pause(
         &mut self,
         track_id: &str,
         expected_side_label: &str,
@@ -412,11 +414,11 @@ impl SidePauseTestFixture {
 }
 
 /// Where a side-pause fixture's playback clock starts.
-fn side_pause_clock_start() -> chrono::DateTime<chrono::Utc> {
+pub(super) fn side_pause_clock_start() -> chrono::DateTime<chrono::Utc> {
     "2026-01-01T00:00:00Z".parse().unwrap()
 }
 
-fn create_side_pause_test_album(format: &str, positions: [&str; 3]) -> DiscogsRelease {
+pub(super) fn create_side_pause_test_album(format: &str, positions: [&str; 3]) -> DiscogsRelease {
     let mut release = create_test_album();
     release.id = format!("side-pause-{format}-{}", positions.join("_"));
     release.title = format!("{format} Side Pause Fixture");
@@ -437,12 +439,233 @@ fn create_side_pause_test_album(format: &str, positions: [&str; 3]) -> DiscogsRe
     release
 }
 
-include!("side_and_navigation.rs");
-include!("side_pause_countdown.rs");
-include!("cd_boundaries.rs");
-include!("queue_and_pregap.rs");
-include!("high_rate_and_restore.rs");
-include!("local_sparse_buffer.rs");
-include!("remote_sparse_buffer.rs");
-include!("now_playing_edits.rs");
-include!("non_utf8_names.rs");
+/// A 3-track CUE album over one FLAC large enough that the streaming reader's
+/// fetch windows (4 MiB each) cover only slices of it — playing one track
+/// buffers the file head (container probe) and a window at that track's byte
+/// offset, leaving the other tracks' regions unfetched.
+///
+/// The boundaries are deliberately mixed: track 2 has a 2-second pregap
+/// (INDEX 00 at 0:58), so a manual Next into it takes the pregap-skip rebuild
+/// path; track 3 has none, so a manual Next into it promotes the preloaded
+/// stream. Raw in-track timelines by construction: track 1 spans 0:00–0:58
+/// (ends at track 2's INDEX 00), track 2 spans 0:58–2:00 (62 s including its
+/// pregap), track 3 spans 2:00–3:00.
+pub(super) fn generate_multi_window_cue_flac_files(dir: &std::path::Path) {
+    std::fs::write(dir.join("Multi Window Album.flac"), MULTI_WINDOW_FLAC.as_slice())
+        .expect("write the multi-window FLAC");
+
+    let cue = "\
+PERFORMER \"Test Artist\"
+TITLE \"Multi Window Album\"
+FILE \"Multi Window Album.flac\" WAVE
+  TRACK 01 AUDIO
+    TITLE \"Multi Window One\"
+    PERFORMER \"Test Artist\"
+    INDEX 01 00:00:00
+  TRACK 02 AUDIO
+    TITLE \"Multi Window Two\"
+    PERFORMER \"Test Artist\"
+    INDEX 00 00:58:00
+    INDEX 01 01:00:00
+  TRACK 03 AUDIO
+    TITLE \"Multi Window Three\"
+    PERFORMER \"Test Artist\"
+    INDEX 01 02:00:00
+";
+    std::fs::write(dir.join("Multi Window Album.cue"), cue).expect("write the multi-window CUE");
+}
+
+pub(super) fn create_multi_window_cue_album() -> DiscogsRelease {
+    DiscogsRelease {
+        artists: vec![bae_catalogs::test_releases::discogs_artist("test-artist-1", "Test Artist")],
+        master_id: Some("multi-window-cue-master".to_string()),
+        ..bae_catalogs::test_releases::discogs_test_release(
+            "multi-window-cue-release",
+            "Multi Window Album",
+            &[
+                ("Multi Window One", "1:00"),
+                ("Multi Window Two", "1:00"),
+                ("Multi Window Three", "1:00"),
+            ],
+        )
+    }
+}
+
+/// An imported multi-window CUE album with a real-time-paced playback service
+/// over it, for tests that drive switches, advances, and boundaries against a
+/// sparsely buffered file.
+pub(super) struct MultiWindowPlayback {
+    pub(super) playback_handle: bae_playback::PlaybackHandle,
+    pub(super) progress_rx: tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
+    pub(super) track_ids: Vec<String>,
+    pub(super) library: TestLibrary,
+    pub(super) _capture_stream_rx: bae_playback::test_capture::CaptureStreamRx,
+    pub(super) _temp_dir: TempDir,
+}
+
+impl MultiWindowPlayback {
+    /// Import this test's release into its own store.
+    pub(super) async fn new(name: &str) -> Self {
+        let (library, imported) = imported_release_setup(
+            create_multi_window_cue_album(),
+            name,
+            uuid::Uuid::new_v4().to_string(),
+            generate_multi_window_cue_flac_files,
+        )
+        .await
+        .expect("import the multi-window fixture");
+        let temp_dir = imported.temp_dir;
+        let track_ids = imported.track_ids;
+        let (playback_handle, capture_stream_rx) = start_capture_service(&library).await;
+        let progress_rx = playback_handle.subscribe_progress();
+        Self {
+            playback_handle,
+            progress_rx,
+            track_ids,
+            library,
+            _capture_stream_rx: capture_stream_rx,
+            _temp_dir: temp_dir,
+        }
+    }
+
+    /// Play `track_id` and wait for its Playing state.
+    pub(super) async fn play_and_wait(&mut self, track_id: &str) {
+        play_and_wait_on(&self.playback_handle, &mut self.progress_rx, track_id).await;
+    }
+}
+
+impl PlaybackFixture for MultiWindowPlayback {
+    async fn close(self) {
+        self.playback_handle.shutdown().await;
+        self.library.close().await.expect("close the test library");
+    }
+}
+
+/// One ~30 MiB noise FLAC shared by every multi-window test. Encoded once —
+/// per-test encoding would dominate the suite's wall time. White noise
+/// compresses poorly, so 3 minutes of it stays near raw PCM size.
+pub(super) static MULTI_WINDOW_FLAC: std::sync::LazyLock<Vec<u8>> =
+    std::sync::LazyLock::new(|| {
+        use rand::{Rng, SeedableRng};
+
+        bae_audio::init();
+
+        const SAMPLE_RATE: u32 = 44_100;
+        const TRACK_SECONDS: u32 = 60;
+        const TRACKS: u32 = 3;
+
+        let frames = (SAMPLE_RATE * TRACK_SECONDS * TRACKS) as usize;
+        // The pregap region (0:58-1:00, track 2's INDEX 00 gap) is silence, like a
+        // real rip's pregap. Silence compresses to a few KB, so the pregap becomes
+        // a tiny segment whose decode must read past its own end byte (raw-FLAC
+        // frame parsing needs lookahead) -- the fill has to serve a reader at its
+        // read-ahead ceiling or the preload decoder deadlocks.
+        let pregap_samples = (SAMPLE_RATE * 58) as usize * 2..(SAMPLE_RATE * 60) as usize * 2;
+        let mut rng = rand::rngs::StdRng::seed_from_u64(0x0bae);
+        let samples: Vec<i32> =
+            (0..frames * 2)
+                .map(|i| {
+                    if pregap_samples.contains(&i) {
+                        0
+                    } else {
+                        (rng.random::<i16>() as i32) << 16
+                    }
+                })
+                .collect();
+        let flac = bae_audio::encode_i32(
+            bae_audio::EncodeFormat::Flac { bits_per_sample: 16 },
+            &samples,
+            SAMPLE_RATE,
+            2,
+        )
+        .expect("encode the multi-window noise FLAC");
+        assert!(
+            flac.len() > 24 * 1024 * 1024,
+            "the fixture must span several 4 MiB fetch windows, got {} bytes",
+            flac.len()
+        );
+        flac
+    });
+
+/// An imported test library with no playback service running, so a test can
+/// write a `playback_state` row and then start its own service to exercise
+/// restore without racing a fixture's service for the row.
+pub(super) struct RestoreTestLibrary {
+    /// The library, which a test's own playback and import services run
+    /// over.
+    pub(super) library: TestLibrary,
+    /// The catalog fakes the library asks, which a test that imports again
+    /// seeds.
+    pub(super) fakes: bae_catalogs::fake_catalogs::FakeCatalogs,
+    pub(super) track_ids: Vec<String>,
+    pub(super) _temp_dir: TempDir,
+}
+
+pub(super) async fn restore_test_library() -> RestoreTestLibrary {
+    let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
+    let (library, album_dir, temp_dir) =
+        bae_library::test_libraries::setup_test_library_with_album_dir(fakes.providers()).await;
+    let _ = generate_test_flac_files(&album_dir);
+    let release_id_key = fakes.seed_discogs_test_release(create_test_album());
+    library.import_folder(album_dir, release_id_key).await;
+    let releases = library
+        .get_releases_for_album(
+            &bae_views::LibraryViews::new(library.database().clone())
+                .get_albums(&[])
+                .await
+                .unwrap()[0]
+                .id,
+        )
+        .await
+        .unwrap();
+    let tracks = library.get_tracks_for_release(&releases[0].id).await.unwrap();
+    let track_ids: Vec<String> = tracks.iter().map(|t| t.id.clone()).collect();
+    assert!(!track_ids.is_empty(), "the test album imported some tracks");
+    RestoreTestLibrary { library, fakes, track_ids, _temp_dir: temp_dir }
+}
+
+/// A library with no imports, for the empty-library no-op paths, beside the
+/// temp dir that keeps its files.
+pub(super) async fn empty_test_library() -> (TestLibrary, TempDir) {
+    bae_util::test_logs::install();
+    let temp_dir = TempDir::new().unwrap();
+    let library = open_test_library(temp_dir.path()).await;
+    (library, temp_dir)
+}
+
+/// Import a second, distinct-content release (the CUE/FLAC album) into `lib`'s
+/// library so a test can have a current track in one release and a
+/// preloaded/queued track in another — needed to delete one without the other.
+/// Returns the new release's id and track ids; the source `TempDir` is returned
+/// so the caller keeps it alive.
+pub(super) async fn import_second_release(
+    lib: &RestoreTestLibrary,
+) -> (String, Vec<String>, TempDir) {
+    let source = TempDir::new().unwrap();
+    generate_cue_flac_files(source.path());
+    let release_key = lib.fakes.seed_discogs_test_release(create_cue_flac_test_album());
+    let import_handle = lib.library.start_discogs_import().await;
+    let import_id = uuid::Uuid::new_v4().to_string();
+    import_handle
+        .send_command(ImportCommand {
+            candidate_key: bae_import::CandidateKey::from_bytes(b"second".to_vec()),
+            ..bae_import::test_imports::folder_import(
+                &import_id,
+                source.path().to_path_buf(),
+                bae_import::test_imports::discogs_release(release_key),
+            )
+        })
+        .await
+        .unwrap();
+    let mut progress_rx = import_handle.subscribe_import(import_id);
+    let (release_id, _album_id) = wait_for_import_complete(&mut progress_rx).await;
+    let tracks = lib
+        .library
+        .get_tracks_for_release(&release_id)
+        .await
+        .unwrap()
+        .iter()
+        .map(|t| t.id.clone())
+        .collect();
+    (release_id, tracks, source)
+}

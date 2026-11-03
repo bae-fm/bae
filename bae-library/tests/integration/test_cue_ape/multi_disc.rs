@@ -1,3 +1,5 @@
+use super::*;
+
 /// Next button must advance to track 2 and produce audio matching the XLD reference.
 ///
 /// Tests the manual Next path (not auto-advance). After pressing Next, the captured
@@ -18,9 +20,12 @@ async fn test_cue_ape_next_track() {
     let _track1_play = fixture.next_capture_stream().await;
 
     // Wait for track 1 to start
-    let started =
-        bae_playback::test_capture::wait_until_playing(&mut fixture.progress_rx, &track1_id, Duration::from_secs(5))
-            .await;
+    let started = bae_playback::test_capture::wait_until_playing(
+        &mut fixture.progress_rx,
+        &track1_id,
+        Duration::from_secs(5),
+    )
+    .await;
     assert!(started, "Track 1 should start playing");
 
     // Press Next — track 2's stream replaces track 1's.
@@ -28,17 +33,21 @@ async fn test_cue_ape_next_track() {
     let mut captured = fixture.next_capture_stream().await;
 
     // Wait for track 2 to start
-    let track2_started =
-        bae_playback::test_capture::wait_until_playing(&mut fixture.progress_rx, &track2_id, Duration::from_secs(10))
-            .await;
+    let track2_started = bae_playback::test_capture::wait_until_playing(
+        &mut fixture.progress_rx,
+        &track2_id,
+        Duration::from_secs(10),
+    )
+    .await;
     assert!(track2_started, "Track 2 should start after Next");
 
     // Decode XLD reference
     let fixture_dir = bae_import::test_fixtures::cue_ape_dir();
     let reference_data =
         std::fs::read(fixture_dir.join("02 Test Artist - Track Two.flac")).expect("read reference");
-    let reference = decode_audio(bae_audio::test_samples::filled_sparse_buffer(&reference_data), None, None)
-        .expect("decode reference");
+    let reference =
+        decode_audio(bae_audio::test_samples::filled_sparse_buffer(&reference_data), None, None)
+            .expect("decode reference");
     let channels = reference.channels as usize;
     let sample_rate = reference.sample_rate;
     let reference_f32 = samples_as_f32(&reference);
@@ -50,19 +59,20 @@ async fn test_cue_ape_next_track() {
     // track's CUE start time. Search within 2s for alignment.
     let max_alignment = sample_rate as usize * channels * 2;
 
-    let track2_sample_count =
-        bae_util::test_channels::next_matching(&mut fixture.progress_rx, Duration::from_secs(10), |event| {
-            match event {
-                PlaybackProgress::DecodeStats { track_id, samples_decoded, .. }
-                    if track_id == track2_id =>
-                {
-                    Some(samples_decoded as usize)
-                }
-                _ => None,
+    let track2_sample_count = bae_util::test_channels::next_matching(
+        &mut fixture.progress_rx,
+        Duration::from_secs(10),
+        |event| match event {
+            PlaybackProgress::DecodeStats { track_id, samples_decoded, .. }
+                if track_id == track2_id =>
+            {
+                Some(samples_decoded as usize)
             }
-        })
-        .await
-        .expect("Track 2 should emit decode stats within 10s");
+            _ => None,
+        },
+    )
+    .await
+    .expect("Track 2 should emit decode stats within 10s");
     assert!(
         track2_sample_count > snippet_len,
         "Track 2 should produce enough samples to compare: {} (needed more than {})",
@@ -76,10 +86,8 @@ async fn test_cue_ape_next_track() {
         track2_sample_count,
     );
 
-    let captured_snapshot = captured.wait_for_samples(track2_sample_count,
-        Duration::from_secs(60),
-    )
-    .await;
+    let captured_snapshot =
+        captured.wait_for_samples(track2_sample_count, Duration::from_secs(60)).await;
     assert!(
         captured_snapshot.len() >= track2_sample_count,
         "Not enough captured samples after Next (60s): {} (needed {})",
@@ -158,11 +166,14 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(destination: ImportDestinati
                 })
             })
             .collect(),
-        ..bae_catalogs::test_releases::discogs_test_release("test-multi-disc-cue-ape", "Multi-Disc Album", &[])
+        ..bae_catalogs::test_releases::discogs_test_release(
+            "test-multi-disc-cue-ape",
+            "Multi-Disc Album",
+            &[],
+        )
     };
     let release_id_key = fakes.seed_discogs_test_release(discogs_release);
-    let import_handle =
-        library.start_discogs_import().await;
+    let import_handle = library.start_discogs_import().await;
 
     let import_id = uuid::Uuid::new_v4().to_string();
     import_handle
@@ -179,8 +190,7 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(destination: ImportDestinati
 
     let mut progress_rx = import_handle.subscribe_import(import_id);
     let (release_id, _) =
-        wait_for_multi_disc_cue_ape_import_ready(&library, destination, &mut progress_rx)
-            .await;
+        wait_for_multi_disc_cue_ape_import_ready(&library, destination, &mut progress_rx).await;
 
     let tracks = library.get_tracks_for_release(&release_id).await.expect("get tracks");
     assert_eq!(tracks.len(), 6, "should have 6 tracks (2 discs × 3 tracks)");
@@ -206,8 +216,7 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(destination: ImportDestinati
         files.iter().map(|f| (f.id.clone(), f.original_filename.clone())).collect();
 
     for track in &tracks {
-        let resolved =
-            library.resolve_track_audio(&track.id).await.expect("resolve track audio");
+        let resolved = library.resolve_track_audio(&track.id).await.expect("resolve track audio");
         let segment = resolved
             .segments
             .iter()

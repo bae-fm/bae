@@ -1,3 +1,6 @@
+use crate::test_playback_behavior::fixtures::*;
+use crate::test_playback_behavior::support::*;
+
 // Pregap tests. The CUE/FLAC fixture's track 2 has a 2s pregap (INDEX 00 at
 // 8s, INDEX 01 at 10s). Play and Next skip it, so the track's first position
 // is 0 or later; auto-advance plays it, so its first position is negative.

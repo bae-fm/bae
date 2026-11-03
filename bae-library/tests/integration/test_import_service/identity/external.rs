@@ -1,23 +1,4 @@
-/// A Discogs release with rich pressing fields, used to assert that a picked
-/// release seeds them.
-fn discogs_release_rich(title: &str, master_id: &str, tracks: &[&str]) -> DiscogsRelease {
-    let tracks: Vec<(&str, &str)> = tracks.iter().map(|title| (*title, "3:00")).collect();
-    DiscogsRelease {
-        year: Some(1996),
-        formats: vec![bae_catalogs::discogs::DiscogsFormat {
-            name: "CD".to_string(),
-            qty: "1".to_string(),
-            descriptions: vec!["Album".to_string(), "Reissue".to_string(), "Promo".to_string()],
-            text: None,
-        }],
-        labels: vec![
-            ReleaseLabel::of(Some("Label A"), Some("AB 100")),
-            ReleaseLabel::of(Some("Label B"), Some("CL 719")),
-        ],
-        master_id: Some(master_id.to_string()),
-        ..bae_catalogs::test_releases::discogs_test_release(&synthetic_release_id(title), title, &tracks)
-    }
-}
+use super::*;
 
 /// A catalog-backed import: the record carries the catalog's key for the
 /// release, and the pressing fields (year, every label with its catalog
@@ -46,7 +27,8 @@ async fn a_picked_release_writes_its_id_and_pressing_fields() {
         .unwrap();
 
     let mut progress_rx = f.handle.subscribe_import(import_id);
-    let (release_id, _album_id) = bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
+    let (release_id, _album_id) =
+        bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
 
     let release = f.library.database().find_release_by_id(&release_id).await.unwrap().unwrap();
     assert_eq!(release.pressing.year, Some(1996));
@@ -119,9 +101,7 @@ async fn a_user_edit_overlays_the_picked_release() {
         tracks: vec![TrackUserEdit {
             title: "Edited Track".to_string(),
             artist_assignments: TrackArtistAssignments::AlbumArtists,
-            file: Some(bae_import::AudioFile::Standalone {
-                file_id: "01 Track One.flac".into(),
-            }),
+            file: Some(bae_import::AudioFile::Standalone { file_id: "01 Track One.flac".into() }),
         }],
     };
 
@@ -139,7 +119,8 @@ async fn a_user_edit_overlays_the_picked_release() {
         .unwrap();
 
     let mut progress_rx = f.handle.subscribe_import(import_id);
-    let (release_id, _album_id) = bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
+    let (release_id, _album_id) =
+        bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
 
     let release = f.library.database().find_release_by_id(&release_id).await.unwrap().unwrap();
     assert_eq!(
@@ -204,7 +185,8 @@ async fn a_linked_draft_read_from_the_tags_imports_under_the_link() {
         .unwrap();
 
     let mut progress_rx = f.handle.subscribe_import(import_id);
-    let (release_id, _album_id) = bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
+    let (release_id, _album_id) =
+        bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
 
     let release = f.library.database().find_release_by_id(&release_id).await.unwrap().unwrap();
     let album = f.library.database().find_album_by_id(&release.album_id).await.unwrap().unwrap();
@@ -326,7 +308,10 @@ async fn a_cross_link_writes_both_catalogs_records() {
             &import_id,
             album_dir,
             bae_import::test_imports::DraftSource::Pick(bae_identify::PressingLink {
-                record: bae_catalogs::records::LookupRef::new(LookupCatalog::MusicBrainz, mb_id.clone()),
+                record: bae_catalogs::records::LookupRef::new(
+                    LookupCatalog::MusicBrainz,
+                    mb_id.clone(),
+                ),
                 partners: vec![],
             }),
         ))
@@ -334,7 +319,8 @@ async fn a_cross_link_writes_both_catalogs_records() {
         .unwrap();
 
     let mut progress_rx = f.handle.subscribe_import(import_id);
-    let (release_id, _) = bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
+    let (release_id, _) =
+        bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
 
     let records = f.library.database().get_release_records(&release_id).await.unwrap();
     assert_eq!(records.len(), 2, "expected MB + Discogs records");
@@ -385,7 +371,10 @@ async fn a_pick_with_a_partner_writes_both_records() {
             &import_id,
             album_dir,
             bae_import::test_imports::DraftSource::Pick(bae_identify::PressingLink {
-                record: bae_catalogs::records::LookupRef::new(LookupCatalog::MusicBrainz, mb_id.clone()),
+                record: bae_catalogs::records::LookupRef::new(
+                    LookupCatalog::MusicBrainz,
+                    mb_id.clone(),
+                ),
                 partners: vec![bae_catalogs::records::LookupRef::new(
                     LookupCatalog::Discogs,
                     discogs_id.clone(),
@@ -396,7 +385,8 @@ async fn a_pick_with_a_partner_writes_both_records() {
         .unwrap();
 
     let mut progress_rx = f.handle.subscribe_import(import_id);
-    let (release_id, _) = bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
+    let (release_id, _) =
+        bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
 
     let records = f.library.database().get_release_records(&release_id).await.unwrap();
     assert_eq!(records.len(), 2, "expected MB + Discogs records");
@@ -448,7 +438,10 @@ async fn a_partner_replaces_an_inferred_record_of_the_same_catalog() {
             &import_id,
             album_dir,
             bae_import::test_imports::DraftSource::Pick(bae_identify::PressingLink {
-                record: bae_catalogs::records::LookupRef::new(LookupCatalog::MusicBrainz, mb_id.clone()),
+                record: bae_catalogs::records::LookupRef::new(
+                    LookupCatalog::MusicBrainz,
+                    mb_id.clone(),
+                ),
                 partners: vec![bae_catalogs::records::LookupRef::new(
                     LookupCatalog::Discogs,
                     picked_id.clone(),
@@ -459,7 +452,8 @@ async fn a_partner_replaces_an_inferred_record_of_the_same_catalog() {
         .unwrap();
 
     let mut progress_rx = f.handle.subscribe_import(import_id);
-    let (release_id, _) = bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
+    let (release_id, _) =
+        bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
 
     let records = f.library.database().get_release_records(&release_id).await.unwrap();
     let discogs: Vec<_> =
@@ -479,7 +473,8 @@ fn seed_mb_without_xref(
     mb_group_id: &str,
     title: &str,
 ) -> String {
-    f.fakes.seed_musicbrainz_response(bae_catalogs::test_releases::mb_release(mb_release_id, mb_group_id, title),
+    f.fakes.seed_musicbrainz_response(
+        bae_catalogs::test_releases::mb_release(mb_release_id, mb_group_id, title),
         mb_group_id,
     )
 }

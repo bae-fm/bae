@@ -1,3 +1,6 @@
+use crate::test_playback_behavior::fixtures::*;
+use crate::test_playback_behavior::support::*;
+
 #[tokio::test]
 async fn sided_vinyl_boundary_pauses_on_auto_advance() {
     assert_sided_boundary_pauses("Vinyl", ["A1", "A2", "B1"], 1, "A", PlaybackPauseBoundary::Side)
@@ -243,21 +246,6 @@ async fn side_boundary_pause_prevents_gapless_stream_handoff() {
         },
     )
     .await;
-}
-
-#[derive(Clone, Copy)]
-enum SkipDirection {
-    Next,
-    Previous,
-}
-
-impl SkipDirection {
-    fn label(self) -> &'static str {
-        match self {
-            SkipDirection::Next => "Next",
-            SkipDirection::Previous => "Previous",
-        }
-    }
 }
 
 /// Next and Previous keep the current play/pause state, unlike a fresh `play`,

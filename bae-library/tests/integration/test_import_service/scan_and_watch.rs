@@ -1,3 +1,5 @@
+use super::*;
+
 /// A folder scan finds each album in a multi-album folder as its own candidate.
 #[tokio::test]
 async fn folder_scan_produces_candidates() {
@@ -145,17 +147,14 @@ async fn wait_for_tab(
     tab: bae_import::TriageTab,
     accept: impl FnMut(&bae_import::ImportListSnapshot) -> bool,
 ) -> bae_import::ImportListSnapshot {
-    let view =
-        bae_import::ImportListView { tab, ..bae_import::ImportListView::default() };
+    let view = bae_import::ImportListView { tab, ..bae_import::ImportListView::default() };
     tokio::time::timeout(HANG_GUARD, f.handle.wait_for_list(view, accept))
         .await
         .unwrap_or_else(|_| panic!("timed out waiting for {what}"))
 }
 
 /// The candidate rows one read of the list holds.
-fn candidate_rows(
-    projection: &bae_import::ImportListSnapshot,
-) -> Vec<&bae_import::TriageRow> {
+fn candidate_rows(projection: &bae_import::ImportListSnapshot) -> Vec<&bae_import::TriageRow> {
     projection
         .windows
         .iter()
@@ -165,17 +164,6 @@ fn candidate_rows(
             _ => None,
         })
         .collect()
-}
-
-/// Wait for a scan event matching `pred`; panics at the hang guard.
-async fn wait_for_scan_event(
-    rx: &mut tokio::sync::mpsc::UnboundedReceiver<ScanEvent>,
-    what: &str,
-    mut pred: impl FnMut(&ScanEvent) -> bool,
-) {
-    bae_util::test_channels::next_matching(rx, HANG_GUARD, |event| pred(&event).then_some(()))
-        .await
-        .unwrap_or_else(|| panic!("timed out waiting for {what}"));
 }
 
 /// `remove_watched_folder` drops the folder from the stored list and its
@@ -313,26 +301,31 @@ async fn scan_whose_stored_decisions_cannot_be_read_records_the_failure() {
     let root_key = root.to_path_buf();
 
     let invalid_folder = format!("{}/a/./b", root_key.display());
-    f.library.database().execute_local_sql_for_test(&format!(
-        "INSERT INTO release_grouping (key, anchor_folder, combined, author) \
+    f.library
+        .database()
+        .execute_local_sql_for_test(&format!(
+            "INSERT INTO release_grouping (key, anchor_folder, combined, author) \
          VALUES (CAST('grouping:corrupt' AS BLOB), X'{}', 1, 'user')",
-        hex::encode(invalid_folder.as_bytes()),
-    ))
-    .await
-    .unwrap();
+            hex::encode(invalid_folder.as_bytes()),
+        ))
+        .await
+        .unwrap();
     let mut events = f.handle.every_scan_event_for_test();
     f.handle.add_watched_folder(root_key.to_path_buf()).await.unwrap();
-    let error = bae_util::test_channels::next_matching(&mut events, HANG_GUARD, |event| match event {
-        ScanEvent::FolderScanStatusChanged { status } if status.watched_folder_path == root_key => {
-            match status.status {
-                bae_import::FolderScanStatus::Failed { error } => Some(error),
-                _ => None,
+    let error =
+        bae_util::test_channels::next_matching(&mut events, HANG_GUARD, |event| match event {
+            ScanEvent::FolderScanStatusChanged { status }
+                if status.watched_folder_path == root_key =>
+            {
+                match status.status {
+                    bae_import::FolderScanStatus::Failed { error } => Some(error),
+                    _ => None,
+                }
             }
-        }
-        _ => None,
-    })
-    .await
-    .expect("unreadable decisions leave a failed scan status");
+            _ => None,
+        })
+        .await
+        .expect("unreadable decisions leave a failed scan status");
     assert!(
         error.contains(&invalid_folder),
         "the failed status carries what went wrong, got {error:?}"
@@ -468,14 +461,8 @@ async fn a_folder_holding_watched_folders_takes_them_over_and_keeps_what_was_dec
     f.handle.add_watched_folder(other.clone()).await.unwrap();
     wait_for_reads(&f, "the inner folders are read", &[&artist, &other]).await;
 
-    f.handle
-        .set_candidate_skipped(bae_import::CandidateKey::folder(&skipped), true)
-        .await
-        .unwrap();
-    f.handle
-        .select_candidate_file_tags(bae_import::CandidateKey::folder(&picked))
-        .await
-        .unwrap();
+    f.handle.set_candidate_skipped(bae_import::CandidateKey::folder(&skipped), true).await.unwrap();
+    f.handle.select_candidate_file_tags(bae_import::CandidateKey::folder(&picked)).await.unwrap();
     let combined = f
         .handle
         .combine_folder(bae_import::FolderReleaseDecisionKey {
@@ -484,11 +471,8 @@ async fn a_folder_holding_watched_folders_takes_them_over_and_keeps_what_was_dec
         })
         .await
         .unwrap();
-    let picked_hash = scanned_folder(&f, &bae_import::CandidateKey::folder(&picked))
-        .await
-        .0
-        .files
-        .content_hash();
+    let picked_hash =
+        scanned_folder(&f, &bae_import::CandidateKey::folder(&picked)).await.0.files.content_hash();
 
     f.handle
         .add_watched_folder(music.clone())
@@ -499,8 +483,7 @@ async fn a_folder_holding_watched_folders_takes_them_over_and_keeps_what_was_dec
     let watched: Vec<std::path::PathBuf> =
         f.handle.watched_folders().await.unwrap().into_iter().map(|folder| folder.path).collect();
     assert_eq!(watched, vec![music.clone()]);
-    let (album, is_skipped) =
-        scanned_folder(&f, &bae_import::CandidateKey::folder(&skipped)).await;
+    let (album, is_skipped) = scanned_folder(&f, &bae_import::CandidateKey::folder(&skipped)).await;
     assert_eq!(album.watched_folder_path, music);
     assert!(is_skipped, "the skip stays");
     let (release, _) = scanned_folder(&f, &combined).await;
@@ -530,10 +513,7 @@ async fn removing_a_watched_folder_forgets_what_was_decided_under_it() {
     let album = album_dir(&f, "Music/Artist/Album");
     f.handle.add_watched_folder(artist.clone()).await.unwrap();
     wait_for_reads(&f, "the folder is read", &[&artist]).await;
-    f.handle
-        .set_candidate_skipped(bae_import::CandidateKey::folder(&album), true)
-        .await
-        .unwrap();
+    f.handle.set_candidate_skipped(bae_import::CandidateKey::folder(&album), true).await.unwrap();
 
     f.handle.remove_watched_folder(artist.clone()).await.unwrap();
     let tables = bae_import::tables::ImportTables::new(f.library.database().clone());
@@ -567,9 +547,10 @@ async fn refresh_missing_watched_folder_records_failure_and_preserves_candidates
         .await
         .expect("the refresh ran; what it found is the folder's status");
     let scans = wait_for_folder_scans(&f, "the failed refresh leaves its status", |scans| {
-        scans.statuses.iter().any(|status| {
-            matches!(status.status, bae_import::FolderScanStatus::Failed { .. })
-        })
+        scans
+            .statuses
+            .iter()
+            .any(|status| matches!(status.status, bae_import::FolderScanStatus::Failed { .. }))
     })
     .await;
     let projection = wait_for_candidates(&f, "the candidate stays", |projection| {
@@ -605,11 +586,8 @@ async fn set_candidate_skipped_flips_flag_and_is_idempotent() {
     assert!(batch.added.contains(&album_key));
 
     async fn wait_for_skipped(f: &ImportFixture, album: &std::path::Path, expected: bool) {
-        let tab = if expected {
-            bae_import::TriageTab::Skipped
-        } else {
-            bae_import::TriageTab::Pending
-        };
+        let tab =
+            if expected { bae_import::TriageTab::Skipped } else { bae_import::TriageTab::Pending };
         let key = bae_import::CandidateKey::folder(album);
         wait_for_tab(f, "the candidate's skip flag", tab, |projection| {
             candidate_rows(projection).iter().any(|row| row.candidate_key == key)
@@ -690,7 +668,8 @@ async fn a_done_row_follows_its_folder_and_its_release() {
         .unwrap();
     let import_id = f.handle.start_import(&album_key).await.unwrap().expect_queued();
     let mut progress_rx = f.handle.subscribe_import(import_id);
-    let (release_id, album_id) = bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
+    let (release_id, album_id) =
+        bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
     let release = bae_import::ImportedRelease { release_id: release_id.clone(), album_id };
 
     let done = done_row(&f, "the imported folder", &album_key).await;
@@ -708,10 +687,7 @@ async fn a_done_row_follows_its_folder_and_its_release() {
     let renamed_key = bae_import::CandidateKey::folder(&renamed);
     f.handle.refresh_watched_folder(collection_key.to_path_buf()).await.unwrap();
     let moved = done_row(&f, "the renamed folder", &renamed_key).await;
-    assert_eq!(
-        moved.import_status,
-        Some(bae_import::TriageImportStatus::Complete { release })
-    );
+    assert_eq!(moved.import_status, Some(bae_import::TriageImportStatus::Complete { release }));
 
     f.library.delete_release(&release_id).await.unwrap();
     wait_for_candidates(&f, "the folder back in Found", |projection| {
@@ -789,7 +765,8 @@ async fn a_folder_whose_files_this_device_imported_is_done() {
         f.handle.select_candidate_file_tags(key.clone()).await.unwrap();
         let import_id = f.handle.start_import(key).await.unwrap().expect_queued();
         let mut progress_rx = f.handle.subscribe_import(import_id);
-        release_ids.push(bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await.0);
+        release_ids
+            .push(bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await.0);
     }
 
     // One read of the Done tab holding all four folders.

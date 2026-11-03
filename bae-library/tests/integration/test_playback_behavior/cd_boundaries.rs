@@ -1,3 +1,6 @@
+use crate::test_playback_behavior::fixtures::*;
+use crate::test_playback_behavior::support::*;
+
 #[tokio::test]
 async fn cd_auto_advance_respects_disc_boundaries_and_setting() {
     for (format, positions, enabled) in [

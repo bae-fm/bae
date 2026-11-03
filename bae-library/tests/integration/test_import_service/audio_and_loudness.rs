@@ -1,3 +1,5 @@
+use super::*;
+
 /// A folder import stores a local release and its tracks and leaves the files
 /// where they were.
 #[tokio::test]
@@ -27,10 +29,18 @@ async fn local_folder_import() {
         .unwrap();
 
     let mut progress_rx = f.handle.subscribe_import(import_id);
-    let (release_id, _album_id) = bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
+    let (release_id, _album_id) =
+        bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
 
     // The release's files resolve to the folder they were imported from.
-    assert!(f.library.database().get_files_for_release(&release_id).await.unwrap().iter().all(|file| !file.stored));
+    assert!(f
+        .library
+        .database()
+        .get_files_for_release(&release_id)
+        .await
+        .unwrap()
+        .iter()
+        .all(|file| !file.stored));
     let files = f.library.database().get_files_for_release(&release_id).await.unwrap();
     let local_path = f.library.file_local_path(&files[0].id).await.unwrap().unwrap();
     assert_eq!(local_path.parent().unwrap(), album_dir);
@@ -71,7 +81,11 @@ async fn import_progress_names_every_operation_before_loudness() {
 
     let import_id = f.ids.new_id().to_string();
     f.handle
-        .send_command(bae_import::test_imports::folder_import(&import_id, album_dir, bae_import::test_imports::DraftSource::FileTags))
+        .send_command(bae_import::test_imports::folder_import(
+            &import_id,
+            album_dir,
+            bae_import::test_imports::DraftSource::FileTags,
+        ))
         .await
         .unwrap();
 
@@ -144,7 +158,8 @@ async fn import_produces_audio_format_records() {
         .unwrap();
 
     let mut progress_rx = f.handle.subscribe_import(import_id);
-    let (release_id, _) = bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
+    let (release_id, _) =
+        bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
 
     let tracks = f.library.database().get_tracks_for_release(&release_id).await.unwrap();
     assert_eq!(tracks.len(), 1);
@@ -169,8 +184,7 @@ async fn exact_metadata_import_stores_dsd_audio_format() {
         let album_dir = f.temp_path().join("album");
         fs::create_dir_all(&album_dir).unwrap();
         fs::copy(
-            bae_audio::test_fixtures::audio_format_dir()
-                .join(fixture_name),
+            bae_audio::test_fixtures::audio_format_dir().join(fixture_name),
             album_dir.join(import_name),
         )
         .unwrap();
@@ -186,7 +200,8 @@ async fn exact_metadata_import_stores_dsd_audio_format() {
             .unwrap();
 
         let mut progress_rx = f.handle.subscribe_import(import_id);
-        let (release_id, _) = bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
+        let (release_id, _) =
+            bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
 
         let files = f.library.database().get_files_for_release(&release_id).await.unwrap();
         assert_eq!(files.len(), 1, "{fixture_name}");
@@ -198,7 +213,13 @@ async fn exact_metadata_import_stores_dsd_audio_format() {
 
         let tracks = f.library.database().get_tracks_for_release(&release_id).await.unwrap();
         assert_eq!(tracks.len(), 1, "{fixture_name}");
-        let format = f.library.database().find_audio_format_by_track_id(&tracks[0].id).await.unwrap().unwrap();
+        let format = f
+            .library
+            .database()
+            .find_audio_format_by_track_id(&tracks[0].id)
+            .await
+            .unwrap()
+            .unwrap();
         assert_eq!(format.content_type, bae_util::content_type::ContentType::Dsd, "{fixture_name}");
     }
 }
@@ -273,7 +294,8 @@ async fn loudness_measured_at_import_drives_playback_gain() {
         .unwrap();
 
     let mut progress_rx = f.handle.subscribe_import(import_id);
-    let (release_id, _) = bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
+    let (release_id, _) =
+        bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
 
     // ── Stored measurements ──
     let tracks = f.library.database().get_tracks_for_release(&release_id).await.unwrap();
@@ -281,8 +303,10 @@ async fn loudness_measured_at_import_drives_playback_gain() {
     let quiet = tracks.iter().find(|t| t.title == "Quiet Track").unwrap();
     let loud = tracks.iter().find(|t| t.title == "Loud Track").unwrap();
 
-    let quiet_fmt = f.library.database().find_audio_format_by_track_id(&quiet.id).await.unwrap().unwrap();
-    let loud_fmt = f.library.database().find_audio_format_by_track_id(&loud.id).await.unwrap().unwrap();
+    let quiet_fmt =
+        f.library.database().find_audio_format_by_track_id(&quiet.id).await.unwrap().unwrap();
+    let loud_fmt =
+        f.library.database().find_audio_format_by_track_id(&loud.id).await.unwrap().unwrap();
 
     let quiet_lufs = quiet_fmt.track_loudness_lufs.expect("quiet track measured a loudness");
     let loud_lufs = loud_fmt.track_loudness_lufs.expect("loud track measured a loudness");
