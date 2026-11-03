@@ -2,12 +2,12 @@
 //! that writes the first such row, and deleted in the write that drops the
 //! last.
 
-use bae_catalogs::records::LookupRef;
 use super::super::{exec, exec_batch};
 use super::*;
-use bae_identify::RunOutcome;
 use crate::IdentifyRunId;
+use bae_catalogs::records::LookupRef;
 use bae_catalogs::source_release::{SourceRelease, UnfetchedDocument, UnfetchedReason};
+use bae_identify::RunOutcome;
 
 /// Candidate `a` with a draft, and MusicBrainz releases `rel-1` and `rel-2`
 /// stored with a barcode each, which nothing names yet.
@@ -212,19 +212,21 @@ async fn a_run_s_rows_keep_the_releases_it_read_until_the_run_ends() {
     let tables = crate::tables::ImportTables::new(db.clone());
     let key = crate::CandidateKey::test("release-reidentify");
     let run = IdentifyRunId::for_test(1);
-    tables.publish_release_run(
-        &key,
-        run,
-        &RunOutcome::Answered(sample_verdict()),
-        vec![release("rel-1"), release("rel-unnamed")],
-        None,
-    )
-    .await
-    .unwrap();
+    tables
+        .publish_release_run(
+            &key,
+            run,
+            &RunOutcome::Answered(sample_verdict()),
+            vec![release("rel-1"), release("rel-unnamed")],
+            None,
+        )
+        .await
+        .unwrap();
     let named = LookupRef::new(LookupCatalog::MusicBrainz, "rel-1");
     assert!(tables.load_source_release(&named).await.unwrap().is_some());
     assert_eq!(
-        tables.load_source_release(&LookupRef::new(LookupCatalog::MusicBrainz, "rel-unnamed"))
+        tables
+            .load_source_release(&LookupRef::new(LookupCatalog::MusicBrainz, "rel-unnamed"))
             .await
             .unwrap(),
         None,
@@ -252,19 +254,21 @@ async fn a_stored_release_is_replaced_only_by_a_copy_that_read_more() {
     let complete = release("rel-1");
     let publish = |copy: SourceRelease| {
         let db = db.clone();
-    let tables = crate::tables::ImportTables::new(db.clone());
+        let tables = crate::tables::ImportTables::new(db.clone());
         let key = key.clone();
         async move {
-            tables.publish_release_run(
-                &key,
-                run,
-                &RunOutcome::Answered(sample_verdict()),
-                vec![copy],
-                None,
-            )
-            .await
-            .unwrap();
-            tables.load_source_release(&LookupRef::new(LookupCatalog::MusicBrainz, "rel-1"))
+            tables
+                .publish_release_run(
+                    &key,
+                    run,
+                    &RunOutcome::Answered(sample_verdict()),
+                    vec![copy],
+                    None,
+                )
+                .await
+                .unwrap();
+            tables
+                .load_source_release(&LookupRef::new(LookupCatalog::MusicBrainz, "rel-1"))
                 .await
                 .unwrap()
                 .expect("the run's match names it")

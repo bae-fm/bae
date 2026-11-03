@@ -554,3 +554,7 @@ pub(super) fn outcome_of(
     };
     Ok((RunOutcome::Answered(verdict), kept_own_draft))
 }
+
+#[cfg(test)]
+#[path = "verdict_rows_tests.rs"]
+mod tests;

@@ -1,5 +1,10 @@
-// The lookup choices stored on a candidate: which signals its runs leave out,
-// and which of its barcodes and extracted catalog numbers they ask about.
+//! The lookup choices stored on a candidate: which signals its runs leave out,
+//! and which of its barcodes and extracted catalog numbers they ask about.
+
+use crate::tables::import_state::tests::*;
+use crate::tables::tests::*;
+use bae_db::test_fixtures::empty_db;
+use bae_db::watched_path::host_root;
 
 /// The whole value goes down and comes back, catalog order included: the
 /// chosen numbers are asked in the order the person chose them, so their
@@ -33,18 +38,19 @@ async fn writing_lookup_choices_replaces_what_stood_before() {
     let files = track_files_candidate(&[("01 Track.flac", 111), ("02 Track.flac", 222)]);
     let hash = store_candidate_state(&db, &files, &host_root("/music/Album")).await;
 
-    tables.save_import_candidate_lookup_choices(
-        &hash,
-        &bae_identify::LookupChoices {
-            disc_id_excluded: true,
-            excluded_barcodes: vec!["0123456789012".to_string()],
-            chosen_catalogs: vec!["LBL 001".to_string(), "LBL 002".to_string()],
-            search_words: None,
-            discounted_catalogs: Vec::new(),
-        },
-    )
-    .await
-    .unwrap();
+    tables
+        .save_import_candidate_lookup_choices(
+            &hash,
+            &bae_identify::LookupChoices {
+                disc_id_excluded: true,
+                excluded_barcodes: vec!["0123456789012".to_string()],
+                chosen_catalogs: vec!["LBL 001".to_string(), "LBL 002".to_string()],
+                search_words: None,
+                discounted_catalogs: Vec::new(),
+            },
+        )
+        .await
+        .unwrap();
     let replacement = bae_identify::LookupChoices {
         disc_id_excluded: false,
         excluded_barcodes: vec!["0123456789012".to_string()],
@@ -132,15 +138,16 @@ async fn writing_the_choices_replaces_what_was_struck_out() {
     let files = track_files_candidate(&[("01 Track.flac", 111), ("02 Track.flac", 222)]);
     let hash = store_candidate_state(&db, &files, &host_root("/music/Album")).await;
 
-    tables.save_import_candidate_lookup_choices(
-        &hash,
-        &bae_identify::LookupChoices {
-            discounted_catalogs: vec!["LBL 001".to_string(), "LBL 002".to_string()],
-            ..Default::default()
-        },
-    )
-    .await
-    .unwrap();
+    tables
+        .save_import_candidate_lookup_choices(
+            &hash,
+            &bae_identify::LookupChoices {
+                discounted_catalogs: vec!["LBL 001".to_string(), "LBL 002".to_string()],
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
     let replacement = bae_identify::LookupChoices {
         discounted_catalogs: vec!["LBL 002".to_string()],
         ..Default::default()
@@ -183,15 +190,16 @@ async fn writing_the_choices_replaces_the_left_out_barcodes() {
     let files = track_files_candidate(&[("01 Track.flac", 111), ("02 Track.flac", 222)]);
     let hash = store_candidate_state(&db, &files, &host_root("/music/Album")).await;
 
-    tables.save_import_candidate_lookup_choices(
-        &hash,
-        &bae_identify::LookupChoices {
-            excluded_barcodes: vec!["0123456789012".to_string(), "9999999999999".to_string()],
-            ..Default::default()
-        },
-    )
-    .await
-    .unwrap();
+    tables
+        .save_import_candidate_lookup_choices(
+            &hash,
+            &bae_identify::LookupChoices {
+                excluded_barcodes: vec!["0123456789012".to_string(), "9999999999999".to_string()],
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
     let replacement = bae_identify::LookupChoices {
         excluded_barcodes: vec!["9999999999999".to_string()],
         ..Default::default()
@@ -222,7 +230,8 @@ async fn typed_search_words_round_trip() {
     let loaded = tables.load_import_candidate_states().await.unwrap();
     assert_eq!(loaded.get(&hash).expect("the candidate reads back").lookup_choices, typed);
 
-    tables.save_import_candidate_lookup_choices(&hash, &bae_identify::LookupChoices::default())
+    tables
+        .save_import_candidate_lookup_choices(&hash, &bae_identify::LookupChoices::default())
         .await
         .unwrap();
     let loaded = tables.load_import_candidate_states().await.unwrap();

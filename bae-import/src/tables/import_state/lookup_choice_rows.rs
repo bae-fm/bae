@@ -165,3 +165,7 @@ impl ImportTables {
         self.database.call(move |sql| replace_lookup_choices_on(sql, &content_hash, &choices)).await
     }
 }
+
+#[cfg(test)]
+#[path = "lookup_choice_rows_tests.rs"]
+mod tests;

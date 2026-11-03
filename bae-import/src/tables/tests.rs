@@ -7,6 +7,7 @@ use bae_db::test_fixtures::{
     empty_db, exec, exec_batch, fixed_now, write_cover, ALBUM_A, ARTIST_A, ARTIST_B, RELEASE_A,
 };
 use bae_db::Database;
+use std::path::PathBuf;
 
 /// The folder at `name`, a `/`-separated path below `root`, spelled the way
 /// the scanner spells it on this host.
@@ -76,3 +77,38 @@ mod import_list_placement_tests;
 mod import_list_tests;
 mod import_list_window_cost;
 mod import_list_window_tests;
+
+/// A folder of plain track files, each `(relative_path, size)`.
+pub(crate) fn track_files_candidate(files: &[(&str, u64)]) -> CategorizedFiles {
+    CategorizedFiles {
+        files: files
+            .iter()
+            .map(|(name, size)| CandidateFile {
+                file: ScannedFile::new(PathBuf::from(*name), name.to_string(), *size, 1)
+                    .with_test_flac_audio(),
+                role: FileRole::Audio,
+            })
+            .collect(),
+        parts: Vec::new(),
+    }
+}
+
+pub(crate) fn scanned_candidate(
+    root: &std::path::Path,
+    name: &str,
+) -> crate::folder_scanner::ScanItem {
+    scanned_candidate_with_scope(root, name, crate::folder_scanner::ReleaseFileScope::Direct)
+}
+
+pub(crate) fn scanned_candidate_with_scope(
+    root: &std::path::Path,
+    name: &str,
+    scope: crate::folder_scanner::ReleaseFileScope,
+) -> crate::folder_scanner::ScanItem {
+    crate::folder_scanner::ScanItem::Valid(candidate_with(
+        root,
+        name,
+        track_files_candidate(&[("01.flac", 123)]),
+        scope,
+    ))
+}

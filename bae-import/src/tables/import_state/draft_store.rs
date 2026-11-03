@@ -213,3 +213,7 @@ fn delete_draft_body(sql: &CovenWrite<'_>, content_hash: &str) -> Result<(), DbE
     }
     Ok(())
 }
+
+#[cfg(test)]
+#[path = "draft_store_tests.rs"]
+mod tests;

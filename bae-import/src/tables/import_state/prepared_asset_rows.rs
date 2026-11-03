@@ -59,3 +59,7 @@ pub(super) fn load_asset_rows_on(
         .optional()?;
     Ok(CandidatePreparedAssets { remote_cover })
 }
+
+#[cfg(test)]
+#[path = "prepared_asset_rows_tests.rs"]
+mod tests;

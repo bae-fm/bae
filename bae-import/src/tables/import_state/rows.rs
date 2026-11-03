@@ -724,3 +724,7 @@ pub(crate) fn load_candidate_file_edits_on(
         stored.map_or_else(|| Ok(CandidateFileEdits::default()), |stored| stored.edits())
     }))
 }
+
+#[cfg(test)]
+#[path = "rows_tests.rs"]
+mod tests;

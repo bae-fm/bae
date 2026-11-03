@@ -224,3 +224,7 @@ pub(super) fn roles_of(roles: Vec<StoredRole>) -> Result<Vec<CreditedRole>, DbEr
         })
         .collect()
 }
+
+#[cfg(test)]
+#[path = "values_tests.rs"]
+mod tests;

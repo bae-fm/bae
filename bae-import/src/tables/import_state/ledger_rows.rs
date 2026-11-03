@@ -702,3 +702,7 @@ fn lookup_of(
         other => Err(unreadable("lookup answer", other)),
     }
 }
+
+#[cfg(test)]
+#[path = "ledger_rows_tests.rs"]
+mod tests;

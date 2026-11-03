@@ -399,7 +399,7 @@ impl ImportTables {
                 let files = if key.names_release() {
                     None
                 } else {
-                    let stored = super::super::release_groupings::load_candidate_on(sql, &key)?
+                    let stored = crate::tables::release_groupings::load_candidate_on(sql, &key)?
                         .ok_or_else(|| {
                             DbError::Message(format!("{key} is no candidate a search can be of"))
                         })?;

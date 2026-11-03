@@ -210,3 +210,7 @@ fn forget_folders_under(
     }
     Ok(removed)
 }
+
+#[cfg(test)]
+#[path = "watched_folder_removal_tests.rs"]
+mod tests;

@@ -638,3 +638,7 @@ pub(super) fn read_match_row(row: &Row<'_>) -> Result<MatchColumns, DbError> {
         named_note: row.get("named_note")?,
     })
 }
+
+#[cfg(test)]
+#[path = "match_rows_tests.rs"]
+mod tests;

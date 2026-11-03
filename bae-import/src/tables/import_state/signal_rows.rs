@@ -407,3 +407,7 @@ impl StoredSignals {
         })
     }
 }
+
+#[cfg(test)]
+#[path = "signal_rows_tests.rs"]
+mod tests;

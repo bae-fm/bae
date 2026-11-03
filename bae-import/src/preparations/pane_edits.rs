@@ -319,3 +319,7 @@ fn fill_track_artists(
     }
     Ok(())
 }
+
+#[cfg(test)]
+#[path = "pane_edits_tests.rs"]
+mod tests;

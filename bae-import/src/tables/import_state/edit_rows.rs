@@ -152,3 +152,7 @@ impl StoredFileEdits {
         Ok(edits)
     }
 }
+
+#[cfg(test)]
+#[path = "edit_rows_tests.rs"]
+mod tests;

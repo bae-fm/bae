@@ -834,4 +834,4 @@ pub(super) fn medium_conflict_of(
 
 #[cfg(test)]
 #[path = "import_state_tests.rs"]
-mod tests;
+pub(crate) mod tests;

@@ -320,7 +320,7 @@ pub(super) fn load_draft_and_cover_on(
         )
         .optional()?
         .ok_or_else(|| DbError::Message(format!("candidate {content_hash} has no state")))?;
-    let candidate = super::super::release_groupings::load_candidate_on(sql, &key)?
+    let candidate = crate::tables::release_groupings::load_candidate_on(sql, &key)?
         .map(|stored| stored.candidate)
         .filter(|candidate| candidate.files.content_hash() == content_hash)
         .ok_or_else(|| {
@@ -859,3 +859,7 @@ fn insert_track_artist_assignments(
     }
     Ok(())
 }
+
+#[cfg(test)]
+#[path = "pane_rows_tests.rs"]
+mod tests;
