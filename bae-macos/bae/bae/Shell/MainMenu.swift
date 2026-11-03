@@ -60,12 +60,12 @@ enum MainMenu {
                     )
                 ),
                 item(
-                    "Check for Updates...",
+                    "Check for Updates…",
                     #selector(AppDelegate.checkForUpdates(_:))
                 ),
                 .separator(),
                 item(
-                    "Settings...",
+                    "Settings…",
                     #selector(AppDelegate.showSettingsWindow(_:)),
                     ","
                 ),
@@ -100,17 +100,17 @@ enum MainMenu {
             "File",
             [
                 item(
-                    "New Library...",
+                    "New Library…",
                     #selector(AppDelegate.newLibrary(_:)),
                     "n",
                     [.command, .option]
                 ),
                 item(
-                    "Join Library...",
+                    "Join Library…",
                     #selector(AppDelegate.joinLibrary(_:))
                 ),
                 item(
-                    "Restore from Code...",
+                    "Restore from Code…",
                     #selector(AppDelegate.restoreFromCode(_:))
                 ),
                 openLibrary,
@@ -123,13 +123,13 @@ enum MainMenu {
     private static func libraryItems() -> [NSMenuItem] {
         [
             item(
-                "Import Folder...",
+                "Import Folder…",
                 #selector(MainWindowController.importFolder(_:)),
                 "i"
             ),
             .separator(),
             item(
-                "Rename Library...",
+                "Rename Library…",
                 #selector(MainWindowController.renameLibrary(_:))
             ),
             item(

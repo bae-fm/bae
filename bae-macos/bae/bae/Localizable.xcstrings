@@ -25175,19 +25175,19 @@
         }
       }
     },
-    "Any S3-compatible storage (AWS, Backblaze, Cloudflare R2, ...)" : {
+    "Any S3-compatible storage (AWS, Backblaze, Cloudflare R2, …)" : {
       "comment" : "Sync wizard: S3 provider blurb (example service names are brands)",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "أي تخزين متوافق مع S3 (AWS، Backblaze، Cloudflare R2، ...)"
+            "value" : "أي تخزين متوافق مع S3 (AWS، Backblaze، Cloudflare R2، …)"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Всяко S3-съвместимо хранилище (AWS, Backblaze, Cloudflare R2, ...)"
+            "value" : "Всяко S3-съвместимо хранилище (AWS, Backblaze, Cloudflare R2, …)"
           }
         },
         "cs" : {
@@ -25199,13 +25199,13 @@
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Enhver S3-kompatibel lagring (AWS, Backblaze, Cloudflare R2, ...)"
+            "value" : "Enhver S3-kompatibel lagring (AWS, Backblaze, Cloudflare R2, …)"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Any S3-compatible storage (AWS, Backblaze, Cloudflare R2, ...)"
+            "value" : "Any S3-compatible storage (AWS, Backblaze, Cloudflare R2, …)"
           }
         },
         "de" : {
@@ -25217,49 +25217,49 @@
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Οποιοσδήποτε αποθηκευτικός χώρος συμβατός με S3 (AWS, Backblaze, Cloudflare R2, ...)"
+            "value" : "Οποιοσδήποτε αποθηκευτικός χώρος συμβατός με S3 (AWS, Backblaze, Cloudflare R2, …)"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cualquier almacenamiento compatible con S3 (AWS, Backblaze, Cloudflare R2, ...)"
+            "value" : "Cualquier almacenamiento compatible con S3 (AWS, Backblaze, Cloudflare R2, …)"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mikä tahansa S3-yhteensopiva tallennustila (AWS, Backblaze, Cloudflare R2, ...)"
+            "value" : "Mikä tahansa S3-yhteensopiva tallennustila (AWS, Backblaze, Cloudflare R2, …)"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tout stockage compatible S3 (AWS, Backblaze, Cloudflare R2, ...)"
+            "value" : "Tout stockage compatible S3 (AWS, Backblaze, Cloudflare R2, …)"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "כל אחסון תואם S3 ‏(AWS, Backblaze, Cloudflare R2, ...)"
+            "value" : "כל אחסון תואם S3 ‏(AWS, Backblaze, Cloudflare R2, …)"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bilo koja pohrana kompatibilna s S3 (AWS, Backblaze, Cloudflare R2, ...)"
+            "value" : "Bilo koja pohrana kompatibilna s S3 (AWS, Backblaze, Cloudflare R2, …)"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bármilyen S3-kompatibilis tárhely (AWS, Backblaze, Cloudflare R2, ...)"
+            "value" : "Bármilyen S3-kompatibilis tárhely (AWS, Backblaze, Cloudflare R2, …)"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Qualsiasi archiviazione compatibile con S3 (AWS, Backblaze, Cloudflare R2, ...)"
+            "value" : "Qualsiasi archiviazione compatibile con S3 (AWS, Backblaze, Cloudflare R2, …)"
           }
         },
         "ja" : {
@@ -25277,61 +25277,61 @@
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hvilken som helst S3-kompatibel lagring (AWS, Backblaze, Cloudflare R2, ...)"
+            "value" : "Hvilken som helst S3-kompatibel lagring (AWS, Backblaze, Cloudflare R2, …)"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Elke S3-compatibele opslag (AWS, Backblaze, Cloudflare R2, ...)"
+            "value" : "Elke S3-compatibele opslag (AWS, Backblaze, Cloudflare R2, …)"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dowolny magazyn zgodny z S3 (AWS, Backblaze, Cloudflare R2, ...)"
+            "value" : "Dowolny magazyn zgodny z S3 (AWS, Backblaze, Cloudflare R2, …)"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Qualquer armazenamento compatível com S3 (AWS, Backblaze, Cloudflare R2, ...)"
+            "value" : "Qualquer armazenamento compatível com S3 (AWS, Backblaze, Cloudflare R2, …)"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Qualquer armazenamento compatível com S3 (AWS, Backblaze, Cloudflare R2, ...)"
+            "value" : "Qualquer armazenamento compatível com S3 (AWS, Backblaze, Cloudflare R2, …)"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Orice stocare compatibilă cu S3 (AWS, Backblaze, Cloudflare R2, ...)"
+            "value" : "Orice stocare compatibilă cu S3 (AWS, Backblaze, Cloudflare R2, …)"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ľubovoľné úložisko kompatibilné s S3 (AWS, Backblaze, Cloudflare R2, ...)"
+            "value" : "Ľubovoľné úložisko kompatibilné s S3 (AWS, Backblaze, Cloudflare R2, …)"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Valfri S3-kompatibel lagring (AWS, Backblaze, Cloudflare R2, ...)"
+            "value" : "Valfri S3-kompatibel lagring (AWS, Backblaze, Cloudflare R2, …)"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "S3 uyumlu herhangi bir depolama (AWS, Backblaze, Cloudflare R2, ...)"
+            "value" : "S3 uyumlu herhangi bir depolama (AWS, Backblaze, Cloudflare R2, …)"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Будь-яке S3-сумісне сховище (AWS, Backblaze, Cloudflare R2, ...)"
+            "value" : "Будь-яке S3-сумісне сховище (AWS, Backblaze, Cloudflare R2, …)"
           }
         },
         "zh-Hans" : {
@@ -25343,7 +25343,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "任何 S3 相容儲存空間 (AWS, Backblaze, Cloudflare R2, ...)"
+            "value" : "任何 S3 相容儲存空間 (AWS, Backblaze, Cloudflare R2, …)"
           }
         }
       }
@@ -29841,19 +29841,19 @@
         }
       }
     },
-    "Check for Updates..." : {
+    "Check for Updates…" : {
       "comment" : "App menu item (after About) that triggers a Sparkle update check",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "التحقق من التحديثات..."
+            "value" : "التحقق من التحديثات…"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Проверка за актуализации..."
+            "value" : "Проверка за актуализации…"
           }
         },
         "cs" : {
@@ -29865,13 +29865,13 @@
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Søg efter opdateringer..."
+            "value" : "Søg efter opdateringer…"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Check for Updates..."
+            "value" : "Check for Updates…"
           }
         },
         "de" : {
@@ -29883,19 +29883,19 @@
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Έλεγχος για ενημερώσεις..."
+            "value" : "Έλεγχος για ενημερώσεις…"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Buscar actualizaciones..."
+            "value" : "Buscar actualizaciones…"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tarkista päivitykset..."
+            "value" : "Tarkista päivitykset…"
           }
         },
         "fr" : {
@@ -29913,19 +29913,19 @@
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Provjeri ima li ažuriranja..."
+            "value" : "Provjeri ima li ažuriranja…"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Frissítések keresése..."
+            "value" : "Frissítések keresése…"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Verifica aggiornamenti..."
+            "value" : "Verifica aggiornamenti…"
           }
         },
         "ja" : {
@@ -29937,61 +29937,61 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "업데이트 확인..."
+            "value" : "업데이트 확인…"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Se etter oppdateringer..."
+            "value" : "Se etter oppdateringer…"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Controleren op updates..."
+            "value" : "Controleren op updates…"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sprawdź dostępność aktualizacji..."
+            "value" : "Sprawdź dostępność aktualizacji…"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Verificar atualizações..."
+            "value" : "Verificar atualizações…"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Procurar atualizações..."
+            "value" : "Procurar atualizações…"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Caută actualizări..."
+            "value" : "Caută actualizări…"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Skontrolovať aktualizácie..."
+            "value" : "Skontrolovať aktualizácie…"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sök efter uppdateringar..."
+            "value" : "Sök efter uppdateringar…"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Güncellemeleri Denetle..."
+            "value" : "Güncellemeleri Denetle…"
           }
         },
         "uk" : {
@@ -30009,7 +30009,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "檢查更新..."
+            "value" : "檢查更新…"
           }
         }
       }
@@ -32089,19 +32089,19 @@
         }
       }
     },
-    "Connecting..." : {
+    "Connecting…" : {
       "comment" : "Sync wizard: OAuth connect button while a connect is in flight",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "جارٍ الاتصال..."
+            "value" : "جارٍ الاتصال…"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Свързване..."
+            "value" : "Свързване…"
           }
         },
         "cs" : {
@@ -32113,13 +32113,13 @@
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Forbinder..."
+            "value" : "Forbinder…"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Connecting..."
+            "value" : "Connecting…"
           }
         },
         "de" : {
@@ -32131,19 +32131,19 @@
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Σύνδεση..."
+            "value" : "Σύνδεση…"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Conectando..."
+            "value" : "Conectando…"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Yhdistetään..."
+            "value" : "Yhdistetään…"
           }
         },
         "fr" : {
@@ -32161,19 +32161,19 @@
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Povezivanje..."
+            "value" : "Povezivanje…"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kapcsolódás..."
+            "value" : "Kapcsolódás…"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Connessione..."
+            "value" : "Connessione…"
           }
         },
         "ja" : {
@@ -32185,61 +32185,61 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "연결 중..."
+            "value" : "연결 중…"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kobler til..."
+            "value" : "Kobler til…"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Verbinden..."
+            "value" : "Verbinden…"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Łączenie..."
+            "value" : "Łączenie…"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Conectando..."
+            "value" : "Conectando…"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A ligar..."
+            "value" : "A ligar…"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Se conectează..."
+            "value" : "Se conectează…"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pripája sa..."
+            "value" : "Pripája sa…"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ansluter..."
+            "value" : "Ansluter…"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bağlanıyor..."
+            "value" : "Bağlanıyor…"
           }
         },
         "uk" : {
@@ -32257,7 +32257,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "正在連線..."
+            "value" : "正在連線…"
           }
         }
       }
@@ -45235,19 +45235,19 @@
         }
       }
     },
-    "Fetching covers..." : {
+    "Fetching covers…" : {
       "comment" : "Cover sheet: loading state",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "جارٍ جلب الأغلفة..."
+            "value" : "جارٍ جلب الأغلفة…"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Извличане на обложки..."
+            "value" : "Извличане на обложки…"
           }
         },
         "cs" : {
@@ -45259,13 +45259,13 @@
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Henter omslag..."
+            "value" : "Henter omslag…"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Fetching covers..."
+            "value" : "Fetching covers…"
           }
         },
         "de" : {
@@ -45277,19 +45277,19 @@
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ανάκτηση εξωφύλλων..."
+            "value" : "Ανάκτηση εξωφύλλων…"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Obteniendo portadas..."
+            "value" : "Obteniendo portadas…"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Haetaan kansia..."
+            "value" : "Haetaan kansia…"
           }
         },
         "fr" : {
@@ -45307,19 +45307,19 @@
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dohvaćanje omota..."
+            "value" : "Dohvaćanje omota…"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Borítók lekérése..."
+            "value" : "Borítók lekérése…"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Recupero copertine..."
+            "value" : "Recupero copertine…"
           }
         },
         "ja" : {
@@ -45331,61 +45331,61 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "커버 가져오는 중..."
+            "value" : "커버 가져오는 중…"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Henter omslag..."
+            "value" : "Henter omslag…"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hoezen ophalen..."
+            "value" : "Hoezen ophalen…"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pobieranie okładek..."
+            "value" : "Pobieranie okładek…"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Buscando capas..."
+            "value" : "Buscando capas…"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A obter capas..."
+            "value" : "A obter capas…"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Se aduc copertele..."
+            "value" : "Se aduc copertele…"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Načítavajú sa obaly..."
+            "value" : "Načítavajú sa obaly…"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hämtar omslag..."
+            "value" : "Hämtar omslag…"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kapaklar alınıyor..."
+            "value" : "Kapaklar alınıyor…"
           }
         },
         "uk" : {
@@ -45403,7 +45403,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "正在擷取封面..."
+            "value" : "正在擷取封面…"
           }
         }
       }
@@ -45926,19 +45926,19 @@
         }
       }
     },
-    "Filter..." : {
+    "Filter…" : {
       "comment" : "Import candidate list: filter text field placeholder",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "تصفية..."
+            "value" : "تصفية…"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Филтриране..."
+            "value" : "Филтриране…"
           }
         },
         "cs" : {
@@ -45950,13 +45950,13 @@
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Filter..."
+            "value" : "Filter…"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Filter..."
+            "value" : "Filter…"
           }
         },
         "de" : {
@@ -45968,19 +45968,19 @@
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Φίλτρο..."
+            "value" : "Φίλτρο…"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Filtrar..."
+            "value" : "Filtrar…"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Suodatin..."
+            "value" : "Suodatin…"
           }
         },
         "fr" : {
@@ -45998,19 +45998,19 @@
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Filtriraj..."
+            "value" : "Filtriraj…"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Szűrő..."
+            "value" : "Szűrő…"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Filtra..."
+            "value" : "Filtra…"
           }
         },
         "ja" : {
@@ -46022,61 +46022,61 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "필터..."
+            "value" : "필터…"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Filter..."
+            "value" : "Filter…"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Filter..."
+            "value" : "Filter…"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Filtruj..."
+            "value" : "Filtruj…"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Filtrar..."
+            "value" : "Filtrar…"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Filtro..."
+            "value" : "Filtro…"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Filtru..."
+            "value" : "Filtru…"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Filter..."
+            "value" : "Filter…"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Filter..."
+            "value" : "Filter…"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Filtrele..."
+            "value" : "Filtrele…"
           }
         },
         "uk" : {
@@ -46094,7 +46094,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "篩選..."
+            "value" : "篩選…"
           }
         }
       }
@@ -48692,19 +48692,19 @@
         }
       }
     },
-    "Import Folder..." : {
+    "Import Folder…" : {
       "comment" : "File menu: add a folder to watch for import",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "استيراد مجلد..."
+            "value" : "استيراد مجلد…"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Внасяне на папка..."
+            "value" : "Внасяне на папка…"
           }
         },
         "cs" : {
@@ -48716,13 +48716,13 @@
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Importer mappe..."
+            "value" : "Importer mappe…"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Import Folder..."
+            "value" : "Import Folder…"
           }
         },
         "de" : {
@@ -48734,19 +48734,19 @@
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Εισαγωγή φακέλου..."
+            "value" : "Εισαγωγή φακέλου…"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Importar carpeta..."
+            "value" : "Importar carpeta…"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tuo kansio..."
+            "value" : "Tuo kansio…"
           }
         },
         "fr" : {
@@ -48764,19 +48764,19 @@
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Uvezi mapu..."
+            "value" : "Uvezi mapu…"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mappa importálása..."
+            "value" : "Mappa importálása…"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Importa cartella..."
+            "value" : "Importa cartella…"
           }
         },
         "ja" : {
@@ -48788,61 +48788,61 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "폴더 가져오기..."
+            "value" : "폴더 가져오기…"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Importer mappe..."
+            "value" : "Importer mappe…"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Map importeren..."
+            "value" : "Map importeren…"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Importuj folder..."
+            "value" : "Importuj folder…"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Importar pasta..."
+            "value" : "Importar pasta…"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Importar pasta..."
+            "value" : "Importar pasta…"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Importă dosar..."
+            "value" : "Importă dosar…"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Importovať priečinok..."
+            "value" : "Importovať priečinok…"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Importera mapp..."
+            "value" : "Importera mapp…"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Klasörü İçe Aktar..."
+            "value" : "Klasörü İçe Aktar…"
           }
         },
         "uk" : {
@@ -48860,7 +48860,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "匯入資料夾..."
+            "value" : "匯入資料夾…"
           }
         }
       }
@@ -50595,175 +50595,175 @@
         }
       }
     },
-    "Join Library..." : {
+    "Join Library…" : {
       "comment" : "File menu: opens the join-a-library flow",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "الانضمام إلى مكتبة..."
+            "value" : "الانضمام إلى مكتبة…"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Присъединяване към библиотека..."
+            "value" : "Присъединяване към библиотека…"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Připojit se ke knihovně..."
+            "value" : "Připojit se ke knihovně…"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Deltag i et bibliotek..."
+            "value" : "Deltag i et bibliotek…"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Join Library..."
+            "value" : "Join Library…"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bibliothek beitreten ..."
+            "value" : "Bibliothek beitreten …"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Συμμετοχή σε βιβλιοθήκη..."
+            "value" : "Συμμετοχή σε βιβλιοθήκη…"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Unirse a una biblioteca..."
+            "value" : "Unirse a una biblioteca…"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Liity kirjastoon..."
+            "value" : "Liity kirjastoon…"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Rejoindre une bibliothèque..."
+            "value" : "Rejoindre une bibliothèque…"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "הצטרפות לספרייה..."
+            "value" : "הצטרפות לספרייה…"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pridruži se fonoteci..."
+            "value" : "Pridruži se fonoteci…"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Csatlakozás könyvtárhoz..."
+            "value" : "Csatlakozás könyvtárhoz…"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Unisciti a una libreria..."
+            "value" : "Unisciti a una libreria…"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ライブラリに参加..."
+            "value" : "ライブラリに参加…"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "라이브러리 참여..."
+            "value" : "라이브러리 참여…"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bli med i et bibliotek..."
+            "value" : "Bli med i et bibliotek…"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Deelnemen aan bibliotheek..."
+            "value" : "Deelnemen aan bibliotheek…"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dołącz do biblioteki..."
+            "value" : "Dołącz do biblioteki…"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Entrar em uma biblioteca..."
+            "value" : "Entrar em uma biblioteca…"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aderir a uma biblioteca..."
+            "value" : "Aderir a uma biblioteca…"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Alătură-te unei biblioteci..."
+            "value" : "Alătură-te unei biblioteci…"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pripojiť sa ku knižnici..."
+            "value" : "Pripojiť sa ku knižnici…"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gå med i ett bibliotek..."
+            "value" : "Gå med i ett bibliotek…"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kitaplığa katıl..."
+            "value" : "Kitaplığa katıl…"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Приєднатися до бібліотеки..."
+            "value" : "Приєднатися до бібліотеки…"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "加入库..."
+            "value" : "加入库…"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "加入資料庫..."
+            "value" : "加入資料庫…"
           }
         }
       }
@@ -54920,19 +54920,19 @@
         }
       }
     },
-    "New Library..." : {
+    "New Library…" : {
       "comment" : "File menu: create a new library",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "مكتبة جديدة..."
+            "value" : "مكتبة جديدة…"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Нова библиотека..."
+            "value" : "Нова библиотека…"
           }
         },
         "cs" : {
@@ -54944,13 +54944,13 @@
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nyt bibliotek..."
+            "value" : "Nyt bibliotek…"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "New Library..."
+            "value" : "New Library…"
           }
         },
         "de" : {
@@ -54962,19 +54962,19 @@
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Νέα βιβλιοθήκη..."
+            "value" : "Νέα βιβλιοθήκη…"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Biblioteca nueva..."
+            "value" : "Biblioteca nueva…"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Uusi kirjasto..."
+            "value" : "Uusi kirjasto…"
           }
         },
         "fr" : {
@@ -54992,19 +54992,19 @@
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nova fonoteka..."
+            "value" : "Nova fonoteka…"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Új könyvtár..."
+            "value" : "Új könyvtár…"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nuova libreria..."
+            "value" : "Nuova libreria…"
           }
         },
         "ja" : {
@@ -55016,61 +55016,61 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "새 라이브러리..."
+            "value" : "새 라이브러리…"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nytt bibliotek..."
+            "value" : "Nytt bibliotek…"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nieuwe bibliotheek..."
+            "value" : "Nieuwe bibliotheek…"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nowa biblioteka..."
+            "value" : "Nowa biblioteka…"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nova biblioteca..."
+            "value" : "Nova biblioteca…"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Biblioteca nova..."
+            "value" : "Biblioteca nova…"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bibliotecă nouă..."
+            "value" : "Bibliotecă nouă…"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nová knižnica..."
+            "value" : "Nová knižnica…"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nytt bibliotek..."
+            "value" : "Nytt bibliotek…"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Yeni Kitaplık..."
+            "value" : "Yeni Kitaplık…"
           }
         },
         "uk" : {
@@ -55088,7 +55088,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "新增資料庫..."
+            "value" : "新增資料庫…"
           }
         }
       }
@@ -68995,13 +68995,13 @@
         }
       }
     },
-    "Remove this library from this Mac..." : {
+    "Remove this library from this Mac…" : {
       "comment" : "Library settings: destructive button to remove the active library from this Mac",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "إزالة هذه المكتبة من هذا الـ Mac..."
+            "value" : "إزالة هذه المكتبة من هذا الـ Mac…"
           }
         },
         "bg" : {
@@ -69019,13 +69019,13 @@
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Fjern dette bibliotek fra denne Mac..."
+            "value" : "Fjern dette bibliotek fra denne Mac…"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Remove this library from this Mac..."
+            "value" : "Remove this library from this Mac…"
           }
         },
         "de" : {
@@ -69037,19 +69037,19 @@
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Αφαίρεση αυτής της βιβλιοθήκης από αυτόν τον Mac..."
+            "value" : "Αφαίρεση αυτής της βιβλιοθήκης από αυτόν τον Mac…"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Quitar esta biblioteca de este Mac..."
+            "value" : "Quitar esta biblioteca de este Mac…"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Poista tämä kirjasto tältä Macilta..."
+            "value" : "Poista tämä kirjasto tältä Macilta…"
           }
         },
         "fr" : {
@@ -69073,13 +69073,13 @@
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Könyvtár eltávolítása erről a Mac gépről..."
+            "value" : "Könyvtár eltávolítása erről a Mac gépről…"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Rimuovi questa libreria da questo Mac..."
+            "value" : "Rimuovi questa libreria da questo Mac…"
           }
         },
         "ja" : {
@@ -69097,13 +69097,13 @@
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Fjern dette biblioteket fra denne Macen..."
+            "value" : "Fjern dette biblioteket fra denne Macen…"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Verwijder deze bibliotheek van deze Mac..."
+            "value" : "Verwijder deze bibliotheek van deze Mac…"
           }
         },
         "pl" : {
@@ -69115,37 +69115,37 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Remover esta biblioteca deste Mac..."
+            "value" : "Remover esta biblioteca deste Mac…"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Remover esta biblioteca deste Mac..."
+            "value" : "Remover esta biblioteca deste Mac…"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Elimină această bibliotecă de pe acest Mac..."
+            "value" : "Elimină această bibliotecă de pe acest Mac…"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Odstrániť túto knižnicu z tohto Macu..."
+            "value" : "Odstrániť túto knižnicu z tohto Macu…"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ta bort det här biblioteket från den här Mac-datorn..."
+            "value" : "Ta bort det här biblioteket från den här Mac-datorn…"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bu kitaplığı bu Mac'ten kaldır..."
+            "value" : "Bu kitaplığı bu Mac'ten kaldır…"
           }
         },
         "uk" : {
@@ -69514,19 +69514,19 @@
         }
       }
     },
-    "Rename Library..." : {
+    "Rename Library…" : {
       "comment" : "File menu: rename the library",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "إعادة تسمية المكتبة..."
+            "value" : "إعادة تسمية المكتبة…"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Преименуване на библиотеката..."
+            "value" : "Преименуване на библиотеката…"
           }
         },
         "cs" : {
@@ -69538,13 +69538,13 @@
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Omdøb biblioteket..."
+            "value" : "Omdøb biblioteket…"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Rename Library..."
+            "value" : "Rename Library…"
           }
         },
         "de" : {
@@ -69556,19 +69556,19 @@
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Μετονομασία βιβλιοθήκης..."
+            "value" : "Μετονομασία βιβλιοθήκης…"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Renombrar biblioteca..."
+            "value" : "Renombrar biblioteca…"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nimeä kirjasto uudelleen..."
+            "value" : "Nimeä kirjasto uudelleen…"
           }
         },
         "fr" : {
@@ -69586,19 +69586,19 @@
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Preimenuj fonoteku..."
+            "value" : "Preimenuj fonoteku…"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Könyvtár átnevezése..."
+            "value" : "Könyvtár átnevezése…"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Rinomina libreria..."
+            "value" : "Rinomina libreria…"
           }
         },
         "ja" : {
@@ -69610,61 +69610,61 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "라이브러리 이름 변경..."
+            "value" : "라이브러리 이름 변경…"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gi biblioteket nytt navn..."
+            "value" : "Gi biblioteket nytt navn…"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bibliotheek hernoemen..."
+            "value" : "Bibliotheek hernoemen…"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Zmień nazwę biblioteki..."
+            "value" : "Zmień nazwę biblioteki…"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Renomear biblioteca..."
+            "value" : "Renomear biblioteca…"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mudar o nome da biblioteca..."
+            "value" : "Mudar o nome da biblioteca…"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Redenumește biblioteca..."
+            "value" : "Redenumește biblioteca…"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Premenovať knižnicu..."
+            "value" : "Premenovať knižnicu…"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Byt namn på biblioteket..."
+            "value" : "Byt namn på biblioteket…"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kitaplığı Yeniden Adlandır..."
+            "value" : "Kitaplığı Yeniden Adlandır…"
           }
         },
         "uk" : {
@@ -69682,7 +69682,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "重新命名資料庫..."
+            "value" : "重新命名資料庫…"
           }
         }
       }
@@ -70725,19 +70725,19 @@
         }
       }
     },
-    "Restore from Code..." : {
+    "Restore from Code…" : {
       "comment" : "File menu: restore a library from a code",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "استعادة من رمز..."
+            "value" : "استعادة من رمز…"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Възстановяване от код..."
+            "value" : "Възстановяване от код…"
           }
         },
         "cs" : {
@@ -70749,13 +70749,13 @@
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gendan fra kode..."
+            "value" : "Gendan fra kode…"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Restore from Code..."
+            "value" : "Restore from Code…"
           }
         },
         "de" : {
@@ -70767,19 +70767,19 @@
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Επαναφορά από κωδικό..."
+            "value" : "Επαναφορά από κωδικό…"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Restaurar desde código..."
+            "value" : "Restaurar desde código…"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Palauta koodista..."
+            "value" : "Palauta koodista…"
           }
         },
         "fr" : {
@@ -70797,19 +70797,19 @@
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vrati pomoću koda..."
+            "value" : "Vrati pomoću koda…"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Visszaállítás kódból..."
+            "value" : "Visszaállítás kódból…"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ripristina da codice..."
+            "value" : "Ripristina da codice…"
           }
         },
         "ja" : {
@@ -70821,61 +70821,61 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "코드에서 복원..."
+            "value" : "코드에서 복원…"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gjenopprett fra kode..."
+            "value" : "Gjenopprett fra kode…"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Herstellen vanaf code..."
+            "value" : "Herstellen vanaf code…"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Przywróć z kodu..."
+            "value" : "Przywróć z kodu…"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Restaurar a partir de código..."
+            "value" : "Restaurar a partir de código…"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Restaurar a partir de código..."
+            "value" : "Restaurar a partir de código…"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Restaurează din cod..."
+            "value" : "Restaurează din cod…"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Obnoviť z kódu..."
+            "value" : "Obnoviť z kódu…"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Återställ från kod..."
+            "value" : "Återställ från kod…"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Koddan Geri Yükle..."
+            "value" : "Koddan Geri Yükle…"
           }
         },
         "uk" : {
@@ -70893,7 +70893,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "從代碼還原..."
+            "value" : "從代碼還原…"
           }
         }
       }
@@ -74874,19 +74874,19 @@
         }
       }
     },
-    "Set up sync..." : {
+    "Set up sync…" : {
       "comment" : "Library settings: button to start the sync setup wizard",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "إعداد المزامنة..."
+            "value" : "إعداد المزامنة…"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Настройка на синхронизирането..."
+            "value" : "Настройка на синхронизирането…"
           }
         },
         "cs" : {
@@ -74898,13 +74898,13 @@
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Konfigurer synkronisering..."
+            "value" : "Konfigurer synkronisering…"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Set up sync..."
+            "value" : "Set up sync…"
           }
         },
         "de" : {
@@ -74916,19 +74916,19 @@
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ρύθμιση συγχρονισμού..."
+            "value" : "Ρύθμιση συγχρονισμού…"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Configurar sincronización..."
+            "value" : "Configurar sincronización…"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ota synkronointi käyttöön..."
+            "value" : "Ota synkronointi käyttöön…"
           }
         },
         "fr" : {
@@ -74946,19 +74946,19 @@
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Postavi sinkronizaciju..."
+            "value" : "Postavi sinkronizaciju…"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Szinkronizálás beállítása..."
+            "value" : "Szinkronizálás beállítása…"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Configura sincronizzazione..."
+            "value" : "Configura sincronizzazione…"
           }
         },
         "ja" : {
@@ -74970,61 +74970,61 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "동기화 설정..."
+            "value" : "동기화 설정…"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sett opp synkronisering..."
+            "value" : "Sett opp synkronisering…"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Synchronisatie instellen..."
+            "value" : "Synchronisatie instellen…"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Skonfiguruj synchronizację..."
+            "value" : "Skonfiguruj synchronizację…"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Configurar sincronização..."
+            "value" : "Configurar sincronização…"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Configurar sincronização..."
+            "value" : "Configurar sincronização…"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Configurează sincronizarea..."
+            "value" : "Configurează sincronizarea…"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nastaviť synchronizáciu..."
+            "value" : "Nastaviť synchronizáciu…"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ställ in synkronisering..."
+            "value" : "Ställ in synkronisering…"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Eşzamanlamayı kur..."
+            "value" : "Eşzamanlamayı kur…"
           }
         },
         "uk" : {
@@ -75042,7 +75042,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "設定同步..."
+            "value" : "設定同步…"
           }
         }
       }
@@ -79713,175 +79713,175 @@
         }
       }
     },
-    "Starting camera..." : {
+    "Starting camera…" : {
       "comment" : "QR scanner: shown while the camera session is starting",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "جارٍ تشغيل الكاميرا..."
+            "value" : "جارٍ تشغيل الكاميرا…"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Стартиране на камерата..."
+            "value" : "Стартиране на камерата…"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Spouštění kamery..."
+            "value" : "Spouštění kamery…"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Starter kameraet..."
+            "value" : "Starter kameraet…"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Starting camera..."
+            "value" : "Starting camera…"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kamera wird gestartet ..."
+            "value" : "Kamera wird gestartet …"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Εκκίνηση κάμερας..."
+            "value" : "Εκκίνηση κάμερας…"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Iniciando la cámara..."
+            "value" : "Iniciando la cámara…"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Käynnistetään kameraa..."
+            "value" : "Käynnistetään kameraa…"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Démarrage de la caméra..."
+            "value" : "Démarrage de la caméra…"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "המצלמה מופעלת..."
+            "value" : "המצלמה מופעלת…"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pokretanje kamere..."
+            "value" : "Pokretanje kamere…"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kamera indítása..."
+            "value" : "Kamera indítása…"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Avvio della fotocamera..."
+            "value" : "Avvio della fotocamera…"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "カメラを起動中..."
+            "value" : "カメラを起動中…"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "카메라 시작 중..."
+            "value" : "카메라 시작 중…"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Starter kameraet..."
+            "value" : "Starter kameraet…"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Camera wordt gestart..."
+            "value" : "Camera wordt gestart…"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Uruchamianie kamery..."
+            "value" : "Uruchamianie kamery…"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Iniciando a câmera..."
+            "value" : "Iniciando a câmera…"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A iniciar a câmara..."
+            "value" : "A iniciar a câmara…"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Se pornește camera..."
+            "value" : "Se pornește camera…"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Spúšťa sa kamera..."
+            "value" : "Spúšťa sa kamera…"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Startar kameran..."
+            "value" : "Startar kameran…"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kamera başlatılıyor..."
+            "value" : "Kamera başlatılıyor…"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Запуск камери..."
+            "value" : "Запуск камери…"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "正在启动相机..."
+            "value" : "正在启动相机…"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "正在啟動相機..."
+            "value" : "正在啟動相機…"
           }
         }
       }
@@ -80405,19 +80405,19 @@
         }
       }
     },
-    "Storage..." : {
+    "Storage…" : {
       "comment" : "Album detail menu: open the storage management sheet",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "التخزين..."
+            "value" : "التخزين…"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Хранилище..."
+            "value" : "Хранилище…"
           }
         },
         "cs" : {
@@ -80429,13 +80429,13 @@
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Lagring..."
+            "value" : "Lagring…"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Storage..."
+            "value" : "Storage…"
           }
         },
         "de" : {
@@ -80447,19 +80447,19 @@
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Αποθήκευση..."
+            "value" : "Αποθήκευση…"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Almacenamiento..."
+            "value" : "Almacenamiento…"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tallennustila..."
+            "value" : "Tallennustila…"
           }
         },
         "fr" : {
@@ -80477,19 +80477,19 @@
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pohrana..."
+            "value" : "Pohrana…"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tárhely..."
+            "value" : "Tárhely…"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Archiviazione..."
+            "value" : "Archiviazione…"
           }
         },
         "ja" : {
@@ -80501,61 +80501,61 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "저장소..."
+            "value" : "저장소…"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Lagring..."
+            "value" : "Lagring…"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Opslag..."
+            "value" : "Opslag…"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Magazyn..."
+            "value" : "Magazyn…"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Armazenamento..."
+            "value" : "Armazenamento…"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Armazenamento..."
+            "value" : "Armazenamento…"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Stocare..."
+            "value" : "Stocare…"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Úložisko..."
+            "value" : "Úložisko…"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Lagring..."
+            "value" : "Lagring…"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Depolama..."
+            "value" : "Depolama…"
           }
         },
         "uk" : {
@@ -80573,7 +80573,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "儲存空間..."
+            "value" : "儲存空間…"
           }
         }
       }
@@ -101715,18 +101715,18 @@
         }
       }
     },
-    "Invite a Person..." : {
+    "Invite a Person…" : {
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "دعوة شخص..."
+            "value" : "دعوة شخص…"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Покани човек..."
+            "value" : "Покани човек…"
           }
         },
         "cs" : {
@@ -101738,7 +101738,7 @@
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Inviter en person..."
+            "value" : "Inviter en person…"
           }
         },
         "de" : {
@@ -101750,19 +101750,19 @@
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Πρόσκληση ατόμου..."
+            "value" : "Πρόσκληση ατόμου…"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Invitar a una persona..."
+            "value" : "Invitar a una persona…"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kutsu henkilö..."
+            "value" : "Kutsu henkilö…"
           }
         },
         "fr" : {
@@ -101780,19 +101780,19 @@
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pozovi osobu..."
+            "value" : "Pozovi osobu…"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Személy meghívása..."
+            "value" : "Személy meghívása…"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Invita una persona..."
+            "value" : "Invita una persona…"
           }
         },
         "ja" : {
@@ -101810,13 +101810,13 @@
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Inviter en person..."
+            "value" : "Inviter en person…"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Iemand uitnodigen..."
+            "value" : "Iemand uitnodigen…"
           }
         },
         "pl" : {
@@ -101828,37 +101828,37 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Convidar uma pessoa..."
+            "value" : "Convidar uma pessoa…"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Convidar uma pessoa..."
+            "value" : "Convidar uma pessoa…"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Invită o persoană..."
+            "value" : "Invită o persoană…"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pozvať osobu..."
+            "value" : "Pozvať osobu…"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bjud in en person..."
+            "value" : "Bjud in en person…"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bir kişiyi davet et..."
+            "value" : "Bir kişiyi davet et…"
           }
         },
         "uk" : {
@@ -107046,18 +107046,18 @@
         }
       }
     },
-    "Sign In..." : {
+    "Sign In…" : {
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "تسجيل الدخول..."
+            "value" : "تسجيل الدخول…"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Вход..."
+            "value" : "Вход…"
           }
         },
         "cs" : {
@@ -107069,7 +107069,7 @@
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Log ind..."
+            "value" : "Log ind…"
           }
         },
         "de" : {
@@ -107081,19 +107081,19 @@
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Σύνδεση..."
+            "value" : "Σύνδεση…"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Iniciar sesión..."
+            "value" : "Iniciar sesión…"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kirjaudu..."
+            "value" : "Kirjaudu…"
           }
         },
         "fr" : {
@@ -107111,19 +107111,19 @@
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Prijava..."
+            "value" : "Prijava…"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bejelentkezés..."
+            "value" : "Bejelentkezés…"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Accedi..."
+            "value" : "Accedi…"
           }
         },
         "ja" : {
@@ -107141,13 +107141,13 @@
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Logg på..."
+            "value" : "Logg på…"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Inloggen..."
+            "value" : "Inloggen…"
           }
         },
         "pl" : {
@@ -107159,37 +107159,37 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Entrar..."
+            "value" : "Entrar…"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Iniciar sessão..."
+            "value" : "Iniciar sessão…"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Conectează-te..."
+            "value" : "Conectează-te…"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Prihlásiť sa..."
+            "value" : "Prihlásiť sa…"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Logga in..."
+            "value" : "Logga in…"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Oturum aç..."
+            "value" : "Oturum aç…"
           }
         },
         "uk" : {
@@ -109040,172 +109040,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "上一層"
-          }
-        }
-      }
-    },
-    "Waiting..." : {
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "في الانتظار..."
-          }
-        },
-        "bg" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Изчакване..."
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Čekání…"
-          }
-        },
-        "da" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Venter..."
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Warten …"
-          }
-        },
-        "el" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Αναμονή..."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Esperando..."
-          }
-        },
-        "fi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Odotetaan..."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "En attente…"
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ממתין…"
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Čekanje..."
-          }
-        },
-        "hu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Várakozás..."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "In attesa..."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "待機中…"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "대기 중…"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Venter..."
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wachten..."
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Oczekiwanie…"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aguardando..."
-          }
-        },
-        "pt-PT" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "A aguardar..."
-          }
-        },
-        "ro" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Se așteaptă..."
-          }
-        },
-        "sk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Čaká sa..."
-          }
-        },
-        "sv" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Väntar..."
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bekleniyor..."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Очікування…"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "正在等待…"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "正在等待…"
           }
         }
       }
@@ -114676,19 +114510,19 @@
         }
       }
     },
-    "Find and Replace..." : {
+    "Find and Replace…" : {
       "comment" : "Edit ▸ Find: show the find bar with its replace field",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "بحث واستبدال..."
+            "value" : "بحث واستبدال…"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Търсене и замяна..."
+            "value" : "Търсене и замяна…"
           }
         },
         "cs" : {
@@ -114700,7 +114534,7 @@
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Find og erstat..."
+            "value" : "Find og erstat…"
           }
         },
         "de" : {
@@ -114712,25 +114546,25 @@
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Εύρεση και αντικατάσταση..."
+            "value" : "Εύρεση και αντικατάσταση…"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Find and Replace..."
+            "value" : "Find and Replace…"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Buscar y reemplazar..."
+            "value" : "Buscar y reemplazar…"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Etsi ja korvaa..."
+            "value" : "Etsi ja korvaa…"
           }
         },
         "fr" : {
@@ -114748,19 +114582,19 @@
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Traži i zamijeni..."
+            "value" : "Traži i zamijeni…"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Keresés és csere..."
+            "value" : "Keresés és csere…"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Trova e sostituisci..."
+            "value" : "Trova e sostituisci…"
           }
         },
         "ja" : {
@@ -114772,61 +114606,61 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "찾기 및 대치..."
+            "value" : "찾기 및 대치…"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Søk og erstatt..."
+            "value" : "Søk og erstatt…"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Zoek en vervang..."
+            "value" : "Zoek en vervang…"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Znajdź i zastąp..."
+            "value" : "Znajdź i zastąp…"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Buscar e substituir..."
+            "value" : "Buscar e substituir…"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Procurar e substituir..."
+            "value" : "Procurar e substituir…"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Caută și înlocuiește..."
+            "value" : "Caută și înlocuiește…"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hľadať a nahradiť..."
+            "value" : "Hľadať a nahradiť…"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sök och ersätt..."
+            "value" : "Sök och ersätt…"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bul ve Değiştir..."
+            "value" : "Bul ve Değiştir…"
           }
         },
         "uk" : {
@@ -114844,24 +114678,24 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "尋找和取代..."
+            "value" : "尋找和取代…"
           }
         }
       }
     },
-    "Find..." : {
+    "Find…" : {
       "comment" : "Edit ▸ Find: show the find bar",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "بحث..."
+            "value" : "بحث…"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Търсене..."
+            "value" : "Търсене…"
           }
         },
         "cs" : {
@@ -114873,7 +114707,7 @@
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Find..."
+            "value" : "Find…"
           }
         },
         "de" : {
@@ -114885,25 +114719,25 @@
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Εύρεση..."
+            "value" : "Εύρεση…"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Find..."
+            "value" : "Find…"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Buscar..."
+            "value" : "Buscar…"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Etsi..."
+            "value" : "Etsi…"
           }
         },
         "fr" : {
@@ -114921,19 +114755,19 @@
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Traži..."
+            "value" : "Traži…"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Keresés..."
+            "value" : "Keresés…"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Trova..."
+            "value" : "Trova…"
           }
         },
         "ja" : {
@@ -114945,61 +114779,61 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "찾기..."
+            "value" : "찾기…"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Søk..."
+            "value" : "Søk…"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Zoek..."
+            "value" : "Zoek…"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Znajdź..."
+            "value" : "Znajdź…"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Buscar..."
+            "value" : "Buscar…"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Procurar..."
+            "value" : "Procurar…"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Caută..."
+            "value" : "Caută…"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hľadať..."
+            "value" : "Hľadať…"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sök..."
+            "value" : "Sök…"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bul..."
+            "value" : "Bul…"
           }
         },
         "uk" : {
@@ -115017,7 +114851,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "尋找..."
+            "value" : "尋找…"
           }
         }
       }
@@ -116752,19 +116586,19 @@
         }
       }
     },
-    "Settings..." : {
+    "Settings…" : {
       "comment" : "App menu: open the settings window",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "الإعدادات..."
+            "value" : "الإعدادات…"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Настройки..."
+            "value" : "Настройки…"
           }
         },
         "cs" : {
@@ -116776,7 +116610,7 @@
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Indstillinger..."
+            "value" : "Indstillinger…"
           }
         },
         "de" : {
@@ -116788,25 +116622,25 @@
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ρυθμίσεις..."
+            "value" : "Ρυθμίσεις…"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Settings..."
+            "value" : "Settings…"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ajustes..."
+            "value" : "Ajustes…"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Asetukset..."
+            "value" : "Asetukset…"
           }
         },
         "fr" : {
@@ -116824,19 +116658,19 @@
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Postavke..."
+            "value" : "Postavke…"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Beállítások..."
+            "value" : "Beállítások…"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Impostazioni..."
+            "value" : "Impostazioni…"
           }
         },
         "ja" : {
@@ -116848,61 +116682,61 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "설정..."
+            "value" : "설정…"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Innstillinger..."
+            "value" : "Innstillinger…"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Instellingen..."
+            "value" : "Instellingen…"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ustawienia..."
+            "value" : "Ustawienia…"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Configurações..."
+            "value" : "Configurações…"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Definições..."
+            "value" : "Definições…"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Setări..."
+            "value" : "Setări…"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nastavenia..."
+            "value" : "Nastavenia…"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Inställningar..."
+            "value" : "Inställningar…"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ayarlar..."
+            "value" : "Ayarlar…"
           }
         },
         "uk" : {
@@ -116920,7 +116754,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "設定..."
+            "value" : "設定…"
           }
         }
       }
@@ -120385,19 +120219,19 @@
         }
       }
     },
-    "Add Device..." : {
+    "Add Device…" : {
       "comment" : "People: button under this device's own person that opens Add a device, the sheet that adds another of their devices.",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "إضافة جهاز..."
+            "value" : "إضافة جهاز…"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Добавяне на устройство..."
+            "value" : "Добавяне на устройство…"
           }
         },
         "cs" : {
@@ -120409,7 +120243,7 @@
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tilføj enhed..."
+            "value" : "Tilføj enhed…"
           }
         },
         "de" : {
@@ -120421,25 +120255,25 @@
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Προσθήκη συσκευής..."
+            "value" : "Προσθήκη συσκευής…"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Add Device..."
+            "value" : "Add Device…"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Añadir dispositivo..."
+            "value" : "Añadir dispositivo…"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Lisää laite..."
+            "value" : "Lisää laite…"
           }
         },
         "fr" : {
@@ -120457,19 +120291,19 @@
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dodaj uređaj..."
+            "value" : "Dodaj uređaj…"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Eszköz hozzáadása..."
+            "value" : "Eszköz hozzáadása…"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aggiungi dispositivo..."
+            "value" : "Aggiungi dispositivo…"
           }
         },
         "ja" : {
@@ -120487,13 +120321,13 @@
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Legg til enhet..."
+            "value" : "Legg til enhet…"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Apparaat toevoegen..."
+            "value" : "Apparaat toevoegen…"
           }
         },
         "pl" : {
@@ -120505,37 +120339,37 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Adicionar dispositivo..."
+            "value" : "Adicionar dispositivo…"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Adicionar dispositivo..."
+            "value" : "Adicionar dispositivo…"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Adaugă dispozitiv..."
+            "value" : "Adaugă dispozitiv…"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pridať zariadenie..."
+            "value" : "Pridať zariadenie…"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Lägg till enhet..."
+            "value" : "Lägg till enhet…"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cihaz ekle..."
+            "value" : "Cihaz ekle…"
           }
         },
         "uk" : {
@@ -121769,19 +121603,19 @@
         }
       }
     },
-    "Add %@ Key..." : {
+    "Add %@ Key…" : {
       "comment" : "Library and Import empty states: button opening Settings on the Import pane, where a metadata source's API key is entered; %@ is the source name",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "إضافة مفتاح %@..."
+            "value" : "إضافة مفتاح %@…"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Добавяне на ключ за %@..."
+            "value" : "Добавяне на ключ за %@…"
           }
         },
         "cs" : {
@@ -121793,13 +121627,13 @@
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tilføj %@-nøgle..."
+            "value" : "Tilføj %@-nøgle…"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Add %@ Key..."
+            "value" : "Add %@ Key…"
           }
         },
         "de" : {
@@ -121811,19 +121645,19 @@
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Προσθήκη κλειδιού %@..."
+            "value" : "Προσθήκη κλειδιού %@…"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Añadir clave de %@..."
+            "value" : "Añadir clave de %@…"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Lisää %@-avain..."
+            "value" : "Lisää %@-avain…"
           }
         },
         "fr" : {
@@ -121841,19 +121675,19 @@
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dodaj %@ ključ..."
+            "value" : "Dodaj %@ ključ…"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@-kulcs hozzáadása..."
+            "value" : "%@-kulcs hozzáadása…"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aggiungi chiave %@..."
+            "value" : "Aggiungi chiave %@…"
           }
         },
         "ja" : {
@@ -121865,61 +121699,61 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ 키 추가..."
+            "value" : "%@ 키 추가…"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Legg til %@-nøkkel..."
+            "value" : "Legg til %@-nøkkel…"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@-sleutel toevoegen..."
+            "value" : "%@-sleutel toevoegen…"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dodaj klucz %@..."
+            "value" : "Dodaj klucz %@…"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Adicionar chave do %@..."
+            "value" : "Adicionar chave do %@…"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Adicionar chave do %@..."
+            "value" : "Adicionar chave do %@…"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Adaugă cheie %@..."
+            "value" : "Adaugă cheie %@…"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pridať kľúč %@..."
+            "value" : "Pridať kľúč %@…"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Lägg till %@-nyckel..."
+            "value" : "Lägg till %@-nyckel…"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ Anahtarı Ekle..."
+            "value" : "%@ Anahtarı Ekle…"
           }
         },
         "uk" : {
@@ -121937,7 +121771,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "新增 %@ 金鑰..."
+            "value" : "新增 %@ 金鑰…"
           }
         }
       }
@@ -126160,176 +125994,176 @@
         }
       }
     },
-    "Checking..." : {
+    "Checking…" : {
       "comment" : "Joining: a check for approval is running.",
       "extractionState" : "manual",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "جارٍ التحقق..."
+            "value" : "جارٍ التحقق…"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Проверка..."
+            "value" : "Проверка…"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Probíhá kontrola..."
+            "value" : "Probíhá kontrola…"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kontrollerer..."
+            "value" : "Kontrollerer…"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Wird geprüft..."
+            "value" : "Wird geprüft…"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Γίνεται έλεγχος..."
+            "value" : "Γίνεται έλεγχος…"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Checking..."
+            "value" : "Checking…"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Comprobando..."
+            "value" : "Comprobando…"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tarkistetaan..."
+            "value" : "Tarkistetaan…"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vérification..."
+            "value" : "Vérification…"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "בודק..."
+            "value" : "בודק…"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Provjera..."
+            "value" : "Provjera…"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ellenőrzés..."
+            "value" : "Ellenőrzés…"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Controllo in corso..."
+            "value" : "Controllo in corso…"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "確認中..."
+            "value" : "確認中…"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "확인 중..."
+            "value" : "확인 중…"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sjekker..."
+            "value" : "Sjekker…"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bezig met controleren..."
+            "value" : "Bezig met controleren…"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sprawdzanie..."
+            "value" : "Sprawdzanie…"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Verificando..."
+            "value" : "Verificando…"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A verificar..."
+            "value" : "A verificar…"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Se verifică..."
+            "value" : "Se verifică…"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Prebieha kontrola..."
+            "value" : "Prebieha kontrola…"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kontrollerar..."
+            "value" : "Kontrollerar…"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Denetleniyor..."
+            "value" : "Denetleniyor…"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Перевірка..."
+            "value" : "Перевірка…"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "正在检查..."
+            "value" : "正在检查…"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "正在檢查..."
+            "value" : "正在檢查…"
           }
         }
       }
@@ -132181,7 +132015,7 @@
       }
     },
     "Waiting…" : {
-      "comment" : "Find online ledger: in the title search chip, while the run asks about the folder's identifiers before it searches by these words.",
+      "comment" : "Find online ledger: in the title search chip, while the run asks about the folder's identifiers before it searches by these words. Also the restore or join status, while coven waits on records it has not received yet.",
       "extractionState" : "manual",
       "localizations" : {
         "ar" : {

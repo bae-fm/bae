@@ -18,7 +18,9 @@ Library…", "Open Library"). "bae" itself is always lowercase.
 
 An ellipsis is one character, "…", never three full stops, in every language
 ("Sign in to Dropbox…", "Checking the bucket…"). bae-loc's catalog check
-refuses three full stops in a core string or any of its translations.
+refuses three full stops in a core string or any of its translations, and
+scripts/loc-english-skeleton.py refuses them in the macOS and Android
+catalogs, source and every locale.
 
 ## The library and where it lives
 

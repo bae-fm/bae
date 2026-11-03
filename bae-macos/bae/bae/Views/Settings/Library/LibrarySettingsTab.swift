@@ -75,7 +75,7 @@ struct LibrarySettingsTab: View {
                     }
                 }
                 else {
-                    Button("Set up sync...") {
+                    Button("Set up sync…") {
                         showSyncSetup = true
                     }
                 }
@@ -93,7 +93,7 @@ struct LibrarySettingsTab: View {
                     .themeText(.detail)
                     .foregroundStyle(.secondary)
                 Button(
-                    "Remove this library from this Mac...",
+                    "Remove this library from this Mac…",
                     role: .destructive
                 ) {
                     askToRemove()

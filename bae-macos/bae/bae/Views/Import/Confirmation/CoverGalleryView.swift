@@ -154,7 +154,7 @@ struct CoverGalleryView: View {
                     }
                     else {
                         if remoteItems.isLoading {
-                            ProgressView("Fetching covers...")
+                            ProgressView("Fetching covers…")
                                 .frame(
                                     maxWidth: .infinity,
                                     maxHeight: .infinity
@@ -337,7 +337,7 @@ extension CoverGalleryView {
     private var remoteStatus: some View {
         switch remoteItems {
         case .loading:
-            ProgressView("Fetching covers...").controlSize(.small)
+            ProgressView("Fetching covers…").controlSize(.small)
         case .unlinked:
             VStack(alignment: .leading, spacing: ThemeSpace.related) {
                 Text("No linked release")

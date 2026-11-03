@@ -38,9 +38,9 @@ extension MainMenu {
     private static func findItems() -> [NSMenuItem] {
         let find = #selector(NSTextView.performFindPanelAction(_:))
         return [
-            item("Find...", find, "f", tag: .showFindInterface),
+            item("Find…", find, "f", tag: .showFindInterface),
             item(
-                "Find and Replace...",
+                "Find and Replace…",
                 find,
                 "f",
                 [.command, .option],

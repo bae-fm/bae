@@ -19,7 +19,7 @@ public struct BootstrapStatusView: View {
                 total: progress.total
             )
         case .connecting:
-            progress("Connecting...")
+            progress("Connecting…")
         case .waitingForApproval(let confirmation, let nextCheck):
             VStack(spacing: ThemeSpace.related) {
                 if let confirmation {
@@ -42,7 +42,7 @@ public struct BootstrapStatusView: View {
             )
         case .pending(let records):
             VStack(alignment: .leading, spacing: ThemeSpace.related) {
-                progress("Waiting...")
+                progress("Waiting…")
                 PendingRecordsView(records: records, perform: nil)
             }
         }
@@ -86,7 +86,7 @@ private struct NextCheckLine: View {
     var body: some View {
         switch nextCheck {
         case .checking:
-            line(Text("Checking..."))
+            line(Text("Checking…"))
         case .at(let time):
             countdown(to: time)
         case .coolingDown(let until):

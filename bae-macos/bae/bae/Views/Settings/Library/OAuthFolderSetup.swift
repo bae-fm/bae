@@ -48,7 +48,7 @@
                         .themeText(.body)
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        Button("Sign In...") { browser.signIn() }
+                        Button("Sign In…") { browser.signIn() }
                             .disabled(browser.isWorking)
                     }
                 }

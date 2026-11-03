@@ -13,7 +13,7 @@ struct ImportEmptyState: View {
                 .themeText(.body)
                 .foregroundStyle(.secondary)
             HStack(spacing: ThemeSpace.related) {
-                Button("Import Folder...") {
+                Button("Import Folder…") {
                     uiStore.setImportFolderPickerPresented(true)
                 }
                 AddDiscogsKeyButton()

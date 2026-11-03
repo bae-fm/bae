@@ -259,7 +259,7 @@ struct SetupStep<Fields: View>: View {
             }
             HStack(spacing: ThemeSpace.related) {
                 Spacer()
-                Button(task != nil ? "Connecting..." : actionTitle) {
+                Button(task != nil ? "Connecting…" : actionTitle) {
                     connect()
                 }
                 .buttonStyle(PrimaryButtonStyle())

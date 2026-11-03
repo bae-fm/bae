@@ -40,6 +40,10 @@ placeholder, which neither catalog format substitutes. A mismatch is a
 translation defect regardless of what the other detectors say, so it is not
 allowlist-suppressible.
 
+Also refuses an ellipsis written as three full stops ("..." for "…",
+spec/words.md "Punctuation") in any key, source or translation of either
+catalog; that is never allowlist-suppressible either.
+
 Gates CI: exits non-zero if any strict-detector or placeholder-multiset hit in
 the macOS xcstrings catalog or the Android catalogs is not allowlisted
 (placeholder mismatches are never allowlist-suppressible).
@@ -464,6 +468,32 @@ def dashed_sources(leaves):
     })
 
 
+# An ellipsis is one character, "…", in the source and every translation
+# (spec/words.md "Punctuation"); three full stops never stand for it.
+THREE_DOTS = "..."
+
+
+def three_dot_values(leaves):
+    """Every (locale, key, value) that writes an ellipsis as three full stops,
+    the key itself included: a String Catalog's key is its English source."""
+    found = set()
+    for key, _form, en_value, values in leaves:
+        if THREE_DOTS in key or THREE_DOTS in en_value:
+            found.add(("en", key, en_value if THREE_DOTS in en_value else key))
+        for locale, value in values.items():
+            if THREE_DOTS in value:
+                found.add((locale, key, value))
+    return sorted(found)
+
+
+def print_three_dots(label, found):
+    if found:
+        print(f'=== {label}: {len(found)} value(s) writing an ellipsis as "..." ===')
+        for locale, key, value in found:
+            print(f"  [{locale}] {key!r}: {value!r}")
+    return len(found)
+
+
 def print_dashed(label, dashed):
     if dashed:
         print(f"=== {label}: {len(dashed)} English source(s) with a sentence dash ===")
@@ -498,6 +528,7 @@ def main():
         total_gating_failures += len(unallowed)
 
         total_gating_failures += print_dashed(label, dashed_sources(leaves))
+        total_gating_failures += print_three_dots(label, three_dot_values(leaves))
 
         mismatches = placeholder_mismatches(leaves)
         if mismatches:
@@ -523,6 +554,9 @@ def main():
 
         total_gating_failures += print_dashed(
             "Android strings.xml", dashed_sources(android_leaves_all)
+        )
+        total_gating_failures += print_three_dots(
+            "Android strings.xml", three_dot_values(android_leaves_all)
         )
 
         mismatches = placeholder_mismatches(android_leaves_all)

@@ -24,7 +24,7 @@ struct QRScannerView: View {
         Group {
             switch state {
             case .requesting:
-                placeholder(String(localized: "Starting camera..."))
+                placeholder(String(localized: "Starting camera…"))
             case .ready(let capture):
                 CameraPreview(capture: capture, onScan: onScan)
             case .denied:

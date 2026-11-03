@@ -97,7 +97,7 @@ struct MembersSection: View {
                 )
             }
             if store.selfIsAdmin {
-                Button("Invite a Person...") { inviteSheet = .form }
+                Button("Invite a Person…") { inviteSheet = .form }
             }
         }
         .sheet(item: $inviteSheet) { sheet in
@@ -333,7 +333,7 @@ private struct MemberRow: View {
             // A row's person never changes, so including this only in one's
             // own row never changes a row's size after it first lays out.
             if member.isSelf {
-                Button("Add Device...", action: onAddDevice)
+                Button("Add Device…", action: onAddDevice)
                     .buttonStyle(.link)
                     .padding(.leading, ThemeSpace.group)
             }

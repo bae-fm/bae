@@ -132,7 +132,7 @@ struct AlbumExpansionContent: View {
             Button("Add to Queue") { onAddAlbumToQueue() }
             Divider()
             Button("Edit…") { onEdit() }
-            Button("Storage...") { onOpenStorage() }
+            Button("Storage…") { onOpenStorage() }
             Button("Export…") { onExportRelease() }
             Button("Save As…") { onSaveReleaseAs() }
             if releaseCursor.canCycle, canSetAsPrimaryRelease {

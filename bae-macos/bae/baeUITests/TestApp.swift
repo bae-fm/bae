@@ -223,7 +223,7 @@ extension XCTestCase {
         app.launch()
         app.activate()
         addTeardownBlock { app.terminate() }
-        // The window says "Loading..." until the library opens, and only then
+        // The window says "Loading…" until the library opens, and only then
         // shows the title bar's Library section.
         guard
             app.windows.firstMatch.buttons["Library"]

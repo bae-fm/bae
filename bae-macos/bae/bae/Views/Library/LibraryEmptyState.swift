@@ -29,7 +29,7 @@ struct LibraryEmptyState: View {
                 Text("Import some music to get started")
             } actions: {
                 HStack(spacing: ThemeSpace.related) {
-                    Button("Import Folder...") {
+                    Button("Import Folder…") {
                         uiStore.setImportFolderPickerPresented(true)
                     }
                     AddDiscogsKeyButton()

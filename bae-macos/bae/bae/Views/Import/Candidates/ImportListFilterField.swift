@@ -28,7 +28,7 @@ struct ImportListFilterField: View {
             Image(systemName: "magnifyingglass")
                 .themeIcon(ImportFilterBarLayout.glyph)
                 .foregroundStyle(.tertiary)
-            TextField("Filter...", text: $text)
+            TextField("Filter…", text: $text)
                 .textFieldStyle(.plain)
                 .themeText(.body)
                 .focused(focused)
