@@ -1,9 +1,9 @@
 use super::*;
 use bae_audio::sparse_buffer::create_sparse_buffer;
-use std::io::Write;
+use bae_audio::sparse_buffer::BufferStop;
+use bae_diagnostics::RecordingBugReporter;
 use std::sync::Mutex;
 use std::time::Duration;
-use tempfile::NamedTempFile;
 use tokio::sync::mpsc as tokio_mpsc;
 use tokio::time::timeout;
 
@@ -59,13 +59,13 @@ fn drain(buffer: &SharedSparseBuffer) -> Vec<u8> {
     out
 }
 
-async fn drain_async(buffer: SharedSparseBuffer) -> Vec<u8> {
+pub(super) async fn drain_async(buffer: SharedSparseBuffer) -> Vec<u8> {
     tokio::task::spawn_blocking(move || drain(&buffer)).await.expect("drain task")
 }
 
 /// A fill-error handler that forwards the error into a channel, plus the
 /// receiving end, so a test can assert on the reported failure.
-fn capturing_error_handler(
+pub(super) fn capturing_error_handler(
 ) -> (FillErrorHandler, tokio_mpsc::UnboundedReceiver<Arc<TrackReadError>>) {
     let (tx, rx) = tokio_mpsc::unbounded_channel();
     (
@@ -80,17 +80,17 @@ fn capturing_error_handler(
     )
 }
 
-async fn next_fill_error(
+pub(super) async fn next_fill_error(
     error_rx: &mut tokio_mpsc::UnboundedReceiver<Arc<TrackReadError>>,
     context: &str,
 ) -> String {
     error_rx.recv().await.expect(context).to_string()
 }
 
-const WINDOW: u64 = CLOUD_STREAM_READ_SIZE;
+pub(super) const WINDOW: u64 = CLOUD_STREAM_READ_SIZE;
 
 /// The OS error kind a failed buffer carries, when it failed on an I/O error.
-fn failure_kind(buffer: &SharedSparseBuffer) -> Option<std::io::ErrorKind> {
+pub(super) fn failure_kind(buffer: &SharedSparseBuffer) -> Option<std::io::ErrorKind> {
     let error = buffer.failure()?;
     std::error::Error::source(&error)
         .and_then(|source| source.downcast_ref::<std::io::Error>())
@@ -597,118 +597,6 @@ async fn blocked_reader_unblocks_on_demanded_window_not_sequential_catch_up() {
     );
 }
 
-#[tokio::test]
-async fn test_local_file_reader_full_file() {
-    // Create temp file with test data
-    let mut temp_file = NamedTempFile::new().unwrap();
-    let test_data = b"Hello, this is test audio data for streaming!";
-    temp_file.write_all(test_data).unwrap();
-    temp_file.flush().unwrap();
-
-    let reader = Box::new(LocalReader::new(temp_file.path(), bae_diagnostics::Diagnostics::noop()));
-    let buffer = create_sparse_buffer(test_data.len() as u64);
-
-    reader.start_reading(buffer.clone(), Box::new(|_| {}));
-    let result = drain_async(buffer.clone()).await;
-
-    assert_eq!(result, test_data);
-}
-
-/// A deep seek into a large local file is served through the shared
-/// demand-driven fill loop: a reader parked at `6*WINDOW` before the loop
-/// starts reads the exact file bytes at that offset (not the prefix). The
-/// byte pattern is position-dependent, so wrong-offset fill would mismatch.
-#[tokio::test]
-async fn local_seek_into_large_file_serves_target_via_shared_fill() {
-    let source_size = 8 * WINDOW;
-    let data: Vec<u8> = (0..source_size).map(|i| (i % 251) as u8).collect();
-    let mut temp_file = NamedTempFile::new().unwrap();
-    temp_file.write_all(&data).unwrap();
-    temp_file.flush().unwrap();
-
-    let reader = Box::new(LocalReader::new(temp_file.path(), bae_diagnostics::Diagnostics::noop()));
-    let buffer = create_sparse_buffer(source_size);
-
-    // Register the seek demand before the fill loop starts (the seek case).
-    let mut seek_reader = buffer.new_reader();
-    assert!(seek_reader.seek(6 * WINDOW));
-
-    reader.start_reading(buffer.clone(), Box::new(|_| {}));
-
-    let chunk_len = 4096usize;
-    let read = tokio::task::spawn_blocking(move || {
-        let mut out = vec![0u8; chunk_len];
-        let n = seek_reader.read(&mut out).ok();
-        drop(seek_reader);
-        (n, out)
-    });
-    let (n, out) = timeout(Duration::from_secs(10), read)
-        .await
-        .expect("a deep local seek must be served, not hang")
-        .expect("seek read task");
-
-    let n = n.expect("seek read returned data");
-    let target = 6 * WINDOW as usize;
-    assert_eq!(
-        &out[..n],
-        &data[target..target + n],
-        "the bytes at the seek target must match the file at that offset"
-    );
-}
-
-#[tokio::test]
-async fn test_local_file_reader_nonexistent_file() {
-    let mut temp_file = NamedTempFile::new().unwrap();
-    let test_data = b"deleted before read";
-    temp_file.write_all(test_data).unwrap();
-    temp_file.flush().unwrap();
-    let path = temp_file.path().to_path_buf();
-    drop(temp_file);
-
-    let reader = Box::new(LocalReader::new(path, bae_diagnostics::Diagnostics::noop()));
-    let buffer = create_sparse_buffer(test_data.len() as u64);
-
-    let (on_error, mut error_rx) = capturing_error_handler();
-    reader.start_reading(buffer.clone(), on_error);
-    let result = drain_async(buffer.clone()).await;
-
-    // The buffer fails with the open's own error, kind intact.
-    assert_eq!(
-        failure_kind(&buffer),
-        Some(std::io::ErrorKind::NotFound),
-        "the buffer carries the open's NotFound"
-    );
-    assert!(result.is_empty());
-    let error =
-        next_fill_error(&mut error_rx, "local open failure should report a fill error").await;
-    assert!(error.contains("Failed to open"), "expected open failure, got: {error}");
-}
-
-#[tokio::test]
-async fn test_local_file_reader_read_error_reports_error() {
-    let dir = tempfile::tempdir().unwrap();
-
-    let reader = Box::new(LocalReader::new(dir.path(), bae_diagnostics::Diagnostics::noop()));
-    let buffer = create_sparse_buffer(1);
-
-    let (on_error, mut error_rx) = capturing_error_handler();
-    reader.start_reading(buffer.clone(), on_error);
-    let result = drain_async(buffer.clone()).await;
-
-    assert!(buffer.failure().is_some(), "the buffer carries the read failure");
-    assert!(result.is_empty());
-    let error =
-        next_fill_error(&mut error_rx, "local read failure should report a fill error").await;
-    // The source is a directory, which the OS refuses to serve as a file: a
-    // POSIX open succeeds and the first read fails, while Windows refuses at
-    // open. Either way the reader must report a fill error and cancel — the
-    // phase the refusal lands in is the OS's, not the contract's.
-    assert!(
-        error.contains("Failed to read") || error.contains("Failed to open"),
-        "expected a read or open failure, got: {error}"
-    );
-}
-
 /// A fetch that fails fails the buffer with that error and returns it for
 /// the owner to report; a reader blocked on the missing window gets the same
 /// error, not a cancel. Bytes already buffered before the failure don't keep
@@ -791,38 +679,42 @@ async fn a_fetch_failing_after_teardown_reports_nothing() {
     drop(reader);
 }
 
-/// Cancelling a buffer closes its file even while the buffer itself is still
-/// held: the fill, parked with nothing demanded, wakes to the stop and exits.
-#[tokio::test]
-async fn cancelling_a_local_buffer_closes_its_file_while_the_buffer_lives() {
-    let dir = tempfile::tempdir().unwrap();
-    let path = dir.path().join("track.flac");
-    std::fs::write(&path, vec![7u8; 1024]).unwrap();
-    let buffer = create_sparse_buffer(1024);
-    Box::new(LocalReader::new(&path, bae_diagnostics::Diagnostics::noop()))
-        .start_reading(buffer.clone(), Box::new(|_| {}));
-    wait_for_open_files(dir.path(), 1).await;
-
-    buffer.cancel();
-
-    wait_for_open_files(dir.path(), 0).await;
-    drop(buffer);
+async fn fill_that_panics() -> Result<(), FillFailure> {
+    panic!("window index out of range")
 }
 
-/// Wait until exactly `count` files under `dir` are open, failing after a
-/// few seconds with the files still open.
-async fn wait_for_open_files(dir: &std::path::Path, count: usize) {
-    let deadline = std::time::Instant::now() + Duration::from_secs(5);
-    loop {
-        let open = coven::open_files_under(dir);
-        if open.len() == count {
-            return;
-        }
-        assert!(
-            std::time::Instant::now() < deadline,
-            "expected {count} open files under {}, found {open:?}",
-            dir.display()
-        );
-        tokio::time::sleep(Duration::from_millis(5)).await;
-    }
+/// A fill that panics fails its buffer, so a reader stops on the failure
+/// instead of waiting for bytes, hands the failure to its owner as any read
+/// failure is, and is reported as a bug. Sabotage: drop the panic arm in
+/// `spawn_fill`, and the reader blocks forever with nothing reported.
+#[tokio::test]
+async fn a_fill_that_panics_fails_its_buffer_and_is_reported() {
+    let bugs = Arc::new(RecordingBugReporter::default());
+    let diagnostics = Diagnostics::noop().reporting_bugs_to(bugs.clone());
+    let buffer = create_sparse_buffer(1_024);
+    let (error_tx, error_rx) = tokio::sync::oneshot::channel();
+
+    let fill = spawn_fill(
+        diagnostics,
+        &buffer,
+        Box::new(move |error| {
+            error_tx.send(error).expect("the test waits for the fill's error");
+        }),
+        fill_that_panics(),
+    );
+    fill.ended().await;
+
+    let error = error_rx.await.expect("the fill's owner hears of it");
+    assert!(
+        matches!(*error, TrackReadError::TaskFailed(ref text) if text.contains("window index out of range")),
+        "{error}"
+    );
+    assert!(matches!(buffer.new_reader().read(&mut [0u8; 1]), Err(BufferStop::Failed(_))));
+    assert_eq!(
+        bugs.reports(),
+        vec![(
+            "fill a playback buffer".to_string(),
+            "fill a playback buffer panicked: window index out of range".to_string()
+        )]
+    );
 }
