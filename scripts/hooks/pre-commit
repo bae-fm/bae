@@ -120,6 +120,11 @@ run_check "screen pulls" \
     exit 1
 }
 
+run_check "every Rust file compiled" \
+    sh -c 'python3 scripts/check-rust-files-compiled.py && python3 scripts/tests/check-rust-files-compiled-test.py' || {
+    exit 1
+}
+
 run_check "test keychain" \
     sh -c 'python3 scripts/check-test-keychain.py && python3 scripts/tests/check-test-keychain-test.py' || {
     exit 1

@@ -3958,11 +3958,11 @@ each device and hands playback the channel or sink.
 A pre-commit hook formats and lints the changed crates and the crates that
 depend on them, their tests included. CI runs, on macOS, iOS, Android, Linux
 and Windows: formatting, the file-size limit, visibility and ownership
-boundaries, test code kept off the person's keychain, the crates' dependency
-order, clippy for each feature set, dead-code and unused-dependency checks,
-cargo deny, docs, every crate's tests, the string catalogs, the Avalonia smoke
-test, the macOS builds and tests and the iOS builds for both editions, and
-Swift lint and format.
+boundaries, test code kept off the person's keychain, every Rust file in a
+crate compiled, the crates' dependency order, clippy for each feature set,
+dead-code and unused-dependency checks, cargo deny, docs, every crate's tests,
+the string catalogs, the Avalonia smoke test, the macOS builds and tests and
+the iOS builds for both editions, and Swift lint and format.
 
 ---
 ## Appendix A. Schema
