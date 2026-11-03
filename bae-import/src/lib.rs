@@ -13,6 +13,8 @@ pub mod assemble;
 #[cfg(desktop)]
 pub mod audio_layout;
 #[cfg(desktop)]
+pub mod candidate_detail;
+#[cfg(desktop)]
 pub mod candidate_key;
 #[cfg(desktop)]
 pub(crate) mod candidate_runtime;
@@ -206,6 +208,12 @@ impl ImportServices {
 #[cfg(desktop)]
 pub use apply_steps::{CatalogApplyStep, CatalogApplySteps};
 #[cfg(desktop)]
+pub use candidate_detail::{
+    CandidateDraftPane, CandidateImportStatus, CandidatePanePlacement, CandidateStage,
+    DraftProjection, ImportCandidateDetail, ImportCandidateDetailProjection, ListedRelease,
+    ProjectedStage,
+};
+#[cfg(desktop)]
 pub use candidate_key::CandidateKey;
 #[cfg(desktop)]
 pub use candidate_runtime::CandidateRuntime;
@@ -255,13 +263,11 @@ pub use identify_service::{IdentifyRunId, IdentifyServiceHandle};
 pub use import_failure::{ImportFailure, ImportFailureReason};
 #[cfg(desktop)]
 pub use list::{
-    ActiveFolderScan, CandidateDraftPane, CandidateImportStatus, CandidatePanePlacement,
-    CandidateStage, DraftProjection, FolderScanActivity, FolderScanProgress, ImportCandidateDetail,
-    ImportCandidateDetailProjection, ImportCandidateListLocation, ImportCounts, ImportListId,
-    ImportListItem, ImportListNarrowing, ImportListOrder, ImportListProjection, ImportListRequest,
-    ImportListSnapshot, ImportListView, ImportListWindow, ImportQueueSummary, ListedRelease,
-    LiveImportList, LiveImportListError, NarrowedCount, PendingFilter, PendingFilterEntry,
-    ProjectedStage,
+    ActiveFolderScan, FolderScanActivity, FolderScanProgress, ImportCandidateListLocation,
+    ImportCounts, ImportListId, ImportListItem, ImportListNarrowing, ImportListOrder,
+    ImportListProjection, ImportListRequest, ImportListSnapshot, ImportListView, ImportListWindow,
+    ImportQueueSummary, LiveImportList, LiveImportListError, NarrowedCount, PendingFilter,
+    PendingFilterEntry,
 };
 #[cfg(desktop)]
 pub use mapping::{

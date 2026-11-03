@@ -7,9 +7,9 @@
 use super::listed::{ListedColumns, LISTED_COLUMNS};
 use super::window::stored_embedded_cover;
 use super::*;
+use crate::candidate_detail::ImportCandidateDetailProjection;
 use crate::cover_art::CoverChoice;
 use crate::folder_scanner::{CategorizedFiles, FileVersion, FolderCandidate};
-use crate::list::ImportCandidateDetailProjection;
 use crate::tables::import_state::{
     load_album_pick_on, load_pane_rows_on, load_standing_on, load_states_on,
 };

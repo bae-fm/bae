@@ -14,8 +14,9 @@
 use super::listed::{ListedColumns, LISTED_COLUMNS};
 use super::order::{Item, ItemKey};
 use super::*;
+use crate::candidate_detail::ListedRelease;
 use crate::folder_scanner::{FileVersion, ScanItem};
-use crate::list::{ImportListItem, ListedRelease};
+use crate::list::ImportListItem;
 use crate::tables::folder_scans;
 use crate::tables::import_state::{
     cover_read_columns, read_cover, read_provenance, read_release_link, RuntimeFactColumns,
