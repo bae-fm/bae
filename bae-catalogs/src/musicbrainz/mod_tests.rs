@@ -1,4 +1,5 @@
 use super::*;
+use crate::musicbrainz::rate::RETRY;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
@@ -247,41 +248,6 @@ fn mb_release(release_id: &str, release_group_id: Option<&str>) -> MbReleaseResp
 /// and the import archives are the same bytes.
 fn mb_release_json(release: &MbReleaseResponse) -> String {
     serde_json::to_string(release).expect("the test release serializes")
-}
-
-/// Only a failure a retry could fix is retried. A `NotFound` is the ordinary
-/// answer for a disc MusicBrainz doesn't have, and each extra attempt costs
-/// another round trip plus a 1s rate-limit wait; the "at least one search field"
-/// error is raised before a request is even built.
-#[tokio::test]
-async fn only_transient_musicbrainz_failures_are_retried() {
-    let provider = |status: Option<u16>, told_wait: Option<Duration>| {
-        repeat_mb(&MusicBrainzError::Provider { status, told_wait })
-    };
-    assert_eq!(repeat_mb(&MusicBrainzError::Timeout), Repeat::AfterBackoff);
-    assert_eq!(
-        repeat_mb(&MusicBrainzError::Network(bae_util::http::refused_request_error().await)),
-        Repeat::AfterBackoff
-    );
-    assert_eq!(provider(Some(503), None), Repeat::AfterBackoff);
-    assert_eq!(
-        provider(Some(503), Some(Duration::from_secs(3))),
-        Repeat::AfterToldWait(Duration::from_secs(3)),
-        "a stated wait replaces the backoff"
-    );
-    assert_eq!(provider(Some(429), None), Repeat::AfterBackoff);
-
-    assert_eq!(repeat_mb(&MusicBrainzError::NotFound("disc".into())), Repeat::Never);
-    assert_eq!(provider(Some(404), None), Repeat::Never);
-    assert_eq!(provider(Some(400), None), Repeat::Never);
-    assert_eq!(
-        repeat_mb(&MusicBrainzError::Other("At least one search field must be provided".into())),
-        Repeat::Never
-    );
-    assert_eq!(
-        repeat_mb(&MusicBrainzError::Request(bae_util::http::unbuildable_request_error())),
-        Repeat::Never
-    );
 }
 
 // ── release_labels ────────────────────────────────────────────────────────

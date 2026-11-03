@@ -1,8 +1,9 @@
 //! MusicBrainz's rate as the client reads it: refusals its rate limiter
 //! sends, failures that are not, and the window under sustained load.
 
-use super::tests::{mb_raw_server, mb_response_server, served_by};
 use super::*;
+use crate::musicbrainz::tests::{mb_raw_server, mb_response_server, served_by};
+use crate::musicbrainz::*;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
 
@@ -152,5 +153,40 @@ async fn sustained_load_keeps_a_second_between_arrivals() {
         outcome.elapsed <= REQUEST_INTERVAL * requests as u32 + Duration::from_secs(1),
         "took {:?}: the shared count slowed requests while it had room",
         outcome.elapsed
+    );
+}
+
+/// Only a failure a retry could fix is retried. A `NotFound` is the ordinary
+/// answer for a disc MusicBrainz doesn't have, and each extra attempt costs
+/// another round trip plus a 1s rate-limit wait; the "at least one search field"
+/// error is raised before a request is even built.
+#[tokio::test]
+async fn only_transient_musicbrainz_failures_are_retried() {
+    let provider = |status: Option<u16>, told_wait: Option<Duration>| {
+        repeat_mb(&MusicBrainzError::Provider { status, told_wait })
+    };
+    assert_eq!(repeat_mb(&MusicBrainzError::Timeout), Repeat::AfterBackoff);
+    assert_eq!(
+        repeat_mb(&MusicBrainzError::Network(bae_util::http::refused_request_error().await)),
+        Repeat::AfterBackoff
+    );
+    assert_eq!(provider(Some(503), None), Repeat::AfterBackoff);
+    assert_eq!(
+        provider(Some(503), Some(Duration::from_secs(3))),
+        Repeat::AfterToldWait(Duration::from_secs(3)),
+        "a stated wait replaces the backoff"
+    );
+    assert_eq!(provider(Some(429), None), Repeat::AfterBackoff);
+
+    assert_eq!(repeat_mb(&MusicBrainzError::NotFound("disc".into())), Repeat::Never);
+    assert_eq!(provider(Some(404), None), Repeat::Never);
+    assert_eq!(provider(Some(400), None), Repeat::Never);
+    assert_eq!(
+        repeat_mb(&MusicBrainzError::Other("At least one search field must be provided".into())),
+        Repeat::Never
+    );
+    assert_eq!(
+        repeat_mb(&MusicBrainzError::Request(bae_util::http::unbuildable_request_error())),
+        Repeat::Never
     );
 }

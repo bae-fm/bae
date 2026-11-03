@@ -16,12 +16,12 @@ use tokio::time::Instant;
 use super::{CallPriority, RateAnswer, RateLimiter};
 
 /// A provider's count of requests from one address.
-pub(crate) trait Window: Send + 'static {
+pub trait Window: Send + 'static {
     /// A request arriving `at`: the status and headers the provider answers.
     fn arrive(&mut self, at: Instant) -> (StatusCode, HeaderMap);
 }
 
-pub(crate) struct Load {
+pub struct Load {
     /// Requests, all waiting from the start.
     pub requests: usize,
     /// How long a request takes to reach the provider, and its answer to come
@@ -32,7 +32,7 @@ pub(crate) struct Load {
     pub seed: u64,
 }
 
-pub(crate) struct Outcome {
+pub struct Outcome {
     /// Times the provider turned one of these requests away for its rate.
     pub refused: usize,
     /// From the start until the last request was answered.
@@ -42,7 +42,7 @@ pub(crate) struct Outcome {
 /// Every request of `load` made through `limiter` against `window`, each
 /// answer read by `read` and handed back to the limiter, a refused one asked
 /// again until it is answered.
-pub(crate) async fn sustain(
+pub async fn sustain(
     limiter: Arc<RateLimiter>,
     window: impl Window,
     read: fn(StatusCode, &HeaderMap) -> RateAnswer,

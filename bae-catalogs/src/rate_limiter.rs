@@ -412,8 +412,8 @@ impl Drop for Ticket<'_> {
     }
 }
 
-#[cfg(test)]
-pub(crate) mod load_model;
+#[cfg(any(test, feature = "test-utils"))]
+pub mod load_model;
 
 #[cfg(test)]
 #[path = "rate_limiter_tests.rs"]
