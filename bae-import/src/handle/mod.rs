@@ -3,7 +3,6 @@ use crate::folder_scanner::{
 };
 use crate::types::{ImportCommand, ImportProgress};
 use crate::watched_folder::WatchedFolder;
-use bae_catalogs::providers::DiscogsCheck;
 use bae_util::worker_thread::WorkerThread;
 use std::collections::HashMap;
 use std::path::Path;
@@ -15,6 +14,7 @@ mod cancel;
 mod combinations;
 mod commit;
 mod covers;
+mod discogs_key;
 mod edits;
 mod event_bus;
 mod file_decisions;
@@ -32,6 +32,7 @@ mod shared_album;
 mod verdict_write;
 mod watch;
 
+pub use discogs_key::DiscogsSaveOutcome;
 pub use event_bus::ImportEventBus;
 pub use import::ImportStart;
 pub(crate) use scan::external_metadata_with_cover;
@@ -92,21 +93,6 @@ pub enum ImportEvent {
 pub struct GroupedSearchResults {
     pub groups: Vec<bae_identify::release_group::ReleaseGroup>,
     pub statuses: Vec<bae_db::LibraryStatus>,
-}
-
-/// What `save_discogs_token` did with a submitted key after checking it with
-/// Discogs.
-///
-/// - `Valid` — Discogs accepted the key; it is stored.
-/// - `Unvalidated` — Discogs could not be asked (unreachable, rate-limited, an
-///   answer bae could not read); the key is stored and re-checked later, and
-///   the failure says why.
-/// - `Rejected` — Discogs returned 401; nothing is stored.
-#[derive(Debug)]
-pub enum DiscogsSaveOutcome {
-    Valid,
-    Unvalidated(bae_catalogs::discogs::client::DiscogsError),
-    Rejected,
 }
 
 /// Handle for sending import requests and subscribing to progress updates.
