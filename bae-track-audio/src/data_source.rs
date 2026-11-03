@@ -62,9 +62,15 @@ impl FetchArbiter {
         self.idle.notify_waiters();
     }
 
-    /// Whether a fetch into `buffer_id` is the playing track's.
-    pub fn is_foreground(&self, buffer_id: u64) -> bool {
+    fn is_foreground(&self, buffer_id: u64) -> bool {
         self.waits.is_foreground(buffer_id)
+    }
+
+    /// Whether a fetch into `buffer_id` runs as the playing track's, for the
+    /// tests of which buffers playback marks.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn fetches_as_playing(&self, buffer_id: u64) -> bool {
+        self.is_foreground(buffer_id)
     }
 
     /// The track a load the person waits on is for, or `None` once nothing

@@ -24,6 +24,9 @@ fn every_file_the_playing_track_reads_fetches_as_the_playing_one() {
 
     buffers.mark_foreground(&prepared);
 
-    assert!(arbiter.is_foreground(pregap.id()), "the pregap's file fetches as the playing one");
-    assert!(arbiter.is_foreground(main.id()), "the main file fetches as the playing one");
+    assert!(
+        arbiter.fetches_as_playing(pregap.id()),
+        "the pregap's file fetches as the playing one"
+    );
+    assert!(arbiter.fetches_as_playing(main.id()), "the main file fetches as the playing one");
 }
