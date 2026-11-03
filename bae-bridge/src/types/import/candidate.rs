@@ -43,7 +43,7 @@ pub struct BridgeFileInfo {
 }
 
 /// Whether one of a candidate's audio files can back a sheet's binding. Mirror
-/// of bae-core's `SheetBindingOffer`. Core decides from stored scan facts, so no
+/// of bae-library's `SheetBindingOffer`. Core decides from stored scan facts, so no
 /// UI reads a codec to work out what it may offer.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeSheetBindingOffer {
@@ -114,7 +114,7 @@ pub(crate) const SHEET_REFUSED_CODEC_KEY: &str = "core.import.sheet.refused_code
 pub(crate) const SHEET_REFUSED_TIMING_KEY: &str = "core.import.sheet.refused_timing";
 pub(crate) const SHEET_REFUSED_UNREADABLE_KEY: &str = "core.import.sheet.refused_unreadable";
 
-/// The job the scan proposed for one file. Mirror of bae-core's `FileRole`. No
+/// The job the scan proposed for one file. Mirror of bae-library's `FileRole`. No
 /// UI decides a file's role, and no UI infers a pairing from a filename.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeFileRole {
@@ -193,7 +193,7 @@ pub struct BridgeCandidateFiles {
     pub source_audio: Option<BridgeCandidateSourceAudio>,
 }
 
-/// Phase-0 preparation step, mirroring bae-core's `PrepareStep`. The UI
+/// Phase-0 preparation step, mirroring bae-library's `PrepareStep`. The UI
 /// localizes each variant via its catalog key (`bridge_prepare_step_key`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgePrepareStep {
@@ -212,7 +212,7 @@ impl BridgePrepareStep {
     }
 }
 
-/// Running phase, mirroring bae-core's `ImportPhase`. Localized via
+/// Running phase, mirroring bae-library's `ImportPhase`. Localized via
 /// `bridge_import_phase_key`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeImportPhase {
@@ -231,7 +231,7 @@ impl BridgeImportPhase {
     }
 }
 
-/// Which step of an import is in progress, mirroring bae-core's `ImportStep`.
+/// Which step of an import is in progress, mirroring bae-library's `ImportStep`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeImportStep {
     Preparing { step: BridgePrepareStep },
@@ -286,7 +286,7 @@ pub struct BridgeAlbumChoice {
 
 #[cfg(feature = "desktop")]
 impl BridgeAlbumChoice {
-    pub(crate) fn from_core(album: bae_core::library::views::DbAlbumSearchResult) -> Self {
+    pub(crate) fn from_core(album: bae_library::library::views::DbAlbumSearchResult) -> Self {
         Self {
             album_id: album.id,
             title: album.title,

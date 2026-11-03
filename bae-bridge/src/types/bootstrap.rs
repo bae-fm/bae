@@ -26,7 +26,7 @@ pub struct BridgeRestoreCodeShare {
     pub qr_carries_s3_key: bool,
 }
 impl BridgeRestoreCodeShare {
-    pub(crate) fn from_core(value: bae_core::sync::restore_code::RestoreCodeShare) -> Self {
+    pub(crate) fn from_core(value: bae_library::sync::restore_code::RestoreCodeShare) -> Self {
         Self {
             code: value.code,
             qr_text: value.qr_text,
@@ -96,9 +96,9 @@ impl BridgeBootstrapStatus {
                 records: records
                     .into_iter()
                     .map(|record| {
-                        BridgePendingRecord::from_core(bae_core::library::PendingItem::before_open(
-                            record,
-                        ))
+                        BridgePendingRecord::from_core(
+                            bae_library::library::PendingItem::before_open(record),
+                        )
                     })
                     .collect(),
             },
@@ -210,7 +210,7 @@ pub struct BridgeLoadProgress {
 }
 
 /// A step closing or removing the open library runs, in the order they run.
-/// Mirrors `bae_core::library::ClosingStep`, after the desktop's own first
+/// Mirrors `bae_library::library::ClosingStep`, after the desktop's own first
 /// step.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeClosingStep {
@@ -233,16 +233,16 @@ pub enum BridgeClosingStep {
 }
 
 impl BridgeClosingStep {
-    pub(crate) fn from_core(step: bae_core::library::ClosingStep) -> Self {
+    pub(crate) fn from_core(step: bae_library::library::ClosingStep) -> Self {
         match step {
-            bae_core::library::ClosingStep::StoppingPlayback => Self::StoppingPlayback,
+            bae_library::library::ClosingStep::StoppingPlayback => Self::StoppingPlayback,
             #[cfg(not(any(target_os = "ios", target_os = "android")))]
-            bae_core::library::ClosingStep::StoppingImports => Self::StoppingImports,
-            bae_core::library::ClosingStep::StoppingSync => Self::StoppingSync,
-            bae_core::library::ClosingStep::FinishingWork => Self::FinishingWork,
-            bae_core::library::ClosingStep::ClosingStore => Self::ClosingStore,
-            bae_core::library::ClosingStep::LeavingLibrary => Self::LeavingLibrary,
-            bae_core::library::ClosingStep::DeletingFiles => Self::DeletingFiles,
+            bae_library::library::ClosingStep::StoppingImports => Self::StoppingImports,
+            bae_library::library::ClosingStep::StoppingSync => Self::StoppingSync,
+            bae_library::library::ClosingStep::FinishingWork => Self::FinishingWork,
+            bae_library::library::ClosingStep::ClosingStore => Self::ClosingStore,
+            bae_library::library::ClosingStep::LeavingLibrary => Self::LeavingLibrary,
+            bae_library::library::ClosingStep::DeletingFiles => Self::DeletingFiles,
         }
     }
 }
@@ -349,8 +349,8 @@ impl BridgeBootstrapResult {
     /// ended without letting this device in.
     pub(crate) fn joined(
         result: Result<
-            Option<bae_core::library::JoinedLibrary>,
-            bae_core::library::RestoreFromCodeError,
+            Option<bae_library::library::JoinedLibrary>,
+            bae_library::library::RestoreFromCodeError,
         >,
         host: Arc<crate::BridgeHost>,
     ) -> Result<Self, BridgeError> {
@@ -365,13 +365,13 @@ impl BridgeBootstrapResult {
         }
     }
     pub(crate) fn failure(
-        error: bae_core::library::RestoreFromCodeError,
+        error: bae_library::library::RestoreFromCodeError,
         host: Arc<crate::BridgeHost>,
     ) -> Result<Self, BridgeError> {
         let category = BridgeErrorCategory::from_core(error.category());
         match error {
-            bae_core::library::RestoreFromCodeError::Cancelled => Err(BridgeError::Cancelled),
-            bae_core::library::RestoreFromCodeError::Restore(error) => match *error {
+            bae_library::library::RestoreFromCodeError::Cancelled => Err(BridgeError::Cancelled),
+            bae_library::library::RestoreFromCodeError::Restore(error) => match *error {
                 coven::BootstrapError::JoinRequestSent => Ok(Self::JoinRequestSent),
                 coven::BootstrapError::Published { handle, source } => Ok(Self::Published {
                     library: Arc::new(crate::OpenedLibrary::new(handle, host)),

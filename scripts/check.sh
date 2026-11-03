@@ -95,8 +95,8 @@ check "UniFFI runtime boundary"      scripts/check-uniffi-runtime-boundary.py
 check "macOS native Cargo cache"     scripts/check-macos-build-cache.sh
 check "mobile host Cargo cache"      scripts/check-mobile-build-cache.sh
 check "clippy (workspace)"          scripts/cargo.sh clippy --workspace -- -D warnings
-check "clippy (bae-core + test-utils)" \
-  scripts/cargo.sh clippy -p bae-core --tests --features bae-core/test-utils -- -D warnings
+check "clippy (bae-library + test-utils)" \
+  scripts/cargo.sh clippy -p bae-library --tests --features bae-library/test-utils -- -D warnings
 check "clippy (bae-util + test-utils)" \
   scripts/cargo.sh clippy -p bae-util --tests --features bae-util/test-utils -- -D warnings
 check "clippy (bae-audio + test features)" \
@@ -124,8 +124,8 @@ check "clippy (bae-import + test-utils)" \
 check "clippy (bae-app + test-utils)" \
   scripts/cargo.sh clippy -p bae-app --tests --features bae-app/test-utils -- -D warnings
 check "clippy (bae-bridge)"         scripts/cargo.sh clippy -p bae-bridge -- -D warnings
-check "clippy (bae-core --features oauth-providers)" \
-  scripts/cargo.sh clippy -p bae-core --features oauth-providers -- -D warnings
+check "clippy (bae-library --features oauth-providers)" \
+  scripts/cargo.sh clippy -p bae-library --features oauth-providers -- -D warnings
 check "clippy (bae-app --features oauth-providers)" \
   scripts/cargo.sh clippy -p bae-app --features oauth-providers -- -D warnings
 check "clippy (bae-bridge --features oauth-providers,cloudkit)" \
@@ -138,8 +138,8 @@ check "clippy (bae-bridge --features oauth-providers,cloudkit,desktop)" \
 # Each crate's production code alone, so an item only its tests use fails as
 # dead code. The flag goes to the one crate: RUSTFLAGS would recompile every
 # dependency for this one check.
-check "dead_code (bae-core lib only)" \
-  scripts/cargo.sh rustc -p bae-core --lib --profile check -- -D warnings
+check "dead_code (bae-library lib only)" \
+  scripts/cargo.sh rustc -p bae-library --lib --profile check -- -D warnings
 check "dead_code (bae-util lib only)" \
   scripts/cargo.sh rustc -p bae-util --lib --profile check -- -D warnings
 check "dead_code (bae-audio lib only)" \
@@ -363,16 +363,16 @@ section "Workflows"
 
 check "actionlint" env SHELLCHECK_OPTS="--severity=error" actionlint
 
-# ── bae-core tests ────────────────────────────────────────────────────────────
-section "bae-core tests"
+# ── bae-library tests ────────────────────────────────────────────────────────────
+section "bae-library tests"
 # A test that changes process-wide state runs in a process of its own; the CPU
 # test, a binary of its own, runs alone below because it reads process-wide
 # getrusage.
-check "cargo test (bae-core)" \
-  scripts/cargo.sh test -p bae-core --features bae-core/test-utils \
+check "cargo test (bae-library)" \
+  scripts/cargo.sh test -p bae-library --features bae-library/test-utils \
     -- --skip test_playback_cpu
-check "cargo test (bae-core playback CPU, release)" \
-  scripts/cargo.sh test -p bae-core --release --features bae-core/test-utils \
+check "cargo test (bae-library playback CPU, release)" \
+  scripts/cargo.sh test -p bae-library --release --features bae-library/test-utils \
     --test test_playback_cpu
 
 # ── Summary ────────────────────────────────────────────────────────────────────

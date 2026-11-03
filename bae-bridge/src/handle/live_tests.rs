@@ -38,10 +38,10 @@ impl Drop for DropSignal {
 /// the receivers that say when it started and when it ended.
 fn waiting_feed(
     app: &AppHandle,
-) -> (bae_core::library::CancellationToken, mpsc::Receiver<()>, mpsc::Receiver<()>) {
+) -> (bae_library::library::CancellationToken, mpsc::Receiver<()>, mpsc::Receiver<()>) {
     let (started_tx, started) = mpsc::channel();
     let (ended_tx, ended) = mpsc::channel();
-    let stop = bae_core::library::CancellationToken::new();
+    let stop = bae_library::library::CancellationToken::new();
     app.deliver_until(stop.clone(), move |_| async move {
         let _ended = DropSignal(ended_tx);
         started_tx.send(()).expect("the test waits for the start");
@@ -145,7 +145,7 @@ fn a_feed_that_panics_is_reported_and_others_go_on() {
         crate::BridgeDiagnostics::reporting_bugs_to(Arc::new(HeardBugs(Mutex::new(reported)))),
     );
 
-    app.deliver_until(bae_core::library::CancellationToken::new(), |_| async {
+    app.deliver_until(bae_library::library::CancellationToken::new(), |_| async {
         panic!("Callback interface failure: the host threw");
     });
     assert_eq!(

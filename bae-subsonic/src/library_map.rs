@@ -8,8 +8,8 @@
 use bae_app::AppServices;
 use bae_audio::StreamEncodeFormat;
 use bae_catalogs::catalog::Catalog;
-use bae_core::library::LibraryError;
 use bae_db::{DbFile, DbRelease, DbTrack, ResolvedTrackAudio};
+use bae_library::library::LibraryError;
 
 use crate::error::SubError;
 use crate::id::SubId;

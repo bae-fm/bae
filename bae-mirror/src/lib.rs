@@ -1,15 +1,15 @@
 //! Macros for the mirrored halves of a surface type's conversions.
 //!
-//! A surface crate restates a bae-core type field for field when it needs a
+//! A surface crate restates a bae-library type field for field when it needs a
 //! shape of its own — `Bridge*` records and enums so uniffi has a concrete
 //! type to export, `Automation*` records and enums so the MCP surface has its
 //! own JSON — and the conversion between the two is a name-for-name copy with
 //! the nested conversions applied. The copy is what these macros write; the
 //! shapes themselves stay declared by hand, so a variant or field added in
-//! bae-core still fails to compile in the surface crate.
+//! bae-library still fails to compile in the surface crate.
 //!
 //! The generated bodies destructure exhaustively — no `..` in any struct or
-//! enum-variant pattern — which is what makes a new bae-core field a build
+//! enum-variant pattern — which is what makes a new bae-library field a build
 //! error rather than a field that silently never crosses.
 //!
 //! A conversion that renames, derives, or drops anything is not a copy and
@@ -82,7 +82,7 @@ macro_rules! mirror_into {
     };
 }
 
-/// The field-for-field copy between a surface record and its bae-core struct.
+/// The field-for-field copy between a surface record and its bae-library struct.
 ///
 /// ```ignore
 /// mirror_struct! {
@@ -163,7 +163,7 @@ macro_rules! mirror_struct {
     };
 }
 
-/// The variant-for-variant copy between a surface enum and its bae-core enum.
+/// The variant-for-variant copy between a surface enum and its bae-library enum.
 ///
 /// ```ignore
 /// mirror_enum! {
@@ -179,9 +179,9 @@ macro_rules! mirror_struct {
 /// }
 /// ```
 ///
-/// A variant is written as bae-core spells it: a bare name for a unit variant,
+/// A variant is written as bae-library spells it: a bare name for a unit variant,
 /// `Name { field, … }` for a struct variant, and `Name(field: …)` where
-/// bae-core carries one unnamed payload and the bridge variant names it.
+/// bae-library carries one unnamed payload and the bridge variant names it.
 /// (uniffi does take tuple variants, such as `Str(String)`; the bridge's
 /// variants name their fields.)
 #[macro_export]

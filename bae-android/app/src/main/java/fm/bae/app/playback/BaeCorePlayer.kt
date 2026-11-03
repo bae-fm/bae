@@ -43,7 +43,7 @@ private const val TAG = "bae.BaeCorePlayer"
 private val logger = BaeLogger(TAG)
 
 /**
- * Media3 [Player] that mirrors bae-core's playback, which plays the audio itself,
+ * Media3 [Player] that mirrors bae-library's playback, which plays the audio itself,
  * so the [androidx.media3.session.MediaSession] and the in-app UI show what core
  * is doing. Transport commands go to core, and the value core publishes back
  * updates [State]; only an in-track seek shows its target before core confirms.

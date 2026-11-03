@@ -273,7 +273,7 @@ pub enum BridgeReleaseStorageState {
 }
 
 mirror_enum! {
-    BridgeReleaseStorageState = bae_core::album_detail::ReleaseStorageState,
+    BridgeReleaseStorageState = bae_library::album_detail::ReleaseStorageState,
     from_core: pub fn,
     variants: { Local, Remote },
 }
@@ -514,7 +514,7 @@ pub struct BridgeTrack {
     pub position_text: String,
 }
 
-/// Mirror of bae-core's `DurationClock` — the fields a clock label shows, for
+/// Mirror of bae-library's `DurationClock` — the fields a clock label shows, for
 /// every place a duration reads as "3:07" / "1:12:34" / "-0:42": a track's
 /// length, the elapsed position, the remaining countdown.
 ///
@@ -553,7 +553,7 @@ impl BridgeDurationClock {
     }
 }
 
-/// Mirror of bae-core's `DurationUnits` — a duration named in words ("39 min",
+/// Mirror of bae-library's `DurationUnits` — a duration named in words ("39 min",
 /// "3 hr", "3 hr, 42 min"), which is what a release's total playing time reads
 /// as. Distinct from [`BridgeDurationClock`], which counts time rather than
 /// naming an amount of it, and which always has minutes and seconds.
@@ -594,7 +594,7 @@ pub fn bridge_length_clock(ms: u64) -> BridgeDurationClock {
     BridgeDurationClock::of_length(ms)
 }
 
-/// The two clocks a seek bar shows. Mirror of bae-core's `SeekBarClocks`.
+/// The two clocks a seek bar shows. Mirror of bae-library's `SeekBarClocks`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeSeekBarClocks {
     /// Pregap countdown before track start; elapsed or remaining afterward,
@@ -765,7 +765,7 @@ mod source_audio_bridge_tests {
     }
 }
 
-/// Mirror of bae-core's `AudioFormat`. The UI composes "FLAC · 44.1 kHz ·
+/// Mirror of bae-library's `AudioFormat`. The UI composes "FLAC · 44.1 kHz ·
 /// 16-bit · stereo" from these parts: the codec is a proper noun, the channel
 /// count maps to a localized word (`bridge_audio_channels_key`), and numbers
 /// format per locale.
@@ -825,7 +825,7 @@ pub enum BridgeGallerySource {
 }
 
 mirror_enum! {
-    BridgeGallerySource = bae_core::album_detail::GallerySource,
+    BridgeGallerySource = bae_library::album_detail::GallerySource,
     from_core: pub(crate) fn,
     into_core: pub fn,
     variants: {
@@ -941,7 +941,7 @@ pub enum BridgeCoverImageSource {
 
 /// One version of a file on disk: its absolute path, and the size and
 /// modification time (nanoseconds since the Unix epoch) that tell the bytes
-/// there from whatever is written at that path later. Mirror of bae-core's
+/// there from whatever is written at that path later. Mirror of bae-library's
 /// `FileVersion`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeFileVersion {

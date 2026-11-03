@@ -3,10 +3,10 @@
 //! composer, work, or folder that failed import validation.
 
 use super::*;
-use bae_core::album_detail::{
+use bae_library::album_detail::{
     AlbumDetail, ArtistDetail, ComposerDetail, ReleaseDetail, WorkDetail,
 };
-use bae_core::library::{live_reads, LiveDetail};
+use bae_library::library::{live_reads, LiveDetail};
 
 impl AppServices {
     /// The detail view's album as it changes; see

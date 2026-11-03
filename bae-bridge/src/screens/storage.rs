@@ -58,8 +58,8 @@ pub struct BridgeReleaseQueueRun {
 }
 
 impl BridgeStorageQueues {
-    fn from_core(queues: bae_core::library::StorageQueues) -> Self {
-        let release = |run: bae_core::library::ReleaseQueueRun| BridgeReleaseQueueRun {
+    fn from_core(queues: bae_library::library::StorageQueues) -> Self {
+        let release = |run: bae_library::library::ReleaseQueueRun| BridgeReleaseQueueRun {
             paused: run.paused,
             active: run.active,
         };
@@ -78,12 +78,12 @@ impl BridgeStorageQueues {
 /// names them.
 #[derive(uniffi::Object)]
 pub struct StorageBrowseSubscription {
-    inner: bae_core::library::LiveStorageBrowse,
+    inner: bae_library::library::LiveStorageBrowse,
     runtime: crate::operation_runtime::OperationRuntime,
 }
 
 pub(crate) fn storage_browse(
-    inner: bae_core::library::LiveStorageBrowse,
+    inner: bae_library::library::LiveStorageBrowse,
     runtime: crate::operation_runtime::OperationRuntime,
 ) -> std::sync::Arc<StorageBrowseSubscription> {
     std::sync::Arc::new(StorageBrowseSubscription { inner, runtime })
@@ -102,7 +102,7 @@ impl StorageBrowseSubscription {
         selected: Vec<String>,
     ) -> Result<(), BridgeError> {
         self.inner
-            .set(bae_core::library::StorageBrowseView {
+            .set(bae_library::library::StorageBrowseView {
                 sort: sort.into_core(),
                 filter: filter.into_core(),
                 search,

@@ -61,9 +61,9 @@ default = []
 # tests of every crate that builds on this one. Dev/test-only: a production
 # build never enables it.
 test-utils = ["bae-util/test-utils", "dep:axum", "dep:image", "tokio/net"]
-# What bae-core's own unit tests read back: the MusicBrainz requests waiting
+# What bae-library's own unit tests read back: the MusicBrainz requests waiting
 # for a slot and the order the rate limiter admitted them in. It records as it
-# runs, so only bae-core's dev-dependency turns it on, never a build that ships
+# runs, so only bae-library's dev-dependency turns it on, never a build that ships
 # or a debug app.
 test-instrumentation = []
 

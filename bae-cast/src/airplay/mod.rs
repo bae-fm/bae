@@ -17,7 +17,7 @@
 //! This module holds the parts common to both and the dialect-specific wire:
 //! [`discovery`] browses for receivers, [`capabilities`] parses what they
 //! announce, [`rtsp`] is the control connection both dialects drive, and
-//! [`sink`] opens either dialect's session behind bae-core's AirPlay output.
+//! [`sink`] opens either dialect's session behind bae-library's AirPlay output.
 
 pub(crate) mod airplay2;
 pub(crate) mod ap2_channel;

@@ -7,7 +7,7 @@ members = [
     "bae-bridge",
     "bae-catalogs",
     "bae-cast",
-    "bae-core",
+    "bae-library",
     "bae-db",
     "bae-desktop",
     "bae-diagnostics",
@@ -77,7 +77,7 @@ bae-audio = { path = "bae-audio" }
 bae-automation = { path = "bae-automation" }
 bae-cast = { path = "bae-cast" }
 bae-catalogs = { path = "bae-catalogs" }
-bae-core = { path = "bae-core" }
+bae-library = { path = "bae-library" }
 bae-db = { path = "bae-db" }
 bae-desktop = { path = "bae-desktop" }
 bae-diagnostics = { path = "bae-diagnostics" }
@@ -174,7 +174,7 @@ debug = "line-tables-only"
 
 # Line tables are enough debuginfo for a debug build: backtraces and panics
 # keep their file:line, and every workspace rlib and test binary shrinks
-# several-fold. Full DWARF put a 0.6 GB bae-core rlib plus a test binary of
+# several-fold. Full DWARF put a 0.6 GB bae-library rlib plus a test binary of
 # the same size into the shared target dir for every source revision every
 # agent built. Local-variable inspection under lldb is what this gives up.
 [profile.dev]

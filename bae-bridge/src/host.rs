@@ -8,7 +8,7 @@ const HOST_LOCK: &str = "host registrations lock";
 pub struct BridgeHost {
     diagnostics: Arc<BridgeDiagnostics>,
     app_dir: bae_app_dir::AppDir,
-    keychain: bae_core::library::Keychain,
+    keychain: bae_library::library::Keychain,
     runtime: Option<tokio::runtime::Runtime>,
     /// Where the host's own calls run, on `runtime`.
     operations: crate::operation_runtime::OperationRuntime,
@@ -128,7 +128,7 @@ impl BridgeHost {
         &self,
         store: coven::StoreId,
         steps: &crate::screens::ClosingSteps,
-    ) -> Result<(), bae_core::library::LibraryRemovalError> {
+    ) -> Result<(), bae_library::library::LibraryRemovalError> {
         self.diagnostics
             .remove_unopenable_library(&self.app_dir, &self.keychain, store, &|step| {
                 steps.step(crate::types::BridgeClosingStep::from_core(step))
@@ -157,7 +157,7 @@ impl BridgeHost {
     fn start(
         diagnostics: Arc<BridgeDiagnostics>,
         app_dir: Arc<BridgeAppDir>,
-        keychain: bae_core::library::Keychain,
+        keychain: bae_library::library::Keychain,
         audio_focus: bae_playback::AudioFocus,
     ) -> Result<Arc<Self>, BridgeError> {
         let runtime = tokio::runtime::Builder::new_multi_thread()
@@ -200,7 +200,7 @@ impl BridgeHost {
         Self::start(
             diagnostics,
             app_dir,
-            bae_core::library::Keychain::in_memory(),
+            bae_library::library::Keychain::in_memory(),
             bae_playback::AudioFocus::Unshared,
         )
     }
@@ -218,7 +218,7 @@ impl BridgeHost {
         Self::start(
             diagnostics,
             app_dir,
-            bae_core::library::Keychain::System,
+            bae_library::library::Keychain::System,
             bae_playback::AudioFocus::Unshared,
         )
     }
@@ -239,7 +239,7 @@ impl BridgeHost {
         Self::start(
             diagnostics,
             app_dir,
-            bae_core::library::Keychain::System,
+            bae_library::library::Keychain::System,
             bae_playback::AudioFocus::Shared(Arc::new(audio_focus)),
         )
     }
@@ -306,7 +306,7 @@ impl BridgeHost {
             .run("BridgeHost.unsent_before_removal", move || async move {
                 self.closed(store).await?;
                 Ok(crate::BridgeUnsentWork::from_core(
-                    bae_core::library::unsent_before_removal(builder, store, report).await?,
+                    bae_library::library::unsent_before_removal(builder, store, report).await?,
                 ))
             })
             .await
@@ -366,15 +366,15 @@ impl BridgeHost {
         let steps = setup.writer();
         let name = match name {
             Some(name) => {
-                bae_core::library_name::LibraryName::parse(&name).map_err(BridgeError::config)?
+                bae_library::library_name::LibraryName::parse(&name).map_err(BridgeError::config)?
             }
-            None => bae_core::library_name::generate_library_name(),
+            None => bae_library::library_name::generate_library_name(),
         };
         self.operations
             .clone()
             .run_to_completion(self.clone(), "create library", move || async move {
                 steps.uncounted(crate::types::BridgeSetupStep::CreatingLibrary);
-                let handle = bae_core::library::create_library(builder, name).await?;
+                let handle = bae_library::library::create_library(builder, name).await?;
                 Ok(Arc::new(crate::OpenedLibrary::new(handle, self)))
             })
             .await
@@ -412,9 +412,11 @@ impl BridgeHost {
 #[cfg(target_os = "android")]
 #[uniffi::export]
 pub fn set_temporary_directory(directory: String) -> Result<(), BridgeError> {
-    bae_core::library::set_temporary_directory(std::path::Path::new(&directory)).map_err(|error| {
-        BridgeError::diagnostic(crate::BridgeErrorCategory::from_core(error.category()), error)
-    })
+    bae_library::library::set_temporary_directory(std::path::Path::new(&directory)).map_err(
+        |error| {
+            BridgeError::diagnostic(crate::BridgeErrorCategory::from_core(error.category()), error)
+        },
+    )
 }
 
 /// Open the library `library_id`, writing the open's steps into `opening`'s

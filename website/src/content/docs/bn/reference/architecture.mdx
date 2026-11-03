@@ -7,7 +7,7 @@ bae হলো এক Rust core, তার উপর চারটি native app�
 
 ## স্তরগুলো
 
-- **`bae-core`**: পণ্য। লাইব্রেরি ও মেটাডেটা মডেল, ইম্পোর্ট ও শনাক্তকরণ পাইপলাইন, FFmpeg প্লেব্যাক ইঞ্জিন, loudness মাপা, এক্সপোর্ট, এবং নিচের coven-এর সঙ্গে সংযোগ। ইম্পোর্ট ও শনাক্তকরণ শুধু ডেস্কটপে compile হয়; mobile build সিঙ্ক ও প্লেব্যাক client।
+- **`bae-library`**: পণ্য। লাইব্রেরি ও মেটাডেটা মডেল, ইম্পোর্ট ও শনাক্তকরণ পাইপলাইন, FFmpeg প্লেব্যাক ইঞ্জিন, loudness মাপা, এক্সপোর্ট, এবং নিচের coven-এর সঙ্গে সংযোগ। ইম্পোর্ট ও শনাক্তকরণ শুধু ডেস্কটপে compile হয়; mobile build সিঙ্ক ও প্লেব্যাক client।
 - **[coven](https://coven.bae.fm)**: ডেটা স্তর, আলাদা লাইব্রেরি। coven SQLite connection-এর মালিক, bae commit করা প্রতিটি পরিবর্তন ধরে, এবং ব্যবহারকারীর মেঘ-সংরক্ষণ দিয়ে end-to-end encrypted অবস্থায় সেই পরিবর্তন সিঙ্ক করে। Blob সংরক্ষণ-ও (অডিও বাইট, চিত্র), স্থানীয় ক্যাশে, identity কী, এবং membership তার। bae একটি exact coven revision pin করে এবং প্রতিটি binary-তে stamp করে; সেটিই build-গুলোর সিঙ্ক-compatibility generation নির্ধারণ করে।
 - **`bae-bridge`**: UniFFI সীমানা। Bridge type একবার Rust-এ defined হয় এবং build time-এ Swift ও Kotlin-এ generated হয়।
 - **অ্যাপগুলো**: macOS ও iOS-এ SwiftUI, Android-এ Jetpack Compose, এবং native Windows app। প্রত্যেকটি core যে প্ল্যাটফর্ম অংশ চায় সেগুলোও implement করে: অডিও আউটপুট, চিত্র text recognition, media controls, keychain access, crash reporting।

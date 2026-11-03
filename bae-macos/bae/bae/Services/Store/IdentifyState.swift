@@ -1,7 +1,7 @@
 import BaeKit
 import Foundation
 
-/// Mirror of `bae_core::identify::IdentifyState`, with the wait on the
+/// Mirror of `bae_identify::IdentifyState`, with the wait on the
 /// identification queue before a run starts, which core reports beside it.
 /// The import-candidate projection assigns one of these onto a candidate on
 /// every refresh; the UI switches on the variant to render banners and match

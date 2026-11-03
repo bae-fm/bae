@@ -100,7 +100,7 @@ impl AppHandle {
     }
 }
 
-// Gated on the target, not on `desktop`: bae-core gates `mod export` itself on
+// Gated on the target, not on `desktop`: bae-library gates `mod export` itself on
 // the target.
 #[cfg(desktop)]
 #[uniffi::export]

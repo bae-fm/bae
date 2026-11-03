@@ -18,7 +18,7 @@ private val logger = BaeLogger(TAG)
 /**
  * The last track this device played, as the home-screen widget shows it. A
  * cold render (the widget drawn by a process with no library open) can't ask
- * bae-core, so the open library writes this compact projection to a file
+ * bae-library, so the open library writes this compact projection to a file
  * whenever now-playing changes and the widget reads it back on render. [track]
  * is null when nothing is playing (the widget's empty state).
  *

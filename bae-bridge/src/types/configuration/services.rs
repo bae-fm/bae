@@ -317,8 +317,8 @@ pub struct BridgeSaveSyncConfig {
 impl BridgeSaveSyncConfig {
     /// A key prefix coven can't parse fails in its own class, naming the
     /// folder at fault.
-    pub(crate) fn into_core(self) -> Result<bae_core::sync::S3ConfigData, BridgeError> {
-        Ok(bae_core::sync::S3ConfigData {
+    pub(crate) fn into_core(self) -> Result<bae_library::sync::S3ConfigData, BridgeError> {
+        Ok(bae_library::sync::S3ConfigData {
             bucket: self.bucket,
             region: self.region,
             endpoint: self.endpoint,

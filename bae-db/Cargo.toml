@@ -59,7 +59,7 @@ regex = { workspace = true }
 [features]
 default = []
 # The OAuth cloud providers' (Dropbox, OneDrive) sign-in and folder calls
-# through coven; bae-core's feature of the same name turns it on.
+# through coven; bae-library's feature of the same name turns it on.
 oauth-providers = []
 # Test databases with bae's schema, the rows and fixtures tests seed them
 # with, and the store-level harness two-device sync tests run on, for the

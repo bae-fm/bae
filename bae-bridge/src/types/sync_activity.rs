@@ -2,7 +2,7 @@
 //! its list show it.
 
 /// Everything sync is doing on this device, for the activity indicator in
-/// the title bar and the list it opens. Mirrors `bae_core::library::SyncActivity`.
+/// the title bar and the list it opens. Mirrors `bae_library::library::SyncActivity`.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeSyncActivity {
     /// Bytes are moving: the indicator spins. A pass alone doesn't count.
@@ -24,10 +24,10 @@ pub struct BridgeSyncActivity {
 }
 
 impl BridgeSyncActivity {
-    pub(crate) fn from_core(activity: bae_core::library::SyncActivity) -> Self {
+    pub(crate) fn from_core(activity: bae_library::library::SyncActivity) -> Self {
         let moving = activity.moving();
         let needs_attention = activity.needs_attention();
-        let bae_core::library::SyncActivity {
+        let bae_library::library::SyncActivity {
             failure,
             attention,
             syncing,
@@ -57,7 +57,7 @@ pub struct BridgeUploadsInFlight {
 }
 
 impl BridgeUploadsInFlight {
-    fn from_core(uploads: bae_core::library::UploadsInFlight) -> Self {
+    fn from_core(uploads: bae_library::library::UploadsInFlight) -> Self {
         Self {
             summary_parts: uploads
                 .summary_parts()
@@ -76,7 +76,7 @@ pub struct BridgeDownloadsInFlight {
 }
 
 impl BridgeDownloadsInFlight {
-    fn from_core(downloads: bae_core::library::DownloadsInFlight) -> Self {
+    fn from_core(downloads: bae_library::library::DownloadsInFlight) -> Self {
         Self {
             summary_parts: downloads
                 .summary_parts()
@@ -88,7 +88,7 @@ impl BridgeDownloadsInFlight {
 }
 
 /// What the person's retry came to: the first sync pass after the request.
-/// Mirrors `bae_core::library::SyncRetryOutcome`.
+/// Mirrors `bae_library::library::SyncRetryOutcome`.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeSyncRetryOutcome {
     /// The pass reached its read end.
@@ -105,16 +105,16 @@ pub enum BridgeSyncRetryOutcome {
 }
 
 impl BridgeSyncRetryOutcome {
-    pub(crate) fn from_core(outcome: bae_core::library::SyncRetryOutcome) -> Self {
+    pub(crate) fn from_core(outcome: bae_library::library::SyncRetryOutcome) -> Self {
         match outcome {
-            bae_core::library::SyncRetryOutcome::Synced => Self::Synced,
-            bae_core::library::SyncRetryOutcome::Failed(error) => {
+            bae_library::library::SyncRetryOutcome::Synced => Self::Synced,
+            bae_library::library::SyncRetryOutcome::Failed(error) => {
                 Self::Failed { error: super::BridgeError::from_core(error) }
             }
-            bae_core::library::SyncRetryOutcome::CoolingDown { until } => {
+            bae_library::library::SyncRetryOutcome::CoolingDown { until } => {
                 Self::CoolingDown { until }
             }
-            bae_core::library::SyncRetryOutcome::NotSyncing => Self::NotSyncing,
+            bae_library::library::SyncRetryOutcome::NotSyncing => Self::NotSyncing,
         }
     }
 }

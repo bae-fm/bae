@@ -63,7 +63,7 @@ impl Library {
             Arc::new(bae_catalogs::discogs::client::Discogs::new(http.clone())),
             Arc::new(bae_catalogs::wikidata::Wikidata::new(http)),
         );
-        let library = bae_core::test_libraries::TestLibrary::open(
+        let library = bae_library::test_libraries::TestLibrary::open(
             database.clone(),
             bae_app_dir::AppDir::under_home(temp.path()).unwrap(),
             providers,

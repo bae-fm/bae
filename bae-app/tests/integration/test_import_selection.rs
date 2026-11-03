@@ -16,7 +16,7 @@ use tempfile::TempDir;
 /// A library at `dir` with automatic identification off, so nothing but the
 /// test acts on the candidates.
 async fn open(dir: &Path) -> AppServices {
-    let library = bae_core::test_libraries::open_test_library(dir).await;
+    let library = bae_library::test_libraries::open_test_library(dir).await;
     library.set_identify_automatically(false).await.unwrap();
     bae_app::test_services::start_services(&library)
         .await

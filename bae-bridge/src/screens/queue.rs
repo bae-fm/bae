@@ -26,12 +26,12 @@ pub struct BridgeQueueUpcomingSnapshot {
 /// the queue changes. It reads no windows until `set_windows`.
 #[derive(uniffi::Object)]
 pub struct QueueUpcomingSubscription {
-    inner: bae_core::library::LiveQueueUpcoming,
+    inner: bae_library::library::LiveQueueUpcoming,
     runtime: crate::operation_runtime::OperationRuntime,
 }
 
 pub(crate) fn queue_upcoming(
-    inner: bae_core::library::LiveQueueUpcoming,
+    inner: bae_library::library::LiveQueueUpcoming,
     runtime: crate::operation_runtime::OperationRuntime,
 ) -> std::sync::Arc<QueueUpcomingSubscription> {
     std::sync::Arc::new(QueueUpcomingSubscription { inner, runtime })
@@ -79,7 +79,7 @@ impl QueueUpcomingSubscription {
 }
 
 impl BridgeQueueUpcomingSnapshot {
-    fn from_core(snapshot: bae_core::library::QueueUpcomingSnapshot) -> Self {
+    fn from_core(snapshot: bae_library::library::QueueUpcomingSnapshot) -> Self {
         Self {
             upcoming_total: snapshot.upcoming_total,
             queue_changed: snapshot.queue_changed,

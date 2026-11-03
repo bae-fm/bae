@@ -13,7 +13,7 @@ private const val MINUTES_KEY = "core.duration.minutes"
 
 // Renders bae's shared `core.*` catalog strings for the current locale.
 //
-// The locale never crosses the bridge: bae-core / bae-bridge emit raw numbers,
+// The locale never crosses the bridge: bae-library / bae-bridge emit raw numbers,
 // typed enums, and stable `core.*` catalog keys; this resolves a key against the
 // generated `core_strings.xml` (the loc-gen Android emit) and formats numbers
 // with Android's locale formatters. Mirrors macOS's `NSLocalizedString(key,

@@ -5,7 +5,7 @@ extension BridgeAudioFormat {
     /// One-line descriptor composed for the current locale, e.g.
     /// "FLAC · 44.1 kHz · 16-bit · stereo" (lossless) or
     /// "MP3 · 320 kbps · 44.1 kHz · stereo" (lossy). The codec is a proper noun;
-    /// the channel word is localized; numbers use the locale's formatter. bae-core
+    /// the channel word is localized; numbers use the locale's formatter. bae-library
     /// owns the parts and the lossy/lossless split (`bitsPerSample == nil`); this
     /// is the UI's locale rendering of them.
     var text: String {

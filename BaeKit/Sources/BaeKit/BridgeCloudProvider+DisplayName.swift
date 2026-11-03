@@ -3,7 +3,7 @@ import Foundation
 extension BridgeCloudProvider {
     /// The provider's display name. Brand names pass through verbatim
     /// (proper nouns, not translated); the generic "S3-compatible" case
-    /// resolves the catalog key bae-core owns. bae-core chooses the provider;
+    /// resolves the catalog key bae-library owns. bae-library chooses the provider;
     /// this is the UI's locale rendering of it.
     public var displayName: String {
         switch self {

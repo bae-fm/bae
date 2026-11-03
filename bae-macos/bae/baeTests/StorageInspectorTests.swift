@@ -4,7 +4,7 @@ import Testing
 @testable import bae
 
 /// Which files and transfers the inspector shows is core's, read for the
-/// release it is set to (bae-core's storage inspector tests); this covers
+/// release it is set to (bae-library's storage inspector tests); this covers
 /// only which release it is set to.
 @MainActor
 @Suite("Storage inspector")

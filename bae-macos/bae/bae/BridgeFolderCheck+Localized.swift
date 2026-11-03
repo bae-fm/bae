@@ -3,7 +3,7 @@ import Foundation
 
 extension BridgeFolderCheck {
     /// The failed check's sentence, resolved from the generated `Core` string
-    /// table via the key bae-core owns for this variant
+    /// table via the key bae-library owns for this variant
     /// (`bridgeFolderCheckKey`). Every number crosses raw — the enum's own
     /// operands — so this is the one place they're interpolated for the
     /// current locale. `nil` for audio no CD holds whose rate is not at hand,

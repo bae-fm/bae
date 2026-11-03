@@ -21,7 +21,7 @@ bae-audio = { workspace = true }
 # The catalogs a library asks, and the image cache their covers come through.
 bae-catalogs = { workspace = true }
 # The library: its manager, views, transfers and what they show.
-bae-core = { workspace = true }
+bae-library = { workspace = true }
 # The store the bootstrap opens, and the live reads the services pass on.
 bae-db = { workspace = true }
 # The bugs, anomalies and telemetry the bootstrap and services report.
@@ -54,7 +54,7 @@ tempfile = { workspace = true, optional = true }
 bae-app-dir = { workspace = true, features = ["test-utils"] }
 bae-catalogs = { workspace = true, features = ["test-utils"] }
 # The test libraries the services start over.
-bae-core = { workspace = true, features = ["test-utils"] }
+bae-library = { workspace = true, features = ["test-utils"] }
 bae-db = { workspace = true, features = ["test-utils"] }
 bae-diagnostics = { workspace = true, features = ["test-utils"] }
 bae-import = { workspace = true, features = ["test-utils"] }
@@ -70,11 +70,11 @@ serde_json = { workspace = true }
 
 [features]
 default = []
-# OAuth cloud providers (Dropbox, OneDrive) through bae-core's sign-in.
-oauth-providers = ["bae-core/oauth-providers"]
+# OAuth cloud providers (Dropbox, OneDrive) through bae-library's sign-in.
+oauth-providers = ["bae-library/oauth-providers"]
 # A library's services started over a device a test supplies, and the test
 # library they start over.
-test-utils = ["dep:tempfile", "bae-core/test-utils", "bae-playback/test-utils"]
+test-utils = ["dep:tempfile", "bae-library/test-utils", "bae-playback/test-utils"]
 
 # bae-app's integration tests, one binary of modules (tests/integration/).
 [[test]]

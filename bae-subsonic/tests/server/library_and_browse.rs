@@ -84,8 +84,8 @@ async fn call_with_range(router: &Router, method: &str, qs: &str, range: Option<
     Resp { status, content_type, content_length, content_range, body }
 }
 
-async fn new_library() -> (bae_core::test_libraries::TestLibrary, TempDir) {
-    bae_core::test_libraries::setup_test_library().await
+async fn new_library() -> (bae_library::test_libraries::TestLibrary, TempDir) {
+    bae_library::test_libraries::setup_test_library().await
 }
 
 async fn new_services() -> (AppServices, TempDir) {
@@ -106,7 +106,7 @@ fn cue_fixture(name: &str) -> std::path::PathBuf {
 /// A seeded library plus the ids a test addresses it by.
 struct Library {
     services: AppServices,
-    library: bae_core::test_libraries::TestLibrary,
+    library: bae_library::test_libraries::TestLibrary,
     per_track_release: String,
     /// The folder the per-track release was imported from, which holds its
     /// originals on this device.
@@ -119,7 +119,7 @@ struct Library {
 /// three-track single-file CUE release into one library.
 async fn seed_library() -> Library {
     let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
-    let (library, db_temp) = bae_core::test_libraries::setup_test_library_with(fakes.providers()).await;
+    let (library, db_temp) = bae_library::test_libraries::setup_test_library_with(fakes.providers()).await;
 
     // Per-track release, imported from file metadata (no network).
     let pt_temp = TempDir::new().unwrap();

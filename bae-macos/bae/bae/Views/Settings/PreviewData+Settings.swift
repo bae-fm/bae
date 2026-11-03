@@ -11,7 +11,7 @@
         // MARK: - Formats
 
         /// Default single-track export filename pattern, for seeding preview
-        /// configs (mirrors bae-core's `default_save_filename_tokens`).
+        /// configs (mirrors bae-library's `default_save_filename_tokens`).
         static let exportFilenameTokens: [BridgeSaveFilenameToken] = [
             .trackNumber, .title,
         ]

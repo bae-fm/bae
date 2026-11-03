@@ -83,7 +83,7 @@ macro_rules! browse_subscription {
         }
 
         impl $snapshot {
-            fn from_core(snapshot: bae_core::library::LibraryBrowseSnapshot<$core_row>) -> Self {
+            fn from_core(snapshot: bae_library::library::LibraryBrowseSnapshot<$core_row>) -> Self {
                 Self {
                     windows: snapshot
                         .windows
@@ -117,35 +117,35 @@ macro_rules! browse_subscription {
 
 browse_subscription! {
     object: AlbumBrowseSubscription,
-    inner: bae_core::library::LiveAlbumBrowse,
+    inner: bae_library::library::LiveAlbumBrowse,
     built by album_browse,
     snapshot: BridgeAlbumBrowseSnapshot,
     window: BridgeAlbumBrowseWindow,
-    row: bae_core::album_detail::AlbumAppearance => crate::types::BridgeAlbumAppearance,
+    row: bae_library::album_detail::AlbumAppearance => crate::types::BridgeAlbumAppearance,
 }
 
 browse_subscription! {
     object: ArtistBrowseSubscription,
-    inner: bae_core::library::LiveArtistBrowse,
+    inner: bae_library::library::LiveArtistBrowse,
     built by artist_browse,
     snapshot: BridgeArtistBrowseSnapshot,
     window: BridgeArtistBrowseWindow,
-    row: bae_core::album_detail::ArtistSummary => crate::types::BridgeArtistSummary,
+    row: bae_library::album_detail::ArtistSummary => crate::types::BridgeArtistSummary,
 }
 
 browse_subscription! {
     object: ComposerBrowseSubscription,
-    inner: bae_core::library::LiveComposerBrowse,
+    inner: bae_library::library::LiveComposerBrowse,
     built by composer_browse,
     snapshot: BridgeComposerBrowseSnapshot,
     window: BridgeComposerBrowseWindow,
-    row: bae_core::album_detail::ComposerSummary => crate::types::BridgeComposerSummary,
+    row: bae_library::album_detail::ComposerSummary => crate::types::BridgeComposerSummary,
 }
 
-fn browse_error(error: bae_core::library::LiveLibraryBrowseError) -> BridgeError {
+fn browse_error(error: bae_library::library::LiveLibraryBrowseError) -> BridgeError {
     match error {
-        bae_core::library::LiveLibraryBrowseError::Cancelled => BridgeError::Cancelled,
-        bae_core::library::LiveLibraryBrowseError::Query(error) => {
+        bae_library::library::LiveLibraryBrowseError::Cancelled => BridgeError::Cancelled,
+        bae_library::library::LiveLibraryBrowseError::Query(error) => {
             BridgeError::database_query(error)
         }
     }
@@ -196,12 +196,12 @@ pub struct BridgeDownloadBrowseSnapshot {
 /// each download's bytes its transfers.
 #[derive(uniffi::Object)]
 pub struct DownloadBrowseSubscription {
-    inner: bae_core::library::LiveDownloadBrowse,
+    inner: bae_library::library::LiveDownloadBrowse,
     runtime: crate::operation_runtime::OperationRuntime,
 }
 
 pub(crate) fn download_browse(
-    inner: bae_core::library::LiveDownloadBrowse,
+    inner: bae_library::library::LiveDownloadBrowse,
     runtime: crate::operation_runtime::OperationRuntime,
 ) -> Arc<DownloadBrowseSubscription> {
     Arc::new(DownloadBrowseSubscription { inner, runtime })
@@ -244,7 +244,7 @@ impl DownloadBrowseSubscription {
 
 impl BridgeDownloadBrowseSnapshot {
     fn from_core(
-        snapshot: bae_core::library::LibraryBrowseSnapshot<bae_core::library::DownloadRow>,
+        snapshot: bae_library::library::LibraryBrowseSnapshot<bae_library::library::DownloadRow>,
     ) -> Self {
         Self {
             windows: snapshot
@@ -277,12 +277,12 @@ pub struct BridgeAlbumSelectionSnapshot {
 /// with none.
 #[derive(uniffi::Object)]
 pub struct AlbumSelectionSubscription {
-    inner: bae_core::library::LiveAlbumSelection,
+    inner: bae_library::library::LiveAlbumSelection,
     runtime: crate::operation_runtime::OperationRuntime,
 }
 
 pub(crate) fn album_selection(
-    inner: bae_core::library::LiveAlbumSelection,
+    inner: bae_library::library::LiveAlbumSelection,
     runtime: crate::operation_runtime::OperationRuntime,
 ) -> Arc<AlbumSelectionSubscription> {
     Arc::new(AlbumSelectionSubscription { inner, runtime })
@@ -322,10 +322,10 @@ impl AlbumSelectionSubscription {
     }
 }
 
-fn selection_error(error: bae_core::library::LiveAlbumSelectionError) -> BridgeError {
+fn selection_error(error: bae_library::library::LiveAlbumSelectionError) -> BridgeError {
     match error {
-        bae_core::library::LiveAlbumSelectionError::Cancelled => BridgeError::Cancelled,
-        bae_core::library::LiveAlbumSelectionError::Query(error) => {
+        bae_library::library::LiveAlbumSelectionError::Cancelled => BridgeError::Cancelled,
+        bae_library::library::LiveAlbumSelectionError::Query(error) => {
             BridgeError::database_query(error)
         }
     }

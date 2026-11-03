@@ -213,11 +213,11 @@ if [ "${#DIRECTLY_CHANGED_CRATES[@]}" -gt 0 ]; then
         exit 1
     }
 
-    # The mobile apps build bae-core and the crates below it without their
+    # The mobile apps build bae-library and the crates below it without their
     # desktop-only modules, where anything only those modules use is dead code
     # and fails the build.
     if [ "$MOBILE_CHANGED" -eq 1 ]; then
-        run_check "bae-core and the crates below it for iOS (desktop-only code)" \
+        run_check "bae-library and the crates below it for iOS (desktop-only code)" \
             scripts/cargo.sh "${MOBILE_CHECK_ARGS[@]}" || {
             echo "Gate code only desktop modules use with the same cfg and try again"
             exit 1

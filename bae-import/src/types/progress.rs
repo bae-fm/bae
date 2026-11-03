@@ -134,7 +134,7 @@ pub enum PrepareStep {
 }
 
 /// Which step of an import is in progress, for the candidate progress UI. The
-/// UI localizes each step; bae-core no longer renders display text for it.
+/// UI localizes each step; bae-library no longer renders display text for it.
 #[cfg(desktop)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ImportStep {

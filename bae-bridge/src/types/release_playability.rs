@@ -4,7 +4,7 @@
 use super::{BridgeFormerDeviceState, BridgeMessage, BridgeMessageArg};
 
 /// Whether this device can play a release now, and why not. Mirrors
-/// `bae_core::album_detail::ReleasePlayability`.
+/// `bae_library::album_detail::ReleasePlayability`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeReleasePlayability {
     Playable,
@@ -12,7 +12,7 @@ pub enum BridgeReleasePlayability {
 }
 
 mirror_enum! {
-    BridgeReleasePlayability = bae_core::album_detail::ReleasePlayability,
+    BridgeReleasePlayability = bae_library::album_detail::ReleasePlayability,
     from_core: pub fn,
     variants: {
         Playable,

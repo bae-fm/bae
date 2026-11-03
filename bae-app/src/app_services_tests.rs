@@ -56,7 +56,7 @@ async fn playing_app_services(track_count: usize) -> (AppServices, Vec<String>, 
     // process-global WASAPI device enumerator is left dangling once the first
     // actor thread that made it exits (the enumerator dies with that thread's
     // COM apartment), and the test builds one player per case.
-    let library = bae_core::test_libraries::TestLibrary::open(
+    let library = bae_library::test_libraries::TestLibrary::open(
         database,
         bae_app_dir::AppDir::under_home(temp_dir.path()).unwrap(),
         bae_catalogs::providers::Providers::offline(),
@@ -91,9 +91,9 @@ fn windows(windows: &[(u64, u64)]) -> bae_db::LibraryPageWindows {
 /// before it — the value for the empty initial window set, or one resolved
 /// before the queue reached the state a test drives it to.
 async fn upcoming_until(
-    subscription: &bae_core::library::LiveQueueUpcoming,
-    accept: impl Fn(&bae_core::library::QueueUpcomingSnapshot) -> bool,
-) -> bae_core::library::QueueUpcomingSnapshot {
+    subscription: &bae_library::library::LiveQueueUpcoming,
+    accept: impl Fn(&bae_library::library::QueueUpcomingSnapshot) -> bool,
+) -> bae_library::library::QueueUpcomingSnapshot {
     loop {
         let value = tokio::time::timeout(std::time::Duration::from_secs(5), subscription.next())
             .await
@@ -105,7 +105,7 @@ async fn upcoming_until(
     }
 }
 
-fn window_track_ids(snapshot: &bae_core::library::QueueUpcomingSnapshot) -> Vec<Vec<&str>> {
+fn window_track_ids(snapshot: &bae_library::library::QueueUpcomingSnapshot) -> Vec<Vec<&str>> {
     snapshot
         .windows
         .iter()
@@ -241,12 +241,12 @@ async fn a_release_session_keeps_its_choices_in_core() {
 /// entry as `matches` looks for.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 async fn inspected_export_until(
-    inspector: &bae_core::library::LiveDetail<
-        bae_core::library::storage_inspector::StorageInspector,
+    inspector: &bae_library::library::LiveDetail<
+        bae_library::library::storage_inspector::StorageInspector,
     >,
-    matches: impl Fn(&bae_core::library::OutputPhaseRow) -> bool,
-) -> bae_core::library::OutputPhaseRow {
-    use bae_core::library::storage_inspector::StorageInspectorTransfer;
+    matches: impl Fn(&bae_library::library::OutputPhaseRow) -> bool,
+) -> bae_library::library::OutputPhaseRow {
+    use bae_library::library::storage_inspector::StorageInspectorTransfer;
     loop {
         let snapshot = tokio::time::timeout(std::time::Duration::from_secs(5), inspector.next())
             .await
@@ -333,7 +333,7 @@ async fn a_queued_release_shows_its_title_as_edited_while_it_waits() {
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[tokio::test(flavor = "multi_thread")]
 async fn the_storage_inspector_reads_the_release_it_is_set_to() {
-    use bae_core::library::storage_inspector::StorageInspectorTransfer;
+    use bae_library::library::storage_inspector::StorageInspectorTransfer;
     let (services, _track_ids, temp_dir) = playing_app_services(1).await;
     let release_id = "c61a9e19-f3ba-4728-842c-c59dbc82e238";
     let manager = &services.inner.manager;
@@ -414,12 +414,12 @@ async fn closing_the_library_ends_a_held_live_reads_task_before_its_store_closes
         {
             Ok(_) => {}
             Err(
-                bae_core::library::LiveReadError::Query(error)
-                | bae_core::library::LiveReadError::Failed(error),
+                bae_library::library::LiveReadError::Query(error)
+                | bae_library::library::LiveReadError::Failed(error),
             ) => {
                 panic!("the live read heard from the closed store: {error}")
             }
-            Err(bae_core::library::LiveReadError::Cancelled) => break,
+            Err(bae_library::library::LiveReadError::Cancelled) => break,
         }
     }
 }
@@ -430,7 +430,7 @@ async fn closing_the_library_ends_a_held_live_reads_task_before_its_store_closes
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[tokio::test(flavor = "multi_thread")]
 async fn the_release_files_read_answers_the_request_it_is_set_to() {
-    use bae_core::library::{ReleaseFileColumn, ReleaseFileOrder, ReleaseFilesRequest};
+    use bae_library::library::{ReleaseFileColumn, ReleaseFileOrder, ReleaseFilesRequest};
     let (services, _track_ids, _temp_dir) = playing_app_services(1).await;
     let files = services.subscribe_release_files();
     let request = |release_id: &str| ReleaseFilesRequest {

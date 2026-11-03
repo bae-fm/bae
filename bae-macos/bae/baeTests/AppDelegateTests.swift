@@ -9,7 +9,7 @@ import Testing
 /// and a real opened core's `close`, which a unit test can't stand up; the
 /// removal semantics — deleting the data directory, active pointer, and every
 /// keyring entry once the library is closed, and refusing while it is open —
-/// are covered by bae-core's and bae-bridge's lifecycle tests.
+/// are covered by bae-library's and bae-bridge's lifecycle tests.
 @MainActor
 @Suite("AppDelegate")
 struct AppDelegateTests {

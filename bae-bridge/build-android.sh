@@ -77,7 +77,7 @@ echo "Generating Kotlin bindings into $BINDINGS_DIR ..."
 rm -rf "$BINDINGS_DIR"
 mkdir -p "$BINDINGS_DIR"
 # The generator is its own host-only package so this build doesn't compile
-# bae-core again.
+# bae-library again.
 ./scripts/cargo.sh build -p bae-uniffi-bindgen
 BINDGEN="$CARGO_TARGET_DIR/debug/uniffi-bindgen"
 "$BINDGEN" generate \

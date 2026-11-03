@@ -538,7 +538,7 @@ extension MappingFixtures {
             )
     }
 
-    /// Whether bae-core can shape what the pane would commit into a savable
+    /// Whether bae-library can shape what the pane would commit into a savable
     /// release — the only thing standing between the commit bar's button and an
     /// import.
     @MainActor

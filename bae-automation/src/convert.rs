@@ -71,9 +71,9 @@ pub(super) fn empty_input_schema() -> Map<String, Value> {
 }
 
 pub(super) fn automation_output_snapshot(
-    snapshot: bae_core::library::OutputSnapshot,
+    snapshot: bae_library::library::OutputSnapshot,
 ) -> AutomationOutputSnapshot {
-    use bae_core::library::{OutputKind, OutputState};
+    use bae_library::library::{OutputKind, OutputState};
     let outputs = snapshot
         .rows
         .into_iter()
@@ -599,7 +599,7 @@ impl AutomationRelease {
 
 impl AutomationTrackGroup {
     /// Drops core's display-only `total_duration_ms`.
-    pub(crate) fn from_core(group: bae_core::album_detail::TrackGroup) -> Self {
+    pub(crate) fn from_core(group: bae_library::album_detail::TrackGroup) -> Self {
         Self {
             side: AutomationTrackSide::from_core(group.side),
             tracks: group.tracks.into_iter().map(AutomationTrackDetail::from_core).collect(),
@@ -608,7 +608,7 @@ impl AutomationTrackGroup {
 }
 
 mirror_struct! {
-    AutomationReleaseSummary = bae_core::album_detail::ReleaseSummary,
+    AutomationReleaseSummary = bae_library::album_detail::ReleaseSummary,
     from_core: pub(crate) fn,
     fields: {
         id,
@@ -629,7 +629,7 @@ mirror_struct! {
 impl AutomationReleaseUpload {
     /// Drops core's bytes, which an automation client polls the release for
     /// rather than follows.
-    pub(crate) fn from_core(upload: bae_core::album_detail::ReleaseUpload) -> Self {
+    pub(crate) fn from_core(upload: bae_library::album_detail::ReleaseUpload) -> Self {
         Self { queued: upload.progress.queued, uploading: upload.progress.uploading }
     }
 }
@@ -737,14 +737,14 @@ impl AutomationLibrarySearchResults {
 }
 
 mirror_struct! {
-    AutomationAlbumSearchResult = bae_core::album_detail::AlbumSearchResult,
+    AutomationAlbumSearchResult = bae_library::album_detail::AlbumSearchResult,
     from_core: pub(crate) fn,
     fields: { id, title, year, artist_name, cover: (opt AutomationImageRef) },
 }
 
 impl AutomationTrackSearchResult {
     /// Drops the cover, which the album hit already carries.
-    pub(crate) fn from_core(track: bae_core::album_detail::TrackSearchResult) -> Self {
+    pub(crate) fn from_core(track: bae_library::album_detail::TrackSearchResult) -> Self {
         Self {
             id: track.id,
             title: track.title,

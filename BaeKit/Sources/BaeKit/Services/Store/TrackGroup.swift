@@ -13,7 +13,7 @@ public struct TrackGroup: Sendable {
     }
 
     /// The group header for the current locale: "Side A" / "Disc 2", or empty
-    /// for a flat single-disc group (no header). bae-core decides the case and
+    /// for a flat single-disc group (no header). bae-library decides the case and
     /// the side letter / disc number, and hands over the header word's catalog
     /// key; the UI resolves the word and substitutes the letter / number.
     public var sideHeaderText: String {

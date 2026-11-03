@@ -21,7 +21,7 @@ pub fn shape_release_edit(
 }
 
 mirror_enum! {
-    /// Kept here, not as a `From` in bae-core, so bae-core stays unaware of
+    /// Kept here, not as a `From` in bae-library, so bae-library stays unaware of
     /// bridge types.
     #[cfg(feature = "desktop")]
     crate::types::BridgeValidationReason = bae_import::EditValidationError,

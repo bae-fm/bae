@@ -4,9 +4,9 @@ set -e
 
 source "$(dirname "$0")/../lib/file-list.sh"
 
-CHANGED_FILES=$'bae-core/Cargo.toml\nbae-core/src/lib.rs'
+CHANGED_FILES=$'bae-library/Cargo.toml\nbae-library/src/lib.rs'
 
-if ! staged_file_in_list "bae-core/Cargo.toml"; then
+if ! staged_file_in_list "bae-library/Cargo.toml"; then
     echo "expected the exact staged path to match"
     exit 1
 fi
@@ -16,8 +16,8 @@ if staged_file_in_list "Cargo.toml"; then
     exit 1
 fi
 
-if ! staged_path_under "bae-core"; then
-    echo "expected a staged path below bae-core to match"
+if ! staged_path_under "bae-library"; then
+    echo "expected a staged path below bae-library to match"
     exit 1
 fi
 
@@ -39,15 +39,15 @@ if [ "$listed" != "$members" ]; then
     exit 1
 fi
 
-CHANGED_FILES=$'bae-core/src/lib.rs\nbae-mirror/src/lib.rs\nnotes/example.md'
+CHANGED_FILES=$'bae-library/src/lib.rs\nbae-mirror/src/lib.rs\nnotes/example.md'
 changed_crates=$(changed_workspace_crates <<< "$workspace" | sort)
-if [ "$changed_crates" != $'bae-core\nbae-mirror' ]; then
+if [ "$changed_crates" != $'bae-library\nbae-mirror' ]; then
     echo "directly changed workspace crates were routed incorrectly:"
     echo "$changed_crates"
     exit 1
 fi
 
-CHANGED_FILES=$'bae-ios/bae/bae/baeApp.swift\nBaeKit/Package.swift\nbae-core/src/lib.rs'
+CHANGED_FILES=$'bae-ios/bae/bae/baeApp.swift\nBaeKit/Package.swift\nbae-library/src/lib.rs'
 swift_files=$(staged_files_with_extension swift)
 if [ "$swift_files" != $'bae-ios/bae/bae/baeApp.swift\nBaeKit/Package.swift' ]; then
     echo "staged Swift files were routed incorrectly:"

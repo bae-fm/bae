@@ -9,8 +9,8 @@ fn handle_over_one_album(
     tracks: &[&str],
 ) -> (std::sync::Arc<super::AppHandle>, Vec<String>) {
     let (runtime, library, _root) = super::super::tests::fresh_test_library(test_name);
-    let fixture = bae_core::library::LibraryFixture {
-        albums: vec![bae_core::library::FixtureAlbum {
+    let fixture = bae_library::library::LibraryFixture {
+        albums: vec![bae_library::library::FixtureAlbum {
             title: "Album Title".to_string(),
             artists: vec!["Artist Name".to_string()],
             tracks: tracks.iter().map(|title| title.to_string()).collect(),

@@ -1,17 +1,17 @@
 mirror_struct! {
-    crate::types::BridgeUploadBar = bae_core::library::UploadBar,
+    crate::types::BridgeUploadBar = bae_library::library::UploadBar,
     from_core: pub(super) fn,
     fields: { bytes_done, bytes_total },
 }
 
 mirror_struct! {
-    crate::types::BridgeUploadTransfer = bae_core::library::UploadTransfer,
+    crate::types::BridgeUploadTransfer = bae_library::library::UploadTransfer,
     from_core: pub(crate) fn,
     fields: { bar: (opt crate::types::BridgeUploadBar), throughput_bps },
 }
 
 mirror_struct! {
-    crate::types::BridgeReleaseUploadTransfer = bae_core::library::ReleaseUploadTransfer,
+    crate::types::BridgeReleaseUploadTransfer = bae_library::library::ReleaseUploadTransfer,
     from_core: pub(crate) fn,
     fields: { bar: (crate::types::BridgeUploadBar), throughput_bps },
 }
@@ -30,31 +30,31 @@ mirror_enum! {
 }
 
 mirror_struct! {
-    crate::types::BridgeDownloadTransferProgress = bae_core::library::DownloadTransferProgress,
+    crate::types::BridgeDownloadTransferProgress = bae_library::library::DownloadTransferProgress,
     from_core: pub(crate) fn,
     fields: { bytes_done, bytes_total, fraction, throughput_bps },
 }
 
 mirror_struct! {
-    crate::types::BridgeMakeLocalProgress = bae_core::library::MakeLocalTransferProgress,
+    crate::types::BridgeMakeLocalProgress = bae_library::library::MakeLocalTransferProgress,
     from_core: pub(crate) fn,
     fields: { file_bytes_done, file_bytes_total, bytes_done, bytes_total },
 }
 
 impl crate::types::BridgeDownloadState {
-    pub(super) fn from_core(state: bae_core::library::DownloadPhase) -> Self {
+    pub(super) fn from_core(state: bae_library::library::DownloadPhase) -> Self {
         match state {
-            bae_core::library::DownloadPhase::Queued => Self::Queued,
-            bae_core::library::DownloadPhase::Active { progress: () } => Self::Active,
-            bae_core::library::DownloadPhase::Failed { error } => Self::Failed { error },
+            bae_library::library::DownloadPhase::Queued => Self::Queued,
+            bae_library::library::DownloadPhase::Active { progress: () } => Self::Active,
+            bae_library::library::DownloadPhase::Failed { error } => Self::Failed { error },
         }
     }
 }
 
 impl crate::types::BridgeDownloadOp {
-    pub(crate) fn from_core(row: bae_core::library::DownloadRow) -> Self {
-        let bae_core::library::release_queue::ReleaseQueueRow { op, release } = row;
-        let bae_core::library::release_queue::ReleaseQueueOp {
+    pub(crate) fn from_core(row: bae_library::library::DownloadRow) -> Self {
+        let bae_library::library::release_queue::ReleaseQueueRow { op, release } = row;
+        let bae_library::library::release_queue::ReleaseQueueOp {
             release_id,
             created_at,
             // Downloads carry no operation-specific payload.
@@ -71,14 +71,14 @@ impl crate::types::BridgeDownloadOp {
 }
 
 impl crate::types::BridgeDownloadCounts {
-    pub(crate) fn from_core(counts: bae_core::library::ReleaseQueueCounts) -> Self {
+    pub(crate) fn from_core(counts: bae_library::library::ReleaseQueueCounts) -> Self {
         let summary_parts = counts
             .total
             .summary_parts("core.queue.downloading")
             .into_iter()
             .map(crate::types::BridgeCountLabel::from_core)
             .collect();
-        let bae_core::library::ReleaseQueueCounts { total, paused } = counts;
+        let bae_library::library::ReleaseQueueCounts { total, paused } = counts;
         crate::types::BridgeDownloadCounts {
             total: crate::types::BridgeDownloadProgress::from_core(total),
             summary_parts,
@@ -88,17 +88,18 @@ impl crate::types::BridgeDownloadCounts {
 }
 
 impl crate::types::BridgeDownloadProgress {
-    pub(super) fn from_core(p: bae_core::library::DownloadProgress) -> Self {
-        let bae_core::library::release_queue::ReleaseQueueProgress { queued, active, failed } = p;
+    pub(super) fn from_core(p: bae_library::library::DownloadProgress) -> Self {
+        let bae_library::library::release_queue::ReleaseQueueProgress { queued, active, failed } =
+            p;
         crate::types::BridgeDownloadProgress { queued, active, failed }
     }
 }
 
 #[cfg(desktop)]
 impl crate::types::BridgeOutputState {
-    pub(super) fn from_core(state: bae_core::library::OutputPhase) -> Self {
+    pub(super) fn from_core(state: bae_library::library::OutputPhase) -> Self {
         use crate::types::BridgeOutputState;
-        use bae_core::library::OutputPhase;
+        use bae_library::library::OutputPhase;
         match state {
             OutputPhase::Queued => BridgeOutputState::Queued,
             OutputPhase::Active { progress: () } => BridgeOutputState::Active,
@@ -109,15 +110,15 @@ impl crate::types::BridgeOutputState {
 
 #[cfg(desktop)]
 impl crate::types::BridgeOutputOp {
-    pub(super) fn from_core(row: bae_core::library::OutputPhaseRow) -> Self {
-        let bae_core::library::release_queue::ReleaseQueueRow { op, release } = row;
-        let bae_core::library::release_queue::ReleaseQueueOp {
+    pub(super) fn from_core(row: bae_library::library::OutputPhaseRow) -> Self {
+        let bae_library::library::release_queue::ReleaseQueueRow { op, release } = row;
+        let bae_library::library::release_queue::ReleaseQueueOp {
             release_id,
             created_at,
             payload,
             state,
         } = op;
-        let bae_core::library::output_snapshot::OutputRequest { target_dir, kind } = payload;
+        let bae_library::library::output_snapshot::OutputRequest { target_dir, kind } = payload;
         crate::types::BridgeOutputOp {
             release_id,
             target_dir: coven::path_text(&target_dir),

@@ -10,7 +10,7 @@
 //! (as `bae-mcp` does) — it binds the listener and runs `axum::serve` on the
 //! [`router`] itself, so it can report a bind failure before it reports the
 //! server running. [`router`] stays public as the seam the integration tests
-//! drive. Nothing in `bae-core` depends on this crate.
+//! drive. Nothing in `bae-library` depends on this crate.
 //!
 //! Implemented from the Subsonic API doc (subsonic.org) and the OpenSubsonic
 //! spec (opensubsonic.netlify.app) only.

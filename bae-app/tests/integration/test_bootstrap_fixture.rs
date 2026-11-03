@@ -4,7 +4,7 @@
 
 use bae_app::bootstrap_on_fixture;
 use bae_app_dir::AppDir;
-use bae_core::library::create_library;
+use bae_library::library::create_library;
 use coven::TestCoven;
 use tempfile::TempDir;
 
@@ -30,11 +30,11 @@ fn library_with_fixture(
     let dir = TempDir::new().unwrap();
     let app_dir = AppDir::under_home(dir.path()).unwrap();
     let installation = TestCoven::new();
-    let runtime = bae_core::test_libraries::multi_thread_runtime();
+    let runtime = bae_library::test_libraries::multi_thread_runtime();
     let id = runtime.block_on(async {
         let handle = create_library(
             installation.builder(app_dir.store_layout()),
-            bae_core::library_name::LibraryName::parse("Fixture Library").unwrap(),
+            bae_library::library_name::LibraryName::parse("Fixture Library").unwrap(),
         )
         .await
         .unwrap();

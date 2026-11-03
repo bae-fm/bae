@@ -29,7 +29,7 @@ private const val SESSION_ACTIVITY_REQUEST_CODE = 1
  * `MediaSessionService`, so all the transport, focus, foreground, and queue
  * behavior is unchanged; only the session type and its browse callback are new.
  *
- * The player itself is a pure projection of bae-core's playback state and is
+ * The player itself is a pure projection of bae-library's playback state and is
  * owned by the open [fm.bae.app.OpenLibrary] (where the bridge handle, library,
  * and event subscription live). The service reads it from [openSession] — the
  * session holder's, when the system creates the service — so there's a single

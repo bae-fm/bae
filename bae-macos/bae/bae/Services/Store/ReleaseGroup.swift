@@ -3,7 +3,7 @@ import Foundation
 
 /// An album, as one or both sources describe it, with the pressings they
 /// surfaced for it. Mirrors `BridgeReleaseGroup` — the grouping, the
-/// cross-source merge and the pressing pairing all happen in bae-core; the UI
+/// cross-source merge and the pressing pairing all happen in bae-library; the UI
 /// iterates the groups and their pressings and renders.
 struct ReleaseGroup: Equatable, Identifiable {
     let id: String

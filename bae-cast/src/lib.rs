@@ -2,7 +2,7 @@
 //! server the receiver fetches audio from, and the URL providers that mint its
 //! media links.
 //!
-//! The cast *session* lives in bae-core's playback service (cast is a renderer
+//! The cast *session* lives in bae-library's playback service (cast is a renderer
 //! behind the one queue), which drives a device only through the interfaces it
 //! defines: a Cast or UPnP device as a `RendererChannel`, an AirPlay receiver as
 //! an `AirPlaySink`. This crate owns everything behind them: the Google Cast
@@ -12,7 +12,7 @@
 //! hands the service.
 //!
 //! It is its own crate because it sits between two that must not depend on each
-//! other: bae-core, which holds the renderer session, and bae-subsonic, which
+//! other: bae-library, which holds the renderer session, and bae-subsonic, which
 //! serves the audio. Every host that casts — desktop and both mobile platforms —
 //! builds one [`CastController`].
 

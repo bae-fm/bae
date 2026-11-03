@@ -78,7 +78,7 @@ forward! { async this => {
         album_id: String,
         group_by_artist: bool,
     ) -> Option<u64> {
-        let sort: Vec<bae_core::library::views::AlbumSortCriterion> = sort_criteria
+        let sort: Vec<bae_library::library::views::AlbumSortCriterion> = sort_criteria
             .into_iter()
             .map(BridgeSortCriterion::into_core)
             .collect();
@@ -96,7 +96,7 @@ forward! { async this => {
         album_ids: Vec<String>,
         group_by_artist: bool,
     ) -> Vec<BridgeAlbum> {
-        let sort: Vec<bae_core::library::views::AlbumSortCriterion> = sort_criteria
+        let sort: Vec<bae_library::library::views::AlbumSortCriterion> = sort_criteria
             .into_iter()
             .map(BridgeSortCriterion::into_core)
             .collect();
@@ -136,7 +136,7 @@ forward! { async this => {
     }
 
     fn change_cover(release_id: String, selection: BridgeCoverSelection) -> () {
-        use bae_core::library::CoverSelection;
+        use bae_library::library::CoverSelection;
 
         let core_selection = match selection {
             BridgeCoverSelection::ReleaseImage { file_id } => {

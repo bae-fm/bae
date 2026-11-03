@@ -1,6 +1,6 @@
 import XCTest
 
-/// The state a UI test opens the app's library on, as bae-core's
+/// The state a UI test opens the app's library on, as bae-library's
 /// `LibraryFixture` reads it. The app writes it straight into the library's
 /// tables as it opens the library, before any of its services starts.
 struct LibraryFixture {

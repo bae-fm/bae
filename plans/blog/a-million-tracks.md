@@ -484,7 +484,7 @@ apps install, since without that it never saw the cost.
 
 A speed fix keeps its measurement in one of three forms:
 
-- **Plan checks.** Thirteen test files in bae-core run `EXPLAIN QUERY PLAN`
+- **Plan checks.** Thirteen test files in bae-library run `EXPLAIN QUERY PLAN`
   and fail on a full scan or a sort where an index should serve, including
   one per sort for every list's seeks.
 - **Counts.** SQLite's VM steps (the group-member and snapshot-check tests

@@ -2,7 +2,7 @@
 //! tests of this crate and the crates above it.
 
 use crate::{AppServices, ServicesStartError};
-use bae_core::test_libraries::TestLibrary;
+use bae_library::test_libraries::TestLibrary;
 use std::sync::Arc;
 
 /// `library`'s services, started through the app's own step, with playback on
@@ -17,7 +17,7 @@ pub async fn start_services_on(
     device: Box<dyn bae_playback::AudioOutputDevice>,
 ) -> Result<AppServices, ServicesStartError> {
     crate::start_library_services(
-        bae_core::library::LibraryManager::clone(library),
+        bae_library::library::LibraryManager::clone(library),
         library.database().clone(),
         library.catalogs().clone(),
         library.closing().clone(),
@@ -34,12 +34,12 @@ pub async fn start_services_on(
     .await
 }
 
-/// [`bae_core::test_libraries::multi_thread_runtime`] with a fresh library's
+/// [`bae_library::test_libraries::multi_thread_runtime`] with a fresh library's
 /// [`AppServices`] already built on it. The `TempDir` owns the library's
 /// files, so it must outlive both.
 pub fn runtime_with_services() -> (tokio::runtime::Runtime, AppServices, tempfile::TempDir) {
-    let runtime = bae_core::test_libraries::multi_thread_runtime();
-    let (library, tmp) = bae_core::test_libraries::setup_fresh_library(&runtime);
+    let runtime = bae_library::test_libraries::multi_thread_runtime();
+    let (library, tmp) = bae_library::test_libraries::setup_fresh_library(&runtime);
     let services = runtime.block_on(async move {
         start_services(&library).await.expect("the test library's services start")
     });

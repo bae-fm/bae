@@ -51,14 +51,14 @@ pub struct AutomationReleaseSummary {
 }
 
 /// A release's files in this device's upload queue. Mirrors
-/// `bae_core::album_detail::ReleaseUpload`'s counts.
+/// `bae_library::album_detail::ReleaseUpload`'s counts.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 pub struct AutomationReleaseUpload {
     pub queued: u32,
     pub uploading: u32,
 }
 
-/// A release's storage state. Mirrors `bae_core::album_detail::ReleaseStorageState`.
+/// A release's storage state. Mirrors `bae_library::album_detail::ReleaseStorageState`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum AutomationReleaseStorageState {

@@ -241,7 +241,7 @@ task_types = [
 # app's step hands the library's services, and the views and services it
 # builds over them. It is test-utils code, which the tests of the crates above
 # compile, so the checker reads it as production code.
-"bae-core/src/test_libraries.rs" = [
+"bae-library/src/test_libraries.rs" = [
     "TestLibrary::deref",
     "TestLibrary::database",
     "TestLibrary::catalogs",

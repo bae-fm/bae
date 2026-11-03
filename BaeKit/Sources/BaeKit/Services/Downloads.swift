@@ -3,7 +3,7 @@ import Foundation
 /// Controls for the download (pin) queue: enqueue releases to pin,
 /// pause/resume the queue, retry failed downloads, and cancel downloads.
 /// Mirrors the outbox controls on `Sync`, wrapping the corresponding
-/// `handle.*` methods. The queue itself lives in bae-core; the Storage
+/// `handle.*` methods. The queue itself lives in bae-library; the Storage
 /// Manager's inspector reads a release's entry in it, and `DownloadStore`
 /// holds the bytes each download has moved.
 public final class Downloads: Sendable, Observable {

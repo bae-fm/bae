@@ -68,7 +68,7 @@ enum AppRuntime: Equatable {
         }
 
         /// The JSON file naming the state a UI test opens the app on, which
-        /// bae-core's `LibraryFixture` reads.
+        /// bae-library's `LibraryFixture` reads.
         static func libraryFixtureForUITesting(
             environment: [String: String]
         ) -> String? {

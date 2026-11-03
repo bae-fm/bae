@@ -2,14 +2,14 @@ name: Windows build
 
 # Builds the native Windows stack for both architectures — x86_64-pc-windows-msvc
 # on the x64 runner and aarch64-pc-windows-msvc on the native ARM64 runner:
-# bae-core → bae-bridge (uniffi metadata + bae_bridge.dll/uniffi_bae_bridge.dll) →
+# bae-library → bae-bridge (uniffi metadata + bae_bridge.dll/uniffi_bae_bridge.dll) →
 # generated C# bindings, plus the Avalonia skeleton build and its smoke test,
 # which loads the bridge DLL through those bindings. The macOS host can't
 # cross-compile the native deps, so this is the verification loop. Each arch builds
 # natively on its own runner (the ARM64 runner is arm64, so aarch64 is its host
 # target — no cross-compile).
 # FFmpeg is a prebuilt release CI fetches (bae-ffmpeg) — no compiling here. The
-# MusicBrainz disc ID is computed in pure Rust (bae-core), so there is no
+# MusicBrainz disc ID is computed in pure Rust (bae-library), so there is no
 # libdiscid to fetch or link.
 
 on:
@@ -157,7 +157,7 @@ jobs:
         if: ${{ !cancelled() && steps.bridge.conclusion == 'success' }}
         uses: taiki-e/install-action@nextest
 
-      - name: Run the unit tests of bae-app, bae-core, the crates below them and bae-cast (Windows)
+      - name: Run the unit tests of bae-app, bae-library, the crates below them and bae-cast (Windows)
         # The only place bae's Rust actually EXECUTES on Windows. Windows-only
         # code paths (the atomic-write directory handling, path semantics) shipped
         # broken while CI merely compiled them; this is the regression gate. The
@@ -175,15 +175,15 @@ jobs:
         env:
           TMP: ${{ runner.temp }}
           TEMP: ${{ runner.temp }}
-        run: cargo nextest run --no-fail-fast -p bae-core -p bae-util -p bae-audio -p bae-types -p bae-catalogs -p bae-diagnostics -p bae-app-dir -p bae-db -p bae-preferences -p bae-track-audio -p bae-identify -p bae-playback -p bae-import -p bae-app -p bae-cast --lib --target ${{ matrix.target }}
+        run: cargo nextest run --no-fail-fast -p bae-library -p bae-util -p bae-audio -p bae-types -p bae-catalogs -p bae-diagnostics -p bae-app-dir -p bae-db -p bae-preferences -p bae-track-audio -p bae-identify -p bae-playback -p bae-import -p bae-app -p bae-cast --lib --target ${{ matrix.target }}
 
       - name: Clippy (baeium / default features)
         # The host clippy in ci.yml targets macOS, so lint the Windows target too.
         if: ${{ !cancelled() && steps.bridge.conclusion == 'success' }}
-        run: cargo clippy -p bae-core -p bae-util -p bae-audio -p bae-types -p bae-catalogs -p bae-diagnostics -p bae-app-dir -p bae-db -p bae-preferences -p bae-track-audio -p bae-identify -p bae-playback -p bae-import -p bae-app -p bae-bridge --target ${{ matrix.target }} -- -D warnings
+        run: cargo clippy -p bae-library -p bae-util -p bae-audio -p bae-types -p bae-catalogs -p bae-diagnostics -p bae-app-dir -p bae-db -p bae-preferences -p bae-track-audio -p bae-identify -p bae-playback -p bae-import -p bae-app -p bae-bridge --target ${{ matrix.target }} -- -D warnings
 
       - name: Clippy (full edition, OAuth + desktop)
         # Dead-code warnings are feature-specific, so lint the OAuth/desktop code
         # on the Windows target too. No cloudkit on Windows.
         if: ${{ !cancelled() && steps.bridge.conclusion == 'success' }}
-        run: cargo clippy -p bae-core -p bae-util -p bae-audio -p bae-types -p bae-catalogs -p bae-diagnostics -p bae-app-dir -p bae-db -p bae-preferences -p bae-track-audio -p bae-identify -p bae-playback -p bae-import -p bae-app -p bae-cast -p bae-bridge --target ${{ matrix.target }} --features oauth-providers,desktop -- -D warnings
+        run: cargo clippy -p bae-library -p bae-util -p bae-audio -p bae-types -p bae-catalogs -p bae-diagnostics -p bae-app-dir -p bae-db -p bae-preferences -p bae-track-audio -p bae-identify -p bae-playback -p bae-import -p bae-app -p bae-cast -p bae-bridge --target ${{ matrix.target }} --features oauth-providers,desktop -- -D warnings

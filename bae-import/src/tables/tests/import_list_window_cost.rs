@@ -4,7 +4,7 @@
 //! measurement, not a check: run it in release with
 //!
 //! ```sh
-//! scripts/cargo.sh test --release -p bae-core --features test-utils --lib -- \
+//! scripts/cargo.sh test --release -p bae-library --features test-utils --lib -- \
 //!     import_list_window_cost --ignored --nocapture --test-threads 1
 //! ```
 

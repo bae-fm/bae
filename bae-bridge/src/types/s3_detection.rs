@@ -73,6 +73,6 @@ impl BridgeS3Detection {
     pub fn check(&self, settings: BridgeS3Settings) -> Result<(), BridgeError> {
         self.detection
             .check(&settings.into_core())
-            .map_err(|error| BridgeError::from(bae_core::library::LibraryError::from(error)))
+            .map_err(|error| BridgeError::from(bae_library::library::LibraryError::from(error)))
     }
 }

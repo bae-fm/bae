@@ -25,7 +25,7 @@ bae-cast = { workspace = true, optional = true }
 bae-identify = { workspace = true, optional = true }
 # The app's services over an open library, which this crate calls.
 bae-app = { workspace = true }
-bae-core = { workspace = true }
+bae-library = { workspace = true }
 # The import screens' candidates, drafts and queue, and the release-edit
 # model every platform's editor mirrors.
 bae-import = { workspace = true }
@@ -45,7 +45,7 @@ bae-catalogs = { workspace = true }
 bae-types = { workspace = true }
 bae-util = { workspace = true }
 bae-mirror = { workspace = true }
-# Boundary records mirror the same coven instance used by bae-core.
+# Boundary records mirror the same coven instance used by bae-library.
 coven = { workspace = true }
 uniffi = { workspace = true, features = ["tokio"] }
 tokio = { workspace = true, features = ["full"] }
@@ -82,7 +82,7 @@ tracing-journald = { workspace = true }
 bae-loc = { workspace = true }
 # A test library's services, started through the app's own step.
 bae-app = { workspace = true, features = ["test-utils"] }
-bae-core = { workspace = true, features = ["test-utils"] }
+bae-library = { workspace = true, features = ["test-utils"] }
 # The fixture audio the import list tests scan.
 bae-import = { workspace = true, features = ["test-utils"] }
 # The bug reporter that keeps what it is handed, and whether a diagnostics
@@ -97,9 +97,9 @@ keyring-core = { workspace = true }
 [features]
 default = []
 # Enables the OAuth cloud-provider surface (sign-in + the desktop/host OAuth
-# flows) via bae-core/coven. Off by default → the baeium build; the bae
+# flows) via bae-library/coven. Off by default → the baeium build; the bae
 # build turns it on.
-oauth-providers = ["bae-app/oauth-providers", "bae-core/oauth-providers"]
+oauth-providers = ["bae-app/oauth-providers", "bae-library/oauth-providers"]
 cloudkit = []
 # Casting to network receivers: the device picker, the session, and the
 # host-reported discovery seam. Off by default; every shipping platform turns it
@@ -108,10 +108,10 @@ cast = ["dep:bae-cast"]
 desktop = ["cast", "dep:bae-desktop", "dep:bae-identify"]
 # An in-memory keychain a debug app can start its host with, so UI tests never
 # touch the login keychain. Debug macOS builds turn it on.
-test-keyring = ["bae-core/test-utils"]
+test-keyring = ["bae-library/test-utils"]
 # A debug app's dev reset, which recreates its library from a profile file.
 # Debug macOS builds turn it on.
-dev-reset = ["bae-core/dev-reset"]
+dev-reset = ["bae-library/dev-reset"]
 
 [lints]
 workspace = true

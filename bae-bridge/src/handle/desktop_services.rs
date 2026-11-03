@@ -5,7 +5,7 @@ impl AppHandle {
     /// A fresh token, generated rather than read: nothing about the handle
     /// takes part.
     pub fn generate_mcp_token(&self) -> String {
-        bae_core::library::generate_mcp_token()
+        bae_library::library::generate_mcp_token()
     }
 }
 

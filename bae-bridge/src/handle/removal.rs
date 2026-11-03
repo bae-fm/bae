@@ -38,9 +38,9 @@ impl BridgeLibraryRemoval {
     /// How a removal ended: done, stopped after the store was deleted with
     /// this device's files left, or failed with nothing deleted.
     pub(crate) fn from_core(
-        removal: Result<(), bae_core::library::LibraryRemovalError>,
+        removal: Result<(), bae_library::library::LibraryRemovalError>,
     ) -> Result<Self, BridgeError> {
-        use bae_core::library::LibraryRemovalError as E;
+        use bae_library::library::LibraryRemovalError as E;
         match removal {
             Ok(()) => Ok(Self::Removed),
             Err(error @ E::Unfinished(_)) => Ok(Self::Unfinished {
@@ -105,7 +105,7 @@ impl AppHandle {
                     .await;
                 if matches!(
                     removal,
-                    Ok(()) | Err(bae_core::library::LibraryRemovalError::Unfinished(_))
+                    Ok(()) | Err(bae_library::library::LibraryRemovalError::Unfinished(_))
                 ) {
                     self.session.removed();
                 }
@@ -132,7 +132,7 @@ mod tests {
             .enable_all()
             .build()
             .unwrap();
-        let (library, root) = bae_core::test_libraries::setup_fresh_library(&runtime);
+        let (library, root) = bae_library::test_libraries::setup_fresh_library(&runtime);
         std::fs::create_dir_all(library.library_path().join("cache")).unwrap();
         let services = runtime.block_on(async move {
             bae_app::test_services::start_services(&library)

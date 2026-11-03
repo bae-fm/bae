@@ -13,7 +13,7 @@ pub struct BridgePendingRecord {
     pub action_key: Option<String>,
 }
 impl BridgePendingRecord {
-    pub(crate) fn from_core(item: bae_core::library::PendingItem) -> Self {
+    pub(crate) fn from_core(item: bae_library::library::PendingItem) -> Self {
         let BridgePendingWait { reason, action } = BridgePendingWait::from_core(item.wait);
         Self {
             subject: subject_message(item.subject),
@@ -31,7 +31,7 @@ pub struct BridgePendingWait {
     pub action: BridgePendingAction,
 }
 impl BridgePendingWait {
-    pub(crate) fn from_core(wait: bae_core::library::PendingWait) -> Self {
+    pub(crate) fn from_core(wait: bae_library::library::PendingWait) -> Self {
         Self {
             reason: BridgePendingReason::from_core(wait.reason, wait.cause),
             action: BridgePendingAction::from_core(wait.action),
@@ -141,8 +141,8 @@ pub enum BridgePendingAction {
     Review,
 }
 impl BridgePendingAction {
-    fn from_core(value: bae_core::library::PendingAction) -> Self {
-        use bae_core::library::PendingAction as A;
+    fn from_core(value: bae_library::library::PendingAction) -> Self {
+        use bae_library::library::PendingAction as A;
         match value {
             A::Wait => Self::Wait,
             A::UpdateApp => Self::UpdateApp,
@@ -212,8 +212,8 @@ impl BridgePendingAction {
 /// The subject as a catalog message. A release file's message takes its
 /// `file` name and `album` title and a cover's its `album` title, in the
 /// order the source message names them.
-pub(crate) fn subject_message(subject: bae_core::library::PendingSubjectName) -> BridgeMessage {
-    use bae_core::library::PendingSubjectName as S;
+pub(crate) fn subject_message(subject: bae_library::library::PendingSubjectName) -> BridgeMessage {
+    use bae_library::library::PendingSubjectName as S;
     use coven::OperationKind as O;
     let key = match subject {
         S::ReleaseFile { file_name, album_title } => {

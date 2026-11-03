@@ -537,7 +537,7 @@ fn produced_keys() -> Vec<String> {
 
 /// Every pending subject's message, one per subject and operation kind.
 fn pending_subject_messages() -> Vec<BridgeMessage> {
-    use bae_core::library::PendingSubjectName as S;
+    use bae_library::library::PendingSubjectName as S;
     use coven::OperationKind as O;
     let operations = [
         O::CreateStore,

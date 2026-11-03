@@ -3,7 +3,7 @@
 
 use crate::{BridgeError, BridgeS3Profile, BridgeSaveSyncConfig};
 
-/// A dev library's profile. Mirrors `bae_core::dev_reset::DevResetProfile`.
+/// A dev library's profile. Mirrors `bae_library::dev_reset::DevResetProfile`.
 #[derive(uniffi::Record)]
 pub struct BridgeDevResetProfile {
     pub library_name: String,
@@ -16,13 +16,13 @@ pub struct BridgeDevResetProfile {
 /// Read the dev profile at `path`, which must be mode 600.
 #[uniffi::export]
 pub fn read_dev_reset_profile(path: String) -> Result<BridgeDevResetProfile, BridgeError> {
-    let bae_core::dev_reset::DevResetProfile {
+    let bae_library::dev_reset::DevResetProfile {
         library_name,
         s3,
         discogs_token,
         identify_automatically,
         import_when_identified,
-    } = bae_core::dev_reset::DevResetProfile::read(std::path::Path::new(&path))
+    } = bae_library::dev_reset::DevResetProfile::read(std::path::Path::new(&path))
         .map_err(profile_error)?;
     Ok(BridgeDevResetProfile {
         library_name: library_name.into_string(),
@@ -44,8 +44,8 @@ pub fn read_dev_reset_profile(path: String) -> Result<BridgeDevResetProfile, Bri
 /// A refused key prefix keeps its own class, so the line names the folder at
 /// fault; the detail names the profile and its `s3.key_prefix` field. Any
 /// other profile failure is a configuration error.
-fn profile_error(error: bae_core::dev_reset::DevResetProfileError) -> BridgeError {
-    use bae_core::dev_reset::DevResetProfileError as E;
+fn profile_error(error: bae_library::dev_reset::DevResetProfileError) -> BridgeError {
+    use bae_library::dev_reset::DevResetProfileError as E;
     match &error {
         E::Prefix { error: refusal, .. } => {
             BridgeError::from_core(bae_diagnostics::UiError::diagnostic(

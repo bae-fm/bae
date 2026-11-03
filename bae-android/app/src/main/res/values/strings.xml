@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   Hand-authored chrome strings for the Android UI (English source). Shared
-  `core.*` strings that originate in bae-core live in the generated
+  `core.*` strings that originate in bae-library live in the generated
   core_strings.xml (loc-gen); these are the app's own labels, buttons, and
   accessibility descriptions. Proper nouns (the "bae" wordmark), log lines, and
   identifiers stay as literals in code and are not listed here.

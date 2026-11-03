@@ -162,8 +162,8 @@ pub struct BridgeArtistSearchResult {
 }
 
 impl BridgeArtistSearchResult {
-    pub(crate) fn from_core(result: bae_core::album_detail::ArtistSearchResult) -> Self {
-        let bae_core::album_detail::ArtistSearchResult { artist, image, credit_names } = result;
+    pub(crate) fn from_core(result: bae_library::album_detail::ArtistSearchResult) -> Self {
+        let bae_library::album_detail::ArtistSearchResult { artist, image, credit_names } = result;
         Self {
             artist: BridgeExistingArtist::from_core(bae_db::ExistingArtist::from(artist)),
             image: image.map(BridgeImageRef::from_core),
@@ -349,12 +349,16 @@ pub struct BridgeSyncStatusSnapshot {
 }
 
 impl BridgeSyncStatusSnapshot {
-    pub(crate) fn from_core(snapshot: bae_core::library::SyncStatusSnapshot) -> Self {
+    pub(crate) fn from_core(snapshot: bae_library::library::SyncStatusSnapshot) -> Self {
         let indicator = snapshot.indicator().map(crate::types::BridgeSyncIndicator::from_core);
         let error = snapshot.shown_failure();
         let reconnect_offered = snapshot.reconnect_offered();
-        let bae_core::library::SyncStatusSnapshot { status: _, pending, error: _, retry_effect: _ } =
-            snapshot;
+        let bae_library::library::SyncStatusSnapshot {
+            status: _,
+            pending,
+            error: _,
+            retry_effect: _,
+        } = snapshot;
         Self {
             indicator,
             reconnect_offered,
@@ -377,14 +381,14 @@ pub enum BridgeSyncIndicator {
     Waiting { items: u64 },
 }
 impl BridgeSyncIndicator {
-    pub(crate) fn from_core(value: bae_core::library::SyncIndicator) -> Self {
+    pub(crate) fn from_core(value: bae_library::library::SyncIndicator) -> Self {
         match value {
-            bae_core::library::SyncIndicator::Stopped => Self::Stopped,
-            bae_core::library::SyncIndicator::Syncing => Self::Syncing,
-            bae_core::library::SyncIndicator::Synced => Self::Synced,
-            bae_core::library::SyncIndicator::Offline => Self::Offline,
-            bae_core::library::SyncIndicator::Failed => Self::Failed,
-            bae_core::library::SyncIndicator::Waiting { items } => {
+            bae_library::library::SyncIndicator::Stopped => Self::Stopped,
+            bae_library::library::SyncIndicator::Syncing => Self::Syncing,
+            bae_library::library::SyncIndicator::Synced => Self::Synced,
+            bae_library::library::SyncIndicator::Offline => Self::Offline,
+            bae_library::library::SyncIndicator::Failed => Self::Failed,
+            bae_library::library::SyncIndicator::Waiting { items } => {
                 Self::Waiting { items: items as u64 }
             }
         }

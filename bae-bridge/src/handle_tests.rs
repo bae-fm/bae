@@ -1,15 +1,15 @@
-use bae_core::album_detail::{
+use bae_db::{DbArtist, DbWork};
+use bae_library::album_detail::{
     ComposerDetail, ComposerSummary, ComposerWorkGroup, WorkDetail, WorkReleaseSummary, WorkSummary,
 };
-use bae_core::library::views::{DbComposerSummary, DbWorkSummary};
-use bae_db::{DbArtist, DbWork};
+use bae_library::library::views::{DbComposerSummary, DbWorkSummary};
 use std::sync::Arc;
 
 fn track_detail(
     position: bae_types::mediums::TrackPosition,
     duration_ms: u64,
-) -> bae_core::album_detail::TrackDetail {
-    bae_core::album_detail::TrackDetail {
+) -> bae_library::album_detail::TrackDetail {
+    bae_library::album_detail::TrackDetail {
         id: "track-1".to_string(),
         title: "Track".to_string(),
         duration_ms,
@@ -39,11 +39,12 @@ fn track_group_precomputes_header_key_per_side() {
     ];
 
     for (side, position, expected) in cases {
-        let group = crate::types::BridgeTrackGroup::from_core(bae_core::album_detail::TrackGroup {
-            side,
-            tracks: vec![track_detail(position, 187_000)],
-            total_duration_ms: 187_000,
-        });
+        let group =
+            crate::types::BridgeTrackGroup::from_core(bae_library::album_detail::TrackGroup {
+                side,
+                tracks: vec![track_detail(position, 187_000)],
+                total_duration_ms: 187_000,
+            });
         assert_eq!(group.header_key.as_deref(), expected);
         assert_eq!(
             group.total_duration,
@@ -66,8 +67,8 @@ fn track_precomputes_duration_clock() {
     assert_eq!((clock.minutes, clock.seconds), (3, 7));
 }
 
-fn track_search_result(duration_ms: u64) -> bae_core::album_detail::TrackSearchResult {
-    bae_core::album_detail::TrackSearchResult {
+fn track_search_result(duration_ms: u64) -> bae_library::album_detail::TrackSearchResult {
+    bae_library::album_detail::TrackSearchResult {
         id: "track-1".to_string(),
         title: "Track".to_string(),
         duration_ms,
@@ -121,7 +122,7 @@ pub(super) fn fresh_bridge_handle(test_name: &str) -> (Arc<super::AppHandle>, st
 /// runtime a handle over it runs on.
 pub(super) fn fresh_test_library(
     test_name: &str,
-) -> (tokio::runtime::Runtime, bae_core::test_libraries::TestLibrary, std::path::PathBuf) {
+) -> (tokio::runtime::Runtime, bae_library::test_libraries::TestLibrary, std::path::PathBuf) {
     let root = std::env::temp_dir().join(format!("bae-bridge-{test_name}"));
     match std::fs::remove_dir_all(&root) {
         Ok(()) => {}
@@ -141,7 +142,7 @@ pub(super) fn fresh_test_library(
                 .create_store("Test Library"),
         )
         .expect("test store");
-    let library = runtime.block_on(bae_core::test_libraries::test_library_from_handle(
+    let library = runtime.block_on(bae_library::test_libraries::test_library_from_handle(
         handle,
         &root,
         bae_catalogs::providers::Providers::offline(),
@@ -152,7 +153,7 @@ pub(super) fn fresh_test_library(
 /// Start a handle over `library` on `runtime`, as the app starts one.
 pub(super) fn start_test_handle(
     runtime: tokio::runtime::Runtime,
-    library: bae_core::test_libraries::TestLibrary,
+    library: bae_library::test_libraries::TestLibrary,
 ) -> Arc<super::AppHandle> {
     let services = runtime.block_on(async move {
         bae_app::test_services::start_services(&library)
@@ -464,7 +465,7 @@ fn work_detail_conversion_preserves_work_release_rows() {
             release_id: "release-a".to_string(),
             album_id: "album-a".to_string(),
             album_title: "Album Title A".to_string(),
-            name: bae_core::album_detail::ReleaseName::Described {
+            name: bae_library::album_detail::ReleaseName::Described {
                 year: Some(2026),
                 media: vec![bae_types::pressing::MediaCount {
                     medium: bae_types::pressing::Medium::Cd,
@@ -505,7 +506,7 @@ fn work_detail_conversion_preserves_work_release_rows() {
 fn a_failed_sync_status_crosses_with_its_fault() {
     let fault = "sync cycle: pull Store commits: database: retained Merge replay \
                  has an unresolved foreign-key dependency";
-    let snapshot = bae_core::library::SyncStatusSnapshot {
+    let snapshot = bae_library::library::SyncStatusSnapshot {
         error: Some(bae_diagnostics::UiError::internal(fault)),
         status: coven::SyncStatus::Disconnected,
         pending: Vec::new(),
@@ -525,7 +526,7 @@ fn a_failed_sync_status_crosses_with_its_fault() {
 /// A healthy cycle carries no error, so no surface renders a failure for it.
 #[test]
 fn a_healthy_sync_status_crosses_without_an_error() {
-    let snapshot = bae_core::library::SyncStatusSnapshot {
+    let snapshot = bae_library::library::SyncStatusSnapshot {
         error: None,
         status: coven::SyncStatus::Synced { finished_at: std::time::UNIX_EPOCH },
         pending: Vec::new(),
@@ -543,7 +544,7 @@ fn a_healthy_sync_status_crosses_without_an_error() {
 /// Reconnect offered beside it.
 #[test]
 fn a_failed_start_crosses_offering_reconnect() {
-    let snapshot = bae_core::library::SyncStatusSnapshot {
+    let snapshot = bae_library::library::SyncStatusSnapshot {
         error: Some(bae_diagnostics::UiError::internal("the store key is missing")),
         status: coven::SyncStatus::Stopped,
         pending: Vec::new(),
@@ -562,13 +563,13 @@ fn a_failed_start_crosses_offering_reconnect() {
 #[test]
 fn a_failure_its_record_shows_crosses_only_as_the_record() {
     let failure = coven::StorageFailure::Protocol;
-    let snapshot = bae_core::library::SyncStatusSnapshot {
+    let snapshot = bae_library::library::SyncStatusSnapshot {
         error: None,
         status: coven::SyncStatus::Failed {
             failure: coven::StatusFailure::Storage(failure),
             error: "storage refused the pass".into(),
         },
-        pending: vec![bae_core::library::PendingItem::before_open(coven::PendingRecord::new(
+        pending: vec![bae_library::library::PendingItem::before_open(coven::PendingRecord::new(
             coven::PendingSubject::Connection,
             coven::PendingReason::Storage {
                 provider: coven::CloudProvider::S3,
@@ -675,16 +676,16 @@ fn dropping_a_handle_closes_its_library_before_its_runtime_ends() {
         .build()
         .expect("test runtime");
     let directory = tempfile::TempDir::new().expect("library directory");
-    let (library, storage) = runtime.block_on(bae_core::test_libraries::storage_library(
+    let (library, storage) = runtime.block_on(bae_library::test_libraries::storage_library(
         directory.path(),
         bae_catalogs::providers::Providers::offline(),
     ));
     runtime.block_on(async {
-        bae_core::test_libraries::connect_storage(&library, &storage).await;
+        bae_library::test_libraries::connect_storage(&library, &storage).await;
         library.set_sync_paused(false).await.expect("resume sync");
         library.attach_and_start_sync_at_startup().await;
         let mut status = library.subscribe_sync_status();
-        bae_core::followed::value_matching(&mut status, |value| {
+        bae_library::followed::value_matching(&mut status, |value| {
             matches!(value.status, coven::SyncStatus::Synced { .. })
         })
         .await;
@@ -749,7 +750,7 @@ fn reopening_a_library_released_on_its_runtime_waits_for_its_close() {
     assert!(
         matches!(
             read,
-            Err(bae_core::library::LibraryError::Database(bae_db::DbError::Coven(
+            Err(bae_library::library::LibraryError::Database(bae_db::DbError::Coven(
                 coven::CovenError::Database(coven::DbError::StoreClosed)
             )))
         ),

@@ -163,8 +163,8 @@ impl From<bae_db::people::ProfileError> for BridgeError {
         Self::diagnostic(BridgeErrorCategory::from_core(error.category()), error)
     }
 }
-impl From<bae_core::people::AvatarError> for BridgeError {
-    fn from(error: bae_core::people::AvatarError) -> Self {
+impl From<bae_library::people::AvatarError> for BridgeError {
+    fn from(error: bae_library::people::AvatarError) -> Self {
         Self::diagnostic(BridgeErrorCategory::from_core(error.category()), error)
     }
 }

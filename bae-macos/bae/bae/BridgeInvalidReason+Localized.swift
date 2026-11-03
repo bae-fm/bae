@@ -3,7 +3,7 @@ import Foundation
 
 extension BridgeInvalidReason {
     /// The localized failure reason, resolved from the generated `Core` string
-    /// table via the key bae-core owns, with the name or the count of damaged
+    /// table via the key bae-library owns, with the name or the count of damaged
     /// files where the reason carries one.
     var localizedText: String {
         let key = bridgeInvalidReasonKey(reason: self)

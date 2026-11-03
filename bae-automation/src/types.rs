@@ -172,7 +172,7 @@ pub struct AutomationInternalFailure {
     pub detail: String,
 }
 
-/// Mirrors bae-core's `identify::signals::DiscIdSignal`.
+/// Mirrors bae-library's `identify::signals::DiscIdSignal`.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationDiscIdSignal {
@@ -228,7 +228,7 @@ pub struct AutomationAudioOrigin {
     pub not_cd_rate: Option<u32>,
 }
 
-/// Mirrors bae-core's `identify::signals::BarcodeSignal`, each code once.
+/// Mirrors bae-library's `identify::signals::BarcodeSignal`, each code once.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationBarcodeSignal {
@@ -238,7 +238,7 @@ pub enum AutomationBarcodeSignal {
     Absent,
 }
 
-/// Mirrors bae-core's `identify::signals::TextSignal`.
+/// Mirrors bae-library's `identify::signals::TextSignal`.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationTextSignal {
@@ -247,7 +247,7 @@ pub enum AutomationTextSignal {
     Failed { failure: AutomationInternalFailure, catalogs: Vec<String>, free_text: Vec<String> },
 }
 
-/// Mirrors bae-core's `identify::signals::Signals`.
+/// Mirrors bae-library's `identify::signals::Signals`.
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationSignals {
     pub origin: AutomationAudioOrigin,
@@ -258,7 +258,7 @@ pub struct AutomationSignals {
     pub track_titles: Vec<String>,
 }
 
-/// Mirrors bae-core's `identify::SignalKind`.
+/// Mirrors bae-library's `identify::SignalKind`.
 #[derive(Debug, Clone, Copy, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum AutomationSignalKind {
@@ -268,7 +268,7 @@ pub enum AutomationSignalKind {
     Isrc,
 }
 
-/// Mirrors bae-core's `identify::SignalState`.
+/// Mirrors bae-library's `identify::SignalState`.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationSignalState {
@@ -287,14 +287,14 @@ pub enum AutomationSignalState {
     },
 }
 
-/// Mirrors bae-core's `identify::SignalOption`.
+/// Mirrors bae-library's `identify::SignalOption`.
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationSignalOption {
     pub value: String,
     pub chosen: bool,
 }
 
-/// Mirrors bae-core's `identify::ToolbarSignal`.
+/// Mirrors bae-library's `identify::ToolbarSignal`.
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationToolbarSignal {
     pub kind: AutomationSignalKind,
@@ -531,7 +531,7 @@ pub enum AutomationCoverSelection {
     Local { path: String },
 }
 
-/// Mirrors bae-core's `import::ImportStart`.
+/// Mirrors bae-library's `import::ImportStart`.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationImportStarted {
@@ -542,7 +542,7 @@ pub enum AutomationImportStarted {
     WhenPickStored,
 }
 
-/// Mirrors bae-core's `import::PrepareStep`.
+/// Mirrors bae-library's `import::PrepareStep`.
 #[derive(Debug, Clone, Copy, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum AutomationPrepareStep {
@@ -551,7 +551,7 @@ pub enum AutomationPrepareStep {
     FetchingArtistPictures,
 }
 
-/// Mirrors bae-core's `import::ImportPhase`.
+/// Mirrors bae-library's `import::ImportPhase`.
 #[derive(Debug, Clone, Copy, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum AutomationImportPhase {
@@ -560,7 +560,7 @@ pub enum AutomationImportPhase {
     Finalizing,
 }
 
-/// Mirrors bae-core's `import::CandidateImportStatus`, with the running
+/// Mirrors bae-library's `import::CandidateImportStatus`, with the running
 /// attempt's progress.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
@@ -585,7 +585,7 @@ pub struct AutomationImportedRelease {
     pub album_id: String,
 }
 
-/// Mirrors bae-core's `import::ImportStep`.
+/// Mirrors bae-library's `import::ImportStep`.
 #[derive(Debug, Clone, Copy, Serialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationImportStep {
@@ -765,7 +765,7 @@ pub struct AutomationReleaseExport {
     pub release_id: String,
 }
 
-/// A queued export's state, mirroring bae-core's `OutputState`.
+/// A queued export's state, mirroring bae-library's `OutputState`.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum AutomationOutputState {
@@ -774,7 +774,7 @@ pub enum AutomationOutputState {
     Failed { error: String },
 }
 
-/// Mirrors bae-core's `OutputKind`; a save carries its preset's name.
+/// Mirrors bae-library's `OutputKind`; a save carries its preset's name.
 #[derive(Debug, Clone, Serialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum AutomationOutputKind {

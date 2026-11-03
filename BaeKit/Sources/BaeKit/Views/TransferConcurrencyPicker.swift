@@ -28,7 +28,7 @@ public struct TransferConcurrencyPicker: View {
         self.showError = showError
     }
 
-    /// The range the setters accept (bae-core's `MAX_CONCURRENT_TRANSFERS`);
+    /// The range the setters accept (bae-library's `MAX_CONCURRENT_TRANSFERS`);
     /// the bridge carries the value, not the bound, so the UI states it.
     private static let choices: [UInt32] = Array(1...8)
 

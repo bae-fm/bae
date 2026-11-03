@@ -260,7 +260,7 @@ mod conversion_roundtrip {
 
     #[test]
     fn artist_search_result_keeps_identity_fields() {
-        let core = bae_core::album_detail::ArtistSearchResult {
+        let core = bae_library::album_detail::ArtistSearchResult {
             credit_names: vec![bae_db::credits::ArtistCreditName {
                 artist_id: "artist-1".to_string(),
                 credit: bae_db::credits::CreditName {
@@ -457,7 +457,7 @@ fn every_kind_of_fact() -> bae_types::pressing::PressingFacts {
 /// already names the kind of failure, so the detail carries only the fault.
 #[test]
 fn a_database_fault_is_not_prefixed_twice() {
-    let error = bae_core::library::LibraryError::Database(bae_db::DbError::Message(
+    let error = bae_library::library::LibraryError::Database(bae_db::DbError::Message(
         "invalid folder scan value".into(),
     ));
     let BridgeError::Diagnostic { detail, .. } = BridgeError::database_query(error) else {
@@ -512,7 +512,7 @@ fn a_release_read_from_several_folders_crosses_as_its_folders() {
 /// details, never the reason's debug text.
 #[test]
 fn a_pending_record_with_its_error_crosses_with_that_error_as_its_details() {
-    let mut item = bae_core::library::PendingItem::before_open(coven::PendingRecord::new(
+    let mut item = bae_library::library::PendingItem::before_open(coven::PendingRecord::new(
         coven::PendingSubject::Connection,
         coven::PendingReason::Storage {
             provider: coven::CloudProvider::S3,
@@ -540,15 +540,15 @@ fn a_pending_record_with_its_error_crosses_with_that_error_as_its_details() {
 /// action's key beside the action.
 #[test]
 fn a_pending_record_crosses_with_its_labels_as_catalog_messages() {
-    let record = BridgePendingRecord::from_core(bae_core::library::PendingItem {
-        subject: bae_core::library::PendingSubjectName::ReleaseFile {
+    let record = BridgePendingRecord::from_core(bae_library::library::PendingItem {
+        subject: bae_library::library::PendingSubjectName::ReleaseFile {
             file_name: "01 Track Title.flac".into(),
             album_title: "Album Title".into(),
         },
-        wait: bae_core::library::PendingWait {
+        wait: bae_library::library::PendingWait {
             reason: coven::PendingReason::Paused,
             cause: None,
-            action: bae_core::library::PendingAction::RestoreFile,
+            action: bae_library::library::PendingAction::RestoreFile,
         },
     });
     assert_eq!(
@@ -564,12 +564,12 @@ fn a_pending_record_crosses_with_its_labels_as_catalog_messages() {
     assert_eq!(record.reason.key, "core.pending.reason.paused");
     assert_eq!(record.action_key.as_deref(), Some("core.pending.action.restore_file"));
 
-    let waiting = BridgePendingRecord::from_core(bae_core::library::PendingItem {
-        subject: bae_core::library::PendingSubjectName::Snapshot,
-        wait: bae_core::library::PendingWait {
+    let waiting = BridgePendingRecord::from_core(bae_library::library::PendingItem {
+        subject: bae_library::library::PendingSubjectName::Snapshot,
+        wait: bae_library::library::PendingWait {
             reason: coven::PendingReason::Paused,
             cause: None,
-            action: bae_core::library::PendingAction::Wait,
+            action: bae_library::library::PendingAction::Wait,
         },
     });
     assert_eq!(

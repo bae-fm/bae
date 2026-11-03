@@ -7,7 +7,7 @@ bae is een Rust-core met vier native apps eromheen. Alles wat het product defini
 
 ## De lagen
 
-- **`bae-core`**: het product. Bibliotheek- en metadatamodel, de import- en identificatiepijplijnen, de FFmpeg-afspeelengine, loudnessanalyse, export, en de integratie met coven eronder. Import en identificatie compileren alleen op desktop; mobiele builds zijn sync- en afspeelclients.
+- **`bae-library`**: het product. Bibliotheek- en metadatamodel, de import- en identificatiepijplijnen, de FFmpeg-afspeelengine, loudnessanalyse, export, en de integratie met coven eronder. Import en identificatie compileren alleen op desktop; mobiele builds zijn sync- en afspeelclients.
 - **[coven](https://coven.bae.fm)**: de datalaag, een aparte library. coven bezit de SQLite-verbinding, legt elke wijziging vast die bae commit, en synchroniseert die wijzigingen end-to-end versleuteld via de cloudopslag van de gebruiker. Het bezit ook blobopslag (audiobytes, artwork), de lokale cache, identiteitssleutels en lidmaatschap. bae pint een exacte coven-revisie en stempelt die in elke binary; die definieert de sync-compatibiliteitsgeneratie tussen builds.
 - **`bae-bridge`**: de UniFFI-grens. Bridge-types worden een keer in Rust gedefinieerd en tijdens build naar Swift en Kotlin gegenereerd.
 - **De apps**: SwiftUI op macOS en iOS, Jetpack Compose op Android, en een native Windows-app. Elk implementeert ook de platformdelen waar de core om vraagt: audio-output, tekstherkenning voor artwork, mediabediening, sleutelbostoegang, crashrapportage.

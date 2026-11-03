@@ -15,7 +15,7 @@ impl Automation {
                 .services
                 .preferences()
                 .await
-                .map_err(bae_core::library::LibraryError::from)?
+                .map_err(bae_library::library::LibraryError::from)?
                 .mcp
                 .into(),
         })
@@ -372,13 +372,14 @@ impl Automation {
                 let outcome =
                     self.services.upload_releases(std::slice::from_ref(&release_id)).await?;
                 match outcome {
-                    bae_core::library::UploadReleasesOutcome::Complete { .. } => {}
-                    bae_core::library::UploadReleasesOutcome::Partial {
+                    bae_library::library::UploadReleasesOutcome::Complete { .. } => {}
+                    bae_library::library::UploadReleasesOutcome::Partial {
                         receipt: None,
                         failure,
                     } => return Err(failure.error.into()),
-                    bae_core::library::UploadReleasesOutcome::Partial {
-                        receipt: Some(_), ..
+                    bae_library::library::UploadReleasesOutcome::Partial {
+                        receipt: Some(_),
+                        ..
                     } => unreachable!("one release cannot be both admitted and refused"),
                 }
                 Ok(AutomationStorageActionOutcome::UploadQueued { release_id })
@@ -486,7 +487,7 @@ impl Automation {
     ) -> Result<AutomationLibrarySearchResults, AutomationError> {
         // Trimming and the blank check are core policy: a blank query is not a
         // search and returns nothing, rather than matching every row.
-        let results = match bae_core::library::LibrarySearchQuery::parse(&query) {
+        let results = match bae_library::library::LibrarySearchQuery::parse(&query) {
             Some(query) => self.services.search_library(&query).await?,
             None => SearchResults::default(),
         };

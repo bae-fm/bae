@@ -29,7 +29,7 @@ pub enum BridgeSaveBitDepth {
 
 /// One piece of an export filename pattern — an ordered token list; rendering
 /// substitutes each token's value and joins the non-empty values with single
-/// spaces. Mirror of bae-core's `SaveFilenameToken`.
+/// spaces. Mirror of bae-library's `SaveFilenameToken`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeSaveFilenameToken {
     Title,
@@ -433,10 +433,10 @@ impl DatabaseFault for coven::CovenError {
     }
 }
 
-impl DatabaseFault for bae_core::library::LibraryError {
+impl DatabaseFault for bae_library::library::LibraryError {
     fn database_fault(self) -> String {
         match self {
-            bae_core::library::LibraryError::Database(inner) => db_fault(inner),
+            bae_library::library::LibraryError::Database(inner) => db_fault(inner),
             other => other.to_string(),
         }
     }
@@ -517,7 +517,7 @@ pub fn bridge_playback_error_reason_key(reason: &BridgePlaybackErrorReason) -> O
 // crosses through a `From` impl.
 //
 // Record converters exhaustively destructure their core input(s) — no `..` in
-// any struct or enum-variant pattern — so a new bae-core field fails the build
+// any struct or enum-variant pattern — so a new bae-library field fails the build
 // here instead of silently never crossing the bridge. A dropped field is named
 // explicitly (`field: _`), with a comment when the drop isn't obvious. Fields of
 // external-crate types (coven's `StorageConfig`, …) are exempt — the
@@ -626,11 +626,11 @@ impl From<bae_import::ImportError> for BridgeError {
 /// (keyring vs cloud credentials vs network vs membership vs …) becomes the
 /// `BridgeErrorCategory` the UI renders a localized line for; the error chain
 /// rides along as opaque diagnostic detail.
-impl From<bae_core::library::LibraryError> for BridgeError {
-    fn from(error: bae_core::library::LibraryError) -> Self {
+impl From<bae_library::library::LibraryError> for BridgeError {
+    fn from(error: bae_library::library::LibraryError) -> Self {
         if matches!(
             error,
-            bae_core::library::LibraryError::CloudSetup(coven::StorageSetupError::OAuth(
+            bae_library::library::LibraryError::CloudSetup(coven::StorageSetupError::OAuth(
                 coven::OAuthError::Cancelled
             ))
         ) {
@@ -643,8 +643,8 @@ impl From<bae_core::library::LibraryError> for BridgeError {
     }
 }
 
-impl From<bae_core::library::CreateLibraryError> for BridgeError {
-    fn from(error: bae_core::library::CreateLibraryError) -> Self {
+impl From<bae_library::library::CreateLibraryError> for BridgeError {
+    fn from(error: bae_library::library::CreateLibraryError) -> Self {
         BridgeError::Diagnostic {
             category: BridgeErrorCategory::from_core(error.category()),
             detail: error.to_string(),
@@ -721,7 +721,7 @@ impl BridgeCloudProvider {
 }
 
 mirror_enum! {
-    BridgeStorageSortField = bae_core::library::views::StorageSortField,
+    BridgeStorageSortField = bae_library::library::views::StorageSortField,
     from_core: fn,
     into_core: fn,
     variants: { AlbumTitle, ArtistNames, Media, FileCount, TotalSize, Storage, DateAdded },
@@ -735,7 +735,7 @@ mirror_enum! {
 }
 
 mirror_struct! {
-    BridgeStorageSort = bae_core::library::views::StorageSortCriterion,
+    BridgeStorageSort = bae_library::library::views::StorageSortCriterion,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
     fields: {
@@ -745,20 +745,20 @@ mirror_struct! {
 }
 
 mirror_enum! {
-    BridgeStorageFilter = bae_core::library::views::StorageFilter,
+    BridgeStorageFilter = bae_library::library::views::StorageFilter,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
     variants: { All, Remote, Local },
 }
 
 mirror_enum! {
-    BridgeComposerSortField = bae_core::library::views::ComposerSortField,
+    BridgeComposerSortField = bae_library::library::views::ComposerSortField,
     into_core: fn,
     variants: { Name, WorkCount, LinkedReleaseCount },
 }
 
 mirror_struct! {
-    BridgeComposerSortCriterion = bae_core::library::views::ComposerSortCriterion,
+    BridgeComposerSortCriterion = bae_library::library::views::ComposerSortCriterion,
     into_core: pub(crate) fn,
     fields: {
         field: (BridgeComposerSortField),
@@ -767,13 +767,13 @@ mirror_struct! {
 }
 
 mirror_enum! {
-    BridgeArtistSortField = bae_core::library::views::ArtistSortField,
+    BridgeArtistSortField = bae_library::library::views::ArtistSortField,
     into_core: fn,
     variants: { Name, AlbumCount },
 }
 
 mirror_struct! {
-    BridgeArtistSortCriterion = bae_core::library::views::ArtistSortCriterion,
+    BridgeArtistSortCriterion = bae_library::library::views::ArtistSortCriterion,
     into_core: pub(crate) fn,
     fields: {
         field: (BridgeArtistSortField),
@@ -788,13 +788,13 @@ mirror_enum! {
 }
 
 mirror_enum! {
-    BridgeSortField = bae_core::library::views::AlbumSortField,
+    BridgeSortField = bae_library::library::views::AlbumSortField,
     into_core: fn,
     variants: { Title, Artist, Year, DateAdded },
 }
 
 mirror_struct! {
-    BridgeSortCriterion = bae_core::library::views::AlbumSortCriterion,
+    BridgeSortCriterion = bae_library::library::views::AlbumSortCriterion,
     into_core: pub(crate) fn,
     fields: {
         field: (BridgeSortField),

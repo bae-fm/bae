@@ -7,7 +7,7 @@ bae ચાર native apps પહેરેલું એક Rust core છે. Prod
 
 ## Layers
 
-- **`bae-core`**: product. Library અને metadata model, import અને identify pipelines, FFmpeg playback engine, loudness analysis, export, અને નીચેના coven સાથે integration. Import અને identify ફક્ત desktop પર compile થાય છે; mobile builds sync અને playback clients છે.
+- **`bae-library`**: product. Library અને metadata model, import અને identify pipelines, FFmpeg playback engine, loudness analysis, export, અને નીચેના coven સાથે integration. Import અને identify ફક્ત desktop પર compile થાય છે; mobile builds sync અને playback clients છે.
 - **[coven](https://coven.bae.fm)**: data layer, અલગ library. coven SQLite connection own કરે છે, bae commit કરે તે દરેક change capture કરે છે, અને user ના cloud storage મારફતે તે changes end-to-end encrypted sync કરે છે. તે blob storage (audio bytes, artwork), local cache, identity keys, અને membership પણ own કરે છે. bae exact coven revision pin કરે છે અને દરેક binary માં stamp કરે છે; તે builds વચ્ચે sync-compatibility generation define કરે છે.
 - **`bae-bridge`**: UniFFI boundary. Bridge types Rust માં એક વાર defined છે અને build time પર Swift અને Kotlin માં generated થાય છે.
 - **Apps**: macOS અને iOS પર SwiftUI, Android પર Jetpack Compose, અને native Windows app. દરેક core માગે તે platform pieces પણ implement કરે છે: audio output, artwork text recognition, media controls, keychain access, crash reporting.

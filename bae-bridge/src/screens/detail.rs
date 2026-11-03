@@ -41,12 +41,12 @@ macro_rules! detail_subscription {
         /// A read that shows nothing until `set_id` names an item.
         #[derive(uniffi::Object)]
         pub struct $object {
-            inner: bae_core::library::LiveDetail<<$bridge_value as DetailValue>::Core, $core_id>,
+            inner: bae_library::library::LiveDetail<<$bridge_value as DetailValue>::Core, $core_id>,
             runtime: crate::operation_runtime::OperationRuntime,
         }
 
         pub(crate) fn $make(
-            inner: bae_core::library::LiveDetail<<$bridge_value as DetailValue>::Core, $core_id>,
+            inner: bae_library::library::LiveDetail<<$bridge_value as DetailValue>::Core, $core_id>,
             runtime: crate::operation_runtime::OperationRuntime,
         ) -> Arc<$object> {
             Arc::new($object { inner, runtime })
@@ -94,23 +94,23 @@ pub(crate) trait DetailValue {
 }
 
 impl DetailValue for crate::types::BridgeAlbumDetail {
-    type Core = bae_core::album_detail::AlbumDetail;
+    type Core = bae_library::album_detail::AlbumDetail;
 }
 
 impl DetailValue for crate::types::BridgeRelease {
-    type Core = bae_core::album_detail::ReleaseDetail;
+    type Core = bae_library::album_detail::ReleaseDetail;
 }
 
 impl DetailValue for crate::types::BridgeArtistDetail {
-    type Core = bae_core::album_detail::ArtistDetail;
+    type Core = bae_library::album_detail::ArtistDetail;
 }
 
 impl DetailValue for crate::types::BridgeComposerDetail {
-    type Core = bae_core::album_detail::ComposerDetail;
+    type Core = bae_library::album_detail::ComposerDetail;
 }
 
 impl DetailValue for crate::types::BridgeWorkDetail {
-    type Core = bae_core::album_detail::WorkDetail;
+    type Core = bae_library::album_detail::WorkDetail;
 }
 
 #[cfg(feature = "desktop")]
@@ -126,7 +126,7 @@ impl DetailValue for crate::types::BridgeInvalidCandidateDetail {
 // Gated on the target, as the export queue its transfers include is.
 #[cfg(desktop)]
 impl DetailValue for crate::types::BridgeStorageInspector {
-    type Core = bae_core::library::storage_inspector::StorageInspector;
+    type Core = bae_library::library::storage_inspector::StorageInspector;
 }
 
 #[cfg(desktop)]
@@ -191,10 +191,10 @@ detail_subscription! {
 }
 
 /// A task-driven live read's failure as the bridge reports it.
-pub(super) fn live_read_error(error: bae_core::library::LiveReadError) -> BridgeError {
+pub(super) fn live_read_error(error: bae_library::library::LiveReadError) -> BridgeError {
     match error {
-        bae_core::library::LiveReadError::Cancelled => BridgeError::Cancelled,
-        bae_core::library::LiveReadError::Query(error) => BridgeError::database_query(error),
-        bae_core::library::LiveReadError::Failed(error) => BridgeError::from(error),
+        bae_library::library::LiveReadError::Cancelled => BridgeError::Cancelled,
+        bae_library::library::LiveReadError::Query(error) => BridgeError::database_query(error),
+        bae_library::library::LiveReadError::Failed(error) => BridgeError::from(error),
     }
 }

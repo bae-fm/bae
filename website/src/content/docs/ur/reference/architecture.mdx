@@ -7,7 +7,7 @@ bae ایک Rust مرکز ہے جس پر چار مقامی ایپیں ہیں۔ م
 
 ## پرتیں
 
-- **`bae-core`**: مصنوعات۔ لائبریری اور میٹا معلومات کا نمونہ، درآمد اور شناخت کے راستے، FFmpeg پلے بیک انجن، آواز کی بلندی کا تجزیہ، برآمد، اور نیچے coven کے ساتھ جوڑ۔ درآمد اور شناخت صرف ڈیسک ٹاپ پر compile ہوتے ہیں؛ mobile builds ہم آہنگی اور پلے بیک کلائنٹ ہیں۔
+- **`bae-library`**: مصنوعات۔ لائبریری اور میٹا معلومات کا نمونہ، درآمد اور شناخت کے راستے، FFmpeg پلے بیک انجن، آواز کی بلندی کا تجزیہ، برآمد، اور نیچے coven کے ساتھ جوڑ۔ درآمد اور شناخت صرف ڈیسک ٹاپ پر compile ہوتے ہیں؛ mobile builds ہم آہنگی اور پلے بیک کلائنٹ ہیں۔
 - **[coven](https://coven.bae.fm)**: ڈیٹا پرت، الگ لائبریری۔ coven SQLite connection رکھتا ہے، bae کی محفوظ کی گئی ہر تبدیلی پکڑتا ہے، اور ان تبدیلیوں کو صارف کی کلاؤڈ ذخیرہ گاہ کے ذریعے end-to-end encrypted ہم آہنگ کرتا ہے۔ یہ blob ذخیرہ (آواز بائٹس، artwork)، مقامی کیش، شناختی کلیدیں، اور رکنیت بھی رکھتا ہے۔ bae coven کی ایک عین revision pin کرتا ہے اور اسے ہر binary میں stamp کرتا ہے؛ یہی builds کے بیچ ہم آہنگی مطابقت کی نسل متعین کرتا ہے۔
 - **`bae-bridge`**: UniFFI حد۔ Bridge types Rust میں ایک بار بنتے ہیں اور build time پر Swift اور Kotlin میں generated ہوتے ہیں۔
 - **ایپیں**: macOS اور iOS پر SwiftUI، Android پر Jetpack Compose، اور مقامی Windows app۔ ہر ایپ وہ پلیٹ فارم حصے بھی بناتی ہے جو مرکز مانگتا ہے: آواز خروج، artwork text recognition، media controls، keychain access، crash reporting۔

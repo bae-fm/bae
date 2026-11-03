@@ -96,14 +96,16 @@ pub enum BootstrapError {
 /// into `Config` aborted the boot as if the library were misconfigured — which
 /// no amount of unlocking fixes, and which sent the user to a restore wall for a
 /// library that was fine.
-pub(crate) fn classify_key_state_error(error: bae_core::library::LibraryError) -> BootstrapError {
+pub(crate) fn classify_key_state_error(
+    error: bae_library::library::LibraryError,
+) -> BootstrapError {
     match error {
-        bae_core::library::LibraryError::Keyring(
+        bae_library::library::LibraryError::Keyring(
             coven::KeyError::KeychainTemporarilyUnavailable(_),
         ) => BootstrapError::KeyringUnavailable,
-        bae_core::library::LibraryError::Keyring(coven::KeyError::MissingKeychainEntitlement(
-            error,
-        )) => BootstrapError::KeychainEntitlementMissing(error),
+        bae_library::library::LibraryError::Keyring(
+            coven::KeyError::MissingKeychainEntitlement(error),
+        ) => BootstrapError::KeychainEntitlementMissing(error),
         error => BootstrapError::Config(error.to_string()),
     }
 }
@@ -206,7 +208,7 @@ where
     )
 }
 
-/// [`bootstrap`] with the [`bae_core::library::LibraryFixture`] at `fixture`
+/// [`bootstrap`] with the [`bae_library::library::LibraryFixture`] at `fixture`
 /// written into the library before any of its services starts, so each starts
 /// on the state the fixture names: what a debug UI test opens the app on.
 /// The store's open reports its steps to `on_open_progress`, as for
@@ -423,10 +425,10 @@ where
     );
     // Closing the library ends what runs while it is open: the manager's
     // tasks and the import service's.
-    let closing = bae_core::library::CancellationToken::new();
+    let closing = bae_library::library::CancellationToken::new();
     let library_manager = timing
         .stage(&library_id, "open library manager", || {
-            runtime.block_on(bae_core::library::open_library_manager(
+            runtime.block_on(bae_library::library::open_library_manager(
                 database.clone(),
                 #[cfg(not(any(target_os = "ios", target_os = "android")))]
                 catalogs.clone(),
@@ -480,7 +482,7 @@ where
                 not(any(target_os = "ios", target_os = "android"))
             ))]
             Opening::Fixture(path) => timing.stage(&library_id, "write the fixture", || {
-                let fixture = bae_core::library::LibraryFixture::read(&path)
+                let fixture = bae_library::library::LibraryFixture::read(&path)
                     .map_err(|error| BootstrapError::Internal(error.to_string()))?;
                 runtime
                     .block_on(library_manager.write_fixture(&fixture))
@@ -577,7 +579,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::{classify_key_state_error, BootstrapError};
-    use bae_core::library::LibraryError;
+    use bae_library::library::LibraryError;
 
     #[tokio::test]
     async fn a_keychain_that_refused_right_now_is_not_a_config_failure() {

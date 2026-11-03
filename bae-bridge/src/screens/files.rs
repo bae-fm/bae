@@ -4,24 +4,24 @@ use super::detail::live_read_error;
 use crate::types::{BridgeError, BridgeFile};
 
 mirror_enum! {
-    crate::types::BridgeReleaseFileColumn = bae_core::library::ReleaseFileColumn,
+    crate::types::BridgeReleaseFileColumn = bae_library::library::ReleaseFileColumn,
     from_core: fn,
     into_core: fn,
     variants: { Name, Size, Kind },
 }
 
 impl crate::types::BridgeReleaseFilesRequest {
-    fn into_core(self) -> bae_core::library::ReleaseFilesRequest {
-        bae_core::library::ReleaseFilesRequest {
+    fn into_core(self) -> bae_library::library::ReleaseFilesRequest {
+        bae_library::library::ReleaseFilesRequest {
             release_id: self.release_id,
-            order: bae_core::library::ReleaseFileOrder {
+            order: bae_library::library::ReleaseFileOrder {
                 column: self.order.column.into_core(),
                 descending: self.order.descending,
             },
         }
     }
 
-    fn from_core(request: bae_core::library::ReleaseFilesRequest) -> Self {
+    fn from_core(request: bae_library::library::ReleaseFilesRequest) -> Self {
         Self {
             release_id: request.release_id,
             order: crate::types::BridgeReleaseFileOrder {
@@ -37,12 +37,12 @@ impl crate::types::BridgeReleaseFilesRequest {
 /// order changes. It shows nothing until `set_request` names a release.
 #[derive(uniffi::Object)]
 pub struct ReleaseFilesSubscription {
-    inner: bae_core::library::LiveReleaseFiles,
+    inner: bae_library::library::LiveReleaseFiles,
     runtime: crate::operation_runtime::OperationRuntime,
 }
 
 pub(crate) fn release_files(
-    inner: bae_core::library::LiveReleaseFiles,
+    inner: bae_library::library::LiveReleaseFiles,
     runtime: crate::operation_runtime::OperationRuntime,
 ) -> std::sync::Arc<ReleaseFilesSubscription> {
     std::sync::Arc::new(ReleaseFilesSubscription { inner, runtime })

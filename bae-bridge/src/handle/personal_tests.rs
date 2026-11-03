@@ -10,12 +10,12 @@ fn profiles_ratings_playlists_and_history_use_the_same_store() {
         .enable_all()
         .build()
         .unwrap();
-    let (library, storage) = runtime.block_on(bae_core::test_libraries::storage_library(
+    let (library, storage) = runtime.block_on(bae_library::test_libraries::storage_library(
         root.path(),
         bae_catalogs::providers::Providers::offline(),
     ));
-    runtime.block_on(bae_core::test_libraries::connect_storage(&library, &storage));
-    let made = runtime.block_on(bae_core::test_libraries::made_profile(&library, "Robin"));
+    runtime.block_on(bae_library::test_libraries::connect_storage(&library, &storage));
+    let made = runtime.block_on(bae_library::test_libraries::made_profile(&library, "Robin"));
     let db = library.database().clone();
     let services = runtime.block_on(async move {
         bae_app::test_services::start_services(&library)

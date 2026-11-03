@@ -207,7 +207,7 @@ pulled_values! {
 pulled_values! {
     /// How many downloads are in each phase, and whether the queue is paused.
     DownloadCountsSubscription:
-        bae_core::library::ReleaseQueueCounts => crate::types::BridgeDownloadCounts,
+        bae_library::library::ReleaseQueueCounts => crate::types::BridgeDownloadCounts,
     converted by crate::types::BridgeDownloadCounts::from_core,
     built by download_counts
 }
@@ -215,7 +215,7 @@ pulled_values! {
 pulled_values! {
     /// What sync is doing, what it waits on, and why a start failed.
     SyncStatusSubscription:
-        bae_core::library::SyncStatusSnapshot => crate::types::BridgeSyncStatusSnapshot,
+        bae_library::library::SyncStatusSnapshot => crate::types::BridgeSyncStatusSnapshot,
     converted by crate::types::BridgeSyncStatusSnapshot::from_core,
     built by sync_status
 }
@@ -224,7 +224,7 @@ pulled_values! {
     /// Everything sync is doing: what needs the person, and the transfers
     /// moving bytes.
     SyncActivitySubscription:
-        bae_core::library::SyncActivity => crate::types::BridgeSyncActivity,
+        bae_library::library::SyncActivity => crate::types::BridgeSyncActivity,
     converted by crate::types::BridgeSyncActivity::from_core,
     built by sync_activity
 }
@@ -247,8 +247,8 @@ pulled_values! {
 pulled_values! {
     /// This device's open invites, each with what coven holds its work for.
     InvitesSubscription:
-        Vec<bae_core::people::OpenInvite> => Vec<crate::types::BridgeInvite>,
-    converted by |invites: Vec<bae_core::people::OpenInvite>| {
+        Vec<bae_library::people::OpenInvite> => Vec<crate::types::BridgeInvite>,
+    converted by |invites: Vec<bae_library::people::OpenInvite>| {
         invites.into_iter().map(crate::types::BridgeInvite::from_core).collect::<Vec<_>>()
     },
     built by invites

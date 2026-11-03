@@ -7,7 +7,7 @@ bae é um núcleo Rust vestindo quatro apps nativos. Tudo que define o produto, 
 
 ## As camadas
 
-- **`bae-core`**: o produto. Modelo de biblioteca e metadados, pipelines de importação e identificação, mecanismo de reprodução com FFmpeg, análise de intensidade sonora, exportação e a integração com coven abaixo. Importação e identificação compilam só no desktop; builds móveis são clientes de sincronização e reprodução.
+- **`bae-library`**: o produto. Modelo de biblioteca e metadados, pipelines de importação e identificação, mecanismo de reprodução com FFmpeg, análise de intensidade sonora, exportação e a integração com coven abaixo. Importação e identificação compilam só no desktop; builds móveis são clientes de sincronização e reprodução.
 - **[coven](https://coven.bae.fm)**: a camada de dados, uma biblioteca separada. coven possui a conexão SQLite, captura toda mudança que bae grava e sincroniza essas mudanças com criptografia de ponta a ponta pelo armazenamento em nuvem do usuário. Também possui armazenamento de blobs (bytes de áudio, arte), cache local, chaves de identidade e associação. bae fixa uma revisão exata de coven e a carimba em todo binário; ela define a geração de compatibilidade de sincronização entre builds.
 - **`bae-bridge`**: a fronteira UniFFI. Tipos de ponte são definidos uma vez em Rust e gerados para Swift e Kotlin em tempo de build.
 - **Os apps**: SwiftUI no macOS e iOS, Jetpack Compose no Android e um app nativo para Windows. Cada um também implementa as peças de plataforma que o núcleo pede: saída de áudio, reconhecimento de texto em arte, controles de mídia, acesso ao chaveiro, relatório de crash.

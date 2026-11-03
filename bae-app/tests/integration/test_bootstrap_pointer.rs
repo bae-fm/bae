@@ -25,11 +25,11 @@ impl Home {
     }
 
     fn create(&self, name: &str) -> coven::StoreId {
-        let runtime = bae_core::test_libraries::multi_thread_runtime();
+        let runtime = bae_library::test_libraries::multi_thread_runtime();
         runtime.block_on(async {
-            let handle = bae_core::library::create_library(
+            let handle = bae_library::library::create_library(
                 self.builder(),
-                bae_core::library_name::LibraryName::parse(name).unwrap(),
+                bae_library::library_name::LibraryName::parse(name).unwrap(),
             )
             .await
             .unwrap();
@@ -172,11 +172,11 @@ fn bootstrap_of_locked_library_leaves_active_pointer() {
             .build()
             .unwrap(),
     );
-    let runtime = bae_core::test_libraries::multi_thread_runtime();
+    let runtime = bae_library::test_libraries::multi_thread_runtime();
     let id = runtime.block_on(async {
-        let handle = bae_core::library::create_library(
+        let handle = bae_library::library::create_library(
             home.builder().storage_connector(storage.clone()),
-            bae_core::library_name::LibraryName::parse("Locked Library").unwrap(),
+            bae_library::library_name::LibraryName::parse("Locked Library").unwrap(),
         )
         .await
         .unwrap();

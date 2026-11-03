@@ -41,7 +41,7 @@ runs:
         sudo mkdir -p /opt
         sudo chown "$(id -u)" /opt
         ./scripts/setup-ffmpeg.sh "$FFMPEG_DIR"
-        # The pinned FFmpeg 8.0 bae-core links against. Its bundled ffmpeg CLI
+        # The pinned FFmpeg 8.0 bae-library links against. Its bundled ffmpeg CLI
         # (anoisesrc + flac + libmp3lame encoders) also generates the test
         # fixtures, so the CLI and the link libs are one consistent version.
         echo "FFMPEG_DIR=$FFMPEG_DIR" >> $GITHUB_ENV

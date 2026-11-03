@@ -8,7 +8,7 @@ publish = false
 [dependencies]
 # The app's services over an open library, which this crate calls.
 bae-app = { workspace = true }
-bae-core = { workspace = true }
+bae-library = { workspace = true }
 # The store errors a setting write fails with, and the cover refs it serves.
 bae-db = { workspace = true }
 # The renderer session, the cast picker and AirPlay's sink, which this crate's
@@ -96,7 +96,7 @@ uuid = { workspace = true, features = ["v4"] }
 # The test libraries the session tests open and play.
 # A test library's services, started through the app's own step.
 bae-app = { workspace = true, features = ["test-utils"] }
-bae-core = { workspace = true, features = ["test-utils"] }
+bae-library = { workspace = true, features = ["test-utils"] }
 # The bug reporter that keeps what it is handed.
 bae-diagnostics = { workspace = true, features = ["test-utils"] }
 tempfile = { workspace = true }

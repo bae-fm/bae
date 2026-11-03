@@ -52,7 +52,7 @@ for package in metadata["packages"]:
 # What the checks of the crates named as arguments turn on: a "feature
 # <crate>/<feature>" line for each test feature a crate declares
 # (`test-utils`, `test-instrumentation`), and a "mobile <crate>" line for each
-# crate the mobile apps build: bae-core and the workspace crates it depends on.
+# crate the mobile apps build: bae-library and the workspace crates it depends on.
 crate_check_plan() {
     python3 - "$@" <<'PLAN'
 import json, subprocess, sys
@@ -62,7 +62,7 @@ members = set(metadata["workspace_members"])
 packages = {package["id"]: package for package in metadata["packages"]}
 by_name = {packages[member]["name"]: member for member in members}
 nodes = {node["id"]: node for node in metadata["resolve"]["nodes"]}
-mobile, pending = set(), [by_name["bae-core"]]
+mobile, pending = set(), [by_name["bae-library"]]
 while pending:
     member = pending.pop()
     if member in mobile:

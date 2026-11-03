@@ -1,9 +1,9 @@
 //! The identify pipeline's shapes as an MCP client reads them, mirroring
-//! bae-core's `identify::IdentifyStateView`.
+//! bae-library's `identify::IdentifyStateView`.
 
 use super::*;
 
-/// Mirrors bae-core's `identify::NotAskedReason`.
+/// Mirrors bae-library's `identify::NotAskedReason`.
 #[derive(Debug, Clone, Copy, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum AutomationNotAskedReason {
@@ -13,7 +13,7 @@ pub enum AutomationNotAskedReason {
     NoCatalog,
 }
 
-/// Mirrors bae-core's `identify::LookupView`.
+/// Mirrors bae-library's `identify::LookupView`.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationLookupState {
@@ -33,7 +33,7 @@ pub enum AutomationLookupState {
     },
 }
 
-/// Mirrors bae-core's `identify::FolderCheck`.
+/// Mirrors bae-library's `identify::FolderCheck`.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationFolderCheck {
@@ -41,7 +41,7 @@ pub enum AutomationFolderCheck {
     MediumDisagrees { folder: AutomationMediumConflict },
 }
 
-/// Mirrors bae-core's `identify::MediumConflict`.
+/// Mirrors bae-library's `identify::MediumConflict`.
 #[derive(Debug, Clone, Copy, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum AutomationMediumConflict {
@@ -49,14 +49,14 @@ pub enum AutomationMediumConflict {
     NotCdAudio,
 }
 
-/// Mirrors bae-core's `identify::ProviderCell`.
+/// Mirrors bae-library's `identify::ProviderCell`.
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationProviderCell {
     pub source: AutomationLookupCatalog,
     pub lookup: AutomationLookupState,
 }
 
-/// Mirrors bae-core's `identify::SignalValueRow`.
+/// Mirrors bae-library's `identify::SignalValueRow`.
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationSignalValueRow {
     pub value: String,
@@ -65,7 +65,7 @@ pub struct AutomationSignalValueRow {
     pub cells: Vec<AutomationProviderCell>,
 }
 
-/// Mirrors bae-core's `identify::DiscIdStepView`.
+/// Mirrors bae-library's `identify::DiscIdStepView`.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationDiscIdStep {
@@ -79,14 +79,14 @@ pub enum AutomationDiscIdStep {
     },
 }
 
-/// Mirrors bae-core's `identify::DiscIdRow`.
+/// Mirrors bae-library's `identify::DiscIdRow`.
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationDiscIdRow {
     pub disc_id: String,
     pub lookup: AutomationLookupState,
 }
 
-/// Mirrors bae-core's `identify::BarcodeStepView`.
+/// Mirrors bae-library's `identify::BarcodeStepView`.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationBarcodeStep {
@@ -95,7 +95,7 @@ pub enum AutomationBarcodeStep {
     Rows { scanning: bool, rows: Vec<AutomationSignalValueRow> },
 }
 
-/// Mirrors bae-core's `identify::IsrcStepView`.
+/// Mirrors bae-library's `identify::IsrcStepView`.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationIsrcStep {
@@ -104,13 +104,13 @@ pub enum AutomationIsrcStep {
     Read { isrcs: Vec<String>, lookup: AutomationLookupState },
 }
 
-/// Mirrors bae-core's `identify::CatalogCandidateView`.
+/// Mirrors bae-library's `identify::CatalogCandidateView`.
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationCatalogCandidate {
     pub value: String,
 }
 
-/// Mirrors bae-core's `identify::CatalogStepView`.
+/// Mirrors bae-library's `identify::CatalogStepView`.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationCatalogStep {
@@ -122,7 +122,7 @@ pub enum AutomationCatalogStep {
     },
 }
 
-/// Mirrors bae-core's `identify::SearchStepView`.
+/// Mirrors bae-library's `identify::SearchStepView`.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationSearchStep {
@@ -132,7 +132,7 @@ pub enum AutomationSearchStep {
     Searched { album: String, artist: String, cells: Vec<AutomationProviderCell> },
 }
 
-/// Mirrors bae-core's `identify::IdentifyRunView`.
+/// Mirrors bae-library's `identify::IdentifyRunView`.
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationIdentifyRun {
     pub providers: Vec<AutomationLookupCatalog>,
@@ -143,7 +143,7 @@ pub struct AutomationIdentifyRun {
     pub search: AutomationSearchStep,
 }
 
-/// Mirrors bae-core's `identify::RowAgreements`, with the release id it
+/// Mirrors bae-library's `identify::RowAgreements`, with the release id it
 /// belongs to.
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationAgreements {
@@ -172,7 +172,7 @@ pub enum AutomationIdentifyFailure {
     Cover { source: AutomationCatalog, failure: AutomationLookupFailure },
 }
 
-/// Mirrors bae-core's `identify::IdentifyStateView`.
+/// Mirrors bae-library's `identify::IdentifyStateView`.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationIdentifyState {

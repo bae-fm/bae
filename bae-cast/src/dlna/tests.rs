@@ -474,7 +474,7 @@ fn channel_to(base: &str) -> DlnaChannel {
 /// `SetAVTransportURI` followed by `Play`; volume goes to RenderingControl.
 #[test]
 fn channel_routes_each_command_to_its_soap_action() {
-    let runtime = bae_core::test_libraries::multi_thread_runtime();
+    let runtime = bae_library::test_libraries::multi_thread_runtime();
     let state: Shared = Arc::new(Mutex::new(FakeRenderer::default()));
     let base = runtime.block_on(start_fake_renderer(state.clone()));
 
@@ -499,7 +499,7 @@ fn channel_routes_each_command_to_its_soap_action() {
 /// advance on.
 #[test]
 fn stopped_after_playing_through_is_finished() {
-    let runtime = bae_core::test_libraries::multi_thread_runtime();
+    let runtime = bae_library::test_libraries::multi_thread_runtime();
     let state: Shared = Arc::new(Mutex::new(FakeRenderer {
         transport_state: "PLAYING".to_string(),
         rel_time: "0:03:00".to_string(),
@@ -531,7 +531,7 @@ fn stopped_after_playing_through_is_finished() {
 /// end-of-track advance, even though the renderer had played.
 #[test]
 fn our_own_stop_is_not_read_as_finished() {
-    let runtime = bae_core::test_libraries::multi_thread_runtime();
+    let runtime = bae_library::test_libraries::multi_thread_runtime();
     let state: Shared = Arc::new(Mutex::new(FakeRenderer {
         transport_state: "PLAYING".to_string(),
         rel_time: "0:03:00".to_string(),
@@ -558,7 +558,7 @@ fn our_own_stop_is_not_read_as_finished() {
 /// the device's own remote) is idle, not an end-of-track advance.
 #[test]
 fn stopped_mid_track_is_idle_not_finished() {
-    let runtime = bae_core::test_libraries::multi_thread_runtime();
+    let runtime = bae_library::test_libraries::multi_thread_runtime();
     let state: Shared = Arc::new(Mutex::new(FakeRenderer {
         transport_state: "PLAYING".to_string(),
         rel_time: "0:00:30".to_string(),
@@ -605,7 +605,7 @@ fn stopped_state_after(
     rel_time: &str,
     track_duration: &str,
 ) -> RendererPlayerState {
-    let runtime = bae_core::test_libraries::multi_thread_runtime();
+    let runtime = bae_library::test_libraries::multi_thread_runtime();
     let state: Shared = Arc::new(Mutex::new(FakeRenderer {
         transport_state: "PLAYING".to_string(),
         rel_time: rel_time.to_string(),

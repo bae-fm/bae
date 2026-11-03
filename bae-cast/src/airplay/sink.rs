@@ -1,6 +1,6 @@
 //! The receiver connections playback's AirPlay output pushes PCM through.
 //!
-//! bae-core's AirPlay output decodes locally and hands its PCM to an
+//! bae-library's AirPlay output decodes locally and hands its PCM to an
 //! [`AirPlaySink`], then drives pause, resume and seek through the
 //! [`AirPlayStreamControl`] the sink returns. These are the two real sinks, one
 //! per dialect: [`RaopSink`] opens a RAOP session, [`Ap2Sink`] an AirPlay 2 one.

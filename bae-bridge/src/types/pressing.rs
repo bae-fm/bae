@@ -1,4 +1,4 @@
-//! What a pressing is, as a surface renders it: the typed facts bae-core reads
+//! What a pressing is, as a surface renders it: the typed facts bae-library reads
 //! out of both catalogs (`bae_types::pressing`), and the words each is shown
 //! in. A surface never sees a catalog's raw text — a country crosses as its
 //! ISO 3166-1 code, which the platform names in the reader's language; every
@@ -726,7 +726,7 @@ pub fn bridge_discogs_details() -> Vec<BridgeDiscogsDetail> {
 }
 
 /// What a list of an album's releases calls one of them. Mirrors
-/// `bae_core::album_detail::ReleaseName`; each surface words it.
+/// `bae_library::album_detail::ReleaseName`; each surface words it.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeReleaseName {
     /// The name the person gave it.
@@ -740,16 +740,16 @@ pub enum BridgeReleaseName {
 }
 
 impl BridgeReleaseName {
-    pub(crate) fn from_core(name: bae_core::album_detail::ReleaseName) -> Self {
+    pub(crate) fn from_core(name: bae_library::album_detail::ReleaseName) -> Self {
         match name {
-            bae_core::album_detail::ReleaseName::Named(name) => Self::Named { name },
-            bae_core::album_detail::ReleaseName::Described { year, media } => Self::Described {
+            bae_library::album_detail::ReleaseName::Named(name) => Self::Named { name },
+            bae_library::album_detail::ReleaseName::Described { year, media } => Self::Described {
                 year,
                 media: bridge_media_terms(
                     media.into_iter().map(BridgeMediaCount::from_core).collect(),
                 ),
             },
-            bae_core::album_detail::ReleaseName::Numbered(number) => Self::Numbered { number },
+            bae_library::album_detail::ReleaseName::Numbered(number) => Self::Numbered { number },
         }
     }
 }

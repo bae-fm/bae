@@ -2,7 +2,7 @@ import Foundation
 
 /// Library reads — album/release lookups, pagination, search,
 /// storage-summary listing, prefetching release detail, resolving
-/// queue-input ids to flat track-id lists. The read side of bae-core's
+/// queue-input ids to flat track-id lists. The read side of bae-library's
 /// catalog, narrow to what view layers ask for — plus the library page's
 /// own display-preference write (`setLibraryFullWidth`).
 public final class Library: Sendable, Observable {

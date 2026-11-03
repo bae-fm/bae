@@ -28,7 +28,7 @@ You pick releases from MusicBrainz or Discogs, point bae at your files, and it h
 | Crate | Description |
 |-------|-------------|
 | `bae-app` | The composition root that opens a library, and `AppServices`, the owner every surface calls |
-| `bae-core` | The library, files, outputs, sync integration, settings, and the live reads the screens pull |
+| `bae-library` | The library, files, outputs, sync integration, settings, and the live reads the screens pull |
 | `bae-import` | Import (desktop only): watched folders, candidates and their drafts, identification runs, and the import that writes a release |
 | `bae-playback` | Playback: the service, the queue as the store keeps it, the outputs, the preview player, and the renderer session |
 | `bae-identify` | Identification (desktop only): the reducer, its view, and the verdict a run stores |
@@ -62,7 +62,7 @@ You pick releases from MusicBrainz or Discogs, point bae at your files, and it h
 
 Each app is versioned independently as `MAJOR.MINOR`, with a separate monotonic build number and a stamp of the exact source it was built from.
 
-- **MAJOR -- the compatibility era, shared across every app.** It's the sync-and-storage compatibility generation: devices on the same major can sync and read each other's data. It bumps -- in lockstep across macOS, Android, and the rest -- only when the wire/on-disk format breaks: the `coven` sync format, or bae-core's own schema. So `macos-2.x` and `android-2.x` are the same generation no matter their minors, and `3.0` is a new, incompatible era. `coven` is a SemVer library, and a break in its *format* (not merely its API) forces a bae major bump -- though bae-core's own schema changes can force one too.
+- **MAJOR -- the compatibility era, shared across every app.** It's the sync-and-storage compatibility generation: devices on the same major can sync and read each other's data. It bumps -- in lockstep across macOS, Android, and the rest -- only when the wire/on-disk format breaks: the `coven` sync format, or bae-library's own schema. So `macos-2.x` and `android-2.x` are the same generation no matter their minors, and `3.0` is a new, incompatible era. `coven` is a SemVer library, and a break in its *format* (not merely its API) forces a bae major bump -- though bae-library's own schema changes can force one too.
 - **MINOR -- the per-app release count within the era.** Auto-incremented from that app's tags (`macos-v*`, `android-v*`). Minors diverge by design: macOS shipping more often than Android just means a higher minor. Only the major is comparable across platforms.
 - **Build number** -- the CI run number, written into `CFBundleVersion` / Android `versionCode`. Monotonic; what Sparkle and the app stores use to order builds. Not user-facing.
 - **Source stamp** -- every build records the bae commit and the pinned `coven` rev (macOS `Info.plist`, Android `BuildConfig`) for crash triage and sync-compatibility debugging.

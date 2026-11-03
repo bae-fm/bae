@@ -60,7 +60,7 @@ private const val TAG = "bae.AppSessionHolder"
 private val logger = BaeLogger(TAG)
 
 /**
- * Position-update tick interval handed to the bridge, in milliseconds. bae-core
+ * Position-update tick interval handed to the bridge, in milliseconds. bae-library
  * drives the real playback engine on Android and publishes retained playback
  * values at this cadence; the [BaeCorePlayer] re-anchors its extrapolating
  * position from each value.

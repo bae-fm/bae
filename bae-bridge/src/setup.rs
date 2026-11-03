@@ -114,7 +114,7 @@ impl BridgeInviteInfo {
 }
 #[uniffi::export]
 pub fn decode_code_info(code: String) -> Result<BridgeCodeInfo, BridgeError> {
-    Ok(match bae_core::sync::decode_code_info(&code).map_err(BridgeError::config)? {
+    Ok(match bae_library::sync::decode_code_info(&code).map_err(BridgeError::config)? {
         coven::CodeInfo::Restore(metadata) => {
             BridgeCodeInfo::Restore { metadata: BridgeCodeMetadata::from_core(metadata) }
         }
@@ -155,7 +155,7 @@ impl OpenedLibrary {
     ) -> Result<Arc<crate::AppHandle>, BridgeError> {
         let mut held = self.handle.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
         let handle = held.as_ref().ok_or_else(|| {
-            BridgeError::from(bae_core::library::LibraryError::Internal(
+            BridgeError::from(bae_library::library::LibraryError::Internal(
                 "this library was already opened".to_string(),
             ))
         })?;

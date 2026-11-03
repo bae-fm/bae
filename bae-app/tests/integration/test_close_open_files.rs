@@ -23,7 +23,7 @@ async fn closing_a_playing_library_leaves_none_of_its_files_open() {
         "Close Test Album",
         &[("Test Track 1", "0:10"), ("Test Track 2", "0:10"), ("Test Track 3", "0:10")],
     );
-    let (library, imported) = bae_core::test_libraries::imported_release_setup(
+    let (library, imported) = bae_library::test_libraries::imported_release_setup(
         release,
         "test",
         uuid::Uuid::new_v4().to_string(),

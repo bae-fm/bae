@@ -1,6 +1,6 @@
-//! What a pressing is, as automation reads and writes it: bae-core's typed
+//! What a pressing is, as automation reads and writes it: bae-library's typed
 //! facts, serialized in the keys bae stores them under. The values cross
-//! as bae-core's own types, so a key outside a vocabulary fails to parse
+//! as bae-library's own types, so a key outside a vocabulary fails to parse
 //! rather than turning into text; the schemas below list each vocabulary's
 //! keys for a client to read.
 
@@ -138,7 +138,7 @@ fn nullable_key(keys: Vec<&'static str>) -> schemars::Schema {
 }
 
 /// What a library release is called where a list names it. Mirrors
-/// `bae_core::album_detail::ReleaseName`.
+/// `bae_library::album_detail::ReleaseName`.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationReleaseName {
@@ -148,13 +148,13 @@ pub enum AutomationReleaseName {
 }
 
 impl AutomationReleaseName {
-    pub(crate) fn from_core(name: bae_core::album_detail::ReleaseName) -> Self {
+    pub(crate) fn from_core(name: bae_library::album_detail::ReleaseName) -> Self {
         match name {
-            bae_core::album_detail::ReleaseName::Named(name) => Self::Named { name },
-            bae_core::album_detail::ReleaseName::Described { year, media } => {
+            bae_library::album_detail::ReleaseName::Named(name) => Self::Named { name },
+            bae_library::album_detail::ReleaseName::Described { year, media } => {
                 Self::Described { year, media }
             }
-            bae_core::album_detail::ReleaseName::Numbered(number) => Self::Numbered { number },
+            bae_library::album_detail::ReleaseName::Numbered(number) => Self::Numbered { number },
         }
     }
 }

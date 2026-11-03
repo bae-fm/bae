@@ -11,7 +11,7 @@ impl AppHandle {
     /// other work goes on.
     pub(super) fn deliver_until<Fut>(
         &self,
-        stop: bae_core::library::CancellationToken,
+        stop: bae_library::library::CancellationToken,
         body: impl FnOnce(AppServices) -> Fut + Send + 'static,
     ) where
         Fut: std::future::Future<Output = ()> + Send + 'static,

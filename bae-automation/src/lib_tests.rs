@@ -179,7 +179,7 @@ mod release_metadata_update_input {
 /// The storage state and actions serialize as snake_case strings.
 #[test]
 fn release_storage_state_and_actions_serialize_snake_case() {
-    let summary = AutomationReleaseSummary::from_core(bae_core::album_detail::ReleaseSummary {
+    let summary = AutomationReleaseSummary::from_core(bae_library::album_detail::ReleaseSummary {
         id: "rel-1".to_string(),
         album_id: "alb-1".to_string(),
         media: vec![bae_types::pressing::MediaCount {
@@ -214,7 +214,7 @@ fn release_storage_state_and_actions_serialize_snake_case() {
 
 #[test]
 fn a_local_release_serializes_its_state_and_absent_transfer() {
-    let summary = AutomationReleaseSummary::from_core(bae_core::album_detail::ReleaseSummary {
+    let summary = AutomationReleaseSummary::from_core(bae_library::album_detail::ReleaseSummary {
         id: "rel-2".to_string(),
         album_id: "alb-1".to_string(),
         media: Vec::new(),
@@ -795,7 +795,7 @@ mod release_album {
     #[tokio::test(flavor = "multi_thread")]
     async fn release_album_set_moves_the_release_into_the_album_it_names() {
         let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
-        let (library, imported) = bae_core::test_libraries::imported_release_setup_with(
+        let (library, imported) = bae_library::test_libraries::imported_release_setup_with(
             &fakes,
             bae_catalogs::test_releases::discogs_test_release(
                 "album-set-moved",

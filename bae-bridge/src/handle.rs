@@ -145,7 +145,7 @@ enum SessionState {
     Ended,
 }
 
-type Closing = Result<(), bae_core::library::LibraryError>;
+type Closing = Result<(), bae_library::library::LibraryError>;
 
 impl Session {
     /// Close the open library with `closing` on its runtime, then shut the
@@ -415,7 +415,7 @@ impl AppHandle {
         let steps =
             closing.map_or_else(crate::screens::ClosingSteps::unread, |closing| closing.writer());
         self.session.end(self.closing(steps)).ok_or_else(|| {
-            BridgeError::from(bae_core::library::LibraryError::Internal(
+            BridgeError::from(bae_library::library::LibraryError::Internal(
                 "the library is already closed".to_string(),
             ))
         })??;

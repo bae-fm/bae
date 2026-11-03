@@ -1,5 +1,5 @@
 //! What this process's file reads have cost, for tests: how many times each
-//! file was probed, so a bae-core test can assert that asking about a folder
+//! file was probed, so a bae-library test can assert that asking about a folder
 //! again opens nothing with FFmpeg; and how many bytes a landing search read,
 //! so this crate's tests can assert a search doesn't read the whole file.
 

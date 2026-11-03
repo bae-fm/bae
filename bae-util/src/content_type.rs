@@ -4,7 +4,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 /// string in the database.
 ///
 /// Every audio variant names a codec we actually decode. Constructed only by
-/// bae-core's audio probe (from `AVCodecID`) or by
+/// bae-library's audio probe (from `AVCodecID`) or by
 /// [`ContentType::from_mime`] (reading a stored MIME back). An extension-based
 /// guess goes through [`crate::content_type_hint::ContentTypeHint`] and
 /// never produces a `ContentType`.

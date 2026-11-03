@@ -2,7 +2,7 @@
 
 use crate::sparse_buffer::{ShortRead, SourceReadError};
 
-/// The window the tests fill by: the 4 MiB bae-core's playback fills by.
+/// The window the tests fill by: the 4 MiB bae-library's playback fills by.
 pub(crate) const TEST_WINDOW: u64 = 4 * 1024 * 1024;
 
 /// A test source's read failure: an OS error with what was being read, or a

@@ -47,19 +47,19 @@ pub enum BridgeUploadReleasesOutcome {
 }
 
 mirror_struct! {
-    BridgeUploadReceipt = bae_core::library::UploadReceipt,
+    BridgeUploadReceipt = bae_library::library::UploadReceipt,
     from_core: fn,
     fields: { release_ids },
 }
 
 mirror_struct! {
-    BridgeUploadBatchFailure = bae_core::library::UploadBatchFailure,
+    BridgeUploadBatchFailure = bae_library::library::UploadBatchFailure,
     from_core: fn,
     fields: { release_ids, error: (BridgeError) },
 }
 
 mirror_enum! {
-    BridgeUploadReleasesOutcome = bae_core::library::UploadReleasesOutcome,
+    BridgeUploadReleasesOutcome = bae_library::library::UploadReleasesOutcome,
     from_core: pub(crate) fn,
     variants: {
         Complete { receipt: (BridgeUploadReceipt) },
@@ -210,7 +210,7 @@ pub struct BridgeQueuedRelease {
 }
 
 mirror_struct! {
-    BridgeQueuedRelease = bae_core::library::QueuedRelease,
+    BridgeQueuedRelease = bae_library::library::QueuedRelease,
     from_core: pub(crate) fn,
     fields: { title, file_count, total_size },
 }
@@ -243,7 +243,7 @@ pub enum BridgeReleaseDownloadStatus {
 }
 
 mirror_enum! {
-    BridgeReleaseDownloadStatus = bae_core::album_detail::ReleaseDownloadStatus,
+    BridgeReleaseDownloadStatus = bae_library::album_detail::ReleaseDownloadStatus,
     from_core: pub(crate) fn,
     variants: {
         Downloaded,
@@ -283,7 +283,7 @@ pub struct BridgeCountLabel {
 }
 
 mirror_struct! {
-    BridgeCountLabel = bae_core::library::CountLabel,
+    BridgeCountLabel = bae_library::library::CountLabel,
     from_core: pub(crate) fn,
     fields: { key, count },
 }
@@ -305,13 +305,13 @@ pub enum BridgeTransferStage {
 }
 
 mirror_enum! {
-    BridgeTransferStage = bae_core::library::TransferStage,
+    BridgeTransferStage = bae_library::library::TransferStage,
     from_core: fn,
     variants: { Moving, Waiting, Done },
 }
 
 mirror_struct! {
-    BridgeTransferCount = bae_core::library::TransferCount,
+    BridgeTransferCount = bae_library::library::TransferCount,
     from_core: pub(crate) fn,
     fields: {
         label: (BridgeCountLabel),

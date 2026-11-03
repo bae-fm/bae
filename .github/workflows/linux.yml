@@ -80,7 +80,7 @@ jobs:
     - name: Run Clippy
       run: |
         cargo clippy --workspace -- -D warnings
-        cargo clippy -p bae-core --tests --features bae-core/test-utils -- -D warnings
+        cargo clippy -p bae-library --tests --features bae-library/test-utils -- -D warnings
         cargo clippy -p bae-util --tests --features bae-util/test-utils -- -D warnings
         cargo clippy -p bae-audio --tests --features test-utils,test-instrumentation -- -D warnings
         cargo clippy -p bae-types --tests --features bae-types/test-utils -- -D warnings
@@ -96,12 +96,12 @@ jobs:
         cargo clippy -p bae-app --tests --features bae-app/test-utils -- -D warnings
         cargo clippy -p bae-bridge -- -D warnings
 
-    - name: Dead-code (bae-app, bae-core, the crates below them and bae-cast, lib only)
+    - name: Dead-code (bae-app, bae-library, the crates below them and bae-cast, lib only)
       # Each crate's production code alone, so an item only its tests use fails
       # as dead code. The flag goes to the one crate: RUSTFLAGS would recompile
       # every dependency for this one check.
       run: |
-        cargo rustc -p bae-core --lib --profile check -- -D warnings
+        cargo rustc -p bae-library --lib --profile check -- -D warnings
         cargo rustc -p bae-util --lib --profile check -- -D warnings
         cargo rustc -p bae-audio --lib --profile check -- -D warnings
         cargo rustc -p bae-types --lib --profile check -- -D warnings
@@ -173,20 +173,20 @@ jobs:
       run: |
         status=0
         RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps || status=1
-        cargo test --doc --no-fail-fast --workspace --features bae-core/test-utils || status=1
+        cargo test --doc --no-fail-fast --workspace --features bae-library/test-utils || status=1
         cargo test --doc --no-fail-fast -p bae-bridge --features desktop || status=1
         exit $status
 
-    - name: Run bae-core tests
+    - name: Run bae-library tests
       if: ${{ !cancelled() && steps.nextest.conclusion == 'success' }}
       run: |
         status=0
         # The CPU test reads process-wide getrusage, so it runs alone, in release: it
         # measures the playback that ships.
-        cargo nextest run --no-fail-fast -p bae-core --features bae-core/test-utils -- --skip test_playback_cpu || status=1
+        cargo nextest run --no-fail-fast -p bae-library --features bae-library/test-utils -- --skip test_playback_cpu || status=1
         # The runner's disk can't hold the debug and release trees at once.
         rm -rf target/debug
-        cargo nextest run --no-fail-fast -p bae-core --release --features bae-core/test-utils --test test_playback_cpu -j 1 || status=1
+        cargo nextest run --no-fail-fast -p bae-library --release --features bae-library/test-utils --test test_playback_cpu -j 1 || status=1
         exit $status
 
   avalonia:

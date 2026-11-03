@@ -1,6 +1,6 @@
 import Foundation
 
-/// Resolve a bae-core message key against the generated `Core` string table.
+/// Resolve a bae-library message key against the generated `Core` string table.
 /// One source of the table lookup for the error/playback lines below.
 public func localizedCoreString(_ key: String) -> String {
     NSLocalizedString(key, tableName: "Core", bundle: .module, comment: "")
@@ -8,7 +8,7 @@ public func localizedCoreString(_ key: String) -> String {
 
 extension BridgeErrorCategory {
     /// The user-facing line for this category, resolved from the generated
-    /// `Core` string table via the key bae-core owns, with the counts, disc
+    /// `Core` string table via the key bae-library owns, with the counts, disc
     /// numbers and key-prefix folder a category carries formatted for the
     /// current locale. The underlying Rust error chain travels separately as
     /// opaque `detail` and is never translated.
@@ -49,7 +49,7 @@ extension BridgeErrorCategory {
 
 extension BridgeEntityKind {
     /// The "… not found" line for this entity, resolved from the generated
-    /// `Core` string table via the key bae-core owns.
+    /// `Core` string table via the key bae-library owns.
     public var notFoundLine: String {
         localizedCoreString(bridgeEntityNotFoundKey(entity: self))
     }

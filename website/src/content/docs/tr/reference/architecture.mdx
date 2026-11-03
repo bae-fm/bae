@@ -7,7 +7,7 @@ bae, dört yerel uygulama taşıyan tek bir Rust çekirdeğidir. Ürünü, kitap
 
 ## Katmanlar
 
-- **`bae-core`**: ürün. Kitaplık ve üst veri modeli, içe aktarma ve tanımlama boru hatları, FFmpeg çalma motoru, ses düzeyi analizi, dışa aktarma ve altındaki coven ile bütünleşme. İçe aktarma ve tanımlama yalnızca masaüstünde derlenir; mobil derlemeler eşzamanlama ve çalma istemcileridir.
+- **`bae-library`**: ürün. Kitaplık ve üst veri modeli, içe aktarma ve tanımlama boru hatları, FFmpeg çalma motoru, ses düzeyi analizi, dışa aktarma ve altındaki coven ile bütünleşme. İçe aktarma ve tanımlama yalnızca masaüstünde derlenir; mobil derlemeler eşzamanlama ve çalma istemcileridir.
 - **[coven](https://coven.bae.fm)**: veri katmanı, ayrı bir kitaplık. coven SQLite bağlantısının sahibidir, bae'in kaydettiği her değişikliği yakalar ve bu değişiklikleri kullanıcının bulut depolaması üzerinden uçtan uca şifreli biçimde eşzamanlar. Blob depolamasına da sahiptir (ses baytları, görseller), yerel önbelleğe, kimlik anahtarlarına ve üyeliğe de. bae kesin bir coven revizyonunu sabitler ve bunu her ikiliye işler; derlemeler arasındaki eşzamanlama uyumluluk kuşağını tanımlar.
 - **`bae-bridge`**: UniFFI sınırı. Köprü tipleri Rust içinde bir kez tanımlanır ve derleme zamanında Swift ile Kotlin'e üretilir.
 - **Uygulamalar**: macOS ve iOS'ta SwiftUI, Android'de Jetpack Compose ve yerel bir Windows uygulaması. Her biri çekirdeğin istediği platform parçalarını da uygular: ses çıkışı, görsel metin tanıma, medya denetimleri, anahtarlık erişimi, çökme raporlama.

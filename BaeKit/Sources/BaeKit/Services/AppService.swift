@@ -89,7 +89,7 @@ open class AppService: @unchecked Sendable, Observable {
     // a module the compiler infers this for `let`s of `Sendable` type on a
     // `@MainActor` class; across the package boundary it must be explicit.
 
-    /// Handle to bae-core via the uniffi bridge. All library, playback, and
+    /// Handle to bae-library via the uniffi bridge. All library, playback, and
     /// sync requests go through this.
     private nonisolated let appHandle: AppHandle
 

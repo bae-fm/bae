@@ -41,7 +41,7 @@ private fun DownloadConcurrencySelector(
     value: UInt,
     onSelect: (UInt) -> Unit,
 ) {
-    // bae-core's MAX_CONCURRENT_TRANSFERS; the bridge carries the value but not the bound.
+    // bae-library's MAX_CONCURRENT_TRANSFERS; the bridge carries the value but not the bound.
     val options = (1u..8u).toList()
     Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),

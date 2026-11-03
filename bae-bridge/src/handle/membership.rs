@@ -40,10 +40,10 @@ impl BridgeJoinRequest {
 /// reports the first of theirs that joins after.
 #[derive(uniffi::Object)]
 pub struct BridgeAddedDeviceWatch {
-    watch: bae_core::sync::membership::AddedDeviceWatch,
+    watch: bae_library::sync::membership::AddedDeviceWatch,
 }
 impl BridgeAddedDeviceWatch {
-    pub(crate) fn new(watch: bae_core::sync::membership::AddedDeviceWatch) -> Self {
+    pub(crate) fn new(watch: bae_library::sync::membership::AddedDeviceWatch) -> Self {
         Self { watch }
     }
 }
@@ -54,7 +54,7 @@ pub struct BridgeAddDevice {
     pub watch: Arc<BridgeAddedDeviceWatch>,
 }
 impl BridgeAddDevice {
-    fn from_core(value: bae_core::sync::membership::AddingDevice) -> Self {
+    fn from_core(value: bae_library::sync::membership::AddingDevice) -> Self {
         Self {
             share: BridgeRestoreCodeShare::from_core(value.share),
             watch: Arc::new(BridgeAddedDeviceWatch::new(value.watch)),

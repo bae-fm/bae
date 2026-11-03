@@ -4,7 +4,7 @@ import android.content.Context
 import uniffi.bae_bridge.BridgeTrackGroup
 import uniffi.bae_bridge.BridgeTrackSide
 
-// Locale rendering of the structured `Bridge*` shapes bae-core emits. The core
+// Locale rendering of the structured `Bridge*` shapes bae-library emits. The core
 // owns the structure (the side discriminant); these compose and format them for
 // the current locale, resolving any translatable word from the shared catalog
 // via the key the core owns. Mirrors the macOS `Bridge*+*.swift` extensions.
@@ -12,7 +12,7 @@ import uniffi.bae_bridge.BridgeTrackSide
 
 /**
  * The localized track-group header ("Side A" / "Disc 2"), or empty for the flat
- * single-disc case (no header). bae-core decides the case and the side letter /
+ * single-disc case (no header). bae-library decides the case and the side letter /
  * disc number, and hands over the header word's catalog key on the group
  * (`headerKey`); this resolves the word and substitutes the letter / number.
  * Mirrors macOS `TrackGroup.sideHeaderText`.

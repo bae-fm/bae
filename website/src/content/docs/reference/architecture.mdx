@@ -7,7 +7,7 @@ bae is one Rust core wearing four native apps. Everything that defines the produ
 
 ## The layers
 
-- **`bae-core`**: the product. Library and metadata model, the import and identify pipelines, the FFmpeg playback engine, loudness analysis, export, and the integration with coven below it. Import and identify compile only on desktop; mobile builds are sync and playback clients.
+- **`bae-library`**: the product. Library and metadata model, the import and identify pipelines, the FFmpeg playback engine, loudness analysis, export, and the integration with coven below it. Import and identify compile only on desktop; mobile builds are sync and playback clients.
 - **[coven](https://coven.bae.fm)**: the data layer, a separate library. coven owns the SQLite connection, captures every change bae commits, and syncs those changes end-to-end encrypted through the user's cloud storage. It also owns blob storage (audio bytes, artwork), the local cache, identity keys, and membership. bae pins an exact coven revision and stamps it into every binary; it defines the sync-compatibility generation between builds.
 - **`bae-bridge`**: the UniFFI boundary. Bridge types are defined once in Rust and generated into Swift and Kotlin at build time.
 - **The apps**: SwiftUI on macOS and iOS, Jetpack Compose on Android, and a native Windows app. Each also implements the platform pieces the core asks for: audio output, artwork text recognition, media controls, keychain access, crash reporting.

@@ -1,13 +1,13 @@
 use super::*;
-use bae_core::library::LibraryError;
 use bae_db::collections::{CollectionError, Playlist, PlaylistEntry, Rating, RatingTarget, Stars};
 use bae_db::people::Sharing;
+use bae_library::library::LibraryError;
 
 impl AppServices {
     delegate_async!(manager, create_profile => create_profile(name: &str) -> Result<(), bae_db::people::ProfileError>);
     delegate_async!(manager, rename_profile => rename_profile(name: &str) -> Result<(), bae_db::people::ProfileError>);
     delegate_async!(manager, set_history_sharing => set_history_sharing(sharing: bae_db::people::Sharing) -> Result<(), bae_db::people::ProfileError>);
-    delegate_async!(manager, set_avatar => set_avatar(bytes: Option<Vec<u8>>) -> Result<(), bae_core::people::AvatarError>);
+    delegate_async!(manager, set_avatar => set_avatar(bytes: Option<Vec<u8>>) -> Result<(), bae_library::people::AvatarError>);
     delegate_async!(manager, avatar => avatar(person: coven::MemberId) -> Result<Option<Vec<u8>>, bae_db::people::ProfileError>);
     delegate_values!(subscribe_profiles => subscribe_profiles() -> Vec<bae_db::people::PersonProfile>);
     delegate_values!(subscribe_requested_profile => subscribe_requested_profile() -> Option<bae_db::people::RequestedProfile>);

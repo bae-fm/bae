@@ -112,7 +112,7 @@ echo "Generating Swift bindings..."
 SWIFT_BINDINGS_DIR="bae-bridge/swift-bindings-ios"
 mkdir -p "$SWIFT_BINDINGS_DIR"
 # The generator is its own host-only package so this build doesn't compile
-# bae-core again.
+# bae-library again.
 run_host_cargo build -p bae-uniffi-bindgen
 BINDGEN="$CARGO_TARGET_DIR/debug/uniffi-bindgen"
 "$BINDGEN" generate \

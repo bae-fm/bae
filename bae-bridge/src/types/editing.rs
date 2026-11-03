@@ -291,7 +291,7 @@ pub enum BridgeAudioFile {
 }
 
 /// Which disc of the release one track sheet's entries become. Mirror of
-/// bae-core's `SheetDisc`.
+/// bae-library's `SheetDisc`.
 ///
 /// Cue filenames are arbitrary — `CD1.cue` may hold disc two — so this is a
 /// decision, set through `AppHandle::set_sheet_disc`, and never something a UI
@@ -307,7 +307,7 @@ pub enum BridgeSheetDisc {
 }
 
 /// What one of the folder's files is, as a row of the mapping table. Mirror of
-/// bae-core's `MappingRole`.
+/// bae-library's `MappingRole`.
 ///
 /// Narrower than the role the scan proposes: a track sheet is not a row here —
 /// it heads a group of rows — and images live in the table's gallery instead.
@@ -328,7 +328,7 @@ pub enum BridgeMappingRole {
 }
 
 /// A file of the folder, as the mapping table's left half shows it. Mirror of
-/// bae-core's `MappingFile`.
+/// bae-library's `MappingFile`.
 #[cfg(feature = "desktop")]
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeMappingFile {
@@ -351,7 +351,7 @@ pub struct BridgeMappingFile {
 }
 
 /// One entry of a track sheet, as the mapping table's left half shows it.
-/// Mirror of bae-core's `MappingEntry`.
+/// Mirror of bae-library's `MappingEntry`.
 #[cfg(feature = "desktop")]
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeMappingEntry {
@@ -374,7 +374,7 @@ pub struct BridgeMappingEntry {
 }
 
 /// The left half of a mapping row: what the folder offers for it. Mirror of
-/// bae-core's `MappingSource`.
+/// bae-library's `MappingSource`.
 #[cfg(feature = "desktop")]
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeMappingSource {
@@ -384,7 +384,7 @@ pub enum BridgeMappingSource {
     SheetEntry { entry: BridgeMappingEntry },
 }
 
-/// One source-to-track mapping row. Mirror of bae-core's `TrackMapping`.
+/// One source-to-track mapping row. Mirror of bae-library's `TrackMapping`.
 #[cfg(feature = "desktop")]
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeTrackMapping {
@@ -404,7 +404,7 @@ pub struct BridgeTrackMapping {
     pub lengths_disagree: bool,
 }
 
-/// The audio a track sheet describes. Mirror of bae-core's `MappingContainer`.
+/// The audio a track sheet describes. Mirror of bae-library's `MappingContainer`.
 #[cfg(feature = "desktop")]
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeMappingContainer {
@@ -415,7 +415,7 @@ pub struct BridgeMappingContainer {
 }
 
 /// A track sheet, as the header of the group of rows it carves. Mirror of
-/// bae-core's `SheetGroup`.
+/// bae-library's `SheetGroup`.
 #[cfg(feature = "desktop")]
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeSheetGroup {
@@ -436,7 +436,7 @@ pub struct BridgeSheetGroup {
 }
 
 /// What a track sheet describes, with the facts its header shows about it.
-/// Mirror of bae-core's `SheetBound`.
+/// Mirror of bae-library's `SheetBound`.
 ///
 /// Core's sheet binding enriched with the container facts its header renders.
 #[cfg(feature = "desktop")]
@@ -468,7 +468,7 @@ pub enum BridgeSheetBound {
     RefusedTiming,
 }
 
-/// One of the folder's images, as the gallery shows it. Mirror of bae-core's
+/// One of the folder's images, as the gallery shows it. Mirror of bae-library's
 /// `MappingImage`.
 #[cfg(feature = "desktop")]
 #[derive(Debug, Clone, uniffi::Record)]
@@ -482,7 +482,7 @@ pub struct BridgeMappingImage {
 }
 
 /// Consecutive rows of one side that the table draws together. Mirror of
-/// bae-core's `MappingTrackRun`.
+/// bae-library's `MappingTrackRun`.
 #[cfg(feature = "desktop")]
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeMappingTrackRun {
@@ -493,7 +493,7 @@ pub enum BridgeMappingTrackRun {
 }
 
 /// One side or disc of the track table and the runs of rows on it, headed
-/// once. Mirror of bae-core's `MappingTrackSide`.
+/// once. Mirror of bae-library's `MappingTrackSide`.
 #[cfg(feature = "desktop")]
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeMappingTrackSide {
@@ -504,7 +504,7 @@ pub struct BridgeMappingTrackSide {
     pub runs: Vec<BridgeMappingTrackRun>,
 }
 
-/// One row in the files section. Mirror of bae-core's `MappingFileRow`.
+/// One row in the files section. Mirror of bae-library's `MappingFileRow`.
 #[cfg(feature = "desktop")]
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeMappingFileRow {
@@ -518,7 +518,7 @@ pub enum BridgeMappingFileRow {
 }
 
 /// The mapping table: every source unit the folder offers, alongside the track
-/// committing makes of it. Mirror of bae-core's `MappingTable`.
+/// committing makes of it. Mirror of bae-library's `MappingTable`.
 #[cfg(feature = "desktop")]
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeMappingTable {
@@ -533,7 +533,7 @@ pub struct BridgeMappingTable {
 }
 
 /// The folder's images and the files carried with the release that no track
-/// row stands for, in the scan's order. Mirror of bae-core's `FolderFiles`.
+/// row stands for, in the scan's order. Mirror of bae-library's `FolderFiles`.
 #[cfg(feature = "desktop")]
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeFolderFiles {
@@ -750,7 +750,7 @@ pub struct BridgeRawTrackEdit {
     pub file: Option<BridgeAudioFile>,
 }
 
-/// Why a release edit can't be saved. An FFI mirror of bae-core's
+/// Why a release edit can't be saved. An FFI mirror of bae-library's
 /// `EditValidationError`; the UI renders each variant by resolving its
 /// localization key — see `bridge_validation_reason_key`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
@@ -780,7 +780,7 @@ impl BridgeValidationReason {
 /// Outcome of shaping a raw edit form (`shape_release_edit`). `Valid` carries
 /// the savable wire edit; `Invalid` carries the typed reason it can't be saved.
 /// The editor enables Save on `Valid` and renders the localized reason on
-/// `Invalid` — bae-core decides which reason, the UI localizes it.
+/// `Invalid` — bae-library decides which reason, the UI localizes it.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeShapeResult {
     Valid { edit: BridgeReleaseUserEdit },

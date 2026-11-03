@@ -242,10 +242,10 @@ pub enum BridgeInviteProgress {
     Joining,
 }
 impl BridgeInvite {
-    pub(crate) fn from_core(value: bae_core::people::OpenInvite) -> Self {
-        use bae_core::people::{InviteProgress, InviteShown};
-        let bae_core::people::OpenInvite { invite, held } = value;
-        let shown = match bae_core::people::invite_shown(&invite) {
+    pub(crate) fn from_core(value: bae_library::people::OpenInvite) -> Self {
+        use bae_library::people::{InviteProgress, InviteShown};
+        let bae_library::people::OpenInvite { invite, held } = value;
+        let shown = match bae_library::people::invite_shown(&invite) {
             InviteShown::Granting => BridgeInviteShown::Granting,
             InviteShown::Code { code, progress } => BridgeInviteShown::Code {
                 code,
@@ -290,7 +290,7 @@ mod tests {
     /// key to delete if nobody uses the invite.
     #[test]
     fn an_invite_carries_its_key_id_and_person() {
-        let invite = BridgeInvite::from_core(bae_core::people::OpenInvite {
+        let invite = BridgeInvite::from_core(bae_library::people::OpenInvite {
             invite: coven::Invite {
                 id: coven::InviteId("00000000-0000-4000-8000-000000000001".parse().unwrap()),
                 member: coven::MemberId("00000000-0000-4000-8000-000000000002".parse().unwrap()),

@@ -3332,7 +3332,7 @@ internal error (HTTP 500).
 
 Every app does the same things with a library: open it, read it, watch it
 change, import, play, move files, sync, and change settings. bae's Rust
-API (bae-app over bae-core) does each once, so no platform keeps its own copy of a rule. This section
+API (bae-app over bae-library) does each once, so no platform keeps its own copy of a rule. This section
 names the API's parts; the source is the reference for each signature.
 
 ### 9.1 Opening a library
@@ -3637,9 +3637,9 @@ how the API reaches Swift and Kotlin, and C# for bae-avalonia.
 
 ### 10.1 Only translation
 
-bae-bridge does one thing: it converts bae-app's and bae-core's types to and
+bae-bridge does one thing: it converts bae-app's and bae-library's types to and
 from types uniffi can export. It looks nothing up, formats nothing, filters
-nothing and holds no state. Anything else is added to bae-app or bae-core, and
+nothing and holds no state. Anything else is added to bae-app or bae-library, and
 the bridge calls it.
 
 The reason is the platforms: anything a UI or the bridge decides, each
@@ -3832,7 +3832,7 @@ bindings export none of their symbols.
 | Crate | Holds |
 |---|---|
 | bae-app | the composition root: the bootstrap that opens a library and builds every long-lived part of it once, and `AppServices`, the one owner of the opened library every surface calls, which passes each call on to the part that answers it |
-| bae-core | the library, files, outputs, sync integration, settings, and the live reads the screens pull |
+| bae-library | the library, files, outputs, sync integration, settings, and the live reads the screens pull |
 | bae-import | import, desktop only but for the release-edit model, the import pane's session values and the errors the library reports from import: watched folders and their scans, the candidates they hold, the drafts a person shapes and the pane's session over them, identification runs against the catalogs and the queue that admits them, cue sheets, loudness measurement, and the import that writes a candidate's release into the store, with import's own tables |
 | bae-playback | playback: the service that plays the queue on this device's output or a remote renderer, the queue, its resume point and play history as the store keeps them, the outputs it plays on, the preview player, and the renderer session a connected cast or UPnP device is driven through |
 | bae-identify | identification, desktop only: the reducer that asks every key a candidate's signals put in effect and ranks what the catalogs return, the release groups and pressing evidence it ranks by, the view a surface shows of a run, and the verdict a finished run stores |
@@ -3858,7 +3858,7 @@ bindings export none of their symbols.
 
 bae-cast stands between bae-playback, which holds the renderer session, and
 bae-subsonic, which serves the audio, because neither may depend on the other.
-Nothing in bae-core or bae-playback depends on a server crate. bae-playback
+Nothing in bae-library or bae-playback depends on a server crate. bae-playback
 holds no device protocol: playback drives a fetching receiver through a command channel and an
 AirPlay receiver through a sink it hands decoded audio to, and bae-cast connects
 each device and hands playback the channel or sink.

@@ -44,7 +44,7 @@ impl BridgeLibraryClosing {
         *self.steps.lock().unwrap() = Some(values.clone());
         Arc::new(KeyedValueStream::new(
             values,
-            bae_core::library::CancellationToken::new(),
+            bae_library::library::CancellationToken::new(),
             self.runtime.clone(),
         ))
     }
