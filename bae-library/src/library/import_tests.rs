@@ -184,21 +184,18 @@ impl Drop for HeldImport<'_> {
     }
 }
 
-/// The next value the detail read delivers for `album_id`.
-async fn next_for(
-    values: &crate::library::LiveDetail<crate::album_detail::AlbumDetail>,
-    album_id: &str,
+/// The next value the album detail view's read delivers, as the detail
+/// view shows it.
+async fn next_detail(
+    values: &mut coven::ReconfigurableLiveQuery<Option<String>, bae_views::AlbumDetailProjection>,
     waiting_for: &str,
-) -> crate::album_detail::AlbumDetail {
-    loop {
-        let snapshot = tokio::time::timeout(HANG_GUARD, values.next())
-            .await
-            .unwrap_or_else(|_| panic!("{waiting_for}"))
-            .expect("the album detail resolves");
-        if snapshot.id.as_deref() == Some(album_id) {
-            return snapshot.value.expect("the album is present");
-        }
-    }
+) -> bae_views::album_detail::AlbumDetail {
+    let event = tokio::time::timeout(HANG_GUARD, values.next())
+        .await
+        .unwrap_or_else(|_| panic!("{waiting_for}"))
+        .expect("the album detail's read stays open");
+    bae_views::album::resolve_album_detail_projection(event.result.expect("the album detail reads"))
+        .expect("the album is present")
 }
 
 /// The import is held partway through measuring its tracks. The shown
@@ -218,18 +215,14 @@ async fn an_album_opened_while_another_release_imports_shows_at_once() {
         .await
         .expect("the import reaches its measurement");
 
-    let values = crate::library::live_reads::subscribe_album_detail(
-        &fixture.library,
-        &fixture.library.views(),
-    );
-    values.set(Some(shown_album.clone())).unwrap();
+    let mut values = bae_views::LibraryViews::new(fixture.library.database().clone())
+        .subscribe_album_detail(Some(shown_album.clone()));
     let shown =
-        next_for(&values, &shown_album, "the album detail arrives while the other import runs")
-            .await;
+        next_detail(&mut values, "the album detail arrives while the other import runs").await;
     assert_eq!(shown.album.id, shown_album);
     assert_eq!(
         shown.releases[0].playability,
-        crate::album_detail::ReleasePlayability::Playable,
+        bae_views::album_detail::ReleasePlayability::Playable,
         "the library records this device holding the originals"
     );
     drop(held);
@@ -465,13 +458,13 @@ async fn an_imported_artist_is_searchable_with_its_picture() {
 
     fixture.import(&key).await.unwrap_or_else(|error| panic!("import failed: {error}"));
 
-    let mut search =
-        fixture.library.views().subscribe_artist_search(crate::library::ArtistSearchView {
-            query: crate::library::LibrarySearchQuery::parse("Track Artist"),
+    let mut search = bae_views::LibraryViews::new(fixture.library.database().clone())
+        .subscribe_artist_search(bae_views::ArtistSearchView {
+            query: bae_views::LibrarySearchQuery::parse("Track Artist"),
             windows: [bae_db::LibraryPageWindow { offset: 0, limit: 50 }].into(),
         });
     let found = search.next().await.expect("the artist search stays open").result.unwrap();
-    let result = crate::library::views::artist_search::resolve_artist_search(found, 0)
+    let result = bae_views::artist_search::resolve_artist_search(found, 0)
         .windows
         .into_iter()
         .flat_map(|window| window.rows)

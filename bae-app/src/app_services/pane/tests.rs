@@ -72,7 +72,7 @@ impl Library {
         let import = library.start_import().await.unwrap();
         let services = AppServices::new(
             LibraryManager::clone(&library),
-            library.views(),
+            bae_views::LibraryViews::new(library.database().clone()),
             library.start_playback().await,
             library.cast_picker(),
             import.clone(),

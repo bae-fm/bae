@@ -25,6 +25,7 @@ members = [
     "bae-types",
     "bae-uniffi-bindgen",
     "bae-util",
+    "bae-views",
 ]
 resolver = "2"
 
@@ -94,6 +95,7 @@ bae-track-audio = { path = "bae-track-audio" }
 bae-transfers = { path = "bae-transfers" }
 bae-types = { path = "bae-types" }
 bae-util = { path = "bae-util" }
+bae-views = { path = "bae-views" }
 
 # Every other external dependency.
 aes = "0.8"

@@ -143,8 +143,8 @@ async fn cancelling_uploads_with_a_missing_original_keeps_every_release_here() {
         }
     }
     assert_eq!(
-        manager.views().find_release_detail(&second.id).await.unwrap().unwrap().playability,
-        crate::album_detail::ReleasePlayability::Playable,
+        views(&manager).find_release_detail(&second.id).await.unwrap().unwrap().playability,
+        bae_views::album_detail::ReleasePlayability::Playable,
         "the release is back on this device, as the library records it"
     );
 }

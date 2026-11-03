@@ -2,7 +2,7 @@
 
 use bae_app::AppServices;
 use bae_db::{DbAlbum, DbRelease};
-use bae_library::library::LibrarySearchQuery;
+use bae_views::LibrarySearchQuery;
 use tracing::debug;
 
 use crate::envelope::Element;
@@ -240,7 +240,7 @@ fn page<'a, T>(items: &'a [T], window: &Window) -> impl Iterator<Item = &'a T> {
 /// it is read here rather than by the caller assembling the list.
 async fn artist_summary_child(
     services: &AppServices,
-    summary: &bae_library::album_detail::ArtistSummary,
+    summary: &bae_views::album_detail::ArtistSummary,
 ) -> Result<Element, SubError> {
     let artist = &summary.raw.artist;
     let count = artist_release_count(services, &artist.id).await?;
@@ -263,8 +263,8 @@ async fn whole_library(
     songs: &Window,
 ) -> Result<Element, SubError> {
     // Artists.
-    let sort = [bae_library::library::views::ArtistSortCriterion {
-        field: bae_library::library::views::ArtistSortField::Name,
+    let sort = [bae_views::ArtistSortCriterion {
+        field: bae_views::ArtistSortField::Name,
         direction: bae_db::SortDirection::Ascending,
     }];
     let artist_page = services

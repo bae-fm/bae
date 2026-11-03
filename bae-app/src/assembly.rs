@@ -46,7 +46,7 @@ pub async fn start_library_services(
     let now_row = bae_playback::tables::PlaybackNowRow::new(database.clone());
     let timeline_row = bae_playback::tables::PlaybackTimelineRow::new(database.clone());
     let track_deletions = manager.subscribe_track_deletions();
-    let views = bae_library::library::views::LibraryViews::new(database.clone());
+    let views = bae_views::LibraryViews::new(database.clone());
     // No discovery outlives the process that ran it: the cast picker's list
     // starts empty, before anything that writes or reads it can.
     let cast_picker = bae_playback::renderer::CastPicker::new(database.clone());

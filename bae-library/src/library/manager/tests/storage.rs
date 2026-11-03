@@ -15,9 +15,9 @@ async fn seed_albums(manager: &LibraryManager, count: usize) -> (Vec<DbAlbum>, V
     (albums, releases)
 }
 
-fn sort_by_album_title_asc() -> crate::library::views::StorageSortCriterion {
-    crate::library::views::StorageSortCriterion {
-        field: crate::library::views::StorageSortField::AlbumTitle,
+fn sort_by_album_title_asc() -> bae_views::StorageSortCriterion {
+    bae_views::StorageSortCriterion {
+        field: bae_views::StorageSortField::AlbumTitle,
         direction: bae_db::SortDirection::Ascending,
     }
 }
@@ -26,11 +26,11 @@ fn sort_by_album_title_asc() -> crate::library::views::StorageSortCriterion {
 /// ascending — the ordering every assertion below reads rows in.
 async fn storage_page(
     manager: &LibraryManager,
-    filter: crate::library::views::StorageFilter,
+    filter: bae_views::StorageFilter,
     offset: u64,
     limit: u64,
-) -> crate::album_detail::StoragePage {
-    crate::library::views::LibraryViews::new(manager.database.clone())
+) -> bae_views::album_detail::StoragePage {
+    bae_views::LibraryViews::new(manager.database.clone())
         .get_storage_page(&sort_by_album_title_asc(), filter, offset, limit)
         .await
         .unwrap()
@@ -41,7 +41,7 @@ async fn storage_page_returns_all_rows_for_all_filter() {
     let (manager, _temp_dir) = setup_test_manager().await;
     seed_albums(&manager, 3).await;
 
-    let page = storage_page(&manager, crate::library::views::StorageFilter::All, 0, 10).await;
+    let page = storage_page(&manager, bae_views::StorageFilter::All, 0, 10).await;
     assert_eq!(page.rows.len(), 3);
     assert_eq!(page.total_count, 3);
 }
@@ -51,9 +51,9 @@ async fn storage_page_paginates() {
     let (manager, _temp_dir) = setup_test_manager().await;
     seed_albums(&manager, 5).await;
 
-    let page1 = storage_page(&manager, crate::library::views::StorageFilter::All, 0, 2).await;
-    let page2 = storage_page(&manager, crate::library::views::StorageFilter::All, 2, 2).await;
-    let page3 = storage_page(&manager, crate::library::views::StorageFilter::All, 4, 2).await;
+    let page1 = storage_page(&manager, bae_views::StorageFilter::All, 0, 2).await;
+    let page2 = storage_page(&manager, bae_views::StorageFilter::All, 2, 2).await;
+    let page3 = storage_page(&manager, bae_views::StorageFilter::All, 4, 2).await;
 
     assert_eq!(page1.rows.len(), 2);
     assert_eq!(page2.rows.len(), 2);
@@ -69,7 +69,7 @@ async fn storage_page_sorts_album_title_ascending() {
     let (manager, _temp_dir) = setup_test_manager().await;
     seed_albums(&manager, 3).await;
 
-    let page = storage_page(&manager, crate::library::views::StorageFilter::All, 0, 10).await;
+    let page = storage_page(&manager, bae_views::StorageFilter::All, 0, 10).await;
     let titles: Vec<_> = page.rows.iter().map(|r| r.album.title.clone()).collect();
     assert_eq!(titles, vec!["Album 0", "Album 1", "Album 2"]);
 }
@@ -79,13 +79,12 @@ async fn storage_page_sorts_album_title_descending() {
     let (manager, _temp_dir) = setup_test_manager().await;
     seed_albums(&manager, 3).await;
 
-    let sort = crate::library::views::StorageSortCriterion {
-        field: crate::library::views::StorageSortField::AlbumTitle,
+    let sort = bae_views::StorageSortCriterion {
+        field: bae_views::StorageSortField::AlbumTitle,
         direction: bae_db::SortDirection::Descending,
     };
-    let page = manager
-        .views()
-        .get_storage_page(&sort, crate::library::views::StorageFilter::All, 0, 10)
+    let page = views(&manager)
+        .get_storage_page(&sort, bae_views::StorageFilter::All, 0, 10)
         .await
         .unwrap();
     let titles: Vec<_> = page.rows.iter().map(|r| r.album.title.clone()).collect();
@@ -127,7 +126,7 @@ async fn storage_page_rows_carry_state_appropriate_actions() {
     manager.database.insert_album(&local_album).await.unwrap();
     insert_release(&manager, &local).await;
 
-    let page = storage_page(&manager, crate::library::views::StorageFilter::All, 0, 10).await;
+    let page = storage_page(&manager, bae_views::StorageFilter::All, 0, 10).await;
     let actions: std::collections::HashMap<_, _> = page
         .rows
         .iter()
@@ -168,7 +167,7 @@ async fn album_detail_releases_carry_their_own_pin_state() {
     }
 
     let detail =
-        manager.views().find_album_detail(&album.id).await.unwrap().expect("the album surfaces");
+        views(&manager).find_album_detail(&album.id).await.unwrap().expect("the album surfaces");
     let pinned: std::collections::HashMap<_, _> = detail
         .releases
         .iter()
@@ -194,7 +193,7 @@ async fn storage_page_rows_have_no_actions_without_cloud_home() {
     manager.database.insert_album(&album).await.unwrap();
     insert_release(&manager, &release).await;
 
-    let page = storage_page(&manager, crate::library::views::StorageFilter::All, 0, 10).await;
+    let page = storage_page(&manager, bae_views::StorageFilter::All, 0, 10).await;
     assert_eq!(page.rows.len(), 1);
     assert!(page.rows[0].release.storage_actions.is_empty());
 }
@@ -213,21 +212,21 @@ async fn storage_page_local_filter_matches_local_path() {
     )
     .await;
 
-    let local = storage_page(&manager, crate::library::views::StorageFilter::Local, 0, 10).await;
+    let local = storage_page(&manager, bae_views::StorageFilter::Local, 0, 10).await;
     assert_eq!(local.rows.len(), 1);
     assert_eq!(local.total_count, 1);
     assert_eq!(local.rows[0].release.id, local_release.id);
     assert_eq!(
         local.rows[0].release.storage_state,
-        crate::album_detail::ReleaseStorageState::Local
+        bae_views::album_detail::ReleaseStorageState::Local
     );
 
-    let remote = storage_page(&manager, crate::library::views::StorageFilter::Remote, 0, 10).await;
+    let remote = storage_page(&manager, bae_views::StorageFilter::Remote, 0, 10).await;
     assert_eq!(remote.rows.len(), 1);
     assert_eq!(remote.rows[0].release.id, remote_id);
     assert_ne!(
         remote.rows[0].release.storage_state,
-        crate::album_detail::ReleaseStorageState::Local
+        bae_views::album_detail::ReleaseStorageState::Local
     );
 }
 
@@ -252,32 +251,20 @@ async fn storage_count_matches_filtered_page_total() {
         }
     }
 
+    assert_eq!(views(&manager).get_storage_count(bae_views::StorageFilter::All).await.unwrap(), 3);
     assert_eq!(
-        manager.views().get_storage_count(crate::library::views::StorageFilter::All).await.unwrap(),
-        3
-    );
-    assert_eq!(
-        manager
-            .views()
-            .get_storage_count(crate::library::views::StorageFilter::Local)
-            .await
-            .unwrap(),
+        views(&manager).get_storage_count(bae_views::StorageFilter::Local).await.unwrap(),
         1
     );
     assert_eq!(
-        manager
-            .views()
-            .get_storage_count(crate::library::views::StorageFilter::Remote)
-            .await
-            .unwrap(),
+        views(&manager).get_storage_count(bae_views::StorageFilter::Remote).await.unwrap(),
         2
     );
 
-    let all_page = storage_page(&manager, crate::library::views::StorageFilter::All, 0, 10).await;
+    let all_page = storage_page(&manager, bae_views::StorageFilter::All, 0, 10).await;
     assert_eq!(all_page.total_count, 3);
 
-    let local_page =
-        storage_page(&manager, crate::library::views::StorageFilter::Local, 0, 10).await;
+    let local_page = storage_page(&manager, bae_views::StorageFilter::Local, 0, 10).await;
     assert_eq!(local_page.rows.len(), 1);
     assert_eq!(local_page.rows[0].release.id, inserted_local.unwrap());
 }
@@ -315,18 +302,17 @@ async fn storage_total_size_matches_page_total_size_sum() {
     .await;
 
     for filter in [
-        crate::library::views::StorageFilter::All,
-        crate::library::views::StorageFilter::Local,
-        crate::library::views::StorageFilter::Remote,
+        bae_views::StorageFilter::All,
+        bae_views::StorageFilter::Local,
+        bae_views::StorageFilter::Remote,
     ] {
-        let page = manager
-            .views()
+        let page = views(&manager)
             .get_storage_page(&sort_by_album_title_asc(), filter, 0, 10)
             .await
             .unwrap();
         let page_sum: i64 = page.rows.iter().map(|row| row.release.total_size).sum();
 
-        let aggregate = manager.views().get_storage_total_size(filter).await.unwrap();
+        let aggregate = views(&manager).get_storage_total_size(filter).await.unwrap();
         assert_eq!(
             aggregate, page_sum as u64,
             "{filter:?}: aggregate must equal the page's own total_size sum"
@@ -336,27 +322,15 @@ async fn storage_total_size_matches_page_total_size_sum() {
     // A release stays local while its upload is pending: its rows name no
     // file until storage holds it.
     assert_eq!(
-        manager
-            .views()
-            .get_storage_total_size(crate::library::views::StorageFilter::All)
-            .await
-            .unwrap(),
+        views(&manager).get_storage_total_size(bae_views::StorageFilter::All).await.unwrap(),
         11_100
     );
     assert_eq!(
-        manager
-            .views()
-            .get_storage_total_size(crate::library::views::StorageFilter::Local)
-            .await
-            .unwrap(),
+        views(&manager).get_storage_total_size(bae_views::StorageFilter::Local).await.unwrap(),
         11_000
     );
     assert_eq!(
-        manager
-            .views()
-            .get_storage_total_size(crate::library::views::StorageFilter::Remote)
-            .await
-            .unwrap(),
+        views(&manager).get_storage_total_size(bae_views::StorageFilter::Remote).await.unwrap(),
         100
     );
 }
@@ -453,60 +427,6 @@ async fn pin_release_counts_audio_and_keeps_cover_evictable() {
     assert_eq!(last.fraction, 1.0, "the bar lands on its denominator");
 }
 
-/// A pin reaches the storage view as it lands, from coven's pin-state watch:
-/// no sync cycle runs behind this connection and no transfer reports it.
-#[tokio::test]
-async fn a_pin_reaches_the_storage_view_without_a_sync_cycle() {
-    let (manager, temp_dir) = setup_test_manager().await;
-    connect_test_cloud(&manager).await;
-    let release = insert_local_release_with_files(
-        &manager,
-        &temp_dir.path().join("pin-watch"),
-        "Pin Watch",
-        &[("track.flac", b"track-bytes")],
-    )
-    .await;
-    manager.upload_release(&release.id, false).await.unwrap();
-    manager.drain_uploads_expecting_work().await.unwrap();
-
-    let values = crate::library::live_reads::subscribe_storage_browse(
-        &manager,
-        &manager.views(),
-        crate::library::StorageBrowseView {
-            sort: crate::library::views::StorageSortCriterion {
-                field: crate::library::views::StorageSortField::AlbumTitle,
-                direction: bae_db::SortDirection::Ascending,
-            },
-            filter: crate::library::views::StorageFilter::All,
-            search: String::new(),
-            windows: [bae_db::LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect(),
-            selected: Default::default(),
-        },
-    );
-    let pinned = |value: &crate::library::StorageBrowseSnapshot| {
-        value
-            .windows
-            .iter()
-            .flat_map(|window| &window.rows)
-            .find(|row| row.release.id == release.id)
-            .map(|row| row.release.pinned)
-    };
-    let first = values.next().await.unwrap();
-    assert_eq!(pinned(&first), Some(false));
-
-    manager.pin_release_files_with_progress(&release.id, |_| {}).await.unwrap();
-
-    loop {
-        let value = tokio::time::timeout(std::time::Duration::from_secs(5), values.next())
-            .await
-            .expect("the pin reaches the storage view")
-            .unwrap();
-        if pinned(&value) == Some(true) {
-            break;
-        }
-    }
-}
-
 /// A pin the provider refuses — bad credentials, a missing bucket — is about
 /// the cloud setup the person fixes, not an internal fault.
 #[tokio::test]
@@ -589,73 +509,6 @@ async fn making_a_release_remote_without_storage_requires_configuration() {
     assert_eq!(error.category(), bae_diagnostics::UiErrorCategory::Config, "{error}");
 }
 
-async fn next_storage_value(
-    values: &crate::library::LiveStorageBrowse,
-) -> crate::library::StorageBrowseSnapshot {
-    tokio::time::timeout(std::time::Duration::from_secs(5), values.next())
-        .await
-        .expect("the storage view delivers")
-        .expect("the storage view resolves")
-}
-
-/// The Storage Manager reads through one subscription: moving its windows,
-/// its sort, or its filter delivers the new view on the same subscription,
-/// with the filtered set's count and total size beside every value.
-#[tokio::test]
-async fn the_storage_view_moves_one_subscription() {
-    let (manager, _temp_dir) = setup_test_manager().await;
-    seed_albums(&manager, 3).await;
-    let window = |offset, limit| bae_db::LibraryPageWindow { offset, limit };
-    let view = |direction, filter, windows: &[bae_db::LibraryPageWindow]| {
-        crate::library::StorageBrowseView {
-            sort: crate::library::views::StorageSortCriterion {
-                field: crate::library::views::StorageSortField::AlbumTitle,
-                direction,
-            },
-            filter,
-            search: String::new(),
-            windows: windows.iter().cloned().collect(),
-            selected: Default::default(),
-        }
-    };
-    let titles = |value: &crate::library::StorageBrowseSnapshot| {
-        value
-            .windows
-            .iter()
-            .map(|window| window.rows.iter().map(|row| row.album.title.clone()).collect::<Vec<_>>())
-            .collect::<Vec<_>>()
-    };
-    let ascending = bae_db::SortDirection::Ascending;
-    let all = crate::library::views::StorageFilter::All;
-    let values = crate::library::live_reads::subscribe_storage_browse(
-        &manager,
-        &manager.views(),
-        view(ascending, all, &[window(0, 2)]),
-    );
-
-    let first = next_storage_value(&values).await;
-    assert_eq!(titles(&first), vec![vec!["Album 0", "Album 1"]]);
-    assert_eq!(first.total_count, 3);
-
-    values.set(view(ascending, all, &[window(0, 1), window(2, 1)])).unwrap();
-    let scrolled = next_storage_value(&values).await;
-    assert_eq!(titles(&scrolled), vec![vec!["Album 0"], vec!["Album 2"]]);
-    assert_eq!(scrolled.total_count, 3, "one count answers every window");
-
-    let descending = bae_db::SortDirection::Descending;
-    values.set(view(descending, all, &[window(0, 2)])).unwrap();
-    let resorted = next_storage_value(&values).await;
-    assert_eq!(resorted.sort.direction, descending);
-    assert_eq!(titles(&resorted), vec![vec!["Album 2", "Album 1"]]);
-
-    let local = crate::library::views::StorageFilter::Local;
-    values.set(view(descending, local, &[window(0, 2)])).unwrap();
-    let filtered = next_storage_value(&values).await;
-    assert_eq!(filtered.filter, local);
-    assert_eq!(filtered.total_count, manager.views().get_storage_count(local).await.unwrap());
-    assert_eq!(filtered.total_size, manager.views().get_storage_total_size(local).await.unwrap());
-}
-
 /// Uploading reads this device's originals, so every surface that offers it —
 /// the release detail, its storage summary, and the Storage Manager row —
 /// offers it only for a release the library records this device holding the
@@ -687,14 +540,14 @@ async fn check_upload_offered(
     .await;
 
     let offered = |release_id: String| async move {
-        let detail = crate::library::views::LibraryViews::new(manager.database.clone())
+        let detail = bae_views::LibraryViews::new(manager.database.clone())
             .find_release_detail(&release_id)
             .await
             .unwrap()
             .expect("the release exists")
             .summary
             .storage_actions;
-        let row = storage_page(manager, crate::library::views::StorageFilter::All, 0, 10)
+        let row = storage_page(manager, bae_views::StorageFilter::All, 0, 10)
             .await
             .rows
             .into_iter()
@@ -727,36 +580,28 @@ async fn a_storage_row_reads_its_queued_upload_from_the_queue() {
     )
     .await;
     let row = |manager: LibraryManager, release_id: String| async move {
-        crate::library::views::LibraryViews::new(manager.database.clone())
-            .get_db_storage_page(
-                &crate::library::views::StorageSortCriterion {
-                    field: crate::library::views::StorageSortField::AlbumTitle,
+        bae_views::LibraryViews::new(manager.database.clone())
+            .get_storage_page(
+                &bae_views::StorageSortCriterion {
+                    field: bae_views::StorageSortField::AlbumTitle,
                     direction: bae_db::SortDirection::Ascending,
                 },
-                crate::library::views::StorageFilter::All,
+                bae_views::StorageFilter::All,
                 0,
                 50,
             )
             .await
             .unwrap()
+            .rows
             .into_iter()
             .find(|row| row.release.id == release_id)
             .expect("the release is listed")
     };
-    let summary = |row: crate::library::views::DbStorageRow| {
-        crate::album_detail::ReleaseSummary::from_raw(
-            row.release,
-            &crate::album_detail::ReleaseResolveCtx {
-                has_cloud_home: true,
-                cover: None,
-                is_compilation: false,
-            },
-        )
-    };
+    let summary = |row: bae_views::album_detail::StorageRow| row.release;
     let queued = summary(row(manager.library.clone(), release.id.clone()).await);
     assert_eq!(
         queued.upload,
-        Some(crate::album_detail::ReleaseUpload {
+        Some(bae_views::album_detail::ReleaseUpload {
             progress: bae_db::UploadProgress { queued: 2, uploading: 0 },
             summary: vec![bae_transfers::TransferCount {
                 label: bae_transfers::CountLabel { key: "core.queue.queued".into(), count: 2 },
@@ -786,17 +631,16 @@ async fn a_storage_row_counts_the_file_being_sent() {
         &[("a.flac", b"bytes-a")],
     )
     .await;
-    let mut browse =
-        manager.views().subscribe_storage_browse(crate::library::views::StorageBrowseRequest {
-            sort: crate::library::views::StorageSortCriterion {
-                field: crate::library::views::StorageSortField::AlbumTitle,
-                direction: bae_db::SortDirection::Ascending,
-            },
-            filter: crate::library::views::StorageFilter::All,
-            search: String::new(),
-            windows: [bae_db::LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect(),
-            selected: Default::default(),
-        });
+    let mut browse = views(&manager).subscribe_storage_browse(bae_views::StorageBrowseRequest {
+        sort: bae_views::StorageSortCriterion {
+            field: bae_views::StorageSortField::AlbumTitle,
+            direction: bae_db::SortDirection::Ascending,
+        },
+        filter: bae_views::StorageFilter::All,
+        search: String::new(),
+        windows: [bae_db::LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect(),
+        selected: Default::default(),
+    });
     home.set_faults(coven::Faults {
         delay: std::time::Duration::from_secs(2),
         ..coven::Faults::none()
@@ -837,7 +681,7 @@ async fn the_sync_activity_follows_a_send_as_it_starts_and_ends() {
         &[("a.flac", b"bytes-a")],
     )
     .await;
-    let mut activity = manager.library.views().subscribe_sync_activity();
+    let mut activity = views(&manager.library).subscribe_sync_activity();
     assert_eq!(crate::followed::value_matching(&mut activity, |_| true).await.uploads, None);
     // Held in flight long enough that its start is read while it runs.
     home.set_faults(coven::Faults {
@@ -855,7 +699,7 @@ async fn the_sync_activity_follows_a_send_as_it_starts_and_ends() {
             break uploads;
         }
     };
-    assert_eq!(sending, crate::library::UploadsInFlight { sending: 1, waiting: 0 });
+    assert_eq!(sending, bae_views::UploadsInFlight { sending: 1, waiting: 0 });
     while crate::followed::value_matching(&mut activity, |_| true).await.uploads.is_some() {}
     drain.await.unwrap().unwrap();
 }
@@ -865,7 +709,7 @@ async fn the_sync_activity_follows_a_send_as_it_starts_and_ends() {
 #[tokio::test]
 async fn the_upload_pause_follows_each_change_with_an_empty_queue() {
     let (manager, _temp_dir) = setup_test_manager().await;
-    let mut paused = manager.views().subscribe_uploads_paused();
+    let mut paused = views(&manager).subscribe_uploads_paused();
     assert!(!paused.next().await.unwrap().unwrap());
     manager.set_sync_paused(true).await.unwrap();
     assert!(paused.next().await.unwrap().unwrap());

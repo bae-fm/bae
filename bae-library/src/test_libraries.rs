@@ -6,11 +6,16 @@
 
 mod playback;
 mod profiles;
+mod records;
 mod storage;
 
 pub use playback::{start_capture_playback, start_capture_playback_with_clock};
 pub use profiles::{made_profile, made_profile_on, requested_profile, requested_profile_on};
-pub use storage::{connect_storage, release_storage, remove_uploaded_file, storage_library};
+pub use records::{
+    insert_local_release_with_files, insert_release, insert_release_with_queued_uploads,
+    test_album, test_release,
+};
+pub use storage::{connect_storage, remove_uploaded_file, storage_library};
 
 use crate::library::{CancellationToken, LibraryManager};
 use bae_catalogs::remote_image::RemoteImageCache;
@@ -104,11 +109,6 @@ impl TestLibrary {
     /// The catalog sessions the library asks through.
     pub fn catalogs(&self) -> &CatalogSessions {
         &self.catalogs
-    }
-
-    /// The library's views over its store.
-    pub fn views(&self) -> crate::library::views::LibraryViews {
-        crate::library::views::LibraryViews::new(self.database.clone())
     }
 
     /// The cast picker's list over its store.

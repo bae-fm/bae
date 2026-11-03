@@ -9,7 +9,7 @@ use crate::sync::test_devices::run_library_test;
 fn an_invite_is_listed_until_it_is_cancelled() {
     run_library_test(async |library| {
         let manager = library.first().manager();
-        let views = crate::library::views::LibraryViews::new(library.first().database().clone());
+        let views = bae_views::LibraryViews::new(library.first().database().clone());
         let mut invites = views.subscribe_invites();
         crate::followed::value_matching(&mut invites, Vec::is_empty).await;
         let invite = manager

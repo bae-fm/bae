@@ -236,10 +236,15 @@ task_types = [
 # A test's catalog fakes: the providers its library asks are built over
 # them, once per library the test opens.
 "bae-catalogs/src/fake_catalogs.rs" = ["FakeCatalogs::providers"]
+# Two stores a test syncs over shared memory storage: it creates the first
+# and restores the second from it, and hands the test, the final owner of
+# what it built, each store to write and read. It is test-utils code, which
+# the views' tests compile, so the checker reads it as production code.
+"bae-db/src/test_devices.rs" = ["TwoStores::a", "TwoStores::b"]
 # A test's library: it opens the library as the app's opening step does, and
 # hands the test, the final owner of what it built, the manager, the parts the
-# app's step hands the library's services, and the views and services it
-# builds over them. It is test-utils code, which the tests of the crates above
+# app's step hands the library's services, and the services it builds over
+# them. It is test-utils code, which the tests of the crates above
 # compile, so the checker reads it as production code.
 "bae-library/src/test_libraries.rs" = [
     "TestLibrary::deref",
@@ -250,7 +255,6 @@ task_types = [
     "TestLibrary::ids",
     "TestLibrary::diagnostics",
     "TestLibrary::remote_images",
-    "TestLibrary::views",
     "TestLibrary::cast_picker",
     "TestLibrary::start_playback",
     "TestLibrary::start_playback_on",

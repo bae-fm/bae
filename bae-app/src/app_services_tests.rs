@@ -241,12 +241,10 @@ async fn a_release_session_keeps_its_choices_in_core() {
 /// entry as `matches` looks for.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 async fn inspected_export_until(
-    inspector: &bae_library::library::LiveDetail<
-        bae_library::library::storage_inspector::StorageInspector,
-    >,
+    inspector: &bae_library::library::LiveDetail<bae_views::storage_inspector::StorageInspector>,
     matches: impl Fn(&bae_transfers::OutputPhaseRow) -> bool,
 ) -> bae_transfers::OutputPhaseRow {
-    use bae_library::library::storage_inspector::StorageInspectorTransfer;
+    use bae_views::storage_inspector::StorageInspectorTransfer;
     loop {
         let snapshot = tokio::time::timeout(std::time::Duration::from_secs(5), inspector.next())
             .await
@@ -333,7 +331,7 @@ async fn a_queued_release_shows_its_title_as_edited_while_it_waits() {
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[tokio::test(flavor = "multi_thread")]
 async fn the_storage_inspector_reads_the_release_it_is_set_to() {
-    use bae_library::library::storage_inspector::StorageInspectorTransfer;
+    use bae_views::storage_inspector::StorageInspectorTransfer;
     let (services, _track_ids, temp_dir) = playing_app_services(1).await;
     let release_id = "c61a9e19-f3ba-4728-842c-c59dbc82e238";
     let manager = &services.inner.manager;
@@ -430,7 +428,7 @@ async fn closing_the_library_ends_a_held_live_reads_task_before_its_store_closes
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[tokio::test(flavor = "multi_thread")]
 async fn the_release_files_read_answers_the_request_it_is_set_to() {
-    use bae_library::library::{ReleaseFileColumn, ReleaseFileOrder, ReleaseFilesRequest};
+    use bae_views::{ReleaseFileColumn, ReleaseFileOrder, ReleaseFilesRequest};
     let (services, _track_ids, _temp_dir) = playing_app_services(1).await;
     let files = services.subscribe_release_files();
     let request = |release_id: &str| ReleaseFilesRequest {

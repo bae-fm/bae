@@ -438,7 +438,7 @@ forward! {
         /// The library albums a query finds, for the album picker. A blank
         /// query is not a search and finds none.
         fn search_albums(query: String) -> Vec<crate::types::BridgeAlbumChoice> {
-            let Some(query) = bae_library::library::LibrarySearchQuery::parse(&query) else {
+            let Some(query) = bae_views::LibrarySearchQuery::parse(&query) else {
                 return Ok(Vec::new());
             };
             Ok(this

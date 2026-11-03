@@ -62,9 +62,9 @@ async fn artists_named(f: &ImportFixture, name: &str) -> Vec<bae_db::DbArtist> {
             .collect::<String>()
             .to_lowercase()
     };
-    let query = bae_library::library::LibrarySearchQuery::parse("rtist").expect("not blank");
+    let query = bae_views::LibrarySearchQuery::parse("rtist").expect("not blank");
     let window = bae_db::LibraryPageWindow { offset: 0, limit: 100 };
-    bae_library::library::views::LibraryViews::new(f.library.database().clone())
+    bae_views::LibraryViews::new(f.library.database().clone())
         .search_artists(&query, window)
         .await
         .unwrap()
@@ -371,7 +371,7 @@ async fn a_discogs_credit_imports_with_its_printed_name_and_join() {
     let (_, album_id) = import_and_wait(&f, dir, bae_import::test_imports::discogs_release(release_key)).await;
 
     let album =
-        bae_library::library::views::LibraryViews::new(f.library.database().clone()).find_album_detail(&album_id).await.unwrap().expect("the imported album");
+        bae_views::LibraryViews::new(f.library.database().clone()).find_album_detail(&album_id).await.unwrap().expect("the imported album");
     assert_eq!(album.artist_names, "A Variation & Artist B");
     assert_eq!(album.artists[0].artist.name, "Artist A");
     assert_eq!(album.artists[0].printed(), "A Variation");

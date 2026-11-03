@@ -46,8 +46,8 @@ async fn download_queue_skips_already_pinned() {
     connect_test_cloud(&manager).await;
     let release_id =
         uploaded_release(&manager, &temp_dir.path().join("pinned"), "Test Album", true).await;
-    let summary = manager.views().find_release_detail(&release_id).await.unwrap().unwrap().summary;
-    assert_eq!(summary.storage_state, crate::album_detail::ReleaseStorageState::Remote);
+    let summary = views(&manager).find_release_detail(&release_id).await.unwrap().unwrap().summary;
+    assert_eq!(summary.storage_state, bae_views::album_detail::ReleaseStorageState::Remote);
     assert!(summary.pinned, "the offline-cached file makes it read as pinned");
 
     manager.set_downloads_paused(true).await.unwrap();
@@ -101,8 +101,8 @@ async fn download_queue_skips_local_release() {
         &[("a.flac", b"aaa")],
     )
     .await;
-    let summary = manager.views().find_release_detail(&release.id).await.unwrap().unwrap().summary;
-    assert_eq!(summary.storage_state, crate::album_detail::ReleaseStorageState::Local);
+    let summary = views(&manager).find_release_detail(&release.id).await.unwrap().unwrap().summary;
+    assert_eq!(summary.storage_state, bae_views::album_detail::ReleaseStorageState::Local);
 
     manager.enqueue_pins(vec![release.id.clone()]).await.unwrap();
     assert!(
@@ -266,7 +266,7 @@ async fn download_bytes_send_no_new_sync_activity() {
     let progress = |bytes_done| {
         bae_transfers::DownloadTransferProgress::new(&release_id, bytes_done, 7).unwrap()
     };
-    let mut activity = manager.library.views().subscribe_sync_activity();
+    let mut activity = views(&manager.library).subscribe_sync_activity();
     assert_eq!(crate::followed::value_matching(&mut activity, |_| true).await.downloads, None);
 
     // The manager's own worker leaves the entry to this test.
@@ -288,7 +288,7 @@ async fn download_bytes_send_no_new_sync_activity() {
         .unwrap());
     assert_eq!(
         crate::followed::value_matching(&mut activity, |_| true).await.downloads,
-        Some(crate::library::DownloadsInFlight { active: 1, queued: 0 })
+        Some(bae_views::DownloadsInFlight { active: 1, queued: 0 })
     );
 
     let next = activity.next();

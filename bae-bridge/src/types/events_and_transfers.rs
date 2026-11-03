@@ -243,7 +243,7 @@ pub enum BridgeReleaseDownloadStatus {
 }
 
 mirror_enum! {
-    BridgeReleaseDownloadStatus = bae_library::album_detail::ReleaseDownloadStatus,
+    BridgeReleaseDownloadStatus = bae_views::album_detail::ReleaseDownloadStatus,
     from_core: pub(crate) fn,
     variants: {
         Downloaded,

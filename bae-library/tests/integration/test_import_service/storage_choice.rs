@@ -61,7 +61,7 @@ async fn an_import_goes_where_the_stored_choice_says_as_it_starts() {
         "the release's one file uploads"
     );
     f.library.wait_for_kept_release_for_test(&id).await;
-    let storage = bae_library::library::views::LibraryViews::new(f.library.database().clone())
+    let storage = bae_views::LibraryViews::new(f.library.database().clone())
         .find_release_detail(&id)
         .await
         .unwrap()

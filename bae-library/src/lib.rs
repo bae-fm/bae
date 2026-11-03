@@ -1,4 +1,3 @@
-pub mod album_detail;
 #[cfg(all(feature = "dev-reset", unix))]
 pub mod dev_reset;
 #[cfg(any(test, feature = "test-utils"))]

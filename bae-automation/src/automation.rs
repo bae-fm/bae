@@ -487,7 +487,7 @@ impl Automation {
     ) -> Result<AutomationLibrarySearchResults, AutomationError> {
         // Trimming and the blank check are core policy: a blank query is not a
         // search and returns nothing, rather than matching every row.
-        let results = match bae_library::library::LibrarySearchQuery::parse(&query) {
+        let results = match bae_views::LibrarySearchQuery::parse(&query) {
             Some(query) => self.services.search_library(&query).await?,
             None => SearchResults::default(),
         };

@@ -94,23 +94,23 @@ pub(crate) trait DetailValue {
 }
 
 impl DetailValue for crate::types::BridgeAlbumDetail {
-    type Core = bae_library::album_detail::AlbumDetail;
+    type Core = bae_views::album_detail::AlbumDetail;
 }
 
 impl DetailValue for crate::types::BridgeRelease {
-    type Core = bae_library::album_detail::ReleaseDetail;
+    type Core = bae_views::album_detail::ReleaseDetail;
 }
 
 impl DetailValue for crate::types::BridgeArtistDetail {
-    type Core = bae_library::album_detail::ArtistDetail;
+    type Core = bae_views::album_detail::ArtistDetail;
 }
 
 impl DetailValue for crate::types::BridgeComposerDetail {
-    type Core = bae_library::album_detail::ComposerDetail;
+    type Core = bae_views::album_detail::ComposerDetail;
 }
 
 impl DetailValue for crate::types::BridgeWorkDetail {
-    type Core = bae_library::album_detail::WorkDetail;
+    type Core = bae_views::album_detail::WorkDetail;
 }
 
 #[cfg(feature = "desktop")]
@@ -126,7 +126,7 @@ impl DetailValue for crate::types::BridgeInvalidCandidateDetail {
 // Gated on the target, as the export queue its transfers include is.
 #[cfg(desktop)]
 impl DetailValue for crate::types::BridgeStorageInspector {
-    type Core = bae_library::library::storage_inspector::StorageInspector;
+    type Core = bae_views::storage_inspector::StorageInspector;
 }
 
 #[cfg(desktop)]

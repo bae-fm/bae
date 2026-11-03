@@ -91,6 +91,7 @@ jobs:
         cargo clippy -p bae-preferences --tests --features bae-preferences/test-utils -- -D warnings
         cargo clippy -p bae-track-audio --tests --features bae-track-audio/test-utils -- -D warnings
         cargo clippy -p bae-transfers --tests --features bae-transfers/test-utils -- -D warnings
+        cargo clippy -p bae-views --tests --features bae-views/test-utils -- -D warnings
         cargo clippy -p bae-identify --tests --features bae-identify/test-utils -- -D warnings
         cargo clippy -p bae-playback --tests --features bae-playback/test-utils -- -D warnings
         cargo clippy -p bae-import --tests --features bae-import/test-utils -- -D warnings
@@ -113,6 +114,7 @@ jobs:
         cargo rustc -p bae-preferences --lib --profile check -- -D warnings
         cargo rustc -p bae-track-audio --lib --profile check -- -D warnings
         cargo rustc -p bae-transfers --lib --profile check -- -D warnings
+        cargo rustc -p bae-views --lib --profile check -- -D warnings
         cargo rustc -p bae-identify --lib --profile check -- -D warnings
         cargo rustc -p bae-playback --lib --profile check -- -D warnings
         cargo rustc -p bae-import --lib --profile check -- -D warnings
@@ -148,6 +150,7 @@ jobs:
         cargo nextest run --no-fail-fast -p bae-preferences || status=1
         cargo nextest run --no-fail-fast -p bae-track-audio || status=1
         cargo nextest run --no-fail-fast -p bae-transfers || status=1
+        cargo nextest run --no-fail-fast -p bae-views || status=1
         cargo nextest run --no-fail-fast -p bae-identify || status=1
         cargo nextest run --no-fail-fast -p bae-playback || status=1
         cargo nextest run --no-fail-fast -p bae-import || status=1

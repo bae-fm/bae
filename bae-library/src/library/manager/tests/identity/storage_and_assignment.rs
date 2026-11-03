@@ -22,14 +22,14 @@ async fn storage_page_id_tiebreaker_stable_across_pages() {
     manager.database.insert_release(&release_a).await.unwrap();
     manager.database.insert_release(&release_b).await.unwrap();
 
-    let sort = crate::library::views::StorageSortCriterion {
-        field: crate::library::views::StorageSortField::AlbumTitle,
+    let sort = bae_views::StorageSortCriterion {
+        field: bae_views::StorageSortField::AlbumTitle,
         direction: bae_db::SortDirection::Ascending,
     };
     let first_page =
-        manager.views().get_storage_page(&sort, crate::library::views::StorageFilter::All, 0, 1).await.unwrap();
+        views(&manager).get_storage_page(&sort, bae_views::StorageFilter::All, 0, 1).await.unwrap();
     let second_page =
-        manager.views().get_storage_page(&sort, crate::library::views::StorageFilter::All, 1, 1).await.unwrap();
+        views(&manager).get_storage_page(&sort, bae_views::StorageFilter::All, 1, 1).await.unwrap();
 
     assert_eq!(first_page.rows.len(), 1);
     assert_eq!(second_page.rows.len(), 1);
@@ -43,7 +43,10 @@ async fn storage_page_id_tiebreaker_stable_across_pages() {
 /// MusicBrainz, so a release carrying both records still has one.
 fn mb_identity(group: &str, release: &str) -> bae_catalogs::records::ReleaseRecord {
     bae_catalogs::records::ReleaseRecord::new(
-        &bae_catalogs::records::MetadataRef::new(bae_catalogs::catalog::Catalog::MusicBrainz, release),
+        &bae_catalogs::records::MetadataRef::new(
+            bae_catalogs::catalog::Catalog::MusicBrainz,
+            release,
+        ),
         Some(group.to_string()),
     )
 }
@@ -96,7 +99,7 @@ async fn set_records_to_file_metadata_moves_release_to_fresh_album() {
     manager.set_records(&release.id, vec![]).await.unwrap();
 
     // The original album was a one-release album → empty and unlisted now.
-    assert!(manager.views().find_album_detail(&album.id).await.unwrap().is_none());
+    assert!(views(&manager).find_album_detail(&album.id).await.unwrap().is_none());
 
     // Release moved to a brand-new album, holds nothing else.
     let new_album_id =
@@ -216,7 +219,7 @@ async fn set_records_moves_the_release_to_the_matching_album() {
     assert_eq!(target_siblings.len(), 2);
 
     // album_a was a single-release album → empty and unlisted now.
-    assert!(manager.views().find_album_detail(&album_a.id).await.unwrap().is_none());
+    assert!(views(&manager).find_album_detail(&album_a.id).await.unwrap().is_none());
 }
 
 #[tokio::test]
@@ -469,8 +472,8 @@ async fn set_records_atomic_rechecks_the_source_count_inside_the_transaction() {
 
 #[tokio::test]
 async fn album_records_merge_albums_but_never_match_pressings() {
-    use bae_catalogs::records::{MetadataRef, ReleaseRecord};
     use bae_catalogs::catalog::Catalog;
+    use bae_catalogs::records::{MetadataRef, ReleaseRecord};
     let (manager, _temp_dir) = setup_test_manager().await;
     let album = create_test_album();
     manager.database.insert_album(&album).await.unwrap();
@@ -525,8 +528,8 @@ async fn album_records_merge_albums_but_never_match_pressings() {
 
 #[tokio::test]
 async fn ungrouped_pressings_do_not_invent_album_matches() {
-    use bae_catalogs::records::{MetadataRef, ReleaseRecord};
     use bae_catalogs::catalog::Catalog;
+    use bae_catalogs::records::{MetadataRef, ReleaseRecord};
     let (manager, _temp_dir) = setup_test_manager().await;
     let album = create_test_album();
     manager.database.insert_album(&album).await.unwrap();

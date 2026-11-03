@@ -3,11 +3,8 @@
 use super::*;
 
 impl crate::types::BridgeStorageInspector {
-    pub(crate) fn from_core(
-        inspector: bae_library::library::storage_inspector::StorageInspector,
-    ) -> Self {
-        let bae_library::library::storage_inspector::StorageInspector { transfers, files } =
-            inspector;
+    pub(crate) fn from_core(inspector: bae_views::storage_inspector::StorageInspector) -> Self {
+        let bae_views::storage_inspector::StorageInspector { transfers, files } = inspector;
         Self {
             transfers: transfers
                 .into_iter()
@@ -22,10 +19,8 @@ impl crate::types::BridgeStorageInspector {
 }
 
 impl crate::types::BridgeStorageInspectorTransfer {
-    fn from_core(
-        transfer: bae_library::library::storage_inspector::StorageInspectorTransfer,
-    ) -> Self {
-        use bae_library::library::storage_inspector::StorageInspectorTransfer;
+    fn from_core(transfer: bae_views::storage_inspector::StorageInspectorTransfer) -> Self {
+        use bae_views::storage_inspector::StorageInspectorTransfer;
         match transfer {
             StorageInspectorTransfer::Download { operation, summary } => Self::Download {
                 operation: crate::types::BridgeDownloadOp::from_core(operation),
@@ -51,9 +46,8 @@ impl crate::types::BridgeStorageInspectorTransfer {
 }
 
 impl crate::types::BridgeStorageInspectorFile {
-    fn from_core(row: bae_library::library::storage_inspector::StorageInspectorFile) -> Self {
-        let bae_library::library::storage_inspector::StorageInspectorFile { file, upload, pin } =
-            row;
+    fn from_core(row: bae_views::storage_inspector::StorageInspectorFile) -> Self {
+        let bae_views::storage_inspector::StorageInspectorFile { file, upload, pin } = row;
         Self {
             file: BridgeFile::from_core(file),
             upload: upload.map(|upload| crate::types::BridgeFileUpload {
@@ -65,11 +59,11 @@ impl crate::types::BridgeStorageInspectorFile {
                 pending: upload.pending.map(crate::types::BridgePendingWait::from_core),
             }),
             pin: pin.map(|pin| match pin {
-                bae_library::album_detail::FilePin::Kept => crate::types::BridgeFilePin::Kept,
-                bae_library::album_detail::FilePin::Downloading { file } => {
+                bae_views::album_detail::FilePin::Kept => crate::types::BridgeFilePin::Kept,
+                bae_views::album_detail::FilePin::Downloading { file } => {
                     crate::types::BridgeFilePin::Downloading { file_id: file.to_string() }
                 }
-                bae_library::album_detail::FilePin::Waiting => crate::types::BridgeFilePin::Waiting,
+                bae_views::album_detail::FilePin::Waiting => crate::types::BridgeFilePin::Waiting,
             }),
         }
     }

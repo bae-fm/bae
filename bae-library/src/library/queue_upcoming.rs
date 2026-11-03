@@ -22,3 +22,49 @@ pub struct QueueUpcomingSnapshot {
 /// in place through [`super::LiveRead::set`], and a change to the queue reads
 /// them again: neither opens another query.
 pub type LiveQueueUpcoming = super::LiveRead<LibraryPageWindows, QueueUpcomingSnapshot>;
+
+/// The context's upcoming tail, read in the windows the subscription is
+/// asked for — none until the first [`LiveRead::set`] — with the tail's
+/// length, and whether the queue changed since the value before or only
+/// the windows moved. One query serves every window; a new window set
+/// points it at the new windows.
+///
+/// [`LiveRead::set`]: super::LiveRead::set
+pub fn subscribe_queue_upcoming(
+    library: &crate::library::LibraryManager,
+) -> crate::library::LiveQueueUpcoming {
+    let (windows_tx, mut windows) = tokio::sync::watch::channel(bae_db::LibraryPageWindows::new());
+    let (tx, rx) = crate::library::live_read_channel();
+    let manager = library.clone();
+    let task = crate::library::CancellationToken::new();
+    library.spawn_stoppable_subscription_task(
+        "queue upcoming",
+        task.clone(),
+        tx.clone(),
+        async move {
+            let mut query = crate::library::live_query_events::reconfigurable_live_query_events(
+                &manager,
+                manager.subscribe_queue_upcoming(windows.borrow_and_update().clone()),
+                tx.clone(),
+            );
+            loop {
+                tokio::select! {
+                    event = query.recv_with_cause() => {
+                        let Some((cause, result)) = event else { return };
+                        let value = result.map(|read| crate::library::QueueUpcomingSnapshot {
+                            upcoming_total: read.upcoming_total,
+                            queue_changed: !matches!(cause, coven::LiveQueryCause::Request),
+                            windows: read.windows,
+                        });
+                        if tx.send(value).is_err() { return; }
+                    }
+                    changed = windows.changed() => {
+                        if changed.is_err() { return; }
+                        query.set(windows.borrow_and_update().clone());
+                    }
+                }
+            }
+        },
+    );
+    crate::library::LiveQueueUpcoming::new(windows_tx, rx, task)
+}

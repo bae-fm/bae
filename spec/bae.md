@@ -3332,7 +3332,7 @@ internal error (HTTP 500).
 
 Every app does the same things with a library: open it, read it, watch it
 change, import, play, move files, sync, and change settings. bae's Rust
-API (bae-app over bae-library) does each once, so no platform keeps its own copy of a rule. This section
+API (bae-app over bae-library and bae-views) does each once, so no platform keeps its own copy of a rule. This section
 names the API's parts; the source is the reference for each signature.
 
 ### 9.1 Opening a library
@@ -3637,10 +3637,10 @@ how the API reaches Swift and Kotlin, and C# for bae-avalonia.
 
 ### 10.1 Only translation
 
-bae-bridge does one thing: it converts bae-app's and bae-library's types to and
-from types uniffi can export. It looks nothing up, formats nothing, filters
-nothing and holds no state. Anything else is added to bae-app or bae-library, and
-the bridge calls it.
+bae-bridge does one thing: it converts the types of bae-app and the crates below
+it to and from types uniffi can export. It looks nothing up, formats nothing, filters
+nothing and holds no state. Anything else is added to bae-app or the crate below
+it that owns it, and the bridge calls it.
 
 The reason is the platforms: anything a UI or the bridge decides, each
 platform would decide again, and they would drift. So a UI renders what it is
@@ -3831,8 +3831,9 @@ bindings export none of their symbols.
 
 | Crate | Holds |
 |---|---|
-| bae-app | the composition root: the bootstrap that opens a library and builds every long-lived part of it once, and `AppServices`, the one owner of the opened library every surface calls, which passes each call on to the part that answers it |
-| bae-library | the library, files, outputs, sync integration, settings, and the live reads the screens pull |
+| bae-app | the composition root: the bootstrap that opens a library and builds every long-lived part of it once, `AppServices`, the one owner of the opened library every surface calls, which passes each call on to the part that answers it, and the live reads the screens pull over the library and its views |
+| bae-library | the library, files, outputs, sync integration and settings: the library manager and the long-lived parts it drives |
+| bae-views | the library's views: what the album, artist and composer lists, the detail views, library search, the artist picker, the Storage Manager and its inspector, and the sync activity read, as live queries over the store, and the shapes a screen shows them in |
 | bae-import | import, desktop only but for the release-edit model, the import pane's session values and the errors the library reports from import: watched folders and their scans, the candidates they hold, the drafts a person shapes and the pane's session over them, identification runs against the catalogs and the queue that admits them, cue sheets, loudness measurement, and the import that writes a candidate's release into the store, with import's own tables |
 | bae-playback | playback: the service that plays the queue on this device's output or a remote renderer, the queue, its resume point and play history as the store keeps them, the outputs it plays on, the preview player, and the renderer session a connected cast or UPnP device is driven through |
 | bae-identify | identification, desktop only: the reducer that asks every key a candidate's signals put in effect and ranks what the catalogs return, the release groups and pressing evidence it ranks by, the view a surface shows of a run, and the verdict a finished run stores |

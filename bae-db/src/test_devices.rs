@@ -288,15 +288,15 @@ pub fn on_device_runtime(body: impl AsyncFnOnce() + Send + 'static) {
 
 /// One device of a store-level test: its store's database, the record of its
 /// sync cycles, and what keeps its installation alive.
-#[cfg(test)]
-pub(crate) struct StoreDevice {
+#[cfg(any(test, feature = "test-utils"))]
+struct StoreDevice {
     database: Database,
     cycles: SyncCycles,
     _installation: coven::TestCoven,
     _dir: tempfile::TempDir,
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "test-utils"))]
 impl StoreDevice {
     fn new(
         handle: coven::CovenHandle,
@@ -307,17 +307,13 @@ impl StoreDevice {
         let cycles = SyncCycles::follow(&database);
         Self { database, cycles, _installation: installation, _dir: dir }
     }
-
-    fn synced(&self) -> (&Database, &SyncCycles) {
-        (&self.database, &self.cycles)
-    }
 }
 
 /// The library's first device and one restored from it, both syncing over
 /// shared memory storage, with no library running on either: what a test of
 /// how db's rows sync between devices runs on.
-#[cfg(test)]
-pub(crate) struct TwoStores {
+#[cfg(any(test, feature = "test-utils"))]
+pub struct TwoStores {
     a: StoreDevice,
     b: StoreDevice,
 }
@@ -325,8 +321,8 @@ pub(crate) struct TwoStores {
 /// Run `test` over two stores, each closed before the runtime ends: a store
 /// still syncing as its runtime shuts down has its next database call
 /// cancelled, which coven reports as a panic.
-#[cfg(test)]
-pub(crate) fn run_two_store_test<F>(test: F)
+#[cfg(any(test, feature = "test-utils"))]
+pub fn run_two_store_test<F>(test: F)
 where
     F: AsyncFnOnce(&TwoStores) + Send + 'static,
 {
@@ -339,7 +335,7 @@ where
     });
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "test-utils"))]
 impl TwoStores {
     async fn new() -> Self {
         let clock: coven::ClockRef = Arc::new(coven::SystemClock);
@@ -370,31 +366,51 @@ impl TwoStores {
     }
 
     /// The device that created the library.
-    pub(crate) fn a(&self) -> &Database {
+    pub fn a(&self) -> &Database {
         &self.a.database
     }
 
     /// The device restored from the first one's code.
-    pub(crate) fn b(&self) -> &Database {
+    pub fn b(&self) -> &Database {
         &self.b.database
     }
 
     /// Wait until both sync loops have stopped, before making concurrent
     /// offline edits.
-    pub(crate) async fn pause(&self) {
+    pub async fn pause(&self) {
         for store in [&self.a, &self.b] {
             stop_sync(&store.database).await;
         }
     }
 
-    pub(crate) async fn resume(&self) {
+    pub async fn resume(&self) {
         for store in [&self.a, &self.b] {
             store.database.start_sync().await.unwrap();
         }
     }
 
     /// Run sync on both until they answer `query` with the same rows.
-    pub(crate) async fn converge(&self, query: &str) {
-        converge(self.a.synced(), self.b.synced(), query).await;
+    pub async fn converge(&self, query: &str) {
+        converge((&self.a.database, &self.a.cycles), (&self.b.database, &self.b.cycles), query)
+            .await;
+    }
+
+    /// Run sync on both until `settled` holds on each, named by its letter,
+    /// and neither holds anything back.
+    pub async fn settle<F, Fut>(&self, what: &str, settled: F)
+    where
+        F: Fn(&'static str, Database) -> Fut,
+        Fut: std::future::Future<Output = bool>,
+    {
+        settle(
+            (&self.a.database, &self.a.cycles),
+            (&self.b.database, &self.b.cycles),
+            what,
+            || async {
+                settled("A", self.a.database.clone()).await
+                    && settled("B", self.b.database.clone()).await
+            },
+        )
+        .await;
     }
 }

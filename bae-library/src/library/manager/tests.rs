@@ -28,6 +28,12 @@ use coven::{MemoryStorage, Storage};
 use tempfile::TempDir;
 use uuid::Uuid;
 
+/// The library's views over `library`'s store, which the tests read its
+/// state back through.
+fn views(library: &LibraryManager) -> bae_views::LibraryViews {
+    bae_views::LibraryViews::new(library.database.clone())
+}
+
 struct TestManager {
     library: TestLibrary,
     /// The catalog fakes the library asks, which a test seeds.
@@ -230,40 +236,15 @@ async fn output_queue_until(
 }
 
 async fn insert_release(manager: &LibraryManager, release: &DbRelease) {
-    manager.database.insert_release(release).await.unwrap();
-    manager
-        .database
-        .insert_release_medium(&bae_db::DbReleaseMedium::new_test(&release.id))
-        .await
-        .unwrap();
+    crate::test_libraries::insert_release(&manager.database, release).await;
 }
 
 fn create_test_album() -> DbAlbum {
-    DbAlbum {
-        id: Uuid::new_v4().to_string(),
-        title: "Test Album".to_string(),
-        year: Some(2024),
-        is_compilation: false,
-        created_at: Utc::now(),
-    }
+    crate::test_libraries::test_album()
 }
-fn create_test_release(album_id: &str) -> DbRelease {
-    DbRelease {
-        id: Uuid::new_v4().to_string(),
-        album_id: album_id.to_string(),
-        release_name: None,
-        pressing: bae_types::pressing::Pressing {
-            year: Some(2024),
-            labels: Vec::new(),
-            facts: Default::default(),
-            barcodes: Vec::new(),
-        },
 
-        source_folder_name: None,
-        album_loudness_lufs: None,
-        album_peak_linear: None,
-        created_at: Utc::now(),
-    }
+fn create_test_release(album_id: &str) -> DbRelease {
+    crate::test_libraries::test_release(album_id)
 }
 
 /// A manager holding one album with one release — the spine most of these

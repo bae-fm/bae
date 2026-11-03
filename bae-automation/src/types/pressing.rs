@@ -138,7 +138,7 @@ fn nullable_key(keys: Vec<&'static str>) -> schemars::Schema {
 }
 
 /// What a library release is called where a list names it. Mirrors
-/// `bae_library::album_detail::ReleaseName`.
+/// `bae_views::album_detail::ReleaseName`.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationReleaseName {
@@ -148,13 +148,13 @@ pub enum AutomationReleaseName {
 }
 
 impl AutomationReleaseName {
-    pub(crate) fn from_core(name: bae_library::album_detail::ReleaseName) -> Self {
+    pub(crate) fn from_core(name: bae_views::album_detail::ReleaseName) -> Self {
         match name {
-            bae_library::album_detail::ReleaseName::Named(name) => Self::Named { name },
-            bae_library::album_detail::ReleaseName::Described { year, media } => {
+            bae_views::album_detail::ReleaseName::Named(name) => Self::Named { name },
+            bae_views::album_detail::ReleaseName::Described { year, media } => {
                 Self::Described { year, media }
             }
-            bae_library::album_detail::ReleaseName::Numbered(number) => Self::Numbered { number },
+            bae_views::album_detail::ReleaseName::Numbered(number) => Self::Numbered { number },
         }
     }
 }

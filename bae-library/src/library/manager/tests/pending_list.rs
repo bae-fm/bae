@@ -228,9 +228,7 @@ async fn a_failed_pins_retry_pins_the_release_again() {
     pending_list_until(&mut values, |items| !items.iter().any(|item| item.wait.action == retry))
         .await;
     assert!(
-        manager
-            .library
-            .views()
+        views(&manager.library)
             .find_release_detail(&release_id)
             .await
             .unwrap()
@@ -240,32 +238,15 @@ async fn a_failed_pins_retry_pins_the_release_again() {
     );
 }
 
-/// Follow the inspector until it shows a value `accept` takes.
-async fn inspector_until(
-    inspector: &crate::library::LiveDetail<crate::library::storage_inspector::StorageInspector>,
-    accept: impl Fn(&crate::library::storage_inspector::StorageInspector) -> bool,
-) -> crate::library::storage_inspector::StorageInspector {
-    tokio::time::timeout(std::time::Duration::from_secs(10), async {
-        loop {
-            let snapshot = inspector.next().await.expect("the inspector reads");
-            if let Some(value) = snapshot.value.filter(|value| accept(value)) {
-                break value;
-            }
-        }
-    })
-    .await
-    .expect("the inspector shows the expected value")
-}
-
 /// The first rows the inspector's read gives for the release `release_id`
 /// that `accept` takes: its files with each one's pin as coven's tables hold
 /// it, whether or not the inspector shows it.
 async fn inspector_rows_until(
     manager: &LibraryManager,
     release_id: &str,
-    accept: impl Fn(&crate::library::views::DbStorageInspector) -> bool,
-) -> crate::library::views::DbStorageInspector {
-    let mut rows = crate::library::views::LibraryViews::new(manager.database.clone())
+    accept: impl Fn(&bae_views::DbStorageInspector) -> bool,
+) -> bae_views::DbStorageInspector {
+    let mut rows = bae_views::LibraryViews::new(manager.database.clone())
         .subscribe_storage_inspector(Some(release_id.to_string()));
     rows_until(&mut rows, accept).await
 }
@@ -274,10 +255,10 @@ async fn inspector_rows_until(
 async fn rows_until(
     rows: &mut coven::ReconfigurableLiveQuery<
         Option<String>,
-        Option<crate::library::views::DbStorageInspector>,
+        Option<bae_views::DbStorageInspector>,
     >,
-    accept: impl Fn(&crate::library::views::DbStorageInspector) -> bool,
-) -> crate::library::views::DbStorageInspector {
+    accept: impl Fn(&bae_views::DbStorageInspector) -> bool,
+) -> bae_views::DbStorageInspector {
     tokio::time::timeout(std::time::Duration::from_secs(10), async {
         loop {
             let event = rows.next().await.expect("the inspector's read runs");
@@ -290,119 +271,6 @@ async fn rows_until(
     .expect("the inspector's read gives the expected rows")
 }
 
-/// The Storage Manager inspector shows each of its release's files beside
-/// its upload while one waits, and the error a failed upload met while this
-/// process holds it.
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn the_inspector_shows_each_files_upload_and_its_error() {
-    let (manager, temp, release, file_id) = queued_upload_fixture("inspected").await;
-    let inspector =
-        crate::library::live_reads::subscribe_storage_inspector(&manager.library, &manager.views());
-    inspector.set(Some(release.id.clone())).unwrap();
-    use crate::library::storage_inspector::StorageInspectorTransfer;
-    let waiting = inspector_until(&inspector, |value| {
-        value.files.iter().any(|row| row.file.id == file_id && row.upload.is_some())
-    })
-    .await;
-    assert!(waiting
-        .transfers
-        .iter()
-        .any(|transfer| matches!(transfer, StorageInspectorTransfer::Upload { .. })));
-
-    // The upload can't read a source that moved, so it waits on the file
-    // with the error it met.
-    std::fs::remove_file(temp.path().join("inspected/a.flac")).unwrap();
-    assert_eq!(manager.drain_uploads_expecting_work().await.unwrap(), 0);
-    inspector_until(&inspector, |value| {
-        value.files.iter().any(|row| {
-            row.file.id == file_id
-                && row
-                    .upload
-                    .as_ref()
-                    .and_then(|upload| upload.pending.as_ref())
-                    .is_some_and(|wait| wait.cause.is_some())
-        })
-    })
-    .await;
-}
-
-/// An upload storage refused waits on its own record, and the inspector
-/// shows the error coven kept beside it.
-#[tokio::test]
-async fn the_inspector_shows_the_error_an_upload_met() {
-    let (manager, _temp, release, file_id) = queued_upload_fixture("refused").await;
-    let inspector =
-        crate::library::live_reads::subscribe_storage_inspector(&manager.library, &manager.views());
-    inspector.set(Some(release.id.clone())).unwrap();
-    manager
-        .storage
-        .set_faults(coven::Faults {
-            fail_next: 1,
-            failure: coven::StorageFailure::Network,
-            response: Some(500),
-            ..coven::Faults::none()
-        })
-        .await;
-    assert_eq!(manager.drain_uploads_expecting_work().await.unwrap(), 0);
-    inspector_until(&inspector, |value| {
-        value.files.iter().any(|row| {
-            row.file.id == file_id
-                && row
-                    .upload
-                    .as_ref()
-                    .and_then(|upload| upload.pending.as_ref())
-                    .and_then(|wait| wait.cause.as_deref())
-                    .is_some_and(|cause| cause.contains("500"))
-        })
-    })
-    .await;
-}
-
-/// A release's file says whether this device keeps it whole, and while the
-/// release waits in the download queue the inspector shows each file's pin
-/// and counts them; once the download has kept every file it leaves the
-/// queue, and the inspector shows no pin but each file kept.
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn the_inspector_shows_each_files_pin_while_the_release_pins() {
-    use crate::album_detail::FilePin;
-    use crate::library::storage_inspector::StorageInspectorTransfer;
-    let (manager, temp_dir) = setup_test_manager().await;
-    connect_test_cloud(&manager).await;
-    let cloud =
-        uploaded_release(&manager, &temp_dir.path().join("cloud"), "Album Title B", false).await;
-    inspector_rows_until(&manager, &cloud, |rows| rows.files.iter().all(|file| file.pin.is_none()))
-        .await;
-
-    let inspector =
-        crate::library::live_reads::subscribe_storage_inspector(&manager.library, &manager.views());
-    inspector.set(Some(cloud.clone())).unwrap();
-    manager.set_downloads_paused(true).await.unwrap();
-    manager.enqueue_pins(vec![cloud.clone()]).await.unwrap();
-    let pinning = inspector_until(&inspector, |value| !value.transfers.is_empty()).await;
-    assert!(pinning.files.iter().all(|file| file.pin == Some(FilePin::Waiting)));
-    let [StorageInspectorTransfer::Download { summary: Some(summary), .. }] =
-        pinning.transfers.as_slice()
-    else {
-        panic!("the pinning release's download counts its files");
-    };
-    assert_eq!(
-        summary
-            .iter()
-            .map(|count| (count.label.key.as_str(), count.label.count))
-            .collect::<Vec<_>>(),
-        vec![("core.queue.waiting", 1)],
-        "no file is kept yet, so none counts as pinned"
-    );
-
-    manager.set_downloads_paused(false).await.unwrap();
-    let pinned = inspector_until(&inspector, |value| value.transfers.is_empty()).await;
-    assert!(pinned.files.iter().all(|file| file.pin.is_none()));
-    inspector_rows_until(&manager, &cloud, |rows| {
-        rows.files.iter().all(|file| file.pin == Some(FilePin::Kept))
-    })
-    .await;
-}
-
 /// Each value the inspector reads of a pinning release is one the library
 /// held: the release still in the download queue, or out of it with every
 /// file kept, never out of it with a file not yet kept. The download worker
@@ -410,15 +278,15 @@ async fn the_inspector_shows_each_files_pin_while_the_release_pins() {
 /// after the other, so each pin passes through both.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn the_inspector_never_reads_a_pin_out_of_the_queue_before_its_files_are_kept() {
-    use crate::album_detail::FilePin;
+    use bae_views::album_detail::FilePin;
     let (manager, temp_dir) = setup_test_manager().await;
     connect_test_cloud(&manager).await;
     let cloud =
         uploaded_release(&manager, &temp_dir.path().join("cloud"), "Album Title B", false).await;
-    let kept = |value: &crate::library::views::DbStorageInspector| {
+    let kept = |value: &bae_views::DbStorageInspector| {
         value.files.iter().all(|file| file.pin == Some(FilePin::Kept))
     };
-    let mut rows = crate::library::views::LibraryViews::new(manager.database.clone())
+    let mut rows = bae_views::LibraryViews::new(manager.database.clone())
         .subscribe_storage_inspector(Some(cloud.clone()));
 
     // The release as it stands before any pin: unpinned, out of the queue.
@@ -448,4 +316,59 @@ async fn the_inspector_never_reads_a_pin_out_of_the_queue_before_its_files_are_k
         manager.unpin_release(&cloud).await.unwrap();
         rows_until(&mut rows, |value| value.files.iter().all(|file| file.pin.is_none())).await;
     }
+}
+
+/// Follow the inspector's read of `release_id` until the inspector it
+/// shows is one `accept` takes.
+async fn inspector_until(
+    manager: &LibraryManager,
+    release_id: &str,
+    accept: impl Fn(&bae_views::storage_inspector::StorageInspector) -> bool,
+) -> bae_views::storage_inspector::StorageInspector {
+    let shown = |rows: bae_views::DbStorageInspector| {
+        bae_views::storage_inspector::StorageInspector::read(release_id, rows)
+    };
+    shown(inspector_rows_until(manager, release_id, |rows| accept(&shown(rows.clone()))).await)
+}
+
+/// A release's file says whether this device keeps it whole, and while the
+/// release waits in the download queue the inspector shows each file's pin
+/// and counts them; once the download has kept every file it leaves the
+/// queue, and the inspector shows no pin but each file kept.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn the_inspector_shows_each_files_pin_while_the_release_pins() {
+    use bae_views::album_detail::FilePin;
+    use bae_views::storage_inspector::StorageInspectorTransfer;
+    let (manager, temp_dir) = setup_test_manager().await;
+    connect_test_cloud(&manager).await;
+    let cloud =
+        uploaded_release(&manager, &temp_dir.path().join("cloud"), "Album Title B", false).await;
+    inspector_rows_until(&manager, &cloud, |rows| rows.files.iter().all(|file| file.pin.is_none()))
+        .await;
+
+    manager.set_downloads_paused(true).await.unwrap();
+    manager.enqueue_pins(vec![cloud.clone()]).await.unwrap();
+    let pinning = inspector_until(&manager, &cloud, |value| !value.transfers.is_empty()).await;
+    assert!(pinning.files.iter().all(|file| file.pin == Some(FilePin::Waiting)));
+    let [StorageInspectorTransfer::Download { summary: Some(summary), .. }] =
+        pinning.transfers.as_slice()
+    else {
+        panic!("the pinning release's download counts its files");
+    };
+    assert_eq!(
+        summary
+            .iter()
+            .map(|count| (count.label.key.as_str(), count.label.count))
+            .collect::<Vec<_>>(),
+        vec![("core.queue.waiting", 1)],
+        "no file is kept yet, so none counts as pinned"
+    );
+
+    manager.set_downloads_paused(false).await.unwrap();
+    let pinned = inspector_until(&manager, &cloud, |value| value.transfers.is_empty()).await;
+    assert!(pinned.files.iter().all(|file| file.pin.is_none()));
+    inspector_rows_until(&manager, &cloud, |rows| {
+        rows.files.iter().all(|file| file.pin == Some(FilePin::Kept))
+    })
+    .await;
 }

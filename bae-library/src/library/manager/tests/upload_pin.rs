@@ -29,7 +29,7 @@ async fn upload_pins_as_the_stored_choice_says() {
     let pinned = |release_id: String| {
         let manager = manager.library.clone();
         async move {
-            crate::library::views::LibraryViews::new(manager.database.clone())
+            bae_views::LibraryViews::new(manager.database.clone())
                 .find_release_detail(&release_id)
                 .await
                 .unwrap()
@@ -65,8 +65,7 @@ async fn a_kept_release_is_pinned_once_its_copy_lands() {
         "the file's copy hasn't landed"
     );
     let summary_pinned = || async {
-        manager
-            .views()
+        views(&manager)
             .find_release_detail(&release.id)
             .await
             .unwrap()
@@ -104,26 +103,27 @@ async fn a_kept_release_sorts_as_pinned_once_its_copies_land() {
     )
     .await;
     let by_storage = || async {
-        crate::library::views::LibraryViews::new(manager.database.clone())
-            .get_db_storage_page(
-                &crate::library::views::StorageSortCriterion {
-                    field: crate::library::views::StorageSortField::Storage,
+        bae_views::LibraryViews::new(manager.database.clone())
+            .get_storage_page(
+                &bae_views::StorageSortCriterion {
+                    field: bae_views::StorageSortField::Storage,
                     direction: bae_db::SortDirection::Ascending,
                 },
-                crate::library::views::StorageFilter::All,
+                bae_views::StorageFilter::All,
                 0,
                 100,
             )
             .await
             .unwrap()
+            .rows
             .into_iter()
-            .map(|row| (row.release.id, row.place))
+            .map(|row| (row.release.id, row.status))
             .collect::<Vec<_>>()
     };
-    use crate::album_detail::StoragePlace;
+    use bae_views::album_detail::StorageRowStatus;
     assert_eq!(
         by_storage().await,
-        [(cloud.clone(), StoragePlace::Cloud), (waiting.id.clone(), StoragePlace::Cloud),]
+        [(cloud.clone(), StorageRowStatus::Cloud), (waiting.id.clone(), StorageRowStatus::Cloud),]
     );
 
     home.set_faults(coven::Faults::none()).await;
@@ -131,10 +131,10 @@ async fn a_kept_release_sorts_as_pinned_once_its_copies_land() {
     manager.database.pin(&refs).await.unwrap();
     assert_eq!(
         by_storage().await,
-        [(waiting.id.clone(), StoragePlace::Pinned), (cloud.clone(), StoragePlace::Cloud),]
+        [(waiting.id.clone(), StorageRowStatus::Pinned), (cloud.clone(), StorageRowStatus::Cloud),]
     );
     inspector_rows_until(&manager, &waiting.id, |rows| {
-        rows.files.iter().all(|file| file.pin == Some(crate::album_detail::FilePin::Kept))
+        rows.files.iter().all(|file| file.pin == Some(bae_views::album_detail::FilePin::Kept))
     })
     .await;
 }

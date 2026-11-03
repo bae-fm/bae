@@ -38,6 +38,8 @@ bae-preferences = { workspace = true }
 bae-track-audio = { workspace = true }
 # The transfer queues' rows and counts the services pass on.
 bae-transfers = { workspace = true }
+# The library's views the screens' reads follow, and the shapes they show.
+bae-views = { workspace = true }
 # Pressing values the services pass on.
 bae-types = { workspace = true }
 # The panic-reporting tasks the services run.

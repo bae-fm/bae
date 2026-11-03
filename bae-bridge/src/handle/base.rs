@@ -78,7 +78,7 @@ forward! { async this => {
         album_id: String,
         group_by_artist: bool,
     ) -> Option<u64> {
-        let sort: Vec<bae_library::library::views::AlbumSortCriterion> = sort_criteria
+        let sort: Vec<bae_views::AlbumSortCriterion> = sort_criteria
             .into_iter()
             .map(BridgeSortCriterion::into_core)
             .collect();
@@ -96,7 +96,7 @@ forward! { async this => {
         album_ids: Vec<String>,
         group_by_artist: bool,
     ) -> Vec<BridgeAlbum> {
-        let sort: Vec<bae_library::library::views::AlbumSortCriterion> = sort_criteria
+        let sort: Vec<bae_views::AlbumSortCriterion> = sort_criteria
             .into_iter()
             .map(BridgeSortCriterion::into_core)
             .collect();

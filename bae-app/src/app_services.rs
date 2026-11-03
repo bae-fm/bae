@@ -58,7 +58,7 @@ macro_rules! delegate_view {
 struct AppServicesInner {
     manager: LibraryManager,
     /// The library's views, for the reads a screen shows as they are.
-    views: bae_library::library::views::LibraryViews,
+    views: bae_views::LibraryViews,
     playback: PlaybackHandle,
     /// The cast picker's list, which casting writes and the picker reads.
     cast_picker: bae_playback::renderer::CastPicker,
@@ -118,7 +118,7 @@ impl std::fmt::Debug for AppServices {
 impl AppServices {
     pub fn new(
         manager: LibraryManager,
-        views: bae_library::library::views::LibraryViews,
+        views: bae_views::LibraryViews,
         playback: PlaybackHandle,
         cast_picker: bae_playback::renderer::CastPicker,
         #[cfg(not(any(target_os = "ios", target_os = "android")))] import: ImportServiceHandle,
@@ -235,25 +235,18 @@ impl AppServices {
 
     pub fn subscribe_album_browse(
         &self,
-        sort: &[bae_library::library::views::AlbumSortCriterion],
+        sort: &[bae_views::AlbumSortCriterion],
         group_by_artist: bool,
-    ) -> bae_library::library::LiveAlbumBrowse {
+    ) -> bae_views::LiveAlbumBrowse {
         let manager = self.inner.manager.clone();
         let query = manager.until_closed(self.inner.views.subscribe_album_browse(
             sort,
             group_by_artist,
             std::collections::BTreeSet::new(),
         ));
-        bae_library::library::LiveLibraryBrowse::new(
-            query,
-            move |projection, request_revision, cause| {
-                bae_library::library::views::album::resolve_album_browse(
-                    projection,
-                    request_revision,
-                    cause,
-                )
-            },
-        )
+        bae_views::LiveLibraryBrowse::new(query, move |projection, request_revision, cause| {
+            bae_views::album::resolve_album_browse(projection, request_revision, cause)
+        })
     }
 
     /// Which of the albums the grid has selected are gone from the library,
@@ -268,31 +261,29 @@ impl AppServices {
 
     /// One live library search, pointed at a new query in place as the
     /// person types; it starts with no query.
-    pub fn subscribe_library_search(&self) -> bae_library::library::LiveLibrarySearch {
+    pub fn subscribe_library_search(&self) -> bae_views::LiveLibrarySearch {
         let manager = self.inner.manager.clone();
         let query = manager.until_closed(
-            self.inner
-                .views
-                .subscribe_library_search(None, bae_library::library::SEARCH_RESULT_LIMIT),
+            self.inner.views.subscribe_library_search(None, bae_views::SEARCH_RESULT_LIMIT),
         );
-        bae_library::library::LiveLibrarySearch::new(query, move |projection| {
-            bae_library::library::views::album::resolve_library_search_projection(projection)
+        bae_views::LiveLibrarySearch::new(query, move |projection| {
+            bae_views::album::resolve_library_search_projection(projection)
         })
     }
 
     /// One live search of the library's artists for an artist picker,
     /// pointed at a new text and new windows in place as the person types and
     /// scrolls; it starts with no text and no windows.
-    pub fn subscribe_artist_search(&self) -> bae_library::library::LiveArtistSearch {
+    pub fn subscribe_artist_search(&self) -> bae_views::LiveArtistSearch {
         let manager = &self.inner.manager;
-        bae_library::library::LiveArtistSearch::new(
+        bae_views::LiveArtistSearch::new(
             manager.until_closed(self.inner.views.subscribe_artist_search(
-                bae_library::library::ArtistSearchView {
+                bae_views::ArtistSearchView {
                     query: None,
                     windows: bae_db::LibraryPageWindows::new(),
                 },
             )),
-            bae_library::library::views::artist_search::resolve_artist_search,
+            bae_views::artist_search::resolve_artist_search,
         )
     }
 
@@ -310,30 +301,24 @@ impl AppServices {
 
     pub fn subscribe_artist_browse(
         &self,
-        sort: &[bae_library::library::views::ArtistSortCriterion],
-    ) -> bae_library::library::LiveArtistBrowse {
+        sort: &[bae_views::ArtistSortCriterion],
+    ) -> bae_views::LiveArtistBrowse {
         let manager = &self.inner.manager;
         let query = manager.until_closed(
             self.inner.views.subscribe_artist_browse(sort, std::collections::BTreeSet::new()),
         );
-        bae_library::library::LiveLibraryBrowse::new(
-            query,
-            bae_library::library::views::artist::resolve_artist_browse,
-        )
+        bae_views::LiveLibraryBrowse::new(query, bae_views::artist::resolve_artist_browse)
     }
 
     pub fn subscribe_composer_browse(
         &self,
-        sort: &[bae_library::library::views::ComposerSortCriterion],
-    ) -> bae_library::library::LiveComposerBrowse {
+        sort: &[bae_views::ComposerSortCriterion],
+    ) -> bae_views::LiveComposerBrowse {
         let manager = &self.inner.manager;
         let query = manager.until_closed(
             self.inner.views.subscribe_composer_browse(sort, std::collections::BTreeSet::new()),
         );
-        bae_library::library::LiveLibraryBrowse::new(
-            query,
-            bae_library::library::views::composer::resolve_composer_browse,
-        )
+        bae_views::LiveLibraryBrowse::new(query, bae_views::composer::resolve_composer_browse)
     }
 
     pub fn subscribe_playback_progress(
@@ -426,17 +411,17 @@ impl AppServices {
     delegate_async!(manager, cancel_download => cancel_download(release_id: &str) -> Result<(), bae_library::library::LibraryError>);
     delegate_async!(manager, retry_downloads => retry_downloads() -> Result<(), bae_library::library::LibraryError>);
     delegate_view!(get_artist_count => get_artist_count() -> u64);
-    delegate_view!(get_artist_page => get_artist_page(sort: &[bae_library::library::views::ArtistSortCriterion], offset: u64, limit: u64) -> Vec<bae_library::album_detail::ArtistSummary>);
-    delegate_view!(get_artist_detail => get_artist_detail(artist_id: &str) -> Option<bae_library::album_detail::ArtistDetail>);
+    delegate_view!(get_artist_page => get_artist_page(sort: &[bae_views::ArtistSortCriterion], offset: u64, limit: u64) -> Vec<bae_views::album_detail::ArtistSummary>);
+    delegate_view!(get_artist_detail => get_artist_detail(artist_id: &str) -> Option<bae_views::album_detail::ArtistDetail>);
     delegate_async!(manager, add_artist_credit_name => add_artist_credit_name(artist_id: &str, name: &str) -> Result<(), bae_library::library::LibraryError>);
     delegate_async!(manager, rename_artist_credit_name => rename_artist_credit_name(artist_id: &str, key: &str, name: &str) -> Result<(), bae_library::library::LibraryError>);
     delegate_async!(manager, remove_artist_credit_name => remove_artist_credit_name(artist_id: &str, key: &str) -> Result<(), bae_library::library::LibraryError>);
-    delegate_view!(get_album_index => get_album_index(sort: &[bae_library::library::views::AlbumSortCriterion], album_id: &str, group_by_artist: bool) -> Option<u64>);
+    delegate_view!(get_album_index => get_album_index(sort: &[bae_views::AlbumSortCriterion], album_id: &str, group_by_artist: bool) -> Option<u64>);
     delegate_async!(manager, check_releases_in_library => check_releases_in_library(checks: &[bae_db::LibraryCheck]) -> Result<Vec<bae_db::LibraryStatus>, bae_library::library::LibraryError>);
-    delegate_view!(albums_in_browse_order => albums_in_browse_order(sort: &[bae_library::library::views::AlbumSortCriterion], album_ids: Vec<String>, group_by_artist: bool) -> Vec<bae_library::album_detail::AlbumSummary>);
-    delegate_view!(find_album_detail => find_album_detail(album_id: &str) -> Option<bae_library::album_detail::AlbumDetail>);
-    delegate_view!(find_release_detail => find_release_detail(release_id: &str) -> Option<bae_library::album_detail::ReleaseDetail>);
-    delegate_view!(get_albums => get_albums(sort: &[bae_library::library::views::AlbumSortCriterion]) -> Vec<bae_db::DbAlbum>);
+    delegate_view!(albums_in_browse_order => albums_in_browse_order(sort: &[bae_views::AlbumSortCriterion], album_ids: Vec<String>, group_by_artist: bool) -> Vec<bae_views::album_detail::AlbumSummary>);
+    delegate_view!(find_album_detail => find_album_detail(album_id: &str) -> Option<bae_views::album_detail::AlbumDetail>);
+    delegate_view!(find_release_detail => find_release_detail(release_id: &str) -> Option<bae_views::album_detail::ReleaseDetail>);
+    delegate_view!(get_albums => get_albums(sort: &[bae_views::AlbumSortCriterion]) -> Vec<bae_db::DbAlbum>);
     delegate_async!(manager, get_releases_for_album => get_releases_for_album(album_id: &str) -> Result<Vec<bae_db::DbRelease>, bae_library::library::LibraryError>);
     delegate_async!(manager, get_release_by_id => get_release_by_id(release_id: &str) -> Result<Option<bae_db::DbRelease>, bae_library::library::LibraryError>);
 
@@ -529,7 +514,7 @@ impl AppServices {
     delegate_async!(manager, save_track_suggested_name => save_track_suggested_name(track_id: &str, preset_id: &str) -> Result<String, bae_library::library::LibraryError>);
     delegate_async!(manager, resolve_release_edit_credits => resolve_release_edit_credits(edit: &bae_import::RawReleaseEdit) -> Result<Vec<bae_db::ResolvedCredit>, bae_library::library::LibraryError>);
     delegate_async!(manager, apply_release_metadata_user_edit => apply_release_metadata_user_edit(release_id: &str, edit: &bae_import::ReleaseUserEdit) -> Result<(), bae_library::library::LibraryError>);
-    delegate_view!(search_library => search_library(query: &bae_library::library::LibrarySearchQuery) -> bae_library::album_detail::SearchResults);
+    delegate_view!(search_library => search_library(query: &bae_views::LibrarySearchQuery) -> bae_views::album_detail::SearchResults);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     delegate_async!(manager, set_outputs_paused => set_outputs_paused(paused: bool) -> Result<(), bae_library::library::LibraryError>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -616,7 +601,7 @@ impl AppServices {
     // in one go.
     pub fn subscribe_sync_activity(
         &self,
-    ) -> bae_db::live_query::LiveValues<bae_library::library::SyncActivity> {
+    ) -> bae_db::live_query::LiveValues<bae_views::SyncActivity> {
         self.inner.manager.values_until_closed(self.inner.views.subscribe_sync_activity())
     }
 
@@ -671,7 +656,7 @@ mod selection;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod storage_inspector_reads;
 mod storage_reads;
-use bae_library::library::live_reads::reconfigurable_live_query_events;
+use bae_library::library::live_query_events::reconfigurable_live_query_events;
 #[cfg(test)]
 #[path = "app_services_tests.rs"]
 mod tests;

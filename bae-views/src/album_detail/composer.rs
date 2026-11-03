@@ -1,0 +1,86 @@
+//! Resolved composer/work types and their pure projections from DB aggregates.
+
+use super::*;
+use crate::{
+    DbComposerSummary, DbReleaseRoleSummary, DbTrackRoleSummary, DbWorkReleaseSummary,
+    DbWorkSummary, DbWorkTrackSummary,
+};
+
+#[derive(Debug, Clone)]
+pub struct ComposerSummary {
+    pub raw: DbComposerSummary,
+}
+
+impl ComposerSummary {
+    /// The composer as its row reads it, image and all.
+    pub(crate) fn from_raw(raw: DbComposerSummary) -> Self {
+        Self { raw }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct WorkSummary {
+    pub raw: DbWorkSummary,
+}
+
+impl WorkSummary {
+    /// The work as its row reads it, its representative release's cover and
+    /// all.
+    pub(crate) fn from_raw(raw: DbWorkSummary) -> Self {
+        Self { raw }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ComposerDetail {
+    pub composer: ComposerSummary,
+    pub work_groups: Vec<ComposerWorkGroup>,
+    pub unlinked_release_roles: Vec<ReleaseRoleSummary>,
+    pub unlinked_track_roles: Vec<TrackRoleSummary>,
+    pub default_work_id: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ComposerWorkGroup {
+    pub id: String,
+    pub parent: Option<WorkSummary>,
+    pub works: Vec<WorkSummary>,
+}
+
+#[derive(Debug, Clone)]
+pub struct WorkDetail {
+    pub work: WorkSummary,
+    pub child_works: Vec<WorkSummary>,
+    pub releases: Vec<WorkReleaseSummary>,
+    pub tracks: Vec<WorkTrackSummary>,
+}
+
+#[derive(Debug, Clone)]
+pub struct WorkReleaseSummary {
+    pub release_id: String,
+    pub album_id: String,
+    pub album_title: String,
+    pub name: ReleaseName,
+    pub media: Vec<bae_types::pressing::MediaCount>,
+    pub cover: Option<ImageRef>,
+}
+
+impl WorkReleaseSummary {
+    pub(crate) fn from_raw(raw: DbWorkReleaseSummary) -> Self {
+        let cover = cover_ref(&raw.release_id, raw.cover_version);
+        let name =
+            ReleaseName::of(raw.release_name.as_deref(), raw.year, &raw.media, raw.release_index);
+        Self {
+            release_id: raw.release_id,
+            album_id: raw.album_id,
+            album_title: raw.album_title,
+            name,
+            media: raw.media,
+            cover,
+        }
+    }
+}
+
+pub type ReleaseRoleSummary = DbReleaseRoleSummary;
+pub type TrackRoleSummary = DbTrackRoleSummary;
+pub type WorkTrackSummary = DbWorkTrackSummary;

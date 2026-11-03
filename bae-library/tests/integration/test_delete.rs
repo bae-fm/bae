@@ -64,10 +64,8 @@ async fn test_delete_album_integration() {
 
     library.delete_album(&album.id).await.unwrap();
 
-    let album_result = bae_library::library::views::LibraryViews::new(database.clone())
-        .find_album_detail(&album.id)
-        .await
-        .unwrap();
+    let album_result =
+        bae_views::LibraryViews::new(database.clone()).find_album_detail(&album.id).await.unwrap();
     assert!(album_result.is_none());
 
     let releases = library.get_releases_for_album(&album.id).await.unwrap();
@@ -124,10 +122,8 @@ async fn test_delete_last_release_empties_album() {
 
     library.delete_release(&release.id).await.unwrap();
 
-    let album_result = bae_library::library::views::LibraryViews::new(database.clone())
-        .find_album_detail(&album.id)
-        .await
-        .unwrap();
+    let album_result =
+        bae_views::LibraryViews::new(database.clone()).find_album_detail(&album.id).await.unwrap();
     assert!(album_result.is_none());
 
     let releases = library.get_releases_for_album(&album.id).await.unwrap();
@@ -136,7 +132,7 @@ async fn test_delete_last_release_empties_album() {
 
 /// The album's primary release, as its detail names it.
 async fn primary_release_of(database: &bae_db::Database, album_id: &str) -> String {
-    bae_library::library::views::LibraryViews::new(database.clone())
+    bae_views::LibraryViews::new(database.clone())
         .find_album_detail(album_id)
         .await
         .unwrap()

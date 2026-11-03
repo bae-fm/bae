@@ -1,15 +1,15 @@
 use bae_db::{DbArtist, DbWork};
-use bae_library::album_detail::{
+use bae_views::album_detail::{
     ComposerDetail, ComposerSummary, ComposerWorkGroup, WorkDetail, WorkReleaseSummary, WorkSummary,
 };
-use bae_library::library::views::{DbComposerSummary, DbWorkSummary};
+use bae_views::{DbComposerSummary, DbWorkSummary};
 use std::sync::Arc;
 
 fn track_detail(
     position: bae_types::mediums::TrackPosition,
     duration_ms: u64,
-) -> bae_library::album_detail::TrackDetail {
-    bae_library::album_detail::TrackDetail {
+) -> bae_views::album_detail::TrackDetail {
+    bae_views::album_detail::TrackDetail {
         id: "track-1".to_string(),
         title: "Track".to_string(),
         duration_ms,
@@ -40,7 +40,7 @@ fn track_group_precomputes_header_key_per_side() {
 
     for (side, position, expected) in cases {
         let group =
-            crate::types::BridgeTrackGroup::from_core(bae_library::album_detail::TrackGroup {
+            crate::types::BridgeTrackGroup::from_core(bae_views::album_detail::TrackGroup {
                 side,
                 tracks: vec![track_detail(position, 187_000)],
                 total_duration_ms: 187_000,
@@ -67,8 +67,8 @@ fn track_precomputes_duration_clock() {
     assert_eq!((clock.minutes, clock.seconds), (3, 7));
 }
 
-fn track_search_result(duration_ms: u64) -> bae_library::album_detail::TrackSearchResult {
-    bae_library::album_detail::TrackSearchResult {
+fn track_search_result(duration_ms: u64) -> bae_views::album_detail::TrackSearchResult {
+    bae_views::album_detail::TrackSearchResult {
         id: "track-1".to_string(),
         title: "Track".to_string(),
         duration_ms,
@@ -465,7 +465,7 @@ fn work_detail_conversion_preserves_work_release_rows() {
             release_id: "release-a".to_string(),
             album_id: "album-a".to_string(),
             album_title: "Album Title A".to_string(),
-            name: bae_library::album_detail::ReleaseName::Described {
+            name: bae_views::album_detail::ReleaseName::Described {
                 year: Some(2026),
                 media: vec![bae_types::pressing::MediaCount {
                     medium: bae_types::pressing::Medium::Cd,

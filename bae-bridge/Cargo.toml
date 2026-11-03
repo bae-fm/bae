@@ -40,6 +40,8 @@ bae-preferences = { workspace = true }
 bae-track-audio = { workspace = true }
 # The transfer queues' rows and counts the bridge mirrors.
 bae-transfers = { workspace = true }
+# The library's views and the shapes the screens show.
+bae-views = { workspace = true }
 bae-diagnostics = { workspace = true }
 # The catalogs, covers and image sets the bridge mirrors.
 bae-catalogs = { workspace = true }

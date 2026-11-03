@@ -162,8 +162,8 @@ pub struct BridgeArtistSearchResult {
 }
 
 impl BridgeArtistSearchResult {
-    pub(crate) fn from_core(result: bae_library::album_detail::ArtistSearchResult) -> Self {
-        let bae_library::album_detail::ArtistSearchResult { artist, image, credit_names } = result;
+    pub(crate) fn from_core(result: bae_views::album_detail::ArtistSearchResult) -> Self {
+        let bae_views::album_detail::ArtistSearchResult { artist, image, credit_names } = result;
         Self {
             artist: BridgeExistingArtist::from_core(bae_db::ExistingArtist::from(artist)),
             image: image.map(BridgeImageRef::from_core),

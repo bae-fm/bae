@@ -36,5 +36,3 @@ mod test_save_s3_config;
 mod test_scrub_points;
 mod test_sql_read_tripwire;
 mod test_storage;
-mod test_storage_state_machine;
-mod test_transfer;

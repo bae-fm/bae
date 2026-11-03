@@ -34,7 +34,7 @@ impl HighSampleRateTestFixture {
 
         library.import_folder(album_dir, release_id_key).await;
 
-        let albums = library.views().get_albums(&[]).await?;
+        let albums = bae_views::LibraryViews::new(library.database().clone()).get_albums(&[]).await?;
         let releases = library.get_releases_for_album(&albums[0].id).await?;
         let tracks = library.get_tracks_for_release(&releases[0].id).await?;
         let track_id = tracks[0].id.clone();
@@ -352,7 +352,7 @@ async fn test_restore_emits_seeked_at_saved_position() {
     // Build a library + import tracks, but do NOT start a playback service.
     let (library, _temp_dir) = imported_library_without_playback().await;
     let releases = library
-        .get_releases_for_album(&library.views().get_albums(&[]).await.unwrap()[0].id)
+        .get_releases_for_album(&bae_views::LibraryViews::new(library.database().clone()).get_albums(&[]).await.unwrap()[0].id)
         .await
         .unwrap();
     let tracks = library.get_tracks_for_release(&releases[0].id).await.unwrap();
@@ -388,7 +388,7 @@ async fn test_play_persists_then_stop_clears_playback_state() {
 
     let (library, _temp_dir) = imported_library_without_playback().await;
     let release_id = library
-        .get_releases_for_album(&library.views().get_albums(&[]).await.unwrap()[0].id)
+        .get_releases_for_album(&bae_views::LibraryViews::new(library.database().clone()).get_albums(&[]).await.unwrap()[0].id)
         .await
         .unwrap()[0]
         .id

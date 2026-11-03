@@ -1,0 +1,59 @@
+[package]
+name = "bae-views"
+version = "0.0.0-dev"
+authors = ["dima"]
+edition = "2021"
+license = "LicenseRef-UNLICENSED"
+publish = false
+# The `desktop` cfg, defined once in bae-util's build script for every crate
+# with desktop-only code.
+build = "../bae-util/build.rs"
+
+[lib]
+name = "bae_views"
+path = "src/lib.rs"
+
+[dependencies]
+# The catalogs' descriptions of a release its detail shows.
+bae-catalogs = { workspace = true }
+# The store the views read, its records, list windows and live queries, and
+# the sync status the activity indicator shows.
+bae-db = { workspace = true }
+# The error a sync failure shows.
+bae-diagnostics = { workspace = true }
+# The transfer queues' entries and the storage transition each release is
+# in, as the detail views, the Storage Manager and the activity read them.
+bae-transfers = { workspace = true }
+# The pressing values and storage actions the screens show.
+bae-types = { workspace = true }
+# Content types and the duration and size labels the screens show.
+bae-util = { workspace = true }
+coven = { workspace = true }
+chrono = { workspace = true }
+rusqlite = { workspace = true }
+# The id sets a live read binds as one JSON list.
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true, features = ["sync"] }
+
+[dev-dependencies]
+# Test databases with bae's schema, the rows db's fixtures seed them with,
+# and two stores syncing over shared storage.
+bae-db = { workspace = true, features = ["test-utils"] }
+# The playback queue's window cost, measured beside the views'.
+bae-playback = { workspace = true, features = ["test-utils"] }
+bae-util = { workspace = true, features = ["test-utils"] }
+bae-types = { workspace = true, features = ["test-utils"] }
+coven = { workspace = true, features = ["test-utils"] }
+tempfile = { workspace = true }
+tokio = { workspace = true, features = ["full", "test-util"] }
+uuid = { workspace = true }
+
+[features]
+default = []
+# The artist search over every stored artist, and a work's page, which
+# tests read.
+test-utils = []
+
+[lints]
+workspace = true

@@ -26,8 +26,8 @@ impl AppServices {
     }
 
     /// The context's upcoming tail, read in the windows the subscription is
-    /// asked for; see [`bae_library::library::live_reads::subscribe_queue_upcoming`].
+    /// asked for; see [`bae_library::library::subscribe_queue_upcoming`].
     pub fn subscribe_queue_upcoming(&self) -> bae_library::library::LiveQueueUpcoming {
-        bae_library::library::live_reads::subscribe_queue_upcoming(&self.inner.manager)
+        bae_library::library::subscribe_queue_upcoming(&self.inner.manager)
     }
 }

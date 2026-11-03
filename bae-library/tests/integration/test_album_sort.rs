@@ -1,5 +1,5 @@
 use bae_db::{Database, DbAlbum, DbAlbumArtist, DbArtist, DbRelease, SortDirection};
-use bae_library::library::views::{AlbumSortCriterion, AlbumSortField, LibraryViews};
+use bae_views::{AlbumSortCriterion, AlbumSortField, LibraryViews};
 use chrono::{Duration, Utc};
 use uuid::Uuid;
 

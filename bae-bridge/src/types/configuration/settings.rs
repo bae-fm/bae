@@ -721,7 +721,7 @@ impl BridgeCloudProvider {
 }
 
 mirror_enum! {
-    BridgeStorageSortField = bae_library::library::views::StorageSortField,
+    BridgeStorageSortField = bae_views::StorageSortField,
     from_core: fn,
     into_core: fn,
     variants: { AlbumTitle, ArtistNames, Media, FileCount, TotalSize, Storage, DateAdded },
@@ -735,7 +735,7 @@ mirror_enum! {
 }
 
 mirror_struct! {
-    BridgeStorageSort = bae_library::library::views::StorageSortCriterion,
+    BridgeStorageSort = bae_views::StorageSortCriterion,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
     fields: {
@@ -745,20 +745,20 @@ mirror_struct! {
 }
 
 mirror_enum! {
-    BridgeStorageFilter = bae_library::library::views::StorageFilter,
+    BridgeStorageFilter = bae_views::StorageFilter,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
     variants: { All, Remote, Local },
 }
 
 mirror_enum! {
-    BridgeComposerSortField = bae_library::library::views::ComposerSortField,
+    BridgeComposerSortField = bae_views::ComposerSortField,
     into_core: fn,
     variants: { Name, WorkCount, LinkedReleaseCount },
 }
 
 mirror_struct! {
-    BridgeComposerSortCriterion = bae_library::library::views::ComposerSortCriterion,
+    BridgeComposerSortCriterion = bae_views::ComposerSortCriterion,
     into_core: pub(crate) fn,
     fields: {
         field: (BridgeComposerSortField),
@@ -767,13 +767,13 @@ mirror_struct! {
 }
 
 mirror_enum! {
-    BridgeArtistSortField = bae_library::library::views::ArtistSortField,
+    BridgeArtistSortField = bae_views::ArtistSortField,
     into_core: fn,
     variants: { Name, AlbumCount },
 }
 
 mirror_struct! {
-    BridgeArtistSortCriterion = bae_library::library::views::ArtistSortCriterion,
+    BridgeArtistSortCriterion = bae_views::ArtistSortCriterion,
     into_core: pub(crate) fn,
     fields: {
         field: (BridgeArtistSortField),
@@ -788,13 +788,13 @@ mirror_enum! {
 }
 
 mirror_enum! {
-    BridgeSortField = bae_library::library::views::AlbumSortField,
+    BridgeSortField = bae_views::AlbumSortField,
     into_core: fn,
     variants: { Title, Artist, Year, DateAdded },
 }
 
 mirror_struct! {
-    BridgeSortCriterion = bae_library::library::views::AlbumSortCriterion,
+    BridgeSortCriterion = bae_views::AlbumSortCriterion,
     into_core: pub(crate) fn,
     fields: {
         field: (BridgeSortField),

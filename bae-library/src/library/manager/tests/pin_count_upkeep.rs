@@ -62,18 +62,19 @@ async fn probed_pinned_releases(manager: &LibraryManager) -> std::collections::B
 
 /// The pinned marker each release shows in the Storage Manager list.
 async fn listed_pinned_releases(manager: &LibraryManager) -> std::collections::BTreeSet<String> {
-    crate::library::views::LibraryViews::new(manager.database.clone())
-        .get_db_storage_page(
-            &crate::library::views::StorageSortCriterion {
-                field: crate::library::views::StorageSortField::AlbumTitle,
+    bae_views::LibraryViews::new(manager.database.clone())
+        .get_storage_page(
+            &bae_views::StorageSortCriterion {
+                field: bae_views::StorageSortField::AlbumTitle,
                 direction: bae_db::SortDirection::Ascending,
             },
-            crate::library::views::StorageFilter::All,
+            bae_views::StorageFilter::All,
             0,
             100,
         )
         .await
         .unwrap()
+        .rows
         .into_iter()
         .filter(|row| row.release.pinned)
         .map(|row| row.release.id)

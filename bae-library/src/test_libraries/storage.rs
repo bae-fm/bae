@@ -77,17 +77,3 @@ pub async fn remove_uploaded_file(
     }
     manager.evict_file_for_test(reference.id()).await.unwrap();
 }
-
-/// This release's storage state and whether it is pinned on this device.
-pub async fn release_storage(
-    database: &bae_db::Database,
-    release_id: &str,
-) -> (crate::album_detail::ReleaseStorageState, bool) {
-    let summary = crate::library::views::LibraryViews::new(database.clone())
-        .find_release_detail(release_id)
-        .await
-        .unwrap()
-        .unwrap()
-        .summary;
-    (summary.storage_state, summary.pinned)
-}

@@ -273,7 +273,7 @@ pub enum BridgeReleaseStorageState {
 }
 
 mirror_enum! {
-    BridgeReleaseStorageState = bae_library::album_detail::ReleaseStorageState,
+    BridgeReleaseStorageState = bae_views::album_detail::ReleaseStorageState,
     from_core: pub fn,
     variants: { Local, Remote },
 }

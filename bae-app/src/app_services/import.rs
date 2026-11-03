@@ -9,15 +9,12 @@ impl AppServices {
     /// picker lists them: title, the album's credit line and year.
     pub async fn search_albums(
         &self,
-        query: &bae_library::library::LibrarySearchQuery,
-    ) -> Result<
-        Vec<bae_library::library::views::DbAlbumSearchResult>,
-        bae_library::library::LibraryError,
-    > {
+        query: &bae_views::LibrarySearchQuery,
+    ) -> Result<Vec<bae_views::DbAlbumSearchResult>, bae_library::library::LibraryError> {
         Ok(self
             .inner
             .views
-            .search_rows(query.as_str(), bae_library::library::SEARCH_RESULT_LIMIT)
+            .search_rows(query.as_str(), bae_views::SEARCH_RESULT_LIMIT)
             .await?
             .albums)
     }

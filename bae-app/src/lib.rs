@@ -11,6 +11,7 @@ use tracing::{info, warn};
 
 mod app_services;
 mod assembly;
+pub mod live_reads;
 #[cfg(all(desktop, any(test, feature = "test-utils")))]
 pub mod test_services;
 

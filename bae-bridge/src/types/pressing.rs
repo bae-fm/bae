@@ -726,7 +726,7 @@ pub fn bridge_discogs_details() -> Vec<BridgeDiscogsDetail> {
 }
 
 /// What a list of an album's releases calls one of them. Mirrors
-/// `bae_library::album_detail::ReleaseName`; each surface words it.
+/// `bae_views::album_detail::ReleaseName`; each surface words it.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeReleaseName {
     /// The name the person gave it.
@@ -740,16 +740,16 @@ pub enum BridgeReleaseName {
 }
 
 impl BridgeReleaseName {
-    pub(crate) fn from_core(name: bae_library::album_detail::ReleaseName) -> Self {
+    pub(crate) fn from_core(name: bae_views::album_detail::ReleaseName) -> Self {
         match name {
-            bae_library::album_detail::ReleaseName::Named(name) => Self::Named { name },
-            bae_library::album_detail::ReleaseName::Described { year, media } => Self::Described {
+            bae_views::album_detail::ReleaseName::Named(name) => Self::Named { name },
+            bae_views::album_detail::ReleaseName::Described { year, media } => Self::Described {
                 year,
                 media: bridge_media_terms(
                     media.into_iter().map(BridgeMediaCount::from_core).collect(),
                 ),
             },
-            bae_library::album_detail::ReleaseName::Numbered(number) => Self::Numbered { number },
+            bae_views::album_detail::ReleaseName::Numbered(number) => Self::Numbered { number },
         }
     }
 }

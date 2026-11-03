@@ -13,6 +13,8 @@ path = "src/lib.rs"
 # The app's services over an open library, which this crate calls.
 bae-app = { workspace = true }
 bae-library = { workspace = true }
+# The library's views the endpoints list and search, and the shapes they show.
+bae-views = { workspace = true }
 # The library's records the API serves.
 bae-db = { workspace = true }
 # The Subsonic server's settings and credential.

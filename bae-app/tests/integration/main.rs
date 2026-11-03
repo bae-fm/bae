@@ -10,6 +10,23 @@ mod test_bootstrap_pointer;
 mod test_close_open_files;
 mod test_import_live_query_reruns;
 mod test_import_selection;
+mod test_live_reads;
 mod test_open_progress;
 mod test_scan_cost;
 mod test_startup_sync;
+mod test_storage_state_machine;
+mod test_transfer;
+
+/// This release's storage state and whether it is pinned on this device.
+pub(crate) async fn release_storage(
+    database: &bae_db::Database,
+    release_id: &str,
+) -> (bae_views::album_detail::ReleaseStorageState, bool) {
+    let summary = bae_views::LibraryViews::new(database.clone())
+        .find_release_detail(release_id)
+        .await
+        .unwrap()
+        .unwrap()
+        .summary;
+    (summary.storage_state, summary.pinned)
+}

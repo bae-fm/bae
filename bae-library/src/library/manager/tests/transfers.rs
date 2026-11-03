@@ -99,7 +99,7 @@ async fn check_release_surfaces(manager: &LibraryManager, release: &DbRelease) {
     let album_id = release.album_id.clone();
 
     // Grid and count include the album.
-    let views = crate::library::views::LibraryViews::new(manager.database.clone());
+    let views = bae_views::LibraryViews::new(manager.database.clone());
     let page = views.get_album_page(&[], 0, 10).await.unwrap();
     assert_eq!(page.len(), 1);
     assert_eq!(page[0].release_ids, vec![release.id.clone()]);
@@ -111,7 +111,7 @@ async fn check_release_surfaces(manager: &LibraryManager, release: &DbRelease) {
     assert_eq!(detail_ids, vec![release.id.clone()]);
 
     // The release-level resolver returns it.
-    assert!(crate::library::views::LibraryViews::new(manager.database.clone())
+    assert!(bae_views::LibraryViews::new(manager.database.clone())
         .find_release_detail(&release.id)
         .await
         .unwrap()
@@ -553,7 +553,7 @@ async fn a_release_kept_here_is_pinned_once_its_move_finishes() {
     assert_eq!(manager.drain_uploads_expecting_work().await.unwrap(), 1);
     wait_for_kept_release(&manager, &release.id).await;
     assert!(
-        manager.views().find_release_detail(&release.id).await.unwrap().unwrap().summary.pinned
+        views(&manager).find_release_detail(&release.id).await.unwrap().unwrap().summary.pinned
     );
 }
 
@@ -610,8 +610,8 @@ async fn check_playability(
     originals: &std::path::Path,
     elsewhere: &DbRelease,
 ) {
-    use crate::album_detail::ReleasePlayability;
     use bae_playback::PlaybackErrorReason;
+    use bae_views::album_detail::ReleasePlayability;
     let here = insert_local_release_with_files(
         manager,
         originals,
@@ -620,7 +620,7 @@ async fn check_playability(
     )
     .await;
     let playability = |release_id: String| async move {
-        crate::library::views::LibraryViews::new(manager.database.clone())
+        bae_views::LibraryViews::new(manager.database.clone())
             .find_release_detail(&release_id)
             .await
             .unwrap()

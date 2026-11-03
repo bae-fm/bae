@@ -6,7 +6,7 @@ async fn restore_test_library() -> RestoreTestLibrary {
         fakes.seed_discogs_test_release(create_test_album());
     library.import_folder(album_dir, release_id_key).await;
     let releases = library
-        .get_releases_for_album(&library.views().get_albums(&[]).await.unwrap()[0].id)
+        .get_releases_for_album(&bae_views::LibraryViews::new(library.database().clone()).get_albums(&[]).await.unwrap()[0].id)
         .await
         .unwrap();
     let tracks = library.get_tracks_for_release(&releases[0].id).await.unwrap();

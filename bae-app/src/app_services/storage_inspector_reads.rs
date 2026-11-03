@@ -5,14 +5,10 @@ use super::*;
 impl AppServices {
     /// What the inspector shows of the release the subscription is set to,
     /// as it changes; see
-    /// [`bae_library::library::live_reads::subscribe_storage_inspector`].
+    /// [`crate::live_reads::subscribe_storage_inspector`].
     pub fn subscribe_storage_inspector(
         &self,
-    ) -> bae_library::library::LiveDetail<bae_library::library::storage_inspector::StorageInspector>
-    {
-        bae_library::library::live_reads::subscribe_storage_inspector(
-            &self.inner.manager,
-            &self.inner.views,
-        )
+    ) -> bae_library::library::LiveDetail<bae_views::storage_inspector::StorageInspector> {
+        crate::live_reads::subscribe_storage_inspector(&self.inner.manager, &self.inner.views)
     }
 }

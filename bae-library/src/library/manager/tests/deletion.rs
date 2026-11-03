@@ -33,7 +33,7 @@ async fn work_detail_release_rows_are_display_ready() {
         .unwrap();
     store_test_cover(&manager, &release.id, b"cover").await;
 
-    let detail = manager.views().get_work_detail(&work.id).await.unwrap().expect("work detail");
+    let detail = views(&manager).get_work_detail(&work.id).await.unwrap().expect("work detail");
 
     assert_eq!(detail.releases.len(), 1);
     let row = &detail.releases[0];
@@ -42,7 +42,7 @@ async fn work_detail_release_rows_are_display_ready() {
     assert_eq!(row.album_title, album.title);
     assert_eq!(
         row.name,
-        crate::album_detail::ReleaseName::Described {
+        bae_views::album_detail::ReleaseName::Described {
             year: Some(2024),
             media: bae_types::pressing::made_of(bae_types::pressing::Medium::Cd, 1).media,
         }
@@ -60,7 +60,7 @@ async fn test_delete_release_with_single_release_empties_album() {
 
     manager.delete_release(&release.id).await.unwrap();
 
-    let album_result = manager.views().find_album_detail(&album.id).await.unwrap();
+    let album_result = views(&manager).find_album_detail(&album.id).await.unwrap();
     assert!(album_result.is_none());
     let releases = album_releases(&manager, &album.id).await;
     assert!(releases.is_empty());
@@ -130,12 +130,11 @@ async fn deletion_refuses_an_unavailable_database_without_losing_rows() {
             manager.delete_release(&release.id).await.unwrap_err()
         };
         assert!(matches!(error, LibraryError::Database(_)), "{error}");
-        let handle = bae_db::configure_store(
-            manager.installation.builder(manager.app_dir.store_layout()),
-        )
-        .open(id, |_| ())
-        .await
-        .unwrap();
+        let handle =
+            bae_db::configure_store(manager.installation.builder(manager.app_dir.store_layout()))
+                .open(id, |_| ())
+                .await
+                .unwrap();
         let reopened = Database::from_handle(
             handle,
             manager.clock.clone(),
@@ -283,7 +282,7 @@ async fn test_delete_album_deletes_all_releases() {
 
     manager.delete_album(&album.id).await.unwrap();
 
-    let album_result = manager.views().find_album_detail(&album.id).await.unwrap();
+    let album_result = views(&manager).find_album_detail(&album.id).await.unwrap();
     assert!(album_result.is_none());
     let releases = album_releases(&manager, &album.id).await;
     assert!(releases.is_empty());
@@ -322,8 +321,7 @@ async fn delete_album_deletes_its_releases_and_what_they_own() {
     let mut tracks = Vec::new();
     for (index, release_id) in [&kept, &local, &other.id].into_iter().enumerate() {
         store_test_cover(&manager, release_id, format!("cover {index}").as_bytes()).await;
-        let track =
-            bae_db::DbTrack::new_test(release_id, &Uuid::new_v4().to_string(), "Track", 1);
+        let track = bae_db::DbTrack::new_test(release_id, &Uuid::new_v4().to_string(), "Track", 1);
         manager.database.insert_track(&track).await.unwrap();
         tracks.push(track.id);
     }
@@ -350,17 +348,17 @@ async fn delete_album_deletes_its_releases_and_what_they_own() {
     let kept_files =
         manager.database.query_texts_for_test(&coven_files_of(&[&other.id])).await.unwrap();
 
-    let mut browse = manager.views().subscribe_album_browse(
+    let mut browse = views(&manager).subscribe_album_browse(
         &[],
         false,
         [bae_db::LibraryPageWindow { offset: 0, limit: 10 }].into(),
     );
-    let listed = |browse: &crate::library::views::AlbumBrowseProjection| -> Vec<String> {
+    let listed = |browse: &bae_views::AlbumBrowseProjection| -> Vec<String> {
         browse.windows[0].rows.iter().map(|row| row.album.id.clone()).collect()
     };
     let before = browse.next().await.expect("the query stays open").result.unwrap();
     assert_eq!(listed(&before).len(), 2);
-    let mut detail = manager.views().subscribe_album_detail(Some(album_id.clone()));
+    let mut detail = views(&manager).subscribe_album_detail(Some(album_id.clone()));
     let shown = detail.next().await.expect("the query stays open").result.unwrap();
     assert_eq!(shown.detail.expect("the album shows").releases.len(), 2);
 
@@ -424,8 +422,13 @@ async fn delete_album_deletes_its_releases_and_what_they_own() {
             1
         );
     }
-    let queued: Vec<String> =
-        bae_playback::tables::queue_value(manager.database()).await.unwrap().manual.into_iter().map(|item| item.track_id).collect();
+    let queued: Vec<String> = bae_playback::tables::queue_value(manager.database())
+        .await
+        .unwrap()
+        .manual
+        .into_iter()
+        .map(|item| item.track_id)
+        .collect();
     assert_eq!(
         queued,
         std::slice::from_ref(&tracks[2]),

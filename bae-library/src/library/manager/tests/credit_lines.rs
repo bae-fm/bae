@@ -80,7 +80,8 @@ struct PrintedLines {
 
 async fn printed_lines(library: &CreditedLibrary) -> PrintedLines {
     let manager = &library.manager;
-    let album = manager.views().find_album_detail(&library.album.id).await.unwrap().expect("the album");
+    let album =
+        views(manager).find_album_detail(&library.album.id).await.unwrap().expect("the album");
     let row = |id: &str| {
         album.releases[0]
             .tracks
@@ -90,13 +91,13 @@ async fn printed_lines(library: &CreditedLibrary) -> PrintedLines {
             .artist_names
             .clone()
     };
-    let queued_featured = bae_playback::tables::track_display(&manager.database, &library.featured.id)
-        .await
-        .unwrap()
-        .expect("the track's display")
-        .artist_names;
-    let searched_album = manager
-        .views()
+    let queued_featured =
+        bae_playback::tables::track_display(&manager.database, &library.featured.id)
+            .await
+            .unwrap()
+            .expect("the track's display")
+            .artist_names;
+    let searched_album = views(manager)
         .search_rows("Test Album", 10)
         .await
         .unwrap()
@@ -139,8 +140,11 @@ async fn a_printed_name_shows_in_place_of_the_artists_while_the_link_names_the_a
     let library = credited_library().await;
 
     let credits = library.manager.get_artists_for_album(&library.album.id).await.unwrap();
-    let detail =
-        library.manager.views().get_artist_detail(CREDIT_ARTIST_B).await.unwrap().expect("Artist B's page");
+    let detail = views(&library.manager)
+        .get_artist_detail(CREDIT_ARTIST_B)
+        .await
+        .unwrap()
+        .expect("Artist B's page");
 
     assert_eq!(credits[1].artist.id, CREDIT_ARTIST_B);
     assert_eq!(credits[1].artist.name, "Artist B");
@@ -223,9 +227,7 @@ async fn an_edit_prints_typed_artists_with_commas_and_drops_the_last_join() {
             &library.release.id,
             &edit(vec![
                 bae_import::Credited::plain(bae_import::ArtistAssignment::picked(artist_a)),
-                bae_import::Credited::plain(bae_import::ArtistAssignment::named(
-                    "Typed Artist",
-                )),
+                bae_import::Credited::plain(bae_import::ArtistAssignment::named("Typed Artist")),
             ]),
         )
         .await
@@ -246,7 +248,7 @@ async fn renaming_or_removing_a_credit_name_reaches_every_credit_printing_it() {
     manager.remove_artist_credit_name(CREDIT_ARTIST_B, "b other").await.unwrap();
     assert_eq!(printed_lines(&library).await.album_page, "Artist A & Artist B");
     let detail =
-        manager.views().get_artist_detail(CREDIT_ARTIST_B).await.unwrap().expect("Artist B's page");
+        views(manager).get_artist_detail(CREDIT_ARTIST_B).await.unwrap().expect("Artist B's page");
     assert!(detail.credit_names.is_empty());
 }
 

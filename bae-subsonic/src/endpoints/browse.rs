@@ -4,7 +4,7 @@
 use std::collections::BTreeMap;
 
 use bae_db::SortDirection;
-use bae_library::library::views::{ArtistSortCriterion, ArtistSortField};
+use bae_views::{ArtistSortCriterion, ArtistSortField};
 
 use crate::envelope::Element;
 use crate::error::SubError;

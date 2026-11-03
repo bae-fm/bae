@@ -31,6 +31,8 @@ bae-catalogs = { workspace = true }
 bae-types = { workspace = true }
 # The export queue its export status reads.
 bae-transfers = { workspace = true }
+# The library's views and the shapes the screens show.
+bae-views = { workspace = true }
 bae-mirror = { workspace = true }
 # The text that shows a path, and a candidate key's bytes as text.
 coven = { workspace = true }

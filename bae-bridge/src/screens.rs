@@ -224,7 +224,7 @@ pulled_values! {
     /// Everything sync is doing: what needs the person, and the transfers
     /// moving bytes.
     SyncActivitySubscription:
-        bae_library::library::SyncActivity => crate::types::BridgeSyncActivity,
+        bae_views::SyncActivity => crate::types::BridgeSyncActivity,
     converted by crate::types::BridgeSyncActivity::from_core,
     built by sync_activity
 }

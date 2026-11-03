@@ -2,7 +2,7 @@
 //! its list show it.
 
 /// Everything sync is doing on this device, for the activity indicator in
-/// the title bar and the list it opens. Mirrors `bae_library::library::SyncActivity`.
+/// the title bar and the list it opens. Mirrors `bae_views::SyncActivity`.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeSyncActivity {
     /// Bytes are moving: the indicator spins. A pass alone doesn't count.
@@ -24,10 +24,10 @@ pub struct BridgeSyncActivity {
 }
 
 impl BridgeSyncActivity {
-    pub(crate) fn from_core(activity: bae_library::library::SyncActivity) -> Self {
+    pub(crate) fn from_core(activity: bae_views::SyncActivity) -> Self {
         let moving = activity.moving();
         let needs_attention = activity.needs_attention();
-        let bae_library::library::SyncActivity {
+        let bae_views::SyncActivity {
             failure,
             attention,
             syncing,
@@ -57,7 +57,7 @@ pub struct BridgeUploadsInFlight {
 }
 
 impl BridgeUploadsInFlight {
-    fn from_core(uploads: bae_library::library::UploadsInFlight) -> Self {
+    fn from_core(uploads: bae_views::UploadsInFlight) -> Self {
         Self {
             summary_parts: uploads
                 .summary_parts()
@@ -76,7 +76,7 @@ pub struct BridgeDownloadsInFlight {
 }
 
 impl BridgeDownloadsInFlight {
-    fn from_core(downloads: bae_library::library::DownloadsInFlight) -> Self {
+    fn from_core(downloads: bae_views::DownloadsInFlight) -> Self {
         Self {
             summary_parts: downloads
                 .summary_parts()

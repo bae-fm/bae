@@ -94,7 +94,7 @@ async fn first_upcoming_until(
 
 /// The queue's upcoming read over its first track.
 fn first_upcoming(library: &TestLibrary) -> bae_library::library::LiveQueueUpcoming {
-    let queue = bae_library::library::live_reads::subscribe_queue_upcoming(library);
+    let queue = bae_library::library::subscribe_queue_upcoming(library);
     queue
         .set(bae_db::LibraryPageWindows::from([bae_db::LibraryPageWindow {
             offset: 0,

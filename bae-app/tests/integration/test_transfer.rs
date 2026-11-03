@@ -1,0 +1,638 @@
+//! File attachment, uploads, pins, and local copies through the library manager.
+//! Coven uses MemoryStorage for cloud reads and writes; bae owns the release
+//! transitions, their progress, and their subscribed storage values.
+
+use bae_app::live_reads::LiveStorageBrowse;
+use bae_db::GallerySource;
+use bae_db::{DbAlbum, DbRelease, NewReleaseFile, SortDirection};
+use bae_library::library::{CancellationToken, LibraryManager};
+use bae_library::storage::transfer::{TransferProgress, TransferService};
+use bae_util::content_type::ContentType;
+use bae_views::album_detail::ReleaseStorageState;
+use bae_views::StorageBrowseView;
+use bae_views::{StorageFilter, StorageSortCriterion, StorageSortField};
+use chrono::Utc;
+use std::path::Path;
+use tempfile::TempDir;
+use uuid::Uuid;
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+async fn setup(tmp: &TempDir) -> bae_library::test_libraries::TestLibrary {
+    bae_library::test_libraries::open_test_library(tmp.path()).await
+}
+
+async fn setup_with_cloud(tmp: &TempDir) -> bae_library::test_libraries::TestLibrary {
+    let (library, storage) = bae_library::test_libraries::storage_library(
+        tmp.path(),
+        bae_catalogs::providers::Providers::offline(),
+    )
+    .await;
+    bae_library::test_libraries::connect_storage(&library, &storage).await;
+    library
+}
+
+/// Insert a Local release: its originals under `source_dir`, one `DbFile` per
+/// file, and each original path in bae's device-local table.
+async fn create_local_release(
+    mgr: &LibraryManager,
+    source_dir: &Path,
+    files: &[(&str, &[u8])],
+) -> (String, String, Vec<(String, Vec<u8>)>) {
+    let now = Utc::now();
+    let album = DbAlbum {
+        id: Uuid::new_v4().to_string(),
+        title: "Album Title".to_string(),
+        year: Some(2024),
+        is_compilation: false,
+        created_at: now,
+    };
+    let release = DbRelease {
+        id: Uuid::new_v4().to_string(),
+        album_id: album.id.clone(),
+        release_name: None,
+        pressing: bae_types::pressing::Pressing::blank(),
+        source_folder_name: None,
+        album_loudness_lufs: None,
+        album_peak_linear: None,
+        created_at: now,
+    };
+    let (album_id, release_id) = (album.id.clone(), release.id.clone());
+    mgr.insert_album_with_release_and_tracks(&album, &[], &release, &[], &[], &[]).await.unwrap();
+
+    tokio::fs::create_dir_all(source_dir).await.unwrap();
+    let mut result = Vec::new();
+    for (name, data) in files {
+        let path = source_dir.join(name);
+        tokio::fs::write(&path, data).await.unwrap();
+        let file = NewReleaseFile::new(
+            &release_id,
+            name,
+            ContentType::Flac,
+            Uuid::new_v4().to_string(),
+            now,
+        );
+        mgr.add_external_file_for_test(&file, &path).await.unwrap();
+        result.push((name.to_string(), data.to_vec()));
+    }
+    (album_id, release_id, result)
+}
+
+/// Get a Remote (cloud-only, not pinned) release whose files sit in `cloud`:
+/// create it Local, attach its files, and finish the uploads.
+async fn create_remote_release(
+    mgr: &LibraryManager,
+    db: &bae_db::Database,
+    source_dir: &Path,
+    files: &[(&str, &[u8])],
+) -> String {
+    let (_album_id, release_id, named) = create_local_release(mgr, source_dir, files).await;
+    mgr.upload_release(&release_id, false).await.unwrap();
+    let count = mgr.drain_uploads_expecting_work().await.unwrap();
+    assert_eq!(count, named.len(), "all files uploaded");
+    assert_eq!(
+        crate::release_storage(db, &release_id).await,
+        (ReleaseStorageState::Remote, false),
+        "Remote (cloud-only) after the drain"
+    );
+    release_id
+}
+
+/// Drain a transfer receiver to its terminal event.
+async fn collect_progress(
+    mut rx: tokio::sync::mpsc::UnboundedReceiver<TransferProgress>,
+) -> Vec<TransferProgress> {
+    let mut events = Vec::new();
+    while let Some(event) = rx.recv().await {
+        let terminal =
+            matches!(event, TransferProgress::Complete { .. } | TransferProgress::Failed { .. });
+        events.push(event);
+        if terminal {
+            break;
+        }
+    }
+    events
+}
+
+fn failed(events: &[TransferProgress]) -> bool {
+    events.iter().any(|e| matches!(e, TransferProgress::Failed { .. }))
+}
+
+async fn expect_storage_state(
+    subscription: &LiveStorageBrowse,
+    release_id: &str,
+    expected: ReleaseStorageState,
+) {
+    loop {
+        let value = tokio::time::timeout(std::time::Duration::from_secs(5), subscription.next())
+            .await
+            .expect("storage subscription delivers a value")
+            .expect("storage projection resolves");
+        if value
+            .windows
+            .iter()
+            .flat_map(|window| &window.rows)
+            .any(|row| row.release.id == release_id && row.release.storage_state == expected)
+        {
+            return;
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// The upload enqueue is counted before the drain
+// ---------------------------------------------------------------------------
+
+/// An upload attaches the release's files and queues their uploads, which
+/// the release's queue count reads the instant the upload returns — before
+/// any byte drains — so the upload shows up at once rather than only after
+/// it finishes.
+#[tokio::test]
+async fn uploads_are_counted_before_drain() {
+    bae_util::test_logs::install();
+    let tmp = TempDir::new().unwrap();
+    let mgr = setup_with_cloud(&tmp).await;
+    let source = tmp.path().join("src");
+    let (_album_id, release_id, named) = create_local_release(
+        &mgr,
+        &source,
+        &[("01.flac", b"aaaaaaaa"), ("02.flac", b"bbbbbbbbbbbb")],
+    )
+    .await;
+
+    // Enqueue upload through the real coven path; do NOT drain.
+    mgr.upload_release(&release_id, false).await.unwrap();
+
+    assert_eq!(
+        mgr.count_pending_uploads_for_release(&release_id).await.unwrap(),
+        named.len() as i64,
+        "every file is queued immediately after upload"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Host-provided cover file via coven's local store
+// ---------------------------------------------------------------------------
+
+/// A cover is a host-provided file: its bytes go to coven's local store
+/// store and coven owns the copy. While the release is Local the cover lives in
+/// coven's local store and `read_image_bytes` serves its bytes through the image
+/// reference — no cloud round-trip and no bae path into coven's store.
+#[tokio::test]
+async fn test_cover_file_stored_via_local_files_is_readable() {
+    bae_util::test_logs::install();
+    let tmp = TempDir::new().unwrap();
+    let mgr = setup(&tmp).await;
+    let (_a, release_id, _f) = create_local_release(&mgr, &tmp.path().join("src"), &[]).await;
+
+    // No cover row yet → no bytes.
+    assert!(
+        bae_library::test_libraries::read_cover_image_bytes(&mgr, &release_id).await.is_none(),
+        "no cover before one is stored"
+    );
+
+    // Store the cover bytes and `covers` row in one coven batch, exactly as
+    // import / change_cover does.
+    let bytes = b"cover-jpeg-bytes";
+    mgr.store_library_image(
+        &bae_db::DbLibraryImage {
+            id: release_id.clone(),
+            image_type: bae_db::LibraryImageType::Cover,
+            content_type: bae_util::content_type::ContentType::Jpeg,
+            width: None,
+            height: None,
+            created_at: chrono::Utc::now(),
+        },
+        bytes,
+    )
+    .await
+    .unwrap();
+
+    // read_image_bytes serves it from coven's local store, byte-for-byte.
+    let read = bae_library::test_libraries::read_cover_image_bytes(&mgr, &release_id)
+        .await
+        .expect("cover resolves to bytes once stored");
+    assert_eq!(read, bytes, "the stored cover reads back byte-for-byte");
+}
+
+// ---------------------------------------------------------------------------
+// Pin / unpin guards
+// ---------------------------------------------------------------------------
+
+/// Pin rejects a Local release: there is no cloud file to fetch into the pinned
+/// cache.
+#[tokio::test]
+async fn test_pin_rejects_local_release() {
+    bae_util::test_logs::install();
+    let tmp = TempDir::new().unwrap();
+    let mgr = setup(&tmp).await;
+    let (_a, release_id, _f) =
+        create_local_release(&mgr, &tmp.path().join("src"), &[("a.flac", b"a")]).await;
+
+    let events = TransferService::new(mgr.clone())
+        .pin_release(release_id, |progress| async move { Ok(collect_progress(progress).await) })
+        .finish()
+        .await
+        .expect("pin task completes");
+    assert!(failed(&events), "pin must fail for a local release");
+}
+
+/// Unpin rejects a Local release: it has no remote files to drop from the cache.
+#[tokio::test]
+async fn test_unpin_rejects_local_release() {
+    bae_util::test_logs::install();
+    let tmp = TempDir::new().unwrap();
+    let mgr = setup(&tmp).await;
+    let (_a, release_id, _f) =
+        create_local_release(&mgr, &tmp.path().join("src"), &[("a.flac", b"a")]).await;
+
+    assert!(mgr.unpin_release(&release_id).await.is_err(), "unpin must fail for a local release");
+}
+
+// ---------------------------------------------------------------------------
+// Pin / unpin success — through coven's cache
+// ---------------------------------------------------------------------------
+
+/// A release's detail carries its download control's state, read from its
+/// entry in the download queue.
+#[tokio::test]
+async fn a_release_detail_says_where_its_download_stands() {
+    use bae_views::album_detail::ReleaseDownloadStatus;
+    bae_util::test_logs::install();
+    let tmp = TempDir::new().unwrap();
+    let mgr = setup_with_cloud(&tmp).await;
+    let db = mgr.database().clone();
+    let release_id =
+        create_remote_release(&mgr, &db, &tmp.path().join("src"), &[("a.flac", b"bytes-a")]).await;
+    let status = |db: bae_db::Database, release_id: String| async move {
+        bae_views::LibraryViews::new(db)
+            .find_release_detail(&release_id)
+            .await
+            .unwrap()
+            .expect("the library holds the release")
+            .download_status
+    };
+    assert_eq!(
+        status(db.clone(), release_id.clone()).await,
+        Some(ReleaseDownloadStatus::Available)
+    );
+
+    mgr.set_downloads_paused(true).await.unwrap();
+    mgr.enqueue_pins(vec![release_id.clone()]).await.unwrap();
+    assert_eq!(status(db.clone(), release_id.clone()).await, Some(ReleaseDownloadStatus::Queued));
+}
+
+/// Pin a Remote cloud-only release: coven fetches its files from the cloud into
+/// the pinned cache, so it reads as (Remote, pinned). Its progress counts
+/// against the release's whole size, never goes back, and reaches that size
+/// before the pin completes. Which steps it reports before that depends on
+/// how coven's download races the pins query, so none is asserted.
+#[tokio::test]
+async fn test_pin_remote_fetches_into_pinned_cache() {
+    bae_util::test_logs::install();
+    let tmp = TempDir::new().unwrap();
+    let mgr = setup_with_cloud(&tmp).await;
+    let db = mgr.database().clone();
+    let release_id = create_remote_release(
+        &mgr,
+        &db,
+        &tmp.path().join("src"),
+        &[("a.flac", b"pin-bytes-a"), ("b.flac", b"pin-bytes-b")],
+    )
+    .await;
+
+    let events = TransferService::new(mgr.clone())
+        .pin_release(
+            release_id.clone(),
+            |progress| async move { Ok(collect_progress(progress).await) },
+        )
+        .finish()
+        .await
+        .expect("pin task completes");
+    let Some((TransferProgress::Complete { .. }, before)) = events.split_last() else {
+        panic!("a pin completes: {events:?}");
+    };
+    let progress: Vec<_> = before
+        .iter()
+        .map(|event| match event {
+            TransferProgress::Progress { progress } => progress,
+            other => panic!("only progress before completion: {other:?}"),
+        })
+        .collect();
+    assert!(
+        progress.iter().all(|progress| progress.bytes_total == 22),
+        "progress counts against the release's size: {progress:?}"
+    );
+    assert!(
+        progress.windows(2).all(|pair| pair[0].bytes_done <= pair[1].bytes_done),
+        "progress never goes back: {progress:?}"
+    );
+    assert_eq!(
+        progress.last().map(|progress| progress.bytes_done),
+        Some(22),
+        "the pin reports every byte before it completes"
+    );
+    assert_eq!(crate::release_storage(&db, &release_id).await, (ReleaseStorageState::Remote, true));
+}
+
+/// The release and album detail views show a release pinned once its files
+/// are, and unpinned again once they aren't, each from its own live read.
+#[tokio::test]
+async fn the_detail_views_follow_a_releases_pin() {
+    bae_util::test_logs::install();
+    let tmp = TempDir::new().unwrap();
+    let mgr = setup_with_cloud(&tmp).await;
+    let release_id = create_remote_release(
+        &mgr,
+        mgr.database(),
+        &tmp.path().join("src"),
+        &[("a.flac", b"follow-bytes")],
+    )
+    .await;
+    let album_id = mgr
+        .get_release_by_id(&release_id)
+        .await
+        .unwrap()
+        .expect("the library holds the release")
+        .album_id;
+    let views = bae_views::LibraryViews::new(mgr.database().clone());
+    let release = bae_app::live_reads::subscribe_release_detail(&mgr, &views);
+    release.set(Some(release_id.clone())).unwrap();
+    let album = bae_app::live_reads::subscribe_album_detail(&mgr, &views);
+    album.set(Some(album_id)).unwrap();
+    let shown = |pinned: bool| {
+        let (release, album) = (&release, &album);
+        async move {
+            tokio::time::timeout(std::time::Duration::from_secs(10), async {
+                loop {
+                    let value = release.next().await.expect("the release detail resolves");
+                    if value.value.is_some_and(|detail| detail.summary.pinned == pinned) {
+                        break;
+                    }
+                }
+                loop {
+                    let value = album.next().await.expect("the album detail resolves");
+                    if value.value.is_some_and(|detail| detail.releases[0].summary.pinned == pinned)
+                    {
+                        break;
+                    }
+                }
+            })
+            .await
+            .unwrap_or_else(|_| panic!("the detail views never showed pinned = {pinned}"));
+        }
+    };
+    shown(false).await;
+
+    TransferService::new(mgr.clone())
+        .pin_release(
+            release_id.clone(),
+            |progress| async move { Ok(collect_progress(progress).await) },
+        )
+        .finish()
+        .await
+        .expect("pin task completes");
+    shown(true).await;
+
+    mgr.unpin_release(&release_id).await.unwrap();
+    shown(false).await;
+}
+
+/// Unpin a Remote pinned release: coven moves its files out of the pinned cache
+/// into the evictable cache, so it reads as (Remote, not pinned).
+#[tokio::test]
+async fn test_unpin_remote_drops_from_pinned_cache() {
+    bae_util::test_logs::install();
+    let tmp = TempDir::new().unwrap();
+    let mgr = setup_with_cloud(&tmp).await;
+    let db = mgr.database().clone();
+    let release_id =
+        create_remote_release(&mgr, &db, &tmp.path().join("src"), &[("a.flac", b"unpin-bytes")])
+            .await;
+
+    TransferService::new(mgr.clone())
+        .pin_release(
+            release_id.clone(),
+            |progress| async move { Ok(collect_progress(progress).await) },
+        )
+        .finish()
+        .await
+        .expect("pin task completes");
+    assert_eq!(crate::release_storage(&db, &release_id).await, (ReleaseStorageState::Remote, true));
+
+    mgr.unpin_release(&release_id).await.unwrap();
+    assert_eq!(
+        crate::release_storage(&db, &release_id).await,
+        (ReleaseStorageState::Remote, false)
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Reading a release file surfaces a missing original as an error
+// ---------------------------------------------------------------------------
+
+/// Reading a Local release whose original file vanished returns an error.
+#[tokio::test]
+async fn test_missing_external_source_maps_to_error() {
+    bae_util::test_logs::install();
+    let tmp = TempDir::new().unwrap();
+    let mgr = setup(&tmp).await;
+    let source_dir = tmp.path().join("src");
+    let (_a, release_id, _f) =
+        create_local_release(&mgr, &source_dir, &[("a.flac", b"present")]).await;
+    let file = mgr.get_files_for_release(&release_id).await.unwrap().into_iter().next().unwrap();
+
+    // The user moved or deleted their original file.
+    tokio::fs::remove_file(source_dir.join("a.flac")).await.unwrap();
+
+    let result =
+        mgr.read_gallery_bytes(&release_id, &GallerySource::ReleaseFile { file_id: file.id }).await;
+    assert!(result.is_err(), "a vanished external source must surface a read error");
+}
+
+// ---------------------------------------------------------------------------
+// Transition completions deliver new storage values
+// ---------------------------------------------------------------------------
+
+/// A drained upload and audio detachment both change the subscribed Storage
+/// Manager value without a separate library event or another read from the UI.
+#[tokio::test]
+async fn transition_completions_deliver_storage_values() {
+    bae_util::test_logs::install();
+    let tmp = TempDir::new().unwrap();
+    let mgr = setup_with_cloud(&tmp).await;
+    let source_dir = tmp.path().join("src");
+    let (_a, release_id, _named) =
+        create_local_release(&mgr, &source_dir, &[("a.flac", b"round-trip-bytes")]).await;
+    let views = bae_views::LibraryViews::new(mgr.database().clone());
+    let values = bae_app::live_reads::subscribe_storage_browse(
+        &mgr,
+        &views,
+        StorageBrowseView {
+            sort: StorageSortCriterion {
+                field: StorageSortField::AlbumTitle,
+                direction: SortDirection::Ascending,
+            },
+            filter: StorageFilter::All,
+            search: String::new(),
+            windows: [bae_db::LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect(),
+            selected: Default::default(),
+        },
+    );
+    expect_storage_state(&values, &release_id, ReleaseStorageState::Local).await;
+
+    mgr.upload_release(&release_id, false).await.unwrap();
+    mgr.drain_uploads_expecting_work().await.unwrap();
+    expect_storage_state(&values, &release_id, ReleaseStorageState::Remote).await;
+
+    let dest = tmp.path().join("brought-back");
+    std::fs::create_dir(&dest).unwrap();
+    mgr.detach_release_audio_into(&release_id, &dest, &CancellationToken::new()).await.unwrap();
+    expect_storage_state(&values, &release_id, ReleaseStorageState::Local).await;
+}
+
+/// The Storage Manager's inspector shows, and its actions act on, a release
+/// only while the list holds it: the list answers with the row of each
+/// selected release it holds wherever it sits, in a window or not, and a
+/// selected release whose upload finishes leaves the Local list and the
+/// answer together.
+#[tokio::test]
+async fn selected_releases_leave_the_local_list_with_their_upload() {
+    bae_util::test_logs::install();
+    let tmp = TempDir::new().unwrap();
+    let mgr = setup_with_cloud(&tmp).await;
+    let (_a, first, _) =
+        create_local_release(&mgr, &tmp.path().join("first"), &[("a.flac", b"first")]).await;
+    let (_b, second, _) =
+        create_local_release(&mgr, &tmp.path().join("second"), &[("b.flac", b"second")]).await;
+    mgr.upload_release(&first, false).await.unwrap();
+    mgr.upload_release(&second, false).await.unwrap();
+
+    let views = bae_views::LibraryViews::new(mgr.database().clone());
+    let selected: std::collections::BTreeSet<String> =
+        [first.clone(), second.clone()].into_iter().collect();
+    let values = bae_app::live_reads::subscribe_storage_browse(
+        &mgr,
+        &views,
+        StorageBrowseView {
+            sort: StorageSortCriterion {
+                field: StorageSortField::AlbumTitle,
+                direction: SortDirection::Ascending,
+            },
+            filter: StorageFilter::Local,
+            search: String::new(),
+            // One row on screen, so one selected release sits outside it.
+            windows: [bae_db::LibraryPageWindow { offset: 0, limit: 1 }].into_iter().collect(),
+            selected: selected.clone(),
+        },
+    );
+    let next = || async {
+        tokio::time::timeout(std::time::Duration::from_secs(5), values.next())
+            .await
+            .expect("storage subscription delivers a value")
+            .expect("storage projection resolves")
+    };
+
+    let queued = next().await;
+    assert_eq!(queued.total_count, 2);
+    assert_eq!(queued.windows[0].rows.len(), 1);
+    let selected_ids = queued
+        .selected
+        .iter()
+        .map(|row| row.release.id.clone())
+        .collect::<std::collections::BTreeSet<_>>();
+    assert_eq!(
+        selected_ids, selected,
+        "a selected release outside every window is still in the list"
+    );
+    let outside = queued
+        .selected
+        .iter()
+        .find(|row| row.release.id != queued.windows[0].rows[0].release.id)
+        .expect("one selected release sits outside the window");
+    assert_eq!(
+        (outside.album.title.as_str(), outside.release.file_count),
+        ("Album Title", 1),
+        "the row of a selected release outside every window is read whole"
+    );
+
+    mgr.drain_uploads_expecting_work().await.unwrap();
+    loop {
+        let value = next().await;
+        if value.total_count == 0 {
+            assert!(
+                value.selected.is_empty(),
+                "an uploaded release is no longer in the Local list"
+            );
+            break;
+        }
+    }
+}
+
+/// The Storage Manager offers a selection only the storage actions every
+/// selected release allows, and the list's value says which those are,
+/// whether or not each selected release sits in a window.
+#[tokio::test]
+async fn a_selection_is_offered_the_actions_all_its_releases_allow() {
+    bae_util::test_logs::install();
+    let tmp = TempDir::new().unwrap();
+    let mgr = setup_with_cloud(&tmp).await;
+    let pinned = create_remote_release(
+        &mgr,
+        mgr.database(),
+        &tmp.path().join("pinned"),
+        &[("a.flac", b"pinned")],
+    )
+    .await;
+    let unpinned = create_remote_release(
+        &mgr,
+        mgr.database(),
+        &tmp.path().join("unpinned"),
+        &[("b.flac", b"unpinned")],
+    )
+    .await;
+    TransferService::new(mgr.clone())
+        .pin_release(pinned.clone(), |progress| async move { Ok(collect_progress(progress).await) })
+        .finish()
+        .await
+        .expect("pin task completes");
+
+    let views = bae_views::LibraryViews::new(mgr.database().clone());
+    let view = |selected: &[&String]| StorageBrowseView {
+        sort: StorageSortCriterion {
+            field: StorageSortField::AlbumTitle,
+            direction: SortDirection::Ascending,
+        },
+        filter: StorageFilter::All,
+        search: String::new(),
+        // One row on screen, so one selected release sits outside it.
+        windows: [bae_db::LibraryPageWindow { offset: 0, limit: 1 }].into_iter().collect(),
+        selected: selected.iter().map(|id| (*id).clone()).collect(),
+    };
+    let values =
+        bae_app::live_reads::subscribe_storage_browse(&mgr, &views, view(&[&pinned, &unpinned]));
+    let next = || async {
+        tokio::time::timeout(std::time::Duration::from_secs(5), values.next())
+            .await
+            .expect("storage subscription delivers a value")
+            .expect("storage projection resolves")
+    };
+
+    use bae_types::release_storage::ReleaseStorageAction::{DetachAudio, Pin};
+    assert_eq!(
+        next().await.selection_actions,
+        [DetachAudio],
+        "a pinned and an unpinned release share only detaching their audio"
+    );
+
+    values.set(view(&[&unpinned])).unwrap();
+    loop {
+        let value = next().await;
+        if value.selected.len() == 1 {
+            assert_eq!(value.selection_actions, [Pin, DetachAudio]);
+            break;
+        }
+    }
+}

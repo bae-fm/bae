@@ -1,0 +1,322 @@
+use crate::*;
+use bae_db::test_fixtures::{exec, exec_batch, temp_db, ARTIST_A, ARTIST_B, ARTIST_C};
+
+async fn grouped_library() -> (Database, tempfile::TempDir) {
+    let (db, dir) = temp_db().await;
+    for (id, name, sort_name) in [
+        (ARTIST_A, "Artist Name A", "Same Sort Name"),
+        (ARTIST_B, "Artist Name B", "Same Sort Name"),
+        (ARTIST_C, "Artist Name C", "Last Artist"),
+    ] {
+        exec(
+            &db,
+            "INSERT INTO artists (id, name, name_key, sort_name, created_at) VALUES (?, ?, ?, ?, '2026-01-01T00:00:00Z')",
+            &[id, name, name, sort_name],
+        )
+        .await;
+    }
+    for (index, (artist, title)) in [
+        (ARTIST_A, "Album A"),
+        (ARTIST_B, "Album B"),
+        (ARTIST_A, "Album C"),
+        (ARTIST_B, "Album D"),
+        (ARTIST_C, "Album E"),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let album = format!("00000000-0000-4000-8000-{index:012}");
+        let credit = format!("20000000-0000-4000-8000-{index:012}");
+        let release = format!("10000000-0000-4000-8000-{index:012}");
+        exec_batch(
+            &db,
+            &format!(
+            "INSERT INTO albums (id, title, is_compilation, created_at) VALUES ('{album}', '{title}', 0, '2026-01-01T00:00:00Z'); \
+             INSERT INTO album_artists (id, album_id, artist_id, position, created_at) VALUES ('{credit}', '{album}', '{artist}', 0, '2026-01-01T00:00:00Z'); \
+             INSERT INTO releases (id, album_id, created_at, album_order) VALUES ('{release}', '{album}', '2026-01-01T00:00:00Z', 0);"
+        ),
+        )
+        .await;
+    }
+    (db, dir)
+}
+
+#[tokio::test]
+async fn artist_sections_cover_unloaded_albums_and_match_page_and_reveal_order() {
+    let (db, _dir) = grouped_library().await;
+    for direction in [SortDirection::Ascending, SortDirection::Descending] {
+        let sort = [
+            AlbumSortCriterion { field: AlbumSortField::Artist, direction },
+            AlbumSortCriterion {
+                field: AlbumSortField::Title,
+                direction: SortDirection::Descending,
+            },
+        ];
+        let mut browse = LibraryViews::new(db.clone()).subscribe_album_browse(
+            &sort,
+            true,
+            [LibraryPageWindow { offset: 2, limit: 1 }].into(),
+        );
+        let value = browse.next().await.expect("the query stays open").result.unwrap();
+        assert_eq!(value.windows[0].rows.len(), 1);
+        assert_eq!(value.total_count, 5);
+        assert_eq!(value.sections.len(), 3);
+        let page = LibraryViews::new(db.clone()).get_album_page(&sort, 0, 10).await.unwrap();
+        let mut offset = 0;
+        for section in &value.sections {
+            assert_eq!(section.window.offset, offset);
+            let albums = &page[offset as usize..(offset + section.window.limit) as usize];
+            assert!(albums.iter().all(|album| album.artist_names == section.title));
+            assert!(albums.windows(2).all(|pair| pair[0].title > pair[1].title));
+            for (position, album) in albums.iter().enumerate() {
+                assert_eq!(
+                    LibraryViews::new(db.clone())
+                        .get_album_index(&sort, &album.id, true)
+                        .await
+                        .unwrap(),
+                    Some(offset + position as u64)
+                );
+            }
+            offset += section.window.limit;
+        }
+        assert_eq!(offset, 5);
+        assert_eq!(value.windows[0].rows[0].album.id, page[2].id);
+    }
+}
+
+#[tokio::test]
+async fn artist_sections_follow_renames_and_disappearing_groups() {
+    let (db, _dir) = grouped_library().await;
+    let sort =
+        [AlbumSortCriterion { field: AlbumSortField::Artist, direction: SortDirection::Ascending }];
+    let mut browse =
+        LibraryViews::new(db.clone()).subscribe_album_browse(&sort, true, BTreeSet::new());
+    let initial = browse.next().await.expect("the query stays open").result.unwrap();
+    assert_eq!(initial.sections[0].id, ARTIST_C);
+    exec(
+        &db,
+        "UPDATE artists SET name = 'Renamed Artist', sort_name = 'Z' WHERE id = ?",
+        &[ARTIST_C],
+    )
+    .await;
+    let renamed = browse.next().await.expect("the query stays open").result.unwrap();
+    assert_eq!(renamed.sections[2].title, "Renamed Artist");
+    assert_eq!(renamed.sections[2].window.offset, 4);
+    exec(
+        &db,
+        "DELETE FROM releases WHERE album_id IN (SELECT album_id FROM album_artists WHERE artist_id = ?)",
+        &[ARTIST_C],
+    )
+    .await;
+    let removed = browse.next().await.expect("the query stays open").result.unwrap();
+    assert_eq!(removed.total_count, 4);
+    assert_eq!(removed.sections.len(), 2);
+    assert!(!removed.sections.iter().any(|section| section.id == ARTIST_C));
+    let mut flat =
+        LibraryViews::new(db.clone()).subscribe_album_browse(&sort, false, BTreeSet::new());
+    assert!(flat.next().await.expect("the query stays open").result.unwrap().sections.is_empty());
+}
+
+#[tokio::test]
+async fn collaborations_appear_under_each_credit_but_count_once() {
+    let (db, _dir) = grouped_library().await;
+    let album_id = "00000000-0000-4000-8000-000000000000";
+    exec(
+        &db,
+        "INSERT INTO album_artists (id, album_id, artist_id, position, created_at) VALUES ('extra', ?, ?, 1, '2026-01-01T00:00:00Z')",
+        &[album_id, ARTIST_B],
+    )
+    .await;
+    let sort =
+        [AlbumSortCriterion { field: AlbumSortField::Title, direction: SortDirection::Descending }];
+    let mut browse = LibraryViews::new(db.clone()).subscribe_album_browse(
+        &sort,
+        true,
+        [LibraryPageWindow { offset: 0, limit: 20 }].into(),
+    );
+    let value = browse.next().await.expect("the query stays open").result.unwrap();
+    assert_eq!(value.total_count, 5);
+    assert_eq!(value.row_count, 6);
+    let rows = &value.windows[0].rows;
+    let mut appearances = Vec::new();
+    for section in &value.sections {
+        let start = section.window.offset as usize;
+        let end = start + section.window.limit as usize;
+        let albums = &rows[start..end];
+        assert!(albums.windows(2).all(|pair| pair[0].album.title > pair[1].album.title));
+        if albums.iter().any(|row| row.album.id == album_id) {
+            appearances.push(section.id.as_str());
+        }
+    }
+    assert_eq!(appearances.into_iter().collect::<BTreeSet<_>>(), [ARTIST_A, ARTIST_B].into());
+    assert_eq!(
+        LibraryViews::new(db.clone()).get_album_index(&sort, album_id, true).await.unwrap(),
+        rows.iter().position(|row| row.album.id == album_id).map(|i| i as u64)
+    );
+    let mut flat = LibraryViews::new(db.clone()).subscribe_album_browse(
+        &sort,
+        false,
+        [LibraryPageWindow { offset: 0, limit: 20 }].into(),
+    );
+    let flat = flat.next().await.expect("the query stays open").result.unwrap();
+    assert_eq!(flat.row_count, 5);
+    assert!(flat.sections.is_empty());
+    assert_eq!(flat.windows[0].rows.iter().filter(|row| row.album.id == album_id).count(), 1);
+    exec(&db, "DELETE FROM album_artists WHERE album_id = ? AND position = 1", &[album_id]).await;
+    let removed = browse.next().await.expect("the query stays open").result.unwrap();
+    assert_eq!(removed.row_count, 5);
+    assert_eq!(removed.total_count, 5);
+}
+
+#[tokio::test]
+async fn merged_and_repeated_credits_make_one_appearance_per_artist() {
+    let (db, _dir) = grouped_library().await;
+    let album_id = "00000000-0000-4000-8000-000000000000";
+    for (id, artist, position) in
+        [("primary-again", ARTIST_A, "1"), ("other-credit", ARTIST_B, "2")]
+    {
+        exec(&db,
+            "INSERT INTO album_artists (id, album_id, artist_id, position, created_at) VALUES (?, ?, ?, ?, '2026-01-01T00:00:00Z')",
+            &[id, album_id, artist, position]).await;
+    }
+    let mut browse = LibraryViews::new(db.clone()).subscribe_album_browse(
+        &[],
+        true,
+        [LibraryPageWindow { offset: 0, limit: 20 }].into(),
+    );
+    let initial = browse.next().await.expect("the query stays open").result.unwrap();
+    assert_eq!(initial.row_count, 6);
+    exec(
+        &db,
+        "INSERT INTO artist_merges (id, into_artist_id, created_at) VALUES (?, ?, '2026-01-01T00:00:00Z')",
+        &[ARTIST_B, ARTIST_A],
+    )
+    .await;
+    let merged = browse.next().await.expect("the query stays open").result.unwrap();
+    assert_eq!(merged.total_count, 5);
+    assert_eq!(merged.row_count, 5);
+    assert_eq!(merged.sections.len(), 2);
+    assert!(merged.sections.iter().all(|section| section.id != ARTIST_B));
+    assert_eq!(merged.windows[0].rows.iter().filter(|row| row.album.id == album_id).count(), 1);
+}
+
+/// The grid's selection comes back in the grid's order, whatever order its
+/// albums were picked in: by title one way, by artist and then title grouped,
+/// each album once, and an album the library no longer holds left out.
+#[tokio::test]
+async fn a_selection_is_read_in_the_grids_order() {
+    let (db, _dir) = grouped_library().await;
+    let album = |index: u32| format!("00000000-0000-4000-8000-{index:012}");
+    let picked = vec![album(3), album(0), "no-such-album".to_string(), album(4), album(1)];
+    let titles = |albums: Vec<crate::album_detail::AlbumSummary>| {
+        albums.into_iter().map(|album| album.title).collect::<Vec<_>>()
+    };
+    let by_title =
+        [AlbumSortCriterion { field: AlbumSortField::Title, direction: SortDirection::Descending }];
+    assert_eq!(
+        titles(
+            LibraryViews::new(db.clone())
+                .albums_in_browse_order(&by_title, picked.clone(), false)
+                .await
+                .unwrap()
+        ),
+        ["Album E", "Album D", "Album B", "Album A"]
+    );
+    let by_artist = [
+        AlbumSortCriterion { field: AlbumSortField::Artist, direction: SortDirection::Ascending },
+        AlbumSortCriterion { field: AlbumSortField::Title, direction: SortDirection::Ascending },
+    ];
+    let grouped = LibraryViews::new(db.clone())
+        .albums_in_browse_order(&by_artist, picked, true)
+        .await
+        .unwrap();
+    let page = LibraryViews::new(db.clone()).get_album_page(&by_artist, 0, 10).await.unwrap();
+    let expected: Vec<String> = page
+        .into_iter()
+        .filter(|album| grouped.iter().any(|picked| picked.id == album.id))
+        .map(|album| album.title)
+        .collect();
+    assert_eq!(titles(grouped), expected);
+}
+
+/// Grouped by artist, a row names the album's other credits beside the
+/// artist whose group lists it, and nothing when that artist is the only
+/// credit; the flat grid names none.
+#[tokio::test]
+async fn a_grouped_row_names_the_albums_other_credits() {
+    let (db, _dir) = grouped_library().await;
+    let album_id = "00000000-0000-4000-8000-000000000000";
+    exec(
+        &db,
+        "INSERT INTO album_artists (id, album_id, artist_id, position, created_at) VALUES ('extra', ?, ?, 1, '2026-01-01T00:00:00Z')",
+        &[album_id, ARTIST_B],
+    )
+    .await;
+    let windows = [LibraryPageWindow { offset: 0, limit: 20 }];
+    let grouped = LibraryViews::new(db.clone())
+        .subscribe_album_browse(&[], true, windows.clone().into())
+        .next()
+        .await
+        .expect("the query stays open")
+        .result
+        .unwrap();
+    let rows = &grouped.windows[0].rows;
+    let mut credited_with = BTreeSet::new();
+    for section in &grouped.sections {
+        let start = section.window.offset as usize;
+        let end = start + section.window.limit as usize;
+        for row in &rows[start..end] {
+            credited_with.insert((
+                section.id.as_str(),
+                row.album.title.as_str(),
+                row.credited_with.as_deref(),
+            ));
+        }
+    }
+    assert_eq!(
+        credited_with,
+        [
+            (ARTIST_A, "Album A", Some("Artist Name B")),
+            (ARTIST_A, "Album C", None),
+            (ARTIST_B, "Album A", Some("Artist Name A")),
+            (ARTIST_B, "Album B", None),
+            (ARTIST_B, "Album D", None),
+            (ARTIST_C, "Album E", None),
+        ]
+        .into()
+    );
+    let flat = LibraryViews::new(db.clone())
+        .subscribe_album_browse(&[], false, windows.into())
+        .next()
+        .await
+        .expect("the query stays open")
+        .result
+        .unwrap();
+    assert!(flat.windows[0].rows.iter().all(|row| row.credited_with.is_none()));
+}
+
+/// An artist's group carries the artist's picture, and follows it as it
+/// changes; an artist without one carries none.
+#[tokio::test]
+async fn an_artist_section_carries_the_artists_picture() {
+    let (db, _dir) = grouped_library().await;
+    let mut browse =
+        LibraryViews::new(db.clone()).subscribe_album_browse(&[], true, BTreeSet::new());
+    let initial = browse.next().await.expect("the query stays open").result.unwrap();
+    assert!(initial.sections.iter().all(|section| section.image.is_none()));
+    let version =
+        bae_db::test_fixtures::live_query::write_artist_image(&db, ARTIST_B, "artist image bytes")
+            .await;
+    let pictured = browse.next().await.expect("the query stays open").result.unwrap();
+    let images = pictured
+        .sections
+        .iter()
+        .map(|section| {
+            (section.id.as_str(), section.image.as_ref().map(|image| image.version.as_str()))
+        })
+        .collect::<BTreeSet<_>>();
+    assert_eq!(
+        images,
+        [(ARTIST_A, None), (ARTIST_B, Some(version.as_str())), (ARTIST_C, None)].into()
+    );
+}

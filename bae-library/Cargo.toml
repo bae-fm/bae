@@ -35,7 +35,6 @@ bae-transfers = { workspace = true }
 bae-types = { workspace = true }
 bae-util = { workspace = true }
 coven = { workspace = true }
-rusqlite = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 toml = { workspace = true }
@@ -85,6 +84,9 @@ bae-identify = { workspace = true, features = ["test-utils"] }
 # The fixture audio and the import service's test seams the library's import
 # tests drive.
 bae-import = { workspace = true, features = ["test-utils"] }
+# The library's views, which the tests read the library's state back
+# through.
+bae-views = { workspace = true, features = ["test-utils"] }
 # A queue entry started without a worker, and a release's transition read
 # back.
 bae-transfers = { workspace = true, features = ["test-utils"] }

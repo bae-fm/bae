@@ -1,22 +1,12 @@
-//! Orchestrator layer: the one place where raw DB aggregates meet util
-//! formatters and filesystem paths to produce resolved types.
+//! The library's operations over its store: what a person does to the
+//! library, and the work its transfers, sync and outputs run.
 //!
 //! `LibraryManager` owns the database handle. Its surface is split into
-//! per-entity modules — `release`, `album`, `track`, `artist`, `identity`,
-//! `image`, `import`, `export`, `storage` — each holding that entity's I/O
-//! operations, reading `&Database` / `&CovenHandle` for the covers, pin state,
-//! and joins a resolved shape needs. The pure projection from a `Db*` aggregate
-//! to its resolved counterpart lives on the produced type, as a `from_raw`
-//! constructor in `crate::album_detail`. Public methods return resolved
-//! shapes, never the raw `Db*` aggregates.
-//!
-//! Rule for additions: a view's reads, and the shapes a screen shows them in,
-//! are `crate::library::views::LibraryViews`'; every other resolved shape is
-//! made in this layer. A new resolved shape means a raw type in
-//! `bae_db::models` (or `crate::library::views` for what a view reads), a
-//! resolved type in `crate::album_detail` (or a sibling like `crate::queue`)
-//! with its `from_raw` constructor, and the I/O method in the matching entity
-//! module here (or in the view's module).
+//! per-entity modules — `release`, `album`, `track`, `artist`, `image`,
+//! `export`, `storage`, `sync` — each holding that entity's operations,
+//! reading `&Database` / `&CovenHandle` for the covers, pin state and joins
+//! an operation needs. It reads none of the library's views: what a screen
+//! shows of the library is `bae_views`', which reads the same store.
 
 use std::future::Future;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]

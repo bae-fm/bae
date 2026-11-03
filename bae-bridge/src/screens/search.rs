@@ -22,12 +22,12 @@ pub struct BridgeLibrarySearchSnapshot {
 /// starts with no query.
 #[derive(uniffi::Object)]
 pub struct LibrarySearchSubscription {
-    inner: bae_library::library::LiveLibrarySearch,
+    inner: bae_views::LiveLibrarySearch,
     runtime: crate::operation_runtime::OperationRuntime,
 }
 
 pub(crate) fn library_search(
-    inner: bae_library::library::LiveLibrarySearch,
+    inner: bae_views::LiveLibrarySearch,
     runtime: crate::operation_runtime::OperationRuntime,
 ) -> Arc<LibrarySearchSubscription> {
     Arc::new(LibrarySearchSubscription { inner, runtime })
@@ -72,12 +72,10 @@ impl LibrarySearchSubscription {
     }
 }
 
-fn search_error(error: bae_library::library::LiveLibrarySearchError) -> BridgeError {
+fn search_error(error: bae_views::LiveLibrarySearchError) -> BridgeError {
     match error {
-        bae_library::library::LiveLibrarySearchError::Cancelled => BridgeError::Cancelled,
-        bae_library::library::LiveLibrarySearchError::Query(error) => {
-            BridgeError::database_query(error)
-        }
+        bae_views::LiveLibrarySearchError::Cancelled => BridgeError::Cancelled,
+        bae_views::LiveLibrarySearchError::Query(error) => BridgeError::database_query(error),
     }
 }
 
@@ -105,12 +103,12 @@ pub struct BridgeArtistSearchSnapshot {
 /// until `set_view` names them.
 #[derive(uniffi::Object)]
 pub struct ArtistSearchSubscription {
-    inner: bae_library::library::LiveArtistSearch,
+    inner: bae_views::LiveArtistSearch,
     runtime: crate::operation_runtime::OperationRuntime,
 }
 
 pub(crate) fn artist_search(
-    inner: bae_library::library::LiveArtistSearch,
+    inner: bae_views::LiveArtistSearch,
     runtime: crate::operation_runtime::OperationRuntime,
 ) -> Arc<ArtistSearchSubscription> {
     Arc::new(ArtistSearchSubscription { inner, runtime })

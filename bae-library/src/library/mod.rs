@@ -1,8 +1,6 @@
 mod album_selection;
-mod artist_search;
 mod assembly;
 mod bootstrap_auth;
-mod browse;
 mod closing_step;
 pub(crate) mod detach_cancels;
 mod detail;
@@ -10,32 +8,22 @@ mod file_transfers;
 #[cfg(all(test, desktop))]
 mod import_tests;
 mod library_status;
+pub mod live_query_events;
 mod live_read;
-pub mod live_reads;
 mod local_lifecycle;
 pub(crate) mod make_local_transfers;
 pub mod manager;
 mod outbox_watch;
 mod queue_upcoming;
-#[cfg(desktop)]
-mod release_files;
 mod release_transfers;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod save;
-pub mod search;
-mod storage_browse;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub mod storage_inspector;
-mod sync_activity;
 pub(crate) mod sync_controller;
 mod track_decode;
 mod upload_progress;
 mod upload_throughput;
-pub mod views;
 pub use album_selection::{AlbumSelectionSnapshot, LiveAlbumSelection, LiveAlbumSelectionError};
-pub use artist_search::{ArtistSearchSnapshot, ArtistSearchView, LiveArtistSearch};
 pub use assembly::open_library_manager;
-pub use browse::*;
 pub use closing_step::ClosingStep;
 pub use track_decode::TrackDecode;
 
@@ -55,25 +43,11 @@ pub use outbox_watch::{
     OutboxTotalTransferWatch, OutboxTransferChange, OutboxTransfers, OutboxTransfersWatch,
     ReleaseUploadTransfer, UploadTransfer,
 };
-pub use queue_upcoming::{LiveQueueUpcoming, QueueUpcomingSnapshot};
-#[cfg(desktop)]
-pub use release_files::{
-    LiveReleaseFiles, ReleaseFileColumn, ReleaseFileOrder, ReleaseFilesRequest,
-    ReleaseFilesSnapshot,
-};
+pub use queue_upcoming::{subscribe_queue_upcoming, LiveQueueUpcoming, QueueUpcomingSnapshot};
 pub use release_transfers::{
     DownloadTransferChange, DownloadTransfersWatch, MakeLocalTransfersWatch, OutputTransferChange,
     OutputTransfersWatch, ReleaseTransferChange, ReleaseTransfersWatch,
 };
-pub use search::{
-    LibrarySearchQuery, LibrarySearchSnapshot, LiveLibrarySearch, LiveLibrarySearchError,
-    SEARCH_RESULT_LIMIT,
-};
-pub use storage_browse::{
-    LiveStorageBrowse, ReleaseQueueRun, StorageBrowseSnapshot, StorageBrowseView, StorageQueues,
-    UploadQueueRun,
-};
-pub use sync_activity::{DownloadsInFlight, SyncActivity, UploadQueueCounts, UploadsInFlight};
 pub use upload_progress::{UploadBar, UploadState};
 
 #[cfg(test)]
