@@ -250,6 +250,25 @@ fn an_unreadable_airplay_advertisement_is_refused() {
     assert!(error.to_string().contains("\"garbage\""));
 }
 
+/// An AirPlay 2 receiver that doesn't take the password-less transient
+/// pairing — the only AirPlay 2 pairing bae does — is refused before any
+/// connection is attempted, rather than tried with a pairing it rejects.
+#[test]
+fn an_airplay2_receiver_without_transient_pairing_is_refused() {
+    // Unified media control (bit 38) without CoreUtils pairing (bit 48).
+    let capabilities = AirPlayCapabilities::from_txt(
+        RendererServiceType::AirPlay,
+        &std::collections::HashMap::from([("features".to_string(), "0x0,0x40".to_string())]),
+    );
+    let Err(error) =
+        build_airplay_sink(&Diagnostics::noop(), "10.0.0.7".parse().unwrap(), 7000, &capabilities)
+    else {
+        panic!("a receiver without transient pairing builds no sink");
+    };
+    assert!(matches!(error, CastError::AirPlayPairingUnsupported), "{error:?}");
+    assert_eq!(error.to_string(), "this AirPlay receiver needs a pairing bae doesn't do");
+}
+
 /// A raw serve carries `format=raw`; an MP3 conversion carries
 /// `format=mp3&maxBitRate=320`, a WAV one `format=wav`. Each names the
 /// track as a `tr-` Subsonic id and carries the auth triplet.

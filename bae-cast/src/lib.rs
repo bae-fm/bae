@@ -52,8 +52,10 @@ use renderer::{
 
 /// Build the push-audio sink for an AirPlay receiver, or a kind-specific error
 /// when it can't be driven: one advertising a setting bae can't read, a
-/// PIN-gated receiver, or one offering only encryption the sender can't
-/// provide. RAOP receivers pick unencrypted when offered, else RSA-AES.
+/// PIN-gated receiver, an AirPlay 2 receiver that doesn't take transient
+/// pairing (the only AirPlay 2 pairing the sender does), or one offering only
+/// encryption the sender can't provide. RAOP receivers pick unencrypted when
+/// offered, else RSA-AES.
 fn build_airplay_sink(
     diagnostics: &Diagnostics,
     addr: std::net::IpAddr,
@@ -67,6 +69,9 @@ fn build_airplay_sink(
         return Err(CastError::AirPlayPinRequired);
     }
     match &capabilities.dialect {
+        Dialect::AirPlay2 if !capabilities.supports_transient_pairing => {
+            Err(CastError::AirPlayPairingUnsupported)
+        }
         Dialect::AirPlay2 => Ok(Box::new(Ap2Sink::new(
             addr,
             port,
@@ -113,6 +118,10 @@ pub enum CastError {
     /// The AirPlay receiver demands a user PIN, which the sender doesn't support.
     #[error("this AirPlay receiver needs a PIN, which isn't supported")]
     AirPlayPinRequired,
+    /// The AirPlay 2 receiver doesn't take transient pairing, the only AirPlay
+    /// 2 pairing the sender does.
+    #[error("this AirPlay receiver needs a pairing bae doesn't do")]
+    AirPlayPairingUnsupported,
     /// The RAOP receiver only offers audio encryption the sender can't provide.
     #[error("this AirPlay receiver requires an encryption the sender can't provide")]
     AirPlayEncryptionUnsupported,

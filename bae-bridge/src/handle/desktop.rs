@@ -94,6 +94,7 @@ forward! {
                     // AirPlay receivers the sender can't drive get their own localized
                     // picker line, not the generic internal-error one.
                     bae_cast::CastError::AirPlayPinRequired
+                    | bae_cast::CastError::AirPlayPairingUnsupported
                     | bae_cast::CastError::AirPlayEncryptionUnsupported => BridgeError::diagnostic(
                         crate::types::BridgeErrorCategory::AirPlayUnsupported,
                         detail,

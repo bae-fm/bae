@@ -3164,8 +3164,9 @@ it gets MP3. (DLNA's required audio format is uncompressed PCM sent as
 `audio/L16`, not a WAV file; bae doesn't serve L16.)
 
 **AirPlay** receivers of both generations play. A receiver that demands a PIN,
-or offers only an encryption bae doesn't implement, is refused with that
-reason.
+an AirPlay 2 receiver that doesn't take the password-less transient pairing
+(the only AirPlay 2 pairing bae does), or one that offers only an encryption
+bae doesn't implement, is refused with that reason before bae connects.
 
 bae sends audio ahead of what the receiver plays by the delay the receiver
 reports when the connection is set up, or two seconds when it reports none.
