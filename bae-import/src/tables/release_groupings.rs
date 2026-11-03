@@ -833,3 +833,7 @@ impl ImportTables {
             .await
     }
 }
+
+#[cfg(test)]
+#[path = "release_groupings_tests.rs"]
+pub(crate) mod tests;

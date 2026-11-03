@@ -866,3 +866,7 @@ impl ImportTables {
         self.database.call(move |sql| replace_source_release_on(sql, &release)).await
     }
 }
+
+#[cfg(test)]
+#[path = "source_releases_tests.rs"]
+mod tests;

@@ -831,3 +831,7 @@ pub(super) fn medium_conflict_of(
         other => return Err(verdict_rows::unreadable("medium_conflict", other)),
     }))
 }
+
+#[cfg(test)]
+#[path = "import_state_tests.rs"]
+mod tests;

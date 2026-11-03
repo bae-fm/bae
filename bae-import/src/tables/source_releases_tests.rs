@@ -1,7 +1,6 @@
 //! The source-release tables hold every fact an extraction reads, and hold it
 //! for exactly one extraction of a release at a time.
 
-use super::empty_db;
 use bae_catalogs::catalog::Catalog;
 use bae_catalogs::catalog::LookupCatalog;
 use bae_catalogs::payloads::ReleasePayloads;
@@ -12,6 +11,7 @@ use bae_catalogs::test_documents::{
     linked_release_group, musicbrainz_release_with_relations, wikidata_item,
     wikidata_linked_release_group,
 };
+use bae_db::test_fixtures::empty_db;
 
 /// A MusicBrainz release with everything its tracklist can state: a vinyl
 /// medium and a CD medium, a credit that names no artist, composer
@@ -495,36 +495,6 @@ async fn a_release_with_its_master_and_group_reads_back_as_extracted() {
     .unwrap();
     tables.save_source_release(&fetched).await.unwrap();
     assert_eq!(tables.load_source_release(fetched.release()).await.unwrap(), Some(fetched));
-}
-
-#[test]
-fn library_check_matches_detail_keys_with_and_without_source_groups() {
-    for group in [None, Some(789)] {
-        for source in [LookupCatalog::Discogs, LookupCatalog::MusicBrainz] {
-            let anchor = match source {
-                LookupCatalog::Discogs => serde_json::json!({
-                    "id": 123, "title": "Album Title", "master_id": group
-                }),
-                LookupCatalog::MusicBrainz => serde_json::json!({
-                    "id": "123", "title": "Album Title", "artist-credit": [],
-                    "label-info": [], "media": [], "relations": [],
-                    "cover-art-archive": { "front": false, "darkened": false },
-                    "release-group": group.map(|id| serde_json::json!({ "id": id.to_string() }))
-                }),
-            };
-            let payloads = ReleasePayloads::for_test(
-                LookupRef::new(source, "123"),
-                anchor.to_string(),
-                Vec::new(),
-            );
-            let check = bae_db::LibraryCheck::of_release(&payloads.extract().unwrap());
-            let detail = payloads.extract().unwrap().detail(&[]);
-            assert_eq!(check.source, detail.source.catalog());
-            assert_eq!(check.release_id, detail.release_id);
-            assert_eq!(check.source_group_id, detail.source_group_id);
-            assert_eq!(check.source_group_id, group.map(|id| id.to_string()));
-        }
-    }
 }
 
 /// What Wikidata's item added when the release was fetched is stored with

@@ -1,14 +1,15 @@
 //! Each candidate's standing as the standings table stores and reads it back.
 
-use super::{empty_db, exec_batch};
+use super::*;
 use crate::candidate_runtime::{
     IdentificationChange, IdentificationStage, StoredIdentification, StoredImport, StoredStanding,
 };
 use crate::candidates::{Admission, CandidateFiles, SaveFailure};
 use crate::IdentifyRunId;
+use bae_db::test_fixtures::{empty_db, exec_batch};
 
 /// Store `key` as a candidate the scan holds with `files`, as the scan would.
-async fn scanned(db: &super::super::Database, key: &crate::CandidateKey, files: &CandidateFiles) {
+async fn scanned(db: &Database, key: &crate::CandidateKey, files: &CandidateFiles) {
     exec_batch(
         db,
         &format!(
@@ -45,11 +46,7 @@ fn run(number: u64) -> IdentifyRunId {
 }
 
 /// Apply `changes` to `key` one write each.
-async fn change(
-    db: &super::super::Database,
-    key: &crate::CandidateKey,
-    changes: Vec<IdentificationChange>,
-) {
+async fn change(db: &Database, key: &crate::CandidateKey, changes: Vec<IdentificationChange>) {
     let tables = crate::tables::ImportTables::new(db.clone());
     for change in changes {
         tables.change_candidate_identifications(vec![(key.clone(), change)]).await.unwrap();
@@ -230,7 +227,7 @@ async fn clearing_removes_every_standing() {
 }
 
 /// How many imports the import counts' live query counts in flight.
-async fn imports_in_flight(db: &super::super::Database) -> u32 {
+async fn imports_in_flight(db: &Database) -> u32 {
     let tables = crate::tables::ImportTables::new(db.clone());
     tables
         .subscribe_import_counts()

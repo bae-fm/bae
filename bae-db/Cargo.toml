@@ -48,6 +48,7 @@ tempfile = { workspace = true, optional = true }
 
 [dev-dependencies]
 bae-app-dir = { workspace = true, features = ["test-utils"] }
+bae-catalogs = { workspace = true, features = ["test-utils"] }
 bae-util = { workspace = true, features = ["test-utils"] }
 bae-types = { workspace = true, features = ["test-utils"] }
 coven = { workspace = true, features = ["test-utils"] }

@@ -2,7 +2,7 @@
 //! person's answer recorded, the merge "same label" makes, and the import
 //! naming the label the answer names.
 
-use super::super::*;
+use super::*;
 use bae_db::client::label_resolution::{import_label_write, write_release_labels_on};
 use bae_db::test_fixtures::labels::{
     add_label, ids_of, label, library, placed, read_labels, stored_label, with_ids, write, RELEASE,

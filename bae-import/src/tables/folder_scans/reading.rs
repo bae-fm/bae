@@ -257,3 +257,7 @@ impl ImportTables {
             .await
     }
 }
+
+#[cfg(test)]
+#[path = "reading_tests.rs"]
+mod tests;

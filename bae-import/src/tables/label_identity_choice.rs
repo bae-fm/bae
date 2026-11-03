@@ -264,3 +264,7 @@ fn shown_label_on<Q: QueryOne>(sql: &Q, label_id: &str) -> Result<Option<LabelRo
     .optional()
     .map_err(DbError::from)
 }
+
+#[cfg(test)]
+#[path = "label_identity_choice_tests.rs"]
+mod tests;

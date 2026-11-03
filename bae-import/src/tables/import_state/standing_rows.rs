@@ -581,3 +581,7 @@ impl ImportTables {
         self.database.call(move |sql| move_import_on(sql, &candidate_key, &import_id, next)).await
     }
 }
+
+#[cfg(test)]
+#[path = "standing_rows_tests.rs"]
+mod tests;

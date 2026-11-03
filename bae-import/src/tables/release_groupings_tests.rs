@@ -1,18 +1,18 @@
 //! Releases picked together, as the store keeps them: built from the releases
 //! they take in, in the same write as whatever changes one of them.
 
-use super::{candidate, empty_db, folder_below};
+use super::*;
 use crate::folder_scanner::{
     AudioDamage, CandidateFile, FileRole, FolderCandidate, FolderSidecar, InvalidReason,
     ProposedRole, ScanItem, ScannedFile, SidecarFiles, SkippedFile,
 };
 use crate::grouping::GroupingBlock;
+use crate::tables::tests::{candidate, candidate_with, folder_below};
+use bae_db::test_fixtures::{empty_db, temp_db};
 use bae_db::watched_path::host_root;
 
 /// `names` under one watched root, scanned to completion.
-async fn scanned(
-    names: &[&str],
-) -> (super::super::Database, tempfile::TempDir, Vec<FolderCandidate>) {
+pub(crate) async fn scanned(names: &[&str]) -> (Database, tempfile::TempDir, Vec<FolderCandidate>) {
     let root = host_root("/music");
     scanned_folders(names.iter().map(|name| candidate(&root, name)).collect()).await
 }
@@ -20,7 +20,7 @@ async fn scanned(
 /// `folders`, under the watched root `/music`, scanned to completion.
 async fn scanned_folders(
     folders: Vec<FolderCandidate>,
-) -> (super::super::Database, tempfile::TempDir, Vec<FolderCandidate>) {
+) -> (Database, tempfile::TempDir, Vec<FolderCandidate>) {
     let (db, temp) = empty_db().await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let root = host_root("/music");
@@ -43,7 +43,7 @@ async fn scanned_folders(
     (db, temp, candidates)
 }
 
-async fn stored(db: &super::super::Database, key: &crate::CandidateKey) -> Option<ScanItem> {
+async fn stored(db: &Database, key: &crate::CandidateKey) -> Option<ScanItem> {
     let tables = crate::tables::ImportTables::new(db.clone());
     tables.load_folder_scan_item(key).await.unwrap()
 }
@@ -208,7 +208,7 @@ async fn the_schema_holds_one_grouping_model() {
 
 /// The sidecar of `folder`, a `/`-separated path under `/music` spelled as
 /// the scanner spells it on this host, holding `names` as artwork.
-fn sidecar_of(folder: &str, names: &[&str]) -> FolderSidecar {
+pub(crate) fn sidecar_of(folder: &str, names: &[&str]) -> FolderSidecar {
     let root = host_root("/music");
     let folder = folder_below(&root, folder);
     FolderSidecar {
@@ -228,7 +228,7 @@ fn sidecar_of(folder: &str, names: &[&str]) -> FolderSidecar {
 
 /// Store `item` under a scan generation opened for it, and say what the
 /// write rebuilt.
-async fn scan_in(db: &super::super::Database, item: ScanItem) -> crate::tables::ScanItemWrite {
+pub(crate) async fn scan_in(db: &Database, item: ScanItem) -> crate::tables::ScanItemWrite {
     let tables = crate::tables::ImportTables::new(db.clone());
     let root = host_root("/music");
     let generation = tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
@@ -241,7 +241,7 @@ async fn scan_in(db: &super::super::Database, item: ScanItem) -> crate::tables::
 
 /// The relative paths of the files the release at `key` holds, when it can be
 /// imported.
-async fn release_files(db: &super::super::Database, key: &crate::CandidateKey) -> Vec<String> {
+async fn release_files(db: &Database, key: &crate::CandidateKey) -> Vec<String> {
     let Some(ScanItem::Valid(release)) = stored(db, key).await else {
         panic!("{key} is a release that can be imported");
     };
@@ -343,7 +343,7 @@ async fn a_release_reading_the_folders_files_replaces_its_sidecar() {
         .unwrap()
         .unwrap();
 
-    let album = super::candidate_with(
+    let album = candidate_with(
         &host_root("/music"),
         "Album",
         sidecar_owner_files(),
@@ -518,14 +518,11 @@ async fn a_grouping_waits_for_its_folders_files_to_finish_downloading() {
 /// folder's one reader, not by reading every grouping in the folder.
 #[tokio::test]
 async fn the_folder_files_reader_is_found_by_its_index() {
-    let (db, _tmp) = super::temp_db().await;
+    let (db, _tmp) = temp_db().await;
     let plan = db
         .read(|sql| {
             sql.query(
-                &format!(
-                    "EXPLAIN QUERY PLAN {}",
-                    super::super::release_groupings::PARENT_FILES_READER
-                ),
+                &format!("EXPLAIN QUERY PLAN {}", PARENT_FILES_READER),
                 ["/music/Album", "grouping"],
                 |row| row.get::<_, String>(3),
             )
@@ -536,40 +533,5 @@ async fn the_folder_files_reader_is_found_by_its_index() {
     assert!(
         plan.iter().any(|step| step.contains("USING INDEX release_grouping_parent_reader")),
         "the reader is found by its index: {plan:?}"
-    );
-}
-
-/// Reading one folder again prunes the sidecars it no longer yields at and
-/// below that folder, and leaves those of the folders beside it, whatever
-/// their names sort next to.
-#[tokio::test]
-async fn reading_a_folder_again_prunes_only_its_own_sidecars() {
-    let (db, _temp, _) = scanned(&[]).await;
-    let tables = crate::tables::ImportTables::new(db.clone());
-    let root = host_root("/music");
-    for folder in ["Album", "Album/Disc 1", "Album 2", "Album0"] {
-        scan_in(&db, ScanItem::Sidecar(sidecar_of(folder, &["cover.jpg"]))).await;
-    }
-
-    let stamp = tables.begin_folder_reading(&root).await.unwrap();
-    tables
-        .commit_folder_reading(crate::tables::FolderReadingCommit {
-            watched_folder_path: root.clone(),
-            folder: "Album".into(),
-            stamp,
-            decision: None,
-            scanned_decisions: Vec::new(),
-            items: Vec::new(),
-            directories: Some(Vec::new()),
-        })
-        .await
-        .unwrap();
-
-    let folder = |name: &str| coven::path_text(&root.join(name));
-    assert_eq!(
-        db.query_texts_for_test("SELECT coven_path_text(folder) FROM scan_sidecar ORDER BY folder")
-            .await
-            .unwrap(),
-        [folder("Album 2"), folder("Album0")]
     );
 }

@@ -527,3 +527,7 @@ impl ImportTables {
             .map_err(import_commit_error)
     }
 }
+
+#[cfg(test)]
+#[path = "import_commit_tests.rs"]
+mod tests;

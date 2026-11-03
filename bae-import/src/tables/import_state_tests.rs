@@ -1,3 +1,6 @@
+//! The watched folders as the store keeps them.
+
+use bae_db::test_fixtures::temp_db;
 use bae_db::watched_path::host_root;
 
 /// Two overlapping folders added at once: the overlap check and the insert
@@ -8,7 +11,7 @@ use bae_db::watched_path::host_root;
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn overlapping_folders_added_at_once_keep_only_one() {
     for _ in 0..20 {
-        let (db, _tmp) = super::temp_db().await;
+        let (db, _tmp) = temp_db().await;
         let tables = crate::tables::ImportTables::new(db.clone());
         let outer = host_root("/music");
         let inner = host_root("/music/inner");
@@ -37,7 +40,7 @@ async fn overlapping_folders_added_at_once_keep_only_one() {
 /// watched folder is, a folder inside it or beside it is not.
 #[tokio::test]
 async fn a_folder_is_watched_only_by_its_own_key() {
-    let (db, _tmp) = super::temp_db().await;
+    let (db, _tmp) = temp_db().await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let watched = host_root("/music");
     tables.add_watched_import_folder(&watched).await.unwrap();
@@ -52,7 +55,7 @@ async fn a_folder_is_watched_only_by_its_own_key() {
 /// order, never one beside it whose name only begins with its own.
 #[tokio::test]
 async fn the_watched_folders_above_and_below_a_folder_are_read_by_path() {
-    let (db, _tmp) = super::temp_db().await;
+    let (db, _tmp) = temp_db().await;
     let tables = crate::tables::ImportTables::new(db.clone());
     for folder in ["/music/b", "/music/a", "/musical"] {
         tables.add_watched_import_folder(&host_root(folder)).await.unwrap();

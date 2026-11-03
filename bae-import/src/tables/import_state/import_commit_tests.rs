@@ -2,9 +2,9 @@
 //! checks the candidate still is what the import was prepared from. The row
 //! reads as importing until that write.
 
-use super::super::*;
-use super::temp_db;
+use super::*;
 use crate::identification::tests::*;
+use bae_db::test_fixtures::temp_db;
 use bae_db::test_fixtures::{
     ALBUM_A, ARTIST_ALBUM, ARTIST_COMPOSER, RELEASE_A, RELEASE_ROLE_A, TRACK_A, TRACK_ROLE_A,
     TRACK_WORK_A, WORK_A,
