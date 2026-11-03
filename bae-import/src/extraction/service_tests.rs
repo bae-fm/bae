@@ -1,8 +1,12 @@
+//! The extraction service through its handle: what one pass over a folder
+//! sends, the settled reading kept and reused, an extraction that cannot
+//! finish, and one ended from outside. Fixtures the pass's own tests share.
+
 use super::*;
 use crate::extraction::{ArtworkAnalysis, ArtworkAnalyzer};
 use crate::ScanEvent;
 use bae_catalogs::rate_limiter::CallPriority;
-use bae_identify::signals::{ArtworkScan, TextOrigin};
+use bae_identify::signals::ArtworkScan;
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -12,21 +16,16 @@ use std::time::Duration;
 use tempfile::TempDir;
 use tokio::sync::mpsc::UnboundedReceiver;
 
-mod aborts;
-mod cancellation;
-mod images_at_once;
-mod tags;
-
 /// Canned text lines keyed by file name; the optional gate holds each image
 /// until the test opens it, so a test can act mid-OCR.
-struct StubAnalyzer {
+pub(super) struct StubAnalyzer {
     responses: StdMutex<HashMap<String, Vec<String>>>,
     gate: Option<crate::test_gate::Held>,
     calls: std::sync::atomic::AtomicUsize,
 }
 
 impl StubAnalyzer {
-    fn new() -> Self {
+    pub(super) fn new() -> Self {
         Self {
             responses: StdMutex::new(HashMap::new()),
             gate: None,
@@ -34,18 +33,18 @@ impl StubAnalyzer {
         }
     }
 
-    fn with(self, filename: &str, lines: Vec<String>) -> Self {
+    pub(super) fn with(self, filename: &str, lines: Vec<String>) -> Self {
         self.responses.lock().unwrap().insert(filename.to_string(), lines);
         self
     }
 
-    fn gated(mut self, gate: crate::test_gate::Held) -> Self {
+    pub(super) fn gated(mut self, gate: crate::test_gate::Held) -> Self {
         self.gate = Some(gate);
         self
     }
 
     /// Lets a test assert a cancelled OCR pass stopped before every image.
-    fn calls(&self) -> usize {
+    pub(super) fn calls(&self) -> usize {
         self.calls.load(std::sync::atomic::Ordering::SeqCst)
     }
 }
@@ -62,7 +61,7 @@ impl ArtworkAnalyzer for StubAnalyzer {
     }
 }
 
-struct PanicAnalyzer;
+pub(super) struct PanicAnalyzer;
 
 impl ArtworkAnalyzer for PanicAnalyzer {
     fn analyze(&self, _path: &Path) -> ArtworkAnalysis {
@@ -71,12 +70,15 @@ impl ArtworkAnalyzer for PanicAnalyzer {
 }
 
 /// Drain `SignalsUpdated` events until `expected` of them arrive, or time out.
-async fn collect_signals(rx: &mut UnboundedReceiver<ImportEvent>, expected: usize) -> Vec<Signals> {
+pub(super) async fn collect_signals(
+    rx: &mut UnboundedReceiver<ImportEvent>,
+    expected: usize,
+) -> Vec<Signals> {
     collect_snapshots(rx, expected).await.into_iter().map(|(signals, _)| signals).collect()
 }
 
 /// Wait until the run behind `watch` has ended, which drops its end.
-async fn run_ended(watch: &mut crate::extraction::ExtractionWatch) {
+pub(super) async fn run_ended(watch: &mut crate::extraction::ExtractionWatch) {
     tokio::time::timeout(Duration::from_secs(30), async { while watch.changed().await.is_ok() {} })
         .await
         .expect("the extraction ends");
@@ -84,7 +86,7 @@ async fn run_ended(watch: &mut crate::extraction::ExtractionWatch) {
 
 /// No `SignalsUpdated` is left on `rx`: once the run has ended, the
 /// extraction said everything it had to say.
-fn assert_no_more_snapshots(rx: &mut UnboundedReceiver<ImportEvent>, after: &str) {
+pub(super) fn assert_no_more_snapshots(rx: &mut UnboundedReceiver<ImportEvent>, after: &str) {
     while let Ok(event) = rx.try_recv() {
         if let ImportEvent::SignalsUpdated { signals, .. } = event {
             panic!("no snapshot follows {after}, got {signals:?}")
@@ -93,7 +95,7 @@ fn assert_no_more_snapshots(rx: &mut UnboundedReceiver<ImportEvent>, after: &str
 }
 
 /// Every snapshot with where the artwork pass was when it went out.
-async fn collect_snapshots(
+pub(super) async fn collect_snapshots(
     rx: &mut UnboundedReceiver<ImportEvent>,
     expected: usize,
 ) -> Vec<(Signals, ArtworkScan)> {
@@ -111,7 +113,7 @@ async fn collect_snapshots(
 }
 
 /// A throwaway library database over a temp dir, which must outlive it.
-async fn make_database() -> (bae_db::Database, TempDir) {
+pub(super) async fn make_database() -> (bae_db::Database, TempDir) {
     let tmp = TempDir::new().unwrap();
     let database = bae_db::Database::new_test(
         tmp.path().join("test.db").to_str().unwrap(),
@@ -123,7 +125,7 @@ async fn make_database() -> (bae_db::Database, TempDir) {
 }
 
 /// Start a service; the bus sender comes back so a test can inject events.
-async fn make_service(
+pub(super) async fn make_service(
 ) -> (ExtractionServiceHandle, ImportEventBus, UnboundedReceiver<ImportEvent>, TempDir) {
     let candidates = CandidateRuntime::for_test().await;
     let tx = ImportEventBus::new(candidates.clone());
@@ -142,7 +144,7 @@ async fn make_service(
 /// Start a service with `analyzer` registered and an extraction running over
 /// `folder` as `"cand-1"`, with the watch its run holds open until it ends.
 /// The `TempDir` must outlive the service.
-async fn start_signals(
+pub(super) async fn start_signals(
     folder: PathBuf,
     analyzer: Arc<dyn ArtworkAnalyzer>,
 ) -> (
@@ -162,18 +164,18 @@ async fn start_signals(
     (handle, rx, run, lib_tmp)
 }
 
-fn fixture_flac() -> Vec<u8> {
+pub(super) fn fixture_flac() -> Vec<u8> {
     std::fs::read(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/flac/01 Test Track 1.flac"))
         .expect("read FLAC fixture")
 }
 
 /// Just the JPEG magic — enough for `is_valid_image` to accept it.
-fn minimal_jpeg() -> Vec<u8> {
+pub(super) fn minimal_jpeg() -> Vec<u8> {
     vec![0xFF, 0xD8, 0xFF, 0xE0, 0x00]
 }
 
 /// A release folder holding one FLAC plus the given images and documents.
-fn build_release(
+pub(super) fn build_release(
     tmp: &TempDir,
     folder_name: &str,
     images: &[&str],
@@ -191,7 +193,7 @@ fn build_release(
     folder
 }
 
-fn folder_source(folder: PathBuf) -> ExtractionSource {
+pub(super) fn folder_source(folder: PathBuf) -> ExtractionSource {
     let files = crate::folder_scanner::collect_release_candidate_files_with_scope(
         &folder,
         crate::ReleaseFileScope::Recursive,
@@ -213,70 +215,40 @@ fn folder_source(folder: PathBuf) -> ExtractionSource {
     }
 }
 
-#[tokio::test(flavor = "multi_thread")]
-async fn emits_fast_pass_then_ocr_then_settled() {
-    // The folder name carries a catalog bracket, the parent an artist name.
-    let tmp = TempDir::new().unwrap();
-    let parent = tmp.path().join("Artist Name");
-    fs::create_dir_all(&parent).unwrap();
-    let folder = parent.join("1989 - Album Title [XX34b]");
-    fs::create_dir_all(&folder).unwrap();
-    fs::write(folder.join("01 - Track.flac"), fixture_flac()).unwrap();
-    fs::write(folder.join("Cover.jpg"), minimal_jpeg()).unwrap();
-    fs::write(folder.join("Back.jpg"), minimal_jpeg()).unwrap();
+/// Start an extraction over `folder` as `"cand-1"` and return the watch its
+/// run holds open until it ends.
+pub(super) fn start(
+    handle: &ExtractionServiceHandle,
+    folder: PathBuf,
+) -> crate::extraction::ExtractionWatch {
+    handle.start(
+        IdentifyRunId::for_test(1),
+        crate::CandidateKey::test("cand-1"),
+        folder_source(folder),
+        CallPriority::Interactive,
+    )
+}
 
-    let analyzer: Arc<dyn ArtworkAnalyzer> = Arc::new(
-        StubAnalyzer::new()
-            .with("Cover.jpg", vec!["WPCR-80001".to_string()])
-            .with("Back.jpg", vec!["Extra Line".to_string()]),
-    );
-    let (_handle, mut rx, _run, _lib_tmp) = start_signals(folder.clone(), analyzer).await;
+/// Wait until the gated analyzer has entered an image.
+pub(super) async fn ocr_entered(entries: std::sync::mpsc::Receiver<()>) {
+    tokio::task::spawn_blocking(move || entries.recv_timeout(Duration::from_secs(30)))
+        .await
+        .unwrap()
+        .expect("the OCR pass reaches an image");
+}
 
-    // The fast pass, one per image but the last, then the settled snapshot.
-    let snapshots = collect_snapshots(&mut rx, 3).await;
-    assert_eq!(snapshots.len(), 3);
-    let artwork: Vec<&ArtworkScan> = snapshots.iter().map(|(_, a)| a).collect();
-    assert_eq!(
-        artwork,
-        vec![
-            &ArtworkScan::Reading { current: Some("Back.jpg".to_string()), position: 1, total: 2 },
-            &ArtworkScan::Reading { current: Some("Cover.jpg".to_string()), position: 2, total: 2 },
-            &ArtworkScan::Done { total: 2 },
-        ]
-    );
-    let signals: Vec<Signals> = snapshots.into_iter().map(|(s, _)| s).collect();
+/// Every `SignalsUpdated` delivered so far.
+pub(super) fn delivered_signals(rx: &mut UnboundedReceiver<ImportEvent>) -> Vec<Signals> {
+    std::iter::from_fn(|| rx.try_recv().ok())
+        .filter_map(|event| match event {
+            ImportEvent::SignalsUpdated { signals, .. } => Some(signals),
+            _ => None,
+        })
+        .collect()
+}
 
-    // While scanning, the bracket is a catalog and the path components are free text.
-    assert!(
-        matches!(signals[0].text, TextSignal::Scanning { .. }),
-        "fast-pass text should be Scanning, got {:?}",
-        signals[0].text,
-    );
-    assert!(
-        signals[0].text.catalogs().iter().any(|c| c == "XX34b"),
-        "expected folder-bracket catalog in fast pass, got {:?}",
-        signals[0].text.catalogs(),
-    );
-    assert!(
-        signals[0]
-            .text
-            .free_text()
-            .iter()
-            .any(|s| s.contains("Artist Name") || s.contains("Album Title")),
-        "expected folder/parent path components in fast pass, got {:?}",
-        signals[0].text.free_text(),
-    );
-
-    // Artwork is OCR'd in sorted order — Back.jpg, then Cover.jpg.
-    assert!(signals[1].text.catalogs().iter().any(|c| c == "XX34b"));
-
-    assert!(
-        matches!(signals[2].text, TextSignal::Settled { .. }),
-        "final text should be Settled, got {:?}",
-        signals[2].text,
-    );
-    assert!(signals[2].text.catalogs().iter().any(|c| c == "XX34b"));
-    assert!(signals[2].text.catalogs().iter().any(|c| c == "WPCR-80001"));
+pub(super) fn settled(signals: &Signals) -> bool {
+    matches!(signals.text, TextSignal::Settled { .. })
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -420,115 +392,6 @@ FILE \"audio.flac\" WAVE\n  \
     );
 }
 
-/// The digits printed under a back cover's bars are the code, read off that
-/// image and spelled as the CUE sheet's; the image's other lines still reach
-/// the text pool.
-#[tokio::test(flavor = "multi_thread")]
-async fn a_barcode_printed_as_text_on_the_artwork_is_a_barcode_sighting() {
-    let tmp = TempDir::new().unwrap();
-    let folder = tmp.path().join("Some Folder");
-    fs::create_dir_all(&folder).unwrap();
-    fs::write(folder.join("audio.flac"), fixture_flac()).unwrap();
-    fs::write(folder.join("Back.jpg"), minimal_jpeg()).unwrap();
-    let cue = "CATALOG 0012345678905\n\
-FILE \"audio.flac\" WAVE\n  \
-  TRACK 01 AUDIO\n    \
-    INDEX 01 00:00:00\n";
-    fs::write(folder.join("Album.cue"), cue).unwrap();
-
-    let analyzer: Arc<dyn ArtworkAnalyzer> = Arc::new(StubAnalyzer::new().with(
-        "Back.jpg",
-        vec![
-            "Artist Alpha".to_string(),
-            "0 12345 67890 5".to_string(),
-            "5 012345 678901".to_string(),
-        ],
-    ));
-    let (_handle, mut rx, _run, _lib_tmp) = start_signals(folder, analyzer).await;
-
-    // The fast pass, then the settled snapshot after the one image.
-    let signals = collect_signals(&mut rx, 2).await;
-    let settled = &signals[1];
-    assert!(matches!(settled.barcode, BarcodeSignal::Settled { .. }));
-    assert_eq!(
-        settled.barcode.codes(),
-        [
-            SourcedValue::in_file("0012345678905".to_string(), "Album.cue".to_string()),
-            SourcedValue::in_file("0012345678905".to_string(), "Back.jpg".to_string()),
-        ]
-    );
-    assert!(
-        settled.text_pool.iter().any(|line| line.text == "Artist Alpha"),
-        "the image's text still reaches the pool, got {:?}",
-        settled.text_pool,
-    );
-}
-
-/// Where the detector decodes the bars and the recognizer reads the digits
-/// under them, the image holds one sighting of the code.
-#[tokio::test(flavor = "multi_thread")]
-async fn the_bars_and_their_printed_digits_are_one_sighting() {
-    struct BarsAndDigits;
-    impl ArtworkAnalyzer for BarsAndDigits {
-        fn analyze(&self, _path: &Path) -> ArtworkAnalysis {
-            ArtworkAnalysis {
-                barcodes: vec!["5012345678900".to_string()],
-                text_lines: vec!["5 012345 678900".to_string()],
-            }
-        }
-    }
-
-    let tmp = TempDir::new().unwrap();
-    let folder = tmp.path().join("Some Folder");
-    fs::create_dir_all(&folder).unwrap();
-    fs::write(folder.join("audio.flac"), fixture_flac()).unwrap();
-    fs::write(folder.join("Back.jpg"), minimal_jpeg()).unwrap();
-
-    let (_handle, mut rx, _run, _lib_tmp) = start_signals(folder, Arc::new(BarsAndDigits)).await;
-
-    let signals = collect_signals(&mut rx, 2).await;
-    assert_eq!(
-        signals[1].barcode.codes(),
-        [SourcedValue::in_file("5012345678900".to_string(), "Back.jpg".to_string())]
-    );
-}
-
-#[test]
-fn non_utf8_cue_is_decoded_not_dropped() {
-    // A Windows-1252 CUE's curly apostrophe (0x92) is decoded, not the sheet dropped.
-    let tmp = TempDir::new().unwrap();
-    let folder = tmp.path().join("Some Folder");
-    fs::create_dir_all(&folder).unwrap();
-    fs::write(folder.join("audio.flac"), fixture_flac()).unwrap();
-
-    let mut cue: Vec<u8> = Vec::new();
-    cue.extend_from_slice(b"PERFORMER \"Artist Alpha\"\n");
-    cue.extend_from_slice(b"TITLE \"Album Title A\"\n");
-    cue.extend_from_slice(b"FILE \"audio.flac\" WAVE\n");
-    cue.extend_from_slice(b"  TRACK 01 AUDIO\n");
-    cue.extend_from_slice(b"    TITLE \"I Ain");
-    cue.push(0x92); // Windows-1252 right single quotation mark
-    cue.extend_from_slice(b"t Got No Heart\"\n");
-    cue.extend_from_slice(b"    INDEX 01 00:00:00\n");
-    fs::write(folder.join("Album.cue"), &cue).unwrap();
-
-    let files = crate::folder_scanner::collect_release_candidate_files_with_scope(
-        &folder,
-        crate::ReleaseFileScope::Recursive,
-        &crate::folder_scanner::StoredCandidateEdits::none(),
-    )
-    .expect("candidate scan");
-    let pass = gather_non_ocr_sources(&[folder], &files)
-        .expect("scanned fixture audio has complete timing");
-    let texts: Vec<&str> = pass.lines.iter().map(|l| l.text.as_str()).collect();
-
-    assert!(texts.contains(&"Artist Alpha"), "non-UTF-8 CUE dropped entirely; got {texts:?}",);
-    assert!(
-        texts.iter().any(|t| t.starts_with("I Ain") && t.ends_with("t Got No Heart")),
-        "non-ASCII track title not recovered; got {texts:?}",
-    );
-}
-
 #[tokio::test(flavor = "multi_thread")]
 async fn text_files_feed_free_text() {
     // A text-file line matching a path component clusters with it, which shows
@@ -614,76 +477,6 @@ FILE \"audio.flac\" WAVE\n  \
     );
 }
 
-/// Every surface a folder carries puts its lines in the pool as read, each with
-/// the surface it came from, and nothing stripped.
-#[tokio::test(flavor = "multi_thread")]
-async fn every_surface_lands_in_the_text_pool_as_it_was_read() {
-    let tmp = TempDir::new().unwrap();
-    let folder = build_release(
-        &tmp,
-        "Artist Alpha - Album Title [16033-2]",
-        &["Artist Alpha - Back Cover.jpg"],
-        &[("info.txt", "Atlantic Records, Inc.\n")],
-    );
-    let cue = r#"PERFORMER "Artist Alpha"
-FILE "01 - Track.flac" WAVE
-  TRACK 01 AUDIO
-    INDEX 01 00:00:00
-"#;
-    fs::write(folder.join("Album.cue"), cue).unwrap();
-
-    let analyzer: Arc<dyn ArtworkAnalyzer> = Arc::new(
-        StubAnalyzer::new()
-            .with("Artist Alpha - Back Cover.jpg", vec!["Made in US · 1976".to_string()]),
-    );
-    let (_handle, mut rx, _run, _lib_tmp) = start_signals(folder, analyzer).await;
-
-    let signals = collect_signals(&mut rx, 2).await;
-    let pool = &signals[signals.len() - 1].text_pool;
-    let found = |text: &str| pool.iter().find(|line| line.text == text);
-
-    let folder_line = found("Artist Alpha - Album Title [16033-2]")
-        .unwrap_or_else(|| panic!("the folder's own name, as written; got {pool:?}"));
-    assert_eq!(folder_line.origin, TextOrigin::FolderName);
-
-    let filename_line = found("Artist Alpha - Back Cover")
-        .unwrap_or_else(|| panic!("the image's file name; got {pool:?}"));
-    assert_eq!(filename_line.origin, TextOrigin::Filename);
-
-    let cue_line =
-        found("Artist Alpha").unwrap_or_else(|| panic!("the CUE PERFORMER; got {pool:?}"));
-    assert_eq!(cue_line.origin, TextOrigin::CueSheet);
-
-    let text_file_line =
-        found("Atlantic Records, Inc.").unwrap_or_else(|| panic!("the .txt line; got {pool:?}"));
-    assert_eq!(text_file_line.origin, TextOrigin::TextFile);
-
-    let ocr_line =
-        found("Made in US · 1976").unwrap_or_else(|| panic!("the OCR line; got {pool:?}"));
-    assert_eq!(ocr_line.origin, TextOrigin::Artwork);
-}
-
-/// One line read twice off one surface is pooled once.
-#[tokio::test(flavor = "multi_thread")]
-async fn a_line_read_twice_off_one_surface_is_pooled_once() {
-    let tmp = TempDir::new().unwrap();
-    let folder = build_release(&tmp, "Some Folder", &["front.jpg"], &[]);
-    let analyzer: Arc<dyn ArtworkAnalyzer> =
-        Arc::new(StubAnalyzer::new().with(
-            "front.jpg",
-            vec!["Atlantic Records".to_string(), "Atlantic Records".to_string()],
-        ));
-    let (_handle, mut rx, _run, _lib_tmp) = start_signals(folder, analyzer).await;
-
-    let signals = collect_signals(&mut rx, 2).await;
-    let pool = &signals[signals.len() - 1].text_pool;
-    assert_eq!(
-        pool.iter().filter(|line| line.text == "Atlantic Records").count(),
-        1,
-        "got {pool:?}",
-    );
-}
-
 /// The settled reading is kept before it is announced, so a run started by
 /// anything that heard the settle reuses it.
 #[tokio::test(flavor = "multi_thread")]
@@ -747,4 +540,181 @@ async fn an_unchanged_folder_is_not_read_again() {
     run_ended(&mut second_run).await;
     assert_no_more_snapshots(&mut rx, "the reused reading");
     assert_eq!(analyzer.calls(), 1, "no image is read again");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_fast_pass_that_panics_says_why_there_is_no_pass_and_is_reported() {
+    let bugs = Arc::new(bae_diagnostics::RecordingBugReporter::default());
+    let diagnostics = bae_diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone());
+    let fast_pass =
+        run_fast_pass_blocking(&diagnostics, || -> Result<FastPass, crate::ImportError> {
+            panic!("fast-pass blocking task panicked")
+        })
+        .await;
+
+    let Err(detail) = fast_pass else {
+        panic!("a fast pass that panics fails, not swallowed");
+    };
+    assert_eq!(detail, "read a folder's signals panicked: fast-pass blocking task panicked");
+    assert_eq!(bugs.reports(), vec![("read a folder's signals".to_string(), detail)]);
+}
+
+/// An extraction that cannot gather its inputs does not go silent: it says so
+/// with one snapshot that fails every signal, and nothing follows it. The run
+/// it feeds ends on that as an error instead of waiting on a snapshot that is
+/// not coming.
+#[tokio::test(flavor = "multi_thread")]
+async fn an_aborted_extraction_fails_every_signal_in_one_snapshot() {
+    let candidates = CandidateRuntime::for_test().await;
+    let tx = ImportEventBus::new(candidates.clone());
+    let mut rx = tx.every_event();
+    let (database, _lib_tmp) = make_database().await;
+    let inner = ExtractionServiceInner {
+        runtime_handle: tokio::runtime::Handle::current(),
+        event_tx: tx,
+        analyzer: std::sync::Mutex::new(None),
+        database,
+        diagnostics: bae_diagnostics::Diagnostics::noop(),
+        settled: SessionCache::new("Settled folder signals", SETTLED_CAPACITY),
+        candidates,
+        image_reads: Arc::new(tokio::sync::Semaphore::new(IMAGES_IN_FLIGHT)),
+    };
+    let generation = inner.candidates.start_work(
+        CandidateWork::Extraction,
+        crate::CandidateKey::test("cand-1"),
+        |_, generation| generation,
+    );
+    let extraction = RunningExtraction {
+        run: IdentifyRunId::for_test(1),
+        key: crate::CandidateKey::test("cand-1"),
+        generation,
+        priority: CallPriority::Interactive,
+        snapshots: watch::channel(None).0,
+    };
+
+    let failure = bae_catalogs::InternalFailure {
+        detail: "read a folder's signals panicked: the reader broke".to_string(),
+    };
+    emit_aborted_signals(
+        &inner,
+        &extraction,
+        DiscIdSignal::Failed { failure: failure.clone() },
+        failure.clone(),
+    );
+
+    let snapshots = collect_snapshots(&mut rx, 1).await;
+    let (signals, artwork) = &snapshots[0];
+    assert!(
+        matches!(&signals.disc_id, DiscIdSignal::Failed { failure: f, .. } if *f == failure),
+        "the disc ID failed with the abort's detail, got {:?}",
+        signals.disc_id
+    );
+    assert!(
+        matches!(&signals.barcode, BarcodeSignal::Failed { failure: f, codes } if *f == failure && codes.is_empty()),
+        "the barcode failed with the abort's detail, got {:?}",
+        signals.barcode
+    );
+    assert!(
+        matches!(&signals.text, TextSignal::Failed { failure: f, .. } if *f == failure),
+        "the text failed with the abort's detail, got {:?}",
+        signals.text
+    );
+    assert!(
+        matches!(artwork, ArtworkScan::Failed { read: 0, total: 0, .. }),
+        "the artwork pass failed before reading anything, got {artwork:?}"
+    );
+    assert_no_more_snapshots(&mut rx, "the aborted extraction's one snapshot");
+}
+
+/// A `CandidateRemoved` sent mid-OCR cancels the run by the time the send
+/// returns: it never settles, and it reads none of the images that were not
+/// already being read when it was cancelled.
+#[tokio::test]
+async fn candidate_removed_event_cancels_in_flight_extraction() {
+    let tmp = TempDir::new().unwrap();
+    let images: Vec<String> = (1..=IMAGES_IN_FLIGHT + 2).map(|n| format!("p{n}.jpg")).collect();
+    let image_names: Vec<&str> = images.iter().map(String::as_str).collect();
+    let folder = build_release(&tmp, "Some Folder", &image_names, &[]);
+    let (gate, held, entries) = crate::test_gate::closed();
+    let analyzer = Arc::new(
+        image_names
+            .iter()
+            .fold(StubAnalyzer::new(), |analyzer, name| {
+                analyzer.with(name, vec![format!("Line {name}")])
+            })
+            .gated(held),
+    );
+    let (handle, tx, mut rx, _lib_tmp) = make_service().await;
+    handle.register_analyzer(analyzer.clone());
+    let mut watch = start(&handle, folder);
+
+    ocr_entered(entries).await;
+    let cancelled = handle
+        .cancelled_for_test(&crate::CandidateKey::test("cand-1"))
+        .expect("the extraction is in flight");
+    tx.send(ImportEvent::Scan(ScanEvent::CandidateRemoved {
+        candidate_key: crate::CandidateKey::test("cand-1"),
+    }));
+    tokio::time::timeout(Duration::ZERO, cancelled)
+        .await
+        .expect("the removal cancels the extraction");
+    gate.open();
+    run_ended(&mut watch).await;
+
+    assert!(
+        !delivered_signals(&mut rx).iter().any(settled),
+        "extraction for a removed candidate must not settle"
+    );
+    assert!(
+        analyzer.calls() <= IMAGES_IN_FLIGHT,
+        "cancel must stop the OCR pass before the images not yet started, read {}",
+        analyzer.calls()
+    );
+}
+
+/// A second `start` for a key cancels the first, and the run it started
+/// completes: only a completed run settles, so its `Settled` snapshot proves
+/// the replacement neither deadlocked nor panicked.
+#[tokio::test(flavor = "multi_thread")]
+async fn restart_for_same_key_cancels_prior_then_starts_fresh() {
+    let tmp = TempDir::new().unwrap();
+    let folder = build_release(&tmp, "Some Folder", &["p1.jpg"], &[]);
+    let analyzer: Arc<dyn ArtworkAnalyzer> =
+        Arc::new(StubAnalyzer::new().with("p1.jpg", vec!["Artist A".to_string()]));
+    let (handle, _tx, mut rx, _lib_tmp) = make_service().await;
+    handle.register_analyzer(analyzer);
+    let _first = start(&handle, folder.clone());
+    let mut second = start(&handle, folder);
+    run_ended(&mut second).await;
+
+    assert!(
+        delivered_signals(&mut rx).iter().any(settled),
+        "expected a Settled snapshot from the completed run"
+    );
+}
+
+/// Three `start`s for one key while the first is still inside OCR: each
+/// cancels its predecessor, and the per-task generation keeps a cancelled
+/// task's teardown from removing a newer task's entry, so the last run still
+/// settles.
+#[tokio::test(flavor = "multi_thread")]
+async fn three_starts_cancel_each_predecessor() {
+    let tmp = TempDir::new().unwrap();
+    let folder = build_release(&tmp, "Some Folder", &["p1.jpg"], &[]);
+    let (gate, held, entries) = crate::test_gate::closed();
+    let analyzer: Arc<dyn ArtworkAnalyzer> =
+        Arc::new(StubAnalyzer::new().with("p1.jpg", vec!["Artist A".to_string()]).gated(held));
+    let (handle, _tx, mut rx, _lib_tmp) = make_service().await;
+    handle.register_analyzer(analyzer);
+    let _first = start(&handle, folder.clone());
+    ocr_entered(entries).await;
+    let _second = start(&handle, folder.clone());
+    let mut third = start(&handle, folder);
+    gate.open();
+    run_ended(&mut third).await;
+
+    assert!(
+        delivered_signals(&mut rx).iter().any(settled),
+        "expected a Settled snapshot from the completed run"
+    );
 }
