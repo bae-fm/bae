@@ -3901,6 +3901,15 @@ each device and hands playback the channel or sink.
 - **Strings.** Every user-facing string lives in a catalog, translated into
   every shipped locale in the change that adds it. Core and the bridge emit
   keys and data, never prose.
+- **Locales.** bae is written in English and ships 27 other locales: German,
+  French, Spanish, Italian, Dutch, Polish, Czech, Slovak, Hungarian, Romanian,
+  Greek, Bulgarian, Croatian, Ukrainian, Turkish, Hebrew, Arabic, Brazilian
+  and European Portuguese, Swedish, Danish, Norwegian Bokmål, Finnish,
+  Japanese, Korean, and Simplified and Traditional Chinese. They are the
+  languages of the markets where people use desktop apps and expect them in
+  their own language. `bae_loc::TARGET_LOCALES` is the one list: `loc-gen
+  check` fails a catalog whose translations miss a locale on it or hold one
+  off it, and the platform catalog checks read it from `loc-gen locales`.
 - **Telemetry is typed.** What leaves a device is a closed catalog of events
   with typed fields. A string can't be a field, so a name, path or title can't
   leak. Events from one installation share an id bae makes once and keeps in
