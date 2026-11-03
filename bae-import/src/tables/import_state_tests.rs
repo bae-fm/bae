@@ -471,25 +471,18 @@ pub(crate) async fn stored_and_read(verdict: &TerminalVerdict) -> (TerminalVerdi
     (read, listings)
 }
 
-/// Folder keys below the root that are not canonical — a doubled separator,
-/// a `.` — fail the reads of the root's folders. They are spelled with the
-/// host's separator, which the reads take the range below the root by.
+/// A folder decision's key below the root that is not canonical — a `.` —
+/// fails the read of the root's decisions. It is spelled with the host's
+/// separator, which the read takes the range below the root by.
 #[tokio::test]
-async fn corrupt_folder_keys_fail_when_loaded() {
+async fn corrupt_folder_decision_keys_fail_when_loaded() {
     let (db, _tmp) = empty_db().await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let root = host_root("/mounted/library");
     tables.add_watched_import_folder(&root).await.unwrap();
     let sep = std::path::MAIN_SEPARATOR;
-    let stored_root = root.display().to_string();
-    let doubled = format!("{stored_root}{sep}a{sep}{sep}b");
-    let dotted = format!("{stored_root}{sep}a{sep}.{sep}b");
-    assert!(tables
-        .set_import_candidate_skipped(std::path::Path::new(&doubled), true)
-        .await
-        .is_err());
+    let dotted = format!("{}{sep}a{sep}.{sep}b", root.display());
     db.call(move |conn| {
-        conn.execute("INSERT INTO skipped_import_candidates VALUES (?)", [doubled.into_bytes()])?;
         conn.execute(
             "INSERT INTO release_grouping (key, anchor_folder, combined, author) \
                  VALUES (CAST('grouping:corrupt' AS BLOB), ?, 1, 'user')",
@@ -499,7 +492,6 @@ async fn corrupt_folder_keys_fail_when_loaded() {
     })
     .await
     .unwrap();
-    assert!(tables.load_skipped_import_candidates(&root).await.is_err());
     assert!(tables.load_folder_release_decisions(&root).await.is_err());
 }
 

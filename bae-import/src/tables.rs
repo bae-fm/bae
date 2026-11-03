@@ -16,6 +16,7 @@ pub(crate) mod import_state;
 mod label_identity_choice;
 mod models;
 mod release_groupings;
+mod skipped_candidates;
 mod source_releases;
 mod watched_folders;
 
