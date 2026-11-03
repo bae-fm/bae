@@ -1,61 +1,121 @@
-use super::*;
-use crate::IdentifyFailure;
-use bae_catalogs::album_links::AlbumLinks;
-use crate::LookupChoices;
-use crate::signals::{BarcodeSignal, DiscIdSignal, Signals, SourcedValue, TextSignal};
-use bae_catalogs::catalog::{Catalog, LookupCatalog};
+//! The run as a whole: how a run starts, takes its snapshots, ends on bae's
+//! own failure or the person's cancel, and combines what its lookups found
+//! into where it lands. The helpers here serve every topic's tests.
 
-fn mk_result(release_id: &str, group_id: Option<&str>) -> MetadataResult {
+use super::*;
+use crate::documents::{ReleaseDocument, ReleaseReading};
+use crate::signals::{BarcodeSignal, DiscIdSignal, Signals, SourcedValue, TextSignal};
+use crate::state::PressingKey;
+use crate::toolbar::{SignalKind, SignalState, ToolbarSignal};
+use crate::LookupChoices;
+use bae_catalogs::album_links::AlbumLinks;
+use bae_catalogs::catalog::LookupCatalog;
+use bae_catalogs::records::LookupRef;
+use bae_catalogs::records::MetadataRef;
+
+/// [`super::step`], answering each read of the offered records' documents at
+/// once with none to be had, and each lookup of an offered row's pressing on
+/// another catalog with nothing found: these tests are about the folder's
+/// own keys, and a run whose documents and pressings add nothing settles on
+/// what those found. The documents' and the pressings' own tests drive
+/// `ReleasesRead` and `PressingLookupAnswered` themselves.
+pub(super) fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<Effect>) {
+    let (mut state, mut effects) = super::step(state, event);
+    while let Some(at) = effects.iter().position(|effect| {
+        matches!(effect, Effect::ReadReleases { .. } | Effect::LookupPressing { .. })
+    }) {
+        let answer = match effects.remove(at) {
+            Effect::ReadReleases { releases, .. } => IdentifyEvent::ReleasesRead {
+                read: releases
+                    .into_iter()
+                    .map(|release| crate::documents::ReleaseReading {
+                        release: release.release().clone(),
+                        document: Err(LookupFailure::Network),
+                    })
+                    .collect(),
+            },
+            Effect::LookupPressing { source, key } => {
+                IdentifyEvent::PressingLookupAnswered { source, key, outcome: Ok(Vec::new()) }
+            }
+            _ => unreachable!("the position is of a read or a pressing lookup"),
+        };
+        let (next, more) = super::step(state, answer);
+        state = next;
+        effects.extend(more);
+    }
+    (state, effects)
+}
+
+/// Whether a lookup of the folder's disc IDs found `result`, as the run's
+/// ledger records it.
+pub(super) fn found_by_disc_id(
+    ledger: Option<&crate::IdentifyRunView>,
+    result: &MetadataResult,
+) -> bool {
+    ledger.is_some_and(|ledger| {
+        ledger
+            .disc_id_releases()
+            .contains(&bae_catalogs::records::LookupRef::new(result.source, &result.release_id))
+    })
+}
+
+/// The records a read of documents asks for.
+pub(super) fn records_read(releases: &[crate::documents::ReleaseToRead]) -> Vec<LookupRef> {
+    releases.iter().map(|release| release.release().clone()).collect()
+}
+
+pub(super) fn mk_result(release_id: &str, group_id: Option<&str>) -> MetadataResult {
     mk_result_from(LookupCatalog::MusicBrainz, release_id, group_id)
 }
 
-fn mk_result_from(source: LookupCatalog, release_id: &str, group_id: Option<&str>) -> MetadataResult {
+pub(super) fn mk_result_from(
+    source: LookupCatalog,
+    release_id: &str,
+    group_id: Option<&str>,
+) -> MetadataResult {
     MetadataResult::for_test(source, release_id, group_id)
 }
 
-fn pair(release_id: &str, group_id: Option<&str>) -> MetadataResult {
+pub(super) fn pair(release_id: &str, group_id: Option<&str>) -> MetadataResult {
     mk_result(release_id, group_id)
 }
 
 /// A Discogs result, for runs where both providers answer.
-fn discogs_pair(release_id: &str, group_id: Option<&str>) -> MetadataResult {
+pub(super) fn discogs_pair(release_id: &str, group_id: Option<&str>) -> MetadataResult {
     mk_result_from(LookupCatalog::Discogs, release_id, group_id)
 }
 
-const MB: LookupCatalog = LookupCatalog::MusicBrainz;
-const DG: LookupCatalog = LookupCatalog::Discogs;
+pub(super) const MB: LookupCatalog = LookupCatalog::MusicBrainz;
+pub(super) const DG: LookupCatalog = LookupCatalog::Discogs;
 
 /// A run started with MusicBrainz as its only provider, waiting for signals.
-fn started() -> IdentifyState {
+pub(super) fn started() -> IdentifyState {
     started_with(vec![MB])
 }
 
 /// A run started with `providers`, nothing chosen or left out.
-fn started_with(providers: Vec<LookupCatalog>) -> IdentifyState {
+pub(super) fn started_with(providers: Vec<LookupCatalog>) -> IdentifyState {
     let (state, effects) = started_with_choices(providers, LookupChoices::default());
     assert!(effects.is_empty(), "with nothing chosen, Started dispatches no effects");
     state
 }
 
 /// The run's ledger as its view lays it out.
-fn ledger_of(state: &IdentifyState) -> crate::IdentifyRunView {
+pub(super) fn ledger_of(state: &IdentifyState) -> crate::IdentifyRunView {
     match crate::IdentifyStateView::from(state.clone()) {
         crate::IdentifyStateView::Triangulating { run, .. } => run,
         crate::IdentifyStateView::Found { run, .. }
         | crate::IdentifyStateView::NotFoundAnywhere { run }
         | crate::IdentifyStateView::ManualOnly { run, .. }
-        | crate::IdentifyStateView::Failed { run, .. } => {
-            run.expect("the run recorded its ledger")
-        }
-        crate::IdentifyStateView::Idle
-        | crate::IdentifyStateView::Error { .. } => {
+        | crate::IdentifyStateView::Failed { run, .. } => run.expect("the run recorded its ledger"),
+        crate::IdentifyStateView::Idle | crate::IdentifyStateView::Error { .. } => {
             panic!("an idle or broken state lays out no run")
         }
     }
 }
 
 /// A run started with `choices`, with the chosen numbers' lookups as effects.
-fn started_with_choices(
+pub(super) fn started_with_choices(
     providers: Vec<LookupCatalog>,
     choices: LookupChoices,
 ) -> (IdentifyState, Vec<Effect>) {
@@ -63,7 +123,7 @@ fn started_with_choices(
 }
 
 /// Choices leaving out the disc ID (when `disc_id`) and the named barcodes.
-fn excluding(disc_id: bool, barcodes: &[&str]) -> LookupChoices {
+pub(super) fn excluding(disc_id: bool, barcodes: &[&str]) -> LookupChoices {
     LookupChoices {
         disc_id_excluded: disc_id,
         excluded_barcodes: barcodes.iter().map(|value| value.to_string()).collect(),
@@ -74,7 +134,7 @@ fn excluding(disc_id: bool, barcodes: &[&str]) -> LookupChoices {
 }
 
 /// Choices picking the named catalog numbers and leaving nothing out.
-fn choosing(catalogs: &[&str]) -> LookupChoices {
+pub(super) fn choosing(catalogs: &[&str]) -> LookupChoices {
     LookupChoices {
         disc_id_excluded: false,
         excluded_barcodes: Vec::new(),
@@ -85,7 +145,7 @@ fn choosing(catalogs: &[&str]) -> LookupChoices {
 }
 
 /// The toolbar badge for one signal.
-fn badge(state: &IdentifyState, kind: SignalKind) -> ToolbarSignal {
+pub(super) fn badge(state: &IdentifyState, kind: SignalKind) -> ToolbarSignal {
     state
         .toolbar()
         .into_iter()
@@ -94,7 +154,7 @@ fn badge(state: &IdentifyState, kind: SignalKind) -> ToolbarSignal {
 }
 
 /// The audio every run in these tests is over: five tracks.
-fn five_tracks() -> crate::signals::AudioFacts {
+pub(super) fn five_tracks() -> crate::signals::AudioFacts {
     crate::signals::AudioFacts {
         track_count: 5,
         track_lengths_ms: vec![200_000; 5],
@@ -102,7 +162,7 @@ fn five_tracks() -> crate::signals::AudioFacts {
     }
 }
 
-fn update(state: IdentifyState, signals: Signals) -> (IdentifyState, Vec<Effect>) {
+pub(super) fn update(state: IdentifyState, signals: Signals) -> (IdentifyState, Vec<Effect>) {
     step(
         state,
         IdentifyEvent::SignalsUpdated {
@@ -114,7 +174,11 @@ fn update(state: IdentifyState, signals: Signals) -> (IdentifyState, Vec<Effect>
 }
 
 /// One provider matched `barcode`.
-fn barcode_matched(source: LookupCatalog, barcode: &str, results: Vec<MetadataResult>) -> IdentifyEvent {
+pub(super) fn barcode_matched(
+    source: LookupCatalog,
+    barcode: &str,
+    results: Vec<MetadataResult>,
+) -> IdentifyEvent {
     IdentifyEvent::BarcodeLookupAnswered {
         source,
         for_barcode: barcode.to_string(),
@@ -123,12 +187,16 @@ fn barcode_matched(source: LookupCatalog, barcode: &str, results: Vec<MetadataRe
 }
 
 /// One provider knew nothing about `barcode`.
-fn barcode_missed(source: LookupCatalog, barcode: &str) -> IdentifyEvent {
+pub(super) fn barcode_missed(source: LookupCatalog, barcode: &str) -> IdentifyEvent {
     barcode_matched(source, barcode, Vec::new())
 }
 
 /// One provider's lookup of `barcode` failed.
-fn barcode_failed(source: LookupCatalog, barcode: &str, failure: LookupFailure) -> IdentifyEvent {
+pub(super) fn barcode_failed(
+    source: LookupCatalog,
+    barcode: &str,
+    failure: LookupFailure,
+) -> IdentifyEvent {
     IdentifyEvent::BarcodeLookupAnswered {
         source,
         for_barcode: barcode.to_string(),
@@ -136,20 +204,20 @@ fn barcode_failed(source: LookupCatalog, barcode: &str, failure: LookupFailure) 
     }
 }
 
-fn lookup_barcode(source: LookupCatalog, barcode: &str) -> Effect {
+pub(super) fn lookup_barcode(source: LookupCatalog, barcode: &str) -> Effect {
     Effect::LookupBarcode { source, barcode: barcode.to_string() }
 }
 
 /// Barcodes read off the artwork; the reducer reads only their values.
-fn artwork_codes(values: &[&str]) -> Vec<SourcedValue> {
+pub(super) fn artwork_codes(values: &[&str]) -> Vec<SourcedValue> {
     values.iter().map(|v| SourcedValue::new(v.to_string())).collect()
 }
 
-fn signals(disc_id: DiscIdSignal, barcode: BarcodeSignal, catalogs: &[&str]) -> Signals {
+pub(super) fn signals(disc_id: DiscIdSignal, barcode: BarcodeSignal, catalogs: &[&str]) -> Signals {
     signals_with_catalogs(disc_id, barcode, catalogs.iter().map(|s| s.to_string()).collect())
 }
 
-fn signals_with_catalogs(
+pub(super) fn signals_with_catalogs(
     disc_id: DiscIdSignal,
     barcode: BarcodeSignal,
     catalogs: Vec<String>,
@@ -166,7 +234,7 @@ fn signals_with_catalogs(
 }
 
 /// A disc ID computed from no named file.
-fn disc(disc_id: &str) -> DiscIdSignal {
+pub(super) fn disc(disc_id: &str) -> DiscIdSignal {
     DiscIdSignal::Computed {
         discs: vec![crate::signals::ComputedDiscId {
             disc_id: disc_id.to_string(),
@@ -176,17 +244,17 @@ fn disc(disc_id: &str) -> DiscIdSignal {
 }
 
 /// A disc ID for five tracks, no barcode source, and the named catalog numbers.
-fn disc_only(catalogs: &[&str]) -> Signals {
+pub(super) fn disc_only(catalogs: &[&str]) -> Signals {
     signals(disc("d"), BarcodeSignal::Absent, catalogs)
 }
 
 /// A MusicBrainz run given the disc ID alone.
-fn disc_only_started() -> (IdentifyState, Vec<Effect>) {
+pub(super) fn disc_only_started() -> (IdentifyState, Vec<Effect>) {
     update(started(), disc_only(&[]))
 }
 
 /// A disc ID, with the given barcodes settled.
-fn disc_and_codes(disc_id: &str, codes: &[&str]) -> Signals {
+pub(super) fn disc_and_codes(disc_id: &str, codes: &[&str]) -> Signals {
     signals(disc(disc_id), BarcodeSignal::Settled { codes: artwork_codes(codes) }, &[])
 }
 
@@ -202,17 +270,6 @@ fn started_enters_triangulating_awaiting_signals() {
         }
         other => panic!("expected Triangulating, got {other:?}"),
     }
-}
-
-/// The disc-ID lookup is dispatched exactly once, even as snapshots stream.
-#[test]
-fn disc_computed_dispatches_lookup_idempotently() {
-    let snapshot = || signals(disc("d"), BarcodeSignal::Scanning { codes: vec![] }, &[]);
-    let (state, effects) = update(started(), snapshot());
-    assert!(effects.iter().any(|e| matches!(e, Effect::LookupDiscid { .. })));
-    // A repeated snapshot must not re-dispatch the lookup.
-    let (_, effects) = update(state, snapshot());
-    assert!(effects.is_empty(), "disc-id lookup dispatched only once, got {effects:?}");
 }
 
 #[test]
@@ -377,42 +434,6 @@ fn absent_barcode_offers_manual_search_where_scanned_and_empty_is_a_no_match() {
     );
 }
 
-/// Barcode lookups go out only once the codes have settled, never while
-/// scanning.
-#[test]
-fn barcode_lookups_start_only_from_settled() {
-    let (state, effects) = update(
-        started_with(vec![MB, DG]),
-        signals(
-            DiscIdSignal::Absent,
-            BarcodeSignal::Scanning { codes: artwork_codes(&["A"]) },
-            &[],
-        ),
-    );
-    assert!(
-        !effects.iter().any(|e| matches!(e, Effect::LookupBarcode { .. })),
-        "no barcode lookup while still scanning"
-    );
-    let (_, effects) = update(
-        state,
-        signals(
-            DiscIdSignal::Absent,
-            BarcodeSignal::Settled { codes: artwork_codes(&["A", "B"]) },
-            &[],
-        ),
-    );
-    // Every provider is asked about every code at once.
-    assert_eq!(
-        effects,
-        vec![
-            lookup_barcode(MB, "A"),
-            lookup_barcode(DG, "A"),
-            lookup_barcode(MB, "B"),
-            lookup_barcode(DG, "B"),
-        ]
-    );
-}
-
 #[test]
 fn disc_only_resolves_to_found_by_the_disc_id() {
     let (state, _) = disc_only_started();
@@ -493,126 +514,6 @@ fn a_barcode_that_named_something_else_waits_under_the_disc_id_s_answer() {
     }
 }
 
-/// Every code is asked of every provider at once, and a match on one stops
-/// nothing.
-#[test]
-fn every_code_is_asked_of_every_provider() {
-    let (state, effects) = update(
-        started_with(vec![MB, DG]),
-        signals(
-            DiscIdSignal::Absent,
-            BarcodeSignal::Settled { codes: artwork_codes(&["A", "B"]) },
-            &[],
-        ),
-    );
-    assert_eq!(
-        effects,
-        vec![
-            lookup_barcode(MB, "A"),
-            lookup_barcode(DG, "A"),
-            lookup_barcode(MB, "B"),
-            lookup_barcode(DG, "B"),
-        ]
-    );
-
-    // A match asks nothing more, and the run waits for the other answers.
-    let (state, effects) =
-        step(state, barcode_matched(DG, "A", vec![discogs_pair("dg-a", Some("g-x"))]));
-    assert!(effects.is_empty());
-    assert!(matches!(state, IdentifyState::Triangulating { .. }));
-    let (state, _) = step(state, barcode_missed(MB, "A"));
-    let (state, _) = step(state, barcode_missed(DG, "B"));
-    // The last answer settles the lookups.
-    let (state, _) = step(state, barcode_matched(MB, "B", vec![pair("mb-b", Some("g-y"))]));
-    let IdentifyState::Found { context, findings: Findings { matches, .. }, .. } = state else {
-        panic!("expected Found");
-    };
-    // Both codes' answers compete in the one ranking.
-    let mut found: Vec<&str> = matches.iter().map(|m| m.release_id.as_str()).collect();
-    found.sort_unstable();
-    assert_eq!(found, vec!["dg-a", "mb-b"]);
-    // The badge names the earliest code anything was found for.
-    assert_eq!(context.barcode.matched.as_deref(), Some("A"));
-}
-
-/// A second answer from the same provider about the same code changes nothing.
-#[test]
-fn a_repeated_barcode_answer_is_ignored() {
-    let (state, _) = update(
-        started(),
-        signals(
-            DiscIdSignal::Absent,
-            BarcodeSignal::Settled { codes: artwork_codes(&["A", "B"]) },
-            &[],
-        ),
-    );
-    let (state, _) = step(state, barcode_missed(MB, "A"));
-    let (state, effects) =
-        step(state, barcode_failed(MB, "A", LookupFailure::Provider { status: Some(500) }));
-    assert!(effects.is_empty());
-    match &state {
-        IdentifyState::Triangulating { barcode, .. } => {
-            assert!(barcode.failures().is_empty(), "the late answer is dropped");
-            assert!(!barcode.is_settled(), "B is still out");
-        }
-        other => panic!("expected the run still looking up, got {other:?}"),
-    }
-}
-
-/// A provider failing one code settles the barcode lookup failed once every
-/// code has answered.
-#[test]
-fn barcode_lookup_failure_settles_failed() {
-    let (state, effects) = update(started(), disc_and_codes("d", &["A", "B"]));
-    assert!(effects.contains(&lookup_barcode(MB, "A")));
-    assert!(effects.contains(&lookup_barcode(MB, "B")));
-
-    let failure = LookupFailure::Provider { status: Some(500) };
-    let source_failure = SourceFailure { source: MB.catalog(), failure: failure.clone() };
-    let (state, effects) = step(state, barcode_failed(MB, "A", failure));
-    assert!(effects.is_empty());
-    let (state, _) = step(state, barcode_missed(MB, "B"));
-    match &state {
-        IdentifyState::Triangulating { barcode, .. } => {
-            assert!(barcode.is_settled());
-            assert_eq!(barcode.failures(), vec![source_failure]);
-            assert!(barcode.results().is_empty());
-        }
-        other => panic!("expected the barcode pipe settled failed, got {other:?}"),
-    }
-}
-
-/// One provider failing does not hide what the other found.
-#[test]
-fn a_failed_provider_does_not_hide_the_other_s_answer() {
-    let (state, _) = update(
-        started_with(vec![MB, DG]),
-        signals(
-            DiscIdSignal::Absent,
-            BarcodeSignal::Settled { codes: artwork_codes(&["A", "B"]) },
-            &[],
-        ),
-    );
-    let (state, _) = step(state, barcode_failed(DG, "A", LookupFailure::Timeout));
-    let (state, _) = step(state, barcode_missed(DG, "B"));
-    let (state, _) = step(state, barcode_missed(MB, "A"));
-    let (state, _) = step(state, barcode_matched(MB, "B", vec![pair("mb-b", Some("g-y"))]));
-    match state {
-        IdentifyState::Failed { failures, context, findings: Findings { matches, .. }, .. } => {
-            assert_eq!(
-                failures,
-                vec![crate::IdentifyFailure::Barcode(SourceFailure {
-                    source: DG.catalog(),
-                    failure: LookupFailure::Timeout,
-                })]
-            );
-            assert_eq!(matches.len(), 1, "MusicBrainz's match still stands");
-            assert_eq!(context.barcode.matched.as_deref(), Some("B"));
-        }
-        other => panic!("expected Failed with the surviving match, got {other:?}"),
-    }
-}
-
 #[test]
 fn failed_discid_lookup_preserves_track_count() {
     let (state, _) = disc_only_started();
@@ -628,35 +529,10 @@ fn failed_discid_lookup_preserves_track_count() {
             assert_eq!(track_count, 5);
             assert_eq!(
                 failures,
-                vec![crate::IdentifyFailure::DiscId(LookupFailure::Provider {
-                    status: Some(503)
-                })]
+                vec![crate::IdentifyFailure::DiscId(LookupFailure::Provider { status: Some(503) })]
             );
         }
         other => panic!("expected Failed, got {other:?}"),
-    }
-}
-
-/// A catalog number nobody chose narrows nothing.
-#[test]
-fn an_unchosen_catalog_number_narrows_nothing() {
-    let (state, _) = update(started(), disc_only(&["LBL 001"]));
-    let mut r_a = mk_result("rel-a", Some("g-x"));
-    r_a.labels = vec![bae_types::pressing::ReleaseLabel::of(None, Some("LBL-001"))];
-    let mut r_b = mk_result("rel-b", Some("g-y"));
-    r_b.labels = vec![bae_types::pressing::ReleaseLabel::of(None, Some("LBL-002"))];
-    let (state, _) = step(
-        state,
-        IdentifyEvent::DiscidLookupAnswered {
-            disc_id: "d".into(),
-            outcome: Ok(DiscIdAnswer::for_test(vec![r_a, r_b])),
-        },
-    );
-    match state {
-        IdentifyState::Found { findings: Findings { matches, .. }, .. } => {
-            assert_eq!(matches.len(), 2);
-        }
-        other => panic!("expected Found, got {other:?}"),
     }
 }
 
@@ -681,32 +557,246 @@ fn cancellation_returns_to_idle() {
     assert!(effects.is_empty());
 }
 
-/// A run not asking MusicBrainz asks nobody about the disc ID, says why, and
-/// with nothing else to go on offers manual search.
-#[test]
-fn a_run_without_the_disc_id_source_dispatches_no_disc_id_lookup() {
-    let state = started_with(vec![LookupCatalog::Discogs]);
-    let (next, effects) = update(state, disc_only(&[]));
+/// A document stating five tracks, `notes`, and nothing else.
+pub(super) fn plain_document(notes: &[&str]) -> ReleaseDocument {
+    ReleaseDocument {
+        labels: Vec::new(),
+        barcodes: Vec::new(),
+        album_first_year: None,
+        source_tracks: bae_catalogs::search::SourceTracks::Listed { count: 5 },
+        track_titles: Vec::new(),
+        notes: notes.iter().map(|note| note.to_string()).collect(),
+        links: Vec::new(),
+        album_links: AlbumLinks::NotAsked,
+        stored: std::sync::Arc::new(bae_catalogs::source_release::SourceRelease::for_test(
+            bae_catalogs::records::LookupRef::new(
+                bae_catalogs::catalog::LookupCatalog::MusicBrainz,
+                "release-1",
+            ),
+        )),
+    }
+}
 
+/// A MusicBrainz release's document naming the Discogs release `linked` as
+/// itself, filed under `master`.
+pub(super) fn linking_document(linked: &str, master: &str) -> ReleaseDocument {
+    ReleaseDocument {
+        links: vec![MetadataRef::new(DG.catalog(), linked)],
+        album_links: AlbumLinks::Read(vec![MetadataRef::new(DG.catalog(), master)]),
+        ..plain_document(&[])
+    }
+}
+
+/// A release on `group` in `packaging`.
+pub(super) fn packed_in(
+    source: LookupCatalog,
+    release_id: &str,
+    group: &str,
+    packaging: bae_types::pressing::Packaging,
+) -> MetadataResult {
+    MetadataResult { packaging: Some(packaging), ..mk_result_from(source, release_id, Some(group)) }
+}
+
+/// What a run asked in its rounds past the folder's own keys: each read's
+/// records, and each lookup of an offered row's pressing.
+#[derive(Debug, Default)]
+pub(super) struct Asked {
+    pub(super) reads: Vec<Vec<LookupRef>>,
+    pub(super) pressings: Vec<(LookupCatalog, PressingKey)>,
+}
+
+/// Answer every read of documents and every pressing lookup `step` asks for:
+/// each record with what `document` says of it, each pressing lookup with
+/// what `pressing` finds. Returns where the run lands, the effects it asks
+/// for past these, and what it asked.
+pub(super) fn answer_rounds(
+    (mut state, mut effects): (IdentifyState, Vec<Effect>),
+    document: impl Fn(&LookupRef) -> ReleaseDocument,
+    pressing: impl Fn(LookupCatalog, &PressingKey) -> Vec<MetadataResult>,
+) -> (IdentifyState, Vec<Effect>, Asked) {
+    let mut asked = Asked::default();
+    while let Some(at) = effects.iter().position(|effect| {
+        matches!(effect, Effect::ReadReleases { .. } | Effect::LookupPressing { .. })
+    }) {
+        let answer = match effects.remove(at) {
+            Effect::ReadReleases { releases, .. } => {
+                asked.reads.push(records_read(&releases));
+                IdentifyEvent::ReleasesRead {
+                    read: releases
+                        .iter()
+                        .map(|release| ReleaseReading {
+                            release: release.release().clone(),
+                            document: Ok(document(release.release())),
+                        })
+                        .collect(),
+                }
+            }
+            Effect::LookupPressing { source, key } => {
+                asked.pressings.push((source, key.clone()));
+                let outcome = Ok(pressing(source, &key));
+                IdentifyEvent::PressingLookupAnswered { source, key, outcome }
+            }
+            _ => unreachable!("the position is of a read or a pressing lookup"),
+        };
+        let (next, more) = super::step(state, answer);
+        state = next;
+        effects.extend(more);
+    }
+    (state, effects, asked)
+}
+
+/// Every release a settled state names with its row and whether a lookup of
+/// the folder's disc IDs found it, offered or set aside.
+pub(super) fn rows_of(state: &IdentifyState) -> Vec<(MetadataResult, bool, u32)> {
+    let IdentifyState::Found { findings, ledger, .. } = state else {
+        panic!("expected Found, got {state:?}");
+    };
+    let by_disc_id = |result: &MetadataResult| found_by_disc_id(ledger.as_ref(), result);
+    findings
+        .matches
+        .iter()
+        .zip(&findings.pressings)
+        .map(|(result, row)| (result.clone(), by_disc_id(result), *row))
+        .chain(
+            findings
+                .narrowed_out
+                .matches
+                .iter()
+                .zip(&findings.narrowed_out.pressings)
+                .map(|(result, row)| (result.clone(), by_disc_id(result), *row + 100)),
+        )
+        .collect()
+}
+
+/// A disc ID run on both catalogs whose lookup named `results`, holding at
+/// the read of its offered records' documents.
+pub(super) fn disc_run_reading(
+    results: Vec<MetadataResult>,
+    text_pool: Vec<crate::signals::TextLine>,
+) -> (IdentifyState, Vec<Effect>) {
+    let mut disc_signals = disc_only(&[]);
+    disc_signals.text_pool = text_pool;
+    let (state, effects) = super::step(
+        started_with(vec![MB, DG]),
+        IdentifyEvent::SignalsUpdated {
+            signals: disc_signals,
+            audio: five_tracks(),
+            artwork: crate::signals::ArtworkScan::Absent,
+        },
+    );
     assert!(
-        !effects.iter().any(|effect| matches!(effect, Effect::LookupDiscid { .. })),
-        "no source was asked about the disc ID: {effects:?}"
+        matches!(effects.as_slice(), [Effect::LookupDiscid { .. }]),
+        "the disc ID is looked up: {effects:?}"
     );
-    let context = next.context().expect("a started run carries its context");
-    assert_eq!(context.providers, vec![LookupCatalog::Discogs]);
-    assert!(
-        matches!(next, IdentifyState::ManualOnly { .. }),
-        "nobody was asked anything, got {next:?}"
+    super::step(
+        state,
+        IdentifyEvent::DiscidLookupAnswered {
+            disc_id: "d".into(),
+            outcome: Ok(DiscIdAnswer::for_test(results)),
+        },
+    )
+}
+
+/// A release of `source` by "Artist Name" printing `number` under `label`.
+pub(super) fn labelled(
+    source: LookupCatalog,
+    release_id: &str,
+    label: &str,
+    number: &str,
+) -> MetadataResult {
+    credited(source, release_id, "Artist Name", label, number)
+}
+
+/// A run on both catalogs given a disc ID alone, its folder named `folder`.
+pub(super) fn disc_run_of_folder(folder: &str, catalogs: &[&str]) -> IdentifyState {
+    disc_run_of_text(&[(folder, crate::signals::TextOrigin::FolderName)], catalogs)
+}
+
+/// A run on both catalogs given a disc ID alone, its text the given lines.
+pub(super) fn disc_run_of_text(
+    lines: &[(&str, crate::signals::TextOrigin)],
+    catalogs: &[&str],
+) -> IdentifyState {
+    let mut disc_signals = disc_only(catalogs);
+    disc_signals.text_pool = lines
+        .iter()
+        .map(|(text, origin)| crate::signals::TextLine { text: text.to_string(), origin: *origin })
+        .collect();
+    let (state, effects) = crate::state::step(
+        started_with(vec![MB, DG]),
+        IdentifyEvent::SignalsUpdated {
+            signals: disc_signals,
+            audio: five_tracks(),
+            artwork: crate::signals::ArtworkScan::Absent,
+        },
     );
-    let no_catalog = crate::NotAskedReason::NoCatalog;
-    assert!(matches!(
-        ledger_of(&next).disc_id,
-        crate::DiscIdStepView::Read { discs }
-            if discs.iter().all(|disc| disc.lookup
-                == crate::LookupView::NotAsked { reason: no_catalog })
-    ));
-    assert_eq!(
-        badge(&next, SignalKind::DiscId).state,
-        SignalState::NotAsked { reason: no_catalog }
+    assert_eq!(effects, vec![Effect::LookupDiscid { disc_id: "d".into() }]);
+    state
+}
+
+/// A run that reads a title off the candidate's draft, with nothing chosen or
+/// excluded.
+pub(super) fn started_searching(
+    providers: Vec<LookupCatalog>,
+    album: &str,
+    artist: &str,
+) -> IdentifyState {
+    let (state, effects) = step(
+        IdentifyState::Idle,
+        IdentifyEvent::Started {
+            providers,
+            choices: LookupChoices::default(),
+            title_search: TitleSearch::of(album, artist),
+        },
     );
+    assert!(effects.is_empty(), "with nothing chosen, Started dispatches no effects");
+    state
+}
+
+pub(super) fn search_title(source: LookupCatalog, album: &str, artist: &str) -> Effect {
+    Effect::SearchTitle {
+        source,
+        query: TitleSearch { album: album.to_string(), artist: artist.to_string() },
+    }
+}
+
+pub(super) fn search_answered(
+    source: LookupCatalog,
+    results: Vec<MetadataResult>,
+) -> IdentifyEvent {
+    IdentifyEvent::SearchAnswered { source, outcome: Ok(results) }
+}
+
+/// A folder with one barcode and no disc ID: enough for the ledger to have a
+/// run to lay out, and a code the providers can miss.
+pub(super) fn one_code(code: &str) -> Signals {
+    signals(DiscIdSignal::Absent, BarcodeSignal::Settled { codes: artwork_codes(&[code]) }, &[])
+}
+
+/// A folder whose tags carry `isrcs`, and nothing else to look up.
+pub(super) fn tagged(isrcs: &[&str]) -> Signals {
+    Signals {
+        isrcs: isrcs.iter().map(|code| code.to_string()).collect(),
+        ..signals(DiscIdSignal::Absent, BarcodeSignal::Absent, &[])
+    }
+}
+
+pub(super) fn lookup_isrcs(isrcs: &[&str]) -> Effect {
+    Effect::LookupIsrcs { isrcs: isrcs.iter().map(|code| code.to_string()).collect() }
+}
+
+/// A release of `source` credited to `artist`, printing `number` under
+/// `label`.
+pub(super) fn credited(
+    source: LookupCatalog,
+    release_id: &str,
+    artist: &str,
+    label: &str,
+    number: &str,
+) -> MetadataResult {
+    MetadataResult {
+        artist: Some(artist.to_string()),
+        labels: vec![bae_types::pressing::ReleaseLabel::of(Some(label), Some(number))],
+        ..mk_result_from(source, release_id, Some("g"))
+    }
 }

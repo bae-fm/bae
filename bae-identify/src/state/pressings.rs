@@ -120,8 +120,8 @@ pub(super) fn keys_of(
                         Some(PressingKey::CatalogNumber {
                             number: label.catalog_number()?.to_string(),
                             label: label.name()?.to_string(),
-                            artist: super::progress::names_artist(catalog)
-                                .then(|| super::progress::credited_artist(record))
+                            artist: super::numbers::names_artist(catalog)
+                                .then(|| super::numbers::credited_artist(record))
                                 .flatten(),
                         })
                     })
@@ -131,3 +131,7 @@ pub(super) fn keys_of(
         })
         .collect()
 }
+
+#[cfg(test)]
+#[path = "pressings_tests.rs"]
+mod tests;

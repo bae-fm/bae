@@ -18,7 +18,6 @@
 
 use super::combine::{combine_results, Findings};
 use super::documents::{DocumentReading, ReleaseReading};
-use super::toolbar::{SignalKind, SignalOption, SignalState, ToolbarSignal};
 use super::view::{run_view, IdentifyRunView};
 use crate::signals::{ArtworkScan, AudioFacts, BarcodeSignal, Signals};
 use crate::LookupChoices;
@@ -160,99 +159,6 @@ impl IdentifyState {
             | IdentifyState::Error { .. } => false,
         }
     }
-
-    /// The disc-ID, barcode, catalog and ISRC badges; none for `Idle`.
-    pub fn toolbar(&self) -> Vec<ToolbarSignal> {
-        let Some(context) = self.context() else {
-            return Vec::new();
-        };
-        vec![
-            self.disc_badge(context),
-            self.barcode_badge(context),
-            self.catalog_badge(context),
-            self.isrc_badge(context),
-        ]
-    }
-
-    /// Shows the first code, with every code as an option: all of them are
-    /// asked about, in one search.
-    fn isrc_badge(&self, context: &SignalsContext) -> ToolbarSignal {
-        let codes = context.isrc.codes();
-        let state = match self {
-            IdentifyState::Triangulating { isrc, .. } => isrc_progress_state(isrc),
-            _ => isrc_settled_state(context),
-        };
-        ToolbarSignal {
-            kind: SignalKind::Isrc,
-            shown: codes.first().cloned(),
-            state,
-            excluded: false,
-            options: signal_options(&codes, |_| true),
-        }
-    }
-
-    /// Shows the first disc ID, with every disc ID as an option: all of them
-    /// are asked about, and left out together.
-    fn disc_badge(&self, context: &SignalsContext) -> ToolbarSignal {
-        let disc_ids = context.disc.signal.disc_ids();
-        let state = match self {
-            IdentifyState::Triangulating { discid, .. } => discid_progress_state(discid),
-            _ => settled_identity_state(context),
-        };
-        ToolbarSignal {
-            kind: SignalKind::DiscId,
-            shown: disc_ids.first().cloned(),
-            state,
-            excluded: context.disc.excluded,
-            options: signal_options(&disc_ids, |_| !context.disc.excluded),
-        }
-    }
-
-    /// Shows the matched code, else the first, with every code as an option.
-    fn barcode_badge(&self, context: &SignalsContext) -> ToolbarSignal {
-        let codes = context.barcode.code_values();
-        let shown = context.barcode.matched.clone().or_else(|| codes.first().cloned());
-        let state = match self {
-            IdentifyState::Triangulating { barcode, .. } => barcode_progress_state(barcode),
-            _ => barcode_settled_state(context),
-        };
-        ToolbarSignal {
-            kind: SignalKind::Barcode,
-            shown,
-            state,
-            excluded: context.barcode.every_code_excluded(),
-            options: signal_options(&codes, |value| {
-                !context.barcode.excluded.iter().any(|left| left == value)
-            }),
-        }
-    }
-
-    /// Shows the first number in effect, with every offered number as an
-    /// option.
-    fn catalog_badge(&self, context: &SignalsContext) -> ToolbarSignal {
-        let first_chosen = context.catalog.in_effect().first().cloned();
-        let state = match self {
-            IdentifyState::Triangulating { catalog, .. } => catalog_progress_state(catalog),
-            _ => catalog_settled_state(context),
-        };
-        ToolbarSignal {
-            kind: SignalKind::Catalog,
-            shown: first_chosen,
-            state,
-            excluded: false,
-            options: signal_options(&context.catalog.numbers, |value| {
-                context.catalog.is_in_effect(value)
-            }),
-        }
-    }
-}
-
-/// The values one signal offers, in first-seen order, each marked when chosen.
-fn signal_options(values: &[String], chosen: impl Fn(&str) -> bool) -> Vec<SignalOption> {
-    values
-        .iter()
-        .map(|value| SignalOption { value: value.clone(), chosen: chosen(value) })
-        .collect()
 }
 
 /// One provider's answer to one lookup.
@@ -759,32 +665,34 @@ fn re_derive(context: SignalsContext, ledger: Option<IdentifyRunView>) -> Identi
     IdentifyState::Found { findings, track_count, ledger, context }
 }
 
+mod badges;
 mod context;
+mod numbers;
 mod pressings;
 mod progress;
 mod rounds;
+mod search;
 
 pub(crate) use context::number_key;
 pub use context::{
     BarcodeEvidence, CatalogEvidence, DiscIdEvidence, IsrcEvidence, SearchEvidence,
-    SearchedCatalog, SignalsContext, TitleSearch,
+    SearchedCatalog, SignalsContext,
 };
+use numbers::start_catalog_progress;
+pub use numbers::{CatalogLookup, CatalogProgress, CatalogSearch};
 pub use pressings::{PressingKey, PressingLookup};
-use progress::{
-    barcode_progress_state, barcode_settled_state, catalog_progress_state, catalog_settled_state,
-    discid_progress_state, isrc_progress_state, isrc_settled_state, settled_identity_state,
-    start_barcode_progress, start_catalog_progress, start_discid_progress, start_isrc_progress,
-    start_search_progress,
-};
+use progress::{start_barcode_progress, start_discid_progress, start_isrc_progress};
 pub use progress::{
-    BarcodeProgress, CatalogLookup, CatalogProgress, CatalogSearch, DiscIdAnswer, DiscLookup,
-    DiscidProgress, IsrcProgress, LookupResults, LookupState, ProviderLookup, SearchProgress,
-    ValueLookup,
+    BarcodeProgress, DiscIdAnswer, DiscLookup, DiscidProgress, IsrcProgress, LookupResults,
+    LookupState, ProviderLookup, ValueLookup,
 };
+use search::start_search_progress;
+pub use search::{SearchProgress, TitleSearch};
 
 // ── Tests ───────────────────────────────────────────────────────────────────
 
 #[cfg(test)]
+#[path = "state_tests.rs"]
 mod tests;
 
 /// `re_derive` for tests in sibling modules; records no ledger.

@@ -1,39 +1,15 @@
-// The fourth step: what the run asks when its three identifiers name nothing.
+//! The fourth step: what the run asks when its three identifiers name
+//! nothing.
 
-/// A run that reads a title off the candidate's draft, with nothing chosen or
-/// excluded.
-fn started_searching(providers: Vec<LookupCatalog>, album: &str, artist: &str) -> IdentifyState {
-    let (state, effects) = step(
-        IdentifyState::Idle,
-        IdentifyEvent::Started {
-            providers,
-            choices: LookupChoices::default(),
-            title_search: TitleSearch::of(album, artist),
-        },
-    );
-    assert!(effects.is_empty(), "with nothing chosen, Started dispatches no effects");
-    state
-}
-
-fn search_title(source: LookupCatalog, album: &str, artist: &str) -> Effect {
-    Effect::SearchTitle {
-        source,
-        query: TitleSearch { album: album.to_string(), artist: artist.to_string() },
-    }
-}
-
-fn search_answered(source: LookupCatalog, results: Vec<MetadataResult>) -> IdentifyEvent {
-    IdentifyEvent::SearchAnswered { source, outcome: Ok(results) }
-}
+use super::*;
+use crate::signals::DiscIdSignal;
+use crate::state::tests::step;
+use crate::state::tests::*;
+use crate::state::*;
+use crate::IdentifyFailure;
 
 fn search_failed(source: LookupCatalog, failure: LookupFailure) -> IdentifyEvent {
     IdentifyEvent::SearchAnswered { source, outcome: Err(failure) }
-}
-
-/// A folder with one barcode and no disc ID: enough for the ledger to have a
-/// run to lay out, and a code the providers can miss.
-fn one_code(code: &str) -> Signals {
-    signals(DiscIdSignal::Absent, BarcodeSignal::Settled { codes: artwork_codes(&[code]) }, &[])
 }
 
 /// The identifiers coming back empty is what sends the candidate's own title
@@ -182,8 +158,7 @@ fn a_failed_search_stores_what_the_other_provider_found() {
     assert_eq!(findings.releases().count(), 3, "every release Discogs returned is kept");
 
     let text = live.candidate_text();
-    let verdict =
-        crate::TerminalVerdict::try_from(live.clone()).expect("a failed run is terminal");
+    let verdict = crate::TerminalVerdict::try_from(live.clone()).expect("a failed run is terminal");
     assert_eq!(verdict.findings(), Some(findings), "the stored failure keeps what Discogs found");
     let resumed = verdict.resume_state(text, Default::default());
     assert_eq!(
@@ -332,4 +307,26 @@ fn the_words_do_not_wait_once_an_identifier_has_found_something() {
         panic!("Discogs is still looking, so the run is too: {state:?}");
     };
     assert_eq!(run.search, crate::SearchStepView::NotNeeded);
+}
+
+/// What the ISRCs return does not stand for the album the way an identifier
+/// does, so the title is still searched, on every catalog.
+#[test]
+fn what_the_isrcs_find_still_leaves_the_title_to_search() {
+    let (state, effects) = update(
+        started_searching(vec![MB, DG], "Album Title", "Artist Name"),
+        tagged(&["XX0000000001"]),
+    );
+    assert_eq!(effects, vec![lookup_isrcs(&["XX0000000001"])]);
+    let (_, effects) = step(
+        state,
+        IdentifyEvent::IsrcLookupAnswered { outcome: Ok(vec![pair("rel-a", Some("g-x"))]) },
+    );
+    assert_eq!(
+        effects,
+        vec![
+            search_title(MB, "Album Title", "Artist Name"),
+            search_title(DG, "Album Title", "Artist Name"),
+        ]
+    );
 }

@@ -1,3 +1,12 @@
+//! What a round reads: every offered row's document before the run
+//! settles, and how what the documents state ranks the rows.
+
+use super::*;
+use crate::signals::DiscIdSignal;
+use crate::state::tests::*;
+use crate::state::*;
+use bae_catalogs::records::LookupRef;
+
 /// A Discogs search result on the master `m-1` stating only its first label.
 fn first_label_only(release_id: &str) -> MetadataResult {
     let mut result = discogs_pair(release_id, Some("m-1"));
@@ -13,14 +22,12 @@ fn packed(mut result: MetadataResult, packaging: bae_types::pressing::Packaging)
 
 /// A run whose barcode found `results` on Discogs, holding at the read of
 /// its offered records' documents, with the records it asks for.
-fn reading_documents(
-    results: Vec<MetadataResult>,
-) -> (IdentifyState, Vec<LookupRef>) {
+fn reading_documents(results: Vec<MetadataResult>) -> (IdentifyState, Vec<LookupRef>) {
     let (state, _) = update(
         started_with(vec![DG]),
         signals(DiscIdSignal::Absent, BarcodeSignal::Settled { codes: artwork_codes(&["A"]) }, &[]),
     );
-    let (state, effects) = super::step(state, barcode_matched(DG, "A", results));
+    let (state, effects) = crate::state::step(state, barcode_matched(DG, "A", results));
     let [Effect::ReadReleases { releases, .. }] = effects.as_slice() else {
         panic!("the run reads its offered records' documents, got {effects:?}");
     };
@@ -68,7 +75,7 @@ fn every_offered_row_is_read_in_full_before_the_run_settles() {
     assert_eq!(releases.len(), 2, "both tied rows are read");
     assert!(matches!(state, IdentifyState::Triangulating { .. }));
     let full = document(&[("Label One", "AB-100"), ("Label One", "CD-200")], 5);
-    let (state, _) = super::step(
+    let (state, _) = crate::state::step(
         state,
         IdentifyEvent::ReleasesRead {
             read: releases.iter().map(|release| read(release, Ok(full.clone()))).collect(),
@@ -93,7 +100,7 @@ fn the_row_whose_tracklist_fits_the_folder_ranks_first() {
         first_label_only("dg-long"),
         packed(first_label_only("dg-fits"), bae_types::pressing::Packaging::Digipak),
     ]);
-    let (state, _) = super::step(
+    let (state, _) = crate::state::step(
         state,
         IdentifyEvent::ReleasesRead {
             read: releases
@@ -125,7 +132,7 @@ fn a_row_whose_document_cannot_be_read_keeps_its_search_facts() {
         packed(first_label_only("dg-unread"), bae_types::pressing::Packaging::Digipak),
     ]);
     let full = document(&[("Label One", "AB-100"), ("Label One", "CD-200")], 5);
-    let (state, _) = super::step(
+    let (state, _) = crate::state::step(
         state,
         IdentifyEvent::ReleasesRead {
             read: releases
@@ -186,10 +193,7 @@ fn titled(release_id: &str, title: &str) -> MetadataResult {
 
 /// Answer a read of `releases` with a document listing `tracks(id)` tracks
 /// for each.
-fn read_with_tracks(
-    releases: &[LookupRef],
-    tracks: impl Fn(&str) -> u32,
-) -> IdentifyEvent {
+fn read_with_tracks(releases: &[LookupRef], tracks: impl Fn(&str) -> u32) -> IdentifyEvent {
     IdentifyEvent::ReleasesRead {
         read: releases
             .iter()
@@ -218,7 +222,7 @@ fn every_pressing_of_the_named_album_is_read_before_its_tracks_rank_it() {
     let state = started_searching(vec![DG], "1990-2000 Album", "Artist");
     let (state, effects) = update(state, titled_folder());
     assert_eq!(effects, vec![search_title(DG, "1990-2000 Album", "Artist")]);
-    let (state, effects) = super::step(
+    let (state, effects) = crate::state::step(
         state,
         search_answered(
             DG,
@@ -246,8 +250,10 @@ fn every_pressing_of_the_named_album_is_read_before_its_tracks_rank_it() {
     let mut asked: Vec<&str> = releases.iter().map(|release| release.key.as_str()).collect();
     asked.sort();
     assert_eq!(asked, vec!["dg-cassette", "dg-cd-1", "dg-cd-2", "dg-lp"]);
-    let (state, effects) =
-        super::step(state, read_with_tracks(releases, |id| if id == "dg-lp" { 7 } else { 5 }));
+    let (state, effects) = crate::state::step(
+        state,
+        read_with_tracks(releases, |id| if id == "dg-lp" { 7 } else { 5 }),
+    );
     assert!(effects.is_empty(), "{effects:?}");
     assert_eq!(offered_ids(&state), vec!["dg-cassette", "dg-cd-1", "dg-cd-2"]);
 }
@@ -266,7 +272,7 @@ fn rows_the_documents_raise_are_read_before_the_run_settles() {
         result.area = Some(bae_types::pressing::area("US"));
         result
     };
-    let (state, effects) = super::step(
+    let (state, effects) = crate::state::step(
         state,
         search_answered(
             DG,
@@ -288,7 +294,7 @@ fn rows_the_documents_raise_are_read_before_the_run_settles() {
         releases.iter().map(|release| release.key.as_str()).collect::<Vec<_>>(),
         vec!["dg-us"]
     );
-    let (state, effects) = super::step(state, read_with_tracks(releases, |_| 7));
+    let (state, effects) = crate::state::step(state, read_with_tracks(releases, |_| 7));
     let [Effect::ReadReleases { releases, .. }] = effects.as_slice() else {
         panic!("the rows the country held back are read next, got {effects:?}");
     };
@@ -296,7 +302,7 @@ fn rows_the_documents_raise_are_read_before_the_run_settles() {
     let mut asked: Vec<&str> = releases.iter().map(|release| release.key.as_str()).collect();
     asked.sort();
     assert_eq!(asked, vec!["dg-elsewhere-1", "dg-elsewhere-2"]);
-    let (state, _) = super::step(
+    let (state, _) = crate::state::step(
         state,
         read_with_tracks(releases, |id| if id == "dg-elsewhere-1" { 5 } else { 6 }),
     );
@@ -320,11 +326,8 @@ fn a_document_s_barcode_joins_its_result_s() {
         ("5051961234567", vec!["0 12345 67890 5", "5051961234567"]),
     ] {
         let mut read_back = result.clone();
-        crate::documents::DocumentReading::Read(vec![read(
-            &release,
-            Ok(with_barcode(barcode)),
-        )])
-        .apply(&mut read_back);
+        crate::documents::DocumentReading::Read(vec![read(&release, Ok(with_barcode(barcode)))])
+            .apply(&mut read_back);
         assert_eq!(read_back.barcodes, expected, "{barcode}");
     }
 }
@@ -345,8 +348,10 @@ fn tied_rows_rank_on_the_documents_this_run_reads() {
     let mut asked: Vec<&str> = releases.iter().map(|release| release.key.as_str()).collect();
     asked.sort();
     assert_eq!(asked, vec!["dg-known", "dg-other-1", "dg-other-2"]);
-    let (state, _) =
-        super::step(state, read_with_tracks(&releases, |id| if id == "dg-known" { 7 } else { 5 }));
+    let (state, _) = crate::state::step(
+        state,
+        read_with_tracks(&releases, |id| if id == "dg-known" { 7 } else { 5 }),
+    );
     assert_eq!(offered_ids(&state), vec!["dg-other-1", "dg-other-2"]);
 }
 
@@ -363,7 +368,7 @@ fn every_row_of_a_wide_tie_is_read_before_it_is_offered() {
         .collect();
     let (state, releases) = reading_documents(tied);
     assert_eq!(releases.len(), 8, "every tied row is read");
-    let (state, effects) = super::step(state, read_with_tracks(&releases, |_| 5));
+    let (state, effects) = crate::state::step(state, read_with_tracks(&releases, |_| 5));
     assert!(effects.is_empty(), "{effects:?}");
     assert_eq!(offered_ids(&state).len(), 8);
     let verdict = crate::TerminalVerdict::try_from(state).expect("the run settled");
@@ -395,8 +400,10 @@ fn a_run_whose_every_row_lists_other_tracks_finds_nothing() {
         first_label_only("dg-long"),
         packed(first_label_only("dg-short"), bae_types::pressing::Packaging::Digipak),
     ]);
-    let (state, effects) =
-        super::step(state, read_with_tracks(&releases, |id| if id == "dg-long" { 6 } else { 4 }));
+    let (state, effects) = crate::state::step(
+        state,
+        read_with_tracks(&releases, |id| if id == "dg-long" { 6 } else { 4 }),
+    );
     assert!(effects.is_empty(), "{effects:?}");
     assert!(
         matches!(state, IdentifyState::NotFoundAnywhere { .. }),
@@ -412,7 +419,7 @@ fn a_run_whose_every_row_lists_other_tracks_finds_nothing() {
 fn a_row_that_lists_other_tracks_lets_the_next_best_row_be_read() {
     let state = started_searching(vec![DG], "1990-2000 Album", "Artist");
     let (state, _) = update(state, titled_folder());
-    let (state, effects) = super::step(
+    let (state, effects) = crate::state::step(
         state,
         search_answered(
             DG,
@@ -427,7 +434,7 @@ fn a_row_that_lists_other_tracks_lets_the_next_best_row_be_read() {
         releases.iter().map(|release| release.key.as_str()).collect::<Vec<_>>(),
         vec!["dg-named"]
     );
-    let (state, effects) = super::step(state, read_with_tracks(releases, |_| 3));
+    let (state, effects) = crate::state::step(state, read_with_tracks(releases, |_| 3));
     let [Effect::ReadReleases { releases, .. }] = effects.as_slice() else {
         panic!("the row below is read next, got {effects:?}");
     };
@@ -436,7 +443,7 @@ fn a_row_that_lists_other_tracks_lets_the_next_best_row_be_read() {
         releases.iter().map(|release| release.key.as_str()).collect::<Vec<_>>(),
         vec!["dg-other"]
     );
-    let (state, effects) = super::step(state, read_with_tracks(releases, |_| 5));
+    let (state, effects) = crate::state::step(state, read_with_tracks(releases, |_| 5));
     assert!(effects.is_empty(), "{effects:?}");
     assert_eq!(offered_ids(&state), vec!["dg-other"]);
     let IdentifyState::Found { findings, .. } = &state else {
@@ -447,5 +454,242 @@ fn a_row_that_lists_other_tracks_lets_the_next_best_row_be_read() {
     assert!(
         crate::VerdictSummary::of(&verdict, false).judgement().0,
         "the one row left fits, and is picked"
+    );
+}
+
+// The order of the folder's track titles against what each read document
+// lists.
+
+const FOLDER_TITLES: [&str; 5] = ["Song One", "Song Two", "Song Three", "Song Four", "Song Five"];
+
+/// A run like `reading_documents`, over a folder whose tracks carry
+/// `FOLDER_TITLES`.
+fn reading_titled_documents(results: Vec<MetadataResult>) -> (IdentifyState, Vec<LookupRef>) {
+    let (state, _) = update(
+        started_with(vec![DG]),
+        Signals {
+            track_titles: FOLDER_TITLES.iter().map(|title| title.to_string()).collect(),
+            ..signals(
+                DiscIdSignal::Absent,
+                BarcodeSignal::Settled { codes: artwork_codes(&["A"]) },
+                &[],
+            )
+        },
+    );
+    let (state, effects) = crate::state::step(state, barcode_matched(DG, "A", results));
+    let [Effect::ReadReleases { releases, .. }] = effects.as_slice() else {
+        panic!("the run reads its offered records' documents, got {effects:?}");
+    };
+    let releases = &records_read(releases);
+    (state, releases.clone())
+}
+
+/// Of three rows the lookups tie, all listing the folder's five tracks, the
+/// one whose document lists them in the folder's order is offered — written
+/// with a version in brackets and in another case — and the one whose titles
+/// are spelled apart and the one listing them in another order are set
+/// aside.
+#[test]
+fn the_row_listing_the_folder_s_titles_in_order_ranks_first() {
+    let (state, releases) = reading_titled_documents(vec![
+        first_label_only("dg-reordered"),
+        first_label_only("dg-spelled"),
+        first_label_only("dg-in-order"),
+    ]);
+    let titled = |titles: &[&str]| crate::documents::ReleaseDocument {
+        track_titles: titles.iter().map(|title| title.to_string()).collect(),
+        ..document(&[("Label One", "AB-100")], 5)
+    };
+    let (state, _) = crate::state::step(
+        state,
+        IdentifyEvent::ReleasesRead {
+            read: releases
+                .iter()
+                .map(|release| {
+                    let document = match release.key.as_str() {
+                        "dg-in-order" => titled(&[
+                            "song one (Remastered)",
+                            "Song Two",
+                            "Song Three [Live]",
+                            "Song Four",
+                            "Song Five",
+                        ]),
+                        "dg-spelled" => titled(&[
+                            "Chanson Un",
+                            "Song Two",
+                            "Song Three",
+                            "Song Four",
+                            "Song Five",
+                        ]),
+                        _ => titled(&[
+                            "Song Two",
+                            "Song One",
+                            "Song Three",
+                            "Song Four",
+                            "Song Five",
+                        ]),
+                    };
+                    read(release, Ok(document))
+                })
+                .collect(),
+        },
+    );
+    let IdentifyState::Found { findings, .. } = state else {
+        panic!("expected Found, got {state:?}");
+    };
+    assert_eq!(findings.matches.len(), 1);
+    assert_eq!(findings.matches[0].release_id, "dg-in-order");
+    assert_eq!(
+        findings.matches[0].track_titles[0], "song one (Remastered)",
+        "the document's titles are kept with its record"
+    );
+}
+
+/// Of the rows the lookups tie, a run reads only some documents. While one
+/// of them is left unread, a row whose titles agree is not lifted above it,
+/// nor above one read with its titles spelled apart; only a row listing the
+/// folder's titles in another order is set aside.
+#[test]
+fn agreeing_lifts_no_row_above_one_left_unread() {
+    let (state, releases) = reading_titled_documents(vec![
+        first_label_only("dg-in-order"),
+        packed(first_label_only("dg-spelled"), bae_types::pressing::Packaging::Digipak),
+        packed(first_label_only("dg-reordered"), bae_types::pressing::Packaging::GatefoldCover),
+        packed(first_label_only("dg-unread"), bae_types::pressing::Packaging::CardboardSleeve),
+    ]);
+    let titled = |titles: &[&str]| crate::documents::ReleaseDocument {
+        track_titles: titles.iter().map(|title| title.to_string()).collect(),
+        ..document(&[("Label One", "AB-100")], 5)
+    };
+    let (state, _) = crate::state::step(
+        state,
+        IdentifyEvent::ReleasesRead {
+            read: releases
+                .iter()
+                .map(|release| match release.key.as_str() {
+                    "dg-in-order" => read(release, Ok(titled(&FOLDER_TITLES))),
+                    "dg-spelled" => read(
+                        release,
+                        Ok(titled(&[
+                            "Chanson Un",
+                            "Song Two",
+                            "Song Three",
+                            "Song Four",
+                            "Song Five",
+                        ])),
+                    ),
+                    "dg-reordered" => read(
+                        release,
+                        Ok(titled(&[
+                            "Song Two",
+                            "Song One",
+                            "Song Three",
+                            "Song Four",
+                            "Song Five",
+                        ])),
+                    ),
+                    _ => read(release, Err(LookupFailure::Timeout)),
+                })
+                .collect(),
+        },
+    );
+    let IdentifyState::Found { findings, .. } = state else {
+        panic!("expected Found, got {state:?}");
+    };
+    let mut offered: Vec<&str> =
+        findings.matches.iter().map(|result| result.release_id.as_str()).collect();
+    offered.sort();
+    assert_eq!(offered, vec!["dg-in-order", "dg-spelled", "dg-unread"]);
+}
+
+/// An offered release the Disc ID lookup answered with its document is read
+/// from that document; one the answer carries no document for is read with
+/// its release lookup.
+#[test]
+fn a_release_the_disc_id_answered_is_read_from_its_answer() {
+    let state = disc_run_of_folder("Some Album", &[]);
+    let answered = bae_catalogs::payloads::DiscIdRelease::new(
+        "mb-answered".to_string(),
+        r#"{"id":"mb-answered"}"#.to_string(),
+    );
+    // Two pressings, told apart by where each was released.
+    let released_in = |release_id: &str, country: &str| {
+        let mut result = pair(release_id, Some("g"));
+        result.area = Some(bae_types::pressing::area(country));
+        result
+    };
+    let (_, effects) = crate::state::step(
+        state,
+        IdentifyEvent::DiscidLookupAnswered {
+            disc_id: "d".into(),
+            outcome: Ok(DiscIdAnswer {
+                results: vec![released_in("mb-answered", "DE"), released_in("mb-other", "GB")],
+                documents: vec![answered.clone()],
+            }),
+        },
+    );
+    let [Effect::ReadReleases { releases, .. }] = effects.as_slice() else {
+        panic!("the run reads its offered records' documents, got {effects:?}");
+    };
+    let mut releases = releases.clone();
+    releases.sort_by_key(|release| release.release().key.clone());
+    assert_eq!(
+        releases,
+        vec![
+            crate::documents::ReleaseToRead::DiscIdAnswer(answered),
+            crate::documents::ReleaseToRead::ReleaseLookup(LookupRef::new(MB, "mb-other")),
+        ]
+    );
+}
+
+/// Two rows tied on everything the folder states, but for what one linked
+/// Discogs release's own document writes: the folder naming the plant only
+/// that release's notes name puts its row first.
+#[test]
+fn a_linked_release_s_note_word_breaks_the_tie() {
+    use bae_types::pressing::Packaging::{Digipak, JewelCase};
+    let reading = disc_run_reading(
+        vec![packed_in(MB, "mb-1", "g-1", JewelCase), packed_in(MB, "mb-2", "g-1", Digipak)],
+        vec![crate::signals::TextLine {
+            text: "Album Title (Pressed by Plantname)".to_string(),
+            origin: crate::signals::TextOrigin::FolderName,
+        }],
+    );
+    let (state, _, _) = answer_rounds(
+        reading,
+        |release| match release.key.as_str() {
+            "mb-1" => linking_document("dg-1", "7"),
+            "mb-2" => linking_document("dg-2", "7"),
+            "dg-2" => plain_document(&["Pressed by Plantname"]),
+            _ => plain_document(&["Pressed elsewhere"]),
+        },
+        |_, key| match key {
+            PressingKey::Link { release } if release.key == "dg-1" => {
+                vec![packed_in(DG, "dg-1", "7", JewelCase)]
+            }
+            _ => vec![packed_in(DG, "dg-2", "7", Digipak)],
+        },
+    );
+    let IdentifyState::Found { findings, .. } = &state else {
+        panic!("expected Found, got {state:?}");
+    };
+    assert_eq!(
+        findings.named_notes,
+        vec![crate::NamedNote {
+            release: LookupRef::new(DG, "dg-2"),
+            note: "Pressed by Plantname".to_string(),
+        }]
+    );
+    let lead_row = findings.pressings[0];
+    let lead: Vec<&str> = findings
+        .matches
+        .iter()
+        .zip(&findings.pressings)
+        .filter(|(_, row)| **row == lead_row)
+        .map(|(result, _)| result.release_id.as_str())
+        .collect();
+    assert!(
+        lead.contains(&"mb-2") && lead.contains(&"dg-2"),
+        "the named release's row leads: {lead:?}"
     );
 }

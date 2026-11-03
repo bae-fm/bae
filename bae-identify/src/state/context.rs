@@ -4,6 +4,7 @@
 //! empty one.
 
 use super::pressings::PressingLookup;
+use super::search::TitleSearch;
 use super::{
     BarcodeProgress, CatalogProgress, DiscidProgress, IsrcProgress, MetadataResult, SearchProgress,
     SourceFailure,
@@ -323,30 +324,6 @@ pub(crate) fn number_key(value: &str) -> String {
         .unwrap_or_else(|| bae_types::text_match::squash(value))
 }
 
-/// The album title and artist a run searches by.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct TitleSearch {
-    pub album: String,
-    /// The first album artist's name, or blank.
-    pub artist: String,
-}
-
-impl TitleSearch {
-    /// The search for these words; `None` when there is no title.
-    pub fn of(album: &str, artist: &str) -> Option<Self> {
-        let album = album.trim();
-        (!album.is_empty())
-            .then(|| Self { album: album.to_string(), artist: artist.trim().to_string() })
-    }
-
-    /// The search for a draft's own title, with trailing bracketed parts such
-    /// as `[MR2002]` taken off, since catalogs match nothing with them — see
-    /// `text_match::bare_album_title`.
-    pub fn of_draft(album: &str, artist: &str) -> Option<Self> {
-        Self::of(&bae_types::text_match::bare_album_title(album), artist)
-    }
-}
-
 /// The title the run can search by, and what asking every provider produced.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct SearchEvidence {
@@ -595,3 +572,7 @@ impl SignalsContext {
             || !self.isrc.tagged.is_empty()
     }
 }
+
+#[cfg(test)]
+#[path = "context_tests.rs"]
+mod tests;

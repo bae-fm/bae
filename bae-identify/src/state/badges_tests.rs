@@ -1,5 +1,11 @@
-// The toolbar projection: what each badge reads while a run is going and
-// once it has settled.
+//! What each badge reads while a run is going and once it has settled.
+
+use super::*;
+use crate::signals::TextSignal;
+use crate::state::tests::step;
+use crate::state::tests::*;
+use crate::state::*;
+use bae_catalogs::catalog::Catalog;
 
 /// A run whose disc ID found two releases of one group, settled `Found` with
 /// "LBL 001" offered but not chosen.
