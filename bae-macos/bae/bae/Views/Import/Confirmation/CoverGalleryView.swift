@@ -184,11 +184,13 @@ struct CoverGalleryView: View {
         .onChange(of: remoteItems) { _, _ in rebuild() }
         .onChange(of: releaseItems) { _, _ in rebuild() }
         .onChange(of: currentCover?.image) { _, _ in rebuild() }
-        // The grid's preview holds the keys whenever it is on screen: when
+        // The grid's preview takes the keys whenever it comes on screen: when
         // the sheet opens on the grid, its covers arrive, or the lightbox
-        // closes back to it.
+        // closes back to it. It never gives them up by hand: the lightbox
+        // takes them as it opens, and clearing the preview's focus in the
+        // same update would clear the lightbox's too.
         .onChange(of: gridPreviewShown, initial: true) { _, shown in
-            previewFocused = shown
+            if shown { previewFocused = true }
         }
         .onKeyPress(.leftArrow) {
             guard browser.layout == .grid else { return .ignored }
