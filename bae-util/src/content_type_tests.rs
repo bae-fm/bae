@@ -93,3 +93,12 @@ fn lossless_audio_membership() {
         assert!(!ct.is_lossless_audio(), "{ct:?}");
     }
 }
+
+#[test]
+fn admitted_audio_content_type_gates_unlisted_codecs() {
+    // Dispatch check: an admitted codec passes the gate.
+    assert!(ContentType::Flac.is_supported_audio());
+    // The gate's job — reject anything not on the import allowlist.
+    assert!(!ContentType::Other("codec:AV_CODEC_ID_SPEEX".to_string()).is_supported_audio());
+    assert!(!ContentType::Other("audio/x-ms-wma".to_string()).is_supported_audio());
+}

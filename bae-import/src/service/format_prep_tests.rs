@@ -17,15 +17,6 @@ pub(super) fn scanned_flac() -> crate::folder_scanner::ScannedAudio {
     }
 }
 
-#[test]
-fn admitted_audio_content_type_gates_unlisted_codecs() {
-    // Dispatch check: an admitted codec passes the gate.
-    assert!(ContentType::Flac.is_supported_audio());
-    // The gate's job — reject anything not on the import allowlist.
-    assert!(!ContentType::Other("codec:AV_CODEC_ID_SPEEX".to_string()).is_supported_audio());
-    assert!(!ContentType::Other("audio/x-ms-wma".to_string()).is_supported_audio());
-}
-
 pub(super) fn test_clock() -> coven::FixedClock {
     coven::FixedClock::new(
         (chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
