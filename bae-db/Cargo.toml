@@ -66,6 +66,7 @@ oauth-providers = []
 test-utils = [
     "dep:bae-app-dir",
     "dep:tempfile",
+    "bae-util/test-utils",
     "coven/test-utils",
     "tokio/rt",
     "tokio/rt-multi-thread",
