@@ -1,6 +1,3 @@
-#[cfg(desktop)]
-use bae_catalogs::catalog::Catalog;
-
 /// Whether an import attaches its files for background upload. Every release's
 /// rows sync; a local import keeps its file paths only on this device.
 #[cfg(desktop)]
@@ -31,21 +28,6 @@ impl ImportDestination {
             Self::Local
         }
     }
-}
-
-/// User's cover art selection for an import.
-#[cfg(desktop)]
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum CoverSelection {
-    /// A catalog's image, and the catalog for attribution. The import
-    /// commits the original; the downscaled copies are what smaller slots
-    /// showing the selection draw.
-    Remote(bae_catalogs::remote_image::RemoteImageSet, Catalog),
-    /// Local file in the album folder (relative path from album root)
-    Local(String),
-    /// Artwork embedded in one audio file, identified by that file's relative
-    /// path in the file-tag snapshot.
-    Embedded(String),
 }
 
 /// Progress updates during import

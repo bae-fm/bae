@@ -15,6 +15,8 @@
 #[cfg(desktop)]
 use crate::cue_flac::CueSheet;
 #[cfg(desktop)]
+use crate::CoverSelection;
+#[cfg(desktop)]
 use bae_audio::ProbeResult;
 use bae_catalogs::credits::{ArtistCredit, CreditedRole};
 use bae_catalogs::works::WorkGraph;

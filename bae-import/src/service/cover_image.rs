@@ -4,7 +4,7 @@
 
 use crate::file_tag_snapshot::FileTagSnapshot;
 use crate::folder_scanner::CandidateFile;
-use crate::types::CoverSelection;
+use crate::CoverSelection;
 use crate::ImportError;
 use bae_catalogs::remote_image::RemoteImage;
 

@@ -44,6 +44,20 @@ pub enum CoverImageSource {
     },
 }
 
+/// User's cover art selection for an import.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum CoverSelection {
+    /// A catalog's image, and the catalog for attribution. The import
+    /// commits the original; the downscaled copies are what smaller slots
+    /// showing the selection draw.
+    Remote(bae_catalogs::remote_image::RemoteImageSet, Catalog),
+    /// Local file in the album folder (relative path from album root)
+    Local(String),
+    /// Artwork embedded in one audio file, identified by that file's relative
+    /// path in the file-tag snapshot.
+    Embedded(String),
+}
+
 /// The cover a candidate will be committed with, and where to draw it from.
 ///
 /// The selection is the candidate's stored one — what the scan read off the
@@ -55,7 +69,7 @@ pub enum CoverImageSource {
 /// catalog's downscaled copies, and the size a slot draws at picks among them.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CoverChoice {
-    pub selection: crate::CoverSelection,
+    pub selection: CoverSelection,
     pub image: CoverImageSource,
 }
 
@@ -63,7 +77,7 @@ impl CoverChoice {
     /// A catalog's image, with every copy the catalog serves of it.
     pub fn remote(image: RemoteImageSet, source: Catalog) -> Self {
         Self {
-            selection: crate::CoverSelection::Remote(image.clone(), source),
+            selection: CoverSelection::Remote(image.clone(), source),
             image: CoverImageSource::Remote { image },
         }
     }
@@ -71,10 +85,7 @@ impl CoverChoice {
     /// One of the folder's own images, named by its relative path and drawn
     /// from where it sits on disk.
     pub fn local(file_id: String, file: crate::folder_scanner::FileVersion) -> Self {
-        Self {
-            selection: crate::CoverSelection::Local(file_id),
-            image: CoverImageSource::Local { file },
-        }
+        Self { selection: CoverSelection::Local(file_id), image: CoverImageSource::Local { file } }
     }
 
     /// Artwork stored in the candidate's file-tag snapshot. The source file
@@ -86,7 +97,7 @@ impl CoverChoice {
         data: Vec<u8>,
     ) -> Self {
         Self {
-            selection: crate::CoverSelection::Embedded(source_file_id),
+            selection: CoverSelection::Embedded(source_file_id),
             image: CoverImageSource::Embedded { source, data },
         }
     }

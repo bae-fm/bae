@@ -229,6 +229,8 @@ pub use candidates::{
 #[cfg(desktop)]
 pub use catalog_sessions::{CatalogSessionError, CatalogSessions, DiscogsKeyError};
 #[cfg(desktop)]
+pub use cover_art::CoverSelection;
+#[cfg(desktop)]
 pub use cover_art::{CoverChoice, CoverImageSource};
 pub use error::ImportError;
 pub use error::{ArtistIdentityConflictChoice, IdentityConflict, LabelIdentityConflictChoice};
@@ -312,9 +314,8 @@ pub use types::{
 };
 #[cfg(desktop)]
 pub use types::{
-    CandidateMetadataDraft, CandidatePreparedAssets, CoverSelection, CueAnalyzedAudioFile,
-    CueFlacAnalysis, ImportDestination, ImportPhase, ImportProgress, ImportStep, PrepareStep,
-    TrackAudio, TrackFile,
+    CandidateMetadataDraft, CandidatePreparedAssets, CueAnalyzedAudioFile, CueFlacAnalysis,
+    ImportDestination, ImportPhase, ImportProgress, ImportStep, PrepareStep, TrackAudio, TrackFile,
 };
 #[cfg(desktop)]
 pub use watched_folder::WatchedFolder;
