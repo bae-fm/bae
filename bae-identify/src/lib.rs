@@ -49,7 +49,7 @@ pub use state::{
 };
 pub use toolbar::{SignalKind, SignalOption, SignalState, ToolbarSignal};
 pub use verdict::{IdentifyFailure, TerminalVerdict};
-pub use verdict_summary::{FolderCheck, LeadMatch, VerdictKind, VerdictSummary};
+pub use verdict_summary::{FolderCheck, VerdictKind, VerdictSummary};
 pub use view::{
     BarcodeStepView, CatalogCandidateView, CatalogStepView, DiscIdRow, DiscIdStepView,
     IdentifyRunView, IdentifyStateView, IsrcStepView, LookupView, ProviderCell, PublishedRun,

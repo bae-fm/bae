@@ -1,8 +1,6 @@
 use super::*;
 use bae_catalogs::catalog::Catalog;
 use bae_catalogs::catalog::LookupCatalog;
-use bae_catalogs::search::SourceTracks;
-use bae_identify::LeadMatch;
 
 /// The pane states the found release's failed check while identification's
 /// pick or nobody's draft stands; a person's or the tags' valid draft is
@@ -11,19 +9,8 @@ use bae_identify::LeadMatch;
 fn a_person_s_draft_states_no_folder_check() {
     let unchecked = VerdictSummary {
         kind: bae_identify::VerdictKind::Found,
-        track_count: Some(12),
         pressing_count: 1,
-        lead: Some(LeadMatch {
-            release_id: "mb-1".to_string(),
-            source: LookupCatalog::MusicBrainz,
-            source_group_id: None,
-            title: "Album".to_string(),
-            artist: None,
-            year: None,
-            media: Vec::new(),
-            cover: None,
-            source_tracks: Some(SourceTracks::Nothing),
-        }),
+        lead: Some(bae_identify::TracklistFit::ListsNothing),
         medium_conflict: None,
         unread_document: false,
         kept_own_draft: false,

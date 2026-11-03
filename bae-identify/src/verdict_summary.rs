@@ -10,10 +10,9 @@
 //! import a person asks for.
 
 use super::fit::Declined;
+use super::fit::TracklistFit;
 use super::verdict::TerminalVerdict;
 use super::MediumConflict;
-use bae_catalogs::remote_image::RemoteCover;
-use bae_catalogs::search::{MetadataResult, SourceTracks};
 
 /// A check of the found release against the folder that did not pass,
 /// carrying what it takes to state the disagreement beside Import.
@@ -42,52 +41,9 @@ pub enum VerdictKind {
     },
 }
 
-/// The match a verdict's findings lead with: the first release they offer.
-/// Everything the queue asks of a verdict's matches is asked of this one, but
-/// whether each was read in full: the judgements consult the lead (they only
-/// reach the tracklist comparison when the matches make a single pressing),
-/// and the row leads with the lead's title, artist and cover whatever the
-/// count.
-///
-/// When they do make a single pressing this is also that pressing's own lead —
-/// the release the documents were settled from, and so the only one carrying a
-/// tracklist. The matches are stored in the order the pressings put them, so
-/// position 0 is that lead; a pressing holds at most one release per source,
-/// so a second release from the same source would be a second pressing and the
-/// check would never have reached the tracklist.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct LeadMatch {
-    pub release_id: String,
-    pub source: bae_catalogs::catalog::LookupCatalog,
-    pub source_group_id: Option<String>,
-    pub title: String,
-    pub artist: Option<String>,
-    pub year: Option<i32>,
-    pub media: Vec<bae_types::pressing::MediaCount>,
-    /// The lead match's cover, with the copies its catalog serves.
-    pub cover: Option<bae_catalogs::remote_image::RemoteImageSet>,
-    pub source_tracks: Option<SourceTracks>,
-}
-
-impl LeadMatch {
-    /// The lead of a verdict's findings, from its first match.
-    pub(crate) fn of(result: &MetadataResult) -> Self {
-        Self {
-            release_id: result.release_id.clone(),
-            source: result.source,
-            source_group_id: result.source_group_id.clone(),
-            title: result.title.clone(),
-            artist: result.artist.clone(),
-            year: result.year,
-            media: result.media.counts(),
-            cover: result.cover_art.as_ref().map(|cover: &RemoteCover| cover.image.clone()),
-            source_tracks: result.source_tracks.clone(),
-        }
-    }
-}
-
 /// As much of a stored verdict as the queue's list reads: which shape it is,
-/// how many pressings it named, and the lead match's own columns.
+/// how many pressings it named, and how its lead match's tracklist fits the
+/// folder.
 ///
 /// The list reads these off the candidate's verdict row and its match rows
 /// rather than rebuilding a [`TerminalVerdict`] — the pane, which shows the
@@ -95,14 +51,18 @@ impl LeadMatch {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct VerdictSummary {
     pub kind: VerdictKind,
-    /// The folder's own track count, as identification counted it. `None` for
-    /// `NotFound`, which counts nothing, and for `Error`, which ended first.
-    pub track_count: Option<u32>,
     /// How many physical pressings the `found` list names — the rows the run
     /// built, so two sources' records of one pressing count once. Zero for
     /// the shapes that hold no findings.
     pub pressing_count: u32,
-    pub lead: Option<LeadMatch>,
+    /// How the tracklist of the match the findings lead with, the first
+    /// release they offer, fits the folder's track count; `None` when they
+    /// offer none. The judgements consult only the lead: they reach the
+    /// tracklist only when the matches make a single pressing, and then the
+    /// lead is that pressing's own — the release its documents were settled
+    /// from, and so the only one carrying a tracklist. The matches are stored
+    /// in the order the pressings put them, so position 0 is that lead.
+    pub lead: Option<TracklistFit>,
     /// The folder's own files rule out every release the verdict found.
     pub medium_conflict: Option<MediumConflict>,
     /// A record the `found` list names whose full document could not be
@@ -150,10 +110,11 @@ impl VerdictSummary {
         Self {
             kept_own_draft,
             kind,
-            track_count,
             pressing_count: findings
                 .map_or(0, |findings| crate::release_group::row_count(&findings.pressings) as u32),
-            lead: findings.and_then(|findings| findings.matches.first().map(LeadMatch::of)),
+            lead: findings.and_then(|findings| findings.matches.first()).map(|lead| {
+                TracklistFit::of(lead.source_tracks.as_ref(), track_count.unwrap_or_default())
+            }),
             medium_conflict: findings.and_then(|findings| findings.medium_conflict),
             unread_document: findings.is_some_and(|findings| {
                 findings.matches.iter().any(|result| result.document_failure.is_some())
@@ -170,13 +131,10 @@ impl VerdictSummary {
         if self.kind != VerdictKind::Found {
             return None;
         }
-        let track_count = self.track_count.unwrap_or_default();
         super::fit::decline(
             self.medium_conflict,
             self.pressing_count as usize,
-            self.lead
-                .as_ref()
-                .map(|lead| super::fit::TracklistFit::of(lead.source_tracks.as_ref(), track_count)),
+            self.lead,
             self.unread_document,
         )
     }

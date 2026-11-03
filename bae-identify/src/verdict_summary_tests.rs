@@ -5,7 +5,7 @@ use super::*;
 use crate::{Findings, NarrowedOut};
 use bae_catalogs::catalog::Catalog;
 use bae_catalogs::catalog::LookupCatalog;
-use bae_catalogs::search::SourceTracks;
+use bae_catalogs::search::{MetadataResult, SourceTracks};
 use bae_catalogs::test_releases::mb_release_json;
 
 fn result(release_id: &str, source_tracks: Option<SourceTracks>) -> MetadataResult {
@@ -256,7 +256,7 @@ fn a_verdict_that_found_nothing_fails_no_folder_check() {
 /// [`VerdictSummary`] is what the list judges from, read off stored columns
 /// rather than a rebuilt verdict — so every fact the judgements consult has
 /// to survive the reduction: which shape the verdict is, how many pressings it
-/// named, and the lead's own columns. Each verdict is paired with the pressing
+/// named, and how the lead's tracklist fits the folder. Each verdict is paired with the pressing
 /// count it makes, which is the fact the reduction can no longer read off a
 /// row count.
 #[test]
@@ -294,25 +294,27 @@ fn a_summary_keeps_every_fact_the_judgements_consult() {
         match &verdict {
             TerminalVerdict::Found { track_count, findings: Findings { matches, .. }, .. } => {
                 assert_eq!(summary.kind, VerdictKind::Found);
-                assert_eq!(summary.track_count, Some(*track_count));
-                let lead = summary.lead.as_ref().expect("a found verdict has a lead");
-                assert_eq!(lead.release_id, matches[0].release_id);
-                assert_eq!(lead.source_tracks, matches[0].source_tracks);
+                assert_eq!(
+                    summary.lead,
+                    Some(TracklistFit::of(matches[0].source_tracks.as_ref(), *track_count))
+                );
             }
             TerminalVerdict::NotFoundAnywhere { .. } => {
                 assert_eq!(summary.kind, VerdictKind::NotFound);
-                assert_eq!(summary.track_count, None);
+                assert_eq!(summary.lead, None);
             }
-            TerminalVerdict::ManualOnly { track_count, .. } => {
+            TerminalVerdict::ManualOnly { .. } => {
                 assert_eq!(summary.kind, VerdictKind::ManualOnly);
-                assert_eq!(summary.track_count, Some(*track_count));
+                assert_eq!(summary.lead, None);
             }
             TerminalVerdict::Failed { track_count, findings, .. } => {
                 assert_eq!(summary.kind, VerdictKind::Failed);
-                assert_eq!(summary.track_count, Some(*track_count));
                 assert_eq!(
-                    summary.lead.as_ref().map(|lead| lead.release_id.as_str()),
-                    findings.matches.first().map(|m| m.release_id.as_str())
+                    summary.lead,
+                    findings
+                        .matches
+                        .first()
+                        .map(|lead| TracklistFit::of(lead.source_tracks.as_ref(), *track_count))
                 );
             }
             TerminalVerdict::Error { .. } => unreachable!("no error verdict is listed"),
