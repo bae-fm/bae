@@ -104,3 +104,7 @@ pub(crate) fn track_display_on(
         .optional()?
         .map(|meta| meta.display))
 }
+
+#[cfg(test)]
+#[path = "track_display_tests.rs"]
+mod tests;

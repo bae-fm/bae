@@ -444,3 +444,7 @@ fn now_playing_on(sql: &SqlReadContext<'_>) -> Result<Option<NowPlayingValues>, 
         Err(Some(error)) => Err(error),
     }
 }
+
+#[cfg(test)]
+#[path = "now_tests.rs"]
+mod tests;

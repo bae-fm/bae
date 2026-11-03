@@ -37,7 +37,8 @@ pub use timeline::PlaybackTimelineRow;
 pub(crate) use track_display::subscribe_playback_track_infos;
 pub use track_display::track_display;
 #[cfg(test)]
-pub(crate) mod tests;
+#[path = "tables_tests.rs"]
+mod tests;
 #[cfg(any(test, feature = "test-utils"))]
 pub mod window_cost;
 

@@ -119,3 +119,7 @@ fn playback_timeline_on(sql: &SqlReadContext<'_>) -> Result<PlaybackTimeline, Db
         Ok(PlaybackTimeline { library, seek_revision: row.get("seek_revision")?, preview })
     })?)
 }
+
+#[cfg(test)]
+#[path = "timeline_tests.rs"]
+mod tests;

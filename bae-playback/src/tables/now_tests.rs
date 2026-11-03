@@ -1,9 +1,8 @@
 //! The `playback_now` row: what each change writes, what the screens' read
 //! makes of it, and how failures count.
 
-use super::super::*;
-use super::playback_queue_tests::release_db;
 use super::*;
+use crate::tables::tests::*;
 use crate::{AudioOutputProblem, PlaybackErrorReason};
 use crate::{
     LoadingTrack, PlaybackChange, PlaybackPauseBoundary, PlaybackPauseReason,

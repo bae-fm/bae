@@ -1,6 +1,5 @@
-use super::super::*;
 use super::*;
-
+use crate::tables::tests::*;
 const RELEASE_LONELY: &str = "fcf4be32-159f-4790-87a1-697700a74462";
 const RELEASE_OTHER: &str = "ce596bd7-be97-4416-8b6d-47f315bae466";
 const TRACK_LONELY: &str = "03c41035-ce18-4fa0-8e83-c446df26a551";
@@ -9,7 +8,7 @@ const TRACK_OTHER: &str = "69e67928-545a-4dcf-8ae7-ef7778331231";
 /// One album holds one release; the other holds two, and the queued track is
 /// on the one that is NOT its primary.
 async fn cover_db() -> (Database, tempfile::TempDir) {
-    let (db, tmp) = super::temp_db().await;
+    let (db, tmp) = temp_db().await;
     db.call(move |conn| {
         conn.execute_batch(
             "
@@ -36,14 +35,14 @@ async fn cover_db() -> (Database, tempfile::TempDir) {
     })
     .await
     .unwrap();
-    super::write_cover(&db, RELEASE_LONELY, "lonely release cover").await;
-    super::write_cover(&db, RELEASE_OTHER, "other release cover").await;
+    write_cover(&db, RELEASE_LONELY, "lonely release cover").await;
+    write_cover(&db, RELEASE_OTHER, "other release cover").await;
     (db, tmp)
 }
 
 async fn cover_of(db: &Database, track_id: &str) -> Option<bae_db::ImageRef> {
     PlaybackQueueTables::new(db.clone()).clear_manual().await.unwrap();
-    let items = super::queue_items(db, &[track_id]).await;
+    let items = queue_items(db, &[track_id]).await;
     assert_eq!(items.len(), 1);
     items[0].display.cover_image.clone()
 }
@@ -52,8 +51,7 @@ async fn cover_of(db: &Database, track_id: &str) -> Option<bae_db::ImageRef> {
 async fn cover_ref(db: &Database, release_id: &str) -> Option<bae_db::ImageRef> {
     Some(bae_db::ImageRef {
         id: release_id.to_string(),
-        version: super::stored_image_version(db, bae_db::synced::COVERS_NAMESPACE, release_id)
-            .await,
+        version: stored_image_version(db, bae_db::synced::COVERS_NAMESPACE, release_id).await,
         image_type: LibraryImageType::Cover,
     })
 }
@@ -80,7 +78,7 @@ async fn replacing_a_cover_changes_its_version() {
     let before = cover_of(&db, TRACK_LONELY).await.expect("the release has a cover");
     let listed_before = db.cover_version(RELEASE_LONELY).await.unwrap();
 
-    super::write_cover(&db, RELEASE_LONELY, "replacement cover").await;
+    write_cover(&db, RELEASE_LONELY, "replacement cover").await;
 
     let after = cover_of(&db, TRACK_LONELY).await.expect("the release has a cover");
     assert_ne!(after.version, before.version, "the queue's cover version moves");

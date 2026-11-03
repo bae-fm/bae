@@ -914,3 +914,7 @@ pub(super) fn repeat_from_column(value: &str) -> rusqlite::Result<RepeatMode> {
         )),
     }
 }
+
+#[cfg(test)]
+#[path = "queue_tests.rs"]
+mod tests;

@@ -220,3 +220,7 @@ pub struct QueueUpcomingRead {
     pub upcoming_total: u64,
     pub windows: Vec<QueueUpcomingWindow>,
 }
+
+#[cfg(test)]
+#[path = "queue_reads_tests.rs"]
+mod tests;
