@@ -12,13 +12,12 @@ device in the household.
 
 - **Imports folders of audio.** On a desktop, bae watches your music folders
   and looks each folder up on MusicBrainz and Discogs for its album, pressing,
-  artists and cover. Folders of one file per track and disc images with a CUE
-  sheet both import.
+  artists and cover.
 - **Leaves your files where they are.** bae reads and plays them; it never
   copies, moves or rewrites them.
-- **Plays a release as it was made.** Tracks join without gaps, hidden pregaps
-  play, and playback can pause between the sides of a record or the discs of a
-  box set.
+- **Plays a release as it was made.** Tracks play directly out of a disc image,
+  using its CUE sheet. Tracks join without gaps, hidden pregaps play, and
+  playback can pause between the sides of a record or the discs of a box set.
 - **Shares the library.** Several people use one library, each with their own
   devices, ratings, listening history and playlists, kept private or shared.
 - **Plays on other devices.** Phones browse, stream and pin releases for
