@@ -35,15 +35,7 @@ const WRITE_FRAMES: usize = 1024;
 const WRITE_TIMEOUT_NS: i64 = 100_000_000; // 100 ms
 
 /// Audio output writing decoded PCM to an AAudio output stream.
-pub struct AAudioOutput {
-    controls: AudioOutputControls,
-}
-
-impl AAudioOutput {
-    pub fn new() -> Result<Self, AudioError> {
-        Ok(Self { controls: AudioOutputControls::new(1.0) })
-    }
-}
+pub struct AAudioOutput;
 
 /// An AAudio output stream as the [`DeviceWriter`] drives it.
 struct AAudioDeviceStream {
@@ -173,13 +165,13 @@ impl Drop for AAudioStreamHandle {
 impl AudioOutput for AAudioOutput {
     fn create_stream(
         &mut self,
+        controls: AudioOutputControls,
         source: Arc<Mutex<PlaybackSource>>,
         source_sample_rate: u32,
         source_channels: u32,
         audio_events: AudioEventSender,
         position_update_interval_ms: u32,
     ) -> Result<Box<dyn AudioStream>, AudioError> {
-        let controls = self.controls.clone();
         let stop = Arc::new(AtomicBool::new(false));
         let stop_clone = stop.clone();
         // The writer thread opens the stream (AAudio binds it to the opening
@@ -249,9 +241,5 @@ impl AudioOutput for AAudioOutput {
                 "the AAudio writer thread exited before opening its stream".to_string(),
             )),
         }
-    }
-
-    fn controls(&self) -> &AudioOutputControls {
-        &self.controls
     }
 }

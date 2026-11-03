@@ -401,8 +401,11 @@ pub(crate) fn duration_millis(duration: std::time::Duration) -> u64 {
 /// A sink that pulls samples from a `PlaybackSource` and sends them somewhere: a
 /// real device, a capture buffer, a discard-and-pace probe.
 pub trait AudioOutput: Send + 'static {
+    /// Build a stream over `source` whose callback plays by `controls`: the
+    /// state and volume the player sets.
     fn create_stream(
         &mut self,
+        controls: AudioOutputControls,
         source: Arc<Mutex<PlaybackSource>>,
         source_sample_rate: u32,
         source_channels: u32,
@@ -423,25 +426,73 @@ pub trait AudioOutput: Send + 'static {
     /// the last track's format, so the next track's stream switches it
     /// directly. The others keep nothing.
     fn playback_ended(&mut self) {}
+}
 
-    /// The state/volume cell this output's callback reads. Every control
-    /// method below drives it, so an output that keeps one gets them all.
-    fn controls(&self) -> &AudioOutputControls;
+/// One player's output and the state and volume its streams play by. The
+/// player sets them here; every stream the output builds reads them, so a
+/// change reaches the stream playing without a command to it.
+pub(crate) struct PlayerOutput {
+    output: Box<dyn AudioOutput>,
+    controls: AudioOutputControls,
+}
 
-    fn set_state(&self, state: AudioState) {
-        self.controls().set_state(state);
+impl PlayerOutput {
+    /// `output`, its streams playing by `controls`.
+    pub(crate) fn new(output: Box<dyn AudioOutput>, controls: AudioOutputControls) -> Self {
+        Self { output, controls }
     }
 
-    fn get_state(&self) -> AudioState {
-        self.controls().get_state()
+    /// Build a stream over `source` on the output, playing by this player's
+    /// state and volume.
+    pub(crate) fn create_stream(
+        &mut self,
+        source: Arc<Mutex<PlaybackSource>>,
+        source_sample_rate: u32,
+        source_channels: u32,
+        audio_events: AudioEventSender,
+        position_update_interval_ms: u32,
+    ) -> Result<Box<dyn AudioStream>, AudioError> {
+        self.output.create_stream(
+            self.controls.clone(),
+            source,
+            source_sample_rate,
+            source_channels,
+            audio_events,
+            position_update_interval_ms,
+        )
     }
 
-    fn set_volume(&self, volume: f32) {
-        self.controls().set_volume(volume);
+    /// See [`AudioOutput::on_source_replaced`].
+    pub(crate) fn on_source_replaced(&mut self) {
+        self.output.on_source_replaced();
     }
 
-    fn get_volume(&self) -> f32 {
-        self.controls().get_volume()
+    /// See [`AudioOutput::playback_ended`].
+    pub(crate) fn playback_ended(&mut self) {
+        self.output.playback_ended();
+    }
+
+    pub(crate) fn set_state(&self, state: AudioState) {
+        self.controls.set_state(state);
+    }
+
+    pub(crate) fn get_state(&self) -> AudioState {
+        self.controls.get_state()
+    }
+
+    pub(crate) fn set_volume(&self, volume: f32) {
+        self.controls.set_volume(volume);
+    }
+
+    pub(crate) fn get_volume(&self) -> f32 {
+        self.controls.get_volume()
+    }
+
+    /// Whether the streams play by `controls`, for a test that follows which
+    /// output is in place.
+    #[cfg(test)]
+    pub(crate) fn plays_by(&self, controls: &AudioOutputControls) -> bool {
+        Arc::ptr_eq(&self.controls.state, &controls.state)
     }
 }
 
@@ -463,7 +514,7 @@ pub trait AudioOutputDevice: Send {
 ///
 /// Each non-gapless transition — a `create_stream` (rebuild) or an
 /// `on_source_replaced` (same-format swap) — starts a new [`CapturedStream`],
-/// and the receiver from `new()` yields one per transition in order. Volume is
+/// sent, one per transition in order, to where `new()` was told. Volume is
 /// NOT applied: samples land exactly as the decoder produced them.
 #[cfg(any(test, feature = "test-utils"))]
 pub struct CaptureAudioOutput {
@@ -485,6 +536,10 @@ type CaptureSender = tokio::sync::mpsc::UnboundedSender<Vec<f32>>;
 /// receives them.
 #[cfg(any(test, feature = "test-utils"))]
 pub type CapturedStreams = tokio::sync::mpsc::UnboundedReceiver<CapturedStream>;
+
+/// Where a capture output sends the stream of each transition it starts.
+#[cfg(any(test, feature = "test-utils"))]
+pub type CapturedStreamSender = tokio::sync::mpsc::UnboundedSender<CapturedStream>;
 
 /// One non-gapless transition's samples, as a test receives them: the capture
 /// thread sends each run it pulls, and the test keeps its own copy, so nothing
@@ -526,8 +581,7 @@ impl CapturedStream {
 
 #[cfg(any(test, feature = "test-utils"))]
 struct CaptureOutputCore {
-    controls: AudioOutputControls,
-    notify_tx: tokio::sync::mpsc::UnboundedSender<CapturedStream>,
+    notify_tx: CapturedStreamSender,
     /// Where the capture thread sends what it pulls. A `create_stream` or an
     /// `on_source_replaced` starts a new stream and points this at it, so each
     /// non-gapless transition is captured on its own — the one-stream-per-
@@ -537,25 +591,16 @@ struct CaptureOutputCore {
 
 #[cfg(any(test, feature = "test-utils"))]
 impl CaptureOutputCore {
-    fn new() -> (Self, CapturedStreams) {
-        let (notify_tx, notify_rx) = tokio::sync::mpsc::unbounded_channel();
-        (Self::publishing_to(notify_tx), notify_rx)
-    }
-
-    /// A core publishing its streams to an existing receiver, so every output
-    /// a capture device opens reports into the one receiver the test holds.
-    fn publishing_to(notify_tx: tokio::sync::mpsc::UnboundedSender<CapturedStream>) -> Self {
+    /// A core publishing its streams to `notify_tx`, so every output a
+    /// capture device opens reports into the one receiver the test holds.
+    fn publishing_to(notify_tx: CapturedStreamSender) -> Self {
         // Nothing is captured before the first transition starts a stream.
         let (before_first, _) = tokio::sync::mpsc::unbounded_channel();
-        Self {
-            controls: AudioOutputControls::new(1.0),
-            notify_tx,
-            active: Arc::new(Mutex::new(before_first)),
-        }
+        Self { notify_tx, active: Arc::new(Mutex::new(before_first)) }
     }
 
     /// Start a new stream, point the capture thread at it, and publish it to
-    /// the receiver `new()` handed back.
+    /// the test's receiver.
     fn rotate_capture_buffer(&self) -> Result<(), AudioError> {
         let (runs_tx, runs) = tokio::sync::mpsc::unbounded_channel();
         *self.active.lock().unwrap() = runs_tx;
@@ -630,47 +675,38 @@ where
 macro_rules! impl_capture_output_constructor {
     ($type:ty) => {
         impl $type {
-            /// Returns the output and a receiver that yields one stream per
-            /// non-gapless transition (a `create_stream` rebuild or an
-            /// `on_source_replaced` swap), in order.
-            pub fn new() -> (Self, CapturedStreams) {
-                let (core, notify_rx) = CaptureOutputCore::new();
-                (Self { core }, notify_rx)
-            }
-
-            /// An output reporting its streams to an existing receiver — how a
-            /// capture device opens each output it hands out, so the main
+            /// An output sending `captured` one stream per non-gapless
+            /// transition (a `create_stream` rebuild or an
+            /// `on_source_replaced` swap), in order. A capture device opens
+            /// each output it hands out over its own sender, so the main
             /// player's and the preview player's land on one receiver.
-            fn publishing_to(
-                notify_tx: tokio::sync::mpsc::UnboundedSender<CapturedStream>,
-            ) -> Self {
-                Self { core: CaptureOutputCore::publishing_to(notify_tx) }
+            pub fn new(captured: CapturedStreamSender) -> Self {
+                Self { core: CaptureOutputCore::publishing_to(captured) }
             }
         }
     };
 }
 
 /// Define a capture *device*: what a test hands the playback service in place of
-/// the system's audio device. Every output it opens captures into the one
-/// receiver `new()` returns, which yields one stream per non-gapless transition
-/// across all of them, in order.
+/// the system's audio device. Every output it opens sends its streams to the
+/// one sender `new()` takes, one stream per non-gapless transition across all
+/// of them, in order.
 #[cfg(any(test, feature = "test-utils"))]
 macro_rules! impl_capture_audio_device {
     ($device:ident, $output:ident) => {
         pub struct $device {
-            notify_tx: tokio::sync::mpsc::UnboundedSender<CapturedStream>,
+            notify_tx: CapturedStreamSender,
         }
 
         impl $device {
-            pub fn new() -> (Self, CapturedStreams) {
-                let (notify_tx, notify_rx) = tokio::sync::mpsc::unbounded_channel();
-                (Self { notify_tx }, notify_rx)
+            pub fn new(captured: CapturedStreamSender) -> Self {
+                Self { notify_tx: captured }
             }
         }
 
         impl AudioOutputDevice for $device {
             fn open_output(&self) -> Result<Box<dyn AudioOutput>, AudioError> {
-                Ok(Box::new($output::publishing_to(self.notify_tx.clone())))
+                Ok(Box::new($output::new(self.notify_tx.clone())))
             }
         }
     };
@@ -692,6 +728,7 @@ impl_capture_audio_device!(RealtimeCaptureAudioDevice, RealtimeCaptureAudioOutpu
 impl AudioOutput for CaptureAudioOutput {
     fn create_stream(
         &mut self,
+        controls: AudioOutputControls,
         source: Arc<Mutex<PlaybackSource>>,
         _source_sample_rate: u32,
         _source_channels: u32,
@@ -700,7 +737,7 @@ impl AudioOutput for CaptureAudioOutput {
     ) -> Result<Box<dyn AudioStream>, AudioError> {
         self.core.rotate_capture_buffer()?;
         let (stop, thread) = spawn_capture_stream(
-            self.core.controls.clone(),
+            controls,
             self.core.active.clone(),
             source,
             audio_events,
@@ -714,12 +751,6 @@ impl AudioOutput for CaptureAudioOutput {
     fn on_source_replaced(&mut self) {
         self.core.on_source_replaced();
     }
-
-    /// Volume is remembered here but never applied — the capture thread drains
-    /// without gain.
-    fn controls(&self) -> &AudioOutputControls {
-        &self.core.controls
-    }
 }
 
 /// A test audio output with no backing device: `create_stream` always fails.
@@ -728,7 +759,7 @@ impl AudioOutput for CaptureAudioOutput {
 /// playback service for its queue/command behavior and never actually play, so
 /// they need no hardware.
 #[cfg(any(test, feature = "test-utils"))]
-pub(crate) struct FailingAudioOutput(AudioOutputControls);
+pub(crate) struct FailingAudioOutput;
 
 /// A device with no hardware behind it: every output it opens fails to create
 /// a stream. What the actor-level tests hand the service — they
@@ -740,14 +771,7 @@ pub struct FailingAudioDevice;
 #[cfg(any(test, feature = "test-utils"))]
 impl AudioOutputDevice for FailingAudioDevice {
     fn open_output(&self) -> Result<Box<dyn AudioOutput>, AudioError> {
-        Ok(Box::new(FailingAudioOutput::new()))
-    }
-}
-
-#[cfg(any(test, feature = "test-utils"))]
-impl FailingAudioOutput {
-    pub(crate) fn new() -> Self {
-        Self(AudioOutputControls::new(1.0))
+        Ok(Box::new(FailingAudioOutput))
     }
 }
 
@@ -755,6 +779,7 @@ impl FailingAudioOutput {
 impl AudioOutput for FailingAudioOutput {
     fn create_stream(
         &mut self,
+        _controls: AudioOutputControls,
         _source: Arc<Mutex<PlaybackSource>>,
         _source_sample_rate: u32,
         _source_channels: u32,
@@ -763,16 +788,13 @@ impl AudioOutput for FailingAudioOutput {
     ) -> Result<Box<dyn AudioStream>, AudioError> {
         Err(AudioError::Unexpected("stream build failure".to_string()))
     }
-
-    fn controls(&self) -> &AudioOutputControls {
-        &self.0
-    }
 }
 
 #[cfg(any(test, feature = "test-utils"))]
 impl AudioOutput for RealtimeCaptureAudioOutput {
     fn create_stream(
         &mut self,
+        controls: AudioOutputControls,
         source: Arc<Mutex<PlaybackSource>>,
         source_sample_rate: u32,
         source_channels: u32,
@@ -782,7 +804,7 @@ impl AudioOutput for RealtimeCaptureAudioOutput {
         self.core.rotate_capture_buffer()?;
         let channels = source_channels.max(1);
         let (stop, thread) = spawn_capture_stream(
-            self.core.controls.clone(),
+            controls,
             self.core.active.clone(),
             source,
             audio_events,
@@ -795,12 +817,6 @@ impl AudioOutput for RealtimeCaptureAudioOutput {
 
     fn on_source_replaced(&mut self) {
         self.core.on_source_replaced();
-    }
-
-    /// Volume is remembered here but never applied — the capture thread drains
-    /// without gain.
-    fn controls(&self) -> &AudioOutputControls {
-        &self.core.controls
     }
 }
 
@@ -843,16 +859,7 @@ impl Drop for CaptureStream {
 /// which is an order of magnitude cheaper. Needs no audio device, so the
 /// measurement runs headless on any platform.
 #[cfg(any(test, feature = "test-utils"))]
-pub struct RealtimeProbeOutput {
-    controls: AudioOutputControls,
-}
-
-#[cfg(any(test, feature = "test-utils"))]
-impl RealtimeProbeOutput {
-    pub fn new() -> Self {
-        Self { controls: AudioOutputControls::new(1.0) }
-    }
-}
+pub struct RealtimeProbeOutput;
 
 /// The device the CPU probe measures through: every output it opens paces to
 /// real time and discards its samples.
@@ -862,7 +869,7 @@ pub struct RealtimeProbeDevice;
 #[cfg(any(test, feature = "test-utils"))]
 impl AudioOutputDevice for RealtimeProbeDevice {
     fn open_output(&self) -> Result<Box<dyn AudioOutput>, AudioError> {
-        Ok(Box::new(RealtimeProbeOutput::new()))
+        Ok(Box::new(RealtimeProbeOutput))
     }
 }
 
@@ -870,13 +877,13 @@ impl AudioOutputDevice for RealtimeProbeDevice {
 impl AudioOutput for RealtimeProbeOutput {
     fn create_stream(
         &mut self,
+        controls: AudioOutputControls,
         source: Arc<Mutex<PlaybackSource>>,
         source_sample_rate: u32,
         source_channels: u32,
         audio_events: AudioEventSender,
         position_update_interval_ms: u32,
     ) -> Result<Box<dyn AudioStream>, AudioError> {
-        let controls = self.controls.clone();
         let stop = Arc::new(std::sync::atomic::AtomicBool::new(false));
         let stop_clone = stop.clone();
         let channels = source_channels.max(1);
@@ -907,9 +914,5 @@ impl AudioOutput for RealtimeProbeOutput {
         });
 
         Ok(Box::new(CaptureStream { stop, thread: Some(thread) }))
-    }
-
-    fn controls(&self) -> &AudioOutputControls {
-        &self.controls
     }
 }

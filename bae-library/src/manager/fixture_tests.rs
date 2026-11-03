@@ -449,7 +449,8 @@ async fn playback_resumes_the_fixtures_playing_album_in_the_pregap() {
     let release_id = manager.get_releases_for_album(&album_id).await.unwrap()[0].id.clone();
     let pregap_track = manager.get_tracks_for_release(&release_id).await.unwrap()[1].id.clone();
 
-    let (device, _capture) = bae_playback::RealtimeCaptureAudioDevice::new();
+    let (captured, _capture) = tokio::sync::mpsc::unbounded_channel();
+    let device = bae_playback::RealtimeCaptureAudioDevice::new(captured);
     let playback = manager
         .start_playback_on(
             Box::new(device),

@@ -46,7 +46,7 @@ pub use audio_output::{
 };
 #[cfg(any(test, feature = "test-utils"))]
 pub use audio_output::{
-    CaptureAudioDevice, CaptureAudioOutput, CapturedStream, CapturedStreams,
+    CaptureAudioDevice, CaptureAudioOutput, CapturedStream, CapturedStreamSender, CapturedStreams,
     RealtimeCaptureAudioDevice, RealtimeCaptureAudioOutput, RealtimeProbeDevice,
     RealtimeProbeOutput,
 };

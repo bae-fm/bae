@@ -63,12 +63,12 @@ pub enum TestAudioDevice {
 pub fn capture_device(device: TestAudioDevice) -> (Box<dyn AudioOutputDevice>, CaptureStreamRx) {
     match device {
         TestAudioDevice::Capture => {
-            let (device, rx) = CaptureAudioDevice::new();
-            (Box::new(device), rx)
+            let (captured, rx) = tokio::sync::mpsc::unbounded_channel();
+            (Box::new(CaptureAudioDevice::new(captured)), rx)
         }
         TestAudioDevice::RealtimeCapture => {
-            let (device, rx) = RealtimeCaptureAudioDevice::new();
-            (Box::new(device), rx)
+            let (captured, rx) = tokio::sync::mpsc::unbounded_channel();
+            (Box::new(RealtimeCaptureAudioDevice::new(captured)), rx)
         }
     }
 }

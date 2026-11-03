@@ -17,7 +17,7 @@ async fn attach_track_reuses_stream_on_same_format_and_rebuilds_on_change() {
     let output = TestAudioOutput::new();
     let builds = output.build_count.clone();
     let replaces = output.replace_count.clone();
-    service.audio_output = Box::new(output);
+    service.audio_output = test_player_output(output);
 
     // First attach: nothing is attached yet, so it builds the stream.
     let (_s1, ts1, _r1) = create_track_stream_pair(44_100, 2);
@@ -83,7 +83,7 @@ async fn an_invalidated_stream_is_rebuilt_over_the_same_source() {
     let output = TestAudioOutput::new();
     let builds = output.build_count.clone();
     let replaces = output.replace_count.clone();
-    service.audio_output = Box::new(output);
+    service.audio_output = test_player_output(output);
     service.audio_output.set_state(crate::audio_output::AudioState::Playing);
 
     // Attach a track so there's a live output stream to move.
@@ -135,10 +135,11 @@ async fn an_invalidated_stream_is_rebuilt_over_the_same_source() {
 #[tokio::test]
 async fn an_invalidated_stream_with_no_device_to_move_to_stops_playback() {
     let (_home, mut service, mut progress_rx) = test_playback_service().await;
-    struct NoDeviceOutput(AudioOutputControls);
+    struct NoDeviceOutput;
     impl AudioOutput for NoDeviceOutput {
         fn create_stream(
             &mut self,
+            _controls: crate::audio_output::AudioOutputControls,
             _source: Arc<Mutex<source::PlaybackSource>>,
             _source_sample_rate: u32,
             _source_channels: u32,
@@ -147,12 +148,11 @@ async fn an_invalidated_stream_with_no_device_to_move_to_stops_playback() {
         ) -> Result<Box<dyn AudioStream>, AudioError> {
             Err(AudioError::DeviceUnavailable)
         }
-
-        fn controls(&self) -> &AudioOutputControls {
-            &self.0
-        }
     }
-    service.audio_output = Box::new(NoDeviceOutput(AudioOutputControls::new(1.0)));
+    service.audio_output = crate::audio_output::PlayerOutput::new(
+        Box::new(NoDeviceOutput),
+        AudioOutputControls::new(1.0),
+    );
 
     let (_sink, stream, _r) = create_track_stream_pair(44_100, 2);
     let source = Arc::new(Mutex::new(source::PlaybackSource::new(stream, test_track_fmt("t"))));

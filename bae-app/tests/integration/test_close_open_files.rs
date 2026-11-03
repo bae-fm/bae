@@ -31,7 +31,8 @@ async fn closing_a_playing_library_leaves_none_of_its_files_open() {
     )
     .await
     .expect("import the release");
-    let (device, _capture) = bae_playback::RealtimeCaptureAudioDevice::new();
+    let (captured, _capture) = tokio::sync::mpsc::unbounded_channel();
+    let device = bae_playback::RealtimeCaptureAudioDevice::new(captured);
     let services = bae_app::test_services::start_services_on(&library, Box::new(device))
         .await
         .expect("start the library's services");

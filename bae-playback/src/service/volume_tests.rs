@@ -1,49 +1,15 @@
 use super::*;
-use crate::audio_output::{
-    AudioError, AudioEventSender, AudioOutputControls, AudioState, AudioStream,
-};
-use crate::source::PlaybackSource;
-use std::sync::{Arc, Mutex};
+use crate::audio_output::{AudioOutputControls, FailingAudioOutput, PlayerOutput};
 
-/// An output that only remembers its level — the whole of what `OutputVolume`
-/// touches. The play state is unreachable from here, and says so rather than
-/// answering with a plausible default.
-struct VolumeOnlyOutput(AudioOutputControls);
-
-impl VolumeOnlyOutput {
-    fn new() -> Self {
-        Self(AudioOutputControls::new(1.0))
-    }
-}
-
-impl AudioOutput for VolumeOnlyOutput {
-    fn create_stream(
-        &mut self,
-        _source: Arc<Mutex<PlaybackSource>>,
-        _source_sample_rate: u32,
-        _source_channels: u32,
-        _audio_events: AudioEventSender,
-        _position_update_interval_ms: u32,
-    ) -> Result<Box<dyn AudioStream>, AudioError> {
-        unreachable!("volume never builds a stream")
-    }
-
-    fn set_state(&self, _state: AudioState) {
-        unreachable!("volume never sets the play state")
-    }
-
-    fn get_state(&self) -> AudioState {
-        unreachable!("volume never reads the play state")
-    }
-
-    fn controls(&self) -> &AudioOutputControls {
-        &self.0
-    }
+/// A player output at full volume over an output that builds no stream: the
+/// level is all `OutputVolume` touches.
+fn volume_only_output() -> PlayerOutput {
+    PlayerOutput::new(Box::new(FailingAudioOutput), AudioOutputControls::new(1.0))
 }
 
 #[test]
 fn unmute_restores_the_level_the_user_set() {
-    let output = VolumeOnlyOutput::new();
+    let output = volume_only_output();
     let mut volume = OutputVolume::new();
 
     assert!(!volume.set(0.4, &output));
@@ -58,7 +24,7 @@ fn unmute_restores_the_level_the_user_set() {
 
 #[test]
 fn muting_twice_changes_nothing() {
-    let output = VolumeOnlyOutput::new();
+    let output = volume_only_output();
     let mut volume = OutputVolume::new();
     volume.set(0.6, &output);
 
@@ -73,7 +39,7 @@ fn muting_twice_changes_nothing() {
 
 #[test]
 fn raising_the_level_unmutes_and_setting_zero_does_not() {
-    let output = VolumeOnlyOutput::new();
+    let output = volume_only_output();
     let mut volume = OutputVolume::new();
     volume.set(0.5, &output);
     volume.set_muted(true, &output);
@@ -88,7 +54,7 @@ fn raising_the_level_unmutes_and_setting_zero_does_not() {
 
 #[test]
 fn a_restored_muted_session_comes_back_silent_at_its_saved_level() {
-    let output = VolumeOnlyOutput::new();
+    let output = volume_only_output();
     let mut volume = OutputVolume::new();
 
     volume.restore(0.7, true, &output);

@@ -102,7 +102,7 @@ impl Renderer {
 
     pub(super) fn return_to_local_for_stop(
         &mut self,
-        audio_output: &mut Box<dyn crate::audio_output::AudioOutput>,
+        audio_output: &mut crate::audio_output::PlayerOutput,
         volume: OutputVolume,
     ) -> bool {
         match std::mem::replace(self, Self::Local) {
@@ -144,14 +144,14 @@ pub(super) struct AirPlayRenderer {
     device: RemoteDevice,
     control: Arc<crate::airplay_output::AirPlayControl>,
     /// The local (cpal/aaudio) output, put back when AirPlay playback ends.
-    saved_output: Box<dyn crate::audio_output::AudioOutput>,
+    saved_output: crate::audio_output::PlayerOutput,
 }
 
 impl AirPlayRenderer {
     pub(super) fn new(
         device: RemoteDevice,
         control: Arc<crate::airplay_output::AirPlayControl>,
-        saved_output: Box<dyn crate::audio_output::AudioOutput>,
+        saved_output: crate::audio_output::PlayerOutput,
     ) -> Self {
         Self { device, control, saved_output }
     }
@@ -161,11 +161,11 @@ impl AirPlayRenderer {
     /// name the receiver AirPlay played on.
     fn restore_local_output(
         self,
-        audio_output: &mut Box<dyn crate::audio_output::AudioOutput>,
+        audio_output: &mut crate::audio_output::PlayerOutput,
         volume: OutputVolume,
     ) -> RemoteDevice {
         *audio_output = self.saved_output;
-        volume.apply_to(audio_output.as_ref());
+        volume.apply_to(audio_output);
         self.device
     }
 }
@@ -635,9 +635,11 @@ impl PlaybackService {
         self.teardown_local_playback();
 
         let control = Arc::new(crate::airplay_output::AirPlayControl::new());
-        let airplay_output =
-            crate::airplay_output::AirPlayOutput::new(sink, volume, control.clone());
-        let saved_output = std::mem::replace(&mut self.audio_output, Box::new(airplay_output));
+        let airplay_output = crate::audio_output::PlayerOutput::new(
+            Box::new(crate::airplay_output::AirPlayOutput::new(sink, control.clone())),
+            crate::audio_output::AudioOutputControls::new(volume),
+        );
+        let saved_output = std::mem::replace(&mut self.audio_output, airplay_output);
         self.renderer =
             Renderer::AirPlay(AirPlayRenderer::new(device.clone(), control, saved_output));
         self.hand_over_to_device(device, current, target).await;

@@ -16,7 +16,8 @@
 //! samples land.
 
 use crate::audio_output::{
-    AudioEvent, AudioEventReceiver, AudioOutput, AudioOutputDevice, AudioState,
+    AudioEvent, AudioEventReceiver, AudioOutputControls, AudioOutputDevice, AudioState,
+    PlayerOutput,
 };
 use crate::progress::{emit_progress, PlaybackProgress, PreviewState};
 use crate::service::{dispatch_command, PlaybackCommand};
@@ -94,7 +95,7 @@ pub(crate) struct PreviewPlayer {
     /// on first play and retained across plays. Preview's play/pause authority is
     /// this output's state atomic — its own truth, distinct from the main
     /// player's slot.
-    audio_output: Option<Box<dyn AudioOutput>>,
+    audio_output: Option<PlayerOutput>,
     /// The currently-loaded preview, if any.
     active: Option<ActivePreview>,
     /// Set when starting a preview paused the main player, so ending the preview
@@ -429,7 +430,10 @@ impl PreviewPlayer {
     ) -> bool {
         if self.audio_output.is_none() {
             match audio_device.open_output() {
-                Ok(output) => self.audio_output = Some(output),
+                Ok(output) => {
+                    self.audio_output =
+                        Some(PlayerOutput::new(output, AudioOutputControls::new(1.0)))
+                }
                 Err(e) => {
                     error!("Failed to open the preview audio output: {:?}", e);
                     source.buffer.cancel();
@@ -477,7 +481,7 @@ impl PreviewPlayer {
         let diagnostics = self.diagnostics.clone();
         let active = match start_stream_pipeline(
             &self.diagnostics,
-            self.audio_output.as_deref_mut().unwrap(),
+            self.audio_output.as_mut().unwrap(),
             setup,
             fmt,
             self.position_update_interval_ms,

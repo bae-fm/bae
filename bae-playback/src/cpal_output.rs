@@ -160,7 +160,6 @@ fn resolve_default_device(
 
 /// Audio output using the system audio device via CPAL.
 pub struct CpalAudioOutput {
-    controls: AudioOutputControls,
     /// The formats this output's streams, and every other output's on the
     /// same system device, set Mac output devices to.
     #[cfg(target_os = "macos")]
@@ -181,7 +180,6 @@ impl CpalAudioOutput {
         host.default_output_device().ok_or(AudioError::DeviceUnavailable)?;
 
         Ok(Self {
-            controls: AudioOutputControls::new(1.0),
             #[cfg(target_os = "macos")]
             device_formats,
             #[cfg(target_os = "macos")]
@@ -193,6 +191,7 @@ impl CpalAudioOutput {
 impl AudioOutput for CpalAudioOutput {
     fn create_stream(
         &mut self,
+        controls: AudioOutputControls,
         source: Arc<Mutex<PlaybackSource>>,
         source_sample_rate: u32,
         source_channels: u32,
@@ -233,13 +232,8 @@ impl AudioOutput for CpalAudioOutput {
         );
 
         let mut converter = ResamplingDrain::new(
-            AudioDrain::new(
-                self.controls.clone(),
-                source,
-                audio_events,
-                position_update_interval_ms,
-            ),
-            self.controls.clone(),
+            AudioDrain::new(controls.clone(), source, audio_events, position_update_interval_ms),
+            controls,
             (source_sample_rate, source_channels),
             (output_rate, source_channels),
             Some(AudioLockMissLog::new()),
@@ -298,10 +292,6 @@ impl AudioOutput for CpalAudioOutput {
             #[cfg(target_os = "macos")]
             _format: self.player_format.stream_started(format_lease),
         }))
-    }
-
-    fn controls(&self) -> &AudioOutputControls {
-        &self.controls
     }
 
     /// Let the lease kept from the last stream go, putting the device back to

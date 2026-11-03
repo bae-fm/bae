@@ -205,7 +205,7 @@ impl PlaybackService {
         // The saved level is what the UI shows even when the session was muted —
         // that is the level unmuting puts back — so `VolumeChanged` carries it
         // either way, and the mute is announced on top.
-        self.volume.restore(volume, is_muted, self.audio_output.as_ref());
+        self.volume.restore(volume, is_muted, &self.audio_output);
         emit_progress(&self.progress_tx, PlaybackProgress::VolumeChanged { volume });
         if is_muted {
             emit_progress(&self.progress_tx, PlaybackProgress::MuteChanged { is_muted: true });
@@ -284,7 +284,7 @@ impl PlaybackService {
     /// too so it stays in step and survives the handoff back to local. Unmutes on
     /// a non-zero level, and always emits `VolumeChanged`.
     pub(super) fn set_volume(&mut self, volume: f32) {
-        let lifted_mute = self.volume.set(volume, self.audio_output.as_ref());
+        let lifted_mute = self.volume.set(volume, &self.audio_output);
         self.renderer.set_remote_volume(volume);
         if lifted_mute {
             emit_progress(&self.progress_tx, PlaybackProgress::MuteChanged { is_muted: false });
@@ -299,7 +299,7 @@ impl PlaybackService {
     /// command of its own. The level the person set is unchanged, and is what
     /// screens show beside the mute.
     pub(super) fn set_muted(&mut self, muted: bool) {
-        if let Some(level) = self.volume.set_muted(muted, self.audio_output.as_ref()) {
+        if let Some(level) = self.volume.set_muted(muted, &self.audio_output) {
             self.renderer.set_remote_volume(level);
             emit_progress(&self.progress_tx, PlaybackProgress::MuteChanged { is_muted: muted });
         }

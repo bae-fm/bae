@@ -698,7 +698,8 @@ async fn seek_with_dropped_capture_receiver_keeps_playing() {
     let first = lib.track_ids[0].clone();
 
     // Built here so the test owns the receiver it drops.
-    let (capture_device, capture_stream_rx) = bae_playback::RealtimeCaptureAudioDevice::new();
+    let (captured, capture_stream_rx) = tokio::sync::mpsc::unbounded_channel();
+    let capture_device = bae_playback::RealtimeCaptureAudioDevice::new(captured);
     let mut capture_stream_rx = Some(capture_stream_rx);
     let handle = lib
         .library

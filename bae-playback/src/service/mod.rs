@@ -29,7 +29,8 @@
 use super::RepeatMode;
 use super::{NextEntry, PlaybackQueue, PreviousAction, QueueEntryId};
 use crate::audio_output::{
-    AudioEvent, AudioEventReceiver, AudioOutput, AudioOutputDevice, AudioStream,
+    AudioEvent, AudioEventReceiver, AudioOutput, AudioOutputControls, AudioOutputDevice,
+    AudioStream, PlayerOutput,
 };
 use crate::error::PlaybackError;
 use crate::preview_player::PreviewPlayer;
@@ -417,7 +418,7 @@ pub struct PlaybackService {
     audio_device: Box<dyn AudioOutputDevice>,
     /// The main player's output. AirPlay swaps this for the receiver sink and
     /// puts the local one back when it ends.
-    audio_output: Box<dyn AudioOutput>,
+    audio_output: PlayerOutput,
     /// The output stream, kept across tracks of the same format. Rebuilt when
     /// the format changes or the device stops playing it; dropped when local
     /// playback is torn down.
@@ -511,21 +512,24 @@ impl AudioOutputDevice for SystemAudioOutputDevice {
 
     #[cfg(target_os = "android")]
     fn open_output(&self) -> Result<Box<dyn AudioOutput>, crate::audio_output::AudioError> {
-        Ok(Box::new(crate::aaudio_output::AAudioOutput::new()?))
+        Ok(Box::new(crate::aaudio_output::AAudioOutput))
     }
 }
 
-/// Open the main player's output from the caller's device, or the system's.
-/// `None` means there is no output, so the service thread returns.
+/// Open the main player's output from the caller's device, or the system's,
+/// at full volume until playback restores the level the person set. `None`
+/// means there is no output, so the service thread returns.
 fn open_audio_device_and_output(
     custom_device: Option<Box<dyn AudioOutputDevice>>,
-) -> Option<(Box<dyn AudioOutputDevice>, Box<dyn AudioOutput>)> {
+) -> Option<(Box<dyn AudioOutputDevice>, PlayerOutput)> {
     let audio_device: Box<dyn AudioOutputDevice> = match custom_device {
         Some(device) => device,
         None => Box::new(SystemAudioOutputDevice::new()),
     };
     match audio_device.open_output() {
-        Ok(output) => Some((audio_device, output)),
+        Ok(output) => {
+            Some((audio_device, PlayerOutput::new(output, AudioOutputControls::new(1.0))))
+        }
         Err(e) => {
             error!("Failed to initialize audio output: {:?}", e);
             None

@@ -122,53 +122,38 @@ impl AirPlayControl {
 
 /// An `AudioOutput` that streams to an AirPlay receiver via `sink`.
 pub struct AirPlayOutput {
-    controls: AudioOutputControls,
     sink: Box<dyn AirPlaySink>,
     control: Arc<AirPlayControl>,
 }
 
 impl AirPlayOutput {
-    pub(crate) fn new(
-        sink: Box<dyn AirPlaySink>,
-        initial_volume: f32,
-        control: Arc<AirPlayControl>,
-    ) -> Self {
-        AirPlayOutput { controls: AudioOutputControls::new(initial_volume), sink, control }
+    pub(crate) fn new(sink: Box<dyn AirPlaySink>, control: Arc<AirPlayControl>) -> Self {
+        AirPlayOutput { sink, control }
     }
 }
 
 impl AudioOutput for AirPlayOutput {
     fn create_stream(
         &mut self,
+        controls: AudioOutputControls,
         source: Arc<Mutex<PlaybackSource>>,
         source_sample_rate: u32,
         source_channels: u32,
         audio_events: AudioEventSender,
         position_update_interval_ms: u32,
     ) -> Result<Box<dyn AudioStream>, AudioError> {
-        let drain = AudioDrain::new(
-            self.controls.clone(),
-            source,
-            audio_events,
-            position_update_interval_ms,
-        );
-        let pcm_source = Box::new(DrainSource::new(
-            drain,
-            self.controls.clone(),
-            source_sample_rate,
-            source_channels,
-        )?);
+        // Local gain IS the AirPlay volume path: the drain multiplies samples
+        // by `controls`' volume before they're packetized, so the user hears
+        // the change. The receiver stays at its own hardware level (the
+        // session's one initial SET_PARAMETER seeds it at full); there is no
+        // per-change device round-trip.
+        let drain =
+            AudioDrain::new(controls.clone(), source, audio_events, position_update_interval_ms);
+        let pcm_source =
+            Box::new(DrainSource::new(drain, controls, source_sample_rate, source_channels)?);
         let session = self.sink.start(pcm_source)?;
         self.control.bind(&session);
         Ok(Box::new(AirPlayAudioStream { _session: session }))
-    }
-
-    /// Local gain IS the AirPlay volume path: the drain multiplies samples by
-    /// this before they're packetized, so the user hears the change. The
-    /// receiver stays at its own hardware level (the session's one initial
-    /// SET_PARAMETER seeds it at full); there is no per-change device round-trip.
-    fn controls(&self) -> &AudioOutputControls {
-        &self.controls
     }
 }
 

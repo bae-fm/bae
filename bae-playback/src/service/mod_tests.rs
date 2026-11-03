@@ -6,6 +6,7 @@
 use super::*;
 use crate::audio_output::{
     AudioError, AudioEventReceiver, AudioEventSender, AudioOutputControls, AudioState, AudioStream,
+    PlayerOutput,
 };
 use crate::renderer::channel::{FakeChannel, FakeChannelState};
 use crate::renderer::RendererFlavor;
@@ -41,7 +42,6 @@ impl AudioStream for InvalidatedTestStream {
 }
 
 pub(super) struct TestAudioOutput {
-    controls: AudioOutputControls,
     /// Count of device streams built (`create_stream`) vs source swaps
     /// (`on_source_replaced`), so a test can assert the persistent stream is
     /// rebuilt only on a format change, not on a same-format transition.
@@ -51,10 +51,7 @@ pub(super) struct TestAudioOutput {
 
 impl TestAudioOutput {
     pub(super) fn new() -> Self {
-        let controls = AudioOutputControls::new(1.0);
-        controls.set_state(AudioState::Playing);
         Self {
-            controls,
             build_count: Arc::new(std::sync::atomic::AtomicU64::new(0)),
             replace_count: Arc::new(std::sync::atomic::AtomicU64::new(0)),
         }
@@ -64,6 +61,7 @@ impl TestAudioOutput {
 impl AudioOutput for TestAudioOutput {
     fn create_stream(
         &mut self,
+        _controls: crate::audio_output::AudioOutputControls,
         _source: Arc<Mutex<source::PlaybackSource>>,
         _source_sample_rate: u32,
         _source_channels: u32,
@@ -77,10 +75,14 @@ impl AudioOutput for TestAudioOutput {
     fn on_source_replaced(&mut self) {
         self.replace_count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     }
+}
 
-    fn controls(&self) -> &AudioOutputControls {
-        &self.controls
-    }
+/// `output` as the main player's, playing at full volume, as a test's
+/// service starts it.
+pub(super) fn test_player_output(output: impl AudioOutput) -> PlayerOutput {
+    let controls = AudioOutputControls::new(1.0);
+    controls.set_state(AudioState::Playing);
+    PlayerOutput::new(Box::new(output), controls)
 }
 
 /// Track ids for the fixtures that insert real `tracks` rows. coven requires a
@@ -264,7 +266,7 @@ pub(super) fn playback_service_over(
         // These tests drive the handlers directly; a preview that starts a
         // stream gets an output from this device that can't build one.
         audio_device: Box::new(crate::audio_output::FailingAudioDevice),
-        audio_output: Box::new(TestAudioOutput::new()),
+        audio_output: test_player_output(TestAudioOutput::new()),
         output: None,
         slot: PlaybackSlot::Stopped,
         listening: None,
@@ -690,13 +692,13 @@ impl crate::airplay_output::AirPlayStreamControl for FakeAirPlayControl {
 pub(super) struct InstalledAirPlay {
     pub(super) state: Arc<FakeAirPlayControlState>,
     _session: Arc<dyn crate::airplay_output::AirPlayStreamControl>,
-    saved_output: *const AudioOutputControls,
+    saved_output: AudioOutputControls,
 }
 
 impl InstalledAirPlay {
     /// Whether `output` is the local output AirPlay saved.
-    pub(super) fn is_saved_output(&self, output: &dyn crate::audio_output::AudioOutput) -> bool {
-        std::ptr::eq(output.controls(), self.saved_output)
+    pub(super) fn is_saved_output(&self, output: &PlayerOutput) -> bool {
+        output.plays_by(&self.saved_output)
     }
 }
 
@@ -711,8 +713,9 @@ pub(super) fn install_airplay(
         Arc::new(FakeAirPlayControl { state: state.clone(), latency });
     let control = Arc::new(crate::airplay_output::AirPlayControl::new());
     control.bind(&session);
-    let saved: Box<dyn crate::audio_output::AudioOutput> = Box::new(TestAudioOutput::new());
-    let saved_output: *const AudioOutputControls = saved.controls();
+    let saved_output = AudioOutputControls::new(1.0);
+    saved_output.set_state(AudioState::Playing);
+    let saved = PlayerOutput::new(Box::new(TestAudioOutput::new()), saved_output.clone());
     service.renderer =
         Renderer::AirPlay(renderer::AirPlayRenderer::new(test_device(), control, saved));
     InstalledAirPlay { state, _session: session, saved_output }

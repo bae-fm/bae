@@ -337,12 +337,16 @@ async fn previous_ships_track_started() {
     );
 }
 
-/// An output whose volume read panics: a bug in one command's handling.
-struct VolumePanicsOutput(AudioOutputControls);
+/// An output whose end of playback panics, the first time: a bug in one
+/// command's handling.
+struct EndPanicsOutput {
+    panicked: bool,
+}
 
-impl crate::audio_output::AudioOutput for VolumePanicsOutput {
+impl crate::audio_output::AudioOutput for EndPanicsOutput {
     fn create_stream(
         &mut self,
+        _controls: crate::audio_output::AudioOutputControls,
         _source: Arc<Mutex<source::PlaybackSource>>,
         _source_sample_rate: u32,
         _source_channels: u32,
@@ -352,12 +356,10 @@ impl crate::audio_output::AudioOutput for VolumePanicsOutput {
         Err(AudioError::Unexpected("this test's output builds no stream".to_string()))
     }
 
-    fn controls(&self) -> &AudioOutputControls {
-        &self.0
-    }
-
-    fn get_volume(&self) -> f32 {
-        panic!("volume cell missing")
+    fn playback_ended(&mut self) {
+        if !std::mem::replace(&mut self.panicked, true) {
+            panic!("the output's end failed")
+        }
     }
 }
 
@@ -371,18 +373,19 @@ async fn a_command_that_panics_is_reported_and_the_next_is_served() {
     let diagnostics = bae_diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone());
     let store = seeded_store(&[]).await;
     let (mut service, mut progress_rx) = playback_service_over(&store, diagnostics.clone());
-    service.audio_output = Box::new(VolumePanicsOutput(AudioOutputControls::new(1.0)));
+    service.audio_output = crate::audio_output::PlayerOutput::new(
+        Box::new(EndPanicsOutput { panicked: false }),
+        AudioOutputControls::new(1.0),
+    );
     let command_tx = service.command_tx.clone();
-    let (volume_tx, volume_rx) = oneshot::channel();
     let (saved_tx, saved_rx) = oneshot::channel();
     let (shutdown_tx, shutdown_rx) = oneshot::channel();
-    dispatch_command(&command_tx, PlaybackCommand::GetVolume(volume_tx));
+    dispatch_command(&command_tx, PlaybackCommand::Stop);
     dispatch_command(&command_tx, PlaybackCommand::SaveState(saved_tx));
     dispatch_command(&command_tx, PlaybackCommand::Shutdown(shutdown_tx));
 
     service.run().await;
 
-    assert!(volume_rx.await.is_err(), "the command that panicked answers nothing");
     saved_rx.await.expect("the next command is served");
     shutdown_rx.await.expect("the service shuts down when asked");
     let mut saw_error = false;
@@ -394,7 +397,7 @@ async fn a_command_that_panics_is_reported_and_the_next_is_served() {
         bugs.reports(),
         vec![(
             "serve playback".to_string(),
-            "serve playback panicked: volume cell missing".to_string()
+            "serve playback panicked: the output's end failed".to_string()
         )]
     );
 }

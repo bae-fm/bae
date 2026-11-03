@@ -371,7 +371,8 @@ pub(super) async fn start_capture_service_with_restore(
     library: &TestLibrary,
     restore_playback: bool,
 ) -> (bae_playback::PlaybackHandle, bae_playback::test_capture::CaptureStreamRx) {
-    let (capture_device, capture_stream_rx) = bae_playback::RealtimeCaptureAudioDevice::new();
+    let (captured, capture_stream_rx) = tokio::sync::mpsc::unbounded_channel();
+    let capture_device = bae_playback::RealtimeCaptureAudioDevice::new(captured);
     let handle = library
         .start_playback_on(
             Box::new(capture_device),

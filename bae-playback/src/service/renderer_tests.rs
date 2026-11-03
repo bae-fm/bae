@@ -639,7 +639,7 @@ async fn airplay_stop_restores_the_local_output_and_returns_to_local() {
 
     assert!(!service.renderer.is_airplay(), "stop returns to the local renderer");
     assert!(
-        airplay.is_saved_output(service.audio_output.as_ref()),
+        airplay.is_saved_output(&service.audio_output),
         "the saved local output sink is restored"
     );
 }
@@ -667,7 +667,7 @@ async fn airplay_stop_reads_the_live_position_and_returns_to_local() {
 
     assert!(!service.renderer.is_airplay(), "stop returns to the local renderer");
     assert!(
-        airplay.is_saved_output(service.audio_output.as_ref()),
+        airplay.is_saved_output(&service.audio_output),
         "the saved local output sink is restored"
     );
 }

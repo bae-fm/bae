@@ -83,11 +83,12 @@ fn create_stream_drives_the_sink_and_publishes_control() {
     let sink = FakeSink::default();
     let state = sink.state.clone();
     let control = Arc::new(AirPlayControl::new());
-    let mut output = AirPlayOutput::new(Box::new(sink), 1.0, control.clone());
-    output.set_state(AudioState::Playing);
+    let mut output = AirPlayOutput::new(Box::new(sink), control.clone());
+    let controls = AudioOutputControls::new(1.0);
+    controls.set_state(AudioState::Playing);
 
     let (tx, _rx) = audio_event_channel();
-    let stream = output.create_stream(source, 44_100, 2, tx, 100).expect("stream builds");
+    let stream = output.create_stream(controls, source, 44_100, 2, tx, 100).expect("stream builds");
 
     // The fake pulled 4 stereo frames.
     assert_eq!(state.frames.load(Ordering::Relaxed), 4);

@@ -11,7 +11,7 @@
 //! decode/seek mapping.
 
 use crate::audio_output::{
-    audio_event_channel, AudioEvent, AudioEventReceiver, AudioOutput, AudioStream,
+    audio_event_channel, AudioEvent, AudioEventReceiver, AudioStream, PlayerOutput,
 };
 use crate::error::PlaybackError;
 use crate::progress::{emit_progress, PlaybackProgress};
@@ -144,7 +144,7 @@ where
 /// spawned. Used by the preview player.
 pub(crate) async fn start_stream_pipeline<T, F>(
     diagnostics: &Diagnostics,
-    audio_output: &mut dyn AudioOutput,
+    audio_output: &mut PlayerOutput,
     setup: DecoderSetup,
     fmt: TrackFmt,
     position_update_interval_ms: u32,
@@ -189,7 +189,7 @@ where
 /// through (the main player builds its persistent stream in `service::output`
 /// instead).
 async fn build_and_play_stream(
-    audio_output: &mut dyn AudioOutput,
+    audio_output: &mut PlayerOutput,
     track_source: TrackStream,
     fmt: TrackFmt,
     position_update_interval_ms: u32,

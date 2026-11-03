@@ -1,5 +1,7 @@
 use super::*;
-use crate::audio_output::{CaptureAudioOutput, FailingAudioOutput};
+use crate::audio_output::{
+    AudioOutputControls, CaptureAudioOutput, FailingAudioOutput, PlayerOutput,
+};
 use bae_audio::sparse_buffer::create_sparse_buffer;
 use bae_track_audio::SegmentDecodeParams;
 
@@ -30,7 +32,7 @@ fn test_fmt() -> TrackFmt {
 #[tokio::test]
 async fn start_stream_pipeline_failure_returns_err_and_cancels_decoder() {
     let buffer = create_sparse_buffer(0);
-    let mut output = FailingAudioOutput::new();
+    let mut output = PlayerOutput::new(Box::new(FailingAudioOutput), AudioOutputControls::new(1.0));
 
     let result = start_stream_pipeline(
         &Diagnostics::noop(),
@@ -61,7 +63,11 @@ async fn start_stream_pipeline_failure_returns_err_and_cancels_decoder() {
 #[tokio::test]
 async fn start_stream_pipeline_success_builds_pipeline() {
     let buffer = create_sparse_buffer(0);
-    let (mut output, _capture_rx) = CaptureAudioOutput::new();
+    let (captured, _capture_rx) = tokio::sync::mpsc::unbounded_channel();
+    let mut output = PlayerOutput::new(
+        Box::new(CaptureAudioOutput::new(captured)),
+        AudioOutputControls::new(1.0),
+    );
 
     let start = start_stream_pipeline(
         &Diagnostics::noop(),
