@@ -19,6 +19,7 @@ use tracing::{debug, info};
 
 mod candidates;
 mod categorize;
+mod file_decisions;
 mod file_reads;
 mod files;
 mod folder_times;
@@ -31,6 +32,7 @@ pub use candidates::*;
 pub use categorize::is_audio_file;
 pub use categorize::scanned_audio;
 use categorize::*;
+pub use file_decisions::*;
 pub(crate) use file_reads::FileReads;
 use file_reads::Playability;
 pub use files::*;
