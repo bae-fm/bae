@@ -15,10 +15,6 @@ impl LibraryManager {
         self.database.ratings().await
     }
 
-    pub fn subscribe_ratings(&self) -> coven::LiveQuery<Vec<Rating>> {
-        self.database.subscribe_ratings()
-    }
-
     pub async fn create_playlist(
         &self,
         name: &str,
@@ -29,10 +25,6 @@ impl LibraryManager {
 
     pub async fn playlists(&self) -> Result<Vec<Playlist>, bae_db::DbError> {
         self.database.playlists().await
-    }
-
-    pub fn subscribe_playlists(&self) -> coven::LiveQuery<Vec<Playlist>> {
-        self.database.subscribe_playlists()
     }
 
     pub async fn rename_playlist(&self, id: uuid::Uuid, name: &str) -> Result<(), CollectionError> {
@@ -56,13 +48,6 @@ impl LibraryManager {
         id: uuid::Uuid,
     ) -> Result<Vec<PlaylistEntry>, bae_db::DbError> {
         self.database.playlist_entries(id).await
-    }
-
-    pub fn subscribe_playlist_entries(
-        &self,
-        id: uuid::Uuid,
-    ) -> coven::LiveQuery<Vec<PlaylistEntry>> {
-        self.database.subscribe_playlist_entries(id)
     }
 
     pub async fn append_playlist_entry(

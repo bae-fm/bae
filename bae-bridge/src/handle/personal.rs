@@ -39,28 +39,6 @@ impl AppHandle {
         )
     }
 
-    /// This person's ratings, now and after each change.
-    pub fn subscribe_ratings(&self) -> std::sync::Arc<crate::RatingsSubscription> {
-        crate::screens::ratings(self.services.subscribe_ratings(), self.runtime.clone())
-    }
-
-    /// The playlists this person sees, now and after each change.
-    pub fn subscribe_playlists(&self) -> std::sync::Arc<crate::PlaylistsSubscription> {
-        crate::screens::playlists(self.services.subscribe_playlists(), self.runtime.clone())
-    }
-
-    /// The playlist `id`'s entries in order, now and after each change.
-    pub fn subscribe_playlist_entries(
-        &self,
-        id: String,
-    ) -> Result<std::sync::Arc<crate::PlaylistEntriesSubscription>, BridgeError> {
-        let id = id.parse().map_err(BridgeError::config)?;
-        Ok(crate::screens::playlist_entries(
-            self.services.subscribe_playlist_entries(id),
-            self.runtime.clone(),
-        ))
-    }
-
     /// The library's name, now and after each rename.
     pub fn subscribe_library_name(&self) -> std::sync::Arc<crate::LibraryNameSubscription> {
         crate::screens::library_name(self.services.subscribe_library_name(), self.runtime.clone())

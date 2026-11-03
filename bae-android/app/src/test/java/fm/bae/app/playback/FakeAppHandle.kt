@@ -91,13 +91,10 @@ import uniffi.bae_bridge.MembersSubscription
 import uniffi.bae_bridge.NoHandle
 import uniffi.bae_bridge.PlaybackTimelineSubscription
 import uniffi.bae_bridge.PlaybackValuesSubscription
-import uniffi.bae_bridge.PlaylistEntriesSubscription
-import uniffi.bae_bridge.PlaylistsSubscription
 import uniffi.bae_bridge.ProfilesSubscription
 import uniffi.bae_bridge.QueueAdditionsSubscription
 import uniffi.bae_bridge.QueueSubscription
 import uniffi.bae_bridge.QueueUpcomingSubscription
-import uniffi.bae_bridge.RatingsSubscription
 import uniffi.bae_bridge.ReleaseDetailSubscription
 import uniffi.bae_bridge.RequestedProfileSubscription
 import uniffi.bae_bridge.StorageBrowseSubscription
@@ -719,15 +716,9 @@ internal open class FakeAppHandle(
 
     override fun subscribeLibraryName(): LibraryNameSubscription = unfaked("subscribeLibraryName")
 
-    override fun subscribePlaylistEntries(id: String): PlaylistEntriesSubscription = unfaked("subscribePlaylistEntries")
-
-    override fun subscribePlaylists(): PlaylistsSubscription = unfaked("subscribePlaylists")
-
     override fun subscribeProfiles(): ProfilesSubscription = unfaked("subscribeProfiles")
 
     override fun subscribeRequestedProfile(): RequestedProfileSubscription = unfaked("subscribeRequestedProfile")
-
-    override fun subscribeRatings(): RatingsSubscription = unfaked("subscribeRatings")
 
     override fun subscribeQueueUpcoming(): QueueUpcomingSubscription = unfaked("subscribeQueueUpcoming")
 

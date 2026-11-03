@@ -64,14 +64,10 @@ fn each_pull_answers_at_once_and_the_profiles_follow_a_new_one() {
     assert!(!quiet.moving && quiet.uploads.is_none(), "{quiet:?}");
     let profiles = handle.subscribe_profiles();
     pull_until(&handle, || Box::pin(profiles.clone().next()), |_| true);
-    let playlists = handle.subscribe_playlists();
-    assert!(pull_until(&handle, || Box::pin(playlists.clone().next()), |_| true).is_empty());
     let invites = handle.subscribe_invites();
     assert!(pull_until(&handle, || Box::pin(invites.clone().next()), |_| true).is_empty());
     let changes = handle.subscribe_admin_changes();
     assert!(pull_until(&handle, || Box::pin(changes.clone().next()), |_| true).is_empty());
-    let ratings = handle.subscribe_ratings();
-    assert!(pull_until(&handle, || Box::pin(ratings.clone().next()), |_| true).is_empty());
 
     let name = handle.subscribe_library_name();
     pull_until(&handle, || Box::pin(name.clone().next()), |_| true);

@@ -301,36 +301,6 @@ pulled_values! {
 }
 
 pulled_values! {
-    /// This person's ratings.
-    RatingsSubscription:
-        Vec<bae_db::collections::Rating> => Vec<crate::types::BridgeRating>,
-    converted by |ratings: Vec<bae_db::collections::Rating>| {
-        ratings.into_iter().map(crate::types::BridgeRating::from_core).collect::<Vec<_>>()
-    },
-    built by ratings
-}
-
-pulled_values! {
-    /// The playlists this person sees.
-    PlaylistsSubscription:
-        Vec<bae_db::collections::Playlist> => Vec<crate::types::BridgePlaylist>,
-    converted by |playlists: Vec<bae_db::collections::Playlist>| {
-        playlists.into_iter().map(crate::types::BridgePlaylist::from_core).collect::<Vec<_>>()
-    },
-    built by playlists
-}
-
-pulled_values! {
-    /// One playlist's entries, in order.
-    PlaylistEntriesSubscription:
-        Vec<bae_db::collections::PlaylistEntry> => Vec<crate::types::BridgePlaylistEntry>,
-    converted by |entries: Vec<bae_db::collections::PlaylistEntry>| {
-        entries.into_iter().map(crate::types::BridgePlaylistEntry::from_core).collect::<Vec<_>>()
-    },
-    built by playlist_entries
-}
-
-pulled_values! {
     /// The library's name.
     LibraryNameSubscription: String => String,
     converted by |name: String| name,

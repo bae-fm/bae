@@ -30,10 +30,6 @@ impl Database {
         self.read(|sql| Ok(ratings(&sql)?)).await
     }
 
-    pub fn subscribe_ratings(&self) -> coven::LiveQuery<Vec<Rating>> {
-        self.inner.handle.subscribe(|sql| Ok(ratings(&sql)?))
-    }
-
     /// The caller obtains ids from its injected IdSource, including on retries.
     pub async fn create_playlist(
         &self,
@@ -63,10 +59,6 @@ impl Database {
 
     pub async fn playlists(&self) -> Result<Vec<Playlist>, DbError> {
         self.read(|sql| Ok(playlists(&sql)?)).await
-    }
-
-    pub fn subscribe_playlists(&self) -> coven::LiveQuery<Vec<Playlist>> {
-        self.inner.handle.subscribe(|sql| Ok(playlists(&sql)?))
     }
 
     pub async fn rename_playlist(&self, id: uuid::Uuid, name: &str) -> Result<(), CollectionError> {
@@ -107,13 +99,6 @@ impl Database {
 
     pub async fn playlist_entries(&self, id: uuid::Uuid) -> Result<Vec<PlaylistEntry>, DbError> {
         self.read(move |sql| Ok(entries(&sql, id)?)).await
-    }
-
-    pub fn subscribe_playlist_entries(
-        &self,
-        id: uuid::Uuid,
-    ) -> coven::LiveQuery<Vec<PlaylistEntry>> {
-        self.inner.handle.subscribe(move |sql| Ok(entries(&sql, id)?))
     }
 
     pub async fn append_playlist_entry(

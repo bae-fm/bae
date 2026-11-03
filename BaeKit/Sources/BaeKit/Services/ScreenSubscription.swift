@@ -167,9 +167,6 @@ extension AdminChangesSubscription: PulledSubscription {}
 extension AddedDeviceSubscription: PulledSubscription {}
 extension ProfilesSubscription: PulledSubscription {}
 extension RequestedProfileSubscription: PulledSubscription {}
-extension RatingsSubscription: PulledSubscription {}
-extension PlaylistsSubscription: PulledSubscription {}
-extension PlaylistEntriesSubscription: PulledSubscription {}
 extension LibraryNameSubscription: PulledSubscription {}
 extension AlbumBrowseSubscription: PulledSubscription {}
 extension ArtistBrowseSubscription: PulledSubscription {}
