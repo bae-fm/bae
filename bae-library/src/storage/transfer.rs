@@ -33,6 +33,23 @@ pub enum TransferProgress {
     Failed { release_id: String, error: LibraryError },
 }
 
+/// The progress one pin, unpin or audio detachment reports, until it says how
+/// it ended, from the transfer service that started it.
+pub struct TransferProgressFeed(mpsc::UnboundedReceiver<TransferProgress>);
+
+impl TransferProgressFeed {
+    /// The transfer's next report, or `None` once it ended without one.
+    pub async fn recv(&mut self) -> Option<TransferProgress> {
+        self.0.recv().await
+    }
+
+    /// A feed over `progress`, for a test that reports a transfer itself.
+    #[cfg(test)]
+    pub(crate) fn of_test_channel(progress: mpsc::UnboundedReceiver<TransferProgress>) -> Self {
+        Self(progress)
+    }
+}
+
 /// Pin, unpin, and audio detachment service for releases.
 pub struct TransferService {
     library_manager: LibraryManager,
@@ -51,7 +68,7 @@ impl TransferService {
         drive: Drive,
     ) -> RunningOp<impl Future<Output = Result<DriveOutput, LibraryError>>>
     where
-        Drive: FnOnce(mpsc::UnboundedReceiver<TransferProgress>) -> DriveFuture,
+        Drive: FnOnce(TransferProgressFeed) -> DriveFuture,
         DriveFuture: Future<Output = Result<DriveOutput, LibraryError>>,
     {
         let library_manager = self.library_manager.clone();
@@ -74,7 +91,7 @@ impl TransferService {
         let abort = task.abort_handle();
         let manager = self.library_manager.clone();
         let outcome = async move {
-            let drained = drive(progress).await;
+            let drained = drive(TransferProgressFeed(progress)).await;
             match task.await {
                 Ok(()) => drained,
                 Err(join_error) if join_error.is_cancelled() => drained,
@@ -91,7 +108,7 @@ impl TransferService {
     /// Unpin a release: move its files from the pinned cache to the evictable
     /// cache, as the release's transition. Returns a receiver for progress
     /// updates.
-    pub fn unpin_release(&self, release_id: String) -> mpsc::UnboundedReceiver<TransferProgress> {
+    pub fn unpin_release(&self, release_id: String) -> TransferProgressFeed {
         let library_manager = self.library_manager.clone();
         let unpinned_release_id = release_id.clone();
         let (rx, _) = spawn_transfer(
@@ -102,7 +119,7 @@ impl TransferService {
             ),
             move |_tx| async move { library_manager.unpin_release_files(&unpinned_release_id).await },
         );
-        rx
+        TransferProgressFeed(rx)
     }
 
     /// Make a Remote release Local, as the release's transition: coven
@@ -116,7 +133,7 @@ impl TransferService {
         new_path: std::path::PathBuf,
         cancel: crate::CancellationToken,
         registration: crate::detach_cancels::DetachRegistration,
-    ) -> mpsc::UnboundedReceiver<TransferProgress> {
+    ) -> TransferProgressFeed {
         let library_manager = self.library_manager.clone();
         let localized_release_id = release_id.clone();
         let (rx, _) = spawn_transfer(
@@ -134,7 +151,7 @@ impl TransferService {
                     .await
             },
         );
-        rx
+        TransferProgressFeed(rx)
     }
 }
 

@@ -231,7 +231,7 @@ impl LibraryManager {
         &self,
         release_id: &str,
         action: ReleaseStorageAction,
-        mut rx: tokio::sync::mpsc::UnboundedReceiver<crate::storage::transfer::TransferProgress>,
+        mut rx: crate::storage::transfer::TransferProgressFeed,
     ) -> Result<(), LibraryError> {
         use crate::storage::transfer::TransferProgress;
 

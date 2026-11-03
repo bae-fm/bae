@@ -232,7 +232,13 @@ async fn download_transfers_report_each_driven_file_progress() {
         let manager = manager.clone();
         let release_id = release_id.clone();
         tokio::spawn(async move {
-            manager.drive_transfer(&release_id, ReleaseStorageAction::Pin, progress_rx).await
+            manager
+                .drive_transfer(
+                    &release_id,
+                    ReleaseStorageAction::Pin,
+                    crate::storage::transfer::TransferProgressFeed::of_test_channel(progress_rx),
+                )
+                .await
         })
     };
     for done in [3, 7] {

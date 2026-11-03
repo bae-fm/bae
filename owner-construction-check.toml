@@ -290,6 +290,8 @@ ImportPercentsWatch = "CandidateRuntime"
 CandidateRuntimeChanges = "CandidateRuntime"
 IdentificationCounts = "CandidateRuntime"
 ExtractionWatch = "ExtractionServiceHandle"
+# One pin, unpin or audio detachment's progress.
+TransferProgressFeed = "TransferService"
 # One request a rate limiter let through, settled against the limiter.
 Admitted = "RateLimiter"
 # One reader of a sparse buffer, with its own slot in the buffer's demands.

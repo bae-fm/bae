@@ -102,7 +102,7 @@ async fn create_remote_release(
 
 /// Drain a transfer receiver to its terminal event.
 async fn collect_progress(
-    mut rx: tokio::sync::mpsc::UnboundedReceiver<TransferProgress>,
+    mut rx: bae_library::storage::transfer::TransferProgressFeed,
 ) -> Vec<TransferProgress> {
     let mut events = Vec::new();
     while let Some(event) = rx.recv().await {
