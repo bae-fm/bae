@@ -52,6 +52,8 @@ pub(crate) mod file_tag_snapshot;
 #[cfg(desktop)]
 mod file_validation;
 #[cfg(desktop)]
+pub mod folder_scan_status;
+#[cfg(desktop)]
 pub mod folder_scanner;
 #[cfg(desktop)]
 pub(crate) mod folder_state_commit;
@@ -225,9 +227,9 @@ pub(crate) use candidate_runtime::CandidateWork;
 pub use candidate_search::{CandidateSearch, SearchStatus, SourceSearch};
 #[cfg(desktop)]
 pub use candidates::{
-    Admission, CandidateFiles, CandidateRuntimeSnapshot, CandidateStanding, FolderScanStatus,
-    IdentificationInFlight, IdentificationRuntime, ImportCandidateSnapshot, ImportInFlight,
-    ImportedRelease, SaveFailure, SavingAnswer, WatchedFolderScanStatus,
+    Admission, CandidateFiles, CandidateRuntimeSnapshot, CandidateStanding, IdentificationInFlight,
+    IdentificationRuntime, ImportCandidateSnapshot, ImportInFlight, ImportedRelease, SaveFailure,
+    SavingAnswer,
 };
 #[cfg(desktop)]
 pub use catalog_sessions::{CatalogSessionError, CatalogSessions, DiscogsKeyError};
@@ -239,6 +241,11 @@ pub use error::{ArtistIdentityConflictChoice, IdentityConflict, LabelIdentityCon
 pub use file_evidence::{file_evidence, EvidenceSignal, FileEvidence};
 #[cfg(all(desktop, any(test, feature = "test-utils")))]
 pub use file_metadata_seed::store_scan_item;
+#[cfg(desktop)]
+pub use folder_scan_status::{
+    ActiveFolderScan, FolderScanActivity, FolderScanProgress, FolderScanStatus,
+    WatchedFolderScanStatus,
+};
 #[cfg(desktop)]
 pub use folder_scanner::{
     FolderCandidate, FolderReleaseDecision, FolderReleaseDecisionKey, InvalidCandidate,
@@ -263,11 +270,10 @@ pub use identify_service::{IdentifyRunId, IdentifyServiceHandle};
 pub use import_failure::{ImportFailure, ImportFailureReason};
 #[cfg(desktop)]
 pub use list::{
-    ActiveFolderScan, FolderScanActivity, FolderScanProgress, ImportCandidateListLocation,
-    ImportCounts, ImportListId, ImportListItem, ImportListNarrowing, ImportListOrder,
-    ImportListProjection, ImportListRequest, ImportListSnapshot, ImportListView, ImportListWindow,
-    ImportQueueSummary, LiveImportList, LiveImportListError, NarrowedCount, PendingFilter,
-    PendingFilterEntry,
+    ImportCandidateListLocation, ImportCounts, ImportListId, ImportListItem, ImportListNarrowing,
+    ImportListOrder, ImportListProjection, ImportListRequest, ImportListSnapshot, ImportListView,
+    ImportListWindow, ImportQueueSummary, LiveImportList, LiveImportListError, NarrowedCount,
+    PendingFilter, PendingFilterEntry,
 };
 #[cfg(desktop)]
 pub use mapping::{

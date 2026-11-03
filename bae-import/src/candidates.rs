@@ -49,26 +49,6 @@ impl CandidateStanding {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct WatchedFolderScanStatus {
-    pub watched_folder_path: std::path::PathBuf,
-    pub watched_folder_name: String,
-    pub status: FolderScanStatus,
-    /// Whether this folder lives on a volume served over the network, which
-    /// changes how it is watched: a filesystem watch on such a volume reports
-    /// only what this machine does to it, so the folder is checked on a
-    /// schedule as well. The list says so, because "I added an album on the
-    /// server and bae has not noticed" is otherwise a mystery.
-    pub on_network_volume: bool,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum FolderScanStatus {
-    Scanning { found_count: u64 },
-    Complete,
-    Failed { error: String },
-}
-
 /// One candidate by key, with its runtime joined: the read behind every
 /// "what is this key right now" question.
 #[derive(Debug, Clone)]

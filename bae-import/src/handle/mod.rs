@@ -37,9 +37,8 @@ pub(crate) use scan::external_metadata_with_cover;
 pub(crate) use verdict_write::VerdictWrite;
 
 use super::candidate_runtime::CandidateRuntime;
-use super::candidates::{
-    CandidateRuntimeSnapshot, ImportCandidateSnapshot, WatchedFolderScanStatus,
-};
+use super::candidates::{CandidateRuntimeSnapshot, ImportCandidateSnapshot};
+use crate::folder_scan_status::WatchedFolderScanStatus;
 
 #[cfg(test)]
 #[path = "mod_tests.rs"]

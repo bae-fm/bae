@@ -6,7 +6,7 @@
 
 use super::columns::to_u64;
 use super::*;
-use crate::list::FolderScanProgress;
+use crate::folder_scan_status::FolderScanProgress;
 use crate::watched_folder::WatchedFolder;
 use crate::{FolderScanStatus, WatchedFolderScanStatus};
 

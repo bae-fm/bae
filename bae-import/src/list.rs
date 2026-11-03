@@ -18,7 +18,6 @@
 use super::folder_scanner::{FolderReleaseDecisionKey, InvalidCandidate};
 use super::triage::{CandidateLiveState, TriageGroup, TriageRow, TriageTabCounts};
 use super::watched_folder::WatchedFolder;
-use super::WatchedFolderScanStatus;
 use bae_db::{LibraryPageWindow, LibraryPageWindows};
 
 mod path_order;
@@ -208,60 +207,6 @@ pub struct ImportCounts {
     pub admitted: u32,
     /// How many candidates an import holds, waiting for the worker or running.
     pub imports_in_flight: u32,
-}
-
-/// Where each watched folder's scan stands, for the chrome around the list.
-///
-/// Read apart from the list, by its own live query, and sent on its own
-/// subscription: a scan re-confirms every folder it walks by moving its row
-/// to the scan's generation, which moves the found count and nothing the list
-/// shows. Counted inside the list's read, each of those writes cost a
-/// whole-queue read, and a rescan of a large folder kept the list reading back
-/// to back until it finished; sent with the list, each resent its page.
-#[derive(Debug, Clone, PartialEq)]
-pub struct FolderScanProgress {
-    /// Every scanned root, in watched-folder order.
-    pub statuses: Vec<WatchedFolderScanStatus>,
-    /// The current walks, already filtered and totalled for the filter-bar
-    /// activity control. Absent as soon as no root is scanning.
-    pub activity: Option<FolderScanActivity>,
-}
-
-impl FolderScanProgress {
-    pub(crate) fn of(statuses: Vec<WatchedFolderScanStatus>) -> Self {
-        let folders: Vec<ActiveFolderScan> = statuses
-            .iter()
-            .filter_map(|folder| match folder.status {
-                super::FolderScanStatus::Scanning { found_count } => Some(ActiveFolderScan {
-                    watched_folder_path: folder.watched_folder_path.clone(),
-                    watched_folder_name: folder.watched_folder_name.clone(),
-                    found_count,
-                }),
-                super::FolderScanStatus::Complete | super::FolderScanStatus::Failed { .. } => None,
-            })
-            .collect();
-        let activity = (!folders.is_empty()).then(|| FolderScanActivity {
-            found_count: folders.iter().map(|folder| folder.found_count).sum(),
-            folders,
-        });
-        Self { statuses, activity }
-    }
-}
-
-/// Live folder-scan activity for the list chrome. Counts come from each
-/// root's current generation, never from the list windows a UI has loaded.
-#[derive(Debug, Clone, PartialEq)]
-pub struct FolderScanActivity {
-    pub found_count: u64,
-    pub folders: Vec<ActiveFolderScan>,
-}
-
-/// One root in [`FolderScanActivity`], in watched-folder order.
-#[derive(Debug, Clone, PartialEq)]
-pub struct ActiveFolderScan {
-    pub watched_folder_path: std::path::PathBuf,
-    pub watched_folder_name: String,
-    pub found_count: u64,
 }
 
 /// One read of the list: the requested windows, the total, and the chrome, as
