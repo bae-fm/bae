@@ -129,6 +129,12 @@ impl IdentifyStateView {
             }
             RunOutcome::Answered(TerminalVerdict::Found { findings, track_count, ledger }) => {
                 let summary = VerdictSummary::of_found(&findings, track_count);
+                // A verdict that picks unattended has one pressing, whose lead
+                // is the findings' first match: the release the settle reads.
+                let unattended_pick = summary
+                    .picks_unattended()
+                    .then(|| findings.matches.first().map(|lead| lead.release_id.clone()))
+                    .flatten();
                 let folded = fold(findings, ledger.as_ref(), text, track_count);
                 IdentifyStateView::Found {
                     run: ledger,
@@ -137,7 +143,7 @@ impl IdentifyStateView {
                     agreements: folded.agreements,
                     narrowed_out_count: folded.narrowed_out_count,
                     folder_check: summary.folder_check(),
-                    unattended_pick: summary.unattended_pick().map(|lead| lead.release_id.clone()),
+                    unattended_pick,
                     offers_shared_album: folded.offers_shared_album,
                 }
             }
