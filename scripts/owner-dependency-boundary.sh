@@ -9,7 +9,7 @@ cd "$ROOT"
 # it runs, and what it holds them to, from this workspace's
 # owner-construction-check.toml. This tool pin is independent of the runtime
 # dependency in Cargo.toml.
-checker_revision="0d4671cae3af11cb4047fd5601dbe6dc90870739"
+checker_revision="946697640dcafd9e24f664b2c2f7a51400b2dc9e"
 target_directory="$(cargo metadata --format-version 1 --locked --no-deps | python3 -c '
 import json
 import sys

@@ -149,55 +149,104 @@ task_types = [
     "LiveDetail",
     "LiveValues",
     "CancellableLiveQuery",
+    "AddedDeviceSubscription",
+    "AdminChangesSubscription",
+    "AlbumBrowseSubscription",
+    "AlbumDetailSubscription",
     "AlbumSelectionSubscription",
+    "ArtistBrowseSubscription",
+    "ArtistDetailSubscription",
     "ArtistSearchSubscription",
+    "CandidateRuntimeSubscription",
+    "CastDevicesSubscription",
+    "ComposerBrowseSubscription",
+    "ComposerDetailSubscription",
+    "ConfigSubscription",
     "DownloadBrowseSubscription",
+    "DownloadCountsSubscription",
+    "FolderScansSubscription",
+    "ImportCandidateSubscription",
+    "ImportCountsSubscription",
     "ImportListSubscription",
+    "InvalidCandidateSubscription",
+    "InvitesSubscription",
+    "LibraryNameSubscription",
     "LibrarySearchSubscription",
     "LibraryStatusSubscription",
+    "MembersSubscription",
+    "PlaybackTimelineSubscription",
+    "PlaybackValuesSubscription",
+    "PlaylistEntriesSubscription",
+    "PlaylistsSubscription",
+    "ProfilesSubscription",
+    "QueueAdditionsSubscription",
+    "QueueSubscription",
     "QueueUpcomingSubscription",
+    "RatingsSubscription",
+    "ReleaseDetailSubscription",
     "ReleaseFilesSubscription",
+    "RequestedProfileSubscription",
     "StorageBrowseSubscription",
+    "StorageInspectorSubscription",
+    "SyncActivitySubscription",
+    "SyncStatusSubscription",
+    "UploadsPausedSubscription",
+    "WorkDetailSubscription",
     # One fast-changing value feed a screen pulls from while it is open.
     "KeyedValueStream",
-    # One open, close or setup call's progress steps, written while it runs.
-    "ClosingSteps",
-    "SetupSteps",
     # One subscriber's watch on the outbox's transfers.
     "OutboxTransfersWatch",
     "OutboxTotalTransferWatch",
-    # One editor's session on one release.
+    # One editor's session on one release, and the bridge's object the app
+    # holds over it.
     "ReleaseEdit",
+    "ReleaseEditSession",
     # One operation's view of the catalogs.
     "CatalogSession",
-    # One request a rate limiter let through.
-    "Admitted",
-    # One reader of a sparse buffer, one file stream's shared buffer, and the
-    # fetch that fills one read.
-    "BufferReader",
+    # One file stream's shared buffer, the fetch that fills one read, and
+    # that read's wait on storage, which the fetch arbiter hands out from
+    # the storage waits it holds.
     "SharedSparseBuffer",
     "FillTask",
     "FetchProgress",
     # One track's decode for a caller outside the library.
     "TrackDecode",
-    # One output's lease on the device format, and one stream's format.
-    "FormatLease",
-    "StreamFormat",
     # One background task or thread a caller started, reporting its failure.
     "ReportedTask",
     "ReportedThread",
-    # One running pin of a release, and one release's make-local progress.
+    # One running pin of a release.
     "RunningOp",
-    "MakeLocalReport",
-    # One detached operation's registration, cancelled with the library.
-    "DetachRegistration",
     # One scan pass's file reads, and what one finished removal leaves to
     # announce.
     "FileReads",
     "RemovalOutcome",
-    # One image a test's remote image host holds back.
-    "ImageHold",
 ]
+
+# Handles (Appendix F.3): what an owner makes from its own state to hand out.
+# Only the owner makes and returns one; a holder receives it when it is built
+# and keeps it for its one piece of work.
+[handles]
+# Where one close or removal writes its steps: the send end of the stream
+# the app pulls from the closing it made.
+ClosingSteps = "BridgeLibraryClosing"
+# Where one setup call writes its steps, the same way.
+SetupSteps = "BridgeLibrarySetup"
+# One release's make-local progress, written into every release's progress
+# while its copies download; dropping it removes the release.
+MakeLocalReport = "MakeLocalTransfers"
+# A release's place in the transfers this process can stop between files,
+# held while its transfer runs; dropping it removes the release's token.
+DetachRegistration = "DetachCancels"
+# One request a rate limiter let through, settled against the limiter.
+Admitted = "RateLimiter"
+# One reader of a sparse buffer, with its own slot in the buffer's demands.
+BufferReader = "SparseStreamingBuffer"
+# One output's lease on the device format, and one stream's format, held
+# while the stream plays.
+FormatLease = "DeviceFormats"
+StreamFormat = "PlayerFormat"
+# One image a test's remote image host holds back until the test lets it go.
+ImageHold = "RemoteImageHost"
 
 # Where the app opens: the bootstrap builds the runtime, the clock, the ids,
 # the HTTP client and the library's owners once, and starts the services that
