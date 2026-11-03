@@ -64,17 +64,11 @@ async fn an_import_that_cannot_open_a_source_writes_nothing_and_a_retry_lands_it
         "the failure names the file that would not open: {detail}"
     );
     assert!(
-        crate::library::views::LibraryViews::new(test.database.clone()).get_albums(&[]).await.unwrap().is_empty(),
+        bae_db::test_fixtures::row_count(&test.database, "albums").await == 0,
         "a failed import writes no album"
     );
     assert!(
-        test
-            .service
-            .tables
-            .release_imported_from(&candidate.content_hash)
-            .await
-            .unwrap()
-            .is_none(),
+        test.service.tables.release_imported_from(&candidate.content_hash).await.unwrap().is_none(),
         "a failed import writes no release of its files"
     );
 
@@ -94,13 +88,16 @@ async fn an_import_that_cannot_open_a_source_writes_nothing_and_a_retry_lands_it
         .await
         .expect("the retried import lands");
 
-    let albums = crate::library::views::LibraryViews::new(test.database.clone()).get_albums(&[]).await.unwrap();
-    assert_eq!(albums.len(), 1, "the retry writes the release once");
-    let releases =
-        test.database.get_releases_for_album(&albums[0].id).await.unwrap();
-    assert_eq!(releases.len(), 1);
     assert_eq!(
-        test.database.get_tracks_for_release(&releases[0].id).await.unwrap().len(),
-        6
+        bae_db::test_fixtures::row_count(&test.database, "albums").await,
+        1,
+        "the retry writes the release once"
     );
+    assert_eq!(bae_db::test_fixtures::row_count(&test.database, "releases").await, 1);
+    let release = tables
+        .release_imported_from(&candidate.content_hash)
+        .await
+        .unwrap()
+        .expect("the retried import records the release of its files");
+    assert_eq!(test.database.get_tracks_for_release(&release).await.unwrap().len(), 6);
 }

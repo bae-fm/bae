@@ -1,7 +1,6 @@
 use super::*;
 use crate::import::folder_scanner::ScannedFile;
 use crate::import::import_cancel::ImportStop;
-use crate::library::LibraryManager;
 use bae_db::watched_path::host_root;
 use bae_db::Database;
 use bae_test_support::HANG_GUARD;
@@ -21,9 +20,6 @@ fn root_path(posix: &str) -> PathBuf {
 /// database.
 struct TestService {
     service: ImportService,
-    /// The library over the same store, for a test that seeds a scan through
-    /// its fixture operations.
-    manager: LibraryManager,
     preparations: crate::import::CandidatePreparations,
     /// The library the service imports into, for a test that reads or seeds
     /// rows no call reads or writes on its own.
@@ -43,14 +39,12 @@ async fn setup_import_service() -> TestService {
     let tables = crate::import::tables::ImportTables::new(database.clone());
     let runtime =
         crate::import::CandidateRuntime::new(tables.clone(), bae_diagnostics::Diagnostics::noop());
-    let library = crate::app::test_library::TestLibrary::open(
-        database.clone(),
-        bae_app_dir::AppDir::under_home(temp_dir.path()).unwrap(),
+    let catalogs = crate::import::CatalogSessions::new(
         bae_catalogs::providers::Providers::offline(),
-    )
-    .await;
-    let catalogs = library.catalogs().clone();
-    let manager = LibraryManager::clone(&library);
+        database.clone(),
+        bae_diagnostics::Diagnostics::noop(),
+        tokio::runtime::Handle::current(),
+    );
     let (_commands_tx, commands_rx) = tokio::sync::mpsc::unbounded_channel();
     let event_tx = crate::import::ImportEventBus::new(runtime.clone());
     TestService {
@@ -72,7 +66,6 @@ async fn setup_import_service() -> TestService {
             import_cancels: Default::default(),
             diagnostics: bae_diagnostics::Diagnostics::noop(),
         },
-        manager,
         preparations,
         database,
         temp: temp_dir,
@@ -414,8 +407,7 @@ impl CoordinatorHarness {
     /// [`root_path`] gives it.
     async fn with_roots(roots: &[&str]) -> Self {
         let roots: Vec<PathBuf> = roots.iter().map(|root| host_root(root)).collect();
-        let TestService { service, manager: _, preparations, database, temp } =
-            setup_import_service().await;
+        let TestService { service, preparations, database, temp } = setup_import_service().await;
         let tables = service.tables.clone();
         for root in &roots {
             tables.add_watched_import_folder(std::path::Path::new(root)).await.unwrap();
@@ -682,5 +674,4 @@ include!("tests/panicked_import.rs");
 include!("tests/panicked_scan.rs");
 include!("tests/scan_reads.rs");
 include!("tests/spent_rows.rs");
-include!("tests/stored_names.rs");
 include!("tests/takeover.rs");

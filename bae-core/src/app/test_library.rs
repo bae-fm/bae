@@ -98,11 +98,6 @@ impl TestLibrary {
         bae_playback::renderer::CastPicker::new(self.database.clone())
     }
 
-    /// The catalog sessions the library asks through.
-    pub(crate) fn catalogs(&self) -> &CatalogSessions {
-        &self.catalogs
-    }
-
     /// The library's services, started through the app's own step, with
     /// playback on a device that plays nothing and no stored queue restored.
     pub(crate) async fn start_services(&self) -> Result<AppServices, super::ServicesStartError> {

@@ -293,6 +293,8 @@ mod admin_changes;
 mod bound_images;
 mod detachment;
 mod import_errors;
+#[cfg(windows)]
+mod imported_names;
 mod invites;
 mod memory;
 mod other_device;

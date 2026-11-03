@@ -21,8 +21,7 @@ async fn an_import_that_panics_is_recorded_as_failed_and_the_next_import_runs() 
     let mut test = setup_import_service().await;
     let tables = test.service.tables.clone();
     let bugs = Arc::new(bae_diagnostics::RecordingBugReporter::default());
-    test.service.diagnostics =
-        bae_diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone());
+    test.service.diagnostics = bae_diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone());
     let folder = test.temp.path().join("album");
     std::fs::create_dir_all(&folder).unwrap();
     let fixture =
@@ -59,7 +58,7 @@ async fn an_import_that_panics_is_recorded_as_failed_and_the_next_import_runs() 
         .do_import(local_import_command("import-again", &candidate_key, &folder), stored)
         .await;
     assert_eq!(
-        crate::library::views::LibraryViews::new(test.database.clone()).get_albums(&[]).await.unwrap().len(),
+        bae_db::test_fixtures::row_count(&test.database, "albums").await,
         1,
         "the next import lands the release"
     );

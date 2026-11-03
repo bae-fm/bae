@@ -512,8 +512,7 @@ async fn coordinator_completes_scan_while_filesystem_batches_remain_ready() {
 
 #[tokio::test]
 async fn cancelled_scan_task_does_not_begin_a_durable_generation() {
-    let TestService { service, manager: _, preparations, database, temp: tmp } =
-        setup_import_service().await;
+    let TestService { service, preparations, database, temp: tmp } = setup_import_service().await;
     let tables = service.tables.clone();
     let root = tmp.path().join("watched");
     std::fs::create_dir(&root).unwrap();
@@ -683,10 +682,7 @@ async fn a_network_folder_found_unchanged_is_checked_again() {
     let modified_at = directory_modified_at(&root).expect("the folder's mtime reads");
     tables.add_watched_import_folder(&root).await.unwrap();
     tables.begin_folder_scan(&root, crate::import::VolumeKind::Local).await.unwrap();
-    tables
-        .record_folder_scan_directories(&root, &[(root.clone(), modified_at)])
-        .await
-        .unwrap();
+    tables.record_folder_scan_directories(&root, &[(root.clone(), modified_at)]).await.unwrap();
     let (_scans, starter) = FakeScanStarter::new();
     let (active_roots, _scan_completions, _removal_completions) = ActiveRoots::new(
         starter,

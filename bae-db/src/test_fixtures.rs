@@ -64,6 +64,16 @@ pub async fn exec(db: &crate::Database, sql: &str, args: &[&str]) {
     .unwrap();
 }
 
+/// How many rows `table` holds.
+pub async fn row_count(db: &crate::Database, table: &str) -> usize {
+    let query = format!("SELECT COUNT(*) FROM \"{table}\"");
+    let count: i64 = db
+        .read(move |sql| sql.query_row(&query, [], |row| row.get(0)).map_err(crate::DbError::from))
+        .await
+        .unwrap();
+    usize::try_from(count).expect("a row count is never negative")
+}
+
 /// `exec` for a multi-statement script, which takes no bound parameters.
 pub async fn exec_batch(db: &crate::Database, sql: &str) {
     let sql = sql.to_string();

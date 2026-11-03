@@ -106,7 +106,7 @@ impl crate::import::file_tag_snapshot::FileTagReader for UnsupportedEmbeddedArtw
 async fn retained_unsupported_embedded_cover_is_only_used_when_explicitly_selected() {
     for explicit in [false, true] {
         let test = setup_import_service().await;
-    let tables = test.service.tables.clone();
+        let tables = test.service.tables.clone();
         let root = test.temp.path().join("watched");
         let folder = root.join("Album");
         std::fs::create_dir_all(&folder).unwrap();
@@ -114,21 +114,13 @@ async fn retained_unsupported_embedded_cover_is_only_used_when_explicitly_select
         write_test_jpeg(&folder.join("front.jpg"));
         let root_text = root.to_string_lossy().into_owned();
         let key = crate::import::CandidateKey::folder(&folder);
-        tables
-            .add_watched_import_folder(std::path::Path::new(&root_text))
-            .await
-            .unwrap();
+        tables.add_watched_import_folder(std::path::Path::new(&root_text)).await.unwrap();
         let (scan, _) = test.scan_with(
             Arc::new(UnsupportedEmbeddedArtworkReader),
             Arc::new(crate::import::folder_scanner::OsDirectoryReader),
         );
         scan.rescan(&root).await.unwrap();
-        let candidate = tables
-            .load_release_candidate(&key)
-            .await
-            .unwrap()
-            .unwrap()
-            .unwrap();
+        let candidate = tables.load_release_candidate(&key).await.unwrap().unwrap().unwrap();
         let hash = candidate.files.content_hash();
         let revision = prepare_named_candidate(
             &test.service,
@@ -139,10 +131,11 @@ async fn retained_unsupported_embedded_cover_is_only_used_when_explicitly_select
             "Cover Album",
         )
         .await;
-        let preparation = crate::import::preparation::import_preparation(&test.service.tables, &hash)
-            .await
-            .unwrap()
-            .unwrap();
+        let preparation =
+            crate::import::preparation::import_preparation(&test.service.tables, &hash)
+                .await
+                .unwrap()
+                .unwrap();
         let revision = test
             .preparations
             .apply_source(
@@ -212,8 +205,8 @@ async fn retained_unsupported_embedded_cover_is_only_used_when_explicitly_select
             };
             // The embedded artwork is no image the store reads, so a stored
             // cover is the folder's front.jpg.
-            test.manager
-                .get_library_image(&release_id, &bae_db::LibraryImageType::Cover)
+            test.database
+                .find_library_image(&release_id, &bae_db::LibraryImageType::Cover)
                 .await
                 .unwrap()
                 .expect("the folder's cover is stored");
@@ -234,14 +227,10 @@ async fn an_import_commits_after_a_pass_finds_its_folder_unchanged() {
     std::fs::write(folder.join("01.flac"), flac()).unwrap();
     let root_text = root.to_string_lossy().into_owned();
     let key = crate::import::CandidateKey::folder(&folder);
-    tables
-        .add_watched_import_folder(std::path::Path::new(&root_text))
-        .await
-        .unwrap();
+    tables.add_watched_import_folder(std::path::Path::new(&root_text)).await.unwrap();
     let (scan, _) = test.scan();
     scan.rescan(&root).await.unwrap();
-    let candidate =
-        tables.load_release_candidate(&key).await.unwrap().unwrap().unwrap();
+    let candidate = tables.load_release_candidate(&key).await.unwrap().unwrap().unwrap();
     let hash = candidate.files.content_hash();
     let revision = prepare_named_candidate(
         &test.service,
@@ -314,13 +303,10 @@ async fn explicit_local_cover_missing_from_discovered_images_is_an_error() {
 
 #[tokio::test]
 async fn explicit_local_cover_with_no_discovered_images_is_an_error() {
-    let err = ImportService::pick_folder_cover(
-        &[],
-        "cover.bmp",
-        &bae_diagnostics::Diagnostics::noop(),
-    )
-    .await
-    .unwrap_err();
+    let err =
+        ImportService::pick_folder_cover(&[], "cover.bmp", &bae_diagnostics::Diagnostics::noop())
+            .await
+            .unwrap_err();
 
     assert!(
         matches!(&err, crate::import::ImportError::LocalCover { detail } if detail.contains("Selected cover") && detail.contains("not found")),
@@ -330,7 +316,7 @@ async fn explicit_local_cover_with_no_discovered_images_is_an_error() {
 
 #[tokio::test]
 async fn selected_local_cover_path_must_match_discovered_file() {
-    let TestService { service, manager: _, preparations, database: _, temp: tmp } =
+    let TestService { service, preparations, database: _, temp: tmp } =
         setup_import_service().await;
     let tables = service.tables.clone();
     let folder = tmp.path().join("release");
@@ -349,31 +335,34 @@ async fn selected_local_cover_path_must_match_discovered_file() {
     .unwrap();
     let expected_content_hash = files.content_hash();
     let watched_folder_path = folder.to_string_lossy().into_owned();
-    tables
-        .add_watched_import_folder(std::path::Path::new(&watched_folder_path))
-        .await
-        .unwrap();
-    let generation = tables.begin_folder_scan(std::path::Path::new(&watched_folder_path), crate::import::VolumeKind::Local)
-        .await
-        .unwrap();
-    crate::import::store_scan_item(&tables, &bae_diagnostics::Diagnostics::noop(),
+    tables.add_watched_import_folder(std::path::Path::new(&watched_folder_path)).await.unwrap();
+    let generation = tables
+        .begin_folder_scan(
             std::path::Path::new(&watched_folder_path),
-            generation,
-            &ScanItem::Valid(crate::import::folder_scanner::FolderCandidate {
-                path: folder.clone(),
-                file_root: folder.clone(),
-                name: "Candidate".to_string(),
-                files,
-                watched_folder_path: std::path::PathBuf::from(&watched_folder_path),
-                scope: crate::import::ReleaseFileScope::Recursive,
-                file_edit_revision: 0,
-                relative_folder: bae_db::RelativeFolder::test("Candidate"),
-                grouping: None,
-            }),
+            crate::import::VolumeKind::Local,
         )
         .await
-        .unwrap()
-        .expect("the stored scan generation is current");
+        .unwrap();
+    crate::import::store_scan_item(
+        &tables,
+        &bae_diagnostics::Diagnostics::noop(),
+        std::path::Path::new(&watched_folder_path),
+        generation,
+        &ScanItem::Valid(crate::import::folder_scanner::FolderCandidate {
+            path: folder.clone(),
+            file_root: folder.clone(),
+            name: "Candidate".to_string(),
+            files,
+            watched_folder_path: std::path::PathBuf::from(&watched_folder_path),
+            scope: crate::import::ReleaseFileScope::Recursive,
+            file_edit_revision: 0,
+            relative_folder: bae_db::RelativeFolder::test("Candidate"),
+            grouping: None,
+        }),
+    )
+    .await
+    .unwrap()
+    .expect("the stored scan generation is current");
     tables
         .finish_folder_scan(std::path::Path::new(&watched_folder_path), generation, None)
         .await
@@ -483,23 +472,26 @@ async fn rescan_seeded_root(
     let service = &test.service;
     let tables = &service.tables;
     tables.add_watched_import_folder(root).await.unwrap();
-    let generation = tables.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
-    crate::import::store_scan_item(tables, &bae_diagnostics::Diagnostics::noop(),
-            root,
-            generation,
-            &ScanItem::Invalid(crate::import::InvalidCandidate {
-                path: root.join("old-key"),
-                name: "Old Candidate".to_string(),
-                watched_folder_path: root.to_path_buf(),
-                relative_folder: bae_db::RelativeFolder::test("old-key"),
-                grouping: None,
-                files: Vec::new(),
-                tags: None,
-            }),
-        )
-        .await
-        .unwrap()
-        .expect("the seeded scan generation is current");
+    let generation =
+        tables.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
+    crate::import::store_scan_item(
+        tables,
+        &bae_diagnostics::Diagnostics::noop(),
+        root,
+        generation,
+        &ScanItem::Invalid(crate::import::InvalidCandidate {
+            path: root.join("old-key"),
+            name: "Old Candidate".to_string(),
+            watched_folder_path: root.to_path_buf(),
+            relative_folder: bae_db::RelativeFolder::test("old-key"),
+            grouping: None,
+            files: Vec::new(),
+            tags: None,
+        }),
+    )
+    .await
+    .unwrap()
+    .expect("the seeded scan generation is current");
 
     let (scan, events) = test.scan();
     let result = scan.rescan(root).await;
@@ -580,8 +572,7 @@ async fn rescan_non_directory_root_keeps_previous_candidates() {
 
 #[test]
 fn resolve_file_content_type_uses_scan_facts_for_new_audio_formats() {
-    let fixture_root =
-        bae_audio::test_fixtures::audio_format_dir();
+    let fixture_root = bae_audio::test_fixtures::audio_format_dir();
     let files = crate::import::folder_scanner::collect_release_candidate_files_with_scope(
         &fixture_root,
         crate::import::ReleaseFileScope::Recursive,
@@ -680,17 +671,11 @@ async fn pre_fill_seeds_the_discovered_candidate_from_its_file_tags() {
     let album = root.join("Candidate");
     std::fs::create_dir_all(&album).unwrap();
     for name in TAGGED_FLAC_FIXTURES {
-        std::fs::copy(
-            bae_audio::test_fixtures::cue_flac_dir().join(name),
-            album.join(name),
-        )
-        .unwrap();
+        std::fs::copy(bae_audio::test_fixtures::cue_flac_dir().join(name), album.join(name))
+            .unwrap();
     }
     let root_text = root.to_string_lossy().into_owned();
-    tables
-        .add_watched_import_folder(std::path::Path::new(&root_text))
-        .await
-        .unwrap();
+    tables.add_watched_import_folder(std::path::Path::new(&root_text)).await.unwrap();
 
     let reader = std::sync::Arc::new(CountingTagReader::default());
     let (scan, mut events) =
@@ -703,11 +688,8 @@ async fn pre_fill_seeds_the_discovered_candidate_from_its_file_tags() {
     assert_eq!(reader.reads(), TAGGED_FLAC_FIXTURES.len() as u64);
 
     let key = crate::import::CandidateKey::folder(&album);
-    let detail = tables
-        .load_import_candidate(&key)
-        .await
-        .unwrap()
-        .expect("the candidate is stored");
+    let detail =
+        tables.load_import_candidate(&key).await.unwrap().expect("the candidate is stored");
     assert_eq!(
         detail.draft().unwrap().metadata_provenance,
         Some(crate::import::MetadataProvenance::FileMetadata)
