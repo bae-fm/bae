@@ -77,6 +77,19 @@ async fn test_delete_release_with_single_release_empties_album() {
     assert!(releases.is_empty());
 }
 
+/// A release the library doesn't hold is refused, as an album it doesn't hold
+/// is: the request names nothing to delete.
+#[tokio::test]
+async fn delete_release_refuses_a_release_the_library_does_not_hold() {
+    let (manager, _temp_dir, _album, release) = manager_with_release().await;
+    manager.delete_release(&release.id).await.unwrap();
+
+    for release_id in [release.id.as_str(), "not-a-release"] {
+        let error = manager.delete_release(release_id).await.unwrap_err();
+        assert!(matches!(error, LibraryError::Refused(_)), "{release_id}: {error}");
+    }
+}
+
 #[tokio::test]
 async fn test_delete_release_with_multiple_releases_preserves_album() {
     let (manager, _temp_dir) = setup_test_manager().await;

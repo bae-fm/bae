@@ -83,10 +83,8 @@ struct AlbumExpansionContent: View {
                             .foregroundStyle(.secondary)
                     }
                     HStack(spacing: ThemeSpace.related) {
-                        Button(action: onPlay) {
-                            Label("Play", systemImage: "play.fill")
-                        }
-                        .buttonStyle(PrimaryButtonStyle())
+                        Button("Play", action: onPlay)
+                            .buttonStyle(PrimaryButtonStyle())
                         albumMenu
                     }
                     .padding(.top, ThemeSpace.group)
@@ -127,22 +125,11 @@ struct AlbumExpansionContent: View {
 
     private var albumMenu: some View {
         Menu {
-            Button(action: onPlay) {
-                Label("Play", systemImage: "play.fill")
-            }
-            Button(action: onShuffle) {
-                Label("Shuffle", systemImage: "shuffle")
-            }
+            Button("Play", action: onPlay)
+            Button("Shuffle", action: onShuffle)
             Divider()
-            Button(action: { onAddNextAlbum() }) {
-                Label(
-                    "Play Next",
-                    systemImage: "text.line.first.and.arrowtriangle.forward"
-                )
-            }
-            Button(action: { onAddAlbumToQueue() }) {
-                Label("Add to Queue", systemImage: "text.append")
-            }
+            Button("Play Next") { onAddNextAlbum() }
+            Button("Add to Queue") { onAddAlbumToQueue() }
             Divider()
             Button("Edit…") { onEdit() }
             Button("Storage...") { onOpenStorage() }

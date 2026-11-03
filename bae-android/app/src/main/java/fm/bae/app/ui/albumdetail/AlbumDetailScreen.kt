@@ -15,13 +15,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -62,7 +56,6 @@ import fm.bae.app.sideHeaderText
 import fm.bae.app.text
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
-import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
@@ -443,29 +436,17 @@ private fun AlbumActionButtons(callbacks: AlbumDetailCallbacks) {
     Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
         Row(horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
             PrimaryButton(onClick = callbacks.onPlayRelease) {
-                Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(ThemeIcon.medium))
-                Spacer(modifier = Modifier.width(ThemeSpace.related))
                 Text(stringResource(R.string.play))
             }
             OutlinedButton(onClick = callbacks.onShuffleRelease) {
-                Icon(Icons.Filled.Shuffle, contentDescription = null, modifier = Modifier.size(ThemeIcon.medium))
-                Spacer(modifier = Modifier.width(ThemeSpace.related))
                 Text(stringResource(R.string.shuffle))
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
             OutlinedButton(onClick = callbacks.onPlayReleaseNext) {
-                Icon(
-                    Icons.AutoMirrored.Filled.PlaylistPlay,
-                    contentDescription = null,
-                    modifier = Modifier.size(ThemeIcon.medium),
-                )
-                Spacer(modifier = Modifier.width(ThemeSpace.related))
                 Text(stringResource(R.string.play_next))
             }
             OutlinedButton(onClick = callbacks.onAddReleaseToQueue) {
-                Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(ThemeIcon.medium))
-                Spacer(modifier = Modifier.width(ThemeSpace.related))
                 Text(stringResource(R.string.add_to_queue))
             }
         }

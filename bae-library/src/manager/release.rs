@@ -190,9 +190,10 @@ impl LibraryManager {
     /// album with them if this was its last release. Coven owns retention of
     /// files still referenced by committed uploads or shared history.
     pub async fn delete_release(&self, release_id: &str) -> Result<(), LibraryError> {
-        self.database.find_release_by_id(release_id).await?.ok_or_else(|| {
-            LibraryError::TrackMapping(format!("Release not found: {release_id}"))
-        })?;
+        self.database
+            .find_release_by_id(release_id)
+            .await?
+            .ok_or_else(|| LibraryError::Refused(format!("Release not found: {release_id}")))?;
 
         // Read the track ids before the delete cascades them away — the player
         // stops a deleted track it plays or has loaded next. The queue's rows

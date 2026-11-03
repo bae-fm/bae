@@ -173,7 +173,8 @@ and is refused for a release of another album. Moving or deleting a release
 writes nothing else: the next release in the order is then the primary.
 
 Deleting a release deletes, in one write, its tracks and their places in the
-queue, its files and its cover (§4.2). Deleting an album deletes every release
+queue, its files and its cover (§4.2), and is refused for a release the library
+doesn't hold. Deleting an album deletes every release
 it holds in one write, and is refused for an album holding none. An album
 left with no release is never deleted itself: another device may have added a
 release to it while apart. It is inert, since every listing shows only albums
