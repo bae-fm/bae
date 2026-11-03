@@ -258,7 +258,7 @@ async fn test_cue_flac_seek_respects_track_end_boundary() {
     let captured_snapshot: Vec<f32> = captured.samples();
 
     // Decode reference and compare at the seek position
-    let fixture_dir = bae_test_support::fixture_dir!("cue_flac");
+    let fixture_dir = bae_audio::test_fixtures::cue_flac_dir();
     let reference_data =
         std::fs::read(fixture_dir.join("02 Test Artist - Track Two (White Noise).flac"))
             .expect("read reference");

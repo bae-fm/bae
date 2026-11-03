@@ -431,25 +431,13 @@ async fn artwork_unresolvable_host_names_its_dns_failure() {
 
 #[tokio::test]
 async fn supported_cover_formats_keep_original_remote_bytes_and_type() {
-    assert!(include_bytes!("../../bae-core/test-fixtures/cover-art/solid.gif").len() < 100);
-    assert!(include_bytes!("../../bae-core/test-fixtures/cover-art/solid.webp").len() < 100);
+    assert!(bae_util::test_cover_art::SOLID_GIF.len() < 100);
+    assert!(bae_util::test_cover_art::SOLID_WEBP.len() < 100);
     for (bytes, content_type) in [
-        (
-            include_bytes!("../../bae-core/test-fixtures/cover-art/solid.gif").as_slice(),
-            ContentType::Gif,
-        ),
-        (
-            include_bytes!("../../bae-core/test-fixtures/cover-art/solid.webp").as_slice(),
-            ContentType::Webp,
-        ),
-        (
-            include_bytes!("../../bae-core/test-fixtures/cover-art/animated.gif").as_slice(),
-            ContentType::Gif,
-        ),
-        (
-            include_bytes!("../../bae-core/test-fixtures/cover-art/animated.webp").as_slice(),
-            ContentType::Webp,
-        ),
+        (bae_util::test_cover_art::SOLID_GIF, ContentType::Gif),
+        (bae_util::test_cover_art::SOLID_WEBP, ContentType::Webp),
+        (bae_util::test_cover_art::ANIMATED_GIF, ContentType::Gif),
+        (bae_util::test_cover_art::ANIMATED_WEBP, ContentType::Webp),
     ] {
         let (host, url) = start_counting_host(200, bytes.to_vec()).await;
         let cache = RemoteImageCache::for_test(direct_http());
@@ -476,7 +464,7 @@ async fn remote_cover_dimensions_are_bounded() {
 
 #[tokio::test]
 async fn remote_cover_decode_allocation_is_bounded() {
-    let mut bytes = include_bytes!("../../bae-core/test-fixtures/cover-art/solid.gif").to_vec();
+    let mut bytes = bae_util::test_cover_art::SOLID_GIF.to_vec();
     bytes[6..8].copy_from_slice(&6000u16.to_le_bytes());
     bytes[8..10].copy_from_slice(&6000u16.to_le_bytes());
     let url = start_mock(vec![(200, bytes)]).await;
@@ -489,10 +477,7 @@ async fn remote_cover_decode_allocation_is_bounded() {
 
 #[tokio::test]
 async fn truncated_gif_and_webp_fail_remote_validation_and_normalization() {
-    for bytes in [
-        include_bytes!("../../bae-core/test-fixtures/cover-art/solid.gif").as_slice(),
-        include_bytes!("../../bae-core/test-fixtures/cover-art/solid.webp").as_slice(),
-    ] {
+    for bytes in [bae_util::test_cover_art::SOLID_GIF, bae_util::test_cover_art::SOLID_WEBP] {
         let truncated = &bytes[..20];
         assert!(bae_util::stored_image::stored_jpeg(truncated).is_err());
         let url = start_mock(vec![(200, truncated.to_vec())]).await;

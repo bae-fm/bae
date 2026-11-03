@@ -203,7 +203,7 @@ async fn test_cue_flac_playback_uses_track_positions() {
     let mut captured = fixture.next_capture_stream().await;
 
     // Decode XLD reference for track 2 (white noise)
-    let fixture_dir = bae_test_support::fixture_dir!("cue_flac");
+    let fixture_dir = bae_audio::test_fixtures::cue_flac_dir();
     let reference_data =
         std::fs::read(fixture_dir.join("02 Test Artist - Track Two (White Noise).flac"))
             .expect("read reference");
@@ -308,7 +308,7 @@ async fn test_cue_flac_decoded_duration_matches_cue_timing() {
 /// Copy the CUE/FLAC fixture with seektable (30-second file with 3 tracks).
 fn copy_cue_flac_fixture_with_seektable(dir: &Path) {
     use std::fs;
-    let fixture_dir = bae_test_support::fixture_dir!("cue_flac");
+    let fixture_dir = bae_audio::test_fixtures::cue_flac_dir();
     let flac_data = bae_test_support::read_fixture(&fixture_dir.join("Test Album.flac"));
     let cue_data = bae_test_support::read_fixture(&fixture_dir.join("Test Album.cue"));
     fs::write(dir.join("Test Album.flac"), &flac_data).expect("write flac");
@@ -473,7 +473,7 @@ async fn test_cue_flac_gapless_track_boundary() {
     .expect("decode track 2");
 
     // Ground truth: the source file decoded once.
-    let source = bae_test_support::fixture_dir!("cue_flac", "Test Album.flac");
+    let source = bae_audio::test_fixtures::cue_flac_dir().join("Test Album.flac");
     let full = decode_audio(
         bae_audio::test_samples::filled_sparse_buffer(&std::fs::read(&source).unwrap()),
         None,

@@ -275,22 +275,22 @@ async fn import_gif_and_webp_covers_stores_first_image_as_jpeg() {
     for (name, bytes, dimensions) in [
         (
             "solid.gif",
-            include_bytes!("../../../test-fixtures/cover-art/solid.gif").as_slice(),
+            bae_util::test_cover_art::SOLID_GIF,
             (16, 8),
         ),
         (
             "solid.webp",
-            include_bytes!("../../../test-fixtures/cover-art/solid.webp").as_slice(),
+            bae_util::test_cover_art::SOLID_WEBP,
             (16, 8),
         ),
         (
             "animated.gif",
-            include_bytes!("../../../test-fixtures/cover-art/animated.gif").as_slice(),
+            bae_util::test_cover_art::ANIMATED_GIF,
             (600, 300),
         ),
         (
             "animated.webp",
-            include_bytes!("../../../test-fixtures/cover-art/animated.webp").as_slice(),
+            bae_util::test_cover_art::ANIMATED_WEBP,
             (600, 300),
         ),
     ] {

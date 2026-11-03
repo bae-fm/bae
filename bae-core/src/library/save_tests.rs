@@ -269,10 +269,10 @@ fn write_tags_round_trips_through_mp4_ilst() {
 #[test]
 fn a_read_that_panics_fails_the_save_as_unfinished() {
     bae_audio::init();
-    let bytes = std::fs::read(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/tests/fixtures/cue_flac/03 Test Artist - Track Three (Brown Noise).flac"
-    ))
+    let bytes = std::fs::read(
+        bae_audio::test_fixtures::cue_flac_dir()
+            .join("03 Test Artist - Track Three (Brown Noise).flac"),
+    )
     .expect("fixture");
     let buffer = bae_audio::sparse_buffer::create_sparse_buffer(bytes.len() as u64);
     buffer.append_at(0, &bytes);

@@ -169,9 +169,7 @@ async fn exact_metadata_import_stores_dsd_audio_format() {
         let album_dir = f.temp_path().join("album");
         fs::create_dir_all(&album_dir).unwrap();
         fs::copy(
-            Path::new(env!("CARGO_MANIFEST_DIR"))
-                .join("test-fixtures")
-                .join("audio-format")
+            bae_audio::test_fixtures::audio_format_dir()
                 .join(fixture_name),
             album_dir.join(import_name),
         )

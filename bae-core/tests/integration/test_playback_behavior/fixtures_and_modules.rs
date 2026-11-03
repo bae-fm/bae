@@ -127,7 +127,7 @@ fn generate_test_flac_files(dir: &std::path::Path) -> Vec<Vec<u8>> {
 /// Copy the `cue_flac` fixture's FLAC and CUE files into `dir`.
 fn generate_cue_flac_files(dir: &std::path::Path) {
     use std::fs;
-    let fixture_dir = bae_test_support::fixture_dir!("cue_flac");
+    let fixture_dir = bae_audio::test_fixtures::cue_flac_dir();
 
     let flac_src = fixture_dir.join("Test Album.flac");
     let flac_dst = dir.join("Test Album.flac");

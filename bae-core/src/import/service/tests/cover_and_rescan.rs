@@ -581,7 +581,7 @@ async fn rescan_non_directory_root_keeps_previous_candidates() {
 #[test]
 fn resolve_file_content_type_uses_scan_facts_for_new_audio_formats() {
     let fixture_root =
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("test-fixtures").join("audio-format");
+        bae_audio::test_fixtures::audio_format_dir();
     let files = crate::import::folder_scanner::collect_release_candidate_files_with_scope(
         &fixture_root,
         crate::import::ReleaseFileScope::Recursive,
@@ -681,7 +681,7 @@ async fn pre_fill_seeds_the_discovered_candidate_from_its_file_tags() {
     std::fs::create_dir_all(&album).unwrap();
     for name in TAGGED_FLAC_FIXTURES {
         std::fs::copy(
-            Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/cue_flac").join(name),
+            bae_audio::test_fixtures::cue_flac_dir().join(name),
             album.join(name),
         )
         .unwrap();

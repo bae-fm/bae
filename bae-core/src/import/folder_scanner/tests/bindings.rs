@@ -6,7 +6,7 @@
 /// Copy the CUE/FLAC disc-image fixture into `album` under `name`.
 fn copy_cue_flac(album: &Path, name: &str) {
     std::fs::copy(
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/cue_flac/Test Album.flac"),
+        bae_audio::test_fixtures::cue_flac_dir().join("Test Album.flac"),
         album.join(name),
     )
     .unwrap();
@@ -42,7 +42,7 @@ fn single_file_cue_uses_the_unique_same_stem_audio_when_its_reference_is_missing
     let (_tmp, album) = album_dir();
     copy_cue_flac(&album, "cd.flac");
     let cue = std::fs::read_to_string(
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/cue_flac/Test Album.cue"),
+        bae_audio::test_fixtures::cue_flac_dir().join("Test Album.cue"),
     )
     .unwrap()
     .replace("Test Album.flac", "cd.wav");
@@ -77,7 +77,7 @@ fn a_reference_with_foreign_folders_resolves_by_its_file_name() {
     let (_tmp, album) = album_dir();
     copy_cue_flac(&album, "cd.flac");
     let cue = std::fs::read_to_string(
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/cue_flac/Test Album.cue"),
+        bae_audio::test_fixtures::cue_flac_dir().join("Test Album.cue"),
     )
     .unwrap()
     .replace("Test Album.flac", "Artist\\Album\\cd.wav");
@@ -106,7 +106,7 @@ fn a_sheet_in_a_subfolder_resolves_audio_above_it() {
     copy_cue_flac(&album, "cd.flac");
     std::fs::create_dir(album.join("extras")).unwrap();
     let cue = std::fs::read_to_string(
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/cue_flac/Test Album.cue"),
+        bae_audio::test_fixtures::cue_flac_dir().join("Test Album.cue"),
     )
     .unwrap()
     .replace("Test Album.flac", "cd.wav");
@@ -256,8 +256,7 @@ fn exact_file_reference_wins_over_other_same_stem_audio() {
 fn audio_a_sheet_cannot_use_is_refused_at_offer_time_with_the_codec_named() {
     let (_tmp, album) = cue_flac_album("cd.flac", "cd.wav", 12);
     std::fs::copy(
-        Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("test-fixtures/audio-format/placeholder-mp3.mp3"),
+        bae_audio::test_fixtures::audio_format_dir().join("placeholder-mp3.mp3"),
         album.join("cd.mp3"),
     )
     .unwrap();
@@ -462,7 +461,7 @@ fn a_reference_in_another_case_resolves_to_its_audio() {
     copy_cue_flac(&album, "CDImage.flac");
     copy_cue_flac(&album, "bonus.flac");
     let cue = std::fs::read_to_string(
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/cue_flac/Test Album.cue"),
+        bae_audio::test_fixtures::cue_flac_dir().join("Test Album.cue"),
     )
     .unwrap()
     .replace("Test Album.flac", "cdimage.WAV");
@@ -493,7 +492,7 @@ fn a_reference_in_another_unicode_normalization_resolves_to_its_audio() {
     copy_cue_flac(&album, "bonus.flac");
     let composed: String = "Café Image.flac".nfc().collect();
     let cue = std::fs::read_to_string(
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/cue_flac/Test Album.cue"),
+        bae_audio::test_fixtures::cue_flac_dir().join("Test Album.cue"),
     )
     .unwrap()
     .replace("Test Album.flac", &composed);
@@ -556,7 +555,7 @@ fn a_sheet_in_a_windows_code_page_names_its_audio() {
     copy_cue_flac(&album, "Café Image.flac");
     copy_cue_flac(&album, "bonus.flac");
     let cue = std::fs::read_to_string(
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/cue_flac/Test Album.cue"),
+        bae_audio::test_fixtures::cue_flac_dir().join("Test Album.cue"),
     )
     .unwrap()
     .replace("Test Album.flac", "Café Image.wav");

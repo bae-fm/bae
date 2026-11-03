@@ -9,8 +9,8 @@
 //! here, so every caller keeps reaching them as `support::<name>`.
 
 /// The calling crate's `tests/fixtures` directory, with any path segments
-/// given joined onto it: `fixture_dir!("cue_flac")` is
-/// `<manifest>/tests/fixtures/cue_flac`.
+/// given joined onto it: `fixture_dir!("flac")` is
+/// `<manifest>/tests/fixtures/flac`.
 ///
 /// A macro rather than a function because `CARGO_MANIFEST_DIR` has to expand at
 /// the call site: a function here would resolve the variable to

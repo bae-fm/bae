@@ -308,12 +308,12 @@ fn unsupported_front_picture_does_not_hide_supported_embedded_cover() {
     for (mime, bytes, expected_type) in [
         (
             MimeType::Gif,
-            include_bytes!("../../../test-fixtures/cover-art/solid.gif").as_slice(),
+            bae_util::test_cover_art::SOLID_GIF,
             ContentType::Gif,
         ),
         (
             MimeType::Unknown("image/webp".to_string()),
-            include_bytes!("../../../test-fixtures/cover-art/solid.webp").as_slice(),
+            bae_util::test_cover_art::SOLID_WEBP,
             ContentType::Webp,
         ),
     ] {
@@ -362,8 +362,7 @@ fn image_content_type_maps_known_and_rejects_non_images() {
 
 #[test]
 fn file_tag_import_leaves_media_blank_for_every_source_codec() {
-    let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
-    let fixture_dir = manifest.join("test-fixtures").join("audio-format");
+    let fixture_dir = bae_audio::test_fixtures::audio_format_dir();
     for name in [
         "placeholder-pcm.wav",
         "placeholder-pcm.aiff",
@@ -379,9 +378,7 @@ fn file_tag_import_leaves_media_blank_for_every_source_codec() {
 
 #[test]
 fn dsd_file_tag_seeding_fails_through_tag_reader() {
-    let path = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("test-fixtures")
-        .join("audio-format")
+    let path = bae_audio::test_fixtures::audio_format_dir()
         .join("placeholder-dsd.dsf");
     let err = map_tags_with_folder(&[path], Some("Album Title"))
         .expect_err("lofty does not read DSF tags");

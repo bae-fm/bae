@@ -111,7 +111,7 @@ async fn broken_reason_flags_shortfall_and_errors_not_clean() {
 #[tokio::test]
 async fn truncated_flac_decode_is_flagged_broken_intact_is_not() {
     bae_audio::init();
-    let path = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/cue_flac/Test Album.flac");
+    let path = bae_audio::test_fixtures::cue_flac_dir().join("Test Album.flac");
     let clean = std::fs::read(path).expect("read fixture");
     let sr = 44100u64;
     // A one-second window deep in the file (25s, brown noise near the end).
@@ -265,7 +265,7 @@ async fn measure(
 }
 
 fn cue_flac_fixture(name: &str) -> PathBuf {
-    PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/cue_flac")).join(name)
+    bae_audio::test_fixtures::cue_flac_dir().join(name)
 }
 
 /// [`measure_loudness`] over one whole-file track at `path` whose validated

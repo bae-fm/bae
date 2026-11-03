@@ -527,7 +527,7 @@ async fn a_release_save_reads_a_cue_image_through_one_open_file() {
     let album_dir = f.temp_path().join("album");
     fs::create_dir_all(&album_dir).unwrap();
     fs::copy(
-        bae_test_support::fixture_dir!("cue_flac", "Test Album.flac"),
+        bae_audio::test_fixtures::cue_flac_dir().join("Test Album.flac"),
         album_dir.join("Test Album.flac"),
     )
     .unwrap();

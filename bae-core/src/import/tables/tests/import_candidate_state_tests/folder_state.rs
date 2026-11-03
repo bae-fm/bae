@@ -665,10 +665,9 @@ async fn a_disc_assignment_survives_a_relaunch() {
 /// Two bound single-track sheets, each naming the audio beside it.
 fn two_sheet_folder() -> tempfile::TempDir {
     let tmp = tempfile::TempDir::new().unwrap();
-    let fixtures = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
     for stem in ["alpha", "beta"] {
         std::fs::copy(
-            fixtures.join("tests/fixtures/cue_flac/Test Album.flac"),
+            bae_audio::test_fixtures::cue_flac_dir().join("Test Album.flac"),
             tmp.path().join(format!("{stem}.flac")),
         )
         .unwrap();
@@ -691,7 +690,7 @@ fn walkthrough_folder() -> tempfile::TempDir {
     let tmp = tempfile::TempDir::new().unwrap();
     let fixtures = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
     std::fs::copy(
-        fixtures.join("tests/fixtures/cue_flac/Test Album.flac"),
+        bae_audio::test_fixtures::cue_flac_dir().join("Test Album.flac"),
         tmp.path().join("cd.flac"),
     )
     .unwrap();

@@ -293,7 +293,7 @@ FILE "album.ape" WAVE
 /// Bytes of a placeholder audio fixture that probes to a specific codec, used to
 /// build CUE pairs whose probed codec identity is what a test asserts against.
 fn audio_format_fixture(name: &str) -> Vec<u8> {
-    std::fs::read(format!("{}/test-fixtures/audio-format/{name}", env!("CARGO_MANIFEST_DIR")))
+    std::fs::read(bae_audio::test_fixtures::audio_format_dir().join(name))
         .unwrap_or_else(|e| panic!("read audio fixture {name}: {e}"))
 }
 

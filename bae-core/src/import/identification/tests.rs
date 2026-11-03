@@ -428,7 +428,7 @@ impl Fixture {
             "02 Test Artist - Track Two (White Noise).flac",
             "03 Test Artist - Track Three (Brown Noise).flac",
         ] {
-            copy_fixture(&Path::new("tests/fixtures/cue_flac").join(file), &dir.join(file));
+            copy_fixture(&bae_audio::test_fixtures::cue_flac_dir().join(file), &dir.join(file));
         }
         dir
     }

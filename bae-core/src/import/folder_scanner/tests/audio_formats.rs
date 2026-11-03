@@ -39,7 +39,7 @@ fn opus_bitrate_comes_from_audio_packets_when_the_stream_has_no_declared_rate() 
     let album = temp_dir.path().join("Album");
     std::fs::create_dir(&album).unwrap();
     std::fs::copy(
-        concat!(env!("CARGO_MANIFEST_DIR"), "/test-fixtures/audio-format/placeholder-opus.opus"),
+        bae_audio::test_fixtures::audio_format_dir().join("placeholder-opus.opus"),
         album.join("01.opus"),
     )
     .unwrap();

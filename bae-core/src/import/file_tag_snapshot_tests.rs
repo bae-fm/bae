@@ -1,7 +1,6 @@
 use super::*;
 
-const PLACEHOLDER_MP3: &[u8] =
-    include_bytes!("../../test-fixtures/audio-format/placeholder-mp3.mp3");
+const PLACEHOLDER_MP3: &[u8] = bae_audio::test_fixtures::PLACEHOLDER_MP3;
 
 fn synchsafe(value: usize) -> [u8; 4] {
     [
@@ -306,8 +305,7 @@ fn unsupported_snapshot_artwork_is_not_selected_when_applying_file_tags() {
 }
 
 const PLACEHOLDER_FLAC: &[u8] = include_bytes!("../../tests/fixtures/flac/01 Test Track 1.flac");
-const PLACEHOLDER_M4A: &[u8] =
-    include_bytes!("../../test-fixtures/audio-format/placeholder-aac.m4a");
+const PLACEHOLDER_M4A: &[u8] = bae_audio::test_fixtures::PLACEHOLDER_AAC;
 
 /// A FLAC carrying these Vorbis comments, written to `dir`.
 fn flac_with(dir: &Path, comments: &[(&str, &str)]) -> std::path::PathBuf {

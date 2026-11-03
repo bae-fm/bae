@@ -58,7 +58,7 @@ fn changed_file_bytes_do_not_replace_scanned_durations() {
 fn a_cue_carved_container_yields_a_row_per_slice() {
     let tmp = TempDir::new().unwrap();
     let dir = tmp.path();
-    let fixture = Path::new("tests/fixtures/cue_flac");
+    let fixture = bae_audio::test_fixtures::cue_flac_dir();
     for entry in std::fs::read_dir(fixture).unwrap() {
         let entry = entry.unwrap();
         std::fs::copy(entry.path(), dir.join(entry.file_name())).unwrap();

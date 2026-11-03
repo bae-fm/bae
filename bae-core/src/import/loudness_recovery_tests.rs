@@ -3,11 +3,9 @@ use super::*;
 #[tokio::test]
 async fn measure_loudness_accepts_complete_audio_with_an_invalid_terminal_packet() {
     bae_audio::init();
-    let clean = std::fs::read(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/test-fixtures/audio-format/placeholder-mp3.mp3"
-    ))
-    .expect("MP3 fixture");
+    let clean =
+        std::fs::read(bae_audio::test_fixtures::audio_format_dir().join("placeholder-mp3.mp3"))
+            .expect("MP3 fixture");
     let frame_start = clean
         .windows(2)
         .position(|bytes| bytes[0] == 0xff && bytes[1] & 0xe0 == 0xe0)

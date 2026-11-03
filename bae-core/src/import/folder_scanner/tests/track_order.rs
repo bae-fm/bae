@@ -96,10 +96,7 @@ fn tagged_files_whose_names_carry_no_numbers_play_in_their_tags_order() {
 #[test]
 fn an_mp4_s_track_atom_and_an_id3_track_frame_order_their_files() {
     let (_tmp, album) = album_dir();
-    let m4a = std::fs::read(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/test-fixtures/audio-format/placeholder-aac.m4a"
-    ))
+    let m4a = std::fs::read(bae_audio::test_fixtures::audio_format_dir().join("placeholder-aac.m4a"))
     .unwrap();
     for (name, track) in [("Alpha.m4a", 2), ("Beta.m4a", 1)] {
         write_tagged_audio(

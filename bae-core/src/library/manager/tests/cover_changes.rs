@@ -19,25 +19,25 @@ async fn change_cover_stores_gif_and_webp_as_jpeg_without_replacing_source() {
     for (name, bytes, content_type, dimensions) in [
         (
             "solid.gif",
-            include_bytes!("../../../../test-fixtures/cover-art/solid.gif").as_slice(),
+            bae_util::test_cover_art::SOLID_GIF,
             ContentType::Gif,
             (16, 8),
         ),
         (
             "solid.webp",
-            include_bytes!("../../../../test-fixtures/cover-art/solid.webp").as_slice(),
+            bae_util::test_cover_art::SOLID_WEBP,
             ContentType::Webp,
             (16, 8),
         ),
         (
             "animated.gif",
-            include_bytes!("../../../../test-fixtures/cover-art/animated.gif").as_slice(),
+            bae_util::test_cover_art::ANIMATED_GIF,
             ContentType::Gif,
             (600, 300),
         ),
         (
             "animated.webp",
-            include_bytes!("../../../../test-fixtures/cover-art/animated.webp").as_slice(),
+            bae_util::test_cover_art::ANIMATED_WEBP,
             ContentType::Webp,
             (600, 300),
         ),

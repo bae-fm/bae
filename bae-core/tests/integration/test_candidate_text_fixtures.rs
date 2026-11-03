@@ -70,7 +70,7 @@ fn load_fixture(path: &Path) -> Fixture {
         .unwrap_or_else(|e| panic!("failed to parse fixture {path:?}: {e}"))
 }
 
-const PROBEABLE_MP3: &[u8] = include_bytes!("../../test-fixtures/audio-format/placeholder-mp3.mp3");
+const PROBEABLE_MP3: &[u8] = bae_audio::test_fixtures::PLACEHOLDER_MP3;
 
 /// Just the JPEG magic, enough to pass as an image.
 fn minimal_jpeg() -> Vec<u8> {

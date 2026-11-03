@@ -116,9 +116,7 @@ async fn a_changed_cover_reaches_the_paused_track_and_the_queue() {
 
     let image_dir = TempDir::new().unwrap();
     let image_path = image_dir.path().join("front.gif");
-    let image_bytes =
-        std::fs::read(concat!(env!("CARGO_MANIFEST_DIR"), "/test-fixtures/cover-art/solid.gif"))
-            .unwrap();
+    let image_bytes = bae_util::test_cover_art::SOLID_GIF.to_vec();
     std::fs::write(&image_path, &image_bytes).unwrap();
     let file = bae_db::NewReleaseFile::new(
         &release_id,

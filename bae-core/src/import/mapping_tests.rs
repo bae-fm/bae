@@ -668,8 +668,7 @@ fn partial_sheet_keeps_assigned_and_missing_references_even_without_choices() {
 fn codec_refusal_does_not_invent_a_current_assignment() {
     let tmp = tempfile::TempDir::new().unwrap();
     fs::copy(
-        Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("test-fixtures/audio-format/placeholder-mp3.mp3"),
+        bae_audio::test_fixtures::audio_format_dir().join("placeholder-mp3.mp3"),
         tmp.path().join("disc.mp3"),
     )
     .unwrap();

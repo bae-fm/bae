@@ -461,10 +461,7 @@ async fn seed_lossy_release() -> (AppServices, String, Vec<TempDir>) {
     let temp = TempDir::new().unwrap();
     let dir = temp.path().join("lossy album");
     std::fs::create_dir_all(&dir).unwrap();
-    let fixture = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .unwrap()
-        .join("bae-core/test-fixtures/audio-format/placeholder-opus.opus");
+    let fixture = bae_audio::test_fixtures::audio_format_dir().join("placeholder-opus.opus");
     std::fs::copy(&fixture, dir.join("track.opus")).unwrap();
 
     let discogs_key = fakes.seed_discogs_test_release(DiscogsRelease {

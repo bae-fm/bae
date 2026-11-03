@@ -397,7 +397,7 @@ async fn a_seektable_no_sparser_than_ten_seconds_stores_no_points() {
 #[tokio::test]
 async fn a_file_with_a_seektable_stores_no_points() {
     support::tracing_init();
-    let fixture_dir = support::fixture_dir!("cue_flac");
+    let fixture_dir = bae_audio::test_fixtures::cue_flac_dir();
     let imported = import(
         release(
             "scrub-points-seektable",

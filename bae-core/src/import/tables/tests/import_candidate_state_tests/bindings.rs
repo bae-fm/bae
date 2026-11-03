@@ -262,8 +262,7 @@ async fn a_sheet_s_ripper_survives_a_relaunch() {
     let tables = crate::import::tables::ImportTables::new(db.clone());
     let folder = tempfile::TempDir::new().unwrap();
     std::fs::copy(
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("tests/fixtures/cue_flac/Test Album.flac"),
+        bae_audio::test_fixtures::cue_flac_dir().join("Test Album.flac"),
         folder.path().join("cd.flac"),
     )
     .unwrap();
@@ -326,8 +325,7 @@ async fn a_timing_refusal_survives_a_relaunch() {
     let tables = crate::import::tables::ImportTables::new(db.clone());
     let folder = tempfile::TempDir::new().unwrap();
     std::fs::copy(
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("tests/fixtures/cue_flac/Test Album.flac"),
+        bae_audio::test_fixtures::cue_flac_dir().join("Test Album.flac"),
         folder.path().join("cd.flac"),
     )
     .unwrap();

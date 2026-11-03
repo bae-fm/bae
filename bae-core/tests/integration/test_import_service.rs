@@ -121,7 +121,7 @@ fn generate_album_files(dir: &Path, filenames: &[&str]) {
 }
 
 fn copy_cue_flac_fixture(dir: &Path) {
-    let fixture = bae_test_support::fixture_dir!("cue_flac");
+    let fixture = bae_audio::test_fixtures::cue_flac_dir();
     for name in ["Test Album.cue", "Test Album.flac"] {
         fs::copy(fixture.join(name), dir.join(name)).expect("copy CUE fixture");
     }

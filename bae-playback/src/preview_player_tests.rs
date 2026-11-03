@@ -45,8 +45,7 @@ async fn switching_previews_keeps_the_main_player_resume() {
     let mut player =
         PreviewPlayer::new(progress_tx, command_tx, 50, bae_diagnostics::Diagnostics::noop());
     let (device, _capture_rx) = CaptureAudioDevice::new();
-    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../bae-core/tests/fixtures/cue_flac/Test Album.flac");
+    let path = bae_audio::test_fixtures::cue_flac_dir().join("Test Album.flac");
     let sample_rate =
         u64::from(bae_audio::probe_audio_from_path(&path).expect("probe fixture").sample_rate);
 
@@ -63,8 +62,7 @@ async fn switching_previews_keeps_the_main_player_resume() {
 
 #[tokio::test]
 async fn preview_plays_only_the_requested_sample_window() {
-    let fixture_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../bae-core/tests/fixtures/cue_flac");
+    let fixture_dir = bae_audio::test_fixtures::cue_flac_dir();
     let path = fixture_dir.join("Test Album.flac");
     let probe = bae_audio::probe_audio_from_path(&path).expect("probe fixture");
     let sample_rate = u64::from(probe.sample_rate);
@@ -128,8 +126,7 @@ async fn preview_plays_only_the_requested_sample_window() {
 
 #[tokio::test]
 async fn preview_seek_is_relative_to_the_requested_sample_window() {
-    let fixture_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../bae-core/tests/fixtures/cue_flac");
+    let fixture_dir = bae_audio::test_fixtures::cue_flac_dir();
     let path = fixture_dir.join("Test Album.flac");
     let probe = bae_audio::probe_audio_from_path(&path).expect("probe fixture");
     let sample_rate = u64::from(probe.sample_rate);
@@ -228,8 +225,7 @@ impl AudioOutput for InvalidatingOutput {
 /// and the new stream plays the window's first samples again.
 #[tokio::test]
 async fn an_invalidated_preview_starts_again_where_it_got_to() {
-    let fixture_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../bae-core/tests/fixtures/cue_flac");
+    let fixture_dir = bae_audio::test_fixtures::cue_flac_dir();
     let path = fixture_dir.join("Test Album.flac");
     let probe = bae_audio::probe_audio_from_path(&path).expect("probe fixture");
     let sample_rate = u64::from(probe.sample_rate);
@@ -459,8 +455,7 @@ fn resolve_preview_probe_rejects_zero_channels() {
 async fn ending_a_preview_closes_its_file() {
     bae_audio::init();
     let dir = tempfile::TempDir::new().unwrap();
-    let fixture = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../bae-core/tests/fixtures/cue_flac");
+    let fixture = bae_audio::test_fixtures::cue_flac_dir();
     let first = dir.path().join("first.flac");
     let second = dir.path().join("second.flac");
     std::fs::copy(fixture.join("Test Album.flac"), &first).unwrap();

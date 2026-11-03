@@ -113,7 +113,7 @@ fn seek_landing_bytes_follow_content_not_time_when_bitrate_swings() {
     init();
     let path = std::path::Path::new(concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/../bae-core/tests/fixtures/cue_flac/Test Album.flac"
+        "/tests/fixtures/cue_flac/Test Album.flac"
     ));
     let probe = probe_audio_from_path(path).expect("probe fixture");
     let sr = probe.sample_rate as u64;
@@ -238,7 +238,7 @@ fn probe_reads_a_file_whose_name_is_not_utf8() {
 fn probe_audio_from_path_maps_audio_format_fixtures() {
     init();
     let fixture = |name: &str| {
-        format!("{}/../bae-core/test-fixtures/audio-format/{name}", env!("CARGO_MANIFEST_DIR"))
+        format!("{}/test-fixtures/audio-format/{name}", env!("CARGO_MANIFEST_DIR"))
     };
     for (name, expected) in [
         ("placeholder-pcm.wav", ContentType::Pcm),
@@ -269,7 +269,7 @@ fn decode_audio_decodes_audio_format_fixtures() {
         "placeholder-dsd.dff",
     ] {
         let bytes = std::fs::read(format!(
-            "{}/../bae-core/test-fixtures/audio-format/{name}",
+            "{}/test-fixtures/audio-format/{name}",
             env!("CARGO_MANIFEST_DIR")
         ))
         .unwrap();

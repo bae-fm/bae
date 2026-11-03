@@ -21,6 +21,8 @@ pub mod task_failure;
 #[cfg(any(test, feature = "test-utils"))]
 pub mod test_channels;
 #[cfg(any(test, feature = "test-utils"))]
+pub mod test_cover_art;
+#[cfg(any(test, feature = "test-utils"))]
 pub mod test_ids;
 #[cfg(any(test, feature = "test-utils"))]
 pub mod test_logs;

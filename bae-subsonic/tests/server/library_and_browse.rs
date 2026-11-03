@@ -110,10 +110,7 @@ fn flac_fixture(name: &str) -> std::path::PathBuf {
 }
 
 fn cue_fixture(name: &str) -> std::path::PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .unwrap()
-        .join("bae-core/tests/fixtures/cue_flac")
+    bae_audio::test_fixtures::cue_flac_dir()
         .join(name)
 }
 

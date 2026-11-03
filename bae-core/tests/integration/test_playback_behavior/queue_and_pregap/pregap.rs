@@ -150,7 +150,7 @@ async fn test_cue_flac_seek() {
 
     bae_playback::test_capture::wait_for_seek(&mut fixture.progress_rx, &track_id).await;
 
-    let fixture_dir = bae_test_support::fixture_dir!("cue_flac");
+    let fixture_dir = bae_audio::test_fixtures::cue_flac_dir();
     let reference_data =
         std::fs::read(fixture_dir.join("02 Test Artist - Track Two (White Noise).flac"))
             .expect("read reference");
@@ -296,7 +296,7 @@ async fn test_direct_play_skips_pregap_cue_flac() {
     let mut captured = fixture.next_capture_stream().await;
 
     // XLD splits at INDEX 01, so the reference has no pregap.
-    let fixture_dir = bae_test_support::fixture_dir!("cue_flac");
+    let fixture_dir = bae_audio::test_fixtures::cue_flac_dir();
     let reference_data =
         std::fs::read(fixture_dir.join("02 Test Artist - Track Two (White Noise).flac"))
             .expect("read reference");
