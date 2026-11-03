@@ -3881,7 +3881,11 @@ release's or track's id as UTF-8, or a candidate's key.
   selected albums are gone and which
   offered releases the library holds — are objects the app asks for each
   next value and points at new windows or a new query in place, built in the
-  bridge's `screens` module like every screen subscription. Closing or
+  bridge's `screens` module like every screen subscription. A screen's read
+  is open while the screen shows and cancelled when it stops showing, in
+  both apps: a detail view shown for another item moves its one read to it
+  in place, and a detail view showing nothing has no read, since a read is
+  never pointed at nothing. Closing or
   removing the library cancels every one before the store closes: a read
   waiting on one, or asked of it after, answers that it was cancelled, never
   with the closed store, and it takes no new request. One opened as the

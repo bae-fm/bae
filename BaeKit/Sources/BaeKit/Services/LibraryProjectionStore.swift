@@ -39,7 +39,8 @@ public final class LibraryProjectionStore {
 
     @ObservationIgnored
     private let library: Library
-    /// Each detail pane's one read, moved to the item the pane shows.
+    /// Each detail pane's one read, moved to the item the pane shows while it
+    /// shows one and closed when it stops.
     @ObservationIgnored
     private var composerReader: DetailReader<BridgeComposerDetail>?
     /// The composer whose rows are opening or shown, and the first read of
@@ -245,18 +246,18 @@ public final class LibraryProjectionStore {
 
     public func deactivateComposer(_ id: String) {
         guard composerReader?.id == id else { return }
-        composerReader?.clear()
+        composerReader?.close()
         closeComposerRows()
     }
 
     public func deactivateArtist(_ id: String) {
         guard artistReader?.id == id else { return }
-        artistReader?.clear()
+        artistReader?.close()
     }
 
     public func deactivateWork(_ id: String) {
         guard workReader?.id == id else { return }
-        workReader?.clear()
+        workReader?.close()
     }
 
     /// Close the live search: the search field is gone.

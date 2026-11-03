@@ -177,12 +177,12 @@ internal class FakeDetailRead<Value>(
     private val lookup: (String) -> Value?,
 ) {
     private val events = Channel<Pair<String?, Value?>>(Channel.UNLIMITED)
-    val requestedIds = mutableListOf<String?>()
+    val requestedIds = mutableListOf<String>()
     var cancelled = false
 
-    fun setId(id: String?) {
+    fun setId(id: String) {
         requestedIds += id
-        events.trySend(id to id?.let(lookup))
+        events.trySend(id to lookup(id))
     }
 
     suspend fun next(): Pair<String?, Value?> = events.receive()
@@ -196,7 +196,7 @@ internal class FakeDetailRead<Value>(
 internal class FakeAlbumDetailSubscription(
     val read: FakeDetailRead<BridgeAlbumDetail>,
 ) : AlbumDetailSubscription(NoHandle) {
-    override fun setId(id: String?) = read.setId(id)
+    override fun setId(id: String) = read.setId(id)
 
     override suspend fun next(): BridgeAlbumDetailSnapshot = read.next().let { (id, value) -> BridgeAlbumDetailSnapshot(id, value) }
 
@@ -208,7 +208,7 @@ internal class FakeAlbumDetailSubscription(
 internal class FakeComposerDetailSubscription(
     val read: FakeDetailRead<BridgeComposerDetail>,
 ) : ComposerDetailSubscription(NoHandle) {
-    override fun setId(id: String?) = read.setId(id)
+    override fun setId(id: String) = read.setId(id)
 
     override suspend fun next(): BridgeComposerDetailSnapshot = read.next().let { (id, value) -> BridgeComposerDetailSnapshot(id, value) }
 
@@ -220,7 +220,7 @@ internal class FakeComposerDetailSubscription(
 internal class FakeWorkDetailSubscription(
     val read: FakeDetailRead<BridgeWorkDetail>,
 ) : WorkDetailSubscription(NoHandle) {
-    override fun setId(id: String?) = read.setId(id)
+    override fun setId(id: String) = read.setId(id)
 
     override suspend fun next(): BridgeWorkDetailSnapshot = read.next().let { (id, value) -> BridgeWorkDetailSnapshot(id, value) }
 
@@ -232,7 +232,7 @@ internal class FakeWorkDetailSubscription(
 internal class FakeReleaseDetailSubscription(
     val read: FakeDetailRead<BridgeRelease>,
 ) : ReleaseDetailSubscription(NoHandle) {
-    override fun setId(id: String?) = read.setId(id)
+    override fun setId(id: String) = read.setId(id)
 
     override suspend fun next(): BridgeReleaseDetailSnapshot = read.next().let { (id, value) -> BridgeReleaseDetailSnapshot(id, value) }
 

@@ -28,9 +28,9 @@ internal data class LiveQueryState<Value>(
 )
 
 /**
- * One detail pane's live read, kept for as long as the pane's store is: [activate] moves it to the
- * item the pane shows, [deactivate] leaves it reading nothing, and only a value answering the item
- * shown now reaches [state].
+ * One detail pane's live read, open while the pane shows an item: [activate] opens it or moves it to
+ * the item the pane shows, [deactivate] ends it when the pane stops showing that item, and only a
+ * value answering the item shown now reaches [state].
  */
 internal class DetailQueryStore<Value>(
     private val scope: CoroutineScope,
@@ -59,15 +59,7 @@ internal class DetailQueryStore<Value>(
 
     fun deactivate(value: String) {
         if (parameter != value) return
-        parameter = null
-        val current = read ?: return
-        // A read that can no longer be pointed anywhere has ended; the next
-        // activation opens another.
-        runCatching { current.setId(null) }.onFailure { error ->
-            if (error !is BridgeException) throw error
-            logger.warning("detail read showing $value could not be cleared, so it is closed", error)
-            closeRead()
-        }
+        cancel()
     }
 
     fun cancel() {

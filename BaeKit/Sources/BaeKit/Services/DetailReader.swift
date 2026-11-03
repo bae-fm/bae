@@ -27,11 +27,11 @@ public typealias DetailDelivery<Value: Sendable> = KeyedDetailDelivery<
 public struct KeyedDetailQuery<Value: Sendable, Id: Hashable & Sendable>:
     Sendable
 {
-    public let setId: @Sendable (Id?) throws -> Void
+    public let setId: @Sendable (Id) throws -> Void
     public let values: PulledValues<KeyedDetailDelivery<Value, Id>>
 
     public init(
-        setId: @escaping @Sendable (Id?) throws -> Void,
+        setId: @escaping @Sendable (Id) throws -> Void,
         values: PulledValues<KeyedDetailDelivery<Value, Id>>
     ) {
         self.setId = setId
@@ -42,33 +42,30 @@ public struct KeyedDetailQuery<Value: Sendable, Id: Hashable & Sendable>:
 /// A read whose items are named by text ids.
 public typealias DetailQuery<Value: Sendable> = KeyedDetailQuery<Value, String>
 
-/// One detail view's read of the item it shows, kept for as long as the view
-/// is: showing another item moves the read in place instead of opening
-/// another. Each value is handed on only while it answers the item shown now.
+/// One detail view's read of the item it shows, open while the view shows
+/// an item: showing another item moves the read in place instead of opening
+/// another, and `close` ends it when the view stops showing one. Each value
+/// is handed on only while it answers the item shown now.
 @MainActor
 public final class KeyedDetailReader<Value: Sendable, Id: Hashable & Sendable> {
     private let open: () -> KeyedDetailQuery<Value, Id>
     private let onValue: @MainActor (Id, Value?) -> Void
     private let onError: @MainActor (Id, any Error) -> Void
-    /// The text a log line names an id by.
-    private let idText: (Id) -> String
     private var query: KeyedDetailQuery<Value, Id>?
     private var deliveries:
         ScreenSubscription<PulledValues<KeyedDetailDelivery<Value, Id>>>?
     /// The item shown now, or `nil` before the first `show` and after
-    /// `clear` or `close`.
+    /// `close`.
     public private(set) var id: Id?
 
     public init(
         open: @escaping () -> KeyedDetailQuery<Value, Id>,
         onValue: @escaping @MainActor (Id, Value?) -> Void,
-        onError: @escaping @MainActor (Id, any Error) -> Void,
-        idText: @escaping (Id) -> String
+        onError: @escaping @MainActor (Id, any Error) -> Void
     ) {
         self.open = open
         self.onValue = onValue
         self.onError = onError
-        self.idText = idText
     }
 
     /// Show `id`, opening the read on first use.
@@ -83,24 +80,6 @@ public final class KeyedDetailReader<Value: Sendable, Id: Hashable & Sendable> {
         guard let id else { return }
         closeRead()
         request(id)
-    }
-
-    /// Stop showing anything, keeping the read open for the next `show`: it
-    /// reads nothing until then.
-    public func clear() {
-        guard let shown = id else { return }
-        id = nil
-        do {
-            try query?.setId(nil)
-        }
-        catch {
-            // A read that can no longer be pointed anywhere has ended; the
-            // next `show` opens another.
-            logger.warning(
-                "detail read showing \(idText(shown)) could not be cleared, so it is closed: \(String(reflecting: error))"
-            )
-            closeRead()
-        }
     }
 
     /// Stop showing anything and end the read.
@@ -157,19 +136,3 @@ public final class KeyedDetailReader<Value: Sendable, Id: Hashable & Sendable> {
 public typealias DetailReader<Value: Sendable> = KeyedDetailReader<
     Value, String
 >
-
-extension KeyedDetailReader where Id == String {
-    /// A reader whose ids are their own text.
-    public convenience init(
-        open: @escaping () -> KeyedDetailQuery<Value, Id>,
-        onValue: @escaping @MainActor (Id, Value?) -> Void,
-        onError: @escaping @MainActor (Id, any Error) -> Void
-    ) {
-        self.init(
-            open: open,
-            onValue: onValue,
-            onError: onError,
-            idText: { $0 }
-        )
-    }
-}

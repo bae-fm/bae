@@ -37,43 +37,49 @@ class LibraryLiveFlowTest {
 
             assertEquals(detail, (event as LiveQueryEvent.Value).value)
             val read = handle.albumDetailSubscriptions.single().read
-            assertEquals(listOf<String?>("album-1"), read.requestedIds)
+            assertEquals(listOf("album-1"), read.requestedIds)
             assertTrue("the read ends with the collection", read.cancelled)
         }
 
     @Test
-    fun a_detail_pane_moves_its_one_read_between_albums() =
+    fun a_detail_pane_moves_its_one_read_while_it_shows_and_closes_it_when_it_goes() =
         runBlocking {
             val handle =
                 FakeAppHandle(
                     albumDetails =
-                        mapOf(
-                            "album-1" to BridgeFixtures.albumDetail(BridgeFixtures.album("album-1")),
-                            "album-2" to BridgeFixtures.albumDetail(BridgeFixtures.album("album-2")),
-                        ),
+                        listOf("album-1", "album-2", "album-3").associateWith {
+                            BridgeFixtures.albumDetail(BridgeFixtures.album(it))
+                        },
                 )
             val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
             val store = LibraryQueryStores(Library(handle), scope).album
 
             store.activate("album-1")
-            assertEquals(
-                "album-1",
-                store.state.value.value
-                    ?.album
-                    ?.id,
-            )
-            store.deactivate("album-1")
             store.activate("album-2")
-
             assertEquals(
                 "album-2",
                 store.state.value.value
                     ?.album
                     ?.id,
             )
-            val read: FakeDetailRead<*> = handle.albumDetailSubscriptions.single().read
-            assertEquals(listOf("album-1", null, "album-2"), read.requestedIds)
-            assertTrue("the pane keeps its read open between albums", !read.cancelled)
+            val first: FakeDetailRead<*> = handle.albumDetailSubscriptions.single().read
+            assertEquals(listOf("album-1", "album-2"), first.requestedIds)
+
+            store.deactivate("album-1")
+            assertTrue("an album no longer shown leaves the read alone", !first.cancelled)
+            store.deactivate("album-2")
+            assertTrue("the pane's read ends when the pane goes", first.cancelled)
+
+            store.activate("album-3")
+            assertEquals(2, handle.albumDetailSubscriptions.size)
+            val second: FakeDetailRead<*> = handle.albumDetailSubscriptions.last().read
+            assertEquals(listOf("album-3"), second.requestedIds)
+            assertEquals(
+                "album-3",
+                store.state.value.value
+                    ?.album
+                    ?.id,
+            )
             scope.cancel()
         }
 }

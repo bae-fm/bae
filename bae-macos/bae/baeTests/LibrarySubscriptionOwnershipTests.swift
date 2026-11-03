@@ -194,7 +194,7 @@ struct LibraryProjectionStoreSearchTests {
 struct LibraryProjectionStoreDetailTests {
     @MainActor
     @Test(
-        "moving the composer pane moves its one read, and clearing it reads nothing"
+        "moving the composer pane moves its one read, and clearing it ends the read"
     )
     func composerPaneMovesOneRead() async throws {
         let feed = DetailFeed<BridgeComposerDetail>()
@@ -225,18 +225,16 @@ struct LibraryProjectionStoreDetailTests {
 
         store.deactivateComposer("composer-1")
         #expect(
-            feed.requested.count == 2,
+            !feed.isCancelled(read: 0),
             "a composer no longer shown is not the one read"
         )
         store.deactivateComposer("composer-2")
+        try await Wait.until { feed.isCancelled(read: 0) }
         #expect(store.composerRows == nil, "a cleared pane reads no rows")
-        store.activateComposer("composer-3")
 
-        #expect(
-            feed.requested == ["composer-1", "composer-2", nil, "composer-3"]
-        )
-        #expect(feed.opened == 1)
-        #expect(!feed.isCancelled(read: 0))
+        store.activateComposer("composer-3")
+        #expect(feed.opened == 2, "a pane shown again opens a read of its own")
+        #expect(feed.requested == ["composer-1", "composer-2", "composer-3"])
     }
 }
 

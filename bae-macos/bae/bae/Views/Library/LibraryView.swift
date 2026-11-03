@@ -53,36 +53,6 @@ struct LibraryView: View {
                 await session.artists.ensureLoaded()
             }
         }
-        .onChange(of: session.detailSelection.composerId, initial: true) {
-            oldId,
-            newId in
-            // Another item moves the pane's one read; only clearing the
-            // selection ends it.
-            if let newId {
-                libraryProjections.activateComposer(newId)
-            }
-            else if let oldId {
-                libraryProjections.deactivateComposer(oldId)
-            }
-        }
-        .onChange(of: session.detailSelection.workId, initial: true) {
-            oldId,
-            newId in
-            if let newId {
-                libraryProjections.activateWork(newId)
-            }
-            else if let oldId {
-                libraryProjections.deactivateWork(oldId)
-            }
-        }
-        .onChange(of: session.selectedArtistId, initial: true) { oldId, newId in
-            if let newId {
-                libraryProjections.activateArtist(newId)
-            }
-            else if let oldId {
-                libraryProjections.deactivateArtist(oldId)
-            }
-        }
         .onChange(of: libraryProjections.composer.value) { _, detail in
             guard let detail,
                 case .composer(let artistId, nil) = session.detailSelection,
@@ -286,6 +256,17 @@ extension LibraryView {
                         )
                         ComposerDetailPane(paneDetail: composerPaneDetail)
                             .frame(minWidth: Self.detailMinWidth)
+                            .detailRead(
+                                id: session.detailSelection.composerId,
+                                activate: libraryProjections.activateComposer,
+                                deactivate: libraryProjections
+                                    .deactivateComposer
+                            )
+                            .detailRead(
+                                id: session.detailSelection.workId,
+                                activate: libraryProjections.activateWork,
+                                deactivate: libraryProjections.deactivateWork
+                            )
                     }
                     .libraryContentContainer(fullWidth: fullWidth)
                 }
@@ -322,6 +303,11 @@ extension LibraryView {
                         )
                         ArtistDetailPane(detail: selectedArtistDetail)
                             .frame(minWidth: Self.detailMinWidth)
+                            .detailRead(
+                                id: session.selectedArtistId,
+                                activate: libraryProjections.activateArtist,
+                                deactivate: libraryProjections.deactivateArtist
+                            )
                     }
                     .libraryContentContainer(fullWidth: fullWidth)
                 }

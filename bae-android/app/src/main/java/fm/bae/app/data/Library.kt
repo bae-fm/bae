@@ -58,19 +58,19 @@ internal data class DetailDelivery<Value>(
  * names the id it answers.
  */
 internal interface DetailRead<Value> : PulledSubscription<DetailDelivery<Value>> {
-    fun setId(id: String?)
+    fun setId(id: String)
 
     /** Free the read without waiting, from a scope that is already ending. */
     fun release()
 }
 
 private class BridgeDetailRead<Value>(
-    private val set: (String?) -> Unit,
+    private val set: (String) -> Unit,
     pulls: PulledSubscription<DetailDelivery<Value>>,
     private val free: () -> Unit,
 ) : DetailRead<Value>,
     PulledSubscription<DetailDelivery<Value>> by pulls {
-    override fun setId(id: String?) = set(id)
+    override fun setId(id: String) = set(id)
 
     override fun release() = free()
 }

@@ -11,16 +11,13 @@
         public static func fixed(
             _ lookup: @escaping @Sendable (Id) -> Value?
         ) -> KeyedDetailQuery<Value, Id> {
-            let requests = FixedRequests<Id?>()
+            let requests = FixedRequests<Id>()
             return KeyedDetailQuery(
                 setId: { requests.request($0) },
                 values: PulledValues(
                     read: {
                         let id = try await requests.take()
-                        return KeyedDetailDelivery(
-                            id: id,
-                            value: id.flatMap(lookup)
-                        )
+                        return KeyedDetailDelivery(id: id, value: lookup(id))
                     },
                     cancel: { requests.close() }
                 )

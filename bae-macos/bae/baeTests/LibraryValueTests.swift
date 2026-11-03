@@ -375,10 +375,10 @@ final class KeyedDetailFeed<Value: Sendable, Id: Hashable & Sendable>:
 
     private let lock = NSLock()
     private var reads: [Read] = []
-    private var ids: [Id?] = []
+    private var ids: [Id] = []
 
     var opened: Int { lock.withLock { reads.count } }
-    var requested: [Id?] { lock.withLock { ids } }
+    var requested: [Id] { lock.withLock { ids } }
 
     func isCancelled(read index: Int) -> Bool {
         lock.withLock { reads[index].cancelled }

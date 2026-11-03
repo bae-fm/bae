@@ -54,9 +54,10 @@ macro_rules! detail_subscription {
 
         #[uniffi::export(async_runtime = "tokio", cancellable)]
         impl $object {
-            /// Show `id` from now on; `None` shows nothing.
-            pub fn set_id(&self, id: Option<$id>) -> Result<(), BridgeError> {
-                self.inner.set(id.map(<$core_id>::from)).map_err(live_read_error)
+            /// Show `id` from now on. A view that stops showing anything
+            /// cancels the read rather than pointing it at nothing.
+            pub fn set_id(&self, id: $id) -> Result<(), BridgeError> {
+                self.inner.set(Some(<$core_id>::from(id))).map_err(live_read_error)
             }
 
             pub async fn next(self: Arc<Self>) -> Result<$snapshot, BridgeError> {

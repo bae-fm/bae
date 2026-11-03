@@ -68,8 +68,7 @@ final class ImportSelectionObservation {
             },
             onError: { [weak self] _, error in
                 self?.uiStore.showError(error)
-            },
-            idText: { bridgeCandidateKeyText(candidateKey: $0) }
+            }
         )
     }
 
@@ -149,8 +148,7 @@ final class InvalidCandidateSelectionObservation {
                 },
                 onError: { [weak self] _, error in
                     self?.uiStore.showError(error)
-                },
-                idText: { bridgeCandidateKeyText(candidateKey: $0) }
+                }
             )
         self.reader = reader
         reader.show(key)
