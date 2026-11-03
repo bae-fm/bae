@@ -34,14 +34,14 @@ pub struct ReconfigurableLiveQueryEvents<Request, T> {
     events: tokio::sync::mpsc::UnboundedReceiver<(
         coven::LiveQueryRevision,
         coven::LiveQueryCause,
-        Result<T, crate::library::LibraryError>,
+        Result<T, crate::LibraryError>,
     )>,
     requests: coven::LiveQueryRequests<Request>,
     /// The revision of the request last set; events answering an older one
     /// are not delivered. `None` while the initial request is the only one.
     newest: Option<coven::LiveQueryRevision>,
     /// Stops the task that owns the query.
-    task: crate::library::CancellationToken,
+    task: crate::CancellationToken,
 }
 
 impl<Request, T> ReconfigurableLiveQueryEvents<Request, T>
@@ -49,7 +49,7 @@ where
     Request: Clone + PartialEq + std::fmt::Debug,
 {
     /// The next result for the newest request, or `None` once the query ends.
-    pub async fn recv(&mut self) -> Option<Result<T, crate::library::LibraryError>> {
+    pub async fn recv(&mut self) -> Option<Result<T, crate::LibraryError>> {
         self.recv_with_cause().await.map(|(_, result)| result)
     }
 
@@ -57,7 +57,7 @@ where
     /// it read, or both.
     pub async fn recv_with_cause(
         &mut self,
-    ) -> Option<(coven::LiveQueryCause, Result<T, crate::library::LibraryError>)> {
+    ) -> Option<(coven::LiveQueryCause, Result<T, crate::LibraryError>)> {
         loop {
             let (revision, cause, result) = self.events.recv().await?;
             if self.newest.is_none_or(|newest| revision == newest) {
@@ -89,9 +89,9 @@ impl<Request, T> Drop for ReconfigurableLiveQueryEvents<Request, T> {
 /// owns the query ends that subscription with the failure, as a panic in the
 /// subscription's own task does.
 pub fn reconfigurable_live_query_events<Request, T>(
-    manager: &crate::library::LibraryManager,
+    manager: &crate::LibraryManager,
     mut query: coven::ReconfigurableLiveQuery<Request, T>,
-    reader: impl crate::library::SubscriptionReader,
+    reader: impl crate::SubscriptionReader,
 ) -> ReconfigurableLiveQueryEvents<Request, T>
 where
     Request: Clone + PartialEq + Send + Sync + 'static,
@@ -99,7 +99,7 @@ where
 {
     let requests = query.requests();
     let (tx, events) = tokio::sync::mpsc::unbounded_channel();
-    let task = crate::library::CancellationToken::new();
+    let task = crate::CancellationToken::new();
     manager.spawn_stoppable_subscription_task(
         "live query events",
         task.clone(),
@@ -108,11 +108,7 @@ where
             while let Some(event) = query.next().await {
                 let revision = event.revision;
                 if tx
-                    .send((
-                        revision,
-                        event.cause,
-                        event.result.map_err(crate::library::LibraryError::from),
-                    ))
+                    .send((revision, event.cause, event.result.map_err(crate::LibraryError::from)))
                     .is_err()
                 {
                     return;
@@ -144,7 +140,7 @@ mod tests {
         )
         .await;
         let (reader, _read) =
-            tokio::sync::mpsc::unbounded_channel::<Result<(), crate::library::LibraryError>>();
+            tokio::sync::mpsc::unbounded_channel::<Result<(), crate::LibraryError>>();
         let mut events = super::reconfigurable_live_query_events(
             &manager,
             manager.subscribe_queue_upcoming(bae_db::LibraryPageWindows::new()),

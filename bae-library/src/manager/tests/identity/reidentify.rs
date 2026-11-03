@@ -32,12 +32,11 @@ async fn reidentify(manager: &LibraryManager, release_id: &str, link: bae_identi
 /// `tracks` tracks, where `prepare_release` reads it.
 fn seed_musicbrainz(manager: &TestManager, release_id: &str, group_id: &str, tracks: usize) {
     let response = make_mb_release_for_re_identify(release_id, group_id, tracks);
-    manager
-        .fakes
-        .seed_musicbrainz_release(release_id, serde_json::to_string(&response).unwrap());
-    manager
-        .fakes
-        .seed_musicbrainz_release_group(group_id, serde_json::json!({ "id": group_id }).to_string());
+    manager.fakes.seed_musicbrainz_release(release_id, serde_json::to_string(&response).unwrap());
+    manager.fakes.seed_musicbrainz_release_group(
+        group_id,
+        serde_json::json!({ "id": group_id }).to_string(),
+    );
 }
 
 /// [`insert_n_tracks`], each track playing a file of its own, as the editor
@@ -213,7 +212,10 @@ async fn a_reidentify_that_does_not_fit_the_stored_tracks_is_refused() {
         .expect_err("a release of 12 tracks cannot lay out 10");
     assert_eq!(
         err.category(),
-        bae_diagnostics::UiErrorCategory::MetadataTrackCount { folder_tracks: 10, release_tracks: 12 },
+        bae_diagnostics::UiErrorCategory::MetadataTrackCount {
+            folder_tracks: 10,
+            release_tracks: 12
+        },
         "the editor names the refusal, not a generic import failure: {err}"
     );
     assert!(manager.database.get_release_records(&release.id).await.unwrap().is_empty());
@@ -319,7 +321,10 @@ async fn a_reidentify_leaves_none_of_the_previous_source_s_roles_or_works() {
         &manager,
         &release.id,
         bae_identify::PressingLink {
-            record: bae_catalogs::records::LookupRef::new(LookupCatalog::Discogs, discogs_release_id),
+            record: bae_catalogs::records::LookupRef::new(
+                LookupCatalog::Discogs,
+                discogs_release_id,
+            ),
             partners: vec![],
         },
     )
@@ -531,9 +536,8 @@ async fn a_session_s_save_is_refused_once_the_release_changed_under_it() {
     let titled = |session: &ReleaseEdit, title: &str| {
         let mut edit = session.opened().edit.clone();
         edit.album_title = title.to_string();
-        edit.album_artist_assignments = vec![bae_import::Credited::plain(
-            bae_import::ArtistAssignment::named("Artist Name"),
-        )];
+        edit.album_artist_assignments =
+            vec![bae_import::Credited::plain(bae_import::ArtistAssignment::named("Artist Name"))];
         edit
     };
 
@@ -578,7 +582,6 @@ async fn a_session_s_save_is_refused_once_the_release_changed_under_it() {
 
 #[tokio::test]
 async fn re_identify_with_a_partner_writes_both_identity_rows() {
-    
     use bae_catalogs::catalog::Catalog;
     let (manager, _temp_dir) = setup_test_manager().await;
     manager

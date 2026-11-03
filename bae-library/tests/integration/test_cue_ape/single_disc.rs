@@ -1,6 +1,6 @@
 use bae_catalogs::discogs::models::DiscogsRelease;
 use bae_import::{ImportCommand, ImportDestination};
-use bae_library::library::LibraryManager;
+use bae_library::LibraryManager;
 use bae_playback::{PlaybackProgress, PlaybackState};
 use bae_types::track_time::{TrackTime};
 use bae_util::content_type::ContentType;

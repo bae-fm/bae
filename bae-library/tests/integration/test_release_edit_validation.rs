@@ -9,7 +9,7 @@
 
 use bae_db::{Database, DbAlbum, DbArtist, DbRelease, DbTrack};
 use bae_import::{ArtistAssignment, ReleaseUserEdit, TrackArtistAssignments, TrackUserEdit};
-use bae_library::library::LibraryError;
+use bae_library::LibraryError;
 use chrono::Utc;
 use uuid::Uuid;
 

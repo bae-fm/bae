@@ -17,7 +17,7 @@ async fn a_file_a_pin_downloads_reads_as_downloading() {
     let mut files = manager.watch_pin_file_transfers();
     assert_eq!(
         files.next().await.unwrap(),
-        vec![crate::library::FileTransferChange::Reset(Default::default())],
+        vec![crate::FileTransferChange::Reset(Default::default())],
         "nothing downloads before the pin"
     );
 
@@ -35,7 +35,7 @@ async fn a_file_a_pin_downloads_reads_as_downloading() {
     let fetched = tokio::time::timeout(std::time::Duration::from_secs(10), async {
         loop {
             for change in files.next().await.unwrap() {
-                if let crate::library::FileTransferChange::Updated { file, .. } = change {
+                if let crate::FileTransferChange::Updated { file, .. } = change {
                     return file;
                 }
             }

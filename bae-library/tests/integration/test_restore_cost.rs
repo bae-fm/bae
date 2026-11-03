@@ -14,7 +14,7 @@
 //! an older library; the others restore from the first slot.
 
 use bae_app_dir::AppDir;
-use bae_library::library::{FixtureAlbum, LibraryFixture};
+use bae_library::{FixtureAlbum, LibraryFixture};
 use coven::{Clock, CovenHandle, MemoryStorage, SecretText, Storage, SyncStatus, TestCoven};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
@@ -162,7 +162,7 @@ async fn restore_cost(library: Library) {
     let device_app_dir = AppDir::at(device_dir.path()).unwrap();
     let (_cancelling, cancel) = tokio::sync::watch::channel(false);
     let restoring = Instant::now();
-    let restored = bae_library::library::restore_from_code(
+    let restored = bae_library::restore_from_code(
         TestCoven::new()
             .builder(device_app_dir.store_layout())
             .clock(clock.clone())

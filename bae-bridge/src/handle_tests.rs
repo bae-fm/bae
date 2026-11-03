@@ -750,7 +750,7 @@ fn reopening_a_library_released_on_its_runtime_waits_for_its_close() {
     assert!(
         matches!(
             read,
-            Err(bae_library::library::LibraryError::Database(bae_db::DbError::Coven(
+            Err(bae_library::LibraryError::Database(bae_db::DbError::Coven(
                 coven::CovenError::Database(coven::DbError::StoreClosed)
             )))
         ),

@@ -6,10 +6,10 @@
 
 /// What a reader of the transfer watch holds after applying `changes`.
 fn apply_transfer_changes(
-    held: &mut Option<crate::library::OutboxTransfers>,
-    changes: Vec<crate::library::OutboxTransferChange>,
+    held: &mut Option<crate::OutboxTransfers>,
+    changes: Vec<crate::OutboxTransferChange>,
 ) {
-    use crate::library::OutboxTransferChange;
+    use crate::OutboxTransferChange;
     for change in changes {
         match change {
             OutboxTransferChange::Reset(transfers) => *held = Some(transfers),
@@ -49,9 +49,9 @@ async fn the_transfers_name_only_the_files_being_sent() {
     apply_transfer_changes(&mut held, transfers.next().await.unwrap().unwrap());
     assert_eq!(
         held,
-        Some(crate::library::OutboxTransfers {
+        Some(crate::OutboxTransfers {
             releases: Default::default(),
-            total: crate::library::UploadTransfer { bar: None, throughput_bps: 0 },
+            total: crate::UploadTransfer { bar: None, throughput_bps: 0 },
         }),
         "files that only wait have no transfer"
     );
@@ -109,7 +109,7 @@ async fn the_total_transfer_is_told_first_and_then_as_it_changes() {
     )
     .await;
     let mut total = manager.watch_outbox_total_transfer();
-    let idle = crate::library::UploadTransfer { bar: None, throughput_bps: 0 };
+    let idle = crate::UploadTransfer { bar: None, throughput_bps: 0 };
     assert_eq!(total.next().await.unwrap().unwrap(), idle);
 
     home.set_faults(coven::Faults {
@@ -184,7 +184,7 @@ async fn a_file_sent_in_one_request_moves_its_release_as_it_goes() {
     .expect("the release moves while its one request goes");
     assert_eq!(
         bar,
-        crate::library::UploadBar { bytes_done: 7, bytes_total: 7 },
+        crate::UploadBar { bytes_done: 7, bytes_total: 7 },
         "the file's whole share counts once its request has taken it"
     );
     let fraction = tokio::time::timeout(std::time::Duration::from_secs(10), async {
@@ -192,11 +192,11 @@ async fn a_file_sent_in_one_request_moves_its_release_as_it_goes() {
         loop {
             for change in files.next().await.unwrap() {
                 match change {
-                    crate::library::FileTransferChange::Reset(all) => held = all,
-                    crate::library::FileTransferChange::Updated { file, fraction } => {
+                    crate::FileTransferChange::Reset(all) => held = all,
+                    crate::FileTransferChange::Updated { file, fraction } => {
                         held.insert(file, fraction);
                     }
-                    crate::library::FileTransferChange::Removed { file } => {
+                    crate::FileTransferChange::Removed { file } => {
                         held.remove(&file);
                     }
                 }

@@ -155,7 +155,7 @@ impl OpenedLibrary {
     ) -> Result<Arc<crate::AppHandle>, BridgeError> {
         let mut held = self.handle.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
         let handle = held.as_ref().ok_or_else(|| {
-            BridgeError::from(bae_library::library::LibraryError::Internal(
+            BridgeError::from(bae_library::LibraryError::Internal(
                 "this library was already opened".to_string(),
             ))
         })?;

@@ -137,11 +137,10 @@ async fn bench(
     remove_devices: bool,
 ) -> Result<(), String> {
     let opening = Instant::now();
-    let source =
-        bae_db::configure_store(bae_library::library::Keychain::System.store_builder(app_dir))
-            .open(store_id, |_| ())
-            .await
-            .map_err(|error| format!("open the active library failed: {error}"))?;
+    let source = bae_db::configure_store(bae_library::Keychain::System.store_builder(app_dir))
+        .open(store_id, |_| ())
+        .await
+        .map_err(|error| format!("open the active library failed: {error}"))?;
     eprintln!(
         "opened {} ({store_id}) in {:?}",
         source.store_name().await.map_err(|error| error.to_string())?,
@@ -195,7 +194,7 @@ async fn restore_runs(
             )
             .await
             .map_err(|error| format!("run {run}: restore failed: {error}"))?,
-            None => bae_library::library::restore_from_code(
+            None => bae_library::restore_from_code(
                 builder,
                 code,
                 s3.clone(),

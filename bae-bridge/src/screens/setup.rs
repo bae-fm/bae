@@ -18,7 +18,7 @@ use crate::types::{
 /// that is handed the stream's values writes them; cancelling the stream ends
 /// what it holds.
 fn setup_steps(values: Arc<StreamValues>, runtime: OperationRuntime) -> Arc<KeyedValueStream> {
-    Arc::new(KeyedValueStream::new(values, bae_library::library::CancellationToken::new(), runtime))
+    Arc::new(KeyedValueStream::new(values, bae_library::CancellationToken::new(), runtime))
 }
 
 /// The app makes one for each call that opens a library, starts reading its

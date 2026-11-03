@@ -1,7 +1,7 @@
 //! The Storage Manager inspector's live read on [`AppServices`].
 
 use super::*;
-use bae_library::library::LibraryError;
+use bae_library::LibraryError;
 use bae_views::storage_inspector::StorageInspector;
 
 /// What the reader was last told of the release shown.
@@ -25,12 +25,12 @@ enum Told {
 pub fn subscribe_storage_inspector(
     library: &LibraryManager,
     library_views: &LibraryViews,
-) -> bae_library::library::LiveDetail<StorageInspector> {
+) -> bae_library::LiveDetail<StorageInspector> {
     let (id_tx, mut ids) = tokio::sync::watch::channel(None::<String>);
-    let (tx, rx) = bae_library::library::live_read_channel();
+    let (tx, rx) = bae_library::live_read_channel();
     let manager = library.clone();
     let views = library_views.clone();
-    let task = bae_library::library::CancellationToken::new();
+    let task = bae_library::CancellationToken::new();
     library.spawn_stoppable_subscription_task(
         "storage inspector",
         task.clone(),
@@ -84,12 +84,12 @@ pub fn subscribe_storage_inspector(
                         Some(inspector)
                     }
                 };
-                let snapshot = bae_library::library::DetailSnapshot { id: Some(release_id), value };
+                let snapshot = bae_library::DetailSnapshot { id: Some(release_id), value };
                 if tx.send(Ok(snapshot)).is_err() {
                     return;
                 }
             }
         },
     );
-    bae_library::library::LiveDetail::new(id_tx, rx, task)
+    bae_library::LiveDetail::new(id_tx, rx, task)
 }

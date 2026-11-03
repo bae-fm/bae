@@ -36,7 +36,7 @@ impl BridgeCatalogApply {
         *self.steps.lock().unwrap() = Some(values.clone());
         Arc::new(KeyedValueStream::new(
             values,
-            bae_library::library::CancellationToken::new(),
+            bae_library::CancellationToken::new(),
             self.runtime.clone(),
         ))
     }

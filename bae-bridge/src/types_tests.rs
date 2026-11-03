@@ -457,7 +457,7 @@ fn every_kind_of_fact() -> bae_types::pressing::PressingFacts {
 /// already names the kind of failure, so the detail carries only the fault.
 #[test]
 fn a_database_fault_is_not_prefixed_twice() {
-    let error = bae_library::library::LibraryError::Database(bae_db::DbError::Message(
+    let error = bae_library::LibraryError::Database(bae_db::DbError::Message(
         "invalid folder scan value".into(),
     ));
     let BridgeError::Diagnostic { detail, .. } = BridgeError::database_query(error) else {

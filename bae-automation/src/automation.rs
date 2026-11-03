@@ -15,7 +15,7 @@ impl Automation {
                 .services
                 .preferences()
                 .await
-                .map_err(bae_library::library::LibraryError::from)?
+                .map_err(bae_library::LibraryError::from)?
                 .mcp
                 .into(),
         })
@@ -372,15 +372,13 @@ impl Automation {
                 let outcome =
                     self.services.upload_releases(std::slice::from_ref(&release_id)).await?;
                 match outcome {
-                    bae_library::library::UploadReleasesOutcome::Complete { .. } => {}
-                    bae_library::library::UploadReleasesOutcome::Partial {
-                        receipt: None,
-                        failure,
-                    } => return Err(failure.error.into()),
-                    bae_library::library::UploadReleasesOutcome::Partial {
-                        receipt: Some(_),
-                        ..
-                    } => unreachable!("one release cannot be both admitted and refused"),
+                    bae_library::UploadReleasesOutcome::Complete { .. } => {}
+                    bae_library::UploadReleasesOutcome::Partial { receipt: None, failure } => {
+                        return Err(failure.error.into())
+                    }
+                    bae_library::UploadReleasesOutcome::Partial { receipt: Some(_), .. } => {
+                        unreachable!("one release cannot be both admitted and refused")
+                    }
                 }
                 Ok(AutomationStorageActionOutcome::UploadQueued { release_id })
             }

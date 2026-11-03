@@ -1,7 +1,7 @@
 //! Provider operations and the upload pause over coven's store handle.
 
-use crate::library::LibraryError;
 use crate::sync::S3ConfigData;
+use crate::LibraryError;
 use bae_db::Database;
 use bae_diagnostics::{Diagnostics, TelemetryEvent};
 use coven::CloudProvider;
@@ -35,7 +35,7 @@ impl SyncController {
         &self,
         data: S3ConfigData,
         device_name: &str,
-        steps: crate::library::StorageSetupSteps<'_>,
+        steps: crate::StorageSetupSteps<'_>,
     ) -> Result<coven::StorageSetup, LibraryError> {
         let (storage, credentials) = data
             .into_location()
@@ -80,7 +80,7 @@ impl SyncController {
     pub(crate) async fn sign_in_again(
         &self,
         device_name: &str,
-        steps: crate::library::StorageSetupSteps<'_>,
+        steps: crate::StorageSetupSteps<'_>,
     ) -> Result<coven::StorageSetup, LibraryError> {
         let storage = self.database.storage_config().await?.ok_or_else(|| {
             LibraryError::Internal("signing in again needs a library with storage".into())
@@ -100,7 +100,7 @@ impl SyncController {
         &self,
         storage: coven::StorageConfig,
         device_name: &str,
-        steps: crate::library::StorageSetupSteps<'_>,
+        steps: crate::StorageSetupSteps<'_>,
     ) -> Result<coven::StorageSetup, LibraryError> {
         let provider = storage.provider();
         let setup = self.database.setup_oauth_storage(storage, device_name, steps).await?;
@@ -111,7 +111,7 @@ impl SyncController {
     pub(crate) async fn use_cloudkit(
         &self,
         device_name: &str,
-        steps: crate::library::StorageSetupSteps<'_>,
+        steps: crate::StorageSetupSteps<'_>,
     ) -> Result<coven::StorageSetup, LibraryError> {
         let setup = self.database.setup_cloudkit_storage(device_name, steps).await?;
         self.diagnostics

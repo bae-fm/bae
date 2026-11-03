@@ -17,30 +17,10 @@ async fn change_cover_stores_a_resized_jpeg_thumbnail() {
 #[tokio::test]
 async fn change_cover_stores_gif_and_webp_as_jpeg_without_replacing_source() {
     for (name, bytes, content_type, dimensions) in [
-        (
-            "solid.gif",
-            bae_util::test_cover_art::SOLID_GIF,
-            ContentType::Gif,
-            (16, 8),
-        ),
-        (
-            "solid.webp",
-            bae_util::test_cover_art::SOLID_WEBP,
-            ContentType::Webp,
-            (16, 8),
-        ),
-        (
-            "animated.gif",
-            bae_util::test_cover_art::ANIMATED_GIF,
-            ContentType::Gif,
-            (600, 300),
-        ),
-        (
-            "animated.webp",
-            bae_util::test_cover_art::ANIMATED_WEBP,
-            ContentType::Webp,
-            (600, 300),
-        ),
+        ("solid.gif", bae_util::test_cover_art::SOLID_GIF, ContentType::Gif, (16, 8)),
+        ("solid.webp", bae_util::test_cover_art::SOLID_WEBP, ContentType::Webp, (16, 8)),
+        ("animated.gif", bae_util::test_cover_art::ANIMATED_GIF, ContentType::Gif, (600, 300)),
+        ("animated.webp", bae_util::test_cover_art::ANIMATED_WEBP, ContentType::Webp, (600, 300)),
     ] {
         assert_changed_cover(name, bytes, content_type, dimensions).await;
     }
@@ -238,9 +218,7 @@ async fn replacing_an_uploaded_cover_deletes_its_file_record() {
     assert_ne!(first.id(), second.id());
     assert!(matches!(
         manager.database.coven_file(first.id()).await,
-        Err(bae_db::DbError::Coven(coven::CovenError::Database(
-            coven::DbError::FileAbsent { .. }
-        )))
+        Err(bae_db::DbError::Coven(coven::CovenError::Database(coven::DbError::FileAbsent { .. })))
     ));
     assert_eq!(manager.database.read_file(&second).await.unwrap(), b"second cover");
 }

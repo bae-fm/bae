@@ -4,7 +4,7 @@
 //! [`super::output`]; the verbatim export arm in [`super::export`].
 
 use super::*;
-use crate::library::SaveTrackPlan;
+use crate::SaveTrackPlan;
 use bae_db::TrackAudioMeta;
 use bae_track_audio::track_sources::SourceStream;
 use bae_track_audio::{SegmentDecodeParams, StreamDecodeParams};
@@ -149,9 +149,9 @@ impl LibraryManager {
             })?;
         let meta = TrackAudioMeta::resolve(&self.database, track_id).await?;
         let resolved = self.resolve_save_tags(&meta.release, &meta.track).await?;
-        let stem = crate::library::save::render_save_filename(&preset.filename_tokens, &resolved);
+        let stem = crate::save::render_save_filename(&preset.filename_tokens, &resolved);
         let extension = preset.codec.extension();
-        let name = crate::library::save::save_file_name(&stem, extension);
+        let name = crate::save::save_file_name(&stem, extension);
         Ok(name
             .to_str()
             .and_then(|name| name.strip_suffix(&format!(".{extension}")))
@@ -207,7 +207,7 @@ impl LibraryManager {
             cover,
             preset.codec,
             NonZeroUsize::MIN,
-            crate::library::save::ExistingOutput::Replace,
+            crate::save::ExistingOutput::Replace,
             |file_id: &String| self.open_save_source(&sources[file_id]),
             Arc::new(|| {}),
         )
@@ -251,8 +251,7 @@ impl LibraryManager {
                     },
                 )
                 .await?;
-            let stem =
-                crate::library::save::render_save_filename(&preset.filename_tokens, &plan.resolved);
+            let stem = crate::save::render_save_filename(&preset.filename_tokens, &plan.resolved);
             let output_path =
                 unique_output_path(staging_dir, &stem, preset.codec.extension(), &mut used_paths);
             saves.push((plan, output_path));
@@ -281,7 +280,7 @@ impl LibraryManager {
             cover,
             preset.codec,
             parallelism,
-            crate::library::save::ExistingOutput::Refuse,
+            crate::save::ExistingOutput::Refuse,
             |file_id: &String| self.open_save_source(&sources[file_id]),
             on_saved,
         )
@@ -292,10 +291,10 @@ impl LibraryManager {
     /// A save's failure as the library reports it: a save that could not be
     /// written fails as a save, and work in it that panicked is reported as
     /// a bug.
-    fn save_failed(&self, error: crate::library::save::SaveError) -> LibraryError {
+    fn save_failed(&self, error: crate::save::SaveError) -> LibraryError {
         match error {
-            crate::library::save::SaveError::Failed(detail) => LibraryError::Save(detail),
-            crate::library::save::SaveError::Unfinished(failed) => self.bug(failed).into(),
+            crate::save::SaveError::Failed(detail) => LibraryError::Save(detail),
+            crate::save::SaveError::Unfinished(failed) => self.bug(failed).into(),
         }
     }
 
@@ -322,15 +321,15 @@ impl LibraryManager {
                 "release {release_id} has no source folder name; cannot name its CUE image"
             ))
         })?;
-        let stem = crate::library::save::sanitize_filename_stem(&folder);
+        let stem = crate::save::sanitize_filename_stem(&folder);
         if stem.is_empty() {
             return Err(LibraryError::Save(format!(
                 "release {release_id} source folder name has no usable filename characters"
             )));
         }
         let output_audio_path =
-            staging_dir.join(crate::library::save::save_file_name(&stem, preset.codec.extension()));
-        let output_cue_path = staging_dir.join(crate::library::save::save_file_name(&stem, "cue"));
+            staging_dir.join(crate::save::save_file_name(&stem, preset.codec.extension()));
+        let output_cue_path = staging_dir.join(crate::save::save_file_name(&stem, "cue"));
 
         let sources = Self::save_source_files(&plans);
         SaveService::save_release_image_with_cue(
@@ -481,7 +480,7 @@ fn unique_output_path(
     loop {
         let candidate_stem =
             if index == 1 { stem.to_string() } else { format!("{stem} ({index})") };
-        let path = dir.join(crate::library::save::save_file_name(&candidate_stem, extension));
+        let path = dir.join(crate::save::save_file_name(&candidate_stem, extension));
         if used_paths.insert(path.clone()) {
             return path;
         }

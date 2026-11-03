@@ -12,7 +12,7 @@ use super::*;
 pub fn subscribe_album_detail(
     library: &LibraryManager,
     library_views: &LibraryViews,
-) -> bae_library::library::LiveDetail<bae_views::album_detail::AlbumDetail> {
+) -> bae_library::LiveDetail<bae_views::album_detail::AlbumDetail> {
     let views = library_views.clone();
     detail_read(
         library.clone(),
@@ -29,12 +29,12 @@ pub fn subscribe_album_detail(
 pub fn subscribe_release_detail(
     library: &LibraryManager,
     library_views: &LibraryViews,
-) -> bae_library::library::LiveDetail<bae_views::album_detail::ReleaseDetail> {
+) -> bae_library::LiveDetail<bae_views::album_detail::ReleaseDetail> {
     let (id_tx, mut ids) = tokio::sync::watch::channel(None::<String>);
-    let (tx, rx) = bae_library::library::live_read_channel();
+    let (tx, rx) = bae_library::live_read_channel();
     let manager = library.clone();
     let views = library_views.clone();
-    let task = bae_library::library::CancellationToken::new();
+    let task = bae_library::CancellationToken::new();
     library.spawn_stoppable_subscription_task("detail", task.clone(), tx.clone(), async move {
         let mut id = ids.borrow_and_update().clone();
         let mut query = reconfigurable_live_query_events(
@@ -63,14 +63,13 @@ pub fn subscribe_release_detail(
                     continue;
                 }
             };
-            let value =
-                value.map(|value| bae_library::library::DetailSnapshot { id: id.clone(), value });
+            let value = value.map(|value| bae_library::DetailSnapshot { id: id.clone(), value });
             if tx.send(value).is_err() {
                 return;
             }
         }
     });
-    bae_library::library::LiveDetail::new(id_tx, rx, task)
+    bae_library::LiveDetail::new(id_tx, rx, task)
 }
 
 /// The artist detail view's artist as it changes; another artist is a
@@ -78,7 +77,7 @@ pub fn subscribe_release_detail(
 pub fn subscribe_artist_detail(
     library: &LibraryManager,
     library_views: &LibraryViews,
-) -> bae_library::library::LiveDetail<bae_views::album_detail::ArtistDetail> {
+) -> bae_library::LiveDetail<bae_views::album_detail::ArtistDetail> {
     let views = library_views.clone();
     detail_read(
         library.clone(),
@@ -92,7 +91,7 @@ pub fn subscribe_artist_detail(
 pub fn subscribe_composer_detail(
     library: &LibraryManager,
     library_views: &LibraryViews,
-) -> bae_library::library::LiveDetail<bae_views::album_detail::ComposerDetail> {
+) -> bae_library::LiveDetail<bae_views::album_detail::ComposerDetail> {
     let views = library_views.clone();
     detail_read(
         library.clone(),
@@ -106,7 +105,7 @@ pub fn subscribe_composer_detail(
 pub fn subscribe_work_detail(
     library: &LibraryManager,
     library_views: &LibraryViews,
-) -> bae_library::library::LiveDetail<bae_views::album_detail::WorkDetail> {
+) -> bae_library::LiveDetail<bae_views::album_detail::WorkDetail> {
     let views = library_views.clone();
     detail_read(
         library.clone(),
@@ -124,15 +123,15 @@ pub fn detail_read<Projection, Value, Id>(
         + Send
         + 'static,
     resolve: impl Fn(Projection) -> Option<Value> + Send + 'static,
-) -> bae_library::library::LiveDetail<Value, Id>
+) -> bae_library::LiveDetail<Value, Id>
 where
     Projection: Clone + PartialEq + Send + 'static,
     Value: Send + 'static,
     Id: Clone + PartialEq + std::fmt::Debug + Send + Sync + 'static,
 {
     let (id_tx, mut ids) = tokio::sync::watch::channel(None::<Id>);
-    let (tx, rx) = bae_library::library::live_read_channel();
-    let task = bae_library::library::CancellationToken::new();
+    let (tx, rx) = bae_library::live_read_channel();
+    let task = bae_library::CancellationToken::new();
     manager.clone().spawn_stoppable_subscription_task(
         "detail",
         task.clone(),
@@ -145,7 +144,7 @@ where
                 tokio::select! {
                     event = query.recv() => {
                         let Some(result) = event else { return };
-                        let value = result.map(|projection| bae_library::library::DetailSnapshot {
+                        let value = result.map(|projection| bae_library::DetailSnapshot {
                             id: id.clone(),
                             value: resolve(projection),
                         });
@@ -164,5 +163,5 @@ where
             }
         },
     );
-    bae_library::library::LiveDetail::new(id_tx, rx, task)
+    bae_library::LiveDetail::new(id_tx, rx, task)
 }

@@ -5,7 +5,7 @@
 
 use bae_app::live_reads::LiveStorageBrowse;
 use bae_db::{Database, DbAlbum, DbRelease, NewReleaseFile, SortDirection};
-use bae_library::library::{CancellationToken, LibraryManager};
+use bae_library::{CancellationToken, LibraryManager};
 use bae_util::content_type::ContentType;
 use bae_views::album_detail::ReleaseStorageState;
 use bae_views::StorageBrowseView;
@@ -229,8 +229,7 @@ async fn test_manage_refused_without_cloud_storage() {
         .upload_releases(std::slice::from_ref(&release_id))
         .await
         .expect("the batch reports a per-release refusal");
-    let bae_library::library::UploadReleasesOutcome::Partial { receipt: None, failure } = result
-    else {
+    let bae_library::UploadReleasesOutcome::Partial { receipt: None, failure } = result else {
         panic!("upload must refuse the release without a receipt");
     };
     assert_eq!(failure.release_ids, vec![release_id.clone()]);
@@ -434,7 +433,7 @@ async fn detaching_audio_whose_names_write_as_one_is_refused() {
     assert!(
         matches!(
             &error,
-            bae_library::library::LibraryError::MakeLocal(error)
+            bae_library::LibraryError::MakeLocal(error)
                 if matches!(**error, coven::DeviceOnlyError::Path(coven::CopyPathError::Clash { .. }))
         ),
         "{error:?}"

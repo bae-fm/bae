@@ -200,7 +200,7 @@ impl Household {
             Some(sign_in) => sign_in.configure(builder),
             None => builder,
         };
-        let owner = bae_library::library::create_library(
+        let owner = bae_library::create_library(
             builder,
             bae_library::library_name::LibraryName::parse("Household").unwrap(),
         )
@@ -298,12 +298,9 @@ impl Household {
         code: &str,
         installation: &coven::TestCoven,
         dir: &tempfile::TempDir,
-        control: &bae_library::library::JoinControl,
-    ) -> Result<
-        Option<bae_library::library::JoinedLibrary>,
-        bae_library::library::RestoreFromCodeError,
-    > {
-        bae_library::library::join_with_invite(
+        control: &bae_library::JoinControl,
+    ) -> Result<Option<bae_library::JoinedLibrary>, bae_library::RestoreFromCodeError> {
+        bae_library::join_with_invite(
             self.device(installation, dir),
             code,
             "Guest Device",
@@ -423,8 +420,8 @@ fn joining_writes_the_invites_name_and_cannot_edit_another_person() {
         let invite = household.invite(new_member("Rowan"), "guest-key").await;
         let guest_dir = tempfile::tempdir().unwrap();
         let guest = coven::TestCoven::new();
-        let control = bae_library::library::JoinControl::new();
-        let joining = bae_library::library::join_with_invite(
+        let control = bae_library::JoinControl::new();
+        let joining = bae_library::join_with_invite(
             household.device(&guest, &guest_dir),
             &invite.code,
             "Guest Device",
@@ -476,8 +473,8 @@ fn a_replacement_invite_writes_no_profile() {
         let invite = household.invite(new_member("Rowan"), "guest-key").await;
         let first_dir = tempfile::tempdir().unwrap();
         let first = coven::TestCoven::new();
-        let control = bae_library::library::JoinControl::new();
-        let joining = bae_library::library::join_with_invite(
+        let control = bae_library::JoinControl::new();
+        let joining = bae_library::join_with_invite(
             household.device(&first, &first_dir),
             &invite.code,
             "Guest Device",
@@ -507,7 +504,7 @@ fn a_replacement_invite_writes_no_profile() {
             .await;
         let second_dir = tempfile::tempdir().unwrap();
         let second = coven::TestCoven::new();
-        let joining = bae_library::library::join_with_invite(
+        let joining = bae_library::join_with_invite(
             household.device(&second, &second_dir),
             &again.code,
             "Replacement Device",
@@ -616,9 +613,9 @@ fn a_stopped_join_resumes_and_writes_the_profile() {
         let invite = household.invite(new_member("Rowan"), "guest-key").await;
         let guest_dir = tempfile::tempdir().unwrap();
         let guest = coven::TestCoven::new();
-        let control = bae_library::library::JoinControl::new();
+        let control = bae_library::JoinControl::new();
         let (waiting, mut waits) = tokio::sync::watch::channel(false);
-        let joining = bae_library::library::join_with_invite(
+        let joining = bae_library::join_with_invite(
             household.device(&guest, &guest_dir),
             &invite.code,
             "Guest Device",
@@ -639,14 +636,14 @@ fn a_stopped_join_resumes_and_writes_the_profile() {
         .await
         .unwrap();
         let builder = household.device(&guest, &guest_dir);
-        let [join] = &bae_library::library::unfinished_joins(&builder).await.unwrap()[..] else {
+        let [join] = &bae_library::unfinished_joins(&builder).await.unwrap()[..] else {
             panic!("one join under way");
         };
         assert_eq!(
             (join.store_name.as_str(), join.invitee.as_deref()),
             ("Household", Some("Rowan"))
         );
-        let resuming = bae_library::library::resume_join(
+        let resuming = bae_library::resume_join(
             || household.device(&guest, &guest_dir),
             join,
             household.clock.clone(),
@@ -764,12 +761,12 @@ async fn stopped_dropbox_join(
     sign_in: &DropboxSignIn,
     guest: &coven::TestCoven,
     guest_dir: &tempfile::TempDir,
-    control: &bae_library::library::JoinControl,
+    control: &bae_library::JoinControl,
 ) -> coven::InviteInfo {
     use std::time::Duration;
     let invite = household.invite(new_member("Rowan"), "").await;
     let (waiting, mut waits) = tokio::sync::watch::channel(false);
-    let joining = bae_library::library::join_with_invite(
+    let joining = bae_library::join_with_invite(
         sign_in.configure(household.device(guest, guest_dir)),
         &invite.code,
         "Guest Device",
@@ -789,9 +786,8 @@ async fn stopped_dropbox_join(
     })
     .await
     .unwrap();
-    let [join] = &bae_library::library::unfinished_joins(&household.device(guest, guest_dir))
-        .await
-        .unwrap()[..]
+    let [join] =
+        &bae_library::unfinished_joins(&household.device(guest, guest_dir)).await.unwrap()[..]
     else {
         panic!("one join under way");
     };
@@ -809,10 +805,10 @@ fn a_stopped_dropbox_join_resumes_with_the_sign_in_it_kept() {
         let household = Household::on_dropbox(&sign_in).await;
         let guest_dir = tempfile::tempdir().unwrap();
         let guest = coven::TestCoven::new();
-        let control = bae_library::library::JoinControl::new();
+        let control = bae_library::JoinControl::new();
         let join = stopped_dropbox_join(&household, &sign_in, &guest, &guest_dir, &control).await;
         let presented = sign_in.presented();
-        let resuming = bae_library::library::resume_join(
+        let resuming = bae_library::resume_join(
             || sign_in.configure(household.device(&guest, &guest_dir)),
             &join,
             household.clock.clone(),
@@ -843,12 +839,12 @@ fn a_stopped_join_whose_sign_in_dropbox_refuses_signs_in_again_and_resumes() {
         let household = Household::on_dropbox(&sign_in).await;
         let guest_dir = tempfile::tempdir().unwrap();
         let guest = coven::TestCoven::new();
-        let control = bae_library::library::JoinControl::new();
+        let control = bae_library::JoinControl::new();
         let join = stopped_dropbox_join(&household, &sign_in, &guest, &guest_dir, &control).await;
         // The owner's sign-in was the first; Rowan's join kept the second.
         household.storage.reject_access_token("access-1").await;
         let presented = sign_in.presented();
-        let resuming = bae_library::library::resume_join(
+        let resuming = bae_library::resume_join(
             || sign_in.configure(household.device(&guest, &guest_dir)),
             &join,
             household.clock.clone(),

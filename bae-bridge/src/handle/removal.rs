@@ -38,9 +38,9 @@ impl BridgeLibraryRemoval {
     /// How a removal ended: done, stopped after the store was deleted with
     /// this device's files left, or failed with nothing deleted.
     pub(crate) fn from_core(
-        removal: Result<(), bae_library::library::LibraryRemovalError>,
+        removal: Result<(), bae_library::LibraryRemovalError>,
     ) -> Result<Self, BridgeError> {
-        use bae_library::library::LibraryRemovalError as E;
+        use bae_library::LibraryRemovalError as E;
         match removal {
             Ok(()) => Ok(Self::Removed),
             Err(error @ E::Unfinished(_)) => Ok(Self::Unfinished {
@@ -103,10 +103,8 @@ impl AppHandle {
                         steps.step(crate::types::BridgeClosingStep::from_core(step))
                     })
                     .await;
-                if matches!(
-                    removal,
-                    Ok(()) | Err(bae_library::library::LibraryRemovalError::Unfinished(_))
-                ) {
+                if matches!(removal, Ok(()) | Err(bae_library::LibraryRemovalError::Unfinished(_)))
+                {
                     self.session.removed();
                 }
                 BridgeLibraryRemoval::from_core(removal)

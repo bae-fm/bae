@@ -4,7 +4,7 @@
 
 use super::*;
 use crate::live_reads;
-use bae_library::library::LiveDetail;
+use bae_library::LiveDetail;
 use bae_views::album_detail::{
     AlbumDetail, ArtistDetail, ComposerDetail, ReleaseDetail, WorkDetail,
 };

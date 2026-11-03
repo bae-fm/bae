@@ -2,7 +2,7 @@
 //! a bug, and failing what it served.
 
 use super::*;
-use crate::library::{LiveRead, LiveReadError};
+use crate::{LiveRead, LiveReadError};
 
 /// A live read whose task panics ends with the failure, which its reader
 /// tells apart from its own cancel, and the panic is reported once.
@@ -10,8 +10,8 @@ use crate::library::{LiveRead, LiveReadError};
 async fn a_live_read_whose_task_panics_ends_with_its_failure() {
     let (manager, _temp_dir, bugs) = setup_test_manager_reporting_bugs().await;
     let (requests, _) = tokio::sync::watch::channel(());
-    let (values, read) = crate::library::live_read_channel::<()>();
-    let task = crate::library::CancellationToken::new();
+    let (values, read) = crate::live_read_channel::<()>();
+    let task = crate::CancellationToken::new();
     manager.spawn_stoppable_subscription_task(
         "test subscription",
         task.clone(),

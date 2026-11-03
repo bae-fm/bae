@@ -5,7 +5,7 @@
 use crate::AppServices;
 use bae_db::{Database, DbError};
 use bae_diagnostics::Diagnostics;
-use bae_library::library::{CancellationToken, LibraryError, LibraryManager};
+use bae_library::{CancellationToken, LibraryError, LibraryManager};
 use coven::{ClockRef, IdSourceRef};
 
 /// Where playback plays.

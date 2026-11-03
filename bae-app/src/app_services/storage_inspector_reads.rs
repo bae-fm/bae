@@ -8,7 +8,7 @@ impl AppServices {
     /// [`crate::live_reads::subscribe_storage_inspector`].
     pub fn subscribe_storage_inspector(
         &self,
-    ) -> bae_library::library::LiveDetail<bae_views::storage_inspector::StorageInspector> {
+    ) -> bae_library::LiveDetail<bae_views::storage_inspector::StorageInspector> {
         crate::live_reads::subscribe_storage_inspector(&self.inner.manager, &self.inner.views)
     }
 }

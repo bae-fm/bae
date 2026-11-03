@@ -4,7 +4,7 @@
 
 use bae_app::bootstrap_on_fixture;
 use bae_app_dir::AppDir;
-use bae_library::library::create_library;
+use bae_library::create_library;
 use coven::TestCoven;
 use tempfile::TempDir;
 

@@ -41,12 +41,12 @@ macro_rules! detail_subscription {
         /// A read that shows nothing until `set_id` names an item.
         #[derive(uniffi::Object)]
         pub struct $object {
-            inner: bae_library::library::LiveDetail<<$bridge_value as DetailValue>::Core, $core_id>,
+            inner: bae_library::LiveDetail<<$bridge_value as DetailValue>::Core, $core_id>,
             runtime: crate::operation_runtime::OperationRuntime,
         }
 
         pub(crate) fn $make(
-            inner: bae_library::library::LiveDetail<<$bridge_value as DetailValue>::Core, $core_id>,
+            inner: bae_library::LiveDetail<<$bridge_value as DetailValue>::Core, $core_id>,
             runtime: crate::operation_runtime::OperationRuntime,
         ) -> Arc<$object> {
             Arc::new($object { inner, runtime })
@@ -191,10 +191,10 @@ detail_subscription! {
 }
 
 /// A task-driven live read's failure as the bridge reports it.
-pub(super) fn live_read_error(error: bae_library::library::LiveReadError) -> BridgeError {
+pub(super) fn live_read_error(error: bae_library::LiveReadError) -> BridgeError {
     match error {
-        bae_library::library::LiveReadError::Cancelled => BridgeError::Cancelled,
-        bae_library::library::LiveReadError::Query(error) => BridgeError::database_query(error),
-        bae_library::library::LiveReadError::Failed(error) => BridgeError::from(error),
+        bae_library::LiveReadError::Cancelled => BridgeError::Cancelled,
+        bae_library::LiveReadError::Query(error) => BridgeError::database_query(error),
+        bae_library::LiveReadError::Failed(error) => BridgeError::from(error),
     }
 }

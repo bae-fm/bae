@@ -105,7 +105,7 @@ impl LibraryManager {
         &self,
         release_id: &str,
         new_path: &std::path::Path,
-        cancel: &crate::library::CancellationToken,
+        cancel: &crate::CancellationToken,
     ) -> Result<(), LibraryError> {
         let files = self.local_copy_paths(release_id).await?;
         let operation = cancel.child_token();
@@ -378,7 +378,7 @@ impl LibraryManager {
         // The token `cancel_release_transition` fires to stop this transfer
         // between files, reachable for exactly as long as the transfer runs:
         // its task holds the registration.
-        let cancel = crate::library::CancellationToken::new();
+        let cancel = crate::CancellationToken::new();
         let registration =
             self.detach_cancels.register(release_id, cancel.clone()).ok_or_else(|| {
                 LibraryError::Storage(format!(

@@ -9,7 +9,7 @@
 //! a lookup and finishing each hold the removal lock for their whole run, so
 //! a lookup never sees a removal that is still waiting on coven.
 
-use crate::library::LibraryError;
+use crate::LibraryError;
 use bae_app_dir::{AppDir, AppDirError};
 use bae_diagnostics::Diagnostics;
 use std::collections::{BTreeSet, HashSet};
@@ -185,7 +185,7 @@ pub async fn remove_unopenable_library(
 
 /// What removing a library that isn't open would lose, read by opening its
 /// store just long enough to count, as
-/// [`crate::library::LibraryManager::unsent_before_removal`] does for an open
+/// [`crate::LibraryManager::unsent_before_removal`] does for an open
 /// one. The open reports its steps to `on_open_progress`, as any open does.
 pub async fn unsent_before_removal(
     builder: coven::CovenBuilder,

@@ -273,12 +273,12 @@ pub struct BridgeAlbumSelectionSnapshot {
 /// with none.
 #[derive(uniffi::Object)]
 pub struct AlbumSelectionSubscription {
-    inner: bae_library::library::LiveAlbumSelection,
+    inner: bae_library::LiveAlbumSelection,
     runtime: crate::operation_runtime::OperationRuntime,
 }
 
 pub(crate) fn album_selection(
-    inner: bae_library::library::LiveAlbumSelection,
+    inner: bae_library::LiveAlbumSelection,
     runtime: crate::operation_runtime::OperationRuntime,
 ) -> Arc<AlbumSelectionSubscription> {
     Arc::new(AlbumSelectionSubscription { inner, runtime })
@@ -318,11 +318,9 @@ impl AlbumSelectionSubscription {
     }
 }
 
-fn selection_error(error: bae_library::library::LiveAlbumSelectionError) -> BridgeError {
+fn selection_error(error: bae_library::LiveAlbumSelectionError) -> BridgeError {
     match error {
-        bae_library::library::LiveAlbumSelectionError::Cancelled => BridgeError::Cancelled,
-        bae_library::library::LiveAlbumSelectionError::Query(error) => {
-            BridgeError::database_query(error)
-        }
+        bae_library::LiveAlbumSelectionError::Cancelled => BridgeError::Cancelled,
+        bae_library::LiveAlbumSelectionError::Query(error) => BridgeError::database_query(error),
     }
 }

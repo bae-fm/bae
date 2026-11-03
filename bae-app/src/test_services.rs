@@ -17,7 +17,7 @@ pub async fn start_services_on(
     device: Box<dyn bae_playback::AudioOutputDevice>,
 ) -> Result<AppServices, ServicesStartError> {
     crate::start_library_services(
-        bae_library::library::LibraryManager::clone(library),
+        bae_library::LibraryManager::clone(library),
         library.database().clone(),
         library.catalogs().clone(),
         library.closing().clone(),

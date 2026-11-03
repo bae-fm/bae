@@ -17,23 +17,21 @@ pub use storage::*;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use storage_inspector::*;
 
-use bae_library::library::live_query_events::reconfigurable_live_query_events;
-use bae_library::library::LibraryManager;
+use bae_library::live_query_events::reconfigurable_live_query_events;
+use bae_library::LibraryManager;
 use bae_views::LibraryViews;
 
 /// A live read of the Storage Manager list. The view changes in place
-/// through [`LiveRead::set`](bae_library::library::LiveRead::set); the upload
+/// through [`LiveRead::set`](bae_library::LiveRead::set); the upload
 /// queue, pin markers, and sync state the rows are resolved against move the
 /// same read.
 pub type LiveStorageBrowse =
-    bae_library::library::LiveRead<bae_views::StorageBrowseView, bae_views::StorageBrowseSnapshot>;
+    bae_library::LiveRead<bae_views::StorageBrowseView, bae_views::StorageBrowseSnapshot>;
 
 /// A live read of one release's files in one order. The release and order
 /// change in place through
-/// [`LiveRead::set`](bae_library::library::LiveRead::set); `None` reads
+/// [`LiveRead::set`](bae_library::LiveRead::set); `None` reads
 /// nothing.
 #[cfg(desktop)]
-pub type LiveReleaseFiles = bae_library::library::LiveRead<
-    Option<bae_views::ReleaseFilesRequest>,
-    bae_views::ReleaseFilesSnapshot,
->;
+pub type LiveReleaseFiles =
+    bae_library::LiveRead<Option<bae_views::ReleaseFilesRequest>, bae_views::ReleaseFilesSnapshot>;

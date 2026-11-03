@@ -34,12 +34,12 @@ impl LibraryManager {
     /// hears each step as it starts.
     pub async fn remove_library(
         &self,
-        steps: &(dyn Fn(crate::library::ClosingStep) + Send + Sync),
-    ) -> Result<(), crate::library::LibraryRemovalError> {
+        steps: &(dyn Fn(crate::ClosingStep) + Send + Sync),
+    ) -> Result<(), crate::LibraryRemovalError> {
         let id = self.database.store_id();
-        steps(crate::library::ClosingStep::FinishingWork);
+        steps(crate::ClosingStep::FinishingWork);
         self.tasks.close().await;
-        crate::library::local_lifecycle::remove_recorded(
+        crate::local_lifecycle::remove_recorded(
             &self.app_dir,
             &self.diagnostics,
             id,

@@ -433,10 +433,10 @@ impl DatabaseFault for coven::CovenError {
     }
 }
 
-impl DatabaseFault for bae_library::library::LibraryError {
+impl DatabaseFault for bae_library::LibraryError {
     fn database_fault(self) -> String {
         match self {
-            bae_library::library::LibraryError::Database(inner) => db_fault(inner),
+            bae_library::LibraryError::Database(inner) => db_fault(inner),
             other => other.to_string(),
         }
     }
@@ -626,11 +626,11 @@ impl From<bae_import::ImportError> for BridgeError {
 /// (keyring vs cloud credentials vs network vs membership vs …) becomes the
 /// `BridgeErrorCategory` the UI renders a localized line for; the error chain
 /// rides along as opaque diagnostic detail.
-impl From<bae_library::library::LibraryError> for BridgeError {
-    fn from(error: bae_library::library::LibraryError) -> Self {
+impl From<bae_library::LibraryError> for BridgeError {
+    fn from(error: bae_library::LibraryError) -> Self {
         if matches!(
             error,
-            bae_library::library::LibraryError::CloudSetup(coven::StorageSetupError::OAuth(
+            bae_library::LibraryError::CloudSetup(coven::StorageSetupError::OAuth(
                 coven::OAuthError::Cancelled
             ))
         ) {
@@ -643,8 +643,8 @@ impl From<bae_library::library::LibraryError> for BridgeError {
     }
 }
 
-impl From<bae_library::library::CreateLibraryError> for BridgeError {
-    fn from(error: bae_library::library::CreateLibraryError) -> Self {
+impl From<bae_library::CreateLibraryError> for BridgeError {
+    fn from(error: bae_library::CreateLibraryError) -> Self {
         BridgeError::Diagnostic {
             category: BridgeErrorCategory::from_core(error.category()),
             detail: error.to_string(),

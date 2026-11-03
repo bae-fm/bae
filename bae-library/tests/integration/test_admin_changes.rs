@@ -17,7 +17,7 @@ fn an_approval_is_listed_by_the_invites_name_until_dismissed() {
         let invite = household.invite(new_member("Rowan"), "guest-key").await;
         let guest_dir = tempfile::tempdir().unwrap();
         let guest = coven::TestCoven::new();
-        let control = bae_library::library::JoinControl::new();
+        let control = bae_library::JoinControl::new();
         let joining = household.join(&invite.code, &guest, &guest_dir, &control);
         let approving = async {
             let mut invites =

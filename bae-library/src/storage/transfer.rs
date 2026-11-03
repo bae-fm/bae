@@ -11,7 +11,7 @@
 
 use std::future::Future;
 
-use crate::library::{LibraryError, LibraryManager};
+use crate::{LibraryError, LibraryManager};
 use bae_diagnostics::{LocalId, TelemetryEvent};
 use bae_transfers::DownloadTransferProgress;
 use bae_transfers::RunningOp;
@@ -114,8 +114,8 @@ impl TransferService {
         &self,
         release_id: String,
         new_path: std::path::PathBuf,
-        cancel: crate::library::CancellationToken,
-        registration: crate::library::detach_cancels::DetachRegistration,
+        cancel: crate::CancellationToken,
+        registration: crate::detach_cancels::DetachRegistration,
     ) -> mpsc::UnboundedReceiver<TransferProgress> {
         let library_manager = self.library_manager.clone();
         let localized_release_id = release_id.clone();
@@ -418,8 +418,7 @@ mod tests {
             .upload_releases(&["missing-release".to_string()])
             .await
             .expect("a per-release refusal is returned as a batch outcome");
-        let crate::library::UploadReleasesOutcome::Partial { receipt: None, failure } = outcome
-        else {
+        let crate::UploadReleasesOutcome::Partial { receipt: None, failure } = outcome else {
             panic!("the missing release must be refused without a receipt");
         };
         assert_eq!(failure.release_ids, vec!["missing-release"]);

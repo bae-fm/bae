@@ -9,7 +9,7 @@ use std::pin::Pin;
 use std::sync::Arc;
 
 use bae_app::AppServices;
-use bae_library::library::CancellationToken;
+use bae_library::CancellationToken;
 
 use crate::keyed_values::{KeyedValueStream, StreamValues, StreamWriter};
 use crate::operation_runtime::OperationRuntime;
@@ -48,10 +48,10 @@ where
 /// names, then each one that moved or left.
 fn write_release_changes<Progress>(
     writer: &StreamWriter,
-    changes: Vec<bae_library::library::ReleaseTransferChange<Progress>>,
+    changes: Vec<bae_library::ReleaseTransferChange<Progress>>,
     value: impl Fn(Progress) -> BridgeFastValue,
 ) {
-    use bae_library::library::ReleaseTransferChange;
+    use bae_library::ReleaseTransferChange;
     for change in changes {
         match change {
             ReleaseTransferChange::Updated { release_id, progress } => {
@@ -69,18 +69,15 @@ fn write_release_changes<Progress>(
 
 /// The files being sent together as their stream holds them: only while
 /// any is being sent.
-fn upload_total(transfer: bae_library::library::UploadTransfer) -> Option<BridgeFastValue> {
+fn upload_total(transfer: bae_library::UploadTransfer) -> Option<BridgeFastValue> {
     transfer.bar.is_some().then(|| BridgeFastValue::UploadTotal {
         transfer: crate::types::BridgeUploadTransfer::from_core(transfer),
     })
 }
 
 /// Write each batch of a file transfer watch, keyed by file id.
-fn write_file_changes(
-    writer: &StreamWriter,
-    changes: Vec<bae_library::library::FileTransferChange>,
-) {
-    use bae_library::library::FileTransferChange;
+fn write_file_changes(writer: &StreamWriter, changes: Vec<bae_library::FileTransferChange>) {
+    use bae_library::FileTransferChange;
     let share = |fraction| BridgeFastValue::FileShare { fraction };
     for change in changes {
         match change {
@@ -104,7 +101,7 @@ pub(crate) fn release_upload_transfers(
     run: impl RunFeed,
 ) -> Arc<KeyedValueStream> {
     feed(runtime, run, move |services, writer| async move {
-        use bae_library::library::OutboxTransferChange;
+        use bae_library::OutboxTransferChange;
         let upload = |transfer| BridgeFastValue::ReleaseUpload {
             transfer: crate::types::BridgeReleaseUploadTransfer::from_core(transfer),
         };

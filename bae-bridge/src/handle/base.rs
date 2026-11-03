@@ -136,7 +136,7 @@ forward! { async this => {
     }
 
     fn change_cover(release_id: String, selection: BridgeCoverSelection) -> () {
-        use bae_library::library::CoverSelection;
+        use bae_library::CoverSelection;
 
         let core_selection = match selection {
             BridgeCoverSelection::ReleaseImage { file_id } => {

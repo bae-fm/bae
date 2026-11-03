@@ -18,9 +18,9 @@ use thiserror::Error;
 use tracing::{debug, warn};
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-use crate::library::save::SaveService;
-use crate::library::sync_controller::SyncController;
+use crate::save::SaveService;
 use crate::sync::S3ConfigData;
+use crate::sync_controller::SyncController;
 use bae_db::GallerySource;
 use bae_db::{
     Database, DbAlbum, DbArtist, DbFile, DbLibraryImage, DbRelease, DbTrack, ImageRef,
@@ -53,10 +53,10 @@ pub use fixture::{
     LibraryFixture, LibraryFixtureError, FIXTURE_IMPORT_FAILURE, FIXTURE_LOOKUP_FAILURE,
 };
 /// Desktop-only, under the same predicate as the rest of the export surface (the
-/// queue field below, and `library::export`). Exporting writes a directory tree
+/// queue field below, and `crate::save`). Exporting writes a directory tree
 /// next to the user's chosen folder — a hidden staging sibling, a marker file, a
 /// rename into place — which a sandboxed iOS/Android document URL does not offer,
-/// and the preset half of it needs the desktop-only `library::export` encoder.
+/// and the preset half of it needs the desktop-only encoder in `crate::save`.
 /// Compiling the producers out with the worker is what makes a mobile export call
 /// a compile error rather than a release that sits `Queued` with nothing to run it.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -438,9 +438,9 @@ pub struct LibraryManager {
     sync: SyncController,
     /// How to stop each transfer making a release local that this process
     /// runs.
-    detach_cancels: crate::library::detach_cancels::DetachCancels,
+    detach_cancels: crate::detach_cancels::DetachCancels,
     /// How far each release this process is making local has come.
-    make_local_transfers: crate::library::make_local_transfers::MakeLocalTransfers,
+    make_local_transfers: crate::make_local_transfers::MakeLocalTransfers,
     /// The "Pin for offline" queue: its table, which the Downloads pane and
     /// the detail views read, and the bytes its active download has moved. A
     /// single serial worker drains it one release at a time. Shared across

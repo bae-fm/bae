@@ -208,7 +208,7 @@ pub struct BridgeLoadProgress {
 }
 
 /// A step closing or removing the open library runs, in the order they run.
-/// Mirrors `bae_library::library::ClosingStep`, after the desktop's own first
+/// Mirrors `bae_library::ClosingStep`, after the desktop's own first
 /// step.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeClosingStep {
@@ -231,16 +231,16 @@ pub enum BridgeClosingStep {
 }
 
 impl BridgeClosingStep {
-    pub(crate) fn from_core(step: bae_library::library::ClosingStep) -> Self {
+    pub(crate) fn from_core(step: bae_library::ClosingStep) -> Self {
         match step {
-            bae_library::library::ClosingStep::StoppingPlayback => Self::StoppingPlayback,
+            bae_library::ClosingStep::StoppingPlayback => Self::StoppingPlayback,
             #[cfg(not(any(target_os = "ios", target_os = "android")))]
-            bae_library::library::ClosingStep::StoppingImports => Self::StoppingImports,
-            bae_library::library::ClosingStep::StoppingSync => Self::StoppingSync,
-            bae_library::library::ClosingStep::FinishingWork => Self::FinishingWork,
-            bae_library::library::ClosingStep::ClosingStore => Self::ClosingStore,
-            bae_library::library::ClosingStep::LeavingLibrary => Self::LeavingLibrary,
-            bae_library::library::ClosingStep::DeletingFiles => Self::DeletingFiles,
+            bae_library::ClosingStep::StoppingImports => Self::StoppingImports,
+            bae_library::ClosingStep::StoppingSync => Self::StoppingSync,
+            bae_library::ClosingStep::FinishingWork => Self::FinishingWork,
+            bae_library::ClosingStep::ClosingStore => Self::ClosingStore,
+            bae_library::ClosingStep::LeavingLibrary => Self::LeavingLibrary,
+            bae_library::ClosingStep::DeletingFiles => Self::DeletingFiles,
         }
     }
 }
@@ -346,10 +346,7 @@ impl BridgeBootstrapResult {
     /// replacement; the library without a profile to retry; or the invite
     /// ended without letting this device in.
     pub(crate) fn joined(
-        result: Result<
-            Option<bae_library::library::JoinedLibrary>,
-            bae_library::library::RestoreFromCodeError,
-        >,
+        result: Result<Option<bae_library::JoinedLibrary>, bae_library::RestoreFromCodeError>,
         host: Arc<crate::BridgeHost>,
     ) -> Result<Self, BridgeError> {
         match result {
@@ -363,13 +360,13 @@ impl BridgeBootstrapResult {
         }
     }
     pub(crate) fn failure(
-        error: bae_library::library::RestoreFromCodeError,
+        error: bae_library::RestoreFromCodeError,
         host: Arc<crate::BridgeHost>,
     ) -> Result<Self, BridgeError> {
         let category = BridgeErrorCategory::from_core(error.category());
         match error {
-            bae_library::library::RestoreFromCodeError::Cancelled => Err(BridgeError::Cancelled),
-            bae_library::library::RestoreFromCodeError::Restore(error) => match *error {
+            bae_library::RestoreFromCodeError::Cancelled => Err(BridgeError::Cancelled),
+            bae_library::RestoreFromCodeError::Restore(error) => match *error {
                 coven::BootstrapError::JoinRequestSent => Ok(Self::JoinRequestSent),
                 coven::BootstrapError::Published { handle, source } => Ok(Self::Published {
                     library: Arc::new(crate::OpenedLibrary::new(handle, host)),

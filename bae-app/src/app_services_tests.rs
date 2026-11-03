@@ -91,9 +91,9 @@ fn windows(windows: &[(u64, u64)]) -> bae_db::LibraryPageWindows {
 /// before it — the value for the empty initial window set, or one resolved
 /// before the queue reached the state a test drives it to.
 async fn upcoming_until(
-    subscription: &bae_library::library::LiveQueueUpcoming,
-    accept: impl Fn(&bae_library::library::QueueUpcomingSnapshot) -> bool,
-) -> bae_library::library::QueueUpcomingSnapshot {
+    subscription: &bae_library::LiveQueueUpcoming,
+    accept: impl Fn(&bae_library::QueueUpcomingSnapshot) -> bool,
+) -> bae_library::QueueUpcomingSnapshot {
     loop {
         let value = tokio::time::timeout(std::time::Duration::from_secs(5), subscription.next())
             .await
@@ -105,7 +105,7 @@ async fn upcoming_until(
     }
 }
 
-fn window_track_ids(snapshot: &bae_library::library::QueueUpcomingSnapshot) -> Vec<Vec<&str>> {
+fn window_track_ids(snapshot: &bae_library::QueueUpcomingSnapshot) -> Vec<Vec<&str>> {
     snapshot
         .windows
         .iter()
@@ -241,7 +241,7 @@ async fn a_release_session_keeps_its_choices_in_core() {
 /// entry as `matches` looks for.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 async fn inspected_export_until(
-    inspector: &bae_library::library::LiveDetail<bae_views::storage_inspector::StorageInspector>,
+    inspector: &bae_library::LiveDetail<bae_views::storage_inspector::StorageInspector>,
     matches: impl Fn(&bae_transfers::OutputPhaseRow) -> bool,
 ) -> bae_transfers::OutputPhaseRow {
     use bae_views::storage_inspector::StorageInspectorTransfer;
@@ -412,12 +412,12 @@ async fn closing_the_library_ends_a_held_live_reads_task_before_its_store_closes
         {
             Ok(_) => {}
             Err(
-                bae_library::library::LiveReadError::Query(error)
-                | bae_library::library::LiveReadError::Failed(error),
+                bae_library::LiveReadError::Query(error)
+                | bae_library::LiveReadError::Failed(error),
             ) => {
                 panic!("the live read heard from the closed store: {error}")
             }
-            Err(bae_library::library::LiveReadError::Cancelled) => break,
+            Err(bae_library::LiveReadError::Cancelled) => break,
         }
     }
 }

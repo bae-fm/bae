@@ -55,7 +55,7 @@ async fn assert_on_this_device(f: &ImportFixture, release_id: &str, folder: &Pat
 async fn move_to_cloud(f: &ImportFixture, release_id: &str) {
     let outcome = f.library.upload_releases(&[release_id.to_string()]).await.unwrap();
     assert!(
-        matches!(outcome, bae_library::library::UploadReleasesOutcome::Complete { .. }),
+        matches!(outcome, bae_library::UploadReleasesOutcome::Complete { .. }),
         "the release moves: {outcome:?}"
     );
 }

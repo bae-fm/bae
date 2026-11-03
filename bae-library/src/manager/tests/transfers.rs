@@ -123,7 +123,7 @@ async fn cancel_release_transition_fires_a_registered_transfer_token() {
     let (manager, _temp_dir) = setup_test_manager().await;
 
     // A registered audio detachment token is fired by the unified cancel.
-    let token = crate::library::CancellationToken::new();
+    let token = crate::CancellationToken::new();
     let _registration = manager
         .detach_cancels
         .register(REL_X, token.clone())
@@ -160,7 +160,7 @@ async fn unmanage_cancelled_before_copy_leaves_release_remote() {
 
     // A token cancelled before coven downloads anything: the call stops
     // before its write and removes whatever it made.
-    let token = crate::library::CancellationToken::new();
+    let token = crate::CancellationToken::new();
     token.cancel();
     let dest = temp_dir.path().join("out");
     std::fs::create_dir(&dest).unwrap();

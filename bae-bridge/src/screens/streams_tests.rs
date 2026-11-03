@@ -4,8 +4,8 @@ use super::*;
 /// being sent: a total with no bar holds nothing.
 #[test]
 fn the_upload_total_is_held_only_while_files_are_sent() {
-    let bar = bae_library::library::UploadBar { bytes_done: 10, bytes_total: 40 };
-    let sending = bae_library::library::UploadTransfer { bar: Some(bar), throughput_bps: 5 };
+    let bar = bae_library::UploadBar { bytes_done: 10, bytes_total: 40 };
+    let sending = bae_library::UploadTransfer { bar: Some(bar), throughput_bps: 5 };
     assert_eq!(
         upload_total(sending),
         Some(BridgeFastValue::UploadTotal {
@@ -15,10 +15,7 @@ fn the_upload_total_is_held_only_while_files_are_sent() {
             },
         })
     );
-    assert_eq!(
-        upload_total(bae_library::library::UploadTransfer { bar: None, throughput_bps: 0 }),
-        None
-    );
+    assert_eq!(upload_total(bae_library::UploadTransfer { bar: None, throughput_bps: 0 }), None);
 }
 
 /// The playing track's held stretches are held under its track's key, and

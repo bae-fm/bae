@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use tempfile::TempDir;
 
-use crate::library::LibraryManager;
+use crate::LibraryManager;
 use bae_app_dir::AppDir;
 use bae_db::test_devices::{self as stores, SyncCycles};
 use bae_db::Database;

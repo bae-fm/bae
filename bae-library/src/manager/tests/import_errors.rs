@@ -1,6 +1,6 @@
 //! How an import's error reads once it crosses into a library error.
 
-use crate::library::LibraryError;
+use crate::LibraryError;
 use bae_diagnostics::UiErrorCategory;
 use bae_import::ImportError;
 

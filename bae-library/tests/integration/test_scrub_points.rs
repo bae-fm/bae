@@ -11,7 +11,7 @@
 use bae_catalogs::discogs::models::DiscogsRelease;
 use bae_db::ResolvedTrackAudio;
 use bae_db::ScrubPoint;
-use bae_library::library::LibraryManager;
+use bae_library::LibraryManager;
 use std::path::Path;
 use tempfile::TempDir;
 

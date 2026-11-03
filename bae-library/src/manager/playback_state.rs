@@ -52,10 +52,7 @@ impl LibraryManager {
     /// then positions in the track's stream, which a remote renderer reports
     /// and seeks by. One stream per file the segments read; they close when
     /// the returned decode is dropped.
-    pub fn open_track_decode(
-        &self,
-        audio: &bae_db::ResolvedTrackAudio,
-    ) -> crate::library::TrackDecode {
+    pub fn open_track_decode(&self, audio: &bae_db::ResolvedTrackAudio) -> crate::TrackDecode {
         use bae_track_audio::{SegmentDecodeParams, StreamDecodeParams};
 
         let mut streams: std::collections::HashMap<
@@ -75,7 +72,7 @@ impl LibraryManager {
                 SegmentDecodeParams::new(buffer, segment.span, 0)
             })
             .collect();
-        crate::library::TrackDecode::new(
+        crate::TrackDecode::new(
             StreamDecodeParams::new(
                 segments,
                 bae_audio::byte_jump_keeps_place(&audio.content_type),

@@ -39,7 +39,7 @@ async fn creating_a_library_costs() {
         let builder = installation.builder(app_dir.store_layout());
         let name = bae_library::library_name::LibraryName::parse("Bench").unwrap();
         let started = Instant::now();
-        let handle = bae_library::library::create_library(builder, name).await.unwrap();
+        let handle = bae_library::create_library(builder, name).await.unwrap();
         let created_in = started.elapsed();
         handle.close().await.unwrap();
         eprintln!("created a library in {created_in:?}");

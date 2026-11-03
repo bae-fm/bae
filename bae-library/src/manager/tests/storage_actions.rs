@@ -146,7 +146,7 @@ async fn the_write_that_switches_a_releases_files_ends_its_make_local() {
     let folder = temp_dir.path().join("local");
     std::fs::create_dir(&folder).unwrap();
     manager
-        .detach_release_audio_into(&release.id, &folder, &crate::library::CancellationToken::new())
+        .detach_release_audio_into(&release.id, &folder, &crate::CancellationToken::new())
         .await
         .unwrap();
     assert!(
@@ -282,11 +282,7 @@ async fn a_release_made_local_lists_its_bytes_while_its_copies_download() {
         let release_id = release_id.clone();
         async move {
             manager
-                .detach_release_audio_into(
-                    &release_id,
-                    &folder,
-                    &crate::library::CancellationToken::new(),
-                )
+                .detach_release_audio_into(&release_id, &folder, &crate::CancellationToken::new())
                 .await
         }
     });

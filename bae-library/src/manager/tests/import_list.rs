@@ -104,7 +104,11 @@ async fn done_runs_the_releases_still_uploading_first() {
         (bae_import::ImportListOrder::PathDescending, ["C", "B", "D", "A"]),
     ] {
         let list = tables.open_import_list(done(order)).await.unwrap();
-        assert_eq!(done_names(&read_list(&manager.database, list, 0, 50).await), expected, "{order:?}");
+        assert_eq!(
+            done_names(&read_list(&manager.database, list, 0, 50).await),
+            expected,
+            "{order:?}"
+        );
     }
 
     let list =
@@ -275,9 +279,7 @@ async fn setting_the_windows_reruns_the_list_as_a_request_change() {
     assert!(initial.windows.is_empty());
 
     subscription
-        .set_windows(
-            std::iter::once(bae_db::LibraryPageWindow { offset: 0, limit: 50 }).collect(),
-        )
+        .set_windows(std::iter::once(bae_db::LibraryPageWindow { offset: 0, limit: 50 }).collect())
         .expect("the first window is requested");
     let requested = subscription.next().await.expect("the requested value");
     assert_eq!(requested.cause, coven::LiveQueryCause::Request);
@@ -322,10 +324,7 @@ async fn cancelling_closes_the_list() {
         subscription.set_view(bae_import::ImportListView::default()).await,
         Err(bae_import::LiveImportListError::Database(_))
     ));
-    assert!(matches!(
-        subscription.next().await,
-        Err(bae_import::LiveImportListError::Cancelled)
-    ));
+    assert!(matches!(subscription.next().await, Err(bae_import::LiveImportListError::Cancelled)));
 }
 
 /// Closing the library ends a list's waiting read before the store closes:
@@ -360,10 +359,7 @@ async fn closing_the_library_cancels_a_waiting_read_before_the_store_closes() {
         "the waiting read is cancelled: {read:?}"
     );
     assert!(
-        matches!(
-            subscription.next().await,
-            Err(bae_import::LiveImportListError::Cancelled)
-        ),
+        matches!(subscription.next().await, Err(bae_import::LiveImportListError::Cancelled)),
         "a read after the close is cancelled too"
     );
 }

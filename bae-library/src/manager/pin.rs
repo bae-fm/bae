@@ -31,7 +31,7 @@ impl PinCount {
                 self.fetched.insert(*file);
             }
         }
-        crate::library::file_transfers::apply(&mut self.moved, changes);
+        crate::file_transfers::apply(&mut self.moved, changes);
         self.fetched.extend(before.into_iter().filter(|file| !self.moved.contains_key(file)));
         ended
     }
@@ -71,8 +71,7 @@ impl PinCount {
                     _ if self.fetched.contains(file) => *size,
                     Some(bae_db::DbFilePin { downloading: Some(file), .. }) => {
                         self.moved.get(file).map_or(0, |progress| {
-                            (*size as f64 * crate::library::file_transfers::fraction(*progress))
-                                as u64
+                            (*size as f64 * crate::file_transfers::fraction(*progress)) as u64
                         })
                     }
                     _ => 0,
@@ -109,7 +108,7 @@ impl LibraryManager {
             .zip(previous)
             .filter_map(|(file, pinned)| (pinned != Some(true)).then_some(file.id()))
             .collect::<Vec<_>>();
-        let cancel = crate::library::CancellationToken::new();
+        let cancel = crate::CancellationToken::new();
         let cancel_on_drop = cancel.clone().drop_guard();
         let manager = self.clone();
         let release = release.to_string();

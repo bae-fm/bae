@@ -6,7 +6,7 @@ use std::sync::Arc;
 /// builds one.
 fn bridge_handle_holding(
     test_name: &str,
-    fixture: &bae_library::library::LibraryFixture,
+    fixture: &bae_library::LibraryFixture,
 ) -> (Arc<super::AppHandle>, std::path::PathBuf) {
     let (runtime, library, root) = super::super::tests::fresh_test_library(test_name);
     runtime.block_on(library.write_fixture(fixture)).expect("write the library fixture");
@@ -18,7 +18,7 @@ fn bridge_handle_holding(
 /// longer holds it.
 #[test]
 fn delete_album_takes_the_album_out_of_the_grid() {
-    let album = |title: &str| bae_library::library::FixtureAlbum {
+    let album = |title: &str| bae_library::FixtureAlbum {
         title: title.to_string(),
         artists: vec!["Artist Name".to_string()],
         tracks: vec!["Track Title".to_string()],
@@ -26,7 +26,7 @@ fn delete_album_takes_the_album_out_of_the_grid() {
     };
     let (handle, _root) = bridge_handle_holding(
         "delete-album",
-        &bae_library::library::LibraryFixture {
+        &bae_library::LibraryFixture {
             albums: vec![album("Deleted Album"), album("Kept Album")],
             watched_folders: Vec::new(),
             playing: None,

@@ -10,7 +10,7 @@ impl AppServices {
     pub async fn search_albums(
         &self,
         query: &bae_views::LibrarySearchQuery,
-    ) -> Result<Vec<bae_views::DbAlbumSearchResult>, bae_library::library::LibraryError> {
+    ) -> Result<Vec<bae_views::DbAlbumSearchResult>, bae_library::LibraryError> {
         Ok(self
             .inner
             .views
@@ -84,7 +84,7 @@ impl AppServices {
     pub async fn identify_release_for_lookup(
         &self,
         release_id: String,
-    ) -> Result<(), bae_library::library::LibraryError> {
+    ) -> Result<(), bae_library::LibraryError> {
         let choices = self
             .release_lookup_choices()
             .entry(bae_import::CandidateKey::reidentify(&release_id))
@@ -99,7 +99,7 @@ impl AppServices {
         &self,
         release_id: String,
         edit: bae_identify::LookupChoiceEdit,
-    ) -> Result<(), bae_library::library::LibraryError> {
+    ) -> Result<(), bae_library::LibraryError> {
         let choices = {
             let mut held = self.release_lookup_choices();
             let choices =
@@ -134,7 +134,7 @@ impl AppServices {
         &self,
         release_id: String,
         choices: bae_identify::LookupChoices,
-    ) -> Result<(), bae_library::library::LibraryError> {
+    ) -> Result<(), bae_library::LibraryError> {
         let candidate_key = bae_import::CandidateKey::reidentify(&release_id);
         let run = self.inner.import.new_identification_run();
         // The sheet names a release, not a draft, so no title is read back: a
@@ -279,7 +279,7 @@ impl AppServices {
     pub async fn subscribe_import_list(
         &self,
         view: ImportListView,
-    ) -> Result<LiveImportList, bae_library::library::LibraryError> {
+    ) -> Result<LiveImportList, bae_library::LibraryError> {
         Ok(self.inner.import.open_list(view, bae_db::LibraryPageWindows::new()).await?)
     }
 
@@ -289,7 +289,7 @@ impl AppServices {
         &self,
         view: ImportListView,
         windows: bae_db::LibraryPageWindows,
-    ) -> Result<bae_import::ImportListProjection, bae_library::library::LibraryError> {
+    ) -> Result<bae_import::ImportListProjection, bae_library::LibraryError> {
         Ok(self.inner.import.load_list(view, windows).await?)
     }
 
@@ -299,7 +299,7 @@ impl AppServices {
     /// selection. Another candidate is a new key on the same read.
     pub fn subscribe_import_candidate(
         &self,
-    ) -> bae_library::library::LiveDetail<ImportCandidateDetail, bae_import::CandidateKey> {
+    ) -> bae_library::LiveDetail<ImportCandidateDetail, bae_import::CandidateKey> {
         self.read_import_candidate(self.inner.import.subscribe_candidate(None))
     }
 
@@ -309,7 +309,7 @@ impl AppServices {
     pub fn subscribe_import_candidate_with_runs_for_test(
         &self,
     ) -> (
-        bae_library::library::LiveDetail<ImportCandidateDetail, bae_import::CandidateKey>,
+        bae_library::LiveDetail<ImportCandidateDetail, bae_import::CandidateKey>,
         coven::LiveQueryRuns,
     ) {
         let query = self.inner.import.subscribe_candidate(None);
@@ -324,11 +324,11 @@ impl AppServices {
             Option<bae_import::CandidateKey>,
             Option<bae_import::ImportCandidateDetailProjection>,
         >,
-    ) -> bae_library::library::LiveDetail<ImportCandidateDetail, bae_import::CandidateKey> {
+    ) -> bae_library::LiveDetail<ImportCandidateDetail, bae_import::CandidateKey> {
         let (key_tx, mut keys) = tokio::sync::watch::channel(None::<bae_import::CandidateKey>);
-        let (tx, rx) = bae_library::library::live_read_channel();
+        let (tx, rx) = bae_library::live_read_channel();
         let manager = self.inner.manager.clone();
-        let task = bae_library::library::CancellationToken::new();
+        let task = bae_library::CancellationToken::new();
         self.inner.manager.spawn_stoppable_subscription_task(
             "import candidate",
             task.clone(),
@@ -356,16 +356,14 @@ impl AppServices {
                             continue;
                         }
                     };
-                    let value = value.map(|value| bae_library::library::DetailSnapshot {
-                        id: key.clone(),
-                        value,
-                    });
+                    let value =
+                        value.map(|value| bae_library::DetailSnapshot { id: key.clone(), value });
                     if tx.send(value).is_err() {
                         return;
                     }
                 }
             },
         );
-        bae_library::library::LiveDetail::new(key_tx, rx, task)
+        bae_library::LiveDetail::new(key_tx, rx, task)
     }
 }

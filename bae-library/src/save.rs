@@ -1,4 +1,4 @@
-use crate::library::SaveTrackPlan;
+use crate::SaveTrackPlan;
 use bae_audio::sparse_buffer::SharedSparseBuffer;
 use bae_audio::{EncodeFormat, StreamingEncoder};
 use bae_track_audio::track_sources::{run_tracks_over_sources, SourceStream};
@@ -18,7 +18,7 @@ use tracing::{debug, warn};
 /// a file takes it through `save_file_name`.
 pub fn render_save_filename(
     tokens: &[bae_preferences::SaveFilenameToken],
-    resolved: &crate::library::manager::ResolvedSaveTags,
+    resolved: &crate::manager::ResolvedSaveTags,
 ) -> String {
     use bae_preferences::SaveFilenameToken;
 
@@ -279,7 +279,7 @@ impl SaveService {
 
         let format = encode_format(&preset.codec);
         let tag_type = codec_tag_type(&preset.codec);
-        let tags = crate::library::manager::SaveTags {
+        let tags = crate::manager::SaveTags {
             title: release_title.clone(),
             artist: release_performer.clone(),
             album_artist: release_performer.clone(),
@@ -661,7 +661,7 @@ fn cue_string(value: &str) -> String {
 fn write_tags(
     path: &Path,
     tag_type: lofty::tag::TagType,
-    tags: &crate::library::manager::SaveTags,
+    tags: &crate::manager::SaveTags,
     track_number: Option<u32>,
     total_tracks: u32,
     cover_data: Option<&[u8]>,

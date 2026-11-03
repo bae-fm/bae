@@ -18,7 +18,7 @@ use bae_import::{
     CoverSelection, GroupedSearchResults, ImportCandidateDetail, ImportError, ImportInFlight,
     ImportListItem, ImportListView, ImportPhase, ImportStep, PrepareStep, TrackUserEdit, TriageTab,
 };
-use bae_library::library::LibraryError;
+use bae_library::LibraryError;
 use bae_preferences::McpConfig;
 use bae_types::audio_format::AudioFormat;
 use bae_types::mediums::{TrackPosition, TrackSide};

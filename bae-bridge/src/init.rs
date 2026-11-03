@@ -180,9 +180,8 @@ impl BridgeDiagnostics {
     pub(crate) async fn unfinished_removal(
         &self,
         app_dir: &bae_app_dir::AppDir,
-    ) -> Result<Option<bae_library::library::UnfinishedRemoval>, bae_library::library::LibraryError>
-    {
-        bae_library::library::UnfinishedRemoval::find(app_dir, &self.inner).await
+    ) -> Result<Option<bae_library::UnfinishedRemoval>, bae_library::LibraryError> {
+        bae_library::UnfinishedRemoval::find(app_dir, &self.inner).await
     }
 
     /// Remove the library `store`, which can't open, without opening it,
@@ -191,18 +190,11 @@ impl BridgeDiagnostics {
     pub(crate) async fn remove_unopenable_library(
         &self,
         app_dir: &bae_app_dir::AppDir,
-        keychain: &bae_library::library::Keychain,
+        keychain: &bae_library::Keychain,
         store: coven::StoreId,
-        steps: &(dyn Fn(bae_library::library::ClosingStep) + Send + Sync),
-    ) -> Result<(), bae_library::library::LibraryRemovalError> {
-        bae_library::library::remove_unopenable_library(
-            app_dir,
-            &self.inner,
-            keychain,
-            store,
-            steps,
-        )
-        .await
+        steps: &(dyn Fn(bae_library::ClosingStep) + Send + Sync),
+    ) -> Result<(), bae_library::LibraryRemovalError> {
+        bae_library::remove_unopenable_library(app_dir, &self.inner, keychain, store, steps).await
     }
 
     /// Complete every recorded removal, telling `finished` how many are done
@@ -212,8 +204,8 @@ impl BridgeDiagnostics {
         &self,
         app_dir: &bae_app_dir::AppDir,
         finished: &(dyn Fn(u64, u64) + Send + Sync),
-    ) -> Result<(), bae_library::library::LibraryError> {
-        bae_library::library::finish_removals(app_dir, &self.inner, finished).await
+    ) -> Result<(), bae_library::LibraryError> {
+        bae_library::finish_removals(app_dir, &self.inner, finished).await
     }
 
     /// The handle a bootstrap built, or its failure shipped as

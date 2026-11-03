@@ -20,13 +20,13 @@ impl BootstrapCancellation {
 /// or check for approval now.
 #[derive(uniffi::Object)]
 pub struct BridgeJoinControl {
-    control: bae_library::library::JoinControl,
+    control: bae_library::JoinControl,
 }
 #[uniffi::export]
 impl BridgeJoinControl {
     #[uniffi::constructor]
     pub fn new() -> Arc<Self> {
-        Arc::new(Self { control: bae_library::library::JoinControl::new() })
+        Arc::new(Self { control: bae_library::JoinControl::new() })
     }
     pub fn cancel(&self) {
         self.control.cancel();
@@ -128,7 +128,7 @@ impl BridgeHost {
         self.operations
             .clone()
             .run_to_completion(self.clone(), "restore library", move || async move {
-                match bae_library::library::restore_from_code(
+                match bae_library::restore_from_code(
                     self.builder(),
                     &code,
                     credentials.map(BridgeS3Credentials::into_core),
@@ -174,7 +174,7 @@ impl BridgeHost {
                 "restore library over this device",
                 move || async move {
                     self.closed(store).await?;
-                    match bae_library::library::restore_replacing_device(
+                    match bae_library::restore_replacing_device(
                         self.builder(),
                         store,
                         &code,
@@ -207,7 +207,7 @@ impl BridgeHost {
         self.operations
             .clone()
             .run_to_completion(self.clone(), "restore saved library", move || async move {
-                match bae_library::library::restore_from_saved_code(
+                match bae_library::restore_from_saved_code(
                     self.builder(),
                     &saved.saved,
                     credentials.map(BridgeS3Credentials::into_core),
@@ -239,7 +239,7 @@ impl BridgeHost {
         self.operations
             .clone()
             .run("BridgeHost.join_with_invite", move || async move {
-                let joined = bae_library::library::join_with_invite(
+                let joined = bae_library::join_with_invite(
                     self.builder(),
                     &code,
                     &device_name,
@@ -260,7 +260,7 @@ impl BridgeHost {
         self.operations
             .clone()
             .run("BridgeHost.unfinished_joins", move || async move {
-                bae_library::library::unfinished_joins(&self.builder())
+                bae_library::unfinished_joins(&self.builder())
                     .await
                     .map(|joins| {
                         joins
@@ -291,7 +291,7 @@ impl BridgeHost {
         self.operations
             .clone()
             .run("BridgeHost.resume_join", move || async move {
-                let joined = bae_library::library::resume_join(
+                let joined = bae_library::resume_join(
                     || self.builder(),
                     &join.join,
                     Arc::new(coven::SystemClock),
@@ -345,7 +345,7 @@ impl BridgeDeviceReset {
             .clone()
             .run_to_completion(self.clone(), "reset device", move || async move {
                 self.host.closed(self.store).await?;
-                match bae_library::library::reset_device(
+                match bae_library::reset_device(
                     self.host.builder(),
                     self.store,
                     &self.device_name,

@@ -59,11 +59,10 @@ fn creation_retains_its_keyring_failure_through_cleanup() {
     let operation = coven::StoreCreationError::Identity(coven::IdentityError::Custody(
         coven::KeyError::UnsupportedKeyringPlatform,
     ));
-    let error =
-        bae_library::library::CreateLibraryError::Store(coven::StoreCreationError::Cleanup {
-            operation: Box::new(operation),
-            cleanup: Box::new(coven::StoreCreationError::Sync(coven::SyncError::NoStorage)),
-        });
+    let error = bae_library::CreateLibraryError::Store(coven::StoreCreationError::Cleanup {
+        operation: Box::new(operation),
+        cleanup: Box::new(coven::StoreCreationError::Sync(coven::SyncError::NoStorage)),
+    });
     assert_eq!(error.category(), bae_diagnostics::UiErrorCategory::Keyring);
 }
 

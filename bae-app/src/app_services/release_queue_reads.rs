@@ -5,7 +5,7 @@
 //! travels apart, keyed by release.
 
 use super::*;
-use bae_library::library::LibraryError;
+use bae_library::LibraryError;
 
 impl AppServices {
     /// The download queue as the Downloads pane draws it: how many entries it
@@ -49,16 +49,14 @@ impl AppServices {
     }
 
     /// The bytes each downloading release has moved, sent as they move.
-    pub fn watch_download_transfers(&self) -> bae_library::library::DownloadTransfersWatch {
-        bae_library::library::DownloadTransfersWatch::of(
-            self.inner.manager.subscribe_download_transfers(),
-        )
+    pub fn watch_download_transfers(&self) -> bae_library::DownloadTransfersWatch {
+        bae_library::DownloadTransfersWatch::of(self.inner.manager.subscribe_download_transfers())
     }
 
     /// The bytes each release this process is making local has downloaded,
     /// sent as they move.
-    pub fn watch_make_local_transfers(&self) -> bae_library::library::MakeLocalTransfersWatch {
-        bae_library::library::MakeLocalTransfersWatch::of(
+    pub fn watch_make_local_transfers(&self) -> bae_library::MakeLocalTransfersWatch {
+        bae_library::MakeLocalTransfersWatch::of(
             self.inner.manager.subscribe_make_local_transfers(),
         )
     }
@@ -73,9 +71,7 @@ impl AppServices {
 
     /// The percent each exporting release has reached, sent as it moves.
     #[cfg(desktop)]
-    pub fn watch_output_transfers(&self) -> bae_library::library::OutputTransfersWatch {
-        bae_library::library::OutputTransfersWatch::of(
-            self.inner.manager.subscribe_output_transfers(),
-        )
+    pub fn watch_output_transfers(&self) -> bae_library::OutputTransfersWatch {
+        bae_library::OutputTransfersWatch::of(self.inner.manager.subscribe_output_transfers())
     }
 }

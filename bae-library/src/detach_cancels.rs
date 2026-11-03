@@ -4,7 +4,7 @@
 //! token can't be a row, so the one transition this process stops between
 //! files keeps its token here, for exactly as long as the transfer runs.
 
-use crate::library::CancellationToken;
+use crate::CancellationToken;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 

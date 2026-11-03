@@ -1,5 +1,5 @@
 use super::*;
-use crate::library::manager::{ResolvedSaveTags, SaveTags};
+use crate::manager::{ResolvedSaveTags, SaveTags};
 
 fn resolved(
     title: &str,

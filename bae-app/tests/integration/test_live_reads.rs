@@ -405,9 +405,7 @@ async fn a_transition_reaches_the_reads_from_its_row() {
         },
     );
     let album_shows = |action: Option<ReleaseStorageAction>| {
-        move |snapshot: &bae_library::library::DetailSnapshot<
-            bae_views::album_detail::AlbumDetail,
-        >| {
+        move |snapshot: &bae_library::DetailSnapshot<bae_views::album_detail::AlbumDetail>| {
             snapshot.value.as_ref().is_some_and(|detail| {
                 detail.releases[0].summary.transfer_action == action
                     && detail.releases[0].summary.transitioning == action.is_some()
@@ -415,9 +413,7 @@ async fn a_transition_reaches_the_reads_from_its_row() {
         }
     };
     let release_shows = |action: Option<ReleaseStorageAction>| {
-        move |snapshot: &bae_library::library::DetailSnapshot<
-            bae_views::album_detail::ReleaseDetail,
-        >| {
+        move |snapshot: &bae_library::DetailSnapshot<bae_views::album_detail::ReleaseDetail>| {
             snapshot.value.as_ref().is_some_and(|detail| detail.summary.transfer_action == action)
         }
     };
@@ -462,7 +458,7 @@ async fn a_transition_reaches_the_reads_from_its_row() {
 
 /// Follow the inspector until it shows a value `accept` takes.
 async fn inspector_until(
-    inspector: &bae_library::library::LiveDetail<bae_views::storage_inspector::StorageInspector>,
+    inspector: &bae_library::LiveDetail<bae_views::storage_inspector::StorageInspector>,
     accept: impl Fn(&bae_views::storage_inspector::StorageInspector) -> bool,
 ) -> bae_views::storage_inspector::StorageInspector {
     tokio::time::timeout(std::time::Duration::from_secs(10), async {

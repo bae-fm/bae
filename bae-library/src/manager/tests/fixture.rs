@@ -1,6 +1,6 @@
 /// One album of a library fixture, credited to `artists`, with no cover.
-fn fixture_album(title: &str, artists: &[&str], tracks: &[&str]) -> crate::library::FixtureAlbum {
-    crate::library::FixtureAlbum {
+fn fixture_album(title: &str, artists: &[&str], tracks: &[&str]) -> crate::FixtureAlbum {
+    crate::FixtureAlbum {
         title: title.to_string(),
         artists: artists.iter().map(|artist| artist.to_string()).collect(),
         tracks: tracks.iter().map(|track| track.to_string()).collect(),
@@ -9,8 +9,8 @@ fn fixture_album(title: &str, artists: &[&str], tracks: &[&str]) -> crate::libra
 }
 
 /// The library fixture holding `albums` and nothing else.
-fn fixture_of_albums(albums: Vec<crate::library::FixtureAlbum>) -> crate::library::LibraryFixture {
-    crate::library::LibraryFixture { albums, watched_folders: Vec::new(), playing: None }
+fn fixture_of_albums(albums: Vec<crate::FixtureAlbum>) -> crate::LibraryFixture {
+    crate::LibraryFixture { albums, watched_folders: Vec::new(), playing: None }
 }
 
 /// A fixture's albums land as the grid lists them: added in the fixture's
@@ -143,17 +143,14 @@ async fn a_fixture_album_crediting_no_artist_writes_nothing() {
 
     assert!(matches!(
         error,
-        crate::library::LibraryFixtureError::NoArtist { ref album } if album == "Uncredited Album"
+        crate::LibraryFixtureError::NoArtist { ref album } if album == "Uncredited Album"
     ));
     assert!(views(&manager).get_albums(&[]).await.unwrap().is_empty());
 }
 
 /// A fixture candidate in `state`, its folder named `folder`, of two tracks.
-fn fixture_candidate(
-    folder: &str,
-    state: crate::library::FixtureCandidateState,
-) -> crate::library::FixtureCandidate {
-    crate::library::FixtureCandidate {
+fn fixture_candidate(folder: &str, state: crate::FixtureCandidateState) -> crate::FixtureCandidate {
+    crate::FixtureCandidate {
         folder: folder.to_string(),
         tracks: vec!["01 Track.flac".to_string(), "02 Track.flac".to_string()],
         state,
@@ -178,7 +175,7 @@ async fn found_rows(manager: &LibraryManager) -> bae_import::ImportListProjectio
 /// folder reads as read through.
 #[tokio::test]
 async fn fixture_candidates_land_on_found_in_their_states() {
-    use crate::library::FixtureCandidateState as State;
+    use crate::FixtureCandidateState as State;
     use bae_import::PendingStanding;
     let (manager, temp_dir) = setup_test_manager().await;
     let tables = bae_import::tables::ImportTables::new(manager.database.clone());
@@ -192,9 +189,9 @@ async fn fixture_candidates_land_on_found_in_their_states() {
         ("Error", State::Error),
         ("Import Error", State::ImportError),
     ];
-    let fixture = crate::library::LibraryFixture {
+    let fixture = crate::LibraryFixture {
         albums: Vec::new(),
-        watched_folders: vec![crate::library::FixtureWatchedFolder {
+        watched_folders: vec![crate::FixtureWatchedFolder {
             path: root.display().to_string(),
             candidates: states
                 .iter()
@@ -233,7 +230,7 @@ async fn fixture_candidates_land_on_found_in_their_states() {
                 "Error".to_string(),
                 Some(PendingStanding::Error {
                     failure: bae_catalogs::InternalFailure {
-                        detail: crate::library::FIXTURE_LOOKUP_FAILURE.to_string(),
+                        detail: crate::FIXTURE_LOOKUP_FAILURE.to_string(),
                     }
                 })
             ),
@@ -266,11 +263,11 @@ async fn fixture_candidates_land_on_found_in_their_states() {
 /// candidate whose import failed says why.
 #[tokio::test]
 async fn fixture_candidates_carry_what_their_states_name() {
-    use crate::library::FixtureCandidateState as State;
+    use crate::FixtureCandidateState as State;
     let (manager, temp_dir) = setup_test_manager().await;
-    let fixture = crate::library::LibraryFixture {
+    let fixture = crate::LibraryFixture {
         albums: Vec::new(),
-        watched_folders: vec![crate::library::FixtureWatchedFolder {
+        watched_folders: vec![crate::FixtureWatchedFolder {
             path: temp_dir.path().join("watched").to_string_lossy().into_owned(),
             candidates: vec![
                 fixture_candidate("Identified Folder", State::Identified),
@@ -316,7 +313,7 @@ async fn fixture_candidates_carry_what_their_states_name() {
         row("Failed Folder").import_status,
         Some(bae_import::TriageImportStatus::Error {
             failure: bae_import::ImportFailureReason {
-                detail: crate::library::FIXTURE_IMPORT_FAILURE.to_string()
+                detail: crate::FIXTURE_IMPORT_FAILURE.to_string()
             }
         })
     );
@@ -362,8 +359,8 @@ fn fixture_disc_image(folder: &std::path::Path) -> std::path::PathBuf {
 }
 
 /// The fixture of nothing but `playing`.
-fn fixture_playing(playing: crate::library::FixturePlaying) -> crate::library::LibraryFixture {
-    crate::library::LibraryFixture {
+fn fixture_playing(playing: crate::FixturePlaying) -> crate::LibraryFixture {
+    crate::LibraryFixture {
         albums: Vec::new(),
         watched_folders: Vec::new(),
         playing: Some(playing),
@@ -379,7 +376,7 @@ async fn a_fixtures_playing_album_lays_its_tracks_over_the_disc_image() {
     let sheet = fixture_disc_image(temp_dir.path());
 
     manager
-        .write_fixture(&fixture_playing(crate::library::FixturePlaying {
+        .write_fixture(&fixture_playing(crate::FixturePlaying {
             title: "Album Title".to_string(),
             artists: vec!["Artist Name".to_string()],
             cue_sheet: sheet,
@@ -433,7 +430,7 @@ async fn playback_resumes_the_fixtures_playing_album_in_the_pregap() {
     let (manager, temp_dir) = setup_test_manager().await;
     let sheet = fixture_disc_image(temp_dir.path());
     manager
-        .write_fixture(&fixture_playing(crate::library::FixturePlaying {
+        .write_fixture(&fixture_playing(crate::FixturePlaying {
             title: "Album Title".to_string(),
             artists: vec!["Artist Name".to_string()],
             cue_sheet: sheet,

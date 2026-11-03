@@ -12,10 +12,10 @@ pub fn subscribe_release_files(
     library_views: &LibraryViews,
 ) -> LiveReleaseFiles {
     let (request_tx, mut requests) = tokio::sync::watch::channel(None::<ReleaseFilesRequest>);
-    let (tx, rx) = bae_library::library::live_read_channel();
+    let (tx, rx) = bae_library::live_read_channel();
     let manager = library.clone();
     let views = library_views.clone();
-    let task = bae_library::library::CancellationToken::new();
+    let task = bae_library::CancellationToken::new();
     library.spawn_stoppable_subscription_task(
         "release files",
         task.clone(),

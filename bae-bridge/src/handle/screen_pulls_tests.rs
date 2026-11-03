@@ -42,7 +42,7 @@ fn each_pull_answers_at_once_and_the_profiles_follow_a_new_one() {
         bae_catalogs::providers::Providers::offline(),
     ));
     runtime.block_on(bae_library::test_libraries::connect_storage(&library, &storage));
-    let syncing = bae_library::library::LibraryManager::clone(&library);
+    let syncing = bae_library::LibraryManager::clone(&library);
     let services = runtime.block_on(async move {
         bae_app::test_services::start_services(&library)
             .await
@@ -117,7 +117,7 @@ fn the_sync_status_follows_storage_being_set_up() {
         root.path(),
         bae_catalogs::providers::Providers::offline(),
     ));
-    let setup = bae_library::library::LibraryManager::clone(&library);
+    let setup = bae_library::LibraryManager::clone(&library);
     let services = runtime.block_on(async move {
         bae_app::test_services::start_services(&library)
             .await

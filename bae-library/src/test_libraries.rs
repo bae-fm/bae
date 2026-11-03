@@ -17,7 +17,7 @@ pub use records::{
 };
 pub use storage::{connect_storage, remove_uploaded_file, storage_library};
 
-use crate::library::{CancellationToken, LibraryManager};
+use crate::{CancellationToken, LibraryManager};
 use bae_catalogs::remote_image::RemoteImageCache;
 use bae_db::Database;
 use bae_diagnostics::Diagnostics;
@@ -85,7 +85,7 @@ impl TestLibrary {
             tokio::runtime::Handle::current(),
         );
         let closing = CancellationToken::new();
-        let manager = crate::library::open_library_manager(
+        let manager = crate::open_library_manager(
             database.clone(),
             catalogs.clone(),
             closing.clone(),

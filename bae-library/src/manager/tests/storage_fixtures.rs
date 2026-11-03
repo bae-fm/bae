@@ -316,8 +316,8 @@ async fn playback_error_reason_for_file(
     manager: &LibraryManager,
     file: &DbFile,
 ) -> bae_playback::PlaybackErrorReason {
-    use bae_track_audio::data_source::FetchArbiter;
     use bae_audio::sparse_buffer::create_sparse_buffer;
+    use bae_track_audio::data_source::FetchArbiter;
 
     let buffer = create_sparse_buffer(file.file_size as u64);
     let reader = manager.create_audio_reader(&file.id, FetchArbiter::new(), None, false);

@@ -49,7 +49,7 @@ impl ImportListSubscription {
         *self.selection_progress.lock().unwrap() = Some(values.clone());
         std::sync::Arc::new(crate::keyed_values::KeyedValueStream::new(
             values,
-            bae_library::library::CancellationToken::new(),
+            bae_library::CancellationToken::new(),
             self.runtime.clone(),
         ))
     }

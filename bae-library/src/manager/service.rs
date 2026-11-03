@@ -77,7 +77,7 @@ impl LibraryManager {
             track_deletions: Arc::default(),
             sync,
             detach_cancels: Default::default(),
-            make_local_transfers: crate::library::make_local_transfers::MakeLocalTransfers::new(),
+            make_local_transfers: crate::make_local_transfers::MakeLocalTransfers::new(),
             downloads,
             #[cfg(desktop)]
             outputs,
@@ -176,7 +176,7 @@ impl LibraryManager {
     pub fn spawn_stoppable_task<F>(
         &self,
         task_name: &'static str,
-        stop: crate::library::CancellationToken,
+        stop: crate::CancellationToken,
         task: F,
         on_panic: impl FnOnce(TaskFailed) + Send + 'static,
     ) -> Result<(), LibraryError>
@@ -201,8 +201,8 @@ impl LibraryManager {
     pub fn spawn_stoppable_subscription_task<F>(
         &self,
         task_name: &'static str,
-        stop: crate::library::CancellationToken,
-        reader: impl crate::library::SubscriptionReader,
+        stop: crate::CancellationToken,
+        reader: impl crate::SubscriptionReader,
         task: F,
     ) where
         F: Future<Output = ()> + Send + 'static,
@@ -252,7 +252,7 @@ impl LibraryManager {
     ) -> Result<T, LibraryError>
     where
         T: Send + 'static,
-        F: FnOnce(crate::library::CancellationToken) -> Fut,
+        F: FnOnce(crate::CancellationToken) -> Fut,
         Fut: Future<Output = Result<T, LibraryError>> + Send + 'static,
     {
         let task = {
@@ -292,15 +292,15 @@ impl LibraryManager {
     /// [`Self::close`], telling `steps` as each step starts.
     pub async fn close_reporting(
         &self,
-        steps: &(dyn Fn(crate::library::ClosingStep) + Send + Sync),
+        steps: &(dyn Fn(crate::ClosingStep) + Send + Sync),
     ) -> Result<(), LibraryError> {
-        steps(crate::library::ClosingStep::StoppingSync);
+        steps(crate::ClosingStep::StoppingSync);
         if let Err(error) = self.database.stop_sync().await {
             warn!(%error, "stopping sync as the library closes failed");
         }
-        steps(crate::library::ClosingStep::FinishingWork);
+        steps(crate::ClosingStep::FinishingWork);
         self.tasks.close().await;
-        steps(crate::library::ClosingStep::ClosingStore);
+        steps(crate::ClosingStep::ClosingStore);
         self.database.close().await?;
         Ok(())
     }
@@ -402,8 +402,8 @@ impl LibraryManager {
 
     /// How far and how fast each release with files being sent goes, and
     /// the files being sent together, told as each one moves.
-    pub fn watch_outbox_transfers(&self) -> crate::library::OutboxTransfersWatch {
-        crate::library::OutboxTransfersWatch::of(
+    pub fn watch_outbox_transfers(&self) -> crate::OutboxTransfersWatch {
+        crate::OutboxTransfersWatch::of(
             self.database.subscribe_sending_uploads(),
             self.database.subscribe_upload_transfers(),
             self.clock.clone(),
@@ -411,8 +411,8 @@ impl LibraryManager {
     }
 
     /// The files being sent together, told each time they move.
-    pub fn watch_outbox_total_transfer(&self) -> crate::library::OutboxTotalTransferWatch {
-        crate::library::OutboxTotalTransferWatch::of(
+    pub fn watch_outbox_total_transfer(&self) -> crate::OutboxTotalTransferWatch {
+        crate::OutboxTotalTransferWatch::of(
             self.database.subscribe_sending_uploads(),
             self.database.subscribe_upload_transfers(),
             self.clock.clone(),
@@ -421,14 +421,14 @@ impl LibraryManager {
 
     /// How far each file being sent has got, by file, told as each one
     /// moves.
-    pub fn watch_upload_file_transfers(&self) -> crate::library::FileTransfersWatch {
-        crate::library::FileTransfersWatch::of(self.database.subscribe_upload_transfers())
+    pub fn watch_upload_file_transfers(&self) -> crate::FileTransfersWatch {
+        crate::FileTransfersWatch::of(self.database.subscribe_upload_transfers())
     }
 
     /// How far each file being downloaded to keep whole has got, by file,
     /// told as each one moves.
-    pub fn watch_pin_file_transfers(&self) -> crate::library::FileTransfersWatch {
-        crate::library::FileTransfersWatch::of(self.database.subscribe_download_file_transfers())
+    pub fn watch_pin_file_transfers(&self) -> crate::FileTransfersWatch {
+        crate::FileTransfersWatch::of(self.database.subscribe_download_file_transfers())
     }
 
     /// Every entry of the download queue now, for a test that reads the
@@ -484,7 +484,7 @@ impl LibraryManager {
     pub fn subscribe_make_local_transfers(
         &self,
     ) -> tokio::sync::watch::Receiver<
-        std::collections::BTreeMap<String, crate::library::MakeLocalTransferProgress>,
+        std::collections::BTreeMap<String, crate::MakeLocalTransferProgress>,
     > {
         self.make_local_transfers.subscribe()
     }

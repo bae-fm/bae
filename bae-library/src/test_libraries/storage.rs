@@ -3,7 +3,7 @@
 use crate::followed::value_matching;
 use std::sync::Arc;
 
-use crate::library::LibraryManager;
+use crate::LibraryManager;
 use bae_catalogs::providers::Providers;
 use coven::{MemoryStorage, Storage};
 

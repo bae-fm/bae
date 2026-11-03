@@ -4,7 +4,7 @@
 //! store and builds what the manager shares with the library's services —
 //! the catalog sessions and the closing token — and passes them by name.
 
-use crate::library::{CancellationToken, LibraryManager};
+use crate::{CancellationToken, LibraryManager};
 use bae_db::{Database, DbError};
 use bae_diagnostics::Diagnostics;
 use coven::{ClockRef, IdSourceRef};
@@ -22,8 +22,7 @@ pub async fn open_library_manager(
     runtime_handle: tokio::runtime::Handle,
     remote_images: bae_catalogs::remote_image::RemoteImageCache,
 ) -> Result<LibraryManager, DbError> {
-    let sync =
-        crate::library::sync_controller::SyncController::new(database.clone(), diagnostics.clone());
+    let sync = crate::sync_controller::SyncController::new(database.clone(), diagnostics.clone());
     let downloads = bae_transfers::Downloads::new(database.clone());
     #[cfg(desktop)]
     let outputs = bae_transfers::Outputs::new(database.clone());

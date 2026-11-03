@@ -15,10 +15,10 @@ pub fn subscribe_storage_browse(
     initial: bae_views::StorageBrowseView,
 ) -> crate::live_reads::LiveStorageBrowse {
     let (view_tx, mut views) = tokio::sync::watch::channel(initial);
-    let (tx, rx) = bae_library::library::live_read_channel();
+    let (tx, rx) = bae_library::live_read_channel();
     let manager = library.clone();
     let library_views = library_views.clone();
-    let task = bae_library::library::CancellationToken::new();
+    let task = bae_library::CancellationToken::new();
     library.spawn_stoppable_subscription_task(
         "storage browse",
         task.clone(),

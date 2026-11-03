@@ -5,8 +5,8 @@
 use bae_app::live_reads::LiveStorageBrowse;
 use bae_db::GallerySource;
 use bae_db::{DbAlbum, DbRelease, NewReleaseFile, SortDirection};
-use bae_library::library::{CancellationToken, LibraryManager};
 use bae_library::storage::transfer::{TransferProgress, TransferService};
+use bae_library::{CancellationToken, LibraryManager};
 use bae_util::content_type::ContentType;
 use bae_views::album_detail::ReleaseStorageState;
 use bae_views::StorageBrowseView;

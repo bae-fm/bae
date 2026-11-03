@@ -2,7 +2,7 @@
 //! has made the person's private circle (§5.4).
 
 use crate::followed::value_matching;
-use crate::library::LibraryManager;
+use crate::LibraryManager;
 use bae_db::{people::PersonProfile, Database};
 
 /// Ask for this device's person's profile named `name`, sync until the

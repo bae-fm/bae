@@ -30,19 +30,17 @@ pub type LiveQueueUpcoming = super::LiveRead<LibraryPageWindows, QueueUpcomingSn
 /// points it at the new windows.
 ///
 /// [`LiveRead::set`]: super::LiveRead::set
-pub fn subscribe_queue_upcoming(
-    library: &crate::library::LibraryManager,
-) -> crate::library::LiveQueueUpcoming {
+pub fn subscribe_queue_upcoming(library: &crate::LibraryManager) -> crate::LiveQueueUpcoming {
     let (windows_tx, mut windows) = tokio::sync::watch::channel(bae_db::LibraryPageWindows::new());
-    let (tx, rx) = crate::library::live_read_channel();
+    let (tx, rx) = crate::live_read_channel();
     let manager = library.clone();
-    let task = crate::library::CancellationToken::new();
+    let task = crate::CancellationToken::new();
     library.spawn_stoppable_subscription_task(
         "queue upcoming",
         task.clone(),
         tx.clone(),
         async move {
-            let mut query = crate::library::live_query_events::reconfigurable_live_query_events(
+            let mut query = crate::live_query_events::reconfigurable_live_query_events(
                 &manager,
                 manager.subscribe_queue_upcoming(windows.borrow_and_update().clone()),
                 tx.clone(),
@@ -51,7 +49,7 @@ pub fn subscribe_queue_upcoming(
                 tokio::select! {
                     event = query.recv_with_cause() => {
                         let Some((cause, result)) = event else { return };
-                        let value = result.map(|read| crate::library::QueueUpcomingSnapshot {
+                        let value = result.map(|read| crate::QueueUpcomingSnapshot {
                             upcoming_total: read.upcoming_total,
                             queue_changed: !matches!(cause, coven::LiveQueryCause::Request),
                             windows: read.windows,
@@ -66,5 +64,5 @@ pub fn subscribe_queue_upcoming(
             }
         },
     );
-    crate::library::LiveQueueUpcoming::new(windows_tx, rx, task)
+    crate::LiveQueueUpcoming::new(windows_tx, rx, task)
 }

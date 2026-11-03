@@ -1,7 +1,7 @@
 use super::*;
 use bae_db::collections::{CollectionError, Playlist, PlaylistEntry, Rating, RatingTarget, Stars};
 use bae_db::people::Sharing;
-use bae_library::library::LibraryError;
+use bae_library::LibraryError;
 
 impl AppServices {
     delegate_async!(manager, create_profile => create_profile(name: &str) -> Result<(), bae_db::people::ProfileError>);

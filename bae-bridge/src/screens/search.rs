@@ -199,7 +199,7 @@ pub struct BridgeLibraryStatusSnapshot {
 #[cfg(feature = "desktop")]
 #[derive(uniffi::Object)]
 pub struct LibraryStatusSubscription {
-    inner: bae_library::library::LiveLibraryStatus,
+    inner: bae_library::LiveLibraryStatus,
     runtime: crate::operation_runtime::OperationRuntime,
 }
 
@@ -255,18 +255,16 @@ impl LibraryStatusSubscription {
 }
 
 #[cfg(feature = "desktop")]
-fn status_error(error: bae_library::library::LiveLibraryStatusError) -> BridgeError {
+fn status_error(error: bae_library::LiveLibraryStatusError) -> BridgeError {
     match error {
-        bae_library::library::LiveLibraryStatusError::Cancelled => BridgeError::Cancelled,
-        bae_library::library::LiveLibraryStatusError::Query(error) => {
-            BridgeError::database_query(error)
-        }
+        bae_library::LiveLibraryStatusError::Cancelled => BridgeError::Cancelled,
+        bae_library::LiveLibraryStatusError::Query(error) => BridgeError::database_query(error),
     }
 }
 
 #[cfg(feature = "desktop")]
 pub(crate) fn library_statuses(
-    inner: bae_library::library::LiveLibraryStatus,
+    inner: bae_library::LiveLibraryStatus,
     runtime: crate::operation_runtime::OperationRuntime,
 ) -> Arc<LibraryStatusSubscription> {
     Arc::new(LibraryStatusSubscription { inner, runtime })

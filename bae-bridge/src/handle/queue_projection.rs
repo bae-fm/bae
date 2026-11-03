@@ -1,17 +1,17 @@
 mirror_struct! {
-    crate::types::BridgeUploadBar = bae_library::library::UploadBar,
+    crate::types::BridgeUploadBar = bae_library::UploadBar,
     from_core: pub(super) fn,
     fields: { bytes_done, bytes_total },
 }
 
 mirror_struct! {
-    crate::types::BridgeUploadTransfer = bae_library::library::UploadTransfer,
+    crate::types::BridgeUploadTransfer = bae_library::UploadTransfer,
     from_core: pub(crate) fn,
     fields: { bar: (opt crate::types::BridgeUploadBar), throughput_bps },
 }
 
 mirror_struct! {
-    crate::types::BridgeReleaseUploadTransfer = bae_library::library::ReleaseUploadTransfer,
+    crate::types::BridgeReleaseUploadTransfer = bae_library::ReleaseUploadTransfer,
     from_core: pub(crate) fn,
     fields: { bar: (crate::types::BridgeUploadBar), throughput_bps },
 }
@@ -36,7 +36,7 @@ mirror_struct! {
 }
 
 mirror_struct! {
-    crate::types::BridgeMakeLocalProgress = bae_library::library::MakeLocalTransferProgress,
+    crate::types::BridgeMakeLocalProgress = bae_library::MakeLocalTransferProgress,
     from_core: pub(crate) fn,
     fields: { file_bytes_done, file_bytes_total, bytes_done, bytes_total },
 }

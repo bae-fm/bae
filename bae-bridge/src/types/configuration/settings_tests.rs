@@ -36,7 +36,7 @@ fn internal_import_failure_retains_its_category() {
 /// whether the library or import met it.
 #[test]
 fn store_internal_and_refused_failures_keep_their_category() {
-    use bae_library::library::LibraryError;
+    use bae_library::LibraryError;
     let cases: [(BridgeError, BridgeErrorCategory); 6] = [
         (
             LibraryError::Database(bae_db::DbError::Message("read failed".into())).into(),
@@ -70,7 +70,7 @@ fn store_internal_and_refused_failures_keep_their_category() {
 /// app words that refusal rather than a generic import failure.
 #[test]
 fn an_import_refusal_inside_a_library_error_crosses_as_itself() {
-    use bae_library::library::LibraryError;
+    use bae_library::LibraryError;
     let cases = [
         (
             ImportError::MetadataTrackCount { folder_tracks: 10, release_tracks: 12 },

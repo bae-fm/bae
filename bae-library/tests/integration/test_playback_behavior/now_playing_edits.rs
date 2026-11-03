@@ -71,7 +71,7 @@ async fn now_playing_until(
 
 /// The queue's first upcoming item once `accept` takes it.
 async fn first_upcoming_until(
-    queue: &bae_library::library::LiveQueueUpcoming,
+    queue: &bae_library::LiveQueueUpcoming,
     accept: impl Fn(&bae_playback::QueueItem) -> bool,
 ) -> bae_playback::QueueItem {
     tokio::time::timeout(Duration::from_secs(10), async {
@@ -93,8 +93,8 @@ async fn first_upcoming_until(
 }
 
 /// The queue's upcoming read over its first track.
-fn first_upcoming(library: &TestLibrary) -> bae_library::library::LiveQueueUpcoming {
-    let queue = bae_library::library::subscribe_queue_upcoming(library);
+fn first_upcoming(library: &TestLibrary) -> bae_library::LiveQueueUpcoming {
+    let queue = bae_library::subscribe_queue_upcoming(library);
     queue
         .set(bae_db::LibraryPageWindows::from([bae_db::LibraryPageWindow {
             offset: 0,
@@ -134,7 +134,7 @@ async fn a_changed_cover_reaches_the_paused_track_and_the_queue() {
         .library
         .change_cover(
             &release_id,
-            bae_library::library::CoverSelection::ReleaseImage { file_id: file.id },
+            bae_library::CoverSelection::ReleaseImage { file_id: file.id },
         )
         .await
         .unwrap();
