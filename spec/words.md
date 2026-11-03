@@ -1,9 +1,9 @@
 # The words bae uses
 
-What each word on screen means, so every screen, platform and locale says the
-same thing the same way. A new word, or a new meaning for one, goes here in
-the commit that puts it on screen. [bae.md](bae.md) states what bae does; this
-file states what it calls things.
+How bae writes, and what its own words mean, so every screen, platform and
+locale says the same thing the same way. A new word, or a new meaning for one,
+goes here in the commit that puts it on screen. [bae.md](bae.md) states what
+bae does; this file states what it calls things.
 
 ## Capitalization
 
@@ -34,39 +34,14 @@ Library…", "Open Library"). "bae" itself is always lowercase.
 ## Sync
 
 - **Sync.** The page and the Library row about keeping this device's copy and
-  storage in step. On screen it is "Sync", never "Cloud home".
-- **Signed out.** This device has no working sign-in for storage: none is
-  saved, or the one it had expired. The status names the storage ("Signed out
-  of Dropbox"), on the Library page's Sync row too, and so does the button:
-  "Sign in to Dropbox…" (Android "Sign in to Dropbox"), and for OneDrive and
-  iCloud the same. S3 has no sign-in; its button is "Enter access key…".
-- **Storage access was denied.** This device is signed in, but that account
-  isn't allowed into the storage folder or bucket. Signing in again doesn't fix
-  it; the person who manages the storage does.
-- **Sync failed.** Sync stopped on an error with no other name, or on a
-  file that can't be uploaded because it is missing or was changed; then
-  the Sync page names the file. The Sync page says what went wrong and
-  offers the fix where there is one.
-- **Syncing…** Something is being sent or received: a change or a file.
-  A pass that finds nothing new leaves the state as it was.
-- **Waiting to sync.** This device is online and has changes to send, but
-  they are held: uploads are paused, or an upload waits to retry. The Sync
-  page says why. Offline with changes to send is "Offline · unsent
-  changes".
-- **Synced.** Everything this device has, its changes and its files, is in
-  storage. A file still uploading is "Syncing…", not "Synced".
-- There is no "Checking sync…" and no "Sync stopped": the state is known as
-  soon as the library opens, and a sync that couldn't start is "Sync
-  failed", with why and Reconnect.
-- **Last synced.** When this device's copy last matched storage. Shown only
-  on the Sync page, on its own line under the status.
+  storage in step. On screen it is "Sync", never "Cloud home". The states it
+  shows are coven's sync state
+  ([coven §19.1](https://github.com/bae-fm/coven/blob/main/spec/coven.md#191-what-the-app-sees)).
 
 ## People and devices
 
 - **Devices.** The phones and Macs that have a copy of the library. "This
   device" is the one in your hand.
-- **Removed from the library.** An admin took this device, or its person, out
-  of the library: it no longer syncs, and what is here is an old copy.
 - **Everyone.** The listening-history choice that shares your plays with the
   library's people. Not "Household", not "Members".
 
