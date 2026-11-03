@@ -18,7 +18,7 @@ mirror_struct! {
 
 impl crate::types::BridgeUploadProgress {
     pub(super) fn from_core(progress: bae_db::UploadProgress) -> Self {
-        let activity = progress.activity().map(crate::types::BridgeUploadActivity::from_core);
+        let activity = crate::types::BridgeUploadActivity::from_core(progress.activity());
         let bae_db::UploadProgress { queued, uploading } = progress;
         Self { queued, uploading, activity }
     }

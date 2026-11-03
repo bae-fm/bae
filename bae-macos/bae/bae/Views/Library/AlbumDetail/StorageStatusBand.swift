@@ -20,7 +20,7 @@ struct StorageStatusBand: View {
             // A cloud transition in flight is the release's storage state
             // while it runs: its phase, bar, and count are one line.
             if let upload = release.summary.upload {
-                if upload.progress.uploading > 0 {
+                if upload.progress.activity == .uploading {
                     uploadLine(upload.progress)
                         .themeText(.body)
                 }

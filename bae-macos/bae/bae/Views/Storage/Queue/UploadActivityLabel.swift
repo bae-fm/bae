@@ -8,7 +8,7 @@ struct UploadActivityLabel: View {
 
     /// The phase alone ("Uploading"), on a line that is one release's own.
     init(phaseOf progress: BridgeUploadProgress) {
-        activity = progress.heldActivity
+        activity = progress.activity
         text = activity.phaseText
     }
 

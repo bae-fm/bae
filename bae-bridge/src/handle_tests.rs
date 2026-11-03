@@ -361,7 +361,7 @@ fn upload_progress_keeps_the_counts_and_their_phase() {
     });
     assert_eq!(value.queued, 1);
     assert_eq!(value.uploading, 2);
-    assert_eq!(value.activity, Some(crate::types::BridgeUploadActivity::Uploading));
+    assert_eq!(value.activity, crate::types::BridgeUploadActivity::Uploading);
 }
 
 #[test]

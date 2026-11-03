@@ -84,11 +84,11 @@ pub enum BridgeUploadFileState {
 
 /// How many files wait and how many are being sent, and the phase that
 /// makes. How far they have gone is in the upload `KeyedValueStream`s.
-#[derive(Debug, Clone, Default, PartialEq, Eq, uniffi::Record)]
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeUploadProgress {
     pub queued: u32,
     pub uploading: u32,
-    pub activity: Option<BridgeUploadActivity>,
+    pub activity: BridgeUploadActivity,
 }
 
 /// How far the files being sent have gone together and how fast they go.

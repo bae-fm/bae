@@ -7,20 +7,6 @@ extension BridgeUploadActivity {
     }
 }
 
-extension BridgeUploadProgress {
-    /// The phase core chose for files it holds: uploading while any file
-    /// moves bytes, queued otherwise. Only an idle total has none.
-    public var heldActivity: BridgeUploadActivity {
-        guard let activity else {
-            preconditionFailure(
-                "an active cloud upload has no projected activity"
-            )
-        }
-        return activity
-    }
-
-}
-
 extension BridgeUploadBar {
     /// How far the encrypted bytes have come, as a 0...1 fraction.
     public var fraction: Double {

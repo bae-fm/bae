@@ -149,8 +149,8 @@ private struct DoneRowUploadLine: View {
     private var outboxStore
 
     var body: some View {
-        let phase = progress.heldActivity.phaseText
-        if progress.uploading > 0 {
+        let phase = progress.activity.phaseText
+        if progress.activity == .uploading {
             ProgressLine(
                 phase,
                 bar: StreamBar(
