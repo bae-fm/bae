@@ -1,68 +1,75 @@
-//! A person's typed search stored beside the standings: each catalog's
-//! answer landing on the run it was asked for, a retry, a source switched
-//! off, and a picked release's documents joining it.
+//! A person's typed search as its rows keep it: each catalog's answer
+//! landing on the run it was asked for, a retry, a source switched off, and
+//! a picked release's documents joining it.
 
 use super::*;
-use crate::candidate_runtime::tests::*;
-use crate::candidate_search::{CandidateSearch, SourceSearch};
-use bae_catalogs::catalog::{Catalog, LookupCatalog};
+use crate::candidate_search::SourceSearch;
+use crate::tables::import_state::tests::{pane_candidate_key, stored_pane_candidate};
+use bae_catalogs::catalog::Catalog;
+use bae_db::test_fixtures::empty_db;
 use bae_preferences::{CatalogAvailability, SourceAvailability};
-
-// A candidate's typed search, stored: which answers land, and which are
-// refused.
 
 /// A library that asks every catalog it can — what these tests search from
 /// unless they are about a catalog that is not asked.
 fn every_source_on() -> Vec<CatalogAvailability> {
-    bae_catalogs::catalog::LookupCatalog::ALL
+    LookupCatalog::ALL
         .into_iter()
         .map(|catalog| CatalogAvailability { catalog, state: SourceAvailability::On })
         .collect()
 }
 
-fn search_query() -> bae_catalogs::search::SearchQuery {
-    bae_catalogs::search::SearchQuery::General {
-        artist: "Artist Name".to_string(),
-        album: "Album Title".to_string(),
-    }
+fn search_query() -> SearchQuery {
+    SearchQuery::General { artist: "Artist Name".to_string(), album: "Album Title".to_string() }
 }
 
-fn search_result(source: LookupCatalog, release_id: &str) -> bae_catalogs::search::MetadataResult {
-    bae_catalogs::search::MetadataResult {
+fn search_result(source: LookupCatalog, release_id: &str) -> MetadataResult {
+    MetadataResult {
         title: "Album Title".to_string(),
         artist: Some("Artist Name".to_string()),
         year: Some(1992),
-        ..bae_catalogs::search::MetadataResult::for_test(source, release_id, None)
+        ..MetadataResult::for_test(source, release_id, None)
     }
 }
 
-/// The search `key` holds, as its snapshot draws it.
-async fn search_of(
-    runtime: &CandidateRuntime,
-    key: &crate::CandidateKey,
-) -> Option<CandidateSearch> {
-    runtime.snapshot(key).await.unwrap().and_then(|runtime| runtime.search)
+/// Tables over a library whose scan holds one folder candidate, and its key.
+async fn scanned() -> (ImportTables, CandidateKey, tempfile::TempDir) {
+    let (db, tmp) = empty_db().await;
+    stored_pane_candidate(&db).await;
+    (ImportTables::new(db), pane_candidate_key(), tmp)
+}
+
+/// The search `key` holds, with the run it is on.
+async fn stored(tables: &ImportTables, key: &CandidateKey) -> Option<(SearchRun, CandidateSearch)> {
+    let key = key.clone();
+    tables.database.read(move |sql| Ok(load_on(&sql, Some(&key))?.remove(&key))).await.unwrap()
+}
+
+/// The search `key` holds.
+async fn search_of(tables: &ImportTables, key: &CandidateKey) -> Option<CandidateSearch> {
+    stored(tables, key).await.map(|(_, search)| search)
+}
+
+/// Whether `run` is the run `key`'s search is on.
+async fn is_current(tables: &ImportTables, key: &CandidateKey, run: SearchRun) -> bool {
+    stored(tables, key).await.map(|(current, _)| current) == Some(run)
 }
 
 /// Start a search of [`search_query`] for `key`, every catalog asked.
-async fn started_search(
-    runtime: &CandidateRuntime,
-    key: &crate::CandidateKey,
-) -> crate::candidate_search::SearchRun {
-    runtime
-        .start_search(key, &CandidateSearch::started(search_query(), &every_source_on()))
+async fn started_search(tables: &ImportTables, key: &CandidateKey) -> SearchRun {
+    tables
+        .start_candidate_search(key, &CandidateSearch::started(search_query(), &every_source_on()))
         .await
         .unwrap()
 }
 
 /// Land `outcome` as `source`'s answer on `run`; whether it landed.
 async fn land(
-    runtime: &CandidateRuntime,
-    run: crate::candidate_search::SearchRun,
-    source: bae_catalogs::catalog::LookupCatalog,
-    outcome: Result<Vec<bae_catalogs::search::MetadataResult>, bae_catalogs::Failure>,
+    tables: &ImportTables,
+    run: SearchRun,
+    source: LookupCatalog,
+    outcome: Result<Vec<MetadataResult>, Failure>,
 ) -> bool {
-    runtime.land_search(run, source, outcome).await.unwrap()
+    tables.land_candidate_search(run, source, outcome).await.unwrap()
 }
 
 /// Both sources land on the same run, one after the other, and neither
@@ -70,14 +77,13 @@ async fn land(
 /// it, in the order it returned them.
 #[tokio::test]
 async fn two_landings_on_one_run_both_stand() {
-    let runtime = CandidateRuntime::for_test().await;
-    let key = &crate::CandidateKey::test("/watch/a/rel1");
-    scanned_key(&runtime, key).await;
-    let run = started_search(&runtime, key).await;
+    let (tables, key, _tmp) = scanned().await;
+    let key = &key;
+    let run = started_search(&tables, key).await;
 
     assert!(
         land(
-            &runtime,
+            &tables,
             run,
             LookupCatalog::MusicBrainz,
             Ok(vec![
@@ -89,7 +95,7 @@ async fn two_landings_on_one_run_both_stand() {
     );
     assert!(
         land(
-            &runtime,
+            &tables,
             run,
             LookupCatalog::Discogs,
             Ok(vec![search_result(LookupCatalog::Discogs, "dg-1")]),
@@ -98,7 +104,7 @@ async fn two_landings_on_one_run_both_stand() {
     );
 
     let landed =
-        search_of(&runtime, key).await.expect("the search is what is in flight for the key");
+        search_of(&tables, key).await.expect("the search is what is in flight for the key");
     assert_eq!(landed.query, search_query());
     let ids = |source| match landed.source(source) {
         Some(SourceSearch::Done { results }) => {
@@ -114,18 +120,17 @@ async fn two_landings_on_one_run_both_stand() {
 /// landing goes nowhere and leaves the new one untouched.
 #[tokio::test]
 async fn a_replaced_search_cannot_land() {
-    let runtime = CandidateRuntime::for_test().await;
-    let key = &crate::CandidateKey::test("/watch/a/rel1");
-    scanned_key(&runtime, key).await;
-    let first = started_search(&runtime, key).await;
-    let second = started_search(&runtime, key).await;
+    let (tables, key, _tmp) = scanned().await;
+    let key = &key;
+    let first = started_search(&tables, key).await;
+    let second = started_search(&tables, key).await;
     assert_ne!(first, second);
-    assert!(!runtime.search_run_is_current(key, first).await);
-    assert!(runtime.search_run_is_current(key, second).await);
+    assert!(!is_current(&tables, key, first).await);
+    assert!(is_current(&tables, key, second).await);
 
     assert!(
         !land(
-            &runtime,
+            &tables,
             first,
             LookupCatalog::MusicBrainz,
             Ok(vec![search_result(LookupCatalog::MusicBrainz, "mb-1")]),
@@ -133,7 +138,7 @@ async fn a_replaced_search_cannot_land() {
         .await
     );
     assert_eq!(
-        search_of(&runtime, key)
+        search_of(&tables, key)
             .await
             .expect("the second search stands")
             .source(LookupCatalog::MusicBrainz),
@@ -146,57 +151,59 @@ async fn a_replaced_search_cannot_land() {
 /// being identified again has no files, and searches all the same.
 #[tokio::test]
 async fn a_search_is_of_a_candidate_the_scan_holds_or_of_a_library_release() {
-    let runtime = CandidateRuntime::for_test().await;
-    let unscanned = &crate::CandidateKey::test("/watch/a/rel1");
-    assert!(runtime
-        .start_search(unscanned, &CandidateSearch::started(search_query(), &every_source_on()),)
+    let (db, _tmp) = empty_db().await;
+    let tables = ImportTables::new(db);
+    let unscanned = &pane_candidate_key();
+    assert!(tables
+        .start_candidate_search(
+            unscanned,
+            &CandidateSearch::started(search_query(), &every_source_on()),
+        )
         .await
         .is_err());
-    assert!(search_of(&runtime, unscanned).await.is_none());
+    assert!(search_of(&tables, unscanned).await.is_none());
 
-    let release = &crate::CandidateKey::reidentify("release-1");
-    started_search(&runtime, release).await;
-    assert!(search_of(&runtime, release).await.is_some());
+    let release = &CandidateKey::reidentify("release-1");
+    started_search(&tables, release).await;
+    assert!(search_of(&tables, release).await.is_some());
 }
 
 /// Retry re-asks only the failed source, on the same run, keeping what the
 /// other found. A search with nothing to re-ask changes nothing.
 #[tokio::test]
 async fn a_retry_re_asks_only_the_failed_sources() {
-    let runtime = CandidateRuntime::for_test().await;
-    let key = &crate::CandidateKey::test("/watch/a/rel1");
-    scanned_key(&runtime, key).await;
-    let run = started_search(&runtime, key).await;
+    let (tables, key, _tmp) = scanned().await;
+    let key = &key;
+    let run = started_search(&tables, key).await;
     assert!(
         land(
-            &runtime,
+            &tables,
             run,
             LookupCatalog::MusicBrainz,
             Ok(vec![search_result(LookupCatalog::MusicBrainz, "mb-1")]),
         )
         .await
     );
-    let unavailable: bae_catalogs::Failure =
-        bae_catalogs::LookupFailure::Provider { status: Some(503) }.into();
-    assert!(land(&runtime, run, LookupCatalog::Discogs, Err(unavailable.clone())).await);
+    let unavailable: Failure = bae_catalogs::LookupFailure::Provider { status: Some(503) }.into();
+    assert!(land(&tables, run, LookupCatalog::Discogs, Err(unavailable.clone())).await);
     assert_eq!(
-        search_of(&runtime, key).await.unwrap().source(LookupCatalog::Discogs),
+        search_of(&tables, key).await.unwrap().source(LookupCatalog::Discogs),
         Some(&SourceSearch::Failed(unavailable)),
         "the failure reads back as it landed"
     );
 
     let (retried, query, sources) =
-        runtime.retry_search(key).await.unwrap().expect("Discogs failed");
+        tables.retry_candidate_search(key).await.unwrap().expect("Discogs failed");
     assert_eq!(retried, run);
     assert_eq!(query, search_query());
     assert_eq!(sources, vec![LookupCatalog::Discogs]);
-    let search = search_of(&runtime, key).await.expect("the retried search is in flight");
+    let search = search_of(&tables, key).await.expect("the retried search is in flight");
     assert!(matches!(search.source(LookupCatalog::MusicBrainz), Some(SourceSearch::Done { .. })));
     assert_eq!(search.source(LookupCatalog::Discogs), Some(&SourceSearch::Searching));
 
     assert!(
         land(
-            &runtime,
+            &tables,
             retried,
             LookupCatalog::Discogs,
             Ok(vec![search_result(LookupCatalog::Discogs, "dg-1")]),
@@ -204,11 +211,15 @@ async fn a_retry_re_asks_only_the_failed_sources() {
         .await
     );
     assert!(
-        runtime.retry_search(key).await.unwrap().is_none(),
+        tables.retry_candidate_search(key).await.unwrap().is_none(),
         "a settled search has no source to re-ask"
     );
     assert!(
-        runtime.retry_search(&crate::CandidateKey::test("/watch/a/rel2")).await.unwrap().is_none(),
+        tables
+            .retry_candidate_search(&CandidateKey::test("/watch/a/rel2"))
+            .await
+            .unwrap()
+            .is_none(),
         "a key with no search has none either"
     );
 }
@@ -217,26 +228,25 @@ async fn a_retry_re_asks_only_the_failed_sources() {
 /// failed one: the answer already out for the other still lands.
 #[tokio::test]
 async fn a_retry_leaves_a_source_still_searching_to_its_answer() {
-    let runtime = CandidateRuntime::for_test().await;
-    let key = &crate::CandidateKey::test("/watch/a/rel1");
-    scanned_key(&runtime, key).await;
-    let run = started_search(&runtime, key).await;
-    let broke: bae_catalogs::Failure = bae_catalogs::InternalFailure {
+    let (tables, key, _tmp) = scanned().await;
+    let key = &key;
+    let run = started_search(&tables, key).await;
+    let broke: Failure = bae_catalogs::InternalFailure {
         detail: "reading the answer: unexpected end of input".to_string(),
     }
     .into();
-    assert!(land(&runtime, run, LookupCatalog::Discogs, Err(broke.clone())).await);
+    assert!(land(&tables, run, LookupCatalog::Discogs, Err(broke.clone())).await);
     assert_eq!(
-        search_of(&runtime, key).await.unwrap().source(LookupCatalog::Discogs),
+        search_of(&tables, key).await.unwrap().source(LookupCatalog::Discogs),
         Some(&SourceSearch::Failed(broke)),
         "bae breaking reads back as its error"
     );
 
-    let (_, _, sources) = runtime.retry_search(key).await.unwrap().unwrap();
+    let (_, _, sources) = tables.retry_candidate_search(key).await.unwrap().unwrap();
     assert_eq!(sources, vec![LookupCatalog::Discogs]);
     assert!(
         land(
-            &runtime,
+            &tables,
             run,
             LookupCatalog::MusicBrainz,
             Ok(vec![search_result(LookupCatalog::MusicBrainz, "mb-1")]),
@@ -250,11 +260,10 @@ async fn a_retry_leaves_a_source_still_searching_to_its_answer() {
 /// never asked takes none at all.
 #[tokio::test]
 async fn only_a_part_still_searching_takes_an_answer() {
-    let runtime = CandidateRuntime::for_test().await;
-    let key = &crate::CandidateKey::test("/watch/a/rel1");
-    scanned_key(&runtime, key).await;
-    let run = runtime
-        .start_search(
+    let (tables, key, _tmp) = scanned().await;
+    let key = &key;
+    let run = tables
+        .start_candidate_search(
             key,
             &CandidateSearch::started(
                 search_query(),
@@ -269,7 +278,7 @@ async fn only_a_part_still_searching_takes_an_answer() {
 
     assert!(
         land(
-            &runtime,
+            &tables,
             run,
             LookupCatalog::Discogs,
             Ok(vec![search_result(LookupCatalog::Discogs, "dg-1")]),
@@ -278,7 +287,7 @@ async fn only_a_part_still_searching_takes_an_answer() {
     );
     assert!(
         !land(
-            &runtime,
+            &tables,
             run,
             LookupCatalog::Discogs,
             Ok(vec![search_result(LookupCatalog::Discogs, "dg-2")]),
@@ -288,7 +297,7 @@ async fn only_a_part_still_searching_takes_an_answer() {
     );
     assert!(
         !land(
-            &runtime,
+            &tables,
             run,
             LookupCatalog::MusicBrainz,
             Ok(vec![search_result(LookupCatalog::MusicBrainz, "mb-1")]),
@@ -297,7 +306,7 @@ async fn only_a_part_still_searching_takes_an_answer() {
         "the search never asked MusicBrainz"
     );
 
-    let search = search_of(&runtime, key).await.unwrap();
+    let search = search_of(&tables, key).await.unwrap();
     assert_eq!(search.source(LookupCatalog::MusicBrainz), None);
     assert_eq!(search.groups.len(), 1);
     assert_eq!(search.groups[0].sections[0].pressings[0].lead().release_id, "dg-1");
@@ -308,27 +317,26 @@ async fn only_a_part_still_searching_takes_an_answer() {
 /// source's part and the run stand.
 #[tokio::test]
 async fn switching_a_source_off_closes_its_part_of_every_search() {
-    let runtime = CandidateRuntime::for_test().await;
-    let answered = &crate::CandidateKey::test("/watch/a/rel1");
-    let searching = &crate::CandidateKey::reidentify("release-1");
-    scanned_key(&runtime, answered).await;
-    let answered_run = started_search(&runtime, answered).await;
-    let searching_run = started_search(&runtime, searching).await;
-    for source in bae_catalogs::catalog::LookupCatalog::ALL {
+    let (tables, answered, _tmp) = scanned().await;
+    let answered = &answered;
+    let searching = &CandidateKey::reidentify("release-1");
+    let answered_run = started_search(&tables, answered).await;
+    let searching_run = started_search(&tables, searching).await;
+    for source in LookupCatalog::ALL {
         let release = format!("{}-1", source.as_str());
         assert!(
-            land(&runtime, answered_run, source, Ok(vec![search_result(source, &release)]),).await
+            land(&tables, answered_run, source, Ok(vec![search_result(source, &release)]),).await
         );
     }
-    assert_eq!(search_of(&runtime, answered).await.unwrap().groups.len(), 2);
+    assert_eq!(search_of(&tables, answered).await.unwrap().groups.len(), 2);
 
-    runtime.switch_source_off(LookupCatalog::MusicBrainz).await.unwrap();
+    tables.switch_search_source_off(LookupCatalog::MusicBrainz).await.unwrap();
 
-    let search = search_of(&runtime, answered).await.unwrap();
+    let search = search_of(&tables, answered).await.unwrap();
     assert_eq!(search.source(LookupCatalog::MusicBrainz), Some(&SourceSearch::Off));
     assert!(matches!(search.source(LookupCatalog::Discogs), Some(SourceSearch::Done { .. })));
     assert_eq!(search.groups.len(), 1, "MusicBrainz's card is gone");
-    let search = search_of(&runtime, searching).await.unwrap();
+    let search = search_of(&tables, searching).await.unwrap();
     assert_eq!(search.source(LookupCatalog::MusicBrainz), Some(&SourceSearch::Off));
     assert_eq!(
         search.source(LookupCatalog::Discogs),
@@ -336,7 +344,7 @@ async fn switching_a_source_off_closes_its_part_of_every_search() {
         "the source still being asked is untouched"
     );
     assert!(
-        runtime.search_run_is_current(searching, searching_run).await,
+        is_current(&tables, searching, searching_run).await,
         "the run stands, so the other source's answer still lands"
     );
 }
@@ -345,15 +353,14 @@ async fn switching_a_source_off_closes_its_part_of_every_search() {
 /// longer searching, so it goes nowhere and the search stays closed on it.
 #[tokio::test]
 async fn a_landing_for_a_switched_off_source_goes_nowhere() {
-    let runtime = CandidateRuntime::for_test().await;
-    let key = &crate::CandidateKey::test("/watch/a/rel1");
-    scanned_key(&runtime, key).await;
-    let run = started_search(&runtime, key).await;
+    let (tables, key, _tmp) = scanned().await;
+    let key = &key;
+    let run = started_search(&tables, key).await;
 
-    runtime.switch_source_off(LookupCatalog::MusicBrainz).await.unwrap();
+    tables.switch_search_source_off(LookupCatalog::MusicBrainz).await.unwrap();
     assert!(
         !land(
-            &runtime,
+            &tables,
             run,
             LookupCatalog::MusicBrainz,
             Ok(vec![search_result(LookupCatalog::MusicBrainz, "mb-1")]),
@@ -362,7 +369,7 @@ async fn a_landing_for_a_switched_off_source_goes_nowhere() {
     );
 
     let search =
-        search_of(&runtime, key).await.expect("the search is what is in flight for the key");
+        search_of(&tables, key).await.expect("the search is what is in flight for the key");
     assert_eq!(
         search.source(LookupCatalog::MusicBrainz),
         Some(&SourceSearch::Off),
@@ -377,19 +384,16 @@ async fn a_landing_for_a_switched_off_source_goes_nowhere() {
 /// returned to it included, changes nothing.
 #[tokio::test]
 async fn a_pick_joins_the_search_s_cards_from_then_on() {
-    let runtime = CandidateRuntime::for_test().await;
-    let key = &crate::CandidateKey::test("/watch/a/rel1");
-    scanned_key(&runtime, key).await;
-    let run = started_search(&runtime, key).await;
-    let grouped = |source: LookupCatalog, release_id: &str, group: &str| {
-        bae_catalogs::search::MetadataResult {
-            source_group_id: Some(group.to_string()),
-            ..search_result(source, release_id)
-        }
+    let (tables, key, _tmp) = scanned().await;
+    let key = &key;
+    let run = started_search(&tables, key).await;
+    let grouped = |source: LookupCatalog, release_id: &str, group: &str| MetadataResult {
+        source_group_id: Some(group.to_string()),
+        ..search_result(source, release_id)
     };
     assert!(
         land(
-            &runtime,
+            &tables,
             run,
             LookupCatalog::MusicBrainz,
             Ok(vec![grouped(LookupCatalog::MusicBrainz, "mb-1", "group-x")]),
@@ -398,19 +402,19 @@ async fn a_pick_joins_the_search_s_cards_from_then_on() {
     );
     assert!(
         land(
-            &runtime,
+            &tables,
             run,
             LookupCatalog::Discogs,
             Ok(vec![grouped(LookupCatalog::Discogs, "dg-1", "master-7")]),
         )
         .await
     );
-    assert_eq!(search_of(&runtime, key).await.unwrap().groups.len(), 2);
-    let master = bae_catalogs::records::MetadataRef::new(Catalog::Discogs, "master-7");
-    let links = bae_catalogs::album_links::AlbumLinks::Read(vec![master.clone()]);
+    assert_eq!(search_of(&tables, key).await.unwrap().groups.len(), 2);
+    let master = MetadataRef::new(Catalog::Discogs, "master-7");
+    let links = AlbumLinks::Read(vec![master.clone()]);
 
-    let off_the_list = runtime
-        .land_picked(
+    let off_the_list = tables
+        .land_candidate_search_pick(
             key,
             &bae_catalogs::records::LookupRef::new(LookupCatalog::MusicBrainz, "mb-partner"),
             links.clone(),
@@ -418,10 +422,10 @@ async fn a_pick_joins_the_search_s_cards_from_then_on() {
         .await
         .unwrap();
     assert!(off_the_list.is_empty());
-    assert_eq!(search_of(&runtime, key).await.unwrap().groups.len(), 2);
+    assert_eq!(search_of(&tables, key).await.unwrap().groups.len(), 2);
 
-    let kept = runtime
-        .land_picked(
+    let kept = tables
+        .land_candidate_search_pick(
             key,
             &bae_catalogs::records::LookupRef::new(LookupCatalog::MusicBrainz, "mb-1"),
             links.clone(),
@@ -429,10 +433,7 @@ async fn a_pick_joins_the_search_s_cards_from_then_on() {
         .await
         .unwrap();
     assert_eq!(kept, vec![("group-x".to_string(), vec![master])]);
-    let search = search_of(&runtime, key).await.unwrap();
+    let search = search_of(&tables, key).await.unwrap();
     assert_eq!(search.groups.len(), 1, "the picked result joins the cards");
-    assert_eq!(
-        search.picked,
-        vec![crate::candidate_search::PickedResult { release_id: "mb-1".to_string(), links }]
-    );
+    assert_eq!(search.picked, vec![PickedResult { release_id: "mb-1".to_string(), links }]);
 }

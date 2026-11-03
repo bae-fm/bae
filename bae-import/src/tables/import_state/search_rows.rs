@@ -520,16 +520,8 @@ impl ImportTables {
             })
             .await
     }
-
-    /// The run `key`'s search is on, for a test.
-    #[cfg(test)]
-    pub(crate) async fn candidate_search_run(
-        &self,
-        key: &CandidateKey,
-    ) -> Result<Option<SearchRun>, DbError> {
-        let key = key.clone();
-        self.database
-            .read(move |sql| Ok(load_on(&sql, Some(&key))?.remove(&key).map(|(run, _)| run)))
-            .await
-    }
 }
+
+#[cfg(test)]
+#[path = "search_rows_tests.rs"]
+mod tests;

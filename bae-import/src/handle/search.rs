@@ -25,7 +25,7 @@ impl ImportServiceHandle {
     ) -> Result<(), crate::ImportError> {
         let sources = bae_preferences::preferences(&self.database).await?.metadata_sources();
         let search = CandidateSearch::started(query.clone(), &sources);
-        let run = self.runtime.start_search(&candidate_key, &search).await?;
+        let run = self.tables.start_candidate_search(&candidate_key, &search).await?;
         for source in search.searching_sources() {
             self.spawn_source_search(candidate_key.clone(), query.clone(), source, run);
         }
@@ -40,7 +40,9 @@ impl ImportServiceHandle {
         &self,
         candidate_key: crate::CandidateKey,
     ) -> Result<(), crate::ImportError> {
-        let Some((run, query, sources)) = self.runtime.retry_search(&candidate_key).await? else {
+        let Some((run, query, sources)) =
+            self.tables.retry_candidate_search(&candidate_key).await?
+        else {
             debug!("retry_candidate_search: {candidate_key} has no source to re-ask");
             return Ok(());
         };
@@ -56,7 +58,7 @@ impl ImportServiceHandle {
     /// Called after the preference is written, so every search started from
     /// here on is started without the source and has nothing to close.
     pub async fn stop_asking_source(&self, source: LookupCatalog) -> Result<(), bae_db::DbError> {
-        self.runtime.switch_source_off(source).await
+        self.tables.switch_search_source_off(source).await
     }
 
     /// Run one source's part of a search and land it on the search's run,
@@ -69,7 +71,7 @@ impl ImportServiceHandle {
         run: SearchRun,
     ) {
         let catalogs = self.catalogs.clone();
-        let runtime = self.runtime.clone();
+        let tables = self.tables.clone();
         let diagnostics = self.diagnostics.clone();
         self.diagnostics.spawn_reported(
             &self.runtime_handle,
@@ -100,8 +102,7 @@ impl ImportServiceHandle {
                         Err(bae_catalogs::Failure::Internal(diagnostics.bug(failed).into()))
                     }
                 };
-                land_source_search(&runtime, &diagnostics, &candidate_key, run, source, found)
-                    .await;
+                land_source_search(&tables, &diagnostics, &candidate_key, run, source, found).await;
             },
             // The landing is what panicked, so nothing is left to land.
             |_| {},
@@ -167,14 +168,14 @@ impl ImportServiceHandle {
 /// search was started by a person who is not waiting on this answer, so a
 /// landing that cannot be written is reported as a bug.
 async fn land_source_search(
-    runtime: &crate::CandidateRuntime,
+    tables: &crate::tables::ImportTables,
     diagnostics: &bae_diagnostics::Diagnostics,
     candidate_key: &crate::CandidateKey,
     run: SearchRun,
     source: LookupCatalog,
     found: bae_catalogs::search::SourceLookup,
 ) {
-    match runtime.land_search(run, source, found).await {
+    match tables.land_candidate_search(run, source, found).await {
         Ok(true) => {}
         Ok(false) => debug!(
             "{}'s {} search landed on no part still searching",

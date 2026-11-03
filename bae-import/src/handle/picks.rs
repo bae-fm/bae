@@ -13,7 +13,7 @@ impl ImportServiceHandle {
         release: &bae_catalogs::records::LookupRef,
         links: bae_catalogs::album_links::AlbumLinks,
     ) -> Result<(), crate::ImportError> {
-        let kept = self.runtime.land_picked(candidate_key, release, links).await?;
+        let kept = self.tables.land_candidate_search_pick(candidate_key, release, links).await?;
         if !kept.is_empty() {
             crate::identify_service::keep_album_links(&self.tables, kept).await;
         }
