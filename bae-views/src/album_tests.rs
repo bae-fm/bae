@@ -323,8 +323,8 @@ async fn album_detail_subscription_ignores_an_unread_column() {
         crate::LibraryViews::new(db.clone()).subscribe_album_detail(Some(ALBUM_ID.to_string()));
     live.next().await.expect("the query stays open").result.unwrap();
 
-    exec(&db, "UPDATE covers SET created_at = '2027-01-01T00:00:00Z' WHERE id = ?1", &[RELEASE_ID])
-        .await;
+    // The detail reads a cover's file, never its content type.
+    exec(&db, "UPDATE covers SET content_type = 'image/png' WHERE id = ?1", &[RELEASE_ID]).await;
 
     next_run_is_only_the_request(&mut live, Some(OTHER_ALBUM_ID.to_string())).await;
 }
