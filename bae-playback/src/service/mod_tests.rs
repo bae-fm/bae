@@ -746,7 +746,6 @@ fn playback_command_kind_maps_user_intent_only() {
 
 #[test]
 fn commands_that_steer_playback_stop_the_countdown_and_the_rest_leave_it() {
-    let (volume_tx, _) = oneshot::channel();
     let stops = [
         PlaybackCommand::Pause,
         PlaybackCommand::Stop,
@@ -769,7 +768,6 @@ fn commands_that_steer_playback_stop_the_countdown_and_the_rest_leave_it() {
         PlaybackCommand::SetVolume(0.5),
         PlaybackCommand::SetMuted(true),
         PlaybackCommand::SetRepeatMode(RepeatMode::Context),
-        PlaybackCommand::GetVolume(volume_tx),
         PlaybackCommand::AutoAdvance { track_id: "track".to_string() },
     ];
     for command in &leaves {

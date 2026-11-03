@@ -582,7 +582,6 @@ fn playback_command_kind(command: &PlaybackCommand) -> Option<PlaybackCommandKin
         | PlaybackCommand::PreviewTogglePause
         | PlaybackCommand::PreviewSeekByRatio(_)
         | PlaybackCommand::PreviewCompleted
-        | PlaybackCommand::GetVolume(_)
         | PlaybackCommand::Shutdown(_)
         | PlaybackCommand::SaveState(_)
         | PlaybackCommand::PlayOn(_)
@@ -641,7 +640,6 @@ fn cancels_side_pause_countdown(command: &PlaybackCommand) -> bool {
         | PlaybackCommand::PreviewTogglePause
         | PlaybackCommand::PreviewSeekByRatio(_)
         | PlaybackCommand::PreviewCompleted
-        | PlaybackCommand::GetVolume(_)
         | PlaybackCommand::Shutdown(_)
         | PlaybackCommand::SaveState(_)
         | PlaybackCommand::RemoteEvent(_) => false,

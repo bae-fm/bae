@@ -484,6 +484,9 @@ impl PlayerOutput {
         self.controls.set_volume(volume);
     }
 
+    /// The level the streams play at, for a test of what a volume change
+    /// set.
+    #[cfg(test)]
     pub(crate) fn get_volume(&self) -> f32 {
         self.controls.get_volume()
     }

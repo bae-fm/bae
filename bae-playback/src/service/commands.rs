@@ -218,11 +218,6 @@ impl PlaybackService {
             PlaybackCommand::PreviewCompleted => {
                 self.preview_completed();
             }
-            PlaybackCommand::GetVolume(reply) => {
-                if reply.send(self.audio_output.get_volume()).is_err() {
-                    debug!("volume asked for by a caller that stopped waiting");
-                }
-            }
             #[cfg(any(test, feature = "test-utils"))]
             PlaybackCommand::GetQueue(reply) => {
                 let value = match crate::tables::queue_value(&self.database).await {

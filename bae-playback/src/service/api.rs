@@ -152,7 +152,6 @@ pub(crate) enum PlaybackCommand {
     /// Muting saves the volume and drives output to 0; unmuting restores it.
     /// Setting the current state changes nothing.
     SetMuted(bool),
-    GetVolume(oneshot::Sender<f32>),
     /// Test-only: replies with the queue once every earlier command has finished.
     #[cfg(any(test, feature = "test-utils"))]
     GetQueue(
@@ -484,15 +483,6 @@ impl PlaybackHandle {
 
     pub fn set_shuffle(&self, on: bool) {
         self.dispatch(PlaybackCommand::SetShuffle(on));
-    }
-
-    pub async fn get_volume(&self) -> f32 {
-        let (tx, rx) = oneshot::channel();
-        self.dispatch(PlaybackCommand::GetVolume(tx));
-        rx.await.unwrap_or_else(|e| {
-            warn!("get_volume: playback loop dropped the response channel: {e}");
-            1.0
-        })
     }
 
     /// Save playback state, stop the service, and join its thread so the store
