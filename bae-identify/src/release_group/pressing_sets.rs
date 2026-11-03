@@ -119,3 +119,7 @@ fn chains(edges: &[(usize, usize)]) -> Vec<Vec<usize>> {
     chains.sort_by_key(|chain| chain[0]);
     chains
 }
+
+#[cfg(test)]
+#[path = "pressing_sets_tests.rs"]
+mod tests;
