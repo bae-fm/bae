@@ -19,7 +19,10 @@ use crate::folder_scanner::{
 };
 use crate::grouping::GroupingBlock;
 use crate::CandidateKey;
+pub(super) use folder_readings::{store_folder_reading, validate_decision_key_ownership};
 use std::path::{Path, PathBuf};
+
+pub(super) mod folder_readings;
 
 /// A stored release, whether it may be worked on, and why not when it is a
 /// grouping's release that is blocked.

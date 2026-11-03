@@ -3,7 +3,6 @@
 
 use super::read::RowSources;
 use super::*;
-use crate::tables::import_state::tests::*;
 use crate::tables::tests::*;
 use crate::tables::ImportTables;
 use bae_db::test_fixtures::empty_db;
@@ -377,47 +376,6 @@ async fn a_row_kept_through_a_rescan_survives_the_completion_prune() {
         after[0].items.len(),
         1,
         "the kept row carries this generation, so the prune leaves it"
-    );
-}
-
-#[tokio::test]
-async fn folder_release_decision_is_idempotent_and_root_scoped() {
-    use crate::folder_scanner::{FolderReleaseDecision, FolderReleaseDecisionKey};
-
-    let (db, _tmp) = empty_db().await;
-    let tables = crate::tables::ImportTables::new(db.clone());
-    let other = host_root("/other/library");
-    let key = FolderReleaseDecisionKey {
-        watched_folder_path: host_root("/mounted/library"),
-        relative_folder: bae_db::RelativeFolder::test("Collection/Release Wrapper"),
-    };
-    tables.add_watched_import_folder(&key.watched_folder_path).await.unwrap();
-    tables.add_watched_import_folder(&other).await.unwrap();
-
-    store_user_folder_decision(&db, &key, FolderReleaseDecision::CombineAsOneRelease)
-        .await
-        .unwrap();
-    store_user_folder_decision(&db, &key, FolderReleaseDecision::CombineAsOneRelease)
-        .await
-        .unwrap();
-    store_user_folder_decision(
-        &db,
-        &FolderReleaseDecisionKey {
-            watched_folder_path: other,
-            relative_folder: key.relative_folder.clone(),
-        },
-        FolderReleaseDecision::KeepAsSeparateReleases,
-    )
-    .await
-    .unwrap();
-
-    let decisions = tables.load_folder_release_decisions(&key.watched_folder_path).await.unwrap();
-    assert_eq!(
-        decisions.get(&key.relative_folder).map(|reading| (reading.decision, reading.author)),
-        Some((
-            FolderReleaseDecision::CombineAsOneRelease,
-            crate::folder_scanner::FolderReleaseDecisionAuthor::User
-        ))
     );
 }
 

@@ -20,8 +20,9 @@ pub(super) mod tag_snapshot;
 pub(super) mod write;
 
 use super::import_state::next_folder_scan_generation;
+use super::release_groupings::{store_folder_reading, validate_decision_key_ownership};
 use super::*;
-use crate::folder_scanner::{FolderReleaseDecisionKey, ScanItem};
+use crate::folder_scanner::ScanItem;
 use crate::CandidateKey;
 use bae_db::client::query::{QueryOne, QueryRows};
 use std::path::{Path, PathBuf};
@@ -716,78 +717,6 @@ pub(super) fn validate_scan_item_ownership(
         ScanItem::Decided { key, .. } => {
             validate_decision_key_ownership(watched_folder_path, key)?;
         }
-    }
-    Ok(())
-}
-
-/// Store the grouping `grouping` anchored at the folder `key` names; a
-/// heuristic reading never replaces the person's. A folder's grouping keeps
-/// its key while stored, since its release is addressed by it, so a reading
-/// naming a different key is stale and refused.
-pub(super) fn store_folder_reading(
-    sql: &CovenWrite<'_>,
-    key: &FolderReleaseDecisionKey,
-    decision: crate::folder_scanner::FolderReleaseDecision,
-    author: crate::folder_scanner::FolderReleaseDecisionAuthor,
-    grouping: &CandidateKey,
-) -> Result<(), DbError> {
-    if key.relative_folder.is_root() {
-        return Err(DbError::Message(format!(
-            "{} is never a release, so it has no reading to store",
-            coven::path_text(&key.watched_folder_path)
-        )));
-    }
-    let author = match author {
-        crate::folder_scanner::FolderReleaseDecisionAuthor::User => "user",
-        crate::folder_scanner::FolderReleaseDecisionAuthor::Heuristic => "heuristic",
-    };
-    let combined =
-        matches!(decision, crate::folder_scanner::FolderReleaseDecision::CombineAsOneRelease);
-    let anchor = bae_db::watched_path::folder_below(&key.watched_folder_path, &key.relative_folder);
-    let covering = super::watched_folders::require_watched(sql, &anchor)?;
-    if covering.as_os_str() != key.watched_folder_path.as_os_str() {
-        return Err(DbError::Message(format!(
-            "{} is watched under {}, not {}",
-            coven::path_text(&anchor),
-            coven::path_text(&covering),
-            coven::path_text(&key.watched_folder_path)
-        )));
-    }
-    let anchor = coven::path_bytes(&anchor);
-    sql.execute(
-        "INSERT INTO release_grouping (key, anchor_folder, combined, author) \
-         VALUES (?, ?, ?, ?) \
-         ON CONFLICT(anchor_folder) DO UPDATE SET \
-             combined = excluded.combined, author = excluded.author \
-         WHERE excluded.author = 'user' \
-             OR release_grouping.author != 'user'",
-        params![grouping, anchor, combined, author],
-    )?;
-    let stored: CandidateKey = sql.query_row(
-        "SELECT key FROM release_grouping WHERE anchor_folder = ?",
-        [&anchor],
-        |row| row.get(0),
-    )?;
-    if &stored != grouping {
-        return Err(DbError::Message(format!(
-            "{} is read as grouping {stored}, not {grouping}: the store changed after the \
-             reading was taken",
-            key.relative_folder.text()
-        )));
-    }
-    Ok(())
-}
-
-pub(super) fn validate_decision_key_ownership(
-    watched_folder_path: &Path,
-    key: &FolderReleaseDecisionKey,
-) -> Result<(), DbError> {
-    if key.watched_folder_path.as_os_str() != watched_folder_path.as_os_str() {
-        return Err(DbError::Message(format!(
-            "folder release decision belongs to {} instead of {}",
-            coven::path_text(&key.watched_folder_path),
-            coven::path_text(watched_folder_path)
-        )));
     }
     Ok(())
 }

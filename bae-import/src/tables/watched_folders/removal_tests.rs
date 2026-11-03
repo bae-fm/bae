@@ -1,7 +1,7 @@
 //! Stopping watching folders: what a removal forgets, and what a folder taking
 //! over the watched folders inside it keeps.
 
-use crate::tables::import_state::tests::*;
+use crate::tables::release_groupings::folder_readings::tests::store_user_folder_decision;
 use crate::tables::tests::*;
 use bae_db::test_fixtures::empty_db;
 use bae_db::watched_path::host_root;
