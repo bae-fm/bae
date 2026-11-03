@@ -41,6 +41,8 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
     private let libraryBrowseSession: LibraryBrowseSession
     private let storageManagerStore: StorageManagerStore
     private let settingsNavigation = SettingsNavigation()
+    /// The library's name, read while a screen shows it.
+    let libraryNameStore: LibraryNameStore
 
     // MARK: - Desktop-only domain services
 
@@ -73,7 +75,6 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
         let playbackStore = PlaybackStore()
         let configStore = ConfigStore(
             config: Config(bridge: config),
-            libraryName: seed.name,
             storage: seed.storage
         )
         let syncStatusStore = SyncStatusStore()
@@ -103,6 +104,10 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
         )
         self.uiStore = uiStore
         self.importStore = importStore
+        libraryNameStore = LibraryNameStore(
+            handle: appHandle,
+            showError: { uiStore.showError($0) }
+        )
         previewAudio = PreviewAudio(handle: appHandle)
         releaseEditor = ReleaseEditor(handle: appHandle, host: host)
         artistEditor = ArtistEditor(handle: appHandle)
@@ -204,6 +209,7 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
             .environment(libraryBrowseSession)
             .environment(storageManagerStore)
             .environment(settingsNavigation)
+            .environment(libraryNameStore)
             .environment(previewAudio)
             .environment(releaseEditor)
             .environment(artistEditor)

@@ -6,10 +6,12 @@ private let logger = Logger.bae("MembershipStore")
 
 /// The store's members joined with their profiles, the profile this device's
 /// person asked for, the invites this device has open and the admin changes
-/// it asked for. Membership, profiles, the requested profile, invites and
-/// admin changes are subscribed; each
-/// change of membership or profiles rereads core's joined list of people and
-/// this device's person.
+/// it asked for. Whether this device's person is an admin is read for as
+/// long as the library is open, from `start()`: the menu bar always shows
+/// Rename Library, which it enables. The rest is read while a screen shows
+/// it, from `show()` to `hide()`: profiles, the requested profile, invites
+/// and admin changes are subscribed, and each change of membership or
+/// profiles rereads core's joined list of people and this device's person.
 @MainActor
 @Observable
 public final class MembershipStore {
@@ -32,9 +34,11 @@ public final class MembershipStore {
     /// joins.
     public private(set) var addedDevice: BridgeActiveDevice?
 
-    /// Starts the membership, profile and invite subscriptions, returning
-    /// what keeps each running.
-    private let subscribe: @MainActor (MembershipStore) -> [AnyObject]
+    /// Starts the membership subscription, returning what keeps it running.
+    private let subscribeMembers: @MainActor (MembershipStore) -> AnyObject
+    /// Starts the profile, requested profile, admin change and invite
+    /// subscriptions a screen shows, returning what keeps each running.
+    private let subscribeShown: @MainActor (MembershipStore) -> [AnyObject]
     /// Starts the pull of this person's device that a watch finds, handing
     /// each value to the closure; the subscription runs while what it
     /// returns is held.
@@ -46,22 +50,26 @@ public final class MembershipStore {
         ) -> AnyObject
     private let readPeopleOperation: @Sendable () async throws -> PeopleRead
     @ObservationIgnored
-    private var subscriptions: [AnyObject] = []
+    private var membersSubscription: AnyObject?
+    /// What a screen showing the people reads, while one does.
+    @ObservationIgnored
+    private var shownSubscriptions: [AnyObject]?
     @ObservationIgnored
     private let peopleRead = CancellableTaskSlot()
 
     public convenience init(handle: AppHandle) {
         self.init(
-            subscribe: { store in
+            subscribeMembers: { store in
+                ScreenSubscription(
+                    handle.subscribeMembers(),
+                    onValue: { [weak store] membership in
+                        store?.membersChanged(membership)
+                    },
+                    onError: { [weak store] error in store?.fail(error) }
+                )
+            },
+            subscribeShown: { store in
                 [
-                    ScreenSubscription(
-                        handle.subscribeMembers(),
-                        onValue: { [weak store] membership in
-                            store?.selfIsAdmin = membership.selfIsAdmin
-                            store?.readPeople()
-                        },
-                        onError: { [weak store] error in store?.fail(error) }
-                    ),
                     ScreenSubscription(
                         handle.subscribeProfiles(),
                         onValue: { [weak store] _ in store?.readPeople() },
@@ -106,7 +114,8 @@ public final class MembershipStore {
     }
 
     private init(
-        subscribe: @escaping @MainActor (MembershipStore) -> [AnyObject],
+        subscribeMembers: @escaping @MainActor (MembershipStore) -> AnyObject,
+        subscribeShown: @escaping @MainActor (MembershipStore) -> [AnyObject],
         readPeople: @escaping @Sendable () async throws -> PeopleRead,
         subscribeAddedDevice:
             @escaping @MainActor (
@@ -115,7 +124,8 @@ public final class MembershipStore {
                 @escaping @MainActor (any Error) -> Void
             ) -> AnyObject
     ) {
-        self.subscribe = subscribe
+        self.subscribeMembers = subscribeMembers
+        self.subscribeShown = subscribeShown
         readPeopleOperation = readPeople
         self.subscribeAddedDevice = subscribeAddedDevice
     }
@@ -132,7 +142,8 @@ public final class MembershipStore {
             addedDevice: BridgeActiveDevice? = nil
         ) -> MembershipStore {
             let store = MembershipStore(
-                subscribe: { _ in [] },
+                subscribeMembers: { _ in NSObject() },
+                subscribeShown: { _ in [] },
                 readPeople: {
                     // The fixture's own person is the one it marks as this
                     // device's, as core would read it.
@@ -155,9 +166,37 @@ public final class MembershipStore {
         }
     #endif
 
+    /// Read whether this device's person is an admin, for as long as the
+    /// library is open.
     public func start() {
-        precondition(subscriptions.isEmpty, "membership subscribed twice")
-        subscriptions = subscribe(self)
+        precondition(membersSubscription == nil, "membership subscribed twice")
+        membersSubscription = subscribeMembers(self)
+    }
+
+    /// Read the people, invites and admin changes while a screen shows them.
+    public func show() {
+        guard shownSubscriptions == nil else { return }
+        shownSubscriptions = subscribeShown(self)
+        readPeople()
+    }
+
+    /// End what `show` reads, once no screen shows it. What it read goes
+    /// with it, so the next screen starts from its own read.
+    public func hide() {
+        guard shownSubscriptions != nil else { return }
+        shownSubscriptions = nil
+        peopleRead.cancel()
+        members = nil
+        selfProfile = nil
+        requestedProfile = nil
+        invites = []
+        adminChanges = []
+        error = nil
+    }
+
+    private func membersChanged(_ membership: BridgeMembership) {
+        selfIsAdmin = membership.selfIsAdmin
+        if shownSubscriptions != nil { readPeople() }
     }
 
     /// Watch for this person's device that `watch` finds, until the calling

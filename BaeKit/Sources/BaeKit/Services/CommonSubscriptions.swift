@@ -16,7 +16,6 @@ final class CommonSubscriptions {
     private var queueAdditions: ScreenSubscription<QueueAdditionsSubscription>?
     private var castDevices: ScreenSubscription<CastDevicesSubscription>?
     private var config: ScreenSubscription<ConfigSubscription>?
-    private var libraryName: ScreenSubscription<LibraryNameSubscription>?
     private var queue: ScreenSubscription<QueueSubscription>?
     private var uploadsPaused: ScreenSubscription<UploadsPausedSubscription>?
     private var syncStatus: ScreenSubscription<SyncStatusSubscription>?
@@ -80,12 +79,6 @@ final class CommonSubscriptions {
             appHandle.subscribeConfig(),
             onValue: { [configStore] config in
                 configStore.applyConfigSnapshot(config)
-            },
-            onError: onError
-        )
-        libraryName = ScreenSubscription(
-            appHandle.subscribeLibraryName(),
-            onValue: { [configStore] name in configStore.applyLibraryName(name)
             },
             onError: onError
         )

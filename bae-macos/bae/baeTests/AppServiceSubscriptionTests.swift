@@ -146,10 +146,46 @@ struct InvitesSubscriptionTests {
         let handle = FakeAppHandle()
         let store = MembershipStore(handle: handle)
         store.start()
+        store.show()
         #expect(store.invites.isEmpty)
 
-        let invite = BridgeInvite(
-            id: "11",
+        handle.deliverInvites([invite(id: "11")])
+        try await Wait.until { store.invites.map(\.id) == ["11"] }
+
+        handle.deliverInvites([])
+        try await Wait.until { store.invites.isEmpty }
+    }
+
+    @Test(
+        "the people and invites are read while a screen shows them; the admin read runs throughout"
+    )
+    func shownReadsFollowTheScreen() async throws {
+        let handle = FakeAppHandle()
+        let store = MembershipStore(handle: handle)
+
+        store.start()
+        #expect(handle.subscribed == ["members"], "the menu bar's admin read")
+
+        store.show()
+        #expect(
+            Set(handle.subscribed.dropFirst())
+                == ["profiles", "requestedProfile", "adminChanges", "invites"]
+        )
+        handle.deliverInvites([invite(id: "11")])
+        try await Wait.until { store.invites.map(\.id) == ["11"] }
+
+        store.hide()
+        try await Wait.until { handle.invitesCancels == 1 }
+        #expect(store.invites.isEmpty, "what the screen read goes with it")
+
+        store.show()
+        #expect(handle.subscribed.filter { $0 == "invites" }.count == 2)
+        #expect(handle.subscribed.filter { $0 == "members" }.count == 1)
+    }
+
+    private func invite(id: String) -> BridgeInvite {
+        BridgeInvite(
+            id: id,
             member: "member-1",
             invitee: "Dan",
             delivery: .sent,
@@ -158,11 +194,35 @@ struct InvitesSubscriptionTests {
             shown: .code(code: "invite-code", progress: .waiting),
             held: nil
         )
-        handle.deliverInvites([invite])
-        try await Wait.until { store.invites.map(\.id) == ["11"] }
+    }
+}
 
-        handle.deliverInvites([])
-        try await Wait.until { store.invites.isEmpty }
+@MainActor
+@Suite("Library name", .serialized)
+struct LibraryNameStoreTests {
+    @Test("the name is read while a screen follows it, and goes with it")
+    func nameIsReadWhileFollowed() async throws {
+        let handle = FakeAppHandle()
+        let store = LibraryNameStore(handle: handle, showError: { _ in })
+        #expect(handle.subscribed.isEmpty, "nothing reads the name unasked")
+
+        let following = Task { await store.follow() }
+        try await Wait.until { handle.subscribed == ["libraryName"] }
+        following.cancel()
+        await following.value
+
+        #expect(store.name == nil)
+        #expect(handle.subscribed == ["libraryName"])
+    }
+
+    @Test("opening the common subscriptions reads no library name")
+    func commonSubscriptionsReadNoName() {
+        let handle = FakeAppHandle()
+        let appService = makeAppService(handle: handle)
+        appService.startCommonSubscriptions()
+
+        #expect(!handle.subscribed.contains("libraryName"))
+        #expect(handle.subscribed == ["members"])
     }
 }
 
@@ -353,7 +413,6 @@ private func makeAppService(
 @MainActor
 private var emptySeed: LibrarySessionSeed {
     LibrarySessionSeed(
-        name: "Test Library",
         storage: nil,
         uploadsPaused: false
     )
@@ -370,6 +429,17 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
     private let syncStatus = FakeSyncStatus()
     private let syncActivity = FakeSyncActivity()
     private let invites = FakeInvites()
+    private let subscribedLock = NSLock()
+    private var subscribedNames: [String] = []
+
+    /// The membership and library-name reads opened so far, in order.
+    var subscribed: [String] { subscribedLock.withLock { subscribedNames } }
+    /// How many times an invites read has been ended.
+    var invitesCancels: Int { invites.cancels }
+
+    private func record(_ name: String) {
+        subscribedLock.withLock { subscribedNames.append(name) }
+    }
 
     func deliverSyncActivity(_ activity: BridgeSyncActivity) {
         syncActivity.values.deliver(activity)
@@ -452,28 +522,39 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
     }
 
     override func subscribeLibraryName() -> LibraryNameSubscription {
-        SilentLibraryName()
+        record("libraryName")
+        return SilentLibraryName()
     }
 
     override func subscribeMembers() -> MembersSubscription {
-        SilentMembers()
+        record("members")
+        return SilentMembers()
     }
 
     override func subscribeProfiles() -> ProfilesSubscription {
-        SilentProfiles()
+        record("profiles")
+        return SilentProfiles()
     }
 
     override func subscribeInvites() -> InvitesSubscription {
-        invites
+        record("invites")
+        return invites
     }
 
     override func subscribeRequestedProfile() -> RequestedProfileSubscription {
-        SilentRequestedProfile()
+        record("requestedProfile")
+        return SilentRequestedProfile()
     }
 
     override func subscribeAdminChanges() -> AdminChangesSubscription {
-        SilentAdminChanges()
+        record("adminChanges")
+        return SilentAdminChanges()
     }
+
+    // A screen showing the people reads them once as it opens.
+    override func people() async throws -> [BridgePerson] { [] }
+
+    override func ownPerson() async throws -> BridgePerson? { nil }
 
     func deliverInvites(_ value: [BridgeInvite]) {
         invites.values.deliver(value)
@@ -620,11 +701,18 @@ private final class FakeInvites: InvitesSubscription, @unchecked Sendable {
         super.init(unsafeFromHandle: handle)
     }
 
+    private let cancelLock = NSLock()
+    private var cancelCount = 0
+    var cancels: Int { cancelLock.withLock { cancelCount } }
+
     override func next() async throws -> [BridgeInvite] {
         try await values.next()
     }
 
-    override func cancel() async throws { values.cancel() }
+    override func cancel() async throws {
+        cancelLock.withLock { cancelCount += 1 }
+        values.cancel()
+    }
 }
 
 /// Preferences that never change after the ones the service was built with:

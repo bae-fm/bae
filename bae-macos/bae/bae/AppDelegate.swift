@@ -203,13 +203,28 @@ extension AppDelegate {
         }
     }
 
+    /// Open Rename Library on the library's name as it stands now.
     func presentRenameLibrary() {
         guard let appService else {
             preconditionFailure("Rename Library is disabled without a library")
         }
-        renameLibrarySheet = RenameLibrarySheetState(
-            id: appService.libraryId,
-            newName: appService.libraryName
+        let libraryId = appService.libraryId
+        let names = appService.libraryNameStore
+        renameSlot.replace(
+            "name read of \(libraryId)",
+            work: { try await names.current() },
+            onSuccess: { name in
+                self.renameLibrarySheet = RenameLibrarySheetState(
+                    id: libraryId,
+                    newName: name
+                )
+            },
+            onError: {
+                baeAppLogger.error(
+                    "Failed to read the name of \(libraryId): \(String(reflecting: $0))"
+                )
+                if let shown = DisplayError($0) { appService.showError(shown) }
+            }
         )
     }
 

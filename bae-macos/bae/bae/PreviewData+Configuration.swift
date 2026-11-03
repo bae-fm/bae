@@ -118,7 +118,6 @@
                         discogsUsable: discogsUsable
                     )
                 ),
-                libraryName: "Preview Library",
                 storage: storage
             )
         }

@@ -8,7 +8,6 @@ struct SyncStatusStoreTests {
     func configValuesDoNotPublishTheLine() {
         let config = ConfigStore(
             config: Config(bridge: bridgeConfig()),
-            libraryName: "Test Library",
             storage: nil
         )
         let sync = SyncStatusStore()

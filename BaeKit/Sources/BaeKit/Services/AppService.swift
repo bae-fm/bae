@@ -199,7 +199,6 @@ open class AppService: @unchecked Sendable, Observable {
     }
 
     public var libraryId: String { configStore.config.libraryId }
-    public var libraryName: String { configStore.libraryName }
     public var libraryPath: String { configStore.config.libraryPath }
 
     /// Close the library so nothing of this process holds its store: save

@@ -158,38 +158,6 @@ struct LibrarySessionOpenerTests {
         #expect(handle.didClose)
     }
 
-    @Test("a failed name read closes the library and reports .failed")
-    func nameSeedFailureClosesTheLibrary() async {
-        struct NameError: Error {}
-        let handle = FakeHandle(
-            config: makeConfig(),
-            name: .failure(NameError())
-        )
-        let opener = TestOpener(
-            makeHandle: { _, _ in handle },
-            makeService: { _, _, _ in
-                Issue.record("makeService must not run when the name fails")
-                fatalError("unreachable")
-            }
-        )
-
-        let waiter = OutcomeWaiter()
-        opener.open(
-            libraryId: "lib-4",
-            progress: LibraryOpenProgress(host: host)
-        ) { waiter.record($0) }
-        let outcome = await waiter.value()
-
-        guard case .failed(let error) = outcome else {
-            Issue.record(
-                "a failed name read should yield .failed, got \(outcome)"
-            )
-            return
-        }
-        #expect(error is NameError)
-        #expect(handle.didClose)
-    }
-
     @Test("a bootstrapped store opens its own handle, not one by id")
     func retainedHandleSkipsTheFactory() async {
         struct SeedError: Error {}
@@ -302,24 +270,20 @@ extension LibrarySessionOpenerTests {
 /// was closed, so a test can assert the seed-failure teardown ran.
 private final class FakeHandle: LibrarySessionHandle, @unchecked Sendable {
     let config: BridgeConfig
-    let name: Result<String, any Error>
     let outbox: Result<Bool, any Error>
     private let closeFlag = Flag()
 
     init(
         config: BridgeConfig,
-        name: Result<String, any Error> = .success("Test Library"),
         outbox: Result<Bool, any Error> = .success(false)
     ) {
         self.config = config
-        self.name = name
         self.outbox = outbox
     }
 
     var didClose: Bool { closeFlag.isSet }
 
     func currentConfig() async throws -> BridgeConfig { config }
-    func libraryName() async throws -> String { try name.get() }
     func storageLocation() async throws -> BridgeStorageLocation? { nil }
     func getUploadsPaused() async throws -> Bool {
         try outbox.get()

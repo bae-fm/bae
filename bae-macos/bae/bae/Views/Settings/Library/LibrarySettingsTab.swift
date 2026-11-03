@@ -21,6 +21,10 @@ struct LibrarySettingsTab: View {
     var configStore
     @Environment(SyncStatusStore.self)
     private var syncStatus
+    @Environment(LibraryNameStore.self)
+    private var libraryName
+    @Environment(MembershipStore.self)
+    private var membership
 
     @State
     private var showSyncSetup = false
@@ -37,7 +41,7 @@ struct LibrarySettingsTab: View {
     var body: some View {
         Form {
             Section {
-                LabeledContent("Name", value: configStore.libraryName)
+                LabeledContent("Name", value: libraryName.name ?? "")
                 LabeledContent("Path") {
                     HStack {
                         Text(configStore.config.libraryPath)
@@ -104,7 +108,14 @@ struct LibrarySettingsTab: View {
             }
         }
         .formStyle(.grouped)
-        .onDisappear { recoveryCode.hide() }
+        // The name, the people, invites and admin changes are read while
+        // this tab shows.
+        .task { await libraryName.follow() }
+        .onAppear { membership.show() }
+        .onDisappear {
+            recoveryCode.hide()
+            membership.hide()
+        }
         .sheet(isPresented: $showSyncSetup) {
             SyncSetupWizard(onDone: { showSyncSetup = false })
         }
@@ -232,6 +243,7 @@ private struct UploadPauseToggle: View {
         )
         .environment(UiStore())
         .environment(OutboxStore(uploadsPaused: false))
+        .environment(LibraryNameStore.stub(name: "Preview Library"))
     }
 
     #Preview("No cloud home") {

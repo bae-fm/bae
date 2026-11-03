@@ -3886,7 +3886,12 @@ release's or track's id as UTF-8, or a candidate's key.
   is open while the screen shows and cancelled when it stops showing, in
   both apps: a detail view shown for another item moves its one read to it
   in place, and a detail view showing nothing has no read, since a read is
-  never pointed at nothing. Closing or
+  never pointed at nothing. The library's name, its people, this device's
+  open invites, the requested profile and the admin changes are read while
+  the settings screen showing them does; Rename Library starts from the name
+  as it stands when it opens. The macOS menu bar always shows Rename Library,
+  enabled for an admin, so the Mac reads whether this device's person is one
+  for as long as the library is open. Closing or
   removing the library cancels every one before the store closes: a read
   waiting on one, or asked of it after, answers that it was cancelled, never
   with the closed store, and it takes no new request. One opened as the
