@@ -62,6 +62,8 @@ fn two_answers_for_one_artist_are_refused() {
 /// transport.
 pub(crate) struct DiscogsPick {
     pub(crate) handle: ImportServiceHandle,
+    /// The store the handle was started over.
+    pub(crate) database: bae_db::Database,
     /// The catalog fakes the library asks, which the test seeds.
     fakes: FakeCatalogs,
     pub(crate) tmp: TempDir,
@@ -91,16 +93,14 @@ impl DiscogsPick {
     /// artist.
     async fn track_artist(&self, release_id: &str) -> bae_db::DbArtist {
         let first_track = self
-            .handle
-            .database()
+            .database
             .get_tracks_for_release(release_id)
             .await
             .unwrap()
             .into_iter()
             .next()
             .expect("the imported release has its first track");
-        self.handle
-            .database()
+        self.database
             .get_artists_for_track(&first_track.id)
             .await
             .unwrap()
@@ -114,7 +114,7 @@ impl DiscogsPick {
 
     /// The bytes of the picture the library holds for `artist_id`, if any.
     async fn picture_of(&self, artist_id: &str) -> Option<Vec<u8>> {
-        let database = self.handle.database();
+        let database = &self.database;
         let file = database
             .library_image_file(artist_id, &bae_db::LibraryImageType::Artist)
             .await
@@ -156,9 +156,9 @@ pub(crate) async fn picked_discogs_release() -> DiscogsPick {
         bae_util::http::Http::for_test()
             .serve(bae_catalogs::test_image_host::TEST_IMAGE_HOST, images.origin()),
     );
-    let StoredCandidate { handle, key, tmp, .. } =
+    let StoredCandidate { handle, parts, database, key, tmp, .. } =
         picked_stored_candidate_with(fakes.providers()).await;
-    handle
+    parts
         .catalogs()
         .store_discogs_key("test-discogs-token", bae_preferences::DiscogsValidation::Valid)
         .await
@@ -210,6 +210,7 @@ pub(crate) async fn picked_discogs_release() -> DiscogsPick {
 
     DiscogsPick {
         handle,
+        database,
         fakes,
         tmp,
         key,
@@ -247,7 +248,7 @@ async fn a_pick_fetches_no_artist_picture_and_the_import_stores_each_as_a_600_pi
 async fn an_artist_the_library_already_has_is_not_fetched_again() {
     let pick = picked_discogs_release().await;
     let existing = make_artist("Track Artist", Some(&pick.track_artist_id), None);
-    pick.handle.database().insert_artist(&existing).await.unwrap();
+    pick.database.insert_artist(&existing).await.unwrap();
     let picture_url =
         pick.images.serve_image(&pick.picture_path, bae_catalogs::test_image_host::cover_png());
 
@@ -273,7 +274,7 @@ async fn a_picture_that_fails_to_download_fails_the_import_before_any_row_and_a_
     pick.import().await.expect_err("a picture that fails to download fails the import");
     let failed_requests = pick.images.requests(&pick.picture_path);
     assert!(failed_requests > 0, "the failed import asked for the picture");
-    let rows = pick.handle.database().every_row_for_test().await.unwrap();
+    let rows = pick.database.every_row_for_test().await.unwrap();
     for table in ["releases", "albums", "artists", "artist_images", "release_files"] {
         assert!(
             rows.get(table).is_none_or(Vec::is_empty),

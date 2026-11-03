@@ -44,7 +44,7 @@ async fn a_file_changed_after_its_scan_fails_the_import_before_any_row() {
         .await
         .expect_err("a file changed since its scan fails the import");
     assert!(error.contains("changed after its import candidate was scanned"), "{error}");
-    let rows = pick.handle.database.every_row_for_test().await.unwrap();
+    let rows = pick.database.every_row_for_test().await.unwrap();
     for table in ["releases", "release_files"] {
         assert!(
             rows.get(table).is_none_or(Vec::is_empty),

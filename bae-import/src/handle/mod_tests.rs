@@ -448,27 +448,17 @@ pub(super) async fn rescan_into(tables: &crate::tables::ImportTables, candidate:
 pub(crate) struct StoredCandidate {
     pub(crate) handle: ImportServiceHandle,
     /// What the service was started from, for the tests that start another
-    /// over the same store to read what survived the first one.
-    pub(super) parts: TestImport,
+    /// over the same store to read what survived the first one, or ask its
+    /// catalog sessions.
+    pub(crate) parts: TestImport,
+    /// The store the service was started over, for a test that reads or
+    /// seeds rows no call reads or writes on its own.
+    pub(crate) database: Database,
     pub(super) candidate: FolderCandidate,
     /// The key the pane's controls address the candidate by.
     pub(crate) key: crate::CandidateKey,
     /// Held for its `Drop`: the watched root lives inside it.
     pub(crate) tmp: TempDir,
-}
-
-impl ImportServiceHandle {
-    /// The library the handle reads and writes, for a test outside the
-    /// handle that reads or seeds rows no call reads or writes on its own.
-    pub(crate) fn database(&self) -> &Database {
-        &self.database
-    }
-
-    /// The catalogs the handle asks, for a test outside the handle that
-    /// stores a Discogs key without asking Discogs about it.
-    pub(crate) fn catalogs(&self) -> &crate::CatalogSessions {
-        &self.catalogs
-    }
 }
 
 pub(super) async fn stored_candidate() -> StoredCandidate {
@@ -511,29 +501,30 @@ pub(super) async fn stored_candidate_with(
     providers: bae_catalogs::providers::Providers,
 ) -> StoredCandidate {
     let (parts, database, tmp) = setup_test_import_with(providers).await;
-    let tables = crate::tables::ImportTables::new(database);
+    let tables = crate::tables::ImportTables::new(database.clone());
     let (candidate, key, _hash) = picked_candidate(&tables, &tmp, "Album").await;
-    started(parts, candidate, key, tmp).await
+    started(parts, database, candidate, key, tmp).await
 }
 
 /// [`stored_candidate`] whose tags the scan could not read.
 pub(super) async fn unread_stored_candidate() -> StoredCandidate {
     let (parts, database, tmp) = setup_test_import().await;
-    let tables = crate::tables::ImportTables::new(database);
+    let tables = crate::tables::ImportTables::new(database.clone());
     let (candidate, key, _hash) = unread_candidate(&tables, &tmp, "Album").await;
-    started(parts, candidate, key, tmp).await
+    started(parts, database, candidate, key, tmp).await
 }
 
-/// An import service started from `parts`, addressed at the stored
-/// `candidate`.
+/// An import service started from `parts` over `database`, addressed at the
+/// stored `candidate`.
 pub(super) async fn started(
     parts: TestImport,
+    database: Database,
     candidate: FolderCandidate,
     key: crate::CandidateKey,
     tmp: TempDir,
 ) -> StoredCandidate {
     let handle = parts.start().await.unwrap();
-    StoredCandidate { handle, parts, candidate, key, tmp }
+    StoredCandidate { handle, parts, database, candidate, key, tmp }
 }
 
 /// The handle, the key its controls address, and the hash its rows are stored
