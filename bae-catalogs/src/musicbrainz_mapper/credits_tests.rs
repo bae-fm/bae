@@ -1,3 +1,9 @@
+use crate::musicbrainz::{MbArtistCredit, MbArtistRef, MbMedium, MbWork};
+use crate::musicbrainz_mapper::tests::{
+    credit, discogs_artist_document, make_mb_track, make_response, map, own_credits, work,
+};
+use crate::musicbrainz_mapper::*;
+
 #[test]
 fn nested_recording_work_imports_composer_work_graph() {
     let composer_ref = MbArtistRef {
@@ -90,10 +96,11 @@ fn nested_recording_work_imports_composer_work_graph() {
         assert_eq!(composers[0].musicbrainz_artist_id.as_deref(), composer);
     }
     // The composer is no album or track artist.
-    assert!(values
-        .album_credits
-        .iter()
-        .all(|credit| credit.credit.musicbrainz_artist_id.as_deref() != composer));
+    assert!(values.album_credits.iter().all(|credit| credit
+        .credit
+        .musicbrainz_artist_id
+        .as_deref()
+        != composer));
     assert!(values.tracks.iter().all(|track| own_credits(track).is_empty()));
 }
 
