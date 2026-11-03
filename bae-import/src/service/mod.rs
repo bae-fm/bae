@@ -22,6 +22,7 @@ use tokio::sync::mpsc;
 use tracing::{debug, error, info, warn};
 
 mod active_roots;
+mod artist_pictures;
 mod content_type;
 mod cover_image;
 mod folder_reading;

@@ -113,35 +113,6 @@ pub struct CandidatePreparedAssets {
     pub remote_cover: Option<bae_catalogs::remote_image::RemoteImage>,
 }
 
-/// Discogs' answer for the picture of one artist an import is about to
-/// create, fetched by that import before it writes anything. `Nothing` is a
-/// real answer: Discogs has no picture of that artist.
-#[cfg(desktop)]
-#[derive(Debug, Clone, PartialEq)]
-pub enum DiscogsArtistImage {
-    Image {
-        discogs_artist_id: String,
-        /// The picture as bae stores it: the JPEG
-        /// [`bae_util::stored_image::stored_jpeg`] made of what Discogs
-        /// served.
-        jpeg: Vec<u8>,
-    },
-    Nothing {
-        discogs_artist_id: String,
-    },
-}
-
-#[cfg(desktop)]
-impl DiscogsArtistImage {
-    pub fn discogs_artist_id(&self) -> &str {
-        match self {
-            Self::Image { discogs_artist_id, .. } | Self::Nothing { discogs_artist_id } => {
-                discogs_artist_id
-            }
-        }
-    }
-}
-
 /// Whether a track inherits its album artists or has its own ordered credits.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TrackArtistAssignments {

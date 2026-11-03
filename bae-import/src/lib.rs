@@ -302,8 +302,8 @@ pub use types::{
 #[cfg(desktop)]
 pub use types::{
     CandidateMetadataDraft, CandidatePreparedAssets, CoverSelection, CueAnalyzedAudioFile,
-    CueFlacAnalysis, DiscogsArtistImage, ImportDestination, ImportPhase, ImportProgress,
-    ImportStep, PrepareStep, TrackAudio, TrackFile,
+    CueFlacAnalysis, ImportDestination, ImportPhase, ImportProgress, ImportStep, PrepareStep,
+    TrackAudio, TrackFile,
 };
 #[cfg(desktop)]
 pub use watched_folder::WatchedFolder;

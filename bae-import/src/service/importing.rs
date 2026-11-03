@@ -1,3 +1,4 @@
+use super::artist_pictures::DiscogsArtistImage;
 use super::cover_image::ImportCover;
 use super::*;
 use crate::import_cancel::{ImportRunEnd, ImportStop};
@@ -322,7 +323,7 @@ impl ImportService {
         prepared: &mut PreparedMetadata,
         files: ImportFiles<'_>,
         cover: Option<ImportCover>,
-        artist_images: &[crate::DiscogsArtistImage],
+        artist_images: &[DiscogsArtistImage],
     ) -> Result<(), ImportStop> {
         let ImportFiles { discovered: discovered_files, tracks: tracks_to_files } = files;
         let ImportRun { import_id, candidate_key } = run;
@@ -643,30 +644,15 @@ impl ImportService {
 }
 
 impl ImportService {
-    /// The Discogs identities of the artists an import of `credits` would
-    /// create, whose pictures it fetches before it writes anything. An artist
-    /// the credits resolve to in the library keeps its own picture, so it is
-    /// not among them.
-    async fn new_discogs_artists(
-        &self,
-        credits: &[bae_db::DbArtist],
-        picked: &[String],
-        content_hash: Option<&str>,
-    ) -> Result<std::collections::BTreeSet<String>, crate::ImportError> {
-        let resolved = self.tables.resolve_artists(credits, picked, content_hash).await?;
-        Ok(resolved.inserts.iter().filter_map(|artist| artist.discogs_artist_id.clone()).collect())
-    }
-
     /// Insert all of an import's data in one transaction, so the release
     /// exists complete or not at all. A Remote import stages its files for
     /// the cloud in the same write, kept here once stored when it asks for
     /// that.
     ///
     /// The pictures of the artists the import creates are staged from
-    /// `artist_images`, the ones fetched for [`Self::new_discogs_artists`],
-    /// against a read just before the write; the write fails if its own
-    /// artist resolution creates different artists, so no picture lands
-    /// without its artist.
+    /// `artist_images` ([`Self::staged_artist_pictures`]); the write fails
+    /// if its own artist resolution creates different artists, so no picture
+    /// lands without its artist.
     async fn finalize_import_atomic(
         &self,
         guard: crate::tables::ImportCommitGuard,
@@ -676,18 +662,12 @@ impl ImportService {
         rows: crate::tables::ImportRows<'_>,
         files: Vec<PreparedImportFile>,
         library_image: Option<(&bae_db::DbLibraryImage, &[u8])>,
-        artist_images: &[crate::DiscogsArtistImage],
+        artist_images: &[DiscogsArtistImage],
     ) -> Result<(), crate::ImportError> {
-        let expected = self
-            .tables
-            .resolve_artists(rows.artists.credits, rows.artists.picked, guard.content_hash())
-            .await?;
-        let expected_new_artists: Vec<String> =
-            expected.inserts.iter().map(|artist| artist.id.clone()).collect();
-        let artist_images =
-            artist_image_rows(&expected.inserts, artist_images, self.clock.now().into())?;
-        let artist_images: Vec<_> =
-            artist_images.iter().map(|(image, bytes)| (image, bytes.as_slice())).collect();
+        let pictures =
+            self.staged_artist_pictures(&rows.artists, guard.content_hash(), artist_images).await?;
+        let images: Vec<_> =
+            pictures.images.iter().map(|(image, bytes)| (image, bytes.as_slice())).collect();
         self.tables
             .finalize_import_atomic(
                 guard,
@@ -698,46 +678,12 @@ impl ImportService {
                 files,
                 library_image,
                 crate::tables::NewArtistImages {
-                    expected_new_artists: &expected_new_artists,
-                    images: &artist_images,
+                    expected_new_artists: &pictures.expected_new_artists,
+                    images: &images,
                 },
             )
             .await?;
         Ok(())
-    }
-
-    /// Discogs' answer for the picture of each artist `ids` names, asked now,
-    /// one artist at a time, each picture downscaled to the JPEG bae stores.
-    /// A provider or download failure, or a picture that does not decode,
-    /// fails the caller with it.
-    async fn fetch_discogs_artist_images(
-        &self,
-        ids: std::collections::BTreeSet<String>,
-    ) -> Result<Vec<crate::DiscogsArtistImage>, crate::ImportError> {
-        if ids.is_empty() {
-            return Ok(Vec::new());
-        }
-        let session = self.catalogs.session().await?;
-        let mut answers = Vec::with_capacity(ids.len());
-        for discogs_artist_id in ids {
-            let Some(source_url) = session.artist_image_url(&discogs_artist_id).await? else {
-                answers.push(crate::DiscogsArtistImage::Nothing { discogs_artist_id });
-                continue;
-            };
-            let Some(image) = self.remote_images.fetch(&source_url).await? else {
-                answers.push(crate::DiscogsArtistImage::Nothing { discogs_artist_id });
-                continue;
-            };
-            // Decoding and re-encoding the image is CPU work.
-            let jpeg = bae_util::task_failure::blocking("resize an artist picture", move || {
-                bae_util::stored_image::stored_jpeg(&image.bytes)
-            })
-            .await
-            .map_err(|failed| self.diagnostics.bug(failed))?
-            .map_err(|detail| crate::ImportError::CoverArt { detail })?;
-            answers.push(crate::DiscogsArtistImage::Image { discogs_artist_id, jpeg });
-        }
-        Ok(answers)
     }
 }
 
@@ -768,43 +714,6 @@ async fn linked_records(
     }
     let (primary, partners) = claimed.split_first().expect("a link claims at least its primary");
     Ok(records_for_commit(primary, partners))
-}
-
-/// The library image rows of the pictures `fetched` for the new artists an
-/// import creates, stamped `now`. An artist the import links to keeps its own
-/// picture; this constructs rows only.
-///
-/// A new Discogs artist with no answer among `fetched` was a library artist
-/// when the import fetched its pictures and is not one now: the library's
-/// artists changed under the import, which fails so it can be run again.
-fn artist_image_rows(
-    inserted_artists: &[bae_db::DbArtist],
-    fetched: &[crate::DiscogsArtistImage],
-    now: chrono::DateTime<chrono::Utc>,
-) -> Result<Vec<(bae_db::DbLibraryImage, Vec<u8>)>, crate::ImportError> {
-    let by_discogs_id: HashMap<_, _> =
-        fetched.iter().map(|answer| (answer.discogs_artist_id(), answer)).collect();
-    if by_discogs_id.len() != fetched.len() {
-        return Err(crate::ImportError::Internal {
-            detail: "fetched artist images contain a duplicate Discogs artist ID".into(),
-        });
-    }
-    let mut images = Vec::new();
-    for artist in inserted_artists {
-        let Some(discogs_artist_id) = artist.discogs_artist_id.as_deref() else {
-            continue;
-        };
-        let Some(answer) = by_discogs_id.get(discogs_artist_id) else {
-            return Err(crate::ImportError::LibraryChanged);
-        };
-        let crate::DiscogsArtistImage::Image { jpeg, .. } = answer else {
-            continue;
-        };
-        let row =
-            bae_db::DbLibraryImage::stored_jpeg(bae_db::LibraryImageType::Artist, &artist.id, now);
-        images.push((row, jpeg.clone()));
-    }
-    Ok(images)
 }
 
 #[cfg(test)]
