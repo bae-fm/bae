@@ -39,18 +39,6 @@ async fn run_providers(database: &bae_db::Database) -> Result<Vec<LookupCatalog>
     ))
 }
 
-/// Keep what release groups were read to be beyond the list that read them,
-/// so a stored release of either album names the other among its records.
-/// Keeping it failing leaves the list's answer standing, and is logged.
-pub(crate) async fn keep_album_links(
-    tables: &crate::tables::ImportTables,
-    kept: Vec<(String, Vec<bae_catalogs::records::MetadataRef>)>,
-) {
-    if let Err(error) = tables.replace_group_album_links(kept).await {
-        tracing::error!("What the release groups were read to be was not kept: {error}");
-    }
-}
-
 /// Thread-safe handle to the running identify service.
 #[derive(Clone)]
 pub struct IdentifyServiceHandle {

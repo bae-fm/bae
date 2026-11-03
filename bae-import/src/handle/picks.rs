@@ -4,22 +4,6 @@
 use super::*;
 
 impl ImportServiceHandle {
-    /// Land what the documents of `release`, which a pick read, state its
-    /// album is on `candidate_key`'s search, and keep what its album was then
-    /// read to be.
-    pub(super) async fn land_picked(
-        &self,
-        candidate_key: &crate::CandidateKey,
-        release: &bae_catalogs::records::LookupRef,
-        links: bae_catalogs::album_links::AlbumLinks,
-    ) -> Result<(), crate::ImportError> {
-        let kept = self.tables.land_candidate_search_pick(candidate_key, release, links).await?;
-        if !kept.is_empty() {
-            crate::identify_service::keep_album_links(&self.tables, kept).await;
-        }
-        Ok(())
-    }
-
     /// Prepare the release an explicit metadata application reads, a fetch
     /// told to `steps`. A settled lead must already have its release stored;
     /// missing it is a broken invariant. Preparation follows any related

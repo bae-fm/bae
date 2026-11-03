@@ -268,11 +268,17 @@ pub(super) fn dispatch_effect(
         }
 
         // What was read stays true whether or not the run stays current, so
-        // cancelling the run does not stop it being kept.
+        // cancelling the run does not stop it being kept. Keeping it, so a
+        // stored release of either album names the other among its records,
+        // has no caller waiting: a write that fails is a bug, and the list's
+        // answer stands.
         Effect::KeepAlbumLinks { kept } => {
             let tables = inner.tables.clone();
+            let diagnostics = inner.diagnostics.clone();
             let keep = async move {
-                keep_album_links(&tables, kept).await;
+                if let Err(error) = tables.replace_group_album_links(kept).await {
+                    diagnostics.report_bug("keep what a run read of albums", &error);
+                }
             };
             #[cfg(test)]
             let keep = inner.driver_tasks.track_future(keep);

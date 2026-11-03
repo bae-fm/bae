@@ -6,6 +6,7 @@ use super::*;
 use crate::candidate_search::SourceSearch;
 use crate::tables::import_state::tests::{pane_candidate_key, stored_pane_candidate};
 use bae_catalogs::catalog::Catalog;
+use bae_catalogs::records::MetadataRef;
 use bae_db::test_fixtures::empty_db;
 use bae_preferences::{CatalogAvailability, SourceAvailability};
 
@@ -378,10 +379,24 @@ async fn a_landing_for_a_switched_off_source_goes_nowhere() {
     assert!(search.groups.is_empty());
 }
 
+/// The albums kept for the release group `group`, beyond any list.
+async fn kept_for(
+    tables: &ImportTables,
+    group: &str,
+) -> Vec<bae_catalogs::album_links::GroupAlbum> {
+    let group = MetadataRef::new(Catalog::MusicBrainz, group);
+    tables
+        .database
+        .read(move |sql| crate::tables::album_link_rows::group_albums_on(&sql, &[group]))
+        .await
+        .unwrap()
+}
+
 /// A pick of a MusicBrainz result reads what its documents state its album
-/// is, and that joins the cards in every read of the search after it. A pick
-/// of a release the search's list does not hold, a partner no catalog
-/// returned to it included, changes nothing.
+/// is, and that joins the cards in every read of the search after it, and is
+/// kept for its release group in the landing's own write. A pick of a release
+/// the search's list does not hold, a partner no catalog returned to it
+/// included, changes nothing.
 #[tokio::test]
 async fn a_pick_joins_the_search_s_cards_from_then_on() {
     let (tables, key, _tmp) = scanned().await;
@@ -413,7 +428,7 @@ async fn a_pick_joins_the_search_s_cards_from_then_on() {
     let master = MetadataRef::new(Catalog::Discogs, "master-7");
     let links = AlbumLinks::Read(vec![master.clone()]);
 
-    let off_the_list = tables
+    tables
         .land_candidate_search_pick(
             key,
             &bae_catalogs::records::LookupRef::new(LookupCatalog::MusicBrainz, "mb-partner"),
@@ -421,10 +436,10 @@ async fn a_pick_joins_the_search_s_cards_from_then_on() {
         )
         .await
         .unwrap();
-    assert!(off_the_list.is_empty());
     assert_eq!(search_of(&tables, key).await.unwrap().groups.len(), 2);
+    assert!(kept_for(&tables, "group-x").await.is_empty());
 
-    let kept = tables
+    tables
         .land_candidate_search_pick(
             key,
             &bae_catalogs::records::LookupRef::new(LookupCatalog::MusicBrainz, "mb-1"),
@@ -432,7 +447,11 @@ async fn a_pick_joins_the_search_s_cards_from_then_on() {
         )
         .await
         .unwrap();
-    assert_eq!(kept, vec![("group-x".to_string(), vec![master])]);
+    assert_eq!(
+        kept_for(&tables, "group-x").await,
+        [bae_catalogs::album_links::GroupAlbum { group: "group-x".to_string(), album: master }],
+        "the landing keeps what the group was read to be"
+    );
     let search = search_of(&tables, key).await.unwrap();
     assert_eq!(search.groups.len(), 1, "the picked result joins the cards");
     assert_eq!(search.picked, vec![PickedResult { release_id: "mb-1".to_string(), links }]);

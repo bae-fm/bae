@@ -115,25 +115,30 @@ impl ImportTables {
         &self,
         read: Vec<(String, Vec<MetadataRef>)>,
     ) -> Result<(), DbError> {
-        self.database
-            .call(move |sql| {
-                for (group, albums) in &read {
-                    sql.execute(
-                        "DELETE FROM release_group_album_link WHERE release_group = ?",
-                        params![group],
-                    )?;
-                    for album in albums {
-                        sql.execute(
-                            &format!(
-                                "INSERT INTO release_group_album_link ({GROUP_LINK_COLUMNS}) \
-                             VALUES (?, ?, ?)"
-                            ),
-                            params![group, album.catalog.as_str(), album.key],
-                        )?;
-                    }
-                }
-                Ok(())
-            })
-            .await
+        self.database.call(move |sql| replace_group_album_links_on(sql, &read)).await
     }
+}
+
+/// Keep, inside the caller's write, the albums reading these release groups
+/// found each to be, replacing whatever an earlier reading of the same group
+/// found.
+pub(super) fn replace_group_album_links_on(
+    sql: &CovenWrite<'_>,
+    read: &[(String, Vec<MetadataRef>)],
+) -> Result<(), DbError> {
+    for (group, albums) in read {
+        sql.execute(
+            "DELETE FROM release_group_album_link WHERE release_group = ?",
+            params![group],
+        )?;
+        for album in albums {
+            sql.execute(
+                &format!(
+                    "INSERT INTO release_group_album_link ({GROUP_LINK_COLUMNS}) VALUES (?, ?, ?)"
+                ),
+                params![group, album.catalog.as_str(), album.key],
+            )?;
+        }
+    }
+    Ok(())
 }

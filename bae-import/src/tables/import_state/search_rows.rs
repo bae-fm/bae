@@ -22,7 +22,6 @@ use crate::candidate_search::{CandidateSearch, PickedResult, SearchRun, SourceSe
 use crate::candidates::CandidateFiles;
 use bae_catalogs::album_links::AlbumLinks;
 use bae_catalogs::catalog::LookupCatalog;
-use bae_catalogs::records::MetadataRef;
 use bae_catalogs::search::{MetadataResult, SearchQuery};
 use bae_catalogs::{Failure, InternalFailure};
 use std::str::FromStr;
@@ -496,27 +495,28 @@ impl ImportTables {
     }
 
     /// Land what the documents of `release`, which a pick read, state its
-    /// album is on `key`'s search, answering what its album on the search's
-    /// list was then read to be, to keep. Nothing when the key has no search,
-    /// or `release` is no MusicBrainz release on its list.
+    /// album is on `key`'s search, and keep what its album on the search's
+    /// list was then read to be for its release group, in one write. Nothing
+    /// when the key has no search, or `release` is no MusicBrainz release on
+    /// its list.
     pub(crate) async fn land_candidate_search_pick(
         &self,
         key: &CandidateKey,
         release: &bae_catalogs::records::LookupRef,
         links: AlbumLinks,
-    ) -> Result<Vec<(String, Vec<MetadataRef>)>, DbError> {
+    ) -> Result<(), DbError> {
         let key = key.clone();
         let release = release.clone();
         self.database
             .call(move |sql| {
                 let Some((run, mut search)) = load_on(sql, Some(&key))?.remove(&key) else {
-                    return Ok(Vec::new());
+                    return Ok(());
                 };
                 let Some(kept) = search.record_picked(&release, links.clone()) else {
-                    return Ok(Vec::new());
+                    return Ok(());
                 };
                 store_picked(sql, run.number(), &release, &links)?;
-                Ok(kept)
+                crate::tables::album_link_rows::replace_group_album_links_on(sql, &kept)
             })
             .await
     }

@@ -344,17 +344,17 @@ async fn a_pick_carries_the_album_a_reading_found_through_another_pressing() {
         .unwrap();
     let group = "chain-mb-group";
     seed_two_track_discogs_release_in(&fakes, "70000012", Some("909"), None);
-    crate::identify_service::keep_album_links(
-        &handle.tables,
-        vec![(
+    handle
+        .tables
+        .replace_group_album_links(vec![(
             group.to_string(),
             vec![bae_catalogs::records::MetadataRef::new(
                 bae_catalogs::catalog::Catalog::Discogs,
                 "909",
             )],
-        )],
-    )
-    .await;
+        )])
+        .await
+        .unwrap();
 
     let picked = bae_catalogs::records::LookupRef::new(
         bae_catalogs::catalog::LookupCatalog::Discogs,

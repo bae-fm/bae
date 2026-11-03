@@ -235,7 +235,9 @@ impl ImportServiceHandle {
         let release = &prepared.release;
         // Picking a result of a typed search reads its documents: what they
         // state its album is joins the search's cards.
-        self.land_picked(&candidate_key, release.release(), release.album_links()).await?;
+        self.tables
+            .land_candidate_search_pick(&candidate_key, release.release(), release.album_links())
+            .await?;
         let audio = crate::audio_layout::read_audio(&candidate.files)?;
         let folder_tracks = audio.track_count();
         // A release that cannot be read onto the folder's audio — it lists
@@ -254,12 +256,13 @@ impl ImportServiceHandle {
             .partners(&link.record, &link.partners, CallPriority::Interactive, steps)
             .await?;
         for partner in &prepared_partners {
-            self.land_picked(
-                &candidate_key,
-                partner.release.release(),
-                partner.release.album_links(),
-            )
-            .await?;
+            self.tables
+                .land_candidate_search_pick(
+                    &candidate_key,
+                    partner.release.release(),
+                    partner.release.album_links(),
+                )
+                .await?;
         }
         // The pick's releases as read, stored in the pick's write, which
         // names them.

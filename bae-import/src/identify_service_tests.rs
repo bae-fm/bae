@@ -16,6 +16,13 @@ use bae_identify::TerminalVerdict;
 use std::time::Duration;
 
 async fn setup_inner() -> (Arc<IdentifyServiceInner>, tempfile::TempDir) {
+    setup_inner_reporting_to(bae_diagnostics::Diagnostics::noop()).await
+}
+
+/// [`setup_inner`] reporting its bugs to `diagnostics`.
+pub(super) async fn setup_inner_reporting_to(
+    diagnostics: bae_diagnostics::Diagnostics,
+) -> (Arc<IdentifyServiceInner>, tempfile::TempDir) {
     let temp_dir = tempfile::TempDir::new().unwrap();
     let db_path = temp_dir.path().join("test.db");
     let database =
@@ -37,7 +44,7 @@ async fn setup_inner() -> (Arc<IdentifyServiceInner>, tempfile::TempDir) {
         tokio::runtime::Handle::current(),
         event_tx,
         candidates,
-        bae_diagnostics::Diagnostics::noop(),
+        diagnostics,
     );
     (handle.inner, temp_dir)
 }
@@ -81,7 +88,7 @@ fn absent_signals() -> Signals {
 
 /// Wait until every driver task has returned, so everything they report
 /// is already on the bus.
-async fn drivers_ended(inner: &Arc<IdentifyServiceInner>) {
+pub(super) async fn drivers_ended(inner: &Arc<IdentifyServiceInner>) {
     inner.driver_tasks.close();
     tokio::time::timeout(Duration::from_secs(30), inner.driver_tasks.wait())
         .await
