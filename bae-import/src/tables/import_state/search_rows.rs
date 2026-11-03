@@ -14,8 +14,8 @@
 //! search replaces it, and the table is emptied as the library opens.
 
 use super::lookup_failure_columns::{failure_columns, failure_of};
+use super::match_rows::load_search_matches_on;
 use super::match_rows::{store_match, store_picked, Listing, MatchOwner, Written};
-use super::rows::load_search_matches_on;
 use super::verdict_rows::unreadable;
 use super::*;
 use crate::candidate_search::{CandidateSearch, PickedResult, SearchRun, SourceSearch};

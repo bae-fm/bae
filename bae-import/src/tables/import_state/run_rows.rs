@@ -12,7 +12,7 @@
 //! ends or the release's sheet closes. So every key's runs with no
 //! identification standing are a release's.
 
-use super::rows::load_run_matches_on;
+use super::match_rows::load_run_matches_on;
 use super::search_rows::{load_search_on, load_searches_on};
 use super::signal_rows::{read_signals, signals_read_columns, store_signals};
 use super::standing_rows::{change_identification_on, load_standing_on, load_standings_on};
