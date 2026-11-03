@@ -21,11 +21,20 @@ pub enum LiveValuesError {
 pub struct LiveValues<T> {
     query: tokio::sync::Mutex<Option<coven::LiveQuery<T>>>,
     cancellation: CancellationToken,
+    /// How often the query had run when it last returned a value, kept here
+    /// because a waiting pull holds the query itself.
+    #[cfg(any(test, feature = "test-utils"))]
+    runs: std::sync::Mutex<coven::LiveQueryRuns>,
 }
 
 impl<T: Clone + PartialEq + Send + 'static> LiveValues<T> {
     pub fn new(query: coven::LiveQuery<T>, cancellation: CancellationToken) -> Self {
-        Self { query: tokio::sync::Mutex::new(Some(query)), cancellation }
+        Self {
+            #[cfg(any(test, feature = "test-utils"))]
+            runs: std::sync::Mutex::new(query.runs()),
+            query: tokio::sync::Mutex::new(Some(query)),
+            cancellation,
+        }
     }
 
     /// The next value, or why there is none.
@@ -36,7 +45,13 @@ impl<T: Clone + PartialEq + Send + 'static> LiveValues<T> {
             value = async {
                 let mut query = self.query.lock().await;
                 let query = query.as_mut().ok_or(LiveValuesError::Cancelled)?;
-                match query.next().await {
+                let value = query.next().await;
+                #[cfg(any(test, feature = "test-utils"))]
+                {
+                    *self.runs.lock().expect("live values run count mutex poisoned") =
+                        query.runs();
+                }
+                match value {
                     Some(value) => Ok(value?),
                     None => Err(LiveValuesError::Cancelled),
                 }
@@ -44,16 +59,12 @@ impl<T: Clone + PartialEq + Send + 'static> LiveValues<T> {
         }
     }
 
-    /// A handle that counts the query's runs, for a test that asks how often
-    /// a write reran it. Asked before any pull waits.
+    /// How often the query had run when it last returned a value, for a
+    /// test that asks how often a write reran it: a run whose result was
+    /// unchanged counts once a later value returns.
     #[cfg(any(test, feature = "test-utils"))]
     pub fn runs(&self) -> coven::LiveQueryRuns {
-        self.query
-            .try_lock()
-            .expect("no pull waits while a test counts the runs")
-            .as_ref()
-            .expect("the values are not cancelled")
-            .runs()
+        *self.runs.lock().expect("live values run count mutex poisoned")
     }
 
     /// Settle a waiting pull and refuse later ones, then drop the query once

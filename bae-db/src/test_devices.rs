@@ -45,10 +45,7 @@ pub async fn create_first_store(
         )
         .await
         .unwrap();
-    handle
-        .test_sync_status()
-        .wait_for(|status| matches!(status, coven::SyncStatus::Synced { .. }))
-        .await;
+    handle.test_sync_status().wait_for(|status| status.state == coven::SyncState::Synced).await;
     handle
 }
 
@@ -91,28 +88,22 @@ pub fn device_database(handle: coven::CovenHandle) -> Database {
     Database::from_handle(handle, Arc::new(coven::SystemClock), Arc::new(coven::UuidIds))
 }
 
-/// coven's sync status on `database`, live.
-fn sync_status(database: &Database) -> coven::LiveQuery<coven::SyncStatus> {
+/// How `database`'s last pass ended and when a pass last reached the end
+/// of the sequence, as coven's sync status row keeps them, live: a pass
+/// that ends synced moves the time, and one that fails changes how it
+/// ended.
+fn pass_ends(database: &Database) -> coven::LiveQuery<(Option<coven::LastPass>, Option<i64>)> {
     database.subscribe(|sql| {
-        crate::client::sync_status::coven_status_on(&sql).map_err(coven::CovenError::from)
+        Ok(sql.query_row("SELECT last_pass, last_synced FROM coven_sync_status", [], |row| {
+            Ok((row.get(0)?, row.get(1)?))
+        })?)
     })
 }
 
-/// Stop the device's sync loop and wait until it has: the pass running ends
-/// first, and no pass starts until sync starts again.
+/// Stop the device's sync loop: once this returns, no pass starts until
+/// sync starts again.
 pub async fn stop_sync(database: &Database) {
     database.stop_sync().await.unwrap();
-    let mut status = sync_status(database);
-    tokio::time::timeout(SETTLE, async {
-        loop {
-            let current = status.next().await.expect("the status ended").expect("read the status");
-            if matches!(current, coven::SyncStatus::Stopped) {
-                return;
-            }
-        }
-    })
-    .await
-    .expect("sync stopped");
 }
 
 /// What a device's completed sync cycles reported: how many have completed,
@@ -131,25 +122,25 @@ pub struct SyncCycles {
 }
 
 impl SyncCycles {
-    /// Record the cycles `database` completes from now on: the status as it
-    /// stands is no cycle.
+    /// Record the cycles `database` completes from now on: the last pass as
+    /// it stands is no cycle.
     pub fn follow(database: &Database) -> Self {
         let cycles = Arc::new(std::sync::Mutex::new(Cycles::default()));
-        let mut status = sync_status(database);
+        let mut ends = pass_ends(database);
         let recorded = cycles.clone();
         let watcher = tokio::spawn(async move {
-            let mut previous = match status.next().await {
-                Some(Ok(status)) => status,
+            let mut previous = match ends.next().await {
+                Some(Ok(end)) => end,
                 _ => return,
             };
-            while let Some(Ok(current)) = status.next().await {
+            while let Some(Ok(current)) = ends.next().await {
                 if current == previous {
                     continue;
                 }
                 previous = current.clone();
                 let last = match &current {
-                    coven::SyncStatus::Synced { .. } => format!("{current:?}"),
-                    coven::SyncStatus::Failed { error, .. } => format!("failed: {error}"),
+                    (Some(coven::LastPass::Synced), Some(at)) => format!("synced at {at}"),
+                    (Some(coven::LastPass::Failed { error, .. }), _) => format!("failed: {error}"),
                     _ => continue,
                 };
                 let mut cycles = recorded.lock().expect("cycle record");

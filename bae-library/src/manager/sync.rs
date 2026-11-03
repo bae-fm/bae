@@ -10,7 +10,7 @@ impl LibraryManager {
     /// Whether storage is set up on this device, as coven's sync status
     /// says now.
     pub async fn has_cloud_home(&self) -> Result<bool, LibraryError> {
-        Ok(!matches!(self.database.coven_sync_status().await?, coven::SyncStatus::Disconnected))
+        Ok(self.database.cloud_home().await?)
     }
 
     pub async fn set_sync_paused(&self, paused: bool) -> Result<(), LibraryError> {
@@ -24,10 +24,7 @@ impl LibraryManager {
     /// Whether coven's sync loop is running now: storage is set up and
     /// syncing isn't stopped.
     pub async fn is_sync_ready(&self) -> Result<bool, LibraryError> {
-        Ok(!matches!(
-            self.database.coven_sync_status().await?,
-            coven::SyncStatus::Disconnected | coven::SyncStatus::Stopped
-        ))
+        Ok(self.sync_status().await?.running())
     }
 
     /// The sync status now, as [`Self::subscribe_sync_status`] reads it.

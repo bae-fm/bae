@@ -304,18 +304,16 @@ impl AppServices {
         self.read_import_candidate(self.inner.import.subscribe_candidate(None))
     }
 
-    /// [`Self::subscribe_import_candidate`], with a handle that counts its
-    /// live query's runs, for a test that measures which writes rerun it.
+    /// The live query [`Self::subscribe_import_candidate`] reads through,
+    /// with no key, for a test that counts its runs as it reads it.
     #[cfg(any(test, feature = "test-utils"))]
-    pub fn subscribe_import_candidate_with_runs_for_test(
+    pub fn subscribe_import_candidate_query_for_test(
         &self,
-    ) -> (
-        bae_library::LiveDetail<ImportCandidateDetail, bae_import::CandidateKey>,
-        coven::LiveQueryRuns,
-    ) {
-        let query = self.inner.import.subscribe_candidate(None);
-        let runs = query.runs();
-        (self.read_import_candidate(query), runs)
+    ) -> coven::ReconfigurableLiveQuery<
+        Option<bae_import::CandidateKey>,
+        Option<bae_import::ImportCandidateDetailProjection>,
+    > {
+        self.inner.import.subscribe_candidate(None)
     }
 
     /// The pane's read through `query`, which starts with no key.

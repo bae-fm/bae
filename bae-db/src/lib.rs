@@ -31,6 +31,7 @@ pub mod source_audio;
 pub mod stored_name;
 mod sync_status;
 pub mod synced;
+pub use client::sync_status::CovenSyncRow;
 pub use sync_status::{
     pending_action, sync_status_on, PendingAction, SyncIndicator, SyncRetryOutcome,
     SyncStatusSnapshot,

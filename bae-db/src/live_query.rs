@@ -26,10 +26,10 @@ pub struct CancellableLiveQuery<Request, Projection> {
     requests: std::sync::Mutex<Option<coven::LiveQueryRequests<Request>>>,
     query: tokio::sync::Mutex<Option<coven::ReconfigurableLiveQuery<Request, Projection>>>,
     cancellation: CancellationToken,
-    /// The query's run count, held here because a waiting read holds the
-    /// query itself.
+    /// How often the query had run when it last returned an event, kept
+    /// here because a waiting read holds the query itself.
     #[cfg(any(test, feature = "test-utils"))]
-    runs: coven::LiveQueryRuns,
+    runs: std::sync::Mutex<coven::LiveQueryRuns>,
 }
 
 impl<Request, Projection> CancellableLiveQuery<Request, Projection>
@@ -45,16 +45,18 @@ where
         Self {
             requests: std::sync::Mutex::new(Some(query.requests())),
             #[cfg(any(test, feature = "test-utils"))]
-            runs: query.runs(),
+            runs: std::sync::Mutex::new(query.runs()),
             query: tokio::sync::Mutex::new(Some(query)),
             cancellation,
         }
     }
 
-    /// A handle that counts the query's runs.
+    /// How often the query had run when it last returned an event, for a
+    /// test that asks how often a write reran it: a run whose result was
+    /// unchanged counts once a later event returns.
     #[cfg(any(test, feature = "test-utils"))]
     pub fn runs(&self) -> coven::LiveQueryRuns {
-        self.runs.clone()
+        *self.runs.lock().expect("live query run count mutex poisoned")
     }
 
     /// Evaluate a new absolute request and return the revision that will
@@ -88,7 +90,13 @@ where
             event = async {
                 let mut query = self.query.lock().await;
                 let query = query.as_mut().ok_or(LiveQueryCancelled)?;
-                query.next().await.ok_or(LiveQueryCancelled)
+                let event = query.next().await.ok_or(LiveQueryCancelled);
+                #[cfg(any(test, feature = "test-utils"))]
+                {
+                    *self.runs.lock().expect("live query run count mutex poisoned") =
+                        query.runs();
+                }
+                event
             } => event,
         }
     }

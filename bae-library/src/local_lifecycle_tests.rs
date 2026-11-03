@@ -58,7 +58,7 @@ impl Home {
             )
             .await
             .unwrap();
-        handle.test_sync_status().wait_for(|s| matches!(s, coven::SyncStatus::Synced { .. })).await;
+        handle.test_sync_status().wait_for(|s| s.state == coven::SyncState::Synced).await;
     }
 
     /// The libraries whose saved restore codes this device offers, with the

@@ -130,7 +130,6 @@ async fn a_scan_leaves_the_open_candidate_pane_alone() {
     );
     list.set_windows(std::iter::once(LibraryPageWindow { offset: 0, limit: 50 }).collect())
         .unwrap();
-    let list_runs = list.runs_for_test();
     let (list_tx, mut list_seen) = tokio::sync::watch::channel(0_u64);
     let reading = list.clone();
     tokio::spawn(async move {
@@ -139,10 +138,11 @@ async fn a_scan_leaves_the_open_candidate_pane_alone() {
         }
     });
 
-    let progress = services.subscribe_folder_scans();
-    let progress_runs = progress.runs();
+    let progress = Arc::new(services.subscribe_folder_scans());
     let (progress_tx, mut progress_seen) = tokio::sync::watch::channel(0_u64);
+    let reading = progress.clone();
     let progress_reader = tokio::spawn(async move {
+        let progress = reading;
         loop {
             let found = match progress.next().await {
                 Ok(read) => read,
@@ -156,25 +156,26 @@ async fn a_scan_leaves_the_open_candidate_pane_alone() {
         }
     });
 
-    let (pane, pane_runs) = services.subscribe_import_candidate_with_runs_for_test();
-    let pane = Arc::new(pane);
-    pane.set(Some(key.clone())).unwrap();
-    let (pane_tx, mut pane_seen) = tokio::sync::watch::channel(None::<bool>);
-    let reading = pane.clone();
-    tokio::spawn(async move {
-        while let Ok(snapshot) = reading.next().await {
-            if let Some(detail) = snapshot.value {
-                pane_tx.send_replace(Some(detail.skipped));
+    // The pane's query, read as the pane reads it, each value beside how
+    // often the query had run when it returned it.
+    let mut pane = services.subscribe_import_candidate_query_for_test();
+    pane.requests().set(Some(key.clone())).unwrap();
+    let (pane_tx, mut pane_seen) = tokio::sync::watch::channel(None::<(bool, Counted)>);
+    let pane_reader = tokio::spawn(async move {
+        while let Some(event) = pane.next().await {
+            if let Some(projection) = event.result.expect("the pane reads") {
+                let skipped = projection.resolve().skipped;
+                pane_tx.send_replace(Some((skipped, Counted::of(&pane.runs()))));
             }
         }
     });
 
     settle(&mut list_seen, "the list", |total| *total == 1).await;
     settle(&mut progress_seen, "the progress", |found| *found == 1).await;
-    settle(&mut pane_seen, "the pane", |skipped| *skipped == Some(false)).await;
-    let list_before = Counted::of(&list_runs);
-    let progress_before = Counted::of(&progress_runs);
-    let pane_before = Counted::of(&pane_runs);
+    settle(&mut pane_seen, "the pane", |shown| matches!(shown, Some((false, _)))).await;
+    let list_before = Counted::of(&list.runs_for_test());
+    let progress_before = Counted::of(&progress.runs());
+    let pane_before = pane_seen.borrow().expect("the pane showed the candidate").1;
 
     for n in 1..=WRITES {
         tables
@@ -188,16 +189,17 @@ async fn a_scan_leaves_the_open_candidate_pane_alone() {
     }
     settle(&mut list_seen, "the list", |total| *total == WRITES + 1).await;
     settle(&mut progress_seen, "the progress", |found| *found == WRITES + 1).await;
-    let list_counted = Counted::of(&list_runs).since(list_before);
-    let progress_counted = Counted::of(&progress_runs).since(progress_before);
+    let list_counted = Counted::of(&list.runs_for_test()).since(list_before);
+    let progress_counted = Counted::of(&progress.runs()).since(progress_before);
 
     // The pane has nothing to show for the scan's writes, so a write it does
     // show closes them: once the pane shows it, it has run for everything
     // the scan wrote before it. Its runs, less the one that showed that
     // write, are the scan's.
     tables.set_import_candidate_skipped(&seed_candidate.path, true).await.unwrap();
-    settle(&mut pane_seen, "the pane", |skipped| *skipped == Some(true)).await;
-    let pane_counted = Counted::of(&pane_runs).since(pane_before);
+    settle(&mut pane_seen, "the pane", |shown| matches!(shown, Some((true, _)))).await;
+    let pane_counted =
+        pane_seen.borrow().expect("the pane showed the candidate").1.since(pane_before);
     let pane_counted = Counted {
         runs: pane_counted.runs - 1,
         writes: pane_counted.writes - 1,
@@ -220,9 +222,11 @@ async fn a_scan_leaves_the_open_candidate_pane_alone() {
     assert_eq!(pane_counted.runs, 0, "the scan's writes of other folders reran the candidate pane");
 
     list.cancel().await.unwrap();
-    pane.cancel();
-    // The progress query ends with the store, so it goes first.
-    progress_reader.abort();
-    assert!(progress_reader.await.unwrap_err().is_cancelled());
+    // The pane's and the progress's queries end with the store, so they go
+    // first.
+    for reader in [pane_reader, progress_reader] {
+        reader.abort();
+        assert!(reader.await.unwrap_err().is_cancelled());
+    }
     services.close().await.unwrap();
 }

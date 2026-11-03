@@ -8,7 +8,11 @@ fn idle_uploads() -> UploadQueueCounts {
 
 fn status() -> SyncStatusSnapshot {
     SyncStatusSnapshot {
-        status: coven::SyncStatus::Synced { finished_at: std::time::UNIX_EPOCH },
+        coven: bae_db::CovenSyncRow {
+            connected: true,
+            moving: false,
+            last_pass: Some(coven::LastPass::Synced),
+        },
         pending: Vec::new(),
         retry_effect: coven::RetryEffect::Pass,
         error: None,
@@ -28,7 +32,7 @@ fn a_settled_library_is_quiet() {
 #[test]
 fn a_pass_alone_is_not_movement() {
     let mut syncing = status();
-    syncing.status = coven::SyncStatus::Syncing;
+    syncing.coven.moving = true;
     let activity = SyncActivity::new(&syncing, &idle_uploads(), &ReleaseQueueCounts::default());
     assert!(activity.syncing);
     assert!(!activity.moving());
@@ -52,10 +56,10 @@ fn transfers_are_movement() {
 #[test]
 fn failures_and_pending_records_need_attention() {
     let mut failed = status();
-    failed.status = coven::SyncStatus::Offline {
+    failed.coven.last_pass = Some(coven::LastPass::Offline {
         failure: coven::StorageFailure::Network,
         error: "unreachable".into(),
-    };
+    });
     let new = |status: &SyncStatusSnapshot| {
         SyncActivity::new(status, &idle_uploads(), &ReleaseQueueCounts::default())
     };
@@ -87,8 +91,8 @@ fn transfer_lines_name_the_moving_count_first() {
 const ANSWERED_S3: &str = "S3 answered HTTP 503";
 
 /// A pass storage refused, as the status keeps it.
-fn refused(failure: coven::StorageFailure) -> coven::SyncStatus {
-    coven::SyncStatus::Failed {
+fn refused(failure: coven::StorageFailure) -> coven::LastPass {
+    coven::LastPass::Failed {
         failure: coven::StatusFailure::Storage(failure),
         error: ANSWERED_S3.into(),
     }
@@ -120,16 +124,16 @@ fn activity(status: &SyncStatusSnapshot) -> SyncActivity {
 fn a_failed_connection_shows_once_as_its_record() {
     for failure in [
         refused(coven::StorageFailure::Protocol),
-        coven::SyncStatus::Offline {
+        coven::LastPass::Offline {
             failure: coven::StorageFailure::Protocol,
             error: ANSWERED_S3.into(),
         },
     ] {
         let mut failed = status();
-        failed.status = failure;
+        failed.coven.last_pass = Some(failure);
         failed.pending = pending(connection(coven::StorageFailure::Protocol));
         let shown = activity(&failed);
-        assert_eq!(shown.failure, None, "{:?}", failed.status);
+        assert_eq!(shown.failure, None, "{:?}", failed.coven);
         assert!(shown.needs_attention());
         assert_eq!(shown.attention.len(), 1);
     }
@@ -145,11 +149,11 @@ fn a_blocked_slot_or_failed_operation_shows_once_as_its_record() {
         answered: true,
     };
     let mut blocked = status();
-    blocked.status = coven::SyncStatus::Blocked {
+    blocked.coven.last_pass = Some(coven::LastPass::Blocked {
         slot: coven::Slot(3),
         reason: reason.clone(),
         error: Some(ANSWERED_S3.into()),
-    };
+    });
     blocked.pending = pending(coven::PendingRecord::new(
         coven::PendingSubject::Slot(coven::Slot(3)),
         reason.clone(),
@@ -164,10 +168,10 @@ fn a_blocked_slot_or_failed_operation_shows_once_as_its_record() {
         reason,
     );
     let mut failed = status();
-    failed.status = coven::SyncStatus::Failed {
+    failed.coven.last_pass = Some(coven::LastPass::Failed {
         failure: coven::StatusFailure::Operation(operation.clone()),
         error: "the invite failed".into(),
-    };
+    });
     failed.pending = pending(operation);
     assert_eq!(activity(&failed).failure, None);
 }
@@ -178,15 +182,15 @@ fn a_blocked_slot_or_failed_operation_shows_once_as_its_record() {
 #[test]
 fn a_failure_no_record_shows_is_its_own_line() {
     let mut copied = status();
-    copied.status = coven::SyncStatus::Failed {
+    copied.coven.last_pass = Some(coven::LastPass::Failed {
         failure: coven::StatusFailure::DeviceIdInUse(coven::DeviceIdEvidence::Replaced),
         error: "another copy uses this device's id".into(),
-    };
+    });
     copied.pending = pending(connection(coven::StorageFailure::Network));
     assert!(activity(&copied).failure.is_some());
 
     let mut unrecorded = status();
-    unrecorded.status = refused(coven::StorageFailure::Protocol);
+    unrecorded.coven.last_pass = Some(refused(coven::StorageFailure::Protocol));
     unrecorded.pending = pending(connection(coven::StorageFailure::Network));
     assert!(activity(&unrecorded).failure.is_some());
 }
@@ -198,7 +202,7 @@ fn a_failure_no_record_shows_is_its_own_line() {
 fn the_list_offers_retry_only_when_a_retry_runs_a_pass_that_can_clear_a_failure() {
     let failed = |retry_effect| {
         let mut failed = status();
-        failed.status = refused(coven::StorageFailure::Network);
+        failed.coven.last_pass = Some(refused(coven::StorageFailure::Network));
         failed.pending = pending(connection(coven::StorageFailure::Network));
         failed.retry_effect = retry_effect;
         activity(&failed).retry_offered

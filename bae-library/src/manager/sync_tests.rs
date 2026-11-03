@@ -228,7 +228,10 @@ async fn startup_and_retry_publish_the_native_connection_status() {
     let mut values = manager.subscribe_sync_status();
     manager.attach_and_start_sync_at_startup().await;
     crate::followed::value_matching(&mut values, |value| {
-        matches!(value.status, coven::SyncStatus::Failed { .. } | coven::SyncStatus::Offline { .. })
+        matches!(
+            value.ended_pass(),
+            Some(coven::LastPass::Failed { .. } | coven::LastPass::Offline { .. })
+        )
     })
     .await;
     assert!(
@@ -239,7 +242,7 @@ async fn startup_and_retry_publish_the_native_connection_status() {
     clock.set(std::time::UNIX_EPOCH + std::time::Duration::from_secs(60));
     manager.reconnect_sync().await.unwrap();
     crate::followed::value_matching(&mut values, |value| {
-        matches!(value.status, coven::SyncStatus::Synced { .. })
+        matches!(value.ended_pass(), Some(coven::LastPass::Synced))
     })
     .await;
     manager.close().await.unwrap();
@@ -258,7 +261,7 @@ async fn a_network_report_ends_the_offline_backoff_and_syncs() {
     manager.storage.set_online(false);
     manager.trigger_sync();
     crate::followed::value_matching(&mut status, |status| {
-        matches!(status.status, coven::SyncStatus::Offline { .. })
+        matches!(status.ended_pass(), Some(coven::LastPass::Offline { .. }))
     })
     .await;
     manager.storage.set_online(true);
@@ -271,12 +274,12 @@ async fn a_network_report_ends_the_offline_backoff_and_syncs() {
         "a sync request ran a pass inside the offline backoff"
     );
     assert!(matches!(
-        manager.sync_status().await.unwrap().status,
-        coven::SyncStatus::Offline { .. }
+        manager.sync_status().await.unwrap().ended_pass(),
+        Some(coven::LastPass::Offline { .. })
     ));
     manager.network_changed();
     crate::followed::value_matching(&mut status, |status| {
-        matches!(status.status, coven::SyncStatus::Synced { .. })
+        matches!(status.ended_pass(), Some(coven::LastPass::Synced))
     })
     .await;
     manager.close().await.unwrap();
@@ -327,7 +330,7 @@ async fn only_a_failed_start_with_storage_set_up_offers_reconnect() {
     manager.start().unwrap();
     manager.attach_and_start_sync_at_startup().await;
     let status = manager.sync_status().await.unwrap();
-    assert!(matches!(status.status, coven::SyncStatus::Stopped), "{status:?}");
+    assert!(status.coven.connected && !status.running(), "{status:?}");
     assert!(status.error.is_some(), "the failed start is recorded: {status:?}");
     assert!(status.reconnect_offered(), "{status:?}");
 
@@ -354,7 +357,7 @@ async fn a_storage_setup_ends_the_failed_start_before_it() {
     manager.installation.fail_next_keychain_operation();
     manager.attach_and_start_sync_at_startup().await;
     let failed = manager.sync_status().await.unwrap();
-    assert!(matches!(failed.status, coven::SyncStatus::Disconnected), "{failed:?}");
+    assert!(!failed.coven.connected, "{failed:?}");
     assert!(failed.error.is_some(), "the failed start is recorded: {failed:?}");
 
     let mut values = manager.subscribe_sync_status();
@@ -370,13 +373,13 @@ async fn a_storage_setup_ends_the_failed_start_before_it() {
         .await
         .unwrap();
     let synced = crate::followed::value_matching(&mut values, |value| {
-        let running =
-            !matches!(value.status, coven::SyncStatus::Stopped | coven::SyncStatus::Disconnected);
+        // Setup writes storage set up on this device and its finish in one
+        // write, which ends the failed start.
         assert!(
-            !running || value.error.is_none(),
-            "a running sync shows a failed start: {value:?}"
+            !value.coven.connected || value.error.is_none(),
+            "sync set up shows a failed start: {value:?}"
         );
-        matches!(value.status, coven::SyncStatus::Synced { .. })
+        matches!(value.ended_pass(), Some(coven::LastPass::Synced))
     })
     .await;
     assert_eq!(synced.indicator(), Some(bae_db::SyncIndicator::Synced), "{synced:?}");
@@ -423,11 +426,10 @@ async fn fail_a_pass(manager: &TestManager, faults: coven::Faults) -> bae_db::Sy
     manager.storage.set_faults(faults).await;
     manager.trigger_sync();
     let failed = crate::followed::value_matching(&mut values, |value| {
-        matches!(value.status, coven::SyncStatus::Failed { .. } | coven::SyncStatus::Offline { .. })
-            && value
-                .pending
-                .iter()
-                .any(|item| item.subject == bae_db::PendingSubjectName::Connection)
+        matches!(
+            value.ended_pass(),
+            Some(coven::LastPass::Failed { .. } | coven::LastPass::Offline { .. })
+        ) && value.pending.iter().any(|item| item.subject == bae_db::PendingSubjectName::Connection)
     })
     .await;
     manager.storage.set_faults(coven::Faults::none()).await;
@@ -452,7 +454,7 @@ async fn each_offered_failure_is_retried_by_a_pass_that_syncs() {
         let (manager, _temp_dir, _clock) = library_on_a_stopped_clock().await;
         let failed = fail_a_pass(&manager, next_request_fails(failure, response)).await;
         assert_eq!(failed.retry_effect, coven::RetryEffect::Pass);
-        assert!(failed.retry_offered(), "{failure:?} {response:?}: {:?}", failed.status);
+        assert!(failed.retry_offered(), "{failure:?} {response:?}: {:?}", failed.coven);
         let requests = manager.storage.request_trace().len();
         let answer = tokio::time::timeout(std::time::Duration::from_secs(20), async {
             manager.retry_now().await.unwrap().await
@@ -489,7 +491,7 @@ async fn each_failure_the_person_clears_offers_no_retry() {
         let (manager, _temp_dir, _clock) = library_on_a_stopped_clock().await;
         let failed = fail_a_pass(&manager, next_request_fails(failure, response)).await;
         assert_eq!(failed.retry_effect, coven::RetryEffect::Failed);
-        assert!(!failed.retry_offered(), "{failure:?} {response:?}: {:?}", failed.status);
+        assert!(!failed.retry_offered(), "{failure:?} {response:?}: {:?}", failed.coven);
         let requests = manager.storage.request_trace().len();
         let answer = tokio::time::timeout(std::time::Duration::from_secs(20), async {
             manager.retry_now().await.unwrap().await
@@ -525,7 +527,7 @@ async fn a_provider_cooldown_offers_no_retry_until_it_ends() {
     .await;
     let ends = std::time::UNIX_EPOCH + std::time::Duration::from_secs(600);
     assert_eq!(cooling.retry_effect, coven::RetryEffect::CoolingDown { until: ends });
-    assert!(!cooling.retry_offered(), "{:?}", cooling.status);
+    assert!(!cooling.retry_offered(), "{:?}", cooling.coven);
     let answer = tokio::time::timeout(std::time::Duration::from_secs(20), async {
         manager.retry_now().await.unwrap().await
     })
@@ -540,9 +542,10 @@ async fn a_provider_cooldown_offers_no_retry_until_it_ends() {
     // failure a retry clears holds work back.
     manager.storage.set_faults(next_request_fails(coven::StorageFailure::Network, None)).await;
     clock.set(ends + std::time::Duration::from_secs(1));
-    let offline =
-        status_until(&manager, |value| matches!(value.status, coven::SyncStatus::Offline { .. }))
-            .await;
+    let offline = status_until(&manager, |value| {
+        matches!(value.ended_pass(), Some(coven::LastPass::Offline { .. }))
+    })
+    .await;
     assert!(offline.retry_offered(), "{:?}", offline.retry_effect);
     manager.storage.set_faults(coven::Faults::none()).await;
     let requests = manager.storage.request_trace().len();

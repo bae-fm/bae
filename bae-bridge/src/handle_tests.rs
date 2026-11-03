@@ -508,7 +508,7 @@ fn a_failed_sync_status_crosses_with_its_fault() {
                  has an unresolved foreign-key dependency";
     let snapshot = bae_db::SyncStatusSnapshot {
         error: Some(bae_diagnostics::UiError::internal(fault)),
-        status: coven::SyncStatus::Disconnected,
+        coven: bae_db::CovenSyncRow { connected: false, moving: false, last_pass: None },
         pending: Vec::new(),
         retry_effect: coven::RetryEffect::Pass,
     };
@@ -528,7 +528,11 @@ fn a_failed_sync_status_crosses_with_its_fault() {
 fn a_healthy_sync_status_crosses_without_an_error() {
     let snapshot = bae_db::SyncStatusSnapshot {
         error: None,
-        status: coven::SyncStatus::Synced { finished_at: std::time::UNIX_EPOCH },
+        coven: bae_db::CovenSyncRow {
+            connected: true,
+            moving: false,
+            last_pass: Some(coven::LastPass::Synced),
+        },
         pending: Vec::new(),
         retry_effect: coven::RetryEffect::Pass,
     };
@@ -546,7 +550,11 @@ fn a_healthy_sync_status_crosses_without_an_error() {
 fn a_failed_start_crosses_offering_reconnect() {
     let snapshot = bae_db::SyncStatusSnapshot {
         error: Some(bae_diagnostics::UiError::internal("the store key is missing")),
-        status: coven::SyncStatus::Stopped,
+        coven: bae_db::CovenSyncRow {
+            connected: true,
+            moving: false,
+            last_pass: Some(coven::LastPass::Synced),
+        },
         pending: Vec::new(),
         retry_effect: coven::RetryEffect::NotSyncing,
     };
@@ -565,9 +573,13 @@ fn a_failure_its_record_shows_crosses_only_as_the_record() {
     let failure = coven::StorageFailure::Protocol;
     let snapshot = bae_db::SyncStatusSnapshot {
         error: None,
-        status: coven::SyncStatus::Failed {
-            failure: coven::StatusFailure::Storage(failure),
-            error: "storage refused the pass".into(),
+        coven: bae_db::CovenSyncRow {
+            connected: true,
+            moving: false,
+            last_pass: Some(coven::LastPass::Failed {
+                failure: coven::StatusFailure::Storage(failure),
+                error: "storage refused the pass".into(),
+            }),
         },
         pending: vec![bae_db::PendingItem::before_open(coven::PendingRecord::new(
             coven::PendingSubject::Connection,
@@ -686,7 +698,7 @@ fn dropping_a_handle_closes_its_library_before_its_runtime_ends() {
         library.attach_and_start_sync_at_startup().await;
         let mut status = library.subscribe_sync_status();
         bae_library::followed::value_matching(&mut status, |value| {
-            matches!(value.status, coven::SyncStatus::Synced { .. })
+            value.running() && matches!(value.ended_pass(), Some(coven::LastPass::Synced))
         })
         .await;
     });

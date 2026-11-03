@@ -176,10 +176,7 @@ pub(super) async fn connect_test_cloud(manager: &TestManager) -> Arc<MemoryStora
     connect_test_cloud_with_sync_loop(manager).await;
     manager.database.stop_sync().await.unwrap();
     let mut status = manager.database.subscribe(bae_db::sync_status_on);
-    crate::followed::value_matching(&mut status, |status| {
-        matches!(status.status, coven::SyncStatus::Stopped)
-    })
-    .await;
+    crate::followed::value_matching(&mut status, |status| !status.running()).await;
     manager.database.unlock_store_key().await.unwrap();
     manager.database.set_uploads_paused(true).await.unwrap();
     manager.storage.clone()
@@ -199,7 +196,7 @@ pub(super) async fn connect_test_cloud_with_sync_loop(manager: &TestManager) -> 
         .unwrap();
     let mut status = manager.database.subscribe(bae_db::sync_status_on);
     crate::followed::value_matching(&mut status, |status| {
-        matches!(status.status, coven::SyncStatus::Synced { .. })
+        matches!(status.ended_pass(), Some(coven::LastPass::Synced))
     })
     .await;
     manager.storage.clone()

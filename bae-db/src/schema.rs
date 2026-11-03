@@ -179,7 +179,8 @@ pub fn bare_library_connection() -> rusqlite::Connection {
          CREATE TABLE coven_upload_queue (file TEXT PRIMARY KEY NOT NULL, \
          position INTEGER NOT NULL) STRICT, WITHOUT ROWID; \
          CREATE TABLE coven_sync_status (singleton INTEGER PRIMARY KEY NOT NULL, \
-         state TEXT NOT NULL, status BLOB NOT NULL) STRICT;",
+         storage TEXT NOT NULL, provider TEXT, last_pass BLOB, moving INTEGER NOT NULL, \
+         last_synced INTEGER) STRICT;",
     )
     .expect("the stand-in coven tables create");
     conn.execute_batch(include_str!("../migrations/001_initial.sql")).expect("the schema applies");

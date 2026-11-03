@@ -16,8 +16,7 @@ impl LibraryViews {
         let Some(context) = self.find_release_detail_context(release_id).await? else {
             return Ok(None);
         };
-        let has_cloud_home =
-            !matches!(self.database.coven_sync_status().await?, coven::SyncStatus::Disconnected);
+        let has_cloud_home = self.database.cloud_home().await?;
         Ok(Some(resolve_release_detail(release_id, context, has_cloud_home)))
     }
 

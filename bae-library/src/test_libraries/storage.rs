@@ -50,10 +50,12 @@ pub async fn connect_storage(manager: &LibraryManager, storage: &MemoryStorage) 
         .await
         .unwrap();
     let mut status = manager.subscribe_sync_status();
-    value_matching(&mut status, |value| matches!(value.status, coven::SyncStatus::Synced { .. }))
-        .await;
+    value_matching(&mut status, |value| {
+        matches!(value.ended_pass(), Some(coven::LastPass::Synced))
+    })
+    .await;
     manager.stop_sync().await.unwrap();
-    value_matching(&mut status, |value| matches!(value.status, coven::SyncStatus::Stopped)).await;
+    value_matching(&mut status, |value| !value.running()).await;
     manager.unlock_store_key().await.unwrap();
     manager.set_sync_paused(true).await.unwrap();
 }

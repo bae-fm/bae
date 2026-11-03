@@ -1,8 +1,9 @@
 //! The sync status as the status line and the activity list show it:
-//! coven's status, its pending records, what a retry would do and why the
-//! last start failed, read in one go, and the actions each pending record
-//! offers.
+//! coven's sync status row, its pending records, what a retry would do and
+//! why the last start failed, read in one go, and the actions each pending
+//! record offers.
 
+use crate::client::sync_status::CovenSyncRow;
 use crate::pending_item::{PendingItem, PendingSubjectName, PendingWait};
 use crate::PendingRow;
 use bae_diagnostics::UiError;
@@ -11,7 +12,10 @@ use bae_diagnostics::UiError;
 /// read from coven's tables and bae's own in one go.
 #[derive(Debug, Clone, PartialEq)]
 pub struct SyncStatusSnapshot {
-    pub status: coven::SyncStatus,
+    /// coven's sync status row: whether storage is set up on this device,
+    /// whether the running pass has moved a slot, and how the last pass
+    /// ended.
+    pub coven: CovenSyncRow,
     pub pending: Vec<PendingItem>,
     /// Why this device's last attempt to start sync failed, while that
     /// stands.
@@ -48,7 +52,7 @@ fn sync_failure_category(error: &coven::SyncFailure) -> bae_diagnostics::UiError
     }
 }
 
-/// The category a whole-pass failure the status keeps shows under, as
+/// The category a whole-pass failure the last pass keeps shows under, as
 /// [`sync_failure_category`] classes the failure it was.
 fn status_failure_category(failure: &coven::StatusFailure) -> bae_diagnostics::UiErrorCategory {
     use bae_diagnostics::UiErrorCategory as C;
@@ -89,7 +93,7 @@ impl From<coven::RetryOutcome> for SyncRetryOutcome {
 }
 
 /// What a failed pass shows the person, under the category the status
-/// would show it. A slot blocked since before this process opened has no
+/// line would show it. A slot blocked since before this process opened has no
 /// error of its own, so its reason is the detail.
 fn pass_failure(failure: &coven::PassFailure) -> UiError {
     use bae_diagnostics::UiErrorCategory as C;
@@ -118,30 +122,31 @@ fn blocked_failure(
     }
 }
 
-/// The sync status as one read of its tables sees it: coven's status
-/// (`coven_sync_status`), what a retry would do (`coven_retry_effect`), its
-/// pending records (`coven_pending`), and why this device's last attempt to
-/// start sync failed (`sync_start_failure`).
+/// The sync status as one read of its tables sees it: coven's sync status
+/// row (`coven_sync_status`), what a retry would do (`coven_retry_effect`),
+/// its pending records (`coven_pending`), and why this device's last
+/// attempt to start sync failed (`sync_start_failure`).
 pub fn sync_status_on(sql: coven::SqlReadContext<'_>) -> coven::CovenResult<SyncStatusSnapshot> {
-    let status = crate::client::sync_status::coven_status_on(&sql)?;
+    let coven = crate::client::sync_status::coven_row_on(&sql)?;
     let pending = crate::client::pending::pending_rows_on(&sql)?;
     let start_failure = crate::client::sync_start_failure::start_failure_on(&sql)?;
     let retry_effect = coven::RetryEffect::read(sql)?;
-    Ok(SyncStatusSnapshot::read(status, retry_effect, pending, start_failure))
+    Ok(SyncStatusSnapshot::read(coven, retry_effect, pending, start_failure))
 }
 
 impl SyncStatusSnapshot {
-    /// The sync status from one read of its tables: coven's status and
-    /// what a retry would do, its pending records each named by its row,
-    /// and why the last attempt to start sync failed, while that stands.
+    /// The sync status from one read of its tables: coven's sync status row
+    /// and what a retry would do, its pending records each named by its
+    /// row, and why the last attempt to start sync failed, while that
+    /// stands.
     pub fn read(
-        status: coven::SyncStatus,
+        coven: CovenSyncRow,
         retry_effect: coven::RetryEffect,
         pending: Vec<PendingRow>,
         error: Option<UiError>,
     ) -> Self {
         let mut snapshot = Self {
-            status,
+            coven,
             pending: pending.into_iter().map(PendingItem::listed).collect(),
             error,
             retry_effect,
@@ -150,15 +155,32 @@ impl SyncStatusSnapshot {
         snapshot
     }
 
-    /// A sync pass is in progress (or the first one is queued).
+    /// A pass is moving: it has read a slot it hadn't, or claimed one.
     pub fn syncing(&self) -> bool {
-        matches!(self.status, coven::SyncStatus::Syncing)
+        self.coven.connected && self.coven.moving
+    }
+
+    /// Whether coven's sync loop runs: storage is set up on this device and
+    /// sync isn't stopped, as what a retry would do says.
+    pub fn running(&self) -> bool {
+        self.coven.connected && self.retry_effect != coven::RetryEffect::NotSyncing
+    }
+
+    /// How the last pass ended, while that is what the status shows:
+    /// storage is set up on this device and no pass is moving. A pass that
+    /// moves shows as syncing until it ends, as coven's own sync state
+    /// shows it.
+    pub fn ended_pass(&self) -> Option<&coven::LastPass> {
+        if !self.coven.connected || self.coven.moving {
+            return None;
+        }
+        self.coven.last_pass.as_ref()
     }
 
     /// Give the connection's record the error behind it. coven keeps the
     /// error behind every other record beside it, but a connection's failure
-    /// goes to the status, which keeps its text until the next pass replaces
-    /// it.
+    /// goes to the last pass, which keeps its text until the next pass
+    /// replaces it.
     fn name_connection_cause(&mut self) {
         let Some((failure, error)) = self.connection_error() else {
             return;
@@ -177,24 +199,28 @@ impl SyncStatusSnapshot {
     /// The storage failure a pass failed on, with its text, when it failed
     /// on the connection: storage refused it, or couldn't be reached.
     fn connection_error(&self) -> Option<(coven::StorageFailure, &str)> {
-        match &self.status {
-            coven::SyncStatus::Offline { failure, error }
-            | coven::SyncStatus::Failed {
-                failure: coven::StatusFailure::Storage(failure),
-                error,
-            } => Some((*failure, error)),
-            _ => None,
+        match self.ended_pass()? {
+            coven::LastPass::Offline { failure, error }
+            | coven::LastPass::Failed { failure: coven::StatusFailure::Storage(failure), error } => {
+                Some((*failure, error))
+            }
+            coven::LastPass::Synced
+            | coven::LastPass::Blocked { .. }
+            | coven::LastPass::Failed { .. } => None,
         }
     }
 
-    /// Whether a pending record shows the status's failure. coven records
-    /// a failed pass's condition beside the status: the connection's when
+    /// Whether a pending record shows the last pass's failure. coven
+    /// records a failed pass's condition beside it: the connection's when
     /// storage refused the pass or couldn't be reached, a blocked slot's, and
     /// that of its own operation whose last attempt failed.
     fn failure_recorded(&self) -> bool {
-        use coven::{PendingReason as R, StatusFailure as F, SyncStatus as S};
+        use coven::{LastPass as S, PendingReason as R, StatusFailure as F};
         use PendingSubjectName as N;
-        self.pending.iter().any(|item| match (&self.status, &item.subject, &item.wait.reason) {
+        let Some(pass) = self.ended_pass() else {
+            return false;
+        };
+        self.pending.iter().any(|item| match (pass, &item.subject, &item.wait.reason) {
             (
                 S::Offline { failure, .. } | S::Failed { failure: F::Storage(failure), .. },
                 N::Connection,
@@ -213,7 +239,8 @@ impl SyncStatusSnapshot {
     }
 
     /// The failure the status line and the activity list show beside the
-    /// pending records: the status's, unless one of them shows it already.
+    /// pending records: the last pass's, unless one of them shows it
+    /// already.
     /// That record names what failed and what the person can do; the same
     /// failure again on a line of its own reads as a second problem.
     pub fn shown_failure(&self) -> Option<UiError> {
@@ -228,23 +255,17 @@ impl SyncStatusSnapshot {
             return Some(error.clone());
         }
         use bae_diagnostics::UiErrorCategory as C;
-        match &self.status {
-            coven::SyncStatus::Offline { error, .. } => {
-                Some(UiError::diagnostic(C::Network, error))
-            }
-            coven::SyncStatus::Failed { failure, error } => {
+        match self.ended_pass()? {
+            coven::LastPass::Offline { error, .. } => Some(UiError::diagnostic(C::Network, error)),
+            coven::LastPass::Failed { failure, error } => {
                 Some(UiError::diagnostic(status_failure_category(failure), error))
             }
             // A device that opened already blocked has only the slot's
             // reason, which its pending record shows.
-            coven::SyncStatus::Blocked { slot, reason, error: Some(error) } => {
+            coven::LastPass::Blocked { slot, reason, error: Some(error) } => {
                 Some(blocked_failure(slot, reason, Some(error)))
             }
-            coven::SyncStatus::Blocked { error: None, .. }
-            | coven::SyncStatus::Disconnected
-            | coven::SyncStatus::Stopped
-            | coven::SyncStatus::Syncing
-            | coven::SyncStatus::Synced { .. } => None,
+            coven::LastPass::Blocked { error: None, .. } | coven::LastPass::Synced => None,
         }
     }
 
@@ -255,7 +276,7 @@ impl SyncStatusSnapshot {
     /// its wait; with no storage set up on this device there is no sync to
     /// start, and signing in to the recorded storage again is the way back.
     pub fn reconnect_offered(&self) -> bool {
-        self.error.is_some() && matches!(self.status, coven::SyncStatus::Stopped)
+        self.error.is_some() && self.coven.connected && !self.running()
     }
 
     /// Whether the activity list offers Retry Now: pressing it runs a pass,
@@ -279,22 +300,21 @@ impl SyncStatusSnapshot {
     /// reset or nothing clears never does, nor a record waiting on other
     /// work, such as another device's upload.
     fn failure_a_retry_clears(&self) -> bool {
-        use coven::{StatusFailure as F, SyncStatus as S};
+        use coven::{LastPass as S, StatusFailure as F};
         let retries =
             |record: &coven::PendingRecord| PendingWait::of(record, None).retries_by_itself();
-        match &self.status {
-            S::Offline { .. } | S::Failed { failure: F::Storage(_) | F::Other, .. } => true,
-            S::Blocked { slot, reason, .. } => retries(&coven::PendingRecord::new(
+        match self.ended_pass() {
+            Some(S::Offline { .. } | S::Failed { failure: F::Storage(_) | F::Other, .. }) => true,
+            Some(S::Blocked { slot, reason, .. }) => retries(&coven::PendingRecord::new(
                 coven::PendingSubject::Slot(*slot),
                 reason.clone(),
             )),
-            S::Failed { failure: F::Operation(record), .. } => retries(record),
-            S::Failed {
-                failure: F::UpdateRequired(_) | F::Removed | F::DeviceIdInUse(_), ..
-            } => false,
-            S::Disconnected | S::Stopped | S::Syncing | S::Synced { .. } => {
-                self.pending.iter().any(|item| item.wait.retries_by_itself())
-            }
+            Some(S::Failed { failure: F::Operation(record), .. }) => retries(record),
+            Some(S::Failed {
+                failure: F::UpdateRequired(_) | F::Removed | F::DeviceIdInUse(_),
+                ..
+            }) => false,
+            Some(S::Synced) | None => self.pending.iter().any(|item| item.wait.retries_by_itself()),
         }
     }
 
@@ -315,9 +335,14 @@ impl SyncStatusSnapshot {
     fn failure_coven_does_not_log(&self) -> Option<UiError> {
         let logged_by_coven = self.error.is_none()
             && matches!(
-                self.status,
-                coven::SyncStatus::Blocked { .. }
-                    | coven::SyncStatus::Failed { failure: coven::StatusFailure::Operation(_), .. }
+                self.ended_pass(),
+                Some(
+                    coven::LastPass::Blocked { .. }
+                        | coven::LastPass::Failed {
+                            failure: coven::StatusFailure::Operation(_),
+                            ..
+                        }
+                )
             );
         if logged_by_coven {
             return None;
@@ -326,23 +351,28 @@ impl SyncStatusSnapshot {
     }
 
     /// What the status line names, or `None` while coven reports no storage
-    /// set up on this device (`Disconnected`): there is no sync to describe.
-    /// A library with a recorded location in that state has lost this
-    /// device's credentials for it, and signs in to it again.
+    /// set up on this device: there is no sync to describe. A library with a
+    /// recorded location in that state has lost this device's credentials
+    /// for it, and signs in to it again.
     ///
     /// Pending records come first, since the list shows what each waits on.
-    /// With none, the line names the status itself; its error, when it has
-    /// one, is `failure()`.
+    /// With none, the line names the status itself: a moving pass is
+    /// syncing; otherwise how the last pass ended, as coven's sync state
+    /// ranks a failure above activity, and a pass that ended synced (or
+    /// none yet) is stopped while the loop isn't running. Its error, when it
+    /// has one, is `failure()`.
     pub fn indicator(&self) -> Option<SyncIndicator> {
-        let named = match self.status {
-            coven::SyncStatus::Disconnected => return None,
-            coven::SyncStatus::Stopped => SyncIndicator::Stopped,
-            coven::SyncStatus::Syncing => SyncIndicator::Syncing,
-            coven::SyncStatus::Synced { .. } => SyncIndicator::Synced,
-            coven::SyncStatus::Offline { .. } => SyncIndicator::Offline,
-            coven::SyncStatus::Failed { .. } | coven::SyncStatus::Blocked { .. } => {
+        if !self.coven.connected {
+            return None;
+        }
+        let named = match self.ended_pass() {
+            None if self.coven.moving => SyncIndicator::Syncing,
+            Some(coven::LastPass::Offline { .. }) => SyncIndicator::Offline,
+            Some(coven::LastPass::Failed { .. } | coven::LastPass::Blocked { .. }) => {
                 SyncIndicator::Failed
             }
+            Some(coven::LastPass::Synced) | None if !self.running() => SyncIndicator::Stopped,
+            Some(coven::LastPass::Synced) | None => SyncIndicator::Synced,
         };
         if !self.pending.is_empty() {
             return Some(SyncIndicator::Waiting { items: self.pending.len() });
@@ -359,7 +389,7 @@ impl SyncStatusSnapshot {
 ///
 /// None of them resets the device: a reset is offered only when opening finds
 /// a damaged database, or when sync finds another copy of this device, which
-/// coven reports as the status's failure rather than as a record. A removed
+/// coven reports as the last pass's failure rather than as a record. A removed
 /// device offers nothing that would register it again; its record is only
 /// reviewed.
 #[derive(Debug, Clone, PartialEq, Eq)]

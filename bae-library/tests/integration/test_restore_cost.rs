@@ -15,7 +15,9 @@
 
 use bae_app_dir::AppDir;
 use bae_library::{FixtureAlbum, LibraryFixture};
-use coven::{Clock, CovenHandle, MemoryStorage, SecretText, Storage, SyncStatus, TestCoven};
+use coven::{
+    Clock, CovenHandle, MemoryStorage, SecretText, Storage, SyncState, SyncStatus, TestCoven,
+};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
@@ -59,16 +61,17 @@ async fn pass(handle: &CovenHandle, clock: &BenchClock) {
     let after = clock.now();
     let mut status = handle.test_sync_status();
     handle.sync_now();
+    let finished = |status: &SyncStatus| status.last_synced.is_some_and(|at| at >= after);
     let ended = status
-        .wait_for(|status| match status {
-            SyncStatus::Synced { finished_at } => *finished_at >= after,
-            SyncStatus::Failed { .. } => true,
-            _ => false,
+        .wait_for(|status| {
+            finished(status)
+                || !matches!(
+                    status.state,
+                    SyncState::Synced | SyncState::Syncing | SyncState::WaitingToSync(_)
+                )
         })
         .await;
-    if let SyncStatus::Failed { error, .. } = ended {
-        panic!("{error}");
-    }
+    assert!(finished(&ended), "the pass didn't sync: {:?}", ended.state);
 }
 
 fn albums(write: usize, per_write: usize) -> LibraryFixture {

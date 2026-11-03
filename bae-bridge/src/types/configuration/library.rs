@@ -353,7 +353,7 @@ impl BridgeSyncStatusSnapshot {
         let indicator = snapshot.indicator().map(crate::types::BridgeSyncIndicator::from_core);
         let error = snapshot.shown_failure();
         let reconnect_offered = snapshot.reconnect_offered();
-        let bae_db::SyncStatusSnapshot { status: _, pending, error: _, retry_effect: _ } = snapshot;
+        let bae_db::SyncStatusSnapshot { coven: _, pending, error: _, retry_effect: _ } = snapshot;
         Self {
             indicator,
             reconnect_offered,

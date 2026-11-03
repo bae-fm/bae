@@ -29,8 +29,7 @@ impl LibraryViews {
     ) -> Result<StoragePage, DbError> {
         let raw_rows = self.get_db_storage_page(sort, filter, offset, limit).await?;
         let total_count = self.get_storage_count(filter).await?;
-        let has_cloud_home =
-            !matches!(self.database.coven_sync_status().await?, coven::SyncStatus::Disconnected);
+        let has_cloud_home = self.database.cloud_home().await?;
         let rows =
             raw_rows.into_iter().map(|raw| StorageRow::from_raw(raw, has_cloud_home)).collect();
         Ok(StoragePage { rows, total_count })

@@ -71,10 +71,7 @@ fn local_startup_returns_while_storage_is_pending_and_reports_its_failure() {
             )
             .await
             .unwrap();
-        handle
-            .test_sync_status()
-            .wait_for(|status| matches!(status, coven::SyncStatus::Synced { .. }))
-            .await;
+        handle.test_sync_status().wait_for(|status| status.state == coven::SyncState::Synced).await;
         let id = handle.store_id().to_string();
         handle.close().await.unwrap();
         storage
@@ -121,8 +118,8 @@ fn local_startup_returns_while_storage_is_pending_and_reports_its_failure() {
         bae_library::followed::pulled_matching(&status, |status| {
             status.error.is_some()
                 || matches!(
-                    status.status,
-                    coven::SyncStatus::Failed { .. } | coven::SyncStatus::Offline { .. }
+                    status.ended_pass(),
+                    Some(coven::LastPass::Failed { .. } | coven::LastPass::Offline { .. })
                 )
         })
         .await;

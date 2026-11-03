@@ -363,8 +363,8 @@ impl LibraryManager {
         {
             tracing::warn!(?category, "sync failure: {detail}");
         }
-        let failed = |snapshot: &bae_db::SyncStatusSnapshot| match &snapshot.status {
-            coven::SyncStatus::Failed { error, .. } => Some(error.clone()),
+        let failed = |snapshot: &bae_db::SyncStatusSnapshot| match snapshot.ended_pass() {
+            Some(coven::LastPass::Failed { error, .. }) => Some(error.clone()),
             _ => None,
         };
         if failed(snapshot).is_some() && last.and_then(failed) != failed(snapshot) {

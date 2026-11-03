@@ -1,35 +1,60 @@
 use super::*;
 
-/// The status as one read of its tables gives it: `status`, the records
+/// The status as one read of its tables gives it: coven's row, the records
 /// beside it, coven's answer to what a retry would do, and why the last
 /// start failed.
 fn read(
-    status: coven::SyncStatus,
+    row: CovenSyncRow,
     records: Vec<coven::PendingRecord>,
     retry_effect: coven::RetryEffect,
     error: Option<UiError>,
 ) -> SyncStatusSnapshot {
     SyncStatusSnapshot::read(
-        status,
+        row,
         retry_effect,
         records.into_iter().map(|record| PendingRow { record, file_row: None }).collect(),
         error,
     )
 }
 
-/// A status, the pending records read beside it, and coven's answer to
+/// coven's row, the pending records read beside it, and coven's answer to
 /// what a retry would do now.
 fn snapshot(
-    status: coven::SyncStatus,
+    row: CovenSyncRow,
     records: Vec<coven::PendingRecord>,
     retry_effect: coven::RetryEffect,
 ) -> SyncStatusSnapshot {
-    read(status, records, retry_effect, None)
+    read(row, records, retry_effect, None)
 }
 
-/// A status with nothing pending.
-fn alone(status: coven::SyncStatus) -> SyncStatusSnapshot {
-    snapshot(status, Vec::new(), coven::RetryEffect::Pass)
+/// coven's row with nothing pending, while sync runs.
+fn alone(row: CovenSyncRow) -> SyncStatusSnapshot {
+    snapshot(row, Vec::new(), coven::RetryEffect::Pass)
+}
+
+/// Storage set up on this device, and the last pass ended as `pass`.
+fn ended(pass: coven::LastPass) -> CovenSyncRow {
+    CovenSyncRow { connected: true, moving: false, last_pass: Some(pass) }
+}
+
+/// Storage set up on this device, and a pass moving.
+fn moving() -> CovenSyncRow {
+    CovenSyncRow { connected: true, moving: true, last_pass: None }
+}
+
+/// No storage set up on this device.
+fn disconnected() -> CovenSyncRow {
+    CovenSyncRow { connected: false, moving: false, last_pass: None }
+}
+
+/// A slot the last pass is blocked at, for `reason`, with the error that
+/// blocked it.
+fn blocked(reason: coven::PendingReason, error: Option<&str>) -> CovenSyncRow {
+    ended(coven::LastPass::Blocked {
+        slot: coven::Slot(3),
+        reason,
+        error: error.map(str::to_string),
+    })
 }
 
 /// The text coven keeps for an S3 request that never reached the provider:
@@ -37,23 +62,23 @@ fn alone(status: coven::SyncStatus) -> SyncStatusSnapshot {
 const UNREACHABLE_S3: &str = "S3: Network: S3 request failed: dispatch failure: io error: \
      client error (Connect): invalid peer certificate: UnknownIssuer";
 
-fn offline() -> coven::SyncStatus {
-    coven::SyncStatus::Offline {
+fn offline() -> CovenSyncRow {
+    ended(coven::LastPass::Offline {
         failure: coven::StorageFailure::Network,
         error: UNREACHABLE_S3.into(),
-    }
+    })
 }
 
-fn failed_status(failure: coven::StatusFailure) -> coven::SyncStatus {
-    coven::SyncStatus::Failed { failure, error: "the pass failed".into() }
+fn failed_status(failure: coven::StatusFailure) -> CovenSyncRow {
+    ended(coven::LastPass::Failed { failure, error: "the pass failed".into() })
 }
 
-/// A failed start the status keeps beside coven's status survives the
+/// A failed start the status keeps beside coven's row survives the
 /// pending records read with it.
 #[test]
 fn reading_pending_items_does_not_clear_a_start_failure() {
     let status = read(
-        coven::SyncStatus::Disconnected,
+        disconnected(),
         vec![record(coven::PendingReason::NoStorage)],
         coven::RetryEffect::Pass,
         Some(UiError::internal("connection failed")),
@@ -155,50 +180,58 @@ fn a_failed_pass_with_no_pending_records_does_not_claim_synced() {
     ));
 }
 
-/// Only a pass in progress is syncing: a finished, offline, blocked,
-/// failed, stopped or absent sync is not, however long its loop runs.
+/// Only a pass that moves is syncing: a finished, offline, blocked, failed,
+/// stopped or absent sync is not, however long its loop runs.
 #[test]
-fn only_a_pass_in_progress_is_syncing() {
-    let syncing = |status| alone(status).syncing();
-    assert!(syncing(coven::SyncStatus::Syncing));
+fn only_a_moving_pass_is_syncing() {
+    let syncing = |row| alone(row).syncing();
+    assert!(syncing(moving()));
     assert!(!syncing(synced()));
     assert!(!syncing(offline()));
-    assert!(!syncing(coven::SyncStatus::Blocked {
-        slot: coven::Slot(3),
-        reason: coven::PendingReason::NoStorage,
-        error: None,
-    }));
+    assert!(!syncing(blocked(coven::PendingReason::NoStorage, None)));
     assert!(!syncing(failed_status(coven::StatusFailure::Removed)));
-    assert!(!syncing(coven::SyncStatus::Stopped));
-    assert!(!syncing(coven::SyncStatus::Disconnected));
+    assert!(!snapshot(synced(), Vec::new(), coven::RetryEffect::NotSyncing).syncing());
+    assert!(!syncing(disconnected()));
 }
 
-/// With nothing pending, the line names the status.
+/// With nothing pending, the line names the status: a moving pass, else how
+/// the last pass ended, and a pass that ended synced is stopped while sync
+/// doesn't run.
 #[test]
 fn with_nothing_pending_the_line_names_the_status() {
-    let indicator =
-        |status, error| read(status, Vec::new(), coven::RetryEffect::Pass, error).indicator();
-    assert_eq!(indicator(coven::SyncStatus::Syncing, None), Some(SyncIndicator::Syncing));
-    assert_eq!(indicator(offline(), None), Some(SyncIndicator::Offline));
+    let indicator = |row, effect, error| read(row, Vec::new(), effect, error).indicator();
+    let running = coven::RetryEffect::Pass;
+    assert_eq!(indicator(moving(), running, None), Some(SyncIndicator::Syncing));
+    assert_eq!(indicator(offline(), running, None), Some(SyncIndicator::Offline));
     assert_eq!(
-        indicator(
-            coven::SyncStatus::Blocked {
-                slot: coven::Slot(3),
-                reason: coven::PendingReason::NoStorage,
-                error: None,
-            },
-            None
-        ),
+        indicator(blocked(coven::PendingReason::NoStorage, None), running, None),
         Some(SyncIndicator::Failed)
     );
-    assert_eq!(indicator(coven::SyncStatus::Stopped, None), Some(SyncIndicator::Stopped));
+    assert_eq!(indicator(synced(), running, None), Some(SyncIndicator::Synced));
+    let never_ended = CovenSyncRow { last_pass: None, ..synced() };
+    assert_eq!(indicator(never_ended.clone(), running, None), Some(SyncIndicator::Synced));
+    let stopped = coven::RetryEffect::NotSyncing;
+    assert_eq!(indicator(synced(), stopped, None), Some(SyncIndicator::Stopped));
+    assert_eq!(indicator(never_ended, stopped, None), Some(SyncIndicator::Stopped));
+    assert_eq!(indicator(offline(), stopped, None), Some(SyncIndicator::Offline));
     assert_eq!(
         indicator(
             synced(),
+            running,
             Some(UiError::diagnostic(bae_diagnostics::UiErrorCategory::Internal, "start failed"))
         ),
         Some(SyncIndicator::Failed)
     );
+}
+
+/// A pass that moves shows as syncing, not as the failure the pass before
+/// it ended with, as coven's own sync state shows it.
+#[test]
+fn a_moving_pass_shows_no_earlier_failure() {
+    let row = CovenSyncRow { moving: true, ..offline() };
+    let status = alone(row);
+    assert_eq!(status.indicator(), Some(SyncIndicator::Syncing));
+    assert_eq!(status.failure(), None);
 }
 
 /// With no storage set up on this device there is no sync to name, whatever
@@ -206,7 +239,7 @@ fn with_nothing_pending_the_line_names_the_status() {
 #[test]
 fn with_no_storage_on_this_device_the_line_names_nothing() {
     let status = read(
-        coven::SyncStatus::Disconnected,
+        disconnected(),
         vec![record(coven::PendingReason::NoStorage)],
         coven::RetryEffect::Pass,
         Some(UiError::internal("connection failed")),
@@ -220,15 +253,17 @@ fn with_no_storage_on_this_device_the_line_names_nothing() {
 #[test]
 fn only_a_failed_start_with_storage_set_up_offers_reconnect() {
     let start_failed = || Some(UiError::internal("the store key is missing"));
-    let offered = |status, error| {
-        read(status, Vec::new(), coven::RetryEffect::NotSyncing, error).reconnect_offered()
-    };
-    assert!(offered(coven::SyncStatus::Stopped, start_failed()));
-    assert!(!offered(coven::SyncStatus::Stopped, None));
-    assert!(!offered(coven::SyncStatus::Disconnected, start_failed()));
-    assert!(!offered(coven::SyncStatus::Syncing, start_failed()));
-    assert!(!offered(offline(), start_failed()));
-    assert!(!offered(synced(), start_failed()));
+    let offered = |row, effect, error| read(row, Vec::new(), effect, error).reconnect_offered();
+    let stopped = coven::RetryEffect::NotSyncing;
+    assert!(offered(synced(), stopped, start_failed()));
+    assert!(offered(offline(), stopped, start_failed()));
+    assert!(!offered(synced(), stopped, None));
+    assert!(!offered(disconnected(), stopped, start_failed()));
+    for running in [coven::RetryEffect::Pass, coven::RetryEffect::Failed] {
+        assert!(!offered(moving(), running, start_failed()));
+        assert!(!offered(offline(), running, start_failed()));
+        assert!(!offered(synced(), running, start_failed()));
+    }
 }
 
 fn record(reason: coven::PendingReason) -> coven::PendingRecord {
@@ -391,14 +426,14 @@ fn the_connection_record_carries_the_error_behind_it() {
     };
     assert_eq!(cause(offline()).as_deref(), Some(UNREACHABLE_S3));
     assert_eq!(
-        cause(coven::SyncStatus::Failed {
+        cause(ended(coven::LastPass::Failed {
             failure: coven::StatusFailure::Storage(coven::StorageFailure::Network),
             error: "refused".into(),
-        })
+        }))
         .as_deref(),
         Some("refused")
     );
-    assert_eq!(cause(coven::SyncStatus::Syncing), None);
+    assert_eq!(cause(moving()), None);
 }
 
 /// A record of another failure names nothing more than the record does.
@@ -417,7 +452,7 @@ fn the_connection_record_names_only_a_matching_error() {
 /// logs nothing more.
 #[test]
 fn a_new_sync_failure_is_logged_once() {
-    let syncing = alone(coven::SyncStatus::Syncing);
+    let syncing = alone(moving());
     let failed = alone(offline());
     let logged = failed.failure_to_log(Some(&syncing)).expect("the new failure is logged");
     let UiError::Diagnostic { category, detail } = &logged;
@@ -439,15 +474,14 @@ fn a_new_sync_failure_is_logged_once() {
 #[test]
 fn a_blocked_slot_surfaces_the_error_that_blocked_it() {
     let blocked = |error: Option<&str>| {
-        alone(coven::SyncStatus::Blocked {
-            slot: coven::Slot(3),
-            reason: coven::PendingReason::Storage {
+        alone(blocked(
+            coven::PendingReason::Storage {
                 provider: coven::CloudProvider::S3,
                 failure: coven::StorageFailure::Network,
                 answered: false,
             },
-            error: error.map(str::to_string),
-        })
+            error,
+        ))
     };
     assert_eq!(
         blocked(Some(UNREACHABLE_S3)).failure(),
@@ -463,12 +497,8 @@ fn a_blocked_slot_surfaces_the_error_that_blocked_it() {
 /// again, though the status shows it.
 #[test]
 fn a_blocked_slot_is_not_logged_again() {
-    let blocked = alone(coven::SyncStatus::Blocked {
-        slot: coven::Slot(3),
-        reason: coven::PendingReason::NoStorage,
-        error: Some(UNREACHABLE_S3.into()),
-    });
-    assert_eq!(blocked.failure_to_log(Some(&alone(coven::SyncStatus::Syncing))), None);
+    let blocked = alone(blocked(coven::PendingReason::NoStorage, Some(UNREACHABLE_S3)));
+    assert_eq!(blocked.failure_to_log(Some(&alone(moving()))), None);
     assert!(blocked.failure().is_some());
 }
 
@@ -490,8 +520,8 @@ fn storage(failure: coven::StorageFailure) -> coven::PendingReason {
 }
 
 /// A pass whose retry runs a pass, beside `records`.
-fn retried(status: coven::SyncStatus, records: Vec<coven::PendingRecord>) -> bool {
-    snapshot(status, records, coven::RetryEffect::Pass).retry_offered()
+fn retried(row: CovenSyncRow, records: Vec<coven::PendingRecord>) -> bool {
+    snapshot(row, records, coven::RetryEffect::Pass).retry_offered()
 }
 
 fn file(reason: coven::PendingReason) -> coven::PendingRecord {
@@ -504,8 +534,8 @@ fn file(reason: coven::PendingReason) -> coven::PendingRecord {
     )
 }
 
-fn synced() -> coven::SyncStatus {
-    coven::SyncStatus::Synced { finished_at: std::time::UNIX_EPOCH }
+fn synced() -> CovenSyncRow {
+    ended(coven::LastPass::Synced)
 }
 
 /// Only a retry coven would run a pass for is offered: never while a
@@ -552,12 +582,7 @@ fn a_failure_no_retry_clears_offers_none() {
 /// for good, or waiting on what another device hasn't sent, doesn't.
 #[test]
 fn a_blocked_slot_offers_retry_only_for_a_retried_failure() {
-    let blocked = |reason: coven::PendingReason| {
-        retried(
-            coven::SyncStatus::Blocked { slot: coven::Slot(3), reason, error: None },
-            Vec::new(),
-        )
-    };
+    let blocked = |reason: coven::PendingReason| retried(blocked(reason, None), Vec::new());
     assert!(blocked(storage(coven::StorageFailure::Network)));
     assert!(blocked(coven::PendingReason::Failed(coven::LocalFailure::Disk)));
     assert!(!blocked(coven::PendingReason::Removed));

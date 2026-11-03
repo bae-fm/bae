@@ -288,8 +288,7 @@ impl LibraryViews {
         else {
             return Ok(None);
         };
-        let has_cloud_home =
-            !matches!(self.database.coven_sync_status().await?, coven::SyncStatus::Disconnected);
+        let has_cloud_home = self.database.cloud_home().await?;
         Ok(Some(resolve_album_detail(raw, has_cloud_home)))
     }
 
