@@ -624,7 +624,7 @@ mod playback_queue_bench {
     /// `setup`, with a pre-update hook that does nothing when `hooked`: the hook
     /// alone makes SQLite delete a whole table row by row, as coven's does.
     fn plain_statement(
-        plain: &rusqlite::Connection,
+        plain: &mut rusqlite::Connection,
         label: &str,
         setup: &str,
         statement: &str,
@@ -723,12 +723,12 @@ mod playback_queue_bench {
         }
 
         // The same statements in plain SQLite, the lane empty and then full.
-        let plain = plain_connection(&path);
+        let mut plain = plain_connection(&path);
         let into_lane = fill_into(LIBRARY_FILL, "playback_context");
         let into_unindexed = fill_into(LIBRARY_FILL, "bench_unindexed_lane");
         plain_query(&plain, "the fill's rows alone, read and counted", LIBRARY_ROWS);
-        plain_statement(&plain, "fill", "", &into_lane, false);
-        plain_statement(&plain, "fill", "", &into_lane, true);
+        plain_statement(&mut plain, "fill", "", &into_lane, false);
+        plain_statement(&mut plain, "fill", "", &into_lane, true);
         let in_track_order = fill_into(LIBRARY_FILL_IN_TRACK_ORDER, "playback_context");
         plain_fill(&plain, "fill", "", &into_lane);
         plain_fill(&plain, "fill in track order", "", &in_track_order);
@@ -755,7 +755,7 @@ mod playback_queue_bench {
             );
         }
         plain_statement(
-            &plain,
+            &mut plain,
             "fill without the track_id index",
             UNINDEXED_LANE,
             &into_unindexed,
@@ -767,17 +767,17 @@ mod playback_queue_bench {
         );
         let empty_lane = "DELETE FROM playback_context";
         let empty_unindexed = "DELETE FROM bench_unindexed_lane";
-        plain_statement(&plain, "empty", "", empty_lane, false);
-        plain_statement(&plain, "empty", "", empty_lane, true);
+        plain_statement(&mut plain, "empty", "", empty_lane, false);
+        plain_statement(&mut plain, "empty", "", empty_lane, true);
         plain_statement(
-            &plain,
+            &mut plain,
             "empty without the track_id index",
             &copy_lane,
             empty_unindexed,
             false,
         );
         plain_statement(
-            &plain,
+            &mut plain,
             "empty without the track_id index",
             &copy_lane,
             empty_unindexed,

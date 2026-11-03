@@ -41,7 +41,10 @@ DYLD_LIBRARY_PATH = { value = "bae-ffmpeg/dist/lib", relative = true, force = fa
 # spills every later statement of the transaction writes its journal to that
 # file. SQLite's unix file layer writes less than 128 KiB a call, and a spill
 # writes all the journal holds at once, so a larger limit fails the statement.
-LIBSQLITE3_FLAGS = { value = "SQLITE_DEFAULT_MEMSTATUS=0 -USQLITE_TEMP_STORE -DSQLITE_TEMP_STORE=1 -DSQLITE_STMTJRNL_SPILL=126976", force = true }
+# Every connection's unused cached pages sit in one pool, so a release on one
+# connection gives back all of them; coven refuses to open a store over SQLite
+# built otherwise.
+LIBSQLITE3_FLAGS = { value = "SQLITE_DEFAULT_MEMSTATUS=0 -USQLITE_TEMP_STORE -DSQLITE_TEMP_STORE=1 -DSQLITE_STMTJRNL_SPILL=126976 -DSQLITE_ENABLE_MEMORY_MANAGEMENT", force = true }
 
 # A Windows build links the C runtime into each binary. The default links it
 # dynamically, making bae's DLL import vcruntime140.dll, which is the Visual

@@ -92,8 +92,9 @@ impl Database {
         Ok(self.inner.handle.release_memory().await?)
     }
 
-    /// Stop the sync loop: returns once no pass runs and the waiting
-    /// retries are answered; a failure writing that has failed the handle.
+    /// Stop the sync loop: returns once the running pass and transfers have
+    /// finished and the provider client is released. A failed release is
+    /// returned, and coven records it as the last pass's failure.
     pub async fn stop_sync(&self) -> Result<(), coven::SyncError> {
         self.inner.handle.stop_sync().await
     }
