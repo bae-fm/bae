@@ -185,7 +185,7 @@ pub(super) async fn prepare_track_for_playback(
 
     // Read the replay-gain mode once, here, and pass it down — rather than a
     // preferences read buried inside `finalize_playback_track`.
-    let replay_gain_mode = crate::preferences::preferences(database).await?.replay_gain_mode;
+    let replay_gain_mode = bae_preferences::preferences(database).await?.replay_gain_mode;
 
     Ok(finalize_playback_track(
         track_id.to_string(),

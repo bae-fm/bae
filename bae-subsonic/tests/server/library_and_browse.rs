@@ -6,7 +6,7 @@ use axum::http::{Request, StatusCode};
 use axum::Router;
 use bae_catalogs::catalog::Catalog;
 use bae_catalogs::discogs::models::DiscogsRelease;
-use bae_core::preferences::SubsonicCredential;
+use bae_preferences::SubsonicCredential;
 use bae_db::{DbAlbum, DbArtist, DbRelease, DbTrack};
 use bae_core::import::release_candidate::CandidateSource;
 use bae_core::import::{ImportCommand, ImportDestination, ReleaseFileScope};

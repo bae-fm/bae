@@ -224,7 +224,7 @@ impl PlaybackService {
         &self,
     ) -> Result<Option<chrono::DateTime<chrono::Utc>>, bae_db::DbError> {
         let Some(length) =
-            crate::preferences::preferences(&self.database).await?.side_pause_countdown.duration()
+            bae_preferences::preferences(&self.database).await?.side_pause_countdown.duration()
         else {
             return Ok(None);
         };
@@ -260,7 +260,7 @@ impl PlaybackService {
     }
 
     pub(super) async fn side_pause_enabled(&self) -> Result<bool, bae_db::DbError> {
-        Ok(crate::preferences::preferences(&self.database).await?.pause_between_sides
+        Ok(bae_preferences::preferences(&self.database).await?.pause_between_sides
             && self.playback_queue.repeat_mode() != RepeatMode::Track)
     }
 

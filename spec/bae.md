@@ -3831,6 +3831,7 @@ bindings export none of their symbols.
 | Crate | Holds |
 |---|---|
 | bae-core | the library, import, identification, files, playback, outputs, sync integration, settings |
+| bae-preferences | this device's preferences for a library: the `preferences` row and its save presets, the values they hold, which catalogs a lookup asks, and the transfer concurrency the setters accept |
 | bae-db | the library's store: the database over coven and the entry points every read and write runs through, the schema (its one migration, the synced tables and the SQL functions it declares), the library's records and the row writers that keep them, list windows, and the people, collections and history a library holds |
 | bae-app-dir | bae's own directory and what it holds before any library opens: the libraries registered on this device and the one last opened, the installation id, the keyring namespace, and the transfer limits a library runs under before its preferences can be read |
 | bae-diagnostics | how a failure is told: the closed catalog of telemetry events and their upload, the bugs core hands the platform's crash reporter, the tasks and threads whose panics are reported, and the error categories a person is shown |

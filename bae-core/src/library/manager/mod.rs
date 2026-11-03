@@ -195,7 +195,7 @@ pub enum LibraryError {
     /// Reading or writing this device's preferences failed, or a change to
     /// them was refused.
     #[error("Config error: {0}")]
-    Preferences(#[from] crate::preferences::PreferencesError),
+    Preferences(#[from] bae_preferences::PreferencesError),
     /// Building or probing a cloud home failed — bad credentials/config
     /// (`Configuration`) or an unreachable backend (`Transport`).
     #[error("Cloud home error: {0}")]

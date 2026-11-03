@@ -766,6 +766,7 @@ dependencies = [
  "bae-db",
  "bae-diagnostics",
  "bae-mirror",
+ "bae-preferences",
  "bae-test-support",
  "bae-types",
  "bae-util",
@@ -792,6 +793,7 @@ dependencies = [
  "bae-diagnostics",
  "bae-loc",
  "bae-mirror",
+ "bae-preferences",
  "bae-test-support",
  "bae-types",
  "bae-util",
@@ -822,6 +824,7 @@ dependencies = [
  "bae-core",
  "bae-db",
  "bae-diagnostics",
+ "bae-preferences",
  "bae-subsonic",
  "bae-test-support",
  "bae-util",
@@ -882,6 +885,7 @@ dependencies = [
  "bae-catalogs",
  "bae-db",
  "bae-diagnostics",
+ "bae-preferences",
  "bae-test-support",
  "bae-types",
  "bae-util",
@@ -960,6 +964,7 @@ dependencies = [
  "bae-core",
  "bae-diagnostics",
  "bae-mcp",
+ "bae-preferences",
  "bae-subsonic",
  "bae-test-support",
  "bae-util",
@@ -1000,8 +1005,8 @@ version = "0.1.0"
 dependencies = [
  "axum",
  "bae-automation",
- "bae-core",
  "bae-diagnostics",
+ "bae-preferences",
  "bae-util",
  "rmcp",
  "serde_json",
@@ -1014,6 +1019,21 @@ name = "bae-mirror"
 version = "0.1.0"
 
 [[package]]
+name = "bae-preferences"
+version = "0.0.0-dev"
+dependencies = [
+ "bae-app-dir",
+ "bae-catalogs",
+ "bae-db",
+ "bae-diagnostics",
+ "coven",
+ "rusqlite",
+ "serde",
+ "thiserror 2.0.18",
+ "tokio",
+]
+
+[[package]]
 name = "bae-subsonic"
 version = "0.1.0"
 dependencies = [
@@ -1023,6 +1043,7 @@ dependencies = [
  "bae-core",
  "bae-db",
  "bae-diagnostics",
+ "bae-preferences",
  "bae-test-support",
  "bae-types",
  "bae-util",
@@ -1049,6 +1070,7 @@ dependencies = [
  "bae-core",
  "bae-db",
  "bae-diagnostics",
+ "bae-preferences",
  "bae-util",
  "coven",
  "image",

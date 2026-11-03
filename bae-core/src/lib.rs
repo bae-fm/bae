@@ -24,7 +24,6 @@ pub mod loudness;
 pub mod open_files_peak;
 pub mod people;
 pub mod playback;
-pub mod preferences;
 pub mod renderer;
 pub mod storage;
 pub mod sync;

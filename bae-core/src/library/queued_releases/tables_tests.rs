@@ -231,7 +231,7 @@ async fn an_entry_shows_its_release_or_none_once_it_is_gone() {
 #[tokio::test]
 async fn an_output_keeps_its_target_and_preset() {
     let (db, _tmp) = temp_db().await;
-    let preset = crate::preferences::Preferences::default().save_presets.remove(0);
+    let preset = bae_preferences::Preferences::default().save_presets.remove(0);
     let save = ReleaseQueueEntry {
         release_id: RELEASE_A.to_string(),
         created_at: 9,

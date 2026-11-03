@@ -350,7 +350,7 @@ fn a_generated_pregap_starts_the_track_past_it() {
         "track".to_string(),
         &resolved,
         Vec::new(),
-        crate::preferences::ReplayGainMode::Off,
+        bae_preferences::ReplayGainMode::Off,
     );
 
     assert_eq!(prepared.generated_pregap_frames, 88_200);
@@ -368,7 +368,7 @@ fn a_stored_pregap_is_as_long_as_its_samples() {
         "track".to_string(),
         &resolved,
         Vec::new(),
-        crate::preferences::ReplayGainMode::Off,
+        bae_preferences::ReplayGainMode::Off,
     );
 
     assert_eq!(prepared.generated_pregap_frames, 0);

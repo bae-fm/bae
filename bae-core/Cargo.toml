@@ -19,6 +19,7 @@ bae-audio = { workspace = true }
 bae-catalogs = { workspace = true }
 bae-db = { workspace = true }
 bae-diagnostics = { workspace = true }
+bae-preferences = { workspace = true }
 bae-types = { workspace = true }
 bae-util = { workspace = true }
 coven = { workspace = true }
@@ -110,6 +111,8 @@ bae-audio = { workspace = true, features = ["test-utils", "test-instrumentation"
 bae-app-dir = { workspace = true, features = ["test-utils"] }
 # Test databases with bae's schema and the rows db's fixtures seed them with.
 bae-db = { workspace = true, features = ["test-utils"] }
+# A new library's preferences, built without a library.
+bae-preferences = { workspace = true, features = ["test-utils"] }
 # The bug reporter and telemetry transport that record what they are handed.
 bae-diagnostics = { workspace = true, features = ["test-utils"] }
 # The test transport and the retry that sleeps no real time, for bae-core's
@@ -181,12 +184,13 @@ dev-reset = ["bae-app-dir/dev-reset"]
 # Forwards coven's test-utils so bae-core's own integration tests get the
 # re-exported clock/id fakes (FixedClock, …), bae-app-dir's so the fixtures
 # can put an app directory at a test's path, bae-db's so they get its test
-# databases and the rows they seed, bae-util's so they get its test
+# databases and the rows they seed, bae-preferences' so they get a new
+# library's preferences without a library, bae-util's so they get its test
 # transport and a retry that sleeps no real time, bae-audio's so they get its
 # test codec helpers, bae-types's so they get the pressing values their
 # fixtures are built from, and bae-catalogs's so they get the catalog clients'
 # and the image cache's test constructors.
-test-utils = ["coven/test-utils", "bae-app-dir/test-utils", "bae-db/test-utils", "bae-util/test-utils", "bae-audio/test-utils", "bae-types/test-utils", "bae-catalogs/test-utils"]
+test-utils = ["coven/test-utils", "bae-app-dir/test-utils", "bae-db/test-utils", "bae-preferences/test-utils", "bae-util/test-utils", "bae-audio/test-utils", "bae-types/test-utils", "bae-catalogs/test-utils"]
 
 [lints]
 workspace = true

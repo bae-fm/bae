@@ -8,6 +8,8 @@ publish = false
 [dependencies]
 bae-core = { workspace = true }
 bae-diagnostics = { workspace = true }
+# The MCP and Subsonic servers' settings and the preferences they are read from.
+bae-preferences = { workspace = true }
 bae-util = { workspace = true }
 bae-mcp = { workspace = true }
 bae-subsonic = { workspace = true }

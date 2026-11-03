@@ -7,7 +7,7 @@
 use bae_test_support as support;
 
 use bae_core::library::{LibraryManager, OutputKind};
-use bae_core::preferences::{
+use bae_preferences::{
     SaveBitDepth, SaveCodec, SaveFilenameToken, SavePregapPlacement, SavePreset,
 };
 use coven::MemoryStorage;

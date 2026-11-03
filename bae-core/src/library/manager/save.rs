@@ -218,12 +218,12 @@ impl LibraryManager {
     pub(super) async fn save_release_tracks_to_dir(
         &self,
         release_id: &str,
-        preset: crate::preferences::SavePreset,
+        preset: bae_preferences::SavePreset,
         staging_dir: &std::path::Path,
     ) -> Result<(), LibraryError> {
         let tracks = self.database.get_tracks_for_release(release_id).await?;
         let total = tracks.len();
-        if preset.pregap_placement == crate::preferences::SavePregapPlacement::SingleFileWithCue {
+        if preset.pregap_placement == bae_preferences::SavePregapPlacement::SingleFileWithCue {
             self.save_release_image_with_cue_to_dir(release_id, preset, &tracks, staging_dir)
                 .await?;
             self.set_output_progress(release_id, 100);
@@ -302,7 +302,7 @@ impl LibraryManager {
     async fn save_release_image_with_cue_to_dir(
         &self,
         release_id: &str,
-        preset: crate::preferences::SavePreset,
+        preset: bae_preferences::SavePreset,
         tracks: &[DbTrack],
         staging_dir: &std::path::Path,
     ) -> Result<(), LibraryError> {
@@ -359,7 +359,7 @@ pub(crate) enum SaveWindow {
     /// trailing silence.
     TrackFile {
         next: Option<TrackAudioMeta>,
-        placement: crate::preferences::SavePregapPlacement,
+        placement: bae_preferences::SavePregapPlacement,
         is_first_track: bool,
     },
 }
@@ -382,7 +382,7 @@ impl SaveTrackPlan {
                 trailing_silence_frames: 0,
             },
             SaveWindow::TrackFile { next, placement, is_first_track } => {
-                use crate::preferences::SavePregapPlacement;
+                use bae_preferences::SavePregapPlacement;
 
                 let own_audio_pregap = pregap_frames(meta.audio_format.pregap_samples);
                 let includes_htoa = *is_first_track

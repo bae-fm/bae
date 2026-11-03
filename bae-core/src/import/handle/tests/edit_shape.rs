@@ -1,6 +1,6 @@
 #[test]
 fn validation_folds_validate_token_outcomes() {
-    use crate::preferences::DiscogsValidation;
+    use bae_preferences::DiscogsValidation;
     use bae_catalogs::discogs::client::DiscogsError;
 
     assert_eq!(DiscogsValidation::of(&DiscogsCheck::of(Ok(()))), DiscogsValidation::Valid);

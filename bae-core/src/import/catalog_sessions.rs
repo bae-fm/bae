@@ -5,13 +5,13 @@
 //! built here and handed out inside a session; no caller receives the
 //! database the callback writes to.
 
-use crate::preferences::DiscogsValidation;
 use bae_catalogs::catalog::LookupCatalog;
 use bae_catalogs::discogs::client::{DiscogsClient, DiscogsError, DiscogsKeySignal};
 use bae_catalogs::providers::{CatalogSession, Providers};
 use bae_catalogs::rate_limiter::CallPriority;
 use bae_db::{Database, DbError};
 use bae_diagnostics::Diagnostics;
+use bae_preferences::DiscogsValidation;
 use bae_util::task_failure::blocking;
 use std::future::Future;
 use std::sync::Arc;
@@ -36,7 +36,7 @@ pub enum DiscogsKeyError {
     #[error("Keyring error: {0}")]
     Keyring(#[from] coven::KeyError),
     #[error(transparent)]
-    Preferences(#[from] crate::preferences::PreferencesError),
+    Preferences(#[from] bae_preferences::PreferencesError),
     #[error(transparent)]
     Task(#[from] bae_util::task_failure::TaskFailed),
 }
@@ -86,7 +86,7 @@ impl CatalogSessions {
         // Held while the stored key is read, so a key being set or cleared is
         // seen whole or not at all.
         let mut cached = self.discogs_client.lock().await;
-        let validation = crate::preferences::preferences(&self.database).await?.discogs;
+        let validation = bae_preferences::preferences(&self.database).await?.discogs;
         if matches!(validation, None | Some(DiscogsValidation::Rejected)) {
             return Ok(CatalogSession::new(None, providers));
         }
@@ -186,7 +186,7 @@ impl CatalogSessions {
             })
             .await
             .map_err(|failed| self.diagnostics.bug(failed))??;
-            crate::preferences::edit_preferences(&self.database, move |prefs| {
+            bae_preferences::edit_preferences(&self.database, move |prefs| {
                 prefs.discogs = Some(validation);
                 Ok(())
             })
@@ -201,7 +201,7 @@ impl CatalogSessions {
     /// Discogs disabled rather than half-enabled.
     pub(crate) async fn clear_discogs_key(&self) -> Result<(), DiscogsKeyError> {
         self.change_discogs_key(async {
-            crate::preferences::edit_preferences(&self.database, |prefs| {
+            bae_preferences::edit_preferences(&self.database, |prefs| {
                 prefs.discogs = None;
                 Ok(())
             })
@@ -234,7 +234,7 @@ impl CatalogSessions {
 /// change applies to the key it finds. A failure to write it is logged; the
 /// next call's outcome is recorded again.
 async fn record_discogs_validation_signal(database: &Database, signal: DiscogsKeySignal) {
-    let recorded = crate::preferences::edit_preferences(database, move |prefs| {
+    let recorded = bae_preferences::edit_preferences(database, move |prefs| {
         let next = match (prefs.discogs, &signal) {
             (None, _) => None,
             (Some(_), DiscogsKeySignal::Rejected) => Some(DiscogsValidation::Rejected),

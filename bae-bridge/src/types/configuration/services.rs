@@ -76,7 +76,7 @@ pub enum BridgeSidePauseCountdown {
 }
 
 mirror_enum! {
-    BridgeSidePauseCountdown = bae_core::preferences::SidePauseCountdown,
+    BridgeSidePauseCountdown = bae_preferences::SidePauseCountdown,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
     variants: { Off, Seconds5, Seconds15, Seconds30, Seconds45, Seconds60 },
@@ -93,13 +93,13 @@ pub enum BridgeCastTranscodeFormat {
 }
 
 mirror_enum! {
-    BridgeCastTranscodeFormat = bae_core::preferences::CastTranscodeFormat,
+    BridgeCastTranscodeFormat = bae_preferences::CastTranscodeFormat,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
     variants: { Mp3, Wav },
 }
 
-/// The import storage choice. Mirrors `bae_core::preferences::ImportStoragePreferences`.
+/// The import storage choice. Mirrors `bae_preferences::ImportStoragePreferences`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeImportStorage {
     /// Whether imports go to the cloud home, when the library has one.
@@ -109,7 +109,7 @@ pub struct BridgeImportStorage {
 }
 
 /// Whether Find online asks one catalog, and when it does not, why not. Mirrors
-/// `bae_core::preferences::SourceAvailability`.
+/// `bae_preferences::SourceAvailability`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeSourceAvailability {
     /// Asked. Its switch is on.

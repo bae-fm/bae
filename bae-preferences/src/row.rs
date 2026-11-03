@@ -16,20 +16,20 @@ use std::collections::HashMap;
 use std::num::NonZeroU32;
 
 /// This device's preferences for the library.
-pub(crate) async fn preferences(database: &Database) -> Result<Preferences, DbError> {
+pub async fn preferences(database: &Database) -> Result<Preferences, DbError> {
     database.read(|sql| Ok(preferences_on(&sql)?)).await
 }
 
 /// Follow this device's preferences: the first value at once, then one
 /// after each write that changes them.
-pub(crate) fn subscribe_preferences(database: &Database) -> coven::LiveQuery<Preferences> {
+pub fn subscribe_preferences(database: &Database) -> coven::LiveQuery<Preferences> {
     database.subscribe(|sql| preferences_on(&sql).map_err(CovenError::from))
 }
 
 /// Edit the preferences in one write. `edit` is handed the stored
 /// preferences and may refuse the change, which then writes nothing; a
 /// change that leaves them as they were writes nothing either.
-pub(crate) async fn edit_preferences(
+pub async fn edit_preferences(
     database: &Database,
     edit: impl FnOnce(&mut Preferences) -> Result<(), PreferencesError> + Send + 'static,
 ) -> Result<(), PreferencesError> {

@@ -325,7 +325,7 @@ impl ImportServiceHandle {
             #[cfg(any(test, feature = "test-utils"))]
             selected_cover: None,
             destination: crate::import::ImportDestination::of(
-                crate::preferences::preferences(&self.database).await?.import_storage,
+                bae_preferences::preferences(&self.database).await?.import_storage,
                 self.database.storage_config().await?.is_some(),
             ),
             #[cfg(any(test, feature = "test-utils"))]
@@ -417,7 +417,7 @@ impl ImportServiceHandle {
     ) -> Result<DiscogsSaveOutcome, crate::import::ImportError> {
         let check =
             DiscogsCheck::of(self.catalogs.try_discogs_key(token, CallPriority::Interactive).await);
-        let validation = crate::preferences::DiscogsValidation::of(&check);
+        let validation = bae_preferences::DiscogsValidation::of(&check);
         match check {
             DiscogsCheck::Valid => {
                 self.persist_discogs_key(token, validation).await?;
@@ -435,7 +435,7 @@ impl ImportServiceHandle {
     async fn persist_discogs_key(
         &self,
         token: &str,
-        validation: crate::preferences::DiscogsValidation,
+        validation: bae_preferences::DiscogsValidation,
     ) -> Result<(), crate::import::ImportError> {
         Ok(self.catalogs.store_discogs_key(token, validation).await?)
     }
@@ -445,10 +445,10 @@ impl ImportServiceHandle {
     /// leaves the key unvalidated and fails with why, so the person who asked
     /// is told rather than shown the same state again.
     pub async fn revalidate_discogs_token(&self) -> Result<(), crate::import::ImportError> {
-        use crate::preferences::DiscogsValidation;
         use bae_catalogs::providers::DiscogsCheck;
+        use bae_preferences::DiscogsValidation;
 
-        if crate::preferences::preferences(&self.database).await?.discogs
+        if bae_preferences::preferences(&self.database).await?.discogs
             != Some(DiscogsValidation::Unvalidated)
         {
             return Ok(());
@@ -459,7 +459,7 @@ impl ImportServiceHandle {
             }
         })?;
         let validation = DiscogsValidation::of(&check);
-        crate::preferences::edit_preferences(&self.database, move |prefs| {
+        bae_preferences::edit_preferences(&self.database, move |prefs| {
             if prefs.discogs.is_some() {
                 prefs.discogs = Some(validation);
             }

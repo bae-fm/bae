@@ -17,10 +17,10 @@ use tracing::{debug, warn};
 /// empty, fall back to the sanitized title, then to "track". The stem is text:
 /// a file takes it through `save_file_name`.
 pub fn render_save_filename(
-    tokens: &[crate::preferences::SaveFilenameToken],
+    tokens: &[bae_preferences::SaveFilenameToken],
     resolved: &crate::library::manager::ResolvedSaveTags,
 ) -> String {
-    use crate::preferences::SaveFilenameToken;
+    use bae_preferences::SaveFilenameToken;
 
     let tags = &resolved.tags;
     let rendered = tokens
@@ -199,7 +199,7 @@ impl SaveService {
     pub(crate) async fn save_tracks(
         tracks: Vec<(SaveTrackPlan, PathBuf)>,
         cover_image_bytes: Option<Vec<u8>>,
-        codec: crate::preferences::SaveCodec,
+        codec: bae_preferences::SaveCodec,
         parallelism: NonZeroUsize,
         existing: ExistingOutput,
         open: impl Fn(&String) -> SourceStream,
@@ -246,7 +246,7 @@ impl SaveService {
         output_audio_path: &Path,
         output_cue_path: &Path,
         catalog: Option<String>,
-        preset: crate::preferences::SavePreset,
+        preset: bae_preferences::SavePreset,
         open: impl Fn(&String) -> SourceStream,
     ) -> Result<(), SaveError> {
         if plans.is_empty() {
@@ -418,7 +418,7 @@ impl SaveService {
         streams: HashMap<String, SharedSparseBuffer>,
         cover_image_bytes: Arc<Option<Vec<u8>>>,
         output_path: PathBuf,
-        codec: crate::preferences::SaveCodec,
+        codec: bae_preferences::SaveCodec,
         existing: ExistingOutput,
     ) -> Result<(), SaveError> {
         let track_id = plan.audio_meta.track.id.clone();
@@ -543,8 +543,8 @@ fn encode_image_track(
 }
 
 /// The encoder format for a save codec.
-fn encode_format(codec: &crate::preferences::SaveCodec) -> EncodeFormat {
-    use crate::preferences::SaveCodec;
+fn encode_format(codec: &bae_preferences::SaveCodec) -> EncodeFormat {
+    use bae_preferences::SaveCodec;
     match codec {
         SaveCodec::Flac { bit_depth } => EncodeFormat::Flac { bits_per_sample: bit_depth.bits() },
         SaveCodec::Mp3 { bitrate_kbps } => EncodeFormat::Mp3 { bitrate_kbps: *bitrate_kbps },
@@ -560,8 +560,8 @@ fn encode_format(codec: &crate::preferences::SaveCodec) -> EncodeFormat {
 }
 
 /// The tag container lofty writes for a save codec's output file.
-fn codec_tag_type(codec: &crate::preferences::SaveCodec) -> lofty::tag::TagType {
-    use crate::preferences::SaveCodec;
+fn codec_tag_type(codec: &bae_preferences::SaveCodec) -> lofty::tag::TagType {
+    use bae_preferences::SaveCodec;
     match codec {
         SaveCodec::Flac { .. } => lofty::tag::TagType::VorbisComments,
         SaveCodec::Mp3 { .. } => lofty::tag::TagType::Id3v2,
@@ -615,17 +615,17 @@ fn render_cue_sheet(
     cue
 }
 
-fn cue_file_type(codec: &crate::preferences::SaveCodec) -> Result<&'static str, String> {
+fn cue_file_type(codec: &bae_preferences::SaveCodec) -> Result<&'static str, String> {
     match codec {
-        crate::preferences::SaveCodec::Mp3 { .. } => Ok("MP3"),
-        crate::preferences::SaveCodec::Aiff { .. } => Ok("AIFF"),
-        crate::preferences::SaveCodec::Flac { .. }
-        | crate::preferences::SaveCodec::Wav { .. } => Ok("WAVE"),
-        crate::preferences::SaveCodec::Aac { .. } => Err(
+        bae_preferences::SaveCodec::Mp3 { .. } => Ok("MP3"),
+        bae_preferences::SaveCodec::Aiff { .. } => Ok("AIFF"),
+        bae_preferences::SaveCodec::Flac { .. }
+        | bae_preferences::SaveCodec::Wav { .. } => Ok("WAVE"),
+        bae_preferences::SaveCodec::Aac { .. } => Err(
             "single-file CUE export does not support AAC because CUE has no AAC file type"
                 .to_string(),
         ),
-        crate::preferences::SaveCodec::OpusOgg { .. } => Err(
+        bae_preferences::SaveCodec::OpusOgg { .. } => Err(
             "single-file CUE export does not support Opus/Ogg because CUE has no Opus/Ogg file type"
                 .to_string(),
         ),

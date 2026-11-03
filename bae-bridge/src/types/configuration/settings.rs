@@ -584,8 +584,8 @@ mirror_enum! {
 
 /// A failed config read or write, in the class core gave it: a setting the
 /// person can fix, or a write that never finished.
-impl From<bae_core::preferences::PreferencesError> for BridgeError {
-    fn from(error: bae_core::preferences::PreferencesError) -> Self {
+impl From<bae_preferences::PreferencesError> for BridgeError {
+    fn from(error: bae_preferences::PreferencesError) -> Self {
         BridgeError::Diagnostic {
             category: BridgeErrorCategory::from_core(error.category()),
             detail: error.to_string(),

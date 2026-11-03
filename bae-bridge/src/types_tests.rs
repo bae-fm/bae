@@ -116,7 +116,7 @@ mod conversion_roundtrip {
 
     #[test]
     fn config_exposes_identify_automatically() {
-        use bae_core::preferences::Config;
+        use bae_preferences::Config;
 
         for identify_automatically in [true, false] {
             let mut config = Config::with_defaults(
@@ -132,7 +132,7 @@ mod conversion_roundtrip {
 
     #[test]
     fn config_exposes_the_import_settings() {
-        use bae_core::preferences::Config;
+        use bae_preferences::Config;
 
         let mut config = Config::with_defaults(
             coven::StoreId("00000000-0000-4000-8000-000000000001".parse().unwrap()),
@@ -148,7 +148,7 @@ mod conversion_roundtrip {
 
     #[test]
     fn config_carries_every_side_pause_countdown_choice_both_ways() {
-        use bae_core::preferences::{Config, SidePauseCountdown as Core};
+        use bae_preferences::{Config, SidePauseCountdown as Core};
 
         for (core, bridge) in [
             (Core::Off, BridgeSidePauseCountdown::Off),
@@ -308,17 +308,17 @@ mod conversion_roundtrip {
 
     #[test]
     fn export_preset_round_trips_and_re_derives_extension() {
-        let core = bae_core::preferences::SavePreset {
+        let core = bae_preferences::SavePreset {
             id: "preset-1".to_string(),
             name: "Preset One".to_string(),
-            codec: bae_core::preferences::SaveCodec::Flac {
-                bit_depth: bae_core::preferences::SaveBitDepth::Bits24,
+            codec: bae_preferences::SaveCodec::Flac {
+                bit_depth: bae_preferences::SaveBitDepth::Bits24,
             },
             filename_tokens: vec![
-                bae_core::preferences::SaveFilenameToken::Artist,
-                bae_core::preferences::SaveFilenameToken::Title,
+                bae_preferences::SaveFilenameToken::Artist,
+                bae_preferences::SaveFilenameToken::Title,
             ],
-            pregap_placement: bae_core::preferences::SavePregapPlacement::Exclude,
+            pregap_placement: bae_preferences::SavePregapPlacement::Exclude,
             applies_to_track: true,
             applies_to_release: false,
             embed_cover: false,

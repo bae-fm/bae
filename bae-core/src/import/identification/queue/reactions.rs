@@ -248,7 +248,7 @@ async fn import_when_identified(
     import_asked: bool,
 ) {
     if !import_asked {
-        match crate::preferences::preferences(&context.database).await {
+        match bae_preferences::preferences(&context.database).await {
             Ok(prefs) if prefs.identification.import_when_identified => {}
             Ok(_) => return,
             Err(error) => {

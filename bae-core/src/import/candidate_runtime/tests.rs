@@ -7,8 +7,8 @@ use crate::import::candidates::{
 use crate::import::folder_scanner::{CategorizedFiles, InvalidCandidate};
 use crate::import::types::{ImportPhase, ImportProgress, PrepareStep};
 use crate::import::ImportStep;
-use crate::preferences::{CatalogAvailability, SourceAvailability};
 use bae_catalogs::catalog::{Catalog, LookupCatalog};
+use bae_preferences::{CatalogAvailability, SourceAvailability};
 use std::path::PathBuf;
 
 fn empty_categorized() -> CategorizedFiles {

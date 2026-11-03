@@ -198,7 +198,7 @@ impl RemoteRenderer {
     fn load(
         &self,
         audio: &ResolvedTrackAudio,
-        transcode: crate::preferences::CastTranscodeFormat,
+        transcode: bae_preferences::CastTranscodeFormat,
         prepared: &PlaybackPreparedTrack,
         display: crate::playback::TrackDisplay,
         position: StreamPosition,
@@ -537,7 +537,7 @@ impl PlaybackService {
                 return;
             }
         };
-        let prefs = match crate::preferences::preferences(&self.database).await {
+        let prefs = match bae_preferences::preferences(&self.database).await {
             Ok(prefs) => prefs,
             Err(e) => {
                 error!("remote: failed to read the preferences to load track {track_id}: {e}");

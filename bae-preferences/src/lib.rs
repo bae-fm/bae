@@ -22,7 +22,7 @@ pub use catalog_availability::{
 pub use identification::{IdentificationPreferences, LookupCatalogPreferences};
 pub use import_storage::ImportStoragePreferences;
 pub use presentation::LookupCatalogSetting;
-pub(crate) use row::{edit_preferences, preferences, subscribe_preferences};
+pub use row::{edit_preferences, preferences, subscribe_preferences};
 pub use save::{SaveBitDepth, SaveCodec, SaveFilenameToken, SavePregapPlacement, SavePreset};
 pub use server::{
     McpConfig, SubsonicConfig, SubsonicCredential, MCP_DEFAULT_PORT, SUBSONIC_DEFAULT_PORT,
@@ -37,7 +37,7 @@ pub const MAX_CONCURRENT_TRANSFERS: u32 = 8;
 /// A file-transfer concurrency setting must be at least 1 — coven's drain admits
 /// nothing at 0 and never completes — and at most [`MAX_CONCURRENT_TRANSFERS`],
 /// the ceiling the UI offers. Returns the validated value for storage.
-pub(crate) fn validate_concurrency(n: u32) -> Result<NonZeroU32, PreferencesError> {
+pub fn validate_concurrency(n: u32) -> Result<NonZeroU32, PreferencesError> {
     NonZeroU32::new(n).filter(|n| n.get() <= MAX_CONCURRENT_TRANSFERS).ok_or_else(|| {
         PreferencesError::Invalid(format!(
             "transfer concurrency must be between 1 and {MAX_CONCURRENT_TRANSFERS}"
@@ -354,5 +354,4 @@ impl Config {
 }
 
 #[cfg(test)]
-#[path = "preferences_tests.rs"]
 mod tests;

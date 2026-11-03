@@ -16,7 +16,7 @@ use std::sync::Arc;
 use axum::extract::{Query, Request, State};
 use axum::middleware::Next;
 use axum::response::Response;
-use bae_core::preferences::SubsonicCredential;
+use bae_preferences::SubsonicCredential;
 use md5::{Digest, Md5};
 
 use crate::envelope::error_response;

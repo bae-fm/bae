@@ -112,7 +112,7 @@ fn lookup_catalog_preferences_are_total_over_the_asked_catalogs() {
 /// which of the two to fix while the person's switch waits underneath it.
 #[test]
 fn metadata_sources_fold_the_credential_and_the_switch() {
-    use crate::preferences::SourceAvailability;
+    use crate::SourceAvailability;
     use bae_catalogs::catalog::LookupCatalog;
 
     let mut prefs = Preferences::default();
@@ -149,7 +149,7 @@ fn metadata_sources_fold_the_credential_and_the_switch() {
 /// off the only source still being asked would leave nothing to ask.
 #[test]
 fn the_only_asked_source_is_the_one_that_cannot_be_switched_off() {
-    use crate::preferences::is_the_only_asked_source;
+    use crate::is_the_only_asked_source;
     use bae_catalogs::catalog::LookupCatalog;
 
     let mut prefs = Preferences::default();

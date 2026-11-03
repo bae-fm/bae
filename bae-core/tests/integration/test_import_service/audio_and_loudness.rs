@@ -249,7 +249,7 @@ fn write_flac(path: &Path, samples: &[i32], sample_rate: u32) {
 async fn loudness_measured_at_import_drives_playback_gain() {
     let f = ImportFixture::new().await;
 
-    use bae_core::preferences::ReplayGainMode;
+    use bae_preferences::ReplayGainMode;
 
     support::tracing_init();
 

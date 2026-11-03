@@ -8,15 +8,15 @@ use crate::types::{
 };
 
 mirror_enum! {
-    BridgeSourceAvailability = bae_core::preferences::SourceAvailability,
+    BridgeSourceAvailability = bae_preferences::SourceAvailability,
     from_core: pub(crate) fn,
     variants: { On, Off, NotConfigured },
 }
 
 impl BridgeLookupCatalogSetting {
-    pub(crate) fn from_core(entry: bae_core::preferences::LookupCatalogSetting) -> Self {
-        let bae_core::preferences::LookupCatalogSetting { availability, can_change } = entry;
-        let bae_core::preferences::CatalogAvailability { catalog, state } = availability;
+    pub(crate) fn from_core(entry: bae_preferences::LookupCatalogSetting) -> Self {
+        let bae_preferences::LookupCatalogSetting { availability, can_change } = entry;
+        let bae_preferences::CatalogAvailability { catalog, state } = availability;
         Self {
             catalog: BridgeLookupCatalog::from_core(catalog),
             availability: BridgeSourceAvailability::from_core(state),
@@ -26,62 +26,62 @@ impl BridgeLookupCatalogSetting {
 }
 
 mirror_enum! {
-    BridgeSaveBitDepth = bae_core::preferences::SaveBitDepth,
+    BridgeSaveBitDepth = bae_preferences::SaveBitDepth,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
     variants: { Bits16, Bits24, Bits32 },
 }
 
 impl BridgeSaveCodec {
-    pub(crate) fn from_core(codec: &bae_core::preferences::SaveCodec) -> Self {
+    pub(crate) fn from_core(codec: &bae_preferences::SaveCodec) -> Self {
         match codec {
-            bae_core::preferences::SaveCodec::Flac { bit_depth } => {
+            bae_preferences::SaveCodec::Flac { bit_depth } => {
                 BridgeSaveCodec::Flac { bit_depth: BridgeSaveBitDepth::from_core(*bit_depth) }
             }
-            bae_core::preferences::SaveCodec::Mp3 { bitrate_kbps } => {
+            bae_preferences::SaveCodec::Mp3 { bitrate_kbps } => {
                 BridgeSaveCodec::Mp3 { bitrate_kbps: *bitrate_kbps }
             }
-            bae_core::preferences::SaveCodec::Aac { bitrate_kbps } => {
+            bae_preferences::SaveCodec::Aac { bitrate_kbps } => {
                 BridgeSaveCodec::Aac { bitrate_kbps: *bitrate_kbps }
             }
-            bae_core::preferences::SaveCodec::OpusOgg { bitrate_kbps } => {
+            bae_preferences::SaveCodec::OpusOgg { bitrate_kbps } => {
                 BridgeSaveCodec::OpusOgg { bitrate_kbps: *bitrate_kbps }
             }
-            bae_core::preferences::SaveCodec::Wav { bit_depth } => {
+            bae_preferences::SaveCodec::Wav { bit_depth } => {
                 BridgeSaveCodec::Wav { bit_depth: BridgeSaveBitDepth::from_core(*bit_depth) }
             }
-            bae_core::preferences::SaveCodec::Aiff { bit_depth } => {
+            bae_preferences::SaveCodec::Aiff { bit_depth } => {
                 BridgeSaveCodec::Aiff { bit_depth: BridgeSaveBitDepth::from_core(*bit_depth) }
             }
         }
     }
 
-    pub(crate) fn into_core(self) -> bae_core::preferences::SaveCodec {
+    pub(crate) fn into_core(self) -> bae_preferences::SaveCodec {
         match self {
             BridgeSaveCodec::Flac { bit_depth } => {
-                bae_core::preferences::SaveCodec::Flac { bit_depth: bit_depth.into_core() }
+                bae_preferences::SaveCodec::Flac { bit_depth: bit_depth.into_core() }
             }
             BridgeSaveCodec::Mp3 { bitrate_kbps } => {
-                bae_core::preferences::SaveCodec::Mp3 { bitrate_kbps }
+                bae_preferences::SaveCodec::Mp3 { bitrate_kbps }
             }
             BridgeSaveCodec::Aac { bitrate_kbps } => {
-                bae_core::preferences::SaveCodec::Aac { bitrate_kbps }
+                bae_preferences::SaveCodec::Aac { bitrate_kbps }
             }
             BridgeSaveCodec::OpusOgg { bitrate_kbps } => {
-                bae_core::preferences::SaveCodec::OpusOgg { bitrate_kbps }
+                bae_preferences::SaveCodec::OpusOgg { bitrate_kbps }
             }
             BridgeSaveCodec::Wav { bit_depth } => {
-                bae_core::preferences::SaveCodec::Wav { bit_depth: bit_depth.into_core() }
+                bae_preferences::SaveCodec::Wav { bit_depth: bit_depth.into_core() }
             }
             BridgeSaveCodec::Aiff { bit_depth } => {
-                bae_core::preferences::SaveCodec::Aiff { bit_depth: bit_depth.into_core() }
+                bae_preferences::SaveCodec::Aiff { bit_depth: bit_depth.into_core() }
             }
         }
     }
 }
 
 mirror_enum! {
-    BridgeSavePregapPlacement = bae_core::preferences::SavePregapPlacement,
+    BridgeSavePregapPlacement = bae_preferences::SavePregapPlacement,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
     variants: {
@@ -93,7 +93,7 @@ mirror_enum! {
 }
 
 mirror_enum! {
-    BridgeSaveFilenameToken = bae_core::preferences::SaveFilenameToken,
+    BridgeSaveFilenameToken = bae_preferences::SaveFilenameToken,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
     variants: { Title, Artist, Album, Year, TrackNumber, DiscNumber, TrackTotal },
@@ -117,8 +117,8 @@ impl BridgeOutputKind {
 }
 
 impl BridgeSavePreset {
-    pub(crate) fn from_core(preset: &bae_core::preferences::SavePreset) -> Self {
-        let bae_core::preferences::SavePreset {
+    pub(crate) fn from_core(preset: &bae_preferences::SavePreset) -> Self {
+        let bae_preferences::SavePreset {
             id,
             name,
             codec,
@@ -146,7 +146,7 @@ impl BridgeSavePreset {
         }
     }
 
-    pub(crate) fn into_core(self) -> bae_core::preferences::SavePreset {
+    pub(crate) fn into_core(self) -> bae_preferences::SavePreset {
         let BridgeSavePreset {
             id,
             name,
@@ -160,7 +160,7 @@ impl BridgeSavePreset {
             // dropped.
             extension: _,
         } = self;
-        bae_core::preferences::SavePreset {
+        bae_preferences::SavePreset {
             id,
             name,
             codec: codec.into_core(),
@@ -177,13 +177,13 @@ impl BridgeSavePreset {
 }
 
 impl BridgeConfig {
-    pub(crate) fn from_core(config: &bae_core::preferences::Config) -> Self {
+    pub(crate) fn from_core(config: &bae_preferences::Config) -> Self {
         let discogs_status = config.prefs.discogs_token_status();
         let catalogs = config.prefs.lookup_catalog_settings();
         let lookup_catalogs =
             catalogs.into_iter().map(BridgeLookupCatalogSetting::from_core).collect();
         let prefs = &config.prefs;
-        let bae_core::preferences::Preferences {
+        let bae_preferences::Preferences {
             // Read via the derived `discogs_token_status()` above.
             discogs: _,
             // Playback loudness policy; not surfaced on the config screen.
@@ -205,7 +205,7 @@ impl BridgeConfig {
             subsonic,
         } = prefs;
 
-        let bae_core::preferences::IdentificationPreferences {
+        let bae_preferences::IdentificationPreferences {
             automatic,
             import_when_identified,
             // Read through `Preferences::metadata_sources()` above, which folds this
@@ -213,9 +213,9 @@ impl BridgeConfig {
             // one answer a surface renders.
             catalogs: _,
         } = identification;
-        let bae_core::preferences::ImportStoragePreferences { cloud, pinned } = import_storage;
-        let bae_core::preferences::McpConfig { enabled, port } = mcp;
-        let bae_core::preferences::SubsonicConfig {
+        let bae_preferences::ImportStoragePreferences { cloud, pinned } = import_storage;
+        let bae_preferences::McpConfig { enabled, port } = mcp;
+        let bae_preferences::SubsonicConfig {
             enabled: subsonic_enabled,
             port: subsonic_port,
             username: subsonic_username,
@@ -249,16 +249,14 @@ impl BridgeConfig {
             },
             discogs_usable: discogs_status.is_usable(),
             discogs_token_status: match discogs_status {
-                bae_core::preferences::DiscogsTokenStatus::NotConfigured => {
+                bae_preferences::DiscogsTokenStatus::NotConfigured => {
                     BridgeDiscogsTokenStatus::NotConfigured
                 }
-                bae_core::preferences::DiscogsTokenStatus::Valid => BridgeDiscogsTokenStatus::Valid,
-                bae_core::preferences::DiscogsTokenStatus::Unvalidated => {
+                bae_preferences::DiscogsTokenStatus::Valid => BridgeDiscogsTokenStatus::Valid,
+                bae_preferences::DiscogsTokenStatus::Unvalidated => {
                     BridgeDiscogsTokenStatus::Unvalidated
                 }
-                bae_core::preferences::DiscogsTokenStatus::Rejected => {
-                    BridgeDiscogsTokenStatus::Rejected
-                }
+                bae_preferences::DiscogsTokenStatus::Rejected => BridgeDiscogsTokenStatus::Rejected,
             },
         }
     }

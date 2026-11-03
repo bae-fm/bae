@@ -22,7 +22,7 @@ impl ImportDestination {
     /// Where an import goes: to the cloud, pinned as chosen, when the stored
     /// choice is the cloud and the library has a cloud home; locally otherwise.
     pub fn of(
-        storage: crate::preferences::ImportStoragePreferences,
+        storage: bae_preferences::ImportStoragePreferences,
         storage_configured: bool,
     ) -> Self {
         if storage.cloud && storage_configured {

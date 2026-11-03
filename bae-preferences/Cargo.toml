@@ -1,0 +1,45 @@
+[package]
+name = "bae-preferences"
+version = "0.0.0-dev"
+authors = ["dima"]
+edition = "2021"
+license = "LicenseRef-UNLICENSED"
+publish = false
+# The `desktop` cfg, defined once in bae-util's build script for every crate
+# with desktop-only code.
+build = "../bae-util/build.rs"
+
+[lib]
+name = "bae_preferences"
+path = "src/lib.rs"
+
+[dependencies]
+# The transfer limits a library runs under before its preferences are read,
+# and the bound they are widened to.
+bae-app-dir = { workspace = true }
+# The catalogs a lookup asks and how a stored Discogs key last checked out.
+bae-catalogs = { workspace = true }
+# The store the `preferences` row and its save presets live in.
+bae-db = { workspace = true }
+# The error categories a failed preference write is shown as.
+bae-diagnostics = { workspace = true }
+# The store's id, its transfer limits, and its read and write contexts.
+coven = { workspace = true }
+rusqlite = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+# Test databases with bae's schema.
+bae-db = { workspace = true, features = ["test-utils"] }
+tokio = { workspace = true, features = ["macros", "rt", "time"] }
+
+[features]
+default = []
+# Preferences built without a library: a new library's defaults and a
+# configuration over them, for the tests of every crate that builds on this
+# one. Dev/test-only: a production build never enables it.
+test-utils = []
+
+[lints]
+workspace = true

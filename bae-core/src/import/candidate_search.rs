@@ -19,12 +19,12 @@
 //! the lookups is [`crate::import::ImportServiceHandle::start_candidate_search`].
 
 use crate::identify::release_group::{group_results, ReleaseGroup};
-use crate::preferences::{CatalogAvailability, SourceAvailability};
 use bae_catalogs::album_links::{self, AlbumLinks, GroupLinks};
 use bae_catalogs::catalog::LookupCatalog;
 use bae_catalogs::records::MetadataRef;
 use bae_catalogs::search::{MetadataResult, SearchQuery};
 use bae_catalogs::Failure;
+use bae_preferences::{CatalogAvailability, SourceAvailability};
 
 /// The run a stored search is on: what each catalog's answer names to land
 /// on it. A new search for a key is on a new run, and no run is used twice.

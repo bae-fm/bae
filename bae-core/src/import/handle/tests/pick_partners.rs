@@ -10,7 +10,7 @@ async fn linked_cover_gallery_can_be_empty() {
     let (handle, _tmp, key, _) = pane_fixture_with(fakes.providers()).await;
     handle
         .catalogs
-        .store_discogs_key("test-discogs-token", crate::preferences::DiscogsValidation::Valid)
+        .store_discogs_key("test-discogs-token", bae_preferences::DiscogsValidation::Valid)
         .await
         .unwrap();
     let release_id = "70000003";
@@ -53,7 +53,7 @@ async fn a_pick_with_a_partner_stores_it_and_archives_its_documents() {
     let tables = handle.tables.clone();
     handle
         .catalogs
-        .store_discogs_key("test-discogs-token", crate::preferences::DiscogsValidation::Valid)
+        .store_discogs_key("test-discogs-token", bae_preferences::DiscogsValidation::Valid)
         .await
         .unwrap();
 
@@ -239,7 +239,7 @@ async fn a_pick_of_a_release_a_run_read_reads_the_rest() {
     let (handle, _tmp, key, _) = pane_fixture_with(fakes.providers()).await;
     handle
         .catalogs
-        .store_discogs_key("test-discogs-token", crate::preferences::DiscogsValidation::Valid)
+        .store_discogs_key("test-discogs-token", bae_preferences::DiscogsValidation::Valid)
         .await
         .unwrap();
     let release = seed_linked_discogs_release(&fakes);
@@ -281,7 +281,7 @@ async fn a_pick_of_a_release_a_run_read_reads_the_rest() {
     let (scratch, _scratch_tmp, _, _) = pane_fixture_with(scratch_fakes.providers()).await;
     scratch
         .catalogs
-        .store_discogs_key("test-discogs-token", crate::preferences::DiscogsValidation::Valid)
+        .store_discogs_key("test-discogs-token", bae_preferences::DiscogsValidation::Valid)
         .await
         .unwrap();
     seed_linked_discogs_release(&scratch_fakes);
@@ -494,7 +494,7 @@ async fn an_import_commits_what_its_picked_releases_store_now() {
             .await;
     handle
         .catalogs
-        .store_discogs_key("test-discogs-token", crate::preferences::DiscogsValidation::Valid)
+        .store_discogs_key("test-discogs-token", bae_preferences::DiscogsValidation::Valid)
         .await
         .unwrap();
     let primary = "70000004";
@@ -577,7 +577,7 @@ async fn a_pick_carries_the_album_a_reading_found_through_another_pressing() {
             .await;
     handle
         .catalogs
-        .store_discogs_key("test-discogs-token", crate::preferences::DiscogsValidation::Valid)
+        .store_discogs_key("test-discogs-token", bae_preferences::DiscogsValidation::Valid)
         .await
         .unwrap();
     let group = "chain-mb-group";
@@ -636,7 +636,7 @@ async fn a_pick_tells_each_catalog_read_it_waits_on() {
             .await;
     handle
         .catalogs
-        .store_discogs_key("test-discogs-token", crate::preferences::DiscogsValidation::Valid)
+        .store_discogs_key("test-discogs-token", bae_preferences::DiscogsValidation::Valid)
         .await
         .unwrap();
     let discogs_release_id = "70000021";

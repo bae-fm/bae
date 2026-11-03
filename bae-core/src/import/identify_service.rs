@@ -34,8 +34,8 @@ fn emit_step(tx: &mpsc::UnboundedSender<IdentifyEvent>, event: IdentifyEvent) {
 /// so a key added or a source switched on since joins the next run rather than
 /// this one.
 async fn run_providers(database: &bae_db::Database) -> Result<Vec<LookupCatalog>, bae_db::DbError> {
-    Ok(crate::preferences::asked_sources(
-        &crate::preferences::preferences(database).await?.metadata_sources(),
+    Ok(bae_preferences::asked_sources(
+        &bae_preferences::preferences(database).await?.metadata_sources(),
     ))
 }
 

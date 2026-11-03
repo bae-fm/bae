@@ -54,9 +54,8 @@ impl LibraryManager {
     ) -> Result<Self, bae_db::DbError> {
         // The store opens running one transfer per direction, the least any
         // preference allows, so nothing it starts before this exceeds them.
-        database.set_transfer_limits(
-            crate::preferences::preferences(&database).await?.transfer_limits(),
-        );
+        database
+            .set_transfer_limits(bae_preferences::preferences(&database).await?.transfer_limits());
         // No transfer outlives the process that ran it, so the library opens
         // with its transfer queues empty, before their workers start, and
         // with no release in a storage transition.

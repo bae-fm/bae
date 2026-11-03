@@ -316,7 +316,7 @@ mod edit_shaping_tests {
 #[cfg(desktop)]
 #[test]
 fn an_import_s_destination_is_the_stored_choice() {
-    use crate::preferences::ImportStoragePreferences;
+    use bae_preferences::ImportStoragePreferences;
     let mut storage = ImportStoragePreferences::default();
     assert_eq!(
         ImportDestination::of(storage, false),

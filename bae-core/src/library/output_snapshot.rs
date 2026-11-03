@@ -38,5 +38,5 @@ pub struct OutputRequest {
 #[derive(Debug, Clone, PartialEq)]
 pub enum OutputKind {
     Export,
-    Save { preset: crate::preferences::SavePreset },
+    Save { preset: bae_preferences::SavePreset },
 }

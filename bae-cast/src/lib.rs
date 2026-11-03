@@ -27,12 +27,12 @@ use std::sync::{Arc, Mutex};
 use bae_core::library::AppServices;
 use bae_core::playback::airplay_output::AirPlaySink;
 use bae_core::playback::{PlaybackProgress, RemoteDevice, RemotePlayback};
-use bae_core::preferences::SubsonicCredential;
 use bae_core::renderer::{
     CoverUrlProvider, MediaUrlProvider, RendererChannel, RendererFlavor, RendererMediaSource,
     RendererStreamFormat, TRANSCODE_BITRATE_KBPS,
 };
 use bae_diagnostics::{lock_or_crash, Diagnostics, ReportedTask};
+use bae_preferences::SubsonicCredential;
 use bae_util::task_failure::{blocking, caught, caught_sync, TaskFailed};
 use md5::{Digest, Md5};
 use rand::RngCore;

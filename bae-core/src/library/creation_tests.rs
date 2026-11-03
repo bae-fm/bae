@@ -613,8 +613,8 @@ async fn a_restore_over_this_devices_copy_starts_at_a_new_librarys_preferences()
         std::sync::Arc::new(coven::UuidIds),
     );
     assert_eq!(
-        crate::preferences::preferences(&database).await.unwrap(),
-        crate::preferences::Preferences::default()
+        bae_preferences::preferences(&database).await.unwrap(),
+        bae_preferences::Preferences::default()
     );
     restored.close().await.unwrap();
 }

@@ -32,7 +32,7 @@ forward! { async this => {
 forward! { async this => {
     fn set_mcp_server_config(enabled: bool, port: u16) -> () {
         this.desktop
-            .set_mcp_config(bae_core::preferences::McpConfig { enabled, port })
+            .set_mcp_config(bae_preferences::McpConfig { enabled, port })
             .await
             .map_err(BridgeError::config)
     }
@@ -50,7 +50,7 @@ forward! { async this => {
         bind_address: String,
     ) -> () {
         this.desktop
-            .set_subsonic_config(bae_core::preferences::SubsonicConfig {
+            .set_subsonic_config(bae_preferences::SubsonicConfig {
                 enabled,
                 port,
                 username,

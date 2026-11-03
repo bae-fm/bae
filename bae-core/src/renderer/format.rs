@@ -12,8 +12,8 @@
 //! and the LOAD metadata (which reports the served MIME type) consult, so the
 //! URL and the declared content type never disagree.
 
-use crate::preferences::CastTranscodeFormat;
 use bae_db::ResolvedTrackAudio;
+use bae_preferences::CastTranscodeFormat;
 use bae_util::content_type::ContentType;
 
 /// The bitrate an MP3 conversion is encoded at, in kbps. Shared across

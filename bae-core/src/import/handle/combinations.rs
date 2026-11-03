@@ -167,7 +167,7 @@ impl ImportServiceHandle {
                 let keys = crate::import::list::release_keys_in_path_order(&returned);
                 self.identification_ended(key).await;
                 let automatic =
-                    crate::preferences::preferences(&self.database).await?.identification.automatic;
+                    bae_preferences::preferences(&self.database).await?.identification.automatic;
                 self.event_tx.send(ImportEvent::Scan(ScanEvent::CandidateRemoved {
                     candidate_key: key.clone(),
                 }));
@@ -208,7 +208,7 @@ impl ImportServiceHandle {
             }));
         }
         let automatic =
-            crate::preferences::preferences(&self.database).await?.identification.automatic;
+            bae_preferences::preferences(&self.database).await?.identification.automatic;
         for item in &regrouped.written {
             let event = match item.clone() {
                 ScanItem::Valid(candidate) => ScanEvent::FolderCandidate {

@@ -6,10 +6,10 @@
 use std::sync::Arc;
 
 use bae_core::library::AppServices;
-use bae_core::preferences::{McpConfig, PreferencesError, SubsonicConfig};
 use bae_diagnostics::Diagnostics;
 use bae_mcp::{Automation, McpServerController};
 pub use bae_mcp::{McpServerError, McpServerStatus};
+use bae_preferences::{McpConfig, PreferencesError, SubsonicConfig};
 use bae_subsonic::SubsonicServerController;
 pub use bae_subsonic::{SubsonicServerError, SubsonicServerStatus};
 use bae_util::server::{ServerError, ServerStatus};
@@ -180,7 +180,7 @@ impl DesktopServices {
     /// back to.
     async fn stored_preferences<E: ServerError>(
         &self,
-    ) -> Result<bae_core::preferences::Preferences, DesktopConfigError<E>> {
+    ) -> Result<bae_preferences::Preferences, DesktopConfigError<E>> {
         self.services
             .preferences()
             .await
@@ -236,7 +236,7 @@ where
 mod tests {
     use super::*;
 
-    use bae_core::preferences::SubsonicConfig;
+    use bae_preferences::SubsonicConfig;
     use bae_test_support as support;
 
     #[test]

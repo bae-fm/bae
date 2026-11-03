@@ -118,7 +118,7 @@ async fn picked_discogs_release() -> DiscogsPick {
         picked_stored_candidate_with(fakes.providers()).await;
     handle
         .catalogs
-        .store_discogs_key("test-discogs-token", crate::preferences::DiscogsValidation::Valid)
+        .store_discogs_key("test-discogs-token", bae_preferences::DiscogsValidation::Valid)
         .await
         .unwrap();
 
