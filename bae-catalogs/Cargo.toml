@@ -34,7 +34,10 @@ tracing = { workspace = true }
 # The remote-image cache spools a download to a temporary file before an
 # atomic persist.
 tempfile = { workspace = true }
-
+# The local stand-in image host (src/test_image_host.rs), under test-utils.
+axum = { workspace = true, features = ["http1", "tokio"], optional = true }
+# The PNG the stand-in image host serves, under test-utils.
+image = { workspace = true, features = ["png"], optional = true }
 
 [dev-dependencies]
 # The test transport and the retry that sleeps no real time.
@@ -54,9 +57,10 @@ chrono = { workspace = true }
 default = []
 # The clients' `for_test` constructors, the image cache over a temporary
 # directory, the fakes a test's providers ask and the documents they answer
-# with, for the tests of every crate that builds on this one. Dev/test-only:
-# a production build never enables it.
-test-utils = ["bae-util/test-utils"]
+# with, and a local stand-in for the hosts provider images come from, for the
+# tests of every crate that builds on this one. Dev/test-only: a production
+# build never enables it.
+test-utils = ["bae-util/test-utils", "dep:axum", "dep:image", "tokio/net"]
 # What bae-core's own unit tests read back: the MusicBrainz requests waiting
 # for a slot and the order the rate limiter admitted them in. It records as it
 # runs, so only bae-core's dev-dependency turns it on, never a build that ships

@@ -1111,7 +1111,6 @@ dependencies = [
 name = "bae-test-support"
 version = "0.0.0-dev"
 dependencies = [
- "axum",
  "bae-app-dir",
  "bae-catalogs",
  "bae-core",
@@ -1122,7 +1121,6 @@ dependencies = [
  "bae-preferences",
  "bae-util",
  "coven",
- "image",
  "lofty",
  "tempfile",
  "tokio",

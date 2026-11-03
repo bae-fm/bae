@@ -14,7 +14,7 @@ struct DiscogsPick {
     fakes: FakeCatalogs,
     tmp: TempDir,
     key: crate::import::CandidateKey,
-    images: bae_test_support::RemoteImageHost,
+    images: bae_catalogs::test_image_host::RemoteImageHost,
     album_artist_id: String,
     track_artist_id: String,
     /// Where the track artist's picture is served on the image host.
@@ -99,9 +99,9 @@ fn assert_stored_large_picture(stored: Option<Vec<u8>>) {
 }
 
 async fn picked_discogs_release() -> DiscogsPick {
-    let images = bae_test_support::RemoteImageHost::start().await;
+    let images = bae_catalogs::test_image_host::RemoteImageHost::start().await;
     let fakes = FakeCatalogs::over(
-        bae_util::http::Http::for_test().serve(bae_test_support::TEST_IMAGE_HOST, images.origin()),
+        bae_util::http::Http::for_test().serve(bae_catalogs::test_image_host::TEST_IMAGE_HOST, images.origin()),
     );
     let StoredCandidate { handle, key, tmp, .. } =
         picked_stored_candidate_with(fakes.providers()).await;
@@ -195,7 +195,7 @@ async fn an_artist_the_library_already_has_is_not_fetched_again() {
     let pick = picked_discogs_release().await;
     let existing = make_artist("Track Artist", Some(&pick.track_artist_id), None);
     pick.handle.database.insert_artist(&existing).await.unwrap();
-    let picture_url = pick.images.serve_image(&pick.picture_path, bae_test_support::cover_png());
+    let picture_url = pick.images.serve_image(&pick.picture_path, bae_catalogs::test_image_host::cover_png());
 
     pick.seed_artists(picture_url);
     let (release_id, _album_id) =

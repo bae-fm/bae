@@ -1,5 +1,11 @@
 //! Waiting on a channel of events for the one a test is after.
 
+/// How long a test waits on an event before failing instead of hanging.
+/// Every wait it bounds ends on the code's own event, so only code that never
+/// sends it reaches this. It is not a measure of speed, so it sits far above
+/// what any step takes on a loaded machine.
+pub const HANG_GUARD: std::time::Duration = std::time::Duration::from_secs(300);
+
 /// Read events off `rx` until `matches` returns a value, discarding the ones it
 /// declines, and give up after `timeout_duration` (or when the channel closes)
 /// with `None`.

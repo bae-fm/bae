@@ -269,7 +269,7 @@ async fn a_changed_cover_gets_a_new_cover_art_id() {
                 height: None,
                 created_at: chrono::Utc::now(),
             },
-            &support::cover_png(),
+            &bae_catalogs::test_image_host::cover_png(),
         )
         .await
         .unwrap();
@@ -278,7 +278,7 @@ async fn a_changed_cover_gets_a_new_cover_art_id() {
     assert_ne!(before, after, "the replaced cover has a new id");
     let served = call(&router, "getCoverArt", &authed(&format!("id={after}"))).await;
     assert_eq!(served.status, StatusCode::OK);
-    assert_eq!(served.body, support::cover_png());
+    assert_eq!(served.body, bae_catalogs::test_image_host::cover_png());
 }
 
 /// An artist's `coverArt` names the artist's own image, and serves it.
@@ -295,7 +295,7 @@ async fn an_artist_cover_art_is_the_artist_image() {
             .await;
     let artist_wire_id = album.sub()["album"]["artistId"].as_str().unwrap().to_string();
     let artist_id = artist_wire_id.strip_prefix("ar-").unwrap().to_string();
-    let image = support::cover_png();
+    let image = bae_catalogs::test_image_host::cover_png();
     lib.manager
         .store_library_image(
             &bae_db::DbLibraryImage {

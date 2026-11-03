@@ -11,7 +11,7 @@ async fn import_outcome(
     import_id: &str,
 ) -> Result<String, String> {
     loop {
-        let event = tokio::time::timeout(bae_test_support::HANG_GUARD, events.recv())
+        let event = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, events.recv())
             .await
             .expect("the import reports its result")
             .expect("the import event stream remains open");

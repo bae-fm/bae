@@ -31,7 +31,7 @@ fn until(
     accept: impl Fn(&BridgeImportListSnapshot) -> bool,
 ) -> BridgeImportListSnapshot {
     handle.runtime.block_on(async {
-        tokio::time::timeout(bae_test_support::HANG_GUARD, async {
+        tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
             loop {
                 let snapshot = list.clone().next().await.expect("the list answers");
                 if accept(&snapshot) {

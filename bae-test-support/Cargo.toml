@@ -32,15 +32,10 @@ bae-diagnostics = { workspace = true }
 # The catalog fakes the helpers open libraries over, and the image cache they
 # build through its test constructor.
 bae-catalogs = { workspace = true, features = ["test-utils"] }
-# test-utils gives the test transport whose hosts `RemoteImageHost::route`
-# sends here.
+# test-utils gives the test transport the import helpers download images
+# over, and how long a wait runs before a test fails.
 bae-util = { workspace = true, features = ["test-utils"] }
-# The local stand-in for the Cover Art Archive: cover addresses are derived, so
-# a test that wants bytes at one has to answer it.
-axum = { workspace = true, features = ["http1", "tokio"] }
 coven = { workspace = true, features = ["test-utils"] }
-# For synthesizing a folder-cover image in tests that need a release with art.
-image = { workspace = true, features = ["png"] }
 lofty = { workspace = true }
 tempfile = { workspace = true }
 tokio = { workspace = true, features = ["full"] }

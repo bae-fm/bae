@@ -7,7 +7,7 @@ use super::*;
 use crate::import::test_import::TestImport;
 use bae_catalogs::fake_catalogs::FakeCatalogs;
 use bae_db::{Database, DbAlbum, DbArtist, DbRelease};
-use bae_test_support::HANG_GUARD;
+use bae_util::test_channels::HANG_GUARD;
 use chrono::Utc;
 use std::path::{Path, PathBuf};
 use tempfile::TempDir;

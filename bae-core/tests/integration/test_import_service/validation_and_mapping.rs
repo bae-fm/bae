@@ -77,7 +77,7 @@ fn seed_two_credit_mb_release(f: &ImportFixture, mb_release_id: &str, mb_group_i
     let mb_release_id = f.fakes.seed_musicbrainz_response(response,
         mb_group_id,
     );
-    f.images.serve_front(&mb_release_id, support::cover_png());
+    f.images.serve_front(&mb_release_id, bae_catalogs::test_image_host::cover_png());
     mb_release_id
 }
 
@@ -177,7 +177,7 @@ fn seed_mb_release_with_media(
     let mb_release_id = f.fakes.seed_musicbrainz_response(response,
         mb_group_id,
     );
-    f.images.serve_front(&mb_release_id, support::cover_png());
+    f.images.serve_front(&mb_release_id, bae_catalogs::test_image_host::cover_png());
     mb_release_id
 }
 
@@ -489,7 +489,7 @@ async fn an_import_with_no_cover_pick_takes_the_release_s_own_cover() {
         "mb-group-derived-cover",
         "Derived Cover Album",
     );
-    f.images.serve_front(mb_id, support::cover_png());
+    f.images.serve_front(mb_id, bae_catalogs::test_image_host::cover_png());
 
     let album_dir = f.temp_path().join("album");
     fs::create_dir_all(&album_dir).unwrap();

@@ -355,7 +355,7 @@ async fn closing_the_library_cancels_a_waiting_read_before_the_store_closes() {
 
     manager.library.close().await.unwrap();
 
-    let read = tokio::time::timeout(bae_test_support::HANG_GUARD, waiting)
+    let read = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, waiting)
         .await
         .expect("the waiting read ends")
         .unwrap();

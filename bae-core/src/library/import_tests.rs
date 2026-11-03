@@ -7,7 +7,7 @@
 
 use crate::app::test_library::TestLibrary;
 use crate::import::{CandidateKey, ImportEvent, ImportServiceHandle};
-use bae_test_support::HANG_GUARD;
+use bae_util::test_channels::HANG_GUARD;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tempfile::TempDir;
@@ -410,9 +410,10 @@ async fn editing_an_imported_candidate_is_refused_and_leaves_its_release() {
 /// library's artist search, with the picture the import fetched and stored.
 #[tokio::test(flavor = "multi_thread")]
 async fn an_imported_artist_is_searchable_with_its_picture() {
-    let images = bae_test_support::RemoteImageHost::start().await;
+    let images = bae_catalogs::test_image_host::RemoteImageHost::start().await;
     let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::over(
-        bae_util::http::Http::for_test().serve(bae_test_support::TEST_IMAGE_HOST, images.origin()),
+        bae_util::http::Http::for_test()
+            .serve(bae_catalogs::test_image_host::TEST_IMAGE_HOST, images.origin()),
     );
     let fixture = ImportingLibrary::asking(fakes.providers()).await;
     fixture
@@ -469,7 +470,7 @@ async fn an_imported_artist_is_searchable_with_its_picture() {
         .unwrap();
     let picture_url = images.serve_image(
         &format!("/discogs-artist-{}.png", uuid::Uuid::new_v4()),
-        bae_test_support::cover_png(),
+        bae_catalogs::test_image_host::cover_png(),
     );
     fakes.seed_discogs_artist_image(&album_artist_id.to_string(), None);
     fakes.seed_discogs_artist_image(&track_artist_id.to_string(), Some(picture_url));

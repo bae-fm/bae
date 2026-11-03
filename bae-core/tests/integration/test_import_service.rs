@@ -19,10 +19,10 @@ use bae_core::import::{
 use bae_core::library::LibraryManager;
 use bae_db::{Database, LibraryImageType};
 use bae_types::pressing::ReleaseLabel;
+use bae_util::test_channels::HANG_GUARD;
 use std::fs;
 use std::path::Path;
 use std::sync::Arc;
-use support::HANG_GUARD;
 use tempfile::TempDir;
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -38,13 +38,13 @@ struct ImportFixture {
     /// The Cover Art Archive and image host this library's requests reach.
     /// Every MusicBrainz release group offers a derived cover address, and an
     /// address no test registered answers 404.
-    images: support::RemoteImageHost,
+    images: bae_catalogs::test_image_host::RemoteImageHost,
     _temp: TempDir,
 }
 
 impl ImportFixture {
     async fn new() -> Self {
-        let images = support::RemoteImageHost::start().await;
+        let images = bae_catalogs::test_image_host::RemoteImageHost::start().await;
         let temp = TempDir::new().unwrap();
         let db_dir = temp.path().join("db");
         fs::create_dir_all(&db_dir).unwrap();

@@ -3,7 +3,7 @@ use crate::import::folder_scanner::ScannedFile;
 use crate::import::import_cancel::ImportStop;
 use bae_db::watched_path::host_root;
 use bae_db::Database;
-use bae_test_support::HANG_GUARD;
+use bae_util::test_channels::HANG_GUARD;
 use coven::FixedClock;
 use coven::SequentialIds;
 use std::sync::Mutex;

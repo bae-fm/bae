@@ -619,7 +619,7 @@ mod tests {
 
         std::fs::write(album.join("01.flac"), b"audio").unwrap();
 
-        let deadline = tokio::time::Instant::now() + bae_test_support::HANG_GUARD;
+        let deadline = tokio::time::Instant::now() + bae_util::test_channels::HANG_GUARD;
         loop {
             let report = tokio::time::timeout_at(deadline, fs_rx.recv())
                 .await

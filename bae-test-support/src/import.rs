@@ -97,7 +97,7 @@ pub async fn try_wait_for_import_complete(
 }
 
 /// The import's first `Complete`, `RemoteUploadQueued` or `Failed`. Panics if
-/// the progress ends without one or none comes before [`crate::HANG_GUARD`].
+/// the progress ends without one or none comes before [`bae_util::test_channels::HANG_GUARD`].
 pub async fn wait_for_import_end(
     progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<bae_core::import::ImportProgress>,
 ) -> bae_core::import::ImportProgress {
@@ -111,9 +111,9 @@ pub async fn wait_for_import_end(
         }
         panic!("Progress channel closed without completion");
     };
-    tokio::time::timeout(crate::HANG_GUARD, ended)
-        .await
-        .unwrap_or_else(|_| panic!("import did not end within {:?}", crate::HANG_GUARD))
+    tokio::time::timeout(bae_util::test_channels::HANG_GUARD, ended).await.unwrap_or_else(|_| {
+        panic!("import did not end within {:?}", bae_util::test_channels::HANG_GUARD)
+    })
 }
 
 /// What a test import reads the candidate's draft from before importing it.

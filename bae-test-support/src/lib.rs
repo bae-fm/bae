@@ -25,12 +25,6 @@ macro_rules! fixture_dir {
     };
 }
 
-/// How long a test waits on an event before failing instead of hanging.
-/// Every wait it bounds ends on the code's own event, so only code that never
-/// sends it reaches this. It is not a measure of speed, so it sits far above
-/// what any step takes on a loaded machine.
-pub const HANG_GUARD: std::time::Duration = std::time::Duration::from_secs(300);
-
 mod files;
 mod import;
 mod library;
@@ -41,8 +35,7 @@ pub use profiles::{made_profile, made_profile_on, requested_profile, requested_p
 pub use storage::{connect_storage, release_storage, remove_uploaded_file, storage_library};
 
 pub use files::{
-    copy_and_tag, cover_png, read_cover_image_bytes, read_fixture, write_cover_png,
-    write_tagged_flac, ImageHold, RemoteImageHost, TEST_IMAGE_HOST,
+    copy_and_tag, read_cover_image_bytes, read_fixture, write_cover_png, write_tagged_flac,
 };
 pub use import::{
     configure_test_discogs, discogs_release, folder_import, import_folder_and_wait,
