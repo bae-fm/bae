@@ -42,7 +42,7 @@ async fn a_queue_longer_than_one_in_clause_reads_every_track() {
     let (db, _tmp, track_ids) =
         crate::db::client::tests::in_clause_chunking_tests::chunked_track_db().await;
     let mut requested = track_ids.clone();
-    requested.insert(SQL_MAX_IN_VARS / 2, bae_test_support::test_uuid("missing-track"));
+    requested.insert(SQL_MAX_IN_VARS / 2, bae_util::test_ids::test_uuid("missing-track"));
 
     let added =
         PlaybackQueueTables::new(db.clone()).add_manual(requested, ManualPlace::End).await.unwrap();

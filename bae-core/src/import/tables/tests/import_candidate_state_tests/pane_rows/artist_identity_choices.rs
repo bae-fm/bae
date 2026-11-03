@@ -8,7 +8,7 @@ async fn fixture() -> (Database, tempfile::TempDir, String, DbArtist, DbArtist, 
     let tables = crate::import::tables::ImportTables::new(db.clone());
     let (_, hash) = stored_pane_candidate(&db).await;
     let discogs = DbArtist {
-        id: bae_test_support::test_uuid("choice-discogs"),
+        id: bae_util::test_ids::test_uuid("choice-discogs"),
         name: "Artist One".into(),
         sort_name: None,
         discogs_artist_id: Some("discogs-1".into()),
@@ -16,13 +16,13 @@ async fn fixture() -> (Database, tempfile::TempDir, String, DbArtist, DbArtist, 
         created_at: fixed_now(),
     };
     let musicbrainz = DbArtist {
-        id: bae_test_support::test_uuid("choice-musicbrainz"),
+        id: bae_util::test_ids::test_uuid("choice-musicbrainz"),
         discogs_artist_id: None,
         musicbrainz_artist_id: Some("mb-1".into()),
         ..discogs.clone()
     };
     let incoming = DbArtist {
-        id: bae_test_support::test_uuid("choice-incoming"),
+        id: bae_util::test_ids::test_uuid("choice-incoming"),
         musicbrainz_artist_id: musicbrainz.musicbrainz_artist_id.clone(),
         ..discogs.clone()
     };
@@ -89,17 +89,17 @@ async fn every_artist_identity_choice_controls_the_imported_credits_and_ids() {
         }
         let now = fixed_now();
         let album = DbAlbum {
-            id: bae_test_support::test_uuid("choice-album"),
+            id: bae_util::test_ids::test_uuid("choice-album"),
             title: "Album Title".into(),
             year: None,
             is_compilation: false,
             created_at: now,
         };
         let release =
-            DbRelease::new_test(&album.id, &bae_test_support::test_uuid("choice-release"));
+            DbRelease::new_test(&album.id, &bae_util::test_ids::test_uuid("choice-release"));
         let track = DbTrack::new_test(
             &release.id,
-            &bae_test_support::test_uuid("choice-track"),
+            &bae_util::test_ids::test_uuid("choice-track"),
             "Track Title",
             1,
         );
@@ -121,7 +121,7 @@ async fn every_artist_identity_choice_controls_the_imported_credits_and_ids() {
             },
         }];
         let work = DbWork {
-            id: bae_test_support::test_uuid("choice-work"),
+            id: bae_util::test_ids::test_uuid("choice-work"),
             title: "Work Title".into(),
             disambiguation: None,
             work_type: None,
@@ -146,7 +146,7 @@ async fn every_artist_identity_choice_controls_the_imported_credits_and_ids() {
                     &work.id,
                     0,
                     bae_catalogs::catalog::Catalog::MusicBrainz,
-                    bae_test_support::test_uuid("choice-track-work"),
+                    bae_util::test_ids::test_uuid("choice-track-work"),
                     now,
                 )],
                 work_artists: &[DbWorkArtist::new(
@@ -162,7 +162,7 @@ async fn every_artist_identity_choice_controls_the_imported_credits_and_ids() {
                     0,
                     bae_catalogs::catalog::Catalog::Discogs,
                     Some("Producer".into()),
-                    bae_test_support::test_uuid("choice-release-role"),
+                    bae_util::test_ids::test_uuid("choice-release-role"),
                     now,
                 )],
                 track_artist_roles: &[DbTrackArtistRole::new(
@@ -171,7 +171,7 @@ async fn every_artist_identity_choice_controls_the_imported_credits_and_ids() {
                     0,
                     bae_catalogs::catalog::Catalog::MusicBrainz,
                     Some("arranger".into()),
-                    bae_test_support::test_uuid("choice-track-role"),
+                    bae_util::test_ids::test_uuid("choice-track-role"),
                     now,
                 )],
                 ..Default::default()
@@ -280,7 +280,7 @@ async fn repeated_credits_share_the_neither_artist_and_picked_credits_stay_picke
     let tables = crate::import::tables::ImportTables::new(db.clone());
     tables.choose_import_artist_identity(&hash, 0, Choice::Neither, &coven::UuidIds).await.unwrap();
     let repeated =
-        DbArtist { id: bae_test_support::test_uuid("repeated-credit"), ..incoming.clone() };
+        DbArtist { id: bae_util::test_ids::test_uuid("repeated-credit"), ..incoming.clone() };
     let resolved = tables
         .resolve_artists(
             &[incoming.clone(), repeated, discogs.clone()],

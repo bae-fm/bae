@@ -15,10 +15,10 @@ async fn a_profile_asked_for_offline_is_written_once_its_circle_lands() {
     let ((manager, database, ..), storage) =
         storage_library(directory.path(), bae_catalogs::providers::Providers::offline()).await;
     connect_storage(&manager, &storage).await;
-    let track = bae_test_support::test_uuid("waiting-track");
-    let release = bae_test_support::test_uuid("waiting-release");
-    let medium = bae_test_support::test_uuid("waiting-medium");
-    let play = bae_test_support::test_uuid("waiting-play");
+    let track = bae_util::test_ids::test_uuid("waiting-track");
+    let release = bae_util::test_ids::test_uuid("waiting-release");
+    let medium = bae_util::test_ids::test_uuid("waiting-medium");
+    let play = bae_util::test_ids::test_uuid("waiting-play");
     database.execute_local_sql_for_test(&format!("INSERT INTO albums (id,title,created_at) VALUES ('waiting-album','Album Title','2026-01-01'); INSERT INTO releases (id, album_id, created_at, album_order) VALUES ('{release}','waiting-album','2026-01-01', 0); INSERT INTO release_mediums (id,release_id,position,medium,side_count,created_at) VALUES ('{medium}','{release}',1,'cd',1,'2026-01-01'); INSERT INTO tracks (id,release_id,title,medium_id,side,track_number,position,duration_ms,created_at) VALUES ('{track}','{release}','Track Title','{medium}',1,1,0,180000,'2026-01-01'); INSERT INTO local_history (id, track_id, started_at, played_ms) VALUES ('{play}', '{track}', '2026-10-18T16:00:00Z', 30000);")).await.unwrap();
 
     manager.create_profile("Robin").await.unwrap();

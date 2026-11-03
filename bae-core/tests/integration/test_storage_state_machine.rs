@@ -61,7 +61,7 @@ async fn create_local_release(
     let now = Utc::now();
     // Shared across every release this helper seeds, so only the first call
     // inserts it.
-    let artist_id = bae_test_support::test_uuid("test-storage-artist");
+    let artist_id = bae_util::test_ids::test_uuid("test-storage-artist");
     if mgr.get_artist_by_id(&artist_id).await.unwrap().is_none() {
         mgr.insert_artist(&bae_core::db::DbArtist {
             id: artist_id.to_string(),

@@ -92,7 +92,7 @@ async fn setup_test_manager_with(
 
     // Insert the test artist that create_test_album() references
     let artist = DbArtist {
-        id: bae_test_support::test_uuid("e36744a5-1a36-460f-891c-e7e558034edf"),
+        id: bae_util::test_ids::test_uuid("e36744a5-1a36-460f-891c-e7e558034edf"),
         name: "Test Artist".to_string(),
         sort_name: None,
         discogs_artist_id: None,

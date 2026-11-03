@@ -18,7 +18,7 @@ async fn playing_app_services(track_count: usize) -> (AppServices, Vec<String>, 
         Database::new_test(db_path.to_str().unwrap(), Arc::new(coven::SystemClock)).await.unwrap();
 
     let artist = DbArtist {
-        id: bae_test_support::test_uuid("e36744a5-1a36-460f-891c-e7e558034edf"),
+        id: bae_util::test_ids::test_uuid("e36744a5-1a36-460f-891c-e7e558034edf"),
         name: "Test Artist".to_string(),
         sort_name: None,
         discogs_artist_id: None,
@@ -40,7 +40,7 @@ async fn playing_app_services(track_count: usize) -> (AppServices, Vec<String>, 
         .unwrap();
     let mut track_ids = Vec::with_capacity(track_count);
     for i in 0..track_count {
-        let track_id = bae_test_support::test_uuid(&format!("track-{i}"));
+        let track_id = bae_util::test_ids::test_uuid(&format!("track-{i}"));
         let track = DbTrack::new_test(
             &release.id,
             &track_id,
@@ -298,7 +298,7 @@ async fn a_queued_release_shows_its_title_as_edited_while_it_waits() {
                     crate::import::ArtistAssignment::Picked {
                         credit_name: None,
                         artist: crate::db::ExistingArtist {
-                            artist_id: bae_test_support::test_uuid(
+                            artist_id: bae_util::test_ids::test_uuid(
                                 "e36744a5-1a36-460f-891c-e7e558034edf",
                             ),
                             name: "Test Artist".to_string(),

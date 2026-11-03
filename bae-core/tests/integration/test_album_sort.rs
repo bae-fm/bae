@@ -38,7 +38,7 @@ async fn insert_listed_album(db: &Database, listed: &ListedAlbum) {
 
 async fn insert_default_artist(db: &Database) -> String {
     let artist = DbArtist {
-        id: bae_test_support::test_uuid("default-test-artist"),
+        id: bae_util::test_ids::test_uuid("default-test-artist"),
         name: "Default Artist".to_string(),
         sort_name: None,
         discogs_artist_id: None,

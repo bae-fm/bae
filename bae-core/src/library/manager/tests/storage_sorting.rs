@@ -95,7 +95,7 @@ async fn storage_page_sort_by_file_count() {
         insert_release(&manager, &release).await;
         for i in 0..*file_count {
             let file = NewReleaseFile {
-                id: bae_test_support::test_uuid(&format!("{}-file-{i}", release.id)),
+                id: bae_util::test_ids::test_uuid(&format!("{}-file-{i}", release.id)),
                 release_id: release.id.clone(),
                 original_filename: format!("{i}.flac"),
                 content_type: bae_util::content_type::ContentType::Flac,
@@ -126,7 +126,7 @@ async fn storage_page_sort_by_total_size() {
         manager.database.insert_album(&album).await.unwrap();
         insert_release(&manager, &release).await;
         let file = NewReleaseFile {
-            id: bae_test_support::test_uuid(&format!("{}-file", release.id)),
+            id: bae_util::test_ids::test_uuid(&format!("{}-file", release.id)),
             release_id: release.id.clone(),
             original_filename: "a.flac".to_string(),
             content_type: bae_util::content_type::ContentType::Flac,

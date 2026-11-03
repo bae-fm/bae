@@ -379,7 +379,7 @@ async fn a_picked_artist_assignment_to_a_missing_row_is_rejected() {
         .set_album_artists(
             &hash,
             &[crate::import::Credited::plain(ArtistAssignment::picked(ExistingArtist {
-                artist_id: bae_test_support::test_uuid("missing-artist"),
+                artist_id: bae_util::test_ids::test_uuid("missing-artist"),
                 name: "Missing Artist".to_string(),
                 sort_name: None,
                 musicbrainz_artist_id: None,

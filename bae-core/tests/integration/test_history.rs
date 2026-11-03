@@ -1,6 +1,7 @@
 use bae_core::db::history::HistoryAudience;
 use bae_core::db::people::Sharing;
-use bae_test_support::{connect_storage, storage_library, test_uuid};
+use bae_test_support::{connect_storage, storage_library};
+use bae_util::test_ids::test_uuid;
 use std::time::Duration;
 
 #[tokio::test]

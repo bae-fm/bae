@@ -334,7 +334,7 @@ async fn the_queue_reads_are_planned_on_their_keys() {
 async fn a_window_reads_its_entries_and_the_queue_length() {
     let (db, _tmp) = temp_db().await;
     let releases: Vec<String> =
-        (0..5).map(|i| bae_test_support::test_uuid(&format!("window-release-{i}"))).collect();
+        (0..5).map(|i| bae_util::test_ids::test_uuid(&format!("window-release-{i}"))).collect();
     enqueue_releases(&db, releases.iter().map(|id| download(id)).collect()).await.unwrap();
     let mut live = crate::library::Downloads::new(db.clone()).subscribe_windows(
         crate::db::LibraryPageWindows::from([

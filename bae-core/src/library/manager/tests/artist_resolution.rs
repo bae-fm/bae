@@ -2,7 +2,7 @@
 async fn exact_various_artists_source_match_wins_over_the_other_provider_row() {
     let (manager, _tmp) = setup_test_manager().await;
     let discogs_artist = DbArtist {
-        id: bae_test_support::test_uuid("1da4c08e-afdf-45f9-aad8-0e5d681d2f29"),
+        id: bae_util::test_ids::test_uuid("1da4c08e-afdf-45f9-aad8-0e5d681d2f29"),
         name: "Artist Group".to_string(),
         sort_name: None,
         discogs_artist_id: Some(crate::db::VARIOUS_ARTISTS.discogs.to_string()),
@@ -10,7 +10,7 @@ async fn exact_various_artists_source_match_wins_over_the_other_provider_row() {
         created_at: manager.clock.now().into(),
     };
     let musicbrainz_artist = DbArtist {
-        id: bae_test_support::test_uuid("9556efc5-bd4b-47b2-b699-4c2f44c83c91"),
+        id: bae_util::test_ids::test_uuid("9556efc5-bd4b-47b2-b699-4c2f44c83c91"),
         name: "Artist Group".to_string(),
         sort_name: None,
         discogs_artist_id: None,
@@ -21,7 +21,7 @@ async fn exact_various_artists_source_match_wins_over_the_other_provider_row() {
     manager.insert_artist(&musicbrainz_artist).await.unwrap();
 
     let incoming = DbArtist {
-        id: bae_test_support::test_uuid("8a85b0df-729d-42d1-86d1-4de55db1415c"),
+        id: bae_util::test_ids::test_uuid("8a85b0df-729d-42d1-86d1-4de55db1415c"),
         name: "Artist Group".to_string(),
         sort_name: None,
         discogs_artist_id: None,
@@ -38,7 +38,7 @@ async fn exact_various_artists_source_match_wins_over_the_other_provider_row() {
 async fn cross_provider_mismatch_is_not_offered_as_a_two_artist_merge() {
     let (manager, _tmp) = setup_test_manager().await;
     let discogs_artist = DbArtist {
-        id: bae_test_support::test_uuid("cross-provider-discogs-artist"),
+        id: bae_util::test_ids::test_uuid("cross-provider-discogs-artist"),
         name: "Artist One".to_string(),
         sort_name: None,
         discogs_artist_id: Some("discogs-1".to_string()),
@@ -46,7 +46,7 @@ async fn cross_provider_mismatch_is_not_offered_as_a_two_artist_merge() {
         created_at: manager.clock.now().into(),
     };
     let musicbrainz_artist = DbArtist {
-        id: bae_test_support::test_uuid("cross-provider-musicbrainz-artist"),
+        id: bae_util::test_ids::test_uuid("cross-provider-musicbrainz-artist"),
         name: "Artist One".to_string(),
         sort_name: None,
         discogs_artist_id: None,
@@ -56,7 +56,7 @@ async fn cross_provider_mismatch_is_not_offered_as_a_two_artist_merge() {
     manager.insert_artist(&discogs_artist).await.unwrap();
     manager.insert_artist(&musicbrainz_artist).await.unwrap();
     let incoming = DbArtist {
-        id: bae_test_support::test_uuid("cross-provider-incoming-artist"),
+        id: bae_util::test_ids::test_uuid("cross-provider-incoming-artist"),
         name: "Artist One".to_string(),
         sort_name: None,
         discogs_artist_id: Some("discogs-1".to_string()),

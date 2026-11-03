@@ -54,7 +54,7 @@ async fn insert_export_release_rows(
             &release.id,
             name,
             bae_util::content_type::ContentType::Flac,
-            bae_test_support::test_uuid(&format!("{}-export-file-{index}", release.id)),
+            bae_util::test_ids::test_uuid(&format!("{}-export-file-{index}", release.id)),
             created_at,
         );
         let path = source_dir.join(name);

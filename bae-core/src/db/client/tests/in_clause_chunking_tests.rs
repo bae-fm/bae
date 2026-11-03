@@ -4,7 +4,7 @@ pub(crate) async fn chunked_track_db() -> (Database, tempfile::TempDir, Vec<Stri
     let (db, tmp) = super::temp_db().await;
     let track_count = SQL_MAX_IN_VARS * 45;
     let track_ids: Vec<String> = (0..track_count)
-        .map(|index| bae_test_support::test_uuid(&format!("track-{index}")))
+        .map(|index| bae_util::test_ids::test_uuid(&format!("track-{index}")))
         .collect();
     let seed_track_ids = track_ids.clone();
     db.call(move |conn| {

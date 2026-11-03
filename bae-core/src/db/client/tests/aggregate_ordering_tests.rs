@@ -103,7 +103,7 @@ async fn release_file_source_audio_facts_round_trip_without_track_rows() {
         &db,
         tmp.path(),
         NewReleaseFile {
-            id: bae_test_support::test_uuid("source-audio-round-trip"),
+            id: bae_util::test_ids::test_uuid("source-audio-round-trip"),
             release_id: RELEASE_A.to_string(),
             original_filename: "album.flac".to_string(),
             content_type: bae_util::content_type::ContentType::Flac,
@@ -246,7 +246,7 @@ pub(crate) async fn insert_files_out_of_natural_order(db: &Database, dir: &std::
             db,
             dir,
             NewReleaseFile {
-                id: bae_test_support::test_uuid(&format!("ordering-file-{i}")),
+                id: bae_util::test_ids::test_uuid(&format!("ordering-file-{i}")),
                 release_id: RELEASE_A.to_string(),
                 original_filename: name.to_string(),
                 content_type: bae_util::content_type::ContentType::from_mime(mime),

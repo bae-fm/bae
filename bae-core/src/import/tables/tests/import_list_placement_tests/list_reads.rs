@@ -122,7 +122,7 @@ impl Library {
     /// The release at `display_path` as this device imported it, its release
     /// written at `created_at` (RFC 3339): what puts it on Done.
     fn imported(&self, display_path: &str, created_at: &str) -> String {
-        let album = bae_test_support::test_uuid(&format!("album {display_path}"));
+        let album = bae_util::test_ids::test_uuid(&format!("album {display_path}"));
         let release = self.release_id(display_path);
         format!(
             "INSERT INTO albums (id, title, is_compilation, created_at)
@@ -137,7 +137,7 @@ impl Library {
 
     /// The id of the release [`Self::imported`] writes for `display_path`.
     fn release_id(&self, display_path: &str) -> String {
-        bae_test_support::test_uuid(&format!("release {display_path}"))
+        bae_util::test_ids::test_uuid(&format!("release {display_path}"))
     }
 
     /// The person's skip of the release at `display_path`.

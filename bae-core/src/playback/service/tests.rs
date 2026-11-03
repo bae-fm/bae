@@ -107,7 +107,7 @@ async fn seed_test_releases(
         return;
     }
     let artist = DbArtist {
-        id: bae_test_support::test_uuid("e36744a5-1a36-460f-891c-e7e558034edf"),
+        id: bae_util::test_ids::test_uuid("e36744a5-1a36-460f-891c-e7e558034edf"),
         name: "Artist Name".to_string(),
         sort_name: None,
         discogs_artist_id: None,

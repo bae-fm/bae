@@ -9,7 +9,7 @@ use super::*;
 pub(super) async fn release_db(count: usize) -> (Database, tempfile::TempDir, Vec<String>) {
     let (db, tmp) = super::temp_db().await;
     let track_ids: Vec<String> = (0..count)
-        .map(|index| bae_test_support::test_uuid(&format!("queue-track-{index}")))
+        .map(|index| bae_util::test_ids::test_uuid(&format!("queue-track-{index}")))
         .collect();
     let seed = track_ids.clone();
     db.call(move |conn| {

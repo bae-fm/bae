@@ -77,7 +77,7 @@ fn credit_named(name: &str) -> ArtistAssignment {
 
 fn existing_artist() -> DbArtist {
     DbArtist {
-        id: bae_test_support::test_uuid("library-artist"),
+        id: bae_util::test_ids::test_uuid("library-artist"),
         name: "Library Artist".to_string(),
         sort_name: Some("Artist, Library".to_string()),
         discogs_artist_id: Some("discogs-library".to_string()),

@@ -25,7 +25,7 @@ async fn an_artist_identity_conflict_round_trips_with_both_library_artists() {
     let tables = crate::import::tables::ImportTables::new(db.clone());
     let (_, hash) = stored_pane_candidate(&db).await;
     let discogs = DbArtist {
-        id: bae_test_support::test_uuid("conflict-round-trip-discogs-artist"),
+        id: bae_util::test_ids::test_uuid("conflict-round-trip-discogs-artist"),
         name: "Artist One".to_string(),
         sort_name: None,
         discogs_artist_id: Some("discogs-1".to_string()),
@@ -33,7 +33,7 @@ async fn an_artist_identity_conflict_round_trips_with_both_library_artists() {
         created_at: fixed_now(),
     };
     let musicbrainz = DbArtist {
-        id: bae_test_support::test_uuid("conflict-round-trip-musicbrainz-artist"),
+        id: bae_util::test_ids::test_uuid("conflict-round-trip-musicbrainz-artist"),
         name: "Artist One".to_string(),
         sort_name: Some("Artist One, The".to_string()),
         discogs_artist_id: None,
@@ -56,7 +56,7 @@ async fn resolving_an_artist_identity_conflict_merges_library_links_and_clears_t
     let tables = crate::import::tables::ImportTables::new(db.clone());
     let (_, hash) = stored_pane_candidate(&db).await;
     let discogs = DbArtist {
-        id: bae_test_support::test_uuid("conflict-merge-discogs-artist"),
+        id: bae_util::test_ids::test_uuid("conflict-merge-discogs-artist"),
         name: "Artist One".to_string(),
         sort_name: None,
         discogs_artist_id: Some("discogs-1".to_string()),
@@ -64,7 +64,7 @@ async fn resolving_an_artist_identity_conflict_merges_library_links_and_clears_t
         created_at: fixed_now(),
     };
     let musicbrainz = DbArtist {
-        id: bae_test_support::test_uuid("conflict-merge-musicbrainz-artist"),
+        id: bae_util::test_ids::test_uuid("conflict-merge-musicbrainz-artist"),
         name: "Artist One".to_string(),
         sort_name: Some("Artist One, The".to_string()),
         discogs_artist_id: None,
@@ -74,16 +74,16 @@ async fn resolving_an_artist_identity_conflict_merges_library_links_and_clears_t
     db.insert_artist(&discogs).await.unwrap();
     db.insert_artist(&musicbrainz).await.unwrap();
     let album = DbAlbum {
-        id: bae_test_support::test_uuid("conflict-merge-album"),
+        id: bae_util::test_ids::test_uuid("conflict-merge-album"),
         title: "Album Title".to_string(),
         year: None,
         is_compilation: false,
         created_at: fixed_now(),
     };
     db.insert_album(&album).await.unwrap();
-    let release_id = bae_test_support::test_uuid("conflict-merge-release");
-    let track_id = bae_test_support::test_uuid("conflict-merge-track");
-    let work_id = bae_test_support::test_uuid("conflict-merge-work");
+    let release_id = bae_util::test_ids::test_uuid("conflict-merge-release");
+    let track_id = bae_util::test_ids::test_uuid("conflict-merge-track");
+    let work_id = bae_util::test_ids::test_uuid("conflict-merge-work");
     let pending_hash = "pending-artist-merge".to_string();
     let seed_discogs_id = discogs.id.clone();
     let seed_musicbrainz_id = musicbrainz.id.clone();
@@ -142,7 +142,7 @@ async fn resolving_an_artist_identity_conflict_merges_library_links_and_clears_t
                          VALUES (?, ?, ?, ?{source_value}, '2026-01-02T03:04:05Z')"
                     ),
                     params![
-                        bae_test_support::test_uuid(&format!(
+                        bae_util::test_ids::test_uuid(&format!(
                             "conflict-merge-{table}-{artist_index}"
                         )),
                         owner_id,
@@ -307,7 +307,7 @@ async fn resolving_a_conflict_moves_the_absorbed_artists_image_to_the_survivor()
     let tables = crate::import::tables::ImportTables::new(db.clone());
     let (_, hash) = stored_pane_candidate(&db).await;
     let discogs = DbArtist {
-        id: bae_test_support::test_uuid("image-move-discogs-artist"),
+        id: bae_util::test_ids::test_uuid("image-move-discogs-artist"),
         name: "Artist One".to_string(),
         sort_name: None,
         discogs_artist_id: Some("discogs-1".to_string()),
@@ -315,7 +315,7 @@ async fn resolving_a_conflict_moves_the_absorbed_artists_image_to_the_survivor()
         created_at: fixed_now(),
     };
     let musicbrainz = DbArtist {
-        id: bae_test_support::test_uuid("image-move-musicbrainz-artist"),
+        id: bae_util::test_ids::test_uuid("image-move-musicbrainz-artist"),
         name: "Artist One".to_string(),
         sort_name: None,
         discogs_artist_id: None,
@@ -361,7 +361,7 @@ async fn resolving_a_conflict_refuses_a_third_provider_identity_without_changing
     let tables = crate::import::tables::ImportTables::new(db.clone());
     let (_, hash) = stored_pane_candidate(&db).await;
     let discogs = DbArtist {
-        id: bae_test_support::test_uuid("three-identity-discogs-artist"),
+        id: bae_util::test_ids::test_uuid("three-identity-discogs-artist"),
         name: "Artist One".to_string(),
         sort_name: None,
         discogs_artist_id: Some("discogs-1".to_string()),
@@ -369,7 +369,7 @@ async fn resolving_a_conflict_refuses_a_third_provider_identity_without_changing
         created_at: fixed_now(),
     };
     let musicbrainz = DbArtist {
-        id: bae_test_support::test_uuid("three-identity-musicbrainz-artist"),
+        id: bae_util::test_ids::test_uuid("three-identity-musicbrainz-artist"),
         name: "Artist One".to_string(),
         sort_name: None,
         discogs_artist_id: None,

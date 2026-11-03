@@ -184,7 +184,7 @@ async fn release_files_are_read_in_each_order_the_storage_sheet_sorts_by() {
             &db,
             tmp.path(),
             NewReleaseFile {
-                id: bae_test_support::test_uuid(&format!("sorted-file-{i}")),
+                id: bae_util::test_ids::test_uuid(&format!("sorted-file-{i}")),
                 release_id: RELEASE_A.to_string(),
                 original_filename: name.to_string(),
                 content_type: bae_util::content_type::ContentType::from_mime(mime),

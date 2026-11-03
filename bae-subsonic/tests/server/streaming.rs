@@ -343,7 +343,7 @@ async fn musicbrainz_id_surfaces_when_present() {
     let ((manager, database, catalogs, closing), _t) = new_manager().await;
     // coven takes only canonical UUIDs on a synced row, so the fixture ids are
     // UUIDs derived from readable monikers.
-    let artist_id = bae_test_support::test_uuid("mb-artist-1");
+    let artist_id = bae_util::test_ids::test_uuid("mb-artist-1");
     let artist = DbArtist {
         id: artist_id.clone(),
         name: "MB Artist".to_string(),
@@ -355,14 +355,14 @@ async fn musicbrainz_id_surfaces_when_present() {
     manager.insert_artist(&artist).await.unwrap();
     let now = chrono::Utc::now();
     let album = DbAlbum {
-        id: bae_test_support::test_uuid("mb-album-1"),
+        id: bae_util::test_ids::test_uuid("mb-album-1"),
         title: "MB Album".to_string(),
         year: Some(2010),
         is_compilation: false,
         created_at: now,
     };
     let release = DbRelease {
-        id: bae_test_support::test_uuid("mb-release-1"),
+        id: bae_util::test_ids::test_uuid("mb-release-1"),
         album_id: album.id.clone(),
         release_name: None,
         pressing: bae_types::pressing::Pressing::blank(),
@@ -378,7 +378,7 @@ async fn musicbrainz_id_surfaces_when_present() {
         now,
     );
     let track = DbTrack {
-        id: bae_test_support::test_uuid("mb-track-1"),
+        id: bae_util::test_ids::test_uuid("mb-track-1"),
         release_id: release.id.clone(),
         title: "MB Track".to_string(),
         medium_id: medium.id.clone(),
@@ -538,8 +538,8 @@ async fn an_album_prints_its_credit_line_and_lists_every_credited_artist() {
     // artist; `artistId` stays the protocol's one id, the first credit's.
     let ((manager, database, catalogs, closing), _t) = new_manager().await;
     let now = chrono::Utc::now();
-    let artist_a = bae_test_support::test_uuid("credit-artist-a");
-    let artist_b = bae_test_support::test_uuid("credit-artist-b");
+    let artist_a = bae_util::test_ids::test_uuid("credit-artist-a");
+    let artist_b = bae_util::test_ids::test_uuid("credit-artist-b");
     for (id, name) in [(&artist_a, "Artist A"), (&artist_b, "Artist B")] {
         manager
             .insert_artist(&DbArtist {
@@ -554,14 +554,14 @@ async fn an_album_prints_its_credit_line_and_lists_every_credited_artist() {
             .unwrap();
     }
     let album = DbAlbum {
-        id: bae_test_support::test_uuid("credit-album"),
+        id: bae_util::test_ids::test_uuid("credit-album"),
         title: "Credited Album".to_string(),
         year: None,
         is_compilation: false,
         created_at: now,
     };
     let release = DbRelease {
-        id: bae_test_support::test_uuid("credit-release"),
+        id: bae_util::test_ids::test_uuid("credit-release"),
         album_id: album.id.clone(),
         release_name: None,
         pressing: bae_types::pressing::Pressing::blank(),

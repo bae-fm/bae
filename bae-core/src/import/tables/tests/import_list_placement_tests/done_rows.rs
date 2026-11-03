@@ -11,7 +11,7 @@ fn done(title: &str, artists: &str) -> Placed {
 }
 
 fn uuid(name: &str) -> String {
-    bae_test_support::test_uuid(name)
+    bae_util::test_ids::test_uuid(name)
 }
 
 /// The Done row follows its library album: retitling it, its credits coming,

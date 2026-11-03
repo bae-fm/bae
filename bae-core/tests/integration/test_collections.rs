@@ -1,6 +1,7 @@
 use bae_core::db::collections::{CollectionError, RatingTarget, Stars};
 use bae_core::db::people::Sharing;
-use bae_test_support::{connect_storage, made_profile, storage_library, test_uuid};
+use bae_test_support::{connect_storage, made_profile, storage_library};
+use bae_util::test_ids::test_uuid;
 
 #[tokio::test]
 async fn ratings_and_playlist_edits_preserve_identity_order_and_audience() {

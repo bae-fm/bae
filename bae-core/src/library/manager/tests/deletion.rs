@@ -159,7 +159,7 @@ async fn track_display_carries_the_cover_version() {
     let track = crate::db::DbTrack::new_test(&release.id, TRACK_A, "Track Title", 1);
     let track_artist = crate::db::DbTrackArtist::new(
         &track.id,
-        &bae_test_support::test_uuid("e36744a5-1a36-460f-891c-e7e558034edf"),
+        &bae_util::test_ids::test_uuid("e36744a5-1a36-460f-891c-e7e558034edf"),
         0,
         Utc::now(),
     );

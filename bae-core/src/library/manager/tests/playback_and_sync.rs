@@ -237,7 +237,7 @@ async fn seed_release_tracks(manager: &LibraryManager, count: usize) -> Vec<Stri
     insert_release(manager, &release).await;
     let mut track_ids = Vec::with_capacity(count);
     for i in 0..count {
-        let track_id = bae_test_support::test_uuid(&format!("track-{i}"));
+        let track_id = bae_util::test_ids::test_uuid(&format!("track-{i}"));
         let track = crate::db::DbTrack::new_test(
             &release.id,
             &track_id,

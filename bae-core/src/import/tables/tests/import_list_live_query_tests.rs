@@ -291,7 +291,7 @@ async fn one_folder_hash_records_one_release() {
     let (db, _temp) = live_db().await;
     record_import(&db, "folder-hash").await;
     let mut copy = db.find_release_by_id(RELEASE_ID).await.unwrap().unwrap();
-    copy.id = bae_test_support::test_uuid("second-imported-copy");
+    copy.id = bae_util::test_ids::test_uuid("second-imported-copy");
     db.insert_release(&copy).await.unwrap();
     let second = copy.id.clone();
     let refused = db

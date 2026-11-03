@@ -293,7 +293,7 @@ async fn insert_local_release_in_album(
             &release.id,
             name,
             bae_util::content_type::ContentType::Flac,
-            bae_test_support::test_uuid(&format!("{}-test-file-{index}", release.id)),
+            bae_util::test_ids::test_uuid(&format!("{}-test-file-{index}", release.id)),
             created_at,
         );
         manager.add_external_file_for_test(&file, &path).await.unwrap();

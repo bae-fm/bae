@@ -245,7 +245,7 @@ mod tests {
         .await
         .unwrap();
         let artist = DbArtist {
-            id: bae_test_support::test_uuid("artist-1"),
+            id: bae_util::test_ids::test_uuid("artist-1"),
             name: "Artist Name".to_string(),
             sort_name: None,
             discogs_artist_id: None,
@@ -360,7 +360,7 @@ mod tests {
         .await
         .unwrap();
         let artist = DbArtist {
-            id: bae_test_support::test_uuid("artist-1"),
+            id: bae_util::test_ids::test_uuid("artist-1"),
             name: "Test Artist".to_string(),
             sort_name: None,
             discogs_artist_id: None,

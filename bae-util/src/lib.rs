@@ -17,6 +17,8 @@ pub mod session_cache;
 pub mod stored_image;
 pub mod task_failure;
 #[cfg(any(test, feature = "test-utils"))]
+pub mod test_ids;
+#[cfg(any(test, feature = "test-utils"))]
 pub mod test_logs;
 #[cfg(desktop)]
 pub mod text_encoding;

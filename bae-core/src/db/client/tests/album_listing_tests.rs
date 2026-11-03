@@ -66,13 +66,14 @@ async fn rows_changed_adding_release(db: &Database, release: &str) -> i64 {
 #[tokio::test]
 async fn adding_a_release_rewrites_no_other_release_of_its_album() {
     let (db, _tmp) = listed_db().await;
-    let second = rows_changed_adding_release(&db, &bae_test_support::test_uuid("box-set-1")).await;
+    let second =
+        rows_changed_adding_release(&db, &bae_util::test_ids::test_uuid("box-set-1")).await;
     for i in 2..22 {
-        rows_changed_adding_release(&db, &bae_test_support::test_uuid(&format!("box-set-{i}")))
+        rows_changed_adding_release(&db, &bae_util::test_ids::test_uuid(&format!("box-set-{i}")))
             .await;
     }
     let twenty_second =
-        rows_changed_adding_release(&db, &bae_test_support::test_uuid("box-set-22")).await;
+        rows_changed_adding_release(&db, &bae_util::test_ids::test_uuid("box-set-22")).await;
     assert_eq!(twenty_second, second, "the 22nd release changes as many rows as the second");
 }
 
@@ -81,7 +82,7 @@ async fn adding_a_release_rewrites_no_other_release_of_its_album() {
 #[tokio::test]
 async fn renaming_an_album_renames_its_releases_listing_rows() {
     let (db, _tmp) = listed_db().await;
-    rows_changed_adding_release(&db, &bae_test_support::test_uuid("box-set-1")).await;
+    rows_changed_adding_release(&db, &bae_util::test_ids::test_uuid("box-set-1")).await;
     exec(
         &db,
         "UPDATE albums SET title = 'Album Title Renamed' \
