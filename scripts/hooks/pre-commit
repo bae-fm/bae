@@ -155,6 +155,14 @@ if staged_file_in_list "scripts/check-bundled-libraries.py" \
     }
 fi
 
+if staged_file_in_list "scripts/xcresult-tests-ran.py" \
+    || staged_file_in_list "scripts/tests/xcresult-tests-ran-test.py"; then
+    run_check "test-filter checker tests" \
+        python3 scripts/tests/xcresult-tests-ran-test.py || {
+        exit 1
+    }
+fi
+
 RUST_SOURCE_OR_MANIFEST_CHANGED=0
 RUST_DEPENDENCY_INPUT_CHANGED=0
 while IFS= read -r file; do

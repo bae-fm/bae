@@ -55,6 +55,17 @@ All commands run from the repo root.
 
 The Xcode build runs `build-macos.sh` for the same configuration: Debug builds the Rust bridge in debug with the `test-keyring` and `dev-reset` features, Release builds it with `--release` and neither.
 
+## Tests
+
+    bae-macos/test.sh             # every baeTests test
+    bae-macos/test.sh PlaybackFailureDisplayTests \
+        'QueueAdditionTests/queueAdditionReachesBadge()'   # only these
+
+A name is a Swift test type (`Type`, or `Type/test` for one test), not a file
+name: one file can hold several types. xcodebuild passes a filter that matches
+nothing, so the script reads the run's result bundle and fails when a name ran
+no tests.
+
 ## Formatting
 
 Swift code is formatted with [swift-format](https://github.com/swiftlang/swift-format), which ships with Xcode (run via `xcrun swift-format`). The pre-commit hook formats `bae-macos/bae/bae/` automatically. Config is in `.swift-format`.

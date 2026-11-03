@@ -272,13 +272,8 @@ check "xcodebuild" \
     -disableAutomaticPackageResolution build
 
 check "xcodebuild test (baeTests)" \
-  env BAE_BRIDGE_FEATURES=oauth-providers,cloudkit,desktop \
-  xcodebuild -project bae-macos/bae/bae.xcodeproj -scheme bae -configuration Debug \
-    CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
-    -derivedDataPath bae-macos/bae/.build/derivedData \
-    -clonedSourcePackagesDirPath bae-macos/bae/.build/SourcePackages \
-    -scmProvider system -disablePackageRepositoryCache -skipPackageUpdates \
-    -disableAutomaticPackageResolution test
+  env BAE_BRIDGE_FEATURES=oauth-providers,cloudkit,desktop bae-macos/test.sh
+check "test-filter checker" python3 scripts/tests/xcresult-tests-ran-test.py
 
 # The Screenshots workflow compiles the scene registry in baeShots, which no
 # other macOS gate builds.
