@@ -672,3 +672,7 @@ unsafe fn next_packet_byte(
     av_packet_free(&mut packet);
     read
 }
+
+#[cfg(test)]
+#[path = "probe_tests.rs"]
+mod tests;

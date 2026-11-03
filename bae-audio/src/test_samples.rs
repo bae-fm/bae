@@ -76,3 +76,33 @@ pub fn assert_captured_matches_reference(
     }
     best_offset
 }
+
+/// A WAV file of `data` behind a plain 16-byte `fmt ` chunk: `format_tag` 1 for
+/// integer PCM, 3 for float.
+pub fn wav_with_fmt(
+    format_tag: u16,
+    bits_per_sample: u16,
+    channels: u16,
+    sample_rate: u32,
+    data: &[u8],
+) -> Vec<u8> {
+    let block_align = channels * bits_per_sample / 8;
+    let byte_rate = sample_rate * block_align as u32;
+    let riff_size = 36 + data.len() as u32;
+    let mut wav = Vec::with_capacity(44 + data.len());
+    wav.extend_from_slice(b"RIFF");
+    wav.extend_from_slice(&riff_size.to_le_bytes());
+    wav.extend_from_slice(b"WAVE");
+    wav.extend_from_slice(b"fmt ");
+    wav.extend_from_slice(&16u32.to_le_bytes());
+    wav.extend_from_slice(&format_tag.to_le_bytes());
+    wav.extend_from_slice(&channels.to_le_bytes());
+    wav.extend_from_slice(&sample_rate.to_le_bytes());
+    wav.extend_from_slice(&byte_rate.to_le_bytes());
+    wav.extend_from_slice(&block_align.to_le_bytes());
+    wav.extend_from_slice(&bits_per_sample.to_le_bytes());
+    wav.extend_from_slice(b"data");
+    wav.extend_from_slice(&(data.len() as u32).to_le_bytes());
+    wav.extend_from_slice(data);
+    wav
+}

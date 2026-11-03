@@ -916,3 +916,7 @@ pub fn encode_i32(
     })?;
     Ok(cursor.into_inner().unwrap().into_inner())
 }
+
+#[cfg(test)]
+#[path = "encode_tests.rs"]
+mod tests;

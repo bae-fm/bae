@@ -1,3 +1,5 @@
+use super::*;
+
 fn index(entries: &[u64], length: Option<u64>) -> HeaderSeekIndex {
     HeaderSeekIndex { entries: entries.to_vec(), length }
 }

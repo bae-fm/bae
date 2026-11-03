@@ -193,3 +193,7 @@ pub(super) unsafe fn seek_to_sample_or_warn(
         );
     }
 }
+
+#[cfg(test)]
+#[path = "seek_tests.rs"]
+mod tests;

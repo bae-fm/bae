@@ -1,3 +1,10 @@
+use crate::test_samples::filled_sparse_buffer;
+use crate::{
+    decode_audio, decode_audio_streaming, encode_i32, init, seek_landing_bytes, DecodeStart,
+    EncodeFormat,
+};
+use std::sync::Arc;
+
 /// A `seek_to_sample` streaming decode (FFmpeg's `avformat_seek_file`, over a
 /// fully-buffered sparse buffer) yields the same samples as decoding the whole
 /// file and slicing at the seek point.
@@ -26,7 +33,7 @@ fn check_seek_to_produces_correct_samples(sample_rate: u32, channels: u32, bits_
     let flac_data =
         encode_i32(EncodeFormat::Flac { bits_per_sample }, &original, sample_rate, channels)
             .unwrap();
-    let ground_truth = decode_audio(buffer_from(&flac_data), None, None).unwrap();
+    let ground_truth = decode_audio(filled_sparse_buffer(&flac_data), None, None).unwrap();
 
     let seek_sample = sample_rate as u64; // 1 second
 
@@ -193,8 +200,7 @@ fn flac_seek_uses_seektable_not_binary_search() {
 
     // 30s synthetic stereo CUE/FLAC fixture (silence / white noise / brown noise)
     // carrying a 6-point seektable.
-    let path =
-        concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/cue_flac/Test Album.flac");
+    let path = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/cue_flac/Test Album.flac");
     let flac = std::fs::read(path).expect("read fixture");
     let file_len = flac.len() as u64;
 
@@ -275,8 +281,7 @@ fn byte_seek_to_landing_is_sample_exact() {
     use std::thread;
 
     init();
-    let path =
-        concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/cue_flac/Test Album.flac");
+    let path = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/cue_flac/Test Album.flac");
     let flac = std::fs::read(path).expect("read fixture");
     let sample_rate = 44100u64;
     let channels = 2u32;
@@ -289,7 +294,8 @@ fn byte_seek_to_landing_is_sample_exact() {
     let landing = landings[0];
     let wrong_landing = landings[1];
 
-    let ground = decode_audio(buffer_from(&flac), None, None).expect("ground-truth decode");
+    let ground =
+        decode_audio(filled_sparse_buffer(&flac), None, None).expect("ground-truth decode");
     let scale = i32::MAX as f32;
 
     // Decode track 2 with a given by-byte seek target, trimming to `start` and
@@ -378,343 +384,125 @@ fn byte_seek_to_landing_is_sample_exact() {
         if sabotaged.len() >= 256 { mse(&sabotaged, target) } else { f64::NAN },
     );
 }
-
-/// A streaming (non-seekable) Opus/Ogg encode produces a valid stream: the Ogg
-/// muxer has a true streaming path, so a plain `Write` sink with no seek
-/// callback still yields a decodable file. This is the sink type a socket
-/// would use.
-#[test]
-fn streaming_opus_encode_into_a_plain_write_sink_is_decodable() {
-    use std::sync::Mutex;
-
-    init();
-
-    /// A Write-only sink (no Seek): bytes land in a shared Vec.
-    #[derive(Clone)]
-    struct SharedVec(Arc<Mutex<Vec<u8>>>);
-    impl std::io::Write for SharedVec {
-        fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-            self.0.lock().unwrap().extend_from_slice(buf);
-            Ok(buf.len())
-        }
-        fn flush(&mut self) -> std::io::Result<()> {
-            Ok(())
-        }
-    }
-
-    let sample_rate = 44_100u32;
-    let samples: Vec<i32> = (0..sample_rate as usize * 2)
-        .map(|i| {
-            let t = (i / 2) as f64 / sample_rate as f64;
-            (0.5 * i32::MAX as f64 * (2.0 * std::f64::consts::PI * 440.0 * t).sin()) as i32
-        })
-        .collect();
-
-    let out = SharedVec(Arc::new(Mutex::new(Vec::new())));
-    let mut encoder = StreamingEncoder::streaming(
-        StreamEncodeFormat::OpusOgg { bitrate_kbps: 192 },
-        Box::new(out.clone()),
-        Arc::new(std::sync::atomic::AtomicBool::new(false)),
-    );
-    encoder.on_format(sample_rate, 2);
-    encoder.on_samples(&samples);
-    encoder.finish().expect("streaming Opus encode");
-
-    let bytes = out.0.lock().unwrap().clone();
-    assert!(bytes.len() > 100, "Opus/Ogg stream too small: {}", bytes.len());
-    assert_eq!(&bytes[0..4], b"OggS");
-
-    let decoded = decode_audio(buffer_from(&bytes), None, None).expect("decode streamed Opus");
-    assert_eq!(decoded.sample_rate, 48_000);
-    assert_eq!(decoded.channels, 2);
-    assert!(!decoded.samples.is_empty());
-}
-
-/// A streaming (non-seekable) MP3 encode produces a decodable stream: the MP3
-/// muxer's Xing/LAME VBR header is patched by seeking back, so the streaming
-/// sink disables it (`write_xing=0`), leaving a plain CBR frame stream that
-/// needs no seek-back. A socket serving a transcode uses this sink.
-#[test]
-fn streaming_mp3_encode_into_a_plain_write_sink_is_decodable() {
-    use std::sync::Mutex;
-
-    init();
-
-    /// A Write-only sink (no Seek): bytes land in a shared Vec.
-    #[derive(Clone)]
-    struct SharedVec(Arc<Mutex<Vec<u8>>>);
-    impl std::io::Write for SharedVec {
-        fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-            self.0.lock().unwrap().extend_from_slice(buf);
-            Ok(buf.len())
-        }
-        fn flush(&mut self) -> std::io::Result<()> {
-            Ok(())
-        }
-    }
-
-    let sample_rate = 44_100u32;
-    let seconds = 2;
-    let samples: Vec<i32> = (0..sample_rate as usize * 2 * seconds)
-        .map(|i| {
-            let t = (i / 2) as f64 / sample_rate as f64;
-            (0.5 * i32::MAX as f64 * (2.0 * std::f64::consts::PI * 440.0 * t).sin()) as i32
-        })
-        .collect();
-
-    let out = SharedVec(Arc::new(Mutex::new(Vec::new())));
-    let mut encoder = StreamingEncoder::streaming(
-        StreamEncodeFormat::Mp3 { bitrate_kbps: 128 },
-        Box::new(out.clone()),
-        Arc::new(std::sync::atomic::AtomicBool::new(false)),
-    );
-    encoder.on_format(sample_rate, 2);
-    encoder.on_samples(&samples);
-    encoder.finish().expect("streaming MP3 encode");
-
-    let bytes = out.0.lock().unwrap().clone();
-    assert!(bytes.len() > 100, "MP3 stream too small: {}", bytes.len());
-
-    let decoded = decode_audio(buffer_from(&bytes), None, None).expect("decode streamed MP3");
-    assert_eq!(decoded.sample_rate, sample_rate);
-    assert_eq!(decoded.channels, 2);
-    // The decode recovers roughly the source duration (MP3's encoder/decoder
-    // delay shifts the exact frame count, so allow a generous window).
-    let decoded_frames = decoded.samples.len() / 2;
-    let expected_frames = sample_rate as usize * seconds;
-    assert!(
-        decoded_frames > expected_frames * 3 / 4,
-        "decoded {decoded_frames} frames, expected near {expected_frames}"
-    );
-}
-
-/// A seekable FLAC encode's patched STREAMINFO carries the real total-sample
-/// count — the header patch-back the seekable sink exists for. STREAMINFO's
-/// 36-bit total-samples field sits at bytes 21..26 of the file (after "fLaC" +
-/// the 4-byte block header + 10 bytes of rates/counts), high bits first.
-#[test]
-fn seekable_flac_encode_patches_streaminfo_total_samples() {
-    init();
-
-    let frames = 44_100u64; // 1s mono
-    let samples: Vec<i32> = vec![0i32; frames as usize];
-    let flac = encode_i32(EncodeFormat::Flac { bits_per_sample: 16 }, &samples, 44_100, 1)
-        .expect("encode FLAC");
-    assert_eq!(&flac[0..4], b"fLaC");
-
-    // STREAMINFO: byte 21 low nibble = total-samples bits 32..36, bytes 22..26
-    // = bits 0..32.
-    let total = ((u64::from(flac[21] & 0x0F)) << 32)
-        | (u64::from(flac[22]) << 24)
-        | (u64::from(flac[23]) << 16)
-        | (u64::from(flac[24]) << 8)
-        | u64::from(flac[25]);
-    assert_eq!(total, frames, "STREAMINFO total_samples must be patched to the real frame count");
-}
-
-/// A PCM-shape change mid-encode (two decodes with different formats feeding
-/// one encoder) is recorded and surfaces at finish — the guarantee the
-/// CUE-image save relies on instead of its old pre-encode shape check.
-#[test]
-fn encoder_rejects_a_pcm_shape_change_mid_stream() {
-    init();
-
-    let mut encoder = StreamingEncoder::seekable(
-        EncodeFormat::Flac { bits_per_sample: 16 },
-        Box::new(std::io::Cursor::new(Vec::new())),
-        Arc::new(std::sync::atomic::AtomicBool::new(false)),
-    );
-    encoder.on_format(44_100, 2);
-    encoder.on_samples(&[0i32; 8820]);
-    encoder.on_format(48_000, 2); // a second track probes to a different rate
-    assert!(encoder.error().is_some(), "the shape change must be recorded when it happens");
-    let err = encoder.finish().expect_err("finish must surface the shape change");
-    assert!(err.contains("PCM shape changed"), "unexpected error: {err}");
-}
-
-/// A streaming (non-seekable) WAV encode is a valid WAV of unknown length: the
-/// RIFF and `data` sizes say "unknown" (`0xFFFFFFFF`) rather than a count the
-/// muxer would have patched in, the `fmt ` chunk describes the PCM, and the
-/// `data` payload is exactly the input at the requested depth — at 16 bits the
-/// top half of each sample, at 24 bits its top three bytes, little-endian. No
-/// chunk sits between `fmt ` and `data`, so at 16 bits the header is the
-/// canonical 44 bytes a renderer's simplest WAV reader expects.
-#[test]
-fn streaming_wav_encode_into_a_plain_write_sink_is_unsized_pcm() {
-    use std::sync::Mutex;
-
-    init();
-
-    /// A Write-only sink (no Seek): bytes land in a shared Vec.
-    #[derive(Clone)]
-    struct SharedVec(Arc<Mutex<Vec<u8>>>);
-    impl std::io::Write for SharedVec {
-        fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-            self.0.lock().unwrap().extend_from_slice(buf);
-            Ok(buf.len())
-        }
-        fn flush(&mut self) -> std::io::Result<()> {
-            Ok(())
-        }
-    }
-
-    let sample_rate = 44_100u32;
-    let samples: Vec<i32> = (0..sample_rate as usize * 2)
-        .map(|i| {
-            let t = (i / 2) as f64 / sample_rate as f64;
-            (0.5 * i32::MAX as f64 * (2.0 * std::f64::consts::PI * 440.0 * t).sin()) as i32
-        })
-        .collect();
-
-    for bits in [16u32, 24] {
-        let out = SharedVec(Arc::new(Mutex::new(Vec::new())));
-        let mut encoder = StreamingEncoder::streaming(
-            StreamEncodeFormat::PcmWav { bits_per_sample: bits },
-            Box::new(out.clone()),
-            Arc::new(std::sync::atomic::AtomicBool::new(false)),
-        );
-        encoder.on_format(sample_rate, 2);
-        encoder.on_samples(&samples);
-        encoder.finish().expect("streaming WAV encode");
-        let bytes = out.0.lock().unwrap().clone();
-
-        let wav = crate::parse_streamed_wav(&bytes).expect("a WAV stream");
-        if bits == 16 {
-            assert_eq!(&bytes[36..40], b"data", "data follows fmt directly");
-            assert_eq!(bytes.len() - wav.data.len(), 44, "a canonical header");
-        }
-        assert_eq!(wav.riff_size, u32::MAX, "{bits}-bit RIFF size is unknown");
-        assert_eq!(wav.data_size, u32::MAX, "{bits}-bit data size is unknown");
-        assert_eq!(wav.channels, 2);
-        assert_eq!(wav.sample_rate, sample_rate);
-        assert_eq!(wav.bits_per_sample, bits);
-        let bytes_per_sample = bits as usize / 8;
-        assert_eq!(
-            wav.data.len(),
-            samples.len() * bytes_per_sample,
-            "{bits}-bit data holds every input frame"
-        );
-        let expected: Vec<u8> = samples
-            .iter()
-            .flat_map(|&s| s.to_le_bytes()[4 - bytes_per_sample..].to_vec())
-            .collect();
-        assert!(wav.data == expected, "{bits}-bit data is the input's top {bits} bits");
-    }
-}
-
-/// Collects a decode's interleaved samples.
-#[derive(Default)]
-struct CollectedSamples(Vec<i32>);
-
-impl DecodedSink for CollectedSamples {
-    fn on_format(&mut self, _sample_rate: u32, _channels: u32) {}
-
-    fn on_samples(&mut self, samples: &[i32]) {
-        self.0.extend_from_slice(samples);
-    }
-}
-
-/// A 16-bit stereo FLAC of `frames` frames, each channel `level(frame)` of full
-/// scale plus a little noise, written to a temp file. Returns the file and its
-/// bytes.
-fn stereo_flac_file(frames: usize) -> (tempfile::NamedTempFile, Vec<u8>) {
-    let mut noise: u64 = 1;
+/// Twenty seconds of a stereo two-tone sweep, encoded as `format`. Long enough
+/// that a seek to its later targets lands inside the file rather than at its
+/// first packet.
+fn lossy_sweep(format: EncodeFormat) -> Vec<u8> {
+    let frames = 44_100 * 20;
     let samples: Vec<i32> = (0..frames * 2)
         .map(|i| {
-            noise = noise
-                .wrapping_mul(6_364_136_223_846_793_005)
-                .wrapping_add(1_442_695_040_888_963_407);
-            let jitter = (noise >> 33) as f64 / (1u64 << 31) as f64 - 0.5;
-            (((i as f64 * 0.013).sin() * 0.5 + jitter * 0.05) * i32::MAX as f64) as i32
+            let t = (i / 2) as f64 / 44_100.0;
+            let v = 0.3 * (2.0 * std::f64::consts::PI * 440.0 * t).sin()
+                + 0.2 * (2.0 * std::f64::consts::PI * 1_234.5 * t * (1.0 + t / 10.0)).sin();
+            (v * i32::MAX as f64) as i32
         })
         .collect();
-    let flac = encode_i32(EncodeFormat::Flac { bits_per_sample: 16 }, &samples, 44_100, 2).unwrap();
-    let mut file = tempfile::NamedTempFile::new().unwrap();
-    std::io::Write::write_all(&mut file, &flac).unwrap();
-    std::io::Write::flush(&mut file).unwrap();
-    (file, flac)
+    encode_i32(format, &samples, 44_100, 2).expect("encode the sweep")
 }
 
-/// Decode `flac` by jumping to the byte `landing`, as playback starts a track:
-/// trimmed to `start` when given, else everything from the landing's frame.
-fn decode_from_landing(flac: &[u8], landing: u64, start: Option<u64>) -> Vec<i32> {
-    let mut decoded = CollectedSamples::default();
-    decode_audio_to_sink_with_seek(
-        buffer_from(flac),
-        DecodeStart::Byte(landing),
-        start,
-        None,
-        &mut decoded,
-        Arc::new(std::sync::atomic::AtomicBool::new(false)),
-    )
-    .expect("decode from the landing");
-    decoded.0
+fn lossy_formats() -> [(&'static str, EncodeFormat); 3] {
+    [
+        ("MP3", EncodeFormat::Mp3 { bitrate_kbps: 192 }),
+        ("AAC", EncodeFormat::Aac { bitrate_kbps: 192 }),
+        ("Opus", EncodeFormat::OpusOgg { bitrate_kbps: 128 }),
+    ]
 }
 
-/// A target in the middle of a long FLAC is found by searching, not by reading
-/// the file up to it: the bytes read stay a small part of the file, and the
-/// landing is the target's frame.
+/// Targets at the first frame's second sample, inside the first frames, and
+/// well into the file, in the stream's own sample rate.
+fn lossy_targets(sample_rate: u32) -> [u64; 3] {
+    let second = u64::from(sample_rate);
+    [1, 4_000, 12 * second + 123]
+}
+
+/// A sink decode that starts at sample N yields exactly what a decode from the
+/// stream's start yields from N on, for codecs that skip an encoder delay
+/// (MP3, Opus) and ones that don't (AAC here).
 #[test]
-fn seek_landing_bytes_search_a_long_flac_rather_than_read_it() {
+fn a_lossy_sink_decode_from_a_sample_is_the_whole_decode_from_it() {
     init();
-    let frames = 4_608 * 1_000;
-    let (file, flac) = stereo_flac_file(frames);
-    let path = file.path();
-    let target = frames as u64 / 2 + 123;
-
-    let landing = seek_landing_bytes(path, &[target]).expect("landing")[0];
-
-    let read = crate::test_reads::landing_search(file.path());
-    assert!(read > 0, "the search's reads are counted");
-    assert!(
-        read < flac.len() as u64 / 10,
-        "finding one landing read {read} of the file's {} bytes",
-        flac.len()
-    );
-    let ground = decode_audio(buffer_from(&flac), None, None).expect("ground-truth decode");
-    let decoded = decode_from_landing(&flac, landing, Some(target));
-    assert!(
-        decoded == ground.samples[target as usize * 2..],
-        "the landing decodes from the target sample on"
-    );
+    for (name, format) in lossy_formats() {
+        let bytes = lossy_sweep(format);
+        let whole =
+            decode_audio(filled_sparse_buffer(&bytes), None, None).expect("decode from the start");
+        let channels = whole.channels as usize;
+        for target in lossy_targets(whole.sample_rate) {
+            let from = decode_audio(filled_sparse_buffer(&bytes), Some(target), None)
+                .expect("decode from the target");
+            let expected = &whole.samples[target as usize * channels..];
+            assert_eq!(from.samples.len(), expected.len(), "{name} from {target}: sample count");
+            assert!(
+                from.samples == expected,
+                "{name} from {target}: the samples differ from the whole decode's"
+            );
+        }
+    }
 }
 
-/// A target in a FLAC's last frame lands on the frame before it, the last one
-/// a byte-seeked decode can date, and one in the third-to-last frame -- where
-/// FFmpeg's binary search fails -- lands on its own frame. Both decode exactly.
-#[test]
-fn seek_landing_bytes_land_targets_in_a_flacs_final_frames() {
-    init();
-    let frames = 4_608 * 30 + 1_000;
-    let (file, flac) = stereo_flac_file(frames);
-    let path = file.path();
-    // STREAMINFO follows the 4-byte marker and its 4-byte block header; its
-    // maximum block size is bytes 2..4, and this encoder's blocks are all that
-    // size but the last.
-    let block = u64::from(u16::from_be_bytes([flac[10], flac[11]]));
-    let total = frames as u64;
-    let last_frame_start = (total - 1) / block * block;
-    let third_to_last = last_frame_start - 2 * block;
-    let targets = [total - 1, third_to_last + 100];
+/// Run playback's streaming decode over `bytes` and collect what it played.
+fn stream_lossy(bytes: &[u8], sample_rate: u32, start: Option<u64>) -> Vec<f32> {
+    use crate::track_stream::create_track_stream_pair_with_capacity;
 
-    let landings = seek_landing_bytes(path, &targets).expect("landings");
-
-    let ground = decode_audio(buffer_from(&flac), None, None).expect("ground-truth decode");
-    assert_eq!(
-        decode_from_landing(&flac, landings[0], None).len() as u64 / 2,
-        total - (last_frame_start - block),
-        "the last frame's target lands on the frame before it"
-    );
-    assert_eq!(
-        decode_from_landing(&flac, landings[1], None).len() as u64 / 2,
-        total - third_to_last,
-        "the third-to-last frame's target lands on its frame"
-    );
-    for (&target, &landing) in targets.iter().zip(&landings) {
-        assert!(
-            decode_from_landing(&flac, landing, Some(target))
-                == ground.samples[target as usize * 2..],
-            "target {target} decodes exactly from its landing"
+    let buffer = filled_sparse_buffer(bytes);
+    let (mut sink, mut source, _ready) =
+        create_track_stream_pair_with_capacity(sample_rate, 2, 4 * sample_rate as usize);
+    let decoder = std::thread::spawn(move || {
+        let result = decode_audio_streaming(
+            buffer,
+            &mut sink,
+            start.map_or(DecodeStart::StreamStart, DecodeStart::Sample),
+            start,
+            None,
+            None,
+            Arc::new(std::sync::atomic::AtomicBool::new(false)),
         );
+        sink.mark_finished();
+        result
+    });
+    let mut played = Vec::new();
+    let mut chunk = [0.0f32; 4_096];
+    loop {
+        let pulled = source.pull_samples(&mut chunk);
+        played.extend_from_slice(&chunk[..pulled]);
+        if pulled == 0 && source.is_finished() {
+            break;
+        }
+    }
+    decoder.join().expect("the decoder thread").expect("the streaming decode");
+    played
+}
+
+/// Playback's streaming decode, started at sample N, plays from sample N: as
+/// many samples as the stream holds from N on, placed where a decode from the
+/// start places them. Unlike a sink decode it seeks, so a lossy decoder starts
+/// on a pre-roll before N rather than at the stream's start, and its samples
+/// converge on the whole decode's within the pre-roll (AAC's, Opus's).
+///
+/// An MP3 has no index to seek a sample by, so its decode reads from the
+/// stream's start and plays exactly the whole decode's samples from N.
+#[test]
+fn a_lossy_streaming_decode_from_a_sample_plays_from_it() {
+    init();
+    for (name, format) in lossy_formats() {
+        let bytes = lossy_sweep(format);
+        let sample_rate = decode_audio(filled_sparse_buffer(&bytes), Some(0), Some(1))
+            .expect("probe the rate")
+            .sample_rate;
+        let whole = stream_lossy(&bytes, sample_rate, None);
+        for target in lossy_targets(sample_rate) {
+            let from = stream_lossy(&bytes, sample_rate, Some(target));
+            let expected = &whole[target as usize * 2..];
+            assert_eq!(from.len(), expected.len(), "{name} from {target}: sample count");
+            if name == "MP3" {
+                assert!(
+                    from == expected,
+                    "{name} from {target}: the samples differ from the whole decode's"
+                );
+            }
+        }
+        // A start whose pre-roll reaches the stream's start decodes as the
+        // whole decode does.
+        let from = stream_lossy(&bytes, sample_rate, Some(1));
+        assert!(from == whole[2..], "{name} from 1: the samples differ from the whole decode's");
     }
 }

@@ -958,7 +958,3 @@ impl Drop for BufferReader {
 #[cfg(test)]
 #[path = "sparse_buffer_tests.rs"]
 mod tests;
-
-#[cfg(test)]
-#[path = "sparse_buffer_poison_tests.rs"]
-mod poison_tests;

@@ -19,13 +19,14 @@ pub mod test_fixtures;
 pub mod test_reads;
 #[cfg(any(test, feature = "test-utils"))]
 pub mod test_samples;
+#[cfg(any(test, feature = "test-utils"))]
+pub mod test_source;
 pub mod track_stream;
 #[cfg(any(test, feature = "test-utils"))]
 mod wav_read;
 
 #[cfg(test)]
-mod test_source;
-#[cfg(test)]
+#[path = "lib_tests.rs"]
 mod tests;
 
 /// Buffer size for FFmpeg custom-IO (`avio`) contexts. The standard 32 KiB
