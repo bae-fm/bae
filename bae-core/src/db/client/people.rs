@@ -4,7 +4,7 @@ use super::profile_request::{
     ProfileRequestState,
 };
 use super::*;
-use crate::people::{Person, PersonProfile, ProfileError, Sharing};
+use crate::db::people::{Person, PersonProfile, ProfileError, Sharing};
 
 /// The columns [`profile_row`] reads, of `people` or of its row `p`.
 macro_rules! profile_columns {
@@ -139,7 +139,7 @@ impl Database {
     /// outcome. A circle refused, or stopped by this device's stop for
     /// good, waits for the person, who acknowledges it by asking again
     /// (§5.4).
-    pub async fn finish_profile_requests(&self) -> Result<(), ProfileError> {
+    pub async fn finish_profile_requests(&self) -> Result<(), DbError> {
         let mut requests = self.subscribe_profile_request();
         while let Some(request) = requests.next().await {
             if let Some(request) = request.map_err(DbError::from)? {
@@ -148,14 +148,14 @@ impl Database {
                 }
             }
         }
-        Err(DbError::Coven(coven::CovenError::Database(coven::DbError::StoreClosed)).into())
+        Err(DbError::Coven(coven::CovenError::Database(coven::DbError::StoreClosed)))
     }
 
     /// The write that creates the profile `request` asked for, from its
     /// landed circle. A profile the person made on another of their devices
     /// meanwhile takes this device's plays instead; the circle made here
     /// stays theirs alone.
-    async fn finish_profile(&self, request: ProfileRequest) -> Result<(), ProfileError> {
+    async fn finish_profile(&self, request: ProfileRequest) -> Result<(), DbError> {
         let _creation = self.inner.profile_creation.lock().await;
         let _registration = self.inner.history_registration.lock().await;
         self.call(move |sql| {

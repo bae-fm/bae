@@ -10,18 +10,18 @@ const ADD_DEVICE_SYNC_INTERVAL: std::time::Duration = std::time::Duration::from_
 impl LibraryManager {
     /// Create this person's profile: at once when their private circle
     /// exists, otherwise once sync has made it (§5.4).
-    pub async fn create_profile(&self, name: &str) -> Result<(), crate::people::ProfileError> {
+    pub async fn create_profile(&self, name: &str) -> Result<(), crate::db::people::ProfileError> {
         self.database.create_profile(name).await
     }
 
-    pub async fn rename_profile(&self, name: &str) -> Result<(), crate::people::ProfileError> {
+    pub async fn rename_profile(&self, name: &str) -> Result<(), crate::db::people::ProfileError> {
         self.database.rename_profile(name).await
     }
 
     pub async fn set_history_sharing(
         &self,
-        sharing: crate::people::Sharing,
-    ) -> Result<(), crate::people::ProfileError> {
+        sharing: crate::db::people::Sharing,
+    ) -> Result<(), crate::db::people::ProfileError> {
         self.database.set_history_sharing(sharing).await
     }
 
@@ -30,7 +30,7 @@ impl LibraryManager {
     pub async fn set_avatar(
         &self,
         bytes: Option<Vec<u8>>,
-    ) -> Result<(), crate::people::ProfileError> {
+    ) -> Result<(), crate::people::AvatarError> {
         let avatar = match bytes {
             Some(bytes) => {
                 // Decoding and re-encoding the image is CPU work.
@@ -39,38 +39,38 @@ impl LibraryManager {
                 })
                 .await
                 .map_err(|failed| self.bug(failed))?
-                .map_err(|detail| crate::people::ProfileError::AvatarImage { detail })?;
+                .map_err(|detail| crate::people::AvatarError::Image { detail })?;
                 Some(jpeg)
             }
             None => None,
         };
-        self.database.set_avatar(avatar).await
+        Ok(self.database.set_avatar(avatar).await?)
     }
 
     pub async fn avatar(
         &self,
         person: coven::MemberId,
-    ) -> Result<Option<Vec<u8>>, crate::people::ProfileError> {
+    ) -> Result<Option<Vec<u8>>, crate::db::people::ProfileError> {
         self.database.avatar(person).await
     }
 
     /// The profile this person asked for, until it is written, live.
     pub fn subscribe_requested_profile(
         &self,
-    ) -> coven::LiveQuery<Option<crate::people::RequestedProfile>> {
+    ) -> coven::LiveQuery<Option<crate::db::people::RequestedProfile>> {
         self.database.subscribe_requested_profile()
     }
 
-    pub fn subscribe_profiles(&self) -> coven::LiveQuery<Vec<crate::people::PersonProfile>> {
+    pub fn subscribe_profiles(&self) -> coven::LiveQuery<Vec<crate::db::people::PersonProfile>> {
         self.database.subscribe_profiles()
     }
 
-    pub async fn people(&self) -> Result<Vec<crate::people::Person>, LibraryError> {
+    pub async fn people(&self) -> Result<Vec<crate::db::people::Person>, LibraryError> {
         Ok(self.database.people().await?)
     }
 
     /// The person using this device, once their registration has applied.
-    pub async fn own_person(&self) -> Result<Option<crate::people::Person>, LibraryError> {
+    pub async fn own_person(&self) -> Result<Option<crate::db::people::Person>, LibraryError> {
         Ok(self.database.own_person().await?)
     }
 

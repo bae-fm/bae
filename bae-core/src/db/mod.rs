@@ -1,12 +1,15 @@
 pub mod admin_change;
 pub(crate) mod client;
+pub mod collections;
 pub mod credits;
 mod error;
 pub use error::DbError;
+pub mod history;
 pub mod identity;
 pub mod membership;
 pub mod migrations;
 mod models;
+pub mod people;
 pub(crate) mod schema;
 pub use schema::configure_store;
 mod resolved_track_audio;

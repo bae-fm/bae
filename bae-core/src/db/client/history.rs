@@ -1,5 +1,5 @@
 use super::*;
-use crate::history::{HistoryAudience, HistoryEntry, HistoryPlay};
+use crate::db::history::{HistoryAudience, HistoryEntry, HistoryPlay};
 use std::time::Duration;
 
 impl Database {
@@ -12,7 +12,7 @@ impl Database {
         started_at: DateTime<Utc>,
     ) -> Result<HistoryPlay, DbError> {
         let audience = match self.own_person().await? {
-            Some(crate::people::Person { profile: Some(profile), membership }) => {
+            Some(crate::db::people::Person { profile: Some(profile), membership }) => {
                 HistoryAudience::Person {
                     person: membership.id,
                     audience: profile.history_sharing.audience(profile.private_circle),
@@ -43,7 +43,8 @@ impl Database {
         let member = own.as_ref().map(|person| person.membership.id);
         match entry.audience {
             HistoryAudience::DevicePrivate => {
-                if let Some(crate::people::Person { profile: Some(profile), membership }) = own {
+                if let Some(crate::db::people::Person { profile: Some(profile), membership }) = own
+                {
                     entry.audience = HistoryAudience::Person {
                         person: membership.id,
                         audience: coven::Audience::Circle(profile.private_circle),
@@ -99,7 +100,7 @@ fn history_rows(sql: &SqlReadContext<'_>) -> rusqlite::Result<Vec<HistoryEntry>>
 
 pub(super) fn adopt_local_history(
     sql: &CovenWrite<'_>,
-    profile: &crate::people::PersonProfile,
+    profile: &crate::db::people::PersonProfile,
 ) -> rusqlite::Result<()> {
     sql.execute("INSERT INTO history (id, person_id, track_id, started_at, played_ms, audience) SELECT id, ?1, track_id, started_at, played_ms, ?2 FROM local_history", params![profile.id.to_string(), coven::Audience::Circle(profile.private_circle)])?;
     sql.execute("DELETE FROM local_history", [])?;

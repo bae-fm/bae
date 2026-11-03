@@ -60,7 +60,7 @@ pub enum CollectionError {
     #[error("the playlist changed; read its entries before reordering it")]
     OrderChanged,
     #[error(transparent)]
-    Profile(#[from] crate::people::ProfileError),
+    Profile(#[from] crate::db::people::ProfileError),
     #[error(transparent)]
     Database(#[from] crate::db::DbError),
 }

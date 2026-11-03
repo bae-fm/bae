@@ -5,7 +5,7 @@ pub enum BridgeSharing {
     Private,
     Household,
 }
-mirror_enum! { BridgeSharing = bae_core::people::Sharing,
+mirror_enum! { BridgeSharing = bae_core::db::people::Sharing,
     from_core: pub(crate) fn, into_core: pub(crate) fn,
     variants: { Private, Household },
 }
@@ -18,7 +18,7 @@ pub enum BridgeStars {
     Four,
     Five,
 }
-mirror_enum! { BridgeStars = bae_core::collections::Stars,
+mirror_enum! { BridgeStars = bae_core::db::collections::Stars,
     from_core: pub(crate) fn, into_core: pub(crate) fn,
     variants: { One, Two, Three, Four, Five },
 }
@@ -28,7 +28,7 @@ pub enum BridgeRatingTarget {
     Album { id: String },
     Track { id: String },
 }
-mirror_enum! { BridgeRatingTarget = bae_core::collections::RatingTarget,
+mirror_enum! { BridgeRatingTarget = bae_core::db::collections::RatingTarget,
     from_core: pub(crate) fn, into_core: pub(crate) fn,
     variants: { Album(id), Track(id) },
 }
@@ -56,8 +56,8 @@ pub struct BridgePersonProfile {
     pub avatar_id: Option<String>,
 }
 impl BridgePersonProfile {
-    pub(crate) fn from_core(value: bae_core::people::PersonProfile) -> Self {
-        let bae_core::people::PersonProfile {
+    pub(crate) fn from_core(value: bae_core::db::people::PersonProfile) -> Self {
+        let bae_core::db::people::PersonProfile {
             id,
             name,
             private_circle,
@@ -92,20 +92,20 @@ pub enum BridgeRequestedProfileState {
     Stopped { stop: super::BridgeDeviceStop },
 }
 impl BridgeRequestedProfile {
-    pub(crate) fn from_core(value: bae_core::people::RequestedProfile) -> Self {
-        let bae_core::people::RequestedProfile { name, state } = value;
+    pub(crate) fn from_core(value: bae_core::db::people::RequestedProfile) -> Self {
+        let bae_core::db::people::RequestedProfile { name, state } = value;
         Self {
             name,
             state: match state {
-                bae_core::people::RequestedProfileState::Making => {
+                bae_core::db::people::RequestedProfileState::Making => {
                     BridgeRequestedProfileState::Making
                 }
-                bae_core::people::RequestedProfileState::Refused(reason) => {
+                bae_core::db::people::RequestedProfileState::Refused(reason) => {
                     BridgeRequestedProfileState::Refused {
                         reason: super::BridgeOperationRejection::from_core(reason),
                     }
                 }
-                bae_core::people::RequestedProfileState::Stopped(stop) => {
+                bae_core::db::people::RequestedProfileState::Stopped(stop) => {
                     BridgeRequestedProfileState::Stopped {
                         stop: super::BridgeDeviceStop::from_core(stop),
                     }
@@ -122,8 +122,8 @@ pub struct BridgeRating {
     pub stars: BridgeStars,
 }
 impl BridgeRating {
-    pub(crate) fn from_core(value: bae_core::collections::Rating) -> Self {
-        let bae_core::collections::Rating { person, target, stars } = value;
+    pub(crate) fn from_core(value: bae_core::db::collections::Rating) -> Self {
+        let bae_core::db::collections::Rating { person, target, stars } = value;
         Self {
             person: person.0.to_string(),
             target: BridgeRatingTarget::from_core(target),
@@ -140,8 +140,8 @@ pub struct BridgePlaylist {
     pub audience: BridgeAudience,
 }
 impl BridgePlaylist {
-    pub(crate) fn from_core(value: bae_core::collections::Playlist) -> Self {
-        let bae_core::collections::Playlist { id, person, name, audience } = value;
+    pub(crate) fn from_core(value: bae_core::db::collections::Playlist) -> Self {
+        let bae_core::db::collections::Playlist { id, person, name, audience } = value;
         Self {
             id: id.to_string(),
             person: person.0.to_string(),
@@ -157,19 +157,24 @@ pub struct BridgePlaylistEntry {
     pub track_id: String,
 }
 impl BridgePlaylistEntry {
-    pub(crate) fn from_core(value: bae_core::collections::PlaylistEntry) -> Self {
-        let bae_core::collections::PlaylistEntry { position_id, track_id } = value;
+    pub(crate) fn from_core(value: bae_core::db::collections::PlaylistEntry) -> Self {
+        let bae_core::db::collections::PlaylistEntry { position_id, track_id } = value;
         Self { position_id: position_id.to_string(), track_id }
     }
 }
 
-impl From<bae_core::people::ProfileError> for BridgeError {
-    fn from(error: bae_core::people::ProfileError) -> Self {
+impl From<bae_core::db::people::ProfileError> for BridgeError {
+    fn from(error: bae_core::db::people::ProfileError) -> Self {
         Self::diagnostic(BridgeErrorCategory::from_core(error.category()), error)
     }
 }
-impl From<bae_core::collections::CollectionError> for BridgeError {
-    fn from(error: bae_core::collections::CollectionError) -> Self {
+impl From<bae_core::people::AvatarError> for BridgeError {
+    fn from(error: bae_core::people::AvatarError) -> Self {
+        Self::diagnostic(BridgeErrorCategory::from_core(error.category()), error)
+    }
+}
+impl From<bae_core::db::collections::CollectionError> for BridgeError {
+    fn from(error: bae_core::db::collections::CollectionError) -> Self {
         Self::diagnostic(BridgeErrorCategory::from_core(error.category()), error)
     }
 }

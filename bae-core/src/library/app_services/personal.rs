@@ -1,18 +1,20 @@
 use super::*;
-use crate::collections::{CollectionError, Playlist, PlaylistEntry, Rating, RatingTarget, Stars};
+use crate::db::collections::{
+    CollectionError, Playlist, PlaylistEntry, Rating, RatingTarget, Stars,
+};
+use crate::db::people::Sharing;
 use crate::library::LibraryError;
-use crate::people::Sharing;
 
 impl AppServices {
-    delegate_async!(manager, create_profile => create_profile(name: &str) -> Result<(), crate::people::ProfileError>);
-    delegate_async!(manager, rename_profile => rename_profile(name: &str) -> Result<(), crate::people::ProfileError>);
-    delegate_async!(manager, set_history_sharing => set_history_sharing(sharing: crate::people::Sharing) -> Result<(), crate::people::ProfileError>);
-    delegate_async!(manager, set_avatar => set_avatar(bytes: Option<Vec<u8>>) -> Result<(), crate::people::ProfileError>);
-    delegate_async!(manager, avatar => avatar(person: coven::MemberId) -> Result<Option<Vec<u8>>, crate::people::ProfileError>);
-    delegate_values!(subscribe_profiles => subscribe_profiles() -> Vec<crate::people::PersonProfile>);
-    delegate_values!(subscribe_requested_profile => subscribe_requested_profile() -> Option<crate::people::RequestedProfile>);
-    delegate_async!(manager, people => people() -> Result<Vec<crate::people::Person>, LibraryError>);
-    delegate_async!(manager, own_person => own_person() -> Result<Option<crate::people::Person>, LibraryError>);
+    delegate_async!(manager, create_profile => create_profile(name: &str) -> Result<(), crate::db::people::ProfileError>);
+    delegate_async!(manager, rename_profile => rename_profile(name: &str) -> Result<(), crate::db::people::ProfileError>);
+    delegate_async!(manager, set_history_sharing => set_history_sharing(sharing: crate::db::people::Sharing) -> Result<(), crate::db::people::ProfileError>);
+    delegate_async!(manager, set_avatar => set_avatar(bytes: Option<Vec<u8>>) -> Result<(), crate::people::AvatarError>);
+    delegate_async!(manager, avatar => avatar(person: coven::MemberId) -> Result<Option<Vec<u8>>, crate::db::people::ProfileError>);
+    delegate_values!(subscribe_profiles => subscribe_profiles() -> Vec<crate::db::people::PersonProfile>);
+    delegate_values!(subscribe_requested_profile => subscribe_requested_profile() -> Option<crate::db::people::RequestedProfile>);
+    delegate_async!(manager, people => people() -> Result<Vec<crate::db::people::Person>, LibraryError>);
+    delegate_async!(manager, own_person => own_person() -> Result<Option<crate::db::people::Person>, LibraryError>);
     delegate_async!(manager, set_rating => set_rating(target: RatingTarget, stars: Option<Stars>) -> Result<(), CollectionError>);
     delegate_async!(manager, ratings => ratings() -> Result<Vec<Rating>, crate::db::DbError>);
     delegate_values!(subscribe_ratings => subscribe_ratings() -> Vec<Rating>);

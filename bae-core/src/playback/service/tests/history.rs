@@ -90,7 +90,7 @@ async fn a_counted_play_is_saved_again_only_at_its_next_boundary() {
     };
     let (fmt, position) = hear(2100);
     service.handle_position_event(fmt, position).await;
-    let saved = |rows: Vec<crate::history::HistoryEntry>| {
+    let saved = |rows: Vec<crate::db::history::HistoryEntry>| {
         assert_eq!(rows.len(), 1);
         rows[0].played
     };

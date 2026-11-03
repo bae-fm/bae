@@ -1,6 +1,8 @@
 use super::*;
-use crate::collections::{CollectionError, Playlist, PlaylistEntry, Rating, RatingTarget, Stars};
-use crate::people::Sharing;
+use crate::db::collections::{
+    CollectionError, Playlist, PlaylistEntry, Rating, RatingTarget, Stars,
+};
+use crate::db::people::Sharing;
 
 impl Database {
     pub async fn set_rating(

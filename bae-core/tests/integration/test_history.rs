@@ -1,5 +1,5 @@
-use bae_core::history::HistoryAudience;
-use bae_core::people::Sharing;
+use bae_core::db::history::HistoryAudience;
+use bae_core::db::people::Sharing;
 use bae_test_support::{connect_storage, storage_library, test_uuid};
 use std::time::Duration;
 

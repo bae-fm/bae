@@ -1,13 +1,11 @@
 pub mod album_detail;
 pub mod app;
-pub mod collections;
 #[doc(hidden)]
 #[cfg(desktop)]
 pub mod cue_flac;
 pub mod db;
 #[cfg(all(feature = "dev-reset", unix))]
 pub mod dev_reset;
-pub mod history;
 #[cfg(desktop)]
 pub mod identify;
 pub mod import;

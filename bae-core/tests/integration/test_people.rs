@@ -1,4 +1,4 @@
-use bae_core::people::{ProfileError, Sharing};
+use bae_core::db::people::{ProfileError, Sharing};
 use bae_test_support::{
     connect_storage, made_profile, made_profile_on, requested_profile_on, storage_library,
 };
@@ -120,7 +120,7 @@ async fn an_undecodable_avatar_is_refused() {
         .await
         .expect_err("bytes that are no image make no avatar");
 
-    assert!(matches!(error, ProfileError::AvatarImage { .. }), "{error}");
+    assert!(matches!(error, bae_core::people::AvatarError::Image { .. }), "{error}");
     assert_eq!(manager.avatar(profile.id).await.unwrap(), None);
     manager.close().await.unwrap();
 }
@@ -143,7 +143,7 @@ pub(super) struct Household {
     owner: coven::CovenHandle,
     storage: std::sync::Arc<coven::MemoryStorage>,
     clock: coven::ClockRef,
-    robin: bae_core::people::PersonProfile,
+    robin: bae_core::db::people::PersonProfile,
 }
 
 /// The Dropbox account a household on Dropbox invites.
@@ -339,7 +339,7 @@ async fn joined_profile(
     guest: &coven::CovenHandle,
     household: &Household,
     requested: Option<Result<(), ProfileError>>,
-) -> bae_core::people::PersonProfile {
+) -> bae_core::db::people::PersonProfile {
     requested.expect("a new person's profile").unwrap();
     let database = bae_core::db::Database::from_handle(
         guest.clone(),

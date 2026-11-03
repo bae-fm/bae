@@ -128,8 +128,8 @@ pub struct BridgePerson {
     pub membership: BridgeMember,
 }
 impl BridgePerson {
-    pub(crate) fn from_core(value: bae_core::people::Person) -> Self {
-        let bae_core::people::Person { profile, membership } = value;
+    pub(crate) fn from_core(value: bae_core::db::people::Person) -> Self {
+        let bae_core::db::people::Person { profile, membership } = value;
         Self {
             profile: profile.map(BridgePersonProfile::from_core),
             membership: BridgeMember::from_core(membership),

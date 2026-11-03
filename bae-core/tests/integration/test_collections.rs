@@ -1,5 +1,5 @@
-use bae_core::collections::{CollectionError, RatingTarget, Stars};
-use bae_core::people::Sharing;
+use bae_core::db::collections::{CollectionError, RatingTarget, Stars};
+use bae_core::db::people::Sharing;
 use bae_test_support::{connect_storage, made_profile, storage_library, test_uuid};
 
 #[tokio::test]

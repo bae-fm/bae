@@ -123,7 +123,7 @@ pub(crate) struct SaveTrackPlan {
 #[derive(Debug, thiserror::Error)]
 pub enum RestoreFromCodeError {
     #[error(transparent)]
-    Profile(#[from] crate::people::ProfileError),
+    Profile(#[from] crate::db::people::ProfileError),
     #[error("restore cancelled")]
     Cancelled,
     #[error("restore failed: {0}")]
@@ -352,7 +352,7 @@ pub async fn restore_from_saved_code(
 /// existing member's keys: that person keeps the row they already have
 /// (§5.4). An asked-for profile is written once sync has made the person's
 /// private circle.
-pub type JoinedLibrary = (coven::CovenHandle, Option<Result<(), crate::people::ProfileError>>);
+pub type JoinedLibrary = (coven::CovenHandle, Option<Result<(), crate::db::people::ProfileError>>);
 
 /// The app's hold on a running join: cancel it before its request is sent, or
 /// check for approval at once. One control covers coven's join and any

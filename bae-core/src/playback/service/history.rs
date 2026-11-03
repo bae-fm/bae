@@ -1,5 +1,5 @@
 use super::*;
-use crate::history::HistoryPlay;
+use crate::db::history::HistoryPlay;
 use std::time::Duration;
 
 pub(super) struct Listening {

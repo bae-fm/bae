@@ -2,7 +2,7 @@
 //! private circle is made, and once this device's stop for good ends it
 //! (§5.4).
 
-use crate::people::{RequestedProfile, RequestedProfileState};
+use crate::db::people::{RequestedProfile, RequestedProfileState};
 use crate::sync::test_devices::run_two_device_test;
 
 /// Robin asks for her profile on her tablet while it is offline, and her
