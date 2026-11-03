@@ -113,8 +113,10 @@ axum = { workspace = true, features = ["http1", "tokio", "json", "form"] }
 # The examples resolve the running user's home once, at the top, to build the
 # app directory they read.
 dirs = { workspace = true }
-# coven's deterministic clock/id fakes for bae's tests (off in production builds).
-coven = { workspace = true, features = ["test-utils"] }
+# coven's deterministic clock/id fakes for bae's tests (off in production
+# builds), and the S3 prefix emptying the bench examples delete their library
+# from storage with.
+coven = { workspace = true, features = ["test-utils", "dev-tools"] }
 # Builds the native keychain refusal coven wraps in `KeychainError`, for the
 # tests of how a missing keychain entitlement is reported.
 keyring-core = { workspace = true }
