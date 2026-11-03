@@ -30,6 +30,7 @@ pub use candidate_edit_field::{CandidateEditField, DraftFieldEdit, PressingFactE
 mod artist_assignment;
 pub use artist_assignment::{
     artists_standing, credited_line, ArtistAssignment, ArtistStanding, ArtistsStanding, Credited,
+    TrackArtistAssignments,
 };
 mod raw_release_edit;
 mod release_edit_display;
@@ -54,13 +55,6 @@ pub use candidate_draft::{
 #[cfg(desktop)]
 pub use candidate_draft::{CandidateMetadataDraft, CandidatePreparedAssets};
 
-/// Whether a track inherits its album artists or has its own ordered credits.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum TrackArtistAssignments {
-    AlbumArtists,
-    Explicit(Vec<Credited>),
-}
-
 /// Trim a raw pressing field; empty (after trim) becomes `None`.
 fn trim_to_option(raw: &str) -> Option<String> {
     let trimmed = raw.trim();
@@ -68,24 +62,6 @@ fn trim_to_option(raw: &str) -> Option<String> {
         None
     } else {
         Some(trimmed.to_string())
-    }
-}
-
-impl TrackArtistAssignments {
-    /// The track's own artists; none when it takes the album's.
-    pub fn explicit(&self) -> &[Credited] {
-        match self {
-            Self::AlbumArtists => &[],
-            Self::Explicit(assignments) => assignments,
-        }
-    }
-
-    /// Each credit normalized and the joins kept as stored (see
-    /// [`Credited::normalized_list`]).
-    pub(crate) fn normalize(&mut self) {
-        if let Self::Explicit(assignments) = self {
-            *assignments = Credited::normalized_list(std::mem::take(assignments));
-        }
     }
 }
 

@@ -83,6 +83,31 @@ pub fn credited_line(credits: &[Credited]) -> String {
     )
 }
 
+/// Whether a track inherits its album artists or has its own ordered credits.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum TrackArtistAssignments {
+    AlbumArtists,
+    Explicit(Vec<Credited>),
+}
+
+impl TrackArtistAssignments {
+    /// The track's own artists; none when it takes the album's.
+    pub fn explicit(&self) -> &[Credited] {
+        match self {
+            Self::AlbumArtists => &[],
+            Self::Explicit(assignments) => assignments,
+        }
+    }
+
+    /// Each credit normalized and the joins kept as stored (see
+    /// [`Credited::normalized_list`]).
+    pub(crate) fn normalize(&mut self) {
+        if let Self::Explicit(assignments) = self {
+            *assignments = Credited::normalized_list(std::mem::take(assignments));
+        }
+    }
+}
+
 /// How one assigned artist stands to the library — what its badge says.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ArtistStanding {
