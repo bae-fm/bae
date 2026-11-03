@@ -512,7 +512,7 @@ pub(crate) fn extract_file_tag_snapshot(
 /// snapshot. Folder artwork remains the candidate's source-neutral fallback.
 pub(crate) fn embedded_cover_selection(
     snapshot: &FileTagSnapshot,
-) -> Option<super::CoverSelection> {
+) -> Option<super::cover_art::PreparedCover> {
     snapshot
         .embedded_cover
         .as_ref()
@@ -525,10 +525,10 @@ pub(crate) fn embedded_cover_selection(
 pub(crate) fn embedded_cover_of(
     source_relative_path: &str,
     content_type: &ContentType,
-) -> Option<super::CoverSelection> {
+) -> Option<super::cover_art::PreparedCover> {
     content_type
         .is_supported_cover()
-        .then(|| super::CoverSelection::Embedded(source_relative_path.to_string()))
+        .then(|| super::cover_art::PreparedCover::Embedded(source_relative_path.to_string()))
 }
 
 fn observe_file(file: &ScannedFile) -> Result<FileObservation, ImportError> {

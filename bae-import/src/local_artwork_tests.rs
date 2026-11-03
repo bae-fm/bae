@@ -10,12 +10,12 @@ fn artwork(relative_path: &str, size: u64) -> ScannedFile {
     )
 }
 
-fn embedded() -> Option<crate::CoverSelection> {
-    Some(crate::CoverSelection::Embedded("01 Track.mp3".to_string()))
+fn embedded() -> Option<crate::cover_art::PreparedCover> {
+    Some(crate::cover_art::PreparedCover::Embedded("01 Track.mp3".to_string()))
 }
 
-fn local(path: &str) -> Option<crate::CoverSelection> {
-    Some(crate::CoverSelection::Local(path.to_string()))
+fn local(path: &str) -> Option<crate::cover_art::PreparedCover> {
+    Some(crate::cover_art::PreparedCover::Local(path.to_string()))
 }
 
 #[test]

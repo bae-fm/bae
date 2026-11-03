@@ -226,12 +226,8 @@ impl CandidatePreparations {
             ImportError::Refused("metadata replacement has no candidate state row".into())
         })?;
         let draft = super::pane::edit_over_audio(draft.clone(), &prep.metadata.draft)?;
-        let metadata = crate::CandidateMetadataDraft {
-            draft,
-            provenance: provenance.cloned(),
-            cover: None,
-            assets: crate::CandidatePreparedAssets::default(),
-        };
+        let metadata =
+            crate::CandidateMetadataDraft { draft, provenance: provenance.cloned(), cover: None };
         self.apply_metadata(prep, None, candidate_key, metadata, None, releases.to_vec()).await
     }
 
@@ -443,7 +439,7 @@ impl CandidatePreparations {
         read: &CandidateAsRead,
         snapshot: &crate::file_tag_snapshot::FileTagSnapshot,
         draft: &crate::CandidateDraft,
-        cover: Option<&crate::CoverSelection>,
+        cover: Option<&crate::cover_art::PreparedCover>,
     ) -> Result<u64, ImportError> {
         let prep = self.loaded_at(read).await?;
         let scanned = ScannedCandidateKey {
@@ -454,7 +450,6 @@ impl CandidatePreparations {
             draft: draft.clone(),
             provenance: Some(crate::MetadataProvenance::FileMetadata),
             cover: cover.cloned(),
-            assets: crate::CandidatePreparedAssets::default(),
         };
         self.apply_metadata(
             prep,
@@ -521,44 +516,20 @@ impl CandidatePreparations {
     }
 }
 
-/// A candidate's cover and the bytes prepared for it, which move together: a
-/// remote selection is stored with the image that revision fetched, and one
-/// without the other is refused when the rows are written.
-struct PreparedCover {
-    selection: Option<crate::CoverSelection>,
-    image: Option<bae_catalogs::remote_image::RemoteImage>,
-}
-
-/// The cover a metadata application settles the candidate on.
+/// Settle the cover a metadata application leaves the candidate with.
 ///
-/// `supplied` is the image the source itself brought. A source that brought
-/// none says nothing about the cover, so the candidate keeps the one it has,
-/// whatever it is: the `cover.jpg` beside the audio, the artwork its tags
-/// embed, or the image an earlier pick fetched — which is why the prepared
-/// bytes travel with the selection rather than being left behind.
-fn settled_cover(supplied: PreparedCover, stored: PreparedCover) -> PreparedCover {
-    match supplied.selection {
-        Some(_) => supplied,
-        None => stored,
-    }
-}
-
-/// Move the settled cover onto `metadata`, taking it from `stored` where the
-/// application supplies none. The bytes move with it, so what is written is
-/// a selection and the image prepared for it, never one of the two.
+/// `metadata`'s cover is the image the source itself brought. A source that
+/// brought none says nothing about the cover, so the candidate keeps the one
+/// `stored` has, whatever it is: the `cover.jpg` beside the audio, the
+/// artwork its tags embed, or the image an earlier pick fetched, with the
+/// bytes it was fetched with.
 fn settle_cover(
     metadata: &mut crate::CandidateMetadataDraft,
     stored: &mut crate::CandidateMetadataDraft,
 ) {
-    let settled = settled_cover(
-        PreparedCover {
-            selection: metadata.cover.take(),
-            image: metadata.assets.remote_cover.take(),
-        },
-        PreparedCover { selection: stored.cover.take(), image: stored.assets.remote_cover.take() },
-    );
-    metadata.cover = settled.selection;
-    metadata.assets.remote_cover = settled.image;
+    if metadata.cover.is_none() {
+        metadata.cover = stored.cover.take();
+    }
 }
 
 #[cfg(test)]

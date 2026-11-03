@@ -58,6 +58,38 @@ pub enum CoverSelection {
     Embedded(String),
 }
 
+/// The cover a candidate's draft holds: a [`CoverSelection`] with whatever
+/// the import needs to store it without asking anyone again. A catalog's
+/// image carries the bytes fetched for it, so no draft holds a remote cover
+/// the import would have to fetch; an image the folder holds needs nothing
+/// beyond its name.
+#[derive(Clone, Debug, PartialEq)]
+pub enum PreparedCover {
+    /// A catalog's image, the catalog for attribution, and the original's
+    /// bytes as that catalog served them.
+    Remote {
+        image: RemoteImageSet,
+        source: Catalog,
+        fetched: bae_catalogs::remote_image::RemoteImage,
+    },
+    /// Local file in the album folder (relative path from album root)
+    Local(String),
+    /// Artwork embedded in one audio file, identified by that file's relative
+    /// path in the file-tag snapshot.
+    Embedded(String),
+}
+
+impl PreparedCover {
+    /// What the cover names, without the bytes it carries.
+    pub fn selection(&self) -> CoverSelection {
+        match self {
+            Self::Remote { image, source, .. } => CoverSelection::Remote(image.clone(), *source),
+            Self::Local(file_id) => CoverSelection::Local(file_id.clone()),
+            Self::Embedded(source_file_id) => CoverSelection::Embedded(source_file_id.clone()),
+        }
+    }
+}
+
 /// The cover a candidate will be committed with, and where to draw it from.
 ///
 /// The selection is the candidate's stored one — what the scan read off the

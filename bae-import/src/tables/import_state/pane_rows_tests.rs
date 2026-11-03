@@ -1,33 +1,35 @@
 //! A draft's rows, the cover and the artist assignments as stored and read back.
 
+use crate::cover_art::PreparedCover;
 use crate::tables::import_state::tests::*;
-use crate::{ArtistAssignment, CoverSelection, RawTrackEdit, TrackArtistAssignments};
+use crate::{ArtistAssignment, RawTrackEdit, TrackArtistAssignments};
 use bae_catalogs::catalog::Catalog;
 use bae_catalogs::credits::ArtistCredit;
 use bae_db::test_fixtures::empty_db;
 use bae_db::watched_path::host_root;
 use bae_db::ExistingArtist;
 
-fn remote_with_copies(url: &str) -> CoverSelection {
+fn remote_with_copies(url: &str) -> PreparedCover {
     use bae_catalogs::remote_image::{DownscaledCopy, RemoteImageSet};
-    CoverSelection::Remote(
-        RemoteImageSet::with_copies(
+    PreparedCover::Remote {
+        image: RemoteImageSet::with_copies(
             url.to_string(),
             [250, 500]
                 .map(|max_edge| DownscaledCopy { url: format!("{url}-{max_edge}"), max_edge })
                 .to_vec(),
         ),
-        Catalog::MusicBrainz,
-    )
+        source: Catalog::MusicBrainz,
+        fetched: fetched_bytes(),
+    }
 }
 
 /// The bytes a remote cover is stored with, fetched with it; none for a cover
 /// the folder holds.
-fn fetched_bytes(cover: &CoverSelection) -> Option<bae_catalogs::remote_image::RemoteImage> {
-    matches!(cover, CoverSelection::Remote(_, _)).then(|| bae_catalogs::remote_image::RemoteImage {
+fn fetched_bytes() -> bae_catalogs::remote_image::RemoteImage {
+    bae_catalogs::remote_image::RemoteImage {
         bytes: vec![1, 2, 3],
         content_type: bae_util::content_type::ContentType::Jpeg,
-    })
+    }
 }
 
 /// Every kind of cover choice comes back as it went in, a remote one with its
@@ -35,25 +37,26 @@ fn fetched_bytes(cover: &CoverSelection) -> Option<bae_catalogs::remote_image::R
 #[tokio::test]
 async fn a_cover_choice_round_trips_in_every_shape() {
     for cover in [
-        CoverSelection::Local("cover.jpg".to_string()),
-        CoverSelection::Remote(
-            bae_catalogs::remote_image::RemoteImageSet::original(
+        PreparedCover::Local("cover.jpg".to_string()),
+        PreparedCover::Remote {
+            image: bae_catalogs::remote_image::RemoteImageSet::original(
                 "https://example.invalid/front".to_string(),
             ),
-            Catalog::Discogs,
-        ),
+            source: Catalog::Discogs,
+            fetched: fetched_bytes(),
+        },
         remote_with_copies("https://example.invalid/front"),
     ] {
         let (db, _tmp) = empty_db().await;
         let tables = crate::tables::ImportTables::new(db.clone());
         let (_, hash) = stored_pane_candidate(&db).await;
 
-        crate::CandidatePreparations::new(db.clone())
-            .set_cover(&hash, &cover, fetched_bytes(&cover).as_ref())
-            .await
-            .unwrap();
+        crate::CandidatePreparations::new(db.clone()).set_cover(&hash, &cover).await.unwrap();
 
-        assert_eq!(tables.load_import_candidate_pane_rows(&hash).await.unwrap().cover, Some(cover));
+        assert_eq!(
+            tables.load_import_candidate_pane_rows(&hash).await.unwrap().cover,
+            Some(cover.selection())
+        );
     }
 }
 
@@ -68,11 +71,14 @@ async fn a_new_cover_choice_leaves_none_of_the_old_copies() {
 
     for cover in [
         remote_with_copies("https://example.invalid/first"),
-        CoverSelection::Local("cover.jpg".to_string()),
+        PreparedCover::Local("cover.jpg".to_string()),
         remote_with_copies("https://example.invalid/second"),
     ] {
-        preparations.set_cover(&hash, &cover, fetched_bytes(&cover).as_ref()).await.unwrap();
-        assert_eq!(tables.load_import_candidate_pane_rows(&hash).await.unwrap().cover, Some(cover));
+        preparations.set_cover(&hash, &cover).await.unwrap();
+        assert_eq!(
+            tables.load_import_candidate_pane_rows(&hash).await.unwrap().cover,
+            Some(cover.selection())
+        );
     }
 }
 
@@ -197,7 +203,6 @@ async fn a_stated_length_past_sqlites_range_fails_the_save() {
                 draft,
                 provenance: Some(release_pick("release-1")),
                 cover: None,
-                assets: crate::CandidatePreparedAssets::default(),
             },
         )
         .await;

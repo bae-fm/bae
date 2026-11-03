@@ -152,7 +152,6 @@ pub(crate) fn concluding(
             draft: candidate_draft("", ""),
             provenance: Some(release_pick(release_id)),
             cover: None,
-            assets: crate::CandidatePreparedAssets::default(),
         },
     });
     row

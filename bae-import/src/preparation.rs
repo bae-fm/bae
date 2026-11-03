@@ -10,7 +10,7 @@
 
 use crate::folder_scanner::CandidateFileEdits;
 use crate::tables::DbCandidateIdentifyResult;
-use crate::{CandidateMetadataDraft, CoverSelection, MetadataProvenance};
+use crate::{CandidateMetadataDraft, MetadataProvenance};
 use bae_identify::signals::Signals;
 
 /// One candidate as a caller last read it: which candidate it is, and the two
@@ -152,8 +152,8 @@ pub struct CandidatePreparation {
     /// overwrite a newer edit.
     pub metadata_revision: u64,
     pub author: MetadataAuthor,
-    /// The draft, its provenance, its cover, and the cover bytes prepared
-    /// for it.
+    /// The draft, its provenance, and its cover with the bytes prepared for
+    /// it.
     pub metadata: CandidateMetadataDraft,
     /// What the candidate is linked to in the catalogs. Independent of
     /// `metadata`: no draft write changes it.
@@ -172,28 +172,7 @@ impl CandidatePreparation {
     pub fn validate(&self) -> Result<(), String> {
         self.author
             .check_provenance(self.metadata.provenance.as_ref())
-            .map_err(|error| format!("candidate {}: {error}", self.content_hash))?;
-        check_cover_bytes(self.metadata.cover.as_ref(), self.metadata.assets.remote_cover.as_ref())
-    }
-}
-
-/// `Ok` when `image` is exactly what `cover` needs to import: a remote
-/// cover's bytes, fetched with the selection, and none for a cover the
-/// folder holds. A remote cover is never stored without its bytes, so a
-/// stored candidate's cover is always ready to import.
-fn check_cover_bytes(
-    cover: Option<&CoverSelection>,
-    image: Option<&bae_catalogs::remote_image::RemoteImage>,
-) -> Result<(), String> {
-    match (cover, image) {
-        (Some(CoverSelection::Remote(_, _)), Some(_))
-        | (Some(CoverSelection::Local(_) | CoverSelection::Embedded(_)) | None, None) => Ok(()),
-        (Some(CoverSelection::Remote(_, _)), None) => {
-            Err("a remote candidate cover has no prepared bytes".into())
-        }
-        (Some(CoverSelection::Local(_) | CoverSelection::Embedded(_)) | None, Some(_)) => {
-            Err("candidate remote-cover bytes have no remote cover selection".into())
-        }
+            .map_err(|error| format!("candidate {}: {error}", self.content_hash))
     }
 }
 

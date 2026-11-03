@@ -508,7 +508,9 @@ fn row_cover(
                     ))
                 })?
                 .candidate
-                .blank_cover();
+                .blank_cover()
+                .as_ref()
+                .map(crate::cover_art::PreparedCover::selection);
             blank.as_ref()
         }
         _ => release.cover.as_ref(),

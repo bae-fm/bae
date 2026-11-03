@@ -1,10 +1,9 @@
-//! The cover an import stores: the image its candidate's selection names,
-//! checked against what the candidate's preparation holds for it, read as its
-//! source holds it and resized to the JPEG bae stores.
+//! The cover an import stores: the image its candidate's draft holds, read
+//! as its source holds it and resized to the JPEG bae stores.
 
+use crate::cover_art::PreparedCover;
 use crate::file_tag_snapshot::FileTagSnapshot;
 use crate::folder_scanner::CandidateFile;
-use crate::CoverSelection;
 use crate::ImportError;
 use bae_catalogs::remote_image::RemoteImage;
 
@@ -13,8 +12,8 @@ use bae_catalogs::remote_image::RemoteImage;
 /// chose, the one its identification fetched, or the folder's own cover the
 /// scan stored for it.
 pub(super) enum ImportCover {
-    /// A catalog's image, its exact bytes prepared with the selection. The
-    /// import validates that pair and never fetches it.
+    /// A catalog's image, its exact bytes as the draft's cover holds them.
+    /// The import never fetches it.
     Remote(Vec<u8>),
     /// An image file in the folder, by its path under the candidate's folder,
     /// read when the release is written.
@@ -26,36 +25,29 @@ pub(super) enum ImportCover {
 }
 
 impl ImportCover {
-    /// The cover `selection` names, from the remote bytes prepared with it or
-    /// the file-tag snapshot the import was queued with. A stored embedded
-    /// selection names the source audio exactly; no other snapshot image
-    /// stands in for it.
+    /// The cover the draft holds, from the remote bytes it carries or the
+    /// file-tag snapshot the import was queued with. A stored embedded
+    /// cover names the source audio exactly; no other snapshot image stands
+    /// in for it.
     pub(super) fn selected(
-        selection: Option<&CoverSelection>,
-        prepared_remote: Option<RemoteImage>,
+        cover: Option<PreparedCover>,
         snapshot: Option<&FileTagSnapshot>,
         candidate_key: &crate::CandidateKey,
     ) -> Result<Option<Self>, ImportError> {
         let internal = |detail: String| ImportError::Internal { detail };
-        match (selection, prepared_remote) {
-            (Some(CoverSelection::Remote(_, _)), Some(image)) => {
-                Ok(Some(Self::Remote(downloaded_cover(image)?)))
+        match cover {
+            Some(PreparedCover::Remote { fetched, .. }) => {
+                Ok(Some(Self::Remote(downloaded_cover(fetched)?)))
             }
-            (Some(CoverSelection::Remote(_, _)), None) => {
-                Err(internal("selected remote cover has no prepared bytes".into()))
-            }
-            (Some(CoverSelection::Local(_) | CoverSelection::Embedded(_)) | None, Some(_)) => {
-                Err(internal("prepared remote-cover bytes have no remote cover selection".into()))
-            }
-            (Some(CoverSelection::Local(path)), None) => Ok(Some(Self::Local(path.clone()))),
-            (Some(CoverSelection::Embedded(source_file_id)), None) => {
+            Some(PreparedCover::Local(path)) => Ok(Some(Self::Local(path))),
+            Some(PreparedCover::Embedded(source_file_id)) => {
                 let Some(snapshot) = snapshot else {
                     return Err(internal(format!(
                         "{candidate_key}'s embedded cover has no prepared tag snapshot"
                     )));
                 };
                 match &snapshot.embedded_cover {
-                    Some(cover) if &cover.source_relative_path == source_file_id => {
+                    Some(cover) if cover.source_relative_path == source_file_id => {
                         Ok(Some(Self::Embedded(cover.data.clone())))
                     }
                     Some(cover) => Err(internal(format!(
@@ -67,7 +59,7 @@ impl ImportCover {
                     ))),
                 }
             }
-            (None, None) => Ok(None),
+            None => Ok(None),
         }
     }
 

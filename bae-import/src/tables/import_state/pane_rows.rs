@@ -18,6 +18,7 @@ pub(crate) use provenance::{
 
 use super::verdict_rows::unreadable;
 use super::*;
+use crate::cover_art::PreparedCover;
 use crate::tables::downscaled_copies::{copies_json_sql, copies_of};
 use crate::{
     ArtistAssignment, AudioFile, CandidateDraft, CandidateTrack, CoverSelection, Credited,
@@ -341,7 +342,7 @@ pub(super) fn load_draft_and_cover_on(
                  at {key} to read its blank one from"
             ))
         })?;
-    Ok((candidate.blank_draft(), candidate.blank_cover()))
+    Ok((candidate.blank_draft(), candidate.blank_cover().as_ref().map(PreparedCover::selection)))
 }
 
 /// A candidate's cover choice as columns of a read that joins its row as

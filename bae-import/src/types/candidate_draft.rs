@@ -10,7 +10,7 @@
 
 use super::*;
 #[cfg(desktop)]
-use crate::CoverSelection;
+use crate::cover_art::PreparedCover;
 #[cfg(desktop)]
 use bae_catalogs::credits::ArtistCredit;
 use bae_catalogs::credits::CreditedRole;
@@ -159,25 +159,15 @@ pub enum MetadataProvenance {
 }
 
 /// One candidate's editable metadata, independent of the source that last
-/// populated it. The selected cover belongs to the draft; candidate files and
-/// mapping decisions do not.
+/// populated it. The selected cover belongs to the draft, with the bytes a
+/// remote one was fetched with; candidate files and mapping decisions do not.
 #[cfg(desktop)]
 #[derive(Debug, Clone, PartialEq)]
 pub struct CandidateMetadataDraft {
     /// Ordered included tracks, each with audio and a required number.
     pub draft: CandidateDraft,
     pub provenance: Option<MetadataProvenance>,
-    pub cover: Option<CoverSelection>,
-    pub assets: CandidatePreparedAssets,
-}
-
-/// Provider image bytes owned by the candidate metadata revision that fetched
-/// them: the remote cover's. Import reads these bytes; it never asks a
-/// provider for the cover again.
-#[cfg(desktop)]
-#[derive(Debug, Clone, Default, PartialEq)]
-pub struct CandidatePreparedAssets {
-    pub remote_cover: Option<bae_catalogs::remote_image::RemoteImage>,
+    pub cover: Option<PreparedCover>,
 }
 
 /// The audio a track's samples come from.

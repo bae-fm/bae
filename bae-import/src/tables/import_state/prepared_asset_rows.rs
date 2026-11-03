@@ -1,37 +1,19 @@
 use super::*;
-use crate::CandidatePreparedAssets;
+use crate::cover_art::PreparedCover;
+use crate::CoverSelection;
 use bae_util::content_type::ContentType;
 
-/// Make the remote cover bytes stored under the hash the value's: in place
-/// when there are bytes, removed when there are none.
-pub(super) fn store_asset_rows(
-    sql: &CovenWrite<'_>,
-    content_hash: &str,
-    assets: &CandidatePreparedAssets,
-) -> Result<(), DbError> {
-    match &assets.remote_cover {
-        Some(image) => sql.execute(
-            "INSERT INTO import_candidate_remote_cover_asset \
-                 (content_hash, content_type, bytes) VALUES (?, ?, ?) \
-             ON CONFLICT (content_hash) DO UPDATE SET \
-                 content_type = excluded.content_type, bytes = excluded.bytes",
-            params![content_hash, image.content_type.as_str(), image.bytes],
-        )?,
-        None => sql.execute(
-            "DELETE FROM import_candidate_remote_cover_asset WHERE content_hash = ?",
-            [content_hash],
-        )?,
-    };
-    Ok(())
-}
-
-/// The rows under the hash as stored. The save that writes them checks
-/// them against the cover ([`crate::preparation::CandidatePreparation::validate`]).
-pub(super) fn load_asset_rows_on(
+/// The candidate's cover `selection` with the bytes stored for it: a remote
+/// selection with the image its write fetched, a folder's image as it is.
+/// The cover's save writes the two together, so a remote cover stored
+/// without its bytes, or bytes stored beside a cover of the folder, is a
+/// damaged row, and the read fails naming it.
+pub(super) fn load_prepared_cover_on(
     sql: &(impl bae_db::client::query::QueryOne + bae_db::client::query::QueryRows),
     content_hash: &str,
-) -> Result<CandidatePreparedAssets, DbError> {
-    let remote_cover = sql
+    selection: Option<CoverSelection>,
+) -> Result<Option<PreparedCover>, DbError> {
+    let fetched = sql
         .query_row(
             "SELECT content_type, bytes FROM import_candidate_remote_cover_asset \
              WHERE content_hash = ?",
@@ -44,7 +26,24 @@ pub(super) fn load_asset_rows_on(
             },
         )
         .optional()?;
-    Ok(CandidatePreparedAssets { remote_cover })
+    match (selection, fetched) {
+        (Some(CoverSelection::Remote(image, source)), Some(fetched)) => {
+            Ok(Some(PreparedCover::Remote { image, source, fetched }))
+        }
+        (Some(CoverSelection::Remote(..)), None) => Err(DbError::Message(format!(
+            "candidate {content_hash}'s remote cover has no stored bytes"
+        ))),
+        (Some(CoverSelection::Local(_) | CoverSelection::Embedded(_)) | None, Some(_)) => {
+            Err(DbError::Message(format!(
+                "candidate {content_hash} stores remote-cover bytes without a remote cover"
+            )))
+        }
+        (Some(CoverSelection::Local(file_id)), None) => Ok(Some(PreparedCover::Local(file_id))),
+        (Some(CoverSelection::Embedded(source_file_id)), None) => {
+            Ok(Some(PreparedCover::Embedded(source_file_id)))
+        }
+        (None, None) => Ok(None),
+    }
 }
 
 #[cfg(test)]

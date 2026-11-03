@@ -16,14 +16,11 @@ impl CandidatePreparations {
     pub async fn set_cover(
         &self,
         content_hash: &str,
-        cover: &crate::CoverSelection,
-        remote_image: Option<&bae_catalogs::remote_image::RemoteImage>,
+        cover: &crate::cover_art::PreparedCover,
     ) -> Result<u64, crate::ImportError> {
         let cover = cover.clone();
-        let remote_image = remote_image.cloned();
         self.edit_candidate(None, content_hash, None, None, move |prep| {
             prep.metadata.cover = Some(cover);
-            prep.metadata.assets.remote_cover = remote_image;
             Ok(())
         })
         .await
@@ -34,11 +31,9 @@ impl CandidatePreparations {
         watched_folder_path: &std::path::Path,
         candidate_path: &crate::CandidateKey,
         read: &CandidateAsRead,
-        cover: &crate::CoverSelection,
-        remote_image: Option<&bae_catalogs::remote_image::RemoteImage>,
+        cover: &crate::cover_art::PreparedCover,
     ) -> Result<u64, crate::ImportError> {
         let cover = cover.clone();
-        let remote_image = remote_image.cloned();
         self.edit_candidate(
             Some(scanned_key(watched_folder_path, candidate_path)),
             &read.content_hash,
@@ -46,7 +41,6 @@ impl CandidatePreparations {
             Some(read.metadata_revision),
             move |prep| {
                 prep.metadata.cover = Some(cover);
-                prep.metadata.assets.remote_cover = remote_image;
                 Ok(())
             },
         )

@@ -5,9 +5,10 @@
 //! while retaining the current rows' identities. The projected draft, its
 //! source reading, and embedded cover are produced together.
 
+use crate::cover_art::PreparedCover;
 use crate::file_tag_snapshot::FileTagSnapshot;
 use crate::folder_scanner::FolderCandidate;
-use crate::{CandidateDraft, CandidateTrack, CoverSelection, ImportError};
+use crate::{CandidateDraft, CandidateTrack, ImportError};
 
 /// A folder read as its own files describe it.
 pub(crate) struct FileMetadataSeed {
@@ -17,7 +18,7 @@ pub(crate) struct FileMetadataSeed {
     /// The cover applying these tags selects, where the tags embed artwork:
     /// that artwork, or a folder image named as the front cover, which ranks
     /// ahead of it (`local_artwork::file_tags_cover`).
-    pub cover: Option<CoverSelection>,
+    pub cover: Option<PreparedCover>,
 }
 
 impl FileMetadataSeed {

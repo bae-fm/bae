@@ -1,6 +1,7 @@
 //! What each write of a candidate's preparation keeps, replaces and refuses.
 
 use super::*;
+use crate::cover_art::PreparedCover;
 use crate::folder_scanner::{CandidateFileEdits, SheetDisc};
 use crate::tables::import_state::tests::*;
 use crate::tables::tests::*;
@@ -19,44 +20,44 @@ fn image(byte: u8) -> bae_catalogs::remote_image::RemoteImage {
     }
 }
 
+/// The cover `supplied` and `stored` settle on, as a metadata application
+/// that brings `supplied` over a candidate holding `stored` leaves it.
+fn settled(
+    supplied: Option<PreparedCover>,
+    stored: Option<PreparedCover>,
+) -> Option<PreparedCover> {
+    let metadata = |cover| crate::CandidateMetadataDraft {
+        draft: candidate_draft("Album", "Artist"),
+        provenance: None,
+        cover,
+    };
+    let (mut supplied, mut stored) = (metadata(supplied), metadata(stored));
+    settle_cover(&mut supplied, &mut stored);
+    supplied.cover
+}
+
+fn remote_cover(url: &str, byte: u8) -> PreparedCover {
+    PreparedCover::Remote {
+        image: bae_catalogs::remote_image::RemoteImageSet::original(url.to_string()),
+        source: Catalog::Discogs,
+        fetched: image(byte),
+    }
+}
+
 /// A source that brings no image of its own says nothing about the
-/// cover, so the stored one stands — a remote selection with the bytes
-/// prepared for it, which is what the candidate commits with.
+/// cover, so the stored one stands — a remote one with the bytes it was
+/// fetched with, which is what the candidate commits with.
 #[test]
 fn a_source_with_no_image_keeps_the_stored_cover_and_its_bytes() {
-    let folders_own = CoverSelection::Local("cover.jpg".to_string());
-    let remote = CoverSelection::Remote(
-        bae_catalogs::remote_image::RemoteImageSet::original(
-            "https://example.invalid/front".to_string(),
-        ),
-        bae_catalogs::catalog::Catalog::Discogs,
-    );
-    let nothing = || PreparedCover { selection: None, image: None };
+    let folders_own = PreparedCover::Local("cover.jpg".to_string());
+    let remote = remote_cover("https://example.invalid/front", 1);
 
-    let kept = settled_cover(
-        nothing(),
-        PreparedCover { selection: Some(folders_own.clone()), image: None },
-    );
-    assert_eq!(kept.selection, Some(folders_own.clone()));
-    assert_eq!(kept.image, None);
+    assert_eq!(settled(None, Some(folders_own.clone())), Some(folders_own.clone()));
+    assert_eq!(settled(None, Some(remote.clone())), Some(remote));
+    assert_eq!(settled(None, None), None);
 
-    let kept = settled_cover(
-        nothing(),
-        PreparedCover { selection: Some(remote.clone()), image: Some(image(1)) },
-    );
-    assert_eq!(kept.selection, Some(remote.clone()));
-    assert_eq!(kept.image, Some(image(1)));
-
-    let none_either_way = settled_cover(nothing(), nothing());
-    assert_eq!(none_either_way.selection, None);
-    assert_eq!(none_either_way.image, None);
-
-    let replaced = settled_cover(
-        PreparedCover { selection: Some(remote.clone()), image: Some(image(2)) },
-        PreparedCover { selection: Some(folders_own), image: None },
-    );
-    assert_eq!(replaced.selection, Some(remote));
-    assert_eq!(replaced.image, Some(image(2)));
+    let replacing = remote_cover("https://example.invalid/other", 2);
+    assert_eq!(settled(Some(replacing.clone()), Some(folders_own)), Some(replacing));
 }
 
 #[tokio::test]
@@ -157,7 +158,6 @@ async fn a_verdict_replaces_a_person_s_pick_and_their_edits() {
                     draft: candidate_draft("Different album", "Different Artist"),
                     provenance: Some(release_pick("rel-1")),
                     cover: None,
-                    assets: crate::CandidatePreparedAssets::default(),
                 },
             }),
             releases: Vec::new(),
@@ -196,7 +196,6 @@ async fn a_verdict_after_a_metadata_edit_replaces_it() {
                     draft: candidate_draft("First album", "Artist"),
                     provenance: Some(first_pick.clone()),
                     cover: None,
-                    assets: crate::CandidatePreparedAssets::default(),
                 },
             }),
             releases: Vec::new(),
@@ -221,7 +220,6 @@ async fn a_verdict_after_a_metadata_edit_replaces_it() {
                     draft: candidate_draft("Second album", "Different Artist"),
                     provenance: Some(release_pick("rel-second")),
                     cover: None,
-                    assets: crate::CandidatePreparedAssets::default(),
                 },
             }),
             releases: Vec::new(),
@@ -372,7 +370,6 @@ async fn stale_file_revision_cannot_replace_prepared_metadata() {
                 draft: stale.metadata.draft,
                 provenance: stale.metadata.provenance,
                 cover: stale.metadata.cover,
-                assets: stale.metadata.assets,
             },
         )
         .await
@@ -418,7 +415,6 @@ async fn metadata_replacement_refuses_a_candidate_key_that_now_names_other_files
                 draft: stale.metadata.draft,
                 provenance: stale.metadata.provenance,
                 cover: stale.metadata.cover,
-                assets: stale.metadata.assets,
             },
         )
         .await
@@ -462,7 +458,7 @@ async fn metadata_apply_and_clear_preserve_every_physical_decision() {
         .await
         .unwrap();
     crate::CandidatePreparations::new(db.clone())
-        .set_cover(&hash, &CoverSelection::Local("cover.jpg".to_string()), None)
+        .set_cover(&hash, &crate::cover_art::PreparedCover::Local("cover.jpg".to_string()))
         .await
         .unwrap();
     let mapping = edited_row(
@@ -507,23 +503,14 @@ async fn metadata_apply_and_clear_preserve_every_physical_decision() {
         file_edits.sheet_discs
     );
 
-    let chosen_bytes = bae_catalogs::remote_image::RemoteImage {
-        bytes: vec![1, 2, 3],
-        content_type: bae_util::content_type::ContentType::Jpeg,
+    let chosen = PreparedCover::Remote {
+        image: bae_catalogs::remote_image::RemoteImageSet::original(
+            "https://example.invalid/cover".to_string(),
+        ),
+        source: Catalog::MusicBrainz,
+        fetched: image(1),
     };
-    crate::CandidatePreparations::new(db.clone())
-        .set_cover(
-            &hash,
-            &CoverSelection::Remote(
-                bae_catalogs::remote_image::RemoteImageSet::original(
-                    "https://example.invalid/cover".to_string(),
-                ),
-                Catalog::MusicBrainz,
-            ),
-            Some(&chosen_bytes),
-        )
-        .await
-        .unwrap();
+    crate::CandidatePreparations::new(db.clone()).set_cover(&hash, &chosen).await.unwrap();
     let mut blank = crate::pane::blank_candidate_draft(&pane_candidate()).release_edit();
     blank.tracks.truncate(1);
     let cleared_revision = crate::CandidatePreparations::new(db.clone())
@@ -536,18 +523,18 @@ async fn metadata_apply_and_clear_preserve_every_physical_decision() {
     assert_eq!(cleared_revision, 6);
     assert_eq!(
         cleared.cover,
-        Some(CoverSelection::Remote(
-            bae_catalogs::remote_image::RemoteImageSet::original(
-                "https://example.invalid/cover".to_string()
-            ),
-            Catalog::MusicBrainz,
-        )),
+        Some(chosen.selection()),
         "a draft that brings no image of its own says nothing about the cover, \
          so the one the person chose stands"
     );
     assert_eq!(
-        tables.load_import_candidate_prepared_assets(&hash).await.unwrap().remote_cover,
-        Some(chosen_bytes),
+        crate::preparation::stored_preparation(&tables, &hash)
+            .await
+            .unwrap()
+            .expect("the candidate is prepared")
+            .metadata
+            .cover,
+        Some(chosen),
         "the chosen cover keeps the bytes fetched with it"
     );
 }
@@ -625,7 +612,7 @@ async fn a_file_decision_clears_what_the_reshaped_folder_invalidates() {
         .await
         .unwrap();
     crate::CandidatePreparations::new(db.clone())
-        .set_cover(&hash, &CoverSelection::Local("cover.jpg".to_string()), None)
+        .set_cover(&hash, &crate::cover_art::PreparedCover::Local("cover.jpg".to_string()))
         .await
         .unwrap();
     let preparation = tables

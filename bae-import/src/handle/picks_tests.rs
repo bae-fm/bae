@@ -131,7 +131,7 @@ async fn a_pick_with_a_partner_stores_it_and_archives_its_documents() {
             .expect("the picked candidate is prepared")
             .metadata
             .cover,
-        Some(crate::CoverSelection::Local("cover.jpg".to_string())),
+        Some(crate::cover_art::PreparedCover::Local("cover.jpg".to_string())),
         "neither claimed release holds an image, so the folder's cover stands"
     );
     shut_down(handle).await;

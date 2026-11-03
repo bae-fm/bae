@@ -1,8 +1,8 @@
 //! One candidate's whole stored state, loaded and saved as a unit.
 //!
 //! Every row group under a content hash — the candidate row, its verdict with
-//! the matches beneath it, its signals, its draft with its provenance, cover,
-//! and prepared assets, its file decisions — is read into one
+//! the matches beneath it, its signals, its draft with its provenance and its
+//! cover with the bytes prepared for it, its file decisions — is read into one
 //! [`CandidatePreparation`] and written back from one, in one transaction
 //! guarded by the revisions the caller loaded. The rules about what a
 //! candidate may hold live on the value, not here.
@@ -153,8 +153,8 @@ pub(super) fn load_preparation_on(
     {
         return Ok(Some(CandidatePreparationRead::Imported { release_id }));
     }
-    let assets = prepared_asset_rows::load_asset_rows_on(sql, content_hash)?;
     let (draft, cover) = pane_rows::load_draft_and_cover_on(sql, content_hash)?;
+    let cover = prepared_asset_rows::load_prepared_cover_on(sql, content_hash, cover)?;
     Ok(Some(CandidatePreparationRead::Stored(CandidatePreparation {
         content_hash: state.content_hash,
         candidate_key: state.candidate_key,
@@ -165,7 +165,6 @@ pub(super) fn load_preparation_on(
             draft,
             provenance: state.metadata_provenance,
             cover,
-            assets,
         },
         link: state.release_link,
         identification: state.identify,
@@ -303,9 +302,6 @@ pub(super) fn save_preparation_on(
         if let Some(cover) = &prep.metadata.cover {
             crate::tables::candidate_state_rows::save_cover(sql, content_hash, cover)?;
         }
-    }
-    if stored.metadata.assets != prep.metadata.assets {
-        prepared_asset_rows::store_asset_rows(sql, content_hash, &prep.metadata.assets)?;
     }
     if (&stored.file_edits.sheet_bindings, &stored.file_edits.sheet_discs)
         != (&prep.file_edits.sheet_bindings, &prep.file_edits.sheet_discs)

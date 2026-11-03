@@ -188,7 +188,6 @@ pub(crate) async fn prepare_named_candidate(
                 draft,
                 provenance: preparation.metadata.provenance,
                 cover: preparation.metadata.cover,
-                assets: preparation.metadata.assets,
             },
         )
         .await

@@ -187,7 +187,7 @@ fn a_damaged_image_leaves_the_release_found_without_it_as_cover() {
     );
     assert_eq!(
         crate::local_artwork::folder_cover(None, candidate.files.artwork()),
-        Some(crate::CoverSelection::Local("back.jpg".to_string())),
+        Some(crate::cover_art::PreparedCover::Local("back.jpg".to_string())),
         "the folder's cover is the image that decodes, though the damaged one is named front"
     );
 }

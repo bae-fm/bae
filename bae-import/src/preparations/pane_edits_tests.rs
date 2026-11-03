@@ -1,8 +1,9 @@
 //! The pane's own writes, each against the candidate as stored.
 
+use crate::cover_art::PreparedCover;
 use crate::tables::import_state::tests::*;
 use crate::tables::tests::*;
-use crate::{AudioFile, CandidateEditField, CoverSelection};
+use crate::{AudioFile, CandidateEditField};
 use bae_catalogs::catalog::Catalog;
 use bae_db::test_fixtures::empty_db;
 use bae_db::watched_path::host_root;
@@ -16,7 +17,7 @@ async fn a_pane_edit_without_a_candidate_row_is_refused() {
 
     for error in [
         crate::CandidatePreparations::new(db.clone())
-            .set_cover(&hash, &CoverSelection::Local("cover.jpg".to_string()), None)
+            .set_cover(&hash, &crate::cover_art::PreparedCover::Local("cover.jpg".to_string()))
             .await
             .expect_err("a cover with nothing picked"),
         crate::CandidatePreparations::new(db.clone())
@@ -59,8 +60,7 @@ async fn cover_write_refuses_a_candidate_key_that_now_names_other_files() {
             &root,
             &pane_candidate_key(),
             &as_read(&hash, 0),
-            &CoverSelection::Local("cover.jpg".to_string()),
-            None,
+            &PreparedCover::Local("cover.jpg".to_string()),
         )
         .await
         .expect_err("the candidate key no longer names the prepared files");
@@ -72,15 +72,15 @@ async fn a_stale_remote_cover_write_leaves_the_current_selection_and_bytes() {
     let (db, _tmp) = empty_db().await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let (_, hash) = stored_pane_candidate(&db).await;
-    let current_cover = CoverSelection::Remote(
-        bae_catalogs::remote_image::RemoteImageSet::original(
+    let current_cover = PreparedCover::Remote {
+        image: bae_catalogs::remote_image::RemoteImageSet::original(
             "https://example.invalid/current".to_string(),
         ),
-        Catalog::Discogs,
-    );
-    let current_image = bae_catalogs::remote_image::RemoteImage {
-        bytes: vec![1, 2, 3],
-        content_type: bae_util::content_type::ContentType::Jpeg,
+        source: Catalog::Discogs,
+        fetched: bae_catalogs::remote_image::RemoteImage {
+            bytes: vec![1, 2, 3],
+            content_type: bae_util::content_type::ContentType::Jpeg,
+        },
     };
     crate::CandidatePreparations::new(db.clone())
         .set_prepared_cover(
@@ -88,20 +88,19 @@ async fn a_stale_remote_cover_write_leaves_the_current_selection_and_bytes() {
             &pane_candidate_key(),
             &as_read(&hash, 0),
             &current_cover,
-            Some(&current_image),
         )
         .await
         .unwrap();
 
-    let stale_cover = CoverSelection::Remote(
-        bae_catalogs::remote_image::RemoteImageSet::original(
+    let stale_cover = PreparedCover::Remote {
+        image: bae_catalogs::remote_image::RemoteImageSet::original(
             "https://example.invalid/stale".to_string(),
         ),
-        Catalog::MusicBrainz,
-    );
-    let stale_image = bae_catalogs::remote_image::RemoteImage {
-        bytes: vec![4, 5, 6],
-        content_type: bae_util::content_type::ContentType::Png,
+        source: Catalog::MusicBrainz,
+        fetched: bae_catalogs::remote_image::RemoteImage {
+            bytes: vec![4, 5, 6],
+            content_type: bae_util::content_type::ContentType::Png,
+        },
     };
     crate::CandidatePreparations::new(db.clone())
         .set_prepared_cover(
@@ -109,15 +108,15 @@ async fn a_stale_remote_cover_write_leaves_the_current_selection_and_bytes() {
             &pane_candidate_key(),
             &as_read(&hash, 0),
             &stale_cover,
-            Some(&stale_image),
         )
         .await
         .expect_err("revision zero is stale after the first selection");
 
-    let rows = tables.load_import_candidate_pane_rows(&hash).await.unwrap();
-    let assets = tables.load_import_candidate_prepared_assets(&hash).await.unwrap();
-    assert_eq!(rows.cover, Some(current_cover));
-    assert_eq!(assets.remote_cover, Some(current_image));
+    let stored = crate::preparation::stored_preparation(&tables, &hash)
+        .await
+        .unwrap()
+        .expect("the candidate is prepared");
+    assert_eq!(stored.metadata.cover, Some(current_cover));
 }
 
 /// Field writes update the one complete draft and leave its other values intact.
@@ -184,7 +183,7 @@ async fn metadata_revision_advances_for_every_draft_and_cover_mutation() {
     );
     assert_eq!(
         crate::CandidatePreparations::new(db.clone())
-            .set_cover(&hash, &CoverSelection::Local("cover.jpg".to_string()), None)
+            .set_cover(&hash, &crate::cover_art::PreparedCover::Local("cover.jpg".to_string()))
             .await
             .unwrap(),
         3

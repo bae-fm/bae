@@ -208,12 +208,8 @@ impl ImportService {
                 .into());
             }
         }
-        let cover = ImportCover::selected(
-            preparation.metadata.cover.as_ref(),
-            preparation.metadata.assets.remote_cover,
-            file_tag_snapshot,
-            &candidate_key,
-        )?;
+        let cover =
+            ImportCover::selected(preparation.metadata.cover, file_tag_snapshot, &candidate_key)?;
 
         let records = match &release_link {
             Some(link) => linked_records(&self.tables, link).await?,

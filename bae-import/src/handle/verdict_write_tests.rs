@@ -143,7 +143,6 @@ impl Fixture {
                                     record,
                                 }),
                                 cover: None,
-                                assets: crate::CandidatePreparedAssets::default(),
                             },
                         }
                     }),

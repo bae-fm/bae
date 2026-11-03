@@ -2,11 +2,11 @@
 //! embedded artwork.
 
 use super::*;
+use crate::cover_art::PreparedCover;
 use crate::folder_scanner::ScanItem;
 use crate::folder_scanner::ScannedFile;
 use crate::import_cancel::ImportStop;
 use crate::service::tests::*;
-use crate::CoverSelection;
 use crate::ImportDestination;
 use crate::ImportProgress;
 use std::path::Path;
@@ -112,8 +112,7 @@ async fn retained_unsupported_embedded_cover_is_only_used_when_explicitly_select
                 &crate::CandidateMetadataDraft {
                     draft: preparation.metadata.draft,
                     provenance: preparation.metadata.provenance,
-                    cover: explicit.then(|| CoverSelection::Embedded("01.flac".to_string())),
-                    assets: preparation.metadata.assets,
+                    cover: explicit.then(|| PreparedCover::Embedded("01.flac".to_string())),
                 },
             )
             .await
@@ -274,8 +273,7 @@ async fn selected_local_cover_path_must_match_discovered_file() {
                 file_edit_revision: 0,
                 metadata_revision,
             },
-            &CoverSelection::Local("cover.bmp".to_string()),
-            None,
+            &PreparedCover::Local("cover.bmp".to_string()),
         )
         .await
         .unwrap();
@@ -367,39 +365,17 @@ fn snapshot_with_cover(
 #[test]
 fn an_embedded_cover_is_the_snapshot_artwork_of_the_audio_it_names() {
     let key = crate::CandidateKey::test("album");
-    let selection = CoverSelection::Embedded("01.flac".into());
+    let selection = PreparedCover::Embedded("01.flac".into());
     let snapshot = snapshot_with_cover(Some("01.flac"));
-    let cover = ImportCover::selected(Some(&selection), None, Some(&snapshot), &key).unwrap();
+    let cover = ImportCover::selected(Some(selection.clone()), Some(&snapshot), &key).unwrap();
     assert!(matches!(cover, Some(ImportCover::Embedded(bytes)) if bytes == [1, 2, 3]));
 
     for snapshot in
         [Some(snapshot_with_cover(Some("02.flac"))), Some(snapshot_with_cover(None)), None]
     {
-        let error = ImportCover::selected(Some(&selection), None, snapshot.as_ref(), &key)
+        let error = ImportCover::selected(Some(selection.clone()), snapshot.as_ref(), &key)
             .err()
             .expect("no other artwork stands in for the named audio's");
         assert!(matches!(error, crate::ImportError::Internal { .. }));
     }
-}
-
-#[test]
-fn a_remote_cover_and_its_prepared_bytes_come_together() {
-    let key = crate::CandidateKey::test("album");
-    let image = bae_catalogs::remote_image::RemoteImage {
-        bytes: vec![1, 2, 3],
-        content_type: bae_util::content_type::ContentType::Jpeg,
-    };
-    let local = CoverSelection::Local("cover.jpg".into());
-    let error = ImportCover::selected(Some(&local), Some(image.clone()), None, &key)
-        .err()
-        .expect("prepared bytes without a remote selection");
-    assert!(matches!(error, crate::ImportError::Internal { .. }));
-    let error = ImportCover::selected(None, Some(image), None, &key)
-        .err()
-        .expect("prepared bytes without any selection");
-    assert!(matches!(error, crate::ImportError::Internal { .. }));
-    assert!(matches!(
-        ImportCover::selected(Some(&local), None, None, &key),
-        Ok(Some(ImportCover::Local(path))) if path == "cover.jpg"
-    ));
 }

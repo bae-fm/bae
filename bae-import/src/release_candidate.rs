@@ -54,7 +54,7 @@ impl FolderCandidate {
 
     /// The cover a release starts from before anyone describes it: the image
     /// of its own the folder's cover rules pick, if it holds one.
-    pub(crate) fn blank_cover(&self) -> Option<super::CoverSelection> {
+    pub(crate) fn blank_cover(&self) -> Option<super::cover_art::PreparedCover> {
         super::local_artwork::folder_cover(None, self.files.artwork())
     }
 

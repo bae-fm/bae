@@ -252,7 +252,7 @@ pub(crate) fn insert_candidate_row(
 pub(crate) enum CandidateStateSeed<'a> {
     /// As many empty track slots as the folder has audio units, and the
     /// folder's own cover: what a candidate holding no draft row reads as.
-    Blank { draft: &'a crate::CandidateDraft, cover: Option<crate::CoverSelection> },
+    Blank { draft: &'a crate::CandidateDraft, cover: Option<crate::cover_art::PreparedCover> },
     /// The folder read as its own files describe it, with the reading it was
     /// projected from and the cover those tags embed.
     FileMetadata(&'a crate::file_metadata_seed::FileMetadataSeed),

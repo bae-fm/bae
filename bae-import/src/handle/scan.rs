@@ -120,7 +120,7 @@ impl ImportServiceHandle {
         release: &bae_catalogs::source_release::SourceRelease,
         partners: &[bae_catalogs::source_release::SourceRelease],
         steps: &crate::CatalogApplySteps,
-    ) -> Result<Option<FetchedCover>, CoverFetchFailure> {
+    ) -> Result<Option<crate::cover_art::PreparedCover>, CoverFetchFailure> {
         let Some(remote) =
             bae_catalogs::source_release::pick_covers(release, partners).into_iter().next()
         else {
@@ -133,7 +133,11 @@ impl ImportServiceHandle {
             )
             .await
             .map_err(|error| CoverFetchFailure { source: remote.source, error })?;
-        Ok(image.map(|image| (remote, image)))
+        Ok(image.map(|fetched| crate::cover_art::PreparedCover::Remote {
+            image: remote.image,
+            source: remote.source,
+            fetched,
+        }))
     }
 
     /// The candidate's stored preparation, for a write about to replace its
@@ -365,12 +369,7 @@ impl ImportServiceHandle {
                     metadata_revision: current.metadata_revision,
                 },
                 &candidate_key,
-                &crate::CandidateMetadataDraft {
-                    draft,
-                    provenance: None,
-                    cover: None,
-                    assets: crate::CandidatePreparedAssets::default(),
-                },
+                &crate::CandidateMetadataDraft { draft, provenance: None, cover: None },
             )
             .await
     }
@@ -463,11 +462,6 @@ impl ImportServiceHandle {
     }
 }
 
-/// The cover [`ImportServiceHandle::fetch_release_cover`] fetched, with the
-/// bytes its catalog served.
-pub(crate) type FetchedCover =
-    (bae_catalogs::remote_image::RemoteCover, bae_catalogs::remote_image::RemoteImage);
-
 /// A fetch of an external release's cover that failed, naming the catalog
 /// that offered it.
 #[derive(Debug)]
@@ -481,21 +475,14 @@ pub(crate) struct CoverFetchFailure {
 pub(crate) fn external_metadata_with_cover(
     draft: crate::CandidateDraft,
     release: &bae_catalogs::source_release::SourceRelease,
-    cover: Option<FetchedCover>,
+    cover: Option<crate::cover_art::PreparedCover>,
 ) -> crate::CandidateMetadataDraft {
-    let (cover, remote_cover) = match cover {
-        Some((remote, image)) => {
-            (Some(crate::CoverSelection::Remote(remote.image, remote.source)), Some(image))
-        }
-        None => (None, None),
-    };
     crate::CandidateMetadataDraft {
         draft,
         provenance: Some(crate::MetadataProvenance::ExternalRelease {
             record: release.release().clone(),
         }),
         cover,
-        assets: crate::CandidatePreparedAssets { remote_cover },
     }
 }
 

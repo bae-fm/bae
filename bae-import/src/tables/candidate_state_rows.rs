@@ -2,6 +2,7 @@
 //! anchor row must exist before either owner can attach state to it.
 
 use super::*;
+use crate::cover_art::PreparedCover;
 use crate::CoverSelection;
 
 pub(super) const COVER_COLUMNS: &str = "content_hash, kind, file_id, url, source";
@@ -41,13 +42,17 @@ pub(super) fn cover_columns(
     }
 }
 
+/// Store `cover` as the candidate's: its row, the copies a catalog serves of
+/// a remote one, and the bytes a remote one was fetched with, which are
+/// written with the row they belong to or removed with it.
 pub(crate) fn save_cover(
     sql: &CovenWrite<'_>,
     content_hash: &str,
-    cover: &CoverSelection,
+    cover: &PreparedCover,
 ) -> Result<(), DbError> {
     require_state_row(sql, content_hash, "cover choice")?;
-    let (kind, file_id, url, source) = cover_columns(cover);
+    let selection = cover.selection();
+    let (kind, file_id, url, source) = cover_columns(&selection);
     // The copies reference the previous choice's address, which the upsert
     // replaces, so they go first.
     sql.execute("DELETE FROM import_candidate_cover_copy WHERE content_hash = ?", [content_hash])?;
@@ -60,13 +65,28 @@ pub(crate) fn save_cover(
         ),
         params![content_hash, kind, file_id, url, source],
     )?;
-    if let CoverSelection::Remote(image, _) = cover {
-        for copy in &image.downscaled {
+    match cover {
+        PreparedCover::Remote { image, fetched, .. } => {
+            for copy in &image.downscaled {
+                sql.execute(
+                    "INSERT INTO import_candidate_cover_copy \
+                         (content_hash, image_url, max_edge, url) \
+                     VALUES (?, ?, ?, ?)",
+                    params![content_hash, image.url, copy.max_edge, copy.url],
+                )?;
+            }
             sql.execute(
-                "INSERT INTO import_candidate_cover_copy \
-                     (content_hash, image_url, max_edge, url) \
-                 VALUES (?, ?, ?, ?)",
-                params![content_hash, image.url, copy.max_edge, copy.url],
+                "INSERT INTO import_candidate_remote_cover_asset \
+                     (content_hash, content_type, bytes) VALUES (?, ?, ?) \
+                 ON CONFLICT (content_hash) DO UPDATE SET \
+                     content_type = excluded.content_type, bytes = excluded.bytes",
+                params![content_hash, fetched.content_type.as_str(), fetched.bytes],
+            )?;
+        }
+        PreparedCover::Local(_) | PreparedCover::Embedded(_) => {
+            sql.execute(
+                "DELETE FROM import_candidate_remote_cover_asset WHERE content_hash = ?",
+                [content_hash],
             )?;
         }
     }

@@ -173,7 +173,10 @@ impl ImportServiceHandle {
         let metadata_provenance = preparation.metadata.provenance.clone();
         let needs_file_tag_snapshot =
             matches!(metadata_provenance, Some(crate::MetadataProvenance::FileMetadata))
-                || matches!(preparation.metadata.cover, Some(crate::CoverSelection::Embedded(_)));
+                || matches!(
+                    preparation.metadata.cover,
+                    Some(crate::cover_art::PreparedCover::Embedded(_))
+                );
         let file_tag_snapshot = if needs_file_tag_snapshot {
             let Some(stored) = self
                 .tables
@@ -338,17 +341,14 @@ impl ImportServiceHandle {
             self.read_candidate_file_tags_write(command.candidate_key.clone()).await?;
         }
         if let Some(edit) = command.user_edit.clone() {
-            let state =
-                self.tables.load_import_candidate_state(&content_hash).await?.ok_or_else(|| {
-                    crate::ImportError::Internal {
-                        detail: "test import has no candidate state".into(),
-                    }
+            let preparation = crate::preparation::stored_preparation(&self.tables, &content_hash)
+                .await?
+                .ok_or_else(|| crate::ImportError::Internal {
+                    detail: "test import has no candidate state".into(),
                 })?;
-            let rows = self.tables.load_import_candidate_pane_rows(&content_hash).await?;
-            let assets = self.tables.load_import_candidate_prepared_assets(&content_hash).await?;
             let draft = crate::pane::edit_over_audio(
                 crate::RawReleaseEdit::from_user_edit(edit, "test-import-track"),
-                &rows.draft,
+                &preparation.metadata.draft,
             )?;
             self.preparations
                 .apply_source(
@@ -356,7 +356,7 @@ impl ImportServiceHandle {
                     &crate::CandidateAsRead {
                         content_hash: content_hash.clone(),
                         file_edit_revision: candidate.file_edit_revision,
-                        metadata_revision: state.metadata_revision,
+                        metadata_revision: preparation.metadata_revision,
                     },
                     &command.candidate_key,
                     &crate::CandidateMetadataDraft {
@@ -364,11 +364,11 @@ impl ImportServiceHandle {
                         // An edit of the draft the command applied, which
                         // stays read from where it was; with none applied,
                         // the draft is typed in, read from nowhere.
-                        provenance: state
-                            .metadata_provenance
+                        provenance: preparation
+                            .metadata
+                            .provenance
                             .filter(|_| command.pick.is_some() || command.read_file_tags),
-                        cover: rows.cover,
-                        assets,
+                        cover: preparation.metadata.cover,
                     },
                 )
                 .await?;

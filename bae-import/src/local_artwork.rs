@@ -19,9 +19,9 @@ use bae_util::content_type_hint::ContentTypeHint;
 /// cover is a stored value, so nothing derives one when a candidate is read.
 #[cfg(desktop)]
 pub(crate) fn folder_cover<'a>(
-    embedded: Option<super::CoverSelection>,
+    embedded: Option<super::cover_art::PreparedCover>,
     artwork: impl IntoIterator<Item = &'a ScannedFile>,
-) -> Option<super::CoverSelection> {
+) -> Option<super::cover_art::PreparedCover> {
     let artwork = artwork.into_iter().collect::<Vec<_>>();
     front_cover_file(artwork.iter().copied())
         .map(local_selection)
@@ -35,9 +35,9 @@ pub(crate) fn folder_cover<'a>(
 /// applying them leaves the candidate's cover as it is.
 #[cfg(desktop)]
 pub(crate) fn file_tags_cover<'a>(
-    embedded: Option<super::CoverSelection>,
+    embedded: Option<super::cover_art::PreparedCover>,
     artwork: impl IntoIterator<Item = &'a ScannedFile>,
-) -> Option<super::CoverSelection> {
+) -> Option<super::cover_art::PreparedCover> {
     embedded.map(|embedded| front_cover_file(artwork).map(local_selection).unwrap_or(embedded))
 }
 
@@ -57,8 +57,8 @@ fn front_cover_file<'a>(
 }
 
 #[cfg(desktop)]
-fn local_selection(file: &ScannedFile) -> super::CoverSelection {
-    super::CoverSelection::Local(file.relative_path.clone())
+fn local_selection(file: &ScannedFile) -> super::cover_art::PreparedCover {
+    super::cover_art::PreparedCover::Local(file.relative_path.clone())
 }
 
 /// Select the folder image used when no source supplies artwork. Every caller

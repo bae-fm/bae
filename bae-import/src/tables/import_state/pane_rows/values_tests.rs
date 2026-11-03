@@ -64,7 +64,6 @@ async fn preparation_round_trips_a_drafts_roles_and_works() {
                 draft: draft.clone(),
                 provenance: Some(release_pick("release-with-role")),
                 cover: None,
-                assets: crate::CandidatePreparedAssets::default(),
             },
         )
         .await

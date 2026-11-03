@@ -43,11 +43,17 @@ impl ImportServiceHandle {
                 detail: format!("{candidate_key} has no stored candidate state"),
             })?
             .metadata_revision;
-        let remote_image = match &cover {
-            crate::CoverSelection::Remote(image, _) => {
-                Some(self.remote_images.fetch_required(&image.url).await?)
+        let cover = match cover {
+            crate::CoverSelection::Remote(image, source) => {
+                let fetched = self.remote_images.fetch_required(&image.url).await?;
+                crate::cover_art::PreparedCover::Remote { image, source, fetched }
             }
-            crate::CoverSelection::Local(_) | crate::CoverSelection::Embedded(_) => None,
+            crate::CoverSelection::Local(file_id) => {
+                crate::cover_art::PreparedCover::Local(file_id)
+            }
+            crate::CoverSelection::Embedded(source_file_id) => {
+                crate::cover_art::PreparedCover::Embedded(source_file_id)
+            }
         };
         let _commit = self
             .commit_lock_for_revision(
@@ -67,7 +73,6 @@ impl ImportServiceHandle {
                     metadata_revision: revision,
                 },
                 &cover,
-                remote_image.as_ref(),
             )
             .await?;
         Ok(())

@@ -257,7 +257,7 @@ async fn the_list_projects_the_applied_draft_and_cover() {
     let hash = candidate.files.content_hash();
 
     crate::CandidatePreparations::new(db.clone())
-        .set_cover(&hash, &crate::CoverSelection::Local("cover.jpg".to_string()), None)
+        .set_cover(&hash, &crate::cover_art::PreparedCover::Local("cover.jpg".to_string()))
         .await
         .unwrap();
     crate::CandidatePreparations::new(db.clone())
@@ -286,7 +286,7 @@ async fn the_list_projects_the_applied_draft_and_cover() {
 
     let content_hash = candidate.files.content_hash();
     crate::CandidatePreparations::new(db.clone())
-        .set_cover(&content_hash, &crate::CoverSelection::Local("folder.jpg".to_string()), None)
+        .set_cover(&content_hash, &crate::cover_art::PreparedCover::Local("folder.jpg".to_string()))
         .await
         .unwrap();
     let generation = tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
@@ -454,7 +454,7 @@ async fn the_list_projects_the_persisted_embedded_file_metadata_cover() {
             },
             &snapshot,
             &draft,
-            Some(&crate::CoverSelection::Embedded("01.flac".to_string())),
+            Some(&crate::cover_art::PreparedCover::Embedded("01.flac".to_string())),
         )
         .await
         .unwrap();
@@ -766,7 +766,7 @@ async fn a_candidate_holding_no_draft_row_reads_its_blank_draft_and_folder_cover
         .await
         .unwrap();
     tables.finish_folder_scan(&root, generation, None).await.unwrap();
-    let folder_cover = crate::CoverSelection::Local("cover.jpg".to_string());
+    let folder_cover = crate::cover_art::PreparedCover::Local("cover.jpg".to_string());
     assert_eq!(candidate.blank_cover(), Some(folder_cover.clone()));
     // As an import deletes them, with no release recorded: the folder is
     // back in Found.
@@ -799,7 +799,7 @@ async fn a_candidate_holding_no_draft_row_reads_its_blank_draft_and_folder_cover
     assert_eq!(draft.metadata_author, crate::MetadataAuthor::Nobody);
     assert_eq!(
         draft.cover.as_ref().map(|cover| cover.selection.clone()),
-        Some(folder_cover.clone())
+        Some(folder_cover.selection())
     );
 
     crate::CandidatePreparations::new(db.clone())

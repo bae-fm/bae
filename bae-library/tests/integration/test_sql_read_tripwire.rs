@@ -112,7 +112,6 @@ async fn pure_reads_use_the_read_connection() {
                     },
                     provenance: None,
                     cover: None,
-                    assets: bae_import::CandidatePreparedAssets::default(),
                 },
             }),
             releases: Vec::new(),

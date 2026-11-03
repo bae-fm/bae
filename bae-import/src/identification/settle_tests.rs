@@ -72,7 +72,7 @@ async fn a_settled_run_with_no_artwork_keeps_the_folders_own_cover() {
     );
     fixture.scan(1).await;
 
-    let folders_own = crate::CoverSelection::Local("cover.jpg".to_string());
+    let folders_own = crate::cover_art::PreparedCover::Local("cover.jpg".to_string());
     assert_eq!(
         crate::preparation::stored_preparation(
             &fixture.context.tables,
@@ -113,7 +113,7 @@ async fn a_settled_run_with_no_artwork_keeps_the_folders_own_cover() {
             .clone()
             .expect("the pane shows the stored selection")
             .selection,
-        folders_own
+        folders_own.selection()
     );
 }
 
@@ -669,17 +669,18 @@ async fn a_cover_the_host_fails_to_serve_is_stored_as_the_runs_lookup_failure() 
     };
     assert_eq!(*source, bae_catalogs::catalog::Catalog::MusicBrainz);
     assert!(image.url.ends_with("/release/mb-cover-1/front"), "{}", image.url);
-    let assets = fixture
-        .context
-        .tables
-        .load_import_candidate_prepared_assets(&fixture.content_hash(&dir))
-        .await
-        .unwrap();
-    assert_eq!(
-        assets.remote_cover.map(|image| image.bytes),
-        Some(cover_png()),
-        "the cover's bytes are stored with the draft"
-    );
+    let stored = crate::preparation::stored_preparation(
+        &fixture.context.tables,
+        &fixture.content_hash(&dir),
+    )
+    .await
+    .unwrap()
+    .expect("the identified candidate is prepared");
+    let Some(crate::cover_art::PreparedCover::Remote { fetched, .. }) = stored.metadata.cover
+    else {
+        panic!("the draft's cover is the catalog's, got {:?}", stored.metadata.cover);
+    };
+    assert_eq!(fetched.bytes, cover_png(), "the cover's bytes are stored with the draft");
 }
 
 /// A folder its rip log proves is a CD rip, and a disc ID answered by a
