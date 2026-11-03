@@ -690,4 +690,5 @@ impl DiagnosticsTransport for RecordingTransport {
 }
 
 #[cfg(test)]
+#[path = "lib_tests.rs"]
 mod tests;
