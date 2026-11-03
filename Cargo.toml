@@ -178,13 +178,13 @@ debug = "line-tables-only"
 
 # Line tables are enough debuginfo for a debug build: backtraces and panics
 # keep their file:line, and every workspace rlib and test binary shrinks
-# several-fold. Full DWARF put a 0.6 GB bae-library rlib plus a test binary of
-# the same size into the shared target dir for every source revision every
-# agent built. Local-variable inspection under lldb is what this gives up.
+# several-fold. Full DWARF made the bae-library rlib 0.6 GB, plus a test binary
+# of the same size, in every checkout's target dir. Local-variable inspection
+# under lldb is what this gives up.
 [profile.dev]
 debug = "line-tables-only"
-# Many worktrees build into one shared target dir through sccache, which
-# cannot cache incremental compiles; incremental state only grew that dir.
+# Every compile goes through sccache, which cannot cache an incremental
+# compile, and incremental state only grows the checkout's target dir.
 incremental = false
 
 # Keep dependency implementations optimized in Debug builds while bae's
