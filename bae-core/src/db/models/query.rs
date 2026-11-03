@@ -1,7 +1,7 @@
 use super::*;
 
 /// Raw release-detail aggregate, which the release detail view resolves into
-/// the display-ready `crate::album_detail::ReleaseDetail`.
+/// the display-ready release detail.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbReleaseDetail {
     pub release: DbRelease,

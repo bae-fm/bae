@@ -100,11 +100,11 @@ async fn tracks_on_missing_mediums(db: &crate::db::Database) -> Vec<String> {
 /// neither holds a track on a missing medium.
 #[test]
 fn concurrent_medium_removal_and_track_write_leave_no_track_on_a_missing_medium() {
-    crate::sync::test_devices::run_two_device_test(check_concurrent_medium_removal);
+    crate::db::test_devices::run_two_store_test(check_concurrent_medium_removal);
 }
 
-async fn check_concurrent_medium_removal(devices: &mut crate::sync::test_devices::TwoDevices) {
-    devices.a().database().call(seed_two_discs).await.unwrap();
+async fn check_concurrent_medium_removal(devices: &crate::db::test_devices::TwoStores) {
+    devices.a().call(seed_two_discs).await.unwrap();
     let rows = "SELECT t.id || ':' || t.medium_id FROM tracks t \
          UNION ALL SELECT 'medium:' || m.id FROM release_mediums m";
     devices.converge(rows).await;
@@ -112,7 +112,6 @@ async fn check_concurrent_medium_removal(devices: &mut crate::sync::test_devices
     devices.pause().await;
     devices
         .a()
-        .database()
         .call(|conn| {
             conn.execute(
                 "UPDATE tracks SET medium_id = ?1 WHERE medium_id = ?2",
@@ -126,11 +125,11 @@ async fn check_concurrent_medium_removal(devices: &mut crate::sync::test_devices
         })
         .await
         .unwrap();
-    devices.b().database().call(|conn| insert_track(conn, STRAY_TRACK, 2, 2)).await.unwrap();
+    devices.b().call(|conn| insert_track(conn, STRAY_TRACK, 2, 2)).await.unwrap();
     devices.resume().await;
     devices.converge(rows).await;
 
     for device in [devices.a(), devices.b()] {
-        assert_eq!(tracks_on_missing_mediums(device.database()).await, Vec::<String>::new());
+        assert_eq!(tracks_on_missing_mediums(device).await, Vec::<String>::new());
     }
 }

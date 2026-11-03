@@ -1,17 +1,15 @@
 //! Isolated installations of one person's library over shared memory
-//! storage: the device that created it, and devices restored from its code.
+//! storage, each running the library: the device that created it, and
+//! devices restored from its code. The stores under them are made, synced
+//! and compared by `crate::db::test_devices`.
 use std::sync::Arc;
-use std::time::Duration;
 
-use coven::Storage;
 use tempfile::TempDir;
 
+use crate::db::test_devices::{self as stores, SyncCycles};
 use crate::db::Database;
 use crate::library::LibraryManager;
 use bae_app_dir::AppDir;
-
-/// How long a test waits for sync to reach a state before failing.
-const SETTLE: Duration = Duration::from_secs(20);
 
 pub(crate) struct TestDevice {
     library: RunningLibrary,
@@ -28,8 +26,7 @@ pub(crate) struct TestDevice {
 struct RunningLibrary {
     manager: LibraryManager,
     database: Database,
-    cycles: Arc<std::sync::Mutex<Cycles>>,
-    _watcher: tokio::task::JoinHandle<()>,
+    cycles: SyncCycles,
 }
 
 impl TestDevice {
@@ -44,12 +41,7 @@ impl TestDevice {
     /// Stop the device's sync loop and wait until it has: the pass running
     /// ends first, and no pass starts until sync starts again.
     pub(crate) async fn stop_sync(&self) {
-        self.database().stop_sync().await.unwrap();
-        let mut status = self.database().subscribe(crate::library::manager::sync_status_on);
-        crate::followed::value_matching(&mut status, |status| {
-            matches!(status.status, coven::SyncStatus::Stopped)
-        })
-        .await;
+        stores::stop_sync(self.database()).await;
     }
 
     /// This device's connection to the shared storage; taking it offline
@@ -66,17 +58,11 @@ impl TestDevice {
         F: Fn() -> Fut,
         Fut: std::future::Future<Output = bool>,
     {
-        let deadline = tokio::time::Instant::now() + SETTLE;
-        loop {
-            self.database().sync_now();
-            if condition().await {
-                return;
-            }
-            if tokio::time::Instant::now() >= deadline {
-                panic!("{what} never came. The last cycle: {}", self.last());
-            }
-            tokio::time::sleep(Duration::from_millis(100)).await;
-        }
+        stores::wait_until(self.database(), &self.library.cycles, what, condition).await;
+    }
+
+    fn synced(&self) -> (&Database, &SyncCycles) {
+        (&self.library.database, &self.library.cycles)
     }
 }
 
@@ -102,7 +88,7 @@ pub(crate) fn run_library_test<F>(test: F)
 where
     F: AsyncFnOnce(&Library) + Send + 'static,
 {
-    on_device_runtime(async move || {
+    stores::on_device_runtime(async move || {
         let library = Library::new().await;
         test(&library).await;
         library.first.close().await;
@@ -116,31 +102,11 @@ pub(crate) fn run_two_device_test<F>(test: F)
 where
     F: AsyncFnOnce(&mut TwoDevices) + Send + 'static,
 {
-    on_device_runtime(async move || {
+    stores::on_device_runtime(async move || {
         let mut devices = TwoDevices::new().await;
         test(&mut devices).await;
         devices.close().await;
     });
-}
-
-/// Run `body` to its end on its own thread and multi-threaded runtime, both
-/// with deep stacks.
-fn on_device_runtime(body: impl AsyncFnOnce() + Send + 'static) {
-    std::thread::Builder::new()
-        .name("device-test".to_string())
-        .stack_size(64 * 1024 * 1024)
-        .spawn(move || {
-            tokio::runtime::Builder::new_multi_thread()
-                .worker_threads(4)
-                .thread_stack_size(16 * 1024 * 1024)
-                .enable_all()
-                .build()
-                .expect("build the device test runtime")
-                .block_on(body())
-        })
-        .expect("spawn the device test thread")
-        .join()
-        .unwrap_or_else(|panic| std::panic::resume_unwind(panic));
 }
 
 impl TwoDevices {
@@ -168,25 +134,8 @@ impl Library {
         let dir = TempDir::new().unwrap();
         let app = AppDir::at(dir.path()).unwrap();
         let installation = coven::TestCoven::new();
-        let handle = crate::db::configure_store(installation.builder(app.store_layout()))
-            .storage_connector(storage.clone())
-            .create_store("Two Devices")
-            .await
-            .unwrap();
-        handle
-            .setup_s3_storage(
-                storage.config(),
-                "Device A",
-                "owner-key".into(),
-                coven::SecretText::new("owner-secret".into()),
-                &|_| (),
-            )
-            .await
-            .unwrap();
-        handle
-            .test_sync_status()
-            .wait_for(|status| matches!(status, coven::SyncStatus::Synced { .. }))
-            .await;
+        let handle =
+            stores::create_first_store(&installation, app.store_layout(), storage.clone()).await;
         Self { first: device(dir, app, handle, installation, storage.clone()).await, storage }
     }
 
@@ -202,22 +151,9 @@ impl Library {
         let app = AppDir::at(dir.path()).unwrap();
         let installation = coven::TestCoven::new();
         let storage = Arc::new(self.storage.for_device());
-        let builder = crate::db::configure_store(installation.builder(app.store_layout()))
-            .storage_connector(storage.clone());
-        let (_sender, cancel) = tokio::sync::watch::channel(false);
-        let handle = coven::restore_from_code(
-            builder,
-            code,
-            Some(coven::S3Credentials {
-                access_key_id: "owner-key".into(),
-                secret_access_key: coven::SecretText::new("owner-secret".into()),
-            }),
-            name,
-            |_| {},
-            &cancel,
-        )
-        .await
-        .unwrap();
+        let handle =
+            stores::restore_store(&installation, app.store_layout(), storage.clone(), code, name)
+                .await;
         let device = device(dir, app, handle, installation, storage).await;
         device.database().start_sync().await.unwrap();
         device
@@ -260,7 +196,7 @@ impl TwoDevices {
         F: Fn(&'static str, Database) -> Fut,
         Fut: std::future::Future<Output = bool>,
     {
-        self.settle_on(what, || async {
+        stores::settle(self.a().synced(), self.b.synced(), what, || async {
             settled("A", self.a().database().clone()).await
                 && settled("B", self.b.database().clone()).await
         })
@@ -270,80 +206,8 @@ impl TwoDevices {
     /// Run cycles until both devices answer `query` with the same rows and
     /// neither holds anything back: each has pulled what the other wrote.
     pub(crate) async fn converge(&self, query: &str) {
-        self.settle_on(&format!("the rows of {query:?}"), || async {
-            sorted_rows(self.a().database(), query).await
-                == sorted_rows(self.b.database(), query).await
-        })
-        .await;
+        stores::converge(self.a().synced(), self.b.synced(), query).await;
     }
-
-    /// Wait until `condition` holds and neither device has a write left to
-    /// send, then for two more completed cycles on each device — so the
-    /// verdict is a cycle that began after every write either device made was
-    /// in storage — and require all of it still holds and nothing is held back.
-    /// A device's write leaves its queue only once its slot is in storage, so
-    /// a condition can hold on one device while the other's write that
-    /// changes the outcome is still on its way out.
-    async fn settle_on<F, Fut>(&self, what: &str, condition: F)
-    where
-        F: Fn() -> Fut,
-        Fut: std::future::Future<Output = bool>,
-    {
-        let deadline = tokio::time::Instant::now() + SETTLE;
-        let mut settling: Option<(u64, u64)> = None;
-        loop {
-            self.a().database().sync_now();
-            self.b.database().sync_now();
-            let quiet = self.a().database().unsent_writes_for_test().await.unwrap() == 0
-                && self.b.database().unsent_writes_for_test().await.unwrap() == 0
-                && condition().await;
-            let (completed_a, completed_b) = (self.a().completed(), self.b.completed());
-            if !quiet {
-                settling = None;
-            } else {
-                match settling {
-                    None => settling = Some((completed_a, completed_b)),
-                    Some((from_a, from_b))
-                        if completed_a >= from_a + 2 && completed_b >= from_b + 2 =>
-                    {
-                        if self.a().database().pending().await.unwrap().is_empty()
-                            && self.b.database().pending().await.unwrap().is_empty()
-                        {
-                            return;
-                        }
-                    }
-                    Some(_) => {}
-                }
-            }
-            if tokio::time::Instant::now() >= deadline {
-                panic!(
-                    "{what} never settled.\nA held {:?} with {} unsent writes after {}\n\
-                     B held {:?} with {} unsent writes after {}",
-                    self.a().database().pending().await.unwrap(),
-                    self.a().database().unsent_writes_for_test().await.unwrap(),
-                    self.a().last(),
-                    self.b.database().pending().await.unwrap(),
-                    self.b.database().unsent_writes_for_test().await.unwrap(),
-                    self.b.last(),
-                );
-            }
-            tokio::time::sleep(Duration::from_millis(100)).await;
-        }
-    }
-}
-
-async fn sorted_rows(database: &Database, query: &str) -> Vec<String> {
-    let mut rows = database.query_texts_for_test(query).await.expect("read the compared rows");
-    rows.sort();
-    rows
-}
-
-/// What a device's completed sync cycles reported: how many have completed,
-/// and what the latest one held back from the library.
-#[derive(Default)]
-struct Cycles {
-    completed: u64,
-    last: String,
 }
 
 impl TestDevice {
@@ -358,56 +222,17 @@ impl TestDevice {
     /// brings a new schema does, then sync again.
     pub(crate) async fn reopen_with(&mut self, migrations: Vec<coven::Migration>) {
         self.close().await;
-        let store = self.database().store_id();
-        let handle = crate::db::configure_store(self.installation.builder(self.app.store_layout()))
-            .migrations(migrations)
-            .storage_connector(self.storage.clone())
-            .open(store, |_| ())
-            .await
-            .expect("open the device's store again");
+        let handle = stores::reopen_store(
+            &self.installation,
+            self.app.store_layout(),
+            self.storage.clone(),
+            self.database().store_id(),
+            migrations,
+        )
+        .await;
         self.library = RunningLibrary::new(self.app.clone(), handle).await;
         self.database().start_sync().await.unwrap();
     }
-
-    fn completed(&self) -> u64 {
-        self.library.cycles.lock().expect("cycle record").completed
-    }
-
-    fn last(&self) -> String {
-        self.library.cycles.lock().expect("cycle record").last.clone()
-    }
-}
-
-/// Record every cycle `database` completes, for as long as the device lives.
-fn record_cycles(
-    database: &Database,
-) -> (Arc<std::sync::Mutex<Cycles>>, tokio::task::JoinHandle<()>) {
-    let cycles = Arc::new(std::sync::Mutex::new(Cycles::default()));
-    let mut status = database.subscribe(crate::library::manager::sync_status_on);
-    let recorded = cycles.clone();
-    let watcher = tokio::spawn(async move {
-        // Cycles from now on: the status as it stands is no cycle.
-        let mut previous = match status.next().await {
-            Some(Ok(snapshot)) => snapshot.status,
-            _ => return,
-        };
-        while let Some(Ok(snapshot)) = status.next().await {
-            let current = snapshot.status;
-            if current == previous {
-                continue;
-            }
-            previous = current.clone();
-            let last = match &current {
-                coven::SyncStatus::Synced { .. } => format!("{current:?}"),
-                coven::SyncStatus::Failed { error, .. } => format!("failed: {error}"),
-                _ => continue,
-            };
-            let mut cycles = recorded.lock().expect("cycle record");
-            cycles.completed += 1;
-            cycles.last = last;
-        }
-    });
-    (cycles, watcher)
 }
 
 async fn device(
@@ -428,8 +253,7 @@ async fn device(
 
 impl RunningLibrary {
     async fn new(app_dir: AppDir, handle: coven::CovenHandle) -> Self {
-        let database =
-            Database::from_handle(handle, Arc::new(coven::SystemClock), Arc::new(coven::UuidIds));
+        let database = stores::device_database(handle);
         let library = crate::app::test_library::TestLibrary::open(
             database.clone(),
             app_dir,
@@ -437,8 +261,8 @@ impl RunningLibrary {
         )
         .await;
         let manager = LibraryManager::clone(&library);
-        let (cycles, watcher) = record_cycles(&database);
-        Self { manager, database, cycles, _watcher: watcher }
+        let cycles = SyncCycles::follow(&database);
+        Self { manager, database, cycles }
     }
 }
 

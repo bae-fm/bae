@@ -43,19 +43,19 @@ const MEDIA_ROWS: &str = "SELECT id || ':' || position || ':' || medium || ':' |
 /// release and sorts its listing by them.
 #[test]
 fn a_media_edit_reaches_the_other_device() {
-    crate::sync::test_devices::run_two_device_test(check_media_edit_reaches);
+    crate::db::test_devices::run_two_store_test(check_media_edit_reaches);
 }
 
-async fn check_media_edit_reaches(devices: &mut crate::sync::test_devices::TwoDevices) {
-    devices.a().database().call(seed_artist_album_release).await.unwrap();
-    set_media(devices.a().database(), vec![count(Medium::Cd, 1)]).await;
+async fn check_media_edit_reaches(devices: &crate::db::test_devices::TwoStores) {
+    devices.a().call(seed_artist_album_release).await.unwrap();
+    set_media(devices.a(), vec![count(Medium::Cd, 1)]).await;
     devices.converge(MEDIA_ROWS).await;
 
-    set_media(devices.a().database(), vec![count(Medium::Vinyl, 2), count(Medium::Cd, 1)]).await;
+    set_media(devices.a(), vec![count(Medium::Vinyl, 2), count(Medium::Cd, 1)]).await;
     devices.converge(MEDIA_ROWS).await;
 
     assert_eq!(
-        media_on(devices.b().database()).await,
+        media_on(devices.b()).await,
         (
             vec![count(Medium::Vinyl, 2), count(Medium::Cd, 1)],
             Some("vinyl:00002,cd:00001".to_string())
@@ -67,23 +67,23 @@ async fn check_media_edit_reaches(devices: &mut crate::sync::test_devices::TwoDe
 /// Once each has the other's write, both hold both changes.
 #[test]
 fn concurrent_edits_of_different_places_both_stay() {
-    crate::sync::test_devices::run_two_device_test(check_concurrent_places);
+    crate::db::test_devices::run_two_store_test(check_concurrent_places);
 }
 
-async fn check_concurrent_places(devices: &mut crate::sync::test_devices::TwoDevices) {
-    devices.a().database().call(seed_artist_album_release).await.unwrap();
-    set_media(devices.a().database(), vec![count(Medium::Cd, 1), count(Medium::Dvd, 1)]).await;
+async fn check_concurrent_places(devices: &crate::db::test_devices::TwoStores) {
+    devices.a().call(seed_artist_album_release).await.unwrap();
+    set_media(devices.a(), vec![count(Medium::Cd, 1), count(Medium::Dvd, 1)]).await;
     devices.converge(MEDIA_ROWS).await;
 
     devices.pause().await;
-    set_media(devices.a().database(), vec![count(Medium::Cd, 2), count(Medium::Dvd, 1)]).await;
-    set_media(devices.b().database(), vec![count(Medium::Cd, 1), count(Medium::BluRay, 1)]).await;
+    set_media(devices.a(), vec![count(Medium::Cd, 2), count(Medium::Dvd, 1)]).await;
+    set_media(devices.b(), vec![count(Medium::Cd, 1), count(Medium::BluRay, 1)]).await;
     devices.resume().await;
     devices.converge(MEDIA_ROWS).await;
 
     let both = vec![count(Medium::Cd, 2), count(Medium::BluRay, 1)];
-    assert_eq!(media_on(devices.a().database()).await.0, both);
-    assert_eq!(media_on(devices.b().database()).await.0, both);
+    assert_eq!(media_on(devices.a()).await.0, both);
+    assert_eq!(media_on(devices.b()).await.0, both);
 }
 
 /// Make `RELEASE`'s barcodes `barcodes` on `db`.
@@ -107,26 +107,26 @@ const BARCODE_ROWS: &str = "SELECT id || ':' || position || ':' || barcode \
 /// later edit that drops one leaves only the other on both.
 #[test]
 fn barcode_edits_merge_by_place_and_reach_the_other_device() {
-    crate::sync::test_devices::run_two_device_test(check_barcodes);
+    crate::db::test_devices::run_two_store_test(check_barcodes);
 }
 
-async fn check_barcodes(devices: &mut crate::sync::test_devices::TwoDevices) {
-    devices.a().database().call(seed_artist_album_release).await.unwrap();
-    set_barcodes(devices.a().database(), &["0123456789012", "5012345678900"]).await;
+async fn check_barcodes(devices: &crate::db::test_devices::TwoStores) {
+    devices.a().call(seed_artist_album_release).await.unwrap();
+    set_barcodes(devices.a(), &["0123456789012", "5012345678900"]).await;
     devices.converge(BARCODE_ROWS).await;
 
     devices.pause().await;
-    set_barcodes(devices.a().database(), &["0123456789029", "5012345678900"]).await;
-    set_barcodes(devices.b().database(), &["0123456789012", "5012345678917"]).await;
+    set_barcodes(devices.a(), &["0123456789029", "5012345678900"]).await;
+    set_barcodes(devices.b(), &["0123456789012", "5012345678917"]).await;
     devices.resume().await;
     devices.converge(BARCODE_ROWS).await;
     let both = ["0123456789029", "5012345678917"];
-    assert_eq!(barcodes_on(devices.a().database()).await, both);
-    assert_eq!(barcodes_on(devices.b().database()).await, both);
+    assert_eq!(barcodes_on(devices.a()).await, both);
+    assert_eq!(barcodes_on(devices.b()).await, both);
 
-    set_barcodes(devices.b().database(), &["0123456789029"]).await;
+    set_barcodes(devices.b(), &["0123456789029"]).await;
     devices.converge(BARCODE_ROWS).await;
-    assert_eq!(barcodes_on(devices.a().database()).await, ["0123456789029"]);
+    assert_eq!(barcodes_on(devices.a()).await, ["0123456789029"]);
 }
 
 /// Make `RELEASE`'s labels `labels` on `db`, as an edit writes them.
@@ -160,23 +160,23 @@ const LABEL_ROWS: &str = "SELECT id || ':' || name || ':' || ifnull(discogs_labe
 /// write, both read the release with the label at each place either wrote.
 #[test]
 fn label_rows_converge_on_both_devices() {
-    crate::sync::test_devices::run_two_device_test(check_labels);
+    crate::db::test_devices::run_two_store_test(check_labels);
 }
 
-async fn check_labels(devices: &mut crate::sync::test_devices::TwoDevices) {
+async fn check_labels(devices: &crate::db::test_devices::TwoStores) {
     use bae_types::pressing::ReleaseLabel;
     let rhino = |number: &str| {
         ReleaseLabel::new(Some("Rhino".to_string()), Some(number.to_string()))
             .unwrap()
             .with_ids(None, Some("7190".to_string()))
     };
-    devices.a().database().call(seed_artist_album_release).await.unwrap();
+    devices.a().call(seed_artist_album_release).await.unwrap();
     devices.converge(LABEL_ROWS).await;
 
     devices.pause().await;
-    set_labels(devices.a().database(), vec![rhino("R2 1")]).await;
+    set_labels(devices.a(), vec![rhino("R2 1")]).await;
     set_labels(
-        devices.b().database(),
+        devices.b(),
         vec![rhino("R2 1"), ReleaseLabel::new(None, Some("XY 3".to_string())).unwrap()],
     )
     .await;
@@ -187,11 +187,10 @@ async fn check_labels(devices: &mut crate::sync::test_devices::TwoDevices) {
         ReleaseLabel::new(Some("Rhino".to_string()), Some("R2 1".to_string())).unwrap(),
         ReleaseLabel::new(None, Some("XY 3".to_string())).unwrap(),
     ];
-    assert_eq!(labels_on(devices.a().database()).await, both);
-    assert_eq!(labels_on(devices.b().database()).await, both);
+    assert_eq!(labels_on(devices.a()).await, both);
+    assert_eq!(labels_on(devices.b()).await, both);
     let labels: i64 = devices
         .a()
-        .database()
         .read(|sql| Ok(sql.query_row("SELECT count(*) FROM labels", [], |row| row.get(0))?))
         .await
         .unwrap();

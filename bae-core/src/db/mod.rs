@@ -19,6 +19,8 @@ pub use resolved_track_audio::{ResolvedTrackAudio, ResolvedTrackAudioSegment, Tr
 pub mod source_audio;
 pub mod stored_name;
 pub mod synced;
+#[cfg(test)]
+pub(crate) mod test_devices;
 pub(crate) mod watched_path;
 pub use watched_path::{RelativeFolder, WatchedPathError};
 // Only an import names its own artist credits from outside `db`.

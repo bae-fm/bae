@@ -6,9 +6,8 @@
 //! `*_label`, sum-of-fields, group-by, path resolution, `has_X` flag, or
 //! `stored.or_else(first)` fallback belongs in the library, not here.
 //!
-//! The library resolves them: its views (`crate::library::views`) turn them
-//! into the display-ready `AlbumDetail`, `ReleaseDetail`, `AlbumSummary` and
-//! `SearchResults` of `crate::album_detail`, which is what the bridge and
+//! The library resolves them: its views turn them into the display-ready
+//! album and release details, summaries and search results the bridge and
 //! event payloads carry.
 
 use bae_catalogs::catalog::Catalog;
@@ -203,7 +202,7 @@ pub struct DbAlbum {
 
 /// Raw album-summary aggregate: artist names, release IDs and the primary
 /// release joined in SQL to avoid N+1 lookups, which the library's views
-/// resolve into the display-ready `crate::album_detail::AlbumSummary`.
+/// resolve into the display-ready album summary.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbAlbumSummary {
     pub id: String,
