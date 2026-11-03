@@ -125,7 +125,7 @@ fn the_watch_reports_a_device_that_joined_before_its_first_look() {
 fn a_rename_is_listed_waiting_then_done_until_dismissed() {
     run_two_device_test(async |devices| {
         let laptop = devices.a();
-        laptop.stop_sync().await;
+        laptop.storage().set_online(false);
         let manager = laptop.manager();
         let mut changes = manager.subscribe_admin_changes();
         crate::followed::value_matching(&mut changes, Vec::is_empty).await;
@@ -149,7 +149,8 @@ fn a_rename_is_listed_waiting_then_done_until_dismissed() {
         assert_eq!(manager.library_name().await.unwrap(), "Two Devices");
         assert!(manager.acknowledge_admin_change(operation).await.is_err());
 
-        laptop.database().start_sync().await.unwrap();
+        laptop.storage().set_online(true);
+        laptop.manager().network_changed();
         crate::followed::value_matching(&mut changes, |changes| {
             changes.len() == 1 && changes[0].state == AdminChangeState::Done
         })
@@ -188,7 +189,10 @@ fn a_change_this_devices_removal_ends_is_listed_as_stopped() {
                 .any(|member| member.active_devices.iter().any(|d| d.id == device))
         };
         laptop.wait_until("the tablet's registration", || active(tablet_id)).await;
-        laptop.stop_sync().await;
+        // Out of storage's reach, no pass of the laptop's can publish the
+        // removal it records. Stopping its sync would not do: a pass already
+        // running when sync stops goes on to its end and can publish it.
+        laptop.storage().set_online(false);
         let mut changes = laptop.manager().subscribe_admin_changes();
         laptop.manager().remove_device(tablet_id).await.unwrap();
 
@@ -206,7 +210,8 @@ fn a_change_this_devices_removal_ends_is_listed_as_stopped() {
             })
             .await;
 
-        laptop.database().start_sync().await.unwrap();
+        laptop.storage().set_online(true);
+        laptop.manager().network_changed();
         let stopped = crate::followed::value_matching(&mut changes, |changes| {
             changes.iter().any(|change| change.state != AdminChangeState::Waiting)
         })
@@ -286,7 +291,7 @@ async fn membership_reads_committed_local_state_without_a_provider() {
 fn a_profile_request_shows_the_stop_that_ended_its_circle() {
     run_two_device_test(async |devices| {
         let tablet = devices.b();
-        tablet.stop_sync().await;
+        tablet.storage().set_online(false);
         let mut requested = tablet.manager().subscribe_requested_profile();
         crate::followed::value_matching(&mut requested, Option::is_none).await;
         tablet.manager().create_profile("Robin").await.unwrap();
@@ -315,7 +320,8 @@ fn a_profile_request_shows_the_stop_that_ended_its_circle() {
         laptop.manager().remove_device(tablet_id).await.unwrap();
         laptop.wait_until("the tablet's removal", || async { !tablet_active().await }).await;
 
-        tablet.database().start_sync().await.unwrap();
+        tablet.storage().set_online(true);
+        tablet.manager().network_changed();
         let stopped = RequestedProfile {
             name: "Robin".into(),
             state: RequestedProfileState::Stopped(coven::DeviceStop::Removed),
