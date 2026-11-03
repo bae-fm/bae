@@ -96,8 +96,7 @@ async fn seek_revision_is_retained_across_later_position_ticks() {
     next_event(&mut events).await;
     next_event(&mut events).await;
 
-    let positions = handle.subscribe_positions();
-    let positions = positions.borrow();
+    let positions = handle.subscribe_positions().positions();
     assert_eq!(positions.library.as_ref().map(|position| position.position_ms), Some(71));
     assert_eq!(positions.seek_revision, 1);
 }
@@ -145,9 +144,7 @@ async fn a_new_line_is_in_the_timeline_row_before_its_event_is_forwarded() {
 
 /// The next event the fan-out forwards, which it writes and folds into
 /// the positions first.
-async fn next_event(
-    events: &mut tokio_mpsc::UnboundedReceiver<PlaybackProgress>,
-) -> PlaybackProgress {
+async fn next_event(events: &mut PlaybackProgressFeed) -> PlaybackProgress {
     timeout(Duration::from_secs(1), events.recv())
         .await
         .expect("the fan-out forwards the event")
@@ -161,7 +158,7 @@ async fn a_position_tick_moves_only_the_positions_and_a_state_change_only_the_ro
     let (handle, progress_tx, db, _tmp) = started().await;
     let mut events = handle.subscribe_all();
     let mut positions = handle.subscribe_positions();
-    positions.mark_unchanged();
+    positions.positions();
     assert_eq!(
         crate::tables::now_playing(&db).await.unwrap().map(|now| now.playback.state),
         Some(crate::PlaybackState::Stopped)

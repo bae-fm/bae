@@ -4,7 +4,7 @@ use crate::test_playback_behavior::support::*;
 /// Playback over uploaded files with neither originals nor cached audio present.
 struct RemoteMultiWindowPlayback {
     playback_handle: bae_playback::PlaybackHandle,
-    progress_rx: tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
+    progress_rx: bae_playback::PlaybackProgressFeed,
     track_ids: Vec<String>,
     cloud: Arc<coven::MemoryStorage>,
     /// Where the album's FLAC is stored.

@@ -252,7 +252,7 @@ fn create_mp3_test_album() -> DiscogsRelease {
 /// audio device). Works with any format.
 struct PlaybackTestFixture {
     playback_handle: bae_playback::PlaybackHandle,
-    progress_rx: tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
+    progress_rx: bae_playback::PlaybackProgressFeed,
     track_ids: Vec<String>,
     /// The album's source audio file, kept so the test can decode it directly and
     /// establish this machine's cost per second of audio — the baseline the

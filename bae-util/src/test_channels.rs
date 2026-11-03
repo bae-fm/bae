@@ -6,6 +6,19 @@
 /// what any step takes on a loaded machine.
 pub const HANG_GUARD: std::time::Duration = std::time::Duration::from_secs(300);
 
+/// What a test reads events off one at a time: a channel's receiving end,
+/// or an owner's handle over one.
+pub trait EventReader<E> {
+    /// The next event, or `None` once no more can come.
+    fn recv(&mut self) -> impl std::future::Future<Output = Option<E>>;
+}
+
+impl<E> EventReader<E> for tokio::sync::mpsc::UnboundedReceiver<E> {
+    fn recv(&mut self) -> impl std::future::Future<Output = Option<E>> {
+        tokio::sync::mpsc::UnboundedReceiver::recv(self)
+    }
+}
+
 /// Read events off `rx` until `matches` returns a value, discarding the ones it
 /// declines, and give up after `timeout_duration` (or when the channel closes)
 /// with `None`.
@@ -15,7 +28,7 @@ pub const HANG_GUARD: std::time::Duration = std::time::Duration::from_secs(300);
 /// declines — which is what a "watch the whole crossing, then report what was
 /// seen" wait needs.
 pub async fn next_matching<E, T>(
-    rx: &mut tokio::sync::mpsc::UnboundedReceiver<E>,
+    rx: &mut impl EventReader<E>,
     timeout_duration: std::time::Duration,
     mut matches: impl FnMut(E) -> Option<T>,
 ) -> Option<T> {

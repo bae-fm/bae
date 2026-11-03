@@ -22,7 +22,7 @@ pub(super) use tracing::debug;
 /// Return the first `StateChanged` state that satisfies `predicate`, or `None`
 /// on timeout.
 pub(super) async fn wait_for_state_on<F>(
-    progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
+    progress_rx: &mut bae_playback::PlaybackProgressFeed,
     predicate: F,
     timeout_duration: Duration,
 ) -> Option<PlaybackState>
@@ -39,7 +39,7 @@ where
 /// Collect every StateChanged state in arrival order until one satisfies `done`
 /// (that final state is included) or the timeout elapses.
 pub(super) async fn collect_states_on<F>(
-    progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
+    progress_rx: &mut bae_playback::PlaybackProgressFeed,
     done: F,
     timeout_duration: Duration,
 ) -> Vec<PlaybackState>
@@ -62,7 +62,7 @@ where
 /// The next `PositionUpdate`'s track-relative `position_ms`, or `None` if none
 /// arrives within `timeout_duration`.
 pub(super) async fn next_position(
-    progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
+    progress_rx: &mut bae_playback::PlaybackProgressFeed,
     timeout_duration: Duration,
 ) -> Option<i64> {
     bae_util::test_channels::next_matching(progress_rx, timeout_duration, |event| match event {
@@ -81,7 +81,7 @@ pub(super) const POSITION_BACKSTOP: Duration = Duration::from_secs(10);
 /// what tells a skipped pregap (it starts at 0) from a played one (it starts
 /// counting up from a negative value).
 pub(super) async fn first_position_of(
-    progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
+    progress_rx: &mut bae_playback::PlaybackProgressFeed,
     track_id: &str,
 ) -> i64 {
     wait_for_track_position(progress_rx, track_id, Duration::from_secs(30))
@@ -92,7 +92,7 @@ pub(super) async fn first_position_of(
 /// The first `position_ms` reported for `track_id` that satisfies `reached`,
 /// or `None` if none does within `POSITION_BACKSTOP`.
 pub(super) async fn wait_for_track_position_where(
-    progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
+    progress_rx: &mut bae_playback::PlaybackProgressFeed,
     track_id: &str,
     reached: impl Fn(i64) -> bool,
 ) -> Option<i64> {
@@ -110,7 +110,7 @@ pub(super) async fn wait_for_track_position_where(
 /// Return the first `position_ms` greater than the first position update seen,
 /// or `None` if the position does not advance.
 pub(super) async fn wait_for_position_advance(
-    progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
+    progress_rx: &mut bae_playback::PlaybackProgressFeed,
 ) -> Option<i64> {
     let anchor = next_position(progress_rx, Duration::from_secs(30))
         .await
@@ -135,7 +135,7 @@ pub(super) const PLAY_START_BACKSTOP: Duration = Duration::from_secs(30);
 /// Play `track_id` and wait for it to reach `Playing`.
 pub(super) async fn play_and_wait_on(
     handle: &bae_playback::PlaybackHandle,
-    progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
+    progress_rx: &mut bae_playback::PlaybackProgressFeed,
     track_id: &str,
 ) {
     handle.play(track_id.to_string());
@@ -175,7 +175,7 @@ pub(super) async fn wait_for_whole_track(
 /// Wait for the next `Seeked` event and return its `position_ms`, or `None` on
 /// timeout.
 pub(super) async fn wait_for_seeked_on(
-    progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
+    progress_rx: &mut bae_playback::PlaybackProgressFeed,
     timeout_duration: Duration,
 ) -> Option<u64> {
     bae_util::test_channels::next_matching(progress_rx, timeout_duration, |event| match event {
@@ -202,7 +202,7 @@ pub(super) const SENTINEL_VOLUME: f32 = 0.4321;
 /// countdown running.
 pub(super) async fn settled_events_on(
     handle: &bae_playback::PlaybackHandle,
-    progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
+    progress_rx: &mut bae_playback::PlaybackProgressFeed,
 ) -> Vec<PlaybackProgress> {
     handle.set_volume(SENTINEL_VOLUME);
     let mut events = Vec::new();
@@ -238,7 +238,7 @@ pub(super) fn states_in(events: &[PlaybackProgress]) -> Vec<&PlaybackState> {
 /// queue must use these.
 pub(super) async fn wait_for_playing_capturing_queue_on(
     playback_handle: &bae_playback::PlaybackHandle,
-    progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
+    progress_rx: &mut bae_playback::PlaybackProgressFeed,
     timeout_duration: Duration,
 ) -> (bool, Vec<bae_playback::QueueEntry>) {
     let playing = bae_util::test_channels::next_matching(progress_rx, timeout_duration, |event| {
@@ -264,9 +264,7 @@ pub(super) async fn wait_for_playing_capturing_queue_on(
 
 /// Assert that the playing position advances. This catches a stalled audio
 /// stream that a queue-only assertion would miss.
-pub(super) async fn assert_position_advances(
-    progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
-) {
+pub(super) async fn assert_position_advances(progress_rx: &mut bae_playback::PlaybackProgressFeed) {
     wait_for_position_advance(progress_rx)
         .await
         .expect("position must keep advancing while playing (the audio stream stalled)");
@@ -276,7 +274,7 @@ pub(super) async fn assert_position_advances(
 /// timeout. Updates for other tracks are skipped, since one for the finishing
 /// track can still arrive right after a boundary.
 pub(super) async fn wait_for_track_position(
-    progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
+    progress_rx: &mut bae_playback::PlaybackProgressFeed,
     track_id: &str,
     timeout_duration: Duration,
 ) -> Option<i64> {
@@ -291,7 +289,7 @@ pub(super) async fn wait_for_track_position(
 
 /// Wait for the next `MuteChanged` and return its flag, or panic on timeout.
 pub(super) async fn wait_for_mute(
-    progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
+    progress_rx: &mut bae_playback::PlaybackProgressFeed,
     timeout_duration: Duration,
 ) -> bool {
     bae_util::test_channels::next_matching(progress_rx, timeout_duration, |event| match event {
@@ -316,7 +314,7 @@ pub(super) struct BoundaryOutcome {
 /// Record what the boundary from `finishing` to `incoming` produced, until
 /// `incoming` reaches `Playing` or the timeout elapses.
 pub(super) async fn observe_boundary(
-    progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
+    progress_rx: &mut bae_playback::PlaybackProgressFeed,
     finishing: &str,
     incoming: &str,
     timeout_duration: Duration,
@@ -406,7 +404,7 @@ pub(super) async fn with_fixture<F: PlaybackFixture>(
 /// A playback service over an imported three-track album.
 pub(super) struct PlaybackTestFixture {
     pub(super) playback_handle: bae_playback::PlaybackHandle,
-    pub(super) progress_rx: tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
+    pub(super) progress_rx: bae_playback::PlaybackProgressFeed,
     pub(super) track_ids: Vec<String>,
     pub(super) album_dir: std::path::PathBuf,
     /// The library the album was imported into, which tests read and edit

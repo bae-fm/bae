@@ -5,7 +5,7 @@ use crate::test_playback_behavior::support::*;
 /// This catches bugs where the playback pipeline assumes 44.1kHz.
 struct HighSampleRateTestFixture {
     playback_handle: bae_playback::PlaybackHandle,
-    progress_rx: tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
+    progress_rx: bae_playback::PlaybackProgressFeed,
     track_id: String,
     library: TestLibrary,
     _capture_stream_rx: bae_playback::test_capture::CaptureStreamRx,

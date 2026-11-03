@@ -135,7 +135,7 @@ struct CloudOnlyPlaybackFixture {
     /// The library the track was imported into, whose playback values a test
     /// reads.
     library: TestLibrary,
-    progress_rx: tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
+    progress_rx: bae_playback::PlaybackProgressFeed,
     cloud: Arc<coven::MemoryStorage>,
     track_ids: Vec<String>,
     _capture_stream_rx: bae_playback::test_capture::CaptureStreamRx,

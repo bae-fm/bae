@@ -11,7 +11,7 @@ use bae_util::test_channels::next_matching;
 /// Wait for playback to report `track_id` as the playing track, discarding
 /// every other progress event, and return whether it arrived in time.
 pub async fn wait_until_playing(
-    progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
+    progress_rx: &mut crate::PlaybackProgressFeed,
     track_id: &str,
     timeout_duration: std::time::Duration,
 ) -> bool {
@@ -29,10 +29,7 @@ pub async fn wait_until_playing(
 
 /// Wait up to ten seconds for playback to confirm a seek on `track_id`,
 /// discarding every other progress event, and assert the confirmation arrived.
-pub async fn wait_for_seek(
-    progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
-    track_id: &str,
-) {
+pub async fn wait_for_seek(progress_rx: &mut crate::PlaybackProgressFeed, track_id: &str) {
     let seeked =
         next_matching(progress_rx, std::time::Duration::from_secs(10), |event| match event {
             PlaybackProgress::Seeked { track_id: seeked_id, .. } if seeked_id == track_id => {

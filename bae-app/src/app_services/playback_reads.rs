@@ -22,9 +22,7 @@ impl AppServices {
     /// Where playback is in what it plays: the library track's position and
     /// the preview's, which change as audio plays. A position names its track
     /// or clip, so a surface shows it only against that one.
-    pub fn subscribe_playback_positions(
-        &self,
-    ) -> tokio::sync::watch::Receiver<bae_playback::PlaybackPositions> {
+    pub fn subscribe_playback_positions(&self) -> bae_playback::PlaybackPositionsWatch {
         self.inner.playback.subscribe_positions()
     }
 

@@ -705,7 +705,7 @@ async fn assert_paused_load_shows_start(fixture: &mut CueFlacTestFixture, track_
         )),
         "the paused load shows {track_id} at its start, got {events:?}",
     );
-    let shown = fixture.playback_handle.subscribe_positions().borrow().library.clone();
+    let shown = fixture.playback_handle.subscribe_positions().positions().library;
     let shown = shown.expect("the UI has a position to show");
     assert_eq!(
         (shown.track_id.as_str(), shown.position_ms),

@@ -220,7 +220,7 @@ pub(crate) fn playback_positions(
     feed(runtime, run, move |services, writer| async move {
         let mut positions = services.subscribe_playback_positions();
         loop {
-            let held = track_positions(&positions.borrow_and_update());
+            let held = track_positions(&positions.positions());
             writer.reset(held);
             if positions.changed().await.is_err() {
                 return;
@@ -268,7 +268,7 @@ pub(crate) fn preview_position(
     feed(runtime, run, move |services, writer| async move {
         let mut positions = services.subscribe_playback_positions();
         loop {
-            let preview = positions.borrow_and_update().preview.clone();
+            let preview = positions.positions().preview;
             match preview {
                 Some(position) => writer.set(
                     ONLY_KEY,

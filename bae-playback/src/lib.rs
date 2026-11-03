@@ -62,9 +62,10 @@ pub use now_playing::{
     NowPlayingTrack, NowPlayingValues, PlaybackFailure, PlayingTrack, TrackDisplay,
 };
 pub use progress::{
-    MediaControlPlayback, PlaybackChange, PlaybackPosition, PlaybackPositions, PlaybackProgress,
-    PlaybackTimeline, PlaybackValues, PreviewPosition, PreviewState, PreviewTimelinePoint,
-    RemoteDevice, RemotePlayback, TimelinePoint,
+    MediaControlPlayback, PlaybackChange, PlaybackPosition, PlaybackPositions,
+    PlaybackPositionsWatch, PlaybackProgress, PlaybackProgressFeed, PlaybackTimeline,
+    PlaybackValues, PreviewPosition, PreviewState, PreviewTimelinePoint, RemoteDevice,
+    RemotePlayback, TimelinePoint,
 };
 pub use queue::{NextEntry, PlaybackQueue, PreviousAction, QueueEntry, QueueEntryId};
 pub use queue_values::{

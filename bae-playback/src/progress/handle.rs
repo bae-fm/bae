@@ -14,6 +14,65 @@ pub struct PlaybackProgressHandle {
     subscriptions: Arc<Mutex<Vec<tokio_mpsc::UnboundedSender<PlaybackProgress>>>>,
     positions: watch::Receiver<PlaybackPositions>,
 }
+
+/// Every progress event playback reports from the moment it was asked for,
+/// none dropped, from the [`PlaybackProgressHandle`] that made it. Dropping
+/// it unsubscribes.
+pub struct PlaybackProgressFeed(tokio_mpsc::UnboundedReceiver<PlaybackProgress>);
+
+impl PlaybackProgressFeed {
+    /// The next event, or `None` once playback has stopped running.
+    pub async fn recv(&mut self) -> Option<PlaybackProgress> {
+        self.0.recv().await
+    }
+
+    /// The next event already reported, without waiting.
+    pub fn try_recv(&mut self) -> Result<PlaybackProgress, tokio_mpsc::error::TryRecvError> {
+        self.0.try_recv()
+    }
+}
+
+#[cfg(any(test, feature = "test-utils"))]
+impl bae_util::test_channels::EventReader<PlaybackProgress> for PlaybackProgressFeed {
+    fn recv(&mut self) -> impl std::future::Future<Output = Option<PlaybackProgress>> {
+        self.0.recv()
+    }
+}
+
+/// Where playback is, now and as audio plays, from the
+/// [`PlaybackProgressHandle`] that made it.
+pub struct PlaybackPositionsWatch(watch::Receiver<PlaybackPositions>);
+
+impl PlaybackPositionsWatch {
+    /// The positions now; the value seen from here on.
+    pub fn positions(&mut self) -> PlaybackPositions {
+        self.0.borrow_and_update().clone()
+    }
+
+    /// Wait until the positions differ from the ones last seen; an error
+    /// once playback has stopped running.
+    pub async fn changed(&mut self) -> Result<(), watch::error::RecvError> {
+        self.0.changed().await
+    }
+
+    /// Whether the positions changed since they were last seen; an error
+    /// once playback has stopped running.
+    #[cfg(test)]
+    pub(crate) fn has_changed(&self) -> Result<bool, watch::error::RecvError> {
+        self.0.has_changed()
+    }
+
+    /// Wait until the positions satisfy `done`, and return them; an error
+    /// once playback has stopped running.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn wait_for(
+        &mut self,
+        done: impl FnMut(&PlaybackPositions) -> bool,
+    ) -> Result<PlaybackPositions, watch::error::RecvError> {
+        Ok(self.0.wait_for(done).await?.clone())
+    }
+}
+
 impl PlaybackProgressHandle {
     /// Spawn the fan-out task that takes each event from `progress_rx` in
     /// order: it writes the change the event makes to what playback is doing
@@ -84,17 +143,17 @@ impl PlaybackProgressHandle {
         });
         Self { subscriptions, positions }
     }
-    /// A receiver yielding every progress update. Dropping it unsubscribes (the
-    /// fan-out prunes closed senders).
-    pub fn subscribe_all(&self) -> tokio_mpsc::UnboundedReceiver<PlaybackProgress> {
+    /// Every progress update from now on. Dropping the feed unsubscribes
+    /// (the fan-out prunes closed senders).
+    pub fn subscribe_all(&self) -> PlaybackProgressFeed {
         let (tx, rx) = tokio_mpsc::unbounded_channel();
         self.subscriptions.lock().unwrap().push(tx);
-        rx
+        PlaybackProgressFeed(rx)
     }
 
     /// The playback positions, which change as audio plays.
-    pub fn subscribe_positions(&self) -> watch::Receiver<PlaybackPositions> {
-        self.positions.clone()
+    pub fn subscribe_positions(&self) -> PlaybackPositionsWatch {
+        PlaybackPositionsWatch(self.positions.clone())
     }
 }
 

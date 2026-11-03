@@ -221,7 +221,7 @@ async fn a_playing_track_moves_its_positions_without_sending_a_value() {
                 .await
                 .expect("the playing track's position moves")
                 .expect("the positions stay open");
-            let position = positions.borrow_and_update().library.clone();
+            let position = positions.positions().library;
             if let Some(position) = position.filter(|position| position.track_id == track_id) {
                 seen.push(position.position_ms);
             }

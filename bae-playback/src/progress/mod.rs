@@ -1,7 +1,7 @@
 pub mod handle;
 pub mod timeline;
 use crate::service::PlaybackState;
-pub use handle::PlaybackProgressHandle;
+pub use handle::{PlaybackPositionsWatch, PlaybackProgressFeed, PlaybackProgressHandle};
 pub use timeline::{PlaybackTimeline, PreviewTimelinePoint, TimelinePoint};
 use tokio::sync::mpsc as tokio_mpsc;
 use tracing::warn;

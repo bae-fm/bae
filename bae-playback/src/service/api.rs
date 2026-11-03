@@ -421,13 +421,11 @@ impl PlaybackHandle {
     pub fn stop_remote(&self) {
         self.dispatch(PlaybackCommand::StopRemote);
     }
-    pub fn subscribe_progress(&self) -> tokio_mpsc::UnboundedReceiver<PlaybackProgress> {
+    pub fn subscribe_progress(&self) -> crate::PlaybackProgressFeed {
         self.progress_handle.subscribe_all()
     }
 
-    pub fn subscribe_positions(
-        &self,
-    ) -> tokio::sync::watch::Receiver<crate::progress::PlaybackPositions> {
+    pub fn subscribe_positions(&self) -> crate::PlaybackPositionsWatch {
         self.progress_handle.subscribe_positions()
     }
 

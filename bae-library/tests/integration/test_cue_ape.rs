@@ -83,7 +83,7 @@ async fn import_cue_ape_fixture() -> (bae_library::test_libraries::TestLibrary, 
 
 struct CueApeTestFixture {
     playback_handle: bae_playback::PlaybackHandle,
-    progress_rx: tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
+    progress_rx: bae_playback::PlaybackProgressFeed,
     track_ids: Vec<String>,
     capture_stream_rx: bae_playback::test_capture::CaptureStreamRx,
     _temp_dir: TempDir,

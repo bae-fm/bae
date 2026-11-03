@@ -321,9 +321,7 @@ impl AppServices {
         bae_views::LiveLibraryBrowse::new(query, bae_views::composer::resolve_composer_browse)
     }
 
-    pub fn subscribe_playback_progress(
-        &self,
-    ) -> tokio::sync::mpsc::UnboundedReceiver<bae_playback::PlaybackProgress> {
+    pub fn subscribe_playback_progress(&self) -> bae_playback::PlaybackProgressFeed {
         self.inner.playback.subscribe_progress()
     }
 

@@ -176,7 +176,7 @@ pub(super) fn create_cue_flac_test_album() -> DiscogsRelease {
 /// `TestAudioDevice::RealtimeCapture`.
 pub(super) struct CueFlacTestFixture {
     pub(super) playback_handle: bae_playback::PlaybackHandle,
-    pub(super) progress_rx: tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
+    pub(super) progress_rx: bae_playback::PlaybackProgressFeed,
     pub(super) track_ids: Vec<String>,
     pub(super) library: TestLibrary,
     pub(super) capture_stream_rx: bae_playback::test_capture::CaptureStreamRx,
@@ -232,7 +232,7 @@ impl CueFlacTestFixture {
 pub(super) struct SidePauseTestFixture {
     pub(super) playback_handle: bae_playback::PlaybackHandle,
     pub(super) library: TestLibrary,
-    pub(super) progress_rx: tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
+    pub(super) progress_rx: bae_playback::PlaybackProgressFeed,
     pub(super) track_ids: Vec<String>,
     pub(super) release_id: String,
     pub(super) capture_stream_rx: bae_playback::test_capture::CaptureStreamRx,
@@ -497,7 +497,7 @@ pub(super) fn create_multi_window_cue_album() -> DiscogsRelease {
 /// sparsely buffered file.
 pub(super) struct MultiWindowPlayback {
     pub(super) playback_handle: bae_playback::PlaybackHandle,
-    pub(super) progress_rx: tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
+    pub(super) progress_rx: bae_playback::PlaybackProgressFeed,
     pub(super) track_ids: Vec<String>,
     pub(super) library: TestLibrary,
     pub(super) _capture_stream_rx: bae_playback::test_capture::CaptureStreamRx,
