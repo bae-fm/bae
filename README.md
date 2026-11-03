@@ -1,153 +1,54 @@
 # bae
 
+bae is a music library and player for a household. It plays the music you
+already have, as files on your own disks, and keeps one library on every
+device in the household.
+
 > [!WARNING]
-> bae is under active development and is not ready for general use. Builds are
-> for testing while the app is pre-1.0; data and sync formats can change without
-> migration.
+> bae is pre-1.0 and under active development. Library and sync formats can
+> change without migration.
 
-A music library manager that uses decentralized identity and end-to-end encryption over pluggable storage for serverless, multi-device sync.
+## What it does
 
-You pick releases from MusicBrainz or Discogs, point bae at your files, and it handles storage, playback, and organization. Everything in the cloud is encrypted. The storage provider sees encrypted objects under random names. All trust lives in cryptography, not in the storage backend.
+- **Imports folders of audio.** On a desktop, bae watches your music folders
+  and looks each folder up on MusicBrainz and Discogs for its album, pressing,
+  artists and cover. Folders of one file per track and disc images with a CUE
+  sheet both import.
+- **Leaves your files where they are.** bae reads and plays them; it never
+  copies, moves or rewrites them.
+- **Plays a release as it was made.** Tracks join without gaps, hidden pregaps
+  play, and playback can pause between the sides of a record or the discs of a
+  box set.
+- **Shares the library.** Several people use one library, each with their own
+  devices, ratings, listening history and playlists, kept private or shared.
+- **Plays on other devices.** Phones browse, stream and pin releases for
+  offline play; the apps cast to AirPlay, Chromecast and UPnP receivers; a
+  desktop can serve the library to Subsonic apps.
 
-## How it works
+## Sync
 
-**Import and play.** Import from local folders (file-per-track or CUE/FLAC). Match to a MusicBrainz or Discogs release for metadata, cover art, credits, label info. Browse and play with native audio, CUE pregap support, and media key integration.
+bae syncs through [coven](https://github.com/bae-fm/coven), using storage you
+already have: a Dropbox or OneDrive folder, iCloud on Apple devices, or an
+S3-compatible bucket. bae runs no server. Everything is encrypted on the device
+before it reaches storage and kept under random names, so the provider sees no
+album, artist or file names.
 
-**Sync across devices.** Sign in with a cloud provider (Dropbox, OneDrive), use iCloud on Apple devices, or configure an S3-compatible bucket. This creates your cloud home -- one encrypted location that holds everything. bae runs no server of its own; your devices sync through the cloud home with [coven](https://github.com/bae-fm/coven). One household, several people, each with their own devices, one library: you add your own devices with your restore code, and an admin invites other people. When sync is waiting on something (a sign-in, a moved file, another device), Settings shows it in one status line that lists each item with the action that resolves it; transient failures back off and retry.
+## Platforms
 
-## Architecture
+- **macOS:** the desktop app.
+- **Android:** the phone app.
+- **iOS and Windows:** the apps start, but have no library screens.
+- **Linux:** no release.
 
-- **Identity**: each person is a coven member with an Ed25519 signing key pair and an X25519 sealing key pair, shared by their devices. A person's new device joins with their restore code; a new person joins by an admin's invite and approval. No central identity server.
-- **Encryption**: a store key per library, a key for each person's private circle, and a key per file. Everything in the cloud home is encrypted before it leaves the device and stored under random names.
-- **Storage**: Dropbox, OneDrive, iCloud (CloudKit), any S3-compatible bucket, or local-only.
-- **Sync**: coven owns the SQLite connection and records each committed write, then publishes it in one numbered sequence in storage that every device applies in order. Concurrent edits merge column by column; of two edits to the same column, the later timestamp wins. Deterministic merge.
-- **Membership**: signed admin entries in that same sequence, judged by every device against the state before them. Each write is checked against its author's membership when applied.
+bae also comes as **baeium**, which syncs only through S3-compatible storage,
+sends no telemetry and needs nothing proprietary to build or run.
 
-## Crates
+## More
 
-| Crate | Description |
-|-------|-------------|
-| `bae-app` | The composition root that opens a library, `AppServices`, the owner every surface calls, and the screens' live reads |
-| `bae-library` | The library, files, outputs, sync integration and settings |
-| `bae-views` | The library's views: what the lists, detail views, search and Storage Manager read, and the shapes a screen shows |
-| `bae-import` | Import (desktop only): watched folders, candidates and their drafts, identification runs, and the import that writes a release |
-| `bae-playback` | Playback: the service, the queue as the store keeps it, the outputs, the preview player, and the renderer session |
-| `bae-identify` | Identification (desktop only): the reducer, its view, and the verdict a run stores |
-| `bae-track-audio` | Reading a track's stored audio for a decode: its readers, decode windows and read errors |
-| `bae-preferences` | This device's preferences for a library and its save presets |
-| `bae-transfers` | The download and export queues and the storage transition each release is in |
-| `bae-db` | The library's store: the database over coven, the schema, the library's records and their row writers |
-| `bae-app-dir` | bae's own directory: the libraries on this device, the installation id, the keyring namespace |
-| `bae-diagnostics` | Telemetry, bug reports to the platform's crash reporter, and the error categories a person is shown |
-| `bae-catalogs` | The MusicBrainz, Discogs and Wikidata clients, their rate limits and covers, and what the catalogs say about a release in bae's terms |
-| `bae-audio` | The audio codec over FFmpeg and the streams a decoded track plays from |
-| `bae-types` | The domain values the catalogs, identification and the library share |
-| `bae-util` | What the other crates build on, with no library vocabulary: HTTP, retries, error text, stored images, logging |
-| `bae-bridge` | UniFFI bridge for the macOS and Android native apps, the iOS skeleton, and the Windows/Linux Avalonia skeleton |
-| `bae-desktop` | The desktop services a bridge handle starts: the MCP and Subsonic servers |
-| `bae-subsonic` | The Subsonic server |
-| `bae-mcp` | The MCP server over bae-automation |
-| `bae-automation` | The automation tools and their JSON shapes |
-| `bae-cast` | AirPlay, Google Cast and UPnP, receiver discovery and the session media server |
-| `bae-mirror` | The macros that write field-for-field conversions |
-| `bae-loc` | The string catalog and each platform's resources |
-| `bae-theme` | The shared theme, written as Swift and Kotlin |
-| `bae-uniffi-bindgen` | The bindings generator |
-
-## Roadmap
-
-- LP mode -- pause at side breaks, "flip" to continue
-- Shuffle
-- Linux
-
-## Versioning
-
-Each app is versioned independently as `MAJOR.MINOR`, with a separate monotonic build number and a stamp of the exact source it was built from.
-
-- **MAJOR -- the compatibility era, shared across every app.** It's the sync-and-storage compatibility generation: devices on the same major can sync and read each other's data. It bumps -- in lockstep across macOS, Android, and the rest -- only when the wire/on-disk format breaks: the `coven` sync format, or bae-library's own schema. So `macos-2.x` and `android-2.x` are the same generation no matter their minors, and `3.0` is a new, incompatible era. `coven` is a SemVer library, and a break in its *format* (not merely its API) forces a bae major bump -- though bae-library's own schema changes can force one too.
-- **MINOR -- the per-app release count within the era.** Auto-incremented from that app's tags (`macos-v*`, `android-v*`). Minors diverge by design: macOS shipping more often than Android just means a higher minor. Only the major is comparable across platforms.
-- **Build number** -- the CI run number, written into `CFBundleVersion` / Android `versionCode`. Monotonic; what Sparkle and the app stores use to order builds. Not user-facing.
-- **Source stamp** -- every build records the bae commit and the pinned `coven` rev (macOS `Info.plist`, Android `BuildConfig`) for crash triage and sync-compatibility debugging.
-
-Releases are tagged `macos-v<MAJOR>.<MINOR>` and `android-v<MAJOR>.<MINOR>`. Pre-1.0, everything is era `0` -- no compatibility promises, and `rm -rf ~/.bae` is the migration strategy.
-
-## Development setup
-
-macOS only for now. Requires Homebrew.
-
-**Prerequisites:**
-
-```bash
-# Rust
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-
-# System libraries
-brew install cmake pkg-config
-```
-
-**Quick start:**
-
-```bash
-# Clone (no submodules — coven is a pinned Cargo git dependency, fetched at build)
-git clone <repository-url>
-cd bae
-
-# Setup bae-ffmpeg (downloads the prebuilt fork binaries). bae links FFmpeg only
-# from here, never from a system/Homebrew install -- so local dev, CI, and
-# release all link the same artifacts. Required setup.
-./scripts/setup-ffmpeg.sh
-
-# Add to your shell profile (~/.zshrc):
-export FFMPEG_DIR="$PWD/bae-ffmpeg/dist"
-export PKG_CONFIG_PATH="$FFMPEG_DIR/lib/pkgconfig:$PKG_CONFIG_PATH"
-export LIBRARY_PATH="$FFMPEG_DIR/lib:$LIBRARY_PATH"
-export DYLD_LIBRARY_PATH="$FFMPEG_DIR/lib:$DYLD_LIBRARY_PATH"
-export BINDGEN_EXTRA_CLANG_ARGS="-I$FFMPEG_DIR/include ${BINDGEN_EXTRA_CLANG_ARGS:-}"
-
-./scripts/install-hooks.sh
-
-# Run
-# See bae-macos for the native macOS app
-```
-
-### Building baeium yourself
-
-baeium needs nothing proprietary to build, run, or distribute.
-
-- **iOS** — the iOS app is a skeleton: it launches, starts telemetry, crash reporting, the host and the keychain, and shows the libraries on the device. Open the Xcode project (`bae-ios`, generated by `xcodegen`) and build with your own signing. Because baeium signs with entitlements that drop the iCloud-*container* capability (a paid Apple Developer account is required to sign that one), it works under **free provisioning** — a personal Apple ID, no paid Developer Program; it keeps the keychain entitlement. Build the bridge for baeium first so the app gets the baeium entitlements and S3-only bindings:
-
-  ```bash
-  BAE_BRIDGE_FEATURES=cast ./bae-bridge/build-ios.sh
-  ```
-
-- **Android** — build the `baeium` product flavor; it carries no Google Play or other proprietary dependencies (barcode scanning uses ZXing, not ML Kit):
-
-  ```bash
-  BAE_BRIDGE_FEATURES=cast ./bae-bridge/build-android.sh
-  cd bae-android && ./gradlew assembleBaeiumDebug
-  ```
-
-- **macOS / Windows** — build with `BAE_BRIDGE_FEATURES=desktop` for macOS and `BAE_BRIDGE_CSHARP_BINDINGS_DIR=bae-bridge/csharp-bindings-full ./bae-bridge/build-windows.sh` for Windows (the default feature set is the full edition).
-
-## Configuration
-
-Secrets live in the system keyring. coven keeps each library's store, its
-database and files, under `~/.bae/stores/<library-id>/`; bae keeps its cache
-in `~/.bae/libraries/<library-id>/`. This device's settings for a library are
-a row in its database; see [the settings reference](spec/bae.md#appendix-c-settings).
-The Discogs API key is entered in the app's settings.
-
-## Logging
-
-Log levels via `RUST_LOG`:
-
-```bash
-RUST_LOG=info              # General info (default)
-RUST_LOG=debug             # Detailed debugging
-RUST_LOG=bae=debug         # Debug only bae module
-RUST_LOG=bae::import=debug # Debug specific submodule
-```
+[spec/bae.md](spec/bae.md) describes what bae does in detail. Downloads are at
+[bae.fm](https://bae.fm).
 
 ## License
 
-Currently unlicensed — all rights reserved while licensing is being decided. See [LICENSE](LICENSE).
+Unlicensed: all rights reserved while licensing is decided. See
+[LICENSE](LICENSE).
