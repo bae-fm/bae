@@ -3200,7 +3200,8 @@ starts or fails.
 
 A UPnP renderer is known by its UDN, so it stays the same entry when its
 address changes. One that states no UDN is left out of the picker, and the
-log names its address.
+log names its address. A receiver with several zones lists each zone as a
+renderer of its own, with its own name and controls.
 
 **When casting breaks.** A panic in casting's own work is a bug, reported to
 the crash reporter, and ends only what it was doing. A thread sending audio,

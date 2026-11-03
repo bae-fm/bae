@@ -11,6 +11,12 @@ use super::soap::{
 };
 use crate::renderer::{RendererConnection, RendererDevice};
 
+/// The one renderer a description describes.
+fn only_device(mut devices: Vec<RendererDevice>) -> RendererDevice {
+    assert_eq!(devices.len(), 1, "the description describes one renderer: {devices:?}");
+    devices.remove(0)
+}
+
 /// The DLNA connection's control URLs, for asserting on a parsed device.
 fn dlna_urls(device: &RendererDevice) -> (String, Option<String>) {
     match &device.connection {
@@ -70,11 +76,10 @@ fn relative_urls_description() -> &'static str {
 
 #[test]
 fn description_with_relative_control_urls_resolves_against_location() {
-    let device = parse_device_description(
+    let device = only_device(parse_device_description(
         relative_urls_description(),
         "http://192.168.1.50:8080/desc/description.xml",
-    )
-    .expect("a renderer with AVTransport is usable");
+    ));
 
     assert_eq!(device.id, "uuid:11111111-2222-3333-4444-555555555555");
     assert_eq!(device.name, "Living Room Receiver");
@@ -98,8 +103,7 @@ fn description_without_friendly_name_falls_back_to_host() {
     </serviceList>
   </device>
 </root>"#;
-    let device = parse_device_description(xml, "http://10.0.0.9:49152/dev.xml")
-        .expect("still usable without a friendly name");
+    let device = only_device(parse_device_description(xml, "http://10.0.0.9:49152/dev.xml"));
     assert_eq!(device.name, "10.0.0.9");
     let (av, rc) = dlna_urls(&device);
     // An absolute-path controlURL resolves against the location's origin.
@@ -124,7 +128,7 @@ fn description_control_url_on_another_host_and_port_is_kept_absolute() {
   </device>
 </root>"#;
     let device =
-        parse_device_description(xml, "http://192.168.1.50:8080/description.xml").expect("usable");
+        only_device(parse_device_description(xml, "http://192.168.1.50:8080/description.xml"));
     assert_eq!(
         dlna_urls(&device).0,
         "http://192.168.1.77:9000/AVTransport/control",
@@ -148,8 +152,7 @@ fn description_url_base_overrides_location_for_resolution() {
     </serviceList>
   </device>
 </root>"#;
-    let device =
-        parse_device_description(xml, "http://192.168.1.50:8080/desc.xml").expect("usable");
+    let device = only_device(parse_device_description(xml, "http://192.168.1.50:8080/desc.xml"));
     assert_eq!(
         dlna_urls(&device).0,
         "http://192.168.1.50:2870/ctl/avt",
@@ -173,7 +176,7 @@ fn description_without_av_transport_is_unusable() {
   </device>
 </root>"#;
     assert!(
-        parse_device_description(xml, "http://host/desc.xml").is_none(),
+        parse_device_description(xml, "http://host/desc.xml").is_empty(),
         "a device that can't be played to (no AVTransport) is dropped"
     );
 }
@@ -199,10 +202,83 @@ fn description_without_a_udn_is_left_out() {
 </root>"#
         );
         assert!(
-            parse_device_description(&xml, "http://10.0.0.9:49152/dev.xml").is_none(),
+            parse_device_description(&xml, "http://10.0.0.9:49152/dev.xml").is_empty(),
             "a renderer without a UDN ({udn:?}) is not offered"
         );
     }
+}
+
+/// A multi-zone receiver: a root device holding no transport of its own, with
+/// one embedded MediaRenderer per zone, each with its own UDN, name and
+/// control URLs.
+fn two_zone_description() -> &'static str {
+    r#"<?xml version="1.0"?>
+<root xmlns="urn:schemas-upnp-org:device-1-0">
+  <device>
+    <deviceType>urn:schemas-upnp-org:device:Basic:1</deviceType>
+    <friendlyName>AV Receiver</friendlyName>
+    <UDN>uuid:receiver-root</UDN>
+    <deviceList>
+      <device>
+        <deviceType>urn:schemas-upnp-org:device:MediaRenderer:1</deviceType>
+        <friendlyName>AV Receiver Main Zone</friendlyName>
+        <UDN>uuid:receiver-zone-1</UDN>
+        <serviceList>
+          <service>
+            <serviceType>urn:schemas-upnp-org:service:AVTransport:1</serviceType>
+            <controlURL>zone1/AVTransport</controlURL>
+          </service>
+          <service>
+            <serviceType>urn:schemas-upnp-org:service:RenderingControl:1</serviceType>
+            <controlURL>zone1/RenderingControl</controlURL>
+          </service>
+        </serviceList>
+      </device>
+      <device>
+        <deviceType>urn:schemas-upnp-org:device:MediaRenderer:1</deviceType>
+        <friendlyName>AV Receiver Zone 2</friendlyName>
+        <UDN>uuid:receiver-zone-2</UDN>
+        <serviceList>
+          <service>
+            <serviceType>urn:schemas-upnp-org:service:AVTransport:1</serviceType>
+            <controlURL>zone2/AVTransport</controlURL>
+          </service>
+        </serviceList>
+      </device>
+    </deviceList>
+  </device>
+</root>"#
+}
+
+/// Each zone of a multi-zone receiver is a renderer of its own: its UDN, its
+/// name and its control URLs, never another zone's or the root device's.
+#[test]
+fn each_zone_of_a_multi_zone_receiver_is_its_own_renderer() {
+    let devices =
+        parse_device_description(two_zone_description(), "http://10.0.0.20:8080/desc.xml");
+
+    let zones: Vec<_> = devices
+        .iter()
+        .map(|device| (device.id.as_str(), device.name.as_str(), dlna_urls(device)))
+        .collect();
+    assert_eq!(
+        zones,
+        vec![
+            (
+                "uuid:receiver-zone-1",
+                "AV Receiver Main Zone",
+                (
+                    "http://10.0.0.20:8080/zone1/AVTransport".to_string(),
+                    Some("http://10.0.0.20:8080/zone1/RenderingControl".to_string())
+                )
+            ),
+            (
+                "uuid:receiver-zone-2",
+                "AV Receiver Zone 2",
+                ("http://10.0.0.20:8080/zone2/AVTransport".to_string(), None)
+            ),
+        ]
+    );
 }
 
 // -- SOAP envelope construction -----------------------------------------------

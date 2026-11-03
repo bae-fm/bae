@@ -159,13 +159,15 @@ fn run_search(
                 return;
             }
 
-            match fetch_device(&client, &location) {
-                Some(device) => {
-                    by_id.insert(device.id.clone(), device);
-                    devices.publish(snapshot(&by_id));
-                }
-                None => debug!("dlna discovery: {location} is not a usable renderer"),
+            let found = fetch_devices(&client, &location);
+            if found.is_empty() {
+                debug!("dlna discovery: {location} describes no usable renderer");
+                return;
             }
+            for device in found {
+                by_id.insert(device.id.clone(), device);
+            }
+            devices.publish(snapshot(&by_id));
         });
         if let Err(failed) = followed {
             diagnostics.bug(failed);
@@ -173,14 +175,14 @@ fn run_search(
     }
 }
 
-/// Fetch and parse a responder's device-description document into a device, or
-/// `None` when the fetch fails or the description isn't a usable renderer.
-fn fetch_device(client: &reqwest::blocking::Client, location: &str) -> Option<RendererDevice> {
+/// Fetch and parse a responder's device-description document into the
+/// renderers it describes; none when the fetch fails.
+fn fetch_devices(client: &reqwest::blocking::Client, location: &str) -> Vec<RendererDevice> {
     let xml = match client.get(location).send().and_then(|r| r.text()) {
         Ok(xml) => xml,
         Err(e) => {
             debug!("dlna discovery: fetching {location} failed: {}", CauseChain(&e));
-            return None;
+            return Vec::new();
         }
     };
     parse_device_description(&xml, location)
@@ -211,16 +213,25 @@ pub(super) fn parse_ssdp_location(response: &str) -> Option<String> {
     None
 }
 
-/// Parse a device-description document (fetched from `location`) into a UPnP
-/// [`RendererDevice`]. Returns `None` when the XML doesn't parse, the device
-/// has no UDN (UPnP tells devices apart by it, so without one the renderer has
-/// no identity that survives its address changing; logged with its address),
-/// or it has no AVTransport service (it can't be played to). Control URLs are resolved to
-/// absolute form against `URLBase` when present, else against `location` — so a
-/// relative `controlURL`, an absolute-path one, and one naming another host/port
-/// all land as a full URL.
-pub(super) fn parse_device_description(xml: &str, location: &str) -> Option<RendererDevice> {
-    let doc = roxmltree::Document::parse(xml).ok()?;
+/// Parse a device-description document (fetched from `location`) into the
+/// UPnP [`RendererDevice`]s it describes: the root device and each device
+/// embedded in it — a multi-zone receiver's zones — that has an AVTransport
+/// service, each from its own elements alone. A document that doesn't parse
+/// describes none (logged). A device with no UDN (UPnP tells devices apart by
+/// it, so without one the renderer has no identity that survives its address
+/// changing; logged with its address) or no AVTransport service (it can't be
+/// played to) is left out. Control URLs are resolved to absolute form against
+/// `URLBase` when present, else against `location` — so a relative
+/// `controlURL`, an absolute-path one, and one naming another host/port all
+/// land as a full URL.
+pub(super) fn parse_device_description(xml: &str, location: &str) -> Vec<RendererDevice> {
+    let doc = match roxmltree::Document::parse(xml) {
+        Ok(doc) => doc,
+        Err(error) => {
+            debug!("dlna discovery: the description at {location} doesn't parse: {error}");
+            return Vec::new();
+        }
+    };
 
     let base = doc
         .descendants()
@@ -230,27 +241,23 @@ pub(super) fn parse_device_description(xml: &str, location: &str) -> Option<Rend
         .filter(|s| !s.is_empty())
         .unwrap_or(location);
 
-    let Some(id) =
-        local_text(&doc, "UDN").map(str::trim).filter(|udn| !udn.is_empty()).map(str::to_string)
-    else {
-        warn!(
-            "dlna discovery: the renderer at {location} states no UDN, which UPnP \
-             needs to tell devices apart; leaving it out of the picker"
-        );
-        return None;
-    };
+    doc.descendants()
+        .filter(|n| n.is_element() && n.tag_name().name() == "device")
+        .filter_map(|device| parse_device(&device, base, location))
+        .collect()
+}
 
-    let name = local_text(&doc, "friendlyName")
-        .map(|s| s.trim().to_string())
-        .filter(|s| !s.is_empty())
-        .unwrap_or_else(|| fallback_name(location));
-
+/// One `device` element as a renderer, read from its own child elements and
+/// services, never those of the devices embedded in it.
+fn parse_device(device: &roxmltree::Node, base: &str, location: &str) -> Option<RendererDevice> {
     let mut av_transport_url = None;
     let mut rendering_control_url = None;
-    for service in doc.descendants().filter(|n| n.is_element() && n.tag_name().name() == "service")
-    {
-        let service_type = child_local_text(&service, "serviceType").unwrap_or_default();
-        let Some(control_url) = child_local_text(&service, "controlURL") else {
+    let services = child_element(device, "serviceList").into_iter().flat_map(|list| {
+        list.children().filter(|n| n.is_element() && n.tag_name().name() == "service")
+    });
+    for service in services {
+        let service_type = child_text(&service, "serviceType").unwrap_or_default();
+        let Some(control_url) = child_text(&service, "controlURL") else {
             continue;
         };
         let resolved = resolve_url(base, control_url.trim());
@@ -260,14 +267,27 @@ pub(super) fn parse_device_description(xml: &str, location: &str) -> Option<Rend
             rendering_control_url = rendering_control_url.or(resolved);
         }
     }
+    let av_transport_url = av_transport_url?;
+
+    let Some(id) =
+        child_text(device, "UDN").map(str::trim).filter(|udn| !udn.is_empty()).map(str::to_string)
+    else {
+        warn!(
+            "dlna discovery: a renderer at {location} states no UDN, which UPnP \
+             needs to tell devices apart; leaving it out of the picker"
+        );
+        return None;
+    };
+
+    let name = child_text(device, "friendlyName")
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| fallback_name(location));
 
     Some(RendererDevice {
         id,
         name,
-        connection: RendererConnection::Dlna {
-            av_transport_url: av_transport_url?,
-            rendering_control_url,
-        },
+        connection: RendererConnection::Dlna { av_transport_url, rendering_control_url },
     })
 }
 
@@ -280,17 +300,17 @@ fn fallback_name(location: &str) -> String {
         .unwrap_or_else(|| "UPnP Renderer".to_string())
 }
 
-/// The text of the first element with local name `name` anywhere in the document.
-fn local_text<'a>(doc: &'a roxmltree::Document, name: &str) -> Option<&'a str> {
-    doc.descendants().find(|n| n.is_element() && n.tag_name().name() == name).and_then(|n| n.text())
+/// The child element of `node` with local name `name`.
+fn child_element<'a, 'input>(
+    node: &roxmltree::Node<'a, 'input>,
+    name: &str,
+) -> Option<roxmltree::Node<'a, 'input>> {
+    node.children().find(|n| n.is_element() && n.tag_name().name() == name)
 }
 
-/// The text of the first descendant of `node` with local name `name`.
-fn child_local_text(node: &roxmltree::Node, name: &str) -> Option<String> {
-    node.descendants()
-        .find(|n| n.is_element() && n.tag_name().name() == name)
-        .and_then(|n| n.text())
-        .map(str::to_string)
+/// The text of the child element of `node` with local name `name`.
+fn child_text<'a>(node: &roxmltree::Node<'a, '_>, name: &str) -> Option<&'a str> {
+    child_element(node, name).and_then(|n| n.text())
 }
 
 /// Resolve `target` against `base`, handling a relative path, an absolute path,
