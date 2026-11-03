@@ -2,7 +2,12 @@
 //! opening the library empties it.
 
 use super::*;
-use crate::renderer::{CastDevice, RendererKind};
+use crate::db::client::tests::temp_db;
+
+/// The receivers the picker lists now.
+async fn cast_devices(database: &Database) -> Result<Vec<CastDevice>, DbError> {
+    database.read(|sql| cast_devices_on(&sql)).await
+}
 
 fn device(id: &str, name: &str, kind: RendererKind) -> CastDevice {
     CastDevice { id: id.to_string(), name: name.to_string(), kind }
@@ -12,15 +17,18 @@ fn device(id: &str, name: &str, kind: RendererKind) -> CastDevice {
 #[tokio::test]
 async fn each_write_lists_the_whole_picker_by_name() {
     let (db, _tmp) = temp_db().await;
-    db.replace_cast_devices(vec![
-        device("uuid:tv", "Television", RendererKind::Dlna),
-        device("cast-1", "Kitchen", RendererKind::Cast),
-        device("airplay-1", "Kitchen", RendererKind::AirPlay),
-    ])
+    replace_cast_devices(
+        &db,
+        vec![
+            device("uuid:tv", "Television", RendererKind::Dlna),
+            device("cast-1", "Kitchen", RendererKind::Cast),
+            device("airplay-1", "Kitchen", RendererKind::AirPlay),
+        ],
+    )
     .await
     .unwrap();
     assert_eq!(
-        db.cast_devices().await.unwrap(),
+        cast_devices(&db).await.unwrap(),
         vec![
             device("airplay-1", "Kitchen", RendererKind::AirPlay),
             device("cast-1", "Kitchen", RendererKind::Cast),
@@ -28,9 +36,9 @@ async fn each_write_lists_the_whole_picker_by_name() {
         ]
     );
 
-    db.replace_cast_devices(vec![device("cast-1", "Kitchen", RendererKind::Cast)]).await.unwrap();
+    replace_cast_devices(&db, vec![device("cast-1", "Kitchen", RendererKind::Cast)]).await.unwrap();
     assert_eq!(
-        db.cast_devices().await.unwrap(),
+        cast_devices(&db).await.unwrap(),
         vec![device("cast-1", "Kitchen", RendererKind::Cast)]
     );
 }
@@ -40,9 +48,9 @@ async fn each_write_lists_the_whole_picker_by_name() {
 #[tokio::test]
 async fn opening_empties_the_picker() {
     let (db, _tmp) = temp_db().await;
-    db.replace_cast_devices(vec![device("cast-1", "Kitchen", RendererKind::Cast)]).await.unwrap();
+    replace_cast_devices(&db, vec![device("cast-1", "Kitchen", RendererKind::Cast)]).await.unwrap();
 
-    db.clear_cast_devices().await.unwrap();
+    clear_cast_devices(&db).await.unwrap();
 
-    assert_eq!(db.cast_devices().await.unwrap(), Vec::new());
+    assert_eq!(cast_devices(&db).await.unwrap(), Vec::new());
 }

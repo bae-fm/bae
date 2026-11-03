@@ -119,8 +119,6 @@ pub(crate) fn seed_artist_album_release(
 mod release_storage_action_tests;
 
 #[cfg(test)]
-mod cast_devices_tests;
-
 #[cfg(test)]
 mod sync_start_failure_tests;
 

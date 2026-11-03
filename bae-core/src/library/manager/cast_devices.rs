@@ -8,11 +8,11 @@ impl LibraryManager {
     /// List `devices` as the picker's receivers in place of the last list, in
     /// one write.
     pub async fn show_cast_devices(&self, devices: Vec<CastDevice>) -> Result<(), LibraryError> {
-        Ok(self.database.replace_cast_devices(devices).await?)
+        Ok(crate::renderer::picker::replace_cast_devices(&self.database, devices).await?)
     }
 
     /// Follow the receivers the picker lists.
     pub(crate) fn subscribe_cast_devices(&self) -> coven::LiveQuery<Vec<CastDevice>> {
-        self.database.subscribe_cast_devices()
+        crate::renderer::picker::subscribe_cast_devices(&self.database)
     }
 }
