@@ -10,6 +10,7 @@
 # Rust build artifacts. No trailing slash: in a checkout set up by
 # scripts/build-layout.sh these paths are symlinks, not directories.
 /target
+/target-ra
 target-macos
 target-ios
 target-android

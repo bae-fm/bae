@@ -15,10 +15,14 @@
 # the Android bridge's debug info among them (0.4G per ABI), are under 1G.
 # target is about three times its fresh build: main's reached 26G across a day
 # of clippy, tests and coven bumps, and a delete there loses the person's warm
-# host build.
+# host build. target-ra is rust-analyzer's own: the Claude Code session's
+# rust-analyzer (agent-instructions' rust-analyzer plugin) builds build scripts
+# and proc macros there with `cargo check --workspace`; main's target held
+# about 5G of check metadata and build-script output, older copies included.
 #
 # path                                cap
 target                                30G
+target-ra                             10G
 target-macos                          15G
 target-ios                            24G
 target-android                        13G
