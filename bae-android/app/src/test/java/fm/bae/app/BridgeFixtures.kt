@@ -8,6 +8,7 @@ import uniffi.bae_bridge.BridgeCastDevice
 import uniffi.bae_bridge.BridgeCastTranscodeFormat
 import uniffi.bae_bridge.BridgeComposerSummary
 import uniffi.bae_bridge.BridgeConfig
+import uniffi.bae_bridge.BridgeCountLabel
 import uniffi.bae_bridge.BridgeDiscogsTokenStatus
 import uniffi.bae_bridge.BridgeDownloadCounts
 import uniffi.bae_bridge.BridgeDownloadOp
@@ -150,7 +151,7 @@ object BridgeFixtures {
         BridgeArtistSummary(
             artistId = artistId,
             name = name,
-            albumCount = 1L,
+            countLine = BridgeCountLabel(key = "core.library.album_count", count = 1u),
             image = null,
         )
 
@@ -162,7 +163,7 @@ object BridgeFixtures {
             artistId = artistId,
             name = name,
             sortName = null,
-            workCount = 1L,
+            countLine = BridgeCountLabel(key = "core.library.work_count", count = 1u),
             linkedReleaseCount = 1L,
             unlinkedCreditCount = 0L,
             image = null,

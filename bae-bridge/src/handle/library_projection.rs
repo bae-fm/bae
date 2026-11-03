@@ -353,11 +353,13 @@ mirror_struct! {
 
 impl BridgeComposerSummary {
     pub(crate) fn from_core(s: bae_views::album_detail::ComposerSummary) -> Self {
+        let count_line = crate::types::BridgeCountLabel::from_core(s.count_line());
         let bae_views::album_detail::ComposerSummary { raw } = s;
         let bae_views::DbComposerSummary {
             artist,
             image,
-            work_count,
+            // Read as the count line above.
+            work_count: _,
             linked_release_count,
             unlinked_credit_count,
         } = raw;
@@ -374,7 +376,7 @@ impl BridgeComposerSummary {
             artist_id,
             name,
             sort_name,
-            work_count,
+            count_line,
             linked_release_count,
             unlinked_credit_count,
             image: image.map(crate::types::BridgeImageRef::from_core),
@@ -384,8 +386,10 @@ impl BridgeComposerSummary {
 
 impl BridgeArtistSummary {
     pub(crate) fn from_core(s: bae_views::album_detail::ArtistSummary) -> Self {
+        let count_line = crate::types::BridgeCountLabel::from_core(s.count_line());
         let bae_views::album_detail::ArtistSummary { raw } = s;
-        let bae_views::DbArtistSummary { artist, image, album_count } = raw;
+        // The album count is read as the count line above.
+        let bae_views::DbArtistSummary { artist, image, album_count: _ } = raw;
         let bae_db::DbArtist {
             id: artist_id,
             name,
@@ -399,7 +403,7 @@ impl BridgeArtistSummary {
         BridgeArtistSummary {
             artist_id,
             name,
-            album_count,
+            count_line,
             image: image.map(crate::types::BridgeImageRef::from_core),
         }
     }

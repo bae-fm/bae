@@ -13,7 +13,10 @@
             artistId: "composer-0",
             name: "Composer Name",
             sortName: nil,
-            workCount: 6,
+            countLine: BridgeCountLabel(
+                key: "core.library.work_count",
+                count: 6
+            ),
             linkedReleaseCount: 4,
             unlinkedCreditCount: 2,
             image: nil,
@@ -22,13 +25,15 @@
         /// A master list of composers for the browse-list previews.
         static let composerSummaries: [BridgeComposerSummary] = (0..<12)
             .map { (index: Int) -> BridgeComposerSummary in
-                let workCount = Int64(2 + index % 6)
                 let linkedReleaseCount = Int64(1 + index % 4)
                 return BridgeComposerSummary(
                     artistId: "composer-\(index)",
                     name: "Composer Name \(index + 1)",
                     sortName: nil,
-                    workCount: workCount,
+                    countLine: BridgeCountLabel(
+                        key: "core.library.work_count",
+                        count: UInt32(2 + index % 6)
+                    ),
                     linkedReleaseCount: linkedReleaseCount,
                     unlinkedCreditCount: 0,
                     image: nil,
@@ -165,7 +170,10 @@
         static let artistSummary = BridgeArtistSummary(
             artistId: "artist-0",
             name: "Artist Name",
-            albumCount: 6,
+            countLine: BridgeCountLabel(
+                key: "core.library.album_count",
+                count: 6
+            ),
             image: nil,
         )
 

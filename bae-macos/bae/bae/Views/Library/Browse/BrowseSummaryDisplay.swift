@@ -10,13 +10,9 @@ protocol BrowseSummaryDisplay {
 }
 
 extension BridgeComposerSummary: BrowseSummaryDisplay {
-    var countText: String {
-        "\(workCount) \(String(localized: "Works"))"
-    }
+    var countText: String { countLine.localizedLine }
 }
 
 extension BridgeArtistSummary: BrowseSummaryDisplay {
-    var countText: String {
-        "\(albumCount) \(String(localized: "Albums"))"
-    }
+    var countText: String { countLine.localizedLine }
 }

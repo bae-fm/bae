@@ -21,12 +21,13 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
+import fm.bae.app.coreString
 import fm.bae.app.data.ComposerPageStore
 import fm.bae.app.data.ImageStore
 import fm.bae.app.data.LocalImageStore
@@ -119,7 +120,7 @@ internal fun ComposerSummaryRow(
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                text = pluralStringResource(R.plurals.work_count, composer.workCount.toInt(), composer.workCount),
+                text = LocalContext.current.coreString(composer.countLine),
                 style = ThemeText.detail.style,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,

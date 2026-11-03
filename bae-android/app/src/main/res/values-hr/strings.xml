@@ -67,11 +67,6 @@
     <string name="search_section_albums">Albumi</string>
     <string name="search_section_artists">Izvođači</string>
     <string name="search_section_tracks">Pjesme</string>
-    <plurals name="work_count">
-        <item quantity="one">%1$d djelo</item>
-        <item quantity="few">%1$d djela</item>
-        <item quantity="other">%1$d djela</item>
-    </plurals>
     <string name="work_detail_load_failed">Nije moguće učitati ovo djelo.</string>
     <string name="work_detail_not_found">Detalji djela nisu pronađeni</string>
     <string name="composer_detail_load_failed">Nije moguće učitati ovog skladatelja.</string>

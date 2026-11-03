@@ -13,6 +13,15 @@ impl ArtistSummary {
     pub(crate) fn from_raw(raw: DbArtistSummary) -> Self {
         Self { raw }
     }
+
+    /// The line under the artist's name in its list, its detail and search:
+    /// how many albums credit it.
+    pub fn count_line(&self) -> bae_transfers::CountLabel {
+        bae_transfers::CountLabel {
+            key: "core.library.album_count".to_string(),
+            count: u32::try_from(self.raw.album_count).expect("an album count is never negative"),
+        }
+    }
 }
 
 /// One existing library artist offered by an artist picker. Unlike the artist

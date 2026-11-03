@@ -72,11 +72,6 @@
     <string name="search_section_albums">Albume</string>
     <string name="search_section_artists">Artiști</string>
     <string name="search_section_tracks">Piese</string>
-    <plurals name="work_count">
-        <item quantity="one">%1$d operă</item>
-        <item quantity="few">%1$d opere</item>
-        <item quantity="other">%1$d de opere</item>
-    </plurals>
     <string name="work_detail_load_failed">Această operă nu a putut fi încărcată.</string>
     <string name="work_detail_not_found">Detaliile operei nu au fost găsite</string>
     <string name="composer_detail_load_failed">Acest compozitor nu a putut fi încărcat.</string>

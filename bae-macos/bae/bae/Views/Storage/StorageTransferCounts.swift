@@ -16,11 +16,9 @@ struct StorageTransferCounts: View {
                 if index > 0 {
                     Text(verbatim: "\u{00B7}").foregroundStyle(.secondary)
                 }
-                Text(
-                    QueueSummary.countLabel(count.label.key, count.label.count)
-                )
-                .fontWeight(count.stage == .moving ? .semibold : .regular)
-                .foregroundStyle(style(count.stage))
+                Text(count.label.localizedLine)
+                    .fontWeight(count.stage == .moving ? .semibold : .regular)
+                    .foregroundStyle(style(count.stage))
             }
         }
     }

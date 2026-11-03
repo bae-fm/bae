@@ -486,7 +486,10 @@
                     BridgeArtistSummary(
                         artistId: "artist-a",
                         name: "Artist Name A",
-                        albumCount: 2,
+                        countLine: BridgeCountLabel(
+                            key: "core.library.album_count",
+                            count: 2
+                        ),
                         image: nil
                     )
                 ],
@@ -517,7 +520,10 @@
                         artistId: "artist-composer-a",
                         name: "Composer Name A",
                         sortName: "Composer Name A",
-                        workCount: 2,
+                        countLine: BridgeCountLabel(
+                            key: "core.library.work_count",
+                            count: 2
+                        ),
                         linkedReleaseCount: 3,
                         unlinkedCreditCount: 0,
                         image: nil

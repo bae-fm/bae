@@ -67,9 +67,6 @@
     <string name="search_section_albums">アルバム</string>
     <string name="search_section_artists">アーティスト</string>
     <string name="search_section_tracks">トラック</string>
-    <plurals name="work_count">
-        <item quantity="other">%1$d作品</item>
-    </plurals>
     <string name="work_detail_load_failed">この作品を読み込めませんでした。</string>
     <string name="work_detail_not_found">作品の詳細が見つかりません</string>
     <string name="composer_detail_load_failed">この作曲者を読み込めませんでした。</string>

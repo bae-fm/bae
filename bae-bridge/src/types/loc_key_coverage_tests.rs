@@ -22,6 +22,9 @@ const DIRECT_KEYS: &[&str] = &[
     "core.queue.pinning",
     "core.queue.waiting",
     "core.queue.pinned",
+    // The count line under an artist's or composer's name.
+    "core.library.album_count",
+    "core.library.work_count",
     // A queue row whose release the library no longer holds.
     "core.queue.release_missing",
     "core.download.bytes_progress",

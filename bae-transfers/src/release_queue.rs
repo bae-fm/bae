@@ -65,10 +65,11 @@ pub struct ReleaseQueueCounts {
     pub paused: bool,
 }
 
-/// One part of a queue summary line: a catalog key and the count to render it
-/// with (e.g. `core.queue.downloading` × 2). Core decides which parts appear, in
-/// what order, and that a zero drops out; the UI resolves each key against its
-/// catalog and joins the parts. Written five times across the apps before this.
+/// A catalog key whose message takes `count`, and the count to render it with
+/// (e.g. `core.queue.downloading` × 2): a part of a queue summary line, or the
+/// count line under an artist's or composer's name. Core decides which keys
+/// appear, in what order, and that a zero drops out of a summary; the UI
+/// resolves each key against its catalog and joins the parts.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CountLabel {
     pub key: String,

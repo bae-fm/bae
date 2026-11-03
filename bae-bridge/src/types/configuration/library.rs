@@ -43,7 +43,8 @@ pub struct BridgeComposerSummary {
     pub artist_id: String,
     pub name: String,
     pub sort_name: Option<String>,
-    pub work_count: i64,
+    /// The line under its name: how many works it is credited on.
+    pub count_line: BridgeCountLabel,
     pub linked_release_count: i64,
     pub unlinked_credit_count: i64,
     pub image: Option<BridgeImageRef>,
@@ -145,9 +146,8 @@ pub struct BridgeComposerSortCriterion {
 pub struct BridgeArtistSummary {
     pub artist_id: String,
     pub name: String,
-    /// Distinct albums this artist is an album artist of (primary FK or
-    /// `album_artists` junction).
-    pub album_count: i64,
+    /// The line under its name: how many albums credit it.
+    pub count_line: BridgeCountLabel,
     pub image: Option<BridgeImageRef>,
 }
 

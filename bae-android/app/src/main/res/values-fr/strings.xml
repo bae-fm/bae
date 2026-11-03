@@ -67,11 +67,6 @@
     <string name="search_section_albums">Albums</string>
     <string name="search_section_artists">Artistes</string>
     <string name="search_section_tracks">Pistes</string>
-    <plurals name="work_count">
-        <item quantity="one">%1$d œuvre</item>
-        <item quantity="many">%1$d d’œuvres</item>
-        <item quantity="other">%1$d œuvres</item>
-    </plurals>
     <string name="work_detail_load_failed">Impossible de charger cette œuvre.</string>
     <string name="work_detail_not_found">Détails de l’œuvre introuvables</string>
     <string name="composer_detail_load_failed">Impossible de charger ce compositeur.</string>

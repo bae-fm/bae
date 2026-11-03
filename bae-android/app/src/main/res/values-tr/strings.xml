@@ -67,10 +67,6 @@
     <string name="search_section_albums">Albümler</string>
     <string name="search_section_artists">Sanatçılar</string>
     <string name="search_section_tracks">Parçalar</string>
-    <plurals name="work_count">
-        <item quantity="one">%1$d eser</item>
-        <item quantity="other">%1$d eser</item>
-    </plurals>
     <string name="work_detail_load_failed">Bu eser yüklenemedi.</string>
     <string name="work_detail_not_found">Eser ayrıntısı bulunamadı</string>
     <string name="composer_detail_load_failed">Bu besteci yüklenemedi.</string>

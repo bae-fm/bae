@@ -67,10 +67,6 @@
     <string name="search_section_albums">Албуми</string>
     <string name="search_section_artists">Изпълнители</string>
     <string name="search_section_tracks">Песни</string>
-    <plurals name="work_count">
-        <item quantity="one">%1$d произведение</item>
-        <item quantity="other">%1$d произведения</item>
-    </plurals>
     <string name="work_detail_load_failed">Това произведение не можа да бъде заредено.</string>
     <string name="work_detail_not_found">Данните за произведението не са намерени</string>
     <string name="composer_detail_load_failed">Този композитор не можа да бъде зареден.</string>

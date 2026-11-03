@@ -67,11 +67,6 @@
     <string name="search_section_albums">אלבומים</string>
     <string name="search_section_artists">אמנים</string>
     <string name="search_section_tracks">רצועות</string>
-    <plurals name="work_count">
-        <item quantity="one">יצירה אחת</item>
-        <item quantity="two">%1$d יצירות</item>
-        <item quantity="other">%1$d יצירות</item>
-    </plurals>
     <string name="work_detail_load_failed">לא ניתן לטעון את היצירה הזו.</string>
     <string name="work_detail_not_found">פרטי היצירה לא נמצאו</string>
     <string name="composer_detail_load_failed">לא ניתן לטעון את המלחין הזה.</string>

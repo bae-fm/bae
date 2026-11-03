@@ -98,10 +98,6 @@
     <string name="search_section_albums">Albums</string>
     <string name="search_section_artists">Artists</string>
     <string name="search_section_tracks">Tracks</string>
-    <plurals name="work_count">
-        <item quantity="one">%1$d work</item>
-        <item quantity="other">%1$d works</item>
-    </plurals>
     <string name="work_detail_load_failed">Couldn\'t load this work.</string>
     <string name="work_detail_not_found">Work detail not found</string>
     <string name="composer_detail_load_failed">Couldn\'t load this composer.</string>

@@ -68,8 +68,7 @@ struct SearchView: View {
                 SearchResultRow(
                     picture: artist.image,
                     title: artist.name,
-                    subtitle:
-                        "\(artist.albumCount) \(String(localized: "Albums"))",
+                    subtitle: artist.countLine.localizedLine,
                     action: { onSelectArtist(artist.artistId) }
                 )
             }
@@ -87,8 +86,7 @@ struct SearchView: View {
                 SearchResultRow(
                     picture: composer.image,
                     title: composer.name,
-                    subtitle:
-                        "\(composer.workCount) \(String(localized: "Works"))",
+                    subtitle: composer.countLine.localizedLine,
                     action: { onSelectComposer(composer.id) }
                 )
             }

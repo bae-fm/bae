@@ -17,17 +17,11 @@ public enum QueueSummary {
         )
     }
 
-    /// Localized "{count} <state>" — or the pluralized pending-delete line —
-    /// resolved against the `Core` table with a locale-formatted count.
-    public static func countLabel(_ key: String, _ count: UInt32) -> String {
-        String.localizedStringWithFormat(message(key), Int(count))
-    }
-
     /// Render core's summary parts into one " · "-joined line. The parts, their
     /// order, and the drop-if-zero rule are core's; this only localizes and joins.
     public static func line(_ parts: [BridgeCountLabel]) -> String {
         parts
-            .map { countLabel($0.key, $0.count) }
+            .map(\.localizedLine)
             .joined(separator: " \u{00B7} ")
     }
 

@@ -274,7 +274,8 @@ pub struct BridgeDownloadCounts {
     pub paused: bool,
 }
 
-/// One part of a queue summary line: a catalog key and its count. Mirrors
+/// A catalog key whose message takes `count`, and the count: a part of a
+/// queue summary line, or a browse summary's count line. Mirrors
 /// `CountLabel`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeCountLabel {

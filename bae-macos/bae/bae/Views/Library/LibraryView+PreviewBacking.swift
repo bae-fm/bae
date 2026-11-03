@@ -120,7 +120,10 @@
                         artistId: "composer-\(index)",
                         name: "Composer Name \(index + 1)",
                         sortName: nil,
-                        workCount: Int64(2 + index % 6),
+                        countLine: BridgeCountLabel(
+                            key: "core.library.work_count",
+                            count: UInt32(2 + index % 6)
+                        ),
                         linkedReleaseCount: Int64(3 + index % 4),
                         unlinkedCreditCount: 0,
                         image: nil,

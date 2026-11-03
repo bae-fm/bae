@@ -67,14 +67,6 @@
     <string name="search_section_albums">الألبومات</string>
     <string name="search_section_artists">الفنانون</string>
     <string name="search_section_tracks">المقاطع</string>
-    <plurals name="work_count">
-        <item quantity="zero">%1$d عمل</item>
-        <item quantity="one">عمل واحد</item>
-        <item quantity="two">عملان</item>
-        <item quantity="few">%1$d أعمال</item>
-        <item quantity="many">%1$d عملًا</item>
-        <item quantity="other">%1$d عمل</item>
-    </plurals>
     <string name="work_detail_load_failed">تعذر تحميل هذا العمل.</string>
     <string name="work_detail_not_found">لم يتم العثور على تفاصيل العمل</string>
     <string name="composer_detail_load_failed">تعذر تحميل هذا المؤلف.</string>

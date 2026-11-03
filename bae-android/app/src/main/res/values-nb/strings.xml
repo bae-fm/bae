@@ -71,10 +71,6 @@
     <string name="search_section_albums">Album</string>
     <string name="search_section_artists">Artister</string>
     <string name="search_section_tracks">Spor</string>
-    <plurals name="work_count">
-        <item quantity="one">%1$d verk</item>
-        <item quantity="other">%1$d verk</item>
-    </plurals>
     <string name="work_detail_load_failed">Dette verket kunne ikke lastes inn.</string>
     <string name="work_detail_not_found">Fant ikke detaljer om verket</string>
     <string name="composer_detail_load_failed">Denne komponisten kunne ikke lastes inn.</string>

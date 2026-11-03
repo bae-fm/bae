@@ -220,7 +220,7 @@ object PreviewData {
         BridgeArtistSummary(
             artistId = artistId,
             name = name,
-            albumCount = 4L,
+            countLine = BridgeCountLabel(key = "core.library.album_count", count = 4u),
             image = null,
         )
 
@@ -232,7 +232,7 @@ object PreviewData {
             artistId = artistId,
             name = name,
             sortName = null,
-            workCount = 3L,
+            countLine = BridgeCountLabel(key = "core.library.work_count", count = 3u),
             linkedReleaseCount = 5L,
             unlinkedCreditCount = 0L,
             image = null,

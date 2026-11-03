@@ -67,12 +67,6 @@
     <string name="search_section_albums">Альбоми</string>
     <string name="search_section_artists">Виконавці</string>
     <string name="search_section_tracks">Треки</string>
-    <plurals name="work_count">
-        <item quantity="one">%1$d твір</item>
-        <item quantity="few">%1$d твори</item>
-        <item quantity="many">%1$d творів</item>
-        <item quantity="other">%1$d твору</item>
-    </plurals>
     <string name="work_detail_load_failed">Не вдалося завантажити цей твір.</string>
     <string name="work_detail_not_found">Відомості про твір не знайдено</string>
     <string name="composer_detail_load_failed">Не вдалося завантажити цього композитора.</string>

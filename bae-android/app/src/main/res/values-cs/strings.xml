@@ -67,12 +67,6 @@
     <string name="search_section_albums">Alba</string>
     <string name="search_section_artists">Interpreti</string>
     <string name="search_section_tracks">Stopy</string>
-    <plurals name="work_count">
-        <item quantity="one">%1$d dílo</item>
-        <item quantity="few">%1$d díla</item>
-        <item quantity="many">%1$d díla</item>
-        <item quantity="other">%1$d děl</item>
-    </plurals>
     <string name="work_detail_load_failed">Toto dílo se nepodařilo načíst.</string>
     <string name="work_detail_not_found">Detail díla nebyl nalezen</string>
     <string name="composer_detail_load_failed">Tohoto skladatele se nepodařilo načíst.</string>

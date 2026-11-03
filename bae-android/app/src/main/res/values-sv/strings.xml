@@ -71,10 +71,6 @@
     <string name="search_section_albums">Album</string>
     <string name="search_section_artists">Artister</string>
     <string name="search_section_tracks">Spår</string>
-    <plurals name="work_count">
-        <item quantity="one">%1$d verk</item>
-        <item quantity="other">%1$d verk</item>
-    </plurals>
     <string name="work_detail_load_failed">Det här verket kunde inte läsas in.</string>
     <string name="work_detail_not_found">Verkdetaljer hittades inte</string>
     <string name="composer_detail_load_failed">Den här kompositören kunde inte läsas in.</string>

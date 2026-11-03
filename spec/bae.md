@@ -200,7 +200,9 @@ picture and how many albums it holds, and each album listed in it carries its
 other credits, those besides that artist, printed as a line (none when that
 artist is its only credit). The artist list shows every artist an
 album's credits show, sorted by name or album count, ties going by name and
-then id.
+then id. Under its name an artist's row, its page and its search result say how
+many albums credit it ("1 album", "3 albums"), in core's words for each
+language.
 
 **Browsing.** The library shows one view at a time: albums, artists or
 composers. The view's name heads the page, and its menu switches views. At the
@@ -423,8 +425,10 @@ credit is linked when a track of the release performs one of their works, a
 track's when the track performs one. A merged artist's works and credits count
 under the artist it shows as. Each row counts the artist's works, the releases
 a track of which performs one of them, and the unlinked credits; the list sorts
-by name, works or releases, ties going by name, then id. An artist's composer
-page lists those works and unlinked credits.
+by name, works or releases, ties going by name, then id. Under its name a
+composer's row, its page and its search result say how many works it is
+credited on ("1 work", "3 works"), in core's words for each language. An
+artist's composer page lists those works and unlinked credits.
 
 ### 2.5 Catalog records
 

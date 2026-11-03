@@ -427,6 +427,11 @@ fn composer_detail_conversion_preserves_work_groups() {
 
     let bridge = super::BridgeComposerDetail::from_core(detail);
 
+    assert_eq!(
+        bridge.composer.count_line,
+        crate::types::BridgeCountLabel { key: "core.library.work_count".to_string(), count: 2 },
+        "the composer's line counts its works"
+    );
     assert_eq!(bridge.work_groups.len(), 1);
     assert_eq!(bridge.default_work_id.as_deref(), Some("work-parent-a"));
     let group = &bridge.work_groups[0];

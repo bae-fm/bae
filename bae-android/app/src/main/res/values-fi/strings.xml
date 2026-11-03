@@ -71,10 +71,6 @@
     <string name="search_section_albums">Albumit</string>
     <string name="search_section_artists">Esittäjät</string>
     <string name="search_section_tracks">Raidat</string>
-    <plurals name="work_count">
-        <item quantity="one">%1$d teos</item>
-        <item quantity="other">%1$d teosta</item>
-    </plurals>
     <string name="work_detail_load_failed">Tätä teosta ei voitu ladata.</string>
     <string name="work_detail_not_found">Teoksen tietoja ei löytynyt</string>
     <string name="composer_detail_load_failed">Tätä säveltäjää ei voitu ladata.</string>
