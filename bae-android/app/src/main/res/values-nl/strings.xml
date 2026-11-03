@@ -55,6 +55,7 @@
     <string name="queue_section_up_next">Volgende</string>
     <string name="queue_section_playing_from">Afspelen vanuit</string>
     <string name="queue_section_your_library">Je bibliotheek</string>
+    <string name="queue_section_these_tracks">Deze nummers</string>
     <string name="shuffle_library">Bibliotheek shufflen</string>
     <string name="queue_nothing_up_next">Niets hierna</string>
     <string name="queue_empty">Wachtrij is leeg</string>

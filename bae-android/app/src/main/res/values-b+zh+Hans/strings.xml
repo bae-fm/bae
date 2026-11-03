@@ -55,6 +55,7 @@
     <string name="queue_section_up_next">接下来</string>
     <string name="queue_section_playing_from">来自</string>
     <string name="queue_section_your_library">你的音乐库</string>
+    <string name="queue_section_these_tracks">这些曲目</string>
     <string name="shuffle_library">随机播放音乐库</string>
     <string name="queue_nothing_up_next">没有接下来的内容</string>
     <string name="queue_empty">队列为空</string>

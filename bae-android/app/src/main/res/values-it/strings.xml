@@ -55,6 +55,7 @@
     <string name="queue_section_up_next">A seguire</string>
     <string name="queue_section_playing_from">In riproduzione da</string>
     <string name="queue_section_your_library">La tua libreria</string>
+    <string name="queue_section_these_tracks">Questi brani</string>
     <string name="shuffle_library">Riproduci libreria in ordine casuale</string>
     <string name="queue_nothing_up_next">Niente in coda</string>
     <string name="queue_empty">La coda è vuota</string>

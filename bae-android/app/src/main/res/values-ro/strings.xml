@@ -55,6 +55,7 @@
     <string name="queue_section_up_next">Urmează</string>
     <string name="queue_section_playing_from">Se redă din</string>
     <string name="queue_section_your_library">Biblioteca ta</string>
+    <string name="queue_section_these_tracks">Aceste piese</string>
     <string name="shuffle_library">Redă biblioteca aleatoriu</string>
     <string name="queue_nothing_up_next">Nimic în continuare</string>
     <string name="queue_empty">Coada este goală</string>

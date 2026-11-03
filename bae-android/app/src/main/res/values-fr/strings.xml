@@ -55,6 +55,7 @@
     <string name="queue_section_up_next">À suivre</string>
     <string name="queue_section_playing_from">Lecture depuis</string>
     <string name="queue_section_your_library">Votre bibliothèque</string>
+    <string name="queue_section_these_tracks">Ces pistes</string>
     <string name="shuffle_library">Lecture aléatoire de la bibliothèque</string>
     <string name="queue_nothing_up_next">Rien à suivre</string>
     <string name="queue_empty">La file est vide</string>

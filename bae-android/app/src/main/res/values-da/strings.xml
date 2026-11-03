@@ -55,6 +55,7 @@
     <string name="queue_section_up_next">Næste</string>
     <string name="queue_section_playing_from">Afspilles fra</string>
     <string name="queue_section_your_library">Dit bibliotek</string>
+    <string name="queue_section_these_tracks">Disse numre</string>
     <string name="shuffle_library">Bland biblioteket</string>
     <string name="queue_nothing_up_next">Intet næste</string>
     <string name="queue_empty">Køen er tom</string>

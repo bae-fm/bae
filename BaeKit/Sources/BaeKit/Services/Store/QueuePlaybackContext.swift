@@ -12,11 +12,11 @@ extension BridgeQueueEntry: Identifiable {
     public var durationLabel: String { DurationClock.label(durationClock) }
 }
 
-/// The context lane (what the queue is playing from): its kind (a release vs
-/// the whole library, which the section header labels) and whether it was
-/// ordered by shuffle (rendered as a shuffle indicator). Shown as its own
-/// section, distinct from the manual "Up Next" lane. Its tracks are read
-/// through `PlaybackStore`'s upcoming read, not carried here.
+/// The context lane (what the queue is playing from): its kind (a release, a
+/// list of tracks or the whole library, which the section header labels) and
+/// whether it was ordered by shuffle (rendered as a shuffle indicator). Shown
+/// as its own section, distinct from the manual "Up Next" lane. Its tracks are
+/// read through `PlaybackStore`'s upcoming read, not carried here.
 public struct QueuePlaybackContext: Equatable, Sendable {
     public let kind: BridgePlaybackSourceKind
     /// The display title of what the context plays from — the album title when

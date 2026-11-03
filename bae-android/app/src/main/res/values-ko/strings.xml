@@ -55,6 +55,7 @@
     <string name="queue_section_up_next">다음 재생</string>
     <string name="queue_section_playing_from">재생 위치</string>
     <string name="queue_section_your_library">보관함</string>
+    <string name="queue_section_these_tracks">이 트랙들</string>
     <string name="shuffle_library">라이브러리 셔플</string>
     <string name="queue_nothing_up_next">다음 항목 없음</string>
     <string name="queue_empty">대기열이 비어 있습니다</string>

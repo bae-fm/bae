@@ -39,9 +39,9 @@ data class SidePausePrompt(
     }
 }
 
-/** The release or library the queue plays from, and the not-yet-played tracks after the current
- *  one: [upcomingTotal] of them, of which [upcoming] holds those read through
- *  [BaeCorePlayer.loadUpcomingRange], keyed by index in the whole tail. */
+/** What the queue plays from (a release, a list of tracks or the library), and the not-yet-played
+ *  tracks after the current one: [upcomingTotal] of them, of which [upcoming] holds those read
+ *  through [BaeCorePlayer.loadUpcomingRange], keyed by index in the whole tail. */
 data class QueueContext(
     val kind: BridgePlaybackSourceKind,
     val shuffled: Boolean,

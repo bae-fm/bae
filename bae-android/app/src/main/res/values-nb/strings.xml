@@ -55,6 +55,7 @@
     <string name="queue_section_up_next">Neste</string>
     <string name="queue_section_playing_from">Spilles fra</string>
     <string name="queue_section_your_library">Biblioteket ditt</string>
+    <string name="queue_section_these_tracks">Disse sporene</string>
     <string name="shuffle_library">Spill biblioteket i tilfeldig rekkefølge</string>
     <string name="queue_nothing_up_next">Ingenting neste</string>
     <string name="queue_empty">Køen er tom</string>

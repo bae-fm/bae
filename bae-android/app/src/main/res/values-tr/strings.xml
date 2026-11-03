@@ -55,6 +55,7 @@
     <string name="queue_section_up_next">Sıradaki</string>
     <string name="queue_section_playing_from">Şuradan çalınıyor</string>
     <string name="queue_section_your_library">Kitaplığınız</string>
+    <string name="queue_section_these_tracks">Bu parçalar</string>
     <string name="shuffle_library">Kitaplığı karıştır</string>
     <string name="queue_nothing_up_next">Sırada bir şey yok</string>
     <string name="queue_empty">Sıra boş</string>

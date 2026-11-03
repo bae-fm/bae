@@ -55,6 +55,7 @@
     <string name="queue_section_up_next">Seuraavaksi</string>
     <string name="queue_section_playing_from">Toistetaan lähteestä</string>
     <string name="queue_section_your_library">Kirjastosi</string>
+    <string name="queue_section_these_tracks">Nämä raidat</string>
     <string name="shuffle_library">Sekoita kirjasto</string>
     <string name="queue_nothing_up_next">Ei mitään seuraavaksi</string>
     <string name="queue_empty">Jono on tyhjä</string>

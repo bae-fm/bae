@@ -55,6 +55,7 @@
     <string name="queue_section_up_next">Sljedeće na redu</string>
     <string name="queue_section_playing_from">Reproducira se iz</string>
     <string name="queue_section_your_library">Vaša biblioteka</string>
+    <string name="queue_section_these_tracks">Ove skladbe</string>
     <string name="shuffle_library">Nasumično reproduciraj biblioteku</string>
     <string name="queue_nothing_up_next">Ništa nije na redu</string>
     <string name="queue_empty">Red je prazan</string>

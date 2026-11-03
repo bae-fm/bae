@@ -55,6 +55,7 @@
     <string name="queue_section_up_next">Ακολουθεί</string>
     <string name="queue_section_playing_from">Αναπαραγωγή από</string>
     <string name="queue_section_your_library">Η βιβλιοθήκη σας</string>
+    <string name="queue_section_these_tracks">Αυτά τα κομμάτια</string>
     <string name="shuffle_library">Τυχαία αναπαραγωγή βιβλιοθήκης</string>
     <string name="queue_nothing_up_next">Δεν ακολουθεί τίποτα</string>
     <string name="queue_empty">Η ουρά είναι κενή</string>

@@ -55,6 +55,7 @@
     <string name="queue_section_up_next">Nasleduje</string>
     <string name="queue_section_playing_from">Prehráva sa z</string>
     <string name="queue_section_your_library">Tvoja knižnica</string>
+    <string name="queue_section_these_tracks">Tieto skladby</string>
     <string name="shuffle_library">Náhodne prehrať knižnicu</string>
     <string name="queue_nothing_up_next">Nič nenasleduje</string>
     <string name="queue_empty">Poradie je prázdne</string>

@@ -221,6 +221,7 @@ private fun LazyListScope.contextLane(
         val labelRes =
             when (order.context.kind) {
                 BridgePlaybackSourceKind.LIBRARY -> R.string.queue_section_your_library
+                BridgePlaybackSourceKind.TRACKS -> R.string.queue_section_these_tracks
                 BridgePlaybackSourceKind.RELEASE, null -> R.string.queue_section_playing_from
             }
         ContextSectionLabel(

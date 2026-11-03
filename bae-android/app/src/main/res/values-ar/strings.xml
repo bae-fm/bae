@@ -55,6 +55,7 @@
     <string name="queue_section_up_next">التالي</string>
     <string name="queue_section_playing_from">يُشغّل من</string>
     <string name="queue_section_your_library">مكتبتك</string>
+    <string name="queue_section_these_tracks">هذه المقطوعات</string>
     <string name="shuffle_library">تشغيل المكتبة عشوائيًا</string>
     <string name="queue_nothing_up_next">لا شيء تاليًا</string>
     <string name="queue_empty">قائمة الانتظار فارغة</string>

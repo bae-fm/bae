@@ -295,25 +295,24 @@ mirror_struct! {
 }
 
 /// Which kind of source the context plays from, so the UI labels the section
-/// (a release's "Playing From" vs the whole library). A single- or multi-release
-/// source is both `Release` here — the queue pane's "Playing From" title is the
-/// same for one album or several. A single release's id stays in core (the UI
-/// labels by kind, not by id here).
+/// (a release's "Playing From", a list of tracks, or the whole library). A
+/// single- or multi-release source is both `Release` here — the queue pane's
+/// "Playing From" title is the same for one album or several. A single
+/// release's id stays in core (the UI labels by kind, not by id here).
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgePlaybackSourceKind {
     Release,
+    Tracks,
     Library,
 }
 
 impl BridgePlaybackSourceKind {
     pub(crate) fn from_core(source: &bae_playback::ContextSource) -> Self {
         match source {
-            // Sentinel: the bridge's own kind for a list of tracks comes with
-            // its queue-section label. Only here to keep the core change apart
-            // from the bridge shape the apps compile against.
-            bae_playback::ContextSource::Release(_)
-            | bae_playback::ContextSource::Releases
-            | bae_playback::ContextSource::Tracks => Self::Release,
+            bae_playback::ContextSource::Release(_) | bae_playback::ContextSource::Releases => {
+                Self::Release
+            }
+            bae_playback::ContextSource::Tracks => Self::Tracks,
             bae_playback::ContextSource::Library => Self::Library,
         }
     }
@@ -321,9 +320,9 @@ impl BridgePlaybackSourceKind {
 
 /// The context lane (what the queue is playing from), delivered alongside the
 /// manual lane so each UI renders the two as distinct sections: its kind
-/// (release vs library, for the section label) and whether it was ordered by
-/// shuffle (the UI shows a shuffle indicator when so). Its tracks are read
-/// through `subscribe_queue_upcoming`.
+/// (release, list of tracks or library, for the section label) and whether it
+/// was ordered by shuffle (the UI shows a shuffle indicator when so). Its
+/// tracks are read through `subscribe_queue_upcoming`.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgePlaybackContext {
     pub kind: BridgePlaybackSourceKind,

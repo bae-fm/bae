@@ -55,6 +55,7 @@
     <string name="queue_section_up_next">Következők</string>
     <string name="queue_section_playing_from">Lejátszás innen</string>
     <string name="queue_section_your_library">A könyvtárad</string>
+    <string name="queue_section_these_tracks">Ezek a számok</string>
     <string name="shuffle_library">Könyvtár keverése</string>
     <string name="queue_nothing_up_next">Nincs következő</string>
     <string name="queue_empty">A sor üres</string>

@@ -55,6 +55,7 @@
     <string name="queue_section_up_next">Далі в черзі</string>
     <string name="queue_section_playing_from">Відтворюється з</string>
     <string name="queue_section_your_library">Ваша фонотека</string>
+    <string name="queue_section_these_tracks">Ці треки</string>
     <string name="shuffle_library">Перемішати фонотеку</string>
     <string name="queue_nothing_up_next">Далі нічого немає</string>
     <string name="queue_empty">Черга порожня</string>

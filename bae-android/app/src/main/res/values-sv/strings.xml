@@ -55,6 +55,7 @@
     <string name="queue_section_up_next">Härnäst</string>
     <string name="queue_section_playing_from">Spelas från</string>
     <string name="queue_section_your_library">Ditt bibliotek</string>
+    <string name="queue_section_these_tracks">Dessa spår</string>
     <string name="shuffle_library">Blanda biblioteket</string>
     <string name="queue_nothing_up_next">Inget härnäst</string>
     <string name="queue_empty">Kön är tom</string>

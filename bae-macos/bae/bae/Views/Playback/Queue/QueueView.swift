@@ -164,7 +164,8 @@ struct QueueView: View {
     }
 
     /// The context section's title: "Playing From", plus the album title when
-    /// known, for a release; "Your Library" for the library.
+    /// known, for a release; "These tracks" for a list of tracks; "Your
+    /// Library" for the library.
     private static func contextSectionTitle(_ context: QueuePlaybackContext)
         -> String
     {
@@ -174,6 +175,8 @@ struct QueueView: View {
                 return String(localized: "Playing From")
             }
             return String(localized: "Playing From") + " · " + sourceTitle
+        case .tracks:
+            return String(localized: "These tracks")
         case .library:
             return String(localized: "Your Library")
         }

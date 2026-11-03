@@ -2989,7 +2989,10 @@ When track 3 ends, Up Next drains first, then the release continues at track
 4.
 
 What's playing from is a release, several releases in the order chosen, a
-list of tracks in the order it was sent, or the whole library. The queue keeps
+list of tracks in the order it was sent, or the whole library. The queue's
+heading for it says which: "Playing from" and the album's title for one
+release, "Playing from" alone for several, "These tracks" for a list, and
+"Your library" for the library. The queue keeps
 which of the four it is, and the release when it is one; which releases
 several were, or which tracks a list named, is the tracks they filled. A play
 of several of which only one has tracks plays that release. A list of tracks

@@ -87,7 +87,8 @@ class BaeCorePlayer(
         val trackId: String,
     )
 
-    /** The release or library the queue plays from; its tracks come from [upcoming]. */
+    /** What the queue plays from (a release, a list of tracks or the library); its tracks come
+     *  from [upcoming]. */
     internal data class ContextLane(
         val kind: BridgePlaybackSourceKind,
         val shuffled: Boolean,
