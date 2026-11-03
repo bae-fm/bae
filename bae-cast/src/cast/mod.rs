@@ -15,4 +15,5 @@ pub(crate) use channel::RustCastChannel;
 pub(crate) use discovery::CastDiscovery;
 
 #[cfg(test)]
+#[path = "mod_tests.rs"]
 mod tests;

@@ -303,7 +303,7 @@ struct SessionLatency {
 /// SETUP stream response (or none), returning what the receiver saw and the
 /// latency the session settled on.
 fn run_full_ap2_session(
-    timing: super::super::airplay2::TimingProtocol,
+    timing: crate::airplay::airplay2::TimingProtocol,
     audio_latency: Option<u64>,
 ) -> (Captured, SessionLatency) {
     let tcp = TcpListener::bind(("127.0.0.1", 0)).unwrap();
@@ -475,7 +475,7 @@ fn run_full_ap2_session(
 /// that reports none.
 #[test]
 fn full_ap2_session_pairs_sets_up_and_streams_encrypted_audio() {
-    let (c, latency) = run_full_ap2_session(super::super::airplay2::TimingProtocol::Ntp, None);
+    let (c, latency) = run_full_ap2_session(crate::airplay::airplay2::TimingProtocol::Ntp, None);
     assert_eq!(
         latency.told,
         Duration::from_secs(2),
@@ -498,7 +498,7 @@ fn full_ap2_session_pairs_sets_up_and_streams_encrypted_audio() {
 /// the network-time anchor — the decision `TimingProtocol::from_features` makes.
 #[test]
 fn ptp_receiver_gets_ptp_timing_and_the_network_anchor() {
-    let (c, _) = run_full_ap2_session(super::super::airplay2::TimingProtocol::Ptp, None);
+    let (c, _) = run_full_ap2_session(crate::airplay::airplay2::TimingProtocol::Ptp, None);
     assert_eq!(c.timing_protocol, "PTP");
     assert!(c.anchor_has_network_time, "PTP carries the network-time anchor in SETRATEANCHORTIME");
 }
@@ -509,7 +509,7 @@ fn ptp_receiver_gets_ptp_timing_and_the_network_anchor() {
 #[test]
 fn playback_is_told_the_latency_the_receiver_reports() {
     let (_, latency) =
-        run_full_ap2_session(super::super::airplay2::TimingProtocol::Ntp, Some(11_025));
+        run_full_ap2_session(crate::airplay::airplay2::TimingProtocol::Ntp, Some(11_025));
     assert_eq!(latency.paced_frames, 11_025, "the session paces by the reported latency");
     assert_eq!(
         latency.told,

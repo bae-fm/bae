@@ -21,4 +21,5 @@ pub(crate) use channel::DlnaChannel;
 pub(crate) use discovery::DlnaDiscovery;
 
 #[cfg(test)]
+#[path = "mod_tests.rs"]
 mod tests;
