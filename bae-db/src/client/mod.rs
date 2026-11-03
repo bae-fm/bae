@@ -79,6 +79,8 @@ pub use release::AlbumFields;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use release_edit_save::ReleaseEditWrite;
 mod release_deletion;
+mod release_detail;
+pub use release_detail::{release_detail_rows_on, unstored_audio_in_row, DbReleaseDetailRows};
 mod release_file;
 mod release_locality;
 pub use release_deletion::ReleaseDeletion;

@@ -51,7 +51,7 @@ async fn find_release_detail_does_not_panic_on_traversal_filenames_from_a_peer()
     assert!(
         detail.gallery_items.iter().all(|item| matches!(
             item.source,
-            crate::album_detail::GallerySource::ReleaseFile { .. }
+            bae_db::GallerySource::ReleaseFile { .. }
         )),
         "with no cover row there is no cover slot; the traversal image file is a \
              release-file item, read by id"
@@ -358,7 +358,7 @@ async fn gallery_includes_cloud_only_image_files_with_no_local_path() {
         .expect("image file surfaced in gallery");
     assert_eq!(item.label, "back.jpg");
     assert!(
-        matches!(item.source, crate::album_detail::GallerySource::ReleaseFile { .. }),
+        matches!(item.source, bae_db::GallerySource::ReleaseFile { .. }),
         "a release-file image is read by file id, not as the cover"
     );
 }
@@ -545,7 +545,7 @@ async fn a_gallery_read_refuses_another_releases_file() {
     let error = manager
         .read_gallery_bytes(
             &release.id,
-            &crate::album_detail::GallerySource::ReleaseFile { file_id: file.id.clone() },
+            &bae_db::GallerySource::ReleaseFile { file_id: file.id.clone() },
         )
         .await
         .expect_err("the file is another release's");

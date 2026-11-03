@@ -20,6 +20,14 @@
 use super::*;
 
 /// One open editor's session on a library release.
+/// A release as the editor reads it: its detail, its album's artists, and
+/// its tracks' audio in release order.
+pub(crate) struct ReleaseEditContext {
+    pub(crate) detail: bae_db::DbReleaseDetail,
+    pub(crate) album_artists: Vec<bae_db::credits::LibraryCredit>,
+    pub(crate) tracks: Vec<bae_db::DbReleaseEditTrack>,
+}
+
 #[derive(Debug)]
 pub struct ReleaseEdit {
     release_id: String,
@@ -81,30 +89,30 @@ impl LibraryManager {
         })
     }
 
-    /// The release as its detail view reads it, and its tracks' audio as the
-    /// release editor reads it, in release order: both from one read.
+    /// The release as the editor reads it, from one read: its detail, its
+    /// album's artists, and its tracks' audio in release order.
     pub(crate) async fn find_release_edit_context(
         &self,
         release_id: &str,
-    ) -> Result<
-        Option<(crate::library::views::ReleaseDetailContext, Vec<bae_db::DbReleaseEditTrack>)>,
-        bae_db::DbError,
-    > {
+    ) -> Result<Option<ReleaseEditContext>, bae_db::DbError> {
         let release_id = release_id.to_string();
         self.database
             .read(move |sql| {
-                let Some(context) = crate::library::views::release::find_release_detail_context_on(
-                    &sql,
-                    &release_id,
-                )?
+                let Some(release) = bae_db::client::read::find_release_by_id_on(&sql, &release_id)?
                 else {
                     return Ok(None);
                 };
-                Ok(Some((context, bae_db::client::release_edit_tracks_on(&sql, &release_id)?)))
+                let album_artists =
+                    bae_db::client::read::get_artists_for_album_on(&sql, &release.album_id)?;
+                let detail = bae_db::client::release_detail_rows_on(&sql, release)?;
+                let tracks = bae_db::client::release_edit_tracks_on(&sql, &release_id)?;
+                Ok(Some((detail, album_artists, tracks)))
             })
             .process(|rows| {
-                Ok(rows.map(|(context, tracks)| {
-                    (crate::library::views::release::ReleaseContextRows::process(context), tracks)
+                Ok(rows.map(|(detail, album_artists, tracks)| ReleaseEditContext {
+                    detail: detail.process(),
+                    album_artists,
+                    tracks,
                 }))
             })
             .await
@@ -121,23 +129,22 @@ impl LibraryManager {
         &self,
         release_id: &str,
     ) -> Result<bae_import::ReleaseEditSeed, LibraryError> {
-        let (context, edit_tracks) = self
+        let ReleaseEditContext { detail, album_artists, tracks: edit_tracks } = self
             .find_release_edit_context(release_id)
             .await?
             .ok_or_else(|| LibraryError::Refused(format!("Release '{release_id}' not found")))?;
-        let release = &context.detail.release;
+        let release = &detail.release;
         let album = self.database.find_album_by_id(&release.album_id).await?.ok_or_else(|| {
             LibraryError::Refused(format!("Album '{}' not found", release.album_id))
         })?;
-        let display =
-            bae_import::ReleaseEditDisplayContext::from_raw(&context.detail, edit_tracks)?;
-        let cover = bae_db::cover_ref(release_id, context.detail.cover_version.clone());
+        let display = bae_import::ReleaseEditDisplayContext::from_raw(&detail, edit_tracks)?;
+        let cover = bae_db::cover_ref(release_id, detail.cover_version.clone());
 
         let album_artist_assignments: Vec<bae_import::Credited> =
-            context.album_artists.into_iter().map(bae_import::Credited::of_library).collect();
+            album_artists.into_iter().map(bae_import::Credited::of_library).collect();
 
-        let mut tracks = Vec::with_capacity(context.detail.tracks.len());
-        for entry in &context.detail.tracks {
+        let mut tracks = Vec::with_capacity(detail.tracks.len());
+        for entry in &detail.tracks {
             // Empty when the track has no artist rows of its own — the wire edit
             // reads that as "shares the album artist", matching how
             // `apply_release_metadata_user_edit` writes it back.

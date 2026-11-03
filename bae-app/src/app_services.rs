@@ -450,7 +450,7 @@ impl AppServices {
     delegate_async!(manager, cover_ref => cover_ref(release_id: &str) -> Result<Option<bae_db::ImageRef>, bae_library::library::LibraryError>);
     delegate_async!(manager, read_image_bytes => read_image_bytes(image: &bae_db::ImageRef) -> Result<Option<Vec<u8>>, bae_library::library::LibraryError>);
     delegate_async!(manager, read_library_image_bytes => read_library_image_bytes(id: &str, image_type: &bae_db::LibraryImageType) -> Result<Option<Vec<u8>>, bae_library::library::LibraryError>);
-    delegate_async!(manager, read_gallery_bytes => read_gallery_bytes(release_id: &str, source: &bae_library::album_detail::GallerySource) -> Result<Vec<u8>, bae_library::library::LibraryError>);
+    delegate_async!(manager, read_gallery_bytes => read_gallery_bytes(release_id: &str, source: &bae_db::GallerySource) -> Result<Vec<u8>, bae_library::library::LibraryError>);
     delegate_async!(manager, read_cover_image_bytes => read_cover_image_bytes(release_id: &str) -> Result<Option<Vec<u8>>, bae_library::library::LibraryError>);
     delegate_async!(manager, get_artists_for_track => get_artists_for_track(track_id: &str) -> Result<Vec<bae_db::credits::LibraryCredit>, bae_library::library::LibraryError>);
     delegate_async!(manager, get_artists_for_album => get_artists_for_album(album_id: &str) -> Result<Vec<bae_db::credits::LibraryCredit>, bae_library::library::LibraryError>);

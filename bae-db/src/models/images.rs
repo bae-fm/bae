@@ -47,6 +47,16 @@ pub struct ImageRef {
     pub image_type: LibraryImageType,
 }
 
+/// Where a gallery slot's bytes come from: a cover, read by its
+/// [`ImageRef`], or one of the release's image files, read by its file id.
+/// The library reads a slot's bytes by it, so a surface never picks a
+/// source itself.
+#[derive(Debug, Clone)]
+pub enum GallerySource {
+    Cover(ImageRef),
+    ReleaseFile { file_id: String },
+}
+
 /// The cover of the release `release_id` at `version`, as its row read it;
 /// `None` when the release has no cover.
 pub fn cover_ref(release_id: &str, version: Option<String>) -> Option<ImageRef> {

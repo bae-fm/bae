@@ -31,7 +31,7 @@
 //! lives with the type it produces.
 
 use bae_db::source_audio::{SourceAudioFile, SourceAudioSummary};
-use bae_db::{cover_ref, ImageRef};
+use bae_db::{cover_ref, GallerySource, ImageRef};
 use bae_types::mediums::{TrackPosition, TrackSide};
 use bae_types::release_storage::ReleaseStorageAction;
 
@@ -278,15 +278,6 @@ pub enum FilePin {
         file: coven::FileId,
     },
     Waiting,
-}
-
-/// Where a gallery slot's bytes come from. Each variant is self-contained: a cover
-/// is read by its [`ImageRef`], a release-file image by its file id.
-/// `read_gallery_bytes` dispatches on this, so the UI never picks a source itself.
-#[derive(Debug, Clone)]
-pub enum GallerySource {
-    Cover(ImageRef),
-    ReleaseFile { file_id: String },
 }
 
 /// One slot in a release's lightbox gallery. Read by id — there is no filesystem

@@ -7,6 +7,7 @@ use bae_catalogs::records::MetadataRef;
 use bae_catalogs::remote_image::RemoteCover;
 use bae_catalogs::search::MetadataResult;
 use bae_catalogs::SearchQuery;
+use bae_db::GallerySource;
 use bae_db::ImageRef;
 use bae_db::LibraryStatus;
 use bae_identify::release_group::ReleaseGroup;
@@ -18,8 +19,7 @@ use bae_import::{
     ImportListItem, ImportListView, ImportPhase, ImportStep, PrepareStep, TrackUserEdit, TriageTab,
 };
 use bae_library::album_detail::{
-    FileDetail, GalleryItem, GallerySource, ReleaseDetail, ReleaseStorageState, SearchResults,
-    TrackDetail,
+    FileDetail, GalleryItem, ReleaseDetail, ReleaseStorageState, SearchResults, TrackDetail,
 };
 use bae_library::library::LibraryError;
 use bae_preferences::McpConfig;

@@ -9,6 +9,7 @@ mod download_snapshot;
 mod output_snapshot;
 mod queued_releases;
 mod release_queue;
+mod release_state;
 pub mod release_storage_action;
 
 pub use download_snapshot::{
@@ -28,6 +29,7 @@ pub use release_queue::{
     ReleaseQueueOp, ReleaseQueueProgress, ReleaseQueueRow, ReleaseQueueSnapshot, ReleaseQueueState,
     ReleaseQueueWindows, TransferCount, TransferStage,
 };
+pub use release_state::{release_transfer_state_on, ReleaseTransferState};
 pub use release_storage_action::StoredTransition;
 
 /// The pin queue: its table, and the bytes its active download has moved.

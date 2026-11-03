@@ -825,7 +825,7 @@ pub enum BridgeGallerySource {
 }
 
 mirror_enum! {
-    BridgeGallerySource = bae_library::album_detail::GallerySource,
+    BridgeGallerySource = bae_db::GallerySource,
     from_core: pub(crate) fn,
     into_core: pub fn,
     variants: {

@@ -27,11 +27,11 @@ use std::sync::Arc;
 use thiserror::Error;
 use tracing::{debug, warn};
 
-use crate::album_detail::GallerySource;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 use crate::library::save::SaveService;
 use crate::library::sync_controller::SyncController;
 use crate::sync::S3ConfigData;
+use bae_db::GallerySource;
 use bae_db::{
     Database, DbAlbum, DbArtist, DbFile, DbLibraryImage, DbRelease, DbTrack, ImageRef,
     LibraryImageType,

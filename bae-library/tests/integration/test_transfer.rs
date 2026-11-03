@@ -2,8 +2,8 @@
 //! Coven uses MemoryStorage for cloud reads and writes; bae owns the release
 //! transitions, their progress, and their subscribed storage values.
 
+use bae_db::GallerySource;
 use bae_db::{DbAlbum, DbRelease, NewReleaseFile, SortDirection};
-use bae_library::album_detail::GallerySource;
 use bae_library::album_detail::ReleaseStorageState;
 use bae_library::library::views::{StorageFilter, StorageSortCriterion, StorageSortField};
 use bae_library::library::{

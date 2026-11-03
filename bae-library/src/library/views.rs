@@ -32,7 +32,7 @@ use artist::{artist_listing_query, row_to_artist_summary};
 use composer::{
     composer_listing_query, row_to_composer_summary, row_to_work_summary, work_summary_query,
 };
-use release::{build_release_detail_on, unstored_audio_in_row, ReleaseDetailRows};
+use release::{build_release_detail_on, ReleaseDetailRows};
 
 use album_search::*;
 use bae_db::client::files::{artist_image_version_sql, cover_version_sql};
@@ -44,11 +44,11 @@ use bae_db::client::pressing_columns::{read_media, release_media_sql};
 use bae_db::client::query::*;
 use bae_db::client::read::*;
 use bae_db::client::sync_status::cloud_home_on;
+use bae_db::client::{release_detail_rows_on, unstored_audio_in_row, DbReleaseDetailRows};
 use bae_db::credits::LibraryCredit;
 use bae_db::schema::search_pattern;
 use bae_db::*;
 use bae_transfers::release_storage_action::{transfer_action_column, transfer_action_sql};
-use bae_util::content_type::ContentType;
 use chrono::{DateTime, Utc};
 use coven::{CovenError, SqlReadContext};
 use rusqlite::{params, OptionalExtension, Row};

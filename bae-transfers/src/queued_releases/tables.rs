@@ -297,7 +297,7 @@ pub fn release_queue_entries_on(
 
 /// The download queue's phase for `release_id`, `None` when it is not
 /// queued: what a release's detail shows of its download.
-pub fn download_phase_on(
+pub(crate) fn download_phase_on(
     sql: &SqlReadContext<'_>,
     release_id: &str,
 ) -> Result<Option<ReleaseQueueState<()>>, DbError> {

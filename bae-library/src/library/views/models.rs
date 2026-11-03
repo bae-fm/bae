@@ -217,9 +217,9 @@ pub struct ArtistSortCriterion {
 #[derive(Debug, Clone, PartialEq)]
 pub struct ReleaseDetailContext {
     pub detail: DbReleaseDetail,
-    /// The release's entry in this device's download queue, `None` when it
-    /// has none.
-    pub download: Option<bae_transfers::DownloadPhase>,
+    /// What the transfer queues and the storage transitions say of the
+    /// release.
+    pub transfers: bae_transfers::ReleaseTransferState,
     pub album_artists: Vec<bae_db::credits::LibraryCredit>,
     pub release_index: usize,
     pub is_compilation: bool,
@@ -333,10 +333,10 @@ pub struct DbFileUpload {
     pub pending: Option<coven::PendingRecord>,
 }
 
-/// A release's rows as its detail reads them, beside its entry in this
-/// device's download queue (`None` when it has none).
+/// A release's rows as its detail reads them, beside what the transfer
+/// queues and the storage transitions say of it.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ReleaseDetailRead {
     pub detail: DbReleaseDetail,
-    pub download: Option<bae_transfers::DownloadPhase>,
+    pub transfers: bae_transfers::ReleaseTransferState,
 }

@@ -371,7 +371,6 @@ mod tests {
             pinned: false,
             remote: false,
             upload: None,
-            transfer_action: None,
             cover_version: None,
         };
         let tracks = vec![bae_db::DbReleaseEditTrack {

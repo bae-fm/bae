@@ -84,8 +84,6 @@ async fn release_edit_seed_uses_persisted_track_ids() {
 
 #[tokio::test]
 async fn an_applied_catalog_s_form_keeps_the_persisted_track_ids() {
-    
-    
     let (manager, _temp_dir, _album, release) = manager_with_release().await;
     insert_editable_tracks(&manager, &release.id, 2).await;
     let persisted_ids = manager
@@ -128,7 +126,6 @@ async fn an_applied_catalog_s_form_keeps_the_persisted_track_ids() {
 /// waits on, and that the read ended.
 #[tokio::test]
 async fn an_applied_catalog_tells_its_catalog_read() {
-    
     use bae_catalogs::catalog::Catalog;
     let (manager, _temp_dir, _album, release) = manager_with_release().await;
     insert_editable_tracks(&manager, &release.id, 2).await;
@@ -278,12 +275,13 @@ async fn release_metadata_edit_preserves_records_and_audio() {
         .insert_release_records(&release.id, std::slice::from_ref(&identity))
         .await
         .unwrap();
-    let (stored_before, audio_before) = manager
+    let super::release_edit::ReleaseEditContext {
+        detail: stored_before, tracks: audio_before, ..
+    } = manager
         .find_release_edit_context(&release.id)
         .await
         .unwrap()
         .expect("the release detail is stored");
-    let stored_before = stored_before.detail;
 
     manager
         .apply_release_metadata_user_edit(
@@ -320,12 +318,13 @@ async fn release_metadata_edit_preserves_records_and_audio() {
         .await
         .unwrap();
 
-    let (stored_after, audio_after) = manager
+    let super::release_edit::ReleaseEditContext {
+        detail: stored_after, tracks: audio_after, ..
+    } = manager
         .find_release_edit_context(&release.id)
         .await
         .unwrap()
         .expect("the edited release remains stored");
-    let stored_after = stored_after.detail;
     let segments = |tracks: &[bae_db::DbReleaseEditTrack]| {
         tracks
             .iter()
@@ -364,12 +363,8 @@ async fn a_named_album_artist_already_in_the_library_is_linked() {
     let edit = bae_import::ReleaseUserEdit {
         album_title: "Album Title".to_string(),
         album_artist_assignments: vec![
-            bae_import::Credited::plain(bae_import::ArtistAssignment::named(
-                "Album Artist One",
-            )),
-            bae_import::Credited::plain(bae_import::ArtistAssignment::named(
-                "Album Artist Two",
-            )),
+            bae_import::Credited::plain(bae_import::ArtistAssignment::named("Album Artist One")),
+            bae_import::Credited::plain(bae_import::ArtistAssignment::named("Album Artist Two")),
         ],
         album_year: None,
         pressing: bae_types::pressing::Pressing::blank(),
@@ -395,15 +390,9 @@ async fn an_album_credit_list_naming_one_artist_twice_keeps_both_credits() {
     let edit = bae_import::ReleaseUserEdit {
         album_title: "Album Title".to_string(),
         album_artist_assignments: vec![
-            bae_import::Credited::plain(bae_import::ArtistAssignment::named(
-                "Album Artist One",
-            )),
-            bae_import::Credited::plain(bae_import::ArtistAssignment::named(
-                "Album Artist Two",
-            )),
-            bae_import::Credited::plain(bae_import::ArtistAssignment::named(
-                "Album Artist One",
-            )),
+            bae_import::Credited::plain(bae_import::ArtistAssignment::named("Album Artist One")),
+            bae_import::Credited::plain(bae_import::ArtistAssignment::named("Album Artist Two")),
+            bae_import::Credited::plain(bae_import::ArtistAssignment::named("Album Artist One")),
         ],
         album_year: None,
         pressing: bae_types::pressing::Pressing::blank(),
@@ -426,12 +415,8 @@ fn credited_release_edit(track_artists: [&[&str]; 2]) -> bae_import::ReleaseUser
     bae_import::ReleaseUserEdit {
         album_title: "Album Title".to_string(),
         album_artist_assignments: vec![
-            bae_import::Credited::plain(bae_import::ArtistAssignment::named(
-                "Album Artist One",
-            )),
-            bae_import::Credited::plain(bae_import::ArtistAssignment::named(
-                "Album Artist Two",
-            )),
+            bae_import::Credited::plain(bae_import::ArtistAssignment::named("Album Artist One")),
+            bae_import::Credited::plain(bae_import::ArtistAssignment::named("Album Artist Two")),
         ],
         album_year: Some(2024),
         pressing: bae_types::pressing::Pressing::blank(),
@@ -444,9 +429,7 @@ fn credited_release_edit(track_artists: [&[&str]; 2]) -> bae_import::ReleaseUser
                     artists
                         .iter()
                         .map(|name| {
-                            bae_import::Credited::plain(bae_import::ArtistAssignment::named(
-                                *name,
-                            ))
+                            bae_import::Credited::plain(bae_import::ArtistAssignment::named(*name))
                         })
                         .collect(),
                 ),

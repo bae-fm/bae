@@ -172,7 +172,7 @@ impl ReleaseDetail {
     /// logic stays in one place.
     pub(crate) fn from_raw(
         raw: DbReleaseDetail,
-        download: Option<bae_transfers::DownloadPhase>,
+        transfers: bae_transfers::ReleaseTransferState,
         album_artists: &[bae_db::credits::LibraryCredit],
         release_index: usize,
         ctx: &ReleaseResolveCtx,
@@ -271,7 +271,7 @@ impl ReleaseDetail {
                 remote,
                 pinned: raw.pinned,
                 upload: raw.upload,
-                transfer_action: raw.transfer_action,
+                transfer_action: transfers.action,
                 file_count,
                 total_size,
                 unstored_audio: raw.unstored_audio,
@@ -279,8 +279,11 @@ impl ReleaseDetail {
             ctx,
         );
 
-        let download_status =
-            release_download_status(summary.pinned, &summary.storage_actions, download.as_ref());
+        let download_status = release_download_status(
+            summary.pinned,
+            &summary.storage_actions,
+            transfers.download.as_ref(),
+        );
         ReleaseDetail {
             download_status,
             summary,
