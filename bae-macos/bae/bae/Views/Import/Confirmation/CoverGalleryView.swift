@@ -184,8 +184,11 @@ struct CoverGalleryView: View {
         .onChange(of: remoteItems) { _, _ in rebuild() }
         .onChange(of: releaseItems) { _, _ in rebuild() }
         .onChange(of: currentCover?.image) { _, _ in rebuild() }
-        .onChange(of: browser.layout) { _, layout in
-            previewFocused = layout == .grid
+        // The grid's preview holds the keys whenever it is on screen: when
+        // the sheet opens on the grid, its covers arrive, or the lightbox
+        // closes back to it.
+        .onChange(of: gridPreviewShown, initial: true) { _, shown in
+            previewFocused = shown
         }
         .onKeyPress(.leftArrow) {
             guard browser.layout == .grid else { return .ignored }
@@ -197,6 +200,10 @@ struct CoverGalleryView: View {
             browser.cursor?.goToNext()
             return .handled
         }
+    }
+
+    private var gridPreviewShown: Bool {
+        browser.layout == .grid && browser.cursor != nil
     }
 
     private func rebuild() {

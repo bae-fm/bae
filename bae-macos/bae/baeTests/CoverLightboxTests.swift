@@ -70,6 +70,47 @@ struct CoverLightboxTests {
         }
     }
 
+    @Test("Arrow keys browse the grid as soon as the sheet opens on it")
+    func gridTakesKeysOnOpen() async throws {
+        let front = remote("Front")
+        let booklet = remote("Booklet")
+        let bytes = try Data(
+            contentsOf: URL(
+                fileURLWithPath: PreviewData.previewArtPath("Booklet")
+            )
+        )
+        let recorder = Reads()
+        let images = ImageStore(fetchRemoteImage: { image, pixels in
+            await recorder.read(Read(url: image.url, pixels: pixels))
+            return bytes
+        })
+        var selected: CoverItem?
+        let size = NSSize(width: 960, height: 700)
+        try await SnapshotTestSupport.withHostedWindow(
+            CoverGalleryView(
+                remoteItems: .linked([front, booklet]),
+                releaseItems: [],
+                selectedCover: front.selection,
+                onSelect: { selected = $0 },
+                onDone: {}
+            )
+            .environment(images)
+            .frame(width: size.width, height: size.height),
+            size: size
+        ) { window, host in
+            try await Wait.until {
+                Set(await recorder.reads.map(\.url)).count >= 2
+            }
+            try await SnapshotTestSupport.settle(host)
+            // Nothing clicked or opened first: the grid has the keys.
+            try HostedInput.keyDown(.rightArrow, in: window)
+            try await SnapshotTestSupport.settle(host)
+            try HostedInput.keyEquivalent(.return, in: host)
+            try await SnapshotTestSupport.settle(host)
+            #expect(selected?.id == booklet.id)
+        }
+    }
+
     /// Open the lightbox the way `opening` names.
     @MainActor
     private func open(
