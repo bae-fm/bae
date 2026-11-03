@@ -41,7 +41,6 @@ use std::sync::{Arc, Mutex};
 use tokio::sync::watch;
 use tracing::debug;
 
-mod published_runs;
 mod snapshots;
 mod standing_writes;
 mod stored_standing;

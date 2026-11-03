@@ -24,7 +24,7 @@ use crate::candidates::CandidateFiles;
 use crate::IdentifyRunId;
 use bae_catalogs::source_release::SourceRelease;
 use bae_identify::signals::Signals;
-use bae_identify::{PublishedRun, RunOutcome};
+use bae_identify::{IdentifyState, PublishedRun, RunOutcome};
 use std::collections::BTreeMap;
 
 /// What every run in flight, or `key`'s runs alone, last published, with the
@@ -145,6 +145,32 @@ fn store_run_on(
     Ok(())
 }
 
+/// How `state`, which `run` of `key` published, stands; a run publishes no
+/// `Idle` while it runs.
+fn published_outcome(
+    key: &CandidateKey,
+    run: IdentifyRunId,
+    state: &IdentifyState,
+) -> Result<RunOutcome, DbError> {
+    RunOutcome::of(state)
+        .ok_or_else(|| DbError::Message(format!("{key}'s run {run:?} published no state to store")))
+}
+
+/// Store how `run` of the library release whose re-identify key is `key`
+/// stands, with each of the `releases` it read that its rows name, and the
+/// signals it last read where it read new ones.
+pub(crate) fn store_release_run_on(
+    sql: &CovenWrite<'_>,
+    key: &CandidateKey,
+    run: IdentifyRunId,
+    outcome: &RunOutcome,
+    releases: &[SourceRelease],
+    signals: Option<&Signals>,
+) -> Result<(), DbError> {
+    let run = to_i64(run.number(), "an identify run")?;
+    store_run_on(sql, key, run, outcome, releases, signals)
+}
+
 /// Store how `run` of the folder candidate `key` stands, with the releases
 /// its rows name, and the signals it last read, if its standing names that
 /// run; whether it did.
@@ -229,20 +255,20 @@ impl ImportTables {
         })
     }
 
-    /// Start `run` from `key`'s wait for `files`, with `outcome` as the first
-    /// thing it published and the `releases` it read, in one write: the run
-    /// is stored only if the standing moves to it.
+    /// Start `run` from `key`'s wait for `files`, with `state` as the first
+    /// thing it published and the releases it read, in one write: the run is
+    /// stored only if the standing moves to it.
     pub(crate) async fn start_candidate_run(
         &self,
         key: &CandidateKey,
         files: &CandidateFiles,
         run: IdentifyRunId,
-        outcome: &RunOutcome,
-        releases: Vec<SourceRelease>,
+        state: &IdentifyState,
     ) -> Result<IdentificationMove, DbError> {
+        let outcome = published_outcome(key, run, state)?;
+        let releases = state.read_releases();
         let key = key.clone();
         let change = IdentificationChange::RunStarted { files: files.clone(), run };
-        let outcome = outcome.clone();
         self.database
             .call(move |sql| {
                 let moved = change_identification_on(sql, &key, &change)?;
@@ -252,20 +278,20 @@ impl ImportTables {
             .await
     }
 
-    /// Store how `run` of the folder candidate `key` stands, with each of the
-    /// `releases` it read that its rows name, and the signals it last read
-    /// where it read new ones, if its standing still names the run; whether
-    /// it did.
+    /// Store `state` as how `run` of the folder candidate `key` stands, with
+    /// each of the releases it read that its rows name, and the signals it
+    /// last read where it read new ones, if its standing still names the run;
+    /// whether it did.
     pub(crate) async fn publish_candidate_run(
         &self,
         key: &CandidateKey,
         run: IdentifyRunId,
-        outcome: &RunOutcome,
-        releases: Vec<SourceRelease>,
+        state: &IdentifyState,
         signals: Option<&Signals>,
     ) -> Result<bool, DbError> {
+        let outcome = published_outcome(key, run, state)?;
+        let releases = state.read_releases();
         let key = key.clone();
-        let outcome = outcome.clone();
         let signals = signals.cloned();
         self.database
             .call(move |sql| {
@@ -274,42 +300,34 @@ impl ImportTables {
             .await
     }
 
-    /// Store how `run` of the library release whose re-identify key is `key`
-    /// stands, with each of the `releases` it read that its rows name, and
-    /// the signals it last read where it read new ones.
+    /// Store `state` as how `run` of the library release whose re-identify
+    /// key is `key` stands, with each of the releases it read that its rows
+    /// name, and the signals it last read where it read new ones. `Idle` ends
+    /// the run: its rows go.
     pub(crate) async fn publish_release_run(
         &self,
         key: &CandidateKey,
         run: IdentifyRunId,
-        outcome: &RunOutcome,
-        releases: Vec<SourceRelease>,
+        state: &IdentifyState,
         signals: Option<&Signals>,
     ) -> Result<(), DbError> {
+        let outcome = RunOutcome::of(state);
+        let releases = state.read_releases();
         let key = key.clone();
-        let outcome = outcome.clone();
         let signals = signals.cloned();
-        let run = to_i64(run.number(), "an identify run")?;
         self.database
-            .call(move |sql| store_run_on(sql, &key, run, &outcome, &releases, signals.as_ref()))
-            .await
-    }
-
-    /// `run` of the library release whose re-identify key is `key` ended: its
-    /// rows go.
-    pub(crate) async fn end_release_run(
-        &self,
-        key: &CandidateKey,
-        run: IdentifyRunId,
-    ) -> Result<(), DbError> {
-        let key = key.clone();
-        let run = to_i64(run.number(), "an identify run")?;
-        self.database
-            .call(move |sql| {
-                sql.execute(
-                    "DELETE FROM import_identify_run WHERE candidate_key = ? AND identify_run = ?",
-                    params![key, run],
-                )?;
-                Ok(())
+            .call(move |sql| match outcome {
+                Some(outcome) => {
+                    store_release_run_on(sql, &key, run, &outcome, &releases, signals.as_ref())
+                }
+                None => {
+                    sql.execute(
+                        "DELETE FROM import_identify_run \
+                         WHERE candidate_key = ? AND identify_run = ?",
+                        params![key, to_i64(run.number(), "an identify run")?],
+                    )?;
+                    Ok(())
+                }
             })
             .await
     }
@@ -330,3 +348,7 @@ impl ImportTables {
             .await
     }
 }
+
+#[cfg(test)]
+#[path = "run_rows_tests.rs"]
+mod tests;

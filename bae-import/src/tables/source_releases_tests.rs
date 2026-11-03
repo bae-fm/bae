@@ -808,6 +808,29 @@ async fn a_verdict_stores_only_the_releases_its_rows_name() {
     assert_eq!(tables.load_source_release(&named).await.unwrap(), None);
 }
 
+/// Store `releases` as what `run` of the library release `key` read, its
+/// answer the sample verdict, as a release run's publish stores them.
+async fn store_release_run(
+    db: &Database,
+    key: &crate::CandidateKey,
+    run: IdentifyRunId,
+    releases: Vec<SourceRelease>,
+) {
+    let key = key.clone();
+    db.call(move |sql| {
+        crate::tables::import_state::store_release_run_on(
+            sql,
+            &key,
+            run,
+            &RunOutcome::Answered(sample_verdict()),
+            &releases,
+            None,
+        )
+    })
+    .await
+    .unwrap();
+}
+
 /// What a run in flight publishes keeps the releases it read that its rows
 /// name, and none it read that they don't; the run's end takes them.
 #[tokio::test]
@@ -816,16 +839,7 @@ async fn a_run_s_rows_keep_the_releases_it_read_until_the_run_ends() {
     let tables = crate::tables::ImportTables::new(db.clone());
     let key = crate::CandidateKey::test("release-reidentify");
     let run = IdentifyRunId::for_test(1);
-    tables
-        .publish_release_run(
-            &key,
-            run,
-            &RunOutcome::Answered(sample_verdict()),
-            vec![release("rel-1"), release("rel-unnamed")],
-            None,
-        )
-        .await
-        .unwrap();
+    store_release_run(&db, &key, run, vec![release("rel-1"), release("rel-unnamed")]).await;
     let named = LookupRef::new(LookupCatalog::MusicBrainz, "rel-1");
     assert!(tables.load_source_release(&named).await.unwrap().is_some());
     assert_eq!(
@@ -837,7 +851,7 @@ async fn a_run_s_rows_keep_the_releases_it_read_until_the_run_ends() {
         "no row of the run names it"
     );
 
-    tables.end_release_run(&key, run).await.unwrap();
+    tables.publish_release_run(&key, run, &bae_identify::IdentifyState::Idle, None).await.unwrap();
     assert_eq!(tables.load_source_release(&named).await.unwrap(), None);
 }
 
@@ -861,16 +875,7 @@ async fn a_stored_release_is_replaced_only_by_a_copy_that_read_more() {
         let tables = crate::tables::ImportTables::new(db.clone());
         let key = key.clone();
         async move {
-            tables
-                .publish_release_run(
-                    &key,
-                    run,
-                    &RunOutcome::Answered(sample_verdict()),
-                    vec![copy],
-                    None,
-                )
-                .await
-                .unwrap();
+            store_release_run(&db, &key, run, vec![copy]).await;
             tables
                 .load_source_release(&LookupRef::new(LookupCatalog::MusicBrainz, "rel-1"))
                 .await

@@ -120,11 +120,7 @@ impl CandidateRuntime {
         run: IdentifyRunId,
         state: &bae_identify::IdentifyState,
     ) -> Result<bool, DbError> {
-        let outcome = super::published_runs::published_outcome(key, run, state)?;
-        let moved = self
-            .tables
-            .start_candidate_run(key, files, run, &outcome, state.read_releases())
-            .await?;
+        let moved = self.tables.start_candidate_run(key, files, run, state).await?;
         #[cfg(any(test, feature = "test-utils"))]
         self.tell_every_change(std::iter::once(key)).await;
         Ok(moved.after.is_some_and(|after| after.stage == IdentificationStage::Running { run }))

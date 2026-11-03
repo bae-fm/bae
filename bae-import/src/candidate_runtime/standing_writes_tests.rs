@@ -111,7 +111,7 @@ async fn a_terminal_state_moves_the_run_to_being_written() {
         }))
     ));
 
-    assert!(runtime.publish_candidate_run(key, run(1), &manual_only(), None).await.unwrap());
+    assert!(runtime.tables.publish_candidate_run(key, run(1), &manual_only(), None).await.unwrap());
     assert!(runtime.run_answered(key, run(1), false).await.unwrap());
     assert_eq!(identification(&runtime, key).await, Some(crate::IdentificationStatus::Finalizing));
     assert!(matches!(
@@ -429,7 +429,7 @@ async fn a_lookup_started_by_hand_opens_a_batch() {
         "the run starting is the same identification, still waited on"
     );
 
-    assert!(runtime.publish_candidate_run(key, run(1), &manual_only(), None).await.unwrap());
+    assert!(runtime.tables.publish_candidate_run(key, run(1), &manual_only(), None).await.unwrap());
     runtime.run_answered(key, run(1), false).await.unwrap();
     assert_eq!(
         counts(&runtime, &mut last).await,
@@ -579,8 +579,8 @@ async fn a_release_re_identified_in_its_own_sheet_is_not_counted() {
     let mut last = (0, 0);
     let key = &crate::CandidateKey::reidentify("release-1");
 
-    runtime.publish_release_run(key, run(1), &triangulating(), None).await.unwrap();
-    runtime.publish_release_run(key, run(1), &manual_only(), None).await.unwrap();
+    runtime.tables.publish_release_run(key, run(1), &triangulating(), None).await.unwrap();
+    runtime.tables.publish_release_run(key, run(1), &manual_only(), None).await.unwrap();
     assert!(
         runtime.snapshot(key).await.unwrap().is_some(),
         "the sheet reads its run off the runtime"

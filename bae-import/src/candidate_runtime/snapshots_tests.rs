@@ -56,7 +56,7 @@ async fn a_queued_key_reads_as_queued_until_its_run_reports() {
         Some(IdentificationInFlight::Run(published(triangulating())))
     );
 
-    assert!(runtime.publish_candidate_run(key, run(1), &manual_only(), None).await.unwrap());
+    assert!(runtime.tables.publish_candidate_run(key, run(1), &manual_only(), None).await.unwrap());
     runtime.run_answered(key, run(1), false).await.unwrap();
     assert_eq!(
         in_flight(&runtime, key).await,
@@ -92,12 +92,12 @@ async fn a_re_identify_run_is_held_by_the_runtime_alone() {
     let runtime = CandidateRuntime::for_test().await;
     let key = &crate::CandidateKey::reidentify("release-1");
 
-    runtime.publish_release_run(key, run(1), &triangulating(), None).await.unwrap();
+    runtime.tables.publish_release_run(key, run(1), &triangulating(), None).await.unwrap();
     assert_eq!(
         in_flight(&runtime, key).await,
         Some(IdentificationInFlight::Run(published(triangulating())))
     );
-    runtime.publish_release_run(key, run(1), &manual_only(), None).await.unwrap();
+    runtime.tables.publish_release_run(key, run(1), &manual_only(), None).await.unwrap();
     assert_eq!(
         in_flight(&runtime, key).await,
         Some(IdentificationInFlight::Run(published(manual_only())))

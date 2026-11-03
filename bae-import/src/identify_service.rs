@@ -457,7 +457,9 @@ impl Driver {
         let (key, run) = (&self.key, self.run);
         let RunSubject::Candidate(files) = &self.subject else {
             // No caller waits on the driver to hear it: a bug.
-            if let Err(error) = candidates.publish_release_run(key, run, state, signals).await {
+            if let Err(error) =
+                self.inner.tables.publish_release_run(key, run, state, signals).await
+            {
                 self.inner
                     .diagnostics
                     .report_bug(&format!("store what {key}'s run {run:?} published"), &error);
@@ -507,7 +509,7 @@ impl Driver {
                 }
             },
             (RunStanding::Held, _) => {
-                match candidates.publish_candidate_run(key, run, state, signals).await {
+                match self.inner.tables.publish_candidate_run(key, run, state, signals).await {
                     Ok(true) => {}
                     Ok(false) => {
                         debug!(

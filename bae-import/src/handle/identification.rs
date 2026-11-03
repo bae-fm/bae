@@ -192,7 +192,7 @@ impl ImportServiceHandle {
         candidate_key: &crate::CandidateKey,
         run: crate::IdentifyRunId,
     ) -> Result<Option<bae_identify::signals::Signals>, bae_db::DbError> {
-        self.runtime.run_signals(candidate_key, run).await
+        self.tables.load_candidate_run_signals(candidate_key, run).await
     }
 }
 

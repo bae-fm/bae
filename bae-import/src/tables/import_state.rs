@@ -46,6 +46,9 @@ pub(super) use seed_rows::{ensure_candidate_state, forget_at_or_below, Candidate
 use session_rows::load_session_on;
 use signal_rows::{delete_signals, store_signals};
 pub(crate) use standing_rows::ImportClaim;
+// The source releases' tests store a run's releases as a release run does.
+#[cfg(test)]
+pub(super) use run_rows::store_release_run_on;
 pub(super) use standing_rows::{
     change_identification_on, end_file_work_unless_of_on, load_standing_on, move_import_on,
     RuntimeFactColumns, RUNTIME_FACT_COLUMNS,

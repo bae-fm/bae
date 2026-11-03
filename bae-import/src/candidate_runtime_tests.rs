@@ -97,7 +97,7 @@ pub(crate) fn signals_context(track_count: u32) -> bae_identify::state::SignalsC
     }
 }
 
-pub(super) fn run(number: u64) -> crate::IdentifyRunId {
+pub(crate) fn run(number: u64) -> crate::IdentifyRunId {
     crate::IdentifyRunId::for_test(number)
 }
 
@@ -248,7 +248,7 @@ pub(super) async fn identification(
     runtime.standing_facts(key).await.unwrap().identification
 }
 
-pub(super) fn extracted_signals() -> bae_identify::signals::Signals {
+pub(crate) fn extracted_signals() -> bae_identify::signals::Signals {
     bae_identify::signals::Signals {
         origin: bae_catalogs::AudioOrigin::default(),
         disc_id: bae_identify::signals::DiscIdSignal::Absent,
