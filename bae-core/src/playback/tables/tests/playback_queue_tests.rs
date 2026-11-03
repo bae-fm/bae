@@ -14,7 +14,7 @@ pub(super) async fn release_db(count: usize) -> (Database, tempfile::TempDir, Ve
     let seed = track_ids.clone();
     db.call(move |conn| {
         super::seed_artist_album_release(conn)?;
-        let medium_id = crate::db::identity::release_medium_id(RELEASE_A, 1);
+        let medium_id = bae_db::identity::release_medium_id(RELEASE_A, 1);
         conn.execute(
             "INSERT INTO release_mediums (id, release_id, position, medium, side_count, created_at) \
              VALUES (?1, ?2, 1, 'cd', 1, '2026-01-01T00:00:00Z')",

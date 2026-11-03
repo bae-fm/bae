@@ -238,7 +238,7 @@ async fn replacing_an_uploaded_cover_deletes_its_file_record() {
     assert_ne!(first.id(), second.id());
     assert!(matches!(
         manager.database.coven_file(first.id()).await,
-        Err(crate::db::DbError::Coven(coven::CovenError::Database(
+        Err(bae_db::DbError::Coven(coven::CovenError::Database(
             coven::DbError::FileAbsent { .. }
         )))
     ));

@@ -317,7 +317,7 @@ pub struct BridgeLibraryAlbumMatch {
 
 #[cfg(feature = "desktop")]
 impl BridgeLibraryStatus {
-    pub(crate) fn from_core(status: bae_core::db::LibraryStatus) -> Self {
+    pub(crate) fn from_core(status: bae_db::LibraryStatus) -> Self {
         Self {
             release_in_library: status.release_in_library(),
             album_in_library: status.album_in_library(),
@@ -329,7 +329,7 @@ impl BridgeLibraryStatus {
 
 mirror_struct! {
     #[cfg(feature = "desktop")]
-    BridgeLibraryAlbumMatch = bae_core::db::LibraryAlbumMatch,
+    BridgeLibraryAlbumMatch = bae_db::LibraryAlbumMatch,
     from_core: pub(crate) fn,
     fields: { album_id, album_title, holds_release },
 }

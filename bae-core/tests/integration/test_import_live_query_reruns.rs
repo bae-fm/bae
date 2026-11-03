@@ -12,14 +12,14 @@
 //! It prints each query's runs over the writes: all of them, those a write
 //! caused, and of those, the ones whose result was unchanged.
 
-use bae_core::db::LibraryPageWindow;
-use bae_core::db::RelativeFolder;
 use bae_core::import::folder_scanner::{
     CandidateFile, CategorizedFiles, FileRole, ScanItem, ScannedAudio, ScannedFile,
 };
 use bae_core::import::{
     CandidateKey, FolderCandidate, ImportListOrder, ImportListView, ReleaseFileScope, TriageTab,
 };
+use bae_db::LibraryPageWindow;
+use bae_db::RelativeFolder;
 use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;

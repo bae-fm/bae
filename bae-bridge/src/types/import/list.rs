@@ -518,7 +518,7 @@ pub enum BridgeImportFailure {
 }
 
 /// A library label as a conflict names it. Mirrors
-/// `bae_core::db::ExistingLabel`.
+/// `bae_db::ExistingLabel`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeExistingLabel {
     pub label_id: String,
@@ -529,7 +529,7 @@ pub struct BridgeExistingLabel {
 
 mirror_struct! {
     #[cfg(feature = "desktop")]
-    BridgeExistingLabel = bae_core::db::ExistingLabel,
+    BridgeExistingLabel = bae_db::ExistingLabel,
     from_core: pub(crate) fn,
     fields: { label_id, name, musicbrainz_label_id, discogs_label_id },
 }

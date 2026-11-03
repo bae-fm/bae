@@ -148,7 +148,7 @@ async fn unscanned_candidate(
         watched_folder_path: root.clone(),
         scope: ReleaseFileScope::Recursive,
         file_edit_revision: 0,
-        relative_folder: crate::db::RelativeFolder::test(folder_name),
+        relative_folder: bae_db::RelativeFolder::test(folder_name),
         grouping: None,
     };
 
@@ -327,9 +327,9 @@ async fn unlinked_cover_gallery_for_library_release() {
     manager
         .insert_album_with_release_and_tracks(
             &album,
-            &[crate::db::DbAlbumArtist::new_test(&album.id, TEST_ARTIST_ID)],
+            &[bae_db::DbAlbumArtist::new_test(&album.id, TEST_ARTIST_ID)],
             &release,
-            &[crate::db::DbReleaseMedium::new_test(&release.id)],
+            &[bae_db::DbReleaseMedium::new_test(&release.id)],
             &[make_track(&release.id, 1)],
             &[],
         )

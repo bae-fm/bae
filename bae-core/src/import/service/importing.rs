@@ -426,11 +426,11 @@ impl ImportService {
         for track_file in tracks_to_files {
             let (file_paths, layout): (Vec<&Path>, _) = match &track_file.audio {
                 TrackAudio::Standalone { file_path, .. } => {
-                    (vec![file_path.as_path()], crate::db::source_audio::SourceAudioLayout::File)
+                    (vec![file_path.as_path()], bae_db::source_audio::SourceAudioLayout::File)
                 }
                 TrackAudio::CueBacked { cue_pair, .. } => (
                     cue_pair.audio_files.iter().map(|audio| audio.path.as_path()).collect(),
-                    crate::db::source_audio::SourceAudioLayout::Cue,
+                    bae_db::source_audio::SourceAudioLayout::Cue,
                 ),
             };
             for file_path in file_paths {
@@ -537,7 +537,7 @@ impl ImportService {
                 files_now,
             );
             db_file.source_audio =
-                file.source_audio.as_ref().map(|audio| crate::db::source_audio::SourceAudioFile {
+                file.source_audio.as_ref().map(|audio| bae_db::source_audio::SourceAudioFile {
                     layout: source_audio_layouts.get(file.path.as_path()).copied(),
                     format: audio.format.clone(),
                     content_type: audio.content_type.clone(),
@@ -654,8 +654,7 @@ impl ImportService {
                 .await
                 .map_err(|failed| self.diagnostics.bug(failed))?
                 .map_err(|detail| crate::import::ImportError::CoverArt { detail })?;
-                let image =
-                    crate::db::DbLibraryImage::cover(&db_release.id, self.clock.now().into());
+                let image = bae_db::DbLibraryImage::cover(&db_release.id, self.clock.now().into());
                 Some((image, bytes))
             }
             None => None,
@@ -700,10 +699,7 @@ impl ImportService {
                 track_works: &work_graph.track_works,
                 release_artist_roles,
                 track_artist_roles,
-                artists: crate::db::ArtistCredits {
-                    credits: artist_credits,
-                    picked: picked_artists,
-                },
+                artists: bae_db::ArtistCredits { credits: artist_credits, picked: picked_artists },
                 audio_formats: &built_audio.audio_formats,
                 audio_segments: &built_audio.audio_segments,
                 scrub_points: &loudness.scrub_points,
@@ -744,7 +740,7 @@ impl ImportService {
     /// not among them.
     async fn new_discogs_artists(
         &self,
-        credits: &[crate::db::DbArtist],
+        credits: &[bae_db::DbArtist],
         picked: &[String],
         content_hash: Option<&str>,
     ) -> Result<std::collections::BTreeSet<String>, crate::import::ImportError> {
@@ -770,7 +766,7 @@ impl ImportService {
         tracks_to_files: &[TrackFile],
         rows: crate::import::tables::ImportRows<'_>,
         files: Vec<PreparedImportFile>,
-        library_image: Option<(&crate::db::DbLibraryImage, &[u8])>,
+        library_image: Option<(&bae_db::DbLibraryImage, &[u8])>,
         artist_images: &[crate::import::DiscogsArtistImage],
     ) -> Result<(), crate::import::ImportError> {
         let expected = self
@@ -873,10 +869,10 @@ async fn linked_records(
 /// when the import fetched its pictures and is not one now: the library's
 /// artists changed under the import, which fails so it can be run again.
 fn artist_image_rows(
-    inserted_artists: &[crate::db::DbArtist],
+    inserted_artists: &[bae_db::DbArtist],
     fetched: &[crate::import::DiscogsArtistImage],
     now: chrono::DateTime<chrono::Utc>,
-) -> Result<Vec<(crate::db::DbLibraryImage, Vec<u8>)>, crate::import::ImportError> {
+) -> Result<Vec<(bae_db::DbLibraryImage, Vec<u8>)>, crate::import::ImportError> {
     let by_discogs_id: HashMap<_, _> =
         fetched.iter().map(|answer| (answer.discogs_artist_id(), answer)).collect();
     if by_discogs_id.len() != fetched.len() {
@@ -895,11 +891,8 @@ fn artist_image_rows(
         let crate::import::DiscogsArtistImage::Image { jpeg, .. } = answer else {
             continue;
         };
-        let row = crate::db::DbLibraryImage::stored_jpeg(
-            crate::db::LibraryImageType::Artist,
-            &artist.id,
-            now,
-        );
+        let row =
+            bae_db::DbLibraryImage::stored_jpeg(bae_db::LibraryImageType::Artist, &artist.id, now);
         images.push((row, jpeg.clone()));
     }
     Ok(images)

@@ -50,7 +50,7 @@ async fn insert_editable_tracks(manager: &LibraryManager, release_id: &str, n: u
         add_track_audio_sources(
             manager,
             track,
-            &[(&format!("{index:02}.flac"), crate::db::source_audio::SourceAudioLayout::File)],
+            &[(&format!("{index:02}.flac"), bae_db::source_audio::SourceAudioLayout::File)],
         )
         .await;
     }
@@ -134,11 +134,11 @@ fn make_mb_release_for_re_identify(
 /// `re_identify_release` accepts the picked release.
 async fn insert_n_tracks(database: &Database, release_id: &str, n: usize) {
     for i in 1..=n {
-        let track = crate::db::DbTrack {
+        let track = bae_db::DbTrack {
             id: Uuid::new_v4().to_string(),
             release_id: release_id.to_string(),
             title: format!("Track {i}"),
-            medium_id: crate::db::identity::release_medium_id(release_id, 1),
+            medium_id: bae_db::identity::release_medium_id(release_id, 1),
             side: std::num::NonZeroU8::MIN,
             track_number: std::num::NonZeroU32::new(
                 u32::try_from(i).expect("a test track number fits u32"),
@@ -275,7 +275,7 @@ async fn a_reidentify_leaves_none_of_the_previous_source_s_roles_or_works() {
         created_at: Utc::now(),
     };
     manager.database.insert_artist(&composer).await.unwrap();
-    let work_id = crate::db::identity::work_id("mb-work-1");
+    let work_id = bae_db::identity::work_id("mb-work-1");
     for (statement, params) in [
         (
             "INSERT INTO works (id, title, musicbrainz_work_id, created_at) \

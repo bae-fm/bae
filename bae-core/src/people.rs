@@ -1,7 +1,7 @@
 //! This device's open invites, as People shows them, and setting a
 //! person's avatar from a picked image.
 
-use crate::db::people::ProfileError;
+use bae_db::people::ProfileError;
 
 /// One of this device's open invites, with the pending record of its
 /// operation when coven holds one: a refused check or a failed grant, which

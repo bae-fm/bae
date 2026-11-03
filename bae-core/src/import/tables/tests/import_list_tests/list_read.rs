@@ -8,7 +8,7 @@ use crate::import::TriageTab;
 /// One read of a list: its view, its windows, and the rows it has selected.
 pub(super) struct ListRead {
     pub(super) view: ImportListView,
-    pub(super) windows: crate::db::LibraryPageWindows,
+    pub(super) windows: bae_db::LibraryPageWindows,
     pub(super) selected: Vec<crate::import::CandidateKey>,
 }
 
@@ -16,7 +16,7 @@ pub(super) struct ListRead {
 pub(super) async fn request(tab: TriageTab) -> ListRead {
     ListRead {
         view: ImportListView { tab, ..ImportListView::default() },
-        windows: std::iter::once(crate::db::LibraryPageWindow { offset: 0, limit: 50 }).collect(),
+        windows: std::iter::once(bae_db::LibraryPageWindow { offset: 0, limit: 50 }).collect(),
         selected: Vec::new(),
     }
 }

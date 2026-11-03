@@ -16,9 +16,9 @@ async fn a_picked_album_shows_over_what_the_records_name() {
         .database
         .insert_album_with_release_and_tracks(
             &album,
-            &[crate::db::DbAlbumArtist::new_test(&album.id, &artist.id)],
+            &[bae_db::DbAlbumArtist::new_test(&album.id, &artist.id)],
             &release,
-            &[crate::db::DbReleaseMedium::new_test(&release.id)],
+            &[bae_db::DbReleaseMedium::new_test(&release.id)],
             &[make_track(&release.id, 1)],
             &[],
         )

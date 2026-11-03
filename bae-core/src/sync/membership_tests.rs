@@ -1,5 +1,5 @@
 use super::*;
-use crate::db::membership::MembershipMember;
+use bae_db::membership::MembershipMember;
 
 fn device(id: u64) -> ActiveDevice {
     ActiveDevice {

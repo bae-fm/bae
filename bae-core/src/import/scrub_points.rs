@@ -11,9 +11,9 @@
 //! its frame's exact byte and first sample. A few of those, stored, let a
 //! scrub start its decode at a known frame instead.
 
-use crate::db::ScrubPoint;
 use crate::track_audio::data_source::FILL_WINDOW_SIZE;
 use bae_audio::{DecodeStart, DecodedPacket, DecodedStream, AVIO_BUFFER_SIZE};
+use bae_db::ScrubPoint;
 use bae_util::content_type::ContentType;
 use tracing::{debug, warn};
 

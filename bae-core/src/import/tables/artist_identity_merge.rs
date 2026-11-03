@@ -1,7 +1,7 @@
 //! Atomic consolidation of library artists after a persisted import conflict.
 
 use super::*;
-use crate::db::client::write::update_artist_external_ids_row;
+use bae_db::client::write::update_artist_external_ids_row;
 
 impl ImportTables {
     /// Consolidate the two library artists named by a candidate's persisted
@@ -114,11 +114,11 @@ fn plan_artist_identity_merge<Q: QueryOne + QueryRows>(
         [&musicbrainz_library_id],
         row_to_artist,
     )?;
-    if !crate::db::artist_source_ids_are_compatible(
+    if !bae_db::artist_source_ids_are_compatible(
         &discogs_artist,
         Some(&discogs_artist_id),
         Some(&musicbrainz_artist_id),
-    ) || !crate::db::artist_source_ids_are_compatible(
+    ) || !bae_db::artist_source_ids_are_compatible(
         &musicbrainz_artist,
         Some(&discogs_artist_id),
         Some(&musicbrainz_artist_id),
@@ -129,7 +129,7 @@ fn plan_artist_identity_merge<Q: QueryOne + QueryRows>(
     }
     let surviving_sort_name = discogs_artist.sort_name.or(musicbrainz_artist.sort_name);
     let image = |artist_id: &str| {
-        crate::db::client::files::image_file_on(sql, &LibraryImageType::Artist, artist_id)
+        bae_db::client::files::image_file_on(sql, &LibraryImageType::Artist, artist_id)
     };
     let surviving_image = image(surviving_artist_id)?;
     let absorbed_image = image(&absorbed_artist_id)?;

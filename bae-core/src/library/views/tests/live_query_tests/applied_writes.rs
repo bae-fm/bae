@@ -50,7 +50,7 @@ fn composer_browse_subscription_delivers_listings_kept_by_applied_writes() {
             .subscribe_composer_browse(&sort, first_page());
         assert_eq!(live.next().await.expect("the query stays open").result.unwrap().total_count, 0);
         let listed = async |live: &mut coven::ReconfigurableLiveQuery<
-            crate::db::LibraryPageWindows,
+            bae_db::LibraryPageWindows,
             ComposerBrowseProjection,
         >,
                             expected: Vec<(&str, i64)>| {

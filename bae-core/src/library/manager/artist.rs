@@ -12,14 +12,14 @@ impl LibraryManager {
     pub async fn get_artists_for_album(
         &self,
         album_id: &str,
-    ) -> Result<Vec<crate::db::credits::LibraryCredit>, LibraryError> {
+    ) -> Result<Vec<bae_db::credits::LibraryCredit>, LibraryError> {
         Ok(self.database.get_artists_for_album(album_id).await?)
     }
 
     pub async fn get_artists_for_track(
         &self,
         track_id: &str,
-    ) -> Result<Vec<crate::db::credits::LibraryCredit>, LibraryError> {
+    ) -> Result<Vec<bae_db::credits::LibraryCredit>, LibraryError> {
         Ok(self.database.get_artists_for_track(track_id).await?)
     }
 
@@ -74,7 +74,7 @@ impl LibraryManager {
     pub async fn resolve_release_edit_credits(
         &self,
         edit: &crate::import::RawReleaseEdit,
-    ) -> Result<Vec<crate::db::ResolvedCredit>, LibraryError> {
+    ) -> Result<Vec<bae_db::ResolvedCredit>, LibraryError> {
         let credits: Vec<_> = edit.credits().cloned().collect();
         Ok(self.database.resolve_artist_credits(&credits).await?)
     }

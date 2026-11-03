@@ -20,16 +20,16 @@ fn audio_entry(path: &str, relative_path: &str, size: u64) -> CandidateFile {
 
 fn assert_uniform_source_audio(
     files: &CategorizedFiles,
-    layout: crate::db::source_audio::SourceAudioLayout,
+    layout: bae_db::source_audio::SourceAudioLayout,
     codec: &str,
 ) {
     let summary = files.source_audio_summary().expect("candidate has source audio");
     match summary {
-        crate::db::source_audio::SourceAudioSummary::Uniform { descriptor } => {
+        bae_db::source_audio::SourceAudioSummary::Uniform { descriptor } => {
             assert_eq!(descriptor.layout, layout);
             assert_eq!(descriptor.format.codec, codec);
         }
-        crate::db::source_audio::SourceAudioSummary::Mixed { differences } => {
+        bae_db::source_audio::SourceAudioSummary::Mixed { differences } => {
             panic!("expected uniform source audio, got {differences:?}")
         }
     }
@@ -53,7 +53,7 @@ fn source_audio_keeps_every_physical_file_in_release_order() {
     );
     assert!(matches!(
         source_audio.summary,
-        crate::db::source_audio::SourceAudioSummary::Uniform { .. }
+        bae_db::source_audio::SourceAudioSummary::Uniform { .. }
     ));
 }
 
@@ -81,7 +81,7 @@ fn scan_projected_items_with_decisions(
 /// finished.
 async fn stored_scan(root: PathBuf, decisions: FolderReleaseDecisions) -> Vec<ScanItem> {
     let store = tempfile::TempDir::new().unwrap();
-    let db = crate::db::Database::new_test(
+    let db = bae_db::Database::new_test(
         store.path().join("test.db").to_str().unwrap(),
         Arc::new(coven::SystemClock),
     )
@@ -160,7 +160,7 @@ fn readings(
             .iter()
             .map(|(folder, decision, author)| {
                 (
-                    crate::db::RelativeFolder::test(folder),
+                    bae_db::RelativeFolder::test(folder),
                     FolderReading {
                         decision: *decision,
                         author: *author,

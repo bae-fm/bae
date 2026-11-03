@@ -171,8 +171,8 @@ fn now() -> chrono::DateTime<chrono::Utc> {
         .with_timezone(&chrono::Utc)
 }
 
-fn audio_format(track_id: &str, id: &str) -> crate::db::DbAudioFormat {
-    crate::db::DbAudioFormat::new(
+fn audio_format(track_id: &str, id: &str) -> bae_db::DbAudioFormat {
+    bae_db::DbAudioFormat::new(
         track_id,
         bae_util::content_type::ContentType::Flac,
         std::num::NonZeroU32::new(44_100).unwrap(),
@@ -183,12 +183,12 @@ fn audio_format(track_id: &str, id: &str) -> crate::db::DbAudioFormat {
     )
 }
 
-fn whole_file_main_segment(format_id: &str, file_id: &str) -> crate::db::DbAudioSegment {
-    crate::db::DbAudioSegment {
+fn whole_file_main_segment(format_id: &str, file_id: &str) -> bae_db::DbAudioSegment {
+    bae_db::DbAudioSegment {
         id: format!("seg-{format_id}"),
         audio_format_id: format_id.to_string(),
         segment_index: 0,
-        role: crate::db::DbAudioSegmentRole::Main,
+        role: bae_db::DbAudioSegmentRole::Main,
         file_id: file_id.to_string(),
         start_sample: 0,
         end_sample: None,
@@ -200,7 +200,7 @@ fn whole_file_main_segment(format_id: &str, file_id: &str) -> crate::db::DbAudio
 
 fn standalone_track(track_id: &str, path: &std::path::Path) -> TrackFile {
     TrackFile {
-        db_track: crate::db::DbTrack::new_test("release-id", track_id, "Track Title", 1),
+        db_track: bae_db::DbTrack::new_test("release-id", track_id, "Track Title", 1),
         audio: crate::import::TrackAudio::Standalone {
             file_path: path.to_path_buf(),
             source_audio: crate::import::folder_scanner::ScannedAudio {
@@ -241,8 +241,8 @@ fn loudness_percents(
 /// asserts on one.
 async fn measure(
     event_tx: &crate::import::handle::ImportEventBus,
-    audio_formats: &mut [crate::db::DbAudioFormat],
-    audio_segments: &[crate::db::DbAudioSegment],
+    audio_formats: &mut [bae_db::DbAudioFormat],
+    audio_segments: &[bae_db::DbAudioSegment],
     file_ids: &HashMap<PathBuf, String>,
     source_file_sizes: &HashMap<PathBuf, u64>,
     tracks_to_files: &[TrackFile],
@@ -387,7 +387,7 @@ async fn measure_loudness_skips_track_with_no_segments() {
     let event_tx =
         crate::import::ImportEventBus::new(crate::import::CandidateRuntime::for_test().await);
     let mut audio_formats = vec![audio_format("track-0", "af-0")];
-    let audio_segments: Vec<crate::db::DbAudioSegment> = Vec::new();
+    let audio_segments: Vec<bae_db::DbAudioSegment> = Vec::new();
     let file_ids = HashMap::new();
     let source_file_sizes = HashMap::new();
     let tracks = vec![standalone_track("track-0", &PathBuf::from("/unused.flac"))];
@@ -521,8 +521,8 @@ async fn measure_loudness_leaves_ungated_track_unmeasured() {
 async fn peak_open_sources(
     dir: &std::path::Path,
     parallelism: usize,
-    audio_formats: &mut [crate::db::DbAudioFormat],
-    audio_segments: &[crate::db::DbAudioSegment],
+    audio_formats: &mut [bae_db::DbAudioFormat],
+    audio_segments: &[bae_db::DbAudioSegment],
     file_ids: &HashMap<PathBuf, String>,
     tracks: &[TrackFile],
 ) -> usize {
@@ -554,7 +554,7 @@ async fn peak_open_sources(
 }
 
 /// Each track's measured loudness, in track order.
-fn track_loudness(audio_formats: &[crate::db::DbAudioFormat]) -> Vec<Option<f64>> {
+fn track_loudness(audio_formats: &[bae_db::DbAudioFormat]) -> Vec<Option<f64>> {
     audio_formats.iter().map(|format| format.track_loudness_lufs).collect()
 }
 

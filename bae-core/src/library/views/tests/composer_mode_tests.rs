@@ -1,5 +1,5 @@
-use crate::db::client::tests::*;
 use crate::library::views::*;
+use bae_db::test_fixtures::*;
 
 const ALBUM_PERCENT: &str = "7e9948c4-f2d0-4a73-8e5c-a885eda086ff";
 const ALBUM_UNDERSCORE: &str = "2dd55a3f-3208-4faf-8737-453f474074cb";

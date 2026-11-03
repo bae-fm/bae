@@ -12,8 +12,8 @@
 //! and the LOAD metadata (which reports the served MIME type) consult, so the
 //! URL and the declared content type never disagree.
 
-use crate::db::ResolvedTrackAudio;
 use crate::preferences::CastTranscodeFormat;
+use bae_db::ResolvedTrackAudio;
 use bae_util::content_type::ContentType;
 
 /// The bitrate an MP3 conversion is encoded at, in kbps. Shared across
@@ -111,8 +111,8 @@ impl RendererFlavor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::db::ResolvedTrackAudioSegment;
-    use crate::db::{DbAudioSegmentRole, SegmentSpan};
+    use bae_db::ResolvedTrackAudioSegment;
+    use bae_db::{DbAudioSegmentRole, SegmentSpan};
 
     /// A track stored as `content_type`, as one whole file when `whole_file`,
     /// else as a window of a CUE image.
@@ -135,7 +135,7 @@ mod tests {
                 file_id: "file".to_string(),
                 file_size: 1_000_000,
                 span,
-                scrub_points: crate::db::ScrubPoints::new(Vec::new()),
+                scrub_points: bae_db::ScrubPoints::new(Vec::new()),
             }],
             duration_ms: 10_000,
             pregap_samples: None,

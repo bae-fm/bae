@@ -3,7 +3,7 @@
 //! identification, no import.
 
 use super::*;
-use crate::db::{DbAlbumArtist, DbArtist, DbLibraryImage, DbRelease, DbTrack, SeededAlbum};
+use bae_db::{DbAlbumArtist, DbArtist, DbLibraryImage, DbRelease, DbTrack, SeededAlbum};
 
 mod import_list;
 mod playing;
@@ -138,7 +138,7 @@ impl LibraryManager {
             })
             .collect();
         // One disc of unstated carrier, its tracks numbered in order.
-        let medium = crate::db::DbReleaseMedium::new(
+        let medium = bae_db::DbReleaseMedium::new(
             &release_id,
             std::num::NonZeroU16::MIN,
             bae_types::mediums::ReleaseMedium::one_sided(None),

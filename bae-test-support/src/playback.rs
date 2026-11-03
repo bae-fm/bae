@@ -99,7 +99,7 @@ pub enum TestAudioDevice {
 /// fixture around what this returns.
 pub async fn start_capture_playback(
     library_manager: &bae_core::library::LibraryManager,
-    database: &bae_core::db::Database,
+    database: &bae_db::Database,
     device: TestAudioDevice,
 ) -> (bae_core::playback::PlaybackHandle, CaptureStreamRx) {
     start_capture_playback_with_clock(library_manager, database, device, wall_playback_clock())
@@ -110,7 +110,7 @@ pub async fn start_capture_playback(
 /// test decides when a side-pause countdown runs out.
 pub async fn start_capture_playback_with_clock(
     library_manager: &bae_core::library::LibraryManager,
-    database: &bae_core::db::Database,
+    database: &bae_db::Database,
     device: TestAudioDevice,
     clock: bae_core::playback::PlaybackClockRef,
 ) -> (bae_core::playback::PlaybackHandle, CaptureStreamRx) {
@@ -125,7 +125,7 @@ pub async fn start_capture_playback_with_clock(
 /// every 100 ms.
 pub async fn start_playback_on(
     library_manager: &bae_core::library::LibraryManager,
-    database: &bae_core::db::Database,
+    database: &bae_db::Database,
     device: Box<dyn bae_core::playback::AudioOutputDevice>,
     clock: bae_core::playback::PlaybackClockRef,
 ) -> bae_core::playback::PlaybackHandle {

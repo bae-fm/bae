@@ -1,15 +1,15 @@
 //! Isolated installations of one person's library over shared memory
 //! storage, each running the library: the device that created it, and
 //! devices restored from its code. The stores under them are made, synced
-//! and compared by `crate::db::test_devices`.
+//! and compared by `bae_db::test_devices`.
 use std::sync::Arc;
 
 use tempfile::TempDir;
 
-use crate::db::test_devices::{self as stores, SyncCycles};
-use crate::db::Database;
 use crate::library::LibraryManager;
 use bae_app_dir::AppDir;
+use bae_db::test_devices::{self as stores, SyncCycles};
+use bae_db::Database;
 
 pub(crate) struct TestDevice {
     library: RunningLibrary,
@@ -289,7 +289,7 @@ fn a_two_device_test_closes_both_devices_before_its_runtime_ends() {
         assert!(
             matches!(
                 read,
-                Err(crate::db::DbError::Coven(coven::CovenError::Database(
+                Err(bae_db::DbError::Coven(coven::CovenError::Database(
                     coven::DbError::StoreClosed
                 )))
             ),

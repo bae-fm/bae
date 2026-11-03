@@ -97,9 +97,9 @@ async fn repeated_imports_keep_independent_copies() {
         assert_eq!(tracks.len(), 1);
         assert_eq!(files.len(), 1);
         for (prior, prior_tracks, prior_files) in &copies {
-            let prior: &bae_core::db::DbRelease = prior;
-            let prior_tracks: &Vec<bae_core::db::DbTrack> = prior_tracks;
-            let prior_files: &Vec<bae_core::db::DbFile> = prior_files;
+            let prior: &bae_db::DbRelease = prior;
+            let prior_tracks: &Vec<bae_db::DbTrack> = prior_tracks;
+            let prior_files: &Vec<bae_db::DbFile> = prior_files;
             assert_ne!(release.id, prior.id);
             assert_eq!(release.album_id, prior.album_id);
             assert_ne!(tracks[0].id, prior_tracks[0].id);

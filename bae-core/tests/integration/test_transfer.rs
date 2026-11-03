@@ -7,10 +7,10 @@ use support::tracing_init;
 
 use bae_core::album_detail::GallerySource;
 use bae_core::album_detail::ReleaseStorageState;
-use bae_core::db::{DbAlbum, DbRelease, NewReleaseFile, SortDirection};
 use bae_core::library::views::{StorageFilter, StorageSortCriterion, StorageSortField};
 use bae_core::library::{CancellationToken, LibraryManager, LiveStorageBrowse, StorageBrowseView};
 use bae_core::storage::transfer::{TransferProgress, TransferService};
+use bae_db::{DbAlbum, DbRelease, NewReleaseFile, SortDirection};
 use bae_util::content_type::ContentType;
 use chrono::Utc;
 use std::path::Path;
@@ -29,7 +29,7 @@ async fn setup_with_cloud(
     tmp: &TempDir,
 ) -> (
     bae_core::library::LibraryManager,
-    bae_core::db::Database,
+    bae_db::Database,
     bae_core::import::CatalogSessions,
     bae_core::library::CancellationToken,
 ) {
@@ -89,7 +89,7 @@ async fn create_local_release(
 /// create it Local, attach its files, and finish the uploads.
 async fn create_remote_release(
     mgr: &LibraryManager,
-    db: &bae_core::db::Database,
+    db: &bae_db::Database,
     source_dir: &Path,
     files: &[(&str, &[u8])],
 ) -> String {
@@ -202,9 +202,9 @@ async fn test_cover_file_stored_via_local_files_is_readable() {
     // import / change_cover does.
     let bytes = b"cover-jpeg-bytes";
     mgr.store_library_image(
-        &bae_core::db::DbLibraryImage {
+        &bae_db::DbLibraryImage {
             id: release_id.clone(),
-            image_type: bae_core::db::LibraryImageType::Cover,
+            image_type: bae_db::LibraryImageType::Cover,
             content_type: bae_util::content_type::ContentType::Jpeg,
             width: None,
             height: None,
@@ -270,7 +270,7 @@ async fn a_release_detail_says_where_its_download_stands() {
     let (mgr, db, ..) = setup_with_cloud(&tmp).await;
     let release_id =
         create_remote_release(&mgr, &db, &tmp.path().join("src"), &[("a.flac", b"bytes-a")]).await;
-    let status = |db: bae_core::db::Database, release_id: String| async move {
+    let status = |db: bae_db::Database, release_id: String| async move {
         bae_core::library::views::LibraryViews::new(db)
             .find_release_detail(&release_id)
             .await
@@ -484,7 +484,7 @@ async fn transition_completions_deliver_storage_values() {
         },
         filter: StorageFilter::All,
         search: String::new(),
-        windows: [bae_core::db::LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect(),
+        windows: [bae_db::LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect(),
         selected: Default::default(),
     });
     expect_storage_state(&values, &release_id, ReleaseStorageState::Local).await;
@@ -528,7 +528,7 @@ async fn selected_releases_leave_the_local_list_with_their_upload() {
         filter: StorageFilter::Local,
         search: String::new(),
         // One row on screen, so one selected release sits outside it.
-        windows: [bae_core::db::LibraryPageWindow { offset: 0, limit: 1 }].into_iter().collect(),
+        windows: [bae_db::LibraryPageWindow { offset: 0, limit: 1 }].into_iter().collect(),
         selected: selected.clone(),
     });
     let next = || async {
@@ -612,7 +612,7 @@ async fn a_selection_is_offered_the_actions_all_its_releases_allow() {
         filter: StorageFilter::All,
         search: String::new(),
         // One row on screen, so one selected release sits outside it.
-        windows: [bae_core::db::LibraryPageWindow { offset: 0, limit: 1 }].into_iter().collect(),
+        windows: [bae_db::LibraryPageWindow { offset: 0, limit: 1 }].into_iter().collect(),
         selected: selected.iter().map(|id| (*id).clone()).collect(),
     };
     let values = services.subscribe_storage_browse(view(&[&pinned, &unpinned]));

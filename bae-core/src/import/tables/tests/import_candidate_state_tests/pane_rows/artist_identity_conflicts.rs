@@ -8,7 +8,7 @@ fn artist_identity_failure(discogs: &DbArtist, musicbrainz: &DbArtist) -> Import
         reason: crate::import::ImportFailureReason::error("the artist identities disagree"),
         failed_at: fixed_now(),
         identity_conflict: Some(crate::import::IdentityConflict::Artist(
-            crate::db::ArtistIdentityConflict {
+            bae_db::ArtistIdentityConflict {
                 incoming_artist_name: "Artist One".to_string(),
                 discogs_artist_id: "discogs-1".to_string(),
                 musicbrainz_artist_id: "mb-1".to_string(),
@@ -97,7 +97,7 @@ async fn resolving_an_artist_identity_conflict_merges_library_links_and_clears_t
             "INSERT INTO releases (id, album_id, created_at, album_order) VALUES (?, ?, '2026-01-02T03:04:05Z', 0)",
             params![seed_release_id, seed_album_id],
         )?;
-        let medium_id = crate::db::identity::release_medium_id(&seed_release_id, 1);
+        let medium_id = bae_db::identity::release_medium_id(&seed_release_id, 1);
         sql.execute(
             "INSERT INTO release_mediums (id, release_id, position, medium, side_count, created_at) VALUES (?, ?, 1, 'cd', 1, '2026-01-02T03:04:05Z')",
             params![medium_id, seed_release_id],
@@ -341,7 +341,7 @@ async fn resolving_a_conflict_moves_the_absorbed_artists_image_to_the_survivor()
 
     assert_eq!(artist_image_file(&db, &discogs.id).await.id(), absorbed);
     assert_eq!(
-        db.queued_upload_count_in_namespace_for_test(crate::db::synced::ARTIST_IMAGES_NAMESPACE)
+        db.queued_upload_count_in_namespace_for_test(bae_db::synced::ARTIST_IMAGES_NAMESPACE)
             .await
             .unwrap(),
         1,

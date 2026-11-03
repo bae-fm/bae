@@ -14,7 +14,7 @@ struct PinCount {
     fetched: std::collections::BTreeSet<coven::FileId>,
     /// Where each file stood at the last read of the pins; `None` until the
     /// first.
-    read: Option<std::collections::BTreeMap<String, crate::db::DbFilePin>>,
+    read: Option<std::collections::BTreeMap<String, bae_db::DbFilePin>>,
 }
 
 impl PinCount {
@@ -40,7 +40,7 @@ impl PinCount {
     /// when a download ends, in either order: a file the last read showed
     /// downloading that this one shows neither downloading nor kept has
     /// ended its download whole, whether or not the watch has said so yet.
-    fn read(&mut self, pins: std::collections::BTreeMap<String, crate::db::DbFilePin>) {
+    fn read(&mut self, pins: std::collections::BTreeMap<String, bae_db::DbFilePin>) {
         if let Some(last) = &self.read {
             for (id, pin) in last {
                 let Some(file) = pin.downloading else { continue };
@@ -69,7 +69,7 @@ impl PinCount {
                 .map(|(id, (file, size))| match pins.get(id) {
                     Some(pin) if pin.kept => *size,
                     _ if self.fetched.contains(file) => *size,
-                    Some(crate::db::DbFilePin { downloading: Some(file), .. }) => {
+                    Some(bae_db::DbFilePin { downloading: Some(file), .. }) => {
                         self.moved.get(file).map_or(0, |progress| {
                             (*size as f64 * crate::library::file_transfers::fraction(*progress))
                                 as u64
@@ -213,7 +213,7 @@ impl LibraryManager {
 #[cfg(test)]
 mod pin_count_tests {
     use super::PinCount;
-    use crate::db::DbFilePin;
+    use bae_db::DbFilePin;
     use std::collections::BTreeMap;
 
     fn file(n: u128) -> coven::FileId {

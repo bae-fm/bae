@@ -23,7 +23,7 @@ async fn measure_loudness_accepts_complete_audio_with_an_invalid_terminal_packet
         .unwrap()
         .with_timezone(&chrono::Utc);
     // The track's stored length is the probe's, as an import measures it.
-    let mut db_track = crate::db::DbTrack::new_test("release-id", "track-id", "Track Title", 1);
+    let mut db_track = bae_db::DbTrack::new_test("release-id", "track-id", "Track Title", 1);
     db_track.duration_ms =
         u64::try_from(probe.duration.as_millis()).expect("the probe's length fits");
     let track = TrackFile {
@@ -43,7 +43,7 @@ async fn measure_loudness_accepts_complete_audio_with_an_invalid_terminal_packet
             },
         },
     };
-    let mut formats = vec![crate::db::DbAudioFormat::new(
+    let mut formats = vec![bae_db::DbAudioFormat::new(
         "track-id",
         probe.content_type,
         std::num::NonZeroU32::new(probe.sample_rate).unwrap(),
@@ -52,11 +52,11 @@ async fn measure_loudness_accepts_complete_audio_with_an_invalid_terminal_packet
         "format-id".to_string(),
         now,
     )];
-    let segments = vec![crate::db::DbAudioSegment {
+    let segments = vec![bae_db::DbAudioSegment {
         id: "segment-id".to_string(),
         audio_format_id: "format-id".to_string(),
         segment_index: 0,
-        role: crate::db::DbAudioSegmentRole::Main,
+        role: bae_db::DbAudioSegmentRole::Main,
         file_id: "file-id".to_string(),
         start_sample: 0,
         end_sample: None,

@@ -110,11 +110,8 @@ impl ImportTables {
         let folder_path = watched_folder_path.join(&folder);
         for (key, _) in decision.iter().chain(scanned_decisions.iter()) {
             validate_decision_key_ownership(&watched_folder_path, key)?;
-            if !crate::db::watched_path::folder_below(
-                &key.watched_folder_path,
-                &key.relative_folder,
-            )
-            .starts_with(&folder_path)
+            if !bae_db::watched_path::folder_below(&key.watched_folder_path, &key.relative_folder)
+                .starts_with(&folder_path)
             {
                 return Err(DbError::Message(format!(
                     "folder release decision for {} is outside {}",
@@ -188,7 +185,7 @@ impl ImportTables {
                     writes.push((item.item, write));
                 }
                 let folder_bytes = coven::path_bytes(&folder_path);
-                let (below_first, below_past) = crate::db::watched_path::paths_below(&folder_path);
+                let (below_first, below_past) = bae_db::watched_path::paths_below(&folder_path);
                 let pruned: Vec<CandidateKey> = sql.query(
                     "SELECT path FROM scan_candidate \
                  WHERE watched_folder_path = :root AND generation != :generation \

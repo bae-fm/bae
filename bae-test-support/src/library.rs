@@ -17,21 +17,13 @@ pub fn tracing_init() {
 }
 
 /// Open `dir/test.db` under the real clock and real UUID provider.
-async fn open_test_db(dir: &std::path::Path) -> bae_core::db::Database {
-    bae_core::db::Database::new_test(
+async fn open_test_db(dir: &std::path::Path) -> bae_db::Database {
+    bae_db::Database::new_test(
         dir.join("test.db").to_str().expect("test database path is valid UTF-8"),
         std::sync::Arc::new(coven::SystemClock),
     )
     .await
     .expect("open the test database")
-}
-
-/// A database in a fresh temp directory, for tests that assert on rows and need
-/// no library manager around them. The returned `TempDir` owns the file.
-pub async fn temp_test_db() -> (bae_core::db::Database, tempfile::TempDir) {
-    let temp_dir = tempfile::TempDir::new().expect("test database temp dir");
-    let database = open_test_db(temp_dir.path()).await;
-    (database, temp_dir)
 }
 
 /// Open `dir/test.db` as a library, through the app's own opening step, with
@@ -45,7 +37,7 @@ pub async fn open_test_library(
     dir: &std::path::Path,
 ) -> (
     bae_core::library::LibraryManager,
-    bae_core::db::Database,
+    bae_db::Database,
     bae_core::import::CatalogSessions,
     bae_core::library::CancellationToken,
 ) {
@@ -59,7 +51,7 @@ pub async fn open_test_library_with(
     providers: bae_catalogs::providers::Providers,
 ) -> (
     bae_core::library::LibraryManager,
-    bae_core::db::Database,
+    bae_db::Database,
     bae_core::import::CatalogSessions,
     bae_core::library::CancellationToken,
 ) {
@@ -75,12 +67,12 @@ pub async fn test_library_from_handle(
     providers: bae_catalogs::providers::Providers,
 ) -> (
     bae_core::library::LibraryManager,
-    bae_core::db::Database,
+    bae_db::Database,
     bae_core::import::CatalogSessions,
     bae_core::library::CancellationToken,
 ) {
     open_library(
-        bae_core::db::Database::from_handle(
+        bae_db::Database::from_handle(
             handle,
             std::sync::Arc::new(coven::SystemClock),
             std::sync::Arc::new(coven::UuidIds),
@@ -95,12 +87,12 @@ pub async fn test_library_from_handle(
 /// over the same store and the closing token are built here, as the bootstrap
 /// builds them, and passed to the app's opening step.
 async fn open_library(
-    database: bae_core::db::Database,
+    database: bae_db::Database,
     app_dir: bae_app_dir::AppDir,
     providers: bae_catalogs::providers::Providers,
 ) -> (
     bae_core::library::LibraryManager,
-    bae_core::db::Database,
+    bae_db::Database,
     bae_core::import::CatalogSessions,
     bae_core::library::CancellationToken,
 ) {
@@ -134,7 +126,7 @@ async fn open_library(
 /// queue restored, and image downloads that reach nothing.
 pub async fn start_test_services(
     manager: bae_core::library::LibraryManager,
-    database: bae_core::db::Database,
+    database: bae_db::Database,
     catalogs: bae_core::import::CatalogSessions,
     closing: bae_core::library::CancellationToken,
 ) -> bae_core::library::AppServices {
@@ -166,7 +158,7 @@ pub async fn start_test_services(
 pub async fn setup_test_library() -> (
     (
         bae_core::library::LibraryManager,
-        bae_core::db::Database,
+        bae_db::Database,
         bae_core::import::CatalogSessions,
         bae_core::library::CancellationToken,
     ),
@@ -182,7 +174,7 @@ pub async fn setup_test_library_with(
 ) -> (
     (
         bae_core::library::LibraryManager,
-        bae_core::db::Database,
+        bae_db::Database,
         bae_core::import::CatalogSessions,
         bae_core::library::CancellationToken,
     ),
@@ -202,7 +194,7 @@ pub async fn setup_test_library_with_album_dir(
 ) -> (
     (
         bae_core::library::LibraryManager,
-        bae_core::db::Database,
+        bae_db::Database,
         bae_core::import::CatalogSessions,
         bae_core::library::CancellationToken,
     ),
@@ -223,7 +215,7 @@ pub fn setup_fresh_library(
 ) -> (
     (
         bae_core::library::LibraryManager,
-        bae_core::db::Database,
+        bae_db::Database,
         bae_core::import::CatalogSessions,
         bae_core::library::CancellationToken,
     ),
@@ -233,11 +225,11 @@ pub fn setup_fresh_library(
     let app_dir = bae_app_dir::AppDir::under_home(tmp.path()).unwrap();
     let installation = coven::TestCoven::new();
     let library = runtime.block_on(async {
-        let handle = bae_core::db::configure_store(installation.builder(app_dir.store_layout()))
+        let handle = bae_db::configure_store(installation.builder(app_dir.store_layout()))
             .create_store("Test Library")
             .await
             .expect("create fresh test store");
-        let database = bae_core::db::Database::from_handle(
+        let database = bae_db::Database::from_handle(
             handle,
             std::sync::Arc::new(coven::SystemClock),
             std::sync::Arc::new(coven::UuidIds),

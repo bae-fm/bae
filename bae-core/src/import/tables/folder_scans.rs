@@ -21,9 +21,9 @@ pub(super) mod write;
 
 use super::import_state::next_folder_scan_generation;
 use super::*;
-use crate::db::client::query::{QueryOne, QueryRows};
 use crate::import::folder_scanner::{FolderReleaseDecisionKey, ScanItem};
 use crate::import::CandidateKey;
+use bae_db::client::query::{QueryOne, QueryRows};
 use std::path::{Path, PathBuf};
 
 // `use super::*` also brings in the client's own `read` and `write`, hence `self::`.
@@ -784,7 +784,7 @@ pub(super) fn validate_scan_item_ownership(
         }
         ScanItem::Decided { key, .. } => (
             key.watched_folder_path.as_path(),
-            crate::db::watched_path::folder_below(&key.watched_folder_path, &key.relative_folder),
+            bae_db::watched_path::folder_below(&key.watched_folder_path, &key.relative_folder),
         ),
         ScanItem::Sidecar(sidecar) => {
             (sidecar.watched_folder_path.as_path(), sidecar.folder.clone())
@@ -844,8 +844,7 @@ pub(super) fn store_folder_reading(
         decision,
         crate::import::folder_scanner::FolderReleaseDecision::CombineAsOneRelease
     );
-    let anchor =
-        crate::db::watched_path::folder_below(&key.watched_folder_path, &key.relative_folder);
+    let anchor = bae_db::watched_path::folder_below(&key.watched_folder_path, &key.relative_folder);
     let covering = super::import_state::require_watched(sql, &anchor)?;
     if covering.as_os_str() != key.watched_folder_path.as_os_str() {
         return Err(DbError::Message(format!(

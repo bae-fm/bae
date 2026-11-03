@@ -3,7 +3,7 @@
 
 use super::super::*;
 use super::temp_db;
-use crate::db::client::tests::{
+use bae_db::test_fixtures::{
     ALBUM_A, ARTIST_ALBUM, ARTIST_COMPOSER, RELEASE_A, RELEASE_ROLE_A, TRACK_A, TRACK_ROLE_A,
     TRACK_WORK_A, WORK_A,
 };
@@ -77,7 +77,7 @@ fn test_track(
         id: id.to_string(),
         release_id: release_id.to_string(),
         title: title.to_string(),
-        medium_id: crate::db::identity::release_medium_id(release_id, 1),
+        medium_id: bae_db::identity::release_medium_id(release_id, 1),
         side: std::num::NonZeroU8::MIN,
         track_number: std::num::NonZeroU32::MIN,
         duration_ms: 1000,
@@ -102,7 +102,7 @@ struct Commit<'a> {
 /// by seeding the DB directly rather than going through the import queue. Its
 /// tracks sit on its one CD ([`test_track`]).
 async fn commit_import(db: &Database, release: &DbRelease, commit: Commit<'_>) {
-    let mediums = [crate::db::DbReleaseMedium::new_test(&release.id)];
+    let mediums = [bae_db::DbReleaseMedium::new_test(&release.id)];
     ImportTables::new(db.clone())
         .finalize_import_atomic(
             crate::import::tables::ImportCommitGuard::UncheckedTestSetup { content_hash: None },
@@ -215,7 +215,7 @@ async fn finalize_import_persists_composer_work_and_role_rows() {
     db.insert_artist(&composer).await.unwrap();
 
     let album = test_album(ALBUM_A, "Album Title A", now);
-    let album_artists = [crate::db::DbAlbumArtist::new(&album.id, &album_artist.id, 0, now)];
+    let album_artists = [bae_db::DbAlbumArtist::new(&album.id, &album_artist.id, 0, now)];
     let release = DbRelease { ..test_release(RELEASE_A, &album.id, now) };
     let track_files = vec![crate::import::TrackFile {
         db_track: test_track(TRACK_A, &release.id, "Track Title A", now),
@@ -275,7 +275,7 @@ async fn finalize_import_persists_composer_work_and_role_rows() {
             album: Some(&album),
             track_files: &track_files,
             rows: crate::import::tables::ImportRows {
-                artists: crate::db::ArtistCredits { credits: &credits, picked: &picked },
+                artists: bae_db::ArtistCredits { credits: &credits, picked: &picked },
                 works: &works,
                 work_artists: &work_artists,
                 track_works: &track_works,

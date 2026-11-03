@@ -7,8 +7,8 @@
 
 use bae_audio::StreamEncodeFormat;
 use bae_catalogs::catalog::Catalog;
-use bae_core::db::{DbFile, DbRelease, DbTrack, ResolvedTrackAudio};
 use bae_core::library::{AppServices, LibraryError};
+use bae_db::{DbFile, DbRelease, DbTrack, ResolvedTrackAudio};
 
 use crate::error::SubError;
 use crate::id::SubId;
@@ -194,7 +194,7 @@ pub(crate) async fn track_child(
     release: &DbRelease,
     album_title: &str,
     files: &[DbFile],
-    mediums: &bae_core::db::DbReleaseMediums,
+    mediums: &bae_db::DbReleaseMediums,
     cover_art: Option<String>,
 ) -> Result<Child, SubError> {
     let audio = resolve_audio_fields(services, &track.id, Some(files)).await?;
@@ -206,7 +206,7 @@ pub(crate) async fn track_child(
         parent: Some(album_wire_id(&release.id)),
         title: track.title.clone(),
         album: Some(album_title.to_string()),
-        artist: Some(bae_core::db::credits::library_line(&credits)).filter(|line| !line.is_empty()),
+        artist: Some(bae_db::credits::library_line(&credits)).filter(|line| !line.is_empty()),
         track: Some(track.track_number.get()),
         year: release.pressing.year,
         cover_art,
@@ -291,7 +291,7 @@ pub(crate) fn artist_id3(
     name: &str,
     album_count: i64,
     music_brainz_id: Option<String>,
-    image: Option<&bae_core::db::ImageRef>,
+    image: Option<&bae_db::ImageRef>,
 ) -> ArtistId3 {
     ArtistId3 {
         id: artist_wire_id(id),
@@ -312,7 +312,7 @@ async fn shown_track_credits(
     services: &AppServices,
     track_id: &str,
     album_id: &str,
-) -> Result<Vec<bae_core::db::credits::LibraryCredit>, SubError> {
+) -> Result<Vec<bae_db::credits::LibraryCredit>, SubError> {
     let own = services.get_artists_for_track(track_id).await.map_err(lib_err)?;
     if !own.is_empty() {
         return Ok(own);

@@ -61,7 +61,7 @@ fn profiles_ratings_playlists_and_history_use_the_same_store() {
                 .unwrap()
                 .unwrap()
                 .history_sharing,
-            bae_core::db::people::Sharing::Household
+            bae_db::people::Sharing::Household
         );
         db.execute_local_sql_for_test(
             "INSERT INTO albums(id,title,created_at) VALUES('bridge-album','Album','2026-01-01');",

@@ -2,9 +2,9 @@
 //! composers and track artists inside each row, and a release's files and
 //! index among its album's releases.
 
-use crate::db::client::tests::aggregate_ordering_tests::*;
+use bae_db::test_fixtures::aggregate_ordering::*;
 
-use crate::db::client::tests::*;
+use bae_db::test_fixtures::*;
 
 use crate::library::views::*;
 
@@ -61,7 +61,7 @@ async fn storage_page_orders_album_aggregate_columns_inside_aggregates() {
 
 #[tokio::test]
 async fn album_and_storage_pages_list_credits_in_order_and_allow_none() {
-    let (db, _tmp) = crate::db::client::tests::temp_db().await;
+    let (db, _tmp) = bae_db::test_fixtures::temp_db().await;
     db.call(|conn| {
         conn.execute_batch(
             "

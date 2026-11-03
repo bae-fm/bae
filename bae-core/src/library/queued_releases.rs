@@ -5,11 +5,11 @@
 
 pub(crate) mod tables;
 
-use crate::db::Database;
 #[cfg(any(desktop, test, feature = "test-utils"))]
 use crate::library::release_queue::ReleaseQueueSnapshot;
 use crate::library::release_queue::{ReleaseQueueCounts, ReleaseQueueEntry};
 use crate::library::LibraryError;
+use bae_db::Database;
 use bae_util::task_failure::{caught, caught_sync, TaskFailed};
 use std::collections::BTreeMap;
 use std::future::Future;
@@ -215,12 +215,12 @@ where
     /// names of them, as its pane draws them.
     pub(crate) fn subscribe_windows(
         &self,
-        initial: crate::db::LibraryPageWindows,
+        initial: bae_db::LibraryPageWindows,
     ) -> coven::ReconfigurableLiveQuery<
-        crate::db::LibraryPageWindows,
+        bae_db::LibraryPageWindows,
         crate::library::ReleaseQueueWindows<Extra>,
     > {
-        let places = crate::db::client::list_windows::KnownPlaces::new();
+        let places = bae_db::client::list_windows::KnownPlaces::new();
         self.database
             .subscribe_reconfigurable(initial, move |windows, sql| {
                 tables::release_queue_windows_on::<Extra>(&sql, windows, &places)

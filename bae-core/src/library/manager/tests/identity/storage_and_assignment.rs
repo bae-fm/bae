@@ -24,7 +24,7 @@ async fn storage_page_id_tiebreaker_stable_across_pages() {
 
     let sort = crate::library::views::StorageSortCriterion {
         field: crate::library::views::StorageSortField::AlbumTitle,
-        direction: crate::db::SortDirection::Ascending,
+        direction: bae_db::SortDirection::Ascending,
     };
     let first_page =
         manager.views().get_storage_page(&sort, crate::library::views::StorageFilter::All, 0, 1).await.unwrap();
@@ -274,14 +274,14 @@ async fn set_records_does_not_touch_metadata_columns() {
     // Insert a track too — we want to verify it survives.
     manager
         .database
-        .insert_release_medium(&crate::db::DbReleaseMedium::new_test(&release.id))
+        .insert_release_medium(&bae_db::DbReleaseMedium::new_test(&release.id))
         .await
         .unwrap();
-    let track = crate::db::DbTrack {
+    let track = bae_db::DbTrack {
         id: Uuid::new_v4().to_string(),
         release_id: release.id.clone(),
         title: "My Track".to_string(),
-        medium_id: crate::db::identity::release_medium_id(&release.id, 1),
+        medium_id: bae_db::identity::release_medium_id(&release.id, 1),
         side: std::num::NonZeroU8::MIN,
         track_number: std::num::NonZeroU32::MIN,
         duration_ms: 180_000,
@@ -376,14 +376,14 @@ async fn set_records_clears_primary_when_it_pointed_at_the_moved_release() {
     // identifiable target.
     manager
         .database
-        .insert_release_medium(&crate::db::DbReleaseMedium::new_test(&release_beta.id))
+        .insert_release_medium(&bae_db::DbReleaseMedium::new_test(&release_beta.id))
         .await
         .unwrap();
-    let beta_track = crate::db::DbTrack {
+    let beta_track = bae_db::DbTrack {
         id: beta_track_id.clone(),
         release_id: release_beta.id.clone(),
         title: "Track Title".to_string(),
-        medium_id: crate::db::identity::release_medium_id(&release_beta.id, 1),
+        medium_id: bae_db::identity::release_medium_id(&release_beta.id, 1),
         side: std::num::NonZeroU8::MIN,
         track_number: std::num::NonZeroU32::MIN,
         duration_ms: 180_000,
@@ -446,7 +446,7 @@ async fn set_records_atomic_rechecks_the_source_count_inside_the_transaction() {
 
     manager
         .database
-        .set_records_atomic(crate::db::RecordsChange {
+        .set_records_atomic(bae_db::RecordsChange {
             release_id: release_alpha.id.clone(),
             records: vec![mb_identity("g2", "g2-rel")],
             current_album_id: album_a.id.clone(),
@@ -495,12 +495,12 @@ async fn album_records_merge_albums_but_never_match_pressings() {
     assert_eq!(name(vec![ungrouped.clone()]).await, None);
     assert_eq!(name(vec![pressing.clone()]).await, Some(album.id.clone()));
     let checks = [
-        crate::db::LibraryCheck {
+        bae_db::LibraryCheck {
             source: Catalog::Discogs,
             release_id: "42".into(),
             source_group_id: None,
         },
-        crate::db::LibraryCheck {
+        bae_db::LibraryCheck {
             source: Catalog::Discogs,
             release_id: "42".into(),
             source_group_id: Some("42".into()),

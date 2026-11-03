@@ -4,8 +4,8 @@
 //! share — the catalog sessions and the closing token — and passes them to
 //! each by name.
 
-use crate::db::{Database, DbError};
 use crate::library::{AppServices, CancellationToken, LibraryError, LibraryManager};
+use bae_db::{Database, DbError};
 use bae_diagnostics::Diagnostics;
 use coven::{ClockRef, IdSourceRef};
 

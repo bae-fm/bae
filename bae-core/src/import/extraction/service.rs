@@ -67,7 +67,7 @@ struct ExtractionServiceInner {
     analyzer: Mutex<Option<Arc<dyn ArtworkAnalyzer>>>,
     /// The library a `Release` re-identify reads the release's rows and
     /// files from.
-    database: crate::db::Database,
+    database: bae_db::Database,
     /// Where a panic in a pass is reported as the bug it is.
     diagnostics: bae_diagnostics::Diagnostics,
     /// Each folder's settled snapshot this session, so a later run over the
@@ -122,7 +122,7 @@ impl ExtractionService {
         runtime_handle: tokio::runtime::Handle,
         event_tx: ImportEventBus,
         candidates: CandidateRuntime,
-        database: crate::db::Database,
+        database: bae_db::Database,
         diagnostics: bae_diagnostics::Diagnostics,
     ) -> ExtractionServiceHandle {
         let inner = Arc::new(ExtractionServiceInner {

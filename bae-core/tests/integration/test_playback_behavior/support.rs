@@ -351,7 +351,7 @@ async fn observe_boundary(
 /// lifetime.
 async fn start_capture_service(
     library_manager: LibraryManager,
-    database: &bae_core::db::Database,
+    database: &bae_db::Database,
     runtime_handle: tokio::runtime::Handle,
 ) -> (bae_core::playback::PlaybackHandle, support::CaptureStreamRx) {
     start_capture_service_with_restore(library_manager, database, runtime_handle, true).await
@@ -361,7 +361,7 @@ async fn start_capture_service(
 /// explicit, for tests that cover the restore-off launch path.
 async fn start_capture_service_with_restore(
     library_manager: LibraryManager,
-    database: &bae_core::db::Database,
+    database: &bae_db::Database,
     runtime_handle: tokio::runtime::Handle,
     restore_playback: bool,
 ) -> (bae_core::playback::PlaybackHandle, support::CaptureStreamRx) {
@@ -398,7 +398,7 @@ struct PlaybackTestFixture {
     library_manager: LibraryManager,
     /// The library's store, sessions and closing token, which the import
     /// service [`Self::services`] starts runs over.
-    database: bae_core::db::Database,
+    database: bae_db::Database,
     catalogs: bae_core::import::CatalogSessions,
     closing: bae_core::library::CancellationToken,
     /// Dropping this receiver would make stream creation fail.

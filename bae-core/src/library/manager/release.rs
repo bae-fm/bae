@@ -17,8 +17,8 @@ impl LibraryManager {
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn insert_audio_format_with_segments_for_test(
         &self,
-        audio_format: &crate::db::DbAudioFormat,
-        segments: &[crate::db::DbAudioSegment],
+        audio_format: &bae_db::DbAudioFormat,
+        segments: &[bae_db::DbAudioSegment],
     ) -> Result<(), LibraryError> {
         self.database.insert_audio_format_with_segments_for_test(audio_format, segments).await?;
         Ok(())
@@ -31,7 +31,7 @@ impl LibraryManager {
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn add_file(
         &self,
-        file: &crate::db::NewReleaseFile,
+        file: &bae_db::NewReleaseFile,
         size: u64,
     ) -> Result<coven::FileId, LibraryError> {
         let folder = self.app_dir.test_originals();
@@ -46,7 +46,7 @@ impl LibraryManager {
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn add_external_file_for_test(
         &self,
-        file: &crate::db::NewReleaseFile,
+        file: &bae_db::NewReleaseFile,
         path: &std::path::Path,
     ) -> Result<coven::FileId, LibraryError> {
         Ok(self.database.insert_file_for_test(file, path).await?)
@@ -70,7 +70,7 @@ impl LibraryManager {
     pub async fn get_release_mediums(
         &self,
         release_id: &str,
-    ) -> Result<crate::db::DbReleaseMediums, LibraryError> {
+    ) -> Result<bae_db::DbReleaseMediums, LibraryError> {
         Ok(self.database.get_release_mediums(release_id).await?)
     }
 
@@ -100,11 +100,11 @@ impl LibraryManager {
     pub async fn insert_album_with_release_and_tracks(
         &self,
         album: &DbAlbum,
-        album_artists: &[crate::db::DbAlbumArtist],
+        album_artists: &[bae_db::DbAlbumArtist],
         release: &DbRelease,
-        mediums: &[crate::db::DbReleaseMedium],
+        mediums: &[bae_db::DbReleaseMedium],
         tracks: &[DbTrack],
-        track_artists: &[crate::db::DbTrackArtist],
+        track_artists: &[bae_db::DbTrackArtist],
     ) -> Result<(), LibraryError> {
         self.database
             .insert_album_with_release_and_tracks(
@@ -124,9 +124,9 @@ impl LibraryManager {
     pub async fn insert_release_with_tracks(
         &self,
         release: &DbRelease,
-        mediums: &[crate::db::DbReleaseMedium],
+        mediums: &[bae_db::DbReleaseMedium],
         tracks: &[DbTrack],
-        track_artists: &[crate::db::DbTrackArtist],
+        track_artists: &[bae_db::DbTrackArtist],
     ) -> Result<(), LibraryError> {
         self.database.insert_release_with_tracks(release, mediums, tracks, track_artists).await?;
         Ok(())
@@ -186,7 +186,7 @@ impl LibraryManager {
     /// and artists, release pressing fields, and per-track titles and
     /// artists. A picked
     /// library artist is linked as itself; every other credit is resolved by the
-    /// artist rule (`db::artist_resolution`) inside the commit that writes the
+    /// artist rule (`bae_db::client::artist_resolution`) inside the commit that writes the
     /// album/release/track rows and replaces the `album_artists` /
     /// `track_artists` junctions.
     ///
@@ -211,8 +211,8 @@ impl LibraryManager {
         release: DbRelease,
         existing_tracks: &[DbTrack],
         edit: &crate::import::ReleaseUserEdit,
-    ) -> Result<crate::db::ReleaseMetadataRows, LibraryError> {
-        use crate::db::{DbAlbumArtist, DbTrackArtist};
+    ) -> Result<bae_db::ReleaseMetadataRows, LibraryError> {
+        use bae_db::{DbAlbumArtist, DbTrackArtist};
 
         if existing_tracks.len() != edit.tracks.len() {
             return Err(LibraryError::Refused(format!(
@@ -294,7 +294,7 @@ impl LibraryManager {
             }
         }
 
-        Ok(crate::db::ReleaseMetadataRows {
+        Ok(bae_db::ReleaseMetadataRows {
             album: updated_album,
             release: updated_release,
             track_updates,
@@ -314,17 +314,17 @@ impl LibraryManager {
 
     pub async fn check_releases_in_library(
         &self,
-        checks: &[crate::db::LibraryCheck],
-    ) -> Result<Vec<crate::db::LibraryStatus>, LibraryError> {
+        checks: &[bae_db::LibraryCheck],
+    ) -> Result<Vec<bae_db::LibraryStatus>, LibraryError> {
         Ok(self.database.check_releases_in_library(checks).await?)
     }
 
     pub(crate) fn subscribe_library_statuses(
         &self,
-        initial: std::collections::BTreeSet<crate::db::LibraryCheck>,
+        initial: std::collections::BTreeSet<bae_db::LibraryCheck>,
     ) -> coven::ReconfigurableLiveQuery<
-        std::collections::BTreeSet<crate::db::LibraryCheck>,
-        Vec<crate::db::LibraryStatus>,
+        std::collections::BTreeSet<bae_db::LibraryCheck>,
+        Vec<bae_db::LibraryStatus>,
     > {
         self.database.subscribe_library_statuses(initial)
     }
@@ -393,5 +393,5 @@ pub(crate) async fn cover_ref_for(
     database: &Database,
     release_id: &str,
 ) -> Result<Option<ImageRef>, LibraryError> {
-    Ok(crate::db::cover_ref(release_id, database.cover_version(release_id).await?))
+    Ok(bae_db::cover_ref(release_id, database.cover_version(release_id).await?))
 }

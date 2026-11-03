@@ -60,7 +60,7 @@ struct Context {
     import: ImportServiceHandle,
     /// The library's store, which the queue reads the person's preferences
     /// from.
-    database: crate::db::Database,
+    database: bae_db::Database,
     /// Import's tables, which the queue reads candidates' stored state from.
     tables: crate::import::tables::ImportTables,
     /// Where a bug in the queue's work is reported.
@@ -103,7 +103,7 @@ enum Drain {
 /// service, since it takes the service's event feed.
 pub(crate) fn start(
     import: ImportServiceHandle,
-    database: crate::db::Database,
+    database: bae_db::Database,
     tables: crate::import::tables::ImportTables,
     diagnostics: bae_diagnostics::Diagnostics,
 ) -> IdentificationHandle {

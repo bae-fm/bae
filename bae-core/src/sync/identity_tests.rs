@@ -4,11 +4,11 @@
 //! apply.
 
 use super::test_devices::{run_two_device_test, TestDevice, TwoDevices};
-use crate::db::ExistingArtist;
-use crate::db::{Database, DbAlbum, DbArtist, DbRelease, DbTrack, DbTrackWork, DbWork};
 use crate::import::{ArtistAssignment, ReleaseUserEdit};
 use bae_catalogs::catalog::Catalog;
 use bae_catalogs::records::{MetadataRef, ReleaseRecord};
+use bae_db::ExistingArtist;
+use bae_db::{Database, DbAlbum, DbArtist, DbRelease, DbTrack, DbTrackWork, DbWork};
 
 const MB_ARTIST: &str = "5b11f4ce-a62d-471e-81fc-a69a8278c7da";
 const DISCOGS_ARTIST: &str = "3840";
@@ -54,7 +54,7 @@ async fn remote_album_by(
     // The album arrives with its release in one write, as an import writes
     // them.
     let album = DbAlbum::new_test(title);
-    let credit = crate::db::DbAlbumArtist::new_test(&album.id, &artist_id);
+    let credit = bae_db::DbAlbumArtist::new_test(&album.id, &artist_id);
     let release = DbRelease { ..DbRelease::new_test(&album.id, &uuid::Uuid::new_v4().to_string()) };
     device
         .database()
@@ -167,7 +167,7 @@ fn one_catalog_work_performed_on_two_devices_is_one_work() {
                 .unwrap()
                 .remove(0);
             let album = DbAlbum::new_test("Album");
-            let credit = crate::db::DbAlbumArtist::new_test(&album.id, &artist_id);
+            let credit = bae_db::DbAlbumArtist::new_test(&album.id, &artist_id);
             let release =
                 DbRelease { ..DbRelease::new_test(&album.id, &uuid::Uuid::new_v4().to_string()) };
             let track =
@@ -178,7 +178,7 @@ fn one_catalog_work_performed_on_two_devices_is_one_work() {
                     &album,
                     &[credit],
                     &release,
-                    &[crate::db::DbReleaseMedium::new_test(&release.id)],
+                    &[bae_db::DbReleaseMedium::new_test(&release.id)],
                     std::slice::from_ref(&track),
                     &[],
                 )

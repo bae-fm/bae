@@ -5,14 +5,14 @@ use crate::import::types::{ImportCommand, ImportDestination, ImportProgress};
 use bae_diagnostics::TelemetryEvent;
 
 use {
-    crate::db::WorkGraphRows,
-    crate::db::{
-        DbAlbum, DbAlbumArtist, DbRelease, DbReleaseArtistRole, DbTrackArtist, DbTrackArtistRole,
-        NewReleaseFile,
-    },
     crate::import::audio_layout::resolve_track_files,
     crate::import::folder_scanner::ScanItem,
     crate::import::types::{CoverSelection, ImportPhase, PrepareStep, TrackFile},
+    bae_db::WorkGraphRows,
+    bae_db::{
+        DbAlbum, DbAlbumArtist, DbRelease, DbReleaseArtistRole, DbTrackArtist, DbTrackArtistRole,
+        NewReleaseFile,
+    },
     std::collections::{HashMap, HashSet},
     std::path::{Path, PathBuf},
     std::sync::Arc,
@@ -69,10 +69,10 @@ struct PreparedMetadata {
     db_album: DbAlbum,
     db_release: DbRelease,
     /// The release's mediums, in order.
-    mediums: Vec<crate::db::DbReleaseMedium>,
+    mediums: Vec<bae_db::DbReleaseMedium>,
     /// The release's tracks, each bound to its audio and measured by the
     /// commit (`resolve_track_files`).
-    track_rows: Vec<crate::db::TrackRow>,
+    track_rows: Vec<bae_db::TrackRow>,
     /// The cover the person picked for this candidate, whatever its source.
     selected_cover: Option<CoverSelection>,
     /// The exact prepared bytes of a picked remote cover.
@@ -89,7 +89,7 @@ struct PreparedMetadata {
     release_artist_roles: Vec<DbReleaseArtistRole>,
     track_artist_roles: Vec<DbTrackArtistRole>,
     /// Every artist the links above name, as the source or the person said.
-    artist_credits: Vec<crate::db::DbArtist>,
+    artist_credits: Vec<bae_db::DbArtist>,
     /// The credits that are library artists a person picked.
     picked_artists: Vec<String>,
     /// One per catalog that describes this release; empty for file metadata and
@@ -184,7 +184,7 @@ pub struct ImportService {
     /// the standing a commit ends.
     runtime: CandidateRuntime,
     /// The library's store, which an import writes its release into.
-    database: crate::db::Database,
+    database: bae_db::Database,
     /// Import's tables, which an import reads its candidate from.
     tables: crate::import::tables::ImportTables,
     /// The catalogs an import asks for its new artists' pictures.

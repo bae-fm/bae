@@ -33,8 +33,8 @@ impl LibraryViews {
     pub(crate) fn subscribe_artist_browse(
         &self,
         sort: &[ArtistSortCriterion],
-        initial_windows: crate::db::LibraryPageWindows,
-    ) -> coven::ReconfigurableLiveQuery<crate::db::LibraryPageWindows, ArtistBrowseProjection> {
+        initial_windows: bae_db::LibraryPageWindows,
+    ) -> coven::ReconfigurableLiveQuery<bae_db::LibraryPageWindows, ArtistBrowseProjection> {
         let order = artist_order(sort);
         let places = KnownPlaces::new();
         self.database.subscribe_reconfigurable(initial_windows, move |requested, sql| {
@@ -48,7 +48,7 @@ impl LibraryViews {
             Ok(ArtistBrowseProjection {
                 windows: windows
                     .into_iter()
-                    .map(|(window, rows)| crate::db::LibraryBrowseWindow { window, rows })
+                    .map(|(window, rows)| bae_db::LibraryBrowseWindow { window, rows })
                     .collect(),
                 total_count,
             })
@@ -111,7 +111,7 @@ pub(crate) fn resolve_artist_browse(
         windows: projection
             .windows
             .into_iter()
-            .map(|window| crate::db::LibraryBrowseWindow {
+            .map(|window| bae_db::LibraryBrowseWindow {
                 window: window.window,
                 rows: window.rows.into_iter().map(ArtistSummary::from_raw).collect(),
             })
@@ -164,7 +164,7 @@ fn find_artist_detail_on(
         select = album_summary_select(),
     );
     let albums = sql.query(&albums_query, params![artist_id], AlbumSummaryRow::read)?;
-    let credit_names = crate::db::client::artist_credit_names::credit_names_of_on(
+    let credit_names = bae_db::client::artist_credit_names::credit_names_of_on(
         sql,
         std::slice::from_ref(&artist.artist.id),
     )?
@@ -176,7 +176,7 @@ fn find_artist_detail_on(
 #[derive(Clone, PartialEq)]
 struct ArtistDetailRows {
     artist: DbArtistSummary,
-    credit_names: Vec<crate::db::credits::ArtistCreditName>,
+    credit_names: Vec<bae_db::credits::ArtistCreditName>,
     albums: Vec<AlbumSummaryRow>,
 }
 
@@ -255,7 +255,7 @@ pub(crate) fn artist_listing_query(
 pub(crate) fn row_to_artist_summary(row: &Row<'_>) -> rusqlite::Result<DbArtistSummary> {
     let artist = row_to_artist_with_prefix(row, "artist_")?;
     Ok(DbArtistSummary {
-        image: crate::db::artist_image_ref(&artist.id, row.get("artist_image_version")?),
+        image: bae_db::artist_image_ref(&artist.id, row.get("artist_image_version")?),
         artist,
         album_count: row.get("album_count")?,
     })
@@ -285,7 +285,7 @@ pub(crate) fn artist_order(sort: &[ArtistSortCriterion]) -> ListOrder {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ArtistBrowseProjection {
-    pub windows: Vec<crate::db::LibraryBrowseWindow<DbArtistSummary>>,
+    pub windows: Vec<bae_db::LibraryBrowseWindow<DbArtistSummary>>,
     pub total_count: u64,
 }
 

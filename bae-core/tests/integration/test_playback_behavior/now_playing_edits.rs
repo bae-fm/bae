@@ -92,7 +92,7 @@ fn first_upcoming(
 ) -> bae_core::library::LiveQueueUpcoming {
     let queue = services.subscribe_queue_upcoming();
     queue
-        .set(bae_core::db::LibraryPageWindows::from([bae_core::db::LibraryPageWindow {
+        .set(bae_db::LibraryPageWindows::from([bae_db::LibraryPageWindow {
             offset: 0,
             limit: 1,
         }]))
@@ -120,7 +120,7 @@ async fn a_changed_cover_reaches_the_paused_track_and_the_queue() {
         std::fs::read(concat!(env!("CARGO_MANIFEST_DIR"), "/test-fixtures/cover-art/solid.gif"))
             .unwrap();
     std::fs::write(&image_path, &image_bytes).unwrap();
-    let file = bae_core::db::NewReleaseFile::new(
+    let file = bae_db::NewReleaseFile::new(
         &release_id,
         "front.gif",
         bae_util::content_type::ContentType::Gif,
@@ -136,7 +136,7 @@ async fn a_changed_cover_reaches_the_paused_track_and_the_queue() {
         .await
         .unwrap();
 
-    let changed = |cover: &Option<bae_core::db::ImageRef>| {
+    let changed = |cover: &Option<bae_db::ImageRef>| {
         cover.as_ref().is_some_and(|cover| {
             cover.id == release_id
                 && before.as_ref().is_none_or(|before| before.version != cover.version)

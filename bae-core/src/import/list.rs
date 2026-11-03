@@ -26,12 +26,12 @@ use super::triage::{
 use super::types::{MetadataProvenance, RawReleaseEdit, ReleaseLink};
 use super::watched_folder::WatchedFolder;
 use super::{FileEvidence, ImportFailure, ImportedRelease, WatchedFolderScanStatus};
-use crate::db::LibraryStatus;
-use crate::db::{LibraryPageWindow, LibraryPageWindows};
 use crate::identify::signals::Signals;
 use crate::identify::{IdentifyState, VerdictSummary};
 use crate::import::CandidateSession;
 use bae_catalogs::remote_image::RemoteCover;
+use bae_db::LibraryStatus;
+use bae_db::{LibraryPageWindow, LibraryPageWindows};
 
 mod path_order;
 mod pending_filter;
@@ -378,7 +378,7 @@ pub struct DraftProjection {
     pub metadata_draft: RawReleaseEdit,
     /// What the library holds, as this read found it, for every artist credit
     /// the draft carries.
-    pub artist_resolutions: Vec<crate::db::ResolvedCredit>,
+    pub artist_resolutions: Vec<bae_db::ResolvedCredit>,
     /// Every source unit the folder offers, with the track committing makes of
     /// it. Every audio row awaits a pick until there is one.
     pub mapping: MappingTable,
@@ -677,7 +677,7 @@ pub struct CandidateDraftPane {
     pub metadata_draft: RawReleaseEdit,
     /// What the library holds for every artist credit of the draft and the
     /// mapping rows, as the pane's live read found it.
-    pub artist_resolutions: Vec<crate::db::ResolvedCredit>,
+    pub artist_resolutions: Vec<bae_db::ResolvedCredit>,
     pub metadata_draft_is_blank: bool,
     pub metadata_provenance: Option<MetadataProvenance>,
     /// What the candidate is linked to in the catalogs, which Unlink clears.

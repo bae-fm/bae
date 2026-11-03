@@ -27,7 +27,7 @@ pub enum RemoteCoverGallery {
 pub enum CoverImageSource {
     /// The cover of the library release imported from the folder's files.
     Library {
-        image: crate::db::ImageRef,
+        image: bae_db::ImageRef,
     },
     Remote {
         image: RemoteImageSet,

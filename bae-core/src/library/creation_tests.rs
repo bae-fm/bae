@@ -607,7 +607,7 @@ async fn a_restore_over_this_devices_copy_starts_at_a_new_librarys_preferences()
     .await
     .unwrap();
     assert_eq!(restored.transfer_limits(), bae_app_dir::default_transfer_limits());
-    let database = crate::db::Database::from_handle(
+    let database = bae_db::Database::from_handle(
         restored.clone(),
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::UuidIds),

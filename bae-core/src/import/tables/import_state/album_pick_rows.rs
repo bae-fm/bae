@@ -5,7 +5,7 @@ use super::*;
 
 /// The album picked for the candidate `content_hash`, if one is.
 pub(crate) fn load_album_pick_on(
-    sql: &impl crate::db::client::query::QueryOne,
+    sql: &impl bae_db::client::query::QueryOne,
     content_hash: &str,
 ) -> Result<Option<String>, DbError> {
     sql.query_row(

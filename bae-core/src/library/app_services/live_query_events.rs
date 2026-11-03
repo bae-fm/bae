@@ -134,7 +134,7 @@ mod tests {
         let directory = tempfile::TempDir::new().unwrap();
         let path = directory.path().join("library.db");
         let database =
-            crate::db::Database::new_test(path.to_str().unwrap(), Arc::new(coven::SystemClock))
+            bae_db::Database::new_test(path.to_str().unwrap(), Arc::new(coven::SystemClock))
                 .await
                 .unwrap();
         let manager = crate::app::test_library::TestLibrary::open(
@@ -147,7 +147,7 @@ mod tests {
             tokio::sync::mpsc::unbounded_channel::<Result<(), crate::library::LibraryError>>();
         let mut events = super::reconfigurable_live_query_events(
             &manager,
-            manager.subscribe_queue_upcoming(crate::db::LibraryPageWindows::new()),
+            manager.subscribe_queue_upcoming(bae_db::LibraryPageWindows::new()),
             reader,
         );
         database.close().await.unwrap();
@@ -158,7 +158,7 @@ mod tests {
         .await
         .expect("the query ends with its store");
 
-        events.set([crate::db::LibraryPageWindow { offset: 0, limit: 10 }].into());
+        events.set([bae_db::LibraryPageWindow { offset: 0, limit: 10 }].into());
 
         assert!(events.recv().await.is_none(), "the ended query reads nothing");
     }

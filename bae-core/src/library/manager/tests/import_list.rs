@@ -17,7 +17,7 @@ async fn done_with_two_uploading(
     let c = insert_release_with_queued_uploads(manager, &dir.join("c"), "C", files).await;
     let b = insert_release_with_queued_uploads(manager, &dir.join("b"), "B", files).await;
     let d = insert_local_release_with_files(manager, &dir.join("d"), "D", files).await;
-    let root = crate::db::watched_path::host_root("/music");
+    let root = bae_db::watched_path::host_root("/music");
     let root_sql = format!("X'{}'", hex::encode(coven::path_bytes(&root)));
     let mut sql = format!(
         "INSERT INTO watched_import_folders (path, position) VALUES ({root_sql}, 0);
@@ -63,14 +63,14 @@ fn done_names(projection: &crate::import::ImportListProjection) -> Vec<String> {
 async fn open_list(
     manager: &TestLibrary,
     view: crate::import::ImportListView,
-    windows: crate::db::LibraryPageWindows,
+    windows: bae_db::LibraryPageWindows,
 ) -> Result<crate::import::LiveImportList, crate::import::ImportError> {
     manager.start_import().await?.open_list(view, windows).await
 }
 
 /// One read of `list` through `offset` and `limit`.
 async fn read_list(
-    database: &crate::db::Database,
+    database: &bae_db::Database,
     list: crate::import::ImportListId,
     offset: u64,
     limit: u64,
@@ -79,7 +79,7 @@ async fn read_list(
     tables
         .load_import_list(crate::import::ImportListRequest {
             list,
-            windows: std::iter::once(crate::db::LibraryPageWindow { offset, limit }).collect(),
+            windows: std::iter::once(bae_db::LibraryPageWindow { offset, limit }).collect(),
         })
         .await
         .unwrap()
@@ -177,7 +177,7 @@ async fn a_done_row_carries_its_release_upload() {
             order: crate::import::ImportListOrder::PathAscending,
             ..crate::import::ImportListView::default()
         },
-        std::iter::once(crate::db::LibraryPageWindow { offset: 0, limit: 50 }).collect(),
+        std::iter::once(bae_db::LibraryPageWindow { offset: 0, limit: 50 }).collect(),
     )
     .await
     .unwrap();
@@ -270,7 +270,7 @@ async fn setting_the_windows_reruns_the_list_as_a_request_change() {
     let subscription = open_list(
         &manager,
         crate::import::ImportListView::default(),
-        crate::db::LibraryPageWindows::default(),
+        bae_db::LibraryPageWindows::default(),
     )
     .await
     .unwrap();
@@ -280,7 +280,7 @@ async fn setting_the_windows_reruns_the_list_as_a_request_change() {
 
     subscription
         .set_windows(
-            std::iter::once(crate::db::LibraryPageWindow { offset: 0, limit: 50 }).collect(),
+            std::iter::once(bae_db::LibraryPageWindow { offset: 0, limit: 50 }).collect(),
         )
         .expect("the first window is requested");
     let requested = subscription.next().await.expect("the requested value");
@@ -308,7 +308,7 @@ async fn cancelling_closes_the_list() {
     let subscription = open_list(
         &manager,
         crate::import::ImportListView::default(),
-        crate::db::LibraryPageWindows::default(),
+        bae_db::LibraryPageWindows::default(),
     )
     .await
     .unwrap();
@@ -342,7 +342,7 @@ async fn closing_the_library_cancels_a_waiting_read_before_the_store_closes() {
         open_list(
             &manager,
             crate::import::ImportListView::default(),
-            crate::db::LibraryPageWindows::default(),
+            bae_db::LibraryPageWindows::default(),
         )
         .await
         .unwrap(),

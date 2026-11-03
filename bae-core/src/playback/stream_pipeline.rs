@@ -406,7 +406,7 @@ mod tests {
 
     fn one_segment_decode(buffer: SharedSparseBuffer) -> StreamDecodeParams {
         StreamDecodeParams::new(
-            vec![SegmentDecodeParams::new(buffer, crate::db::SegmentSpan::whole_file(), 0)],
+            vec![SegmentDecodeParams::new(buffer, bae_db::SegmentSpan::whole_file(), 0)],
             true,
             0,
             0,

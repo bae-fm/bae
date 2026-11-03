@@ -11,7 +11,6 @@
 use super::columns::*;
 use super::*;
 use crate::cue_flac::{CueIndex, CueSheet, CueTrack, CueTrackMode};
-use crate::db::RelativeFolder;
 use crate::import::file_tag_snapshot::{
     EmbeddedCoverFact, FileObservation, FileTagFact, FileTagSnapshot, FileTags,
 };
@@ -21,6 +20,7 @@ use crate::import::folder_scanner::{
     SkippedFile, SkippedTags,
 };
 use crate::import::CandidateKey;
+use bae_db::RelativeFolder;
 use bae_types::audio_format::AudioFormat;
 use bae_util::content_type::ContentType;
 use track_sheets::{StoredSheet, StoredSheetAudio, SHEET_AUDIO_JSON, SHEET_JSON};
@@ -435,8 +435,7 @@ pub(crate) fn entries_reading(
             .skip(1)
             .take_while(|above| above.starts_with(watched_folder_path)),
     );
-    let below =
-        coverage.whole_subtree.then(|| crate::db::watched_path::paths_below(&coverage.folder));
+    let below = coverage.whole_subtree.then(|| bae_db::watched_path::paths_below(&coverage.folder));
     let mut params: Vec<(&str, &dyn rusqlite::ToSql)> =
         vec![(":root", &root), (":folder", &folder), (":above", &above)];
     let readers_clause = match &readers {

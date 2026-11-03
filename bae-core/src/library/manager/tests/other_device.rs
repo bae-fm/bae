@@ -4,8 +4,8 @@
 
 use super::*;
 use crate::album_detail::ReleasePlayability;
-use crate::db::membership::FormerDeviceState;
-use crate::db::OtherDevice;
+use bae_db::membership::FormerDeviceState;
+use bae_db::OtherDevice;
 use bae_types::release_storage::ReleaseStorageAction;
 
 /// How long a test waits for a live read to deliver a value.

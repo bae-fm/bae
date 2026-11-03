@@ -36,13 +36,13 @@ use super::candidate_search::{CandidateSearch, SearchRun};
 use super::folder_scanner::{FolderCandidate, ReleaseFileScope};
 use super::handle::{ImportEvent, ScanEvent};
 use super::types::ImportProgress;
-use crate::db::DbError;
 use crate::identify::signals::Signals;
 use crate::identify::{IdentifyState, RunOutcome};
 use crate::import::IdentifyRunId;
 use bae_catalogs::catalog::LookupCatalog;
 use bae_catalogs::search::{MetadataResult, SearchQuery};
 use bae_catalogs::Failure;
+use bae_db::DbError;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
@@ -187,7 +187,7 @@ impl CandidateRuntime {
     pub async fn for_test() -> Self {
         let directory = tempfile::TempDir::new().expect("a test runtime has a directory");
         let path = directory.path().join("library.db");
-        let database = crate::db::Database::new_test(
+        let database = bae_db::Database::new_test(
             path.to_str().expect("a temporary path is UTF-8"),
             Arc::new(coven::SystemClock),
         )

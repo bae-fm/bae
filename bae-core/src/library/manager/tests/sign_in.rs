@@ -30,18 +30,17 @@ async fn manager_signing_in_with(
     let app_dir = bae_app_dir::AppDir::at(temp_dir.path()).unwrap();
     let clock: coven::ClockRef = Arc::new(coven::SystemClock);
     let storage = Arc::new(MemoryStorage::builder().clock(clock.clone()).build().unwrap());
-    let handle =
-        crate::db::configure_store(coven::TestCoven::new().builder(app_dir.store_layout()))
-            .oauth_clients(coven::OAuthClients::new(
-                Some(coven::DropboxClients::FullDropbox { app_key: "dropbox-key".into() }),
-                Some("onedrive-id".into()),
-                clock.clone(),
-            ))
-            .oauth_presenter(presenter)
-            .storage_connector(storage.clone())
-            .create_store("Test Library")
-            .await
-            .unwrap();
+    let handle = bae_db::configure_store(coven::TestCoven::new().builder(app_dir.store_layout()))
+        .oauth_clients(coven::OAuthClients::new(
+            Some(coven::DropboxClients::FullDropbox { app_key: "dropbox-key".into() }),
+            Some("onedrive-id".into()),
+            clock.clone(),
+        ))
+        .oauth_presenter(presenter)
+        .storage_connector(storage.clone())
+        .create_store("Test Library")
+        .await
+        .unwrap();
     let database =
         Database::from_handle(handle, clock.clone(), std::sync::Arc::new(coven::UuidIds));
     let library = TestLibrary::open_with(

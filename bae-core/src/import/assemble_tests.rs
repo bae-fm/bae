@@ -1,8 +1,8 @@
 use super::*;
-use crate::db::ExistingArtist;
 use crate::import::{CandidateTrack, RawPressingEdit, RawTrackEdit};
 use bae_catalogs::credits::{ArtistCredit, CreditedRole};
 use bae_catalogs::works::{GraphWork, WorkGraph, WorkPart};
+use bae_db::ExistingArtist;
 
 fn clock() -> coven::FixedClock {
     coven::FixedClock::new(
@@ -200,7 +200,7 @@ fn roles_and_works_are_written_from_the_draft() {
     assert_eq!(name_of(&parsed.track_artist_roles[0].artist_id), "Track Composer");
 
     let graph = &parsed.work_graph;
-    let work_id = |id: &str| crate::db::identity::work_id(id);
+    let work_id = |id: &str| bae_db::identity::work_id(id);
     assert_eq!(graph.works.len(), 3);
     assert_eq!(
         graph

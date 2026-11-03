@@ -240,7 +240,7 @@ pub(crate) fn load_standings_on(
 /// Where `candidate_key` stands, as its row says, inside a write or outside
 /// one; nothing running when it has no row.
 pub(crate) fn load_standing_on(
-    sql: &impl crate::db::client::query::QueryOne,
+    sql: &impl bae_db::client::query::QueryOne,
     candidate_key: &CandidateKey,
 ) -> Result<StoredStanding, DbError> {
     let columns = sql

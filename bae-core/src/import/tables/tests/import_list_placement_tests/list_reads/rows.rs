@@ -505,7 +505,7 @@ async fn candidate_location_opens_only_its_group() {
         .await;
     let fold = |group: &str| crate::import::FolderReleaseDecisionKey {
         watched_folder_path: lib.root.clone(),
-        relative_folder: crate::db::RelativeFolder::test(group),
+        relative_folder: bae_db::RelativeFolder::test(group),
     };
     tables.set_import_list_groups_folded(list, true).await.unwrap();
     let location = tables

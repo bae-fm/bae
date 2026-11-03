@@ -2,10 +2,10 @@
 //! what opening the library leaves, and how the reads are planned.
 
 use super::tables::{self, QueuedPayload};
-use crate::db::client::tests::*;
-use crate::db::*;
 use crate::library::output_snapshot::{OutputKind, OutputRequest};
 use crate::library::release_queue::{ReleaseQueueEntry, ReleaseQueueState};
+use bae_db::test_fixtures::*;
+use bae_db::*;
 
 pub(crate) async fn enqueue_releases<P: QueuedPayload>(
     db: &Database,
@@ -337,9 +337,9 @@ async fn a_window_reads_its_entries_and_the_queue_length() {
         (0..5).map(|i| bae_util::test_ids::test_uuid(&format!("window-release-{i}"))).collect();
     enqueue_releases(&db, releases.iter().map(|id| download(id)).collect()).await.unwrap();
     let mut live = crate::library::Downloads::new(db.clone()).subscribe_windows(
-        crate::db::LibraryPageWindows::from([
-            crate::db::LibraryPageWindow { offset: 1, limit: 2 },
-            crate::db::LibraryPageWindow { offset: 9, limit: 2 },
+        bae_db::LibraryPageWindows::from([
+            bae_db::LibraryPageWindow { offset: 1, limit: 2 },
+            bae_db::LibraryPageWindow { offset: 9, limit: 2 },
         ]),
     );
     let read = live.next().await.expect("the query stays open").result.unwrap();

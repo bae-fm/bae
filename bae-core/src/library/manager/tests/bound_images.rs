@@ -64,7 +64,7 @@ fn a_cover_whose_row_arrives_before_its_file_moves_its_version_when_the_file_lan
         store_test_cover(devices.a().manager(), &release.id, b"the cover").await;
         let cover = cover_file(devices.a().manager(), &release.id).await.id();
         let uploader = devices.a().manager().device_id();
-        let mut raised = crate::db::migrations::all();
+        let mut raised = bae_db::migrations::all();
         raised.push(coven::Migration::breaking(
             2,
             "index works by title",
@@ -177,7 +177,7 @@ async fn an_image_over_the_bound_limit_is_refused() {
         .await
         .expect_err("an image over the limit makes no cover");
     match &error {
-        LibraryError::Database(crate::db::DbError::Coven(coven::CovenError::Database(
+        LibraryError::Database(bae_db::DbError::Coven(coven::CovenError::Database(
             coven::DbError::BoundFileTooLarge { table, column, size, limit },
         ))) => {
             assert_eq!((table.as_str(), column.as_str()), ("covers", "file"));

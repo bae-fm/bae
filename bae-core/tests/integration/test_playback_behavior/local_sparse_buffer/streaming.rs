@@ -96,7 +96,7 @@ struct MultiWindowPlayback {
     progress_rx: tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
     track_ids: Vec<String>,
     library_manager: LibraryManager,
-    database: bae_core::db::Database,
+    database: bae_db::Database,
     runtime_handle: tokio::runtime::Handle,
     _capture_stream_rx: support::CaptureStreamRx,
     _temp_dir: TempDir,

@@ -4,18 +4,18 @@
 async fn real_schema_opens_with_the_declarations_and_device_only_files() {
     let directory = tempfile::tempdir().unwrap();
     let installation = coven::TestCoven::new();
-    let handle = bae_core::db::configure_store(
+    let handle = bae_db::configure_store(
         installation.builder(bae_app_dir::AppDir::at(directory.path()).unwrap().store_layout()),
     )
     .create_store("Schema Test")
     .await
     .unwrap();
-    let database = bae_core::db::Database::from_handle(
+    let database = bae_db::Database::from_handle(
         handle.clone(),
         std::sync::Arc::new(coven::SystemClock),
         std::sync::Arc::new(coven::UuidIds),
     );
-    let artist = bae_core::db::DbArtist {
+    let artist = bae_db::DbArtist {
         id: uuid::Uuid::new_v4().to_string(),
         name: "Schema Artist".into(),
         sort_name: None,
@@ -24,20 +24,20 @@ async fn real_schema_opens_with_the_declarations_and_device_only_files() {
         created_at: chrono::Utc::now(),
     };
     database.insert_artist(&artist).await.unwrap();
-    let album = bae_core::db::DbAlbum {
+    let album = bae_db::DbAlbum {
         id: uuid::Uuid::new_v4().to_string(),
         title: "Schema Album".into(),
         year: None,
         is_compilation: false,
         created_at: chrono::Utc::now(),
     };
-    let release = bae_core::db::DbRelease::new_test(&album.id, &uuid::Uuid::new_v4().to_string());
-    let credit = bae_core::db::DbAlbumArtist::new_test(&album.id, &artist.id);
+    let release = bae_db::DbRelease::new_test(&album.id, &uuid::Uuid::new_v4().to_string());
+    let credit = bae_db::DbAlbumArtist::new_test(&album.id, &artist.id);
     database
         .insert_album_with_release_and_tracks(&album, &[credit], &release, &[], &[], &[])
         .await
         .unwrap();
-    let file = bae_core::db::NewReleaseFile::new(
+    let file = bae_db::NewReleaseFile::new(
         &release.id,
         "track.flac",
         bae_util::content_type::ContentType::Flac,
@@ -70,7 +70,7 @@ fn creation_retains_its_keyring_failure_through_cleanup() {
 async fn upload_cancellation_keeps_the_file_on_this_device_with_its_original() {
     let directory = tempfile::tempdir().unwrap();
     let installation = coven::TestCoven::new();
-    let handle = bae_core::db::configure_store(
+    let handle = bae_db::configure_store(
         installation.builder(bae_app_dir::AppDir::at(directory.path()).unwrap().store_layout()),
     )
     .create_store("Upload Test")
@@ -82,7 +82,7 @@ async fn upload_cancellation_keeps_the_file_on_this_device_with_its_original() {
         bae_catalogs::providers::Providers::offline(),
     )
     .await;
-    let artist = bae_core::db::DbArtist {
+    let artist = bae_db::DbArtist {
         id: uuid::Uuid::new_v4().to_string(),
         name: "Artist".into(),
         sort_name: None,
@@ -91,22 +91,22 @@ async fn upload_cancellation_keeps_the_file_on_this_device_with_its_original() {
         created_at: chrono::Utc::now(),
     };
     database.insert_artist(&artist).await.unwrap();
-    let album = bae_core::db::DbAlbum {
+    let album = bae_db::DbAlbum {
         id: uuid::Uuid::new_v4().to_string(),
         title: "Album".into(),
         year: None,
         is_compilation: false,
         created_at: chrono::Utc::now(),
     };
-    let release = bae_core::db::DbRelease::new_test(&album.id, &uuid::Uuid::new_v4().to_string());
-    let credit = bae_core::db::DbAlbumArtist::new_test(&album.id, &artist.id);
+    let release = bae_db::DbRelease::new_test(&album.id, &uuid::Uuid::new_v4().to_string());
+    let credit = bae_db::DbAlbumArtist::new_test(&album.id, &artist.id);
     database
         .insert_album_with_release_and_tracks(&album, &[credit], &release, &[], &[], &[])
         .await
         .unwrap();
     let source = directory.path().join("track.flac");
     std::fs::write(&source, b"audio").unwrap();
-    let file = bae_core::db::NewReleaseFile::new(
+    let file = bae_db::NewReleaseFile::new(
         &release.id,
         "track.flac",
         bae_util::content_type::ContentType::Flac,

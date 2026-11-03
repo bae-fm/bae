@@ -84,7 +84,7 @@ pub(super) fn edit_row_values(
 ) -> Vec<rusqlite::types::Value> {
     use rusqlite::types::Value;
     let release_edit = draft.release_edit();
-    let facts = crate::db::client::pressing_columns::FactColumns::of(&draft.pressing.facts);
+    let facts = bae_db::client::pressing_columns::FactColumns::of(&draft.pressing.facts);
     let text = |value: &str| Value::Text(value.to_string());
     let optional = |value: Option<&str>| value.map_or(Value::Null, text);
     vec![
@@ -94,7 +94,7 @@ pub(super) fn edit_row_values(
         text(&draft.pressing.year),
         optional(facts.country),
         optional(facts.region),
-        Value::Text(crate::db::client::pressing_columns::media_column(&draft.pressing.facts.media)),
+        Value::Text(bae_db::client::pressing_columns::media_column(&draft.pressing.facts.media)),
         optional(facts.status),
         optional(facts.packaging),
         Value::Text(facts.discogs_details),
@@ -272,7 +272,7 @@ pub(crate) fn load_pane_rows_on(
 
 /// Whether the candidate `content_hash` holds a draft row.
 pub(super) fn has_draft_row_on(
-    sql: &impl crate::db::client::query::QueryOne,
+    sql: &impl bae_db::client::query::QueryOne,
     content_hash: &str,
 ) -> Result<bool, DbError> {
     Ok(sql
@@ -292,7 +292,7 @@ pub(super) fn has_draft_row_on(
 /// one. A candidate this device imported holds no draft, so reading one
 /// fails.
 pub(super) fn load_draft_and_cover_on(
-    sql: &(impl crate::db::client::query::QueryOne + crate::db::client::query::QueryRows),
+    sql: &(impl bae_db::client::query::QueryOne + bae_db::client::query::QueryRows),
     content_hash: &str,
 ) -> Result<(CandidateDraft, Option<CoverSelection>), DbError> {
     if let Some(draft) = load_drafts_on(sql, CandidateRows::One(content_hash))?.remove(content_hash)
@@ -403,7 +403,7 @@ impl StoredCover {
 
 /// The cover the candidate `content_hash` chose, if it chose one.
 pub(super) fn load_cover_on(
-    sql: &(impl crate::db::client::query::QueryOne + crate::db::client::query::QueryRows),
+    sql: &(impl bae_db::client::query::QueryOne + bae_db::client::query::QueryRows),
     content_hash: &str,
 ) -> Result<Option<CoverSelection>, DbError> {
     sql.query_row(
@@ -423,7 +423,7 @@ pub(super) fn load_cover_on(
 /// Every candidate's complete stored draft, or the one `only` names: one row
 /// per draft, its lists riding on it as JSON arrays in their stored order.
 pub(crate) fn load_drafts_on(
-    sql: &(impl crate::db::client::query::QueryOne + crate::db::client::query::QueryRows),
+    sql: &(impl bae_db::client::query::QueryOne + bae_db::client::query::QueryRows),
     only: CandidateRows<'_>,
 ) -> Result<HashMap<String, CandidateDraft>, DbError> {
     let filter = only.filter("edit.content_hash");
@@ -484,8 +484,8 @@ pub(crate) fn load_drafts_on(
                 album_year: row.get("album_year")?,
                 year: row.get("year")?,
                 labels: read_label_rows(row)?,
-                barcodes: crate::db::client::pressing_columns::read_barcodes(row, "barcodes")?,
-                facts: crate::db::client::pressing_columns::read_facts(row, "")?,
+                barcodes: bae_db::client::pressing_columns::read_barcodes(row, "barcodes")?,
+                facts: bae_db::client::pressing_columns::read_facts(row, "")?,
                 album_assignments: row.get("album_assignments")?,
                 mediums: row.get("mediums")?,
                 tracks: row.get("tracks")?,
@@ -576,7 +576,7 @@ impl StoredDraftRow {
 fn read_label_rows(row: &rusqlite::Row) -> rusqlite::Result<Vec<RawLabelEdit>> {
     let labels: String = row.get("labels")?;
     serde_json::from_str::<Vec<RawLabelEdit>>(&labels).map_err(|error| {
-        crate::db::client::read::column_conversion_error(
+        bae_db::client::read::column_conversion_error(
             row,
             "labels",
             format!("label rows {labels:?}: {error}"),
@@ -759,7 +759,7 @@ impl StoredAssignment {
                     discogs_artist_id: self.discogs_artist_id,
                 },
                 credit_name: match (self.credit_key, self.credit_name) {
-                    (Some(key), Some(name)) => Some(crate::db::credits::CreditName { key, name }),
+                    (Some(key), Some(name)) => Some(bae_db::credits::CreditName { key, name }),
                     _ => None,
                 },
             },

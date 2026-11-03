@@ -1,11 +1,11 @@
 //! The artist picker's live search: one subscription moved between texts and
 //! windows, and woken by writes to what it finds.
 
-use crate::db::client::tests::live_query_tests::write_artist_image;
-use crate::db::client::tests::{exec, exec_batch, temp_db};
-use crate::db::LibraryPageWindow;
 use crate::library::views::*;
 use crate::library::{ArtistSearchView, LibrarySearchQuery};
+use bae_db::test_fixtures::live_query::write_artist_image;
+use bae_db::test_fixtures::{exec, exec_batch, temp_db};
+use bae_db::LibraryPageWindow;
 use std::time::Duration;
 
 const FIRST: &str = "1a7c1f53-6d0e-4f43-9a52-0c3f3a9f0a01";
@@ -40,7 +40,7 @@ fn view(text: &str, windows: &[LibraryPageWindow]) -> ArtistSearchView {
     }
 }
 
-fn ids(window: &crate::db::LibraryBrowseWindow<DbArtistSearchRow>) -> Vec<&str> {
+fn ids(window: &bae_db::LibraryBrowseWindow<DbArtistSearchRow>) -> Vec<&str> {
     window.rows.iter().map(|row| row.artist.id.as_str()).collect()
 }
 

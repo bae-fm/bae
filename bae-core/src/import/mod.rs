@@ -122,7 +122,7 @@ pub use volume::VolumeKind;
 pub(crate) struct ImportServices {
     event_tx: handle::ImportEventBus,
     /// The library's store, which import reads and writes directly.
-    database: crate::db::Database,
+    database: bae_db::Database,
     /// Import's own tables in that store.
     tables: tables::ImportTables,
     /// The catalogs as this library may ask them.
@@ -157,7 +157,7 @@ pub(crate) struct ImportServices {
 impl ImportServices {
     pub(crate) fn new(
         event_tx: handle::ImportEventBus,
-        database: crate::db::Database,
+        database: bae_db::Database,
         catalogs: CatalogSessions,
         remote_images: bae_catalogs::remote_image::RemoteImageCache,
         preparations: preparations::CandidatePreparations,

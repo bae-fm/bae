@@ -15,7 +15,7 @@ fn stored_release(audio: ScannedAudio) -> ScanItem {
         watched_folder_path: std::path::PathBuf::from("/music"),
         scope: ReleaseFileScope::Direct,
         file_edit_revision: 0,
-        relative_folder: crate::db::RelativeFolder::test("Album"),
+        relative_folder: bae_db::RelativeFolder::test("Album"),
         grouping: None,
     })
 }

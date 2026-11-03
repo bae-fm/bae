@@ -12,7 +12,7 @@ async fn offers(database: &Database) -> (Vec<(String, bool)>, Vec<(String, bool)
     let projection = tables
         .load_import_list(crate::import::ImportListRequest {
             list,
-            windows: [crate::db::LibraryPageWindow { offset: 0, limit: 50 }]
+            windows: [bae_db::LibraryPageWindow { offset: 0, limit: 50 }]
                 .into_iter()
                 .collect(),
         })
@@ -43,7 +43,7 @@ async fn scanned_root(releases: &[&str]) -> (TestService, TestScan, PathBuf) {
     for release in releases {
         write_disc(&root.join(release), 1);
     }
-    let root = crate::db::watched_path::canonical_absolute_root(&root).unwrap();
+    let root = bae_db::watched_path::canonical_absolute_root(&root).unwrap();
     tables.add_watched_import_folder(&root).await.unwrap();
     let (scan, _events) = test.scan();
     scan.rescan(&root).await.unwrap();
@@ -53,7 +53,7 @@ async fn scanned_root(releases: &[&str]) -> (TestService, TestScan, PathBuf) {
 fn folder_key(root: &Path, relative: &str) -> crate::import::FolderReleaseDecisionKey {
     crate::import::FolderReleaseDecisionKey {
         watched_folder_path: root.to_path_buf(),
-        relative_folder: crate::db::RelativeFolder::test(relative),
+        relative_folder: bae_db::RelativeFolder::test(relative),
     }
 }
 
@@ -122,7 +122,7 @@ async fn a_folders_release_keeps_its_key_across_readings() {
             .load_folder_release_decisions(&root)
             .await
             .unwrap()
-            .get(&crate::db::RelativeFolder::test("Album"))
+            .get(&bae_db::RelativeFolder::test("Album"))
             .map(|reading| reading.grouping.clone())
             .expect("the scan read the album's discs as one")
     };
@@ -168,7 +168,7 @@ async fn a_folder_read_as_one_release_takes_its_own_files_and_numbers_its_discs(
         write_disc(&root.join(disc), 2);
     }
     std::fs::write(root.join("Album/notes.txt"), "notes").unwrap();
-    let root = crate::db::watched_path::canonical_absolute_root(&root).unwrap();
+    let root = bae_db::watched_path::canonical_absolute_root(&root).unwrap();
     tables.add_watched_import_folder(&root).await.unwrap();
     let (scan, _events) = test.scan();
     scan.rescan(&root).await.unwrap();

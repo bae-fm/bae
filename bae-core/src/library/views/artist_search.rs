@@ -3,13 +3,13 @@
 //! that makes another match, reads it again.
 
 use super::*;
-use crate::db::client::artist_credit_names::{credit_names_column, credit_names_json_sql};
+use bae_db::client::artist_credit_names::{credit_names_column, credit_names_json_sql};
 
 /// Every requested window of an artist search, and how many artists it
 /// found.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ArtistSearchProjection {
-    pub windows: Vec<crate::db::LibraryBrowseWindow<DbArtistSearchRow>>,
+    pub windows: Vec<bae_db::LibraryBrowseWindow<DbArtistSearchRow>>,
     pub total_count: u64,
 }
 
@@ -19,7 +19,7 @@ pub struct ArtistSearchProjection {
 pub struct DbArtistSearchRow {
     pub artist: DbArtist,
     pub image_version: Option<String>,
-    pub credit_names: Vec<crate::db::credits::ArtistCreditName>,
+    pub credit_names: Vec<bae_db::credits::ArtistCreditName>,
 }
 
 impl LibraryViews {
@@ -29,7 +29,7 @@ impl LibraryViews {
     pub async fn search_artists(
         &self,
         query: &crate::library::LibrarySearchQuery,
-        window: crate::db::LibraryPageWindow,
+        window: bae_db::LibraryPageWindow,
     ) -> Result<Vec<DbArtist>, DbError> {
         let query = query.clone();
         self.database
@@ -57,7 +57,7 @@ impl LibraryViews {
                     windows: view
                         .windows
                         .iter()
-                        .map(|window| crate::db::LibraryBrowseWindow {
+                        .map(|window| bae_db::LibraryBrowseWindow {
                             window: window.clone(),
                             rows: Vec::new(),
                         })
@@ -70,7 +70,7 @@ impl LibraryViews {
                 .windows
                 .iter()
                 .map(|window| {
-                    Ok(crate::db::LibraryBrowseWindow {
+                    Ok(bae_db::LibraryBrowseWindow {
                         window: window.clone(),
                         rows: artist_search_rows_on(&sql, query, window)?,
                     })
@@ -92,13 +92,13 @@ pub(crate) fn resolve_artist_search(
     crate::library::ArtistSearchSnapshot {
         windows: windows
             .into_iter()
-            .map(|window| crate::db::LibraryBrowseWindow {
+            .map(|window| bae_db::LibraryBrowseWindow {
                 window: window.window,
                 rows: window
                     .rows
                     .into_iter()
                     .map(|row| crate::album_detail::ArtistSearchResult {
-                        image: crate::db::artist_image_ref(&row.artist.id, row.image_version),
+                        image: bae_db::artist_image_ref(&row.artist.id, row.image_version),
                         credit_names: row.credit_names,
                         artist: row.artist,
                     })
@@ -150,7 +150,7 @@ fn artist_search_count_on(
 fn artist_search_rows_on(
     sql: &SqlReadContext<'_>,
     query: &crate::library::LibrarySearchQuery,
-    window: &crate::db::LibraryPageWindow,
+    window: &bae_db::LibraryPageWindow,
 ) -> Result<Vec<DbArtistSearchRow>, DbError> {
     sql.query(
         &format!(

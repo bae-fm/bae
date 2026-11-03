@@ -18,7 +18,7 @@ fn import_terminal_ids(progress: &bae_core::import::ImportProgress) -> Option<(S
 /// private copy that can drift from the others.
 pub async fn start_test_import(
     runtime_handle: tokio::runtime::Handle,
-    database: &bae_core::db::Database,
+    database: &bae_db::Database,
     catalogs: &bae_core::import::CatalogSessions,
     closing: &bae_core::library::CancellationToken,
 ) -> bae_core::import::ImportServiceHandle {
@@ -41,7 +41,7 @@ pub async fn start_test_import(
 /// [`ImportService`]: bae_core::import::ImportService
 pub async fn start_import_service(
     runtime_handle: tokio::runtime::Handle,
-    database: &bae_core::db::Database,
+    database: &bae_db::Database,
     catalogs: &bae_core::import::CatalogSessions,
     closing: &bae_core::library::CancellationToken,
     http: bae_util::http::Http,
@@ -194,7 +194,7 @@ pub fn folder_import(
 /// (release_id, album_id). The service is started here and dropped on return —
 /// by then the import has landed everything it writes.
 async fn send_folder_import_and_wait(
-    database: &bae_core::db::Database,
+    database: &bae_db::Database,
     catalogs: &bae_core::import::CatalogSessions,
     closing: &bae_core::library::CancellationToken,
     album_dir: std::path::PathBuf,
@@ -221,7 +221,7 @@ async fn send_folder_import_and_wait(
 /// under candidate key `"test"` and a fresh import id, and return the release id
 /// the import landed. Panics if the import fails.
 pub async fn import_folder_and_wait(
-    database: &bae_core::db::Database,
+    database: &bae_db::Database,
     catalogs: &bae_core::import::CatalogSessions,
     closing: &bae_core::library::CancellationToken,
     album_dir: impl Into<std::path::PathBuf>,
@@ -267,7 +267,7 @@ pub async fn imported_release_setup<G>(
     (
         (
             bae_core::library::LibraryManager,
-            bae_core::db::Database,
+            bae_db::Database,
             bae_core::import::CatalogSessions,
             bae_core::library::CancellationToken,
         ),
@@ -300,7 +300,7 @@ pub async fn imported_release_setup_with<G>(
     (
         (
             bae_core::library::LibraryManager,
-            bae_core::db::Database,
+            bae_db::Database,
             bae_core::import::CatalogSessions,
             bae_core::library::CancellationToken,
         ),

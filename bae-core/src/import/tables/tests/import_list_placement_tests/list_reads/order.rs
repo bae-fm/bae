@@ -28,7 +28,7 @@ impl Library {
     pub(super) fn group_key(&self, name: &str) -> FolderReleaseDecisionKey {
         FolderReleaseDecisionKey {
             watched_folder_path: self.root.clone(),
-            relative_folder: crate::db::RelativeFolder::test(name),
+            relative_folder: bae_db::RelativeFolder::test(name),
         }
     }
 
@@ -46,7 +46,7 @@ impl Library {
 #[tokio::test]
 async fn rows_order_by_watched_root_then_natural_path() {
     let lib = Library::new().await;
-    let second = crate::db::watched_path::host_root("/second");
+    let second = bae_db::watched_path::host_root("/second");
     lib.run(&format!(
         "{}{}{}",
         lib.scan("Release 10"),
@@ -326,7 +326,7 @@ async fn default_is_newest_first_and_groups_use_their_newest_member() {
 #[tokio::test]
 async fn dates_cross_watched_roots_and_ties_have_a_stable_natural_path_order() {
     let lib = Library::new().await;
-    let second = crate::db::watched_path::host_root("/second");
+    let second = bae_db::watched_path::host_root("/second");
     lib.run(&format!(
         "{}{}INSERT INTO folder_discovery (folder, first_seen_at, settled)
              VALUES ({}, 20, 1);",

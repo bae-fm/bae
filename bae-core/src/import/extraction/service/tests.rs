@@ -111,9 +111,9 @@ async fn collect_snapshots(
 }
 
 /// A throwaway library database over a temp dir, which must outlive it.
-async fn make_database() -> (crate::db::Database, TempDir) {
+async fn make_database() -> (bae_db::Database, TempDir) {
     let tmp = TempDir::new().unwrap();
-    let database = crate::db::Database::new_test(
+    let database = bae_db::Database::new_test(
         tmp.path().join("test.db").to_str().unwrap(),
         Arc::new(coven::SystemClock),
     )
@@ -201,7 +201,7 @@ fn folder_source(folder: PathBuf) -> ExtractionSource {
     ExtractionSource::Candidate {
         candidate: crate::import::FolderCandidate {
             name: folder.file_name().unwrap().to_string_lossy().into_owned(),
-            relative_folder: crate::db::RelativeFolder::root(),
+            relative_folder: bae_db::RelativeFolder::root(),
             watched_folder_path: folder.clone(),
             file_root: folder.clone(),
             path: folder,

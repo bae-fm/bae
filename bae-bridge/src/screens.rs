@@ -239,7 +239,7 @@ pulled_values! {
 pulled_values! {
     /// The store's members and their devices.
     MembersSubscription:
-        bae_core::db::membership::Membership => crate::types::BridgeMembership,
+        bae_db::membership::Membership => crate::types::BridgeMembership,
     converted by crate::types::BridgeMembership::from_core,
     built by members
 }
@@ -258,9 +258,9 @@ pulled_values! {
     /// The admin changes this device asked for, each until the person
     /// dismisses its outcome.
     AdminChangesSubscription:
-        Vec<bae_core::db::admin_change::AdminChange>
+        Vec<bae_db::admin_change::AdminChange>
             => Vec<crate::types::BridgeAdminChange>,
-    converted by |changes: Vec<bae_core::db::admin_change::AdminChange>| {
+    converted by |changes: Vec<bae_db::admin_change::AdminChange>| {
         changes.into_iter().map(crate::types::BridgeAdminChange::from_core).collect::<Vec<_>>()
     },
     built by admin_changes
@@ -270,9 +270,9 @@ pulled_values! {
     /// This person's device that joined after Add Device made its code; none
     /// until one does.
     AddedDeviceSubscription:
-        Option<bae_core::db::membership::ActiveDevice>
+        Option<bae_db::membership::ActiveDevice>
             => Option<crate::types::BridgeActiveDevice>,
-    converted by |device: Option<bae_core::db::membership::ActiveDevice>| {
+    converted by |device: Option<bae_db::membership::ActiveDevice>| {
         device.map(crate::types::BridgeActiveDevice::from_core)
     },
     built by added_device
@@ -281,8 +281,8 @@ pulled_values! {
 pulled_values! {
     /// Every person's profile.
     ProfilesSubscription:
-        Vec<bae_core::db::people::PersonProfile> => Vec<crate::types::BridgePersonProfile>,
-    converted by |profiles: Vec<bae_core::db::people::PersonProfile>| {
+        Vec<bae_db::people::PersonProfile> => Vec<crate::types::BridgePersonProfile>,
+    converted by |profiles: Vec<bae_db::people::PersonProfile>| {
         profiles.into_iter().map(crate::types::BridgePersonProfile::from_core).collect::<Vec<_>>()
     },
     built by profiles
@@ -292,9 +292,9 @@ pulled_values! {
     /// The profile this person asked for, until it is written: none before
     /// they ask and once it is.
     RequestedProfileSubscription:
-        Option<bae_core::db::people::RequestedProfile>
+        Option<bae_db::people::RequestedProfile>
             => Option<crate::types::BridgeRequestedProfile>,
-    converted by |requested: Option<bae_core::db::people::RequestedProfile>| {
+    converted by |requested: Option<bae_db::people::RequestedProfile>| {
         requested.map(crate::types::BridgeRequestedProfile::from_core)
     },
     built by requested_profile
@@ -303,8 +303,8 @@ pulled_values! {
 pulled_values! {
     /// This person's ratings.
     RatingsSubscription:
-        Vec<bae_core::db::collections::Rating> => Vec<crate::types::BridgeRating>,
-    converted by |ratings: Vec<bae_core::db::collections::Rating>| {
+        Vec<bae_db::collections::Rating> => Vec<crate::types::BridgeRating>,
+    converted by |ratings: Vec<bae_db::collections::Rating>| {
         ratings.into_iter().map(crate::types::BridgeRating::from_core).collect::<Vec<_>>()
     },
     built by ratings
@@ -313,8 +313,8 @@ pulled_values! {
 pulled_values! {
     /// The playlists this person sees.
     PlaylistsSubscription:
-        Vec<bae_core::db::collections::Playlist> => Vec<crate::types::BridgePlaylist>,
-    converted by |playlists: Vec<bae_core::db::collections::Playlist>| {
+        Vec<bae_db::collections::Playlist> => Vec<crate::types::BridgePlaylist>,
+    converted by |playlists: Vec<bae_db::collections::Playlist>| {
         playlists.into_iter().map(crate::types::BridgePlaylist::from_core).collect::<Vec<_>>()
     },
     built by playlists
@@ -323,8 +323,8 @@ pulled_values! {
 pulled_values! {
     /// One playlist's entries, in order.
     PlaylistEntriesSubscription:
-        Vec<bae_core::db::collections::PlaylistEntry> => Vec<crate::types::BridgePlaylistEntry>,
-    converted by |entries: Vec<bae_core::db::collections::PlaylistEntry>| {
+        Vec<bae_db::collections::PlaylistEntry> => Vec<crate::types::BridgePlaylistEntry>,
+    converted by |entries: Vec<bae_db::collections::PlaylistEntry>| {
         entries.into_iter().map(crate::types::BridgePlaylistEntry::from_core).collect::<Vec<_>>()
     },
     built by playlist_entries

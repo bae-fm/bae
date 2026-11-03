@@ -2,7 +2,7 @@
 //! recognizes it, with why it waits and what they can do about it.
 
 use super::*;
-use crate::db::{FileRow, PendingRow};
+use bae_db::{FileRow, PendingRow};
 
 /// What a pending record is about. A file is named by the row on this device
 /// whose file it is; every other subject by what it is.

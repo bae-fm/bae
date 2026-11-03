@@ -3,7 +3,7 @@
 
 use super::*;
 use crate::album_detail::{StoragePage, StorageRow};
-use crate::db::client::queued_uploads::{RELEASES_SENDING, RELEASE_UPLOAD_COLUMNS};
+use bae_db::client::queued_uploads::{RELEASES_SENDING, RELEASE_UPLOAD_COLUMNS};
 
 impl LibraryViews {
     /// Count storage rows matching `filter`: the set `get_storage_page` pages.
@@ -137,7 +137,7 @@ impl LibraryViews {
                     let windows = windows
                         .into_iter()
                         .map(|(window, rows)| {
-                            Ok(crate::db::LibraryBrowseWindow {
+                            Ok(bae_db::LibraryBrowseWindow {
                                 window,
                                 rows: process_storage_rows(rows)?,
                             })
@@ -169,7 +169,7 @@ pub(crate) fn resolve_storage_browse(
     let windows = projection
         .windows
         .into_iter()
-        .map(|window| crate::db::LibraryBrowseWindow {
+        .map(|window| bae_db::LibraryBrowseWindow {
             window: window.window,
             rows: window.rows.into_iter().map(&resolve).collect(),
         })
@@ -262,7 +262,7 @@ fn row_to_release_summary(
         media: read_media(row, "release_media")?,
         remote: row.get("remote")?,
         pinned: row.get("pinned")?,
-        upload: crate::db::client::queued_uploads::release_upload_in_row(row)?,
+        upload: bae_db::client::queued_uploads::release_upload_in_row(row)?,
         transfer_action: transfer_action_column(row, "transfer_action")?,
         file_count: row.get("file_count")?,
         total_size: row.get("total_size")?,
@@ -514,7 +514,7 @@ pub(crate) fn storage_totals_on(
         &storage_found_totals_query(filter),
         rusqlite::named_params! {
             ":search": pattern,
-            ":titles": crate::db::client::list_windows::sql_bound(titles),
+            ":titles": bae_db::client::list_windows::sql_bound(titles),
         },
         |row| {
             Ok((row.get::<_, bool>(0)?, row.get::<_, i64>(1)? as u64, row.get::<_, i64>(2)? as u64))
@@ -714,7 +714,7 @@ pub struct StorageBrowseRequest {
     pub sort: StorageSortCriterion,
     pub filter: StorageFilter,
     pub search: String,
-    pub windows: crate::db::LibraryPageWindows,
+    pub windows: bae_db::LibraryPageWindows,
     pub selected: BTreeSet<String>,
 }
 
@@ -730,7 +730,7 @@ pub struct StorageBrowseProjection {
     /// Whether the search text narrows the list: it is a library search,
     /// not blank.
     pub searching: bool,
-    pub windows: Vec<crate::db::LibraryBrowseWindow<DbStorageRow>>,
+    pub windows: Vec<bae_db::LibraryBrowseWindow<DbStorageRow>>,
     pub total_count: u64,
     pub total_size: u64,
     pub selected: Vec<DbStorageRow>,

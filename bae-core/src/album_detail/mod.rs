@@ -3,7 +3,7 @@
 //!
 //! They carry **formatted labels, resolved paths, derived flags, and pre-computed
 //! totals**. The library's views produce them by combining raw DB aggregates (from
-//! `crate::db`) with the position formatters of `bae_types::mediums`; the bridge is
+//! `bae_db`) with the position formatters of `bae_types::mediums`; the bridge is
 //! then a field-by-field copy to UniFFI types. That split is the invariant: once a
 //! caller holds a resolved type, derivation has already happened, and no consumer
 //! downstream re-computes anything.
@@ -30,8 +30,8 @@
 //! them (covers, pin state, cloud-home presence) and hand that in, so the derivation
 //! lives with the type it produces.
 
-use crate::db::source_audio::{SourceAudioFile, SourceAudioSummary};
-use crate::db::{cover_ref, ImageRef};
+use bae_db::source_audio::{SourceAudioFile, SourceAudioSummary};
+use bae_db::{cover_ref, ImageRef};
 use bae_types::mediums::{TrackPosition, TrackSide};
 use bae_types::release_storage::ReleaseStorageAction;
 
@@ -252,7 +252,7 @@ pub struct FileDetail {
 
 impl FileDetail {
     /// The release file `f` as a list of the release's files shows it.
-    pub(crate) fn from_raw(f: crate::db::DbFile) -> Self {
+    pub(crate) fn from_raw(f: bae_db::DbFile) -> Self {
         FileDetail {
             place: FilePlace::of(&f.original_filename),
             kind: FileKind::of(&f.content_type, &f.original_filename),
@@ -361,8 +361,7 @@ mod tests {
     /// imported offers nothing to upload.
     #[test]
     fn local_without_its_originals_here_offers_nothing() {
-        let elsewhere =
-            OnOtherDevice(crate::db::OtherDevice::Active { name: "Device A".to_string() });
+        let elsewhere = OnOtherDevice(bae_db::OtherDevice::Active { name: "Device A".to_string() });
         assert_eq!(
             available_storage_actions(Local, &elsewhere, false, true),
             Vec::<ReleaseStorageAction>::new(),

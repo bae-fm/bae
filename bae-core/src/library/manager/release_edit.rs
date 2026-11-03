@@ -87,8 +87,8 @@ impl LibraryManager {
         &self,
         release_id: &str,
     ) -> Result<
-        Option<(crate::library::views::ReleaseDetailContext, Vec<crate::db::DbReleaseEditTrack>)>,
-        crate::db::DbError,
+        Option<(crate::library::views::ReleaseDetailContext, Vec<bae_db::DbReleaseEditTrack>)>,
+        bae_db::DbError,
     > {
         let release_id = release_id.to_string();
         self.database
@@ -100,7 +100,7 @@ impl LibraryManager {
                 else {
                     return Ok(None);
                 };
-                Ok(Some((context, crate::db::client::release_edit_tracks_on(&sql, &release_id)?)))
+                Ok(Some((context, bae_db::client::release_edit_tracks_on(&sql, &release_id)?)))
             })
             .process(|rows| {
                 Ok(rows.map(|(context, tracks)| {
@@ -131,7 +131,7 @@ impl LibraryManager {
         })?;
         let display =
             crate::import::ReleaseEditDisplayContext::from_raw(&context.detail, edit_tracks)?;
-        let cover = crate::db::cover_ref(release_id, context.detail.cover_version.clone());
+        let cover = bae_db::cover_ref(release_id, context.detail.cover_version.clone());
 
         let album_artist_assignments: Vec<crate::import::Credited> =
             context.album_artists.into_iter().map(crate::import::Credited::of_library).collect();
@@ -336,7 +336,7 @@ impl LibraryManager {
             None => self.database.get_release_records(release_id).await?,
         };
         let change = match (&album, &applied) {
-            (Some(picked), _) => Some(crate::db::RecordsChange {
+            (Some(picked), _) => Some(bae_db::RecordsChange {
                 release_id: release_id.to_string(),
                 records: records.clone(),
                 current_album_id: current_album_id.clone(),
@@ -354,9 +354,9 @@ impl LibraryManager {
         // A release the person moved into another album keeps that album's
         // own title and artists.
         let album_fields = if album.as_ref().is_some_and(|picked| *picked != current_album_id) {
-            crate::db::AlbumFields::Kept
+            bae_db::AlbumFields::Kept
         } else {
-            crate::db::AlbumFields::Written
+            bae_db::AlbumFields::Written
         };
         let write = match applied {
             Some(applied) => {
@@ -386,7 +386,7 @@ impl LibraryManager {
                     self.clock.as_ref(),
                     self.ids.as_ref(),
                 )?;
-                crate::db::ReleaseEditWrite::Applied {
+                bae_db::ReleaseEditWrite::Applied {
                     rows: assembled.parsed,
                     picked: assembled.picked.into_iter().collect(),
                 }
@@ -399,7 +399,7 @@ impl LibraryManager {
                         LibraryError::Refused(format!("Album '{target_album_id}' not found"))
                     })?
                 };
-                crate::db::ReleaseEditWrite::Fields(self.release_metadata_rows(
+                bae_db::ReleaseEditWrite::Fields(self.release_metadata_rows(
                     album_row,
                     release,
                     &existing_tracks,

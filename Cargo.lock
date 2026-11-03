@@ -763,6 +763,7 @@ version = "0.1.0"
 dependencies = [
  "bae-catalogs",
  "bae-core",
+ "bae-db",
  "bae-diagnostics",
  "bae-mirror",
  "bae-test-support",
@@ -786,6 +787,7 @@ dependencies = [
  "bae-cast",
  "bae-catalogs",
  "bae-core",
+ "bae-db",
  "bae-desktop",
  "bae-diagnostics",
  "bae-loc",
@@ -818,6 +820,7 @@ dependencies = [
  "aes",
  "axum",
  "bae-core",
+ "bae-db",
  "bae-diagnostics",
  "bae-subsonic",
  "bae-test-support",
@@ -877,6 +880,7 @@ dependencies = [
  "bae-app-dir",
  "bae-audio",
  "bae-catalogs",
+ "bae-db",
  "bae-diagnostics",
  "bae-test-support",
  "bae-types",
@@ -923,6 +927,30 @@ dependencies = [
  "url",
  "uuid",
  "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "bae-db"
+version = "0.0.0-dev"
+dependencies = [
+ "bae-app-dir",
+ "bae-catalogs",
+ "bae-diagnostics",
+ "bae-types",
+ "bae-util",
+ "chrono",
+ "coven",
+ "hex",
+ "natord",
+ "regex",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+ "uuid",
 ]
 
 [[package]]
@@ -993,6 +1021,7 @@ dependencies = [
  "bae-audio",
  "bae-catalogs",
  "bae-core",
+ "bae-db",
  "bae-diagnostics",
  "bae-test-support",
  "bae-types",
@@ -1018,6 +1047,7 @@ dependencies = [
  "bae-audio",
  "bae-catalogs",
  "bae-core",
+ "bae-db",
  "bae-diagnostics",
  "bae-util",
  "coven",

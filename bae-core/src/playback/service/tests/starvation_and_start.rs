@@ -415,25 +415,25 @@ fn prepared_track_with_pregap_segments(
             role: DbAudioSegmentRole::AudioPregap,
             file_id: "pregap-file".to_string(),
             buffer: pregap_buffer.clone(),
-            span: crate::db::SegmentSpan {
+            span: bae_db::SegmentSpan {
                 start_sample: 1_000,
                 end_sample: None,
                 start_byte: Some(100),
                 end_byte: None,
             },
-            scrub_points: crate::db::ScrubPoints::new(Vec::new()),
+            scrub_points: bae_db::ScrubPoints::new(Vec::new()),
         },
         PreparedAudioSegment {
             role: DbAudioSegmentRole::Main,
             file_id: "main-file".to_string(),
             buffer: main_buffer.clone(),
-            span: crate::db::SegmentSpan {
+            span: bae_db::SegmentSpan {
                 start_sample: 44_100,
                 end_sample: Some(88_200),
                 start_byte: Some(2_000),
                 end_byte: Some(4_000),
             },
-            scrub_points: crate::db::ScrubPoints::new(Vec::new()),
+            scrub_points: bae_db::ScrubPoints::new(Vec::new()),
         },
     ];
     (prepared, pregap_buffer, main_buffer)

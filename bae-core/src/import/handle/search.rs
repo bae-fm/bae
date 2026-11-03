@@ -66,10 +66,7 @@ impl ImportServiceHandle {
     ///
     /// Called after the preference is written, so every search started from
     /// here on is started without the source and has nothing to close.
-    pub async fn stop_asking_source(
-        &self,
-        source: LookupCatalog,
-    ) -> Result<(), crate::db::DbError> {
+    pub async fn stop_asking_source(&self, source: LookupCatalog) -> Result<(), bae_db::DbError> {
         self.runtime.switch_source_off(source).await
     }
 
@@ -150,7 +147,7 @@ impl ImportServiceHandle {
         query: SearchQuery,
         source: LookupCatalog,
     ) -> Result<GroupedSearchResults, crate::import::ImportError> {
-        use crate::db::LibraryCheck;
+        use bae_db::LibraryCheck;
 
         let results = bae_catalogs::search::search_provider(
             &self.catalogs.search_session(source).await?,
@@ -164,7 +161,7 @@ impl ImportServiceHandle {
 
         let statuses = self.database.check_releases_in_library(&checks).await?;
 
-        let status_map: HashMap<String, crate::db::LibraryStatus> =
+        let status_map: HashMap<String, bae_db::LibraryStatus> =
             statuses.into_iter().map(|s| (s.release_id.clone(), s)).collect();
 
         // `check_releases_in_library` returns exactly one status per input check,

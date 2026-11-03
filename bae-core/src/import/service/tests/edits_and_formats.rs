@@ -1,4 +1,4 @@
-use crate::db::DbTrack;
+use bae_db::DbTrack;
 /// Deterministic clock for the audio-format tests — the exact instant is
 /// immaterial to what they assert, only that the same one feeds every row.
 fn test_clock() -> FixedClock {
@@ -31,7 +31,7 @@ fn cue_backed_tracks(dir: &str) -> Vec<TrackFile> {
                 id: format!("track-{index}"),
                 release_id: "rel".to_string(),
                 title: format!("Track {index}"),
-                medium_id: crate::db::identity::release_medium_id("rel", 1),
+                medium_id: bae_db::identity::release_medium_id("rel", 1),
                 side: std::num::NonZeroU8::MIN,
                 track_number: std::num::NonZeroU32::new(
                     u32::try_from(index + 1).expect("a test track number fits u32"),
@@ -79,7 +79,7 @@ fn build_audio_formats_gives_ape_cue_tracks_real_end_bytes() {
     let main_segments: Vec<_> = built
         .audio_segments
         .iter()
-        .filter(|segment| segment.role == crate::db::DbAudioSegmentRole::Main)
+        .filter(|segment| segment.role == bae_db::DbAudioSegmentRole::Main)
         .collect();
     let ends: Vec<Option<u64>> = main_segments.iter().map(|segment| segment.end_byte).collect();
     // Non-last tracks carry a real, ascending, in-file end byte.

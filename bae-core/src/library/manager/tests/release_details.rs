@@ -113,7 +113,7 @@ async fn storage_page_rows_carry_each_releases_own_cover() {
         .views().get_storage_page(
             &crate::library::views::StorageSortCriterion {
                 field: crate::library::views::StorageSortField::AlbumTitle,
-                direction: crate::db::SortDirection::Ascending,
+                direction: bae_db::SortDirection::Ascending,
             },
             crate::library::views::StorageFilter::All,
             0,
@@ -221,7 +221,7 @@ async fn release_source_audio_summary_uses_every_file_without_track_formats() {
     let (manager, _temp_dir, _album, release) = manager_with_release().await;
 
     let source = |content_type, layout, codec: &str, bitrate_kbps: Option<i64>| {
-        crate::db::source_audio::SourceAudioFile {
+        bae_db::source_audio::SourceAudioFile {
             layout: Some(layout),
             content_type,
             duration_ms: 90_000,
@@ -234,9 +234,9 @@ async fn release_source_audio_summary_uses_every_file_without_track_formats() {
             },
         }
     };
-    let flac = source(ContentType::Flac, crate::db::source_audio::SourceAudioLayout::Cue, "FLAC", None);
+    let flac = source(ContentType::Flac, bae_db::source_audio::SourceAudioLayout::Cue, "FLAC", None);
     let mp3 =
-        source(ContentType::Mp3, crate::db::source_audio::SourceAudioLayout::File, "MP3", Some(320));
+        source(ContentType::Mp3, bae_db::source_audio::SourceAudioLayout::File, "MP3", Some(320));
     for (name, facts) in [("01-disc.flac", flac.clone()), ("02-bonus.mp3", mp3.clone())] {
         let mut file = NewReleaseFile::new(
             &release.id,
@@ -253,15 +253,15 @@ async fn release_source_audio_summary_uses_every_file_without_track_formats() {
     assert!(detail.tracks.is_empty());
     assert_eq!(
         detail.source_audio,
-        Some(crate::db::source_audio::SourceAudioSummary::Mixed {
+        Some(bae_db::source_audio::SourceAudioSummary::Mixed {
             differences: vec![
-                crate::db::source_audio::SourceAudioDifference::Layout {
+                bae_db::source_audio::SourceAudioDifference::Layout {
                     layouts: vec![
-                        crate::db::source_audio::SourceAudioLayout::Cue,
-                        crate::db::source_audio::SourceAudioLayout::File,
+                        bae_db::source_audio::SourceAudioLayout::Cue,
+                        bae_db::source_audio::SourceAudioLayout::File,
                     ],
                 },
-                crate::db::source_audio::SourceAudioDifference::Codec {
+                bae_db::source_audio::SourceAudioDifference::Codec {
                     codecs: vec!["FLAC".to_string(), "MP3".to_string()],
                 },
             ],
@@ -275,8 +275,8 @@ async fn find_release_detail_surfaces_seeded_tracks() {
 
     // Seed two tracks; the detail resolver must surface both with their
     // titles and track numbers (not just report emptiness).
-    let t1 = crate::db::DbTrack::new_test(&release.id, TRACK_1, "Opening", 1);
-    let t2 = crate::db::DbTrack::new_test(&release.id, TRACK_2, "Closing", 2);
+    let t1 = bae_db::DbTrack::new_test(&release.id, TRACK_1, "Opening", 1);
+    let t2 = bae_db::DbTrack::new_test(&release.id, TRACK_2, "Closing", 2);
     manager.database.insert_track(&t1).await.unwrap();
     manager.database.insert_track(&t2).await.unwrap();
 
@@ -299,7 +299,7 @@ async fn display_artist_is_set_only_for_a_compilation() {
         let mut album = create_test_album();
         album.is_compilation = is_compilation;
         let release = create_test_release(&album.id);
-        let track = crate::db::DbTrack::new_test(&release.id, TRACK_A, "Track Title", 1);
+        let track = bae_db::DbTrack::new_test(&release.id, TRACK_A, "Track Title", 1);
         let guest = DbArtist {
             id: "75c512c4-41b6-438d-89a6-d5929fa0697d".to_string(),
             name: "Guest Performer".to_string(),
@@ -308,7 +308,7 @@ async fn display_artist_is_set_only_for_a_compilation() {
             musicbrainz_artist_id: None,
             created_at: Utc::now(),
         };
-        let track_artist = crate::db::DbTrackArtist::new(&track.id, &guest.id, 0, Utc::now());
+        let track_artist = bae_db::DbTrackArtist::new(&track.id, &guest.id, 0, Utc::now());
         manager.database.insert_album(&album).await.unwrap();
         insert_release(&manager, &release).await;
         manager.database.insert_artist(&guest).await.unwrap();
@@ -338,7 +338,7 @@ async fn gallery_includes_cloud_only_image_files_with_no_local_path() {
 
     // An image file for the release with no local copy on this device — the
     // release's images live only in the cloud here.
-    let image = crate::db::NewReleaseFile::new(
+    let image = bae_db::NewReleaseFile::new(
         &release.id,
         "back.jpg",
         bae_util::content_type::ContentType::Jpeg,
@@ -421,19 +421,19 @@ async fn resolve_to_track_ids_expands_album_to_primary_release() {
     insert_release(&manager, &release1).await;
     insert_release(&manager, &release2).await;
 
-    let old = crate::db::DbTrack::new_test(
+    let old = bae_db::DbTrack::new_test(
         &release1.id,
         "48ae00a1-d7a5-443c-8240-f999fc4ddfcc",
         "Old A",
         1,
     );
-    let p1 = crate::db::DbTrack::new_test(
+    let p1 = bae_db::DbTrack::new_test(
         &release2.id,
         "cc4180bc-58f5-456f-8116-f9b2099f5b7f",
         "New A",
         1,
     );
-    let p2 = crate::db::DbTrack::new_test(
+    let p2 = bae_db::DbTrack::new_test(
         &release2.id,
         "cc4181bc-58f5-4722-8116-fab2099f5d32",
         "New B",

@@ -63,7 +63,7 @@ async fn a_key_discogs_cannot_be_asked_about_is_stored_unchecked_with_why() {
 /// Seed an album with two releases, each holding two tracks inserted in
 /// playing order, so the library order is deterministic.
 async fn seed_two_release_library(manager: &LibraryManager) -> (String, String) {
-    use crate::db::DbTrack;
+    use bae_db::DbTrack;
     let mut album = create_test_album();
     album.id = "1250a7bb-41ed-4500-8ab4-04f5d3461e30".to_string();
     let mut rel1 = create_test_release(&album.id);
@@ -238,7 +238,7 @@ async fn seed_release_tracks(manager: &LibraryManager, count: usize) -> Vec<Stri
     let mut track_ids = Vec::with_capacity(count);
     for i in 0..count {
         let track_id = bae_util::test_ids::test_uuid(&format!("track-{i}"));
-        let track = crate::db::DbTrack::new_test(
+        let track = bae_db::DbTrack::new_test(
             &release.id,
             &track_id,
             &format!("Track Title {i}"),

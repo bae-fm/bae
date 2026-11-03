@@ -40,7 +40,7 @@ impl LibraryManager {
     }
 
     /// This device's preferences for the library, as stored now.
-    pub async fn preferences(&self) -> Result<crate::preferences::Preferences, crate::db::DbError> {
+    pub async fn preferences(&self) -> Result<crate::preferences::Preferences, bae_db::DbError> {
         crate::preferences::preferences(&self.database).await
     }
 
@@ -170,7 +170,7 @@ impl LibraryManager {
     /// current ones.
     pub async fn metadata_sources(
         &self,
-    ) -> Result<Vec<crate::preferences::CatalogAvailability>, crate::db::DbError> {
+    ) -> Result<Vec<crate::preferences::CatalogAvailability>, bae_db::DbError> {
         Ok(self.preferences().await?.metadata_sources())
     }
 
@@ -269,7 +269,7 @@ impl LibraryManager {
 
     pub async fn save_presets(
         &self,
-    ) -> Result<Vec<crate::preferences::SavePreset>, crate::db::DbError> {
+    ) -> Result<Vec<crate::preferences::SavePreset>, bae_db::DbError> {
         Ok(self.preferences().await?.save_presets)
     }
 

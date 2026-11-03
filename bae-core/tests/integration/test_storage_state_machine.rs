@@ -6,9 +6,9 @@
 use bae_test_support as support;
 
 use bae_core::album_detail::ReleaseStorageState;
-use bae_core::db::{Database, DbAlbum, DbRelease, NewReleaseFile, SortDirection};
 use bae_core::library::views::{StorageFilter, StorageSortCriterion, StorageSortField};
 use bae_core::library::{CancellationToken, LibraryManager, LiveStorageBrowse, StorageBrowseView};
+use bae_db::{Database, DbAlbum, DbRelease, NewReleaseFile, SortDirection};
 use bae_util::content_type::ContentType;
 use chrono::Utc;
 use coven::MemoryStorage;
@@ -25,7 +25,7 @@ async fn setup_manager(
 ) -> (
     (
         bae_core::library::LibraryManager,
-        bae_core::db::Database,
+        bae_db::Database,
         bae_core::import::CatalogSessions,
         bae_core::library::CancellationToken,
     ),
@@ -39,7 +39,7 @@ async fn setup_with_cloud(
 ) -> (
     (
         bae_core::library::LibraryManager,
-        bae_core::db::Database,
+        bae_db::Database,
         bae_core::import::CatalogSessions,
         bae_core::library::CancellationToken,
     ),
@@ -63,7 +63,7 @@ async fn create_local_release(
     // inserts it.
     let artist_id = bae_util::test_ids::test_uuid("test-storage-artist");
     if mgr.get_artist_by_id(&artist_id).await.unwrap().is_none() {
-        mgr.insert_artist(&bae_core::db::DbArtist {
+        mgr.insert_artist(&bae_db::DbArtist {
             id: artist_id.to_string(),
             name: "Artist Name".to_string(),
             sort_name: None,
@@ -92,7 +92,7 @@ async fn create_local_release(
         created_at: now,
     };
     let release_id = release.id.clone();
-    let credit = bae_core::db::DbAlbumArtist::new_test(&album.id, &artist_id);
+    let credit = bae_db::DbAlbumArtist::new_test(&album.id, &artist_id);
     mgr.insert_album_with_release_and_tracks(&album, &[credit], &release, &[], &[], &[])
         .await
         .unwrap();
@@ -512,7 +512,7 @@ async fn storage_subscription_delivers_actions_on_cloud_home_transition() {
         },
         filter: StorageFilter::All,
         search: String::new(),
-        windows: [bae_core::db::LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect(),
+        windows: [bae_db::LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect(),
         selected: Default::default(),
     });
     let before = next_storage_release(&values, &release_id).await;

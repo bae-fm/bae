@@ -254,10 +254,10 @@ mod conversion_roundtrip {
 
     #[test]
     fn image_ref_round_trips() {
-        let core = bae_core::db::ImageRef {
+        let core = bae_db::ImageRef {
             id: "rel-123".to_string(),
             version: "v1".to_string(),
-            image_type: bae_core::db::LibraryImageType::Artist,
+            image_type: bae_db::LibraryImageType::Artist,
         };
         assert_eq!(core, BridgeImageRef::from_core(core.clone()).into_core());
     }
@@ -265,14 +265,14 @@ mod conversion_roundtrip {
     #[test]
     fn artist_search_result_keeps_identity_fields() {
         let core = bae_core::album_detail::ArtistSearchResult {
-            credit_names: vec![bae_core::db::credits::ArtistCreditName {
+            credit_names: vec![bae_db::credits::ArtistCreditName {
                 artist_id: "artist-1".to_string(),
-                credit: bae_core::db::credits::CreditName {
+                credit: bae_db::credits::CreditName {
                     key: "printed name".to_string(),
                     name: "Printed Name".to_string(),
                 },
             }],
-            artist: bae_core::db::DbArtist {
+            artist: bae_db::DbArtist {
                 id: "artist-1".to_string(),
                 name: "Artist Name".to_string(),
                 sort_name: Some("Name, Artist".to_string()),
@@ -280,10 +280,10 @@ mod conversion_roundtrip {
                 musicbrainz_artist_id: Some("musicbrainz-1".to_string()),
                 created_at: "2026-01-01T00:00:00Z".parse().unwrap(),
             },
-            image: Some(bae_core::db::ImageRef {
+            image: Some(bae_db::ImageRef {
                 id: "artist-1".to_string(),
                 version: "image-1".to_string(),
-                image_type: bae_core::db::LibraryImageType::Artist,
+                image_type: bae_db::LibraryImageType::Artist,
             }),
         };
 
@@ -408,7 +408,7 @@ mod conversion_roundtrip {
                                 sources: vec![bae_core::import::ReleaseEditTrackSource {
                                     file_id: "file-id".to_string(),
                                     name: "source.flac".to_string(),
-                                    layout: bae_core::db::source_audio::SourceAudioLayout::File,
+                                    layout: bae_db::source_audio::SourceAudioLayout::File,
                                 }],
                                 duration_ms: 123_000,
                                 position_text: "3".to_string(),
@@ -463,7 +463,7 @@ fn every_kind_of_fact() -> bae_types::pressing::PressingFacts {
 /// already names the kind of failure, so the detail carries only the fault.
 #[test]
 fn a_database_fault_is_not_prefixed_twice() {
-    let error = bae_core::library::LibraryError::Database(bae_core::db::DbError::Message(
+    let error = bae_core::library::LibraryError::Database(bae_db::DbError::Message(
         "invalid folder scan value".into(),
     ));
     let BridgeError::Diagnostic { detail, .. } = BridgeError::database_query(error) else {

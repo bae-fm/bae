@@ -417,9 +417,9 @@ pub(crate) trait DatabaseFault {
 /// The message a `DbError` carries, without its own "database error:" prefix.
 ///
 /// Non-message failures retain their complete diagnostic chain.
-fn db_fault(error: bae_core::db::DbError) -> String {
+fn db_fault(error: bae_db::DbError) -> String {
     match error {
-        bae_core::db::DbError::Message(message) => message,
+        bae_db::DbError::Message(message) => message,
         other => other.to_string(),
     }
 }
@@ -730,7 +730,7 @@ mirror_enum! {
 }
 
 mirror_enum! {
-    BridgeStorageSortDirection = bae_core::db::SortDirection,
+    BridgeStorageSortDirection = bae_db::SortDirection,
     from_core: fn,
     into_core: fn,
     variants: { Ascending, Descending },
@@ -784,7 +784,7 @@ mirror_struct! {
 }
 
 mirror_enum! {
-    BridgeSortDirection = bae_core::db::SortDirection,
+    BridgeSortDirection = bae_db::SortDirection,
     into_core: pub(crate) fn,
     variants: { Ascending, Descending },
 }

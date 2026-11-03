@@ -3,7 +3,7 @@ use super::*;
 /// The service's follow of the sides of the staged crossing's tracks, reading
 /// nothing until a crossing is staged.
 pub(super) fn staged_sides_follow(
-    database: &crate::db::Database,
+    database: &bae_db::Database,
     diagnostics: &Diagnostics,
 ) -> LibraryFollow<Vec<String>, Vec<PlaybackTrackInfo>> {
     LibraryFollow::new(
@@ -222,7 +222,7 @@ impl PlaybackService {
     /// setting — `None` when it waits for Play.
     async fn side_pause_countdown_from_now(
         &self,
-    ) -> Result<Option<chrono::DateTime<chrono::Utc>>, crate::db::DbError> {
+    ) -> Result<Option<chrono::DateTime<chrono::Utc>>, bae_db::DbError> {
         let Some(length) =
             crate::preferences::preferences(&self.database).await?.side_pause_countdown.duration()
         else {
@@ -259,7 +259,7 @@ impl PlaybackService {
             .ok_or_else(|| PlaybackError::not_found("Track", track_id))
     }
 
-    pub(super) async fn side_pause_enabled(&self) -> Result<bool, crate::db::DbError> {
+    pub(super) async fn side_pause_enabled(&self) -> Result<bool, bae_db::DbError> {
         Ok(crate::preferences::preferences(&self.database).await?.pause_between_sides
             && self.playback_queue.repeat_mode() != RepeatMode::Track)
     }

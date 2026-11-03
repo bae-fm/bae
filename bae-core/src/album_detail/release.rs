@@ -2,8 +2,8 @@
 //! projections that produce them from raw DB aggregates.
 
 use super::*;
-use crate::db::DbReleaseDetail;
 use crate::library::views::DbReleaseSummary;
+use bae_db::DbReleaseDetail;
 
 /// The per-release inputs the library's views read beside the release's rows and
 /// threads into the release projections: whether a cloud home exists at all
@@ -108,7 +108,7 @@ pub struct ReleaseUpload {
 }
 
 impl ReleaseUpload {
-    pub(crate) fn from_raw(raw: crate::db::DbReleaseUpload) -> Self {
+    pub(crate) fn from_raw(raw: bae_db::DbReleaseUpload) -> Self {
         let progress = crate::library::UploadProgress::of_release(&raw);
         use crate::library::TransferStage;
         Self {
@@ -173,7 +173,7 @@ impl ReleaseDetail {
     pub(crate) fn from_raw(
         raw: DbReleaseDetail,
         download: Option<crate::library::DownloadPhase>,
-        album_artists: &[crate::db::credits::LibraryCredit],
+        album_artists: &[bae_db::credits::LibraryCredit],
         release_index: usize,
         ctx: &ReleaseResolveCtx,
     ) -> ReleaseDetail {
@@ -184,9 +184,9 @@ impl ReleaseDetail {
             .into_iter()
             .map(|entry| {
                 let artist_names = if entry.artists.is_empty() {
-                    crate::db::credits::library_line(album_artists)
+                    bae_db::credits::library_line(album_artists)
                 } else {
-                    crate::db::credits::library_line(&entry.artists)
+                    bae_db::credits::library_line(&entry.artists)
                 };
                 let position = raw.mediums.position(&entry.track);
                 let position_text = position.text();

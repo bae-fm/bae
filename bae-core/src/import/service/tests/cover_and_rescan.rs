@@ -213,7 +213,7 @@ async fn retained_unsupported_embedded_cover_is_only_used_when_explicitly_select
             // The embedded artwork is no image the store reads, so a stored
             // cover is the folder's front.jpg.
             test.manager
-                .get_library_image(&release_id, &crate::db::LibraryImageType::Cover)
+                .get_library_image(&release_id, &bae_db::LibraryImageType::Cover)
                 .await
                 .unwrap()
                 .expect("the folder's cover is stored");
@@ -367,7 +367,7 @@ async fn selected_local_cover_path_must_match_discovered_file() {
                 watched_folder_path: std::path::PathBuf::from(&watched_folder_path),
                 scope: crate::import::ReleaseFileScope::Recursive,
                 file_edit_revision: 0,
-                relative_folder: crate::db::RelativeFolder::test("Candidate"),
+                relative_folder: bae_db::RelativeFolder::test("Candidate"),
                 grouping: None,
             }),
         )
@@ -491,7 +491,7 @@ async fn rescan_seeded_root(
                 path: root.join("old-key"),
                 name: "Old Candidate".to_string(),
                 watched_folder_path: root.to_path_buf(),
-                relative_folder: crate::db::RelativeFolder::test("old-key"),
+                relative_folder: bae_db::RelativeFolder::test("old-key"),
                 grouping: None,
                 files: Vec::new(),
                 tags: None,

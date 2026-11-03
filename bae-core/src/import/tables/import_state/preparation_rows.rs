@@ -136,7 +136,7 @@ impl CandidatePreparationRead {
 }
 
 pub(super) fn load_preparation_on(
-    sql: &(impl crate::db::client::query::QueryOne + crate::db::client::query::QueryRows),
+    sql: &(impl bae_db::client::query::QueryOne + bae_db::client::query::QueryRows),
     content_hash: &str,
 ) -> Result<Option<CandidatePreparationRead>, DbError> {
     let Some(state) = load_states_on(sql, CandidateRows::One(content_hash))?.remove(content_hash)

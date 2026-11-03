@@ -1,5 +1,5 @@
 use super::*;
-use crate::db::client::query::CandidateRows;
+use bae_db::client::query::CandidateRows;
 
 mod album_pick_rows;
 mod draft_store;
@@ -44,12 +44,12 @@ pub(super) use standing_rows::{
     RuntimeFactColumns, RUNTIME_FACT_COLUMNS,
 };
 
-use crate::db::RelativeFolder;
 use crate::import::folder_scanner::{
     CandidateFileEdits, FolderReleaseDecision, FolderReleaseDecisionAuthor,
     FolderReleaseDecisionKey, FolderReleaseDecisions, StoredCandidateEdits,
 };
 use crate::import::CandidateKey;
+use bae_db::RelativeFolder;
 use rows::{insert_provenance, load_states_rows_on};
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
@@ -121,7 +121,7 @@ pub(super) fn require_current_candidate(
 /// `folder`, a stored folder under the watched folder `root`, as the folder
 /// below it.
 pub(super) fn relative_below(root: &Path, folder: &Path) -> Result<RelativeFolder, DbError> {
-    crate::db::watched_path::candidate_relative_path(root, folder)
+    bae_db::watched_path::candidate_relative_path(root, folder)
         .map_err(|error| DbError::Message(error.to_string()))
 }
 
@@ -173,7 +173,7 @@ impl ImportTables {
     ) -> Result<Vec<crate::import::WatchedFolder>, DbError> {
         let roots = self.watched_import_roots().await?;
         for (index, root) in roots.iter().enumerate() {
-            crate::db::watched_path::validate_absolute_root(root)?;
+            bae_db::watched_path::validate_absolute_root(root)?;
             if let Some(conflict) = roots[index + 1..]
                 .iter()
                 .find(|other| crate::import::watched_folder::paths_overlap(root, other))
@@ -196,7 +196,7 @@ impl ImportTables {
         &self,
         watched_folder_path: &Path,
     ) -> Result<HashSet<RelativeFolder>, DbError> {
-        let (below_first, below_past) = crate::db::watched_path::paths_below(watched_folder_path);
+        let (below_first, below_past) = bae_db::watched_path::paths_below(watched_folder_path);
         let paths: Vec<PathBuf> = self
             .database
             .read(move |sql| {
@@ -210,7 +210,7 @@ impl ImportTables {
             .await?;
         let mut below = HashSet::new();
         for path in &paths {
-            crate::db::watched_path::validate_stored_folder(path)?;
+            bae_db::watched_path::validate_stored_folder(path)?;
             below.insert(relative_below(watched_folder_path, path)?);
         }
         Ok(below)
@@ -243,7 +243,7 @@ impl ImportTables {
     /// The watched folders inside `path`, not `path` itself, in their order:
     /// those whose key lies in the range of paths below it.
     pub async fn watched_import_folders_below(&self, path: &Path) -> Result<Vec<PathBuf>, DbError> {
-        let (first, past) = crate::db::watched_path::paths_below(path);
+        let (first, past) = bae_db::watched_path::paths_below(path);
         let path = coven::path_bytes(path);
         self.database
             .read(move |sql| {
@@ -278,7 +278,7 @@ impl ImportTables {
     /// a read first, since the store refuses a write that changes nothing; a
     /// folder watched in between fails the write.
     pub async fn add_watched_import_folder(&self, path: &Path) -> Result<bool, DbError> {
-        let path = crate::db::watched_path::canonical_absolute_root(path)?;
+        let path = bae_db::watched_path::canonical_absolute_root(path)?;
         if self.is_watched_import_folder(&path).await? {
             return Ok(false);
         }
@@ -327,7 +327,7 @@ impl ImportTables {
         candidate_path: &Path,
         skipped: bool,
     ) -> Result<bool, DbError> {
-        crate::db::watched_path::validate_stored_folder(candidate_path)?;
+        bae_db::watched_path::validate_stored_folder(candidate_path)?;
         let candidate_path = candidate_path.to_path_buf();
         // The store refuses a write that changes nothing, so read first.
         let stored = {
@@ -430,7 +430,7 @@ impl ImportTables {
         &self,
         folder: &FolderReleaseDecisionKey,
     ) -> Result<Option<CandidateKey>, DbError> {
-        let anchor = coven::path_bytes(&crate::db::watched_path::folder_below(
+        let anchor = coven::path_bytes(&bae_db::watched_path::folder_below(
             &folder.watched_folder_path,
             &folder.relative_folder,
         ));
@@ -457,8 +457,8 @@ impl ImportTables {
         decision: crate::import::folder_scanner::FolderReleaseDecision,
     ) -> Result<bool, DbError> {
         let folder =
-            crate::db::watched_path::folder_below(&key.watched_folder_path, &key.relative_folder);
-        let (below_first, below_past) = crate::db::watched_path::paths_below(&folder);
+            bae_db::watched_path::folder_below(&key.watched_folder_path, &key.relative_folder);
+        let (below_first, below_past) = bae_db::watched_path::paths_below(&folder);
         let folder = coven::path_bytes(&folder);
         let root = coven::path_bytes(&key.watched_folder_path);
         self.database
@@ -501,7 +501,7 @@ impl ImportTables {
         watched_folder_path: &Path,
         folder: &Path,
     ) -> Result<std::collections::BTreeSet<CandidateKey>, DbError> {
-        let (below_first, below_past) = crate::db::watched_path::paths_below(folder);
+        let (below_first, below_past) = bae_db::watched_path::paths_below(folder);
         let (root, folder) = (coven::path_bytes(watched_folder_path), coven::path_bytes(folder));
         self.database
             .read(move |sql| {
@@ -531,7 +531,7 @@ impl ImportTables {
         watched_folder_path: &Path,
     ) -> Result<FolderReleaseDecisions, DbError> {
         let watched_folder_path = watched_folder_path.to_path_buf();
-        let (below_first, below_past) = crate::db::watched_path::paths_below(&watched_folder_path);
+        let (below_first, below_past) = bae_db::watched_path::paths_below(&watched_folder_path);
         self.database
             .read(move |sql| {
                 let rows = sql.query(
@@ -554,7 +554,7 @@ impl ImportTables {
                 )?;
                 let mut readings = HashMap::new();
                 for (folder, combined, author, grouping) in rows {
-                    crate::db::watched_path::validate_stored_folder(&folder)?;
+                    bae_db::watched_path::validate_stored_folder(&folder)?;
                     let path = relative_below(&watched_folder_path, &folder)?;
                     let author = match author.as_str() {
                         "user" => FolderReleaseDecisionAuthor::User,

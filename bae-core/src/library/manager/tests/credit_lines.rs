@@ -39,10 +39,10 @@ async fn credited_library() -> CreditedLibrary {
     {
         manager
             .database
-            .insert_album_artist(&crate::db::DbAlbumArtist {
-                credit: credit.map(crate::db::credits::CreditName::of),
+            .insert_album_artist(&bae_db::DbAlbumArtist {
+                credit: credit.map(bae_db::credits::CreditName::of),
                 join_phrase: join.map(str::to_string),
-                ..crate::db::DbAlbumArtist::new(&album.id, artist, position, now)
+                ..bae_db::DbAlbumArtist::new(&album.id, artist, position, now)
             })
             .await
             .unwrap();
@@ -56,9 +56,9 @@ async fn credited_library() -> CreditedLibrary {
     {
         manager
             .database
-            .insert_track_artist(&crate::db::DbTrackArtist {
+            .insert_track_artist(&bae_db::DbTrackArtist {
                 join_phrase: join.map(str::to_string),
-                ..crate::db::DbTrackArtist::new(&featured.id, artist, position, now)
+                ..bae_db::DbTrackArtist::new(&featured.id, artist, position, now)
             })
             .await
             .unwrap();
@@ -180,7 +180,7 @@ async fn a_merged_artists_credit_prints_the_survivor_unless_a_printed_name_was_s
 async fn an_edit_prints_typed_artists_with_commas_and_drops_the_last_join() {
     let library = credited_library().await;
     let manager = &library.manager;
-    let artist_a = crate::db::ExistingArtist::from(
+    let artist_a = bae_db::ExistingArtist::from(
         manager.get_artist_by_id(CREDIT_ARTIST_A).await.unwrap().expect("Artist A"),
     );
     let edit = |album_artists: Vec<crate::import::Credited>| crate::import::ReleaseUserEdit {

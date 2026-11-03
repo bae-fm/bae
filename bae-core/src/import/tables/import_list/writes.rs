@@ -5,9 +5,9 @@
 
 use super::order::{order_column, tab_column, Shown};
 use super::*;
-use crate::db::LibraryPageWindow;
 use crate::import::selection::SelectionChange;
 use crate::import::{CandidateKey, FolderReleaseDecisionKey};
+use bae_db::LibraryPageWindow;
 
 /// What a change to a selection came to.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

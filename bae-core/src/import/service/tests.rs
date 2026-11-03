@@ -1,9 +1,9 @@
 use super::*;
-use crate::db::watched_path::host_root;
-use crate::db::Database;
 use crate::import::folder_scanner::ScannedFile;
 use crate::import::import_cancel::ImportStop;
 use crate::library::LibraryManager;
+use bae_db::watched_path::host_root;
+use bae_db::Database;
 use bae_test_support::HANG_GUARD;
 use coven::FixedClock;
 use coven::SequentialIds;
@@ -162,7 +162,7 @@ async fn store_scanned_candidate(
             watched_folder_path: folder.to_path_buf(),
             scope: crate::import::ReleaseFileScope::Recursive,
             file_edit_revision: 0,
-            relative_folder: crate::db::RelativeFolder::test(name),
+            relative_folder: bae_db::RelativeFolder::test(name),
             grouping: None,
         }),
     )
@@ -437,7 +437,7 @@ impl CoordinatorHarness {
                     path: root_path.join("Group/Release"),
                     name: "Release".to_string(),
                     watched_folder_path: std::path::PathBuf::from(&root),
-                    relative_folder: crate::db::RelativeFolder::test("Group/Release"),
+                    relative_folder: bae_db::RelativeFolder::test("Group/Release"),
                     grouping: None,
                     files: Vec::new(),
                     tags: None,
@@ -521,13 +521,13 @@ fn terminal_import_failure_preserves_a_label_identity_conflict() {
     let failed_at = chrono::DateTime::parse_from_rfc3339("2026-01-15T12:00:00Z")
         .unwrap()
         .with_timezone(&chrono::Utc);
-    let label = |id: &str| crate::db::ExistingLabel {
+    let label = |id: &str| bae_db::ExistingLabel {
         label_id: id.to_string(),
         name: "Label Name".to_string(),
         musicbrainz_label_id: None,
         discogs_label_id: None,
     };
-    let conflict = crate::db::LabelIdentityConflict {
+    let conflict = bae_db::LabelIdentityConflict {
         incoming_label_name: "Label Name".to_string(),
         discogs_label_id: "7190".to_string(),
         musicbrainz_label_id: "mb-label".to_string(),
@@ -535,7 +535,7 @@ fn terminal_import_failure_preserves_a_label_identity_conflict() {
         musicbrainz_label: label("by-musicbrainz"),
     };
     let error = crate::import::ImportError::from(
-        crate::db::IdentityWriteError::LabelIdentityConflict(Box::new(conflict.clone())),
+        bae_db::IdentityWriteError::LabelIdentityConflict(Box::new(conflict.clone())),
     );
 
     let failure = ImportService::terminal_failure(&error, failed_at);
@@ -548,14 +548,14 @@ fn terminal_import_failure_preserves_an_artist_identity_conflict() {
     let failed_at = chrono::DateTime::parse_from_rfc3339("2026-01-15T12:00:00Z")
         .unwrap()
         .with_timezone(&chrono::Utc);
-    let discogs_artist = crate::db::ExistingArtist {
+    let discogs_artist = bae_db::ExistingArtist {
         artist_id: "artist-discogs".to_string(),
         name: "Artist One".to_string(),
         sort_name: None,
         musicbrainz_artist_id: None,
         discogs_artist_id: Some("discogs-1".to_string()),
     };
-    let musicbrainz_artist = crate::db::ExistingArtist {
+    let musicbrainz_artist = bae_db::ExistingArtist {
         artist_id: "artist-musicbrainz".to_string(),
         name: "Artist Two".to_string(),
         sort_name: None,
@@ -563,7 +563,7 @@ fn terminal_import_failure_preserves_an_artist_identity_conflict() {
         discogs_artist_id: None,
     };
     let error = crate::import::ImportError::ArtistIdentityConflict(Box::new(
-        crate::db::ArtistIdentityConflict {
+        bae_db::ArtistIdentityConflict {
             incoming_artist_name: "Mapped Artist".to_string(),
             discogs_artist_id: "discogs-1".to_string(),
             musicbrainz_artist_id: "musicbrainz-1".to_string(),
@@ -577,7 +577,7 @@ fn terminal_import_failure_preserves_an_artist_identity_conflict() {
     assert_eq!(failure.failed_at, failed_at);
     assert!(matches!(
         failure.identity_conflict,
-        Some(crate::import::IdentityConflict::Artist(crate::db::ArtistIdentityConflict {
+        Some(crate::import::IdentityConflict::Artist(bae_db::ArtistIdentityConflict {
             discogs_artist: actual_discogs,
             musicbrainz_artist: actual_musicbrainz,
             ..
@@ -589,7 +589,7 @@ fn terminal_import_failure_preserves_an_artist_identity_conflict() {
 /// commit lock of their own.
 fn test_scan_services(
     service: &ImportService,
-    database: &crate::db::Database,
+    database: &bae_db::Database,
     preparations: &crate::import::CandidatePreparations,
     event_tx: crate::import::handle::ImportEventBus,
     folder_watcher: Arc<FolderWatcher>,

@@ -137,7 +137,7 @@ impl FileBuffers {
 /// buffers onward into the slot, and an owner hands its retained state to no
 /// caller. Kept in this module so the only reach into the cache stays here.
 pub(super) async fn prepare_track_for_playback(
-    database: &crate::db::Database,
+    database: &bae_db::Database,
     diagnostics: &Diagnostics,
     track_id: &str,
     file_buffers: &mut FileBuffers,

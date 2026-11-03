@@ -33,9 +33,7 @@ fn emit_step(tx: &mpsc::UnboundedSender<IdentifyEvent>, event: IdentifyEvent) {
 /// reach. A projection of `metadata_sources()`, read once when the run starts,
 /// so a key added or a source switched on since joins the next run rather than
 /// this one.
-async fn run_providers(
-    database: &crate::db::Database,
-) -> Result<Vec<LookupCatalog>, crate::db::DbError> {
+async fn run_providers(database: &bae_db::Database) -> Result<Vec<LookupCatalog>, bae_db::DbError> {
     Ok(crate::preferences::asked_sources(
         &crate::preferences::preferences(database).await?.metadata_sources(),
     ))
@@ -103,7 +101,7 @@ pub struct IdentifyServiceHandle {
 
 struct IdentifyServiceInner {
     /// The library's store: the sources it asks.
-    database: crate::db::Database,
+    database: bae_db::Database,
     /// Import's tables: what release groups were read to be.
     tables: crate::import::tables::ImportTables,
     /// The catalogs a run's lookups ask.
@@ -159,7 +157,7 @@ impl IdentifyServiceHandle {
     /// `candidates` is the runtime `event_tx` records into, which ends a
     /// removed or rebound candidate's run in the send that says so.
     pub fn new(
-        database: crate::db::Database,
+        database: bae_db::Database,
         catalogs: crate::import::CatalogSessions,
         release_reads: crate::import::ReleaseReads,
         runtime_handle: tokio::runtime::Handle,
@@ -227,7 +225,7 @@ impl IdentifyServiceHandle {
         choices: LookupChoices,
         title_search: Option<TitleSearch>,
         snapshots: ExtractionWatch,
-    ) -> Result<bool, crate::db::DbError> {
+    ) -> Result<bool, bae_db::DbError> {
         // Read before the prior run is cancelled, so nothing comes between
         // the cancel and the start.
         let providers = run_providers(&self.inner.database).await?;

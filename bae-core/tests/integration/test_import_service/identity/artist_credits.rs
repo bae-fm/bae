@@ -54,7 +54,7 @@ async fn import_and_wait(
 }
 
 /// Every library artist whose name folds to `name`'s.
-async fn artists_named(f: &ImportFixture, name: &str) -> Vec<bae_core::db::DbArtist> {
+async fn artists_named(f: &ImportFixture, name: &str) -> Vec<bae_db::DbArtist> {
     let fold = |text: &str| {
         use unicode_normalization::UnicodeNormalization;
         text.nfd()
@@ -63,7 +63,7 @@ async fn artists_named(f: &ImportFixture, name: &str) -> Vec<bae_core::db::DbArt
             .to_lowercase()
     };
     let query = bae_core::library::LibrarySearchQuery::parse("rtist").expect("not blank");
-    let window = bae_core::db::LibraryPageWindow { offset: 0, limit: 100 };
+    let window = bae_db::LibraryPageWindow { offset: 0, limit: 100 };
     bae_core::library::views::LibraryViews::new(f.db.clone())
         .search_artists(&query, window)
         .await
@@ -85,8 +85,8 @@ async fn album_artist_id(f: &ImportFixture, album_id: &str) -> String {
         .clone()
 }
 
-fn library_artist(name: &str, discogs_artist_id: Option<&str>) -> bae_core::db::DbArtist {
-    bae_core::db::DbArtist {
+fn library_artist(name: &str, discogs_artist_id: Option<&str>) -> bae_db::DbArtist {
+    bae_db::DbArtist {
         id: uuid::Uuid::new_v4().to_string(),
         name: name.to_string(),
         sort_name: None,
@@ -252,8 +252,8 @@ async fn open_tagged_pane(
 async fn next_resolution(
     pane: &mut PaneQuery,
     name: &str,
-    mut accept: impl FnMut(&bae_core::db::CreditResolution) -> bool,
-) -> bae_core::db::CreditResolution {
+    mut accept: impl FnMut(&bae_db::CreditResolution) -> bool,
+) -> bae_db::CreditResolution {
     tokio::time::timeout(HANG_GUARD, async {
         loop {
             let projection = pane
@@ -293,7 +293,7 @@ async fn an_open_pane_reads_its_credit_into_the_library_when_another_import_comm
     let (tagged_key, mut pane) = open_tagged_pane(&f, &tagged_dir).await;
 
     next_resolution(&mut pane, "Artist Name", |resolution| {
-        *resolution == bae_core::db::CreditResolution::New
+        *resolution == bae_db::CreditResolution::New
     })
     .await;
 
@@ -301,10 +301,10 @@ async fn an_open_pane_reads_its_credit_into_the_library_when_another_import_comm
     let catalog_artist = album_artist_id(&f, &catalog_album).await;
 
     let resolution = next_resolution(&mut pane, "Artist Name", |resolution| {
-        matches!(resolution, bae_core::db::CreditResolution::Library { .. })
+        matches!(resolution, bae_db::CreditResolution::Library { .. })
     })
     .await;
-    let bae_core::db::CreditResolution::Library { artist } = resolution else {
+    let bae_db::CreditResolution::Library { artist } = resolution else {
         unreachable!("accepted only a library artist")
     };
     assert_eq!(artist.artist_id, catalog_artist);
@@ -337,7 +337,7 @@ async fn a_pane_offers_the_library_artists_a_shared_name_could_be() {
 
     let resolution = next_resolution(&mut pane, "Artist Name", |_| true).await;
 
-    let bae_core::db::CreditResolution::Ambiguous { artists } = resolution else {
+    let bae_db::CreditResolution::Ambiguous { artists } = resolution else {
         panic!("expected the credit to be ambiguous, got {resolution:?}");
     };
     let mut offered: Vec<_> = artists.into_iter().map(|artist| artist.artist_id).collect();

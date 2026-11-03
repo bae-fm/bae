@@ -2,7 +2,7 @@
 //! they are planned, over a store seeded with db's fixtures.
 
 use super::*;
-pub(crate) use crate::db::client::tests::*;
+pub(crate) use bae_db::test_fixtures::*;
 
 mod playback_now_tests;
 mod playback_queue_additions_tests;
@@ -27,7 +27,7 @@ pub(crate) async fn queue_items(
 
 #[tokio::test]
 async fn queue_items_order_track_artist_names_inside_the_aggregate() {
-    let (db, _tmp) = crate::db::client::tests::aggregate_ordering_tests::queue_db().await;
+    let (db, _tmp) = bae_db::test_fixtures::aggregate_ordering::queue_db().await;
     let items = queue_items(&db, &[TRACK_A]).await;
 
     assert_eq!(items.len(), 1);
@@ -39,8 +39,7 @@ async fn queue_items_order_track_artist_names_inside_the_aggregate() {
 /// resolved.
 #[tokio::test]
 async fn a_queue_longer_than_one_in_clause_reads_every_track() {
-    let (db, _tmp, track_ids) =
-        crate::db::client::tests::in_clause_chunking_tests::chunked_track_db().await;
+    let (db, _tmp, track_ids) = bae_db::test_fixtures::chunked_tracks::chunked_track_db().await;
     let mut requested = track_ids.clone();
     requested.insert(SQL_MAX_IN_VARS / 2, bae_util::test_ids::test_uuid("missing-track"));
 

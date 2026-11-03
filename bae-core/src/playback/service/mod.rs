@@ -28,8 +28,6 @@
 
 use super::RepeatMode;
 use super::{NextEntry, PlaybackQueue, PreviousAction, QueueEntryId};
-use crate::db::DbAudioSegmentRole;
-use crate::db::ResolvedTrackAudio;
 use crate::playback::audio_output::{
     AudioEvent, AudioEventReceiver, AudioOutput, AudioOutputDevice, AudioStream,
 };
@@ -40,6 +38,8 @@ use crate::playback::progress::{PlaybackProgress, PlaybackProgressHandle};
 use crate::playback::tables::{ContextFill, ContextFilled, PlaybackResumeRow, ReleaseStart};
 use crate::track_audio::data_source::FetchArbiter;
 use bae_audio::DecodeError;
+use bae_db::DbAudioSegmentRole;
+use bae_db::ResolvedTrackAudio;
 use bae_diagnostics::{
     AnomalyKind, Diagnostics, LocalId, PlaybackCommandKind, PlaybackOperation, PlaybackStartSource,
     ReportedThread, TelemetryEvent, TrackTransition,
@@ -240,9 +240,9 @@ struct PreparedAudioSegment {
     file_id: String,
     buffer: SharedSparseBuffer,
     /// Where this segment sits inside its backing file, in samples and bytes.
-    span: crate::db::SegmentSpan,
+    span: bae_db::SegmentSpan,
     /// The frames a decode inside this segment starts at.
-    scrub_points: crate::db::ScrubPoints,
+    scrub_points: bae_db::ScrubPoints,
 }
 
 impl PreparedAudioSegment {
@@ -424,7 +424,7 @@ pub struct PlaybackService {
     /// The library's store: the tracks playback reads, the resume row and
     /// listening history it writes, the preferences it plays by, and the
     /// files it streams.
-    database: crate::db::Database,
+    database: bae_db::Database,
     /// Mints the id of each play the listening history records.
     ids: coven::IdSourceRef,
     /// Where the service, its decoders, its fills and its watchers report a

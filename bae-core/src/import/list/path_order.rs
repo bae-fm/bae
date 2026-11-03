@@ -28,8 +28,8 @@ pub(crate) fn release_keys_in_path_order<'a>(
         })
         .collect();
     releases.sort_by(|left, right| {
-        crate::db::migrations::natural_order(&left.0, &right.0)
-            .then_with(|| crate::db::migrations::natural_order(&left.1, &right.1))
+        bae_db::migrations::natural_order(&left.0, &right.0)
+            .then_with(|| bae_db::migrations::natural_order(&left.1, &right.1))
     });
     releases.into_iter().map(|(_, _, key)| key).collect()
 }

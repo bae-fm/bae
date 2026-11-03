@@ -171,7 +171,7 @@ impl LibraryManager {
     /// (still readable, now droppable) in the write that ends the
     /// transition. No cloud read.
     pub(crate) async fn unpin_release_files(&self, release_id: &str) -> Result<(), LibraryError> {
-        self.run_storage_action(release_id, crate::db::StoredTransition::Unpin, async {
+        self.run_storage_action(release_id, bae_db::StoredTransition::Unpin, async {
             let files: Vec<coven::FileId> = self
                 .release_pinnable_files(release_id)
                 .await?

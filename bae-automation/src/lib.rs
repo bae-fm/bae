@@ -10,8 +10,6 @@ use bae_core::album_detail::{
     FileDetail, GalleryItem, GallerySource, ReleaseDetail, ReleaseStorageState, SearchResults,
     TrackDetail,
 };
-use bae_core::db::ImageRef;
-use bae_core::db::LibraryStatus;
 use bae_core::identify::release_group::ReleaseGroup;
 use bae_core::identify::PressingLink;
 use bae_core::import::folder_scanner::InvalidCandidate;
@@ -22,6 +20,8 @@ use bae_core::import::{
 };
 use bae_core::library::{AppServices, LibraryError};
 use bae_core::preferences::McpConfig;
+use bae_db::ImageRef;
+use bae_db::LibraryStatus;
 use bae_types::audio_format::AudioFormat;
 use bae_types::mediums::{TrackPosition, TrackSide};
 use bae_types::release_storage::ReleaseStorageAction;

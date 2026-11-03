@@ -10,7 +10,7 @@ use std::ops::Range;
 
 use tokio::sync::watch;
 
-use crate::db::{ScrubPoint, SegmentSpan};
+use bae_db::{ScrubPoint, SegmentSpan};
 
 /// A stretch of a track, as fractions of its length from INDEX 01: the unit
 /// of a position's `progress`.

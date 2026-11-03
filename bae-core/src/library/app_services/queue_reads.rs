@@ -34,7 +34,7 @@ impl AppServices {
     /// [`LiveRead::set`]: crate::library::LiveRead::set
     pub fn subscribe_queue_upcoming(&self) -> crate::library::LiveQueueUpcoming {
         let (windows_tx, mut windows) =
-            tokio::sync::watch::channel(crate::db::LibraryPageWindows::new());
+            tokio::sync::watch::channel(bae_db::LibraryPageWindows::new());
         let (tx, rx) = crate::library::live_read_channel();
         let manager = self.inner.manager.clone();
         let task = crate::library::CancellationToken::new();

@@ -5,11 +5,6 @@
 //! the detail views and the sync activity read the same tables through live
 //! queries.
 
-use crate::db::client::list_windows::{
-    list_order_versions_on, read_windows, Keyed, KnownPlaces, ListOrder, Seek, SortTerm,
-    WindowsRead,
-};
-use crate::db::{DbError, LibraryBrowseWindow, LibraryPageWindows};
 use crate::library::output_snapshot::{OutputKind, OutputRequest};
 #[cfg(any(desktop, test, feature = "test-utils"))]
 use crate::library::release_queue::ReleaseQueueSnapshot;
@@ -17,6 +12,11 @@ use crate::library::release_queue::{
     QueuedRelease, ReleaseQueueCounts, ReleaseQueueEntry, ReleaseQueueOp, ReleaseQueueProgress,
     ReleaseQueueRow, ReleaseQueueState, ReleaseQueueWindows,
 };
+use bae_db::client::list_windows::{
+    list_order_versions_on, read_windows, Keyed, KnownPlaces, ListOrder, Seek, SortTerm,
+    WindowsRead,
+};
+use bae_db::{DbError, LibraryBrowseWindow, LibraryPageWindows};
 use coven::{CovenWrite, SqlReadContext};
 use rusqlite::types::Type;
 #[cfg(desktop)]
@@ -356,7 +356,7 @@ pub(crate) fn enqueue_pinnable_releases_on(
              ORDER BY requested.key \
              ON CONFLICT (release_id) DO UPDATE SET state = 'queued', error = NULL \
              WHERE download_queue.state = 'failed'",
-            pinned = crate::db::client::query::RELEASE_LISTING_PINNED,
+            pinned = bae_db::client::query::RELEASE_LISTING_PINNED,
         ),
         rusqlite::named_params! {
             ":created_at": created_at,

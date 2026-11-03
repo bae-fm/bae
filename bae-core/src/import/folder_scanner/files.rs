@@ -19,7 +19,7 @@ pub struct ScannedFile {
     ///
     /// Always `/`-separated, on every platform: it is stored and synced, and
     /// whichever device exports the release or makes it local writes the file
-    /// under these names (see [`crate::db::stored_name`]), so it cannot
+    /// under these names (see [`bae_db::stored_name`]), so it cannot
     /// carry the writing platform's separator.
     pub relative_path: String,
     /// File size in bytes
@@ -544,7 +544,7 @@ pub(crate) fn part_of(parts: &[ReleasePart], relative_path: &str) -> Option<usiz
 /// without copying file identity or probe facts into another type.
 #[derive(Debug)]
 pub struct CandidateSourceAudio<'a> {
-    pub summary: crate::db::source_audio::SourceAudioSummary,
+    pub summary: bae_db::source_audio::SourceAudioSummary,
     pub files: Vec<&'a ScannedFile>,
 }
 
@@ -558,7 +558,7 @@ impl CategorizedFiles {
     }
 
     pub fn source_audio(&self) -> Option<CandidateSourceAudio<'_>> {
-        use crate::db::source_audio::{
+        use bae_db::source_audio::{
             SourceAudioDescriptor, SourceAudioLayout, SourceAudioSummary, SummarizedAudio,
         };
         let carved_audio: std::collections::HashSet<&str> = self
@@ -597,7 +597,7 @@ impl CategorizedFiles {
         })
     }
 
-    pub fn source_audio_summary(&self) -> Option<crate::db::source_audio::SourceAudioSummary> {
+    pub fn source_audio_summary(&self) -> Option<bae_db::source_audio::SourceAudioSummary> {
         self.source_audio().map(|source_audio| source_audio.summary)
     }
 

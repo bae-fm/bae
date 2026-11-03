@@ -7,9 +7,9 @@
 //! `LibraryManager::apply_release_metadata_user_edit`. These tests drive that
 //! write path the way those surfaces do, with no editor in front of it.
 
-use bae_core::db::{Database, DbAlbum, DbArtist, DbRelease, DbTrack};
 use bae_core::import::{ArtistAssignment, ReleaseUserEdit, TrackArtistAssignments, TrackUserEdit};
 use bae_core::library::LibraryError;
+use bae_db::{Database, DbAlbum, DbArtist, DbRelease, DbTrack};
 use chrono::Utc;
 use uuid::Uuid;
 
@@ -45,7 +45,7 @@ async fn seed(db: &Database) -> (String, String) {
         id: Uuid::new_v4().to_string(),
         release_id: release.id.clone(),
         title: "Original Track".to_string(),
-        medium_id: bae_core::db::identity::release_medium_id(&release.id, 1),
+        medium_id: bae_db::identity::release_medium_id(&release.id, 1),
         side: std::num::NonZeroU8::MIN,
         track_number: std::num::NonZeroU32::MIN,
         duration_ms: 180_000,
@@ -54,7 +54,7 @@ async fn seed(db: &Database) -> (String, String) {
     db.insert_artist(&artist).await.unwrap();
     db.insert_album(&album).await.unwrap();
     db.insert_release(&release).await.unwrap();
-    db.insert_release_medium(&bae_core::db::DbReleaseMedium::new_test(&release.id)).await.unwrap();
+    db.insert_release_medium(&bae_db::DbReleaseMedium::new_test(&release.id)).await.unwrap();
     db.insert_track(&track).await.unwrap();
     (album.id, release.id)
 }

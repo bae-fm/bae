@@ -15,9 +15,9 @@
 //! index like any other tab.
 
 use super::*;
-use crate::db::client::query::{QueryOne, QueryRows};
-use crate::db::LibraryPageWindow;
 use crate::import::{FolderReleaseDecisionKey, ImportListOrder, TriageTab};
+use bae_db::client::query::{QueryOne, QueryRows};
+use bae_db::LibraryPageWindow;
 use rusqlite::ToSql;
 
 /// What one item of the list is, by the placement's `item` column.
@@ -303,7 +303,7 @@ pub(super) fn uploading_cte() -> String {
              JOIN local_release_origin AS origin ON origin.release_id = released.release_id \
              JOIN scan_candidate AS c ON c.content_hash = origin.content_hash \
              GROUP BY c.path)",
-        releases = crate::db::client::query::UPLOADING_RELEASES,
+        releases = bae_db::client::query::UPLOADING_RELEASES,
     )
 }
 
@@ -664,7 +664,7 @@ impl<'a> Items<'a> {
                 .collect();
             let WindowsRead { windows: read, found: places } = read_windows(
                 &order,
-                &crate::db::LibraryPageWindows::from([LibraryPageWindow { offset, limit }]),
+                &bae_db::LibraryPageWindows::from([LibraryPageWindow { offset, limit }]),
                 in_part,
                 |seek, limit, offset| self.window_of(sql, part, &order, seek, limit, offset),
             )?;

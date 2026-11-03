@@ -12,13 +12,13 @@ pub async fn storage_library(
     directory: &std::path::Path,
     providers: Providers,
 ) -> (
-    (LibraryManager, bae_core::db::Database, bae_core::import::CatalogSessions, CancellationToken),
+    (LibraryManager, bae_db::Database, bae_core::import::CatalogSessions, CancellationToken),
     Arc<MemoryStorage>,
 ) {
     let installation = coven::TestCoven::new();
     let storage =
         Arc::new(MemoryStorage::builder().clock(Arc::new(coven::SystemClock)).build().unwrap());
-    let handle = bae_core::db::configure_store(
+    let handle = bae_db::configure_store(
         installation.builder(bae_app_dir::AppDir::under_home(directory).unwrap().store_layout()),
     )
     .storage_connector(storage.clone())
@@ -84,7 +84,7 @@ pub async fn remove_uploaded_file(
 
 /// This release's storage state and whether it is pinned on this device.
 pub async fn release_storage(
-    database: &bae_core::db::Database,
+    database: &bae_db::Database,
     release_id: &str,
 ) -> (bae_core::album_detail::ReleaseStorageState, bool) {
     let summary = bae_core::library::views::LibraryViews::new(database.clone())

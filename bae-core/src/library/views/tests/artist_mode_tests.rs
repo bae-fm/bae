@@ -1,5 +1,5 @@
-use crate::db::client::tests::{temp_db, ARTIST_A, ARTIST_B, ARTIST_C, ARTIST_PRIMARY};
 use crate::library::views::*;
+use bae_db::test_fixtures::{temp_db, ARTIST_A, ARTIST_B, ARTIST_C, ARTIST_PRIMARY};
 
 const ALBUM_1999: &str = "88f57246-3e65-4eb9-8d36-ee8d40326cfc";
 const ALBUM_2001_LOWER: &str = "88183677-683b-485e-8224-f6a328c233c7";
@@ -61,7 +61,7 @@ async fn search(db: &Database, text: &str) -> Vec<DbArtist> {
     LibraryViews::new(db.clone())
         .search_artists(
             &crate::library::LibrarySearchQuery::parse(text).expect("the text is not blank"),
-            crate::db::LibraryPageWindow { offset: 0, limit: 10 },
+            bae_db::LibraryPageWindow { offset: 0, limit: 10 },
         )
         .await
         .unwrap()

@@ -2,7 +2,7 @@
 //! library's window-cost harness.
 
 use super::super::*;
-use crate::db::client::tests::window_cost::{median, offsets, report, LIMIT};
+use bae_db::test_fixtures::window_cost::{median, offsets, report, LIMIT};
 
 /// What the playback queue's upcoming windows cost to read.
 pub(crate) async fn measure_playback_queue(db: &Database, n: u64) {

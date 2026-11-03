@@ -29,8 +29,8 @@ fn validation_folds_validate_token_outcomes() {
     }
 }
 
-fn track_artist(artist_id: &str) -> crate::db::DbTrackArtist {
-    crate::db::DbTrackArtist {
+fn track_artist(artist_id: &str) -> bae_db::DbTrackArtist {
+    bae_db::DbTrackArtist {
         track_id: TRACK_1.to_string(),
         artist_id: artist_id.to_string(),
         position: 3,

@@ -1,7 +1,7 @@
 //! The raw rows the library's views read, before they are resolved into
 //! what a screen shows.
 
-use crate::db::*;
+use bae_db::*;
 use chrono::{DateTime, Utc};
 
 /// Raw combined search-result aggregate. No formatting — resolving it
@@ -66,7 +66,7 @@ pub struct AlbumSortCriterion {
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbAlbumDetail {
     pub album: DbAlbum,
-    pub artists: Vec<crate::db::credits::LibraryCredit>,
+    pub artists: Vec<bae_db::credits::LibraryCredit>,
     /// The album's releases in album order.
     pub releases: Vec<ReleaseDetailRead>,
     /// The album's lowest-ordered release.
@@ -90,7 +90,7 @@ pub struct DbAlbumAppearance {
 pub struct DbComposerSummary {
     pub artist: DbArtist,
     /// The artist's image, at the version its row read; `None` when it has none.
-    pub image: Option<crate::db::ImageRef>,
+    pub image: Option<bae_db::ImageRef>,
     pub work_count: i64,
     pub linked_release_count: i64,
     pub unlinked_credit_count: i64,
@@ -102,7 +102,7 @@ pub struct DbComposerSummary {
 pub struct DbArtistSummary {
     pub artist: DbArtist,
     /// The artist's image, at the version its row read; `None` when it has none.
-    pub image: Option<crate::db::ImageRef>,
+    pub image: Option<bae_db::ImageRef>,
     pub album_count: i64,
 }
 
@@ -112,7 +112,7 @@ pub struct DbArtistSummary {
 pub struct DbArtistDetail {
     pub artist: DbArtistSummary,
     /// The artist's other printed names, its merged artists' too.
-    pub credit_names: Vec<crate::db::credits::ArtistCreditName>,
+    pub credit_names: Vec<bae_db::credits::ArtistCreditName>,
     pub albums: Vec<DbAlbumSummary>,
 }
 
@@ -123,7 +123,7 @@ pub struct DbWorkSummary {
     pub representative_release_id: Option<String>,
     /// That release's cover, at the version its row read; `None` when it has
     /// none.
-    pub representative_cover: Option<crate::db::ImageRef>,
+    pub representative_cover: Option<bae_db::ImageRef>,
     pub composer_names: Option<String>,
     pub linked_release_count: i64,
 }
@@ -220,7 +220,7 @@ pub struct ReleaseDetailContext {
     /// The release's entry in this device's download queue, `None` when it
     /// has none.
     pub download: Option<crate::library::DownloadPhase>,
-    pub album_artists: Vec<crate::db::credits::LibraryCredit>,
+    pub album_artists: Vec<bae_db::credits::LibraryCredit>,
     pub release_index: usize,
     pub is_compilation: bool,
 }

@@ -3,10 +3,10 @@ use std::collections::HashSet;
 use tracing::warn;
 
 use super::RepeatMode;
-use crate::db::DbError;
 use crate::playback::tables::{
     ContextFill, ContextFilled, ManualPlace, PlaybackQueueTables, ShuffleChange,
 };
+use bae_db::DbError;
 use bae_types::track_time::TrackTime;
 
 /// What names a queued row to the screens and back. Every row of either lane

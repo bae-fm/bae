@@ -1,5 +1,5 @@
 use super::*;
-use crate::db::{DbSendingFile, DbSendingRelease};
+use bae_db::{DbSendingFile, DbSendingRelease};
 
 fn file(n: u128) -> coven::FileId {
     coven::FileId(uuid::Uuid::from_u128(n))

@@ -5,7 +5,7 @@ const RELEASE_ONE_TRACK: &str = "e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b";
 /// track of the lane in order.
 async fn context_lane(
     service: &PlaybackService,
-    database: &crate::db::Database,
+    database: &bae_db::Database,
 ) -> (ContextSource, Vec<String>) {
     let value = crate::playback::tables::queue_value(&service.database).await.unwrap();
     let source = value.context.expect("a context lane").source;

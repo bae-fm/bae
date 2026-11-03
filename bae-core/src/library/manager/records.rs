@@ -29,7 +29,7 @@ impl LibraryManager {
     /// `new_records` on `(catalog, album key)`, that release's album is the
     /// destination (per-catalog agreement makes the candidate unique). With no
     /// merge candidate, a release alone in its album moves to its group's own
-    /// album (`db::identity::album_id_for_records`); one with siblings stays put
+    /// album (`bae_db::identity::album_id_for_records`); one with siblings stays put
     /// if no sibling disagrees on a shared catalog, and moves to its group's
     /// album (or a fresh one, with no group) if one does. A vacated album stays,
     /// empty (see `vacate_album_on`).
@@ -60,14 +60,14 @@ impl LibraryManager {
         &self,
         release_id: &str,
         new_records: Vec<bae_catalogs::records::ReleaseRecord>,
-    ) -> Result<crate::db::RecordsChange, LibraryError> {
+    ) -> Result<bae_db::RecordsChange, LibraryError> {
         let current_album_id =
             self.database.find_album_id_for_release(release_id).await?.ok_or_else(|| {
                 LibraryError::Refused(format!("Release '{release_id}' not found"))
             })?;
         let target =
             self.resolve_records_target_album(release_id, &current_album_id, &new_records).await?;
-        Ok(crate::db::RecordsChange {
+        Ok(bae_db::RecordsChange {
             release_id: release_id.to_string(),
             records: new_records,
             current_album_id,
@@ -118,7 +118,7 @@ impl LibraryManager {
         // devices identifying one group while apart land in one album.
         let beside =
             self.database.album_beside_release(current_album_id, release_id, new_records).await?;
-        let group_album_id = crate::db::identity::album_id_for_records(new_records);
+        let group_album_id = bae_db::identity::album_id_for_records(new_records);
         if !beside.holds_others {
             return match group_album_id {
                 Some(group_album_id) if group_album_id != current_album_id => {

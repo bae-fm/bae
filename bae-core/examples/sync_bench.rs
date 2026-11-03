@@ -84,7 +84,7 @@ fn main() {
 
     let runtime = tokio::runtime::Runtime::new().expect("build tokio runtime");
     let result: Result<(), String> = runtime.block_on(async {
-        let handle = bae_core::db::configure_store(coven::Coven::builder(app_dir.store_layout()))
+        let handle = bae_db::configure_store(coven::Coven::builder(app_dir.store_layout()))
             .open(store_id, |_| ())
             .await
             .map_err(|e| format!("open store failed: {e}"))?;

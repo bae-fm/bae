@@ -1,8 +1,8 @@
 use bae_core::album_detail::{
     ComposerDetail, ComposerSummary, ComposerWorkGroup, WorkDetail, WorkReleaseSummary, WorkSummary,
 };
-use bae_core::db::{DbArtist, DbWork};
 use bae_core::library::views::{DbComposerSummary, DbWorkSummary};
+use bae_db::{DbArtist, DbWork};
 use std::sync::Arc;
 
 fn track_detail(
@@ -125,7 +125,7 @@ pub(super) fn fresh_test_library(
     tokio::runtime::Runtime,
     (
         bae_core::library::LibraryManager,
-        bae_core::db::Database,
+        bae_db::Database,
         bae_core::import::CatalogSessions,
         bae_core::library::CancellationToken,
     ),
@@ -146,7 +146,7 @@ pub(super) fn fresh_test_library(
     let app_dir = bae_app_dir::AppDir::under_home(&root).unwrap();
     let handle = runtime
         .block_on(
-            bae_core::db::configure_store(installation.builder(app_dir.store_layout()))
+            bae_db::configure_store(installation.builder(app_dir.store_layout()))
                 .create_store("Test Library"),
         )
         .expect("test store");
@@ -163,7 +163,7 @@ pub(super) fn start_test_handle(
     runtime: tokio::runtime::Runtime,
     (manager, database, catalogs, closing): (
         bae_core::library::LibraryManager,
-        bae_core::db::Database,
+        bae_db::Database,
         bae_core::import::CatalogSessions,
         bae_core::library::CancellationToken,
     ),
@@ -720,9 +720,7 @@ fn dropping_a_handle_closes_its_library_before_its_runtime_ends() {
     assert!(
         matches!(
             read,
-            Err(bae_core::db::DbError::Coven(coven::CovenError::Database(
-                coven::DbError::StoreClosed
-            )))
+            Err(bae_db::DbError::Coven(coven::CovenError::Database(coven::DbError::StoreClosed)))
         ),
         "the library's store is closed: {read:?}"
     );
@@ -763,7 +761,7 @@ fn reopening_a_library_released_on_its_runtime_waits_for_its_close() {
     assert!(
         matches!(
             read,
-            Err(bae_core::library::LibraryError::Database(bae_core::db::DbError::Coven(
+            Err(bae_core::library::LibraryError::Database(bae_db::DbError::Coven(
                 coven::CovenError::Database(coven::DbError::StoreClosed)
             )))
         ),

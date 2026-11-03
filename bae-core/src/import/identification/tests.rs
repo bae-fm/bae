@@ -3,7 +3,6 @@
 
 use super::*;
 use crate::app::test_library::TestLibrary;
-use crate::db::Database;
 use crate::identify::signals::{BarcodeSignal, DiscIdSignal, Signals, TextSignal};
 use crate::identify::{FolderCheck, VerdictSummary};
 use crate::import::extraction::{ArtworkAnalysis, ArtworkAnalyzer};
@@ -12,6 +11,7 @@ use crate::import::tables::{
 };
 use crate::import::{FolderCandidate, ImportCandidateSnapshot};
 use bae_catalogs::search::{MetadataResult, SourceTracks};
+use bae_db::Database;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};

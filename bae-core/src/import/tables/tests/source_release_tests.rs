@@ -517,7 +517,7 @@ fn library_check_matches_detail_keys_with_and_without_source_groups() {
                 anchor.to_string(),
                 Vec::new(),
             );
-            let check = crate::db::LibraryCheck::of_release(&payloads.extract().unwrap());
+            let check = bae_db::LibraryCheck::of_release(&payloads.extract().unwrap());
             let detail = payloads.extract().unwrap().detail(&[]);
             assert_eq!(check.source, detail.source.catalog());
             assert_eq!(check.release_id, detail.release_id);

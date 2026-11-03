@@ -13,7 +13,7 @@
 //!     window_cost --ignored --nocapture --test-threads 1
 //! ```
 
-use crate::db::client::tests::window_cost::*;
+use bae_db::test_fixtures::window_cost::*;
 
 use crate::library::views::*;
 use std::time::{Duration, Instant};
@@ -287,7 +287,7 @@ async fn measure_storage_search(db: &Database, n: u64) {
 #[tokio::test(flavor = "multi_thread")]
 #[ignore = "measurement: run in release with --ignored --nocapture"]
 async fn window_cost() {
-    let (db, tmp) = crate::db::client::tests::empty_db().await;
+    let (db, tmp) = bae_db::test_fixtures::empty_db().await;
     let mut held = 0;
     for n in SIZES {
         let took = grow_to(&db, &tmp.path().join("originals"), held, n).await;

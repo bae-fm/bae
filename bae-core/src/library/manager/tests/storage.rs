@@ -18,7 +18,7 @@ async fn seed_albums(manager: &LibraryManager, count: usize) -> (Vec<DbAlbum>, V
 fn sort_by_album_title_asc() -> crate::library::views::StorageSortCriterion {
     crate::library::views::StorageSortCriterion {
         field: crate::library::views::StorageSortField::AlbumTitle,
-        direction: crate::db::SortDirection::Ascending,
+        direction: bae_db::SortDirection::Ascending,
     }
 }
 
@@ -78,7 +78,7 @@ async fn storage_page_sorts_album_title_descending() {
 
     let sort = crate::library::views::StorageSortCriterion {
         field: crate::library::views::StorageSortField::AlbumTitle,
-        direction: crate::db::SortDirection::Descending,
+        direction: bae_db::SortDirection::Descending,
     };
     let page = manager.views().get_storage_page(&sort, crate::library::views::StorageFilter::All, 0, 10).await.unwrap();
     let titles: Vec<_> = page.rows.iter().map(|r| r.album.title.clone()).collect();
@@ -345,22 +345,22 @@ async fn unpin_release_releases_audio_and_keeps_cover_evictable() {
     wait_for_kept_release(&manager, &release.id).await;
     let file_id = release_files(&manager, &release.id).await[0].id.clone();
     assert!(
-        file_pinned(&manager, crate::db::synced::RELEASE_FILES_NAMESPACE, &file_id).await,
+        file_pinned(&manager, bae_db::synced::RELEASE_FILES_NAMESPACE, &file_id).await,
         "a move to be kept here leaves the release file pinned"
     );
     assert!(
-        !file_pinned(&manager, crate::db::synced::COVERS_NAMESPACE, &release.id).await,
+        !file_pinned(&manager, bae_db::synced::COVERS_NAMESPACE, &release.id).await,
         "covers remain evictable when audio is pinned"
     );
 
     manager.unpin_release(&release.id).await.unwrap();
 
     assert!(
-        !file_pinned(&manager, crate::db::synced::RELEASE_FILES_NAMESPACE, &file_id).await,
+        !file_pinned(&manager, bae_db::synced::RELEASE_FILES_NAMESPACE, &file_id).await,
         "the release file unpinned"
     );
     assert!(
-        !file_pinned(&manager, crate::db::synced::COVERS_NAMESPACE, &release.id).await,
+        !file_pinned(&manager, bae_db::synced::COVERS_NAMESPACE, &release.id).await,
         "the cover remains evictable"
     );
 }
@@ -385,7 +385,7 @@ async fn pin_release_counts_audio_and_keeps_cover_evictable() {
     manager.upload_release(&release.id, false).await.unwrap();
     manager.drain_uploads_expecting_work().await.unwrap();
     assert!(
-        !file_pinned(&manager, crate::db::synced::COVERS_NAMESPACE, &release.id).await,
+        !file_pinned(&manager, bae_db::synced::COVERS_NAMESPACE, &release.id).await,
         "upload without pin leaves the cover evictable"
     );
 
@@ -404,11 +404,11 @@ async fn pin_release_counts_audio_and_keeps_cover_evictable() {
 
     let file_id = release_files(&manager, &release.id).await[0].id.clone();
     assert!(
-        file_pinned(&manager, crate::db::synced::RELEASE_FILES_NAMESPACE, &file_id).await,
+        file_pinned(&manager, bae_db::synced::RELEASE_FILES_NAMESPACE, &file_id).await,
         "the release file pinned"
     );
     assert!(
-        !file_pinned(&manager, crate::db::synced::COVERS_NAMESPACE, &release.id).await,
+        !file_pinned(&manager, bae_db::synced::COVERS_NAMESPACE, &release.id).await,
         "the cover remains evictable"
     );
     let last = progress.last().expect("the pin reports progress");
@@ -438,11 +438,11 @@ async fn a_pin_reaches_the_storage_view_without_a_sync_cycle() {
     let values = services.subscribe_storage_browse(crate::library::StorageBrowseView {
         sort: crate::library::views::StorageSortCriterion {
             field: crate::library::views::StorageSortField::AlbumTitle,
-            direction: crate::db::SortDirection::Ascending,
+            direction: bae_db::SortDirection::Ascending,
         },
         filter: crate::library::views::StorageFilter::All,
         search: String::new(),
-        windows: [crate::db::LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect(),
+        windows: [bae_db::LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect(),
         selected: Default::default(),
     });
     let pinned = |value: &crate::library::StorageBrowseSnapshot| {
@@ -572,8 +572,8 @@ async fn the_storage_view_moves_one_subscription() {
     let (manager, _temp_dir) = setup_test_manager().await;
     seed_albums(&manager, 3).await;
     let services = manager.start_services().await.unwrap();
-    let window = |offset, limit| crate::db::LibraryPageWindow { offset, limit };
-    let view = |direction, filter, windows: &[crate::db::LibraryPageWindow]| {
+    let window = |offset, limit| bae_db::LibraryPageWindow { offset, limit };
+    let view = |direction, filter, windows: &[bae_db::LibraryPageWindow]| {
         crate::library::StorageBrowseView {
             sort: crate::library::views::StorageSortCriterion {
                 field: crate::library::views::StorageSortField::AlbumTitle,
@@ -592,7 +592,7 @@ async fn the_storage_view_moves_one_subscription() {
             .map(|window| window.rows.iter().map(|row| row.album.title.clone()).collect::<Vec<_>>())
             .collect::<Vec<_>>()
     };
-    let ascending = crate::db::SortDirection::Ascending;
+    let ascending = bae_db::SortDirection::Ascending;
     let all = crate::library::views::StorageFilter::All;
     let values = services.subscribe_storage_browse(view(ascending, all, &[window(0, 2)]));
 
@@ -605,7 +605,7 @@ async fn the_storage_view_moves_one_subscription() {
     assert_eq!(titles(&scrolled), vec![vec!["Album 0"], vec!["Album 2"]]);
     assert_eq!(scrolled.total_count, 3, "one count answers every window");
 
-    let descending = crate::db::SortDirection::Descending;
+    let descending = bae_db::SortDirection::Descending;
     values.set(view(descending, all, &[window(0, 2)])).unwrap();
     let resorted = next_storage_value(&values).await;
     assert_eq!(resorted.sort.direction, descending);
@@ -695,7 +695,7 @@ async fn a_storage_row_reads_its_queued_upload_from_the_queue() {
             .get_db_storage_page(
                 &crate::library::views::StorageSortCriterion {
                     field: crate::library::views::StorageSortField::AlbumTitle,
-                    direction: crate::db::SortDirection::Ascending,
+                    direction: bae_db::SortDirection::Ascending,
                 },
                 crate::library::views::StorageFilter::All,
                 0,
@@ -754,11 +754,11 @@ async fn a_storage_row_counts_the_file_being_sent() {
     let mut browse = manager.views().subscribe_storage_browse(crate::library::views::StorageBrowseRequest {
         sort: crate::library::views::StorageSortCriterion {
             field: crate::library::views::StorageSortField::AlbumTitle,
-            direction: crate::db::SortDirection::Ascending,
+            direction: bae_db::SortDirection::Ascending,
         },
         filter: crate::library::views::StorageFilter::All,
         search: String::new(),
-        windows: [crate::db::LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect(),
+        windows: [bae_db::LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect(),
         selected: Default::default(),
     });
     home.set_faults(coven::Faults {

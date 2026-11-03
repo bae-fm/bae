@@ -127,7 +127,7 @@ pub enum CastError {
     Internal(TaskFailed),
     /// Whether casting is on couldn't be read.
     #[error("couldn't read whether casting is on: {0}")]
-    Setting(bae_core::db::DbError),
+    Setting(bae_db::DbError),
 }
 
 /// Where the ephemeral server listens, and the address its URLs name.
@@ -656,7 +656,7 @@ fn stream_url_provider(base_url: String, credential: SubsonicCredential) -> Medi
 /// cover and ignores `cover`; it is there so a replaced cover has a new URL,
 /// which a receiver that cached the old art fetches again.
 fn cover_url_provider(base_url: String, credential: SubsonicCredential) -> CoverUrlProvider {
-    Arc::new(move |cover: &bae_core::db::ImageRef| {
+    Arc::new(move |cover: &bae_db::ImageRef| {
         format!(
             "{base_url}/rest/getCoverArt?id=al-{release_id}&cover={version}&{auth}&v=1.16.1&c=bae-cast",
             release_id = cover.id,

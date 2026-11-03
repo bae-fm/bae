@@ -302,7 +302,7 @@ pub enum ImportEvent {
 #[derive(Debug, Clone)]
 pub struct GroupedSearchResults {
     pub groups: Vec<crate::identify::release_group::ReleaseGroup>,
-    pub statuses: Vec<crate::db::LibraryStatus>,
+    pub statuses: Vec<bae_db::LibraryStatus>,
 }
 
 /// What `save_discogs_token` did with a submitted key after checking it with
@@ -327,7 +327,7 @@ pub struct ImportServiceHandle {
     /// lock, so teardown must not return before it is joined.
     worker: WorkerThread<crate::import::service::ImportWorkerMessage>,
     /// The library's store, which the handle reads and writes directly.
-    database: crate::db::Database,
+    database: bae_db::Database,
     /// Import's own tables in that store.
     tables: crate::import::tables::ImportTables,
     /// The catalogs as this library may ask them.
@@ -711,11 +711,8 @@ impl ImportServiceHandle {
         &self,
         view: crate::import::ImportListView,
     ) -> crate::import::LiveImportList {
-        self.subscribe_list_window(
-            view,
-            crate::db::LibraryPageWindow { offset: 0, limit: u64::MAX },
-        )
-        .await
+        self.subscribe_list_window(view, bae_db::LibraryPageWindow { offset: 0, limit: u64::MAX })
+            .await
     }
 
     /// The import list for `view` through one window, for a test that
@@ -724,7 +721,7 @@ impl ImportServiceHandle {
     pub async fn subscribe_list_window(
         &self,
         view: crate::import::ImportListView,
-        window: crate::db::LibraryPageWindow,
+        window: bae_db::LibraryPageWindow,
     ) -> crate::import::LiveImportList {
         self.open_list(view, std::iter::once(window).collect())
             .await

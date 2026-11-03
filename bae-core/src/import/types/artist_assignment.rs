@@ -2,8 +2,8 @@
 //! and how such a credit stands to the library when it is read.
 
 use super::trim_to_option;
-use crate::db::{CreditResolution, ExistingArtist, ResolvedCredit};
 use bae_catalogs::credits::{ArtistCredit, SourceCredit};
+use bae_db::{CreditResolution, ExistingArtist, ResolvedCredit};
 use serde::{Deserialize, Serialize};
 
 /// One artist credited on an album or track.
@@ -17,7 +17,7 @@ use serde::{Deserialize, Serialize};
 /// it.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ArtistAssignment {
-    Picked { artist: ExistingArtist, credit_name: Option<crate::db::credits::CreditName> },
+    Picked { artist: ExistingArtist, credit_name: Option<bae_db::credits::CreditName> },
     Credit { credit: ArtistCredit },
 }
 
@@ -54,7 +54,7 @@ impl Credited {
 
     /// A library credit as the editor holds it: its artist picked, with the
     /// credit name and join it names.
-    pub fn of_library(credit: crate::db::credits::LibraryCredit) -> Self {
+    pub fn of_library(credit: bae_db::credits::LibraryCredit) -> Self {
         Self {
             artist: ArtistAssignment::Picked {
                 artist: credit.artist.into(),
@@ -136,11 +136,11 @@ impl ArtistAssignment {
     /// The credit name a write's link for this credit names, before the
     /// write resolves its artist: a picked artist's chosen one; for a credit,
     /// the name it prints, which the write keeps only where it is not the
-    /// resolved artist's own (see `db::client::write::settle_credit_name`).
-    pub(crate) fn link_credit(&self) -> Option<crate::db::credits::CreditName> {
+    /// resolved artist's own (see `bae_db::client::artist_credit_names::settle_credit_name`).
+    pub(crate) fn link_credit(&self) -> Option<bae_db::credits::CreditName> {
         match self {
             Self::Picked { credit_name, .. } => credit_name.clone(),
-            Self::Credit { credit } => Some(crate::db::credits::CreditName::of(credit.printed())),
+            Self::Credit { credit } => Some(bae_db::credits::CreditName::of(credit.printed())),
         }
     }
 
@@ -169,9 +169,9 @@ impl ArtistAssignment {
         &self,
         ids: &dyn coven::IdSource,
         now: chrono::DateTime<chrono::Utc>,
-    ) -> crate::db::DbArtist {
+    ) -> bae_db::DbArtist {
         match self {
-            Self::Picked { artist, .. } => crate::db::DbArtist {
+            Self::Picked { artist, .. } => bae_db::DbArtist {
                 id: artist.artist_id.clone(),
                 name: artist.name.clone(),
                 sort_name: artist.sort_name.clone(),
@@ -179,7 +179,7 @@ impl ArtistAssignment {
                 musicbrainz_artist_id: artist.musicbrainz_artist_id.clone(),
                 created_at: now,
             },
-            Self::Credit { credit } => crate::db::DbArtist::of_credit(credit, ids, now),
+            Self::Credit { credit } => bae_db::DbArtist::of_credit(credit, ids, now),
         }
     }
 

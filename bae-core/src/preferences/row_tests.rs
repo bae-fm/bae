@@ -3,8 +3,7 @@
 //! and what the schema refuses.
 
 use super::*;
-use crate::db::client::tests::*;
-use crate::db::*;
+use bae_db::test_fixtures::*;
 use std::num::NonZeroU32;
 use std::time::Duration;
 

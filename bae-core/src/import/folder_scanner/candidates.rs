@@ -1,6 +1,6 @@
 use super::*;
-use crate::db::RelativeFolder;
 use crate::import::CandidateKey;
+use bae_db::RelativeFolder;
 
 /// Why a folder that looks like a release (it holds audio) can't be imported,
 /// as its skipped files say. The UI localizes the typed variant for the

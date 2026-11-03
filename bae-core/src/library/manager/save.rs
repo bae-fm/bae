@@ -4,10 +4,10 @@
 //! [`super::output`]; the verbatim export arm in [`super::export`].
 
 use super::*;
-use crate::db::TrackAudioMeta;
 use crate::library::SaveTrackPlan;
 use crate::track_audio::track_sources::SourceStream;
 use crate::track_audio::{SegmentDecodeParams, StreamDecodeParams};
+use bae_db::TrackAudioMeta;
 use std::collections::HashMap;
 use std::num::NonZeroUsize;
 
@@ -27,12 +27,12 @@ impl LibraryManager {
         let album = self.database.get_album_for_release(release).await?;
 
         let album_artists = self.database.get_artists_for_album(&album.id).await?;
-        let album_artist = crate::db::credits::library_line(&album_artists);
+        let album_artist = bae_db::credits::library_line(&album_artists);
         let track_artists = self.database.get_artists_for_track(&track.id).await?;
         let artist = if track_artists.is_empty() {
             album_artist.clone()
         } else {
-            crate::db::credits::library_line(&track_artists)
+            bae_db::credits::library_line(&track_artists)
         };
 
         let total_tracks = self.database.count_tracks_for_release(&release.id).await?;
@@ -88,7 +88,7 @@ impl LibraryManager {
     /// store, the cache, or the cloud with decrypt). A read failure — or a
     /// file shorter than the stored size — fails the buffer, and the decode
     /// fails loudly with that read's error.
-    fn open_save_source(&self, file: &crate::db::DbFile) -> SourceStream {
+    fn open_save_source(&self, file: &bae_db::DbFile) -> SourceStream {
         use crate::track_audio::data_source::FetchArbiter;
 
         // A fresh arbiter per file: save has no foreground track to prioritize,
@@ -108,7 +108,7 @@ impl LibraryManager {
     /// reaches the tracks reading them.
     fn save_source_files<'a>(
         plans: impl IntoIterator<Item = &'a SaveTrackPlan>,
-    ) -> HashMap<String, crate::db::DbFile> {
+    ) -> HashMap<String, bae_db::DbFile> {
         plans
             .into_iter()
             .flat_map(|plan| {
@@ -367,7 +367,7 @@ pub(crate) enum SaveWindow {
 /// The segments a saved track file decodes, in order, and the silence around
 /// them.
 struct SaveSegments<'a> {
-    segments: Vec<&'a crate::db::DbAudioSegment>,
+    segments: Vec<&'a bae_db::DbAudioSegment>,
     leading_silence_frames: u64,
     trailing_silence_frames: u64,
 }
@@ -393,7 +393,7 @@ impl SaveTrackPlan {
                     .iter()
                     .map(|entry| &entry.segment)
                     .filter(|segment| {
-                        include_own_pregap || segment.role == crate::db::DbAudioSegmentRole::Main
+                        include_own_pregap || segment.role == bae_db::DbAudioSegmentRole::Main
                     })
                     .collect();
                 let leading_silence_frames = if includes_htoa {
@@ -412,7 +412,7 @@ impl SaveTrackPlan {
                             segments.extend(
                                 next.audio_segments.iter().map(|entry| &entry.segment).filter(
                                     |segment| {
-                                        segment.role == crate::db::DbAudioSegmentRole::AudioPregap
+                                        segment.role == bae_db::DbAudioSegmentRole::AudioPregap
                                     },
                                 ),
                             );

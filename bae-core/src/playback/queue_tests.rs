@@ -3,9 +3,9 @@
 //! fixture maps between the two.
 
 use super::*;
-use crate::db::Database;
 use crate::playback::tables::{ContextFill, ReleaseStart};
 use crate::playback::ContextSource;
+use bae_db::Database;
 use std::collections::HashMap;
 
 struct Fixture {
@@ -19,7 +19,7 @@ struct Fixture {
 /// A library holding `releases`, each `(release name, track names)` with its
 /// tracks in that order, and an empty queue over it.
 async fn fixture(releases: &[(&str, &[&str])]) -> Fixture {
-    use crate::db::{DbAlbum, DbAlbumArtist, DbArtist, DbRelease, DbReleaseMedium, DbTrack};
+    use bae_db::{DbAlbum, DbAlbumArtist, DbArtist, DbRelease, DbReleaseMedium, DbTrack};
     let home = tempfile::TempDir::new().unwrap();
     let db = Database::new_test(
         home.path().join("queue.db").to_str().unwrap(),

@@ -1,8 +1,8 @@
 //! An album's credits are one ordered list (`album_artists` from position 0):
 //! every reader of an album's artists reads the whole list.
 
-use crate::db::client::tests::{exec_batch, temp_db};
 use crate::library::views::*;
+use bae_db::test_fixtures::{exec_batch, temp_db};
 
 const ARTIST_A: &str = "3d0f8a52-6c1e-4b8e-9a51-0f6f1e2c7a01";
 const ARTIST_B: &str = "3d0f8a52-6c1e-4b8e-9a51-0f6f1e2c7a02";

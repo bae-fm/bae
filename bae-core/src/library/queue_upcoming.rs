@@ -1,8 +1,8 @@
 //! The context's upcoming tail, read through one live subscription whose
 //! windows move as the queue scrolls.
 
-use crate::db::LibraryPageWindows;
 use crate::playback::QueueUpcomingWindow;
+use bae_db::LibraryPageWindows;
 
 /// Every requested window as of one read. Offsets are into the
 /// not-yet-played tail, the first entry after the playing one at offset 0, and

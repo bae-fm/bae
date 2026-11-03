@@ -111,7 +111,7 @@ async fn a_kept_release_sorts_as_pinned_once_its_copies_land() {
             .get_db_storage_page(
                 &crate::library::views::StorageSortCriterion {
                     field: crate::library::views::StorageSortField::Storage,
-                    direction: crate::db::SortDirection::Ascending,
+                    direction: bae_db::SortDirection::Ascending,
                 },
                 crate::library::views::StorageFilter::All,
                 0,

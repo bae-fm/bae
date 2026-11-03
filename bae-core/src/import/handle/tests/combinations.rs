@@ -121,7 +121,7 @@ async fn pending(handle: &ImportServiceHandle) -> Vec<String> {
                 order: crate::import::ImportListOrder::PathAscending,
                 ..crate::import::ImportListView::default()
             },
-            [crate::db::LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect(),
+            [bae_db::LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect(),
         )
         .await
         .unwrap();
@@ -188,7 +188,7 @@ async fn combining_every_release_under_a_folder_reads_that_folder_as_one() {
         std::fs::create_dir_all(&folder).unwrap();
         std::fs::copy(&fixture, folder.join("01.flac")).unwrap();
     }
-    let root = crate::db::watched_path::canonical_absolute_root(&root).unwrap();
+    let root = bae_db::watched_path::canonical_absolute_root(&root).unwrap();
     tables.add_watched_import_folder(&root).await.unwrap();
     let handle = manager.start_import().await.unwrap();
     handle.refresh_watched_folder(root.clone()).await.unwrap();
@@ -207,7 +207,7 @@ async fn combining_every_release_under_a_folder_reads_that_folder_as_one() {
         Some(crate::import::tables::GroupingFacts::Anchored {
             folder: crate::import::FolderReleaseDecisionKey {
                 watched_folder_path: root.clone(),
-                relative_folder: crate::db::RelativeFolder::test("Artist"),
+                relative_folder: bae_db::RelativeFolder::test("Artist"),
             },
             decision: crate::import::FolderReleaseDecision::CombineAsOneRelease,
         })
@@ -247,7 +247,7 @@ async fn separating_picked_releases_answers_with_their_keys_in_path_order() {
         std::fs::create_dir_all(&folder).unwrap();
         std::fs::copy(&fixture, folder.join("01.flac")).unwrap();
     }
-    let root = crate::db::watched_path::canonical_absolute_root(&root).unwrap();
+    let root = bae_db::watched_path::canonical_absolute_root(&root).unwrap();
     tables.add_watched_import_folder(&root).await.unwrap();
     let handle = manager.start_import().await.unwrap();
     handle.refresh_watched_folder(root.clone()).await.unwrap();

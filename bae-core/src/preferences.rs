@@ -223,7 +223,7 @@ pub enum PreferencesError {
     Invalid(String),
     /// The preferences row could not be read or written.
     #[error(transparent)]
-    Database(#[from] crate::db::DbError),
+    Database(#[from] bae_db::DbError),
 }
 
 impl PreferencesError {

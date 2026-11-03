@@ -1,9 +1,10 @@
 //! The album grid and the artist list over one small library: how they
 //! sort, and how a release leaving or an artist merging moves what they list.
 
-use crate::db::client::tests::album_listing_tests::*;
-use crate::db::LibraryPageWindow;
 use crate::library::views::*;
+use bae_db::test_fixtures::album_listing::*;
+use bae_db::test_fixtures::exec_batch;
+use bae_db::LibraryPageWindow;
 use std::collections::BTreeSet;
 
 /// The grid's album ids in `field` order, `direction`.
@@ -59,7 +60,7 @@ async fn album_grid_sorts_by_credits_as_their_artists_change() {
         ids(&[ALBUM_TWO, ALBUM_ONE, ALBUM_THREE])
     );
 
-    exec(
+    exec_batch(
         &db,
         "UPDATE artists SET sort_name = 'Zulu Sort Name' WHERE id = '4309b580-a6bf-455e-92ea-ec58ee7129e7';",
     )
@@ -97,7 +98,8 @@ async fn an_album_leaves_the_lists_with_its_last_release() {
     );
     assert_eq!(artists(&db).await, vec![(ALPHA.to_string(), 2), (BRAVO.to_string(), 2)]);
 
-    exec(&db, "DELETE FROM releases WHERE id = '5a905d5d-d400-42f3-a9a8-b858f18dcbc3';").await;
+    exec_batch(&db, "DELETE FROM releases WHERE id = '5a905d5d-d400-42f3-a9a8-b858f18dcbc3';")
+        .await;
     assert_eq!(
         crate::library::views::LibraryViews::new(db.clone()).get_album_count().await.unwrap(),
         2
@@ -112,7 +114,7 @@ async fn an_album_leaves_the_lists_with_its_last_release() {
     );
 
     // A release arriving under the album lists it again.
-    exec(
+    exec_batch(
         &db,
         "INSERT INTO releases (id, album_id, created_at, album_order) VALUES
             ('24b929ff-1f01-4621-9891-81abea7fbe87', '07d22f7d-3980-4c81-9d27-8fcd50ee3464', '2026-01-01T00:00:00Z', 0);",
@@ -142,7 +144,7 @@ async fn a_merge_moves_the_absorbed_artists_albums_under_the_survivor() {
         )
     );
 
-    exec(
+    exec_batch(
         &db,
         "INSERT INTO artist_merges (id, into_artist_id, created_at) VALUES
             ('4309b580-a6bf-455e-92ea-ec58ee7129e7', 'f392a38b-f264-41a0-a225-c6935b8a8262', '2026-01-01T00:00:00Z');",

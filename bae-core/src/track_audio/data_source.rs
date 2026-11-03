@@ -301,17 +301,17 @@ impl AudioDataReader for LocalReader {
 }
 
 /// Preserve the actionable storage failure when opening or reading audio.
-fn read_error_for_file_read(error: crate::db::DbError) -> TrackReadError {
+fn read_error_for_file_read(error: bae_db::DbError) -> TrackReadError {
     match error {
-        crate::db::DbError::FileRead(coven::FileReadError::NoStorage) => {
+        bae_db::DbError::FileRead(coven::FileReadError::NoStorage) => {
             TrackReadError::SyncDisconnected
         }
         // Audio another device holds: a release nobody uploaded is on the
         // device that imported it, or made it local again.
-        crate::db::DbError::FileRead(coven::FileReadError::DeviceOnly { .. }) => {
+        bae_db::DbError::FileRead(coven::FileReadError::DeviceOnly { .. }) => {
             TrackReadError::NotUploaded
         }
-        crate::db::DbError::FileRead(
+        bae_db::DbError::FileRead(
             coven::FileReadError::UserFileMissing { .. }
             | coven::FileReadError::UserFileChanged { .. },
         ) => TrackReadError::OriginalMissing,
@@ -324,7 +324,7 @@ fn read_error_for_file_read(error: crate::db::DbError) -> TrackReadError {
 /// when the stream opens, so playback never branches on locality and every window
 /// after that costs only its own bytes.
 pub struct CovenFileReader {
-    db: crate::db::Database,
+    db: bae_db::Database,
     file_id: String,
     arbiter: Arc<FetchArbiter>,
     /// The byte the playing track's audio starts at, when it's past the header
@@ -343,7 +343,7 @@ pub struct CovenFileReader {
 
 impl CovenFileReader {
     pub(crate) fn new(
-        db: crate::db::Database,
+        db: bae_db::Database,
         file_id: String,
         arbiter: Arc<FetchArbiter>,
         prefetch_byte: Option<u64>,

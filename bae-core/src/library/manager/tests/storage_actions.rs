@@ -4,7 +4,7 @@
 
 use super::*;
 use crate::album_detail::StorageRowStatus;
-use crate::db::StoredTransition;
+use bae_db::StoredTransition;
 use bae_types::release_storage::ReleaseStorageAction;
 
 const WAIT: std::time::Duration = std::time::Duration::from_secs(10);
@@ -41,11 +41,11 @@ async fn a_transition_reaches_the_reads_from_its_row() {
     let storage = services.subscribe_storage_browse(crate::library::StorageBrowseView {
         sort: crate::library::views::StorageSortCriterion {
             field: crate::library::views::StorageSortField::AlbumTitle,
-            direction: crate::db::SortDirection::Ascending,
+            direction: bae_db::SortDirection::Ascending,
         },
         filter: crate::library::views::StorageFilter::All,
         search: String::new(),
-        windows: [crate::db::LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect(),
+        windows: [bae_db::LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect(),
         selected: Default::default(),
     });
     let album_shows = |action: Option<ReleaseStorageAction>| {
@@ -150,9 +150,8 @@ async fn the_write_that_releases_a_releases_pins_ends_its_unpin() {
     manager.drain_uploads_expecting_work().await.unwrap();
     wait_for_kept_release(&manager, &release.id).await;
     let file = release_files(&manager, &release.id).await.remove(0);
-    let pinned = || async {
-        file_pinned(&manager, crate::db::synced::RELEASE_FILES_NAMESPACE, &file.id).await
-    };
+    let pinned =
+        || async { file_pinned(&manager, bae_db::synced::RELEASE_FILES_NAMESPACE, &file.id).await };
     assert!(pinned().await);
 
     let refused = manager.database.unpin_release(&release.id, vec![file.file]).await;
@@ -194,7 +193,7 @@ async fn the_write_that_switches_a_releases_files_ends_its_make_local() {
         .iter()
         .map(|file| {
             let path =
-                crate::db::stored_name::file_path(&release.id, &file.id, &file.original_filename)
+                bae_db::stored_name::file_path(&release.id, &file.id, &file.original_filename)
                     .unwrap();
             (file.file, path)
         })

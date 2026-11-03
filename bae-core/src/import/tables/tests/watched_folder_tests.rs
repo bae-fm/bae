@@ -1,4 +1,4 @@
-use crate::db::watched_path::host_root;
+use bae_db::watched_path::host_root;
 
 /// Two overlapping folders added at once: the overlap check and the insert
 /// are one decision, so exactly one of them is watched and the other is

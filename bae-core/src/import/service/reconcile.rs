@@ -6,16 +6,16 @@
 use std::collections::HashMap;
 
 use super::{ImportService, PreparedMetadata};
-use crate::db::WorkGraphRows;
 use crate::import::handle::remap_links;
+use bae_db::WorkGraphRows;
 
 fn retain_referenced_artists(
-    artists: &mut Vec<crate::db::DbArtist>,
-    new_album: Option<(&crate::db::DbAlbum, &[crate::db::DbAlbumArtist])>,
-    track_artists: &[crate::db::DbTrackArtist],
-    release_artist_roles: &[crate::db::DbReleaseArtistRole],
-    track_artist_roles: &[crate::db::DbTrackArtistRole],
-    work_artists: &[crate::db::DbWorkArtist],
+    artists: &mut Vec<bae_db::DbArtist>,
+    new_album: Option<(&bae_db::DbAlbum, &[bae_db::DbAlbumArtist])>,
+    track_artists: &[bae_db::DbTrackArtist],
+    release_artist_roles: &[bae_db::DbReleaseArtistRole],
+    track_artist_roles: &[bae_db::DbTrackArtistRole],
+    work_artists: &[bae_db::DbWorkArtist],
 ) {
     let album_artists = new_album
         .into_iter()
@@ -44,12 +44,12 @@ impl ImportService {
     /// the library as it stands when the release is written.
     pub(super) async fn reconcile_prepared_release(
         &self,
-        parsed: crate::db::ReleaseRows,
+        parsed: bae_db::ReleaseRows,
         records: Vec<bae_catalogs::records::ReleaseRecord>,
         picked_album: Option<String>,
         picked_artists: std::collections::HashSet<String>,
     ) -> Result<PreparedMetadata, crate::import::ImportError> {
-        let crate::db::ReleaseRows {
+        let bae_db::ReleaseRows {
             album: mut db_album,
             release: mut db_release,
             mediums,
@@ -82,7 +82,7 @@ impl ImportService {
             // device, so two devices importing into one group while apart
             // write one album.
             None => {
-                if let Some(group_album_id) = crate::db::identity::album_id_for_records(&records) {
+                if let Some(group_album_id) = bae_db::identity::album_id_for_records(&records) {
                     db_album.id = group_album_id;
                     db_release.album_id = db_album.id.clone();
                     for album_artist in &mut album_artists {
@@ -186,7 +186,7 @@ mod tests {
             .unwrap()
             .with_timezone(&chrono::Utc);
         let mut artists = vec![
-            crate::db::DbArtist {
+            bae_db::DbArtist {
                 id: "artist-referenced".into(),
                 name: "Artist Name".into(),
                 sort_name: None,
@@ -194,7 +194,7 @@ mod tests {
                 musicbrainz_artist_id: None,
                 created_at: now,
             },
-            crate::db::DbArtist {
+            bae_db::DbArtist {
                 id: "artist-replaced".into(),
                 name: "Replaced Artist".into(),
                 sort_name: None,
@@ -203,14 +203,14 @@ mod tests {
                 created_at: now,
             },
         ];
-        let album = crate::db::DbAlbum {
+        let album = bae_db::DbAlbum {
             id: "album-1".into(),
             title: "Album Title".into(),
             year: None,
             is_compilation: false,
             created_at: now,
         };
-        let credits = [crate::db::DbAlbumArtist::new(&album.id, "artist-referenced", 0, now)];
+        let credits = [bae_db::DbAlbumArtist::new(&album.id, "artist-referenced", 0, now)];
 
         retain_referenced_artists(&mut artists, Some((&album, &credits)), &[], &[], &[], &[]);
 
@@ -223,7 +223,7 @@ mod tests {
         let now = chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
             .unwrap()
             .with_timezone(&chrono::Utc);
-        let mut artists = vec![crate::db::DbArtist {
+        let mut artists = vec![bae_db::DbArtist {
             id: "artist-album-only".into(),
             name: "Album Artist".into(),
             sort_name: None,

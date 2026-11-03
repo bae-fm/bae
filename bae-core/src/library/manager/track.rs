@@ -55,9 +55,9 @@ impl LibraryManager {
     /// Follow the windows `initial` names of the context lane's upcoming tracks.
     pub(crate) fn subscribe_queue_upcoming(
         &self,
-        initial: crate::db::LibraryPageWindows,
+        initial: bae_db::LibraryPageWindows,
     ) -> coven::ReconfigurableLiveQuery<
-        crate::db::LibraryPageWindows,
+        bae_db::LibraryPageWindows,
         crate::playback::tables::QueueUpcomingRead,
     > {
         crate::playback::tables::subscribe_queue_upcoming(&self.database, initial)
@@ -75,7 +75,7 @@ impl LibraryManager {
     pub async fn get_audio_format_by_track_id(
         &self,
         track_id: &str,
-    ) -> Result<Option<crate::db::DbAudioFormat>, LibraryError> {
+    ) -> Result<Option<bae_db::DbAudioFormat>, LibraryError> {
         Ok(self.database.find_audio_format_by_track_id(track_id).await?)
     }
 
@@ -84,8 +84,8 @@ impl LibraryManager {
     pub async fn resolve_track_audio(
         &self,
         track_id: &str,
-    ) -> Result<crate::db::ResolvedTrackAudio, LibraryError> {
-        Ok(crate::db::ResolvedTrackAudio::resolve(&self.database, track_id).await?)
+    ) -> Result<bae_db::ResolvedTrackAudio, LibraryError> {
+        Ok(bae_db::ResolvedTrackAudio::resolve(&self.database, track_id).await?)
     }
 
     /// What playback decides a side or disc pause with about a track: its

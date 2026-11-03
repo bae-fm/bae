@@ -287,7 +287,7 @@ fn a_read_that_panics_fails_the_save_as_unfinished() {
         decode: crate::track_audio::StreamDecodeParams::new(
             vec![crate::track_audio::SegmentDecodeParams::new(
                 buffer,
-                crate::db::SegmentSpan::whole_file(),
+                bae_db::SegmentSpan::whole_file(),
                 0,
             )],
             true,

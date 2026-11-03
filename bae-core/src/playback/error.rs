@@ -27,18 +27,16 @@ pub enum PlaybackError {
     #[error("the audio output didn't start: {0}")]
     AudioOutput(#[source] crate::playback::AudioError),
 }
-impl From<crate::db::DbError> for PlaybackError {
-    fn from(error: crate::db::DbError) -> Self {
+impl From<bae_db::DbError> for PlaybackError {
+    fn from(error: bae_db::DbError) -> Self {
         Self::database(error)
     }
 }
 
-impl From<crate::db::TrackAudioError> for PlaybackError {
-    fn from(error: crate::db::TrackAudioError) -> Self {
+impl From<bae_db::TrackAudioError> for PlaybackError {
+    fn from(error: bae_db::TrackAudioError) -> Self {
         match error {
-            crate::db::TrackAudioError::TrackNotFound(track_id) => {
-                Self::not_found("Track", track_id)
-            }
+            bae_db::TrackAudioError::TrackNotFound(track_id) => Self::not_found("Track", track_id),
             error => Self::database(error),
         }
     }

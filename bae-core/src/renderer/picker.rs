@@ -3,7 +3,7 @@
 //! bae-cast in one write per change. The table's SQL is here, as functions
 //! over the library's store.
 
-use crate::db::{Database, DbError};
+use bae_db::{Database, DbError};
 use coven::{CovenError, SqlReadContext};
 use rusqlite::{params, Row};
 

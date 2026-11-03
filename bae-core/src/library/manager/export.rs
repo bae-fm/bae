@@ -34,7 +34,7 @@ impl LibraryManager {
 
     /// Copy one release file's verbatim bytes to the path its name in the
     /// release gives below `staging_dir`, each name written as coven writes it
-    /// (see [`crate::db::stored_name`]). The name may name a subfolder
+    /// (see [`bae_db::stored_name`]). The name may name a subfolder
     /// (e.g. `CD1/CDImage.ape`), so its parent is created first. No per-file
     /// temp is needed: the whole staging directory is the atomic unit, renamed
     /// into place only once every file is written.
@@ -52,7 +52,7 @@ impl LibraryManager {
         staging_dir: &std::path::Path,
     ) -> Result<(), LibraryError> {
         let relative =
-            crate::db::stored_name::file_path(&file.release_id, &file.id, &file.original_filename)?
+            bae_db::stored_name::file_path(&file.release_id, &file.id, &file.original_filename)?
                 .local_path();
         let stream = self.database.open_release_file(&file.id).await?;
         let size = stream.plaintext_size();
@@ -78,7 +78,7 @@ impl LibraryManager {
         let mut offset = 0;
         while offset < size {
             let len = EXPORT_WINDOW.min(size - offset);
-            let window = stream.read_at(offset, len).await.map_err(crate::db::DbError::from)?;
+            let window = stream.read_at(offset, len).await.map_err(bae_db::DbError::from)?;
             output = blocking("write an exported file", move || {
                 std::io::Write::write_all(&mut output, &window).map(|()| output)
             })

@@ -55,8 +55,7 @@ pub use import::{
 pub use library::{
     multi_thread_runtime, open_test_library, open_test_library_with, runtime_with_services,
     setup_fresh_library, setup_test_library, setup_test_library_with,
-    setup_test_library_with_album_dir, start_test_services, temp_test_db, test_library_from_handle,
-    tracing_init,
+    setup_test_library_with_album_dir, start_test_services, test_library_from_handle, tracing_init,
 };
 pub use playback::{
     next_capture_stream, next_matching, start_capture_playback, start_capture_playback_with_clock,

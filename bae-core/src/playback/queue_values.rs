@@ -49,6 +49,6 @@ pub struct QueueAddition {
 /// in it.
 #[derive(Debug, Clone, PartialEq)]
 pub struct QueueUpcomingWindow {
-    pub window: crate::db::LibraryPageWindow,
+    pub window: bae_db::LibraryPageWindow,
     pub items: Vec<QueueItem>,
 }

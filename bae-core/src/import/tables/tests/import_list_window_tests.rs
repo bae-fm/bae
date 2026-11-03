@@ -2,7 +2,7 @@
 //! has moved.
 
 use super::super::*;
-use crate::db::{LibraryPageWindow, LibraryPageWindows};
+use bae_db::{LibraryPageWindow, LibraryPageWindows};
 
 /// The import list's items in the windows `request` names, as one read with
 /// no earlier read's rows to start from finds them.

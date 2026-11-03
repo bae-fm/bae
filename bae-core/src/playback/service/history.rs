@@ -1,5 +1,5 @@
 use super::*;
-use crate::db::history::HistoryPlay;
+use bae_db::history::HistoryPlay;
 use std::time::Duration;
 
 pub(super) struct Listening {
@@ -275,7 +275,7 @@ impl PlaybackService {
         listening.meter = ListeningMeter::Remote { position, reported_at: now };
     }
 
-    fn listening_failed(&self, error: crate::db::DbError) {
+    fn listening_failed(&self, error: bae_db::DbError) {
         error!("could not record listening history: {error}");
         emit_progress(
             &self.progress_tx,
@@ -285,9 +285,9 @@ impl PlaybackService {
 }
 
 async fn persist(
-    database: &crate::db::Database,
+    database: &bae_db::Database,
     listening: &mut Listening,
-) -> Result<(), crate::db::DbError> {
+) -> Result<(), bae_db::DbError> {
     if listening.play.qualifies()
         && listening.play.entry().played.as_millis() != listening.saved.as_millis()
     {

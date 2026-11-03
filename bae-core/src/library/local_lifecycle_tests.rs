@@ -36,7 +36,7 @@ impl Home {
     /// opened.
     async fn library(&self, name: &str) -> coven::CovenHandle {
         let handle =
-            crate::db::configure_store(self.installation.builder(self.app_dir.store_layout()))
+            bae_db::configure_store(self.installation.builder(self.app_dir.store_layout()))
                 .storage_connector(self.storage.clone())
                 .create_store(name)
                 .await
@@ -465,11 +465,10 @@ async fn unsent_work_of_a_closed_library_leaves_it_closed() {
     .await
     .unwrap();
     assert!(work.is_empty(), "{work:?}");
-    let reopened =
-        crate::db::configure_store(home.installation.builder(home.app_dir.store_layout()))
-            .open(id, |_| ())
-            .await
-            .unwrap();
+    let reopened = bae_db::configure_store(home.installation.builder(home.app_dir.store_layout()))
+        .open(id, |_| ())
+        .await
+        .unwrap();
     assert_eq!(reopened.store_name().await.unwrap(), "Library");
 }
 

@@ -408,7 +408,7 @@ async fn a_release_written_again_keeps_its_selection_and_its_group_s_fold() {
     lib.select(list, SelectionChange::Replace { keys: vec![lib.key("Loose")] }).await;
     let group = crate::import::FolderReleaseDecisionKey {
         watched_folder_path: lib.root.clone(),
-        relative_folder: crate::db::RelativeFolder::test("Box"),
+        relative_folder: bae_db::RelativeFolder::test("Box"),
     };
     tables.set_import_list_group_folded(list, group, true).await.unwrap();
     for name in ["Box/2", "Loose"] {

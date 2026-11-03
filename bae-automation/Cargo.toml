@@ -14,6 +14,8 @@ path = "src/lib.rs"
 
 [dependencies]
 bae-core = { workspace = true }
+# The library's records its answers carry.
+bae-db = { workspace = true }
 bae-diagnostics = { workspace = true }
 # The catalogs and covers its records carry.
 bae-catalogs = { workspace = true }

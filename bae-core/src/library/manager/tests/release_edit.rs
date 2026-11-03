@@ -1,7 +1,7 @@
 async fn add_track_audio_sources(
     manager: &LibraryManager,
-    track: &crate::db::DbTrack,
-    sources: &[(&str, crate::db::source_audio::SourceAudioLayout)],
+    track: &bae_db::DbTrack,
+    sources: &[(&str, bae_db::source_audio::SourceAudioLayout)],
 ) -> Vec<NewReleaseFile> {
     let now = Utc::now();
     let mut files = Vec::with_capacity(sources.len());
@@ -13,7 +13,7 @@ async fn add_track_audio_sources(
             Uuid::new_v4().to_string(),
             now,
         );
-        file.source_audio = Some(crate::db::source_audio::SourceAudioFile {
+        file.source_audio = Some(bae_db::source_audio::SourceAudioFile {
             layout: Some(*layout),
             format: bae_types::audio_format::AudioFormat {
                 codec: "FLAC".to_string(),
@@ -28,7 +28,7 @@ async fn add_track_audio_sources(
         manager.add_file(&file, 1_000).await.unwrap();
         files.push(file);
     }
-    let audio_format = crate::db::DbAudioFormat {
+    let audio_format = bae_db::DbAudioFormat {
         id: Uuid::new_v4().to_string(),
         track_id: track.id.clone(),
         content_type: ContentType::Flac,
@@ -44,11 +44,11 @@ async fn add_track_audio_sources(
     let segments = files
         .iter()
         .enumerate()
-        .map(|(index, file)| crate::db::DbAudioSegment {
+        .map(|(index, file)| bae_db::DbAudioSegment {
             id: Uuid::new_v4().to_string(),
             audio_format_id: audio_format.id.clone(),
             segment_index: i64::try_from(index).unwrap(),
-            role: crate::db::DbAudioSegmentRole::Main,
+            role: bae_db::DbAudioSegmentRole::Main,
             file_id: file.id.clone(),
             start_sample: 0,
             end_sample: None,
@@ -66,14 +66,14 @@ async fn release_edit_seed_uses_persisted_track_ids() {
     let (manager, _temp_dir) = setup_test_manager().await;
     let album = create_test_album();
     let release = create_test_release(&album.id);
-    let track = crate::db::DbTrack::new_test(&release.id, TRACK_1, "Track Title", 1);
+    let track = bae_db::DbTrack::new_test(&release.id, TRACK_1, "Track Title", 1);
     manager.database.insert_album(&album).await.unwrap();
     insert_release(&manager, &release).await;
     manager.database.insert_track(&track).await.unwrap();
     add_track_audio_sources(
         &manager,
         &track,
-        &[("track.flac", crate::db::source_audio::SourceAudioLayout::File)],
+        &[("track.flac", bae_db::source_audio::SourceAudioLayout::File)],
     )
     .await;
 
@@ -170,7 +170,7 @@ async fn release_edit_seed_refuses_a_track_without_stored_audio() {
     let (manager, _temp_dir) = setup_test_manager().await;
     let album = create_test_album();
     let release = create_test_release(&album.id);
-    let track = crate::db::DbTrack::new_test(&release.id, TRACK_1, "Track Title", 1);
+    let track = bae_db::DbTrack::new_test(&release.id, TRACK_1, "Track Title", 1);
     manager.database.insert_album(&album).await.unwrap();
     insert_release(&manager, &release).await;
     manager.database.insert_track(&track).await.unwrap();
@@ -189,9 +189,9 @@ async fn release_edit_seed_projects_track_sources_in_segment_order() {
     let album = create_test_album();
     let mut release = create_test_release(&album.id);
     release.pressing.facts = bae_types::pressing::made_of(bae_types::pressing::Medium::Cd, 2);
-    let first = crate::db::DbTrack::new_test(&release.id, TRACK_1, "First Track", 1);
-    let mut second = crate::db::DbTrack::new_test(&release.id, TRACK_2, "Second Track", 1);
-    let second_disc = crate::db::DbReleaseMedium::new(
+    let first = bae_db::DbTrack::new_test(&release.id, TRACK_1, "First Track", 1);
+    let mut second = bae_db::DbTrack::new_test(&release.id, TRACK_2, "Second Track", 1);
+    let second_disc = bae_db::DbReleaseMedium::new(
         &release.id,
         std::num::NonZeroU16::new(2).expect("disc 2"),
         bae_types::mediums::ReleaseMedium::one_sided(Some(bae_types::pressing::Medium::Cd)),
@@ -206,15 +206,15 @@ async fn release_edit_seed_projects_track_sources_in_segment_order() {
     add_track_audio_sources(
         &manager,
         &first,
-        &[("first.flac", crate::db::source_audio::SourceAudioLayout::File)],
+        &[("first.flac", bae_db::source_audio::SourceAudioLayout::File)],
     )
     .await;
     add_track_audio_sources(
         &manager,
         &second,
         &[
-            ("second-a.flac", crate::db::source_audio::SourceAudioLayout::Cue),
-            ("second-b.flac", crate::db::source_audio::SourceAudioLayout::Cue),
+            ("second-a.flac", bae_db::source_audio::SourceAudioLayout::Cue),
+            ("second-b.flac", bae_db::source_audio::SourceAudioLayout::Cue),
         ],
     )
     .await;
@@ -235,7 +235,7 @@ async fn release_edit_seed_projects_track_sources_in_segment_order() {
         panic!("a track on its own file is a run of its own");
     };
     assert_eq!(first_context.track_id, first.id);
-    assert_eq!(first_context.sources[0].layout, crate::db::source_audio::SourceAudioLayout::File);
+    assert_eq!(first_context.sources[0].layout, bae_db::source_audio::SourceAudioLayout::File);
     // A track playing two files is no sheet's run, though a sheet carves both.
     let crate::import::ReleaseEditTrackRun::Track(second_context) = &sides[1].runs[0] else {
         panic!("a track over two files is a run of its own");
@@ -247,7 +247,7 @@ async fn release_edit_seed_projects_track_sources_in_segment_order() {
     );
     assert!(matches!(
         seed.display.source_audio,
-        Some(crate::db::source_audio::SourceAudioSummary::Mixed { .. })
+        Some(bae_db::source_audio::SourceAudioSummary::Mixed { .. })
     ));
 }
 
@@ -256,14 +256,14 @@ async fn release_metadata_edit_preserves_records_and_audio() {
     let (manager, _temp_dir) = setup_test_manager().await;
     let album = create_test_album();
     let release = create_test_release(&album.id);
-    let track = crate::db::DbTrack::new_test(&release.id, TRACK_1, "Track Title", 1);
+    let track = bae_db::DbTrack::new_test(&release.id, TRACK_1, "Track Title", 1);
     manager.database.insert_album(&album).await.unwrap();
     insert_release(&manager, &release).await;
     manager.database.insert_track(&track).await.unwrap();
     add_track_audio_sources(
         &manager,
         &track,
-        &[("track.flac", crate::db::source_audio::SourceAudioLayout::File)],
+        &[("track.flac", bae_db::source_audio::SourceAudioLayout::File)],
     )
     .await;
     let identity = bae_catalogs::records::ReleaseRecord::new(
@@ -326,7 +326,7 @@ async fn release_metadata_edit_preserves_records_and_audio() {
         .unwrap()
         .expect("the edited release remains stored");
     let stored_after = stored_after.detail;
-    let segments = |tracks: &[crate::db::DbReleaseEditTrack]| {
+    let segments = |tracks: &[bae_db::DbReleaseEditTrack]| {
         tracks
             .iter()
             .map(|track| (track.audio_format_count, track.segments.clone()))

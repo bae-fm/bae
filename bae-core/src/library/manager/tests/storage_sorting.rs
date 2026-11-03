@@ -23,7 +23,7 @@ async fn storage_page_sort_by_artist_names() {
         manager.database.insert_album(&album).await.unwrap();
         manager
             .database
-            .insert_album_artist(&crate::db::DbAlbumArtist::new_test(&album.id, artist_id))
+            .insert_album_artist(&bae_db::DbAlbumArtist::new_test(&album.id, artist_id))
             .await
             .unwrap();
         insert_release(&manager, &release).await;
@@ -31,7 +31,7 @@ async fn storage_page_sort_by_artist_names() {
 
     let asc = crate::library::views::StorageSortCriterion {
         field: crate::library::views::StorageSortField::ArtistNames,
-        direction: crate::db::SortDirection::Ascending,
+        direction: bae_db::SortDirection::Ascending,
     };
     let page = manager.views().get_storage_page(&asc, crate::library::views::StorageFilter::All, 0, 10).await.unwrap();
     let names: Vec<_> = page.rows.iter().map(|r| r.album.title.clone()).collect();
@@ -39,7 +39,7 @@ async fn storage_page_sort_by_artist_names() {
 
     let desc = crate::library::views::StorageSortCriterion {
         field: crate::library::views::StorageSortField::ArtistNames,
-        direction: crate::db::SortDirection::Descending,
+        direction: bae_db::SortDirection::Descending,
     };
     let page = manager.views().get_storage_page(&desc, crate::library::views::StorageFilter::All, 0, 10).await.unwrap();
     let names: Vec<_> = page.rows.iter().map(|r| r.album.title.clone()).collect();
@@ -66,7 +66,7 @@ async fn storage_page_sort_by_media_nulls_last() {
 
     let asc = crate::library::views::StorageSortCriterion {
         field: crate::library::views::StorageSortField::Media,
-        direction: crate::db::SortDirection::Ascending,
+        direction: bae_db::SortDirection::Ascending,
     };
     let page = manager.views().get_storage_page(&asc, crate::library::views::StorageFilter::All, 0, 10).await.unwrap();
     let titles: Vec<_> = page.rows.iter().map(|r| r.album.title.clone()).collect();
@@ -75,7 +75,7 @@ async fn storage_page_sort_by_media_nulls_last() {
 
     let desc = crate::library::views::StorageSortCriterion {
         field: crate::library::views::StorageSortField::Media,
-        direction: crate::db::SortDirection::Descending,
+        direction: bae_db::SortDirection::Descending,
     };
     let page = manager.views().get_storage_page(&desc, crate::library::views::StorageFilter::All, 0, 10).await.unwrap();
     let titles: Vec<_> = page.rows.iter().map(|r| r.album.title.clone()).collect();
@@ -108,7 +108,7 @@ async fn storage_page_sort_by_file_count() {
 
     let desc = crate::library::views::StorageSortCriterion {
         field: crate::library::views::StorageSortField::FileCount,
-        direction: crate::db::SortDirection::Descending,
+        direction: bae_db::SortDirection::Descending,
     };
     let page = manager.views().get_storage_page(&desc, crate::library::views::StorageFilter::All, 0, 10).await.unwrap();
     let titles: Vec<_> = page.rows.iter().map(|r| r.album.title.clone()).collect();
@@ -138,7 +138,7 @@ async fn storage_page_sort_by_total_size() {
 
     let asc = crate::library::views::StorageSortCriterion {
         field: crate::library::views::StorageSortField::TotalSize,
-        direction: crate::db::SortDirection::Ascending,
+        direction: bae_db::SortDirection::Ascending,
     };
     let page = manager.views().get_storage_page(&asc, crate::library::views::StorageFilter::All, 0, 10).await.unwrap();
     let titles: Vec<_> = page.rows.iter().map(|r| r.album.title.clone()).collect();
@@ -184,7 +184,7 @@ async fn storage_page_sort_by_date_added() {
         }
     };
     assert_eq!(
-        page(crate::db::SortDirection::Ascending).await,
+        page(bae_db::SortDirection::Ascending).await,
         vec![
             ("Album First".to_string(), at(0)),
             ("Album Tied A".to_string(), at(10)),
@@ -193,7 +193,7 @@ async fn storage_page_sort_by_date_added() {
         ]
     );
     assert_eq!(
-        page(crate::db::SortDirection::Descending).await,
+        page(bae_db::SortDirection::Descending).await,
         vec![
             ("Album Last".to_string(), at(20)),
             ("Album Tied A".to_string(), at(10)),
@@ -209,7 +209,7 @@ async fn storage_page_sort_by_date_added() {
 async fn by_storage(
     manager: &LibraryManager,
     filter: crate::library::views::StorageFilter,
-    direction: crate::db::SortDirection,
+    direction: bae_db::SortDirection,
 ) -> Vec<String> {
     let sort =
         crate::library::views::StorageSortCriterion { field: crate::library::views::StorageSortField::Storage, direction };
@@ -256,7 +256,7 @@ async fn storage_page_sort_by_storage_state() {
     .await
     .id;
 
-    use crate::db::SortDirection;
+    use bae_db::SortDirection;
 use crate::library::views::StorageFilter;
     let ascending =
         vec![uploading.clone(), pinning.clone(), local.clone(), pinned.clone(), cloud.clone()];
@@ -313,7 +313,7 @@ async fn a_release_sorts_as_pinning_while_the_download_queue_holds_it() {
     let first = uploaded_release(&manager, &dir("first"), "Album Title A", false).await;
     let second = uploaded_release(&manager, &dir("second"), "Album Title B", false).await;
     let ascending =
-        || by_storage(&manager, crate::library::views::StorageFilter::All, crate::db::SortDirection::Ascending);
+        || by_storage(&manager, crate::library::views::StorageFilter::All, bae_db::SortDirection::Ascending);
     let resting = vec![first.clone(), second.clone()];
     let second_pinning = vec![second.clone(), first.clone()];
     assert_eq!(ascending().await, resting);
@@ -364,7 +364,7 @@ async fn listed_queues(manager: &LibraryManager) -> crate::library::StorageQueue
     let mut browse = crate::library::views::LibraryViews::new(manager.database.clone()).subscribe_storage_browse(crate::library::views::StorageBrowseRequest {
         sort: crate::library::views::StorageSortCriterion {
             field: crate::library::views::StorageSortField::Storage,
-            direction: crate::db::SortDirection::Ascending,
+            direction: bae_db::SortDirection::Ascending,
         },
         filter: crate::library::views::StorageFilter::All,
         search: String::new(),
@@ -442,7 +442,7 @@ async fn the_storage_list_carries_the_queues_holding_work() {
 async fn activate_download(
     manager: &LibraryManager,
     release_id: &str,
-) -> Result<bool, crate::db::DbError> {
+) -> Result<bool, bae_db::DbError> {
     let release_id = release_id.to_string();
     manager
         .database
@@ -459,7 +459,7 @@ async fn activate_download(
 async fn finish_download(
     manager: &LibraryManager,
     release_id: &str,
-) -> Result<bool, crate::db::DbError> {
+) -> Result<bool, bae_db::DbError> {
     let release_id = release_id.to_string();
     manager
         .database
@@ -477,7 +477,7 @@ async fn fail_download(
     manager: &LibraryManager,
     release_id: &str,
     error: String,
-) -> Result<bool, crate::db::DbError> {
+) -> Result<bool, bae_db::DbError> {
     let release_id = release_id.to_string();
     manager
         .database
@@ -492,6 +492,6 @@ async fn fail_download(
 }
 
 /// Empty the transfer queues as opening the library does.
-async fn clear_transfers_as_opening(manager: &LibraryManager) -> Result<(), crate::db::DbError> {
+async fn clear_transfers_as_opening(manager: &LibraryManager) -> Result<(), bae_db::DbError> {
     manager.database.call(crate::library::queued_releases::tables::clear_transfers_on).await
 }

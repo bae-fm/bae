@@ -1,9 +1,9 @@
 //! The library views' live queries: each read moved in place by its
 //! request, and woken by the writes that change what it shows.
 
-use crate::db::client::tests::live_query_tests::*;
-use crate::db::client::tests::{exec, exec_batch};
 use crate::library::views::*;
+use bae_db::test_fixtures::live_query::*;
+use bae_db::test_fixtures::{exec, exec_batch};
 use std::collections::BTreeSet;
 use std::time::Duration;
 
@@ -13,7 +13,7 @@ use std::time::Duration;
 /// before the rename, would show in that page too.
 async fn next_album_page_is_only_a_rename(
     db: &Database,
-    live: &mut coven::ReconfigurableLiveQuery<crate::db::LibraryPageWindows, AlbumBrowseProjection>,
+    live: &mut coven::ReconfigurableLiveQuery<bae_db::LibraryPageWindows, AlbumBrowseProjection>,
     shown: AlbumBrowseProjection,
     title: &str,
 ) -> AlbumBrowseProjection {
@@ -35,10 +35,7 @@ async fn next_album_page_is_only_a_rename(
 /// composer `shown` holds.
 async fn next_composer_page_is_only_a_rename(
     db: &Database,
-    live: &mut coven::ReconfigurableLiveQuery<
-        crate::db::LibraryPageWindows,
-        ComposerBrowseProjection,
-    >,
+    live: &mut coven::ReconfigurableLiveQuery<bae_db::LibraryPageWindows, ComposerBrowseProjection>,
     shown: ComposerBrowseProjection,
     name: &str,
 ) -> ComposerBrowseProjection {
@@ -70,7 +67,7 @@ async fn album_browse_delivers_rows_count_and_cover_versions() {
     assert_eq!(initial.windows[0].rows[0].album.title, "Album Title");
     assert_eq!(initial.windows[0].rows[0].album.cover_version, None);
 
-    let cover = crate::db::client::tests::write_cover(&db, RELEASE_ID, "cover bytes").await;
+    let cover = bae_db::test_fixtures::write_cover(&db, RELEASE_ID, "cover bytes").await;
 
     let updated = tokio::time::timeout(Duration::from_secs(2), live.next())
         .await
@@ -100,9 +97,9 @@ async fn album_browse_reads_only_the_primary_releases_cover() {
     );
     live.next().await.expect("the query stays open").result.unwrap();
 
-    crate::db::client::tests::write_cover(&db, OTHER_RELEASE_ID, "other release cover bytes").await;
+    bae_db::test_fixtures::write_cover(&db, OTHER_RELEASE_ID, "other release cover bytes").await;
     let primary =
-        crate::db::client::tests::write_cover(&db, RELEASE_ID, "primary release cover bytes").await;
+        bae_db::test_fixtures::write_cover(&db, RELEASE_ID, "primary release cover bytes").await;
     let updated = tokio::time::timeout(Duration::from_secs(2), live.next())
         .await
         .expect("the primary release's cover wakes the browse")
@@ -225,7 +222,7 @@ async fn album_browse_subscription_reconfigures_bounded_windows() {
     let shown = shown_again;
 
     let other_cover =
-        crate::db::client::tests::write_cover(&db, OTHER_RELEASE_ID, "other cover bytes").await;
+        bae_db::test_fixtures::write_cover(&db, OTHER_RELEASE_ID, "other cover bytes").await;
     // Only the requested rows' covers are read, so a cover on the album
     // outside the window changes nothing the browse delivers.
     next_album_page_is_only_a_rename(&db, &mut live, shown, "Album Title Shown Again").await;
@@ -240,7 +237,7 @@ async fn album_browse_subscription_reconfigures_bounded_windows() {
     );
 
     let replaced_other_cover =
-        crate::db::client::tests::write_cover(&db, OTHER_RELEASE_ID, "replaced other cover bytes")
+        bae_db::test_fixtures::write_cover(&db, OTHER_RELEASE_ID, "replaced other cover bytes")
             .await;
     let cover_updated = tokio::time::timeout(Duration::from_secs(2), live.next())
         .await
@@ -489,7 +486,7 @@ async fn album_browse_ignores_an_unread_table() {
 #[tokio::test]
 async fn album_detail_subscription_ignores_an_unread_column() {
     let (db, _temp) = live_db().await;
-    crate::db::client::tests::write_cover(&db, RELEASE_ID, "cover bytes").await;
+    bae_db::test_fixtures::write_cover(&db, RELEASE_ID, "cover bytes").await;
     let mut live = crate::library::views::LibraryViews::new(db.clone())
         .subscribe_album_detail(Some(ALBUM_ID.to_string()));
     live.next().await.expect("the query stays open").result.unwrap();

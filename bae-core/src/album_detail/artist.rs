@@ -20,16 +20,16 @@ impl ArtistSummary {
 /// person can use to distinguish otherwise identical names.
 #[derive(Debug, Clone)]
 pub struct ArtistSearchResult {
-    pub artist: crate::db::DbArtist,
+    pub artist: bae_db::DbArtist,
     pub image: Option<ImageRef>,
     /// The artist's other printed names, which the picker offers under it.
-    pub credit_names: Vec<crate::db::credits::ArtistCreditName>,
+    pub credit_names: Vec<bae_db::credits::ArtistCreditName>,
 }
 
 #[derive(Debug, Clone)]
 pub struct ArtistDetail {
     pub artist: ArtistSummary,
     /// The artist's other printed names, which its page lists and edits.
-    pub credit_names: Vec<crate::db::credits::ArtistCreditName>,
+    pub credit_names: Vec<bae_db::credits::ArtistCreditName>,
     pub albums: Vec<AlbumSummary>,
 }

@@ -244,7 +244,7 @@ impl PlaybackService {
 
     /// A queue table write or read failed: the queue is as it was before the
     /// command, and the command does nothing more.
-    pub(super) fn queue_failed(&self, doing: &str, error: crate::db::DbError) {
+    pub(super) fn queue_failed(&self, doing: &str, error: bae_db::DbError) {
         error!("couldn't {doing}: {error}");
         self.telemetry_playback_failed(PlaybackOperation::QueueChange);
     }
@@ -606,7 +606,7 @@ impl PlaybackService {
     /// track `track_deletions` names. Take `track_deletions` before the
     /// library can delete anything, so no deletion goes unheard.
     pub fn start(
-        database: crate::db::Database,
+        database: bae_db::Database,
         ids: coven::IdSourceRef,
         queue_tables: crate::playback::tables::PlaybackQueueTables,
         now_row: crate::playback::tables::PlaybackNowRow,
@@ -641,7 +641,7 @@ impl PlaybackService {
     /// touches no audio hardware.
     #[cfg(any(test, feature = "test-utils"))]
     pub fn start_with_audio_device(
-        database: crate::db::Database,
+        database: bae_db::Database,
         ids: coven::IdSourceRef,
         queue_tables: crate::playback::tables::PlaybackQueueTables,
         now_row: crate::playback::tables::PlaybackNowRow,
@@ -673,7 +673,7 @@ impl PlaybackService {
     }
 
     pub(super) fn start_inner(
-        database: crate::db::Database,
+        database: bae_db::Database,
         ids: coven::IdSourceRef,
         queue_tables: crate::playback::tables::PlaybackQueueTables,
         now_row: crate::playback::tables::PlaybackNowRow,

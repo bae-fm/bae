@@ -7,7 +7,7 @@ impl ImportService {
     /// is how the rest of the app submits import requests.
     pub async fn start(
         runtime_handle: tokio::runtime::Handle,
-        database: crate::db::Database,
+        database: bae_db::Database,
         catalogs: crate::import::CatalogSessions,
         remote_images: bae_catalogs::remote_image::RemoteImageCache,
         diagnostics: bae_diagnostics::Diagnostics,
@@ -43,7 +43,7 @@ impl ImportService {
     #[cfg(test)]
     pub(crate) fn start_reading_tags_with(
         runtime_handle: tokio::runtime::Handle,
-        database: crate::db::Database,
+        database: bae_db::Database,
         catalogs: crate::import::CatalogSessions,
         remote_images: bae_catalogs::remote_image::RemoteImageCache,
         diagnostics: bae_diagnostics::Diagnostics,

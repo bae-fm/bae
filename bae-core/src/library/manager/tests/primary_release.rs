@@ -8,7 +8,7 @@ fn devices_setting_different_primaries_converge_on_one() {
     crate::sync::test_devices::run_two_device_test(check_converging_primaries);
 }
 
-async fn primary_of(database: &crate::db::Database, album_id: &str) -> String {
+async fn primary_of(database: &bae_db::Database, album_id: &str) -> String {
     crate::library::views::LibraryViews::new(database.clone())
         .find_album_detail(album_id)
         .await

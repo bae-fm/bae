@@ -108,18 +108,18 @@ pub(crate) fn classify_key_state_error(error: crate::library::LibraryError) -> B
     }
 }
 
-fn classify_open_error(error: crate::db::DbError) -> BootstrapError {
+fn classify_open_error(error: bae_db::DbError) -> BootstrapError {
     match error {
-        crate::db::DbError::Coven(coven::CovenError::Key(
+        bae_db::DbError::Coven(coven::CovenError::Key(
             coven::KeyError::KeychainTemporarilyUnavailable(_),
         )) => BootstrapError::KeyringUnavailable,
-        crate::db::DbError::Coven(coven::CovenError::Key(
+        bae_db::DbError::Coven(coven::CovenError::Key(
             coven::KeyError::MissingKeychainEntitlement(error),
         )) => BootstrapError::KeychainEntitlementMissing(error),
-        error @ crate::db::DbError::Coven(coven::CovenError::Database(
+        error @ bae_db::DbError::Coven(coven::CovenError::Database(
             coven::DbError::DamagedDatabase,
         )) => BootstrapError::DeviceResetRequired(error.to_string()),
-        crate::db::DbError::Coven(coven::CovenError::Lock(
+        bae_db::DbError::Coven(coven::CovenError::Lock(
             coven::StoreLockError::ReplacementUnfinished { by, .. },
         )) => BootstrapError::ReplacementUnfinished(by),
         error => BootstrapError::Database(format!("Failed to open database: {error}")),
@@ -268,17 +268,14 @@ async fn open_store(
     opening: LibraryOpening,
     clock: ClockRef,
     ids: IdSourceRef,
-) -> Result<crate::db::Database, crate::db::DbError> {
+) -> Result<bae_db::Database, bae_db::DbError> {
     let handle = match opening {
         LibraryOpening::Registered { builder, store, on_progress } => {
-            crate::db::configure_store(builder)
-                .clock(clock.clone())
-                .open(store, on_progress)
-                .await?
+            bae_db::configure_store(builder).clock(clock.clone()).open(store, on_progress).await?
         }
         LibraryOpening::Open(handle) => handle,
     };
-    Ok(crate::db::Database::from_handle(handle, clock, ids))
+    Ok(bae_db::Database::from_handle(handle, clock, ids))
 }
 
 /// The library a registered id names; an id that is no library's is not
@@ -586,7 +583,7 @@ mod tests {
         let temp = tempfile::tempdir().unwrap();
         let installation = coven::TestCoven::new();
         installation.fail_next_keychain_operation();
-        let failure = crate::db::configure_store(
+        let failure = bae_db::configure_store(
             installation.builder(bae_app_dir::AppDir::at(temp.path()).unwrap().store_layout()),
         )
         .create_store("Unavailable Keychain")
@@ -606,7 +603,7 @@ mod tests {
         let temp = tempfile::tempdir().unwrap();
         let installation = coven::TestCoven::new();
         installation.fail_next_keychain_operation();
-        let failure = crate::db::configure_store(
+        let failure = bae_db::configure_store(
             installation.builder(bae_app_dir::AppDir::at(temp.path()).unwrap().store_layout()),
         )
         .create_store("Keychain test")
@@ -638,7 +635,7 @@ mod tests {
             BootstrapError::KeychainEntitlementMissing(_)
         ));
         assert!(matches!(
-            super::classify_open_error(crate::db::DbError::Coven(coven::CovenError::Key(
+            super::classify_open_error(bae_db::DbError::Coven(coven::CovenError::Key(
                 missing_entitlement()
             ))),
             BootstrapError::KeychainEntitlementMissing(_)
@@ -661,7 +658,7 @@ mod tests {
         let installation = coven::TestCoven::new();
         let handle = runtime
             .block_on(
-                crate::db::configure_store(installation.builder(app_dir.store_layout()))
+                bae_db::configure_store(installation.builder(app_dir.store_layout()))
                     .create_store("Failing Bootstrap"),
             )
             .unwrap();

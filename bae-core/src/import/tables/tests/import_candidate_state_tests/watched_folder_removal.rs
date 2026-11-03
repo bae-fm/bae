@@ -85,7 +85,7 @@ async fn removing_a_watched_folder_forgets_what_was_decided_under_it() {
         &db,
         &crate::import::folder_scanner::FolderReleaseDecisionKey {
             watched_folder_path: root.clone(),
-            relative_folder: crate::db::RelativeFolder::test("Collection"),
+            relative_folder: bae_db::RelativeFolder::test("Collection"),
         },
         crate::import::folder_scanner::FolderReleaseDecision::KeepAsSeparateReleases,
     )
@@ -136,7 +136,7 @@ async fn removing_a_watched_folder_forgets_what_was_decided_under_it() {
         tables.load_folder_release_decisions(root)
             .await
             .unwrap()
-            .get(&crate::db::RelativeFolder::test("Collection")),
+            .get(&bae_db::RelativeFolder::test("Collection")),
         None
     );
     assert!(tables.load_folder_scan_snapshots().await.unwrap().is_empty());
@@ -183,7 +183,7 @@ async fn a_folder_taking_over_the_watched_folders_inside_it_keeps_what_was_decid
         &db,
         &crate::import::folder_scanner::FolderReleaseDecisionKey {
             watched_folder_path: one.clone(),
-            relative_folder: crate::db::RelativeFolder::test("Box"),
+            relative_folder: bae_db::RelativeFolder::test("Box"),
         },
         crate::import::folder_scanner::FolderReleaseDecision::KeepAsSeparateReleases,
     )
@@ -220,11 +220,11 @@ async fn a_folder_taking_over_the_watched_folders_inside_it_keeps_what_was_decid
     }
     assert_eq!(
         tables.load_skipped_import_candidates(&music).await.unwrap(),
-        std::collections::HashSet::from([crate::db::RelativeFolder::test("one/Album")])
+        std::collections::HashSet::from([bae_db::RelativeFolder::test("one/Album")])
     );
     let box_reading = tables.load_folder_release_decisions(&music).await.unwrap();
     let box_reading = box_reading
-        .get(&crate::db::RelativeFolder::test("one/Box"))
+        .get(&bae_db::RelativeFolder::test("one/Box"))
         .expect("the box still reads its way");
     assert_eq!(
         box_reading.decision,
@@ -239,7 +239,7 @@ async fn a_folder_taking_over_the_watched_folders_inside_it_keeps_what_was_decid
         Some(crate::import::tables::GroupingFacts::Anchored {
             folder: crate::import::folder_scanner::FolderReleaseDecisionKey {
                 watched_folder_path: music.clone(),
-                relative_folder: crate::db::RelativeFolder::test("one/Box"),
+                relative_folder: bae_db::RelativeFolder::test("one/Box"),
             },
             decision: crate::import::folder_scanner::FolderReleaseDecision::KeepAsSeparateReleases,
         })
@@ -345,6 +345,6 @@ async fn removing_a_watched_folder_leaves_the_folder_beside_it() {
     assert!(tables.load_skipped_import_candidates(&root).await.unwrap().is_empty());
     assert_eq!(
         tables.load_skipped_import_candidates(&beside).await.unwrap(),
-        [crate::db::RelativeFolder::test("Release")].into_iter().collect()
+        [bae_db::RelativeFolder::test("Release")].into_iter().collect()
     );
 }

@@ -98,11 +98,11 @@ const TRACK_T2B: &str = "b98ba0de-5eb5-4c15-a20f-b5df519ed969";
 /// inserted, and so played, in slice order, on the release's one CD. Each
 /// stores `track_length_ms` as its length.
 async fn seed_test_releases(
-    database: &crate::db::Database,
+    database: &bae_db::Database,
     releases: &[(&str, &[&str])],
     track_length_ms: u64,
 ) {
-    use crate::db::{DbAlbum, DbArtist, DbRelease, DbTrack};
+    use bae_db::{DbAlbum, DbArtist, DbRelease, DbTrack};
     if releases.is_empty() {
         return;
     }
@@ -120,12 +120,12 @@ async fn seed_test_releases(
         let release = DbRelease::new_test(&album.id, release_id);
         database.insert_album(&album).await.unwrap();
         database
-            .insert_album_artist(&crate::db::DbAlbumArtist::new_test(&album.id, &artist.id))
+            .insert_album_artist(&bae_db::DbAlbumArtist::new_test(&album.id, &artist.id))
             .await
             .unwrap();
         database.insert_release(&release).await.unwrap();
         database
-            .insert_release_medium(&crate::db::DbReleaseMedium::new_test(release_id))
+            .insert_release_medium(&bae_db::DbReleaseMedium::new_test(release_id))
             .await
             .unwrap();
         for (index, track_id) in track_ids.iter().enumerate() {
@@ -160,13 +160,13 @@ async fn fill_test_release(service: &mut PlaybackService, release_id: &str) {
 /// A store seeded with releases, and the directory holding it, which
 /// outlives it.
 struct SeededStore {
-    database: crate::db::Database,
+    database: bae_db::Database,
     home: TempDir,
 }
 
 impl std::ops::Deref for SeededStore {
-    type Target = crate::db::Database;
-    fn deref(&self) -> &crate::db::Database {
+    type Target = bae_db::Database;
+    fn deref(&self) -> &bae_db::Database {
         &self.database
     }
 }
@@ -182,7 +182,7 @@ async fn seeded_store_with_track_length(
     let home = TempDir::new().unwrap();
     let db_path = home.path().join("playback-service-test.db");
     let database =
-        crate::db::Database::new_test(db_path.to_str().unwrap(), Arc::new(coven::SystemClock))
+        bae_db::Database::new_test(db_path.to_str().unwrap(), Arc::new(coven::SystemClock))
             .await
             .unwrap();
     seed_test_releases(&database, releases, track_length_ms).await;
@@ -238,7 +238,7 @@ async fn seeded_playback_service(
 /// stub audio output), reporting to `diagnostics`, for tests that call its
 /// handlers without the actor loop.
 fn playback_service_over(
-    database: &crate::db::Database,
+    database: &bae_db::Database,
     diagnostics: bae_diagnostics::Diagnostics,
 ) -> (PlaybackService, tokio_mpsc::UnboundedReceiver<PlaybackProgress>) {
     let (command_tx, command_rx) = tokio_mpsc::unbounded_channel();
@@ -358,8 +358,8 @@ fn test_prepared_track_with_file(
             role: DbAudioSegmentRole::Main,
             file_id: file_id.to_string(),
             buffer,
-            span: crate::db::SegmentSpan::whole_file(),
-            scrub_points: crate::db::ScrubPoints::new(Vec::new()),
+            span: bae_db::SegmentSpan::whole_file(),
+            scrub_points: bae_db::ScrubPoints::new(Vec::new()),
         }],
         sample_rate: 44_100,
         channels: 2,
@@ -482,9 +482,9 @@ impl bae_audio::DecodedSink for TakesScrubPoints {
 /// `content_type` file holding `bytes`, which must be one that gets them.
 fn import_scrub_points(
     bytes: &[u8],
-    span: crate::db::SegmentSpan,
+    span: bae_db::SegmentSpan,
     content_type: &bae_util::content_type::ContentType,
-) -> Vec<crate::db::ScrubPoint> {
+) -> Vec<bae_db::ScrubPoint> {
     use crate::track_audio::{SegmentDecodeParams, StreamDecodeParams};
     let decode = StreamDecodeParams::new(
         vec![SegmentDecodeParams::new(filled_buffer(bytes), span, 0)],

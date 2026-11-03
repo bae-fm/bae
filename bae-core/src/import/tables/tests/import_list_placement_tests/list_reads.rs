@@ -5,12 +5,12 @@
 //! placement tests write them, and every answer is the list's own read.
 
 use super::{hash, Library};
-use crate::db::LibraryPageWindow;
 use crate::import::selection::SelectionChange;
 use crate::import::{
     ImportListId, ImportListItem, ImportListOrder, ImportListProjection, ImportListRequest,
     ImportListView, PendingFilter, TriageTab,
 };
+use bae_db::LibraryPageWindow;
 
 mod counts;
 mod order;

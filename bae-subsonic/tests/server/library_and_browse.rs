@@ -7,7 +7,7 @@ use axum::Router;
 use bae_catalogs::catalog::Catalog;
 use bae_catalogs::discogs::models::DiscogsRelease;
 use bae_core::preferences::SubsonicCredential;
-use bae_core::db::{DbAlbum, DbArtist, DbRelease, DbTrack};
+use bae_db::{DbAlbum, DbArtist, DbRelease, DbTrack};
 use bae_core::import::release_candidate::CandidateSource;
 use bae_core::import::{ImportCommand, ImportDestination, ReleaseFileScope};
 use bae_core::library::{AppServices, LibraryManager};
@@ -88,7 +88,7 @@ async fn call_with_range(router: &Router, method: &str, qs: &str, range: Option<
 
 async fn new_manager() -> ((
     bae_core::library::LibraryManager,
-    bae_core::db::Database,
+    bae_db::Database,
     bae_core::import::CatalogSessions,
     bae_core::library::CancellationToken,
 ), TempDir) {

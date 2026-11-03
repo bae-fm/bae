@@ -3,8 +3,8 @@
 
 use std::collections::BTreeMap;
 
-use bae_core::db::SortDirection;
 use bae_core::library::views::{ArtistSortCriterion, ArtistSortField};
+use bae_db::SortDirection;
 
 use crate::envelope::Element;
 use crate::error::SubError;

@@ -3830,7 +3830,8 @@ bindings export none of their symbols.
 
 | Crate | Holds |
 |---|---|
-| bae-core | the library, schema, import, identification, files, playback, outputs, sync integration, settings |
+| bae-core | the library, import, identification, files, playback, outputs, sync integration, settings |
+| bae-db | the library's store: the database over coven and the entry points every read and write runs through, the schema (its one migration, the synced tables and the SQL functions it declares), the library's records and the row writers that keep them, list windows, and the people, collections and history a library holds |
 | bae-app-dir | bae's own directory and what it holds before any library opens: the libraries registered on this device and the one last opened, the installation id, the keyring namespace, and the transfer limits a library runs under before its preferences can be read |
 | bae-diagnostics | how a failure is told: the closed catalog of telemetry events and their upload, the bugs core hands the platform's crash reporter, the tasks and threads whose panics are reported, and the error categories a person is shown |
 | bae-catalogs | the MusicBrainz, Discogs and Wikidata clients and the rate their requests are admitted at, the catalogs bae knows and the pages they publish, and the covers they offer with the cache their images are read through; what the catalogs say about a release in bae's terms: searches and lookups, the documents a release is read from and what they state, each catalog's release mapped onto bae's values, and why a lookup failed |
@@ -3925,7 +3926,7 @@ builds for both editions, and Swift lint and format.
 ---
 ## Appendix A. Schema
 
-The schema is `bae-core/migrations/001_initial.sql`, which coven applies as
+The schema is `bae-db/migrations/001_initial.sql`, which coven applies as
 migration 1. Every table is `STRICT`. "Syncs" means coven syncs its rows
 (Appendix B); every other table stays on the device.
 
@@ -4174,7 +4175,7 @@ queue empty and running, and no release in a storage transition.
 
 ## Appendix B. Synced tables
 
-From `bae_core::db::synced::synced_tables`. *Shared key* rows take an id computed
+From `bae_db::synced::synced_tables`. *Shared key* rows take an id computed
 from their fact (§2.6); *independent* rows a fresh id. Every synced table's
 rows reach every device that can read their audience: a local release's rows
 too (§4.2). *Audience* is the store unless the table names one (§5.3); *owner*

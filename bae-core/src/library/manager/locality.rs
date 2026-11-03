@@ -16,7 +16,7 @@ impl LibraryManager {
         // coven keeps the files here once stored when `pin` asks it to.
         self.run_file_operation("attach release", move |_closing| async move {
             manager
-                .run_storage_action(&release_id, crate::db::StoredTransition::Upload, async {
+                .run_storage_action(&release_id, bae_db::StoredTransition::Upload, async {
                     Ok(manager.database.attach_release_files(&release_id, pin).await?)
                 })
                 .await
@@ -32,7 +32,7 @@ impl LibraryManager {
     pub(crate) async fn run_storage_action<T>(
         &self,
         release_id: &str,
-        action: crate::db::StoredTransition,
+        action: bae_db::StoredTransition,
         work: impl std::future::Future<Output = Result<T, LibraryError>>,
     ) -> Result<T, LibraryError> {
         self.begin_storage_action(release_id, action).await?;
@@ -48,7 +48,7 @@ impl LibraryManager {
     async fn begin_storage_action(
         &self,
         release_id: &str,
-        action: crate::db::StoredTransition,
+        action: bae_db::StoredTransition,
     ) -> Result<(), LibraryError> {
         match self.database.begin_release_storage_action(release_id, action).await? {
             true => Ok(()),
@@ -100,39 +100,35 @@ impl LibraryManager {
         let result = self
             .run_file_operation("make release local", move |closing| async move {
                 manager
-                    .run_storage_action(
-                        &release_id,
-                        crate::db::StoredTransition::DetachAudio,
-                        async {
-                            let (stop, stopped) = tokio::sync::watch::channel(false);
-                            // Listed until the transition ends, however it
-                            // ends.
-                            let report = manager.make_local_transfers.report(&release_id);
-                            let call = manager.database.prepare_device_only(
-                                &folder,
-                                files,
-                                &stopped,
-                                |progress| report.progress(progress),
-                            );
-                            tokio::pin!(call);
-                            // A cancel that came first stops the call before
-                            // it starts.
-                            let prepared = tokio::select! {
-                                biased;
-                                _ = operation.cancelled() => {
-                                    stop.send_replace(true);
-                                    call.await
-                                }
-                                _ = closing.cancelled() => {
-                                    stop.send_replace(true);
-                                    call.await
-                                }
-                                result = &mut call => result,
+                    .run_storage_action(&release_id, bae_db::StoredTransition::DetachAudio, async {
+                        let (stop, stopped) = tokio::sync::watch::channel(false);
+                        // Listed until the transition ends, however it
+                        // ends.
+                        let report = manager.make_local_transfers.report(&release_id);
+                        let call = manager.database.prepare_device_only(
+                            &folder,
+                            files,
+                            &stopped,
+                            |progress| report.progress(progress),
+                        );
+                        tokio::pin!(call);
+                        // A cancel that came first stops the call before
+                        // it starts.
+                        let prepared = tokio::select! {
+                            biased;
+                            _ = operation.cancelled() => {
+                                stop.send_replace(true);
+                                call.await
                             }
-                            .map_err(|error| LibraryError::MakeLocal(Box::new(error)))?;
-                            Ok(manager.database.make_release_local(&release_id, prepared).await?)
-                        },
-                    )
+                            _ = closing.cancelled() => {
+                                stop.send_replace(true);
+                                call.await
+                            }
+                            result = &mut call => result,
+                        }
+                        .map_err(|error| LibraryError::MakeLocal(Box::new(error)))?;
+                        Ok(manager.database.make_release_local(&release_id, prepared).await?)
+                    })
                     .await
             })
             .await;
@@ -147,7 +143,7 @@ impl LibraryManager {
     /// `original_filename` is a synced column another device may have
     /// written, so each path is its names, split at `/`, and coven writes
     /// each name through the rule it uses for its own copies (see
-    /// [`crate::db::stored_name`]): every name is one name inside the
+    /// [`bae_db::stored_name`]): every name is one name inside the
     /// person's folder. A release carrying a name that names no file makes
     /// no file local.
     async fn local_copy_paths(
@@ -158,8 +154,7 @@ impl LibraryManager {
         files
             .iter()
             .map(|f| {
-                let path =
-                    crate::db::stored_name::file_path(release_id, &f.id, &f.original_filename)?;
+                let path = bae_db::stored_name::file_path(release_id, &f.id, &f.original_filename)?;
                 Ok((f.file, path))
             })
             .collect()

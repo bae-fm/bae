@@ -1,7 +1,7 @@
 //! Sync status and the actions for coven's current pending records.
 
 use super::{PendingItem, SyncIndicator, SyncStatusSnapshot};
-use crate::db::PendingRow;
+use bae_db::PendingRow;
 use bae_diagnostics::UiError;
 
 /// The category a whole-pass sync failure shows under.
@@ -93,9 +93,9 @@ fn blocked_failure(
 pub(crate) fn sync_status_on(
     sql: coven::SqlReadContext<'_>,
 ) -> coven::CovenResult<SyncStatusSnapshot> {
-    let status = crate::db::client::sync_status::coven_status_on(&sql)?;
-    let pending = crate::db::client::pending::pending_rows_on(&sql)?;
-    let start_failure = crate::db::client::sync_start_failure::start_failure_on(&sql)?;
+    let status = bae_db::client::sync_status::coven_status_on(&sql)?;
+    let pending = bae_db::client::pending::pending_rows_on(&sql)?;
+    let start_failure = bae_db::client::sync_start_failure::start_failure_on(&sql)?;
     let retry_effect = coven::RetryEffect::read(sql)?;
     Ok(SyncStatusSnapshot::read(status, retry_effect, pending, start_failure))
 }

@@ -10,12 +10,12 @@ use super::verdict_rows::{
     identification_of, read_verdict_row, unreadable, verdict_columns, VerdictRow,
 };
 use super::*;
-use crate::db::client::query::CandidateRows;
 use crate::identify::AlbumLink;
 use crate::identify::PressingLink;
 use crate::import::{MetadataProvenance, ReleaseLink};
 use bae_catalogs::catalog::{Catalog, LookupCatalog};
 use bae_catalogs::records::{LookupRef, MetadataRef};
+use bae_db::client::query::CandidateRows;
 use std::str::FromStr;
 
 /// The provenance as its columns. Only an external release names a source and
@@ -452,7 +452,7 @@ fn read_found(row: &Row<'_>) -> Result<Option<(MatchColumns, StoredMatchEntries)
 /// The releases of every run in flight, or of `key`'s runs alone, by run,
 /// each run's in position order.
 pub(super) fn load_run_matches_on(
-    sql: &impl crate::db::client::query::QueryRows,
+    sql: &impl bae_db::client::query::QueryRows,
     key: Option<&crate::import::CandidateKey>,
 ) -> Result<HashMap<i64, StoredMatches>, DbError> {
     let rows = sql.query(
@@ -489,7 +489,7 @@ pub(super) fn load_run_matches_on(
 /// each search's under its catalog parts in their order, each part's in the
 /// order it returned them.
 pub(super) fn load_search_matches_on(
-    sql: &impl crate::db::client::query::QueryRows,
+    sql: &impl bae_db::client::query::QueryRows,
     key: Option<&crate::import::CandidateKey>,
 ) -> Result<HashMap<i64, Vec<MatchRow>>, DbError> {
     let rows = sql.query(
@@ -527,7 +527,7 @@ pub(super) fn load_search_matches_on(
 /// Every stored candidate row, or the one `only` names, assembled with the
 /// verdict, signals, provenance, and file-decision rows that hang off it.
 pub(crate) fn load_states_on(
-    sql: &(impl crate::db::client::query::QueryOne + crate::db::client::query::QueryRows),
+    sql: &(impl bae_db::client::query::QueryOne + bae_db::client::query::QueryRows),
     only: CandidateRows<'_>,
 ) -> Result<HashMap<String, DbImportCandidateState>, DbError> {
     load_states_rows_on(sql, only)?()
@@ -537,7 +537,7 @@ pub(crate) fn load_states_on(
 /// that hang off it one-to-one joined onto it once, then joined to its
 /// matches in position order, one row per match.
 pub(crate) fn load_states_rows_on(
-    sql: &(impl crate::db::client::query::QueryOne + crate::db::client::query::QueryRows),
+    sql: &(impl bae_db::client::query::QueryOne + bae_db::client::query::QueryRows),
     only: CandidateRows<'_>,
 ) -> Result<FinishRead<HashMap<String, DbImportCandidateState>>, DbError> {
     let filter = only.filter("state.content_hash");
@@ -678,7 +678,7 @@ type FinishRead<T> = Box<dyn FnOnce() -> Result<T, DbError> + Send + 'static>;
 /// moved past zero though none stands now. Any other candidate has none at
 /// revision zero, which is what a scan reads where nothing is stored.
 pub(crate) fn load_stored_candidate_edits_on(
-    sql: &(impl crate::db::client::query::QueryOne + crate::db::client::query::QueryRows),
+    sql: &(impl bae_db::client::query::QueryOne + bae_db::client::query::QueryRows),
 ) -> Result<FinishRead<crate::import::folder_scanner::StoredCandidateEdits>, DbError> {
     let rows = sql.query(
         &format!(
@@ -707,7 +707,7 @@ pub(crate) fn load_stored_candidate_edits_on(
 /// compute a content hash, so each emitted row performs one indexed lookup
 /// instead of rereading the whole table.
 pub(crate) fn load_candidate_file_edits_on(
-    sql: &(impl crate::db::client::query::QueryOne + crate::db::client::query::QueryRows),
+    sql: &(impl bae_db::client::query::QueryOne + bae_db::client::query::QueryRows),
     content_hash: &str,
 ) -> Result<FinishRead<CandidateFileEdits>, DbError> {
     let stored = sql

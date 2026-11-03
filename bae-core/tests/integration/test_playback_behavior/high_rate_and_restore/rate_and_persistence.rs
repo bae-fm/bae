@@ -324,7 +324,7 @@ async fn test_cue_flac_seek_respects_track_end_boundary() {
 /// service started — the arrange for the tests below, which each decide when
 /// their own service comes up — beside the library's store. The `TempDir` owns
 /// the library's files.
-async fn imported_library_without_playback() -> (LibraryManager, bae_core::db::Database, TempDir) {
+async fn imported_library_without_playback() -> (LibraryManager, bae_db::Database, TempDir) {
     let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
     let ((library_manager, database, catalogs, closing), album_dir, temp_dir) = support::setup_test_library_with_album_dir(fakes.providers()).await;
     let _ = generate_test_flac_files(&album_dir);
@@ -493,7 +493,7 @@ struct RestoreTestLibrary {
     library_manager: LibraryManager,
     /// The library's store and closing token, which a test's own playback
     /// and import services run over.
-    database: bae_core::db::Database,
+    database: bae_db::Database,
     closing: bae_core::library::CancellationToken,
     /// The catalog sessions the library was built over, for a test that
     /// imports again.

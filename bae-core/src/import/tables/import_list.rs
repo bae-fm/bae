@@ -82,7 +82,7 @@ fn pending_filter_of(column: &str) -> Result<PendingFilter, DbError> {
 /// The list `id`'s row. A list is read only while it is open, so a missing
 /// row is a list closed under its own read.
 fn list_row(
-    sql: &(impl crate::db::client::query::QueryOne + crate::db::client::query::QueryRows),
+    sql: &(impl bae_db::client::query::QueryOne + bae_db::client::query::QueryRows),
     id: ImportListId,
 ) -> Result<ListRow, DbError> {
     let (
@@ -129,7 +129,7 @@ fn list_row(
 
 #[derive(Clone, PartialEq)]
 struct ImportListRows {
-    windows: Vec<(crate::db::LibraryPageWindow, Vec<window::WindowItemRows>)>,
+    windows: Vec<(bae_db::LibraryPageWindow, Vec<window::WindowItemRows>)>,
     total_count: u64,
     summary: ImportQueueSummary,
     pending_filter_entries: Vec<crate::import::PendingFilterEntry>,
@@ -309,7 +309,7 @@ impl ImportTables {
         self.database
             .read(move |sql| {
                 let row = list_row(&sql, list)?;
-                let everything = crate::db::LibraryPageWindow { offset: 0, limit: u64::MAX };
+                let everything = bae_db::LibraryPageWindow { offset: 0, limit: u64::MAX };
                 let keys = |shown| -> Result<Vec<String>, DbError> {
                     Ok(row
                         .items(shown)

@@ -3,7 +3,7 @@
 
 #[tokio::test]
 async fn pure_reads_use_the_read_connection() {
-    let (db, tmp) = bae_test_support::temp_test_db().await;
+    let (db, tmp) = bae_db::test_fixtures::temp_db().await;
 
     let tables = bae_core::import::tables::ImportTables::new(db.clone());
 
@@ -15,7 +15,7 @@ async fn pure_reads_use_the_read_connection() {
     .await
     .unwrap();
 
-    // At least one read per db/client file.
+    // At least one read per file of bae-db's client.
     db.find_album_by_id("missing").await.unwrap();
     bae_core::library::views::LibraryViews::new(db.clone()).get_album_count().await.unwrap();
     bae_core::library::views::LibraryViews::new(db.clone()).get_albums(&[]).await.unwrap();

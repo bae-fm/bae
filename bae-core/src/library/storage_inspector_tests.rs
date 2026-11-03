@@ -26,7 +26,7 @@ fn waiting() -> ReleaseUpload {
 
 fn file(id: &str, pin: Option<FilePin>) -> crate::library::views::DbStorageInspectorFile {
     crate::library::views::DbStorageInspectorFile {
-        file: crate::db::DbFile {
+        file: bae_db::DbFile {
             id: id.to_string(),
             release_id: "selected".to_string(),
             original_filename: format!("{id}.flac"),

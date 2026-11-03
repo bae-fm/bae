@@ -34,20 +34,20 @@ use composer::{
 };
 use release::{build_release_detail_on, unstored_audio_in_row, ReleaseDetailRows};
 
-use crate::db::client::files::{artist_image_version_sql, cover_version_sql};
-use crate::db::client::list_windows::{
+use album_search::*;
+use bae_db::client::files::{artist_image_version_sql, cover_version_sql};
+use bae_db::client::list_windows::{
     list_order_versions_on, read_windows, Keyed, KnownPlaces, ListOrder, Seek, SortTerm,
     WindowsRead,
 };
-use crate::db::client::pressing_columns::{read_media, release_media_sql};
-use crate::db::client::query::*;
-use crate::db::client::read::*;
-use crate::db::client::release_storage_action::{transfer_action_column, transfer_action_sql};
-use crate::db::client::sync_status::cloud_home_on;
-use crate::db::credits::LibraryCredit;
-use crate::db::schema::search_pattern;
-use crate::db::*;
-use album_search::*;
+use bae_db::client::pressing_columns::{read_media, release_media_sql};
+use bae_db::client::query::*;
+use bae_db::client::read::*;
+use bae_db::client::release_storage_action::{transfer_action_column, transfer_action_sql};
+use bae_db::client::sync_status::cloud_home_on;
+use bae_db::credits::LibraryCredit;
+use bae_db::schema::search_pattern;
+use bae_db::*;
 use bae_util::content_type::ContentType;
 use chrono::{DateTime, Utc};
 use coven::{CovenError, SqlReadContext};

@@ -1,5 +1,5 @@
 use super::*;
-use crate::db::{DbScrubPoints, ScrubPoint};
+use bae_db::{DbScrubPoints, ScrubPoint};
 
 /// Scrub points sync with their segment: another device playing the track
 /// from storage resolves the same points, so its scrubs jump the same way.
@@ -12,14 +12,14 @@ async fn check_scrub_points_sync(devices: &mut crate::sync::test_devices::TwoDev
     let manager = devices.a().manager();
     let album = create_test_album();
     let release = create_test_release(&album.id);
-    let track = crate::db::DbTrack::new_test(&release.id, TRACK_1, "Track Title", 1);
+    let track = bae_db::DbTrack::new_test(&release.id, TRACK_1, "Track Title", 1);
     manager.database.insert_album(&album).await.unwrap();
     insert_release(manager, &release).await;
     manager.database.insert_track(&track).await.unwrap();
     add_track_audio_sources(
         manager,
         &track,
-        &[("Album Title.flac", crate::db::source_audio::SourceAudioLayout::File)],
+        &[("Album Title.flac", bae_db::source_audio::SourceAudioLayout::File)],
     )
     .await;
     let format = manager

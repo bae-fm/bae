@@ -88,10 +88,7 @@ async fn check_release_detachment(devices: &crate::sync::test_devices::TwoDevice
         assert!(devices.b().manager().file_local_path(&file.id).await.unwrap().is_none());
         let read = devices.b().database().read_release_file(&file.id).await;
         assert!(
-            matches!(
-                read,
-                Err(crate::db::DbError::FileRead(coven::FileReadError::DeviceOnly { .. }))
-            ),
+            matches!(read, Err(bae_db::DbError::FileRead(coven::FileReadError::DeviceOnly { .. }))),
             "{read:?}"
         );
         assert!(matches!(

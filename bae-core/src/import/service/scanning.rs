@@ -246,7 +246,7 @@ impl ImportService {
         items: Vec<ScanItem>,
         reads: &Arc<crate::import::folder_scanner::FileReads>,
         services: &crate::import::ImportServices,
-        written_keys: &mut Vec<crate::db::RelativeFolder>,
+        written_keys: &mut Vec<bae_db::RelativeFolder>,
         displaced_keys: &mut Vec<crate::import::CandidateKey>,
     ) -> Result<bool, crate::import::ImportError> {
         if items.is_empty() {
@@ -416,7 +416,7 @@ impl ImportService {
         // What this pass wrote and what it displaced, for the log line at the
         // end. Two passes over an unchanged folder should displace nothing;
         // one that keeps rewriting the same entry names it here.
-        let mut written_keys: Vec<crate::db::RelativeFolder> = Vec::new();
+        let mut written_keys: Vec<bae_db::RelativeFolder> = Vec::new();
         let mut displaced_keys: Vec<crate::import::CandidateKey> = Vec::new();
         // Bound the duplicate candidate payloads waiting on the store's writes.
         // The blocking producer naturally pauses when the async consumer falls

@@ -8,13 +8,13 @@
 //! write as the change that moves it.
 
 use super::{CandidateRuntime, IdentificationChange, IdentificationMove, IdentificationStage};
-use crate::db::DbError;
 use crate::import::candidates::{Admission, CandidateFiles, SaveFailure};
 use crate::import::tables::ImportClaim;
 use crate::import::triage::TriageRuntimeFacts;
 use crate::import::CandidateKey;
 use crate::import::IdentifyRunId;
 use crate::import::ImportStep;
+use bae_db::DbError;
 
 /// What a run identifies: a folder candidate's files, whose standing the
 /// table holds, or a library release, which has none.

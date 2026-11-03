@@ -41,7 +41,7 @@ pub(super) fn load_prepared_assets_on(
 /// The rows under the hash as stored. No validation: the value they load
 /// into carries its own.
 pub(super) fn load_asset_rows_on(
-    sql: &(impl crate::db::client::query::QueryOne + crate::db::client::query::QueryRows),
+    sql: &(impl bae_db::client::query::QueryOne + bae_db::client::query::QueryRows),
     content_hash: &str,
 ) -> Result<CandidatePreparedAssets, DbError> {
     let remote_cover = sql

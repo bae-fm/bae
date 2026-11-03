@@ -1,8 +1,8 @@
 //! Provider operations and the upload pause over coven's store handle.
 
-use crate::db::Database;
 use crate::library::LibraryError;
 use crate::sync::S3ConfigData;
+use bae_db::Database;
 use bae_diagnostics::{Diagnostics, TelemetryEvent};
 use coven::CloudProvider;
 

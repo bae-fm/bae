@@ -3,7 +3,7 @@
 //! artwork paths for the OCR pass. Reading the rip artifacts themselves lives
 //! in `import::discid`.
 
-use crate::db::{Database, DbError, LibraryImageType};
+use bae_db::{Database, DbError, LibraryImageType};
 use bae_diagnostics::Diagnostics;
 use bae_util::task_failure::TaskFailed;
 use std::path::PathBuf;
@@ -229,7 +229,7 @@ mod tests {
 
     #[tokio::test]
     async fn resolve_release_artwork_paths_warns_on_missing_registered_image_file() {
-        use crate::db::{Database, DbAlbum, DbArtist, DbRelease, NewReleaseFile};
+        use bae_db::{Database, DbAlbum, DbArtist, DbRelease, NewReleaseFile};
         use bae_util::content_type::ContentType;
         use chrono::Utc;
         use uuid::Uuid;
@@ -263,7 +263,7 @@ mod tests {
         };
         database.insert_album(&album).await.unwrap();
         database
-            .insert_album_artist(&crate::db::DbAlbumArtist::new_test(&album.id, &artist.id))
+            .insert_album_artist(&bae_db::DbAlbumArtist::new_test(&album.id, &artist.id))
             .await
             .unwrap();
 
@@ -324,7 +324,7 @@ mod tests {
     /// would have computed.
     #[tokio::test]
     async fn test_resolve_release_identity_local() {
-        use crate::db::{Database, DbAlbum, DbArtist, DbRelease, DbTrack, NewReleaseFile};
+        use bae_db::{Database, DbAlbum, DbArtist, DbRelease, DbTrack, NewReleaseFile};
         use bae_util::content_type::ContentType;
         use chrono::Utc;
         use std::sync::Arc;
@@ -378,7 +378,7 @@ mod tests {
         };
         database.insert_album(&album).await.unwrap();
         database
-            .insert_album_artist(&crate::db::DbAlbumArtist::new_test(&album.id, &artist.id))
+            .insert_album_artist(&bae_db::DbAlbumArtist::new_test(&album.id, &artist.id))
             .await
             .unwrap();
 
@@ -416,7 +416,7 @@ mod tests {
         // lengths to the DB rather than to whatever a folder walk would have
         // read.
         database
-            .insert_release_medium(&crate::db::DbReleaseMedium::new_test(&release.id))
+            .insert_release_medium(&bae_db::DbReleaseMedium::new_test(&release.id))
             .await
             .unwrap();
         for n in 1..=2 {
@@ -424,7 +424,7 @@ mod tests {
                 id: Uuid::new_v4().to_string(),
                 release_id: release.id.clone(),
                 title: format!("Track {n}"),
-                medium_id: crate::db::identity::release_medium_id(&release.id, 1),
+                medium_id: bae_db::identity::release_medium_id(&release.id, 1),
                 side: std::num::NonZeroU8::MIN,
                 track_number: std::num::NonZeroU32::new(
                     u32::try_from(n).expect("a test track number fits u32"),

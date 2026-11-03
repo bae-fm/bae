@@ -228,7 +228,7 @@ async fn one_row_on_the_page(
     let list = handle
         .subscribe_list_window(
             ImportListView::default(),
-            crate::db::LibraryPageWindow { offset: 0, limit: 1 },
+            bae_db::LibraryPageWindow { offset: 0, limit: 1 },
         )
         .await;
     let snapshot = delivered(&list).await;

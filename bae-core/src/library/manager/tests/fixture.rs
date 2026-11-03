@@ -31,7 +31,7 @@ async fn fixture_albums_land_in_the_order_they_were_added() {
         .views()
         .get_albums(&[crate::library::views::AlbumSortCriterion {
             field: crate::library::views::AlbumSortField::DateAdded,
-            direction: crate::db::SortDirection::Descending,
+            direction: bae_db::SortDirection::Descending,
         }])
         .await
         .unwrap();
@@ -80,7 +80,7 @@ async fn a_fixture_album_credited_to_two_artists_is_listed_under_each() {
     let mut browse = manager.views().subscribe_album_browse(
         &[],
         true,
-        [crate::db::LibraryPageWindow { offset: 0, limit: 10 }].into(),
+        [bae_db::LibraryPageWindow { offset: 0, limit: 10 }].into(),
     );
     let grouped = browse.next().await.expect("the query stays open").result.unwrap();
     let rows = &grouped.windows[0].rows;
@@ -169,7 +169,7 @@ async fn found_rows(manager: &LibraryManager) -> crate::import::ImportListProjec
     tables
         .load_import_list(crate::import::ImportListRequest {
             list,
-            windows: std::iter::once(crate::db::LibraryPageWindow { offset: 0, limit: 50 })
+            windows: std::iter::once(bae_db::LibraryPageWindow { offset: 0, limit: 50 })
                 .collect(),
         })
         .await
@@ -416,8 +416,8 @@ async fn a_fixtures_playing_album_lays_its_tracks_over_the_disc_image() {
             ))
             .collect::<Vec<_>>(),
         [
-            (crate::db::DbAudioSegmentRole::AudioPregap, 132_300, Some(220_500)),
-            (crate::db::DbAudioSegmentRole::Main, 220_500, None),
+            (bae_db::DbAudioSegmentRole::AudioPregap, 132_300, Some(220_500)),
+            (bae_db::DbAudioSegmentRole::Main, 220_500, None),
         ]
     );
     let files = manager.get_files_for_release(&release_id).await.unwrap();

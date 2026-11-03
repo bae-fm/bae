@@ -1,7 +1,7 @@
 //! List and search endpoints: album lists, one song, and combined search.
 
-use bae_core::db::{DbAlbum, DbRelease};
 use bae_core::library::{AppServices, LibrarySearchQuery};
+use bae_db::{DbAlbum, DbRelease};
 use tracing::debug;
 
 use crate::envelope::Element;
@@ -264,7 +264,7 @@ async fn whole_library(
     // Artists.
     let sort = [bae_core::library::views::ArtistSortCriterion {
         field: bae_core::library::views::ArtistSortField::Name,
-        direction: bae_core::db::SortDirection::Ascending,
+        direction: bae_db::SortDirection::Ascending,
     }];
     let artist_page = services
         .get_artist_page(&sort, artists.offset as u64, artists.count as u64)

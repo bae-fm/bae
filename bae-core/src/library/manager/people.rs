@@ -10,18 +10,18 @@ const ADD_DEVICE_SYNC_INTERVAL: std::time::Duration = std::time::Duration::from_
 impl LibraryManager {
     /// Create this person's profile: at once when their private circle
     /// exists, otherwise once sync has made it (§5.4).
-    pub async fn create_profile(&self, name: &str) -> Result<(), crate::db::people::ProfileError> {
+    pub async fn create_profile(&self, name: &str) -> Result<(), bae_db::people::ProfileError> {
         self.database.create_profile(name).await
     }
 
-    pub async fn rename_profile(&self, name: &str) -> Result<(), crate::db::people::ProfileError> {
+    pub async fn rename_profile(&self, name: &str) -> Result<(), bae_db::people::ProfileError> {
         self.database.rename_profile(name).await
     }
 
     pub async fn set_history_sharing(
         &self,
-        sharing: crate::db::people::Sharing,
-    ) -> Result<(), crate::db::people::ProfileError> {
+        sharing: bae_db::people::Sharing,
+    ) -> Result<(), bae_db::people::ProfileError> {
         self.database.set_history_sharing(sharing).await
     }
 
@@ -50,27 +50,27 @@ impl LibraryManager {
     pub async fn avatar(
         &self,
         person: coven::MemberId,
-    ) -> Result<Option<Vec<u8>>, crate::db::people::ProfileError> {
+    ) -> Result<Option<Vec<u8>>, bae_db::people::ProfileError> {
         self.database.avatar(person).await
     }
 
     /// The profile this person asked for, until it is written, live.
     pub fn subscribe_requested_profile(
         &self,
-    ) -> coven::LiveQuery<Option<crate::db::people::RequestedProfile>> {
+    ) -> coven::LiveQuery<Option<bae_db::people::RequestedProfile>> {
         self.database.subscribe_requested_profile()
     }
 
-    pub fn subscribe_profiles(&self) -> coven::LiveQuery<Vec<crate::db::people::PersonProfile>> {
+    pub fn subscribe_profiles(&self) -> coven::LiveQuery<Vec<bae_db::people::PersonProfile>> {
         self.database.subscribe_profiles()
     }
 
-    pub async fn people(&self) -> Result<Vec<crate::db::people::Person>, LibraryError> {
+    pub async fn people(&self) -> Result<Vec<bae_db::people::Person>, LibraryError> {
         Ok(self.database.people().await?)
     }
 
     /// The person using this device, once their registration has applied.
-    pub async fn own_person(&self) -> Result<Option<crate::db::people::Person>, LibraryError> {
+    pub async fn own_person(&self) -> Result<Option<bae_db::people::Person>, LibraryError> {
         Ok(self.database.own_person().await?)
     }
 
@@ -85,11 +85,11 @@ impl LibraryManager {
             .map_err(LibraryError::TransferCode)
     }
 
-    pub async fn get_members(&self) -> Result<crate::db::membership::Membership, LibraryError> {
+    pub async fn get_members(&self) -> Result<bae_db::membership::Membership, LibraryError> {
         Ok(self.database.membership().await?)
     }
 
-    pub fn subscribe_members(&self) -> coven::LiveQuery<crate::db::membership::Membership> {
+    pub fn subscribe_members(&self) -> coven::LiveQuery<bae_db::membership::Membership> {
         self.database.subscribe_membership()
     }
 
@@ -110,7 +110,7 @@ impl LibraryManager {
     pub fn subscribe_added_device(
         &self,
         watch: crate::sync::membership::AddedDeviceWatch,
-    ) -> coven::LiveQuery<Option<crate::db::membership::ActiveDevice>> {
+    ) -> coven::LiveQuery<Option<bae_db::membership::ActiveDevice>> {
         let sync_often = self.database.sync_often(ADD_DEVICE_SYNC_INTERVAL);
         self.subscribe_members().process(move |membership| {
             // The subscription owns the request; dropping it ends the request.
@@ -123,7 +123,7 @@ impl LibraryManager {
     /// dismisses its outcome, live (§5.6).
     pub fn subscribe_admin_changes(
         &self,
-    ) -> coven::LiveQuery<Vec<crate::db::admin_change::AdminChange>> {
+    ) -> coven::LiveQuery<Vec<bae_db::admin_change::AdminChange>> {
         self.database.subscribe_admin_changes()
     }
 

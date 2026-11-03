@@ -4,7 +4,7 @@ async fn work_detail_release_rows_are_display_ready() {
     let album = create_test_album();
     let mut release = create_test_release(&album.id);
     release.pressing.facts = bae_types::pressing::made_of(bae_types::pressing::Medium::Cd, 1);
-    let track = crate::db::DbTrack::new_test(&release.id, TRACK_A, "Track Title", 1);
+    let track = bae_db::DbTrack::new_test(&release.id, TRACK_A, "Track Title", 1);
     let now = Utc::now();
     let work = DbWork {
         id: WORK_A.to_string(),
@@ -51,7 +51,7 @@ async fn work_detail_release_rows_are_display_ready() {
     let cover = row.cover.as_ref().expect("work release cover");
     assert_eq!(cover.id, release.id);
     assert!(!cover.version.is_empty());
-    assert_eq!(cover.image_type, crate::db::LibraryImageType::Cover);
+    assert_eq!(cover.image_type, bae_db::LibraryImageType::Cover);
 }
 
 #[tokio::test]
@@ -130,7 +130,7 @@ async fn deletion_refuses_an_unavailable_database_without_losing_rows() {
             manager.delete_release(&release.id).await.unwrap_err()
         };
         assert!(matches!(error, LibraryError::Database(_)), "{error}");
-        let handle = crate::db::configure_store(
+        let handle = bae_db::configure_store(
             manager.installation.builder(manager.app_dir.store_layout()),
         )
         .open(id, |_| ())
@@ -156,8 +156,8 @@ async fn track_display_carries_the_cover_version() {
     let (manager, _temp_dir) = setup_test_manager().await;
     let album = create_test_album();
     let release = create_test_release(&album.id);
-    let track = crate::db::DbTrack::new_test(&release.id, TRACK_A, "Track Title", 1);
-    let track_artist = crate::db::DbTrackArtist::new(
+    let track = bae_db::DbTrack::new_test(&release.id, TRACK_A, "Track Title", 1);
+    let track_artist = bae_db::DbTrackArtist::new(
         &track.id,
         &bae_util::test_ids::test_uuid("e36744a5-1a36-460f-891c-e7e558034edf"),
         0,
@@ -182,7 +182,7 @@ async fn track_display_carries_the_cover_version() {
     let display = manager.get_track_display(&track.id).await.unwrap();
     assert_eq!(
         display.cover_image,
-        Some(crate::db::ImageRef {
+        Some(bae_db::ImageRef {
             id: release.id.clone(),
             version,
             image_type: LibraryImageType::Cover,
@@ -215,7 +215,7 @@ async fn delete_release_removes_its_cover_image() {
     // Give release1 a cover: a `covers` row plus its file in one coven batch.
     store_test_cover(&manager, &release1.id, b"image").await;
 
-    wait_for_published_file(&manager, crate::db::synced::COVERS_NAMESPACE, &release1.id).await;
+    wait_for_published_file(&manager, bae_db::synced::COVERS_NAMESPACE, &release1.id).await;
 
     manager.delete_release(&release1.id).await.unwrap();
 
@@ -242,7 +242,7 @@ async fn delete_album_removes_release_covers() {
     .await;
     store_test_cover(&manager, &release.id, b"image").await;
 
-    wait_for_published_file(&manager, crate::db::synced::COVERS_NAMESPACE, &release.id).await;
+    wait_for_published_file(&manager, bae_db::synced::COVERS_NAMESPACE, &release.id).await;
 
     manager.delete_album(&release.album_id).await.unwrap();
 
@@ -327,7 +327,7 @@ async fn delete_album_deletes_its_releases_and_what_they_own() {
     for (index, release_id) in [&kept, &local, &other.id].into_iter().enumerate() {
         store_test_cover(&manager, release_id, format!("cover {index}").as_bytes()).await;
         let track =
-            crate::db::DbTrack::new_test(release_id, &Uuid::new_v4().to_string(), "Track", 1);
+            bae_db::DbTrack::new_test(release_id, &Uuid::new_v4().to_string(), "Track", 1);
         manager.database.insert_track(&track).await.unwrap();
         tracks.push(track.id);
     }
@@ -357,7 +357,7 @@ async fn delete_album_deletes_its_releases_and_what_they_own() {
     let mut browse = manager.views().subscribe_album_browse(
         &[],
         false,
-        [crate::db::LibraryPageWindow { offset: 0, limit: 10 }].into(),
+        [bae_db::LibraryPageWindow { offset: 0, limit: 10 }].into(),
     );
     let listed = |browse: &crate::library::views::AlbumBrowseProjection| -> Vec<String> {
         browse.windows[0].rows.iter().map(|row| row.album.id.clone()).collect()

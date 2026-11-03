@@ -20,10 +20,6 @@ use super::super::release_groupings::{block_of, load_candidate_on};
 use super::listed::{ListedColumns, LISTED_COLUMNS};
 use super::order::{Item, ItemKey};
 use super::*;
-use crate::db::client::files::cover_version_sql;
-use crate::db::client::queued_uploads::release_upload_on;
-use crate::db::client::read::get_release_records_on;
-use crate::db::RelativeFolder;
 use crate::identify::PressingLink;
 use crate::import::folder_scanner::{FileVersion, ScanItem};
 use crate::import::list::{ImportListItem, ListedRelease};
@@ -33,6 +29,10 @@ use crate::import::triage::{
 };
 use crate::import::{CandidateKey, CoverSelection, FolderReleaseDecisionKey, ReleaseLink};
 use crate::library::UploadProgress;
+use bae_db::client::files::cover_version_sql;
+use bae_db::client::queued_uploads::release_upload_on;
+use bae_db::client::read::get_release_records_on;
+use bae_db::RelativeFolder;
 use std::path::{Path, PathBuf};
 
 /// The items `keys` name, in their order, loaded whole for the list `list`,
@@ -367,7 +367,7 @@ fn candidate_item(
             release_link: None,
             reading: TriageReading::of_library(get_release_records_on(sql, &imported.release_id)?),
             picked: None,
-            cover: crate::db::cover_ref(&imported.release_id, release.library_cover.clone())
+            cover: bae_db::cover_ref(&imported.release_id, release.library_cover.clone())
                 .map(|image| crate::import::CoverImageSource::Library { image }),
         },
         None => {

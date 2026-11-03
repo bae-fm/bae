@@ -28,13 +28,13 @@ async fn seed_track_window(
     end_sample: Option<u64>,
     generated_pregap_samples: Option<u64>,
 ) {
-    use crate::db::{DbAudioFormat, DbAudioSegment, DbAudioSegmentRole, NewReleaseFile};
+    use bae_db::{DbAudioFormat, DbAudioSegment, DbAudioSegmentRole, NewReleaseFile};
     use bae_util::content_type::ContentType;
     let now = chrono::Utc::now();
     let file_id = bae_util::test_ids::test_uuid(&format!("{track_id}-file"));
     let file =
         NewReleaseFile::new(release_id, "track.flac", ContentType::Flac, file_id.clone(), now);
-    crate::db::client::tests::aggregate_ordering_tests::insert_file(
+    bae_db::test_fixtures::aggregate_ordering::insert_file(
         store,
         store.home.path(),
         file,
@@ -551,7 +551,7 @@ async fn a_queued_track_renamed_while_another_plays_remotely_loads_with_its_new_
     let first_url = format!("http://renderer.local/stream?id={FIRST}");
     let second_url = format!("http://renderer.local/stream?id={SECOND}");
 
-    crate::db::client::tests::exec(
+    bae_db::test_fixtures::exec(
         &library,
         "UPDATE tracks SET title = 'Renamed Track' WHERE id = ?1",
         &[SECOND],

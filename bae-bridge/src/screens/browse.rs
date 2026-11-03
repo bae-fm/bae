@@ -153,17 +153,17 @@ fn browse_error(error: bae_core::library::LiveLibraryBrowseError) -> BridgeError
 
 fn core_windows(
     windows: Vec<crate::types::BridgeLibraryPageWindow>,
-) -> BTreeSet<bae_core::db::LibraryPageWindow> {
+) -> BTreeSet<bae_db::LibraryPageWindow> {
     windows.into_iter().map(crate::types::BridgeLibraryPageWindow::into_core).collect()
 }
 
 impl crate::types::BridgeLibraryPageWindow {
-    pub(crate) fn from_core(window: bae_core::db::LibraryPageWindow) -> Self {
+    pub(crate) fn from_core(window: bae_db::LibraryPageWindow) -> Self {
         Self { offset: window.offset, limit: window.limit }
     }
 
-    pub(crate) fn into_core(self) -> bae_core::db::LibraryPageWindow {
-        bae_core::db::LibraryPageWindow { offset: self.offset, limit: self.limit }
+    pub(crate) fn into_core(self) -> bae_db::LibraryPageWindow {
+        bae_db::LibraryPageWindow { offset: self.offset, limit: self.limit }
     }
 }
 

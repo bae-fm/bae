@@ -1,6 +1,6 @@
 //! Add Device's watch for the person's device that joins from its code.
 
-use crate::db::membership::{ActiveDevice, Membership};
+use bae_db::membership::{ActiveDevice, Membership};
 
 /// Watches the membership for a device of this device's person that wasn't
 /// among their active devices when Add Device made its code. Add Device's

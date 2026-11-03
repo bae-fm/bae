@@ -1,4 +1,4 @@
-use bae_core::db::people::{ProfileError, Sharing};
+use bae_db::people::{ProfileError, Sharing};
 use bae_test_support::{
     connect_storage, made_profile, made_profile_on, requested_profile_on, storage_library,
 };
@@ -143,7 +143,7 @@ pub(super) struct Household {
     owner: coven::CovenHandle,
     storage: std::sync::Arc<coven::MemoryStorage>,
     clock: coven::ClockRef,
-    robin: bae_core::db::people::PersonProfile,
+    robin: bae_db::people::PersonProfile,
 }
 
 /// The Dropbox account a household on Dropbox invites.
@@ -161,7 +161,7 @@ impl Household {
 
     async fn on(provider: coven::CloudProvider, sign_in: Option<&DropboxSignIn>) -> Self {
         let (dir, owner, storage, clock) = Self::owner(provider, sign_in).await;
-        let database = bae_core::db::Database::from_handle(
+        let database = bae_db::Database::from_handle(
             owner.clone(),
             clock.clone(),
             std::sync::Arc::new(coven::UuidIds),
@@ -340,9 +340,9 @@ async fn joined_profile(
     guest: &coven::CovenHandle,
     household: &Household,
     requested: Option<Result<(), ProfileError>>,
-) -> bae_core::db::people::PersonProfile {
+) -> bae_db::people::PersonProfile {
     requested.expect("a new person's profile").unwrap();
-    let database = bae_core::db::Database::from_handle(
+    let database = bae_db::Database::from_handle(
         guest.clone(),
         household.clock.clone(),
         std::sync::Arc::new(coven::UuidIds),
@@ -385,7 +385,7 @@ async fn a_profile_takes_the_private_circle_already_made_for_it() {
         owner.members().await.unwrap().into_iter().find(|member| member.is_self).unwrap().id;
     let name = format!("bae-person:{member}");
     let made = landed_circle(&owner, &name).await;
-    let database = bae_core::db::Database::from_handle(
+    let database = bae_db::Database::from_handle(
         owner.clone(),
         clock.clone(),
         std::sync::Arc::new(coven::UuidIds),
@@ -402,11 +402,8 @@ async fn a_profile_takes_the_private_circle_already_made_for_it() {
     for _ in 0..2 {
         landed_circle(&owner, &name).await;
     }
-    let database = bae_core::db::Database::from_handle(
-        owner.clone(),
-        clock,
-        std::sync::Arc::new(coven::UuidIds),
-    );
+    let database =
+        bae_db::Database::from_handle(owner.clone(), clock, std::sync::Arc::new(coven::UuidIds));
     assert!(matches!(
         database.create_profile("Robin").await,
         Err(ProfileError::InvalidPrivateCircle)
@@ -523,7 +520,7 @@ fn a_replacement_invite_writes_no_profile() {
         .unwrap();
         let (replacement, profile) = joined.unwrap().unwrap();
         assert!(profile.is_none());
-        let database = bae_core::db::Database::from_handle(
+        let database = bae_db::Database::from_handle(
             replacement.clone(),
             household.clock.clone(),
             std::sync::Arc::new(coven::UuidIds),
@@ -532,7 +529,7 @@ fn a_replacement_invite_writes_no_profile() {
         // The owner's membership lists each member's devices that can sync
         // apart from those that lost access, as coven's own member list has
         // them.
-        let owner = bae_core::db::Database::from_handle(
+        let owner = bae_db::Database::from_handle(
             household.owner.clone(),
             household.clock.clone(),
             std::sync::Arc::new(coven::UuidIds),

@@ -10,14 +10,14 @@ use super::super::import_state::{RuntimeFactColumns, RUNTIME_FACT_COLUMNS};
 use super::listed::{BasisColumns, BASIS_COLUMNS};
 use super::order::{sorted_terms, tab_of, unit_join, uploading_cte, Item};
 use super::*;
-use crate::db::client::query::{QueryOne, QueryRows};
-use crate::db::RelativeFolder;
 use crate::import::list::{ImportCandidateListLocation, NarrowedCount};
 use crate::import::selection::{
     SelectedCandidate, SelectedRows, SelectionSummary, SingleSelection,
 };
 use crate::import::triage::{selection_offers, SelectionPart};
 use crate::import::{CandidateKey, PendingFilterEntry, TriageTabCounts};
+use bae_db::client::query::{QueryOne, QueryRows};
+use bae_db::RelativeFolder;
 
 /// Every tab's count, how many of Found's releases each filter entry holds,
 /// and whether Found has any group.
@@ -90,7 +90,7 @@ impl Listed {
     /// end: about the window's end times the tab's releases over the releases
     /// the search keeps. Otherwise it is read from the tab's rows in order,
     /// each tested.
-    pub(super) fn shown(&self, window: &crate::db::LibraryPageWindow) -> Shown<'static> {
+    pub(super) fn shown(&self, window: &bae_db::LibraryPageWindow) -> Shown<'static> {
         let narrowed = match (self.reads, self.narrowed) {
             (Reads::Search, Some(narrowed)) => narrowed,
             (Reads::Search, None) | (Reads::Order, _) => return Shown::View,

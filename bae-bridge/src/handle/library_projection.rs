@@ -298,7 +298,7 @@ impl BridgeAlbumDetail {
             cover,
         } = detail;
         let release_ids: Vec<String> = releases.iter().map(|r| r.summary.id.clone()).collect();
-        let bae_core::db::DbAlbum {
+        let bae_db::DbAlbum {
             id,
             title,
             year,
@@ -361,7 +361,7 @@ impl BridgeComposerSummary {
             linked_release_count,
             unlinked_credit_count,
         } = raw;
-        let bae_core::db::DbArtist {
+        let bae_db::DbArtist {
             id: artist_id,
             name,
             sort_name,
@@ -386,7 +386,7 @@ impl BridgeArtistSummary {
     pub(crate) fn from_core(s: bae_core::album_detail::ArtistSummary) -> Self {
         let bae_core::album_detail::ArtistSummary { raw } = s;
         let bae_core::library::views::DbArtistSummary { artist, image, album_count } = raw;
-        let bae_core::db::DbArtist {
+        let bae_db::DbArtist {
             id: artist_id,
             name,
             // The MB-only sort name, per-source dedup ids, and the row
@@ -426,7 +426,7 @@ impl BridgeWorkSummary {
             composer_names,
             linked_release_count,
         } = raw;
-        let bae_core::db::DbWork {
+        let bae_db::DbWork {
             id: work_id,
             title,
             disambiguation,
@@ -453,7 +453,7 @@ impl BridgeWorkSummary {
 impl BridgeReleaseRoleSummary {
     pub(super) fn from_core(s: bae_core::album_detail::ReleaseRoleSummary) -> Self {
         let bae_core::library::views::DbReleaseRoleSummary { role, album } = s;
-        let bae_core::db::DbReleaseArtistRole {
+        let bae_db::DbReleaseArtistRole {
             release_id,
             source,
             source_credit,
@@ -462,7 +462,7 @@ impl BridgeReleaseRoleSummary {
             position: _,
             created_at: _,
         } = role;
-        let bae_core::db::DbAlbum {
+        let bae_db::DbAlbum {
             id: album_id,
             title: album_title,
             year: _,
@@ -482,7 +482,7 @@ impl BridgeReleaseRoleSummary {
 impl BridgeTrackRoleSummary {
     pub(super) fn from_core(s: bae_core::album_detail::TrackRoleSummary) -> Self {
         let bae_core::library::views::DbTrackRoleSummary { role, track, album, artist } = s;
-        let bae_core::db::DbTrackArtistRole {
+        let bae_db::DbTrackArtistRole {
             track_id,
             artist_id,
             source,
@@ -491,7 +491,7 @@ impl BridgeTrackRoleSummary {
             position: _,
             created_at: _,
         } = role;
-        let bae_core::db::DbTrack {
+        let bae_db::DbTrack {
             title: track_title,
             release_id,
             id: _,
@@ -501,14 +501,14 @@ impl BridgeTrackRoleSummary {
             duration_ms: _,
             created_at: _,
         } = track;
-        let bae_core::db::DbAlbum {
+        let bae_db::DbAlbum {
             id: album_id,
             title: album_title,
             year: _,
             is_compilation: _,
             created_at: _,
         } = album;
-        let bae_core::db::DbArtist {
+        let bae_db::DbArtist {
             name: artist_name,
             id: _,
             sort_name: _,
@@ -533,7 +533,7 @@ impl BridgeTrackRoleSummary {
 impl BridgeWorkTrackSummary {
     pub(super) fn from_core(s: bae_core::album_detail::WorkTrackSummary) -> Self {
         let bae_core::library::views::DbWorkTrackSummary { link, track, album } = s;
-        let bae_core::db::DbTrackWork {
+        let bae_db::DbTrackWork {
             track_id,
             id: _,
             work_id: _,
@@ -541,7 +541,7 @@ impl BridgeWorkTrackSummary {
             source: _,
             created_at: _,
         } = link;
-        let bae_core::db::DbTrack {
+        let bae_db::DbTrack {
             title: track_title,
             release_id,
             id: _,
@@ -551,7 +551,7 @@ impl BridgeWorkTrackSummary {
             duration_ms: _,
             created_at: _,
         } = track;
-        let bae_core::db::DbAlbum {
+        let bae_db::DbAlbum {
             id: album_id,
             title: album_title,
             year: _,

@@ -1,9 +1,9 @@
 //! The Storage Manager inspector's read of one release.
 
-use crate::db::client::tests::*;
 use crate::library::output_snapshot::{OutputKind, OutputRequest};
 use crate::library::queued_releases::tables_tests::{download, enqueue_releases};
 use crate::library::release_queue::ReleaseQueueEntry;
+use bae_db::test_fixtures::*;
 
 /// The inspector's read of one release holds its entry in each queue and
 /// nothing of another release's, and reads no release the library does not

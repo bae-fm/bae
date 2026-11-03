@@ -329,7 +329,7 @@ impl AppServices {
             manager.until_closed(self.inner.views.subscribe_artist_search(
                 crate::library::ArtistSearchView {
                     query: None,
-                    windows: crate::db::LibraryPageWindows::new(),
+                    windows: bae_db::LibraryPageWindows::new(),
                 },
             )),
             crate::library::views::artist_search::resolve_artist_search,
@@ -382,7 +382,7 @@ impl AppServices {
         self.inner.playback.subscribe_progress()
     }
 
-    delegate_async!(manager, preferences => preferences() -> Result<crate::preferences::Preferences, crate::db::DbError>);
+    delegate_async!(manager, preferences => preferences() -> Result<crate::preferences::Preferences, bae_db::DbError>);
     delegate_sync!(manager, library_path => library_path() -> std::path::PathBuf);
     delegate_sync!(manager, store_id => store_id() -> coven::StoreId);
     delegate_async!(manager, ensure_mcp_token => ensure_mcp_token() -> Result<String, crate::library::LibraryError>);
@@ -474,31 +474,31 @@ impl AppServices {
     delegate_async!(manager, rename_artist_credit_name => rename_artist_credit_name(artist_id: &str, key: &str, name: &str) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, remove_artist_credit_name => remove_artist_credit_name(artist_id: &str, key: &str) -> Result<(), crate::library::LibraryError>);
     delegate_view!(get_album_index => get_album_index(sort: &[crate::library::views::AlbumSortCriterion], album_id: &str, group_by_artist: bool) -> Option<u64>);
-    delegate_async!(manager, check_releases_in_library => check_releases_in_library(checks: &[crate::db::LibraryCheck]) -> Result<Vec<crate::db::LibraryStatus>, crate::library::LibraryError>);
+    delegate_async!(manager, check_releases_in_library => check_releases_in_library(checks: &[bae_db::LibraryCheck]) -> Result<Vec<bae_db::LibraryStatus>, crate::library::LibraryError>);
     delegate_view!(albums_in_browse_order => albums_in_browse_order(sort: &[crate::library::views::AlbumSortCriterion], album_ids: Vec<String>, group_by_artist: bool) -> Vec<crate::album_detail::AlbumSummary>);
     delegate_view!(find_album_detail => find_album_detail(album_id: &str) -> Option<crate::album_detail::AlbumDetail>);
     delegate_view!(find_release_detail => find_release_detail(release_id: &str) -> Option<crate::album_detail::ReleaseDetail>);
-    delegate_view!(get_albums => get_albums(sort: &[crate::library::views::AlbumSortCriterion]) -> Vec<crate::db::DbAlbum>);
-    delegate_async!(manager, get_releases_for_album => get_releases_for_album(album_id: &str) -> Result<Vec<crate::db::DbRelease>, crate::library::LibraryError>);
-    delegate_async!(manager, get_release_by_id => get_release_by_id(release_id: &str) -> Result<Option<crate::db::DbRelease>, crate::library::LibraryError>);
+    delegate_view!(get_albums => get_albums(sort: &[crate::library::views::AlbumSortCriterion]) -> Vec<bae_db::DbAlbum>);
+    delegate_async!(manager, get_releases_for_album => get_releases_for_album(album_id: &str) -> Result<Vec<bae_db::DbRelease>, crate::library::LibraryError>);
+    delegate_async!(manager, get_release_by_id => get_release_by_id(release_id: &str) -> Result<Option<bae_db::DbRelease>, crate::library::LibraryError>);
 
     delegate_async!(manager, get_release_records => get_release_records(release_id: &str) -> Result<Vec<bae_catalogs::records::ReleaseRecord>, crate::library::LibraryError>);
-    delegate_async!(manager, get_tracks_for_release => get_tracks_for_release(release_id: &str) -> Result<Vec<crate::db::DbTrack>, crate::library::LibraryError>);
-    delegate_async!(manager, get_release_mediums => get_release_mediums(release_id: &str) -> Result<crate::db::DbReleaseMediums, crate::library::LibraryError>);
-    delegate_async!(manager, get_files_for_release => get_files_for_release(release_id: &str) -> Result<Vec<crate::db::DbFile>, crate::library::LibraryError>);
-    delegate_async!(manager, get_file_by_id => get_file_by_id(file_id: &str) -> Result<Option<crate::db::DbFile>, crate::library::LibraryError>);
+    delegate_async!(manager, get_tracks_for_release => get_tracks_for_release(release_id: &str) -> Result<Vec<bae_db::DbTrack>, crate::library::LibraryError>);
+    delegate_async!(manager, get_release_mediums => get_release_mediums(release_id: &str) -> Result<bae_db::DbReleaseMediums, crate::library::LibraryError>);
+    delegate_async!(manager, get_files_for_release => get_files_for_release(release_id: &str) -> Result<Vec<bae_db::DbFile>, crate::library::LibraryError>);
+    delegate_async!(manager, get_file_by_id => get_file_by_id(file_id: &str) -> Result<Option<bae_db::DbFile>, crate::library::LibraryError>);
     delegate_async!(manager, file_local_path => file_local_path(file_id: &str) -> Result<Option<std::path::PathBuf>, crate::library::LibraryError>);
-    delegate_async!(manager, get_library_image => get_library_image(id: &str, image_type: &crate::db::LibraryImageType) -> Result<Option<crate::db::DbLibraryImage>, crate::library::LibraryError>);
-    delegate_async!(manager, cover_ref => cover_ref(release_id: &str) -> Result<Option<crate::db::ImageRef>, crate::library::LibraryError>);
-    delegate_async!(manager, read_image_bytes => read_image_bytes(image: &crate::db::ImageRef) -> Result<Option<Vec<u8>>, crate::library::LibraryError>);
-    delegate_async!(manager, read_library_image_bytes => read_library_image_bytes(id: &str, image_type: &crate::db::LibraryImageType) -> Result<Option<Vec<u8>>, crate::library::LibraryError>);
+    delegate_async!(manager, get_library_image => get_library_image(id: &str, image_type: &bae_db::LibraryImageType) -> Result<Option<bae_db::DbLibraryImage>, crate::library::LibraryError>);
+    delegate_async!(manager, cover_ref => cover_ref(release_id: &str) -> Result<Option<bae_db::ImageRef>, crate::library::LibraryError>);
+    delegate_async!(manager, read_image_bytes => read_image_bytes(image: &bae_db::ImageRef) -> Result<Option<Vec<u8>>, crate::library::LibraryError>);
+    delegate_async!(manager, read_library_image_bytes => read_library_image_bytes(id: &str, image_type: &bae_db::LibraryImageType) -> Result<Option<Vec<u8>>, crate::library::LibraryError>);
     delegate_async!(manager, read_gallery_bytes => read_gallery_bytes(release_id: &str, source: &crate::album_detail::GallerySource) -> Result<Vec<u8>, crate::library::LibraryError>);
     delegate_async!(manager, read_cover_image_bytes => read_cover_image_bytes(release_id: &str) -> Result<Option<Vec<u8>>, crate::library::LibraryError>);
-    delegate_async!(manager, get_artists_for_track => get_artists_for_track(track_id: &str) -> Result<Vec<crate::db::credits::LibraryCredit>, crate::library::LibraryError>);
-    delegate_async!(manager, get_artists_for_album => get_artists_for_album(album_id: &str) -> Result<Vec<crate::db::credits::LibraryCredit>, crate::library::LibraryError>);
+    delegate_async!(manager, get_artists_for_track => get_artists_for_track(track_id: &str) -> Result<Vec<bae_db::credits::LibraryCredit>, crate::library::LibraryError>);
+    delegate_async!(manager, get_artists_for_album => get_artists_for_album(album_id: &str) -> Result<Vec<bae_db::credits::LibraryCredit>, crate::library::LibraryError>);
     delegate_async!(manager, get_all_track_ids => get_all_track_ids() -> Result<Vec<String>, crate::library::LibraryError>);
     delegate_async!(manager, filter_existing_track_ids => filter_existing_track_ids(ids: &[String]) -> Result<Vec<String>, crate::library::LibraryError>);
-    delegate_async!(manager, resolve_track_audio => resolve_track_audio(track_id: &str) -> Result<crate::db::ResolvedTrackAudio, crate::library::LibraryError>);
+    delegate_async!(manager, resolve_track_audio => resolve_track_audio(track_id: &str) -> Result<bae_db::ResolvedTrackAudio, crate::library::LibraryError>);
     delegate_async!(manager, resolve_to_track_ids => resolve_to_track_ids(ids: &[String]) -> Result<Vec<String>, crate::library::LibraryError>);
     delegate_async!(manager, get_playback_track_info => get_playback_track_info(track_id: &str) -> Result<crate::playback::PlaybackTrackInfo, crate::library::LibraryError>);
     delegate_async!(manager, get_track_display => get_track_display(track_id: &str) -> Result<crate::playback::TrackDisplay, crate::library::LibraryError>);
@@ -511,14 +511,14 @@ impl AppServices {
     delegate_async!(manager, delete_album => delete_album(album_id: &str) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, save_s3_config => save_s3_config(data: crate::sync::S3ConfigData, device_name: &str, steps: crate::library::StorageSetupSteps<'_>) -> Result<coven::StorageSetup, crate::library::LibraryError>);
     delegate_async!(manager, generate_restore_code => generate_restore_code() -> Result<crate::sync::restore_code::RestoreCodeShare, crate::library::LibraryError>);
-    delegate_async!(manager, get_members => get_members() -> Result<crate::db::membership::Membership, crate::library::LibraryError>);
+    delegate_async!(manager, get_members => get_members() -> Result<bae_db::membership::Membership, crate::library::LibraryError>);
     delegate_async!(manager, remove_member => remove_member(member: &coven::MemberId) -> Result<(), crate::library::LibraryError>);
-    delegate_values!(subscribe_members => subscribe_members() -> crate::db::membership::Membership);
+    delegate_values!(subscribe_members => subscribe_members() -> bae_db::membership::Membership);
     delegate_async!(manager, add_device => add_device() -> Result<crate::sync::membership::AddingDevice, crate::library::LibraryError>);
-    delegate_values!(subscribe_added_device => subscribe_added_device(watch: crate::sync::membership::AddedDeviceWatch) -> Option<crate::db::membership::ActiveDevice>);
+    delegate_values!(subscribe_added_device => subscribe_added_device(watch: crate::sync::membership::AddedDeviceWatch) -> Option<bae_db::membership::ActiveDevice>);
     delegate_async!(manager, remove_device => remove_device(device: coven::DeviceId) -> Result<Option<coven::ProviderSignOut>, crate::library::LibraryError>);
     delegate_async!(manager, set_member_role => set_member_role(member: &coven::MemberId, role: coven::MemberRole) -> Result<(), crate::library::LibraryError>);
-    delegate_values!(subscribe_admin_changes => subscribe_admin_changes() -> Vec<crate::db::admin_change::AdminChange>);
+    delegate_values!(subscribe_admin_changes => subscribe_admin_changes() -> Vec<bae_db::admin_change::AdminChange>);
     delegate_async!(manager, acknowledge_admin_change => acknowledge_admin_change(operation: coven::OperationId) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, invite_person => invite_person(role: coven::MemberRole, name: String, access: coven::InviteAccess, delivery: coven::InviteDelivery) -> Result<coven::InviteId, crate::library::LibraryError>);
     /// This device's open invites, each with the pending record of its
@@ -569,7 +569,7 @@ impl AppServices {
     delegate_async!(manager, save_track => save_track(track_id: &str, output_path: &std::path::Path, preset_id: &str) -> Result<(), crate::library::LibraryError>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     delegate_async!(manager, save_track_suggested_name => save_track_suggested_name(track_id: &str, preset_id: &str) -> Result<String, crate::library::LibraryError>);
-    delegate_async!(manager, resolve_release_edit_credits => resolve_release_edit_credits(edit: &crate::import::RawReleaseEdit) -> Result<Vec<crate::db::ResolvedCredit>, crate::library::LibraryError>);
+    delegate_async!(manager, resolve_release_edit_credits => resolve_release_edit_credits(edit: &crate::import::RawReleaseEdit) -> Result<Vec<bae_db::ResolvedCredit>, crate::library::LibraryError>);
     delegate_async!(manager, apply_release_metadata_user_edit => apply_release_metadata_user_edit(release_id: &str, edit: &crate::import::ReleaseUserEdit) -> Result<(), crate::library::LibraryError>);
     delegate_view!(search_library => search_library(query: &crate::library::LibrarySearchQuery) -> crate::album_detail::SearchResults);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -644,7 +644,7 @@ impl AppServices {
     /// then positions in the track's stream, which a remote renderer reports
     /// and seeks by. One stream per file the segments read; they close when
     /// the returned decode is dropped.
-    pub fn open_track_decode(&self, audio: &crate::db::ResolvedTrackAudio) -> TrackDecode {
+    pub fn open_track_decode(&self, audio: &bae_db::ResolvedTrackAudio) -> TrackDecode {
         use crate::track_audio::{SegmentDecodeParams, StreamDecodeParams};
 
         let mut streams: std::collections::HashMap<

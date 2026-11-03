@@ -23,6 +23,8 @@ bae-desktop = { workspace = true, optional = true }
 bae-cast = { workspace = true, optional = true }
 bae-core = { workspace = true }
 bae-app-dir = { workspace = true }
+# The library's records and the store the bridge mirrors.
+bae-db = { workspace = true }
 bae-diagnostics = { workspace = true }
 # The catalogs, covers and image sets the bridge mirrors.
 bae-catalogs = { workspace = true }

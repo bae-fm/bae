@@ -1,8 +1,6 @@
 use super::*;
-use crate::db::collections::{
-    CollectionError, Playlist, PlaylistEntry, Rating, RatingTarget, Stars,
-};
-use crate::db::people::Sharing;
+use bae_db::collections::{CollectionError, Playlist, PlaylistEntry, Rating, RatingTarget, Stars};
+use bae_db::people::Sharing;
 
 impl LibraryManager {
     pub async fn set_rating(
@@ -13,7 +11,7 @@ impl LibraryManager {
         self.database.set_rating(target, stars).await
     }
 
-    pub async fn ratings(&self) -> Result<Vec<Rating>, crate::db::DbError> {
+    pub async fn ratings(&self) -> Result<Vec<Rating>, bae_db::DbError> {
         self.database.ratings().await
     }
 
@@ -29,7 +27,7 @@ impl LibraryManager {
         self.database.create_playlist(self.ids.new_id(), name, sharing).await
     }
 
-    pub async fn playlists(&self) -> Result<Vec<Playlist>, crate::db::DbError> {
+    pub async fn playlists(&self) -> Result<Vec<Playlist>, bae_db::DbError> {
         self.database.playlists().await
     }
 
@@ -56,7 +54,7 @@ impl LibraryManager {
     pub async fn playlist_entries(
         &self,
         id: uuid::Uuid,
-    ) -> Result<Vec<PlaylistEntry>, crate::db::DbError> {
+    ) -> Result<Vec<PlaylistEntry>, bae_db::DbError> {
         self.database.playlist_entries(id).await
     }
 

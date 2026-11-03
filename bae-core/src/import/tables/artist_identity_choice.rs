@@ -2,10 +2,8 @@
 //! stays intact; only this candidate's writes and previews use the answer.
 
 use super::*;
-use crate::db::client::artist_resolution::{
-    resolve_credit_on, resolve_credits_with, ResolvedArtists,
-};
 use crate::import::ArtistIdentityConflictChoice as Choice;
+use bae_db::client::artist_resolution::{resolve_credit_on, resolve_credits_with, ResolvedArtists};
 
 impl ImportTables {
     pub(crate) async fn choose_import_artist_identity(
@@ -217,7 +215,7 @@ pub(crate) fn resolve_import_credits_on<'a, Q: QueryOne + QueryRows>(
     sql: &Q,
     hash: &str,
     credits: impl IntoIterator<Item = &'a bae_catalogs::credits::ArtistCredit>,
-) -> Result<Vec<crate::db::ResolvedCredit>, DbError> {
+) -> Result<Vec<bae_db::ResolvedCredit>, DbError> {
     resolve_credits_with(credits, |credit| {
         Ok(
             match chosen_artist_on(
@@ -227,9 +225,9 @@ pub(crate) fn resolve_import_credits_on<'a, Q: QueryOne + QueryRows>(
                 credit.musicbrainz_artist_id.as_deref(),
             )? {
                 Some(ChosenArtist::Library(artist)) => {
-                    crate::db::CreditResolution::Library { artist: artist.into() }
+                    bae_db::CreditResolution::Library { artist: artist.into() }
                 }
-                Some(ChosenArtist::New(_)) => crate::db::CreditResolution::New,
+                Some(ChosenArtist::New(_)) => bae_db::CreditResolution::New,
                 None => resolve_credit_on(sql, credit)?,
             },
         )

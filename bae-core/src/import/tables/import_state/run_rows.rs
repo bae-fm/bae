@@ -30,7 +30,7 @@ use std::collections::BTreeMap;
 /// What every run in flight, or `key`'s runs alone, last published, with the
 /// signals each last read, by key and run.
 fn load_runs_on(
-    sql: &impl crate::db::client::query::QueryRows,
+    sql: &impl bae_db::client::query::QueryRows,
     key: Option<&CandidateKey>,
 ) -> Result<HashMap<CandidateKey, BTreeMap<IdentifyRunId, PublishedRun>>, DbError> {
     let mut matches = load_run_matches_on(sql, key)?;
@@ -77,7 +77,7 @@ fn load_runs_on(
 /// Where `key` stands, what each of its runs in flight last published, and
 /// its typed search.
 pub(crate) fn load_stored_runtime_on(
-    sql: &(impl crate::db::client::query::QueryOne + crate::db::client::query::QueryRows),
+    sql: &(impl bae_db::client::query::QueryOne + bae_db::client::query::QueryRows),
     key: &CandidateKey,
 ) -> Result<StoredRuntime, DbError> {
     Ok(StoredRuntime {

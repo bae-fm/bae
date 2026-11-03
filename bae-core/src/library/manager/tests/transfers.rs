@@ -419,7 +419,7 @@ async fn an_active_target_does_not_block_sibling_cloud_admissions() {
     assert!(
         manager
             .database
-            .begin_release_storage_action(&active_release.id, crate::db::StoredTransition::Unpin)
+            .begin_release_storage_action(&active_release.id, bae_db::StoredTransition::Unpin)
             .await
             .unwrap(),
         "hold the target in another transition"
@@ -634,7 +634,7 @@ async fn check_playability(
 
     assert_eq!(
         playability(elsewhere.id.clone()).await,
-        ReleasePlayability::OnOtherDevice(crate::db::OtherDevice::Active {
+        ReleasePlayability::OnOtherDevice(bae_db::OtherDevice::Active {
             name: "Device A".to_string()
         })
     );

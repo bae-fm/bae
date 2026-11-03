@@ -1,6 +1,6 @@
 //! Creating the files of a release's output: an export, a save or a local
 //! copy, each written under the release's stored names
-//! ([`crate::db::stored_name`]).
+//! ([`bae_db::stored_name`]).
 
 use std::path::{Path, PathBuf};
 

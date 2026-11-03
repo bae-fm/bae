@@ -17,11 +17,11 @@ const WORK_A: &str = "432c8996-8af0-43dc-868a-822a256f65c4"; // was "work-a"
 
 use super::*;
 use crate::app::test_library::TestLibrary;
-use crate::db::{
+use bae_catalogs::catalog::Catalog;
+use bae_db::{
     DbAlbum, DbAlbumArtist, DbFile, DbLibraryImage, DbRelease, DbTrackWork, DbWork,
     LibraryImageType, NewReleaseFile,
 };
-use bae_catalogs::catalog::Catalog;
 use bae_util::content_type::ContentType;
 use chrono::Utc;
 use coven::{MemoryStorage, Storage};
@@ -71,7 +71,7 @@ async fn setup_test_manager_with(
     let app_dir = bae_app_dir::AppDir::at(temp_dir.path()).unwrap();
     let installation = coven::TestCoven::new();
     let storage = Arc::new(MemoryStorage::builder().clock(clock.clone()).build().unwrap());
-    let handle = crate::db::configure_store(installation.builder(app_dir.store_layout()))
+    let handle = bae_db::configure_store(installation.builder(app_dir.store_layout()))
         .clock(clock.clone())
         .storage_connector(storage.clone())
         .create_store("Test Library")
@@ -112,7 +112,7 @@ async fn reopen_without_credentials(manager: TestManager, temp_dir: &TempDir) ->
     manager.installation.lose_storage_credentials(store).unwrap();
     let app_dir = bae_app_dir::AppDir::at(temp_dir.path()).unwrap();
     let clock: coven::ClockRef = Arc::new(coven::SystemClock);
-    let handle = crate::db::configure_store(manager.installation.builder(app_dir.store_layout()))
+    let handle = bae_db::configure_store(manager.installation.builder(app_dir.store_layout()))
         .clock(clock.clone())
         .storage_connector(manager.storage.clone())
         .open(store, |_| ())
@@ -233,7 +233,7 @@ async fn insert_release(manager: &LibraryManager, release: &DbRelease) {
     manager.database.insert_release(release).await.unwrap();
     manager
         .database
-        .insert_release_medium(&crate::db::DbReleaseMedium::new_test(&release.id))
+        .insert_release_medium(&bae_db::DbReleaseMedium::new_test(&release.id))
         .await
         .unwrap();
 }

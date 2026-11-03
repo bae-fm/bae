@@ -1,13 +1,13 @@
 //! The import tables' tests, over a library store of their own.
 
-use crate::db::client::tests::{
-    empty_db, exec, exec_batch, fixed_now, temp_db, write_cover, ALBUM_A, ARTIST_A, ARTIST_B,
-    RELEASE_A,
-};
-use crate::db::Database;
 use crate::import::folder_scanner::{
     CandidateFile, CategorizedFiles, FileRole, FolderCandidate, ReleaseFileScope, ScannedFile,
 };
+use bae_db::test_fixtures::{
+    empty_db, exec, exec_batch, fixed_now, temp_db, write_cover, ALBUM_A, ARTIST_A, ARTIST_B,
+    RELEASE_A,
+};
+use bae_db::Database;
 
 /// The folder at `name`, a `/`-separated path below `root`, spelled the way
 /// the scanner spells it on this host.
@@ -32,7 +32,7 @@ pub(crate) fn candidate_with(
         watched_folder_path: std::path::PathBuf::from(root),
         scope,
         file_edit_revision: 0,
-        relative_folder: crate::db::RelativeFolder::test(name),
+        relative_folder: bae_db::RelativeFolder::test(name),
         grouping: None,
     }
 }

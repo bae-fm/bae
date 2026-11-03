@@ -1,5 +1,5 @@
 use super::*;
-use crate::db::{Database, DbAlbum, DbArtist, DbRelease, DbTrack};
+use bae_db::{Database, DbAlbum, DbArtist, DbRelease, DbTrack};
 use tempfile::TempDir;
 
 /// Build a real `AppServices` — library manager, actor-backed playback,
@@ -30,14 +30,11 @@ async fn playing_app_services(track_count: usize) -> (AppServices, Vec<String>, 
     let release = DbRelease::new_test(&album.id, "c61a9e19-f3ba-4728-842c-c59dbc82e238");
     database.insert_album(&album).await.unwrap();
     database
-        .insert_album_artist(&crate::db::DbAlbumArtist::new_test(&album.id, &artist.id))
+        .insert_album_artist(&bae_db::DbAlbumArtist::new_test(&album.id, &artist.id))
         .await
         .unwrap();
     database.insert_release(&release).await.unwrap();
-    database
-        .insert_release_medium(&crate::db::DbReleaseMedium::new_test(&release.id))
-        .await
-        .unwrap();
+    database.insert_release_medium(&bae_db::DbReleaseMedium::new_test(&release.id)).await.unwrap();
     let mut track_ids = Vec::with_capacity(track_count);
     for i in 0..track_count {
         let track_id = bae_util::test_ids::test_uuid(&format!("track-{i}"));
@@ -89,8 +86,8 @@ async fn queue_value_with_context(
     }
 }
 
-fn windows(windows: &[(u64, u64)]) -> crate::db::LibraryPageWindows {
-    windows.iter().map(|&(offset, limit)| crate::db::LibraryPageWindow { offset, limit }).collect()
+fn windows(windows: &[(u64, u64)]) -> bae_db::LibraryPageWindows {
+    windows.iter().map(|&(offset, limit)| bae_db::LibraryPageWindow { offset, limit }).collect()
 }
 
 /// The subscription's next value that `accept` takes, skipping the ones
@@ -297,7 +294,7 @@ async fn a_queued_release_shows_its_title_as_edited_while_it_waits() {
                 album_artist_assignments: vec![crate::import::Credited::plain(
                     crate::import::ArtistAssignment::Picked {
                         credit_name: None,
-                        artist: crate::db::ExistingArtist {
+                        artist: bae_db::ExistingArtist {
                             artist_id: bae_util::test_ids::test_uuid(
                                 "e36744a5-1a36-460f-891c-e7e558034edf",
                             ),
@@ -490,7 +487,7 @@ fn a_track_decode_whose_read_panics_reports_it() {
         crate::track_audio::StreamDecodeParams::new(
             vec![crate::track_audio::SegmentDecodeParams::new(
                 buffer,
-                crate::db::SegmentSpan::whole_file(),
+                bae_db::SegmentSpan::whole_file(),
                 0,
             )],
             true,

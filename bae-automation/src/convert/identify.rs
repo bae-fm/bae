@@ -230,7 +230,7 @@ fn automation_agreements(
 #[cfg(desktop)]
 pub(crate) fn library_checks(
     view: &bae_core::identify::IdentifyStateView,
-) -> Vec<bae_core::db::LibraryCheck> {
+) -> Vec<bae_db::LibraryCheck> {
     use bae_core::identify::IdentifyStateView;
     let groups = match view {
         IdentifyStateView::Triangulating { groups, .. }
@@ -245,7 +245,7 @@ pub(crate) fn library_checks(
         .iter()
         .flat_map(|group| group.pressings().chain(group.narrowed_out()))
         .flat_map(|pressing| &pressing.releases)
-        .map(bae_core::db::LibraryCheck::from)
+        .map(bae_db::LibraryCheck::from)
         .collect()
 }
 
@@ -254,7 +254,7 @@ pub(crate) fn library_checks(
 #[cfg(desktop)]
 pub(crate) fn automation_identify_state(
     view: bae_core::identify::IdentifyStateView,
-    library_statuses: Vec<bae_core::db::LibraryStatus>,
+    library_statuses: Vec<bae_db::LibraryStatus>,
 ) -> AutomationIdentifyState {
     use bae_core::identify::IdentifyStateView;
     match view {

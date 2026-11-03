@@ -8,8 +8,8 @@
 //! These tests use storageless imports for simplicity (the CUE/FLAC handling
 //! is independent of storage configuration).
 use bae_catalogs::discogs::models::DiscogsRelease;
-use bae_core::db::DbAudioSegmentRole;
 use bae_core::library::LibraryManager;
+use bae_db::DbAudioSegmentRole;
 use bae_test_support as support;
 use bae_util::content_type::ContentType;
 use std::path::Path;
@@ -315,9 +315,7 @@ fn copy_cue_flac_fixture_with_seektable(dir: &Path) {
 /// Import the 3-track CUE/FLAC fixture (storageless) under `temp_root` and return
 /// the library manager and the imported release id. Shared by the CUE/FLAC tests
 /// whose only common setup is this import.
-async fn import_cue_flac_fixture(
-    temp_root: &Path,
-) -> (LibraryManager, bae_core::db::Database, String) {
+async fn import_cue_flac_fixture(temp_root: &Path) -> (LibraryManager, bae_db::Database, String) {
     let album_dir = temp_root.join("album");
     let db_dir = temp_root.join("db");
     std::fs::create_dir_all(&album_dir).expect("album dir");

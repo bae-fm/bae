@@ -45,7 +45,7 @@ async fn album_detail_delivers_while_sync_shaped_load_runs() {
     load.push(tokio::spawn(async move {
         loop {
             database
-                .begin_release_storage_action(&transitioning, crate::db::StoredTransition::Unpin)
+                .begin_release_storage_action(&transitioning, bae_db::StoredTransition::Unpin)
                 .await
                 .unwrap();
             database.end_release_storage_action(&transitioning).await.unwrap();

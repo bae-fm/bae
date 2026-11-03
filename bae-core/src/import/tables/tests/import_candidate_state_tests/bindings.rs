@@ -36,7 +36,7 @@ async fn a_cleared_binding_survives_a_relaunch() {
         watched_folder_path: std::path::PathBuf::from(&root),
         scope: crate::import::ReleaseFileScope::Recursive,
         file_edit_revision: 0,
-        relative_folder: crate::db::RelativeFolder::root(),
+        relative_folder: bae_db::RelativeFolder::root(),
         grouping: None,
     };
     tables.save_folder_scan_item(
@@ -218,7 +218,7 @@ async fn folder_release_decision_is_idempotent_and_root_scoped() {
     let other = host_root("/other/library");
     let key = FolderReleaseDecisionKey {
         watched_folder_path: host_root("/mounted/library"),
-        relative_folder: crate::db::RelativeFolder::test("Collection/Release Wrapper"),
+        relative_folder: bae_db::RelativeFolder::test("Collection/Release Wrapper"),
     };
     tables.add_watched_import_folder(&key.watched_folder_path).await.unwrap();
     tables.add_watched_import_folder(&other).await.unwrap();
@@ -296,7 +296,7 @@ async fn a_sheet_s_ripper_survives_a_relaunch() {
             watched_folder_path: std::path::PathBuf::from(&root),
             scope: crate::import::ReleaseFileScope::Recursive,
             file_edit_revision: 0,
-            relative_folder: crate::db::RelativeFolder::root(),
+            relative_folder: bae_db::RelativeFolder::root(),
             grouping: None,
         }),
     )
@@ -366,7 +366,7 @@ async fn a_timing_refusal_survives_a_relaunch() {
             watched_folder_path: std::path::PathBuf::from(&root),
             scope: crate::import::ReleaseFileScope::Recursive,
             file_edit_revision: 0,
-            relative_folder: crate::db::RelativeFolder::root(),
+            relative_folder: bae_db::RelativeFolder::root(),
             grouping: None,
         }),
     )

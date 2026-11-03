@@ -8,8 +8,8 @@ use super::{
     SaveBitDepth, SaveCodec, SaveFilenameToken, SavePregapPlacement, SavePreset,
     SidePauseCountdown, SubsonicConfig,
 };
-use crate::db::client::query::{QueryOne, QueryRows};
-use crate::db::{Database, DbError};
+use bae_db::client::query::{QueryOne, QueryRows};
+use bae_db::{Database, DbError};
 use coven::{CovenError, CovenWrite};
 use rusqlite::params;
 use std::collections::HashMap;

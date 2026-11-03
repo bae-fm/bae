@@ -149,7 +149,7 @@ impl StoredPart {
 
 /// Every search, or `key`'s alone, by key, each with the run it is on.
 fn load_on(
-    sql: &impl crate::db::client::query::QueryRows,
+    sql: &impl bae_db::client::query::QueryRows,
     key: Option<&CandidateKey>,
 ) -> Result<HashMap<CandidateKey, (SearchRun, CandidateSearch)>, DbError> {
     let searches = sql.query(
@@ -234,7 +234,7 @@ fn load_on(
 
 /// `key`'s search; `None` when it has none.
 pub(super) fn load_search_on(
-    sql: &impl crate::db::client::query::QueryRows,
+    sql: &impl bae_db::client::query::QueryRows,
     key: &CandidateKey,
 ) -> Result<Option<CandidateSearch>, DbError> {
     Ok(load_on(sql, Some(key))?.remove(key).map(|(_, search)| search))
@@ -242,7 +242,7 @@ pub(super) fn load_search_on(
 
 /// Every key's search.
 pub(super) fn load_searches_on(
-    sql: &impl crate::db::client::query::QueryRows,
+    sql: &impl bae_db::client::query::QueryRows,
 ) -> Result<HashMap<CandidateKey, CandidateSearch>, DbError> {
     Ok(load_on(sql, None)?.into_iter().map(|(key, (_, search))| (key, search)).collect())
 }

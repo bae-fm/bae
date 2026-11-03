@@ -2,7 +2,7 @@
 //! tracks laid out by side and by the file each plays from, and the summary of
 //! its audio.
 
-use crate::db::source_audio::{SourceAudioLayout, SourceAudioSummary};
+use bae_db::source_audio::{SourceAudioLayout, SourceAudioSummary};
 use bae_types::mediums::TrackSide;
 
 /// One physical source file that supplies a persisted track. A track can span
@@ -182,8 +182,8 @@ impl ReleaseEditDisplayContext {
     /// `tracks` reads it in release order.
     #[cfg(desktop)]
     pub(crate) fn from_raw(
-        raw: &crate::db::DbReleaseDetail,
-        tracks: Vec<crate::db::DbReleaseEditTrack>,
+        raw: &bae_db::DbReleaseDetail,
+        tracks: Vec<bae_db::DbReleaseEditTrack>,
     ) -> Result<Self, ReleaseEditLoadError> {
         let mut contexts = Vec::with_capacity(tracks.len());
         for entry in tracks {
@@ -359,17 +359,12 @@ mod tests {
 
     #[test]
     fn missing_segment_file_is_an_editor_load_error() {
-        let release = crate::db::DbRelease::new_test("album-id", "release-id");
-        let track = crate::db::DbTrack::new_test(&release.id, "track-id", "Track Title", 1);
-        let raw = crate::db::DbReleaseDetail {
-            mediums: crate::db::DbReleaseMediums(vec![crate::db::DbReleaseMedium::new_test(
-                &release.id,
-            )]),
+        let release = bae_db::DbRelease::new_test("album-id", "release-id");
+        let track = bae_db::DbTrack::new_test(&release.id, "track-id", "Track Title", 1);
+        let raw = bae_db::DbReleaseDetail {
+            mediums: bae_db::DbReleaseMediums(vec![bae_db::DbReleaseMedium::new_test(&release.id)]),
             release,
-            tracks: vec![crate::db::DbTrackWithArtists {
-                track: track.clone(),
-                artists: Vec::new(),
-            }],
+            tracks: vec![bae_db::DbTrackWithArtists { track: track.clone(), artists: Vec::new() }],
             files: Vec::new(),
             records: Vec::new(),
             unstored_audio: Vec::new(),
@@ -379,10 +374,10 @@ mod tests {
             transfer_action: None,
             cover_version: None,
         };
-        let tracks = vec![crate::db::DbReleaseEditTrack {
+        let tracks = vec![bae_db::DbReleaseEditTrack {
             track,
             audio_format_count: 1,
-            segments: vec![crate::db::DbReleaseEditSegment {
+            segments: vec![bae_db::DbReleaseEditSegment {
                 file_id: "missing-file-id".to_string(),
                 file: None,
             }],

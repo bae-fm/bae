@@ -194,7 +194,7 @@ impl ImportServiceHandle {
         &self,
         candidate_key: &crate::import::CandidateKey,
         run: crate::import::IdentifyRunId,
-    ) -> Result<Option<crate::identify::signals::Signals>, crate::db::DbError> {
+    ) -> Result<Option<crate::identify::signals::Signals>, bae_db::DbError> {
         self.runtime.run_signals(candidate_key, run).await
     }
 }

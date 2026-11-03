@@ -3,7 +3,6 @@ pub mod app;
 #[doc(hidden)]
 #[cfg(desktop)]
 pub mod cue_flac;
-pub mod db;
 #[cfg(all(feature = "dev-reset", unix))]
 pub mod dev_reset;
 #[cfg(desktop)]

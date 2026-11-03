@@ -8,10 +8,10 @@ use std::collections::HashMap;
 use std::num::NonZeroU32;
 use std::path::{Path, PathBuf};
 
-use crate::db::{DbAudioFormat, DbAudioSegment, DbAudioSegmentRole, SegmentSpan};
 use crate::import::types::{CueFlacAnalysis, TrackAudio, TrackFile};
 use crate::import::ImportError;
 use bae_audio::ProbeResult;
+use bae_db::{DbAudioFormat, DbAudioSegment, DbAudioSegmentRole, SegmentSpan};
 use bae_util::content_type::ContentType;
 use bae_util::content_type_hint::ContentTypeHint;
 
@@ -243,7 +243,7 @@ fn standalone_audio_format(
     source_audio: &crate::import::folder_scanner::ScannedAudio,
     id: String,
     now: chrono::DateTime<chrono::Utc>,
-) -> Result<crate::db::DbAudioFormat, ImportError> {
+) -> Result<bae_db::DbAudioFormat, ImportError> {
     // A per-track file is its own whole-file source; the sample window lives in
     // its `audio_format_segments` row.
     Ok(DbAudioFormat::new(

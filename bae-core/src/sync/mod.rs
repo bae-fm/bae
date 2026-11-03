@@ -2,7 +2,7 @@
 //!
 //! coven owns sync, keys, storage and database connections; bae's shared
 //! rows, the columns that reference coven's files and its kinds of file are
-//! declared with the schema, in `crate::db::synced`.
+//! declared with the schema, in `bae_db::synced`.
 
 // The sync substrate lives in coven; these resolve `crate::sync::<item>`
 // unchanged. Cloud file operations use the exact stored file reference.

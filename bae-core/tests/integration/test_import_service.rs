@@ -12,12 +12,12 @@ use bae_catalogs::musicbrainz::{
     MbArtistCredit, MbArtistRef, MbRecording, MbRelation, MbReleaseResponse, MbTrack,
     MbUrlResource, MbWork,
 };
-use bae_core::db::{Database, LibraryImageType};
 use bae_core::import::{
     ArtistAssignment, CoverSelection, ImportCommand, ImportDestination, ReleaseUserEdit, ScanEvent,
     TrackArtistAssignments, TrackUserEdit,
 };
 use bae_core::library::LibraryManager;
+use bae_db::{Database, LibraryImageType};
 use bae_types::pressing::ReleaseLabel;
 use std::fs;
 use std::path::Path;

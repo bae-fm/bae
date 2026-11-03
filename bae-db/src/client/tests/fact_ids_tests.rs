@@ -1,0 +1,76 @@
+use super::super::*;
+use super::*;
+use crate::{identity, DbAlbum, DbAlbumArtist, DbArtist, DbRelease};
+use bae_catalogs::catalog::Catalog;
+use bae_catalogs::records::ReleaseRecord;
+use chrono::Utc;
+
+fn record(source: Catalog, release_id: &str) -> ReleaseRecord {
+    ReleaseRecord::new(
+        &bae_catalogs::records::MetadataRef::new(source, release_id),
+        Some(format!("group-{release_id}")),
+    )
+}
+
+async fn ids(db: &Database, query: &'static str) -> Vec<String> {
+    db.read(move |sql| sql.query(query, [], |row| row.get::<_, String>(0)).map_err(DbError::from))
+        .await
+        .unwrap()
+}
+
+/// A release's records and an album's credits are facts: each row's id is
+/// computed from the fact it states, so another device stating the same fact
+/// writes the same row.
+#[tokio::test]
+async fn fact_rows_take_their_ids_from_their_facts() {
+    let (db, _tmp) = temp_db().await;
+    let now = Utc::now();
+
+    let artist = DbArtist {
+        id: ARTIST_1.to_string(),
+        name: "Artist".to_string(),
+        sort_name: None,
+        discogs_artist_id: None,
+        musicbrainz_artist_id: None,
+        created_at: now,
+    };
+    db.insert_artist(&artist).await.unwrap();
+
+    let mut album = DbAlbum::new_test("Album");
+    album.id = ALBUM_1.to_string();
+    db.insert_album(&album).await.unwrap();
+    db.insert_album_artist(&DbAlbumArtist::new(&album.id, &artist.id, 0, now)).await.unwrap();
+
+    let release = DbRelease::new_test(&album.id, RELEASE_1);
+    db.insert_release(&release).await.unwrap();
+    db.insert_release_records(&release.id, &[record(Catalog::Discogs, "discogs-release-1")])
+        .await
+        .unwrap();
+    assert_eq!(
+        ids(&db, "SELECT id FROM release_records").await,
+        vec![identity::release_record_id(&release.id, Catalog::Discogs)],
+    );
+
+    // Moving the release to a fresh album copies its credits under the new
+    // album's ids.
+    let target = DbAlbum::new_test("Target Album");
+    db.set_records_atomic(crate::RecordsChange {
+        release_id: release.id.clone(),
+        records: vec![record(Catalog::MusicBrainz, "mb-release-1")],
+        current_album_id: album.id.clone(),
+        target_album_id: target.id.clone(),
+        new_album: Some(target.clone()),
+    })
+    .await
+    .unwrap();
+
+    let credits = ids(&db, "SELECT id FROM album_artists").await;
+    assert!(
+        credits.contains(&identity::album_artist_id(&target.id, 0)),
+        "the copied credit's id is its (album, position), got {credits:?}"
+    );
+    assert_eq!(
+        ids(&db, "SELECT id FROM release_records").await,
+        vec![identity::release_record_id(&release.id, Catalog::MusicBrainz)],
+    );
+}

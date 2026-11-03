@@ -95,13 +95,13 @@ mirror_struct! {
 }
 
 mirror_enum! {
-    AutomationSourceAudioLayout = bae_core::db::source_audio::SourceAudioLayout,
+    AutomationSourceAudioLayout = bae_db::source_audio::SourceAudioLayout,
     from_core: pub(crate) fn,
     variants: { File, Cue },
 }
 
 mirror_struct! {
-    AutomationSourceAudioDescriptor = bae_core::db::source_audio::SourceAudioDescriptor,
+    AutomationSourceAudioDescriptor = bae_db::source_audio::SourceAudioDescriptor,
     from_core: pub(crate) fn,
     fields: {
         layout: (AutomationSourceAudioLayout),
@@ -110,7 +110,7 @@ mirror_struct! {
 }
 
 mirror_enum! {
-    AutomationSourceAudioSummary = bae_core::db::source_audio::SourceAudioSummary,
+    AutomationSourceAudioSummary = bae_db::source_audio::SourceAudioSummary,
     from_core: pub(crate) fn,
     variants: {
         Uniform { descriptor: (AutomationSourceAudioDescriptor) },
@@ -119,7 +119,7 @@ mirror_enum! {
 }
 
 mirror_enum! {
-    AutomationSourceAudioDifference = bae_core::db::source_audio::SourceAudioDifference,
+    AutomationSourceAudioDifference = bae_db::source_audio::SourceAudioDifference,
     from_core: pub(crate) fn,
     variants: {
         Layout { layouts: (each AutomationSourceAudioLayout) },

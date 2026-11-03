@@ -4,11 +4,14 @@
 //! are one.
 
 use super::*;
-use crate::db::client::artist_resolution::{
+use crate::import::preparation::CommittingCandidate;
+use crate::import::tables::artist_identity_choice::resolve_for_import_on;
+use crate::import::tables::label_identity_choice::label_answers_on;
+use bae_db::client::artist_resolution::{
     identity_write_failure, relink, relink_album_artists, relink_track_artists,
 };
-use crate::db::client::label_resolution::import_label_write;
-use crate::db::client::write::{
+use bae_db::client::label_resolution::import_label_write;
+use bae_db::client::write::{
     insert_audio_format_row, insert_audio_segment_row, insert_release_artist_role_row,
     insert_release_file_row, insert_release_medium_row, insert_release_row,
     insert_scrub_points_row, insert_track_artist_role_row, insert_track_artist_row,
@@ -16,9 +19,6 @@ use crate::db::client::write::{
     insert_work_row, replace_album_artists, upsert_album_row, upsert_library_image_row,
     write_release_records,
 };
-use crate::import::preparation::CommittingCandidate;
-use crate::import::tables::artist_identity_choice::resolve_for_import_on;
-use crate::import::tables::label_identity_choice::label_answers_on;
 use std::collections::BTreeSet;
 
 /// Why an import's commit did not land. Nothing of it was written; the
@@ -300,7 +300,7 @@ pub(crate) struct ImportRows<'a> {
     pub track_works: &'a [DbTrackWork],
     pub release_artist_roles: &'a [DbReleaseArtistRole],
     pub track_artist_roles: &'a [DbTrackArtistRole],
-    pub artists: crate::db::ArtistCredits<'a>,
+    pub artists: bae_db::ArtistCredits<'a>,
     pub audio_formats: &'a [DbAudioFormat],
     pub audio_segments: &'a [DbAudioSegment],
     pub scrub_points: &'a [DbScrubPoints],
@@ -389,7 +389,7 @@ impl ImportTables {
                         .into_iter()
                         .map(|(original, place)| {
                             sql.put_user_file(
-                                crate::db::synced::RELEASE_FILES_NAMESPACE,
+                                bae_db::synced::RELEASE_FILES_NAMESPACE,
                                 original,
                                 place,
                             )

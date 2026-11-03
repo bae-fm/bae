@@ -12,7 +12,7 @@ pub(crate) fn cue_image(
     dir: &std::path::Path,
     name: &str,
     format: bae_audio::EncodeFormat,
-) -> (Vec<u8>, Vec<crate::db::DbAudioSegment>) {
+) -> (Vec<u8>, Vec<bae_db::DbAudioSegment>) {
     let samples: Vec<i32> = (0..44_100 * 10 * 2)
         .map(|i| (((i / 2) as f64 * 0.031).sin() * 0.3 * i32::MAX as f64) as i32)
         .collect();
@@ -39,7 +39,7 @@ pub(crate) fn cue_image(
     });
     let tracks: Vec<_> = (0..2u32)
         .map(|index| TrackFile {
-            db_track: crate::db::DbTrack::new_test(
+            db_track: bae_db::DbTrack::new_test(
                 "release-id",
                 &format!("track-{index}"),
                 "Track Title",

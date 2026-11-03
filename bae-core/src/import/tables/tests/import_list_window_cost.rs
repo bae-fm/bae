@@ -9,7 +9,7 @@
 //! ```
 
 use super::super::*;
-use crate::db::client::tests::window_cost::{offsets, report, LIMIT, RUNS, SIZES};
+use bae_db::test_fixtures::window_cost::{offsets, report, LIMIT, RUNS, SIZES};
 use std::time::{Duration, Instant};
 
 /// Scan `start..end` more folders into the import list, each its own album
@@ -71,7 +71,7 @@ async fn measure_import_list(db: &Database, n: u64) {
             .unwrap();
         let request = |offset| ImportListRequest {
             list,
-            windows: crate::db::LibraryPageWindows::from([crate::db::LibraryPageWindow {
+            windows: bae_db::LibraryPageWindows::from([bae_db::LibraryPageWindow {
                 offset,
                 limit: LIMIT,
             }]),

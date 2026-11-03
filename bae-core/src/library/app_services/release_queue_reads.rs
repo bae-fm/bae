@@ -16,7 +16,7 @@ impl AppServices {
     pub fn subscribe_download_browse(&self) -> crate::library::LiveDownloadBrowse {
         let manager = &self.inner.manager;
         let query = manager
-            .until_closed(manager.subscribe_download_windows(crate::db::LibraryPageWindows::new()));
+            .until_closed(manager.subscribe_download_windows(bae_db::LibraryPageWindows::new()));
         crate::library::LiveLibraryBrowse::new(
             query,
             |read: crate::library::ReleaseQueueWindows<()>, request_revision, cause| {

@@ -71,7 +71,7 @@ async fn listed_pinned_releases(manager: &LibraryManager) -> std::collections::B
         .get_db_storage_page(
             &crate::library::views::StorageSortCriterion {
                 field: crate::library::views::StorageSortField::AlbumTitle,
-                direction: crate::db::SortDirection::Ascending,
+                direction: bae_db::SortDirection::Ascending,
             },
             crate::library::views::StorageFilter::All,
             0,

@@ -120,7 +120,7 @@ fn album_assignments(values: &ReleaseValues) -> Vec<Credited> {
 /// file per track and built into rows the way the import builds them. What a
 /// reader's test checks a reading's rows with.
 #[cfg(test)]
-pub(crate) fn committed_rows(values: ReleaseValues) -> crate::db::ReleaseRows {
+pub(crate) fn committed_rows(values: ReleaseValues) -> bae_db::ReleaseRows {
     let units = (0..values.tracks.len())
         .map(|index| AudioFile::Standalone { file_id: format!("{index:02}.flac") })
         .collect();
@@ -141,19 +141,19 @@ pub(crate) fn committed_rows(values: ReleaseValues) -> crate::db::ReleaseRows {
 /// one artist.
 #[cfg(test)]
 pub(crate) fn committed_artists(
-    parsed: &crate::db::ReleaseRows,
+    parsed: &bae_db::ReleaseRows,
 ) -> std::collections::HashMap<String, String> {
     parsed
         .artists
         .iter()
         .map(|artist| artist.id.clone())
-        .zip(crate::db::resolved_in_an_empty_library(&parsed.artists))
+        .zip(bae_db::resolved_in_an_empty_library(&parsed.artists))
         .collect()
 }
 
 /// [`place_labels`](bae_catalogs::release_values::place_labels) of an import's track rows.
 #[cfg(test)]
-pub(crate) fn row_labels(rows: &crate::db::ReleaseRows) -> Vec<String> {
+pub(crate) fn row_labels(rows: &bae_db::ReleaseRows) -> Vec<String> {
     let mediums: Vec<_> = rows.mediums.iter().map(|medium| medium.medium).collect();
     bae_catalogs::release_values::place_labels(
         &mediums,

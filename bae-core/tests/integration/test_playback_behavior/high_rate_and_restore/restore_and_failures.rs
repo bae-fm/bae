@@ -29,7 +29,7 @@ async fn restore_test_library() -> RestoreTestLibrary {
 /// manager, its store, runtime handle, and temp dir (kept alive for the DB
 /// file).
 async fn empty_test_library(
-) -> (LibraryManager, bae_core::db::Database, tokio::runtime::Handle, TempDir) {
+) -> (LibraryManager, bae_db::Database, tokio::runtime::Handle, TempDir) {
     tracing_init();
     let temp_dir = TempDir::new().unwrap();
     let (library_manager, database, ..) = open_test_library(temp_dir.path()).await;

@@ -38,7 +38,7 @@ pub use artist_search::{ArtistSearchSnapshot, ArtistSearchView, LiveArtistSearch
 pub use browse::*;
 pub use closing_step::ClosingStep;
 
-pub use crate::db::StorageSetupSteps;
+pub use bae_db::StorageSetupSteps;
 pub use detail::{DetailSnapshot, LiveDetail};
 pub use download_snapshot::{
     DownloadEntry, DownloadPhase, DownloadProgress, DownloadRow, DownloadSnapshot,
@@ -97,8 +97,8 @@ mod local_lifecycle_tests;
 #[cfg(test)]
 mod saved_codes_tests;
 
-use crate::db::configure_store;
 use bae_app_dir::AppDir;
+use bae_db::configure_store;
 use tokio::sync::watch;
 
 pub use tokio_util::sync::CancellationToken;
@@ -116,14 +116,14 @@ pub(crate) type Outputs = QueuedReleases<output_snapshot::OutputRequest, u8>;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) struct SaveTrackPlan {
     resolved: manager::ResolvedSaveTags,
-    audio_meta: crate::db::TrackAudioMeta,
+    audio_meta: bae_db::TrackAudioMeta,
     window: manager::SaveWindow,
 }
 
 #[derive(Debug, thiserror::Error)]
 pub enum RestoreFromCodeError {
     #[error(transparent)]
-    Profile(#[from] crate::db::people::ProfileError),
+    Profile(#[from] bae_db::people::ProfileError),
     #[error("restore cancelled")]
     Cancelled,
     #[error("restore failed: {0}")]
@@ -352,7 +352,7 @@ pub async fn restore_from_saved_code(
 /// existing member's keys: that person keeps the row they already have
 /// (§5.4). An asked-for profile is written once sync has made the person's
 /// private circle.
-pub type JoinedLibrary = (coven::CovenHandle, Option<Result<(), crate::db::people::ProfileError>>);
+pub type JoinedLibrary = (coven::CovenHandle, Option<Result<(), bae_db::people::ProfileError>>);
 
 /// The app's hold on a running join: cancel it before its request is sent, or
 /// check for approval at once. One control covers coven's join and any
@@ -487,7 +487,7 @@ async fn with_profile(
 ) -> JoinedLibrary {
     let profile = match invitee {
         Some(name) => Some(
-            crate::db::Database::from_handle(
+            bae_db::Database::from_handle(
                 handle.clone(),
                 clock,
                 std::sync::Arc::new(coven::UuidIds),

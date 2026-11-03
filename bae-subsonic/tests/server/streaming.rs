@@ -261,9 +261,9 @@ async fn a_changed_cover_gets_a_new_cover_art_id() {
 
     lib.manager
         .store_library_image(
-            &bae_core::db::DbLibraryImage {
+            &bae_db::DbLibraryImage {
                 id: lib.per_track_release.clone(),
-                image_type: bae_core::db::LibraryImageType::Cover,
+                image_type: bae_db::LibraryImageType::Cover,
                 content_type: bae_util::content_type::ContentType::Png,
                 width: None,
                 height: None,
@@ -298,9 +298,9 @@ async fn an_artist_cover_art_is_the_artist_image() {
     let image = support::cover_png();
     lib.manager
         .store_library_image(
-            &bae_core::db::DbLibraryImage {
+            &bae_db::DbLibraryImage {
                 id: artist_id,
-                image_type: bae_core::db::LibraryImageType::Artist,
+                image_type: bae_db::LibraryImageType::Artist,
                 content_type: bae_util::content_type::ContentType::Png,
                 width: None,
                 height: None,
@@ -371,7 +371,7 @@ async fn musicbrainz_id_surfaces_when_present() {
         album_peak_linear: None,
         created_at: now,
     };
-    let medium = bae_core::db::DbReleaseMedium::new(
+    let medium = bae_db::DbReleaseMedium::new(
         &release.id,
         std::num::NonZeroU16::MIN,
         bae_types::mediums::ReleaseMedium::one_sided(Some(bae_types::pressing::Medium::Cd)),
@@ -390,7 +390,7 @@ async fn musicbrainz_id_surfaces_when_present() {
     manager
         .insert_album_with_release_and_tracks(
             &album,
-            &[bae_core::db::DbAlbumArtist::new_test(&album.id, &artist.id)],
+            &[bae_db::DbAlbumArtist::new_test(&album.id, &artist.id)],
             &release,
             &[medium],
             &[track],
@@ -571,16 +571,16 @@ async fn an_album_prints_its_credit_line_and_lists_every_credited_artist() {
         created_at: now,
     };
     let credits = [
-        bae_core::db::DbAlbumArtist {
+        bae_db::DbAlbumArtist {
             join_phrase: Some(" & ".to_string()),
-            ..bae_core::db::DbAlbumArtist::new(&album.id, &artist_a, 0, now)
+            ..bae_db::DbAlbumArtist::new(&album.id, &artist_a, 0, now)
         },
-        bae_core::db::DbAlbumArtist {
-            credit: Some(bae_core::db::credits::CreditName {
+        bae_db::DbAlbumArtist {
+            credit: Some(bae_db::credits::CreditName {
                 key: "b alias".to_string(),
                 name: "B Alias".to_string(),
             }),
-            ..bae_core::db::DbAlbumArtist::new(&album.id, &artist_b, 1, now)
+            ..bae_db::DbAlbumArtist::new(&album.id, &artist_b, 1, now)
         },
     ];
     manager

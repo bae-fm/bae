@@ -5,8 +5,8 @@
 //! view resolves it (`crate::library::views`).
 
 use super::*;
-use crate::db::{DbAlbum, DbAlbumSummary};
 use crate::library::views::DbAlbumAppearance;
+use bae_db::{DbAlbum, DbAlbumSummary};
 
 /// An album with its releases, each carrying tracks, files, and gallery.
 #[derive(Debug, Clone)]
@@ -14,7 +14,7 @@ pub struct AlbumDetail {
     pub album: DbAlbum,
     /// The album's credits in list order, each the artist it shows after
     /// merges.
-    pub artists: Vec<crate::db::credits::LibraryCredit>,
+    pub artists: Vec<bae_db::credits::LibraryCredit>,
     /// Comma-joined artist names for display.
     pub artist_names: String,
     pub releases: Vec<ReleaseDetail>,

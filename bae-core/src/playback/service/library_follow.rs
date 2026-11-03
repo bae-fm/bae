@@ -99,7 +99,7 @@ mod tests {
     async fn a_follow_ends_once_its_store_closes() {
         let directory = tempfile::TempDir::new().unwrap();
         let path = directory.path().join("library.db");
-        let database = crate::db::Database::new_test(
+        let database = bae_db::Database::new_test(
             path.to_str().unwrap(),
             std::sync::Arc::new(coven::SystemClock),
         )
@@ -133,7 +133,7 @@ mod tests {
     async fn an_ended_follow_takes_a_new_request() {
         let directory = tempfile::TempDir::new().unwrap();
         let path = directory.path().join("library.db");
-        let database = crate::db::Database::new_test(
+        let database = bae_db::Database::new_test(
             path.to_str().unwrap(),
             std::sync::Arc::new(coven::SystemClock),
         )

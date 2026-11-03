@@ -1,5 +1,5 @@
-use crate::db::client::tests::{exec, exec_batch, temp_db, ARTIST_A, ARTIST_B, ARTIST_C};
 use crate::library::views::*;
+use bae_db::test_fixtures::{exec, exec_batch, temp_db, ARTIST_A, ARTIST_B, ARTIST_C};
 
 async fn grouped_library() -> (Database, tempfile::TempDir) {
     let (db, dir) = temp_db().await;
@@ -304,12 +304,9 @@ async fn an_artist_section_carries_the_artists_picture() {
         LibraryViews::new(db.clone()).subscribe_album_browse(&[], true, BTreeSet::new());
     let initial = browse.next().await.expect("the query stays open").result.unwrap();
     assert!(initial.sections.iter().all(|section| section.image.is_none()));
-    let version = crate::db::client::tests::live_query_tests::write_artist_image(
-        &db,
-        ARTIST_B,
-        "artist image bytes",
-    )
-    .await;
+    let version =
+        bae_db::test_fixtures::live_query::write_artist_image(&db, ARTIST_B, "artist image bytes")
+            .await;
     let pictured = browse.next().await.expect("the query stays open").result.unwrap();
     let images = pictured
         .sections

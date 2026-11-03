@@ -115,8 +115,8 @@ impl LibraryViews {
         &self,
         sort: &[AlbumSortCriterion],
         group_by_artist: bool,
-        initial_windows: crate::db::LibraryPageWindows,
-    ) -> coven::ReconfigurableLiveQuery<crate::db::LibraryPageWindows, AlbumBrowseProjection> {
+        initial_windows: bae_db::LibraryPageWindows,
+    ) -> coven::ReconfigurableLiveQuery<bae_db::LibraryPageWindows, AlbumBrowseProjection> {
         let (relation, order) = album_browse_order(sort, group_by_artist);
         let sources = album_browse_sources(group_by_artist);
         let places = KnownPlaces::new();
@@ -136,11 +136,8 @@ impl LibraryViews {
                         Ok(crate::library::LibraryBrowseSection {
                             id: row.get(0)?,
                             title: row.get(1)?,
-                            image: crate::db::artist_image_ref(
-                                &row.get::<_, String>(0)?,
-                                row.get(4)?,
-                            ),
-                            window: crate::db::LibraryPageWindow {
+                            image: bae_db::artist_image_ref(&row.get::<_, String>(0)?, row.get(4)?),
+                            window: bae_db::LibraryPageWindow {
                                 offset: row.get::<_, i64>(2)? as u64,
                                 limit: row.get::<_, i64>(3)? as u64,
                             },
@@ -164,15 +161,15 @@ impl LibraryViews {
                 places.keep(versions, found);
                 let windows = windows
                     .into_iter()
-                    .map(|(window, rows)| crate::db::LibraryBrowseWindow { window, rows })
+                    .map(|(window, rows)| bae_db::LibraryBrowseWindow { window, rows })
                     .collect::<Vec<_>>();
                 Ok((windows, total_count, row_count, sections))
             })
             .process(|(windows, total_count, row_count, sections)| {
                 let windows = windows
                     .into_iter()
-                    .map(|window: crate::db::LibraryBrowseWindow<AlbumAppearanceRow>| {
-                        Ok(crate::db::LibraryBrowseWindow {
+                    .map(|window: bae_db::LibraryBrowseWindow<AlbumAppearanceRow>| {
+                        Ok(bae_db::LibraryBrowseWindow {
                             window: window.window,
                             rows: window
                                 .rows
@@ -330,7 +327,7 @@ pub(crate) fn resolve_album_browse(
         windows: projection
             .windows
             .into_iter()
-            .map(|window| crate::db::LibraryBrowseWindow {
+            .map(|window| bae_db::LibraryBrowseWindow {
                 window: window.window,
                 rows: window
                     .rows
@@ -369,15 +366,15 @@ fn resolve_album_detail(
     raw: DbAlbumDetail,
     has_cloud_home: bool,
 ) -> crate::album_detail::AlbumDetail {
-    let artist_names = crate::db::credits::library_line(&raw.artists);
+    let artist_names = bae_db::credits::library_line(&raw.artists);
     let primary_release_id = raw.primary_release_id;
 
-    let cover = crate::db::cover_ref(&primary_release_id, raw.primary_cover_version);
+    let cover = bae_db::cover_ref(&primary_release_id, raw.primary_cover_version);
     let mut releases = Vec::with_capacity(raw.releases.len());
     for (i, ReleaseDetailRead { detail, download }) in raw.releases.into_iter().enumerate() {
         let ctx = crate::album_detail::ReleaseResolveCtx {
             has_cloud_home,
-            cover: crate::db::cover_ref(&detail.release.id, detail.cover_version.clone()),
+            cover: bae_db::cover_ref(&detail.release.id, detail.cover_version.clone()),
             is_compilation: raw.album.is_compilation,
         };
         releases.push(crate::album_detail::ReleaseDetail::from_raw(
@@ -429,7 +426,7 @@ fn search_library_on(
             ORDER BY a.title, a.id
             "#,
         primary_release = album_primary_release_sql(),
-        primary_cover = crate::db::client::files::cover_version_sql(album_primary_release_sql()),
+        primary_cover = bae_db::client::files::cover_version_sql(album_primary_release_sql()),
         artist_names = album_credits_json_sql(),
         album_matches = album_matches_sql("a.id", "?1"),
     );
@@ -460,7 +457,7 @@ fn search_library_on(
             ORDER BY t.title, t.id
             "#,
             track_credits_json_sql("t"),
-            crate::db::client::files::cover_version_sql("t.release_id"),
+            bae_db::client::files::cover_version_sql("t.release_id"),
         ),
         params![pattern, limit],
         |row| {
@@ -572,7 +569,7 @@ fn find_album_detail_on(
         &format!(
             "SELECT {primary}, {cover} FROM albums a WHERE a.id = ?",
             primary = album_primary_release_sql(),
-            cover = crate::db::client::files::cover_version_sql(album_primary_release_sql()),
+            cover = bae_db::client::files::cover_version_sql(album_primary_release_sql()),
         ),
         params![album_id],
         |row| Ok((row.get(0)?, row.get(1)?)),
@@ -679,7 +676,7 @@ impl AlbumAppearanceRow {
                 .filter(|credit| credit.artist.id != group)
                 .cloned()
                 .collect::<Vec<_>>();
-            (!others.is_empty()).then(|| crate::db::credits::library_line(&others))
+            (!others.is_empty()).then(|| bae_db::credits::library_line(&others))
         });
         Ok(DbAlbumAppearance { album: self.row.process_with(&credits)?, credited_with })
     }
@@ -687,7 +684,7 @@ impl AlbumAppearanceRow {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct AlbumBrowseProjection {
-    pub windows: Vec<crate::db::LibraryBrowseWindow<DbAlbumAppearance>>,
+    pub windows: Vec<bae_db::LibraryBrowseWindow<DbAlbumAppearance>>,
     pub total_count: u64,
     pub row_count: u64,
     pub sections: Vec<crate::library::LibraryBrowseSection>,
@@ -779,7 +776,7 @@ fn album_browse_sections_query(direction: SortDirection) -> String {
                 {image} AS image_version \
          FROM artist_listing artist \
          ORDER BY {order}",
-        image = crate::db::client::files::artist_image_version_sql("artist.artist_id"),
+        image = bae_db::client::files::artist_image_version_sql("artist.artist_id"),
     )
 }
 

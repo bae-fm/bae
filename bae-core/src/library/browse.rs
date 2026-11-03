@@ -1,5 +1,5 @@
-use crate::db::{LibraryBrowseWindow, LibraryPageWindow, LibraryPageWindows};
 use crate::live_query::CancellableLiveQuery;
+use bae_db::{LibraryBrowseWindow, LibraryPageWindow, LibraryPageWindows};
 use std::sync::Arc;
 
 /// One artist's group in the album grid grouped by artist. Its range includes
@@ -12,7 +12,7 @@ pub struct LibraryBrowseSection {
     /// The artist's name.
     pub title: String,
     /// The artist's picture, if it has one.
-    pub image: Option<crate::db::ImageRef>,
+    pub image: Option<bae_db::ImageRef>,
     /// Where the artist's albums start in the grid's rows, and all of them:
     /// never a page of them, so `limit` is how many albums the artist has.
     pub window: LibraryPageWindow,

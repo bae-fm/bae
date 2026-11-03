@@ -269,7 +269,6 @@ mod identify_mirrors {
     use super::*;
     use bae_catalogs::search::MetadataResult;
     use bae_catalogs::LookupFailure;
-    use bae_core::db::LibraryStatus;
     use bae_core::identify::signals::{
         BarcodeSignal, DiscIdSignal, Signals, SourcedValue, TextSignal,
     };
@@ -278,6 +277,7 @@ mod identify_mirrors {
         BarcodeProgress, CatalogProgress, DiscidProgress, IdentifyState, LookupState,
         ProviderLookup, SignalKind, SignalState, ToolbarSignal, ValueLookup,
     };
+    use bae_db::LibraryStatus;
     /// A result with every field the mirrors render filled in.
     fn metadata_result(release_id: &str, group_id: &str) -> MetadataResult {
         MetadataResult {

@@ -5,7 +5,7 @@ async fn exact_various_artists_source_match_wins_over_the_other_provider_row() {
         id: bae_util::test_ids::test_uuid("1da4c08e-afdf-45f9-aad8-0e5d681d2f29"),
         name: "Artist Group".to_string(),
         sort_name: None,
-        discogs_artist_id: Some(crate::db::VARIOUS_ARTISTS.discogs.to_string()),
+        discogs_artist_id: Some(bae_db::VARIOUS_ARTISTS.discogs.to_string()),
         musicbrainz_artist_id: None,
         created_at: manager.clock.now().into(),
     };
@@ -14,7 +14,7 @@ async fn exact_various_artists_source_match_wins_over_the_other_provider_row() {
         name: "Artist Group".to_string(),
         sort_name: None,
         discogs_artist_id: None,
-        musicbrainz_artist_id: Some(crate::db::VARIOUS_ARTISTS.musicbrainz.to_string()),
+        musicbrainz_artist_id: Some(bae_db::VARIOUS_ARTISTS.musicbrainz.to_string()),
         created_at: manager.clock.now().into(),
     };
     manager.insert_artist(&discogs_artist).await.unwrap();
@@ -25,7 +25,7 @@ async fn exact_various_artists_source_match_wins_over_the_other_provider_row() {
         name: "Artist Group".to_string(),
         sort_name: None,
         discogs_artist_id: None,
-        musicbrainz_artist_id: Some(crate::db::VARIOUS_ARTISTS.musicbrainz.to_string()),
+        musicbrainz_artist_id: Some(bae_db::VARIOUS_ARTISTS.musicbrainz.to_string()),
         created_at: manager.clock.now().into(),
     };
     let resolved = manager.find_or_create_artists(std::slice::from_ref(&incoming)).await.unwrap();

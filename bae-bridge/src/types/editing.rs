@@ -115,7 +115,7 @@ pub struct BridgeCredited {
 }
 
 /// One of an artist's other printed names. Mirror of
-/// `bae_core::db::credits::CreditName`: its folded key and the name as printed.
+/// `bae_db::credits::CreditName`: its folded key and the name as printed.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, uniffi::Record)]
 pub struct BridgeCreditName {
     pub key: String,
@@ -124,7 +124,7 @@ pub struct BridgeCreditName {
 
 /// One of an artist's other printed names with the artist whose row holds
 /// it (the artist, or one merged into it). Mirror of
-/// `bae_core::db::credits::ArtistCreditName`.
+/// `bae_db::credits::ArtistCreditName`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeArtistCreditName {
     pub artist_id: String,
@@ -144,7 +144,7 @@ pub struct BridgeExistingArtist {
 }
 
 mirror_struct! {
-    BridgeCreditName = bae_core::db::credits::CreditName,
+    BridgeCreditName = bae_db::credits::CreditName,
     from_core: pub(crate) fn,
     #[cfg(feature = "desktop")]
     into_core: pub(crate) fn,
@@ -152,13 +152,13 @@ mirror_struct! {
 }
 
 mirror_struct! {
-    BridgeArtistCreditName = bae_core::db::credits::ArtistCreditName,
+    BridgeArtistCreditName = bae_db::credits::ArtistCreditName,
     from_core: pub(crate) fn,
     fields: { artist_id, credit: (BridgeCreditName) },
 }
 
 mirror_struct! {
-    BridgeExistingArtist = bae_core::db::ExistingArtist,
+    BridgeExistingArtist = bae_db::ExistingArtist,
     from_core: pub(crate) fn,
     #[cfg(feature = "desktop")]
     into_core: pub(crate) fn,
@@ -184,7 +184,7 @@ pub struct BridgeArtistCredit {
 }
 
 /// What the library holds for one credit, as it stood when read. Mirror of
-/// `bae_core::db::CreditResolution`.
+/// `bae_db::CreditResolution`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeCreditResolution {
     /// The credit names this library artist.
@@ -200,7 +200,7 @@ pub enum BridgeCreditResolution {
 }
 
 /// One credit and what it resolves to. Mirror of
-/// `bae_core::db::ResolvedCredit`.
+/// `bae_db::ResolvedCredit`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeResolvedCredit {
     pub credit: BridgeArtistCredit,

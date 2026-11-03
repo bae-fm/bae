@@ -2,7 +2,8 @@
 //! has made the person's private circle (§5.4).
 
 use bae_core::followed::value_matching;
-use bae_core::{db::people::PersonProfile, db::Database, library::LibraryManager};
+use bae_core::library::LibraryManager;
+use bae_db::{people::PersonProfile, Database};
 
 /// Ask for this device's person's profile named `name`, sync until the
 /// manager has written it, then stop sync again, as [`crate::connect_storage`]

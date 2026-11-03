@@ -32,9 +32,8 @@ impl LibraryViews {
     pub(crate) fn subscribe_composer_browse(
         &self,
         sort: &[ComposerSortCriterion],
-        initial_windows: crate::db::LibraryPageWindows,
-    ) -> coven::ReconfigurableLiveQuery<crate::db::LibraryPageWindows, ComposerBrowseProjection>
-    {
+        initial_windows: bae_db::LibraryPageWindows,
+    ) -> coven::ReconfigurableLiveQuery<bae_db::LibraryPageWindows, ComposerBrowseProjection> {
         let order = composer_order(sort);
         let places = KnownPlaces::new();
         self.database.subscribe_reconfigurable(initial_windows, move |requested, sql| {
@@ -48,7 +47,7 @@ impl LibraryViews {
             Ok(ComposerBrowseProjection {
                 windows: windows
                     .into_iter()
-                    .map(|(window, rows)| crate::db::LibraryBrowseWindow { window, rows })
+                    .map(|(window, rows)| bae_db::LibraryBrowseWindow { window, rows })
                     .collect(),
                 total_count,
             })
@@ -130,7 +129,7 @@ pub(crate) fn resolve_composer_browse(
         windows: projection
             .windows
             .into_iter()
-            .map(|window| crate::db::LibraryBrowseWindow {
+            .map(|window| bae_db::LibraryBrowseWindow {
                 window: window.window,
                 rows: window.rows.into_iter().map(ComposerSummary::from_raw).collect(),
             })
@@ -535,7 +534,7 @@ pub(crate) fn work_summary_query(filter: Option<&str>, tail: Option<&str>) -> St
 pub(crate) fn row_to_work_summary(row: &Row<'_>) -> rusqlite::Result<DbWorkSummary> {
     let representative_release_id: Option<String> = row.get("representative_release_id")?;
     let representative_cover = match &representative_release_id {
-        Some(id) => crate::db::cover_ref(id, row.get("representative_cover_version")?),
+        Some(id) => bae_db::cover_ref(id, row.get("representative_cover_version")?),
         None => None,
     };
     Ok(DbWorkSummary {
@@ -558,7 +557,7 @@ pub(crate) fn row_to_work_summary(row: &Row<'_>) -> rusqlite::Result<DbWorkSumma
 pub(crate) fn row_to_composer_summary(row: &Row<'_>) -> rusqlite::Result<DbComposerSummary> {
     let artist = row_to_artist_with_prefix(row, "artist_")?;
     Ok(DbComposerSummary {
-        image: crate::db::artist_image_ref(&artist.id, row.get("artist_image_version")?),
+        image: bae_db::artist_image_ref(&artist.id, row.get("artist_image_version")?),
         artist,
         work_count: row.get("work_count")?,
         linked_release_count: row.get("linked_release_count")?,
@@ -664,7 +663,7 @@ pub(crate) fn composer_order(sort: &[ComposerSortCriterion]) -> ListOrder {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ComposerBrowseProjection {
-    pub windows: Vec<crate::db::LibraryBrowseWindow<DbComposerSummary>>,
+    pub windows: Vec<bae_db::LibraryBrowseWindow<DbComposerSummary>>,
     pub total_count: u64,
 }
 

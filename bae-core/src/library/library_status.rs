@@ -1,8 +1,8 @@
 //! Whether the releases an import pane offers are already in the library,
 //! read through one live query whose checks change as the offers do.
 
-use crate::db::{LibraryCheck, LibraryStatus};
 use crate::live_query::CancellableLiveQuery;
+use bae_db::{LibraryCheck, LibraryStatus};
 use std::collections::BTreeSet;
 
 /// One value the subscription delivered: a status for each release it was

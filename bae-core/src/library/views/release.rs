@@ -97,7 +97,7 @@ fn resolve_release_detail(
         context;
     let ctx = ReleaseResolveCtx {
         has_cloud_home,
-        cover: crate::db::cover_ref(release_id, detail.cover_version.clone()),
+        cover: bae_db::cover_ref(release_id, detail.cover_version.clone()),
         is_compilation,
     };
     ReleaseDetail::from_raw(detail, download, &album_artists, release_index, &ctx)
@@ -194,7 +194,7 @@ pub(crate) fn build_release_detail_on(
         params![release.id],
         |row| row.get(0),
     )?;
-    let upload = crate::db::client::queued_uploads::release_upload_on(sql, &release.id)?;
+    let upload = bae_db::client::queued_uploads::release_upload_on(sql, &release.id)?;
     let transfer_action = sql.query_row(
         &format!("SELECT {} AS transfer_action", transfer_action_sql("?1")),
         params![release.id],
@@ -389,9 +389,9 @@ impl UnstoredRow {
 
     /// The device the file is on, which is not this one: removed when its
     /// registration says so or its person was removed from the library.
-    fn other_device(&self) -> Result<crate::db::OtherDevice, DbError> {
-        use crate::db::membership::FormerDeviceState;
-        use crate::db::OtherDevice;
+    fn other_device(&self) -> Result<bae_db::OtherDevice, DbError> {
+        use bae_db::membership::FormerDeviceState;
+        use bae_db::OtherDevice;
         let (Some(name), Some(state), Some(member_removed)) =
             (self.name.clone(), self.state.as_deref(), self.member_removed)
         else {

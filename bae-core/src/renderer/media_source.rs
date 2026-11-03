@@ -14,9 +14,9 @@
 use std::sync::Arc;
 
 use super::{RendererFlavor, RendererStreamFormat};
-use crate::db::ImageRef;
-use crate::db::ResolvedTrackAudio;
 use crate::preferences::CastTranscodeFormat;
+use bae_db::ImageRef;
+use bae_db::ResolvedTrackAudio;
 
 /// Mints the HTTP URL the renderer fetches a track's audio from, given the track
 /// id and the stream format to serve it in; the error is a human-readable

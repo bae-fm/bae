@@ -9,7 +9,6 @@
 
 mod pane_edits;
 
-use crate::db::Database;
 use crate::import::folder_scanner::CandidateFileEdits;
 use crate::import::preparation::{CandidateAsRead, CandidatePreparation, CandidateWrite};
 use crate::import::tables::{
@@ -19,6 +18,7 @@ use crate::import::tables::{
 use crate::import::tables::{DbCandidateIdentifyResult, NewImportCandidateVerdict};
 use crate::import::ImportError;
 use crate::import::MetadataAuthor;
+use bae_db::Database;
 
 /// The writer, over the database it writes through. The import service
 /// holds one; the import handle resolves keys, holds the commit lock, and

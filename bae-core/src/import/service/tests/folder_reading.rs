@@ -65,7 +65,7 @@ impl DecisionFixture {
             write_disc(&root.join("Artist").join("Album").join(disc), tracks);
         }
         write_disc(&root.join("Other").join("Record"), 1);
-        let root = crate::db::watched_path::canonical_absolute_root(&root).unwrap();
+        let root = bae_db::watched_path::canonical_absolute_root(&root).unwrap();
         test.service.tables.add_watched_import_folder(&root).await.unwrap();
         let listing = Arc::new(RecordingListing::default());
         let (scan, _) = test.scan_with(
@@ -80,7 +80,7 @@ impl DecisionFixture {
     fn album_key(&self) -> crate::import::FolderReleaseDecisionKey {
         crate::import::FolderReleaseDecisionKey {
             watched_folder_path: self.root.clone(),
-            relative_folder: crate::db::RelativeFolder::test("Artist/Album"),
+            relative_folder: bae_db::RelativeFolder::test("Artist/Album"),
         }
     }
 
@@ -91,7 +91,7 @@ impl DecisionFixture {
             .await
             .unwrap()
             .iter()
-            .filter_map(|item| item.relative_folder().map(crate::db::RelativeFolder::text))
+            .filter_map(|item| item.relative_folder().map(bae_db::RelativeFolder::text))
             .collect();
         paths.sort();
         paths
@@ -115,7 +115,7 @@ impl DecisionFixture {
                 })
                 .await
                 .unwrap(),
-            windows: [crate::db::LibraryPageWindow { offset: 0, limit: 50 }]
+            windows: [bae_db::LibraryPageWindow { offset: 0, limit: 50 }]
                 .into_iter()
                 .collect(),
         });
@@ -218,7 +218,7 @@ async fn keeping_discs_separate_trades_the_combined_row_for_both_discs_at_once()
             .load_folder_release_decisions(&fixture.root)
             .await
             .unwrap()
-            .get(&crate::db::RelativeFolder::test("Artist/Album"))
+            .get(&bae_db::RelativeFolder::test("Artist/Album"))
             .map(|reading| (reading.decision, reading.author)),
         Some((
             crate::import::FolderReleaseDecision::KeepAsSeparateReleases,
@@ -287,7 +287,7 @@ async fn a_folder_reading_refuses_a_root_that_moved_while_it_read() {
         .load_folder_release_decisions(&fixture.root)
         .await
         .unwrap()
-        .get(&crate::db::RelativeFolder::test("Artist/Album"))
+        .get(&bae_db::RelativeFolder::test("Artist/Album"))
         .cloned();
 
     // Hold the commit lock, so the reading waits at it with its walk done,
@@ -335,7 +335,7 @@ async fn a_folder_reading_refuses_a_root_that_moved_while_it_read() {
             .load_folder_release_decisions(&fixture.root)
             .await
             .unwrap()
-            .get(&crate::db::RelativeFolder::test("Artist/Album"))
+            .get(&bae_db::RelativeFolder::test("Artist/Album"))
             .cloned(),
         decisions_before
     );

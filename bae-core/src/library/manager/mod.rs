@@ -13,7 +13,7 @@
 //! Rule for additions: a view's reads, and the shapes a screen shows them in,
 //! are `crate::library::views::LibraryViews`'; every other resolved shape is
 //! made in this layer. A new resolved shape means a raw type in
-//! `crate::db::models` (or `crate::library::views` for what a view reads), a
+//! `bae_db::models` (or `crate::library::views` for what a view reads), a
 //! resolved type in `crate::album_detail` (or a sibling like `crate::queue`)
 //! with its `from_raw` constructor, and the I/O method in the matching entity
 //! module here (or in the view's module).
@@ -28,14 +28,14 @@ use thiserror::Error;
 use tracing::{debug, warn};
 
 use crate::album_detail::GallerySource;
-use crate::db::{
-    Database, DbAlbum, DbArtist, DbFile, DbLibraryImage, DbRelease, DbTrack, ImageRef,
-    LibraryImageType,
-};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 use crate::library::save::SaveService;
 use crate::library::sync_controller::SyncController;
 use crate::sync::S3ConfigData;
+use bae_db::{
+    Database, DbAlbum, DbArtist, DbFile, DbLibraryImage, DbRelease, DbTrack, ImageRef,
+    LibraryImageType,
+};
 use bae_diagnostics::{Diagnostics, SyncOperation, TelemetryEvent};
 use bae_types::release_storage::ReleaseStorageAction;
 use bae_util::task_failure::{blocking, caught, joined, TaskFailed};
@@ -121,7 +121,7 @@ struct RecordsTargetAlbum {
 #[derive(Error, Debug)]
 pub enum LibraryError {
     #[error("Database error: {0}")]
-    Database(#[from] crate::db::DbError),
+    Database(#[from] bae_db::DbError),
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
     /// An import step the library ran failed — reading a catalog release
@@ -138,9 +138,9 @@ pub enum LibraryError {
     #[error("{0}")]
     Refused(String),
     #[error("Import error: {0}")]
-    ArtistIdentityConflict(#[source] Box<crate::db::ArtistIdentityConflict>),
+    ArtistIdentityConflict(#[source] Box<bae_db::ArtistIdentityConflict>),
     #[error("Import error: {0}")]
-    LabelIdentityConflict(#[source] Box<crate::db::LabelIdentityConflict>),
+    LabelIdentityConflict(#[source] Box<bae_db::LabelIdentityConflict>),
     /// A verbatim release export (reproducing the imported file set) failed.
     #[error("Export error: {0}")]
     Export(String),
@@ -233,10 +233,10 @@ impl LibraryError {
     }
 }
 
-impl From<crate::db::TrackAudioError> for LibraryError {
-    fn from(error: crate::db::TrackAudioError) -> Self {
+impl From<bae_db::TrackAudioError> for LibraryError {
+    fn from(error: bae_db::TrackAudioError) -> Self {
         match error {
-            crate::db::TrackAudioError::Database(error) => Self::Database(error),
+            bae_db::TrackAudioError::Database(error) => Self::Database(error),
             error => Self::TrackMapping(error.to_string()),
         }
     }
@@ -254,23 +254,23 @@ impl From<coven::CovenError> for LibraryError {
     }
 }
 
-impl From<crate::db::IdentityWriteError> for LibraryError {
-    fn from(error: crate::db::IdentityWriteError) -> Self {
+impl From<bae_db::IdentityWriteError> for LibraryError {
+    fn from(error: bae_db::IdentityWriteError) -> Self {
         match error {
-            crate::db::IdentityWriteError::ArtistIdentityConflict(conflict) => {
+            bae_db::IdentityWriteError::ArtistIdentityConflict(conflict) => {
                 Self::ArtistIdentityConflict(conflict)
             }
-            crate::db::IdentityWriteError::LabelIdentityConflict(conflict) => {
+            bae_db::IdentityWriteError::LabelIdentityConflict(conflict) => {
                 Self::LabelIdentityConflict(conflict)
             }
-            crate::db::IdentityWriteError::Db(error) => Self::Database(error),
-            crate::db::IdentityWriteError::Unresolvable(detail) => Self::Refused(detail),
+            bae_db::IdentityWriteError::Db(error) => Self::Database(error),
+            bae_db::IdentityWriteError::Unresolvable(detail) => Self::Refused(detail),
         }
     }
 }
 
-impl From<crate::db::ArtistIdentityConflict> for LibraryError {
-    fn from(error: crate::db::ArtistIdentityConflict) -> Self {
+impl From<bae_db::ArtistIdentityConflict> for LibraryError {
+    fn from(error: bae_db::ArtistIdentityConflict) -> Self {
         Self::ArtistIdentityConflict(Box::new(error))
     }
 }
@@ -294,8 +294,8 @@ pub enum UploadReleasesOutcome {
 
 /// A stored name that names no file refuses the write it was for: the row it
 /// came from is unusable, and the copy does not run.
-impl From<crate::db::stored_name::StoredNameError> for LibraryError {
-    fn from(error: crate::db::stored_name::StoredNameError) -> Self {
+impl From<bae_db::stored_name::StoredNameError> for LibraryError {
+    fn from(error: bae_db::stored_name::StoredNameError) -> Self {
         LibraryError::Refused(error.to_string())
     }
 }

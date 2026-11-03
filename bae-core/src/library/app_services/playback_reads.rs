@@ -65,7 +65,7 @@ impl AppServices {
     pub async fn show_cast_devices(
         &self,
         devices: Vec<crate::renderer::CastDevice>,
-    ) -> Result<(), crate::db::DbError> {
+    ) -> Result<(), bae_db::DbError> {
         self.inner.cast_picker.show(devices).await
     }
 }

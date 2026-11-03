@@ -41,7 +41,7 @@ async fn cover_db() -> (Database, tempfile::TempDir) {
     (db, tmp)
 }
 
-async fn cover_of(db: &Database, track_id: &str) -> Option<crate::db::ImageRef> {
+async fn cover_of(db: &Database, track_id: &str) -> Option<bae_db::ImageRef> {
     PlaybackQueueTables::new(db.clone()).clear_manual().await.unwrap();
     let items = super::queue_items(db, &[track_id]).await;
     assert_eq!(items.len(), 1);
@@ -49,10 +49,10 @@ async fn cover_of(db: &Database, track_id: &str) -> Option<crate::db::ImageRef> 
 }
 
 /// The release's cover reference, carrying the version of the cover stored for it.
-async fn cover_ref(db: &Database, release_id: &str) -> Option<crate::db::ImageRef> {
-    Some(crate::db::ImageRef {
+async fn cover_ref(db: &Database, release_id: &str) -> Option<bae_db::ImageRef> {
+    Some(bae_db::ImageRef {
         id: release_id.to_string(),
-        version: super::stored_image_version(db, crate::db::synced::COVERS_NAMESPACE, release_id)
+        version: super::stored_image_version(db, bae_db::synced::COVERS_NAMESPACE, release_id)
             .await,
         image_type: LibraryImageType::Cover,
     })

@@ -117,7 +117,7 @@ async fn library_db() -> (Database, tempfile::TempDir, std::path::PathBuf) {
         conn.execute(
             "INSERT INTO release_mediums (id, release_id, position, medium, side_count, created_at) \
              VALUES (?1, ?2, 1, 'cd', 1, '2026-01-01T00:00:00Z')",
-            params![crate::db::identity::release_medium_id(RELEASE_A, 1), RELEASE_A],
+            params![bae_db::identity::release_medium_id(RELEASE_A, 1), RELEASE_A],
         )?;
         Ok(())
     })
@@ -139,7 +139,7 @@ async fn library_db() -> (Database, tempfile::TempDir, std::path::PathBuf) {
                         ?1, 'Track Title ' || i, ?2, 1, i + 1, 1000, '2026-01-01T00:00:00Z' \
                  FROM n"
             ),
-            params![RELEASE_A, crate::db::identity::release_medium_id(RELEASE_A, 1)],
+            params![RELEASE_A, bae_db::identity::release_medium_id(RELEASE_A, 1)],
         )
         .unwrap();
     (db, tmp, path)
@@ -260,10 +260,7 @@ async fn playback_queue_bench_library_play() {
     let mut value = subscribe_queue_value(&db);
     let mut upcoming = subscribe_queue_upcoming(
         &db,
-        crate::db::LibraryPageWindows::from([crate::db::LibraryPageWindow {
-            offset: 0,
-            limit: 100,
-        }]),
+        bae_db::LibraryPageWindows::from([bae_db::LibraryPageWindow { offset: 0, limit: 100 }]),
     );
     value.next().await.unwrap().unwrap();
     upcoming.next().await.unwrap();

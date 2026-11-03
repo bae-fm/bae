@@ -4,7 +4,7 @@
 
 use super::search::{LibrarySearchQuery, LiveLibrarySearchError};
 use crate::album_detail::ArtistSearchResult;
-use crate::db::{LibraryBrowseWindow, LibraryPageWindows};
+use bae_db::{LibraryBrowseWindow, LibraryPageWindows};
 
 /// What an artist picker reads: the artists its text finds, parsed as every
 /// library search parses a query (`None` is no search), in the windows of its

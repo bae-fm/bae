@@ -7,11 +7,11 @@
 //! than the window a scrub fetches.
 
 use super::*;
-use crate::db::ScrubPoints;
-use crate::db::{ScrubPoint, SegmentSpan};
 use crate::track_audio::data_source::FILL_WINDOW_SIZE;
 use crate::track_audio::{SegmentDecodeParams, StreamDecodeParams};
 use bae_audio::{encode_i32, EncodeFormat};
+use bae_db::ScrubPoints;
+use bae_db::{ScrubPoint, SegmentSpan};
 use bae_util::content_type::ContentType;
 
 /// A stream's sample rate and channel count.

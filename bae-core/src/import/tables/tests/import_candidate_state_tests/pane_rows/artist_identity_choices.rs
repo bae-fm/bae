@@ -1,5 +1,5 @@
 use super::*;
-use crate::db::ArtistCredits;
+use bae_db::ArtistCredits;
 use crate::import::tables::{ImportCommitGuard, ImportRows, NewArtistImages};
 use crate::import::ArtistIdentityConflictChoice as Choice;
 
@@ -136,7 +136,7 @@ async fn every_artist_identity_choice_controls_the_imported_credits_and_ids() {
             &release,
             &tracks,
             ImportRows {
-                mediums: &[crate::db::DbReleaseMedium::new_test(&release.id)],
+                mediums: &[bae_db::DbReleaseMedium::new_test(&release.id)],
                 artists: ArtistCredits { credits: &credits, picked: &[] },
                 album_artists: &[DbAlbumArtist::new(&album.id, &incoming.id, 0, now)],
                 track_artists: &[DbTrackArtist::new(&track.id, &incoming.id, 0, now)],
@@ -309,5 +309,5 @@ async fn repeated_credits_share_the_neither_artist_and_picked_credits_stay_picke
         })
         .await
         .unwrap();
-    assert_eq!(preview[0].resolution, crate::db::CreditResolution::New);
+    assert_eq!(preview[0].resolution, bae_db::CreditResolution::New);
 }

@@ -65,8 +65,8 @@ async fn upload_keeps_every_file_in_the_queue() {
             .into_iter()
             .collect::<std::collections::BTreeSet<_>>(),
         vec![
-            (crate::db::synced::RELEASE_FILES_NAMESPACE.to_string(), files[0].id.clone(),),
-            (crate::db::synced::RELEASE_FILES_NAMESPACE.to_string(), files[1].id.clone(),),
+            (bae_db::synced::RELEASE_FILES_NAMESPACE.to_string(), files[0].id.clone(),),
+            (bae_db::synced::RELEASE_FILES_NAMESPACE.to_string(), files[1].id.clone(),),
         ]
         .into_iter()
         .collect::<std::collections::BTreeSet<_>>(),

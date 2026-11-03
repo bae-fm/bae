@@ -1,7 +1,7 @@
 //! What the transfer queues hold and show. Downloading for offline and
 //! exporting or saving each work through one release at a time from a queue
 //! that can be paused, cancelled and retried. Each queue is a table of this
-//! device's ([`crate::db`]): its entries in the order queued, each one's
+//! device's ([`bae_db`]): its entries in the order queued, each one's
 //! phase, and whether the queue is paused. How far the active entry has got
 //! moves too often to be written, and travels apart from the table, keyed by
 //! release ([`crate::library::ReleaseTransfersWatch`]).
@@ -147,7 +147,7 @@ pub struct ReleaseQueueSnapshot<Extra, Progress> {
 /// the order queued, each beside its release.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ReleaseQueueWindows<Extra> {
-    pub windows: Vec<crate::db::LibraryBrowseWindow<ReleaseQueueRow<Extra, ()>>>,
+    pub windows: Vec<bae_db::LibraryBrowseWindow<ReleaseQueueRow<Extra, ()>>>,
     pub total_count: u64,
 }
 

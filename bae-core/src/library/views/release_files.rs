@@ -25,7 +25,7 @@ pub(crate) fn release_files_in(order: ReleaseFileOrder) -> String {
         .join(", ");
     format!(
         "SELECT {} FROM release_files AS f WHERE f.release_id = ?1 ORDER BY {terms}",
-        crate::db::client::release_file_columns!()
+        bae_db::release_file_columns!()
     )
 }
 

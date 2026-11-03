@@ -15,11 +15,11 @@
 #[cfg(desktop)]
 use crate::cue_flac::CueSheet;
 #[cfg(desktop)]
-use crate::db::DbTrack;
-#[cfg(desktop)]
 use bae_audio::ProbeResult;
 use bae_catalogs::credits::{ArtistCredit, CreditedRole};
 use bae_catalogs::works::WorkGraph;
+#[cfg(desktop)]
+use bae_db::DbTrack;
 use serde::{Deserialize, Serialize};
 #[cfg(desktop)]
 mod progress;
@@ -225,7 +225,7 @@ pub enum DraftAlbum {
     /// library holds.
     New,
     /// The album the draft's records name (see
-    /// [`crate::db::Database::album_records_name`]); for a library release
+    /// [`bae_db::Database::album_records_name`]); for a library release
     /// with no catalog applied, the album it is in.
     Named { album_id: String, title: String },
     /// The album the person picked, over what the records name.
@@ -238,7 +238,7 @@ pub enum DraftAlbum {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReleaseEditSeed {
     pub edit: RawReleaseEdit,
-    pub cover: Option<crate::db::ImageRef>,
+    pub cover: Option<bae_db::ImageRef>,
     pub display: crate::import::ReleaseEditDisplayContext,
     pub album: DraftAlbum,
 }

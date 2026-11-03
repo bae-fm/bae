@@ -6,7 +6,7 @@
 //! chain. `do_import`, the terminal consumer, is the only place that turns this
 //! back into a string, for the user-facing `ImportProgress::Failed { error }`.
 
-use crate::db::{ArtistIdentityConflict, LabelIdentityConflict};
+use bae_db::{ArtistIdentityConflict, LabelIdentityConflict};
 
 /// The person's answer to an import's conflicting artist identities. Nothing
 /// selects an answer automatically. The first four answers decide this credit;
@@ -210,7 +210,7 @@ pub enum ImportError {
     /// one canonical spelling.
     #[cfg(desktop)]
     #[error(transparent)]
-    WatchedFolder(crate::db::WatchedPathError),
+    WatchedFolder(bae_db::WatchedPathError),
 
     /// A folder's OS-level filesystem watch could not be installed or
     /// removed (missing path, permissions). An OS/user condition, not a
@@ -222,7 +222,7 @@ pub enum ImportError {
     /// The library's store failed a read or a write import asked of it.
     #[cfg(desktop)]
     #[error(transparent)]
-    Database(#[from] crate::db::DbError),
+    Database(#[from] bae_db::DbError),
 
     /// Where the library syncs to could not be read, which decides where an
     /// import's files go.
@@ -328,9 +328,9 @@ impl ImportError {
 /// An import's write to the library's records failed: a conflict a person
 /// resolves, credits or labels that cannot be linked, or the store.
 #[cfg(desktop)]
-impl From<crate::db::IdentityWriteError> for ImportError {
-    fn from(error: crate::db::IdentityWriteError) -> Self {
-        use crate::db::IdentityWriteError as E;
+impl From<bae_db::IdentityWriteError> for ImportError {
+    fn from(error: bae_db::IdentityWriteError) -> Self {
+        use bae_db::IdentityWriteError as E;
         match error {
             E::ArtistIdentityConflict(conflict) => Self::ArtistIdentityConflict(conflict),
             E::LabelIdentityConflict(conflict) => Self::LabelIdentityConflict(conflict),
@@ -663,7 +663,7 @@ mod tests {
             UiErrorCategory::MetadataTrackCount { folder_tracks: 10, release_tracks: 12 }
         );
 
-        let from_db = LibraryError::from(ImportError::Database(crate::db::DbError::Message(
+        let from_db = LibraryError::from(ImportError::Database(bae_db::DbError::Message(
             "read failed".into(),
         )));
         assert!(matches!(from_db, LibraryError::Database(_)), "{from_db:?}");

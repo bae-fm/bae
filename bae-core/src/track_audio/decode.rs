@@ -31,7 +31,7 @@ pub(crate) struct StreamDecodeParams {
 #[derive(Clone)]
 pub(crate) struct SegmentDecodeParams {
     buffer: SharedSparseBuffer,
-    span: crate::db::SegmentSpan,
+    span: bae_db::SegmentSpan,
     start_offset: u64,
     start: SegmentStart,
 }
@@ -44,7 +44,7 @@ enum SegmentStart {
     /// sample to the target.
     Span,
     /// A stored scrub point that plays the target exactly.
-    ScrubPoint(crate::db::ScrubPoint),
+    ScrubPoint(bae_db::ScrubPoint),
     /// The stream's first frame: an MP3 target before every stored point's
     /// exact start.
     StreamStart,
@@ -55,7 +55,7 @@ impl SegmentDecodeParams {
     /// span's landing byte, a mid-track seek seeks by sample.
     pub(crate) fn new(
         buffer: SharedSparseBuffer,
-        span: crate::db::SegmentSpan,
+        span: bae_db::SegmentSpan,
         start_offset: u64,
     ) -> Self {
         Self { buffer, span, start_offset, start: SegmentStart::Span }
@@ -66,9 +66,9 @@ impl SegmentDecodeParams {
     /// target.
     pub(crate) fn from_scrub_point(
         buffer: SharedSparseBuffer,
-        span: crate::db::SegmentSpan,
+        span: bae_db::SegmentSpan,
         start_offset: u64,
-        point: crate::db::ScrubPoint,
+        point: bae_db::ScrubPoint,
     ) -> Self {
         Self { buffer, span, start_offset, start: SegmentStart::ScrubPoint(point) }
     }
@@ -77,7 +77,7 @@ impl SegmentDecodeParams {
     /// stream's first frame forward to the target.
     pub(crate) fn from_stream_start(
         buffer: SharedSparseBuffer,
-        span: crate::db::SegmentSpan,
+        span: bae_db::SegmentSpan,
         start_offset: u64,
     ) -> Self {
         Self { buffer, span, start_offset, start: SegmentStart::StreamStart }
@@ -334,7 +334,7 @@ mod tests {
         let decode = StreamDecodeParams::new(
             vec![SegmentDecodeParams::new(
                 buffer.clone(),
-                crate::db::SegmentSpan {
+                bae_db::SegmentSpan {
                     start_sample,
                     end_sample: Some(start_sample + 44_100),
                     start_byte: Some(landing),
@@ -396,7 +396,7 @@ mod tests {
         buffer.append_at(0, &flac);
 
         let split = sample_rate as u64;
-        let span = |start: u64, end: u64| crate::db::SegmentSpan {
+        let span = |start: u64, end: u64| bae_db::SegmentSpan {
             start_sample: start,
             end_sample: Some(end),
             start_byte: None,

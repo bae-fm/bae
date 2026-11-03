@@ -51,7 +51,7 @@ impl LibraryManager {
         downloads: crate::library::Downloads,
         #[cfg(desktop)] outputs: crate::library::Outputs,
         closing: tokio_util::sync::CancellationToken,
-    ) -> Result<Self, crate::db::DbError> {
+    ) -> Result<Self, bae_db::DbError> {
         // The store opens running one transfer per direction, the least any
         // preference allows, so nothing it starts before this exceeds them.
         database.set_transfer_limits(
@@ -454,9 +454,9 @@ impl LibraryManager {
     /// names of them, as the Downloads pane draws them.
     pub(crate) fn subscribe_download_windows(
         &self,
-        initial: crate::db::LibraryPageWindows,
+        initial: bae_db::LibraryPageWindows,
     ) -> coven::ReconfigurableLiveQuery<
-        crate::db::LibraryPageWindows,
+        bae_db::LibraryPageWindows,
         crate::library::ReleaseQueueWindows<()>,
     > {
         self.downloads.subscribe_windows(initial)

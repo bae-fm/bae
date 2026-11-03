@@ -3,8 +3,8 @@
 //! catalogs gave it; only this candidate's writes use the answer.
 
 use super::*;
-use crate::db::client::label_resolution::{AnsweredLabel, LabelAnswer, LabelRow};
 use crate::import::LabelIdentityConflictChoice as Choice;
+use bae_db::client::label_resolution::{AnsweredLabel, LabelAnswer, LabelRow};
 use bae_types::pressing::ReleaseLabel;
 
 impl ImportTables {
@@ -138,7 +138,7 @@ fn merge_labels_on(
         |id: &str| sql.query_row("SELECT * FROM labels WHERE id = ?", [id], LabelRow::from_row);
     let (surviving, absorbed_row) = (row(survivor)?, row(absorbed)?);
     for label in [&surviving, &absorbed_row] {
-        if !crate::db::label_ids_are_compatible(
+        if !bae_db::label_ids_are_compatible(
             &label.existing(),
             Some(&conflict.musicbrainz),
             Some(&conflict.discogs),
@@ -256,7 +256,7 @@ fn shown_label_on<Q: QueryOne>(sql: &Q, label_id: &str) -> Result<Option<LabelRo
     sql.query_row(
         &format!(
             "SELECT * FROM labels WHERE id = {}",
-            crate::db::client::label_resolution::shown_label_id("?1")
+            bae_db::client::label_resolution::shown_label_id("?1")
         ),
         [label_id],
         LabelRow::from_row,

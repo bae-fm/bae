@@ -265,7 +265,7 @@ fn sheet_audio_ids<'a>(bound: &BoundTrackSheet<'a>) -> Vec<&'a str> {
 /// import whose authority the user already chose, and would write something
 /// the table never displayed.
 pub(crate) fn resolve_track_files(
-    rows: Vec<(crate::db::TrackRow, AudioFile)>,
+    rows: Vec<(bae_db::TrackRow, AudioFile)>,
     files: &CategorizedFiles,
 ) -> Result<Vec<TrackFile>, ImportError> {
     debug!("Binding {} tracks to the folder's audio", rows.len());

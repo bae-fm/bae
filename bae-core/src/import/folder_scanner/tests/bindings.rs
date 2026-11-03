@@ -51,7 +51,7 @@ fn single_file_cue_uses_the_unique_same_stem_audio_when_its_reference_is_missing
     let files = scan_files(&album);
 
     assert_eq!(files.track_count(), 3);
-    assert_uniform_source_audio(&files, crate::db::source_audio::SourceAudioLayout::Cue, "FLAC");
+    assert_uniform_source_audio(&files, bae_db::source_audio::SourceAudioLayout::Cue, "FLAC");
     assert_eq!(
         files.track_sheets().next().unwrap().binding,
         &SheetBinding::Resolved {
@@ -304,7 +304,7 @@ fn clearing_a_binding_leaves_it_unbound_rather_than_re_guessed() {
         "the sheet the user cleared describes nothing, proposal or not",
     );
     assert_eq!(cleared.track_count(), 1);
-    assert_uniform_source_audio(&cleared, crate::db::source_audio::SourceAudioLayout::File, "FLAC");
+    assert_uniform_source_audio(&cleared, bae_db::source_audio::SourceAudioLayout::File, "FLAC");
     assert!(cleared.bound_sheets().is_empty());
 }
 

@@ -141,7 +141,7 @@ const UPLOAD_QUEUE_COUNTS: &str = "SELECT \
 /// files move are not read, so a confirmed part reruns nothing.
 fn upload_queue_counts_on(
     sql: &coven::SqlReadContext<'_>,
-) -> Result<UploadQueueCounts, crate::db::DbError> {
+) -> Result<UploadQueueCounts, bae_db::DbError> {
     Ok(sql.query_row(UPLOAD_QUEUE_COUNTS, [], |row| {
         Ok(UploadQueueCounts { queued: row.get(0)?, sending: row.get(1)?, paused: row.get(2)? })
     })?)

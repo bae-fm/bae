@@ -184,22 +184,22 @@ fn commands_that_steer_playback_stop_the_countdown_and_the_rest_leave_it() {
 /// as (medium, side).
 fn info_on(
     track_id: &str,
-    mediums: &crate::db::DbReleaseMediums,
+    mediums: &bae_db::DbReleaseMediums,
     (medium, side): (u16, u8),
 ) -> PlaybackTrackInfo {
-    let mut track = crate::db::DbTrack::new_test("release-id", track_id, "Track Title", 1);
+    let mut track = bae_db::DbTrack::new_test("release-id", track_id, "Track Title", 1);
     track.medium_id.clone_from(&mediums.0[usize::from(medium) - 1].id);
     track.side = std::num::NonZeroU8::new(side).expect("sides count from one");
     PlaybackTrackInfo::of(&track, mediums)
 }
 
-fn release_of(mediums: &[bae_types::mediums::ReleaseMedium]) -> crate::db::DbReleaseMediums {
-    crate::db::DbReleaseMediums(
+fn release_of(mediums: &[bae_types::mediums::ReleaseMedium]) -> bae_db::DbReleaseMediums {
+    bae_db::DbReleaseMediums(
         mediums
             .iter()
             .enumerate()
             .map(|(index, medium)| {
-                crate::db::DbReleaseMedium::new(
+                bae_db::DbReleaseMedium::new(
                     "release-id",
                     bae_types::mediums::medium_position(index),
                     *medium,

@@ -43,7 +43,7 @@ impl ImportServiceHandle {
         &self,
         path: std::path::PathBuf,
     ) -> Result<(), crate::import::ImportError> {
-        let path = crate::db::watched_path::canonical_absolute_root(&path)?;
+        let path = bae_db::watched_path::canonical_absolute_root(&path)?;
         let shown = coven::path_text(&path);
         if let Some(covering) = self.tables.watched_import_folder_above(&path).await? {
             info!(
@@ -86,7 +86,7 @@ impl ImportServiceHandle {
         &self,
         path: std::path::PathBuf,
     ) -> Result<(), crate::import::ImportError> {
-        let path = crate::db::watched_path::canonical_absolute_root(&path)?;
+        let path = bae_db::watched_path::canonical_absolute_root(&path)?;
         self.remove_watched_roots(vec![path], None).await
     }
 
@@ -141,7 +141,7 @@ impl ImportServiceHandle {
         &self,
         path: std::path::PathBuf,
     ) -> Result<(), crate::import::ImportError> {
-        let path = crate::db::watched_path::canonical_absolute_root(&path)?;
+        let path = bae_db::watched_path::canonical_absolute_root(&path)?;
         if !self.is_watched(&path).await? {
             return Err(crate::import::ImportError::Watch {
                 detail: format!("{} is not a watched folder", coven::path_text(&path)),

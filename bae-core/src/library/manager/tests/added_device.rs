@@ -1,8 +1,8 @@
 //! Add Device's sheet watches for the person's device that joins while it
 //! shows the code.
 
-use crate::db::membership::ActiveDevice;
 use crate::sync::test_devices::{run_library_test, TestDevice};
+use bae_db::membership::ActiveDevice;
 use std::time::Duration;
 
 /// The person's phone restores from the code Add Device shows while the

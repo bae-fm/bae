@@ -40,7 +40,7 @@ impl DiscogsPick {
 
     /// The library artist the release's first track credits as the track
     /// artist.
-    async fn track_artist(&self, release_id: &str) -> crate::db::DbArtist {
+    async fn track_artist(&self, release_id: &str) -> bae_db::DbArtist {
         let first_track = self
             .handle
             .database
@@ -68,7 +68,7 @@ impl DiscogsPick {
         let mut search = crate::library::views::LibraryViews::new(self.handle.database.clone())
             .subscribe_artist_search(crate::library::ArtistSearchView {
                 query: crate::library::LibrarySearchQuery::parse("Track Artist"),
-                windows: [crate::db::LibraryPageWindow { offset: 0, limit: 50 }].into(),
+                windows: [bae_db::LibraryPageWindow { offset: 0, limit: 50 }].into(),
             });
         let found = search.next().await.expect("the artist search stays open").result.unwrap();
         let result = crate::library::views::artist_search::resolve_artist_search(found, 0)

@@ -2,10 +2,10 @@
 //! starts over it: the whole of the library's services through the app's own
 //! step, or one service alone for a test that drives its internals.
 
-use crate::db::Database;
 use crate::import::{CatalogSessions, ImportServiceHandle};
 use crate::library::{AppServices, CancellationToken, LibraryManager};
 use bae_catalogs::remote_image::RemoteImageCache;
+use bae_db::Database;
 use bae_diagnostics::Diagnostics;
 use coven::{ClockRef, IdSourceRef};
 use std::sync::Arc;
