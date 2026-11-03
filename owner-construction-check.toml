@@ -41,10 +41,10 @@ crate_order = [
     "bae-bridge",
 ]
 
-# These are retained state and service capabilities, not values passed between
+# These are retained service capabilities, not values passed between
 # operations. The checker also follows fields containing them, so an owner made
-# from another owner is covered. Receivers, records, and configuration values
-# are omitted.
+# from another owner is covered. Records and configuration values are omitted;
+# shared in-memory state has its own rows below.
 capability_types = [
     "AbortHandle",
     "AirPlaySink",
@@ -52,9 +52,6 @@ capability_types = [
     "AppServices",
     "ArtworkAnalyzer",
     "ArtworkAnalyzerCallback",
-    "AtomicBool",
-    "AtomicU64",
-    "AtomicUsize",
     "AudioDataReader",
     # An AudioOutputDevice opens a new output for each player that asks. The
     # system device owns what its outputs share: on a Mac, the formats bae's
@@ -84,7 +81,6 @@ capability_types = [
     "IdentifyServiceHandle",
     "ImportService",
     "ImportServiceHandle",
-    "JoinHandle",
     "LibraryManager",
     "LocalSessionManager",
     "LruCache",
@@ -92,9 +88,6 @@ capability_types = [
     "McpTokenProvider",
     "MediaUrlProvider",
     "MonotonicClock",
-    "Mutex",
-    "Notify",
-    "OnceLock",
     "PcmSource",
     "PlaybackQueue",
     "PlaybackService",
@@ -105,7 +98,6 @@ capability_types = [
     "RtspConnection",
     "Runtime",
     "SaveService",
-    "Sender",
     "ServiceDaemon",
     "SessionCache",
     "SparseStreamingBuffer",
@@ -123,15 +115,44 @@ capability_types = [
     "WriteSeek",
 ]
 
-# Capability types that bae's dependencies declare: std and tokio's locks,
-# atomics, channels, tasks and runtimes, coven's handle and store files, and
-# the libraries' own services.
-external_types = [
-    "AbortHandle",
+# Shared in-memory state: whoever holds one shares it with the others that
+# do, so an owner shares it on purpose, and it leaves that owner only inside
+# a handle the owner makes.
+shared_state_types = [
     "AtomicBool",
+    "AtomicU8",
+    "AtomicU32",
     "AtomicU64",
     "AtomicUsize",
+    "JoinHandle",
+    "Notify",
+    "OnceCell",
+    "OnceLock",
+    "Receiver",
+    "Semaphore",
+    "Sender",
+    "UnboundedReceiver",
+    "UnboundedSender",
+]
+# Locks an owner keeps to itself while it holds them by value; held through
+# a shared pointer they are shared state.
+private_state_types = ["Condvar", "Mutex"]
+# Every holder of one of these shares what it points at with the others.
+shared_pointer_types = ["Arc", "Weak"]
+
+# Types that bae's dependencies declare: std and tokio's locks, atomics,
+# shared pointers, channels, tasks and runtimes, coven's handle and store
+# files, and the libraries' own services.
+external_types = [
+    "AbortHandle",
+    "Arc",
+    "AtomicBool",
+    "AtomicU32",
+    "AtomicU64",
+    "AtomicU8",
+    "AtomicUsize",
     "CancellationToken",
+    "Condvar",
     "CovenHandle",
     "FileStream",
     "Handle",
@@ -142,11 +163,17 @@ external_types = [
     "LruCache",
     "Mutex",
     "Notify",
+    "OnceCell",
     "OnceLock",
+    "Receiver",
     "Runtime",
+    "Semaphore",
     "Sender",
     "ServiceDaemon",
     "StoreDir",
+    "UnboundedReceiver",
+    "UnboundedSender",
+    "Weak",
     "Write",
 ]
 
