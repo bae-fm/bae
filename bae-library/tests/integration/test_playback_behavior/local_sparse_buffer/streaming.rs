@@ -137,7 +137,7 @@ impl MultiWindowPlayback {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_local_load_waits_on_no_storage_and_holds_the_whole_track() {
     let mut playback = MultiWindowPlayback::new("local-load-wait").await;
-    let waits = playback.playback_handle.subscribe_storage_waits();
+    let mut waits = playback.playback_handle.subscribe_storage_waits();
     let mut buffered = playback.playback_handle.follow_track_buffered();
 
     let track = playback.track_ids[0].clone();
@@ -145,7 +145,7 @@ async fn a_local_load_waits_on_no_storage_and_holds_the_whole_track() {
     wait_for_whole_track(&mut buffered, &track).await;
 
     assert!(!waits.has_changed().expect("playback runs"), "a local load waits on no storage");
-    assert_eq!(*waits.borrow(), None);
+    assert_eq!(waits.waiting(), None);
 
     // Once playback stops, no track's bytes are followed.
     playback.playback_handle.stop();

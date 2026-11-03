@@ -31,7 +31,7 @@ impl AppServices {
     /// The playing track while the person waits on its load and the load
     /// reads from storage, by id; `None` otherwise, and for a load this
     /// device serves from its own copy or the cache.
-    pub fn subscribe_storage_waits(&self) -> tokio::sync::watch::Receiver<Option<String>> {
+    pub fn subscribe_storage_waits(&self) -> bae_track_audio::StorageWaitWatch {
         self.inner.playback.subscribe_storage_waits()
     }
 

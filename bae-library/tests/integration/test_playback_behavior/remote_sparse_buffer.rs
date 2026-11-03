@@ -105,7 +105,7 @@ async fn a_load_from_storage_waits_on_storage() {
     observed.await.expect("the load reads the FLAC from storage");
     let waiting = tokio::time::timeout(Duration::from_secs(30), async {
         loop {
-            if let Some(waiting) = waits.borrow_and_update().clone() {
+            if let Some(waiting) = waits.waiting() {
                 return waiting;
             }
             waits.changed().await.expect("playback runs");
@@ -126,7 +126,7 @@ async fn a_load_from_storage_waits_on_storage() {
     )
     .await
     .expect("the track plays once its bytes arrive");
-    assert_eq!(*waits.borrow(), None, "a playing track waits on no storage");
+    assert_eq!(waits.waiting(), None, "a playing track waits on no storage");
     wait_for_whole_track(&mut buffered, &track).await;
 }
 

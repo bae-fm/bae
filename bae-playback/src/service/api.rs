@@ -234,23 +234,25 @@ pub struct PlaybackHandle {
     /// `Shutdown` ends it. Clones share one take-once join handle.
     worker: WorkerThread<PlaybackCommand>,
     progress_handle: PlaybackProgressHandle,
-    storage_waits: tokio::sync::watch::Receiver<Option<String>>,
+    /// The arbiter the service's reads run under, which hears whether the
+    /// playing track's load waits on storage.
+    arbiter: std::sync::Arc<bae_track_audio::data_source::FetchArbiter>,
     playing_bytes: tokio::sync::watch::Receiver<Option<crate::track_buffered::PlayingBytes>>,
 }
 impl PlaybackHandle {
     pub(super) fn new(
         worker: WorkerThread<PlaybackCommand>,
         progress_handle: PlaybackProgressHandle,
-        storage_waits: tokio::sync::watch::Receiver<Option<String>>,
+        arbiter: std::sync::Arc<bae_track_audio::data_source::FetchArbiter>,
         playing_bytes: tokio::sync::watch::Receiver<Option<crate::track_buffered::PlayingBytes>>,
     ) -> Self {
-        Self { worker, progress_handle, storage_waits, playing_bytes }
+        Self { worker, progress_handle, arbiter, playing_bytes }
     }
 
     /// The playing track while the person waits on its load and the load
     /// reads from storage, by id; `None` otherwise.
-    pub fn subscribe_storage_waits(&self) -> tokio::sync::watch::Receiver<Option<String>> {
-        self.storage_waits.clone()
+    pub fn subscribe_storage_waits(&self) -> bae_track_audio::StorageWaitWatch {
+        self.arbiter.subscribe_storage_waits()
     }
 
     /// The parts of the playing track whose bytes this device holds, as

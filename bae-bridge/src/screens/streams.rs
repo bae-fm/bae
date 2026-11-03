@@ -250,7 +250,7 @@ pub(crate) fn track_storage_waits(
     feed(runtime, run, move |services, writer| async move {
         let mut waits = services.subscribe_storage_waits();
         loop {
-            let held = track_storage_wait(waits.borrow_and_update().clone());
+            let held = track_storage_wait(waits.waiting());
             writer.reset(held);
             if waits.changed().await.is_err() {
                 return;

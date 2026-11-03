@@ -50,10 +50,9 @@ impl StorageWaits {
         }
     }
 
-    /// The playing track while its load waits on storage, by id: `None`
-    /// while no load does.
-    pub(crate) fn subscribe(&self) -> watch::Receiver<Option<String>> {
-        self.tx.subscribe()
+    /// Hear the playing track while its load waits on storage.
+    pub(crate) fn subscribe(&self) -> StorageWaitWatch {
+        StorageWaitWatch(self.tx.subscribe())
     }
 
     /// Make `track_id`, reading from `buffer_id`, the playing track.
@@ -135,6 +134,30 @@ fn waiting_on_storage(state: &WaitsState) -> Option<String> {
         .values()
         .any(|buffer_id| *buffer_id == foreground.buffer_id)
         .then(|| foreground.track_id.clone())
+}
+
+/// Hears which track's load waits on storage, from the storage waits
+/// that made it.
+pub struct StorageWaitWatch(watch::Receiver<Option<String>>);
+
+impl StorageWaitWatch {
+    /// The playing track while its load waits on storage, by id, `None`
+    /// while no load does; the value seen from here on.
+    pub fn waiting(&mut self) -> Option<String> {
+        self.0.borrow_and_update().clone()
+    }
+
+    /// Wait until the waiting track differs from the one last seen; an
+    /// error once playback is gone.
+    pub async fn changed(&mut self) -> Result<(), watch::error::RecvError> {
+        self.0.changed().await
+    }
+
+    /// Whether the waiting track changed since it was last seen; an error
+    /// once playback is gone.
+    pub fn has_changed(&self) -> Result<bool, watch::error::RecvError> {
+        self.0.has_changed()
+    }
 }
 
 /// A read's progress, told to coven: the read counts as a fetch from storage

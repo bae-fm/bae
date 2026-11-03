@@ -4,7 +4,7 @@
 //! - Local files (non-storage releases, or storage releases with local backend)
 //! - Cloud storage (storage releases with cloud backend)
 
-use crate::storage_wait::{FetchProgress, StorageWaits};
+use crate::storage_wait::{FetchProgress, StorageWaitWatch, StorageWaits};
 use crate::TrackReadError;
 use bae_audio::sparse_buffer::{SharedSparseBuffer, SourceReadError};
 use bae_diagnostics::Diagnostics;
@@ -73,9 +73,8 @@ impl FetchArbiter {
         self.waits.set_waiting(track_id);
     }
 
-    /// The playing track while its load waits on storage, by id: `None`
-    /// while no load does.
-    pub fn subscribe_storage_waits(&self) -> tokio::sync::watch::Receiver<Option<String>> {
+    /// Hear the playing track while its load waits on storage.
+    pub fn subscribe_storage_waits(&self) -> StorageWaitWatch {
         self.waits.subscribe()
     }
 

@@ -25,33 +25,33 @@ fn waiting(track_id: &str) -> Option<String> {
 #[test]
 fn a_waited_load_waits_on_its_reads_from_storage() {
     let waits = playing();
-    let told = waits.subscribe();
+    let mut told = waits.subscribe();
     waits.set_waiting(Some("track-1"));
 
     let first = waits.read(PLAYING);
     let second = waits.read(PLAYING);
-    assert_eq!(*told.borrow(), None, "a read coven told nothing reads no storage");
+    assert_eq!(told.waiting(), None, "a read coven told nothing reads no storage");
     tell(&first, PLAYING);
     tell(&second, PLAYING);
-    assert_eq!(*told.borrow(), waiting("track-1"));
+    assert_eq!(told.waiting(), waiting("track-1"));
 
     drop(first);
-    assert_eq!(*told.borrow(), waiting("track-1"));
+    assert_eq!(told.waiting(), waiting("track-1"));
     drop(second);
-    assert_eq!(*told.borrow(), None);
+    assert_eq!(told.waiting(), None);
 }
 
 /// A preload's reads are not what the playing track's load waits on.
 #[test]
 fn a_preloads_reads_are_no_wait() {
     let waits = playing();
-    let told = waits.subscribe();
+    let mut told = waits.subscribe();
     waits.set_waiting(Some("track-1"));
 
     let preload = waits.read(PRELOAD);
     tell(&preload, PRELOAD);
 
-    assert_eq!(*told.borrow(), None);
+    assert_eq!(told.waiting(), None);
 }
 
 /// Reading ahead while the track plays is no wait: nothing is told until a
@@ -59,16 +59,16 @@ fn a_preloads_reads_are_no_wait() {
 #[test]
 fn reads_while_nothing_loads_are_no_wait() {
     let waits = playing();
-    let told = waits.subscribe();
+    let mut told = waits.subscribe();
 
     let read = waits.read(PLAYING);
     tell(&read, PLAYING);
-    assert_eq!(*told.borrow(), None);
+    assert_eq!(told.waiting(), None);
 
     waits.set_waiting(Some("track-1"));
-    assert_eq!(*told.borrow(), waiting("track-1"));
+    assert_eq!(told.waiting(), waiting("track-1"));
     waits.set_waiting(None);
-    assert_eq!(*told.borrow(), None);
+    assert_eq!(told.waiting(), None);
 }
 
 /// A load of a track that isn't playing yet waits on none of the playing
@@ -76,15 +76,15 @@ fn reads_while_nothing_loads_are_no_wait() {
 #[test]
 fn a_load_of_another_track_waits_on_none_of_the_playing_ones_reads() {
     let waits = playing();
-    let told = waits.subscribe();
+    let mut told = waits.subscribe();
     waits.set_waiting(Some("track-2"));
 
     let read = waits.read(PLAYING);
     tell(&read, PLAYING);
-    assert_eq!(*told.borrow(), None);
+    assert_eq!(told.waiting(), None);
 
     let next = waits.read(PRELOAD);
     tell(&next, PRELOAD);
     waits.set_foreground(PRELOAD, "track-2");
-    assert_eq!(*told.borrow(), waiting("track-2"));
+    assert_eq!(told.waiting(), waiting("track-2"));
 }
