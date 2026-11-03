@@ -9,6 +9,8 @@
 //! source, so nothing reads it again.
 
 use super::*;
+#[cfg(desktop)]
+use crate::CoverSelection;
 
 /// A release's draft: the editor's album fields, one [`DraftTrack`] per
 /// track, and the release-level values the source stated. Its tracks are
@@ -135,3 +137,70 @@ impl<Binding: TrackBinding> ReleaseDraft<Binding> {
         Self { tracks, works, ..self.clone() }
     }
 }
+
+/// What the current draft's values were read from. Direct entry and a
+/// cleared draft carry no provenance.
+///
+/// This is the draft's own history, not a claim about which release the
+/// folder is: that claim is the candidate's [`ReleaseLink`], which no draft
+/// write changes.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum MetadataProvenance {
+    ExternalRelease {
+        /// The catalog's release the draft is read from.
+        record: bae_catalogs::records::LookupRef,
+    },
+    FileMetadata,
+}
+
+/// One candidate's editable metadata, independent of the source that last
+/// populated it. The selected cover belongs to the draft; candidate files and
+/// mapping decisions do not.
+#[cfg(desktop)]
+#[derive(Debug, Clone, PartialEq)]
+pub struct CandidateMetadataDraft {
+    /// Ordered included tracks, each with audio and a required number.
+    pub draft: CandidateDraft,
+    pub provenance: Option<MetadataProvenance>,
+    pub cover: Option<CoverSelection>,
+    pub assets: CandidatePreparedAssets,
+}
+
+/// Provider image bytes owned by the candidate metadata revision that fetched
+/// them: the remote cover's. Import reads these bytes; it never asks a
+/// provider for the cover again.
+#[cfg(desktop)]
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct CandidatePreparedAssets {
+    pub remote_cover: Option<bae_catalogs::remote_image::RemoteImage>,
+}
+
+/// The audio a track's samples come from.
+///
+/// The audio is named by its identity within the release
+/// ([`ScannedFile::relative_path`](crate::folder_scanner::ScannedFile::relative_path)),
+/// never by absolute path. The draft owns this choice independently of applied
+/// metadata. Import resolves it against the persisted scan after validating the
+/// physical file identities.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum AudioFile {
+    /// The whole file holds this one track.
+    Standalone { file_id: String },
+    /// One of several tracks a bound track sheet carves out of one container.
+    /// `index` counts that sheet's playable tracks from zero.
+    SheetSlice { file_id: String, sheet_id: String, index: u32 },
+}
+
+impl AudioFile {
+    /// The audio file holding this track's samples.
+    pub fn file_id(&self) -> &str {
+        match self {
+            Self::Standalone { file_id } | Self::SheetSlice { file_id, .. } => file_id,
+        }
+    }
+}
+
+#[cfg(test)]
+#[path = "candidate_draft_tests.rs"]
+mod tests;
