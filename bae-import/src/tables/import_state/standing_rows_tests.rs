@@ -1,10 +1,10 @@
 //! Each candidate's standing as the standings table stores and reads it back.
 
-use super::*;
 use crate::candidate_runtime::{
     IdentificationChange, IdentificationStage, StoredIdentification, StoredImport, StoredStanding,
 };
 use crate::candidates::{Admission, CandidateFiles, SaveFailure};
+use crate::folder_scanner::CandidateFileEdits;
 use crate::tables::import_state::tests::*;
 use crate::tables::tests::*;
 use crate::IdentifyRunId;

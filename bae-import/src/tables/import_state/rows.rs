@@ -1,7 +1,7 @@
 //! Reading a candidate back: its row, its verdict with the matches that hang
 //! off it, its draft's provenance, its release link, and its file decisions.
 
-use super::edit_rows::{read_file_edits, FILE_EDITS_COLUMNS};
+use super::file_decision_rows::{read_file_edits, FILE_EDITS_COLUMNS};
 use super::lookup_choice_rows::LOOKUP_CHOICES_COLUMNS;
 use super::match_rows::{
     match_of, read_match_row, MatchColumns, MatchEntries, MatchRow, StoredMatches, StoredMedium,
@@ -408,7 +408,7 @@ struct StoredCandidate {
     candidate_key: crate::CandidateKey,
     metadata_revision: i64,
     author: Option<String>,
-    file_edits: super::edit_rows::StoredFileEdits,
+    file_edits: super::file_decision_rows::StoredFileEdits,
     signals: Option<super::signal_rows::StoredSignals>,
     provenance: Option<StoredProvenance>,
     link: Option<StoredReleaseLink>,
@@ -671,59 +671,7 @@ impl StoredCandidate {
 
 /// What a read fetched, still to be assembled — boxed so a read on either
 /// connection hands back one type.
-type FinishRead<T> = Box<dyn FnOnce() -> Result<T, DbError> + Send + 'static>;
-
-/// The file decisions of every candidate a decision was made for, each at its
-/// revision: the candidates whose decisions stand, and those whose revision
-/// moved past zero though none stands now. Any other candidate has none at
-/// revision zero, which is what a scan reads where nothing is stored.
-pub(crate) fn load_stored_candidate_edits_on(
-    sql: &(impl bae_db::client::query::QueryOne + bae_db::client::query::QueryRows),
-) -> Result<FinishRead<crate::folder_scanner::StoredCandidateEdits>, DbError> {
-    let rows = sql.query(
-        &format!(
-            "SELECT state.content_hash, {FILE_EDITS_COLUMNS} \
-             FROM import_candidate_state AS state \
-             WHERE state.edit_revision > 0 \
-                OR EXISTS (SELECT 1 FROM import_candidate_sheet_disc AS decided \
-                           WHERE decided.content_hash = state.content_hash) \
-                OR EXISTS (SELECT 1 FROM import_candidate_sheet_reference AS decided \
-                           WHERE decided.content_hash = state.content_hash)"
-        ),
-        [],
-        read_file_edits,
-    )?;
-    Ok(Box::new(move || {
-        let edits = rows
-            .into_iter()
-            .map(|stored| Ok((stored.content_hash().to_string(), stored.edits()?)))
-            .collect::<Result<HashMap<_, _>, DbError>>()?;
-        Ok(crate::folder_scanner::StoredCandidateEdits::new(edits))
-    }))
-}
-
-/// One candidate's file decisions, revision included; none at revision zero
-/// for a candidate with no state row. Progressive scans call this after they
-/// compute a content hash, so each emitted row performs one indexed lookup
-/// instead of rereading the whole table.
-pub(crate) fn load_candidate_file_edits_on(
-    sql: &(impl bae_db::client::query::QueryOne + bae_db::client::query::QueryRows),
-    content_hash: &str,
-) -> Result<FinishRead<CandidateFileEdits>, DbError> {
-    let stored = sql
-        .query_row(
-            &format!(
-                "SELECT state.content_hash, {FILE_EDITS_COLUMNS} \
-                 FROM import_candidate_state AS state WHERE state.content_hash = ?"
-            ),
-            [content_hash],
-            read_file_edits,
-        )
-        .optional()?;
-    Ok(Box::new(move || {
-        stored.map_or_else(|| Ok(CandidateFileEdits::default()), |stored| stored.edits())
-    }))
-}
+pub(super) type FinishRead<T> = Box<dyn FnOnce() -> Result<T, DbError> + Send + 'static>;
 
 #[cfg(test)]
 #[path = "rows_tests.rs"]
