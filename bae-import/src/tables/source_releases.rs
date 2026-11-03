@@ -24,7 +24,6 @@ use bae_catalogs::source_release::{
 use bae_types::pressing::{Medium, Pressing, ReleaseLabel, StatedFormat, StatedMedia};
 use tracklist::{insert_entry, load_mediums, Numbering};
 
-#[path = "source_releases/tracklist.rs"]
 mod tracklist;
 
 /// The tables under `source_release`, children before the tables they hang
