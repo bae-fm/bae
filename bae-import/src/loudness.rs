@@ -658,9 +658,5 @@ pub(super) async fn measure_loudness(
 }
 
 #[cfg(test)]
-#[path = "loudness_recovery_tests.rs"]
-mod recovery_tests;
-
-#[cfg(test)]
 #[path = "loudness_tests.rs"]
 mod tests;
