@@ -1,39 +1,7 @@
-//! This device's open invites, as People shows them, and setting a
-//! person's avatar from a picked image.
+//! Where an open invite stands, as People shows it, and setting a person's
+//! avatar from a picked image.
 
 use bae_db::people::ProfileError;
-
-/// One of this device's open invites, with the pending record of its
-/// operation when coven holds one: a refused check or a failed grant, which
-/// the person ends by cancelling the invite (§5.6).
-#[derive(Clone, Debug, PartialEq)]
-pub struct OpenInvite {
-    pub invite: coven::Invite,
-    pub held: Option<bae_db::PendingWait>,
-}
-
-impl OpenInvite {
-    /// Each of `invites` with the record among `records` whose subject is
-    /// its operation.
-    pub(crate) fn held_by(
-        invites: Vec<coven::Invite>,
-        records: &[coven::PendingRecord],
-    ) -> Vec<Self> {
-        invites
-            .into_iter()
-            .map(|invite| {
-                let held = records
-                    .iter()
-                    .find(|record| {
-                        matches!(record.subject,
-                            coven::PendingSubject::Operation { id, .. } if id == invite.operation)
-                    })
-                    .map(|record| bae_db::PendingWait::of(record, None));
-                Self { invite, held }
-            })
-            .collect()
-    }
-}
 
 /// Where an open invite stands, as People shows it (§5.6).
 #[derive(Clone, Debug, PartialEq, Eq)]

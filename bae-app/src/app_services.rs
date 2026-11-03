@@ -483,7 +483,7 @@ impl AppServices {
     /// operation when coven holds one.
     pub fn subscribe_invites(
         &self,
-    ) -> bae_db::live_query::LiveValues<Vec<bae_library::people::OpenInvite>> {
+    ) -> bae_db::live_query::LiveValues<Vec<bae_db::people::OpenInvite>> {
         self.inner.manager.values_until_closed(self.inner.views.subscribe_invites())
     }
     delegate_async!(manager, approve_join_request => approve_join_request(request: &coven::JoinRequest) -> Result<(), bae_library::library::LibraryError>);

@@ -247,8 +247,8 @@ pulled_values! {
 pulled_values! {
     /// This device's open invites, each with what coven holds its work for.
     InvitesSubscription:
-        Vec<bae_library::people::OpenInvite> => Vec<crate::types::BridgeInvite>,
-    converted by |invites: Vec<bae_library::people::OpenInvite>| {
+        Vec<bae_db::people::OpenInvite> => Vec<crate::types::BridgeInvite>,
+    converted by |invites: Vec<bae_db::people::OpenInvite>| {
         invites.into_iter().map(crate::types::BridgeInvite::from_core).collect::<Vec<_>>()
     },
     built by invites

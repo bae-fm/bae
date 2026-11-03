@@ -13,29 +13,12 @@ fn invite(id: &str, operation: i64) -> coven::Invite {
     }
 }
 
-/// Coven holds Dan's invite while it can't grant his access: the invite
-/// whose operation the record names shows why, and the invite beside it
-/// shows nothing.
+/// Coven granting Dan's access is all an invite shows until its code can
+/// be shown.
 #[test]
-fn an_invite_shows_the_record_its_operation_holds() {
-    let record = coven::PendingRecord {
-        subject: coven::PendingSubject::Operation {
-            id: coven::OperationId(7),
-            kind: coven::OperationKind::Invite,
-        },
-        reason: coven::PendingReason::NoStorage,
-        cause: Some("offline".into()),
-    };
-    let open = OpenInvite::held_by(
-        vec![
-            invite("00000000-0000-4000-8000-000000000001", 6),
-            invite("00000000-0000-4000-8000-000000000002", 7),
-        ],
-        std::slice::from_ref(&record),
+fn a_granting_invite_shows_granting() {
+    assert_eq!(
+        invite_shown(&invite("00000000-0000-4000-8000-000000000002", 7)),
+        InviteShown::Granting
     );
-    assert_eq!(open[0].held, None);
-    let held = open[1].held.as_ref().expect("the record names the second invite");
-    assert_eq!(held.reason, coven::PendingReason::NoStorage);
-    assert_eq!(held.cause.as_deref(), Some("offline"));
-    assert_eq!(invite_shown(&open[1].invite), InviteShown::Granting);
 }
