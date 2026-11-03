@@ -13,14 +13,14 @@ fn an_approval_is_listed_by_the_invites_name_until_dismissed() {
         use std::time::Duration;
         let household = Household::new().await;
         let dir = tempfile::tempdir().unwrap();
-        let manager = household.owners_manager(dir.path()).await;
+        let (manager, views) = household.owners_library(dir.path()).await;
         let invite = household.invite(new_member("Rowan"), "guest-key").await;
         let guest_dir = tempfile::tempdir().unwrap();
         let guest = coven::TestCoven::new();
         let control = bae_core::library::JoinControl::new();
         let joining = household.join(&invite.code, &guest, &guest_dir, &control);
         let approving = async {
-            let mut invites = manager.subscribe_invites();
+            let mut invites = views.subscribe_invites();
             let deciding =
                 |open: &bae_core::people::OpenInvite| match bae_core::people::invite_shown(
                     &open.invite,

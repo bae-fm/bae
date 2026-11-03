@@ -517,7 +517,13 @@ impl AppServices {
     delegate_values!(subscribe_admin_changes => subscribe_admin_changes() -> Vec<crate::db::admin_change::AdminChange>);
     delegate_async!(manager, acknowledge_admin_change => acknowledge_admin_change(operation: coven::OperationId) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, invite_person => invite_person(role: coven::MemberRole, name: String, access: coven::InviteAccess, delivery: coven::InviteDelivery) -> Result<coven::InviteId, crate::library::LibraryError>);
-    delegate_values!(subscribe_invites => subscribe_invites() -> Vec<crate::people::OpenInvite>);
+    /// This device's open invites, each with the pending record of its
+    /// operation when coven holds one.
+    pub fn subscribe_invites(
+        &self,
+    ) -> crate::live_query::LiveValues<Vec<crate::people::OpenInvite>> {
+        self.inner.manager.values_until_closed(self.inner.views.subscribe_invites())
+    }
     delegate_async!(manager, approve_join_request => approve_join_request(request: &coven::JoinRequest) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, decline_join_request => decline_join_request(request: &coven::JoinRequest) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, cancel_invite => cancel_invite(invite: &coven::InviteId) -> Result<(), crate::library::LibraryError>);

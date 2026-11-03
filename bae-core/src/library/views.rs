@@ -9,6 +9,7 @@ mod album_search;
 pub(crate) mod artist;
 pub(crate) mod artist_search;
 pub(crate) mod composer;
+mod invites;
 mod models;
 pub(crate) mod release;
 #[cfg(desktop)]

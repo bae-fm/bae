@@ -277,18 +277,19 @@ impl Household {
             .storage_connector(std::sync::Arc::new(storage))
     }
 
-    /// A library manager over the owner's store, in `dir`.
-    pub(super) async fn owners_manager(
+    /// A library manager over the owner's store, in `dir`, and the library's
+    /// views over that store.
+    pub(super) async fn owners_library(
         &self,
         dir: &std::path::Path,
-    ) -> bae_core::library::LibraryManager {
-        let (manager, ..) = bae_test_support::test_library_from_handle(
+    ) -> (bae_core::library::LibraryManager, bae_core::library::views::LibraryViews) {
+        let (manager, database, ..) = bae_test_support::test_library_from_handle(
             self.owner.clone(),
             dir,
             bae_catalogs::providers::Providers::offline(),
         )
         .await;
-        manager
+        (manager, bae_core::library::views::LibraryViews::new(database))
     }
 
     /// Join with `code` from a device of its own, named Guest Device.
