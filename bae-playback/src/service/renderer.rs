@@ -685,3 +685,7 @@ impl PlaybackService {
         self.reset_starvation_episode();
     }
 }
+
+#[cfg(test)]
+#[path = "renderer_tests.rs"]
+mod tests;

@@ -1,156 +1,10 @@
-/// Poll `predicate` until it holds or a 2s deadline passes.
-fn wait_until(predicate: impl Fn() -> bool) -> bool {
-    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
-    while std::time::Instant::now() < deadline {
-        if predicate() {
-            return true;
-        }
-        std::thread::sleep(std::time::Duration::from_millis(5));
-    }
-    predicate()
-}
-
-/// Seed the audio format, segment, and backing file that make `track_id`
-/// resolvable, so the remote path can turn it into media. No real bytes on disk —
-/// the device, not bae, fetches the audio, so the remote path never decodes it.
-async fn seed_playable_track(store: &SeededStore, release_id: &str, track_id: &str) {
-    seed_track_window(store, release_id, track_id, 0, None, None).await;
-}
-
-/// [`seed_playable_track`] with its one main segment spanning
-/// `start_sample..end_sample` of its file, as a CUE image's track does, after
-/// `generated_pregap_samples` of silence a CUE `PREGAP` generates.
-async fn seed_track_window(
-    store: &SeededStore,
-    release_id: &str,
-    track_id: &str,
-    start_sample: u64,
-    end_sample: Option<u64>,
-    generated_pregap_samples: Option<u64>,
-) {
-    use bae_db::{DbAudioFormat, DbAudioSegment, DbAudioSegmentRole, NewReleaseFile};
-    use bae_util::content_type::ContentType;
-    let now = chrono::Utc::now();
-    let file_id = bae_util::test_ids::test_uuid(&format!("{track_id}-file"));
-    let file =
-        NewReleaseFile::new(release_id, "track.flac", ContentType::Flac, file_id.clone(), now);
-    bae_db::test_fixtures::aggregate_ordering::insert_file(
-        store,
-        store.home.path(),
-        file,
-        4_096,
-    )
-    .await;
-    let audio_format_id = bae_util::test_ids::test_uuid(&format!("{track_id}-af"));
-    let audio_format = DbAudioFormat::new(
-        track_id,
-        ContentType::Flac,
-        std::num::NonZeroU32::new(44_100).unwrap(),
-        Some(std::num::NonZeroU32::new(16).unwrap()),
-        std::num::NonZeroU32::new(2).unwrap(),
-        audio_format_id.clone(),
-        now,
-    )
-    .with_pregaps(None, generated_pregap_samples);
-    let segment = DbAudioSegment {
-        id: bae_util::test_ids::test_uuid(&format!("{track_id}-seg")),
-        audio_format_id,
-        segment_index: 0,
-        role: DbAudioSegmentRole::Main,
-        file_id,
-        start_sample,
-        end_sample,
-        start_byte: None,
-        end_byte: None,
-        created_at: now,
-    };
-    store
-        .insert_audio_format_with_segments_for_test(&audio_format, &[segment])
-        .await
-        .unwrap();
-}
-
-/// A playback service over releases whose every track is resolvable to remote
-/// media.
-async fn remote_service(
-    releases: &[(&str, &[&str])],
-) -> (SeededStore, PlaybackService, tokio_mpsc::UnboundedReceiver<PlaybackProgress>) {
-    let (home, service, rx) = seeded_playback_service(releases).await;
-    for (release_id, tracks) in releases {
-        for track_id in *tracks {
-            seed_playable_track(&home, release_id, track_id).await;
-        }
-    }
-    (home, service, rx)
-}
-
-fn test_stream_provider() -> crate::renderer::MediaUrlProvider {
-    Arc::new(|track_id: &str, _format| Ok(format!("http://renderer.local/stream?id={track_id}")))
-}
-
-fn test_device() -> crate::RemoteDevice {
-    crate::RemoteDevice {
-        id: "renderer-device-id".to_string(),
-        name: "Speaker Name".to_string(),
-    }
-}
-
-fn remote_connect(channel: FakeChannel) -> RemoteConnect {
-    RemoteConnect::new(
-        Box::new(channel),
-        test_device(),
-        crate::renderer::RendererMediaSource::new(
-            test_stream_provider(),
-            Arc::new(|cover| {
-                format!("http://renderer.local/cover?id={}&v={}", cover.id, cover.version)
-            }),
-            RendererFlavor::Cast,
-        ),
-    )
-}
-
-/// The arrange every remote test shares: a service over one release of `tracks`,
-/// that release playing from its first track, and the session handed to a fake
-/// device by `handle_play_on`, from `position` in the first track's stream.
-/// Returns the service, the fake channel's shared state and the progress
-/// receiver.
-async fn playing_remote_fixture(
-    tracks: &[&str],
-    position: StreamPosition,
-) -> (
-    SeededStore,
-    PlaybackService,
-    Arc<Mutex<FakeChannelState>>,
-    tokio_mpsc::UnboundedReceiver<PlaybackProgress>,
-) {
-    remote_fixture_from(tracks, position, TrackPhase::Playing).await
-}
-
-/// [`playing_remote_fixture`] with the first track in `phase` when it is
-/// handed to the device.
-async fn remote_fixture_from(
-    tracks: &[&str],
-    position: StreamPosition,
-    phase: TrackPhase,
-) -> (
-    SeededStore,
-    PlaybackService,
-    Arc<Mutex<FakeChannelState>>,
-    tokio_mpsc::UnboundedReceiver<PlaybackProgress>,
-) {
-    const RELEASE: &str = "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e";
-    let (home, mut service, rx) = remote_service(&[(RELEASE, tracks)]).await;
-    fill_test_release(&mut service, RELEASE).await;
-    service.slot = active_slot(test_prepared_track(tracks[0], create_sparse_buffer(1_024)), phase);
-    if let PlaybackSlot::Active(cur) = &mut service.slot {
-        cur.position = position;
-    }
-
-    let channel = FakeChannel::new();
-    let state = channel.state.clone();
-    service.handle_play_on(remote_connect(channel)).await;
-    (home, service, state, rx)
-}
+use super::*;
+use crate::audio_output::{audio_event_channel, AudioError};
+use crate::renderer::channel::FakeChannel;
+use crate::renderer::{ReceiverStatus, RendererFlavor, RendererPlayerState, RendererSessionEvent};
+use crate::service::tests::*;
+use crate::RemotePlayback;
+use bae_audio::track_stream::create_track_stream_pair;
 
 /// `play_on` mid-track keeps the current track and queue position, switches the
 /// renderer to Remote, and reissues the current track to the device at its
@@ -378,21 +232,6 @@ async fn stop_while_remote_stops_device_and_returns_to_local() {
     assert!(saw_not_remote, "stopping while remote announces local playback");
 }
 
-/// [`playing_remote_fixture`] over one track at position zero, waited until the
-/// device has taken its first load.
-async fn remote_over_fake() -> (
-    SeededStore,
-    PlaybackService,
-    Arc<Mutex<FakeChannelState>>,
-    tokio_mpsc::UnboundedReceiver<PlaybackProgress>,
-) {
-    let (home, service, state, rx) =
-        playing_remote_fixture(&["08c7ff07-b56a-4e16-8df6-ae2967fa0806"], StreamPosition::START)
-            .await;
-    assert!(wait_until(|| !state.lock().unwrap().loads.is_empty()));
-    (home, service, state, rx)
-}
-
 /// Ending remote playback resumes locally where the current track is on the
 /// device: after the device finished a track and was loaded with the next, at
 /// the next track's start — not where the finished track last was.
@@ -587,5 +426,380 @@ async fn a_queued_track_renamed_while_another_plays_remotely_loads_with_its_new_
         urls,
         [first_url.as_str(), second_url.as_str()],
         "the first track is loaded once, at the handoff, and never again"
+    );
+}
+
+/// What a whole-file track and then a CUE image's track are each served as on
+/// a renderer of `flavor`, with conversions set to `transcode`: the URL (named
+/// by its format) and the MIME type declared for it.
+async fn served_whole_file_then_window(
+    flavor: RendererFlavor,
+    transcode: bae_preferences::CastTranscodeFormat,
+) -> Vec<(String, String)> {
+    const RELEASE: &str = "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e";
+    const WHOLE_FILE: &str = "08c7ff07-b56a-4e16-8df6-ae2967fa0806";
+    const IMAGE_WINDOW: &str = "08c7fe07-b56a-4c63-8df6-ad2967fa0653";
+    let (library, mut service, _rx) =
+        seeded_playback_service(&[(RELEASE, &[WHOLE_FILE, IMAGE_WINDOW])]).await;
+    bae_preferences::edit_preferences(&library, move |prefs| {
+        prefs.cast_transcode_format = transcode;
+        Ok(())
+    })
+    .await
+    .unwrap();
+    seed_playable_track(&library, RELEASE, WHOLE_FILE).await;
+    seed_track_window(&library, RELEASE, IMAGE_WINDOW, 441_000, Some(882_000), None).await;
+    fill_test_release(&mut service, RELEASE).await;
+    service.slot = active_slot(
+        test_prepared_track(WHOLE_FILE, create_sparse_buffer(1_024)),
+        TrackPhase::Playing,
+    );
+    let channel = FakeChannel::new();
+    let state = channel.state.clone();
+    service
+        .handle_play_on(RemoteConnect::new(
+            Box::new(channel),
+            test_device(),
+            crate::renderer::RendererMediaSource::new(
+                Arc::new(|track_id: &str, format| {
+                    Ok(format!("http://renderer.local/stream?id={track_id}&{format:?}"))
+                }),
+                Arc::new(|cover| format!("http://renderer.local/cover?id={}", cover.id)),
+                flavor,
+            ),
+        ))
+        .await;
+    service
+        .handle_remote_event(RendererSessionEvent::Status(ReceiverStatus {
+            player_state: RendererPlayerState::Finished,
+            position: None,
+            duration: None,
+            volume: Some(1.0),
+        }))
+        .await;
+
+    assert!(
+        wait_until(|| state.lock().unwrap().loads.len() == 2),
+        "both tracks are loaded onto the device"
+    );
+    let s = state.lock().unwrap();
+    s.loads.iter().map(|m| (m.url.clone(), m.content_type.clone())).collect()
+}
+
+/// A device plays the stream it is served, so each track is served as its own
+/// stream from its first sample: a track that is a whole file goes out as that
+/// file, and a CUE image's track is transcoded from its window rather than
+/// served as the whole image.
+#[tokio::test]
+async fn a_cue_image_track_is_served_as_its_own_window() {
+    assert_eq!(
+        served_whole_file_then_window(
+            RendererFlavor::Cast,
+            bae_preferences::CastTranscodeFormat::Mp3
+        )
+        .await,
+        [
+            (
+                "http://renderer.local/stream?id=08c7ff07-b56a-4e16-8df6-ae2967fa0806&Raw"
+                    .to_string(),
+                "audio/flac".to_string()
+            ),
+            (
+                "http://renderer.local/stream?id=08c7fe07-b56a-4c63-8df6-ad2967fa0653&TranscodeMp3"
+                    .to_string(),
+                "audio/mpeg".to_string()
+            ),
+        ]
+    );
+}
+
+/// The conversion setting reaches the device as each track loads: with WAV
+/// picked, a Cast receiver is sent the CUE track as WAV, and a UPnP renderer,
+/// which isn't counted on to play WAV, is sent MP3. A whole file it decodes
+/// goes out as stored either way.
+#[tokio::test]
+async fn a_converted_track_goes_out_in_the_format_the_flavor_takes() {
+    let window = |format: &str, mime: &str| {
+        (
+            format!(
+                "http://renderer.local/stream?id=08c7fe07-b56a-4c63-8df6-ad2967fa0653&{format}"
+            ),
+            mime.to_string(),
+        )
+    };
+    let whole_file = (
+        "http://renderer.local/stream?id=08c7ff07-b56a-4e16-8df6-ae2967fa0806&Raw".to_string(),
+        "audio/flac".to_string(),
+    );
+    assert_eq!(
+        served_whole_file_then_window(
+            RendererFlavor::Cast,
+            bae_preferences::CastTranscodeFormat::Wav
+        )
+        .await,
+        [whole_file.clone(), window("TranscodeWav", "audio/wav")]
+    );
+    assert_eq!(
+        served_whole_file_then_window(
+            RendererFlavor::Dlna,
+            bae_preferences::CastTranscodeFormat::Wav
+        )
+        .await,
+        [whole_file, window("TranscodeMp3", "audio/mpeg")]
+    );
+}
+
+/// Cast `RELEASE`'s one track, stored with `track_length_ms` and a 2 s
+/// generated pregap, to a fake device, and return the length the device is
+/// told for its stream.
+async fn served_stream_length(track_length_ms: u64) -> Option<std::time::Duration> {
+    const RELEASE: &str = "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e";
+    const TRACK: &str = "08c7ff07-b56a-4e16-8df6-ae2967fa0806";
+    let store = seeded_store_with_track_length(&[(RELEASE, &[TRACK])], track_length_ms).await;
+    let (mut service, _rx) = playback_service_over(&store, bae_diagnostics::Diagnostics::noop());
+    // Two seconds of generated silence at 44.1 kHz.
+    seed_track_window(&store, RELEASE, TRACK, 0, None, Some(88_200)).await;
+    fill_test_release(&mut service, RELEASE).await;
+    service.slot =
+        active_slot(test_prepared_track(TRACK, create_sparse_buffer(1_024)), TrackPhase::Playing);
+    let channel = FakeChannel::new();
+    let state = channel.state.clone();
+
+    service.handle_play_on(remote_connect(channel)).await;
+
+    assert!(wait_until(|| !state.lock().unwrap().loads.is_empty()));
+    let duration = state.lock().unwrap().loads[0].duration;
+    duration
+}
+
+/// A device is told the length of the stream it is served, which runs through
+/// the track's pregap before the track: the device's position counts in that
+/// stream, so a length without the pregap would end the track early.
+#[tokio::test]
+async fn a_device_is_told_the_served_stream_length_pregap_included() {
+    assert_eq!(served_stream_length(60_000).await, Some(std::time::Duration::from_secs(62)));
+}
+
+#[tokio::test]
+async fn airplay_pause_flushes_and_resume_reanchors() {
+    let (_home, mut service, _progress_rx) = test_playback_service().await;
+    let buffer = create_sparse_buffer(1_024);
+    service.slot = active_slot(test_prepared_track("t", buffer), TrackPhase::Playing);
+    let airplay = install_airplay(&mut service, std::time::Duration::from_secs(2), 0.5);
+    let state = &airplay.state;
+
+    service.pause();
+    assert_eq!(
+        state.flushed.load(std::sync::atomic::Ordering::Acquire),
+        1,
+        "pause FLUSHes the receiver"
+    );
+    assert_eq!(state.reanchored.load(std::sync::atomic::Ordering::Acquire), 0);
+
+    service.resume().await;
+    assert_eq!(
+        state.reanchored.load(std::sync::atomic::Ordering::Acquire),
+        1,
+        "resume re-anchors the pacing"
+    );
+}
+
+#[tokio::test]
+async fn airplay_position_is_offset_by_receiver_latency() {
+    let (_home, mut service, mut progress_rx) = test_playback_service().await;
+    let buffer = create_sparse_buffer(1_024);
+    service.slot = active_slot(test_prepared_track("t", buffer), TrackPhase::Playing);
+    // The live session's receiver reported a quarter-second latency.
+    let _airplay = install_airplay(&mut service, std::time::Duration::from_millis(250), 0.5);
+
+    // A tick at 5 s of decoded position: the audible position is 5 − 0.25 s.
+    let mut fmt = test_track_fmt("t");
+    fmt.timeline =
+        TrackTimeline::new(Some(std::time::Duration::from_secs(60)), std::time::Duration::ZERO);
+    service.handle_position_event(Arc::new(fmt), StreamPosition::from_millis(5_000)).await;
+
+    let position = loop {
+        match progress_rx.try_recv() {
+            Ok(PlaybackProgress::PositionUpdate { position_ms, .. }) => break position_ms,
+            Ok(_) => continue,
+            Err(_) => panic!("expected a PositionUpdate"),
+        }
+    };
+    assert_eq!(position, 4_750, "position reflects the live session's receiver latency");
+}
+
+#[tokio::test]
+async fn airplay_stop_restores_the_local_output_and_returns_to_local() {
+    let (_home, mut service, _progress_rx) = test_playback_service().await;
+    let buffer = create_sparse_buffer(1_024);
+    service.slot = active_slot(test_prepared_track("t", buffer), TrackPhase::Playing);
+    let _airplay = install_airplay(&mut service, std::time::Duration::from_secs(2), 0.777);
+
+    service.stop().await;
+
+    assert!(!service.renderer.is_airplay(), "stop returns to the local renderer");
+    assert_eq!(service.audio_output.get_volume(), 0.777, "the saved local output sink is restored");
+}
+
+/// Stopping AirPlay resumes local at the position playback actually reached: the
+/// resume position is read from the live shared position at teardown, so the
+/// `AirPlayRenderer` carries no separately-stored position that could go stale.
+/// (Fully exercising the resumed local decode needs a real imported track; here
+/// the position source and the return-to-local are asserted.)
+#[tokio::test]
+async fn airplay_stop_reads_the_live_position_and_returns_to_local() {
+    let (_home, mut service, _progress_rx) =
+        seeded_playback_service(&[("af63ef4c-8602-4cd5-82c0-3d334b916305", &[TRACK_T])]).await;
+    service.slot =
+        active_slot(test_prepared_track(TRACK_T, create_sparse_buffer(1_024)), TrackPhase::Playing);
+    let saved_tag = 0.5;
+    let _airplay = install_airplay(&mut service, std::time::Duration::from_secs(2), saved_tag);
+
+    // Playback progressed on AirPlay: decode is local, so the slot's position is
+    // the live one the resume reads.
+    if let PlaybackSlot::Active(cur) = &mut service.slot {
+        cur.position = StreamPosition::from_millis(30_000);
+    }
+
+    service.handle_stop_remote().await;
+
+    assert!(!service.renderer.is_airplay(), "stop returns to the local renderer");
+    assert_eq!(
+        service.audio_output.get_volume(),
+        saved_tag,
+        "the saved local output sink is restored"
+    );
+}
+
+/// Seeking while on AirPlay FLUSHes the receiver and re-anchors the pacing (decode
+/// is local, so the rebuild re-fills the sink at the new position).
+#[tokio::test]
+async fn airplay_seek_flushes_and_reanchors() {
+    let (_home, mut service, _progress_rx) =
+        seeded_playback_service(&[("af63ef4c-8602-4cd5-82c0-3d334b916305", &[TRACK_T])]).await;
+    let buffer = create_sparse_buffer(64 * 1024);
+    service.slot = active_slot(test_prepared_track(TRACK_T, buffer.clone()), TrackPhase::Playing);
+    let (_sink, source, _ready) = create_track_stream_pair(44_100, 2);
+    let (_tx, audio_rx) = audio_event_channel();
+    service.output = Some(test_output(
+        Arc::new(Mutex::new(source::PlaybackSource::new(source, test_track_fmt(TRACK_T)))),
+        audio_rx,
+    ));
+    let airplay = install_airplay(&mut service, std::time::Duration::from_secs(2), 0.5);
+    let state = &airplay.state;
+
+    service.seek(StreamPosition::from_duration(std::time::Duration::from_secs(20))).await;
+
+    assert!(
+        state.flushed.load(std::sync::atomic::Ordering::Acquire) >= 1,
+        "seek FLUSHes the receiver's buffer"
+    );
+    assert!(
+        state.reanchored.load(std::sync::atomic::Ordering::Acquire) >= 1,
+        "seek re-anchors the pacing"
+    );
+}
+
+/// A local end-of-decode advances the queue while the AirPlay renderer stays
+/// installed — playback moves to the next track on the same receiver.
+#[tokio::test]
+async fn airplay_advance_on_local_end_stays_on_airplay() {
+    let (_home, mut service, _progress_rx) =
+        seeded_playback_service(&[("af63ef4c-8602-4cd5-82c0-3d334b916305", &[TRACK_A, TRACK_B])])
+            .await;
+    fill_test_release(&mut service, "af63ef4c-8602-4cd5-82c0-3d334b916305").await;
+    service.slot =
+        active_slot(test_prepared_track(TRACK_A, create_sparse_buffer(1_024)), TrackPhase::Playing);
+    let _airplay = install_airplay(&mut service, std::time::Duration::from_secs(2), 0.5);
+
+    service.handle_auto_advance(TRACK_A.to_string()).await;
+
+    assert!(
+        service.renderer.is_airplay(),
+        "the AirPlay renderer stays installed across an auto-advance"
+    );
+}
+
+/// A no-op AirPlay sink for driving `handle_play_on_airplay`: it accepts the PCM
+/// source without touching a socket.
+struct NoopAirPlaySink;
+
+impl crate::airplay_output::AirPlaySink for NoopAirPlaySink {
+    fn start(
+        &self,
+        _source: Box<dyn crate::airplay_output::PcmSource>,
+    ) -> Result<Arc<dyn crate::airplay_output::AirPlayStreamControl>, AudioError> {
+        Ok(Arc::new(FakeAirPlayControl {
+            state: Arc::new(FakeAirPlayControlState::default()),
+            latency: std::time::Duration::from_secs(2),
+        }))
+    }
+}
+
+/// `handle_play_on_airplay` swaps to the AirPlay output and installs the AirPlay
+/// renderer without turning playback "remote" — decode stays local, so the queue
+/// and slot are driven by the local pipeline, not device transport commands.
+/// (Driven with nothing playing so the swap isn't torn down by the unit harness's
+/// undecodable seed track; the local decode path is covered by the seek/advance
+/// tests.)
+#[tokio::test]
+async fn play_on_airplay_swaps_the_sink_and_keeps_decode_local() {
+    let (_home, mut service, _progress_rx) = test_playback_service().await;
+    // Nothing playing: AirPlay arms without a track to re-decode.
+    service.slot = PlaybackSlot::Stopped;
+
+    service
+        .handle_play_on_airplay(renderer::AirPlayConnect::new(
+            Box::new(NoopAirPlaySink),
+            test_device(),
+        ))
+        .await;
+
+    assert!(service.renderer.is_airplay(), "the AirPlay renderer is installed");
+    assert!(
+        !service.renderer.is_remote(),
+        "AirPlay keeps decoding locally — it is not a fetch-a-URL remote renderer"
+    );
+}
+
+/// A dead AirPlay receiver (the session reports transport failure) ends AirPlay
+/// and returns to local — surfaced on the service's audio tick rather than
+/// erroring silently forever, even with no position ticks coming, as when a
+/// sender thread panicked — and announces the receiver lost with why.
+#[tokio::test]
+async fn airplay_receiver_death_ends_airplay_and_returns_to_local() {
+    let (_home, mut service, mut progress_rx) =
+        seeded_playback_service(&[("af63ef4c-8602-4cd5-82c0-3d334b916305", &[TRACK_T])]).await;
+    service.slot =
+        active_slot(test_prepared_track(TRACK_T, create_sparse_buffer(1_024)), TrackPhase::Playing);
+    let airplay = install_airplay(&mut service, std::time::Duration::from_secs(2), 0.5);
+    let state = &airplay.state;
+    while progress_rx.try_recv().is_ok() {}
+
+    // The receiver went away: the session reports the transport as failed.
+    state
+        .failure
+        .set("20 audio sends in a row failed: No route to host (os error 65)".to_string())
+        .expect("the failure is set once");
+
+    // The service's audio tick catches it and ends AirPlay.
+    service.drain_current_audio_events().await;
+
+    assert!(
+        !service.renderer.is_airplay(),
+        "a dead receiver ends AirPlay and returns to the local renderer"
+    );
+    let mut announced = None;
+    while let Ok(progress) = progress_rx.try_recv() {
+        if let PlaybackProgress::RemoteStatusChanged { remote } = progress {
+            announced = Some(remote);
+        }
+    }
+    assert_eq!(
+        announced,
+        Some(RemotePlayback::Ended {
+            device: test_device(),
+            detail: "20 audio sends in a row failed: No route to host (os error 65)".to_string(),
+        })
     );
 }

@@ -506,6 +506,31 @@ async fn test_a_release_named_twice_plays_twice() {
     assert_eq!(played, names(&["a1", "a2", "b1", "a1", "a2"]));
 }
 
+/// A multi-release play concatenates each release's tracks in the input order the
+/// releases were chosen, and reports the releases that contributed as the source.
+#[tokio::test]
+async fn play_releases_concatenates_tracks_in_input_order() {
+    let mut f = fixture(&[("two", &["t1", "t2"]), ("one", &["t3"])]).await;
+    f.play_fill(ContextFill::Releases(vec![f.id("one"), f.id("two")])).await;
+    assert_eq!(f.value().await.context.unwrap().source, ContextSource::Releases);
+    assert_eq!(f.context_order().await, names(&["t3", "t1", "t2"]));
+}
+
+/// A release with no tracks (deleted, or never existed) is skipped; the remaining
+/// releases still play in order.
+#[tokio::test]
+async fn play_releases_skips_a_release_without_tracks() {
+    let mut f = fixture(&[("two", &["t1"]), ("one", &["t2", "t3"])]).await;
+    f.play_fill(ContextFill::Releases(vec![
+        f.id("two"),
+        "6f9a1c2e-0b3d-4e5f-8a7b-9c0d1e2f3a4b".to_string(),
+        f.id("one"),
+    ]))
+    .await;
+    assert_eq!(f.value().await.context.unwrap().source, ContextSource::Releases);
+    assert_eq!(f.context_order().await, names(&["t1", "t2", "t3"]));
+}
+
 /// The same track queued twice in Up Next plays twice.
 #[tokio::test]
 async fn test_a_track_queued_twice_plays_twice() {

@@ -96,3 +96,7 @@ impl PlaybackService {
         self.starvation_episode = None;
     }
 }
+
+#[cfg(test)]
+#[path = "starvation_tests.rs"]
+mod tests;

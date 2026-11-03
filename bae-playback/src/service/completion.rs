@@ -87,3 +87,7 @@ impl PlaybackService {
         self.sync_audio_state();
     }
 }
+
+#[cfg(test)]
+#[path = "completion_tests.rs"]
+mod tests;

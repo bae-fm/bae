@@ -37,8 +37,8 @@ pub struct SegmentDecodeParams {
 }
 
 /// Where a segment's decode starts reading its file.
-#[derive(Clone, Copy)]
-enum SegmentStart {
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SegmentStart {
     /// From what the span records: its landing byte at a natural start of a
     /// codec whose frames keep their place after a byte jump, else a seek by
     /// sample to the target.
@@ -57,26 +57,15 @@ impl SegmentDecodeParams {
         Self { buffer, span, start_offset, start: SegmentStart::Span }
     }
 
-    /// A start `start_offset` samples into the segment that decodes from
-    /// `point`, a stored frame that plays the target exactly, forward to the
-    /// target.
-    pub fn from_scrub_point(
+    /// A window `start_offset` samples into the segment whose decode starts
+    /// reading the file at `start`, then decodes forward to the target.
+    pub fn with_start(
         buffer: SharedSparseBuffer,
         span: bae_db::SegmentSpan,
         start_offset: u64,
-        point: bae_db::ScrubPoint,
+        start: SegmentStart,
     ) -> Self {
-        Self { buffer, span, start_offset, start: SegmentStart::ScrubPoint(point) }
-    }
-
-    /// A start `start_offset` samples into the segment that decodes from the
-    /// stream's first frame forward to the target.
-    pub fn from_stream_start(
-        buffer: SharedSparseBuffer,
-        span: bae_db::SegmentSpan,
-        start_offset: u64,
-    ) -> Self {
-        Self { buffer, span, start_offset, start: SegmentStart::StreamStart }
+        Self { buffer, span, start_offset, start }
     }
 
     /// First sample to emit: the segment's start plus the seek offset. FFmpeg

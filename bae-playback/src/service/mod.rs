@@ -76,7 +76,9 @@ mod preview;
 mod queue_commands;
 mod renderer;
 mod seek;
+mod segment_start;
 mod side_countdown;
+mod sides;
 mod slot;
 mod starvation;
 mod state;
@@ -87,21 +89,23 @@ use crate::stream_pipeline::{
     DecodeFailureReport, DecoderSetup,
 };
 pub(crate) use api::{dispatch_command, PlaybackCommand};
-pub use api::{
-    LoadingTrack, PlaybackHandle, PlaybackPauseBoundary, PlaybackPauseReason,
-    PlaybackSideCountdown, PlaybackSidePausePrompt, PlaybackState, PlaybackTrackInfo,
-    PlaybackTrackSide,
-};
-use api::{SideBoundary, SidePauseDecision};
+pub use api::{LoadingTrack, PlaybackHandle, PlaybackPauseReason, PlaybackState};
 use bae_track_audio::{SegmentDecodeParams, StreamDecodeParams};
 use file_buffers::{prepare_track_for_playback, FileBuffers};
 use library_follow::LibraryFollow;
 use renderer::{RemoteConnect, RemoteEnd, Renderer};
+use segment_start::segment_start;
+use sides::{side_boundary_between, SideBoundary, SidePauseDecision};
+pub use sides::{
+    PlaybackPauseBoundary, PlaybackSideCountdown, PlaybackSidePausePrompt, PlaybackTrackInfo,
+    PlaybackTrackSide,
+};
 use slot::{LoadGeneration, PausePhase, PlayIntent, PlayTarget, PlaybackSlot, TrackPhase};
 use starvation::StarvationEpisode;
 use volume::OutputVolume;
 
 #[cfg(test)]
+#[path = "mod_tests.rs"]
 mod tests;
 
 mod runtime;
@@ -247,55 +251,20 @@ struct PreparedAudioSegment {
 
 impl PreparedAudioSegment {
     /// This segment's decoder window, starting `offset` samples in, in a file
-    /// of `content_type`.
-    ///
-    /// An MP3's frames state no position and lean on the frames before them,
-    /// so neither a byte jump nor a sample seek puts out its own samples: any
-    /// start, a track's first included, decodes from the last stored point
-    /// that plays the target exactly, or, before the first such point, from
-    /// the stream's start.
-    ///
-    /// Any other seek into a segment with stored scrub points (a FLAC the
-    /// demuxer can only binary-search) jumps by byte to the last one at or
-    /// before its target; any other start seeks as
-    /// [`SegmentDecodeParams::new`] says.
+    /// of `content_type`, from where [`segment_start`] says.
     fn decode_params(
         &self,
         offset: u64,
         content_type: &bae_util::content_type::ContentType,
     ) -> SegmentDecodeParams {
-        let target = self.span.start_sample + offset;
-        if *content_type == bae_util::content_type::ContentType::Mp3 {
-            return match self.scrub_points.at_or_before(target) {
-                Some(point) => SegmentDecodeParams::from_scrub_point(
-                    self.buffer.clone(),
-                    self.span,
-                    offset,
-                    point,
-                ),
-                None => {
-                    SegmentDecodeParams::from_stream_start(self.buffer.clone(), self.span, offset)
-                }
-            };
-        }
-        if offset == 0 || self.scrub_points.is_empty() {
-            return SegmentDecodeParams::new(self.buffer.clone(), self.span, offset);
-        }
-        match self.scrub_points.at_or_before(target) {
-            Some(point) => {
-                SegmentDecodeParams::from_scrub_point(self.buffer.clone(), self.span, offset, point)
-            }
-            None => {
-                // Import's first point is the frame the segment starts in, so
-                // every sample of the segment has one at or before it.
-                warn!(
-                    file_id = %self.file_id,
-                    target,
-                    "no stored scrub point at or before the seek target; seeking by sample"
-                );
-                SegmentDecodeParams::new(self.buffer.clone(), self.span, offset)
-            }
-        }
+        let start = segment_start(
+            content_type,
+            &self.scrub_points,
+            self.span.start_sample,
+            offset,
+            &self.file_id,
+        );
+        SegmentDecodeParams::with_start(self.buffer.clone(), self.span, offset, start)
     }
 }
 
@@ -498,27 +467,6 @@ struct FirstAudioMeasurement {
     generation: LoadGeneration,
     track_id: String,
     started_at: std::time::Instant,
-}
-
-/// The side or disc boundary between `current` and `next`, or `None` when they
-/// play on the same side (or aren't on one release's sides at all).
-fn side_boundary_between(
-    current: &PlaybackTrackInfo,
-    next: &PlaybackTrackInfo,
-) -> Option<SideBoundary> {
-    if current.release_id != next.release_id {
-        return None;
-    }
-    let current_side = current.side.as_ref()?;
-    let next_side = next.side.as_ref()?;
-    if (current_side.medium, current_side.side) == (next_side.medium, next_side.side) {
-        return None;
-    }
-    Some(SideBoundary {
-        id: format!("{}:{}:{}", next.track_id, current_side.medium, current_side.side),
-        kind: current_side.boundary,
-        side_label: current_side.label.clone(),
-    })
 }
 
 /// The system's audio output device: the platform sink (cpal on desktop and

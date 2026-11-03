@@ -885,3 +885,7 @@ enum Wake {
     Command(PlaybackCommand),
     TracksDeleted(Vec<String>),
 }
+
+#[cfg(test)]
+#[path = "runtime_tests.rs"]
+mod tests;

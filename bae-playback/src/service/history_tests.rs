@@ -1,3 +1,8 @@
+use super::*;
+use crate::audio_output::{audio_event_channel, AudioEvent};
+use crate::renderer::{ReceiverStatus, RendererPlayerState, RendererSessionEvent};
+use crate::service::tests::*;
+
 /// Exercise listening through the real source's consumed-frame counter, replacing
 /// its decoder at a seek and retaining the same play across a pause.
 #[tokio::test]
@@ -188,20 +193,14 @@ async fn airplay_completion_waits_for_the_audio_still_in_the_receiver() {
         service
             .handle_audio_event(AudioEvent::Completion(source.take_completion_event().unwrap()))
             .await;
-        assert_eq!(
-            service.database.history().await.unwrap()[0].played,
-            Duration::from_secs(38)
-        );
+        assert_eq!(service.database.history().await.unwrap()[0].played, Duration::from_secs(38));
         assert!(
             drained_track_completed_ids(&mut progress).is_empty(),
             "the receiver still has two seconds to play"
         );
         clock.advance(Duration::from_secs(1));
         service.persist_listening().await;
-        assert_eq!(
-            service.database.history().await.unwrap()[0].played,
-            Duration::from_secs(39)
-        );
+        assert_eq!(service.database.history().await.unwrap()[0].played, Duration::from_secs(39));
         if pause_tail {
             service.pause();
         }

@@ -152,3 +152,7 @@ impl PlaybackService {
         self.renderer.reanchor_airplay();
     }
 }
+
+#[cfg(test)]
+#[path = "seek_tests.rs"]
+mod tests;

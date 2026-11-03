@@ -215,3 +215,7 @@ impl PlaybackService {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "output_tests.rs"]
+mod tests;

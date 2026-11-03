@@ -355,3 +355,7 @@ impl PlaybackService {
         self.renderer.reanchor_airplay();
     }
 }
+
+#[cfg(test)]
+#[path = "state_tests.rs"]
+mod tests;

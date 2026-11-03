@@ -17,6 +17,6 @@ mod storage_wait;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod track_sources;
 
-pub use decode::{SegmentDecodeParams, StreamDecodeParams};
+pub use decode::{SegmentDecodeParams, SegmentStart, StreamDecodeParams};
 pub use preview_target::PreviewTarget;
 pub use read_error::TrackReadError;

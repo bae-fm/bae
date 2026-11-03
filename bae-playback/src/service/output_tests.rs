@@ -1,124 +1,9 @@
-const RELEASE_TWO_TRACKS: &str = "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e";
-const RELEASE_ONE_TRACK: &str = "e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b";
-
-/// What a multi-release play put in the context lane: its source and every
-/// track of the lane in order.
-async fn context_lane(
-    service: &PlaybackService,
-    database: &bae_db::Database,
-) -> (ContextSource, Vec<String>) {
-    let value = crate::tables::queue_value(&service.database).await.unwrap();
-    let source = value.context.expect("a context lane").source;
-    let order =
-        crate::tables::PlaybackQueueTables::new(database.clone()).context_order().await.unwrap();
-    (source, order)
-}
-
-/// A multi-release play concatenates each release's tracks in the input order the
-/// releases were chosen, and reports the releases that contributed as the source.
-#[tokio::test]
-async fn play_releases_concatenates_tracks_in_input_order() {
-    let library = seeded_store(&[
-        (
-            RELEASE_TWO_TRACKS,
-            &["5634d119-43be-4435-8432-575baddc4705", "5634ce19-43be-4f1c-8432-545baddc41ec"],
-        ),
-        (RELEASE_ONE_TRACK, &["5630a919-43ba-4766-842e-6f5badd886f6"]),
-    ])
-    .await;
-    let (mut service, _rx) = playback_service_over(&library, bae_diagnostics::Diagnostics::noop());
-
-    service
-        .playback_queue
-        .play(ContextFill::Releases(vec![
-            RELEASE_ONE_TRACK.to_string(),
-            RELEASE_TWO_TRACKS.to_string(),
-        ]))
-        .await
-        .unwrap();
-
-    assert_eq!(
-        context_lane(&service, &library).await,
-        (
-            ContextSource::Releases,
-            vec![
-                "5630a919-43ba-4766-842e-6f5badd886f6".to_string(),
-                "5634d119-43be-4435-8432-575baddc4705".to_string(),
-                "5634ce19-43be-4f1c-8432-545baddc41ec".to_string()
-            ]
-        )
-    );
-}
-
-/// A release with no tracks (deleted, or never existed) is skipped; the remaining
-/// releases still play in order.
-#[tokio::test]
-async fn play_releases_skips_a_release_without_tracks() {
-    let library = seeded_store(&[
-        (RELEASE_TWO_TRACKS, &["5634d119-43be-4435-8432-575baddc4705"]),
-        (RELEASE_ONE_TRACK, &["5630a919-43ba-4766-842e-6f5badd886f6", TRACK_T2B]),
-    ])
-    .await;
-    let (mut service, _rx) = playback_service_over(&library, bae_diagnostics::Diagnostics::noop());
-
-    service
-        .playback_queue
-        .play(ContextFill::Releases(vec![
-            RELEASE_TWO_TRACKS.to_string(),
-            "6f9a1c2e-0b3d-4e5f-8a7b-9c0d1e2f3a4b".to_string(),
-            RELEASE_ONE_TRACK.to_string(),
-        ]))
-        .await
-        .unwrap();
-
-    assert_eq!(
-        context_lane(&service, &library).await,
-        (
-            ContextSource::Releases,
-            vec![
-                "5634d119-43be-4435-8432-575baddc4705".to_string(),
-                "5630a919-43ba-4766-842e-6f5badd886f6".to_string(),
-                TRACK_T2B.to_string()
-            ]
-        )
-    );
-}
-
-/// A `Play` whose context load fails (here: the track doesn't exist) must
-/// fail loud — a `PlaybackError` and nothing else — rather than silently
-/// falling back to a single-track queue. `release_id` is a required column,
-/// so there is no legitimate "track with no context" case to preserve a
-/// fallback for.
-#[tokio::test]
-async fn play_context_load_failure_surfaces_error_without_touching_the_queue() {
-    let (_home, mut service, mut progress_rx) = test_playback_service().await;
-    let queue_before = crate::tables::queue_value(&service.database).await.unwrap();
-
-    service.handle_play("4b6f0e2a-91c3-4d58-b7e6-0a2f3c4d5e6f".to_string()).await;
-
-    let mut saw_error = false;
-    let mut saw_playing = false;
-    while let Ok(progress) = progress_rx.try_recv() {
-        match progress {
-            PlaybackProgress::PlaybackError { .. } => saw_error = true,
-            PlaybackProgress::StateChanged { state: PlaybackState::Playing { .. } } => {
-                saw_playing = true
-            }
-            _ => {}
-        }
-    }
-    assert!(saw_error, "a failed context load must surface a PlaybackError");
-    assert_eq!(
-        crate::tables::queue_value(&service.database).await.unwrap(),
-        queue_before,
-        "a failed context load must not mutate the queue with a fallback single-track entry"
-    );
-    assert!(!saw_playing, "a failed context load must never reach Playing");
-    assert!(
-        matches!(service.slot, PlaybackSlot::Stopped),
-        "the slot must stay Stopped, not start loading a track whose context failed"
-    );
-}
+use super::*;
+use crate::audio_output::{
+    audio_event_channel, AudioError, AudioEvent, AudioEventSender, AudioOutputControls, AudioStream,
+};
+use crate::service::tests::*;
+use bae_audio::track_stream::create_track_stream_pair;
 
 /// `attach_track` reuses the one persistent output stream for a same-format
 /// transition (swapping the source in place, which fires `on_source_replaced`)
@@ -398,18 +283,6 @@ fn queued_completion(track_id: &str) -> AudioEvent {
     AudioEvent::Completion((Arc::new(test_track_fmt(track_id)), 0, 44_100))
 }
 
-fn drained_track_completed_ids(
-    progress_rx: &mut tokio_mpsc::UnboundedReceiver<PlaybackProgress>,
-) -> Vec<String> {
-    let mut ids = Vec::new();
-    while let Ok(progress) = progress_rx.try_recv() {
-        if let PlaybackProgress::TrackCompleted { track_id } = progress {
-            ids.push(track_id);
-        }
-    }
-    ids
-}
-
 /// A same-format switch swaps the source in place but keeps the one persistent
 /// audio-events receiver. Events queued for the outgoing track before the swap
 /// must be dropped under the same lock the swap takes, or a later drain would
@@ -474,197 +347,30 @@ async fn an_invalidated_stream_rebuild_carries_a_queued_completion_forward() {
     );
 }
 
-/// A stale `AutoAdvance` — for a track that is no longer current because the user
-/// pressed Next first — must be dropped, not advance again (which would skip the
-/// track Next landed on). The completed track's id no longer matches the current
-/// track, so the advance is stale.
+/// An output that stops sending partway — an AirPlay conversion failing —
+/// stops playback with an error and reports the bug, rather than playing on
+/// with audio missing.
 #[tokio::test]
-async fn auto_advance_ignores_a_stale_track_id_after_a_manual_next() {
-    let (_home, mut service, _rx) = test_playback_service().await;
-    let buffer = create_sparse_buffer(1_024);
-    // The user already pressed Next: B is current and Playing. A stale
-    // AutoAdvance for the previously-completed A arrives afterward.
-    service.slot = active_slot(test_prepared_track("B", buffer), TrackPhase::Playing);
+async fn an_output_that_stops_sending_stops_playback_and_reports_the_bug() {
+    let bugs = Arc::new(bae_diagnostics::RecordingBugReporter::default());
+    let diagnostics = bae_diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone());
+    let store = seeded_store(&[]).await;
+    let (mut service, mut progress_rx) = playback_service_over(&store, diagnostics.clone());
+    service.slot =
+        active_slot(test_prepared_track("t", create_sparse_buffer(1_024)), TrackPhase::Playing);
 
-    service.handle_auto_advance("A".to_string()).await;
-
-    assert_eq!(
-        service.slot.current_track_id(),
-        Some("B"),
-        "a stale AutoAdvance for a no-longer-current track must not advance"
-    );
-}
-
-/// A stale `AutoAdvance` whose track IS still current but is no longer in the
-/// `Completed` phase — because a seek after its completion reset the phase — must
-/// also be dropped, or the queued advance would abandon the seek the user just
-/// made.
-#[tokio::test]
-async fn auto_advance_ignores_a_matching_track_that_is_no_longer_completed() {
-    let (_home, mut service, _rx) = test_playback_service().await;
-    let buffer = create_sparse_buffer(1_024);
-    // A is current again and Playing (a seek after its completion moved the phase
-    // off Completed). The stale AutoAdvance for A must not advance.
-    service.slot = active_slot(test_prepared_track("A", buffer), TrackPhase::Playing);
-
-    service.handle_auto_advance("A".to_string()).await;
-
-    assert_eq!(
-        service.slot.current_track_id(),
-        Some("A"),
-        "AutoAdvance must only fire while the completed track is still Completed"
-    );
-}
-
-/// A play command ships `playback_command` (the user intent), `playback_started`
-/// (the new context), and `track_started` (the track it begins), driven through
-/// the real command loop out to the (recording) Datadog transport. Driving it as
-/// a queued command — not a direct `handle_play` — is what exercises the
-/// `playback_command` emission, which lives in the loop, not the handler. The
-/// seeded release has no backing audio, so preparing the track fails after all
-/// three events are already emitted — the events fire at the command, not on a
-/// successful decode.
-#[tokio::test]
-async fn a_play_command_ships_playback_command_started_and_track_started() {
-    let (diagnostics, transport) = recording_diagnostics();
-    let store = seeded_store(&[(
-            "c61a9e19-f3ba-4728-842c-c59dbc82e238",
-            &["08c80007-b56a-4fc9-8df6-af2967fa09b9", "08c7ff07-b56a-4e16-8df6-ae2967fa0806"],
-        )]).await;
-    let (mut service, _progress_rx) = playback_service_over(&store, diagnostics.clone());
-
-    // Queue the play command and a shutdown, then let the real loop drain both:
-    // it emits the command telemetry, runs the play, then breaks on shutdown.
-    let commands = service.command_tx.clone();
-    dispatch_command(
-        &commands,
-        PlaybackCommand::Play("08c80007-b56a-4fc9-8df6-af2967fa09b9".to_string()),
-    );
-    let (shutdown_tx, _shutdown_rx) = tokio::sync::oneshot::channel::<()>();
-    dispatch_command(&commands, PlaybackCommand::Shutdown(shutdown_tx));
-    let (_deletions_tx, track_deletions) = tokio_mpsc::unbounded_channel();
-    service.run(track_deletions).await;
-
-    diagnostics.flush().await.expect("flush succeeds");
-    let names = transport.event_names();
-    assert!(
-        names.iter().any(|n| n == "playback_command"),
-        "a play command ships playback_command (got {names:?})"
-    );
-    assert!(
-        names.iter().any(|n| n == "playback_started"),
-        "a play command ships playback_started (got {names:?})"
-    );
-    assert!(
-        names.iter().any(|n| n == "track_started"),
-        "a play command ships track_started (got {names:?})"
-    );
-}
-
-/// `Previous` ships `track_started` for the track it lands on — a path that
-/// carried no emission until the event moved into `play_track`. The seeded
-/// release has no backing audio, so preparing the previous track fails after
-/// the event is already emitted: the event fires at the command, not on a
-/// successful decode.
-#[tokio::test]
-async fn previous_ships_track_started() {
-    let (diagnostics, transport) = recording_diagnostics();
-    let store = seeded_store(&[(
-            "c61a9e19-f3ba-4728-842c-c59dbc82e238",
-            &["08c80007-b56a-4fc9-8df6-af2967fa09b9", "08c7ff07-b56a-4e16-8df6-ae2967fa0806"],
-        )]).await;
-    let (mut service, _progress_rx) = playback_service_over(&store, diagnostics.clone());
-
-    // A two-track context playing from t1, so Previous steps back to t0.
     service
-        .playback_queue
-        .play(ContextFill::Release {
-            release_id: "c61a9e19-f3ba-4728-842c-c59dbc82e238".to_string(),
-            start: ReleaseStart::Track("08c7ff07-b56a-4e16-8df6-ae2967fa0806".to_string()),
+        .handle_audio_event(AudioEvent::OutputFailed {
+            detail: "converting a chunk for the AirPlay speaker failed: swr_convert".to_string(),
         })
-        .await
-        .unwrap();
-    let buffer = create_sparse_buffer(1_024);
-    service.slot = active_slot(
-        test_prepared_track("08c7ff07-b56a-4e16-8df6-ae2967fa0806", buffer),
-        TrackPhase::Playing,
-    );
-
-    service.handle_previous().await;
-
-    diagnostics.flush().await.expect("flush succeeds");
-    let names = transport.event_names();
-    assert!(
-        names.iter().any(|n| n == "track_started"),
-        "Previous ships track_started (got {names:?})"
-    );
-}
-
-/// A user-intent command maps to its telemetry kind; internal/system commands,
-/// queries, and continuous inputs map to `None` and ship nothing.
-#[test]
-fn playback_command_kind_maps_user_intent_only() {
-    use super::playback_command_kind;
-    assert!(matches!(
-        playback_command_kind(&PlaybackCommand::Play(
-            "08c80007-b56a-4fc9-8df6-af2967fa09b9".to_string()
-        )),
-        Some(PlaybackCommandKind::Play)
-    ));
-    assert!(matches!(
-        playback_command_kind(&PlaybackCommand::SetRepeatMode(RepeatMode::Off)),
-        Some(PlaybackCommandKind::SetRepeat)
-    ));
-    // A continuous input and an internal command ship nothing.
-    assert!(playback_command_kind(&PlaybackCommand::SetVolume(0.5)).is_none());
-    assert!(playback_command_kind(&PlaybackCommand::AutoAdvance {
-        track_id: "08c80007-b56a-4fc9-8df6-af2967fa09b9".to_string()
-    })
-    .is_none());
-}
-
-/// A track's natural completion ships `track_completed` carrying the decode-error
-/// count — the quality signal.
-#[tokio::test]
-async fn track_completion_ships_track_completed_with_decode_error_count() {
-    let (diagnostics, transport) = recording_diagnostics();
-    let store = seeded_store(&[("c61a9e19-f3ba-4728-842c-c59dbc82e238", &["08c80007-b56a-4fc9-8df6-af2967fa09b9"])]).await;
-    let (mut service, _progress_rx) = playback_service_over(&store, diagnostics.clone());
-
-    // A track must be active for the completion to mark its phase.
-    let buffer = create_sparse_buffer(1_024);
-    service.slot = active_slot(
-        test_prepared_track("08c80007-b56a-4fc9-8df6-af2967fa09b9", buffer),
-        TrackPhase::Playing,
-    );
-
-    service
-        .handle_completion_event(
-            Arc::new(test_track_fmt("08c80007-b56a-4fc9-8df6-af2967fa09b9")),
-            2,
-            44_100,
-        )
         .await;
 
-    diagnostics.flush().await.expect("flush succeeds");
-    let bodies = transport.requests();
-    let events: Vec<bae_diagnostics::DiagnosticEvent> = bodies
-        .iter()
-        .flat_map(|r| {
-            serde_json::from_slice::<Vec<bae_diagnostics::DiagnosticEvent>>(&r.body).unwrap()
-        })
-        .collect();
-    let completed = events
-        .iter()
-        .find(|e| e.name == "track_completed")
-        .expect("track completion ships track_completed");
-    assert_eq!(completed.fields["decode_errors"], serde_json::json!(2));
-    assert_eq!(
-        completed.fields["track_id"],
-        serde_json::json!("08c80007-b56a-4fc9-8df6-af2967fa09b9")
-    );
+    let mut saw_error = false;
+    while let Ok(progress) = progress_rx.try_recv() {
+        saw_error |= matches!(progress, PlaybackProgress::PlaybackError { .. });
+    }
+    assert!(saw_error, "the person is told playback stopped");
+    assert!(matches!(service.slot, PlaybackSlot::Stopped));
+    assert_eq!(bugs.reports().len(), 1);
+    assert!(bugs.reports()[0].1.contains("swr_convert"));
 }
-
-// -- renderer seam: remote playback -------------------------------------------
-
-use crate::renderer::{ReceiverStatus, RendererFlavor, RendererPlayerState, RendererSessionEvent};

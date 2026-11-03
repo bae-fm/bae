@@ -824,3 +824,7 @@ impl PlaybackService {
         self.persist_playback_state().await;
     }
 }
+
+#[cfg(test)]
+#[path = "advance_tests.rs"]
+mod tests;

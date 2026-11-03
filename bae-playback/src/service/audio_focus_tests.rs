@@ -1,3 +1,7 @@
+use super::*;
+use crate::service::tests::*;
+use bae_audio::track_stream::create_track_stream_pair;
+
 /// A system that grants the speaker or refuses it, counting what it was asked.
 struct CountingAudioFocus {
     refuses: bool,
@@ -59,6 +63,7 @@ fn manually_paused(service: &mut PlaybackService) {
 
 /// The release these tests play, and its second track.
 const FOCUS_RELEASE: &str = "5f0fb2d4-0a39-4f43-9b0c-6a8f1b7f3d21";
+
 const FOCUS_NEXT: &str = "8c2e7f14-61d3-4b5a-a0de-2b6c9e4f7a13";
 
 /// The queue `t` then `next`, with `next` decoded ahead and ready to play.
@@ -111,10 +116,7 @@ async fn play_while_the_system_grants_the_speaker_plays() {
     service.resume().await;
 
     assert_eq!(system.requests(), 1);
-    assert_eq!(
-        service.audio_output.get_state(),
-        crate::audio_output::AudioState::Playing
-    );
+    assert_eq!(service.audio_output.get_state(), crate::audio_output::AudioState::Playing);
 }
 
 #[tokio::test]

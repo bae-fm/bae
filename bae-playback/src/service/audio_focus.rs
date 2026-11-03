@@ -25,3 +25,7 @@ impl PlaybackService {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "audio_focus_tests.rs"]
+mod tests;
