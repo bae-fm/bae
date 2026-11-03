@@ -585,7 +585,7 @@ async fn airplay_pause_flushes_and_resume_reanchors() {
     let (_home, mut service, _progress_rx) = test_playback_service().await;
     let buffer = create_sparse_buffer(1_024);
     service.slot = active_slot(test_prepared_track("t", buffer), TrackPhase::Playing);
-    let airplay = install_airplay(&mut service, std::time::Duration::from_secs(2), 0.5);
+    let airplay = install_airplay(&mut service, std::time::Duration::from_secs(2));
     let state = &airplay.state;
 
     service.pause();
@@ -610,7 +610,7 @@ async fn airplay_position_is_offset_by_receiver_latency() {
     let buffer = create_sparse_buffer(1_024);
     service.slot = active_slot(test_prepared_track("t", buffer), TrackPhase::Playing);
     // The live session's receiver reported a quarter-second latency.
-    let _airplay = install_airplay(&mut service, std::time::Duration::from_millis(250), 0.5);
+    let _airplay = install_airplay(&mut service, std::time::Duration::from_millis(250));
 
     // A tick at 5 s of decoded position: the audible position is 5 − 0.25 s.
     let mut fmt = test_track_fmt("t");
@@ -633,12 +633,15 @@ async fn airplay_stop_restores_the_local_output_and_returns_to_local() {
     let (_home, mut service, _progress_rx) = test_playback_service().await;
     let buffer = create_sparse_buffer(1_024);
     service.slot = active_slot(test_prepared_track("t", buffer), TrackPhase::Playing);
-    let _airplay = install_airplay(&mut service, std::time::Duration::from_secs(2), 0.777);
+    let airplay = install_airplay(&mut service, std::time::Duration::from_secs(2));
 
     service.stop().await;
 
     assert!(!service.renderer.is_airplay(), "stop returns to the local renderer");
-    assert_eq!(service.audio_output.get_volume(), 0.777, "the saved local output sink is restored");
+    assert!(
+        airplay.is_saved_output(service.audio_output.as_ref()),
+        "the saved local output sink is restored"
+    );
 }
 
 /// Stopping AirPlay resumes local at the position playback actually reached: the
@@ -652,8 +655,7 @@ async fn airplay_stop_reads_the_live_position_and_returns_to_local() {
         seeded_playback_service(&[("af63ef4c-8602-4cd5-82c0-3d334b916305", &[TRACK_T])]).await;
     service.slot =
         active_slot(test_prepared_track(TRACK_T, create_sparse_buffer(1_024)), TrackPhase::Playing);
-    let saved_tag = 0.5;
-    let _airplay = install_airplay(&mut service, std::time::Duration::from_secs(2), saved_tag);
+    let airplay = install_airplay(&mut service, std::time::Duration::from_secs(2));
 
     // Playback progressed on AirPlay: decode is local, so the slot's position is
     // the live one the resume reads.
@@ -664,9 +666,8 @@ async fn airplay_stop_reads_the_live_position_and_returns_to_local() {
     service.handle_stop_remote().await;
 
     assert!(!service.renderer.is_airplay(), "stop returns to the local renderer");
-    assert_eq!(
-        service.audio_output.get_volume(),
-        saved_tag,
+    assert!(
+        airplay.is_saved_output(service.audio_output.as_ref()),
         "the saved local output sink is restored"
     );
 }
@@ -685,7 +686,7 @@ async fn airplay_seek_flushes_and_reanchors() {
         Arc::new(Mutex::new(source::PlaybackSource::new(source, test_track_fmt(TRACK_T)))),
         audio_rx,
     ));
-    let airplay = install_airplay(&mut service, std::time::Duration::from_secs(2), 0.5);
+    let airplay = install_airplay(&mut service, std::time::Duration::from_secs(2));
     let state = &airplay.state;
 
     service.seek(StreamPosition::from_duration(std::time::Duration::from_secs(20))).await;
@@ -710,7 +711,7 @@ async fn airplay_advance_on_local_end_stays_on_airplay() {
     fill_test_release(&mut service, "af63ef4c-8602-4cd5-82c0-3d334b916305").await;
     service.slot =
         active_slot(test_prepared_track(TRACK_A, create_sparse_buffer(1_024)), TrackPhase::Playing);
-    let _airplay = install_airplay(&mut service, std::time::Duration::from_secs(2), 0.5);
+    let _airplay = install_airplay(&mut service, std::time::Duration::from_secs(2));
 
     service.handle_auto_advance(TRACK_A.to_string()).await;
 
@@ -772,7 +773,7 @@ async fn airplay_receiver_death_ends_airplay_and_returns_to_local() {
         seeded_playback_service(&[("af63ef4c-8602-4cd5-82c0-3d334b916305", &[TRACK_T])]).await;
     service.slot =
         active_slot(test_prepared_track(TRACK_T, create_sparse_buffer(1_024)), TrackPhase::Playing);
-    let airplay = install_airplay(&mut service, std::time::Duration::from_secs(2), 0.5);
+    let airplay = install_airplay(&mut service, std::time::Duration::from_secs(2));
     let state = &airplay.state;
     while progress_rx.try_recv().is_ok() {}
 
@@ -802,4 +803,47 @@ async fn airplay_receiver_death_ends_airplay_and_returns_to_local() {
             detail: "20 audio sends in a row failed: No route to host (os error 65)".to_string(),
         })
     );
+}
+
+/// The level set while AirPlay plays carries back to the local output when
+/// the person stops AirPlay: there is one level, and the UI already shows it.
+#[tokio::test]
+async fn stopping_airplay_keeps_the_level_set_on_the_receiver() {
+    let (_home, mut service, _progress_rx) = test_playback_service().await;
+    service.set_volume(0.8);
+    service
+        .handle_play_on_airplay(renderer::AirPlayConnect::new(
+            Box::new(NoopAirPlaySink),
+            test_device(),
+        ))
+        .await;
+
+    service.set_volume(0.3);
+    service.handle_stop_remote().await;
+
+    assert!(!service.renderer.is_airplay(), "stop returns to the local renderer");
+    assert_eq!(service.audio_output.get_volume(), 0.3, "the local output plays at the level set");
+}
+
+/// A mute made while AirPlay plays holds on the local output after a stop
+/// ends AirPlay, and unmuting there puts back the level set before the mute.
+#[tokio::test]
+async fn a_mute_made_on_airplay_holds_after_airplay_ends() {
+    let (_home, mut service, _progress_rx) = test_playback_service().await;
+    service.set_volume(0.8);
+    service
+        .handle_play_on_airplay(renderer::AirPlayConnect::new(
+            Box::new(NoopAirPlaySink),
+            test_device(),
+        ))
+        .await;
+
+    service.set_volume(0.4);
+    service.set_muted(true);
+    service.stop().await;
+
+    assert!(!service.renderer.is_airplay(), "stop returns to the local renderer");
+    assert_eq!(service.audio_output.get_volume(), 0.0, "the local output stays muted");
+    service.set_muted(false);
+    assert_eq!(service.audio_output.get_volume(), 0.4, "unmute puts back the level set");
 }

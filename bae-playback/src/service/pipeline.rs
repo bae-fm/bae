@@ -196,7 +196,8 @@ impl PlaybackService {
         // renderer here until history has applied its audible-position offset.
         self.teardown_local_playback();
         self.finish_listening().await;
-        let was_playing_on_device = self.renderer.return_to_local_for_stop(&mut self.audio_output);
+        let was_playing_on_device =
+            self.renderer.return_to_local_for_stop(&mut self.audio_output, self.volume);
         if was_playing_on_device {
             emit_progress(
                 &self.progress_tx,

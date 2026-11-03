@@ -103,6 +103,7 @@ impl Renderer {
     pub(super) fn return_to_local_for_stop(
         &mut self,
         audio_output: &mut Box<dyn crate::audio_output::AudioOutput>,
+        volume: OutputVolume,
     ) -> bool {
         match std::mem::replace(self, Self::Local) {
             Self::Local => false,
@@ -111,7 +112,7 @@ impl Renderer {
                 true
             }
             Self::AirPlay(airplay) => {
-                *audio_output = airplay.saved_output;
+                airplay.restore_local_output(audio_output, volume);
                 true
             }
         }
@@ -153,6 +154,19 @@ impl AirPlayRenderer {
         saved_output: Box<dyn crate::audio_output::AudioOutput>,
     ) -> Self {
         Self { device, control, saved_output }
+    }
+
+    /// Put the local output back in place of the AirPlay one, playing at
+    /// `volume` — the level set while AirPlay played, and its mute — and
+    /// name the receiver AirPlay played on.
+    fn restore_local_output(
+        self,
+        audio_output: &mut Box<dyn crate::audio_output::AudioOutput>,
+        volume: OutputVolume,
+    ) -> RemoteDevice {
+        *audio_output = self.saved_output;
+        volume.apply_to(audio_output.as_ref());
+        self.device
     }
 }
 
@@ -289,7 +303,7 @@ impl PlaybackService {
         // Carry the current play/pause intent to the device.
         let target = self.current_play_target();
         // Seed the device with what the user hears, so it matches (0 while muted).
-        let volume = self.volume.audible_level(self.audio_output.as_ref());
+        let volume = self.volume.audible_level();
 
         // Stop the local pipeline (decoder, cpal stream, byte buffers); the
         // queue and its cursor are untouched.
@@ -614,7 +628,7 @@ impl PlaybackService {
         let current = self.current_track_position();
         let target = self.current_play_target();
         // Seed the device with what the user hears, so it matches (0 while muted).
-        let volume = self.volume.audible_level(self.audio_output.as_ref());
+        let volume = self.volume.audible_level();
 
         // Tear the current local pipeline down; `play_track` rebuilds it below,
         // this time feeding the AirPlay sink.
@@ -639,18 +653,18 @@ impl PlaybackService {
         let current = self.current_track_position();
         self.retire_current_track();
         self.discard_buffered_listening();
-        let (saved_output, remote_playback) =
-            match std::mem::replace(&mut self.renderer, Renderer::Local) {
-                Renderer::AirPlay(r) => (r.saved_output, end.remote_playback(r.device)),
-                other => {
-                    self.renderer = other;
-                    return;
-                }
-            };
+        let airplay = match std::mem::replace(&mut self.renderer, Renderer::Local) {
+            Renderer::AirPlay(airplay) => airplay,
+            other => {
+                self.renderer = other;
+                return;
+            }
+        };
         // Dropping the current output (the AirPlay stream) tears the receiver
         // session down; then restore the local sink.
         self.teardown_local_playback();
-        self.audio_output = saved_output;
+        let device = airplay.restore_local_output(&mut self.audio_output, self.volume);
+        let remote_playback = end.remote_playback(device);
         emit_progress(
             &self.progress_tx,
             PlaybackProgress::RemoteStatusChanged { remote: remote_playback },

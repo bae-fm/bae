@@ -3150,7 +3150,7 @@ drops its bytes, and its fill fetches them again.
 
 Switching to a receiver keeps the queue and sends the current track at its
 current position. Ending the session returns to this device, paused where it
-was.
+was, at the volume and mute last set: there is one volume, whatever plays.
 
 **Fetching receivers.** A Chromecast or UPnP renderer fetches each track from
 a small HTTP server bae runs for the session, on the local network, with a

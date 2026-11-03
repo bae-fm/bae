@@ -146,20 +146,7 @@ impl PlaybackService {
                 self.set_volume(volume);
             }
             PlaybackCommand::SetMuted(muted) => {
-                // Already in that state means nothing changes and nothing
-                // emits. Otherwise the new audible level comes back — zero on
-                // mute, the level from before the mute on unmute. Receiver
-                // mute is flaky across devices, so the remote device follows
-                // that level rather than a mute command of its own. The level
-                // the person set is unchanged, and is what screens show
-                // beside the mute.
-                if let Some(level) = self.volume.set_muted(muted, self.audio_output.as_ref()) {
-                    self.renderer.set_remote_volume(level);
-                    emit_progress(
-                        &self.progress_tx,
-                        PlaybackProgress::MuteChanged { is_muted: muted },
-                    );
-                }
+                self.set_muted(muted);
             }
             PlaybackCommand::AddToQueue(track_ids) => {
                 let added = self.playback_queue.add_to_queue(track_ids).await;

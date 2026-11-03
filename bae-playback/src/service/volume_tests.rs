@@ -49,8 +49,8 @@ fn unmute_restores_the_level_the_user_set() {
     assert!(!volume.set(0.4, &output));
     assert_eq!(volume.set_muted(true, &output), Some(0.0));
     assert_eq!(output.get_volume(), 0.0);
-    assert_eq!(volume.level(&output), 0.4, "the UI keeps showing 0.4");
-    assert_eq!(volume.audible_level(&output), 0.0);
+    assert_eq!(volume.level(), 0.4, "the UI keeps showing 0.4");
+    assert_eq!(volume.audible_level(), 0.0);
 
     assert_eq!(volume.set_muted(false, &output), Some(0.4));
     assert_eq!(output.get_volume(), 0.4);
@@ -83,7 +83,7 @@ fn raising_the_level_unmutes_and_setting_zero_does_not() {
 
     assert!(volume.set(0.3, &output), "a level above zero lifts mute");
     assert!(!volume.is_muted());
-    assert_eq!(volume.level(&output), 0.3);
+    assert_eq!(volume.level(), 0.3);
 }
 
 #[test]
@@ -93,7 +93,7 @@ fn a_restored_muted_session_comes_back_silent_at_its_saved_level() {
 
     volume.restore(0.7, true, &output);
     assert_eq!(output.get_volume(), 0.0);
-    assert_eq!(volume.level(&output), 0.7);
+    assert_eq!(volume.level(), 0.7);
     assert_eq!(volume.set_muted(false, &output), Some(0.7));
 
     volume.restore(0.2, false, &output);

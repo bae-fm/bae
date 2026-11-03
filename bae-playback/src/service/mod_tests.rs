@@ -679,32 +679,39 @@ impl crate::airplay_output::AirPlayStreamControl for FakeAirPlayControl {
     }
 }
 
-/// A fake AirPlay session bound as the live one: what it recorded, and the
-/// session itself, which the test holds the way an output stream does.
+/// A fake AirPlay session bound as the live one: what it recorded, the
+/// session itself, which the test holds the way an output stream does, and
+/// the saved local output, by where it lives.
 #[must_use = "the session is live only while this is held"]
 pub(super) struct InstalledAirPlay {
     pub(super) state: Arc<FakeAirPlayControlState>,
     _session: Arc<dyn crate::airplay_output::AirPlayStreamControl>,
+    saved_output: *const AudioOutputControls,
 }
 
-/// Install an AirPlay renderer on `service` with a tagged saved local output
-/// (volume `saved_tag`) and a fake session at the receiver `latency` bound as
-/// the live one.
+impl InstalledAirPlay {
+    /// Whether `output` is the local output AirPlay saved.
+    pub(super) fn is_saved_output(&self, output: &dyn crate::audio_output::AudioOutput) -> bool {
+        std::ptr::eq(output.controls(), self.saved_output)
+    }
+}
+
+/// Install an AirPlay renderer on `service` with a saved local output and a
+/// fake session at the receiver `latency` bound as the live one.
 pub(super) fn install_airplay(
     service: &mut PlaybackService,
     latency: std::time::Duration,
-    saved_tag: f32,
 ) -> InstalledAirPlay {
     let state = Arc::new(FakeAirPlayControlState::default());
     let session: Arc<dyn crate::airplay_output::AirPlayStreamControl> =
         Arc::new(FakeAirPlayControl { state: state.clone(), latency });
     let control = Arc::new(crate::airplay_output::AirPlayControl::new());
     control.bind(&session);
-    let saved = TestAudioOutput::new();
-    saved.set_volume(saved_tag);
+    let saved: Box<dyn crate::audio_output::AudioOutput> = Box::new(TestAudioOutput::new());
+    let saved_output: *const AudioOutputControls = saved.controls();
     service.renderer =
-        Renderer::AirPlay(renderer::AirPlayRenderer::new(test_device(), control, Box::new(saved)));
-    InstalledAirPlay { state, _session: session }
+        Renderer::AirPlay(renderer::AirPlayRenderer::new(test_device(), control, saved));
+    InstalledAirPlay { state, _session: session, saved_output }
 }
 
 /// A user-intent command maps to its telemetry kind; internal/system commands,
