@@ -132,7 +132,6 @@ export default {
   endPrefix: "Đọc kiến trúc",
   endFallback: ".",
   endText: "Riêng tư, mã nguồn mở và đang phát triển. Mọi thứ bạn thêm vẫn là của bạn.",
-  readArchitecture: "Đọc kiến trúc",
   footerStatus: "riêng tư và mã nguồn mở",
   cycleWords: [
     "về nhà",

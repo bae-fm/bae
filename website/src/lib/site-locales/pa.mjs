@@ -132,7 +132,6 @@ export default {
   endPrefix: "ਆਰਕੀਟੈਕਚਰ ਪੜ੍ਹੋ",
   endFallback: ".",
   endText: "ਨਿੱਜੀ, open source ਅਤੇ ਵਿਕਾਸ ਵਿੱਚ। ਤੁਸੀਂ ਜੋ ਜੋੜਦੇ ਹੋ ਉਹ ਤੁਹਾਡਾ ਰਹਿੰਦਾ ਹੈ।",
-  readArchitecture: "ਆਰਕੀਟੈਕਚਰ ਪੜ੍ਹੋ",
   footerStatus: "ਨਿੱਜੀ ਅਤੇ open source",
   cycleWords: [
     "ਘਰ",

@@ -132,7 +132,6 @@ export default {
   endPrefix: "રચના વાંચો",
   endFallback: ".",
   endText: "ખાનગી, open source અને વિકાસમાં. તમે ઉમેરો તે બધું તમારું જ રહે છે.",
-  readArchitecture: "રચના વાંચો",
   footerStatus: "ખાનગી અને open source",
   cycleWords: [
     "ઘરે",

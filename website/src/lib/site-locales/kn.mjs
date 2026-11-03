@@ -132,7 +132,6 @@ export default {
   endPrefix: "ವಾಸ್ತುಶಿಲ್ಪ ಓದಿ",
   endFallback: ".",
   endText: "ಖಾಸಗಿ, open source, ಮತ್ತು ಅಭಿವೃದ್ಧಿಯಲ್ಲಿದೆ. ನೀವು ಸೇರಿಸುವುದೆಲ್ಲ ನಿಮ್ಮದೇ ಇರುತ್ತದೆ.",
-  readArchitecture: "ವಾಸ್ತುಶಿಲ್ಪ ಓದಿ",
   footerStatus: "ಖಾಸಗಿ ಮತ್ತು open source",
   cycleWords: [
     "ಮನೆಗೆ",

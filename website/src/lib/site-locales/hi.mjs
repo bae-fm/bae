@@ -132,7 +132,6 @@ export default {
   endPrefix: "आर्किटेक्चर पढ़ें",
   endFallback: ".",
   endText: "निजी, ओपन सोर्स और विकास में। आप जो जोड़ते हैं वह आपका रहता है।",
-  readArchitecture: "आर्किटेक्चर पढ़ें",
   footerStatus: "निजी और ओपन सोर्स",
   cycleWords: [
     "घर",

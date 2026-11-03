@@ -68,7 +68,6 @@ export default {
   endPrefix: '把你的收藏带到',
   endFallback: '身边。',
   endText: '私有、开源，并处于积极开发中。你添加的一切仍然属于你。',
-  readArchitecture: '阅读架构',
   footerStatus: '私有且开源',
   cycleWords: ['身边', '任何地方', '一起', '离线', '由你控制'],
 };

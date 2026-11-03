@@ -68,7 +68,6 @@ export default {
   endPrefix: 'הבא את האוסף שלך',
   endFallback: 'הביתה.',
   endText: 'פרטית, קוד פתוח, ובפיתוח פעיל. כל מה שתוסיף נשאר שלך.',
-  readArchitecture: 'קריאת הארכיטקטורה',
   footerStatus: 'פרטית וקוד פתוח',
   cycleWords: ['הביתה', 'לכל מקום', 'יחד', 'לא מקוון', 'בשליטתך'],
 };

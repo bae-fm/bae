@@ -132,7 +132,6 @@ export default {
   endPrefix: "把你的收藏帶到",
   endFallback: "身邊。",
   endText: "私有、開源，並處於開發中。你加入的一切仍然屬於你。",
-  readArchitecture: "閱讀架構",
   footerStatus: "私有且開源",
   cycleWords: [
     "身邊",

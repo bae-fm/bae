@@ -132,7 +132,6 @@ export default {
   endPrefix: "Lees architectuur",
   endFallback: ".",
   endText: "Privé, open source en in ontwikkeling. Alles wat je toevoegt blijft van jou.",
-  readArchitecture: "Lees architectuur",
   footerStatus: "privé en open source",
   cycleWords: [
     "naar huis",

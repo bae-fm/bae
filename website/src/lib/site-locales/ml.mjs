@@ -132,7 +132,6 @@ export default {
   endPrefix: "ആർക്കിടെക്ചർ വായിക്കുക",
   endFallback: ".",
   endText: "സ്വകാര്യവും open source-ഉം വികസനത്തിലുമാണ്. നിങ്ങൾ ചേർക്കുന്നതെല്ലാം നിങ്ങളുടേതായി തുടരും.",
-  readArchitecture: "ആർക്കിടെക്ചർ വായിക്കുക",
   footerStatus: "സ്വകാര്യവും open source-ഉം",
   cycleWords: [
     "വീട്ടിലേക്ക്",

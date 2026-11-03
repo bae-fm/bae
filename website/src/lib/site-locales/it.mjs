@@ -132,7 +132,6 @@ export default {
   endPrefix: "Leggi architettura",
   endFallback: ".",
   endText: "Privato, open source e in sviluppo. Tutto ciò che aggiungi resta tuo.",
-  readArchitecture: "Leggi architettura",
   footerStatus: "privato e open source",
   cycleWords: [
     "a casa",

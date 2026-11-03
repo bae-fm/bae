@@ -19,7 +19,6 @@ export const sidebarTranslations = {
     storage: { en: 'Storage and offline' },
     exporting: { en: 'Exporting' },
     automation: { en: 'Automation' },
-    architecture: { en: 'Architecture' },
     dataModel: { en: 'Data model' },
     syncInternals: { en: 'Sync' },
     cloudStorage: { en: 'Cloud storage' },

@@ -68,7 +68,6 @@ export default {
   endPrefix: 'Traga sua coleção',
   endFallback: 'para casa.',
   endText: 'Privada, open source e em desenvolvimento ativo. Tudo que você adiciona continua seu.',
-  readArchitecture: 'Ler arquitetura',
   footerStatus: 'privada e open source',
   cycleWords: ['para casa', 'a todos os lugares', 'junta', 'offline', 'sob controle'],
 };

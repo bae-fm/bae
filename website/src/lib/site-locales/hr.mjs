@@ -68,7 +68,6 @@ export default {
   endPrefix: 'Donesite kolekciju',
   endFallback: 'kući.',
   endText: 'Privatna, otvorenog koda i u aktivnom razvoju. Sve što dodate ostaje vaše.',
-  readArchitecture: 'Čitaj arhitekturu',
   footerStatus: 'privatna i otvorenog koda',
   cycleWords: ['kući', 'svugdje', 'zajedno', 'offline', 'pod kontrolom'],
 };

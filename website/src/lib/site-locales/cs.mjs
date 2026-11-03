@@ -68,7 +68,6 @@ export default {
   endPrefix: 'Přineste sbírku',
   endFallback: 'domů.',
   endText: 'Soukromá, open source a v aktivním vývoji. Vše, co přidáte, zůstává vaše.',
-  readArchitecture: 'Číst architekturu',
   footerStatus: 'soukromá a open source',
   cycleWords: ['domů', 'všude', 'společně', 'offline', 'pod kontrolou'],
 };

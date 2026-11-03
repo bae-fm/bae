@@ -132,7 +132,6 @@ export default {
   endPrefix: "रचना वाचा",
   endFallback: ".",
   endText: "खाजगी, open source आणि विकासात. तुम्ही जोडलेले सर्व तुमचेच राहते.",
-  readArchitecture: "रचना वाचा",
   footerStatus: "खाजगी आणि open source",
   cycleWords: [
     "घरी",

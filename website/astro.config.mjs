@@ -100,7 +100,6 @@ export default defineConfig({
 					label: 'Technical reference',
 					translations: translations(sidebarTranslations.sections.technicalReference),
 					items: [
-						{ label: 'Architecture', translations: docTitleTranslations('reference/architecture', 'Architecture'), slug: 'reference/architecture' },
 						{ label: 'Data model', translations: docTitleTranslations('reference/data-model', 'Data model'), slug: 'reference/data-model' },
 						{ label: 'Sync', translations: docTitleTranslations('reference/sync', 'Sync'), slug: 'reference/sync' },
 						{ label: 'Cloud storage', translations: docTitleTranslations('reference/cloud-storage', 'Cloud storage'), slug: 'reference/cloud-storage' },

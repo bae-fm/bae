@@ -132,7 +132,6 @@ export default {
   endPrefix: "ساخت پڑھیں",
   endFallback: ".",
   endText: "نجی، open source، اور ترقی میں۔ آپ جو کچھ شامل کرتے ہیں وہ آپ کا رہتا ہے۔",
-  readArchitecture: "ساخت پڑھیں",
   footerStatus: "نجی اور open source",
   cycleWords: [
     "گھر",

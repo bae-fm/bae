@@ -132,7 +132,6 @@ export default {
   endPrefix: "อ่านสถาปัตยกรรม",
   endFallback: ".",
   endText: "เป็นส่วนตัว open source และอยู่ระหว่างพัฒนา ทุกอย่างที่คุณเพิ่มยังเป็นของคุณ",
-  readArchitecture: "อ่านสถาปัตยกรรม",
   footerStatus: "ส่วนตัวและ open source",
   cycleWords: [
     "กลับบ้าน",

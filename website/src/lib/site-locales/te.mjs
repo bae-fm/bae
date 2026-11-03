@@ -132,7 +132,6 @@ export default {
   endPrefix: "నిర్మాణం చదవండి",
   endFallback: ".",
   endText: "ప్రైవేట్, open source, అభివృద్ధిలో ఉంది. మీరు జోడించిన ప్రతిదీ మీదే.",
-  readArchitecture: "నిర్మాణం చదవండి",
   footerStatus: "ప్రైవేట్ మరియు open source",
   cycleWords: [
     "ఇంటికి",

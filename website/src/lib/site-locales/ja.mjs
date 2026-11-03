@@ -68,7 +68,6 @@ export default {
   endPrefix: 'コレクションを',
   endFallback: '手元へ。',
   endText: '非公開、オープンソース、現在開発中です。追加したものはすべてあなたのものです。',
-  readArchitecture: 'アーキテクチャを読む',
   footerStatus: '非公開・オープンソース',
   cycleWords: ['手元へ', 'どこでも', '一緒に', 'オフラインで', '自分の管理下に'],
 };

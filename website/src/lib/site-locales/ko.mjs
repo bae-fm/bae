@@ -68,7 +68,6 @@ export default {
   endPrefix: '컬렉션을',
   endFallback: '집으로.',
   endText: '비공개, 오픈 소스, 개발 중입니다. 추가한 모든 것은 계속 내 것입니다.',
-  readArchitecture: '아키텍처 읽기',
   footerStatus: '비공개 및 오픈 소스',
   cycleWords: ['집으로', '어디서나', '함께', '오프라인', '내 제어 아래'],
 };

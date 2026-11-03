@@ -132,7 +132,6 @@ export default {
   endPrefix: "Mimariyi oku",
   endFallback: ".",
   endText: "Özel, açık kaynak ve geliştirme aşamasında. Eklediğin her şey senin kalır.",
-  readArchitecture: "Mimariyi oku",
   footerStatus: "özel ve açık kaynak",
   cycleWords: [
     "eve",

@@ -132,7 +132,6 @@ export default {
   endPrefix: "கட்டமைப்பைப் படிக்க",
   endFallback: ".",
   endText: "தனிப்பட்டது, open source, வளர்ச்சியில். நீங்கள் சேர்ப்பது அனைத்தும் உங்களுடையதே.",
-  readArchitecture: "கட்டமைப்பைப் படிக்க",
   footerStatus: "தனிப்பட்டது மற்றும் open source",
   cycleWords: [
     "வீட்டிற்கு",
