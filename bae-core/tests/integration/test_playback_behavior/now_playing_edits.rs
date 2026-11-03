@@ -1,33 +1,39 @@
-/// Services over `fixture`'s library and playback, playing its first track
-/// with the queue's context holding the rest of the release.
-async fn playing_first_track(
-    fixture: &PlaybackTestFixture,
-) -> (bae_core::library::AppServices, String) {
-    let services = fixture.services().await;
+/// `fixture`'s playback playing its first track with the queue's context
+/// holding the rest of the release, and that release's id.
+async fn playing_first_track(fixture: &PlaybackTestFixture) -> String {
     let release_id = fixture
         .library
         .get_track_display(&fixture.track_ids[0])
         .await
         .expect("read the first track's release")
         .release_id;
-    let mut progress = services.subscribe_playback_progress();
-    services.playback_play_release(release_id.clone(), Some(fixture.track_ids[0].clone()), false);
+    let mut progress = fixture.playback_handle.subscribe_progress();
+    fixture.playback_handle.play_release(
+        release_id.clone(),
+        Some(fixture.track_ids[0].clone()),
+        false,
+    );
     assert!(
         bae_playback::test_capture::wait_until_playing(&mut progress, &fixture.track_ids[0], PLAY_START_BACKSTOP)
             .await,
         "the first track plays"
     );
-    (services, release_id)
+    release_id
 }
 
-/// Services over `fixture`'s library and playback, paused on its first track
-/// with the queue's context holding the rest of the release.
-async fn paused_on_first_track(
+/// `fixture`'s playback paused on its first track with the queue's context
+/// holding the rest of the release, and that release's id.
+async fn paused_on_first_track(fixture: &PlaybackTestFixture) -> String {
+    let release_id = playing_first_track(fixture).await;
+    fixture.playback_handle.pause();
+    release_id
+}
+
+/// The now-playing values of `fixture`'s library, as a screen reads them.
+fn playback_values(
     fixture: &PlaybackTestFixture,
-) -> (bae_core::library::AppServices, String) {
-    let (services, release_id) = playing_first_track(fixture).await;
-    services.playback_pause();
-    (services, release_id)
+) -> bae_db::live_query::LiveValues<Option<bae_playback::NowPlayingValues>> {
+    fixture.library.values_until_closed(fixture.library.subscribe_now_playing())
 }
 
 /// What the now-playing value shows for `track_id`, once a value shows it
@@ -87,10 +93,8 @@ async fn first_upcoming_until(
 }
 
 /// The queue's upcoming read over its first track.
-fn first_upcoming(
-    services: &bae_core::library::AppServices,
-) -> bae_core::library::LiveQueueUpcoming {
-    let queue = services.subscribe_queue_upcoming();
+fn first_upcoming(library: &TestLibrary) -> bae_core::library::LiveQueueUpcoming {
+    let queue = bae_core::library::live_reads::subscribe_queue_upcoming(library);
     queue
         .set(bae_db::LibraryPageWindows::from([bae_db::LibraryPageWindow {
             offset: 0,
@@ -106,10 +110,10 @@ fn first_upcoming(
 #[tokio::test(flavor = "multi_thread")]
 async fn a_changed_cover_reaches_the_paused_track_and_the_queue() {
     let fixture = PlaybackTestFixture::new().await;
-    let (services, release_id) = paused_on_first_track(&fixture).await;
+    let release_id = paused_on_first_track(&fixture).await;
     let track_id = fixture.track_ids[0].clone();
-    let values = services.subscribe_playback_values();
-    let queue = first_upcoming(&services);
+    let values = playback_values(&fixture);
+    let queue = first_upcoming(&fixture.library);
     let before =
         now_playing_until(&values, &track_id, "the paused track", |_| true).await.cover_image;
     first_upcoming_until(&queue, |item| item.display.cover_image == before).await;
@@ -126,7 +130,8 @@ async fn a_changed_cover_reaches_the_paused_track_and_the_queue() {
         chrono::Utc::now(),
     );
     fixture.library.add_external_file_for_test(&file, &image_path).await.unwrap();
-    services
+    fixture
+        .library
         .change_cover(
             &release_id,
             bae_core::library::CoverSelection::ReleaseImage { file_id: file.id },
@@ -154,14 +159,15 @@ async fn a_changed_cover_reaches_the_paused_track_and_the_queue() {
 #[tokio::test(flavor = "multi_thread")]
 async fn renamed_titles_reach_the_paused_track_and_the_queue() {
     let fixture = PlaybackTestFixture::new().await;
-    let (services, release_id) = paused_on_first_track(&fixture).await;
+    let release_id = paused_on_first_track(&fixture).await;
     let track_id = fixture.track_ids[0].clone();
-    let values = services.subscribe_playback_values();
-    let queue = first_upcoming(&services);
+    let values = playback_values(&fixture);
+    let queue = first_upcoming(&fixture.library);
     now_playing_until(&values, &track_id, "the paused track", |_| true).await;
     first_upcoming_until(&queue, |_| true).await;
 
-    let mut edit = services
+    let mut edit = fixture
+        .library
         .open_release_edit(&release_id)
         .await
         .expect("read the release's edit form")
@@ -171,7 +177,8 @@ async fn renamed_titles_reach_the_paused_track_and_the_queue() {
     edit.album_title = "Renamed Album".to_string();
     edit.tracks[0].title = "Renamed Opening Track".to_string();
     edit.tracks[1].title = "Renamed Second Track".to_string();
-    services
+    fixture
+        .library
         .apply_release_metadata_user_edit(&release_id, &edit.shape().expect("the edit shapes"))
         .await
         .expect("apply the edit");
@@ -191,10 +198,10 @@ async fn renamed_titles_reach_the_paused_track_and_the_queue() {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_playing_track_moves_its_positions_without_sending_a_value() {
     let fixture = PlaybackTestFixture::new().await;
-    let (services, _) = playing_first_track(&fixture).await;
+    playing_first_track(&fixture).await;
     let track_id = fixture.track_ids[0].clone();
-    let values = services.subscribe_playback_values();
-    let mut positions = services.subscribe_playback_positions();
+    let values = playback_values(&fixture);
+    let mut positions = fixture.playback_handle.subscribe_positions();
     let value = tokio::time::timeout(Duration::from_secs(10), values.next())
         .await
         .expect("the playing value arrives")

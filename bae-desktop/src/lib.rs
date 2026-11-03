@@ -5,7 +5,7 @@
 
 use std::sync::Arc;
 
-use bae_core::library::AppServices;
+use bae_app::AppServices;
 use bae_diagnostics::Diagnostics;
 use bae_mcp::{Automation, McpServerController};
 pub use bae_mcp::{McpServerError, McpServerStatus};
@@ -240,7 +240,7 @@ mod tests {
 
     #[test]
     fn desktop_initialization_does_not_reenter_the_owned_runtime() {
-        let (runtime, services, _tmp) = bae_core::test_libraries::runtime_with_services();
+        let (runtime, services, _tmp) = bae_app::test_services::runtime_with_services();
 
         runtime.block_on(async {
             let desktop = DesktopServices::start(
@@ -255,7 +255,7 @@ mod tests {
 
     #[test]
     fn desktop_controller_calls_do_not_reenter_the_owned_runtime() {
-        let (runtime, services, _tmp) = bae_core::test_libraries::runtime_with_services();
+        let (runtime, services, _tmp) = bae_app::test_services::runtime_with_services();
         let desktop = runtime.block_on(DesktopServices::start(
             services,
             runtime.handle().clone(),
@@ -277,7 +277,7 @@ mod tests {
     /// the persisted config untouched — no half-applied enable.
     #[test]
     fn set_subsonic_config_rolls_back_persisted_config_on_runtime_error() {
-        let (runtime, services, _tmp) = bae_core::test_libraries::runtime_with_services();
+        let (runtime, services, _tmp) = bae_app::test_services::runtime_with_services();
         runtime
             .block_on(services.set_subsonic_password("s3cret".to_string()))
             .expect("seed keyring password");

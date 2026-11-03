@@ -171,9 +171,9 @@ impl LibraryManager {
         Ok(())
     }
 
-    /// [`Self::spawn_supervised_task`] for a task its owner stops too: it
+    /// `spawn_supervised_task` for a task its owner stops too: it
     /// runs until it ends, `stop` is cancelled, or the manager closes.
-    pub(crate) fn spawn_stoppable_task<F>(
+    pub fn spawn_stoppable_task<F>(
         &self,
         task_name: &'static str,
         stop: crate::library::CancellationToken,
@@ -198,7 +198,7 @@ impl LibraryManager {
     /// panic in it is reported, and `reader` is told it failed. One asked for
     /// while the library closes starts nothing: the task and the sender it
     /// holds are dropped, so the subscription ends at once.
-    pub(crate) fn spawn_stoppable_subscription_task<F>(
+    pub fn spawn_stoppable_subscription_task<F>(
         &self,
         task_name: &'static str,
         stop: crate::library::CancellationToken,
@@ -219,7 +219,7 @@ impl LibraryManager {
     /// on it then answers that it was cancelled, and it takes no more
     /// requests. One opened while the library closes is cancelled from the
     /// start.
-    pub(crate) fn until_closed<Request, Projection>(
+    pub fn until_closed<Request, Projection>(
         &self,
         query: coven::ReconfigurableLiveQuery<Request, Projection>,
     ) -> bae_db::live_query::CancellableLiveQuery<Request, Projection>
@@ -234,7 +234,7 @@ impl LibraryManager {
     /// before the store closes: a pull waiting on it then answers that it was
     /// cancelled. One opened while the library closes is cancelled from the
     /// start.
-    pub(crate) fn values_until_closed<T: Clone + PartialEq + Send + 'static>(
+    pub fn values_until_closed<T: Clone + PartialEq + Send + 'static>(
         &self,
         query: coven::LiveQuery<T>,
     ) -> bae_db::live_query::LiveValues<T> {
@@ -310,13 +310,13 @@ impl LibraryManager {
     }
 
     /// Report a bug to the log and the platform's crash reporter.
-    pub(crate) fn report_bug(&self, operation: &str, error: &dyn std::fmt::Display) {
+    pub fn report_bug(&self, operation: &str, error: &dyn std::fmt::Display) {
         self.diagnostics.report_bug(operation, error);
     }
 
     /// Report work that panicked apart from its caller as a bug, and hand the
     /// failure back for the caller's own error.
-    pub(crate) fn bug(
+    pub fn bug(
         &self,
         failed: bae_util::task_failure::TaskFailed,
     ) -> bae_util::task_failure::TaskFailed {
@@ -451,7 +451,7 @@ impl LibraryManager {
 
     /// Follow how many downloads the queue holds and the windows `initial`
     /// names of them, as the Downloads pane draws them.
-    pub(crate) fn subscribe_download_windows(
+    pub fn subscribe_download_windows(
         &self,
         initial: bae_db::LibraryPageWindows,
     ) -> coven::ReconfigurableLiveQuery<
@@ -471,7 +471,7 @@ impl LibraryManager {
 
     /// Follow how many downloads are in each phase, and whether the queue is
     /// paused: what the Downloads pane's controls show of them.
-    pub(crate) fn subscribe_download_counts(
+    pub fn subscribe_download_counts(
         &self,
     ) -> coven::LiveQuery<crate::library::ReleaseQueueCounts> {
         self.downloads.subscribe_counts()
@@ -479,7 +479,7 @@ impl LibraryManager {
 
     /// The bytes the active download has moved, by release, and each change
     /// to them.
-    pub(crate) fn subscribe_download_transfers(
+    pub fn subscribe_download_transfers(
         &self,
     ) -> tokio::sync::watch::Receiver<
         std::collections::BTreeMap<String, crate::library::DownloadTransferProgress>,
@@ -489,7 +489,7 @@ impl LibraryManager {
 
     /// The bytes each release this process is making local has downloaded,
     /// by release, and each change to them.
-    pub(crate) fn subscribe_make_local_transfers(
+    pub fn subscribe_make_local_transfers(
         &self,
     ) -> tokio::sync::watch::Receiver<
         std::collections::BTreeMap<String, crate::library::MakeLocalTransferProgress>,
@@ -521,7 +521,7 @@ impl LibraryManager {
     /// The percent the active export has reached, by release, and each
     /// change to it.
     #[cfg(desktop)]
-    pub(crate) fn subscribe_output_transfers(
+    pub fn subscribe_output_transfers(
         &self,
     ) -> tokio::sync::watch::Receiver<std::collections::BTreeMap<String, u8>> {
         self.outputs.subscribe_transfers()

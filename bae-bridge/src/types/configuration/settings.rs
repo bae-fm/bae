@@ -605,11 +605,11 @@ impl From<bae_app_dir::AppDirError> for BridgeError {
 
 /// A metadata source's switch failed on its preference or on the searches it
 /// closes, each crossing as that error does.
-impl From<bae_core::library::MetadataSourceSwitchError> for BridgeError {
-    fn from(error: bae_core::library::MetadataSourceSwitchError) -> Self {
+impl From<bae_app::MetadataSourceSwitchError> for BridgeError {
+    fn from(error: bae_app::MetadataSourceSwitchError) -> Self {
         match error {
-            bae_core::library::MetadataSourceSwitchError::Preference(error) => error.into(),
-            bae_core::library::MetadataSourceSwitchError::Searches(error) => error.into(),
+            bae_app::MetadataSourceSwitchError::Preference(error) => error.into(),
+            bae_app::MetadataSourceSwitchError::Searches(error) => error.into(),
         }
     }
 }

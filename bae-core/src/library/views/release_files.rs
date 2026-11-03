@@ -48,7 +48,7 @@ fn release_files_on(
 impl LibraryViews {
     /// Follow the files of the release `initial` names, or none, in its
     /// order. Another release or order is a new request on the same query.
-    pub(crate) fn subscribe_release_files(
+    pub fn subscribe_release_files(
         &self,
         initial: Option<ReleaseFilesRequest>,
     ) -> coven::ReconfigurableLiveQuery<Option<ReleaseFilesRequest>, Option<Vec<DbFile>>> {

@@ -22,7 +22,7 @@ pub enum LiveReadError {
 }
 
 /// What a live read's task sends its reader.
-pub(crate) enum LiveReadMessage<Value> {
+pub enum LiveReadMessage<Value> {
     /// A value, or a query error the read goes on after.
     Read(Result<Value, LibraryError>),
     /// The task broke, and the read ends.
@@ -30,7 +30,7 @@ pub(crate) enum LiveReadMessage<Value> {
 }
 
 /// The end of a live read its task sends on.
-pub(crate) struct LiveReadSender<Value>(mpsc::UnboundedSender<LiveReadMessage<Value>>);
+pub struct LiveReadSender<Value>(mpsc::UnboundedSender<LiveReadMessage<Value>>);
 
 impl<Value> Clone for LiveReadSender<Value> {
     fn clone(&self) -> Self {
@@ -40,7 +40,7 @@ impl<Value> Clone for LiveReadSender<Value> {
 
 impl<Value> LiveReadSender<Value> {
     /// Send a value or a query error. Fails once the reader is gone.
-    pub(crate) fn send(
+    pub fn send(
         &self,
         value: Result<Value, LibraryError>,
     ) -> Result<(), mpsc::error::SendError<LiveReadMessage<Value>>> {
@@ -49,7 +49,7 @@ impl<Value> LiveReadSender<Value> {
 }
 
 /// A live read's channel: the task's end and the [`LiveRead`]'s.
-pub(crate) fn live_read_channel<Value>(
+pub fn live_read_channel<Value>(
 ) -> (LiveReadSender<Value>, mpsc::UnboundedReceiver<LiveReadMessage<Value>>) {
     let (sender, values) = mpsc::unbounded_channel();
     (LiveReadSender(sender), values)
@@ -57,7 +57,7 @@ pub(crate) fn live_read_channel<Value>(
 
 /// Whoever reads what a subscription's task sends, told when the task broke
 /// so the read ends with that failure rather than as if it were cancelled.
-pub(crate) trait SubscriptionReader: Send + 'static {
+pub trait SubscriptionReader: Send + 'static {
     fn fail(&self, error: LibraryError);
 }
 
@@ -94,7 +94,7 @@ pub struct LiveRead<Request, Value> {
 impl<Request: PartialEq, Value> LiveRead<Request, Value> {
     /// Owns the task `task` stops, which reads the request `request` holds
     /// and sends each value on `values`.
-    pub(crate) fn new(
+    pub fn new(
         request: tokio::sync::watch::Sender<Request>,
         values: mpsc::UnboundedReceiver<LiveReadMessage<Value>>,
         task: CancellationToken,

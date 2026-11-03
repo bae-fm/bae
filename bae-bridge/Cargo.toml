@@ -23,6 +23,8 @@ bae-desktop = { workspace = true, optional = true }
 bae-cast = { workspace = true, optional = true }
 # The identify views and verdicts the desktop import screens mirror.
 bae-identify = { workspace = true, optional = true }
+# The app's services over an open library, which this crate calls.
+bae-app = { workspace = true }
 bae-core = { workspace = true }
 # The import screens' candidates, drafts and queue, and the release-edit
 # model every platform's editor mirrors.
@@ -78,6 +80,8 @@ tracing-journald = { workspace = true }
 [dev-dependencies]
 # The validation-reason ↔ catalog cross-check test loads the master catalog.
 bae-loc = { workspace = true }
+# A test library's services, started through the app's own step.
+bae-app = { workspace = true, features = ["test-utils"] }
 bae-core = { workspace = true, features = ["test-utils"] }
 # The fixture audio the import list tests scan.
 bae-import = { workspace = true, features = ["test-utils"] }
@@ -95,7 +99,7 @@ default = []
 # Enables the OAuth cloud-provider surface (sign-in + the desktop/host OAuth
 # flows) via bae-core/coven. Off by default → the baeium build; the bae
 # build turns it on.
-oauth-providers = ["bae-core/oauth-providers"]
+oauth-providers = ["bae-app/oauth-providers", "bae-core/oauth-providers"]
 cloudkit = []
 # Casting to network receivers: the device picker, the session, and the
 # host-reported discovery seam. Off by default; every shipping platform turns it

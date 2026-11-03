@@ -1,4 +1,4 @@
-use bae_core::library::AppServices;
+use bae_app::AppServices;
 use bae_playback::QueueEntryId;
 use std::sync::PoisonError;
 use tracing::info;
@@ -266,7 +266,7 @@ impl AppHandle {
         services: AppServices,
         runtime: tokio::runtime::Runtime,
         diagnostics: bae_diagnostics::Diagnostics,
-    ) -> Result<Self, bae_core::app::BootstrapError> {
+    ) -> Result<Self, bae_app::BootstrapError> {
         #[cfg(feature = "desktop")]
         let desktop = {
             let runtime_handle = runtime.handle().clone();
@@ -289,7 +289,7 @@ impl AppHandle {
                     if let Err(closing) = runtime.block_on(services.close()) {
                         services.report_bug("close the library a failed open left open", &closing);
                     }
-                    return Err(bae_core::app::BootstrapError::Internal(format!(
+                    return Err(bae_app::BootstrapError::Internal(format!(
                         "desktop services failed to start: {failed}"
                     )));
                 }
@@ -324,7 +324,7 @@ impl AppHandle {
         runtime: tokio::runtime::Runtime,
         diagnostics: bae_diagnostics::Diagnostics,
         host: std::sync::Arc<crate::BridgeHost>,
-    ) -> Result<Self, bae_core::app::BootstrapError> {
+    ) -> Result<Self, bae_app::BootstrapError> {
         let mut app = Self::start(services, runtime, diagnostics)?;
         app._host = Some(host);
         Ok(app)

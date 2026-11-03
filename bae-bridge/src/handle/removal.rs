@@ -135,7 +135,9 @@ mod tests {
         let (library, root) = bae_core::test_libraries::setup_fresh_library(&runtime);
         std::fs::create_dir_all(library.library_path().join("cache")).unwrap();
         let services = runtime.block_on(async move {
-            library.start_services().await.expect("the test library's services start")
+            bae_app::test_services::start_services(&library)
+                .await
+                .expect("the test library's services start")
         });
         let app = Arc::new(
             AppHandle::start(services, runtime, bae_diagnostics::Diagnostics::noop()).unwrap(),

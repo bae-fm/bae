@@ -19,7 +19,7 @@ use std::sync::Arc;
 
 use axum::extract::FromRef;
 use axum::Router;
-use bae_core::library::AppServices;
+use bae_app::AppServices;
 use bae_diagnostics::Diagnostics;
 use bae_preferences::SubsonicCredential;
 

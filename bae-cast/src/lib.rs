@@ -24,7 +24,7 @@ pub mod renderer;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
-use bae_core::library::AppServices;
+use bae_app::AppServices;
 use bae_diagnostics::{lock_or_crash, Diagnostics, ReportedTask};
 use bae_playback::airplay_output::AirPlaySink;
 use bae_playback::renderer::{

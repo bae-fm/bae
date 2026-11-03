@@ -9,7 +9,7 @@ use bae_preferences::SubsonicCredential;
 use bae_db::{DbAlbum, DbArtist, DbRelease, DbTrack};
 use bae_import::release_candidate::CandidateSource;
 use bae_import::{ImportCommand, ImportDestination, ReleaseFileScope};
-use bae_core::library::AppServices;
+use bae_app::AppServices;
 use md5::{Digest, Md5};
 use serde_json::Value;
 use tempfile::TempDir;
@@ -90,7 +90,7 @@ async fn new_library() -> (bae_core::test_libraries::TestLibrary, TempDir) {
 
 async fn new_services() -> (AppServices, TempDir) {
     let (library, temp) = new_library().await;
-    let services = library.start_services().await.expect("the test library's services start");
+    let services = bae_app::test_services::start_services(&library).await.expect("the test library's services start");
     (services, temp)
 }
 
@@ -210,7 +210,7 @@ async fn seed_library() -> Library {
     let mut cue_rx = cue_import.subscribe_import(cue_id);
     let (cue_release, _cue_album) = bae_import::test_imports::wait_for_import_complete(&mut cue_rx).await;
 
-    let services = library.start_services().await.expect("the test library's services start");
+    let services = bae_app::test_services::start_services(&library).await.expect("the test library's services start");
     Library {
         services,
         library,

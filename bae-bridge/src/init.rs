@@ -1,7 +1,7 @@
 use std::backtrace::Backtrace;
 use std::sync::{Arc, Once};
 
-use bae_core::app::{bootstrap, BootstrapError};
+use bae_app::{bootstrap, BootstrapError};
 use bae_diagnostics::{
     AppDiagnosticMetadata, AppStartFailureKind, DatadogDiagnosticsConfig, Diagnostics,
     DiagnosticsConfig, DiagnosticsError, Screen, TelemetryEvent,
@@ -142,7 +142,7 @@ impl BridgeDiagnostics {
         opening: &crate::BridgeLibraryOpening,
         host: Arc<crate::BridgeHost>,
     ) -> Result<Arc<AppHandle>, BridgeError> {
-        self.opened(bae_core::app::bootstrap_on_fixture(
+        self.opened(bae_app::bootstrap_on_fixture(
             fixture,
             app_dir,
             library_id,
@@ -164,7 +164,7 @@ impl BridgeDiagnostics {
         position_update_interval_ms: u32,
         restore_playback: bool,
     ) -> Result<Arc<AppHandle>, BridgeError> {
-        self.opened(bae_core::app::bootstrap_prepared(
+        self.opened(bae_app::bootstrap_prepared(
             app_dir,
             handle,
             position_update_interval_ms,
@@ -533,9 +533,9 @@ fn start_handle(
     host: Arc<crate::BridgeHost>,
     diagnostics: Diagnostics,
 ) -> impl FnOnce(
-    bae_core::library::AppServices,
+    bae_app::AppServices,
     tokio::runtime::Runtime,
-) -> Result<AppHandle, bae_core::app::BootstrapError>
+) -> Result<AppHandle, bae_app::BootstrapError>
        + Send
        + 'static {
     move |services, runtime| AppHandle::start_for_host(services, runtime, diagnostics, host)

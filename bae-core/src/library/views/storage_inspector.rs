@@ -25,7 +25,7 @@ impl LibraryViews {
     /// Follow the release `initial` names, or none, as the Storage Manager's
     /// inspector shows it, each value read in one go. Another release is a
     /// new request on the same query.
-    pub(crate) fn subscribe_storage_inspector(
+    pub fn subscribe_storage_inspector(
         &self,
         initial: Option<String>,
     ) -> coven::ReconfigurableLiveQuery<Option<String>, Option<DbStorageInspector>> {

@@ -44,7 +44,9 @@ fn each_pull_answers_at_once_and_the_profiles_follow_a_new_one() {
     runtime.block_on(bae_core::test_libraries::connect_storage(&library, &storage));
     let syncing = bae_core::library::LibraryManager::clone(&library);
     let services = runtime.block_on(async move {
-        library.start_services().await.expect("the test library's services start")
+        bae_app::test_services::start_services(&library)
+            .await
+            .expect("the test library's services start")
     });
     let handle = std::sync::Arc::new(
         super::AppHandle::start(services, runtime, bae_diagnostics::Diagnostics::noop()).unwrap(),
@@ -117,7 +119,9 @@ fn the_sync_status_follows_storage_being_set_up() {
     ));
     let setup = bae_core::library::LibraryManager::clone(&library);
     let services = runtime.block_on(async move {
-        library.start_services().await.expect("the test library's services start")
+        bae_app::test_services::start_services(&library)
+            .await
+            .expect("the test library's services start")
     });
     let handle = std::sync::Arc::new(
         super::AppHandle::start(services, runtime, bae_diagnostics::Diagnostics::noop()).unwrap(),

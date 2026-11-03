@@ -399,7 +399,7 @@ async fn musicbrainz_id_surfaces_when_present() {
         .await
         .unwrap();
 
-    let services = library.start_services().await.expect("the test library's services start");
+    let services = bae_app::test_services::start_services(&library).await.expect("the test library's services start");
     let router =
         bae_subsonic::router(services, credential(), bae_diagnostics::Diagnostics::noop());
 
@@ -499,7 +499,7 @@ async fn seed_lossy_release() -> (AppServices, String, Vec<TempDir>) {
         .unwrap();
     let mut rx = import.subscribe_import(import_id);
     let (release_id, _album) = bae_import::test_imports::wait_for_import_complete(&mut rx).await;
-    let services = library.start_services().await.expect("the test library's services start");
+    let services = bae_app::test_services::start_services(&library).await.expect("the test library's services start");
     (services, release_id, vec![db_temp, temp])
 }
 
@@ -584,7 +584,7 @@ async fn an_album_prints_its_credit_line_and_lists_every_credited_artist() {
         .insert_album_with_release_and_tracks(&album, &credits, &release, &[], &[], &[])
         .await
         .unwrap();
-    let services = library.start_services().await.expect("the test library's services start");
+    let services = bae_app::test_services::start_services(&library).await.expect("the test library's services start");
     let router =
         bae_subsonic::router(services, credential(), bae_diagnostics::Diagnostics::noop());
 

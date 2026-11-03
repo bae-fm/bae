@@ -825,7 +825,9 @@ mod release_album {
             .await
             .expect("the release's own album");
         assert_ne!(moved_from, picked_album);
-        let services = library.start_services().await.expect("the test library's services start");
+        let services = bae_app::test_services::start_services(&library)
+            .await
+            .expect("the test library's services start");
         let automation = Automation::new(services, &tokio::runtime::Handle::current());
 
         automation

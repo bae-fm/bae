@@ -70,7 +70,7 @@ pub struct LiveLibrarySearch {
 }
 
 impl LiveLibrarySearch {
-    pub(crate) fn new(
+    pub fn new(
         query: bae_db::live_query::CancellableLiveQuery<
             Option<LibrarySearchQuery>,
             crate::library::views::LibrarySearchProjection,

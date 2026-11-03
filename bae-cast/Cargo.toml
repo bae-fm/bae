@@ -6,6 +6,8 @@ license = "LicenseRef-UNLICENSED"
 publish = false
 
 [dependencies]
+# The app's services over an open library, which this crate calls.
+bae-app = { workspace = true }
 bae-core = { workspace = true }
 # The store errors a setting write fails with, and the cover refs it serves.
 bae-db = { workspace = true }
@@ -92,6 +94,8 @@ uuid = { workspace = true, features = ["v4"] }
 
 [dev-dependencies]
 # The test libraries the session tests open and play.
+# A test library's services, started through the app's own step.
+bae-app = { workspace = true, features = ["test-utils"] }
 bae-core = { workspace = true, features = ["test-utils"] }
 # The bug reporter that keeps what it is handed.
 bae-diagnostics = { workspace = true, features = ["test-utils"] }

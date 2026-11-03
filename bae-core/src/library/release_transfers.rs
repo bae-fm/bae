@@ -39,7 +39,7 @@ pub type OutputTransfersWatch = ReleaseTransfersWatch<u8>;
 pub type MakeLocalTransfersWatch = ReleaseTransfersWatch<super::MakeLocalTransferProgress>;
 
 impl<Progress: Clone + PartialEq> ReleaseTransfersWatch<Progress> {
-    pub(crate) fn of(transfers: watch::Receiver<BTreeMap<String, Progress>>) -> Self {
+    pub fn of(transfers: watch::Receiver<BTreeMap<String, Progress>>) -> Self {
         Self { transfers, told: None }
     }
 

@@ -54,7 +54,7 @@ impl LibraryViews {
 
     /// Follow the release `initial` names, or none. The detail view moves
     /// to another release through the request handle, not another query.
-    pub(crate) fn subscribe_release_detail(
+    pub fn subscribe_release_detail(
         &self,
         initial: Option<String>,
     ) -> coven::ReconfigurableLiveQuery<Option<String>, ReleaseDetailProjection> {
@@ -78,7 +78,7 @@ impl LibraryViews {
 }
 
 /// One delivery of the release `release_id` as the detail view shows it.
-pub(crate) fn resolve_release_detail_projection(
+pub fn resolve_release_detail_projection(
     release_id: &str,
     projection: ReleaseDetailProjection,
 ) -> Option<ReleaseDetail> {

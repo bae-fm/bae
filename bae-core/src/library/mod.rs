@@ -1,6 +1,6 @@
 mod album_selection;
-pub mod app_services;
 mod artist_search;
+mod assembly;
 mod bootstrap_auth;
 mod browse;
 mod closing_step;
@@ -12,6 +12,7 @@ mod file_transfers;
 mod import_tests;
 mod library_status;
 mod live_read;
+pub mod live_reads;
 mod local_lifecycle;
 pub(crate) mod make_local_transfers;
 pub mod manager;
@@ -31,14 +32,16 @@ mod storage_browse;
 pub mod storage_inspector;
 mod sync_activity;
 pub(crate) mod sync_controller;
+mod track_decode;
 mod upload_progress;
 mod upload_throughput;
 pub mod views;
 pub use album_selection::{AlbumSelectionSnapshot, LiveAlbumSelection, LiveAlbumSelectionError};
-pub use app_services::*;
 pub use artist_search::{ArtistSearchSnapshot, ArtistSearchView, LiveArtistSearch};
+pub use assembly::open_library_manager;
 pub use browse::*;
 pub use closing_step::ClosingStep;
+pub use track_decode::TrackDecode;
 
 pub use bae_db::StorageSetupSteps;
 pub use detail::{DetailSnapshot, LiveDetail};
@@ -48,7 +51,7 @@ pub use download_snapshot::{
 };
 pub use file_transfers::{FileTransferChange, FileTransfersWatch};
 pub use library_status::{LibraryStatusSnapshot, LiveLibraryStatus, LiveLibraryStatusError};
-pub(crate) use live_read::{live_read_channel, SubscriptionReader};
+pub use live_read::{live_read_channel, SubscriptionReader};
 pub use live_read::{LiveRead, LiveReadError};
 pub use local_lifecycle::{
     finish_removals, remove_local_library, remove_unopenable_library, unsent_before_removal,

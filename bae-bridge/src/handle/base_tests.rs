@@ -95,7 +95,9 @@ fn setting_up_s3_storage_writes_its_steps() {
         panic!("the memory provider uses S3 configuration");
     };
     let services = runtime.block_on(async move {
-        library.start_services().await.expect("the test library's services start")
+        bae_app::test_services::start_services(&library)
+            .await
+            .expect("the test library's services start")
     });
     let app = Arc::new(
         super::AppHandle::start(services, runtime, bae_diagnostics::Diagnostics::noop()).unwrap(),

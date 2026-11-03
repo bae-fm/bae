@@ -206,7 +206,7 @@ task_types = [
 # Task starts are listed with them: each starts a service's long-lived work,
 # which the handle it returns stops.
 [composition_roots]
-"bae-core/src/app.rs" = [
+"bae-app/src/lib.rs" = [
     "bootstrap",
     "bootstrap_prepared",
     "bootstrap_on_fixture",
@@ -237,14 +237,19 @@ task_types = [
 # them, once per library the test opens.
 "bae-catalogs/src/fake_catalogs.rs" = ["FakeCatalogs::providers"]
 # A test's library: it opens the library as the app's opening step does, and
-# hands the test, the final owner of what it built, the manager, the store and
-# the catalog sessions, and the views and services it builds over them. It is
-# test-utils code, which the tests of the crates above compile, so the checker
-# reads it as production code.
+# hands the test, the final owner of what it built, the manager, the parts the
+# app's step hands the library's services, and the views and services it
+# builds over them. It is test-utils code, which the tests of the crates above
+# compile, so the checker reads it as production code.
 "bae-core/src/test_libraries.rs" = [
     "TestLibrary::deref",
     "TestLibrary::database",
     "TestLibrary::catalogs",
+    "TestLibrary::closing",
+    "TestLibrary::clock",
+    "TestLibrary::ids",
+    "TestLibrary::diagnostics",
+    "TestLibrary::remote_images",
     "TestLibrary::views",
     "TestLibrary::cast_picker",
     "TestLibrary::start_playback",

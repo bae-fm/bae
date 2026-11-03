@@ -242,9 +242,7 @@ async fn a_failed_pins_retry_pins_the_release_again() {
 
 /// Follow the inspector until it shows a value `accept` takes.
 async fn inspector_until(
-    inspector: &crate::library::LiveDetail<
-        crate::library::storage_inspector::StorageInspector,
-    >,
+    inspector: &crate::library::LiveDetail<crate::library::storage_inspector::StorageInspector>,
     accept: impl Fn(&crate::library::storage_inspector::StorageInspector) -> bool,
 ) -> crate::library::storage_inspector::StorageInspector {
     tokio::time::timeout(std::time::Duration::from_secs(10), async {
@@ -267,7 +265,8 @@ async fn inspector_rows_until(
     release_id: &str,
     accept: impl Fn(&crate::library::views::DbStorageInspector) -> bool,
 ) -> crate::library::views::DbStorageInspector {
-    let mut rows = crate::library::views::LibraryViews::new(manager.database.clone()).subscribe_storage_inspector(Some(release_id.to_string()));
+    let mut rows = crate::library::views::LibraryViews::new(manager.database.clone())
+        .subscribe_storage_inspector(Some(release_id.to_string()));
     rows_until(&mut rows, accept).await
 }
 
@@ -297,8 +296,8 @@ async fn rows_until(
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn the_inspector_shows_each_files_upload_and_its_error() {
     let (manager, temp, release, file_id) = queued_upload_fixture("inspected").await;
-    let services = manager.library.start_services().await.unwrap();
-    let inspector = services.subscribe_storage_inspector();
+    let inspector =
+        crate::library::live_reads::subscribe_storage_inspector(&manager.library, &manager.views());
     inspector.set(Some(release.id.clone())).unwrap();
     use crate::library::storage_inspector::StorageInspectorTransfer;
     let waiting = inspector_until(&inspector, |value| {
@@ -332,8 +331,8 @@ async fn the_inspector_shows_each_files_upload_and_its_error() {
 #[tokio::test]
 async fn the_inspector_shows_the_error_an_upload_met() {
     let (manager, _temp, release, file_id) = queued_upload_fixture("refused").await;
-    let services = manager.library.start_services().await.unwrap();
-    let inspector = services.subscribe_storage_inspector();
+    let inspector =
+        crate::library::live_reads::subscribe_storage_inspector(&manager.library, &manager.views());
     inspector.set(Some(release.id.clone())).unwrap();
     manager
         .storage
@@ -374,8 +373,8 @@ async fn the_inspector_shows_each_files_pin_while_the_release_pins() {
     inspector_rows_until(&manager, &cloud, |rows| rows.files.iter().all(|file| file.pin.is_none()))
         .await;
 
-    let services = manager.library.start_services().await.unwrap();
-    let inspector = services.subscribe_storage_inspector();
+    let inspector =
+        crate::library::live_reads::subscribe_storage_inspector(&manager.library, &manager.views());
     inspector.set(Some(cloud.clone())).unwrap();
     manager.set_downloads_paused(true).await.unwrap();
     manager.enqueue_pins(vec![cloud.clone()]).await.unwrap();
@@ -419,7 +418,8 @@ async fn the_inspector_never_reads_a_pin_out_of_the_queue_before_its_files_are_k
     let kept = |value: &crate::library::views::DbStorageInspector| {
         value.files.iter().all(|file| file.pin == Some(FilePin::Kept))
     };
-    let mut rows = crate::library::views::LibraryViews::new(manager.database.clone()).subscribe_storage_inspector(Some(cloud.clone()));
+    let mut rows = crate::library::views::LibraryViews::new(manager.database.clone())
+        .subscribe_storage_inspector(Some(cloud.clone()));
 
     // The release as it stands before any pin: unpinned, out of the queue.
     rows_until(&mut rows, |value| value.files.iter().all(|file| file.pin.is_none())).await;

@@ -319,7 +319,7 @@ impl LibraryManager {
         Ok(self.database.check_releases_in_library(checks).await?)
     }
 
-    pub(crate) fn subscribe_library_statuses(
+    pub fn subscribe_library_statuses(
         &self,
         initial: std::collections::BTreeSet<bae_db::LibraryCheck>,
     ) -> coven::ReconfigurableLiveQuery<

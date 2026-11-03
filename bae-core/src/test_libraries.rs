@@ -1,6 +1,6 @@
 //! Test libraries for the tests of this crate and the crates above it: a
 //! library opened as the app opens one, the services a test starts over it,
-//! the runtimes the tests around them need, playback on a capture device,
+//! the runtime the tests around them need, playback on a capture device,
 //! profiles, a library over in-memory storage, and a release imported into a
 //! fresh library.
 
@@ -12,7 +12,7 @@ pub use playback::{start_capture_playback, start_capture_playback_with_clock};
 pub use profiles::{made_profile, made_profile_on, requested_profile, requested_profile_on};
 pub use storage::{connect_storage, release_storage, remove_uploaded_file, storage_library};
 
-use crate::library::{AppServices, CancellationToken, LibraryManager};
+use crate::library::{CancellationToken, LibraryManager};
 use bae_catalogs::remote_image::RemoteImageCache;
 use bae_db::Database;
 use bae_diagnostics::Diagnostics;
@@ -22,7 +22,7 @@ use std::sync::Arc;
 
 /// An open test library: its manager, which it reads as, and what the app
 /// would hand the library's services beside it. A test starts the services it
-/// needs from here, each over the same store, catalog sessions and image cache.
+/// needs over it, each over the same store, catalog sessions and image cache.
 pub struct TestLibrary {
     manager: LibraryManager,
     database: Database,
@@ -80,7 +80,7 @@ impl TestLibrary {
             tokio::runtime::Handle::current(),
         );
         let closing = CancellationToken::new();
-        let manager = crate::app::open_library_manager(
+        let manager = crate::library::open_library_manager(
             database.clone(),
             catalogs.clone(),
             closing.clone(),
@@ -116,33 +116,29 @@ impl TestLibrary {
         bae_playback::renderer::CastPicker::new(self.database.clone())
     }
 
-    /// The library's services, started through the app's own step, with
-    /// playback on a device that plays nothing and no stored queue restored.
-    pub async fn start_services(&self) -> Result<AppServices, crate::app::ServicesStartError> {
-        self.start_services_on(Box::new(bae_playback::audio_output::FailingAudioDevice)).await
+    /// The token whose cancel ends what runs while the library is open.
+    pub fn closing(&self) -> &CancellationToken {
+        &self.closing
     }
 
-    /// [`Self::start_services`] with playback on `device`.
-    pub async fn start_services_on(
-        &self,
-        device: Box<dyn bae_playback::AudioOutputDevice>,
-    ) -> Result<AppServices, crate::app::ServicesStartError> {
-        crate::app::start_library_services(
-            self.manager.clone(),
-            self.database.clone(),
-            self.catalogs.clone(),
-            self.closing.clone(),
-            self.clock.clone(),
-            self.ids.clone(),
-            self.diagnostics.clone(),
-            tokio::runtime::Handle::current(),
-            self.remote_images.clone(),
-            50,
-            false,
-            Arc::new(bae_playback::WallPlaybackClock::new(self.clock.clone())),
-            crate::app::PlaybackOutput::Device(device),
-        )
-        .await
+    /// The clock the library reads.
+    pub fn clock(&self) -> &ClockRef {
+        &self.clock
+    }
+
+    /// The ids the library mints.
+    pub fn ids(&self) -> &IdSourceRef {
+        &self.ids
+    }
+
+    /// Where the library reports.
+    pub fn diagnostics(&self) -> &Diagnostics {
+        &self.diagnostics
+    }
+
+    /// The image cache the library fetches covers through.
+    pub fn remote_images(&self) -> &RemoteImageCache {
+        &self.remote_images
     }
 
     /// The import service alone, over the library's store, ending as the
@@ -375,17 +371,6 @@ pub fn multi_thread_runtime() -> tokio::runtime::Runtime {
         .enable_all()
         .build()
         .expect("multi-threaded test runtime")
-}
-
-/// [`multi_thread_runtime`] with a fresh library's [`AppServices`] already built
-/// on it. The `TempDir` owns the library's files, so it must outlive both.
-pub fn runtime_with_services() -> (tokio::runtime::Runtime, AppServices, tempfile::TempDir) {
-    let runtime = multi_thread_runtime();
-    let (library, tmp) = setup_fresh_library(&runtime);
-    let services = runtime.block_on(async move {
-        library.start_services().await.expect("the test library's services start")
-    });
-    (runtime, services, tmp)
 }
 
 /// The bytes of `release_id`'s stored cover, if it has one.

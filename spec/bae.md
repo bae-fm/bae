@@ -3331,8 +3331,8 @@ internal error (HTTP 500).
 ## 9. API
 
 Every app does the same things with a library: open it, read it, watch it
-change, import, play, move files, sync, and change settings. bae-core's Rust
-API does each once, so no platform keeps its own copy of a rule. This section
+change, import, play, move files, sync, and change settings. bae's Rust
+API (bae-app over bae-core) does each once, so no platform keeps its own copy of a rule. This section
 names the API's parts; the source is the reference for each signature.
 
 ### 9.1 Opening a library
@@ -3351,7 +3351,7 @@ library is registered there by id.
 | `unfinished_joins`, `resume_join` | list the joins this device has under way, and continue one after bae restarts, without the code, signing in only when coven has no sign-in it can use (§5.6) |
 | `reset_device` | loads a library again under a fresh device id, after the warning; called again, finishes a reset that stopped after the new copy took the old one's place (§6.4) |
 | `Config::discover_libraries` | lists registered libraries, including any that can't be opened, with why: storage settings that can't be read, or a reset or restore of this device's copy that didn't finish, with the call that finishes it |
-| `app::bootstrap` | opens a library and starts its services: the store, sync, playback, and on desktops import and identification; a library whose reset or restore didn't finish fails with the call that finishes it |
+| `bae_app::bootstrap` | opens a library and starts its services: the store, sync, playback, and on desktops import and identification; a library whose reset or restore didn't finish fails with the call that finishes it |
 | `AppServices::close` | stops playback, saving where it was, then identification and import, then closes the store |
 | `unsent_before_removal` | counts what removing a library would discard: the edits and files this device hasn't sent, for the open library or, opening its store briefly, one that isn't open (§6.4) |
 | `AppServices::remove_library` | stops the library's services, records the removal, leaves the store discarding what this device hasn't sent, then deletes the library from this device and the record last (§6.4) |
@@ -3369,7 +3369,7 @@ reports each of these steps as it runs, with how much of it is done: first
 rebuilding, counted in rebuilds, then migrating, counted in migrations, at
 most four times a second within a step
 ([coven E1](https://github.com/bae-fm/coven/blob/main/spec/api.md#e1-opening)).
-That is `app::bootstrap`, `unsent_before_removal` for a library that isn't
+That is `bae_app::bootstrap`, `unsent_before_removal` for a library that isn't
 open, and `restore_replacing_device` when this device already holds the
 code's keys and the call just opens the library. An open with neither step
 reports nothing. The apps read the steps as a fast stream, never as observed
@@ -3637,9 +3637,10 @@ how the API reaches Swift and Kotlin, and C# for bae-avalonia.
 
 ### 10.1 Only translation
 
-bae-bridge does one thing: it converts bae-core's types to and from types
-uniffi can export. It looks nothing up, formats nothing, filters nothing and
-holds no state. Anything else is added to bae-core, and the bridge calls it.
+bae-bridge does one thing: it converts bae-app's and bae-core's types to and
+from types uniffi can export. It looks nothing up, formats nothing, filters
+nothing and holds no state. Anything else is added to bae-app or bae-core, and
+the bridge calls it.
 
 The reason is the platforms: anything a UI or the bridge decides, each
 platform would decide again, and they would drift. So a UI renders what it is
@@ -3830,7 +3831,8 @@ bindings export none of their symbols.
 
 | Crate | Holds |
 |---|---|
-| bae-core | the library, files, outputs, sync integration, settings |
+| bae-app | the composition root: the bootstrap that opens a library and builds every long-lived part of it once, and `AppServices`, the one owner of the opened library every surface calls, which passes each call on to the part that answers it |
+| bae-core | the library, files, outputs, sync integration, settings, and the live reads the screens pull |
 | bae-import | import, desktop only but for the release-edit model, the import pane's session values and the errors the library reports from import: watched folders and their scans, the candidates they hold, the drafts a person shapes and the pane's session over them, identification runs against the catalogs and the queue that admits them, cue sheets, loudness measurement, and the import that writes a candidate's release into the store, with import's own tables |
 | bae-playback | playback: the service that plays the queue on this device's output or a remote renderer, the queue, its resume point and play history as the store keeps them, the outputs it plays on, the preview player, and the renderer session a connected cast or UPnP device is driven through |
 | bae-identify | identification, desktop only: the reducer that asks every key a candidate's signals put in effect and ranks what the catalogs return, the release groups and pressing evidence it ranks by, the view a surface shows of a run, and the verdict a finished run stores |

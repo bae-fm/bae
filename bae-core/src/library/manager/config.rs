@@ -180,7 +180,7 @@ impl LibraryManager {
     /// racing, not the path a person takes.
     ///
     /// Writes the preference only. Re-laying live runs and searches over the
-    /// new list is [`AppServices::set_metadata_source_enabled`](crate::library::AppServices::set_metadata_source_enabled)'s
+    /// new list is the app's `AppServices::set_metadata_source_enabled`'s
     /// job — this layer owns config and knows nothing about what is running.
     pub async fn set_metadata_source_enabled(
         &self,

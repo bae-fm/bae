@@ -30,7 +30,10 @@ async fn storage_page(
     offset: u64,
     limit: u64,
 ) -> crate::album_detail::StoragePage {
-    crate::library::views::LibraryViews::new(manager.database.clone()).get_storage_page(&sort_by_album_title_asc(), filter, offset, limit).await.unwrap()
+    crate::library::views::LibraryViews::new(manager.database.clone())
+        .get_storage_page(&sort_by_album_title_asc(), filter, offset, limit)
+        .await
+        .unwrap()
 }
 
 #[tokio::test]
@@ -80,7 +83,11 @@ async fn storage_page_sorts_album_title_descending() {
         field: crate::library::views::StorageSortField::AlbumTitle,
         direction: bae_db::SortDirection::Descending,
     };
-    let page = manager.views().get_storage_page(&sort, crate::library::views::StorageFilter::All, 0, 10).await.unwrap();
+    let page = manager
+        .views()
+        .get_storage_page(&sort, crate::library::views::StorageFilter::All, 0, 10)
+        .await
+        .unwrap();
     let titles: Vec<_> = page.rows.iter().map(|r| r.album.title.clone()).collect();
     assert_eq!(titles, vec!["Album 2", "Album 1", "Album 0"]);
 }
@@ -160,7 +167,8 @@ async fn album_detail_releases_carry_their_own_pin_state() {
         pressings.push((release.id, pin));
     }
 
-    let detail = manager.views().find_album_detail(&album.id).await.unwrap().expect("the album surfaces");
+    let detail =
+        manager.views().find_album_detail(&album.id).await.unwrap().expect("the album surfaces");
     let pinned: std::collections::HashMap<_, _> = detail
         .releases
         .iter()
@@ -244,14 +252,32 @@ async fn storage_count_matches_filtered_page_total() {
         }
     }
 
-    assert_eq!(manager.views().get_storage_count(crate::library::views::StorageFilter::All).await.unwrap(), 3);
-    assert_eq!(manager.views().get_storage_count(crate::library::views::StorageFilter::Local).await.unwrap(), 1);
-    assert_eq!(manager.views().get_storage_count(crate::library::views::StorageFilter::Remote).await.unwrap(), 2);
+    assert_eq!(
+        manager.views().get_storage_count(crate::library::views::StorageFilter::All).await.unwrap(),
+        3
+    );
+    assert_eq!(
+        manager
+            .views()
+            .get_storage_count(crate::library::views::StorageFilter::Local)
+            .await
+            .unwrap(),
+        1
+    );
+    assert_eq!(
+        manager
+            .views()
+            .get_storage_count(crate::library::views::StorageFilter::Remote)
+            .await
+            .unwrap(),
+        2
+    );
 
     let all_page = storage_page(&manager, crate::library::views::StorageFilter::All, 0, 10).await;
     assert_eq!(all_page.total_count, 3);
 
-    let local_page = storage_page(&manager, crate::library::views::StorageFilter::Local, 0, 10).await;
+    let local_page =
+        storage_page(&manager, crate::library::views::StorageFilter::Local, 0, 10).await;
     assert_eq!(local_page.rows.len(), 1);
     assert_eq!(local_page.rows[0].release.id, inserted_local.unwrap());
 }
@@ -293,8 +319,11 @@ async fn storage_total_size_matches_page_total_size_sum() {
         crate::library::views::StorageFilter::Local,
         crate::library::views::StorageFilter::Remote,
     ] {
-        let page =
-            manager.views().get_storage_page(&sort_by_album_title_asc(), filter, 0, 10).await.unwrap();
+        let page = manager
+            .views()
+            .get_storage_page(&sort_by_album_title_asc(), filter, 0, 10)
+            .await
+            .unwrap();
         let page_sum: i64 = page.rows.iter().map(|row| row.release.total_size).sum();
 
         let aggregate = manager.views().get_storage_total_size(filter).await.unwrap();
@@ -307,15 +336,27 @@ async fn storage_total_size_matches_page_total_size_sum() {
     // A release stays local while its upload is pending: its rows name no
     // file until storage holds it.
     assert_eq!(
-        manager.views().get_storage_total_size(crate::library::views::StorageFilter::All).await.unwrap(),
+        manager
+            .views()
+            .get_storage_total_size(crate::library::views::StorageFilter::All)
+            .await
+            .unwrap(),
         11_100
     );
     assert_eq!(
-        manager.views().get_storage_total_size(crate::library::views::StorageFilter::Local).await.unwrap(),
+        manager
+            .views()
+            .get_storage_total_size(crate::library::views::StorageFilter::Local)
+            .await
+            .unwrap(),
         11_000
     );
     assert_eq!(
-        manager.views().get_storage_total_size(crate::library::views::StorageFilter::Remote).await.unwrap(),
+        manager
+            .views()
+            .get_storage_total_size(crate::library::views::StorageFilter::Remote)
+            .await
+            .unwrap(),
         100
     );
 }
@@ -428,17 +469,20 @@ async fn a_pin_reaches_the_storage_view_without_a_sync_cycle() {
     manager.upload_release(&release.id, false).await.unwrap();
     manager.drain_uploads_expecting_work().await.unwrap();
 
-    let services = manager.start_services().await.unwrap();
-    let values = services.subscribe_storage_browse(crate::library::StorageBrowseView {
-        sort: crate::library::views::StorageSortCriterion {
-            field: crate::library::views::StorageSortField::AlbumTitle,
-            direction: bae_db::SortDirection::Ascending,
+    let values = crate::library::live_reads::subscribe_storage_browse(
+        &manager,
+        &manager.views(),
+        crate::library::StorageBrowseView {
+            sort: crate::library::views::StorageSortCriterion {
+                field: crate::library::views::StorageSortField::AlbumTitle,
+                direction: bae_db::SortDirection::Ascending,
+            },
+            filter: crate::library::views::StorageFilter::All,
+            search: String::new(),
+            windows: [bae_db::LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect(),
+            selected: Default::default(),
         },
-        filter: crate::library::views::StorageFilter::All,
-        search: String::new(),
-        windows: [bae_db::LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect(),
-        selected: Default::default(),
-    });
+    );
     let pinned = |value: &crate::library::StorageBrowseSnapshot| {
         value
             .windows
@@ -561,7 +605,6 @@ async fn next_storage_value(
 async fn the_storage_view_moves_one_subscription() {
     let (manager, _temp_dir) = setup_test_manager().await;
     seed_albums(&manager, 3).await;
-    let services = manager.start_services().await.unwrap();
     let window = |offset, limit| bae_db::LibraryPageWindow { offset, limit };
     let view = |direction, filter, windows: &[bae_db::LibraryPageWindow]| {
         crate::library::StorageBrowseView {
@@ -584,7 +627,11 @@ async fn the_storage_view_moves_one_subscription() {
     };
     let ascending = bae_db::SortDirection::Ascending;
     let all = crate::library::views::StorageFilter::All;
-    let values = services.subscribe_storage_browse(view(ascending, all, &[window(0, 2)]));
+    let values = crate::library::live_reads::subscribe_storage_browse(
+        &manager,
+        &manager.views(),
+        view(ascending, all, &[window(0, 2)]),
+    );
 
     let first = next_storage_value(&values).await;
     assert_eq!(titles(&first), vec![vec!["Album 0", "Album 1"]]);
@@ -739,16 +786,17 @@ async fn a_storage_row_counts_the_file_being_sent() {
         &[("a.flac", b"bytes-a")],
     )
     .await;
-    let mut browse = manager.views().subscribe_storage_browse(crate::library::views::StorageBrowseRequest {
-        sort: crate::library::views::StorageSortCriterion {
-            field: crate::library::views::StorageSortField::AlbumTitle,
-            direction: bae_db::SortDirection::Ascending,
-        },
-        filter: crate::library::views::StorageFilter::All,
-        search: String::new(),
-        windows: [bae_db::LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect(),
-        selected: Default::default(),
-    });
+    let mut browse =
+        manager.views().subscribe_storage_browse(crate::library::views::StorageBrowseRequest {
+            sort: crate::library::views::StorageSortCriterion {
+                field: crate::library::views::StorageSortField::AlbumTitle,
+                direction: bae_db::SortDirection::Ascending,
+            },
+            filter: crate::library::views::StorageFilter::All,
+            search: String::new(),
+            windows: [bae_db::LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect(),
+            selected: Default::default(),
+        });
     home.set_faults(coven::Faults {
         delay: std::time::Duration::from_secs(2),
         ..coven::Faults::none()

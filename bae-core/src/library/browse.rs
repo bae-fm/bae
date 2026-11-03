@@ -74,7 +74,7 @@ where
     Projection: Clone + PartialEq + Send + 'static,
     Row: Send + 'static,
 {
-    pub(crate) fn new(
+    pub fn new(
         query: CancellableLiveQuery<LibraryPageWindows, Projection>,
         resolve: impl Fn(Projection, u64, coven::LiveQueryCause) -> LibraryBrowseSnapshot<Row>
             + Send

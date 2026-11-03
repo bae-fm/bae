@@ -46,7 +46,7 @@ impl LibraryViews {
     /// query finds nothing; each window it asks for answers with no rows. A
     /// new query or new windows move this subscription's request rather than
     /// opening another.
-    pub(crate) fn subscribe_artist_search(
+    pub fn subscribe_artist_search(
         &self,
         initial: crate::library::ArtistSearchView,
     ) -> coven::ReconfigurableLiveQuery<crate::library::ArtistSearchView, ArtistSearchProjection>
@@ -84,7 +84,7 @@ impl LibraryViews {
 
 /// The artists an artist search's windows hold, each beside its image
 /// and its other printed names.
-pub(crate) fn resolve_artist_search(
+pub fn resolve_artist_search(
     projection: ArtistSearchProjection,
     request_revision: u64,
 ) -> crate::library::ArtistSearchSnapshot {

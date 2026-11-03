@@ -53,10 +53,7 @@ async fn album_detail_delivers_while_sync_shaped_load_runs() {
         }
     }));
 
-    // Playback on no hardware: this test never plays anything.
-    let services = manager.start_services().await.expect("start the services");
-
-    let values = services.subscribe_album_detail();
+    let values = crate::library::live_reads::subscribe_album_detail(&manager, &manager.views());
     values.set(Some(album.id.clone())).unwrap();
     let delivered = tokio::time::timeout(std::time::Duration::from_secs(10), async {
         loop {
@@ -68,14 +65,12 @@ async fn album_detail_delivers_while_sync_shaped_load_runs() {
     })
     .await;
 
-    // Dropping `services` joins the playback and import threads, so it happens
-    // on a blocking thread, and before the assertions so a failure reports
-    // rather than hanging the test binary on the panic path.
+    // Before the assertions, so a failure reports rather than leaving the
+    // load running.
     for task in load {
         task.abort();
     }
     drop(values);
-    tokio::task::spawn_blocking(move || drop(services)).await.expect("tear the application down");
 
     let detail = delivered
         .expect("the album detail arrives while sync-shaped load runs")
@@ -98,8 +93,7 @@ async fn album_detail_moves_between_albums_on_one_subscription() {
         insert_release(&manager, &create_test_release(&album.id)).await;
         albums.push(album);
     }
-    let services = manager.start_services().await.unwrap();
-    let values = services.subscribe_album_detail();
+    let values = crate::library::live_reads::subscribe_album_detail(&manager, &manager.views());
     let next_for = |id: Option<String>| {
         let values = &values;
         async move {
@@ -141,26 +135,27 @@ async fn release_detail_offers_storage_once_a_cloud_home_is_set_up() {
         &[("a.flac", b"aaa")],
     )
     .await;
-    let services = manager.library.start_services().await.unwrap();
-    let values = services.subscribe_release_detail();
+    let values =
+        crate::library::live_reads::subscribe_release_detail(&manager.library, &manager.views());
     values.set(Some(release.id.clone())).unwrap();
-    let actions_until = |accept: fn(&[bae_types::release_storage::ReleaseStorageAction]) -> bool| {
-        let values = &values;
-        async move {
-            tokio::time::timeout(std::time::Duration::from_secs(20), async {
-                loop {
-                    let snapshot = values.next().await.expect("the release detail resolves");
-                    if let Some(detail) = snapshot.value {
-                        if accept(&detail.summary.storage_actions) {
-                            return detail.summary.storage_actions;
+    let actions_until =
+        |accept: fn(&[bae_types::release_storage::ReleaseStorageAction]) -> bool| {
+            let values = &values;
+            async move {
+                tokio::time::timeout(std::time::Duration::from_secs(20), async {
+                    loop {
+                        let snapshot = values.next().await.expect("the release detail resolves");
+                        if let Some(detail) = snapshot.value {
+                            if accept(&detail.summary.storage_actions) {
+                                return detail.summary.storage_actions;
+                            }
                         }
                     }
-                }
-            })
-            .await
-            .expect("the release detail shows the expected storage choices")
-        }
-    };
+                })
+                .await
+                .expect("the release detail shows the expected storage choices")
+            }
+        };
     actions_until(|actions| actions.is_empty()).await;
     connect_test_cloud(&manager).await;
     assert_eq!(

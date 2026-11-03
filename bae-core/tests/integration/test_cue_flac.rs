@@ -587,10 +587,8 @@ async fn test_served_decode_starts_with_the_generated_pregap() {
     )
     .await
     .expect("import the PREGAP album");
-    let services = library.start_services().await.expect("the test library's services start");
-    let audio =
-        services.resolve_track_audio(&imported.track_ids[1]).await.expect("resolve track 2");
-    let decode = services.open_track_decode(&audio);
+    let audio = library.resolve_track_audio(&imported.track_ids[1]).await.expect("resolve track 2");
+    let decode = library.open_track_decode(&audio);
 
     let decoded = tokio::task::spawn_blocking(move || {
         let mut sink = CollectedDecode::default();

@@ -14,7 +14,7 @@
 use std::net::SocketAddr;
 use std::sync::Arc;
 
-use bae_core::library::AppServices;
+use bae_app::AppServices;
 use bae_diagnostics::Diagnostics;
 use bae_preferences::{SubsonicConfig, SubsonicCredential};
 use bae_util::server::{ServerController, ServerError, ServerStatus};
@@ -204,12 +204,14 @@ mod tests {
     use super::*;
     use std::sync::Arc;
 
-    use bae_core::library::AppServices;
+    use bae_app::AppServices;
     use tempfile::TempDir;
 
     async fn test_manager() -> (AppServices, TempDir) {
         let (library, temp) = bae_core::test_libraries::setup_test_library().await;
-        let services = library.start_services().await.expect("the test library's services start");
+        let services = bae_app::test_services::start_services(&library)
+            .await
+            .expect("the test library's services start");
         (services, temp)
     }
 

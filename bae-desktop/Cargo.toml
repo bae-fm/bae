@@ -6,7 +6,8 @@ license = "LicenseRef-UNLICENSED"
 publish = false
 
 [dependencies]
-bae-core = { workspace = true }
+# The app's services over an open library, which this crate calls.
+bae-app = { workspace = true }
 # The errors a live settings read ends with.
 bae-db = { workspace = true }
 bae-diagnostics = { workspace = true }
@@ -20,7 +21,8 @@ tracing = { workspace = true }
 thiserror = { workspace = true }
 
 [dev-dependencies]
-bae-core = { workspace = true, features = ["test-utils"] }
+# A test library's services, started through the app's own step.
+bae-app = { workspace = true, features = ["test-utils"] }
 
 [lints]
 workspace = true

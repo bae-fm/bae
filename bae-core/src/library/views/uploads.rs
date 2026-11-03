@@ -6,7 +6,7 @@ use super::*;
 impl LibraryViews {
     /// Whether the person paused uploads, live, whether or not anything is
     /// queued.
-    pub(crate) fn subscribe_uploads_paused(&self) -> coven::LiveQuery<bool> {
+    pub fn subscribe_uploads_paused(&self) -> coven::LiveQuery<bool> {
         self.database.subscribe(|sql| {
             Ok(sql
                 .query_row(bae_db::client::queued_uploads::UPLOADS_PAUSED, [], |row| row.get(0))?)

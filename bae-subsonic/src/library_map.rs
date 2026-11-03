@@ -5,9 +5,10 @@
 //! release into an `AlbumID3` and a track into a `Child`, resolving the audio
 //! format, artists, and backing file each `Child` requires.
 
+use bae_app::AppServices;
 use bae_audio::StreamEncodeFormat;
 use bae_catalogs::catalog::Catalog;
-use bae_core::library::{AppServices, LibraryError};
+use bae_core::library::LibraryError;
 use bae_db::{DbFile, DbRelease, DbTrack, ResolvedTrackAudio};
 
 use crate::error::SubError;

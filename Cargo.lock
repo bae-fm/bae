@@ -730,6 +730,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "bae-app"
+version = "0.0.0-dev"
+dependencies = [
+ "bae-app-dir",
+ "bae-audio",
+ "bae-catalogs",
+ "bae-core",
+ "bae-db",
+ "bae-diagnostics",
+ "bae-identify",
+ "bae-import",
+ "bae-playback",
+ "bae-preferences",
+ "bae-track-audio",
+ "bae-types",
+ "bae-util",
+ "chrono",
+ "coven",
+ "keyring-core",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
 name = "bae-app-dir"
 version = "0.0.0-dev"
 dependencies = [
@@ -761,6 +789,7 @@ dependencies = [
 name = "bae-automation"
 version = "0.1.0"
 dependencies = [
+ "bae-app",
  "bae-catalogs",
  "bae-core",
  "bae-db",
@@ -785,6 +814,7 @@ name = "bae-bridge"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "bae-app",
  "bae-app-dir",
  "bae-cast",
  "bae-catalogs",
@@ -825,6 +855,7 @@ version = "0.1.0"
 dependencies = [
  "aes",
  "axum",
+ "bae-app",
  "bae-core",
  "bae-db",
  "bae-diagnostics",
@@ -953,7 +984,7 @@ dependencies = [
 name = "bae-desktop"
 version = "0.1.0"
 dependencies = [
- "bae-core",
+ "bae-app",
  "bae-db",
  "bae-diagnostics",
  "bae-mcp",
@@ -1116,6 +1147,7 @@ name = "bae-subsonic"
 version = "0.1.0"
 dependencies = [
  "axum",
+ "bae-app",
  "bae-audio",
  "bae-catalogs",
  "bae-core",

@@ -36,7 +36,7 @@ pub struct LiveAlbumSelection {
 }
 
 impl LiveAlbumSelection {
-    pub(crate) fn new(query: CancellableLiveQuery<BTreeSet<String>, Vec<String>>) -> Self {
+    pub fn new(query: CancellableLiveQuery<BTreeSet<String>, Vec<String>>) -> Self {
         Self { query }
     }
 

@@ -40,7 +40,7 @@ pub struct LiveArtistSearch {
 }
 
 impl LiveArtistSearch {
-    pub(crate) fn new(
+    pub fn new(
         query: bae_db::live_query::CancellableLiveQuery<
             ArtistSearchView,
             crate::library::views::ArtistSearchProjection,

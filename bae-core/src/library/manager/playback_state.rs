@@ -4,7 +4,7 @@
 use super::*;
 
 impl LibraryManager {
-    pub(crate) fn create_audio_reader(
+    pub fn create_audio_reader(
         &self,
         file_id: &str,
         arbiter: Arc<bae_track_audio::data_source::FetchArbiter>,
@@ -21,16 +21,71 @@ impl LibraryManager {
         ))
     }
 
-    /// `decode`, a track's stored audio as `sample_rate` and `channels`, as
-    /// one decode for a caller outside the library (a transcode), reporting a
-    /// read of it that panics to the library's diagnostics.
-    pub(crate) fn track_decode(
+    /// `file_id`'s bytes, `size` long, read into a buffer from the start,
+    /// which a failed read is logged against.
+    pub fn open_release_file_stream(
         &self,
-        decode: bae_track_audio::StreamDecodeParams,
-        sample_rate: u32,
-        channels: u32,
+        file_id: &str,
+        size: u64,
+    ) -> bae_audio::sparse_buffer::SharedSparseBuffer {
+        let buffer = bae_audio::sparse_buffer::create_sparse_buffer(size);
+        let reader = self.create_audio_reader(
+            file_id,
+            bae_track_audio::data_source::FetchArbiter::new(),
+            None,
+            false,
+        );
+        let file_id = file_id.to_string();
+        reader.start_reading(
+            buffer.clone(),
+            Box::new(move |error| {
+                tracing::warn!(file_id, %error, "reading release file failed");
+            }),
+        );
+        buffer
+    }
+
+    /// Open `audio`'s stream for one decode start to finish (a transcode): the
+    /// track from its first sample, as playback decodes it from its start — the
+    /// silence a CUE `PREGAP` generates, then each segment, pregap included,
+    /// seeked the way playback seeks it. Positions in the served stream are
+    /// then positions in the track's stream, which a remote renderer reports
+    /// and seeks by. One stream per file the segments read; they close when
+    /// the returned decode is dropped.
+    pub fn open_track_decode(
+        &self,
+        audio: &bae_db::ResolvedTrackAudio,
     ) -> crate::library::TrackDecode {
-        crate::library::TrackDecode::new(decode, sample_rate, channels, self.diagnostics.clone())
+        use bae_track_audio::{SegmentDecodeParams, StreamDecodeParams};
+
+        let mut streams: std::collections::HashMap<
+            &str,
+            bae_audio::sparse_buffer::SharedSparseBuffer,
+        > = std::collections::HashMap::new();
+        let segments = audio
+            .segments
+            .iter()
+            .map(|segment| {
+                let buffer = streams
+                    .entry(segment.file_id.as_str())
+                    .or_insert_with(|| {
+                        self.open_release_file_stream(&segment.file_id, segment.file_size)
+                    })
+                    .clone();
+                SegmentDecodeParams::new(buffer, segment.span, 0)
+            })
+            .collect();
+        crate::library::TrackDecode::new(
+            StreamDecodeParams::new(
+                segments,
+                bae_audio::byte_jump_keeps_place(&audio.content_type),
+                audio.generated_pregap_frames(),
+                0,
+            ),
+            audio.sample_rate.get(),
+            audio.channels.get(),
+            self.diagnostics.clone(),
+        )
     }
 
     /// Settle the playback queue for starting playback: kept when it will be

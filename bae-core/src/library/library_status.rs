@@ -36,9 +36,7 @@ pub struct LiveLibraryStatus {
 }
 
 impl LiveLibraryStatus {
-    pub(crate) fn new(
-        query: CancellableLiveQuery<BTreeSet<LibraryCheck>, Vec<LibraryStatus>>,
-    ) -> Self {
+    pub fn new(query: CancellableLiveQuery<BTreeSet<LibraryCheck>, Vec<LibraryStatus>>) -> Self {
         Self { query }
     }
 

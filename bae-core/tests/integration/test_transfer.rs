@@ -358,10 +358,10 @@ async fn the_detail_views_follow_a_releases_pin() {
         .unwrap()
         .expect("the library holds the release")
         .album_id;
-    let services = mgr.start_services().await.expect("the test library's services start");
-    let release = services.subscribe_release_detail();
+    let views = mgr.views();
+    let release = bae_core::library::live_reads::subscribe_release_detail(&mgr, &views);
     release.set(Some(release_id.clone())).unwrap();
-    let album = services.subscribe_album_detail();
+    let album = bae_core::library::live_reads::subscribe_album_detail(&mgr, &views);
     album.set(Some(album_id)).unwrap();
     let shown = |pinned: bool| {
         let (release, album) = (&release, &album);
@@ -470,17 +470,21 @@ async fn transition_completions_deliver_storage_values() {
     let source_dir = tmp.path().join("src");
     let (_a, release_id, _named) =
         create_local_release(&mgr, &source_dir, &[("a.flac", b"round-trip-bytes")]).await;
-    let services = mgr.start_services().await.expect("the test library's services start");
-    let values = services.subscribe_storage_browse(StorageBrowseView {
-        sort: StorageSortCriterion {
-            field: StorageSortField::AlbumTitle,
-            direction: SortDirection::Ascending,
+    let views = mgr.views();
+    let values = bae_core::library::live_reads::subscribe_storage_browse(
+        &mgr,
+        &views,
+        StorageBrowseView {
+            sort: StorageSortCriterion {
+                field: StorageSortField::AlbumTitle,
+                direction: SortDirection::Ascending,
+            },
+            filter: StorageFilter::All,
+            search: String::new(),
+            windows: [bae_db::LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect(),
+            selected: Default::default(),
         },
-        filter: StorageFilter::All,
-        search: String::new(),
-        windows: [bae_db::LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect(),
-        selected: Default::default(),
-    });
+    );
     expect_storage_state(&values, &release_id, ReleaseStorageState::Local).await;
 
     mgr.upload_release(&release_id, false).await.unwrap();
@@ -510,20 +514,24 @@ async fn selected_releases_leave_the_local_list_with_their_upload() {
     mgr.upload_release(&first, false).await.unwrap();
     mgr.upload_release(&second, false).await.unwrap();
 
-    let services = mgr.start_services().await.expect("the test library's services start");
+    let views = mgr.views();
     let selected: std::collections::BTreeSet<String> =
         [first.clone(), second.clone()].into_iter().collect();
-    let values = services.subscribe_storage_browse(StorageBrowseView {
-        sort: StorageSortCriterion {
-            field: StorageSortField::AlbumTitle,
-            direction: SortDirection::Ascending,
+    let values = bae_core::library::live_reads::subscribe_storage_browse(
+        &mgr,
+        &views,
+        StorageBrowseView {
+            sort: StorageSortCriterion {
+                field: StorageSortField::AlbumTitle,
+                direction: SortDirection::Ascending,
+            },
+            filter: StorageFilter::Local,
+            search: String::new(),
+            // One row on screen, so one selected release sits outside it.
+            windows: [bae_db::LibraryPageWindow { offset: 0, limit: 1 }].into_iter().collect(),
+            selected: selected.clone(),
         },
-        filter: StorageFilter::Local,
-        search: String::new(),
-        // One row on screen, so one selected release sits outside it.
-        windows: [bae_db::LibraryPageWindow { offset: 0, limit: 1 }].into_iter().collect(),
-        selected: selected.clone(),
-    });
+    );
     let next = || async {
         tokio::time::timeout(std::time::Duration::from_secs(5), values.next())
             .await
@@ -595,7 +603,7 @@ async fn a_selection_is_offered_the_actions_all_its_releases_allow() {
         .await
         .expect("pin task completes");
 
-    let services = mgr.start_services().await.expect("the test library's services start");
+    let views = mgr.views();
     let view = |selected: &[&String]| StorageBrowseView {
         sort: StorageSortCriterion {
             field: StorageSortField::AlbumTitle,
@@ -607,7 +615,11 @@ async fn a_selection_is_offered_the_actions_all_its_releases_allow() {
         windows: [bae_db::LibraryPageWindow { offset: 0, limit: 1 }].into_iter().collect(),
         selected: selected.iter().map(|id| (*id).clone()).collect(),
     };
-    let values = services.subscribe_storage_browse(view(&[&pinned, &unpinned]));
+    let values = bae_core::library::live_reads::subscribe_storage_browse(
+        &mgr,
+        &views,
+        view(&[&pinned, &unpinned]),
+    );
     let next = || async {
         tokio::time::timeout(std::time::Duration::from_secs(5), values.next())
             .await

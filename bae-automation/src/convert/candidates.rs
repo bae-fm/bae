@@ -18,7 +18,7 @@ pub(crate) async fn automation_candidate_from_folder(
     folder: &ImportCandidateDetail,
     runtime: &HashMap<CandidateKey, CandidateRuntimeSnapshot>,
     percents: &HashMap<CandidateKey, u32>,
-    services: &bae_core::library::AppServices,
+    services: &bae_app::AppServices,
 ) -> Result<AutomationCandidate, AutomationError> {
     let candidate = &folder.candidate;
     let draft = folder.draft();

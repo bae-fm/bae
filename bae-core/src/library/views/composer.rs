@@ -29,7 +29,7 @@ impl LibraryViews {
     /// Follow the composer list under `sort` in the windows its request
     /// names, each read from the row beside it when one is known
     /// (`list_windows`).
-    pub(crate) fn subscribe_composer_browse(
+    pub fn subscribe_composer_browse(
         &self,
         sort: &[ComposerSortCriterion],
         initial_windows: bae_db::LibraryPageWindows,
@@ -68,7 +68,7 @@ impl LibraryViews {
 
     /// Follow the composer `initial` names, or none. The detail view moves to
     /// another composer through the request handle, not another query.
-    pub(crate) fn subscribe_composer_detail(
+    pub fn subscribe_composer_detail(
         &self,
         initial: Option<String>,
     ) -> coven::ReconfigurableLiveQuery<Option<String>, ComposerDetailProjection> {
@@ -104,7 +104,7 @@ impl LibraryViews {
 
     /// Follow the work `initial` names, or none. The detail view moves to
     /// another work through the request handle, not another query.
-    pub(crate) fn subscribe_work_detail(
+    pub fn subscribe_work_detail(
         &self,
         initial: Option<String>,
     ) -> coven::ReconfigurableLiveQuery<Option<String>, WorkDetailProjection> {
@@ -120,7 +120,7 @@ impl LibraryViews {
 }
 
 /// One delivery of the composer list as the list shows it.
-pub(crate) fn resolve_composer_browse(
+pub fn resolve_composer_browse(
     projection: ComposerBrowseProjection,
     request_revision: u64,
     cause: coven::LiveQueryCause,
@@ -144,7 +144,7 @@ pub(crate) fn resolve_composer_browse(
 
 /// One delivery of the composer detail as the detail view shows it: its
 /// works grouped under their parents, and the work the view opens first.
-pub(crate) fn resolve_composer_detail_projection(
+pub fn resolve_composer_detail_projection(
     projection: ComposerDetailProjection,
 ) -> Option<ComposerDetail> {
     let raw = projection.detail?;
@@ -174,9 +174,7 @@ pub(crate) fn resolve_composer_detail_projection(
 }
 
 /// One delivery of the work detail as the detail view shows it.
-pub(crate) fn resolve_work_detail_projection(
-    projection: WorkDetailProjection,
-) -> Option<WorkDetail> {
+pub fn resolve_work_detail_projection(projection: WorkDetailProjection) -> Option<WorkDetail> {
     projection.detail.map(work_detail_of)
 }
 

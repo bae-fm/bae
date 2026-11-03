@@ -18,7 +18,9 @@ fn profiles_ratings_playlists_and_history_use_the_same_store() {
     let made = runtime.block_on(bae_core::test_libraries::made_profile(&library, "Robin"));
     let db = library.database().clone();
     let services = runtime.block_on(async move {
-        library.start_services().await.expect("the test library's services start")
+        bae_app::test_services::start_services(&library)
+            .await
+            .expect("the test library's services start")
     });
     let app = Arc::new(
         AppHandle::start(services, runtime, bae_diagnostics::Diagnostics::noop()).unwrap(),

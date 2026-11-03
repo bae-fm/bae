@@ -252,7 +252,7 @@ pub struct FileDetail {
 
 impl FileDetail {
     /// The release file `f` as a list of the release's files shows it.
-    pub(crate) fn from_raw(f: bae_db::DbFile) -> Self {
+    pub fn from_raw(f: bae_db::DbFile) -> Self {
         FileDetail {
             place: FilePlace::of(&f.original_filename),
             kind: FileKind::of(&f.content_type, &f.original_filename),

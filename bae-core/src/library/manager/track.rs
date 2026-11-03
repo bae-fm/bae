@@ -39,21 +39,19 @@ impl LibraryManager {
     }
 
     /// Follow the queue as its screens show it.
-    pub(crate) fn subscribe_queue_value(
-        &self,
-    ) -> coven::LiveQuery<bae_playback::ResolvedQueueSnapshot> {
+    pub fn subscribe_queue_value(&self) -> coven::LiveQuery<bae_playback::ResolvedQueueSnapshot> {
         bae_playback::tables::subscribe_queue_value(&self.database)
     }
 
     /// Follow the queue's last addition to Up Next.
-    pub(crate) fn subscribe_queue_addition(
+    pub fn subscribe_queue_addition(
         &self,
     ) -> coven::LiveQuery<Option<bae_playback::QueueAddition>> {
         bae_playback::tables::subscribe_queue_addition(&self.database)
     }
 
     /// Follow the windows `initial` names of the context lane's upcoming tracks.
-    pub(crate) fn subscribe_queue_upcoming(
+    pub fn subscribe_queue_upcoming(
         &self,
         initial: bae_db::LibraryPageWindows,
     ) -> coven::ReconfigurableLiveQuery<
@@ -112,15 +110,13 @@ impl LibraryManager {
 
     /// Follow where playback is, as the surfaces that move the position on
     /// themselves read it.
-    pub(crate) fn subscribe_playback_timeline(
-        &self,
-    ) -> coven::LiveQuery<bae_playback::PlaybackTimeline> {
+    pub fn subscribe_playback_timeline(&self) -> coven::LiveQuery<bae_playback::PlaybackTimeline> {
         bae_playback::tables::subscribe_playback_timeline(&self.database)
     }
 
     /// Follow what playback is doing as its screens show it; `None` while it
     /// names a track the library no longer holds.
-    pub(crate) fn subscribe_now_playing(
+    pub fn subscribe_now_playing(
         &self,
     ) -> coven::LiveQuery<Option<bae_playback::NowPlayingValues>> {
         bae_playback::tables::subscribe_now_playing(&self.database)

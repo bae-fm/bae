@@ -17,7 +17,7 @@ impl LibraryViews {
 
     /// The albums, tracks, composers and works whose title or name `query`
     /// finds, at most `limit` of each, as their rows read.
-    pub(crate) async fn search_rows(
+    pub async fn search_rows(
         &self,
         query: &str,
         limit: usize,
@@ -34,7 +34,7 @@ impl LibraryViews {
     /// query; `None` is no search, which reads nothing and delivers no results.
     /// A new query moves this subscription's request rather than opening
     /// another.
-    pub(crate) fn subscribe_library_search(
+    pub fn subscribe_library_search(
         &self,
         initial: Option<crate::library::LibrarySearchQuery>,
         limit: usize,
@@ -111,7 +111,7 @@ impl LibraryViews {
     /// Follow the album list under `sort`, flat or grouped by artist, in the
     /// windows its request names. A window next to one this read or the
     /// last read held is read from the row beside it (`list_windows`).
-    pub(crate) fn subscribe_album_browse(
+    pub fn subscribe_album_browse(
         &self,
         sort: &[AlbumSortCriterion],
         group_by_artist: bool,
@@ -187,7 +187,7 @@ impl LibraryViews {
     /// multi-selection — the library no longer shows, by id. The selection
     /// changes by pointing the same query at new ids through its request
     /// handle, not by opening another one.
-    pub(crate) fn subscribe_album_selection(
+    pub fn subscribe_album_selection(
         &self,
         initial: BTreeSet<String>,
     ) -> coven::ReconfigurableLiveQuery<BTreeSet<String>, Vec<String>> {
@@ -293,7 +293,7 @@ impl LibraryViews {
 
     /// Follow the album `initial` names, or none. The detail view moves to
     /// another album through the request handle, not another query.
-    pub(crate) fn subscribe_album_detail(
+    pub fn subscribe_album_detail(
         &self,
         initial: Option<String>,
     ) -> coven::ReconfigurableLiveQuery<Option<String>, AlbumDetailProjection> {
@@ -318,7 +318,7 @@ impl LibraryViews {
 }
 
 /// One delivery of the album grid as the grid shows it.
-pub(crate) fn resolve_album_browse(
+pub fn resolve_album_browse(
     projection: AlbumBrowseProjection,
     request_revision: u64,
     cause: coven::LiveQueryCause,
@@ -345,7 +345,7 @@ pub(crate) fn resolve_album_browse(
 }
 
 /// One delivery of the album detail as the detail view shows it.
-pub(crate) fn resolve_album_detail_projection(
+pub fn resolve_album_detail_projection(
     projection: AlbumDetailProjection,
 ) -> Option<crate::album_detail::AlbumDetail> {
     let has_cloud_home = projection.has_cloud_home;
@@ -353,7 +353,7 @@ pub(crate) fn resolve_album_detail_projection(
 }
 
 /// One delivery of a library search as its results show it.
-pub(crate) fn resolve_library_search_projection(
+pub fn resolve_library_search_projection(
     projection: LibrarySearchProjection,
 ) -> crate::album_detail::SearchResults {
     crate::album_detail::SearchResults::from_raw(projection.results)

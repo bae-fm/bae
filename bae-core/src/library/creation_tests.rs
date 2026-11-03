@@ -393,33 +393,17 @@ async fn a_restore_stopped_after_its_swap_is_listed_and_finished_by_restoring_ag
         libraries[0].state
     );
 
-    let opening = {
-        let app_dir = app_dir.clone();
-        let builder = builder();
-        tokio::task::spawn_blocking(move || {
-            crate::app::bootstrap(
-                app_dir,
-                store.to_string(),
-                200,
-                false,
-                bae_playback::AudioFocus::Unshared,
-                bae_diagnostics::Diagnostics::noop(),
-                builder,
-                |_| (),
-                |_, _| -> Result<(), crate::app::BootstrapError> {
-                    panic!("a library whose restore is unfinished doesn't open")
-                },
-            )
-        })
-        .await
-        .unwrap()
-    };
+    let opening = configure_store(builder()).open(store, |_| ()).await;
     assert!(
         matches!(
             opening,
-            Err(crate::app::BootstrapError::ReplacementUnfinished(coven::ReplacedBy::Restore))
+            Err(coven::CovenError::Lock(coven::StoreLockError::ReplacementUnfinished {
+                by: coven::ReplacedBy::Restore,
+                ..
+            }))
         ),
-        "{opening:?}"
+        "{:?}",
+        opening.err()
     );
 
     let restored = restore().await.unwrap();

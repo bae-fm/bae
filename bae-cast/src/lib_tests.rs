@@ -30,7 +30,7 @@ fn start_discovery(runtime: &tokio::runtime::Runtime, controller: &Arc<CastContr
 fn test_controller(
     discovery: RendererDiscovery,
 ) -> (tokio::runtime::Runtime, Arc<CastController>, AppServices, tempfile::TempDir) {
-    let (runtime, services, tmp) = bae_core::test_libraries::runtime_with_services();
+    let (runtime, services, tmp) = bae_app::test_services::runtime_with_services();
     let controller = CastController::start_serving_on(
         services.clone(),
         runtime.handle().clone(),
@@ -307,7 +307,7 @@ fn each_url_uses_a_fresh_salt() {
 /// stopping the server frees the port.
 #[test]
 fn ephemeral_server_authenticates_minted_urls_and_stops() {
-    let (runtime, services, _tmp) = bae_core::test_libraries::runtime_with_services();
+    let (runtime, services, _tmp) = bae_app::test_services::runtime_with_services();
 
     runtime.block_on(async move {
         let server =

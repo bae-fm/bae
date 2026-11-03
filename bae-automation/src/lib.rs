@@ -1,6 +1,7 @@
 #[macro_use]
 extern crate bae_mirror;
 
+use bae_app::AppServices;
 use bae_catalogs::catalog::{Catalog, LookupCatalog};
 use bae_catalogs::records::MetadataRef;
 use bae_catalogs::remote_image::RemoteCover;
@@ -10,7 +11,7 @@ use bae_core::album_detail::{
     FileDetail, GalleryItem, GallerySource, ReleaseDetail, ReleaseStorageState, SearchResults,
     TrackDetail,
 };
-use bae_core::library::{AppServices, LibraryError};
+use bae_core::library::LibraryError;
 use bae_db::ImageRef;
 use bae_db::LibraryStatus;
 use bae_identify::release_group::ReleaseGroup;

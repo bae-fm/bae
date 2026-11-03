@@ -172,9 +172,9 @@ async fn test_multiple_releases_independent_completion() {
     assert!(settled.rows.is_empty(), "offline copy failed: {settled:?}");
     // Each completed upload carried its file's pin to the stored file, which
     // is pinned once its copy from storage lands.
-    let services = mgr.start_services().await.expect("the test library's services start");
+    let views = mgr.views();
     for release_id in [&release_a, &release_b] {
-        let release = services.subscribe_release_detail();
+        let release = bae_core::library::live_reads::subscribe_release_detail(&mgr, &views);
         release.set(Some(release_id.clone())).unwrap();
         tokio::time::timeout(std::time::Duration::from_secs(10), async {
             loop {
@@ -494,17 +494,21 @@ async fn storage_subscription_delivers_actions_on_cloud_home_transition() {
     let source_dir = tmp.path().join("originals");
     let (release_id, _files) = create_local_release(&mgr, &source_dir, &[("a.flac", b"a")]).await;
 
-    let services = mgr.start_services().await.expect("the test library's services start");
-    let values = services.subscribe_storage_browse(StorageBrowseView {
-        sort: StorageSortCriterion {
-            field: StorageSortField::AlbumTitle,
-            direction: SortDirection::Ascending,
+    let views = mgr.views();
+    let values = bae_core::library::live_reads::subscribe_storage_browse(
+        &mgr,
+        &views,
+        StorageBrowseView {
+            sort: StorageSortCriterion {
+                field: StorageSortField::AlbumTitle,
+                direction: SortDirection::Ascending,
+            },
+            filter: StorageFilter::All,
+            search: String::new(),
+            windows: [bae_db::LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect(),
+            selected: Default::default(),
         },
-        filter: StorageFilter::All,
-        search: String::new(),
-        windows: [bae_db::LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect(),
-        selected: Default::default(),
-    });
+    );
     let before = next_storage_release(&values, &release_id).await;
     assert!(before.storage_actions.is_empty(), "no cloud home → no storage actions");
 

@@ -68,7 +68,7 @@ impl LibraryViews {
     /// whether each window is read from those releases or through the
     /// order's index (`StorageSearch`). Its rows' places hold for the next
     /// read only while what library search finds has not moved either.
-    pub(crate) fn subscribe_storage_browse(
+    pub fn subscribe_storage_browse(
         &self,
         initial: StorageBrowseRequest,
     ) -> coven::ReconfigurableLiveQuery<StorageBrowseRequest, StorageBrowseProjection> {
@@ -161,7 +161,7 @@ impl LibraryViews {
 }
 
 /// One delivery of the Storage Manager list as it shows it.
-pub(crate) fn resolve_storage_browse(
+pub fn resolve_storage_browse(
     projection: StorageBrowseProjection,
 ) -> crate::library::StorageBrowseSnapshot {
     let has_cloud_home = projection.has_cloud_home;

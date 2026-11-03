@@ -4,17 +4,17 @@
 //! is functions over coven's read context; [`LibraryViews`] runs them through
 //! the store and resolves what they read into what a screen shows.
 
-pub(crate) mod album;
+pub mod album;
 mod album_search;
-pub(crate) mod artist;
-pub(crate) mod artist_search;
-pub(crate) mod composer;
+pub mod artist;
+pub mod artist_search;
+pub mod composer;
 mod invites;
 mod models;
-pub(crate) mod release;
+pub mod release;
 #[cfg(desktop)]
 pub(crate) mod release_files;
-pub(crate) mod storage;
+pub mod storage;
 #[cfg(desktop)]
 pub(crate) mod storage_inspector;
 mod sync_activity;

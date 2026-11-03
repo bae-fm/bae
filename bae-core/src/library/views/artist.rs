@@ -30,7 +30,7 @@ impl LibraryViews {
     /// Follow the artist list under `sort` in the windows its request
     /// names, each read from the row beside it when one is known
     /// (`list_windows`).
-    pub(crate) fn subscribe_artist_browse(
+    pub fn subscribe_artist_browse(
         &self,
         sort: &[ArtistSortCriterion],
         initial_windows: bae_db::LibraryPageWindows,
@@ -82,7 +82,7 @@ impl LibraryViews {
 
     /// Follow the artist `initial` names, or none. The detail view moves to
     /// another artist through the request handle, not another query.
-    pub(crate) fn subscribe_artist_detail(
+    pub fn subscribe_artist_detail(
         &self,
         initial: Option<String>,
     ) -> coven::ReconfigurableLiveQuery<Option<String>, ArtistDetailProjection> {
@@ -102,7 +102,7 @@ impl LibraryViews {
 }
 
 /// One delivery of the artist list as the list shows it.
-pub(crate) fn resolve_artist_browse(
+pub fn resolve_artist_browse(
     projection: ArtistBrowseProjection,
     request_revision: u64,
     cause: coven::LiveQueryCause,
@@ -125,7 +125,7 @@ pub(crate) fn resolve_artist_browse(
 }
 
 /// One delivery of the artist detail as the detail view shows it.
-pub(crate) fn resolve_artist_detail_projection(
+pub fn resolve_artist_detail_projection(
     projection: ArtistDetailProjection,
 ) -> Option<ArtistDetail> {
     projection.detail.map(artist_detail_of)

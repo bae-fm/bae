@@ -66,7 +66,7 @@ pub enum StorageInspectorTransfer {
 
 impl StorageInspector {
     /// The release `release_id` from one read of it, `rows`.
-    pub(crate) fn read(release_id: &str, rows: crate::library::views::DbStorageInspector) -> Self {
+    pub fn read(release_id: &str, rows: crate::library::views::DbStorageInspector) -> Self {
         Self::of(release_id, rows.files, &rows.entries, rows.upload.map(ReleaseUpload::from_raw))
     }
 

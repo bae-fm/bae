@@ -32,21 +32,26 @@ async fn until<Value, Error: std::fmt::Debug>(
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn a_transition_reaches_the_reads_from_its_row() {
     let (manager, _temp_dir, album, release) = manager_with_release().await;
-    let services = manager.library.start_services().await.unwrap();
-    let album_detail = services.subscribe_album_detail();
+    let views = manager.views();
+    let album_detail = crate::library::live_reads::subscribe_album_detail(&manager.library, &views);
     album_detail.set(Some(album.id.clone())).unwrap();
-    let release_detail = services.subscribe_release_detail();
+    let release_detail =
+        crate::library::live_reads::subscribe_release_detail(&manager.library, &views);
     release_detail.set(Some(release.id.clone())).unwrap();
-    let storage = services.subscribe_storage_browse(crate::library::StorageBrowseView {
-        sort: crate::library::views::StorageSortCriterion {
-            field: crate::library::views::StorageSortField::AlbumTitle,
-            direction: bae_db::SortDirection::Ascending,
+    let storage = crate::library::live_reads::subscribe_storage_browse(
+        &manager.library,
+        &views,
+        crate::library::StorageBrowseView {
+            sort: crate::library::views::StorageSortCriterion {
+                field: crate::library::views::StorageSortField::AlbumTitle,
+                direction: bae_db::SortDirection::Ascending,
+            },
+            filter: crate::library::views::StorageFilter::All,
+            search: String::new(),
+            windows: [bae_db::LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect(),
+            selected: Default::default(),
         },
-        filter: crate::library::views::StorageFilter::All,
-        search: String::new(),
-        windows: [bae_db::LibraryPageWindow { offset: 0, limit: 50 }].into_iter().collect(),
-        selected: Default::default(),
-    });
+    );
     let album_shows = |action: Option<ReleaseStorageAction>| {
         move |snapshot: &crate::library::DetailSnapshot<crate::album_detail::AlbumDetail>| {
             snapshot.value.as_ref().is_some_and(|detail| {
@@ -90,9 +95,6 @@ async fn a_transition_reaches_the_reads_from_its_row() {
     until("the album's transition ends", || album_detail.next(), album_shows(None)).await;
     until("the release's transition ends", || release_detail.next(), release_shows(None)).await;
     until("the row rests again", || storage.next(), row_shows(StorageRowStatus::Local)).await;
-
-    drop((album_detail, release_detail, storage));
-    tokio::task::spawn_blocking(move || drop(services)).await.expect("tear the application down");
 }
 
 /// A transition's row is there while its work runs; a work that fails or

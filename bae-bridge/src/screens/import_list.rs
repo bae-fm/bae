@@ -15,7 +15,7 @@ use crate::types::BridgeError;
 #[derive(uniffi::Object)]
 pub struct ImportListSubscription {
     inner: bae_import::LiveImportList,
-    services: bae_core::library::AppServices,
+    services: bae_app::AppServices,
     runtime: crate::operation_runtime::OperationRuntime,
     /// Where the next bulk action reports how far it has got: the stream
     /// [`Self::selection_action_progress`] last handed out.
@@ -24,7 +24,7 @@ pub struct ImportListSubscription {
 
 pub(crate) fn import_list(
     inner: bae_import::LiveImportList,
-    services: bae_core::library::AppServices,
+    services: bae_app::AppServices,
     runtime: crate::operation_runtime::OperationRuntime,
 ) -> std::sync::Arc<ImportListSubscription> {
     std::sync::Arc::new(ImportListSubscription {

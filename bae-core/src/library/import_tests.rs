@@ -209,16 +209,6 @@ async fn an_album_opened_while_another_release_imports_shows_at_once() {
     let fixture = ImportingLibrary::open().await;
     let shown_key = fixture.importable_folder("shown", "Shown Album", "Artist").await;
     let importing_key = fixture.importable_folder("other", "Importing Album", "Artist").await;
-    // No hardware behind it: this test never plays anything.
-    let playback = fixture.library.start_playback().await;
-    let services = crate::library::AppServices::new(
-        crate::library::LibraryManager::clone(&fixture.library),
-        fixture.library.views(),
-        playback,
-        fixture.library.cast_picker(),
-        fixture.import.clone(),
-        fixture.import.start_identification_queue(),
-    );
     let (_, shown_album) = fixture.import(&shown_key).await.expect("the shown album imports");
 
     let mut events = fixture.import.every_event();
@@ -228,7 +218,10 @@ async fn an_album_opened_while_another_release_imports_shows_at_once() {
         .await
         .expect("the import reaches its measurement");
 
-    let values = services.subscribe_album_detail();
+    let values = crate::library::live_reads::subscribe_album_detail(
+        &fixture.library,
+        &fixture.library.views(),
+    );
     values.set(Some(shown_album.clone())).unwrap();
     let shown =
         next_for(&values, &shown_album, "the album detail arrives while the other import runs")
@@ -242,10 +235,7 @@ async fn an_album_opened_while_another_release_imports_shows_at_once() {
     drop(held);
     import_outcome(&mut events, &importing).await.expect("the held import finishes");
 
-    // Dropping `services` joins the playback and import threads, so it happens
-    // on a blocking thread.
     drop(values);
-    tokio::task::spawn_blocking(move || drop(services)).await.unwrap();
     fixture.shut_down().await;
 }
 

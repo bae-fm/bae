@@ -462,8 +462,7 @@ async fn play_library_shuffled_is_a_no_op_on_an_empty_library() {
 #[tokio::test]
 async fn set_repeat_mode_applies_and_reports_each_mode() {
     let fixture = PlaybackTestFixture::new().await;
-    let services = fixture.services().await;
-    let values = services.subscribe_playback_values();
+    let values = playback_values(&fixture);
     for expected in [RepeatMode::Context, RepeatMode::Track, RepeatMode::Off] {
         fixture.playback_handle.set_repeat_mode(expected);
         tokio::time::timeout(Duration::from_secs(3), async {

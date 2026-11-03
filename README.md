@@ -27,7 +27,8 @@ You pick releases from MusicBrainz or Discogs, point bae at your files, and it h
 
 | Crate | Description |
 |-------|-------------|
-| `bae-core` | The library, files, outputs, sync integration, settings |
+| `bae-app` | The composition root that opens a library, and `AppServices`, the owner every surface calls |
+| `bae-core` | The library, files, outputs, sync integration, settings, and the live reads the screens pull |
 | `bae-import` | Import (desktop only): watched folders, candidates and their drafts, identification runs, and the import that writes a release |
 | `bae-playback` | Playback: the service, the queue as the store keeps it, the outputs, the preview player, and the renderer session |
 | `bae-identify` | Identification (desktop only): the reducer, its view, and the verdict a run stores |

@@ -155,7 +155,9 @@ pub(super) fn start_test_handle(
     library: bae_core::test_libraries::TestLibrary,
 ) -> Arc<super::AppHandle> {
     let services = runtime.block_on(async move {
-        library.start_services().await.expect("the test library's services start")
+        bae_app::test_services::start_services(&library)
+            .await
+            .expect("the test library's services start")
     });
     Arc::new(
         super::AppHandle::start(services, runtime, bae_diagnostics::Diagnostics::noop())
@@ -689,7 +691,9 @@ fn dropping_a_handle_closes_its_library_before_its_runtime_ends() {
     });
     let database = library.database().clone();
     let services = runtime.block_on(async move {
-        library.start_services().await.expect("the test library's services start")
+        bae_app::test_services::start_services(&library)
+            .await
+            .expect("the test library's services start")
     });
     let app = super::AppHandle::start(services, runtime, bae_diagnostics::Diagnostics::noop())
         .expect("the bridge handle starts");

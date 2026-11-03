@@ -13,6 +13,8 @@ name = "bae_automation"
 path = "src/lib.rs"
 
 [dependencies]
+# The app's services over an open library, which this crate calls.
+bae-app = { workspace = true }
 bae-core = { workspace = true }
 # The library's records its answers carry.
 bae-db = { workspace = true }
@@ -38,6 +40,8 @@ tokio = { workspace = true, features = ["sync", "time"] }
 
 [dev-dependencies]
 # The test libraries the tools are driven over.
+# A test library's services, started through the app's own step.
+bae-app = { workspace = true, features = ["test-utils"] }
 bae-core = { workspace = true, features = ["test-utils"] }
 # The import runs the import tests land releases with.
 bae-import = { workspace = true, features = ["test-utils"] }

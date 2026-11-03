@@ -1,0 +1,86 @@
+[package]
+name = "bae-app"
+version = "0.0.0-dev"
+authors = ["dima"]
+edition = "2021"
+license = "LicenseRef-UNLICENSED"
+publish = false
+# The `desktop` cfg, defined once in bae-util's build script for every crate
+# with desktop-only code.
+build = "../bae-util/build.rs"
+
+[lib]
+name = "bae_app"
+path = "src/lib.rs"
+
+[dependencies]
+# The app directory the bootstrap opens a library under.
+bae-app-dir = { workspace = true }
+# The decode sink a track's decode writes into.
+bae-audio = { workspace = true }
+# The catalogs a library asks, and the image cache their covers come through.
+bae-catalogs = { workspace = true }
+# The library: its manager, views, transfers and what they show.
+bae-core = { workspace = true }
+# The store the bootstrap opens, and the live reads the services pass on.
+bae-db = { workspace = true }
+# The bugs, anomalies and telemetry the bootstrap and services report.
+bae-diagnostics = { workspace = true }
+# The identify choices a release being identified again asks about.
+bae-identify = { workspace = true }
+# The import service the library's services start, and its handles.
+bae-import = { workspace = true }
+# The playback service the library's services start, and the cast picker.
+bae-playback = { workspace = true }
+# The preferences the services read and write.
+bae-preferences = { workspace = true }
+# The stored audio a track's decode reads.
+bae-track-audio = { workspace = true }
+# Pressing values the services pass on.
+bae-types = { workspace = true }
+# The panic-reporting tasks the services run.
+bae-util = { workspace = true }
+# The store's files, clock and ids.
+coven = { workspace = true }
+chrono = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
+tracing = { workspace = true }
+uuid = { workspace = true, features = ["v4"] }
+# The temp directory a test library's services run over.
+tempfile = { workspace = true, optional = true }
+
+[dev-dependencies]
+bae-app-dir = { workspace = true, features = ["test-utils"] }
+bae-catalogs = { workspace = true, features = ["test-utils"] }
+# The test libraries the services start over.
+bae-core = { workspace = true, features = ["test-utils"] }
+bae-db = { workspace = true, features = ["test-utils"] }
+bae-diagnostics = { workspace = true, features = ["test-utils"] }
+bae-import = { workspace = true, features = ["test-utils"] }
+bae-playback = { workspace = true, features = ["test-utils"] }
+bae-util = { workspace = true, features = ["test-utils"] }
+coven = { workspace = true, features = ["test-utils"] }
+tempfile = { workspace = true }
+# Builds the native keychain refusal coven wraps in `KeyError`, for the
+# tests of how a missing keychain entitlement is reported.
+keyring-core = { workspace = true }
+# The library fixtures the bootstrap tests write.
+serde_json = { workspace = true }
+
+[features]
+default = []
+# OAuth cloud providers (Dropbox, OneDrive) through bae-core's sign-in.
+oauth-providers = ["bae-core/oauth-providers"]
+# A library's services started over a device a test supplies, and the test
+# library they start over.
+test-utils = ["dep:tempfile", "bae-core/test-utils", "bae-playback/test-utils"]
+
+# bae-app's integration tests, one binary of modules (tests/integration/).
+[[test]]
+name = "integration"
+path = "tests/integration/main.rs"
+required-features = ["test-utils"]
+
+[lints]
+workspace = true

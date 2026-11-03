@@ -1,7 +1,6 @@
 use bae_catalogs::discogs::models::DiscogsRelease;
 use bae_preferences::SidePauseCountdown;
 use bae_import::{ImportCommand, ImportDestination};
-use bae_core::library::LibraryManager;
 use bae_playback::{LoadingTrack, PlaybackPauseBoundary, PlaybackPauseReason, PlaybackProgress, PlaybackSideCountdown, PlaybackState, RepeatMode};
 use bae_types::track_time::{TrackTime};
 use coven::{IdSource, SequentialIds};
@@ -377,7 +376,7 @@ struct PlaybackTestFixture {
     track_ids: Vec<String>,
     album_dir: std::path::PathBuf,
     /// The library the album was imported into, which tests read and edit
-    /// directly and [`Self::services`] starts its import service over.
+    /// directly.
     library: TestLibrary,
     /// Dropping this receiver would make stream creation fail.
     _capture_stream_rx: bae_playback::CapturedStreams,
@@ -409,20 +408,6 @@ impl PlaybackTestFixture {
             _capture_stream_rx: capture_stream_rx,
             _temp_dir: temp_dir,
         }
-    }
-    /// The services over this fixture's library and playback, as an app
-    /// holds them.
-    async fn services(&self) -> bae_core::library::AppServices {
-        let import = self.library.start_import().await.expect("test import service starts");
-        let identification = import.start_identification_queue();
-        bae_core::library::AppServices::new(
-            LibraryManager::clone(&self.library),
-            self.library.views(),
-            self.playback_handle.clone(),
-            self.library.cast_picker(),
-            import,
-            identification,
-        )
     }
     /// Wait for a specific state change with timeout
     async fn wait_for_state<F>(
