@@ -12,7 +12,7 @@ use tracing::{debug, warn};
 /// What a release already in the library was copied from: what its rip
 /// artifacts say, and what its audio is.
 pub struct ReleaseIdentity {
-    pub(crate) rip: crate::discid::RipReading,
+    pub(crate) rip: crate::rip_reading::RipReading,
     pub(crate) audio: bae_identify::signals::AudioFacts,
 }
 
@@ -43,7 +43,7 @@ impl ReleaseIdentity {
 
 /// Read the release's local files, pick out its rip documents, track sheets
 /// and audio, and read them the way a folder's are read (see
-/// [`crate::discid::read_rip_artifacts_from_paths`]). The track count
+/// [`crate::rip_reading::read_rip_artifacts_from_paths`]). The track count
 /// and lengths come from the release's track rows, not the files — those rows
 /// are the user's truth. A panic reading the files is reported to
 /// `diagnostics`.
@@ -75,7 +75,7 @@ pub async fn resolve_release_identity(
             if !path.exists() {
                 continue;
             }
-            if crate::discid::is_rip_document(&path) {
+            if crate::rip_reading::is_rip_document(&path) {
                 documents.push(path.clone());
             } else if path
                 .extension()
@@ -86,7 +86,7 @@ pub async fn resolve_release_identity(
             }
             if let Some(source_audio) = &f.source_audio {
                 let duration_ms = source_audio.duration_ms;
-                audio_files.push(crate::discid::ReleaseAudioFile {
+                audio_files.push(crate::rip_reading::ReleaseAudioFile {
                     path,
                     duration_ms,
                     format: source_audio.format.clone(),
@@ -101,7 +101,7 @@ pub async fn resolve_release_identity(
         audio_files.iter().map(|file| &file.format),
     );
     let rip = bae_util::task_failure::blocking("read a release's rip files", move || {
-        crate::discid::read_rip_artifacts_from_paths(&documents, &cue_paths, &audio_files)
+        crate::rip_reading::read_rip_artifacts_from_paths(&documents, &cue_paths, &audio_files)
     })
     .await
     .map_err(|failed| diagnostics.bug(failed))?;

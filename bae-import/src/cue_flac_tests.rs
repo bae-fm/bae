@@ -727,3 +727,41 @@ fn test_cue_parser_stops_at_data_track() {
         CueTrackMode::Other(ref mode) if mode == "MODE1/2048"
     ));
 }
+
+pub(crate) fn audio_cue_track(number: u32, file_reference: &str) -> crate::cue_flac::CueTrack {
+    audio_cue_track_at(number, file_reference, 0)
+}
+
+pub(crate) fn audio_cue_track_at(
+    number: u32,
+    file_reference: &str,
+    start_cue_frames: u64,
+) -> crate::cue_flac::CueTrack {
+    use crate::cue_flac::{CueIndex, CueTrack, CueTrackMode};
+    CueTrack {
+        number,
+        mode: CueTrackMode::Audio,
+        title: Some(format!("Track {number:02}")),
+        performer: None,
+        indexes: vec![CueIndex {
+            number: 1,
+            frames: start_cue_frames,
+            file_reference: file_reference.to_string(),
+        }],
+        file_reference: file_reference.to_string(),
+        start_cue_frames,
+        generated_pregap_frames: None,
+        end_cue_frames: None,
+    }
+}
+
+pub(crate) fn cue_sheet_with(tracks: Vec<crate::cue_flac::CueTrack>) -> CueSheet {
+    CueSheet {
+        title: Some("Album Title".to_string()),
+        performer: Some("Artist Name".to_string()),
+        catalog: None,
+        date: None,
+        ripper: None,
+        tracks,
+    }
+}

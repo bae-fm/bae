@@ -1,7 +1,9 @@
-//! The crate's own test tools, shared by tests across its modules: files a
-//! test makes misbehave, a gate a test holds a worker behind, the import
-//! service a unit test starts, and how many times this test binary has read
-//! each file.
+//! The crate's own test tools, shared by tests across its modules: the
+//! checked-in fixture files, files a test makes misbehave, a gate a test holds
+//! a worker behind, the import service a unit test starts, and how many times
+//! this test binary has read each file.
+
+use std::path::{Path, PathBuf};
 
 pub(crate) mod files {
     //! Files a test makes misbehave.
@@ -251,4 +253,10 @@ pub(crate) mod reads {
             .copied()
             .unwrap_or(0)
     }
+}
+
+/// Resolve a checked-in test fixture by path relative to the crate root, so
+/// tests don't depend on the process working directory.
+pub(crate) fn fixture(rel: &str) -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures").join(rel)
 }

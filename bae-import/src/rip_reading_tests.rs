@@ -3,6 +3,7 @@
 
 use super::*;
 use crate::cue_flac::{CdRipper, CueIndex, CueTrack, CueTrackMode};
+use crate::tests::fixture;
 
 fn track(number: u32, start_cue_frames: u64) -> CueTrack {
     CueTrack {
@@ -268,4 +269,126 @@ fn audio_off_a_cds_rate_with_no_sheet_is_absent() {
         read(RipArtifacts { documents: Vec::new(), sheets: Vec::new(), audio: vec![&format] });
     assert_eq!(reading.origin.not_cd_rate, Some(96_000));
     assert_eq!(reading.disc_id, DiscIdReading::Absent);
+}
+
+/// A folder's log carves the disc its table of contents hashes to, and the
+/// row can name the file it was read off.
+#[test]
+fn a_log_carves_its_disc_and_names_the_file_it_was_read_off() {
+    use tempfile::TempDir;
+    let tmp = TempDir::new().unwrap();
+    let folder = tmp.path();
+    std::fs::copy(fixture("logs/test_album.log"), folder.join("Album.log")).unwrap();
+    let flac = fixture("flac");
+    for name in ["01 Test Track 1.flac", "02 Test Track 2.flac"] {
+        std::fs::copy(flac.join(name), folder.join(name)).unwrap();
+    }
+
+    let categorized = crate::folder_scanner::collect_release_candidate_files_with_scope(
+        folder,
+        crate::ReleaseFileScope::Recursive,
+        &crate::folder_scanner::StoredCandidateEdits::none(),
+    )
+    .unwrap();
+
+    let disc_id = read_rip_artifacts(&categorized)
+        .disc_id
+        .computed()
+        .try_into()
+        .map(|[disc]: [bae_identify::signals::ComputedDiscId; 1]| disc)
+        .expect("the log carves one disc");
+    assert_eq!(disc_id.source_file.as_deref(), Some("Album.log"));
+}
+
+/// A single-FILE rip with `.cue` + `.ape` produces a disc ID — the
+/// dispatcher routes APE through the FFmpeg-probe path.
+#[test]
+fn test_compute_discid_routes_cue_ape() {
+    use tempfile::TempDir;
+    let fixture_dir = fixture("cue_ape");
+    let tmp = TempDir::new().unwrap();
+    let folder = tmp.path();
+    std::fs::copy(fixture_dir.join("Test Album.ape"), folder.join("Test Album.ape")).unwrap();
+    std::fs::copy(fixture_dir.join("Test Album.cue"), folder.join("Test Album.cue")).unwrap();
+
+    let categorized = crate::folder_scanner::collect_release_candidate_files_with_scope(
+        folder,
+        crate::ReleaseFileScope::Recursive,
+        &crate::folder_scanner::StoredCandidateEdits::none(),
+    )
+    .unwrap();
+    let audio_path = folder.join("Test Album.ape");
+    let opens_before = bae_audio::test_reads::probes(&audio_path);
+    let computed = read_rip_artifacts(&categorized)
+        .disc_id
+        .computed()
+        .try_into()
+        .map(|[disc]: [bae_identify::signals::ComputedDiscId; 1]| disc)
+        .expect("CUE+APE pair must compute one disc ID");
+    assert_eq!(
+        bae_audio::test_reads::probes(&audio_path),
+        opens_before,
+        "DiscID must reuse the duration retained by the folder scan"
+    );
+    assert_eq!(computed.disc_id.len(), 28, "MusicBrainz disc IDs are 28 chars");
+    assert!(
+        computed.source_file.as_deref().is_some_and(|file| file.ends_with(".cue")),
+        "the sheet it was carved from rides with it, got {:?}",
+        computed.source_file
+    );
+}
+
+/// A single-FILE rip with `.cue` + `.mp3` produces a disc ID — the dispatcher
+/// routes MP3 through the FFmpeg-probe path.
+///
+/// Drives `read_rip_artifacts_from_paths` with constructed paths rather than
+/// `read_rip_artifacts`, which would go through the folder scanner's CUE+audio
+/// pair detection — a separate concern for MP3.
+#[test]
+fn test_compute_discid_routes_cue_mp3() {
+    use tempfile::TempDir;
+
+    bae_audio::init();
+    let tmp = TempDir::new().unwrap();
+    let folder = tmp.path();
+    let mp3_path = folder.join("Test Album.mp3");
+    // 9s silent stereo MP3 — short enough to keep the test fast, long
+    // enough to span the CUE's three 3-second tracks.
+    let samples = vec![0i32; 44_100 * 9 * 2];
+    let mp3_bytes = bae_audio::encode_i32(
+        bae_audio::EncodeFormat::Mp3 { bitrate_kbps: 320 },
+        &samples,
+        44_100,
+        2,
+    )
+    .expect("encode mp3");
+    std::fs::write(&mp3_path, mp3_bytes).unwrap();
+
+    let cue_body = "PERFORMER \"Artist Name\"\n\
+                    TITLE \"Album Title\"\n\
+                    FILE \"Test Album.mp3\" WAVE\n  \
+                    TRACK 01 AUDIO\n    INDEX 01 00:00:00\n  \
+                    TRACK 02 AUDIO\n    INDEX 01 00:03:00\n  \
+                    TRACK 03 AUDIO\n    INDEX 01 00:06:00\n";
+    let cue_path = folder.join("Test Album.cue");
+    std::fs::write(&cue_path, cue_body).unwrap();
+
+    let mp3 = ReleaseAudioFile {
+        path: mp3_path,
+        duration_ms: 9_000,
+        format: bae_types::audio_format::AudioFormat {
+            codec: "MP3".to_string(),
+            sample_rate_hz: 44_100,
+            bits_per_sample: None,
+            bitrate_kbps: Some(320),
+            channels: 2,
+        },
+    };
+    let disc_id = read_rip_artifacts_from_paths(&[], &[cue_path], &[mp3])
+        .disc_id
+        .computed()
+        .try_into()
+        .map(|[disc]: [bae_identify::signals::ComputedDiscId; 1]| disc)
+        .expect("CUE+MP3 pair must compute one disc ID");
+    assert_eq!(disc_id.disc_id.len(), 28, "MusicBrainz disc IDs are 28 chars");
 }

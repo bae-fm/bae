@@ -2,8 +2,8 @@
 //! blocking call, plus the artwork to read afterwards.
 
 use super::candidate_text::{extract_folder_brackets, parse_filename_stem, Source, SourcedLine};
-use crate::discid::read_rip_artifacts;
 use crate::folder_scanner::CategorizedFiles;
+use crate::rip_reading::read_rip_artifacts;
 use bae_catalogs::{AudioOrigin, AudioSource, DownloadProof};
 use bae_identify::signals::{AudioFacts, DiscIdSignal, SourcedValue};
 use bae_types::barcode::Barcode;
@@ -328,7 +328,7 @@ fn download_proof(
         return Some(DownloadProof::Store { marker, file });
     }
     let read_off_a_disc = categorized.files.iter().any(|entry| {
-        crate::discid::is_rip_document(&entry.file.path) || has_ext(&entry.file.path, "cue")
+        crate::rip_reading::is_rip_document(&entry.file.path) || has_ext(&entry.file.path, "cue")
     });
     let delivered = !files.is_empty()
         && files.iter().all(|file| {

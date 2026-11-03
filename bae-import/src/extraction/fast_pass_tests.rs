@@ -88,7 +88,7 @@ fn test_categorized_yields_discid_and_track_count() {
         &crate::folder_scanner::StoredCandidateEdits::none(),
     )
     .unwrap();
-    let disc_id = crate::discid::read_rip_artifacts(&categorized).disc_id.computed();
+    let disc_id = crate::rip_reading::read_rip_artifacts(&categorized).disc_id.computed();
     let track_count = categorized.track_count();
 
     assert_eq!(disc_id.len(), 1, "LOG fixture should produce a Disc ID");

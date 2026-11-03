@@ -94,6 +94,8 @@ mod release_reads;
 #[cfg(desktop)]
 mod remote_images;
 #[cfg(desktop)]
+pub mod rip_reading;
+#[cfg(desktop)]
 pub mod selection;
 #[cfg(desktop)]
 pub mod service;

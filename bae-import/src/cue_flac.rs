@@ -559,4 +559,4 @@ fn parse_u64_time_field(input: &str, token: Option<&str>) -> Result<u64, CueFlac
 }
 #[cfg(test)]
 #[path = "cue_flac_tests.rs"]
-mod tests;
+pub(crate) mod tests;
