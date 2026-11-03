@@ -102,10 +102,12 @@ async fn check_release_detachment(devices: &crate::test_libraries::TwoDevices, u
             matches!(read, Err(bae_db::DbError::FileRead(coven::FileReadError::DeviceOnly { .. }))),
             "{read:?}"
         );
-        assert!(matches!(
+        assert_eq!(
             playback_error_reason_for_file(devices.b().manager(), file).await,
-            bae_playback::PlaybackErrorReason::NotUploaded
-        ));
+            bae_playback::PlaybackErrorReason::OnOtherDevice(OtherDevice::Active {
+                name: "Device A".to_string()
+            })
+        );
     }
 }
 
@@ -277,6 +279,15 @@ fn a_release_on_a_removed_device_names_it_as_removed() {
                     })
             })
             .await;
+        // Playing it names the removed device the same way.
+        let file = release_files(manager, &release.id).await.remove(0);
+        assert_eq!(
+            playback_error_reason_for_file(manager, &file).await,
+            bae_playback::PlaybackErrorReason::OnOtherDevice(OtherDevice::Former {
+                name: "Device B".to_string(),
+                state: FormerDeviceState::Removed,
+            })
+        );
     });
 }
 

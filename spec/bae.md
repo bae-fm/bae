@@ -1671,7 +1671,8 @@ from the library, or whose person was, reads "On Ana's Mac, a removed device",
 and one replaced when it was reset reads "On Ana's Mac, a replaced device":
 its files stay on it, and no device can move them to the cloud any more. Such
 a release offers nothing here, neither moving it to the cloud, which uploads
-the originals, nor pinning it (§4.3). Playing it says it isn't uploaded yet.
+the originals, nor pinning it (§4.3). Playing it fails with the same line,
+naming the device as the read finds it in coven's records then.
 
 Whether this device can play a release, and whether it offers moving it to
 the cloud, comes from these records alone; bae doesn't ask the disk whether

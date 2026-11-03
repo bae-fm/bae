@@ -11,9 +11,9 @@ pub enum PlaybackErrorReason {
     /// A remote cloud-only track has no local copy and sync is disconnected —
     /// the user reconnects cloud sync to play it. Actionable, keyed.
     SyncDisconnected,
-    /// A local release imported on another device, which hasn't uploaded it.
-    /// Actionable, keyed.
-    NotUploaded,
+    /// A local release whose audio is on another device only, the one
+    /// named, which hasn't uploaded it. Actionable, keyed.
+    OnOtherDevice(bae_db::OtherDevice),
     /// A local release's original files are gone or changed on this device.
     /// Actionable, keyed.
     OriginalMissing,

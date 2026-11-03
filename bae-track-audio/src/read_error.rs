@@ -25,10 +25,11 @@ pub enum TrackReadError {
     /// audio can't be fetched. The user needs to reconnect cloud sync.
     #[error("Sync is disconnected — reconnect to play this release")]
     SyncDisconnected,
-    /// A local release imported on another device: its audio stays there
-    /// until that device uploads it, so this device has nothing to read.
-    #[error("This release's audio is on the device that imported it and isn't uploaded yet")]
-    NotUploaded,
+    /// A local release's audio is on another device only, the one named:
+    /// it stays there until that device uploads it, so this device has
+    /// nothing to read.
+    #[error("This release's audio is only on another device: {0:?}")]
+    OnOtherDevice(bae_db::OtherDevice),
     /// A local release's original file on this device is gone or changed
     /// since import.
     #[error("This release's original files are missing or changed on this device")]

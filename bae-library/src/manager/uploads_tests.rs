@@ -331,10 +331,10 @@ async fn upload_keeps_every_file_in_the_queue() {
     );
 }
 
-/// A local release another device holds says it isn't uploaded here:
-/// nobody started an upload, so there is nothing to wait for.
+/// Playing a local release another device holds says which device its audio
+/// is on: nobody started an upload, so there is nothing here to wait for.
 #[test]
-fn a_file_on_another_device_is_not_uploaded() {
+fn playing_a_file_on_another_device_names_the_device() {
     crate::test_libraries::run_two_device_test(async |devices| {
         use bae_playback::PlaybackErrorReason;
         let originals = TempDir::new().unwrap();
@@ -344,7 +344,12 @@ fn a_file_on_another_device_is_not_uploaded() {
         let files = release_files(manager, &release.id).await;
         let file = files.first().expect("the release has a file");
         let reason = playback_error_reason_for_file(manager, file).await;
-        assert!(matches!(reason, PlaybackErrorReason::NotUploaded), "got {reason:?}");
+        assert_eq!(
+            reason,
+            PlaybackErrorReason::OnOtherDevice(bae_db::OtherDevice::Active {
+                name: "Device A".to_string()
+            })
+        );
     });
 }
 

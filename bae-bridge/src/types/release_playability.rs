@@ -44,22 +44,31 @@ mirror_enum! {
 pub fn bridge_release_playability_line(
     playability: &BridgeReleasePlayability,
 ) -> Option<BridgeMessage> {
-    let message =
-        |key: &str, args: Vec<BridgeMessageArg>| BridgeMessage { key: key.to_string(), args };
     match playability {
         BridgeReleasePlayability::Playable => None,
-        BridgeReleasePlayability::OnOtherDevice { device } => Some(match device {
-            BridgeOtherDevice::Active { name } => message(
-                "core.release.on_device",
-                vec![BridgeMessageArg::new("device", name.clone())],
-            ),
+        BridgeReleasePlayability::OnOtherDevice { device } => Some(device.line()),
+    }
+}
+
+impl BridgeOtherDevice {
+    /// The line naming this device as the one a release's audio is on
+    /// ("On Dima's Mac"), saying so when it was removed from the library or
+    /// replaced: what a release this device can't play shows, and what
+    /// playing it says.
+    pub(crate) fn line(&self) -> BridgeMessage {
+        let message = |key: &str, name: &str| BridgeMessage {
+            key: key.to_string(),
+            args: vec![BridgeMessageArg::new("device", name.to_string())],
+        };
+        match self {
+            BridgeOtherDevice::Active { name } => message("core.release.on_device", name),
             BridgeOtherDevice::Former { name, state } => message(
                 match state {
                     BridgeFormerDeviceState::Removed => "core.release.on_removed_device",
                     BridgeFormerDeviceState::Replaced => "core.release.on_replaced_device",
                 },
-                vec![BridgeMessageArg::new("device", name.clone())],
+                name,
             ),
-        }),
+        }
     }
 }

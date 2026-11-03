@@ -10,7 +10,7 @@ import uniffi.bae_bridge.BridgePlaybackErrorReason
 import uniffi.bae_bridge.BridgeS3PrefixProblem
 import uniffi.bae_bridge.BridgeSyncRetryOutcome
 import uniffi.bae_bridge.bridgeErrorLineKey
-import uniffi.bae_bridge.bridgePlaybackErrorReasonKey
+import uniffi.bae_bridge.bridgePlaybackErrorReasonLine
 import uniffi.bae_bridge.bridgeSyncRetryOutcomeKey
 import java.text.DateFormat
 import java.util.Date
@@ -79,18 +79,19 @@ fun Context.localizedLine(error: BridgeException): String? =
 /**
  * The localized, user-facing line for a [BridgePlaybackErrorReason]. The
  * actionable cases, where this device can't reach the audio, resolve their own
- * keyed line (core returns a key for exactly those); everything else renders
- * through the shared [BridgeException] path.
+ * line (core returns one for exactly those, naming the device a release's
+ * audio is on); everything else renders through the shared [BridgeException]
+ * path.
  */
 fun Context.localizedLine(reason: BridgePlaybackErrorReason): String? =
     when (reason) {
         is BridgePlaybackErrorReason.SyncDisconnected,
-        is BridgePlaybackErrorReason.NotUploaded,
+        is BridgePlaybackErrorReason.OnOtherDevice,
         is BridgePlaybackErrorReason.OriginalMissing,
         is BridgePlaybackErrorReason.AudioOutput,
         -> {
-            // Core owns a key for exactly the actionable cases; non-null here.
-            coreString(bridgePlaybackErrorReasonKey(reason)!!)
+            // Core owns a line for exactly the actionable cases.
+            bridgePlaybackErrorReasonLine(reason)?.let { coreString(it) }
         }
 
         is BridgePlaybackErrorReason.Diagnostic -> {

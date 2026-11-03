@@ -475,25 +475,9 @@ fn produced_keys() -> Vec<String> {
         assert_eq!(bridge_error_line_key(&e), expected);
     }
 
-    // bridge_playback_error_reason_key — Diagnostic carries no key.
-    for r in [
-        BridgePlaybackErrorReason::SyncDisconnected,
-        BridgePlaybackErrorReason::NotUploaded,
-        BridgePlaybackErrorReason::OriginalMissing,
-        BridgePlaybackErrorReason::AudioOutput {
-            problem: BridgeAudioOutputProblem::DeviceUnavailable,
-        },
-        BridgePlaybackErrorReason::AudioOutput {
-            problem: BridgeAudioOutputProblem::UnsupportedFormat,
-        },
-        BridgePlaybackErrorReason::AudioOutput {
-            problem: BridgeAudioOutputProblem::AirPlayRefused,
-        },
-        BridgePlaybackErrorReason::Diagnostic { error: BridgeError::internal("") },
-    ] {
-        keys.extend(bridge_playback_error_reason_key(&r));
-    }
-    assert!(bridge_playback_error_reason_key(&BridgePlaybackErrorReason::Diagnostic {
+    // bridge_playback_error_reason_line — Diagnostic carries no line.
+    keys.extend(playback_error_reason_lines().into_iter().map(|message| message.key));
+    assert!(bridge_playback_error_reason_line(&BridgePlaybackErrorReason::Diagnostic {
         error: BridgeError::internal(""),
     })
     .is_none());
@@ -625,6 +609,45 @@ fn playability_messages() -> Vec<BridgeMessage> {
     .collect()
 }
 
+/// Every playback failure's line: one for each actionable reason, a release
+/// on another device naming it.
+fn playback_error_reason_lines() -> Vec<BridgeMessage> {
+    let name = || "Device Name".to_string();
+    [
+        BridgePlaybackErrorReason::SyncDisconnected,
+        BridgePlaybackErrorReason::OnOtherDevice {
+            device: BridgeOtherDevice::Active { name: name() },
+        },
+        BridgePlaybackErrorReason::OnOtherDevice {
+            device: BridgeOtherDevice::Former {
+                name: name(),
+                state: BridgeFormerDeviceState::Removed,
+            },
+        },
+        BridgePlaybackErrorReason::OnOtherDevice {
+            device: BridgeOtherDevice::Former {
+                name: name(),
+                state: BridgeFormerDeviceState::Replaced,
+            },
+        },
+        BridgePlaybackErrorReason::OriginalMissing,
+        BridgePlaybackErrorReason::AudioOutput {
+            problem: BridgeAudioOutputProblem::DeviceUnavailable,
+        },
+        BridgePlaybackErrorReason::AudioOutput {
+            problem: BridgeAudioOutputProblem::UnsupportedFormat,
+        },
+        BridgePlaybackErrorReason::AudioOutput {
+            problem: BridgeAudioOutputProblem::AirPlayRefused,
+        },
+    ]
+    .iter()
+    .map(|reason| {
+        bridge_playback_error_reason_line(reason).expect("an actionable reason has a line")
+    })
+    .collect()
+}
+
 fn catalog() -> bae_loc::Catalog {
     bae_loc::Catalog::from_toml(include_str!("../../loc/catalog.toml")).expect("catalog parses")
 }
@@ -667,6 +690,7 @@ fn message_arguments_follow_the_source_message() {
     for message in pending_subject_messages()
         .into_iter()
         .chain(playability_messages())
+        .chain(playback_error_reason_lines())
         .chain(catalog_apply_step_lines())
     {
         let source = &cat.messages[&message.key].value;

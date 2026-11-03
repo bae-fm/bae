@@ -82,7 +82,8 @@ fn apply_on(sql: &CovenWrite<'_>, change: &PlaybackChange) -> rusqlite::Result<(
             if matches!(state, PlaybackState::Playing { .. }) {
                 sql.execute(
                     "UPDATE playback_now \
-                     SET failure = NULL, failure_problem = NULL, failure_detail = NULL \
+                     SET failure = NULL, failure_problem = NULL, failure_detail = NULL, \
+                         failure_device = NULL, failure_device_state = NULL \
                      WHERE failure IS NOT NULL",
                     [],
                 )?;
@@ -145,11 +146,17 @@ fn apply_on(sql: &CovenWrite<'_>, change: &PlaybackChange) -> rusqlite::Result<(
             )?;
         }
         PlaybackChange::Failed(reason) => {
-            let (failure, problem, detail) = failure_columns(reason);
+            let columns = FailureColumns::of(reason);
             sql.execute(
                 "UPDATE playback_now SET failure = ?, failure_problem = ?, failure_detail = ?, \
-                     failures = failures + 1",
-                params![failure, problem, detail],
+                     failure_device = ?, failure_device_state = ?, failures = failures + 1",
+                params![
+                    columns.failure,
+                    columns.problem,
+                    columns.detail,
+                    columns.device,
+                    columns.device_state
+                ],
             )?;
         }
     }
@@ -170,7 +177,8 @@ pub(super) fn reset_playback_now_on(
              remote = 'local', remote_device_id = NULL, remote_device_name = NULL, \
              remote_end_detail = NULL, preview = 'idle', preview_path = NULL, \
              preview_start_sample = NULL, preview_end_sample = NULL, preview_duration_ms = NULL, \
-             failure = NULL, failure_problem = NULL, failure_detail = NULL, failures = 0",
+             failure = NULL, failure_problem = NULL, failure_detail = NULL, \
+             failure_device = NULL, failure_device_state = NULL, failures = 0",
         [],
     )?;
     if !keep_level {
@@ -254,30 +262,55 @@ impl<'a> StateColumns<'a> {
 }
 
 /// A failure as the row's failure columns hold it.
-fn failure_columns(
-    reason: &PlaybackErrorReason,
-) -> (&'static str, Option<&'static str>, Option<&str>) {
-    match reason {
-        PlaybackErrorReason::SyncDisconnected => ("sync_disconnected", None, None),
-        PlaybackErrorReason::NotUploaded => ("not_uploaded", None, None),
-        PlaybackErrorReason::OriginalMissing => ("original_missing", None, None),
-        PlaybackErrorReason::AudioOutput { problem } => (
-            "audio_output",
-            Some(match problem {
-                AudioOutputProblem::DeviceUnavailable => "device_unavailable",
-                AudioOutputProblem::UnsupportedFormat => "unsupported_format",
-                AudioOutputProblem::AirPlayRefused => "airplay_refused",
-            }),
-            None,
-        ),
-        PlaybackErrorReason::Diagnostic { failure, detail } => (
-            match failure {
-                PlaybackDiagnostic::Internal => "internal",
-                PlaybackDiagnostic::Renderer => "renderer",
+struct FailureColumns<'a> {
+    failure: &'static str,
+    problem: Option<&'static str>,
+    detail: Option<&'a str>,
+    device: Option<&'a str>,
+    device_state: Option<&'static str>,
+}
+
+impl<'a> FailureColumns<'a> {
+    fn of(reason: &'a PlaybackErrorReason) -> Self {
+        let columns = |failure| Self {
+            failure,
+            problem: None,
+            detail: None,
+            device: None,
+            device_state: None,
+        };
+        match reason {
+            PlaybackErrorReason::SyncDisconnected => columns("sync_disconnected"),
+            PlaybackErrorReason::OnOtherDevice(device) => {
+                let (name, state) = match device {
+                    bae_db::OtherDevice::Active { name } => (name, "active"),
+                    bae_db::OtherDevice::Former { name, state } => (
+                        name,
+                        match state {
+                            bae_db::membership::FormerDeviceState::Removed => "removed",
+                            bae_db::membership::FormerDeviceState::Replaced => "replaced",
+                        },
+                    ),
+                };
+                Self { device: Some(name), device_state: Some(state), ..columns("on_other_device") }
+            }
+            PlaybackErrorReason::OriginalMissing => columns("original_missing"),
+            PlaybackErrorReason::AudioOutput { problem } => Self {
+                problem: Some(match problem {
+                    AudioOutputProblem::DeviceUnavailable => "device_unavailable",
+                    AudioOutputProblem::UnsupportedFormat => "unsupported_format",
+                    AudioOutputProblem::AirPlayRefused => "airplay_refused",
+                }),
+                ..columns("audio_output")
             },
-            None,
-            Some(detail),
-        ),
+            PlaybackErrorReason::Diagnostic { failure, detail } => Self {
+                detail: Some(detail),
+                ..columns(match failure {
+                    PlaybackDiagnostic::Internal => "internal",
+                    PlaybackDiagnostic::Renderer => "renderer",
+                })
+            },
+        }
     }
 }
 
@@ -390,7 +423,22 @@ fn failure_from_row(row: &Row<'_>) -> rusqlite::Result<Option<PlaybackFailure>> 
     };
     let reason = match failure.as_str() {
         "sync_disconnected" => PlaybackErrorReason::SyncDisconnected,
-        "not_uploaded" => PlaybackErrorReason::NotUploaded,
+        "on_other_device" => {
+            let name: String = row.get("failure_device")?;
+            let state: String = row.get("failure_device_state")?;
+            PlaybackErrorReason::OnOtherDevice(match state.as_str() {
+                "active" => bae_db::OtherDevice::Active { name },
+                "removed" => bae_db::OtherDevice::Former {
+                    name,
+                    state: bae_db::membership::FormerDeviceState::Removed,
+                },
+                "replaced" => bae_db::OtherDevice::Former {
+                    name,
+                    state: bae_db::membership::FormerDeviceState::Replaced,
+                },
+                other => return Err(unknown("failure_device_state", other)),
+            })
+        }
         "original_missing" => PlaybackErrorReason::OriginalMissing,
         "audio_output" => {
             let problem: String = row.get("failure_problem")?;

@@ -237,8 +237,14 @@ fn report_fill_failure(on_error: FillErrorHandler, error: Arc<TrackReadError>) {
     on_error(error);
 }
 
-/// Preserve the actionable storage failure when opening or reading audio.
-fn read_error_for_file_read(error: bae_db::DbError) -> TrackReadError {
+/// Preserve the actionable storage failure when opening or reading release
+/// file `file_id` from `db`: a file on another device only names that
+/// device, as coven records it.
+async fn read_error_for_file_read(
+    db: &bae_db::Database,
+    file_id: &str,
+    error: bae_db::DbError,
+) -> TrackReadError {
     match error {
         bae_db::DbError::FileRead(coven::FileReadError::NoStorage) => {
             TrackReadError::SyncDisconnected
@@ -246,7 +252,12 @@ fn read_error_for_file_read(error: bae_db::DbError) -> TrackReadError {
         // Audio another device holds: a release nobody uploaded is on the
         // device that imported it, or made it local again.
         bae_db::DbError::FileRead(coven::FileReadError::DeviceOnly { .. }) => {
-            TrackReadError::NotUploaded
+            match db.release_file_other_device(file_id).await {
+                Ok(device) => TrackReadError::OnOtherDevice(device),
+                Err(error) => TrackReadError::internal(format!(
+                    "release file {file_id} is on another device only, which couldn't be read: {error}"
+                )),
+            }
         }
         bae_db::DbError::FileRead(
             coven::FileReadError::UserFileMissing { .. }
@@ -347,7 +358,11 @@ impl AudioDataReader for CovenFileReader {
             let buffer = fill_buffer;
             let stream = match db.open_release_file(&file_id).await {
                 Ok(stream) => Arc::new(stream),
-                Err(error) => return Err(FillFailure::Open(read_error_for_file_read(error))),
+                Err(error) => {
+                    return Err(FillFailure::Open(
+                        read_error_for_file_read(&db, &file_id, error).await,
+                    ))
+                }
             };
             // The length coven proved when it opened the stream, not a number the
             // caller tracked: it bounds the prefetch windows below.
@@ -403,6 +418,8 @@ impl AudioDataReader for CovenFileReader {
                     let stream = &stream;
                     let playback = playback.as_ref();
                     let fetched = &fetched;
+                    let db = &db;
+                    let file_id = &file_id;
                     async move {
                         debug!(
                             "fetch start buffer={buffer_id} off={src_off} len={len} {}ms",
@@ -418,7 +435,7 @@ impl AudioDataReader for CovenFileReader {
                                     "fetch failed buffer={buffer_id} {kind} off={src_off} len={len} waited={}ms error={e}",
                                     fetch_started.elapsed().as_millis(),
                                 );
-                                return Err(read_error_for_file_read(e.into()));
+                                return Err(read_error_for_file_read(db, file_id, e.into()).await);
                             }
                         };
                         let total = fetched.fetch_add(data.len() as u64, Ordering::Relaxed)

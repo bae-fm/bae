@@ -288,7 +288,7 @@ impl BridgeError {
 }
 
 /// Why playback couldn't start or continue. The cases where this device can't
-/// reach the audio are user-actionable and keyed (`bridge_playback_error_reason_key`);
+/// reach the audio are user-actionable and have a line (`bridge_playback_error_reason_line`);
 /// every in-core failure is un-enumerable and rides in `Diagnostic` — the UI
 /// renders it through the same `BridgeError` path (generic per-category line +
 /// copyable diagnostic detail).
@@ -297,8 +297,9 @@ pub enum BridgePlaybackErrorReason {
     /// A remote cloud-only track isn't downloaded and sync is disconnected —
     /// the user reconnects to play it.
     SyncDisconnected,
-    /// A local release imported on another device, which hasn't uploaded it.
-    NotUploaded,
+    /// A local release whose audio is on another device only, the one named,
+    /// which hasn't uploaded it.
+    OnOtherDevice { device: crate::types::BridgeOtherDevice },
     /// A local release's original files are gone or changed on this device.
     OriginalMissing,
     /// The audio output didn't start, for a reason of the device's or the
@@ -471,31 +472,30 @@ pub enum BridgeAudioOutputProblem {
     AirPlayRefused,
 }
 
-/// Localization key for the actionable `BridgePlaybackErrorReason` variants, or
+/// The line for the actionable `BridgePlaybackErrorReason` variants, or
 /// `None` for `Diagnostic` (which the UI renders through the `BridgeError`
-/// category path instead). One source of these keys for every platform.
+/// category path instead). A release on another device names it, as the
+/// release itself does. One source of these lines for every platform.
 #[uniffi::export]
-pub fn bridge_playback_error_reason_key(reason: &BridgePlaybackErrorReason) -> Option<String> {
+pub fn bridge_playback_error_reason_line(
+    reason: &BridgePlaybackErrorReason,
+) -> Option<BridgeMessage> {
+    let keyed = |key: &str| Some(BridgeMessage { key: key.to_string(), args: Vec::new() });
     match reason {
         BridgePlaybackErrorReason::SyncDisconnected => {
-            Some("core.playback.error.sync_disconnected".to_string())
+            keyed("core.playback.error.sync_disconnected")
         }
-        BridgePlaybackErrorReason::NotUploaded => Some("core.release.not_uploaded".to_string()),
-        BridgePlaybackErrorReason::OriginalMissing => {
-            Some("core.release.original_missing".to_string())
-        }
-        BridgePlaybackErrorReason::AudioOutput { problem } => Some(
-            match problem {
-                BridgeAudioOutputProblem::DeviceUnavailable => {
-                    "core.playback.error.audio_device_unavailable"
-                }
-                BridgeAudioOutputProblem::UnsupportedFormat => {
-                    "core.playback.error.audio_format_unsupported"
-                }
-                BridgeAudioOutputProblem::AirPlayRefused => "core.playback.error.airplay_refused",
+        BridgePlaybackErrorReason::OnOtherDevice { device } => Some(device.line()),
+        BridgePlaybackErrorReason::OriginalMissing => keyed("core.release.original_missing"),
+        BridgePlaybackErrorReason::AudioOutput { problem } => keyed(match problem {
+            BridgeAudioOutputProblem::DeviceUnavailable => {
+                "core.playback.error.audio_device_unavailable"
             }
-            .to_string(),
-        ),
+            BridgeAudioOutputProblem::UnsupportedFormat => {
+                "core.playback.error.audio_format_unsupported"
+            }
+            BridgeAudioOutputProblem::AirPlayRefused => "core.playback.error.airplay_refused",
+        }),
         BridgePlaybackErrorReason::Diagnostic { .. } => None,
     }
 }
@@ -651,7 +651,9 @@ impl BridgePlaybackErrorReason {
         use bae_playback::PlaybackErrorReason;
         match reason {
             PlaybackErrorReason::SyncDisconnected => Self::SyncDisconnected,
-            PlaybackErrorReason::NotUploaded => Self::NotUploaded,
+            PlaybackErrorReason::OnOtherDevice(device) => {
+                Self::OnOtherDevice { device: crate::types::BridgeOtherDevice::from_core(device) }
+            }
             PlaybackErrorReason::OriginalMissing => Self::OriginalMissing,
             PlaybackErrorReason::AudioOutput { problem } => {
                 Self::AudioOutput { problem: BridgeAudioOutputProblem::from_core(problem) }

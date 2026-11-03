@@ -107,10 +107,9 @@ extension BridgePlaybackErrorReason {
     /// from.
     public var localizedLine: String? {
         switch self {
-        case .syncDisconnected, .notUploaded, .originalMissing,
+        case .syncDisconnected, .onOtherDevice, .originalMissing,
             .audioOutput:
-            return bridgePlaybackErrorReasonKey(reason: self)
-                .map(localizedCoreString)
+            return bridgePlaybackErrorReasonLine(reason: self)?.localizedLine
         case .diagnostic(let error):
             return error.localizedLine
         }
@@ -122,7 +121,7 @@ extension BridgePlaybackErrorReason {
         switch self {
         case .diagnostic(let error):
             return error.detail
-        case .syncDisconnected, .notUploaded, .originalMissing,
+        case .syncDisconnected, .onOtherDevice, .originalMissing,
             .audioOutput:
             return nil
         }

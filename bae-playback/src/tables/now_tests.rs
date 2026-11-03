@@ -79,7 +79,17 @@ async fn each_change_reads_back_as_written() {
 
     for reason in [
         PlaybackErrorReason::SyncDisconnected,
-        PlaybackErrorReason::NotUploaded,
+        PlaybackErrorReason::OnOtherDevice(bae_db::OtherDevice::Active {
+            name: "Device A".to_string(),
+        }),
+        PlaybackErrorReason::OnOtherDevice(bae_db::OtherDevice::Former {
+            name: "Device B".to_string(),
+            state: bae_db::membership::FormerDeviceState::Removed,
+        }),
+        PlaybackErrorReason::OnOtherDevice(bae_db::OtherDevice::Former {
+            name: "Device C".to_string(),
+            state: bae_db::membership::FormerDeviceState::Replaced,
+        }),
         PlaybackErrorReason::OriginalMissing,
         PlaybackErrorReason::AudioOutput { problem: AudioOutputProblem::DeviceUnavailable },
         PlaybackErrorReason::AudioOutput { problem: AudioOutputProblem::UnsupportedFormat },

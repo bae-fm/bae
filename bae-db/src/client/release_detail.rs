@@ -128,16 +128,32 @@ fn unstored_audio_on(
     sql: &SqlReadContext<'_>,
     release_id: &str,
 ) -> Result<Vec<DbUnstoredAudio>, DbError> {
-    let rows: Vec<UnstoredRow> = sql.query(
-        "SELECT f.content_type, f.file, u.file IS NOT NULL, \
-                d.is_self, d.name, d.state, m.removed \
-         FROM release_files f JOIN coven_files coven ON coven.id = f.file \
-         LEFT JOIN coven_user_files u ON u.file = f.file \
-         LEFT JOIN coven_devices d ON d.device = coven_file_device(coven.coordinates) \
-         LEFT JOIN coven_members m ON m.member = d.member \
-         WHERE f.release_id = ? AND coven_file_device(coven.coordinates) IS NOT NULL \
-         ORDER BY f.id",
-        params![release_id],
+    unstored_rows_on(sql, "f.release_id = ?", release_id)?
+        .into_iter()
+        .filter(|row| ContentType::from_mime(&row.content_type).is_audio())
+        .map(UnstoredRow::into_unstored_audio)
+        .collect()
+}
+
+/// The release files `filter` picks, binding `value`, that are on one device
+/// only, with what coven records of that device.
+fn unstored_rows_on(
+    sql: &SqlReadContext<'_>,
+    filter: &str,
+    value: &str,
+) -> Result<Vec<UnstoredRow>, DbError> {
+    Ok(sql.query(
+        &format!(
+            "SELECT f.content_type, f.file, u.file IS NOT NULL, \
+                    d.is_self, d.name, d.state, m.removed \
+             FROM release_files f JOIN coven_files coven ON coven.id = f.file \
+             LEFT JOIN coven_user_files u ON u.file = f.file \
+             LEFT JOIN coven_devices d ON d.device = coven_file_device(coven.coordinates) \
+             LEFT JOIN coven_members m ON m.member = d.member \
+             WHERE {filter} AND coven_file_device(coven.coordinates) IS NOT NULL \
+             ORDER BY f.id"
+        ),
+        params![value],
         |row| {
             Ok(UnstoredRow {
                 content_type: row.get(0)?,
@@ -149,11 +165,31 @@ fn unstored_audio_on(
                 member_removed: row.get(6)?,
             })
         },
-    )?;
-    rows.into_iter()
-        .filter(|row| ContentType::from_mime(&row.content_type).is_audio())
-        .map(UnstoredRow::into_unstored_audio)
-        .collect()
+    )?)
+}
+
+impl Database {
+    /// The other device release file `file_id` is on, for a read of it that
+    /// found it on one device only, not this one. A file coven records here,
+    /// or on no one device, fails the read naming the file.
+    pub async fn release_file_other_device(&self, file_id: &str) -> Result<OtherDevice, DbError> {
+        let file_id = file_id.to_string();
+        self.read(move |sql| {
+            let mut rows = unstored_rows_on(&sql, "f.id = ?", &file_id)?;
+            let (Some(row), None) = (rows.pop(), rows.pop()) else {
+                return Err(DbError::Message(format!(
+                    "coven lists release file {file_id} on no one device"
+                )));
+            };
+            match row.into_unstored_audio()? {
+                DbUnstoredAudio::Elsewhere(device) => Ok(device),
+                DbUnstoredAudio::Original => Err(DbError::Message(format!(
+                    "release file {file_id} read as on another device, with its original here"
+                ))),
+            }
+        })
+        .await
+    }
 }
 
 /// One release file on one device only, as [`unstored_audio_on`] reads it.
@@ -199,11 +235,8 @@ impl UnstoredRow {
         }
     }
 
-    /// The device the file is on, which is not this one: removed when its
-    /// registration says so or its person was removed from the library.
+    /// The device the file is on, which is not this one.
     fn other_device(&self) -> Result<crate::OtherDevice, DbError> {
-        use crate::membership::FormerDeviceState;
-        use crate::OtherDevice;
         let (Some(name), Some(state), Some(member_removed)) =
             (self.name.clone(), self.state.as_deref(), self.member_removed)
         else {
@@ -212,21 +245,31 @@ impl UnstoredRow {
                 self.file, self.name, self.state, self.member_removed
             )));
         };
-        Ok(match state {
-            "replaced" => OtherDevice::Former { name, state: FormerDeviceState::Replaced },
-            "removed" => OtherDevice::Former { name, state: FormerDeviceState::Removed },
-            "active" if member_removed => {
-                OtherDevice::Former { name, state: FormerDeviceState::Removed }
-            }
-            "active" => OtherDevice::Active { name },
-            other => {
-                return Err(DbError::Message(format!(
-                    "coven_devices lists the device of release file {} as {other}",
-                    self.file
-                )))
-            }
+        other_device(name, state, member_removed).ok_or_else(|| {
+            DbError::Message(format!(
+                "coven_devices lists the device of release file {} as {state}",
+                self.file
+            ))
         })
     }
+}
+
+/// Another device named `name`, as coven's registration `state` of it reads:
+/// removed when its registration says so or its person was removed from the
+/// library (`member_removed`), replaced when it was reset. `None` for a state
+/// coven doesn't write.
+fn other_device(name: String, state: &str, member_removed: bool) -> Option<crate::OtherDevice> {
+    use crate::membership::FormerDeviceState;
+    use crate::OtherDevice;
+    Some(match state {
+        "replaced" => OtherDevice::Former { name, state: FormerDeviceState::Replaced },
+        "removed" => OtherDevice::Former { name, state: FormerDeviceState::Removed },
+        "active" if member_removed => {
+            OtherDevice::Former { name, state: FormerDeviceState::Removed }
+        }
+        "active" => OtherDevice::Active { name },
+        _ => return None,
+    })
 }
 
 /// What this device holds for each of `release_id`'s audio files on one
@@ -239,3 +282,7 @@ pub fn unstored_audio_in_row(
     unstored_audio_on(sql, release_id)
         .map_err(|error| rusqlite::Error::UserFunctionError(Box::new(error)))
 }
+
+#[cfg(test)]
+#[path = "release_detail_tests.rs"]
+mod tests;

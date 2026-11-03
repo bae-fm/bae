@@ -280,7 +280,7 @@ async fn opening_keeps_the_queue_only_to_resume_it() {
         }),
         crate::PlaybackChange::Volume(0.5),
         crate::PlaybackChange::Muted(true),
-        crate::PlaybackChange::Failed(crate::PlaybackErrorReason::NotUploaded),
+        crate::PlaybackChange::Failed(crate::PlaybackErrorReason::OriginalMissing),
     ] {
         now.apply(&change).await.unwrap();
     }

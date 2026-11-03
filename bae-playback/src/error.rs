@@ -93,7 +93,7 @@ pub fn read_failure_reason(error: &bae_track_audio::TrackReadError) -> crate::Pl
     use bae_track_audio::TrackReadError;
     match error {
         TrackReadError::SyncDisconnected => PlaybackErrorReason::SyncDisconnected,
-        TrackReadError::NotUploaded => PlaybackErrorReason::NotUploaded,
+        TrackReadError::OnOtherDevice(device) => PlaybackErrorReason::OnOtherDevice(device.clone()),
         TrackReadError::OriginalMissing => PlaybackErrorReason::OriginalMissing,
         other => PlaybackErrorReason::internal(other),
     }

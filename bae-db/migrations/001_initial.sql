@@ -2082,15 +2082,19 @@ CREATE TABLE IF NOT EXISTS playback_now (
     preview_end_sample   INTEGER CHECK (preview_end_sample >= 0),
     preview_duration_ms  INTEGER CHECK (preview_duration_ms >= 0),
     -- Why playback last failed, until it next plays: a reason the person can
-    -- act on, or bae's own or the renderer's failure with its untranslated
-    -- detail. Each failure counts up `failures`, so two alike in a row are
-    -- two values a screen tells apart.
+    -- act on, the other device a release's audio is on (by its name, and
+    -- whether it is still in the library, removed, or replaced), or bae's own
+    -- or the renderer's failure with its untranslated detail. Each failure
+    -- counts up `failures`, so two alike in a row are two values a screen
+    -- tells apart.
     failure         TEXT CHECK (failure IN (
-        'sync_disconnected', 'not_uploaded', 'original_missing',
+        'sync_disconnected', 'on_other_device', 'original_missing',
         'audio_output', 'internal', 'renderer')),
     failure_problem TEXT CHECK (failure_problem IN (
         'device_unavailable', 'unsupported_format', 'airplay_refused')),
     failure_detail  TEXT,
+    failure_device       TEXT,
+    failure_device_state TEXT CHECK (failure_device_state IN ('active', 'removed', 'replaced')),
     failures        INTEGER NOT NULL CHECK (failures >= 0),
     CHECK ((state = 'stopped') = (track_id IS NULL)),
     CHECK ((state = 'loading') = (prepared IS NOT NULL)),
@@ -2108,7 +2112,9 @@ CREATE TABLE IF NOT EXISTS playback_now (
         AND (preview = 'idle') = (preview_duration_ms IS NULL)),
     CHECK (preview_end_sample IS NULL OR preview_path IS NOT NULL),
     CHECK ((failure IS 'audio_output') = (failure_problem IS NOT NULL)),
-    CHECK ((failure IS 'internal' OR failure IS 'renderer') = (failure_detail IS NOT NULL))
+    CHECK ((failure IS 'internal' OR failure IS 'renderer') = (failure_detail IS NOT NULL)),
+    CHECK ((failure IS 'on_other_device') = (failure_device IS NOT NULL)
+        AND (failure IS 'on_other_device') = (failure_device_state IS NOT NULL))
 ) STRICT;
 
 INSERT OR IGNORE INTO playback_now (singleton, state, volume, is_muted, remote, preview, failures)
