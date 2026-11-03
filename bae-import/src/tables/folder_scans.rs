@@ -6,11 +6,13 @@
 //!
 //! [`write`] stores candidate rows, [`read`] loads them back, [`sidecar`]
 //! stores a folder's sidecar files, [`file_reads`] reads what they say was
-//! read of each file, and [`tag_snapshot`] stores and reads back what a
-//! candidate's files' tags read.
+//! read of each file, [`tag_snapshot`] stores and reads back what a
+//! candidate's files' tags read, and [`file_decisions`] settles the rows a
+//! file decision reshapes.
 
 pub(super) mod columns;
 mod dates;
+mod file_decisions;
 mod file_reads;
 mod progress;
 pub(super) mod read;
@@ -48,6 +50,7 @@ pub(super) const FOLDER_SCAN_PROGRESS: &str = "SELECT roots.watched_folder_path,
      JOIN folder_scan_roots AS roots ON roots.watched_folder_path = watched.path \
      ORDER BY watched.position";
 
+pub(super) use self::file_decisions::settle_candidate_files;
 pub(super) use self::sidecar::load_sidecar;
 use self::sidecar::load_sidecars;
 pub(super) use self::write::{delete_entry, insert_candidate_files};
