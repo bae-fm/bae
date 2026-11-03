@@ -18,6 +18,7 @@ mod match_rows;
 mod pane_rows;
 mod preparation_rows;
 mod prepared_asset_rows;
+mod release_link_rows;
 mod rows;
 mod run_rows;
 mod search_rows;
@@ -38,7 +39,8 @@ pub(crate) use preparation_rows::{
     CandidatePaneWrite, CandidatePreparationRead, CandidateSaveExpectation, CandidateSaveExtras,
     CandidateSaved, RunVerdictSaved, ScannedCandidateKey,
 };
-pub(super) use rows::{load_states_on, read_release_link, RELEASE_LINK_COLUMNS};
+pub(super) use release_link_rows::{read_release_link, RELEASE_LINK_COLUMNS};
+pub(super) use rows::load_states_on;
 use session_rows::load_session_on;
 use signal_rows::{delete_signals, store_signals};
 pub(crate) use standing_rows::ImportClaim;

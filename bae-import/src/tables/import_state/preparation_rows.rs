@@ -274,7 +274,7 @@ pub(super) fn save_preparation_on(
         }
     }
     if stored.link != prep.link {
-        super::rows::store_release_link(sql, content_hash, prep.link.as_ref())?;
+        super::release_link_rows::store_release_link(sql, content_hash, prep.link.as_ref())?;
     }
     // `validate` has already refused an author the provenance cannot have.
     if pane_rows::has_draft_row_on(sql, content_hash)? {
