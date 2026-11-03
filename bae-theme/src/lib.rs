@@ -508,4 +508,5 @@ fn check_same_roles(
 }
 
 #[cfg(test)]
+#[path = "lib_tests.rs"]
 mod tests;
