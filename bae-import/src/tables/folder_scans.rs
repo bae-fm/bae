@@ -19,7 +19,6 @@ mod sidecar;
 pub(super) mod tag_snapshot;
 pub(super) mod write;
 
-use super::import_state::next_folder_scan_generation;
 use super::release_groupings::{store_folder_reading, validate_decision_key_ownership};
 use super::*;
 use crate::folder_scanner::ScanItem;
@@ -719,6 +718,20 @@ pub(super) fn validate_scan_item_ownership(
         }
     }
     Ok(())
+}
+
+/// The next scan generation. An upsert, so a missing seed row is created
+/// rather than failing the scan.
+pub(super) fn next_folder_scan_generation(sql: &CovenWrite<'_>) -> Result<i64, DbError> {
+    let generation: i64 = sql.query_row(
+        "INSERT INTO folder_scan_generation_sequence (singleton, last_generation) \
+         VALUES (1, 1) \
+         ON CONFLICT(singleton) DO UPDATE SET last_generation = last_generation + 1 \
+         RETURNING last_generation",
+        [],
+        |row| row.get(0),
+    )?;
+    Ok(generation)
 }
 
 #[cfg(test)]

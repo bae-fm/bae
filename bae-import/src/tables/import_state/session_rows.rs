@@ -421,7 +421,7 @@ fn save_session_on(
 /// Move the candidate's pane by the one rule, [`CandidateSession::moved`],
 /// leaving the rest of its session as it is. A candidate with no session yet
 /// gets a fresh one moved the same way; one with no state row gets nothing.
-pub(super) fn move_pane_on(
+pub(crate) fn move_pane_on(
     sql: &CovenWrite<'_>,
     content_hash: &str,
     pane_move: PaneMove,

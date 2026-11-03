@@ -390,7 +390,7 @@ pub(super) fn read_verdict_row(row: &Row<'_>) -> Result<Option<VerdictRow>, DbEr
         failures_json: row.get("verdict_failures_json")?,
         error_detail: row.get("verdict_error_detail")?,
         ledger: read_ledger(row)?,
-        medium_conflict: super::medium_conflict_of(row.get("verdict_medium_conflict")?)?,
+        medium_conflict: medium_conflict_of(row.get("verdict_medium_conflict")?)?,
         kept_own_draft: row.get("verdict_kept_own_draft")?,
     }))
 }
@@ -553,6 +553,45 @@ pub(super) fn outcome_of(
         other => return Err(unreadable("verdict kind", other)),
     };
     Ok((RunOutcome::Answered(verdict), kept_own_draft))
+}
+
+/// The stored medium conflict of a verdict row.
+pub(super) fn medium_conflict_of(
+    kind: Option<String>,
+) -> Result<Option<bae_identify::MediumConflict>, DbError> {
+    let Some(kind) = kind else {
+        return Ok(None);
+    };
+    Ok(Some(match kind.as_str() {
+        "cd_rip" => bae_identify::MediumConflict::CdRip,
+        "not_cd_audio" => bae_identify::MediumConflict::NotCdAudio,
+        other => return Err(verdict_rows::unreadable("medium_conflict", other)),
+    }))
+}
+
+impl ImportTables {
+    /// Whether a verdict is stored for the files at `content_hash` as their
+    /// file decisions stand at `edit_revision`.
+    pub(crate) async fn verdict_stored_for(
+        &self,
+        content_hash: &str,
+        edit_revision: u64,
+    ) -> Result<bool, DbError> {
+        let content_hash = content_hash.to_string();
+        let edit_revision = to_i64(edit_revision, "a candidate's file edit revision")?;
+        self.database
+            .read(move |sql| {
+                Ok(sql.query_row(
+                    "SELECT EXISTS (SELECT 1 FROM import_candidate_state AS state \
+                     JOIN import_candidate_verdict AS verdict \
+                       ON verdict.content_hash = state.content_hash \
+                     WHERE state.content_hash = ? AND state.edit_revision = ?)",
+                    params![content_hash, edit_revision],
+                    |row| row.get(0),
+                )?)
+            })
+            .await
+    }
 }
 
 #[cfg(test)]

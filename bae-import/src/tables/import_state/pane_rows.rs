@@ -860,6 +860,18 @@ fn insert_track_artist_assignments(
     Ok(())
 }
 
+/// Seed a candidate's draft from the folder's file tags, authored by the
+/// pre-fill, with provenance naming the tags as its source.
+pub(crate) fn insert_file_tags_draft(
+    sql: &CovenWrite<'_>,
+    content_hash: &str,
+    draft: &crate::CandidateDraft,
+) -> Result<(), DbError> {
+    pane_rows::insert_draft(sql, content_hash, draft, crate::MetadataAuthor::Prefill)?;
+    insert_provenance(sql, content_hash, &crate::MetadataProvenance::FileMetadata)?;
+    Ok(())
+}
+
 #[cfg(test)]
 #[path = "pane_rows_tests.rs"]
 mod tests;
