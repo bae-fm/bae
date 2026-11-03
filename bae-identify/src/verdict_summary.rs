@@ -206,4 +206,5 @@ impl VerdictSummary {
 }
 
 #[cfg(test)]
+#[path = "verdict_summary_tests.rs"]
 mod tests;
