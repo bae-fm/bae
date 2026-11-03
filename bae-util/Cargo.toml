@@ -64,7 +64,8 @@ coven = { workspace = true, features = ["test-utils"] }
 [features]
 default = []
 # The test transport (`Http::for_test`, `serve`, and the local servers and
-# canned errors tests answer with), a retry that sleeps no real time, and the
+# canned errors tests answer with), a local host that answers, records and
+# holds a test's requests, a retry that sleeps no real time, and the
 # sampler of the files a piece of work holds open at once, for the tests of
 # every crate that builds on this one. Dev/test-only: a
 # production build never enables it.

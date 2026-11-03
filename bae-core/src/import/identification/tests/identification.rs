@@ -239,7 +239,8 @@ async fn the_interactive_path_is_not_delayed_by_automatic_identification() {
     .expect("automatic identification queues background lookups on the limiter");
 
     let typed = fixture
-        .catalogs
+        .parts
+        .catalogs()
         .musicbrainz()
         .search_musicbrainz(
             bae_catalogs::musicbrainz::ReleaseSearchParams {
@@ -321,13 +322,15 @@ fn found_verdict(track_count: u32, source: Option<SourceTracks>) -> TerminalVerd
 fn the_lengths_a_source_states_do_not_decide() {
     let payloads: bae_catalogs::payloads::ReleasePayloads =
         bae_catalogs::payloads::ReleasePayloads::for_test(
-            bae_catalogs::records::LookupRef::new(bae_catalogs::catalog::LookupCatalog::MusicBrainz, "mb-1"),
+            bae_catalogs::records::LookupRef::new(
+                bae_catalogs::catalog::LookupCatalog::MusicBrainz,
+                "mb-1",
+            ),
             release_json("mb-1", "rg-1", &[200_000, 100_000, 300_000]),
             Vec::new(),
         );
     let audio = bae_catalogs::reading::ReadAudio::of_lengths(&[400_000, 500_000, 600_000]);
-    let source =
-        bae_catalogs::reading::listing(&payloads.extract().unwrap().read(&audio), &audio);
+    let source = bae_catalogs::reading::listing(&payloads.extract().unwrap().read(&audio), &audio);
     assert_eq!(source, SourceTracks::Listed { count: 3 });
     assert_eq!(
         bae_identify::VerdictSummary::of(&found_verdict(3, Some(source)), false).judgement(),
@@ -341,7 +344,10 @@ fn the_lengths_a_source_states_do_not_decide() {
 #[test]
 fn a_document_lists_its_tracks_titles() {
     let payloads = bae_catalogs::payloads::ReleasePayloads::for_test(
-        bae_catalogs::records::LookupRef::new(bae_catalogs::catalog::LookupCatalog::MusicBrainz, "mb-1"),
+        bae_catalogs::records::LookupRef::new(
+            bae_catalogs::catalog::LookupCatalog::MusicBrainz,
+            "mb-1",
+        ),
         release_json("mb-1", "rg-1", &[200_000, 100_000, 300_000]),
         Vec::new(),
     );
@@ -411,11 +417,14 @@ async fn a_settled_run_with_no_artwork_keeps_the_folders_own_cover() {
 
     let folders_own = crate::import::CoverSelection::Local("cover.jpg".to_string());
     assert_eq!(
-        crate::import::preparation::import_preparation(&fixture.context.tables, &fixture.content_hash(&dir))
-            .await
-            .unwrap()
-            .expect("the scanned candidate is prepared")
-            .cover,
+        crate::import::preparation::import_preparation(
+            &fixture.context.tables,
+            &fixture.content_hash(&dir)
+        )
+        .await
+        .unwrap()
+        .expect("the scanned candidate is prepared")
+        .cover,
         Some(folders_own.clone()),
         "the scan stores the cover the folder gives the candidate"
     );
@@ -423,11 +432,14 @@ async fn a_settled_run_with_no_artwork_keeps_the_folders_own_cover() {
     fixture.drain_automatic().await;
 
     assert_eq!(
-        crate::import::preparation::import_preparation(&fixture.context.tables, &fixture.content_hash(&dir))
-            .await
-            .unwrap()
-            .expect("the identified candidate is prepared")
-            .cover,
+        crate::import::preparation::import_preparation(
+            &fixture.context.tables,
+            &fixture.content_hash(&dir)
+        )
+        .await
+        .unwrap()
+        .expect("the identified candidate is prepared")
+        .cover,
         Some(folders_own.clone()),
         "the settled release brought no image, so the folder's cover stands"
     );
@@ -477,8 +489,7 @@ async fn a_release_no_identifier_names_is_found_by_its_title() {
     let verdict = identify_result(&fixture.stored_for(&dir).await.expect("a verdict is stored"))
         .verdict
         .clone();
-    let TerminalVerdict::Found { findings: bae_identify::Findings { matches, .. }, .. } =
-        &verdict
+    let TerminalVerdict::Found { findings: bae_identify::Findings { matches, .. }, .. } = &verdict
     else {
         panic!("expected the title search's release, got {verdict:?}");
     };

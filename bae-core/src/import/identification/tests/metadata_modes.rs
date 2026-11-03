@@ -6,7 +6,7 @@ async fn automatic_lookup_off_runs_none_of_the_identification_pipeline() {
         .import
         .register_artwork_analyzer(Arc::new(CountingAnalyzer { calls: Arc::clone(&calls) }));
     let dir = fixture.barcode_candidate("Candidate");
-    fixture.manager.set_identify_automatically(false).await.unwrap();
+    fixture.set_identify_automatically(false).await;
     fixture.scan(1).await;
 
     fixture.drain_automatic().await;
@@ -238,11 +238,11 @@ async fn disabling_automatic_lookup_lets_what_it_queued_finish() {
     fixture.scan(1).await;
 
     let pass = fixture.drain_automatic_task();
-    wait_for_request(&fixture.provider, "/discid/", 1).await;
+    fixture.provider.wait_for_request("/discid/", 1).await;
 
     // A preference is not a cancel: the run the setting admitted is still
     // running after it turns off, and answers.
-    fixture.manager.set_identify_automatically(false).await.unwrap();
+    fixture.set_identify_automatically(false).await;
     assert!(fixture.import.is_identifying(&key));
     fixture.provider.release();
     tokio::time::timeout(Duration::from_secs(20), pass)
@@ -272,7 +272,7 @@ async fn disabling_automatic_lookup_preserves_a_settled_result() {
     fixture.drain_automatic().await;
     let before = fixture.stored_for(&dir).await.expect("identification stores its settled result");
 
-    fixture.manager.set_identify_automatically(false).await.unwrap();
+    fixture.set_identify_automatically(false).await;
     fixture.drain_automatic().await;
 
     let after = fixture

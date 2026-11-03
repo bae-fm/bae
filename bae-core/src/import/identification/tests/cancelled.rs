@@ -40,7 +40,7 @@ async fn a_cancelled_waiting_candidate_is_never_looked_up() {
     let fixture = Fixture::new("cancel-waiting").await;
     let dirs = flooded_queue(&fixture).await;
     let sweep = fixture.drain_automatic_task();
-    wait_for_request(&fixture.provider, "query=barcode", MAX_IN_FLIGHT).await;
+    fixture.provider.wait_for_request("query=barcode", MAX_IN_FLIGHT).await;
     let waiting =
         fixture.first_queued(&dirs).await.expect("one candidate is over the cap and waiting");
     let waiting_key = crate::import::CandidateKey::folder(&waiting);
@@ -79,7 +79,7 @@ async fn a_cancelled_run_leaves_the_candidate_as_it_was_until_asked_again() {
     fixture.scan(1).await;
     let before = fixture.stored_for(&dir).await.expect("the scan stores the candidate's state row");
     let sweep = fixture.drain_automatic_task();
-    wait_for_request(&fixture.provider, "/discid/", 1).await;
+    fixture.provider.wait_for_request("/discid/", 1).await;
 
     fixture.identification().cancel(vec![key.clone()]).await.unwrap();
     tokio::time::timeout(Duration::from_secs(10), sweep)
@@ -118,7 +118,7 @@ async fn cancelling_everything_empties_the_queue() {
     let fixture = Fixture::new("cancel-all").await;
     let dirs = flooded_queue(&fixture).await;
     let sweep = fixture.drain_automatic_task();
-    wait_for_request(&fixture.provider, "query=barcode", MAX_IN_FLIGHT).await;
+    fixture.provider.wait_for_request("query=barcode", MAX_IN_FLIGHT).await;
 
     fixture.identification().cancel_all().await.unwrap();
     tokio::time::timeout(Duration::from_secs(10), sweep)
@@ -156,7 +156,7 @@ async fn a_cancelled_answer_is_not_written() {
     fixture.provider.hold("/release-group/rg-1?");
     fixture.scan(1).await;
     let sweep = fixture.drain_automatic_task();
-    wait_for_request(&fixture.provider, "/release-group/rg-1?", 1).await;
+    fixture.provider.wait_for_request("/release-group/rg-1?", 1).await;
     assert_eq!(
         fixture.identification_status(&key).await,
         Some(crate::import::IdentificationStatus::Running),
@@ -185,7 +185,7 @@ async fn a_run_the_queue_did_not_start_ends_through_the_same_cancel() {
     fixture.provider.route("/discid/", 200, "{}");
     fixture.provider.hold("/discid/");
     // Nothing found is queued, so the queue holds nothing for the key.
-    fixture.manager.set_identify_automatically(false).await.unwrap();
+    fixture.set_identify_automatically(false).await;
     fixture.scan(1).await;
     let candidate = fixture
         .import
@@ -206,7 +206,7 @@ async fn a_run_the_queue_did_not_start_ends_through_the_same_cancel() {
         )
         .await
         .unwrap());
-    wait_for_request(&fixture.provider, "/discid/", 1).await;
+    fixture.provider.wait_for_request("/discid/", 1).await;
     assert!(fixture.import.is_identifying(&key));
 
     fixture.identification().cancel(vec![key.clone()]).await.unwrap();
@@ -214,68 +214,4 @@ async fn a_run_the_queue_did_not_start_ends_through_the_same_cancel() {
     fixture.provider.release();
 
     assert!(fixture.identified_for(&dir).await.is_none());
-}
-
-/// A person cancelling a waiting candidate from its pane takes it off the
-/// queue, stores nothing for it, and puts the pane back on the draft, as its
-/// Back does.
-#[tokio::test(flavor = "multi_thread")]
-async fn cancelling_from_the_pane_takes_a_waiting_candidate_off_the_queue() {
-    let fixture = Fixture::new("cancel-from-pane").await;
-    let dirs = flooded_queue(&fixture).await;
-    // The app's queue over the fixture's import service, which the pane's
-    // command goes through; the fixture's own queue is never started.
-    let services = crate::library::AppServices::new(
-        fixture.manager.clone(),
-        fixture.manager.views(),
-        fixture.manager.start_playback().await,
-        fixture.manager.cast_picker(),
-        fixture.import.clone(),
-        fixture.import.start_identification_queue(),
-    );
-    wait_for_request(&fixture.provider, "query=barcode", MAX_IN_FLIGHT).await;
-    let waiting =
-        fixture.first_queued(&dirs).await.expect("one candidate is over the cap and waiting");
-    let key = crate::import::CandidateKey::folder(&waiting);
-    assert_eq!(
-        fixture
-            .import
-            .candidate_runtime(&key)
-            .await
-            .unwrap()
-            .and_then(|runtime| runtime.identification_in_flight()),
-        Some(crate::import::IdentificationInFlight::Queued),
-        "its pane shows it waiting"
-    );
-    fixture.import.move_candidate_pane(&key, crate::import::PaneMove::Automatic).await.unwrap();
-
-    services.pane_cancel_identification(&key).await.unwrap();
-
-    assert!(
-        fixture.import.candidate_runtime(&key).await.unwrap().is_none(),
-        "nothing is waiting or running for it"
-    );
-    assert_eq!(
-        fixture
-            .pane(&waiting)
-            .await
-            .expect("the candidate is still listed")
-            .draft()
-            .unwrap()
-            .session
-            .presentation,
-        crate::import::MetadataPresentation::Draft,
-        "the pane is back on the draft"
-    );
-    fixture.provider.release();
-    for dir in dirs.iter().filter(|dir| **dir != waiting) {
-        fixture.await_identified_row(dir).await;
-    }
-    assert_eq!(
-        fixture.provider.count_containing("query=barcode"),
-        MAX_IN_FLIGHT,
-        "the cancelled candidate was never looked up: {:?}",
-        fixture.provider.requests()
-    );
-    assert!(fixture.identified_for(&waiting).await.is_none());
 }

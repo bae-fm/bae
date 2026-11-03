@@ -36,7 +36,7 @@ impl Fixture {
         release_id: &str,
         group_id: &str,
     ) -> (PathBuf, crate::import::CandidateKey) {
-        self.manager.set_identify_automatically(false).await.unwrap();
+        self.set_identify_automatically(false).await;
         let dir = self.disc_id_candidate("Album");
         let key = crate::import::CandidateKey::folder(&dir);
         self.route_disc_id_match(&dir, release_id, group_id, 2);
@@ -65,7 +65,7 @@ impl Fixture {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_settle_reading_its_pick_holds_no_slot() {
     let fixture = Fixture::new("settle-holds-no-slot").await;
-    fixture.manager.set_identify_automatically(false).await.unwrap();
+    fixture.set_identify_automatically(false).await;
     fixture.import.register_artwork_analyzer(Arc::new(PerFolderBarcodeAnalyzer));
     let settling = fixture.disc_id_candidate("Album 0");
     let settling_key = crate::import::CandidateKey::folder(&settling);
@@ -93,7 +93,7 @@ async fn a_settle_reading_its_pick_holds_no_slot() {
     }
 
     // The settle's read and every slot's lookup are out at once.
-    wait_for_request(&fixture.provider, "query=barcode", MAX_IN_FLIGHT).await;
+    fixture.provider.wait_for_request("query=barcode", MAX_IN_FLIGHT).await;
     assert_eq!(
         fixture.count_release_lookups("mb-slot"),
         1,
@@ -124,7 +124,7 @@ async fn a_settle_reading_its_pick_holds_no_slot() {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_row_whose_pick_is_being_read_is_identified() {
     let fixture = Fixture::new("reading-the-pick-row").await;
-    fixture.manager.set_identify_automatically(false).await.unwrap();
+    fixture.set_identify_automatically(false).await;
     let dir = fixture.disc_id_candidate("Album");
     let key = crate::import::CandidateKey::folder(&dir);
     fixture.route_disc_id_match(&dir, "mb-row", "rg-row", 2);
@@ -257,7 +257,7 @@ async fn importing_a_selection_while_the_pick_is_read_imports_it_once_stored() {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_read_that_fails_after_import_was_asked_imports_nothing() {
     let fixture = Fixture::importing("import-asked-read-fails").await;
-    fixture.manager.set_identify_automatically(false).await.unwrap();
+    fixture.set_identify_automatically(false).await;
     let dir = fixture.disc_id_candidate("Album");
     let key = crate::import::CandidateKey::folder(&dir);
     // The run reads its release from the Disc ID answer; the pick's read of

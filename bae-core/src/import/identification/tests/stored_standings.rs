@@ -31,7 +31,7 @@ fn page_rows(
 #[tokio::test(flavor = "multi_thread")]
 async fn a_run_reads_as_identifying_until_its_verdict_is_stored() {
     let fixture = Fixture::new("standing-run-to-verdict").await;
-    fixture.manager.set_identify_automatically(false).await.unwrap();
+    fixture.set_identify_automatically(false).await;
     let dir = fixture.disc_id_candidate("Album");
     let key = crate::import::CandidateKey::folder(&dir);
     fixture.route_disc_id_match(&dir, "mb-standing", "rg-standing", 2);
@@ -184,8 +184,7 @@ async fn the_library_opens_with_no_standing_a_crash_left() {
         .unwrap();
     assert_eq!(tables.load_candidate_standings().await.unwrap().len(), 2);
 
-    let reopened =
-        fixture.manager.start_import().await.unwrap();
+    let reopened = fixture.parts.start().await.unwrap();
 
     assert!(tables.load_candidate_standings().await.unwrap().is_empty());
     tokio::task::spawn_blocking(move || reopened.stop_and_join())
@@ -199,7 +198,7 @@ async fn the_library_opens_with_no_standing_a_crash_left() {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_folder_removed_and_found_again_starts_with_no_standing() {
     let fixture = Fixture::new("standing-ends-with-its-candidate").await;
-    fixture.manager.set_identify_automatically(false).await.unwrap();
+    fixture.set_identify_automatically(false).await;
     let dir = fixture.disc_id_candidate("Album");
     let key = crate::import::CandidateKey::folder(&dir);
     fixture.scan(1).await;

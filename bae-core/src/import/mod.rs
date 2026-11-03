@@ -92,6 +92,8 @@ pub mod session;
 pub(crate) mod shared_album;
 #[cfg(desktop)]
 pub mod tables;
+#[cfg(all(test, desktop))]
+pub(crate) mod test_import;
 #[cfg(desktop)]
 pub(crate) mod track_numbers;
 #[cfg(desktop)]

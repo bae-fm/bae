@@ -52,7 +52,7 @@ use settle::*;
 
 /// How many runs go at once: a cap on local work such as OCR, since the
 /// provider rate limiter already paces the network. Settles run beside them.
-const MAX_IN_FLIGHT: usize = 4;
+pub(crate) const MAX_IN_FLIGHT: usize = 4;
 
 /// The services the queue runs on.
 #[derive(Clone)]

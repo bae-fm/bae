@@ -2,7 +2,6 @@
 //! fixture answers their URLs and records each request.
 
 use super::*;
-use crate::app::test_library::TestLibrary;
 use crate::import::extraction::{ArtworkAnalysis, ArtworkAnalyzer};
 use crate::import::tables::{
     DbCandidateIdentifyResult, DbImportCandidateState, NewImportCandidateVerdict,
@@ -15,7 +14,7 @@ use bae_identify::{FolderCheck, VerdictSummary};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::{Arc, Mutex, OnceLock};
+use std::sync::{Arc, OnceLock};
 use std::time::Duration;
 use tempfile::TempDir;
 
@@ -56,105 +55,6 @@ fn settled_signals() -> Signals {
     }
 }
 
-// ── The fake provider ───────────────────────────────────────────────────────
-
-/// A local HTTP server standing in for the providers. Routes match by
-/// substring of the request target, in the order added; every request is
-/// recorded.
-struct FakeProvider {
-    base_url: String,
-    state: Arc<Mutex<FakeState>>,
-}
-
-#[derive(Default)]
-struct FakeState {
-    routes: Vec<(String, u16, Vec<u8>)>,
-    requests: Vec<String>,
-    /// While set, a request containing any of the needles waits here after
-    /// recording itself.
-    gate: Option<(Vec<String>, Arc<tokio::sync::Semaphore>)>,
-}
-
-impl FakeProvider {
-    async fn start() -> Self {
-        let listener =
-            tokio::net::TcpListener::bind("127.0.0.1:0").await.expect("fake provider binds");
-        let base_url = format!("http://{}", listener.local_addr().unwrap());
-        let state = Arc::new(Mutex::new(FakeState::default()));
-        let accept_state = state.clone();
-        tokio::spawn(async move {
-            loop {
-                let Ok((stream, _)) = listener.accept().await else {
-                    return;
-                };
-                let state = accept_state.clone();
-                tokio::spawn(async move { serve_one(stream, state).await });
-            }
-        });
-        FakeProvider { base_url, state }
-    }
-
-    /// Answer any request containing `needle` with `status` and `body`; an
-    /// earlier route wins over a later one.
-    fn route(&self, needle: &str, status: u16, body: impl Into<Vec<u8>>) {
-        self.state.lock().unwrap().routes.push((needle.to_string(), status, body.into()));
-    }
-
-    /// Answer requests containing `needle` with `status` and `body` from now
-    /// on, in place of what the route for it said before.
-    fn reroute(&self, needle: &str, status: u16, body: impl Into<Vec<u8>>) {
-        let mut state = self.state.lock().unwrap();
-        state.routes.retain(|(existing, _, _)| existing != needle);
-        state.routes.insert(0, (needle.to_string(), status, body.into()));
-    }
-
-    /// Replace every route.
-    fn set_routes(&self, routes: Vec<(&str, u16, String)>) {
-        let mut state = self.state.lock().unwrap();
-        state.routes = routes
-            .into_iter()
-            .map(|(needle, status, body)| (needle.to_string(), status, body.into_bytes()))
-            .collect();
-    }
-
-    /// Leave every request matching `needle` unanswered until
-    /// [`Self::release`], so a test can act on a lookup in flight.
-    fn hold(&self, needle: &str) {
-        self.hold_each(&[needle]);
-    }
-
-    /// [`Self::hold`] every request matching any of `needles`.
-    fn hold_each(&self, needles: &[&str]) {
-        self.state.lock().unwrap().gate = Some((
-            needles.iter().map(|needle| needle.to_string()).collect(),
-            Arc::new(tokio::sync::Semaphore::new(0)),
-        ));
-    }
-
-    /// Answer one held request, the next to reach the hold if none is
-    /// waiting, and go on holding the rest.
-    fn let_one_through(&self) {
-        if let Some((_, gate)) = self.state.lock().unwrap().gate.as_ref() {
-            gate.add_permits(1);
-        }
-    }
-
-    /// Answer everything held, and let later requests through.
-    fn release(&self) {
-        if let Some((_, gate)) = self.state.lock().unwrap().gate.take() {
-            gate.close();
-        }
-    }
-
-    fn requests(&self) -> Vec<String> {
-        self.state.lock().unwrap().requests.clone()
-    }
-
-    fn count_containing(&self, needle: &str) -> usize {
-        self.requests().iter().filter(|target| target.contains(needle)).count()
-    }
-}
-
 /// The id of the next run of `key` whose reported state `accept` answers.
 async fn await_run_state(
     events: &mut tokio::sync::mpsc::UnboundedReceiver<ImportEvent>,
@@ -190,23 +90,6 @@ fn drain_events(
                 panic!("the import event bus closed while draining ready events")
             }
         }
-    }
-}
-
-async fn wait_for_request(provider: &FakeProvider, needle: &str, count: usize) {
-    if tokio::time::timeout(Duration::from_secs(10), async {
-        while provider.count_containing(needle) < count {
-            tokio::time::sleep(Duration::from_millis(10)).await;
-        }
-    })
-    .await
-    .is_err()
-    {
-        panic!(
-            "the provider received no request containing {needle:?} (wanted {count}); \
-             requests so far: {:?}",
-            provider.requests()
-        );
     }
 }
 
@@ -271,16 +154,15 @@ impl ArtworkAnalyzer for GatedAnalyzer {
 }
 
 struct Fixture {
-    manager: TestLibrary,
-    /// The store under `manager`, for a test that breaks a row directly.
+    /// What the fixture's import service was started from, for a test that
+    /// starts another over the same store or writes a preference.
+    parts: crate::import::test_import::TestImport,
+    /// The store under `import`, for a test that breaks a row directly.
     database: Database,
     /// The writer the handle uses, for tests that write a candidate directly.
     preparations: crate::import::CandidatePreparations,
     import: ImportServiceHandle,
-    provider: FakeProvider,
-    /// The catalog sessions the library and its import ask through, which a
-    /// test stores a Discogs key with.
-    catalogs: crate::import::CatalogSessions,
+    provider: bae_util::test_host::FakeHost,
     /// The MusicBrainz client those sessions ask, which a test seeds answers
     /// into and reads the waiting requests of.
     musicbrainz: Arc<bae_catalogs::musicbrainz::MusicBrainz>,
@@ -321,12 +203,12 @@ impl Fixture {
                 .unwrap();
         let preparations = crate::import::CandidatePreparations::new(database.clone());
 
-        let provider = FakeProvider::start().await;
+        let provider = bae_util::test_host::FakeHost::start().await;
         // Discogs goes to the fake too, so no test reaches the real API.
         let http = bae_util::http::Http::for_test()
-            .serve("musicbrainz.org", &provider.base_url)
-            .serve("coverartarchive.org", &provider.base_url)
-            .serve("api.discogs.com", &provider.base_url);
+            .serve("musicbrainz.org", provider.base_url())
+            .serve("coverartarchive.org", provider.base_url())
+            .serve("api.discogs.com", provider.base_url());
         // Production request spacing: admission order is part of what these
         // tests measure.
         let musicbrainz = Arc::new(bae_catalogs::musicbrainz::MusicBrainz::new(http.clone()));
@@ -338,18 +220,14 @@ impl Fixture {
         );
         // No Discogs key, so lookups ask MusicBrainz alone unless a test calls
         // `use_discogs`.
-        let manager = TestLibrary::open_with(
+        let parts = crate::import::test_import::TestImport::new(
             database.clone(),
-            bae_app_dir::AppDir::under_home(temp.path()).unwrap(),
             providers,
             clock,
             ids,
             bae_diagnostics::Diagnostics::noop(),
-        )
-        .await;
-        let catalogs = manager.catalogs().clone();
-
-        let import = manager.start_import().await.unwrap();
+        );
+        let import = parts.start().await.unwrap();
 
         let root = temp.path().join("watched");
         std::fs::create_dir_all(&root).unwrap();
@@ -361,18 +239,31 @@ impl Fixture {
             diagnostics: bae_diagnostics::Diagnostics::noop(),
         };
         Fixture {
-            manager,
+            parts,
             database,
             preparations,
             import,
             provider,
-            catalogs,
             musicbrainz,
             context,
             identification: OnceLock::new(),
             root,
             _temp: temp,
         }
+    }
+
+    /// Whether releases found from now on are identified on their own.
+    async fn set_identify_automatically(&self, enabled: bool) {
+        self.parts.edit_preferences(move |prefs| prefs.identification.automatic = enabled).await;
+    }
+
+    /// Whether what a run settles on as needing nothing is imported at once.
+    async fn set_import_when_identified(&self, enabled: bool) {
+        self.parts
+            .edit_preferences(move |prefs| {
+                prefs.identification.import_when_identified = enabled;
+            })
+            .await;
     }
 
     /// The running queue, started on first use.
@@ -618,7 +509,8 @@ impl Fixture {
 
     /// Store a fake Discogs key, so lookups ask both providers.
     async fn use_discogs(&self) {
-        self.catalogs
+        self.parts
+            .catalogs()
             .store_discogs_key("test-discogs-token", bae_preferences::DiscogsValidation::Valid)
             .await
             .expect("the fake Discogs key is stored");

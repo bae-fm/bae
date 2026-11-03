@@ -66,7 +66,7 @@ async fn an_import_start_takes_a_queued_candidate_out_of_work_and_progress() {
 
     let mut counts = fixture.import.every_identification_count_for_test();
     let pass = fixture.drain_automatic_task();
-    wait_for_request(&fixture.provider, "/discid/", 1).await;
+    fixture.provider.wait_for_request("/discid/", 1).await;
     start_import_for(&fixture, &importing).await;
     fixture.provider.release();
     tokio::time::timeout(Duration::from_secs(15), pass)
@@ -118,7 +118,7 @@ async fn a_rescan_does_not_count_back_a_candidate_an_import_owns() {
 
     let mut counts = fixture.import.every_identification_count_for_test();
     let pass = fixture.drain_automatic_task();
-    wait_for_request(&fixture.provider, "/discid/", 1).await;
+    fixture.provider.wait_for_request("/discid/", 1).await;
     start_import_for(&fixture, &importing).await;
     // The scan re-announces the claimed candidate, as a watcher re-scan does.
     let claimed = match fixture
@@ -174,7 +174,7 @@ async fn an_import_started_while_a_verdict_is_in_flight_stores_nothing() {
     fixture.provider.hold("/release/mb-mid-write?");
 
     let pass = fixture.drain_automatic_task();
-    wait_for_request(&fixture.provider, "/release/mb-mid-write?", 1).await;
+    fixture.provider.wait_for_request("/release/mb-mid-write?", 1).await;
     start_import_for(&fixture, &dir).await;
     fixture.provider.release();
     tokio::time::timeout(Duration::from_secs(20), pass)
@@ -371,7 +371,7 @@ async fn a_cancelled_candidate_writes_no_row() {
     fixture.provider.hold("/discid/");
 
     let pass = fixture.drain_automatic_task();
-    wait_for_request(&fixture.provider, "/discid/", 1).await;
+    fixture.provider.wait_for_request("/discid/", 1).await;
     fixture.identification().shut_down();
     fixture.provider.release();
     tokio::time::timeout(Duration::from_secs(10), pass)

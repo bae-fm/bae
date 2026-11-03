@@ -118,27 +118,27 @@ async fn a_run_restarted_over_a_shorter_provider_list_asks_only_what_is_left() {
     // source is switched off rather than racing a run that already settled.
     fixture.provider.hold("/release?");
     // Identified only when asked: nothing found here is identified on its own.
-    fixture.manager.set_identify_automatically(false).await.unwrap();
+    fixture.set_identify_automatically(false).await;
     fixture.scan(1).await;
 
     let mut events = fixture.import.every_event();
     fixture.start_explicit_lookup_and_await_run(&dir).await;
     let asked_both = await_run_state(&mut events, &key, |_, _| true).await;
-    wait_for_request(&fixture.provider, "/database/search", 1).await;
+    fixture.provider.wait_for_request("/database/search", 1).await;
 
     fixture
-        .manager
-        .set_metadata_source_enabled(bae_catalogs::catalog::LookupCatalog::Discogs, false)
-        .await
-        .expect("MusicBrainz is still asked, so Discogs can be switched off");
+        .parts
+        .edit_preferences(|prefs| {
+            prefs.identification.catalogs.set(bae_catalogs::catalog::LookupCatalog::Discogs, false);
+        })
+        .await;
     fixture.identification().rerun_identify(key.clone());
     await_run_state(&mut events, &key, |run, _| run != asked_both).await;
     fixture.provider.release();
 
     let row = fixture.await_identified_row(&dir).await;
     let verdict = identify_result(&row).verdict.clone();
-    let TerminalVerdict::Found { findings: bae_identify::Findings { matches, .. }, .. } =
-        &verdict
+    let TerminalVerdict::Found { findings: bae_identify::Findings { matches, .. }, .. } = &verdict
     else {
         panic!("expected a Found verdict, got {verdict:?}");
     };
@@ -173,7 +173,7 @@ async fn explicit_lookup_settles_its_lead_before_storing_the_verdict() {
         release_json("mb-interactive-1", "rg-interactive-1", &[probed, 0]),
     );
     // Identified only when asked: nothing found here is identified on its own.
-    fixture.manager.set_identify_automatically(false).await.unwrap();
+    fixture.set_identify_automatically(false).await;
     fixture.scan(1).await;
 
     // Exactly what a person asking to identify the candidate does.
@@ -183,8 +183,7 @@ async fn explicit_lookup_settles_its_lead_before_storing_the_verdict() {
         .expect("the explicit Lookup recorder stores the verdict");
 
     let verdict = identify_result(&row).verdict.clone();
-    let TerminalVerdict::Found { findings: bae_identify::Findings { matches, .. }, .. } =
-        &verdict
+    let TerminalVerdict::Found { findings: bae_identify::Findings { matches, .. }, .. } = &verdict
     else {
         panic!("expected a single-match Found, got {verdict:?}");
     };
@@ -225,7 +224,7 @@ async fn a_release_its_draft_cannot_be_read_from_is_no_match() {
     incomplete.remove("release-group");
     fixture.provider.route("/discid/", 200, answer.to_string());
     // Identified only when asked: nothing found here is identified on its own.
-    fixture.manager.set_identify_automatically(false).await.unwrap();
+    fixture.set_identify_automatically(false).await;
     fixture.scan(1).await;
 
     fixture.start_explicit_lookup(&dir);
@@ -262,7 +261,7 @@ async fn interactive_lookup_runs_while_automatic_lookup_is_off() {
         release_json("mb-interactive-off", "rg-interactive-off", &[probed, 0]),
     );
     // Identified only when asked: nothing found here is identified on its own.
-    fixture.manager.set_identify_automatically(false).await.unwrap();
+    fixture.set_identify_automatically(false).await;
     fixture.scan(1).await;
 
     fixture.start_explicit_lookup(&dir);
@@ -292,7 +291,7 @@ async fn explicit_lookup_stores_its_verdict_for_a_pre_filled_candidate() {
         release_json("mb-default-none", "rg-default-none", &[probed, 0]),
     );
     // Identified only when asked: nothing found here is identified on its own.
-    fixture.manager.set_identify_automatically(false).await.unwrap();
+    fixture.set_identify_automatically(false).await;
     fixture.scan(1).await;
 
     fixture.start_explicit_lookup(&dir);
@@ -328,7 +327,7 @@ async fn explicit_lookup_for_an_answered_candidate_runs_it_again() {
         release_json("mb-asked-again", "rg-asked-again", &[probed, 0]),
     );
     // Identified only when asked: nothing found here is identified on its own.
-    fixture.manager.set_identify_automatically(false).await.unwrap();
+    fixture.set_identify_automatically(false).await;
     fixture.scan(1).await;
 
     let verdict = multi_match_verdict(&["mb-resume-1", "mb-resume-2"], "rg-resume-1");
@@ -383,12 +382,12 @@ async fn explicit_lookup_during_an_active_run_supersedes_it() {
     fixture.provider.route("/discid/", 200, "{}");
     fixture.provider.hold("/discid/");
     // Identified only when asked: nothing found here is identified on its own.
-    fixture.manager.set_identify_automatically(false).await.unwrap();
+    fixture.set_identify_automatically(false).await;
     fixture.scan(1).await;
     let mut events = fixture.import.every_event();
 
     fixture.start_explicit_lookup_and_await_run(&dir).await;
-    wait_for_request(&fixture.provider, "/discid/", 1).await;
+    fixture.provider.wait_for_request("/discid/", 1).await;
     let first_run = loop {
         let event = tokio::time::timeout(Duration::from_secs(10), events.recv())
             .await
@@ -438,7 +437,7 @@ async fn a_rerun_with_no_driver_runs_identification_again() {
     let dir = fixture.disc_id_candidate("Album");
     let probed = fixture.probed_total_ms(&dir);
     // Identified only when asked: nothing found here is identified on its own.
-    fixture.manager.set_identify_automatically(false).await.unwrap();
+    fixture.set_identify_automatically(false).await;
     fixture.scan(1).await;
     fixture.archive("mb-rerun-1", "rg-rerun-1", &[probed, 0]).await;
     fixture.store_settled_verdict(&dir, "mb-rerun-1", "rg-rerun-1").await;
@@ -451,7 +450,7 @@ async fn a_rerun_with_no_driver_runs_identification_again() {
 
     fixture.identification().rerun_identify(crate::import::CandidateKey::folder(&dir));
 
-    wait_for_request(&fixture.provider, "/discid/", 1).await;
+    fixture.provider.wait_for_request("/discid/", 1).await;
 }
 
 /// A person's decision ends their own run like any other: it stops at `Idle`
@@ -464,12 +463,12 @@ async fn a_pick_during_an_explicit_lookup_stores_no_verdict() {
     fixture.provider.route("/discid/", 200, "{}");
     fixture.provider.hold("/discid/");
     // Identified only when asked: nothing found here is identified on its own.
-    fixture.manager.set_identify_automatically(false).await.unwrap();
+    fixture.set_identify_automatically(false).await;
     fixture.scan(1).await;
 
     let mut events = fixture.import.every_event();
     fixture.start_explicit_lookup_and_await_run(&dir).await;
-    wait_for_request(&fixture.provider, "/discid/", 1).await;
+    fixture.provider.wait_for_request("/discid/", 1).await;
 
     fixture.import.select_candidate_file_tags(key.clone()).await.expect("the pick lands");
 
@@ -511,7 +510,7 @@ async fn changing_the_choices_supersedes_the_run_and_frees_its_slot() {
     let mut restart = fixture.import.every_event();
 
     let pass = fixture.drain_automatic_task();
-    wait_for_request(&fixture.provider, "/discid/", 1).await;
+    fixture.provider.wait_for_request("/discid/", 1).await;
     let sweeps_run = await_run_state(&mut restart, &key, |_, _| true).await;
 
     // What a person changing a choice does: the change is made to the stored
@@ -576,13 +575,13 @@ async fn an_edit_during_a_run_leaves_its_answer_to_land() {
     let probed = fixture.probed_total_ms(&dir);
     fixture.provider.route("/discid/", 200, discid_json("mb-1", "rg-1", &[probed, 0]));
     fixture.provider.route("/release/mb-1?", 200, release_json("mb-1", "rg-1", &[probed, 0]));
-    fixture.manager.set_identify_automatically(false).await.unwrap();
+    fixture.set_identify_automatically(false).await;
     fixture.scan(1).await;
     fixture.provider.hold("/release/mb-1?");
     let mut events = fixture.import.every_event();
 
     fixture.start_explicit_lookup(&dir);
-    wait_for_request(&fixture.provider, "/release/mb-1?", 1).await;
+    fixture.provider.wait_for_request("/release/mb-1?", 1).await;
     fixture
         .import
         .set_candidate_edit_field(
@@ -603,7 +602,8 @@ async fn an_edit_during_a_run_leaves_its_answer_to_land() {
     assert_eq!(
         fixture
             .context
-            .tables.load_import_candidate_pane_rows(&fixture.content_hash(&dir))
+            .tables
+            .load_import_candidate_pane_rows(&fixture.content_hash(&dir))
             .await
             .unwrap()
             .draft

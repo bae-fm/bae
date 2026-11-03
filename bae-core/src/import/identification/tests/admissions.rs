@@ -23,7 +23,7 @@ async fn a_request_on_a_waiting_candidate_takes_the_next_slot() {
 
     let sweep = fixture.drain_automatic_task();
     // The cap's worth of lookups are out, and one candidate is still waiting.
-    wait_for_request(&fixture.provider, "query=barcode", MAX_IN_FLIGHT).await;
+    fixture.provider.wait_for_request("query=barcode", MAX_IN_FLIGHT).await;
     let waiting =
         fixture.first_queued(&dirs).await.expect("one candidate is over the cap and waiting");
     let waiting_key = crate::import::CandidateKey::folder(&waiting);
@@ -60,7 +60,7 @@ async fn a_request_on_a_waiting_candidate_takes_the_next_slot() {
         "the requested candidate takes the next slot at the priority a person \
          waiting on it deserves"
     );
-    wait_for_request(&fixture.provider, "query=barcode", MAX_IN_FLIGHT + 1).await;
+    fixture.provider.wait_for_request("query=barcode", MAX_IN_FLIGHT + 1).await;
     assert_eq!(
         fixture.provider.count_containing("query=barcode"),
         MAX_IN_FLIGHT + 1,
@@ -119,7 +119,7 @@ async fn a_request_superseding_a_run_keeps_the_rest_of_its_group() {
     fixture.scan(2).await;
 
     let sweep = fixture.drain_automatic_task();
-    wait_for_request(&fixture.provider, "/discid/", 1).await;
+    fixture.provider.wait_for_request("/discid/", 1).await;
     // Whichever of them the automatic admission is running, the person asks
     // about the other one.
     let running = if fixture.import.is_identifying(&crate::import::CandidateKey::folder(&first)) {
@@ -187,9 +187,9 @@ async fn automatic_off_leaves_the_queue_to_finish() {
 
     fixture.start_explicit_lookup_and_await_run(&requested).await;
     let sweep = fixture.drain_automatic_task();
-    wait_for_request(&fixture.provider, "/discid/", 2).await;
+    fixture.provider.wait_for_request("/discid/", 2).await;
 
-    fixture.manager.set_identify_automatically(false).await.unwrap();
+    fixture.set_identify_automatically(false).await;
 
     assert!(
         fixture.import.is_identifying(&automatic_key),
@@ -225,7 +225,7 @@ async fn a_requested_run_is_counted() {
         release_json("mb-counted", "rg-counted", &[probed, 0]),
     );
     // Identified only when asked: nothing found here is identified on its own.
-    fixture.manager.set_identify_automatically(false).await.unwrap();
+    fixture.set_identify_automatically(false).await;
     fixture.scan(1).await;
 
     let mut counts = fixture.import.every_identification_count_for_test();
@@ -264,7 +264,7 @@ async fn an_admitted_candidate_opens_on_find_online() {
     );
 
     let sweep = fixture.drain_automatic_task();
-    wait_for_request(&fixture.provider, "/discid/", 1).await;
+    fixture.provider.wait_for_request("/discid/", 1).await;
 
     assert_eq!(
         fixture.pane(&dir).await.expect("still scanned").draft().unwrap().session.presentation,

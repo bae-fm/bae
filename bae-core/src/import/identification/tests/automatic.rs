@@ -10,7 +10,7 @@ async fn only_a_release_found_while_automatic_is_on_is_identified_on_its_own() {
     fixture.provider.route("/discid/", 200, "{}");
     fixture.scan(1).await;
 
-    fixture.manager.set_identify_automatically(false).await.unwrap();
+    fixture.set_identify_automatically(false).await;
     let off = fixture.disc_id_candidate("Found While Off");
     std::fs::write(off.join("notes.txt"), "a candidate of its own").unwrap();
     fixture.rescan(&fixture.import, 2).await;
@@ -40,9 +40,9 @@ async fn a_release_found_after_its_key_was_removed_is_queued() {
     let dir = fixture.disc_id_candidate("Album");
     let key = crate::import::CandidateKey::folder(&dir);
     fixture.provider.route("/discid/", 200, "{}");
-    fixture.manager.set_identify_automatically(false).await.unwrap();
+    fixture.set_identify_automatically(false).await;
     fixture.scan(1).await;
-    fixture.manager.set_identify_automatically(true).await.unwrap();
+    fixture.set_identify_automatically(true).await;
     let candidate = fixture
         .import
         .answerable_candidate(&key)
@@ -75,7 +75,7 @@ async fn a_found_release_whose_key_is_then_removed_is_not_identified() {
     let key = crate::import::CandidateKey::folder(&dir);
     fixture.provider.route("/discid/", 200, "{}");
     fixture.provider.hold("/discid/");
-    fixture.manager.set_identify_automatically(false).await.unwrap();
+    fixture.set_identify_automatically(false).await;
     fixture.scan(1).await;
     let candidate = fixture
         .import
@@ -103,11 +103,11 @@ async fn turning_automatic_identification_on_queues_no_candidate_already_found()
     let fixture = Fixture::new("on-reaches-back-to-nothing").await;
     let dir = fixture.disc_id_candidate("Album");
     fixture.provider.route("/discid/", 200, "{}");
-    fixture.manager.set_identify_automatically(false).await.unwrap();
+    fixture.set_identify_automatically(false).await;
     fixture.scan(1).await;
     fixture.drain_automatic().await;
 
-    fixture.manager.set_identify_automatically(true).await.unwrap();
+    fixture.set_identify_automatically(true).await;
     fixture.drain_automatic().await;
 
     assert_eq!(
@@ -127,7 +127,7 @@ async fn a_rescan_queues_no_candidate_it_had_found() {
     let dir = fixture.disc_id_candidate("Album");
     let key = crate::import::CandidateKey::folder(&dir);
     fixture.provider.route("/discid/", 200, "{}");
-    fixture.manager.set_identify_automatically(false).await.unwrap();
+    fixture.set_identify_automatically(false).await;
     fixture.scan(1).await;
     let files_before = fixture
         .import
@@ -137,7 +137,7 @@ async fn a_rescan_queues_no_candidate_it_had_found() {
         .expect("the scanned candidate is answerable")
         .files
         .content_hash();
-    fixture.manager.set_identify_automatically(true).await.unwrap();
+    fixture.set_identify_automatically(true).await;
     fixture.drain_automatic().await;
 
     fixture.rescan(&fixture.import, 1).await;
@@ -176,8 +176,7 @@ async fn a_relaunch_queues_no_candidate_the_library_stored() {
     fixture.scan(1).await;
     fixture.import.stop_and_join();
 
-    let import =
-        fixture.manager.start_import().await.unwrap();
+    let import = fixture.parts.start().await.unwrap();
     let identification = import.start_identification_queue();
     fixture.rescan(&import, 1).await;
     tokio::time::timeout(Duration::from_secs(30), identification.automatic_drained_for_test())
@@ -209,11 +208,11 @@ async fn turning_automatic_identification_off_finishes_what_is_queued() {
     let fixture = Fixture::new("off-finishes-queue").await;
     let dirs = flooded_queue(&fixture).await;
     let sweep = fixture.drain_automatic_task();
-    wait_for_request(&fixture.provider, "query=barcode", MAX_IN_FLIGHT).await;
+    fixture.provider.wait_for_request("query=barcode", MAX_IN_FLIGHT).await;
     let waiting =
         fixture.first_queued(&dirs).await.expect("one candidate is over the cap and waiting");
 
-    fixture.manager.set_identify_automatically(false).await.unwrap();
+    fixture.set_identify_automatically(false).await;
     fixture.provider.release();
     tokio::time::timeout(Duration::from_secs(30), sweep)
         .await
@@ -247,11 +246,11 @@ async fn a_takeover_queues_only_a_release_new_to_the_parent() {
     let inner = fixture.root.join("Inner");
     let known = fixture.disc_id_candidate("Inner/Album");
     fixture.provider.route("/discid/", 200, "{}");
-    fixture.manager.set_identify_automatically(false).await.unwrap();
+    fixture.set_identify_automatically(false).await;
     fixture.import.add_watched_folder(inner.clone()).await.unwrap();
     fixture.read_root(&fixture.import, &inner).await;
     fixture.await_listed(&fixture.import, 1).await;
-    fixture.manager.set_identify_automatically(true).await.unwrap();
+    fixture.set_identify_automatically(true).await;
 
     let new = fixture.disc_id_candidate("New Album");
     std::fs::write(new.join("notes.txt"), "a candidate of its own").unwrap();
@@ -293,7 +292,7 @@ async fn combined_parts(
         })
         .collect();
     fixture.provider.route("/discid/", 200, "{}");
-    fixture.manager.set_identify_automatically(false).await.unwrap();
+    fixture.set_identify_automatically(false).await;
     fixture.scan(2).await;
     let combined = fixture
         .import
@@ -312,7 +311,7 @@ async fn separating_a_folder_queues_its_parts_only_while_the_setting_is_on() {
     for automatic in [true, false] {
         let fixture = Fixture::new(&format!("separate-folder-{automatic}")).await;
         let (parts, combined) = combined_parts(&fixture, "Box").await;
-        fixture.manager.set_identify_automatically(automatic).await.unwrap();
+        fixture.set_identify_automatically(automatic).await;
 
         fixture.import.separate_candidate(&combined).await.unwrap();
         fixture.drain_automatic().await;
@@ -356,7 +355,7 @@ async fn separating_picked_releases_queues_them_only_while_the_setting_is_on() {
             })
             .collect();
         fixture.provider.route("/discid/", 200, "{}");
-        fixture.manager.set_identify_automatically(false).await.unwrap();
+        fixture.set_identify_automatically(false).await;
         fixture.scan(3).await;
         let combined = fixture
             .import
@@ -366,7 +365,7 @@ async fn separating_picked_releases_queues_them_only_while_the_setting_is_on() {
             .await
             .unwrap();
         assert!(combined.as_bytes().starts_with(b"grouping:"), "{combined} is a picked grouping");
-        fixture.manager.set_identify_automatically(automatic).await.unwrap();
+        fixture.set_identify_automatically(automatic).await;
 
         fixture.import.separate_candidate(&combined).await.unwrap();
         fixture.drain_automatic().await;

@@ -234,3 +234,6 @@ impl AppServices {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests;

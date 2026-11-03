@@ -97,14 +97,19 @@ impl Fixture {
 
     /// The failed import `dir`'s pane shows, if any.
     async fn import_failure(&self, dir: &Path) -> Option<crate::import::ImportFailure> {
-        self.context.tables.load_import_candidate_pane_rows(&self.content_hash(dir)).await.unwrap().failure
+        self.context
+            .tables
+            .load_import_candidate_pane_rows(&self.content_hash(dir))
+            .await
+            .unwrap()
+            .failure
     }
 }
 
 #[tokio::test(flavor = "multi_thread")]
 async fn an_automatic_run_that_settles_auto_importable_imports_its_candidate_once() {
     let fixture = Fixture::importing("auto-importable").await;
-    fixture.manager.set_import_when_identified(true).await.unwrap();
+    fixture.set_import_when_identified(true).await;
     let dir = fixture.disc_id_candidate("Album");
     let key = crate::import::CandidateKey::folder(&dir);
     fixture.route_disc_id_match(&dir, "mb-auto", "rg-auto", 2);
@@ -143,7 +148,7 @@ async fn an_automatic_run_that_settles_auto_importable_with_the_setting_off_impo
 #[tokio::test(flavor = "multi_thread")]
 async fn an_automatic_run_that_settles_needing_you_imports_nothing() {
     let fixture = Fixture::new("auto-import-needs-you").await;
-    fixture.manager.set_import_when_identified(true).await.unwrap();
+    fixture.set_import_when_identified(true).await;
     fixture.import.register_artwork_analyzer(Arc::new(BarcodeAnalyzer {
         barcode: PAIRED_BARCODE.to_string(),
     }));
@@ -172,7 +177,7 @@ async fn an_automatic_run_that_settles_needing_you_imports_nothing() {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_release_the_folder_rules_out_is_neither_applied_nor_imported() {
     let fixture = Fixture::importing("auto-import-medium").await;
-    fixture.manager.set_import_when_identified(true).await.unwrap();
+    fixture.set_import_when_identified(true).await;
     let dir = fixture.disc_id_candidate("Album");
     let key = crate::import::CandidateKey::folder(&dir);
     let probed = fixture.probed_total_ms(&dir);
@@ -188,10 +193,7 @@ async fn a_release_the_folder_rules_out_is_neither_applied_nor_imported() {
 
     assert_eq!(
         fixture.judgement_for(&dir).await,
-        (
-            false,
-            Some(FolderCheck::MediumDisagrees { folder: bae_identify::MediumConflict::CdRip })
-        )
+        (false, Some(FolderCheck::MediumDisagrees { folder: bae_identify::MediumConflict::CdRip }))
     );
     let row = fixture.stored_for(&dir).await.expect("the candidate stores a row");
     assert_ne!(
@@ -217,7 +219,7 @@ async fn a_candidate_auto_importable_before_the_setting_was_on_is_not_imported()
     fixture.identify_ready(&dir, "mb-earlier", "rg-earlier").await;
     let mut events = fixture.import.every_event();
 
-    fixture.manager.set_import_when_identified(true).await.unwrap();
+    fixture.set_import_when_identified(true).await;
     fixture.rescan(&fixture.import, 1).await;
     fixture.drain_automatic().await;
 
@@ -229,8 +231,8 @@ async fn a_candidate_auto_importable_before_the_setting_was_on_is_not_imported()
 #[tokio::test(flavor = "multi_thread")]
 async fn a_run_a_person_asked_for_imports_its_candidate_with_identifying_automatically_off() {
     let fixture = Fixture::importing("auto-import-requested").await;
-    fixture.manager.set_identify_automatically(false).await.unwrap();
-    fixture.manager.set_import_when_identified(true).await.unwrap();
+    fixture.set_identify_automatically(false).await;
+    fixture.set_import_when_identified(true).await;
     let dir = fixture.disc_id_candidate("Album");
     let key = crate::import::CandidateKey::folder(&dir);
     fixture.route_disc_id_match(&dir, "mb-requested", "rg-requested", 2);
@@ -248,7 +250,7 @@ async fn a_run_a_person_asked_for_imports_its_candidate_with_identifying_automat
 #[tokio::test(flavor = "multi_thread")]
 async fn a_run_a_person_asked_for_with_the_setting_off_imports_nothing() {
     let fixture = Fixture::new("auto-import-requested-setting-off").await;
-    fixture.manager.set_identify_automatically(false).await.unwrap();
+    fixture.set_identify_automatically(false).await;
     let dir = fixture.disc_id_candidate("Album");
     let key = crate::import::CandidateKey::folder(&dir);
     fixture.route_disc_id_match(&dir, "mb-requested-off", "rg-requested-off", 2);
@@ -270,8 +272,8 @@ async fn a_run_a_person_asked_for_with_the_setting_off_imports_nothing() {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_release_picked_from_a_typed_search_is_not_imported() {
     let fixture = Fixture::new("auto-import-typed-search").await;
-    fixture.manager.set_identify_automatically(false).await.unwrap();
-    fixture.manager.set_import_when_identified(true).await.unwrap();
+    fixture.set_identify_automatically(false).await;
+    fixture.set_import_when_identified(true).await;
     let dir = fixture.disc_id_candidate("Album");
     let key = crate::import::CandidateKey::folder(&dir);
     let probed = fixture.probed_total_ms(&dir);

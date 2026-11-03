@@ -21,9 +21,7 @@ fn page_window(offset: u64, limit: u64) -> bae_db::LibraryPageWindows {
 }
 
 /// The list's next snapshot.
-async fn next_page(
-    list: &crate::import::LiveImportList,
-) -> crate::import::ImportListSnapshot {
+async fn next_page(list: &crate::import::LiveImportList) -> crate::import::ImportListSnapshot {
     tokio::time::timeout(Duration::from_secs(20), list.next())
         .await
         .expect("the list delivers")
@@ -307,7 +305,7 @@ async fn a_batch_identify_shows_a_row_waiting_for_a_slot_queued_then_running() {
     fixture.provider.route("/release?", 200, r#"{"releases":[]}"#);
     fixture.provider.hold("query=barcode");
     // Identified only when asked: nothing found here is identified on its own.
-    fixture.manager.set_identify_automatically(false).await.unwrap();
+    fixture.set_identify_automatically(false).await;
     fixture.scan(MAX_IN_FLIGHT + 1).await;
 
     let list = list_subscription(&fixture, page_window(0, 50)).await;
@@ -321,7 +319,7 @@ async fn a_batch_identify_shows_a_row_waiting_for_a_slot_queued_then_running() {
     for key in &keys {
         fixture.identification().rerun_identify(key.clone());
     }
-    wait_for_request(&fixture.provider, "query=barcode", MAX_IN_FLIGHT).await;
+    fixture.provider.wait_for_request("query=barcode", MAX_IN_FLIGHT).await;
 
     let status = |snapshot: &crate::import::ImportListSnapshot,
                   key: &crate::import::CandidateKey| {
@@ -371,7 +369,7 @@ async fn a_verdict_off_the_page_delivers_the_counts_it_moves() {
     let first = fixture.disc_id_candidate("First");
     let second = fixture.disc_id_candidate("Second");
     std::fs::write(second.join("notes.txt"), "distinct candidate").unwrap();
-    fixture.manager.set_identify_automatically(false).await.unwrap();
+    fixture.set_identify_automatically(false).await;
     fixture.scan(2).await;
 
     let list = list_subscription(&fixture, page_window(0, 1)).await;

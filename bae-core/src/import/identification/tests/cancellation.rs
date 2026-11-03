@@ -27,7 +27,7 @@ async fn a_pick_ends_only_the_picked_candidates_run() {
     let picked_key = crate::import::CandidateKey::folder(&picked);
     let other_key = crate::import::CandidateKey::folder(&other);
     let pass = fixture.drain_automatic_task();
-    wait_for_request(&fixture.provider, "/discid/", 1).await;
+    fixture.provider.wait_for_request("/discid/", 1).await;
     let mut events = fixture.import.every_event();
 
     fixture.import.select_candidate_file_tags(picked_key.clone()).await.expect("the pick lands");
@@ -82,11 +82,11 @@ async fn skipping_a_candidate_ends_its_run_and_unskipping_queues_nothing() {
     fixture.provider.route("/discid/", 200, "{}");
     fixture.provider.hold("/discid/");
     // Identified only when asked: nothing found here is identified on its own.
-    fixture.manager.set_identify_automatically(false).await.unwrap();
+    fixture.set_identify_automatically(false).await;
     fixture.scan(1).await;
 
     fixture.start_explicit_lookup_and_await_run(&dir).await;
-    wait_for_request(&fixture.provider, "/discid/", 1).await;
+    fixture.provider.wait_for_request("/discid/", 1).await;
 
     fixture
         .import
@@ -127,12 +127,12 @@ async fn clearing_a_candidates_metadata_ends_its_run_and_announces_the_change() 
     fixture.provider.route("/discid/", 200, "{}");
     fixture.provider.hold("/discid/");
     // Identified only when asked: nothing found here is identified on its own.
-    fixture.manager.set_identify_automatically(false).await.unwrap();
+    fixture.set_identify_automatically(false).await;
     fixture.scan(1).await;
 
     let mut events = fixture.import.every_event();
     fixture.start_explicit_lookup_and_await_run(&dir).await;
-    wait_for_request(&fixture.provider, "/discid/", 1).await;
+    fixture.provider.wait_for_request("/discid/", 1).await;
 
     fixture.import.clear_candidate_metadata(key.clone()).await.expect("the metadata is cleared");
 
@@ -171,7 +171,7 @@ async fn clearing_a_candidates_metadata_takes_it_off_the_queue() {
     fixture.scan(1).await;
 
     let pass = fixture.drain_automatic_task();
-    wait_for_request(&fixture.provider, "/discid/", 1).await;
+    fixture.provider.wait_for_request("/discid/", 1).await;
 
     fixture.import.clear_candidate_metadata(key.clone()).await.expect("the metadata is cleared");
 
@@ -208,7 +208,7 @@ async fn a_decision_announced_before_a_request_leaves_the_requested_run_going() 
         200,
         release_json("mb-asked", "rg-asked", &[probed, 0]),
     );
-    fixture.manager.set_identify_automatically(false).await.unwrap();
+    fixture.set_identify_automatically(false).await;
     fixture.scan(1).await;
 
     // The loop is handed both before it first looks: the announcement, then
@@ -260,11 +260,11 @@ async fn starting_an_import_ends_the_candidates_run() {
     fixture.provider.route("/discid/", 200, "{}");
     fixture.provider.hold("/discid/");
     // Identified only when asked: nothing found here is identified on its own.
-    fixture.manager.set_identify_automatically(false).await.unwrap();
+    fixture.set_identify_automatically(false).await;
     fixture.scan(1).await;
 
     fixture.start_explicit_lookup_and_await_run(&dir).await;
-    wait_for_request(&fixture.provider, "/discid/", 1).await;
+    fixture.provider.wait_for_request("/discid/", 1).await;
 
     let import_id = fixture
         .import
@@ -305,9 +305,9 @@ async fn switching_automatic_identification_off_lets_a_settling_write_land() {
     fixture.scan(1).await;
 
     let pass = fixture.drain_automatic_task();
-    wait_for_request(&fixture.provider, "/release/mb-settling?", 1).await;
+    fixture.provider.wait_for_request("/release/mb-settling?", 1).await;
 
-    fixture.manager.set_identify_automatically(false).await.unwrap();
+    fixture.set_identify_automatically(false).await;
 
     fixture.provider.release();
     tokio::time::timeout(Duration::from_secs(20), pass)
