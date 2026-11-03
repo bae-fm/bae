@@ -68,7 +68,7 @@ pub(super) fn delete_draft(sql: &CovenWrite<'_>, content_hash: &str) -> Result<(
 
 /// The draft row of a candidate that has none yet, with everything hanging
 /// off it: its album artists, its mediums, its tracks and their values.
-pub(crate) fn insert_draft(
+pub(super) fn insert_draft(
     sql: &CovenWrite<'_>,
     content_hash: &str,
     draft: &CandidateDraft,
@@ -877,7 +877,7 @@ fn insert_track_artist_assignments(
 
 /// Seed a candidate's draft from the folder's file tags, authored by the
 /// pre-fill, with provenance naming the tags as its source.
-pub(crate) fn insert_file_tags_draft(
+pub(super) fn insert_file_tags_draft(
     sql: &CovenWrite<'_>,
     content_hash: &str,
     draft: &crate::CandidateDraft,

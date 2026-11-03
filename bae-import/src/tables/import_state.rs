@@ -22,6 +22,7 @@ mod release_link_rows;
 mod rows;
 mod run_rows;
 mod search_rows;
+mod seed_rows;
 mod session_rows;
 mod signal_rows;
 mod standing_rows;
@@ -33,7 +34,7 @@ use file_decision_rows::{delete_file_edits, insert_file_edits, settle_scanned_ca
 pub(super) use file_decision_rows::{load_candidate_file_edits_on, store_file_edits};
 pub use import_commit::ImportCommitError;
 pub(crate) use import_commit::{ImportCommitGuard, ImportRows, NewArtistImages};
-pub(super) use pane_rows::{cover_read_columns, insert_draft, load_pane_rows_on, read_cover};
+pub(super) use pane_rows::{cover_read_columns, load_pane_rows_on, read_cover};
 pub(super) use pane_rows::{read_provenance, PROVENANCE_COLUMNS};
 pub(crate) use preparation_rows::{
     CandidatePaneWrite, CandidatePreparationRead, CandidateSaveExpectation, CandidateSaveExtras,
@@ -41,6 +42,7 @@ pub(crate) use preparation_rows::{
 };
 pub(super) use release_link_rows::{read_release_link, RELEASE_LINK_COLUMNS};
 pub(super) use rows::load_states_on;
+pub(super) use seed_rows::{ensure_candidate_state, CandidateStateSeed};
 use session_rows::load_session_on;
 use signal_rows::{delete_signals, store_signals};
 pub(crate) use standing_rows::ImportClaim;
@@ -57,7 +59,6 @@ use rows::load_states_rows_on;
 use std::str::FromStr;
 use verdict_rows::{delete_verdict, store_verdict};
 
-pub(crate) use pane_rows::insert_file_tags_draft;
 pub(crate) use session_rows::move_pane_on;
 
 impl ImportTables {

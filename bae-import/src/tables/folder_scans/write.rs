@@ -172,6 +172,7 @@ fn insert_candidate(
     insert_candidate_row(sql, watched_folder_path, generation, kind, source_kind, candidate)?;
     let path = candidate.key();
     let blank;
+    use crate::tables::import_state::{ensure_candidate_state, CandidateStateSeed};
     let seed = match file_metadata {
         Some(seed) => CandidateStateSeed::FileMetadata(seed),
         None => {
@@ -244,75 +245,6 @@ pub(crate) fn insert_candidate_row(
                 part.prefix,
             ],
         )?;
-    }
-    Ok(())
-}
-
-/// What a new candidate's draft and cover are created from.
-pub(crate) enum CandidateStateSeed<'a> {
-    /// As many empty track slots as the folder has audio units, and the
-    /// folder's own cover: what a candidate holding no draft row reads as.
-    Blank { draft: &'a crate::CandidateDraft, cover: Option<crate::cover_art::PreparedCover> },
-    /// The folder read as its own files describe it, with the reading it was
-    /// projected from and the cover those tags embed.
-    FileMetadata(&'a crate::file_metadata_seed::FileMetadataSeed),
-}
-
-/// Make sure `files` has a state row, and record `folder` as a folder on disk
-/// it was found at; the state lives while a watched folder covers one of
-/// those folders. The write that creates the state seeds its draft and cover,
-/// unless this device imported the files, whose candidate holds neither; a
-/// state that already exists keeps what it holds, its draft row or none.
-pub(crate) fn ensure_candidate_state(
-    sql: &CovenWrite<'_>,
-    path: &CandidateKey,
-    folder: &std::path::Path,
-    files: &crate::folder_scanner::CategorizedFiles,
-    seed: CandidateStateSeed<'_>,
-) -> Result<(), DbError> {
-    let content_hash = files.content_hash();
-    let created = sql.execute(
-        "INSERT INTO import_candidate_state (content_hash, candidate_key) VALUES (?, ?) \
-         ON CONFLICT (content_hash) DO NOTHING",
-        params![content_hash, path],
-    )? == 1;
-    if !created {
-        sql.execute(
-            "UPDATE import_candidate_state SET candidate_key = ? WHERE content_hash = ?",
-            params![path, content_hash],
-        )?;
-    }
-    sql.execute(
-        "INSERT INTO import_candidate_folder (content_hash, folder) \
-         VALUES (?, ?) ON CONFLICT DO NOTHING",
-        params![content_hash, coven::path_bytes(folder)],
-    )?;
-    if !created {
-        return Ok(());
-    }
-    if crate::tables::import_origin::imported_release_on(sql, &content_hash)?.is_some() {
-        return Ok(());
-    }
-    // The folder's own cover is stored with the candidate so readers never
-    // recompute it; the picture the tags embed comes with the draft they
-    // seed.
-    let cover = match seed {
-        CandidateStateSeed::Blank { draft, cover } => {
-            crate::tables::import_state::insert_draft(
-                sql,
-                &content_hash,
-                draft,
-                crate::MetadataAuthor::Nobody,
-            )?;
-            cover
-        }
-        CandidateStateSeed::FileMetadata(seed) => {
-            crate::tables::import_state::insert_file_tags_draft(sql, &content_hash, &seed.draft)?;
-            crate::local_artwork::folder_cover(seed.cover.clone(), files.artwork())
-        }
-    };
-    if let Some(cover) = cover {
-        crate::tables::candidate_state_rows::save_cover(sql, &content_hash, &cover)?;
     }
     Ok(())
 }
