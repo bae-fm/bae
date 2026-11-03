@@ -132,8 +132,6 @@ impl BridgeSavePreset {
             id: id.clone(),
             name: name.clone(),
             codec: BridgeSaveCodec::from_core(codec),
-            // Derived from the codec; the core preset re-derives it on `into_core`.
-            extension: codec.extension().to_string(),
             filename_tokens: filename_tokens
                 .iter()
                 .copied()
@@ -156,9 +154,6 @@ impl BridgeSavePreset {
             applies_to_track,
             applies_to_release,
             embed_cover,
-            // The core preset re-derives this from `codec`; the carried value is
-            // dropped.
-            extension: _,
         } = self;
         bae_preferences::SavePreset {
             id,

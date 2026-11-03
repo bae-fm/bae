@@ -128,7 +128,6 @@ struct SavePresetEditor: View {
                 set: { format in
                     var changed = preset
                     changed.codec = preset.codec.switched(to: format)
-                    changed.extension = changed.codec.fileExtension
                     // A default name follows the format; a name the user typed
                     // stays put.
                     if preset.name == preset.codec.format.label {

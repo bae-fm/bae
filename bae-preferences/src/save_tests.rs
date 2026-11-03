@@ -90,3 +90,28 @@ fn each_format_starts_at_a_codec_of_its_own_that_saves() {
         }
     }
 }
+
+/// Add format's preset: FLAC at its starting depth, named for the format,
+/// numbered by title, pregaps appended except the hidden first-track audio,
+/// for tracks and releases, with the cover, under an id of its own.
+#[test]
+fn a_new_preset_is_a_valid_flac_preset_with_its_own_id() {
+    let preset = SavePreset::new_flac();
+    let other = SavePreset::new_flac();
+
+    preset.validate().unwrap();
+    assert_ne!(preset.id, other.id, "each new preset has an id of its own");
+    assert_eq!(
+        SavePreset { id: "new".to_string(), ..preset },
+        SavePreset {
+            id: "new".to_string(),
+            name: "FLAC".to_string(),
+            codec: SaveCodec::Flac { bit_depth: SaveBitDepth::Bits24 },
+            filename_tokens: vec![SaveFilenameToken::TrackNumber, SaveFilenameToken::Title],
+            pregap_placement: SavePregapPlacement::AppendToPreviousExceptHtoa,
+            applies_to_track: true,
+            applies_to_release: true,
+            embed_cover: true,
+        }
+    );
+}

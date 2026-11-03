@@ -116,24 +116,10 @@ struct FormatsSettingsTab: View {
         set { try await outputs.setSavePresets(presets) }
     }
 
-    /// The filename pattern a new preset starts with, matching core's default.
-    private static let defaultPresetFilenameTokens: [BridgeSaveFilenameToken] =
-        [.trackNumber, .title]
-
-    /// Adds a FLAC preset and opens its editor once config holds it.
+    /// Adds the preset core makes for a new format and opens its editor once
+    /// config holds it.
     private func addPreset() {
-        let codec = bridgeSaveFormatDefaultCodec(format: .flac)
-        let preset = BridgeSavePreset(
-            id: UUID().uuidString.replacingOccurrences(of: "-", with: ""),
-            name: BridgeSaveFormat.flac.label,
-            codec: codec,
-            extension: codec.fileExtension,
-            filenameTokens: Self.defaultPresetFilenameTokens,
-            pregapPlacement: .appendToPreviousExceptHtoa,
-            appliesToTrack: true,
-            appliesToRelease: true,
-            embedCover: true
-        )
+        let preset = bridgeNewSavePreset()
         let presets = configStore.config.savePresets + [preset]
         set {
             try await outputs.setSavePresets(presets)

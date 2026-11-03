@@ -3,8 +3,7 @@ import BaeKit
 import Foundation
 
 /// One preset the user can pick in a save flow: its display name, the file
-/// extension its codec produces (carried across the bridge on the preset), and
-/// its id. Built from the configured presets, filtered to the relevant level.
+/// extension its codec produces (as core gives it), and its id. Built from the configured presets, filtered to the relevant level.
 struct SaveFormatChoice {
     let title: String
     let extensionName: String
@@ -18,7 +17,7 @@ struct SaveFormatChoice {
             .map {
                 SaveFormatChoice(
                     title: $0.name,
-                    extensionName: $0.extension,
+                    extensionName: $0.codec.fileExtension,
                     presetId: $0.id
                 )
             }
@@ -32,7 +31,7 @@ struct SaveFormatChoice {
             .map {
                 SaveFormatChoice(
                     title: $0.name,
-                    extensionName: $0.extension,
+                    extensionName: $0.codec.fileExtension,
                     presetId: $0.id
                 )
             }

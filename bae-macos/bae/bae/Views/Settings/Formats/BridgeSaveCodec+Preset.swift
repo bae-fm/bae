@@ -63,37 +63,24 @@ extension BridgeSaveCodec {
         }
     }
 
+    /// Whether this codec can write a release as one file with a CUE sheet,
+    /// as core reads it.
     var supportsSingleFileCue: Bool {
-        switch self {
-        case .aac, .opusOgg:
-            false
-        case .flac, .mp3, .wav, .aiff:
-            true
-        }
+        bridgeSaveCodecSupportsSingleFileCue(codec: self)
     }
 
     var label: String {
         switch self {
-        case .flac: "FLAC"
+        case .flac, .wav, .aiff: format.label
         case .mp3(let bitrateKbps):
             String(localized: "MP3 \(Int(bitrateKbps)) kbps")
         case .aac(let bitrateKbps):
             String(localized: "AAC \(Int(bitrateKbps)) kbps")
         case .opusOgg(let bitrateKbps):
             String(localized: "Opus \(Int(bitrateKbps)) kbps")
-        case .wav: "WAV"
-        case .aiff: "AIFF"
         }
     }
 
-    var fileExtension: String {
-        switch self {
-        case .flac: "flac"
-        case .mp3: "mp3"
-        case .aac: "m4a"
-        case .opusOgg: "ogg"
-        case .wav: "wav"
-        case .aiff: "aiff"
-        }
-    }
+    /// The extension of the files this codec writes, as core gives it.
+    var fileExtension: String { bridgeSaveCodecExtension(codec: self) }
 }

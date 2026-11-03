@@ -303,7 +303,7 @@ mod conversion_roundtrip {
     }
 
     #[test]
-    fn export_preset_round_trips_and_re_derives_extension() {
+    fn export_preset_round_trips() {
         let core = bae_preferences::SavePreset {
             id: "preset-1".to_string(),
             name: "Preset One".to_string(),
@@ -320,8 +320,6 @@ mod conversion_roundtrip {
             embed_cover: false,
         };
         let bridge = BridgeSavePreset::from_core(&core);
-        // `extension` is derived from the codec, not carried in the core preset.
-        assert_eq!(bridge.extension, core.codec.extension());
         assert!(!bridge.embed_cover);
         assert_eq!(core, bridge.into_core());
     }

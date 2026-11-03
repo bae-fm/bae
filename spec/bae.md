@@ -4404,7 +4404,12 @@ track before, with or without the hidden first-track audio; left out; or one
 file with a CUE sheet), and whether it embeds the cover. A preset switched to
 another format keeps its bit depth between lossless formats and its bitrate
 between lossy ones, brought into the new format's range; otherwise it starts
-at 24 bits, or MP3 at 320, AAC at 256 and Opus at 192 kbps.
+at 24 bits, or MP3 at 320, AAC at 256 and Opus at 192 kbps. A preset the
+person adds starts as core makes it: FLAC at 24 bits named "FLAC", the track
+number then the title, pregaps appended to the track before except the hidden
+first-track audio, offered for tracks and releases, embedding the cover. Its
+files' extension, and whether its codec can write one file with a CUE sheet
+(not AAC or Opus), come from core too.
 
 Platform settings, such as the appearance and restoring playback on launch,
 live in each app. The apps start in the system's light or dark mode with the

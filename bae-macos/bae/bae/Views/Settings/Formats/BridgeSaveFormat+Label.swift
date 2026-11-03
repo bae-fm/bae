@@ -1,15 +1,7 @@
 import BaeKit
 
 extension BridgeSaveFormat {
-    /// Format names are proper nouns, shown as-is in every locale.
-    var label: String {
-        switch self {
-        case .flac: "FLAC"
-        case .mp3: "MP3"
-        case .aac: "AAC"
-        case .opusOgg: "Opus"
-        case .wav: "WAV"
-        case .aiff: "AIFF"
-        }
-    }
+    /// The format's name as core gives it, a proper noun shown as-is in every
+    /// locale.
+    var label: String { bridgeSaveFormatName(format: self) }
 }

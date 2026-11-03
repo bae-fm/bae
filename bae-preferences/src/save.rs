@@ -18,9 +18,8 @@ pub enum SaveFilenameToken {
     TrackTotal,
 }
 
-/// The filename pattern the schema's default presets start with: the
-/// zero-padded track number, then the title.
-#[cfg(any(test, feature = "test-utils"))]
+/// The filename pattern the schema's default presets and a new preset start
+/// with: the zero-padded track number, then the title.
 fn default_save_filename_tokens() -> Vec<SaveFilenameToken> {
     vec![SaveFilenameToken::TrackNumber, SaveFilenameToken::Title]
 }
@@ -93,7 +92,9 @@ impl SaveFormat {
         }
     }
 
-    fn name(self) -> &'static str {
+    /// The format's name, a proper noun shown as-is in every locale; a new
+    /// preset of the format is named it.
+    pub fn name(self) -> &'static str {
         match self {
             Self::Flac => "FLAC",
             Self::Mp3 => "MP3",
@@ -144,7 +145,6 @@ pub enum SavePregapPlacement {
     SingleFileWithCue,
 }
 
-#[cfg(any(test, feature = "test-utils"))]
 fn default_export_pregap_placement() -> SavePregapPlacement {
     SavePregapPlacement::AppendToPreviousExceptHtoa
 }
@@ -165,6 +165,24 @@ pub struct SavePreset {
 }
 
 impl SavePreset {
+    /// The preset a person adds to their list: FLAC at its starting codec,
+    /// named for the format, the default filename pattern, pregaps appended
+    /// to the track before except the hidden first-track audio, offered for
+    /// tracks and releases, embedding the cover, under a new id.
+    pub fn new_flac() -> Self {
+        let format = SaveFormat::Flac;
+        SavePreset {
+            id: uuid::Uuid::new_v4().simple().to_string(),
+            name: format.name().to_string(),
+            codec: format.default_codec(),
+            filename_tokens: default_save_filename_tokens(),
+            pregap_placement: default_export_pregap_placement(),
+            applies_to_track: true,
+            applies_to_release: true,
+            embed_cover: true,
+        }
+    }
+
     pub fn validate(&self) -> Result<(), PreferencesError> {
         if self.id.trim().is_empty() {
             return Err(PreferencesError::Invalid("export preset id is empty".to_string()));

@@ -49,6 +49,32 @@ pub fn bridge_save_format_bitrates_kbps(format: BridgeSaveFormat) -> Option<Brid
         .map(|range| BridgeKbpsRange { min: *range.start(), max: *range.end() })
 }
 
+/// The name of `format`, a proper noun shown as-is in every locale.
+#[uniffi::export]
+pub fn bridge_save_format_name(format: BridgeSaveFormat) -> String {
+    format.into_core().name().to_string()
+}
+
+/// The preset a person adds to their list, as core makes it: FLAC, the
+/// default filename pattern and pregap placement, both levels, the cover
+/// embedded, under a new id.
+#[uniffi::export]
+pub fn bridge_new_save_preset() -> BridgeSavePreset {
+    BridgeSavePreset::from_core(&bae_preferences::SavePreset::new_flac())
+}
+
+/// The extension of the files `codec` writes, without its dot.
+#[uniffi::export]
+pub fn bridge_save_codec_extension(codec: &BridgeSaveCodec) -> String {
+    codec.clone().into_core().extension().to_string()
+}
+
+/// Whether `codec` can write a release as one file with a CUE sheet.
+#[uniffi::export]
+pub fn bridge_save_codec_supports_single_file_cue(codec: &BridgeSaveCodec) -> bool {
+    codec.clone().into_core().supports_single_file_cue()
+}
+
 /// The format `codec` saves as.
 #[uniffi::export]
 pub fn bridge_save_codec_format(codec: &BridgeSaveCodec) -> BridgeSaveFormat {
