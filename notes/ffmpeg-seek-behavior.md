@@ -256,7 +256,7 @@ which computes the byte position directly from `block_align` and `byte_rate`:
   - *A sparse SEEKTABLE* (points minutes apart, or none near the end):
     `flac_seek` lands on the last point at or before the target, and the
     decode reads everything from there. With one point per 10 minutes a seek
-    decodes up to 10 minutes of audio. MEASUREMENT
+    decodes up to 10 minutes of audio.
 
   Import's loudness pass, which decodes every segment from a frame start (its
   recorded landing byte, or the file's first frame), checks the demuxer's
@@ -271,6 +271,9 @@ which computes the byte position directly from `block_align` and `byte_rate`:
   (`audio_segment_scrub_points`) come from the decode: each packet the decoder accepts gives its
   frame's byte (`pkt->pos`) and first sample (`pkt->pts`, the frame header's
   own number, since the FLAC demuxer parses with `PARSER_FLAG_USE_CODEC_TS`).
+  They are taken only from a decode that started on a frame start: after a
+  byte jump into the middle of a frame, the first two packets carry wrong
+  positions.
   A segment keeps its first frame, then the first frame each 10 seconds of
   audio on, or sooner where the frame would start more than one fill window,
   less the reads that follow it, past the last point. Those reads: FFmpeg's
@@ -290,6 +293,12 @@ which computes the byte position directly from `block_align` and `byte_rate`:
   its last track went from 26 jumps to 3, the middle of its first from 6 to 2;
   a 245 MB album's from 4 to 3 and 6 to 2; a per-track file's from 4 to 2 and
   8 to 2; the album with a seektable takes 3 and 2.
+
+  Two other ways to use the points fail. Adding them to the stream's index
+  (`av_add_index_entry`) leaves a FLAC with no SEEKTABLE bisecting anyway:
+  `flac_seek` declines before it reads the index, and avformat falls back to
+  `ff_seek_frame_binary`. Jumping to a byte guessed between two points can
+  land inside a frame, and the decode from there is not sample-exact.
 - **An MP3 starts at a stored scrub point, or its first frame.** Its frames
   state no position, and its audio leans on the frames before it: a frame's
   main data begins up to 511 bytes back in the main data of earlier frames
