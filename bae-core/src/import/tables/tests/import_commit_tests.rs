@@ -289,13 +289,16 @@ async fn finalize_import_persists_composer_work_and_role_rows() {
     )
     .await;
 
-    let composer_detail = crate::library::views::LibraryViews::new(db.clone())
-        .find_composer_detail(&composer.id)
+    assert_eq!(
+        db.query_texts_for_test(&format!(
+            "SELECT work_id FROM work_artists WHERE artist_id = '{}'",
+            composer.id
+        ))
         .await
-        .unwrap()
-        .expect("composer detail");
-    assert_eq!(composer_detail.work_groups.len(), 1);
-    assert_eq!(composer_detail.work_groups[0].works[0].work.id, WORK_A);
+        .unwrap(),
+        [WORK_A],
+        "the work is the composer's"
+    );
     let release_role_count = db
         .read(|conn| {
             conn.query_row(
@@ -309,12 +312,15 @@ async fn finalize_import_persists_composer_work_and_role_rows() {
         .unwrap();
     assert_eq!(release_role_count, 1);
 
-    let work_detail = crate::library::views::LibraryViews::new(db.clone())
-        .find_work_detail(WORK_A)
+    assert_eq!(
+        db.query_texts_for_test(&format!(
+            "SELECT track_id FROM track_works WHERE work_id = '{WORK_A}'"
+        ))
         .await
-        .unwrap()
-        .expect("work detail");
-    assert_eq!(work_detail.tracks.len(), 1);
+        .unwrap(),
+        [TRACK_A],
+        "the track performs the work"
+    );
     let track_role_count = db
         .read(|conn| {
             conn.query_row(
