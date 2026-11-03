@@ -1,6 +1,6 @@
 //! What the library shows of a release an import writes: the album detail
-//! while another import reads its files, and the release editor's copy of an
-//! imported release. Each test opens a library, starts its import service,
+//! while another import reads its files, the release editor's copy of an
+//! imported release, and the artists the import created. Each test opens a library, starts its import service,
 //! and imports folders through the service's handle the way the import pane
 //! does: the folder's watched root is read, its draft is read from its own
 //! tags, and the import is asked for.
@@ -21,6 +21,11 @@ struct ImportingLibrary {
 
 impl ImportingLibrary {
     async fn open() -> Self {
+        Self::asking(bae_catalogs::providers::Providers::offline()).await
+    }
+
+    /// A library asking `providers`.
+    async fn asking(providers: bae_catalogs::providers::Providers) -> Self {
         let temp = TempDir::new().unwrap();
         let database = bae_db::Database::new_test(
             temp.path().join("test.db").to_str().unwrap(),
@@ -31,7 +36,7 @@ impl ImportingLibrary {
         let library = TestLibrary::open(
             database,
             bae_app_dir::AppDir::under_home(temp.path()).unwrap(),
-            bae_catalogs::providers::Providers::offline(),
+            providers,
         )
         .await;
         let import = library.start_import().await.unwrap();
@@ -396,5 +401,97 @@ async fn editing_an_imported_candidate_is_refused_and_leaves_its_release() {
             .to_string())
     );
     assert_eq!(fixture.release_edit(&release_id).await, release_before);
+    fixture.shut_down().await;
+}
+
+// ── The artists an import creates ───────────────────────────────────────────
+
+/// A track artist the import of a Discogs pick creates is found by the
+/// library's artist search, with the picture the import fetched and stored.
+#[tokio::test(flavor = "multi_thread")]
+async fn an_imported_artist_is_searchable_with_its_picture() {
+    let images = bae_test_support::RemoteImageHost::start().await;
+    let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::over(
+        bae_util::http::Http::for_test().serve(bae_test_support::TEST_IMAGE_HOST, images.origin()),
+    );
+    let fixture = ImportingLibrary::asking(fakes.providers()).await;
+    fixture
+        .library
+        .catalogs()
+        .store_discogs_key("test-discogs-token", bae_preferences::DiscogsValidation::Valid)
+        .await
+        .unwrap();
+    let key = fixture.scanned_folder("watched", "Album").await;
+    fixture.import.select_candidate_file_tags(key.clone()).await.unwrap();
+
+    let numeric_id = || (uuid::Uuid::new_v4().as_u128() % u128::from(u64::MAX)) as u64;
+    let album_artist_id = numeric_id();
+    let track_artist_id = numeric_id();
+    let source_release_id = numeric_id().to_string();
+    fakes.seed_discogs_release(
+        &source_release_id,
+        serde_json::json!({
+            "id": source_release_id.parse::<u64>().unwrap(),
+            "title": "Album Title",
+            "year": 2020,
+            "formats": [{ "name": "CD" }],
+            "artists": [{ "id": album_artist_id, "name": "Album Artist" }],
+            "tracklist": [
+                {
+                    "position": "1",
+                    "title": "Track One",
+                    "duration": "0:01",
+                    "artists": [{ "id": track_artist_id, "name": "Track Artist" }],
+                },
+                { "position": "2", "title": "Track Two", "duration": "0:01" },
+            ],
+        })
+        .to_string(),
+    );
+    fakes.seed_discogs_page_lookup(&[(
+        bae_catalogs::musicbrainz::DiscogsPage::Release(source_release_id.clone()),
+        None,
+    )]);
+    fixture
+        .import
+        .select_candidate_release(
+            key.clone(),
+            bae_identify::PressingLink {
+                record: bae_catalogs::records::LookupRef::new(
+                    bae_catalogs::catalog::LookupCatalog::Discogs,
+                    source_release_id,
+                ),
+                partners: vec![],
+            },
+            crate::import::CatalogApplySteps::unread(),
+        )
+        .await
+        .unwrap();
+    let picture_url = images.serve_image(
+        &format!("/discogs-artist-{}.png", uuid::Uuid::new_v4()),
+        bae_test_support::cover_png(),
+    );
+    fakes.seed_discogs_artist_image(&album_artist_id.to_string(), None);
+    fakes.seed_discogs_artist_image(&track_artist_id.to_string(), Some(picture_url));
+
+    fixture.import(&key).await.unwrap_or_else(|error| panic!("import failed: {error}"));
+
+    let mut search =
+        fixture.library.views().subscribe_artist_search(crate::library::ArtistSearchView {
+            query: crate::library::LibrarySearchQuery::parse("Track Artist"),
+            windows: [bae_db::LibraryPageWindow { offset: 0, limit: 50 }].into(),
+        });
+    let found = search.next().await.expect("the artist search stays open").result.unwrap();
+    let result = crate::library::views::artist_search::resolve_artist_search(found, 0)
+        .windows
+        .into_iter()
+        .flat_map(|window| window.rows)
+        .find(|result| {
+            result.artist.discogs_artist_id.as_deref() == Some(&track_artist_id.to_string())
+        })
+        .expect("the track artist is searchable");
+    let image = result.image.expect("the searched artist shows its picture");
+    let bytes = fixture.library.read_image_bytes(&image).await.unwrap();
+    assert!(bytes.is_some_and(|bytes| !bytes.is_empty()), "the picture's bytes read back");
     fixture.shut_down().await;
 }

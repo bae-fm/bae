@@ -88,6 +88,11 @@ impl TestLibrary {
         &self.database
     }
 
+    /// The catalog sessions the library asks through.
+    pub(crate) fn catalogs(&self) -> &CatalogSessions {
+        &self.catalogs
+    }
+
     /// The library's views over its store.
     pub(crate) fn views(&self) -> crate::library::views::LibraryViews {
         crate::library::views::LibraryViews::new(self.database.clone())
