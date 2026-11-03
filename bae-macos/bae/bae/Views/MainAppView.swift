@@ -182,7 +182,9 @@ struct MainAppView: View {
         .toolbar(.hidden)
         .ignoresSafeArea(.all, edges: .top)
         .modifier(TrafficLightOffset(xOffset: 6, yOffset: 7))
-        .onDrop(of: [.fileURL], isTargeted: nil, perform: handleDrop)
+        .onDrop(of: [.fileURL], isTargeted: nil) {
+            importFolderEntry.take(dropped: $0)
+        }
         .sidePausePromptAlert(showError: { uiStore.showError($0) })
         // An import-audio preview ends with the library session, not a tab.
         .onDisappear { previewAudio.previewStop() }
@@ -234,38 +236,6 @@ struct MainAppView: View {
 
     private var importFolderEntry: ImportFolderEntry {
         ImportFolderEntry(importer: importer, uiStore: uiStore)
-    }
-
-    private func handleDrop(_ providers: [NSItemProvider]) -> Bool {
-        guard let provider = providers.first else {
-            return false
-        }
-        guard
-            provider.hasItemConformingToTypeIdentifier(
-                UTType.fileURL.identifier
-            )
-        else {
-            return false
-        }
-        provider.loadItem(
-            forTypeIdentifier: UTType.fileURL.identifier,
-            options: nil
-        ) { data, _ in
-            guard let data = data as? Data,
-                let url = URL(dataRepresentation: data, relativeTo: nil)
-            else {
-                DispatchQueue.main.async {
-                    uiStore.showError(
-                        String(localized: "Could not read dropped item")
-                    )
-                }
-                return
-            }
-            DispatchQueue.main.async {
-                importFolderEntry.take(url)
-            }
-        }
-        return true
     }
 }
 

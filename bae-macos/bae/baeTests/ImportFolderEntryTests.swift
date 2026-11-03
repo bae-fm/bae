@@ -1,6 +1,7 @@
 import BaeKit
 import Foundation
 import Testing
+import UniformTypeIdentifiers
 
 @testable import bae
 
@@ -64,4 +65,29 @@ struct ImportFolderEntryTests {
         #expect(uiStore.lastError != nil)
         #expect(uiStore.activeSection == .library)
     }
+
+    @Test("every folder of a drop is taken in")
+    func everyDroppedFolderIsTakenIn() async throws {
+        let folders = [try folder(), try folder()]
+        let added = Added()
+        let entry = ImportFolderEntry(
+            importer: Importer(addWatchedFolder: { await added.add($0) }),
+            uiStore: UiStore()
+        )
+        let providers = folders.map {
+            NSItemProvider(
+                item: $0.dataRepresentation as NSData,
+                typeIdentifier: UTType.fileURL.identifier
+            )
+        }
+
+        #expect(entry.take(dropped: providers))
+        try await Wait.until { await added.paths.count == folders.count }
+        #expect(Set(await added.paths) == Set(folders.map(\.pathBytes)))
+    }
+}
+
+private actor Added {
+    var paths: [Data] = []
+    func add(_ path: Data) { paths.append(path) }
 }

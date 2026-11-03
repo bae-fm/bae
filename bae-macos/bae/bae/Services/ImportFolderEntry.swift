@@ -1,5 +1,6 @@
 import BaeKit
 import Foundation
+import UniformTypeIdentifiers
 
 /// The one way a folder someone chose becomes something to import. The folder
 /// picker (from the menu, the import tab or the empty library), a drop on the
@@ -48,6 +49,39 @@ struct ImportFolderEntry {
                 report(error)
             }
         }
+    }
+
+    /// Take in every folder dropped on the window, each as if it were chosen.
+    /// Declines a drop that holds anything but files.
+    func take(dropped providers: [NSItemProvider]) -> Bool {
+        let fileURL = UTType.fileURL.identifier
+        guard !providers.isEmpty,
+            providers.allSatisfy({
+                $0.hasItemConformingToTypeIdentifier(fileURL)
+            })
+        else {
+            return false
+        }
+        for provider in providers {
+            provider.loadItem(forTypeIdentifier: fileURL, options: nil) {
+                data,
+                _ in
+                guard let data = data as? Data,
+                    let url = URL(dataRepresentation: data, relativeTo: nil)
+                else {
+                    DispatchQueue.main.async {
+                        uiStore.showError(
+                            String(localized: "Could not read dropped item")
+                        )
+                    }
+                    return
+                }
+                DispatchQueue.main.async {
+                    take(url)
+                }
+            }
+        }
+        return true
     }
 
     /// `DisplayError` is nil when core says the failure has no line — a
