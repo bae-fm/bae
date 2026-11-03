@@ -519,3 +519,7 @@ pub mod worker_moves {
         fail_queued_release_on::<P>(sql, release_id, error)
     }
 }
+
+#[cfg(test)]
+#[path = "tables_tests.rs"]
+mod tests;

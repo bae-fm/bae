@@ -1,8 +1,8 @@
 //! The transfer queues' tables: what an entry is, what one move does to it,
 //! what opening the library leaves, and how the reads are planned.
 
-use super::tables::{self, QueuedPayload};
 use crate::output_snapshot::{OutputKind, OutputRequest};
+use crate::queued_releases::tables::{self, QueuedPayload};
 use crate::release_queue::{ReleaseQueueEntry, ReleaseQueueState};
 use bae_db::test_fixtures::*;
 use bae_db::*;

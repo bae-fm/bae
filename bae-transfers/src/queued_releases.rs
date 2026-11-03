@@ -474,7 +474,3 @@ impl<Extra: QueuedPayload> QueuedReleases<Extra, u8> {
 #[cfg(test)]
 #[path = "queued_releases_tests.rs"]
 mod tests;
-
-#[cfg(test)]
-#[path = "queued_releases/tables_tests.rs"]
-mod tables_tests;
