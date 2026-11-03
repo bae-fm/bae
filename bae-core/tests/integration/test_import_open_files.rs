@@ -11,8 +11,8 @@
 //! open at once to stay within a constant and none of them to remain open once
 //! the import is done.
 
-use bae_core::open_files_peak::OpenFilesPeak;
 use bae_test_support as support;
+use bae_util::open_files_peak::OpenFilesPeak;
 
 use crate::own_process::in_own_process;
 

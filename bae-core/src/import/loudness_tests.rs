@@ -532,7 +532,7 @@ async fn peak_open_sources(
         .keys()
         .map(|path| (path.clone(), std::fs::metadata(path).unwrap().len()))
         .collect();
-    let sampler = crate::open_files_peak::OpenFilesPeak::start(dir);
+    let sampler = bae_util::open_files_peak::OpenFilesPeak::start(dir);
     measure_loudness(
         &event_tx,
         NonZeroUsize::new(parallelism).unwrap(),

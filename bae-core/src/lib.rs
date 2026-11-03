@@ -20,8 +20,6 @@ pub mod live_query;
 pub mod followed;
 #[cfg(desktop)]
 pub mod loudness;
-#[cfg(any(test, feature = "test-utils"))]
-pub mod open_files_peak;
 pub mod people;
 pub mod playback;
 pub mod renderer;

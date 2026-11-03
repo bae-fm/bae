@@ -1,6 +1,6 @@
 use super::*;
-use crate::open_files_peak::OpenFilesPeak;
 use crate::track_audio::data_source::LocalReader;
+use bae_util::open_files_peak::OpenFilesPeak;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
@@ -93,7 +93,7 @@ async fn run(dir: &Path, tracks: Vec<Track>, parallelism: usize) -> Run {
                         assert_eq!(bytes[0], path.file_name().unwrap().len() as u8);
                     }
                     peak_seen_by_tracks.fetch_max(
-                        crate::open_files_peak::open_together(&dir).len(),
+                        bae_util::open_files_peak::open_together(&dir).len(),
                         Ordering::SeqCst,
                     );
                 })

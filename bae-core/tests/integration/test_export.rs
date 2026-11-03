@@ -448,7 +448,7 @@ async fn peak_sources_open_saving(
     let target = f.temp_path().join(format!("export-{}", preset.id));
     fs::create_dir_all(&target).unwrap();
 
-    let sampler = bae_core::open_files_peak::OpenFilesPeak::start(source_dir);
+    let sampler = bae_util::open_files_peak::OpenFilesPeak::start(source_dir);
     f.mgr
         .export_release(release_id, &target, OutputKind::Save { preset })
         .await

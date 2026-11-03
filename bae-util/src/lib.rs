@@ -11,6 +11,8 @@ pub mod http;
 pub mod logging;
 #[cfg(unix)]
 pub mod open_file_limit;
+#[cfg(any(test, feature = "test-utils"))]
+pub mod open_files_peak;
 pub mod retry;
 pub mod server;
 pub mod session_cache;
