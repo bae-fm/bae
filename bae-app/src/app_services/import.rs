@@ -251,27 +251,20 @@ impl AppServices {
     }
 
     /// Each running import's percent, by candidate key, now and as it moves.
-    pub fn watch_import_percents(
-        &self,
-    ) -> tokio::sync::watch::Receiver<std::collections::HashMap<bae_import::CandidateKey, u32>>
-    {
+    pub fn watch_import_percents(&self) -> bae_import::ImportPercentsWatch {
         self.inner.import.watch_import_percents()
     }
 
     /// Every key's runtime as each write of its standing leaves it, in the
     /// order they land, from now on, for a test.
     #[cfg(any(test, feature = "test-utils"))]
-    pub fn every_candidate_runtime_change_for_test(
-        &self,
-    ) -> tokio::sync::mpsc::UnboundedReceiver<bae_import::CandidateRuntimeChange> {
+    pub fn every_candidate_runtime_change_for_test(&self) -> bae_import::CandidateRuntimeChanges {
         self.inner.import.every_runtime_change_for_test()
     }
 
     /// Every scan event from now on, none dropped, for a test.
     #[cfg(any(test, feature = "test-utils"))]
-    pub fn every_scan_event_for_test(
-        &self,
-    ) -> tokio::sync::mpsc::UnboundedReceiver<bae_import::ScanEvent> {
+    pub fn every_scan_event_for_test(&self) -> bae_import::ScanEvents {
         self.inner.import.every_scan_event_for_test()
     }
 

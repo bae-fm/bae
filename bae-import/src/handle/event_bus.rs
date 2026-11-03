@@ -94,6 +94,86 @@ pub enum ScanEvent {
     Finished,
 }
 
+/// Import events, none dropped, in the order they were sent, from the
+/// import event bus that made it.
+pub struct ImportEvents(mpsc::UnboundedReceiver<ImportEvent>);
+
+impl ImportEvents {
+    /// The next event, or `None` once the bus is gone.
+    pub async fn recv(&mut self) -> Option<ImportEvent> {
+        self.0.recv().await
+    }
+
+    /// The next event already sent, without waiting.
+    pub fn try_recv(&mut self) -> Result<ImportEvent, mpsc::error::TryRecvError> {
+        self.0.try_recv()
+    }
+
+    /// Events over `events`, for a test that sends a reader its events
+    /// itself.
+    #[cfg(test)]
+    pub(crate) fn of_test_channel(events: mpsc::UnboundedReceiver<ImportEvent>) -> Self {
+        Self(events)
+    }
+}
+
+#[cfg(any(test, feature = "test-utils"))]
+impl bae_util::test_channels::EventReader<ImportEvent> for ImportEvents {
+    fn recv(&mut self) -> impl std::future::Future<Output = Option<ImportEvent>> {
+        self.0.recv()
+    }
+}
+
+/// One import's progress, none dropped, from the import service handle
+/// that made it.
+#[cfg(any(test, feature = "test-utils"))]
+pub struct ImportProgressFeed(mpsc::UnboundedReceiver<ImportProgress>);
+
+#[cfg(any(test, feature = "test-utils"))]
+impl ImportProgressFeed {
+    /// The next import's progress, or `None` once the import service is gone.
+    pub async fn recv(&mut self) -> Option<ImportProgress> {
+        self.0.recv().await
+    }
+
+    /// The next import's progress already sent, without waiting.
+    pub fn try_recv(&mut self) -> Result<ImportProgress, mpsc::error::TryRecvError> {
+        self.0.try_recv()
+    }
+}
+
+#[cfg(any(test, feature = "test-utils"))]
+impl bae_util::test_channels::EventReader<ImportProgress> for ImportProgressFeed {
+    fn recv(&mut self) -> impl std::future::Future<Output = Option<ImportProgress>> {
+        self.0.recv()
+    }
+}
+
+/// Scan events, none dropped, from the import service handle that made
+/// it.
+#[cfg(any(test, feature = "test-utils"))]
+pub struct ScanEvents(mpsc::UnboundedReceiver<ScanEvent>);
+
+#[cfg(any(test, feature = "test-utils"))]
+impl ScanEvents {
+    /// The next scan event, or `None` once the import service is gone.
+    pub async fn recv(&mut self) -> Option<ScanEvent> {
+        self.0.recv().await
+    }
+
+    /// The next scan event already sent, without waiting.
+    pub fn try_recv(&mut self) -> Result<ScanEvent, mpsc::error::TryRecvError> {
+        self.0.try_recv()
+    }
+}
+
+#[cfg(any(test, feature = "test-utils"))]
+impl bae_util::test_channels::EventReader<ScanEvent> for ScanEvents {
+    fn recv(&mut self) -> impl std::future::Future<Output = Option<ScanEvent>> {
+        self.0.recv()
+    }
+}
+
 /// The import event channel and the candidate runtime it records into.
 ///
 /// Every event is recorded in the runtime before any reader hears it, so a
@@ -148,7 +228,7 @@ struct EventDelivery {
     every_event: Arc<std::sync::Mutex<EveryEvent>>,
     /// The feed's end, holding every event since the bus started, until the
     /// one reader in the app that acts on every event takes it.
-    feed: Arc<std::sync::Mutex<Option<mpsc::UnboundedReceiver<ImportEvent>>>>,
+    feed: Arc<std::sync::Mutex<Option<ImportEvents>>>,
 }
 
 /// The readers that hear every event, and — for a test reader from the start
@@ -169,7 +249,7 @@ impl EventDelivery {
                 #[cfg(any(test, feature = "test-utils"))]
                 delivered: Vec::new(),
             })),
-            feed: Arc::new(std::sync::Mutex::new(Some(feed))),
+            feed: Arc::new(std::sync::Mutex::new(Some(ImportEvents(feed)))),
         }
     }
 
@@ -224,22 +304,22 @@ impl ImportEventBus {
     /// every event, whenever it starts. A reader that also takes commands
     /// hears every event sent before a command before the command itself.
     /// `None` once taken.
-    pub(crate) fn take_feed(&self) -> Option<mpsc::UnboundedReceiver<ImportEvent>> {
+    pub(crate) fn take_feed(&self) -> Option<ImportEvents> {
         self.delivery.feed.lock().unwrap().take()
     }
 
     /// Every event sent from now on, none dropped, for a test to wait on.
     #[cfg(any(test, feature = "test-utils"))]
-    pub fn every_event(&self) -> mpsc::UnboundedReceiver<ImportEvent> {
+    pub fn every_event(&self) -> ImportEvents {
         let (reader, events) = mpsc::unbounded_channel();
         self.delivery.every_event.lock().unwrap().readers.push(reader);
-        events
+        ImportEvents(events)
     }
 
     /// Every event this bus has delivered and will deliver, none dropped —
     /// for a test that starts reading after the work it waits on began.
     #[cfg(any(test, feature = "test-utils"))]
-    pub fn every_event_from_start(&self) -> mpsc::UnboundedReceiver<ImportEvent> {
+    pub fn every_event_from_start(&self) -> ImportEvents {
         let (reader, events) = mpsc::unbounded_channel();
         let mut every_event = self.delivery.every_event.lock().unwrap();
         for event in &every_event.delivered {
@@ -250,7 +330,7 @@ impl ImportEventBus {
             let _ = reader.send(event.clone());
         }
         every_event.readers.push(reader);
-        events
+        ImportEvents(events)
     }
 
     /// Stop the first thread that sends an event `matches` takes, before the
@@ -317,10 +397,7 @@ impl ImportEventBus {
 impl ImportServiceHandle {
     /// Every `ImportProgress` of `import_id` from its start, none dropped.
     #[cfg(any(test, feature = "test-utils"))]
-    pub fn subscribe_import(
-        &self,
-        import_id: String,
-    ) -> tokio::sync::mpsc::UnboundedReceiver<ImportProgress> {
+    pub fn subscribe_import(&self, import_id: String) -> ImportProgressFeed {
         let mut events = self.event_tx.every_event_from_start();
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         self.runtime_handle.spawn(async move {
@@ -335,25 +412,25 @@ impl ImportServiceHandle {
                 }
             }
         });
-        rx
+        ImportProgressFeed(rx)
     }
 
     /// Every import event since the service started, for the one
     /// identification queue that takes it (see
     /// [`super::ImportEventBus::take_feed`]).
-    pub(crate) fn take_event_feed(&self) -> Option<mpsc::UnboundedReceiver<ImportEvent>> {
+    pub(crate) fn take_event_feed(&self) -> Option<ImportEvents> {
         self.event_tx.take_feed()
     }
 
     /// Every import event from now on, none dropped, for a test to wait on.
     #[cfg(any(test, feature = "test-utils"))]
-    pub fn every_event(&self) -> mpsc::UnboundedReceiver<ImportEvent> {
+    pub fn every_event(&self) -> ImportEvents {
         self.event_tx.every_event()
     }
 
     /// Every scan event from now on, none dropped, for a test to wait on.
     #[cfg(any(test, feature = "test-utils"))]
-    pub fn every_scan_event_for_test(&self) -> mpsc::UnboundedReceiver<ScanEvent> {
+    pub fn every_scan_event_for_test(&self) -> ScanEvents {
         let mut events = self.event_tx.every_event();
         let (reader, scan_events) = mpsc::unbounded_channel();
         self.runtime_handle.spawn(async move {
@@ -365,7 +442,7 @@ impl ImportServiceHandle {
                 }
             }
         });
-        scan_events
+        ScanEvents(scan_events)
     }
 }
 

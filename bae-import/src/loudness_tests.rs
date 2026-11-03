@@ -214,9 +214,7 @@ fn standalone_track(track_id: &str, path: &std::path::Path) -> TrackFile {
 }
 
 /// The whole-percent moves one loudness pass reported, in order.
-fn loudness_percents(
-    rx: &mut tokio::sync::mpsc::UnboundedReceiver<crate::handle::ImportEvent>,
-) -> Vec<u8> {
+fn loudness_percents(rx: &mut crate::ImportEvents) -> Vec<u8> {
     let mut percents = Vec::new();
     while let Ok(event) = rx.try_recv() {
         if let crate::handle::ImportEvent::ImportProgress {

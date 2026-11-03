@@ -92,7 +92,7 @@ pub(super) async fn insert_library_release(
 /// What the import `import_id` reported: the release and album it created, or
 /// the error it failed with. Every other event on the stream is skipped.
 pub(crate) async fn await_import_outcome(
-    events: &mut tokio::sync::mpsc::UnboundedReceiver<ImportEvent>,
+    events: &mut crate::ImportEvents,
     import_id: &str,
 ) -> Result<(String, String), String> {
     loop {

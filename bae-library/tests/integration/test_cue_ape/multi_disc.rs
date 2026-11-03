@@ -244,7 +244,7 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(destination: ImportDestinati
 async fn wait_for_multi_disc_cue_ape_import_ready(
     library_manager: &LibraryManager,
     destination: ImportDestination,
-    progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<bae_import::ImportProgress>,
+    progress_rx: &mut bae_import::ImportProgressFeed,
 ) -> (String, String) {
     match destination {
         ImportDestination::Local => wait_for_import_complete(progress_rx).await,

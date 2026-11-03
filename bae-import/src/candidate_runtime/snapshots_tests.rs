@@ -275,7 +275,7 @@ async fn an_import_percent_moves_the_percents_not_the_runtime() {
 
     runtime.record_event(&progress(key, 41));
     within_five_seconds(percents.wait_for(|percents| percents.get(key) == Some(&41))).await;
-    assert!(!percents.borrow().contains_key(other), "a claim no report moved has no percent");
+    assert!(!percents.percents().contains_key(other), "a claim no report moved has no percent");
     assert!(
         tokio::time::timeout(std::time::Duration::from_millis(100), query.next()).await.is_err(),
         "a percent at the same step tells the runtime query nothing"

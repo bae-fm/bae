@@ -130,7 +130,7 @@ fn set_modified(path: &Path, modified: std::time::SystemTime) {
 /// What the import `import_id` reported: the release and album it created, or
 /// the error it failed with. Every other event on the stream is skipped.
 async fn import_outcome(
-    events: &mut tokio::sync::mpsc::UnboundedReceiver<ImportEvent>,
+    events: &mut bae_import::ImportEvents,
     import_id: &str,
 ) -> Result<(String, String), String> {
     loop {

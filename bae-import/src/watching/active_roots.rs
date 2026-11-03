@@ -185,36 +185,29 @@ fn answer(waiter: RefreshCompletion, result: Result<(), String>) {
 }
 
 impl ActiveRoots {
-    /// The roots, with the completion channels the coordinator's loop hands
-    /// back to [`Self::finish_scan`] and [`Self::finish_removal`].
+    /// The roots, sending each finished scan and removal to
+    /// `scan_completions` and `removal_completions`, which the coordinator's
+    /// loop hands back to [`Self::finish_scan`] and [`Self::finish_removal`].
     pub(super) fn new(
         starter: RootScanStarter,
         removal_backend: Arc<dyn RootRemovalBackend>,
         folder_state_commit: crate::FolderStateCommit,
         diagnostics: bae_diagnostics::Diagnostics,
-    ) -> (
-        Self,
-        mpsc::UnboundedReceiver<RootScanCompletion>,
-        mpsc::UnboundedReceiver<RootRemovalCompletion>,
-    ) {
-        let (scan_completions, scan_rx) = mpsc::unbounded_channel();
-        let (removal_completions, removal_rx) = mpsc::unbounded_channel();
-        (
-            Self {
-                roots: HashMap::new(),
-                removals: HashMap::new(),
-                starter,
-                scan_completions,
-                next_scan_id: 0,
-                removal_backend,
-                removal_completions,
-                folder_state_commit,
-                next_removal_id: 0,
-                diagnostics,
-            },
-            scan_rx,
-            removal_rx,
-        )
+        scan_completions: mpsc::UnboundedSender<RootScanCompletion>,
+        removal_completions: mpsc::UnboundedSender<RootRemovalCompletion>,
+    ) -> Self {
+        Self {
+            roots: HashMap::new(),
+            removals: HashMap::new(),
+            starter,
+            scan_completions,
+            next_scan_id: 0,
+            removal_backend,
+            removal_completions,
+            folder_state_commit,
+            next_removal_id: 0,
+            diagnostics,
+        }
     }
 
     /// Whether a removal holds `path`.

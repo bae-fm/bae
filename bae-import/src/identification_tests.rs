@@ -645,7 +645,7 @@ pub(crate) fn route_two_pressings(fixture: &Fixture, probed: u64) {
 
 /// The id of the next run of `key` whose reported state `accept` answers.
 pub(crate) async fn await_run_state(
-    events: &mut tokio::sync::mpsc::UnboundedReceiver<ImportEvent>,
+    events: &mut crate::ImportEvents,
     key: &crate::CandidateKey,
     accept: impl Fn(IdentifyRunId, &IdentifyState) -> bool,
 ) -> IdentifyRunId {
@@ -666,9 +666,7 @@ pub(crate) async fn await_run_state(
 }
 
 /// Every event `events` holds so far.
-pub(crate) fn drain_events(
-    events: &mut tokio::sync::mpsc::UnboundedReceiver<ImportEvent>,
-) -> Vec<ImportEvent> {
+pub(crate) fn drain_events(events: &mut crate::ImportEvents) -> Vec<ImportEvent> {
     let mut drained = Vec::new();
     loop {
         match events.try_recv() {
@@ -686,7 +684,7 @@ pub(crate) fn drain_events(
 /// every report there will be.
 pub(crate) async fn assert_no_import(
     fixture: &Fixture,
-    events: &mut tokio::sync::mpsc::UnboundedReceiver<ImportEvent>,
+    events: &mut crate::ImportEvents,
     key: &crate::CandidateKey,
     after: &str,
 ) {

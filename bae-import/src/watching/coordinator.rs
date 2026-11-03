@@ -80,15 +80,19 @@ pub(super) fn start_watcher_with_starter(
             .build()
             .expect("folder scan coordinator runtime");
         runtime.block_on(async move {
-            let (active_roots, mut scan_completion_rx, mut removal_completion_rx) =
-                ActiveRoots::new(
-                    starter,
-                    removal_backend,
-                    folder_state_commit.clone(),
-                    diagnostics.clone(),
-                );
-            let (mut coordinator, mut checked_rx) =
-                Coordinator::new(active_roots, event_tx, tables, diagnostics);
+            let (scan_completions, mut scan_completion_rx) = mpsc::unbounded_channel();
+            let (removal_completions, mut removal_completion_rx) = mpsc::unbounded_channel();
+            let (checked_tx, mut checked_rx) = mpsc::unbounded_channel();
+            let active_roots = ActiveRoots::new(
+                starter,
+                removal_backend,
+                folder_state_commit.clone(),
+                diagnostics.clone(),
+                scan_completions,
+                removal_completions,
+            );
+            let mut coordinator =
+                Coordinator::new(active_roots, event_tx, tables, diagnostics, checked_tx);
             let period = crate::volume::CHECK_PERIOD;
             let mut periodic =
                 tokio::time::interval_at(tokio::time::Instant::now() + period, period);
@@ -170,9 +174,6 @@ pub(super) enum NetworkCheck {
     Unfinished,
 }
 
-/// The answers of network folders' checks, by folder.
-pub(super) type NetworkChecks = mpsc::UnboundedReceiver<(PathBuf, NetworkCheck)>;
-
 impl CoordinatorEvent {
     /// What taking it up does, as its failure names it.
     fn operation(&self) -> &'static str {
@@ -200,27 +201,17 @@ pub(super) struct Coordinator {
 }
 
 impl Coordinator {
-    /// The coordinator over `active_roots`, and where the answers of the
-    /// network checks it starts arrive, which the loop hands back to
-    /// [`Self::take`].
+    /// The coordinator over `active_roots`, sending the answers of the
+    /// network checks it starts to `checked_tx`, which the loop hands back
+    /// to [`Self::take`].
     pub(super) fn new(
         active_roots: ActiveRoots,
         event_tx: crate::handle::ImportEventBus,
         tables: crate::tables::ImportTables,
         diagnostics: bae_diagnostics::Diagnostics,
-    ) -> (Self, NetworkChecks) {
-        let (checked_tx, checked_rx) = mpsc::unbounded_channel();
-        (
-            Self {
-                active_roots,
-                checking: HashSet::new(),
-                checked_tx,
-                event_tx,
-                tables,
-                diagnostics,
-            },
-            checked_rx,
-        )
+        checked_tx: mpsc::UnboundedSender<(PathBuf, NetworkCheck)>,
+    ) -> Self {
+        Self { active_roots, checking: HashSet::new(), checked_tx, event_tx, tables, diagnostics }
     }
 
     pub(super) async fn take(&mut self, event: CoordinatorEvent) {

@@ -98,7 +98,7 @@ struct ScanBatch {
 /// Read scan events until one matching `done` arrives, collecting the
 /// candidates added and removed along the way; panics at the hang guard.
 async fn scan_batch_until(
-    rx: &mut tokio::sync::mpsc::UnboundedReceiver<ScanEvent>,
+    rx: &mut bae_import::ScanEvents,
     what: &str,
     mut done: impl FnMut(&ScanEvent) -> bool,
 ) -> ScanBatch {

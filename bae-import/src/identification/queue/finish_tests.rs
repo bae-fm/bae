@@ -13,7 +13,7 @@ use std::time::Duration;
 /// Every import the worker reports on for `key` until one ends: the ids it
 /// reported under, and the error the ending one failed with, if it failed.
 async fn await_import_ending(
-    events: &mut tokio::sync::mpsc::UnboundedReceiver<ImportEvent>,
+    events: &mut crate::ImportEvents,
     key: &crate::CandidateKey,
 ) -> (std::collections::BTreeSet<String>, Option<String>) {
     let mut ids = std::collections::BTreeSet::new();

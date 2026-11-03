@@ -11,7 +11,7 @@ use std::time::Duration;
 
 /// The priority the next run of `key` reports.
 async fn await_run_priority(
-    events: &mut tokio::sync::mpsc::UnboundedReceiver<ImportEvent>,
+    events: &mut crate::ImportEvents,
     key: &crate::CandidateKey,
 ) -> CallPriority {
     tokio::time::timeout(Duration::from_secs(20), async {

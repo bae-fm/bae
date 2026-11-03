@@ -48,9 +48,40 @@ pub struct SignalsSnapshot {
     pub artwork: ArtworkScan,
 }
 
-/// The latest snapshot of the extraction feeding a run, `None` until the
-/// first; the sender dropping tells the run its extraction is over.
-pub type ExtractionWatch = watch::Receiver<Option<SignalsSnapshot>>;
+/// The latest snapshot of the extraction feeding a run, from the extraction
+/// service handle that started it; closed once the extraction is over.
+pub struct ExtractionWatch(watch::Receiver<Option<SignalsSnapshot>>);
+
+impl ExtractionWatch {
+    /// The latest snapshot, `None` before the first; the value seen from
+    /// here on.
+    pub fn snapshot(&mut self) -> Option<SignalsSnapshot> {
+        self.0.borrow_and_update().clone()
+    }
+
+    /// Wait until a snapshot newer than the one last seen is sent; an error
+    /// once the extraction is over.
+    pub async fn changed(&mut self) -> Result<(), watch::error::RecvError> {
+        self.0.changed().await
+    }
+
+    /// Wait until the latest snapshot satisfies `done`; an error once the
+    /// extraction is over.
+    #[cfg(test)]
+    pub(crate) async fn wait_for(
+        &mut self,
+        done: impl FnMut(&Option<SignalsSnapshot>) -> bool,
+    ) -> Result<(), watch::error::RecvError> {
+        self.0.wait_for(done).await.map(drop)
+    }
+
+    /// A watch over `snapshots`, for a test that feeds a run its snapshots
+    /// itself.
+    #[cfg(test)]
+    pub(crate) fn of_test_channel(snapshots: watch::Receiver<Option<SignalsSnapshot>>) -> Self {
+        Self(snapshots)
+    }
+}
 
 /// Thread-safe handle to the running signal-extraction service.
 #[derive(Clone)]
@@ -157,7 +188,7 @@ impl ExtractionServiceHandle {
     ) -> ExtractionWatch {
         let inner = self.inner.clone();
         let runtime_handle = self.inner.runtime_handle.clone();
-        let (snapshots, watch) = watch::channel(None);
+        let (snapshots, snapshots_rx) = watch::channel(None);
         self.inner.candidates.start_work(
             CandidateWork::Extraction,
             key.clone(),
@@ -168,7 +199,7 @@ impl ExtractionServiceHandle {
                 });
             },
         );
-        watch
+        ExtractionWatch(snapshots_rx)
     }
 
     /// Cancel a candidate's in-flight extraction.

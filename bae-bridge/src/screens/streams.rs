@@ -295,7 +295,7 @@ pub(crate) fn import_percents(
         let mut percents = services.watch_import_percents();
         loop {
             let held: HashMap<Vec<u8>, BridgeFastValue> = percents
-                .borrow_and_update()
+                .percents()
                 .iter()
                 .map(|(key, percent)| {
                     (key.as_bytes().to_vec(), BridgeFastValue::ImportPercent { percent: *percent })

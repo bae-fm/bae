@@ -14,7 +14,6 @@ use std::sync::Arc;
 use std::sync::Mutex as StdMutex;
 use std::time::Duration;
 use tempfile::TempDir;
-use tokio::sync::mpsc::UnboundedReceiver;
 
 /// Canned text lines keyed by file name; the optional gate holds each image
 /// until the test opens it, so a test can act mid-OCR.
@@ -70,10 +69,7 @@ impl ArtworkAnalyzer for PanicAnalyzer {
 }
 
 /// Drain `SignalsUpdated` events until `expected` of them arrive, or time out.
-pub(super) async fn collect_signals(
-    rx: &mut UnboundedReceiver<ImportEvent>,
-    expected: usize,
-) -> Vec<Signals> {
+pub(super) async fn collect_signals(rx: &mut crate::ImportEvents, expected: usize) -> Vec<Signals> {
     collect_snapshots(rx, expected).await.into_iter().map(|(signals, _)| signals).collect()
 }
 
@@ -86,7 +82,7 @@ pub(super) async fn run_ended(watch: &mut crate::extraction::ExtractionWatch) {
 
 /// No `SignalsUpdated` is left on `rx`: once the run has ended, the
 /// extraction said everything it had to say.
-pub(super) fn assert_no_more_snapshots(rx: &mut UnboundedReceiver<ImportEvent>, after: &str) {
+pub(super) fn assert_no_more_snapshots(rx: &mut crate::ImportEvents, after: &str) {
     while let Ok(event) = rx.try_recv() {
         if let ImportEvent::SignalsUpdated { signals, .. } = event {
             panic!("no snapshot follows {after}, got {signals:?}")
@@ -96,7 +92,7 @@ pub(super) fn assert_no_more_snapshots(rx: &mut UnboundedReceiver<ImportEvent>, 
 
 /// Every snapshot with where the artwork pass was when it went out.
 pub(super) async fn collect_snapshots(
-    rx: &mut UnboundedReceiver<ImportEvent>,
+    rx: &mut crate::ImportEvents,
     expected: usize,
 ) -> Vec<(Signals, ArtworkScan)> {
     let mut out = Vec::new();
@@ -126,7 +122,7 @@ pub(super) async fn make_database() -> (bae_db::Database, TempDir) {
 
 /// Start a service; the bus sender comes back so a test can inject events.
 pub(super) async fn make_service(
-) -> (ExtractionServiceHandle, ImportEventBus, UnboundedReceiver<ImportEvent>, TempDir) {
+) -> (ExtractionServiceHandle, ImportEventBus, crate::ImportEvents, TempDir) {
     let candidates = CandidateRuntime::for_test().await;
     let tx = ImportEventBus::new(candidates.clone());
     let rx = tx.every_event();
@@ -147,12 +143,7 @@ pub(super) async fn make_service(
 pub(super) async fn start_signals(
     folder: PathBuf,
     analyzer: Arc<dyn ArtworkAnalyzer>,
-) -> (
-    ExtractionServiceHandle,
-    UnboundedReceiver<ImportEvent>,
-    crate::extraction::ExtractionWatch,
-    TempDir,
-) {
+) -> (ExtractionServiceHandle, crate::ImportEvents, crate::extraction::ExtractionWatch, TempDir) {
     let (handle, _tx, rx, lib_tmp) = make_service().await;
     handle.register_analyzer(analyzer);
     let run = handle.start(
@@ -238,7 +229,7 @@ pub(super) async fn ocr_entered(entries: std::sync::mpsc::Receiver<()>) {
 }
 
 /// Every `SignalsUpdated` delivered so far.
-pub(super) fn delivered_signals(rx: &mut UnboundedReceiver<ImportEvent>) -> Vec<Signals> {
+pub(super) fn delivered_signals(rx: &mut crate::ImportEvents) -> Vec<Signals> {
     std::iter::from_fn(|| rx.try_recv().ok())
         .filter_map(|event| match event {
             ImportEvent::SignalsUpdated { signals, .. } => Some(signals),

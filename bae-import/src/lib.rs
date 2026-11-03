@@ -214,10 +214,14 @@ pub use candidate_detail::{
 pub use candidate_key::CandidateKey;
 #[cfg(desktop)]
 pub use candidate_runtime::CandidateRuntime;
-#[cfg(any(test, feature = "test-utils"))]
-pub use candidate_runtime::CandidateRuntimeChange;
 #[cfg(desktop)]
 pub(crate) use candidate_runtime::CandidateWork;
+#[cfg(desktop)]
+pub use candidate_runtime::ImportPercentsWatch;
+#[cfg(any(test, feature = "test-utils"))]
+pub use candidate_runtime::{
+    CandidateRuntimeChange, CandidateRuntimeChanges, IdentificationCounts,
+};
 #[cfg(desktop)]
 pub use candidate_search::{CandidateSearch, SearchStatus, SourceSearch};
 #[cfg(desktop)]
@@ -256,9 +260,11 @@ pub use grouping::GroupingBlock;
 pub(crate) use handle::{external_metadata_with_cover, VerdictWrite};
 #[cfg(desktop)]
 pub use handle::{
-    DiscogsSaveOutcome, GroupedSearchResults, ImportEvent, ImportEventBus, ImportServiceHandle,
-    ImportStart, ScanEvent,
+    DiscogsSaveOutcome, GroupedSearchResults, ImportEvent, ImportEventBus, ImportEvents,
+    ImportServiceHandle, ImportStart, ScanEvent,
 };
+#[cfg(all(desktop, any(test, feature = "test-utils")))]
+pub use handle::{ImportProgressFeed, ScanEvents};
 #[cfg(desktop)]
 pub use identification::IdentificationHandle;
 #[cfg(desktop)]

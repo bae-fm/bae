@@ -35,10 +35,7 @@ async fn two_importable(
 
 /// Wait for every one of `import_ids` to end cancelled, in whatever order
 /// they end.
-async fn await_cancelled(
-    events: &mut tokio::sync::mpsc::UnboundedReceiver<ImportEvent>,
-    import_ids: &[&str],
-) {
+async fn await_cancelled(events: &mut crate::ImportEvents, import_ids: &[&str]) {
     let mut pending: std::collections::HashSet<String> =
         import_ids.iter().map(|id| id.to_string()).collect();
     while !pending.is_empty() {
@@ -195,7 +192,7 @@ async fn store_state(handle: &ImportServiceHandle, library_dir: &Path) -> StoreS
 
 /// The next `phase` percent `import_id` reports on the stream.
 async fn await_progress_of(
-    events: &mut tokio::sync::mpsc::UnboundedReceiver<ImportEvent>,
+    events: &mut crate::ImportEvents,
     import_id: &str,
     phase: crate::ImportPhase,
 ) {

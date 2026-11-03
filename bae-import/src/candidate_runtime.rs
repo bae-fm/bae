@@ -48,12 +48,65 @@ mod standing_writes;
 mod stored_standing;
 mod work;
 pub(crate) use snapshots::compose;
+pub use snapshots::ImportPercentsWatch;
 pub(crate) use standing_writes::RunSubject;
 pub(crate) use stored_standing::{
     IdentificationChange, IdentificationMove, IdentificationStage, Identifying,
     StoredIdentification, StoredImport, StoredRuntime, StoredStanding,
 };
 pub(crate) use work::CandidateWork;
+
+/// Every move of the identification count, identifying and identified, from
+/// the candidate runtime that made it, for a test.
+#[cfg(any(test, feature = "test-utils"))]
+pub struct IdentificationCounts(tokio::sync::mpsc::UnboundedReceiver<(u32, u32)>);
+
+#[cfg(any(test, feature = "test-utils"))]
+impl IdentificationCounts {
+    /// The next count, or `None` once the runtime is gone.
+    pub async fn recv(&mut self) -> Option<(u32, u32)> {
+        self.0.recv().await
+    }
+
+    /// The next count already told, without waiting.
+    pub fn try_recv(&mut self) -> Result<(u32, u32), tokio::sync::mpsc::error::TryRecvError> {
+        self.0.try_recv()
+    }
+}
+
+#[cfg(any(test, feature = "test-utils"))]
+impl bae_util::test_channels::EventReader<(u32, u32)> for IdentificationCounts {
+    fn recv(&mut self) -> impl std::future::Future<Output = Option<(u32, u32)>> {
+        self.0.recv()
+    }
+}
+
+/// Every key's runtime as each write of its standing leaves it, in the order
+/// the writes land, from the candidate runtime that made it, for a test.
+#[cfg(any(test, feature = "test-utils"))]
+pub struct CandidateRuntimeChanges(tokio::sync::mpsc::UnboundedReceiver<CandidateRuntimeChange>);
+
+#[cfg(any(test, feature = "test-utils"))]
+impl CandidateRuntimeChanges {
+    /// The next change, or `None` once the runtime is gone.
+    pub async fn recv(&mut self) -> Option<CandidateRuntimeChange> {
+        self.0.recv().await
+    }
+
+    /// The next change already told, without waiting.
+    pub fn try_recv(
+        &mut self,
+    ) -> Result<CandidateRuntimeChange, tokio::sync::mpsc::error::TryRecvError> {
+        self.0.try_recv()
+    }
+}
+
+#[cfg(any(test, feature = "test-utils"))]
+impl bae_util::test_channels::EventReader<CandidateRuntimeChange> for CandidateRuntimeChanges {
+    fn recv(&mut self) -> impl std::future::Future<Output = Option<CandidateRuntimeChange>> {
+        self.0.recv()
+    }
+}
 
 #[cfg(test)]
 #[path = "candidate_runtime_tests.rs"]
@@ -219,21 +272,19 @@ impl CandidateRuntime {
 
     /// Every move of the identification count from now on, for a test.
     #[cfg(any(test, feature = "test-utils"))]
-    pub(crate) fn every_count(&self) -> tokio::sync::mpsc::UnboundedReceiver<(u32, u32)> {
+    pub(crate) fn every_count(&self) -> IdentificationCounts {
         let (reader, counts) = tokio::sync::mpsc::unbounded_channel();
         self.every_count.lock().unwrap().push(reader);
-        counts
+        IdentificationCounts(counts)
     }
 
     /// Every key's runtime as each write of its standing leaves it, in the
     /// order the writes land, from now on, for a test.
     #[cfg(any(test, feature = "test-utils"))]
-    pub(crate) fn every_change(
-        &self,
-    ) -> tokio::sync::mpsc::UnboundedReceiver<CandidateRuntimeChange> {
+    pub(crate) fn every_change(&self) -> CandidateRuntimeChanges {
         let (reader, changes) = tokio::sync::mpsc::unbounded_channel();
         self.every_change.lock().unwrap().push(reader);
-        changes
+        CandidateRuntimeChanges(changes)
     }
 
     /// The scan dropped or reshaped the key: its work in flight ends. Its

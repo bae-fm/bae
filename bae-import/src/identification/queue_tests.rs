@@ -319,7 +319,8 @@ async fn a_decision_announced_before_a_request_leaves_the_requested_run_going() 
 
     // The loop is handed both before it first looks: the announcement, then
     // the request, with every later event behind them.
-    let (events, mut bus) = tokio::sync::mpsc::unbounded_channel();
+    let (events, bus) = tokio::sync::mpsc::unbounded_channel();
+    let mut bus = crate::ImportEvents::of_test_channel(bus);
     events
         .send(ImportEvent::Scan(ScanEvent::CandidateMetadataChanged { candidate_key: key.clone() }))
         .unwrap();

@@ -72,7 +72,7 @@ fn write_folders(root: &Path, shape: Shape, count: usize) {
 /// moment the watched folder was added, until the scan finished.
 async fn scan(
     services: &AppServices,
-    events: &mut tokio::sync::mpsc::UnboundedReceiver<ScanEvent>,
+    events: &mut bae_import::ScanEvents,
     root: &Path,
 ) -> (Vec<Duration>, Duration) {
     let start = Instant::now();

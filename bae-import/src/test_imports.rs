@@ -16,7 +16,7 @@ fn import_terminal_ids(progress: &crate::ImportProgress) -> Option<(String, Stri
 /// Local imports emit `Complete`; remote imports emit `RemoteUploadQueued`,
 /// since remote completion waits on the upload. Panics on failure.
 pub async fn wait_for_import_complete(
-    progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<crate::ImportProgress>,
+    progress_rx: &mut crate::ImportProgressFeed,
 ) -> (String, String) {
     try_wait_for_import_complete(progress_rx)
         .await
@@ -25,7 +25,7 @@ pub async fn wait_for_import_complete(
 
 /// Like [`wait_for_import_complete`], returning the failure instead of panicking.
 pub async fn try_wait_for_import_complete(
-    progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<crate::ImportProgress>,
+    progress_rx: &mut crate::ImportProgressFeed,
 ) -> Result<(String, String), String> {
     let end = wait_for_import_end(progress_rx).await;
     match import_terminal_ids(&end) {
@@ -40,7 +40,7 @@ pub async fn try_wait_for_import_complete(
 /// The import's first `Complete`, `RemoteUploadQueued` or `Failed`. Panics if
 /// the progress ends without one or none comes before [`bae_util::test_channels::HANG_GUARD`].
 pub async fn wait_for_import_end(
-    progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<crate::ImportProgress>,
+    progress_rx: &mut crate::ImportProgressFeed,
 ) -> crate::ImportProgress {
     let ended = async {
         while let Some(progress) = progress_rx.recv().await {

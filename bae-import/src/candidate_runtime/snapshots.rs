@@ -110,10 +110,36 @@ impl CandidateRuntime {
     }
 
     /// Each key's import percent, now and as it moves.
-    pub fn watch_import_percents(
-        &self,
-    ) -> tokio::sync::watch::Receiver<HashMap<CandidateKey, u32>> {
-        self.percents.subscribe()
+    pub fn watch_import_percents(&self) -> ImportPercentsWatch {
+        ImportPercentsWatch(self.percents.subscribe())
+    }
+}
+
+/// Each key's import percent, now and as it moves, from the candidate
+/// runtime that made it.
+pub struct ImportPercentsWatch(tokio::sync::watch::Receiver<HashMap<CandidateKey, u32>>);
+
+impl ImportPercentsWatch {
+    /// Each running import's percent now, by key; the value seen from here
+    /// on.
+    pub fn percents(&mut self) -> HashMap<CandidateKey, u32> {
+        self.0.borrow_and_update().clone()
+    }
+
+    /// Wait until the percents differ from the ones last seen; an error once
+    /// the runtime is gone.
+    pub async fn changed(&mut self) -> Result<(), tokio::sync::watch::error::RecvError> {
+        self.0.changed().await
+    }
+
+    /// Wait until the percents satisfy `done`; an error once the runtime is
+    /// gone.
+    #[cfg(test)]
+    pub(crate) async fn wait_for(
+        &mut self,
+        done: impl FnMut(&HashMap<CandidateKey, u32>) -> bool,
+    ) -> Result<(), tokio::sync::watch::error::RecvError> {
+        self.0.wait_for(done).await.map(drop)
     }
 }
 

@@ -225,7 +225,7 @@ async fn drive_fixture(
     // The run's watch holds its latest snapshot until the text settles.
     tokio::time::timeout(Duration::from_secs(10), async {
         loop {
-            if let Some(snapshot) = run.borrow_and_update().as_ref() {
+            if let Some(snapshot) = run.snapshot() {
                 if let TextSignal::Settled { free_text, .. } = &snapshot.signals.text {
                     return (snapshot.signals.text.catalogs().to_vec(), free_text.clone());
                 }

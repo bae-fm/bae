@@ -241,9 +241,7 @@ async fn cancelled_scan_task_does_not_begin_a_durable_generation() {
 }
 
 /// The candidates a pass told anyone about, in the order it did.
-pub(crate) fn announced_candidates(
-    events: &mut tokio::sync::mpsc::UnboundedReceiver<crate::handle::ImportEvent>,
-) -> Vec<String> {
+pub(crate) fn announced_candidates(events: &mut crate::ImportEvents) -> Vec<String> {
     let mut announced = Vec::new();
     while let Ok(event) = events.try_recv() {
         match event {

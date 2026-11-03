@@ -67,9 +67,7 @@ impl TestService {
     }
 
     /// A scan over this service's library, and the stream it announces on.
-    pub(crate) fn scan(
-        &self,
-    ) -> (TestScan, tokio::sync::mpsc::UnboundedReceiver<crate::handle::ImportEvent>) {
+    pub(crate) fn scan(&self) -> (TestScan, crate::ImportEvents) {
         self.scan_with(
             Arc::new(crate::file_tag_snapshot::LoftyFileTagReader),
             Arc::new(crate::folder_scanner::OsDirectoryReader),
@@ -82,7 +80,7 @@ impl TestService {
         &self,
         file_tags: Arc<dyn crate::file_tag_snapshot::FileTagReader>,
         directories: Arc<dyn crate::folder_scanner::DirectoryReader>,
-    ) -> (TestScan, tokio::sync::mpsc::UnboundedReceiver<crate::handle::ImportEvent>) {
+    ) -> (TestScan, crate::ImportEvents) {
         let event_tx = crate::ImportEventBus::new(self.service.runtime.clone());
         let events = event_tx.every_event();
         let (fs_tx, fs_rx) = tokio::sync::mpsc::unbounded_channel();

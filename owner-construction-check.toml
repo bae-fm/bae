@@ -164,10 +164,6 @@ task_types = [
     "FileStream",
     # A client asking Discogs with the library's stored key, for one call.
     "DiscogsClient",
-    # The handles a started service gives its caller for that service's work.
-    "ExtractionServiceHandle",
-    "IdentifyServiceHandle",
-    "ImportServiceHandle",
     # A screen's live read of the library, for as long as the screen shows it,
     # and the bridge's subscription the app holds over each one.
     "LiveAlbumBrowse",
@@ -283,6 +279,17 @@ HeldRangesWatch = "SparseStreamingBuffer"
 TrackBufferedFollow = "PlaybackHandle"
 # A watch on one discovery's device list.
 DeviceListWatch = "PublishedDevices"
+# Import events off the bus; one import's progress and the scan events,
+# which the import service handle forwards from the bus; the percents of the
+# running imports, and a test's feeds of the runtime's changes and counts;
+# and the snapshots of the extraction feeding one identify run.
+ImportEvents = "ImportEventBus"
+ImportProgressFeed = "ImportServiceHandle"
+ScanEvents = "ImportServiceHandle"
+ImportPercentsWatch = "CandidateRuntime"
+CandidateRuntimeChanges = "CandidateRuntime"
+IdentificationCounts = "CandidateRuntime"
+ExtractionWatch = "ExtractionServiceHandle"
 # One request a rate limiter let through, settled against the limiter.
 Admitted = "RateLimiter"
 # One reader of a sparse buffer, with its own slot in the buffer's demands.

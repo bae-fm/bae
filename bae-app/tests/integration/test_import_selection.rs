@@ -279,7 +279,7 @@ async fn select_out_of_order(
 /// The keys the runtime's changes bring to `reached`, in the order they get
 /// there, until `count` have.
 async fn reached_in_order(
-    changes: &mut tokio::sync::mpsc::UnboundedReceiver<CandidateRuntimeChange>,
+    changes: &mut bae_import::CandidateRuntimeChanges,
     count: usize,
     reached: impl Fn(&CandidateRuntimeSnapshot) -> bool,
 ) -> Vec<bae_import::CandidateKey> {

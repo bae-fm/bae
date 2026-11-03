@@ -232,17 +232,23 @@ async fn a_network_folder_found_unchanged_is_checked_again() {
     tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
     tables.record_folder_scan_directories(&root, &[(root.clone(), modified_at)]).await.unwrap();
     let (_scans, starter) = FakeScanStarter::new();
-    let (active_roots, _scan_completions, _removal_completions) = ActiveRoots::new(
+    let (scan_completions, _scan_completions) = tokio::sync::mpsc::unbounded_channel();
+    let (removal_completions, _removal_completions) = tokio::sync::mpsc::unbounded_channel();
+    let active_roots = ActiveRoots::new(
         starter,
         Arc::new(FakeRemovalBackend::default()),
         crate::FolderStateCommit::default(),
         bae_diagnostics::Diagnostics::noop(),
+        scan_completions,
+        removal_completions,
     );
-    let (mut coordinator, mut checks) = crate::watching::coordinator::Coordinator::new(
+    let (checked_tx, mut checks) = tokio::sync::mpsc::unbounded_channel();
+    let mut coordinator = crate::watching::coordinator::Coordinator::new(
         active_roots,
         test.event_tx().clone(),
         tables,
         bae_diagnostics::Diagnostics::noop(),
+        checked_tx,
     );
 
     for check in ["first", "second"] {

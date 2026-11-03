@@ -33,7 +33,9 @@ mod verdict_write;
 mod watch;
 
 pub use discogs_key::DiscogsSaveOutcome;
-pub use event_bus::{ImportEvent, ImportEventBus, ScanEvent};
+pub use event_bus::{ImportEvent, ImportEventBus, ImportEvents, ScanEvent};
+#[cfg(any(test, feature = "test-utils"))]
+pub use event_bus::{ImportProgressFeed, ScanEvents};
 pub use import::ImportStart;
 pub(crate) use scan::external_metadata_with_cover;
 pub use search::GroupedSearchResults;
@@ -340,26 +342,20 @@ impl ImportServiceHandle {
     }
 
     /// Each running import's percent, by candidate key, now and as it moves.
-    pub fn watch_import_percents(
-        &self,
-    ) -> tokio::sync::watch::Receiver<std::collections::HashMap<crate::CandidateKey, u32>> {
+    pub fn watch_import_percents(&self) -> crate::ImportPercentsWatch {
         self.runtime.watch_import_percents()
     }
 
     /// Every key's runtime as each write of its standing leaves it, in the
     /// order they land, from now on, for a test that checks that order.
     #[cfg(any(test, feature = "test-utils"))]
-    pub fn every_runtime_change_for_test(
-        &self,
-    ) -> tokio::sync::mpsc::UnboundedReceiver<super::CandidateRuntimeChange> {
+    pub fn every_runtime_change_for_test(&self) -> crate::CandidateRuntimeChanges {
         self.runtime.every_change()
     }
 
     /// Every move of the identification count from now on, for a test.
     #[cfg(any(test, feature = "test-utils"))]
-    pub fn every_identification_count_for_test(
-        &self,
-    ) -> tokio::sync::mpsc::UnboundedReceiver<(u32, u32)> {
+    pub fn every_identification_count_for_test(&self) -> crate::IdentificationCounts {
         self.runtime.every_count()
     }
 

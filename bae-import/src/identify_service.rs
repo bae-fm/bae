@@ -320,7 +320,7 @@ async fn run_driver(
                 biased;
                 _ = driver.token.cancelled() => IdentifyEvent::Cancelled,
                 changed = snapshots.changed(), if extracting => match changed {
-                    Ok(()) => match snapshots.borrow_and_update().clone() {
+                    Ok(()) => match snapshots.snapshot() {
                         Some(SignalsSnapshot {
                             signals,
                             audio,

@@ -405,7 +405,7 @@ pub(super) async fn withdraw(context: &Context, key: &crate::CandidateKey) {
 pub(super) async fn run(
     context: &Context,
     token: &CancellationToken,
-    bus: &mut mpsc::UnboundedReceiver<ImportEvent>,
+    bus: &mut crate::ImportEvents,
     commands: &mut mpsc::UnboundedReceiver<Command>,
 ) {
     let mut queue = Queue::default();
@@ -509,9 +509,7 @@ pub(super) async fn run(
 }
 
 /// The events on the bus not yet taken off it.
-fn pending(
-    bus: &mut mpsc::UnboundedReceiver<ImportEvent>,
-) -> impl Iterator<Item = ImportEvent> + '_ {
+fn pending(bus: &mut crate::ImportEvents) -> impl Iterator<Item = ImportEvent> + '_ {
     std::iter::from_fn(|| bus.try_recv().ok())
 }
 

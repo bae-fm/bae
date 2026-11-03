@@ -469,7 +469,7 @@ mod imported_names {
     /// What the import `import_id` reported: the release it created, or the
     /// error it failed with.
     async fn import_outcome(
-        events: &mut tokio::sync::mpsc::UnboundedReceiver<bae_import::ImportEvent>,
+        events: &mut bae_import::ImportEvents,
         import_id: &str,
     ) -> Result<String, String> {
         loop {

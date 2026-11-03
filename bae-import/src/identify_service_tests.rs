@@ -14,7 +14,6 @@ use bae_identify::signals::{BarcodeSignal, DiscIdSignal, Signals, TextSignal};
 use bae_identify::IdentifyState;
 use bae_identify::TerminalVerdict;
 use std::time::Duration;
-use tokio::sync::mpsc::UnboundedReceiver;
 
 async fn setup_inner() -> (Arc<IdentifyServiceInner>, tempfile::TempDir) {
     let temp_dir = tempfile::TempDir::new().unwrap();
@@ -91,7 +90,7 @@ async fn drivers_ended(inner: &Arc<IdentifyServiceInner>) {
 
 /// Read `k`'s states until `wanted` answers one, or the wait runs out.
 async fn await_state<T>(
-    events: &mut UnboundedReceiver<ImportEvent>,
+    events: &mut crate::ImportEvents,
     wanted: impl Fn(&IdentifyState) -> Option<T>,
 ) -> Option<T> {
     tokio::time::timeout(Duration::from_secs(5), async {
@@ -112,7 +111,7 @@ async fn await_state<T>(
 }
 
 /// `k`'s states already reported.
-fn reported_states(events: &mut UnboundedReceiver<ImportEvent>) -> Vec<IdentifyState> {
+fn reported_states(events: &mut crate::ImportEvents) -> Vec<IdentifyState> {
     std::iter::from_fn(|| events.try_recv().ok())
         .filter_map(|event| match event {
             ImportEvent::IdentifyStateChanged { candidate_key, state, .. }
@@ -169,7 +168,7 @@ async fn a_driver_that_reaches_its_verdict_is_gone_without_a_cancel() {
             CallPriority::Interactive,
             LookupChoices::default(),
             None,
-            watch,
+            crate::extraction::ExtractionWatch::of_test_channel(watch),
         )
         .await
         .unwrap());
@@ -217,7 +216,7 @@ async fn a_run_reads_the_latest_snapshot_however_many_landed_before_it_looked() 
             CallPriority::Interactive,
             LookupChoices::default(),
             None,
-            watch,
+            crate::extraction::ExtractionWatch::of_test_channel(watch),
         )
         .await
         .unwrap());
@@ -250,7 +249,7 @@ async fn an_extraction_ending_does_not_end_the_run() {
             CallPriority::Interactive,
             LookupChoices::default(),
             None,
-            watch,
+            crate::extraction::ExtractionWatch::of_test_channel(watch),
         )
         .await
         .unwrap());
@@ -288,7 +287,7 @@ async fn a_cancel_mid_run_reports_idle_and_deregisters() {
             CallPriority::Interactive,
             LookupChoices::default(),
             None,
-            watch,
+            crate::extraction::ExtractionWatch::of_test_channel(watch),
         )
         .await
         .unwrap());

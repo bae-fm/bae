@@ -320,7 +320,7 @@ async fn assert_cover_row_describes_stored_bytes(f: &ImportFixture, release_id: 
 
 /// Wait for a scan event matching `pred`; panics at the hang guard.
 async fn wait_for_scan_event(
-    rx: &mut tokio::sync::mpsc::UnboundedReceiver<ScanEvent>,
+    rx: &mut bae_import::ScanEvents,
     what: &str,
     mut pred: impl FnMut(&ScanEvent) -> bool,
 ) {

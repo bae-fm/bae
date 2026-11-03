@@ -308,10 +308,7 @@ async fn a_candidate_is_announced_while_the_walk_still_reads_the_next_folder() {
 async fn rescan_seeded_root(
     test: &TestService,
     root: &Path,
-) -> (
-    tokio::sync::mpsc::UnboundedReceiver<crate::handle::ImportEvent>,
-    Result<(), crate::ImportError>,
-) {
+) -> (crate::ImportEvents, Result<(), crate::ImportError>) {
     let tables = test.tables();
     tables.add_watched_import_folder(root).await.unwrap();
     let generation = tables.begin_folder_scan(root, crate::VolumeKind::Local).await.unwrap();
