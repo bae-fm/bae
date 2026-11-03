@@ -8,8 +8,8 @@
 //! one whose own contents just changed, shows its releases before the rest of
 //! the root is read.
 
-use super::super::folder_times::newest_first;
 use super::*;
+use crate::folder_scanner::folder_times::newest_first;
 use bae_util::task_failure::{caught_sync, TaskFailed};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -202,3 +202,7 @@ where
         .map(|files| files.expect("a pass nothing stopped reads every folder"))
         .collect())
 }
+
+#[cfg(test)]
+#[path = "root_tests.rs"]
+mod tests;

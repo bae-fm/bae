@@ -1,3 +1,10 @@
+//! A folder's sidecar files: what a folder kept as separate releases or read
+//! as one carries beside them, a folder still downloading, and what makes
+//! them invalid.
+
+use super::*;
+use crate::folder_scanner::tests::*;
+
 // ── A folder's sidecar files ────────────────────────────────────────────────
 
 /// The sidecars a scan of `root` says, read under `decisions`.
@@ -215,5 +222,113 @@ fn a_zero_byte_track_makes_the_sidecar_invalid() {
             ("Scans/booklet.txt", ProposedRole::Document),
         ],
         "every file, as the scan read it"
+    );
+}
+
+/// A release's sidecar subfolders attach to the candidate by category:
+/// `booklet/*.png` becomes artwork (keeping its `booklet/` prefix), and
+/// `Info/Tracklist.txt` becomes a document.
+#[test]
+fn subfolder_sidecars_attach_by_category() {
+    let mut entries = flat_audio("Album", 3, FileKind::Flac);
+    entries.extend([
+        file("Album/booklet/page1.png", FileKind::Png),
+        file("Album/booklet/page2.png", FileKind::Png),
+        file("Album/Info/Tracklist.txt", FileKind::TracklistTxt),
+    ]);
+    let result = run_scenario(entries);
+    let c = result.candidate("Album");
+
+    let booklet_paths: Vec<_> = c
+        .files
+        .artwork()
+        .filter(|a| a.relative_path.starts_with("booklet/"))
+        .map(|a| a.relative_path.as_str())
+        .collect();
+    assert_eq!(booklet_paths.len(), 2, "booklet artwork: {booklet_paths:?}");
+
+    assert!(
+        c.files.documents().any(|d| d.relative_path.ends_with("Tracklist.txt")),
+        "Info/Tracklist.txt should be a document, got {:?}",
+        c.files.documents().map(|d| d.relative_path.as_str()).collect::<Vec<_>>(),
+    );
+}
+
+/// The folder is the release, so an unrecognized sidecar is carried like every
+/// other file: it becomes a row the import writes, and it counts toward the
+/// hash. The pair that fails if someone narrows either set back — and they must
+/// stay one set, or the fingerprint stops describing the payload it identifies.
+#[test]
+fn an_unrecognized_sidecar_is_carried_and_hashed() {
+    const SIDECARS: [&str; 5] = ["rip.ffp", "rip.md5", "rip.nfo", "rip.par2", "rip.sfv"];
+
+    let tmp = tempfile::tempdir().unwrap();
+    let bare = tmp.path().join("Bare");
+    let with_sidecars = tmp.path().join("Sidecars");
+    for dir in [&bare, &with_sidecars] {
+        std::fs::create_dir_all(dir).unwrap();
+        std::fs::write(dir.join("01.flac"), fake_flac()).unwrap();
+    }
+    for sidecar in SIDECARS {
+        std::fs::write(with_sidecars.join(sidecar), b"scene notes").unwrap();
+    }
+
+    let bare_files = scan_files(&bare);
+    let sidecar_files = scan_files(&with_sidecars);
+    assert_eq!(
+        sidecar_files
+            .files
+            .iter()
+            .filter(|entry| matches!(entry.role, FileRole::Other))
+            .map(|entry| entry.file.file_name.as_str())
+            .collect::<Vec<_>>(),
+        SIDECARS.to_vec(),
+        "each sidecar is listed under the role for what the scan doesn't recognize",
+    );
+
+    // The import writes a row for every file the hash covers.
+    let carried: Vec<_> =
+        sidecar_files.release_files().map(|file| file.file_name.clone()).collect();
+    for sidecar in SIDECARS {
+        assert!(
+            carried.contains(&sidecar.to_string()),
+            "{sidecar} must become a file row, got {carried:?}",
+        );
+    }
+
+    assert_ne!(
+        bare_files.content_hash(),
+        sidecar_files.content_hash(),
+        "a file the release carries must count toward the hash",
+    );
+}
+
+/// Two of a folder's own files showing one name leave them unimportable, the
+/// way a release holding them would be.
+#[cfg(target_os = "linux")]
+#[test]
+fn two_files_showing_one_name_make_the_sidecar_invalid() {
+    let (_temp, root, album) = album_of_discs(&["Disc 1", "Disc 2"]);
+    std::fs::write(album.join(r"Caf\xE9.txt"), "one").unwrap();
+    std::fs::write(album.join(latin1_name(".txt")), "two").unwrap();
+
+    let found = sidecars(
+        &root,
+        readings(&[(
+            "Artist/Album",
+            FolderReleaseDecision::KeepAsSeparateReleases,
+            FolderReleaseDecisionAuthor::User,
+        )]),
+    );
+
+    let [sidecar] = found.as_slice() else {
+        panic!("one sidecar: {found:?}");
+    };
+    let SidecarFiles::Invalid(files) = &sidecar.files else {
+        panic!("two files showing one name leave the files unimportable: {:?}", sidecar.files);
+    };
+    assert_eq!(
+        InvalidReason::of(files),
+        InvalidReason::SameName { name: r"Caf\xE9.txt".to_string() }
     );
 }

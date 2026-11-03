@@ -1,24 +1,11 @@
-/// Scan `root` through a test `DirectoryReader`, with no stored edits, no
-/// stored decisions, and nothing to cancel.
-fn scan_with_reader<R: DirectoryReader, F: FnMut(ScanItem)>(
-    reader: &R,
-    root: PathBuf,
-    on_item: F,
-) -> Result<(), FolderScanError> {
-    scan_for_candidates_with_reader_cancellable_and_directories(
-        reader,
-        root,
-        &ScanReadings {
-            stored: &StoredCandidateEdits::none(),
-            decisions: &FolderReleaseDecisions::default(),
-            new_grouping_key: &fresh_grouping_key,
-        },
-        &FileReads::new(Arc::new(crate::file_tag_snapshot::LoftyFileTagReader)),
-        &ScanCancellation::new(),
-        |_| {},
-        on_item,
-    )
-}
+//! A walk of a watched folder: where its releases begin and end, a folder
+//! read as one release or several, its candidates said as they are found,
+//! names that are not UTF-8, and a walk that is cancelled or cannot read a
+//! folder.
+
+use super::*;
+use crate::folder_scanner::tests::*;
+use std::sync::Arc;
 
 /// Reads directories normally, except inside `blocked`, where it is held.
 struct BlockingReader {
@@ -356,115 +343,6 @@ fn cancellation_reaches_an_in_progress_directory_read() {
     assert!(matches!(scan.join().unwrap(), Err(FolderScanError::Cancelled)));
 }
 
-#[test]
-fn a_wrapper_of_numbered_parts_combines_unless_the_user_says_otherwise() {
-    let temp_dir = tempfile::tempdir().unwrap();
-    let root = temp_dir.path().join("Queue");
-    let wrapper = root.join("Collection").join("Release Wrapper");
-    for child in ["Part 01", "Part 02"] {
-        let child = wrapper.join(child);
-        std::fs::create_dir_all(&child).unwrap();
-        std::fs::write(child.join("track.flac"), fake_flac()).unwrap();
-    }
-    std::fs::write(wrapper.join("booklet.txt"), "notes").unwrap();
-
-    let scan = |decisions: FolderReleaseDecisions| {
-        scan_projected_items_with_decisions(root.clone(), decisions)
-    };
-
-    // `Part 01` and `Part 02` number themselves 1 and 2, so with nothing
-    // stored the scan reads the wrapper as one release and says so.
-    let read_by_the_scan =
-        scan_for_candidates_with_decisions_collect(root.clone(), FolderReleaseDecisions::default());
-    assert!(read_by_the_scan.iter().any(|item| matches!(
-        item,
-        ScanItem::Decided {
-            key,
-            decision: FolderReleaseDecision::CombineAsOneRelease,
-            ..
-        } if key.relative_folder == bae_db::RelativeFolder::test("Collection/Release Wrapper")
-    )));
-
-    let combined = read_by_the_scan
-        .iter()
-        .find_map(|item| match item {
-            ScanItem::Valid(candidate) => Some(candidate),
-            ScanItem::Discovered(_)
-            | ScanItem::Invalid(_)
-            | ScanItem::Decided { .. }
-            | ScanItem::Sidecar(_) => None,
-        })
-        .expect("combined wrapper is actionable");
-    assert_eq!(combined.path, wrapper);
-    assert_eq!(combined.scope, ReleaseFileScope::Recursive);
-    assert_eq!(combined.files.release_files().count(), 3);
-    // The release is its grouping, made of the two parts, each a disc run.
-    assert!(combined.grouping.is_some());
-    assert_eq!(
-        combined.files.parts.iter().map(|part| part.prefix.as_str()).collect::<Vec<_>>(),
-        ["Part 01/", "Part 02/"]
-    );
-
-    let separate = scan(readings(&[(
-        "Collection/Release Wrapper",
-        FolderReleaseDecision::KeepAsSeparateReleases,
-        FolderReleaseDecisionAuthor::User,
-    )]));
-    let separate: Vec<_> = separate
-        .iter()
-        .filter_map(|item| match item {
-            ScanItem::Valid(candidate) => Some(candidate),
-            ScanItem::Discovered(_)
-            | ScanItem::Invalid(_)
-            | ScanItem::Decided { .. }
-            | ScanItem::Sidecar(_) => None,
-        })
-        .collect();
-    assert_eq!(separate.len(), 2);
-    assert!(separate.iter().all(|candidate| {
-        candidate.scope == ReleaseFileScope::Direct && candidate.grouping.is_none()
-    }));
-}
-
-#[test]
-fn labeled_disc_numbers_win_over_other_numbers_in_part_names() {
-    let temp_dir = tempfile::tempdir().unwrap();
-    let root = temp_dir.path().join("Queue");
-    let wrapper = root.join("Collection").join("Release Wrapper");
-    for child in [
-        "1935 Archive - CD 1 - Location A",
-        "CD 2 - 1935-36 - Location A",
-        "1936 Archive - CD 3 - 1937 - Location B",
-        "Session 1937-40 - CD 4 - Location C",
-        "Archive 1940 - CD 5 - 1941 - Location D",
-    ] {
-        let child = wrapper.join(child);
-        std::fs::create_dir_all(&child).unwrap();
-        std::fs::write(child.join("track.flac"), fake_flac()).unwrap();
-    }
-
-    let items = scan_for_candidates_with_decisions_collect(root, FolderReleaseDecisions::default());
-
-    assert!(items.iter().any(|item| matches!(
-        item,
-        ScanItem::Decided {
-            key,
-            decision: FolderReleaseDecision::CombineAsOneRelease,
-            ..
-        } if key.relative_folder == bae_db::RelativeFolder::test("Collection/Release Wrapper")
-    )));
-    let releases: Vec<_> = items
-        .iter()
-        .filter_map(|item| match item {
-            ScanItem::Valid(candidate) => Some(candidate),
-            _ => None,
-        })
-        .collect();
-    assert_eq!(releases.len(), 1);
-    assert_eq!(releases[0].path, wrapper);
-    assert_eq!(releases[0].scope, ReleaseFileScope::Recursive);
-}
-
 /// A folder with tracks of its own and an album folder beside them is two
 /// releases, and the scan says it read the folder that way.
 #[test]
@@ -602,39 +480,6 @@ fn a_folder_that_yields_nothing_is_not_one_of_the_parts() {
     assert_eq!(releases, vec!["Collection/Release Wrapper"]);
 }
 
-/// A child that does hold audio and carries no number still breaks the run:
-/// the folder holds several releases, not one release's parts.
-#[test]
-fn a_part_with_no_number_makes_it_several_releases() {
-    let temp_dir = tempfile::tempdir().unwrap();
-    let root = temp_dir.path().join("Queue");
-    let wrapper = root.join("Collection").join("Release Wrapper");
-    for child in ["Release 01", "Release 02", "Bonus"] {
-        let child = wrapper.join(child);
-        std::fs::create_dir_all(&child).unwrap();
-        std::fs::write(child.join("track.flac"), fake_flac()).unwrap();
-    }
-
-    let items = scan_for_candidates_with_decisions_collect(root, FolderReleaseDecisions::default());
-    assert!(items.iter().any(|item| matches!(
-        item,
-        ScanItem::Decided {
-            key,
-            decision: FolderReleaseDecision::KeepAsSeparateReleases,
-            ..
-        } if key.relative_folder == bae_db::RelativeFolder::test("Collection/Release Wrapper")
-    )));
-    let releases: Vec<_> = items
-        .iter()
-        .filter_map(|item| match item {
-            ScanItem::Valid(candidate) => Some(candidate.relative_folder.text()),
-            _ => None,
-        })
-        .collect();
-    assert!(releases.contains(&"Collection/Release Wrapper/Release 01".to_string()));
-    assert!(releases.contains(&"Collection/Release Wrapper/Bonus".to_string()));
-}
-
 /// An album folder whose only subfolder is artwork yields one release, so
 /// there is nothing to combine it with and no decision to record — the pane
 /// used to offer the album a choice between itself and its own artwork.
@@ -665,33 +510,6 @@ fn a_folder_that_yields_one_release_decides_nothing() {
         ScanItem::Valid(candidate)
             if candidate.grouping.is_none()
     )));
-}
-
-/// A box of numbered parts inside a collection of albums: the box is one
-/// release, its sibling album is another, and the collection around them is
-/// not one release just because it holds both.
-#[test]
-fn a_numbered_box_inside_a_collection_is_one_release() {
-    let temp_dir = tempfile::tempdir().unwrap();
-    let root = temp_dir.path().join("Queue");
-    for release in
-        ["Collection/Box/Release 01", "Collection/Box/Release 02", "Collection/Release 03"]
-    {
-        let release = root.join(release);
-        std::fs::create_dir_all(&release).unwrap();
-        std::fs::write(release.join("track.flac"), fake_flac()).unwrap();
-    }
-
-    let items = scan_items(&root);
-    let mut paths: Vec<_> = items
-        .iter()
-        .filter_map(|item| match item {
-            ScanItem::Valid(candidate) => Some(candidate.relative_folder.text()),
-            _ => None,
-        })
-        .collect();
-    paths.sort_unstable();
-    assert_eq!(paths, vec!["Collection/Box", "Collection/Release 03"]);
 }
 
 /// Two walks of one unchanged tree produce the same items, in the same order.
@@ -795,4 +613,194 @@ fn a_wrapper_over_one_folder_of_releases_asks_nothing() {
         ScanItem::Valid(candidate) => candidate.grouping.is_none(),
         _ => true,
     }));
+}
+
+/// A folder whose only audio is a zero-byte file can't be imported:
+/// `collect_release_candidate_files` surfaces the typed
+/// `ImportError::InvalidFolder` (carrying the scanner's `InvalidReason`)
+/// rather than a stringly error, so the commit caller can distinguish an
+/// unimportable folder from an I/O fault.
+#[test]
+fn collect_release_candidate_files_on_invalid_folder_yields_invalid_folder() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let root = temp_dir.path();
+    // Zero-byte audio is corruption, not an I/O fault.
+    std::fs::write(root.join("track.flac"), []).unwrap();
+
+    let err = collect_release_candidate_files_with_scope(
+        root,
+        crate::ReleaseFileScope::Recursive,
+        &StoredCandidateEdits::none(),
+    )
+    .expect_err("zero-byte audio makes the folder unimportable");
+    assert!(
+        matches!(err, crate::ImportError::InvalidFolder(InvalidReason::DamagedAudio { count: 1 })),
+        "got: {err:?}"
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn unreadable_child_directory_fails_scan() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let temp_dir = tempfile::tempdir().unwrap();
+    let root = temp_dir.path();
+    let blocked = root.join("blocked");
+    std::fs::create_dir(&blocked).unwrap();
+    std::fs::set_permissions(&blocked, std::fs::Permissions::from_mode(0o000)).unwrap();
+
+    let err = scan_for_candidates_with_decisions(
+        root.to_path_buf(),
+        &StoredCandidateEdits::none(),
+        &FolderReleaseDecisions::default(),
+        |_| {},
+    )
+    .expect_err("unreadable directory should fail the scan");
+
+    std::fs::set_permissions(&blocked, std::fs::Permissions::from_mode(0o700)).unwrap();
+
+    match err {
+        FolderScanError::Io { path, source } => {
+            assert_eq!(path, blocked);
+            assert_eq!(source.kind(), std::io::ErrorKind::PermissionDenied);
+        }
+        FolderScanError::NotADirectory { path } => {
+            panic!("expected IO error, got not-a-directory for {}", path.display())
+        }
+        FolderScanError::Other(message) => panic!("expected IO error, got {message}"),
+        FolderScanError::Cancelled => panic!("expected IO error, got cancellation"),
+        FolderScanError::Panicked(failed) => panic!("expected IO error, got {failed}"),
+    }
+}
+
+#[test]
+fn test_volume_folders_with_long_names_are_separate() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let root = temp_dir.path().join("Compilation Series");
+    std::fs::create_dir(&root).unwrap();
+
+    let volumes = ["Vol. 01 (R2 70921 - 1990)", "Vol. 02 (R2 70922 - 1991)"];
+
+    for vol_name in &volumes {
+        let vol_dir = root.join(vol_name);
+        std::fs::create_dir(&vol_dir).unwrap();
+        std::fs::write(vol_dir.join("track.flac"), fake_flac()).unwrap();
+    }
+
+    let candidates = scan_valid(root);
+
+    // Names do not affect folder grouping. Each audio-bearing child is its own
+    // approximation.
+    assert_eq!(candidates.len(), 2, "each volume should be a candidate");
+    for c in &candidates {
+        let name = c.path.file_name().and_then(|n| n.to_str()).unwrap();
+        assert!(volumes.contains(&name), "unexpected candidate name {:?}", name,);
+    }
+}
+
+/// A loose partial-download marker sitting directly at the scan root must
+/// not abort the whole scan: complete albums in sibling subfolders still
+/// import. The root is a collection, not a release, so a loose marker there
+/// belongs to no album and shouldn't suppress its neighbours. (A marker
+/// that lives inside a release is still caught by the release-level deep
+/// check.)
+#[test]
+fn loose_marker_at_scan_root_does_not_suppress_sibling_albums() {
+    let result = run_scenario(vec![
+        file("loose.flac.part", FileKind::PartialMarker("part")),
+        file("AlbumA/01.flac", FileKind::Flac),
+        file("AlbumB/01.flac", FileKind::Flac),
+    ]);
+    let mut paths = result.top_level_paths();
+    paths.sort();
+    assert_eq!(paths, vec!["AlbumA".to_string(), "AlbumB".to_string()]);
+}
+
+/// An audio-free parent emits each audio-bearing child, not the parent.
+#[test]
+fn sibling_audio_folders_emit_separate_candidates() {
+    let mut entries = flat_audio("Collection/First", 3, FileKind::Flac);
+    entries.extend(flat_audio("Collection/Second", 3, FileKind::Flac));
+    let result = run_scenario(entries);
+    let top = result.top_level_paths();
+    assert_eq!(top.len(), 2);
+    assert!(top.iter().any(|p| p == "Collection/First"));
+    assert!(top.iter().any(|p| p == "Collection/Second"));
+}
+
+/// A folder with only `.avi` yields no candidates and no diagnostic.
+#[test]
+fn non_audio_folder_emits_no_candidates() {
+    let result = run_scenario(vec![
+        file("Show/S01E01.avi", FileKind::Avi),
+        file("Show/S01E02.avi", FileKind::Avi),
+    ]);
+    assert!(result.top_level_paths().is_empty());
+}
+
+/// Loose junk at the scan root (.pdf, .zip, .dmg, .jpg) is
+/// ignored; a release subfolder still surfaces.
+#[test]
+fn loose_junk_at_scan_root_ignored() {
+    let mut entries = vec![
+        file("loose.pdf", FileKind::Pdf),
+        file("loose.zip", FileKind::Zip),
+        file("loose.dmg", FileKind::Dmg),
+    ];
+    entries.extend(flat_audio("Album", 3, FileKind::Flac));
+    let result = run_scenario(entries);
+    assert_eq!(result.top_level_paths(), vec!["Album"]);
+}
+
+/// Cyrillic path components scan cleanly and the name is
+/// preserved verbatim.
+#[test]
+fn cyrillic_path_component_scans_cleanly() {
+    let result = run_scenario(flat_audio("Studio \u{0410}lbums/Album", 3, FileKind::Flac));
+    assert_eq!(result.top_level_paths(), vec!["Studio \u{0410}lbums/Album"],);
+}
+
+// ── Layer 2: combination tests ────────────────────────────────────────
+
+/// Sibling folders with different audio layouts surface independently with
+/// their own formats.
+#[test]
+fn sibling_folders_keep_their_own_audio_layouts() {
+    let mut entries = flat_audio("Collection/Track Files", 3, FileKind::Flac);
+    entries.push(file("Collection/Cue Image/Audio.flac", FileKind::Flac));
+    entries.push(file(
+        "Collection/Cue Image/Audio.cue",
+        FileKind::CueFor { stem: "Audio.flac", n_tracks: 10 },
+    ));
+    let result = run_scenario(entries);
+    let top = result.top_level_paths();
+    assert_eq!(top.len(), 2);
+    let track_files = &result.candidate("Collection/Track Files").files;
+    assert_uniform_source_audio(track_files, bae_db::source_audio::SourceAudioLayout::File, "FLAC");
+    assert!(track_files.bound_sheets().is_empty());
+    let cue_image = &result.candidate("Collection/Cue Image").files;
+    assert_uniform_source_audio(cue_image, bae_db::source_audio::SourceAudioLayout::Cue, "FLAC");
+    assert_eq!(cue_image.bound_sheets().len(), 1);
+}
+
+/// A partial marker nested under a release subdirectory (e.g. in
+/// `booklet/`) still suppresses the whole release. This exercises the
+/// deep walker check.
+#[test]
+fn partial_marker_in_nested_subdir_stops_release_candidate() {
+    let mut entries = flat_audio("Album", 3, FileKind::Flac);
+    entries.push(file("Album/booklet/02.flac.part", FileKind::PartialMarker("part")));
+    let result = run_scenario(entries);
+    assert!(result.top_level_paths().is_empty());
+}
+
+/// A deeply nested release under a chain of single-child wrappers
+/// collapses to the leaf.
+#[test]
+fn deeply_nested_release_scan_root_two_levels_up() {
+    let result = run_scenario(flat_audio("A/B/C/Release", 3, FileKind::Flac));
+    let top = result.top_level_paths();
+    assert_eq!(top, vec!["A/B/C/Release"]);
+    assert_eq!(result.candidate(&top[0]).name, "Release");
 }

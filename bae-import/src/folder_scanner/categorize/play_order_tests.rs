@@ -1,3 +1,10 @@
+//! The order a folder's tracks play in: each file's disc and track tags
+//! first, the numbers its name starts with only where its tags state none.
+
+use super::*;
+use crate::folder_scanner::tests::*;
+use std::sync::Arc;
+
 // The order a folder's tracks play in, and the numbers its draft gives them:
 // each file's disc and track tags first, the numbers its name starts with only
 // where its tags state none.
@@ -41,10 +48,7 @@ fn tagged_flac(album: &Path, name: &str, title: &str, disc: Option<u32>, track: 
 }
 
 fn audio_order(files: &CategorizedFiles) -> Vec<String> {
-    crate::audio_layout::audio_units(files)
-        .iter()
-        .map(|unit| unit.file_id().to_string())
-        .collect()
+    crate::audio_layout::audio_units(files).iter().map(|unit| unit.file_id().to_string()).collect()
 }
 
 /// The draft a scan of `root`'s one release starts from: its files' tags, read
@@ -96,8 +100,9 @@ fn tagged_files_whose_names_carry_no_numbers_play_in_their_tags_order() {
 #[test]
 fn an_mp4_s_track_atom_and_an_id3_track_frame_order_their_files() {
     let (_tmp, album) = album_dir();
-    let m4a = std::fs::read(bae_audio::test_fixtures::audio_format_dir().join("placeholder-aac.m4a"))
-    .unwrap();
+    let m4a =
+        std::fs::read(bae_audio::test_fixtures::audio_format_dir().join("placeholder-aac.m4a"))
+            .unwrap();
     for (name, track) in [("Alpha.m4a", 2), ("Beta.m4a", 1)] {
         write_tagged_audio(
             &album.join(name),

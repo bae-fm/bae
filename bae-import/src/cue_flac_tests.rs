@@ -1,4 +1,5 @@
 use super::*;
+
 #[test]
 fn test_parse_time() {
     // "MM:SS:FF" -> total CUE frames (75 frames per second).
@@ -681,4 +682,48 @@ fn a_sheet_names_the_cd_ripper_that_wrote_it() {
     assert_eq!(sheet("REM COMMENT \"ExactAudioCopy v1.1\"").ripper, Some(CdRipper::ExactAudioCopy));
     assert_eq!(sheet("REM COMMENT \"Transferred from LP\"").ripper, None);
     assert_eq!(sheet("REM Placeholder MONO").ripper, None);
+}
+
+#[test]
+fn test_cue_parser_counts_audio_tracks_and_captures_file_reference() {
+    let tmp = tempfile::tempdir().unwrap();
+    let cue = tmp.path().join("album.cue");
+    let content = "FILE \"album.flac\" WAVE\n  TRACK 01 AUDIO\n    INDEX 01 00:00:00\n  TRACK 02 AUDIO\n    INDEX 01 05:00:00\n  TRACK 03 AUDIO\n    INDEX 01 10:00:00\n";
+    std::fs::write(&cue, content).unwrap();
+
+    let sheet = parse_cue_sheet(&cue).unwrap();
+    assert_eq!(sheet.audio_file_references(), ["album.flac"]);
+    assert_eq!(sheet.tracks.len(), 3);
+}
+
+#[test]
+fn test_cue_parser_tolerates_missing_performer_title() {
+    // Minimal CUE with no PERFORMER/TITLE — still a valid rip artifact,
+    // must parse so the scanner and importer see the same facts.
+    let tmp = tempfile::tempdir().unwrap();
+    let cue = tmp.path().join("album.cue");
+    let content = "FILE \"dummy.flac\" WAVE\n  TRACK 01 AUDIO\n    INDEX 01 00:00:00\n";
+    std::fs::write(&cue, content).unwrap();
+
+    let sheet = parse_cue_sheet(&cue).unwrap();
+    assert!(sheet.title.is_none());
+    assert!(sheet.performer.is_none());
+    assert_eq!(sheet.audio_file_references(), ["dummy.flac"]);
+    assert_eq!(sheet.tracks.len(), 1);
+}
+
+#[test]
+fn test_cue_parser_stops_at_data_track() {
+    let tmp = tempfile::tempdir().unwrap();
+    let cue = tmp.path().join("album.cue");
+    let content = "FILE \"album.flac\" WAVE\n  TRACK 01 AUDIO\n    INDEX 01 00:00:00\n  TRACK 02 MODE1/2048\n    INDEX 01 05:00:00\n";
+    std::fs::write(&cue, content).unwrap();
+
+    let sheet = parse_cue_sheet(&cue).unwrap();
+    assert_eq!(sheet.tracks.len(), 2);
+    assert_eq!(sheet.playable_track_count(), 1);
+    assert!(matches!(
+        sheet.tracks[1].mode,
+        CueTrackMode::Other(ref mode) if mode == "MODE1/2048"
+    ));
 }

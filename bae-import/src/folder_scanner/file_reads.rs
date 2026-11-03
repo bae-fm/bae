@@ -722,3 +722,7 @@ fn probe(
     unchanged(file, "changed while its audio facts were being read")?;
     Ok((stream, read))
 }
+
+#[cfg(test)]
+#[path = "file_reads_tests.rs"]
+mod tests;

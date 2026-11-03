@@ -1,3 +1,10 @@
+//! What a pass knows it has read of each file, and the reads it takes again
+//! only where a file changed.
+
+use super::*;
+use crate::folder_scanner::tests::*;
+use std::sync::Arc;
+
 /// One valid release at `/music/Album` holding the track `01.flac`, measured
 /// as `audio`.
 fn stored_release(audio: ScannedAudio) -> ScanItem {
@@ -155,4 +162,28 @@ fn a_pass_lets_the_oldest_picture_go_past_what_it_holds() {
     }
     assert_eq!(reader.reads_of(&audio_of(&second)[0].path), 1);
     assert_eq!(reader.reads_of(&audio_of(&first)[0].path), 2);
+}
+
+#[test]
+fn same_size_same_mtime_corrupt_replacement_is_not_served_from_probe_cache() {
+    let result = run_scenario(vec![file("Album/01.flac", FileKind::Flac)]);
+    let path = result.root.join("Album/01.flac");
+    let original_metadata = std::fs::metadata(&path).unwrap();
+    std::fs::write(&path, vec![0; original_metadata.len() as usize]).unwrap();
+    std::fs::OpenOptions::new()
+        .write(true)
+        .open(&path)
+        .unwrap()
+        .set_times(std::fs::FileTimes::new().set_modified(original_metadata.modified().unwrap()))
+        .unwrap();
+
+    let items = scan_items(result.root);
+    assert!(items.iter().any(|item| matches!(
+        item,
+        ScanItem::Invalid(invalid)
+            if invalid.reason() == InvalidReason::DamagedAudio { count: 1 }
+    )));
+    assert!(!items
+        .iter()
+        .any(|item| matches!(item, ScanItem::Valid(candidate) if candidate.name == "Album")));
 }

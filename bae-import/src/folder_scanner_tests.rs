@@ -1,11 +1,194 @@
+//! The fixtures the folder scanner's tests share: scans of a test tree, the
+//! readings a pass stores, and folders built from a list of files of each
+//! kind, with the invariants each kind's scan holds to.
+
+use super::*;
+use std::sync::Arc;
+
+/// The final projected scan items for `root`. The callback is an update stream:
+/// a later item with the same key can add a proven combine action or replace
+/// provisional candidates with an unresolved boundary.
+pub(super) fn scan_items(root: impl Into<PathBuf>) -> Vec<ScanItem> {
+    scan_projected_items_with_decisions(root.into(), FolderReleaseDecisions::default())
+}
+
+pub(super) fn scan_projected_items_with_decisions(
+    root: PathBuf,
+    decisions: FolderReleaseDecisions,
+) -> Vec<ScanItem> {
+    tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap()
+        .block_on(stored_scan(root, decisions))
+}
+
+/// What the scan tables hold after one scan of `root` under `decisions`: the
+/// readings stored first, as a library holds them before its scan, then each
+/// item the walk reports written in turn as a scan writes it, and the scan
+/// finished.
+pub(super) async fn stored_scan(root: PathBuf, decisions: FolderReleaseDecisions) -> Vec<ScanItem> {
+    let store = tempfile::TempDir::new().unwrap();
+    let db = bae_db::Database::new_test(
+        store.path().join("test.db").to_str().unwrap(),
+        Arc::new(coven::SystemClock),
+    )
+    .await
+    .unwrap();
+    let tables = crate::tables::ImportTables::new(db.clone());
+    tables.add_watched_import_folder(&root).await.unwrap();
+    for (folder, reading) in decisions.iter() {
+        tables
+            .store_folder_reading(
+                &FolderReleaseDecisionKey {
+                    watched_folder_path: root.clone(),
+                    relative_folder: folder.clone(),
+                },
+                reading,
+            )
+            .await
+            .unwrap();
+    }
+    let decisions = tables.load_folder_release_decisions(&root).await.unwrap();
+    let mut walked = Vec::new();
+    scan_for_candidates_with_decisions(
+        root.clone(),
+        &StoredCandidateEdits::none(),
+        &decisions,
+        |item| walked.push(item),
+    )
+    .unwrap();
+    let generation = tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
+    for item in walked {
+        match item {
+            ScanItem::Decided { key, decision, grouping } => tables
+                .record_scanned_folder_release_decision(&key, decision, &grouping)
+                .await
+                .unwrap(),
+            item => {
+                tables
+                    .save_folder_scan_item(&root, generation, &item)
+                    .await
+                    .unwrap()
+                    .expect("the scan generation is current");
+            }
+        }
+    }
+    tables
+        .finish_folder_scan(&root, generation, None)
+        .await
+        .unwrap()
+        .expect("the scan generation is current");
+    // The order the import tab shows them in: valid releases first in natural
+    // path order, then the folders that failed validation.
+    let mut valid = Vec::new();
+    let mut invalid = Vec::new();
+    for item in tables.load_folder_scan_items(&root).await.unwrap() {
+        match item {
+            ScanItem::Invalid(_) => invalid.push(item),
+            ScanItem::Discovered(_) | ScanItem::Valid(_) => valid.push(item),
+            ScanItem::Decided { .. } | ScanItem::Sidecar(_) => {
+                unreachable!("the scan tables load only releases: {item:?}")
+            }
+        }
+    }
+    let shown = |item: &ScanItem| item.relative_folder().expect("a release shows a path").text();
+    valid.sort_by(|left, right| natord::compare_ignore_case(&shown(left), &shown(right)));
+    invalid.sort_by(|left, right| natord::compare_ignore_case(&shown(left), &shown(right)));
+    valid.into_iter().chain(invalid).collect()
+}
+
+/// How each folder named reads, under a grouping key of its own.
+pub(super) fn readings(
+    readings: &[(&str, FolderReleaseDecision, FolderReleaseDecisionAuthor)],
+) -> FolderReleaseDecisions {
+    FolderReleaseDecisions::new(
+        readings
+            .iter()
+            .map(|(folder, decision, author)| {
+                (
+                    bae_db::RelativeFolder::test(folder),
+                    FolderReading {
+                        decision: *decision,
+                        author: *author,
+                        grouping: crate::CandidateKey::grouping(folder),
+                    },
+                )
+            })
+            .collect(),
+    )
+}
+
+/// Everything `root` holds, read as one release, with nothing stored about it.
+pub(super) fn scan_files(root: impl AsRef<Path>) -> CategorizedFiles {
+    collect_release_candidate_files_with_scope(
+        root.as_ref(),
+        ReleaseFileScope::Recursive,
+        &StoredCandidateEdits::none(),
+    )
+    .expect("scan")
+}
+
+/// A temp folder holding an empty `Album` directory. The `TempDir` comes back
+/// with it because dropping it deletes the folder.
+pub(super) fn album_dir() -> (tempfile::TempDir, PathBuf) {
+    let tmp = tempfile::tempdir().unwrap();
+    let album = tmp.path().join("Album");
+    std::fs::create_dir_all(&album).unwrap();
+    (tmp, album)
+}
+
+/// Only the valid `FolderCandidate`s for `root` — the shape most scanner
+/// tests assert against (counts, paths, categorized files).
+pub(super) fn scan_valid(root: impl Into<PathBuf>) -> Vec<FolderCandidate> {
+    scan_items(root)
+        .into_iter()
+        .filter_map(|item| match item {
+            ScanItem::Valid(c) => Some(c),
+            ScanItem::Invalid(_) => None,
+            ScanItem::Discovered(_) | ScanItem::Decided { .. } | ScanItem::Sidecar(_) => None,
+        })
+        .collect()
+}
+
+pub(super) fn scan_for_candidates_with_decisions_collect(
+    root: PathBuf,
+    decisions: FolderReleaseDecisions,
+) -> Vec<ScanItem> {
+    let mut items = Vec::new();
+    scan_for_candidates_with_decisions(root, &StoredCandidateEdits::none(), &decisions, |item| {
+        if !matches!(item, ScanItem::Discovered(_)) {
+            items.push(item);
+        }
+    })
+    .unwrap();
+    items
+}
+
+/// Valid FLAC fixture bytes.
+pub(super) fn fake_flac() -> Vec<u8> {
+    std::fs::read(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/flac/01 Test Track 1.flac"))
+        .expect("read FLAC fixture")
+}
+
+/// One audio-role entry, for the hand-built `CategorizedFiles` in the
+/// content-hash tests.
+pub(super) fn audio_entry(path: &str, relative_path: &str, size: u64) -> CandidateFile {
+    CandidateFile {
+        file: ScannedFile::new(PathBuf::from(path), relative_path.to_string(), size, 1)
+            .with_test_flac_audio(),
+        role: FileRole::Audio,
+    }
+}
+
 /// Minimal valid APE (Monkey's Audio) header — just the "MAC " magic.
-fn fake_ape() -> Vec<u8> {
+pub(super) fn fake_ape() -> Vec<u8> {
     std::fs::read(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/cue_ape/Test Album.ape"))
         .expect("read APE fixture")
 }
 
 /// Probeable MP3 fixture generated by the production encoder.
-fn fake_mp3() -> Vec<u8> {
+pub(super) fn fake_mp3() -> Vec<u8> {
     static BYTES: std::sync::OnceLock<Vec<u8>> = std::sync::OnceLock::new();
     BYTES
         .get_or_init(|| {
@@ -25,24 +208,24 @@ fn fake_mp3() -> Vec<u8> {
 /// brand. The scanner does not validate audio bytes, so these only need
 /// to be non-empty and have a plausible shape for anything downstream
 /// that might sniff them.
-fn fake_m4a() -> Vec<u8> {
+pub(super) fn fake_m4a() -> Vec<u8> {
     std::fs::read(concat!(env!("CARGO_MANIFEST_DIR"), "/test-fixtures/alac/cue-alac.m4a"))
         .expect("read ALAC fixture")
 }
 
 /// Minimal valid JPEG (only the SOI + APP0 marker — enough for magic check).
-fn fake_jpeg() -> Vec<u8> {
+pub(super) fn fake_jpeg() -> Vec<u8> {
     vec![0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10]
 }
 
 /// Minimal valid PNG (just the 8-byte signature).
-fn fake_png() -> Vec<u8> {
+pub(super) fn fake_png() -> Vec<u8> {
     vec![0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]
 }
 
 /// A plausible AVI file. Never validated by the scanner, but should not be
 /// mistaken for audio. RIFF header with an `AVI ` form type.
-fn fake_avi() -> Vec<u8> {
+pub(super) fn fake_avi() -> Vec<u8> {
     let mut v = b"RIFF".to_vec();
     v.extend_from_slice(&[0x00, 0x00, 0x00, 0x00]);
     v.extend_from_slice(b"AVI ");
@@ -50,14 +233,14 @@ fn fake_avi() -> Vec<u8> {
 }
 
 /// FLAC with valid magic but a malformed STREAMINFO block length.
-fn malformed_flac_streaminfo() -> Vec<u8> {
+pub(super) fn malformed_flac_streaminfo() -> Vec<u8> {
     let mut buf = vec![b'f', b'L', b'a', b'C', 0x00, 0x00, 0x00, 33];
     buf.resize(42, 0x00);
     buf
 }
 
 /// FLAC with wrong magic bytes — nothing can probe it as audio.
-fn broken_flac() -> Vec<u8> {
+pub(super) fn broken_flac() -> Vec<u8> {
     // Valid size, but the leading four bytes are not `fLaC`.
     let mut buf = b"BROK".to_vec();
     buf.resize(64, 0u8);
@@ -67,7 +250,11 @@ fn broken_flac() -> Vec<u8> {
 /// CUE sheet content referencing `audio_filename` with `n_tracks` entries.
 /// Each track is spaced one CUE frame apart, inside every audio fixture used by
 /// the scanner scenarios.
-fn make_cue_content_n_tracks(audio_filename: &str, title: &str, n_tracks: usize) -> String {
+pub(super) fn make_cue_content_n_tracks(
+    audio_filename: &str,
+    title: &str,
+    n_tracks: usize,
+) -> String {
     let mut s =
         format!("PERFORMER \"Test Artist\"\nTITLE \"{title}\"\nFILE \"{audio_filename}\" WAVE\n");
     for i in 1..=n_tracks {
@@ -83,7 +270,11 @@ fn make_cue_content_n_tracks(audio_filename: &str, title: &str, n_tracks: usize)
 /// Like `make_cue_content_n_tracks` but emits an unquoted FILE directive
 /// (`FILE name.wav WAVE`). Exercises the unquoted branch of the
 /// CUE parser's FILE directive.
-fn make_cue_content_unquoted(audio_filename: &str, title: &str, n_tracks: usize) -> String {
+pub(super) fn make_cue_content_unquoted(
+    audio_filename: &str,
+    title: &str,
+    n_tracks: usize,
+) -> String {
     let mut s =
         format!("PERFORMER \"Test Artist\"\nTITLE \"{title}\"\nFILE {audio_filename} WAVE\n");
     for i in 1..=n_tracks {
@@ -98,7 +289,7 @@ fn make_cue_content_unquoted(audio_filename: &str, title: &str, n_tracks: usize)
 
 /// CUE sheet without PERFORMER / TITLE. The unified CUE parser is lenient
 /// enough to accept it — both fields land as `None`.
-fn make_cue_content_no_header(audio_filename: &str, n_tracks: usize) -> String {
+pub(super) fn make_cue_content_no_header(audio_filename: &str, n_tracks: usize) -> String {
     let mut s = format!("FILE \"{audio_filename}\" WAVE\n");
     for i in 1..=n_tracks {
         let frame = i - 1;
@@ -112,9 +303,9 @@ fn make_cue_content_no_header(audio_filename: &str, n_tracks: usize) -> String {
 /// A file the scenario builder writes at `rel_path`. Folder creation is
 /// implicit via `create_dir_all` on the parent.
 #[derive(Debug)]
-struct FixtureEntry {
-    rel_path: String,
-    kind: FileKind,
+pub(super) struct FixtureEntry {
+    pub(super) rel_path: String,
+    pub(super) kind: FileKind,
 }
 
 /// Every file the fixture writes. One variant per distinct byte pattern
@@ -125,7 +316,7 @@ struct FixtureEntry {
 /// — if the walker emits `.flac`/`.mp3`/`.ape`/`.m4a`, the scanner must
 /// recognize those.
 #[derive(Debug, Clone, Copy)]
-enum FileKind {
+pub(super) enum FileKind {
     // Audio formats recognised by the scanner.
     Flac,
     Mp3,
@@ -203,7 +394,7 @@ enum FileKind {
 // --- Byte writers & validators keyed purely on FileKind ---
 
 /// Bytes to write for each kind. The walker uses this directly.
-fn bytes_for(kind: FileKind) -> Vec<u8> {
+pub(super) fn bytes_for(kind: FileKind) -> Vec<u8> {
     match kind {
         FileKind::Flac => fake_flac(),
         FileKind::Mp3 => fake_mp3(),
@@ -242,7 +433,7 @@ fn bytes_for(kind: FileKind) -> Vec<u8> {
 
 /// Fixture-builder invariant: validate the written bytes match the kind.
 /// Failure here is always a fixture-builder bug, never a scanner bug.
-fn assert_kind_invariant(path: &Path, kind: FileKind) {
+pub(super) fn assert_kind_invariant(path: &Path, kind: FileKind) {
     assert!(path.exists(), "fixture builder bug, not scanner bug: file missing at {:?}", path,);
     match kind {
         FileKind::M4a => {
@@ -360,7 +551,7 @@ fn assert_kind_invariant(path: &Path, kind: FileKind) {
 // --- Sugar: per-track audio ---
 
 /// One file the fixture writes at `rel_path`.
-fn file(rel_path: impl Into<String>, kind: FileKind) -> FixtureEntry {
+pub(super) fn file(rel_path: impl Into<String>, kind: FileKind) -> FixtureEntry {
     FixtureEntry { rel_path: rel_path.into(), kind }
 }
 
@@ -369,7 +560,7 @@ fn file(rel_path: impl Into<String>, kind: FileKind) -> FixtureEntry {
 /// (Flac / ZeroByteFlac → `flac`, Mp3 → `mp3`). Panics on
 /// non-audio kinds — the helper is named for the "per-track audio
 /// release" shape and refuses to be repurposed.
-fn flat_audio(dir: &str, n: usize, kind: FileKind) -> Vec<FixtureEntry> {
+pub(super) fn flat_audio(dir: &str, n: usize, kind: FileKind) -> Vec<FixtureEntry> {
     let ext = match kind {
         FileKind::Flac | FileKind::ZeroByteFlac => "flac",
         FileKind::Mp3 => "mp3",
@@ -386,7 +577,7 @@ fn flat_audio(dir: &str, n: usize, kind: FileKind) -> Vec<FixtureEntry> {
 
 /// Build a fixture on disk at `root` from a spec. Parent directories for any
 /// file path are created implicitly, so container folders need no entries.
-fn build_fixture(root: &Path, spec: &[FixtureEntry]) {
+pub(super) fn build_fixture(root: &Path, spec: &[FixtureEntry]) {
     for entry in spec {
         let path = root.join(&entry.rel_path);
         if let Some(parent) = path.parent() {
@@ -398,7 +589,7 @@ fn build_fixture(root: &Path, spec: &[FixtureEntry]) {
 
 // --- Invariant pass: confirm each File entry exists with expected bytes.
 
-fn assert_fixture_invariants(root: &Path, spec: &[FixtureEntry]) {
+pub(super) fn assert_fixture_invariants(root: &Path, spec: &[FixtureEntry]) {
     for entry in spec {
         assert_kind_invariant(&root.join(&entry.rel_path), entry.kind);
     }
@@ -416,12 +607,12 @@ fn assert_fixture_invariants(root: &Path, spec: &[FixtureEntry]) {
 /// Wraps the common "build tempdir, scan, filter top-level" shape. Keeps
 /// `_tmp` alive for the lifetime of the result so the tempdir isn't
 /// pulled out from under `candidates`.
-struct ScenarioResult {
+pub(super) struct ScenarioResult {
     /// Held for its `Drop`: keeps the tempdir alive so `candidates` paths
     /// remain valid for the result's lifetime. Never read directly.
-    _tmp: tempfile::TempDir,
-    candidates: Vec<FolderCandidate>,
-    root: PathBuf,
+    pub(super) _tmp: tempfile::TempDir,
+    pub(super) candidates: Vec<FolderCandidate>,
+    pub(super) root: PathBuf,
 }
 
 impl ScenarioResult {
@@ -430,7 +621,7 @@ impl ScenarioResult {
     /// candidate under `A/B` reads `A/B` on Windows too — `candidate.path` is a
     /// real, host-separated filesystem path (backslashes on Windows), and only
     /// this test view flattens it to the OS-neutral form the expectations use.
-    fn top_level_paths(&self) -> Vec<String> {
+    pub(super) fn top_level_paths(&self) -> Vec<String> {
         self.candidates
             .iter()
             .map(|c| {
@@ -446,7 +637,7 @@ impl ScenarioResult {
     }
 
     /// Find a candidate by exact rel path.
-    fn candidate(&self, rel_path: &str) -> &FolderCandidate {
+    pub(super) fn candidate(&self, rel_path: &str) -> &FolderCandidate {
         let target = Path::new(rel_path);
         self.candidates
             .iter()
@@ -460,7 +651,7 @@ impl ScenarioResult {
     }
 }
 
-fn run_scenario(entries: Vec<FixtureEntry>) -> ScenarioResult {
+pub(super) fn run_scenario(entries: Vec<FixtureEntry>) -> ScenarioResult {
     let tmp = tempfile::tempdir().unwrap();
     let root = tmp.path().to_path_buf();
     build_fixture(&root, &entries);
@@ -469,6 +660,107 @@ fn run_scenario(entries: Vec<FixtureEntry>) -> ScenarioResult {
     ScenarioResult { _tmp: tmp, candidates, root }
 }
 
-// ── Layer 1: single-case minimal tests ────────────────────────────────
+/// Creates a minimal CUE file content that references the given FLAC filename
+pub(super) fn make_cue_content(flac_filename: &str, title: &str) -> String {
+    format!(
+        r#"PERFORMER "Test Artist"
+TITLE "{title}"
+FILE "{flac_filename}" WAVE
+  TRACK 01 AUDIO
+    TITLE "Track One"
+    INDEX 01 00:00:00
+  TRACK 02 AUDIO
+    TITLE "Track Two"
+    INDEX 01 00:01:00
+"#
+    )
+}
 
-// --- Completeness signals (A-series) ---
+pub(super) fn assert_uniform_source_audio(
+    files: &CategorizedFiles,
+    layout: bae_db::source_audio::SourceAudioLayout,
+    codec: &str,
+) {
+    let summary = files.source_audio_summary().expect("candidate has source audio");
+    match summary {
+        bae_db::source_audio::SourceAudioSummary::Uniform { descriptor } => {
+            assert_eq!(descriptor.layout, layout);
+            assert_eq!(descriptor.format.codec, codec);
+        }
+        bae_db::source_audio::SourceAudioSummary::Mixed { differences } => {
+            panic!("expected uniform source audio, got {differences:?}")
+        }
+    }
+}
+
+// ── The sheet↔audio binding is a user decision ──────────────────────────
+//
+// The scan proposes; these pin both its automatic choices and what happens
+// when the user overrules them.
+
+/// Copy the CUE/FLAC disc-image fixture into `album` under `name`.
+pub(super) fn copy_cue_flac(album: &Path, name: &str) {
+    std::fs::copy(
+        bae_audio::test_fixtures::cue_flac_dir().join("Test Album.flac"),
+        album.join(name),
+    )
+    .unwrap();
+}
+
+/// An `Album` folder holding the disc-image FLAC as `audio_name`, beside a
+/// sheet named for the same stem that carves `tracks` tracks out of
+/// `cue_reference`.
+pub(super) fn cue_flac_album(
+    audio_name: &str,
+    cue_reference: &str,
+    tracks: usize,
+) -> (tempfile::TempDir, PathBuf) {
+    let (tmp, album) = album_dir();
+    copy_cue_flac(&album, audio_name);
+    let stem = Path::new(audio_name)
+        .file_stem()
+        .expect("the audio fixture is named")
+        .to_string_lossy()
+        .into_owned();
+    std::fs::write(
+        album.join(format!("{stem}.cue")),
+        make_cue_content_n_tracks(cue_reference, "Album Title", tracks),
+    )
+    .unwrap();
+    (tmp, album)
+}
+
+/// Bytes of a placeholder audio fixture that probes to a specific codec, used to
+/// build CUE pairs whose probed codec identity is what a test asserts against.
+pub(super) fn audio_format_fixture(name: &str) -> Vec<u8> {
+    std::fs::read(bae_audio::test_fixtures::audio_format_dir().join(name))
+        .unwrap_or_else(|e| panic!("read audio fixture {name}: {e}"))
+}
+
+/// No date for any of `folders`: a reader that gives these has the pass walk
+/// its folders in name order.
+pub(super) fn undated(folders: &[PathBuf]) -> Vec<FolderTimes> {
+    vec![FolderTimes::default(); folders.len()]
+}
+
+/// Scan `root` through a test `DirectoryReader`, with no stored edits, no
+/// stored decisions, and nothing to cancel.
+pub(super) fn scan_with_reader<R: DirectoryReader, F: FnMut(ScanItem)>(
+    reader: &R,
+    root: PathBuf,
+    on_item: F,
+) -> Result<(), FolderScanError> {
+    scan_for_candidates_with_reader_cancellable_and_directories(
+        reader,
+        root,
+        &ScanReadings {
+            stored: &StoredCandidateEdits::none(),
+            decisions: &FolderReleaseDecisions::default(),
+            new_grouping_key: &fresh_grouping_key,
+        },
+        &FileReads::new(Arc::new(crate::file_tag_snapshot::LoftyFileTagReader)),
+        &ScanCancellation::new(),
+        |_| {},
+        on_item,
+    )
+}

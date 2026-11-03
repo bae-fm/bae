@@ -829,3 +829,7 @@ pub(super) fn content_hash_of<'a>(files: impl Iterator<Item = &'a ScannedFile>) 
     }
     format!("{:x}", hasher.finalize())
 }
+
+#[cfg(test)]
+#[path = "files_tests.rs"]
+mod tests;

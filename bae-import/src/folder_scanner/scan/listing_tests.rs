@@ -1,3 +1,9 @@
+//! Reading one directory: names that are not UTF-8 listed under their
+//! escaped names, hidden entries and bae's own files left out, and files in
+//! natural name order.
+
+use crate::folder_scanner::tests::*;
+
 // ── Names that aren't UTF-8 ─────────────────────────────────────────────────
 //
 // Only Linux takes such a name: macOS and Windows store names as Unicode.
@@ -62,36 +68,6 @@ fn two_files_showing_one_name_skip_their_folder() {
         .all(|file| file.relative_path == r"Caf\xE9.flac" && file.role == ProposedRole::Audio));
 }
 
-/// Two of a folder's own files showing one name leave them unimportable, the
-/// way a release holding them would be.
-#[cfg(target_os = "linux")]
-#[test]
-fn two_files_showing_one_name_make_the_sidecar_invalid() {
-    let (_temp, root, album) = album_of_discs(&["Disc 1", "Disc 2"]);
-    std::fs::write(album.join(r"Caf\xE9.txt"), "one").unwrap();
-    std::fs::write(album.join(latin1_name(".txt")), "two").unwrap();
-
-    let found = sidecars(
-        &root,
-        readings(&[(
-            "Artist/Album",
-            FolderReleaseDecision::KeepAsSeparateReleases,
-            FolderReleaseDecisionAuthor::User,
-        )]),
-    );
-
-    let [sidecar] = found.as_slice() else {
-        panic!("one sidecar: {found:?}");
-    };
-    let SidecarFiles::Invalid(files) = &sidecar.files else {
-        panic!("two files showing one name leave the files unimportable: {:?}", sidecar.files);
-    };
-    assert_eq!(
-        InvalidReason::of(files),
-        InvalidReason::SameName { name: r"Caf\xE9.txt".to_string() }
-    );
-}
-
 /// A folder whose name isn't UTF-8 is read like any other: the scan lists the
 /// release in it, keyed by its path as it is, its name and its place below the
 /// watched folder shown escaped and stored as the name's bytes.
@@ -118,4 +94,74 @@ fn a_folder_whose_name_is_not_utf8_is_listed_under_its_escaped_name() {
     };
     assert_eq!(entry.file.path, album.join("01.flac"));
     assert_eq!(entry.file.relative_path, "01.flac");
+}
+
+#[test]
+fn test_collect_release_candidate_files_skips_hidden_and_bae() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let root = temp_dir.path();
+
+    // Create visible files
+    std::fs::write(root.join("track.flac"), fake_flac()).unwrap();
+    std::fs::write(root.join("cover.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
+    std::fs::write(root.join("back.bmp"), b"BMvalid bmp marker").unwrap();
+
+    // Create hidden file that should be ignored
+    std::fs::write(root.join(".DS_Store"), b"mac junk").unwrap();
+
+    // Create .bae directory -- entirely ignored by the scanner
+    let bae_dir = root.join(".bae");
+    std::fs::create_dir(&bae_dir).unwrap();
+    std::fs::write(bae_dir.join("cover-mb.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
+    std::fs::write(bae_dir.join("cover-discogs.jpeg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
+
+    let files = scan_files(root);
+
+    let audio_paths: Vec<_> = files.audio().map(|f| f.relative_path.as_str()).collect();
+    assert_eq!(audio_paths, vec!["track.flac"]);
+
+    // Only release artwork, not .bae/ files
+    let artwork_paths: Vec<_> = files.artwork().map(|f| f.relative_path.as_str()).collect();
+    assert_eq!(artwork_paths, vec!["back.bmp", "cover.jpg"]);
+
+    assert_eq!(files.documents().count(), 0);
+}
+
+/// The `.bae/` subdirectory is entirely hidden from the scanner.
+#[test]
+fn bae_sidecar_hidden_from_scanner() {
+    let mut entries = flat_audio("Album", 3, FileKind::Flac);
+    entries.push(file("Album/.bae/cover-mb.jpg", FileKind::Jpeg));
+    let result = run_scenario(entries);
+    assert_eq!(result.top_level_paths(), vec!["Album"]);
+    let c = result.candidate("Album");
+    // Nothing under .bae/ should leak into artwork or documents.
+    assert!(c.files.artwork().all(|a| !a.relative_path.contains(".bae/")));
+    assert!(c.files.documents().all(|d| !d.relative_path.contains(".bae/")));
+}
+
+/// The folder lists its files the way a person reads them: natural order
+/// (`2` before `10`) and case-insensitive, so `cover.jpg` sits among the
+/// names starting with `c`, not after every capitalized one.
+#[test]
+fn files_list_in_case_insensitive_natural_order() {
+    let (_tmp, album) = album_dir();
+    for name in ["Track 10.flac", "cover.jpg", "Track 2.flac", "Back.jpg", "booklet.pdf"] {
+        let bytes = if name.ends_with(".flac") {
+            fake_flac()
+        } else if name.ends_with(".jpg") {
+            fake_jpeg()
+        } else {
+            b"%PDF-1.4".to_vec()
+        };
+        std::fs::write(album.join(name), bytes).unwrap();
+    }
+
+    let files = scan_files(&album);
+    let names: Vec<&str> =
+        files.files.iter().map(|entry| entry.file.relative_path.as_str()).collect();
+    assert_eq!(
+        names,
+        vec!["Back.jpg", "booklet.pdf", "cover.jpg", "Track 2.flac", "Track 10.flac",]
+    );
 }

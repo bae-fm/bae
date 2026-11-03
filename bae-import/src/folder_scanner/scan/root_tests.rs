@@ -1,13 +1,15 @@
+//! A pass over a whole watched root: the folders directly under it read
+//! several at once, newest first, each saying what it says on its own; a
+//! folder that fails or a cancel stopping them all.
+
+use super::*;
+use crate::folder_scanner::tests::*;
+use std::sync::Arc;
+
 /// Everything a pass over `root` said, in the order it said it.
 struct SaidByPass {
     directories: Vec<PathBuf>,
     items: Vec<ScanItem>,
-}
-
-/// No date for any of `folders`: a reader that gives these has the pass walk
-/// its folders in name order.
-fn undated(folders: &[PathBuf]) -> Vec<FolderTimes> {
-    vec![FolderTimes::default(); folders.len()]
 }
 
 /// One grouping key for every grouping a pass proposes, so two passes over
