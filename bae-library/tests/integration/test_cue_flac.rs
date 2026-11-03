@@ -242,7 +242,6 @@ async fn test_cue_flac_decoded_duration_matches_cue_timing() {
     bae_util::test_logs::install();
     let temp_root = TempDir::new().expect("temp root");
     let (library, release_id) = import_cue_flac_fixture(temp_root.path()).await;
-    let database = library.database().clone();
     let tracks = library.get_tracks_for_release(&release_id).await.expect("get tracks");
     assert_eq!(tracks.len(), 3, "Should have exactly 3 tracks");
 
@@ -252,24 +251,12 @@ async fn test_cue_flac_decoded_duration_matches_cue_timing() {
     let track1 = &tracks[0];
     let expected_duration_ms: i64 = 8000; // Track 1 is 0:00 to 0:08
 
-    library.settle_playback_queue(true).await.expect("settle the playback queue");
-    let playback_handle = bae_playback::PlaybackService::start(
-        database.clone(),
-        std::sync::Arc::new(coven::UuidIds),
-        bae_playback::tables::PlaybackQueueTables::new(database.clone()),
-        bae_playback::tables::PlaybackNowRow::new(database.clone()),
-        bae_playback::tables::PlaybackTimelineRow::new(database.clone()),
-        library.subscribe_track_deletions(),
-        bae_diagnostics::Diagnostics::noop(),
-        tokio::runtime::Handle::current(),
-        100,
-        true,
-        std::sync::Arc::new(bae_playback::WallPlaybackClock::new(std::sync::Arc::new(
-            coven::SystemClock,
-        ))),
-        bae_playback::AudioFocus::Unshared,
-    );
-    playback_handle.set_volume(0.0);
+    let (playback_handle, _capture_stream_rx) =
+        bae_library::test_libraries::start_capture_playback(
+            &library,
+            bae_playback::test_capture::TestAudioDevice::Capture,
+        )
+        .await;
     let mut progress_rx = playback_handle.subscribe_progress();
     playback_handle.play(track1.id.clone());
 
