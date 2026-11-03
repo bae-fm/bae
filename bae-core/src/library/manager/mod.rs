@@ -49,8 +49,6 @@ mod artist;
 mod collections;
 mod config;
 mod coven_files;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-mod discogs;
 #[cfg(all(
     any(test, feature = "test-utils", debug_assertions),
     not(any(target_os = "ios", target_os = "android"))

@@ -62,7 +62,7 @@ async fn discogs_is_not_asked_with_a_rejected_key() {
 async fn discogs_is_not_asked_with_a_key_the_preferences_do_not_claim() {
     let (sessions, database, _temp_dir) = test_sessions().await;
 
-    database.set_host_secret(crate::keys::DISCOGS_API_KEY, "orphan-key").unwrap();
+    database.set_host_secret(DISCOGS_API_KEY, "orphan-key").unwrap();
 
     assert_eq!(stored_validation(&database).await, None);
     assert!(!asks_discogs(&sessions).await, "a keyring key with no preference is not served");
@@ -75,15 +75,12 @@ async fn storing_and_clearing_the_key_move_both_stores() {
 
     sessions.store_discogs_key("the-key", DiscogsValidation::Valid).await.unwrap();
     assert_eq!(stored_validation(&database).await, Some(DiscogsValidation::Valid));
-    assert_eq!(
-        database.host_secret(crate::keys::DISCOGS_API_KEY).unwrap().as_deref(),
-        Some("the-key"),
-    );
+    assert_eq!(database.host_secret(DISCOGS_API_KEY).unwrap().as_deref(), Some("the-key"),);
     assert!(asks_discogs(&sessions).await);
 
     sessions.clear_discogs_key().await.unwrap();
     assert_eq!(stored_validation(&database).await, None);
-    assert_eq!(database.host_secret(crate::keys::DISCOGS_API_KEY).unwrap(), None);
+    assert_eq!(database.host_secret(DISCOGS_API_KEY).unwrap(), None);
     assert!(!asks_discogs(&sessions).await);
 }
 

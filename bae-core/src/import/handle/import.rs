@@ -474,6 +474,11 @@ impl ImportServiceHandle {
     }
 
     /// Remove the stored Discogs key and its validation.
+    /// The library's stored Discogs key, as the settings screen shows it.
+    pub async fn discogs_token(&self) -> Result<Option<String>, crate::import::ImportError> {
+        Ok(self.catalogs.stored_discogs_key().await?)
+    }
+
     pub async fn remove_discogs_token(&self) -> Result<(), crate::import::ImportError> {
         Ok(self.catalogs.clear_discogs_key().await?)
     }

@@ -17,6 +17,10 @@ use std::future::Future;
 use std::sync::Arc;
 use tracing::{debug, warn};
 
+/// The name the stored Discogs key is kept under through coven's host
+/// secrets.
+const DISCOGS_API_KEY: &str = "discogs_api_key";
+
 /// Why a session that asks Discogs could not be had: the library's
 /// preferences, which say whether a key is stored, or the keyring holding it,
 /// could not be read.
@@ -114,7 +118,7 @@ impl CatalogSessions {
             });
             *cached = self
                 .database
-                .host_secret(crate::keys::DISCOGS_API_KEY)?
+                .host_secret(DISCOGS_API_KEY)?
                 .map(|key| Arc::new(providers.discogs_client(key, Some(observer))));
         }
         Ok(CatalogSession::new(cached.clone(), providers))
@@ -168,6 +172,16 @@ impl CatalogSessions {
         self.providers.discogs_client(key.to_string(), None).validate_token(priority).await
     }
 
+    /// The library's stored Discogs key, read from the keychain on a blocking
+    /// thread: a keychain call can wait on the system, and on a prompt.
+    pub async fn stored_discogs_key(&self) -> Result<Option<String>, DiscogsKeyError> {
+        let database = self.database.clone();
+        let key = blocking("read the Discogs key", move || database.host_secret(DISCOGS_API_KEY))
+            .await
+            .map_err(|failed| self.diagnostics.bug(failed))??;
+        Ok(key)
+    }
+
     /// Store `token` as the library's Discogs key, with what Discogs said of
     /// it. The keyring bytes are written before the key's state is recorded:
     /// a failure between the writes leaves Discogs disabled until the caller
@@ -182,7 +196,7 @@ impl CatalogSessions {
             let database = self.database.clone();
             let token = token.to_string();
             blocking("store the Discogs key", move || {
-                database.set_host_secret(crate::keys::DISCOGS_API_KEY, &token)
+                database.set_host_secret(DISCOGS_API_KEY, &token)
             })
             .await
             .map_err(|failed| self.diagnostics.bug(failed))??;
@@ -207,11 +221,9 @@ impl CatalogSessions {
             })
             .await?;
             let database = self.database.clone();
-            blocking("clear the Discogs key", move || {
-                database.delete_host_secret(crate::keys::DISCOGS_API_KEY)
-            })
-            .await
-            .map_err(|failed| self.diagnostics.bug(failed))??;
+            blocking("clear the Discogs key", move || database.delete_host_secret(DISCOGS_API_KEY))
+                .await
+                .map_err(|failed| self.diagnostics.bug(failed))??;
             Ok(())
         })
         .await
