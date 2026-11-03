@@ -1,3 +1,16 @@
+//! What the files and CUE sheets of a folder say of its album together: the
+//! title, artists and years they agree on, else the first one's.
+
+use super::*;
+use crate::file_tag_mapper::read_file_tags;
+use crate::file_tag_mapper::tests::cue_track;
+use crate::file_tag_mapper::tests::*;
+use bae_catalogs::release_values::{ReleaseValues, TrackCredits};
+use lofty::prelude::*;
+use std::fs;
+use std::path::{Path, PathBuf};
+use tempfile::TempDir;
+
 /// A FLAC named `name` in `dir` carrying exactly these Vorbis comments.
 fn flac_commented(dir: &Path, name: &str, comments: &[(&str, &str)]) -> PathBuf {
     use lofty::config::WriteOptions;

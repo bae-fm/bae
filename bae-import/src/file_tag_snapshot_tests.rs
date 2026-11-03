@@ -1,4 +1,8 @@
 use super::*;
+use lofty::tag::{Tag, TagType};
+use std::fs;
+use std::path::PathBuf;
+use tempfile::TempDir;
 
 const PLACEHOLDER_MP3: &[u8] = bae_audio::test_fixtures::PLACEHOLDER_MP3;
 
@@ -468,4 +472,189 @@ fn the_compilation_flag_is_read() {
     };
     assert!(flagged("1"));
     assert!(!flagged("0"));
+}
+
+/// A few JPEG SOI/EOI bytes — enough to round-trip as opaque cover
+/// data; the embedded-cover read never decodes the image.
+const JPEG_BYTES: &[u8] = &[0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0xFF, 0xD9];
+
+/// Copy the FLAC fixture into `dir/{name}` and embed a picture with the
+/// given type and MIME. Returns the destination path.
+fn copy_with_picture(
+    dir: &Path,
+    name: &str,
+    pic_type: lofty::picture::PictureType,
+    mime: lofty::picture::MimeType,
+    data: &[u8],
+) -> PathBuf {
+    use lofty::config::WriteOptions;
+    use lofty::picture::Picture;
+
+    let src = crate::test_fixtures::flac_dir().join("01 Test Track 1.flac");
+    let dest = dir.join(name);
+    fs::copy(&src, &dest).unwrap();
+    let mut tagged = lofty::read_from_path(&dest).unwrap();
+    let mut tag = Tag::new(TagType::VorbisComments);
+    tag.set_title("Track".to_string());
+    tag.push_picture(Picture::unchecked(data.to_vec()).pic_type(pic_type).mime_type(mime).build());
+    tagged.insert_tag(tag);
+    tagged.save_to_path(&dest, WriteOptions::default()).unwrap();
+    dest
+}
+
+/// The cover a file's tag read carries.
+fn embedded_cover(
+    path: &std::path::Path,
+) -> Result<Option<(Vec<u8>, ContentType)>, crate::ImportError> {
+    use crate::file_tag_snapshot::FileTagReader;
+    crate::file_tag_snapshot::LoftyFileTagReader.read(path).map(|read| read.embedded_cover)
+}
+
+/// An embedded front cover is read and mapped to its `ContentType`.
+#[test]
+fn tag_read_cover_returns_front_cover() {
+    let temp = TempDir::new().unwrap();
+    let f = copy_with_picture(
+        temp.path(),
+        "01.flac",
+        lofty::picture::PictureType::CoverFront,
+        lofty::picture::MimeType::Jpeg,
+        JPEG_BYTES,
+    );
+    let (bytes, content_type) = embedded_cover(&f).unwrap().expect("cover present");
+    assert_eq!(bytes, JPEG_BYTES);
+    assert_eq!(content_type, ContentType::Jpeg);
+}
+
+/// No embedded picture → None (the caller falls through to no cover).
+#[test]
+fn tag_read_cover_none_when_no_picture() {
+    let temp = TempDir::new().unwrap();
+    let src = crate::test_fixtures::flac_dir().join("01 Test Track 1.flac");
+    let dest = temp.path().join("01.flac");
+    fs::copy(&src, &dest).unwrap();
+    assert!(embedded_cover(&dest).unwrap().is_none());
+}
+
+/// When a file carries both a back and a front cover, the front cover
+/// wins regardless of which was pushed first.
+#[test]
+fn tag_read_cover_prefers_front_over_other() {
+    use lofty::config::WriteOptions;
+    use lofty::picture::{MimeType, Picture, PictureType};
+
+    let temp = TempDir::new().unwrap();
+    let src = crate::test_fixtures::flac_dir().join("01 Test Track 1.flac");
+    let dest = temp.path().join("01.flac");
+    fs::copy(&src, &dest).unwrap();
+    let mut tagged = lofty::read_from_path(&dest).unwrap();
+    let mut tag = Tag::new(TagType::VorbisComments);
+    tag.set_title("Track".to_string());
+    // Back cover pushed first, front cover second.
+    tag.push_picture(
+        Picture::unchecked(vec![0x89, b'P', b'N', b'G'])
+            .pic_type(PictureType::CoverBack)
+            .mime_type(MimeType::Png)
+            .build(),
+    );
+    tag.push_picture(
+        Picture::unchecked(JPEG_BYTES.to_vec())
+            .pic_type(PictureType::CoverFront)
+            .mime_type(MimeType::Jpeg)
+            .build(),
+    );
+    tagged.insert_tag(tag);
+    tagged.save_to_path(&dest, WriteOptions::default()).unwrap();
+
+    let (bytes, content_type) = embedded_cover(&dest).unwrap().expect("cover present");
+    assert_eq!(bytes, JPEG_BYTES, "front cover wins over back");
+    assert_eq!(content_type, ContentType::Jpeg);
+}
+
+/// With no front cover, the first embedded picture of any type is used —
+/// a back-cover-only file still yields a cover to seed.
+#[test]
+fn tag_read_cover_falls_back_to_non_front_picture() {
+    let temp = TempDir::new().unwrap();
+    let f = copy_with_picture(
+        temp.path(),
+        "01.flac",
+        lofty::picture::PictureType::CoverBack,
+        lofty::picture::MimeType::Jpeg,
+        JPEG_BYTES,
+    );
+    let (bytes, content_type) = embedded_cover(&f).unwrap().expect("cover present");
+    assert_eq!(bytes, JPEG_BYTES, "back cover used when no front cover");
+    assert_eq!(content_type, ContentType::Jpeg);
+}
+
+/// A picture in an unsupported MIME (lofty `Tiff`) maps to None rather
+/// than being stored as a cover the library can't render.
+#[test]
+fn tag_read_cover_none_for_unsupported_mime() {
+    let temp = TempDir::new().unwrap();
+    let f = copy_with_picture(
+        temp.path(),
+        "01.flac",
+        lofty::picture::PictureType::CoverFront,
+        lofty::picture::MimeType::Tiff,
+        &[0x49, 0x49, 0x2A, 0x00],
+    );
+    assert!(embedded_cover(&f).unwrap().is_none());
+}
+
+#[test]
+fn unsupported_front_picture_does_not_hide_supported_embedded_cover() {
+    use lofty::config::WriteOptions;
+    use lofty::picture::{MimeType, Picture, PictureType};
+
+    for (mime, bytes, expected_type) in [
+        (MimeType::Gif, bae_util::test_cover_art::SOLID_GIF, ContentType::Gif),
+        (
+            MimeType::Unknown("image/webp".to_string()),
+            bae_util::test_cover_art::SOLID_WEBP,
+            ContentType::Webp,
+        ),
+    ] {
+        let temp = TempDir::new().unwrap();
+        let dest = copy_with_picture(
+            temp.path(),
+            "01.flac",
+            PictureType::CoverFront,
+            MimeType::Bmp,
+            b"BM",
+        );
+        let mut tagged = lofty::read_from_path(&dest).unwrap();
+        let tag = tagged.primary_tag_mut().unwrap();
+        tag.push_picture(
+            Picture::unchecked(bytes.to_vec())
+                .pic_type(PictureType::CoverBack)
+                .mime_type(mime)
+                .build(),
+        );
+        tagged.save_to_path(&dest, WriteOptions::default()).unwrap();
+
+        assert_eq!(embedded_cover(&dest).unwrap(), Some((bytes.to_vec(), expected_type)));
+    }
+}
+
+#[test]
+fn image_content_type_maps_known_and_rejects_non_images() {
+    use lofty::picture::MimeType;
+    assert_eq!(image_content_type(&MimeType::Jpeg), Some(ContentType::Jpeg));
+    assert_eq!(image_content_type(&MimeType::Png), Some(ContentType::Png));
+    assert_eq!(image_content_type(&MimeType::Gif), Some(ContentType::Gif));
+    assert_eq!(image_content_type(&MimeType::Bmp), None);
+    // WebP reaches us only as Unknown — lofty has no WebP variant.
+    assert_eq!(
+        image_content_type(&MimeType::Unknown("image/webp".to_string())),
+        Some(ContentType::Webp)
+    );
+    // A non-image Unknown mime is rejected.
+    assert_eq!(
+        image_content_type(&MimeType::Unknown("application/octet-stream".to_string())),
+        None
+    );
+    // A non-image known variant is rejected too.
+    assert_eq!(image_content_type(&MimeType::Tiff), None);
 }
