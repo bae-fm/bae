@@ -1,5 +1,6 @@
 use super::*;
-use crate::{remove_unopenable_library, unsent_before_removal, UnfinishedRemoval};
+use crate::{remove_unopenable_library, unsent_before_removal, Keychain, UnfinishedRemoval};
+use bae_app_dir::AppDir;
 use coven::Storage as _;
 
 #[tokio::test]

@@ -3371,7 +3371,7 @@ library is registered there by id.
 
 | Call | What it does |
 |---|---|
-| `create_library` | creates a new library's store and gives this device its identity; `create_library_default` generates the name |
+| `create_library` | creates a new library's store and gives this device its identity; given no name, the bridge generates one |
 | `restore_from_code`, `restore_from_saved_code` | opens a library on a new device from a restore code, typed or scanned, or saved in iCloud Keychain or the phone's Block Store (§5.6) |
 | `saved_restore_codes` | lists the restore codes coven saved in iCloud Keychain, or in this phone's Block Store on Android, for libraries not already on this device, each with its library's saved name, its location and the provider sign-in restoring it needs; an entry coven can't restore from is listed with its library id and why, for deleting only; a device with no Block Store lists none |
 | `forget_saved_restore_code` | deletes a saved restore code, readable or not, and the S3 key beside it from iCloud Keychain on all the person's Apple devices, or from this phone's Block Store; no library, storage or device's copy changes, and an absent code succeeds (§5.6) |

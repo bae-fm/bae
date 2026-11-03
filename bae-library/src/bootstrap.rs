@@ -4,11 +4,8 @@
 
 mod auth;
 
-use bae_app_dir::AppDir;
 use bae_db::configure_store;
 use tokio::sync::watch;
-
-use crate::Keychain;
 
 #[derive(Debug, thiserror::Error)]
 pub enum RestoreFromCodeError {
@@ -67,16 +64,6 @@ pub async fn create_library(
     name: crate::library_name::LibraryName,
 ) -> Result<coven::CovenHandle, CreateLibraryError> {
     Ok(configure_store(builder).create_store(name.as_str()).await?)
-}
-
-pub async fn create_library_default(
-    app_dir: &AppDir,
-) -> Result<coven::CovenHandle, CreateLibraryError> {
-    create_library(
-        Keychain::System.store_builder(app_dir),
-        crate::library_name::generate_library_name(),
-    )
-    .await
 }
 
 /// Restore with a separately entered S3 key and coven's own OAuth presentation.
