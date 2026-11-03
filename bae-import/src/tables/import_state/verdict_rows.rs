@@ -14,7 +14,7 @@ use super::ledger_rows::{
     delete_ledger, read_ledger, step_columns, store_ledger, MatchPositions, StoredLedger,
     LEDGER_COLUMNS,
 };
-use super::match_rows::{ordinal_column, store_match, Listing, MatchOwner, StoredMatches, Written};
+use super::match_rows::{store_match, Listing, MatchOwner, StoredMatches, Written};
 use super::*;
 use bae_catalogs::search::MetadataResult;
 use bae_catalogs::InternalFailure;
@@ -231,21 +231,9 @@ pub(super) fn store_outcome(
     // media's kind), so the previous verdict's go first. The import list
     // reads none of them.
     delete_ledger(sql, owner)?;
-    for table in [
-        "import_candidate_match_cover_copy",
-        "import_candidate_match_label",
-        "import_candidate_match_barcode",
-        "import_candidate_match_medium",
-        "import_candidate_match_link",
-        "import_candidate_match_album_link",
-    ] {
-        sql.execute(&format!("DELETE FROM {table} WHERE {column} = ?"), params![owner])?;
-    }
+    super::match_rows::delete_verdict_match_entries(sql, owner)?;
     let written = store_matches(sql, owner, outcome)?;
-    sql.execute(
-        &format!("DELETE FROM import_candidate_match WHERE {column} = ? AND position >= ?"),
-        params![owner, ordinal_column(written.len())?],
-    )?;
+    super::match_rows::delete_verdict_matches_from(sql, owner, written.len())?;
     if let Some(ledger) = outcome.ledger() {
         let positions: MatchPositions<'_> = written
             .iter()

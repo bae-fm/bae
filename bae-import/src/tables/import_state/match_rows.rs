@@ -81,6 +81,54 @@ pub(super) enum Written<'a> {
 /// it. The rows under the match that stood there are already gone. Only a
 /// search writes a returned release, and only a verdict-shaped owner a listed
 /// or unlisted one.
+/// Delete the rows below every match the verdict `owner` holds, which name
+/// each match by its owner and position, so the matches a write stores next
+/// carry only their own.
+pub(super) fn delete_verdict_match_entries(
+    sql: &CovenWrite<'_>,
+    owner: Owner<'_>,
+) -> Result<(), DbError> {
+    let column = owner.column();
+    for table in [
+        "import_candidate_match_cover_copy",
+        "import_candidate_match_label",
+        "import_candidate_match_barcode",
+        "import_candidate_match_medium",
+        "import_candidate_match_link",
+        "import_candidate_match_album_link",
+    ] {
+        sql.execute(&format!("DELETE FROM {table} WHERE {column} = ?"), params![owner])?;
+    }
+    Ok(())
+}
+
+/// Delete the verdict `owner`'s matches from `position` on: those an earlier
+/// verdict held past the ones a write just stored.
+pub(super) fn delete_verdict_matches_from(
+    sql: &CovenWrite<'_>,
+    owner: Owner<'_>,
+    position: usize,
+) -> Result<(), DbError> {
+    let column = owner.column();
+    sql.execute(
+        &format!("DELETE FROM import_candidate_match WHERE {column} = ? AND position >= ?"),
+        params![owner, ordinal_column(position)?],
+    )?;
+    Ok(())
+}
+
+/// Delete every release a search part asking `catalog` returned.
+pub(super) fn delete_search_matches_of(
+    sql: &CovenWrite<'_>,
+    catalog: LookupCatalog,
+) -> Result<(), DbError> {
+    sql.execute(
+        "DELETE FROM import_candidate_match WHERE search_run IS NOT NULL AND source = ?",
+        [catalog.as_str()],
+    )?;
+    Ok(())
+}
+
 pub(super) fn store_match(
     sql: &CovenWrite<'_>,
     owner: MatchOwner<'_>,

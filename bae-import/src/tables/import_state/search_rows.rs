@@ -466,10 +466,7 @@ impl ImportTables {
             .call(move |sql| {
                 // A part holds releases only while it stands answered, so they go
                 // first.
-                sql.execute(
-                "DELETE FROM import_candidate_match WHERE search_run IS NOT NULL AND source = ?",
-                [catalog.as_str()],
-            )?;
+                super::match_rows::delete_search_matches_of(sql, catalog)?;
                 sql.execute(
                     "UPDATE import_candidate_search_source \
                  SET state = 'off', failure = NULL, failure_status = NULL, error_detail = NULL \
