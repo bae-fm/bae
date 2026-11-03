@@ -236,4 +236,5 @@ impl AppServices {
 }
 
 #[cfg(test)]
+#[path = "pane_tests.rs"]
 mod tests;
