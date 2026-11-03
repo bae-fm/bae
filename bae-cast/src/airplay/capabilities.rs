@@ -3,10 +3,10 @@
 //!
 //! A receiver advertises `_airplay._tcp` (AirPlay 2 and newer AirPlay 1 gear),
 //! `_raop._tcp` (the legacy Remote Audio Output Protocol), or both. The TXT
-//! records carry a `features`/`ft` bitmask and a set of RAOP audio parameters;
-//! [`AirPlayCapabilities`] parses them into the two things the sender needs to
-//! decide before it connects: which [`Dialect`] to speak, and — for that dialect
-//! — how to pair and encrypt.
+//! records carry a `features`/`ft` bitmask and, for RAOP, the encryption types
+//! the receiver offers; [`AirPlayCapabilities`] parses them into the two things
+//! the sender needs to decide before it connects: which [`Dialect`] to speak,
+//! and — for that dialect — how to pair and encrypt.
 //!
 //! The dialect is chosen from the announced bits, never probed on the wire: a
 //! receiver that advertises the AirPlay 2 unified-media-control or
@@ -15,6 +15,8 @@
 //! implementations use (established by pyatv's `get_protocol_version`, MIT).
 
 use std::collections::HashMap;
+
+use tracing::debug;
 
 use crate::renderer::discovery::RendererServiceType;
 
@@ -30,8 +32,8 @@ mod feature_bits {
     pub(super) const SUPPORTS_COREUTILS_PAIRING_AND_ENCRYPTION: u64 = 1 << 48;
 }
 
-/// The status flags carried in the `flags`/`sf` value, and the RAOP `et`/`cn`
-/// enumerations. These gate whether a receiver can be driven without a user PIN.
+/// The status flags carried in the `flags`/`sf` value. These gate whether a
+/// receiver can be driven without a user PIN.
 mod status_flags {
     /// A user PIN is required before pairing (`0x8`).
     pub(super) const PIN_REQUIRED: u64 = 0x8;
@@ -42,11 +44,12 @@ mod status_flags {
 }
 
 /// Which AirPlay dialect a receiver speaks, chosen from its announced features.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Dialect {
     /// Legacy RAOP (`_raop._tcp`): RTSP + ALAC/PCM over RTP, RSA-AES or
-    /// unencrypted per the receiver's `et`.
-    Raop,
+    /// unencrypted. `encryption` is what the receiver's `et` offers that the
+    /// sender implements, in the receiver's order.
+    Raop { encryption: Vec<RaopEncryption> },
     /// AirPlay 2 (`_airplay._tcp` with an AirPlay 2 feature bit): HomeKit
     /// transient pairing, ChaCha20-Poly1305 packet encryption.
     AirPlay2,
@@ -64,38 +67,8 @@ pub enum RaopEncryption {
     RsaAes,
 }
 
-/// A RAOP audio codec from the `cn` (codec) TXT value.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum RaopCodec {
-    /// `cn` includes `0`: raw PCM.
-    Pcm,
-    /// `cn` includes `1`: Apple Lossless (ALAC).
-    Alac,
-    /// `cn` includes `2`: AAC.
-    Aac,
-}
-
-/// The RAOP audio parameters a receiver announces, parsed from the `_raop._tcp`
-/// TXT record. Sample rate/size/channels are the negotiated stream format; the
-/// codec and encryption sets are what the receiver will accept.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct RaopParams {
-    /// Codecs the receiver decodes, from `cn`. Empty means the receiver named
-    /// none (treated as PCM-only by callers).
-    pub codecs: Vec<RaopCodec>,
-    /// Encryption types the receiver offers, from `et`.
-    pub encryption: Vec<RaopEncryption>,
-    /// Sample rate in Hz, from `sr` (default 44100).
-    pub sample_rate: u32,
-    /// Sample size in bits, from `ss` (default 16).
-    pub sample_size: u16,
-    /// Channel count, from `ch` (default 2).
-    pub channels: u16,
-}
-
-/// Everything a sender decides about a receiver before connecting: the dialect,
-/// whether it can be driven without a user PIN, and the dialect-specific
-/// parameters.
+/// Everything a sender decides about a receiver before connecting: the dialect
+/// with its parameters, and whether it can be driven without a user PIN.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AirPlayCapabilities {
     pub dialect: Dialect,
@@ -109,8 +82,6 @@ pub struct AirPlayCapabilities {
     /// True when the receiver accepts the password-less transient pair-setup
     /// (AirPlay 2 only; always false for RAOP).
     pub supports_transient_pairing: bool,
-    /// Present only for a RAOP receiver.
-    pub raop: Option<RaopParams>,
 }
 
 /// A TXT value bae reads to decide how to connect that the receiver left out
@@ -119,7 +90,8 @@ pub struct AirPlayCapabilities {
 /// would pick the wrong dialect or skip a PIN it requires.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UnreadableSetting {
-    /// The TXT key, as the receiver spelled it (`features`, `ft`, `flags`, `sf`).
+    /// The TXT key, as the receiver spelled it (`features`, `ft`, `flags`,
+    /// `sf`, `et`).
     pub key: String,
     /// The text it carried, or `None` when it was left out.
     pub raw: Option<String>,
@@ -146,7 +118,10 @@ impl AirPlayCapabilities {
     /// the protocol (the spec's RAOP table has no such key), so without one the
     /// receiver advertises no feature bits. `flags`/`sf` is absent on older
     /// receivers on both services (the spec's Apple TV 2 record has none), which
-    /// sets no status bits. Any of them present but not hex is unreadable.
+    /// sets no status bits. Any of them present but not hex is unreadable. A
+    /// RAOP receiver's `et` lists the encryption types it offers as decimal
+    /// numbers; one that isn't a number is unreadable, and without `et` the
+    /// receiver offers an unencrypted stream.
     pub fn from_txt(
         service_type: RendererServiceType,
         txt: &HashMap<String, String>,
@@ -182,15 +157,17 @@ impl AirPlayCapabilities {
                 supports_transient_pairing: features
                     & feature_bits::SUPPORTS_COREUTILS_PAIRING_AND_ENCRYPTION
                     != 0,
-                raop: None,
             }
         } else {
+            let encryption = match txt.get("et") {
+                Some(raw) => parse_encryption(raw).ok_or_else(|| unreadable("et", raw))?,
+                None => vec![RaopEncryption::None],
+            };
             AirPlayCapabilities {
-                dialect: Dialect::Raop,
+                dialect: Dialect::Raop { encryption },
                 features,
                 requires_pin,
                 supports_transient_pairing: false,
-                raop: Some(RaopParams::from_txt(txt)),
             }
         })
     }
@@ -212,32 +189,6 @@ fn unreadable(key: &str, raw: &str) -> UnreadableSetting {
     UnreadableSetting { key: key.to_string(), raw: Some(raw.to_string()) }
 }
 
-impl RaopParams {
-    fn from_txt(txt: &HashMap<String, String>) -> Self {
-        let codecs = txt.get("cn").map(|s| parse_int_set(s, raop_codec)).unwrap_or_default();
-        let encryption = txt
-            .get("et")
-            .map(|s| parse_int_set(s, raop_encryption))
-            .unwrap_or_else(|| vec![RaopEncryption::None]);
-        RaopParams {
-            codecs,
-            encryption,
-            sample_rate: txt.get("sr").and_then(|s| s.parse().ok()).unwrap_or(44_100),
-            sample_size: txt.get("ss").and_then(|s| s.parse().ok()).unwrap_or(16),
-            channels: txt.get("ch").and_then(|s| s.parse().ok()).unwrap_or(2),
-        }
-    }
-}
-
-fn raop_codec(v: u32) -> Option<RaopCodec> {
-    match v {
-        0 => Some(RaopCodec::Pcm),
-        1 => Some(RaopCodec::Alac),
-        2 => Some(RaopCodec::Aac),
-        _ => None,
-    }
-}
-
 fn raop_encryption(v: u32) -> Option<RaopEncryption> {
     match v {
         0 => Some(RaopEncryption::None),
@@ -247,18 +198,22 @@ fn raop_encryption(v: u32) -> Option<RaopEncryption> {
     }
 }
 
-/// Parse a comma-separated set of integers into the values `map` recognizes,
-/// dropping unrecognized entries and de-duplicating while preserving order.
-fn parse_int_set<T: PartialEq>(s: &str, map: impl Fn(u32) -> Option<T>) -> Vec<T> {
-    let mut out = Vec::new();
-    for part in s.split(',') {
-        if let Some(value) = part.trim().parse().ok().and_then(&map) {
-            if !out.contains(&value) {
-                out.push(value);
-            }
+/// The encryption types a comma-separated `et` value offers that the sender
+/// implements, de-duplicated in the receiver's order. Types the sender doesn't
+/// implement are left out (logged). `None` when an entry isn't a number.
+fn parse_encryption(raw: &str) -> Option<Vec<RaopEncryption>> {
+    let mut offered = Vec::new();
+    for part in raw.split(',') {
+        let value: u32 = part.trim().parse().ok()?;
+        match raop_encryption(value) {
+            Some(encryption) if !offered.contains(&encryption) => offered.push(encryption),
+            Some(_) => {}
+            None => debug!(
+                "airplay: the receiver offers encryption type {value}, which bae doesn't implement"
+            ),
         }
     }
-    out
+    Some(offered)
 }
 
 /// Parse a features string into a 64-bit bitmask. Two forms, per the spec:

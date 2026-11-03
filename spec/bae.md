@@ -3182,11 +3182,12 @@ is reported as a bug; no audio is skipped silently.
 
 How to connect is read from what the receiver advertises, never guessed. An
 AirPlay advertisement must state its features; a RAOP one without them states
-none, and a receiver without status flags sets none, as older receivers do. A
-receiver whose features or status flags can't be read, or whose AirPlay
-advertisement states no features, shows as one bae can't connect to because it
-advertises settings bae can't read, even when its other advertisement reads;
-the log names the setting and the text it carried.
+none, and a receiver without status flags sets none, as older receivers do; a
+RAOP receiver that states no encryption types takes an unencrypted stream. A
+receiver whose features, status flags or encryption types can't be read, or
+whose AirPlay advertisement states no features, shows as one bae can't connect
+to because it advertises settings bae can't read, even when its other
+advertisement reads; the log names the setting and the text it carried.
 
 **Finding receivers.** Casting is off by default: it browses the local network
 and serves audio from this machine. While on, devices are searched for only

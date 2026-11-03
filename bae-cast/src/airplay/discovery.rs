@@ -235,7 +235,8 @@ pub(crate) fn dedupe_by_id<'a>(
                 let replaces = match (&device.capabilities, &existing.capabilities) {
                     (Err(_), Ok(_)) => true,
                     (Ok(new), Ok(old)) => {
-                        new.dialect == Dialect::AirPlay2 && old.dialect == Dialect::Raop
+                        new.dialect == Dialect::AirPlay2
+                            && matches!(old.dialect, Dialect::Raop { .. })
                     }
                     (Ok(_), Err(_)) | (Err(_), Err(_)) => false,
                 };

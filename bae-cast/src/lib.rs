@@ -66,7 +66,7 @@ fn build_airplay_sink(
     if capabilities.requires_pin {
         return Err(CastError::AirPlayPinRequired);
     }
-    match capabilities.dialect {
+    match &capabilities.dialect {
         Dialect::AirPlay2 => Ok(Box::new(Ap2Sink::new(
             addr,
             port,
@@ -74,11 +74,10 @@ fn build_airplay_sink(
             TimingProtocol::from_features(capabilities.features),
             diagnostics.clone(),
         ))),
-        Dialect::Raop => {
-            let raop = capabilities.raop.as_ref().ok_or(CastError::AirPlayEncryptionUnsupported)?;
-            let encryption = if raop.encryption.contains(&RaopEncryption::None) {
+        Dialect::Raop { encryption: offered } => {
+            let encryption = if offered.contains(&RaopEncryption::None) {
                 RaopEncryption::None
-            } else if raop.encryption.contains(&RaopEncryption::RsaAes) {
+            } else if offered.contains(&RaopEncryption::RsaAes) {
                 RaopEncryption::RsaAes
             } else {
                 return Err(CastError::AirPlayEncryptionUnsupported);

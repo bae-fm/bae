@@ -38,7 +38,6 @@ fn homepod_speaks_airplay2_with_transient_pairing() {
     assert!(caps.supports_transient_pairing);
     assert!(!caps.requires_pin);
     assert_eq!(caps.features, features);
-    assert!(caps.raop.is_none());
 }
 
 /// A modern Apple TV advertises the unified-media-control bit; it too speaks
@@ -70,14 +69,11 @@ fn airport_express_speaks_raop_with_rsa_aes_alac() {
         ]),
     )
     .unwrap();
-    assert_eq!(caps.dialect, Dialect::Raop);
+    assert_eq!(
+        caps.dialect,
+        Dialect::Raop { encryption: vec![RaopEncryption::None, RaopEncryption::RsaAes] }
+    );
     assert!(!caps.supports_transient_pairing);
-    let raop = caps.raop.expect("a RAOP receiver carries RAOP params");
-    assert_eq!(raop.codecs, vec![RaopCodec::Pcm, RaopCodec::Alac]);
-    assert_eq!(raop.encryption, vec![RaopEncryption::None, RaopEncryption::RsaAes]);
-    assert_eq!(raop.sample_rate, 44_100);
-    assert_eq!(raop.sample_size, 16);
-    assert_eq!(raop.channels, 2);
 }
 
 /// A third-party AirPlay-2 speaker: the `_airplay._tcp` service carries an
@@ -100,7 +96,7 @@ fn raop_without_airplay2_bits_stays_raop() {
     let caps =
         AirPlayCapabilities::from_txt(RendererServiceType::Raop, &txt(&[("et", "1"), ("cn", "1")]))
             .unwrap();
-    assert_eq!(caps.dialect, Dialect::Raop);
+    assert_eq!(caps.dialect, Dialect::Raop { encryption: vec![RaopEncryption::RsaAes] });
 }
 
 /// A password-protected or PIN-gated receiver is flagged so the sender can
@@ -165,7 +161,7 @@ fn an_airplay_service_without_features_is_unreadable() {
 fn optional_fields_take_the_meaning_of_their_absence() {
     let raop =
         AirPlayCapabilities::from_txt(RendererServiceType::Raop, &txt(&[("cn", "1")])).unwrap();
-    assert_eq!(raop.dialect, Dialect::Raop);
+    assert!(matches!(raop.dialect, Dialect::Raop { .. }));
     assert_eq!(raop.features, 0);
     assert!(!raop.requires_pin);
 
@@ -184,5 +180,36 @@ fn optional_fields_take_the_meaning_of_their_absence() {
 fn missing_encryption_defaults_to_none() {
     let caps =
         AirPlayCapabilities::from_txt(RendererServiceType::Raop, &txt(&[("cn", "1")])).unwrap();
-    assert_eq!(caps.raop.unwrap().encryption, vec![RaopEncryption::None]);
+    assert_eq!(caps.dialect, Dialect::Raop { encryption: vec![RaopEncryption::None] });
+}
+
+/// An `et` entry that isn't a number is not "no encryption offered": the
+/// receiver can't be connected to, and the error names `et` and its text.
+#[test]
+fn an_unparseable_encryption_entry_is_unreadable() {
+    for raw in ["0,x", "rsa", "1;0"] {
+        let unreadable =
+            AirPlayCapabilities::from_txt(RendererServiceType::Raop, &txt(&[("et", raw)]))
+                .expect_err(&format!("et={raw} is unreadable"));
+        assert_eq!(
+            unreadable,
+            UnreadableSetting { key: "et".to_string(), raw: Some(raw.to_string()) }
+        );
+    }
+}
+
+/// Encryption types the sender doesn't implement (FairPlay and MFiSAP) are
+/// left out of what the receiver offers; a receiver offering only those
+/// offers nothing the sender can use.
+#[test]
+fn encryption_the_sender_does_not_implement_is_left_out() {
+    let caps = AirPlayCapabilities::from_txt(RendererServiceType::Raop, &txt(&[("et", "0,3,1,0")]))
+        .unwrap();
+    assert_eq!(
+        caps.dialect,
+        Dialect::Raop { encryption: vec![RaopEncryption::None, RaopEncryption::RsaAes] }
+    );
+    let fairplay_only =
+        AirPlayCapabilities::from_txt(RendererServiceType::Raop, &txt(&[("et", "3,5")])).unwrap();
+    assert_eq!(fairplay_only.dialect, Dialect::Raop { encryption: Vec::new() });
 }

@@ -46,7 +46,7 @@ fn raop_instance_name_splits_mac_and_name() {
     .expect("maps");
     assert_eq!(device.id, "001122334455");
     assert_eq!(device.name, "Studio Monitor");
-    assert_eq!(device.capabilities.as_ref().unwrap().dialect, Dialect::Raop);
+    assert!(matches!(device.capabilities.as_ref().unwrap().dialect, Dialect::Raop { .. }));
 }
 
 /// A service with no resolvable address is dropped.
