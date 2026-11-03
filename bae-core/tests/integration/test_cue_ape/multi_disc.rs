@@ -134,10 +134,10 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(destination: ImportDestinati
     }
 
     let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
-    let ((library_manager, database, catalogs, closing), storage) =
+    let (library, storage) =
         bae_core::test_libraries::storage_library(&db_dir, fakes.providers()).await;
     if let ImportDestination::Remote { .. } = destination {
-        bae_core::test_libraries::connect_storage(&library_manager, &storage).await;
+        bae_core::test_libraries::connect_storage(&library, &storage).await;
     }
 
     // Discogs multi-disc tracklist: positions "1-1".."1-3", "2-1".."2-3",
@@ -162,7 +162,7 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(destination: ImportDestinati
     };
     let release_id_key = fakes.seed_discogs_test_release(discogs_release);
     let import_handle =
-        start_test_import(tokio::runtime::Handle::current(), &database, &catalogs, &closing).await;
+        library.start_discogs_import().await;
 
     let import_id = uuid::Uuid::new_v4().to_string();
     import_handle
@@ -179,16 +179,16 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(destination: ImportDestinati
 
     let mut progress_rx = import_handle.subscribe_import(import_id);
     let (release_id, _) =
-        wait_for_multi_disc_cue_ape_import_ready(&library_manager, destination, &mut progress_rx)
+        wait_for_multi_disc_cue_ape_import_ready(&library, destination, &mut progress_rx)
             .await;
 
-    let tracks = library_manager.get_tracks_for_release(&release_id).await.expect("get tracks");
+    let tracks = library.get_tracks_for_release(&release_id).await.expect("get tracks");
     assert_eq!(tracks.len(), 6, "should have 6 tracks (2 discs × 3 tracks)");
 
     // `original_filename` in release_files must be the full relative path
     // (`CD1/CDImage.ape`), not the bare filename — otherwise the two discs'
     // APE rows would collide on the same `"CDImage.ape"` string.
-    let files = library_manager.get_files_for_release(&release_id).await.expect("get files");
+    let files = library.get_files_for_release(&release_id).await.expect("get files");
     let mut ape_filenames: Vec<String> = files
         .iter()
         .filter(|f| f.original_filename.ends_with(".ape"))
@@ -207,7 +207,7 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(destination: ImportDestinati
 
     for track in &tracks {
         let resolved =
-            library_manager.resolve_track_audio(&track.id).await.expect("resolve track audio");
+            library.resolve_track_audio(&track.id).await.expect("resolve track audio");
         let segment = resolved
             .segments
             .iter()

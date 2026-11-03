@@ -1,39 +1,32 @@
 async fn restore_test_library() -> RestoreTestLibrary {
     let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
-    let ((library_manager, database, catalogs, closing), album_dir, temp_dir) = bae_core::test_libraries::setup_test_library_with_album_dir(fakes.providers()).await;
-    let runtime_handle = tokio::runtime::Handle::current();
+    let (library, album_dir, temp_dir) = bae_core::test_libraries::setup_test_library_with_album_dir(fakes.providers()).await;
     let _ = generate_test_flac_files(&album_dir);
     let release_id_key =
         fakes.seed_discogs_test_release(create_test_album());
-    bae_import::test_imports::import_folder_and_wait(&database, &catalogs, &closing, album_dir, release_id_key).await;
-    let releases = library_manager
-        .get_releases_for_album(&bae_core::library::views::LibraryViews::new(database.clone()).get_albums(&[]).await.unwrap()[0].id)
+    library.import_folder(album_dir, release_id_key).await;
+    let releases = library
+        .get_releases_for_album(&library.views().get_albums(&[]).await.unwrap()[0].id)
         .await
         .unwrap();
-    let tracks = library_manager.get_tracks_for_release(&releases[0].id).await.unwrap();
+    let tracks = library.get_tracks_for_release(&releases[0].id).await.unwrap();
     let track_ids: Vec<String> = tracks.iter().map(|t| t.id.clone()).collect();
     assert!(!track_ids.is_empty(), "the test album imported some tracks");
     RestoreTestLibrary {
-        library_manager,
-        database,
-        closing,
-        catalogs,
+        library,
         fakes,
-        runtime_handle,
         track_ids,
         _temp_dir: temp_dir,
     }
 }
 
-/// A library with no imports, for the empty-library no-op paths. Returns the
-/// manager, its store, runtime handle, and temp dir (kept alive for the DB
-/// file).
-async fn empty_test_library(
-) -> (LibraryManager, bae_db::Database, tokio::runtime::Handle, TempDir) {
+/// A library with no imports, for the empty-library no-op paths, beside the
+/// temp dir that keeps its files.
+async fn empty_test_library() -> (TestLibrary, TempDir) {
     bae_util::test_logs::install();
     let temp_dir = TempDir::new().unwrap();
-    let (library_manager, database, ..) = open_test_library(temp_dir.path()).await;
-    (library_manager, database, tokio::runtime::Handle::current(), temp_dir)
+    let library = open_test_library(temp_dir.path()).await;
+    (library, temp_dir)
 }
 
 /// Import a second, distinct-content release (the CUE/FLAC album) into `lib`'s
@@ -47,7 +40,7 @@ async fn import_second_release(lib: &RestoreTestLibrary) -> (String, Vec<String>
     let release_key =
         lib.fakes.seed_discogs_test_release(create_cue_flac_test_album());
     let import_handle =
-        start_test_import(lib.runtime_handle.clone(), &lib.database, &lib.catalogs, &lib.closing).await;
+        lib.library.start_discogs_import().await;
     let import_id = uuid::Uuid::new_v4().to_string();
     import_handle
         .send_command(ImportCommand {
@@ -63,7 +56,7 @@ async fn import_second_release(lib: &RestoreTestLibrary) -> (String, Vec<String>
     let mut progress_rx = import_handle.subscribe_import(import_id);
     let (release_id, _album_id) = wait_for_import_complete(&mut progress_rx).await;
     let tracks = lib
-        .library_manager
+        .library
         .get_tracks_for_release(&release_id)
         .await
         .unwrap()
@@ -80,14 +73,14 @@ async fn import_second_release(lib: &RestoreTestLibrary) -> (String, Vec<String>
 async fn test_restart_resumes_the_stored_queue_in_its_order() {
     let lib = restore_test_library().await;
     let release_id = lib
-        .library_manager
+        .library
         .get_track_display(&lib.track_ids[0])
         .await
         .expect("the imported track")
         .release_id;
 
     let (handle, _capture_rx) =
-        start_capture_service(lib.library_manager.clone(), &lib.database, lib.runtime_handle.clone()).await;
+        start_capture_service(&lib.library).await;
     let mut progress_rx = handle.subscribe_progress();
     handle.play_release(release_id, None, true);
     let playing = wait_for_state_on(
@@ -105,7 +98,7 @@ async fn test_restart_resumes_the_stored_queue_in_its_order() {
     handle.shutdown().await;
 
     let (handle, _capture_rx) =
-        start_capture_service(lib.library_manager.clone(), &lib.database, lib.runtime_handle).await;
+        start_capture_service(&lib.library).await;
     let mut progress_rx = handle.subscribe_progress();
     let playing_id = playing.track_id().expect("a playing track").to_string();
     wait_for_state_on(
@@ -215,19 +208,18 @@ impl CloudOnlyPlaybackFixture {
         let album_dir = temp_dir.path().join("album");
         std::fs::create_dir_all(&album_dir)?;
         let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
-        let ((library_manager, database, catalogs, closing), cloud) =
+        let (library, cloud) =
             bae_core::test_libraries::storage_library(temp_dir.path(), fakes.providers())
                 .await;
-        bae_core::test_libraries::connect_storage(&library_manager, &cloud).await;
+        bae_core::test_libraries::connect_storage(&library, &cloud).await;
 
-        let runtime_handle = tokio::runtime::Handle::current();
         let discogs_release = create_test_album();
         let release_id_key =
             fakes.seed_discogs_test_release(discogs_release);
         generate_test_flac_files(&album_dir);
 
         let import_handle =
-            start_test_import(runtime_handle.clone(), &database, &catalogs, &closing).await;
+            library.start_discogs_import().await;
         let import_id = uuid::Uuid::new_v4().to_string();
         import_handle
             .send_command(ImportCommand {
@@ -247,30 +239,30 @@ impl CloudOnlyPlaybackFixture {
         // clears — after this the track resolves cloud-only (no local copy, no
         // pending upload).
         while matches!(
-            library_manager.drain_uploads_for_test().await?,
+            library.drain_uploads_for_test().await?,
             coven::DrainOutcome::Drained { uploaded, .. } if uploaded > 0
         ) {}
 
-        for file in library_manager.get_files_for_release(&release_id).await? {
-            library_manager.evict_file_for_test(file.file).await?;
+        for file in library.get_files_for_release(&release_id).await? {
+            library.evict_file_for_test(file.file).await?;
         }
 
         // Delete the import originals so file resolution can't fall back to them.
         std::fs::remove_dir_all(&album_dir)?;
 
-        let tracks = library_manager.get_tracks_for_release(&release_id).await?;
+        let tracks = library.get_tracks_for_release(&release_id).await?;
         let track_ids: Vec<String> = tracks.iter().map(|t| t.id.clone()).collect();
         assert!(!track_ids.is_empty(), "Should have imported tracks");
 
         let (playback_handle, capture_stream_rx) =
-            start_capture_service(library_manager.clone(), &database, runtime_handle).await;
+            start_capture_service(&library).await;
         let progress_rx = playback_handle.subscribe_progress();
         let identification = import_handle.start_identification_queue();
         let services = bae_core::library::AppServices::new(
-            library_manager,
-            bae_core::library::views::LibraryViews::new(database.clone()),
+            LibraryManager::clone(&library),
+            library.views(),
             playback_handle.clone(),
-            bae_playback::renderer::CastPicker::new(database.clone()),
+            library.cast_picker(),
             import_handle,
             identification,
         );

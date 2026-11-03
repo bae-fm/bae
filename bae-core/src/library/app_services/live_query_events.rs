@@ -137,7 +137,7 @@ mod tests {
             bae_db::Database::new_test(path.to_str().unwrap(), Arc::new(coven::SystemClock))
                 .await
                 .unwrap();
-        let manager = crate::app::test_library::TestLibrary::open(
+        let manager = crate::test_libraries::TestLibrary::open(
             database.clone(),
             bae_app_dir::AppDir::under_home(directory.path()).unwrap(),
             bae_catalogs::providers::Providers::offline(),

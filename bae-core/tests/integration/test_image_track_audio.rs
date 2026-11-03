@@ -43,7 +43,7 @@ fn track2_of(image: &[u8]) -> Vec<i32> {
 async fn import_image(
     extension: &str,
     format: EncodeFormat,
-) -> (bae_core::library::LibraryManager, String, Vec<u8>, tempfile::TempDir) {
+) -> (bae_core::test_libraries::TestLibrary, String, Vec<u8>, tempfile::TempDir) {
     bae_util::test_logs::install();
     bae_audio::init();
     let image =
@@ -58,7 +58,7 @@ async fn import_image(
             &[("Track One", "0:03"), ("Track Two", "0:03"), ("Track Three", "0:03")],
         )
     };
-    let ((library_manager, ..), imported) = bae_core::test_libraries::imported_release_setup(
+    let (library, imported) = bae_core::test_libraries::imported_release_setup(
         release,
         "test",
         uuid::Uuid::new_v4().to_string(),
@@ -78,7 +78,7 @@ async fn import_image(
     .await
     .expect("import the image");
     assert_eq!(imported.track_ids.len(), 3, "the image's three tracks");
-    (library_manager, imported.track_ids[1].clone(), image, imported.temp_dir)
+    (library, imported.track_ids[1].clone(), image, imported.temp_dir)
 }
 
 /// The loudness of `samples` as the import's meter reads it.
@@ -92,8 +92,8 @@ fn loudness_of(samples: &[i32]) -> f64 {
 /// Import an image and check the loudness its import measured for track 2 is
 /// track 2's own.
 async fn check_track2_loudness(extension: &str, format: EncodeFormat) {
-    let (library_manager, track2, image, _dir) = import_image(extension, format).await;
-    let measured = library_manager
+    let (library, track2, image, _dir) = import_image(extension, format).await;
+    let measured = library
         .resolve_track_audio(&track2)
         .await
         .expect("resolve track 2")
@@ -109,9 +109,9 @@ async fn check_track2_loudness(extension: &str, format: EncodeFormat) {
 /// Import an image, save track 2 as FLAC, and check the saved file holds
 /// track 2's own samples.
 async fn check_track2_save(extension: &str, format: EncodeFormat) {
-    let (library_manager, track2, image, dir) = import_image(extension, format).await;
+    let (library, track2, image, dir) = import_image(extension, format).await;
     let out = dir.path().join("saved.flac");
-    library_manager.save_track(&track2, &out, "flac").await.expect("save track 2");
+    library.save_track(&track2, &out, "flac").await.expect("save track 2");
     let saved = bae_audio::decode_audio(
         bae_audio::test_samples::filled_sparse_buffer(&std::fs::read(&out).unwrap()),
         None,

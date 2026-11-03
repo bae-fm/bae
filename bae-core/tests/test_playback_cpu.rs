@@ -268,14 +268,13 @@ impl PlaybackTestFixture {
         expected_tracks: usize,
         source_file: &str,
     ) -> Result<Self, Box<dyn std::error::Error>> {
-        let ((library_manager, database, ..), imported) =
-            bae_core::test_libraries::imported_release_setup(
-                discogs_release,
-                "test",
-                uuid::Uuid::new_v4().to_string(),
-                generate_files,
-            )
-            .await?;
+        let (library, imported) = bae_core::test_libraries::imported_release_setup(
+            discogs_release,
+            "test",
+            uuid::Uuid::new_v4().to_string(),
+            generate_files,
+        )
+        .await?;
         assert_eq!(
             imported.track_ids.len(),
             expected_tracks,
@@ -285,13 +284,13 @@ impl PlaybackTestFixture {
 
         // Real-time probe sink: drives the real decode + drain at real time and
         // discards the samples, so playback CPU is measured with no device.
-        let playback_handle = bae_core::test_libraries::start_playback_on(
-            &library_manager,
-            &database,
-            Box::new(bae_playback::RealtimeProbeDevice),
-            bae_playback::test_capture::wall_playback_clock(),
-        )
-        .await;
+        let playback_handle = library
+            .start_playback_on(
+                Box::new(bae_playback::RealtimeProbeDevice),
+                bae_playback::test_capture::wall_playback_clock(),
+                true,
+            )
+            .await;
         let progress_rx = playback_handle.subscribe_progress();
 
         Ok(Self {

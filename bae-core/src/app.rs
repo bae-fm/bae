@@ -9,8 +9,6 @@ use std::{sync::Arc, time::Instant};
 use tracing::{info, warn};
 
 mod assembly;
-#[cfg(test)]
-pub(crate) mod test_library;
 
 use crate::library::AppServices;
 pub use assembly::{

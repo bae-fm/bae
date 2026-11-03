@@ -357,7 +357,7 @@ mod tests {
         )
         .expect("diagnostics starts");
 
-        let library = crate::app::test_library::TestLibrary::open_with(
+        let library = crate::test_libraries::TestLibrary::open_with(
             database,
             bae_app_dir::AppDir::under_home(home.path()).unwrap(),
             bae_catalogs::providers::Providers::offline(),

@@ -104,11 +104,9 @@ async fn measure(shape: Shape, count: usize, list_open: bool) {
     write_folders(&root, shape, count);
     let library = temp.path().join("library");
     std::fs::create_dir_all(&library).unwrap();
-    let (manager, database, catalogs, closing) =
-        bae_core::test_libraries::open_test_library(&library).await;
-    manager.set_identify_automatically(false).await.unwrap();
-    let services =
-        bae_core::test_libraries::start_test_services(manager, database, catalogs, closing).await;
+    let test_library = bae_core::test_libraries::open_test_library(&library).await;
+    test_library.set_identify_automatically(false).await.unwrap();
+    let services = test_library.start_services().await.expect("the test library's services start");
     let mut events = services.every_scan_event_for_test();
 
     let list = match list_open {

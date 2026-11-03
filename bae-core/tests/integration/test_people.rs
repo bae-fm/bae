@@ -6,29 +6,30 @@ use bae_db::people::{ProfileError, Sharing};
 #[tokio::test]
 async fn profile_requires_membership_and_is_idempotent_after_setup() {
     let directory = tempfile::tempdir().unwrap();
-    let ((manager, database, ..), storage) =
+    let (library, storage) =
         storage_library(directory.path(), bae_catalogs::providers::Providers::offline()).await;
-    assert!(matches!(manager.create_profile("Robin").await, Err(ProfileError::NotRegistered)));
+    let database = library.database().clone();
+    assert!(matches!(library.create_profile("Robin").await, Err(ProfileError::NotRegistered)));
     assert!(database.profiles().await.unwrap().is_empty());
-    connect_storage(&manager, &storage).await;
-    let profile = made_profile(&manager, "Robin").await;
+    connect_storage(&library, &storage).await;
+    let profile = made_profile(&library, "Robin").await;
     assert_eq!(profile.history_sharing, Sharing::Private);
-    manager.create_profile("Robin").await.unwrap();
+    library.create_profile("Robin").await.unwrap();
     assert_eq!(database.profile(profile.id).await.unwrap(), Some(profile.clone()));
     assert!(matches!(
-        manager.create_profile("Another Name").await,
+        library.create_profile("Another Name").await,
         Err(ProfileError::AlreadyExists)
     ));
-    let people = manager.people().await.unwrap();
+    let people = library.people().await.unwrap();
     assert_eq!(people.len(), 1);
     assert_eq!(people[0].profile.as_ref(), Some(&profile));
     assert!(people[0].membership.is_self);
-    manager.rename_profile("New Name").await.unwrap();
-    manager.set_history_sharing(Sharing::Household).await.unwrap();
+    library.rename_profile("New Name").await.unwrap();
+    library.set_history_sharing(Sharing::Household).await.unwrap();
     let profile = database.profile(profile.id).await.unwrap().unwrap();
     assert_eq!(profile.name, "New Name");
     assert_eq!(profile.history_sharing, Sharing::Household);
-    manager.close().await.unwrap();
+    library.close().await.unwrap();
 }
 
 /// A PNG of `width` by `height` pixels in one color.
@@ -45,34 +46,35 @@ fn png(image: image::RgbImage) -> Vec<u8> {
 #[tokio::test]
 async fn a_profile_names_each_new_avatar_at_once() {
     let directory = tempfile::tempdir().unwrap();
-    let ((manager, database, ..), storage) =
+    let (library, storage) =
         storage_library(directory.path(), bae_catalogs::providers::Providers::offline()).await;
-    connect_storage(&manager, &storage).await;
-    let profile = made_profile(&manager, "Rowan").await;
-    assert_eq!(manager.avatar(profile.id).await.unwrap(), None);
+    let database = library.database().clone();
+    connect_storage(&library, &storage).await;
+    let profile = made_profile(&library, "Rowan").await;
+    assert_eq!(library.avatar(profile.id).await.unwrap(), None);
     let first_source = solid_png(16, 16, [120, 40, 200]);
     let second_source = solid_png(16, 16, [20, 160, 90]);
     let first_jpeg = bae_util::stored_image::stored_jpeg(&first_source).unwrap();
     let second_jpeg = bae_util::stored_image::stored_jpeg(&second_source).unwrap();
-    manager.set_avatar(Some(first_source)).await.unwrap();
+    library.set_avatar(Some(first_source)).await.unwrap();
     let first = database.profile(profile.id).await.unwrap().unwrap();
-    assert_eq!(manager.avatar(profile.id).await.unwrap().unwrap(), first_jpeg);
-    manager.set_avatar(Some(second_source)).await.unwrap();
+    assert_eq!(library.avatar(profile.id).await.unwrap().unwrap(), first_jpeg);
+    library.set_avatar(Some(second_source)).await.unwrap();
     let second = database.profile(profile.id).await.unwrap().unwrap();
     // The profile row references each new avatar's coven file from the write
     // that sets it; a new avatar is a new file.
     assert!(first.avatar_id.is_some());
     assert!(second.avatar_id.is_some());
     assert_ne!(first.avatar_id, second.avatar_id);
-    assert_eq!(manager.avatar(profile.id).await.unwrap().unwrap(), second_jpeg);
-    manager.drain_uploads_for_test().await.unwrap();
+    assert_eq!(library.avatar(profile.id).await.unwrap().unwrap(), second_jpeg);
+    library.drain_uploads_for_test().await.unwrap();
     let stored = database.profile(profile.id).await.unwrap().unwrap();
     assert_eq!(stored.avatar_id, second.avatar_id, "the upload changes no row");
-    assert_eq!(manager.avatar(profile.id).await.unwrap().unwrap(), second_jpeg);
-    manager.set_avatar(None).await.unwrap();
-    assert_eq!(manager.avatar(profile.id).await.unwrap(), None);
+    assert_eq!(library.avatar(profile.id).await.unwrap().unwrap(), second_jpeg);
+    library.set_avatar(None).await.unwrap();
+    assert_eq!(library.avatar(profile.id).await.unwrap(), None);
     assert_eq!(database.profile(profile.id).await.unwrap().unwrap().avatar_id, None);
-    manager.close().await.unwrap();
+    library.close().await.unwrap();
 }
 
 /// A camera-sized photo is stored as a cover is: a JPEG downscaled to fit the
@@ -81,10 +83,10 @@ async fn a_profile_names_each_new_avatar_at_once() {
 #[tokio::test]
 async fn an_oversized_avatar_is_stored_as_a_downscaled_jpeg() {
     let directory = tempfile::tempdir().unwrap();
-    let ((manager, ..), storage) =
+    let (library, storage) =
         storage_library(directory.path(), bae_catalogs::providers::Providers::offline()).await;
-    connect_storage(&manager, &storage).await;
-    let profile = made_profile(&manager, "Rowan").await;
+    connect_storage(&library, &storage).await;
+    let profile = made_profile(&library, "Rowan").await;
     let edge = bae_util::stored_image::STORED_MAX_EDGE;
     let photo = png(image::RgbImage::from_fn(edge * 5, edge * 10 / 3, |x, y| {
         let mixed = x.wrapping_mul(2_654_435_761) ^ y.wrapping_mul(2_246_822_519);
@@ -92,9 +94,9 @@ async fn an_oversized_avatar_is_stored_as_a_downscaled_jpeg() {
         image::Rgb([r, g, b])
     }));
 
-    manager.set_avatar(Some(photo)).await.unwrap();
+    library.set_avatar(Some(photo)).await.unwrap();
 
-    let stored = manager.avatar(profile.id).await.unwrap().unwrap();
+    let stored = library.avatar(profile.id).await.unwrap().unwrap();
     assert_eq!(image::guess_format(&stored).unwrap(), image::ImageFormat::Jpeg);
     let decoded = image::load_from_memory(&stored).unwrap();
     assert_eq!(
@@ -102,7 +104,7 @@ async fn an_oversized_avatar_is_stored_as_a_downscaled_jpeg() {
         (edge, edge * 2 / 3),
         "downscaled to fit the stored edge, aspect kept"
     );
-    manager.close().await.unwrap();
+    library.close().await.unwrap();
 }
 
 /// Bytes that are no image make no avatar: the setting is refused and the
@@ -110,19 +112,19 @@ async fn an_oversized_avatar_is_stored_as_a_downscaled_jpeg() {
 #[tokio::test]
 async fn an_undecodable_avatar_is_refused() {
     let directory = tempfile::tempdir().unwrap();
-    let ((manager, ..), storage) =
+    let (library, storage) =
         storage_library(directory.path(), bae_catalogs::providers::Providers::offline()).await;
-    connect_storage(&manager, &storage).await;
-    let profile = made_profile(&manager, "Rowan").await;
+    connect_storage(&library, &storage).await;
+    let profile = made_profile(&library, "Rowan").await;
 
-    let error = manager
+    let error = library
         .set_avatar(Some(b"not an image".to_vec()))
         .await
         .expect_err("bytes that are no image make no avatar");
 
     assert!(matches!(error, bae_core::people::AvatarError::Image { .. }), "{error}");
-    assert_eq!(manager.avatar(profile.id).await.unwrap(), None);
-    manager.close().await.unwrap();
+    assert_eq!(library.avatar(profile.id).await.unwrap(), None);
+    library.close().await.unwrap();
 }
 
 /// Run a test body on the worker stack the app gives native invite and
@@ -277,19 +279,17 @@ impl Household {
             .storage_connector(std::sync::Arc::new(storage))
     }
 
-    /// A library manager over the owner's store, in `dir`, and the library's
-    /// views over that store.
+    /// A library over the owner's store, in `dir`.
     pub(super) async fn owners_library(
         &self,
         dir: &std::path::Path,
-    ) -> (bae_core::library::LibraryManager, bae_core::library::views::LibraryViews) {
-        let (manager, database, ..) = bae_core::test_libraries::test_library_from_handle(
+    ) -> bae_core::test_libraries::TestLibrary {
+        bae_core::test_libraries::test_library_from_handle(
             self.owner.clone(),
             dir,
             bae_catalogs::providers::Providers::offline(),
         )
-        .await;
-        (manager, bae_core::library::views::LibraryViews::new(database))
+        .await
     }
 
     /// Join with `code` from a device of its own, named Guest Device.

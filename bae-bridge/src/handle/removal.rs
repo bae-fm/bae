@@ -132,12 +132,11 @@ mod tests {
             .enable_all()
             .build()
             .unwrap();
-        let ((manager, database, catalogs, closing), root) =
-            bae_core::test_libraries::setup_fresh_library(&runtime);
-        std::fs::create_dir_all(manager.library_path().join("cache")).unwrap();
-        let services = runtime.block_on(bae_core::test_libraries::start_test_services(
-            manager, database, catalogs, closing,
-        ));
+        let (library, root) = bae_core::test_libraries::setup_fresh_library(&runtime);
+        std::fs::create_dir_all(library.library_path().join("cache")).unwrap();
+        let services = runtime.block_on(async move {
+            library.start_services().await.expect("the test library's services start")
+        });
         let app = Arc::new(
             AppHandle::start(services, runtime, bae_diagnostics::Diagnostics::noop()).unwrap(),
         );

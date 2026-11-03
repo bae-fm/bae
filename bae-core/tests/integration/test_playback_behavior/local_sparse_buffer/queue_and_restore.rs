@@ -185,7 +185,7 @@ async fn restore_at_position_over_sparse_buffer_resumes_and_advances() {
     playback.playback_handle.shutdown().await;
 
     let (handle, _capture_rx) =
-        start_capture_service(playback.library_manager.clone(), &playback.database, playback.runtime_handle.clone())
+        start_capture_service(&playback.library)
             .await;
     let mut progress_rx = handle.subscribe_progress();
 
@@ -225,7 +225,7 @@ async fn restore_off_starts_with_nothing_in_playback_and_forgets_the_session() {
     // Persist mid-track and tear the service down, like an app quit.
     playback.playback_handle.shutdown().await;
     assert!(
-        bae_playback::tables::load_playback_state(&playback.database)
+        bae_playback::tables::load_playback_state(playback.library.database())
             .await
             .expect("read the resume row")
             .is_some(),
@@ -233,10 +233,7 @@ async fn restore_off_starts_with_nothing_in_playback_and_forgets_the_session() {
     );
 
     // Relaunch with the preference off.
-    let (handle, _capture_rx) = start_capture_service_with_restore(
-        playback.library_manager.clone(),
-        &playback.database,
-        playback.runtime_handle.clone(),
+    let (handle, _capture_rx) = start_capture_service_with_restore(&playback.library,
         false,
     )
     .await;
@@ -261,7 +258,7 @@ async fn restore_off_starts_with_nothing_in_playback_and_forgets_the_session() {
         "restore-off starts with an empty queue"
     );
     assert!(
-        bae_playback::tables::load_playback_state(&playback.database)
+        bae_playback::tables::load_playback_state(playback.library.database())
             .await
             .expect("re-read the resume row")
             .is_none(),
@@ -288,10 +285,7 @@ async fn a_resumed_session_comes_back_at_its_volume_and_mute() {
     .expect("the mute lands");
     playback.playback_handle.shutdown().await;
 
-    let (handle, _capture_rx) = start_capture_service_with_restore(
-        playback.library_manager.clone(),
-        &playback.database,
-        playback.runtime_handle.clone(),
+    let (handle, _capture_rx) = start_capture_service_with_restore(&playback.library,
         true,
     )
     .await;
@@ -310,7 +304,7 @@ async fn a_resumed_session_comes_back_at_its_volume_and_mute() {
     .await
     .expect("restore announces the volume and the mute");
     assert_eq!(announced, (Some(0.3), Some(true)));
-    assert_eq!(bae_playback::tables::playback_level(&playback.database).await.unwrap(), (0.3, true));
+    assert_eq!(bae_playback::tables::playback_level(playback.library.database()).await.unwrap(), (0.3, true));
     handle.shutdown().await;
 }
 

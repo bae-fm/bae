@@ -49,8 +49,8 @@ fn create_test_track(release_id: &str, track_number: i32) -> DbTrack {
 
 #[tokio::test]
 async fn test_delete_album_integration() {
-    let ((library_manager, database, ..), _temp_dir) =
-        bae_core::test_libraries::setup_test_library().await;
+    let (library, _temp_dir) = bae_core::test_libraries::setup_test_library().await;
+    let database = library.database().clone();
     let album = create_test_album();
     let release = create_test_release(&album.id);
     let track1 = create_test_track(&release.id, 1);
@@ -62,7 +62,7 @@ async fn test_delete_album_integration() {
     database.insert_track(&track1).await.unwrap();
     database.insert_track(&track2).await.unwrap();
 
-    library_manager.delete_album(&album.id).await.unwrap();
+    library.delete_album(&album.id).await.unwrap();
 
     let album_result = bae_core::library::views::LibraryViews::new(database.clone())
         .find_album_detail(&album.id)
@@ -70,17 +70,17 @@ async fn test_delete_album_integration() {
         .unwrap();
     assert!(album_result.is_none());
 
-    let releases = library_manager.get_releases_for_album(&album.id).await.unwrap();
+    let releases = library.get_releases_for_album(&album.id).await.unwrap();
     assert!(releases.is_empty());
 
-    let tracks = library_manager.get_tracks_for_release(&release.id).await.unwrap();
+    let tracks = library.get_tracks_for_release(&release.id).await.unwrap();
     assert!(tracks.is_empty());
 }
 
 #[tokio::test]
 async fn test_delete_release_integration() {
-    let ((library_manager, database, ..), _temp_dir) =
-        bae_core::test_libraries::setup_test_library().await;
+    let (library, _temp_dir) = bae_core::test_libraries::setup_test_library().await;
+    let database = library.database().clone();
     let album = create_test_album();
     let release1 = create_test_release(&album.id);
     let release2 = create_test_release(&album.id);
@@ -95,26 +95,26 @@ async fn test_delete_release_integration() {
     database.insert_track(&track1).await.unwrap();
     database.insert_track(&track2).await.unwrap();
 
-    library_manager.delete_release(&release1.id).await.unwrap();
+    library.delete_release(&release1.id).await.unwrap();
 
-    let album_result = library_manager.get_album_by_id(&album.id).await.unwrap();
+    let album_result = library.get_album_by_id(&album.id).await.unwrap();
     assert!(album_result.is_some());
 
-    let releases = library_manager.get_releases_for_album(&album.id).await.unwrap();
+    let releases = library.get_releases_for_album(&album.id).await.unwrap();
     assert_eq!(releases.len(), 1);
     assert_eq!(releases[0].id, release2.id);
 
-    let tracks1 = library_manager.get_tracks_for_release(&release1.id).await.unwrap();
+    let tracks1 = library.get_tracks_for_release(&release1.id).await.unwrap();
     assert!(tracks1.is_empty());
 
-    let tracks2 = library_manager.get_tracks_for_release(&release2.id).await.unwrap();
+    let tracks2 = library.get_tracks_for_release(&release2.id).await.unwrap();
     assert_eq!(tracks2.len(), 1);
 }
 
 #[tokio::test]
 async fn test_delete_last_release_empties_album() {
-    let ((library_manager, database, ..), _temp_dir) =
-        bae_core::test_libraries::setup_test_library().await;
+    let (library, _temp_dir) = bae_core::test_libraries::setup_test_library().await;
+    let database = library.database().clone();
     let album = create_test_album();
     let release = create_test_release(&album.id);
 
@@ -122,7 +122,7 @@ async fn test_delete_last_release_empties_album() {
     database.insert_release(&release).await.unwrap();
     database.insert_release_medium(&bae_db::DbReleaseMedium::new_test(&release.id)).await.unwrap();
 
-    library_manager.delete_release(&release.id).await.unwrap();
+    library.delete_release(&release.id).await.unwrap();
 
     let album_result = bae_core::library::views::LibraryViews::new(database.clone())
         .find_album_detail(&album.id)
@@ -130,7 +130,7 @@ async fn test_delete_last_release_empties_album() {
         .unwrap();
     assert!(album_result.is_none());
 
-    let releases = library_manager.get_releases_for_album(&album.id).await.unwrap();
+    let releases = library.get_releases_for_album(&album.id).await.unwrap();
     assert!(releases.is_empty());
 }
 
@@ -148,8 +148,8 @@ async fn primary_release_of(database: &bae_db::Database, album_id: &str) -> Stri
 /// same write: nothing points at the release that went.
 #[tokio::test]
 async fn test_deleting_the_primary_release_makes_the_next_one_primary() {
-    let ((library_manager, database, ..), _temp_dir) =
-        bae_core::test_libraries::setup_test_library().await;
+    let (library, _temp_dir) = bae_core::test_libraries::setup_test_library().await;
+    let database = library.database().clone();
     let album = create_test_album();
     let release1 = create_test_release(&album.id);
     let release2 = create_test_release(&album.id);
@@ -168,10 +168,10 @@ async fn test_deleting_the_primary_release_makes_the_next_one_primary() {
         release1.id,
         "an album's first release is its primary"
     );
-    library_manager.set_album_primary_release(&album.id, &release3.id).await.unwrap();
+    library.set_album_primary_release(&album.id, &release3.id).await.unwrap();
     assert_eq!(primary_release_of(&database, &album.id).await, release3.id);
 
-    library_manager.delete_release(&release3.id).await.unwrap();
+    library.delete_release(&release3.id).await.unwrap();
 
     assert_eq!(
         primary_release_of(&database, &album.id).await,
@@ -182,8 +182,8 @@ async fn test_deleting_the_primary_release_makes_the_next_one_primary() {
 
 #[tokio::test]
 async fn test_deleting_another_release_keeps_the_primary() {
-    let ((library_manager, database, ..), _temp_dir) =
-        bae_core::test_libraries::setup_test_library().await;
+    let (library, _temp_dir) = bae_core::test_libraries::setup_test_library().await;
+    let database = library.database().clone();
     let album = create_test_album();
     let release1 = create_test_release(&album.id);
     let release2 = create_test_release(&album.id);
@@ -194,9 +194,9 @@ async fn test_deleting_another_release_keeps_the_primary() {
     database.insert_release(&release2).await.unwrap();
     database.insert_release_medium(&bae_db::DbReleaseMedium::new_test(&release2.id)).await.unwrap();
 
-    library_manager.set_album_primary_release(&album.id, &release2.id).await.unwrap();
+    library.set_album_primary_release(&album.id, &release2.id).await.unwrap();
 
-    library_manager.delete_release(&release1.id).await.unwrap();
+    library.delete_release(&release1.id).await.unwrap();
 
     assert_eq!(primary_release_of(&database, &album.id).await, release2.id);
 }
@@ -204,8 +204,8 @@ async fn test_deleting_another_release_keeps_the_primary() {
 /// Making a release primary that is not one of the album's is refused.
 #[tokio::test]
 async fn test_a_release_of_another_album_cannot_be_made_primary() {
-    let ((library_manager, database, ..), _temp_dir) =
-        bae_core::test_libraries::setup_test_library().await;
+    let (library, _temp_dir) = bae_core::test_libraries::setup_test_library().await;
+    let database = library.database().clone();
     let album = create_test_album();
     let other = create_test_album();
     let release = create_test_release(&album.id);
@@ -220,7 +220,7 @@ async fn test_a_release_of_another_album_cannot_be_made_primary() {
         .await
         .unwrap();
 
-    library_manager
+    library
         .set_album_primary_release(&album.id, &elsewhere.id)
         .await
         .expect_err("another album's release is not this album's to make primary");

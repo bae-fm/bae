@@ -90,10 +90,11 @@ async fn invalid_edits_are_rejected_on_the_write_path() {
         ("an artist-less album", "Album Alpha", &[][..]),
         ("a blank album artist name", "Album Alpha", &["  "][..]),
     ] {
-        let ((manager, db, ..), _tmp) = bae_core::test_libraries::setup_test_library().await;
+        let (library, _tmp) = bae_core::test_libraries::setup_test_library().await;
+        let db = library.database().clone();
         let (album_id, release_id) = seed(&db).await;
 
-        let result = manager
+        let result = library
             .apply_release_metadata_user_edit(
                 &release_id,
                 &wire_edit(album_title, album_artist_seed_names),
@@ -114,10 +115,11 @@ async fn invalid_edits_are_rejected_on_the_write_path() {
 /// what lands in the row.
 #[tokio::test]
 async fn an_untrimmed_album_title_is_stored_trimmed() {
-    let ((manager, db, ..), _tmp) = bae_core::test_libraries::setup_test_library().await;
+    let (library, _tmp) = bae_core::test_libraries::setup_test_library().await;
+    let db = library.database().clone();
     let (album_id, release_id) = seed(&db).await;
 
-    manager
+    library
         .apply_release_metadata_user_edit(
             &release_id,
             &wire_edit("  Album Alpha  ", &["Artist Alpha"]),
@@ -132,10 +134,11 @@ async fn an_untrimmed_album_title_is_stored_trimmed() {
 /// The artist names a user edit does supply are trimmed.
 #[tokio::test]
 async fn new_artist_names_are_stored_trimmed() {
-    let ((manager, db, ..), _tmp) = bae_core::test_libraries::setup_test_library().await;
+    let (library, _tmp) = bae_core::test_libraries::setup_test_library().await;
+    let db = library.database().clone();
     let (album_id, release_id) = seed(&db).await;
 
-    manager
+    library
         .apply_release_metadata_user_edit(
             &release_id,
             &wire_edit("Album Alpha", &["  Artist Alpha  "]),
@@ -156,7 +159,8 @@ async fn new_artist_names_are_stored_trimmed() {
 /// crediting it to anyone else, or to that artist beside another, unmarks it.
 #[tokio::test]
 async fn editing_the_album_artist_decides_whether_it_is_a_compilation() {
-    let ((manager, db, ..), _tmp) = bae_core::test_libraries::setup_test_library().await;
+    let (library, _tmp) = bae_core::test_libraries::setup_test_library().await;
+    let db = library.database().clone();
     let (album_id, release_id) = seed(&db).await;
 
     for (artists, compilation) in [
@@ -164,7 +168,7 @@ async fn editing_the_album_artist_decides_whether_it_is_a_compilation() {
         (&["Artist Alpha"][..], false),
         (&["Various Artists", "Artist Alpha"][..], false),
     ] {
-        manager
+        library
             .apply_release_metadata_user_edit(&release_id, &wire_edit("Album Alpha", artists))
             .await
             .unwrap();

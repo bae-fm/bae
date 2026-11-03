@@ -8,8 +8,7 @@ fn handle_over_one_album(
     test_name: &str,
     tracks: &[&str],
 ) -> (std::sync::Arc<super::AppHandle>, Vec<String>) {
-    let (runtime, (manager, database, catalogs, closing), _root) =
-        super::super::tests::fresh_test_library(test_name);
+    let (runtime, library, _root) = super::super::tests::fresh_test_library(test_name);
     let fixture = bae_core::library::LibraryFixture {
         albums: vec![bae_core::library::FixtureAlbum {
             title: "Album Title".to_string(),
@@ -21,14 +20,11 @@ fn handle_over_one_album(
         playing: None,
     };
     let track_ids = runtime.block_on(async {
-        manager.write_fixture(&fixture).await.expect("write the library fixture");
-        let albums = bae_core::library::views::LibraryViews::new(database.clone())
-            .get_albums(&[])
-            .await
-            .expect("read the albums");
+        library.write_fixture(&fixture).await.expect("write the library fixture");
+        let albums = library.views().get_albums(&[]).await.expect("read the albums");
         let releases =
-            manager.get_releases_for_album(&albums[0].id).await.expect("read the releases");
-        manager
+            library.get_releases_for_album(&albums[0].id).await.expect("read the releases");
+        library
             .get_tracks_for_release(&releases[0].id)
             .await
             .expect("read the tracks")
@@ -36,10 +32,7 @@ fn handle_over_one_album(
             .map(|track| track.id)
             .collect()
     });
-    (
-        super::super::tests::start_test_handle(runtime, (manager, database, catalogs, closing)),
-        track_ids,
-    )
+    (super::super::tests::start_test_handle(runtime, library), track_ids)
 }
 
 /// An addition reaches the app as a value of its own, with how many tracks

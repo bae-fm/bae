@@ -5,7 +5,7 @@
 //! does: the folder's watched root is read, its draft is read from its own
 //! tags, and the import is asked for.
 
-use crate::app::test_library::TestLibrary;
+use crate::test_libraries::TestLibrary;
 use bae_import::{CandidateKey, ImportEvent, ImportServiceHandle};
 use bae_util::test_channels::HANG_GUARD;
 use std::path::{Path, PathBuf};

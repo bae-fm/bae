@@ -6,7 +6,6 @@ use bae_types::track_time::{TrackTime};
 use bae_util::content_type::ContentType;
 use std::path::Path;
 use std::time::Duration;
-use bae_import::test_imports::start_test_import;
 use bae_import::test_imports::wait_for_import_complete;
 use bae_audio::test_samples::{assert_captured_matches_reference, samples_as_f32};
 use tempfile::TempDir;
@@ -54,7 +53,7 @@ const FULL_FILE_DURATION_MS: u64 = 90000;
 /// Import the 3-track CUE/APE fixture into a fresh library, returning the
 /// manager, the imported release id, and the temp root that owns both the
 /// album folder and the database.
-async fn import_cue_ape_fixture() -> (LibraryManager, String, TempDir) {
+async fn import_cue_ape_fixture() -> (bae_core::test_libraries::TestLibrary, String, TempDir) {
     bae_util::test_logs::install();
     let temp_root = TempDir::new().expect("temp root");
     let album_dir = temp_root.path().join("album");
@@ -64,12 +63,12 @@ async fn import_cue_ape_fixture() -> (LibraryManager, String, TempDir) {
     copy_cue_ape_fixture(&album_dir);
 
     let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
-    let (library_manager, database, catalogs, closing) = bae_core::test_libraries::open_test_library_with(&db_dir, fakes.providers()).await;
+    let library = bae_core::test_libraries::open_test_library_with(&db_dir, fakes.providers()).await;
     let release_id_key =
         fakes.seed_discogs_test_release(create_test_discogs_release());
     let release_id =
-        bae_import::test_imports::import_folder_and_wait(&database, &catalogs, &closing, album_dir, release_id_key).await;
-    (library_manager, release_id, temp_root)
+        library.import_folder(album_dir, release_id_key).await;
+    (library, release_id, temp_root)
 }
 
 /// Regression: CUE+APE imports must store per-track durations, not the full file duration.
@@ -78,10 +77,10 @@ async fn import_cue_ape_fixture() -> (LibraryManager, String, TempDir) {
 /// For CUE+APE, all 8 tracks got the full APE file duration (37:29).
 #[tokio::test]
 async fn test_cue_ape_records_correct_durations() {
-    let (library_manager, release_id, _temp_root) = import_cue_ape_fixture().await;
+    let (library, release_id, _temp_root) = import_cue_ape_fixture().await;
     info!("Import completed, release_id: {}", release_id);
 
-    let tracks = library_manager.get_tracks_for_release(&release_id).await.expect("get tracks");
+    let tracks = library.get_tracks_for_release(&release_id).await.expect("get tracks");
     assert_eq!(tracks.len(), 3, "Should have 3 tracks");
 
     // Core assertion: each track must have its own duration, NOT the full file duration
@@ -200,8 +199,8 @@ async fn test_cue_ape_track2_samples_match_xld_reference() {
 /// for full-file decode with seek/stop.
 #[tokio::test]
 async fn test_cue_ape_records_track_timing() {
-    let (library_manager, release_id, _temp_root) = import_cue_ape_fixture().await;
-    let tracks = library_manager.get_tracks_for_release(&release_id).await.expect("get tracks");
+    let (library, release_id, _temp_root) = import_cue_ape_fixture().await;
+    let tracks = library.get_tracks_for_release(&release_id).await.expect("get tracks");
     assert_eq!(tracks.len(), 3);
 
     // Expected CUE timings in samples at 44100Hz:
@@ -211,7 +210,7 @@ async fn test_cue_ape_records_track_timing() {
     let expected_end_sample: [Option<u64>; 3] = [Some(2250 * 588), Some(4500 * 588), None];
 
     for (i, track) in tracks.iter().enumerate() {
-        let af = library_manager
+        let af = library
             .get_audio_format_by_track_id(&track.id)
             .await
             .expect("get audio format")
@@ -220,7 +219,7 @@ async fn test_cue_ape_records_track_timing() {
         assert_eq!(af.content_type, ContentType::Ape, "Track {} should be APE", i + 1);
 
         let resolved =
-            library_manager.resolve_track_audio(&track.id).await.expect("resolve track audio");
+            library.resolve_track_audio(&track.id).await.expect("resolve track audio");
         assert_eq!(resolved.segments.len(), 1);
         let segment = &resolved.segments[0];
 
@@ -259,7 +258,7 @@ impl CueApeTestFixture {
     /// The 3-track CUE/APE album, imported and playing through a full-speed
     /// capture sink.
     async fn with_capture() -> Result<Self, Box<dyn std::error::Error>> {
-        let ((library_manager, database, ..), imported) = bae_core::test_libraries::imported_release_setup(
+        let (library, imported) = bae_core::test_libraries::imported_release_setup(
             create_test_discogs_release(),
             "test",
             uuid::Uuid::new_v4().to_string(),
@@ -268,7 +267,7 @@ impl CueApeTestFixture {
         .await?;
         assert_eq!(imported.track_ids.len(), 3, "Should have 3 tracks from CUE/APE");
         let (playback_handle, capture_stream_rx) =
-            bae_core::test_libraries::start_capture_playback(&library_manager, &database, bae_playback::test_capture::TestAudioDevice::Capture)
+            bae_core::test_libraries::start_capture_playback(&library, bae_playback::test_capture::TestAudioDevice::Capture)
                 .await;
         let progress_rx = playback_handle.subscribe_progress();
         Ok(Self {

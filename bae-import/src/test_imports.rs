@@ -1,5 +1,5 @@
-//! Running the import service over a test store's folder and waiting for
-//! what it lands, for the tests of this crate and the crates above it.
+//! The import commands a test sends over a test store's folder, and waiting
+//! for what they land, for the tests of this crate and the crates above it.
 
 fn import_terminal_ids(progress: &crate::ImportProgress) -> Option<(String, String)> {
     match progress {
@@ -9,64 +9,6 @@ fn import_terminal_ids(progress: &crate::ImportProgress) -> Option<(String, Stri
         }
         _ => None,
     }
-}
-
-/// [`start_import_service`] with the Discogs key stored through `catalogs`,
-/// downloading images over a transport that reaches nothing — the shared
-/// setup every import/playback test binary needs, so none of them keep a
-/// private copy that can drift from the others.
-pub async fn start_test_import(
-    runtime_handle: tokio::runtime::Handle,
-    database: &bae_db::Database,
-    catalogs: &crate::CatalogSessions,
-    closing: &tokio_util::sync::CancellationToken,
-) -> crate::ImportServiceHandle {
-    configure_test_discogs(catalogs).await;
-    start_import_service(
-        runtime_handle,
-        database,
-        catalogs,
-        closing,
-        bae_util::http::Http::for_test(),
-    )
-    .await
-}
-
-/// Start an [`ImportService`] over a test library's store, asking the catalogs
-/// through `catalogs`, the sessions the library was opened with, and
-/// downloading images over `http`. The library's `closing` token ends the
-/// service with the library.
-///
-/// [`ImportService`]: crate::ImportService
-pub async fn start_import_service(
-    runtime_handle: tokio::runtime::Handle,
-    database: &bae_db::Database,
-    catalogs: &crate::CatalogSessions,
-    closing: &tokio_util::sync::CancellationToken,
-    http: bae_util::http::Http,
-) -> crate::ImportServiceHandle {
-    crate::ImportService::start(
-        runtime_handle,
-        database.clone(),
-        catalogs.clone(),
-        bae_catalogs::remote_image::RemoteImageCache::for_test(http),
-        bae_diagnostics::Diagnostics::noop(),
-        crate::CandidatePreparations::new(database.clone()),
-        std::sync::Arc::new(coven::SystemClock),
-        std::sync::Arc::new(coven::UuidIds),
-        closing.child_token(),
-    )
-    .await
-    .expect("test import service starts")
-}
-
-/// Store the Discogs key seeded Discogs fixtures are asked for with, through
-/// `catalogs`, the sessions the test built its library over.
-pub async fn configure_test_discogs(catalogs: &crate::CatalogSessions) {
-    catalogs
-        .store_discogs_key("test-discogs-token", bae_preferences::DiscogsValidation::Valid)
-        .await
-        .expect("test Discogs key is stored");
 }
 
 /// Wait for the import worker to finish, returning (release_id, album_id).
@@ -183,55 +125,4 @@ pub fn folder_import(
         read_file_tags: false,
         user_edit: None,
     })
-}
-
-/// Send one folder import of `album_dir` as the already-seeded Discogs release
-/// `release_id_key`, under `candidate_key` and `import_id`, and wait for the
-/// worker to finish it, returning (release_id, album_id). The service is
-/// started here and dropped on return — by then the import has landed
-/// everything it writes.
-pub async fn send_folder_import_and_wait(
-    database: &bae_db::Database,
-    catalogs: &crate::CatalogSessions,
-    closing: &tokio_util::sync::CancellationToken,
-    album_dir: std::path::PathBuf,
-    release_id_key: String,
-    candidate_key: &str,
-    import_id: String,
-) -> Result<(String, String), Box<dyn std::error::Error>> {
-    let import_handle =
-        start_test_import(tokio::runtime::Handle::current(), database, catalogs, closing).await;
-    import_handle
-        .send_command(crate::ImportCommand {
-            candidate_key: crate::CandidateKey::from_bytes(candidate_key.as_bytes().to_vec()),
-            ..folder_import(&import_id, album_dir, discogs_release(release_id_key))
-        })
-        .await
-        .map_err(|e| -> Box<dyn std::error::Error> { e.into() })?;
-    let mut progress_rx = import_handle.subscribe_import(import_id);
-    Ok(wait_for_import_complete(&mut progress_rx).await)
-}
-
-/// Import `album_dir` as the already-seeded Discogs release `release_id_key`,
-/// under candidate key `"test"` and a fresh import id, and return the release id
-/// the import landed. Panics if the import fails.
-pub async fn import_folder_and_wait(
-    database: &bae_db::Database,
-    catalogs: &crate::CatalogSessions,
-    closing: &tokio_util::sync::CancellationToken,
-    album_dir: impl Into<std::path::PathBuf>,
-    release_id_key: String,
-) -> String {
-    let (release_id, _album_id) = send_folder_import_and_wait(
-        database,
-        catalogs,
-        closing,
-        album_dir.into(),
-        release_id_key,
-        "test",
-        uuid::Uuid::new_v4().to_string(),
-    )
-    .await
-    .expect("the test import service accepts and completes the folder import");
-    release_id
 }

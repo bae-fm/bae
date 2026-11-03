@@ -5,7 +5,7 @@ async fn playing_first_track(
 ) -> (bae_core::library::AppServices, String) {
     let services = fixture.services().await;
     let release_id = fixture
-        .library_manager
+        .library
         .get_track_display(&fixture.track_ids[0])
         .await
         .expect("read the first track's release")
@@ -125,7 +125,7 @@ async fn a_changed_cover_reaches_the_paused_track_and_the_queue() {
         uuid::Uuid::new_v4().to_string(),
         chrono::Utc::now(),
     );
-    fixture.library_manager.add_external_file_for_test(&file, &image_path).await.unwrap();
+    fixture.library.add_external_file_for_test(&file, &image_path).await.unwrap();
     services
         .change_cover(
             &release_id,

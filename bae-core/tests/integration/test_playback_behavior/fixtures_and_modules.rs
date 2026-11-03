@@ -181,12 +181,12 @@ impl CueFlacTestFixture {
         album: DiscogsRelease,
         generate_files: impl FnOnce(&std::path::Path),
     ) -> Result<Self, Box<dyn std::error::Error>> {
-        let ((library_manager, database, ..), imported) =
+        let (library, imported) =
             imported_release_setup(album, "test", uuid::Uuid::new_v4().to_string(), generate_files)
                 .await?;
         assert_eq!(imported.track_ids.len(), 3, "Should have 3 tracks from CUE/FLAC");
         let (playback_handle, capture_stream_rx) =
-            bae_core::test_libraries::start_capture_playback(&library_manager, &database, device).await;
+            bae_core::test_libraries::start_capture_playback(&library, device).await;
         let progress_rx = playback_handle.subscribe_progress();
         Ok(Self {
             playback_handle,
@@ -207,7 +207,7 @@ impl CueFlacTestFixture {
 /// manager the side-pause setting is written through.
 struct SidePauseTestFixture {
     playback_handle: bae_playback::PlaybackHandle,
-    library_manager: LibraryManager,
+    library: TestLibrary,
     progress_rx: tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
     track_ids: Vec<String>,
     release_id: String,
@@ -242,7 +242,7 @@ impl SidePauseTestFixture {
     ) -> Result<Self, Box<dyn std::error::Error>> {
         let import_ids = SequentialIds::new();
         let import_id = import_ids.new_id().to_string();
-        let ((library_manager, database, ..), imported) = imported_release_setup(
+        let (library, imported) = imported_release_setup(
             create_side_pause_test_album(format, positions),
             "side-pause",
             import_id,
@@ -253,15 +253,15 @@ impl SidePauseTestFixture {
         .await?;
         // Set before the playback service starts, so its first preload reads
         // them.
-        library_manager.set_pause_between_sides(pause_between_sides).await?;
-        library_manager.set_side_pause_countdown(countdown).await?;
+        library.set_pause_between_sides(pause_between_sides).await?;
+        library.set_side_pause_countdown(countdown).await?;
         assert_eq!(imported.track_ids.len(), 3, "side-pause fixture imports 3 tracks");
 
         // Paced to wall-clock time so commands issued after play land before
         // the track's boundary.
         let clock =
             Arc::new(bae_playback::ManualPlaybackClock::new(side_pause_clock_start()));
-        let (playback_handle, capture_stream_rx) = bae_core::test_libraries::start_capture_playback_with_clock(&library_manager, &database,
+        let (playback_handle, capture_stream_rx) = bae_core::test_libraries::start_capture_playback_with_clock(&library,
             bae_playback::test_capture::TestAudioDevice::RealtimeCapture,
             clock.clone(),
         )
@@ -269,7 +269,7 @@ impl SidePauseTestFixture {
         let progress_rx = playback_handle.subscribe_progress();
         Ok(Self {
             playback_handle,
-            library_manager,
+            library,
             progress_rx,
             track_ids: imported.track_ids,
             release_id: imported.release_id,
@@ -282,7 +282,7 @@ impl SidePauseTestFixture {
     /// Toggle `pause_between_sides` the way `AppServices::set_pause_between_sides`
     /// does; this fixture has no `AppServices`.
     async fn set_pause_between_sides_mid_track(&self, enabled: bool) {
-        self.library_manager
+        self.library
             .set_pause_between_sides(enabled)
             .await
             .expect("set_pause_between_sides");

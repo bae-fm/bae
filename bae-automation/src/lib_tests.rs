@@ -795,20 +795,19 @@ mod release_album {
     #[tokio::test(flavor = "multi_thread")]
     async fn release_album_set_moves_the_release_into_the_album_it_names() {
         let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
-        let ((manager, database, catalogs, closing), imported) =
-            bae_core::test_libraries::imported_release_setup_with(
-                &fakes,
-                bae_catalogs::test_releases::discogs_test_release(
-                    "album-set-moved",
-                    "Moved Album",
-                    &[("Track One", "0:10")],
-                ),
-                "moved",
-                "album-set-moved-import".to_string(),
-                one_track,
-            )
-            .await
-            .expect("import the release that moves");
+        let (library, imported) = bae_core::test_libraries::imported_release_setup_with(
+            &fakes,
+            bae_catalogs::test_releases::discogs_test_release(
+                "album-set-moved",
+                "Moved Album",
+                &[("Track One", "0:10")],
+            ),
+            "moved",
+            "album-set-moved-import".to_string(),
+            one_track,
+        )
+        .await
+        .expect("import the release that moves");
         let picked_dir = imported.temp_dir.path().join("picked");
         std::fs::create_dir_all(&picked_dir).expect("the second album's folder");
         one_track(&picked_dir);
@@ -818,28 +817,15 @@ mod release_album {
                 "Picked Album",
                 &[("Track One", "0:10")],
             ));
-        let picked_release = bae_import::test_imports::import_folder_and_wait(
-            &database,
-            &catalogs,
-            &closing,
-            &picked_dir,
-            picked_key,
-        )
-        .await;
+        let picked_release = library.import_folder(&picked_dir, picked_key).await;
         let picked_album =
-            manager.get_album_id_for_release(&picked_release).await.expect("the picked album");
-        let moved_from = manager
+            library.get_album_id_for_release(&picked_release).await.expect("the picked album");
+        let moved_from = library
             .get_album_id_for_release(&imported.release_id)
             .await
             .expect("the release's own album");
         assert_ne!(moved_from, picked_album);
-        let services = bae_core::test_libraries::start_test_services(
-            manager.clone(),
-            database,
-            catalogs,
-            closing,
-        )
-        .await;
+        let services = library.start_services().await.expect("the test library's services start");
         let automation = Automation::new(services, &tokio::runtime::Handle::current());
 
         automation
@@ -854,11 +840,11 @@ mod release_album {
             .expect("the release moves");
 
         assert_eq!(
-            manager.get_album_id_for_release(&imported.release_id).await.unwrap(),
+            library.get_album_id_for_release(&imported.release_id).await.unwrap(),
             picked_album
         );
         assert_eq!(
-            manager
+            library
                 .get_album_by_id(&picked_album)
                 .await
                 .unwrap()

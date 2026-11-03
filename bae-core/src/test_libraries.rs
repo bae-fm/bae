@@ -1,6 +1,6 @@
 //! Test libraries for the tests of this crate and the crates above it: a
-//! database, a library opened over it as the app opens one, its services, the
-//! runtimes the tests around them need, playback on a capture device,
+//! library opened as the app opens one, the services a test starts over it,
+//! the runtimes the tests around them need, playback on a capture device,
 //! profiles, a library over in-memory storage, and a release imported into a
 //! fresh library.
 
@@ -8,35 +8,289 @@ mod playback;
 mod profiles;
 mod storage;
 
-pub use playback::{start_capture_playback, start_capture_playback_with_clock, start_playback_on};
+pub use playback::{start_capture_playback, start_capture_playback_with_clock};
 pub use profiles::{made_profile, made_profile_on, requested_profile, requested_profile_on};
 pub use storage::{connect_storage, release_storage, remove_uploaded_file, storage_library};
 
+use crate::library::{AppServices, CancellationToken, LibraryManager};
+use bae_catalogs::remote_image::RemoteImageCache;
+use bae_db::Database;
+use bae_diagnostics::Diagnostics;
+use bae_import::{CatalogSessions, ImportServiceHandle};
+use coven::{ClockRef, IdSourceRef};
+use std::sync::Arc;
+
+/// An open test library: its manager, which it reads as, and what the app
+/// would hand the library's services beside it. A test starts the services it
+/// needs from here, each over the same store, catalog sessions and image cache.
+pub struct TestLibrary {
+    manager: LibraryManager,
+    database: Database,
+    catalogs: CatalogSessions,
+    closing: CancellationToken,
+    clock: ClockRef,
+    ids: IdSourceRef,
+    diagnostics: Diagnostics,
+    remote_images: RemoteImageCache,
+}
+
+impl std::ops::Deref for TestLibrary {
+    type Target = LibraryManager;
+    fn deref(&self) -> &LibraryManager {
+        &self.manager
+    }
+}
+
+impl TestLibrary {
+    /// Open the library over `database` on the real clock and ids, asking
+    /// `providers`, reporting nowhere.
+    pub async fn open(
+        database: Database,
+        app_dir: bae_app_dir::AppDir,
+        providers: bae_catalogs::providers::Providers,
+    ) -> Self {
+        Self::open_with(
+            database,
+            app_dir,
+            providers,
+            Arc::new(coven::SystemClock),
+            Arc::new(coven::UuidIds),
+            Diagnostics::noop(),
+        )
+        .await
+    }
+
+    /// Open the library over `database` through the app's opening step, on
+    /// `clock` and `ids`, reporting to `diagnostics`. The catalog sessions,
+    /// the image cache and the closing token are built here, as the bootstrap
+    /// builds them.
+    pub async fn open_with(
+        database: Database,
+        app_dir: bae_app_dir::AppDir,
+        providers: bae_catalogs::providers::Providers,
+        clock: ClockRef,
+        ids: IdSourceRef,
+        diagnostics: Diagnostics,
+    ) -> Self {
+        let remote_images = RemoteImageCache::for_test(providers.http().clone());
+        let catalogs = CatalogSessions::new(
+            providers,
+            database.clone(),
+            diagnostics.clone(),
+            tokio::runtime::Handle::current(),
+        );
+        let closing = CancellationToken::new();
+        let manager = crate::app::open_library_manager(
+            database.clone(),
+            catalogs.clone(),
+            closing.clone(),
+            app_dir,
+            clock.clone(),
+            ids.clone(),
+            diagnostics.clone(),
+            tokio::runtime::Handle::current(),
+            remote_images.clone(),
+        )
+        .await
+        .expect("open the test library");
+        Self { manager, database, catalogs, closing, clock, ids, diagnostics, remote_images }
+    }
+
+    /// The library's store.
+    pub fn database(&self) -> &Database {
+        &self.database
+    }
+
+    /// The catalog sessions the library asks through.
+    pub fn catalogs(&self) -> &CatalogSessions {
+        &self.catalogs
+    }
+
+    /// The library's views over its store.
+    pub fn views(&self) -> crate::library::views::LibraryViews {
+        crate::library::views::LibraryViews::new(self.database.clone())
+    }
+
+    /// The cast picker's list over its store.
+    pub fn cast_picker(&self) -> bae_playback::renderer::CastPicker {
+        bae_playback::renderer::CastPicker::new(self.database.clone())
+    }
+
+    /// The library's services, started through the app's own step, with
+    /// playback on a device that plays nothing and no stored queue restored.
+    pub async fn start_services(&self) -> Result<AppServices, crate::app::ServicesStartError> {
+        self.start_services_on(Box::new(bae_playback::audio_output::FailingAudioDevice)).await
+    }
+
+    /// [`Self::start_services`] with playback on `device`.
+    pub async fn start_services_on(
+        &self,
+        device: Box<dyn bae_playback::AudioOutputDevice>,
+    ) -> Result<AppServices, crate::app::ServicesStartError> {
+        crate::app::start_library_services(
+            self.manager.clone(),
+            self.database.clone(),
+            self.catalogs.clone(),
+            self.closing.clone(),
+            self.clock.clone(),
+            self.ids.clone(),
+            self.diagnostics.clone(),
+            tokio::runtime::Handle::current(),
+            self.remote_images.clone(),
+            50,
+            false,
+            Arc::new(bae_playback::WallPlaybackClock::new(self.clock.clone())),
+            crate::app::PlaybackOutput::Device(device),
+        )
+        .await
+    }
+
+    /// The import service alone, over the library's store, ending as the
+    /// library closes.
+    pub async fn start_import(&self) -> Result<ImportServiceHandle, bae_import::ImportError> {
+        bae_import::ImportService::start(
+            tokio::runtime::Handle::current(),
+            self.database.clone(),
+            self.catalogs.clone(),
+            self.remote_images.clone(),
+            self.diagnostics.clone(),
+            bae_import::CandidatePreparations::new(self.database.clone()),
+            self.clock.clone(),
+            self.ids.clone(),
+            self.closing.child_token(),
+        )
+        .await
+    }
+
+    /// [`Self::start_import`] with the Discogs key stored that seeded Discogs
+    /// fixtures are asked for with.
+    pub async fn start_discogs_import(&self) -> ImportServiceHandle {
+        self.catalogs
+            .store_discogs_key("test-discogs-token", bae_preferences::DiscogsValidation::Valid)
+            .await
+            .expect("test Discogs key is stored");
+        self.start_import().await.expect("test import service starts")
+    }
+
+    /// Import `album_dir` as the already-seeded Discogs release
+    /// `release_id_key`, under candidate key `"test"` and a fresh import id,
+    /// and return the release id the import landed. Panics if the import
+    /// fails.
+    pub async fn import_folder(
+        &self,
+        album_dir: impl Into<std::path::PathBuf>,
+        release_id_key: String,
+    ) -> String {
+        let (release_id, _album_id) = self
+            .import_folder_as(
+                album_dir.into(),
+                release_id_key,
+                "test",
+                uuid::Uuid::new_v4().to_string(),
+            )
+            .await
+            .expect("the test import service accepts and completes the folder import");
+        release_id
+    }
+
+    /// Send one folder import of `album_dir` as the already-seeded Discogs
+    /// release `release_id_key`, under `candidate_key` and `import_id`, and
+    /// wait for the worker to finish it, returning (release_id, album_id).
+    /// The service is started here and dropped on return — by then the import
+    /// has landed everything it writes.
+    async fn import_folder_as(
+        &self,
+        album_dir: std::path::PathBuf,
+        release_id_key: String,
+        candidate_key: &str,
+        import_id: String,
+    ) -> Result<(String, String), Box<dyn std::error::Error>> {
+        let import = self.start_discogs_import().await;
+        import
+            .send_command(bae_import::ImportCommand {
+                candidate_key: bae_import::CandidateKey::from_bytes(
+                    candidate_key.as_bytes().to_vec(),
+                ),
+                ..bae_import::test_imports::folder_import(
+                    &import_id,
+                    album_dir,
+                    bae_import::test_imports::discogs_release(release_id_key),
+                )
+            })
+            .await
+            .map_err(|e| -> Box<dyn std::error::Error> { e.into() })?;
+        let mut progress_rx = import.subscribe_import(import_id);
+        Ok(bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await)
+    }
+
+    /// The playback service alone, on a device that plays nothing, with no
+    /// stored queue restored.
+    pub async fn start_playback(&self) -> bae_playback::PlaybackHandle {
+        self.start_playback_reporting(
+            Box::new(bae_playback::audio_output::FailingAudioDevice),
+            Arc::new(bae_playback::WallPlaybackClock::new(self.clock.clone())),
+            50,
+            false,
+        )
+        .await
+    }
+
+    /// The playback service alone, playing on `device`, timing side-pause
+    /// countdowns on `clock` and reporting its position every 100 ms. With
+    /// `restore_playback` ("Restore on launch") it resumes the stored queue;
+    /// without, the queue and the resume point are forgotten first.
+    pub async fn start_playback_on(
+        &self,
+        device: Box<dyn bae_playback::AudioOutputDevice>,
+        clock: bae_playback::PlaybackClockRef,
+        restore_playback: bool,
+    ) -> bae_playback::PlaybackHandle {
+        self.start_playback_reporting(device, clock, 100, restore_playback).await
+    }
+
+    async fn start_playback_reporting(
+        &self,
+        device: Box<dyn bae_playback::AudioOutputDevice>,
+        clock: bae_playback::PlaybackClockRef,
+        position_update_interval_ms: u32,
+        restore_playback: bool,
+    ) -> bae_playback::PlaybackHandle {
+        self.manager
+            .settle_playback_queue(restore_playback)
+            .await
+            .expect("settle the playback queue");
+        bae_playback::PlaybackService::start_with_audio_device(
+            self.database.clone(),
+            self.ids.clone(),
+            bae_playback::tables::PlaybackQueueTables::new(self.database.clone()),
+            bae_playback::tables::PlaybackNowRow::new(self.database.clone()),
+            bae_playback::tables::PlaybackTimelineRow::new(self.database.clone()),
+            self.manager.subscribe_track_deletions(),
+            self.diagnostics.clone(),
+            tokio::runtime::Handle::current(),
+            position_update_interval_ms,
+            restore_playback,
+            device,
+            clock,
+        )
+    }
+}
+
 /// Open `dir/test.db` under the real clock and real UUID provider.
-async fn open_test_db(dir: &std::path::Path) -> bae_db::Database {
-    bae_db::Database::new_test(
+async fn open_test_db(dir: &std::path::Path) -> Database {
+    Database::new_test(
         dir.join("test.db").to_str().expect("test database path is valid UTF-8"),
-        std::sync::Arc::new(coven::SystemClock),
+        Arc::new(coven::SystemClock),
     )
     .await
     .expect("open the test database")
 }
 
 /// Open `dir/test.db` as a library, through the app's own opening step, with
-/// `dir` as the library's store dir, and return its manager, the store under
-/// it, the catalog sessions it asks through, and the token whose cancel ends
-/// what runs while it is open. [`start_test_services`] takes them to start the
-/// library's services over the same store. Takes the directory rather than making
+/// `dir` as the library's store dir. Takes the directory rather than making
 /// one, so a test that already owns its library directory (a cloned fixture
 /// template, a `db/` subdirectory next to an `album/`) uses it too.
-pub async fn open_test_library(
-    dir: &std::path::Path,
-) -> (
-    crate::library::LibraryManager,
-    bae_db::Database,
-    bae_import::CatalogSessions,
-    crate::library::CancellationToken,
-) {
+pub async fn open_test_library(dir: &std::path::Path) -> TestLibrary {
     open_test_library_with(dir, bae_catalogs::providers::Providers::offline()).await
 }
 
@@ -45,14 +299,9 @@ pub async fn open_test_library(
 pub async fn open_test_library_with(
     dir: &std::path::Path,
     providers: bae_catalogs::providers::Providers,
-) -> (
-    crate::library::LibraryManager,
-    bae_db::Database,
-    bae_import::CatalogSessions,
-    crate::library::CancellationToken,
-) {
+) -> TestLibrary {
     let database = open_test_db(dir).await;
-    open_library(database, bae_app_dir::AppDir::under_home(dir).unwrap(), providers).await
+    TestLibrary::open(database, bae_app_dir::AppDir::under_home(dir).unwrap(), providers).await
 }
 
 /// A library over an installation the test created with its own storage and
@@ -61,105 +310,18 @@ pub async fn test_library_from_handle(
     handle: coven::CovenHandle,
     dir: &std::path::Path,
     providers: bae_catalogs::providers::Providers,
-) -> (
-    crate::library::LibraryManager,
-    bae_db::Database,
-    bae_import::CatalogSessions,
-    crate::library::CancellationToken,
-) {
-    open_library(
-        bae_db::Database::from_handle(
-            handle,
-            std::sync::Arc::new(coven::SystemClock),
-            std::sync::Arc::new(coven::UuidIds),
-        ),
+) -> TestLibrary {
+    TestLibrary::open(
+        Database::from_handle(handle, Arc::new(coven::SystemClock), Arc::new(coven::UuidIds)),
         bae_app_dir::AppDir::under_home(dir).unwrap(),
         providers,
     )
     .await
 }
 
-/// Open the library over `database` as the app does: the catalog sessions
-/// over the same store and the closing token are built here, as the bootstrap
-/// builds them, and passed to the app's opening step.
-async fn open_library(
-    database: bae_db::Database,
-    app_dir: bae_app_dir::AppDir,
-    providers: bae_catalogs::providers::Providers,
-) -> (
-    crate::library::LibraryManager,
-    bae_db::Database,
-    bae_import::CatalogSessions,
-    crate::library::CancellationToken,
-) {
-    let remote_images =
-        bae_catalogs::remote_image::RemoteImageCache::for_test(providers.http().clone());
-    let catalogs = bae_import::CatalogSessions::new(
-        providers,
-        database.clone(),
-        bae_diagnostics::Diagnostics::noop(),
-        tokio::runtime::Handle::current(),
-    );
-    let closing = crate::library::CancellationToken::new();
-    let manager = crate::app::open_library_manager(
-        database.clone(),
-        catalogs.clone(),
-        closing.clone(),
-        app_dir,
-        std::sync::Arc::new(coven::SystemClock),
-        std::sync::Arc::new(coven::UuidIds),
-        bae_diagnostics::Diagnostics::noop(),
-        tokio::runtime::Handle::current(),
-        remote_images,
-    )
-    .await
-    .expect("open the test library");
-    (manager, database, catalogs, closing)
-}
-
-/// Start the services of a library [`open_test_library`] opened, through the
-/// app's own step, with playback on a device that plays nothing, no stored
-/// queue restored, and image downloads that reach nothing.
-pub async fn start_test_services(
-    manager: crate::library::LibraryManager,
-    database: bae_db::Database,
-    catalogs: bae_import::CatalogSessions,
-    closing: crate::library::CancellationToken,
-) -> crate::library::AppServices {
-    let remote_images =
-        bae_catalogs::remote_image::RemoteImageCache::for_test(bae_util::http::Http::for_test());
-    crate::app::start_library_services(
-        manager,
-        database,
-        catalogs,
-        closing,
-        std::sync::Arc::new(coven::SystemClock),
-        std::sync::Arc::new(coven::UuidIds),
-        bae_diagnostics::Diagnostics::noop(),
-        tokio::runtime::Handle::current(),
-        remote_images,
-        50,
-        false,
-        bae_playback::test_capture::wall_playback_clock(),
-        crate::app::PlaybackOutput::Device(Box::new(
-            bae_playback::audio_output::FailingAudioDevice,
-        )),
-    )
-    .await
-    .expect("the test library's services start")
-}
-
 /// [`open_test_library`] over a fresh temp directory. The returned `TempDir`
-/// owns the database file, so it must outlive the manager.
-pub async fn setup_test_library() -> (
-    (
-        crate::library::LibraryManager,
-        bae_db::Database,
-        bae_import::CatalogSessions,
-        crate::library::CancellationToken,
-    ),
-    tempfile::TempDir,
-) {
+/// owns the database file, so it must outlive the library.
+pub async fn setup_test_library() -> (TestLibrary, tempfile::TempDir) {
     setup_test_library_with(bae_catalogs::providers::Providers::offline()).await
 }
 
@@ -167,15 +329,7 @@ pub async fn setup_test_library() -> (
 /// fakes.
 pub async fn setup_test_library_with(
     providers: bae_catalogs::providers::Providers,
-) -> (
-    (
-        crate::library::LibraryManager,
-        bae_db::Database,
-        bae_import::CatalogSessions,
-        crate::library::CancellationToken,
-    ),
-    tempfile::TempDir,
-) {
+) -> (TestLibrary, tempfile::TempDir) {
     bae_util::test_logs::install();
     let temp_dir = tempfile::TempDir::new().expect("test library temp dir");
     let library = open_test_library_with(temp_dir.path(), providers).await;
@@ -184,19 +338,10 @@ pub async fn setup_test_library_with(
 
 /// [`setup_test_library_with`] with an `album/` directory made alongside it,
 /// for a test that writes audio into a folder and imports that folder. The
-/// `TempDir` owns both directories, so it must outlive the manager.
+/// `TempDir` owns both directories, so it must outlive the library.
 pub async fn setup_test_library_with_album_dir(
     providers: bae_catalogs::providers::Providers,
-) -> (
-    (
-        crate::library::LibraryManager,
-        bae_db::Database,
-        bae_import::CatalogSessions,
-        crate::library::CancellationToken,
-    ),
-    std::path::PathBuf,
-    tempfile::TempDir,
-) {
+) -> (TestLibrary, std::path::PathBuf, tempfile::TempDir) {
     let (library, temp_dir) = setup_test_library_with(providers).await;
     let album_dir = temp_dir.path().join("album");
     std::fs::create_dir_all(&album_dir).expect("test album dir");
@@ -206,17 +351,7 @@ pub async fn setup_test_library_with_album_dir(
 /// Set up a fresh library through the production creation and open paths.
 /// Sync is not set up: tests configure it themselves via
 /// connect_*/save_s3_config.
-pub fn setup_fresh_library(
-    runtime: &tokio::runtime::Runtime,
-) -> (
-    (
-        crate::library::LibraryManager,
-        bae_db::Database,
-        bae_import::CatalogSessions,
-        crate::library::CancellationToken,
-    ),
-    tempfile::TempDir,
-) {
+pub fn setup_fresh_library(runtime: &tokio::runtime::Runtime) -> (TestLibrary, tempfile::TempDir) {
     let tmp = tempfile::TempDir::new().unwrap();
     let app_dir = bae_app_dir::AppDir::under_home(tmp.path()).unwrap();
     let installation = coven::TestCoven::new();
@@ -225,12 +360,9 @@ pub fn setup_fresh_library(
             .create_store("Test Library")
             .await
             .expect("create fresh test store");
-        let database = bae_db::Database::from_handle(
-            handle,
-            std::sync::Arc::new(coven::SystemClock),
-            std::sync::Arc::new(coven::UuidIds),
-        );
-        open_library(database, app_dir, bae_catalogs::providers::Providers::offline()).await
+        let database =
+            Database::from_handle(handle, Arc::new(coven::SystemClock), Arc::new(coven::UuidIds));
+        TestLibrary::open(database, app_dir, bae_catalogs::providers::Providers::offline()).await
     });
     (library, tmp)
 }
@@ -247,58 +379,41 @@ pub fn multi_thread_runtime() -> tokio::runtime::Runtime {
 
 /// [`multi_thread_runtime`] with a fresh library's [`AppServices`] already built
 /// on it. The `TempDir` owns the library's files, so it must outlive both.
-///
-/// [`AppServices`]: crate::library::AppServices
-pub fn runtime_with_services(
-) -> (tokio::runtime::Runtime, crate::library::AppServices, tempfile::TempDir) {
+pub fn runtime_with_services() -> (tokio::runtime::Runtime, AppServices, tempfile::TempDir) {
     let runtime = multi_thread_runtime();
-    let ((manager, database, catalogs, closing), tmp) = setup_fresh_library(&runtime);
-    let services = runtime.block_on(start_test_services(manager, database, catalogs, closing));
+    let (library, tmp) = setup_fresh_library(&runtime);
+    let services = runtime.block_on(async move {
+        library.start_services().await.expect("the test library's services start")
+    });
     (runtime, services, tmp)
 }
 
 /// The bytes of `release_id`'s stored cover, if it has one.
-pub async fn read_cover_image_bytes(
-    mgr: &crate::library::LibraryManager,
-    release_id: &str,
-) -> Option<Vec<u8>> {
+pub async fn read_cover_image_bytes(mgr: &LibraryManager, release_id: &str) -> Option<Vec<u8>> {
     mgr.read_cover_image_bytes(release_id).await.unwrap()
 }
 
-/// What an import landed, beside the library it landed in. Holds no service of
-/// its own, so a fixture can keep it whole while handing the library's parts
-/// to whatever it starts.
+/// What an import landed, beside the library it landed in.
 pub struct ImportedRelease {
     pub track_ids: Vec<String>,
     pub release_id: String,
     /// The folder the audio was written into, for a test that reads a real file.
     pub album_dir: std::path::PathBuf,
-    /// Owns the library's files, so it must outlive the manager.
+    /// Owns the library's files, so it must outlive the library.
     pub temp_dir: tempfile::TempDir,
 }
 
 /// Import one Discogs-identified release from a folder, on the calling test's
-/// runtime, and return the library beside what it landed: open a fresh library, seed `release` for the fake Discogs
-/// endpoint, write the audio with `generate_files`, run the import to
-/// completion, and read back the tracks it landed. The arrange every playback
-/// test binary starts from.
+/// runtime, and return the library beside what it landed: open a fresh
+/// library, seed `release` for the fake Discogs endpoint, write the audio with
+/// `generate_files`, run the import to completion, and read back the tracks it
+/// landed. The arrange every playback test binary starts from.
 pub async fn imported_release_setup<G>(
     release: bae_catalogs::discogs::DiscogsRelease,
     candidate_key: &str,
     import_id: String,
     generate_files: G,
-) -> Result<
-    (
-        (
-            crate::library::LibraryManager,
-            bae_db::Database,
-            bae_import::CatalogSessions,
-            crate::library::CancellationToken,
-        ),
-        ImportedRelease,
-    ),
-    Box<dyn std::error::Error>,
->
+) -> Result<(TestLibrary, ImportedRelease), Box<dyn std::error::Error>>
 where
     G: FnOnce(&std::path::Path),
 {
@@ -320,42 +435,20 @@ pub async fn imported_release_setup_with<G>(
     candidate_key: &str,
     import_id: String,
     generate_files: G,
-) -> Result<
-    (
-        (
-            crate::library::LibraryManager,
-            bae_db::Database,
-            bae_import::CatalogSessions,
-            crate::library::CancellationToken,
-        ),
-        ImportedRelease,
-    ),
-    Box<dyn std::error::Error>,
->
+) -> Result<(TestLibrary, ImportedRelease), Box<dyn std::error::Error>>
 where
     G: FnOnce(&std::path::Path),
 {
-    let ((library_manager, database, catalogs, closing), album_dir, temp_dir) =
-        setup_test_library_with_album_dir(fakes.providers()).await;
+    let (library, album_dir, temp_dir) = setup_test_library_with_album_dir(fakes.providers()).await;
 
     let release_id_key = fakes.seed_discogs_test_release(release);
     generate_files(&album_dir);
 
-    let (release_id, _album_id) = bae_import::test_imports::send_folder_import_and_wait(
-        &database,
-        &catalogs,
-        &closing,
-        album_dir.clone(),
-        release_id_key,
-        candidate_key,
-        import_id,
-    )
-    .await?;
-    let tracks = library_manager.get_tracks_for_release(&release_id).await?;
+    let (release_id, _album_id) = library
+        .import_folder_as(album_dir.clone(), release_id_key, candidate_key, import_id)
+        .await?;
+    let tracks = library.get_tracks_for_release(&release_id).await?;
     let track_ids: Vec<String> = tracks.iter().map(|t| t.id.clone()).collect();
 
-    Ok((
-        (library_manager, database, catalogs, closing),
-        ImportedRelease { track_ids, release_id, album_dir, temp_dir },
-    ))
+    Ok((library, ImportedRelease { track_ids, release_id, album_dir, temp_dir }))
 }

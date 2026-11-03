@@ -173,8 +173,8 @@ fn materialize(fixture: &Fixture, tmp: &TempDir) -> (PathBuf, HashMap<PathBuf, V
 /// A throwaway library database over a temp dir, which must outlive it.
 async fn make_database() -> (bae_db::Database, TempDir) {
     let tmp = TempDir::new().expect("library temp dir");
-    let (_manager, database, ..) = bae_core::test_libraries::open_test_library(tmp.path()).await;
-    (database, tmp)
+    let library = bae_core::test_libraries::open_test_library(tmp.path()).await;
+    (library.database().clone(), tmp)
 }
 
 async fn drive_fixture(

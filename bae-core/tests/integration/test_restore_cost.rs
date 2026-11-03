@@ -117,31 +117,18 @@ async fn restore_cost(library: Library) {
         clock.clone(),
         std::sync::Arc::new(coven::UuidIds),
     );
-    let providers = bae_catalogs::providers::Providers::offline();
-    let remote_images =
-        bae_catalogs::remote_image::RemoteImageCache::for_test(providers.http().clone());
-    let catalogs = bae_import::CatalogSessions::new(
-        providers,
-        database.clone(),
-        bae_diagnostics::Diagnostics::noop(),
-        tokio::runtime::Handle::current(),
-    );
-    let manager = bae_core::app::open_library_manager(
+    let opened = bae_core::test_libraries::TestLibrary::open_with(
         database,
-        catalogs,
-        bae_core::library::CancellationToken::new(),
         app_dir.clone(),
+        bae_catalogs::providers::Providers::offline(),
         clock.clone(),
         Arc::new(coven::UuidIds),
         bae_diagnostics::Diagnostics::noop(),
-        tokio::runtime::Handle::current(),
-        remote_images,
     )
-    .await
-    .unwrap();
+    .await;
     let building = Instant::now();
     for write in 0..library.albums / library.albums_per_write {
-        manager.write_fixture(&albums(write, library.albums_per_write)).await.unwrap();
+        opened.write_fixture(&albums(write, library.albums_per_write)).await.unwrap();
         pass(&handle, &clock).await;
     }
     for edit in 0..library.edits {
@@ -165,7 +152,7 @@ async fn restore_cost(library: Library) {
     }
     eprintln!("built the library in {:?} (floor {floor})", building.elapsed());
     let code = handle.restore_code_for_transfer().await.unwrap();
-    drop(manager);
+    drop(opened);
     handle.close().await.unwrap();
     let mut faults = coven::Faults::none();
     faults.delay = library.latency;

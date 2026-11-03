@@ -13,14 +13,14 @@ fn an_approval_is_listed_by_the_invites_name_until_dismissed() {
         use std::time::Duration;
         let household = Household::new().await;
         let dir = tempfile::tempdir().unwrap();
-        let (manager, views) = household.owners_library(dir.path()).await;
+        let library = household.owners_library(dir.path()).await;
         let invite = household.invite(new_member("Rowan"), "guest-key").await;
         let guest_dir = tempfile::tempdir().unwrap();
         let guest = coven::TestCoven::new();
         let control = bae_core::library::JoinControl::new();
         let joining = household.join(&invite.code, &guest, &guest_dir, &control);
         let approving = async {
-            let mut invites = views.subscribe_invites();
+            let mut invites = library.views().subscribe_invites();
             let deciding =
                 |open: &bae_core::people::OpenInvite| match bae_core::people::invite_shown(
                     &open.invite,
@@ -39,7 +39,7 @@ fn an_approval_is_listed_by_the_invites_name_until_dismissed() {
             .iter()
             .find_map(deciding)
             .unwrap();
-            manager.approve_join_request(&request).await.unwrap();
+            library.approve_join_request(&request).await.unwrap();
         };
         let (joined, ()) = tokio::time::timeout(Duration::from_secs(30), async {
             tokio::join!(joining, approving)
@@ -48,7 +48,7 @@ fn an_approval_is_listed_by_the_invites_name_until_dismissed() {
         .unwrap();
         let (guest, _profile) = joined.unwrap().unwrap();
 
-        let mut changes = manager.subscribe_admin_changes();
+        let mut changes = library.subscribe_admin_changes();
         let done = bae_core::followed::value_matching(&mut changes, |changes| {
             changes.iter().any(|change| change.state == AdminChangeState::Done)
         })
@@ -62,9 +62,9 @@ fn an_approval_is_listed_by_the_invites_name_until_dismissed() {
             panic!("one approval, done: {done:?}");
         };
         assert_eq!((*member, person.as_deref()), (invite.member, Some("Rowan")));
-        manager.acknowledge_admin_change(*operation).await.unwrap();
+        library.acknowledge_admin_change(*operation).await.unwrap();
         bae_core::followed::value_matching(&mut changes, Vec::is_empty).await;
         guest.close().await.unwrap();
-        manager.close().await.unwrap();
+        library.close().await.unwrap();
     });
 }

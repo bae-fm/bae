@@ -121,16 +121,7 @@ pub(super) fn fresh_bridge_handle(test_name: &str) -> (Arc<super::AppHandle>, st
 /// runtime a handle over it runs on.
 pub(super) fn fresh_test_library(
     test_name: &str,
-) -> (
-    tokio::runtime::Runtime,
-    (
-        bae_core::library::LibraryManager,
-        bae_db::Database,
-        bae_import::CatalogSessions,
-        bae_core::library::CancellationToken,
-    ),
-    std::path::PathBuf,
-) {
+) -> (tokio::runtime::Runtime, bae_core::test_libraries::TestLibrary, std::path::PathBuf) {
     let root = std::env::temp_dir().join(format!("bae-bridge-{test_name}"));
     match std::fs::remove_dir_all(&root) {
         Ok(()) => {}
@@ -161,16 +152,11 @@ pub(super) fn fresh_test_library(
 /// Start a handle over `library` on `runtime`, as the app starts one.
 pub(super) fn start_test_handle(
     runtime: tokio::runtime::Runtime,
-    (manager, database, catalogs, closing): (
-        bae_core::library::LibraryManager,
-        bae_db::Database,
-        bae_import::CatalogSessions,
-        bae_core::library::CancellationToken,
-    ),
+    library: bae_core::test_libraries::TestLibrary,
 ) -> Arc<super::AppHandle> {
-    let services = runtime.block_on(bae_core::test_libraries::start_test_services(
-        manager, database, catalogs, closing,
-    ));
+    let services = runtime.block_on(async move {
+        library.start_services().await.expect("the test library's services start")
+    });
     Arc::new(
         super::AppHandle::start(services, runtime, bae_diagnostics::Diagnostics::noop())
             .expect("the bridge handle starts"),
@@ -687,27 +673,24 @@ fn dropping_a_handle_closes_its_library_before_its_runtime_ends() {
         .build()
         .expect("test runtime");
     let directory = tempfile::TempDir::new().expect("library directory");
-    let ((manager, database, catalogs, closing), storage) =
-        runtime.block_on(bae_core::test_libraries::storage_library(
-            directory.path(),
-            bae_catalogs::providers::Providers::offline(),
-        ));
+    let (library, storage) = runtime.block_on(bae_core::test_libraries::storage_library(
+        directory.path(),
+        bae_catalogs::providers::Providers::offline(),
+    ));
     runtime.block_on(async {
-        bae_core::test_libraries::connect_storage(&manager, &storage).await;
-        manager.set_sync_paused(false).await.expect("resume sync");
-        manager.attach_and_start_sync_at_startup().await;
-        let mut status = manager.subscribe_sync_status();
+        bae_core::test_libraries::connect_storage(&library, &storage).await;
+        library.set_sync_paused(false).await.expect("resume sync");
+        library.attach_and_start_sync_at_startup().await;
+        let mut status = library.subscribe_sync_status();
         bae_core::followed::value_matching(&mut status, |value| {
             matches!(value.status, coven::SyncStatus::Synced { .. })
         })
         .await;
     });
-    let services = runtime.block_on(bae_core::test_libraries::start_test_services(
-        manager,
-        database.clone(),
-        catalogs,
-        closing,
-    ));
+    let database = library.database().clone();
+    let services = runtime.block_on(async move {
+        library.start_services().await.expect("the test library's services start")
+    });
     let app = super::AppHandle::start(services, runtime, bae_diagnostics::Diagnostics::noop())
         .expect("the bridge handle starts");
 

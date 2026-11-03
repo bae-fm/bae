@@ -10,19 +10,16 @@ fn profiles_ratings_playlists_and_history_use_the_same_store() {
         .enable_all()
         .build()
         .unwrap();
-    let ((manager, db, catalogs, closing), storage) =
-        runtime.block_on(bae_core::test_libraries::storage_library(
-            root.path(),
-            bae_catalogs::providers::Providers::offline(),
-        ));
-    runtime.block_on(bae_core::test_libraries::connect_storage(&manager, &storage));
-    let made = runtime.block_on(bae_core::test_libraries::made_profile(&manager, "Robin"));
-    let services = runtime.block_on(bae_core::test_libraries::start_test_services(
-        manager,
-        db.clone(),
-        catalogs,
-        closing,
+    let (library, storage) = runtime.block_on(bae_core::test_libraries::storage_library(
+        root.path(),
+        bae_catalogs::providers::Providers::offline(),
     ));
+    runtime.block_on(bae_core::test_libraries::connect_storage(&library, &storage));
+    let made = runtime.block_on(bae_core::test_libraries::made_profile(&library, "Robin"));
+    let db = library.database().clone();
+    let services = runtime.block_on(async move {
+        library.start_services().await.expect("the test library's services start")
+    });
     let app = Arc::new(
         AppHandle::start(services, runtime, bae_diagnostics::Diagnostics::noop()).unwrap(),
     );

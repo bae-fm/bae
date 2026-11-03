@@ -37,16 +37,15 @@ fn each_pull_answers_at_once_and_the_profiles_follow_a_new_one() {
         .build()
         .unwrap();
     // A library with its storage, which making a profile needs.
-    let ((manager, database, catalogs, closing), storage) =
-        runtime.block_on(bae_core::test_libraries::storage_library(
-            root.path(),
-            bae_catalogs::providers::Providers::offline(),
-        ));
-    runtime.block_on(bae_core::test_libraries::connect_storage(&manager, &storage));
-    let syncing = manager.clone();
-    let services = runtime.block_on(bae_core::test_libraries::start_test_services(
-        manager, database, catalogs, closing,
+    let (library, storage) = runtime.block_on(bae_core::test_libraries::storage_library(
+        root.path(),
+        bae_catalogs::providers::Providers::offline(),
     ));
+    runtime.block_on(bae_core::test_libraries::connect_storage(&library, &storage));
+    let syncing = bae_core::library::LibraryManager::clone(&library);
+    let services = runtime.block_on(async move {
+        library.start_services().await.expect("the test library's services start")
+    });
     let handle = std::sync::Arc::new(
         super::AppHandle::start(services, runtime, bae_diagnostics::Diagnostics::noop()).unwrap(),
     );
@@ -112,15 +111,14 @@ fn the_sync_status_follows_storage_being_set_up() {
         .enable_all()
         .build()
         .unwrap();
-    let ((manager, database, catalogs, closing), storage) =
-        runtime.block_on(bae_core::test_libraries::storage_library(
-            root.path(),
-            bae_catalogs::providers::Providers::offline(),
-        ));
-    let setup = manager.clone();
-    let services = runtime.block_on(bae_core::test_libraries::start_test_services(
-        manager, database, catalogs, closing,
+    let (library, storage) = runtime.block_on(bae_core::test_libraries::storage_library(
+        root.path(),
+        bae_catalogs::providers::Providers::offline(),
     ));
+    let setup = bae_core::library::LibraryManager::clone(&library);
+    let services = runtime.block_on(async move {
+        library.start_services().await.expect("the test library's services start")
+    });
     let handle = std::sync::Arc::new(
         super::AppHandle::start(services, runtime, bae_diagnostics::Diagnostics::noop()).unwrap(),
     );

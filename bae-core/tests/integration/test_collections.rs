@@ -6,10 +6,11 @@ use bae_util::test_ids::test_uuid;
 #[tokio::test]
 async fn ratings_and_playlist_edits_preserve_identity_order_and_audience() {
     let directory = tempfile::tempdir().unwrap();
-    let ((manager, db, ..), storage) =
+    let (library, storage) =
         storage_library(directory.path(), bae_catalogs::providers::Providers::offline()).await;
-    connect_storage(&manager, &storage).await;
-    let person = made_profile(&manager, "Robin").await;
+    let db = library.database().clone();
+    connect_storage(&library, &storage).await;
+    let person = made_profile(&library, "Robin").await;
     let release = test_uuid("collection-release");
     let first = test_uuid("collection-first");
     let second = test_uuid("collection-second");
@@ -67,5 +68,5 @@ async fn ratings_and_playlist_edits_preserve_identity_order_and_audience() {
     db.delete_playlist(id).await.unwrap();
     assert!(db.playlists().await.unwrap().is_empty());
     assert!(db.playlist_entries(id).await.unwrap().is_empty());
-    manager.close().await.unwrap();
+    library.close().await.unwrap();
 }

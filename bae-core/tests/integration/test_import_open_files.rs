@@ -97,7 +97,7 @@ fn a_box_set_import_holds_a_bounded_number_of_files_open() {
 
 async fn import_a_box_set_under_a_lowered_limit() {
     let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
-    let ((library_manager, database, catalogs, closing), album_dir, _temp) =
+    let (library, album_dir, _temp) =
         bae_core::test_libraries::setup_test_library_with_album_dir(fakes.providers()).await;
     write_box_set(&album_dir);
 
@@ -120,13 +120,7 @@ async fn import_a_box_set_under_a_lowered_limit() {
         )
     };
     let release_key = fakes.seed_discogs_test_release(release);
-    let import_handle = bae_import::test_imports::start_test_import(
-        tokio::runtime::Handle::current(),
-        &database,
-        &catalogs,
-        &closing,
-    )
-    .await;
+    let import_handle = library.start_discogs_import().await;
 
     let _limit = LoweredFileLimit::to((highest_open_fd() + 1 + headroom()) as libc::rlim_t);
 
@@ -161,8 +155,7 @@ async fn import_a_box_set_under_a_lowered_limit() {
         "the import held {peak_sources} source files open at once, over {} cores",
         max_sources_open()
     );
-    let tracks =
-        library_manager.get_tracks_for_release(&release_id).await.expect("read imported tracks");
+    let tracks = library.get_tracks_for_release(&release_id).await.expect("read imported tracks");
     assert_eq!(tracks.len(), DISCS * TRACKS_PER_DISC);
 
     // Every source file the import opened is closed once it is done.

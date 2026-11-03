@@ -17,15 +17,15 @@ impl RemoteMultiWindowPlayback {
         let album_dir = temp_dir.path().join("album");
         std::fs::create_dir_all(&album_dir)?;
         let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
-        let ((library_manager, database, catalogs, closing), cloud) =
+        let (library, cloud) =
             bae_core::test_libraries::storage_library(temp_dir.path(), fakes.providers())
                 .await;
-        bae_core::test_libraries::connect_storage(&library_manager, &cloud).await;
+        bae_core::test_libraries::connect_storage(&library, &cloud).await;
         generate_multi_window_cue_flac_files(&album_dir);
         let release_key =
             fakes.seed_discogs_test_release(create_multi_window_cue_album());
         let import_handle =
-            start_test_import(tokio::runtime::Handle::current(), &database, &catalogs, &closing).await;
+            library.start_discogs_import().await;
         let import_id = uuid::Uuid::new_v4().to_string();
         import_handle
             .send_command(ImportCommand {
@@ -40,33 +40,33 @@ impl RemoteMultiWindowPlayback {
             .await?;
         let (release_id, _) =
             wait_for_import_complete(&mut import_handle.subscribe_import(import_id)).await;
-        library_manager.drain_uploads_expecting_work().await?;
-        let files = library_manager.get_files_for_release(&release_id).await?;
+        library.drain_uploads_expecting_work().await?;
+        let files = library.get_files_for_release(&release_id).await?;
         let flac = files
             .iter()
             .find(|file| file.original_filename.ends_with(".flac"))
             .expect("the album has its FLAC");
-        let flac_ref = library_manager.release_file_ref_for_test(&flac.id).await?;
+        let flac_ref = library.release_file_ref_for_test(&flac.id).await?;
         let coven::FilePlace::Cloud { location, .. } = flac_ref.place() else {
             panic!("the uploaded FLAC is stored");
         };
         let flac_object = coven::ObjectPath::file(
-            library_manager.store_id(),
+            library.store_id(),
             location.uploader(),
             location.object(),
         );
         for file in files {
-            library_manager.evict_file_for_test(file.file).await?;
+            library.evict_file_for_test(file.file).await?;
         }
         std::fs::remove_dir_all(album_dir)?;
-        let track_ids = library_manager
+        let track_ids = library
             .get_tracks_for_release(&release_id)
             .await?
             .into_iter()
             .map(|track| track.id)
             .collect();
         let (playback_handle, capture_stream_rx) =
-            start_capture_service(library_manager, &database, tokio::runtime::Handle::current()).await;
+            start_capture_service(&library).await;
         let progress_rx = playback_handle.subscribe_progress();
         Ok(Self {
             playback_handle,

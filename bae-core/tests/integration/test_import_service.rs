@@ -11,8 +11,7 @@ use bae_catalogs::musicbrainz::{
     MbArtistCredit, MbArtistRef, MbRecording, MbRelation, MbReleaseResponse, MbTrack,
     MbUrlResource, MbWork,
 };
-use bae_core::library::LibraryManager;
-use bae_db::{Database, LibraryImageType};
+use bae_db::LibraryImageType;
 use bae_import::{
     ArtistAssignment, CoverSelection, ImportCommand, ImportDestination, ReleaseUserEdit, ScanEvent,
     TrackArtistAssignments, TrackUserEdit,
@@ -27,10 +26,9 @@ use tempfile::TempDir;
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
 struct ImportFixture {
-    db: Database,
+    library: bae_core::test_libraries::TestLibrary,
     storage: Arc<coven::MemoryStorage>,
     handle: bae_import::ImportServiceHandle,
-    library_manager: LibraryManager,
     /// The catalog fakes the library asks, which a test seeds.
     fakes: bae_catalogs::fake_catalogs::FakeCatalogs,
     ids: Arc<dyn coven::IdSource>,
@@ -49,22 +47,13 @@ impl ImportFixture {
         fs::create_dir_all(&db_dir).unwrap();
 
         let http = images.route(bae_util::http::Http::for_test());
-        let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::over(http.clone());
-        let ((library_manager, db, catalogs, closing), storage) =
+        let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::over(http);
+        let (library, storage) =
             bae_core::test_libraries::storage_library(&db_dir, fakes.providers()).await;
         let ids: Arc<dyn coven::IdSource> = Arc::new(coven::UuidIds);
-        bae_import::test_imports::configure_test_discogs(&catalogs).await;
+        let handle = library.start_discogs_import().await;
 
-        let handle = bae_import::test_imports::start_import_service(
-            tokio::runtime::Handle::current(),
-            &db,
-            &catalogs,
-            &closing,
-            http,
-        )
-        .await;
-
-        Self { db, storage, handle, library_manager, fakes, ids, images, _temp: temp }
+        Self { library, storage, handle, fakes, ids, images, _temp: temp }
     }
 
     fn temp_path(&self) -> &Path {
@@ -74,7 +63,7 @@ impl ImportFixture {
     /// No sync loop behind the connection: the remote-import tests drain the
     /// upload queue themselves and assert what that pass moved.
     async fn connect_cloud(&self) {
-        bae_core::test_libraries::connect_storage(&self.library_manager, &self.storage).await;
+        bae_core::test_libraries::connect_storage(&self.library, &self.storage).await;
     }
 }
 
@@ -104,13 +93,13 @@ async fn import_folder(
 
 async fn assert_release_has_external_ref(f: &ImportFixture, release_id: &str) {
     assert!(
-        f.db.find_release_by_id(release_id).await.unwrap().is_some(),
+        f.library.database().find_release_by_id(release_id).await.unwrap().is_some(),
         "prior release row should remain"
     );
-    let files = f.db.get_files_for_release(release_id).await.unwrap();
+    let files = f.library.database().get_files_for_release(release_id).await.unwrap();
     assert!(!files.is_empty(), "prior release files should remain");
     assert!(
-        f.db.external_file(&files[0].id).await.unwrap().is_some(),
+        f.library.database().external_file(&files[0].id).await.unwrap().is_some(),
         "prior local file reference should remain"
     );
 }

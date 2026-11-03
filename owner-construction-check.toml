@@ -236,6 +236,20 @@ task_types = [
 # A test's catalog fakes: the providers its library asks are built over
 # them, once per library the test opens.
 "bae-catalogs/src/fake_catalogs.rs" = ["FakeCatalogs::providers"]
+# A test's library: it opens the library as the app's opening step does, and
+# hands the test, the final owner of what it built, the manager, the store and
+# the catalog sessions, and the views and services it builds over them. It is
+# test-utils code, which the tests of the crates above compile, so the checker
+# reads it as production code.
+"bae-core/src/test_libraries.rs" = [
+    "TestLibrary::deref",
+    "TestLibrary::database",
+    "TestLibrary::catalogs",
+    "TestLibrary::views",
+    "TestLibrary::cast_picker",
+    "TestLibrary::start_playback",
+    "TestLibrary::start_playback_on",
+]
 # Starts the playback service's task; its handle stops it.
 "bae-playback/src/service/runtime.rs" = [
     "PlaybackService::start",

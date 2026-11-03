@@ -95,9 +95,7 @@ struct MultiWindowPlayback {
     playback_handle: bae_playback::PlaybackHandle,
     progress_rx: tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
     track_ids: Vec<String>,
-    library_manager: LibraryManager,
-    database: bae_db::Database,
-    runtime_handle: tokio::runtime::Handle,
+    library: TestLibrary,
     _capture_stream_rx: bae_playback::test_capture::CaptureStreamRx,
     _temp_dir: TempDir,
 }
@@ -105,7 +103,7 @@ struct MultiWindowPlayback {
 impl MultiWindowPlayback {
     /// Import this test's release into its own store.
     async fn new(name: &str) -> Self {
-        let ((library_manager, database, ..), imported) = imported_release_setup(
+        let (library, imported) = imported_release_setup(
             create_multi_window_cue_album(),
             name,
             uuid::Uuid::new_v4().to_string(),
@@ -115,18 +113,13 @@ impl MultiWindowPlayback {
         .expect("import the multi-window fixture");
         let temp_dir = imported.temp_dir;
         let track_ids = imported.track_ids;
-        let runtime_handle = tokio::runtime::Handle::current();
-
-        let (playback_handle, capture_stream_rx) =
-            start_capture_service(library_manager.clone(), &database, runtime_handle.clone()).await;
+        let (playback_handle, capture_stream_rx) = start_capture_service(&library).await;
         let progress_rx = playback_handle.subscribe_progress();
         Self {
             playback_handle,
             progress_rx,
             track_ids,
-            library_manager,
-            database,
-            runtime_handle,
+            library,
             _capture_stream_rx: capture_stream_rx,
             _temp_dir: temp_dir,
         }
@@ -620,7 +613,7 @@ async fn auto_advance_plays_pregap_over_sparse_buffer() {
 async fn stopping_playback_closes_the_files_it_streamed() {
     bae_util::test_logs::install();
     let import_ids = SequentialIds::new();
-    let ((library_manager, database, ..), imported) = imported_release_setup(
+    let (library, imported) = imported_release_setup(
         create_test_album(),
         "test",
         import_ids.new_id().to_string(),
@@ -631,7 +624,7 @@ async fn stopping_playback_closes_the_files_it_streamed() {
     .await
     .expect("import the release to play");
     let (playback_handle, _capture) =
-        start_capture_service(library_manager, &database, tokio::runtime::Handle::current()).await;
+        start_capture_service(&library).await;
     let mut progress_rx = playback_handle.subscribe_progress();
 
     playback_handle.play(imported.track_ids[0].clone());

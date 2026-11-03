@@ -7,8 +7,7 @@ use bae_types::track_time::{TrackTime};
 use coven::{IdSource, SequentialIds};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use bae_import::test_imports::start_test_import;
-use bae_core::test_libraries::{imported_release_setup, open_test_library};
+use bae_core::test_libraries::{imported_release_setup, open_test_library, TestLibrary};
 use bae_import::test_imports::wait_for_import_complete;
 use bae_audio::test_samples::samples_as_f32;
 use tempfile::TempDir;
@@ -349,41 +348,25 @@ async fn observe_boundary(
 /// audio device is needed. Hold the returned receiver for the service's
 /// lifetime.
 async fn start_capture_service(
-    library_manager: LibraryManager,
-    database: &bae_db::Database,
-    runtime_handle: tokio::runtime::Handle,
+    library: &TestLibrary,
 ) -> (bae_playback::PlaybackHandle, bae_playback::test_capture::CaptureStreamRx) {
-    start_capture_service_with_restore(library_manager, database, runtime_handle, true).await
+    start_capture_service_with_restore(library, true).await
 }
 
 /// `start_capture_service` with the platform's "Restore on launch" preference
 /// explicit, for tests that cover the restore-off launch path.
 async fn start_capture_service_with_restore(
-    library_manager: LibraryManager,
-    database: &bae_db::Database,
-    runtime_handle: tokio::runtime::Handle,
+    library: &TestLibrary,
     restore_playback: bool,
 ) -> (bae_playback::PlaybackHandle, bae_playback::test_capture::CaptureStreamRx) {
     let (capture_device, capture_stream_rx) = bae_playback::RealtimeCaptureAudioDevice::new();
-    library_manager
-        .settle_playback_queue(restore_playback)
-        .await
-        .expect("settle the playback queue");
-    let track_deletions = library_manager.subscribe_track_deletions();
-    let handle = bae_playback::PlaybackService::start_with_audio_device(
-        database.clone(),
-        Arc::new(coven::UuidIds),
-        bae_playback::tables::PlaybackQueueTables::new(database.clone()),
-        bae_playback::tables::PlaybackNowRow::new(database.clone()),
-        bae_playback::tables::PlaybackTimelineRow::new(database.clone()),
-        track_deletions,
-        bae_diagnostics::Diagnostics::noop(),
-        runtime_handle,
-        100,
-        restore_playback,
-        Box::new(capture_device),
-        Arc::new(bae_playback::WallPlaybackClock::new(Arc::new(coven::SystemClock))),
-    );
+    let handle = library
+        .start_playback_on(
+            Box::new(capture_device),
+            bae_playback::test_capture::wall_playback_clock(),
+            restore_playback,
+        )
+        .await;
     (handle, capture_stream_rx)
 }
 
@@ -393,20 +376,16 @@ struct PlaybackTestFixture {
     progress_rx: tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
     track_ids: Vec<String>,
     album_dir: std::path::PathBuf,
-    /// Lets tests read the device-local `playback_state` row directly.
-    library_manager: LibraryManager,
-    /// The library's store, sessions and closing token, which the import
-    /// service [`Self::services`] starts runs over.
-    database: bae_db::Database,
-    catalogs: bae_import::CatalogSessions,
-    closing: bae_core::library::CancellationToken,
+    /// The library the album was imported into, which tests read and edit
+    /// directly and [`Self::services`] starts its import service over.
+    library: TestLibrary,
     /// Dropping this receiver would make stream creation fail.
     _capture_stream_rx: bae_playback::CapturedStreams,
     _temp_dir: TempDir,
 }
 impl PlaybackTestFixture {
     async fn new() -> Self {
-        let ((library_manager, database, catalogs, closing), imported) = imported_release_setup(
+        let (library, imported) = imported_release_setup(
             create_test_album(),
             "playback",
             uuid::Uuid::new_v4().to_string(),
@@ -419,20 +398,14 @@ impl PlaybackTestFixture {
         let temp_dir = imported.temp_dir;
         let album_dir = imported.album_dir;
         let track_ids = imported.track_ids;
-        let runtime_handle = tokio::runtime::Handle::current();
-
-        let (playback_handle, capture_stream_rx) =
-            start_capture_service(library_manager.clone(), &database, runtime_handle).await;
+        let (playback_handle, capture_stream_rx) = start_capture_service(&library).await;
         let progress_rx = playback_handle.subscribe_progress();
         Self {
             playback_handle,
             progress_rx,
             track_ids,
             album_dir,
-            library_manager,
-            database,
-            catalogs,
-            closing,
+            library,
             _capture_stream_rx: capture_stream_rx,
             _temp_dir: temp_dir,
         }
@@ -440,20 +413,13 @@ impl PlaybackTestFixture {
     /// The services over this fixture's library and playback, as an app
     /// holds them.
     async fn services(&self) -> bae_core::library::AppServices {
-        let import = bae_import::test_imports::start_import_service(
-            tokio::runtime::Handle::current(),
-            &self.database,
-            &self.catalogs,
-            &self.closing,
-            bae_util::http::Http::for_test(),
-        )
-        .await;
+        let import = self.library.start_import().await.expect("test import service starts");
         let identification = import.start_identification_queue();
         bae_core::library::AppServices::new(
-            self.library_manager.clone(),
-            bae_core::library::views::LibraryViews::new(self.database.clone()),
+            LibraryManager::clone(&self.library),
+            self.library.views(),
             self.playback_handle.clone(),
-            bae_playback::renderer::CastPicker::new(self.database.clone()),
+            self.library.cast_picker(),
             import,
             identification,
         )

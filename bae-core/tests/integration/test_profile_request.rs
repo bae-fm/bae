@@ -12,16 +12,17 @@ use bae_db::people::{ProfileError, Sharing};
 #[tokio::test]
 async fn a_profile_asked_for_offline_is_written_once_its_circle_lands() {
     let directory = tempfile::tempdir().unwrap();
-    let ((manager, database, ..), storage) =
+    let (library, storage) =
         storage_library(directory.path(), bae_catalogs::providers::Providers::offline()).await;
-    connect_storage(&manager, &storage).await;
+    let database = library.database().clone();
+    connect_storage(&library, &storage).await;
     let track = bae_util::test_ids::test_uuid("waiting-track");
     let release = bae_util::test_ids::test_uuid("waiting-release");
     let medium = bae_util::test_ids::test_uuid("waiting-medium");
     let play = bae_util::test_ids::test_uuid("waiting-play");
     database.execute_local_sql_for_test(&format!("INSERT INTO albums (id,title,created_at) VALUES ('waiting-album','Album Title','2026-01-01'); INSERT INTO releases (id, album_id, created_at, album_order) VALUES ('{release}','waiting-album','2026-01-01', 0); INSERT INTO release_mediums (id,release_id,position,medium,side_count,created_at) VALUES ('{medium}','{release}',1,'cd',1,'2026-01-01'); INSERT INTO tracks (id,release_id,title,medium_id,side,track_number,position,duration_ms,created_at) VALUES ('{track}','{release}','Track Title','{medium}',1,1,0,180000,'2026-01-01'); INSERT INTO local_history (id, track_id, started_at, played_ms) VALUES ('{play}', '{track}', '2026-10-18T16:00:00Z', 30000);")).await.unwrap();
 
-    manager.create_profile("Robin").await.unwrap();
+    library.create_profile("Robin").await.unwrap();
     assert!(database.profiles().await.unwrap().is_empty());
     let requested =
         database.query_texts_for_test("SELECT name FROM profile_request").await.unwrap();
@@ -38,9 +39,9 @@ async fn a_profile_asked_for_offline_is_written_once_its_circle_lands() {
         database.query_texts_for_test("SELECT id FROM local_history").await.unwrap(),
         [play.as_str()]
     );
-    assert!(matches!(manager.create_profile("Robin").await, Err(ProfileError::CirclePending(_))));
+    assert!(matches!(library.create_profile("Robin").await, Err(ProfileError::CirclePending(_))));
 
-    let profile = requested_profile(&manager).await;
+    let profile = requested_profile(&library).await;
     assert_eq!(profile.name, "Robin");
     assert_eq!(profile.history_sharing, Sharing::Private);
     let members = database
@@ -76,5 +77,5 @@ async fn a_profile_asked_for_offline_is_written_once_its_circle_lands() {
             .is_empty(),
         "the profile's write acknowledged the circle's outcome"
     );
-    manager.close().await.unwrap();
+    library.close().await.unwrap();
 }

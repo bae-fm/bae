@@ -7,7 +7,6 @@
 
 use bae_audio::{decode_audio, probe_audio_from_path};
 use bae_catalogs::discogs::models::DiscogsRelease;
-use bae_core::library::LibraryManager;
 use bae_import::cue_flac::parse_cue_sheet;
 use bae_import::discid::read_rip_artifacts;
 use bae_import::folder_scanner::{
@@ -35,7 +34,7 @@ fn make_discogs_release(id: &str, title: &str, tracks: &[&str]) -> DiscogsReleas
 async fn import_single_m4a_fixture(
     fixture_name: &str,
     temp_root: &Path,
-) -> (LibraryManager, String) {
+) -> (bae_core::test_libraries::TestLibrary, String) {
     let album_dir = temp_root.join("album");
     let db_dir = temp_root.join("db");
     std::fs::create_dir_all(&album_dir).expect("album dir");
@@ -46,21 +45,14 @@ async fn import_single_m4a_fixture(
     std::fs::copy(&fixture_path, &dest).expect("copy fixture");
 
     let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
-    let (library_manager, database, catalogs, closing) =
+    let library =
         bae_core::test_libraries::open_test_library_with(&db_dir, fakes.providers()).await;
 
     let discogs_release = make_discogs_release("test-m4a", "Album Title", &["Track One"]);
     let release_id_key = fakes.seed_discogs_test_release(discogs_release);
 
-    let release_id = bae_import::test_imports::import_folder_and_wait(
-        &database,
-        &catalogs,
-        &closing,
-        album_dir,
-        release_id_key,
-    )
-    .await;
-    (library_manager, release_id)
+    let release_id = library.import_folder(album_dir, release_id_key).await;
+    (library, release_id)
 }
 
 // ─────────────────────────────── Probe tests ────────────────────────────────
@@ -103,14 +95,14 @@ fn probe_aac_returns_content_type_aac() {
 async fn import_standalone_alac_m4a() {
     bae_util::test_logs::install();
     let temp_root = TempDir::new().expect("temp root");
-    let (library_manager, release_id) =
+    let (library, release_id) =
         import_single_m4a_fixture("silence-alac.m4a", temp_root.path()).await;
 
-    let tracks = library_manager.get_tracks_for_release(&release_id).await.expect("get tracks");
+    let tracks = library.get_tracks_for_release(&release_id).await.expect("get tracks");
     assert_eq!(tracks.len(), 1, "standalone .m4a produces one track");
 
     let track = &tracks[0];
-    let af = library_manager
+    let af = library
         .get_audio_format_by_track_id(&track.id)
         .await
         .expect("get audio format")
@@ -121,8 +113,7 @@ async fn import_standalone_alac_m4a() {
     assert_eq!(af.channels.get(), 2);
     assert_eq!(af.bits_per_sample.map(|bits| bits.get()), Some(16));
 
-    let resolved =
-        library_manager.resolve_track_audio(&track.id).await.expect("resolve track audio");
+    let resolved = library.resolve_track_audio(&track.id).await.expect("resolve track audio");
     assert_eq!(resolved.segments.len(), 1);
     let segment = &resolved.segments[0];
 
@@ -136,14 +127,14 @@ async fn import_standalone_alac_m4a() {
 async fn import_standalone_aac_m4a() {
     bae_util::test_logs::install();
     let temp_root = TempDir::new().expect("temp root");
-    let (library_manager, release_id) =
+    let (library, release_id) =
         import_single_m4a_fixture("silence-aac.m4a", temp_root.path()).await;
 
-    let tracks = library_manager.get_tracks_for_release(&release_id).await.expect("get tracks");
+    let tracks = library.get_tracks_for_release(&release_id).await.expect("get tracks");
     assert_eq!(tracks.len(), 1);
 
     let track = &tracks[0];
-    let af = library_manager
+    let af = library
         .get_audio_format_by_track_id(&track.id)
         .await
         .expect("get audio format")
@@ -153,8 +144,7 @@ async fn import_standalone_aac_m4a() {
     assert_eq!(af.sample_rate.get(), 44100);
     assert_eq!(af.channels.get(), 2);
 
-    let resolved =
-        library_manager.resolve_track_audio(&track.id).await.expect("resolve track audio");
+    let resolved = library.resolve_track_audio(&track.id).await.expect("resolve track audio");
 
     assert_eq!(resolved.segments.len(), 1);
     assert_eq!(resolved.segments[0].span.start_sample, 0);
@@ -223,7 +213,7 @@ async fn import_cue_alac_pair() {
     std::fs::copy(fix.join("cue-alac.cue"), album_dir.join("cue-alac.cue")).expect("copy cue");
 
     let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
-    let (library_manager, database, catalogs, closing) =
+    let library =
         bae_core::test_libraries::open_test_library_with(&db_dir, fakes.providers()).await;
 
     let discogs_release = make_discogs_release(
@@ -233,16 +223,9 @@ async fn import_cue_alac_pair() {
     );
     let release_id_key = fakes.seed_discogs_test_release(discogs_release);
 
-    let release_id = bae_import::test_imports::import_folder_and_wait(
-        &database,
-        &catalogs,
-        &closing,
-        album_dir,
-        release_id_key,
-    )
-    .await;
+    let release_id = library.import_folder(album_dir, release_id_key).await;
 
-    let tracks = library_manager.get_tracks_for_release(&release_id).await.expect("get tracks");
+    let tracks = library.get_tracks_for_release(&release_id).await.expect("get tracks");
     assert_eq!(tracks.len(), 3);
 
     // CUE INDEX 01 times: 00:00:00, 00:03:00, 00:06:00.
@@ -254,7 +237,7 @@ async fn import_cue_alac_pair() {
     const END_SAMPLES: [Option<u64>; 3] = [Some(132_300), Some(264_600), None];
 
     for (i, track) in tracks.iter().enumerate() {
-        let af = library_manager
+        let af = library
             .get_audio_format_by_track_id(&track.id)
             .await
             .expect("get audio format")
@@ -262,8 +245,7 @@ async fn import_cue_alac_pair() {
 
         assert_eq!(af.content_type, ContentType::Alac, "track {} content type", i + 1);
 
-        let resolved =
-            library_manager.resolve_track_audio(&track.id).await.expect("resolve track audio");
+        let resolved = library.resolve_track_audio(&track.id).await.expect("resolve track audio");
         assert_eq!(resolved.segments.len(), 1);
         let segment = &resolved.segments[0];
 

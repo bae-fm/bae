@@ -259,7 +259,7 @@ async fn a_changed_cover_gets_a_new_cover_art_id() {
     };
     let before = cover_art(&call(&router, "getAlbum", &album_query).await);
 
-    lib.manager
+    lib.library
         .store_library_image(
             &bae_db::DbLibraryImage {
                 id: lib.per_track_release.clone(),
@@ -296,7 +296,7 @@ async fn an_artist_cover_art_is_the_artist_image() {
     let artist_wire_id = album.sub()["album"]["artistId"].as_str().unwrap().to_string();
     let artist_id = artist_wire_id.strip_prefix("ar-").unwrap().to_string();
     let image = bae_catalogs::test_image_host::cover_png();
-    lib.manager
+    lib.library
         .store_library_image(
             &bae_db::DbLibraryImage {
                 id: artist_id,
@@ -340,7 +340,7 @@ async fn musicbrainz_id_surfaces_when_present() {
     // Spec: ArtistID3 carries musicBrainzId when the artist has one. Seed an
     // artist with a MusicBrainz id and a minimal album/release, then assert both
     // getArtists and getArtist emit it.
-    let ((manager, database, catalogs, closing), _t) = new_manager().await;
+    let (library, _t) = new_library().await;
     // coven takes only canonical UUIDs on a synced row, so the fixture ids are
     // UUIDs derived from readable monikers.
     let artist_id = bae_util::test_ids::test_uuid("mb-artist-1");
@@ -352,7 +352,7 @@ async fn musicbrainz_id_surfaces_when_present() {
         musicbrainz_artist_id: Some("mbid-abc-123".to_string()),
         created_at: chrono::Utc::now(),
     };
-    manager.insert_artist(&artist).await.unwrap();
+    library.insert_artist(&artist).await.unwrap();
     let now = chrono::Utc::now();
     let album = DbAlbum {
         id: bae_util::test_ids::test_uuid("mb-album-1"),
@@ -387,7 +387,7 @@ async fn musicbrainz_id_surfaces_when_present() {
         duration_ms: 1000,
         created_at: now,
     };
-    manager
+    library
         .insert_album_with_release_and_tracks(
             &album,
             &[bae_db::DbAlbumArtist::new_test(&album.id, &artist.id)],
@@ -399,7 +399,7 @@ async fn musicbrainz_id_surfaces_when_present() {
         .await
         .unwrap();
 
-    let services = bae_core::test_libraries::start_test_services(manager.clone(), database, catalogs, closing).await;
+    let services = library.start_services().await.expect("the test library's services start");
     let router =
         bae_subsonic::router(services, credential(), bae_diagnostics::Diagnostics::noop());
 
@@ -421,7 +421,7 @@ async fn musicbrainz_id_surfaces_when_present() {
             Some(pressing.key.as_str()),
         ),
     ] {
-        manager.set_records(&release.id, vec![record]).await.unwrap();
+        library.set_records(&release.id, vec![record]).await.unwrap();
         let response =
             call(&router, "getAlbumList2", &authed("f=json&type=alphabeticalByName")).await;
         assert_eq!(
@@ -457,7 +457,7 @@ async fn lossy_track_reports_bit_depth_zero() {
 /// Import the single-file lossy Opus fixture through the normal import path.
 async fn seed_lossy_release() -> (AppServices, String, Vec<TempDir>) {
     let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
-    let ((manager, database, catalogs, closing), db_temp) = bae_core::test_libraries::setup_test_library_with(fakes.providers()).await;
+    let (library, db_temp) = bae_core::test_libraries::setup_test_library_with(fakes.providers()).await;
     let temp = TempDir::new().unwrap();
     let dir = temp.path().join("lossy album");
     std::fs::create_dir_all(&dir).unwrap();
@@ -472,7 +472,7 @@ async fn seed_lossy_release() -> (AppServices, String, Vec<TempDir>) {
         },
     );
     let import =
-        bae_import::test_imports::start_test_import(tokio::runtime::Handle::current(), &database, &catalogs, &closing).await;
+        library.start_discogs_import().await;
     let import_id = "lossy".to_string();
     import
         .send_command(ImportCommand {
@@ -499,7 +499,7 @@ async fn seed_lossy_release() -> (AppServices, String, Vec<TempDir>) {
         .unwrap();
     let mut rx = import.subscribe_import(import_id);
     let (release_id, _album) = bae_import::test_imports::wait_for_import_complete(&mut rx).await;
-    let services = bae_core::test_libraries::start_test_services(manager, database, catalogs, closing).await;
+    let services = library.start_services().await.expect("the test library's services start");
     (services, release_id, vec![db_temp, temp])
 }
 
@@ -533,12 +533,12 @@ fn decode_bytes(bytes: &[u8]) -> bae_audio::DecodedAudio {
 async fn an_album_prints_its_credit_line_and_lists_every_credited_artist() {
     // OpenSubsonic: `artist` is the display line, `artists` every credited
     // artist; `artistId` stays the protocol's one id, the first credit's.
-    let ((manager, database, catalogs, closing), _t) = new_manager().await;
+    let (library, _t) = new_library().await;
     let now = chrono::Utc::now();
     let artist_a = bae_util::test_ids::test_uuid("credit-artist-a");
     let artist_b = bae_util::test_ids::test_uuid("credit-artist-b");
     for (id, name) in [(&artist_a, "Artist A"), (&artist_b, "Artist B")] {
-        manager
+        library
             .insert_artist(&DbArtist {
                 id: id.clone(),
                 name: name.to_string(),
@@ -580,11 +580,11 @@ async fn an_album_prints_its_credit_line_and_lists_every_credited_artist() {
             ..bae_db::DbAlbumArtist::new(&album.id, &artist_b, 1, now)
         },
     ];
-    manager
+    library
         .insert_album_with_release_and_tracks(&album, &credits, &release, &[], &[], &[])
         .await
         .unwrap();
-    let services = bae_core::test_libraries::start_test_services(manager.clone(), database, catalogs, closing).await;
+    let services = library.start_services().await.expect("the test library's services start");
     let router =
         bae_subsonic::router(services, credential(), bae_diagnostics::Diagnostics::noop());
 

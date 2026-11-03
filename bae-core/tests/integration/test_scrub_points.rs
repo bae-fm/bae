@@ -229,7 +229,7 @@ struct Imported {
 
 /// Import `release` from the folder `write_files` fills.
 async fn import(release: DiscogsRelease, write_files: impl FnOnce(&Path)) -> Imported {
-    let ((library_manager, ..), imported) = bae_core::test_libraries::imported_release_setup(
+    let (library, imported) = bae_core::test_libraries::imported_release_setup(
         release,
         "test",
         uuid::Uuid::new_v4().to_string(),
@@ -238,7 +238,7 @@ async fn import(release: DiscogsRelease, write_files: impl FnOnce(&Path)) -> Imp
     .await
     .expect("import the release");
     Imported {
-        tracks: tracks(&library_manager, &imported.release_id).await,
+        tracks: tracks(&library, &imported.release_id).await,
         album_dir: imported.album_dir,
         _temp_dir: imported.temp_dir,
     }

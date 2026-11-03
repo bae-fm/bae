@@ -35,8 +35,8 @@ async fn an_import_goes_where_the_stored_choice_says_as_it_starts() {
         f.handle.select_candidate_file_tags(key.clone()).await.unwrap();
     }
 
-    f.library_manager.set_import_to_cloud(true).await.unwrap();
-    f.library_manager.set_import_pinned(true).await.unwrap();
+    f.library.set_import_to_cloud(true).await.unwrap();
+    f.library.set_import_pinned(true).await.unwrap();
     let outcome = import_outcome(&f, &keys[0]).await;
     let bae_import::ImportProgress::RemoteUploadQueued { id, .. } = outcome else {
         panic!("the cloud choice queues the release's upload: {outcome:?}");
@@ -44,7 +44,7 @@ async fn an_import_goes_where_the_stored_choice_says_as_it_starts() {
     // The import stages its files to be kept here: no entry of the download
     // queue pins them, and once the move finishes coven keeps each whole.
     assert!(
-        !f.library_manager
+        !f.library
             .download_snapshot()
             .await
             .unwrap()
@@ -56,12 +56,12 @@ async fn an_import_goes_where_the_stored_choice_says_as_it_starts() {
     // No sync loop runs behind this connection, so the test drives the
     // release's upload itself.
     assert_eq!(
-        f.library_manager.drain_uploads_expecting_work().await.unwrap(),
+        f.library.drain_uploads_expecting_work().await.unwrap(),
         1,
         "the release's one file uploads"
     );
-    f.library_manager.wait_for_kept_release_for_test(&id).await;
-    let storage = bae_core::library::views::LibraryViews::new(f.db.clone())
+    f.library.wait_for_kept_release_for_test(&id).await;
+    let storage = bae_core::library::views::LibraryViews::new(f.library.database().clone())
         .find_release_detail(&id)
         .await
         .unwrap()
@@ -69,7 +69,7 @@ async fn an_import_goes_where_the_stored_choice_says_as_it_starts() {
         .summary;
     assert!(storage.pinned, "the import keeps the selected offline pin");
 
-    f.library_manager.set_import_to_cloud(false).await.unwrap();
+    f.library.set_import_to_cloud(false).await.unwrap();
     assert!(
         matches!(
             import_outcome(&f, &keys[1]).await,
@@ -124,21 +124,21 @@ async fn a_local_import_s_queued_cover_is_not_its_release_uploading() {
         .await
         .expect("a local import commits with no storage connected");
         assert!(
-            f.db.cover_version(&id).await.unwrap().is_some(),
+            f.library.database().cover_version(&id).await.unwrap().is_some(),
             "the import stores the embedded cover"
         );
         release_ids.push(id);
     }
 
     assert_eq!(
-        f.db.queued_upload_count_in_table_for_test("release_files").await.unwrap(),
+        f.library.database().queued_upload_count_in_table_for_test("release_files").await.unwrap(),
         0,
         "no release's files wait to upload"
     );
     assert_eq!(
-        f.db.queued_upload_count_in_table_for_test("covers").await.unwrap(),
+        f.library.database().queued_upload_count_in_table_for_test("covers").await.unwrap(),
         release_ids.len() as i64,
         "each cover waits to upload"
     );
-    assert!(f.db.uploading_releases().await.unwrap().is_empty());
+    assert!(f.library.database().uploading_releases().await.unwrap().is_empty());
 }

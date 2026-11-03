@@ -64,7 +64,7 @@ async fn artists_named(f: &ImportFixture, name: &str) -> Vec<bae_db::DbArtist> {
     };
     let query = bae_core::library::LibrarySearchQuery::parse("rtist").expect("not blank");
     let window = bae_db::LibraryPageWindow { offset: 0, limit: 100 };
-    bae_core::library::views::LibraryViews::new(f.db.clone())
+    bae_core::library::views::LibraryViews::new(f.library.database().clone())
         .search_artists(&query, window)
         .await
         .unwrap()
@@ -75,7 +75,7 @@ async fn artists_named(f: &ImportFixture, name: &str) -> Vec<bae_db::DbArtist> {
 
 /// The artist the album's first credit names.
 async fn album_artist_id(f: &ImportFixture, album_id: &str) -> String {
-    f.db.get_artists_for_album(album_id)
+    f.library.database().get_artists_for_album(album_id)
         .await
         .unwrap()
         .first()
@@ -177,8 +177,8 @@ async fn a_name_two_library_artists_share_imports_as_a_new_artist() {
     let f = ImportFixture::new().await;
     let first = library_artist("Artist Name", None);
     let second = library_artist("Artist Name", Some("discogs-other"));
-    f.library_manager.insert_artist(&first).await.unwrap();
-    f.library_manager.insert_artist(&second).await.unwrap();
+    f.library.insert_artist(&first).await.unwrap();
+    f.library.insert_artist(&second).await.unwrap();
     let tagged_dir = tagged_album_folder(&f, "album-two", "Album Two", "Artist Name");
 
     let (_, album) = import_and_wait(&f, tagged_dir, bae_import::test_imports::DraftSource::FileTags).await;
@@ -196,14 +196,14 @@ async fn a_library_artist_with_another_discogs_id_is_not_the_credit() {
     bae_util::test_logs::install();
     let f = ImportFixture::new().await;
     let other = library_artist("Artist Name", Some("discogs-other"));
-    f.library_manager.insert_artist(&other).await.unwrap();
+    f.library.insert_artist(&other).await.unwrap();
     let (catalog_dir, catalog) = discogs_album_folder(&f, "album-one", "Album One");
 
     let (_, album) = import_and_wait(&f, catalog_dir, catalog).await;
 
     let album_artist = album_artist_id(&f, &album).await;
     assert_ne!(album_artist, other.id);
-    let unchanged = f.db.find_artist_by_id(&other.id).await.unwrap().unwrap();
+    let unchanged = f.library.database().find_artist_by_id(&other.id).await.unwrap().unwrap();
     assert_eq!(unchanged.discogs_artist_id.as_deref(), Some("discogs-other"));
     assert_eq!(artists_named(&f, "Artist Name").await.len(), 2);
 }
@@ -213,7 +213,7 @@ async fn a_credit_meets_its_artist_however_the_name_is_cased_or_accented() {
     bae_util::test_logs::install();
     let f = ImportFixture::new().await;
     let existing = library_artist("artist name", None);
-    f.library_manager.insert_artist(&existing).await.unwrap();
+    f.library.insert_artist(&existing).await.unwrap();
     let accented_dir = tagged_album_folder(&f, "album-two", "Album Two", "Ärtist Name");
     let cased_dir = tagged_album_folder(&f, "album-three", "Album Three", "ARTIST NAME");
 
@@ -330,8 +330,8 @@ async fn a_pane_offers_the_library_artists_a_shared_name_could_be() {
     let f = ImportFixture::new().await;
     let first = library_artist("Artist Name", None);
     let second = library_artist("Artist Name", Some("discogs-other"));
-    f.library_manager.insert_artist(&first).await.unwrap();
-    f.library_manager.insert_artist(&second).await.unwrap();
+    f.library.insert_artist(&first).await.unwrap();
+    f.library.insert_artist(&second).await.unwrap();
     let tagged_dir = tagged_album_folder(&f, "album-two", "Album Two", "Artist Name");
     let (_, mut pane) = open_tagged_pane(&f, &tagged_dir).await;
 
@@ -371,7 +371,7 @@ async fn a_discogs_credit_imports_with_its_printed_name_and_join() {
     let (_, album_id) = import_and_wait(&f, dir, bae_import::test_imports::discogs_release(release_key)).await;
 
     let album =
-        bae_core::library::views::LibraryViews::new(f.db.clone()).find_album_detail(&album_id).await.unwrap().expect("the imported album");
+        bae_core::library::views::LibraryViews::new(f.library.database().clone()).find_album_detail(&album_id).await.unwrap().expect("the imported album");
     assert_eq!(album.artist_names, "A Variation & Artist B");
     assert_eq!(album.artists[0].artist.name, "Artist A");
     assert_eq!(album.artists[0].printed(), "A Variation");

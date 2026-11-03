@@ -313,7 +313,7 @@ async fn scan_whose_stored_decisions_cannot_be_read_records_the_failure() {
     let root_key = root.to_path_buf();
 
     let invalid_folder = format!("{}/a/./b", root_key.display());
-    f.db.execute_local_sql_for_test(&format!(
+    f.library.database().execute_local_sql_for_test(&format!(
         "INSERT INTO release_grouping (key, anchor_folder, combined, author) \
          VALUES (CAST('grouping:corrupt' AS BLOB), X'{}', 1, 'user')",
         hex::encode(invalid_folder.as_bytes()),
@@ -508,7 +508,7 @@ async fn a_folder_holding_watched_folders_takes_them_over_and_keeps_what_was_dec
         release.watched_folder_path, music,
         "the box is still read as one release, under the same key"
     );
-    let state = bae_import::tables::ImportTables::new(f.db.clone())
+    let state = bae_import::tables::ImportTables::new(f.library.database().clone())
         .load_import_candidate_state(&picked_hash)
         .await
         .unwrap()
@@ -536,7 +536,7 @@ async fn removing_a_watched_folder_forgets_what_was_decided_under_it() {
         .unwrap();
 
     f.handle.remove_watched_folder(artist.clone()).await.unwrap();
-    let tables = bae_import::tables::ImportTables::new(f.db.clone());
+    let tables = bae_import::tables::ImportTables::new(f.library.database().clone());
     assert!(tables.load_skipped_import_candidates(&artist).await.unwrap().is_empty());
     f.handle.add_watched_folder(artist.clone()).await.unwrap();
     wait_for_reads(&f, "the folder is read again", &[&artist]).await;
@@ -713,7 +713,7 @@ async fn a_done_row_follows_its_folder_and_its_release() {
         Some(bae_import::TriageImportStatus::Complete { release })
     );
 
-    f.library_manager.delete_release(&release_id).await.unwrap();
+    f.library.delete_release(&release_id).await.unwrap();
     wait_for_candidates(&f, "the folder back in Found", |projection| {
         candidate_rows(projection)
             .iter()

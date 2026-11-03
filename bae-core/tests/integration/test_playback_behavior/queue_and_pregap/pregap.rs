@@ -250,7 +250,7 @@ async fn seek_lands_at_the_track_time_it_names() {
 /// its 2 s pregap, and shows it there: at 0, not 2 s before it.
 #[tokio::test]
 async fn restore_without_a_saved_position_shows_the_track_start() {
-    let ((library_manager, database, ..), imported) = imported_release_setup(
+    let (library, imported) = imported_release_setup(
         create_cue_flac_test_album(),
         "test",
         uuid::Uuid::new_v4().to_string(),
@@ -258,13 +258,13 @@ async fn restore_without_a_saved_position_shows_the_track_start() {
     )
     .await
     .expect("import the CUE/FLAC album");
-    library_manager
+    library
         .write_resume_point(&imported.release_id, imported.track_ids[1].clone(), None)
         .await
         .unwrap();
 
     let (handle, _capture_rx) =
-        start_capture_service(library_manager, &database, tokio::runtime::Handle::current()).await;
+        start_capture_service(&library).await;
     let mut progress_rx = handle.subscribe_progress();
     let shown =
         bae_util::test_channels::next_matching(&mut progress_rx, PLAY_START_BACKSTOP, |event| match event {

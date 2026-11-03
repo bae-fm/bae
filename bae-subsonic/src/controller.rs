@@ -208,11 +208,8 @@ mod tests {
     use tempfile::TempDir;
 
     async fn test_manager() -> (AppServices, TempDir) {
-        let ((manager, database, catalogs, closing), temp) =
-            bae_core::test_libraries::setup_test_library().await;
-        let services =
-            bae_core::test_libraries::start_test_services(manager, database, catalogs, closing)
-                .await;
+        let (library, temp) = bae_core::test_libraries::setup_test_library().await;
+        let services = library.start_services().await.expect("the test library's services start");
         (services, temp)
     }
 

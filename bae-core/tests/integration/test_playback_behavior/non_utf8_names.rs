@@ -9,7 +9,7 @@ async fn a_track_whose_name_is_not_utf8_plays() {
     let mut album = create_test_album();
     album.id = "non-utf8-name".to_string();
     album.tracklist.truncate(1);
-    let ((library_manager, database, catalogs, closing), imported) = imported_release_setup(
+    let (library, imported) = imported_release_setup(
         album,
         "non-utf8-name",
         uuid::Uuid::new_v4().to_string(),
@@ -27,7 +27,7 @@ async fn a_track_whose_name_is_not_utf8_plays() {
     let [track_id] = imported.track_ids.as_slice() else {
         panic!("one track: {:?}", imported.track_ids);
     };
-    let (playback_handle, _capture_stream_rx) = bae_core::test_libraries::start_capture_playback(&library_manager, &database,
+    let (playback_handle, _capture_stream_rx) = bae_core::test_libraries::start_capture_playback(&library,
         bae_playback::test_capture::TestAudioDevice::RealtimeCapture,
     )
     .await;

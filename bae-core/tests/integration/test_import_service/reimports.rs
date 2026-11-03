@@ -38,14 +38,14 @@ async fn two_sequential_imports() {
     }
 
     // Both releases exist in DB
-    let release1 = f.db.find_release_by_id(&release_ids[0]).await.unwrap().unwrap();
-    let release2 = f.db.find_release_by_id(&release_ids[1]).await.unwrap().unwrap();
+    let release1 = f.library.database().find_release_by_id(&release_ids[0]).await.unwrap().unwrap();
+    let release2 = f.library.database().find_release_by_id(&release_ids[1]).await.unwrap().unwrap();
 
     // Different albums
     assert_ne!(release1.album_id, release2.album_id);
 
-    let album1 = f.db.find_album_by_id(&release1.album_id).await.unwrap().unwrap();
-    let album2 = f.db.find_album_by_id(&release2.album_id).await.unwrap().unwrap();
+    let album1 = f.library.database().find_album_by_id(&release1.album_id).await.unwrap().unwrap();
+    let album2 = f.library.database().find_album_by_id(&release2.album_id).await.unwrap().unwrap();
     assert_eq!(album1.title, "First Album");
     assert_eq!(album2.title, "Second Album");
 }
@@ -91,9 +91,9 @@ async fn repeated_imports_keep_independent_copies() {
         )
         .await
         .expect("each import creates another copy");
-        let release = f.db.find_release_by_id(&id).await.unwrap().unwrap();
-        let tracks = f.db.get_tracks_for_release(&id).await.unwrap();
-        let files = f.db.get_files_for_release(&id).await.unwrap();
+        let release = f.library.database().find_release_by_id(&id).await.unwrap().unwrap();
+        let tracks = f.library.database().get_tracks_for_release(&id).await.unwrap();
+        let files = f.library.database().get_files_for_release(&id).await.unwrap();
         assert_eq!(tracks.len(), 1);
         assert_eq!(files.len(), 1);
         for (prior, prior_tracks, prior_files) in &copies {
@@ -104,21 +104,21 @@ async fn repeated_imports_keep_independent_copies() {
             assert_eq!(release.album_id, prior.album_id);
             assert_ne!(tracks[0].id, prior_tracks[0].id);
             assert_ne!(files[0].id, prior_files[0].id);
-            assert_eq!(f.db.get_tracks_for_release(&prior.id).await.unwrap(), *prior_tracks);
-            assert_eq!(f.db.get_files_for_release(&prior.id).await.unwrap(), *prior_files);
+            assert_eq!(f.library.database().get_tracks_for_release(&prior.id).await.unwrap(), *prior_tracks);
+            assert_eq!(f.library.database().get_files_for_release(&prior.id).await.unwrap(), *prior_files);
         }
         if matches!(destination, ImportDestination::Remote { .. }) {
-            assert_eq!(f.library_manager.drain_uploads_expecting_work().await.unwrap(), 1);
-            assert!(f.db.get_files_for_release(&id).await.unwrap().iter().all(|file| file.stored));
+            assert_eq!(f.library.drain_uploads_expecting_work().await.unwrap(), 1);
+            assert!(f.library.database().get_files_for_release(&id).await.unwrap().iter().all(|file| file.stored));
         } else {
             assert_release_has_external_ref(&f, &id).await;
         }
         // Rows as they stand once any upload landed.
-        let files = f.db.get_files_for_release(&id).await.unwrap();
+        let files = f.library.database().get_files_for_release(&id).await.unwrap();
         copies.push((release, tracks, files));
     }
     for (release, _, files) in &copies {
-        let bytes = f.library_manager.materialize_release_file_for_test(&files[0].id).await;
+        let bytes = f.library.materialize_release_file_for_test(&files[0].id).await;
         assert!(bytes.is_ok(), "copy {} remains readable: {bytes:?}", release.id);
     }
 }
@@ -152,11 +152,11 @@ async fn a_remote_import_without_a_cloud_connection_queues_its_uploads() {
     .await
     .expect("a Remote import commits with no cloud connected");
 
-    assert!(f.db.find_release_by_id(&release_id).await.unwrap().is_some());
+    assert!(f.library.database().find_release_by_id(&release_id).await.unwrap().is_some());
     // Each row names its file only once its upload completes.
-    assert!(f.db.get_files_for_release(&release_id).await.unwrap().iter().all(|file| !file.stored));
+    assert!(f.library.database().get_files_for_release(&release_id).await.unwrap().iter().all(|file| !file.stored));
     assert!(
-        f.db.has_pending_uploads_for_release(&release_id).await.unwrap(),
+        f.library.database().has_pending_uploads_for_release(&release_id).await.unwrap(),
         "its uploads wait in the queue"
     );
 }

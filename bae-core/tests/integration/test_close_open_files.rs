@@ -23,34 +23,17 @@ async fn closing_a_playing_library_leaves_none_of_its_files_open() {
         "Close Test Album",
         &[("Test Track 1", "0:10"), ("Test Track 2", "0:10"), ("Test Track 3", "0:10")],
     );
-    let ((manager, database, catalogs, closing), imported) =
-        bae_core::test_libraries::imported_release_setup(
-            release,
-            "test",
-            uuid::Uuid::new_v4().to_string(),
-            write_tracks,
-        )
-        .await
-        .expect("import the release");
-    let (device, _capture) = bae_playback::RealtimeCaptureAudioDevice::new();
-    let clock: coven::ClockRef = std::sync::Arc::new(coven::SystemClock);
-    let services = bae_core::app::start_library_services(
-        manager,
-        database,
-        catalogs.clone(),
-        closing,
-        clock.clone(),
-        std::sync::Arc::new(coven::UuidIds),
-        bae_diagnostics::Diagnostics::noop(),
-        tokio::runtime::Handle::current(),
-        bae_catalogs::remote_image::RemoteImageCache::for_test(bae_util::http::Http::for_test()),
-        100,
-        false,
-        std::sync::Arc::new(bae_playback::WallPlaybackClock::new(clock)),
-        bae_core::app::PlaybackOutput::Device(Box::new(device)),
+    let (library, imported) = bae_core::test_libraries::imported_release_setup(
+        release,
+        "test",
+        uuid::Uuid::new_v4().to_string(),
+        write_tracks,
     )
     .await
-    .expect("start the library's services");
+    .expect("import the release");
+    let (device, _capture) = bae_playback::RealtimeCaptureAudioDevice::new();
+    let services =
+        library.start_services_on(Box::new(device)).await.expect("start the library's services");
     let mut progress = services.subscribe_playback_progress();
 
     services.playback_play_release(imported.release_id.clone(), None, false);

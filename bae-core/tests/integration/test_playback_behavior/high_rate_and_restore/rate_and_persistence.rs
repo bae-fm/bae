@@ -11,9 +11,8 @@ struct HighSampleRateTestFixture {
 impl HighSampleRateTestFixture {
     async fn new() -> Result<Self, Box<dyn std::error::Error>> {
         let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
-        let ((library_manager, database, catalogs, closing), album_dir, temp_dir) =
+        let (library, album_dir, temp_dir) =
             bae_core::test_libraries::setup_test_library_with_album_dir(fakes.providers()).await;
-        let runtime_handle = tokio::runtime::Handle::current();
 
         let fixture_path = bae_import::test_fixtures::flac_dir().join("96khz_test.flac");
         let test_path = album_dir.join("01 96kHz Track.flac");
@@ -33,15 +32,15 @@ impl HighSampleRateTestFixture {
         let release_id_key =
             fakes.seed_discogs_test_release(discogs_release);
 
-        bae_import::test_imports::import_folder_and_wait(&database, &catalogs, &closing, album_dir, release_id_key).await;
+        library.import_folder(album_dir, release_id_key).await;
 
-        let albums = bae_core::library::views::LibraryViews::new(database.clone()).get_albums(&[]).await?;
-        let releases = library_manager.get_releases_for_album(&albums[0].id).await?;
-        let tracks = library_manager.get_tracks_for_release(&releases[0].id).await?;
+        let albums = library.views().get_albums(&[]).await?;
+        let releases = library.get_releases_for_album(&albums[0].id).await?;
+        let tracks = library.get_tracks_for_release(&releases[0].id).await?;
         let track_id = tracks[0].id.clone();
 
         // Verify the audio format was correctly detected as 96kHz
-        let audio_format = library_manager
+        let audio_format = library
             .get_audio_format_by_track_id(&track_id)
             .await?
             .expect("Audio format should be detected for 96kHz track");
@@ -53,7 +52,7 @@ impl HighSampleRateTestFixture {
         );
 
         let (playback_handle, capture_stream_rx) =
-            start_capture_service(library_manager.clone(), &database, runtime_handle).await;
+            start_capture_service(&library).await;
         let progress_rx = playback_handle.subscribe_progress();
 
         Ok(Self {
@@ -324,14 +323,14 @@ async fn test_cue_flac_seek_respects_track_end_boundary() {
 /// service started — the arrange for the tests below, which each decide when
 /// their own service comes up — beside the library's store. The `TempDir` owns
 /// the library's files.
-async fn imported_library_without_playback() -> (LibraryManager, bae_db::Database, TempDir) {
+async fn imported_library_without_playback() -> (TestLibrary, TempDir) {
     let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
-    let ((library_manager, database, catalogs, closing), album_dir, temp_dir) = bae_core::test_libraries::setup_test_library_with_album_dir(fakes.providers()).await;
+    let (library, album_dir, temp_dir) = bae_core::test_libraries::setup_test_library_with_album_dir(fakes.providers()).await;
     let _ = generate_test_flac_files(&album_dir);
     let release_id_key =
         fakes.seed_discogs_test_release(create_test_album());
-    bae_import::test_imports::import_folder_and_wait(&database, &catalogs, &closing, album_dir, release_id_key).await;
-    (library_manager, database, temp_dir)
+    library.import_folder(album_dir, release_id_key).await;
+    (library, temp_dir)
 }
 
 /// Restoring playback state on service start must emit the restored position
@@ -351,22 +350,21 @@ async fn test_restore_emits_seeked_at_saved_position() {
     bae_util::test_logs::install();
 
     // Build a library + import tracks, but do NOT start a playback service.
-    let (library_manager, database, _temp_dir) = imported_library_without_playback().await;
-    let runtime_handle = tokio::runtime::Handle::current();
-    let releases = library_manager
-        .get_releases_for_album(&bae_core::library::views::LibraryViews::new(database.clone()).get_albums(&[]).await.unwrap()[0].id)
+    let (library, _temp_dir) = imported_library_without_playback().await;
+    let releases = library
+        .get_releases_for_album(&library.views().get_albums(&[]).await.unwrap()[0].id)
         .await
         .unwrap();
-    let tracks = library_manager.get_tracks_for_release(&releases[0].id).await.unwrap();
+    let tracks = library.get_tracks_for_release(&releases[0].id).await.unwrap();
     let track_id = tracks[0].id.clone();
 
     // Write a snapshot before the service starts, so no one can consume it
     // before our test service starts.
-    library_manager.write_resume_point(&releases[0].id, track_id.clone(), Some(0)).await.unwrap();
+    library.write_resume_point(&releases[0].id, track_id.clone(), Some(0)).await.unwrap();
 
     // Start the playback service — restore() runs on the audio thread before
     // run() and calls emit_position_display at its tail.
-    let (handle, _capture_rx) = start_capture_service(library_manager, &database, runtime_handle).await;
+    let (handle, _capture_rx) = start_capture_service(&library).await;
     let mut progress_rx = handle.subscribe_progress();
 
     let landed = wait_for_seeked_on(&mut progress_rx, Duration::from_secs(20)).await;
@@ -388,19 +386,18 @@ async fn test_restore_emits_seeked_at_saved_position() {
 async fn test_play_persists_then_stop_clears_playback_state() {
     bae_util::test_logs::install();
 
-    let (library_manager, database, _temp_dir) = imported_library_without_playback().await;
-    let runtime_handle = tokio::runtime::Handle::current();
-    let release_id = library_manager
-        .get_releases_for_album(&bae_core::library::views::LibraryViews::new(database.clone()).get_albums(&[]).await.unwrap()[0].id)
+    let (library, _temp_dir) = imported_library_without_playback().await;
+    let release_id = library
+        .get_releases_for_album(&library.views().get_albums(&[]).await.unwrap()[0].id)
         .await
         .unwrap()[0]
         .id
         .clone();
     let first_track =
-        library_manager.get_tracks_for_release(&release_id).await.unwrap()[0].id.clone();
+        library.get_tracks_for_release(&release_id).await.unwrap()[0].id.clone();
 
     let (handle, _capture_rx) =
-        start_capture_service(library_manager.clone(), &database, runtime_handle).await;
+        start_capture_service(&library).await;
 
     // Playing a release persists the row: current is the first track, and the
     // queue plays from the release.
@@ -408,7 +405,7 @@ async fn test_play_persists_then_stop_clears_playback_state() {
     let deadline = Instant::now() + Duration::from_secs(5);
     let mut persisted = None;
     while Instant::now() < deadline {
-        if let Some(row) = bae_playback::tables::load_playback_state(&database).await.unwrap() {
+        if let Some(row) = bae_playback::tables::load_playback_state(library.database()).await.unwrap() {
             persisted = Some(row);
             break;
         }
@@ -429,7 +426,7 @@ async fn test_play_persists_then_stop_clears_playback_state() {
     let deadline = Instant::now() + Duration::from_secs(5);
     let mut cleared = false;
     while Instant::now() < deadline {
-        if bae_playback::tables::load_playback_state(&database).await.unwrap().is_none() {
+        if bae_playback::tables::load_playback_state(library.database()).await.unwrap().is_none() {
             cleared = true;
             break;
         }
@@ -475,7 +472,7 @@ async fn persisted_position_past(fixture: &mut PlaybackTestFixture, floor_ms: u6
                      with no Shutdown/SaveState sent"
             )
         });
-        let state = bae_playback::tables::load_playback_state(&fixture.database)
+        let state = bae_playback::tables::load_playback_state(fixture.library.database())
             .await
             .expect("load_playback_state should succeed");
         if let Some(persisted_ms) =
@@ -490,18 +487,12 @@ async fn persisted_position_past(fixture: &mut PlaybackTestFixture, floor_ms: u6
 /// write a `playback_state` row and then start its own service to exercise
 /// restore without racing a fixture's service for the row.
 struct RestoreTestLibrary {
-    library_manager: LibraryManager,
-    /// The library's store and closing token, which a test's own playback
-    /// and import services run over.
-    database: bae_db::Database,
-    closing: bae_core::library::CancellationToken,
-    /// The catalog sessions the library was built over, for a test that
-    /// imports again.
-    catalogs: bae_import::CatalogSessions,
-    /// The catalog fakes those sessions ask, which a test that imports again
+    /// The library, which a test's own playback and import services run
+    /// over.
+    library: TestLibrary,
+    /// The catalog fakes the library asks, which a test that imports again
     /// seeds.
     fakes: bae_catalogs::fake_catalogs::FakeCatalogs,
-    runtime_handle: tokio::runtime::Handle,
     track_ids: Vec<String>,
     _temp_dir: TempDir,
 }

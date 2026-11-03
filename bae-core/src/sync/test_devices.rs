@@ -254,7 +254,7 @@ async fn device(
 impl RunningLibrary {
     async fn new(app_dir: AppDir, handle: coven::CovenHandle) -> Self {
         let database = stores::device_database(handle);
-        let library = crate::app::test_library::TestLibrary::open(
+        let library = crate::test_libraries::TestLibrary::open(
             database.clone(),
             app_dir,
             bae_catalogs::providers::Providers::offline(),

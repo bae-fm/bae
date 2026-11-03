@@ -29,12 +29,12 @@ fn unreachable_s3_config() -> S3ConfigData {
 #[test]
 fn probe_failure_persists_nothing_and_surfaces_as_cloud_setup_network() {
     let runtime = tokio::runtime::Runtime::new().unwrap();
-    let ((lm, ..), _tmp) = setup_fresh_library(&runtime);
+    let (library, _tmp) = setup_fresh_library(&runtime);
 
     // Nothing listens on port 1, so the probe fails with connection-refused
     // before `save_s3_config` reaches any of its persisting steps.
     let err = runtime
-        .block_on(lm.save_s3_config(unreachable_s3_config(), "Test Device", &|_| ()))
+        .block_on(library.save_s3_config(unreachable_s3_config(), "Test Device", &|_| ()))
         .expect_err("an unreachable endpoint must fail the probe");
     // An unreachable backend is the network case within the cloud-setup
     // category, distinct from the authentication and permission cases.
@@ -45,7 +45,7 @@ fn probe_failure_persists_nothing_and_surfaces_as_cloud_setup_network() {
     );
 
     // The library is untouched: no provider recorded and sync is unconfigured.
-    assert!(!runtime.block_on(lm.is_sync_configured()).unwrap());
+    assert!(!runtime.block_on(library.is_sync_configured()).unwrap());
 }
 
 /// Runs in its own process: a host stack too narrow for the save overflows,
@@ -54,14 +54,14 @@ fn probe_failure_persists_nothing_and_surfaces_as_cloud_setup_network() {
 fn save_s3_config_survives_a_narrow_host_stack() {
     in_own_process("test_save_s3_config::save_s3_config_survives_a_narrow_host_stack", || {
         let runtime = tokio::runtime::Runtime::new().expect("build test runtime");
-        let ((manager, ..), _library) = setup_fresh_library(&runtime);
+        let (library, _dir) = setup_fresh_library(&runtime);
         std::thread::scope(|scope| {
             std::thread::Builder::new()
                 .name("narrow-s3-host".to_string())
                 .stack_size(512 * 1024)
                 .spawn_scoped(scope, move || {
                     runtime
-                        .block_on(manager.save_s3_config(
+                        .block_on(library.save_s3_config(
                             unreachable_s3_config(),
                             "Test Device",
                             &|_| (),

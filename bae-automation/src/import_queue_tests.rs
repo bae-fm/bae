@@ -63,11 +63,9 @@ impl Fixture {
 
 pub(super) async fn automation_over() -> Fixture {
     let tmp = tempfile::TempDir::new().expect("a temp library dir");
-    let (manager, database, catalogs, closing) =
-        bae_core::test_libraries::open_test_library(tmp.path()).await;
-    let tables = bae_import::tables::ImportTables::new(database.clone());
-    let services =
-        bae_core::test_libraries::start_test_services(manager, database, catalogs, closing).await;
+    let library = bae_core::test_libraries::open_test_library(tmp.path()).await;
+    let tables = bae_import::tables::ImportTables::new(library.database().clone());
+    let services = library.start_services().await.expect("the test library's services start");
     let automation = Automation::new(services.clone(), &tokio::runtime::Handle::current());
     Fixture { automation, tables, services, tmp }
 }

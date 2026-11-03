@@ -3,7 +3,7 @@
 use crate::followed::value_matching;
 use std::sync::Arc;
 
-use crate::library::{CancellationToken, LibraryManager};
+use crate::library::LibraryManager;
 use bae_catalogs::providers::Providers;
 use coven::{MemoryStorage, Storage};
 
@@ -11,10 +11,7 @@ use coven::{MemoryStorage, Storage};
 pub async fn storage_library(
     directory: &std::path::Path,
     providers: Providers,
-) -> (
-    (LibraryManager, bae_db::Database, bae_import::CatalogSessions, CancellationToken),
-    Arc<MemoryStorage>,
-) {
+) -> (super::TestLibrary, Arc<MemoryStorage>) {
     let installation = coven::TestCoven::new();
     let storage =
         Arc::new(MemoryStorage::builder().clock(Arc::new(coven::SystemClock)).build().unwrap());
@@ -25,10 +22,9 @@ pub async fn storage_library(
     .create_store("Test Library")
     .await
     .unwrap();
-    let (manager, database, catalogs, closing) =
-        super::test_library_from_handle(handle, directory, providers).await;
-    manager.start().unwrap();
-    ((manager, database, catalogs, closing), storage)
+    let library = super::test_library_from_handle(handle, directory, providers).await;
+    library.start().unwrap();
+    (library, storage)
 }
 
 /// Set up storage, then pause uploads while the caller seeds its queue.

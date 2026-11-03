@@ -18,24 +18,17 @@ use uuid::Uuid;
 // Helpers
 // ---------------------------------------------------------------------------
 
-async fn setup(tmp: &TempDir) -> LibraryManager {
-    bae_core::test_libraries::open_test_library(tmp.path()).await.0
+async fn setup(tmp: &TempDir) -> bae_core::test_libraries::TestLibrary {
+    bae_core::test_libraries::open_test_library(tmp.path()).await
 }
 
-async fn setup_with_cloud(
-    tmp: &TempDir,
-) -> (
-    bae_core::library::LibraryManager,
-    bae_db::Database,
-    bae_import::CatalogSessions,
-    bae_core::library::CancellationToken,
-) {
+async fn setup_with_cloud(tmp: &TempDir) -> bae_core::test_libraries::TestLibrary {
     let (library, storage) = bae_core::test_libraries::storage_library(
         tmp.path(),
         bae_catalogs::providers::Providers::offline(),
     )
     .await;
-    bae_core::test_libraries::connect_storage(&library.0, &storage).await;
+    bae_core::test_libraries::connect_storage(&library, &storage).await;
     library
 }
 
@@ -158,7 +151,7 @@ async fn expect_storage_state(
 async fn uploads_are_counted_before_drain() {
     bae_util::test_logs::install();
     let tmp = TempDir::new().unwrap();
-    let (mgr, ..) = setup_with_cloud(&tmp).await;
+    let mgr = setup_with_cloud(&tmp).await;
     let source = tmp.path().join("src");
     let (_album_id, release_id, named) = create_local_release(
         &mgr,
@@ -267,7 +260,8 @@ async fn a_release_detail_says_where_its_download_stands() {
     use bae_core::album_detail::ReleaseDownloadStatus;
     bae_util::test_logs::install();
     let tmp = TempDir::new().unwrap();
-    let (mgr, db, ..) = setup_with_cloud(&tmp).await;
+    let mgr = setup_with_cloud(&tmp).await;
+    let db = mgr.database().clone();
     let release_id =
         create_remote_release(&mgr, &db, &tmp.path().join("src"), &[("a.flac", b"bytes-a")]).await;
     let status = |db: bae_db::Database, release_id: String| async move {
@@ -297,7 +291,8 @@ async fn a_release_detail_says_where_its_download_stands() {
 async fn test_pin_remote_fetches_into_pinned_cache() {
     bae_util::test_logs::install();
     let tmp = TempDir::new().unwrap();
-    let (mgr, db, ..) = setup_with_cloud(&tmp).await;
+    let mgr = setup_with_cloud(&tmp).await;
+    let db = mgr.database().clone();
     let release_id = create_remote_release(
         &mgr,
         &db,
@@ -349,10 +344,10 @@ async fn test_pin_remote_fetches_into_pinned_cache() {
 async fn the_detail_views_follow_a_releases_pin() {
     bae_util::test_logs::install();
     let tmp = TempDir::new().unwrap();
-    let (mgr, database, catalogs, closing) = setup_with_cloud(&tmp).await;
+    let mgr = setup_with_cloud(&tmp).await;
     let release_id = create_remote_release(
         &mgr,
-        &database,
+        mgr.database(),
         &tmp.path().join("src"),
         &[("a.flac", b"follow-bytes")],
     )
@@ -363,9 +358,7 @@ async fn the_detail_views_follow_a_releases_pin() {
         .unwrap()
         .expect("the library holds the release")
         .album_id;
-    let services =
-        bae_core::test_libraries::start_test_services(mgr.clone(), database, catalogs, closing)
-            .await;
+    let services = mgr.start_services().await.expect("the test library's services start");
     let release = services.subscribe_release_detail();
     release.set(Some(release_id.clone())).unwrap();
     let album = services.subscribe_album_detail();
@@ -414,7 +407,8 @@ async fn the_detail_views_follow_a_releases_pin() {
 async fn test_unpin_remote_drops_from_pinned_cache() {
     bae_util::test_logs::install();
     let tmp = TempDir::new().unwrap();
-    let (mgr, db, ..) = setup_with_cloud(&tmp).await;
+    let mgr = setup_with_cloud(&tmp).await;
+    let db = mgr.database().clone();
     let release_id =
         create_remote_release(&mgr, &db, &tmp.path().join("src"), &[("a.flac", b"unpin-bytes")])
             .await;
@@ -472,13 +466,11 @@ async fn test_missing_external_source_maps_to_error() {
 async fn transition_completions_deliver_storage_values() {
     bae_util::test_logs::install();
     let tmp = TempDir::new().unwrap();
-    let (mgr, database, catalogs, closing) = setup_with_cloud(&tmp).await;
+    let mgr = setup_with_cloud(&tmp).await;
     let source_dir = tmp.path().join("src");
     let (_a, release_id, _named) =
         create_local_release(&mgr, &source_dir, &[("a.flac", b"round-trip-bytes")]).await;
-    let services =
-        bae_core::test_libraries::start_test_services(mgr.clone(), database, catalogs, closing)
-            .await;
+    let services = mgr.start_services().await.expect("the test library's services start");
     let values = services.subscribe_storage_browse(StorageBrowseView {
         sort: StorageSortCriterion {
             field: StorageSortField::AlbumTitle,
@@ -510,7 +502,7 @@ async fn transition_completions_deliver_storage_values() {
 async fn selected_releases_leave_the_local_list_with_their_upload() {
     bae_util::test_logs::install();
     let tmp = TempDir::new().unwrap();
-    let (mgr, database, catalogs, closing) = setup_with_cloud(&tmp).await;
+    let mgr = setup_with_cloud(&tmp).await;
     let (_a, first, _) =
         create_local_release(&mgr, &tmp.path().join("first"), &[("a.flac", b"first")]).await;
     let (_b, second, _) =
@@ -518,9 +510,7 @@ async fn selected_releases_leave_the_local_list_with_their_upload() {
     mgr.upload_release(&first, false).await.unwrap();
     mgr.upload_release(&second, false).await.unwrap();
 
-    let services =
-        bae_core::test_libraries::start_test_services(mgr.clone(), database, catalogs, closing)
-            .await;
+    let services = mgr.start_services().await.expect("the test library's services start");
     let selected: std::collections::BTreeSet<String> =
         [first.clone(), second.clone()].into_iter().collect();
     let values = services.subscribe_storage_browse(StorageBrowseView {
@@ -584,17 +574,17 @@ async fn selected_releases_leave_the_local_list_with_their_upload() {
 async fn a_selection_is_offered_the_actions_all_its_releases_allow() {
     bae_util::test_logs::install();
     let tmp = TempDir::new().unwrap();
-    let (mgr, database, catalogs, closing) = setup_with_cloud(&tmp).await;
+    let mgr = setup_with_cloud(&tmp).await;
     let pinned = create_remote_release(
         &mgr,
-        &database,
+        mgr.database(),
         &tmp.path().join("pinned"),
         &[("a.flac", b"pinned")],
     )
     .await;
     let unpinned = create_remote_release(
         &mgr,
-        &database,
+        mgr.database(),
         &tmp.path().join("unpinned"),
         &[("b.flac", b"unpinned")],
     )
@@ -605,9 +595,7 @@ async fn a_selection_is_offered_the_actions_all_its_releases_allow() {
         .await
         .expect("pin task completes");
 
-    let services =
-        bae_core::test_libraries::start_test_services(mgr.clone(), database, catalogs, closing)
-            .await;
+    let services = mgr.start_services().await.expect("the test library's services start");
     let view = |selected: &[&String]| StorageBrowseView {
         sort: StorageSortCriterion {
             field: StorageSortField::AlbumTitle,

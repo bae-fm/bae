@@ -56,7 +56,7 @@ async fn playing_app_services(track_count: usize) -> (AppServices, Vec<String>, 
     // process-global WASAPI device enumerator is left dangling once the first
     // actor thread that made it exits (the enumerator dies with that thread's
     // COM apartment), and the test builds one player per case.
-    let services = crate::app::test_library::TestLibrary::open(
+    let services = crate::test_libraries::TestLibrary::open(
         database,
         bae_app_dir::AppDir::under_home(temp_dir.path()).unwrap(),
         bae_catalogs::providers::Providers::offline(),

@@ -131,7 +131,7 @@ async fn work_mbid_is_stored_beside_a_minted_row_id_and_shared_across_releases()
     .await
     .expect("second local MB import succeeds");
 
-    let (work_ids, linked_release_ids) = f.db.work_links_for_test(V3_WORK).await.unwrap();
+    let (work_ids, linked_release_ids) = f.library.database().work_links_for_test(V3_WORK).await.unwrap();
 
     assert_eq!(work_ids.len(), 1, "the work the two releases share is one row",);
     assert_ne!(work_ids[0], V3_WORK, "the row id is minted, not the MusicBrainz MBID",);
@@ -149,15 +149,15 @@ async fn work_mbid_is_stored_beside_a_minted_row_id_and_shared_across_releases()
 /// the image it was made from — and their size. The record carries the
 /// file's hash once it is stored.
 async fn assert_cover_row_describes_stored_bytes(f: &ImportFixture, release_id: &str) {
-    f.db.find_library_image(release_id, &LibraryImageType::Cover)
+    f.library.database().find_library_image(release_id, &LibraryImageType::Cover)
         .await
         .unwrap()
         .expect("cover row");
-    let bytes = bae_core::test_libraries::read_cover_image_bytes(&f.library_manager, release_id)
+    let bytes = bae_core::test_libraries::read_cover_image_bytes(&f.library, release_id)
         .await
         .expect("cover file readable");
     let file = f
-        .library_manager
+        .library
         .library_image_file_for_test(release_id, &LibraryImageType::Cover)
         .await
         .unwrap()
@@ -205,11 +205,11 @@ async fn import_with_cover_art() {
     let (release_id, _) = bae_import::test_imports::wait_for_import_complete(&mut progress_rx).await;
 
     // Cover image row in DB
-    let cover = f.db.find_library_image(&release_id, &LibraryImageType::Cover).await.unwrap();
+    let cover = f.library.database().find_library_image(&release_id, &LibraryImageType::Cover).await.unwrap();
     assert!(cover.is_some(), "should have cover image in DB");
 
     // Cover bytes readable through the image ref path (coven's local store while Local).
-    let cover_bytes = bae_core::test_libraries::read_cover_image_bytes(&f.library_manager, &release_id)
+    let cover_bytes = bae_core::test_libraries::read_cover_image_bytes(&f.library, &release_id)
         .await
         .expect("cover file should be readable");
     assert!(!cover_bytes.is_empty(), "cover bytes should not be empty");
@@ -251,14 +251,14 @@ async fn import_resizes_oversized_cover_to_jpeg_thumbnail() {
 
     // The row records the stored format (JPEG), not the source PNG.
     let cover =
-        f.db.find_library_image(&release_id, &LibraryImageType::Cover)
+        f.library.database().find_library_image(&release_id, &LibraryImageType::Cover)
             .await
             .unwrap()
             .expect("cover image in DB");
     assert_eq!(cover.content_type, bae_util::content_type::ContentType::Jpeg);
 
     // The stored file is a ≤600 JPEG downscaled from the 1000×1000 PNG source.
-    let cover_bytes = bae_core::test_libraries::read_cover_image_bytes(&f.library_manager, &release_id)
+    let cover_bytes = bae_core::test_libraries::read_cover_image_bytes(&f.library, &release_id)
         .await
         .expect("cover file should be readable");
     assert_eq!(image::guess_format(&cover_bytes).unwrap(), image::ImageFormat::Jpeg);
@@ -319,10 +319,10 @@ async fn import_gif_and_webp_covers_stores_first_image_as_jpeg() {
             .await
             .unwrap_or_else(|error| panic!("{name}: {error}"));
         let cover =
-            f.db.find_library_image(&release_id, &LibraryImageType::Cover).await.unwrap().unwrap();
+            f.library.database().find_library_image(&release_id, &LibraryImageType::Cover).await.unwrap().unwrap();
         assert_eq!(cover.content_type, bae_util::content_type::ContentType::Jpeg);
         let stored =
-            bae_core::test_libraries::read_cover_image_bytes(&f.library_manager, &release_id).await.unwrap();
+            bae_core::test_libraries::read_cover_image_bytes(&f.library, &release_id).await.unwrap();
         assert_eq!(image::guess_format(&stored).unwrap(), image::ImageFormat::Jpeg);
         let decoded = image::load_from_memory(&stored).unwrap();
         assert_eq!((decoded.width(), decoded.height()), dimensions);
