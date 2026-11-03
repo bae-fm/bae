@@ -367,8 +367,12 @@ fn measure_decode_baseline_factor(fixture: &PlaybackTestFixture, label: &str) ->
     let mut audio_seconds = 0.0f64;
     let mut passes = 0u32;
     let cpu_time = loop {
-        let decoded = bae_audio::decode_audio(support::filled_sparse_buffer(&bytes), None, None)
-            .unwrap_or_else(|e| panic!("{label}: decode the source file for the baseline: {e}"));
+        let decoded = bae_audio::decode_audio(
+            bae_audio::test_samples::filled_sparse_buffer(&bytes),
+            None,
+            None,
+        )
+        .unwrap_or_else(|e| panic!("{label}: decode the source file for the baseline: {e}"));
         let frames = decoded.samples.len() as f64 / decoded.channels as f64;
         audio_seconds += frames / decoded.sample_rate as f64;
         passes += 1;

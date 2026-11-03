@@ -41,7 +41,8 @@ tempfile = { workspace = true }
 [features]
 default = []
 # The WAV reader and the whole-buffer i32 encoder bae-core's and bae-subsonic's
-# tests build and check audio with.
+# tests build and check audio with, and the buffer, sample conversion and
+# comparison they check a decode or a capture against a reference with.
 test-utils = []
 # What bae-core's own unit tests read back and drive: the files each probe
 # opened (for tests that assert a second look at a folder opens nothing), where

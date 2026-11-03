@@ -262,7 +262,7 @@ async fn test_cue_flac_seek_respects_track_end_boundary() {
     let reference_data =
         std::fs::read(fixture_dir.join("02 Test Artist - Track Two (White Noise).flac"))
             .expect("read reference");
-    let reference = decode_audio(support::filled_sparse_buffer(&reference_data), None, None)
+    let reference = decode_audio(bae_audio::test_samples::filled_sparse_buffer(&reference_data), None, None)
         .expect("decode reference");
     let channels = reference.channels as usize;
     let sample_rate = reference.sample_rate;

@@ -118,11 +118,18 @@ async fn export_track_from_cloud_only_release() {
     // FLAC is lossless: the exported file decodes to the same PCM as the
     // cloud copy.
     let exported = fs::read(&out).unwrap();
-    let exported_pcm =
-        bae_audio::decode_audio(support::filled_sparse_buffer(&exported), None, None).unwrap();
-    let original_pcm =
-        bae_audio::decode_audio(support::filled_sparse_buffer(&original_bytes), None, None)
-            .unwrap();
+    let exported_pcm = bae_audio::decode_audio(
+        bae_audio::test_samples::filled_sparse_buffer(&exported),
+        None,
+        None,
+    )
+    .unwrap();
+    let original_pcm = bae_audio::decode_audio(
+        bae_audio::test_samples::filled_sparse_buffer(&original_bytes),
+        None,
+        None,
+    )
+    .unwrap();
     assert_eq!(exported_pcm.samples, original_pcm.samples);
 }
 
@@ -289,15 +296,25 @@ async fn export_release_single_file_with_cue_writes_image_and_cue() {
     assert!(cue.contains("  TRACK 02 AUDIO"));
 
     let image_pcm = bae_audio::decode_audio(
-        support::filled_sparse_buffer(&fs::read(subdir.join("album.flac")).unwrap()),
+        bae_audio::test_samples::filled_sparse_buffer(
+            &fs::read(subdir.join("album.flac")).unwrap(),
+        ),
         None,
         None,
     )
     .unwrap();
-    let first_pcm =
-        bae_audio::decode_audio(support::filled_sparse_buffer(&first_bytes), None, None).unwrap();
-    let second_pcm =
-        bae_audio::decode_audio(support::filled_sparse_buffer(&second_bytes), None, None).unwrap();
+    let first_pcm = bae_audio::decode_audio(
+        bae_audio::test_samples::filled_sparse_buffer(&first_bytes),
+        None,
+        None,
+    )
+    .unwrap();
+    let second_pcm = bae_audio::decode_audio(
+        bae_audio::test_samples::filled_sparse_buffer(&second_bytes),
+        None,
+        None,
+    )
+    .unwrap();
     assert_eq!(image_pcm.samples.len(), first_pcm.samples.len() + second_pcm.samples.len());
 }
 

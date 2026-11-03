@@ -339,8 +339,8 @@ fn cue_alac_cue_sheet_has_three_tracks() {
 #[test]
 fn decode_alac_fixture_smoke() {
     let bytes = std::fs::read(fixture_dir().join("silence-alac.m4a")).expect("read alac");
-    let decoded =
-        decode_audio(support::filled_sparse_buffer(&bytes), None, None).expect("decode alac");
+    let decoded = decode_audio(bae_audio::test_samples::filled_sparse_buffer(&bytes), None, None)
+        .expect("decode alac");
 
     assert_eq!(decoded.sample_rate, 44100);
     assert_eq!(decoded.channels, 2);

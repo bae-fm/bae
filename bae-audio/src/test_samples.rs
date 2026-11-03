@@ -3,8 +3,8 @@
 
 /// A sparse buffer pre-filled with the whole byte slice, so a decode exercises
 /// the window logic without waiting on a fill.
-pub fn filled_sparse_buffer(bytes: &[u8]) -> bae_audio::sparse_buffer::SharedSparseBuffer {
-    let buffer = bae_audio::sparse_buffer::create_sparse_buffer(bytes.len() as u64);
+pub fn filled_sparse_buffer(bytes: &[u8]) -> crate::sparse_buffer::SharedSparseBuffer {
+    let buffer = crate::sparse_buffer::create_sparse_buffer(bytes.len() as u64);
     buffer.append_at(0, bytes);
     buffer
 }
@@ -12,7 +12,7 @@ pub fn filled_sparse_buffer(bytes: &[u8]) -> bae_audio::sparse_buffer::SharedSpa
 /// Convert a decode's full-range i32 PCM samples to the f32 shape emitted by
 /// streaming playback, for comparing a ground-truth decode against captured
 /// playback output.
-pub fn samples_as_f32(decoded: &bae_audio::DecodedAudio) -> Vec<f32> {
+pub fn samples_as_f32(decoded: &crate::DecodedAudio) -> Vec<f32> {
     let scale = i32::MAX as f32;
     decoded.samples.iter().map(|&s| s as f32 / scale).collect()
 }

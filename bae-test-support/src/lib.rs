@@ -31,7 +31,6 @@ macro_rules! fixture_dir {
 /// what any step takes on a loaded machine.
 pub const HANG_GUARD: std::time::Duration = std::time::Duration::from_secs(300);
 
-mod audio;
 mod files;
 mod import;
 mod library;
@@ -41,7 +40,6 @@ mod storage;
 pub use profiles::{made_profile, made_profile_on, requested_profile, requested_profile_on};
 pub use storage::{connect_storage, release_storage, remove_uploaded_file, storage_library};
 
-pub use audio::{assert_captured_matches_reference, filled_sparse_buffer, samples_as_f32};
 pub use files::{
     copy_and_tag, cover_png, read_cover_image_bytes, read_fixture, write_cover_png,
     write_tagged_flac, ImageHold, RemoteImageHost, TEST_IMAGE_HOST,

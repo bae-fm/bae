@@ -31,8 +31,9 @@ fn image_samples() -> Vec<i32> {
 
 /// Interleaved samples of track 2, as a decode of the whole image puts them out.
 fn track2_of(image: &[u8]) -> Vec<i32> {
-    let whole = bae_audio::decode_audio(support::filled_sparse_buffer(image), None, None)
-        .expect("decode the image");
+    let whole =
+        bae_audio::decode_audio(bae_audio::test_samples::filled_sparse_buffer(image), None, None)
+            .expect("decode the image");
     let track_frames = (SAMPLE_RATE * TRACK_SECONDS) as usize;
     whole.samples[track_frames * 2..track_frames * 2 * 2].to_vec()
 }
@@ -112,7 +113,7 @@ async fn check_track2_save(extension: &str, format: EncodeFormat) {
     let out = dir.path().join("saved.flac");
     library_manager.save_track(&track2, &out, "flac").await.expect("save track 2");
     let saved = bae_audio::decode_audio(
-        support::filled_sparse_buffer(&std::fs::read(&out).unwrap()),
+        bae_audio::test_samples::filled_sparse_buffer(&std::fs::read(&out).unwrap()),
         None,
         None,
     )

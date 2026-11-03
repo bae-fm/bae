@@ -9,9 +9,8 @@ use coven::{IdSource, SequentialIds};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use support::start_test_import;
-use support::{
-    imported_release_setup, open_test_library, samples_as_f32, tracing_init, wait_for_import_complete,
-};
+use support::{imported_release_setup, open_test_library, tracing_init, wait_for_import_complete};
+use bae_audio::test_samples::samples_as_f32;
 use tempfile::TempDir;
 use tracing::debug;
 

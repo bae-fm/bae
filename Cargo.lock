@@ -1113,7 +1113,6 @@ version = "0.0.0-dev"
 dependencies = [
  "axum",
  "bae-app-dir",
- "bae-audio",
  "bae-catalogs",
  "bae-core",
  "bae-db",

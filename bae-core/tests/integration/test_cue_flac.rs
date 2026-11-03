@@ -7,6 +7,7 @@
 //!
 //! These tests use storageless imports for simplicity (the CUE/FLAC handling
 //! is independent of storage configuration).
+use bae_audio::test_samples::{assert_captured_matches_reference, samples_as_f32};
 use bae_catalogs::discogs::models::DiscogsRelease;
 use bae_core::library::LibraryManager;
 use bae_db::DbAudioSegmentRole;
@@ -14,7 +15,7 @@ use bae_test_support as support;
 use bae_util::content_type::ContentType;
 use std::path::Path;
 use std::time::Duration;
-use support::{assert_captured_matches_reference, samples_as_f32, tracing_init};
+use support::tracing_init;
 use tempfile::TempDir;
 use tracing::info;
 
@@ -206,8 +207,9 @@ async fn test_cue_flac_playback_uses_track_positions() {
     let reference_data =
         std::fs::read(fixture_dir.join("02 Test Artist - Track Two (White Noise).flac"))
             .expect("read reference");
-    let reference = decode_audio(support::filled_sparse_buffer(&reference_data), None, None)
-        .expect("decode reference");
+    let reference =
+        decode_audio(bae_audio::test_samples::filled_sparse_buffer(&reference_data), None, None)
+            .expect("decode reference");
     let channels = reference.channels as usize;
     let sample_rate = reference.sample_rate;
     let reference_f32 = samples_as_f32(&reference);
@@ -403,8 +405,9 @@ async fn test_cue_flac_export_single_track() {
 
     // Decode the exported file and check its duration
     let exported_data = std::fs::read(&export_path).expect("read exported file");
-    let decoded = decode_audio(support::filled_sparse_buffer(&exported_data), None, None)
-        .expect("decode exported");
+    let decoded =
+        decode_audio(bae_audio::test_samples::filled_sparse_buffer(&exported_data), None, None)
+            .expect("decode exported");
 
     let exported_duration_ms = decoded.samples.len() as u64 * 1000
         / (decoded.sample_rate as u64 * decoded.channels as u64);
@@ -456,18 +459,27 @@ async fn test_cue_flac_gapless_track_boundary() {
     library_manager.save_track(&tracks[0].id, &t1_path, "flac").await.expect("export track 1");
     let t2_path = temp_root.path().join("t2.flac");
     library_manager.save_track(&tracks[1].id, &t2_path, "flac").await.expect("export track 2");
-    let t1 =
-        decode_audio(support::filled_sparse_buffer(&std::fs::read(&t1_path).unwrap()), None, None)
-            .expect("decode track 1");
-    let t2 =
-        decode_audio(support::filled_sparse_buffer(&std::fs::read(&t2_path).unwrap()), None, None)
-            .expect("decode track 2");
+    let t1 = decode_audio(
+        bae_audio::test_samples::filled_sparse_buffer(&std::fs::read(&t1_path).unwrap()),
+        None,
+        None,
+    )
+    .expect("decode track 1");
+    let t2 = decode_audio(
+        bae_audio::test_samples::filled_sparse_buffer(&std::fs::read(&t2_path).unwrap()),
+        None,
+        None,
+    )
+    .expect("decode track 2");
 
     // Ground truth: the source file decoded once.
     let source = bae_test_support::fixture_dir!("cue_flac", "Test Album.flac");
-    let full =
-        decode_audio(support::filled_sparse_buffer(&std::fs::read(&source).unwrap()), None, None)
-            .expect("decode full");
+    let full = decode_audio(
+        bae_audio::test_samples::filled_sparse_buffer(&std::fs::read(&source).unwrap()),
+        None,
+        None,
+    )
+    .expect("decode full");
 
     // Concatenating the two exported tracks reproduces the continuous source.
     let combined: Vec<i32> = t1.samples.iter().chain(t2.samples.iter()).copied().collect();
