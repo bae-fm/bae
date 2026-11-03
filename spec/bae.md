@@ -597,7 +597,10 @@ The scan's reading is a guess, stored as the folder's *grouping*, marked as the
 scan's. The person can flip it: read a folder as one release, or keep its parts
 apart. Their answer is marked as theirs, and no later scan overrides it. The
 person can also combine releases from anywhere into one, in an order they
-choose; such a grouping reads exactly those folders.
+choose; such a grouping reads exactly those folders. Combining selects the
+release it makes. A combined release's pane offers Keep as Separate
+Releases, which separates it at once, with no confirmation, and selects the
+releases it returns.
 
 Files under a folder that no release there owns, such as a cover beside two
 discs kept as separate releases, are a *sidecar*. At most one release reads a
